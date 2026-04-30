@@ -8,7 +8,7 @@ function login() {
     alert("Preencha email e senha");
     return;
   }
-
+ 
   firebase.auth().signInWithEmailAndPassword(email, senha)
     .then((userCredential) => {
       const user = userCredential.user;
