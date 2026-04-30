@@ -1,20 +1,15 @@
-// CONTROLE GLOBAL ÍNTEGRO
+// APP GLOBAL ÍNTEGRO
 
 document.addEventListener("DOMContentLoaded", () => {
-
+  const pagina = window.location.pathname.split("/").pop() || "index.html";
   const usuario = JSON.parse(localStorage.getItem("usuario"));
 
-  // 🔒 Se não estiver logado → volta pro login
-  if (!usuario) {
-    if (!window.location.pathname.includes("index.html")) {
-      window.location.href = "index.html";
-    }
+  if (pagina !== "index.html" && !usuario) {
+    window.location.href = "index.html";
     return;
   }
 
-  // 🔁 Se já estiver logado e abrir o index → redireciona
-  if (window.location.pathname.includes("index.html")) {
+  if (pagina === "index.html" && usuario) {
     redirecionarUsuario(usuario);
   }
-
 });
