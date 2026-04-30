@@ -1,4 +1,4 @@
-// CONFIG FIREBASE ÍNTEGRO
+// Firebase Config - ÍNTEGRO OFICIAL
 
 const firebaseConfig = {
   apiKey: "AIzaSyBwqnPjj3b8DbTS-27J3p1SYIwGTX8W89g",
@@ -11,3 +11,7 @@ const firebaseConfig = {
 
 // Inicializar Firebase
 firebase.initializeApp(firebaseConfig);
+
+// Inicializar serviços
+const auth = firebase.auth();
+const db = firebase.firestore();
