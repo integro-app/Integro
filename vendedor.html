@@ -1,1 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Vendedor</title>
+</head>
+<body>
+
 <h1>VENDEDOR</h1>
+
+<script>
+  const usuario = JSON.parse(localStorage.getItem("usuario"));
+
+  if (!usuario || usuario.tipoUsuario !== "vendedor") {
+    alert("Acesso negado");
+    window.location.href = "index.html";
+  }
+</script>
+
+</body>
+</html>
