@@ -1,4 +1,4 @@
-// AUTH ÍNTEGRO - LOGIN OFICIAL
+// AUTH ÍNTEGRO - DEBUG REAL
 
 async function login() {
   const email = document.getElementById("email").value.trim();
@@ -10,18 +10,20 @@ async function login() {
   }
 
   try {
+    console.log("Tentando login com:", email);
+
     const credencial = await firebase.auth().signInWithEmailAndPassword(email, senha);
     const authUser = credencial.user;
 
+    console.log("AUTH OK:", authUser.uid, authUser.email);
+
     const db = firebase.firestore();
 
-    // Busca primeiro pelo authUid
     let snap = await db.collection("usuarios")
       .where("authUid", "==", authUser.uid)
       .limit(1)
       .get();
 
-    // Se não achar, tenta pelo email
     if (snap.empty) {
       snap = await db.collection("usuarios")
         .where("email", "==", authUser.email)
@@ -30,8 +32,7 @@ async function login() {
     }
 
     if (snap.empty) {
-      alert("Usuário autenticado, mas não cadastrado no sistema.");
-      await firebase.auth().signOut();
+      alert("Login autenticado, mas usuário não encontrado na coleção usuarios.");
       return;
     }
 
@@ -41,29 +42,34 @@ async function login() {
       ...doc.data()
     };
 
+    console.log("USUÁRIO FIRESTORE:", usuario);
+
     if (usuario.status !== "ATIVO") {
       alert("Usuário inativo ou bloqueado.");
-      await firebase.auth().signOut();
       return;
     }
 
     if (usuario.acessoLiberado === false) {
-      alert("Acesso bloqueado. Procure o administrador.");
-      await firebase.auth().signOut();
+      alert("Acesso bloqueado.");
       return;
     }
 
     localStorage.setItem("usuario", JSON.stringify(usuario));
 
-    await redirecionarUsuario(usuario);
+    redirecionarUsuario(usuario);
 
   } catch (erro) {
-    console.error("Erro no login:", erro);
-    alert("Email ou senha inválidos.");
+    console.error("ERRO REAL NO LOGIN:", erro);
+
+    alert(
+      "Erro real do Firebase:\n\n" +
+      "Código: " + erro.code + "\n" +
+      "Mensagem: " + erro.message
+    );
   }
 }
 
-async function redirecionarUsuario(usuario) {
+function redirecionarUsuario(usuario) {
   const tipo = usuario.tipoUsuario;
 
   if (tipo === "master_global") {
@@ -73,6 +79,11 @@ async function redirecionarUsuario(usuario) {
 
   if (tipo === "master_local") {
     window.location.href = "master-local.html";
+    return;
+  }
+
+  if (tipo === "vendedor") {
+    window.location.href = "vendedor.html";
     return;
   }
 
@@ -86,54 +97,5 @@ async function redirecionarUsuario(usuario) {
     return;
   }
 
-  if (tipo === "vendedor") {
-    await validarCaixaVendedor(usuario);
-    return;
-  }
-
-  alert("Tipo de usuário não identificado.");
-}
-
-async function validarCaixaVendedor(usuario) {
-  try {
-    const db = firebase.firestore();
-
-    const hoje = new Date().toISOString().split("T")[0];
-
-    const snap = await db.collection("caixas")
-      .where("usuarioId", "==", usuario.id)
-      .where("status", "==", "ABERTO")
-      .where("ativo", "==", true)
-      .limit(1)
-      .get();
-
-    if (snap.empty) {
-      alert("Caixa não aberto. Procure o supervisor.");
-      await firebase.auth().signOut();
-      localStorage.removeItem("usuario");
-      return;
-    }
-
-    const caixaDoc = snap.docs[0];
-    const caixa = {
-      id: caixaDoc.id,
-      ...caixaDoc.data()
-    };
-
-    localStorage.setItem("caixaAtual", JSON.stringify(caixa));
-
-    window.location.href = "vendedor.html";
-
-  } catch (erro) {
-    console.error("Erro ao validar caixa:", erro);
-    alert("Erro ao validar caixa do vendedor.");
-  }
-}
-
-function logout() {
-  firebase.auth().signOut().then(() => {
-    localStorage.removeItem("usuario");
-    localStorage.removeItem("caixaAtual");
-    window.location.href = "index.html";
-  });
+  alert("Tipo de usuário não identificado: " + tipo);
 }
