@@ -1,2 +1,2 @@
-# -ntegro
+# integro
 Sistema íntegro
