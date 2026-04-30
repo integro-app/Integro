@@ -1,66 +1,70 @@
-// LOGIN ÍNTEGRO COMPLETO
+// AUTH ÍNTEGRO - LOGIN OFICIAL
 
-function login() {
+async function login() {
   const email = document.getElementById("email").value.trim();
   const senha = document.getElementById("senha").value.trim();
 
   if (!email || !senha) {
-    alert("Preencha email e senha");
+    alert("Preencha email e senha.");
     return;
   }
- 
-  firebase.auth().signInWithEmailAndPassword(email, senha)
-    .then((userCredential) => {
-      const user = userCredential.user;
 
-      // Buscar dados do usuário no Firestore
-      firebase.firestore().collection("usuarios")
-        .where("email", "==", user.email)
-        .get()
-        .then((querySnapshot) => {
+  try {
+    const credencial = await firebase.auth().signInWithEmailAndPassword(email, senha);
+    const authUser = credencial.user;
 
-          if (querySnapshot.empty) {
-            alert("Usuário autenticado, mas não cadastrado no sistema");
-            return;
-          }
+    const db = firebase.firestore();
 
-          const dados = querySnapshot.docs[0].data();
+    // Busca primeiro pelo authUid
+    let snap = await db.collection("usuarios")
+      .where("authUid", "==", authUser.uid)
+      .limit(1)
+      .get();
 
-          // 🔒 BLOQUEIOS DE SEGURANÇA
-          if (dados.status !== "ATIVO") {
-            alert("Usuário inativo ou bloqueado");
-            return;
-          }
+    // Se não achar, tenta pelo email
+    if (snap.empty) {
+      snap = await db.collection("usuarios")
+        .where("email", "==", authUser.email)
+        .limit(1)
+        .get();
+    }
 
-          if (dados.acessoLiberado === false) {
-            alert("Acesso não liberado");
-            return;
-          }
+    if (snap.empty) {
+      alert("Usuário autenticado, mas não cadastrado no sistema.");
+      await firebase.auth().signOut();
+      return;
+    }
 
-          // 🧠 SALVAR SESSÃO
-          localStorage.setItem("usuario", JSON.stringify(dados));
+    const doc = snap.docs[0];
+    const usuario = {
+      id: doc.id,
+      ...doc.data()
+    };
 
-          // 🚀 REDIRECIONAMENTO POR PERFIL
-          redirecionarUsuario(dados);
+    if (usuario.status !== "ATIVO") {
+      alert("Usuário inativo ou bloqueado.");
+      await firebase.auth().signOut();
+      return;
+    }
 
-        })
-        .catch((error) => {
-          console.error(error);
-          alert("Erro ao buscar dados do usuário");
-        });
+    if (usuario.acessoLiberado === false) {
+      alert("Acesso bloqueado. Procure o administrador.");
+      await firebase.auth().signOut();
+      return;
+    }
 
-    })
-    .catch((error) => {
-      alert("Email ou senha inválidos");
-    });
+    localStorage.setItem("usuario", JSON.stringify(usuario));
+
+    await redirecionarUsuario(usuario);
+
+  } catch (erro) {
+    console.error("Erro no login:", erro);
+    alert("Email ou senha inválidos.");
+  }
 }
 
-
-// 🚀 FUNÇÃO DE REDIRECIONAMENTO
-
-function redirecionarUsuario(dados) {
-
-  const tipo = dados.tipoUsuario;
+async function redirecionarUsuario(usuario) {
+  const tipo = usuario.tipoUsuario;
 
   if (tipo === "master_global") {
     window.location.href = "master-global.html";
@@ -69,14 +73,6 @@ function redirecionarUsuario(dados) {
 
   if (tipo === "master_local") {
     window.location.href = "master-local.html";
-    return;
-  }
-
-  if (tipo === "vendedor") {
-
-    // 🔴 REGRA CRÍTICA DO ÍNTEGRO
-    validarCaixaVendedor(dados);
-
     return;
   }
 
@@ -90,35 +86,54 @@ function redirecionarUsuario(dados) {
     return;
   }
 
-  alert("Tipo de usuário não identificado");
+  if (tipo === "vendedor") {
+    await validarCaixaVendedor(usuario);
+    return;
+  }
+
+  alert("Tipo de usuário não identificado.");
 }
 
+async function validarCaixaVendedor(usuario) {
+  try {
+    const db = firebase.firestore();
 
-// 💰 VALIDAÇÃO DE CAIXA (REGRA PRINCIPAL)
+    const hoje = new Date().toISOString().split("T")[0];
 
-function validarCaixaVendedor(dados) {
+    const snap = await db.collection("caixas")
+      .where("usuarioId", "==", usuario.id)
+      .where("status", "==", "ABERTO")
+      .where("ativo", "==", true)
+      .limit(1)
+      .get();
 
-  const hoje = new Date().toISOString().split("T")[0];
+    if (snap.empty) {
+      alert("Caixa não aberto. Procure o supervisor.");
+      await firebase.auth().signOut();
+      localStorage.removeItem("usuario");
+      return;
+    }
 
-  firebase.firestore().collection("caixas")
-    .where("usuarioId", "==", dados.id)
-    .where("data", "==", hoje)
-    .where("status", "==", "ABERTO")
-    .where("ativo", "==", true)
-    .get()
-    .then((querySnapshot) => {
+    const caixaDoc = snap.docs[0];
+    const caixa = {
+      id: caixaDoc.id,
+      ...caixaDoc.data()
+    };
 
-      if (querySnapshot.empty) {
-        alert("Caixa não aberto. Procure o supervisor.");
-        return;
-      }
+    localStorage.setItem("caixaAtual", JSON.stringify(caixa));
 
-      // Se tiver caixa aberto → entra
-      window.location.href = "vendedor.html";
+    window.location.href = "vendedor.html";
 
-    })
-    .catch((error) => {
-      console.error(error);
-      alert("Erro ao validar caixa");
-    });
+  } catch (erro) {
+    console.error("Erro ao validar caixa:", erro);
+    alert("Erro ao validar caixa do vendedor.");
+  }
+}
+
+function logout() {
+  firebase.auth().signOut().then(() => {
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("caixaAtual");
+    window.location.href = "index.html";
+  });
 }
