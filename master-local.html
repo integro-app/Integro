@@ -431,3 +431,323 @@ function fecharDrawer() {
   document.getElementById("drawer").classList.remove("open");
   document.getElementById("drawerBg").classList.remove("open");
 }
+
+function renderUsuarios() {
+  const html = usuariosCache.length
+    ? usuariosCache.map(u => `
+      <tr>
+        <td>${u.nome || u.nomeCompleto || "-"}</td>
+        <td>${u.email || "-"}</td>
+        <td>${u.tipoUsuario || "-"}</td>
+        <td>
+          <button class="btn btn-ghost" onclick="abrirEditarUsuario('${u.id}')">Editar</button>
+          <button class="btn btn-danger" onclick="alternarAcessoUsuario('${u.id}')">
+            ${u.acessoLiberado === false ? "Liberar" : "Bloquear"}
+          </button>
+        </td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="4">Nenhum usuário encontrado.</td></tr>`;
+
+  document.getElementById("tabelaUsuarios").innerHTML = html;
+}
+
+function abrirNovoUsuario() {
+  abrirDrawer("Novo usuário", `
+    <input id="novoNome" placeholder="Nome completo">
+    <input id="novoEmail" type="email" placeholder="Email">
+    <select id="novoTipo">
+      <option value="vendedor">Vendedor</option>
+      <option value="supervisor">Supervisor</option>
+      <option value="financeiro">Financeiro</option>
+      <option value="master_local">Master Local</option>
+    </select>
+    <input id="novoCargo" placeholder="Cargo">
+    <button class="btn btn-primary" onclick="salvarNovoUsuario()">Criar usuário</button>
+  `);
+}
+
+async function salvarNovoUsuario() {
+  try {
+    const nome = document.getElementById("novoNome").value.trim();
+    const email = document.getElementById("novoEmail").value.trim();
+    const tipo = document.getElementById("novoTipo").value;
+    const cargo = document.getElementById("novoCargo").value.trim();
+
+    if (!nome || !email) {
+      alert("Informe nome e email.");
+      return;
+    }
+
+    const senhaPadrao = "123456";
+
+    const secondaryApp = firebase.initializeApp(firebase.app().options, "Secondary_" + Date.now());
+
+    const cred = await secondaryApp
+      .auth()
+      .createUserWithEmailAndPassword(email, senhaPadrao);
+
+    await secondaryApp.auth().signOut();
+    await secondaryApp.delete();
+
+    await db.collection("usuarios").add({
+      authUid: cred.user.uid,
+      nome,
+      nomeCompleto: nome,
+      email,
+      tipoUsuario: tipo,
+      cargoNome: cargo || tipo,
+      status: "ATIVO",
+      acessoLiberado: true,
+      clientePlataformaId: tenantId,
+      clientePlataformaNome:
+        usuarioLogado.clientePlataformaNome ||
+        usuarioLogado.empresaNome ||
+        "",
+      criadoPorUid: usuarioLogado.authUid || "",
+      criadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection("logs").add({
+      tipo: "CRIACAO_USUARIO",
+      emailCriado: email,
+      tipoUsuarioCriado: tipo,
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert(
+      "Usuário criado com sucesso.\n\n" +
+      "Email: " + email + "\n" +
+      "Senha padrão: " + senhaPadrao
+    );
+
+    fecharDrawer();
+    await carregarUsuarios();
+    renderUsuarios();
+    atualizarDashboard();
+
+  } catch (e) {
+    console.error(e);
+
+    if (e.code === "auth/email-already-in-use") {
+      alert("Este email já existe no Firebase Auth.");
+      return;
+    }
+
+    alert("Erro ao criar usuário: " + (e.message || e.code));
+  }
+}
+
+function abrirEditarUsuario(id) {
+  const u = usuariosCache.find(x => x.id === id);
+  if (!u) return;
+
+  abrirDrawer("Editar usuário", `
+    <input id="editNome" value="${u.nome || u.nomeCompleto || ""}">
+    <input value="${u.email || ""}" disabled>
+
+    <select id="editTipo">
+      <option value="vendedor" ${u.tipoUsuario === "vendedor" ? "selected" : ""}>Vendedor</option>
+      <option value="supervisor" ${u.tipoUsuario === "supervisor" ? "selected" : ""}>Supervisor</option>
+      <option value="financeiro" ${u.tipoUsuario === "financeiro" ? "selected" : ""}>Financeiro</option>
+      <option value="master_local" ${u.tipoUsuario === "master_local" ? "selected" : ""}>Master Local</option>
+    </select>
+
+    <input id="editCargo" value="${u.cargoNome || ""}">
+
+    <select id="editStatus">
+      <option value="ATIVO" ${u.status === "ATIVO" ? "selected" : ""}>ATIVO</option>
+      <option value="INATIVO" ${u.status === "INATIVO" ? "selected" : ""}>INATIVO</option>
+      <option value="BLOQUEADO" ${u.status === "BLOQUEADO" ? "selected" : ""}>BLOQUEADO</option>
+    </select>
+
+    <button class="btn btn-primary" onclick="salvarEdicaoUsuario('${u.id}')">Salvar</button>
+  `);
+}
+
+async function salvarEdicaoUsuario(id) {
+  try {
+    const nome = document.getElementById("editNome").value.trim();
+    const tipo = document.getElementById("editTipo").value;
+    const cargo = document.getElementById("editCargo").value.trim();
+    const status = document.getElementById("editStatus").value;
+
+    await db.collection("usuarios").doc(id).update({
+      nome,
+      nomeCompleto: nome,
+      tipoUsuario: tipo,
+      cargoNome: cargo,
+      status,
+      atualizadoPorUid: usuarioLogado.authUid || "",
+      atualizadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Dados alterados com sucesso.");
+
+    fecharDrawer();
+    await carregarUsuarios();
+    renderUsuarios();
+
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao salvar edição.");
+  }
+}
+
+async function alternarAcessoUsuario(id) {
+  try {
+    const u = usuariosCache.find(x => x.id === id);
+    if (!u) return;
+
+    const novoAcesso = u.acessoLiberado === false;
+
+    await db.collection("usuarios").doc(id).update({
+      acessoLiberado: novoAcesso,
+      status: novoAcesso ? "ATIVO" : "BLOQUEADO",
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection("logs").add({
+      tipo: novoAcesso ? "LIBERAR_USUARIO" : "BLOQUEAR_USUARIO",
+      usuarioAlvoId: id,
+      usuarioAlvoEmail: u.email || "",
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await carregarUsuarios();
+    renderUsuarios();
+
+    alert(novoAcesso ? "Usuário liberado." : "Usuário bloqueado.");
+
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao alterar acesso.");
+  }
+}
+
+function renderClientes() {
+  const html = clientesCache.length
+    ? clientesCache.map(c => `
+      <div class="card" style="margin-bottom:10px;">
+        <strong>${c.nome || c.nomeCompleto || c.apelido || "Cliente sem nome"}</strong><br>
+        <small>${c.telefone || c.telefonePrincipal || "-"}</small><br>
+        <small>Saldo: ${moeda(c.saldoDevedor || c.saldo || 0)}</small>
+      </div>
+    `).join("")
+    : "Nenhum cliente encontrado.";
+
+  document.getElementById("listaClientes").innerHTML = html;
+}
+
+function renderSolicitacoes() {
+  const el = document.getElementById("solicitacoes");
+  if (!el) return;
+
+  el.innerHTML = `
+    <h3>Solicitações</h3>
+    ${
+      solicitacoesCache.length
+        ? solicitacoesCache.map(s => `
+          <div class="card" style="margin-bottom:10px;">
+            <strong>${s.tipo || "Solicitação"}</strong><br>
+            <small>Status: ${s.status || "PENDENTE"}</small><br>
+            <small>Valor: ${moeda(s.valor || 0)}</small><br>
+            <button class="btn btn-primary" onclick="aprovarSolicitacao('${s.id}')">Aprovar</button>
+            <button class="btn btn-danger" onclick="recusarSolicitacao('${s.id}')">Recusar</button>
+          </div>
+        `).join("")
+        : "Nenhuma solicitação encontrada."
+    }
+  `;
+}
+
+async function aprovarSolicitacao(id) {
+  try {
+    const s = solicitacoesCache.find(x => x.id === id);
+    if (!s) return;
+
+    await db.collection("solicitacoes").doc(id).update({
+      status: "APROVADA",
+      aprovadoPorUid: usuarioLogado.authUid || "",
+      aprovadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      aprovadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (s.tipo === "INGRESSO" && s.caixaId) {
+      const caixaRef = db.collection("caixas").doc(s.caixaId);
+      const caixaSnap = await caixaRef.get();
+
+      if (caixaSnap.exists) {
+        const caixa = caixaSnap.data();
+        const saldoAtual = Number(caixa.saldoAtual || caixa.valorAtual || caixa.saldo || 0);
+        const novoSaldo = saldoAtual + Number(s.valor || 0);
+
+        await caixaRef.update({
+          saldoAtual: novoSaldo,
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await db.collection("movcaixa").add({
+          tipo: "ENTRADA",
+          origem: "INGRESSO_APROVADO",
+          valor: Number(s.valor || 0),
+          caixaId: s.caixaId,
+          solicitacaoId: id,
+          clientePlataformaId: tenantId,
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+
+    alert("Solicitação aprovada.");
+    await carregarSolicitacoes();
+    renderSolicitacoes();
+
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao aprovar solicitação.");
+  }
+}
+
+async function recusarSolicitacao(id) {
+  try {
+    await db.collection("solicitacoes").doc(id).update({
+      status: "RECUSADA",
+      recusadoPorUid: usuarioLogado.authUid || "",
+      recusadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      recusadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Solicitação recusada.");
+    await carregarSolicitacoes();
+    renderSolicitacoes();
+
+  } catch (e) {
+    console.error(e);
+    alert("Erro ao recusar solicitação.");
+  }
+}
+
+function logout() {
+  firebase.auth().signOut().finally(() => {
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("caixaAtual");
+    window.location.href = "index.html";
+  });
+}
+
+window.addEventListener("error", function(e) {
+  console.error("ERRO JS:", e.message, "Linha:", e.lineno);
+});
+</script>
+
+</body>
+</html>
