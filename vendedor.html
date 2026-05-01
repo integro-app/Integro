@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ÍNTEGRO - Vendedor</title>
+  <title>ÍNTEGRO - Vendedor Profissional</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
@@ -12,67 +12,180 @@
     :root{
       --azul:#071a33;--azul2:#09213f;--lar1:#ffb100;--lar2:#ff6b00;
       --bg:#f4f7fb;--card:#fff;--texto:#0f172a;--muted:#64748b;--linha:#e2e8f0;
-      --verde:#22c55e;--vermelho:#ef4444;--amarelo:#f59e0b;--azulclaro:#0ea5e9
+      --verde:#22c55e;--vermelho:#ef4444;--amarelo:#f59e0b;--azulclaro:#0ea5e9;
+      --roxo:#7c3aed;
     }
+
     body{min-height:100vh;background:var(--bg);color:var(--texto);display:flex}
-    .sidebar{width:280px;background:linear-gradient(180deg,#061426,#09213f);color:#fff;padding:22px;position:fixed;inset:0 auto 0 0;z-index:30;transition:.25s}
+
+    .sidebar{
+      width:280px;background:linear-gradient(180deg,#061426,#09213f);
+      color:#fff;padding:22px;position:fixed;inset:0 auto 0 0;z-index:30;transition:.25s;
+    }
+
     .brand{font-size:28px;font-weight:900;letter-spacing:-1px;margin-bottom:22px}
-    .user-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px;margin-bottom:20px}
-    .user-card small{display:block;color:#cbd5e1;margin-bottom:4px}.user-card strong{display:block;font-size:15px;margin-bottom:3px}
+
+    .user-card{
+      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);
+      border-radius:18px;padding:14px;margin-bottom:20px;
+    }
+
+    .user-card small{display:block;color:#cbd5e1;margin-bottom:4px}
+    .user-card strong{display:block;font-size:15px;margin-bottom:3px}
+
     .menu-title{font-size:11px;color:#94a3b8;font-weight:900;text-transform:uppercase;margin:18px 0 8px}
-    .menu-item{padding:13px 14px;border-radius:14px;cursor:pointer;font-weight:800;color:#dbeafe;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;transition:.2s}
-    .menu-item:hover,.menu-item.active{background:linear-gradient(135deg,rgba(255,177,0,.22),rgba(255,107,0,.18));color:#fff}
+
+    .menu-item{
+      padding:13px 14px;border-radius:14px;cursor:pointer;font-weight:800;color:#dbeafe;
+      display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;transition:.2s;
+    }
+
+    .menu-item:hover,.menu-item.active{
+      background:linear-gradient(135deg,rgba(255,177,0,.22),rgba(255,107,0,.18));color:#fff;
+    }
+
     .main{margin-left:280px;width:calc(100% - 280px);padding:24px}
+
     .topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:20px}
-    .topbar h1{font-size:26px;font-weight:900;letter-spacing:-1px}.topbar p{color:var(--muted);font-weight:700;margin-top:4px}
+    .topbar h1{font-size:26px;font-weight:900;letter-spacing:-1px}
+    .topbar p{color:var(--muted);font-weight:700;margin-top:4px}
+
     .top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    button{font-family:inherit}.icon-btn,.primary-btn,.ghost-btn,.danger-btn,.success-btn{border:0;cursor:pointer;border-radius:13px;font-weight:900}
+
+    button{font-family:inherit}
+    .icon-btn,.primary-btn,.ghost-btn,.danger-btn,.success-btn,.purple-btn{
+      border:0;cursor:pointer;border-radius:13px;font-weight:900;
+    }
+
     .icon-btn{width:44px;height:44px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.08)}
     .primary-btn{padding:13px 17px;color:#fff;background:linear-gradient(135deg,var(--lar1),var(--lar2));box-shadow:0 10px 20px rgba(255,107,0,.22)}
     .ghost-btn{padding:12px 15px;color:var(--azul);background:#fff;border:1px solid var(--linha)}
     .success-btn{padding:12px 15px;color:#fff;background:linear-gradient(135deg,#22c55e,#15803d)}
     .danger-btn{padding:12px 15px;color:#fff;background:linear-gradient(135deg,#ef4444,#991b1b)}
+    .purple-btn{padding:12px 15px;color:#fff;background:linear-gradient(135deg,#8b5cf6,#5b21b6)}
+
     .grid-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
-    .kpi{border-radius:22px;padding:20px;color:#fff;min-height:130px;position:relative;overflow:hidden;box-shadow:0 16px 35px rgba(15,23,42,.12)}
-    .kpi:after{content:"";position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.14);right:-45px;bottom:-55px}
-    .kpi small{font-weight:900;opacity:.88;display:block;margin-bottom:14px}.kpi strong{font-size:26px;font-weight:900;letter-spacing:-1px}
+
+    .kpi{
+      border-radius:22px;padding:20px;color:#fff;min-height:130px;position:relative;overflow:hidden;
+      box-shadow:0 16px 35px rgba(15,23,42,.12);cursor:pointer;
+    }
+
+    .kpi:after{
+      content:"";position:absolute;width:140px;height:140px;border-radius:50%;
+      background:rgba(255,255,255,.14);right:-45px;bottom:-55px;
+    }
+
+    .kpi small{font-weight:900;opacity:.88;display:block;margin-bottom:14px}
+    .kpi strong{font-size:26px;font-weight:900;letter-spacing:-1px}
     .kpi span{display:block;font-size:12px;opacity:.9;margin-top:8px;font-weight:800}
-    .g1{background:linear-gradient(135deg,#ffb100,#ff6b00)}.g2{background:linear-gradient(135deg,#00c6ff,#0072ff)}
-    .g3{background:linear-gradient(135deg,#22c55e,#15803d)}.g4{background:linear-gradient(135deg,#ef4444,#7f1d1d)}
-    .panel{background:#fff;border-radius:22px;padding:20px;border:1px solid var(--linha);box-shadow:0 10px 25px rgba(15,23,42,.06)}
-    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}.toolbar input,.toolbar select{flex:1;min-width:180px}
-    input,select,textarea{width:100%;padding:13px;border:1px solid var(--linha);border-radius:13px;outline:none;font-weight:700;background:#fff}
+
+    .g1{background:linear-gradient(135deg,#ffb100,#ff6b00)}
+    .g2{background:linear-gradient(135deg,#00c6ff,#0072ff)}
+    .g3{background:linear-gradient(135deg,#22c55e,#15803d)}
+    .g4{background:linear-gradient(135deg,#ef4444,#7f1d1d)}
+
+    .panel{
+      background:#fff;border-radius:22px;padding:20px;border:1px solid var(--linha);
+      box-shadow:0 10px 25px rgba(15,23,42,.06);
+    }
+
+    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+    .toolbar input,.toolbar select{flex:1;min-width:180px}
+
+    input,select,textarea{
+      width:100%;padding:13px;border:1px solid var(--linha);border-radius:13px;
+      outline:none;font-weight:700;background:#fff;
+    }
+
+    input[type="range"]{padding:0}
     textarea{min-height:90px;resize:vertical}
+
     .clientes-list{display:grid;gap:12px}
-    .cliente-card{background:#fff;border:1px solid var(--linha);border-radius:20px;padding:16px;display:grid;grid-template-columns:8px 1fr auto;gap:14px;align-items:center;box-shadow:0 8px 18px rgba(15,23,42,.05)}
+
+    .cliente-card{
+      background:#fff;border:1px solid var(--linha);border-radius:20px;padding:16px;
+      display:grid;grid-template-columns:8px 1fr auto;gap:14px;align-items:center;
+      box-shadow:0 8px 18px rgba(15,23,42,.05);
+    }
+
     .stripe{width:8px;height:100%;border-radius:999px;background:var(--muted)}
-    .stripe.pago{background:var(--verde)}.stripe.pendente{background:var(--amarelo)}.stripe.atraso{background:var(--vermelho)}.stripe.adiantado{background:var(--azulclaro)}
-    .cliente-info h3{font-size:16px;font-weight:900;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .stripe.pago{background:var(--verde)}
+    .stripe.pendente{background:var(--amarelo)}
+    .stripe.atraso{background:var(--vermelho)}
+    .stripe.adiantado{background:var(--azulclaro)}
+    .stripe.roxo{background:var(--roxo)}
+
+    .cliente-info h3{
+      font-size:16px;font-weight:900;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;
+    }
+
     .cliente-info p{font-size:13px;color:var(--muted);font-weight:700;line-height:1.5}
-    .cliente-actions{display:flex;flex-direction:column;gap:8px;min-width:160px}
+
+    .cliente-actions{display:flex;flex-direction:column;gap:8px;min-width:165px}
+
     .badge{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:900}
-    .badge.verde{background:#dcfce7;color:#166534}.badge.vermelho{background:#fee2e2;color:#991b1b}
-    .badge.amarelo{background:#fef3c7;color:#92400e}.badge.azul{background:#dbeafe;color:#1d4ed8}
-    .score{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:26px;border-radius:999px;color:#fff;font-size:12px;font-weight:900;background:linear-gradient(135deg,#ef4444,#ffb100,#22c55e)}
+    .badge.verde{background:#dcfce7;color:#166534}
+    .badge.vermelho{background:#fee2e2;color:#991b1b}
+    .badge.amarelo{background:#fef3c7;color:#92400e}
+    .badge.azul{background:#dbeafe;color:#1d4ed8}
+    .badge.roxo{background:#ede9fe;color:#5b21b6}
+
+    .score{
+      display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:26px;border-radius:999px;
+      color:#fff;font-size:12px;font-weight:900;background:linear-gradient(135deg,#ef4444,#ffb100,#22c55e);
+    }
+
     .hidden{display:none}
+
     .drawer-bg{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;display:none}
     .drawer-bg.open{display:block}
-    .drawer{position:fixed;right:0;top:0;height:100vh;width:480px;max-width:94vw;background:#fff;z-index:50;padding:22px;transform:translateX(100%);transition:.25s;box-shadow:-20px 0 50px rgba(15,23,42,.2);overflow-y:auto}
-    .drawer.open{transform:translateX(0)}.drawer h2{font-size:22px;font-weight:900;margin-bottom:14px}
-    .form-group{margin-bottom:12px}.form-group label{display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
-    .resumo-venda{background:#f8fafc;border:1px solid var(--linha);border-radius:16px;padding:14px;margin:12px 0}
+
+    .drawer{
+      position:fixed;right:0;top:0;height:100vh;width:500px;max-width:94vw;background:#fff;z-index:50;
+      padding:22px;transform:translateX(100%);transition:.25s;box-shadow:-20px 0 50px rgba(15,23,42,.2);
+      overflow-y:auto;
+    }
+
+    .drawer.open{transform:translateX(0)}
+    .drawer h2{font-size:22px;font-weight:900;margin-bottom:14px}
+
+    .form-group{margin-bottom:12px}
+    .form-group label{
+      display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bottom:6px;text-transform:uppercase;
+    }
+
+    .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+    .resumo-venda{
+      background:#f8fafc;border:1px solid var(--linha);border-radius:16px;padding:14px;margin:12px 0;
+    }
+
     .resumo-venda div{display:flex;justify-content:space-between;margin-bottom:8px;font-weight:800;color:#334155}
+
+    .parcela-item{
+      background:#f8fafc;border:1px solid var(--linha);border-radius:16px;padding:13px;margin-bottom:10px;
+      display:flex;justify-content:space-between;gap:12px;align-items:center;
+    }
+
+    .parcela-item strong{font-size:14px}
+    .parcela-item small{color:var(--muted);font-weight:700}
+
     .mobile-menu{display:none}
     #menuBg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:20}
     #menuBg.open{display:block}
+
     @media(max-width:900px){
       .sidebar{transform:translateX(-100%);width:270px}.sidebar.open{transform:translateX(0)}
       .main{margin-left:0;width:100%;padding:16px}.mobile-menu{display:inline-flex}
       .topbar{flex-direction:column}.top-actions{width:100%;display:flex}.grid-cards{grid-template-columns:repeat(2,1fr)}
       .cliente-card{grid-template-columns:7px 1fr}.cliente-actions{grid-column:2;display:grid;grid-template-columns:1fr 1fr;min-width:0}
+      .form-row{grid-template-columns:1fr}
     }
+
     @media(max-width:560px){
-      .grid-cards{grid-template-columns:1fr}.top-actions{flex-direction:column}.primary-btn,.ghost-btn,.success-btn,.danger-btn{width:100%}
+      .grid-cards{grid-template-columns:1fr}.top-actions{flex-direction:column}
+      .primary-btn,.ghost-btn,.success-btn,.danger-btn,.purple-btn{width:100%}
       .cliente-actions{grid-template-columns:1fr}.drawer{width:100%;max-width:100%}
     }
   </style>
@@ -97,6 +210,7 @@
     <div class="menu-item" onclick="trocarTela('cobrancas', this)">Cobranças <span>›</span></div>
     <div class="menu-item" onclick="trocarTela('clientes', this)">Clientes <span>›</span></div>
     <div class="menu-item" onclick="trocarTela('vendas', this)">Nova venda <span>›</span></div>
+    <div class="menu-item" onclick="trocarTela('parcelas', this)">Parcelas <span>›</span></div>
     <div class="menu-item" onclick="trocarTela('solicitacoes', this)">Solicitações <span>›</span></div>
 
     <div class="menu-title">Sistema</div>
@@ -122,8 +236,8 @@
       <div class="grid-cards">
         <div class="kpi g1"><small>Carteira Final</small><strong id="kpiCarteira">R$ 0,00</strong><span>Saldo devedor ativo</span></div>
         <div class="kpi g2"><small>Caixa Atual</small><strong id="kpiCaixa">R$ 0,00</strong><span>Saldo do caixa aberto</span></div>
-        <div class="kpi g3"><small>Recebido Hoje</small><strong id="kpiRecebido">R$ 0,00</strong><span>Pagamentos registrados</span></div>
-        <div class="kpi g4"><small>Clientes Pendentes</small><strong id="kpiPendentes">0</strong><span>Cobranças ainda não baixadas</span></div>
+        <div class="kpi g3"><small>Recebido Hoje</small><strong id="kpiRecebido">R$ 0,00</strong><span>Pagamentos confirmados</span></div>
+        <div class="kpi g4"><small>Parcelas Vencidas</small><strong id="kpiVencidas">0</strong><span>Cobranças em atraso</span></div>
       </div>
 
       <div class="panel">
@@ -139,16 +253,16 @@
     <section id="cobrancas" class="hidden">
       <div class="panel">
         <div class="toolbar">
-          <input id="buscaCobranca" placeholder="Buscar cliente">
-          <select id="filtroStatus" onchange="filtrarClientes()">
-            <option value="todos">Todos</option>
-            <option value="pendente">Pendentes</option>
-            <option value="pago">Pagos</option>
-            <option value="atraso">Em atraso</option>
+          <input id="buscaCobranca" placeholder="Buscar cobrança">
+          <select id="filtroCobranca" onchange="renderCobrancas()">
+            <option value="hoje">Vencem hoje</option>
+            <option value="vencidas">Vencidas</option>
+            <option value="pendentes">Todas pendentes</option>
+            <option value="pagas">Pagas</option>
           </select>
-          <button class="ghost-btn" onclick="filtrarClientes()">Buscar</button>
+          <button class="ghost-btn" onclick="renderCobrancas()">Buscar</button>
         </div>
-        <div id="listaCobrancas" class="clientes-list">Carregando...</div>
+        <div id="listaCobrancas" class="clientes-list">Carregando cobranças...</div>
       </div>
     </section>
 
@@ -159,7 +273,7 @@
           <button class="ghost-btn" onclick="filtrarClientes()">Buscar</button>
           <button class="primary-btn" onclick="abrirNovoCliente()">Novo cliente</button>
         </div>
-        <div id="listaClientes" class="clientes-list">Carregando...</div>
+        <div id="listaClientes" class="clientes-list">Carregando clientes...</div>
       </div>
     </section>
 
@@ -170,6 +284,16 @@
           Selecione um cliente quitado para iniciar venda/renovação. Clientes com saldo devedor ativo ficam bloqueados.
         </p>
         <div id="listaVendas" class="clientes-list">Carregando clientes...</div>
+      </div>
+    </section>
+
+    <section id="parcelas" class="hidden">
+      <div class="panel">
+        <div class="toolbar">
+          <input id="buscaParcelas" placeholder="Buscar parcela por cliente">
+          <button class="ghost-btn" onclick="renderParcelas()">Buscar</button>
+        </div>
+        <div id="listaParcelas" class="clientes-list">Carregando parcelas...</div>
       </div>
     </section>
 
@@ -192,305 +316,1187 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
-
 <script>
 let usuarioLogado = null;
 let tenantId = "";
 let caixaAtual = null;
+
 let clientesCache = [];
+let parcelasCache = [];
 let pagamentosHoje = [];
+let solicitacoesCache = [];
 
-// ================= INIT =================
 document.addEventListener("DOMContentLoaded", async () => {
-
   usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
 
   if (!usuarioLogado) {
-    alert("Sessão expirada");
+    alert("Sessão expirada. Faça login novamente.");
     window.location.href = "index.html";
     return;
   }
 
   if (usuarioLogado.tipoUsuario !== "vendedor") {
-    alert("Acesso negado");
+    alert("Acesso negado para este perfil.");
     window.location.href = "index.html";
     return;
   }
 
-  tenantId = usuarioLogado.clientePlataformaId || "";
+  tenantId =
+    usuarioLogado.clientePlataformaId ||
+    usuarioLogado.empresaId ||
+    usuarioLogado.tenantId ||
+    "";
 
   document.getElementById("userName").innerText =
-    usuarioLogado.nome || usuarioLogado.email;
+    usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "Vendedor";
 
   document.getElementById("empresaNome").innerText =
-    usuarioLogado.clientePlataformaNome || "Empresa";
+    usuarioLogado.clientePlataformaNome || usuarioLogado.empresaNome || "Empresa";
 
   await carregarTudo();
 });
 
-// ================= HELPERS =================
-function moeda(v){
-  return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-}
-
-function hoje(){
-  return new Date().toISOString().split("T")[0];
-}
-
-// ================= LOAD =================
-async function carregarTudo(){
-  await carregarCaixa();
-  await carregarClientes();
-  await carregarPagamentos();
-  atualizarKPIs();
-  renderizarTudo(clientesCache);
-}
-
-async function carregarCaixa(){
-  const snap = await db.collection("caixas")
-    .where("usuarioId","==",usuarioLogado.id)
-    .where("status","==","ABERTO")
-    .limit(1)
-    .get();
-
-  if(!snap.empty){
-    caixaAtual = {id:snap.docs[0].id,...snap.docs[0].data()};
-    localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
-  }
-
-  document.getElementById("caixaInfo").innerText =
-    caixaAtual ? "Caixa aberto" : "Sem caixa";
-}
-
-async function carregarClientes(){
-  let ref = db.collection("clientes").limit(100);
-
-  if(tenantId){
-    ref = db.collection("clientes")
-      .where("clientePlataformaId","==",tenantId)
-      .limit(100);
-  }
-
-  const snap = await ref.get();
-  clientesCache = [];
-
-  snap.forEach(doc=>{
-    clientesCache.push({id:doc.id,...doc.data()});
+function moeda(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
   });
 }
 
-async function carregarPagamentos(){
-  const snap = await db.collection("pagamentos")
-    .where("data","==",hoje())
-    .get();
-
-  pagamentosHoje = [];
-  snap.forEach(doc=>pagamentosHoje.push(doc.data()));
+function dataHojeISO() {
+  return new Date().toISOString().split("T")[0];
 }
 
-// ================= KPI =================
-function atualizarKPIs(){
-  const carteira = clientesCache.reduce((t,c)=>t+Number(c.saldoDevedor||0),0);
-  const recebido = pagamentosHoje.reduce((t,p)=>t+Number(p.valor||0),0);
-  const pendentes = clientesCache.filter(c=>c.saldoDevedor>0).length;
+function addDias(dataISO, dias) {
+  const data = new Date(dataISO + "T00:00:00");
+  data.setDate(data.getDate() + dias);
+  return data.toISOString().split("T")[0];
+}
+
+function badge(texto, tipo) {
+  return `<span class="badge ${tipo || "azul"}">${texto}</span>`;
+}
+
+async function carregarTudo() {
+  await carregarCaixa();
+  await Promise.all([
+    carregarClientes(),
+    carregarParcelas(),
+    carregarPagamentosHoje(),
+    carregarSolicitacoes()
+  ]);
+
+  atualizarKPIs();
+  renderizarTudo(clientesCache);
+  renderCobrancas();
+  renderParcelas();
+  renderSolicitacoes();
+}
+
+async function carregarCaixa() {
+  try {
+    const local = JSON.parse(localStorage.getItem("caixaAtual"));
+    if (local) caixaAtual = local;
+
+    let ref = db.collection("caixas")
+      .where("usuarioId", "==", usuarioLogado.id)
+      .where("status", "==", "ABERTO")
+      .limit(1);
+
+    const snap = await ref.get();
+
+    if (!snap.empty) {
+      const doc = snap.docs[0];
+      caixaAtual = { id: doc.id, ...doc.data() };
+      localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
+    }
+
+    document.getElementById("caixaInfo").innerText =
+      caixaAtual ? "Caixa: aberto" : "Caixa: não encontrado";
+
+  } catch (e) {
+    console.error("Erro caixa:", e);
+    document.getElementById("caixaInfo").innerText = "Caixa: erro";
+  }
+}
+
+async function carregarClientes() {
+  try {
+    let ref = db.collection("clientes").limit(150);
+
+    if (tenantId) {
+      ref = db.collection("clientes")
+        .where("clientePlataformaId", "==", tenantId)
+        .limit(150);
+    }
+
+    const snap = await ref.get();
+    clientesCache = [];
+
+    snap.forEach(doc => {
+      const c = { id: doc.id, ...doc.data() };
+
+      if (
+        !c.vendedorId ||
+        c.vendedorId === usuarioLogado.id ||
+        c.usuarioId === usuarioLogado.id
+      ) {
+        clientesCache.push(c);
+      }
+    });
+
+  } catch (e) {
+    console.error("Erro clientes:", e);
+    clientesCache = [];
+  }
+}
+
+async function carregarParcelas() {
+  try {
+    let ref = db.collection("parcelas").limit(300);
+
+    if (tenantId) {
+      ref = db.collection("parcelas")
+        .where("clientePlataformaId", "==", tenantId)
+        .limit(300);
+    }
+
+    const snap = await ref.get();
+    parcelasCache = [];
+
+    snap.forEach(doc => {
+      const p = { id: doc.id, ...doc.data() };
+
+      if (
+        !p.vendedorId ||
+        p.vendedorId === usuarioLogado.id ||
+        p.usuarioId === usuarioLogado.id
+      ) {
+        parcelasCache.push(p);
+      }
+    });
+
+  } catch (e) {
+    console.error("Erro parcelas:", e);
+    parcelasCache = [];
+  }
+}
+
+async function carregarPagamentosHoje() {
+  try {
+    let ref = db.collection("pagamentos")
+      .where("data", "==", dataHojeISO())
+      .limit(150);
+
+    if (tenantId) {
+      ref = db.collection("pagamentos")
+        .where("clientePlataformaId", "==", tenantId)
+        .where("data", "==", dataHojeISO())
+        .limit(150);
+    }
+
+    const snap = await ref.get();
+    pagamentosHoje = [];
+
+    snap.forEach(doc => pagamentosHoje.push({ id: doc.id, ...doc.data() }));
+
+  } catch (e) {
+    console.error("Erro pagamentos:", e);
+    pagamentosHoje = [];
+  }
+}
+
+async function carregarSolicitacoes() {
+  try {
+    let ref = db.collection("solicitacoes").limit(50);
+
+    if (tenantId) {
+      ref = db.collection("solicitacoes")
+        .where("clientePlataformaId", "==", tenantId)
+        .limit(50);
+    }
+
+    const snap = await ref.get();
+    solicitacoesCache = [];
+
+    snap.forEach(doc => {
+      const s = { id: doc.id, ...doc.data() };
+
+      if (!s.usuarioId || s.usuarioId === usuarioLogado.id) {
+        solicitacoesCache.push(s);
+      }
+    });
+
+  } catch (e) {
+    console.error("Erro solicitações:", e);
+    solicitacoesCache = [];
+  }
+}
+
+function atualizarKPIs() {
+  const carteira = clientesCache.reduce((total, c) => {
+    return total + Number(c.saldoDevedor || c.saldo || 0);
+  }, 0);
+
+  const recebido = pagamentosHoje.reduce((total, p) => {
+    return total + Number(p.valor || 0);
+  }, 0);
+
+  const vencidas = parcelasCache.filter(p => {
+    return String(p.status || "").toUpperCase() === "PENDENTE" &&
+      String(p.dataVencimento || "") < dataHojeISO();
+  }).length;
 
   document.getElementById("kpiCarteira").innerText = moeda(carteira);
-  document.getElementById("kpiCaixa").innerText = moeda(caixaAtual?.saldoAtual||0);
+  document.getElementById("kpiCaixa").innerText =
+    moeda(caixaAtual?.saldoAtual || caixaAtual?.valorAtual || caixaAtual?.saldo || 0);
   document.getElementById("kpiRecebido").innerText = moeda(recebido);
-  document.getElementById("kpiPendentes").innerText = pendentes;
+  document.getElementById("kpiVencidas").innerText = vencidas;
 }
 
-// ================= CLIENTES =================
-function renderizarTudo(lista){
-  const html = lista.map(c=>cardCliente(c)).join("");
+function situacaoCliente(c) {
+  const saldo = Number(c.saldoDevedor || c.saldo || 0);
+  const parcelasCliente = parcelasCache.filter(p => p.clienteId === c.id);
+  const pendentes = parcelasCliente.filter(p => String(p.status || "").toUpperCase() === "PENDENTE");
+  const vencidas = pendentes.filter(p => String(p.dataVencimento || "") < dataHojeISO());
+
+  if (saldo <= 1) return { txt: "QUITADO", cor: "pago", badge: "verde" };
+  if (vencidas.length > 0) return { txt: "EM ATRASO", cor: "atraso", badge: "vermelho" };
+  return { txt: "PENDENTE", cor: "pendente", badge: "azul" };
+}
+
+function cardCliente(c) {
+  const s = situacaoCliente(c);
+  const nome = c.nome || c.nomeCompleto || c.apelido || "Cliente sem nome";
+  const saldo = Number(c.saldoDevedor || c.saldo || 0);
+  const score = c.score ?? 50;
+
+  return `
+    <div class="cliente-card">
+      <div class="stripe ${s.cor}"></div>
+
+      <div class="cliente-info">
+        <h3>${nome} <span class="score">${score}</span> ${badge(s.txt, s.badge)}</h3>
+        <p>Saldo: <strong>${moeda(saldo)}</strong> • Tel: ${c.telefone || c.telefonePrincipal || "-"}</p>
+        <p>Apelido: ${c.apelido || "-"} • Documento: ${c.documento || "-"}</p>
+      </div>
+
+      <div class="cliente-actions">
+        <button class="success-btn" onclick="abrirPagamentoCliente('${c.id}')">Receber</button>
+        <button class="primary-btn" onclick="abrirNovaVenda('${c.id}')">Nova venda</button>
+        <button class="ghost-btn" onclick="abrirCliente('${c.id}')">Ver cliente</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderizarTudo(lista) {
+  const html = lista.length ? lista.map(c => cardCliente(c)).join("") : "Nenhum cliente encontrado.";
+
   document.getElementById("listaDashboard").innerHTML = html;
-  document.getElementById("listaCobrancas").innerHTML = html;
   document.getElementById("listaClientes").innerHTML = html;
   document.getElementById("listaVendas").innerHTML = html;
 }
 
-function cardCliente(c){
+function filtrarClientes() {
+  const termo = (
+    document.getElementById("buscaDash")?.value ||
+    document.getElementById("buscaClientes")?.value ||
+    ""
+  ).toLowerCase();
+
+  const lista = clientesCache.filter(c => {
+    const texto = `${c.nome || ""} ${c.nomeCompleto || ""} ${c.apelido || ""} ${c.documento || ""} ${c.telefone || ""}`.toLowerCase();
+    return !termo || texto.includes(termo);
+  });
+
+  renderizarTudo(lista);
+}
+
+function limparBusca() {
+  ["buscaDash", "buscaClientes"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+
+  renderizarTudo(clientesCache);
+}
+
+function abrirNovoCliente() {
+  document.getElementById("drawerTitle").innerText = "Novo cliente";
+
+  document.getElementById("drawerContent").innerHTML = `
+    <div class="form-group">
+      <label>Nome completo</label>
+      <input id="c_nome" placeholder="Nome completo">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Apelido</label>
+        <input id="c_apelido" placeholder="Apelido / nome conhecido">
+      </div>
+      <div class="form-group">
+        <label>Documento</label>
+        <input id="c_documento" placeholder="CPF ou documento">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Data de nascimento</label>
+        <input id="c_nascimento" type="date">
+      </div>
+      <div class="form-group">
+        <label>Telefone principal</label>
+        <input id="c_telefone" placeholder="Telefone">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Telefone referência 1</label>
+        <input id="c_ref1" placeholder="Referência 1">
+      </div>
+      <div class="form-group">
+        <label>Telefone referência 2</label>
+        <input id="c_ref2" placeholder="Referência 2">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>CEP</label>
+        <input id="c_cep" placeholder="CEP">
+      </div>
+      <div class="form-group">
+        <label>Número</label>
+        <input id="c_numero" placeholder="Número">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Endereço</label>
+      <input id="c_endereco" placeholder="Rua / avenida">
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Bairro</label>
+        <input id="c_bairro" placeholder="Bairro">
+      </div>
+      <div class="form-group">
+        <label>Cidade</label>
+        <input id="c_cidade" placeholder="Cidade">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Chave PIX / dados bancários</label>
+      <input id="c_pix" placeholder="PIX ou dados bancários">
+    </div>
+
+    <div class="form-group">
+      <label>Observações</label>
+      <textarea id="c_obs" placeholder="Observações do cliente"></textarea>
+    </div>
+
+    <button class="primary-btn" style="width:100%" onclick="salvarCliente()">
+      Salvar cliente
+    </button>
+  `;
+
+  abrirDrawer();
+}
+
+async function salvarCliente() {
+  try {
+    const nome = document.getElementById("c_nome").value.trim();
+    const telefone = document.getElementById("c_telefone").value.trim();
+
+    if (!nome || !telefone) {
+      alert("Nome completo e telefone principal são obrigatórios.");
+      return;
+    }
+
+    const novoCliente = {
+      nome,
+      nomeCompleto: nome,
+      apelido: document.getElementById("c_apelido").value.trim(),
+      documento: document.getElementById("c_documento").value.trim(),
+      dataNascimento: document.getElementById("c_nascimento").value,
+      telefone,
+      telefonePrincipal: telefone,
+      referencia1: document.getElementById("c_ref1").value.trim(),
+      referencia2: document.getElementById("c_ref2").value.trim(),
+      cep: document.getElementById("c_cep").value.trim(),
+      numero: document.getElementById("c_numero").value.trim(),
+      endereco: document.getElementById("c_endereco").value.trim(),
+      bairro: document.getElementById("c_bairro").value.trim(),
+      cidade: document.getElementById("c_cidade").value.trim(),
+      pix: document.getElementById("c_pix").value.trim(),
+      observacoes: document.getElementById("c_obs").value.trim(),
+
+      status: "QUITADO",
+      saldoDevedor: 0,
+      score: 50,
+      diasAtraso: 0,
+
+      vendedorId: usuarioLogado.id,
+      vendedorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection("clientes").add(novoCliente);
+
+    await db.collection("logs").add({
+      tipo: "CRIACAO_CLIENTE",
+      clienteNome: nome,
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Cliente criado com sucesso.");
+    fecharDrawer();
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro salvar cliente:", e);
+    alert("Erro ao salvar cliente.");
+  }
+}
+
+function abrirCliente(clienteId) {
+  const c = clientesCache.find(x => x.id === clienteId);
+  if (!c) return;
+
+  document.getElementById("drawerTitle").innerText =
+    c.nome || c.nomeCompleto || "Cliente";
+
+  document.getElementById("drawerContent").innerHTML = `
+    <p style="color:#64748b;font-weight:800;line-height:1.7">
+      <strong>Apelido:</strong> ${c.apelido || "-"}<br>
+      <strong>Documento:</strong> ${c.documento || "-"}<br>
+      <strong>Telefone:</strong> ${c.telefone || c.telefonePrincipal || "-"}<br>
+      <strong>Referência 1:</strong> ${c.referencia1 || "-"}<br>
+      <strong>Referência 2:</strong> ${c.referencia2 || "-"}<br>
+      <strong>Endereço:</strong> ${c.endereco || "-"}, ${c.numero || ""}<br>
+      <strong>Bairro:</strong> ${c.bairro || "-"}<br>
+      <strong>Cidade:</strong> ${c.cidade || "-"}<br>
+      <strong>Saldo:</strong> ${moeda(c.saldoDevedor || 0)}<br>
+      <strong>Score:</strong> ${c.score ?? 50}
+    </p>
+  `;
+
+  abrirDrawer();
+}
+
+function abrirNovaVenda(clienteId) {
+  const c = clientesCache.find(x => x.id === clienteId);
+  if (!c) return;
+
+  const saldo = Number(c.saldoDevedor || 0);
+
+  if (saldo > 1) {
+    alert("Cliente possui saldo devedor ativo. Nova venda bloqueada.");
+    return;
+  }
+
+  document.getElementById("drawerTitle").innerText = "Nova venda";
+
+  document.getElementById("drawerContent").innerHTML = `
+    <div class="form-group">
+      <label>Cliente</label>
+      <input value="${c.nome || c.nomeCompleto || c.apelido || ""}" disabled>
+    </div>
+
+    <div class="form-group">
+      <label>Valor emprestado</label>
+      <input id="v_valor" type="number" step="0.01" placeholder="0,00" oninput="calcularVendaPreview()">
+    </div>
+
+    <div class="form-group">
+      <label>Taxa de juros: <span id="v_juros_txt">20%</span></label>
+      <input id="v_juros" type="range" min="0" max="100" value="20" oninput="calcularVendaPreview()">
+    </div>
+
+    <div class="form-group">
+      <label>Parcelas: <span id="v_parcelas_txt">30</span></label>
+      <input id="v_parcelas" type="range" min="1" max="90" value="30" oninput="calcularVendaPreview()">
+    </div>
+
+    <div class="form-group">
+      <label>Frequência</label>
+      <select id="v_frequencia" onchange="calcularVendaPreview()">
+        <option value="DIÁRIA">DIÁRIA</option>
+        <option value="SEMANAL">SEMANAL</option>
+        <option value="QUINZENAL">QUINZENAL</option>
+        <option value="MENSAL">MENSAL</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label>Data da primeira cobrança</label>
+      <input id="v_primeira" type="date" value="${dataHojeISO()}" onchange="calcularVendaPreview()">
+    </div>
+
+    <div class="resumo-venda">
+      <div><span>Valor da venda</span><strong id="res_valor">R$ 0,00</strong></div>
+      <div><span>Saldo devedor</span><strong id="res_total">R$ 0,00</strong></div>
+      <div><span>Valor da parcela</span><strong id="res_parcela">R$ 0,00</strong></div>
+      <div><span>Impacto no caixa</span><strong id="res_caixa">R$ 0,00</strong></div>
+    </div>
+
+    <button class="primary-btn" style="width:100%" onclick="salvarVendaProfissional('${clienteId}')">
+      Confirmar venda
+    </button>
+  `;
+
+  abrirDrawer();
+  calcularVendaPreview();
+}
+
+function calcularVendaPreview() {
+  const valor = Number(document.getElementById("v_valor")?.value || 0);
+  const juros = Number(document.getElementById("v_juros")?.value || 0);
+  const parcelas = Number(document.getElementById("v_parcelas")?.value || 1);
+
+  const total = valor + (valor * juros / 100);
+  const valorParcela = total / parcelas;
+
+  document.getElementById("v_juros_txt").innerText = juros + "%";
+  document.getElementById("v_parcelas_txt").innerText = parcelas;
+
+  document.getElementById("res_valor").innerText = moeda(valor);
+  document.getElementById("res_total").innerText = moeda(total);
+  document.getElementById("res_parcela").innerText = moeda(valorParcela);
+  document.getElementById("res_caixa").innerText = "-" + moeda(valor);
+}
+
+function intervaloPorFrequencia(freq) {
+  if (freq === "SEMANAL") return 7;
+  if (freq === "QUINZENAL") return 15;
+  if (freq === "MENSAL") return 30;
+  return 1;
+}
+
+async function salvarVendaProfissional(clienteId) {
+  try {
+    const c = clientesCache.find(x => x.id === clienteId);
+    if (!c) return;
+
+    const valor = Number(document.getElementById("v_valor").value || 0);
+    const jurosPercentual = Number(document.getElementById("v_juros").value || 0);
+    const quantidadeParcelas = Number(document.getElementById("v_parcelas").value || 1);
+    const frequencia = document.getElementById("v_frequencia").value;
+    const primeiraData = document.getElementById("v_primeira").value;
+
+    if (valor <= 0) {
+      alert("Informe o valor emprestado.");
+      return;
+    }
+
+    if (!primeiraData || primeiraData < dataHojeISO()) {
+      alert("A primeira cobrança não pode ser retroativa.");
+      return;
+    }
+
+    const saldoCliente = Number(c.saldoDevedor || 0);
+    if (saldoCliente > 1) {
+      alert("Cliente possui saldo devedor ativo. Venda bloqueada.");
+      return;
+    }
+
+    const saldoCaixa = Number(caixaAtual?.saldoAtual || caixaAtual?.valorAtual || caixaAtual?.saldo || 0);
+
+    if (!caixaAtual?.id) {
+      alert("Não existe caixa aberto para esta venda.");
+      return;
+    }
+
+    if (saldoCaixa < valor) {
+      const continuar = confirm(
+        "Caixa insuficiente.\n\n" +
+        "Caixa atual: " + moeda(saldoCaixa) + "\n" +
+        "Valor da venda: " + moeda(valor) + "\n" +
+        "Faltante: " + moeda(valor - saldoCaixa) + "\n\n" +
+        "Deseja continuar mesmo assim e deixar caixa negativo?"
+      );
+
+      if (!continuar) return;
+    }
+
+    const valorTotal = valor + (valor * jurosPercentual / 100);
+    const valorParcela = valorTotal / quantidadeParcelas;
+    const intervalo = intervaloPorFrequencia(frequencia);
+
+    const vendaRef = await db.collection("vendas").add({
+      clienteId,
+      clienteNome: c.nome || c.nomeCompleto || c.apelido || "",
+      vendedorId: usuarioLogado.id,
+      vendedorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      caixaId: caixaAtual.id,
+
+      tipoVenda: "NOVA",
+      status: "ATIVA",
+
+      valorEmprestado: valor,
+      jurosPercentual,
+      quantidadeParcelas,
+      frequencia,
+      dataPrimeiraCobranca: primeiraData,
+
+      valorTotal,
+      valorParcela,
+      saldoDevedor: valorTotal,
+      parcelasPagas: 0,
+
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const batch = db.batch();
+
+    for (let i = 1; i <= quantidadeParcelas; i++) {
+      const dataVencimento = addDias(primeiraData, (i - 1) * intervalo);
+      const parcelaRef = db.collection("parcelas").doc();
+
+      batch.set(parcelaRef, {
+        vendaId: vendaRef.id,
+        clienteId,
+        clienteNome: c.nome || c.nomeCompleto || c.apelido || "",
+        vendedorId: usuarioLogado.id,
+        vendedorNome: usuarioLogado.nome || usuarioLogado.email || "",
+        caixaId: caixaAtual.id,
+
+        numeroParcela: i,
+        totalParcelas: quantidadeParcelas,
+        valor: valorParcela,
+        valorPago: 0,
+        status: "PENDENTE",
+        dataVencimento,
+
+        clientePlataformaId: tenantId,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      });
+    }
+
+    batch.update(db.collection("clientes").doc(clienteId), {
+      saldoDevedor: valorTotal,
+      saldo: valorTotal,
+      status: "ATIVO",
+      vendaAtivaId: vendaRef.id,
+      valorParcela,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const novoSaldoCaixa = saldoCaixa - valor;
+
+    batch.update(db.collection("caixas").doc(caixaAtual.id), {
+      saldoAtual: novoSaldoCaixa,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const movRef = db.collection("movcaixa").doc();
+    batch.set(movRef, {
+      tipo: "SAIDA",
+      origem: "VENDA",
+      valor,
+      caixaId: caixaAtual.id,
+      vendaId: vendaRef.id,
+      clienteId,
+      clienteNome: c.nome || c.nomeCompleto || c.apelido || "",
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const logRef = db.collection("logs").doc();
+    batch.set(logRef, {
+      tipo: "CRIACAO_VENDA",
+      vendaId: vendaRef.id,
+      clienteId,
+      clienteNome: c.nome || c.nomeCompleto || c.apelido || "",
+      valorEmprestado: valor,
+      valorTotal,
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
+
+    caixaAtual.saldoAtual = novoSaldoCaixa;
+    localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
+
+    alert("Venda criada com sucesso. Parcelas geradas automaticamente.");
+    fecharDrawer();
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro salvar venda:", e);
+    alert("Erro ao salvar venda.");
+  }
+}
+
+function renderCobrancas() {
+  const filtro = document.getElementById("filtroCobranca")?.value || "hoje";
+  const termo = (document.getElementById("buscaCobranca")?.value || "").toLowerCase();
+
+  let lista = parcelasCache.filter(p => {
+    const texto = `${p.clienteNome || ""}`.toLowerCase();
+    const status = String(p.status || "").toUpperCase();
+    const data = String(p.dataVencimento || "");
+
+    if (termo && !texto.includes(termo)) return false;
+
+    if (filtro === "hoje") return status === "PENDENTE" && data === dataHojeISO();
+    if (filtro === "vencidas") return status === "PENDENTE" && data < dataHojeISO();
+    if (filtro === "pendentes") return status === "PENDENTE";
+    if (filtro === "pagas") return status === "PAGA";
+
+    return true;
+  });
+
+  lista.sort((a,b) => String(a.dataVencimento || "").localeCompare(String(b.dataVencimento || "")));
+
+  const html = lista.length ? lista.map(p => cardParcela(p)).join("") : "Nenhuma cobrança encontrada.";
+  document.getElementById("listaCobrancas").innerHTML = html;
+}
+
+function renderParcelas() {
+  const termo = (document.getElementById("buscaParcelas")?.value || "").toLowerCase();
+
+  let lista = parcelasCache.filter(p => {
+    const texto = `${p.clienteNome || ""}`.toLowerCase();
+    return !termo || texto.includes(termo);
+  });
+
+  lista.sort((a,b) => String(a.dataVencimento || "").localeCompare(String(b.dataVencimento || "")));
+
+  const html = lista.length ? lista.map(p => cardParcela(p)).join("") : "Nenhuma parcela encontrada.";
+  document.getElementById("listaParcelas").innerHTML = html;
+}
+
+function cardParcela(p) {
+  const status = String(p.status || "").toUpperCase();
+  const vencida = status === "PENDENTE" && String(p.dataVencimento || "") < dataHojeISO();
+  const cor = status === "PAGA" ? "pago" : vencida ? "atraso" : "pendente";
+  const badgeTipo = status === "PAGA" ? "verde" : vencida ? "vermelho" : "azul";
+
   return `
-  <div class="cliente-card">
-    <div class="stripe"></div>
+    <div class="cliente-card">
+      <div class="stripe ${cor}"></div>
 
-    <div class="cliente-info">
-      <h3>${c.nome} <span class="score">${c.score||50}</span></h3>
-      <p>Saldo: ${moeda(c.saldoDevedor||0)}</p>
-    </div>
+      <div class="cliente-info">
+        <h3>${p.clienteNome || "Cliente"} ${badge(status || "PENDENTE", badgeTipo)}</h3>
+        <p>Parcela ${p.numeroParcela || "-"} de ${p.totalParcelas || "-"} • Valor: <strong>${moeda(p.valor || 0)}</strong></p>
+        <p>Vencimento: ${p.dataVencimento || "-"} ${vencida ? "• VENCIDA" : ""}</p>
+      </div>
 
-    <div class="cliente-actions">
-      <button class="success-btn" onclick="abrirPagamento('${c.id}')">Receber</button>
-      <button class="primary-btn" onclick="abrirVenda('${c.id}')">Venda</button>
+      <div class="cliente-actions">
+        ${status !== "PAGA" ? `<button class="success-btn" onclick="abrirPagamentoParcela('${p.id}')">Receber</button>` : ""}
+        <button class="ghost-btn" onclick="abrirDetalheParcela('${p.id}')">Detalhes</button>
+      </div>
     </div>
-  </div>
   `;
 }
 
-// ================= NOVO CLIENTE =================
-function abrirNovoCliente(){
-  document.getElementById("drawerTitle").innerText="Novo cliente";
+function abrirPagamentoCliente(clienteId) {
+  const parcelas = parcelasCache
+    .filter(p => p.clienteId === clienteId && String(p.status || "").toUpperCase() === "PENDENTE")
+    .sort((a,b) => String(a.dataVencimento || "").localeCompare(String(b.dataVencimento || "")));
 
-  document.getElementById("drawerContent").innerHTML=`
-    <input id="nome" placeholder="Nome">
-    <input id="tel" placeholder="Telefone">
-    <button onclick="salvarCliente()">Salvar</button>
-  `;
-
-  abrirDrawer();
-}
-
-async function salvarCliente(){
-  const nome=document.getElementById("nome").value;
-  const tel=document.getElementById("tel").value;
-
-  await db.collection("clientes").add({
-    nome,
-    telefone:tel,
-    saldoDevedor:0,
-    score:50,
-    vendedorId:usuarioLogado.id,
-    clientePlataformaId:tenantId
-  });
-
-  fecharDrawer();
-  carregarTudo();
-}
-
-// ================= VENDA =================
-function abrirVenda(id){
-  const c=clientesCache.find(x=>x.id===id);
-
-  if(c.saldoDevedor>1){
-    alert("Cliente com dívida");
+  if (!parcelas.length) {
+    alert("Cliente não possui parcelas pendentes.");
     return;
   }
 
-  document.getElementById("drawerTitle").innerText="Nova venda";
+  abrirPagamentoParcela(parcelas[0].id);
+}
 
-  document.getElementById("drawerContent").innerHTML=`
-    <input id="valor" type="number" placeholder="Valor">
-    <input id="juros" type="number" placeholder="Juros %">
-    <input id="parcelas" type="number" placeholder="Parcelas">
+function abrirPagamentoParcela(parcelaId) {
+  const p = parcelasCache.find(x => x.id === parcelaId);
+  if (!p) return;
 
-    <div id="resumo"></div>
+  document.getElementById("drawerTitle").innerText = "Registrar pagamento";
 
-    <button onclick="calcular()">Calcular</button>
-    <button onclick="salvarVenda('${id}')">Confirmar</button>
+  document.getElementById("drawerContent").innerHTML = `
+    <div class="form-group">
+      <label>Cliente</label>
+      <input value="${p.clienteNome || ""}" disabled>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label>Parcela</label>
+        <input value="${p.numeroParcela || "-"} de ${p.totalParcelas || "-"}" disabled>
+      </div>
+      <div class="form-group">
+        <label>Vencimento</label>
+        <input value="${p.dataVencimento || "-"}" disabled>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Valor recebido</label>
+      <input id="pag_valor" type="number" step="0.01" value="${Number(p.valor || 0).toFixed(2)}">
+    </div>
+
+    <div class="form-group">
+      <label>Observação</label>
+      <textarea id="pag_obs" placeholder="Observação opcional"></textarea>
+    </div>
+
+    <button class="success-btn" style="width:100%" onclick="salvarPagamentoProfissional('${p.id}')">
+      Confirmar pagamento
+    </button>
   `;
 
   abrirDrawer();
 }
 
-function calcular(){
-  const v=Number(valor.value);
-  const j=Number(juros.value)/100;
-  const p=Number(parcelas.value);
+async function salvarPagamentoProfissional(parcelaId) {
+  try {
+    const p = parcelasCache.find(x => x.id === parcelaId);
+    if (!p) return;
 
-  const total=v*(1+j);
-  const parcela=total/p;
+    const valor = Number(document.getElementById("pag_valor").value || 0);
+    const obs = document.getElementById("pag_obs").value.trim();
 
-  document.getElementById("resumo").innerHTML=`
-    Total: ${moeda(total)}<br>
-    Parcela: ${moeda(parcela)}
-  `;
+    if (valor <= 0) {
+      alert("Informe um valor válido.");
+      return;
+    }
+
+    const cliente = clientesCache.find(c => c.id === p.clienteId);
+    const saldoCliente = Number(cliente?.saldoDevedor || cliente?.saldo || 0);
+
+    if (valor > saldoCliente && saldoCliente > 0) {
+      alert("Pagamento não pode ser maior que o saldo devedor.");
+      return;
+    }
+
+    if (!caixaAtual?.id) {
+      alert("Não existe caixa aberto para registrar pagamento.");
+      return;
+    }
+
+    const saldoCaixa = Number(caixaAtual.saldoAtual || caixaAtual.valorAtual || caixaAtual.saldo || 0);
+    const novoSaldoCaixa = saldoCaixa + valor;
+    const novoSaldoCliente = Math.max(0, saldoCliente - valor);
+
+    const batch = db.batch();
+
+    const pagRef = db.collection("pagamentos").doc();
+    batch.set(pagRef, {
+      parcelaId,
+      vendaId: p.vendaId || "",
+      clienteId: p.clienteId,
+      clienteNome: p.clienteNome || "",
+      usuarioId: usuarioLogado.id,
+      vendedorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      caixaId: caixaAtual.id,
+      valor,
+      observacao: obs,
+      status: "CONFIRMADO",
+      data: dataHojeISO(),
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const valorParcela = Number(p.valor || 0);
+    const quitouParcela = valor >= valorParcela;
+
+    batch.update(db.collection("parcelas").doc(parcelaId), {
+      valorPago: valor,
+      status: quitouParcela ? "PAGA" : "PENDENTE",
+      dataPagamento: dataHojeISO(),
+      pagamentoId: pagRef.id,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    batch.update(db.collection("clientes").doc(p.clienteId), {
+      saldoDevedor: novoSaldoCliente,
+      saldo: novoSaldoCliente,
+      status: novoSaldoCliente <= 1 ? "QUITADO" : "ATIVO",
+      diasAtraso: 0,
+      score: Math.min(100, Number(cliente?.score || 50) + 2),
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    batch.update(db.collection("caixas").doc(caixaAtual.id), {
+      saldoAtual: novoSaldoCaixa,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const movRef = db.collection("movcaixa").doc();
+    batch.set(movRef, {
+      tipo: "ENTRADA",
+      origem: "PAGAMENTO",
+      valor,
+      caixaId: caixaAtual.id,
+      pagamentoId: pagRef.id,
+      parcelaId,
+      vendaId: p.vendaId || "",
+      clienteId: p.clienteId,
+      clienteNome: p.clienteNome || "",
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    const logRef = db.collection("logs").doc();
+    batch.set(logRef, {
+      tipo: "REGISTRO_PAGAMENTO",
+      pagamentoId: pagRef.id,
+      parcelaId,
+      clienteId: p.clienteId,
+      clienteNome: p.clienteNome || "",
+      valor,
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await batch.commit();
+
+    caixaAtual.saldoAtual = novoSaldoCaixa;
+    localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
+
+    alert("Pagamento registrado com sucesso.");
+    fecharDrawer();
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro pagamento:", e);
+    alert("Erro ao registrar pagamento.");
+  }
 }
 
-async function salvarVenda(id){
-  const v=Number(valor.value);
-  const j=Number(juros.value)/100;
-  const p=Number(parcelas.value);
+function abrirDetalheParcela(parcelaId) {
+  const p = parcelasCache.find(x => x.id === parcelaId);
+  if (!p) return;
 
-  const total=v*(1+j);
-
-  await db.collection("vendas").add({
-    clienteId:id,
-    valor:v,
-    juros:j,
-    parcelas:p,
-    valorTotal:total,
-    saldoDevedor:total,
-    clientePlataformaId:tenantId
-  });
-
-  await db.collection("clientes").doc(id).update({
-    saldoDevedor:total
-  });
-
-  alert("Venda criada");
-
-  fecharDrawer();
-  carregarTudo();
-}
-
-// ================= PAGAMENTO =================
-function abrirPagamento(id){
-  document.getElementById("drawerTitle").innerText="Pagamento";
-
-  document.getElementById("drawerContent").innerHTML=`
-    <input id="valorPag" type="number">
-    <button onclick="salvarPagamento('${id}')">Confirmar</button>
+  document.getElementById("drawerTitle").innerText = "Detalhe da parcela";
+  document.getElementById("drawerContent").innerHTML = `
+    <p style="color:#64748b;font-weight:800;line-height:1.7">
+      <strong>Cliente:</strong> ${p.clienteNome || "-"}<br>
+      <strong>Parcela:</strong> ${p.numeroParcela || "-"} de ${p.totalParcelas || "-"}<br>
+      <strong>Valor:</strong> ${moeda(p.valor || 0)}<br>
+      <strong>Status:</strong> ${p.status || "PENDENTE"}<br>
+      <strong>Vencimento:</strong> ${p.dataVencimento || "-"}<br>
+      <strong>Venda:</strong> ${p.vendaId || "-"}
+    </p>
   `;
 
   abrirDrawer();
 }
 
-async function salvarPagamento(id){
-  const valor=Number(valorPag.value);
+function abrirSolicitacaoIngresso() {
+  document.getElementById("drawerTitle").innerText = "Solicitar ingresso de caixa";
 
-  await db.collection("pagamentos").add({
-    clienteId:id,
-    valor,
-    data:hoje()
-  });
+  document.getElementById("drawerContent").innerHTML = `
+    <div class="form-group">
+      <label>Valor solicitado</label>
+      <input id="sol_valor" type="number" step="0.01" placeholder="0,00">
+    </div>
 
-  const c=clientesCache.find(x=>x.id===id);
+    <div class="form-group">
+      <label>Observação</label>
+      <textarea id="sol_obs" placeholder="Explique o motivo da solicitação"></textarea>
+    </div>
 
-  await db.collection("clientes").doc(id).update({
-    saldoDevedor:Math.max(0,(c.saldoDevedor||0)-valor)
-  });
+    <button class="primary-btn" style="width:100%" onclick="salvarSolicitacaoIngresso()">
+      Enviar solicitação
+    </button>
+  `;
 
-  alert("Pago");
-
-  fecharDrawer();
-  carregarTudo();
+  abrirDrawer();
 }
 
-// ================= UI =================
-function abrirDrawer(){
-  drawer.classList.add("open");
-  drawerBg.classList.add("open");
+async function salvarSolicitacaoIngresso() {
+  try {
+    const valor = Number(document.getElementById("sol_valor").value || 0);
+    const observacao = document.getElementById("sol_obs").value.trim();
+
+    if (valor <= 0) {
+      alert("Informe um valor válido.");
+      return;
+    }
+
+    await db.collection("solicitacoes").add({
+      tipo: "INGRESSO",
+      status: "PENDENTE",
+      valor,
+      observacao,
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      caixaId: caixaAtual?.id || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await db.collection("logs").add({
+      tipo: "SOLICITACAO_INGRESSO",
+      valor,
+      usuarioId: usuarioLogado.id,
+      usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+      clientePlataformaId: tenantId,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Solicitação enviada com sucesso.");
+    fecharDrawer();
+    await carregarSolicitacoes();
+    renderSolicitacoes();
+
+  } catch (e) {
+    console.error("Erro solicitação:", e);
+    alert("Erro ao enviar solicitação.");
+  }
 }
 
-function fecharDrawer(){
-  drawer.classList.remove("open");
-  drawerBg.classList.remove("open");
+function renderSolicitacoes() {
+  const html = solicitacoesCache.length
+    ? solicitacoesCache.map(s => `
+      <div class="cliente-card">
+        <div class="stripe roxo"></div>
+
+        <div class="cliente-info">
+          <h3>${s.tipo || "Solicitação"} ${badge(s.status || "PENDENTE", "roxo")}</h3>
+          <p>Valor: <strong>${moeda(s.valor || 0)}</strong></p>
+          <p>${s.observacao || ""}</p>
+        </div>
+
+        <div class="cliente-actions">
+          <button class="ghost-btn" onclick="abrirDetalheSolicitacao('${s.id}')">Detalhes</button>
+        </div>
+      </div>
+    `).join("")
+    : "Nenhuma solicitação encontrada.";
+
+  document.getElementById("listaSolicitacoes").innerHTML = html;
 }
 
-function toggleMenu(force){
-  const s=document.getElementById("sidebar");
-  const b=document.getElementById("menuBg");
+function abrirDetalheSolicitacao(id) {
+  const s = solicitacoesCache.find(x => x.id === id);
+  if (!s) return;
 
-  if(force===false){
-    s.classList.remove("open");
-    b.classList.remove("open");
+  document.getElementById("drawerTitle").innerText = "Detalhe da solicitação";
+
+  document.getElementById("drawerContent").innerHTML = `
+    <p style="color:#64748b;font-weight:800;line-height:1.7">
+      <strong>Tipo:</strong> ${s.tipo || "-"}<br>
+      <strong>Status:</strong> ${s.status || "-"}<br>
+      <strong>Valor:</strong> ${moeda(s.valor || 0)}<br>
+      <strong>Observação:</strong> ${s.observacao || "-"}<br>
+      <strong>Caixa:</strong> ${s.caixaId || "-"}
+    </p>
+  `;
+
+  abrirDrawer();
+}
+
+function abrirDrawerInfo(titulo) {
+  document.getElementById("drawerTitle").innerText = titulo;
+
+  document.getElementById("drawerContent").innerHTML = `
+    <p style="color:#64748b;font-weight:800;line-height:1.7">
+      Área preparada para detalhes de <strong>${titulo}</strong>.
+      Conforme evoluirmos, este espaço vai listar os registros reais que formam cada indicador.
+    </p>
+  `;
+
+  abrirDrawer();
+}
+
+function abrirDrawer() {
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawerBg").classList.add("open");
+}
+
+function fecharDrawer() {
+  document.getElementById("drawer").classList.remove("open");
+  document.getElementById("drawerBg").classList.remove("open");
+}
+
+function toggleMenu(force) {
+  const sidebar = document.getElementById("sidebar");
+  const bg = document.getElementById("menuBg");
+
+  if (force === false) {
+    sidebar.classList.remove("open");
+    bg.classList.remove("open");
     return;
   }
 
-  s.classList.toggle("open");
-  b.classList.toggle("open");
+  sidebar.classList.toggle("open");
+  bg.classList.toggle("open", sidebar.classList.contains("open"));
 }
 
-function trocarTela(id){
-  document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
+function trocarTela(id, el) {
+  const secao = document.getElementById(id);
+
+  if (!secao) {
+    alert("Tela não encontrada: " + id);
+    return;
+  }
+
+  document.querySelectorAll("main section").forEach(s => s.classList.add("hidden"));
+  secao.classList.remove("hidden");
+
+  document.querySelectorAll(".menu-item").forEach(i => i.classList.remove("active"));
+
+  if (el) {
+    el.classList.add("active");
+  } else {
+    const menu = Array.from(document.querySelectorAll(".menu-item"))
+      .find(item => item.getAttribute("onclick")?.includes("'" + id + "'"));
+    if (menu) menu.classList.add("active");
+  }
+
+  const titulos = {
+    dashboard: ["Dashboard Vendedor", "Resumo operacional do caixa e cobranças do dia."],
+    cobrancas: ["Cobranças", "Parcelas vencendo hoje, vencidas e pendentes."],
+    clientes: ["Clientes", "Cadastro, consulta e início de vendas."],
+    vendas: ["Nova venda", "Selecione um cliente quitado para iniciar venda ou renovação."],
+    parcelas: ["Parcelas", "Controle completo das parcelas geradas."],
+    solicitacoes: ["Solicitações", "Solicite ingresso de caixa e acompanhe aprovações."]
+  };
+
+  if (titulos[id]) {
+    document.getElementById("pageTitle").innerText = titulos[id][0];
+    document.getElementById("pageSubtitle").innerText = titulos[id][1];
+  }
+
+  if (id === "cobrancas") renderCobrancas();
+  if (id === "parcelas") renderParcelas();
+  if (id === "solicitacoes") renderSolicitacoes();
+
+  if (window.innerWidth <= 900) toggleMenu(false);
 }
 
-function logout(){
-  firebase.auth().signOut();
-  localStorage.clear();
-  window.location.href="index.html";
+function logout() {
+  firebase.auth().signOut().finally(() => {
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("caixaAtual");
+    window.location.href = "index.html";
+  });
 }
+
+window.addEventListener("error", function(e) {
+  console.error("ERRO JS:", e.message, "Linha:", e.lineno);
+});
 </script>
+
 </body>
 </html>
