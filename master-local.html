@@ -751,3 +751,274 @@ window.addEventListener("error", function(e) {
 
 </body>
 </html>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+
+<script>
+let usuarioLogado = null;
+let tenantId = "";
+
+let usuariosCache = [];
+let clientesCache = [];
+let caixasCache = [];
+let vendasCache = [];
+let solicitacoesCache = [];
+
+// INIT
+document.addEventListener("DOMContentLoaded", async () => {
+  usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
+
+  if (!usuarioLogado) {
+    alert("Sessão expirada. Faça login novamente.");
+    window.location.href = "index.html";
+    return;
+  }
+
+  if (usuarioLogado.tipoUsuario !== "master_local") {
+    alert("Acesso negado para este perfil.");
+    window.location.href = "index.html";
+    return;
+  }
+
+  tenantId =
+    usuarioLogado.clientePlataformaId ||
+    usuarioLogado.empresaId ||
+    usuarioLogado.tenantId ||
+    usuarioLogado.clienteId ||
+    "";
+
+  document.getElementById("userNome").innerText =
+    usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "Master Local";
+
+  document.getElementById("empresaNome").innerText =
+    usuarioLogado.clientePlataformaNome ||
+    usuarioLogado.empresaNome ||
+    usuarioLogado.nomeEmpresa ||
+    "Empresa não identificada";
+
+  await carregarTudo();
+});
+
+// HELPERS
+function moeda(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
+function badgeStatus(status) {
+  const s = String(status || "").toUpperCase();
+
+  if (s === "ATIVO" || s === "ATIVA" || s === "ABERTO" || s === "APROVADA") {
+    return `<span class="badge b-green">${s}</span>`;
+  }
+
+  if (s === "BLOQUEADO" || s === "INATIVO" || s === "INATIVA" || s === "RECUSADA" || s === "FECHADO") {
+    return `<span class="badge b-red">${s}</span>`;
+  }
+
+  if (s === "PENDENTE") {
+    return `<span class="badge b-yellow">${s}</span>`;
+  }
+
+  return `<span class="badge b-gray">${s || "N/I"}</span>`;
+}
+
+// LOADERS
+async function carregarTudo() {
+  try {
+    await Promise.all([
+      carregarUsuarios(),
+      carregarClientes(),
+      carregarCaixas(),
+      carregarVendas(),
+      carregarSolicitacoes()
+    ]);
+
+    atualizarDashboard();
+    renderUsuarios();
+    renderClientes();
+    renderCaixas();
+    renderSolicitacoes();
+
+  } catch (e) {
+    console.error("Erro ao carregar dados:", e);
+    alert("Erro ao carregar dados do Master Local.");
+  }
+}
+
+async function carregarUsuarios() {
+  let ref = db.collection("usuarios").limit(150);
+
+  if (tenantId) {
+    ref = db.collection("usuarios")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(150);
+  }
+
+  const snap = await ref.get();
+  usuariosCache = [];
+
+  snap.forEach(doc => {
+    usuariosCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarClientes() {
+  let ref = db.collection("clientes").limit(200);
+
+  if (tenantId) {
+    ref = db.collection("clientes")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(200);
+  }
+
+  const snap = await ref.get();
+  clientesCache = [];
+
+  snap.forEach(doc => {
+    clientesCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarCaixas() {
+  let ref = db.collection("caixas").limit(150);
+
+  if (tenantId) {
+    ref = db.collection("caixas")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(150);
+  }
+
+  const snap = await ref.get();
+  caixasCache = [];
+
+  snap.forEach(doc => {
+    caixasCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarVendas() {
+  let ref = db.collection("vendas").limit(200);
+
+  if (tenantId) {
+    ref = db.collection("vendas")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(200);
+  }
+
+  const snap = await ref.get();
+  vendasCache = [];
+
+  snap.forEach(doc => {
+    vendasCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarSolicitacoes() {
+  let ref = db.collection("solicitacoes").limit(150);
+
+  if (tenantId) {
+    ref = db.collection("solicitacoes")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(150);
+  }
+
+  const snap = await ref.get();
+  solicitacoesCache = [];
+
+  snap.forEach(doc => {
+    solicitacoesCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+// DASHBOARD
+function atualizarDashboard() {
+  const carteira = clientesCache.reduce((total, c) => {
+    return total + Number(c.saldoDevedor || c.saldo || 0);
+  }, 0);
+
+  const caixasAbertos = caixasCache.filter(c => {
+    return String(c.status || "").toUpperCase() === "ABERTO";
+  }).length;
+
+  document.getElementById("kpiCarteira").innerText = moeda(carteira);
+  document.getElementById("kpiClientes").innerText = clientesCache.length;
+  document.getElementById("kpiUsuarios").innerText = usuariosCache.length;
+  document.getElementById("kpiCaixas").innerText = caixasAbertos;
+}
+
+// NAVEGAÇÃO
+function trocarTela(id, el) {
+  const secao = document.getElementById(id);
+
+  if (!secao) {
+    alert("Tela não encontrada: " + id);
+    return;
+  }
+
+  document.querySelectorAll("main section").forEach(section => {
+    section.classList.add("hidden");
+  });
+
+  secao.classList.remove("hidden");
+
+  document.querySelectorAll(".menu-item").forEach(item => {
+    item.classList.remove("active");
+  });
+
+  if (el) {
+    el.classList.add("active");
+  } else {
+    const menu = Array.from(document.querySelectorAll(".menu-item"))
+      .find(item => item.getAttribute("onclick")?.includes("'" + id + "'"));
+    if (menu) menu.classList.add("active");
+  }
+
+  const titulos = {
+    dashboard: ["Dashboard", "Visão geral da empresa"],
+    usuarios: ["Usuários", "Criação, edição, bloqueio e controle de acesso"],
+    clientes: ["Clientes", "Consulta dos clientes da empresa"],
+    caixas: ["Caixas", "Abertura, fechamento e acompanhamento dos caixas"],
+    solicitacoes: ["Solicitações", "Aprovação ou recusa de ingressos e pedidos financeiros"]
+  };
+
+  if (titulos[id]) {
+    document.getElementById("pageTitle").innerText = titulos[id][0];
+    document.getElementById("pageSubtitle").innerText = titulos[id][1];
+  }
+
+  if (window.innerWidth <= 900) toggleMenu(false);
+}
+
+function toggleMenu(force) {
+  const sidebar = document.getElementById("sidebar");
+  const bg = document.getElementById("menuBg");
+
+  if (force === false) {
+    sidebar.classList.remove("open");
+    bg.classList.remove("open");
+    return;
+  }
+
+  sidebar.classList.toggle("open");
+  bg.classList.toggle("open", sidebar.classList.contains("open"));
+}
+
+// DRAWER
+function abrirDrawer(titulo, html) {
+  document.getElementById("drawerTitle").innerText = titulo;
+  document.getElementById("drawerContent").innerHTML = html;
+  document.getElementById("drawerBg").classList.add("open");
+  document.getElementById("drawer").classList.add("open");
+}
+
+function fecharDrawer() {
+  document.getElementById("drawerBg").classList.remove("open");
+  document.getElementById("drawer").classList.remove("open");
+}
