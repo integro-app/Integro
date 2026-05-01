@@ -1022,3 +1022,259 @@ function fecharDrawer() {
   document.getElementById("drawerBg").classList.remove("open");
   document.getElementById("drawer").classList.remove("open");
 }
+
+// ================= USUÁRIOS =================
+
+function renderUsuarios() {
+  const html = usuariosCache.length
+    ? usuariosCache.map(u => `
+      <tr>
+        <td>${u.nome || "-"}</td>
+        <td>${u.email || "-"}</td>
+        <td>${u.tipoUsuario || "-"}</td>
+        <td>${badgeStatus(u.status)}</td>
+        <td>
+          <button class="ghost-btn" onclick="editarUsuario('${u.id}')">Editar</button>
+          <button class="danger-btn" onclick="toggleUsuario('${u.id}')">
+            ${u.acessoLiberado === false ? "Liberar" : "Bloquear"}
+          </button>
+        </td>
+      </tr>
+    `).join("")
+    : `<tr><td colspan="5">Nenhum usuário encontrado</td></tr>`;
+
+  document.getElementById("tabelaUsuarios").innerHTML = html;
+}
+
+function abrirNovoUsuario() {
+  abrirDrawer("Novo usuário", `
+    <div class="form-group">
+      <label>Nome</label>
+      <input id="u_nome">
+    </div>
+
+    <div class="form-group">
+      <label>Email</label>
+      <input id="u_email">
+    </div>
+
+    <div class="form-group">
+      <label>Tipo</label>
+      <select id="u_tipo">
+        <option value="vendedor">Vendedor</option>
+        <option value="supervisor">Supervisor</option>
+        <option value="financeiro">Financeiro</option>
+      </select>
+    </div>
+
+    <button class="primary-btn" onclick="salvarUsuario()">Criar usuário</button>
+  `);
+}
+
+async function salvarUsuario() {
+  const nome = document.getElementById("u_nome").value;
+  const email = document.getElementById("u_email").value;
+  const tipo = document.getElementById("u_tipo").value;
+
+  if (!nome || !email) {
+    alert("Preencha nome e email");
+    return;
+  }
+
+  const senha = "123456";
+
+  const app2 = firebase.initializeApp(firebase.app().options, "sec" + Date.now());
+
+  const cred = await app2.auth().createUserWithEmailAndPassword(email, senha);
+
+  await app2.auth().signOut();
+  await app2.delete();
+
+  await db.collection("usuarios").add({
+    authUid: cred.user.uid,
+    nome,
+    email,
+    tipoUsuario: tipo,
+    status: "ATIVO",
+    acessoLiberado: true,
+    clientePlataformaId: tenantId
+  });
+
+  alert("Usuário criado\nSenha: 123456");
+
+  fecharDrawer();
+  await carregarUsuarios();
+  renderUsuarios();
+}
+
+// EDITAR
+function editarUsuario(id) {
+  const u = usuariosCache.find(x => x.id === id);
+
+  abrirDrawer("Editar usuário", `
+    <input id="e_nome" value="${u.nome}">
+    <select id="e_tipo">
+      <option value="vendedor">Vendedor</option>
+      <option value="supervisor">Supervisor</option>
+      <option value="financeiro">Financeiro</option>
+    </select>
+    <button class="primary-btn" onclick="salvarEdicao('${id}')">Salvar</button>
+  `);
+}
+
+async function salvarEdicao(id) {
+  const nome = document.getElementById("e_nome").value;
+  const tipo = document.getElementById("e_tipo").value;
+
+  await db.collection("usuarios").doc(id).update({
+    nome,
+    tipoUsuario: tipo
+  });
+
+  fecharDrawer();
+  await carregarUsuarios();
+  renderUsuarios();
+}
+
+// BLOQUEAR
+async function toggleUsuario(id) {
+  const u = usuariosCache.find(x => x.id === id);
+
+  const novo = u.acessoLiberado === false;
+
+  await db.collection("usuarios").doc(id).update({
+    acessoLiberado: novo,
+    status: novo ? "ATIVO" : "BLOQUEADO"
+  });
+
+  await carregarUsuarios();
+  renderUsuarios();
+}
+
+// ================= CLIENTES =================
+
+function renderClientes() {
+  const html = clientesCache.length
+    ? clientesCache.map(c => `
+      <div class="list-item">
+        <div>
+          <strong>${c.nome}</strong>
+          <small>${c.telefone || "-"}</small>
+          <small>Saldo: ${moeda(c.saldoDevedor)}</small>
+        </div>
+      </div>
+    `).join("")
+    : "Nenhum cliente";
+
+  document.getElementById("listaClientes").innerHTML = html;
+}
+
+// ================= CAIXA =================
+
+function renderCaixas() {
+  const html = caixasCache.length
+    ? caixasCache.map(c => `
+      <div class="list-item">
+        <div>
+          <strong>${c.usuarioNome || "Vendedor"}</strong>
+          <small>Status: ${c.status}</small>
+          <small>Saldo: ${moeda(c.saldoAtual)}</small>
+        </div>
+
+        <div class="item-actions">
+          ${c.status === "ABERTO"
+            ? `<button class="danger-btn" onclick="fecharCaixa('${c.id}')">Fechar</button>`
+            : `<button class="success-btn" onclick="reabrirCaixa('${c.id}')">Reabrir</button>`
+          }
+        </div>
+      </div>
+    `).join("")
+    : "Nenhum caixa";
+
+  document.getElementById("listaCaixas").innerHTML = html;
+}
+
+async function fecharCaixa(id) {
+  await db.collection("caixas").doc(id).update({
+    status: "FECHADO"
+  });
+
+  await carregarCaixas();
+  renderCaixas();
+}
+
+async function reabrirCaixa(id) {
+  await db.collection("caixas").doc(id).update({
+    status: "ABERTO"
+  });
+
+  await carregarCaixas();
+  renderCaixas();
+}
+
+// ================= SOLICITAÇÕES =================
+
+function renderSolicitacoes() {
+  const html = solicitacoesCache.length
+    ? solicitacoesCache.map(s => `
+      <div class="list-item">
+        <div>
+          <strong>${s.tipo}</strong>
+          <small>${s.status}</small>
+          <small>${moeda(s.valor)}</small>
+        </div>
+
+        <div class="item-actions">
+          <button class="success-btn" onclick="aprovar('${s.id}')">Aprovar</button>
+          <button class="danger-btn" onclick="recusar('${s.id}')">Recusar</button>
+        </div>
+      </div>
+    `).join("")
+    : "Nenhuma solicitação";
+
+  document.getElementById("listaSolicitacoes").innerHTML = html;
+}
+
+async function aprovar(id) {
+  const s = solicitacoesCache.find(x => x.id === id);
+
+  await db.collection("solicitacoes").doc(id).update({
+    status: "APROVADA"
+  });
+
+  if (s.tipo === "INGRESSO") {
+    const caixaRef = db.collection("caixas").doc(s.caixaId);
+    const doc = await caixaRef.get();
+    const saldo = doc.data().saldoAtual || 0;
+
+    await caixaRef.update({
+      saldoAtual: saldo + s.valor
+    });
+  }
+
+  await carregarSolicitacoes();
+  renderSolicitacoes();
+}
+
+async function recusar(id) {
+  await db.collection("solicitacoes").doc(id).update({
+    status: "RECUSADA"
+  });
+
+  await carregarSolicitacoes();
+  renderSolicitacoes();
+}
+
+// ================= LOGOUT =================
+
+function logout() {
+  firebase.auth().signOut();
+  localStorage.clear();
+  window.location.href = "index.html";
+}
+
+// ================= DEBUG =================
+
+window.addEventListener("error", e => {
+  alert("Erro JS: " + e.message);
+});
