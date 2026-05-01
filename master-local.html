@@ -861,3 +861,199 @@ function abrirCliente(id) {
     <p><strong>Status:</strong> ${c.status || "-"}</p>
   `);
 }
+
+// ================= CARGOS E PERMISSÕES =================
+function renderCargos() {
+  const html = `
+    <div class="item">
+      <div>
+        <strong>Cargos e permissões</strong><br>
+        <small>Crie cargos e defina o que cada perfil pode ver/fazer.</small>
+      </div>
+      <button class="btn btn-primary" onclick="abrirNovoCargo()">Novo cargo</button>
+    </div>
+    ${
+      cargosCache.length
+        ? cargosCache.map(c => `
+          <div class="item">
+            <div>
+              <strong>${c.nome || c.cargoNome || "Cargo sem nome"}</strong><br>
+              <small>${c.descricao || "Sem descrição"}</small><br>
+              <small>Tipo base: ${c.tipoBase || "-"}</small>
+            </div>
+            <div>
+              <button class="btn btn-ghost" onclick="abrirEditarCargo('${c.id}')">Editar</button>
+              <button class="btn btn-danger" onclick="excluirCargo('${c.id}')">Excluir</button>
+            </div>
+          </div>
+        `).join("")
+        : `<div class="item"><strong>Nenhum cargo cadastrado.</strong></div>`
+    }
+  `;
+
+  document.getElementById("listaCargos").innerHTML = html;
+}
+
+function abrirNovoCargo() {
+  abrirDrawer("Novo cargo", formularioCargo());
+}
+
+function abrirEditarCargo(id) {
+  const c = cargosCache.find(x => x.id === id);
+  if (!c) return;
+
+  abrirDrawer("Editar cargo", formularioCargo(c));
+}
+
+function formularioCargo(c = null) {
+  const p = c?.permissoes || {};
+
+  return `
+    <input id="cargoNome" placeholder="Nome do cargo" value="${c?.nome || c?.cargoNome || ""}">
+    <input id="cargoDescricao" placeholder="Descrição do cargo" value="${c?.descricao || ""}">
+
+    <select id="cargoTipoBase">
+      <option value="vendedor" ${c?.tipoBase === "vendedor" ? "selected" : ""}>Vendedor</option>
+      <option value="supervisor" ${c?.tipoBase === "supervisor" ? "selected" : ""}>Supervisor</option>
+      <option value="financeiro" ${c?.tipoBase === "financeiro" ? "selected" : ""}>Financeiro</option>
+      <option value="gerente" ${c?.tipoBase === "gerente" ? "selected" : ""}>Gerente</option>
+      <option value="operacional" ${c?.tipoBase === "operacional" ? "selected" : ""}>Operacional</option>
+    </select>
+
+    <div style="margin:12px 0;font-weight:900;">Permissões</div>
+
+    ${checkPerm("verDashboard", "Ver dashboard", p)}
+    ${checkPerm("verUsuarios", "Ver usuários", p)}
+    ${checkPerm("criarUsuarios", "Criar usuários", p)}
+    ${checkPerm("editarUsuarios", "Editar usuários", p)}
+    ${checkPerm("bloquearUsuarios", "Bloquear/liberar usuários", p)}
+    ${checkPerm("verClientes", "Ver clientes", p)}
+    ${checkPerm("verCaixas", "Ver caixas", p)}
+    ${checkPerm("abrirCaixa", "Abrir caixa", p)}
+    ${checkPerm("fecharCaixa", "Fechar caixa", p)}
+    ${checkPerm("reabrirCaixa", "Reabrir caixa", p)}
+    ${checkPerm("aprovarSolicitacoes", "Aprovar solicitações", p)}
+    ${checkPerm("verLogs", "Ver auditoria/logs", p)}
+
+    <button class="btn btn-primary" onclick="${c ? `salvarCargo('${c.id}')` : "salvarCargo()"}">
+      Salvar cargo
+    </button>
+  `;
+}
+
+function checkPerm(chave, texto, permissoes) {
+  return `
+    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:700;">
+      <input type="checkbox" id="perm_${chave}" ${permissoes?.[chave] ? "checked" : ""} style="width:auto;margin:0;">
+      ${texto}
+    </label>
+  `;
+}
+
+function coletarPermissoesCargo() {
+  const chaves = [
+    "verDashboard",
+    "verUsuarios",
+    "criarUsuarios",
+    "editarUsuarios",
+    "bloquearUsuarios",
+    "verClientes",
+    "verCaixas",
+    "abrirCaixa",
+    "fecharCaixa",
+    "reabrirCaixa",
+    "aprovarSolicitacoes",
+    "verLogs"
+  ];
+
+  const permissoes = {};
+
+  chaves.forEach(chave => {
+    permissoes[chave] = document.getElementById("perm_" + chave)?.checked || false;
+  });
+
+  return permissoes;
+}
+
+async function salvarCargo(id = null) {
+  try {
+    const nome = document.getElementById("cargoNome").value.trim();
+    const descricao = document.getElementById("cargoDescricao").value.trim();
+    const tipoBase = document.getElementById("cargoTipoBase").value;
+
+    if (!nome) {
+      alert("Informe o nome do cargo.");
+      return;
+    }
+
+    const dados = {
+      nome,
+      cargoNome: nome,
+      descricao,
+      tipoBase,
+      permissoes: coletarPermissoesCargo(),
+      clientePlataformaId: tenantId,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (id) {
+      await db.collection("cargos").doc(id).update(dados);
+
+      await gravarLog("EDICAO_CARGO", {
+        cargoId: id,
+        cargoNome: nome
+      });
+
+      alert("Cargo atualizado com sucesso.");
+    } else {
+      await db.collection("cargos").add({
+        ...dados,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        criadoPorUid: usuarioLogado.authUid || "",
+        criadoPorNome: usuarioLogado.nome || usuarioLogado.email || ""
+      });
+
+      await gravarLog("CRIACAO_CARGO", {
+        cargoNome: nome
+      });
+
+      alert("Cargo criado com sucesso.");
+    }
+
+    fecharDrawer();
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro salvar cargo:", e);
+    alert("Erro ao salvar cargo.");
+  }
+}
+
+async function excluirCargo(id) {
+  try {
+    const emUso = usuariosCache.some(u => u.cargoId === id);
+
+    if (emUso) {
+      alert("Não é possível excluir cargo vinculado a usuário.");
+      return;
+    }
+
+    if (!confirm("Deseja excluir este cargo?")) return;
+
+    const cargo = cargosCache.find(c => c.id === id);
+
+    await db.collection("cargos").doc(id).delete();
+
+    await gravarLog("EXCLUSAO_CARGO", {
+      cargoId: id,
+      cargoNome: cargo?.nome || ""
+    });
+
+    alert("Cargo excluído.");
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro excluir cargo:", e);
+    alert("Erro ao excluir cargo.");
+  }
+}
