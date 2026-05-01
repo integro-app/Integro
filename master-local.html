@@ -254,3 +254,238 @@
   <h3 id="drawerTitle"></h3>
   <div id="drawerContent"></div>
 </div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="js/firebase-config.js"></script>
+
+<script>
+let usuarioLogado = null;
+let tenantId = "";
+
+let usuariosCache = [];
+let clientesCache = [];
+let cargosCache = [];
+let equipesCache = [];
+let caixasCache = [];
+let vendasCache = [];
+let logsCache = [];
+
+// ================= INIT =================
+document.addEventListener("DOMContentLoaded", async () => {
+  usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
+
+  if (!usuarioLogado) {
+    alert("Sessão expirada. Faça login novamente.");
+    window.location.href = "index.html";
+    return;
+  }
+
+  if (usuarioLogado.tipoUsuario !== "master_local") {
+    alert("Acesso negado para este perfil.");
+    window.location.href = "index.html";
+    return;
+  }
+
+  tenantId =
+    usuarioLogado.clientePlataformaId ||
+    usuarioLogado.empresaId ||
+    usuarioLogado.tenantId ||
+    usuarioLogado.clienteId ||
+    "";
+
+  await carregarTudo();
+});
+
+// ================= HELPERS =================
+function moeda(valor) {
+  return Number(valor || 0).toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
+  });
+}
+
+function hojeISO() {
+  return new Date().toISOString().split("T")[0];
+}
+
+function statusTxt(valor) {
+  return String(valor || "").toUpperCase();
+}
+
+function gravarLog(tipo, dados = {}) {
+  return db.collection("logs").add({
+    tipo,
+    ...dados,
+    usuarioId: usuarioLogado?.id || "",
+    usuarioNome: usuarioLogado?.nome || usuarioLogado?.email || "",
+    clientePlataformaId: tenantId,
+    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+// ================= CARREGAMENTO GERAL =================
+async function carregarTudo() {
+  try {
+    await Promise.all([
+      carregarUsuarios(),
+      carregarClientes(),
+      carregarCargos(),
+      carregarEquipes(),
+      carregarCaixas(),
+      carregarVendas(),
+      carregarLogs()
+    ]);
+
+    atualizarDashboard();
+
+    renderUsuarios();
+    renderClientes();
+    renderCargos();
+    renderEquipes();
+    renderCaixas();
+    renderLogs();
+
+  } catch (erro) {
+    console.error("Erro ao carregar dados:", erro);
+    alert("Erro ao carregar dados do Master Local.");
+  }
+}
+
+// ================= LOADERS FIREBASE =================
+async function carregarUsuarios() {
+  let ref = db.collection("usuarios").limit(200);
+
+  if (tenantId) {
+    ref = db.collection("usuarios")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(200);
+  }
+
+  const snap = await ref.get();
+  usuariosCache = [];
+
+  snap.forEach(doc => {
+    usuariosCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarClientes() {
+  let ref = db.collection("clientes").limit(300);
+
+  if (tenantId) {
+    ref = db.collection("clientes")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(300);
+  }
+
+  const snap = await ref.get();
+  clientesCache = [];
+
+  snap.forEach(doc => {
+    clientesCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarCargos() {
+  let ref = db.collection("cargos").limit(100);
+
+  if (tenantId) {
+    ref = db.collection("cargos")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(100);
+  }
+
+  const snap = await ref.get();
+  cargosCache = [];
+
+  snap.forEach(doc => {
+    cargosCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarEquipes() {
+  let ref = db.collection("equipes").limit(100);
+
+  if (tenantId) {
+    ref = db.collection("equipes")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(100);
+  }
+
+  const snap = await ref.get();
+  equipesCache = [];
+
+  snap.forEach(doc => {
+    equipesCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarCaixas() {
+  let ref = db.collection("caixas").limit(200);
+
+  if (tenantId) {
+    ref = db.collection("caixas")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(200);
+  }
+
+  const snap = await ref.get();
+  caixasCache = [];
+
+  snap.forEach(doc => {
+    caixasCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarVendas() {
+  let ref = db.collection("vendas").limit(300);
+
+  if (tenantId) {
+    ref = db.collection("vendas")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(300);
+  }
+
+  const snap = await ref.get();
+  vendasCache = [];
+
+  snap.forEach(doc => {
+    vendasCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+async function carregarLogs() {
+  let ref = db.collection("logs").limit(150);
+
+  if (tenantId) {
+    ref = db.collection("logs")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(150);
+  }
+
+  const snap = await ref.get();
+  logsCache = [];
+
+  snap.forEach(doc => {
+    logsCache.push({ id: doc.id, ...doc.data() });
+  });
+}
+
+// ================= DASHBOARD =================
+function atualizarDashboard() {
+  const carteira = clientesCache.reduce((total, c) => {
+    return total + Number(c.saldoDevedor || c.saldo || 0);
+  }, 0);
+
+  const caixasAbertos = caixasCache.filter(c => {
+    return statusTxt(c.status) === "ABERTO";
+  }).length;
+
+  document.getElementById("kpiCarteira").innerText = moeda(carteira);
+  document.getElementById("kpiClientes").innerText = clientesCache.length;
+  document.getElementById("kpiUsuarios").innerText = usuariosCache.length;
+  document.getElementById("kpiCaixas").innerText = caixasAbertos;
+}
