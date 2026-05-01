@@ -49,7 +49,7 @@
     .stripe.pago{background:var(--verde)}.stripe.pendente{background:var(--amarelo)}.stripe.atraso{background:var(--vermelho)}.stripe.adiantado{background:var(--azulclaro)}
     .cliente-info h3{font-size:16px;font-weight:900;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .cliente-info p{font-size:13px;color:var(--muted);font-weight:700;line-height:1.5}
-    .cliente-actions{display:flex;flex-direction:column;gap:8px;min-width:155px}
+    .cliente-actions{display:flex;flex-direction:column;gap:8px;min-width:160px}
     .badge{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:900}
     .badge.verde{background:#dcfce7;color:#166534}.badge.vermelho{background:#fee2e2;color:#991b1b}
     .badge.amarelo{background:#fef3c7;color:#92400e}.badge.azul{background:#dbeafe;color:#1d4ed8}
@@ -57,9 +57,11 @@
     .hidden{display:none}
     .drawer-bg{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;display:none}
     .drawer-bg.open{display:block}
-    .drawer{position:fixed;right:0;top:0;height:100vh;width:460px;max-width:94vw;background:#fff;z-index:50;padding:22px;transform:translateX(100%);transition:.25s;box-shadow:-20px 0 50px rgba(15,23,42,.2);overflow-y:auto}
+    .drawer{position:fixed;right:0;top:0;height:100vh;width:480px;max-width:94vw;background:#fff;z-index:50;padding:22px;transform:translateX(100%);transition:.25s;box-shadow:-20px 0 50px rgba(15,23,42,.2);overflow-y:auto}
     .drawer.open{transform:translateX(0)}.drawer h2{font-size:22px;font-weight:900;margin-bottom:14px}
     .form-group{margin-bottom:12px}.form-group label{display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
+    .resumo-venda{background:#f8fafc;border:1px solid var(--linha);border-radius:16px;padding:14px;margin:12px 0}
+    .resumo-venda div{display:flex;justify-content:space-between;margin-bottom:8px;font-weight:800;color:#334155}
     .mobile-menu{display:none}
     #menuBg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:20}
     #menuBg.open{display:block}
@@ -112,7 +114,7 @@
       <div class="top-actions">
         <button class="icon-btn" onclick="abrirDrawerInfo('Notificações')">🔔</button>
         <button class="ghost-btn" onclick="carregarTudo()">Atualizar</button>
-        <button class="primary-btn" onclick="trocarTela('cobrancas')">Cobranças</button>
+        <button class="primary-btn" onclick="abrirNovoCliente()">Novo cliente</button>
       </div>
     </div>
 
@@ -152,10 +154,10 @@
 
     <section id="clientes" class="hidden">
       <div class="panel">
-        <h2>Clientes</h2>
         <div class="toolbar">
           <input id="buscaClientes" placeholder="Pesquisar cliente">
           <button class="ghost-btn" onclick="filtrarClientes()">Buscar</button>
+          <button class="primary-btn" onclick="abrirNovoCliente()">Novo cliente</button>
         </div>
         <div id="listaClientes" class="clientes-list">Carregando...</div>
       </div>
@@ -164,7 +166,9 @@
     <section id="vendas" class="hidden">
       <div class="panel">
         <h2>Nova venda</h2>
-        <p style="color:#64748b;font-weight:700;margin-bottom:14px">Selecione um cliente na lista para iniciar venda/renovação. A trava de saldo devedor será aplicada na próxima etapa.</p>
+        <p style="color:#64748b;font-weight:700;margin-bottom:14px">
+          Selecione um cliente quitado para iniciar venda/renovação. Clientes com saldo devedor ativo ficam bloqueados.
+        </p>
         <div id="listaVendas" class="clientes-list">Carregando clientes...</div>
       </div>
     </section>
@@ -189,442 +193,304 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="js/firebase-config.js"></script>
 
-  <script>
-    let usuarioLogado = null;
-    let tenantId = "";
-    let caixaAtual = null;
-    let clientesCache = [];
-    let pagamentosHoje = [];
-
-    document.addEventListener("DOMContentLoaded", async () => {
-      usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
-
-      if (!usuarioLogado) {
-        alert("Sessão expirada. Faça login novamente.");
-        window.location.href = "index.html";
-        return;
-      }
-
-      if (usuarioLogado.tipoUsuario !== "vendedor") {
-        alert("Acesso negado para este perfil.");
-        window.location.href = "index.html";
-        return;
-      }
-
-      tenantId = usuarioLogado.clientePlataformaId || usuarioLogado.empresaId || usuarioLogado.tenantId || "";
-
-      document.getElementById("userName").innerText = usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "Vendedor";
-      document.getElementById("empresaNome").innerText = usuarioLogado.clientePlataformaNome || usuarioLogado.empresaNome || "Empresa";
-      await carregarTudo();
-    });
-
-    function moeda(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
-    function hojeISO(){return new Date().toISOString().split("T")[0]}
-
-    async function carregarTudo(){
-      await carregarCaixa();
-      await Promise.all([carregarClientes(), carregarPagamentosHoje(), carregarSolicitacoes()]);
-      atualizarKPIs();
-      renderizarTudo(clientesCache);
-    }
-
-    async function carregarCaixa(){
-      try{
-        const local = JSON.parse(localStorage.getItem("caixaAtual"));
-        if(local){caixaAtual = local}
-
-        let ref = db.collection("caixas")
-          .where("usuarioId","==",usuarioLogado.id)
-          .where("status","==","ABERTO")
-          .limit(1);
-
-        const snap = await ref.get();
-
-        if(!snap.empty){
-          const doc = snap.docs[0];
-          caixaAtual = {id:doc.id,...doc.data()};
-          localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
-        }
-
-        document.getElementById("caixaInfo").innerText = caixaAtual ? "Caixa: aberto" : "Caixa: não encontrado";
-      }catch(e){
-        console.error(e);
-        document.getElementById("caixaInfo").innerText = "Caixa: erro";
-      }
-    }
-
-    async function carregarClientes(){
-      try{
-        let ref = db.collection("clientes").limit(100);
-
-        if(tenantId){
-          ref = db.collection("clientes").where("clientePlataformaId","==",tenantId).limit(100);
-        }
-
-        const snap = await ref.get();
-        clientesCache = [];
-
-        snap.forEach(doc=>{
-          const c = {id:doc.id,...doc.data()};
-          if(!c.vendedorId || c.vendedorId === usuarioLogado.id || c.usuarioId === usuarioLogado.id || !usuarioLogado.id){
-            clientesCache.push(c);
-          }
-        });
-      }catch(e){
-        console.error(e);
-        clientesCache = [];
-      }
-    }
-
-    async function carregarPagamentosHoje(){
-      try{
-        let ref = db.collection("pagamentos").where("data","==",hojeISO()).limit(100);
-
-        if(tenantId){
-          ref = db.collection("pagamentos").where("clientePlataformaId","==",tenantId).where("data","==",hojeISO()).limit(100);
-        }
-
-        const snap = await ref.get();
-        pagamentosHoje = [];
-        snap.forEach(doc=>pagamentosHoje.push({id:doc.id,...doc.data()}));
-      }catch(e){
-        console.error(e);
-        pagamentosHoje = [];
-      }
-    }
-
-    async function carregarSolicitacoes(){
-      try{
-        let ref = db.collection("solicitacoes").limit(20);
-        if(tenantId){
-          ref = db.collection("solicitacoes").where("clientePlataformaId","==",tenantId).limit(20);
-        }
-
-        const snap = await ref.get();
-        const itens = [];
-        snap.forEach(doc=>{
-          const s = doc.data();
-          if(!s.usuarioId || s.usuarioId === usuarioLogado.id){
-            itens.push(`
-              <div class="cliente-card">
-                <div class="stripe pendente"></div>
-                <div class="cliente-info">
-                  <h3>${s.tipo || "Solicitação"} ${badge(s.status || "PENDENTE","amarelo")}</h3>
-                  <p>Valor: ${moeda(s.valor || 0)} • ${s.observacao || ""}</p>
-                </div>
-              </div>
-            `);
-          }
-        });
-        document.getElementById("listaSolicitacoes").innerHTML = itens.length ? itens.join("") : "Nenhuma solicitação encontrada.";
-      }catch(e){
-        console.error(e);
-        document.getElementById("listaSolicitacoes").innerHTML = "Erro ao carregar solicitações.";
-      }
-    }
-
-    function atualizarKPIs(){
-      const carteira = clientesCache.reduce((t,c)=>t+Number(c.saldoDevedor||c.saldo||0),0);
-      const recebido = pagamentosHoje.reduce((t,p)=>t+Number(p.valor||0),0);
-      const pendentes = clientesCache.filter(c=>Number(c.saldoDevedor||c.saldo||0)>0).length;
-
-      document.getElementById("kpiCarteira").innerText = moeda(carteira);
-      document.getElementById("kpiCaixa").innerText = moeda(caixaAtual?.saldoAtual || caixaAtual?.valorAtual || caixaAtual?.saldo || 0);
-      document.getElementById("kpiRecebido").innerText = moeda(recebido);
-      document.getElementById("kpiPendentes").innerText = pendentes;
-    }
-
-    function badge(txt,tipo){
-      return `<span class="badge ${tipo||"azul"}">${txt}</span>`;
-    }
-
-    function situacaoCliente(c){
-      const saldo = Number(c.saldoDevedor||c.saldo||0);
-      const atraso = Number(c.diasAtraso||0);
-      if(saldo <= 0) return {txt:"QUITADO", cor:"pago", badge:"verde"};
-      if(atraso > 10) return {txt:"ATRASO GRAVE", cor:"atraso", badge:"vermelho"};
-      if(atraso > 0) return {txt:"EM ATRASO", cor:"atraso", badge:"amarelo"};
-      return {txt:"PENDENTE", cor:"pendente", badge:"azul"};
-    }
-
-    function cardCliente(c, contexto){
-      const s = situacaoCliente(c);
-      const nome = c.nome || c.nomeCompleto || c.apelido || "Cliente sem nome";
-      const parcela = Number(c.valorParcela || c.parcelaValor || 0);
-      const saldo = Number(c.saldoDevedor || c.saldo || 0);
-      const score = c.score ?? 50;
-
-      return `
-        <div class="cliente-card">
-          <div class="stripe ${s.cor}"></div>
-          <div class="cliente-info">
-            <h3>${nome} <span class="score">${score}</span> ${badge(s.txt,s.badge)}</h3>
-            <p>Parcela: <strong>${moeda(parcela)}</strong> • Saldo: <strong>${moeda(saldo)}</strong></p>
-            <p>Atraso: ${Number(c.diasAtraso||0)} dia(s) • Apelido: ${c.apelido || "-"}</p>
-          </div>
-          <div class="cliente-actions">
-            <button class="success-btn" onclick="abrirPagamento('${c.id}')">Registrar pagamento</button>
-            <button class="danger-btn" onclick="registrarNaoPagamento('${c.id}')">Não pagamento</button>
-            <button class="ghost-btn" onclick="abrirCliente('${c.id}')">Ver cliente</button>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderizarTudo(lista){
-      const html = lista.length ? lista.map(c=>cardCliente(c)).join("") : "Nenhum cliente encontrado.";
-      document.getElementById("listaDashboard").innerHTML = html;
-      document.getElementById("listaCobrancas").innerHTML = html;
-      document.getElementById("listaClientes").innerHTML = html;
-      document.getElementById("listaVendas").innerHTML = html;
-    }
-
-    function filtrarClientes(){
-      const termo = (
-        document.getElementById("buscaDash")?.value ||
-        document.getElementById("buscaCobranca")?.value ||
-        document.getElementById("buscaClientes")?.value ||
-        ""
-      ).toLowerCase();
-
-      const status = document.getElementById("filtroStatus")?.value || "todos";
-
-      let lista = clientesCache.filter(c=>{
-        const texto = `${c.nome||""} ${c.nomeCompleto||""} ${c.apelido||""} ${c.telefone||""} ${c.telefonePrincipal||""}`.toLowerCase();
-        return !termo || texto.includes(termo);
-      });
-
-      if(status !== "todos"){
-        lista = lista.filter(c=>{
-          const s = situacaoCliente(c).cor;
-          if(status === "atraso") return s === "atraso";
-          return s === status;
-        });
-      }
-
-      renderizarTudo(lista);
-    }
-
-    function limparBusca(){
-      ["buscaDash","buscaCobranca","buscaClientes"].forEach(id=>{
-        const el=document.getElementById(id); if(el) el.value="";
-      });
-      renderizarTudo(clientesCache);
-    }
-
-    function abrirCliente(id){
-      const c = clientesCache.find(x=>x.id===id);
-      if(!c) return;
-
-      document.getElementById("drawerTitle").innerText = c.nome || c.nomeCompleto || "Cliente";
-      document.getElementById("drawerContent").innerHTML = `
-        <p style="color:#64748b;font-weight:800;line-height:1.7">
-          Apelido: ${c.apelido || "-"}<br>
-          Telefone: ${c.telefone || c.telefonePrincipal || "-"}<br>
-          Endereço: ${c.endereco || c.enderecoCompleto || "-"}<br>
-          Saldo: ${moeda(c.saldoDevedor || c.saldo || 0)}<br>
-          Parcela: ${moeda(c.valorParcela || c.parcelaValor || 0)}<br>
-          Score: ${c.score ?? "-"}
-        </p>
-      `;
-      abrirDrawer();
-    }
-
-    function abrirPagamento(id){
-      const c = clientesCache.find(x=>x.id===id);
-      if(!c) return;
-
-      const valorPadrao = Number(c.valorParcela || c.parcelaValor || 0);
-
-      document.getElementById("drawerTitle").innerText = "Registrar pagamento";
-      document.getElementById("drawerContent").innerHTML = `
-        <div class="form-group">
-          <label>Cliente</label>
-          <input value="${c.nome || c.nomeCompleto || c.apelido || ""}" disabled>
-        </div>
-        <div class="form-group">
-          <label>Valor recebido</label>
-          <input id="valorPagamento" type="number" value="${valorPadrao}" step="0.01">
-        </div>
-        <div class="form-group">
-          <label>Observação</label>
-          <textarea id="obsPagamento" placeholder="Ex: recebeu via PIX, cliente pagou parcial..."></textarea>
-        </div>
-        <button class="success-btn" style="width:100%" onclick="salvarPagamento('${c.id}')">Confirmar pagamento</button>
-      `;
-      abrirDrawer();
-    }
-
-    async function salvarPagamento(clienteId){
-      try{
-        const c = clientesCache.find(x=>x.id===clienteId);
-        const valor = Number(document.getElementById("valorPagamento").value || 0);
-        const obs = document.getElementById("obsPagamento").value.trim();
-
-        if(valor <= 0){ alert("Informe um valor válido."); return; }
-
-        const saldoAtual = Number(c.saldoDevedor || c.saldo || 0);
-        if(valor > saldoAtual && saldoAtual > 0){
-          alert("Pagamento não pode ser maior que o saldo devedor.");
-          return;
-        }
-
-        await db.collection("pagamentos").add({
-          clienteId,
-          clienteNome: c.nome || c.nomeCompleto || c.apelido || "",
-          usuarioId: usuarioLogado.id,
-          vendedorNome: usuarioLogado.nome || usuarioLogado.email || "",
-          caixaId: caixaAtual?.id || "",
-          clientePlataformaId: tenantId,
-          valor,
-          observacao: obs,
-          data: hojeISO(),
-          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        const novoSaldo = Math.max(0, saldoAtual - valor);
-
-        await db.collection("clientes").doc(clienteId).update({
-          saldoDevedor: novoSaldo,
-          saldo: novoSaldo,
-          diasAtraso: 0,
-          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        if(caixaAtual?.id){
-          const saldoCaixa = Number(caixaAtual.saldoAtual || caixaAtual.valorAtual || caixaAtual.saldo || 0) + valor;
-          await db.collection("caixas").doc(caixaAtual.id).update({
-            saldoAtual: saldoCaixa,
-            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-          });
-          caixaAtual.saldoAtual = saldoCaixa;
-          localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
-        }
-
-        alert("Pagamento registrado com sucesso.");
-        fecharDrawer();
-        await carregarTudo();
-
-      }catch(e){
-        console.error(e);
-        alert("Erro ao registrar pagamento.");
-      }
-    }
-
-    async function registrarNaoPagamento(clienteId){
-      try{
-        const c = clientesCache.find(x=>x.id===clienteId);
-        if(!c) return;
-
-        await db.collection("clientes").doc(clienteId).update({
-          diasAtraso: Number(c.diasAtraso || 0) + 1,
-          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await db.collection("logs").add({
-          tipo:"NAO_PAGAMENTO",
-          clienteId,
-          clienteNome:c.nome || c.nomeCompleto || c.apelido || "",
-          usuarioId:usuarioLogado.id,
-          clientePlataformaId:tenantId,
-          criadoEm:firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        alert("Não pagamento registrado.");
-        await carregarTudo();
-      }catch(e){
-        console.error(e);
-        alert("Erro ao registrar não pagamento.");
-      }
-    }
-
-    function abrirSolicitacaoIngresso(){
-      document.getElementById("drawerTitle").innerText = "Solicitar ingresso de caixa";
-      document.getElementById("drawerContent").innerHTML = `
-        <div class="form-group">
-          <label>Valor solicitado</label>
-          <input id="valorIngresso" type="number" step="0.01" placeholder="0,00">
-        </div>
-        <div class="form-group">
-          <label>Observação</label>
-          <textarea id="obsIngresso" placeholder="Explique o motivo da solicitação"></textarea>
-        </div>
-        <button class="primary-btn" style="width:100%" onclick="salvarSolicitacaoIngresso()">Enviar solicitação</button>
-      `;
-      abrirDrawer();
-    }
-
-    async function salvarSolicitacaoIngresso(){
-      try{
-        const valor = Number(document.getElementById("valorIngresso").value || 0);
-        const obs = document.getElementById("obsIngresso").value.trim();
-
-        if(valor <= 0){ alert("Informe um valor válido."); return; }
-
-        await db.collection("solicitacoes").add({
-          tipo:"INGRESSO",
-          status:"PENDENTE",
-          valor,
-          observacao:obs,
-          usuarioId:usuarioLogado.id,
-          usuarioNome:usuarioLogado.nome || usuarioLogado.email || "",
-          caixaId:caixaAtual?.id || "",
-          clientePlataformaId:tenantId,
-          criadoEm:firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        alert("Solicitação enviada.");
-        fecharDrawer();
-        carregarSolicitacoes();
-      }catch(e){
-        console.error(e);
-        alert("Erro ao enviar solicitação.");
-      }
-    }
-
-    function trocarTela(id, el){
-      document.querySelectorAll("main section").forEach(sec=>sec.classList.add("hidden"));
-      document.getElementById(id).classList.remove("hidden");
-      document.querySelectorAll(".menu-item").forEach(i=>i.classList.remove("active"));
-      if(el) el.classList.add("active");
-
-      const titulos = {
-        dashboard:["Dashboard Vendedor","Resumo operacional do caixa e cobranças do dia."],
-        cobrancas:["Cobranças","Baixe pagamentos e registre não pagamento."],
-        clientes:["Clientes","Consulte sua carteira de clientes."],
-        vendas:["Nova venda","Inicie venda ou renovação para um cliente."],
-        solicitacoes:["Solicitações","Solicite ingresso de caixa e acompanhe retornos."]
-      };
-
-      document.getElementById("pageTitle").innerText = titulos[id][0];
-      document.getElementById("pageSubtitle").innerText = titulos[id][1];
-
-      if(window.innerWidth <= 900) toggleMenu(false);
-    }
-
-    function abrirDrawer(){document.getElementById("drawerBg").classList.add("open");document.getElementById("drawer").classList.add("open")}
-    function fecharDrawer(){document.getElementById("drawerBg").classList.remove("open");document.getElementById("drawer").classList.remove("open")}
-    function abrirDrawerInfo(titulo){
-      document.getElementById("drawerTitle").innerText = titulo;
-      document.getElementById("drawerContent").innerHTML = `<p style="color:#64748b;font-weight:800;line-height:1.7">Área de ${titulo} preparada para notificações do sistema.</p>`;
-      abrirDrawer();
-    }
-
-    function toggleMenu(force){
-      const sidebar=document.getElementById("sidebar");
-      const bg=document.getElementById("menuBg");
-      if(force===false){sidebar.classList.remove("open");bg.classList.remove("open");return}
-      sidebar.classList.toggle("open");
-      bg.classList.toggle("open", sidebar.classList.contains("open"));
-    }
-
-    function logout(){
-      firebase.auth().signOut().finally(()=>{
-        localStorage.removeItem("usuario");
-        localStorage.removeItem("caixaAtual");
-        window.location.href="index.html";
-      });
-    }
-  </script>
+<script>
+let usuarioLogado = null;
+let tenantId = "";
+let caixaAtual = null;
+let clientesCache = [];
+let pagamentosHoje = [];
+
+// ================= INIT =================
+document.addEventListener("DOMContentLoaded", async () => {
+
+  usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
+
+  if (!usuarioLogado) {
+    alert("Sessão expirada");
+    window.location.href = "index.html";
+    return;
+  }
+
+  if (usuarioLogado.tipoUsuario !== "vendedor") {
+    alert("Acesso negado");
+    window.location.href = "index.html";
+    return;
+  }
+
+  tenantId = usuarioLogado.clientePlataformaId || "";
+
+  document.getElementById("userName").innerText =
+    usuarioLogado.nome || usuarioLogado.email;
+
+  document.getElementById("empresaNome").innerText =
+    usuarioLogado.clientePlataformaNome || "Empresa";
+
+  await carregarTudo();
+});
+
+// ================= HELPERS =================
+function moeda(v){
+  return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+}
+
+function hoje(){
+  return new Date().toISOString().split("T")[0];
+}
+
+// ================= LOAD =================
+async function carregarTudo(){
+  await carregarCaixa();
+  await carregarClientes();
+  await carregarPagamentos();
+  atualizarKPIs();
+  renderizarTudo(clientesCache);
+}
+
+async function carregarCaixa(){
+  const snap = await db.collection("caixas")
+    .where("usuarioId","==",usuarioLogado.id)
+    .where("status","==","ABERTO")
+    .limit(1)
+    .get();
+
+  if(!snap.empty){
+    caixaAtual = {id:snap.docs[0].id,...snap.docs[0].data()};
+    localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
+  }
+
+  document.getElementById("caixaInfo").innerText =
+    caixaAtual ? "Caixa aberto" : "Sem caixa";
+}
+
+async function carregarClientes(){
+  let ref = db.collection("clientes").limit(100);
+
+  if(tenantId){
+    ref = db.collection("clientes")
+      .where("clientePlataformaId","==",tenantId)
+      .limit(100);
+  }
+
+  const snap = await ref.get();
+  clientesCache = [];
+
+  snap.forEach(doc=>{
+    clientesCache.push({id:doc.id,...doc.data()});
+  });
+}
+
+async function carregarPagamentos(){
+  const snap = await db.collection("pagamentos")
+    .where("data","==",hoje())
+    .get();
+
+  pagamentosHoje = [];
+  snap.forEach(doc=>pagamentosHoje.push(doc.data()));
+}
+
+// ================= KPI =================
+function atualizarKPIs(){
+  const carteira = clientesCache.reduce((t,c)=>t+Number(c.saldoDevedor||0),0);
+  const recebido = pagamentosHoje.reduce((t,p)=>t+Number(p.valor||0),0);
+  const pendentes = clientesCache.filter(c=>c.saldoDevedor>0).length;
+
+  document.getElementById("kpiCarteira").innerText = moeda(carteira);
+  document.getElementById("kpiCaixa").innerText = moeda(caixaAtual?.saldoAtual||0);
+  document.getElementById("kpiRecebido").innerText = moeda(recebido);
+  document.getElementById("kpiPendentes").innerText = pendentes;
+}
+
+// ================= CLIENTES =================
+function renderizarTudo(lista){
+  const html = lista.map(c=>cardCliente(c)).join("");
+  document.getElementById("listaDashboard").innerHTML = html;
+  document.getElementById("listaCobrancas").innerHTML = html;
+  document.getElementById("listaClientes").innerHTML = html;
+  document.getElementById("listaVendas").innerHTML = html;
+}
+
+function cardCliente(c){
+  return `
+  <div class="cliente-card">
+    <div class="stripe"></div>
+
+    <div class="cliente-info">
+      <h3>${c.nome} <span class="score">${c.score||50}</span></h3>
+      <p>Saldo: ${moeda(c.saldoDevedor||0)}</p>
+    </div>
+
+    <div class="cliente-actions">
+      <button class="success-btn" onclick="abrirPagamento('${c.id}')">Receber</button>
+      <button class="primary-btn" onclick="abrirVenda('${c.id}')">Venda</button>
+    </div>
+  </div>
+  `;
+}
+
+// ================= NOVO CLIENTE =================
+function abrirNovoCliente(){
+  document.getElementById("drawerTitle").innerText="Novo cliente";
+
+  document.getElementById("drawerContent").innerHTML=`
+    <input id="nome" placeholder="Nome">
+    <input id="tel" placeholder="Telefone">
+    <button onclick="salvarCliente()">Salvar</button>
+  `;
+
+  abrirDrawer();
+}
+
+async function salvarCliente(){
+  const nome=document.getElementById("nome").value;
+  const tel=document.getElementById("tel").value;
+
+  await db.collection("clientes").add({
+    nome,
+    telefone:tel,
+    saldoDevedor:0,
+    score:50,
+    vendedorId:usuarioLogado.id,
+    clientePlataformaId:tenantId
+  });
+
+  fecharDrawer();
+  carregarTudo();
+}
+
+// ================= VENDA =================
+function abrirVenda(id){
+  const c=clientesCache.find(x=>x.id===id);
+
+  if(c.saldoDevedor>1){
+    alert("Cliente com dívida");
+    return;
+  }
+
+  document.getElementById("drawerTitle").innerText="Nova venda";
+
+  document.getElementById("drawerContent").innerHTML=`
+    <input id="valor" type="number" placeholder="Valor">
+    <input id="juros" type="number" placeholder="Juros %">
+    <input id="parcelas" type="number" placeholder="Parcelas">
+
+    <div id="resumo"></div>
+
+    <button onclick="calcular()">Calcular</button>
+    <button onclick="salvarVenda('${id}')">Confirmar</button>
+  `;
+
+  abrirDrawer();
+}
+
+function calcular(){
+  const v=Number(valor.value);
+  const j=Number(juros.value)/100;
+  const p=Number(parcelas.value);
+
+  const total=v*(1+j);
+  const parcela=total/p;
+
+  document.getElementById("resumo").innerHTML=`
+    Total: ${moeda(total)}<br>
+    Parcela: ${moeda(parcela)}
+  `;
+}
+
+async function salvarVenda(id){
+  const v=Number(valor.value);
+  const j=Number(juros.value)/100;
+  const p=Number(parcelas.value);
+
+  const total=v*(1+j);
+
+  await db.collection("vendas").add({
+    clienteId:id,
+    valor:v,
+    juros:j,
+    parcelas:p,
+    valorTotal:total,
+    saldoDevedor:total,
+    clientePlataformaId:tenantId
+  });
+
+  await db.collection("clientes").doc(id).update({
+    saldoDevedor:total
+  });
+
+  alert("Venda criada");
+
+  fecharDrawer();
+  carregarTudo();
+}
+
+// ================= PAGAMENTO =================
+function abrirPagamento(id){
+  document.getElementById("drawerTitle").innerText="Pagamento";
+
+  document.getElementById("drawerContent").innerHTML=`
+    <input id="valorPag" type="number">
+    <button onclick="salvarPagamento('${id}')">Confirmar</button>
+  `;
+
+  abrirDrawer();
+}
+
+async function salvarPagamento(id){
+  const valor=Number(valorPag.value);
+
+  await db.collection("pagamentos").add({
+    clienteId:id,
+    valor,
+    data:hoje()
+  });
+
+  const c=clientesCache.find(x=>x.id===id);
+
+  await db.collection("clientes").doc(id).update({
+    saldoDevedor:Math.max(0,(c.saldoDevedor||0)-valor)
+  });
+
+  alert("Pago");
+
+  fecharDrawer();
+  carregarTudo();
+}
+
+// ================= UI =================
+function abrirDrawer(){
+  drawer.classList.add("open");
+  drawerBg.classList.add("open");
+}
+
+function fecharDrawer(){
+  drawer.classList.remove("open");
+  drawerBg.classList.remove("open");
+}
+
+function toggleMenu(force){
+  const s=document.getElementById("sidebar");
+  const b=document.getElementById("menuBg");
+
+  if(force===false){
+    s.classList.remove("open");
+    b.classList.remove("open");
+    return;
+  }
+
+  s.classList.toggle("open");
+  b.classList.toggle("open");
+}
+
+function trocarTela(id){
+  document.querySelectorAll("section").forEach(s=>s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+}
+
+function logout(){
+  firebase.auth().signOut();
+  localStorage.clear();
+  window.location.href="index.html";
+}
+</script>
 </body>
 </html>
