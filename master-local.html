@@ -8,421 +8,75 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: "Inter", sans-serif;
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
+    :root{
+      --azul:#071a33;--azul2:#09213f;--lar1:#ffb100;--lar2:#ff6b00;
+      --bg:#f4f7fb;--card:#fff;--texto:#0f172a;--muted:#64748b;--linha:#e2e8f0;
+      --verde:#22c55e;--vermelho:#ef4444;--amarelo:#f59e0b;--azulclaro:#0ea5e9
     }
-
-    :root {
-      --azul: #071a33;
-      --azul2: #09213f;
-      --laranja1: #ffb100;
-      --laranja2: #ff6b00;
-      --bg: #f4f7fb;
-      --card: #ffffff;
-      --texto: #0f172a;
-      --muted: #64748b;
-      --linha: #e2e8f0;
-      --verde: #22c55e;
-      --vermelho: #ef4444;
-      --amarelo: #f59e0b;
+    body{min-height:100vh;background:var(--bg);color:var(--texto);display:flex}
+    .sidebar{width:280px;background:linear-gradient(180deg,#061426,#09213f);color:#fff;padding:22px;position:fixed;inset:0 auto 0 0;z-index:30;transition:.25s}
+    .brand{font-size:28px;font-weight:900;letter-spacing:-1px;margin-bottom:22px}
+    .user-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px;margin-bottom:20px}
+    .user-card small{display:block;color:#cbd5e1;margin-bottom:4px}.user-card strong{display:block;font-size:15px;margin-bottom:3px}
+    .menu-title{font-size:11px;color:#94a3b8;font-weight:900;text-transform:uppercase;margin:18px 0 8px}
+    .menu-item{padding:13px 14px;border-radius:14px;cursor:pointer;font-weight:800;color:#dbeafe;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;transition:.2s}
+    .menu-item:hover,.menu-item.active{background:linear-gradient(135deg,rgba(255,177,0,.22),rgba(255,107,0,.18));color:#fff}
+    .main{margin-left:280px;width:calc(100% - 280px);padding:24px}
+    .topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:20px}
+    .topbar h1{font-size:26px;font-weight:900;letter-spacing:-1px}.topbar p{color:var(--muted);font-weight:700;margin-top:4px}
+    .top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    button{font-family:inherit}.icon-btn,.primary-btn,.ghost-btn,.danger-btn,.success-btn{border:0;cursor:pointer;border-radius:13px;font-weight:900}
+    .icon-btn{width:44px;height:44px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.08)}
+    .primary-btn{padding:13px 17px;color:#fff;background:linear-gradient(135deg,var(--lar1),var(--lar2));box-shadow:0 10px 20px rgba(255,107,0,.22)}
+    .ghost-btn{padding:12px 15px;color:var(--azul);background:#fff;border:1px solid var(--linha)}
+    .success-btn{padding:12px 15px;color:#fff;background:linear-gradient(135deg,#22c55e,#15803d)}
+    .danger-btn{padding:12px 15px;color:#fff;background:linear-gradient(135deg,#ef4444,#991b1b)}
+    .grid-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
+    .kpi{border-radius:22px;padding:20px;color:#fff;min-height:130px;position:relative;overflow:hidden;box-shadow:0 16px 35px rgba(15,23,42,.12);cursor:pointer}
+    .kpi:after{content:"";position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.14);right:-45px;bottom:-55px}
+    .kpi small{font-weight:900;opacity:.88;display:block;margin-bottom:14px}.kpi strong{font-size:26px;font-weight:900;letter-spacing:-1px}
+    .kpi span{display:block;font-size:12px;opacity:.9;margin-top:8px;font-weight:800}
+    .g1{background:linear-gradient(135deg,#ffb100,#ff6b00)}.g2{background:linear-gradient(135deg,#00c6ff,#0072ff)}
+    .g3{background:linear-gradient(135deg,#22c55e,#15803d)}.g4{background:linear-gradient(135deg,#ef4444,#7f1d1d)}
+    .panel-grid{display:grid;grid-template-columns:1.35fr .8fr;gap:16px}
+    .panel{background:#fff;border-radius:22px;padding:20px;border:1px solid var(--linha);box-shadow:0 10px 25px rgba(15,23,42,.06)}
+    .panel h2{font-size:18px;font-weight:900;margin-bottom:14px}
+    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}.toolbar input,.toolbar select{flex:1;min-width:180px}
+    input,select,textarea{width:100%;padding:13px;border:1px solid var(--linha);border-radius:13px;outline:none;font-weight:700;background:#fff}
+    textarea{min-height:90px;resize:vertical}
+    .table-wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:720px}
+    th,td{text-align:left;padding:13px 10px;border-bottom:1px solid var(--linha);font-size:13px}
+    th{color:var(--muted);font-size:12px;text-transform:uppercase;font-weight:900}
+    .badge{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:900}
+    .verde{background:#dcfce7;color:#166534}.vermelho{background:#fee2e2;color:#991b1b}.amarelo{background:#fef3c7;color:#92400e}.azul{background:#dbeafe;color:#1d4ed8}
+    .list-item{display:flex;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid var(--linha);align-items:center}
+    .list-item:last-child{border-bottom:none}.list-item strong{font-size:14px}.list-item small{color:var(--muted);font-weight:700}
+    .hidden{display:none}
+    .drawer-bg{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;display:none}
+    .drawer-bg.open{display:block}
+    .drawer{position:fixed;right:0;top:0;height:100vh;width:460px;max-width:94vw;background:#fff;z-index:50;padding:22px;transform:translateX(100%);transition:.25s;box-shadow:-20px 0 50px rgba(15,23,42,.2);overflow-y:auto}
+    .drawer.open{transform:translateX(0)}.drawer h2{font-size:22px;font-weight:900;margin-bottom:14px}
+    .form-group{margin-bottom:12px}.form-group label{display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
+    .mobile-menu{display:none}
+    #menuBg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:20}
+    #menuBg.open{display:block}
+    @media(max-width:900px){
+      .sidebar{transform:translateX(-100%);width:270px}.sidebar.open{transform:translateX(0)}
+      .main{margin-left:0;width:100%;padding:16px}.mobile-menu{display:inline-flex}
+      .topbar{flex-direction:column}.top-actions{width:100%;display:flex}.grid-cards{grid-template-columns:repeat(2,1fr)}
+      .panel-grid{grid-template-columns:1fr}
     }
-
-    body {
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--texto);
-      display: flex;
-    }
-
-    .sidebar {
-      width: 280px;
-      background: linear-gradient(180deg, #061426, #09213f);
-      color: #fff;
-      padding: 22px;
-      position: fixed;
-      inset: 0 auto 0 0;
-      z-index: 20;
-      transition: .25s;
-    }
-
-    .brand {
-      font-size: 28px;
-      font-weight: 900;
-      letter-spacing: -1px;
-      margin-bottom: 26px;
-    }
-
-    .user-card {
-      background: rgba(255,255,255,.08);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 18px;
-      padding: 14px;
-      margin-bottom: 22px;
-    }
-
-    .user-card small {
-      display: block;
-      color: #cbd5e1;
-      margin-bottom: 4px;
-    }
-
-    .user-card strong {
-      display: block;
-      font-size: 15px;
-      margin-bottom: 3px;
-    }
-
-    .menu-title {
-      font-size: 11px;
-      color: #94a3b8;
-      font-weight: 800;
-      text-transform: uppercase;
-      margin: 18px 0 8px;
-    }
-
-    .menu-item {
-      padding: 13px 14px;
-      border-radius: 14px;
-      cursor: pointer;
-      font-weight: 700;
-      color: #dbeafe;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 6px;
-      transition: .2s;
-    }
-
-    .menu-item:hover,
-    .menu-item.active {
-      background: linear-gradient(135deg, rgba(255,177,0,.22), rgba(255,107,0,.18));
-      color: #fff;
-    }
-
-    .main {
-      margin-left: 280px;
-      width: calc(100% - 280px);
-      padding: 24px;
-    }
-
-    .topbar {
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: center;
-      margin-bottom: 22px;
-    }
-
-    .topbar h1 {
-      font-size: 26px;
-      font-weight: 900;
-      letter-spacing: -1px;
-    }
-
-    .topbar p {
-      color: var(--muted);
-      font-weight: 600;
-      margin-top: 4px;
-    }
-
-    .top-actions {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .icon-btn,
-    .primary-btn,
-    .ghost-btn {
-      border: 0;
-      cursor: pointer;
-      border-radius: 13px;
-      font-weight: 800;
-    }
-
-    .icon-btn {
-      width: 44px;
-      height: 44px;
-      background: #fff;
-      box-shadow: 0 8px 22px rgba(15,23,42,.08);
-    }
-
-    .primary-btn {
-      padding: 13px 17px;
-      color: #fff;
-      background: linear-gradient(135deg, var(--laranja1), var(--laranja2));
-      box-shadow: 0 10px 20px rgba(255,107,0,.22);
-    }
-
-    .ghost-btn {
-      padding: 12px 15px;
-      color: var(--azul);
-      background: #fff;
-      border: 1px solid var(--linha);
-    }
-
-    .grid-cards {
-      display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-      gap: 16px;
-      margin-bottom: 18px;
-    }
-
-    .kpi {
-      border-radius: 22px;
-      padding: 20px;
-      color: #fff;
-      min-height: 132px;
-      position: relative;
-      overflow: hidden;
-      box-shadow: 0 16px 35px rgba(15,23,42,.12);
-      cursor: pointer;
-    }
-
-    .kpi:after {
-      content: "";
-      position: absolute;
-      width: 140px;
-      height: 140px;
-      border-radius: 50%;
-      background: rgba(255,255,255,.14);
-      right: -45px;
-      bottom: -55px;
-    }
-
-    .kpi small {
-      font-weight: 800;
-      opacity: .86;
-      display: block;
-      margin-bottom: 14px;
-    }
-
-    .kpi strong {
-      font-size: 27px;
-      font-weight: 900;
-      letter-spacing: -1px;
-    }
-
-    .kpi span {
-      display: block;
-      font-size: 12px;
-      opacity: .9;
-      margin-top: 8px;
-      font-weight: 700;
-    }
-
-    .g1 { background: linear-gradient(135deg, #ffb100, #ff6b00); }
-    .g2 { background: linear-gradient(135deg, #00c6ff, #0072ff); }
-    .g3 { background: linear-gradient(135deg, #22c55e, #15803d); }
-    .g4 { background: linear-gradient(135deg, #ef4444, #7f1d1d); }
-
-    .panel-grid {
-      display: grid;
-      grid-template-columns: 1.4fr .8fr;
-      gap: 16px;
-    }
-
-    .panel {
-      background: #fff;
-      border-radius: 22px;
-      padding: 20px;
-      border: 1px solid var(--linha);
-      box-shadow: 0 10px 25px rgba(15,23,42,.06);
-    }
-
-    .panel h2 {
-      font-size: 18px;
-      font-weight: 900;
-      margin-bottom: 14px;
-    }
-
-    .table-wrap {
-      overflow-x: auto;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      min-width: 680px;
-    }
-
-    th, td {
-      text-align: left;
-      padding: 13px 10px;
-      border-bottom: 1px solid var(--linha);
-      font-size: 13px;
-    }
-
-    th {
-      color: var(--muted);
-      font-size: 12px;
-      text-transform: uppercase;
-      font-weight: 900;
-    }
-
-    .badge {
-      display: inline-flex;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: 900;
-    }
-
-    .ativo { background: #dcfce7; color: #166534; }
-    .bloq { background: #fee2e2; color: #991b1b; }
-    .pend { background: #fef3c7; color: #92400e; }
-
-    .list-item {
-      display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 14px 0;
-      border-bottom: 1px solid var(--linha);
-    }
-
-    .list-item:last-child {
-      border-bottom: none;
-    }
-
-    .list-item strong {
-      font-size: 14px;
-    }
-
-    .list-item small {
-      color: var(--muted);
-      font-weight: 600;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    .drawer-bg {
-      position: fixed;
-      inset: 0;
-      background: rgba(15,23,42,.45);
-      z-index: 40;
-      display: none;
-    }
-
-    .drawer {
-      position: fixed;
-      right: 0;
-      top: 0;
-      height: 100vh;
-      width: 430px;
-      max-width: 92vw;
-      background: #fff;
-      z-index: 50;
-      padding: 22px;
-      transform: translateX(100%);
-      transition: .25s;
-      box-shadow: -20px 0 50px rgba(15,23,42,.2);
-      overflow-y: auto;
-    }
-
-    .drawer.open {
-      transform: translateX(0);
-    }
-
-    .drawer-bg.open {
-      display: block;
-    }
-
-    .drawer h2 {
-      font-size: 22px;
-      font-weight: 900;
-      margin-bottom: 14px;
-    }
-
-    .form-group {
-      margin-bottom: 12px;
-    }
-
-    .form-group label {
-      display: block;
-      font-size: 12px;
-      font-weight: 900;
-      color: var(--muted);
-      margin-bottom: 6px;
-      text-transform: uppercase;
-    }
-
-    input, select {
-      width: 100%;
-      padding: 13px;
-      border: 1px solid var(--linha);
-      border-radius: 13px;
-      outline: none;
-      font-weight: 700;
-    }
-
-    .mobile-menu {
-      display: none;
-    }
-
-    @media (max-width: 900px) {
-      .sidebar {
-        transform: translateX(-100%);
-      }
-
-      .sidebar.open {
-        transform: translateX(0);
-      }
-
-      .main {
-        margin-left: 0;
-        width: 100%;
-        padding: 16px;
-      }
-
-      .mobile-menu {
-        display: inline-flex;
-      }
-
-      .topbar {
-        align-items: flex-start;
-      }
-
-      .top-actions {
-        flex-wrap: wrap;
-        justify-content: flex-end;
-      }
-
-      .grid-cards {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .panel-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (max-width: 560px) {
-      .grid-cards {
-        grid-template-columns: 1fr;
-      }
-
-      .topbar {
-        flex-direction: column;
-      }
-
-      .top-actions {
-        width: 100%;
-      }
-
-      .primary-btn,
-      .ghost-btn {
-        flex: 1;
-      }
+    @media(max-width:560px){
+      .grid-cards{grid-template-columns:1fr}.top-actions{flex-direction:column}
+      .primary-btn,.ghost-btn,.success-btn,.danger-btn{width:100%}.drawer{width:100%;max-width:100%}
     }
   </style>
 </head>
 
 <body>
+
+  <div id="menuBg" onclick="toggleMenu(false)"></div>
 
   <aside class="sidebar" id="sidebar">
     <div class="brand">ÍNTEGRO</div>
@@ -449,13 +103,12 @@
     <div class="topbar">
       <div>
         <button class="icon-btn mobile-menu" onclick="toggleMenu()">☰</button>
-<div class="drawer-bg" id="menuBg" onclick="toggleMenu(false)"></div>
         <h1 id="pageTitle">Dashboard Master Local</h1>
         <p id="pageSubtitle">Visão geral da empresa em tempo real.</p>
       </div>
 
       <div class="top-actions">
-        <button class="icon-btn" onclick="abrirDrawer('Notificações')">🔔</button>
+        <button class="icon-btn" onclick="abrirDrawerInfo('Notificações')">🔔</button>
         <button class="ghost-btn" onclick="carregarTudo()">Atualizar</button>
         <button class="primary-btn" onclick="abrirNovoUsuario()">Novo usuário</button>
       </div>
@@ -463,28 +116,17 @@
 
     <section id="dashboard">
       <div class="grid-cards">
-        <div class="kpi g1" onclick="abrirDrawer('Carteira Final')">
-          <small>Carteira Final</small>
-          <strong id="kpiCarteira">R$ 0,00</strong>
-          <span>Total consolidado das vendas ativas</span>
+        <div class="kpi g1" onclick="abrirDrawerInfo('Carteira Final')">
+          <small>Carteira Final</small><strong id="kpiCarteira">R$ 0,00</strong><span>Total consolidado das vendas ativas</span>
         </div>
-
-        <div class="kpi g2" onclick="abrirDrawer('Caixa')">
-          <small>Caixas Abertos</small>
-          <strong id="kpiCaixas">0</strong>
-          <span>Operação ativa hoje</span>
+        <div class="kpi g2" onclick="abrirDrawerInfo('Caixas Abertos')">
+          <small>Caixas Abertos</small><strong id="kpiCaixas">0</strong><span>Operação ativa</span>
         </div>
-
-        <div class="kpi g3" onclick="abrirDrawer('Clientes')">
-          <small>Clientes</small>
-          <strong id="kpiClientes">0</strong>
-          <span>Clientes cadastrados no tenant</span>
+        <div class="kpi g3" onclick="abrirDrawerInfo('Clientes')">
+          <small>Clientes</small><strong id="kpiClientes">0</strong><span>Clientes cadastrados no tenant</span>
         </div>
-
-        <div class="kpi g4" onclick="abrirDrawer('Inadimplência')">
-          <small>Inadimplência</small>
-          <strong id="kpiInadimplencia">0</strong>
-          <span>Clientes/vendas em atraso crítico</span>
+        <div class="kpi g4" onclick="abrirDrawerInfo('Inadimplência')">
+          <small>Inadimplência</small><strong id="kpiInadimplencia">0</strong><span>Clientes/vendas em atraso crítico</span>
         </div>
       </div>
 
@@ -494,17 +136,9 @@
           <div class="table-wrap">
             <table>
               <thead>
-                <tr>
-                  <th>Nome</th>
-                  <th>Email</th>
-                  <th>Tipo</th>
-                  <th>Status</th>
-                  <th>Acesso</th>
-                </tr>
+                <tr><th>Nome</th><th>Email</th><th>Tipo</th><th>Cargo</th><th>Status</th><th>Acesso</th><th>Ações</th></tr>
               </thead>
-              <tbody id="usuariosTabela">
-                <tr><td colspan="5">Carregando...</td></tr>
-              </tbody>
+              <tbody id="usuariosTabela"><tr><td colspan="7">Carregando...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -513,26 +147,17 @@
           <h2>Atalhos operacionais</h2>
 
           <div class="list-item">
-            <div>
-              <strong>Criar usuário</strong><br>
-              <small>Cadastrar funcionário da empresa</small>
-            </div>
+            <div><strong>Criar usuário</strong><br><small>Cria Auth + Firestore</small></div>
             <button class="ghost-btn" onclick="abrirNovoUsuario()">Abrir</button>
           </div>
 
           <div class="list-item">
-            <div>
-              <strong>Ver clientes</strong><br>
-              <small>Consultar base da operação</small>
-            </div>
+            <div><strong>Ver clientes</strong><br><small>Consultar base da operação</small></div>
             <button class="ghost-btn" onclick="trocarTela('clientes')">Abrir</button>
           </div>
 
           <div class="list-item">
-            <div>
-              <strong>Financeiro</strong><br>
-              <small>Compromissos, contas e solicitações</small>
-            </div>
+            <div><strong>Financeiro</strong><br><small>Compromissos e solicitações</small></div>
             <button class="ghost-btn" onclick="trocarTela('financeiro')">Abrir</button>
           </div>
         </div>
@@ -541,22 +166,24 @@
 
     <section id="usuarios" class="hidden">
       <div class="panel">
-        <h2>Usuários</h2>
+        <div class="toolbar">
+          <input id="buscaUsuario" placeholder="Buscar usuário por nome ou email">
+          <select id="filtroTipoUsuario">
+            <option value="">Todos os tipos</option>
+            <option value="vendedor">Vendedor</option>
+            <option value="supervisor">Supervisor</option>
+            <option value="financeiro">Financeiro</option>
+            <option value="master_local">Master Local</option>
+          </select>
+          <button class="ghost-btn" onclick="renderUsuarios()">Filtrar</button>
+          <button class="primary-btn" onclick="abrirNovoUsuario()">Novo usuário</button>
+        </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Email</th>
-                <th>Tipo</th>
-                <th>Cargo</th>
-                <th>Status</th>
-                <th>Ação</th>
-              </tr>
+              <tr><th>Nome</th><th>Email</th><th>Tipo</th><th>Cargo</th><th>Status</th><th>Acesso</th><th>Ações</th></tr>
             </thead>
-            <tbody id="usuariosTabela2">
-              <tr><td colspan="6">Carregando...</td></tr>
-            </tbody>
+            <tbody id="usuariosTabela2"><tr><td colspan="7">Carregando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -564,21 +191,14 @@
 
     <section id="clientes" class="hidden">
       <div class="panel">
-        <h2>Clientes</h2>
+        <div class="toolbar">
+          <input id="buscaCliente" placeholder="Buscar cliente">
+          <button class="ghost-btn" onclick="renderClientes()">Buscar</button>
+        </div>
         <div class="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Telefone</th>
-                <th>Status</th>
-                <th>Saldo</th>
-                <th>Score</th>
-              </tr>
-            </thead>
-            <tbody id="clientesTabela">
-              <tr><td colspan="5">Carregando...</td></tr>
-            </tbody>
+            <thead><tr><th>Nome</th><th>Telefone</th><th>Status</th><th>Saldo</th><th>Score</th></tr></thead>
+            <tbody id="clientesTabela"><tr><td colspan="5">Carregando...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -587,24 +207,21 @@
     <section id="financeiro" class="hidden">
       <div class="panel">
         <h2>Financeiro</h2>
-        <div id="financeiroLista">
-          Carregando compromissos...
-        </div>
+        <div id="financeiroLista">Carregando compromissos...</div>
       </div>
     </section>
 
     <section id="configuracoes" class="hidden">
       <div class="panel">
         <h2>Configurações da empresa</h2>
-        <p style="color:#64748b;font-weight:700;">
-          Área reservada para permissões, cargos, moeda, regras de cobrança e alertas.
+        <p style="color:#64748b;font-weight:700;line-height:1.6">
+          Área reservada para cargos, permissões, moeda, regras de cobrança, alertas e parâmetros da empresa.
         </p>
       </div>
     </section>
   </main>
 
   <div class="drawer-bg" id="drawerBg" onclick="fecharDrawer()"></div>
-
   <aside class="drawer" id="drawer">
     <h2 id="drawerTitle">Detalhes</h2>
     <div id="drawerContent"></div>
@@ -613,12 +230,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-
   <script src="js/firebase-config.js"></script>
 
   <script>
     let usuarioLogado = null;
-    let tenantId = null;
+    let tenantId = "";
+    let usuariosCache = [];
+    let clientesCache = [];
+    let vendasCache = [];
+    let caixasCache = [];
 
     document.addEventListener("DOMContentLoaded", async () => {
       usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
@@ -655,25 +275,14 @@
     });
 
     function moeda(valor) {
-      const n = Number(valor || 0);
-      return n.toLocaleString("pt-BR", {
-        style: "currency",
-        currency: "BRL"
-      });
+      return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
 
     function badgeStatus(status) {
       const s = String(status || "").toUpperCase();
-
-      if (s === "ATIVO" || s === "ATIVA" || s === "ABERTO") {
-        return `<span class="badge ativo">${s}</span>`;
-      }
-
-      if (s === "BLOQUEADO" || s === "INATIVO" || s === "INATIVA") {
-        return `<span class="badge bloq">${s}</span>`;
-      }
-
-      return `<span class="badge pend">${s || "N/I"}</span>`;
+      if (s === "ATIVO" || s === "ATIVA" || s === "ABERTO") return `<span class="badge verde">${s}</span>`;
+      if (s === "BLOQUEADO" || s === "INATIVO" || s === "INATIVA") return `<span class="badge vermelho">${s}</span>`;
+      return `<span class="badge amarelo">${s || "N/I"}</span>`;
     }
 
     async function carregarTudo() {
@@ -684,177 +293,91 @@
         carregarVendas(),
         carregarFinanceiro()
       ]);
-    }
 
-    function queryTenant(collectionName) {
-      let ref = db.collection(collectionName);
-
-      if (!tenantId) return ref.limit(50);
-
-      return ref.where("clientePlataformaId", "==", tenantId).limit(50);
+      renderUsuarios();
+      renderClientes();
+      atualizarKPIs();
     }
 
     async function carregarUsuarios() {
       try {
-        let snap;
+        let ref = db.collection("usuarios").limit(100);
+        if (tenantId) ref = db.collection("usuarios").where("clientePlataformaId", "==", tenantId).limit(100);
 
-        if (tenantId) {
-          snap = await db.collection("usuarios")
-            .where("clientePlataformaId", "==", tenantId)
-            .limit(50)
-            .get();
-        } else {
-          snap = await db.collection("usuarios").limit(50).get();
-        }
-
-        const linhas = [];
-
-        snap.forEach(doc => {
-          const u = { id: doc.id, ...doc.data() };
-
-          linhas.push(`
-            <tr>
-              <td>${u.nome || u.nomeCompleto || "-"}</td>
-              <td>${u.email || "-"}</td>
-              <td>${u.tipoUsuario || "-"}</td>
-              <td>${u.cargoNome || "-"}</td>
-              <td>${badgeStatus(u.status)}</td>
-              <td>${u.acessoLiberado === false ? "Bloqueado" : "Liberado"}</td>
-            </tr>
-          `);
-        });
-
-        const html = linhas.length ? linhas.join("") : `<tr><td colspan="6">Nenhum usuário encontrado.</td></tr>`;
-
-        document.getElementById("usuariosTabela").innerHTML = html;
-        document.getElementById("usuariosTabela2").innerHTML = html;
-
+        const snap = await ref.get();
+        usuariosCache = [];
+        snap.forEach(doc => usuariosCache.push({ id: doc.id, ...doc.data() }));
       } catch (e) {
-        console.error(e);
-        document.getElementById("usuariosTabela").innerHTML = `<tr><td colspan="5">Erro ao carregar usuários.</td></tr>`;
-        document.getElementById("usuariosTabela2").innerHTML = `<tr><td colspan="6">Erro ao carregar usuários.</td></tr>`;
+        console.error("Erro usuários:", e);
+        usuariosCache = [];
       }
     }
 
     async function carregarClientes() {
       try {
-        let snap;
+        let ref = db.collection("clientes").limit(100);
+        if (tenantId) ref = db.collection("clientes").where("clientePlataformaId", "==", tenantId).limit(100);
 
-        if (tenantId) {
-          snap = await db.collection("clientes")
-            .where("clientePlataformaId", "==", tenantId)
-            .limit(80)
-            .get();
-        } else {
-          snap = await db.collection("clientes").limit(80).get();
-        }
-
-        let total = 0;
-        let inad = 0;
-        const linhas = [];
-
-        snap.forEach(doc => {
-          const c = { id: doc.id, ...doc.data() };
-          total++;
-
-          const status = String(c.status || "").toUpperCase();
-          if (status.includes("INAD") || Number(c.diasAtraso || 0) >= 20) inad++;
-
-          linhas.push(`
-            <tr>
-              <td>${c.nome || c.nomeCompleto || c.apelido || "-"}</td>
-              <td>${c.telefone || c.telefonePrincipal || "-"}</td>
-              <td>${badgeStatus(c.status)}</td>
-              <td>${moeda(c.saldoDevedor || c.saldo || 0)}</td>
-              <td>${c.score ?? "-"}</td>
-            </tr>
-          `);
-        });
-
-        document.getElementById("kpiClientes").innerText = total;
-        document.getElementById("kpiInadimplencia").innerText = inad;
-
-        document.getElementById("clientesTabela").innerHTML =
-          linhas.length ? linhas.join("") : `<tr><td colspan="5">Nenhum cliente encontrado.</td></tr>`;
-
+        const snap = await ref.get();
+        clientesCache = [];
+        snap.forEach(doc => clientesCache.push({ id: doc.id, ...doc.data() }));
       } catch (e) {
-        console.error(e);
-        document.getElementById("clientesTabela").innerHTML = `<tr><td colspan="5">Erro ao carregar clientes.</td></tr>`;
+        console.error("Erro clientes:", e);
+        clientesCache = [];
       }
     }
 
     async function carregarCaixas() {
       try {
-        let ref = db.collection("caixas").where("status", "==", "ABERTO");
+        let ref = db.collection("caixas").where("status", "==", "ABERTO").limit(100);
+        if (tenantId) ref = db.collection("caixas").where("clientePlataformaId", "==", tenantId).where("status", "==", "ABERTO").limit(100);
 
-        if (tenantId) {
-          ref = ref.where("clientePlataformaId", "==", tenantId);
-        }
-
-        const snap = await ref.limit(50).get();
-
-        document.getElementById("kpiCaixas").innerText = snap.size;
-
+        const snap = await ref.get();
+        caixasCache = [];
+        snap.forEach(doc => caixasCache.push({ id: doc.id, ...doc.data() }));
       } catch (e) {
-        console.error(e);
-        document.getElementById("kpiCaixas").innerText = "Erro";
+        console.error("Erro caixas:", e);
+        caixasCache = [];
       }
     }
 
     async function carregarVendas() {
       try {
-        let snap;
+        let ref = db.collection("vendas").limit(150);
+        if (tenantId) ref = db.collection("vendas").where("clientePlataformaId", "==", tenantId).limit(150);
 
-        if (tenantId) {
-          snap = await db.collection("vendas")
-            .where("clientePlataformaId", "==", tenantId)
-            .limit(100)
-            .get();
-        } else {
-          snap = await db.collection("vendas").limit(100).get();
-        }
-
-        let carteira = 0;
-
-        snap.forEach(doc => {
-          const v = doc.data();
-          const status = String(v.status || "").toUpperCase();
-
-          if (!status.includes("CANCEL")) {
-            carteira += Number(v.saldoDevedor || v.valorTotal || v.valorVenda || 0);
-          }
-        });
-
-        document.getElementById("kpiCarteira").innerText = moeda(carteira);
-
+        const snap = await ref.get();
+        vendasCache = [];
+        snap.forEach(doc => vendasCache.push({ id: doc.id, ...doc.data() }));
       } catch (e) {
-        console.error(e);
-        document.getElementById("kpiCarteira").innerText = "Erro";
+        console.error("Erro vendas:", e);
+        vendasCache = [];
       }
     }
 
     async function carregarFinanceiro() {
+      const alvo = document.getElementById("financeiroLista");
+      if (!alvo) return;
+
       try {
         let snap;
-
-        if (tenantId) {
-          snap = await db.collection("contasFinanceiras")
-            .where("clientePlataformaId", "==", tenantId)
-            .limit(10)
-            .get();
-        } else {
-          snap = await db.collection("contasFinanceiras").limit(10).get();
+        try {
+          let ref = db.collection("contasFinanceiras").limit(10);
+          if (tenantId) ref = db.collection("contasFinanceiras").where("clientePlataformaId", "==", tenantId).limit(10);
+          snap = await ref.get();
+        } catch {
+          let ref = db.collection("solicitacoes").limit(10);
+          if (tenantId) ref = db.collection("solicitacoes").where("clientePlataformaId", "==", tenantId).limit(10);
+          snap = await ref.get();
         }
 
         const itens = [];
-
         snap.forEach(doc => {
           const f = doc.data();
-
           itens.push(`
             <div class="list-item">
               <div>
-                <strong>${f.titulo || f.descricao || "Compromisso financeiro"}</strong><br>
+                <strong>${f.titulo || f.tipo || f.descricao || "Registro financeiro"}</strong><br>
                 <small>${f.status || "PENDENTE"} • ${f.dataVencimento || ""}</small>
               </div>
               <strong>${moeda(f.valor || 0)}</strong>
@@ -862,14 +385,82 @@
           `);
         });
 
-        document.getElementById("financeiroLista").innerHTML =
-          itens.length ? itens.join("") : "Nenhum compromisso financeiro encontrado.";
-
+        alvo.innerHTML = itens.length ? itens.join("") : "Nenhum registro financeiro encontrado.";
       } catch (e) {
-        console.error(e);
-        document.getElementById("financeiroLista").innerHTML =
-          "Erro ao carregar financeiro.";
+        console.error("Erro financeiro:", e);
+        alvo.innerHTML = "Erro ao carregar financeiro.";
       }
+    }
+
+    function atualizarKPIs() {
+      const carteira = vendasCache.reduce((total, v) => {
+        const status = String(v.status || "").toUpperCase();
+        if (status.includes("CANCEL")) return total;
+        return total + Number(v.saldoDevedor || v.valorTotal || v.valorVenda || 0);
+      }, 0);
+
+      const inad = clientesCache.filter(c => {
+        const status = String(c.status || "").toUpperCase();
+        return status.includes("INAD") || Number(c.diasAtraso || 0) >= 20;
+      }).length;
+
+      document.getElementById("kpiCarteira").innerText = moeda(carteira);
+      document.getElementById("kpiCaixas").innerText = caixasCache.length;
+      document.getElementById("kpiClientes").innerText = clientesCache.length;
+      document.getElementById("kpiInadimplencia").innerText = inad;
+    }
+
+    function renderUsuarios() {
+      const termo = (document.getElementById("buscaUsuario")?.value || "").toLowerCase();
+      const tipoFiltro = document.getElementById("filtroTipoUsuario")?.value || "";
+
+      let lista = usuariosCache.filter(u => {
+        const texto = `${u.nome || ""} ${u.nomeCompleto || ""} ${u.email || ""}`.toLowerCase();
+        const bateTexto = !termo || texto.includes(termo);
+        const bateTipo = !tipoFiltro || u.tipoUsuario === tipoFiltro;
+        return bateTexto && bateTipo;
+      });
+
+      const html = lista.length ? lista.map(u => `
+        <tr>
+          <td>${u.nome || u.nomeCompleto || "-"}</td>
+          <td>${u.email || "-"}</td>
+          <td>${u.tipoUsuario || "-"}</td>
+          <td>${u.cargoNome || "-"}</td>
+          <td>${badgeStatus(u.status)}</td>
+          <td>${u.acessoLiberado === false ? "Bloqueado" : "Liberado"}</td>
+          <td>
+            <button class="ghost-btn" onclick="abrirEditarUsuario('${u.id}')">Editar</button>
+            <button class="danger-btn" onclick="alternarAcessoUsuario('${u.id}')">
+              ${u.acessoLiberado === false ? "Liberar" : "Bloquear"}
+            </button>
+          </td>
+        </tr>
+      `).join("") : `<tr><td colspan="7">Nenhum usuário encontrado.</td></tr>`;
+
+      document.getElementById("usuariosTabela").innerHTML = html;
+      document.getElementById("usuariosTabela2").innerHTML = html;
+    }
+
+    function renderClientes() {
+      const termo = (document.getElementById("buscaCliente")?.value || "").toLowerCase();
+
+      let lista = clientesCache.filter(c => {
+        const texto = `${c.nome || ""} ${c.nomeCompleto || ""} ${c.apelido || ""} ${c.telefone || ""} ${c.telefonePrincipal || ""}`.toLowerCase();
+        return !termo || texto.includes(termo);
+      });
+
+      const html = lista.length ? lista.map(c => `
+        <tr>
+          <td>${c.nome || c.nomeCompleto || c.apelido || "-"}</td>
+          <td>${c.telefone || c.telefonePrincipal || "-"}</td>
+          <td>${badgeStatus(c.status)}</td>
+          <td>${moeda(c.saldoDevedor || c.saldo || 0)}</td>
+          <td>${c.score ?? "-"}</td>
+        </tr>
+      `).join("") : `<tr><td colspan="5">Nenhum cliente encontrado.</td></tr>`;
+
+      document.getElementById("clientesTabela").innerHTML = html;
     }
 
     function trocarTela(id, el) {
@@ -883,7 +474,7 @@
         dashboard: ["Dashboard Master Local", "Visão geral da empresa em tempo real."],
         usuarios: ["Usuários", "Gerencie funcionários, cargos e acessos."],
         clientes: ["Clientes", "Consulte a base de clientes da operação."],
-        financeiro: ["Financeiro", "Compromissos e contas da empresa."],
+        financeiro: ["Financeiro", "Compromissos, contas e solicitações."],
         configuracoes: ["Configurações", "Regras, permissões e parâmetros da empresa."]
       };
 
@@ -893,22 +484,28 @@
       if (window.innerWidth <= 900) toggleMenu(false);
     }
 
-    function abrirDrawer(titulo) {
+    function abrirDrawer(titulo, html) {
       document.getElementById("drawerTitle").innerText = titulo;
-      document.getElementById("drawerContent").innerHTML = `
-        <p style="color:#64748b;font-weight:700;line-height:1.6;">
-          Esta gaveta será usada para detalhar todos os registros que compõem o indicador:
-          <strong>${titulo}</strong>.
-        </p>
-      `;
-
+      document.getElementById("drawerContent").innerHTML = html;
       document.getElementById("drawerBg").classList.add("open");
       document.getElementById("drawer").classList.add("open");
     }
 
+    function abrirDrawerInfo(titulo) {
+      abrirDrawer(titulo, `
+        <p style="color:#64748b;font-weight:800;line-height:1.7">
+          Área de detalhes preparada para listar os registros que compõem: <strong>${titulo}</strong>.
+        </p>
+      `);
+    }
+
+    function fecharDrawer() {
+      document.getElementById("drawerBg").classList.remove("open");
+      document.getElementById("drawer").classList.remove("open");
+    }
+
     function abrirNovoUsuario() {
-      document.getElementById("drawerTitle").innerText = "Novo usuário";
-      document.getElementById("drawerContent").innerHTML = `
+      abrirDrawer("Novo usuário", `
         <div class="form-group">
           <label>Nome</label>
           <input id="novoNome" placeholder="Nome completo">
@@ -916,7 +513,7 @@
 
         <div class="form-group">
           <label>Email</label>
-          <input id="novoEmail" placeholder="email@empresa.com">
+          <input id="novoEmail" type="email" placeholder="email@empresa.com">
         </div>
 
         <div class="form-group">
@@ -931,24 +528,20 @@
 
         <div class="form-group">
           <label>Cargo</label>
-          <input id="novoCargo" placeholder="Cargo do usuário">
+          <input id="novoCargo" placeholder="Ex: Vendedor, Supervisor, Financeiro">
         </div>
 
-        <button class="primary-btn" style="width:100%;margin-top:8px;" onclick="salvarUsuarioDemo()">
-          Salvar usuário
+        <button class="primary-btn" style="width:100%;margin-top:8px;" onclick="salvarNovoUsuario()">
+          Criar usuário com acesso
         </button>
 
-        <p style="font-size:12px;color:#64748b;margin-top:12px;line-height:1.5;">
-          Nesta fase, o botão salva o cadastro interno em Firestore. A criação real no Firebase Auth
-          será feita depois via Cloud Functions para segurança.
+        <p style="font-size:12px;color:#64748b;margin-top:12px;line-height:1.5;font-weight:700">
+          Será criado no Firebase Auth e na coleção usuarios. Senha padrão: <strong>123456</strong>.
         </p>
-      `;
-
-      document.getElementById("drawerBg").classList.add("open");
-      document.getElementById("drawer").classList.add("open");
+      `);
     }
 
-    async function salvarUsuarioDemo() {
+    async function salvarNovoUsuario() {
       try {
         const nome = document.getElementById("novoNome").value.trim();
         const email = document.getElementById("novoEmail").value.trim();
@@ -960,57 +553,206 @@
           return;
         }
 
+        const senhaPadrao = "123456";
+
+        const secondaryApp = firebase.initializeApp(firebase.app().options, "Secondary_" + Date.now());
+
+        const userCredential = await secondaryApp
+          .auth()
+          .createUserWithEmailAndPassword(email, senhaPadrao);
+
+        const novoAuthUser = userCredential.user;
+
+        await secondaryApp.auth().signOut();
+        await secondaryApp.delete();
+
         await db.collection("usuarios").add({
+          authUid: novoAuthUser.uid,
           nome,
+          nomeCompleto: nome,
           email,
           tipoUsuario: tipo,
-          cargoNome: cargo,
+          cargoNome: cargo || tipo,
           status: "ATIVO",
           acessoLiberado: true,
           clientePlataformaId: tenantId || "",
-          clientePlataformaNome: usuarioLogado.clientePlataformaNome || usuarioLogado.empresaNome || "",
+          clientePlataformaNome:
+            usuarioLogado.clientePlataformaNome ||
+            usuarioLogado.empresaNome ||
+            "",
           criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
           criadoPorUid: usuarioLogado.authUid || "",
           criadoPorNome: usuarioLogado.nome || usuarioLogado.email || ""
         });
 
-        alert("Usuário salvo no Firestore.");
+        await db.collection("logs").add({
+          tipo: "CRIACAO_USUARIO",
+          usuarioCriadoEmail: email,
+          usuarioCriadoTipo: tipo,
+          criadoPorUid: usuarioLogado.authUid || "",
+          criadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+          clientePlataformaId: tenantId || "",
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert(
+          "Usuário criado com sucesso.\n\n" +
+          "Email: " + email + "\n" +
+          "Senha padrão: " + senhaPadrao
+        );
+
         fecharDrawer();
-        carregarUsuarios();
+        await carregarUsuarios();
+        renderUsuarios();
 
       } catch (e) {
-        console.error(e);
-        alert("Erro ao salvar usuário.");
+        console.error("Erro ao criar usuário:", e);
+
+        if (e.code === "auth/email-already-in-use") {
+          alert("Este email já existe no Firebase Auth.");
+          return;
+        }
+
+        if (e.code === "auth/invalid-email") {
+          alert("Email inválido.");
+          return;
+        }
+
+        if (e.code === "auth/weak-password") {
+          alert("Senha muito fraca.");
+          return;
+        }
+
+        alert("Erro ao criar usuário: " + (e.message || e.code));
       }
     }
 
-    function fecharDrawer() {
-      document.getElementById("drawerBg").classList.remove("open");
-      document.getElementById("drawer").classList.remove("open");
+    function abrirEditarUsuario(id) {
+      const u = usuariosCache.find(x => x.id === id);
+      if (!u) return;
+
+      abrirDrawer("Editar usuário", `
+        <div class="form-group">
+          <label>Nome</label>
+          <input id="editNome" value="${u.nome || u.nomeCompleto || ""}">
+        </div>
+
+        <div class="form-group">
+          <label>Email</label>
+          <input id="editEmail" value="${u.email || ""}" disabled>
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de usuário</label>
+          <select id="editTipo">
+            <option value="vendedor" ${u.tipoUsuario === "vendedor" ? "selected" : ""}>Vendedor</option>
+            <option value="supervisor" ${u.tipoUsuario === "supervisor" ? "selected" : ""}>Supervisor</option>
+            <option value="financeiro" ${u.tipoUsuario === "financeiro" ? "selected" : ""}>Financeiro</option>
+            <option value="master_local" ${u.tipoUsuario === "master_local" ? "selected" : ""}>Master Local</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Cargo</label>
+          <input id="editCargo" value="${u.cargoNome || ""}">
+        </div>
+
+        <div class="form-group">
+          <label>Status</label>
+          <select id="editStatus">
+            <option value="ATIVO" ${u.status === "ATIVO" ? "selected" : ""}>ATIVO</option>
+            <option value="INATIVO" ${u.status === "INATIVO" ? "selected" : ""}>INATIVO</option>
+            <option value="BLOQUEADO" ${u.status === "BLOQUEADO" ? "selected" : ""}>BLOQUEADO</option>
+          </select>
+        </div>
+
+        <button class="primary-btn" style="width:100%" onclick="salvarEdicaoUsuario('${u.id}')">Salvar alterações</button>
+      `);
+    }
+
+    async function salvarEdicaoUsuario(id) {
+      try {
+        const nome = document.getElementById("editNome").value.trim();
+        const tipo = document.getElementById("editTipo").value;
+        const cargo = document.getElementById("editCargo").value.trim();
+        const status = document.getElementById("editStatus").value;
+
+        await db.collection("usuarios").doc(id).update({
+          nome,
+          nomeCompleto: nome,
+          tipoUsuario: tipo,
+          cargoNome: cargo,
+          status,
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+          atualizadoPorUid: usuarioLogado.authUid || "",
+          atualizadoPorNome: usuarioLogado.nome || usuarioLogado.email || ""
+        });
+
+        await db.collection("logs").add({
+          tipo: "EDICAO_USUARIO",
+          usuarioEditadoId: id,
+          criadoPorUid: usuarioLogado.authUid || "",
+          criadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+          clientePlataformaId: tenantId || "",
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert("Dados alterados com sucesso.");
+        fecharDrawer();
+        await carregarUsuarios();
+        renderUsuarios();
+
+      } catch (e) {
+        console.error("Erro editar:", e);
+        alert("Erro ao editar usuário.");
+      }
+    }
+
+    async function alternarAcessoUsuario(id) {
+      try {
+        const u = usuariosCache.find(x => x.id === id);
+        if (!u) return;
+
+        const novoAcesso = u.acessoLiberado === false;
+
+        await db.collection("usuarios").doc(id).update({
+          acessoLiberado: novoAcesso,
+          status: novoAcesso ? "ATIVO" : "BLOQUEADO",
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await db.collection("logs").add({
+          tipo: novoAcesso ? "LIBERACAO_ACESSO_USUARIO" : "BLOQUEIO_ACESSO_USUARIO",
+          usuarioAlvoId: id,
+          usuarioAlvoEmail: u.email || "",
+          criadoPorUid: usuarioLogado.authUid || "",
+          criadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+          clientePlataformaId: tenantId || "",
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert(novoAcesso ? "Acesso liberado." : "Usuário bloqueado.");
+        await carregarUsuarios();
+        renderUsuarios();
+
+      } catch (e) {
+        console.error("Erro acesso:", e);
+        alert("Erro ao alterar acesso.");
+      }
     }
 
     function toggleMenu(force) {
-  const sidebar = document.getElementById("sidebar");
-  const menuBg = document.getElementById("menuBg");
+      const sidebar = document.getElementById("sidebar");
+      const bg = document.getElementById("menuBg");
 
-  if (force === false) {
-    sidebar.classList.remove("open");
-    if (menuBg) menuBg.classList.remove("open");
-    return;
-  }
-
-  sidebar.classList.toggle("open");
-
-  if (menuBg) {
-    if (sidebar.classList.contains("open")) {
-      menuBg.classList.add("open");
-    } else {
-      menuBg.classList.remove("open");
-    }
-  }
-}
+      if (force === false) {
+        sidebar.classList.remove("open");
+        bg.classList.remove("open");
+        return;
+      }
 
       sidebar.classList.toggle("open");
+      bg.classList.toggle("open", sidebar.classList.contains("open"));
     }
 
     function logout() {
