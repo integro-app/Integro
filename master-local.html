@@ -489,3 +489,375 @@ function atualizarDashboard() {
   document.getElementById("kpiUsuarios").innerText = usuariosCache.length;
   document.getElementById("kpiCaixas").innerText = caixasAbertos;
 }
+
+// ================= NAVEGAÇÃO =================
+function trocarTela(id) {
+  const telas = [
+    "dashboard",
+    "usuarios",
+    "clientes",
+    "cargos",
+    "equipes",
+    "caixa",
+    "logs"
+  ];
+
+  telas.forEach(tela => {
+    const el = document.getElementById(tela);
+    if (el) el.style.display = "none";
+  });
+
+  const atual = document.getElementById(id);
+  if (atual) atual.style.display = "block";
+
+  document.getElementById("titulo").innerText =
+    id === "dashboard" ? "Dashboard" :
+    id === "usuarios" ? "Usuários" :
+    id === "clientes" ? "Clientes" :
+    id === "cargos" ? "Cargos e permissões" :
+    id === "equipes" ? "Equipes / Unidades" :
+    id === "caixa" ? "Caixa" :
+    id === "logs" ? "Auditoria" :
+    "ÍNTEGRO";
+
+  document.querySelectorAll(".menu-item").forEach(item => {
+    item.classList.remove("active");
+  });
+
+  const menu = Array.from(document.querySelectorAll(".menu-item"))
+    .find(item => item.getAttribute("onclick")?.includes("'" + id + "'"));
+
+  if (menu) menu.classList.add("active");
+
+  if (window.innerWidth <= 900) {
+    toggleMenu(false);
+  }
+}
+
+function toggleMenu(force) {
+  const sidebar = document.getElementById("sidebar");
+
+  if (force === false) {
+    sidebar.classList.add("hide");
+    sidebar.classList.remove("open");
+    return;
+  }
+
+  if (sidebar.classList.contains("open")) {
+    sidebar.classList.remove("open");
+    sidebar.classList.add("hide");
+  } else {
+    sidebar.classList.add("open");
+    sidebar.classList.remove("hide");
+  }
+}
+
+// ================= DRAWER =================
+function abrirDrawer(titulo, conteudo) {
+  document.getElementById("drawerTitle").innerText = titulo;
+  document.getElementById("drawerContent").innerHTML = conteudo;
+
+  document.getElementById("drawer").classList.add("open");
+  document.getElementById("drawerBg").classList.add("open");
+}
+
+function fecharDrawer() {
+  document.getElementById("drawer").classList.remove("open");
+  document.getElementById("drawerBg").classList.remove("open");
+}
+
+// ================= RENDER USUÁRIOS =================
+function renderUsuarios() {
+  const html = usuariosCache.length
+    ? usuariosCache.map(u => `
+      <div class="item">
+        <div>
+          <strong>${u.nome || u.nomeCompleto || "-"}</strong><br>
+          <small>${u.email || "-"}</small><br>
+          <small>Tipo: ${u.tipoUsuario || "-"} • Status: ${u.status || "-"}</small>
+        </div>
+
+        <div>
+          <button class="btn btn-ghost" onclick="abrirEditarUsuario('${u.id}')">Editar</button>
+          <button class="btn btn-danger" onclick="alternarAcessoUsuario('${u.id}')">
+            ${u.acessoLiberado === false ? "Liberar" : "Bloquear"}
+          </button>
+        </div>
+      </div>
+    `).join("")
+    : "Nenhum usuário encontrado.";
+
+  document.getElementById("listaUsuarios").innerHTML = html;
+}
+
+// ================= NOVO USUÁRIO =================
+function abrirNovoUsuario() {
+  const cargosOptions = cargosCache.length
+    ? cargosCache.map(c => `<option value="${c.id}">${c.nome || c.cargoNome || "Cargo"}</option>`).join("")
+    : `<option value="">Sem cargos cadastrados</option>`;
+
+  const equipesOptions = equipesCache.length
+    ? equipesCache.map(e => `<option value="${e.id}">${e.nome || "Equipe"}</option>`).join("")
+    : `<option value="">Sem equipe</option>`;
+
+  abrirDrawer("Novo usuário", `
+    <input id="novoNome" placeholder="Nome completo">
+
+    <input id="novoEmail" type="email" placeholder="Email">
+
+    <select id="novoTipo">
+      <option value="vendedor">Vendedor</option>
+      <option value="supervisor">Supervisor</option>
+      <option value="financeiro">Financeiro</option>
+      <option value="master_local">Master Local</option>
+    </select>
+
+    <select id="novoCargoId">
+      ${cargosOptions}
+    </select>
+
+    <select id="novoEquipeId">
+      ${equipesOptions}
+    </select>
+
+    <button class="btn btn-primary" onclick="salvarNovoUsuario()">Criar usuário</button>
+
+    <p style="font-size:12px;color:#64748b;margin-top:10px;">
+      Senha padrão: <strong>123456</strong>
+    </p>
+  `);
+}
+
+async function salvarNovoUsuario() {
+  try {
+    const nome = document.getElementById("novoNome").value.trim();
+    const email = document.getElementById("novoEmail").value.trim();
+    const tipo = document.getElementById("novoTipo").value;
+    const cargoId = document.getElementById("novoCargoId").value;
+    const equipeId = document.getElementById("novoEquipeId").value;
+
+    if (!nome || !email) {
+      alert("Informe nome e email.");
+      return;
+    }
+
+    const cargo = cargosCache.find(c => c.id === cargoId);
+    const equipe = equipesCache.find(e => e.id === equipeId);
+
+    const senhaPadrao = "123456";
+
+    const secondaryApp = firebase.initializeApp(firebase.app().options, "secondary_" + Date.now());
+
+    const cred = await secondaryApp
+      .auth()
+      .createUserWithEmailAndPassword(email, senhaPadrao);
+
+    await secondaryApp.auth().signOut();
+    await secondaryApp.delete();
+
+    await db.collection("usuarios").add({
+      authUid: cred.user.uid,
+      nome,
+      nomeCompleto: nome,
+      email,
+      tipoUsuario: tipo,
+
+      cargoId: cargoId || "",
+      cargoNome: cargo?.nome || cargo?.cargoNome || tipo,
+      permissoes: cargo?.permissoes || {},
+
+      equipeId: equipeId || "",
+      equipeNome: equipe?.nome || "",
+
+      status: "ATIVO",
+      acessoLiberado: true,
+
+      clientePlataformaId: tenantId,
+      clientePlataformaNome:
+        usuarioLogado.clientePlataformaNome ||
+        usuarioLogado.empresaNome ||
+        "",
+
+      criadoPorUid: usuarioLogado.authUid || "",
+      criadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await gravarLog("CRIACAO_USUARIO", {
+      emailCriado: email,
+      nomeCriado: nome,
+      tipoUsuarioCriado: tipo
+    });
+
+    alert(
+      "Usuário criado com sucesso.\n\n" +
+      "Email: " + email + "\n" +
+      "Senha: " + senhaPadrao
+    );
+
+    fecharDrawer();
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro criar usuário:", e);
+
+    if (e.code === "auth/email-already-in-use") {
+      alert("Este email já existe no Firebase Auth.");
+      return;
+    }
+
+    alert("Erro ao criar usuário: " + (e.message || e.code));
+  }
+}
+
+// ================= EDITAR / BLOQUEAR USUÁRIO =================
+function abrirEditarUsuario(id) {
+  const u = usuariosCache.find(x => x.id === id);
+  if (!u) return;
+
+  const cargosOptions = cargosCache.length
+    ? cargosCache.map(c => `
+      <option value="${c.id}" ${u.cargoId === c.id ? "selected" : ""}>
+        ${c.nome || c.cargoNome || "Cargo"}
+      </option>
+    `).join("")
+    : `<option value="">Sem cargos cadastrados</option>`;
+
+  const equipesOptions = equipesCache.length
+    ? equipesCache.map(e => `
+      <option value="${e.id}" ${u.equipeId === e.id ? "selected" : ""}>
+        ${e.nome || "Equipe"}
+      </option>
+    `).join("")
+    : `<option value="">Sem equipe</option>`;
+
+  abrirDrawer("Editar usuário", `
+    <input id="editNome" value="${u.nome || u.nomeCompleto || ""}">
+    <input value="${u.email || ""}" disabled>
+
+    <select id="editTipo">
+      <option value="vendedor" ${u.tipoUsuario === "vendedor" ? "selected" : ""}>Vendedor</option>
+      <option value="supervisor" ${u.tipoUsuario === "supervisor" ? "selected" : ""}>Supervisor</option>
+      <option value="financeiro" ${u.tipoUsuario === "financeiro" ? "selected" : ""}>Financeiro</option>
+      <option value="master_local" ${u.tipoUsuario === "master_local" ? "selected" : ""}>Master Local</option>
+    </select>
+
+    <select id="editCargoId">${cargosOptions}</select>
+
+    <select id="editEquipeId">${equipesOptions}</select>
+
+    <select id="editStatus">
+      <option value="ATIVO" ${u.status === "ATIVO" ? "selected" : ""}>ATIVO</option>
+      <option value="INATIVO" ${u.status === "INATIVO" ? "selected" : ""}>INATIVO</option>
+      <option value="BLOQUEADO" ${u.status === "BLOQUEADO" ? "selected" : ""}>BLOQUEADO</option>
+    </select>
+
+    <button class="btn btn-primary" onclick="salvarEdicaoUsuario('${u.id}')">Salvar alterações</button>
+  `);
+}
+
+async function salvarEdicaoUsuario(id) {
+  try {
+    const nome = document.getElementById("editNome").value.trim();
+    const tipo = document.getElementById("editTipo").value;
+    const cargoId = document.getElementById("editCargoId").value;
+    const equipeId = document.getElementById("editEquipeId").value;
+    const status = document.getElementById("editStatus").value;
+
+    const cargo = cargosCache.find(c => c.id === cargoId);
+    const equipe = equipesCache.find(e => e.id === equipeId);
+
+    await db.collection("usuarios").doc(id).update({
+      nome,
+      nomeCompleto: nome,
+      tipoUsuario: tipo,
+      cargoId: cargoId || "",
+      cargoNome: cargo?.nome || cargo?.cargoNome || tipo,
+      permissoes: cargo?.permissoes || {},
+      equipeId: equipeId || "",
+      equipeNome: equipe?.nome || "",
+      status,
+      acessoLiberado: status !== "BLOQUEADO",
+      atualizadoPorUid: usuarioLogado.authUid || "",
+      atualizadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await gravarLog("EDICAO_USUARIO", {
+      usuarioEditadoId: id,
+      nomeEditado: nome,
+      tipoEditado: tipo
+    });
+
+    alert("Usuário atualizado com sucesso.");
+
+    fecharDrawer();
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro editar usuário:", e);
+    alert("Erro ao editar usuário.");
+  }
+}
+
+async function alternarAcessoUsuario(id) {
+  try {
+    const u = usuariosCache.find(x => x.id === id);
+    if (!u) return;
+
+    const novoAcesso = u.acessoLiberado === false;
+
+    await db.collection("usuarios").doc(id).update({
+      acessoLiberado: novoAcesso,
+      status: novoAcesso ? "ATIVO" : "BLOQUEADO",
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await gravarLog(novoAcesso ? "LIBERAR_USUARIO" : "BLOQUEAR_USUARIO", {
+      usuarioAlvoId: id,
+      usuarioAlvoEmail: u.email || ""
+    });
+
+    alert(novoAcesso ? "Usuário liberado." : "Usuário bloqueado.");
+
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro acesso usuário:", e);
+    alert("Erro ao alterar acesso.");
+  }
+}
+
+// ================= RENDER CLIENTES =================
+function renderClientes() {
+  const html = clientesCache.length
+    ? clientesCache.map(c => `
+      <div class="item">
+        <div>
+          <strong>${c.nome || c.nomeCompleto || c.apelido || "Cliente sem nome"}</strong><br>
+          <small>${c.telefone || c.telefonePrincipal || "-"}</small><br>
+          <small>Saldo: ${moeda(c.saldoDevedor || c.saldo || 0)}</small>
+        </div>
+        <div>
+          <button class="btn btn-ghost" onclick="abrirCliente('${c.id}')">Ver</button>
+        </div>
+      </div>
+    `).join("")
+    : "Nenhum cliente encontrado.";
+
+  document.getElementById("listaClientes").innerHTML = html;
+}
+
+function abrirCliente(id) {
+  const c = clientesCache.find(x => x.id === id);
+  if (!c) return;
+
+  abrirDrawer("Cliente", `
+    <p><strong>Nome:</strong> ${c.nome || c.nomeCompleto || "-"}</p>
+    <p><strong>Apelido:</strong> ${c.apelido || "-"}</p>
+    <p><strong>Telefone:</strong> ${c.telefone || c.telefonePrincipal || "-"}</p>
+    <p><strong>Documento:</strong> ${c.documento || "-"}</p>
+    <p><strong>Saldo:</strong> ${moeda(c.saldoDevedor || c.saldo || 0)}</p>
+    <p><strong>Status:</strong> ${c.status || "-"}</p>
+  `);
+}
