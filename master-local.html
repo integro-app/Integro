@@ -990,12 +990,25 @@
     }
 
     function toggleMenu(force) {
-      const sidebar = document.getElementById("sidebar");
+  const sidebar = document.getElementById("sidebar");
+  const menuBg = document.getElementById("menuBg");
 
-      if (force === false) {
-        sidebar.classList.remove("open");
-        return;
-      }
+  if (force === false) {
+    sidebar.classList.remove("open");
+    if (menuBg) menuBg.classList.remove("open");
+    return;
+  }
+
+  sidebar.classList.toggle("open");
+
+  if (menuBg) {
+    if (sidebar.classList.contains("open")) {
+      menuBg.classList.add("open");
+    } else {
+      menuBg.classList.remove("open");
+    }
+  }
+}
 
       sidebar.classList.toggle("open");
     }
