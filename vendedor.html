@@ -1,96 +1,630 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ÍNTEGRO - Vendedor</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ÍNTEGRO - Vendedor</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-<style>
-* { margin:0; padding:0; box-sizing:border-box; font-family:Inter; }
-
-body { display:flex; height:100vh; background:#f5f7fb; }
-
-.sidebar {
-  width:240px;
-  background:#071a33;
-  color:#fff;
-  padding:20px;
-}
-
-.logo { font-size:22px; font-weight:800; margin-bottom:30px; }
-
-.menu-item {
-  padding:12px;
-  border-radius:8px;
-  margin-bottom:10px;
-}
-
-.menu-item:hover { background:rgba(255,255,255,0.1); }
-
-.main { flex:1; padding:20px; }
-
-.topbar {
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:20px;
-}
-
-.cards {
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(180px,1fr));
-  gap:15px;
-}
-
-.card {
-  padding:20px;
-  border-radius:16px;
-  color:white;
-  font-weight:600;
-}
-
-.card1 { background:linear-gradient(135deg,#ffb100,#ff6b00); }
-.card2 { background:linear-gradient(135deg,#00c6ff,#0072ff); }
-.card3 { background:linear-gradient(135deg,#22c55e,#15803d); }
-.card4 { background:linear-gradient(135deg,#ef4444,#7f1d1d); }
-
-</style>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
+    :root{
+      --azul:#071a33;--azul2:#09213f;--lar1:#ffb100;--lar2:#ff6b00;
+      --bg:#f4f7fb;--card:#fff;--texto:#0f172a;--muted:#64748b;--linha:#e2e8f0;
+      --verde:#22c55e;--vermelho:#ef4444;--amarelo:#f59e0b;--azulclaro:#0ea5e9
+    }
+    body{min-height:100vh;background:var(--bg);color:var(--texto);display:flex}
+    .sidebar{width:280px;background:linear-gradient(180deg,#061426,#09213f);color:#fff;padding:22px;position:fixed;inset:0 auto 0 0;z-index:30;transition:.25s}
+    .brand{font-size:28px;font-weight:900;letter-spacing:-1px;margin-bottom:22px}
+    .user-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);border-radius:18px;padding:14px;margin-bottom:20px}
+    .user-card small{display:block;color:#cbd5e1;margin-bottom:4px}.user-card strong{display:block;font-size:15px;margin-bottom:3px}
+    .menu-title{font-size:11px;color:#94a3b8;font-weight:900;text-transform:uppercase;margin:18px 0 8px}
+    .menu-item{padding:13px 14px;border-radius:14px;cursor:pointer;font-weight:800;color:#dbeafe;display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;transition:.2s}
+    .menu-item:hover,.menu-item.active{background:linear-gradient(135deg,rgba(255,177,0,.22),rgba(255,107,0,.18));color:#fff}
+    .main{margin-left:280px;width:calc(100% - 280px);padding:24px}
+    .topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:20px}
+    .topbar h1{font-size:26px;font-weight:900;letter-spacing:-1px}.topbar p{color:var(--muted);font-weight:700;margin-top:4px}
+    .top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    button{font-family:inherit}.icon-btn,.primary-btn,.ghost-btn,.danger-btn,.success-btn{border:0;cursor:pointer;border-radius:13px;font-weight:900}
+    .icon-btn{width:44px;height:44px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.08)}
+    .primary-btn{padding:13px 17px;color:#fff;background:linear-gradient(135deg,var(--lar1),var(--lar2));box-shadow:0 10px 20px rgba(255,107,0,.22)}
+    .ghost-btn{padding:12px 15px;color:var(--azul);background:#fff;border:1px solid var(--linha)}
+    .success-btn{padding:12px 15px;color:#fff;background:linear-gradient(135deg,#22c55e,#15803d)}
+    .danger-btn{padding:12px 15px;color:#fff;background:linear-gradient(135deg,#ef4444,#991b1b)}
+    .grid-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}
+    .kpi{border-radius:22px;padding:20px;color:#fff;min-height:130px;position:relative;overflow:hidden;box-shadow:0 16px 35px rgba(15,23,42,.12)}
+    .kpi:after{content:"";position:absolute;width:140px;height:140px;border-radius:50%;background:rgba(255,255,255,.14);right:-45px;bottom:-55px}
+    .kpi small{font-weight:900;opacity:.88;display:block;margin-bottom:14px}.kpi strong{font-size:26px;font-weight:900;letter-spacing:-1px}
+    .kpi span{display:block;font-size:12px;opacity:.9;margin-top:8px;font-weight:800}
+    .g1{background:linear-gradient(135deg,#ffb100,#ff6b00)}.g2{background:linear-gradient(135deg,#00c6ff,#0072ff)}
+    .g3{background:linear-gradient(135deg,#22c55e,#15803d)}.g4{background:linear-gradient(135deg,#ef4444,#7f1d1d)}
+    .panel{background:#fff;border-radius:22px;padding:20px;border:1px solid var(--linha);box-shadow:0 10px 25px rgba(15,23,42,.06)}
+    .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}.toolbar input,.toolbar select{flex:1;min-width:180px}
+    input,select,textarea{width:100%;padding:13px;border:1px solid var(--linha);border-radius:13px;outline:none;font-weight:700;background:#fff}
+    textarea{min-height:90px;resize:vertical}
+    .clientes-list{display:grid;gap:12px}
+    .cliente-card{background:#fff;border:1px solid var(--linha);border-radius:20px;padding:16px;display:grid;grid-template-columns:8px 1fr auto;gap:14px;align-items:center;box-shadow:0 8px 18px rgba(15,23,42,.05)}
+    .stripe{width:8px;height:100%;border-radius:999px;background:var(--muted)}
+    .stripe.pago{background:var(--verde)}.stripe.pendente{background:var(--amarelo)}.stripe.atraso{background:var(--vermelho)}.stripe.adiantado{background:var(--azulclaro)}
+    .cliente-info h3{font-size:16px;font-weight:900;margin-bottom:4px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .cliente-info p{font-size:13px;color:var(--muted);font-weight:700;line-height:1.5}
+    .cliente-actions{display:flex;flex-direction:column;gap:8px;min-width:155px}
+    .badge{display:inline-flex;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:900}
+    .badge.verde{background:#dcfce7;color:#166534}.badge.vermelho{background:#fee2e2;color:#991b1b}
+    .badge.amarelo{background:#fef3c7;color:#92400e}.badge.azul{background:#dbeafe;color:#1d4ed8}
+    .score{display:inline-flex;align-items:center;justify-content:center;min-width:44px;height:26px;border-radius:999px;color:#fff;font-size:12px;font-weight:900;background:linear-gradient(135deg,#ef4444,#ffb100,#22c55e)}
+    .hidden{display:none}
+    .drawer-bg{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:40;display:none}
+    .drawer-bg.open{display:block}
+    .drawer{position:fixed;right:0;top:0;height:100vh;width:460px;max-width:94vw;background:#fff;z-index:50;padding:22px;transform:translateX(100%);transition:.25s;box-shadow:-20px 0 50px rgba(15,23,42,.2);overflow-y:auto}
+    .drawer.open{transform:translateX(0)}.drawer h2{font-size:22px;font-weight:900;margin-bottom:14px}
+    .form-group{margin-bottom:12px}.form-group label{display:block;font-size:12px;font-weight:900;color:var(--muted);margin-bottom:6px;text-transform:uppercase}
+    .mobile-menu{display:none}
+    #menuBg{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;z-index:20}
+    #menuBg.open{display:block}
+    @media(max-width:900px){
+      .sidebar{transform:translateX(-100%);width:270px}.sidebar.open{transform:translateX(0)}
+      .main{margin-left:0;width:100%;padding:16px}.mobile-menu{display:inline-flex}
+      .topbar{flex-direction:column}.top-actions{width:100%;display:flex}.grid-cards{grid-template-columns:repeat(2,1fr)}
+      .cliente-card{grid-template-columns:7px 1fr}.cliente-actions{grid-column:2;display:grid;grid-template-columns:1fr 1fr;min-width:0}
+    }
+    @media(max-width:560px){
+      .grid-cards{grid-template-columns:1fr}.top-actions{flex-direction:column}.primary-btn,.ghost-btn,.success-btn,.danger-btn{width:100%}
+      .cliente-actions{grid-template-columns:1fr}.drawer{width:100%;max-width:100%}
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="sidebar">
-  <div class="logo">ÍNTEGRO</div>
-  <div class="menu-item">Dashboard</div>
-  <div class="menu-item">Clientes</div>
-  <div class="menu-item">Cobranças</div>
-</div>
+  <div id="menuBg" onclick="toggleMenu(false)"></div>
 
-<div class="main">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">ÍNTEGRO</div>
 
-  <div class="topbar">
-    <h2>Dashboard Vendedor</h2>
-    <div>🔔</div>
-  </div>
+    <div class="user-card">
+      <small>Vendedor logado</small>
+      <strong id="userName">Carregando...</strong>
+      <small id="empresaNome">Empresa</small>
+      <small id="caixaInfo">Caixa: verificando...</small>
+    </div>
 
-  <div class="cards">
-    <div class="card card1">Carteira Final</div>
-    <div class="card card2">Caixa</div>
-    <div class="card card3">Recebido</div>
-    <div class="card card4">Inadimplência</div>
-  </div>
+    <div class="menu-title">Operação</div>
+    <div class="menu-item active" onclick="trocarTela('dashboard', this)">Dashboard <span>›</span></div>
+    <div class="menu-item" onclick="trocarTela('cobrancas', this)">Cobranças <span>›</span></div>
+    <div class="menu-item" onclick="trocarTela('clientes', this)">Clientes <span>›</span></div>
+    <div class="menu-item" onclick="trocarTela('vendas', this)">Nova venda <span>›</span></div>
+    <div class="menu-item" onclick="trocarTela('solicitacoes', this)">Solicitações <span>›</span></div>
 
-</div>
+    <div class="menu-title">Sistema</div>
+    <div class="menu-item" onclick="logout()">Sair <span>×</span></div>
+  </aside>
 
-<script>
-const usuario = JSON.parse(localStorage.getItem("usuario"));
+  <main class="main">
+    <div class="topbar">
+      <div>
+        <button class="icon-btn mobile-menu" onclick="toggleMenu()">☰</button>
+        <h1 id="pageTitle">Dashboard Vendedor</h1>
+        <p id="pageSubtitle">Resumo operacional do caixa e cobranças do dia.</p>
+      </div>
 
-if (!usuario || usuario.tipoUsuario !== "vendedor") {
-  alert("Acesso negado");
-  window.location.href = "index.html";
-}
-</script>
+      <div class="top-actions">
+        <button class="icon-btn" onclick="abrirDrawerInfo('Notificações')">🔔</button>
+        <button class="ghost-btn" onclick="carregarTudo()">Atualizar</button>
+        <button class="primary-btn" onclick="trocarTela('cobrancas')">Cobranças</button>
+      </div>
+    </div>
 
+    <section id="dashboard">
+      <div class="grid-cards">
+        <div class="kpi g1"><small>Carteira Final</small><strong id="kpiCarteira">R$ 0,00</strong><span>Saldo devedor ativo</span></div>
+        <div class="kpi g2"><small>Caixa Atual</small><strong id="kpiCaixa">R$ 0,00</strong><span>Saldo do caixa aberto</span></div>
+        <div class="kpi g3"><small>Recebido Hoje</small><strong id="kpiRecebido">R$ 0,00</strong><span>Pagamentos registrados</span></div>
+        <div class="kpi g4"><small>Clientes Pendentes</small><strong id="kpiPendentes">0</strong><span>Cobranças ainda não baixadas</span></div>
+      </div>
+
+      <div class="panel">
+        <div class="toolbar">
+          <input id="buscaDash" placeholder="Buscar cliente por nome, apelido ou telefone">
+          <button class="ghost-btn" onclick="filtrarClientes()">Buscar</button>
+          <button class="ghost-btn" onclick="limparBusca()">Limpar</button>
+        </div>
+        <div id="listaDashboard" class="clientes-list">Carregando clientes...</div>
+      </div>
+    </section>
+
+    <section id="cobrancas" class="hidden">
+      <div class="panel">
+        <div class="toolbar">
+          <input id="buscaCobranca" placeholder="Buscar cliente">
+          <select id="filtroStatus" onchange="filtrarClientes()">
+            <option value="todos">Todos</option>
+            <option value="pendente">Pendentes</option>
+            <option value="pago">Pagos</option>
+            <option value="atraso">Em atraso</option>
+          </select>
+          <button class="ghost-btn" onclick="filtrarClientes()">Buscar</button>
+        </div>
+        <div id="listaCobrancas" class="clientes-list">Carregando...</div>
+      </div>
+    </section>
+
+    <section id="clientes" class="hidden">
+      <div class="panel">
+        <h2>Clientes</h2>
+        <div class="toolbar">
+          <input id="buscaClientes" placeholder="Pesquisar cliente">
+          <button class="ghost-btn" onclick="filtrarClientes()">Buscar</button>
+        </div>
+        <div id="listaClientes" class="clientes-list">Carregando...</div>
+      </div>
+    </section>
+
+    <section id="vendas" class="hidden">
+      <div class="panel">
+        <h2>Nova venda</h2>
+        <p style="color:#64748b;font-weight:700;margin-bottom:14px">Selecione um cliente na lista para iniciar venda/renovação. A trava de saldo devedor será aplicada na próxima etapa.</p>
+        <div id="listaVendas" class="clientes-list">Carregando clientes...</div>
+      </div>
+    </section>
+
+    <section id="solicitacoes" class="hidden">
+      <div class="panel">
+        <h2>Solicitações financeiras</h2>
+        <button class="primary-btn" onclick="abrirSolicitacaoIngresso()">Solicitar ingresso de caixa</button>
+        <div id="listaSolicitacoes" style="margin-top:16px;color:#64748b;font-weight:700">Carregando solicitações...</div>
+      </div>
+    </section>
+  </main>
+
+  <div class="drawer-bg" id="drawerBg" onclick="fecharDrawer()"></div>
+  <aside class="drawer" id="drawer">
+    <h2 id="drawerTitle">Detalhes</h2>
+    <div id="drawerContent"></div>
+  </aside>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let usuarioLogado = null;
+    let tenantId = "";
+    let caixaAtual = null;
+    let clientesCache = [];
+    let pagamentosHoje = [];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
+
+      if (!usuarioLogado) {
+        alert("Sessão expirada. Faça login novamente.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      if (usuarioLogado.tipoUsuario !== "vendedor") {
+        alert("Acesso negado para este perfil.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      tenantId = usuarioLogado.clientePlataformaId || usuarioLogado.empresaId || usuarioLogado.tenantId || "";
+
+      document.getElementById("userName").innerText = usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "Vendedor";
+      document.getElementById("empresaNome").innerText = usuarioLogado.clientePlataformaNome || usuarioLogado.empresaNome || "Empresa";
+      await carregarTudo();
+    });
+
+    function moeda(v){return Number(v||0).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+    function hojeISO(){return new Date().toISOString().split("T")[0]}
+
+    async function carregarTudo(){
+      await carregarCaixa();
+      await Promise.all([carregarClientes(), carregarPagamentosHoje(), carregarSolicitacoes()]);
+      atualizarKPIs();
+      renderizarTudo(clientesCache);
+    }
+
+    async function carregarCaixa(){
+      try{
+        const local = JSON.parse(localStorage.getItem("caixaAtual"));
+        if(local){caixaAtual = local}
+
+        let ref = db.collection("caixas")
+          .where("usuarioId","==",usuarioLogado.id)
+          .where("status","==","ABERTO")
+          .limit(1);
+
+        const snap = await ref.get();
+
+        if(!snap.empty){
+          const doc = snap.docs[0];
+          caixaAtual = {id:doc.id,...doc.data()};
+          localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
+        }
+
+        document.getElementById("caixaInfo").innerText = caixaAtual ? "Caixa: aberto" : "Caixa: não encontrado";
+      }catch(e){
+        console.error(e);
+        document.getElementById("caixaInfo").innerText = "Caixa: erro";
+      }
+    }
+
+    async function carregarClientes(){
+      try{
+        let ref = db.collection("clientes").limit(100);
+
+        if(tenantId){
+          ref = db.collection("clientes").where("clientePlataformaId","==",tenantId).limit(100);
+        }
+
+        const snap = await ref.get();
+        clientesCache = [];
+
+        snap.forEach(doc=>{
+          const c = {id:doc.id,...doc.data()};
+          if(!c.vendedorId || c.vendedorId === usuarioLogado.id || c.usuarioId === usuarioLogado.id || !usuarioLogado.id){
+            clientesCache.push(c);
+          }
+        });
+      }catch(e){
+        console.error(e);
+        clientesCache = [];
+      }
+    }
+
+    async function carregarPagamentosHoje(){
+      try{
+        let ref = db.collection("pagamentos").where("data","==",hojeISO()).limit(100);
+
+        if(tenantId){
+          ref = db.collection("pagamentos").where("clientePlataformaId","==",tenantId).where("data","==",hojeISO()).limit(100);
+        }
+
+        const snap = await ref.get();
+        pagamentosHoje = [];
+        snap.forEach(doc=>pagamentosHoje.push({id:doc.id,...doc.data()}));
+      }catch(e){
+        console.error(e);
+        pagamentosHoje = [];
+      }
+    }
+
+    async function carregarSolicitacoes(){
+      try{
+        let ref = db.collection("solicitacoes").limit(20);
+        if(tenantId){
+          ref = db.collection("solicitacoes").where("clientePlataformaId","==",tenantId).limit(20);
+        }
+
+        const snap = await ref.get();
+        const itens = [];
+        snap.forEach(doc=>{
+          const s = doc.data();
+          if(!s.usuarioId || s.usuarioId === usuarioLogado.id){
+            itens.push(`
+              <div class="cliente-card">
+                <div class="stripe pendente"></div>
+                <div class="cliente-info">
+                  <h3>${s.tipo || "Solicitação"} ${badge(s.status || "PENDENTE","amarelo")}</h3>
+                  <p>Valor: ${moeda(s.valor || 0)} • ${s.observacao || ""}</p>
+                </div>
+              </div>
+            `);
+          }
+        });
+        document.getElementById("listaSolicitacoes").innerHTML = itens.length ? itens.join("") : "Nenhuma solicitação encontrada.";
+      }catch(e){
+        console.error(e);
+        document.getElementById("listaSolicitacoes").innerHTML = "Erro ao carregar solicitações.";
+      }
+    }
+
+    function atualizarKPIs(){
+      const carteira = clientesCache.reduce((t,c)=>t+Number(c.saldoDevedor||c.saldo||0),0);
+      const recebido = pagamentosHoje.reduce((t,p)=>t+Number(p.valor||0),0);
+      const pendentes = clientesCache.filter(c=>Number(c.saldoDevedor||c.saldo||0)>0).length;
+
+      document.getElementById("kpiCarteira").innerText = moeda(carteira);
+      document.getElementById("kpiCaixa").innerText = moeda(caixaAtual?.saldoAtual || caixaAtual?.valorAtual || caixaAtual?.saldo || 0);
+      document.getElementById("kpiRecebido").innerText = moeda(recebido);
+      document.getElementById("kpiPendentes").innerText = pendentes;
+    }
+
+    function badge(txt,tipo){
+      return `<span class="badge ${tipo||"azul"}">${txt}</span>`;
+    }
+
+    function situacaoCliente(c){
+      const saldo = Number(c.saldoDevedor||c.saldo||0);
+      const atraso = Number(c.diasAtraso||0);
+      if(saldo <= 0) return {txt:"QUITADO", cor:"pago", badge:"verde"};
+      if(atraso > 10) return {txt:"ATRASO GRAVE", cor:"atraso", badge:"vermelho"};
+      if(atraso > 0) return {txt:"EM ATRASO", cor:"atraso", badge:"amarelo"};
+      return {txt:"PENDENTE", cor:"pendente", badge:"azul"};
+    }
+
+    function cardCliente(c, contexto){
+      const s = situacaoCliente(c);
+      const nome = c.nome || c.nomeCompleto || c.apelido || "Cliente sem nome";
+      const parcela = Number(c.valorParcela || c.parcelaValor || 0);
+      const saldo = Number(c.saldoDevedor || c.saldo || 0);
+      const score = c.score ?? 50;
+
+      return `
+        <div class="cliente-card">
+          <div class="stripe ${s.cor}"></div>
+          <div class="cliente-info">
+            <h3>${nome} <span class="score">${score}</span> ${badge(s.txt,s.badge)}</h3>
+            <p>Parcela: <strong>${moeda(parcela)}</strong> • Saldo: <strong>${moeda(saldo)}</strong></p>
+            <p>Atraso: ${Number(c.diasAtraso||0)} dia(s) • Apelido: ${c.apelido || "-"}</p>
+          </div>
+          <div class="cliente-actions">
+            <button class="success-btn" onclick="abrirPagamento('${c.id}')">Registrar pagamento</button>
+            <button class="danger-btn" onclick="registrarNaoPagamento('${c.id}')">Não pagamento</button>
+            <button class="ghost-btn" onclick="abrirCliente('${c.id}')">Ver cliente</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderizarTudo(lista){
+      const html = lista.length ? lista.map(c=>cardCliente(c)).join("") : "Nenhum cliente encontrado.";
+      document.getElementById("listaDashboard").innerHTML = html;
+      document.getElementById("listaCobrancas").innerHTML = html;
+      document.getElementById("listaClientes").innerHTML = html;
+      document.getElementById("listaVendas").innerHTML = html;
+    }
+
+    function filtrarClientes(){
+      const termo = (
+        document.getElementById("buscaDash")?.value ||
+        document.getElementById("buscaCobranca")?.value ||
+        document.getElementById("buscaClientes")?.value ||
+        ""
+      ).toLowerCase();
+
+      const status = document.getElementById("filtroStatus")?.value || "todos";
+
+      let lista = clientesCache.filter(c=>{
+        const texto = `${c.nome||""} ${c.nomeCompleto||""} ${c.apelido||""} ${c.telefone||""} ${c.telefonePrincipal||""}`.toLowerCase();
+        return !termo || texto.includes(termo);
+      });
+
+      if(status !== "todos"){
+        lista = lista.filter(c=>{
+          const s = situacaoCliente(c).cor;
+          if(status === "atraso") return s === "atraso";
+          return s === status;
+        });
+      }
+
+      renderizarTudo(lista);
+    }
+
+    function limparBusca(){
+      ["buscaDash","buscaCobranca","buscaClientes"].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.value="";
+      });
+      renderizarTudo(clientesCache);
+    }
+
+    function abrirCliente(id){
+      const c = clientesCache.find(x=>x.id===id);
+      if(!c) return;
+
+      document.getElementById("drawerTitle").innerText = c.nome || c.nomeCompleto || "Cliente";
+      document.getElementById("drawerContent").innerHTML = `
+        <p style="color:#64748b;font-weight:800;line-height:1.7">
+          Apelido: ${c.apelido || "-"}<br>
+          Telefone: ${c.telefone || c.telefonePrincipal || "-"}<br>
+          Endereço: ${c.endereco || c.enderecoCompleto || "-"}<br>
+          Saldo: ${moeda(c.saldoDevedor || c.saldo || 0)}<br>
+          Parcela: ${moeda(c.valorParcela || c.parcelaValor || 0)}<br>
+          Score: ${c.score ?? "-"}
+        </p>
+      `;
+      abrirDrawer();
+    }
+
+    function abrirPagamento(id){
+      const c = clientesCache.find(x=>x.id===id);
+      if(!c) return;
+
+      const valorPadrao = Number(c.valorParcela || c.parcelaValor || 0);
+
+      document.getElementById("drawerTitle").innerText = "Registrar pagamento";
+      document.getElementById("drawerContent").innerHTML = `
+        <div class="form-group">
+          <label>Cliente</label>
+          <input value="${c.nome || c.nomeCompleto || c.apelido || ""}" disabled>
+        </div>
+        <div class="form-group">
+          <label>Valor recebido</label>
+          <input id="valorPagamento" type="number" value="${valorPadrao}" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>Observação</label>
+          <textarea id="obsPagamento" placeholder="Ex: recebeu via PIX, cliente pagou parcial..."></textarea>
+        </div>
+        <button class="success-btn" style="width:100%" onclick="salvarPagamento('${c.id}')">Confirmar pagamento</button>
+      `;
+      abrirDrawer();
+    }
+
+    async function salvarPagamento(clienteId){
+      try{
+        const c = clientesCache.find(x=>x.id===clienteId);
+        const valor = Number(document.getElementById("valorPagamento").value || 0);
+        const obs = document.getElementById("obsPagamento").value.trim();
+
+        if(valor <= 0){ alert("Informe um valor válido."); return; }
+
+        const saldoAtual = Number(c.saldoDevedor || c.saldo || 0);
+        if(valor > saldoAtual && saldoAtual > 0){
+          alert("Pagamento não pode ser maior que o saldo devedor.");
+          return;
+        }
+
+        await db.collection("pagamentos").add({
+          clienteId,
+          clienteNome: c.nome || c.nomeCompleto || c.apelido || "",
+          usuarioId: usuarioLogado.id,
+          vendedorNome: usuarioLogado.nome || usuarioLogado.email || "",
+          caixaId: caixaAtual?.id || "",
+          clientePlataformaId: tenantId,
+          valor,
+          observacao: obs,
+          data: hojeISO(),
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        const novoSaldo = Math.max(0, saldoAtual - valor);
+
+        await db.collection("clientes").doc(clienteId).update({
+          saldoDevedor: novoSaldo,
+          saldo: novoSaldo,
+          diasAtraso: 0,
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        if(caixaAtual?.id){
+          const saldoCaixa = Number(caixaAtual.saldoAtual || caixaAtual.valorAtual || caixaAtual.saldo || 0) + valor;
+          await db.collection("caixas").doc(caixaAtual.id).update({
+            saldoAtual: saldoCaixa,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          caixaAtual.saldoAtual = saldoCaixa;
+          localStorage.setItem("caixaAtual", JSON.stringify(caixaAtual));
+        }
+
+        alert("Pagamento registrado com sucesso.");
+        fecharDrawer();
+        await carregarTudo();
+
+      }catch(e){
+        console.error(e);
+        alert("Erro ao registrar pagamento.");
+      }
+    }
+
+    async function registrarNaoPagamento(clienteId){
+      try{
+        const c = clientesCache.find(x=>x.id===clienteId);
+        if(!c) return;
+
+        await db.collection("clientes").doc(clienteId).update({
+          diasAtraso: Number(c.diasAtraso || 0) + 1,
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await db.collection("logs").add({
+          tipo:"NAO_PAGAMENTO",
+          clienteId,
+          clienteNome:c.nome || c.nomeCompleto || c.apelido || "",
+          usuarioId:usuarioLogado.id,
+          clientePlataformaId:tenantId,
+          criadoEm:firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert("Não pagamento registrado.");
+        await carregarTudo();
+      }catch(e){
+        console.error(e);
+        alert("Erro ao registrar não pagamento.");
+      }
+    }
+
+    function abrirSolicitacaoIngresso(){
+      document.getElementById("drawerTitle").innerText = "Solicitar ingresso de caixa";
+      document.getElementById("drawerContent").innerHTML = `
+        <div class="form-group">
+          <label>Valor solicitado</label>
+          <input id="valorIngresso" type="number" step="0.01" placeholder="0,00">
+        </div>
+        <div class="form-group">
+          <label>Observação</label>
+          <textarea id="obsIngresso" placeholder="Explique o motivo da solicitação"></textarea>
+        </div>
+        <button class="primary-btn" style="width:100%" onclick="salvarSolicitacaoIngresso()">Enviar solicitação</button>
+      `;
+      abrirDrawer();
+    }
+
+    async function salvarSolicitacaoIngresso(){
+      try{
+        const valor = Number(document.getElementById("valorIngresso").value || 0);
+        const obs = document.getElementById("obsIngresso").value.trim();
+
+        if(valor <= 0){ alert("Informe um valor válido."); return; }
+
+        await db.collection("solicitacoes").add({
+          tipo:"INGRESSO",
+          status:"PENDENTE",
+          valor,
+          observacao:obs,
+          usuarioId:usuarioLogado.id,
+          usuarioNome:usuarioLogado.nome || usuarioLogado.email || "",
+          caixaId:caixaAtual?.id || "",
+          clientePlataformaId:tenantId,
+          criadoEm:firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert("Solicitação enviada.");
+        fecharDrawer();
+        carregarSolicitacoes();
+      }catch(e){
+        console.error(e);
+        alert("Erro ao enviar solicitação.");
+      }
+    }
+
+    function trocarTela(id, el){
+      document.querySelectorAll("main section").forEach(sec=>sec.classList.add("hidden"));
+      document.getElementById(id).classList.remove("hidden");
+      document.querySelectorAll(".menu-item").forEach(i=>i.classList.remove("active"));
+      if(el) el.classList.add("active");
+
+      const titulos = {
+        dashboard:["Dashboard Vendedor","Resumo operacional do caixa e cobranças do dia."],
+        cobrancas:["Cobranças","Baixe pagamentos e registre não pagamento."],
+        clientes:["Clientes","Consulte sua carteira de clientes."],
+        vendas:["Nova venda","Inicie venda ou renovação para um cliente."],
+        solicitacoes:["Solicitações","Solicite ingresso de caixa e acompanhe retornos."]
+      };
+
+      document.getElementById("pageTitle").innerText = titulos[id][0];
+      document.getElementById("pageSubtitle").innerText = titulos[id][1];
+
+      if(window.innerWidth <= 900) toggleMenu(false);
+    }
+
+    function abrirDrawer(){document.getElementById("drawerBg").classList.add("open");document.getElementById("drawer").classList.add("open")}
+    function fecharDrawer(){document.getElementById("drawerBg").classList.remove("open");document.getElementById("drawer").classList.remove("open")}
+    function abrirDrawerInfo(titulo){
+      document.getElementById("drawerTitle").innerText = titulo;
+      document.getElementById("drawerContent").innerHTML = `<p style="color:#64748b;font-weight:800;line-height:1.7">Área de ${titulo} preparada para notificações do sistema.</p>`;
+      abrirDrawer();
+    }
+
+    function toggleMenu(force){
+      const sidebar=document.getElementById("sidebar");
+      const bg=document.getElementById("menuBg");
+      if(force===false){sidebar.classList.remove("open");bg.classList.remove("open");return}
+      sidebar.classList.toggle("open");
+      bg.classList.toggle("open", sidebar.classList.contains("open"));
+    }
+
+    function logout(){
+      firebase.auth().signOut().finally(()=>{
+        localStorage.removeItem("usuario");
+        localStorage.removeItem("caixaAtual");
+        window.location.href="index.html";
+      });
+    }
+  </script>
 </body>
 </html>
