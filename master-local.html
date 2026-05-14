@@ -1322,25 +1322,54 @@
 
     function atualizarKPIs() {
 
-      const carteira = clientesCache.reduce((total, c) => {
-        return total + Number(c.saldoDevedor || c.saldo || 0);
-      }, 0);
+  const hoje = hojeISO();
 
-      const caixasAbertos = caixasCache.filter(c =>
-        statusTxt(c.status) === "ABERTO"
-      ).length;
+  const carteira = clientesCache.reduce((total, c) => {
+    return total + Number(c.saldoDevedor || c.saldo || 0);
+  }, 0);
 
-      document.getElementById("kpiCarteira").innerText = moeda(carteira);
+  const clientesAtivos = clientesCache.filter(c => {
+    const status = statusTxt(c.status);
+    return status === "ATIVO" || status === "ATIVA" || Number(c.saldoDevedor || 0) > 1;
+  }).length;
 
-      document.getElementById("kpiClientes").innerText =
-        clientesCache.length;
+  const inadimplencia = clientesCache.reduce((total, c) => {
+    const atraso = Number(c.diasAtraso || 0);
+    const saldo = Number(c.saldoDevedor || c.saldo || 0);
 
-      document.getElementById("kpiUsuarios").innerText =
-        usuariosCache.length;
-
-      document.getElementById("kpiCaixas").innerText =
-        caixasAbertos;
+    if (atraso >= 10 || statusTxt(c.status).includes("INAD")) {
+      return total + saldo;
     }
+
+    return total;
+  }, 0);
+
+  const caixasAbertos = caixasCache.filter(c =>
+    statusTxt(c.status) === "ABERTO"
+  ).length;
+
+  const vendasHoje = vendasCache.filter(v => {
+    const data = v.data || v.dataVenda || v.criadoEmTexto || "";
+    return String(data).includes(hoje);
+  }).length;
+
+  const solicitacoesPendentes = solicitacoesCache.filter(s =>
+    statusTxt(s.status) === "PENDENTE"
+  ).length;
+
+  const recebidoHoje = pagamentosHojeCache
+    ? pagamentosHojeCache.reduce((total, p) => total + Number(p.valor || 0), 0)
+    : 0;
+
+  document.getElementById("kpiCarteira").innerText = moeda(carteira);
+  document.getElementById("kpiRecebidoHoje").innerText = moeda(recebidoHoje);
+  document.getElementById("kpiClientes").innerText = clientesAtivos;
+  document.getElementById("kpiInadimplencia").innerText = moeda(inadimplencia);
+  document.getElementById("kpiCaixas").innerText = caixasAbertos;
+  document.getElementById("kpiUsuarios").innerText = usuariosCache.length;
+  document.getElementById("kpiVendasHoje").innerText = vendasHoje;
+  document.getElementById("kpiSolicitacoes").innerText = solicitacoesPendentes;
+}
 
     // ================= DASHBOARD =================
 
