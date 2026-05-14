@@ -454,3 +454,36 @@
 
   </style>
 </head>
+
+<body>
+
+  <!-- OVERLAY MENU MOBILE -->
+  <div id="menuBg" onclick="toggleMenu(false)"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+
+    <div class="brand">ÍNTEGRO</div>
+
+    <div class="user-box">
+      <small>Usuário logado</small>
+      <strong id="userNome">Carregando...</strong>
+      <small id="empresaNome">Empresa</small>
+      <span class="badge-master">MASTER LOCAL</span>
+    </div>
+
+    <div class="menu-title">Gestão</div>
+
+    <div class="menu-item active" onclick="trocarTela('dashboard', this)">
+      Dashboard <span>›</span>
+    </div>
+
+    <div class="menu-item" onclick="trocarTela('usuarios', this)">
+      Usuários <span>›</span>
+    </div>
+
+    <div class="menu-item" onclick="trocarTela('clientes', this)">
+      Clientes <span>›</span>
+    </div>
+
+    <div class="menu-item" onclick="trocarTela('
