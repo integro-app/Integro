@@ -539,36 +539,303 @@
     <!-- DASHBOARD -->
     <section id="dashboard">
 
-      <div class="cards">
+  <!-- KPI PRINCIPAL -->
+  <div class="cards">
 
-        <div class="card orange">
-          <small>Carteira Final</small>
-          <strong id="kpiCarteira">R$ 0,00</strong>
-        </div>
+    <div class="card orange">
+      <small>Carteira Final</small>
+      <strong id="kpiCarteira">R$ 0,00</strong>
+      <small style="margin-top:10px;">
+        Total da carteira operacional
+      </small>
+    </div>
 
-        <div class="card blue">
-          <small>Clientes</small>
-          <strong id="kpiClientes">0</strong>
-        </div>
+    <div class="card blue">
+      <small>Recebido Hoje</small>
+      <strong id="kpiRecebidoHoje">R$ 0,00</strong>
+      <small style="margin-top:10px;">
+        Recebimentos do dia
+      </small>
+    </div>
 
-        <div class="card green">
-          <small>Usuários</small>
-          <strong id="kpiUsuarios">0</strong>
-        </div>
+    <div class="card green">
+      <small>Clientes Ativos</small>
+      <strong id="kpiClientes">0</strong>
+      <small style="margin-top:10px;">
+        Base operacional
+      </small>
+    </div>
 
-        <div class="card purple">
-          <small>Caixas Abertos</small>
-          <strong id="kpiCaixas">0</strong>
-        </div>
+    <div class="card purple">
+      <small>Inadimplência</small>
+      <strong id="kpiInadimplencia">R$ 0,00</strong>
+      <small style="margin-top:10px;">
+        Carteira em atraso
+      </small>
+    </div>
 
-      </div>
+  </div>
 
+  <!-- SEGUNDA LINHA -->
+  <div class="cards">
+
+    <div class="card blue">
+      <small>Caixas Abertos</small>
+      <strong id="kpiCaixas">0</strong>
+    </div>
+
+    <div class="card green">
+      <small>Usuários</small>
+      <strong id="kpiUsuarios">0</strong>
+    </div>
+
+    <div class="card orange">
+      <small>Vendas Hoje</small>
+      <strong id="kpiVendasHoje">0</strong>
+    </div>
+
+    <div class="card purple">
+      <small>Solicitações</small>
+      <strong id="kpiSolicitacoes">0</strong>
+    </div>
+
+  </div>
+
+  <!-- GRID EXECUTIVO -->
+  <div style="
+    display:grid;
+    grid-template-columns:1.4fr .9fr;
+    gap:18px;
+    margin-top:18px;
+  " id="gridExecutivo">
+
+    <!-- ESQUERDA -->
+    <div style="display:grid;gap:18px;">
+
+      <!-- PERFORMANCE -->
       <div class="panel">
-        <div class="panel-title">Resumo operacional</div>
-        <div id="dashboardResumo" class="list"></div>
+
+        <div style="
+          display:flex;
+          justify-content:space-between;
+          align-items:center;
+          margin-bottom:18px;
+          flex-wrap:wrap;
+          gap:10px;
+        ">
+
+          <div>
+            <div class="panel-title">
+              Performance operacional
+            </div>
+
+            <small style="
+              color:#64748b;
+              font-weight:700;
+            ">
+              Resumo geral da operação
+            </small>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+
+            <button class="ghost-btn">
+              Hoje
+            </button>
+
+            <button class="ghost-btn">
+              7 dias
+            </button>
+
+            <button class="ghost-btn">
+              30 dias
+            </button>
+
+          </div>
+
+        </div>
+
+        <!-- GRÁFICO FAKE INICIAL -->
+        <div style="
+          height:260px;
+          border-radius:22px;
+          background:
+            linear-gradient(
+              180deg,
+              rgba(14,165,233,.08),
+              rgba(14,165,233,.02)
+            );
+          border:1px solid #e2e8f0;
+          display:flex;
+          align-items:flex-end;
+          justify-content:space-around;
+          padding:25px;
+          gap:12px;
+        ">
+
+          <div style="width:40px;height:35%;background:#0ea5e9;border-radius:12px 12px 0 0;"></div>
+          <div style="width:40px;height:58%;background:#22c55e;border-radius:12px 12px 0 0;"></div>
+          <div style="width:40px;height:42%;background:#ffb100;border-radius:12px 12px 0 0;"></div>
+          <div style="width:40px;height:78%;background:#7c3aed;border-radius:12px 12px 0 0;"></div>
+          <div style="width:40px;height:62%;background:#0ea5e9;border-radius:12px 12px 0 0;"></div>
+          <div style="width:40px;height:82%;background:#22c55e;border-radius:12px 12px 0 0;"></div>
+
+        </div>
+
       </div>
 
-    </section>
+      <!-- MOVIMENTAÇÃO -->
+      <div class="panel">
+
+        <div class="panel-title">
+          Movimentações recentes
+        </div>
+
+        <div id="movimentacoesRecentes" class="list">
+
+          <div class="list-item">
+            <div>
+              <strong>Nova venda registrada</strong>
+              <small>João Vendedor • R$ 450,00</small>
+            </div>
+
+            <small style="font-weight:800;color:#64748b;">
+              agora
+            </small>
+          </div>
+
+          <div class="list-item">
+            <div>
+              <strong>Solicitação aprovada</strong>
+              <small>Ingresso de caixa • R$ 1.000,00</small>
+            </div>
+
+            <small style="font-weight:800;color:#64748b;">
+              5 min
+            </small>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- DIREITA -->
+    <div style="display:grid;gap:18px;">
+
+      <!-- RANKING -->
+      <div class="panel">
+
+        <div class="panel-title">
+          Ranking vendedores
+        </div>
+
+        <div id="rankingVendedores" class="list">
+
+          <div class="list-item">
+            <div>
+              <strong>João Silva</strong>
+              <small>R$ 12.450,00 vendidos</small>
+            </div>
+
+            <strong style="color:#22c55e;">
+              ↑
+            </strong>
+          </div>
+
+          <div class="list-item">
+            <div>
+              <strong>Marcos Lima</strong>
+              <small>R$ 9.820,00 vendidos</small>
+            </div>
+
+            <strong style="color:#0ea5e9;">
+              ↑
+            </strong>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ALERTAS -->
+      <div class="panel">
+
+        <div class="panel-title">
+          Alertas operacionais
+        </div>
+
+        <div class="list">
+
+          <div class="list-item">
+            <div>
+              <strong style="color:#ef4444;">
+                12 clientes em atraso grave
+              </strong>
+
+              <small>
+                Acima de 10 dias
+              </small>
+            </div>
+          </div>
+
+          <div class="list-item">
+            <div>
+              <strong style="color:#f59e0b;">
+                3 caixas negativos
+              </strong>
+
+              <small>
+                Requer atenção
+              </small>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- COMPROMISSOS -->
+      <div class="panel">
+
+        <div class="panel-title">
+          Compromissos financeiros
+        </div>
+
+        <div class="list">
+
+          <div class="list-item">
+            <div>
+              <strong>Aluguel Matriz</strong>
+              <small>Vence hoje</small>
+            </div>
+
+            <strong style="color:#ef4444;">
+              R$ 3.500
+            </strong>
+          </div>
+
+          <div class="list-item">
+            <div>
+              <strong>Internet</strong>
+              <small>Vence amanhã</small>
+            </div>
+
+            <strong style="color:#0ea5e9;">
+              R$ 280
+            </strong>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</section>
 
     <!-- USUÁRIOS -->
     <section id="usuarios" class="hidden">
