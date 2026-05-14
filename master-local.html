@@ -1057,3 +1057,492 @@ async function excluirCargo(id) {
     alert("Erro ao excluir cargo.");
   }
 }
+
+// ================= EQUIPES / UNIDADES =================
+function renderEquipes() {
+  const html = `
+    <div class="item">
+      <div>
+        <strong>Equipes / Unidades</strong><br>
+        <small>Organize vendedores, supervisores e operações por equipe ou filial.</small>
+      </div>
+      <button class="btn btn-primary" onclick="abrirNovaEquipe()">Nova equipe</button>
+    </div>
+    ${
+      equipesCache.length
+        ? equipesCache.map(e => `
+          <div class="item">
+            <div>
+              <strong>${e.nome || "Equipe sem nome"}</strong><br>
+              <small>${e.descricao || "Sem descrição"}</small><br>
+              <small>Status: ${e.status || "ATIVA"}</small>
+            </div>
+            <div>
+              <button class="btn btn-ghost" onclick="abrirEditarEquipe('${e.id}')">Editar</button>
+              <button class="btn btn-danger" onclick="excluirEquipe('${e.id}')">Excluir</button>
+            </div>
+          </div>
+        `).join("")
+        : `<div class="item"><strong>Nenhuma equipe cadastrada.</strong></div>`
+    }
+  `;
+
+  document.getElementById("listaEquipes").innerHTML = html;
+}
+
+function abrirNovaEquipe() {
+  abrirDrawer("Nova equipe", formularioEquipe());
+}
+
+function abrirEditarEquipe(id) {
+  const equipe = equipesCache.find(e => e.id === id);
+  if (!equipe) return;
+
+  abrirDrawer("Editar equipe", formularioEquipe(equipe));
+}
+
+function formularioEquipe(e = null) {
+  return `
+    <input id="equipeNome" placeholder="Nome da equipe/unidade" value="${e?.nome || ""}">
+    <input id="equipeDescricao" placeholder="Descrição" value="${e?.descricao || ""}">
+
+    <select id="equipeStatus">
+      <option value="ATIVA" ${e?.status === "ATIVA" ? "selected" : ""}>ATIVA</option>
+      <option value="INATIVA" ${e?.status === "INATIVA" ? "selected" : ""}>INATIVA</option>
+    </select>
+
+    <button class="btn btn-primary" onclick="${e ? `salvarEquipe('${e.id}')` : "salvarEquipe()"}">
+      Salvar equipe
+    </button>
+  `;
+}
+
+async function salvarEquipe(id = null) {
+  try {
+    const nome = document.getElementById("equipeNome").value.trim();
+    const descricao = document.getElementById("equipeDescricao").value.trim();
+    const status = document.getElementById("equipeStatus").value;
+
+    if (!nome) {
+      alert("Informe o nome da equipe.");
+      return;
+    }
+
+    const dados = {
+      nome,
+      descricao,
+      status,
+      clientePlataformaId: tenantId,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (id) {
+      await db.collection("equipes").doc(id).update(dados);
+      await gravarLog("EDICAO_EQUIPE", { equipeId: id, equipeNome: nome });
+      alert("Equipe atualizada.");
+    } else {
+      await db.collection("equipes").add({
+        ...dados,
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        criadoPorUid: usuarioLogado.authUid || "",
+        criadoPorNome: usuarioLogado.nome || usuarioLogado.email || ""
+      });
+
+      await gravarLog("CRIACAO_EQUIPE", { equipeNome: nome });
+      alert("Equipe criada.");
+    }
+
+    fecharDrawer();
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro salvar equipe:", e);
+    alert("Erro ao salvar equipe.");
+  }
+}
+
+async function excluirEquipe(id) {
+  try {
+    const emUso = usuariosCache.some(u => u.equipeId === id);
+
+    if (emUso) {
+      alert("Não é possível excluir equipe vinculada a usuário.");
+      return;
+    }
+
+    if (!confirm("Deseja excluir esta equipe?")) return;
+
+    const equipe = equipesCache.find(e => e.id === id);
+
+    await db.collection("equipes").doc(id).delete();
+
+    await gravarLog("EXCLUSAO_EQUIPE", {
+      equipeId: id,
+      equipeNome: equipe?.nome || ""
+    });
+
+    alert("Equipe excluída.");
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro excluir equipe:", e);
+    alert("Erro ao excluir equipe.");
+  }
+}
+
+// ================= CAIXAS =================
+function renderCaixas() {
+  const vendedores = usuariosCache.filter(u => u.tipoUsuario === "vendedor");
+
+  const html = `
+    <div class="item">
+      <div>
+        <strong>Gestão de caixas</strong><br>
+        <small>Abra, acompanhe, feche ou reabra caixas dos vendedores.</small>
+      </div>
+      <button class="btn btn-primary" onclick="abrirNovoCaixa()">Abrir caixa</button>
+    </div>
+    ${
+      caixasCache.length
+        ? caixasCache.map(c => `
+          <div class="item">
+            <div>
+              <strong>${c.usuarioNome || c.vendedorNome || "Vendedor"}</strong><br>
+              <small>Status: ${c.status || "-"}</small><br>
+              <small>Saldo atual: ${moeda(c.saldoAtual || c.valorAtual || c.saldo || 0)}</small><br>
+              <small>Data: ${c.data || "-"}</small>
+            </div>
+            <div>
+              ${
+                statusTxt(c.status) === "ABERTO"
+                  ? `<button class="btn btn-danger" onclick="fecharCaixa('${c.id}')">Fechar</button>`
+                  : `<button class="btn btn-primary" onclick="reabrirCaixa('${c.id}')">Reabrir</button>`
+              }
+            </div>
+          </div>
+        `).join("")
+        : `<div class="item"><strong>Nenhum caixa encontrado.</strong></div>`
+    }
+  `;
+
+  document.getElementById("listaCaixas").innerHTML = html;
+}
+
+function abrirNovoCaixa() {
+  const vendedores = usuariosCache.filter(u => u.tipoUsuario === "vendedor");
+
+  const options = vendedores.length
+    ? vendedores.map(v => `<option value="${v.id}">${v.nome || v.email}</option>`).join("")
+    : `<option value="">Nenhum vendedor cadastrado</option>`;
+
+  abrirDrawer("Abrir caixa", `
+    <select id="caixaVendedorId">
+      ${options}
+    </select>
+
+    <input id="caixaValorInicial" type="number" step="0.01" placeholder="Valor inicial">
+
+    <button class="btn btn-primary" onclick="salvarAberturaCaixa()">Abrir caixa</button>
+  `);
+}
+
+async function salvarAberturaCaixa() {
+  try {
+    const vendedorId = document.getElementById("caixaVendedorId").value;
+    const valorInicial = Number(document.getElementById("caixaValorInicial").value || 0);
+
+    if (!vendedorId) {
+      alert("Selecione um vendedor.");
+      return;
+    }
+
+    const vendedor = usuariosCache.find(u => u.id === vendedorId);
+
+    const caixaAberto = caixasCache.find(c =>
+      c.usuarioId === vendedorId &&
+      statusTxt(c.status) === "ABERTO"
+    );
+
+    if (caixaAberto) {
+      alert("Este vendedor já possui caixa aberto.");
+      return;
+    }
+
+    await db.collection("caixas").add({
+      usuarioId: vendedorId,
+      usuarioNome: vendedor?.nome || vendedor?.email || "",
+      vendedorId,
+      vendedorNome: vendedor?.nome || vendedor?.email || "",
+
+      status: "ABERTO",
+      ativo: true,
+      data: hojeISO(),
+
+      valorInicial,
+      saldoInicial: valorInicial,
+      saldoAtual: valorInicial,
+
+      clientePlataformaId: tenantId,
+
+      abertoPorUid: usuarioLogado.authUid || "",
+      abertoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await gravarLog("ABERTURA_CAIXA", {
+      vendedorId,
+      vendedorNome: vendedor?.nome || vendedor?.email || "",
+      valorInicial
+    });
+
+    alert("Caixa aberto com sucesso.");
+    fecharDrawer();
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro abrir caixa:", e);
+    alert("Erro ao abrir caixa.");
+  }
+}
+
+async function fecharCaixa(id) {
+  try {
+    const caixa = caixasCache.find(c => c.id === id);
+    if (!caixa) return;
+
+    if (!confirm("Deseja fechar este caixa?")) return;
+
+    await db.collection("caixas").doc(id).update({
+      status: "FECHADO",
+      ativo: false,
+      fechadoPorUid: usuarioLogado.authUid || "",
+      fechadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      fechadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await gravarLog("FECHAMENTO_CAIXA", {
+      caixaId: id,
+      vendedorId: caixa.usuarioId || caixa.vendedorId || "",
+      saldoFinal: Number(caixa.saldoAtual || 0)
+    });
+
+    alert("Caixa fechado.");
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro fechar caixa:", e);
+    alert("Erro ao fechar caixa.");
+  }
+}
+
+async function reabrirCaixa(id) {
+  try {
+    const caixa = caixasCache.find(c => c.id === id);
+    if (!caixa) return;
+
+    if (!confirm("Reabrir este caixa?")) return;
+
+    await db.collection("caixas").doc(id).update({
+      status: "ABERTO",
+      ativo: true,
+      reabertoPorUid: usuarioLogado.authUid || "",
+      reabertoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      reabertoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await gravarLog("REABERTURA_CAIXA", {
+      caixaId: id,
+      vendedorId: caixa.usuarioId || caixa.vendedorId || ""
+    });
+
+    alert("Caixa reaberto.");
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro reabrir caixa:", e);
+    alert("Erro ao reabrir caixa.");
+  }
+}
+
+// ================= SOLICITAÇÕES =================
+function renderSolicitacoes() {
+  const html = solicitacoesCache.length
+    ? solicitacoesCache.map(s => `
+      <div class="item">
+        <div>
+          <strong>${s.tipo || "Solicitação"}</strong><br>
+          <small>Status: ${s.status || "PENDENTE"}</small><br>
+          <small>Valor: ${moeda(s.valor || 0)}</small><br>
+          <small>Usuário: ${s.usuarioNome || "-"}</small>
+        </div>
+        <div>
+          ${
+            statusTxt(s.status) === "PENDENTE"
+              ? `
+                <button class="btn btn-primary" onclick="aprovarSolicitacao('${s.id}')">Aprovar</button>
+                <button class="btn btn-danger" onclick="recusarSolicitacao('${s.id}')">Recusar</button>
+              `
+              : `<button class="btn btn-ghost" onclick="verSolicitacao('${s.id}')">Ver</button>`
+          }
+        </div>
+      </div>
+    `).join("")
+    : `<div class="item"><strong>Nenhuma solicitação encontrada.</strong></div>`;
+
+  document.getElementById("listaSolicitacoes").innerHTML = html;
+}
+
+function verSolicitacao(id) {
+  const s = solicitacoesCache.find(x => x.id === id);
+  if (!s) return;
+
+  abrirDrawer("Solicitação", `
+    <p><strong>Tipo:</strong> ${s.tipo || "-"}</p>
+    <p><strong>Status:</strong> ${s.status || "-"}</p>
+    <p><strong>Valor:</strong> ${moeda(s.valor || 0)}</p>
+    <p><strong>Usuário:</strong> ${s.usuarioNome || "-"}</p>
+    <p><strong>Observação:</strong> ${s.observacao || "-"}</p>
+  `);
+}
+
+async function aprovarSolicitacao(id) {
+  try {
+    const s = solicitacoesCache.find(x => x.id === id);
+    if (!s) return;
+
+    if (!confirm("Aprovar esta solicitação?")) return;
+
+    await db.collection("solicitacoes").doc(id).update({
+      status: "APROVADA",
+      aprovadoPorUid: usuarioLogado.authUid || "",
+      aprovadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      aprovadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    if (s.tipo === "INGRESSO" && s.caixaId) {
+      const caixaRef = db.collection("caixas").doc(s.caixaId);
+      const caixaSnap = await caixaRef.get();
+
+      if (caixaSnap.exists) {
+        const caixa = caixaSnap.data();
+        const saldoAtual = Number(caixa.saldoAtual || caixa.valorAtual || caixa.saldo || 0);
+        const novoSaldo = saldoAtual + Number(s.valor || 0);
+
+        await caixaRef.update({
+          saldoAtual: novoSaldo,
+          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await db.collection("movcaixa").add({
+          tipo: "ENTRADA",
+          origem: "INGRESSO_APROVADO",
+          valor: Number(s.valor || 0),
+          caixaId: s.caixaId,
+          solicitacaoId: id,
+          usuarioId: s.usuarioId || "",
+          usuarioNome: s.usuarioNome || "",
+          clientePlataformaId: tenantId,
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+    }
+
+    await gravarLog("APROVACAO_SOLICITACAO", {
+      solicitacaoId: id,
+      tipoSolicitacao: s.tipo || "",
+      valor: Number(s.valor || 0)
+    });
+
+    alert("Solicitação aprovada.");
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro aprovar solicitação:", e);
+    alert("Erro ao aprovar solicitação.");
+  }
+}
+
+async function recusarSolicitacao(id) {
+  try {
+    const s = solicitacoesCache.find(x => x.id === id);
+    if (!s) return;
+
+    if (!confirm("Recusar esta solicitação?")) return;
+
+    await db.collection("solicitacoes").doc(id).update({
+      status: "RECUSADA",
+      recusadoPorUid: usuarioLogado.authUid || "",
+      recusadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+      recusadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await gravarLog("RECUSA_SOLICITACAO", {
+      solicitacaoId: id,
+      tipoSolicitacao: s.tipo || "",
+      valor: Number(s.valor || 0)
+    });
+
+    alert("Solicitação recusada.");
+    await carregarTudo();
+
+  } catch (e) {
+    console.error("Erro recusar solicitação:", e);
+    alert("Erro ao recusar solicitação.");
+  }
+}
+
+// ================= LOGS / AUDITORIA =================
+function renderLogs() {
+  const html = logsCache.length
+    ? logsCache.map(l => `
+      <div class="item">
+        <div>
+          <strong>${l.tipo || "AÇÃO"}</strong><br>
+          <small>Usuário: ${l.usuarioNome || l.criadoPorNome || "-"}</small><br>
+          <small>Referência: ${l.usuarioAlvoEmail || l.emailCriado || l.clienteNome || l.cargoNome || l.equipeNome || "-"}</small>
+        </div>
+        <div>
+          <button class="btn btn-ghost" onclick="verLog('${l.id}')">Ver</button>
+        </div>
+      </div>
+    `).join("")
+    : `<div class="item"><strong>Nenhum log encontrado.</strong></div>`;
+
+  document.getElementById("listaLogs").innerHTML = html;
+}
+
+function verLog(id) {
+  const l = logsCache.find(x => x.id === id);
+  if (!l) return;
+
+  abrirDrawer("Detalhe do log", `
+    <p><strong>Tipo:</strong> ${l.tipo || "-"}</p>
+    <p><strong>Usuário:</strong> ${l.usuarioNome || l.criadoPorNome || "-"}</p>
+    <p><strong>Email alvo:</strong> ${l.usuarioAlvoEmail || l.emailCriado || "-"}</p>
+    <p><strong>Cliente:</strong> ${l.clienteNome || "-"}</p>
+    <p><strong>Cargo:</strong> ${l.cargoNome || "-"}</p>
+    <p><strong>Equipe:</strong> ${l.equipeNome || "-"}</p>
+    <p><strong>Valor:</strong> ${l.valor ? moeda(l.valor) : "-"}</p>
+    <p><strong>Tenant:</strong> ${l.clientePlataformaId || "-"}</p>
+  `);
+}
+
+// ================= LOGOUT =================
+function logout() {
+  firebase.auth().signOut().finally(() => {
+    localStorage.removeItem("usuario");
+    localStorage.removeItem("caixaAtual");
+    window.location.href = "index.html";
+  });
+}
+
+// ================= DEBUG =================
+window.addEventListener("error", function(e) {
+  console.error("ERRO JS:", e.message, "Linha:", e.lineno);
+  alert("Erro JS: " + e.message + "\nLinha: " + e.lineno);
+});
+</script>
+
+</body>
+</html>
