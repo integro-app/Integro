@@ -486,4 +486,205 @@
       Clientes <span>›</span>
     </div>
 
-    <div class="menu-item" onclick="trocarTela('
+    <div class="menu-item" onclick="trocarTela('cargos', this)">
+      Cargos e permissões <span>›</span>
+    </div>
+
+    <div class="menu-item" onclick="trocarTela('equipes', this)">
+      Equipes / Unidades <span>›</span>
+    </div>
+
+    <div class="menu-item" onclick="trocarTela('caixas', this)">
+      Caixas <span>›</span>
+    </div>
+
+    <div class="menu-item" onclick="trocarTela('solicitacoes', this)">
+      Solicitações <span>›</span>
+    </div>
+
+    <div class="menu-item" onclick="trocarTela('logs', this)">
+      Auditoria <span>›</span>
+    </div>
+
+    <div class="menu-title">Sistema</div>
+
+    <div class="menu-item" onclick="logout()">
+      Sair <span>×</span>
+    </div>
+
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- TOPBAR -->
+    <div class="topbar">
+
+      <div class="top-left">
+        <button class="mobile-btn" onclick="toggleMenu()">☰</button>
+
+        <div>
+          <h1 id="pageTitle">Dashboard Master Local</h1>
+          <p id="pageSubtitle">Visão geral da empresa em tempo real.</p>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="ghost-btn" onclick="carregarTudo()">Atualizar</button>
+        <button class="primary-btn" onclick="abrirNovoUsuario()">Novo usuário</button>
+      </div>
+
+    </div>
+
+    <!-- DASHBOARD -->
+    <section id="dashboard">
+
+      <div class="cards">
+
+        <div class="card orange">
+          <small>Carteira Final</small>
+          <strong id="kpiCarteira">R$ 0,00</strong>
+        </div>
+
+        <div class="card blue">
+          <small>Clientes</small>
+          <strong id="kpiClientes">0</strong>
+        </div>
+
+        <div class="card green">
+          <small>Usuários</small>
+          <strong id="kpiUsuarios">0</strong>
+        </div>
+
+        <div class="card purple">
+          <small>Caixas Abertos</small>
+          <strong id="kpiCaixas">0</strong>
+        </div>
+
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">Resumo operacional</div>
+        <div id="dashboardResumo" class="list"></div>
+      </div>
+
+    </section>
+
+    <!-- USUÁRIOS -->
+    <section id="usuarios" class="hidden">
+
+      <div class="panel">
+
+        <div class="panel-title">Usuários</div>
+
+        <div class="top-actions" style="margin-bottom:16px;">
+          <button class="primary-btn" onclick="abrirNovoUsuario()">Novo usuário</button>
+        </div>
+
+        <div id="listaUsuarios" class="list"></div>
+
+      </div>
+
+    </section>
+
+    <!-- CLIENTES -->
+    <section id="clientes" class="hidden">
+
+      <div class="panel">
+
+        <div class="panel-title">Clientes</div>
+
+        <input id="buscaClientes" placeholder="Buscar cliente por nome, telefone ou documento" oninput="renderClientes()">
+
+        <div id="listaClientes" class="list"></div>
+
+      </div>
+
+    </section>
+
+    <!-- CARGOS -->
+    <section id="cargos" class="hidden">
+
+      <div class="panel">
+
+        <div class="panel-title">Cargos e permissões</div>
+
+        <div class="top-actions" style="margin-bottom:16px;">
+          <button class="primary-btn" onclick="abrirNovoCargo()">Novo cargo</button>
+        </div>
+
+        <div id="listaCargos" class="list"></div>
+
+      </div>
+
+    </section>
+
+    <!-- EQUIPES -->
+    <section id="equipes" class="hidden">
+
+      <div class="panel">
+
+        <div class="panel-title">Equipes / Unidades</div>
+
+        <div class="top-actions" style="margin-bottom:16px;">
+          <button class="primary-btn" onclick="abrirNovaEquipe()">Nova equipe</button>
+        </div>
+
+        <div id="listaEquipes" class="list"></div>
+
+      </div>
+
+    </section>
+
+    <!-- CAIXAS -->
+    <section id="caixas" class="hidden">
+
+      <div class="panel">
+
+        <div class="panel-title">Caixas</div>
+
+        <div class="top-actions" style="margin-bottom:16px;">
+          <button class="primary-btn" onclick="abrirNovoCaixa()">Abrir caixa</button>
+        </div>
+
+        <div id="listaCaixas" class="list"></div>
+
+      </div>
+
+    </section>
+
+    <!-- SOLICITAÇÕES -->
+    <section id="solicitacoes" class="hidden">
+
+      <div class="panel">
+
+        <div class="panel-title">Solicitações</div>
+
+        <div id="listaSolicitacoes" class="list"></div>
+
+      </div>
+
+    </section>
+
+    <!-- LOGS -->
+    <section id="logs" class="hidden">
+
+      <div class="panel">
+
+        <div class="panel-title">Auditoria</div>
+
+        <div id="listaLogs" class="list"></div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- DRAWER -->
+  <div class="drawer-bg" id="drawerBg" onclick="fecharDrawer()"></div>
+
+  <aside class="drawer" id="drawer">
+    <h2 id="drawerTitle">Detalhes</h2>
+    <div id="drawerContent"></div>
+  </aside>
