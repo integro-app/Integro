@@ -688,3 +688,411 @@
     <h2 id="drawerTitle">Detalhes</h2>
     <div id="drawerContent"></div>
   </aside>
+
+<!-- FIREBASE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+
+    // ================= ESTADO =================
+
+    let usuarioLogado = null;
+    let tenantId = "";
+
+    let usuariosCache = [];
+    let clientesCache = [];
+    let cargosCache = [];
+    let equipesCache = [];
+    let caixasCache = [];
+    let solicitacoesCache = [];
+    let logsCache = [];
+
+    // ================= INIT =================
+
+    document.addEventListener("DOMContentLoaded", async () => {
+
+      usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
+
+      if (!usuarioLogado) {
+        alert("Sessão expirada.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      if (usuarioLogado.tipoUsuario !== "master_local") {
+        alert("Acesso negado.");
+        window.location.href = "index.html";
+        return;
+      }
+
+      tenantId =
+        usuarioLogado.clientePlataformaId ||
+        usuarioLogado.empresaId ||
+        usuarioLogado.tenantId ||
+        "";
+
+      document.getElementById("userNome").innerText =
+        usuarioLogado.nome ||
+        usuarioLogado.nomeCompleto ||
+        usuarioLogado.email ||
+        "Master Local";
+
+      document.getElementById("empresaNome").innerText =
+        usuarioLogado.clientePlataformaNome ||
+        usuarioLogado.empresaNome ||
+        "Empresa";
+
+      await carregarTudo();
+
+    });
+
+    // ================= HELPERS =================
+
+    function moeda(valor) {
+      return Number(valor || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function statusTxt(v) {
+      return String(v || "").toUpperCase();
+    }
+
+    function hojeISO() {
+      return new Date().toISOString().split("T")[0];
+    }
+
+    // ================= MENU =================
+
+    function toggleMenu(force) {
+
+      const sidebar = document.getElementById("sidebar");
+      const menuBg = document.getElementById("menuBg");
+
+      if (force === false) {
+        sidebar.classList.remove("open");
+        menuBg.classList.remove("open");
+        return;
+      }
+
+      sidebar.classList.toggle("open");
+
+      menuBg.classList.toggle(
+        "open",
+        sidebar.classList.contains("open")
+      );
+    }
+
+    // ================= TROCAR TELA =================
+
+    function trocarTela(id, el = null) {
+
+      const telas = [
+        "dashboard",
+        "usuarios",
+        "clientes",
+        "cargos",
+        "equipes",
+        "caixas",
+        "solicitacoes",
+        "logs"
+      ];
+
+      telas.forEach(t => {
+        const tela = document.getElementById(t);
+
+        if (tela) {
+          tela.classList.add("hidden");
+        }
+      });
+
+      const atual = document.getElementById(id);
+
+      if (atual) {
+        atual.classList.remove("hidden");
+      }
+
+      document.querySelectorAll(".menu-item").forEach(item => {
+        item.classList.remove("active");
+      });
+
+      if (el) {
+        el.classList.add("active");
+      }
+
+      const nomes = {
+        dashboard: "Dashboard Master Local",
+        usuarios: "Usuários",
+        clientes: "Clientes",
+        cargos: "Cargos e permissões",
+        equipes: "Equipes / Unidades",
+        caixas: "Caixas",
+        solicitacoes: "Solicitações",
+        logs: "Auditoria"
+      };
+
+      document.getElementById("pageTitle").innerText =
+        nomes[id] || "ÍNTEGRO";
+
+      if (window.innerWidth <= 900) {
+        toggleMenu(false);
+      }
+    }
+
+    // ================= DRAWER =================
+
+    function abrirDrawer(titulo, conteudo) {
+
+      document.getElementById("drawerTitle").innerText = titulo;
+
+      document.getElementById("drawerContent").innerHTML = conteudo;
+
+      document.getElementById("drawer").classList.add("open");
+
+      document.getElementById("drawerBg").classList.add("open");
+    }
+
+    function fecharDrawer() {
+
+      document.getElementById("drawer").classList.remove("open");
+
+      document.getElementById("drawerBg").classList.remove("open");
+    }
+
+    // ================= LOADERS =================
+
+    async function carregarTudo() {
+
+      await Promise.all([
+        carregarUsuarios(),
+        carregarClientes(),
+        carregarCargos(),
+        carregarEquipes(),
+        carregarCaixas(),
+        carregarSolicitacoes(),
+        carregarLogs()
+      ]);
+
+      atualizarKPIs();
+
+      renderDashboard();
+
+      renderUsuarios();
+
+      renderClientes();
+
+      renderCargos();
+
+      renderEquipes();
+
+      renderCaixas();
+
+      renderSolicitacoes();
+
+      renderLogs();
+    }
+
+    async function carregarUsuarios() {
+
+      let ref = db.collection("usuarios").limit(200);
+
+      if (tenantId) {
+        ref = db.collection("usuarios")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(200);
+      }
+
+      const snap = await ref.get();
+
+      usuariosCache = [];
+
+      snap.forEach(doc => {
+        usuariosCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarClientes() {
+
+      let ref = db.collection("clientes").limit(300);
+
+      if (tenantId) {
+        ref = db.collection("clientes")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(300);
+      }
+
+      const snap = await ref.get();
+
+      clientesCache = [];
+
+      snap.forEach(doc => {
+        clientesCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarCargos() {
+
+      let ref = db.collection("cargos").limit(100);
+
+      if (tenantId) {
+        ref = db.collection("cargos")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(100);
+      }
+
+      const snap = await ref.get();
+
+      cargosCache = [];
+
+      snap.forEach(doc => {
+        cargosCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarEquipes() {
+
+      let ref = db.collection("equipes").limit(100);
+
+      if (tenantId) {
+        ref = db.collection("equipes")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(100);
+      }
+
+      const snap = await ref.get();
+
+      equipesCache = [];
+
+      snap.forEach(doc => {
+        equipesCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarCaixas() {
+
+      let ref = db.collection("caixas").limit(200);
+
+      if (tenantId) {
+        ref = db.collection("caixas")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(200);
+      }
+
+      const snap = await ref.get();
+
+      caixasCache = [];
+
+      snap.forEach(doc => {
+        caixasCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarSolicitacoes() {
+
+      let ref = db.collection("solicitacoes").limit(200);
+
+      if (tenantId) {
+        ref = db.collection("solicitacoes")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(200);
+      }
+
+      const snap = await ref.get();
+
+      solicitacoesCache = [];
+
+      snap.forEach(doc => {
+        solicitacoesCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarLogs() {
+
+      let ref = db.collection("logs").limit(200);
+
+      if (tenantId) {
+        ref = db.collection("logs")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(200);
+      }
+
+      const snap = await ref.get();
+
+      logsCache = [];
+
+      snap.forEach(doc => {
+        logsCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    // ================= KPI =================
+
+    function atualizarKPIs() {
+
+      const carteira = clientesCache.reduce((total, c) => {
+        return total + Number(c.saldoDevedor || c.saldo || 0);
+      }, 0);
+
+      const caixasAbertos = caixasCache.filter(c =>
+        statusTxt(c.status) === "ABERTO"
+      ).length;
+
+      document.getElementById("kpiCarteira").innerText = moeda(carteira);
+
+      document.getElementById("kpiClientes").innerText =
+        clientesCache.length;
+
+      document.getElementById("kpiUsuarios").innerText =
+        usuariosCache.length;
+
+      document.getElementById("kpiCaixas").innerText =
+        caixasAbertos;
+    }
+
+    // ================= DASHBOARD =================
+
+    function renderDashboard() {
+
+      const html = `
+
+        <div class="list-item">
+          <div>
+            <strong>Resumo operacional</strong>
+            <small>
+              ${usuariosCache.length} usuários cadastrados •
+              ${clientesCache.length} clientes •
+              ${caixasCache.length} caixas registrados
+            </small>
+          </div>
+        </div>
+
+      `;
+
+      document.getElementById("dashboardResumo").innerHTML = html;
+    }
