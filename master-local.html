@@ -1,3 +1,7 @@
+MASTER LOCAL PREMIUM — PARTE 1 (VISUAL OFICIAL)
+
+Substitua o início do master-local.html por isso:
+
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -5,1544 +9,452 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ÍNTEGRO - Master Local</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
+
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:"Inter",sans-serif;
+    }
+
+    :root{
+      --bg:#f4f7fb;
+      --surface:#ffffff;
+      --panel:#071a33;
+      --panel2:#0d2444;
+      --text:#0f172a;
+      --muted:#64748b;
+      --line:#e2e8f0;
+
+      --orange1:#ffb100;
+      --orange2:#ff6b00;
+
+      --green:#22c55e;
+      --red:#ef4444;
+      --blue:#0ea5e9;
+      --purple:#7c3aed;
+
+      --shadow:0 18px 40px rgba(15,23,42,.08);
+    }
 
     body{
-      background:#f4f7fb;
-      display:flex;
+      background:var(--bg);
       min-height:100vh;
+      overflow-x:hidden;
+    }
+
+    /* MENU BG MOBILE */
+    #menuBg{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.45);
+      z-index:90;
+      display:none;
+    }
+
+    #menuBg.open{
+      display:block;
     }
 
     /* SIDEBAR */
     .sidebar{
-      width:260px;
-      background:#071a33;
-      color:#fff;
-      padding:20px;
+      width:280px;
+      height:100vh;
       position:fixed;
-      height:100%;
-      transition:.3s;
+      left:0;
+      top:0;
+      background:linear-gradient(180deg,var(--panel),var(--panel2));
+      color:#fff;
+      padding:22px;
       z-index:100;
+      overflow-y:auto;
+      transition:.3s;
     }
 
-    .sidebar.open{transform:translateX(0)}
-    .sidebar.hide{transform:translateX(-100%)}
-
-    .logo{
-      font-size:22px;
+    .brand{
+      font-size:28px;
       font-weight:900;
-      margin-bottom:20px;
+      margin-bottom:25px;
+      letter-spacing:-1px;
+    }
+
+    .user-box{
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:20px;
+      padding:16px;
+      margin-bottom:22px;
+    }
+
+    .user-box small{
+      display:block;
+      color:#cbd5e1;
+      margin-bottom:5px;
+      font-weight:700;
+    }
+
+    .user-box strong{
+      display:block;
+      font-size:15px;
+      margin-bottom:5px;
+    }
+
+    .badge-master{
+      display:inline-flex;
+      padding:7px 11px;
+      border-radius:999px;
+      background:linear-gradient(135deg,#ffb10055,#ff6b0030);
+      font-size:11px;
+      font-weight:900;
+    }
+
+    .menu-title{
+      font-size:11px;
+      text-transform:uppercase;
+      color:#94a3b8;
+      margin:18px 0 10px;
+      font-weight:900;
+      letter-spacing:.5px;
     }
 
     .menu-item{
-      padding:12px;
-      border-radius:10px;
-      margin-bottom:8px;
+      padding:14px;
+      border-radius:16px;
       cursor:pointer;
-      font-weight:700;
+      margin-bottom:8px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      transition:.2s;
+      font-weight:800;
+      color:#dbeafe;
     }
 
     .menu-item:hover,
     .menu-item.active{
-      background:linear-gradient(135deg,#ffb10033,#ff6b0033);
+      background:linear-gradient(135deg,#ffb10033,#ff6b0020);
+      color:#fff;
     }
 
     /* MAIN */
     .main{
-      margin-left:260px;
-      padding:20px;
-      width:100%;
+      margin-left:280px;
+      padding:24px;
+      transition:.3s;
     }
 
-    /* TOP */
-    .top{
+    /* TOPBAR */
+    .topbar{
       display:flex;
       justify-content:space-between;
-      align-items:center;
-      margin-bottom:20px;
+      align-items:flex-start;
+      gap:20px;
+      margin-bottom:22px;
     }
 
-    .hamburger{
-      display:none;
-      font-size:22px;
-      cursor:pointer;
+    .top-left{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
     }
 
-    /* BUTTONS */
-    .btn{
-      padding:10px 14px;
-      border:none;
-      border-radius:8px;
+    .topbar h1{
+      font-size:28px;
+      font-weight:900;
+      letter-spacing:-1px;
+      color:var(--text);
+    }
+
+    .topbar p{
+      color:var(--muted);
+      margin-top:5px;
       font-weight:700;
-      cursor:pointer;
     }
 
-    .btn-primary{
-      background:linear-gradient(135deg,#ffb100,#ff6b00);
-      color:#fff;
-    }
-
-    .btn-ghost{
+    .mobile-btn{
+      width:46px;
+      height:46px;
+      border:none;
+      border-radius:14px;
       background:#fff;
-      border:1px solid #ddd;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      box-shadow:var(--shadow);
+      font-size:20px;
+      font-weight:900;
     }
 
-    .btn-danger{
-      background:#ef4444;
+    .top-actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    button{
+      border:none;
+      cursor:pointer;
+      transition:.2s;
+      font-family:inherit;
+      font-weight:900;
+    }
+
+    .primary-btn{
+      padding:13px 18px;
+      border-radius:14px;
+      color:#fff;
+      background:linear-gradient(135deg,var(--orange1),var(--orange2));
+      box-shadow:0 10px 20px rgba(255,107,0,.22);
+    }
+
+    .ghost-btn{
+      padding:13px 18px;
+      border-radius:14px;
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
+    }
+
+    .danger-btn{
+      padding:12px 16px;
+      border-radius:12px;
+      background:linear-gradient(135deg,#ef4444,#991b1b);
       color:#fff;
     }
 
-    /* CARDS */
+    .success-btn{
+      padding:12px 16px;
+      border-radius:12px;
+      background:linear-gradient(135deg,#22c55e,#166534);
+      color:#fff;
+    }
+
+    /* KPI CARDS */
     .cards{
       display:grid;
       grid-template-columns:repeat(4,1fr);
-      gap:12px;
+      gap:16px;
       margin-bottom:20px;
     }
 
     .card{
+      border-radius:24px;
+      padding:22px;
+      color:#fff;
+      min-height:130px;
+      position:relative;
+      overflow:hidden;
+      box-shadow:var(--shadow);
+    }
+
+    .card::after{
+      content:"";
+      position:absolute;
+      width:150px;
+      height:150px;
+      border-radius:50%;
+      background:rgba(255,255,255,.12);
+      right:-45px;
+      bottom:-55px;
+    }
+
+    .card small{
+      display:block;
+      margin-bottom:16px;
+      font-weight:900;
+      opacity:.9;
+    }
+
+    .card strong{
+      font-size:28px;
+      font-weight:900;
+      letter-spacing:-1px;
+    }
+
+    .orange{
+      background:linear-gradient(135deg,#ffb100,#ff6b00);
+    }
+
+    .blue{
+      background:linear-gradient(135deg,#00c6ff,#0072ff);
+    }
+
+    .green{
+      background:linear-gradient(135deg,#22c55e,#15803d);
+    }
+
+    .purple{
+      background:linear-gradient(135deg,#8b5cf6,#5b21b6);
+    }
+
+    /* PANEL */
+    .panel{
       background:#fff;
-      padding:18px;
-      border-radius:14px;
-      font-weight:800;
-      box-shadow:0 10px 20px rgba(0,0,0,0.05);
+      border-radius:24px;
+      padding:22px;
+      box-shadow:0 10px 25px rgba(15,23,42,.06);
+      border:1px solid var(--line);
+    }
+
+    .panel-title{
+      font-size:18px;
+      font-weight:900;
+      margin-bottom:16px;
+      color:var(--text);
     }
 
     /* LIST */
     .list{
       display:grid;
-      gap:10px;
+      gap:12px;
     }
 
-    .item{
+    .list-item{
       background:#fff;
-      padding:14px;
-      border-radius:10px;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:16px;
       display:flex;
       justify-content:space-between;
       align-items:center;
+      gap:12px;
+    }
+
+    .list-item strong{
+      display:block;
+      margin-bottom:4px;
+      font-size:14px;
+    }
+
+    .list-item small{
+      display:block;
+      color:var(--muted);
+      line-height:1.5;
+      font-weight:700;
+    }
+
+    .item-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
     }
 
     /* DRAWER */
     .drawer-bg{
       position:fixed;
       inset:0;
-      background:rgba(0,0,0,0.5);
+      background:rgba(0,0,0,.45);
+      z-index:150;
       display:none;
-      z-index:200;
+    }
+
+    .drawer-bg.open{
+      display:block;
     }
 
     .drawer{
       position:fixed;
       right:0;
       top:0;
-      width:400px;
-      height:100%;
+      width:480px;
+      max-width:100%;
+      height:100vh;
       background:#fff;
-      padding:20px;
+      z-index:200;
+      padding:24px;
+      overflow-y:auto;
       transform:translateX(100%);
       transition:.3s;
-      z-index:300;
+      box-shadow:-20px 0 50px rgba(0,0,0,.18);
     }
 
-    .drawer.open{transform:translateX(0)}
-    .drawer-bg.open{display:block}
+    .drawer.open{
+      transform:translateX(0);
+    }
+
+    .drawer h2{
+      font-size:24px;
+      font-weight:900;
+      margin-bottom:18px;
+    }
 
     input,select{
       width:100%;
-      padding:10px;
-      margin-bottom:10px;
-      border-radius:8px;
-      border:1px solid #ccc;
+      padding:13px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      margin-bottom:12px;
+      outline:none;
+      font-weight:700;
     }
 
     /* MOBILE */
     @media(max-width:900px){
-      .sidebar{transform:translateX(-100%)}
-      .main{margin-left:0}
-      .hamburger{display:block}
-      .cards{grid-template-columns:1fr 1fr}
+
+      .sidebar{
+        transform:translateX(-100%);
+      }
+
+      .sidebar.open{
+        transform:translateX(0);
+      }
+
+      .main{
+        margin-left:0;
+        padding:16px;
+      }
+
+      .mobile-btn{
+        display:flex;
+      }
+
+      .cards{
+        grid-template-columns:1fr 1fr;
+      }
+
+      .topbar{
+        flex-direction:column;
+      }
+
     }
 
     @media(max-width:600px){
-      .cards{grid-template-columns:1fr}
+
+      .cards{
+        grid-template-columns:1fr;
+      }
+
+      .list-item{
+        flex-direction:column;
+        align-items:flex-start;
+      }
+
+      .item-actions{
+        width:100%;
+      }
+
+      .item-actions button{
+        width:100%;
+      }
+
+      .top-actions{
+        width:100%;
+        flex-direction:column;
+      }
+
+      .top-actions button{
+        width:100%;
+      }
+
     }
+
+    .hidden{
+      display:none!important;
+    }
+
   </style>
 </head>
-
-<body>
-
-<!-- SIDEBAR -->
-<div class="sidebar" id="sidebar">
-
-  <div class="logo">ÍNTEGRO</div>
-
-  <div class="menu-item active" onclick="trocarTela('dashboard')">Dashboard</div>
-  <div class="menu-item" onclick="trocarTela('usuarios')">Usuários</div>
-  <div class="menu-item" onclick="trocarTela('clientes')">Clientes</div>
-  <div class="menu-item" onclick="trocarTela('cargos')">Cargos</div>
-  <div class="menu-item" onclick="trocarTela('equipes')">Equipes</div>
-  <div class="menu-item" onclick="trocarTela('caixa')">Caixa</div>
-  <div class="menu-item" onclick="trocarTela('logs')">Auditoria</div>
-
-  <div class="menu-item" onclick="logout()">Sair</div>
-
-</div>
-
-<!-- MAIN -->
-<div class="main">
-
-  <div class="top">
-    <div>
-      <span class="hamburger" onclick="toggleMenu()">☰</span>
-      <h2 id="titulo">Dashboard</h2>
-    </div>
-
-    <button class="btn btn-primary" onclick="abrirNovoUsuario()">Novo usuário</button>
-  </div>
-
-  <!-- DASHBOARD -->
-  <div id="dashboard">
-
-    <div class="cards">
-      <div class="card">Carteira: <span id="kpiCarteira">0</span></div>
-      <div class="card">Clientes: <span id="kpiClientes">0</span></div>
-      <div class="card">Usuários: <span id="kpiUsuarios">0</span></div>
-      <div class="card">Caixas: <span id="kpiCaixas">0</span></div>
-    </div>
-
-  </div>
-
-  <!-- USUARIOS -->
-  <div id="usuarios" style="display:none">
-    <div id="listaUsuarios" class="list"></div>
-  </div>
-
-  <!-- CLIENTES -->
-  <div id="clientes" style="display:none">
-    <div id="listaClientes" class="list"></div>
-  </div>
-
-  <!-- CARGOS -->
-  <div id="cargos" style="display:none">
-    <div id="listaCargos" class="list"></div>
-  </div>
-
-  <!-- EQUIPES -->
-  <div id="equipes" style="display:none">
-    <div id="listaEquipes" class="list"></div>
-  </div>
-
-  <!-- CAIXA -->
-  <div id="caixa" style="display:none">
-    <div id="listaCaixas" class="list"></div>
-  </div>
-
-  <!-- LOGS -->
-  <div id="logs" style="display:none">
-    <div id="listaLogs" class="list"></div>
-  </div>
-
-</div>
-
-<!-- DRAWER -->
-<div class="drawer-bg" id="drawerBg" onclick="fecharDrawer()"></div>
-<div class="drawer" id="drawer">
-  <h3 id="drawerTitle"></h3>
-  <div id="drawerContent"></div>
-</div>
-
-<!-- FIREBASE -->
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-<script src="js/firebase-config.js"></script>
-
-<script>
-let usuarioLogado = null;
-let tenantId = "";
-
-let usuariosCache = [];
-let clientesCache = [];
-let cargosCache = [];
-let equipesCache = [];
-let caixasCache = [];
-let vendasCache = [];
-let logsCache = [];
-
-// ================= INIT =================
-document.addEventListener("DOMContentLoaded", async () => {
-  usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
-
-  if (!usuarioLogado) {
-    alert("Sessão expirada. Faça login novamente.");
-    window.location.href = "index.html";
-    return;
-  }
-
-  if (usuarioLogado.tipoUsuario !== "master_local") {
-    alert("Acesso negado para este perfil.");
-    window.location.href = "index.html";
-    return;
-  }
-
-  tenantId =
-    usuarioLogado.clientePlataformaId ||
-    usuarioLogado.empresaId ||
-    usuarioLogado.tenantId ||
-    usuarioLogado.clienteId ||
-    "";
-
-  await carregarTudo();
-});
-
-// ================= HELPERS =================
-function moeda(valor) {
-  return Number(valor || 0).toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  });
-}
-
-function hojeISO() {
-  return new Date().toISOString().split("T")[0];
-}
-
-function statusTxt(valor) {
-  return String(valor || "").toUpperCase();
-}
-
-function gravarLog(tipo, dados = {}) {
-  return db.collection("logs").add({
-    tipo,
-    ...dados,
-    usuarioId: usuarioLogado?.id || "",
-    usuarioNome: usuarioLogado?.nome || usuarioLogado?.email || "",
-    clientePlataformaId: tenantId,
-    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-  });
-}
-
-// ================= CARREGAMENTO GERAL =================
-async function carregarTudo() {
-  try {
-    await Promise.all([
-      carregarUsuarios(),
-      carregarClientes(),
-      carregarCargos(),
-      carregarEquipes(),
-      carregarCaixas(),
-      carregarVendas(),
-      carregarLogs()
-    ]);
-
-    atualizarDashboard();
-
-    renderUsuarios();
-    renderClientes();
-    renderCargos();
-    renderEquipes();
-    renderCaixas();
-    renderLogs();
-
-  } catch (erro) {
-    console.error("Erro ao carregar dados:", erro);
-    alert("Erro ao carregar dados do Master Local.");
-  }
-}
-
-// ================= LOADERS FIREBASE =================
-async function carregarUsuarios() {
-  let ref = db.collection("usuarios").limit(200);
-
-  if (tenantId) {
-    ref = db.collection("usuarios")
-      .where("clientePlataformaId", "==", tenantId)
-      .limit(200);
-  }
-
-  const snap = await ref.get();
-  usuariosCache = [];
-
-  snap.forEach(doc => {
-    usuariosCache.push({ id: doc.id, ...doc.data() });
-  });
-}
-
-async function carregarClientes() {
-  let ref = db.collection("clientes").limit(300);
-
-  if (tenantId) {
-    ref = db.collection("clientes")
-      .where("clientePlataformaId", "==", tenantId)
-      .limit(300);
-  }
-
-  const snap = await ref.get();
-  clientesCache = [];
-
-  snap.forEach(doc => {
-    clientesCache.push({ id: doc.id, ...doc.data() });
-  });
-}
-
-async function carregarCargos() {
-  let ref = db.collection("cargos").limit(100);
-
-  if (tenantId) {
-    ref = db.collection("cargos")
-      .where("clientePlataformaId", "==", tenantId)
-      .limit(100);
-  }
-
-  const snap = await ref.get();
-  cargosCache = [];
-
-  snap.forEach(doc => {
-    cargosCache.push({ id: doc.id, ...doc.data() });
-  });
-}
-
-async function carregarEquipes() {
-  let ref = db.collection("equipes").limit(100);
-
-  if (tenantId) {
-    ref = db.collection("equipes")
-      .where("clientePlataformaId", "==", tenantId)
-      .limit(100);
-  }
-
-  const snap = await ref.get();
-  equipesCache = [];
-
-  snap.forEach(doc => {
-    equipesCache.push({ id: doc.id, ...doc.data() });
-  });
-}
-
-async function carregarCaixas() {
-  let ref = db.collection("caixas").limit(200);
-
-  if (tenantId) {
-    ref = db.collection("caixas")
-      .where("clientePlataformaId", "==", tenantId)
-      .limit(200);
-  }
-
-  const snap = await ref.get();
-  caixasCache = [];
-
-  snap.forEach(doc => {
-    caixasCache.push({ id: doc.id, ...doc.data() });
-  });
-}
-
-async function carregarVendas() {
-  let ref = db.collection("vendas").limit(300);
-
-  if (tenantId) {
-    ref = db.collection("vendas")
-      .where("clientePlataformaId", "==", tenantId)
-      .limit(300);
-  }
-
-  const snap = await ref.get();
-  vendasCache = [];
-
-  snap.forEach(doc => {
-    vendasCache.push({ id: doc.id, ...doc.data() });
-  });
-}
-
-async function carregarLogs() {
-  let ref = db.collection("logs").limit(150);
-
-  if (tenantId) {
-    ref = db.collection("logs")
-      .where("clientePlataformaId", "==", tenantId)
-      .limit(150);
-  }
-
-  const snap = await ref.get();
-  logsCache = [];
-
-  snap.forEach(doc => {
-    logsCache.push({ id: doc.id, ...doc.data() });
-  });
-}
-
-// ================= DASHBOARD =================
-function atualizarDashboard() {
-  const carteira = clientesCache.reduce((total, c) => {
-    return total + Number(c.saldoDevedor || c.saldo || 0);
-  }, 0);
-
-  const caixasAbertos = caixasCache.filter(c => {
-    return statusTxt(c.status) === "ABERTO";
-  }).length;
-
-  document.getElementById("kpiCarteira").innerText = moeda(carteira);
-  document.getElementById("kpiClientes").innerText = clientesCache.length;
-  document.getElementById("kpiUsuarios").innerText = usuariosCache.length;
-  document.getElementById("kpiCaixas").innerText = caixasAbertos;
-}
-
-// ================= NAVEGAÇÃO =================
-function trocarTela(id) {
-  const telas = [
-    "dashboard",
-    "usuarios",
-    "clientes",
-    "cargos",
-    "equipes",
-    "caixa",
-    "logs"
-  ];
-
-  telas.forEach(tela => {
-    const el = document.getElementById(tela);
-    if (el) el.style.display = "none";
-  });
-
-  const atual = document.getElementById(id);
-  if (atual) atual.style.display = "block";
-
-  document.getElementById("titulo").innerText =
-    id === "dashboard" ? "Dashboard" :
-    id === "usuarios" ? "Usuários" :
-    id === "clientes" ? "Clientes" :
-    id === "cargos" ? "Cargos e permissões" :
-    id === "equipes" ? "Equipes / Unidades" :
-    id === "caixa" ? "Caixa" :
-    id === "logs" ? "Auditoria" :
-    "ÍNTEGRO";
-
-  document.querySelectorAll(".menu-item").forEach(item => {
-    item.classList.remove("active");
-  });
-
-  const menu = Array.from(document.querySelectorAll(".menu-item"))
-    .find(item => item.getAttribute("onclick")?.includes("'" + id + "'"));
-
-  if (menu) menu.classList.add("active");
-
-  if (window.innerWidth <= 900) {
-    toggleMenu(false);
-  }
-}
-
-function toggleMenu(force) {
-  const sidebar = document.getElementById("sidebar");
-
-  if (force === false) {
-    sidebar.classList.add("hide");
-    sidebar.classList.remove("open");
-    return;
-  }
-
-  if (sidebar.classList.contains("open")) {
-    sidebar.classList.remove("open");
-    sidebar.classList.add("hide");
-  } else {
-    sidebar.classList.add("open");
-    sidebar.classList.remove("hide");
-  }
-}
-
-// ================= DRAWER =================
-function abrirDrawer(titulo, conteudo) {
-  document.getElementById("drawerTitle").innerText = titulo;
-  document.getElementById("drawerContent").innerHTML = conteudo;
-
-  document.getElementById("drawer").classList.add("open");
-  document.getElementById("drawerBg").classList.add("open");
-}
-
-function fecharDrawer() {
-  document.getElementById("drawer").classList.remove("open");
-  document.getElementById("drawerBg").classList.remove("open");
-}
-
-// ================= RENDER USUÁRIOS =================
-function renderUsuarios() {
-  const html = usuariosCache.length
-    ? usuariosCache.map(u => `
-      <div class="item">
-        <div>
-          <strong>${u.nome || u.nomeCompleto || "-"}</strong><br>
-          <small>${u.email || "-"}</small><br>
-          <small>Tipo: ${u.tipoUsuario || "-"} • Status: ${u.status || "-"}</small>
-        </div>
-
-        <div>
-          <button class="btn btn-ghost" onclick="abrirEditarUsuario('${u.id}')">Editar</button>
-          <button class="btn btn-danger" onclick="alternarAcessoUsuario('${u.id}')">
-            ${u.acessoLiberado === false ? "Liberar" : "Bloquear"}
-          </button>
-        </div>
-      </div>
-    `).join("")
-    : "Nenhum usuário encontrado.";
-
-  document.getElementById("listaUsuarios").innerHTML = html;
-}
-
-// ================= NOVO USUÁRIO =================
-function abrirNovoUsuario() {
-  const cargosOptions = cargosCache.length
-    ? cargosCache.map(c => `<option value="${c.id}">${c.nome || c.cargoNome || "Cargo"}</option>`).join("")
-    : `<option value="">Sem cargos cadastrados</option>`;
-
-  const equipesOptions = equipesCache.length
-    ? equipesCache.map(e => `<option value="${e.id}">${e.nome || "Equipe"}</option>`).join("")
-    : `<option value="">Sem equipe</option>`;
-
-  abrirDrawer("Novo usuário", `
-    <input id="novoNome" placeholder="Nome completo">
-
-    <input id="novoEmail" type="email" placeholder="Email">
-
-    <select id="novoTipo">
-      <option value="vendedor">Vendedor</option>
-      <option value="supervisor">Supervisor</option>
-      <option value="financeiro">Financeiro</option>
-      <option value="master_local">Master Local</option>
-    </select>
-
-    <select id="novoCargoId">
-      ${cargosOptions}
-    </select>
-
-    <select id="novoEquipeId">
-      ${equipesOptions}
-    </select>
-
-    <button class="btn btn-primary" onclick="salvarNovoUsuario()">Criar usuário</button>
-
-    <p style="font-size:12px;color:#64748b;margin-top:10px;">
-      Senha padrão: <strong>123456</strong>
-    </p>
-  `);
-}
-
-async function salvarNovoUsuario() {
-  try {
-    const nome = document.getElementById("novoNome").value.trim();
-    const email = document.getElementById("novoEmail").value.trim();
-    const tipo = document.getElementById("novoTipo").value;
-    const cargoId = document.getElementById("novoCargoId").value;
-    const equipeId = document.getElementById("novoEquipeId").value;
-
-    if (!nome || !email) {
-      alert("Informe nome e email.");
-      return;
-    }
-
-    const cargo = cargosCache.find(c => c.id === cargoId);
-    const equipe = equipesCache.find(e => e.id === equipeId);
-
-    const senhaPadrao = "123456";
-
-    const secondaryApp = firebase.initializeApp(firebase.app().options, "secondary_" + Date.now());
-
-    const cred = await secondaryApp
-      .auth()
-      .createUserWithEmailAndPassword(email, senhaPadrao);
-
-    await secondaryApp.auth().signOut();
-    await secondaryApp.delete();
-
-    await db.collection("usuarios").add({
-      authUid: cred.user.uid,
-      nome,
-      nomeCompleto: nome,
-      email,
-      tipoUsuario: tipo,
-
-      cargoId: cargoId || "",
-      cargoNome: cargo?.nome || cargo?.cargoNome || tipo,
-      permissoes: cargo?.permissoes || {},
-
-      equipeId: equipeId || "",
-      equipeNome: equipe?.nome || "",
-
-      status: "ATIVO",
-      acessoLiberado: true,
-
-      clientePlataformaId: tenantId,
-      clientePlataformaNome:
-        usuarioLogado.clientePlataformaNome ||
-        usuarioLogado.empresaNome ||
-        "",
-
-      criadoPorUid: usuarioLogado.authUid || "",
-      criadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await gravarLog("CRIACAO_USUARIO", {
-      emailCriado: email,
-      nomeCriado: nome,
-      tipoUsuarioCriado: tipo
-    });
-
-    alert(
-      "Usuário criado com sucesso.\n\n" +
-      "Email: " + email + "\n" +
-      "Senha: " + senhaPadrao
-    );
-
-    fecharDrawer();
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro criar usuário:", e);
-
-    if (e.code === "auth/email-already-in-use") {
-      alert("Este email já existe no Firebase Auth.");
-      return;
-    }
-
-    alert("Erro ao criar usuário: " + (e.message || e.code));
-  }
-}
-
-// ================= EDITAR / BLOQUEAR USUÁRIO =================
-function abrirEditarUsuario(id) {
-  const u = usuariosCache.find(x => x.id === id);
-  if (!u) return;
-
-  const cargosOptions = cargosCache.length
-    ? cargosCache.map(c => `
-      <option value="${c.id}" ${u.cargoId === c.id ? "selected" : ""}>
-        ${c.nome || c.cargoNome || "Cargo"}
-      </option>
-    `).join("")
-    : `<option value="">Sem cargos cadastrados</option>`;
-
-  const equipesOptions = equipesCache.length
-    ? equipesCache.map(e => `
-      <option value="${e.id}" ${u.equipeId === e.id ? "selected" : ""}>
-        ${e.nome || "Equipe"}
-      </option>
-    `).join("")
-    : `<option value="">Sem equipe</option>`;
-
-  abrirDrawer("Editar usuário", `
-    <input id="editNome" value="${u.nome || u.nomeCompleto || ""}">
-    <input value="${u.email || ""}" disabled>
-
-    <select id="editTipo">
-      <option value="vendedor" ${u.tipoUsuario === "vendedor" ? "selected" : ""}>Vendedor</option>
-      <option value="supervisor" ${u.tipoUsuario === "supervisor" ? "selected" : ""}>Supervisor</option>
-      <option value="financeiro" ${u.tipoUsuario === "financeiro" ? "selected" : ""}>Financeiro</option>
-      <option value="master_local" ${u.tipoUsuario === "master_local" ? "selected" : ""}>Master Local</option>
-    </select>
-
-    <select id="editCargoId">${cargosOptions}</select>
-
-    <select id="editEquipeId">${equipesOptions}</select>
-
-    <select id="editStatus">
-      <option value="ATIVO" ${u.status === "ATIVO" ? "selected" : ""}>ATIVO</option>
-      <option value="INATIVO" ${u.status === "INATIVO" ? "selected" : ""}>INATIVO</option>
-      <option value="BLOQUEADO" ${u.status === "BLOQUEADO" ? "selected" : ""}>BLOQUEADO</option>
-    </select>
-
-    <button class="btn btn-primary" onclick="salvarEdicaoUsuario('${u.id}')">Salvar alterações</button>
-  `);
-}
-
-async function salvarEdicaoUsuario(id) {
-  try {
-    const nome = document.getElementById("editNome").value.trim();
-    const tipo = document.getElementById("editTipo").value;
-    const cargoId = document.getElementById("editCargoId").value;
-    const equipeId = document.getElementById("editEquipeId").value;
-    const status = document.getElementById("editStatus").value;
-
-    const cargo = cargosCache.find(c => c.id === cargoId);
-    const equipe = equipesCache.find(e => e.id === equipeId);
-
-    await db.collection("usuarios").doc(id).update({
-      nome,
-      nomeCompleto: nome,
-      tipoUsuario: tipo,
-      cargoId: cargoId || "",
-      cargoNome: cargo?.nome || cargo?.cargoNome || tipo,
-      permissoes: cargo?.permissoes || {},
-      equipeId: equipeId || "",
-      equipeNome: equipe?.nome || "",
-      status,
-      acessoLiberado: status !== "BLOQUEADO",
-      atualizadoPorUid: usuarioLogado.authUid || "",
-      atualizadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await gravarLog("EDICAO_USUARIO", {
-      usuarioEditadoId: id,
-      nomeEditado: nome,
-      tipoEditado: tipo
-    });
-
-    alert("Usuário atualizado com sucesso.");
-
-    fecharDrawer();
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro editar usuário:", e);
-    alert("Erro ao editar usuário.");
-  }
-}
-
-async function alternarAcessoUsuario(id) {
-  try {
-    const u = usuariosCache.find(x => x.id === id);
-    if (!u) return;
-
-    const novoAcesso = u.acessoLiberado === false;
-
-    await db.collection("usuarios").doc(id).update({
-      acessoLiberado: novoAcesso,
-      status: novoAcesso ? "ATIVO" : "BLOQUEADO",
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await gravarLog(novoAcesso ? "LIBERAR_USUARIO" : "BLOQUEAR_USUARIO", {
-      usuarioAlvoId: id,
-      usuarioAlvoEmail: u.email || ""
-    });
-
-    alert(novoAcesso ? "Usuário liberado." : "Usuário bloqueado.");
-
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro acesso usuário:", e);
-    alert("Erro ao alterar acesso.");
-  }
-}
-
-// ================= RENDER CLIENTES =================
-function renderClientes() {
-  const html = clientesCache.length
-    ? clientesCache.map(c => `
-      <div class="item">
-        <div>
-          <strong>${c.nome || c.nomeCompleto || c.apelido || "Cliente sem nome"}</strong><br>
-          <small>${c.telefone || c.telefonePrincipal || "-"}</small><br>
-          <small>Saldo: ${moeda(c.saldoDevedor || c.saldo || 0)}</small>
-        </div>
-        <div>
-          <button class="btn btn-ghost" onclick="abrirCliente('${c.id}')">Ver</button>
-        </div>
-      </div>
-    `).join("")
-    : "Nenhum cliente encontrado.";
-
-  document.getElementById("listaClientes").innerHTML = html;
-}
-
-function abrirCliente(id) {
-  const c = clientesCache.find(x => x.id === id);
-  if (!c) return;
-
-  abrirDrawer("Cliente", `
-    <p><strong>Nome:</strong> ${c.nome || c.nomeCompleto || "-"}</p>
-    <p><strong>Apelido:</strong> ${c.apelido || "-"}</p>
-    <p><strong>Telefone:</strong> ${c.telefone || c.telefonePrincipal || "-"}</p>
-    <p><strong>Documento:</strong> ${c.documento || "-"}</p>
-    <p><strong>Saldo:</strong> ${moeda(c.saldoDevedor || c.saldo || 0)}</p>
-    <p><strong>Status:</strong> ${c.status || "-"}</p>
-  `);
-}
-
-// ================= CARGOS E PERMISSÕES =================
-function renderCargos() {
-  const html = `
-    <div class="item">
-      <div>
-        <strong>Cargos e permissões</strong><br>
-        <small>Crie cargos e defina o que cada perfil pode ver/fazer.</small>
-      </div>
-      <button class="btn btn-primary" onclick="abrirNovoCargo()">Novo cargo</button>
-    </div>
-    ${
-      cargosCache.length
-        ? cargosCache.map(c => `
-          <div class="item">
-            <div>
-              <strong>${c.nome || c.cargoNome || "Cargo sem nome"}</strong><br>
-              <small>${c.descricao || "Sem descrição"}</small><br>
-              <small>Tipo base: ${c.tipoBase || "-"}</small>
-            </div>
-            <div>
-              <button class="btn btn-ghost" onclick="abrirEditarCargo('${c.id}')">Editar</button>
-              <button class="btn btn-danger" onclick="excluirCargo('${c.id}')">Excluir</button>
-            </div>
-          </div>
-        `).join("")
-        : `<div class="item"><strong>Nenhum cargo cadastrado.</strong></div>`
-    }
-  `;
-
-  document.getElementById("listaCargos").innerHTML = html;
-}
-
-function abrirNovoCargo() {
-  abrirDrawer("Novo cargo", formularioCargo());
-}
-
-function abrirEditarCargo(id) {
-  const c = cargosCache.find(x => x.id === id);
-  if (!c) return;
-
-  abrirDrawer("Editar cargo", formularioCargo(c));
-}
-
-function formularioCargo(c = null) {
-  const p = c?.permissoes || {};
-
-  return `
-    <input id="cargoNome" placeholder="Nome do cargo" value="${c?.nome || c?.cargoNome || ""}">
-    <input id="cargoDescricao" placeholder="Descrição do cargo" value="${c?.descricao || ""}">
-
-    <select id="cargoTipoBase">
-      <option value="vendedor" ${c?.tipoBase === "vendedor" ? "selected" : ""}>Vendedor</option>
-      <option value="supervisor" ${c?.tipoBase === "supervisor" ? "selected" : ""}>Supervisor</option>
-      <option value="financeiro" ${c?.tipoBase === "financeiro" ? "selected" : ""}>Financeiro</option>
-      <option value="gerente" ${c?.tipoBase === "gerente" ? "selected" : ""}>Gerente</option>
-      <option value="operacional" ${c?.tipoBase === "operacional" ? "selected" : ""}>Operacional</option>
-    </select>
-
-    <div style="margin:12px 0;font-weight:900;">Permissões</div>
-
-    ${checkPerm("verDashboard", "Ver dashboard", p)}
-    ${checkPerm("verUsuarios", "Ver usuários", p)}
-    ${checkPerm("criarUsuarios", "Criar usuários", p)}
-    ${checkPerm("editarUsuarios", "Editar usuários", p)}
-    ${checkPerm("bloquearUsuarios", "Bloquear/liberar usuários", p)}
-    ${checkPerm("verClientes", "Ver clientes", p)}
-    ${checkPerm("verCaixas", "Ver caixas", p)}
-    ${checkPerm("abrirCaixa", "Abrir caixa", p)}
-    ${checkPerm("fecharCaixa", "Fechar caixa", p)}
-    ${checkPerm("reabrirCaixa", "Reabrir caixa", p)}
-    ${checkPerm("aprovarSolicitacoes", "Aprovar solicitações", p)}
-    ${checkPerm("verLogs", "Ver auditoria/logs", p)}
-
-    <button class="btn btn-primary" onclick="${c ? `salvarCargo('${c.id}')` : "salvarCargo()"}">
-      Salvar cargo
-    </button>
-  `;
-}
-
-function checkPerm(chave, texto, permissoes) {
-  return `
-    <label style="display:flex;align-items:center;gap:8px;margin-bottom:8px;font-weight:700;">
-      <input type="checkbox" id="perm_${chave}" ${permissoes?.[chave] ? "checked" : ""} style="width:auto;margin:0;">
-      ${texto}
-    </label>
-  `;
-}
-
-function coletarPermissoesCargo() {
-  const chaves = [
-    "verDashboard",
-    "verUsuarios",
-    "criarUsuarios",
-    "editarUsuarios",
-    "bloquearUsuarios",
-    "verClientes",
-    "verCaixas",
-    "abrirCaixa",
-    "fecharCaixa",
-    "reabrirCaixa",
-    "aprovarSolicitacoes",
-    "verLogs"
-  ];
-
-  const permissoes = {};
-
-  chaves.forEach(chave => {
-    permissoes[chave] = document.getElementById("perm_" + chave)?.checked || false;
-  });
-
-  return permissoes;
-}
-
-async function salvarCargo(id = null) {
-  try {
-    const nome = document.getElementById("cargoNome").value.trim();
-    const descricao = document.getElementById("cargoDescricao").value.trim();
-    const tipoBase = document.getElementById("cargoTipoBase").value;
-
-    if (!nome) {
-      alert("Informe o nome do cargo.");
-      return;
-    }
-
-    const dados = {
-      nome,
-      cargoNome: nome,
-      descricao,
-      tipoBase,
-      permissoes: coletarPermissoesCargo(),
-      clientePlataformaId: tenantId,
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    if (id) {
-      await db.collection("cargos").doc(id).update(dados);
-
-      await gravarLog("EDICAO_CARGO", {
-        cargoId: id,
-        cargoNome: nome
-      });
-
-      alert("Cargo atualizado com sucesso.");
-    } else {
-      await db.collection("cargos").add({
-        ...dados,
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        criadoPorUid: usuarioLogado.authUid || "",
-        criadoPorNome: usuarioLogado.nome || usuarioLogado.email || ""
-      });
-
-      await gravarLog("CRIACAO_CARGO", {
-        cargoNome: nome
-      });
-
-      alert("Cargo criado com sucesso.");
-    }
-
-    fecharDrawer();
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro salvar cargo:", e);
-    alert("Erro ao salvar cargo.");
-  }
-}
-
-async function excluirCargo(id) {
-  try {
-    const emUso = usuariosCache.some(u => u.cargoId === id);
-
-    if (emUso) {
-      alert("Não é possível excluir cargo vinculado a usuário.");
-      return;
-    }
-
-    if (!confirm("Deseja excluir este cargo?")) return;
-
-    const cargo = cargosCache.find(c => c.id === id);
-
-    await db.collection("cargos").doc(id).delete();
-
-    await gravarLog("EXCLUSAO_CARGO", {
-      cargoId: id,
-      cargoNome: cargo?.nome || ""
-    });
-
-    alert("Cargo excluído.");
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro excluir cargo:", e);
-    alert("Erro ao excluir cargo.");
-  }
-}
-
-// ================= EQUIPES / UNIDADES =================
-function renderEquipes() {
-  const html = `
-    <div class="item">
-      <div>
-        <strong>Equipes / Unidades</strong><br>
-        <small>Organize vendedores, supervisores e operações por equipe ou filial.</small>
-      </div>
-      <button class="btn btn-primary" onclick="abrirNovaEquipe()">Nova equipe</button>
-    </div>
-    ${
-      equipesCache.length
-        ? equipesCache.map(e => `
-          <div class="item">
-            <div>
-              <strong>${e.nome || "Equipe sem nome"}</strong><br>
-              <small>${e.descricao || "Sem descrição"}</small><br>
-              <small>Status: ${e.status || "ATIVA"}</small>
-            </div>
-            <div>
-              <button class="btn btn-ghost" onclick="abrirEditarEquipe('${e.id}')">Editar</button>
-              <button class="btn btn-danger" onclick="excluirEquipe('${e.id}')">Excluir</button>
-            </div>
-          </div>
-        `).join("")
-        : `<div class="item"><strong>Nenhuma equipe cadastrada.</strong></div>`
-    }
-  `;
-
-  document.getElementById("listaEquipes").innerHTML = html;
-}
-
-function abrirNovaEquipe() {
-  abrirDrawer("Nova equipe", formularioEquipe());
-}
-
-function abrirEditarEquipe(id) {
-  const equipe = equipesCache.find(e => e.id === id);
-  if (!equipe) return;
-
-  abrirDrawer("Editar equipe", formularioEquipe(equipe));
-}
-
-function formularioEquipe(e = null) {
-  return `
-    <input id="equipeNome" placeholder="Nome da equipe/unidade" value="${e?.nome || ""}">
-    <input id="equipeDescricao" placeholder="Descrição" value="${e?.descricao || ""}">
-
-    <select id="equipeStatus">
-      <option value="ATIVA" ${e?.status === "ATIVA" ? "selected" : ""}>ATIVA</option>
-      <option value="INATIVA" ${e?.status === "INATIVA" ? "selected" : ""}>INATIVA</option>
-    </select>
-
-    <button class="btn btn-primary" onclick="${e ? `salvarEquipe('${e.id}')` : "salvarEquipe()"}">
-      Salvar equipe
-    </button>
-  `;
-}
-
-async function salvarEquipe(id = null) {
-  try {
-    const nome = document.getElementById("equipeNome").value.trim();
-    const descricao = document.getElementById("equipeDescricao").value.trim();
-    const status = document.getElementById("equipeStatus").value;
-
-    if (!nome) {
-      alert("Informe o nome da equipe.");
-      return;
-    }
-
-    const dados = {
-      nome,
-      descricao,
-      status,
-      clientePlataformaId: tenantId,
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    };
-
-    if (id) {
-      await db.collection("equipes").doc(id).update(dados);
-      await gravarLog("EDICAO_EQUIPE", { equipeId: id, equipeNome: nome });
-      alert("Equipe atualizada.");
-    } else {
-      await db.collection("equipes").add({
-        ...dados,
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        criadoPorUid: usuarioLogado.authUid || "",
-        criadoPorNome: usuarioLogado.nome || usuarioLogado.email || ""
-      });
-
-      await gravarLog("CRIACAO_EQUIPE", { equipeNome: nome });
-      alert("Equipe criada.");
-    }
-
-    fecharDrawer();
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro salvar equipe:", e);
-    alert("Erro ao salvar equipe.");
-  }
-}
-
-async function excluirEquipe(id) {
-  try {
-    const emUso = usuariosCache.some(u => u.equipeId === id);
-
-    if (emUso) {
-      alert("Não é possível excluir equipe vinculada a usuário.");
-      return;
-    }
-
-    if (!confirm("Deseja excluir esta equipe?")) return;
-
-    const equipe = equipesCache.find(e => e.id === id);
-
-    await db.collection("equipes").doc(id).delete();
-
-    await gravarLog("EXCLUSAO_EQUIPE", {
-      equipeId: id,
-      equipeNome: equipe?.nome || ""
-    });
-
-    alert("Equipe excluída.");
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro excluir equipe:", e);
-    alert("Erro ao excluir equipe.");
-  }
-}
-
-// ================= CAIXAS =================
-function renderCaixas() {
-  const vendedores = usuariosCache.filter(u => u.tipoUsuario === "vendedor");
-
-  const html = `
-    <div class="item">
-      <div>
-        <strong>Gestão de caixas</strong><br>
-        <small>Abra, acompanhe, feche ou reabra caixas dos vendedores.</small>
-      </div>
-      <button class="btn btn-primary" onclick="abrirNovoCaixa()">Abrir caixa</button>
-    </div>
-    ${
-      caixasCache.length
-        ? caixasCache.map(c => `
-          <div class="item">
-            <div>
-              <strong>${c.usuarioNome || c.vendedorNome || "Vendedor"}</strong><br>
-              <small>Status: ${c.status || "-"}</small><br>
-              <small>Saldo atual: ${moeda(c.saldoAtual || c.valorAtual || c.saldo || 0)}</small><br>
-              <small>Data: ${c.data || "-"}</small>
-            </div>
-            <div>
-              ${
-                statusTxt(c.status) === "ABERTO"
-                  ? `<button class="btn btn-danger" onclick="fecharCaixa('${c.id}')">Fechar</button>`
-                  : `<button class="btn btn-primary" onclick="reabrirCaixa('${c.id}')">Reabrir</button>`
-              }
-            </div>
-          </div>
-        `).join("")
-        : `<div class="item"><strong>Nenhum caixa encontrado.</strong></div>`
-    }
-  `;
-
-  document.getElementById("listaCaixas").innerHTML = html;
-}
-
-function abrirNovoCaixa() {
-  const vendedores = usuariosCache.filter(u => u.tipoUsuario === "vendedor");
-
-  const options = vendedores.length
-    ? vendedores.map(v => `<option value="${v.id}">${v.nome || v.email}</option>`).join("")
-    : `<option value="">Nenhum vendedor cadastrado</option>`;
-
-  abrirDrawer("Abrir caixa", `
-    <select id="caixaVendedorId">
-      ${options}
-    </select>
-
-    <input id="caixaValorInicial" type="number" step="0.01" placeholder="Valor inicial">
-
-    <button class="btn btn-primary" onclick="salvarAberturaCaixa()">Abrir caixa</button>
-  `);
-}
-
-async function salvarAberturaCaixa() {
-  try {
-    const vendedorId = document.getElementById("caixaVendedorId").value;
-    const valorInicial = Number(document.getElementById("caixaValorInicial").value || 0);
-
-    if (!vendedorId) {
-      alert("Selecione um vendedor.");
-      return;
-    }
-
-    const vendedor = usuariosCache.find(u => u.id === vendedorId);
-
-    const caixaAberto = caixasCache.find(c =>
-      c.usuarioId === vendedorId &&
-      statusTxt(c.status) === "ABERTO"
-    );
-
-    if (caixaAberto) {
-      alert("Este vendedor já possui caixa aberto.");
-      return;
-    }
-
-    await db.collection("caixas").add({
-      usuarioId: vendedorId,
-      usuarioNome: vendedor?.nome || vendedor?.email || "",
-      vendedorId,
-      vendedorNome: vendedor?.nome || vendedor?.email || "",
-
-      status: "ABERTO",
-      ativo: true,
-      data: hojeISO(),
-
-      valorInicial,
-      saldoInicial: valorInicial,
-      saldoAtual: valorInicial,
-
-      clientePlataformaId: tenantId,
-
-      abertoPorUid: usuarioLogado.authUid || "",
-      abertoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
-      abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await gravarLog("ABERTURA_CAIXA", {
-      vendedorId,
-      vendedorNome: vendedor?.nome || vendedor?.email || "",
-      valorInicial
-    });
-
-    alert("Caixa aberto com sucesso.");
-    fecharDrawer();
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro abrir caixa:", e);
-    alert("Erro ao abrir caixa.");
-  }
-}
-
-async function fecharCaixa(id) {
-  try {
-    const caixa = caixasCache.find(c => c.id === id);
-    if (!caixa) return;
-
-    if (!confirm("Deseja fechar este caixa?")) return;
-
-    await db.collection("caixas").doc(id).update({
-      status: "FECHADO",
-      ativo: false,
-      fechadoPorUid: usuarioLogado.authUid || "",
-      fechadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
-      fechadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await gravarLog("FECHAMENTO_CAIXA", {
-      caixaId: id,
-      vendedorId: caixa.usuarioId || caixa.vendedorId || "",
-      saldoFinal: Number(caixa.saldoAtual || 0)
-    });
-
-    alert("Caixa fechado.");
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro fechar caixa:", e);
-    alert("Erro ao fechar caixa.");
-  }
-}
-
-async function reabrirCaixa(id) {
-  try {
-    const caixa = caixasCache.find(c => c.id === id);
-    if (!caixa) return;
-
-    if (!confirm("Reabrir este caixa?")) return;
-
-    await db.collection("caixas").doc(id).update({
-      status: "ABERTO",
-      ativo: true,
-      reabertoPorUid: usuarioLogado.authUid || "",
-      reabertoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
-      reabertoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await gravarLog("REABERTURA_CAIXA", {
-      caixaId: id,
-      vendedorId: caixa.usuarioId || caixa.vendedorId || ""
-    });
-
-    alert("Caixa reaberto.");
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro reabrir caixa:", e);
-    alert("Erro ao reabrir caixa.");
-  }
-}
-
-// ================= SOLICITAÇÕES =================
-function renderSolicitacoes() {
-  const html = solicitacoesCache.length
-    ? solicitacoesCache.map(s => `
-      <div class="item">
-        <div>
-          <strong>${s.tipo || "Solicitação"}</strong><br>
-          <small>Status: ${s.status || "PENDENTE"}</small><br>
-          <small>Valor: ${moeda(s.valor || 0)}</small><br>
-          <small>Usuário: ${s.usuarioNome || "-"}</small>
-        </div>
-        <div>
-          ${
-            statusTxt(s.status) === "PENDENTE"
-              ? `
-                <button class="btn btn-primary" onclick="aprovarSolicitacao('${s.id}')">Aprovar</button>
-                <button class="btn btn-danger" onclick="recusarSolicitacao('${s.id}')">Recusar</button>
-              `
-              : `<button class="btn btn-ghost" onclick="verSolicitacao('${s.id}')">Ver</button>`
-          }
-        </div>
-      </div>
-    `).join("")
-    : `<div class="item"><strong>Nenhuma solicitação encontrada.</strong></div>`;
-
-  document.getElementById("listaSolicitacoes").innerHTML = html;
-}
-
-function verSolicitacao(id) {
-  const s = solicitacoesCache.find(x => x.id === id);
-  if (!s) return;
-
-  abrirDrawer("Solicitação", `
-    <p><strong>Tipo:</strong> ${s.tipo || "-"}</p>
-    <p><strong>Status:</strong> ${s.status || "-"}</p>
-    <p><strong>Valor:</strong> ${moeda(s.valor || 0)}</p>
-    <p><strong>Usuário:</strong> ${s.usuarioNome || "-"}</p>
-    <p><strong>Observação:</strong> ${s.observacao || "-"}</p>
-  `);
-}
-
-async function aprovarSolicitacao(id) {
-  try {
-    const s = solicitacoesCache.find(x => x.id === id);
-    if (!s) return;
-
-    if (!confirm("Aprovar esta solicitação?")) return;
-
-    await db.collection("solicitacoes").doc(id).update({
-      status: "APROVADA",
-      aprovadoPorUid: usuarioLogado.authUid || "",
-      aprovadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
-      aprovadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    if (s.tipo === "INGRESSO" && s.caixaId) {
-      const caixaRef = db.collection("caixas").doc(s.caixaId);
-      const caixaSnap = await caixaRef.get();
-
-      if (caixaSnap.exists) {
-        const caixa = caixaSnap.data();
-        const saldoAtual = Number(caixa.saldoAtual || caixa.valorAtual || caixa.saldo || 0);
-        const novoSaldo = saldoAtual + Number(s.valor || 0);
-
-        await caixaRef.update({
-          saldoAtual: novoSaldo,
-          atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await db.collection("movcaixa").add({
-          tipo: "ENTRADA",
-          origem: "INGRESSO_APROVADO",
-          valor: Number(s.valor || 0),
-          caixaId: s.caixaId,
-          solicitacaoId: id,
-          usuarioId: s.usuarioId || "",
-          usuarioNome: s.usuarioNome || "",
-          clientePlataformaId: tenantId,
-          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        });
-      }
-    }
-
-    await gravarLog("APROVACAO_SOLICITACAO", {
-      solicitacaoId: id,
-      tipoSolicitacao: s.tipo || "",
-      valor: Number(s.valor || 0)
-    });
-
-    alert("Solicitação aprovada.");
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro aprovar solicitação:", e);
-    alert("Erro ao aprovar solicitação.");
-  }
-}
-
-async function recusarSolicitacao(id) {
-  try {
-    const s = solicitacoesCache.find(x => x.id === id);
-    if (!s) return;
-
-    if (!confirm("Recusar esta solicitação?")) return;
-
-    await db.collection("solicitacoes").doc(id).update({
-      status: "RECUSADA",
-      recusadoPorUid: usuarioLogado.authUid || "",
-      recusadoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
-      recusadoEm: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
-    await gravarLog("RECUSA_SOLICITACAO", {
-      solicitacaoId: id,
-      tipoSolicitacao: s.tipo || "",
-      valor: Number(s.valor || 0)
-    });
-
-    alert("Solicitação recusada.");
-    await carregarTudo();
-
-  } catch (e) {
-    console.error("Erro recusar solicitação:", e);
-    alert("Erro ao recusar solicitação.");
-  }
-}
-
-// ================= LOGS / AUDITORIA =================
-function renderLogs() {
-  const html = logsCache.length
-    ? logsCache.map(l => `
-      <div class="item">
-        <div>
-          <strong>${l.tipo || "AÇÃO"}</strong><br>
-          <small>Usuário: ${l.usuarioNome || l.criadoPorNome || "-"}</small><br>
-          <small>Referência: ${l.usuarioAlvoEmail || l.emailCriado || l.clienteNome || l.cargoNome || l.equipeNome || "-"}</small>
-        </div>
-        <div>
-          <button class="btn btn-ghost" onclick="verLog('${l.id}')">Ver</button>
-        </div>
-      </div>
-    `).join("")
-    : `<div class="item"><strong>Nenhum log encontrado.</strong></div>`;
-
-  document.getElementById("listaLogs").innerHTML = html;
-}
-
-function verLog(id) {
-  const l = logsCache.find(x => x.id === id);
-  if (!l) return;
-
-  abrirDrawer("Detalhe do log", `
-    <p><strong>Tipo:</strong> ${l.tipo || "-"}</p>
-    <p><strong>Usuário:</strong> ${l.usuarioNome || l.criadoPorNome || "-"}</p>
-    <p><strong>Email alvo:</strong> ${l.usuarioAlvoEmail || l.emailCriado || "-"}</p>
-    <p><strong>Cliente:</strong> ${l.clienteNome || "-"}</p>
-    <p><strong>Cargo:</strong> ${l.cargoNome || "-"}</p>
-    <p><strong>Equipe:</strong> ${l.equipeNome || "-"}</p>
-    <p><strong>Valor:</strong> ${l.valor ? moeda(l.valor) : "-"}</p>
-    <p><strong>Tenant:</strong> ${l.clientePlataformaId || "-"}</p>
-  `);
-}
-
-// ================= LOGOUT =================
-function logout() {
-  firebase.auth().signOut().finally(() => {
-    localStorage.removeItem("usuario");
-    localStorage.removeItem("caixaAtual");
-    window.location.href = "index.html";
-  });
-}
-
-// ================= DEBUG =================
-window.addEventListener("error", function(e) {
-  console.error("ERRO JS:", e.message, "Linha:", e.lineno);
-  alert("Erro JS: " + e.message + "\nLinha: " + e.lineno);
-});
-</script>
-
-</body>
-</html>
