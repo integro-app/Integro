@@ -977,6 +977,7 @@
     let caixasCache = [];
     let solicitacoesCache = [];
     let logsCache = [];
+    let pagamentosHojeCache = [];
 
     // ================= INIT =================
 
@@ -1143,6 +1144,7 @@
         carregarCaixas(),
         carregarSolicitacoes(),
         carregarLogs()
+        carregarPagamentosHoje()
       ]);
 
       atualizarKPIs();
@@ -1316,6 +1318,30 @@
           ...doc.data()
         });
       });
+    }
+
+    async function carregarPagamentosHoje() {
+  let ref = db.collection("pagamentos")
+    .where("data", "==", hojeISO())
+    .limit(200);
+
+  if (tenantId) {
+    ref = db.collection("pagamentos")
+      .where("clientePlataformaId", "==", tenantId)
+      .where("data", "==", hojeISO())
+      .limit(200);
+  }
+
+  const snap = await ref.get();
+
+  pagamentosHojeCache = [];
+
+  snap.forEach(doc => {
+    pagamentosHojeCache.push({
+      id: doc.id,
+      ...doc.data()
+    });
+  });
     }
 
     // ================= KPI =================
