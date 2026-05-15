@@ -3,119 +3,286 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ÍNTEGRO</title>
+  <title>ÍNTEGRO - Login</title>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-      font-family: 'Inter', sans-serif;
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
+
+    body{
+      min-height:100vh;
+      background:
+        radial-gradient(circle at top left, rgba(255,177,0,.20), transparent 32%),
+        radial-gradient(circle at bottom right, rgba(255,107,0,.18), transparent 35%),
+        linear-gradient(135deg,#061426,#071a33 55%,#0c2344);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:20px;
+      color:#fff;
     }
 
-    body {
-      display: flex;
-      height: 100vh;
-      background: #f5f7fb;
+    .login-shell{
+      width:100%;
+      max-width:1100px;
+      display:grid;
+      grid-template-columns:1.1fr .9fr;
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:32px;
+      overflow:hidden;
+      box-shadow:0 30px 80px rgba(0,0,0,.35);
+      backdrop-filter:blur(18px);
     }
 
-    /* SIDEBAR */
-    .sidebar {
-      width: 240px;
-      background: #071a33;
-      color: white;
-      padding: 20px;
+    .brand-area{
+      padding:54px;
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      min-height:620px;
+      background:
+        linear-gradient(135deg,rgba(255,177,0,.10),rgba(255,107,0,.04));
     }
 
-    .logo {
-      font-size: 22px;
-      font-weight: 800;
-      margin-bottom: 30px;
+    .logo{
+      font-size:38px;
+      font-weight:900;
+      letter-spacing:-1.5px;
     }
 
-    .menu-item {
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-      cursor: pointer;
+    .logo span{
+      background:linear-gradient(135deg,#ffb100,#ff6b00);
+      -webkit-background-clip:text;
+      color:transparent;
     }
 
-    .menu-item:hover {
-      background: rgba(255,255,255,0.1);
+    .brand-text h1{
+      font-size:44px;
+      line-height:1.05;
+      letter-spacing:-2px;
+      margin-bottom:18px;
+      font-weight:900;
     }
 
-    /* MAIN */
-    .main {
-      flex: 1;
-      padding: 20px;
+    .brand-text p{
+      color:#cbd5e1;
+      font-weight:600;
+      line-height:1.6;
+      max-width:440px;
     }
 
-    /* LOGIN */
-    .login-box {
-      max-width: 400px;
-      margin: 100px auto;
-      background: white;
-      padding: 30px;
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    .chips{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      margin-top:26px;
     }
 
-    .login-box h2 {
-      margin-bottom: 20px;
+    .chip{
+      padding:10px 13px;
+      border-radius:999px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.10);
+      color:#e2e8f0;
+      font-size:13px;
+      font-weight:800;
     }
 
-    .input {
-      width: 100%;
-      padding: 12px;
-      margin-bottom: 12px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
+    .login-area{
+      background:#ffffff;
+      color:#0f172a;
+      padding:54px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
     }
 
-    .btn {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 8px;
-      background: linear-gradient(135deg, #ffb100, #ff6b00);
-      color: white;
-      font-weight: 600;
-      cursor: pointer;
+    .login-box{
+      width:100%;
+      max-width:390px;
     }
 
-    .btn:hover {
-      opacity: 0.9;
+    .login-box h2{
+      font-size:30px;
+      font-weight:900;
+      letter-spacing:-1px;
+      margin-bottom:8px;
     }
 
+    .login-box p{
+      color:#64748b;
+      font-weight:600;
+      margin-bottom:28px;
+      line-height:1.5;
+    }
+
+    label{
+      display:block;
+      font-size:12px;
+      font-weight:900;
+      color:#64748b;
+      text-transform:uppercase;
+      margin-bottom:7px;
+    }
+
+    .input{
+      width:100%;
+      padding:15px;
+      border:1px solid #e2e8f0;
+      border-radius:15px;
+      outline:none;
+      font-size:15px;
+      font-weight:700;
+      color:#0f172a;
+      background:#f8fafc;
+      margin-bottom:16px;
+    }
+
+    .input:focus{
+      border-color:#ffb100;
+      background:#fff;
+      box-shadow:0 0 0 4px rgba(255,177,0,.13);
+    }
+
+    .btn{
+      width:100%;
+      padding:15px;
+      border:0;
+      border-radius:15px;
+      background:linear-gradient(135deg,#ffb100,#ff6b00);
+      color:#fff;
+      font-size:15px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:0 12px 24px rgba(255,107,0,.25);
+      margin-top:4px;
+    }
+
+    .btn:active{
+      transform:scale(.99);
+    }
+
+    .forgot{
+      margin-top:18px;
+      text-align:center;
+      color:#0f172a;
+      font-weight:800;
+      cursor:pointer;
+      font-size:14px;
+    }
+
+    .status{
+      margin-top:18px;
+      padding:12px;
+      border-radius:14px;
+      background:#f8fafc;
+      color:#64748b;
+      font-size:13px;
+      font-weight:700;
+      line-height:1.4;
+      display:none;
+    }
+
+    @media(max-width:900px){
+      .login-shell{
+        grid-template-columns:1fr;
+        max-width:520px;
+      }
+
+      .brand-area{
+        min-height:auto;
+        padding:34px;
+        gap:28px;
+      }
+
+      .brand-text h1{
+        font-size:34px;
+      }
+
+      .login-area{
+        padding:34px;
+      }
+    }
+
+    @media(max-width:520px){
+      body{
+        padding:12px;
+        align-items:flex-start;
+      }
+
+      .login-shell{
+        border-radius:24px;
+      }
+
+      .brand-area{
+        padding:26px;
+      }
+
+      .logo{
+        font-size:30px;
+      }
+
+      .brand-text h1{
+        font-size:28px;
+      }
+
+      .brand-text p{
+        font-size:14px;
+      }
+
+      .login-area{
+        padding:26px;
+      }
+
+      .login-box h2{
+        font-size:26px;
+      }
+    }
   </style>
 </head>
 
 <body>
 
-  <!-- MENU -->
-  <div class="sidebar">
-    <div class="logo">ÍNTEGRO</div>
+  <div class="login-shell">
 
-    <div class="menu-item">Dashboard</div>
-    <div class="menu-item">Clientes</div>
-    <div class="menu-item">Vendas</div>
-    <div class="menu-item">Cobranças</div>
-    <div class="menu-item">Financeiro</div>
-  </div>
+    <section class="brand-area">
+      <div class="logo">ÍNTE<span>GRO</span></div>
 
-  <!-- CONTEÚDO -->
-  <div class="main">
+      <div class="brand-text">
+        <h1>Gestão de vendas, cobrança e caixa em tempo real.</h1>
+        <p>
+          Plataforma operacional para empresas controlarem vendedores, clientes, carteiras, caixas, solicitações e auditoria com segurança.
+        </p>
 
-    <div class="login-box">
-      <h2>Login ÍNTEGRO</h2>
+        <div class="chips">
+          <div class="chip">Multiempresa</div>
+          <div class="chip">Caixa diário</div>
+          <div class="chip">Cobrança</div>
+          <div class="chip">Auditoria</div>
+        </div>
+      </div>
+    </section>
 
-      <input id="email" class="input" type="email" placeholder="Email">
-      <input id="senha" class="input" type="password" placeholder="Senha">
+    <section class="login-area">
+      <div class="login-box">
+        <h2>Acessar sistema</h2>
+        <p>Entre com seu email e senha para acessar seu painel ÍNTEGRO.</p>
 
-      <button class="btn" onclick="login()">Entrar</button>
-    </div>
+        <label>Email</label>
+        <input id="email" class="input" type="email" placeholder="seuemail@empresa.com">
+
+        <label>Senha</label>
+        <input id="senha" class="input" type="password" placeholder="Digite sua senha">
+
+        <button class="btn" onclick="login()">Entrar</button>
+
+        <div class="forgot" onclick="recuperarSenha()">Esqueci minha senha</div>
+
+        <div id="statusLogin" class="status"></div>
+      </div>
+    </section>
 
   </div>
 
