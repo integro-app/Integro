@@ -4186,3 +4186,182 @@
       }
 
     }
+
+    // =========================
+    // AUDITORIA / LOGS
+    // =========================
+
+    function renderLogs() {
+
+      const el =
+        document.getElementById("listaLogs");
+
+      if (!el) return;
+
+      el.innerHTML = logsCache.length
+        ? logsCache.map(l => `
+
+          <div class="list-item">
+
+            <div>
+
+              <strong>
+                ${formatarTipoLog(l.tipo)}
+              </strong>
+
+              <small>
+                Usuário:
+                ${l.usuarioNome || l.criadoPorNome || "-"}
+              </small>
+
+              <small>
+                Referência:
+                ${
+                  l.usuarioAlvoEmail ||
+                  l.emailCriado ||
+                  l.clienteNome ||
+                  l.cargoNome ||
+                  l.equipeNome ||
+                  l.vendedorNome ||
+                  "-"
+                }
+              </small>
+
+              ${
+                l.valor
+                  ? `<small>Valor: ${moeda(l.valor)}</small>`
+                  : ""
+              }
+
+            </div>
+
+            <div class="item-actions">
+
+              <button
+                class="ghost-btn"
+                onclick="verLog('${l.id}')"
+              >
+                Ver
+              </button>
+
+            </div>
+
+          </div>
+
+        `).join("")
+        : `
+
+          <div class="list-item">
+            <div>
+              <strong>Nenhum log encontrado</strong>
+              <small>As ações importantes do sistema aparecerão aqui.</small>
+            </div>
+          </div>
+
+        `;
+
+    }
+
+    function verLog(id) {
+
+      const l =
+        logsCache.find(x => x.id === id);
+
+      if (!l) return;
+
+      abrirDrawer("Detalhe do log", `
+
+        <div style="
+          display:grid;
+          gap:12px;
+          font-weight:800;
+          color:#334155;
+          line-height:1.6;
+        ">
+
+          <p><strong>Tipo:</strong> ${formatarTipoLog(l.tipo)}</p>
+
+          <p><strong>Usuário:</strong> ${l.usuarioNome || l.criadoPorNome || "-"}</p>
+
+          <p><strong>Email alvo:</strong> ${l.usuarioAlvoEmail || l.emailCriado || "-"}</p>
+
+          <p><strong>Cliente:</strong> ${l.clienteNome || "-"}</p>
+
+          <p><strong>Cargo:</strong> ${l.cargoNome || "-"}</p>
+
+          <p><strong>Equipe:</strong> ${l.equipeNome || "-"}</p>
+
+          <p><strong>Vendedor:</strong> ${l.vendedorNome || "-"}</p>
+
+          <p><strong>Valor:</strong> ${l.valor ? moeda(l.valor) : "-"}</p>
+
+          <p><strong>Tenant:</strong> ${l.clientePlataformaId || "-"}</p>
+
+        </div>
+
+      `);
+
+    }
+
+    // =========================
+    // LOGOUT
+    // =========================
+
+    function logout() {
+
+      firebase.auth().signOut().finally(() => {
+
+        localStorage.removeItem("usuario");
+
+        localStorage.removeItem("caixaAtual");
+
+        window.location.href = "index.html";
+
+      });
+
+    }
+
+    // =========================
+    // ERROS GLOBAIS
+    // =========================
+
+    window.addEventListener("error", function(event) {
+
+      console.error(
+        "ERRO JS:",
+        event.message,
+        "Linha:",
+        event.lineno
+      );
+
+      alert(
+        "Erro JS:\n\n" +
+        event.message +
+        "\nLinha: " +
+        event.lineno
+      );
+
+    });
+
+    window.addEventListener("unhandledrejection", function(event) {
+
+      console.error(
+        "PROMISE REJEITADA:",
+        event.reason
+      );
+
+      alert(
+        "Erro assíncrono:\n\n" +
+        (
+          event.reason?.message ||
+          event.reason ||
+          "Erro desconhecido"
+        )
+      );
+
+    });
+
+  </script>
+
+</body>
+</html>
