@@ -2040,3 +2040,497 @@
         .toLowerCase()
         .replace(/\b\w/g, letra => letra.toUpperCase());
           }
+
+    // =========================
+    // USUÁRIOS
+    // =========================
+
+    function renderUsuarios() {
+
+      const el = document.getElementById("listaUsuarios");
+
+      if (!el) return;
+
+      el.innerHTML = usuariosCache.length
+        ? usuariosCache.map(u => `
+
+          <div class="list-item">
+
+            <div>
+
+              <strong>
+                ${campoTexto(
+                  u.nome ||
+                  u.nomeCompleto
+                )}
+              </strong>
+
+              <small>
+                ${campoTexto(u.email)}
+              </small>
+
+              <small>
+                ${campoTexto(u.tipoUsuario)} •
+                ${campoTexto(u.cargoNome)}
+              </small>
+
+              <small>
+                ${campoTexto(u.equipeNome)}
+              </small>
+
+              <div style="margin-top:10px;">
+                ${badgeStatus(u.status)}
+              </div>
+
+            </div>
+
+            <div class="item-actions">
+
+              <button
+                class="ghost-btn"
+                onclick="abrirEditarUsuario('${u.id}')"
+              >
+                Editar
+              </button>
+
+              ${
+                u.acessoLiberado === false
+                  ? `
+                    <button
+                      class="success-btn"
+                      onclick="alternarAcessoUsuario('${u.id}', true)"
+                    >
+                      Liberar
+                    </button>
+                  `
+                  : `
+                    <button
+                      class="danger-btn"
+                      onclick="alternarAcessoUsuario('${u.id}', false)"
+                    >
+                      Bloquear
+                    </button>
+                  `
+              }
+
+            </div>
+
+          </div>
+
+        `).join("")
+        : `
+          <div class="list-item">
+            <div>
+              <strong>Nenhum usuário encontrado</strong>
+              <small>Crie o primeiro usuário da empresa.</small>
+            </div>
+          </div>
+        `;
+    }
+
+    // =========================
+    // NOVO USUÁRIO
+    // =========================
+
+    function abrirNovoUsuario() {
+
+      const cargosOptions = cargosCache.length
+        ? cargosCache.map(c => `
+            <option value="${c.id}">
+              ${campoTexto(c.nome || c.cargoNome)}
+            </option>
+          `).join("")
+        : `<option value="">Sem cargos cadastrados</option>`;
+
+      const equipesOptions = equipesCache.length
+        ? equipesCache.map(e => `
+            <option value="${e.id}">
+              ${campoTexto(e.nome)}
+            </option>
+          `).join("")
+        : `<option value="">Sem equipe</option>`;
+
+      abrirDrawer("Novo usuário", `
+
+        <input
+          id="novoNome"
+          placeholder="Nome completo"
+          style="margin-bottom:12px;"
+        >
+
+        <input
+          id="novoEmail"
+          type="email"
+          placeholder="Email"
+          style="margin-bottom:12px;"
+        >
+
+        <select
+          id="novoTipo"
+          style="margin-bottom:12px;"
+        >
+          <option value="vendedor">Vendedor</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="financeiro">Financeiro</option>
+          <option value="master_local">Master Local</option>
+        </select>
+
+        <select
+          id="novoCargo"
+          style="margin-bottom:12px;"
+        >
+          ${cargosOptions}
+        </select>
+
+        <select
+          id="novaEquipe"
+          style="margin-bottom:20px;"
+        >
+          ${equipesOptions}
+        </select>
+
+        <button
+          class="primary-btn"
+          style="width:100%;"
+          onclick="salvarNovoUsuario()"
+        >
+          Criar usuário
+        </button>
+
+        <div style="
+          margin-top:16px;
+          padding:14px;
+          border-radius:16px;
+          background:#f8fafc;
+          border:1px solid #e2e8f0;
+          font-size:13px;
+          font-weight:800;
+          color:#475569;
+        ">
+          Senha padrão:
+          <strong>123456</strong>
+        </div>
+
+      `);
+
+    }
+
+    async function salvarNovoUsuario() {
+
+      try {
+
+        const nome =
+          document.getElementById("novoNome").value.trim();
+
+        const email =
+          document.getElementById("novoEmail").value.trim();
+
+        const tipo =
+          document.getElementById("novoTipo").value;
+
+        const cargoId =
+          document.getElementById("novoCargo").value;
+
+        const equipeId =
+          document.getElementById("novaEquipe").value;
+
+        if (!nome || !email) {
+          alert("Informe nome e email.");
+          return;
+        }
+
+        const cargo =
+          cargosCache.find(c => c.id === cargoId);
+
+        const equipe =
+          equipesCache.find(e => e.id === equipeId);
+
+        const senhaPadrao = "123456";
+
+        // APP SECUNDÁRIO
+        const secondApp =
+          firebase.initializeApp(
+            firebase.app().options,
+            "secondary-" + Date.now()
+          );
+
+        const cred =
+          await secondApp.auth()
+            .createUserWithEmailAndPassword(
+              email,
+              senhaPadrao
+            );
+
+        await secondApp.auth().signOut();
+
+        await secondApp.delete();
+
+        await db.collection("usuarios").add({
+
+          authUid: cred.user.uid,
+
+          nome,
+          nomeCompleto: nome,
+
+          email,
+
+          tipoUsuario: tipo,
+
+          cargoId: cargoId || "",
+          cargoNome:
+            cargo?.nome ||
+            cargo?.cargoNome ||
+            tipo,
+
+          permissoes:
+            cargo?.permissoes || {},
+
+          equipeId: equipeId || "",
+          equipeNome:
+            equipe?.nome || "",
+
+          status: "ATIVO",
+
+          acessoLiberado: true,
+
+          clientePlataformaId: tenantId,
+
+          clientePlataformaNome:
+            usuarioLogado.clientePlataformaNome ||
+            usuarioLogado.empresaNome ||
+            "",
+
+          criadoPorUid:
+            usuarioLogado.authUid || "",
+
+          criadoPorNome:
+            usuarioLogado.nome ||
+            usuarioLogado.email ||
+            "",
+
+          criadoEm:
+            firebase.firestore.FieldValue.serverTimestamp()
+
+        });
+
+        await gravarLog(
+          "CRIACAO_USUARIO",
+          {
+            emailCriado: email,
+            nomeCriado: nome,
+            tipoUsuarioCriado: tipo
+          }
+        );
+
+        alert(
+          "Usuário criado com sucesso.\n\n" +
+          "Email: " + email + "\n" +
+          "Senha padrão: 123456"
+        );
+
+        fecharDrawer();
+
+        await carregarTudo();
+
+      } catch (erro) {
+
+        console.error(
+          "Erro ao criar usuário:",
+          erro
+        );
+
+        if (
+          erro.code ===
+          "auth/email-already-in-use"
+        ) {
+          alert("Este email já existe.");
+          return;
+        }
+
+        alert(
+          "Erro ao criar usuário:\n\n" +
+          erro.message
+        );
+
+      }
+
+    }
+
+    // =========================
+    // EDITAR USUÁRIO
+    // =========================
+
+    function abrirEditarUsuario(id) {
+
+      const u =
+        usuariosCache.find(x => x.id === id);
+
+      if (!u) return;
+
+      const cargosOptions = cargosCache.length
+        ? cargosCache.map(c => `
+            <option
+              value="${c.id}"
+              ${
+                u.cargoId === c.id
+                  ? "selected"
+                  : ""
+              }
+            >
+              ${campoTexto(
+                c.nome ||
+                c.cargoNome
+              )}
+            </option>
+          `).join("")
+        : `<option value="">Sem cargos</option>`;
+
+      const equipesOptions = equipesCache.length
+        ? equipesCache.map(e => `
+            <option
+              value="${e.id}"
+              ${
+                u.equipeId === e.id
+                  ? "selected"
+                  : ""
+              }
+            >
+              ${campoTexto(e.nome)}
+            </option>
+          `).join("")
+        : `<option value="">Sem equipe</option>`;
+
+      abrirDrawer("Editar usuário", `
+
+        <input
+          id="editNome"
+          value="${campoTexto(
+            u.nome ||
+            u.nomeCompleto,
+            ""
+          )}"
+          style="margin-bottom:12px;"
+        >
+
+        <input
+          value="${campoTexto(u.email)}"
+          disabled
+          style="margin-bottom:12px;"
+        >
+
+        <select
+          id="editTipo"
+          style="margin-bottom:12px;"
+        >
+
+          <option
+            value="vendedor"
+            ${
+              u.tipoUsuario === "vendedor"
+                ? "selected"
+                : ""
+            }
+          >
+            Vendedor
+          </option>
+
+          <option
+            value="supervisor"
+            ${
+              u.tipoUsuario === "supervisor"
+                ? "selected"
+                : ""
+            }
+          >
+            Supervisor
+          </option>
+
+          <option
+            value="financeiro"
+            ${
+              u.tipoUsuario === "financeiro"
+                ? "selected"
+                : ""
+            }
+          >
+            Financeiro
+          </option>
+
+          <option
+            value="master_local"
+            ${
+              u.tipoUsuario === "master_local"
+                ? "selected"
+                : ""
+            }
+          >
+            Master Local
+          </option>
+
+        </select>
+
+        <select
+          id="editCargo"
+          style="margin-bottom:12px;"
+        >
+          ${cargosOptions}
+        </select>
+
+        <select
+          id="editEquipe"
+          style="margin-bottom:12px;"
+        >
+          ${equipesOptions}
+        </select>
+
+        <select
+          id="editStatus"
+          style="margin-bottom:20px;"
+        >
+
+          <option
+            value="ATIVO"
+            ${
+              u.status === "ATIVO"
+                ? "selected"
+                : ""
+            }
+          >
+            ATIVO
+          </option>
+
+          <option
+            value="INATIVO"
+            ${
+              u.status === "INATIVO"
+                ? "selected"
+                : ""
+            }
+          >
+            INATIVO
+          </option>
+
+          <option
+            value="BLOQUEADO"
+            ${
+              u.status === "BLOQUEADO"
+                ? "selected"
+                : ""
+            }
+          >
+            BLOQUEADO
+          </option>
+
+        </select>
+
+        <button
+          class="primary-btn"
+          style="width:100%;"
+          onclick="salvarEdicaoUsuario('${u.id}')"
+        >
+          Salvar alterações
+        </button>
+
+      `);
+
+          }
