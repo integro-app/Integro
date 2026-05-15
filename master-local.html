@@ -1596,3 +1596,447 @@
         console.error("Erro ao gravar log:", erro);
       }
     }
+
+    // =========================
+    // LOADERS FIREBASE
+    // =========================
+
+    async function carregarTudo() {
+      try {
+        await Promise.all([
+          carregarUsuarios(),
+          carregarClientes(),
+          carregarCargos(),
+          carregarEquipes(),
+          carregarCaixas(),
+          carregarVendas(),
+          carregarPagamentosHoje(),
+          carregarSolicitacoes(),
+          carregarLogs()
+        ]);
+
+        atualizarKPIs();
+        renderDashboard();
+        renderUsuarios();
+        renderClientes();
+        renderCargos();
+        renderEquipes();
+        renderCaixas();
+        renderSolicitacoes();
+        renderLogs();
+
+      } catch (erro) {
+        console.error("Erro ao carregar dados:", erro);
+        alert("Erro ao carregar dados: " + erro.message);
+      }
+    }
+
+    async function carregarUsuarios() {
+      let ref = db.collection("usuarios").limit(300);
+
+      if (tenantId) {
+        ref = db.collection("usuarios")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(300);
+      }
+
+      const snap = await ref.get();
+
+      usuariosCache = [];
+
+      snap.forEach(doc => {
+        usuariosCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarClientes() {
+      let ref = db.collection("clientes").limit(500);
+
+      if (tenantId) {
+        ref = db.collection("clientes")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(500);
+      }
+
+      const snap = await ref.get();
+
+      clientesCache = [];
+
+      snap.forEach(doc => {
+        clientesCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarCargos() {
+      let ref = db.collection("cargos").limit(150);
+
+      if (tenantId) {
+        ref = db.collection("cargos")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(150);
+      }
+
+      const snap = await ref.get();
+
+      cargosCache = [];
+
+      snap.forEach(doc => {
+        cargosCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarEquipes() {
+      let ref = db.collection("equipes").limit(150);
+
+      if (tenantId) {
+        ref = db.collection("equipes")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(150);
+      }
+
+      const snap = await ref.get();
+
+      equipesCache = [];
+
+      snap.forEach(doc => {
+        equipesCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarCaixas() {
+      let ref = db.collection("caixas").limit(300);
+
+      if (tenantId) {
+        ref = db.collection("caixas")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(300);
+      }
+
+      const snap = await ref.get();
+
+      caixasCache = [];
+
+      snap.forEach(doc => {
+        caixasCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarVendas() {
+      let ref = db.collection("vendas").limit(500);
+
+      if (tenantId) {
+        ref = db.collection("vendas")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(500);
+      }
+
+      const snap = await ref.get();
+
+      vendasCache = [];
+
+      snap.forEach(doc => {
+        vendasCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarPagamentosHoje() {
+      let ref = db.collection("pagamentos")
+        .where("data", "==", hojeISO())
+        .limit(300);
+
+      if (tenantId) {
+        ref = db.collection("pagamentos")
+          .where("clientePlataformaId", "==", tenantId)
+          .where("data", "==", hojeISO())
+          .limit(300);
+      }
+
+      const snap = await ref.get();
+
+      pagamentosHojeCache = [];
+
+      snap.forEach(doc => {
+        pagamentosHojeCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarSolicitacoes() {
+      let ref = db.collection("solicitacoes").limit(300);
+
+      if (tenantId) {
+        ref = db.collection("solicitacoes")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(300);
+      }
+
+      const snap = await ref.get();
+
+      solicitacoesCache = [];
+
+      snap.forEach(doc => {
+        solicitacoesCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    async function carregarLogs() {
+      let ref = db.collection("logs").limit(300);
+
+      if (tenantId) {
+        ref = db.collection("logs")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(300);
+      }
+
+      const snap = await ref.get();
+
+      logsCache = [];
+
+      snap.forEach(doc => {
+        logsCache.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+    }
+
+    // =========================
+    // DASHBOARD EXECUTIVO
+    // =========================
+
+    function atualizarKPIs() {
+      const hoje = hojeISO();
+
+      const carteira = clientesCache.reduce((total, c) => {
+        return total + numero(c.saldoDevedor || c.saldo || 0);
+      }, 0);
+
+      const clientesAtivos = clientesCache.filter(c => {
+        return (
+          statusTxt(c.status) === "ATIVO" ||
+          statusTxt(c.status) === "ATIVA" ||
+          numero(c.saldoDevedor || c.saldo || 0) > 1
+        );
+      }).length;
+
+      const inadimplencia = clientesCache.reduce((total, c) => {
+        const atraso = numero(c.diasAtraso || 0);
+        const saldo = numero(c.saldoDevedor || c.saldo || 0);
+        const status = statusTxt(c.status);
+
+        if (atraso >= 10 || status.includes("INAD")) {
+          return total + saldo;
+        }
+
+        return total;
+      }, 0);
+
+      const caixasAbertos = caixasCache.filter(c =>
+        statusTxt(c.status) === "ABERTO"
+      ).length;
+
+      const vendasHoje = vendasCache.filter(v => {
+        const data =
+          v.data ||
+          v.dataVenda ||
+          v.dataCriacao ||
+          v.dataTexto ||
+          "";
+
+        return String(data).includes(hoje);
+      }).length;
+
+      const solicitacoesPendentes = solicitacoesCache.filter(s =>
+        statusTxt(s.status) === "PENDENTE"
+      ).length;
+
+      const recebidoHoje = pagamentosHojeCache.reduce((total, p) => {
+        return total + numero(p.valor || 0);
+      }, 0);
+
+      document.getElementById("kpiCarteira").innerText = moeda(carteira);
+      document.getElementById("kpiRecebidoHoje").innerText = moeda(recebidoHoje);
+      document.getElementById("kpiClientes").innerText = clientesAtivos;
+      document.getElementById("kpiInadimplencia").innerText = moeda(inadimplencia);
+      document.getElementById("kpiCaixas").innerText = caixasAbertos;
+      document.getElementById("kpiUsuarios").innerText = usuariosCache.length;
+      document.getElementById("kpiVendasHoje").innerText = vendasHoje;
+      document.getElementById("kpiSolicitacoes").innerText = solicitacoesPendentes;
+    }
+
+    function renderDashboard() {
+      renderMovimentacoesRecentes();
+      renderRankingVendedores();
+      renderAlertasOperacionais();
+      renderCompromissosFinanceiros();
+    }
+
+    function renderMovimentacoesRecentes() {
+      const el = document.getElementById("movimentacoesRecentes");
+      if (!el) return;
+
+      const ultimosLogs = logsCache.slice(0, 6);
+
+      el.innerHTML = ultimosLogs.length
+        ? ultimosLogs.map(l => `
+          <div class="list-item">
+            <div>
+              <strong>${formatarTipoLog(l.tipo)}</strong>
+              <small>${l.usuarioNome || l.criadoPorNome || "-"}</small>
+              <small>${l.emailCriado || l.usuarioAlvoEmail || l.clienteNome || l.cargoNome || l.equipeNome || ""}</small>
+            </div>
+            <small style="font-weight:800;color:#64748b;">recente</small>
+          </div>
+        `).join("")
+        : `
+          <div class="list-item">
+            <div>
+              <strong>Nenhuma movimentação encontrada</strong>
+              <small>As ações importantes aparecerão aqui.</small>
+            </div>
+          </div>
+        `;
+    }
+
+    function renderRankingVendedores() {
+      const el = document.getElementById("rankingVendedores");
+      if (!el) return;
+
+      const vendedores = usuariosCache.filter(u => u.tipoUsuario === "vendedor");
+
+      const ranking = vendedores.map(v => {
+        const vendas = vendasCache.filter(x =>
+          x.vendedorId === v.id ||
+          x.usuarioId === v.id ||
+          x.usuarioCriadorId === v.id
+        );
+
+        const total = vendas.reduce((sum, venda) => {
+          return sum + numero(
+            venda.valorEmprestado ||
+            venda.valor ||
+            venda.valorVenda ||
+            0
+          );
+        }, 0);
+
+        return {
+          nome: v.nome || v.nomeCompleto || v.email || "Vendedor",
+          total
+        };
+      });
+
+      ranking.sort((a, b) => b.total - a.total);
+
+      el.innerHTML = ranking.length
+        ? ranking.slice(0, 5).map((r, index) => `
+          <div class="list-item">
+            <div>
+              <strong>#${index + 1} ${r.nome}</strong>
+              <small>${moeda(r.total)} vendidos</small>
+            </div>
+            <strong style="color:#22c55e;font-size:18px;">↑</strong>
+          </div>
+        `).join("")
+        : `
+          <div class="list-item">
+            <div>
+              <strong>Nenhum vendedor encontrado</strong>
+              <small>Cadastre vendedores para montar o ranking.</small>
+            </div>
+          </div>
+        `;
+    }
+
+    function renderAlertasOperacionais() {
+      const el = document.getElementById("alertasOperacionais");
+      if (!el) return;
+
+      const clientesAtrasados = clientesCache.filter(c => {
+        return numero(c.diasAtraso || 0) >= 10 ||
+          statusTxt(c.status).includes("INAD");
+      });
+
+      const caixasNegativos = caixasCache.filter(c => {
+        return numero(c.saldoAtual || c.valorAtual || c.saldo || 0) < 0;
+      });
+
+      const solicitacoesPendentes = solicitacoesCache.filter(s =>
+        statusTxt(s.status) === "PENDENTE"
+      );
+
+      el.innerHTML = `
+        <div class="list-item">
+          <div>
+            <strong style="color:#ef4444;">
+              ${clientesAtrasados.length} clientes em atraso grave
+            </strong>
+            <small>Clientes com atraso crítico ou inadimplentes.</small>
+          </div>
+        </div>
+
+        <div class="list-item">
+          <div>
+            <strong style="color:#f59e0b;">
+              ${caixasNegativos.length} caixas negativos
+            </strong>
+            <small>Caixas com saldo abaixo de zero.</small>
+          </div>
+        </div>
+
+        <div class="list-item">
+          <div>
+            <strong style="color:#0ea5e9;">
+              ${solicitacoesPendentes.length} solicitações pendentes
+            </strong>
+            <small>Aguardando aprovação ou recusa.</small>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderCompromissosFinanceiros() {
+      const el = document.getElementById("compromissosFinanceiros");
+      if (!el) return;
+
+      el.innerHTML = `
+        <div class="list-item">
+          <div>
+            <strong>Agenda financeira</strong>
+            <small>Módulo financeiro será conectado aos compromissos da empresa.</small>
+          </div>
+        </div>
+      `;
+    }
+
+    function formatarTipoLog(tipo) {
+      if (!tipo) return "Movimentação";
+
+      return String(tipo)
+        .replaceAll("_", " ")
+        .toLowerCase()
+        .replace(/\b\w/g, letra => letra.toUpperCase());
+          }
