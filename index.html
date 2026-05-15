@@ -1,91 +1,48 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <title>ÍNTEGRO • Plataforma Operacional</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-
-    *{
-      margin:0;
-      padding:0;
-      box-sizing:border-box;
-      font-family:'Inter',sans-serif;
-    }
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
 
     body{
-
       min-height:100vh;
-
       overflow:hidden;
-
       background:
-        radial-gradient(circle at top left,
-          rgba(255,177,0,.16),
-          transparent 26%
-        ),
-
-        radial-gradient(circle at bottom right,
-          rgba(255,107,0,.12),
-          transparent 30%
-        ),
-
-        linear-gradient(
-          135deg,
-          #020617 0%,
-          #071a33 40%,
-          #0c2344 100%
-        );
-
+        radial-gradient(circle at top left, rgba(255,177,0,.16), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(255,107,0,.12), transparent 30%),
+        linear-gradient(135deg,#020617 0%,#071a33 40%,#0c2344 100%);
       position:relative;
-
       color:#fff;
-
       display:flex;
       align-items:center;
       justify-content:center;
-
       padding:24px;
-
     }
 
-    /* FUNDO */
-
     .bg-grid{
-
       position:absolute;
       inset:0;
-
       background-image:
         linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
-
       background-size:40px 40px;
-
       opacity:.35;
-
       pointer-events:none;
-
     }
 
     .blur-ball{
-
       position:absolute;
-
       border-radius:50%;
-
       filter:blur(90px);
-
       opacity:.35;
-
     }
 
     .blur1{
@@ -104,260 +61,110 @@
       right:-80px;
     }
 
-    /* CONTAINER */
-
     .shell{
-
       width:100%;
-      max-width:1320px;
-
-      min-height:760px;
-
+      max-width:1180px;
+      min-height:680px;
       display:grid;
-      grid-template-columns:1.1fr .9fr;
-
+      grid-template-columns:1.05fr .95fr;
       border-radius:38px;
-
       overflow:hidden;
-
-      background:
-        rgba(255,255,255,.05);
-
-      border:
-        1px solid rgba(255,255,255,.08);
-
+      background:rgba(255,255,255,.05);
+      border:1px solid rgba(255,255,255,.08);
       backdrop-filter:blur(22px);
-
-      box-shadow:
-        0 30px 80px rgba(0,0,0,.45);
-
+      box-shadow:0 30px 80px rgba(0,0,0,.45);
       position:relative;
-
       z-index:2;
-
     }
 
-    /* LEFT */
-
     .hero{
-
       padding:60px;
-
       display:flex;
       flex-direction:column;
-      justify-content:space-between;
-
+      justify-content:center;
       position:relative;
-
     }
 
     .logo{
-
+      position:absolute;
+      top:48px;
+      left:60px;
       font-size:42px;
       font-weight:900;
       letter-spacing:-2px;
-
     }
 
     .logo span{
-
-      background:
-        linear-gradient(
-          135deg,
-          #ffb100,
-          #ff6b00
-        );
-
+      background:linear-gradient(135deg,#ffb100,#ff6b00);
       -webkit-background-clip:text;
       color:transparent;
-
     }
 
     .hero-center{
-
       max-width:620px;
-
+      margin-top:50px;
     }
 
     .hero-badge{
-
       display:inline-flex;
-
       align-items:center;
       gap:10px;
-
       padding:12px 16px;
-
       border-radius:999px;
-
-      background:
-        rgba(255,255,255,.08);
-
-      border:
-        1px solid rgba(255,255,255,.08);
-
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.08);
       font-size:13px;
       font-weight:800;
-
       color:#dbeafe;
-
       margin-bottom:26px;
-
     }
 
     .hero h1{
-
       font-size:64px;
       line-height:1.02;
-
       letter-spacing:-3px;
-
       margin-bottom:24px;
-
       font-weight:900;
-
     }
 
     .hero p{
-
       font-size:17px;
-
       color:#cbd5e1;
-
       line-height:1.8;
-
       max-width:540px;
-
       font-weight:500;
-
     }
-
-    .hero-cards{
-
-      margin-top:34px;
-
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-
-      gap:14px;
-
-    }
-
-    .mini-card{
-
-      padding:18px;
-
-      border-radius:22px;
-
-      background:
-        rgba(255,255,255,.05);
-
-      border:
-        1px solid rgba(255,255,255,.08);
-
-    }
-
-    .mini-card strong{
-
-      display:block;
-
-      font-size:22px;
-      font-weight:900;
-
-      margin-bottom:8px;
-
-    }
-
-    .mini-card small{
-
-      color:#cbd5e1;
-
-      line-height:1.5;
-
-      font-weight:700;
-
-    }
-
-    .footer-info{
-
-      display:flex;
-      gap:14px;
-      flex-wrap:wrap;
-
-      margin-top:40px;
-
-    }
-
-    .footer-chip{
-
-      padding:11px 15px;
-
-      border-radius:999px;
-
-      background:
-        rgba(255,255,255,.06);
-
-      border:
-        1px solid rgba(255,255,255,.08);
-
-      color:#dbeafe;
-
-      font-size:12px;
-      font-weight:800;
-
-    }
-
-    /* RIGHT */
 
     .auth{
-
-      background:
-        rgba(255,255,255,.96);
-
+      background:rgba(255,255,255,.96);
       display:flex;
       align-items:center;
       justify-content:center;
-
       padding:50px;
-
       position:relative;
-
     }
 
     .auth-box{
-
       width:100%;
       max-width:420px;
-
     }
 
     .auth-top{
-
       margin-bottom:34px;
-
     }
 
     .auth-top h2{
-
       color:#0f172a;
-
       font-size:42px;
       font-weight:900;
-
       letter-spacing:-2px;
-
       margin-bottom:10px;
-
     }
 
     .auth-top p{
-
       color:#64748b;
-
       line-height:1.7;
-
       font-weight:600;
-
     }
 
     .input-group{
@@ -365,90 +172,48 @@
     }
 
     .input-group label{
-
       display:block;
-
       margin-bottom:8px;
-
       color:#475569;
-
       font-size:12px;
-
       text-transform:uppercase;
-
       font-weight:900;
-
       letter-spacing:.5px;
-
     }
 
     .input{
-
       width:100%;
-
       height:58px;
-
       border-radius:18px;
-
       border:1px solid #e2e8f0;
-
       background:#f8fafc;
-
       padding:0 18px;
-
       outline:none;
-
       font-size:15px;
       font-weight:700;
-
       color:#0f172a;
-
       transition:.2s;
-
     }
 
     .input:focus{
-
       border-color:#ffb100;
-
       background:#fff;
-
-      box-shadow:
-        0 0 0 5px rgba(255,177,0,.12);
-
+      box-shadow:0 0 0 5px rgba(255,177,0,.12);
     }
 
     .login-btn{
-
       width:100%;
-
       height:60px;
-
       border:none;
-
       border-radius:18px;
-
-      background:
-        linear-gradient(
-          135deg,
-          #ffb100,
-          #ff6b00
-        );
-
+      background:linear-gradient(135deg,#ffb100,#ff6b00);
       color:#fff;
-
       font-size:16px;
       font-weight:900;
-
       cursor:pointer;
-
       margin-top:10px;
-
-      box-shadow:
-        0 18px 35px rgba(255,107,0,.28);
-
+      box-shadow:0 18px 35px rgba(255,107,0,.28);
       transition:.2s;
-
     }
 
     .login-btn:hover{
@@ -456,19 +221,12 @@
     }
 
     .forgot{
-
       margin-top:18px;
-
       text-align:center;
-
       color:#475569;
-
       font-size:14px;
-
       font-weight:800;
-
       cursor:pointer;
-
     }
 
     .forgot:hover{
@@ -476,59 +234,57 @@
     }
 
     .status{
-
       margin-top:18px;
-
       padding:14px;
-
       border-radius:16px;
-
       background:#f8fafc;
-
       border:1px solid #e2e8f0;
-
       color:#64748b;
-
       font-size:13px;
-
       line-height:1.6;
-
       font-weight:700;
-
       display:none;
-
     }
 
-    /* MOBILE */
-
     @media(max-width:1100px){
-
       body{
         overflow:auto;
       }
 
       .shell{
         grid-template-columns:1fr;
-      }
-
-      .hero{
+        max-width:620px;
         min-height:auto;
       }
 
+      .hero{
+        padding:34px;
+        min-height:360px;
+      }
+
+      .logo{
+        position:static;
+        font-size:36px;
+        margin-bottom:44px;
+      }
+
+      .hero-center{
+        margin-top:0;
+      }
+
       .hero h1{
-        font-size:48px;
+        font-size:42px;
       }
 
-      .hero-cards{
-        grid-template-columns:1fr;
+      .auth{
+        padding:34px;
       }
-
     }
 
     @media(max-width:700px){
-
       body{
         padding:14px;
+        align-items:flex-start;
       }
 
       .shell{
@@ -536,12 +292,25 @@
       }
 
       .hero{
-        padding:30px;
+        padding:28px;
+        min-height:auto;
+      }
+
+      .logo{
+        font-size:34px;
+        margin-bottom:34px;
+      }
+
+      .hero-badge{
+        font-size:12px;
+        padding:10px 14px;
+        margin-bottom:20px;
       }
 
       .hero h1{
-        font-size:36px;
+        font-size:34px;
         line-height:1.08;
+        letter-spacing:-2px;
       }
 
       .hero p{
@@ -549,188 +318,76 @@
       }
 
       .auth{
-        padding:30px;
+        padding:28px;
       }
 
       .auth-top h2{
         font-size:32px;
       }
-
-      .logo{
-        font-size:34px;
-      }
-
-      .mini-card strong{
-        font-size:20px;
-      }
-
     }
-
   </style>
-
 </head>
 
 <body>
 
   <div class="bg-grid"></div>
-
   <div class="blur-ball blur1"></div>
   <div class="blur-ball blur2"></div>
 
   <div class="shell">
 
-    <!-- HERO -->
-
     <section class="hero">
-
-      <div class="logo">
-        ÍNTE<span>GRO</span>
-      </div>
+      <div class="logo">ÍNTE<span>GRO</span></div>
 
       <div class="hero-center">
-
         <div class="hero-badge">
           Plataforma operacional multiempresa
         </div>
 
-        <h1>
-          Gestão inteligente de vendas, cobrança e caixa.
-        </h1>
+        <h1>Gestão inteligente de vendas, cobrança e caixa.</h1>
 
         <p>
-          Controle vendedores, clientes, carteiras, solicitações, inadimplência, auditoria e financeiro em uma única plataforma premium.
+          Controle vendedores, clientes, carteiras, solicitações, inadimplência,
+          auditoria e financeiro em uma única plataforma premium.
         </p>
-
-        <div class="hero-cards">
-
-          <div class="mini-card">
-            <strong>Multiempresa</strong>
-            <small>
-              Gestão consolidada de equipes e operações.
-            </small>
-          </div>
-
-          <div class="mini-card">
-            <strong>Tempo real</strong>
-            <small>
-              Informações sincronizadas com Firebase.
-            </small>
-          </div>
-
-          <div class="mini-card">
-            <strong>Auditoria</strong>
-            <small>
-              Controle completo das ações do sistema.
-            </small>
-          </div>
-
-        </div>
-
       </div>
-
-      <div class="footer-info">
-
-        <div class="footer-chip">
-          Dashboard executivo
-        </div>
-
-        <div class="footer-chip">
-          Controle de caixa
-        </div>
-
-        <div class="footer-chip">
-          Cobrança inteligente
-        </div>
-
-        <div class="footer-chip">
-          Segurança operacional
-        </div>
-
-      </div>
-
     </section>
 
-    <!-- LOGIN -->
-
     <section class="auth">
-
       <div class="auth-box">
 
         <div class="auth-top">
-
-          <h2>
-            Acessar sistema
-          </h2>
-
-          <p>
-            Entre com suas credenciais para acessar a plataforma ÍNTEGRO.
-          </p>
-
+          <h2>Acessar sistema</h2>
+          <p>Entre com suas credenciais para acessar a plataforma ÍNTEGRO.</p>
         </div>
 
         <div class="input-group">
-
           <label>Email</label>
-
-          <input
-            id="email"
-            class="input"
-            type="email"
-            placeholder="seuemail@empresa.com"
-          >
-
+          <input id="email" class="input" type="email" placeholder="seuemail@empresa.com">
         </div>
 
         <div class="input-group">
-
           <label>Senha</label>
-
-          <input
-            id="senha"
-            class="input"
-            type="password"
-            placeholder="Digite sua senha"
-          >
-
+          <input id="senha" class="input" type="password" placeholder="Digite sua senha">
         </div>
 
-        <button
-          class="login-btn"
-          onclick="login()"
-        >
-          Entrar na plataforma
-        </button>
+        <button class="login-btn" onclick="login()">Entrar na plataforma</button>
 
-        <div
-          class="forgot"
-          onclick="recuperarSenha()"
-        >
-          Esqueci minha senha
-        </div>
+        <div class="forgot" onclick="recuperarSenha()">Esqueci minha senha</div>
 
-        <div
-          id="statusLogin"
-          class="status"
-        ></div>
+        <div id="statusLogin" class="status"></div>
 
       </div>
-
     </section>
 
   </div>
 
-  <!-- FIREBASE -->
-
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
   <script src="js/firebase-config.js"></script>
-
   <script src="js/auth.js"></script>
-
   <script src="js/app.js"></script>
 
 </body>
