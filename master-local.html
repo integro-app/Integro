@@ -2840,3 +2840,661 @@
       `);
 
       }
+
+    // =========================
+    // CARGOS E PERMISSÕES
+    // =========================
+
+    function renderCargos() {
+
+      const el = document.getElementById("listaCargos");
+
+      if (!el) return;
+
+      el.innerHTML = cargosCache.length
+        ? cargosCache.map(c => `
+
+          <div class="list-item">
+
+            <div>
+
+              <strong>
+                ${c.nome || c.cargoNome || "Cargo sem nome"}
+              </strong>
+
+              <small>
+                ${c.descricao || "Sem descrição"}
+              </small>
+
+              <small>
+                Tipo base: ${c.tipoBase || "-"}
+              </small>
+
+            </div>
+
+            <div class="item-actions">
+
+              <button
+                class="ghost-btn"
+                onclick="abrirEditarCargo('${c.id}')"
+              >
+                Editar
+              </button>
+
+              <button
+                class="danger-btn"
+                onclick="excluirCargo('${c.id}')"
+              >
+                Excluir
+              </button>
+
+            </div>
+
+          </div>
+
+        `).join("")
+        : `
+
+          <div class="list-item">
+
+            <div>
+              <strong>Nenhum cargo cadastrado</strong>
+              <small>Crie cargos para definir permissões e vincular usuários.</small>
+            </div>
+
+            <div class="item-actions">
+              <button class="primary-btn" onclick="abrirNovoCargo()">
+                Novo cargo
+              </button>
+            </div>
+
+          </div>
+
+        `;
+    }
+
+    function abrirNovoCargo() {
+      abrirDrawer("Novo cargo", formularioCargo());
+    }
+
+    function abrirEditarCargo(id) {
+
+      const cargo =
+        cargosCache.find(c => c.id === id);
+
+      if (!cargo) return;
+
+      abrirDrawer(
+        "Editar cargo",
+        formularioCargo(cargo)
+      );
+
+    }
+
+    function formularioCargo(cargo = null) {
+
+      const p = cargo?.permissoes || {};
+
+      return `
+
+        <input
+          id="cargoNome"
+          placeholder="Nome do cargo"
+          value="${cargo?.nome || cargo?.cargoNome || ""}"
+          style="margin-bottom:12px;"
+        >
+
+        <input
+          id="cargoDescricao"
+          placeholder="Descrição do cargo"
+          value="${cargo?.descricao || ""}"
+          style="margin-bottom:12px;"
+        >
+
+        <select
+          id="cargoTipoBase"
+          style="margin-bottom:16px;"
+        >
+          <option value="vendedor" ${cargo?.tipoBase === "vendedor" ? "selected" : ""}>Vendedor</option>
+          <option value="supervisor" ${cargo?.tipoBase === "supervisor" ? "selected" : ""}>Supervisor</option>
+          <option value="financeiro" ${cargo?.tipoBase === "financeiro" ? "selected" : ""}>Financeiro</option>
+          <option value="gerente" ${cargo?.tipoBase === "gerente" ? "selected" : ""}>Gerente</option>
+          <option value="operacional" ${cargo?.tipoBase === "operacional" ? "selected" : ""}>Operacional</option>
+        </select>
+
+        <div style="
+          font-weight:900;
+          margin:14px 0 12px;
+          color:#0f172a;
+        ">
+          Permissões
+        </div>
+
+        <div style="
+          display:grid;
+          gap:8px;
+          margin-bottom:18px;
+        ">
+
+          ${checkPermissao("verDashboard", "Ver dashboard", p)}
+          ${checkPermissao("verUsuarios", "Ver usuários", p)}
+          ${checkPermissao("criarUsuarios", "Criar usuários", p)}
+          ${checkPermissao("editarUsuarios", "Editar usuários", p)}
+          ${checkPermissao("bloquearUsuarios", "Bloquear/liberar usuários", p)}
+          ${checkPermissao("verClientes", "Ver clientes", p)}
+          ${checkPermissao("verCargos", "Ver cargos", p)}
+          ${checkPermissao("editarCargos", "Criar/editar cargos", p)}
+          ${checkPermissao("verEquipes", "Ver equipes", p)}
+          ${checkPermissao("editarEquipes", "Criar/editar equipes", p)}
+          ${checkPermissao("verCaixas", "Ver caixas", p)}
+          ${checkPermissao("abrirCaixa", "Abrir caixa", p)}
+          ${checkPermissao("fecharCaixa", "Fechar caixa", p)}
+          ${checkPermissao("reabrirCaixa", "Reabrir caixa", p)}
+          ${checkPermissao("aprovarSolicitacoes", "Aprovar solicitações", p)}
+          ${checkPermissao("verLogs", "Ver auditoria", p)}
+
+        </div>
+
+        <button
+          class="primary-btn"
+          style="width:100%;"
+          onclick="${cargo ? `salvarCargo('${cargo.id}')` : "salvarCargo()"}"
+        >
+          Salvar cargo
+        </button>
+
+      `;
+    }
+
+    function checkPermissao(chave, texto, permissoes) {
+
+      return `
+
+        <label style="
+          display:flex;
+          align-items:center;
+          gap:10px;
+          font-weight:800;
+          color:#334155;
+          background:#f8fafc;
+          border:1px solid #e2e8f0;
+          border-radius:14px;
+          padding:12px;
+        ">
+
+          <input
+            type="checkbox"
+            id="perm_${chave}"
+            ${permissoes?.[chave] ? "checked" : ""}
+            style="width:auto;margin:0;"
+          >
+
+          ${texto}
+
+        </label>
+
+      `;
+    }
+
+    function coletarPermissoesCargo() {
+
+      const chaves = [
+        "verDashboard",
+        "verUsuarios",
+        "criarUsuarios",
+        "editarUsuarios",
+        "bloquearUsuarios",
+        "verClientes",
+        "verCargos",
+        "editarCargos",
+        "verEquipes",
+        "editarEquipes",
+        "verCaixas",
+        "abrirCaixa",
+        "fecharCaixa",
+        "reabrirCaixa",
+        "aprovarSolicitacoes",
+        "verLogs"
+      ];
+
+      const permissoes = {};
+
+      chaves.forEach(chave => {
+        permissoes[chave] =
+          document.getElementById("perm_" + chave)?.checked || false;
+      });
+
+      return permissoes;
+    }
+
+    async function salvarCargo(id = null) {
+
+      try {
+
+        const nome =
+          document.getElementById("cargoNome").value.trim();
+
+        const descricao =
+          document.getElementById("cargoDescricao").value.trim();
+
+        const tipoBase =
+          document.getElementById("cargoTipoBase").value;
+
+        if (!nome) {
+          alert("Informe o nome do cargo.");
+          return;
+        }
+
+        const dados = {
+
+          nome,
+          cargoNome: nome,
+          descricao,
+          tipoBase,
+          permissoes: coletarPermissoesCargo(),
+
+          clientePlataformaId: tenantId,
+
+          atualizadoPorUid:
+            usuarioLogado.authUid || "",
+
+          atualizadoPorNome:
+            usuarioLogado.nome ||
+            usuarioLogado.email ||
+            "",
+
+          atualizadoEm:
+            firebase.firestore.FieldValue.serverTimestamp()
+
+        };
+
+        if (id) {
+
+          await db.collection("cargos").doc(id).update(dados);
+
+          await gravarLog(
+            "EDICAO_CARGO",
+            {
+              cargoId: id,
+              cargoNome: nome
+            }
+          );
+
+          alert("Cargo atualizado com sucesso.");
+
+        } else {
+
+          await db.collection("cargos").add({
+
+            ...dados,
+
+            criadoPorUid:
+              usuarioLogado.authUid || "",
+
+            criadoPorNome:
+              usuarioLogado.nome ||
+              usuarioLogado.email ||
+              "",
+
+            criadoEm:
+              firebase.firestore.FieldValue.serverTimestamp()
+
+          });
+
+          await gravarLog(
+            "CRIACAO_CARGO",
+            {
+              cargoNome: nome
+            }
+          );
+
+          alert("Cargo criado com sucesso.");
+
+        }
+
+        fecharDrawer();
+
+        await carregarTudo();
+
+      } catch (erro) {
+
+        console.error("Erro ao salvar cargo:", erro);
+
+        alert(
+          "Erro ao salvar cargo:\n\n" +
+          erro.message
+        );
+
+      }
+
+    }
+
+    async function excluirCargo(id) {
+
+      try {
+
+        const emUso =
+          usuariosCache.some(u => u.cargoId === id);
+
+        if (emUso) {
+          alert("Não é possível excluir cargo vinculado a usuário.");
+          return;
+        }
+
+        if (!confirm("Deseja excluir este cargo?")) {
+          return;
+        }
+
+        const cargo =
+          cargosCache.find(c => c.id === id);
+
+        await db.collection("cargos").doc(id).delete();
+
+        await gravarLog(
+          "EXCLUSAO_CARGO",
+          {
+            cargoId: id,
+            cargoNome:
+              cargo?.nome ||
+              cargo?.cargoNome ||
+              ""
+          }
+        );
+
+        alert("Cargo excluído.");
+
+        await carregarTudo();
+
+      } catch (erro) {
+
+        console.error("Erro ao excluir cargo:", erro);
+
+        alert(
+          "Erro ao excluir cargo:\n\n" +
+          erro.message
+        );
+
+      }
+
+    }
+
+    // =========================
+    // EQUIPES / UNIDADES
+    // =========================
+
+    function renderEquipes() {
+
+      const el =
+        document.getElementById("listaEquipes");
+
+      if (!el) return;
+
+      el.innerHTML = equipesCache.length
+        ? equipesCache.map(e => `
+
+          <div class="list-item">
+
+            <div>
+
+              <strong>
+                ${e.nome || "Equipe sem nome"}
+              </strong>
+
+              <small>
+                ${e.descricao || "Sem descrição"}
+              </small>
+
+              <small>
+                Status: ${e.status || "ATIVA"}
+              </small>
+
+            </div>
+
+            <div class="item-actions">
+
+              <button
+                class="ghost-btn"
+                onclick="abrirEditarEquipe('${e.id}')"
+              >
+                Editar
+              </button>
+
+              <button
+                class="danger-btn"
+                onclick="excluirEquipe('${e.id}')"
+              >
+                Excluir
+              </button>
+
+            </div>
+
+          </div>
+
+        `).join("")
+        : `
+
+          <div class="list-item">
+
+            <div>
+              <strong>Nenhuma equipe cadastrada</strong>
+              <small>Crie equipes, unidades ou filiais para organizar a operação.</small>
+            </div>
+
+            <div class="item-actions">
+              <button class="primary-btn" onclick="abrirNovaEquipe()">
+                Nova equipe
+              </button>
+            </div>
+
+          </div>
+
+        `;
+    }
+
+    function abrirNovaEquipe() {
+      abrirDrawer("Nova equipe", formularioEquipe());
+    }
+
+    function abrirEditarEquipe(id) {
+
+      const equipe =
+        equipesCache.find(e => e.id === id);
+
+      if (!equipe) return;
+
+      abrirDrawer(
+        "Editar equipe",
+        formularioEquipe(equipe)
+      );
+
+    }
+
+    function formularioEquipe(equipe = null) {
+
+      return `
+
+        <input
+          id="equipeNome"
+          placeholder="Nome da equipe/unidade"
+          value="${equipe?.nome || ""}"
+          style="margin-bottom:12px;"
+        >
+
+        <input
+          id="equipeDescricao"
+          placeholder="Descrição"
+          value="${equipe?.descricao || ""}"
+          style="margin-bottom:12px;"
+        >
+
+        <select
+          id="equipeStatus"
+          style="margin-bottom:20px;"
+        >
+
+          <option value="ATIVA" ${equipe?.status === "ATIVA" ? "selected" : ""}>
+            ATIVA
+          </option>
+
+          <option value="INATIVA" ${equipe?.status === "INATIVA" ? "selected" : ""}>
+            INATIVA
+          </option>
+
+        </select>
+
+        <button
+          class="primary-btn"
+          style="width:100%;"
+          onclick="${equipe ? `salvarEquipe('${equipe.id}')` : "salvarEquipe()"}"
+        >
+          Salvar equipe
+        </button>
+
+      `;
+    }
+
+    async function salvarEquipe(id = null) {
+
+      try {
+
+        const nome =
+          document.getElementById("equipeNome").value.trim();
+
+        const descricao =
+          document.getElementById("equipeDescricao").value.trim();
+
+        const status =
+          document.getElementById("equipeStatus").value;
+
+        if (!nome) {
+          alert("Informe o nome da equipe.");
+          return;
+        }
+
+        const dados = {
+
+          nome,
+          descricao,
+          status,
+
+          clientePlataformaId: tenantId,
+
+          atualizadoPorUid:
+            usuarioLogado.authUid || "",
+
+          atualizadoPorNome:
+            usuarioLogado.nome ||
+            usuarioLogado.email ||
+            "",
+
+          atualizadoEm:
+            firebase.firestore.FieldValue.serverTimestamp()
+
+        };
+
+        if (id) {
+
+          await db.collection("equipes").doc(id).update(dados);
+
+          await gravarLog(
+            "EDICAO_EQUIPE",
+            {
+              equipeId: id,
+              equipeNome: nome
+            }
+          );
+
+          alert("Equipe atualizada com sucesso.");
+
+        } else {
+
+          await db.collection("equipes").add({
+
+            ...dados,
+
+            criadoPorUid:
+              usuarioLogado.authUid || "",
+
+            criadoPorNome:
+              usuarioLogado.nome ||
+              usuarioLogado.email ||
+              "",
+
+            criadoEm:
+              firebase.firestore.FieldValue.serverTimestamp()
+
+          });
+
+          await gravarLog(
+            "CRIACAO_EQUIPE",
+            {
+              equipeNome: nome
+            }
+          );
+
+          alert("Equipe criada com sucesso.");
+
+        }
+
+        fecharDrawer();
+
+        await carregarTudo();
+
+      } catch (erro) {
+
+        console.error("Erro ao salvar equipe:", erro);
+
+        alert(
+          "Erro ao salvar equipe:\n\n" +
+          erro.message
+        );
+
+      }
+
+    }
+
+    async function excluirEquipe(id) {
+
+      try {
+
+        const emUso =
+          usuariosCache.some(u => u.equipeId === id);
+
+        if (emUso) {
+          alert("Não é possível excluir equipe vinculada a usuário.");
+          return;
+        }
+
+        if (!confirm("Deseja excluir esta equipe?")) {
+          return;
+        }
+
+        const equipe =
+          equipesCache.find(e => e.id === id);
+
+        await db.collection("equipes").doc(id).delete();
+
+        await gravarLog(
+          "EXCLUSAO_EQUIPE",
+          {
+            equipeId: id,
+            equipeNome: equipe?.nome || ""
+          }
+        );
+
+        alert("Equipe excluída.");
+
+        await carregarTudo();
+
+      } catch (erro) {
+
+        console.error("Erro ao excluir equipe:", erro);
+
+        alert(
+          "Erro ao excluir equipe:\n\n" +
+          erro.message
+        );
+
+      }
+
+                          }
