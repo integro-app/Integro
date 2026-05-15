@@ -2534,3 +2534,309 @@
       `);
 
           }
+
+    async function salvarEdicaoUsuario(id) {
+
+      try {
+
+        const nome =
+          document.getElementById("editNome").value.trim();
+
+        const tipo =
+          document.getElementById("editTipo").value;
+
+        const cargoId =
+          document.getElementById("editCargo").value;
+
+        const equipeId =
+          document.getElementById("editEquipe").value;
+
+        const status =
+          document.getElementById("editStatus").value;
+
+        if (!nome) {
+          alert("Informe o nome.");
+          return;
+        }
+
+        const cargo =
+          cargosCache.find(c => c.id === cargoId);
+
+        const equipe =
+          equipesCache.find(e => e.id === equipeId);
+
+        await db.collection("usuarios").doc(id).update({
+
+          nome,
+          nomeCompleto: nome,
+
+          tipoUsuario: tipo,
+
+          cargoId: cargoId || "",
+          cargoNome:
+            cargo?.nome ||
+            cargo?.cargoNome ||
+            tipo,
+
+          permissoes:
+            cargo?.permissoes || {},
+
+          equipeId: equipeId || "",
+          equipeNome:
+            equipe?.nome || "",
+
+          status,
+
+          acessoLiberado:
+            status !== "BLOQUEADO",
+
+          atualizadoPorUid:
+            usuarioLogado.authUid || "",
+
+          atualizadoPorNome:
+            usuarioLogado.nome ||
+            usuarioLogado.email ||
+            "",
+
+          atualizadoEm:
+            firebase.firestore.FieldValue.serverTimestamp()
+
+        });
+
+        await gravarLog(
+          "EDICAO_USUARIO",
+          {
+            usuarioEditadoId: id,
+            nomeEditado: nome,
+            tipoEditado: tipo
+          }
+        );
+
+        alert("Usuário atualizado com sucesso.");
+
+        fecharDrawer();
+
+        await carregarTudo();
+
+      } catch (erro) {
+
+        console.error(
+          "Erro ao salvar edição:",
+          erro
+        );
+
+        alert(
+          "Erro ao salvar edição:\n\n" +
+          erro.message
+        );
+
+      }
+
+    }
+
+    async function alternarAcessoUsuario(id, liberar) {
+
+      try {
+
+        const usuario =
+          usuariosCache.find(u => u.id === id);
+
+        if (!usuario) return;
+
+        await db.collection("usuarios").doc(id).update({
+
+          acessoLiberado: liberar,
+
+          status:
+            liberar ? "ATIVO" : "BLOQUEADO",
+
+          atualizadoPorUid:
+            usuarioLogado.authUid || "",
+
+          atualizadoPorNome:
+            usuarioLogado.nome ||
+            usuarioLogado.email ||
+            "",
+
+          atualizadoEm:
+            firebase.firestore.FieldValue.serverTimestamp()
+
+        });
+
+        await gravarLog(
+          liberar
+            ? "LIBERACAO_USUARIO"
+            : "BLOQUEIO_USUARIO",
+          {
+            usuarioAlvoId: id,
+            usuarioAlvoEmail:
+              usuario.email || ""
+          }
+        );
+
+        alert(
+          liberar
+            ? "Usuário liberado."
+            : "Usuário bloqueado."
+        );
+
+        await carregarTudo();
+
+      } catch (erro) {
+
+        console.error(
+          "Erro ao alterar acesso:",
+          erro
+        );
+
+        alert(
+          "Erro ao alterar acesso:\n\n" +
+          erro.message
+        );
+
+      }
+
+    }
+
+    // =========================
+    // CLIENTES
+    // =========================
+
+    function renderClientes() {
+
+      const el =
+        document.getElementById("listaClientes");
+
+      if (!el) return;
+
+      const termo =
+        (
+          document.getElementById("buscaClientes")?.value ||
+          ""
+        ).toLowerCase();
+
+      const lista = clientesCache.filter(c => {
+
+        const texto = `
+          ${c.nome || ""}
+          ${c.nomeCompleto || ""}
+          ${c.apelido || ""}
+          ${c.documento || ""}
+          ${c.telefone || ""}
+          ${c.telefonePrincipal || ""}
+        `.toLowerCase();
+
+        return !termo || texto.includes(termo);
+
+      });
+
+      el.innerHTML = lista.length
+        ? lista.map(c => `
+
+          <div class="list-item">
+
+            <div>
+
+              <strong>
+                ${
+                  c.nome ||
+                  c.nomeCompleto ||
+                  c.apelido ||
+                  "Cliente sem nome"
+                }
+              </strong>
+
+              <small>
+                Telefone:
+                ${
+                  c.telefone ||
+                  c.telefonePrincipal ||
+                  "-"
+                }
+              </small>
+
+              <small>
+                Documento:
+                ${c.documento || "-"}
+              </small>
+
+              <small>
+                Saldo:
+                ${moeda(c.saldoDevedor || c.saldo || 0)}
+              </small>
+
+              <small>
+                Status:
+                ${c.status || "-"}
+              </small>
+
+            </div>
+
+            <div class="item-actions">
+
+              <button
+                class="ghost-btn"
+                onclick="abrirCliente('${c.id}')"
+              >
+                Ver cliente
+              </button>
+
+            </div>
+
+          </div>
+
+        `).join("")
+        : `
+
+          <div class="list-item">
+            <div>
+              <strong>Nenhum cliente encontrado</strong>
+              <small>Clientes cadastrados pelos vendedores aparecerão aqui.</small>
+            </div>
+          </div>
+
+        `;
+    }
+
+    function abrirCliente(id) {
+
+      const c =
+        clientesCache.find(x => x.id === id);
+
+      if (!c) return;
+
+      abrirDrawer("Cliente", `
+
+        <div style="
+          display:grid;
+          gap:12px;
+          color:#334155;
+          font-weight:800;
+          line-height:1.6;
+        ">
+
+          <p><strong>Nome:</strong> ${c.nome || c.nomeCompleto || "-"}</p>
+
+          <p><strong>Apelido:</strong> ${c.apelido || "-"}</p>
+
+          <p><strong>Documento:</strong> ${c.documento || "-"}</p>
+
+          <p><strong>Telefone:</strong> ${c.telefone || c.telefonePrincipal || "-"}</p>
+
+          <p><strong>Endereço:</strong> ${c.endereco || "-"}, ${c.numero || ""}</p>
+
+          <p><strong>Bairro:</strong> ${c.bairro || "-"}</p>
+
+          <p><strong>Cidade:</strong> ${c.cidade || "-"}</p>
+
+          <p><strong>Saldo:</strong> ${moeda(c.saldoDevedor || c.saldo || 0)}</p>
+
+          <p><strong>Status:</strong> ${c.status || "-"}</p>
+
+          <p><strong>Score:</strong> ${c.score ?? "-"}</p>
+
+        </div>
+
+      `);
+
+      }
