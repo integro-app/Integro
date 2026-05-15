@@ -1341,3 +1341,258 @@
     <div id="drawerContent"></div>
 
   </aside>
+
+    <!-- FIREBASE -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+
+    // =========================
+    // ESTADO GLOBAL
+    // =========================
+
+    let usuarioLogado = null;
+    let tenantId = "";
+
+    let usuariosCache = [];
+    let clientesCache = [];
+    let cargosCache = [];
+    let equipesCache = [];
+    let caixasCache = [];
+    let vendasCache = [];
+    let pagamentosHojeCache = [];
+    let solicitacoesCache = [];
+    let logsCache = [];
+
+    // =========================
+    // INIT / SESSÃO
+    // =========================
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        usuarioLogado = JSON.parse(localStorage.getItem("usuario"));
+
+        if (!usuarioLogado) {
+          alert("Sessão expirada. Faça login novamente.");
+          window.location.href = "index.html";
+          return;
+        }
+
+        if (usuarioLogado.tipoUsuario !== "master_local") {
+          alert("Acesso negado para este perfil.");
+          window.location.href = "index.html";
+          return;
+        }
+
+        tenantId =
+          usuarioLogado.clientePlataformaId ||
+          usuarioLogado.empresaId ||
+          usuarioLogado.tenantId ||
+          usuarioLogado.clienteId ||
+          "";
+
+        document.getElementById("userNome").innerText =
+          usuarioLogado.nome ||
+          usuarioLogado.nomeCompleto ||
+          usuarioLogado.email ||
+          "Master Local";
+
+        document.getElementById("empresaNome").innerText =
+          usuarioLogado.clientePlataformaNome ||
+          usuarioLogado.empresaNome ||
+          usuarioLogado.nomeEmpresa ||
+          "Empresa";
+
+        await carregarTudo();
+
+      } catch (erro) {
+        console.error("Erro ao iniciar Master Local:", erro);
+        alert("Erro ao iniciar Master Local: " + erro.message);
+      }
+    });
+
+    // =========================
+    // HELPERS
+    // =========================
+
+    function moeda(valor) {
+      return Number(valor || 0).toLocaleString("pt-BR", {
+        style: "currency",
+        currency: "BRL"
+      });
+    }
+
+    function hojeISO() {
+      return new Date().toISOString().split("T")[0];
+    }
+
+    function statusTxt(valor) {
+      return String(valor || "").toUpperCase();
+    }
+
+    function campoTexto(valor, fallback = "-") {
+      return valor ? String(valor) : fallback;
+    }
+
+    function numero(valor) {
+      return Number(valor || 0);
+    }
+
+    function safeArray(arr) {
+      return Array.isArray(arr) ? arr : [];
+    }
+
+    function badgeStatus(status) {
+      const s = statusTxt(status);
+
+      if (["ATIVO", "ATIVA", "ABERTO", "APROVADA", "PAGA", "QUITADO"].includes(s)) {
+        return `<span style="display:inline-flex;padding:6px 10px;border-radius:999px;background:#dcfce7;color:#166534;font-size:11px;font-weight:900;">${s || "ATIVO"}</span>`;
+      }
+
+      if (["BLOQUEADO", "INATIVO", "INATIVA", "FECHADO", "RECUSADA", "CANCELADO"].includes(s)) {
+        return `<span style="display:inline-flex;padding:6px 10px;border-radius:999px;background:#fee2e2;color:#991b1b;font-size:11px;font-weight:900;">${s}</span>`;
+      }
+
+      if (s === "PENDENTE") {
+        return `<span style="display:inline-flex;padding:6px 10px;border-radius:999px;background:#fef3c7;color:#92400e;font-size:11px;font-weight:900;">PENDENTE</span>`;
+      }
+
+      return `<span style="display:inline-flex;padding:6px 10px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:11px;font-weight:900;">${s || "N/I"}</span>`;
+    }
+
+    // =========================
+    // MENU MOBILE
+    // =========================
+
+    function toggleMenu(force) {
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("menuOverlay");
+
+      if (!sidebar || !overlay) return;
+
+      if (force === false) {
+        sidebar.classList.remove("open");
+        overlay.classList.remove("open");
+        return;
+      }
+
+      sidebar.classList.toggle("open");
+      overlay.classList.toggle("open", sidebar.classList.contains("open"));
+    }
+
+    // =========================
+    // NAVEGAÇÃO
+    // =========================
+
+    function trocarTela(id, el = null) {
+      const telas = [
+        "dashboard",
+        "usuarios",
+        "clientes",
+        "cargos",
+        "equipes",
+        "caixas",
+        "solicitacoes",
+        "logs"
+      ];
+
+      telas.forEach(telaId => {
+        const tela = document.getElementById(telaId);
+        if (tela) tela.classList.add("hidden");
+      });
+
+      const telaAtual = document.getElementById(id);
+
+      if (!telaAtual) {
+        alert("Tela não encontrada: " + id);
+        return;
+      }
+
+      telaAtual.classList.remove("hidden");
+
+      document.querySelectorAll(".menu-item").forEach(item => {
+        item.classList.remove("active");
+      });
+
+      if (el) {
+        el.classList.add("active");
+      } else {
+        const menu = Array.from(document.querySelectorAll(".menu-item"))
+          .find(item => item.getAttribute("onclick")?.includes("'" + id + "'"));
+
+        if (menu) menu.classList.add("active");
+      }
+
+      const titulos = {
+        dashboard: ["Dashboard Master Local", "Gestão operacional da empresa"],
+        usuarios: ["Usuários", "Gestão de acessos, cargos e equipes"],
+        clientes: ["Clientes", "Consulta geral da base de clientes"],
+        cargos: ["Cargos e permissões", "Controle de funções e permissões por perfil"],
+        equipes: ["Equipes / Unidades", "Organização por equipe, unidade ou filial"],
+        caixas: ["Caixas", "Abertura, fechamento e acompanhamento dos caixas"],
+        solicitacoes: ["Solicitações", "Aprovação de ingressos, retiradas e ajustes"],
+        logs: ["Auditoria", "Histórico das ações críticas do sistema"]
+      };
+
+      if (titulos[id]) {
+        document.getElementById("pageTitle").innerText = titulos[id][0];
+        document.getElementById("pageSubtitle").innerText = titulos[id][1];
+      }
+
+      if (window.innerWidth <= 1000) {
+        toggleMenu(false);
+      }
+    }
+
+    // =========================
+    // DRAWER
+    // =========================
+
+    function abrirDrawer(titulo, conteudo) {
+      const drawer = document.getElementById("drawer");
+      const overlay = document.getElementById("drawerOverlay");
+      const title = document.getElementById("drawerTitle");
+      const content = document.getElementById("drawerContent");
+
+      if (!drawer || !overlay || !title || !content) {
+        alert("Erro interno: drawer não encontrado.");
+        return;
+      }
+
+      title.innerText = titulo;
+      content.innerHTML = conteudo;
+
+      overlay.classList.add("open");
+      drawer.classList.add("open");
+    }
+
+    function fecharDrawer() {
+      const drawer = document.getElementById("drawer");
+      const overlay = document.getElementById("drawerOverlay");
+
+      if (drawer) drawer.classList.remove("open");
+      if (overlay) overlay.classList.remove("open");
+    }
+
+    // =========================
+    // LOGS
+    // =========================
+
+    async function gravarLog(tipo, dados = {}) {
+      try {
+        await db.collection("logs").add({
+          tipo,
+          ...dados,
+          usuarioId: usuarioLogado?.id || "",
+          usuarioNome: usuarioLogado?.nome || usuarioLogado?.email || "",
+          clientePlataformaId: tenantId,
+          criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+      } catch (erro) {
+        console.error("Erro ao gravar log:", erro);
+      }
+    }
