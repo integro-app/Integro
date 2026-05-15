@@ -1,298 +1,736 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ÍNTEGRO - Login</title>
+
+  <title>ÍNTEGRO • Plataforma Operacional</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
   <style>
-    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
+
+    *{
+      margin:0;
+      padding:0;
+      box-sizing:border-box;
+      font-family:'Inter',sans-serif;
+    }
 
     body{
+
       min-height:100vh;
+
+      overflow:hidden;
+
       background:
-        radial-gradient(circle at top left, rgba(255,177,0,.20), transparent 32%),
-        radial-gradient(circle at bottom right, rgba(255,107,0,.18), transparent 35%),
-        linear-gradient(135deg,#061426,#071a33 55%,#0c2344);
+        radial-gradient(circle at top left,
+          rgba(255,177,0,.16),
+          transparent 26%
+        ),
+
+        radial-gradient(circle at bottom right,
+          rgba(255,107,0,.12),
+          transparent 30%
+        ),
+
+        linear-gradient(
+          135deg,
+          #020617 0%,
+          #071a33 40%,
+          #0c2344 100%
+        );
+
+      position:relative;
+
+      color:#fff;
+
       display:flex;
       align-items:center;
       justify-content:center;
-      padding:20px;
-      color:#fff;
+
+      padding:24px;
+
     }
 
-    .login-shell{
+    /* FUNDO */
+
+    .bg-grid{
+
+      position:absolute;
+      inset:0;
+
+      background-image:
+        linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+
+      background-size:40px 40px;
+
+      opacity:.35;
+
+      pointer-events:none;
+
+    }
+
+    .blur-ball{
+
+      position:absolute;
+
+      border-radius:50%;
+
+      filter:blur(90px);
+
+      opacity:.35;
+
+    }
+
+    .blur1{
+      width:320px;
+      height:320px;
+      background:#ff6b00;
+      top:-120px;
+      left:-120px;
+    }
+
+    .blur2{
+      width:280px;
+      height:280px;
+      background:#0ea5e9;
+      bottom:-120px;
+      right:-80px;
+    }
+
+    /* CONTAINER */
+
+    .shell{
+
       width:100%;
-      max-width:1100px;
+      max-width:1320px;
+
+      min-height:760px;
+
       display:grid;
       grid-template-columns:1.1fr .9fr;
-      background:rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.12);
-      border-radius:32px;
+
+      border-radius:38px;
+
       overflow:hidden;
-      box-shadow:0 30px 80px rgba(0,0,0,.35);
-      backdrop-filter:blur(18px);
+
+      background:
+        rgba(255,255,255,.05);
+
+      border:
+        1px solid rgba(255,255,255,.08);
+
+      backdrop-filter:blur(22px);
+
+      box-shadow:
+        0 30px 80px rgba(0,0,0,.45);
+
+      position:relative;
+
+      z-index:2;
+
     }
 
-    .brand-area{
-      padding:54px;
+    /* LEFT */
+
+    .hero{
+
+      padding:60px;
+
       display:flex;
       flex-direction:column;
       justify-content:space-between;
-      min-height:620px;
-      background:
-        linear-gradient(135deg,rgba(255,177,0,.10),rgba(255,107,0,.04));
+
+      position:relative;
+
     }
 
     .logo{
-      font-size:38px;
+
+      font-size:42px;
       font-weight:900;
-      letter-spacing:-1.5px;
+      letter-spacing:-2px;
+
     }
 
     .logo span{
-      background:linear-gradient(135deg,#ffb100,#ff6b00);
+
+      background:
+        linear-gradient(
+          135deg,
+          #ffb100,
+          #ff6b00
+        );
+
       -webkit-background-clip:text;
       color:transparent;
+
     }
 
-    .brand-text h1{
-      font-size:44px;
-      line-height:1.05;
-      letter-spacing:-2px;
-      margin-bottom:18px;
-      font-weight:900;
+    .hero-center{
+
+      max-width:620px;
+
     }
 
-    .brand-text p{
-      color:#cbd5e1;
-      font-weight:600;
-      line-height:1.6;
-      max-width:440px;
-    }
+    .hero-badge{
 
-    .chips{
-      display:flex;
-      flex-wrap:wrap;
+      display:inline-flex;
+
+      align-items:center;
       gap:10px;
-      margin-top:26px;
-    }
 
-    .chip{
-      padding:10px 13px;
+      padding:12px 16px;
+
       border-radius:999px;
-      background:rgba(255,255,255,.10);
-      border:1px solid rgba(255,255,255,.10);
-      color:#e2e8f0;
+
+      background:
+        rgba(255,255,255,.08);
+
+      border:
+        1px solid rgba(255,255,255,.08);
+
       font-size:13px;
       font-weight:800;
+
+      color:#dbeafe;
+
+      margin-bottom:26px;
+
     }
 
-    .login-area{
-      background:#ffffff;
-      color:#0f172a;
-      padding:54px;
+    .hero h1{
+
+      font-size:64px;
+      line-height:1.02;
+
+      letter-spacing:-3px;
+
+      margin-bottom:24px;
+
+      font-weight:900;
+
+    }
+
+    .hero p{
+
+      font-size:17px;
+
+      color:#cbd5e1;
+
+      line-height:1.8;
+
+      max-width:540px;
+
+      font-weight:500;
+
+    }
+
+    .hero-cards{
+
+      margin-top:34px;
+
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+
+      gap:14px;
+
+    }
+
+    .mini-card{
+
+      padding:18px;
+
+      border-radius:22px;
+
+      background:
+        rgba(255,255,255,.05);
+
+      border:
+        1px solid rgba(255,255,255,.08);
+
+    }
+
+    .mini-card strong{
+
+      display:block;
+
+      font-size:22px;
+      font-weight:900;
+
+      margin-bottom:8px;
+
+    }
+
+    .mini-card small{
+
+      color:#cbd5e1;
+
+      line-height:1.5;
+
+      font-weight:700;
+
+    }
+
+    .footer-info{
+
+      display:flex;
+      gap:14px;
+      flex-wrap:wrap;
+
+      margin-top:40px;
+
+    }
+
+    .footer-chip{
+
+      padding:11px 15px;
+
+      border-radius:999px;
+
+      background:
+        rgba(255,255,255,.06);
+
+      border:
+        1px solid rgba(255,255,255,.08);
+
+      color:#dbeafe;
+
+      font-size:12px;
+      font-weight:800;
+
+    }
+
+    /* RIGHT */
+
+    .auth{
+
+      background:
+        rgba(255,255,255,.96);
+
       display:flex;
       align-items:center;
       justify-content:center;
+
+      padding:50px;
+
+      position:relative;
+
     }
 
-    .login-box{
+    .auth-box{
+
       width:100%;
-      max-width:390px;
+      max-width:420px;
+
     }
 
-    .login-box h2{
-      font-size:30px;
+    .auth-top{
+
+      margin-bottom:34px;
+
+    }
+
+    .auth-top h2{
+
+      color:#0f172a;
+
+      font-size:42px;
       font-weight:900;
-      letter-spacing:-1px;
-      margin-bottom:8px;
+
+      letter-spacing:-2px;
+
+      margin-bottom:10px;
+
     }
 
-    .login-box p{
+    .auth-top p{
+
       color:#64748b;
+
+      line-height:1.7;
+
       font-weight:600;
-      margin-bottom:28px;
-      line-height:1.5;
+
     }
 
-    label{
+    .input-group{
+      margin-bottom:18px;
+    }
+
+    .input-group label{
+
       display:block;
+
+      margin-bottom:8px;
+
+      color:#475569;
+
       font-size:12px;
-      font-weight:900;
-      color:#64748b;
+
       text-transform:uppercase;
-      margin-bottom:7px;
+
+      font-weight:900;
+
+      letter-spacing:.5px;
+
     }
 
     .input{
+
       width:100%;
-      padding:15px;
+
+      height:58px;
+
+      border-radius:18px;
+
       border:1px solid #e2e8f0;
-      border-radius:15px;
+
+      background:#f8fafc;
+
+      padding:0 18px;
+
       outline:none;
+
       font-size:15px;
       font-weight:700;
+
       color:#0f172a;
-      background:#f8fafc;
-      margin-bottom:16px;
+
+      transition:.2s;
+
     }
 
     .input:focus{
+
       border-color:#ffb100;
+
       background:#fff;
-      box-shadow:0 0 0 4px rgba(255,177,0,.13);
+
+      box-shadow:
+        0 0 0 5px rgba(255,177,0,.12);
+
     }
 
-    .btn{
+    .login-btn{
+
       width:100%;
-      padding:15px;
-      border:0;
-      border-radius:15px;
-      background:linear-gradient(135deg,#ffb100,#ff6b00);
+
+      height:60px;
+
+      border:none;
+
+      border-radius:18px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #ffb100,
+          #ff6b00
+        );
+
       color:#fff;
-      font-size:15px;
+
+      font-size:16px;
       font-weight:900;
+
       cursor:pointer;
-      box-shadow:0 12px 24px rgba(255,107,0,.25);
-      margin-top:4px;
+
+      margin-top:10px;
+
+      box-shadow:
+        0 18px 35px rgba(255,107,0,.28);
+
+      transition:.2s;
+
     }
 
-    .btn:active{
-      transform:scale(.99);
+    .login-btn:hover{
+      transform:translateY(-2px);
     }
 
     .forgot{
+
       margin-top:18px;
+
       text-align:center;
-      color:#0f172a;
-      font-weight:800;
-      cursor:pointer;
+
+      color:#475569;
+
       font-size:14px;
+
+      font-weight:800;
+
+      cursor:pointer;
+
+    }
+
+    .forgot:hover{
+      color:#ff6b00;
     }
 
     .status{
+
       margin-top:18px;
-      padding:12px;
-      border-radius:14px;
+
+      padding:14px;
+
+      border-radius:16px;
+
       background:#f8fafc;
+
+      border:1px solid #e2e8f0;
+
       color:#64748b;
+
       font-size:13px;
+
+      line-height:1.6;
+
       font-weight:700;
-      line-height:1.4;
+
       display:none;
+
     }
 
-    @media(max-width:900px){
-      .login-shell{
-        grid-template-columns:1fr;
-        max-width:520px;
-      }
+    /* MOBILE */
 
-      .brand-area{
-        min-height:auto;
-        padding:34px;
-        gap:28px;
-      }
+    @media(max-width:1100px){
 
-      .brand-text h1{
-        font-size:34px;
-      }
-
-      .login-area{
-        padding:34px;
-      }
-    }
-
-    @media(max-width:520px){
       body{
-        padding:12px;
-        align-items:flex-start;
+        overflow:auto;
       }
 
-      .login-shell{
-        border-radius:24px;
+      .shell{
+        grid-template-columns:1fr;
       }
 
-      .brand-area{
-        padding:26px;
+      .hero{
+        min-height:auto;
       }
 
-      .logo{
-        font-size:30px;
+      .hero h1{
+        font-size:48px;
       }
 
-      .brand-text h1{
-        font-size:28px;
+      .hero-cards{
+        grid-template-columns:1fr;
       }
 
-      .brand-text p{
+    }
+
+    @media(max-width:700px){
+
+      body{
+        padding:14px;
+      }
+
+      .shell{
+        border-radius:28px;
+      }
+
+      .hero{
+        padding:30px;
+      }
+
+      .hero h1{
+        font-size:36px;
+        line-height:1.08;
+      }
+
+      .hero p{
         font-size:14px;
       }
 
-      .login-area{
-        padding:26px;
+      .auth{
+        padding:30px;
       }
 
-      .login-box h2{
-        font-size:26px;
+      .auth-top h2{
+        font-size:32px;
       }
+
+      .logo{
+        font-size:34px;
+      }
+
+      .mini-card strong{
+        font-size:20px;
+      }
+
     }
+
   </style>
+
 </head>
 
 <body>
 
-  <div class="login-shell">
+  <div class="bg-grid"></div>
 
-    <section class="brand-area">
-      <div class="logo">ÍNTE<span>GRO</span></div>
+  <div class="blur-ball blur1"></div>
+  <div class="blur-ball blur2"></div>
 
-      <div class="brand-text">
-        <h1>Gestão de vendas, cobrança e caixa em tempo real.</h1>
+  <div class="shell">
+
+    <!-- HERO -->
+
+    <section class="hero">
+
+      <div class="logo">
+        ÍNTE<span>GRO</span>
+      </div>
+
+      <div class="hero-center">
+
+        <div class="hero-badge">
+          Plataforma operacional multiempresa
+        </div>
+
+        <h1>
+          Gestão inteligente de vendas, cobrança e caixa.
+        </h1>
+
         <p>
-          Plataforma operacional para empresas controlarem vendedores, clientes, carteiras, caixas, solicitações e auditoria com segurança.
+          Controle vendedores, clientes, carteiras, solicitações, inadimplência, auditoria e financeiro em uma única plataforma premium.
         </p>
 
-        <div class="chips">
-          <div class="chip">Multiempresa</div>
-          <div class="chip">Caixa diário</div>
-          <div class="chip">Cobrança</div>
-          <div class="chip">Auditoria</div>
+        <div class="hero-cards">
+
+          <div class="mini-card">
+            <strong>Multiempresa</strong>
+            <small>
+              Gestão consolidada de equipes e operações.
+            </small>
+          </div>
+
+          <div class="mini-card">
+            <strong>Tempo real</strong>
+            <small>
+              Informações sincronizadas com Firebase.
+            </small>
+          </div>
+
+          <div class="mini-card">
+            <strong>Auditoria</strong>
+            <small>
+              Controle completo das ações do sistema.
+            </small>
+          </div>
+
         </div>
+
       </div>
+
+      <div class="footer-info">
+
+        <div class="footer-chip">
+          Dashboard executivo
+        </div>
+
+        <div class="footer-chip">
+          Controle de caixa
+        </div>
+
+        <div class="footer-chip">
+          Cobrança inteligente
+        </div>
+
+        <div class="footer-chip">
+          Segurança operacional
+        </div>
+
+      </div>
+
     </section>
 
-    <section class="login-area">
-      <div class="login-box">
-        <h2>Acessar sistema</h2>
-        <p>Entre com seu email e senha para acessar seu painel ÍNTEGRO.</p>
+    <!-- LOGIN -->
 
-        <label>Email</label>
-        <input id="email" class="input" type="email" placeholder="seuemail@empresa.com">
+    <section class="auth">
 
-        <label>Senha</label>
-        <input id="senha" class="input" type="password" placeholder="Digite sua senha">
+      <div class="auth-box">
 
-        <button class="btn" onclick="login()">Entrar</button>
+        <div class="auth-top">
 
-        <div class="forgot" onclick="recuperarSenha()">Esqueci minha senha</div>
+          <h2>
+            Acessar sistema
+          </h2>
 
-        <div id="statusLogin" class="status"></div>
+          <p>
+            Entre com suas credenciais para acessar a plataforma ÍNTEGRO.
+          </p>
+
+        </div>
+
+        <div class="input-group">
+
+          <label>Email</label>
+
+          <input
+            id="email"
+            class="input"
+            type="email"
+            placeholder="seuemail@empresa.com"
+          >
+
+        </div>
+
+        <div class="input-group">
+
+          <label>Senha</label>
+
+          <input
+            id="senha"
+            class="input"
+            type="password"
+            placeholder="Digite sua senha"
+          >
+
+        </div>
+
+        <button
+          class="login-btn"
+          onclick="login()"
+        >
+          Entrar na plataforma
+        </button>
+
+        <div
+          class="forgot"
+          onclick="recuperarSenha()"
+        >
+          Esqueci minha senha
+        </div>
+
+        <div
+          id="statusLogin"
+          class="status"
+        ></div>
+
       </div>
+
     </section>
 
   </div>
 
   <!-- FIREBASE -->
+
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
   <script src="js/firebase-config.js"></script>
+
   <script src="js/auth.js"></script>
+
   <script src="js/app.js"></script>
 
 </body>
