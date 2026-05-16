@@ -4669,3 +4669,72 @@
 
                 criadoEm:
                   firebase.firestore.FieldValue.serverTimestamp()
+
+<script>
+
+        // =========================
+        // LOGOUT
+        // =========================
+
+        function logout(){
+
+          firebase.auth().signOut().finally(() => {
+
+            localStorage.removeItem("usuario");
+
+            localStorage.removeItem("caixaAtual");
+
+            window.location.href = "index.html";
+
+          });
+
+        }
+
+        // =========================
+        // DEBUG / ERROS
+        // =========================
+
+        window.addEventListener("error", function(event){
+
+          console.error(
+            "ERRO JS:",
+            event.message,
+            "Linha:",
+            event.lineno
+          );
+
+          alert(
+            "Erro JS:\n\n" +
+            event.message +
+            "\nLinha: " +
+            event.lineno
+          );
+
+        });
+
+        window.addEventListener("unhandledrejection", function(event){
+
+          console.error(
+            "PROMISE REJEITADA:",
+            event.reason
+          );
+
+          alert(
+            "Erro assíncrono:\n\n" +
+            (
+              event.reason?.message ||
+              event.reason ||
+              "Erro desconhecido"
+            )
+          );
+
+        });
+
+      </script>
+
+    </main>
+
+  </div>
+
+</body>
+</html>
