@@ -1564,3 +1564,459 @@
         }
 
       </script>
+
+<!-- VENDAS -->
+      <section
+        id="vendas"
+        class="screen"
+        style="display:none;"
+      >
+
+        <div class="panel">
+
+          <div class="panel-title">
+
+            <div>
+              <h2>Vendas</h2>
+              <p>
+                Selecione um cliente quitado para iniciar nova venda ou renovação.
+              </p>
+            </div>
+
+            <button
+              class="btn btn-light"
+              onclick="renderClientesParaVenda()"
+            >
+              Atualizar
+            </button>
+
+          </div>
+
+          <div
+            id="listaClientesVenda"
+            class="grid"
+            style="gap:14px;"
+          ></div>
+
+        </div>
+
+      </section>
+
+      <script>
+
+        function renderClientesParaVenda(){
+
+          const el =
+            document.getElementById("listaClientesVenda");
+
+          if (!el) return;
+
+          const clientes =
+            clientesCache || [];
+
+          el.innerHTML = clientes.length
+            ? clientes.map(c => {
+
+              const saldo =
+                Number(c.saldoDevedor || c.saldo || 0);
+
+              const bloqueado =
+                saldo > 1;
+
+              return `
+
+                <div
+                  class="client-sale-card"
+                  style="
+                    background:#fff;
+                    border:1px solid #e2e8f0;
+                    border-radius:24px;
+                    padding:18px;
+                    display:flex;
+                    justify-content:space-between;
+                    gap:14px;
+                    align-items:center;
+                    box-shadow:0 10px 24px rgba(15,23,42,.04);
+                  "
+                >
+
+                  <div>
+                    <strong
+                      style="
+                        display:block;
+                        font-size:16px;
+                        margin-bottom:6px;
+                      "
+                    >
+                      ${
+                        c.nome ||
+                        c.nomeCompleto ||
+                        c.apelido ||
+                        "Cliente sem nome"
+                      }
+                    </strong>
+
+                    <small
+                      style="
+                        display:block;
+                        color:#64748b;
+                        font-weight:700;
+                        margin-bottom:4px;
+                      "
+                    >
+                      Tel: ${c.telefone || c.telefonePrincipal || "-"}
+                    </small>
+
+                    <small
+                      style="
+                        display:block;
+                        color:#64748b;
+                        font-weight:800;
+                      "
+                    >
+                      Saldo: ${moeda(saldo)}
+                    </small>
+                  </div>
+
+                  <div
+                    style="
+                      display:flex;
+                      gap:8px;
+                      flex-wrap:wrap;
+                    "
+                  >
+
+                    ${
+                      bloqueado
+                        ? `
+                          <button
+                            class="btn btn-light"
+                            disabled
+                            style="
+                              opacity:.55;
+                              cursor:not-allowed;
+                            "
+                          >
+                            Saldo ativo
+                          </button>
+                        `
+                        : `
+                          <button
+                            class="btn btn-primary"
+                            onclick="abrirNovaVenda('${c.id}')"
+                          >
+                            Nova venda
+                          </button>
+                        `
+                    }
+
+                    <button
+                      class="btn btn-light"
+                      onclick="abrirDetalheCliente('${c.id}')"
+                    >
+                      Ver
+                    </button>
+
+                  </div>
+
+                </div>
+
+              `;
+            }).join("")
+            : `
+
+              <div
+                style="
+                  background:#fff;
+                  border:1px solid #e2e8f0;
+                  border-radius:24px;
+                  padding:18px;
+                "
+              >
+                <strong>Nenhum cliente encontrado</strong>
+                <p
+                  style="
+                    color:#64748b;
+                    font-weight:700;
+                    margin-top:6px;
+                  "
+                >
+                  Cadastre ou busque clientes para iniciar vendas.
+                </p>
+              </div>
+
+            `;
+        }
+
+        function abrirNovaVenda(clienteId){
+
+          const cliente =
+            clientesCache.find(c => c.id === clienteId);
+
+          if (!cliente) {
+            alert("Cliente não encontrado.");
+            return;
+          }
+
+          const saldo =
+            Number(cliente.saldoDevedor || cliente.saldo || 0);
+
+          if (saldo > 1) {
+            alert("Cliente possui saldo devedor ativo. Nova venda bloqueada.");
+            return;
+          }
+
+          abrirDrawer(
+
+            "Nova venda",
+
+            "Configure valor, juros, parcelas e primeira cobrança",
+
+            `
+
+            <div style="display:grid;gap:18px;">
+
+              <div
+                style="
+                  background:#f8fafc;
+                  border:1px solid #e2e8f0;
+                  border-radius:22px;
+                  padding:16px;
+                "
+              >
+
+                <strong
+                  style="
+                    display:block;
+                    margin-bottom:6px;
+                    font-size:16px;
+                  "
+                >
+                  ${cliente.nome || cliente.nomeCompleto || cliente.apelido || "Cliente"}
+                </strong>
+
+                <small
+                  style="
+                    color:#64748b;
+                    font-weight:700;
+                  "
+                >
+                  Cliente quitado • liberado para venda
+                </small>
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Valor emprestado
+                </label>
+
+                <input
+                  id="vendaValor"
+                  type="number"
+                  step="0.01"
+                  class="form-input"
+                  placeholder="0,00"
+                  oninput="calcularPreviewVenda()"
+                >
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Juros:
+                  <span id="jurosTxt">20%</span>
+                </label>
+
+                <input
+                  id="vendaJuros"
+                  type="range"
+                  min="0"
+                  max="100"
+                  value="20"
+                  oninput="calcularPreviewVenda()"
+                  style="width:100%;"
+                >
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Parcelas:
+                  <span id="parcelasTxt">30</span>
+                </label>
+
+                <input
+                  id="vendaParcelas"
+                  type="range"
+                  min="1"
+                  max="90"
+                  value="30"
+                  oninput="calcularPreviewVenda()"
+                  style="width:100%;"
+                >
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Frequência
+                </label>
+
+                <select
+                  id="vendaFrequencia"
+                  class="form-input"
+                  onchange="calcularPreviewVenda()"
+                >
+                  <option value="DIÁRIA">Diária</option>
+                  <option value="SEMANAL">Semanal</option>
+                  <option value="QUINZENAL">Quinzenal</option>
+                  <option value="MENSAL">Mensal</option>
+                </select>
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Primeira cobrança
+                </label>
+
+                <input
+                  id="vendaPrimeiraData"
+                  type="date"
+                  class="form-input"
+                  value="${hojeISO()}"
+                  onchange="calcularPreviewVenda()"
+                >
+
+              </div>
+
+              <div
+                style="
+                  background:linear-gradient(135deg,#071a33,#0c2344);
+                  color:#fff;
+                  border-radius:24px;
+                  padding:20px;
+                  display:grid;
+                  gap:12px;
+                "
+              >
+
+                <div style="display:flex;justify-content:space-between;gap:10px;">
+                  <span style="font-weight:800;color:#cbd5e1;">Valor emprestado</span>
+                  <strong id="prevValor">R$ 0,00</strong>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;gap:10px;">
+                  <span style="font-weight:800;color:#cbd5e1;">Saldo devedor</span>
+                  <strong id="prevTotal">R$ 0,00</strong>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;gap:10px;">
+                  <span style="font-weight:800;color:#cbd5e1;">Valor da parcela</span>
+                  <strong id="prevParcela">R$ 0,00</strong>
+                </div>
+
+                <div style="display:flex;justify-content:space-between;gap:10px;">
+                  <span style="font-weight:800;color:#cbd5e1;">Impacto no caixa</span>
+                  <strong id="prevCaixa">R$ 0,00</strong>
+                </div>
+
+              </div>
+
+              <button
+                class="btn btn-primary"
+                style="
+                  width:100%;
+                  height:60px;
+                  font-size:16px;
+                "
+                onclick="salvarVendaProfissional('${clienteId}')"
+              >
+                Confirmar venda
+              </button>
+
+            </div>
+
+            `
+
+          );
+
+          setTimeout(calcularPreviewVenda, 100);
+
+        }
+
+        function calcularPreviewVenda(){
+
+          const valor =
+            Number(document.getElementById("vendaValor")?.value || 0);
+
+          const juros =
+            Number(document.getElementById("vendaJuros")?.value || 0);
+
+          const parcelas =
+            Number(document.getElementById("vendaParcelas")?.value || 1);
+
+          const total =
+            valor + (valor * juros / 100);
+
+          const valorParcela =
+            parcelas > 0 ? total / parcelas : 0;
+
+          const jurosTxt =
+            document.getElementById("jurosTxt");
+
+          const parcelasTxt =
+            document.getElementById("parcelasTxt");
+
+          if (jurosTxt) jurosTxt.innerText = juros + "%";
+
+          if (parcelasTxt) parcelasTxt.innerText = parcelas;
+
+          if (document.getElementById("prevValor")) {
+            document.getElementById("prevValor").innerText = moeda(valor);
+          }
+
+          if (document.getElementById("prevTotal")) {
+            document.getElementById("prevTotal").innerText = moeda(total);
+          }
+
+          if (document.getElementById("prevParcela")) {
+            document.getElementById("prevParcela").innerText = moeda(valorParcela);
+          }
+
+          if (document.getElementById("prevCaixa")) {
+            document.getElementById("prevCaixa").innerText = "-" + moeda(valor);
+          }
+
+        }
+
+        function intervaloPorFrequencia(freq){
+
+          if (freq === "SEMANAL") return 7;
+
+          if (freq === "QUINZENAL") return 15;
+
+          if (freq === "MENSAL") return 30;
+
+          return 1;
+
+        }
+
+        function addDias(dataISO, dias){
+
+          const data =
+            new Date(dataISO + "T00:00:00");
+
+          data.setDate(data.getDate() + dias);
+
+          return data.toISOString().split("T")[0];
+
+        }
+
+      </script>
