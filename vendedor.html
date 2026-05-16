@@ -3489,3 +3489,474 @@
           }
         }
       </style>
+
+<!-- FIREBASE -->
+      <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+      <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+      <script src="js/firebase-config.js"></script>
+
+      <script>
+
+        // =========================
+        // ESTADO GLOBAL
+        // =========================
+
+        let usuarioLogado = null;
+        let tenantId = "";
+        let caixaAtual = null;
+
+        let clientesCache = [];
+        let vendasCache = [];
+        let parcelasCache = [];
+        let pagamentosHojeCache = [];
+        let solicitacoesCache = [];
+        let historicoCobrancasCache = [];
+
+        // =========================
+        // INIT
+        // =========================
+
+        document.addEventListener("DOMContentLoaded", async () => {
+
+          try {
+
+            usuarioLogado =
+              JSON.parse(localStorage.getItem("usuario"));
+
+            if (!usuarioLogado) {
+              alert("Sessão expirada. Faça login novamente.");
+              window.location.href = "index.html";
+              return;
+            }
+
+            if (usuarioLogado.tipoUsuario !== "vendedor") {
+              alert("Acesso negado para este perfil.");
+              window.location.href = "index.html";
+              return;
+            }
+
+            tenantId =
+              usuarioLogado.clientePlataformaId ||
+              usuarioLogado.empresaId ||
+              usuarioLogado.tenantId ||
+              "";
+
+            document.getElementById("vendedorNome").innerText =
+              usuarioLogado.nome ||
+              usuarioLogado.nomeCompleto ||
+              usuarioLogado.email ||
+              "Vendedor";
+
+            document.getElementById("empresaNome").innerText =
+              usuarioLogado.clientePlataformaNome ||
+              usuarioLogado.empresaNome ||
+              "Empresa";
+
+            await carregarTudo();
+
+          } catch (erro) {
+
+            console.error("Erro ao iniciar vendedor:", erro);
+
+            alert(
+              "Erro ao iniciar vendedor:\n\n" +
+              erro.message
+            );
+
+          }
+
+        });
+
+        // =========================
+        // HELPERS
+        // =========================
+
+        function moeda(valor) {
+          return Number(valor || 0).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL"
+          });
+        }
+
+        function hojeISO() {
+          return new Date().toISOString().split("T")[0];
+        }
+
+        function statusTxt(valor) {
+          return String(valor || "").toUpperCase();
+        }
+
+        function numero(valor) {
+          return Number(valor || 0);
+        }
+
+        function texto(valor, fallback = "-") {
+          return valor ? String(valor) : fallback;
+        }
+
+        // =========================
+        // SIDEBAR / NAVEGAÇÃO
+        // =========================
+
+        function toggleSidebar(force) {
+          const sidebar = document.getElementById("sidebar");
+          const overlay = document.getElementById("overlay");
+
+          if (!sidebar || !overlay) return;
+
+          if (force === false) {
+            sidebar.classList.remove("show");
+            overlay.classList.remove("show");
+            return;
+          }
+
+          sidebar.classList.toggle("show");
+          overlay.classList.toggle("show", sidebar.classList.contains("show"));
+        }
+
+        function trocarTela(id, el = null) {
+
+          document.querySelectorAll(".screen").forEach(screen => {
+            screen.style.display = "none";
+          });
+
+          const atual = document.getElementById(id);
+
+          if (!atual) {
+            alert("Tela não encontrada: " + id);
+            return;
+          }
+
+          atual.style.display = "block";
+
+          document.querySelectorAll(".menu button").forEach(btn => {
+            btn.classList.remove("active");
+          });
+
+          if (el) {
+            el.classList.add("active");
+          } else {
+            const menu = Array.from(document.querySelectorAll(".menu button"))
+              .find(btn => btn.getAttribute("onclick")?.includes("'" + id + "'"));
+
+            if (menu) menu.classList.add("active");
+          }
+
+          const titulos = {
+            dashboard: [
+              "Dashboard do vendedor",
+              "Resumo do caixa, clientes, cobranças e vendas do dia."
+            ],
+            clientes: [
+              "Clientes",
+              "Busca, cadastro e gerenciamento de clientes."
+            ],
+            cobrancas: [
+              "Cobranças",
+              "Controle de parcelas, pagamentos e visitas."
+            ],
+            vendas: [
+              "Vendas",
+              "Inicie uma nova venda ou renovação para cliente quitado."
+            ],
+            solicitacoes: [
+              "Solicitações financeiras",
+              "Solicite ingresso, gasto, retirada ou ajuste."
+            ],
+            caixa: [
+              "Meu caixa",
+              "Saldo atual, status e movimentações do caixa."
+            ]
+          };
+
+          if (titulos[id]) {
+            document.getElementById("pageTitle").innerText = titulos[id][0];
+            document.getElementById("pageSubtitle").innerText = titulos[id][1];
+          }
+
+          if (id === "vendas") renderClientesParaVenda();
+          if (id === "cobrancas") renderCobrancas();
+          if (id === "solicitacoes") renderSolicitacoes();
+          if (id === "caixa") renderCaixaVendedor();
+
+          if (window.innerWidth <= 980) {
+            toggleSidebar(false);
+          }
+
+        }
+
+        // =========================
+        // LOADERS
+        // =========================
+
+        async function carregarTudo() {
+
+          try {
+
+            await Promise.all([
+              carregarCaixaAtual(),
+              carregarClientes(),
+              carregarVendas(),
+              carregarParcelas(),
+              carregarPagamentosHoje(),
+              carregarSolicitacoes(),
+              carregarHistoricoCobrancas()
+            ]);
+
+            atualizarDashboard();
+            buscarClientes();
+            renderClientesParaVenda();
+            renderCobrancas();
+            renderSolicitacoes();
+            renderCaixaVendedor();
+
+          } catch (erro) {
+
+            console.error("Erro ao carregar dados do vendedor:", erro);
+
+            alert(
+              "Erro ao carregar dados:\n\n" +
+              erro.message
+            );
+
+          }
+
+        }
+
+        async function carregarCaixaAtual() {
+
+          caixaAtual = null;
+
+          const local =
+            localStorage.getItem("caixaAtual");
+
+          if (local) {
+            try {
+              caixaAtual = JSON.parse(local);
+            } catch (_) {}
+          }
+
+          let ref = db.collection("caixas")
+            .where("usuarioId", "==", usuarioLogado.id)
+            .where("status", "==", "ABERTO")
+            .limit(1);
+
+          if (tenantId) {
+            ref = db.collection("caixas")
+              .where("clientePlataformaId", "==", tenantId)
+              .where("usuarioId", "==", usuarioLogado.id)
+              .where("status", "==", "ABERTO")
+              .limit(1);
+          }
+
+          const snap = await ref.get();
+
+          if (!snap.empty) {
+            const doc = snap.docs[0];
+            caixaAtual = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            localStorage.setItem(
+              "caixaAtual",
+              JSON.stringify(caixaAtual)
+            );
+          }
+
+        }
+
+        async function carregarClientes() {
+
+          let ref = db.collection("clientes").limit(500);
+
+          if (tenantId) {
+            ref = db.collection("clientes")
+              .where("clientePlataformaId", "==", tenantId)
+              .limit(500);
+          }
+
+          const snap = await ref.get();
+
+          clientesCache = [];
+
+          snap.forEach(doc => {
+
+            const c = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            if (
+              !c.vendedorId ||
+              c.vendedorId === usuarioLogado.id ||
+              c.usuarioId === usuarioLogado.id
+            ) {
+              clientesCache.push(c);
+            }
+
+          });
+
+        }
+
+        async function carregarVendas() {
+
+          let ref = db.collection("vendas").limit(500);
+
+          if (tenantId) {
+            ref = db.collection("vendas")
+              .where("clientePlataformaId", "==", tenantId)
+              .limit(500);
+          }
+
+          const snap = await ref.get();
+
+          vendasCache = [];
+
+          snap.forEach(doc => {
+            const v = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            if (
+              !v.vendedorId ||
+              v.vendedorId === usuarioLogado.id ||
+              v.usuarioId === usuarioLogado.id
+            ) {
+              vendasCache.push(v);
+            }
+          });
+
+        }
+
+        async function carregarParcelas() {
+
+          let ref = db.collection("parcelas").limit(800);
+
+          if (tenantId) {
+            ref = db.collection("parcelas")
+              .where("clientePlataformaId", "==", tenantId)
+              .limit(800);
+          }
+
+          const snap = await ref.get();
+
+          parcelasCache = [];
+
+          snap.forEach(doc => {
+            const p = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            if (
+              !p.vendedorId ||
+              p.vendedorId === usuarioLogado.id ||
+              p.usuarioId === usuarioLogado.id
+            ) {
+              parcelasCache.push(p);
+            }
+          });
+
+        }
+
+        async function carregarPagamentosHoje() {
+
+          let ref = db.collection("pagamentos")
+            .where("data", "==", hojeISO())
+            .limit(300);
+
+          if (tenantId) {
+            ref = db.collection("pagamentos")
+              .where("clientePlataformaId", "==", tenantId)
+              .where("data", "==", hojeISO())
+              .limit(300);
+          }
+
+          const snap = await ref.get();
+
+          pagamentosHojeCache = [];
+
+          snap.forEach(doc => {
+            const p = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            if (
+              !p.vendedorId ||
+              p.vendedorId === usuarioLogado.id ||
+              p.usuarioId === usuarioLogado.id
+            ) {
+              pagamentosHojeCache.push(p);
+            }
+          });
+
+        }
+
+        async function carregarSolicitacoes() {
+
+          let ref = db.collection("solicitacoes").limit(300);
+
+          if (tenantId) {
+            ref = db.collection("solicitacoes")
+              .where("clientePlataformaId", "==", tenantId)
+              .limit(300);
+          }
+
+          const snap = await ref.get();
+
+          solicitacoesCache = [];
+
+          snap.forEach(doc => {
+            const s = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            if (
+              !s.usuarioId ||
+              s.usuarioId === usuarioLogado.id ||
+              s.vendedorId === usuarioLogado.id
+            ) {
+              solicitacoesCache.push(s);
+            }
+          });
+
+        }
+
+        async function carregarHistoricoCobrancas() {
+
+          let ref = db.collection("historicoCobrancas").limit(300);
+
+          if (tenantId) {
+            ref = db.collection("historicoCobrancas")
+              .where("clientePlataformaId", "==", tenantId)
+              .limit(300);
+          }
+
+          const snap = await ref.get();
+
+          historicoCobrancasCache = [];
+
+          snap.forEach(doc => {
+            const h = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            if (
+              !h.vendedorId ||
+              h.vendedorId === usuarioLogado.id ||
+              h.usuarioId === usuarioLogado.id
+            ) {
+              historicoCobrancasCache.push(h);
+            }
+          });
+
+        }
+
+      </script>
