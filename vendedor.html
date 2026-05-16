@@ -2020,3 +2020,368 @@
         }
 
       </script>
+
+<!-- COBRANÇAS -->
+      <section
+        id="cobrancas"
+        class="screen"
+        style="display:none;"
+      >
+
+        <div class="panel">
+
+          <div class="panel-title">
+
+            <div>
+              <h2>Cobranças</h2>
+              <p>
+                Controle de parcelas vencendo hoje, vencidas, pendentes e pagas.
+              </p>
+            </div>
+
+            <button
+              class="btn btn-light"
+              onclick="renderCobrancas()"
+            >
+              Atualizar
+            </button>
+
+          </div>
+
+          <div style="
+            display:grid;
+            grid-template-columns:1fr 220px auto;
+            gap:12px;
+            margin-bottom:20px;
+          " class="busca-grid">
+
+            <input
+              id="buscaCobrancaInput"
+              placeholder="Buscar cliente na cobrança"
+              style="
+                height:58px;
+                border-radius:18px;
+                border:1px solid #e2e8f0;
+                padding:0 18px;
+                font-size:15px;
+                font-weight:700;
+                outline:none;
+                width:100%;
+              "
+            >
+
+            <select
+              id="filtroCobranca"
+              onchange="renderCobrancas()"
+              style="
+                height:58px;
+                border-radius:18px;
+                border:1px solid #e2e8f0;
+                padding:0 14px;
+                font-weight:800;
+                outline:none;
+              "
+            >
+              <option value="hoje">Vencem hoje</option>
+              <option value="vencidas">Vencidas</option>
+              <option value="pendentes">Todas pendentes</option>
+              <option value="pagas">Pagas</option>
+              <option value="todas">Todas</option>
+            </select>
+
+            <button
+              class="btn btn-primary"
+              onclick="renderCobrancas()"
+            >
+              Buscar
+            </button>
+
+          </div>
+
+          <div
+            id="listaCobrancas"
+            class="grid"
+            style="gap:14px;"
+          ></div>
+
+        </div>
+
+      </section>
+
+      <script>
+
+        function renderCobrancas(){
+
+          const el =
+            document.getElementById("listaCobrancas");
+
+          if (!el) return;
+
+          const termo =
+            (
+              document.getElementById("buscaCobrancaInput")?.value ||
+              ""
+            ).toLowerCase();
+
+          const filtro =
+            document.getElementById("filtroCobranca")?.value ||
+            "hoje";
+
+          let lista =
+            parcelasCache || [];
+
+          lista = lista.filter(p => {
+
+            const texto =
+              `${p.clienteNome || ""} ${p.clienteId || ""}`
+                .toLowerCase();
+
+            const status =
+              String(p.status || "PENDENTE").toUpperCase();
+
+            const data =
+              String(p.dataVencimento || "");
+
+            if (termo && !texto.includes(termo)) {
+              return false;
+            }
+
+            if (filtro === "hoje") {
+              return status === "PENDENTE" && data === hojeISO();
+            }
+
+            if (filtro === "vencidas") {
+              return status === "PENDENTE" && data < hojeISO();
+            }
+
+            if (filtro === "pendentes") {
+              return status === "PENDENTE";
+            }
+
+            if (filtro === "pagas") {
+              return status === "PAGA";
+            }
+
+            return true;
+
+          });
+
+          lista.sort((a,b) =>
+            String(a.dataVencimento || "")
+              .localeCompare(String(b.dataVencimento || ""))
+          );
+
+          el.innerHTML = lista.length
+            ? lista.map(p => cardParcela(p)).join("")
+            : `
+
+              <div
+                style="
+                  background:#fff;
+                  border:1px solid #e2e8f0;
+                  border-radius:24px;
+                  padding:18px;
+                "
+              >
+                <strong>Nenhuma cobrança encontrada</strong>
+                <p
+                  style="
+                    color:#64748b;
+                    font-weight:700;
+                    margin-top:6px;
+                  "
+                >
+                  Não há parcelas correspondentes ao filtro selecionado.
+                </p>
+              </div>
+
+            `;
+
+        }
+
+        function cardParcela(p){
+
+          const status =
+            String(p.status || "PENDENTE").toUpperCase();
+
+          const vencida =
+            status === "PENDENTE" &&
+            String(p.dataVencimento || "") < hojeISO();
+
+          const cor =
+            status === "PAGA"
+              ? "#22c55e"
+              : vencida
+                ? "#ef4444"
+                : "#ffb100";
+
+          const label =
+            status === "PAGA"
+              ? "Paga"
+              : vencida
+                ? "Vencida"
+                : "Pendente";
+
+          return `
+
+            <div
+              style="
+                background:#fff;
+                border:1px solid #e2e8f0;
+                border-radius:24px;
+                padding:18px;
+                display:grid;
+                grid-template-columns:8px 1fr auto;
+                gap:16px;
+                align-items:center;
+                box-shadow:0 10px 24px rgba(15,23,42,.04);
+              "
+              class="cobranca-card"
+            >
+
+              <div
+                style="
+                  width:8px;
+                  height:100%;
+                  min-height:84px;
+                  border-radius:999px;
+                  background:${cor};
+                "
+              ></div>
+
+              <div>
+
+                <strong
+                  style="
+                    display:block;
+                    font-size:16px;
+                    margin-bottom:6px;
+                  "
+                >
+                  ${p.clienteNome || "Cliente"}
+                </strong>
+
+                <small
+                  style="
+                    display:block;
+                    color:#64748b;
+                    font-weight:700;
+                    margin-bottom:4px;
+                  "
+                >
+                  Parcela ${p.numeroParcela || "-"} de ${p.totalParcelas || "-"}
+                </small>
+
+                <small
+                  style="
+                    display:block;
+                    color:#64748b;
+                    font-weight:800;
+                    margin-bottom:4px;
+                  "
+                >
+                  Valor: ${moeda(p.valor || 0)}
+                </small>
+
+                <small
+                  style="
+                    display:block;
+                    color:#64748b;
+                    font-weight:700;
+                  "
+                >
+                  Vencimento: ${p.dataVencimento || "-"} • ${label}
+                </small>
+
+              </div>
+
+              <div
+                style="
+                  display:flex;
+                  flex-direction:column;
+                  gap:8px;
+                  min-width:150px;
+                "
+              >
+
+                ${
+                  status !== "PAGA"
+                    ? `
+                      <button
+                        class="btn btn-primary"
+                        onclick="abrirPagamentoParcela('${p.id}')"
+                      >
+                        Receber
+                      </button>
+
+                      <button
+                        class="btn btn-light"
+                        onclick="registrarNaoPagamento('${p.id}')"
+                      >
+                        Não pagamento
+                      </button>
+                    `
+                    : `
+                      <button
+                        class="btn btn-light"
+                        onclick="abrirDetalheParcela('${p.id}')"
+                      >
+                        Detalhes
+                      </button>
+                    `
+                }
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+
+        function abrirDetalheParcela(parcelaId){
+
+          const p =
+            parcelasCache.find(x => x.id === parcelaId);
+
+          if (!p) return;
+
+          abrirDrawer(
+
+            "Detalhe da parcela",
+
+            "Informações da cobrança",
+
+            `
+
+              <div
+                style="
+                  display:grid;
+                  gap:14px;
+                  color:#334155;
+                  font-weight:800;
+                  line-height:1.6;
+                "
+              >
+
+                <p><strong>Cliente:</strong> ${p.clienteNome || "-"}</p>
+
+                <p><strong>Parcela:</strong> ${p.numeroParcela || "-"} de ${p.totalParcelas || "-"}</p>
+
+                <p><strong>Valor:</strong> ${moeda(p.valor || 0)}</p>
+
+                <p><strong>Status:</strong> ${p.status || "PENDENTE"}</p>
+
+                <p><strong>Vencimento:</strong> ${p.dataVencimento || "-"}</p>
+
+                <p><strong>Venda:</strong> ${p.vendaId || "-"}</p>
+
+              </div>
+
+            `
+
+          );
+
+        }
+
+      </script>
