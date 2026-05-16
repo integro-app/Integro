@@ -854,3 +854,225 @@
   ></div>
 
   <div class="app">
+
+<!-- SIDEBAR -->
+    <aside class="sidebar" id="sidebar">
+
+      <div class="logo">
+        ÍNTE<span>GRO</span>
+      </div>
+
+      <div class="user-card">
+        <small>Usuário logado</small>
+        <strong id="vendedorNome">Carregando...</strong>
+        <small id="empresaNome">Empresa</small>
+        <span class="status-online">Online</span>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-title">Operação</div>
+
+        <div class="menu">
+
+          <button class="active" onclick="trocarTela('dashboard', this)">
+            <span class="menu-left">
+              <span>🏠</span>
+              Dashboard
+            </span>
+            <span>›</span>
+          </button>
+
+          <button onclick="trocarTela('clientes', this)">
+            <span class="menu-left">
+              <span>👥</span>
+              Clientes
+            </span>
+            <span>›</span>
+          </button>
+
+          <button onclick="trocarTela('cobrancas', this)">
+            <span class="menu-left">
+              <span>💳</span>
+              Cobranças
+            </span>
+            <span>›</span>
+          </button>
+
+          <button onclick="trocarTela('vendas', this)">
+            <span class="menu-left">
+              <span>🧾</span>
+              Vendas
+            </span>
+            <span>›</span>
+          </button>
+
+          <button onclick="trocarTela('solicitacoes', this)">
+            <span class="menu-left">
+              <span>📨</span>
+              Solicitações
+            </span>
+            <span>›</span>
+          </button>
+
+          <button onclick="trocarTela('caixa', this)">
+            <span class="menu-left">
+              <span>💼</span>
+              Meu caixa
+            </span>
+            <span>›</span>
+          </button>
+
+        </div>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-title">Sistema</div>
+
+        <div class="menu">
+          <button onclick="logout()">
+            <span class="menu-left">
+              <span>🚪</span>
+              Sair
+            </span>
+            <span>×</span>
+          </button>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- MAIN -->
+    <main class="main">
+
+      <!-- TOPBAR -->
+      <header class="topbar">
+
+        <div class="top-left">
+
+          <button class="hamburger" onclick="toggleSidebar(true)">
+            ☰
+          </button>
+
+          <div>
+            <h1 id="pageTitle">Dashboard do vendedor</h1>
+            <p id="pageSubtitle">Resumo do caixa, clientes, cobranças e vendas do dia.</p>
+          </div>
+
+        </div>
+
+        <div class="top-actions">
+
+          <button class="btn btn-light" onclick="carregarTudo()">
+            Atualizar
+          </button>
+
+          <button class="btn btn-primary" onclick="trocarTela('clientes')">
+            Buscar cliente
+          </button>
+
+        </div>
+
+      </header>
+
+      <!-- DASHBOARD -->
+      <section id="dashboard" class="screen">
+
+        <div class="grid grid-4">
+
+          <div class="card card-gradient card-orange">
+            <small>Caixa atual</small>
+            <strong id="kpiCaixaAtual">R$ 0,00</strong>
+            <p>Saldo disponível no caixa aberto.</p>
+          </div>
+
+          <div class="card card-gradient card-blue">
+            <small>Recebido hoje</small>
+            <strong id="kpiRecebidoHoje">R$ 0,00</strong>
+            <p>Total de pagamentos registrados no dia.</p>
+          </div>
+
+          <div class="card card-gradient card-green">
+            <small>Vendas hoje</small>
+            <strong id="kpiVendasHoje">0</strong>
+            <p>Quantidade de vendas registradas no caixa atual.</p>
+          </div>
+
+          <div class="card card-gradient card-purple">
+            <small>Clientes do dia</small>
+            <strong id="kpiClientesDia">0</strong>
+            <p>Clientes previstos/visitados na operação atual.</p>
+          </div>
+
+        </div>
+
+        <div style="
+          display:grid;
+          grid-template-columns:1.25fr .85fr;
+          gap:20px;
+          margin-top:20px;
+        " class="dashboard-grid">
+
+          <div class="panel">
+
+            <div class="panel-title">
+              <div>
+                <h2>Progresso do dia</h2>
+                <p>Controle de visitas, pagamentos e pendências.</p>
+              </div>
+            </div>
+
+            <div style="
+              background:#f8fafc;
+              border:1px solid #e2e8f0;
+              border-radius:22px;
+              padding:18px;
+              margin-bottom:18px;
+            ">
+
+              <div style="
+                display:flex;
+                justify-content:space-between;
+                margin-bottom:10px;
+                font-weight:900;
+              ">
+                <span>Meta de visitas</span>
+                <span id="progressoTexto">0%</span>
+              </div>
+
+              <div style="
+                height:14px;
+                background:#e2e8f0;
+                border-radius:999px;
+                overflow:hidden;
+              ">
+                <div id="barraProgresso" style="
+                  height:100%;
+                  width:0%;
+                  border-radius:999px;
+                  background:linear-gradient(135deg,#ffb100,#ff6b00);
+                  transition:.3s;
+                "></div>
+              </div>
+
+            </div>
+
+            <div id="resumoDia" class="grid" style="gap:12px;"></div>
+
+          </div>
+
+          <div class="panel">
+
+            <div class="panel-title">
+              <div>
+                <h2>Alertas</h2>
+                <p>Pontos que exigem atenção.</p>
+              </div>
+            </div>
+
+            <div id="alertasVendedor" class="grid" style="gap:12px;"></div>
+
+          </div>
+
+        </div>
+
+      </section>
