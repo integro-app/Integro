@@ -1076,3 +1076,491 @@
         </div>
 
       </section>
+
+<!-- CLIENTES -->
+      <section
+        id="clientes"
+        class="screen"
+        style="display:none;"
+      >
+
+        <div class="panel">
+
+          <div class="panel-title">
+
+            <div>
+              <h2>Clientes</h2>
+              <p>
+                Busca, cadastro e gerenciamento dos clientes da carteira.
+              </p>
+            </div>
+
+            <div style="
+              display:flex;
+              gap:10px;
+              flex-wrap:wrap;
+            ">
+
+              <button
+                class="btn btn-light"
+                onclick="limparBuscaClientes()"
+              >
+                Limpar
+              </button>
+
+              <button
+                class="btn btn-primary"
+                onclick="abrirNovoCliente()"
+              >
+                Novo cliente
+              </button>
+
+            </div>
+
+          </div>
+
+          <!-- BUSCA -->
+
+          <div style="
+            display:grid;
+            grid-template-columns:1fr auto;
+            gap:12px;
+            margin-bottom:20px;
+          " class="busca-grid">
+
+            <input
+              id="buscaClienteInput"
+              placeholder="Buscar por nome, apelido, telefone ou documento"
+              style="
+                height:58px;
+                border-radius:18px;
+                border:1px solid #e2e8f0;
+                padding:0 18px;
+                font-size:15px;
+                font-weight:700;
+                outline:none;
+                width:100%;
+              "
+            >
+
+            <button
+              class="btn btn-primary"
+              onclick="buscarClientes()"
+            >
+              Buscar
+            </button>
+
+          </div>
+
+          <!-- LISTA -->
+
+          <div
+            id="listaClientes"
+            class="grid"
+            style="gap:14px;"
+          ></div>
+
+        </div>
+
+      </section>
+
+      <!-- DRAWER -->
+      <aside
+        id="drawer"
+        style="
+          position:fixed;
+          top:0;
+          right:-100%;
+          width:100%;
+          max-width:520px;
+          height:100vh;
+          background:#fff;
+          z-index:9999;
+          transition:.28s;
+          box-shadow:-20px 0 50px rgba(15,23,42,.18);
+          overflow-y:auto;
+        "
+      >
+
+        <div style="
+          position:sticky;
+          top:0;
+          background:#fff;
+          border-bottom:1px solid #e2e8f0;
+          padding:22px;
+          z-index:5;
+
+          display:flex;
+          align-items:center;
+          justify-content:space-between;
+        ">
+
+          <div>
+            <h2
+              id="drawerTitle"
+              style="
+                font-size:26px;
+                font-weight:900;
+                letter-spacing:-1px;
+                margin-bottom:4px;
+              "
+            >
+              Novo cliente
+            </h2>
+
+            <p
+              id="drawerSubtitle"
+              style="
+                color:#64748b;
+                font-size:14px;
+                font-weight:600;
+              "
+            >
+              Cadastro completo do cliente
+            </p>
+          </div>
+
+          <button
+            onclick="fecharDrawer()"
+            style="
+              width:46px;
+              height:46px;
+              border:none;
+              border-radius:14px;
+              background:#f1f5f9;
+              font-size:22px;
+              font-weight:900;
+              cursor:pointer;
+            "
+          >
+            ×
+          </button>
+
+        </div>
+
+        <!-- BODY -->
+
+        <div
+          id="drawerBody"
+          style="
+            padding:22px;
+          "
+        ></div>
+
+      </aside>
+
+      <!-- DRAWER OVERLAY -->
+
+      <div
+        id="drawerOverlay"
+        onclick="fecharDrawer()"
+        style="
+          position:fixed;
+          inset:0;
+          background:rgba(2,6,23,.55);
+          z-index:9998;
+          opacity:0;
+          visibility:hidden;
+          transition:.2s;
+        "
+      ></div>
+
+      <!-- RESPONSIVO -->
+
+      <style>
+
+        @media(max-width:780px){
+
+          .dashboard-grid{
+            grid-template-columns:1fr !important;
+          }
+
+          .busca-grid{
+            grid-template-columns:1fr !important;
+          }
+
+        }
+
+      </style>
+
+      <!-- HELPERS CLIENTES -->
+
+      <script>
+
+        function abrirDrawer(
+          titulo,
+          subtitulo,
+          html
+        ){
+
+          document.getElementById(
+            "drawerTitle"
+          ).innerText = titulo;
+
+          document.getElementById(
+            "drawerSubtitle"
+          ).innerText = subtitulo;
+
+          document.getElementById(
+            "drawerBody"
+          ).innerHTML = html;
+
+          document.getElementById(
+            "drawer"
+          ).style.right = "0";
+
+          document.getElementById(
+            "drawerOverlay"
+          ).style.opacity = "1";
+
+          document.getElementById(
+            "drawerOverlay"
+          ).style.visibility = "visible";
+
+        }
+
+        function fecharDrawer(){
+
+          document.getElementById(
+            "drawer"
+          ).style.right = "-100%";
+
+          document.getElementById(
+            "drawerOverlay"
+          ).style.opacity = "0";
+
+          document.getElementById(
+            "drawerOverlay"
+          ).style.visibility = "hidden";
+
+        }
+
+        function limparBuscaClientes(){
+
+          document.getElementById(
+            "buscaClienteInput"
+          ).value = "";
+
+          buscarClientes();
+
+        }
+
+        function abrirNovoCliente(){
+
+          abrirDrawer(
+
+            "Novo cliente",
+
+            "Cadastro operacional completo",
+
+            `
+
+            <div style="
+              display:grid;
+              gap:18px;
+            ">
+
+              <div>
+
+                <label class="form-label">
+                  Nome completo
+                </label>
+
+                <input
+                  id="clienteNome"
+                  class="form-input"
+                  placeholder="Digite o nome completo"
+                >
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Apelido / referência
+                </label>
+
+                <input
+                  id="clienteApelido"
+                  class="form-input"
+                  placeholder="Ex: João mercado"
+                >
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Documento
+                </label>
+
+                <input
+                  id="clienteDocumento"
+                  class="form-input"
+                  placeholder="CPF / RG"
+                >
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Telefone principal
+                </label>
+
+                <input
+                  id="clienteTelefone"
+                  class="form-input"
+                  placeholder="(11) 99999-9999"
+                >
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Endereço
+                </label>
+
+                <input
+                  id="clienteEndereco"
+                  class="form-input"
+                  placeholder="Rua / avenida"
+                >
+
+              </div>
+
+              <div style="
+                display:grid;
+                grid-template-columns:1fr 1fr;
+                gap:12px;
+              ">
+
+                <div>
+
+                  <label class="form-label">
+                    Número
+                  </label>
+
+                  <input
+                    id="clienteNumero"
+                    class="form-input"
+                    placeholder="123"
+                  >
+
+                </div>
+
+                <div>
+
+                  <label class="form-label">
+                    Bairro
+                  </label>
+
+                  <input
+                    id="clienteBairro"
+                    class="form-input"
+                    placeholder="Centro"
+                  >
+
+                </div>
+
+              </div>
+
+              <div>
+
+                <label class="form-label">
+                  Observações
+                </label>
+
+                <textarea
+                  id="clienteObs"
+                  class="form-textarea"
+                  placeholder="Informações importantes"
+                ></textarea>
+
+              </div>
+
+              <button
+                class="btn btn-primary"
+                style="
+                  width:100%;
+                  height:60px;
+                  font-size:16px;
+                "
+                onclick="salvarNovoCliente()"
+              >
+                Salvar cliente
+              </button>
+
+            </div>
+
+            <style>
+
+              .form-label{
+
+                display:block;
+
+                margin-bottom:10px;
+
+                font-size:13px;
+
+                font-weight:900;
+
+                text-transform:uppercase;
+
+                letter-spacing:.6px;
+
+                color:#475569;
+
+              }
+
+              .form-input{
+
+                width:100%;
+
+                height:58px;
+
+                border-radius:18px;
+
+                border:1px solid #e2e8f0;
+
+                padding:0 16px;
+
+                outline:none;
+
+                font-size:15px;
+
+                font-weight:700;
+
+              }
+
+              .form-textarea{
+
+                width:100%;
+
+                min-height:120px;
+
+                border-radius:18px;
+
+                border:1px solid #e2e8f0;
+
+                padding:16px;
+
+                outline:none;
+
+                font-size:15px;
+
+                font-weight:700;
+
+                resize:none;
+
+              }
+
+            </style>
+
+            `
+          );
+
+        }
+
+      </script>
