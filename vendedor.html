@@ -2385,3 +2385,603 @@
         }
 
       </script>
+
+<script>
+
+        function abrirPagamentoParcela(parcelaId){
+
+          const parcela =
+            parcelasCache.find(p => p.id === parcelaId);
+
+          if (!parcela) {
+            alert("Parcela não encontrada.");
+            return;
+          }
+
+          abrirDrawer(
+
+            "Registrar pagamento",
+
+            "Confirme o valor recebido do cliente",
+
+            `
+
+              <div style="display:grid;gap:18px;">
+
+                <div
+                  style="
+                    background:#f8fafc;
+                    border:1px solid #e2e8f0;
+                    border-radius:22px;
+                    padding:16px;
+                  "
+                >
+
+                  <strong
+                    style="
+                      display:block;
+                      font-size:16px;
+                      margin-bottom:6px;
+                    "
+                  >
+                    ${parcela.clienteNome || "Cliente"}
+                  </strong>
+
+                  <small
+                    style="
+                      color:#64748b;
+                      font-weight:700;
+                      display:block;
+                      margin-bottom:4px;
+                    "
+                  >
+                    Parcela ${parcela.numeroParcela || "-"} de ${parcela.totalParcelas || "-"}
+                  </small>
+
+                  <small
+                    style="
+                      color:#64748b;
+                      font-weight:800;
+                    "
+                  >
+                    Valor previsto: ${moeda(parcela.valor || 0)}
+                  </small>
+
+                </div>
+
+                <div>
+
+                  <label class="form-label">
+                    Valor recebido
+                  </label>
+
+                  <input
+                    id="pagamentoValor"
+                    type="number"
+                    step="0.01"
+                    class="form-input"
+                    value="${Number(parcela.valor || 0).toFixed(2)}"
+                  >
+
+                </div>
+
+                <div>
+
+                  <label class="form-label">
+                    Observação
+                  </label>
+
+                  <textarea
+                    id="pagamentoObs"
+                    class="form-textarea"
+                    placeholder="Observação opcional"
+                  ></textarea>
+
+                </div>
+
+                <button
+                  class="btn btn-primary"
+                  style="
+                    width:100%;
+                    height:60px;
+                    font-size:16px;
+                  "
+                  onclick="salvarPagamentoParcela('${parcelaId}')"
+                >
+                  Confirmar pagamento
+                </button>
+
+              </div>
+
+            `
+
+          );
+
+        }
+
+        async function salvarPagamentoParcela(parcelaId){
+
+          try {
+
+            const parcela =
+              parcelasCache.find(p => p.id === parcelaId);
+
+            if (!parcela) {
+              alert("Parcela não encontrada.");
+              return;
+            }
+
+            if (!caixaAtual || !caixaAtual.id) {
+              alert("Não existe caixa aberto para registrar pagamento.");
+              return;
+            }
+
+            const valor =
+              Number(
+                document.getElementById("pagamentoValor").value ||
+                0
+              );
+
+            const observacao =
+              document.getElementById("pagamentoObs").value.trim();
+
+            if (valor <= 0) {
+              alert("Informe um valor válido.");
+              return;
+            }
+
+            const cliente =
+              clientesCache.find(c => c.id === parcela.clienteId);
+
+            const saldoCliente =
+              Number(
+                cliente?.saldoDevedor ||
+                cliente?.saldo ||
+                0
+              );
+
+            if (saldoCliente > 0 && valor > saldoCliente) {
+              alert("O pagamento não pode ser maior que o saldo devedor.");
+              return;
+            }
+
+            const valorParcela =
+              Number(parcela.valor || 0);
+
+            const quitouParcela =
+              valor >= valorParcela;
+
+            const saldoCaixa =
+              Number(
+                caixaAtual.saldoAtual ||
+                caixaAtual.valorAtual ||
+                caixaAtual.saldo ||
+                0
+              );
+
+            const novoSaldoCaixa =
+              saldoCaixa + valor;
+
+            const novoSaldoCliente =
+              Math.max(0, saldoCliente - valor);
+
+            const batch =
+              db.batch();
+
+            const pagamentoRef =
+              db.collection("pagamentos").doc();
+
+            batch.set(pagamentoRef, {
+
+              parcelaId,
+
+              vendaId:
+                parcela.vendaId || "",
+
+              clienteId:
+                parcela.clienteId || "",
+
+              clienteNome:
+                parcela.clienteNome || "",
+
+              vendedorId:
+                usuarioLogado.id,
+
+              vendedorNome:
+                usuarioLogado.nome ||
+                usuarioLogado.email ||
+                "",
+
+              caixaId:
+                caixaAtual.id,
+
+              valor,
+
+              observacao,
+
+              status:
+                "CONFIRMADO",
+
+              data:
+                hojeISO(),
+
+              clientePlataformaId:
+                tenantId,
+
+              criadoEm:
+                firebase.firestore.FieldValue.serverTimestamp()
+
+            });
+
+            batch.update(
+              db.collection("parcelas").doc(parcelaId),
+              {
+
+                valorPago:
+                  valor,
+
+                status:
+                  quitouParcela ? "PAGA" : "PENDENTE",
+
+                dataPagamento:
+                  hojeISO(),
+
+                pagamentoId:
+                  pagamentoRef.id,
+
+                atualizadoEm:
+                  firebase.firestore.FieldValue.serverTimestamp()
+
+              }
+            );
+
+            if (cliente?.id) {
+
+              batch.update(
+                db.collection("clientes").doc(cliente.id),
+                {
+
+                  saldoDevedor:
+                    novoSaldoCliente,
+
+                  saldo:
+                    novoSaldoCliente,
+
+                  status:
+                    novoSaldoCliente <= 1 ? "QUITADO" : "ATIVO",
+
+                  diasAtraso:
+                    0,
+
+                  score:
+                    Math.min(
+                      100,
+                      Number(cliente.score || 50) + 2
+                    ),
+
+                  atualizadoEm:
+                    firebase.firestore.FieldValue.serverTimestamp()
+
+                }
+              );
+
+            }
+
+            batch.update(
+              db.collection("caixas").doc(caixaAtual.id),
+              {
+
+                saldoAtual:
+                  novoSaldoCaixa,
+
+                atualizadoEm:
+                  firebase.firestore.FieldValue.serverTimestamp()
+
+              }
+            );
+
+            const movRef =
+              db.collection("movcaixa").doc();
+
+            batch.set(movRef, {
+
+              tipo:
+                "ENTRADA",
+
+              origem:
+                "PAGAMENTO",
+
+              valor,
+
+              caixaId:
+                caixaAtual.id,
+
+              pagamentoId:
+                pagamentoRef.id,
+
+              parcelaId,
+
+              vendaId:
+                parcela.vendaId || "",
+
+              clienteId:
+                parcela.clienteId || "",
+
+              clienteNome:
+                parcela.clienteNome || "",
+
+              usuarioId:
+                usuarioLogado.id,
+
+              usuarioNome:
+                usuarioLogado.nome ||
+                usuarioLogado.email ||
+                "",
+
+              clientePlataformaId:
+                tenantId,
+
+              criadoEm:
+                firebase.firestore.FieldValue.serverTimestamp()
+
+            });
+
+            const logRef =
+              db.collection("logs").doc();
+
+            batch.set(logRef, {
+
+              tipo:
+                "REGISTRO_PAGAMENTO",
+
+              pagamentoId:
+                pagamentoRef.id,
+
+              parcelaId,
+
+              clienteId:
+                parcela.clienteId || "",
+
+              clienteNome:
+                parcela.clienteNome || "",
+
+              valor,
+
+              usuarioId:
+                usuarioLogado.id,
+
+              usuarioNome:
+                usuarioLogado.nome ||
+                usuarioLogado.email ||
+                "",
+
+              clientePlataformaId:
+                tenantId,
+
+              criadoEm:
+                firebase.firestore.FieldValue.serverTimestamp()
+
+            });
+
+            await batch.commit();
+
+            caixaAtual.saldoAtual =
+              novoSaldoCaixa;
+
+            localStorage.setItem(
+              "caixaAtual",
+              JSON.stringify(caixaAtual)
+            );
+
+            alert("Pagamento registrado com sucesso.");
+
+            fecharDrawer();
+
+            await carregarTudo();
+
+          } catch (erro) {
+
+            console.error(
+              "Erro ao registrar pagamento:",
+              erro
+            );
+
+            alert(
+              "Erro ao registrar pagamento:\n\n" +
+              erro.message
+            );
+
+          }
+
+        }
+
+        function registrarNaoPagamento(parcelaId){
+
+          const parcela =
+            parcelasCache.find(p => p.id === parcelaId);
+
+          if (!parcela) {
+            alert("Parcela não encontrada.");
+            return;
+          }
+
+          abrirDrawer(
+
+            "Não pagamento",
+
+            "Registre a visita sem recebimento",
+
+            `
+
+              <div style="display:grid;gap:18px;">
+
+                <div
+                  style="
+                    background:#fff7ed;
+                    border:1px solid #fed7aa;
+                    border-radius:22px;
+                    padding:16px;
+                  "
+                >
+
+                  <strong
+                    style="
+                      color:#9a3412;
+                      display:block;
+                      margin-bottom:6px;
+                    "
+                  >
+                    Atenção
+                  </strong>
+
+                  <small
+                    style="
+                      color:#9a3412;
+                      font-weight:700;
+                      line-height:1.6;
+                    "
+                  >
+                    Esta ação marca a cobrança como visitada sem pagamento.
+                    O saldo do cliente e o caixa não serão alterados.
+                  </small>
+
+                </div>
+
+                <div>
+
+                  <label class="form-label">
+                    Motivo / observação
+                  </label>
+
+                  <textarea
+                    id="naoPagamentoObs"
+                    class="form-textarea"
+                    placeholder="Ex: cliente não localizado, prometeu pagar amanhã..."
+                  ></textarea>
+
+                </div>
+
+                <button
+                  class="btn btn-primary"
+                  style="
+                    width:100%;
+                    height:60px;
+                    font-size:16px;
+                  "
+                  onclick="salvarNaoPagamento('${parcelaId}')"
+                >
+                  Registrar não pagamento
+                </button>
+
+              </div>
+
+            `
+
+          );
+
+        }
+
+        async function salvarNaoPagamento(parcelaId){
+
+          try {
+
+            const parcela =
+              parcelasCache.find(p => p.id === parcelaId);
+
+            if (!parcela) {
+              alert("Parcela não encontrada.");
+              return;
+            }
+
+            const observacao =
+              document.getElementById("naoPagamentoObs").value.trim();
+
+            await db.collection("historicoCobrancas").add({
+
+              tipo:
+                "NAO_PAGAMENTO",
+
+              parcelaId,
+
+              vendaId:
+                parcela.vendaId || "",
+
+              clienteId:
+                parcela.clienteId || "",
+
+              clienteNome:
+                parcela.clienteNome || "",
+
+              vendedorId:
+                usuarioLogado.id,
+
+              vendedorNome:
+                usuarioLogado.nome ||
+                usuarioLogado.email ||
+                "",
+
+              observacao,
+
+              data:
+                hojeISO(),
+
+              clientePlataformaId:
+                tenantId,
+
+              criadoEm:
+                firebase.firestore.FieldValue.serverTimestamp()
+
+            });
+
+            await db.collection("logs").add({
+
+              tipo:
+                "NAO_PAGAMENTO",
+
+              parcelaId,
+
+              clienteId:
+                parcela.clienteId || "",
+
+              clienteNome:
+                parcela.clienteNome || "",
+
+              usuarioId:
+                usuarioLogado.id,
+
+              usuarioNome:
+                usuarioLogado.nome ||
+                usuarioLogado.email ||
+                "",
+
+              clientePlataformaId:
+                tenantId,
+
+              criadoEm:
+                firebase.firestore.FieldValue.serverTimestamp()
+
+            });
+
+            alert("Não pagamento registrado.");
+
+            fecharDrawer();
+
+            await carregarTudo();
+
+          } catch (erro) {
+
+            console.error(
+              "Erro ao registrar não pagamento:",
+              erro
+            );
+
+            alert(
+              "Erro ao registrar não pagamento:\n\n" +
+              erro.message
+            );
+
+          }
+
+        }
+
+      </script>
