@@ -3960,3 +3960,712 @@
         }
 
       </script>
+
+<script>
+
+        // =========================
+        // DASHBOARD
+        // =========================
+
+        function atualizarDashboard(){
+
+          const saldoCaixa =
+            numero(
+              caixaAtual?.saldoAtual ||
+              caixaAtual?.valorAtual ||
+              caixaAtual?.saldo ||
+              0
+            );
+
+          const recebidoHoje =
+            pagamentosHojeCache.reduce((total, p) => {
+              return total + numero(p.valor || 0);
+            }, 0);
+
+          const vendasHoje =
+            vendasCache.filter(v => {
+              const data =
+                v.data ||
+                v.dataVenda ||
+                v.dataCriacao ||
+                "";
+
+              return String(data).includes(hojeISO());
+            }).length;
+
+          const clientesDia =
+            clientesCache.length;
+
+          document.getElementById("kpiCaixaAtual").innerText =
+            moeda(saldoCaixa);
+
+          document.getElementById("kpiRecebidoHoje").innerText =
+            moeda(recebidoHoje);
+
+          document.getElementById("kpiVendasHoje").innerText =
+            vendasHoje;
+
+          document.getElementById("kpiClientesDia").innerText =
+            clientesDia;
+
+          const totalClientes =
+            clientesCache.length || 1;
+
+          const visitadosHoje =
+            historicoCobrancasCache.filter(h =>
+              String(h.data || "") === hojeISO()
+            ).length;
+
+          const progresso =
+            Math.min(100, Math.round((visitadosHoje / totalClientes) * 100));
+
+          const barra =
+            document.getElementById("barraProgresso");
+
+          const txt =
+            document.getElementById("progressoTexto");
+
+          if (barra) barra.style.width = progresso + "%";
+          if (txt) txt.innerText = progresso + "%";
+
+          renderResumoDia();
+          renderAlertasVendedor();
+
+        }
+
+        function renderResumoDia(){
+
+          const el =
+            document.getElementById("resumoDia");
+
+          if (!el) return;
+
+          const pendentes =
+            parcelasCache.filter(p =>
+              statusTxt(p.status || "PENDENTE") === "PENDENTE"
+            ).length;
+
+          const vencidas =
+            parcelasCache.filter(p =>
+              statusTxt(p.status || "PENDENTE") === "PENDENTE" &&
+              String(p.dataVencimento || "") < hojeISO()
+            ).length;
+
+          const pagasHoje =
+            pagamentosHojeCache.length;
+
+          el.innerHTML = `
+
+            <div
+              style="
+                background:#f8fafc;
+                border:1px solid #e2e8f0;
+                border-radius:22px;
+                padding:16px;
+              "
+            >
+              <strong>${pendentes}</strong>
+              <p style="color:#64748b;font-weight:700;margin-top:4px;">
+                Parcelas pendentes
+              </p>
+            </div>
+
+            <div
+              style="
+                background:#fff7ed;
+                border:1px solid #fed7aa;
+                border-radius:22px;
+                padding:16px;
+              "
+            >
+              <strong style="color:#9a3412;">${vencidas}</strong>
+              <p style="color:#9a3412;font-weight:700;margin-top:4px;">
+                Parcelas vencidas
+              </p>
+            </div>
+
+            <div
+              style="
+                background:#ecfdf5;
+                border:1px solid #bbf7d0;
+                border-radius:22px;
+                padding:16px;
+              "
+            >
+              <strong style="color:#166534;">${pagasHoje}</strong>
+              <p style="color:#166534;font-weight:700;margin-top:4px;">
+                Pagamentos hoje
+              </p>
+            </div>
+
+          `;
+
+        }
+
+        function renderAlertasVendedor(){
+
+          const el =
+            document.getElementById("alertasVendedor");
+
+          if (!el) return;
+
+          const saldo =
+            numero(
+              caixaAtual?.saldoAtual ||
+              caixaAtual?.valorAtual ||
+              caixaAtual?.saldo ||
+              0
+            );
+
+          const atrasadas =
+            parcelasCache.filter(p =>
+              statusTxt(p.status || "PENDENTE") === "PENDENTE" &&
+              String(p.dataVencimento || "") < hojeISO()
+            ).length;
+
+          el.innerHTML = `
+
+            ${
+              !caixaAtual?.id
+                ? `
+                  <div
+                    style="
+                      background:#fff7ed;
+                      border:1px solid #fed7aa;
+                      border-radius:22px;
+                      padding:16px;
+                    "
+                  >
+                    <strong style="color:#9a3412;">
+                      Caixa não aberto
+                    </strong>
+                    <p style="color:#9a3412;font-weight:700;margin-top:6px;">
+                      Aguarde abertura pelo supervisor ou master local.
+                    </p>
+                  </div>
+                `
+                : `
+                  <div
+                    style="
+                      background:#ecfdf5;
+                      border:1px solid #bbf7d0;
+                      border-radius:22px;
+                      padding:16px;
+                    "
+                  >
+                    <strong style="color:#166534;">
+                      Caixa aberto
+                    </strong>
+                    <p style="color:#166534;font-weight:700;margin-top:6px;">
+                      Saldo atual: ${moeda(saldo)}
+                    </p>
+                  </div>
+                `
+            }
+
+            <div
+              style="
+                background:${atrasadas > 0 ? "#fef2f2" : "#f8fafc"};
+                border:1px solid ${atrasadas > 0 ? "#fecaca" : "#e2e8f0"};
+                border-radius:22px;
+                padding:16px;
+              "
+            >
+              <strong style="color:${atrasadas > 0 ? "#991b1b" : "#0f172a"};">
+                ${atrasadas} cobranças atrasadas
+              </strong>
+              <p style="color:#64748b;font-weight:700;margin-top:6px;">
+                Parcelas pendentes com vencimento anterior a hoje.
+              </p>
+            </div>
+
+          `;
+
+        }
+
+        // =========================
+        // CLIENTES
+        // =========================
+
+        function buscarClientes(){
+
+          const el =
+            document.getElementById("listaClientes");
+
+          if (!el) return;
+
+          const termo =
+            (
+              document.getElementById("buscaClienteInput")?.value ||
+              ""
+            ).toLowerCase();
+
+          const lista =
+            clientesCache.filter(c => {
+
+              const textoBusca =
+                `
+                  ${c.nome || ""}
+                  ${c.nomeCompleto || ""}
+                  ${c.apelido || ""}
+                  ${c.telefone || ""}
+                  ${c.telefonePrincipal || ""}
+                  ${c.documento || ""}
+                `.toLowerCase();
+
+              return !termo || textoBusca.includes(termo);
+
+            });
+
+          el.innerHTML = lista.length
+            ? lista.map(c => cardCliente(c)).join("")
+            : `
+
+              <div
+                style="
+                  background:#fff;
+                  border:1px solid #e2e8f0;
+                  border-radius:24px;
+                  padding:18px;
+                "
+              >
+                <strong>Nenhum cliente encontrado</strong>
+                <p
+                  style="
+                    color:#64748b;
+                    font-weight:700;
+                    margin-top:6px;
+                  "
+                >
+                  Pesquise ou cadastre um novo cliente.
+                </p>
+              </div>
+
+            `;
+
+        }
+
+        function cardCliente(c){
+
+          const saldo =
+            numero(c.saldoDevedor || c.saldo || 0);
+
+          const status =
+            saldo > 1 ? "ATIVO" : "QUITADO";
+
+          const score =
+            c.score ?? 50;
+
+          return `
+
+            <div
+              style="
+                background:#fff;
+                border:1px solid #e2e8f0;
+                border-radius:24px;
+                padding:18px;
+                display:grid;
+                grid-template-columns:8px 1fr auto;
+                gap:16px;
+                align-items:center;
+                box-shadow:0 10px 24px rgba(15,23,42,.04);
+              "
+            >
+
+              <div
+                style="
+                  width:8px;
+                  height:100%;
+                  min-height:90px;
+                  border-radius:999px;
+                  background:${status === "ATIVO" ? "#ffb100" : "#22c55e"};
+                "
+              ></div>
+
+              <div>
+
+                <strong
+                  style="
+                    display:block;
+                    font-size:16px;
+                    margin-bottom:6px;
+                  "
+                >
+                  ${c.nome || c.nomeCompleto || c.apelido || "Cliente sem nome"}
+                </strong>
+
+                <small
+                  style="
+                    display:block;
+                    color:#64748b;
+                    font-weight:700;
+                    margin-bottom:4px;
+                  "
+                >
+                  Tel: ${c.telefone || c.telefonePrincipal || "-"} • Doc: ${c.documento || "-"}
+                </small>
+
+                <small
+                  style="
+                    display:block;
+                    color:#64748b;
+                    font-weight:800;
+                  "
+                >
+                  Saldo: ${moeda(saldo)} • Score: ${score}
+                </small>
+
+              </div>
+
+              <div
+                style="
+                  display:flex;
+                  gap:8px;
+                  flex-wrap:wrap;
+                  justify-content:flex-end;
+                "
+              >
+
+                <button
+                  class="btn btn-light"
+                  onclick="abrirDetalheCliente('${c.id}')"
+                >
+                  Ver
+                </button>
+
+                ${
+                  saldo <= 1
+                    ? `
+                      <button
+                        class="btn btn-primary"
+                        onclick="abrirNovaVenda('${c.id}')"
+                      >
+                        Venda
+                      </button>
+                    `
+                    : `
+                      <button
+                        class="btn btn-light"
+                        disabled
+                        style="opacity:.55;cursor:not-allowed;"
+                      >
+                        Saldo ativo
+                      </button>
+                    `
+                }
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+
+        function abrirDetalheCliente(id){
+
+          const c =
+            clientesCache.find(x => x.id === id);
+
+          if (!c) return;
+
+          abrirDrawer(
+
+            "Cliente",
+
+            "Perfil resumido do cliente",
+
+            `
+
+              <div
+                style="
+                  display:grid;
+                  gap:14px;
+                  color:#334155;
+                  font-weight:800;
+                  line-height:1.6;
+                "
+              >
+
+                <p><strong>Nome:</strong> ${c.nome || c.nomeCompleto || "-"}</p>
+
+                <p><strong>Apelido:</strong> ${c.apelido || "-"}</p>
+
+                <p><strong>Documento:</strong> ${c.documento || "-"}</p>
+
+                <p><strong>Telefone:</strong> ${c.telefone || c.telefonePrincipal || "-"}</p>
+
+                <p><strong>Endereço:</strong> ${c.endereco || "-"}, ${c.numero || ""}</p>
+
+                <p><strong>Bairro:</strong> ${c.bairro || "-"}</p>
+
+                <p><strong>Saldo:</strong> ${moeda(c.saldoDevedor || c.saldo || 0)}</p>
+
+                <p><strong>Status:</strong> ${c.status || "-"}</p>
+
+                <p><strong>Score:</strong> ${c.score ?? "-"}</p>
+
+              </div>
+
+            `
+
+          );
+
+        }
+
+        async function salvarNovoCliente(){
+
+          try {
+
+            const nome =
+              document.getElementById("clienteNome").value.trim();
+
+            const apelido =
+              document.getElementById("clienteApelido").value.trim();
+
+            const documento =
+              document.getElementById("clienteDocumento").value.trim();
+
+            const telefone =
+              document.getElementById("clienteTelefone").value.trim();
+
+            const endereco =
+              document.getElementById("clienteEndereco").value.trim();
+
+            const numeroCasa =
+              document.getElementById("clienteNumero").value.trim();
+
+            const bairro =
+              document.getElementById("clienteBairro").value.trim();
+
+            const observacoes =
+              document.getElementById("clienteObs").value.trim();
+
+            if (!nome || !telefone) {
+              alert("Nome completo e telefone são obrigatórios.");
+              return;
+            }
+
+            await db.collection("clientes").add({
+
+              nome,
+              nomeCompleto: nome,
+              apelido,
+              documento,
+              telefone,
+              telefonePrincipal: telefone,
+
+              endereco,
+              numero: numeroCasa,
+              bairro,
+              observacoes,
+
+              status: "QUITADO",
+              saldoDevedor: 0,
+              saldo: 0,
+              score: 50,
+              diasAtraso: 0,
+
+              vendedorId:
+                usuarioLogado.id,
+
+              vendedorNome:
+                usuarioLogado.nome ||
+                usuarioLogado.email ||
+                "",
+
+              clientePlataformaId:
+                tenantId,
+
+              criadoEm:
+                firebase.firestore.FieldValue.serverTimestamp()
+
+            });
+
+            await db.collection("logs").add({
+
+              tipo:
+                "CRIACAO_CLIENTE",
+
+              clienteNome:
+                nome,
+
+              usuarioId:
+                usuarioLogado.id,
+
+              usuarioNome:
+                usuarioLogado.nome ||
+                usuarioLogado.email ||
+                "",
+
+              clientePlataformaId:
+                tenantId,
+
+              criadoEm:
+                firebase.firestore.FieldValue.serverTimestamp()
+
+            });
+
+            alert("Cliente criado com sucesso.");
+
+            fecharDrawer();
+
+            await carregarTudo();
+
+          } catch (erro) {
+
+            console.error("Erro ao salvar cliente:", erro);
+
+            alert(
+              "Erro ao salvar cliente:\n\n" +
+              erro.message
+            );
+
+          }
+
+        }
+
+        // =========================
+        // SALVAR VENDA PROFISSIONAL
+        // =========================
+
+        async function salvarVendaProfissional(clienteId){
+
+          try {
+
+            if (!caixaAtual || !caixaAtual.id) {
+              alert("Não existe caixa aberto para realizar venda.");
+              return;
+            }
+
+            const cliente =
+              clientesCache.find(c => c.id === clienteId);
+
+            if (!cliente) {
+              alert("Cliente não encontrado.");
+              return;
+            }
+
+            const saldoCliente =
+              numero(cliente.saldoDevedor || cliente.saldo || 0);
+
+            if (saldoCliente > 1) {
+              alert("Cliente possui saldo devedor ativo. Venda bloqueada.");
+              return;
+            }
+
+            const valor =
+              numero(document.getElementById("vendaValor").value);
+
+            const jurosPercentual =
+              numero(document.getElementById("vendaJuros").value);
+
+            const quantidadeParcelas =
+              numero(document.getElementById("vendaParcelas").value);
+
+            const frequencia =
+              document.getElementById("vendaFrequencia").value;
+
+            const primeiraData =
+              document.getElementById("vendaPrimeiraData").value;
+
+            if (valor <= 0) {
+              alert("Informe o valor emprestado.");
+              return;
+            }
+
+            if (!primeiraData || primeiraData < hojeISO()) {
+              alert("A primeira cobrança não pode ser retroativa.");
+              return;
+            }
+
+            const saldoCaixa =
+              numero(
+                caixaAtual.saldoAtual ||
+                caixaAtual.valorAtual ||
+                caixaAtual.saldo ||
+                0
+              );
+
+            if (saldoCaixa < valor) {
+
+              const ok =
+                confirm(
+                  "Caixa insuficiente.\n\n" +
+                  "Caixa atual: " + moeda(saldoCaixa) + "\n" +
+                  "Valor da venda: " + moeda(valor) + "\n" +
+                  "Faltante: " + moeda(valor - saldoCaixa) + "\n\n" +
+                  "Deseja continuar e deixar caixa negativo?"
+                );
+
+              if (!ok) return;
+
+            }
+
+            const valorTotal =
+              valor + (valor * jurosPercentual / 100);
+
+            const valorParcela =
+              valorTotal / quantidadeParcelas;
+
+            const intervalo =
+              intervaloPorFrequencia(frequencia);
+
+            const vendaRef =
+              await db.collection("vendas").add({
+
+                clienteId,
+
+                clienteNome:
+                  cliente.nome ||
+                  cliente.nomeCompleto ||
+                  cliente.apelido ||
+                  "",
+
+                vendedorId:
+                  usuarioLogado.id,
+
+                vendedorNome:
+                  usuarioLogado.nome ||
+                  usuarioLogado.email ||
+                  "",
+
+                caixaId:
+                  caixaAtual.id,
+
+                tipoVenda:
+                  "NOVA",
+
+                status:
+                  "ATIVA",
+
+                data:
+                  hojeISO(),
+
+                valorEmprestado:
+                  valor,
+
+                jurosPercentual,
+
+                quantidadeParcelas,
+
+                frequencia,
+
+                dataPrimeiraCobranca:
+                  primeiraData,
+
+                valorTotal,
+
+                valorParcela,
+
+                saldoDevedor:
+                  valorTotal,
+
+                parcelasPagas:
+                  0,
+
+                clientePlataformaId:
+                  tenantId,
+
+                criadoEm:
+                  firebase.firestore.FieldValue.serverTimestamp()
