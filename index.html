@@ -358,7 +358,14 @@
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
         </svg>
-        <input id="email" class="input" type="email" placeholder="seuemail@empresa.com" autocomplete="email">
+
+        <input
+          id="email"
+          class="input"
+          type="email"
+          placeholder="seuemail@empresa.com"
+          autocomplete="email"
+        >
       </div>
 
       <label for="senha">Senha</label>
@@ -367,9 +374,21 @@
           <rect x="3" y="11" width="18" height="11" rx="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
         </svg>
-        <input id="senha" class="input" type="password" placeholder="Digite sua senha" autocomplete="current-password">
 
-        <button class="toggle-pass" type="button" onclick="toggleSenha()" aria-label="Mostrar senha">
+        <input
+          id="senha"
+          class="input"
+          type="password"
+          placeholder="Digite sua senha"
+          autocomplete="current-password"
+        >
+
+        <button
+          class="toggle-pass"
+          type="button"
+          onclick="toggleSenha()"
+          aria-label="Mostrar senha"
+        >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z"/>
             <circle cx="12" cy="12" r="3"/>
@@ -377,11 +396,15 @@
         </button>
       </div>
 
-      <button class="login-btn" onclick="login()">Entrar na plataforma</button>
+      <button class="login-btn" onclick="login()">
+        Entrar na plataforma
+      </button>
 
       <div class="divider">ou</div>
 
-      <div class="forgot" onclick="recuperarSenha()">Esqueci minha senha</div>
+      <div class="forgot" onclick="recuperarSenha()">
+        Esqueci minha senha
+      </div>
 
       <div id="statusLogin" class="status"></div>
 
@@ -400,30 +423,11 @@
   <script>
     function toggleSenha(){
       const senha = document.getElementById("senha");
-      senha.type = senha.type === "password" ? "text" : "password";
-    }
 
-    if (typeof recuperarSenha !== "function") {
-      window.recuperarSenha = function(){
-        const email = document.getElementById("email").value.trim();
-        const status = document.getElementById("statusLogin");
-
-        if (!email) {
-          status.style.display = "block";
-          status.innerText = "Informe seu email para recuperar a senha.";
-          return;
-        }
-
-        firebase.auth().sendPasswordResetEmail(email)
-          .then(() => {
-            status.style.display = "block";
-            status.innerText = "Enviamos um link de recuperação para o email informado.";
-          })
-          .catch((erro) => {
-            status.style.display = "block";
-            status.innerText = "Erro ao enviar recuperação: " + erro.message;
-          });
-      }
+      senha.type =
+        senha.type === "password"
+          ? "text"
+          : "password";
     }
   </script>
 
