@@ -1,0 +1,16 @@
+# Firebase
+firebase-debug.log
+.firebase/
+
+# Node
+node_modules/
+
+# VS Code
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
