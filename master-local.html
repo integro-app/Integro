@@ -1,286 +1,590 @@
-MASTER LOCAL — HTML PARTE 1/4
-
-Cole no início do master-local.html:
-
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ÍNTEGRO • Master Local</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
-    *{
-      margin:0;
-      padding:0;
-      box-sizing:border-box;
-      font-family:'Inter',sans-serif;
-    }
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
     :root{
-      --bg:#f4f7fb;
-      --surface:#ffffff;
-      --surface2:#f8fafc;
-      --panel:#071a33;
-      --panel2:#0c2344;
-      --line:#e2e8f0;
-      --text:#0f172a;
+      --nav:#061a35;
+      --nav2:#092b61;
+      --bg:#f3f7fc;
+      --card:#fff;
+      --text:#071a33;
       --muted:#64748b;
-      --orange1:#ffb100;
-      --orange2:#ff6b00;
-      --green:#22c55e;
-      --red:#ef4444;
-      --blue:#0ea5e9;
-      --purple:#7c3aed;
-      --shadow:0 15px 35px rgba(15,23,42,.08);
+      --line:#e2e8f0;
+      --orange:#ff8a00;
+      --orange2:#ffb100;
+      --green:#16c784;
+      --blue:#1683ff;
+      --red:#ff405d;
+      --purple:#8b5cf6;
+      --shadow:0 18px 45px rgba(15,23,42,.08);
     }
+
     body{
-      background:var(--bg);
+      min-height:100vh;
+      background:linear-gradient(135deg,#f6f9fd,#eef4fb);
+      color:var(--text);
       overflow-x:hidden;
+    }
+
+    button,input,select{font-family:inherit}
+    button{border:0;cursor:pointer}
+
+    .layout{
+      display:flex;
       min-height:100vh;
     }
-    button{
-      border:none;
-      cursor:pointer;
-      font-family:inherit;
-      transition:.2s;
-    }
-    input,
-    select,
-    textarea{
-      width:100%;
-      border:1px solid var(--line);
-      background:#fff;
-      border-radius:14px;
-      padding:14px;
-      outline:none;
-      font-weight:700;
-      color:var(--text);
-    }
-    textarea{
-      min-height:120px;
-      resize:none;
-    }
-    .hidden{
-      display:none!important;
-    }
-    #menuOverlay{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.45);
-      z-index:90;
-      display:none;
-    }
-    #menuOverlay.open{
-      display:block;
-    }
+
     .sidebar{
-      width:290px;
-      height:100vh;
-      position:fixed;
-      left:0;
-      top:0;
-      background:linear-gradient(180deg,var(--panel),var(--panel2));
+      width:300px;
+      background:linear-gradient(180deg,var(--nav),var(--nav2));
       color:#fff;
-      z-index:100;
+      padding:26px 20px;
+      position:fixed;
+      inset:0 auto 0 0;
       overflow-y:auto;
-      padding:22px;
-      transition:.3s;
+      z-index:50;
+      transition:.25s;
     }
-    .logo{
-      font-size:29px;
+
+    .sidebar.collapsed{
+      width:88px;
+    }
+
+    .brand{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin-bottom:28px;
+    }
+
+    .brand h1{
+      font-size:32px;
       font-weight:900;
       letter-spacing:-1px;
-      margin-bottom:25px;
     }
-    .user-card{
-      background:rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:22px;
-      padding:18px;
-      margin-bottom:22px;
-    }
-    .user-card small{
-      display:block;
-      color:#cbd5e1;
-      margin-bottom:5px;
-      font-weight:700;
-    }
-    .user-card strong{
-      display:block;
-      font-size:15px;
-      margin-bottom:6px;
-    }
-    .master-badge{
-      display:inline-flex;
-      padding:7px 12px;
-      border-radius:999px;
-      background:linear-gradient(135deg,#ffb10055,#ff6b0030);
-      font-size:11px;
-      font-weight:900;
-    }
-    .menu-title{
-      font-size:11px;
-      text-transform:uppercase;
-      color:#94a3b8;
-      margin:18px 0 10px;
+
+    .brand small{
+      color:var(--orange2);
       font-weight:900;
       letter-spacing:.5px;
     }
-    .menu-item{
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-      padding:14px;
-      border-radius:16px;
-      margin-bottom:8px;
-      cursor:pointer;
-      transition:.2s;
-      font-weight:800;
-      color:#dbeafe;
-    }
-    .menu-item:hover,
-    .menu-item.active{
-      background:linear-gradient(135deg,#ffb10033,#ff6b0018);
+
+    .collapse-btn{
+      width:44px;
+      height:44px;
+      border-radius:50%;
+      background:rgba(255,255,255,.10);
       color:#fff;
+      font-size:22px;
+      border:1px solid rgba(255,255,255,.15);
     }
+
+    .user-card{
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:22px;
+      padding:18px;
+      display:flex;
+      gap:14px;
+      align-items:center;
+      margin-bottom:28px;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+    }
+
+    .avatar{
+      width:54px;
+      height:54px;
+      border-radius:18px;
+      background:linear-gradient(135deg,var(--orange2),var(--orange));
+      display:grid;
+      place-items:center;
+      font-size:26px;
+      font-weight:900;
+      flex-shrink:0;
+    }
+
+    .user-card strong{
+      display:block;
+      font-size:16px;
+      margin-bottom:3px;
+    }
+
+    .user-card small{
+      display:block;
+      color:#cbd5e1;
+      font-weight:700;
+      margin-bottom:3px;
+    }
+
+    .online{
+      color:#7dffb1!important;
+    }
+
+    .role-pill{
+      display:inline-block;
+      margin-top:6px;
+      background:rgba(0,0,0,.25);
+      border-radius:8px;
+      padding:4px 8px;
+      font-size:12px;
+      color:#fff!important;
+    }
+
+    .menu-title{
+      color:#8fb4dc;
+      font-size:12px;
+      font-weight:900;
+      text-transform:uppercase;
+      margin:22px 6px 12px;
+      letter-spacing:.6px;
+    }
+
+    .menu-item{
+      height:52px;
+      border-radius:14px;
+      display:flex;
+      align-items:center;
+      gap:12px;
+      color:#eaf3ff;
+      font-weight:800;
+      padding:0 14px;
+      margin-bottom:7px;
+      transition:.2s;
+    }
+
+    .menu-item:hover,.menu-item.active{
+      background:linear-gradient(135deg,var(--orange2),var(--orange));
+      color:#fff;
+      box-shadow:0 12px 26px rgba(255,138,0,.25);
+    }
+
+    .menu-icon{
+      width:24px;
+      text-align:center;
+      font-size:18px;
+      flex-shrink:0;
+    }
+
+    .badge{
+      margin-left:auto;
+      background:var(--red);
+      color:#fff;
+      border-radius:999px;
+      padding:4px 8px;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .quick-actions{
+      margin-top:26px;
+      border-top:1px solid rgba(255,255,255,.12);
+      padding-top:20px;
+    }
+
+    .quick-btn{
+      width:100%;
+      height:54px;
+      border-radius:14px;
+      color:#fff;
+      font-weight:900;
+      margin-bottom:10px;
+      background:linear-gradient(135deg,var(--orange2),var(--orange));
+    }
+
+    .outline-btn{
+      background:transparent;
+      border:1px solid rgba(255,255,255,.25);
+    }
+
+    .sidebar.collapsed .brand small,
+    .sidebar.collapsed .brand h1,
+    .sidebar.collapsed .user-info,
+    .sidebar.collapsed .menu-title,
+    .sidebar.collapsed .menu-label,
+    .sidebar.collapsed .quick-actions,
+    .sidebar.collapsed .badge{
+      display:none;
+    }
+
+    .sidebar.collapsed .menu-item{
+      justify-content:center;
+    }
+
     .main{
-      margin-left:290px;
-      padding:24px;
-      transition:.3s;
+      margin-left:300px;
+      width:calc(100% - 300px);
+      padding:28px 34px;
+      transition:.25s;
     }
+
+    .sidebar.collapsed + .main{
+      margin-left:88px;
+      width:calc(100% - 88px);
+    }
+
     .topbar{
       display:flex;
       justify-content:space-between;
-      align-items:flex-start;
-      gap:18px;
-      margin-bottom:22px;
-    }
-    .top-left{
-      display:flex;
-      gap:14px;
-      align-items:flex-start;
-    }
-    .mobile-menu-btn{
-      width:48px;
-      height:48px;
-      border-radius:16px;
-      background:#fff;
-      display:none;
       align-items:center;
-      justify-content:center;
-      box-shadow:var(--shadow);
-      font-size:22px;
-      font-weight:900;
+      gap:18px;
+      margin-bottom:26px;
     }
-    .topbar h1{
+
+    .topbar h2{
       font-size:30px;
       font-weight:900;
       letter-spacing:-1px;
-      color:var(--text);
     }
+
     .topbar p{
-      margin-top:5px;
+      margin-top:6px;
+      color:var(--muted);
+      font-weight:600;
+    }
+
+    .top-actions{
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+
+    .top-btn{
+      height:54px;
+      padding:0 18px;
+      border-radius:14px;
+      background:#fff;
+      border:1px solid var(--line);
+      color:var(--text);
+      font-weight:800;
+      box-shadow:var(--shadow);
+    }
+
+    .notification{
+      width:54px;
+      padding:0;
+      position:relative;
+    }
+
+    .notification span{
+      position:absolute;
+      top:-6px;
+      right:-6px;
+      background:var(--red);
+      color:#fff;
+      border-radius:999px;
+      font-size:11px;
+      padding:4px 7px;
+    }
+
+    .screen{display:none}
+    .screen.active{display:block}
+
+    .kpi-grid{
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:18px;
+      margin-bottom:22px;
+    }
+
+    .kpi-card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:22px;
+      padding:22px;
+      box-shadow:var(--shadow);
+      min-height:150px;
+      display:flex;
+      align-items:center;
+      gap:18px;
+      overflow:hidden;
+    }
+
+    .kpi-icon{
+      width:62px;
+      height:62px;
+      border-radius:20px;
+      display:grid;
+      place-items:center;
+      font-size:28px;
+      flex-shrink:0;
+    }
+
+    .ico-orange{background:#fff0df;color:var(--orange)}
+    .ico-green{background:#e6fff2;color:var(--green)}
+    .ico-blue{background:#eaf4ff;color:var(--blue)}
+    .ico-red{background:#ffe8ec;color:var(--red)}
+    .ico-purple{background:#f2eaff;color:var(--purple)}
+    .ico-cyan{background:#e6fffb;color:#14b8a6}
+
+    .kpi-label{
+      font-size:13px;
+      text-transform:uppercase;
+      font-weight:900;
+      color:#526780;
+      letter-spacing:.4px;
+      margin-bottom:8px;
+    }
+
+    .kpi-value{
+      font-size:28px;
+      font-weight:900;
+      color:var(--text);
+      line-height:1;
+    }
+
+    .kpi-sub{
+      margin-top:10px;
+      font-size:13px;
       color:var(--muted);
       font-weight:700;
     }
-    .top-actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
+
+    .positive{color:var(--green)}
+    .negative{color:var(--red)}
+    .orange-text{color:var(--orange)}
+
+    .dashboard-row{
+      display:grid;
+      grid-template-columns:1.35fr .9fr;
+      gap:20px;
+      margin-bottom:22px;
     }
-MASTER LOCAL — HTML PARTE 2/4
 
-Cole logo abaixo da parte 1:
+    .panel{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      padding:24px;
+    }
 
-    .primary-btn{
-      padding:13px 18px;
-      border-radius:14px;
-      color:#fff;
-      background:linear-gradient(135deg,var(--orange1),var(--orange2));
-      box-shadow:0 12px 24px rgba(255,107,0,.24);
+    .panel-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .panel h3{
+      font-size:18px;
       font-weight:900;
     }
+
+    .select-lite{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 14px;
+      color:#334155;
+      background:#fff;
+      font-weight:700;
+    }
+
+    .fake-chart{
+      height:260px;
+      border-radius:18px;
+      background:
+        linear-gradient(180deg,rgba(255,138,0,.10),transparent),
+        repeating-linear-gradient(to bottom,transparent 0 48px,#eef2f7 49px);
+      position:relative;
+      overflow:hidden;
+      padding:20px;
+    }
+
+    .chart-line{
+      position:absolute;
+      left:45px;
+      right:40px;
+      bottom:48px;
+      height:130px;
+      border-bottom:4px solid var(--orange);
+      border-radius:50%;
+      transform:skewX(-12deg);
+      opacity:.9;
+    }
+
+    .chart-line.green{
+      bottom:34px;
+      height:95px;
+      border-color:var(--green);
+      opacity:.8;
+    }
+
+    .activity-list,.mini-list{
+      display:grid;
+      gap:14px;
+    }
+
+    .activity{
+      display:flex;
+      gap:14px;
+      align-items:center;
+      border-bottom:1px solid var(--line);
+      padding-bottom:13px;
+    }
+
+    .activity:last-child{border-bottom:0;padding-bottom:0}
+
+    .activity .dot{
+      width:42px;
+      height:42px;
+      border-radius:14px;
+      display:grid;
+      place-items:center;
+      font-weight:900;
+    }
+
+    .activity strong{
+      display:block;
+      font-size:14px;
+      margin-bottom:4px;
+    }
+
+    .activity small{
+      color:var(--muted);
+      font-weight:600;
+    }
+
+    .time{
+      margin-left:auto;
+      color:#475569;
+      font-size:12px;
+      font-weight:700;
+      white-space:nowrap;
+    }
+
+    .bottom-grid{
+      display:grid;
+      grid-template-columns:1.35fr .9fr;
+      gap:20px;
+    }
+
+    table{
+      width:100%;
+      border-collapse:collapse;
+    }
+
+    th,td{
+      padding:14px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+      font-size:14px;
+    }
+
+    th{
+      color:#526780;
+      text-transform:uppercase;
+      font-size:12px;
+      font-weight:900;
+      background:#f8fafc;
+    }
+
+    td{
+      color:#334155;
+      font-weight:700;
+    }
+
+    .ranking-item{
+      display:grid;
+      grid-template-columns:26px 1fr auto;
+      align-items:center;
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .bar{
+      height:8px;
+      border-radius:999px;
+      background:#eef2f7;
+      margin-top:8px;
+      overflow:hidden;
+    }
+
+    .bar span{
+      display:block;
+      height:100%;
+      border-radius:999px;
+      background:linear-gradient(90deg,var(--orange2),var(--orange));
+    }
+
+    .section-card{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:var(--shadow);
+      padding:26px;
+    }
+
+    .section-header{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:18px;
+    }
+
+    .section-header h2{
+      font-size:26px;
+      font-weight:900;
+    }
+
+    .section-header p{
+      color:var(--muted);
+      font-weight:600;
+      margin-top:5px;
+    }
+
+    .primary-btn{
+      height:46px;
+      padding:0 18px;
+      border-radius:14px;
+      background:linear-gradient(135deg,var(--orange2),var(--orange));
+      color:#fff;
+      font-weight:900;
+      box-shadow:0 12px 24px rgba(255,138,0,.24);
+    }
+
     .ghost-btn{
-      padding:13px 18px;
+      height:46px;
+      padding:0 18px;
       border-radius:14px;
       background:#fff;
       border:1px solid var(--line);
       color:var(--text);
       font-weight:800;
     }
-    .danger-btn{
-      padding:12px 16px;
-      border-radius:12px;
-      color:#fff;
-      background:linear-gradient(135deg,#ef4444,#991b1b);
-      font-weight:900;
-    }
-    .success-btn{
-      padding:12px 16px;
-      border-radius:12px;
-      color:#fff;
-      background:linear-gradient(135deg,#22c55e,#166534);
-      font-weight:900;
-    }
-    .cards{
+
+    .search-row{
       display:grid;
-      grid-template-columns:repeat(4,1fr);
-      gap:16px;
+      grid-template-columns:1fr auto;
+      gap:12px;
       margin-bottom:18px;
     }
-    .card{
-      border-radius:26px;
-      padding:24px;
-      color:#fff;
-      min-height:135px;
-      position:relative;
-      overflow:hidden;
-      box-shadow:var(--shadow);
-    }
-    .card::after{
-      content:"";
-      position:absolute;
-      width:170px;
-      height:170px;
-      border-radius:50%;
-      background:rgba(255,255,255,.10);
-      right:-55px;
-      bottom:-65px;
-    }
-    .card small{
-      display:block;
-      margin-bottom:16px;
-      font-weight:900;
-      opacity:.95;
-    }
-    .card strong{
-      font-size:30px;
-      font-weight:900;
-      letter-spacing:-1px;
-    }
-    .orange{background:linear-gradient(135deg,#ffb100,#ff6b00);}
-    .blue{background:linear-gradient(135deg,#00c6ff,#0072ff);}
-    .green{background:linear-gradient(135deg,#22c55e,#15803d);}
-    .purple{background:linear-gradient(135deg,#8b5cf6,#5b21b6);}
-    .panel{
-      background:#fff;
-      border-radius:24px;
-      padding:22px;
+
+    .search-row input{
+      height:48px;
       border:1px solid var(--line);
-      box-shadow:0 10px 30px rgba(15,23,42,.05);
+      border-radius:14px;
+      padding:0 16px;
+      font-weight:700;
+      outline:none;
     }
-    .panel-title{
-      font-size:18px;
-      font-weight:900;
-      margin-bottom:16px;
-      color:var(--text);
-    }
+
     .list{
       display:grid;
       gap:12px;
     }
+
+    #listaUsuarios .list-item,
     .list-item{
       background:#fff;
       border:1px solid var(--line);
@@ -288,140 +592,639 @@ Cole logo abaixo da parte 1:
       padding:16px;
       display:flex;
       justify-content:space-between;
-      align-items:center;
       gap:14px;
+      align-items:center;
     }
-    .list-item strong{
-      display:block;
-      margin-bottom:4px;
-      font-size:14px;
-    }
-    .list-item small{
-      display:block;
-      color:var(--muted);
-      line-height:1.5;
-      font-weight:700;
-    }
+
     .item-actions{
       display:flex;
       gap:8px;
       flex-wrap:wrap;
     }
-    .drawerOverlay{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.45);
-      z-index:150;
-      display:none;
+
+    .danger-btn{
+      background:var(--red);
+      color:#fff;
+      border-radius:12px;
+      padding:12px 16px;
+      font-weight:900;
     }
-    .drawerOverlay.open{
-      display:block;
+
+    .success-btn{
+      background:var(--green);
+      color:#fff;
+      border-radius:12px;
+      padding:12px 16px;
+      font-weight:900;
     }
+
+    .placeholder{
+      border:2px dashed #cbd5e1;
+      border-radius:20px;
+      padding:34px;
+      color:#64748b;
+      background:#f8fafc;
+      font-weight:700;
+    }
+
     .drawer{
       position:fixed;
+      inset:0;
+      z-index:200;
+      display:none;
+    }
+
+    .drawer.show{display:block}
+
+    .drawer-overlay{
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,.45);
+    }
+
+    .drawer-content{
+      position:absolute;
       right:0;
       top:0;
-      width:500px;
-      max-width:100%;
-      height:100vh;
+      height:100%;
+      width:min(520px,100%);
       background:#fff;
-      z-index:200;
-      overflow-y:auto;
+      box-shadow:-20px 0 50px rgba(15,23,42,.18);
+      display:flex;
+      flex-direction:column;
+    }
+
+    .drawer-header{
       padding:24px;
-      transform:translateX(100%);
-      transition:.3s;
-      box-shadow:-20px 0 50px rgba(0,0,0,.18);
+      border-bottom:1px solid var(--line);
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
     }
-    .drawer.open{
-      transform:translateX(0);
+
+    .drawer-body{
+      padding:24px;
+      overflow:auto;
+      flex:1;
     }
-    .drawer h2{
-      font-size:25px;
-      font-weight:900;
-      margin-bottom:18px;
-      color:var(--text);
+
+    .drawer-close{
+      width:42px;
+      height:42px;
+      border-radius:12px;
+      background:#f1f5f9;
+      font-size:22px;
     }
-    @media(max-width:1000px){
+
+      .form-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+}
+
+.form-group{
+  display:flex;
+  flex-direction:column;
+  gap:7px;
+}
+
+.form-group.full{
+  grid-column:1 / -1;
+}
+
+.form-group label{
+  font-size:12px;
+  font-weight:900;
+  color:#526780;
+  text-transform:uppercase;
+  letter-spacing:.45px;
+}
+
+.form-group input,
+.form-group select{
+  width:100%;
+  height:50px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:0 14px;
+  background:#fff;
+  color:var(--text);
+  font-size:14px;
+  font-weight:800;
+  outline:none;
+}
+
+.form-group input:focus,
+.form-group select:focus{
+  border-color:var(--orange);
+  box-shadow:0 0 0 4px rgba(255,138,0,.12);
+}
+
+.permissions-grid{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:14px;
+}
+
+.permission-card{
+  border:1px solid var(--line);
+  background:#fff;
+  border-radius:18px;
+  padding:16px;
+  display:grid;
+  gap:10px;
+}
+
+.permission-title{
+  font-size:15px;
+  font-weight:900;
+  color:var(--text);
+  margin-bottom:4px;
+}
+
+.permission-card label{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:14px;
+  font-weight:800;
+  color:#334155;
+}
+
+.permission-card input{
+  width:18px;
+  height:18px;
+  accent-color:var(--orange);
+}
+.drawer-actions{
+  display:grid;
+  gap:12px;
+  margin-top:22px;
+}
+
+.drawer-primary,
+.drawer-secondary{
+  width:100%;
+  height:52px;
+}
+
+.password-hint{
+  padding:14px;
+  border-radius:14px;
+  background:#fff7ed;
+  color:#9a3412;
+  font-size:13px;
+  font-weight:800;
+  border:1px solid #fed7aa;
+}
+
+.team-box{
+  margin-top:18px;
+  display:grid;
+  gap:10px;
+}
+
+.team-box-title{
+  font-size:13px;
+  font-weight:900;
+  color:#526780;
+  text-transform:uppercase;
+  letter-spacing:.45px;
+  margin-bottom:4px;
+}
+
+.team-user-check{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  padding:12px;
+  background:#fff;
+  cursor:pointer;
+}
+
+.team-user-check input{
+  width:18px;
+  height:18px;
+  accent-color:var(--orange);
+}
+
+.team-user-check strong{
+  display:block;
+  font-size:14px;
+  color:var(--text);
+}
+
+.team-user-check small{
+  display:block;
+  margin-top:3px;
+  color:var(--muted);
+  font-weight:700;
+}
+
+@media(max-width:640px){
+  .form-grid{
+    grid-template-columns:1fr;
+  }
+}
+    @media(max-width:1200px){
+      .kpi-grid{grid-template-columns:repeat(2,1fr)}
+      .dashboard-row,.bottom-grid{grid-template-columns:1fr}
+    }
+
+    @media(max-width:760px){
       .sidebar{
         transform:translateX(-100%);
+        width:285px;
       }
-      .sidebar.open{
-        transform:translateX(0);
-      }
+      .sidebar.show{transform:translateX(0)}
       .main{
         margin-left:0;
-      }
-      .mobile-menu-btn{
-        display:flex;
-      }
-      .cards{
-        grid-template-columns:1fr 1fr;
-      }
-      #dashboardGrid{
-        grid-template-columns:1fr!important;
-      }
-    }
-    @media(max-width:700px){
-      .main{
-        padding:16px;
-      }
-      .cards{
-        grid-template-columns:1fr;
-      }
-      .topbar{
-        flex-direction:column;
-      }
-      .top-actions{
         width:100%;
-        flex-direction:column;
-      }
-      .top-actions button{
-        width:100%;
-      }
-      .list-item{
-        flex-direction:column;
-        align-items:flex-start;
-      }
-      .item-actions{
-        width:100%;
-      }
-      .item-actions button{
-        width:100%;
-      }
-      .card{
-        min-height:115px;
-        padding:20px;
-      }
-      .card strong{
-        font-size:25px;
-      }
-      .panel{
         padding:18px;
       }
+      .kpi-grid{grid-template-columns:1fr}
+      .topbar,.section-header{align-items:flex-start;flex-direction:column}
+      .top-actions{width:100%;flex-wrap:wrap}
+      .top-btn{flex:1}
+      .search-row{grid-template-columns:1fr}
+      .list-item{flex-direction:column;align-items:flex-start}
+      .item-actions{width:100%}
+      .item-actions button{flex:1}
     }
+
+    .toggle-wrap{
+  width:82px;
+  height:42px;
+  cursor:pointer;
+}
+
+.toggle-pill{
+  width:82px;
+  height:42px;
+  border-radius:999px;
+  background:#ff405d;
+  padding:4px;
+  transition:.2s;
+  display:flex;
+  align-items:center;
+}
+
+.toggle-ball{
+  width:34px;
+  height:34px;
+  border-radius:50%;
+  background:#fff;
+  color:#ff405d;
+  display:grid;
+  place-items:center;
+  font-weight:900;
+  font-size:22px;
+  transition:.2s;
+}
+
+.toggle-wrap.active .toggle-pill{
+  background:#16c784;
+  justify-content:flex-end;
+}
+
+.toggle-wrap.active .toggle-ball{
+  color:#16c784;
+}
+
   </style>
 </head>
-<body>
-  <div id="menuOverlay" onclick="toggleMenu(false)"></div>
-  <aside class="sidebar" id="sidebar">
-    <div class="logo">ÍNTEGRO</div>
-    <div class="user-card">
-      <small>Usuário logado</small>
-      <strong id="userNome">Carregando...</strong>
-      <small id="empresaNome">Empresa</small>
-      <span class="master-badge">MASTER LOCAL</span>
-    </div>
-    <div class="menu-title">Gestão</div>
-    <div class="menu-item active" onclick="trocarTela('dashboard',this)">Dashboard <span>›</span></div>
-    <div class="menu-item" onclick="trocarTela('usuarios',this)">Usuários <span>›</span></div>
-    <div class="menu-item" onclick="trocarTela('clientes',this)">Clientes <span>›</span></div>
-    <div class="menu-item" onclick="trocarTela('cargos',this)">Cargos <span>›</span></div>
-    <div class="menu-item" onclick="trocarTela('equipes',this)">Equipes <span>›</span></div>
-    <div class="menu-item" onclick="trocarTela('caixas',this)">Caixas <span>›</span></div>
-    <div class="menu-item" onclick="trocarTela('solicitacoes',this)">Solicitações <span>›</span></div>
-    <div class="menu-item" onclick="trocarTela('logs',this)">Auditoria <span>›</span></div>
-    <div class="menu-title">Sistema</div>
-    <div class="menu-item" onclick="logout()">Sair <span>×</span></div>
-  </aside>
-  <main class="main">
 
+<body>
+  <div class="layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div>
+          <h1>ÍNTEGRO</h1>
+          <small>MASTER LOCAL</small>
+        </div>
+        <button class="collapse-btn" type="button" onclick="toggleCollapseSidebar()">«</button>
+      </div>
+
+      <div class="user-card">
+        <div class="avatar">●</div>
+        <div class="user-info">
+          <strong id="userNome">Usuário</strong>
+          <small id="empresaNome">Empresa</small>
+          <small class="online" id="userStatus">● Online</small>
+          <small class="role-pill" id="userCargo">master_local</small>
+        </div>
+      </div>
+
+      <div class="menu-title">Navegação</div>
+      <div class="menu-item active" onclick="trocarTela('dashboard',this)"><span class="menu-icon">⌂</span><span class="menu-label">Dashboard</span></div>
+      <div class="menu-item" onclick="trocarTela('usuarios',this)"><span class="menu-icon">♙</span><span class="menu-label">Usuários</span></div>
+      <div class="menu-item" onclick="trocarTela('clientes',this)"><span class="menu-icon">☷</span><span class="menu-label">Clientes</span></div>
+      <div class="menu-item" onclick="trocarTela('vendas',this)"><span class="menu-icon">🛒</span><span class="menu-label">Vendas</span></div>
+      <div class="menu-item" onclick="trocarTela('cargos',this)"><span class="menu-icon">◇</span><span class="menu-label">Cargos</span></div>
+      <div class="menu-item" onclick="trocarTela('equipes',this)"><span class="menu-icon">☰</span><span class="menu-label">Equipes</span></div>
+      <div class="menu-item" onclick="trocarTela('caixas',this)"><span class="menu-icon">▣</span><span class="menu-label">Caixas</span></div>
+      <div class="menu-item" onclick="trocarTela('solicitacoes',this)"><span class="menu-icon">▤</span><span class="menu-label">Solicitações</span><span class="badge">1</span></div>
+      <div class="menu-item" onclick="trocarTela('auditoria',this)"><span class="menu-icon">◎</span><span class="menu-label">Auditoria</span></div>
+      <div class="menu-item" onclick="trocarTela('configuracoes',this)"><span class="menu-icon">⚙</span><span class="menu-label">Configurações</span></div>
+
+      <div class="quick-actions">
+        <div class="menu-title">Ações rápidas</div>
+        <button class="quick-btn" type="button" onclick="trocarTela('clientes')">Clientes</button>
+        <button class="quick-btn outline-btn" type="button" onclick="carregarTudo()">⟳ Atualizar dados</button>
+        <button class="quick-btn outline-btn" type="button" onclick="logout()">Sair</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <section id="dashboard" class="screen active">
+        <div class="topbar">
+          <div>
+            <h2>Olá, <span id="topNome">Tiago</span> 👋</h2>
+            <p>Bem-vindo ao Master Local. Acompanhe suas métricas e desempenho.</p>
+          </div>
+
+          <div class="top-actions">
+            <button class="top-btn">📅 22 de Maio, 2025</button>
+            <button class="top-btn notification">🔔<span>3</span></button>
+            <button class="top-btn" onclick="logout()">↪</button>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon ico-orange">$</div>
+            <div>
+              <div class="kpi-label">Carteira Final</div>
+              <div class="kpi-value" id="kpiCarteira">R$ 0,00</div>
+              <div class="kpi-sub">Total em aberto</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon ico-green">↓</div>
+            <div>
+              <div class="kpi-label">Recebido Hoje</div>
+              <div class="kpi-value" id="kpiRecebidoHoje">R$ 0,00</div>
+              <div class="kpi-sub positive">+12% vs ontem</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon ico-blue">♙</div>
+            <div>
+              <div class="kpi-label">Clientes Ativos</div>
+              <div class="kpi-value" id="kpiClientes">0</div>
+              <div class="kpi-sub positive">+8 novos este mês</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon ico-red">⚠</div>
+            <div>
+              <div class="kpi-label">Inadimplência</div>
+              <div class="kpi-value" id="kpiInadimplencia">R$ 0,00</div>
+              <div class="kpi-sub negative">6.2% da carteira</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon ico-orange">▣</div>
+            <div>
+              <div class="kpi-label">Caixas Abertos</div>
+              <div class="kpi-value" id="kpiCaixas">0</div>
+              <div class="kpi-sub">2 aguardando fechamento</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon ico-purple">🛒</div>
+            <div>
+              <div class="kpi-label">Vendas Hoje</div>
+              <div class="kpi-value" id="kpiVendasHoje">0</div>
+              <div class="kpi-sub">R$ 0,00 em vendas</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon ico-cyan">▤</div>
+            <div>
+              <div class="kpi-label">Solicitações Pendentes</div>
+              <div class="kpi-value" id="kpiSolicitacoes">0</div>
+              <div class="kpi-sub orange-text">3 urgentes</div>
+            </div>
+          </div>
+
+          <div class="kpi-card">
+            <div class="kpi-icon ico-orange">68%</div>
+            <div>
+              <div class="kpi-label">Meta do Mês</div>
+              <div class="kpi-value">R$ 68.000,00</div>
+              <div class="kpi-sub">de R$ 100.000,00</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-row">
+          <div class="panel">
+            <div class="panel-head">
+              <h3>Resumo de Vendas</h3>
+              <div>
+                <select class="select-lite"><option>Últimos 7 dias</option></select>
+                <select class="select-lite"><option>Todos os Caixas</option></select>
+              </div>
+            </div>
+            <div class="fake-chart">
+              <div class="chart-line"></div>
+              <div class="chart-line green"></div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head"><h3>Atividades Recentes</h3></div>
+            <div class="activity-list">
+              <div class="activity"><div class="dot ico-green">$</div><div><strong>Recebimento realizado</strong><small>Cliente: Maria Silva — R$ 1.250,00</small></div><span class="time">2 min atrás</span></div>
+              <div class="activity"><div class="dot ico-blue">🛒</div><div><strong>Nova venda criada</strong><small>Venda #VDA-2025-1234</small></div><span class="time">15 min atrás</span></div>
+              <div class="activity"><div class="dot ico-orange">♙</div><div><strong>Novo cliente cadastrado</strong><small>João Santos</small></div><span class="time">1 hora atrás</span></div>
+              <div class="activity"><div class="dot ico-purple">▣</div><div><strong>Caixa aberto</strong><small>Caixa 02 - Tiago</small></div><span class="time">2 horas atrás</span></div>
+              <div class="activity"><div class="dot ico-red">⚠</div><div><strong>Solicitação urgente</strong><small>Aprovação de desconto</small></div><span class="time">3 horas atrás</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bottom-grid">
+          <div class="panel">
+            <div class="panel-head"><h3>Top Clientes</h3></div>
+            <table>
+              <thead>
+                <tr><th>#</th><th>Cliente</th><th>Total Compras</th><th>Em Aberto</th><th>Última Compra</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>1</td><td>Maria Silva</td><td>R$ 12.450,00</td><td>R$ 2.150,00</td><td>22/05/2025</td></tr>
+                <tr><td>2</td><td>João Santos</td><td>R$ 9.870,00</td><td>R$ 1.350,00</td><td>21/05/2025</td></tr>
+                <tr><td>3</td><td>Empresa XPTO Ltda</td><td>R$ 8.230,00</td><td>R$ 0,00</td><td>20/05/2025</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h3>Performance da Equipe</h3>
+                <p style="color:var(--muted);font-weight:600;margin-top:6px;">Vendas do mês por vendedor</p>
+              </div>
+              <button class="ghost-btn">Ver ranking completo</button>
+            </div>
+
+            <div class="ranking-item"><strong>1</strong><div><strong>Tiago</strong><div class="bar"><span style="width:92%"></span></div></div><strong>R$ 24.850,00</strong></div>
+            <div class="ranking-item"><strong>2</strong><div><strong>Ana Clara</strong><div class="bar"><span style="width:76%"></span></div></div><strong>R$ 18.620,00</strong></div>
+            <div class="ranking-item"><strong>3</strong><div><strong>Carlos Eduardo</strong><div class="bar"><span style="width:58%"></span></div></div><strong>R$ 15.430,00</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="usuarios" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <h2>Usuários</h2>
+              <p>Gerencie usuários, cargos, equipes e acessos da empresa.</p>
+            </div>
+            <button class="primary-btn" onclick="abrirNovoUsuario()">Novo usuário</button>
+          </div>
+          <div class="search-row">
+            <input type="search" placeholder="Buscar usuário por nome, email ou cargo">
+            <button class="ghost-btn">Filtros</button>
+          </div>
+          <div id="listaUsuarios" class="list"></div>
+        </div>
+      </section>
+
+      <section id="clientes" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <h2>Clientes</h2>
+              <p>Consulta e gestão premium da carteira de clientes.</p>
+            </div>
+          </div>
+          <div class="search-row">
+            <input type="search" placeholder="Buscar cliente">
+            <button class="ghost-btn">Filtros</button>
+          </div>
+          <div id="listaClientes" class="placeholder">Área pronta para conexão com clientes.</div>
+        </div>
+      </section>
+
+      <section id="vendas" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <h2>Vendas</h2>
+              <p>Controle de vendas, renovações e desempenho comercial.</p>
+            </div>
+          </div>
+          <div id="listaVendas" class="placeholder">Área pronta para conexão com vendas.</div>
+        </div>
+      </section>
+
+      <section id="cargos" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div><h2>Cargos</h2><p>Permissões e funções operacionais.</p></div>
+            <button class="primary-btn" onclick="window.abrirNovoCargo ? abrirNovoCargo() : alert('Módulo de cargos em construção')">Novo cargo</button>
+          </div>
+          <div id="listaCargos" class="placeholder">Nenhum cargo carregado ainda.</div>
+        </div>
+      </section>
+
+      <section id="equipes" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div><h2>Equipes</h2><p>Organização por equipes, supervisores e vendedores.</p></div>
+            <button class="primary-btn" onclick="window.abrirNovaEquipe ? abrirNovaEquipe() : alert('Módulo de equipes em construção')">Nova equipe</button>
+          </div>
+          <div id="listaEquipes" class="placeholder">Nenhuma equipe carregada ainda.</div>
+        </div>
+      </section>
+
+      <section id="caixas" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div><h2>Caixas</h2><p>Abertura, fechamento e reabertura de caixas.</p></div>
+            <button class="primary-btn" onclick="window.abrirNovoCaixa ? abrirNovoCaixa() : alert('Módulo de caixas em construção')">Abrir caixa</button>
+          </div>
+          <div id="listaCaixas" class="placeholder">Nenhum caixa carregado ainda.</div>
+        </div>
+      </section>
+
+      <section id="solicitacoes" class="screen">
+        <div class="section-card">
+          <div class="section-header"><div><h2>Solicitações</h2><p>Aprovações financeiras e operacionais.</p></div></div>
+          <div id="listaSolicitacoes" class="placeholder">Solicitações serão exibidas aqui.</div>
+        </div>
+      </section>
+
+      <section id="auditoria" class="screen">
+        <div class="section-card">
+          <div class="section-header"><div><h2>Auditoria</h2><p>Logs de ações e rastreabilidade.</p></div></div>
+          <div id="listaLogs" class="placeholder">Logs serão exibidos aqui.</div>
+        </div>
+      </section>
+
+      <section id="configuracoes" class="screen">
+        <div class="section-card">
+          <div class="section-header"><div><h2>Configurações</h2><p>Parâmetros da empresa e personalização do sistema.</p></div></div>
+          <div class="placeholder">Configurações avançadas serão conectadas aqui.</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer" id="drawer"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+  <script src="js/firebase-config.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/services/firestore.js"></script>
+  <script src="js/utils/validators.js"></script>
+  <script src="js/utils/ui-helpers.js"></script>
+  <script src="js/cargos.js"></script>
+  <script src="js/equipes.js"></script>
+  <script src="js/caixas.js"></script>
+  <script src="js/usuarios.js"></script>
+  <script src="js/clientes.js"></script>
+  <script src="js/vendas.js"></script>
+  <script src="js/master-local.js"></script>
+
+  <script>
+    function toggleCollapseSidebar(){
+      document.getElementById("sidebar").classList.toggle("collapsed");
+    }
+
+    function trocarTela(tela, el){
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      const atual = document.getElementById(tela);
+      if(atual) atual.classList.add("active");
+
+      document.querySelectorAll(".menu-item").forEach(i => i.classList.remove("active"));
+      if(el) el.classList.add("active");
+
+      if(window.innerWidth <= 760){
+        document.getElementById("sidebar").classList.remove("show");
+      }
+    }
+
+    if(typeof protegerPaginaAtual === "function"){
+      protegerPaginaAtual();
+    }
+  </script>
+</body>
+</html>

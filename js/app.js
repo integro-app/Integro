@@ -129,7 +129,7 @@ function toast(
 
   setTimeout(() => {
     toastEl.classList.remove("show");
-  }, 3500);
+  }, CONFIG.TIMEOUTS.TOAST);
 
 }
 
@@ -218,7 +218,7 @@ function sanitizeDocumento(valor = "") {
 
 }
 
-function debounce(func, delay = 400) {
+function debounce(func, delay = CONFIG.TIMEOUTS.DEBOUNCE) {
 
   let timer;
 
