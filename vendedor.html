@@ -865,14 +865,6 @@
             <span>›</span>
           </button>
 
-          <button onclick="trocarTela('vendas', this); abrirAbaVendasCobrancas('cobrancas')">
-            <span class="menu-left">
-              <span>💳</span>
-              Cobranças
-            </span>
-            <span>›</span>
-          </button>
-
           <button onclick="trocarTela('vendas', this); abrirAbaVendasCobrancas('vendas')">
             <span class="menu-left">
               <span>🧾</span>
@@ -3118,7 +3110,8 @@
 
             await carregarTudo();
 
-            trocarTela("cobrancas");
+            trocarTela("vendas");
+            abrirAbaVendasCobrancas("cobrancas");
 
           } catch (erro) {
             console.error("Erro ao salvar venda:", erro);
