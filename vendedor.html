@@ -865,7 +865,7 @@
             <span>›</span>
           </button>
 
-          <button onclick="trocarTela('cobrancas', this)">
+          <button onclick="trocarTela('vendas', this); abrirAbaVendasCobrancas('cobrancas')">
             <span class="menu-left">
               <span>💳</span>
               Cobranças
@@ -873,10 +873,10 @@
             <span>›</span>
           </button>
 
-          <button onclick="trocarTela('vendas', this)">
+          <button onclick="trocarTela('vendas', this); abrirAbaVendasCobrancas('vendas')">
             <span class="menu-left">
               <span>🧾</span>
-              Vendas
+              Vendas/Cobranças
             </span>
             <span>›</span>
           </button>
@@ -1208,41 +1208,50 @@
       <!-- RESPONSIVO -->
 
       <style>
-       @media(max-width:780px) {
+        @media(max-width:780px) {
 
-  .dashboard-grid {
-    grid-template-columns: 1fr !important;
-  }
+          .dashboard-grid {
+            grid-template-columns: 1fr !important;
+          }
 
-  .busca-grid {
-    grid-template-columns: 1fr !important;
-  }
+          .busca-grid {
+            grid-template-columns: 1fr !important;
+          }
 
-  #drawer {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    overflow-y: auto !important;
-  }
+          #drawer {
+            width: 100vw !important;
+            max-width: 100vw !important;
+            height: 100dvh !important;
+            overflow-y: auto !important;
+          }
 
-  #drawerBody {
-    padding-bottom: 130px !important;
-  }
+          #drawerBody {
+            padding-bottom: 130px !important;
+          }
 
-  .drawer-mobile-action {
-    position: sticky;
-    bottom: 0;
-    z-index: 50;
-    background: linear-gradient(
-      180deg,
-      rgba(255,255,255,.2),
-      #fff 35%
-    );
-    padding: 14px 0 calc(14px + env(safe-area-inset-bottom));
-    margin-top: 16px;
-  }
+          .drawer-mobile-action {
+            position: sticky;
+            bottom: 0;
+            z-index: 50;
+            background: linear-gradient(180deg, rgba(255,255,255,.2), #fff 35%);
+            padding: 14px 0 calc(14px + env(safe-area-inset-bottom));
+            margin-top: 16px;
+          }
 
-}
+          .operacao-tabs {
+            grid-template-columns: 1fr 1fr !important;
+          }
+
+          .operacao-tabs .btn {
+            width: 100%;
+            padding: 0 10px;
+          }
+
+          .venda-cobranca-card {
+            padding: 16px !important;
+            border-radius: 22px !important;
+          }
+
         }
       </style>
 
@@ -1869,33 +1878,246 @@
         }
       </script>
 
-      <!-- VENDAS -->
+      <!-- VENDAS E COBRANÇAS -->
       <section id="vendas" class="screen" style="display:none;">
 
         <div class="panel">
 
           <div class="panel-title">
-
             <div>
-              <h2>Vendas</h2>
-              <p>
-                Selecione um cliente quitado para iniciar nova venda ou renovação.
-              </p>
+              <h2>Vendas e cobranças</h2>
+              <p>Vendas do dia e rota de cobranças em uma única tela.</p>
             </div>
-
-            <button class="btn btn-light" onclick="renderClientesParaVenda()">
-              Atualizar
-            </button>
-
           </div>
 
-          <div id="listaClientesVenda" class="grid" style="gap:14px;"></div>
+          <div
+            class="operacao-tabs"
+            style="
+              display:grid;
+              grid-template-columns:auto auto 1fr;
+              gap:10px;
+              margin-bottom:18px;
+              align-items:center;
+            "
+          >
+            <button
+              id="tabVendasDiaBtn"
+              class="btn btn-primary"
+              onclick="abrirAbaVendasCobrancas('vendas')"
+            >
+              Vendas do dia
+            </button>
+
+            <button
+              id="tabCobrancasBtn"
+              class="btn btn-light"
+              onclick="abrirAbaVendasCobrancas('cobrancas')"
+            >
+              Cobranças
+            </button>
+          </div>
+
+          <div id="abaVendasDia" style="display:block;">
+            <div
+              id="contadorVendasDia"
+              style="
+                color:#64748b;
+                font-size:13px;
+                font-weight:800;
+                margin-bottom:14px;
+              "
+            ></div>
+
+            <div id="listaVendasDia" class="grid" style="gap:14px;"></div>
+          </div>
+
+          <div id="abaCobrancas" style="display:none;">
+            <div style="
+              display:grid;
+              grid-template-columns:1fr auto auto 180px auto;
+              gap:12px;
+              margin-bottom:20px;
+            " class="busca-grid">
+
+              <input
+                id="buscaCobrancaInput"
+                placeholder="Buscar cliente na cobrança"
+                onkeydown="if(event.key === 'Enter') renderCobrancas()"
+                style="
+                  height:52px;
+                  border-radius:16px;
+                  border:1px solid #e2e8f0;
+                  padding:0 16px;
+                  font-size:14px;
+                  font-weight:700;
+                  outline:none;
+                  width:100%;
+                "
+              >
+
+              <button class="btn btn-primary" onclick="renderCobrancas()">
+                Buscar
+              </button>
+
+              <button class="btn btn-light" onclick="limparBuscaCobrancas()">
+                Limpar
+              </button>
+
+              <select
+                id="ordenarCobrancas"
+                onchange="renderCobrancas()"
+                style="
+                  height:50px;
+                  width:180px;
+                  border-radius:16px;
+                  border:1px solid #e2e8f0;
+                  padding:0 12px;
+                  font-weight:800;
+                  outline:none;
+                  background:#fff;
+                "
+              >
+                <option value="nome_az">A → Z</option>
+                <option value="nome_za">Z → A</option>
+                <option value="saldo_maior">Saldo maior</option>
+                <option value="saldo_menor">Saldo menor</option>
+                <option value="parcela_maior">Parcela maior</option>
+                <option value="parcela_menor">Parcela menor</option>
+                <option value="em_dia">Em dia primeiro</option>
+                <option value="atrasado">Mais atrasados</option>
+                <option value="adiantado">Mais adiantados</option>
+              </select>
+
+              <button class="btn btn-light" onclick="abrirFiltrosCobranca()">
+                Filtros
+              </button>
+
+            </div>
+
+            <div
+              id="contadorCobrancas"
+              style="
+                color:#64748b;
+                font-size:13px;
+                font-weight:800;
+                margin-bottom:14px;
+              "
+            ></div>
+
+            <div id="listaCobrancas" class="grid" style="gap:14px;"></div>
+          </div>
 
         </div>
 
       </section>
 
       <script>
+
+        function abrirAbaVendasCobrancas(aba = "vendas") {
+          const abaVendas = document.getElementById("abaVendasDia");
+          const abaCobrancas = document.getElementById("abaCobrancas");
+          const btnVendas = document.getElementById("tabVendasDiaBtn");
+          const btnCobrancas = document.getElementById("tabCobrancasBtn");
+
+          if (!abaVendas || !abaCobrancas) return;
+
+          const mostrarCobrancas = aba === "cobrancas";
+
+          abaVendas.style.display = mostrarCobrancas ? "none" : "block";
+          abaCobrancas.style.display = mostrarCobrancas ? "block" : "none";
+
+          if (btnVendas) btnVendas.className = mostrarCobrancas ? "btn btn-light" : "btn btn-primary";
+          if (btnCobrancas) btnCobrancas.className = mostrarCobrancas ? "btn btn-primary" : "btn btn-light";
+
+          if (mostrarCobrancas) {
+            renderCobrancas();
+          } else {
+            renderVendasDia();
+          }
+        }
+
+        function renderVendasDia() {
+          const el = document.getElementById("listaVendasDia");
+          if (!el) return;
+
+          const hoje = hojeISO();
+          const vendasDia = (vendasCache || []).filter(v =>
+            v.excluido !== true &&
+            String(v.statusVenda || v.status || "").toUpperCase() !== "CANCELADO" &&
+            (
+              v.dataVenda === hoje ||
+              v.data === hoje ||
+              String(v.criadoEmTexto || "").startsWith(hoje) ||
+              v.caixaId === caixaAtual?.id
+            )
+          );
+
+          const totalVendido = vendasDia.reduce((soma, v) =>
+            soma + Number(v.valorEmprestado || 0), 0
+          );
+
+          const totalCarteira = vendasDia.reduce((soma, v) =>
+            soma + Number(v.valorTotalVenda || v.saldoDevedor || 0), 0
+          );
+
+          const contador = document.getElementById("contadorVendasDia");
+          if (contador) {
+            contador.innerText = `${vendasDia.length} venda(s) hoje • Vendido: ${moeda(totalVendido)} • Carteira gerada: ${moeda(totalCarteira)}`;
+          }
+
+          el.innerHTML = vendasDia.length
+            ? vendasDia.map(v => `
+              <div
+                class="venda-cobranca-card"
+                style="
+                  background:#fff;
+                  border:1px solid #e2e8f0;
+                  border-radius:24px;
+                  padding:18px;
+                  box-shadow:0 10px 24px rgba(15,23,42,.04);
+                  display:grid;
+                  gap:10px;
+                "
+              >
+                <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+                  <div>
+                    <strong style="display:block;font-size:16px;margin-bottom:6px;">
+                      ${v.clienteNome || "Cliente"}
+                    </strong>
+                    <small style="display:block;color:#64748b;font-weight:800;">
+                      ${v.tipoVenda || "NOVA"} • ${v.frequencia || "DIÁRIA"} • ${v.quantidadeParcelas || 0} parcela(s)
+                    </small>
+                  </div>
+                  <span style="background:#ecfeff;color:#0e7490;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap;">
+                    ${v.statusVenda || v.status || "ATIVA"}
+                  </span>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;" class="busca-grid">
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+                    <small style="display:block;color:#64748b;font-weight:900;margin-bottom:4px;">Emprestado</small>
+                    <strong>${moeda(v.valorEmprestado || 0)}</strong>
+                  </div>
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+                    <small style="display:block;color:#64748b;font-weight:900;margin-bottom:4px;">Carteira</small>
+                    <strong>${moeda(v.valorTotalVenda || v.saldoDevedor || 0)}</strong>
+                  </div>
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+                    <small style="display:block;color:#64748b;font-weight:900;margin-bottom:4px;">Parcela</small>
+                    <strong>${moeda(v.valorParcela || 0)}</strong>
+                  </div>
+                </div>
+              </div>
+            `).join("")
+            : `
+              <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;">
+                <strong>Nenhuma venda registrada hoje</strong>
+                <p style="color:#64748b;font-weight:700;margin-top:6px;">
+                  Para lançar uma venda, acesse Clientes, selecione um cliente quitado e clique em Nova venda.
+                </p>
+              </div>
+            `;
+        }
 
         function renderClientesParaVenda() {
 
@@ -2169,8 +2391,6 @@
                     >
                   </div>
 
-                  <small style="display:block;color:#64748b;font-weight:700;margin-top:8px;line-height:1.45;">
-                  </small>
                 </div>
 
                 <div
@@ -2186,9 +2406,6 @@
                   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                     <div>
                       <label class="form-label" style="margin:0;">Taxa de juros</label>
-                      <small style="display:block;color:#64748b;font-weight:700;margin-top:4px;">
-                        
-                      </small>
                     </div>
 
                     <strong
@@ -2208,21 +2425,21 @@
                   </div>
 
                   <div style="display:grid;grid-template-columns:44px 1fr 44px;gap:10px;align-items:center;">
-                    <button type="button" class="btn btn-light" style="height:44px;padding:0;" onclick="ajustarJurosVenda(-5)">−</button>
+                    <button type="button" class="btn btn-light" style="height:44px;padding:0;" onclick="ajustarJurosVenda(-1)">−</button>
 
                     <input
                       id="vendaJuros"
                       type="range"
                       min="0"
                       max="100"
-                      step="5"
+                      step="1"
                       value="20"
-                      oninput="normalizarRangeVenda(this, 0, 100, 5); calcularPreviewVenda()"
-                      onchange="normalizarRangeVenda(this, 0, 100, 5); calcularPreviewVenda()"
+                      oninput="normalizarRangeVenda(this, 0, 100, 1); calcularPreviewVenda()"
+                      onchange="normalizarRangeVenda(this, 0, 100, 1); calcularPreviewVenda()"
                       style="width:100%;accent-color:#ff6b00;"
                     >
 
-                    <button type="button" class="btn btn-light" style="height:44px;padding:0;" onclick="ajustarJurosVenda(5)">+</button>
+                    <button type="button" class="btn btn-light" style="height:44px;padding:0;" onclick="ajustarJurosVenda(1)">+</button>
                   </div>
 
                   <div style="display:flex;justify-content:space-between;color:#64748b;font-size:12px;font-weight:800;">
@@ -2244,8 +2461,6 @@
                   <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;">
                     <div>
                       <label class="form-label" style="margin:0;">Quantidade de parcelas</label>
-                      <small style="display:block;color:#64748b;font-weight:700;margin-top:4px;">
-                                              </small>
                     </div>
 
                     <strong
@@ -2288,57 +2503,67 @@
                   </div>
                 </div>
 
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="busca-grid">
+                <div
+                  style="
+                    background:#fff;
+                    border:1px solid #e2e8f0;
+                    border-radius:26px;
+                    padding:20px;
+                    display:grid;
+                    gap:16px;
+                    box-shadow:0 12px 30px rgba(15,23,42,.04);
+                  "
+                >
+                  <strong style="font-size:16px;font-weight:900;color:#0f172a;">
+                    Cobranças
+                  </strong>
 
-                  <div>
-                    <label class="form-label">Frequência</label>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;" class="busca-grid">
+                    <div>
+                      <label class="form-label">Frequência</label>
 
-                    <select
-                      id="vendaFrequencia"
-                      class="form-input"
-                      onchange="calcularPreviewVenda()"
-                      style="
-                        height:58px;
-                        font-size:15px;
-                        font-weight:900;
-                        cursor:pointer;
-                        background:#fff;
-                        border-radius:18px;
-                        color:#0f172a;
-                      "
-                    >
-                      <option value="DIÁRIA">Diária</option>
-                      <option value="SEMANAL">Semanal</option>
-                      <option value="QUINZENAL">Quinzenal</option>
-                      <option value="MENSAL">Mensal</option>
-                    </select>
+                      <select
+                        id="vendaFrequencia"
+                        class="form-input"
+                        onchange="validarDataPrimeiraCobranca(); calcularPreviewVenda()"
+                        style="
+                          height:58px;
+                          font-size:15px;
+                          font-weight:900;
+                          cursor:pointer;
+                          background:#fff;
+                          border-radius:18px;
+                          color:#0f172a;
+                        "
+                      >
+                        <option value="DIÁRIA">Diária</option>
+                        <option value="SEMANAL">Semanal</option>
+                        <option value="QUINZENAL">Quinzenal</option>
+                        <option value="MENSAL">Mensal</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="form-label">Primeira cobrança</label>
+
+                      <input
+                        id="vendaPrimeiraData"
+                        type="date"
+                        class="form-input"
+                        min="${proximaDataMinimaVenda()}"
+                        value="${proximaDataMinimaVenda()}"
+                        onchange="validarDataPrimeiraCobranca(); calcularPreviewVenda()"
+                        onblur="validarDataPrimeiraCobranca(); calcularPreviewVenda()"
+                        style="
+                          height:58px;
+                          font-size:15px;
+                          font-weight:900;
+                          border-radius:18px;
+                          color:#0f172a;
+                        "
+                      >
+                    </div>
                   </div>
-
-                  <div>
-                    <label class="form-label">Primeira cobrança</label>
-
-                    <input
-                      id="vendaPrimeiraData"
-                      type="date"
-                      class="form-input"
-                      min="${hojeISO()}"
-                      value="${hojeISO()}"
-                      onchange="validarDataPrimeiraCobranca(); calcularPreviewVenda()"
-                      onblur="validarDataPrimeiraCobranca(); calcularPreviewVenda()"
-                      style="
-                        height:58px;
-                        font-size:15px;
-                        font-weight:900;
-                        border-radius:18px;
-                        color:#0f172a;
-                      "
-                    >
-
-                    <small style="display:block;color:#64748b;font-weight:700;margin-top:8px;line-height:1.35;">
-                      Não é permitido lançar data anterior ao dia atual.
-                    </small>
-                  </div>
-
                 </div>
 
               </div>
@@ -2382,6 +2607,18 @@
 
               </div>
 
+              <div
+                id="previewCobrancas"
+                style="
+                  background:#f8fafc;
+                  border:1px solid #e2e8f0;
+                  border-radius:24px;
+                  padding:18px;
+                  display:grid;
+                  gap:10px;
+                "
+              ></div>
+
             <div class="drawer-mobile-action">
   <button
     id="btnConfirmarVenda"
@@ -2391,7 +2628,7 @@
       height:60px;
       font-size:16px;
     "
-    onclick="salvarVendaProfissional('${clienteId}')"
+    onclick="salvarVendaProfissional('${clienteId}', this)"
   >
     Confirmar venda
   </button>
@@ -2450,7 +2687,7 @@
 
           const atual = Number(input.value || 0);
           input.value = String(Math.min(100, Math.max(0, atual + delta)));
-          normalizarRangeVenda(input, 0, 100, 5);
+          normalizarRangeVenda(input, 0, 100, 1);
 
           calcularPreviewVenda();
         }
@@ -2466,12 +2703,129 @@
           calcularPreviewVenda();
         }
 
+        function diasTrabalhoEmpresa() {
+          const config = window.configuracoesEmpresa || window.configEmpresa || {};
+          const dias =
+            config.diasTrabalho ||
+            config.diasUteisTrabalho ||
+            config.diasFuncionamento ||
+            [1, 2, 3, 4, 5];
+
+          return Array.isArray(dias) && dias.length ? dias.map(Number) : [1, 2, 3, 4, 5];
+        }
+
+        function ehDiaTrabalhoEmpresa(data) {
+          return diasTrabalhoEmpresa().includes(data.getDay());
+        }
+
+        function formatarISOData(data) {
+          return data.toISOString().split("T")[0];
+        }
+
+        function proximoDiaTrabalhoEmpresa(dataBaseIso = hojeISO()) {
+          const data = new Date(dataBaseIso + "T00:00:00");
+          data.setDate(data.getDate() + 1);
+
+          let seguranca = 0;
+          while (!ehDiaTrabalhoEmpresa(data) && seguranca < 14) {
+            data.setDate(data.getDate() + 1);
+            seguranca++;
+          }
+
+          return formatarISOData(data);
+        }
+
+        function proximaDataMinimaVenda() {
+          return proximoDiaTrabalhoEmpresa(hojeISO());
+        }
+
+        function adicionarPeriodoCobranca(dataIso, frequencia) {
+          const data = new Date(dataIso + "T00:00:00");
+
+          if (frequencia === "SEMANAL") data.setDate(data.getDate() + 7);
+          else if (frequencia === "QUINZENAL") data.setDate(data.getDate() + 15);
+          else if (frequencia === "MENSAL") data.setMonth(data.getMonth() + 1);
+          else data.setDate(data.getDate() + 1);
+
+          if (frequencia === "DIÁRIA" || frequencia === "DIARIA") {
+            let seguranca = 0;
+            while (!ehDiaTrabalhoEmpresa(data) && seguranca < 14) {
+              data.setDate(data.getDate() + 1);
+              seguranca++;
+            }
+          }
+
+          return formatarISOData(data);
+        }
+
+        function calcularDatasCobrancaVenda(parcelas, primeiraData, frequencia) {
+          const total = Math.min(90, Math.max(1, Number(parcelas || 1)));
+          const datas = [];
+          let dataAtual = primeiraData || proximaDataMinimaVenda();
+
+          for (let i = 0; i < total; i++) {
+            datas.push(dataAtual);
+            dataAtual = adicionarPeriodoCobranca(dataAtual, frequencia);
+          }
+
+          return datas;
+        }
+
+        function formatarDataVendaPt(dataIso) {
+          if (!dataIso) return "-";
+          const [ano, mes, dia] = dataIso.split("-");
+          return `${dia}/${mes}/${ano}`;
+        }
+
+        function renderPreviewCobrancasVenda(parcelas, primeiraData, frequencia) {
+          const box = document.getElementById("previewCobrancas");
+          if (!box) return;
+
+          const datas = calcularDatasCobrancaVenda(parcelas, primeiraData, frequencia);
+          const primeiras = datas.slice(0, 8);
+
+          box.innerHTML = `
+            <strong style="font-size:15px;font-weight:900;color:#0f172a;">
+              Próximas cobranças
+            </strong>
+
+            <div style="display:grid;gap:8px;">
+              ${primeiras.map((data, index) => `
+                <div style="display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e2e8f0;padding:8px 0;">
+                  <span style="color:#64748b;font-weight:800;">${index + 1}ª parcela</span>
+                  <strong style="color:#0f172a;">${formatarDataVendaPt(data)}</strong>
+                </div>
+              `).join("")}
+            </div>
+
+            ${datas.length > primeiras.length
+              ? `<small style="color:#64748b;font-weight:800;">+ ${datas.length - primeiras.length} cobrança(s) futura(s)</small>`
+              : ""
+            }
+          `;
+        }
+
         function validarDataPrimeiraCobranca() {
           const input = document.getElementById("vendaPrimeiraData");
           if (!input) return;
 
-          if (!input.value || input.value < hojeISO()) {
-            input.value = hojeISO();
+          const frequencia = document.getElementById("vendaFrequencia")?.value || "DIÁRIA";
+          const minima = frequencia === "DIÁRIA" || frequencia === "DIARIA"
+            ? proximoDiaTrabalhoEmpresa(hojeISO())
+            : hojeISO();
+
+          input.min = minima;
+
+          if (frequencia === "DIÁRIA" || frequencia === "DIARIA") {
+            input.value = minima;
+            input.max = minima;
+            return;
+          }
+
+          input.removeAttribute("max");
+
+          if (!input.value || input.value < minima) {
+            input.value = minima;
           }
         }
 
@@ -2483,7 +2837,7 @@
           const jurosInput = document.getElementById("vendaJuros");
           const parcelasInput = document.getElementById("vendaParcelas");
 
-          normalizarRangeVenda(jurosInput, 0, 100, 5);
+          normalizarRangeVenda(jurosInput, 0, 100, 1);
           normalizarRangeVenda(parcelasInput, 1, 90, 1);
 
           const juros =
@@ -2521,6 +2875,10 @@
           setPreview("prevTotal", moeda(total));
           setPreview("prevParcela", moeda(valorParcela));
           setPreview("prevCaixa", "-" + moeda(valor));
+
+          const frequencia = document.getElementById("vendaFrequencia")?.value || "DIÁRIA";
+          const primeiraData = document.getElementById("vendaPrimeiraData")?.value || proximaDataMinimaVenda();
+          renderPreviewCobrancasVenda(parcelas, primeiraData, frequencia);
 
           return {
             valor,
@@ -2671,10 +3029,10 @@
               atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
             });
 
-            const intervalo = intervaloPorFrequencia(frequencia);
+            const datasCobranca = calcularDatasCobrancaVenda(preview.parcelas, primeiraCobranca, frequencia);
 
             for (let i = 1; i <= preview.parcelas; i++) {
-              const dataVencimento = addDias(primeiraCobranca, (i - 1) * intervalo);
+              const dataVencimento = datasCobranca[i - 1] || primeiraCobranca;
               const parcelaRef = db.collection("parcelas").doc();
 
               batch.set(parcelaRef, {
@@ -2801,94 +3159,7 @@
       </script>
 
       <!-- COBRANÇAS -->
-      <section id="cobrancas" class="screen" style="display:none;">
-
-        <div class="panel">
-
-          <div class="panel-title">
-            <div>
-              <h2>Rota de cobranças</h2>
-              <p>Clientes com saldo, visitas, pagamentos e situação da carteira.</p>
-            </div>
-          </div>
-
-          <div style="
-            display:grid;
-            grid-template-columns:1fr auto auto 180px auto;
-            gap:12px;
-            margin-bottom:20px;
-          " class="busca-grid">
-
-            <input
-              id="buscaCobrancaInput"
-              placeholder="Buscar cliente na cobrança"
-              onkeydown="if(event.key === 'Enter') renderCobrancas()"
-              style="
-                height:52px;
-                border-radius:16px;
-                border:1px solid #e2e8f0;
-                padding:0 16px;
-                font-size:14px;
-                font-weight:700;
-                outline:none;
-                width:100%;
-              "
-            >
-
-            <button class="btn btn-primary" onclick="renderCobrancas()">
-              Buscar
-            </button>
-
-            <button class="btn btn-light" onclick="limparBuscaCobrancas()">
-              Limpar
-            </button>
-
-            <select
-              id="ordenarCobrancas"
-              onchange="renderCobrancas()"
-              style="
-                height:50px;
-                width:180px;
-                border-radius:16px;
-                border:1px solid #e2e8f0;
-                padding:0 12px;
-                font-weight:800;
-                outline:none;
-                background:#fff;
-              "
-            >
-              <option value="nome_az">A → Z</option>
-              <option value="nome_za">Z → A</option>
-              <option value="saldo_maior">Saldo maior</option>
-              <option value="saldo_menor">Saldo menor</option>
-              <option value="parcela_maior">Parcela maior</option>
-              <option value="parcela_menor">Parcela menor</option>
-              <option value="em_dia">Em dia primeiro</option>
-              <option value="atrasado">Mais atrasados</option>
-              <option value="adiantado">Mais adiantados</option>
-            </select>
-
-            <button class="btn btn-light" onclick="abrirFiltrosCobranca()">
-              Filtros
-            </button>
-
-          </div>
-
-          <div
-            id="contadorCobrancas"
-            style="
-              color:#64748b;
-              font-size:13px;
-              font-weight:800;
-              margin-bottom:14px;
-            "
-          ></div>
-
-          <div id="listaCobrancas" class="grid" style="gap:14px;"></div>
-
-        </div>
-
-      </section>
+      <!-- Tela de cobranças incorporada à tela Vendas/Cobranças. -->
 
       <div
         id="modalFiltrosCobranca"
@@ -4335,8 +4606,8 @@
               "Controle de parcelas, pagamentos e visitas."
             ],
             vendas: [
-              "Vendas",
-              "Inicie uma nova venda ou renovação para cliente quitado."
+              "Vendas e cobranças",
+              "Vendas do dia e rota de cobranças do vendedor."
             ],
             solicitacoes: [
               "Solicitações financeiras",
@@ -4359,8 +4630,15 @@
             btnTopNovoCliente.style.display = id === "clientes" ? "inline-flex" : "none";
           }
 
-          if (id === "vendas") renderClientesParaVenda();
-          if (id === "cobrancas") renderCobrancas();
+          if (id === "vendas") {
+            abrirAbaVendasCobrancas("vendas");
+            renderVendasDia();
+            renderCobrancas();
+          }
+          if (id === "cobrancas") {
+            trocarTela("vendas", el);
+            abrirAbaVendasCobrancas("cobrancas");
+          }
           if (id === "solicitacoes") renderSolicitacoes();
           if (id === "caixa") renderCaixaVendedor();
 
@@ -4390,7 +4668,7 @@
 
             atualizarDashboard();
             buscarClientes();
-            renderClientesParaVenda();
+            renderVendasDia();
             renderCobrancas();
             renderSolicitacoes();
             renderCaixaVendedor();
