@@ -1208,16 +1208,7 @@
       <!-- RESPONSIVO -->
 
       <style>
-        @media(max-width:780px) {
-
-          .dashboard-grid {
-            grid-template-columns: 1fr !important;
-          }
-
-          .busca-grid {
-            grid-template-columns: 1fr !important;
-          }
-@media(max-width:780px) {
+       @media(max-width:780px) {
 
   .dashboard-grid {
     grid-template-columns: 1fr !important;
@@ -1242,13 +1233,16 @@
     position: sticky;
     bottom: 0;
     z-index: 50;
-    background: linear-gradient(180deg, rgba(255,255,255,.2), #fff 35%);
+    background: linear-gradient(
+      180deg,
+      rgba(255,255,255,.2),
+      #fff 35%
+    );
     padding: 14px 0 calc(14px + env(safe-area-inset-bottom));
     margin-top: 16px;
   }
 
 }
-
         }
       </style>
 
