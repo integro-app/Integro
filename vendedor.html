@@ -820,6 +820,222 @@
       }
 
     }
+
+    /* PADRÃO PREMIUM ÍNTEGRO - DASHBOARD VENDEDOR */
+    .topbar {
+      height: auto;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+      padding: 0;
+      margin-bottom: 26px;
+      box-shadow: none;
+    }
+
+    .top-left {
+      min-width: 0;
+    }
+
+    .topbar h1 {
+      font-size: 32px;
+      line-height: 1.1;
+    }
+
+    .top-actions {
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .date-chip {
+      min-height: 66px;
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 18px;
+      border-radius: 20px;
+      background: #fff;
+      border: 1px solid var(--line);
+      box-shadow: 0 10px 26px rgba(15, 23, 42, .05);
+      font-weight: 900;
+      color: var(--text);
+    }
+
+    .date-chip small {
+      display: block;
+      color: var(--muted);
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .menu-badge,
+    .menu-new {
+      min-width: 28px;
+      height: 28px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+      font-size: 12px;
+      font-weight: 900;
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(255, 107, 0, .24);
+    }
+
+    .menu-badge {
+      background: linear-gradient(135deg, var(--orange-2), var(--orange));
+    }
+
+    .menu-new {
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      font-size: 11px;
+    }
+
+    .grid-4 {
+      align-items: stretch;
+    }
+
+    .card {
+      min-height: 170px;
+      transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+    }
+
+    .card[onclick] {
+      cursor: pointer;
+    }
+
+    .card[onclick]:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 18px 38px rgba(15, 23, 42, .14);
+      filter: saturate(1.05);
+    }
+
+    .card-red {
+      background: linear-gradient(135deg, #ff3b30, #dc2626);
+    }
+
+    .card-cyan {
+      background: linear-gradient(135deg, #06b6d4, #0284c7);
+    }
+
+    .kpi-card {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      height: 100%;
+    }
+
+    .kpi-icon {
+      width: 64px;
+      height: 64px;
+      flex: 0 0 64px;
+      border-radius: 20px;
+      background: rgba(15, 23, 42, .15);
+      border: 1px solid rgba(255, 255, 255, .12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 30px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.12);
+    }
+
+    .kpi-content {
+      min-width: 0;
+    }
+
+    .kpi-content small {
+      margin-bottom: 10px;
+    }
+
+    .kpi-content strong {
+      font-size: 36px;
+      line-height: 1.05;
+    }
+
+    .resumo-lista {
+      display: grid;
+      gap: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: #fff;
+    }
+
+    .resumo-linha {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      color: #475569;
+      font-weight: 800;
+    }
+
+    .resumo-linha:last-child {
+      border-bottom: 0;
+    }
+
+    .resumo-linha strong {
+      color: #0f172a;
+    }
+
+    @media(max-width:980px) {
+      .topbar {
+        gap: 16px;
+      }
+
+      .top-actions {
+        width: 100%;
+      }
+
+      .date-chip {
+        flex: 1;
+      }
+    }
+
+    @media(max-width:700px) {
+      .topbar {
+        align-items: stretch;
+      }
+
+      .top-left {
+        width: 100%;
+      }
+
+      .topbar h1 {
+        font-size: 24px;
+      }
+
+      .top-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+      }
+
+      .date-chip,
+      .top-actions .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      .card {
+        min-height: 148px;
+        padding: 20px;
+      }
+
+      .kpi-icon {
+        width: 54px;
+        height: 54px;
+        flex-basis: 54px;
+        border-radius: 18px;
+        font-size: 25px;
+      }
+
+      .kpi-content strong {
+        font-size: 30px;
+      }
+    }
+
   </style>
 
 </head>
@@ -842,6 +1058,30 @@
         <strong id="vendedorNome">Carregando...</strong>
         <small id="empresaNome">Empresa</small>
         <span class="status-online">Online</span>
+      </div>
+
+      <div class="menu-section">
+        <div class="menu-title">Comunicação</div>
+
+        <div class="menu">
+
+          <button onclick="trocarTela('notificacoes', this)">
+            <span class="menu-left">
+              <span>🔔</span>
+              Notificações
+            </span>
+            <span class="menu-badge" id="badgeNotificacoes">0</span>
+          </button>
+
+          <button onclick="trocarTela('chatInterno', this)">
+            <span class="menu-left">
+              <span>💬</span>
+              Chat interno
+            </span>
+            <span class="menu-new">Novo</span>
+          </button>
+
+        </div>
       </div>
 
       <div class="menu-section">
@@ -929,6 +1169,14 @@
         </div>
 
         <div class="top-actions">
+          <div class="date-chip">
+            <span>📅</span>
+            <div>
+              <div id="dataPainel">--/--/----</div>
+              <small id="diaPainel">Hoje</small>
+            </div>
+          </div>
+
           <button
             id="btnTopNovoCliente"
             class="btn btn-primary"
@@ -946,46 +1194,81 @@
 
         <div class="grid grid-4">
 
-          <div class="card card-gradient card-orange" onclick="abrirResumoKpi('caixa')" style="cursor:pointer;">
-            <small>Caixa atual</small>
-            <strong id="kpiCaixaAtual">R$ 0,00</strong>
-            <p>Caixa inicial + recebimentos + ingressos - vendas - despesas.</p>
+          <div class="card card-gradient card-blue" onclick="abrirResumoKpi('caixa')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('caixa')">
+            <div class="kpi-card">
+              <div class="kpi-icon">💼</div>
+              <div class="kpi-content">
+                <small>Caixa atual</small>
+                <strong id="kpiCaixaAtual">R$ 0,00</strong>
+                <p>Caixa inicial + recebimentos + ingressos - vendas - despesas.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="card card-gradient card-blue" onclick="abrirResumoKpi('carteira')" style="cursor:pointer;">
-            <small>Carteira final</small>
-            <strong id="kpiCarteiraFinal">R$ 0,00</strong>
-            <p>Carteira inicial: <b id="kpiCarteiraInicial">R$ 0,00</b> <span id="kpiCarteiraVariacao" style="margin-left:6px;font-weight:900;">→ 0%</span></p>
+          <div class="card card-gradient card-green" onclick="abrirResumoKpi('carteira')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('carteira')">
+            <div class="kpi-card">
+              <div class="kpi-icon">📊</div>
+              <div class="kpi-content">
+                <small>Carteira final</small>
+                <strong id="kpiCarteiraFinal">R$ 0,00</strong>
+                <p>Carteira inicial: <b id="kpiCarteiraInicial">R$ 0,00</b> <span id="kpiCarteiraVariacao" style="margin-left:6px;font-weight:900;">→ 0%</span></p>
+              </div>
+            </div>
           </div>
 
-          <div class="card card-gradient card-green" onclick="abrirResumoKpi('recebido')" style="cursor:pointer;">
-            <small>Recebido hoje</small>
-            <strong id="kpiRecebidoHoje">R$ 0,00</strong>
-            <p>Soma dos pagamentos confirmados no dia.</p>
+          <div class="card card-gradient card-green" onclick="abrirResumoKpi('recebido')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('recebido')">
+            <div class="kpi-card">
+              <div class="kpi-icon">✅</div>
+              <div class="kpi-content">
+                <small>Recebido hoje</small>
+                <strong id="kpiRecebidoHoje">R$ 0,00</strong>
+                <p>Soma dos pagamentos confirmados no dia.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="card card-gradient card-purple" onclick="abrirResumoKpi('ativos')" style="cursor:pointer;">
-            <small>Clientes ativos</small>
-            <strong id="kpiClientesAtivos">0</strong>
-            <p>Clientes com saldo devedor maior que R$ 0,01.</p>
+          <div class="card card-gradient card-purple" onclick="abrirResumoKpi('ativos')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('ativos')">
+            <div class="kpi-card">
+              <div class="kpi-icon">👥</div>
+              <div class="kpi-content">
+                <small>Clientes ativos</small>
+                <strong id="kpiClientesAtivos">0</strong>
+                <p>Clientes com saldo devedor maior que R$ 0,01.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="card card-gradient card-blue" onclick="abrirResumoKpi('vendas')" style="cursor:pointer;">
-            <small>Vendas hoje</small>
-            <strong id="kpiVendasHoje">R$ 0,00</strong>
-            <p>Soma do valor vendido no caixa atual.</p>
+          <div class="card card-gradient card-orange" onclick="abrirResumoKpi('vendas')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('vendas')">
+            <div class="kpi-card">
+              <div class="kpi-icon">🛒</div>
+              <div class="kpi-content">
+                <small>Vendas hoje</small>
+                <strong id="kpiVendasHoje">R$ 0,00</strong>
+                <p>Soma do valor vendido no caixa atual.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="card card-gradient card-orange" onclick="abrirResumoKpi('despesas')" style="cursor:pointer;">
-            <small>Despesas</small>
-            <strong id="kpiDespesasHoje">R$ 0,00</strong>
-            <p>Gastos e retiradas vinculados ao caixa atual.</p>
+          <div class="card card-gradient card-red" onclick="abrirResumoKpi('despesas')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('despesas')">
+            <div class="kpi-card">
+              <div class="kpi-icon">⬇️</div>
+              <div class="kpi-content">
+                <small>Despesas</small>
+                <strong id="kpiDespesasHoje">R$ 0,00</strong>
+                <p>Gastos e retiradas vinculados ao caixa atual.</p>
+              </div>
+            </div>
           </div>
 
-          <div class="card card-gradient card-green" onclick="abrirResumoKpi('rota')" style="cursor:pointer;">
-            <small>Clientes da rota</small>
-            <strong id="kpiClientesDia">0</strong>
-            <p>Clientes com venda ativa para acompanhamento.</p>
+          <div class="card card-gradient card-cyan" onclick="abrirResumoKpi('rota')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('rota')">
+            <div class="kpi-card">
+              <div class="kpi-icon">📍</div>
+              <div class="kpi-content">
+                <small>Clientes da rota</small>
+                <strong id="kpiClientesDia">0</strong>
+                <p>Clientes com venda ativa para acompanhamento.</p>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -1049,8 +1332,8 @@
 
             <div class="panel-title">
               <div>
-                <h2>Alertas</h2>
-                <p>Pontos que exigem atenção.</p>
+                <h2>Resumo rápido</h2>
+                <p>Panorama geral do dia.</p>
               </div>
             </div>
 
@@ -1114,6 +1397,42 @@
 
         </div>
 
+      </section>
+
+      <!-- NOTIFICAÇÕES -->
+      <section id="notificacoes" class="screen" style="display:none;">
+        <div class="panel">
+          <div class="panel-title">
+            <div>
+              <h2>Notificações</h2>
+              <p>Central de avisos, solicitações e comunicações internas.</p>
+            </div>
+          </div>
+
+          <div id="listaNotificacoes" class="grid" style="gap:12px;">
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:22px;padding:18px;font-weight:800;color:#475569;">
+              Nenhuma notificação pendente no momento.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- CHAT INTERNO -->
+      <section id="chatInterno" class="screen" style="display:none;">
+        <div class="panel">
+          <div class="panel-title">
+            <div>
+              <h2>Chat interno</h2>
+              <p>Comunicação entre vendedores, supervisores, financeiro e equipe administrativa.</p>
+            </div>
+          </div>
+
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:22px;padding:18px;color:#475569;font-weight:800;line-height:1.6;">
+            Módulo reservado para o futuro WhatsApp interno do ÍNTEGRO.
+            <br>
+            Aqui depois teremos conversas por equipe, avisos rápidos e comunicação entre funcionários.
+          </div>
+        </div>
       </section>
 
       <!-- DRAWER -->
@@ -4577,6 +4896,8 @@
               usuarioLogado.empresaNome ||
               "Empresa";
 
+            atualizarDataPainel();
+
             await carregarTudo();
 
           } catch (erro) {
@@ -4605,6 +4926,21 @@
 
         function hojeISO() {
           return new Date().toISOString().split("T")[0];
+        }
+
+        function atualizarDataPainel() {
+          const dataEl = document.getElementById("dataPainel");
+          const diaEl = document.getElementById("diaPainel");
+          const agora = new Date();
+
+          if (dataEl) {
+            dataEl.innerText = agora.toLocaleDateString("pt-BR");
+          }
+
+          if (diaEl) {
+            const dia = agora.toLocaleDateString("pt-BR", { weekday: "long" });
+            diaEl.innerText = dia.charAt(0).toUpperCase() + dia.slice(1);
+          }
         }
 
         function statusTxt(valor) {
@@ -4691,6 +5027,14 @@
             caixa: [
               "Meu caixa",
               "Saldo atual, status e movimentações do caixa."
+            ],
+            notificacoes: [
+              "Notificações",
+              "Avisos, solicitações e comunicados internos."
+            ],
+            chatInterno: [
+              "Chat interno",
+              "Comunicação interna entre funcionários e equipes."
             ]
           };
 
