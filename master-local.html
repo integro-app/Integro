@@ -88,23 +88,7 @@
       border:1px solid rgba(255,255,255,.15);
     }
     
- .mobile-menu-btn{
-  width:54px;
-  height:54px;
-  border-radius:16px;
-  background:#fff;
-  border:1px solid var(--line);
-  color:var(--text);
-  font-size:26px;
-  font-weight:900;
-  box-shadow:var(--shadow);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  flex-shrink:0;
-}
-
-.mobile-floating-menu{
+.mobile-menu-btn{
   position:fixed;
   top:14px;
   left:14px;
@@ -120,7 +104,7 @@
   display:none;
   align-items:center;
   justify-content:center;
-  z-index:9998;
+  z-index:10000;
 }
 
     .user-card{
@@ -879,8 +863,7 @@
         width:100%;
         padding:18px;
       }
-      .mobile-menu-btn,
-.mobile-floating-menu{
+     .mobile-menu-btn{
   display:flex !important;
 }
 
@@ -946,19 +929,18 @@
 
 <body>
   
-  <button class="mobile-floating-menu" type="button" onclick="abrirMenuMobile()">
+  <button class="mobile-menu-btn" type="button" onclick="abrirMenuMobile()">
   ☰
 </button>
 
   <div class="layout">
     <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <div>
-          <h1>ÍNTEGRO</h1>
-          <small>MASTER LOCAL</small>
-        </div>
-        <button class="collapse-btn" type="button" onclick="toggleCollapseSidebar()">«</button>
-      </div>
+    <div class="brand">
+  <div>
+    <h1>ÍNTEGRO</h1>
+  </div>
+  <button class="collapse-btn" type="button" onclick="toggleCollapseSidebar()">«</button>
+</div>
 
       <div class="user-card">
         <div class="avatar">●</div>
@@ -1263,13 +1245,16 @@
   <script src="js/vendas.js"></script>
   <script src="js/master-local.js"></script>
 
- <script>
+
+<script>
   function abrirMenuMobile(){
-    document.getElementById("sidebar").classList.add("show");
+    const sidebar = document.getElementById("sidebar");
+    if(sidebar) sidebar.classList.add("show");
   }
 
   function fecharMenuMobile(){
-    document.getElementById("sidebar").classList.remove("show");
+    const sidebar = document.getElementById("sidebar");
+    if(sidebar) sidebar.classList.remove("show");
   }
 
   function toggleCollapseSidebar(){
@@ -1281,48 +1266,42 @@
     document.getElementById("sidebar").classList.toggle("collapsed");
   }
 
-  function preencherTopoMasterLocal(){
-  const usuario =
-    window.usuarioLogado ||
-    window.usuarioAtual ||
-    State?.getUsuario?.() ||
-    JSON.parse(localStorage.getItem("usuarioLogado") || "{}") ||
-    JSON.parse(localStorage.getItem("usuarioAtual") || "{}");
+  function preencherTopoMasterLocal(usuarioRecebido = null){
+    const usuario =
+      usuarioRecebido ||
+      window.usuarioLogado ||
+      window.usuarioAtual ||
+      State?.getUsuario?.() ||
+      JSON.parse(localStorage.getItem("usuarioLogado") || "{}") ||
+      JSON.parse(localStorage.getItem("usuarioAtual") || "{}");
 
-  const nome =
-    usuario.nome ||
-    usuario.nomeCompleto ||
-    usuario.displayName ||
-    "Usuário";
+    const nome =
+      usuario.nome ||
+      usuario.nomeCompleto ||
+      usuario.displayName ||
+      "Usuário";
 
-  const empresa =
-    usuario.empresaNome ||
-    usuario.nomeEmpresa ||
-    usuario.clientePlataformaNome ||
-    usuario.clienteNome ||
-    "Empresa";
+    const empresa =
+      usuario.empresaNome ||
+      usuario.nomeEmpresa ||
+      usuario.clientePlataformaNome ||
+      usuario.clienteNome ||
+      "Empresa";
 
-  const cargo =
-    usuario.cargoNome ||
-    usuario.cargo ||
-    usuario.tipoUsuario ||
-    "Cargo";
+    const cargo =
+      usuario.cargoNome ||
+      usuario.cargo ||
+      usuario.tipoUsuario ||
+      "Cargo";
 
-  const data = new Date().toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric"
-  });
+    const userNome = document.getElementById("userNome");
+    const empresaNome = document.getElementById("empresaNome");
+    const userCargo = document.getElementById("userCargo");
 
-  document.getElementById("topNome").innerText = nome;
-  document.getElementById("topEmpresa").innerText = empresa;
-  document.getElementById("topCargo").innerText = cargo;
-  document.getElementById("topData").innerText = `📅 ${data}`;
-
-  document.getElementById("userNome").innerText = nome;
-  document.getElementById("empresaNome").innerText = empresa;
-  document.getElementById("userCargo").innerText = cargo;
-}
+    if(userNome) userNome.innerText = nome;
+    if(empresaNome) empresaNome.innerText = empresa;
+    if(userCargo) userCargo.innerText = cargo;
+  }
 
   function trocarTela(tela, el){
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -1337,6 +1316,10 @@
     }
   }
 
+  document.addEventListener("usuario-validado", function(event){
+    preencherTopoMasterLocal(event.detail);
+  });
+
   preencherTopoMasterLocal();
 
   if(typeof protegerPaginaAtual === "function"){
@@ -1344,87 +1327,11 @@
   }
 </script>
 
-<!-- PATCH FINAL MENU MOBILE MASTER LOCAL -->
-<div
-  id="overlayMenuMobileMaster"
-  onclick="fecharMenuMobileMaster()"
-  style="
-    position:fixed;
-    inset:0;
-    background:rgba(2,6,23,.55);
-    z-index:9997;
-    display:none;
-  "
-></div>
-
-<style>
-  @media(max-width:760px){
-    .mobile-floating-menu{
-      display:flex !important;
-      position:fixed !important;
-      top:14px !important;
-      left:14px !important;
-      z-index:10000 !important;
-    }
-
-    #sidebar{
-      position:fixed !important;
-      top:0 !important;
-      left:0 !important;
-      bottom:0 !important;
-      width:285px !important;
-      transform:translateX(-100%) !important;
-      z-index:9999 !important;
-      transition:.25s !important;
-    }
-
-    #sidebar.show{
-      transform:translateX(0) !important;
-    }
-
-    .main{
-      margin-left:0 !important;
-      width:100% !important;
-      padding-top:86px !important;
-    }
-  }
-</style>
-
-<script>
-  function abrirMenuMobileMaster(){
-    const sidebar = document.getElementById("sidebar");
-    const overlay = document.getElementById("overlayMenuMobileMaster");
-
-    if(sidebar){
-      sidebar.classList.add("show");
-    }
-
-    if(overlay){
-      overlay.style.display = "block";
-    }
-  }
-
-  function fecharMenuMobileMaster(){
-    const sidebar = document.getElementById("sidebar");
-    const overlay = document.getElementById("overlayMenuMobileMaster");
-
-    if(sidebar){
-      sidebar.classList.remove("show");
-    }
-
-    if(overlay){
-      overlay.style.display = "none";
-    }
-  }
-
-  function abrirMenuMobile(){
-    abrirMenuMobileMaster();
-  }
-
-  function fecharMenuMobile(){
-    fecharMenuMobileMaster();
-  }
 </script>
+
+
+
+  
     
 </body>
 </html>
