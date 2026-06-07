@@ -112,15 +112,25 @@
       left: 0;
       bottom: 0;
 
+      transform: translateX(-100%);
+
       overflow-y: auto;
 
-      z-index: 999;
+      z-index: 1200;
 
-      transition: .25s;
+      transition: transform .25s ease;
 
       box-shadow:
         12px 0 40px rgba(2, 6, 23, .18);
 
+    }
+
+    .sidebar.show {
+      transform: translateX(0);
+    }
+
+    .sidebar.show-global-fix {
+      transform: translateX(0);
     }
 
     .sidebar::-webkit-scrollbar {
@@ -349,7 +359,7 @@
 
       flex: 1;
 
-      margin-left: 290px;
+      margin-left: 0;
 
       padding: 26px;
 
@@ -409,7 +419,7 @@
 
       cursor: pointer;
 
-      display: none;
+      display: flex;
 
       align-items: center;
 
@@ -700,7 +710,7 @@
 
       transition: .2s;
 
-      z-index: 998;
+      z-index: 1190;
 
     }
 
@@ -724,18 +734,6 @@
     }
 
     @media(max-width:980px) {
-
-      .sidebar {
-
-        transform: translateX(-100%);
-
-      }
-
-      .sidebar.show {
-
-        transform: translateX(0);
-
-      }
 
       .main {
 
@@ -1038,6 +1036,55 @@
 
   </style>
 
+
+<style id="integro-sidebar-drawer-fix">
+  body.menu-aberto { overflow: hidden; }
+
+  .hamburger {
+    display: flex !important;
+  }
+
+  .main {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+
+  .sidebar {
+    transform: translateX(-100%) !important;
+  }
+
+  .sidebar.show,
+  .sidebar.open,
+  .sidebar.active {
+    transform: translateX(0) !important;
+  }
+
+  .overlay {
+    pointer-events: none;
+  }
+
+  .overlay.show,
+  .overlay.active {
+    pointer-events: auto;
+  }
+
+  @media(max-width:700px) {
+    .sidebar {
+      width: min(86vw, 310px) !important;
+    }
+
+    .top-left {
+      width: 100%;
+      align-items: flex-start;
+    }
+
+    .hamburger {
+      flex: 0 0 48px;
+      width: 48px;
+      height: 48px;
+    }
+  }
+</style>
 </head>
 
 <body>
@@ -5125,9 +5172,7 @@
           if (id === "solicitacoes") renderSolicitacoes();
           if (id === "caixa") renderCaixaVendedor();
 
-          if (window.innerWidth <= 980) {
-            toggleSidebar(false);
-          }
+          toggleSidebar(false);
 
         }
 
@@ -6800,21 +6845,35 @@ async function verificarCaixaAbertoDiaAnterior() {
   </div>
 
 <script>
-  function toggleSidebar(){
+  // Menu lateral padrão global ÍNTEGRO
+  // - Fechado por padrão em desktop e mobile
+  // - Abre pelo botão ☰
+  // - Fecha ao clicar fora, ao selecionar um item ou pressionar ESC
+  function toggleSidebar(force) {
     const sidebar = document.getElementById("sidebar");
-    const overlay = document.getElementById("sidebarOverlay");
+    const overlay = document.getElementById("overlay");
 
-    if(sidebar){
-      sidebar.classList.toggle("show");
-      sidebar.classList.toggle("open");
-      sidebar.classList.toggle("active");
-    }
+    if (!sidebar || !overlay) return;
 
-    if(overlay){
-      overlay.classList.toggle("show");
-      overlay.classList.toggle("active");
-    }
+    const deveAbrir = typeof force === "boolean"
+      ? force
+      : !sidebar.classList.contains("show");
+
+    sidebar.classList.toggle("show", deveAbrir);
+    sidebar.classList.toggle("open", deveAbrir);
+    sidebar.classList.toggle("active", deveAbrir);
+
+    overlay.classList.toggle("show", deveAbrir);
+    overlay.classList.toggle("active", deveAbrir);
+
+    document.body.classList.toggle("menu-aberto", deveAbrir);
   }
+
+  document.addEventListener("keydown", function(event) {
+    if (event.key === "Escape") {
+      toggleSidebar(false);
+    }
+  });
 </script>
 
 </body>
