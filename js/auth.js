@@ -23,11 +23,11 @@ async function login() {
   }
 
   try {
-    if (botaoLogin) {
-      botaoLogin.disabled = true;
-      botaoLogin.dataset.textoOriginal = botaoLogin.innerText;
-      botaoLogin.innerText = "Validando...";
-    }
+  if (botaoLogin) {
+  botaoLogin.disabled = true;
+  botaoLogin.dataset.textoOriginal = botaoLogin.innerText;
+  botaoLogin.innerText = "Entrando...";
+}
 
     const credencial = await auth.signInWithEmailAndPassword(email, senha);
     const authUser = credencial.user;
