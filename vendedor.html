@@ -4762,30 +4762,97 @@
         }
 
         async function carregarCaixaAtual() {
+  caixaAtual = null;
 
-          caixaAtual = null;
+  const possiveisCampos = [
+    "usuarioId",
+    "vendedorId",
+    "abertoPorUid"
+  ];
 
-          const local =
-            localStorage.getItem("caixaAtual");
+  for (const campo of possiveisCampos) {
+    try {
+      let ref = db.collection("caixas")
+        .where(campo, "==", usuarioLogado.id)
+        .where("status", "==", "ABERTO")
+        .limit(1);
 
-          if (local) {
-            try {
-              caixaAtual = JSON.parse(local);
-            } catch (_) { }
-          }
+      if (tenantId) {
+        ref = db.collection("caixas")
+          .where("clientePlataformaId", "==", tenantId)
+          .where(campo, "==", usuarioLogado.id)
+          .where("status", "==", "ABERTO")
+          .limit(1);
+      }
 
-          let ref = db.collection("caixas")
-            .where("usuarioId", "==", usuarioLogado.id)
-            .where("status", "==", "ABERTO")
-            .limit(1);
+      const snap = await ref.get();
 
-          if (tenantId) {
-            ref = db.collection("caixas")
-              .where("clientePlataformaId", "==", tenantId)
-              .where("usuarioId", "==", usuarioLogado.id)
-              .where("status", "==", "ABERTO")
-              .limit(1);
-          }
+      if (!snap.empty) {
+        const doc = snap.docs[0];
+
+        caixaAtual = {
+          id: doc.id,
+          ...doc.data()
+        };
+
+        localStorage.setItem(
+          "caixaAtual",
+          JSON.stringify(caixaAtual)
+        );
+
+        await verificarCaixaAbertoDiaAnterior();
+
+        return;
+      }
+    } catch (erro) {
+      console.warn("Falha ao buscar caixa pelo campo:", campo, erro);
+    }
+  }
+
+  localStorage.removeItem("caixaAtual");
+}
+
+async function verificarCaixaAbertoDiaAnterior() {
+  if (!caixaAtual) return;
+
+  const dataCaixa = String(
+    caixaAtual.dataCaixa ||
+    caixaAtual.dataAbertura ||
+    caixaAtual.criadoEmTexto ||
+    ""
+  ).slice(0, 10);
+
+  if (!dataCaixa) return;
+
+  if (dataCaixa >= hojeISO()) return;
+
+  const chaveAlerta = `caixa_antigo_${caixaAtual.id}`;
+
+  if (localStorage.getItem(chaveAlerta) === hojeISO()) {
+    return;
+  }
+
+  try {
+    await db.collection("notificacoes").add({
+      tipo: "CAIXA_ABERTO_DIA_ANTERIOR",
+      titulo: "Caixa aberto de dia anterior",
+      mensagem: `O vendedor ${usuarioLogado.nome || usuarioLogado.nomeCompleto || ""} está operando com caixa aberto desde ${dataCaixa}.`,
+      clientePlataformaId: tenantId || caixaAtual.clientePlataformaId || null,
+      vendedorId: usuarioLogado.id,
+      vendedorNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || "",
+      caixaId: caixaAtual.id,
+      dataCaixa,
+      status: "PENDENTE",
+      publico: "SUPERVISOR",
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      criadoEmTexto: new Date().toISOString()
+    });
+
+    localStorage.setItem(chaveAlerta, hojeISO());
+  } catch (erro) {
+    console.error("Erro ao criar notificação de caixa antigo:", erro);
+  }
+}
 
           const snap = await ref.get();
 
