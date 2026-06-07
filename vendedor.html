@@ -4845,73 +4845,137 @@
         // ESTADO GLOBAL
         // =========================
 
-        let usuarioLogado = null;
-        let tenantId = "";
-        let caixaAtual = null;
+        var usuarioLogado = null;
+        var tenantId = "";
+        var caixaAtual = null;
 
-        let clientesCache = [];
-        let vendasCache = [];
-        let parcelasCache = [];
-        let pagamentosHojeCache = [];
-        let solicitacoesCache = [];
-        let historicoCobrancasCache = [];
+        var clientesCache = [];
+        var vendasCache = [];
+        var parcelasCache = [];
+        var pagamentosHojeCache = [];
+        var solicitacoesCache = [];
+        var historicoCobrancasCache = [];
+        var notificacoesCache = [];
 
         // =========================
         // INIT
         // =========================
 
-        document.addEventListener("DOMContentLoaded", async () => {
+        document.addEventListener("DOMContentLoaded", () => {
 
-          try {
+          firebase.auth().onAuthStateChanged(async (authUser) => {
+            try {
+              if (!authUser) {
+                const usuarioLocal = lerUsuarioLocal();
+                if (!usuarioLocal) {
+                  alert("Sessão expirada. Faça login novamente.");
+                  window.location.href = "index.html";
+                  return;
+                }
+                usuarioLogado = usuarioLocal;
+              } else {
+                usuarioLogado = await buscarUsuarioLogadoFirebase(authUser);
+              }
 
-            usuarioLogado =
-              JSON.parse(localStorage.getItem("usuario"));
+              if (!usuarioLogado) {
+                alert("Usuário autenticado, mas não encontrado no cadastro interno.");
+                window.location.href = "index.html";
+                return;
+              }
 
-            if (!usuarioLogado) {
-              alert("Sessão expirada. Faça login novamente.");
-              window.location.href = "index.html";
-              return;
+              const tipo = String(usuarioLogado.tipoUsuario || usuarioLogado.perfil || usuarioLogado.cargoNome || "").toLowerCase();
+              if (tipo && !tipo.includes("vendedor")) {
+                alert("Acesso negado para este perfil.");
+                window.location.href = "index.html";
+                return;
+              }
+
+              if (["INATIVO", "BLOQUEADO"].includes(String(usuarioLogado.status || "").toUpperCase()) || usuarioLogado.acessoLiberado === false) {
+                alert("Seu acesso está inativo ou bloqueado.");
+                window.location.href = "index.html";
+                return;
+              }
+
+              tenantId =
+                usuarioLogado.clientePlataformaId ||
+                usuarioLogado.empresaId ||
+                usuarioLogado.tenantId ||
+                usuarioLogado.clienteId ||
+                "";
+
+              localStorage.setItem("usuario", JSON.stringify(usuarioLogado));
+
+              preencherUsuarioLogadoNaTela();
+              atualizarDataPainel();
+
+              await carregarTudo();
+
+            } catch (erro) {
+              console.error("Erro ao iniciar vendedor:", erro);
+              alert("Erro ao iniciar vendedor:\n\n" + erro.message);
             }
-
-            if (usuarioLogado.tipoUsuario !== "vendedor") {
-              alert("Acesso negado para este perfil.");
-              window.location.href = "index.html";
-              return;
-            }
-
-            tenantId =
-              usuarioLogado.clientePlataformaId ||
-              usuarioLogado.empresaId ||
-              usuarioLogado.tenantId ||
-              "";
-
-            document.getElementById("vendedorNome").innerText =
-              usuarioLogado.nome ||
-              usuarioLogado.nomeCompleto ||
-              usuarioLogado.email ||
-              "Vendedor";
-
-            document.getElementById("empresaNome").innerText =
-              usuarioLogado.clientePlataformaNome ||
-              usuarioLogado.empresaNome ||
-              "Empresa";
-
-            atualizarDataPainel();
-
-            await carregarTudo();
-
-          } catch (erro) {
-
-            console.error("Erro ao iniciar vendedor:", erro);
-
-            alert(
-              "Erro ao iniciar vendedor:\n\n" +
-              erro.message
-            );
-
-          }
+          });
 
         });
+
+        function lerUsuarioLocal() {
+          const chaves = ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario"];
+          for (const chave of chaves) {
+            try {
+              const valor = localStorage.getItem(chave);
+              if (valor) return JSON.parse(valor);
+            } catch (erro) {
+              console.warn("Falha ao ler usuário local:", chave, erro);
+            }
+          }
+          return null;
+        }
+
+        async function buscarUsuarioLogadoFirebase(authUser) {
+          const local = lerUsuarioLocal() || {};
+          const tentativas = [
+            ["authUid", authUser.uid],
+            ["uid", authUser.uid],
+            ["email", authUser.email]
+          ].filter(([campo, valor]) => !!valor);
+
+          for (const [campo, valor] of tentativas) {
+            const snap = await db.collection("usuarios").where(campo, "==", valor).limit(1).get();
+            if (!snap.empty) {
+              const doc = snap.docs[0];
+              return { id: doc.id, authUid: authUser.uid, email: authUser.email, ...doc.data() };
+            }
+          }
+
+          if (local && (local.id || local.email)) {
+            return { authUid: authUser.uid, email: authUser.email, ...local };
+          }
+
+          return null;
+        }
+
+        function preencherUsuarioLogadoNaTela() {
+          const nomeEl = document.getElementById("vendedorNome");
+          const empresaEl = document.getElementById("empresaNome");
+
+          if (nomeEl) {
+            nomeEl.innerText =
+              usuarioLogado.nome ||
+              usuarioLogado.nomeCompleto ||
+              usuarioLogado.displayName ||
+              usuarioLogado.email ||
+              "Vendedor";
+          }
+
+          if (empresaEl) {
+            empresaEl.innerText =
+              usuarioLogado.clientePlataformaNome ||
+              usuarioLogado.empresaNome ||
+              usuarioLogado.nomeEmpresa ||
+              usuarioLogado.clienteNome ||
+              "Empresa";
+          }
+        }
 
         // =========================
         // HELPERS
@@ -5082,6 +5146,7 @@
               carregarParcelas(),
               carregarPagamentosHoje(),
               carregarSolicitacoes(),
+              carregarNotificacoes(),
               carregarHistoricoCobrancas()
             ]);
 
@@ -5198,22 +5263,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 }
 
-          const snap = await ref.get();
-
-          if (!snap.empty) {
-            const doc = snap.docs[0];
-            caixaAtual = {
-              id: doc.id,
-              ...doc.data()
-            };
-
-            localStorage.setItem(
-              "caixaAtual",
-              JSON.stringify(caixaAtual)
-            );
-          }
-
-        }
 
         async function carregarClientes() {
 
@@ -5369,6 +5418,49 @@ async function verificarCaixaAbertoDiaAnterior() {
             }
           });
 
+        }
+
+        async function carregarNotificacoes() {
+          try {
+            let ref = db.collection("notificacoes").limit(100);
+
+            if (tenantId) {
+              ref = db.collection("notificacoes")
+                .where("clientePlataformaId", "==", tenantId)
+                .limit(100);
+            }
+
+            const snap = await ref.get();
+            notificacoesCache = [];
+
+            snap.forEach(doc => {
+              const n = { id: doc.id, ...doc.data() };
+              const pertenceAoUsuario =
+                !n.usuarioId ||
+                n.usuarioId === usuarioLogado.id ||
+                n.vendedorId === usuarioLogado.id ||
+                String(n.publico || "").toUpperCase().includes("VENDEDOR") ||
+                String(n.destinatarioTipo || "").toUpperCase().includes("VENDEDOR");
+
+              if (pertenceAoUsuario && n.excluido !== true) notificacoesCache.push(n);
+            });
+
+            atualizarContadorNotificacoes();
+          } catch (erro) {
+            console.warn("Falha ao carregar notificações:", erro);
+            notificacoesCache = [];
+            atualizarContadorNotificacoes();
+          }
+        }
+
+        function atualizarContadorNotificacoes() {
+          const pendentes = (notificacoesCache || []).filter(n =>
+            !n.lida && !["LIDA", "ARQUIVADA", "CANCELADA"].includes(String(n.status || "").toUpperCase())
+          ).length;
+
+          document.querySelectorAll("[data-notification-count]").forEach(el => {
+            el.innerText = pendentes;
+          });
         }
 
         async function carregarHistoricoCobrancas() {
@@ -6653,9 +6745,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
             firebase.auth().signOut().finally(() => {
 
-              localStorage.removeItem("usuario");
-
-              localStorage.removeItem("caixaAtual");
+              ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario", "caixaAtual"].forEach(chave => localStorage.removeItem(chave));
 
               window.location.href = "index.html";
 
