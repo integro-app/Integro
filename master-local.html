@@ -1324,17 +1324,6 @@
   document.getElementById("userCargo").innerText = cargo;
 }
 
-    const topNome = document.getElementById("topNome");
-    const topEmpresa = document.getElementById("topEmpresa");
-    const topCargo = document.getElementById("topCargo");
-    const topData = document.getElementById("topData");
-
-    if(topNome) topNome.innerText = nome;
-    if(topEmpresa) topEmpresa.innerText = empresa;
-    if(topCargo) topCargo.innerText = cargo;
-    if(topData) topData.innerText = `📅 ${data}`;
-  }
-
   function trocarTela(tela, el){
     document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
     const atual = document.getElementById(tela);
