@@ -6365,6 +6365,24 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   </div>
 
+<script>
+  function toggleSidebar(){
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+
+    if(sidebar){
+      sidebar.classList.toggle("show");
+      sidebar.classList.toggle("open");
+      sidebar.classList.toggle("active");
+    }
+
+    if(overlay){
+      overlay.classList.toggle("show");
+      overlay.classList.toggle("active");
+    }
+  }
+</script>
+
 </body>
 
 </html>
