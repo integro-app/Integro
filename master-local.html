@@ -1285,31 +1285,47 @@
   }
 
   function preencherTopoMasterLocal(){
-    const usuario =
-      window.usuarioLogado ||
-      JSON.parse(localStorage.getItem("usuarioLogado") || "{}");
+  const usuario =
+    window.usuarioLogado ||
+    window.usuarioAtual ||
+    State?.getUsuario?.() ||
+    JSON.parse(localStorage.getItem("usuarioLogado") || "{}") ||
+    JSON.parse(localStorage.getItem("usuarioAtual") || "{}");
 
-    const nome =
-      usuario.nome ||
-      usuario.nomeCompleto ||
-      "Usuário";
+  const nome =
+    usuario.nome ||
+    usuario.nomeCompleto ||
+    usuario.displayName ||
+    "Usuário";
 
-    const empresa =
-      usuario.empresaNome ||
-      usuario.clientePlataformaNome ||
-      usuario.clienteNome ||
-      "Empresa";
+  const empresa =
+    usuario.empresaNome ||
+    usuario.nomeEmpresa ||
+    usuario.clientePlataformaNome ||
+    usuario.clienteNome ||
+    "Empresa";
 
-    const cargo =
-      usuario.cargoNome ||
-      usuario.tipoUsuario ||
-      "Cargo";
+  const cargo =
+    usuario.cargoNome ||
+    usuario.cargo ||
+    usuario.tipoUsuario ||
+    "Cargo";
 
-    const data = new Date().toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric"
-    });
+  const data = new Date().toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric"
+  });
+
+  document.getElementById("topNome").innerText = nome;
+  document.getElementById("topEmpresa").innerText = empresa;
+  document.getElementById("topCargo").innerText = cargo;
+  document.getElementById("topData").innerText = `📅 ${data}`;
+
+  document.getElementById("userNome").innerText = nome;
+  document.getElementById("empresaNome").innerText = empresa;
+  document.getElementById("userCargo").innerText = cargo;
+}
 
     const topNome = document.getElementById("topNome");
     const topEmpresa = document.getElementById("topEmpresa");
