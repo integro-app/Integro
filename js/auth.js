@@ -10,6 +10,9 @@
 async function login() {
   const emailInput = document.getElementById("email");
   const senhaInput = document.getElementById("senha");
+  const botaoLogin =
+    document.querySelector("button[onclick='login()']") ||
+    document.querySelector("#btnLogin");
 
   const email = (emailInput?.value || "").trim().toLowerCase();
   const senha = (senhaInput?.value || "").trim();
@@ -20,7 +23,11 @@ async function login() {
   }
 
   try {
-    UIHelpers.alerta("Validando acesso...");
+    if (botaoLogin) {
+      botaoLogin.disabled = true;
+      botaoLogin.dataset.textoOriginal = botaoLogin.innerText;
+      botaoLogin.innerText = "Validando...";
+    }
 
     const credencial = await auth.signInWithEmailAndPassword(email, senha);
     const authUser = credencial.user;
@@ -45,6 +52,11 @@ async function login() {
 
     State.setUsuario(usuario);
 
+    try {
+      localStorage.setItem("usuarioLogado", JSON.stringify(usuario));
+      localStorage.setItem("usuarioAtual", JSON.stringify(usuario));
+    } catch (_) {}
+
     redirecionarUsuario(usuario);
 
   } catch (erro) {
@@ -67,9 +79,13 @@ async function login() {
     }
 
     UIHelpers.alerta(mensagem);
+  } finally {
+    if (botaoLogin) {
+      botaoLogin.disabled = false;
+      botaoLogin.innerText = botaoLogin.dataset.textoOriginal || "Entrar na plataforma";
+    }
   }
 }
-
 // ===============================
 // REDIRECIONAMENTO
 // ===============================
