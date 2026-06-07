@@ -143,6 +143,11 @@ function protegerPagina(tipoObrigatorio = null) {
       }
 
       State.setUsuario(usuario);
+      
+      try {
+  localStorage.setItem("usuarioLogado", JSON.stringify(usuario));
+  localStorage.setItem("usuarioAtual", JSON.stringify(usuario));
+} catch (_) {}
 
       // Disparar evento de usuário validado para outras partes da aplicação
       document.dispatchEvent(
