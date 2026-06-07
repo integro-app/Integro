@@ -1,1 +1,306 @@
-<h1>MASTER GLOBAL</h1>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ÍNTEGRO • Master Global</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
+    :root{
+      --bg:#f1f5f9;--sidebar:#071a33;--sidebar2:#0c2344;--orange:#ff6b00;--orange2:#ffb100;
+      --blue:#2563eb;--green:#16a34a;--purple:#7c3aed;--red:#dc2626;--text:#0f172a;
+      --muted:#64748b;--card:#fff;--line:#e2e8f0;
+    }
+    body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+    .app{min-height:100vh}
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);opacity:0;visibility:hidden;transition:.2s;z-index:900}
+    .overlay.show{opacity:1;visibility:visible}
+    .sidebar{position:fixed;top:0;left:-310px;bottom:0;width:300px;background:linear-gradient(180deg,var(--sidebar),var(--sidebar2));color:#fff;padding:22px 16px;z-index:999;transition:.25s;overflow-y:auto;box-shadow:14px 0 40px rgba(2,6,23,.22)}
+    .sidebar.show{left:0}.sidebar::-webkit-scrollbar{width:5px}.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}
+    .logo{font-size:36px;font-weight:900;letter-spacing:-2px;margin:2px 8px 22px}.logo span{background:linear-gradient(135deg,var(--orange2),var(--orange));-webkit-background-clip:text;color:transparent}
+    .user-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:16px;margin-bottom:22px}.user-card small{display:block;color:#cbd5e1;font-size:12px;font-weight:800;margin-bottom:6px}.user-card strong{display:block;font-size:16px;margin-bottom:10px}.status-online{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(34,197,94,.14);color:#4ade80;font-size:12px;font-weight:900}.status-online:before{content:"";width:8px;height:8px;border-radius:50%;background:#4ade80}
+    .menu-section{margin-bottom:22px}.menu-title{font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#94a3b8;padding:0 12px;margin-bottom:10px}.menu{display:grid;gap:7px}.menu button{height:52px;border:0;background:transparent;color:#e2e8f0;border-radius:16px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;cursor:pointer;transition:.18s}.menu button:hover{background:rgba(255,255,255,.08)}.menu button.active{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;box-shadow:0 10px 24px rgba(255,107,0,.25)}.menu-left{display:flex;align-items:center;gap:11px}
+    .main{min-height:100vh;padding:22px}.topbar{background:#fff;border:1px solid var(--line);border-radius:26px;padding:16px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:14px;box-shadow:0 10px 26px rgba(15,23,42,.04)}.top-left{display:flex;align-items:center;gap:14px}.hamburger{width:52px;height:52px;border:1px solid var(--line);background:#f8fafc;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:900;cursor:pointer;color:#0f172a}.topbar h1{font-size:28px;font-weight:900;letter-spacing:-1px}.topbar p{color:var(--muted);font-size:14px;font-weight:700;margin-top:2px}.top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .btn{height:50px;padding:0 18px;border:0;border-radius:16px;cursor:pointer;font-weight:900;font-size:14px;transition:.18s;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn-primary{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;box-shadow:0 12px 24px rgba(255,107,0,.20)}.btn-light{background:#fff;border:1px solid var(--line);color:#0f172a}.btn-danger{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}.btn-ok{background:#dcfce7;color:#166534;border:1px solid #bbf7d0}.btn:hover{transform:translateY(-1px)}
+    .grid{display:grid;gap:18px}.grid-4{grid-template-columns:repeat(4,1fr)}.grid-3{grid-template-columns:repeat(3,1fr)}
+    .card,.panel{background:#fff;border:1px solid var(--line);border-radius:28px;padding:22px;box-shadow:0 10px 24px rgba(15,23,42,.04)}.card-gradient{color:#fff;border:0;cursor:pointer}.card-orange{background:linear-gradient(135deg,#ffb100,#ff6b00)}.card-blue{background:linear-gradient(135deg,#0ea5e9,#2563eb)}.card-green{background:linear-gradient(135deg,#22c55e,#15803d)}.card-purple{background:linear-gradient(135deg,#8b5cf6,#5b21b6)}.card-red{background:linear-gradient(135deg,#fb7185,#dc2626)}.card small{display:block;font-size:13px;font-weight:900;opacity:.9;margin-bottom:12px}.card strong{display:block;font-size:32px;font-weight:900;letter-spacing:-1px;margin-bottom:8px}.card p{font-size:13px;line-height:1.5;font-weight:700;opacity:.92}
+    .panel-title{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:18px}.panel-title h2{font-size:24px;font-weight:900;letter-spacing:-1px}.panel-title p{color:var(--muted);font-size:13px;font-weight:700;margin-top:3px}
+    .input,.select,.textarea{width:100%;border:1px solid var(--line);border-radius:16px;background:#fff;outline:none;font-size:14px;font-weight:800}.input,.select{height:54px;padding:0 15px}.textarea{min-height:110px;padding:15px;resize:none}.label{display:block;margin-bottom:8px;color:#475569;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.6px}.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.search-grid{display:grid;grid-template-columns:1fr auto auto;gap:12px;margin-bottom:16px}.badge{display:inline-flex;align-items:center;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:900}.badge-ok{background:#dcfce7;color:#166534}.badge-off{background:#fee2e2;color:#991b1b}.badge-warn{background:#ffedd5;color:#9a3412}.row-card{border:1px solid var(--line);border-radius:22px;padding:16px;background:#fff;display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;box-shadow:0 8px 18px rgba(15,23,42,.035)}
+    .screen{display:none}.screen.active{display:block}
+    .drawer{position:fixed;top:0;right:-100%;width:100%;max-width:560px;height:100dvh;background:#fff;z-index:1001;transition:.28s;box-shadow:-20px 0 50px rgba(15,23,42,.18);overflow-y:auto}.drawer.show{right:0}.drawer-head{position:sticky;top:0;background:#fff;border-bottom:1px solid var(--line);padding:20px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px}.drawer-head h2{font-size:25px;font-weight:900;letter-spacing:-1px}.drawer-head p{color:var(--muted);font-weight:700;font-size:13px;margin-top:3px}.drawer-body{padding:20px}.close{width:46px;height:46px;border:0;border-radius:14px;background:#f1f5f9;font-size:22px;font-weight:900;cursor:pointer}.drawer-overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);z-index:1000;opacity:0;visibility:hidden;transition:.2s}.drawer-overlay.show{opacity:1;visibility:visible}
+    @media(max-width:1200px){.grid-4{grid-template-columns:repeat(2,1fr)}.grid-3{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:760px){.main{padding:12px}.topbar{border-radius:22px;align-items:flex-start;flex-direction:column}.topbar h1{font-size:22px}.top-actions,.top-actions .btn{width:100%}.grid-4,.grid-3,.form-grid,.search-grid{grid-template-columns:1fr}.card,.panel{border-radius:22px;padding:16px}.row-card{grid-template-columns:1fr}.drawer{max-width:100vw}.drawer-body{padding-bottom:120px}.btn{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="overlay" id="sidebarOverlay" onclick="fecharSidebar()"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="logo">ÍNTE<span>GRO</span></div>
+    <div class="user-card">
+      <small>Usuário logado</small>
+      <strong id="usuarioNome">Carregando...</strong>
+      <small id="usuarioPerfil">Master Global</small>
+      <span class="status-online">Online</span>
+    </div>
+
+    <div class="menu-section">
+      <div class="menu-title">Comunicação</div>
+      <div class="menu">
+        <button onclick="trocarTela('notificacoes',this)"><span class="menu-left"><span>🔔</span>Notificações</span><span>›</span></button>
+        <button onclick="trocarTela('chat',this)"><span class="menu-left"><span>💬</span>Chat interno</span><span>›</span></button>
+      </div>
+    </div>
+
+    <div class="menu-section">
+      <div class="menu-title">Plataforma</div>
+      <div class="menu">
+        <button class="active" onclick="trocarTela('dashboard',this)"><span class="menu-left"><span>🏠</span>Dashboard</span><span>›</span></button>
+        <button onclick="trocarTela('clientes',this)"><span class="menu-left"><span>🏢</span>Clientes ÍNTEGRO</span><span>›</span></button>
+        <button onclick="trocarTela('usuarios',this)"><span class="menu-left"><span>👤</span>Usuários internos</span><span>›</span></button>
+        <button onclick="trocarTela('departamentos',this)"><span class="menu-left"><span>🧩</span>Departamentos</span><span>›</span></button>
+        <button onclick="trocarTela('planos',this)"><span class="menu-left"><span>💳</span>Planos</span><span>›</span></button>
+        <button onclick="trocarTela('logs',this)"><span class="menu-left"><span>📜</span>Logs</span><span>›</span></button>
+      </div>
+    </div>
+
+    <div class="menu-section">
+      <div class="menu-title">Sistema</div>
+      <div class="menu">
+        <button onclick="logout()"><span class="menu-left"><span>🚪</span>Sair</span><span>×</span></button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="top-left">
+        <button class="hamburger" onclick="abrirSidebar()">☰</button>
+        <div><h1 id="pageTitle">Dashboard Master Global</h1><p id="pageSubtitle">Controle raiz da plataforma ÍNTEGRO.</p></div>
+      </div>
+      <div class="top-actions">
+        <button id="btnAcaoTopo" class="btn btn-primary" onclick="abrirNovoCliente()">+ Novo cliente</button>
+      </div>
+    </header>
+
+    <section id="dashboard" class="screen active">
+      <div class="grid grid-4">
+        <div class="card card-gradient card-blue" onclick="abrirResumo('clientes')"><small>Clientes da plataforma</small><strong id="kpiClientes">0</strong><p>PF/PJ cadastrados no ÍNTEGRO.</p></div>
+        <div class="card card-gradient card-green" onclick="abrirResumo('ativos')"><small>Clientes ativos</small><strong id="kpiAtivos">0</strong><p>Com acesso liberado e status ativo.</p></div>
+        <div class="card card-gradient card-orange" onclick="abrirResumo('teste')"><small>Em teste</small><strong id="kpiTeste">0</strong><p>Clientes usando período de teste.</p></div>
+        <div class="card card-gradient card-purple" onclick="abrirResumo('masters')"><small>Masters locais</small><strong id="kpiMasters">0</strong><p>Usuários master_local vinculados.</p></div>
+      </div>
+      <div class="grid grid-3" style="margin-top:18px;">
+        <div class="panel"><div class="panel-title"><div><h2>Status da plataforma</h2><p>Resumo operacional.</p></div></div><div id="resumoPlataforma" class="grid" style="gap:12px"></div></div>
+        <div class="panel"><div class="panel-title"><div><h2>Últimos clientes</h2><p>Cadastros recentes.</p></div></div><div id="ultimosClientes" class="grid" style="gap:12px"></div></div>
+        <div class="panel"><div class="panel-title"><div><h2>Alertas</h2><p>Pontos de atenção.</p></div></div><div id="alertas" class="grid" style="gap:12px"></div></div>
+      </div>
+    </section>
+
+    <section id="clientes" class="screen">
+      <div class="panel">
+        <div class="panel-title"><div><h2>Clientes ÍNTEGRO</h2><p>Empresas ou pessoas físicas contratantes da plataforma.</p></div><button class="btn btn-primary" onclick="abrirNovoCliente()">+ Novo cliente</button></div>
+        <div class="search-grid"><input id="buscaCliente" class="input" placeholder="Buscar por nome, fantasia, documento ou e-mail" onkeydown="if(event.key==='Enter')renderClientes()"><button class="btn btn-primary" onclick="renderClientes()">Buscar</button><button class="btn btn-light" onclick="limparBusca('buscaCliente',renderClientes)">Limpar</button></div>
+        <div id="contadorClientes" style="color:#64748b;font-size:13px;font-weight:900;margin-bottom:12px"></div>
+        <div id="listaClientes" class="grid" style="gap:14px"></div>
+      </div>
+    </section>
+
+    <section id="usuarios" class="screen">
+      <div class="panel">
+        <div class="panel-title"><div><h2>Usuários internos ÍNTEGRO</h2><p>Equipe interna que administra a empresa dona da plataforma.</p></div><button class="btn btn-primary" onclick="abrirNovoUsuarioInterno()">+ Novo usuário</button></div>
+        <div id="listaUsuariosInternos" class="grid" style="gap:14px"></div>
+      </div>
+    </section>
+
+    <section id="departamentos" class="screen"><div class="panel"><div class="panel-title"><div><h2>Departamentos internos</h2><p>Comercial, financeiro, administrativo e suporte.</p></div><button class="btn btn-primary" onclick="abrirNovoDepartamento()">+ Departamento</button></div><div id="listaDepartamentos" class="grid" style="gap:14px"></div></div></section>
+    <section id="planos" class="screen"><div class="panel"><div class="panel-title"><div><h2>Planos</h2><p>Planos comerciais da plataforma.</p></div><button class="btn btn-primary" onclick="abrirNovoPlano()">+ Plano</button></div><div id="listaPlanos" class="grid" style="gap:14px"></div></div></section>
+    <section id="notificacoes" class="screen"><div class="panel"><div class="panel-title"><div><h2>Notificações</h2><p>Central de comunicação da plataforma.</p></div></div><div id="listaNotificacoes" class="grid" style="gap:14px"></div></div></section>
+    <section id="chat" class="screen"><div class="panel"><div class="panel-title"><div><h2>Chat interno</h2><p>Área reservada para comunicação entre funcionários.</p></div></div><div class="row-card"><div><strong>Chat interno em preparação</strong><p style="color:#64748b;font-weight:700;margin-top:5px">Futuramente funcionará como WhatsApp interno do ÍNTEGRO.</p></div><span class="badge badge-warn">Futuro</span></div></div></section>
+    <section id="logs" class="screen"><div class="panel"><div class="panel-title"><div><h2>Logs e auditoria</h2><p>Registro de ações importantes no sistema.</p></div><button class="btn btn-light" onclick="carregarLogs()">Atualizar</button></div><div id="listaLogs" class="grid" style="gap:14px"></div></div></section>
+  </main>
+
+  <div id="drawerOverlay" class="drawer-overlay" onclick="fecharDrawer()"></div>
+  <aside id="drawer" class="drawer">
+    <div class="drawer-head"><div><h2 id="drawerTitle">Título</h2><p id="drawerSubtitle">Subtítulo</p></div><button class="close" onclick="fecharDrawer()">×</button></div>
+    <div id="drawerBody" class="drawer-body"></div>
+  </aside>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+
+  <script>
+    let db, auth, usuarioLogado=null;
+    let clientesIntegro=[], usuarios=[], departamentos=[], planos=[], notificacoes=[], logs=[];
+
+    document.addEventListener('DOMContentLoaded', async()=>{
+      try{
+        db=firebase.firestore(); auth=firebase.auth();
+        auth.onAuthStateChanged(async user=>{
+          if(!user){ window.location.href='index.html'; return; }
+          await carregarUsuarioLogado(user);
+          validarAcessoMasterGlobal();
+          preencherUsuario();
+          await carregarTudo();
+        });
+      }catch(e){ console.error(e); alert('Erro ao iniciar Master Global: '+e.message); }
+    });
+
+    async function carregarUsuarioLogado(user){
+      let snap = await db.collection('usuarios').where('authUid','==',user.uid).limit(1).get();
+      if(snap.empty) snap = await db.collection('usuarios').where('uid','==',user.uid).limit(1).get();
+      if(snap.empty) snap = await db.collection('usuarios').where('email','==',user.email).limit(1).get();
+      if(snap.empty) throw new Error('Usuário autenticado sem cadastro interno na coleção usuarios.');
+      const doc=snap.docs[0]; usuarioLogado={id:doc.id,...doc.data(),authUid:user.uid,email:user.email||doc.data().email};
+      localStorage.setItem('usuario',JSON.stringify(usuarioLogado));
+    }
+
+    function validarAcessoMasterGlobal(){
+      const tipo=String(usuarioLogado.tipoUsuario||'').toLowerCase();
+      const status=String(usuarioLogado.status||'ATIVO').toUpperCase();
+      if(tipo!=='master_global' || status!=='ATIVO' || usuarioLogado.acessoLiberado===false){
+        alert('Acesso negado. Este painel é exclusivo para master_global ativo e liberado.');
+        window.location.href='index.html';
+      }
+    }
+
+    function preencherUsuario(){
+      document.getElementById('usuarioNome').innerText=usuarioLogado.nome||usuarioLogado.nomeCompleto||usuarioLogado.email||'Master Global';
+      document.getElementById('usuarioPerfil').innerText='Master Global • ÍNTEGRO';
+    }
+
+    async function carregarTudo(){
+      await Promise.all([carregarClientesIntegro(),carregarUsuarios(),carregarDepartamentos(),carregarPlanos(),carregarNotificacoes(),carregarLogs()]);
+      atualizarDashboard(); renderClientes(); renderUsuariosInternos(); renderDepartamentos(); renderPlanos(); renderNotificacoes(); renderLogs();
+    }
+
+    async function carregarClientesIntegro(){ const s=await db.collection('clientes_integro').limit(800).get(); clientesIntegro=s.docs.map(d=>({id:d.id,...d.data()})); }
+    async function carregarUsuarios(){ const s=await db.collection('usuarios').limit(1000).get(); usuarios=s.docs.map(d=>({id:d.id,...d.data()})); }
+    async function carregarDepartamentos(){ const s=await db.collection('departamentos_integro').limit(300).get().catch(()=>({docs:[]})); departamentos=s.docs.map(d=>({id:d.id,...d.data()})); }
+    async function carregarPlanos(){ const s=await db.collection('planos').limit(300).get().catch(()=>({docs:[]})); planos=s.docs.map(d=>({id:d.id,...d.data()})); }
+    async function carregarNotificacoes(){ const s=await db.collection('notificacoes').limit(100).get().catch(()=>({docs:[]})); notificacoes=s.docs.map(d=>({id:d.id,...d.data()})); }
+    async function carregarLogs(){ const s=await db.collection('logs').limit(120).get().catch(()=>({docs:[]})); logs=s.docs.map(d=>({id:d.id,...d.data()})); renderLogs(); }
+
+    function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebarOverlay').classList.add('show')}
+    function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebarOverlay').classList.remove('show')}
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}});
+
+    function trocarTela(id,btn){
+      document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+      document.getElementById(id)?.classList.add('active');
+      document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));
+      if(btn)btn.classList.add('active');
+      const tit={dashboard:['Dashboard Master Global','Controle raiz da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma e seus masters locais.'],usuarios:['Usuários internos','Equipe interna da empresa ÍNTEGRO.'],departamentos:['Departamentos','Organização interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais e regras de acesso.'],notificacoes:['Notificações','Central de comunicação.'],chat:['Chat interno','Comunicação futura entre funcionários.'],logs:['Logs e auditoria','Registro de ações importantes.']};
+      if(tit[id]){pageTitle.innerText=tit[id][0];pageSubtitle.innerText=tit[id][1];}
+      btnAcaoTopo.style.display=id==='clientes'?'inline-flex':'none';
+      fecharSidebar();
+    }
+
+    function abrirDrawer(t,s,h){drawerTitle.innerText=t;drawerSubtitle.innerText=s;drawerBody.innerHTML=h;drawer.classList.add('show');drawerOverlay.classList.add('show')}
+    function fecharDrawer(){drawer.classList.remove('show');drawerOverlay.classList.remove('show')}
+    function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+    function dataBR(v){ if(!v)return '-'; if(v.toDate)return v.toDate().toLocaleString('pt-BR'); return String(v).slice(0,19).replace('T',' '); }
+    function limparBusca(id,fn){document.getElementById(id).value='';fn();}
+    function statusBadge(status,liberado=true){ const st=String(status||'ATIVO').toUpperCase(); if(st==='ATIVO'&&liberado!==false)return '<span class="badge badge-ok">ATIVO</span>'; if(st==='BLOQUEADO'||liberado===false)return '<span class="badge badge-off">BLOQUEADO</span>'; return '<span class="badge badge-warn">'+st+'</span>'; }
+
+    function atualizarDashboard(){
+      const ativos=clientesIntegro.filter(c=>String(c.status||'ATIVO').toUpperCase()==='ATIVO'&&c.acessoLiberado!==false).length;
+      const teste=clientesIntegro.filter(c=>c.testeAtivo===true).length;
+      const masters=usuarios.filter(u=>String(u.tipoUsuario||'').toLowerCase()==='master_local').length;
+      kpiClientes.innerText=clientesIntegro.length;kpiAtivos.innerText=ativos;kpiTeste.innerText=teste;kpiMasters.innerText=masters;
+      resumoPlataforma.innerHTML=`<div class="row-card"><div><strong>${usuarios.length}</strong><p style="color:#64748b;font-weight:700">Usuários totais cadastrados</p></div></div><div class="row-card"><div><strong>${departamentos.length}</strong><p style="color:#64748b;font-weight:700">Departamentos internos</p></div></div><div class="row-card"><div><strong>${planos.length}</strong><p style="color:#64748b;font-weight:700">Planos cadastrados</p></div></div>`;
+      ultimosClientes.innerHTML=(clientesIntegro.slice(0,4).map(c=>`<div class="row-card"><div><strong>${c.nomeFantasia||c.fantasia||c.razaoSocial||c.nomeCompleto||'Cliente'}</strong><p style="color:#64748b;font-weight:700">${c.email||'-'}</p></div>${statusBadge(c.status,c.acessoLiberado)}</div>`).join(''))||'<div class="row-card"><strong>Nenhum cliente cadastrado</strong></div>';
+      alertas.innerHTML=`<div class="row-card"><div><strong>${clientesIntegro.filter(c=>c.acessoLiberado===false).length}</strong><p style="color:#64748b;font-weight:700">Clientes bloqueados</p></div></div><div class="row-card"><div><strong>${notificacoes.length}</strong><p style="color:#64748b;font-weight:700">Notificações recentes</p></div></div>`;
+    }
+
+    function renderClientes(){
+      const termo=(buscaCliente?.value||'').toLowerCase();
+      const lista=clientesIntegro.filter(c=>!termo||`${c.nomeCompleto||''} ${c.razaoSocial||''} ${c.fantasia||''} ${c.nomeFantasia||''} ${c.documento||''} ${c.email||''}`.toLowerCase().includes(termo));
+      contadorClientes.innerText=`${lista.length} cliente(s) exibido(s).`;
+      listaClientes.innerHTML=lista.length?lista.map(c=>`<div class="row-card" onclick="abrirCliente('${c.id}')" style="cursor:pointer"><div><strong>${c.nomeFantasia||c.fantasia||c.razaoSocial||c.nomeCompleto||'Cliente'}</strong><p style="color:#64748b;font-weight:700;margin-top:4px">${c.tipoPessoa||'-'} • ${c.documento||'-'} • ${c.email||'-'}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">${statusBadge(c.status,c.acessoLiberado)}${c.testeAtivo?'<span class="badge badge-warn">TESTE</span>':''}</div></div>`).join(''):'<div class="row-card"><strong>Nenhum cliente encontrado</strong></div>';
+    }
+
+    function renderUsuariosInternos(){
+      const internos=usuarios.filter(u=>!u.clientePlataformaId && String(u.tipoUsuario||'').toLowerCase()!=='master_local');
+      listaUsuariosInternos.innerHTML=internos.length?internos.map(u=>`<div class="row-card"><div><strong>${u.nome||u.nomeCompleto||u.email}</strong><p style="color:#64748b;font-weight:700">${u.email||'-'} • ${u.tipoUsuario||'-'} • ${u.departamentoNome||'-'}</p></div>${statusBadge(u.status,u.acessoLiberado)}</div>`).join(''):'<div class="row-card"><strong>Nenhum usuário interno cadastrado</strong></div>';
+    }
+
+    function renderDepartamentos(){listaDepartamentos.innerHTML=departamentos.length?departamentos.map(d=>`<div class="row-card"><div><strong>${d.nome}</strong><p style="color:#64748b;font-weight:700">${d.descricao||'-'}</p></div>${statusBadge(d.status??'ATIVO',true)}</div>`).join(''):'<div class="row-card"><strong>Nenhum departamento cadastrado</strong></div>';}
+    function renderPlanos(){listaPlanos.innerHTML=planos.length?planos.map(p=>`<div class="row-card"><div><strong>${p.nome}</strong><p style="color:#64748b;font-weight:700">${moeda(p.valorMensal||p.valor||0)} • ${p.descricao||'-'}</p></div>${statusBadge(p.status??'ATIVO',true)}</div>`).join(''):'<div class="row-card"><strong>Nenhum plano cadastrado</strong></div>';}
+    function renderNotificacoes(){listaNotificacoes.innerHTML=notificacoes.length?notificacoes.map(n=>`<div class="row-card"><div><strong>${n.titulo||n.tipo||'Notificação'}</strong><p style="color:#64748b;font-weight:700">${n.mensagem||n.descricao||'-'}</p></div><span class="badge badge-warn">${n.status||'PENDENTE'}</span></div>`).join(''):'<div class="row-card"><strong>Nenhuma notificação encontrada</strong></div>';}
+    function renderLogs(){if(!document.getElementById('listaLogs'))return; listaLogs.innerHTML=logs.length?logs.map(l=>`<div class="row-card"><div><strong>${l.tipoAcao||l.tipo||'LOG'}</strong><p style="color:#64748b;font-weight:700">${l.usuarioNome||l.usuarioId||'-'} • ${dataBR(l.criadoEm||l.data)}</p><p style="color:#64748b;font-weight:700;margin-top:4px">${l.detalhe||l.descricao||'-'}</p></div></div>`).join(''):'<div class="row-card"><strong>Nenhum log encontrado</strong></div>';}
+
+    function abrirNovoCliente(){
+      abrirDrawer('Novo cliente ÍNTEGRO','Crie PF/PJ contratante e depois vincule o Master Local',`
+        <div class="grid" style="gap:18px">
+          <div class="form-grid"><div><label class="label">Tipo de pessoa</label><select id="cliTipo" class="select"><option value="PJ">Pessoa Jurídica</option><option value="PF">Pessoa Física</option></select></div><div><label class="label">Status</label><select id="cliStatus" class="select"><option value="ATIVO">ATIVO</option><option value="BLOQUEADO">BLOQUEADO</option></select></div></div>
+          <div><label class="label">Nome/Razão social</label><input id="cliNome" class="input" placeholder="Nome do cliente ou razão social"></div>
+          <div><label class="label">Fantasia/Apelido</label><input id="cliFantasia" class="input" placeholder="Nome de exibição"></div>
+          <div class="form-grid"><div><label class="label">Documento</label><input id="cliDocumento" class="input" placeholder="CPF/CNPJ"></div><div><label class="label">Telefone</label><input id="cliTelefone" class="input" placeholder="Telefone"></div></div>
+          <div><label class="label">E-mail do cliente</label><input id="cliEmail" class="input" placeholder="email@empresa.com"></div>
+          <div class="form-grid"><div><label class="label">Plano</label><input id="cliPlano" class="input" placeholder="Plano inicial"></div><div><label class="label">Teste ativo?</label><select id="cliTeste" class="select"><option value="false">Não</option><option value="true">Sim</option></select></div></div>
+          <button class="btn btn-primary" onclick="salvarClienteIntegro()">Salvar cliente</button>
+        </div>`);
+    }
+
+    async function salvarClienteIntegro(){
+      const nome=cliNome.value.trim(); if(!nome){alert('Informe o nome/razão social.');return;}
+      const ref=await db.collection('clientes_integro').add({tipoPessoa:cliTipo.value,status:cliStatus.value,acessoLiberado:cliStatus.value==='ATIVO',nomeCompleto:cliTipo.value==='PF'?nome:'',razaoSocial:cliTipo.value==='PJ'?nome:'',fantasia:cliFantasia.value.trim(),nomeFantasia:cliFantasia.value.trim(),documento:cliDocumento.value.trim(),telefone:cliTelefone.value.trim(),email:cliEmail.value.trim(),planoNome:cliPlano.value.trim(),testeAtivo:cliTeste.value==='true',criadoPor:usuarioLogado.id,criadoPorNome:usuarioLogado.nome||usuarioLogado.email,criadoEm:firebase.firestore.FieldValue.serverTimestamp(),criadoEmTexto:new Date().toISOString()});
+      await registrarLog('CRIAR_CLIENTE_INTEGRO',`Cliente criado: ${nome}`); fecharDrawer(); await carregarTudo(); abrirCliente(ref.id);
+    }
+
+    function abrirCliente(id){
+      const c=clientesIntegro.find(x=>x.id===id); if(!c)return;
+      const masters=usuarios.filter(u=>u.clientePlataformaId===id && String(u.tipoUsuario||'').toLowerCase()==='master_local');
+      abrirDrawer('Cliente ÍNTEGRO',c.nomeFantasia||c.fantasia||c.razaoSocial||c.nomeCompleto||'Cliente',`
+        <div class="grid" style="gap:14px">
+          <div class="row-card"><div><strong>${c.razaoSocial||c.nomeCompleto||'-'}</strong><p style="color:#64748b;font-weight:700">${c.email||'-'} • ${c.documento||'-'}</p></div>${statusBadge(c.status,c.acessoLiberado)}</div>
+          <button class="btn btn-primary" onclick="abrirCriarMasterLocal('${id}')">Criar Master Local</button>
+          <button class="btn ${c.acessoLiberado===false?'btn-ok':'btn-danger'}" onclick="alternarAcessoCliente('${id}',${c.acessoLiberado!==false})">${c.acessoLiberado===false?'Liberar acesso':'Bloquear acesso'}</button>
+          <div class="panel" style="box-shadow:none"><div class="panel-title"><div><h2>Masters locais</h2><p>${masters.length} usuário(s) vinculado(s).</p></div></div>${masters.length?masters.map(m=>`<div class="row-card"><div><strong>${m.nome||m.email}</strong><p style="color:#64748b;font-weight:700">${m.email}</p></div>${statusBadge(m.status,m.acessoLiberado)}</div>`).join(''):'<div class="row-card"><strong>Nenhum Master Local vinculado</strong></div>'}</div>
+        </div>`);
+    }
+
+    function abrirCriarMasterLocal(clienteId){
+      const c=clientesIntegro.find(x=>x.id===clienteId); if(!c)return;
+      abrirDrawer('Criar Master Local',`Vinculado a ${c.nomeFantasia||c.fantasia||c.razaoSocial||c.nomeCompleto}`,`
+        <div class="grid" style="gap:18px">
+          <div><label class="label">Nome do Master Local</label><input id="mlNome" class="input" placeholder="Nome completo"></div>
+          <div><label class="label">E-mail de acesso</label><input id="mlEmail" class="input" placeholder="email@empresa.com"></div>
+          <div><label class="label">Telefone</label><input id="mlTelefone" class="input" placeholder="Telefone"></div>
+          <div><label class="label">Senha inicial</label><input id="mlSenha" class="input" type="password" placeholder="Mínimo 6 caracteres"></div>
+          <button class="btn btn-primary" onclick="salvarMasterLocal('${clienteId}')">Criar Master Local</button>
+          <p style="color:#64748b;font-weight:700;font-size:13px;line-height:1.5">O usuário será criado no Firebase Auth e na coleção usuarios com tipoUsuario = master_local.</p>
+        </div>`);
+    }
+
+    async function salvarMasterLocal(clienteId){
+      const nome=mlNome.value.trim(), email=mlEmail.value.trim(), senha=mlSenha.value.trim(); if(!nome||!email||senha.length<6){alert('Informe nome, e-mail e senha com no mínimo 6 caracteres.');return;}
+      const c=clientesIntegro.find(x=>x.id===clienteId);
+      const cred=await firebase.auth().createUserWithEmailAndPassword(email,senha);
+      await db.collection('usuarios').add({authUid:cred.user.uid,uid:cred.user.uid,email,nome,telefone:mlTelefone.value.trim(),tipoUsuario:'master_local',cargoNome:'Master Local',clientePlataformaId:clienteId,clientePlataformaNome:c?.nomeFantasia||c?.fantasia||c?.razaoSocial||c?.nomeCompleto||'',status:'ATIVO',acessoLiberado:true,criadoPor:usuarioLogado.id,criadoEm:firebase.firestore.FieldValue.serverTimestamp(),criadoEmTexto:new Date().toISOString()});
+      await registrarLog('CRIAR_MASTER_LOCAL',`Master Local criado: ${email}`); alert('Master Local criado com sucesso.'); fecharDrawer(); await carregarTudo(); abrirCliente(clienteId);
+    }
+
+    async function alternarAcessoCliente(id,estaLiberado){
+      const novo=!estaLiberado; await db.collection('clientes_integro').doc(id).update({acessoLiberado:novo,status:novo?'ATIVO':'BLOQUEADO',atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()});
+      await registrarLog(novo?'LIBERAR_CLIENTE':'BLOQUEAR_CLIENTE',`Cliente ${id}`); fecharDrawer(); await carregarTudo();
+    }
+
+    function abrirNovoUsuarioInterno(){abrirDrawer('Novo usuário interno','Equipe da empresa ÍNTEGRO',`<div class="grid" style="gap:18px"><div><label class="label">Nome</label><input id="uiNome" class="input"></div><div><label class="label">E-mail</label><input id="uiEmail" class="input"></div><div><label class="label">Senha inicial</label><input id="uiSenha" class="input" type="password"></div><div><label class="label">Tipo</label><select id="uiTipo" class="select"><option value="comercial_integro">Comercial ÍNTEGRO</option><option value="financeiro_integro">Financeiro ÍNTEGRO</option><option value="administrativo_integro">Administrativo ÍNTEGRO</option><option value="suporte_integro">Suporte ÍNTEGRO</option></select></div><button class="btn btn-primary" onclick="salvarUsuarioInterno()">Salvar usuário interno</button></div>`)}
+    async function salvarUsuarioInterno(){ const nome=uiNome.value.trim(),email=uiEmail.value.trim(),senha=uiSenha.value.trim(); if(!nome||!email||senha.length<6){alert('Preencha nome, e-mail e senha.');return;} const cred=await firebase.auth().createUserWithEmailAndPassword(email,senha); await db.collection('usuarios').add({authUid:cred.user.uid,uid:cred.user.uid,email,nome,tipoUsuario:uiTipo.value,status:'ATIVO',acessoLiberado:true,criadoPor:usuarioLogado.id,criadoEm:firebase.firestore.FieldValue.serverTimestamp()}); await registrarLog('CRIAR_USUARIO_INTERNO',email); fecharDrawer(); await carregarTudo(); }
+    function abrirNovoDepartamento(){abrirDrawer('Novo departamento','Organização interna',`<div class="grid" style="gap:18px"><div><label class="label">Nome</label><input id="depNome" class="input"></div><div><label class="label">Descrição</label><textarea id="depDesc" class="textarea"></textarea></div><button class="btn btn-primary" onclick="salvarDepartamento()">Salvar departamento</button></div>`)}
+    async function salvarDepartamento(){if(!depNome.value.trim()){alert('Informe o nome.');return;} await db.collection('departamentos_integro').add({nome:depNome.value.trim(),descricao:depDesc.value.trim(),status:'ATIVO',criadoEm:firebase.firestore.FieldValue.serverTimestamp()}); await registrarLog('CRIAR_DEPARTAMENTO',depNome.value.trim()); fecharDrawer(); await carregarTudo();}
+    function abrirNovoPlano(){abrirDrawer('Novo plano','Plano comercial',`<div class="grid" style="gap:18px"><div><label class="label">Nome</label><input id="plNome" class="input"></div><div><label class="label">Valor mensal</label><input id="plValor" class="input" type="number" step="0.01"></div><div><label class="label">Descrição</label><textarea id="plDesc" class="textarea"></textarea></div><button class="btn btn-primary" onclick="salvarPlano()">Salvar plano</button></div>`)}
+    async function salvarPlano(){if(!plNome.value.trim()){alert('Informe o nome.');return;} await db.collection('planos').add({nome:plNome.value.trim(),valorMensal:Number(plValor.value||0),descricao:plDesc.value.trim(),status:'ATIVO',criadoEm:firebase.firestore.FieldValue.serverTimestamp()}); await registrarLog('CRIAR_PLANO',plNome.value.trim()); fecharDrawer(); await carregarTudo();}
+    function abrirResumo(tipo){trocarTela(tipo==='clientes'||tipo==='ativos'||tipo==='teste'?'clientes':'usuarios')}
+    async function registrarLog(tipoAcao,detalhe){await db.collection('logs').add({tipoAcao,detalhe,usuarioId:usuarioLogado.id,usuarioNome:usuarioLogado.nome||usuarioLogado.email,origem:'master_global',criadoEm:firebase.firestore.FieldValue.serverTimestamp(),criadoEmTexto:new Date().toISOString()}).catch(console.error)}
+    async function logout(){await firebase.auth().signOut();localStorage.clear();window.location.href='index.html'}
+  </script>
+</body>
+</html>
