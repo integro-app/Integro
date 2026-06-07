@@ -87,6 +87,22 @@
       font-size:22px;
       border:1px solid rgba(255,255,255,.15);
     }
+    
+    .mobile-menu-btn{
+  width:54px;
+  height:54px;
+  border-radius:16px;
+  background:#fff;
+  border:1px solid var(--line);
+  color:var(--text);
+  font-size:26px;
+  font-weight:900;
+  box-shadow:var(--shadow);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+}
 
     .user-card{
       background:rgba(255,255,255,.08);
@@ -844,6 +860,18 @@
         width:100%;
         padding:18px;
       }
+      .mobile-menu-btn{
+  display:flex;
+}
+
+.sidebar{
+  z-index:9999;
+}
+
+.sidebar.show{
+  box-shadow:20px 0 50px rgba(15,23,42,.35);
+}
+      
       .kpi-grid{grid-template-columns:1fr}
       .topbar,.section-header{align-items:flex-start;flex-direction:column}
       .top-actions{width:100%;flex-wrap:wrap}
@@ -940,17 +968,26 @@
     <main class="main">
       <section id="dashboard" class="screen active">
         <div class="topbar">
-          <div>
-            <h2>Olá, <span id="topNome">Tiago</span> 👋</h2>
-            <p>Bem-vindo ao Master Local. Acompanhe suas métricas e desempenho.</p>
-          </div>
+  <div style="display:flex;align-items:center;gap:14px;">
+    <button class="mobile-menu-btn" type="button" onclick="abrirMenuMobile()">
+      ☰
+    </button>
 
-          <div class="top-actions">
-            <button class="top-btn">📅 22 de Maio, 2025</button>
-            <button class="top-btn notification">🔔<span>3</span></button>
-            <button class="top-btn" onclick="logout()">↪</button>
-          </div>
-        </div>
+    <div>
+      <h2>Olá, <span id="topNome">Usuário</span> 👋</h2>
+      <p>
+        <span id="topEmpresa">Empresa</span> •
+        <span id="topCargo">Cargo</span>
+      </p>
+    </div>
+  </div>
+
+  <div class="top-actions">
+    <button class="top-btn" id="topData">📅 Hoje</button>
+    <button class="top-btn notification">🔔<span>3</span></button>
+    <button class="top-btn" onclick="logout()">↪</button>
+  </div>
+</div>
 
         <div class="kpi-grid">
           <div class="kpi-card">
@@ -1204,27 +1241,81 @@
   <script src="js/vendas.js"></script>
   <script src="js/master-local.js"></script>
 
-  <script>
-    function toggleCollapseSidebar(){
-      document.getElementById("sidebar").classList.toggle("collapsed");
+ <script>
+  function abrirMenuMobile(){
+    document.getElementById("sidebar").classList.add("show");
+  }
+
+  function fecharMenuMobile(){
+    document.getElementById("sidebar").classList.remove("show");
+  }
+
+  function toggleCollapseSidebar(){
+    if(window.innerWidth <= 760){
+      fecharMenuMobile();
+      return;
     }
 
-    function trocarTela(tela, el){
-      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-      const atual = document.getElementById(tela);
-      if(atual) atual.classList.add("active");
+    document.getElementById("sidebar").classList.toggle("collapsed");
+  }
 
-      document.querySelectorAll(".menu-item").forEach(i => i.classList.remove("active"));
-      if(el) el.classList.add("active");
+  function preencherTopoMasterLocal(){
+    const usuario =
+      window.usuarioLogado ||
+      JSON.parse(localStorage.getItem("usuarioLogado") || "{}");
 
-      if(window.innerWidth <= 760){
-        document.getElementById("sidebar").classList.remove("show");
-      }
+    const nome =
+      usuario.nome ||
+      usuario.nomeCompleto ||
+      "Usuário";
+
+    const empresa =
+      usuario.empresaNome ||
+      usuario.clientePlataformaNome ||
+      usuario.clienteNome ||
+      "Empresa";
+
+    const cargo =
+      usuario.cargoNome ||
+      usuario.tipoUsuario ||
+      "Cargo";
+
+    const data = new Date().toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric"
+    });
+
+    const topNome = document.getElementById("topNome");
+    const topEmpresa = document.getElementById("topEmpresa");
+    const topCargo = document.getElementById("topCargo");
+    const topData = document.getElementById("topData");
+
+    if(topNome) topNome.innerText = nome;
+    if(topEmpresa) topEmpresa.innerText = empresa;
+    if(topCargo) topCargo.innerText = cargo;
+    if(topData) topData.innerText = `📅 ${data}`;
+  }
+
+  function trocarTela(tela, el){
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    const atual = document.getElementById(tela);
+    if(atual) atual.classList.add("active");
+
+    document.querySelectorAll(".menu-item").forEach(i => i.classList.remove("active"));
+    if(el) el.classList.add("active");
+
+    if(window.innerWidth <= 760){
+      fecharMenuMobile();
     }
+  }
 
-    if(typeof protegerPaginaAtual === "function"){
-      protegerPaginaAtual();
-    }
-  </script>
+  preencherTopoMasterLocal();
+
+  if(typeof protegerPaginaAtual === "function"){
+    protegerPaginaAtual();
+  }
+</script>
+    
 </body>
 </html>
