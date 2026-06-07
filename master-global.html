@@ -17,10 +17,10 @@
     }
     body{background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
     .app{min-height:100vh}
-    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);opacity:0;visibility:hidden;transition:.2s;z-index:900}
-    .overlay.show{opacity:1;visibility:visible}
-    .sidebar{position:fixed;top:0;left:-310px;bottom:0;width:300px;background:linear-gradient(180deg,var(--sidebar),var(--sidebar2));color:#fff;padding:22px 16px;z-index:999;transition:.25s;overflow-y:auto;box-shadow:14px 0 40px rgba(2,6,23,.22)}
-    .sidebar.show{left:0}.sidebar::-webkit-scrollbar{width:5px}.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);opacity:0;visibility:hidden;pointer-events:none;transition:.2s;z-index:900}
+    .overlay.show{opacity:1;visibility:visible;pointer-events:auto}
+    .sidebar{position:fixed;top:0;left:0;bottom:0;width:300px;background:linear-gradient(180deg,var(--sidebar),var(--sidebar2));color:#fff;padding:22px 16px;z-index:999;transition:transform .25s ease;overflow-y:auto;box-shadow:14px 0 40px rgba(2,6,23,.22);transform:translateX(-105%)}
+    .sidebar.show{transform:translateX(0)}.sidebar::-webkit-scrollbar{width:5px}.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}
     .logo{font-size:36px;font-weight:900;letter-spacing:-2px;margin:2px 8px 22px}.logo span{background:linear-gradient(135deg,var(--orange2),var(--orange));-webkit-background-clip:text;color:transparent}
     .user-card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);border-radius:24px;padding:16px;margin-bottom:22px}.user-card small{display:block;color:#cbd5e1;font-size:12px;font-weight:800;margin-bottom:6px}.user-card strong{display:block;font-size:16px;margin-bottom:10px}.status-online{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:rgba(34,197,94,.14);color:#4ade80;font-size:12px;font-weight:900}.status-online:before{content:"";width:8px;height:8px;border-radius:50%;background:#4ade80}
     .menu-section{margin-bottom:22px}.menu-title{font-size:11px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:#94a3b8;padding:0 12px;margin-bottom:10px}.menu{display:grid;gap:7px}.menu button{height:52px;border:0;background:transparent;color:#e2e8f0;border-radius:16px;padding:0 15px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800;cursor:pointer;transition:.18s}.menu button:hover{background:rgba(255,255,255,.08)}.menu button.active{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;box-shadow:0 10px 24px rgba(255,107,0,.25)}.menu-left{display:flex;align-items:center;gap:11px}
@@ -78,7 +78,7 @@
   <main class="main">
     <header class="topbar">
       <div class="top-left">
-        <button class="hamburger" onclick="abrirSidebar()">☰</button>
+        <button id="btnAbrirMenu" type="button" class="hamburger" aria-label="Abrir menu" onclick="abrirSidebar(event)">☰</button>
         <div><h1 id="pageTitle">Dashboard Master Global</h1><p id="pageSubtitle">Controle raiz da plataforma ÍNTEGRO.</p></div>
       </div>
       <div class="top-actions">
@@ -186,8 +186,46 @@
     async function carregarNotificacoes(){ const s=await db.collection('notificacoes').limit(100).get().catch(()=>({docs:[]})); notificacoes=s.docs.map(d=>({id:d.id,...d.data()})); }
     async function carregarLogs(){ const s=await db.collection('logs').limit(120).get().catch(()=>({docs:[]})); logs=s.docs.map(d=>({id:d.id,...d.data()})); renderLogs(); }
 
-    function abrirSidebar(){document.getElementById('sidebar').classList.add('show');document.getElementById('sidebarOverlay').classList.add('show')}
-    function fecharSidebar(){document.getElementById('sidebar').classList.remove('show');document.getElementById('sidebarOverlay').classList.remove('show')}
+    // =========================
+    // MENU LATERAL PADRÃO ÍNTEGRO
+    // =========================
+    function abrirSidebar(event){
+      if(event && event.stopPropagation) event.stopPropagation();
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if(!sidebar || !overlay) return;
+      sidebar.classList.add('show');
+      overlay.classList.add('show');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function fecharSidebar(){
+      const sidebar = document.getElementById('sidebar');
+      const overlay = document.getElementById('sidebarOverlay');
+      if(!sidebar || !overlay) return;
+      sidebar.classList.remove('show');
+      overlay.classList.remove('show');
+      document.body.style.overflow = '';
+    }
+
+    function alternarSidebar(event){
+      if(event && event.stopPropagation) event.stopPropagation();
+      const sidebar = document.getElementById('sidebar');
+      if(sidebar && sidebar.classList.contains('show')) fecharSidebar();
+      else abrirSidebar(event);
+    }
+
+    window.abrirSidebar = abrirSidebar;
+    window.fecharSidebar = fecharSidebar;
+    window.alternarSidebar = alternarSidebar;
+
+    document.addEventListener('DOMContentLoaded',()=>{
+      const btn = document.getElementById('btnAbrirMenu');
+      const overlay = document.getElementById('sidebarOverlay');
+      if(btn) btn.addEventListener('click', abrirSidebar);
+      if(overlay) overlay.addEventListener('click', fecharSidebar);
+    });
+
     document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}});
 
     function trocarTela(id,btn){
