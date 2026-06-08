@@ -536,6 +536,13 @@
 
     }
 
+    .grid-3 {
+
+      grid-template-columns:
+        repeat(3, 1fr);
+
+    }
+
     /* CARDS */
 
     .card {
@@ -724,7 +731,8 @@
 
     @media(max-width:1200px) {
 
-      .grid-4 {
+      .grid-4,
+      .grid-3 {
 
         grid-template-columns:
           repeat(2, 1fr);
@@ -767,7 +775,8 @@
 
     @media(max-width:700px) {
 
-      .grid-4 {
+      .grid-4,
+      .grid-3 {
 
         grid-template-columns: 1fr;
 
@@ -914,6 +923,30 @@
 
     .card-cyan {
       background: linear-gradient(135deg, #06b6d4, #0284c7);
+    }
+
+    .card-money {
+      background: linear-gradient(135deg, #16a34a, #065f46);
+    }
+
+    .card-gold {
+      background: linear-gradient(135deg, #ffcf33, #b77900);
+    }
+
+    .card-green-mid {
+      background: linear-gradient(135deg, #4ade80, #15803d);
+    }
+
+    .card-emerald {
+      background: linear-gradient(135deg, #2dd4bf, #047857);
+    }
+
+    .card-petrol {
+      background: linear-gradient(135deg, #0f766e, #134e4a);
+    }
+
+    .card-dark-red {
+      background: linear-gradient(135deg, #991b1b, #450a0a);
     }
 
     .kpi-card {
@@ -1091,6 +1124,109 @@
     }
   }
 </style>
+
+<style id="integro-campos-premium-ajustes">
+  .money-field-wrap {
+    width: 100%;
+    height: 62px;
+    border-radius: 18px;
+    border: 1px solid #dbe5f0;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 0 16px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.7);
+  }
+
+  .money-field-prefix {
+    width: 34px;
+    height: 34px;
+    border-radius: 999px;
+    background: #061a35;
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 900;
+    flex: 0 0 34px;
+  }
+
+  .money-field-input {
+    width: 100%;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: #334155;
+    font-size: 24px;
+    font-weight: 900;
+    letter-spacing: -.5px;
+  }
+
+  .money-field-input::placeholder {
+    color: #94a3b8;
+  }
+
+  .form-select-premium,
+  select.form-input {
+    height: 58px;
+    border-radius: 18px;
+    border: 1px solid #dbe5f0;
+    background: #fff;
+    color: #0f172a;
+    font-size: 15px;
+    font-weight: 900;
+    padding: 0 44px 0 16px;
+    outline: none;
+    cursor: pointer;
+    appearance: auto;
+  }
+
+  .mini-card-caixa-premium {
+    border: 0;
+    border-radius: 24px;
+    padding: 22px;
+    min-height: 132px;
+    text-align: left;
+    cursor: pointer;
+    color: #fff;
+    font-weight: 900;
+    box-shadow: 0 18px 38px rgba(15,23,42,.18);
+    transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+  }
+
+  .mini-card-caixa-premium:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 22px 46px rgba(15,23,42,.22);
+    filter: saturate(1.05);
+  }
+
+  .mini-card-caixa-premium small {
+    display: block;
+    color: rgba(255,255,255,.88);
+    font-size: 13px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+
+  .mini-card-caixa-premium strong {
+    display: block;
+    color: #fff;
+    font-size: 30px;
+    line-height: 1;
+    margin-top: 14px;
+    letter-spacing: -1px;
+  }
+
+  @media(max-width:780px) {
+    .money-field-wrap { height: 60px; }
+    .money-field-input { font-size: 22px; }
+    .mini-card-caixa-premium { min-height: 116px; padding: 20px; }
+    .mini-card-caixa-premium strong { font-size: 28px; }
+  }
+</style>
 </head>
 
 <body>
@@ -1178,8 +1314,8 @@
 
           <button onclick="trocarTela('caixa', this)">
             <span class="menu-left">
-              <span>💼</span>
-              Meu caixa
+              <span>◎</span>
+              Indicações
             </span>
             <span>›</span>
           </button>
@@ -1246,48 +1382,38 @@
       <!-- DASHBOARD -->
       <section id="dashboard" class="screen">
 
-        <div class="grid grid-4">
+        <div class="grid grid-3">
 
-          <div class="card card-gradient card-blue" onclick="abrirResumoKpi('caixa')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('caixa')">
+          <div class="card card-gradient card-money" onclick="abrirResumoKpi('caixa')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('caixa')">
             <div class="kpi-card">
-              <div class="kpi-icon">💼</div>
+              <div class="kpi-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 9V4h8l3 5"></path>
+                  <path d="M4 9h18v11H4z"></path>
+                  <path d="M8 13h.01"></path>
+                  <path d="M12 13h.01"></path>
+                  <path d="M16 13h.01"></path>
+                  <path d="M8 17h8"></path>
+                  <path d="M18 4h1"></path>
+                </svg>
+              </div>
               <div class="kpi-content">
                 <small>Caixa atual</small>
                 <strong id="kpiCaixaAtual">R$ 0,00</strong>
-                <p>Caixa inicial + recebimentos + ingressos - vendas - despesas.</p>
+                <p>Entradas: <b id="kpiCaixaEntradas">R$ 0,00</b></p>
+                <p>Saídas: <b id="kpiCaixaSaidas">R$ 0,00</b></p>
               </div>
             </div>
           </div>
 
-          <div class="card card-gradient card-green" onclick="abrirResumoKpi('carteira')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('carteira')">
+          <div class="card card-gradient card-gold" onclick="abrirResumoKpi('carteira')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('carteira')">
             <div class="kpi-card">
               <div class="kpi-icon">📊</div>
               <div class="kpi-content">
                 <small>Carteira final</small>
                 <strong id="kpiCarteiraFinal">R$ 0,00</strong>
-                <p>Carteira inicial: <b id="kpiCarteiraInicial">R$ 0,00</b> <span id="kpiCarteiraVariacao" style="margin-left:6px;font-weight:900;">→ 0%</span></p>
-              </div>
-            </div>
-          </div>
-
-          <div class="card card-gradient card-green" onclick="abrirResumoKpi('recebido')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('recebido')">
-            <div class="kpi-card">
-              <div class="kpi-icon">✅</div>
-              <div class="kpi-content">
-                <small>Recebido hoje</small>
-                <strong id="kpiRecebidoHoje">R$ 0,00</strong>
-                <p>Soma dos pagamentos confirmados no dia.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="card card-gradient card-purple" onclick="abrirResumoKpi('ativos')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('ativos')">
-            <div class="kpi-card">
-              <div class="kpi-icon">👥</div>
-              <div class="kpi-content">
-                <small>Clientes ativos</small>
-                <strong id="kpiClientesAtivos">0</strong>
-                <p>Clientes com saldo devedor maior que R$ 0,01.</p>
+                <p><b id="kpiCarteiraInicial">R$ 0,00</b> <span id="kpiCarteiraVariacao" style="margin-left:6px;font-weight:900;">→ 0%</span></p>
+                <p><b id="kpiCarteiraClientes">0 clientes ativos</b></p>
               </div>
             </div>
           </div>
@@ -1298,29 +1424,8 @@
               <div class="kpi-content">
                 <small>Vendas hoje</small>
                 <strong id="kpiVendasHoje">R$ 0,00</strong>
-                <p>Soma do valor vendido no caixa atual.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="card card-gradient card-red" onclick="abrirResumoKpi('despesas')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('despesas')">
-            <div class="kpi-card">
-              <div class="kpi-icon">⬇️</div>
-              <div class="kpi-content">
-                <small>Despesas</small>
-                <strong id="kpiDespesasHoje">R$ 0,00</strong>
-                <p>Gastos e retiradas vinculados ao caixa atual.</p>
-              </div>
-            </div>
-          </div>
-
-          <div class="card card-gradient card-cyan" onclick="abrirResumoKpi('rota')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('rota')">
-            <div class="kpi-card">
-              <div class="kpi-icon">📍</div>
-              <div class="kpi-content">
-                <small>Clientes da rota</small>
-                <strong id="kpiClientesDia">0</strong>
-                <p>Clientes com venda ativa para acompanhamento.</p>
+                <p><b id="kpiVendasClientes">0 clientes</b></p>
+                <p><b id="kpiVendasNovas">0 novas</b> · <b id="kpiVendasRenovacoes">0 renovações</b></p>
               </div>
             </div>
           </div>
@@ -1406,7 +1511,7 @@
 
           <div style="
             display:grid;
-            grid-template-columns:1fr auto auto;
+            grid-template-columns:1fr auto auto auto;
             gap:12px;
             margin-bottom:20px;
           " class="busca-grid">
@@ -1431,10 +1536,34 @@
               Buscar
             </button>
 
+            <button class="btn btn-light" onclick="alternarFiltrosClientes()">
+              Filtros
+            </button>
+
             <button class="btn btn-light" onclick="limparBuscaClientes()">
               Limpar
             </button>
 
+          </div>
+
+          <div
+            id="filtrosClientes"
+            style="
+              display:none;
+              grid-template-columns:repeat(4,1fr);
+              gap:12px;
+              margin-bottom:16px;
+            "
+            class="busca-grid"
+          >
+            <select id="filtroClienteStatus" class="form-input">
+              <option value="">Todos os status</option>
+              <option value="ATIVO">Cliente Ativo</option>
+              <option value="INATIVO">Cliente Inativo</option>
+            </select>
+            <input id="filtroClienteDataInicial" type="date" class="form-input" aria-label="Data cadastro inicial">
+            <input id="filtroClienteDataFinal" type="date" class="form-input" aria-label="Data cadastro final">
+            <button class="btn btn-primary" onclick="buscarClientes()">Aplicar filtros</button>
           </div>
 
           <div
@@ -1447,7 +1576,11 @@
             "
           ></div>
 
-          <div id="listaClientes" class="grid" style="gap:14px;"></div>
+          <div id="listaClientes" class="grid" style="gap:14px;">
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
+              Pesquise um cliente para exibir resultados.
+            </div>
+          </div>
 
         </div>
 
@@ -1687,24 +1820,50 @@
             "buscaClienteInput"
           ).value = "";
 
-          buscarClientes();
+          ["filtroClienteStatus", "filtroClienteDataInicial", "filtroClienteDataFinal"].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = "";
+          });
+
+          clientesBuscaExecutada = false;
+
+          const contador = document.getElementById("contadorClientes");
+          if (contador) contador.innerText = "";
+
+          const lista = document.getElementById("listaClientes");
+          if (lista) {
+            lista.innerHTML = `
+              <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
+                Pesquise um cliente para exibir resultados.
+              </div>
+            `;
+          }
 
         }
 
-        function abrirNovoCliente() {
+        function valorAtributo(valor = "") {
+          return String(valor)
+            .replace(/&/g, "&amp;")
+            .replace(/"/g, "&quot;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        }
+
+        function abrirNovoCliente(dadosPrefill = {}) {
 
           abrirDrawer(
             "Novo cliente",
             "Cadastro operacional completo",
             `
             <div style="display:grid;gap:20px;">
+              <input id="clienteIndicacaoId" type="hidden" value="${valorAtributo(dadosPrefill.indicacaoId || "")}">
 
               <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:22px;padding:16px;display:grid;gap:14px;">
                 <strong style="font-size:16px;">Identificação do cliente</strong>
 
                 <div>
                   <label class="form-label">Nome completo</label>
-                  <input id="clienteNome" class="form-input" placeholder="Digite o nome completo">
+                  <input id="clienteNome" class="form-input" placeholder="Digite o nome completo" value="${valorAtributo(dadosPrefill.nome || "")}">
                 </div>
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="busca-grid">
@@ -1766,6 +1925,7 @@
                       placeholder="+55 11 99999-9999"
                       maxlength="17"
                       inputmode="numeric"
+                      value="${valorAtributo(dadosPrefill.telefone || "")}"
                       oninput="formatarTelefoneCadastroCliente(this)"
                     >
                   </div>
@@ -1850,7 +2010,7 @@
 
               <div>
                 <label class="form-label">Observações</label>
-                <textarea id="clienteObs" class="form-textarea" placeholder="Informações importantes"></textarea>
+                <textarea id="clienteObs" class="form-textarea" placeholder="Informações importantes">${valorAtributo(dadosPrefill.observacoes || "")}</textarea>
               </div>
 
               <button class="btn btn-primary" style="width:100%;height:60px;font-size:16px;" onclick="salvarNovoCliente(this)">
@@ -2497,7 +2657,21 @@
           }
 
           el.innerHTML = vendasDia.length
-            ? vendasDia.map(v => `
+            ? vendasDia.map(v => {
+              const cliente = clientesCache.find(c => c.id === v.clienteId) || {};
+              const nomeCompleto = cliente.nomeCompleto || cliente.nome || v.clienteNome || "Cliente";
+              const apelido = cliente.apelido || v.clienteApelido || "-";
+              const tipoVenda = String(v.tipoVenda || v.tipo || "NOVA").toUpperCase().includes("RENOV") ? "Renovação" : "Nova";
+              const renovacoesCliente = vendasDoClienteComVendedor(v.clienteId).filter(x =>
+                String(x.tipoVenda || x.tipo || "").toUpperCase().includes("RENOV")
+              );
+              const numeroRenovacao =
+                v.numeroRenovacao ||
+                v.renovacaoNumero ||
+                v.renovacaoIndex ||
+                (tipoVenda === "Renovação" ? Math.max(1, renovacoesCliente.findIndex(x => x.id === v.id) + 1) : "");
+
+              return `
               <div
                 class="venda-cobranca-card"
                 style="
@@ -2513,10 +2687,13 @@
                 <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
                   <div>
                     <strong style="display:block;font-size:16px;margin-bottom:6px;">
-                      ${v.clienteNome || "Cliente"}
+                      ${nomeCompleto}
                     </strong>
                     <small style="display:block;color:#64748b;font-weight:800;">
-                      ${v.tipoVenda || "NOVA"} • ${v.frequencia || "DIÁRIA"} • ${v.quantidadeParcelas || 0} parcela(s)
+                      Apelido: ${apelido}
+                    </small>
+                    <small style="display:block;color:#64748b;font-weight:800;">
+                      Tipo: ${tipoVenda}${tipoVenda === "Renovação" ? ` • Renovação #${numeroRenovacao}` : ""}${tipoVenda === "Renovação" ? ` • Total de renovações: ${renovacoesCliente.length}` : ""}
                     </small>
                   </div>
                   <span style="background:#ecfeff;color:#0e7490;padding:8px 12px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap;">
@@ -2530,6 +2707,18 @@
                     <strong>${moeda(v.valorEmprestado || 0)}</strong>
                   </div>
                   <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+                    <small style="display:block;color:#64748b;font-weight:900;margin-bottom:4px;">Juros</small>
+                    <strong>${Number(v.taxaJuros || v.juros || 0).toLocaleString("pt-BR")}%</strong>
+                  </div>
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+                    <small style="display:block;color:#64748b;font-weight:900;margin-bottom:4px;">Frequência</small>
+                    <strong>${v.frequencia || "DIÁRIA"}</strong>
+                  </div>
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+                    <small style="display:block;color:#64748b;font-weight:900;margin-bottom:4px;">Parcelas</small>
+                    <strong>${v.quantidadeParcelas || 0}</strong>
+                  </div>
+                  <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
                     <small style="display:block;color:#64748b;font-weight:900;margin-bottom:4px;">Carteira</small>
                     <strong>${moeda(v.valorTotalVenda || v.saldoDevedor || 0)}</strong>
                   </div>
@@ -2539,7 +2728,8 @@
                   </div>
                 </div>
               </div>
-            `).join("")
+            `;
+            }).join("")
             : `
               <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;">
                 <strong>Nenhuma venda registrada hoje</strong>
@@ -3330,10 +3520,7 @@
               return;
             }
 
-            if (!caixaAtual || !caixaAtual.id) {
-              alert("Não existe caixa aberto para registrar venda.");
-              return;
-            }
+            if (!garantirCaixaAberto("O caixa está fechado. Não é possível criar venda.")) return;
 
             const saldoCliente = Number(cliente.saldoDevedor || cliente.saldo || 0);
 
@@ -3543,13 +3730,15 @@
 
             await batch.commit();
 
-            alert("Venda cadastrada com sucesso.");
-
             fecharDrawer();
 
             await carregarTudo();
 
-            trocarTela("cobrancas");
+            renderVendasDia();
+            renderCobrancas();
+            if (clientesBuscaExecutada) await buscarClientes(false);
+
+            alert("Venda cadastrada com sucesso.");
 
           } catch (erro) {
             console.error("Erro ao salvar venda:", erro);
@@ -4118,14 +4307,6 @@
                   </small>
                 </div>
 
-                <button class="btn btn-primary" style="width:100%;" onclick="abrirPagamentoCliente('${vendaId}')">
-                  Registrar pagamento
-                </button>
-
-                <button class="btn btn-light" style="width:100%;" onclick="registrarNaoPagamentoVenda('${vendaId}')">
-                  Registrar não pagamento
-                </button>
-
                 <button class="btn btn-light" style="width:100%;" onclick="abrirHistoricoPagamentosVenda('${vendaId}')">
                   Histórico de pagamentos
                 </button>
@@ -4213,10 +4394,7 @@
               return;
             }
 
-            if (!caixaAtual || !caixaAtual.id) {
-              alert("Não existe caixa aberto para registrar pagamento.");
-              return;
-            }
+            if (!garantirCaixaAberto("O caixa está fechado. Não é possível registrar pagamento.")) return;
 
             const valor = Number(document.getElementById("pagamentoValor").value || 0);
             const observacao = document.getElementById("pagamentoObs").value.trim();
@@ -4366,10 +4544,11 @@
         }
 
         function abrirHistoricoPagamentosVenda(vendaId) {
-          const pagamentos = (pagamentosHojeCache || []).filter(p => p.vendaId === vendaId);
+          const pagamentos = (pagamentosCache || []).filter(p => p.vendaId === vendaId)
+            .sort((a, b) => String(b.criadoEmTexto || b.dataPagamento || b.data || "").localeCompare(String(a.criadoEmTexto || a.dataPagamento || a.data || "")));
 
           abrirDrawer(
-            "Histórico de pagamentos",
+            "Histórico de Pagamentos",
             "Pagamentos registrados na venda",
             pagamentos.length
               ? `
@@ -4377,13 +4556,22 @@
                   ${pagamentos.map(p => `
                     <div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;">
                       <strong style="display:block;margin-bottom:6px;">
-                        ${moeda(p.valor || 0)}
+                        ${moeda(p.valorPago || p.valorRecebido || p.valor || 0)}
                       </strong>
                       <small style="display:block;color:#64748b;font-weight:700;">
-                        Data: ${p.data || "-"}
+                        Data: ${p.dataPagamento || p.data || (p.criadoEmTexto || "").slice(0, 10) || "-"}
                       </small>
                       <small style="display:block;color:#64748b;font-weight:700;">
-                        Status: ${p.status || "-"}
+                        Hora: ${p.horaPagamento || p.hora || (p.criadoEmTexto || "").slice(11, 16) || "-"}
+                      </small>
+                      <small style="display:block;color:#64748b;font-weight:700;">
+                        Parcela: ${p.numeroParcela || p.parcelaNumero || p.parcela || "-"}
+                      </small>
+                      <small style="display:block;color:#64748b;font-weight:700;">
+                        Forma de pagamento: ${p.formaPagamento || p.metodoPagamento || "-"}
+                      </small>
+                      <small style="display:block;color:#64748b;font-weight:700;">
+                        Observação: ${p.observacao || p.obs || "-"}
                       </small>
                     </div>
                   `).join("")}
@@ -4425,7 +4613,7 @@
 
       </section>
 
-      <!-- MEU CAIXA -->
+      <!-- INDICAÇÕES -->
       <section id="caixa" class="screen" style="display:none;">
 
         <div class="panel">
@@ -4433,19 +4621,20 @@
           <div class="panel-title">
 
             <div>
-              <h2>Meu caixa</h2>
+              <h2>Indicações</h2>
               <p>
-                Acompanhe o caixa aberto, saldo atual e movimentações principais.
+                Leads recebidos do marketing para contato, conversão e venda.
               </p>
             </div>
 
-            <button class="btn btn-light" onclick="renderCaixaVendedor()">
-              Atualizar
+            <button class="btn btn-primary" onclick="abrirNovaIndicacao()">
+              Nova indicação
             </button>
 
           </div>
 
-          <div id="caixaResumo"></div>
+          <div id="indicacoesResumo" class="grid grid-4" style="margin-bottom:18px;"></div>
+          <div id="listaIndicacoes" class="grid" style="gap:14px;"></div>
 
         </div>
 
@@ -4791,6 +4980,308 @@
 
         }
 
+        function statusIndicacaoClasse(status) {
+          const s = String(status || "NOVA").toUpperCase();
+          if (s === "CONVERTIDA") return ["#ecfdf5", "#15803d"];
+          if (["SEM INTERESSE", "INVÁLIDA", "INVALIDA"].includes(s)) return ["#fef2f2", "#b91c1c"];
+          if (["NEGOCIANDO", "AGENDADO"].includes(s)) return ["#fff7ed", "#c2410c"];
+          return ["#eff6ff", "#1d4ed8"];
+        }
+
+        function renderIndicacoes() {
+          const resumoEl = document.getElementById("indicacoesResumo");
+          const listaEl = document.getElementById("listaIndicacoes");
+          if (!resumoEl || !listaEl) return;
+
+          const total = indicacoesCache.length;
+          const convertidas = indicacoesCache.filter(i => String(i.status || "").toUpperCase() === "CONVERTIDA").length;
+          const novas = indicacoesCache.filter(i => String(i.status || "NOVA").toUpperCase() === "NOVA").length;
+          const taxa = total ? Math.round((convertidas / total) * 100) : 0;
+
+          resumoEl.innerHTML = `
+            <div class="card"><small>Leads recebidos</small><strong>${total}</strong></div>
+            <div class="card"><small>Leads convertidos</small><strong>${convertidas}</strong></div>
+            <div class="card"><small>Novas indicações</small><strong>${novas}</strong></div>
+            <div class="card"><small>Taxa de conversão</small><strong>${taxa}%</strong></div>
+          `;
+
+          listaEl.innerHTML = indicacoesCache.length
+            ? indicacoesCache.map(i => cardIndicacao(i)).join("")
+            : `
+              <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
+                Nenhuma indicação atribuída a você no momento.
+              </div>
+            `;
+        }
+
+        function cardIndicacao(indicacao) {
+          const [bg, color] = statusIndicacaoClasse(indicacao.status);
+          const telefone = indicacao.telefone || indicacao.telefonePrincipal || "";
+          return `
+            <div class="venda-cobranca-card" style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;display:grid;grid-template-columns:8px 1fr auto;gap:16px;align-items:center;box-shadow:0 10px 24px rgba(15,23,42,.04);">
+              <div style="width:8px;height:100%;min-height:96px;border-radius:999px;background:${color};"></div>
+              <div>
+                <strong style="display:block;font-size:16px;margin-bottom:6px;">${indicacao.nome || "Lead sem nome"}</strong>
+                <small style="display:block;color:#64748b;font-weight:800;">Telefone: ${telefone || "-"}</small>
+                <small style="display:block;color:#64748b;font-weight:800;">Origem: ${indicacao.origem || "-"}</small>
+                <small style="display:block;color:#64748b;font-weight:800;">Entrada: ${indicacao.dataEntrada || (indicacao.criadoEmTexto || "").slice(0, 10) || "-"}</small>
+                <span style="display:inline-flex;margin-top:8px;background:${bg};color:${color};border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;">${indicacao.status || "NOVA"}</span>
+              </div>
+              <div style="display:grid;gap:8px;min-width:170px;">
+                <button class="btn btn-primary" onclick="abrirWhatsAppIndicacao('${indicacao.id}')">WhatsApp</button>
+                <button class="btn btn-light" onclick="abrirDetalheIndicacao('${indicacao.id}')">Ver</button>
+              </div>
+            </div>
+          `;
+        }
+
+        function abrirNovaIndicacao() {
+          abrirDrawer(
+            "Nova indicação",
+            "Lead recebido do marketing",
+            formIndicacaoHtml()
+          );
+        }
+
+        function formIndicacaoHtml(indicacao = null) {
+          return `
+            <div style="display:grid;gap:16px;">
+              <div><label class="form-label">Nome</label><input id="indicacaoNome" class="form-input" value="${indicacao?.nome || ""}"></div>
+              <div><label class="form-label">Telefone</label><input id="indicacaoTelefone" class="form-input" value="${indicacao?.telefone || ""}"></div>
+              <div>
+                <label class="form-label">Origem</label>
+                <select id="indicacaoOrigem" class="form-input">
+                  ${["Instagram","Facebook","TikTok","Site","WhatsApp","Indicação","Panfleto","Outro"].map(o => `<option value="${o}" ${indicacao?.origem === o ? "selected" : ""}>${o}</option>`).join("")}
+                </select>
+              </div>
+              <div><label class="form-label">Observação</label><textarea id="indicacaoObs" class="form-textarea">${indicacao?.observacao || ""}</textarea></div>
+              <div><label class="form-label">Vendedor responsável</label><input class="form-input" value="${usuarioLogado?.nome || usuarioLogado?.email || "Vendedor"}" disabled></div>
+              <div><label class="form-label">Data de entrada</label><input id="indicacaoDataEntrada" type="date" class="form-input" value="${indicacao?.dataEntrada || hojeISO()}"></div>
+              <button class="btn btn-primary" style="width:100%;height:58px;" onclick="salvarIndicacao()">Salvar indicação</button>
+            </div>
+          `;
+        }
+
+        async function salvarIndicacao() {
+          try {
+            const nome = document.getElementById("indicacaoNome")?.value.trim() || "";
+            const telefone = document.getElementById("indicacaoTelefone")?.value.trim() || "";
+            const origem = document.getElementById("indicacaoOrigem")?.value || "Outro";
+            const observacao = document.getElementById("indicacaoObs")?.value.trim() || "";
+            const dataEntrada = document.getElementById("indicacaoDataEntrada")?.value || hojeISO();
+
+            if (!nome || !telefone) {
+              alert("Informe nome e telefone da indicação.");
+              return;
+            }
+
+            const docRef = await db.collection("indicacoes").add({
+              nome,
+              telefone,
+              origem,
+              observacao,
+              vendedorResponsavelId: usuarioLogado.id,
+              vendedorResponsavelNome: usuarioLogado.nome || usuarioLogado.email || "",
+              vendedorId: usuarioLogado.id,
+              vendedorNome: usuarioLogado.nome || usuarioLogado.email || "",
+              dataEntrada,
+              status: "NOVA",
+              historico: [{
+                dataHora: new Date().toISOString(),
+                usuarioId: usuarioLogado.id,
+                usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+                acao: "CRIADA",
+                observacao
+              }],
+              metricas: {
+                origem,
+                convertida: false,
+                vendedorId: usuarioLogado.id
+              },
+              clientePlataformaId: tenantId || null,
+              excluido: false,
+              criadoEmTexto: new Date().toISOString(),
+              criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            await registrarLogIndicacao("CRIAR_INDICACAO", docRef.id, { observacao });
+            await carregarIndicacoes();
+            renderIndicacoes();
+            fecharDrawer();
+            alert("Indicação cadastrada com sucesso.");
+          } catch (erro) {
+            console.error("Erro ao salvar indicação:", erro);
+            alert("Erro ao salvar indicação:\n\n" + erro.message);
+          }
+        }
+
+        async function registrarLogIndicacao(acao, indicacaoId, dados = {}) {
+          try {
+            await db.collection("logs").add({
+              usuarioId: usuarioLogado?.id || "",
+              usuarioNome: usuarioLogado?.nome || usuarioLogado?.email || "",
+              cargo: usuarioLogado?.cargoNome || usuarioLogado?.cargo || "",
+              tipoUsuario: usuarioLogado?.tipoUsuario || "",
+              tipoAcao: acao,
+              acaoExecutada: acao,
+              indicacaoId,
+              observacao: dados.observacao || "",
+              valor: dados.valor ?? null,
+              valorAnterior: dados.valorAnterior ?? null,
+              valorNovo: dados.valorNovo ?? null,
+              caixaId: dados.caixaId || "",
+              clientePlataformaId: tenantId || null,
+              dataHora: new Date().toISOString(),
+              criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (erro) {
+            console.warn("Falha ao registrar log de indicação:", erro);
+          }
+        }
+
+        function abrirWhatsAppIndicacao(id) {
+          const i = indicacoesCache.find(x => x.id === id);
+          if (!i) return;
+          const telefone = apenasDigitos(i.telefone || "").replace(/^55/, "");
+          window.open(`https://wa.me/55${telefone}`, "_blank", "noopener");
+        }
+
+        function abrirDetalheIndicacao(id) {
+          const i = indicacoesCache.find(x => x.id === id);
+          if (!i) return;
+
+          const historico = (i.historico || []).map(h => `
+            <div style="border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+              <strong>${(h.dataHora || "").slice(0, 10) || "-"} - ${h.acao || "Registro"}</strong>
+              <small style="display:block;color:#64748b;font-weight:800;">${h.observacao || ""}</small>
+              <small style="display:block;color:#64748b;font-weight:800;">${h.vendedorAnteriorNome ? `De ${h.vendedorAnteriorNome} para ${h.vendedorAtualNome || "-"}` : h.usuarioNome || ""}</small>
+            </div>
+          `).join("");
+
+          abrirDrawer(
+            "Indicação",
+            i.nome || "Lead",
+            `
+              <div style="display:grid;gap:14px;color:#334155;font-weight:800;line-height:1.6;">
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:14px;">
+                  <p><strong>Nome:</strong> ${i.nome || "-"}</p>
+                  <p><strong>Telefone:</strong> ${i.telefone || "-"}</p>
+                  <p><strong>Origem:</strong> ${i.origem || "-"}</p>
+                  <p><strong>Status:</strong> ${i.status || "NOVA"}</p>
+                  <p><strong>Observação:</strong> ${i.observacao || "-"}</p>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" class="busca-grid">
+                  <button class="btn btn-primary" onclick="abrirWhatsAppIndicacao('${id}')">Abrir WhatsApp</button>
+                  <button class="btn btn-light" onclick="registrarContatoIndicacao('${id}')">Registrar contato</button>
+                  <button class="btn btn-light" onclick="registrarInteracaoIndicacao('${id}')">Registrar interação</button>
+                  <button class="btn btn-light" onclick="agendarRetornoIndicacao('${id}')">Agendar retorno</button>
+                  <button class="btn btn-primary" onclick="converterIndicacaoEmCliente('${id}')">Converter em cliente</button>
+                </div>
+                <div>
+                  <h3 style="font-size:18px;margin-bottom:10px;">Histórico da indicação</h3>
+                  <div style="display:grid;gap:10px;">${historico || `<div style="border:1px dashed #cbd5e1;border-radius:16px;padding:12px;color:#64748b;">Sem histórico.</div>`}</div>
+                </div>
+              </div>
+            `
+          );
+        }
+
+        async function atualizarIndicacaoComHistorico(id, dados, historicoItem) {
+          const ref = db.collection("indicacoes").doc(id);
+          await ref.update({
+            ...dados,
+            historico: firebase.firestore.FieldValue.arrayUnion({
+              dataHora: new Date().toISOString(),
+              usuarioId: usuarioLogado.id,
+              usuarioNome: usuarioLogado.nome || usuarioLogado.email || "",
+              ...historicoItem
+            }),
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+          });
+          await registrarLogIndicacao(historicoItem.acao || "ATUALIZAR_INDICACAO", id, { observacao: historicoItem.observacao || "" });
+          await carregarIndicacoes();
+          renderIndicacoes();
+        }
+
+        function registrarContatoIndicacao(id) {
+          abrirFormularioAcaoIndicacao(id, "CONTATO", "Registrar contato", "EM CONTATO");
+        }
+
+        function registrarInteracaoIndicacao(id) {
+          abrirFormularioAcaoIndicacao(id, "INTERACAO", "Registrar interação", "NEGOCIANDO");
+        }
+
+        function agendarRetornoIndicacao(id) {
+          abrirFormularioAcaoIndicacao(id, "AGENDADO", "Agendar retorno", "AGENDADO", true);
+        }
+
+        function abrirFormularioAcaoIndicacao(id, acao, titulo, status, pedirData = false) {
+          const indicacao = indicacoesCache.find(x => x.id === id);
+          if (!indicacao) return;
+
+          abrirDrawer(
+            titulo,
+            indicacao.nome || "Indicação",
+            `
+              <div style="display:grid;gap:16px;">
+                ${pedirData ? `<div><label class="form-label">Data do retorno</label><input id="indicacaoAcaoData" type="date" class="form-input" value="${hojeISO()}"></div>` : ""}
+                <div>
+                  <label class="form-label">Observação</label>
+                  <textarea id="indicacaoAcaoObs" class="form-textarea" placeholder="Registre o detalhe da ação"></textarea>
+                </div>
+                <button class="btn btn-primary" style="width:100%;height:58px;" onclick="salvarAcaoIndicacao('${id}','${acao}','${status}',${pedirData})">
+                  Salvar
+                </button>
+              </div>
+            `
+          );
+        }
+
+        async function salvarAcaoIndicacao(id, acao, status, pedirData = false) {
+          const data = pedirData ? (document.getElementById("indicacaoAcaoData")?.value || "") : "";
+          const obs = document.getElementById("indicacaoAcaoObs")?.value.trim() || "";
+          await atualizarIndicacaoComHistorico(
+            id,
+            pedirData ? { status, dataRetorno: data } : { status },
+            { acao, observacao: `${data} ${obs}`.trim() }
+          );
+          abrirDetalheIndicacao(id);
+        }
+
+        function converterIndicacaoEmCliente(id) {
+          const i = indicacoesCache.find(x => x.id === id);
+          if (!i) return;
+          abrirNovoCliente({
+            indicacaoId: id,
+            nome: i.nome || "",
+            telefone: i.telefone || "",
+            observacoes: i.observacao || "",
+            origem: i.origem || ""
+          });
+        }
+
+        async function marcarIndicacaoConvertida(indicacaoId, clienteId, clienteNome) {
+          if (!indicacaoId) return;
+          await atualizarIndicacaoComHistorico(
+            indicacaoId,
+            {
+              status: "CONVERTIDA",
+              clienteId,
+              clienteNome,
+              convertidoPorId: usuarioLogado.id,
+              convertidoPorNome: usuarioLogado.nome || usuarioLogado.email || "",
+              convertidoEmTexto: new Date().toISOString(),
+              metricas: {
+                convertida: true,
+                origem: indicacoesCache.find(i => i.id === indicacaoId)?.origem || "",
+                vendedorId: usuarioLogado.id
+              }
+            },
+            { acao: "CONVERTIDO", observacao: `Convertido em cliente ${clienteNome}` }
+          );
+        }
+
         function renderCaixaVendedor() {
 
           const el =
@@ -4906,10 +5397,14 @@
         var clientesCache = [];
         var vendasCache = [];
         var parcelasCache = [];
+        var pagamentosCache = [];
         var pagamentosHojeCache = [];
         var solicitacoesCache = [];
         var historicoCobrancasCache = [];
         var notificacoesCache = [];
+        var indicacoesCache = [];
+        var categoriasMovimentacaoCache = [];
+        var clientesBuscaExecutada = false;
 
         // =========================
         // INIT
@@ -5051,6 +5546,90 @@
           });
         }
 
+        function formatarMoedaBR(valor) {
+          return Number(valor || 0).toLocaleString("pt-BR", {
+            style: "currency",
+            currency: "BRL"
+          });
+        }
+
+        function converterMoedaBRParaNumero(valor) {
+          if (typeof valor === "number") return valor;
+
+          let textoValor = String(valor || "").trim();
+          if (!textoValor) return 0;
+
+          const negativo = textoValor.includes("-");
+          textoValor = textoValor
+            .replace(/R\$/gi, "")
+            .replace(/[^0-9,.-]/g, "")
+            .replace(/-/g, "");
+
+          if (!textoValor) return 0;
+
+          let numeroFinal = 0;
+
+          if (textoValor.includes(",")) {
+            numeroFinal = Number(textoValor.replace(/\./g, "").replace(",", "."));
+          } else if (textoValor.includes(".")) {
+            const partes = textoValor.split(".");
+            if (partes[partes.length - 1].length === 2) {
+              numeroFinal = Number(textoValor.replace(/,/g, ""));
+            } else {
+              numeroFinal = Number(textoValor.replace(/\./g, ""));
+            }
+          } else {
+            const digitos = textoValor.replace(/\D/g, "");
+            numeroFinal = Number(digitos || 0) / 100;
+          }
+
+          if (Number.isNaN(numeroFinal)) return 0;
+          return negativo ? -Math.abs(numeroFinal) : numeroFinal;
+        }
+
+        function formatarMoedaBRInput(input) {
+          if (!input) return;
+
+          const negativo = String(input.value || "").trim().startsWith("-") || String(input.value || "").includes("-");
+          const digitos = String(input.value || "").replace(/\D/g, "");
+
+          if (!digitos) {
+            input.value = negativo ? "-" : "";
+            input.dataset.valorNumerico = "0";
+            return;
+          }
+
+          const valor = Number(digitos) / 100;
+          const valorFinal = negativo ? -valor : valor;
+          input.dataset.valorNumerico = String(valorFinal);
+          input.value = (negativo ? "-" : "") + valor.toLocaleString("pt-BR", {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+          });
+        }
+
+        function campoMoedaHtml(id, placeholder = "R$ 0,00", valorInicial = "") {
+          const valor = valorInicial !== "" && valorInicial !== null && valorInicial !== undefined
+            ? Number(valorInicial || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+            : "";
+
+          return `
+            <div class="money-field-wrap">
+              <span class="money-field-prefix">R$</span>
+              <input
+                id="${id}"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                class="money-field-input"
+                placeholder="${placeholder}"
+                value="${valor}"
+                oninput="formatarMoedaBRInput(this)"
+              >
+            </div>
+          `;
+        }
+
         function hojeISO() {
           return new Date().toISOString().split("T")[0];
         }
@@ -5095,7 +5674,7 @@
           const atual = document.getElementById(id);
 
           if (!atual) {
-            alert("Tela não encontrada: " + id);
+            console.warn("Tela não encontrada:", id);
             return;
           }
 
@@ -5136,8 +5715,8 @@
               "Solicite ingresso, gasto, retirada ou ajuste."
             ],
             caixa: [
-              "Meu caixa",
-              "Saldo atual, status e movimentações do caixa."
+              "Indicações",
+              "Leads recebidos, contatos e conversões."
             ],
             notificacoes: [
               "Notificações",
@@ -5170,7 +5749,7 @@
             abrirAbaVendasCobrancas("cobrancas");
           }
           if (id === "solicitacoes") renderSolicitacoes();
-          if (id === "caixa") renderCaixaVendedor();
+          if (id === "caixa") renderIndicacoes();
 
           toggleSidebar(false);
 
@@ -5186,21 +5765,23 @@
 
             await Promise.all([
               carregarCaixaAtual(),
-              carregarClientes(),
               carregarVendas(),
               carregarParcelas(),
+              carregarPagamentosHistorico(),
               carregarPagamentosHoje(),
               carregarSolicitacoes(),
+              carregarIndicacoes(),
+              carregarCategoriasMovimentacao(),
               carregarNotificacoes(),
               carregarHistoricoCobrancas()
             ]);
 
             atualizarDashboard();
-            buscarClientes();
+            if (clientesBuscaExecutada) await buscarClientes(false);
             renderVendasDia();
             renderCobrancas();
             renderSolicitacoes();
-            renderCaixaVendedor();
+            renderIndicacoes();
 
           } catch (erro) {
 
@@ -5400,6 +5981,43 @@ async function verificarCaixaAbertoDiaAnterior() {
 
         }
 
+        async function carregarPagamentosHistorico() {
+
+          let ref = db.collection("pagamentos").limit(1000);
+
+          if (tenantId) {
+            ref = db.collection("pagamentos")
+              .where("clientePlataformaId", "==", tenantId)
+              .limit(1000);
+          }
+
+          const snap = await ref.get();
+
+          pagamentosCache = [];
+
+          snap.forEach(doc => {
+            const p = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            const pertenceAoVendedor =
+              !p.vendedorId ||
+              p.vendedorId === usuarioLogado.id ||
+              p.usuarioId === usuarioLogado.id;
+
+            const pertenceAoTenant =
+              !tenantId ||
+              !p.clientePlataformaId ||
+              p.clientePlataformaId === tenantId;
+
+            if (pertenceAoVendedor && pertenceAoTenant && p.excluido !== true) {
+              pagamentosCache.push(p);
+            }
+          });
+
+        }
+
         async function carregarPagamentosHoje() {
 
           let ref = db.collection("pagamentos")
@@ -5463,6 +6081,75 @@ async function verificarCaixaAbertoDiaAnterior() {
             }
           });
 
+        }
+
+        async function carregarIndicacoes() {
+          let ref = db.collection("indicacoes").limit(500);
+
+          if (tenantId) {
+            ref = db.collection("indicacoes")
+              .where("clientePlataformaId", "==", tenantId)
+              .limit(500);
+          }
+
+          const snap = await ref.get();
+
+          indicacoesCache = [];
+
+          snap.forEach(doc => {
+            const item = {
+              id: doc.id,
+              ...doc.data()
+            };
+
+            const pertenceAoVendedor =
+              !item.vendedorResponsavelId ||
+              item.vendedorResponsavelId === usuarioLogado.id ||
+              item.vendedorId === usuarioLogado.id;
+
+            const pertenceAoTenant =
+              !tenantId ||
+              !item.clientePlataformaId ||
+              item.clientePlataformaId === tenantId;
+
+            if (pertenceAoVendedor && pertenceAoTenant && item.excluido !== true) {
+              indicacoesCache.push(item);
+            }
+          });
+        }
+
+        async function carregarCategoriasMovimentacao() {
+          try {
+            let ref = db.collection("categoriasMovimentacao").limit(300);
+
+            if (tenantId) {
+              ref = db.collection("categoriasMovimentacao")
+                .where("clientePlataformaId", "==", tenantId)
+                .limit(300);
+            }
+
+            const snap = await ref.get();
+            categoriasMovimentacaoCache = [];
+
+            snap.forEach(doc => {
+              const categoria = {
+                id: doc.id,
+                ...doc.data()
+              };
+
+              const pertenceAoTenant =
+                !tenantId ||
+                !categoria.clientePlataformaId ||
+                categoria.clientePlataformaId === tenantId;
+
+              if (pertenceAoTenant && categoria.excluido !== true && categoria.ativo !== false) {
+                categoriasMovimentacaoCache.push(categoria);
+              }
+            });
+          } catch (erro) {
+            console.warn("Falha ao carregar categorias de movimentação:", erro);
+            categoriasMovimentacaoCache = [];
+          }
         }
 
         async function carregarNotificacoes() {
@@ -5633,13 +6320,115 @@ async function verificarCaixaAbertoDiaAnterior() {
         }
 
         function getDespesasHojeDashboard() {
+          return getSolicitacoesCaixaDashboard(["GASTO"]);
+        }
+
+        function getIngressosHojeDashboard() {
+          return getSolicitacoesCaixaDashboard(["INGRESSO"]);
+        }
+
+        function getRetiradasHojeDashboard() {
+          return getSolicitacoesCaixaDashboard(["RETIRADA"]);
+        }
+
+        function getSolicitacoesCaixaDashboard(tipos = []) {
           return (solicitacoesCache || []).filter(s => {
             const tipo = String(s.tipo || s.tipoSolicitacao || "").toUpperCase();
             const status = String(s.status || "").toUpperCase();
-            const ehDespesa = tipo === "GASTO" || tipo === "RETIRADA";
-            const cancelada = ["CANCELADO", "CANCELADA", "REJEITADO", "REJEITADA", "RECUSADO", "RECUSADA"].includes(status);
-            return ehDespesa && !cancelada && dataRegistroEhHoje(s);
+            const aprovada = ["APROVADO", "APROVADA"].includes(status);
+            const mesmoCaixa =
+              !caixaAtual?.id ||
+              !s.caixaId ||
+              s.caixaId === caixaAtual.id;
+
+            return tipos.includes(tipo) && aprovada && mesmoCaixa;
           });
+        }
+
+        function statusAprovado(valor) {
+          return ["APROVADO", "APROVADA"].includes(String(valor || "").toUpperCase());
+        }
+
+        function statusConfirmado(valor) {
+          return ["CONFIRMADO", "CONFIRMADA", "ATIVO", "ATIVA", "APROVADO", "APROVADA"].includes(String(valor || "").toUpperCase());
+        }
+
+        function pertenceAoCaixaAtual(registro) {
+          return !caixaAtual?.id || !registro?.caixaId || registro.caixaId === caixaAtual.id;
+        }
+
+        function getCaixaInicialAtual() {
+          return numero(
+            caixaAtual?.valorInicial ||
+            caixaAtual?.caixaInicial ||
+            caixaAtual?.saldoInicial ||
+            caixaAtual?.valorAbertura ||
+            caixaAtual?.carteiraInicial ||
+            0
+          );
+        }
+
+        function getRecebimentosCaixaAtual() {
+          return (pagamentosCache || pagamentosHojeCache || []).filter(p =>
+            pertenceAoCaixaAtual(p) &&
+            statusConfirmado(p.status || "CONFIRMADO") &&
+            p.excluido !== true
+          );
+        }
+
+        function getVendasCaixaAtual() {
+          return (vendasCache || []).filter(v =>
+            pertenceAoCaixaAtual(v) &&
+            v.excluido !== true &&
+            String(v.statusVenda || v.status || "").toUpperCase() !== "CANCELADO"
+          );
+        }
+
+        function getLancamentosCaixaAtual(tipo, statusFn) {
+          return (solicitacoesCache || []).filter(s =>
+            String(s.tipo || s.tipoSolicitacao || "").toUpperCase() === tipo &&
+            pertenceAoCaixaAtual(s) &&
+            s.excluido !== true &&
+            statusFn(s.status)
+          );
+        }
+
+        function calcularResumoCaixaAtual() {
+          const caixaInicial = getCaixaInicialAtual();
+          const recebimentos = getRecebimentosCaixaAtual();
+          const ingressos = getLancamentosCaixaAtual("INGRESSO", statusAprovado);
+          const retiradas = getLancamentosCaixaAtual("RETIRADA", statusAprovado);
+          const gastos = getLancamentosCaixaAtual("GASTO", statusConfirmado);
+          const vendas = getVendasCaixaAtual();
+
+          const totalRecebimentos = recebimentos.reduce((total, p) =>
+            total + numero(p.valorPago || p.valorRecebido || p.valor || 0), 0
+          );
+          const totalIngressos = ingressos.reduce((total, s) => total + numero(s.valor || 0), 0);
+          const totalRetiradas = retiradas.reduce((total, s) => total + numero(s.valor || 0), 0);
+          const totalGastos = gastos.reduce((total, s) => total + numero(s.valor || 0), 0);
+          const totalVendas = vendas.reduce((total, v) => total + numero(v.valorEmprestado || v.valor || 0), 0);
+
+          const entradas = totalRecebimentos + totalIngressos;
+          const saidas = totalVendas + totalRetiradas + totalGastos;
+          const caixaAtualCalculado = caixaInicial + entradas - saidas;
+
+          return {
+            caixaInicial,
+            recebimentos,
+            ingressos,
+            retiradas,
+            gastos,
+            vendas,
+            totalRecebimentos,
+            totalIngressos,
+            totalRetiradas,
+            totalGastos,
+            totalVendas,
+            entradas,
+            saidas,
+            caixaAtual: caixaAtualCalculado
+          };
         }
 
         function calcularCarteiraFinalDashboard() {
@@ -5687,12 +6476,8 @@ async function verificarCaixaAbertoDiaAnterior() {
         }
 
         function atualizarDashboard() {
-          const saldoCaixa = numero(
-            caixaAtual?.saldoAtual ||
-            caixaAtual?.valorAtual ||
-            caixaAtual?.saldo ||
-            0
-          );
+          const resumoCaixa = calcularResumoCaixaAtual();
+          const saldoCaixa = resumoCaixa.caixaAtual;
 
           const pagamentosValidosHoje = (pagamentosHojeCache || [])
             .filter(p => String(p.status || "CONFIRMADO").toUpperCase() !== "CANCELADO");
@@ -5704,11 +6489,6 @@ async function verificarCaixaAbertoDiaAnterior() {
           const vendasHojeLista = getVendasHojeDashboard();
           const valorVendidoHoje = vendasHojeLista.reduce((total, v) =>
             total + valorTotalVendaCalculado(v), 0
-          );
-
-          const despesasHojeLista = getDespesasHojeDashboard();
-          const despesasHoje = despesasHojeLista.reduce((total, s) =>
-            total + numero(s.valor || 0), 0
           );
 
           const vendasAtivas = getVendasAtivasDashboard();
@@ -5728,6 +6508,13 @@ async function verificarCaixaAbertoDiaAnterior() {
 
           const clientesAtivos = clientesAtivosIds.size;
           const clientesDia = vendasAtivas.length;
+          const clientesVendidosHoje = new Set(vendasHojeLista.map(v => v.clienteId || v.clienteNome).filter(Boolean)).size;
+          const vendasNovasHoje = vendasHojeLista.filter(v =>
+            !String(v.tipoVenda || v.tipo || "").toUpperCase().includes("RENOV")
+          ).length;
+          const renovacoesHoje = vendasHojeLista.filter(v =>
+            String(v.tipoVenda || v.tipo || "").toUpperCase().includes("RENOV")
+          ).length;
 
           const setTexto = (id, valor) => {
             const el = document.getElementById(id);
@@ -5735,13 +6522,16 @@ async function verificarCaixaAbertoDiaAnterior() {
           };
 
           setTexto("kpiCaixaAtual", moeda(saldoCaixa));
+          setTexto("kpiCaixaEntradas", moeda(resumoCaixa.entradas));
+          setTexto("kpiCaixaSaidas", moeda(resumoCaixa.saidas));
           setTexto("kpiCarteiraFinal", moeda(carteiraFinal));
           setTexto("kpiCarteiraInicial", moeda(carteiraInicial));
-          setTexto("kpiRecebidoHoje", moeda(recebidoHoje));
+          setTexto("kpiCarteiraClientes", `${clientesAtivos || clientesDia} clientes ativos`);
           setTexto("kpiClientesAtivos", clientesAtivos);
           setTexto("kpiVendasHoje", moeda(valorVendidoHoje));
-          setTexto("kpiDespesasHoje", moeda(despesasHoje));
-          setTexto("kpiClientesDia", clientesDia);
+          setTexto("kpiVendasClientes", `${clientesVendidosHoje} clientes`);
+          setTexto("kpiVendasNovas", `${vendasNovasHoje} novas`);
+          setTexto("kpiVendasRenovacoes", `${renovacoesHoje} renovações`);
 
           atualizarIndicadorCarteira(carteiraInicial, carteiraFinal);
 
@@ -5762,10 +6552,687 @@ async function verificarCaixaAbertoDiaAnterior() {
           renderAlertasVendedor();
         }
 
+        function dataHoraMovimento(registro) {
+          const textoData =
+            registro.dataPagamento ||
+            registro.dataSolicitacao ||
+            registro.dataVenda ||
+            registro.data ||
+            (registro.criadoEmTexto || "").slice(0, 10) ||
+            "";
+          const textoHora =
+            registro.horaPagamento ||
+            registro.hora ||
+            (registro.criadoEmTexto || "").slice(11, 16) ||
+            "";
+
+          return {
+            data: textoData || "-",
+            hora: textoHora || "-"
+          };
+        }
+
+        function getAnexoMovimento(registro) {
+          return (
+            registro.comprovanteUrl ||
+            registro.anexoUrl ||
+            registro.urlAnexo ||
+            registro.comprovante?.url ||
+            registro.anexo?.url ||
+            ""
+          );
+        }
+
+        function caixaEstaFechado() {
+          return String(caixaAtual?.status || "").toUpperCase() === "FECHADO";
+        }
+
+        function garantirCaixaAberto(mensagem = "O caixa está fechado. Esta ação não pode ser realizada.") {
+          if (!caixaAtual?.id) {
+            alert("Não existe caixa aberto para esta ação.");
+            return false;
+          }
+
+          if (caixaEstaFechado()) {
+            alert(mensagem);
+            return false;
+          }
+
+          return true;
+        }
+
+        function categoriasPadraoMovimentacao(tipo) {
+          const listas = {
+            DESPESA: ["Combustível", "Alimentação", "Manutenção", "Internet", "Material", "Outros"],
+            RETIRADA: ["Recolhimento", "Repasse", "Ajuste de caixa", "Retirada autorizada", "Outros"],
+            INGRESSO: ["Aporte de caixa", "Reposição", "Ajuste de caixa", "Outros"]
+          };
+
+          return (listas[tipo] || ["Outros"]).map((nome, index) => ({
+            id: `PADRAO_${tipo}_${index}`,
+            nome,
+            padraoSistema: true,
+            tipo
+          }));
+        }
+
+        function categoriasPorTipoMovimentacao(tipo) {
+          const cadastradas = (categoriasMovimentacaoCache || [])
+            .filter(c => String(c.tipo || c.tipoCategoria || c.categoriaTipo || "").toUpperCase() === tipo)
+            .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+
+          return cadastradas.length ? cadastradas : categoriasPadraoMovimentacao(tipo);
+        }
+
+        function selectCategoriasMovimentacao(tipo, id, label) {
+          const categorias = categoriasPorTipoMovimentacao(tipo);
+
+          return `
+            <div>
+              <label class="form-label">${label}</label>
+              <select id="${id}" class="form-input form-select-premium">
+                <option value="">Selecione</option>
+                ${categorias.map(c => `<option value="${c.id}" data-nome="${valorAtributo(c.nome || "")}" data-padrao="${c.padraoSistema ? "true" : "false"}">${c.nome || "Categoria"}</option>`).join("")}
+              </select>
+              ${categorias.some(c => c.padraoSistema) ? `
+                <small style="display:block;color:#64748b;font-weight:800;margin-top:8px;line-height:1.4;">
+                  Usando opções padrão. O Master Local pode personalizar em Configurações &gt; Financeiro &gt; Categorias de movimentação.
+                </small>
+              ` : ""}
+            </div>
+          `;
+        }
+
+        function atualizarCamposLancamentoCaixa() {
+          const tipo = document.getElementById("lancamentoTipo")?.value || "";
+          const destino = document.getElementById("camposCategoriaLancamento");
+          if (!destino) return;
+
+          if (tipo === "GASTO") {
+            destino.innerHTML = selectCategoriasMovimentacao("DESPESA", "lancamentoCategoria", "Categoria da despesa");
+            return;
+          }
+
+          if (tipo === "RETIRADA") {
+            destino.innerHTML = selectCategoriasMovimentacao("RETIRADA", "lancamentoCategoria", "Motivo da retirada");
+            return;
+          }
+
+          if (tipo === "INGRESSO") {
+            destino.innerHTML = selectCategoriasMovimentacao("INGRESSO", "lancamentoCategoria", "Motivo do ingresso");
+            return;
+          }
+
+          destino.innerHTML = "";
+        }
+
+        function montarMovimentacoesCaixa(resumo) {
+          const movimentos = [];
+
+          resumo.recebimentos.forEach(p => {
+            movimentos.push({
+              ...dataHoraMovimento(p),
+              tipo: "RECEBIMENTO",
+              valor: numero(p.valorPago || p.valorRecebido || p.valor || 0),
+              status: p.status || "CONFIRMADO",
+              observacao: p.observacao || p.obs || "",
+              anexo: getAnexoMovimento(p)
+            });
+          });
+
+          resumo.ingressos.forEach(s => {
+            movimentos.push({
+              ...dataHoraMovimento(s),
+              tipo: "INGRESSO",
+              valor: numero(s.valor || 0),
+              status: s.status || "APROVADO",
+              observacao: s.observacao || s.descricao || "",
+              anexo: getAnexoMovimento(s)
+            });
+          });
+
+          resumo.retiradas.forEach(s => {
+            movimentos.push({
+              ...dataHoraMovimento(s),
+              tipo: "RETIRADA",
+              valor: numero(s.valor || 0),
+              status: s.status || "APROVADO",
+              observacao: s.observacao || s.descricao || "",
+              anexo: getAnexoMovimento(s)
+            });
+          });
+
+          resumo.gastos.forEach(s => {
+            movimentos.push({
+              ...dataHoraMovimento(s),
+              tipo: "GASTO",
+              valor: numero(s.valor || 0),
+              status: s.status || "CONFIRMADO",
+              observacao: s.observacao || s.descricao || "",
+              anexo: getAnexoMovimento(s)
+            });
+          });
+
+          return movimentos.sort((a, b) =>
+            `${b.data} ${b.hora}`.localeCompare(`${a.data} ${a.hora}`)
+          );
+        }
+
+        function htmlMovimentacoesCaixa(resumo) {
+          const movimentos = montarMovimentacoesCaixa(resumo);
+
+          if (!movimentos.length) {
+            return `
+              <div style="border:1px dashed #cbd5e1;border-radius:18px;padding:16px;color:#64748b;font-weight:800;">
+                Nenhuma movimentação registrada neste caixa.
+              </div>
+            `;
+          }
+
+          return movimentos.map(m => `
+            <div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;display:grid;gap:6px;">
+              <strong>${m.tipo} • ${moeda(m.valor)}</strong>
+              <small style="color:#64748b;font-weight:800;">Data: ${m.data} • Hora: ${m.hora}</small>
+              <small style="color:#64748b;font-weight:800;">Status: ${m.status || "-"}</small>
+              <small style="color:#64748b;font-weight:800;">Observação: ${m.observacao || "-"}</small>
+              ${m.anexo ? `<a href="${m.anexo}" target="_blank" rel="noopener" style="color:#0f766e;font-weight:900;">Ver anexo/comprovante</a>` : `<small style="color:#94a3b8;font-weight:800;">Sem anexo/comprovante</small>`}
+            </div>
+          `).join("");
+        }
+
+        function miniCardCaixa(titulo, valor, gradiente, categoria) {
+          return `
+            <button
+              type="button"
+              class="mini-card-caixa-premium"
+              onclick="abrirDetalheMiniCardCaixa('${categoria}')"
+              style="background:${gradiente};"
+            >
+              <small>${titulo}</small>
+              <strong>${moeda(valor)}</strong>
+            </button>
+          `;
+        }
+
+        function abrirDetalheMiniCardCaixa(categoria) {
+          const resumo = calcularResumoCaixaAtual();
+          const mapa = {
+            caixa_inicial: {
+              titulo: "Caixa Inicial",
+              subtitulo: "Valor de abertura do caixa",
+              html: `<div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;"><strong>${moeda(resumo.caixaInicial)}</strong></div>`
+            },
+            recebimentos: {
+              titulo: "Recebimentos",
+              subtitulo: `${resumo.recebimentos.length} registro(s)`,
+              html: htmlMovimentacoesCaixa({ ...resumo, ingressos: [], retiradas: [], gastos: [] })
+            },
+            ingressos: {
+              titulo: "Ingressos Aprovados",
+              subtitulo: `${resumo.ingressos.length} registro(s)`,
+              html: htmlMovimentacoesCaixa({ ...resumo, recebimentos: [], retiradas: [], gastos: [] })
+            },
+            vendas: {
+              titulo: "Vendas Realizadas",
+              subtitulo: `${resumo.vendas.length} venda(s)`,
+              html: resumo.vendas.length
+                ? resumo.vendas.map(v => {
+                    const tipoBase = String(v.tipoVenda || v.tipo || "NOVA").toUpperCase();
+                    const renovacoesCliente = resumo.vendas.filter(x =>
+                      x.clienteId === v.clienteId &&
+                      String(x.tipoVenda || x.tipo || "").toUpperCase().includes("RENOV")
+                    );
+                    const numeroRenovacao =
+                      v.numeroRenovacao ||
+                      v.renovacaoNumero ||
+                      v.renovacaoIndex ||
+                      (tipoBase.includes("RENOV") ? Math.max(1, renovacoesCliente.findIndex(x => x.id === v.id) + 1) : "");
+                    const tipoTexto = tipoBase.includes("RENOV") ? `Renovação #${numeroRenovacao}` : "Venda Nova";
+
+                    return `
+                      <div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;">
+                        <strong>${v.clienteNome || "Cliente"} • ${tipoTexto}</strong>
+                        <small style="display:block;color:#64748b;font-weight:800;">Valor emprestado: ${moeda(v.valorEmprestado || v.valor || 0)}</small>
+                        <small style="display:block;color:#64748b;font-weight:800;">Data: ${v.dataVenda || v.data || (v.criadoEmTexto || "").slice(0, 10) || "-"}</small>
+                        <small style="display:block;color:#64748b;font-weight:800;">Status: ${v.statusVenda || v.status || "-"}</small>
+                        <small style="display:block;color:#64748b;font-weight:800;">Juros: ${Number(v.taxaJuros || v.juros || 0).toLocaleString("pt-BR")}% • Parcelas: ${v.quantidadeParcelas || 0} • Frequência: ${v.frequencia || "-"}</small>
+                      </div>
+                    `;
+                  }).join("")
+                : `<div style="border:1px dashed #cbd5e1;border-radius:18px;padding:16px;color:#64748b;font-weight:800;">Nenhuma venda realizada.</div>`
+            },
+            retiradas: {
+              titulo: "Retiradas Aprovadas",
+              subtitulo: `${resumo.retiradas.length} registro(s)`,
+              html: htmlMovimentacoesCaixa({ ...resumo, recebimentos: [], ingressos: [], gastos: [] })
+            },
+            gastos: {
+              titulo: "Gastos/Despesas",
+              subtitulo: `${resumo.gastos.length} registro(s)`,
+              html: htmlMovimentacoesCaixa({ ...resumo, recebimentos: [], ingressos: [], retiradas: [] })
+            },
+            caixa_atual: {
+              titulo: "Caixa Atual",
+              subtitulo: "Saldo calculado",
+              html: `<div style="border:1px solid #bbf7d0;background:#ecfdf5;border-radius:18px;padding:14px;"><strong>${moeda(resumo.caixaAtual)}</strong></div>`
+            }
+          };
+
+          const info = mapa[categoria];
+          if (!info) return;
+
+          abrirDrawer(
+            info.titulo,
+            info.subtitulo,
+            `<div style="display:grid;gap:12px;color:#334155;font-weight:800;line-height:1.6;">${info.html}<button class="btn btn-light" onclick="abrirGavetaCaixaAtual()">Voltar ao caixa</button></div>`
+          );
+        }
+
+        function abrirGavetaCaixaAtual() {
+          const resumo = calcularResumoCaixaAtual();
+
+          abrirDrawer(
+            "Caixa Atual",
+            "Resumo financeiro do caixa",
+            `
+              <div style="display:grid;gap:16px;color:#334155;font-weight:800;line-height:1.6;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="busca-grid">
+                  <button class="btn btn-primary" style="width:100%;height:56px;" onclick="abrirFormularioLancamentoCaixa()">
+                    Nova movimentação
+                  </button>
+                  <button class="btn btn-light" style="width:100%;height:56px;" onclick="abrirFechamentoCaixa()">
+                    Fechar caixa
+                  </button>
+                </div>
+
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:14px;" class="busca-grid">
+                  ${miniCardCaixa("Caixa Inicial", resumo.caixaInicial, "linear-gradient(135deg,#0f766e,#061a35)", "caixa_inicial")}
+                  ${miniCardCaixa("Recebimentos", resumo.totalRecebimentos, "linear-gradient(135deg,#22c55e,#15803d)", "recebimentos")}
+                  ${miniCardCaixa("Ingressos Aprovados", resumo.totalIngressos, "linear-gradient(135deg,#2dd4bf,#047857)", "ingressos")}
+                  ${miniCardCaixa("Vendas Realizadas", resumo.totalVendas, "linear-gradient(135deg,#ffb100,#ff8a00)", "vendas")}
+                  ${miniCardCaixa("Retiradas Aprovadas", resumo.totalRetiradas, "linear-gradient(135deg,#991b1b,#450a0a)", "retiradas")}
+                  ${miniCardCaixa("Gastos/Despesas", resumo.totalGastos, "linear-gradient(135deg,#ef4444,#b91c1c)", "gastos")}
+                  ${miniCardCaixa("Caixa Atual", resumo.caixaAtual, "linear-gradient(135deg,#16a34a,#065f46)", "caixa_atual")}
+                </div>
+
+                <div>
+                  <h3 style="font-size:18px;margin-bottom:10px;">Movimentações do caixa</h3>
+                  <div style="display:grid;gap:12px;">${htmlMovimentacoesCaixa(resumo)}</div>
+                </div>
+              </div>
+            `
+          );
+        }
+
+        function abrirFormularioLancamentoCaixa() {
+          if (!garantirCaixaAberto("O caixa está fechado. Não é possível lançar movimentação.")) return;
+
+          abrirDrawer(
+            "Nova movimentação",
+            "Movimentação vinculada ao caixa atual",
+            `
+              <div style="display:grid;gap:18px;">
+                <div>
+                  <label class="form-label">Tipo de lançamento</label>
+                  <select id="lancamentoTipo" class="form-input form-select-premium" onchange="atualizarCamposLancamentoCaixa()">
+                    <option value="GASTO">Lançar gasto</option>
+                    <option value="RETIRADA">Solicitar retirada</option>
+                    <option value="INGRESSO">Solicitar ingresso</option>
+                  </select>
+                </div>
+
+                <div id="camposCategoriaLancamento">
+                  ${selectCategoriasMovimentacao("DESPESA", "lancamentoCategoria", "Categoria da despesa")}
+                </div>
+
+                <div>
+                  <label class="form-label">Valor</label>
+                  ${campoMoedaHtml("lancamentoValor", "0,00")}
+                </div>
+
+                <div>
+                  <label class="form-label">Observação</label>
+                  <textarea id="lancamentoObs" class="form-textarea" placeholder="Observação opcional"></textarea>
+                </div>
+
+                <div>
+                  <label class="form-label">Anexo/foto/comprovante</label>
+                  <input id="lancamentoAnexo" type="file" accept="image/*" class="form-input">
+                  <small style="display:block;color:#64748b;font-weight:800;margin-top:8px;">
+                    O anexo é opcional. Quando o Firebase Storage estiver disponível, o arquivo será enviado automaticamente.
+                  </small>
+                </div>
+
+                <button class="btn btn-primary" style="width:100%;height:60px;font-size:16px;" onclick="salvarLancamentoCaixa(this)">
+                  Confirmar movimentação
+                </button>
+              </div>
+            `
+          );
+        }
+
+        async function uploadArquivoLancamentoCaixa(lancamentoId, arquivo) {
+          // Preparado para Firebase Storage. Se Storage não estiver disponível no ambiente,
+          // o lançamento segue sem anexo para não quebrar o fluxo operacional.
+          if (!arquivo || !firebase.storage) return null;
+
+          const nomeSeguro = arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+          const caminho = `caixas/${tenantId || "sem_tenant"}/${caixaAtual.id}/lancamentos/${lancamentoId}/${Date.now()}_${nomeSeguro}`;
+          const ref = firebase.storage().ref().child(caminho);
+
+          await ref.put(arquivo);
+
+          return {
+            nome: arquivo.name,
+            tipo: arquivo.type || "",
+            tamanho: arquivo.size || 0,
+            caminho,
+            url: await ref.getDownloadURL(),
+            criadoEmTexto: new Date().toISOString()
+          };
+        }
+
+        async function registrarLogLancamentoCaixa(acao, dados = {}) {
+          try {
+            const agora = new Date();
+            await db.collection("logs").add({
+              usuarioId: usuarioLogado?.id || "",
+              usuarioNome: usuarioLogado?.nome || usuarioLogado?.nomeCompleto || usuarioLogado?.email || "",
+              tipoUsuario: usuarioLogado?.tipoUsuario || "",
+              cargo: usuarioLogado?.cargoNome || usuarioLogado?.cargo || "",
+              acaoExecutada: acao,
+              tipoAcao: acao,
+              tipoLancamento: dados.tipoLancamento || "",
+              valor: numero(dados.valor || 0),
+              valorAnterior: dados.valorAnterior ?? null,
+              valorNovo: dados.valorNovo ?? null,
+              motivo: dados.motivo || "",
+              observacao: dados.motivo || dados.observacao || "",
+              caixaId: caixaAtual?.id || dados.caixaId || "",
+              clientePlataformaId: tenantId || null,
+              tenantId: tenantId || null,
+              lancamentoId: dados.lancamentoId || "",
+              data: hojeISO(),
+              hora: agora.toTimeString().slice(0, 5),
+              dataHora: agora.toISOString(),
+              criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+          } catch (erro) {
+            console.warn("Falha ao registrar log do lançamento:", erro);
+          }
+        }
+
+        async function salvarLancamentoCaixa(botao = null) {
+          try {
+            if (!garantirCaixaAberto("O caixa está fechado. Não é possível lançar movimentação.")) return;
+
+            const tipo = document.getElementById("lancamentoTipo")?.value || "";
+            const valor = converterMoedaBRParaNumero(document.getElementById("lancamentoValor")?.value || "");
+            const observacao = (document.getElementById("lancamentoObs")?.value || "").trim();
+            const arquivo = document.getElementById("lancamentoAnexo")?.files?.[0] || null;
+            const categoriaEl = document.getElementById("lancamentoCategoria");
+            const categoriaId = categoriaEl?.value || "";
+            const categoriaNome = categoriaEl?.selectedOptions?.[0]?.dataset?.nome || categoriaEl?.selectedOptions?.[0]?.textContent || "";
+
+            if (!["GASTO", "RETIRADA", "INGRESSO"].includes(tipo)) {
+              alert("Selecione um tipo de lançamento válido.");
+              return;
+            }
+
+            if (!valor || valor <= 0) {
+              alert("Informe um valor maior que zero.");
+              return;
+            }
+
+            if (["GASTO", "RETIRADA", "INGRESSO"].includes(tipo) && !categoriaId) {
+              alert(
+                tipo === "GASTO"
+                  ? "Selecione a categoria da despesa."
+                  : tipo === "RETIRADA"
+                    ? "Selecione o motivo da retirada."
+                    : "Selecione o motivo do ingresso."
+              );
+              return;
+            }
+
+            if (categoriaNome.trim().toUpperCase() === "OUTROS" && !observacao) {
+              alert("Informe a observação ao selecionar Outros.");
+              return;
+            }
+
+            if (botao) {
+              botao.disabled = true;
+              botao.innerText = "Salvando...";
+            }
+
+            const lancamentoRef = db.collection("solicitacoes").doc();
+            let anexo = null;
+
+            try {
+              anexo = await uploadArquivoLancamentoCaixa(lancamentoRef.id, arquivo);
+            } catch (erroUpload) {
+              console.warn("Lançamento seguirá sem anexo por falha no Storage:", erroUpload);
+            }
+
+            const status = tipo === "GASTO" ? "CONFIRMADO" : "PENDENTE";
+            const dadosLancamento = {
+              tipo,
+              tipoSolicitacao: tipo,
+              origem: "CAIXA_ATUAL",
+              status,
+              valor,
+              observacao,
+              descricao: observacao,
+              categoriaId,
+              categoriaNome,
+              categoriaTipo: tipo === "GASTO" ? "DESPESA" : tipo === "RETIRADA" ? "RETIRADA" : tipo === "INGRESSO" ? "INGRESSO" : "",
+              anexo,
+              anexoUrl: anexo?.url || "",
+              comprovanteUrl: anexo?.url || "",
+              editavelPeloVendedor: false,
+              bloqueadoParaVendedor: true,
+              cancelamentoLogico: true,
+              usuarioId: usuarioLogado.id,
+              usuarioNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "",
+              vendedorId: usuarioLogado.id,
+              vendedorNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "",
+              tipoUsuario: usuarioLogado.tipoUsuario || "",
+              cargoNome: usuarioLogado.cargoNome || usuarioLogado.cargo || "",
+              caixaId: caixaAtual.id,
+              clientePlataformaId: tenantId || null,
+              data: hojeISO(),
+              criadoEmTexto: new Date().toISOString(),
+              criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            const batch = db.batch();
+            batch.set(lancamentoRef, dadosLancamento);
+
+            let novoSaldo = null;
+            if (tipo === "GASTO") {
+              const resumo = calcularResumoCaixaAtual();
+              novoSaldo = resumo.caixaAtual - valor;
+              batch.update(db.collection("caixas").doc(caixaAtual.id), {
+                saldoAtual: novoSaldo,
+                valorAtual: novoSaldo,
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            }
+
+            await batch.commit();
+
+            await registrarLogLancamentoCaixa("CRIAR_LANCAMENTO_CAIXA", {
+              tipoLancamento: tipo,
+              valor,
+              valorAnterior: tipo === "GASTO" ? calcularResumoCaixaAtual().caixaAtual : null,
+              valorNovo: novoSaldo,
+              motivo: observacao,
+              lancamentoId: lancamentoRef.id
+            });
+
+            await carregarSolicitacoes();
+            await carregarCaixaAtual();
+            atualizarDashboard();
+            abrirGavetaCaixaAtual();
+
+            alert("Lançamento registrado com sucesso.");
+          } catch (erro) {
+            console.error("Erro ao salvar lançamento:", erro);
+            alert("Erro ao salvar lançamento:\n\n" + erro.message);
+          } finally {
+            if (botao) {
+              botao.disabled = false;
+              botao.innerText = "Confirmar movimentação";
+            }
+          }
+        }
+
+        function abrirFechamentoCaixa() {
+          if (!garantirCaixaAberto("Este caixa já está fechado.")) return;
+
+          const resumo = calcularResumoCaixaAtual();
+
+          abrirDrawer(
+            "Fechar caixa",
+            "Conferência final do caixa atual",
+            `
+              <div style="display:grid;gap:18px;color:#334155;font-weight:800;">
+                <div style="background:linear-gradient(135deg,#16a34a,#065f46);border-radius:24px;padding:20px;color:#fff;box-shadow:0 18px 36px rgba(15,23,42,.16);">
+                  <small style="display:block;color:rgba(255,255,255,.85);font-weight:900;text-transform:uppercase;">Valor calculado do caixa</small>
+                  <strong style="display:block;font-size:30px;margin-top:8px;">${moeda(resumo.caixaAtual)}</strong>
+                </div>
+
+                <div>
+                  <label class="form-label">Informe o valor físico/real do caixa</label>
+                  ${campoMoedaHtml("fechamentoValorReal", "0,00")}
+                </div>
+
+                <div>
+                  <label class="form-label">Observação</label>
+                  <textarea id="fechamentoObservacao" class="form-textarea" placeholder="Observação opcional"></textarea>
+                </div>
+
+                <button class="btn btn-primary" style="width:100%;height:60px;font-size:16px;" onclick="confirmarFechamentoCaixa(this)">
+                  Confirmar fechamento
+                </button>
+              </div>
+            `
+          );
+        }
+
+        async function confirmarFechamentoCaixa(botao = null) {
+          try {
+            if (!garantirCaixaAberto("Este caixa já está fechado.")) return;
+
+            const resumo = calcularResumoCaixaAtual();
+            const valorReal = converterMoedaBRParaNumero(document.getElementById("fechamentoValorReal")?.value || "");
+            const observacao = (document.getElementById("fechamentoObservacao")?.value || "").trim();
+
+            if (Number.isNaN(valorReal)) {
+              alert("Informe um valor físico/real válido.");
+              return;
+            }
+
+            if (botao) {
+              botao.disabled = true;
+              botao.innerText = "Fechando...";
+            }
+
+            const valorCalculado = Number(resumo.caixaAtual || 0);
+            const diferenca = Number((valorReal - valorCalculado).toFixed(2));
+            const possuiDivergencia = Math.abs(diferenca) > 0.01;
+            const batch = db.batch();
+            const caixaRef = db.collection("caixas").doc(caixaAtual.id);
+
+            batch.update(caixaRef, {
+              status: "FECHADO",
+              ativo: false,
+              valorCalculadoFechamento: valorCalculado,
+              valorFisicoFechamento: valorReal,
+              valorRealFechamento: valorReal,
+              divergenciaFechamento: diferenca,
+              fechamentoDivergente: possuiDivergencia,
+              observacaoFechamento: observacao,
+              fechadoPorId: usuarioLogado.id,
+              fechadoPorNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "",
+              fechadoEmTexto: new Date().toISOString(),
+              fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            let solicitacaoDivergenciaId = "";
+
+            if (possuiDivergencia) {
+              const solicitacaoRef = db.collection("solicitacoes").doc();
+              solicitacaoDivergenciaId = solicitacaoRef.id;
+
+              batch.set(solicitacaoRef, {
+                tipo: "FECHAMENTO_CAIXA_DIVERGENTE",
+                tipoSolicitacao: "FECHAMENTO_CAIXA_DIVERGENTE",
+                origem: "CAIXA_ATUAL",
+                status: "PENDENTE",
+                valor: Math.abs(diferenca),
+                valorCalculado,
+                valorInformado: valorReal,
+                divergencia: diferenca,
+                observacao,
+                descricao: observacao || "Divergência no fechamento de caixa.",
+                usuarioId: usuarioLogado.id,
+                usuarioNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "",
+                vendedorId: usuarioLogado.id,
+                vendedorNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "",
+                caixaId: caixaAtual.id,
+                clientePlataformaId: tenantId || null,
+                data: hojeISO(),
+                criadoEmTexto: new Date().toISOString(),
+                criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+              });
+            }
+
+            await batch.commit();
+
+            await registrarLogLancamentoCaixa("FECHAMENTO_CAIXA", {
+              tipoLancamento: "FECHAMENTO",
+              valor: valorCalculado,
+              valorAnterior: valorCalculado,
+              valorNovo: valorReal,
+              motivo: observacao || (possuiDivergencia ? "Fechamento com divergência." : "Fechamento sem divergência."),
+              caixaId: caixaAtual.id,
+              lancamentoId: solicitacaoDivergenciaId
+            });
+
+            await carregarSolicitacoes();
+            await carregarCaixaAtual();
+            atualizarDashboard();
+            fecharDrawer();
+
+            alert(possuiDivergencia
+              ? "Caixa fechado com divergência registrada para análise."
+              : "Caixa fechado com sucesso.");
+          } catch (erro) {
+            console.error("Erro ao fechar caixa:", erro);
+            alert("Erro ao fechar caixa: " + erro.message);
+          } finally {
+            if (botao) {
+              botao.disabled = false;
+              botao.innerText = "Confirmar fechamento";
+            }
+          }
+        }
+
         function abrirResumoKpi(tipo) {
+          if (tipo === "caixa") {
+            abrirGavetaCaixaAtual();
+            return;
+          }
+
           const vendasHojeLista = getVendasHojeDashboard();
           const vendasAtivas = getVendasAtivasDashboard();
           const despesasHojeLista = getDespesasHojeDashboard();
+          const ingressosHojeLista = getIngressosHojeDashboard();
+          const retiradasHojeLista = getRetiradasHojeDashboard();
 
           const recebidoHoje = (pagamentosHojeCache || [])
             .filter(p => String(p.status || "CONFIRMADO").toUpperCase() !== "CANCELADO")
@@ -5775,6 +7242,8 @@ async function verificarCaixaAbertoDiaAnterior() {
           const carteiraFinal = calcularCarteiraFinalDashboard();
           const carteiraInicial = calcularCarteiraInicialDashboard(carteiraFinal, recebidoHoje, valorVendidoHoje);
           const despesasHoje = despesasHojeLista.reduce((total, s) => total + numero(s.valor || 0), 0);
+          const ingressosHoje = ingressosHojeLista.reduce((total, s) => total + numero(s.valor || 0), 0);
+          const retiradasHoje = retiradasHojeLista.reduce((total, s) => total + numero(s.valor || 0), 0);
 
           const saldoCaixa = numero(
             caixaAtual?.saldoAtual || caixaAtual?.valorAtual || caixaAtual?.saldo || 0
@@ -5801,6 +7270,17 @@ async function verificarCaixaAbertoDiaAnterior() {
                 </div>
               `).join("")
             : `<div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;"><strong>Nenhuma despesa hoje</strong></div>`;
+
+          const renderSolicitacoesResumo = (lista, vazio) => lista.length
+            ? lista.map(s => `
+                <div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;">
+                  <strong>${s.tipo || s.tipoSolicitacao || "Solicitação"}</strong>
+                  <small style="display:block;color:#64748b;font-weight:800;margin-top:4px;">Valor: ${moeda(s.valor || 0)}</small>
+                  <small style="display:block;color:#64748b;font-weight:800;">Status: ${s.status || "-"}</small>
+                  <small style="display:block;color:#64748b;font-weight:800;">Descrição: ${s.descricao || s.observacao || "-"}</small>
+                </div>
+              `).join("")
+            : `<div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;"><strong>${vazio}</strong></div>`;
 
           const dados = {
             caixa: {
@@ -5830,8 +7310,18 @@ async function verificarCaixaAbertoDiaAnterior() {
             },
             despesas: {
               titulo: "Despesas",
-              subtitulo: `Gastos e retiradas • ${moeda(despesasHoje)}`,
+              subtitulo: `Gastos aprovados • ${moeda(despesasHoje)}`,
               html: `<div style="display:grid;gap:12px;">${htmlDespesas}</div>`
+            },
+            ingressos: {
+              titulo: "Ingressos",
+              subtitulo: `Ingressos aprovados • ${moeda(ingressosHoje)}`,
+              html: `<div style="display:grid;gap:12px;">${renderSolicitacoesResumo(ingressosHojeLista, "Nenhum ingresso aprovado")}</div>`
+            },
+            retiradas: {
+              titulo: "Retiradas",
+              subtitulo: `Retiradas aprovadas • ${moeda(retiradasHoje)}`,
+              html: `<div style="display:grid;gap:12px;">${renderSolicitacoesResumo(retiradasHojeLista, "Nenhuma retirada aprovada")}</div>`
             },
             rota: {
               titulo: "Clientes da rota",
@@ -5963,18 +7453,53 @@ async function verificarCaixaAbertoDiaAnterior() {
         // CLIENTES
         // =========================
 
-        function buscarClientes() {
+        function alternarFiltrosClientes() {
+          const filtros = document.getElementById("filtrosClientes");
+          if (!filtros) return;
+          filtros.style.display = filtros.style.display === "grid" ? "none" : "grid";
+        }
+
+        function clienteDataCadastroISO(cliente) {
+          const valor =
+            cliente.dataCadastro ||
+            cliente.criadoEmTexto ||
+            cliente.criadoEm ||
+            cliente.dataCriacao ||
+            "";
+
+          if (!valor) return "";
+          if (typeof valor === "string") return valor.slice(0, 10);
+          if (valor?.toDate) return valor.toDate().toISOString().slice(0, 10);
+          const data = new Date(valor);
+          return isNaN(data.getTime()) ? "" : data.toISOString().slice(0, 10);
+        }
+
+        async function buscarClientes(marcarBusca = true) {
+
+          if (marcarBusca) clientesBuscaExecutada = true;
 
           const el =
             document.getElementById("listaClientes");
 
           if (!el) return;
 
+          el.innerHTML = `
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
+              Buscando clientes...
+            </div>
+          `;
+
+          await carregarClientes();
+
           const termo =
             (
               document.getElementById("buscaClienteInput")?.value ||
               ""
             ).toLowerCase();
+
+          const filtroStatus = document.getElementById("filtroClienteStatus")?.value || "";
+          const dataInicial = document.getElementById("filtroClienteDataInicial")?.value || "";
+          const dataFinal = document.getElementById("filtroClienteDataFinal")?.value || "";
 
           const lista =
             clientesCache.filter(c => {
@@ -5989,7 +7514,19 @@ async function verificarCaixaAbertoDiaAnterior() {
                   ${c.documento || ""}
                 `.toLowerCase();
 
-              return !termo || textoBusca.includes(termo);
+              const passaBusca = !termo || textoBusca.includes(termo);
+              const saldo = numero(c.saldoDevedor || c.saldo || 0);
+              const vendaAtiva = clienteTemVendaAtiva(c.id);
+              const ativo = vendaAtiva || saldo > 0.01 || ["ATIVO", "ACTIVE"].includes(String(c.status || c.statusCliente || "").toUpperCase());
+              const passaStatus =
+                !filtroStatus ||
+                (filtroStatus === "ATIVO" && ativo) ||
+                (filtroStatus === "INATIVO" && !ativo);
+              const dataCadastro = clienteDataCadastroISO(c);
+              const passaDataInicial = !dataInicial || (dataCadastro && dataCadastro >= dataInicial);
+              const passaDataFinal = !dataFinal || (dataCadastro && dataCadastro <= dataFinal);
+
+              return passaBusca && passaStatus && passaDataInicial && passaDataFinal;
 
             });
 
@@ -6021,7 +7558,7 @@ async function verificarCaixaAbertoDiaAnterior() {
                     margin-top:6px;
                   "
                 >
-                  Pesquise ou cadastre um novo cliente.
+                  Ajuste a pesquisa ou os filtros para tentar novamente.
                 </p>
               </div>
 
@@ -6029,19 +7566,60 @@ async function verificarCaixaAbertoDiaAnterior() {
 
         }
 
+        function clienteTemVendaAtiva(clienteId) {
+          return (vendasCache || []).some(v =>
+            v.clienteId === clienteId &&
+            v.excluido !== true &&
+            String(v.statusVenda || v.status || "").toUpperCase() !== "CANCELADO" &&
+            numero(v.saldoDevedor || 0) > 0.01
+          );
+        }
+
+        function vendasDoClienteComVendedor(clienteId) {
+          return (vendasCache || []).filter(v =>
+            v.clienteId === clienteId &&
+            v.excluido !== true &&
+            (!v.vendedorId || v.vendedorId === usuarioLogado.id)
+          );
+        }
+
+        function vendaMaisRecenteCliente(clienteId) {
+          return vendasDoClienteComVendedor(clienteId).sort((a, b) =>
+            String(b.criadoEmTexto || b.dataVenda || b.data || "").localeCompare(String(a.criadoEmTexto || a.dataVenda || a.data || ""))
+          )[0] || null;
+        }
+
+        function scoreVenda(venda) {
+          if (!venda) return null;
+          const valor =
+            venda.scoreCliente ??
+            venda.clienteScore ??
+            venda.scoreNoMomento ??
+            venda.score;
+          return valor === undefined || valor === null || valor === "" ? null : Number(valor);
+        }
+
+        function indicadorScore(scoreAtual, scoreAnterior) {
+          if (scoreAnterior === null || Number.isNaN(scoreAnterior)) return "→ score manteve";
+          if (scoreAtual > scoreAnterior) return "↑ score aumentou";
+          if (scoreAtual < scoreAnterior) return "↓ score diminuiu";
+          return "→ score manteve";
+        }
+
         function cardCliente(c) {
 
           const saldo =
             numero(c.saldoDevedor || c.saldo || 0);
 
-          const status =
-            saldo > 1 ? "ATIVO" : "QUITADO";
-
           const score =
             c.score ?? 50;
 
-          const corStatus =
-            status === "ATIVO" ? "#ffb100" : "#22c55e";
+          const vendasCliente = vendasDoClienteComVendedor(c.id);
+          const ultimaVenda = vendaMaisRecenteCliente(c.id);
+          const scoreAnterior = scoreVenda(ultimaVenda);
+          const variacaoScore = indicadorScore(Number(score), scoreAnterior);
+          const temVendaAtiva = clienteTemVendaAtiva(c.id);
+          const corStatus = temVendaAtiva && saldo > 0.01 ? "#22c55e" : "#94a3b8";
 
           return `
 
@@ -6101,7 +7679,30 @@ async function verificarCaixaAbertoDiaAnterior() {
                     font-weight:800;
                   "
                 >
-                  Saldo: ${moeda(saldo)} • Score: ${score}
+                  Saldo: ${moeda(saldo)}
+                </small>
+
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+                  <span style="background:#fff7ed;color:#9a3412;border:1px solid #fed7aa;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;">
+                    Score: ${score}
+                  </span>
+                  <span style="background:#f8fafc;color:#334155;border:1px solid #e2e8f0;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;">
+                    ${variacaoScore}
+                  </span>
+                  <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;">
+                    Empréstimos: ${vendasCliente.length}
+                  </span>
+                </div>
+
+                <small
+                  style="
+                    display:block;
+                    color:#64748b;
+                    font-weight:800;
+                    margin-top:8px;
+                  "
+                >
+                  ${temVendaAtiva && saldo > 0.01 ? "Cliente com venda ativa" : "Cliente sem venda ativa"}
                 </small>
 
               </div>
@@ -6186,6 +7787,10 @@ async function verificarCaixaAbertoDiaAnterior() {
                   Histórico de vendas
                 </button>
 
+                <button class="btn btn-light" style="width:100%;" onclick="abrirHistoricoPagamentosCliente('${id}')">
+                  Histórico de pagamentos
+                </button>
+
                 <button class="btn btn-light" style="width:100%;" onclick="abrirDocumentosCliente('${id}')">
                   Documentos
                 </button>
@@ -6203,12 +7808,15 @@ async function verificarCaixaAbertoDiaAnterior() {
           const vendas =
             (vendasCache || []).filter(v =>
               v.clienteId === id &&
-              v.excluido !== true
+              v.excluido !== true &&
+              (!v.vendedorId || v.vendedorId === usuarioLogado.id)
+            ).sort((a, b) =>
+              String(b.criadoEmTexto || b.dataVenda || b.data || "").localeCompare(String(a.criadoEmTexto || a.dataVenda || a.data || ""))
             );
 
           abrirDrawer(
 
-            "Histórico de vendas",
+            "Histórico de Vendas",
 
             "Vendas vinculadas ao cliente",
 
@@ -6218,7 +7826,7 @@ async function verificarCaixaAbertoDiaAnterior() {
                     ${vendas.map(v => `
                       <div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;">
                         <strong style="display:block;margin-bottom:6px;">
-                          ${v.tipoVenda || "NOVA"} • ${v.statusVenda || v.status || "ATIVA"}
+                          ${v.dataVenda || v.data || (v.criadoEmTexto || "").slice(0, 10) || "-"} • ${String(v.tipoVenda || v.tipo || "NOVA").toUpperCase().includes("RENOV") ? "Renovação" : "Nova"}
                         </strong>
 
                         <small style="display:block;color:#64748b;font-weight:800;margin-bottom:4px;">
@@ -6226,11 +7834,19 @@ async function verificarCaixaAbertoDiaAnterior() {
                         </small>
 
                         <small style="display:block;color:#64748b;font-weight:800;margin-bottom:4px;">
-                          Saldo devedor: ${moeda(v.saldoDevedor || 0)}
+                          Juros: ${Number(v.taxaJuros || v.juros || 0).toLocaleString("pt-BR")}%
                         </small>
 
-                        <small style="display:block;color:#64748b;font-weight:700;">
-                          Criada em: ${v.dataVenda || v.criadoEmTexto || "-"}
+                        <small style="display:block;color:#64748b;font-weight:800;margin-bottom:4px;">
+                          Parcelas: ${v.quantidadeParcelas || 0}
+                        </small>
+
+                        <small style="display:block;color:#64748b;font-weight:800;margin-bottom:4px;">
+                          Frequência: ${v.frequencia || "-"}
+                        </small>
+
+                        <small style="display:block;color:#64748b;font-weight:800;">
+                          Status: ${v.statusVenda || v.status || "-"}
                         </small>
                       </div>
                     `).join("")}
@@ -6242,6 +7858,45 @@ async function verificarCaixaAbertoDiaAnterior() {
                   </div>
                 `
 
+          );
+
+        }
+
+        function abrirHistoricoPagamentosCliente(id) {
+
+          const pagamentos =
+            (pagamentosCache || []).filter(p =>
+              p.clienteId === id &&
+              (!p.vendedorId || p.vendedorId === usuarioLogado.id)
+            ).sort((a, b) =>
+              String(b.criadoEmTexto || b.dataPagamento || b.data || "").localeCompare(String(a.criadoEmTexto || a.dataPagamento || a.data || ""))
+            );
+
+          abrirDrawer(
+            "Histórico de Pagamentos",
+            "Pagamentos vinculados ao cliente",
+            pagamentos.length
+              ? `
+                  <div style="display:grid;gap:12px;">
+                    ${pagamentos.map(p => `
+                      <div style="border:1px solid #e2e8f0;border-radius:18px;padding:14px;">
+                        <strong style="display:block;margin-bottom:6px;">
+                          ${moeda(p.valorPago || p.valorRecebido || p.valor || 0)}
+                        </strong>
+                        <small style="display:block;color:#64748b;font-weight:800;">Data: ${p.dataPagamento || p.data || (p.criadoEmTexto || "").slice(0, 10) || "-"}</small>
+                        <small style="display:block;color:#64748b;font-weight:800;">Hora: ${p.horaPagamento || p.hora || (p.criadoEmTexto || "").slice(11, 16) || "-"}</small>
+                        <small style="display:block;color:#64748b;font-weight:800;">Parcela: ${p.numeroParcela || p.parcelaNumero || p.parcela || "-"}</small>
+                        <small style="display:block;color:#64748b;font-weight:800;">Forma de pagamento: ${p.formaPagamento || p.metodoPagamento || "-"}</small>
+                        <small style="display:block;color:#64748b;font-weight:800;">Observação: ${p.observacao || p.obs || "-"}</small>
+                      </div>
+                    `).join("")}
+                  </div>
+                `
+              : `
+                  <div style="border:1px solid #e2e8f0;border-radius:18px;padding:16px;">
+                    <strong>Nenhum pagamento encontrado</strong>
+                  </div>
+                `
           );
 
         }
@@ -6273,6 +7928,35 @@ async function verificarCaixaAbertoDiaAnterior() {
             clientesCache.find(x => x.id === id);
 
           if (!c) return;
+
+          const vendasCliente = vendasDoClienteComVendedor(id)
+            .sort((a, b) => String(b.criadoEmTexto || b.dataVenda || b.data || "").localeCompare(String(a.criadoEmTexto || a.dataVenda || a.data || "")));
+
+          const pagamentosCliente = (pagamentosCache || [])
+            .filter(p => p.clienteId === id && (!p.vendedorId || p.vendedorId === usuarioLogado.id))
+            .sort((a, b) => String(b.criadoEmTexto || b.dataPagamento || b.data || "").localeCompare(String(a.criadoEmTexto || a.dataPagamento || a.data || "")));
+
+          const htmlHistoricoPagamentos = pagamentosCliente.length
+            ? pagamentosCliente.slice(0, 5).map(p => `
+                <div style="border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+                  <strong>${p.dataPagamento || p.data || (p.criadoEmTexto || "").slice(0, 10) || "-"}</strong>
+                  <small style="display:block;color:#64748b;">Hora: ${p.horaPagamento || p.hora || (p.criadoEmTexto || "").slice(11, 16) || "-"} • Valor: ${moeda(p.valorPago || p.valorRecebido || p.valor || 0)}</small>
+                  <small style="display:block;color:#64748b;">Parcela: ${p.numeroParcela || p.parcelaNumero || p.parcela || "-"} • Forma: ${p.formaPagamento || p.metodoPagamento || "-"}</small>
+                  <small style="display:block;color:#64748b;">Observação: ${p.observacao || p.obs || "-"}</small>
+                </div>
+              `).join("")
+            : `<div style="border:1px dashed #cbd5e1;border-radius:16px;padding:12px;color:#64748b;">Nenhum pagamento encontrado.</div>`;
+
+          const htmlHistoricoVendas = vendasCliente.length
+            ? vendasCliente.slice(0, 5).map(v => `
+                <div style="border:1px solid #e2e8f0;border-radius:16px;padding:12px;">
+                  <strong>${v.dataVenda || v.data || (v.criadoEmTexto || "").slice(0, 10) || "-"} • ${String(v.tipoVenda || v.tipo || "NOVA").toUpperCase().includes("RENOV") ? "Renovação" : "Nova"}</strong>
+                  <small style="display:block;color:#64748b;">Valor: ${moeda(v.valorEmprestado || 0)} • Juros: ${Number(v.taxaJuros || v.juros || 0).toLocaleString("pt-BR")}%</small>
+                  <small style="display:block;color:#64748b;">Parcelas: ${v.quantidadeParcelas || 0} • Frequência: ${v.frequencia || "-"}</small>
+                  <small style="display:block;color:#64748b;">Status: ${v.statusVenda || v.status || "-"}</small>
+                </div>
+              `).join("")
+            : `<div style="border:1px dashed #cbd5e1;border-radius:16px;padding:12px;color:#64748b;">Nenhuma venda encontrada.</div>`;
 
           abrirDrawer(
 
@@ -6309,6 +7993,16 @@ async function verificarCaixaAbertoDiaAnterior() {
                 <p><strong>Status:</strong> ${c.status || "-"}</p>
 
                 <p><strong>Score:</strong> ${c.score ?? "-"}</p>
+
+                <div style="margin-top:8px;">
+                  <h3 style="font-size:18px;margin-bottom:10px;">Histórico de Pagamentos</h3>
+                  <div style="display:grid;gap:10px;">${htmlHistoricoPagamentos}</div>
+                </div>
+
+                <div style="margin-top:8px;">
+                  <h3 style="font-size:18px;margin-bottom:10px;">Histórico de Vendas</h3>
+                  <div style="display:grid;gap:10px;">${htmlHistoricoVendas}</div>
+                </div>
 
               </div>
 
@@ -6546,6 +8240,7 @@ async function verificarCaixaAbertoDiaAnterior() {
             const uf = (document.getElementById("clienteUf")?.value.trim() || "").toUpperCase();
             const complemento = document.getElementById("clienteComplemento")?.value.trim() || "";
             const observacoes = document.getElementById("clienteObs").value.trim();
+            const indicacaoId = document.getElementById("clienteIndicacaoId")?.value || "";
 
             const fotoPerfil = document.getElementById("clienteFotoPerfil")?.files?.[0] || null;
             const anexosSelecionados = Array.from(document.getElementById("clienteAnexos")?.files || []);
@@ -6632,6 +8327,8 @@ async function verificarCaixaAbertoDiaAnterior() {
               enderecoCompleto: `${endereco}, ${numeroCasa} - ${bairro} - ${cidade}/${uf}`,
 
               observacoes,
+              indicacaoId,
+              origemIndicacao: indicacaoId ? "INDICACAO" : "",
 
               fotoPerfilUrl: "",
               anexos: [],
@@ -6688,6 +8385,10 @@ async function verificarCaixaAbertoDiaAnterior() {
               clientePlataformaId: tenantId,
               criadoEm: firebase.firestore.FieldValue.serverTimestamp()
             });
+
+            if (indicacaoId) {
+              await marcarIndicacaoConvertida(indicacaoId, clienteRef.id, nome);
+            }
 
             alert("Cliente cadastrado com sucesso.");
             fecharDrawer();

@@ -3,6 +3,8 @@
 // Inicialização e orquestração da tela Master Local
 // ========================================
 
+let categoriasMovimentacaoMasterLocal = [];
+
 // Listener de usuário validado
 document.addEventListener("usuario-validado", async (event) => {
   const usuario = event.detail;
@@ -45,6 +47,7 @@ async function carregarTudoMasterLocal() {
       carregarVendas(),
       carregarPagamentosHoje(),
       carregarSolicitacoes(),
+      carregarCategoriasMovimentacaoMasterLocal(),
       carregarNotificacoesMasterLocal(),
       carregarLogs()
     ]);
@@ -58,6 +61,8 @@ async function carregarTudoMasterLocal() {
     if (typeof renderClientes === "function") {
       renderClientes();
     }
+
+    renderCategoriasMovimentacaoMasterLocal();
 
   } catch (erro) {
     console.error("Erro ao carregar dados do master local:", erro);
@@ -504,6 +509,234 @@ function setText(id, valor) {
   if (el) el.innerText = valor;
 }
 
+async function carregarCategoriasMovimentacaoMasterLocal() {
+  try {
+    let ref = db.collection("categoriasMovimentacao").limit(300);
+
+    if (State.getTenantId()) {
+      ref = db.collection("categoriasMovimentacao")
+        .where("clientePlataformaId", "==", State.getTenantId())
+        .limit(300);
+    }
+
+    const snap = await ref.get();
+
+    categoriasMovimentacaoMasterLocal = snap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(c => c.excluido !== true)
+      .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+  } catch (erro) {
+    console.error("Erro ao carregar categorias de movimentação:", erro);
+    categoriasMovimentacaoMasterLocal = [];
+  }
+}
+
+function renderCategoriasMovimentacaoMasterLocal() {
+  renderListaCategoriasMovimentacao("DESPESA", "listaCategoriasDespesas");
+  renderListaCategoriasMovimentacao("RETIRADA", "listaCategoriasRetiradas");
+}
+
+function renderListaCategoriasMovimentacao(tipo, idDestino) {
+  const el = document.getElementById(idDestino);
+  if (!el) return;
+
+  const lista = categoriasMovimentacaoMasterLocal.filter(c =>
+    String(c.tipo || c.tipoCategoria || "").toUpperCase() === tipo
+  );
+
+  if (!lista.length) {
+    el.innerHTML = `
+      <div class="list-item">
+        <div>
+          <strong>Nenhuma categoria configurada</strong>
+          <small>Crie categorias para liberar lançamentos no caixa do vendedor.</small>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  el.innerHTML = lista.map(c => `
+    <div class="list-item">
+      <div>
+        <strong>${escaparHtml(c.nome || "Categoria")}</strong>
+        <small>Tipo: ${tipo === "DESPESA" ? "Despesa" : "Retirada"}</small>
+        <small>Status: ${c.ativo === false ? "Inativa" : "Ativa"}</small>
+      </div>
+
+      <div class="item-actions">
+        <button class="ghost-btn" type="button" onclick="abrirEditarCategoriaMovimentacao('${c.id}')">Editar</button>
+        <button class="ghost-btn" type="button" onclick="desativarCategoriaMovimentacao('${c.id}')">Desativar</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function abrirNovaCategoriaMovimentacao() {
+  abrirDrawer(
+    "Categoria de movimentação",
+    "Configuração financeira",
+    formularioCategoriaMovimentacao()
+  );
+}
+
+function abrirEditarCategoriaMovimentacao(id) {
+  const categoria = categoriasMovimentacaoMasterLocal.find(c => c.id === id);
+
+  if (!categoria) {
+    UIHelpers.alerta("Categoria não encontrada.");
+    return;
+  }
+
+  abrirDrawer(
+    "Editar categoria",
+    "Configuração financeira",
+    formularioCategoriaMovimentacao(categoria)
+  );
+}
+
+function formularioCategoriaMovimentacao(categoria = null) {
+  const tipo = String(categoria?.tipo || "DESPESA").toUpperCase();
+  const ativo = categoria?.ativo !== false;
+
+  return `
+    <div class="form-grid">
+      <input id="categoriaMovimentacaoId" type="hidden" value="${categoria?.id || ""}">
+
+      <div class="form-group full">
+        <label>Tipo</label>
+        <select id="categoriaMovimentacaoTipo">
+          <option value="DESPESA" ${tipo === "DESPESA" ? "selected" : ""}>Despesa</option>
+          <option value="RETIRADA" ${tipo === "RETIRADA" ? "selected" : ""}>Retirada</option>
+        </select>
+      </div>
+
+      <div class="form-group full">
+        <label>Nome</label>
+        <input id="categoriaMovimentacaoNome" value="${escaparHtml(categoria?.nome || "")}" placeholder="Ex.: Combustível, Recolhimento, Outros">
+      </div>
+
+      <div class="form-group full">
+        <label>Status</label>
+        <select id="categoriaMovimentacaoAtivo">
+          <option value="true" ${ativo ? "selected" : ""}>Ativa</option>
+          <option value="false" ${!ativo ? "selected" : ""}>Inativa</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="drawer-actions">
+      <button class="primary-btn drawer-primary" onclick="salvarCategoriaMovimentacao(this)">
+        Salvar categoria
+      </button>
+    </div>
+  `;
+}
+
+async function salvarCategoriaMovimentacao(botao = null) {
+  try {
+    const id = document.getElementById("categoriaMovimentacaoId")?.value || "";
+    const tipo = document.getElementById("categoriaMovimentacaoTipo")?.value || "";
+    const nome = (document.getElementById("categoriaMovimentacaoNome")?.value || "").trim();
+    const ativo = document.getElementById("categoriaMovimentacaoAtivo")?.value !== "false";
+
+    if (!["DESPESA", "RETIRADA"].includes(tipo)) {
+      UIHelpers.alerta("Selecione um tipo válido.");
+      return;
+    }
+
+    if (!nome) {
+      UIHelpers.alerta("Informe o nome da categoria.");
+      return;
+    }
+
+    if (botao) {
+      botao.disabled = true;
+      botao.innerText = "Salvando...";
+    }
+
+    const dados = {
+      tipo,
+      tipoCategoria: tipo,
+      nome,
+      nomeNormalizado: nome.toUpperCase(),
+      ativo,
+      excluido: false,
+      clientePlataformaId: State.getTenantId(),
+      clientePlataformaNome: State.getEmpresaNome(),
+      atualizadoPorUid: State.authUid || "",
+      atualizadoPorNome: State.usuario?.nome || State.usuario?.email || "",
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    let categoriaId = id;
+
+    if (id) {
+      await db.collection("categoriasMovimentacao").doc(id).update(dados);
+    } else {
+      const docRef = await db.collection("categoriasMovimentacao").add({
+        ...dados,
+        criadoPorUid: State.authUid || "",
+        criadoPorNome: State.usuario?.nome || State.usuario?.email || "",
+        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      categoriaId = docRef.id;
+    }
+
+    await FirestoreService.gravarLog(id ? "EDITAR_CATEGORIA_MOVIMENTACAO" : "CRIAR_CATEGORIA_MOVIMENTACAO", {
+      categoriaId,
+      tipo,
+      nome
+    });
+
+    UIHelpers.alerta("Categoria salva com sucesso.");
+    fecharDrawer();
+    await carregarCategoriasMovimentacaoMasterLocal();
+    renderCategoriasMovimentacaoMasterLocal();
+  } catch (erro) {
+    console.error("Erro ao salvar categoria de movimentação:", erro);
+    UIHelpers.alerta("Erro ao salvar categoria: " + erro.message);
+  } finally {
+    if (botao) {
+      botao.disabled = false;
+      botao.innerText = "Salvar categoria";
+    }
+  }
+}
+
+async function desativarCategoriaMovimentacao(id) {
+  try {
+    const categoria = categoriasMovimentacaoMasterLocal.find(c => c.id === id);
+
+    if (!categoria) {
+      UIHelpers.alerta("Categoria não encontrada.");
+      return;
+    }
+
+    if (!confirm("Desativar esta categoria?")) return;
+
+    await db.collection("categoriasMovimentacao").doc(id).update({
+      ativo: false,
+      atualizadoPorUid: State.authUid || "",
+      atualizadoPorNome: State.usuario?.nome || State.usuario?.email || "",
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    await FirestoreService.gravarLog("DESATIVAR_CATEGORIA_MOVIMENTACAO", {
+      categoriaId: id,
+      tipo: categoria.tipo || categoria.tipoCategoria || "",
+      nome: categoria.nome || ""
+    });
+
+    UIHelpers.alerta("Categoria desativada com sucesso.");
+    await carregarCategoriasMovimentacaoMasterLocal();
+    renderCategoriasMovimentacaoMasterLocal();
+  } catch (erro) {
+    console.error("Erro ao desativar categoria de movimentação:", erro);
+    UIHelpers.alerta("Erro ao desativar categoria: " + erro.message);
+  }
+}
+
 async function recarregarMasterLocal() {
   await carregarTudoMasterLocal();
 }
@@ -560,6 +793,10 @@ function trocarTela(id, el = null) {
       );
 
     if (menu) menu.classList.add("active");
+  }
+
+  if (id === "configuracoes") {
+    renderCategoriasMovimentacaoMasterLocal();
   }
 
   if (window.innerWidth <= 900) {
