@@ -45,6 +45,7 @@ async function carregarTudoMasterLocal() {
       carregarVendas(),
       carregarPagamentosHoje(),
       carregarSolicitacoes(),
+      carregarNotificacoesMasterLocal(),
       carregarLogs()
     ]);
 
@@ -148,6 +149,16 @@ async function carregarSolicitacoes() {
   }
 }
 
+async function carregarNotificacoesMasterLocal() {
+  if (typeof carregarNotificacoesLayout === "function") {
+    const lista = await carregarNotificacoesLayout(State.getUsuario());
+    State.notificacoes = lista || [];
+    return;
+  }
+
+  State.notificacoes = [];
+}
+
 async function carregarLogs() {
   try {
     const data = await FirestoreService.loadCollection(
@@ -213,10 +224,15 @@ function renderDashboardMasterLocal() {
   setTextSafe("kpiUsuarios", usuarios.length);
   setTextSafe("kpiVendasHoje", vendasHoje);
   setTextSafe("kpiSolicitacoes", solicitacoesPendentes);
+  setTextSafe("badgeSolicitacoes", solicitacoesPendentes);
+
+  const dataEl = document.getElementById("topData");
+  if (dataEl) dataEl.innerText = new Date().toLocaleDateString("pt-BR");
 
   renderAtividadesRecentes(logs, pagamentos, vendas);
   renderTopClientes(clientes, vendasValidas);
   renderPerformanceEquipe(usuarios, vendasValidas);
+  renderResumoVendas(vendasValidas);
 }
 
 function setTextSafe(id, valor) {
@@ -433,6 +449,40 @@ function renderPerformanceEquipe(usuarios = [], vendas = []) {
   panel.appendChild(wrap);
 }
 
+function renderResumoVendas(vendas = []) {
+  const container = document.getElementById("resumoVendas");
+  if (!container) return;
+
+  const vendasHoje = vendas.filter(v => dataEhHoje(v.dataVenda || v.criadoEm));
+  const valorHoje = vendasHoje.reduce((total, v) => {
+    return total + Number(v.valorTotalVenda || v.valorEmprestado || v.valor || 0);
+  }, 0);
+
+  if (!vendas.length) {
+    container.innerHTML = "Sem dados de vendas para exibir.";
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="ranking-item">
+      <strong>${vendasHoje.length}</strong>
+      <div>
+        <strong>Vendas hoje</strong>
+        <div class="bar"><span style="width:${Math.min(100, Math.max(8, vendasHoje.length * 8))}%"></span></div>
+      </div>
+      <strong>${moeda(valorHoje)}</strong>
+    </div>
+    <div class="ranking-item">
+      <strong>${vendas.length}</strong>
+      <div>
+        <strong>Total carregado</strong>
+        <div class="bar"><span style="width:100%"></span></div>
+      </div>
+      <strong>${moeda(vendas.reduce((total, v) => total + Number(v.valorTotalVenda || v.valorEmprestado || v.valor || 0), 0))}</strong>
+    </div>
+  `;
+}
+
 function formatarData(valor) {
   if (!valor) return "-";
 
@@ -465,18 +515,21 @@ window.carregarTudo = recarregarMasterLocal;
 // --------------------------
 function toggleSidebar(force) {
   const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("menuOverlay");
+  const overlay = document.getElementById("overlay");
 
-  if (!sidebar || !overlay) return;
+  if (!sidebar) return;
 
   if (force === false) {
     sidebar.classList.remove("show");
-    overlay.classList.remove("open");
+    overlay?.classList.remove("show", "open", "active");
     return;
   }
 
-  sidebar.classList.toggle("show");
-  overlay.classList.toggle("open", sidebar.classList.contains("show"));
+  const abrir = typeof force === "boolean" ? force : !sidebar.classList.contains("show");
+  sidebar.classList.toggle("show", abrir);
+  overlay?.classList.toggle("show", abrir);
+  overlay?.classList.toggle("open", abrir);
+  overlay?.classList.toggle("active", abrir);
 }
 
 function trocarTela(id, el = null) {
@@ -507,6 +560,10 @@ function trocarTela(id, el = null) {
       );
 
     if (menu) menu.classList.add("active");
+  }
+
+  if (window.innerWidth <= 900) {
+    toggleSidebar(false);
   }
 }
 

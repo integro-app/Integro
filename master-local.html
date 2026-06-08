@@ -107,6 +107,21 @@
   z-index:10000;
 }
 
+.overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(2,6,23,.58);
+  opacity:0;
+  visibility:hidden;
+  transition:.2s;
+  z-index:9998;
+}
+
+.overlay.show,.overlay.open,.overlay.active{
+  opacity:1;
+  visibility:visible;
+}
+
     .user-card{
       background:rgba(255,255,255,.08);
       border:1px solid rgba(255,255,255,.12);
@@ -929,11 +944,12 @@
 
 <body>
   
-  <button class="mobile-menu-btn" type="button" onclick="abrirMenuMobile()">
+  <button class="mobile-menu-btn" type="button" onclick="toggleSidebar(true)" aria-label="Abrir menu">
   ☰
 </button>
 
   <div class="layout">
+    <div class="overlay" id="overlay" onclick="toggleSidebar(false)"></div>
     <aside class="sidebar" id="sidebar">
     <div class="brand">
   <div>
@@ -960,7 +976,7 @@
       <div class="menu-item" onclick="trocarTela('cargos',this)"><span class="menu-icon">◇</span><span class="menu-label">Cargos</span></div>
       <div class="menu-item" onclick="trocarTela('equipes',this)"><span class="menu-icon">☰</span><span class="menu-label">Equipes</span></div>
       <div class="menu-item" onclick="trocarTela('caixas',this)"><span class="menu-icon">▣</span><span class="menu-label">Caixas</span></div>
-      <div class="menu-item" onclick="trocarTela('solicitacoes',this)"><span class="menu-icon">▤</span><span class="menu-label">Solicitações</span><span class="badge">1</span></div>
+      <div class="menu-item" onclick="trocarTela('solicitacoes',this)"><span class="menu-icon">▤</span><span class="menu-label">Solicitações</span><span class="badge" id="badgeSolicitacoes">0</span></div>
       <div class="menu-item" onclick="trocarTela('auditoria',this)"><span class="menu-icon">◎</span><span class="menu-label">Auditoria</span></div>
       <div class="menu-item" onclick="trocarTela('configuracoes',this)"><span class="menu-icon">⚙</span><span class="menu-label">Configurações</span></div>
 
@@ -976,20 +992,16 @@
       <section id="dashboard" class="screen active">
         <div class="topbar">
   <div style="display:flex;align-items:center;gap:14px;">
-
     <div>
-      <h2>Olá, <span id="topNome">Usuário</span> 👋</h2>
-      <p>
-        <span id="topEmpresa">Empresa</span> •
-        <span id="topCargo">Cargo</span>
-      </p>
+      <h2>Dashboard</h2>
+      <p>Visão operacional da empresa.</p>
     </div>
   </div>
 
   <div class="top-actions">
-    <button class="top-btn" id="topData">📅 Hoje</button>
-    <button class="top-btn notification">🔔<span>3</span></button>
-    <button class="top-btn" onclick="logout()">↪</button>
+    <button class="top-btn" id="topData">Hoje</button>
+    <button class="top-btn notification" type="button" onclick="abrirNotificacoes()">🔔<span id="notificationCount" data-notification-count>0</span></button>
+    <button class="top-btn" type="button" onclick="carregarTudo()">Atualizar</button>
   </div>
 </div>
 
@@ -1008,7 +1020,7 @@
             <div>
               <div class="kpi-label">Recebido Hoje</div>
               <div class="kpi-value" id="kpiRecebidoHoje">R$ 0,00</div>
-              <div class="kpi-sub positive">+12% vs ontem</div>
+              <div class="kpi-sub">Dados carregados do Firestore</div>
             </div>
           </div>
 
@@ -1017,7 +1029,7 @@
             <div>
               <div class="kpi-label">Clientes Ativos</div>
               <div class="kpi-value" id="kpiClientes">0</div>
-              <div class="kpi-sub positive">+8 novos este mês</div>
+              <div class="kpi-sub">Clientes com saldo ou status ativo</div>
             </div>
           </div>
 
@@ -1026,7 +1038,7 @@
             <div>
               <div class="kpi-label">Inadimplência</div>
               <div class="kpi-value" id="kpiInadimplencia">R$ 0,00</div>
-              <div class="kpi-sub negative">6.2% da carteira</div>
+              <div class="kpi-sub">Saldo vencido ou marcado inadimplente</div>
             </div>
           </div>
 
@@ -1035,7 +1047,7 @@
             <div>
               <div class="kpi-label">Caixas Abertos</div>
               <div class="kpi-value" id="kpiCaixas">0</div>
-              <div class="kpi-sub">2 aguardando fechamento</div>
+              <div class="kpi-sub">Caixas com status aberto</div>
             </div>
           </div>
 
@@ -1053,16 +1065,16 @@
             <div>
               <div class="kpi-label">Solicitações Pendentes</div>
               <div class="kpi-value" id="kpiSolicitacoes">0</div>
-              <div class="kpi-sub orange-text">3 urgentes</div>
+              <div class="kpi-sub orange-text">Aguardando aprovação</div>
             </div>
           </div>
 
           <div class="kpi-card">
-            <div class="kpi-icon ico-orange">68%</div>
+            <div class="kpi-icon ico-orange">☷</div>
             <div>
-              <div class="kpi-label">Meta do Mês</div>
-              <div class="kpi-value">R$ 68.000,00</div>
-              <div class="kpi-sub">de R$ 100.000,00</div>
+              <div class="kpi-label">Usuários</div>
+              <div class="kpi-value" id="kpiUsuarios">0</div>
+              <div class="kpi-sub">Usuários cadastrados na empresa</div>
             </div>
           </div>
         </div>
@@ -1076,20 +1088,13 @@
                 <select class="select-lite"><option>Todos os Caixas</option></select>
               </div>
             </div>
-            <div class="fake-chart">
-              <div class="chart-line"></div>
-              <div class="chart-line green"></div>
-            </div>
+            <div id="resumoVendas" class="placeholder">Sem dados de vendas para exibir.</div>
           </div>
 
           <div class="panel">
             <div class="panel-head"><h3>Atividades Recentes</h3></div>
             <div class="activity-list">
-              <div class="activity"><div class="dot ico-green">$</div><div><strong>Recebimento realizado</strong><small>Cliente: Maria Silva — R$ 1.250,00</small></div><span class="time">2 min atrás</span></div>
-              <div class="activity"><div class="dot ico-blue">🛒</div><div><strong>Nova venda criada</strong><small>Venda #VDA-2025-1234</small></div><span class="time">15 min atrás</span></div>
-              <div class="activity"><div class="dot ico-orange">♙</div><div><strong>Novo cliente cadastrado</strong><small>João Santos</small></div><span class="time">1 hora atrás</span></div>
-              <div class="activity"><div class="dot ico-purple">▣</div><div><strong>Caixa aberto</strong><small>Caixa 02 - Tiago</small></div><span class="time">2 horas atrás</span></div>
-              <div class="activity"><div class="dot ico-red">⚠</div><div><strong>Solicitação urgente</strong><small>Aprovação de desconto</small></div><span class="time">3 horas atrás</span></div>
+              <div class="placeholder">Sem atividades recentes ainda.</div>
             </div>
           </div>
         </div>
@@ -1102,9 +1107,7 @@
                 <tr><th>#</th><th>Cliente</th><th>Total Compras</th><th>Em Aberto</th><th>Última Compra</th></tr>
               </thead>
               <tbody>
-                <tr><td>1</td><td>Maria Silva</td><td>R$ 12.450,00</td><td>R$ 2.150,00</td><td>22/05/2025</td></tr>
-                <tr><td>2</td><td>João Santos</td><td>R$ 9.870,00</td><td>R$ 1.350,00</td><td>21/05/2025</td></tr>
-                <tr><td>3</td><td>Empresa XPTO Ltda</td><td>R$ 8.230,00</td><td>R$ 0,00</td><td>20/05/2025</td></tr>
+                <tr><td colspan="5">Sem clientes para exibir.</td></tr>
               </tbody>
             </table>
           </div>
@@ -1115,12 +1118,10 @@
                 <h3>Performance da Equipe</h3>
                 <p style="color:var(--muted);font-weight:600;margin-top:6px;">Vendas do mês por vendedor</p>
               </div>
-              <button class="ghost-btn">Ver ranking completo</button>
+              <button class="ghost-btn" type="button" onclick="trocarTela('usuarios')">Ver equipe</button>
             </div>
 
-            <div class="ranking-item"><strong>1</strong><div><strong>Tiago</strong><div class="bar"><span style="width:92%"></span></div></div><strong>R$ 24.850,00</strong></div>
-            <div class="ranking-item"><strong>2</strong><div><strong>Ana Clara</strong><div class="bar"><span style="width:76%"></span></div></div><strong>R$ 18.620,00</strong></div>
-            <div class="ranking-item"><strong>3</strong><div><strong>Carlos Eduardo</strong><div class="bar"><span style="width:58%"></span></div></div><strong>R$ 15.430,00</strong></div>
+            <div class="placeholder">Sem vendas por vendedor ainda.</div>
           </div>
         </div>
       </section>
@@ -1232,11 +1233,11 @@
   <script src="js/firebase-config.js"></script>
   <script src="js/config.js"></script>
   <script src="js/state.js"></script>
-  <script src="js/app.js"></script>
-  <script src="js/auth.js"></script>
   <script src="js/services/firestore.js"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
   <script src="js/cargos.js"></script>
   <script src="js/equipes.js"></script>
   <script src="js/caixas.js"></script>
@@ -1248,13 +1249,11 @@
 
 <script>
   function abrirMenuMobile(){
-    const sidebar = document.getElementById("sidebar");
-    if(sidebar) sidebar.classList.add("show");
+    toggleSidebar(true);
   }
 
   function fecharMenuMobile(){
-    const sidebar = document.getElementById("sidebar");
-    if(sidebar) sidebar.classList.remove("show");
+    toggleSidebar(false);
   }
 
   function toggleCollapseSidebar(){
@@ -1266,65 +1265,7 @@
     document.getElementById("sidebar").classList.toggle("collapsed");
   }
 
-  function preencherTopoMasterLocal(usuarioRecebido = null){
-    const usuario =
-      usuarioRecebido ||
-      window.usuarioLogado ||
-      window.usuarioAtual ||
-      State?.getUsuario?.() ||
-      JSON.parse(localStorage.getItem("usuarioLogado") || "{}") ||
-      JSON.parse(localStorage.getItem("usuarioAtual") || "{}");
-
-    const nome =
-      usuario.nome ||
-      usuario.nomeCompleto ||
-      usuario.displayName ||
-      "Usuário";
-
-    const empresa =
-      usuario.empresaNome ||
-      usuario.nomeEmpresa ||
-      usuario.clientePlataformaNome ||
-      usuario.clienteNome ||
-      "Empresa";
-
-    const cargo =
-      usuario.cargoNome ||
-      usuario.cargo ||
-      usuario.tipoUsuario ||
-      "Cargo";
-
-    const userNome = document.getElementById("userNome");
-    const empresaNome = document.getElementById("empresaNome");
-    const userCargo = document.getElementById("userCargo");
-
-    if(userNome) userNome.innerText = nome;
-    if(empresaNome) empresaNome.innerText = empresa;
-    if(userCargo) userCargo.innerText = cargo;
-  }
-
-  function trocarTela(tela, el){
-    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
-    const atual = document.getElementById(tela);
-    if(atual) atual.classList.add("active");
-
-    document.querySelectorAll(".menu-item").forEach(i => i.classList.remove("active"));
-    if(el) el.classList.add("active");
-
-    if(window.innerWidth <= 760){
-      fecharMenuMobile();
-    }
-  }
-
-  document.addEventListener("usuario-validado", function(event){
-    preencherTopoMasterLocal(event.detail);
-  });
-
-  preencherTopoMasterLocal();
-
-  if(typeof protegerPaginaAtual === "function"){
-    protegerPaginaAtual();
-  }
+  preencherUsuarioLayout();
 
 </script>
 

@@ -1,1 +1,88 @@
-<h1>SUPERVISOR</h1>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>INTEGRO - Supervisor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,sans-serif}
+    :root{--bg:#f6f8fb;--side:#061a35;--side2:#092b61;--orange:#ff8a00;--orange2:#ffb100;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--shadow:0 16px 38px rgba(15,23,42,.08)}
+    body{min-height:100vh;background:var(--bg);color:var(--text)}
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);opacity:0;visibility:hidden;z-index:40;transition:.2s}.overlay.show,.overlay.open,.overlay.active{opacity:1;visibility:visible}
+    .sidebar{position:fixed;inset:0 auto 0 0;width:300px;background:linear-gradient(180deg,var(--side),var(--side2));color:#fff;padding:22px 16px;z-index:50;overflow:auto;box-shadow:16px 0 40px rgba(2,6,23,.22)}
+    .logo{font-size:34px;font-weight:900;letter-spacing:-2px;margin:0 8px 24px}.logo span{color:var(--orange2)}
+    .user-card{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);border-radius:22px;padding:16px;margin-bottom:22px}.user-card small{display:block;color:#cbd5e1;font-weight:800;margin-top:6px}.user-card strong{display:block;font-size:16px}.status-online{display:inline-flex;margin-top:10px;color:#4ade80;font-weight:900}
+    .menu{display:grid;gap:8px}.menu button{height:50px;border:0;border-radius:14px;background:transparent;color:#e2e8f0;font-weight:900;text-align:left;padding:0 14px;cursor:pointer}.menu button.active,.menu button:hover{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
+    .main{margin-left:300px;padding:24px}.topbar{min-height:82px;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;margin-bottom:20px}.topbar h1{font-size:28px;font-weight:900}.topbar p{color:var(--muted);font-weight:700;margin-top:3px}.hamburger{display:none;width:50px;height:50px;border:1px solid var(--line);background:#fff;border-radius:14px;font-size:24px;font-weight:900}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{height:46px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--text);font-weight:900;padding:0 16px;cursor:pointer}.btn-primary{border:0;background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
+    .screen{display:none}.screen.active{display:block}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:20px}.card small{display:block;color:var(--muted);font-weight:900;margin-bottom:10px}.card strong{font-size:28px;font-weight:900}.card p,.muted{color:var(--muted);font-weight:700;margin-top:8px}.panel{margin-top:18px}.empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:18px;padding:18px;color:#475569;font-weight:800}
+    @media(max-width:900px){.sidebar{transform:translateX(-105%);transition:.25s}.sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}.main{margin-left:0;padding:14px}.hamburger{display:block}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}}
+  </style>
+</head>
+<body>
+  <div id="overlay" class="overlay" onclick="toggleSidebar(false)"></div>
+  <aside id="sidebar" class="sidebar">
+    <div class="logo">INTE<span>GRO</span></div>
+    <div class="user-card">
+      <strong id="userNome">Usuario</strong>
+      <small id="empresaNome">Empresa</small>
+      <span class="status-online">Online</span>
+      <small id="userCargo">Supervisor</small>
+    </div>
+    <div class="menu">
+      <button class="active" onclick="trocarTela('dashboard',this)">Dashboard</button>
+      <button onclick="trocarTela('notificacoes',this)">Notificacoes <span id="badgeNotificacoes">0</span></button>
+      <button onclick="logout()">Sair</button>
+    </div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <div style="display:flex;align-items:center;gap:14px">
+        <button class="hamburger" onclick="toggleSidebar(true)">☰</button>
+        <div><h1 id="pageTitle">Dashboard</h1><p>Visao operacional da equipe.</p></div>
+      </div>
+      <div class="actions">
+        <button class="btn" onclick="abrirNotificacoes()">Notificacoes <span id="notificationCount" data-notification-count>0</span></button>
+        <button class="btn btn-primary" onclick="carregarTudoSupervisor()">Atualizar</button>
+      </div>
+    </header>
+    <section id="dashboard" class="screen active">
+      <div class="grid">
+        <div class="card"><small>Equipe</small><strong id="kpiEquipe">0</strong><p>Usuarios vinculados.</p></div>
+        <div class="card"><small>Clientes</small><strong id="kpiClientes">0</strong><p>Carteira carregada.</p></div>
+        <div class="card"><small>Vendas hoje</small><strong id="kpiVendasHoje">0</strong><p>Registros do dia.</p></div>
+        <div class="card"><small>Solicitacoes</small><strong id="kpiSolicitacoes">0</strong><p>Pendentes de aprovacao.</p></div>
+      </div>
+      <div class="panel"><h2>Resumo</h2><div id="resumoSupervisor" class="empty">Sem dados para exibir.</div></div>
+    </section>
+    <section id="notificacoes" class="screen"><div class="panel"><h2>Notificacoes</h2><div id="listaNotificacoes" class="empty">Nenhuma notificacao no momento.</div></div></section>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/services/firestore.js"></script>
+  <script src="js/utils/validators.js"></script>
+  <script src="js/utils/ui-helpers.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.addEventListener("usuario-validado", async () => carregarTudoSupervisor());
+    async function carregarTudoSupervisor(){
+      preencherUsuarioLayout();
+      await carregarNotificacoesLayout(State.getUsuario());
+    }
+    function trocarTela(id, el){
+      document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
+      document.getElementById(id)?.classList.add("active");
+      document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("active"));
+      el?.classList.add("active");
+      if (window.innerWidth <= 900) toggleSidebar(false);
+    }
+  </script>
+</body>
+</html>

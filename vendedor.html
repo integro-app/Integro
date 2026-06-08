@@ -1041,16 +1041,16 @@
   body.menu-aberto { overflow: hidden; }
 
   .hamburger {
-    display: flex !important;
+    display: none !important;
   }
 
   .main {
-    margin-left: 0 !important;
+    margin-left: 290px !important;
     width: 100%;
   }
 
   .sidebar {
-    transform: translateX(-100%) !important;
+    transform: translateX(0) !important;
   }
 
   .sidebar.show,
@@ -1068,9 +1068,14 @@
     pointer-events: auto;
   }
 
-  @media(max-width:700px) {
+  @media(max-width:980px) {
+    .main {
+      margin-left: 0 !important;
+    }
+
     .sidebar {
       width: min(86vw, 310px) !important;
+      transform: translateX(-100%) !important;
     }
 
     .top-left {
@@ -1079,6 +1084,7 @@
     }
 
     .hamburger {
+      display: flex !important;
       flex: 0 0 48px;
       width: 48px;
       height: 48px;
@@ -1105,6 +1111,7 @@
         <strong id="vendedorNome">Carregando...</strong>
         <small id="empresaNome">Empresa</small>
         <span class="status-online">Online</span>
+        <small id="vendedorCargo">Vendedor</small>
       </div>
 
       <div class="menu-section">
@@ -5004,6 +5011,7 @@
         function preencherUsuarioLogadoNaTela() {
           const nomeEl = document.getElementById("vendedorNome");
           const empresaEl = document.getElementById("empresaNome");
+          const cargoEl = document.getElementById("vendedorCargo");
 
           if (nomeEl) {
             nomeEl.innerText =
@@ -5021,6 +5029,14 @@
               usuarioLogado.nomeEmpresa ||
               usuarioLogado.clienteNome ||
               "Empresa";
+          }
+
+          if (cargoEl) {
+            cargoEl.innerText =
+              usuarioLogado.cargoNome ||
+              usuarioLogado.cargo ||
+              usuarioLogado.tipoUsuario ||
+              "Vendedor";
           }
         }
 
@@ -5069,22 +5085,6 @@
         // =========================
         // SIDEBAR / NAVEGAÇÃO
         // =========================
-
-        function toggleSidebar(force) {
-          const sidebar = document.getElementById("sidebar");
-          const overlay = document.getElementById("overlay");
-
-          if (!sidebar || !overlay) return;
-
-          if (force === false) {
-            sidebar.classList.remove("show");
-            overlay.classList.remove("show");
-            return;
-          }
-
-          sidebar.classList.toggle("show");
-          overlay.classList.toggle("show", sidebar.classList.contains("show"));
-        }
 
         function trocarTela(id, el = null) {
 
@@ -5491,10 +5491,12 @@ async function verificarCaixaAbertoDiaAnterior() {
             });
 
             atualizarContadorNotificacoes();
+            renderizarNotificacoes();
           } catch (erro) {
             console.warn("Falha ao carregar notificações:", erro);
             notificacoesCache = [];
             atualizarContadorNotificacoes();
+            renderizarNotificacoes();
           }
         }
 
@@ -5506,6 +5508,42 @@ async function verificarCaixaAbertoDiaAnterior() {
           document.querySelectorAll("[data-notification-count]").forEach(el => {
             el.innerText = pendentes;
           });
+
+          const badge = document.getElementById("badgeNotificacoes");
+          if (badge) badge.innerText = pendentes;
+        }
+
+        function renderizarNotificacoes() {
+          const listaEl = document.getElementById("listaNotificacoes");
+          if (!listaEl) return;
+
+          const lista = notificacoesCache || [];
+
+          if (!lista.length) {
+            listaEl.innerHTML = `
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:22px;padding:18px;font-weight:800;color:#475569;">
+                Nenhuma notificação no momento.
+              </div>
+            `;
+            return;
+          }
+
+          listaEl.innerHTML = lista.map(n => `
+            <div class="card">
+              <small>${escapeHtml(n.status || "PENDENTE")}</small>
+              <strong style="font-size:18px;">${escapeHtml(n.titulo || n.tipo || "Notificação")}</strong>
+              <p>${escapeHtml(n.mensagem || n.descricao || "")}</p>
+            </div>
+          `).join("");
+        }
+
+        function escapeHtml(valor = "") {
+          return String(valor)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
         }
 
         async function carregarHistoricoCobrancas() {
