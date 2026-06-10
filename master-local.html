@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
 
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
@@ -1257,6 +1258,399 @@ body.integro-booting .layout{
   display:none !important;
 }
 
+
+/* ===== MENU MASTER LOCAL ADULTO / PREMIUM ===== */
+.sidebar{
+  scrollbar-width:thin;
+  scrollbar-color:rgba(148,163,184,.45) transparent;
+}
+.sidebar::-webkit-scrollbar{width:8px;}
+.sidebar::-webkit-scrollbar-thumb{
+  background:rgba(148,163,184,.35);
+  border-radius:999px;
+}
+.menu-group-title{
+  margin:26px 8px 10px;
+  color:#8fb4dc;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.9px;
+}
+.menu-item{
+  min-height:50px;
+  height:auto;
+  padding:10px 12px;
+  border-radius:14px;
+  color:#dbeafe;
+  font-size:14px;
+  font-weight:850;
+  gap:12px;
+  border:1px solid transparent;
+}
+.menu-item:hover{
+  background:rgba(255,255,255,.07);
+  border-color:rgba(255,255,255,.10);
+  box-shadow:none;
+}
+.menu-item.active{
+  background:linear-gradient(135deg,#ffb100,#ff8a00);
+  color:#fff;
+  border-color:rgba(255,255,255,.18);
+  box-shadow:0 14px 30px rgba(255,138,0,.24);
+}
+.menu-icon{
+  width:30px;
+  height:30px;
+  border-radius:10px;
+  display:grid;
+  place-items:center;
+  flex-shrink:0;
+  background:rgba(255,255,255,.09);
+  border:1px solid rgba(255,255,255,.11);
+  color:#eaf3ff;
+  font-size:10px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:.5px;
+}
+.menu-item.active .menu-icon{
+  background:rgba(255,255,255,.18);
+  border-color:rgba(255,255,255,.22);
+  color:#fff;
+}
+.menu-label{
+  flex:1;
+  min-width:0;
+}
+.menu-item .chevron{
+  margin-left:auto;
+  color:#b8cce4;
+  font-size:18px;
+  line-height:1;
+  opacity:.9;
+}
+.menu-item.active .chevron{
+  color:#fff;
+}
+.menu-subitem{
+  height:36px;
+  margin-left:44px;
+  margin-right:4px;
+  margin-bottom:4px;
+  padding:0 12px;
+  border-radius:11px;
+  color:#a9bed8;
+  font-size:13px;
+  font-weight:750;
+  border-left:1px solid rgba(148,163,184,.18);
+}
+.menu-subitem:hover,
+.menu-subitem.active{
+  background:rgba(255,255,255,.07);
+  color:#fff;
+}
+.badge-success{
+  background:#16c784!important;
+}
+.sidebar.collapsed .menu-icon{
+  width:38px;
+  height:38px;
+  border-radius:13px;
+}
+.sidebar.collapsed .menu-item{
+  padding:8px;
+}
+
+
+
+/* ===== MENU PADRÃO ÍNTEGRO PREMIUM COM CONTROLE POR PERMISSÃO ===== */
+.sidebar{
+  width:315px;
+  padding:26px 18px;
+  background:linear-gradient(180deg,#061426 0%,#071f3f 52%,#092b61 100%);
+  scrollbar-width:thin;
+  scrollbar-color:rgba(148,163,184,.45) transparent;
+}
+.sidebar::-webkit-scrollbar{width:8px;}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(148,163,184,.35);border-radius:999px;}
+.sidebar.collapsed{width:92px;}
+.sidebar.collapsed + .main{margin-left:92px;width:calc(100% - 92px);}
+.main{margin-left:315px;width:calc(100% - 315px);}
+.brand-premium{margin-bottom:24px;padding:0 8px;}
+.brand-logo-wrap{height:50px;display:flex;align-items:center;min-width:0;}
+.logo-integro-sidebar{width:174px;max-width:100%;height:auto;display:block;object-fit:contain;}
+.logo-integro-text{font-size:28px;font-weight:900;letter-spacing:-1px;color:#fff;line-height:1;}
+.logo-integro-text span{color:#ff8a00;}
+.collapse-btn{width:34px;height:34px;border-radius:10px;font-size:22px;background:rgba(255,255,255,.06);box-shadow:none;}
+.user-card-premium{padding:13px;border-radius:16px;margin:4px 8px 22px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.08);gap:12px;}
+.company-avatar{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:grid;place-items:center;color:#fff;font-size:13px;font-weight:700;letter-spacing:.3px;flex-shrink:0;}
+.user-card-premium strong{font-size:13px;font-weight:600;line-height:1.25;color:#f8fafc;margin:0;}
+.user-card-premium small{font-size:12px;font-weight:400;color:#a9bed8;margin-top:2px;}
+.user-card-premium .role-pill{display:inline-block;width:max-content;margin-top:5px;padding:3px 7px;border-radius:999px;background:rgba(255,255,255,.08);color:#cbd5e1!important;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.35px;}
+.menu-group-title{margin:24px 10px 9px;color:#85a8cf;font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:.85px;}
+.menu-item{min-height:42px;height:auto;margin:0 8px 4px;padding:8px 10px;border-radius:11px;color:#d8e5f4;font-size:13.5px;font-weight:500;gap:10px;border:1px solid transparent;box-shadow:none;}
+.menu-item:hover{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.07);box-shadow:none;color:#fff;}
+.menu-item.active{background:linear-gradient(135deg,#123a6d,#0c2c55);color:#fff;border-color:rgba(255,255,255,.08);box-shadow:none;}
+.menu-item.active::before{content:"";width:3px;height:22px;border-radius:999px;background:linear-gradient(180deg,#ffb100,#ff8a00);position:absolute;left:0;}
+.menu-item{position:relative;}
+.menu-icon{width:22px;height:22px;border-radius:0;display:grid;place-items:center;background:transparent;border:0;color:#b8cce4;font-size:20px!important;font-weight:350!important;line-height:1;letter-spacing:0;}
+.menu-item.active .menu-icon,.menu-item:hover .menu-icon{background:transparent;border:0;color:#fff;}
+.menu-label{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.menu-item .chevron{margin-left:auto;color:#9fb7d3;font-size:18px;line-height:1;opacity:.85;}
+.menu-item.active .chevron{color:#fff;}
+.menu-subitem{height:30px;margin-left:48px;margin-right:8px;margin-bottom:2px;padding:0 10px;border-radius:9px;color:#9fb7d3;font-size:12px;font-weight:400;border-left:1px solid rgba(148,163,184,.18);display:flex;align-items:center;}
+.menu-subitem:hover,.menu-subitem.active{background:rgba(255,255,255,.055);color:#fff;}
+.badge{font-weight:700;font-size:11px;padding:3px 7px;box-shadow:none;}
+.badge-success{background:#16c784!important;}
+.sidebar.collapsed .brand-logo-wrap{justify-content:center;}
+.sidebar.collapsed .logo-integro-sidebar{width:42px;max-width:42px;object-fit:cover;object-position:left center;}
+.sidebar.collapsed .company-avatar{width:38px;height:38px;}
+.sidebar.collapsed .user-card-premium{justify-content:center;padding:10px;margin-left:4px;margin-right:4px;}
+.sidebar.collapsed .menu-group-title,.sidebar.collapsed .menu-label,.sidebar.collapsed .menu-subitem,.sidebar.collapsed .chevron,.sidebar.collapsed .badge,.sidebar.collapsed .user-info{display:none!important;}
+.sidebar.collapsed .menu-item{justify-content:center;margin-left:5px;margin-right:5px;padding:9px;}
+.sidebar.collapsed .menu-icon{width:28px;height:28px;font-size:22px!important;}
+@media(max-width:760px){
+  .sidebar{width:290px;transform:translateX(-100%);}
+  .sidebar.show{transform:translateX(0);}
+  .main{margin-left:0;width:100%;}
+}
+
+
+
+/* ===== VENDAS MASTER LOCAL - BUSCA SOB DEMANDA E FILTROS ===== */
+.vendas-master-card{
+  overflow:hidden;
+}
+.vendas-master-toolbar{
+  display:grid;
+  grid-template-columns:minmax(260px,1fr) auto auto auto;
+  gap:12px;
+  align-items:center;
+  margin:18px 0;
+}
+.vendas-master-toolbar input{
+  height:48px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:0 16px;
+  color:var(--text);
+  background:#fff;
+  font-weight:700;
+  outline:none;
+}
+.vendas-master-toolbar input:focus,
+.vendas-filtros-panel input:focus,
+.vendas-filtros-panel select:focus{
+  border-color:var(--orange);
+  box-shadow:0 0 0 4px rgba(255,138,0,.10);
+}
+.vendas-filter-btn,
+.vendas-clear-btn,
+.vendas-search-btn{
+  min-width:112px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+.vendas-filter-btn.filtros-ativos{
+  border-color:rgba(255,138,0,.45);
+  background:#fff7ed;
+  color:#9a3412;
+}
+.vendas-filter-summary{
+  display:none;
+  align-items:center;
+  gap:8px;
+  margin:-6px 0 14px;
+  color:#526780;
+  font-size:13px;
+  font-weight:800;
+}
+.vendas-filter-summary.show{display:flex;}
+.vendas-filter-summary span{
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  background:#fff7ed;
+  color:#9a3412;
+  border:1px solid #fed7aa;
+  padding:5px 10px;
+  font-size:12px;
+  font-weight:900;
+}
+.btn-icon{
+  font-size:20px!important;
+  line-height:1;
+}
+.vendas-filtros-panel{
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:#f8fafc;
+  padding:18px;
+  margin:0 0 18px;
+}
+.vendas-filter-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px;
+}
+.filter-block{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.filter-block.full{
+  grid-column:1 / -1;
+}
+.filter-block label{
+  font-size:11px;
+  font-weight:900;
+  color:#526780;
+  letter-spacing:.45px;
+  text-transform:uppercase;
+}
+.filter-block input,
+.filter-block select{
+  height:46px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+  color:var(--text);
+  font-weight:800;
+  padding:0 13px;
+  outline:none;
+}
+.check-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(150px,1fr));
+  gap:10px;
+}
+.check-grid label{
+  min-height:42px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:0 12px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  color:#334155;
+  font-size:13px;
+  font-weight:800;
+  text-transform:none;
+  letter-spacing:0;
+}
+.check-grid input{
+  width:16px;
+  height:16px;
+  accent-color:var(--orange);
+}
+.filter-empty{
+  grid-column:1 / -1;
+  min-height:42px;
+  display:flex;
+  align-items:center;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:800;
+}
+.vendas-filter-actions{
+  display:flex;
+  justify-content:flex-end;
+  gap:10px;
+  margin-top:16px;
+}
+.vendas-empty-state{
+  min-height:210px;
+  border:1px dashed #cbd5e1;
+  border-radius:18px;
+  background:#f8fafc;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  padding:34px;
+  color:#526780;
+}
+.vendas-empty-state .material-symbols-rounded{
+  font-size:38px!important;
+  color:#94a3b8;
+  margin-bottom:10px;
+}
+.vendas-empty-state strong{
+  display:block;
+  color:var(--text);
+  font-size:16px;
+  font-weight:900;
+  margin-bottom:8px;
+}
+.vendas-empty-state p{
+  max-width:560px;
+  line-height:1.5;
+  font-weight:700;
+}
+.vendas-table-wrap{
+  border:1px solid var(--line);
+  border-radius:18px;
+  overflow:auto;
+  background:#fff;
+}
+.vendas-table{
+  min-width:1180px;
+}
+.vendas-table th{
+  background:#f8fafc;
+  color:#526780;
+}
+.venda-status{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:82px;
+  height:28px;
+  padding:0 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:900;
+}
+.venda-status.ativa,
+.venda-status.em-dia,
+.venda-status.adiantado{
+  background:#dcfce7;
+  color:#15803d;
+}
+.venda-status.em-atraso,
+.venda-status.atraso-grave{
+  background:#fee2e2;
+  color:#991b1b;
+}
+.venda-status.quitado{
+  background:#dbeafe;
+  color:#1d4ed8;
+}
+.venda-status.cancelado{
+  background:#f1f5f9;
+  color:#475569;
+}
+@media(max-width:1000px){
+  .vendas-master-toolbar{
+    grid-template-columns:1fr;
+  }
+  .vendas-filter-grid,
+  .check-grid{
+    grid-template-columns:1fr;
+  }
+  .vendas-filter-actions{
+    flex-direction:column;
+  }
+  .vendas-filter-actions button{
+    width:100%;
+  }
+}
+
 </style>
 </head>
 
@@ -1279,50 +1673,145 @@ body.integro-booting .layout{
   <div class="layout">
     <div class="overlay" id="overlay" onclick="toggleSidebar(false)"></div>
     <aside class="sidebar" id="sidebar">
-    <div class="brand">
-  <div>
-    <h1>ÍNTEGRO</h1>
-  </div>
-  <button class="collapse-btn" type="button" onclick="toggleCollapseSidebar()">«</button>
-</div>
+      <div class="brand brand-premium">
+        <div class="brand-logo-wrap">
+          <img src="assets/logo-integro.png" alt="ÍNTEGRO" class="logo-integro-sidebar" onerror="this.style.display='none';this.nextElementSibling.style.display='block';">
+          <div class="logo-integro-text" style="display:none;">ÍNTE<span>GRO</span></div>
+        </div>
+        <button class="collapse-btn" type="button" onclick="toggleCollapseSidebar()" aria-label="Recolher menu">‹</button>
+      </div>
 
-      <div class="user-card">
-        <div class="avatar">●</div>
+      <div class="user-card user-card-premium">
+        <div class="company-avatar" id="empresaAvatar">CL</div>
         <div class="user-info">
-          <strong id="userNome">Usuário</strong>
-          <small id="empresaNome">Empresa</small>
-          <small class="online" id="userStatus">● Online</small>
+          <strong id="empresaNome">Empresa</strong>
+          <small id="userNome">Usuário</small>
           <small class="role-pill" id="userCargo">master_local</small>
         </div>
       </div>
 
-      <div class="menu-group-title">Comunicação</div>
-      <div class="menu-item" onclick="trocarTela('notificacoes',this)"><span class="menu-icon">🔔</span><span class="menu-label">Notificações</span><span class="badge" id="badgeNotificacoesMenu">0</span></div>
-      <div class="menu-item" onclick="trocarTela('chatInterno',this)"><span class="menu-icon">💬</span><span class="menu-label">Chat interno</span><span class="badge" style="background:#16c784;">Novo</span></div>
+      <div class="menu-group-title" data-menu-group="principal">Principal</div>
+      <div class="menu-item active" data-modulo="dashboard" onclick="trocarTela('dashboard',this)">
+        <span class="menu-icon material-symbols-rounded">dashboard</span><span class="menu-label">Dashboard</span>
+      </div>
 
-      <div class="menu-group-title">Operação</div>
-      <div class="menu-item active" onclick="trocarTela('dashboard',this)"><span class="menu-icon">📊</span><span class="menu-label">Dashboard</span><span class="chevron">›</span></div>
-      <div class="menu-item" onclick="trocarTela('caixas',this); setTimeout(renderCaixasPremium,50)"><span class="menu-icon">💰</span><span class="menu-label">Caixas</span><span class="chevron">›</span></div>
-      <div class="menu-item" onclick="trocarTela('vendas',this)"><span class="menu-icon">🛒</span><span class="menu-label">Vendas</span><span class="chevron">›</span></div>
-      <div class="menu-item" onclick="trocarTela('unidades',this)"><span class="menu-icon">🏢</span><span class="menu-label">Unidades</span><span class="chevron">›</span></div>
-      <div class="menu-subitem" onclick="trocarTela('unidades',this); abrirAbaUnidades('equipes')">Equipes</div>
-      <div class="menu-subitem" onclick="trocarTela('unidades',this); abrirAbaUnidades('vendedores')">Vendedores</div>
-      <div class="menu-item" onclick="trocarTela('indicacoes',this)"><span class="menu-icon">🎯</span><span class="menu-label">Indicações</span><span class="chevron">›</span></div>
-      <div class="menu-subitem" onclick="trocarTela('indicacoes',this)">Ver indicações</div>
+      <div class="menu-group-title" data-menu-group="operacao">Operação</div>
+      <div class="menu-item" data-modulo="caixas" onclick="trocarTela('caixas',this); setTimeout(renderCaixasPremium,50)">
+        <span class="menu-icon material-symbols-rounded">account_balance_wallet</span><span class="menu-label">Caixas</span>
+      </div>
+      <div class="menu-subitem" data-modulo="caixas" onclick="trocarTela('caixas',this); setTimeout(renderCaixasPremium,50)">Supervisão de equipes</div>
+      <div class="menu-subitem" data-modulo="caixas" onclick="trocarTela('caixas',this); setTimeout(renderCaixasPremium,50)">Histórico de caixas</div>
+      <div class="menu-subitem" data-modulo="caixas" onclick="trocarTela('caixas',this); setTimeout(renderCaixasPremium,50)">Divergências</div>
 
-      <div class="menu-group-title">Controle</div>
-      <div class="menu-item" onclick="trocarTela('solicitacoes',this)"><span class="menu-icon">📨</span><span class="menu-label">Solicitações</span><span class="badge" id="badgeSolicitacoes">0</span></div>
-      <div class="menu-item" onclick="trocarTela('relatorios',this)"><span class="menu-icon">📈</span><span class="menu-label">Relatórios</span><span class="chevron">›</span></div>
-      <div class="menu-item" onclick="trocarTela('auditoria',this)"><span class="menu-icon">🕵️</span><span class="menu-label">Auditoria</span><span class="chevron">›</span></div>
+      <div class="menu-item" data-modulo="vendas" onclick="trocarTela('vendas',this)">
+        <span class="menu-icon material-symbols-rounded">shopping_cart</span><span class="menu-label">Vendas</span>
+      </div>
 
-      <div class="menu-group-title">Configurações</div>
-      <div class="menu-item" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('sistema')"><span class="menu-icon">⚙</span><span class="menu-label">Configurações</span><span class="chevron">›</span></div>
-      <div class="menu-subitem" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('sistema')">Sistema</div>
-      <div class="menu-subitem" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('usuarios')">Usuários</div>
-      <div class="menu-subitem" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('permissoes')">Permissões</div>
+      <div class="menu-item" data-modulo="clientes" onclick="trocarTela('clientes',this); setTimeout(()=>{ if(window.renderClientesEmpresaMaster) renderClientesEmpresaMaster(); },80)">
+        <span class="menu-icon material-symbols-rounded">groups</span><span class="menu-label">Clientes</span>
+      </div>
+      <div class="menu-subitem" data-modulo="clientes" onclick="trocarTela('clientes',this); setTimeout(()=>{ if(window.renderClientesEmpresaMaster) renderClientesEmpresaMaster(); },80)">Buscar cliente</div>
+      <div class="menu-subitem" data-modulo="clientes" onclick="trocarTela('clientes',this); setTimeout(()=>{ if(window.abrirNovoCliente) abrirNovoCliente(); },80)">Criar cliente</div>
+      <div class="menu-subitem" data-modulo="indicacoes" onclick="trocarTela('indicacoes',this)">Indicações</div>
 
-      <div class="menu-group-title">Sistema</div>
-      <div class="menu-item" onclick="logout()"><span class="menu-icon">🚪</span><span class="menu-label">Sair</span><span class="chevron">×</span></div>
+      <div class="menu-group-title" data-menu-group="estrutura">Estrutura</div>
+      <div class="menu-item" data-modulo="equipes" onclick="trocarTela('equipes',this)">
+        <span class="menu-icon material-symbols-rounded">hub</span><span class="menu-label">Equipes</span>
+      </div>
+
+      <div class="menu-item" data-modulo="usuarios" onclick="trocarTela('usuarios',this)">
+        <span class="menu-icon material-symbols-rounded">person</span><span class="menu-label">Usuários</span>
+      </div>
+
+      <div class="menu-item" data-modulo="cargos" onclick="trocarTela('cargos',this)">
+        <span class="menu-icon material-symbols-rounded">admin_panel_settings</span><span class="menu-label">Cargos e permissões</span>
+      </div>
+
+      <div class="menu-group-title" data-menu-group="aprovacoes">Aprovações</div>
+      <div class="menu-item" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes',this)">
+        <span class="menu-icon material-symbols-rounded">task</span><span class="menu-label">Solicitações</span><span class="badge" id="badgeSolicitacoes">0</span>
+      </div>
+      <div class="menu-subitem" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes',this)">Pendentes</div>
+      <div class="menu-subitem" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes',this)">Histórico</div>
+
+      <div class="menu-item" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">
+        <span class="menu-icon material-symbols-rounded">request_quote</span><span class="menu-label">Financeiro</span>
+      </div>
+      <div class="menu-subitem" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">Ingressos</div>
+      <div class="menu-subitem" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">Retiradas</div>
+      <div class="menu-subitem" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">Despesas</div>
+      <div class="menu-subitem" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">Ajustes</div>
+
+      <div class="menu-item" data-modulo="aprovacoesComercial" onclick="trocarTela('aprovacoesComercial',this)">
+        <span class="menu-icon material-symbols-rounded">verified</span><span class="menu-label">Comercial</span>
+      </div>
+      <div class="menu-subitem" data-modulo="aprovacoesComercial" onclick="trocarTela('aprovacoesComercial',this)">Vendas fora da regra</div>
+      <div class="menu-subitem" data-modulo="aprovacoesComercial" onclick="trocarTela('aprovacoesComercial',this)">Exceções</div>
+
+      <div class="menu-group-title" data-menu-group="monitoramento">Monitoramento</div>
+      <div class="menu-item" data-modulo="monitoramento" onclick="trocarTela('monitoramento',this)">
+        <span class="menu-icon material-symbols-rounded">location_on</span><span class="menu-label">Operação em campo</span>
+      </div>
+      <div class="menu-subitem" data-modulo="monitoramento" onclick="trocarTela('monitoramento',this)">Mapa operacional</div>
+      <div class="menu-subitem" data-modulo="monitoramento" onclick="trocarTela('monitoramento',this)">Últimas localizações</div>
+
+      <div class="menu-item" data-modulo="contratosDigitais" onclick="trocarTela('contratosDigitais',this)">
+        <span class="menu-icon material-symbols-rounded">draw</span><span class="menu-label">Contratos digitais</span>
+      </div>
+      <div class="menu-subitem" data-modulo="contratosDigitais" onclick="trocarTela('contratosDigitais',this)">Assinaturas</div>
+      <div class="menu-subitem" data-modulo="contratosDigitais" onclick="trocarTela('contratosDigitais',this)">Consentimentos</div>
+      <div class="menu-subitem" data-modulo="contratosDigitais" onclick="trocarTela('contratosDigitais',this)">Selfies de validação</div>
+
+      <div class="menu-group-title" data-menu-group="gestao">Gestão</div>
+      <div class="menu-item" data-modulo="relatorios" onclick="trocarTela('relatorios',this)">
+        <span class="menu-icon material-symbols-rounded">monitoring</span><span class="menu-label">Relatórios</span>
+      </div>
+      <div class="menu-subitem" data-modulo="relatorios" onclick="trocarTela('relatorios',this)">Operacional</div>
+      <div class="menu-subitem" data-modulo="relatorios" onclick="trocarTela('relatorios',this)">Comercial</div>
+      <div class="menu-subitem" data-modulo="relatorios" onclick="trocarTela('relatorios',this)">Financeiro</div>
+
+      <div class="menu-item" data-modulo="indicadores" onclick="trocarTela('indicadores',this)">
+        <span class="menu-icon material-symbols-rounded">query_stats</span><span class="menu-label">Indicadores</span>
+      </div>
+      <div class="menu-subitem" data-modulo="indicadores" onclick="trocarTela('indicadores',this)">Equipes</div>
+      <div class="menu-subitem" data-modulo="indicadores" onclick="trocarTela('indicadores',this)">Vendedores</div>
+      <div class="menu-subitem" data-modulo="indicadores" onclick="trocarTela('indicadores',this)">Carteira e inadimplência</div>
+
+      <div class="menu-item" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">
+        <span class="menu-icon material-symbols-rounded">manage_search</span><span class="menu-label">Auditoria</span>
+      </div>
+      <div class="menu-subitem" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">Logs do sistema</div>
+      <div class="menu-subitem" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">Logs financeiros</div>
+      <div class="menu-subitem" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">Logs de usuários</div>
+
+      <div class="menu-group-title" data-menu-group="comunicacao">Comunicação</div>
+      <div class="menu-item" data-modulo="notificacoes" onclick="trocarTela('notificacoes',this)">
+        <span class="menu-icon material-symbols-rounded">notifications</span><span class="menu-label">Notificações</span><span class="badge" id="badgeNotificacoesMenu">0</span>
+      </div>
+      <div class="menu-item" data-modulo="chatInterno" onclick="trocarTela('chatInterno',this)">
+        <span class="menu-icon material-symbols-rounded">forum</span><span class="menu-label">Chat interno</span><span class="badge badge-success">Novo</span>
+      </div>
+
+      <div class="menu-group-title" data-menu-group="configuracoes">Configurações</div>
+      <div class="menu-item" data-modulo="configuracoes" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('sistema')">
+        <span class="menu-icon material-symbols-rounded">settings</span><span class="menu-label">Configurações</span>
+      </div>
+      <div class="menu-subitem" data-modulo="configuracoes" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('sistema')">Empresa</div>
+      <div class="menu-subitem" data-modulo="configuracoes" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('sistema')">Financeiro</div>
+      <div class="menu-subitem" data-modulo="configuracoes" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('sistema')">Regras operacionais</div>
+      <div class="menu-subitem" data-modulo="configuracoes" onclick="trocarTela('configuracoes',this); abrirAbaConfiguracoes('permissoes')">Permissões</div>
+
+      <div class="menu-group-title" data-menu-group="conta">Minha conta</div>
+      <div class="menu-item" data-modulo="minhaConta" onclick="trocarTela('minhaConta',this)">
+        <span class="menu-icon material-symbols-rounded">account_circle</span><span class="menu-label">Minha conta</span>
+      </div>
+      <div class="menu-subitem" data-modulo="minhaConta" onclick="trocarTela('minhaConta',this)">Perfil</div>
+      <div class="menu-subitem" data-modulo="minhaConta" onclick="trocarTela('minhaConta',this)">Segurança</div>
+
+      <div class="menu-group-title" data-menu-group="sistema">Sistema</div>
+      <div class="menu-item" data-modulo="sair" onclick="logout()">
+        <span class="menu-icon material-symbols-rounded">logout</span><span class="menu-label">Sair</span>
+      </div>
     </aside>
 
     <main class="main">
@@ -1497,14 +1986,97 @@ body.integro-booting .layout{
       </section>
 
       <section id="vendas" class="screen">
-        <div class="section-card">
-          <div class="section-header">
+        <div class="section-card vendas-master-card">
+          <div class="section-header vendas-master-header">
             <div>
               <h2>Vendas</h2>
-              <p>Controle de vendas, renovações e desempenho comercial.</p>
+              <p>Consulta gerencial de vendas por cliente, documento, vendedor, equipe, status e período.</p>
             </div>
           </div>
-          <div id="listaVendas" class="placeholder">Área pronta para conexão com vendas.</div>
+
+          <div class="vendas-master-toolbar">
+            <input
+              id="vendaBuscaTexto"
+              type="search"
+              placeholder="Buscar por cliente, documento, vendedor ou código da venda"
+              onkeydown="if(event.key==='Enter') buscarVendasMasterLocal()"
+            >
+
+            <button class="ghost-btn vendas-filter-btn" type="button" onclick="toggleFiltrosVendasMasterLocal()">
+              <span class="material-symbols-rounded btn-icon">tune</span>
+              Filtros
+            </button>
+
+            <button class="ghost-btn vendas-clear-btn" type="button" onclick="limparFiltrosVendasMasterLocal()">
+              Limpar
+            </button>
+
+            <button class="primary-btn vendas-search-btn" type="button" onclick="buscarVendasMasterLocal()">
+              Buscar
+            </button>
+          </div>
+
+          <div id="painelFiltrosVendas" class="vendas-filtros-panel" style="display:none;">
+            <div class="vendas-filter-grid">
+              <div class="filter-block filter-equipes full">
+                <label>Equipes</label>
+                <div id="vendaFiltroEquipes" class="check-grid">
+                  <div class="filter-empty">As equipes serão carregadas automaticamente.</div>
+                </div>
+              </div>
+
+              <div class="filter-block">
+                <label>Status</label>
+                <select id="vendaFiltroStatus">
+                  <option value="">Todos</option>
+                  <option value="ATIVA">Ativa</option>
+                  <option value="EM DIA">Em dia</option>
+                  <option value="ADIANTADO">Adiantado</option>
+                  <option value="EM ATRASO">Em atraso</option>
+                  <option value="ATRASO GRAVE">Atraso grave</option>
+                  <option value="QUITADO">Quitado</option>
+                  <option value="CANCELADO">Cancelado</option>
+                  <option value="PENDENTE">Pendente</option>
+                </select>
+              </div>
+
+              <div class="filter-block">
+                <label>Tipo</label>
+                <select id="vendaFiltroTipo">
+                  <option value="">Todos</option>
+                  <option value="NOVA">Nova</option>
+                  <option value="RENOVAÇÃO">Renovação</option>
+                  <option value="RENOVACAO">Renovação</option>
+                </select>
+              </div>
+
+              <div class="filter-block">
+                <label>Data inicial</label>
+                <input id="vendaFiltroDataInicio" type="date">
+              </div>
+
+              <div class="filter-block">
+                <label>Data final</label>
+                <input id="vendaFiltroDataFim" type="date">
+              </div>
+
+              <div class="filter-block full">
+                <label>Vendedor</label>
+                <input id="vendaFiltroVendedor" type="search" placeholder="Nome do vendedor">
+              </div>
+            </div>
+
+            <div class="vendas-filter-actions">
+              <button class="ghost-btn" type="button" onclick="limparFiltrosVendasMasterLocal()">Limpar filtros</button>
+              <button class="primary-btn" type="button" onclick="buscarVendasMasterLocal()">Aplicar filtros</button>
+            </div>
+          </div>
+
+          <div id="listaVendas" class="vendas-empty-state">
+            <span class="material-symbols-rounded">manage_search</span>
+            <strong>Nenhuma venda pesquisada ainda</strong>
+            <p>Use a busca ou os filtros para consultar vendas. A tela não carrega registros automaticamente para evitar travamentos.</p>
+          </div>
         </div>
       </section>
 
@@ -1607,6 +2179,75 @@ body.integro-booting .layout{
         </div>
       </section>
 
+      <section id="cobrancas" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div><h2>Cobranças</h2><p>Cobranças do dia, carteira ativa e inadimplência.</p></div>
+          </div>
+          <div class="placeholder-dev">
+            Módulo preparado para produtividade do supervisor: cobranças do dia, carteira ativa, inadimplentes e histórico de recebimentos.
+          </div>
+        </div>
+      </section>
+
+      <section id="indicadores" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div><h2>Indicadores</h2><p>Performance de equipes, vendedores, carteira e inadimplência.</p></div>
+          </div>
+          <div class="placeholder-dev">
+            Módulo preparado para indicadores operacionais: ranking de equipes, produtividade por vendedor, carteira final e inadimplência.
+          </div>
+        </div>
+      </section>
+
+      <section id="minhaConta" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div><h2>Minha conta</h2><p>Perfil, segurança e preferências do usuário logado.</p></div>
+          </div>
+          <div class="placeholder-dev">
+            Área reservada para dados do perfil, troca de senha, sessões ativas e segurança da conta.
+          </div>
+        </div>
+      </section>
+
+
+      <section id="documentacao" class="screen">
+        <div class="section-card">
+          <div class="section-header"><div><h2>Documentação</h2><p>Documentos, contratos, assinaturas e histórico documental dos clientes.</p></div></div>
+          <div class="placeholder-dev">Módulo reservado para documentos, contratos, assinaturas e validações digitais.</div>
+        </div>
+      </section>
+
+      <section id="aprovacoesFinanceiro" class="screen">
+        <div class="section-card">
+          <div class="section-header"><div><h2>Aprovações financeiras</h2><p>Ingressos, retiradas, despesas e ajustes aguardando análise.</p></div></div>
+          <div class="placeholder-dev">As aprovações financeiras serão integradas às gavetas dos cards de Caixa, Recebido, Ingressos, Retiradas e Despesas.</div>
+        </div>
+      </section>
+
+      <section id="aprovacoesComercial" class="screen">
+        <div class="section-card">
+          <div class="section-header"><div><h2>Aprovações comerciais</h2><p>Vendas fora da regra, exceções e análises operacionais.</p></div></div>
+          <div class="placeholder-dev">Módulo preparado para solicitações de venda fora das regras da equipe e exceções comerciais.</div>
+        </div>
+      </section>
+
+      <section id="monitoramento" class="screen">
+        <div class="section-card">
+          <div class="section-header"><div><h2>Operação em campo</h2><p>Mapa operacional, localização autorizada e alertas de campo.</p></div></div>
+          <div class="placeholder-dev">Módulo reservado para monitoramento da operação em campo com consentimento do cliente e regras de segurança.</div>
+        </div>
+      </section>
+
+      <section id="contratosDigitais" class="screen">
+        <div class="section-card">
+          <div class="section-header"><div><h2>Contratos digitais</h2><p>Assinaturas, consentimentos e selfies de validação.</p></div></div>
+          <div class="placeholder-dev">Módulo reservado para contrato digital, aceite, rubrica, selfie e consentimento de localização.</div>
+        </div>
+      </section>
+
       <section id="configuracoes" class="screen">
         <div class="section-card">
           <div class="section-header"><div><h2>Configurações</h2><p>Parâmetros da empresa, usuários e permissões.</p></div></div>
@@ -1696,7 +2337,7 @@ body.integro-booting .layout{
     document.getElementById("sidebar").classList.toggle("collapsed");
   }
 
-  preencherUsuarioLayout();
+  if (typeof preencherUsuarioLayout === "function") preencherUsuarioLayout();
 
 </script>
 
@@ -5337,26 +5978,37 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
     const lista = linhas();
     const totalSelecionado = CX.selecionadas.size;
+    const temCaixaParaAbrir = lista.some(r => CX.selecionadas.has(r.id) && ["FECHADO","SEM_CAIXA"].includes(r.estado));
+    const temCaixaParaFechar = lista.some(r => CX.selecionadas.has(r.id) && r.estado === "ABERTO");
 
     card.innerHTML = `
       <div class="section-header">
         <div>
           <h2>Supervisão de equipes</h2>
-          <p>Equipes ativas, caixas e operação carregados automaticamente em tempo real.</p>
         </div>
       </div>
 
-      <div class="consolidado-actions-fixo">
-        <button class="ghost-btn" type="button" ${totalSelecionado ? '' : 'disabled'} onclick="verConsolidadoEquipesSelecionadasIntegro()">Ver consolidado selecionadas</button>
-        <button class="primary-btn" type="button" onclick="verConsolidadoEmpresaIntegro()">Ver consolidado da empresa</button>
+      <div class="caixas-action-card">
+        <div class="caixas-selection-info ${totalSelecionado ? 'active' : ''}">
+          <div class="caixas-selection-icon">☑</div>
+          <div>
+            <strong>${totalSelecionado ? totalSelecionado + ' equipe(s) selecionada(s)' : 'Nenhuma equipe selecionada'}</strong>
+            <small>${totalSelecionado ? 'Ações disponíveis para as equipes selecionadas' : 'Selecione uma ou mais equipes para ações em massa'}</small>
+          </div>
+        </div>
+
+        <div class="caixas-action-buttons">
+          <button class="ghost-btn" type="button" ${totalSelecionado ? '' : 'disabled'} onclick="verConsolidadoEquipesSelecionadasIntegro()">Ver consolidado selecionadas</button>
+          <button class="primary-btn" type="button" onclick="verConsolidadoEmpresaIntegro()">Ver consolidado da empresa</button>
+          <button class="ghost-btn filtro-toggle-btn" type="button" onclick="toggleFiltrosCaixasIntegro()">Filtros ▾</button>
+          <button class="success-btn action-open" type="button" ${temCaixaParaAbrir ? '' : 'disabled'} onclick="abrirCaixasSelecionadasIntegro()">Abrir caixas selecionados</button>
+          <button class="danger-btn action-close" type="button" ${temCaixaParaFechar ? '' : 'disabled'} onclick="fecharCaixasSelecionadasIntegro()">Fechar caixas selecionados</button>
+          <button class="ghost-btn action-more" type="button" onclick="abrirMenuAcoesCaixasIntegro()">⋮</button>
+        </div>
       </div>
 
-      <div id="barraAcoesMassaCaixas" class="bulk-bar-caixas" style="${totalSelecionado ? "display:flex" : "display:none"}">
-        <strong>${totalSelecionado} equipe(s) selecionada(s)</strong>
-        <div>
-          ${lista.some(r => CX.selecionadas.has(r.id) && ["FECHADO","SEM_CAIXA"].includes(r.estado)) ? '<button class="primary-btn" type="button" onclick="abrirCaixasSelecionadasIntegro()">Abrir caixa</button>' : ''}
-          ${lista.some(r => CX.selecionadas.has(r.id) && r.estado === "ABERTO") ? '<button class="danger-btn" type="button" onclick="fecharCaixasSelecionadasIntegro()">Fechar caixa</button>' : ''}
-        </div>
+      <div id="filtrosCaixasIntegro" class="filtros-ocultos-box" style="display:none;">
+        <div class="placeholder-dev">Filtros avançados ocultos. Próximo passo: estado do caixa, equipe, supervisor, data e indicadores.</div>
       </div>
 
       <div class="caixas-table-wrap">
@@ -6079,6 +6731,17 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     setTimeout(() => renderDetalheEquipe(id), 300);
   }
 
+
+  window.toggleFiltrosCaixasIntegro = function(){
+    const box = document.getElementById("filtrosCaixasIntegro");
+    if (!box) return;
+    box.style.display = box.style.display === "none" || !box.style.display ? "block" : "none";
+  };
+
+  window.abrirMenuAcoesCaixasIntegro = function(){
+    alert("Menu de ações preparado para: atualizar dados, exportar relatório e ações individuais futuras.");
+  };
+
   window.renderCaixasPremium = function(){
     iniciarRealtime();
     carregarDados().then(renderTelaCaixas);
@@ -6103,6 +6766,20 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
   const style = document.createElement("style");
   style.textContent = `
+    #caixas .caixas-action-card{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:16px 18px;border:1px solid var(--line);border-radius:22px;background:#f8fafc;margin:0 0 22px;box-shadow:0 12px 30px rgba(15,23,42,.04);}
+    #caixas .caixas-selection-info{display:flex;align-items:center;gap:12px;min-width:260px;color:#64748b;}
+    #caixas .caixas-selection-info.active{color:#0757c7;}
+    #caixas .caixas-selection-icon{width:30px;height:30px;border-radius:9px;border:1px solid #cbd5e1;background:#fff;display:grid;place-items:center;font-weight:900;color:#0757c7;}
+    #caixas .caixas-selection-info strong{display:block;font-size:14px;font-weight:900;margin-bottom:5px;}
+    #caixas .caixas-selection-info small{display:block;font-size:12px;font-weight:800;color:#64748b;}
+    #caixas .caixas-action-buttons{display:flex;align-items:center;justify-content:flex-end;gap:12px;flex-wrap:wrap;}
+    #caixas .caixas-action-buttons button{height:46px;white-space:nowrap;}
+    #caixas .caixas-action-buttons button:disabled{opacity:.45;cursor:not-allowed;filter:grayscale(.2);box-shadow:none;}
+    #caixas .caixas-action-buttons .action-open{background:#eafaf0;color:#16803d;border:1px solid #86efac;box-shadow:none;}
+    #caixas .caixas-action-buttons .action-close{background:#fff1f2;color:#ff405d;border:1px solid #fecdd3;box-shadow:none;}
+    #caixas .caixas-action-buttons .action-more{width:46px;padding:0;font-size:22px;}
+    #caixas .filtros-ocultos-box{border:1px solid var(--line);border-radius:18px;background:#fff;padding:14px;margin:0 0 18px;}
+
     #caixas .bulk-bar-caixas{align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-radius:18px;background:#fff7ed;border:1px solid #fed7aa;margin:0 0 16px;color:#9a3412}
     #caixas .bulk-bar-caixas > div{display:flex;gap:8px;flex-wrap:wrap}
     #caixas .caixas-table-listview-oficial{min-width:1680px;table-layout:auto;border-collapse:separate;border-spacing:0}
@@ -9459,52 +10136,31 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   function ajustarMenuOperacaoClientesEquipes(){
-    const itens = Array.from(document.querySelectorAll(".menu-item"));
-    const itemVendas = itens.find(item => normalizarTexto(item.querySelector(".menu-label")?.textContent) === "vendas");
-    const itemUnidades = itens.find(item => {
-      const label = normalizarTexto(item.querySelector(".menu-label")?.textContent);
-      return label === "unidades" || label === "equipes";
+    // Menu padrão já contém Clientes dentro de Operação.
+    // Esta rotina agora apenas evita duplicidades herdadas de versões anteriores.
+    const clientesMenu = Array.from(document.querySelectorAll('.menu-item')).filter(item => {
+      return normalizarTexto(item.querySelector('.menu-label')?.textContent || '') === 'clientes';
     });
 
-    if(itemUnidades){
-      const label = itemUnidades.querySelector(".menu-label");
-      const icon = itemUnidades.querySelector(".menu-icon");
-      if(label) label.textContent = "Equipes";
-      if(icon) icon.textContent = "👥";
-      itemUnidades.setAttribute("onclick", "trocarTela('unidades',this); setTimeout(renderTelaEquipesGestao || renderUnidades,80)");
-      itemUnidades.dataset.menuEquipesPrincipal = "true";
-    }
-
-    if(itemVendas && !document.querySelector('[data-menu-clientes-principal="true"]')){
-      const clientes = document.createElement("div");
-      clientes.className = "menu-item";
-      clientes.dataset.menuClientesPrincipal = "true";
-      clientes.setAttribute("onclick", "trocarTela('clientes',this); setTimeout(renderClientesEmpresaMaster,80)");
-      clientes.innerHTML = '<span class="menu-icon">👤</span><span class="menu-label">Clientes</span><span class="chevron">›</span>';
-      itemVendas.insertAdjacentElement("afterend", clientes);
-
-      const indicacoesSub = document.createElement("div");
-      indicacoesSub.className = "menu-subitem";
-      indicacoesSub.dataset.submenuIndicacoesClientes = "true";
-      indicacoesSub.setAttribute("onclick", "trocarTela('indicacoes',this)");
-      indicacoesSub.textContent = "Indicações";
-      clientes.insertAdjacentElement("afterend", indicacoesSub);
-    }
-
-    document.querySelectorAll(".menu-subitem").forEach(sub=>{
-      const txt = normalizarTexto(sub.textContent.trim());
-      if(txt === "equipes" || txt === "vendedores"){
-        sub.style.display = "none";
+    clientesMenu.forEach((item, index) => {
+      if(index > 0){
+        item.style.display = 'none';
+        let prox = item.nextElementSibling;
+        while(prox && prox.classList?.contains('menu-subitem')){
+          prox.style.display = 'none';
+          prox = prox.nextElementSibling;
+        }
       }
     });
 
-    document.querySelectorAll(".menu-item").forEach(item=>{
-      const label = normalizarTexto(item.querySelector(".menu-label")?.textContent);
-      if(label === "indicacoes") item.style.display = "none";
+    document.querySelectorAll('.menu-item').forEach(item=>{
+      const label = normalizarTexto(item.querySelector('.menu-label')?.textContent || '');
+      if(label === 'indicacoes') item.style.display = 'none';
     });
-    document.querySelectorAll(".menu-subitem").forEach(sub=>{
+
+    document.querySelectorAll('.menu-subitem').forEach(sub=>{
       const txt = normalizarTexto(sub.textContent.trim());
-      if(txt === "ver indicacoes" || txt === "ver indicações") sub.style.display = "none";
+      if(txt === 'ver indicacoes' || txt === 'ver indicações') sub.style.display = 'none';
     });
   }
 
@@ -11475,6 +12131,755 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 })();
 </script>
 <!-- ===== FIM PATCH ÍNTEGRO - PERMISSÕES POR CARGO / SOMENTE HTML ===== -->
+
+
+<script>
+/* ===== MENU PADRÃO POR PERMISSÃO / PERFIL ===== */
+(function(){
+  const PERFIS_ADMIN = new Set(["master_global","master_local","admin","administrador"]);
+
+  const MODULOS_PADRAO_POR_PERFIL = {
+    master_global: "*",
+    master_local: "*",
+    gerente: ["dashboard","caixas","vendas","cobrancas","clientes","indicacoes","documentacao","equipes","usuarios","cargos","solicitacoes","aprovacoesFinanceiro","aprovacoesComercial","monitoramento","contratosDigitais","relatorios","indicadores","auditoria","notificacoes","chatInterno","configuracoes","minhaConta","sair"],
+    supervisor: ["dashboard","caixas","vendas","cobrancas","clientes","indicacoes","documentacao","equipes","solicitacoes","aprovacoesFinanceiro","aprovacoesComercial","monitoramento","contratosDigitais","relatorios","indicadores","auditoria","notificacoes","chatInterno","minhaConta","sair"],
+    financeiro: ["dashboard","caixas","cobrancas","clientes","solicitacoes","aprovacoesFinanceiro","relatorios","indicadores","auditoria","notificacoes","chatInterno","minhaConta","sair"],
+    vendedor: ["dashboard","vendas","cobrancas","clientes","documentacao","notificacoes","chatInterno","minhaConta","sair"]
+  };
+
+  function normalizarPerfil(v){
+    return String(v || "").trim().toLowerCase();
+  }
+
+  function getUsuarioAtual(){
+    return window.usuarioLogado || window.currentUserData || window.usuarioAtual || window.userData || {};
+  }
+
+  function getPerfilAtual(){
+    const u = getUsuarioAtual();
+    return normalizarPerfil(u.tipoUsuario || u.tipo || u.perfil || u.cargoNome || document.getElementById("userCargo")?.textContent || "master_local");
+  }
+
+  function getPermissoesAtuais(){
+    const u = getUsuarioAtual();
+    return window.permissoesUsuario || window.__integroPermissoesUsuario || u.permissoes || u.permissoesCargo || {};
+  }
+
+  function permissaoModuloObjeto(permissoes, modulo){
+    return permissoes?.[modulo] || permissoes?.modulos?.[modulo] || null;
+  }
+
+  window.temAcessoModuloIntegro = function(modulo){
+    if(!modulo || modulo === "sair") return true;
+
+    const perfil = getPerfilAtual();
+    if(PERFIS_ADMIN.has(perfil)) return true;
+
+    const permissoes = getPermissoesAtuais();
+    const p = permissaoModuloObjeto(permissoes, modulo);
+
+    if(typeof p === "boolean") return p;
+    if(p && typeof p === "object"){
+      if(p.visualizar === true || p.acessar === true || p.listar === true || p.ler === true) return true;
+      if(p.ativo === false || p.visualizar === false || p.acessar === false) return false;
+    }
+
+    const listaPadrao = MODULOS_PADRAO_POR_PERFIL[perfil];
+    if(listaPadrao === "*") return true;
+    if(Array.isArray(listaPadrao)) return listaPadrao.includes(modulo);
+
+    return false;
+  };
+
+  window.aplicarMenuPorPermissoesIntegro = function(){
+    document.querySelectorAll(".sidebar [data-modulo]").forEach(el=>{
+      const modulo = el.dataset.modulo;
+      const permitido = window.temAcessoModuloIntegro(modulo);
+      el.style.display = permitido ? "" : "none";
+      el.dataset.permissaoVisivel = permitido ? "1" : "0";
+    });
+
+    const sidebar = document.getElementById("sidebar");
+    if(!sidebar) return;
+
+    const filhos = Array.from(sidebar.children);
+    filhos.forEach((el, idx)=>{
+      if(!el.classList?.contains("menu-group-title")) return;
+      let temItemVisivel = false;
+      for(let i = idx + 1; i < filhos.length; i++){
+        const prox = filhos[i];
+        if(prox.classList?.contains("menu-group-title")) break;
+        if((prox.classList?.contains("menu-item") || prox.classList?.contains("menu-subitem")) && prox.style.display !== "none"){
+          temItemVisivel = true;
+          break;
+        }
+      }
+      el.style.display = temItemVisivel ? "" : "none";
+    });
+  };
+
+  const trocarTelaOriginalPermissoesMenu = window.trocarTela;
+  window.trocarTela = function(tela, el){
+    const modulo = el?.dataset?.modulo || tela;
+    if(modulo && !window.temAcessoModuloIntegro(modulo)){
+      alert("Seu usuário não tem permissão para acessar este módulo.");
+      return;
+    }
+    if(typeof trocarTelaOriginalPermissoesMenu === "function"){
+      trocarTelaOriginalPermissoesMenu(tela, el);
+    }
+  };
+
+  function atualizarEmpresaAvatar(){
+    const empresa = document.getElementById("empresaNome")?.textContent || "";
+    const avatar = document.getElementById("empresaAvatar");
+    if(!avatar) return;
+    const letras = empresa.split(/\s+/).filter(Boolean).slice(0,2).map(p=>p[0]).join("").toUpperCase();
+    avatar.textContent = letras || "IN";
+  }
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    setTimeout(()=>{
+      window.aplicarMenuPorPermissoesIntegro();
+      atualizarEmpresaAvatar();
+    }, 250);
+  });
+
+  const aplicarPermissoesAnterior = window.aplicarPermissoesBasicasInterface;
+  window.aplicarPermissoesBasicasInterface = function(){
+    if(typeof aplicarPermissoesAnterior === "function") aplicarPermissoesAnterior();
+    window.aplicarMenuPorPermissoesIntegro();
+  };
+
+  setTimeout(()=>{
+    window.aplicarMenuPorPermissoesIntegro();
+    atualizarEmpresaAvatar();
+  }, 900);
+})();
+</script>
+
+
+<!-- ===== AJUSTE FINAL MENU ÍNTEGRO: ACCORDION + PERMISSÕES + VISUAL PREMIUM ===== -->
+<style>
+/* Mantém o menu completo no código, mas mostra só o necessário na navegação */
+.sidebar .menu-item{
+  font-weight:500 !important;
+}
+
+.sidebar .menu-group-title{
+  font-weight:650 !important;
+}
+
+.sidebar .menu-subitem{
+  display:none !important;
+  font-weight:400 !important;
+}
+
+.sidebar .menu-subitem.submenu-open{
+  display:flex !important;
+}
+
+.sidebar .menu-item.has-submenu .chevron{
+  transition:transform .18s ease, color .18s ease;
+}
+
+.sidebar .menu-item.menu-expanded .chevron{
+  transform:rotate(90deg);
+  color:#fff;
+}
+
+.sidebar .menu-item.menu-expanded{
+  background:rgba(255,255,255,.055);
+  border-color:rgba(255,255,255,.07);
+}
+
+.sidebar .menu-item.menu-expanded.active{
+  background:linear-gradient(135deg,#ffb100,#ff8a00);
+}
+
+.sidebar .menu-subitem.submenu-open.active{
+  background:rgba(255,255,255,.075);
+  color:#fff;
+}
+
+.sidebar.collapsed .menu-subitem,
+.sidebar.collapsed .menu-subitem.submenu-open{
+  display:none !important;
+}
+
+.sidebar.collapsed .menu-item.menu-expanded .chevron{
+  transform:none;
+}
+
+.sidebar .menu-icon.material-symbols-rounded{
+  font-variation-settings:'FILL' 0,'wght' 350,'GRAD' 0,'opsz' 22;
+}
+
+.user-card-premium{
+  min-height:66px;
+}
+
+.user-card-premium strong,
+.user-card-premium small{
+  font-weight:400 !important;
+}
+
+.user-card-premium strong{
+  font-weight:500 !important;
+}
+
+.role-pill{
+  font-weight:500 !important;
+}
+</style>
+
+<script>
+/* ===== MENU PADRÃO COM ACCORDION E CONTROLE POR PERMISSÃO ===== */
+(function(){
+  function getSidebar(){
+    return document.getElementById("sidebar");
+  }
+
+  function getSubmenusDoItem(item){
+    const subs = [];
+    let prox = item?.nextElementSibling;
+
+    while(prox){
+      if(prox.classList?.contains("menu-group-title")) break;
+      if(prox.classList?.contains("menu-item")) break;
+
+      if(prox.classList?.contains("menu-subitem")){
+        subs.push(prox);
+      }
+
+      prox = prox.nextElementSibling;
+    }
+
+    return subs;
+  }
+
+  function getItemPaiDoSubmenu(subitem){
+    let anterior = subitem?.previousElementSibling;
+
+    while(anterior){
+      if(anterior.classList?.contains("menu-item")) return anterior;
+      if(anterior.classList?.contains("menu-group-title")) return null;
+      anterior = anterior.previousElementSibling;
+    }
+
+    return null;
+  }
+
+  function prepararMenuAccordion(){
+    const sidebar = getSidebar();
+    if(!sidebar) return;
+
+    sidebar.querySelectorAll(".menu-item").forEach(item=>{
+      const subs = getSubmenusDoItem(item);
+      item.classList.toggle("has-submenu", subs.length > 0);
+
+      if(subs.length > 0 && !item.querySelector(".chevron")){
+        item.insertAdjacentHTML("beforeend", `<span class="chevron">›</span>`);
+      }
+    });
+  }
+
+  function fecharTodosMenus(excetoItem){
+    const sidebar = getSidebar();
+    if(!sidebar) return;
+
+    sidebar.querySelectorAll(".menu-item.menu-expanded").forEach(item=>{
+      if(item !== excetoItem) item.classList.remove("menu-expanded");
+    });
+
+    sidebar.querySelectorAll(".menu-subitem.submenu-open").forEach(sub=>{
+      const pai = getItemPaiDoSubmenu(sub);
+      if(pai !== excetoItem) sub.classList.remove("submenu-open");
+    });
+  }
+
+  function abrirMenuItem(item){
+    if(!item) return;
+
+    const subs = getSubmenusDoItem(item);
+    const temSubmenus = subs.length > 0;
+
+    fecharTodosMenus(item);
+
+    if(temSubmenus){
+      item.classList.add("menu-expanded");
+      subs.forEach(sub=>{
+        if(sub.dataset.permissaoVisivel !== "0" && sub.style.display !== "none"){
+          sub.classList.add("submenu-open");
+        }
+      });
+    }
+  }
+
+  function abrirMenuDoSubitem(subitem){
+    const pai = getItemPaiDoSubmenu(subitem);
+    if(!pai) return;
+    abrirMenuItem(pai);
+    subitem.classList.add("submenu-open");
+  }
+
+  function abrirMenuAtivoInicial(){
+    const sidebar = getSidebar();
+    if(!sidebar) return;
+
+    const ativo = sidebar.querySelector(".menu-item.active") || sidebar.querySelector(".menu-subitem.active");
+
+    if(ativo?.classList.contains("menu-subitem")){
+      abrirMenuDoSubitem(ativo);
+      return;
+    }
+
+    if(ativo?.classList.contains("menu-item")){
+      abrirMenuItem(ativo);
+    }
+  }
+
+  function limparAtivosDoMenu(){
+    const sidebar = getSidebar();
+    if(!sidebar) return;
+    sidebar.querySelectorAll(".menu-item.active,.menu-subitem.active").forEach(el=>el.classList.remove("active"));
+  }
+
+  function marcarAtivo(el){
+    if(!el) return;
+
+    limparAtivosDoMenu();
+    el.classList.add("active");
+
+    if(el.classList.contains("menu-subitem")){
+      const pai = getItemPaiDoSubmenu(el);
+      if(pai){
+        pai.classList.add("active");
+        abrirMenuItem(pai);
+      }
+    }else{
+      abrirMenuItem(el);
+    }
+  }
+
+  function aplicarPermissoesMenu(){
+    if(typeof window.aplicarMenuPorPermissoesIntegro === "function"){
+      window.aplicarMenuPorPermissoesIntegro();
+    }
+
+    prepararMenuAccordion();
+
+    const sidebar = getSidebar();
+    if(!sidebar) return;
+
+    sidebar.querySelectorAll(".menu-subitem").forEach(sub=>{
+      const pai = getItemPaiDoSubmenu(sub);
+      const paiOculto = !pai || pai.style.display === "none" || pai.dataset.permissaoVisivel === "0";
+      if(paiOculto){
+        sub.style.display = "none";
+        sub.dataset.permissaoVisivel = "0";
+      }
+    });
+
+    sidebar.querySelectorAll(".menu-item.menu-expanded").forEach(item=>{
+      getSubmenusDoItem(item).forEach(sub=>{
+        if(sub.dataset.permissaoVisivel !== "0" && sub.style.display !== "none"){
+          sub.classList.add("submenu-open");
+        }
+      });
+    });
+
+    sidebar.querySelectorAll(".menu-group-title").forEach(titulo=>{
+      let prox = titulo.nextElementSibling;
+      let temVisivel = false;
+
+      while(prox){
+        if(prox.classList?.contains("menu-group-title")) break;
+        if(
+          (prox.classList?.contains("menu-item") || prox.classList?.contains("menu-subitem")) &&
+          prox.style.display !== "none" &&
+          prox.dataset.permissaoVisivel !== "0"
+        ){
+          temVisivel = true;
+          break;
+        }
+        prox = prox.nextElementSibling;
+      }
+
+      titulo.style.display = temVisivel ? "" : "none";
+    });
+
+    abrirMenuAtivoInicial();
+  }
+
+  document.addEventListener("click", function(ev){
+    const item = ev.target.closest?.(".sidebar .menu-item");
+    const subitem = ev.target.closest?.(".sidebar .menu-subitem");
+
+    if(subitem){
+      setTimeout(()=>marcarAtivo(subitem), 0);
+      return;
+    }
+
+    if(item){
+      setTimeout(()=>marcarAtivo(item), 0);
+    }
+  }, true);
+
+  const trocarTelaAnteriorAccordion = window.trocarTela;
+  window.trocarTela = function(tela, el){
+    const retorno = typeof trocarTelaAnteriorAccordion === "function"
+      ? trocarTelaAnteriorAccordion(tela, el)
+      : undefined;
+
+    if(el?.classList?.contains("menu-item") || el?.classList?.contains("menu-subitem")){
+      setTimeout(()=>marcarAtivo(el), 0);
+    }
+
+    return retorno;
+  };
+
+  const aplicarPermissoesAnteriorAccordion = window.aplicarMenuPorPermissoesIntegro;
+  window.aplicarMenuPorPermissoesIntegro = function(){
+    if(typeof aplicarPermissoesAnteriorAccordion === "function"){
+      aplicarPermissoesAnteriorAccordion();
+    }
+
+    setTimeout(()=>{
+      prepararMenuAccordion();
+      abrirMenuAtivoInicial();
+    }, 0);
+  };
+
+  document.addEventListener("DOMContentLoaded", ()=>{
+    setTimeout(aplicarPermissoesMenu, 150);
+    setTimeout(aplicarPermissoesMenu, 800);
+  });
+
+  window.atualizarMenuPadraoIntegro = aplicarPermissoesMenu;
+})();
+</script>
+
+
+\n
+<script>
+/* ===== ÍNTEGRO PATCH FINAL - MASTER LOCAL: ERROS, VENDAS, FILTROS E PADRÃO UI ===== */
+(function(){
+  "use strict";
+
+  function qs(sel, root=document){ return root.querySelector(sel); }
+  function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+  function norm(v){
+    return String(v || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .trim();
+  }
+  function esc(v){
+    return String(v ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+  }
+  function moeda(valor){
+    const n = Number(valor || 0);
+    if(typeof window.moedaBR === 'function') return window.moedaBR(n);
+    return n.toLocaleString('pt-BR', {style:'currency', currency:'BRL'});
+  }
+  function campo(obj, campos, fallback=''){
+    for(const c of campos){
+      if(obj && obj[c] !== undefined && obj[c] !== null && obj[c] !== '') return obj[c];
+    }
+    return fallback;
+  }
+  function dataVenda(venda){
+    const bruto = campo(venda, [
+      'dataVenda','data','criadoEm','createdAt','dataCriacao','inicioEm','created_at',
+      'dataCadastro','dataContrato','dataOperacao','dataLancamento','dataRegistro',
+      'dataPrimeiraCobranca','primeiraCobranca','dataPrimeiraParcela','dataVencimento','vencimento'
+    ]);
+    if(!bruto) return null;
+    if(bruto instanceof Date) return bruto;
+    if(bruto && typeof bruto.toDate === 'function') return bruto.toDate();
+    if(typeof bruto === 'number') return new Date(bruto);
+    if(typeof bruto === 'string'){
+      if(/^\d{2}\/\d{2}\/\d{4}/.test(bruto)){
+        const [d,m,y] = bruto.split(/[\/\s]/);
+        return new Date(`${y}-${m}-${d}T12:00:00`);
+      }
+      const d = new Date(bruto);
+      return isNaN(d.getTime()) ? null : d;
+    }
+    return null;
+  }
+  function dataBR(venda){
+    const d = dataVenda(venda);
+    return d ? d.toLocaleDateString('pt-BR') : '-';
+  }
+  function colecao(nome, getter){
+    const cacheName = `${nome}Cache`;
+    if(Array.isArray(window[cacheName])) return window[cacheName];
+    if(Array.isArray(window[nome])) return window[nome];
+    if(window.State && typeof window.State[getter] === 'function'){
+      const arr = window.State[getter]();
+      if(Array.isArray(arr)) return arr;
+    }
+    return [];
+  }
+  function vendas(){ return colecao('vendas','getVendas'); }
+  function clientes(){ return colecao('clientes','getClientes'); }
+  function usuarios(){ return colecao('usuarios','getUsuarios'); }
+  function equipes(){ return colecao('equipes','getEquipes'); }
+
+  function findRelated(lista, ids, nomes){
+    return lista.find(item => {
+      const itemIds = [item.id,item.uid,item.authUid,item.docId,item.clienteId,item.vendedorId,item.equipeId].filter(Boolean).map(String);
+      const itemNomes = [item.nome,item.nomeCompleto,item.razaoSocial,item.apelido,item.email].filter(Boolean).map(norm);
+      return ids.filter(Boolean).some(id => itemIds.includes(String(id))) || nomes.filter(Boolean).some(n => itemNomes.includes(norm(n)));
+    }) || null;
+  }
+
+  function vendaView(v){
+    const cli = findRelated(clientes(), [v.clienteId,v.clienteOperacionalId,v.cliente_id], [v.clienteNome,v.nomeCliente,v.cliente]);
+    const vend = findRelated(usuarios(), [v.vendedorId,v.usuarioId,v.userId], [v.vendedorNome,v.nomeVendedor,v.vendedor]);
+
+    // A equipe pode estar gravada diretamente na venda OU herdada do vendedor vinculado.
+    // Sem isso, o filtro por equipe pode zerar resultados mesmo existindo venda no período.
+    const eq = findRelated(
+      equipes(),
+      [v.equipeId,v.unidadeId,v.equipe_id,v.timeId, vend?.equipeId, vend?.unidadeId, vend?.equipePrincipalId],
+      [v.equipeNome,v.unidade,v.equipe,v.nomeEquipe,v.timeNome, vend?.equipeNome, vend?.unidade, vend?.equipe]
+    );
+
+    const equipeId = campo(v,['equipeId','unidadeId','equipe_id','timeId']) || campo(vend || {}, ['equipeId','unidadeId','equipePrincipalId']) || campo(eq || {}, ['id','docId']);
+    const equipeNome = campo(v,['equipeNome','unidade','equipe','nomeEquipe','timeNome']) || campo(vend || {}, ['equipeNome','unidade','equipe']) || campo(eq || {}, ['nome','descricao'], '-');
+
+    return {
+      ...v,
+      _id: String(campo(v,['id','docId','codigo','numeroContrato'],'')),
+      _clienteNome: campo(v,['clienteNome','nomeCliente','cliente']) || campo(cli || {}, ['nome','nomeCompleto','razaoSocial'], '-'),
+      _documento: campo(v,['documentoCliente','clienteDocumento','cpf','cpfCliente','documento']) || campo(cli || {}, ['cpf','documento','cnpj'], '-'),
+      _vendedorNome: campo(v,['vendedorNome','nomeVendedor','vendedor']) || campo(vend || {}, ['nome','nomeCompleto','email'], '-'),
+      _equipeId: String(equipeId || ''),
+      _equipeNome: equipeNome,
+      _status: String(campo(v,['status','statusVenda','situacao'], '-')).toUpperCase(),
+      _tipo: String(campo(v,['tipo','tipoVenda'], '-')).toUpperCase(),
+      _valorEmprestado: Number(campo(v,['valorEmprestado','valor','principal','valorLiberado'], 0) || 0),
+      _valorTotal: Number(campo(v,['valorTotal','total','valorContrato','totalReceber'], 0) || 0),
+      _saldo: Number(campo(v,['saldo','saldoDevedor','valorAberto','saldoAtual'], 0) || 0),
+      _data: dataVenda(v)
+    };
+  }
+
+  function ensureVendasTela(){
+    const sec = qs('#vendas');
+    if(!sec) return;
+    const card = sec.querySelector('.section-card') || sec;
+    card.classList.add('vendas-master-card');
+
+    // IMPORTANTE: não remontar a tela se ela já existe.
+    // Antes, cada clique em Buscar/Aplicar Filtros chamava ensureVendasTela(),
+    // que recriava todo o HTML e apagava os valores selecionados nos filtros.
+    if(qs('#vendaBuscaTexto', card) && qs('#listaVendas', card)) return;
+
+    card.innerHTML = `
+      <div class="section-header vendas-master-header">
+        <div>
+          <h2>Vendas</h2>
+          <p>Consulta gerencial de vendas por cliente, documento, vendedor, equipe, status e período.</p>
+        </div>
+      </div>
+      <div class="vendas-master-toolbar">
+        <input id="vendaBuscaTexto" type="search" placeholder="Buscar por cliente, documento, vendedor ou código da venda" onkeydown="if(event.key==='Enter') buscarVendasMasterLocal()">
+        <button class="ghost-btn vendas-filter-btn" type="button" onclick="toggleFiltrosVendasMasterLocal()"><span class="material-symbols-rounded btn-icon">tune</span>Filtros</button>
+        <button class="ghost-btn vendas-clear-btn" type="button" onclick="limparFiltrosVendasMasterLocal()">Limpar</button>
+        <button class="primary-btn vendas-search-btn" type="button" onclick="buscarVendasMasterLocal()">Buscar</button>
+      </div>
+      <div id="resumoFiltrosVendas" class="vendas-filter-summary"></div>
+      <div id="painelFiltrosVendas" class="vendas-filtros-panel" style="display:none;">
+        <div class="vendas-filter-grid">
+          <div class="filter-block filter-equipes full">
+            <label>Equipes</label>
+            <div id="vendaFiltroEquipes" class="check-grid"><div class="filter-empty">As equipes serão carregadas automaticamente.</div></div>
+          </div>
+          <div class="filter-block"><label>Status</label><select id="vendaFiltroStatus">
+            <option value="">Todos</option><option value="ATIVA">Ativa</option><option value="EM DIA">Em dia</option><option value="ADIANTADO">Adiantado</option><option value="EM ATRASO">Em atraso</option><option value="ATRASO GRAVE">Atraso grave</option><option value="QUITADO">Quitado</option><option value="CANCELADO">Cancelado</option><option value="PENDENTE">Pendente</option>
+          </select></div>
+          <div class="filter-block"><label>Tipo</label><select id="vendaFiltroTipo"><option value="">Todos</option><option value="NOVA">Nova</option><option value="RENOVAÇÃO">Renovação</option><option value="RENOVACAO">Renovação</option></select></div>
+          <div class="filter-block"><label>Data inicial</label><input id="vendaFiltroDataInicio" type="date"></div>
+          <div class="filter-block"><label>Data final</label><input id="vendaFiltroDataFim" type="date"></div>
+          <div class="filter-block full"><label>Vendedor</label><input id="vendaFiltroVendedor" type="search" placeholder="Nome do vendedor"></div>
+        </div>
+        <div class="vendas-filter-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosVendasMasterLocal(false)">Limpar filtros</button><button class="primary-btn" type="button" onclick="salvarFiltrosVendasMasterLocal()">Salvar filtros</button></div>
+      </div>
+      <div id="listaVendas" class="vendas-empty-state"><span class="material-symbols-rounded">manage_search</span><strong>Nenhuma venda pesquisada ainda</strong><p>Use a busca ou os filtros para consultar vendas. A tela não carrega registros automaticamente para evitar travamentos.</p></div>
+    `;
+  }
+
+  window.montarEquipesFiltroVendasMasterLocal = function(){
+    const box = qs('#vendaFiltroEquipes');
+    if(!box) return;
+    const lista = equipes();
+    if(!lista.length){
+      box.innerHTML = '<div class="filter-empty">Nenhuma equipe carregada ainda.</div>';
+      return;
+    }
+
+    // Preserva seleções ao reaplicar busca/filtro.
+    const selecionadas = new Set(qsa('input[name="vendaEquipeFiltro"]:checked', box).map(chk => String(chk.value)));
+
+    box.innerHTML = lista.map(e => {
+      const nome = campo(e,['nome','descricao'], 'Equipe');
+      const id = String(campo(e,['id','docId'], nome));
+      const checked = selecionadas.has(id) ? 'checked' : '';
+      return `<label><input type="checkbox" name="vendaEquipeFiltro" value="${esc(id)}" data-nome="${esc(nome)}" ${checked}><span>${esc(nome)}</span></label>`;
+    }).join('');
+  };
+
+  window.renderVendas = function(){
+    ensureVendasTela();
+    window.montarEquipesFiltroVendasMasterLocal();
+    atualizarResumoFiltrosVendas();
+  };
+
+  window.toggleFiltrosVendasMasterLocal = function(){
+    ensureVendasTela();
+    window.montarEquipesFiltroVendasMasterLocal();
+    const painel = qs('#painelFiltrosVendas');
+    if(painel){
+      const vaiAbrir = (painel.style.display === 'none' || !painel.style.display);
+      painel.style.display = vaiAbrir ? 'block' : 'none';
+      if(!vaiAbrir) atualizarResumoFiltrosVendas();
+    }
+  };
+
+  function getFiltrosVendasAtivos(){
+    const equipesSel = qsa('input[name="vendaEquipeFiltro"]:checked').map(chk => ({id:String(chk.value), nome:chk.dataset.nome || chk.value}));
+    return {
+      termo: qs('#vendaBuscaTexto')?.value || '',
+      vendedor: qs('#vendaFiltroVendedor')?.value || '',
+      status: qs('#vendaFiltroStatus')?.value || '',
+      tipo: qs('#vendaFiltroTipo')?.value || '',
+      dataInicio: qs('#vendaFiltroDataInicio')?.value || '',
+      dataFim: qs('#vendaFiltroDataFim')?.value || '',
+      equipes: equipesSel
+    };
+  }
+
+  function atualizarResumoFiltrosVendas(){
+    const filtros = getFiltrosVendasAtivos();
+    const partes = [];
+    if(filtros.equipes.length) partes.push(`${filtros.equipes.length} equipe(s)`);
+    if(filtros.status) partes.push(`status: ${filtros.status}`);
+    if(filtros.tipo) partes.push(`tipo: ${filtros.tipo}`);
+    if(filtros.dataInicio || filtros.dataFim) partes.push('período definido');
+    if(filtros.vendedor.trim()) partes.push('vendedor');
+
+    const resumo = qs('#resumoFiltrosVendas');
+    const btn = qs('.vendas-filter-btn');
+    if(!resumo || !btn) return;
+
+    if(partes.length){
+      resumo.classList.add('show');
+      resumo.innerHTML = `<strong>Filtros selecionados:</strong> ${partes.map(p => `<span>${esc(p)}</span>`).join('')}`;
+      btn.classList.add('filtros-ativos');
+    }else{
+      resumo.classList.remove('show');
+      resumo.innerHTML = '';
+      btn.classList.remove('filtros-ativos');
+    }
+  }
+
+  window.salvarFiltrosVendasMasterLocal = function(){
+    atualizarResumoFiltrosVendas();
+    const painel = qs('#painelFiltrosVendas');
+    if(painel) painel.style.display = 'none';
+  };
+
+  window.limparFiltrosVendasMasterLocal = function(resetResultado = true){
+    ['vendaBuscaTexto','vendaFiltroVendedor','vendaFiltroDataInicio','vendaFiltroDataFim'].forEach(id => { const el = qs('#'+id); if(el) el.value=''; });
+    ['vendaFiltroStatus','vendaFiltroTipo'].forEach(id => { const el = qs('#'+id); if(el) el.value=''; });
+    qsa('input[name="vendaEquipeFiltro"]').forEach(chk => chk.checked = false);
+    atualizarResumoFiltrosVendas();
+    if(resetResultado){
+      const box = qs('#listaVendas');
+      if(box){
+        box.className = 'vendas-empty-state';
+        box.innerHTML = '<span class="material-symbols-rounded">manage_search</span><strong>Nenhuma venda pesquisada ainda</strong><p>Use a busca ou os filtros para consultar vendas. A tela não carrega registros automaticamente para evitar travamentos.</p>';
+      }
+    }
+  };
+
+  window.buscarVendasMasterLocal = function(){
+    ensureVendasTela();
+    window.montarEquipesFiltroVendasMasterLocal();
+    const box = qs('#listaVendas');
+    if(!box) return;
+    const termo = norm(qs('#vendaBuscaTexto')?.value || '');
+    const vendedorFiltro = norm(qs('#vendaFiltroVendedor')?.value || '');
+    const statusFiltro = norm(qs('#vendaFiltroStatus')?.value || '');
+    const tipoFiltro = norm(qs('#vendaFiltroTipo')?.value || '');
+    const di = qs('#vendaFiltroDataInicio')?.value ? new Date(qs('#vendaFiltroDataInicio').value + 'T00:00:00') : null;
+    const df = qs('#vendaFiltroDataFim')?.value ? new Date(qs('#vendaFiltroDataFim').value + 'T23:59:59') : null;
+    const equipesSel = qsa('input[name="vendaEquipeFiltro"]:checked').map(chk => ({id:String(chk.value), nome:norm(chk.dataset.nome || chk.value)}));
+    const temFiltro = Boolean(termo || vendedorFiltro || statusFiltro || tipoFiltro || di || df || equipesSel.length);
+    atualizarResumoFiltrosVendas();
+    if(!temFiltro){ window.limparFiltrosVendasMasterLocal(); return; }
+
+    const filtradas = vendas().map(vendaView).filter(v => {
+      const texto = norm([v._id,v.codigo,v.numeroContrato,v._clienteNome,v._documento,v._vendedorNome,v._equipeNome,v._status,v._tipo].join(' '));
+      if(termo && !texto.includes(termo)) return false;
+      if(vendedorFiltro && !norm(v._vendedorNome).includes(vendedorFiltro)) return false;
+      if(statusFiltro && norm(v._status) !== statusFiltro) return false;
+      if(tipoFiltro && norm(v._tipo) !== tipoFiltro) return false;
+      if(equipesSel.length){
+        const vendaEquipeId = String(v._equipeId || campo(v,['equipeId','unidadeId','equipe_id','timeId'],''));
+        const vendaEquipeNome = norm(v._equipeNome);
+        if(!equipesSel.some(eq => eq.id === vendaEquipeId || eq.nome === vendaEquipeNome || vendaEquipeNome.includes(eq.nome) || eq.nome.includes(vendaEquipeNome))) return false;
+      }
+      if(di || df){
+        if(!v._data) return false;
+        if(di && v._data < di) return false;
+        if(df && v._data > df) return false;
+      }
+      return true;
+    });
+
+    if(!filtradas.length){
+      box.className = 'vendas-empty-state';
+      box.innerHTML = '<span class="material-symbols-rounded">search_off</span><strong>Nenhuma venda encontrada</strong><p>Revise o nome, documento, vendedor, equipe, status ou período informado e tente novamente.</p>';
+      return;
+    }
+    box.className = 'vendas-table-wrap';
+    box.innerHTML = `<table class="vendas-table"><thead><tr><th>Cliente</th><th>Documento</th><th>Vendedor</th><th>Equipe</th><th>Tipo</th><th>Status</th><th>Valor emprestado</th><th>Valor total</th><th>Saldo</th><th>Data</th><th>Ações</th></tr></thead><tbody>${filtradas.map(v => {
+      const cls = norm(v._status).replace(/\s+/g,'-');
+      return `<tr><td><strong>${esc(v._clienteNome)}</strong></td><td>${esc(v._documento)}</td><td>${esc(v._vendedorNome)}</td><td>${esc(v._equipeNome)}</td><td>${esc(v._tipo)}</td><td><span class="venda-status ${esc(cls)}">${esc(v._status)}</span></td><td>${moeda(v._valorEmprestado)}</td><td>${moeda(v._valorTotal)}</td><td>${moeda(v._saldo)}</td><td>${dataBR(v)}</td><td><button class="ghost-btn" type="button" onclick="abrirDetalheVendaMasterLocal('${esc(v._id)}')">Ver</button></td></tr>`;
+    }).join('')}</tbody></table>`;
+  };
+
+  window.abrirDetalheVendaMasterLocal = function(id){
+    const venda = vendas().map(vendaView).find(v => String(v._id) === String(id));
+    if(!venda){ alert('Venda não encontrada.'); return; }
+    alert(`Venda de ${venda._clienteNome}\nVendedor: ${venda._vendedorNome}\nStatus: ${venda._status}\nSaldo: ${moeda(venda._saldo)}\n\nDetalhe completo com parcelas, pagamentos, histórico e logs será aberto em gaveta na próxima etapa.`);
+  };
+
+  // Patch trocarTela: preserva original e garante que Vendas sempre renderize o padrão aprovado.
+  const originalTrocarTela = window.trocarTela;
+  window.trocarTela = function(tela, el){
+    if(typeof originalTrocarTela === 'function'){
+      originalTrocarTela.call(this, tela, el);
+    }else{
+      qsa('.screen').forEach(s => s.classList.remove('active'));
+      qs('#'+tela)?.classList.add('active');
+      qsa('.menu-item,.menu-subitem').forEach(i => i.classList.remove('active'));
+      if(el) el.classList.add('active');
+    }
+    if(tela === 'vendas') setTimeout(window.renderVendas, 0);
+  };
+
+  document.addEventListener('DOMContentLoaded', function(){
+    if(qs('#vendas.active')) window.renderVendas();
+  });
+})();
+</script>
 
 </body>
 </html>
