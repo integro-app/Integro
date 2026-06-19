@@ -4,61 +4,310 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>INTEGRO - Financeiro</title>
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
   <style>
-    *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,sans-serif}
-    :root{--bg:#f6f8fb;--side:#061a35;--side2:#092b61;--orange:#ff8a00;--orange2:#ffb100;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--shadow:0 16px 38px rgba(15,23,42,.08)}
-    body{min-height:100vh;background:var(--bg);color:var(--text)}
-    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.55);opacity:0;visibility:hidden;z-index:40;transition:.2s}.overlay.show,.overlay.open,.overlay.active{opacity:1;visibility:visible}
-    .sidebar{position:fixed;inset:0 auto 0 0;width:300px;background:linear-gradient(180deg,var(--side),var(--side2));color:#fff;padding:22px 16px;z-index:50;overflow:auto;box-shadow:16px 0 40px rgba(2,6,23,.22)}
-    .logo{font-size:34px;font-weight:900;letter-spacing:-2px;margin:0 8px 24px}.logo span{color:var(--orange2)}
-    .user-card{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);border-radius:22px;padding:16px;margin-bottom:22px}.user-card small{display:block;color:#cbd5e1;font-weight:800;margin-top:6px}.user-card strong{display:block;font-size:16px}.status-online{display:inline-flex;margin-top:10px;color:#4ade80;font-weight:900}
-    .menu{display:grid;gap:8px}.menu button{height:50px;border:0;border-radius:14px;background:transparent;color:#e2e8f0;font-weight:900;text-align:left;padding:0 14px;cursor:pointer}.menu button.active,.menu button:hover{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
-    .main{margin-left:300px;padding:24px}.topbar{min-height:82px;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;margin-bottom:20px}.topbar h1{font-size:28px;font-weight:900}.topbar p{color:var(--muted);font-weight:700;margin-top:3px}.hamburger{display:none;width:50px;height:50px;border:1px solid var(--line);background:#fff;border-radius:14px;font-size:24px;font-weight:900}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{height:46px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--text);font-weight:900;padding:0 16px;cursor:pointer}.btn-primary{border:0;background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
-    .screen{display:none}.screen.active{display:block}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:20px}.card small{display:block;color:var(--muted);font-weight:900;margin-bottom:10px}.card strong{font-size:28px;font-weight:900}.card p,.muted{color:var(--muted);font-weight:700;margin-top:8px}.panel{margin-top:18px}.empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:18px;padding:18px;color:#475569;font-weight:800}
-    @media(max-width:900px){.sidebar{transform:translateX(-105%);transition:.25s}.sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}.main{margin-left:0;padding:14px}.hamburger{display:block}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}}
+    *{box-sizing:border-box;margin:0;padding:0;font-family:"Inter",sans-serif}
+    :root{
+      --nav:#061a35;
+      --nav2:#092b61;
+      --bg:#f3f7fc;
+      --card:#fff;
+      --text:#071a33;
+      --muted:#64748b;
+      --line:#e2e8f0;
+      --orange:#ff8a00;
+      --orange2:#ffb100;
+      --green:#16c784;
+      --blue:#1683ff;
+      --red:#ff405d;
+      --purple:#8b5cf6;
+      --cyan:#14b8a6;
+      --shadow:0 18px 45px rgba(15,23,42,.08);
+    }
+
+    body{min-height:100vh;background:linear-gradient(135deg,#f6f9fd,#eef4fb);color:var(--text);overflow-x:hidden}
+    button,input,select,textarea{font-family:inherit}
+    button{border:0;cursor:pointer}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px 14px;background:#fff;color:var(--text);font-weight:700;outline:none}
+    textarea{min-height:92px;resize:vertical}
+    label{display:block;color:#475569;font-size:13px;font-weight:900;margin-bottom:8px}
+
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:300px;background:linear-gradient(180deg,var(--nav),var(--nav2));color:#fff;padding:26px 20px;position:fixed;inset:0 auto 0 0;overflow-y:auto;z-index:50;transition:.25s}
+    .sidebar.collapsed{width:88px}
+    .brand{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+    .brand h1{font-size:32px;font-weight:900;letter-spacing:-1px}
+    .brand span{color:var(--orange2)}
+    .collapse-btn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.10);color:#fff;font-size:20px;border:1px solid rgba(255,255,255,.15)}
+    .mobile-menu-btn{position:fixed;top:14px;left:14px;width:54px;height:54px;border-radius:16px;background:#fff;border:1px solid var(--line);color:var(--text);font-size:26px;font-weight:900;box-shadow:var(--shadow);display:none;align-items:center;justify-content:center;z-index:10000}
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.58);opacity:0;visibility:hidden;transition:.2s;z-index:9998}
+    .overlay.show,.overlay.open,.overlay.active{opacity:1;visibility:visible}
+
+    .user-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px;display:flex;gap:14px;align-items:center;margin-bottom:28px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+    .avatar{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,var(--orange2),var(--orange));display:grid;place-items:center;font-size:24px;font-weight:900;flex-shrink:0}
+    .user-card strong{display:block;font-size:16px;margin-bottom:3px}
+    .user-card small{display:block;color:#cbd5e1;font-weight:700;margin-bottom:3px}
+    .online{color:#7dffb1!important}
+    .role-pill{display:inline-block;margin-top:6px;background:rgba(0,0,0,.25);border-radius:8px;padding:4px 8px;font-size:12px;color:#fff!important}
+    .menu-title{color:#8fb4dc;font-size:12px;font-weight:900;text-transform:uppercase;margin:22px 6px 12px;letter-spacing:.6px}
+    .menu-item{height:52px;border-radius:14px;display:flex;align-items:center;gap:12px;color:#eaf3ff;font-weight:800;padding:0 14px;margin-bottom:7px;transition:.2s;background:transparent;width:100%;text-align:left}
+    .menu-item:hover,.menu-item.active{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;box-shadow:0 12px 26px rgba(255,138,0,.25)}
+    .menu-icon{width:24px;text-align:center;font-size:18px;flex-shrink:0}
+    .quick-actions{margin-top:26px;border-top:1px solid rgba(255,255,255,.12);padding-top:20px}
+    .quick-btn{width:100%;height:54px;border-radius:14px;color:#fff;font-weight:900;margin-bottom:10px;background:linear-gradient(135deg,var(--orange2),var(--orange))}
+    .outline-btn{background:transparent;border:1px solid rgba(255,255,255,.25)}
+    .sidebar.collapsed .brand h1,.sidebar.collapsed .user-info,.sidebar.collapsed .menu-title,.sidebar.collapsed .menu-label,.sidebar.collapsed .quick-actions{display:none}
+    .sidebar.collapsed .menu-item{justify-content:center}
+
+    .main{margin-left:300px;width:calc(100% - 300px);padding:28px 34px;transition:.25s}
+    .sidebar.collapsed + .main{margin-left:88px;width:calc(100% - 88px)}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:26px}
+    .topbar h2{font-size:30px;font-weight:900;letter-spacing:-1px}
+    .topbar p{margin-top:6px;color:var(--muted);font-weight:600}
+    .top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .top-btn{height:54px;padding:0 18px;border-radius:14px;background:#fff;border:1px solid var(--line);color:var(--text);font-weight:800;box-shadow:var(--shadow)}
+    .primary-btn,.ghost-btn,.danger-btn,.success-btn{height:46px;border-radius:14px;padding:0 16px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+    .primary-btn{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;box-shadow:0 12px 26px rgba(255,138,0,.22)}
+    .ghost-btn{background:#fff;color:var(--text);border:1px solid var(--line)}
+    .danger-btn{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
+    .success-btn{background:#ecfdf5;color:#15803d;border:1px solid #bbf7d0}
+
+    .screen{display:none}
+    .screen.active{display:block}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-bottom:22px}
+    .kpi-card{border-radius:22px;padding:22px;box-shadow:var(--shadow);min-height:150px;display:flex;align-items:center;gap:18px;overflow:hidden;color:#fff;position:relative}
+    .kpi-card[onclick]{cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+    .kpi-card[onclick]:hover{transform:translateY(-3px);box-shadow:0 22px 52px rgba(15,23,42,.14);filter:saturate(1.04)}
+    .kpi-card::after{content:"";position:absolute;right:-32px;bottom:-36px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.14)}
+    .kpi-icon{width:62px;height:62px;border-radius:20px;display:grid;place-items:center;font-size:28px;flex-shrink:0;background:rgba(255,255,255,.18);z-index:1}
+    .kpi-card>div:last-child{z-index:1}
+    .kpi-label{font-size:13px;text-transform:uppercase;font-weight:900;color:rgba(255,255,255,.84);letter-spacing:.4px;margin-bottom:8px}
+    .kpi-value{font-size:28px;font-weight:900;color:#fff;line-height:1}
+    .kpi-sub{margin-top:10px;font-size:13px;color:rgba(255,255,255,.84);font-weight:700}
+    .grad-red{background:linear-gradient(135deg,#ef4444,#991b1b)}
+    .grad-orange{background:linear-gradient(135deg,var(--orange2),var(--orange))}
+    .grad-blue{background:linear-gradient(135deg,#38bdf8,#1d4ed8)}
+    .grad-green{background:linear-gradient(135deg,#22c55e,#15803d)}
+    .grad-purple{background:linear-gradient(135deg,#a78bfa,#7c3aed)}
+    .grad-cyan{background:linear-gradient(135deg,#2dd4bf,#047857)}
+    .grad-navy{background:linear-gradient(135deg,#092b61,#061a35)}
+
+    .panel,.section-card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:24px;margin-bottom:22px}
+    .panel-head,.section-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+    .panel h3,.section-header h2{font-weight:900}
+    .section-header p,.panel-head p{color:var(--muted);font-weight:600;margin-top:6px}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+    .toolbar-group{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .toolbar-spacer{margin-left:auto}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .tab-btn{height:42px;border-radius:999px;padding:0 14px;background:#f8fafc;border:1px solid var(--line);font-weight:900;color:#475569}
+    .tab-btn.active{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;border-color:transparent}
+    .filters{display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;background:#f8fafc;border:1px solid var(--line);border-radius:18px;padding:16px}
+    .filters.show{display:grid}
+    .view-toggle{display:inline-flex;background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px}
+    .view-toggle button{height:38px;border-radius:10px;padding:0 12px;background:transparent;color:#64748b;font-weight:900}
+    .view-toggle button.active{background:#fff;color:var(--orange);box-shadow:0 8px 18px rgba(15,23,42,.08)}
+
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:18px}
+    table{width:100%;border-collapse:collapse;background:#fff}
+    th,td{padding:14px;border-bottom:1px solid var(--line);text-align:left;font-size:14px;vertical-align:middle;white-space:nowrap}
+    th{background:linear-gradient(135deg,var(--nav),var(--nav2));color:#dbeafe;text-transform:uppercase;font-size:12px;font-weight:900}
+    tbody tr{cursor:pointer}
+    tbody tr:hover{background:#f8fafc}
+    .status-badge{display:inline-flex;align-items:center;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900}
+    .st-vencida{background:#fef2f2;color:#991b1b}
+    .st-hoje{background:#fff7ed;color:#c2410c}
+    .st-proxima{background:#eff6ff;color:#1d4ed8}
+    .st-paga,.st-aprovada{background:#ecfdf5;color:#15803d}
+    .st-cancelada,.st-recusada{background:#f1f5f9;color:#475569}
+    .st-pendente{background:#fefce8;color:#a16207}
+    .st-recorrente{background:#f5f3ff;color:#6d28d9}
+
+    .calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+    .calendar-head{background:#f8fafc;color:#475569;font-weight:900;text-align:center;border-radius:12px;padding:10px}
+    .calendar-day{min-height:130px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px;cursor:pointer;box-shadow:0 8px 22px rgba(15,23,42,.04)}
+    .calendar-day.muted{opacity:.45}
+    .day-number{font-weight:900;margin-bottom:8px}
+    .event-pill{display:block;border-radius:999px;padding:6px 8px;font-size:11px;font-weight:900;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mini-calendar .calendar-day{min-height:104px}
+    .mini-calendar .event-pill{font-size:10px;padding:5px 7px}
+
+    .cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .info-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 10px 28px rgba(15,23,42,.05)}
+    .info-card strong{display:block;font-size:17px;margin-bottom:8px}
+    .info-card small{display:block;color:var(--muted);font-weight:800;margin-top:4px}
+    .empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:18px;padding:18px;color:#475569;font-weight:800}
+
+    .drawer{position:fixed;inset:0;z-index:12000;display:none}
+    .drawer.show{display:block}
+    .drawer-overlay{position:absolute;inset:0;background:rgba(2,6,23,.58)}
+    .drawer-content{position:absolute;right:0;top:0;height:100%;width:min(560px,100%);background:#fff;box-shadow:-22px 0 48px rgba(2,6,23,.22);display:flex;flex-direction:column}
+    .drawer-header{padding:22px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+    .drawer-header h3{font-size:22px;font-weight:900}
+    .drawer-header p{color:var(--muted);font-weight:700;margin-top:5px}
+    .drawer-close{width:44px;height:44px;border-radius:14px;background:#f8fafc;color:#334155;font-weight:900;font-size:18px}
+    .drawer-body{padding:24px;overflow:auto;display:grid;gap:16px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-group.full{grid-column:1/-1}
+    .drawer-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+    .drawer-primary{flex:1}
+    .recurrence-box{border:1px solid var(--line);border-radius:18px;padding:16px;background:#f8fafc;display:grid;gap:14px}
+    .recurrence-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .weekday-row{display:flex;gap:8px;flex-wrap:wrap}
+    .weekday-chip{width:34px;height:34px;border-radius:999px;background:#e8f0fe;color:#1d4ed8;font-weight:900}
+    .weekday-chip.active{background:#0b57d0;color:#fff}
+    .radio-row{display:grid;gap:10px}
+    .radio-line{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;color:#475569;font-weight:800}
+    .radio-line input[type="radio"],.radio-line input[type="checkbox"]{width:auto}
+    .log-list{display:grid;gap:10px}
+    .log-item{border:1px solid var(--line);border-radius:14px;padding:12px;background:#f8fafc}
+    .log-item small{display:block;color:var(--muted);font-weight:800;margin-top:4px}
+
+    @media(max-width:1180px){.kpi-grid,.cards-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:900px){
+      .mobile-menu-btn{display:flex}
+      .sidebar{transform:translateX(-105%);z-index:9999}
+      .sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}
+      .sidebar.collapsed{width:300px}
+      .sidebar.collapsed .brand h1,.sidebar.collapsed .user-info,.sidebar.collapsed .menu-title,.sidebar.collapsed .menu-label,.sidebar.collapsed .quick-actions{display:block}
+      .main,.sidebar.collapsed + .main{margin-left:0;width:100%;padding:84px 14px 18px}
+      .topbar{align-items:flex-start;flex-direction:column}
+      .top-actions,.toolbar,.toolbar-group{width:100%}
+      .top-btn,.primary-btn,.ghost-btn,.danger-btn,.success-btn{flex:1}
+      .toolbar-spacer{margin-left:0}
+      .kpi-grid,.cards-grid,.filters,.form-grid{grid-template-columns:1fr}
+      .recurrence-row{grid-template-columns:1fr}
+      .calendar{grid-template-columns:1fr}
+      .calendar-head{display:none}
+      .calendar-day{min-height:auto}
+    }
   </style>
 </head>
+
 <body>
-  <div id="overlay" class="overlay" onclick="toggleSidebar(false)"></div>
-  <aside id="sidebar" class="sidebar">
-    <div class="logo">INTE<span>GRO</span></div>
-    <div class="user-card">
-      <strong id="userNome">Usuario</strong>
-      <small id="empresaNome">Empresa</small>
-      <span class="status-online">Online</span>
-      <small id="userCargo">Financeiro</small>
-    </div>
-    <div class="menu">
-      <button class="active" onclick="trocarTela('dashboard',this)">Dashboard</button>
-      <button onclick="trocarTela('notificacoes',this)">Notificacoes <span id="badgeNotificacoes">0</span></button>
-      <button onclick="logout()">Sair</button>
-    </div>
-  </aside>
-  <main class="main">
-    <header class="topbar">
-      <div style="display:flex;align-items:center;gap:14px">
-        <button class="hamburger" onclick="toggleSidebar(true)">☰</button>
-        <div><h1 id="pageTitle">Dashboard</h1><p>Visao financeira da empresa.</p></div>
+  <button class="mobile-menu-btn" type="button" onclick="toggleSidebarFinanceiro(true)" aria-label="Abrir menu">☰</button>
+  <div class="layout">
+    <div class="overlay" id="overlay" onclick="toggleSidebarFinanceiro(false)"></div>
+
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <h1>INTE<span>GRO</span></h1>
+        <button class="collapse-btn" type="button" onclick="toggleCollapseSidebarFinanceiro()">«</button>
       </div>
-      <div class="actions">
-        <button class="btn" onclick="abrirNotificacoes()">Notificacoes <span id="notificationCount" data-notification-count>0</span></button>
-        <button class="btn btn-primary" onclick="carregarTudoFinanceiro()">Atualizar</button>
+
+      <div class="user-card">
+        <div class="avatar">$</div>
+        <div class="user-info">
+          <strong id="userNome">Usuário</strong>
+          <small id="empresaNome">Empresa</small>
+          <small class="online" id="userStatus">● Online</small>
+          <small class="role-pill" id="userCargo">Financeiro</small>
+        </div>
       </div>
-    </header>
-    <section id="dashboard" class="screen active">
-      <div class="grid">
-        <div class="card"><small>Recebido hoje</small><strong id="kpiRecebidoHoje">R$ 0,00</strong><p>Pagamentos carregados.</p></div>
-        <div class="card"><small>Carteira</small><strong id="kpiCarteira">R$ 0,00</strong><p>Saldo em aberto.</p></div>
-        <div class="card"><small>Inadimplencia</small><strong id="kpiInadimplencia">R$ 0,00</strong><p>Saldo vencido.</p></div>
-        <div class="card"><small>Solicitacoes</small><strong id="kpiSolicitacoes">0</strong><p>Pendentes de aprovacao.</p></div>
+
+      <div class="menu-title">Financeiro</div>
+      <button class="menu-item active" onclick="trocarTelaFinanceiro('dashboard', this)"><span class="menu-icon">⌂</span><span class="menu-label">Dashboard</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('contas', this)"><span class="menu-icon">▤</span><span class="menu-label">Contas</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('solicitacoes', this)"><span class="menu-icon">◇</span><span class="menu-label">Solicitações</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('caixas', this)"><span class="menu-icon">▣</span><span class="menu-label">Caixas</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('fornecedores', this)"><span class="menu-icon">♙</span><span class="menu-label">Fornecedores</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('relatorios', this)"><span class="menu-icon">◫</span><span class="menu-label">Relatórios</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('auditoria', this)"><span class="menu-icon">◎</span><span class="menu-label">Auditoria</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('configuracoes', this)"><span class="menu-icon">⚙</span><span class="menu-label">Configurações</span></button>
+
+      <div class="quick-actions">
+        <div class="menu-title">Ações</div>
+        <button class="quick-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
+        <button class="quick-btn outline-btn" type="button" onclick="carregarFinanceiroMock()">Atualizar dados</button>
+        <button class="quick-btn outline-btn" type="button" onclick="logoutFinanceiro()">Sair</button>
       </div>
-      <div class="panel"><h2>Resumo</h2><div id="resumoFinanceiro" class="empty">Sem dados para exibir.</div></div>
-    </section>
-    <section id="notificacoes" class="screen"><div class="panel"><h2>Notificacoes</h2><div id="listaNotificacoes" class="empty">Nenhuma notificacao no momento.</div></div></section>
-  </main>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard Financeiro</h2>
+          <p id="pageSubtitle">Resumo de contas, pagamentos, caixas e solicitações.</p>
+        </div>
+        <div class="top-actions">
+          <button class="top-btn" type="button" id="topDataFinanceiro">Hoje</button>
+          <button class="top-btn" type="button" onclick="carregarFinanceiroMock()">Atualizar</button>
+          <button class="primary-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
+        </div>
+      </div>
+
+      <section id="dashboard" class="screen active">
+        <div class="kpi-grid" id="dashboardFinanceiroCards"></div>
+
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h3>Agenda de pagamentos</h3>
+              <p>Próximos vencimentos e recorrências em destaque.</p>
+            </div>
+            <button class="ghost-btn" type="button" onclick="trocarTelaFinanceiro('contas')">Ver contas</button>
+          </div>
+          <div id="agendaPagamentosResumo" class="mini-calendar"></div>
+        </div>
+      </section>
+
+      <section id="contas" class="screen">
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <h2>Contas</h2>
+              <p>Contas a pagar, pagas, vencidas, recorrentes e canceladas.</p>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <div class="toolbar-group">
+              <button class="primary-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
+              <button class="ghost-btn" type="button" onclick="abrirNovaRecorrencia()">Nova recorrência</button>
+              <button class="ghost-btn" type="button" onclick="exportarContasMock()">Exportar</button>
+              <button class="ghost-btn" type="button" onclick="alternarFiltrosContas()">Filtros</button>
+            </div>
+            <div class="view-toggle toolbar-spacer">
+              <button id="btnTabelaContas" class="active" type="button" onclick="alternarVisualizacaoContas('tabela')">Tabela</button>
+              <button id="btnCalendarioContas" type="button" onclick="alternarVisualizacaoContas('calendario')">Calendário</button>
+            </div>
+          </div>
+
+          <div class="tabs" id="tabsContas"></div>
+
+          <div class="filters" id="filtrosContas">
+            <div><label>Status</label><select id="filtroStatus"><option value="">Todos</option><option>VENCIDA</option><option>VENCE_HOJE</option><option>PROXIMA</option><option>PAGA</option><option>RECORRENTE</option><option>CANCELADA</option></select></div>
+            <div><label>Fornecedor</label><select id="filtroFornecedor"><option value="">Todos</option></select></div>
+            <div><label>Categoria</label><select id="filtroCategoria"><option value="">Todas</option><option>Aluguel</option><option>Marketing</option><option>Operacional</option><option>Serviços</option><option>Tecnologia</option></select></div>
+            <div><label>Forma de pagamento</label><select id="filtroForma"><option value="">Todas</option><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+            <div><label>Data inicial</label><input id="filtroDataInicial" type="date"></div>
+            <div><label>Data final</label><input id="filtroDataFinal" type="date"></div>
+            <div><label>Valor mínimo</label><input id="filtroValorMin" type="number" min="0" step="0.01"></div>
+            <div><label>Valor máximo</label><input id="filtroValorMax" type="number" min="0" step="0.01"></div>
+            <div class="form-group full"><label>Buscar descrição</label><input id="filtroBuscaDescricao" type="search" placeholder="Buscar por descrição" oninput="aplicarFiltrosContas()"></div>
+            <div class="form-group full"><button class="primary-btn" type="button" onclick="aplicarFiltrosContas(true)">Aplicar filtros</button></div>
+          </div>
+
+          <div id="contasTabelaView"></div>
+          <div id="contasCalendarioView" style="display:none;"></div>
+        </div>
+      </section>
+
+      <section id="solicitacoes" class="screen"><div class="section-card"><div class="section-header"><div><h2>Solicitações financeiras</h2><p>Ingressos, retiradas, gastos e vendas fora da regra.</p></div></div><div id="listaSolicitacoesFinanceiras" class="cards-grid"></div></div></section>
+      <section id="caixas" class="screen"><div class="section-card"><div class="section-header"><div><h2>Caixas</h2><p>Caixas abertos, fechados e divergências.</p></div></div><div id="listaCaixasFinanceiro" class="table-wrap"></div></div></section>
+      <section id="fornecedores" class="screen"><div class="section-card"><div class="section-header"><div><h2>Fornecedores</h2><p>Cadastro base para contas a pagar.</p></div><button class="primary-btn" type="button" onclick="abrirNovoFornecedorMock()">Novo fornecedor</button></div><div id="listaFornecedores" class="cards-grid"></div></div></section>
+      <section id="relatorios" class="screen"><div class="section-card"><div class="section-header"><div><h2>Relatórios</h2><p>Estrutura preparada para indicadores e exportações futuras.</p></div></div><div id="listaRelatoriosFinanceiro" class="cards-grid"></div></div></section>
+      <section id="auditoria" class="screen"><div class="section-card"><div class="section-header"><div><h2>Auditoria</h2><p>Logs financeiros e rastreabilidade.</p></div></div><div id="listaAuditoriaFinanceira" class="table-wrap"></div></div></section>
+      <section id="configuracoes" class="screen"><div class="section-card"><div class="section-header"><div><h2>Configurações</h2><p>Categorias, formas de pagamento, alertas e permissões financeiras.</p></div></div><div id="listaConfiguracoesFinanceiras" class="cards-grid"></div></div></section>
+    </main>
+  </div>
+
+  <div class="drawer" id="drawer"></div>
+
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -70,18 +319,1179 @@
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
+
   <script>
-    document.addEventListener("usuario-validado", async () => carregarTudoFinanceiro());
-    async function carregarTudoFinanceiro(){
-      preencherUsuarioLayout();
-      await carregarNotificacoesLayout(State.getUsuario());
+    const hojeFinanceiro = new Date();
+    const hojeIsoFinanceiro = hojeFinanceiro.toISOString().slice(0, 10);
+    const feriadosFinanceirosExtrasMock = [];
+    let abaContasAtual = "todas";
+    let modoVisualizacaoContas = "tabela";
+    let filtroRapidoContas = "";
+    let contasFiltradasMock = [];
+
+    let contasFinanceirasMock = [];
+    let fornecedoresMock = [];
+    let solicitacoesFinanceirasMock = [];
+    let caixasFinanceiroMock = [];
+    let logsFinanceirosMock = [];
+
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("topDataFinanceiro").innerText = new Date().toLocaleDateString("pt-BR");
+      carregarFinanceiroMock();
+      if (typeof protegerPaginaAtual === "function") protegerPaginaAtual();
+    });
+
+    document.addEventListener("usuario-validado", () => {
+      if (typeof preencherUsuarioLayout === "function") preencherUsuarioLayout();
+    });
+
+    function moeda(valor) {
+      return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     }
-    function trocarTela(id, el){
-      document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
-      document.getElementById(id)?.classList.add("active");
-      document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("active"));
-      el?.classList.add("active");
-      if (window.innerWidth <= 900) toggleSidebar(false);
+
+    function dataPtBr(valor) {
+      if (!valor) return "-";
+      return new Date(valor + "T00:00:00").toLocaleDateString("pt-BR");
+    }
+
+    function addDias(data, dias) {
+      const d = new Date(data + "T00:00:00");
+      d.setDate(d.getDate() + dias);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function escapar(valor = "") {
+      return String(valor).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function diaSemanaIso(dataIso) {
+      return new Date(dataIso + "T00:00:00").getDay();
+    }
+
+    function nomeDiaSemana(dataIso) {
+      return new Date(dataIso + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long" });
+    }
+
+    function ordemDiaSemanaNoMes(dataIso) {
+      return Math.ceil(Number(String(dataIso).slice(8, 10)) / 7);
+    }
+
+    function textoOrdemDiaSemana(dataIso) {
+      const ordem = ordemDiaSemanaNoMes(dataIso);
+      const nomes = ["primeiro", "segundo", "terceiro", "quarto", "quinto"];
+      return nomes[ordem - 1] || `${ordem}º`;
+    }
+
+    function opcoesRecorrenciaRapida(dataIso) {
+      const data = dataIso || hojeIsoFinanceiro;
+      const dia = nomeDiaSemana(data);
+      const mesDia = new Date(data + "T00:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
+      return `
+        <option value="NAO_REPETIR">Não se repete</option>
+        <option value="DIARIO">Todos os dias</option>
+        <option value="SEMANAL">Semanal: cada ${dia}</option>
+        <option value="MENSAL_DIA_SEMANA">Mensal no(a) ${textoOrdemDiaSemana(data)}(a) ${dia}</option>
+        <option value="ANUAL">Anual em ${mesDia}</option>
+        <option value="DIAS_UTEIS">Todos os dias da semana (segunda a sexta-feira)</option>
+        <option value="PERSONALIZADO">Personalizar...</option>
+      `;
+    }
+
+    function statusClasse(status) {
+      const s = String(status || "").toUpperCase();
+      if (s === "VENCIDA") return "st-vencida";
+      if (s === "VENCE_HOJE") return "st-hoje";
+      if (s === "PAGA" || s === "APROVADA") return "st-paga";
+      if (s === "CANCELADA" || s === "RECUSADA") return "st-cancelada";
+      if (s === "RECORRENTE") return "st-recorrente";
+      if (s === "PENDENTE") return "st-pendente";
+      return "st-proxima";
+    }
+
+    function statusLabel(status) {
+      return String(status || "").replace(/_/g, " ");
+    }
+
+    function carregarFinanceiroMock() {
+      fornecedoresMock = [
+        { id:"forn_1", nome:"Alpha Tecnologia", documento:"12.345.678/0001-90", telefone:"(11) 99999-0101", pix:"financeiro@alpha.com", banco:"Itaú", categoriaPadrao:"Tecnologia", observacoes:"Fornecedor recorrente de sistemas." },
+        { id:"forn_2", nome:"Mídia Forte", documento:"23.456.789/0001-10", telefone:"(11) 98888-0202", pix:"23.456.789/0001-10", banco:"Inter", categoriaPadrao:"Marketing", observacoes:"Campanhas digitais." },
+        { id:"forn_3", nome:"Serviços Prime", documento:"34.567.890/0001-20", telefone:"(11) 97777-0303", pix:"servicos@prime.com", banco:"Santander", categoriaPadrao:"Operacional", observacoes:"Manutenção e suporte." }
+      ];
+
+      contasFinanceirasMock = [
+        { id:"conta_1", descricao:"Hospedagem do sistema", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-18), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Tecnologia", vencimento:addDias(hojeIsoFinanceiro,-3), valor:980, status:"VENCIDA", formaPagamento:"Boleto", recorrente:true, observacao:"Plano mensal.", anexos:["boleto-hospedagem.pdf"], historico:["Conta criada", "Alerta enviado"], logs:["Mock: geração automática"] },
+        { id:"conta_2", descricao:"Campanha Instagram", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Marketing", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-5), dataPagamento:"", fornecedor:"Mídia Forte", fornecedorId:"forn_2", categoria:"Marketing", vencimento:hojeIsoFinanceiro, valor:1450, status:"VENCE_HOJE", formaPagamento:"PIX", recorrente:false, observacao:"Campanha de leads.", anexos:[], historico:["Conta importada"], logs:["Mock: aguardando pagamento"] },
+        { id:"conta_3", descricao:"Manutenção escritório", empresaNome:"Unidade Centro", empresaId:"empresa_2", responsavelNome:"Bruna Financeiro", responsavelId:"user_2", criadoPorNome:"Supervisor Centro", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-2), dataPagamento:"", fornecedor:"Serviços Prime", fornecedorId:"forn_3", categoria:"Operacional", vencimento:addDias(hojeIsoFinanceiro,4), valor:620, status:"PROXIMA", formaPagamento:"Transferência", recorrente:false, observacao:"Chamado preventivo.", anexos:[], historico:["Conta criada"], logs:["Mock: sem alterações"] },
+        { id:"conta_4", descricao:"Internet corporativa", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-30), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Serviços", vencimento:addDias(hojeIsoFinanceiro,7), valor:399.9, status:"RECORRENTE", formaPagamento:"Cartão", recorrente:true, observacao:"Recorrência mensal.", anexos:[], historico:["Recorrência criada"], logs:["Mock: próxima ocorrência"] },
+        { id:"conta_5", descricao:"Energia unidade central", empresaNome:"Unidade Centro", empresaId:"empresa_2", responsavelNome:"Bruna Financeiro", responsavelId:"user_2", criadoPorNome:"Financeiro", pagoPorNome:"Bruna Financeiro", dataCriacao:addDias(hojeIsoFinanceiro,-20), dataPagamento:addDias(hojeIsoFinanceiro,-2), fornecedor:"Serviços Prime", fornecedorId:"forn_3", categoria:"Operacional", vencimento:addDias(hojeIsoFinanceiro,-12), valor:830.45, status:"PAGA", formaPagamento:"PIX", recorrente:false, observacao:"Pago integralmente.", anexos:["comprovante-energia.jpg"], historico:["Pagamento registrado"], logs:["Mock: pago no mês"] },
+        { id:"conta_6", descricao:"Assinatura cancelada", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-9), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Tecnologia", vencimento:addDias(hojeIsoFinanceiro,12), valor:129, status:"CANCELADA", formaPagamento:"Cartão", recorrente:false, observacao:"Cancelada antes do vencimento.", anexos:[], historico:["Conta cancelada"], logs:["Mock: cancelamento"] }
+      ];
+
+      solicitacoesFinanceirasMock = [
+        { id:"sol_1", tipo:"INGRESSO", status:"PENDENTE", vendedor:"Kauan", valor:500, descricao:"Solicitação de ingresso para reforço de caixa." },
+        { id:"sol_2", tipo:"RETIRADA", status:"APROVADA", vendedor:"Gustavo", valor:300, descricao:"Recolhimento autorizado." },
+        { id:"sol_3", tipo:"GASTO", status:"PENDENTE", vendedor:"Tiago", valor:87.5, descricao:"Combustível para rota." },
+        { id:"sol_4", tipo:"VENDA_FORA_REGRA", status:"RECUSADA", vendedor:"Mariana", valor:1200, descricao:"Venda acima do limite operacional." }
+      ];
+
+      caixasFinanceiroMock = [
+        { id:"cx_1", equipe:"Equipe Norte", vendedor:"Kauan", status:"ABERTO", valorCalculado:1520, valorInformado:0, diferenca:0 },
+        { id:"cx_2", equipe:"Equipe Centro", vendedor:"Gustavo", status:"FECHADO", valorCalculado:2310, valorInformado:2310, diferenca:0 },
+        { id:"cx_3", equipe:"Equipe Sul", vendedor:"Mariana", status:"DIVERGENTE", valorCalculado:1840, valorInformado:1760, diferenca:-80 }
+      ];
+
+      logsFinanceirosMock = [
+        { id:"log_1", usuario:"Financeiro", acao:"CRIAR_CONTA", data:hojeIsoFinanceiro, conta:"Campanha Instagram", descricao:"Conta criada via mock." },
+        { id:"log_2", usuario:"Financeiro", acao:"REGISTRAR_PAGAMENTO", data:addDias(hojeIsoFinanceiro,-2), conta:"Energia unidade central", descricao:"Pagamento registrado com comprovante." },
+        { id:"log_3", usuario:"Supervisor", acao:"APROVAR_RETIRADA", data:addDias(hojeIsoFinanceiro,-1), conta:"Caixa Gustavo", descricao:"Solicitação financeira aprovada." }
+      ];
+
+      popularFiltroFornecedores();
+      renderDashboardFinanceiro();
+      renderContas();
+      renderSolicitacoesFinanceiras();
+      renderCaixasFinanceiro();
+      renderFornecedores();
+      renderRelatoriosFinanceiro();
+      renderAuditoriaFinanceira();
+      renderConfiguracoesFinanceiras();
+    }
+
+    function trocarTelaFinanceiro(tela, el = null) {
+      const titulos = {
+        dashboard:["Dashboard Financeiro","Resumo de contas, pagamentos, caixas e solicitações."],
+        contas:["Contas","Contas a pagar, agenda, pagamentos e recorrências."],
+        solicitacoes:["Solicitações","Aprovações financeiras e operações fora da regra."],
+        caixas:["Caixas","Abertos, fechados e divergências de caixa."],
+        fornecedores:["Fornecedores","Base de fornecedores e dados bancários."],
+        relatorios:["Relatórios","Indicadores e exportações futuras."],
+        auditoria:["Auditoria","Logs financeiros e rastreabilidade."],
+        configuracoes:["Configurações","Categorias, formas de pagamento, alertas e permissões."]
+      };
+
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      document.getElementById(tela)?.classList.add("active");
+      document.querySelectorAll(".menu-item").forEach(b => b.classList.remove("active"));
+      if (el) {
+        el.classList.add("active");
+      } else {
+        const menu = Array.from(document.querySelectorAll(".menu-item"))
+          .find(btn => btn.getAttribute("onclick")?.includes(`'${tela}'`) || btn.getAttribute("onclick")?.includes(`\"${tela}\"`));
+        if (menu) menu.classList.add("active");
+      }
+      document.getElementById("pageTitle").innerText = titulos[tela]?.[0] || "Financeiro";
+      document.getElementById("pageSubtitle").innerText = titulos[tela]?.[1] || "";
+      if (tela === "contas") renderContas();
+      if (window.innerWidth <= 900) toggleSidebarFinanceiro(false);
+    }
+
+    function renderDashboardFinanceiro() {
+      const vencidas = contasFinanceirasMock.filter(c => c.status === "VENCIDA");
+      const hoje = contasFinanceirasMock.filter(c => c.vencimento === hojeIsoFinanceiro && c.status !== "PAGA" && c.status !== "CANCELADA");
+      const proximas = contasFinanceirasMock.filter(c => c.vencimento > hojeIsoFinanceiro && c.vencimento <= addDias(hojeIsoFinanceiro, 7) && c.status !== "PAGA" && c.status !== "CANCELADA");
+      const abertas = contasFinanceirasMock.filter(c => !["PAGA","CANCELADA"].includes(c.status));
+      const pagas = contasFinanceirasMock.filter(c => c.status === "PAGA");
+      const recorrentes = contasFinanceirasMock.filter(c => c.recorrente);
+      const solicitacoes = solicitacoesFinanceirasMock.filter(s => s.status === "PENDENTE");
+      const divergencias = caixasFinanceiroMock.filter(c => Number(c.diferenca || 0) !== 0);
+
+      const cards = [
+        ["Contas vencidas", vencidas.length, moeda(vencidas.reduce((t,c)=>t+c.valor,0)), "!", "grad-red", "vencidas"],
+        ["Vencem hoje", hoje.length, moeda(hoje.reduce((t,c)=>t+c.valor,0)), "⌁", "grad-orange", "hoje"],
+        ["Próximos 7 dias", proximas.length, moeda(proximas.reduce((t,c)=>t+c.valor,0)), "7", "grad-blue", "7dias"],
+        ["Total em aberto", moeda(abertas.reduce((t,c)=>t+c.valor,0)), `${abertas.length} conta(s)`, "$", "grad-navy", "abertas"],
+        ["Total pago no mês", moeda(pagas.reduce((t,c)=>t+c.valor,0)), `${pagas.length} pagamento(s)`, "✓", "grad-green", "pagas"],
+        ["Recorrências ativas", recorrentes.length, "Agenda automática", "↻", "grad-purple", "recorrentes"],
+        ["Solicitações pendentes", solicitacoes.length, moeda(solicitacoes.reduce((t,s)=>t+s.valor,0)), "◇", "grad-cyan", "solicitacoes"],
+        ["Divergências de caixa", divergencias.length, moeda(divergencias.reduce((t,c)=>t+Math.abs(c.diferenca),0)), "△", "grad-red", "caixas"]
+      ];
+
+      document.getElementById("dashboardFinanceiroCards").innerHTML = cards.map(c => `
+        <div class="kpi-card ${c[4]}" onclick="abrirAtalhoDashboardFinanceiro('${c[5]}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirAtalhoDashboardFinanceiro('${c[5]}')">
+          <div class="kpi-icon">${c[3]}</div>
+          <div>
+            <div class="kpi-label">${c[0]}</div>
+            <div class="kpi-value">${c[1]}</div>
+            <div class="kpi-sub">${c[2]}</div>
+          </div>
+        </div>
+      `).join("");
+
+      renderMiniCalendarioDashboard();
+    }
+
+    function abrirAtalhoDashboardFinanceiro(destino) {
+      if (destino === "solicitacoes") {
+        trocarTelaFinanceiro("solicitacoes");
+        return;
+      }
+
+      if (destino === "caixas") {
+        trocarTelaFinanceiro("caixas");
+        return;
+      }
+
+      const filtroStatus = document.getElementById("filtroStatus");
+      if (filtroStatus) filtroStatus.value = "";
+
+      if (destino === "abertas") {
+        abaContasAtual = "todas";
+        filtroRapidoContas = "abertas";
+      } else {
+        filtroRapidoContas = "";
+        abaContasAtual = destino;
+      }
+
+      trocarTelaFinanceiro("contas");
+      alternarVisualizacaoContas("tabela");
+      renderContas();
+    }
+
+    function renderMiniCalendarioDashboard() {
+      const el = document.getElementById("agendaPagamentosResumo");
+      if (!el) return;
+
+      const base = new Date(hojeIsoFinanceiro + "T00:00:00");
+      const ano = base.getFullYear();
+      const mes = base.getMonth();
+      const primeiro = new Date(ano, mes, 1);
+      const inicio = new Date(primeiro);
+      inicio.setDate(primeiro.getDate() - primeiro.getDay());
+      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      let html = `<div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
+
+      for (let i = 0; i < 42; i++) {
+        const dia = new Date(inicio);
+        dia.setDate(inicio.getDate() + i);
+        const iso = dia.toISOString().slice(0, 10);
+        const contasDia = contasFinanceirasMock.filter(c => c.vencimento === iso);
+        html += `
+          <div class="calendar-day ${dia.getMonth() !== mes ? "muted" : ""}" onclick="abrirContasDoDia('${iso}')">
+            <div class="day-number">${dia.getDate()}</div>
+            ${contasDia.slice(0, 2).map(c => `<span class="event-pill ${statusClasse(c.status)}">${escapar(c.descricao)} • ${moeda(c.valor)}</span>`).join("")}
+            ${contasDia.length > 2 ? `<small>+${contasDia.length - 2} conta(s)</small>` : ""}
+          </div>
+        `;
+      }
+
+      el.innerHTML = html + `</div>`;
+    }
+
+    function cardContaResumo(conta) {
+      return `
+        <div class="info-card" onclick="abrirDetalheConta('${conta.id}')" style="cursor:pointer;">
+          <strong>${escapar(conta.descricao)}</strong>
+          <span class="status-badge ${statusClasse(conta.status)}">${statusLabel(conta.status)}</span>
+          <small>${escapar(conta.fornecedor)} • ${escapar(conta.categoria)}</small>
+          <small>Vencimento: ${dataPtBr(conta.vencimento)}</small>
+          <small>Valor: ${moeda(conta.valor)}</small>
+        </div>
+      `;
+    }
+
+    function popularFiltroFornecedores() {
+      const select = document.getElementById("filtroFornecedor");
+      if (!select) return;
+      select.innerHTML = `<option value="">Todos</option>${fornecedoresMock.map(f => `<option>${escapar(f.nome)}</option>`).join("")}`;
+    }
+
+    function renderContas() {
+      const tabs = [
+        ["todas","Todas"],["hoje","Vencem hoje"],["7dias","Próximos 7 dias"],["vencidas","Vencidas"],["pagas","Pagas"],["recorrentes","Recorrentes"],["canceladas","Canceladas"]
+      ];
+      document.getElementById("tabsContas").innerHTML = tabs.map(t => `<button class="tab-btn ${abaContasAtual === t[0] ? "active" : ""}" onclick="selecionarAbaContas('${t[0]}')">${t[1]}</button>`).join("");
+      aplicarFiltrosContas();
+    }
+
+    function selecionarAbaContas(aba) {
+      abaContasAtual = aba;
+      filtroRapidoContas = "";
+      renderContas();
+    }
+
+    function alternarFiltrosContas() {
+      document.getElementById("filtrosContas")?.classList.toggle("show");
+    }
+
+    function aplicarFiltrosContas(fecharPainel = false) {
+      const status = document.getElementById("filtroStatus")?.value || "";
+      const fornecedor = document.getElementById("filtroFornecedor")?.value || "";
+      const categoria = document.getElementById("filtroCategoria")?.value || "";
+      const forma = document.getElementById("filtroForma")?.value || "";
+      const dataInicial = document.getElementById("filtroDataInicial")?.value || "";
+      const dataFinal = document.getElementById("filtroDataFinal")?.value || "";
+      const valorMin = Number(document.getElementById("filtroValorMin")?.value || 0);
+      const valorMax = Number(document.getElementById("filtroValorMax")?.value || 0);
+      const busca = (document.getElementById("filtroBuscaDescricao")?.value || "").toLowerCase();
+
+      contasFiltradasMock = contasFinanceirasMock.filter(c => {
+        const porAba =
+          abaContasAtual === "todas" ||
+          (abaContasAtual === "hoje" && c.vencimento === hojeIsoFinanceiro) ||
+          (abaContasAtual === "7dias" && c.vencimento > hojeIsoFinanceiro && c.vencimento <= addDias(hojeIsoFinanceiro, 7)) ||
+          (abaContasAtual === "vencidas" && c.status === "VENCIDA") ||
+          (abaContasAtual === "pagas" && c.status === "PAGA") ||
+          (abaContasAtual === "recorrentes" && c.recorrente) ||
+          (abaContasAtual === "canceladas" && c.status === "CANCELADA");
+
+        return porAba &&
+          (!filtroRapidoContas || !["PAGA","CANCELADA"].includes(c.status)) &&
+          (!status || c.status === status) &&
+          (!fornecedor || c.fornecedor === fornecedor) &&
+          (!categoria || c.categoria === categoria) &&
+          (!forma || c.formaPagamento === forma) &&
+          (!dataInicial || c.vencimento >= dataInicial) &&
+          (!dataFinal || c.vencimento <= dataFinal) &&
+          (!valorMin || c.valor >= valorMin) &&
+          (!valorMax || c.valor <= valorMax) &&
+          (!busca || c.descricao.toLowerCase().includes(busca));
+      });
+
+      if (modoVisualizacaoContas === "tabela") renderTabelaContas();
+      else renderCalendarioContas();
+
+      if (fecharPainel) {
+        document.getElementById("filtrosContas")?.classList.remove("show");
+      }
+    }
+
+    function alternarVisualizacaoContas(modo) {
+      modoVisualizacaoContas = modo;
+      document.getElementById("btnTabelaContas").classList.toggle("active", modo === "tabela");
+      document.getElementById("btnCalendarioContas").classList.toggle("active", modo === "calendario");
+      document.getElementById("contasTabelaView").style.display = modo === "tabela" ? "block" : "none";
+      document.getElementById("contasCalendarioView").style.display = modo === "calendario" ? "block" : "none";
+      aplicarFiltrosContas();
+    }
+
+    function renderTabelaContas() {
+      const el = document.getElementById("contasTabelaView");
+      if (!contasFiltradasMock.length) {
+        el.innerHTML = `<div class="empty">Nenhuma conta encontrada para os filtros selecionados.</div>`;
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th><input type="checkbox"></th><th>Descrição</th><th>Empresa</th><th>Responsável</th><th>Fornecedor</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Forma de pagamento</th><th>Recorrente</th><th>Ações</th></tr></thead>
+            <tbody>
+              ${contasFiltradasMock.map(c => `
+                <tr onclick="abrirDetalheConta('${c.id}')">
+                  <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+                  <td><strong>${escapar(c.descricao)}</strong></td>
+                  <td>${escapar(c.empresaNome || "-")}</td>
+                  <td>${escapar(c.responsavelNome || "-")}</td>
+                  <td>${escapar(c.fornecedor)}</td>
+                  <td>${escapar(c.categoria)}</td>
+                  <td>${dataPtBr(c.vencimento)}</td>
+                  <td><strong>${moeda(c.valor)}</strong></td>
+                  <td><span class="status-badge ${statusClasse(c.status)}">${statusLabel(c.status)}</span></td>
+                  <td>${escapar(c.formaPagamento)}</td>
+                  <td>${c.recorrente ? "Sim" : "Não"}</td>
+                  <td onclick="event.stopPropagation()"><button class="ghost-btn" onclick="abrirDetalheConta('${c.id}')">Ver</button></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderCalendarioContas() {
+      const el = document.getElementById("contasCalendarioView");
+      const base = new Date(hojeIsoFinanceiro + "T00:00:00");
+      const ano = base.getFullYear();
+      const mes = base.getMonth();
+      const primeiro = new Date(ano, mes, 1);
+      const inicio = new Date(primeiro);
+      inicio.setDate(primeiro.getDate() - primeiro.getDay());
+      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      let html = `<div class="panel-head"><div><h3>${base.toLocaleDateString("pt-BR", { month:"long", year:"numeric" })}</h3><p>Calendário mensal de contas.</p></div></div><div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
+
+      for (let i = 0; i < 42; i++) {
+        const dia = new Date(inicio);
+        dia.setDate(inicio.getDate() + i);
+        const iso = dia.toISOString().slice(0, 10);
+        const contasDia = contasFiltradasMock.filter(c => c.vencimento === iso);
+        html += `
+          <div class="calendar-day ${dia.getMonth() !== mes ? "muted" : ""}" onclick="abrirContasDoDia('${iso}')">
+            <div class="day-number">${dia.getDate()}</div>
+            ${contasDia.slice(0, 3).map(c => `<span class="event-pill ${statusClasse(c.status)}">${escapar(c.descricao)} • ${moeda(c.valor)}</span>`).join("")}
+            ${contasDia.length > 3 ? `<small>+${contasDia.length - 3} conta(s)</small>` : ""}
+          </div>
+        `;
+      }
+
+      el.innerHTML = html + `</div>`;
+    }
+
+    function abrirContasDoDia(data) {
+      const contas = contasFinanceirasMock.filter(c => c.vencimento === data);
+      abrirDrawerFinanceiro("Contas do dia", dataPtBr(data), contas.length ? contas.map(cardContaResumo).join("") : `<div class="empty">Nenhuma conta neste dia.</div>`);
+    }
+
+    function abrirDetalheConta(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      if (!conta) return;
+
+      abrirDrawerFinanceiro("Detalhe da conta", conta.descricao, `
+        <div class="info-card">
+          <strong>${escapar(conta.descricao)}</strong>
+          <small>Empresa: ${escapar(conta.empresaNome || "-")}</small>
+          <small>Usuário responsável: ${escapar(conta.responsavelNome || "-")}</small>
+          <small>Criado por: ${escapar(conta.criadoPorNome || "-")}</small>
+          <small>Pago por: ${escapar(conta.pagoPorNome || "-")}</small>
+          <small>Data de criação: ${dataPtBr(conta.dataCriacao)}</small>
+          <small>Data de pagamento: ${dataPtBr(conta.dataPagamento)}</small>
+          <small>Fornecedor: ${escapar(conta.fornecedor)}</small>
+          <small>Categoria: ${escapar(conta.categoria)}</small>
+          <small>Valor: ${moeda(conta.valor)}</small>
+          <small>Vencimento: ${dataPtBr(conta.vencimento)}</small>
+          <small>Status: <span class="status-badge ${statusClasse(conta.status)}">${statusLabel(conta.status)}</span></small>
+          <small>Forma de pagamento: ${escapar(conta.formaPagamento)}</small>
+          <small>Observação: ${escapar(conta.observacao || "-")}</small>
+          <small>Comprovantes: ${conta.anexos.length ? conta.anexos.map(escapar).join(", ") : "Nenhum comprovante"}</small>
+        </div>
+        <div class="drawer-actions">
+          <button class="success-btn" onclick="registrarPagamentoConta('${conta.id}')">Registrar pagamento</button>
+          <button class="ghost-btn" onclick="anexarComprovanteConta('${conta.id}')">Anexar comprovante</button>
+          <button class="ghost-btn" onclick="editarContaMock('${conta.id}')">Editar conta</button>
+          <button class="danger-btn" onclick="cancelarConta('${conta.id}')">Cancelar conta</button>
+          <button class="ghost-btn" onclick="duplicarConta('${conta.id}')">Duplicar conta</button>
+          <button class="ghost-btn" onclick="abrirNovaRecorrencia('${conta.id}')">Criar recorrência</button>
+        </div>
+        <div class="log-list">
+          <strong>Histórico</strong>
+          ${conta.historico.map(h => `<div class="log-item">${escapar(h)}</div>`).join("")}
+          <strong>Logs</strong>
+          ${conta.logs.map(l => `<div class="log-item">${escapar(l)}</div>`).join("")}
+        </div>
+      `);
+    }
+
+    function abrirNovaConta() {
+      abrirDrawerFinanceiro("Nova conta", "Cadastro visual preparado para Firebase", formularioContaMock());
+    }
+
+    function editarContaMock(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      abrirDrawerFinanceiro("Editar conta", "Alteração visual preparada para Firebase", formularioContaMock(conta));
+    }
+
+    function formularioContaMock(conta = {}) {
+      return `
+        <div class="form-grid">
+          <div class="form-group full"><label>Descrição</label><input id="contaDescricao" value="${escapar(conta.descricao || "")}"></div>
+          <div><label>Empresa</label><input id="contaEmpresaNome" value="${escapar(conta.empresaNome || "Joaquins Pizzaria")}" placeholder="Empresa"></div>
+          <div><label>Usuário responsável pela conta</label><input id="contaResponsavelNome" value="${escapar(conta.responsavelNome || "Financeiro")}" placeholder="Responsável"></div>
+          <div><label>Fornecedor</label><select id="contaFornecedor">${fornecedoresMock.map(f => `<option ${conta.fornecedor === f.nome ? "selected" : ""}>${escapar(f.nome)}</option>`).join("")}</select></div>
+          <div><label>Categoria</label><input id="contaCategoria" value="${escapar(conta.categoria || "")}" placeholder="Categoria"></div>
+          <div><label>Valor</label><input id="contaValor" type="number" step="0.01" value="${conta.valor || ""}"></div>
+          <div><label>Data de vencimento</label><input id="contaVencimento" type="date" value="${conta.vencimento || hojeIsoFinanceiro}"></div>
+          <div><label>Forma de pagamento</label><select id="contaForma"><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+          <div><label>Anexo opcional</label><input id="contaAnexo" type="file"></div>
+          <div class="form-group full"><label>Observação</label><textarea id="contaObservacao">${escapar(conta.observacao || "")}</textarea></div>
+          <div class="form-group full"><label><input id="contaRecorrente" type="checkbox" style="width:auto;" ${conta.recorrente ? "checked" : ""} onchange="alternarCamposRecorrenciaConta()"> Conta recorrente</label></div>
+          <div id="contaRecorrenciaCampos" class="form-group full" style="display:${conta.recorrente ? "block" : "none"};">
+            <div class="recurrence-box">
+              <div><label>Repetição</label><select id="contaRecPreset" onchange="atualizarRecorrenciaContaPersonalizada()">${opcoesRecorrenciaRapida(conta.vencimento || hojeIsoFinanceiro)}</select></div>
+              <div id="contaRecPersonalizado" style="display:none;">
+                <div class="recurrence-row">
+                  <div><label>Repetir a cada</label><input id="contaRecIntervalo" type="number" min="1" value="1"></div>
+                  <div><label>Unidade</label><select id="contaRecUnidade" onchange="atualizarVisibilidadeDiasSemanaConta()"><option value="DIA">dia</option><option value="SEMANA" selected>semana</option><option value="MES">mês</option><option value="ANO">ano</option></select></div>
+                </div>
+                <div id="contaRecDiasSemanaBloco" style="margin-top:14px;">
+                  <label>Repetir</label>
+                  <input id="contaRecDiasSemana" type="hidden" value="${diaSemanaIso(conta.vencimento || hojeIsoFinanceiro)}">
+                  <div class="weekday-row">
+                    ${["D","S","T","Q","Q","S","S"].map((d, i) => `<button type="button" class="weekday-chip ${i === diaSemanaIso(conta.vencimento || hojeIsoFinanceiro) ? "active" : ""}" data-dia="${i}" onclick="toggleDiaSemanaRecorrencia(this)">${d}</button>`).join("")}
+                  </div>
+                </div>
+              </div>
+              <div class="radio-row">
+                <label>Termina em</label>
+                <label class="radio-line"><input type="radio" name="contaRecTermino" value="NUNCA" checked> Nunca</label>
+                <label class="radio-line"><input type="radio" name="contaRecTermino" value="DATA"> Em <input id="contaRecDataFinal" type="date"></label>
+                <label class="radio-line"><input type="radio" name="contaRecTermino" value="OCORRENCIAS"> Após <input id="contaRecOcorrencias" type="number" min="1" value="12" style="max-width:160px;"> ocorrência(s)</label>
+              </div>
+              <input id="contaRecDiaVencimento" type="hidden" value="${conta.vencimento ? Number(conta.vencimento.slice(8, 10)) : 10}">
+              <div class="form-group full">
+                <label>Ajuste de vencimento</label>
+                <div style="display:grid;gap:10px;">
+                  <label style="margin:0;"><input id="contaRecPularSabado" type="checkbox" style="width:auto;" checked> Se cair no sábado, avançar para o próximo dia útil</label>
+                  <label style="margin:0;"><input id="contaRecPularDomingo" type="checkbox" style="width:auto;" checked> Se cair no domingo, avançar para o próximo dia útil</label>
+                  <label style="margin:0;"><input id="contaRecPularFeriado" type="checkbox" style="width:auto;" checked> Se cair em feriado, avançar para o próximo dia útil</label>
+                </div>
+              </div>
+              <div class="form-group full"><label>Alertas</label><select id="contaRecAlertas"><option>No vencimento</option><option>1 dia antes</option><option>3 dias antes</option><option>7 dias antes</option><option>Personalizado</option></select></div>
+            </div>
+          </div>
+        </div>
+        <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="salvarContaMock('${conta.id || ""}')">Salvar conta</button></div>
+      `;
+    }
+
+    function alternarCamposRecorrenciaConta() {
+      const campos = document.getElementById("contaRecorrenciaCampos");
+      const marcado = document.getElementById("contaRecorrente")?.checked;
+      if (campos) campos.style.display = marcado ? "block" : "none";
+      if (marcado) atualizarRecorrenciaContaPersonalizada();
+    }
+
+    function atualizarRecorrenciaContaPersonalizada() {
+      const preset = document.getElementById("contaRecPreset")?.value || "";
+      const bloco = document.getElementById("contaRecPersonalizado");
+      if (bloco) bloco.style.display = preset === "PERSONALIZADO" ? "block" : "none";
+      atualizarVisibilidadeDiasSemanaConta();
+    }
+
+    function atualizarVisibilidadeDiasSemanaConta() {
+      const unidade = document.getElementById("contaRecUnidade")?.value || "SEMANA";
+      const bloco = document.getElementById("contaRecDiasSemanaBloco");
+      if (bloco) bloco.style.display = unidade === "SEMANA" ? "block" : "none";
+    }
+
+    function toggleDiaSemanaRecorrencia(botao) {
+      botao.classList.toggle("active");
+      const selecionados = Array.from(document.querySelectorAll(".weekday-chip.active"))
+        .map(btn => btn.dataset.dia)
+        .join(",");
+      document.getElementById("contaRecDiasSemana").value = selecionados;
+    }
+
+    function terminoRecorrenciaConta() {
+      return document.querySelector('input[name="contaRecTermino"]:checked')?.value || "NUNCA";
+    }
+
+    function montarConfigRecorrenciaDaConta(conta) {
+      const preset = document.getElementById("contaRecPreset")?.value || "MENSAL_DIA_SEMANA";
+      const terminoTipo = terminoRecorrenciaConta();
+      const dataInicial = conta.vencimento || hojeIsoFinanceiro;
+      const base = {
+        ...conta,
+        dataInicial,
+        terminoTipo,
+        dataFinal: document.getElementById("contaRecDataFinal")?.value || "",
+        ocorrencias: Number(document.getElementById("contaRecOcorrencias")?.value || 12),
+        diaVencimento: Number(document.getElementById("contaRecDiaVencimento")?.value || dataInicial.slice(8, 10)),
+        regrasDiaUtil: {
+          pularSabado: document.getElementById("contaRecPularSabado")?.checked || false,
+          pularDomingo: document.getElementById("contaRecPularDomingo")?.checked || false,
+          pularFeriado: document.getElementById("contaRecPularFeriado")?.checked || false
+        },
+        alerta: document.getElementById("contaRecAlertas")?.value || "No vencimento"
+      };
+
+      if (preset === "DIARIO") return { ...base, repetir: "Diariamente", intervalo: 1 };
+      if (preset === "SEMANAL") return { ...base, repetir: "Semanalmente", intervalo: 1, diasSemana: [diaSemanaIso(dataInicial)] };
+      if (preset === "MENSAL_DIA_SEMANA") return { ...base, repetir: "MENSAL_DIA_SEMANA", intervalo: 1, ordemSemana: ordemDiaSemanaNoMes(dataInicial), diaSemana: diaSemanaIso(dataInicial) };
+      if (preset === "ANUAL") return { ...base, repetir: "Anualmente", intervalo: 1 };
+      if (preset === "DIAS_UTEIS") return { ...base, repetir: "DIAS_UTEIS", intervalo: 1 };
+      if (preset !== "PERSONALIZADO") return { ...base, repetir: "Não repetir", intervalo: 1, ocorrencias: 1 };
+
+      const unidade = document.getElementById("contaRecUnidade")?.value || "SEMANA";
+      const intervalo = Number(document.getElementById("contaRecIntervalo")?.value || 1);
+      const diasSemana = (document.getElementById("contaRecDiasSemana")?.value || "")
+        .split(",")
+        .filter(Boolean)
+        .map(Number);
+
+      return {
+        ...base,
+        repetir: unidade === "DIA" ? "Diariamente" : unidade === "SEMANA" ? "Semanalmente" : unidade === "MES" ? "Mensalmente" : "Anualmente",
+        intervalo,
+        unidadePersonalizada: unidade,
+        diasSemana: unidade === "SEMANA" ? diasSemana : []
+      };
+    }
+
+    function salvarContaMock(id = "") {
+      const descricao = document.getElementById("contaDescricao").value.trim();
+      if (!descricao) { alert("Informe a descrição."); return; }
+
+      const fornecedor = document.getElementById("contaFornecedor").value;
+      const recorrenteMarcado = document.getElementById("contaRecorrente").checked;
+      const conta = {
+        id: id || `conta_${Date.now()}`,
+        descricao,
+        empresaNome: document.getElementById("contaEmpresaNome").value || "Empresa",
+        empresaId: id ? contasFinanceirasMock.find(c => c.id === id)?.empresaId || "empresa_mock" : "empresa_mock",
+        responsavelNome: document.getElementById("contaResponsavelNome").value || "Financeiro",
+        responsavelId: id ? contasFinanceirasMock.find(c => c.id === id)?.responsavelId || "user_mock" : "user_mock",
+        criadoPorNome: id ? contasFinanceirasMock.find(c => c.id === id)?.criadoPorNome || "Financeiro" : "Financeiro",
+        pagoPorNome: id ? contasFinanceirasMock.find(c => c.id === id)?.pagoPorNome || "" : "",
+        dataCriacao: id ? contasFinanceirasMock.find(c => c.id === id)?.dataCriacao || hojeIsoFinanceiro : hojeIsoFinanceiro,
+        dataPagamento: id ? contasFinanceirasMock.find(c => c.id === id)?.dataPagamento || "" : "",
+        fornecedor,
+        fornecedorId: fornecedoresMock.find(f => f.nome === fornecedor)?.id || "",
+        categoria: document.getElementById("contaCategoria").value || "Sem categoria",
+        vencimento: document.getElementById("contaVencimento").value || hojeIsoFinanceiro,
+        valor: Number(document.getElementById("contaValor").value || 0),
+        status: "PROXIMA",
+        formaPagamento: document.getElementById("contaForma").value,
+        recorrente: recorrenteMarcado,
+        observacao: document.getElementById("contaObservacao").value,
+        anexos: [],
+        historico: ["Conta salva no mock"],
+        logs: ["Mock: salvarContaMock"]
+      };
+
+      if (recorrenteMarcado) {
+        const resultado = gerarContasRecorrentesMock(montarConfigRecorrenciaDaConta(conta));
+
+        if (!resultado.length) {
+          alert("Nenhuma ocorrência foi gerada. Verifique a data final.");
+          return;
+        }
+
+        contasFinanceirasMock = [...resultado, ...contasFinanceirasMock];
+        fecharDrawerFinanceiro();
+        abaContasAtual = "recorrentes";
+        filtroRapidoContas = "";
+        trocarTelaFinanceiro("contas");
+        alternarVisualizacaoContas("tabela");
+        renderDashboardFinanceiro();
+        renderContas();
+        alert(`${resultado.length} conta(s) recorrente(s) gerada(s) no mock.`);
+        return;
+      }
+
+      const idx = contasFinanceirasMock.findIndex(c => c.id === id);
+      if (idx >= 0) contasFinanceirasMock[idx] = conta;
+      else contasFinanceirasMock.unshift(conta);
+      renderDashboardFinanceiro();
+      renderContas();
+
+      fecharDrawerFinanceiro();
+      alert("Conta salva no mock.");
+    }
+
+    function adicionarMeses(dataIso, meses, diaVencimento = null) {
+      const base = new Date(dataIso + "T00:00:00");
+      const alvo = new Date(base);
+      alvo.setMonth(alvo.getMonth() + meses);
+
+      if (diaVencimento) {
+        const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+        alvo.setDate(Math.min(Number(diaVencimento), ultimoDia));
+      }
+
+      return alvo.toISOString().slice(0, 10);
+    }
+
+    function pascoaAno(ano) {
+      const a = ano % 19;
+      const b = Math.floor(ano / 100);
+      const c = ano % 100;
+      const d = Math.floor(b / 4);
+      const e = b % 4;
+      const f = Math.floor((b + 8) / 25);
+      const g = Math.floor((b - f + 1) / 3);
+      const h = (19 * a + b - d - g + 15) % 30;
+      const i = Math.floor(c / 4);
+      const k = c % 4;
+      const l = (32 + 2 * e + 2 * i - h - k) % 7;
+      const m = Math.floor((a + 11 * h + 22 * l) / 451);
+      const mes = Math.floor((h + l - 7 * m + 114) / 31);
+      const dia = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(ano, mes - 1, dia);
+    }
+
+    function isoDeData(data) {
+      return data.toISOString().slice(0, 10);
+    }
+
+    function addDiasDate(data, dias) {
+      const d = new Date(data);
+      d.setDate(d.getDate() + dias);
+      return d;
+    }
+
+    function feriadosFinanceirosAno(ano) {
+      const pascoa = pascoaAno(ano);
+      return [
+        `${ano}-01-01`,
+        `${ano}-04-21`,
+        `${ano}-05-01`,
+        `${ano}-09-07`,
+        `${ano}-10-12`,
+        `${ano}-11-02`,
+        `${ano}-11-15`,
+        `${ano}-12-25`,
+        isoDeData(addDiasDate(pascoa, -47)),
+        isoDeData(addDiasDate(pascoa, -2)),
+        isoDeData(addDiasDate(pascoa, 60)),
+        ...feriadosFinanceirosExtrasMock
+      ];
+    }
+
+    function ehFeriadoFinanceiro(dataIso) {
+      const ano = Number(String(dataIso).slice(0, 4));
+      return feriadosFinanceirosAno(ano).includes(dataIso);
+    }
+
+    function ajustarParaProximoDiaUtil(dataIso, regras = {}) {
+      let data = dataIso;
+      let guard = 0;
+
+      while (guard < 10) {
+        const diaSemana = new Date(data + "T00:00:00").getDay();
+        const devePular =
+          (regras.pularSabado && diaSemana === 6) ||
+          (regras.pularDomingo && diaSemana === 0) ||
+          (regras.pularFeriado && ehFeriadoFinanceiro(data));
+
+        if (!devePular) return data;
+        data = addDias(data, 1);
+        guard++;
+      }
+
+      return data;
+    }
+
+    function calcularVencimentoRecorrencia(dataInicial, repetir, intervalo, indice, diaVencimento) {
+      const base = dataInicial || hojeIsoFinanceiro;
+      const passo = Math.max(1, Number(intervalo || 1));
+      const repeticao = String(repetir || "Não repetir").toUpperCase();
+
+      if (indice === 0) {
+        if (["MENSALMENTE", "ANUALMENTE"].includes(repeticao) && diaVencimento) {
+          return adicionarMeses(base, 0, diaVencimento);
+        }
+        return base;
+      }
+
+      if (repeticao === "DIARIAMENTE" || repeticao === "PERSONALIZADO") return addDias(base, indice * passo);
+      if (repeticao === "SEMANALMENTE") return addDias(base, indice * 7 * passo);
+      if (repeticao === "QUINZENALMENTE") return addDias(base, indice * 15 * passo);
+      if (repeticao === "MENSALMENTE") return adicionarMeses(base, indice * passo, diaVencimento);
+      if (repeticao === "ANUALMENTE") return adicionarMeses(base, indice * 12 * passo, diaVencimento);
+      return base;
+    }
+
+    function dataMensalPorOrdemSemana(dataInicial, meses, ordemSemana, diaSemana) {
+      const base = new Date(dataInicial + "T00:00:00");
+      const alvo = new Date(base.getFullYear(), base.getMonth() + meses, 1);
+      const primeiroDiaSemana = alvo.getDay();
+      const deslocamento = (Number(diaSemana) - primeiroDiaSemana + 7) % 7;
+      alvo.setDate(1 + deslocamento + (Number(ordemSemana || 1) - 1) * 7);
+
+      if (alvo.getMonth() !== new Date(base.getFullYear(), base.getMonth() + meses, 1).getMonth()) {
+        alvo.setDate(alvo.getDate() - 7);
+      }
+
+      return alvo.toISOString().slice(0, 10);
+    }
+
+    function semanaRelativa(dataInicial, dataIso) {
+      const inicio = new Date(dataInicial + "T00:00:00");
+      const data = new Date(dataIso + "T00:00:00");
+      return Math.floor((data - inicio) / (7 * 24 * 60 * 60 * 1000));
+    }
+
+    function gerarContasRecorrentesMock(config) {
+      const terminoTipo = config.terminoTipo || "OCORRENCIAS";
+      const dataFinal = config.dataFinal || "";
+      const ocorrencias = Math.min(60, Math.max(1, Number(config.ocorrencias || 1)));
+      const semRepeticao = String(config.repetir || "").toUpperCase() === "NÃO REPETIR";
+      const totalPlanejado =
+        semRepeticao ? 1 :
+        terminoTipo === "DATA" ? 60 :
+        terminoTipo === "NUNCA" ? 60 :
+        ocorrencias;
+      const recorrenciaId = `rec_${Date.now()}`;
+      const novasContas = [];
+
+      if (terminoTipo === "DATA" && !dataFinal) return [];
+
+      const usarVarreduraSemanal =
+        config.repetir === "DIAS_UTEIS" ||
+        (config.repetir === "Semanalmente" && Array.isArray(config.diasSemana) && config.diasSemana.length);
+
+      let cursor = config.dataInicial || hojeIsoFinanceiro;
+      let tentativas = 0;
+
+      for (let i = 0; i < totalPlanejado; i++) {
+        let vencimentoOriginal = "";
+
+        if (usarVarreduraSemanal) {
+          while (tentativas < 3700) {
+            const dia = diaSemanaIso(cursor);
+            const semana = semanaRelativa(config.dataInicial || hojeIsoFinanceiro, cursor);
+            const bateDiaUtil = config.repetir === "DIAS_UTEIS" && dia >= 1 && dia <= 5;
+            const bateDiaPersonalizado = config.repetir === "Semanalmente" && (config.diasSemana || []).includes(dia) && semana % Math.max(1, Number(config.intervalo || 1)) === 0;
+
+            if (bateDiaUtil || bateDiaPersonalizado) {
+              vencimentoOriginal = cursor;
+              cursor = addDias(cursor, 1);
+              tentativas++;
+              break;
+            }
+
+            cursor = addDias(cursor, 1);
+            tentativas++;
+          }
+        } else if (config.repetir === "MENSAL_DIA_SEMANA") {
+          vencimentoOriginal = dataMensalPorOrdemSemana(
+            config.dataInicial || hojeIsoFinanceiro,
+            i * Math.max(1, Number(config.intervalo || 1)),
+            config.ordemSemana || 1,
+            config.diaSemana ?? diaSemanaIso(config.dataInicial || hojeIsoFinanceiro)
+          );
+        } else {
+          vencimentoOriginal = calcularVencimentoRecorrencia(
+            config.dataInicial || hojeIsoFinanceiro,
+            config.repetir || "Mensalmente",
+            config.intervalo || 1,
+            i,
+            config.diaVencimento || null
+          );
+        }
+
+        if (!vencimentoOriginal) break;
+
+        if (terminoTipo === "DATA" && dataFinal && vencimentoOriginal > dataFinal) break;
+
+        const vencimento = ajustarParaProximoDiaUtil(vencimentoOriginal, config.regrasDiaUtil || {});
+
+        novasContas.push({
+          id: `conta_rec_${Date.now()}_${i + 1}`,
+          descricao: config.descricao || "Conta recorrente",
+          empresaNome: config.empresaNome || "Empresa",
+          empresaId: config.empresaId || "empresa_mock",
+          responsavelNome: config.responsavelNome || "Financeiro",
+          responsavelId: config.responsavelId || "user_mock",
+          criadoPorNome: config.criadoPorNome || "Financeiro",
+          pagoPorNome: "",
+          dataCriacao: hojeIsoFinanceiro,
+          dataPagamento: "",
+          fornecedor: config.fornecedor || "",
+          fornecedorId: config.fornecedorId || "",
+          categoria: config.categoria || "Sem categoria",
+          vencimento,
+          vencimentoOriginal,
+          valor: Number(config.valor || 0),
+          status: "RECORRENTE",
+          formaPagamento: config.formaPagamento || "PIX",
+          recorrente: true,
+          recorrenciaId,
+          recorrenciaRegra: {
+            repetir: config.repetir || "Mensalmente",
+            intervalo: Number(config.intervalo || 1),
+            diaVencimento: config.diaVencimento || null,
+            dataInicial: config.dataInicial || hojeIsoFinanceiro,
+            terminoTipo,
+            dataFinal: terminoTipo === "DATA" ? dataFinal : null,
+            ocorrencias: totalPlanejado,
+            ajustarParaDiaUtil: config.regrasDiaUtil || {},
+            alerta: config.alerta || "No vencimento"
+          },
+          recorrenciaNumero: i + 1,
+          recorrenciaTotal: totalPlanejado,
+          observacao: config.observacao || "",
+          anexos: [],
+          historico: [`Ocorrência ${i + 1}/${totalPlanejado} gerada pela recorrência${vencimento !== vencimentoOriginal ? `, vencimento ajustado de ${dataPtBr(vencimentoOriginal)} para ${dataPtBr(vencimento)}` : ""}`],
+          logs: ["Mock: gerarContasRecorrentesMock"]
+        });
+      }
+
+      const totalGerado = novasContas.length;
+      novasContas.forEach((conta, index) => {
+        conta.descricao = `${config.descricao || "Conta recorrente"} ${totalGerado > 1 ? `(${index + 1}/${totalGerado})` : ""}`.trim();
+        conta.recorrenciaNumero = index + 1;
+        conta.recorrenciaTotal = totalGerado;
+        conta.recorrenciaRegra.ocorrenciasGeradas = totalGerado;
+        conta.historico = [
+          `Ocorrência ${index + 1}/${totalGerado} gerada pela recorrência${conta.vencimento !== conta.vencimentoOriginal ? `, vencimento ajustado de ${dataPtBr(conta.vencimentoOriginal)} para ${dataPtBr(conta.vencimento)}` : ""}`
+        ];
+      });
+
+      return novasContas;
+    }
+
+    function abrirNovaRecorrencia(contaId = "") {
+      const conta = contasFinanceirasMock.find(c => c.id === contaId) || {};
+      abrirDrawerFinanceiro("Nova recorrência", "Modelo visual estilo agenda", `
+        <div class="form-grid">
+          <input id="recContaOrigemId" type="hidden" value="${escapar(conta.id || "")}">
+          <div class="form-group full"><label>Descrição</label><input id="recDescricao" value="${escapar(conta.descricao || "")}"></div>
+          <div><label>Empresa</label><input id="recEmpresaNome" value="${escapar(conta.empresaNome || "Joaquins Pizzaria")}"></div>
+          <div><label>Responsável</label><input id="recResponsavelNome" value="${escapar(conta.responsavelNome || "Financeiro")}"></div>
+          <div><label>Fornecedor</label><select id="recFornecedor">${fornecedoresMock.map(f => `<option ${conta.fornecedor === f.nome ? "selected" : ""}>${escapar(f.nome)}</option>`).join("")}</select></div>
+          <div><label>Categoria</label><input id="recCategoria" value="${escapar(conta.categoria || "")}"></div>
+          <div><label>Valor</label><input id="recValor" type="number" step="0.01" value="${conta.valor || ""}"></div>
+          <div><label>Forma de pagamento</label><select id="recForma"><option ${conta.formaPagamento === "PIX" ? "selected" : ""}>PIX</option><option ${conta.formaPagamento === "Boleto" ? "selected" : ""}>Boleto</option><option ${conta.formaPagamento === "Transferência" ? "selected" : ""}>Transferência</option><option ${conta.formaPagamento === "Cartão" ? "selected" : ""}>Cartão</option></select></div>
+          <div><label>Data inicial</label><input id="recDataInicial" type="date" value="${conta.vencimento || hojeIsoFinanceiro}"></div>
+          <div><label>Repetir</label><select id="recRepetir"><option>Não repetir</option><option>Diariamente</option><option>Semanalmente</option><option>Quinzenalmente</option><option>Mensalmente</option><option>Anualmente</option><option>Personalizado</option></select></div>
+          <div><label>Repetir a cada</label><input id="recIntervalo" type="number" min="1" value="1"></div>
+          <div><label>Dia de vencimento</label><input id="recDiaVencimento" type="number" min="1" max="31" value="${conta.vencimento ? Number(conta.vencimento.slice(8, 10)) : 10}"></div>
+          <div><label>Término da recorrência</label><select id="recTerminoTipo"><option value="OCORRENCIAS">Após quantidade de ocorrências</option><option value="DATA">Em uma data final</option><option value="NUNCA">Sem data final definida</option></select></div>
+          <div><label>Data final</label><input id="recDataFinal" type="date"></div>
+          <div><label>Quantidade de ocorrências</label><input id="recOcorrencias" type="number" min="1" value="12"></div>
+          <div class="form-group full">
+            <label>Ajuste de vencimento</label>
+            <div style="display:grid;gap:10px;border:1px solid var(--line);border-radius:16px;padding:14px;background:#f8fafc;">
+              <label style="margin:0;"><input id="recPularSabado" type="checkbox" style="width:auto;" checked> Se cair no sábado, avançar para o próximo dia útil</label>
+              <label style="margin:0;"><input id="recPularDomingo" type="checkbox" style="width:auto;" checked> Se cair no domingo, avançar para o próximo dia útil</label>
+              <label style="margin:0;"><input id="recPularFeriado" type="checkbox" style="width:auto;" checked> Se cair em feriado, avançar para o próximo dia útil</label>
+            </div>
+          </div>
+          <div class="form-group full"><label>Alertas</label><select id="recAlertas"><option>No vencimento</option><option>1 dia antes</option><option>3 dias antes</option><option>7 dias antes</option><option>Personalizado</option></select></div>
+          <div class="form-group full"><label>Observação</label><textarea id="recObservacao">${escapar(conta.observacao || "")}</textarea></div>
+        </div>
+        <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="salvarRecorrenciaMock()">Salvar recorrência</button></div>
+      `);
+    }
+
+    function salvarRecorrenciaMock() {
+      const descricao = document.getElementById("recDescricao")?.value.trim();
+      const valor = Number(document.getElementById("recValor")?.value || 0);
+      const dataInicial = document.getElementById("recDataInicial")?.value || hojeIsoFinanceiro;
+      const repetir = document.getElementById("recRepetir")?.value || "Não repetir";
+      const intervalo = Number(document.getElementById("recIntervalo")?.value || 1);
+      const diaVencimento = Number(document.getElementById("recDiaVencimento")?.value || 0);
+      const terminoTipo = document.getElementById("recTerminoTipo")?.value || "OCORRENCIAS";
+      const dataFinal = document.getElementById("recDataFinal")?.value || "";
+      const ocorrencias = Math.min(60, Math.max(1, Number(document.getElementById("recOcorrencias")?.value || 1)));
+      const regrasDiaUtil = {
+        pularSabado: document.getElementById("recPularSabado")?.checked || false,
+        pularDomingo: document.getElementById("recPularDomingo")?.checked || false,
+        pularFeriado: document.getElementById("recPularFeriado")?.checked || false
+      };
+
+      if (!descricao) {
+        alert("Informe a descrição da recorrência.");
+        return;
+      }
+
+      if (!valor || valor <= 0) {
+        alert("Informe um valor maior que zero.");
+        return;
+      }
+
+      if (terminoTipo === "DATA" && !dataFinal) {
+        alert("Informe a data final da recorrência.");
+        return;
+      }
+
+      const fornecedor = document.getElementById("recFornecedor")?.value || "";
+      const fornecedorId = fornecedoresMock.find(f => f.nome === fornecedor)?.id || "";
+      const novasContas = gerarContasRecorrentesMock({
+        descricao,
+        valor,
+        dataInicial,
+        repetir,
+        intervalo,
+        diaVencimento,
+        terminoTipo,
+        dataFinal,
+        ocorrencias,
+        regrasDiaUtil,
+        fornecedor,
+        fornecedorId,
+        empresaNome: document.getElementById("recEmpresaNome")?.value || "Empresa",
+        empresaId: "empresa_mock",
+        responsavelNome: document.getElementById("recResponsavelNome")?.value || "Financeiro",
+        responsavelId: "user_mock",
+        categoria: document.getElementById("recCategoria")?.value || "Sem categoria",
+        formaPagamento: document.getElementById("recForma")?.value || "PIX",
+        observacao: document.getElementById("recObservacao")?.value || "",
+        alerta: document.getElementById("recAlertas")?.value || "No vencimento"
+      });
+
+      if (!novasContas.length) {
+        alert("Nenhuma ocorrência foi gerada. Verifique a data final.");
+        return;
+      }
+
+      contasFinanceirasMock = [...novasContas, ...contasFinanceirasMock];
+      fecharDrawerFinanceiro();
+      abaContasAtual = "recorrentes";
+      filtroRapidoContas = "";
+      trocarTelaFinanceiro("contas");
+      alternarVisualizacaoContas("tabela");
+      renderDashboardFinanceiro();
+      renderContas();
+      alert(`${novasContas.length} conta(s) recorrente(s) gerada(s) no mock.`);
+    }
+
+    function registrarPagamentoConta(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      abrirDrawerFinanceiro("Registrar pagamento", conta?.descricao || "Conta", `
+        <div class="form-grid">
+          <div><label>Usuário responsável pela baixa</label><input id="pagResponsavel" value="${escapar(conta?.responsavelNome || "Financeiro")}"></div>
+          <div><label>Data em que foi paga</label><input id="pagData" type="date" value="${hojeIsoFinanceiro}"></div>
+          <div><label>Valor pago</label><input id="pagValor" type="number" step="0.01" value="${conta?.valor || ""}"></div>
+          <div><label>Forma de pagamento</label><select id="pagForma"><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+          <div><label>Conta/banco</label><input id="pagBanco" placeholder="Banco ou conta"></div>
+          <div class="form-group full"><label>Comprovante</label><input id="pagComprovante" type="file"></div>
+          <div class="form-group full"><label>Observação</label><textarea id="pagObs"></textarea></div>
+        </div>
+        <div class="drawer-actions"><button class="success-btn drawer-primary" onclick="confirmarPagamentoMock('${id}')">Confirmar pagamento</button></div>
+      `);
+    }
+
+    function confirmarPagamentoMock(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      if (conta) {
+        conta.status = "PAGA";
+        conta.pagoPorNome = document.getElementById("pagResponsavel")?.value || "Financeiro";
+        conta.dataPagamento = document.getElementById("pagData")?.value || hojeIsoFinanceiro;
+        conta.valorPago = Number(document.getElementById("pagValor")?.value || conta.valor || 0);
+        conta.formaPagamento = document.getElementById("pagForma")?.value || conta.formaPagamento;
+        conta.contaBancoPagamento = document.getElementById("pagBanco")?.value || "";
+        conta.historico.push("Pagamento registrado no mock");
+        conta.logs.push("Mock: confirmarPagamentoMock");
+      }
+      fecharDrawerFinanceiro();
+      renderDashboardFinanceiro();
+      renderContas();
+      alert("Pagamento registrado no mock.");
+    }
+
+    function anexarComprovanteConta(id) {
+      alert("Upload visual preparado. Integração com Storage será feita na próxima etapa.");
+    }
+
+    function cancelarConta(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      if (!conta || !confirm("Cancelar esta conta no mock?")) return;
+      conta.status = "CANCELADA";
+      conta.logs.push("Mock: cancelarConta");
+      fecharDrawerFinanceiro();
+      renderDashboardFinanceiro();
+      renderContas();
+    }
+
+    function duplicarConta(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      if (!conta) return;
+      contasFinanceirasMock.unshift({ ...conta, id:`conta_${Date.now()}`, descricao:`${conta.descricao} - cópia`, status:"PROXIMA", historico:["Conta duplicada no mock"], logs:["Mock: duplicarConta"] });
+      fecharDrawerFinanceiro();
+      renderDashboardFinanceiro();
+      renderContas();
+      alert("Conta duplicada no mock.");
+    }
+
+    function renderSolicitacoesFinanceiras() {
+      document.getElementById("listaSolicitacoesFinanceiras").innerHTML = solicitacoesFinanceirasMock.map(s => `
+        <div class="info-card">
+          <strong>${s.tipo}</strong>
+          <span class="status-badge ${statusClasse(s.status)}">${statusLabel(s.status)}</span>
+          <small>Vendedor: ${escapar(s.vendedor)}</small>
+          <small>Valor: ${moeda(s.valor)}</small>
+          <small>${escapar(s.descricao)}</small>
+          <div class="drawer-actions"><button class="success-btn">Aprovar</button><button class="danger-btn">Recusar</button><button class="ghost-btn">Ver detalhes</button></div>
+        </div>
+      `).join("");
+    }
+
+    function renderCaixasFinanceiro() {
+      document.getElementById("listaCaixasFinanceiro").innerHTML = `
+        <table><thead><tr><th>Equipe</th><th>Vendedor</th><th>Calculado</th><th>Informado</th><th>Diferença</th><th>Status</th></tr></thead><tbody>
+        ${caixasFinanceiroMock.map(c => `<tr><td>${escapar(c.equipe)}</td><td>${escapar(c.vendedor)}</td><td>${moeda(c.valorCalculado)}</td><td>${moeda(c.valorInformado)}</td><td>${moeda(c.diferenca)}</td><td><span class="status-badge ${c.status === "DIVERGENTE" ? "st-vencida" : "st-proxima"}">${c.status}</span></td></tr>`).join("")}
+        </tbody></table>`;
+    }
+
+    function renderFornecedores() {
+      document.getElementById("listaFornecedores").innerHTML = fornecedoresMock.map(f => `
+        <div class="info-card">
+          <strong>${escapar(f.nome)}</strong>
+          <small>Documento: ${escapar(f.documento)}</small>
+          <small>Telefone: ${escapar(f.telefone)}</small>
+          <small>PIX: ${escapar(f.pix)}</small>
+          <small>Banco: ${escapar(f.banco)}</small>
+          <small>Categoria padrão: ${escapar(f.categoriaPadrao)}</small>
+          <small>${escapar(f.observacoes)}</small>
+        </div>
+      `).join("");
+    }
+
+    function abrirNovoFornecedorMock() {
+      abrirDrawerFinanceiro("Novo fornecedor", "Cadastro visual preparado para Firebase", `
+        <div class="form-grid">
+          <div class="form-group full"><label>Nome</label><input></div>
+          <div><label>Documento</label><input></div>
+          <div><label>Telefone</label><input></div>
+          <div><label>PIX</label><input></div>
+          <div><label>Banco</label><input></div>
+          <div><label>Categoria padrão</label><input></div>
+          <div class="form-group full"><label>Observações</label><textarea></textarea></div>
+        </div>
+        <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="fecharDrawerFinanceiro()">Salvar fornecedor</button></div>
+      `);
+    }
+
+    function renderRelatoriosFinanceiro() {
+      const relatorios = ["Contas por período","Contas por categoria","Contas por fornecedor","Pagamentos realizados","Recorrências","Exportação futura"];
+      document.getElementById("listaRelatoriosFinanceiro").innerHTML = relatorios.map(r => `<div class="info-card"><strong>${r}</strong><small>Estrutura visual pronta para conexão com dados reais.</small><button class="ghost-btn" style="margin-top:12px;">Ver relatório</button></div>`).join("");
+    }
+
+    function renderAuditoriaFinanceira() {
+      document.getElementById("listaAuditoriaFinanceira").innerHTML = `
+        <table><thead><tr><th>Usuário</th><th>Ação</th><th>Data</th><th>Conta relacionada</th><th>Descrição</th></tr></thead><tbody>
+        ${logsFinanceirosMock.map(l => `<tr><td>${escapar(l.usuario)}</td><td>${escapar(l.acao)}</td><td>${dataPtBr(l.data)}</td><td>${escapar(l.conta)}</td><td>${escapar(l.descricao)}</td></tr>`).join("")}
+        </tbody></table>`;
+    }
+
+    function renderConfiguracoesFinanceiras() {
+      const itens = ["Categorias financeiras","Formas de pagamento","Alertas padrão","Permissões financeiras"];
+      document.getElementById("listaConfiguracoesFinanceiras").innerHTML = itens.map(i => `<div class="info-card"><strong>${i}</strong><small>Bloco visual preparado para parametrização futura.</small><button class="ghost-btn" style="margin-top:12px;">Configurar</button></div>`).join("");
+    }
+
+    function exportarContasMock() {
+      alert("Exportação mockada. A geração de arquivo será conectada depois.");
+    }
+
+    function abrirDrawerFinanceiro(titulo, subtitulo, conteudo) {
+      const drawer = document.getElementById("drawer");
+      drawer.innerHTML = `
+        <div class="drawer-overlay" onclick="fecharDrawerFinanceiro()"></div>
+        <div class="drawer-content">
+          <div class="drawer-header">
+            <div><h3>${titulo}</h3><p>${subtitulo}</p></div>
+            <button class="drawer-close" onclick="fecharDrawerFinanceiro()">×</button>
+          </div>
+          <div class="drawer-body">${conteudo}</div>
+        </div>
+      `;
+      drawer.classList.add("show");
+    }
+
+    function fecharDrawerFinanceiro() {
+      const drawer = document.getElementById("drawer");
+      drawer.classList.remove("show");
+      setTimeout(() => { drawer.innerHTML = ""; }, 200);
+    }
+
+    function toggleSidebarFinanceiro(force) {
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("overlay");
+      const abrir = typeof force === "boolean" ? force : !sidebar.classList.contains("show");
+      sidebar.classList.toggle("show", abrir);
+      sidebar.classList.toggle("open", abrir);
+      sidebar.classList.toggle("active", abrir);
+      overlay.classList.toggle("show", abrir);
+      overlay.classList.toggle("open", abrir);
+      overlay.classList.toggle("active", abrir);
+    }
+
+    function toggleCollapseSidebarFinanceiro() {
+      if (window.innerWidth <= 900) {
+        toggleSidebarFinanceiro(false);
+        return;
+      }
+      document.getElementById("sidebar").classList.toggle("collapsed");
+    }
+
+    function logoutFinanceiro() {
+      if (typeof logout === "function") {
+        logout();
+        return;
+      }
+      firebase.auth().signOut().finally(() => window.location.href = "index.html");
     }
   </script>
 </body>
