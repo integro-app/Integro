@@ -8616,6 +8616,786 @@ async function verificarCaixaAbertoDiaAnterior() {
   });
 </script>
 
+<!-- =========================================================
+     ÍNTEGRO - MENU PADRÃO PREMIUM VENDEDOR
+     Cole este bloco antes de </body>
+     ========================================================= -->
+
+<style id="integro-vendedor-menu-premium-final">
+  /* ===== BASE MENU VENDEDOR PADRÃO ÍNTEGRO ===== */
+
+  html,
+  body {
+    overflow-x: hidden !important;
+  }
+
+  body.menu-aberto {
+    overflow: hidden !important;
+  }
+
+  .app {
+    display: flex !important;
+    min-height: 100vh !important;
+  }
+
+  /* neutraliza menu antigo */
+  .logo,
+  .menu-section,
+  .menu-title,
+  .menu {
+    all: unset;
+  }
+
+  .sidebar {
+    width: 315px !important;
+    max-width: 315px !important;
+    padding: 26px 18px !important;
+    background: linear-gradient(180deg,#061426 0%,#071f3f 52%,#092b61 100%) !important;
+    color: #fff !important;
+    position: fixed !important;
+    inset: 0 auto 0 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    z-index: 1200 !important;
+    transform: translateX(0) !important;
+    transition: transform .25s ease, opacity .2s ease, visibility .2s ease !important;
+    box-shadow: none !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(148,163,184,.45) transparent !important;
+  }
+
+  .sidebar::-webkit-scrollbar {
+    width: 8px !important;
+  }
+
+  .sidebar::-webkit-scrollbar-thumb {
+    background: rgba(148,163,184,.35) !important;
+    border-radius: 999px !important;
+  }
+
+  .main {
+    margin-left: 315px !important;
+    width: calc(100% - 315px) !important;
+    padding: 28px 34px !important;
+    transition: margin-left .25s ease, width .25s ease, padding .25s ease !important;
+  }
+
+  .brand-premium {
+    margin-bottom: 24px !important;
+    padding: 0 8px !important;
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    gap: 12px !important;
+  }
+
+  .brand-logo-wrap {
+    height: 50px !important;
+    display: flex !important;
+    align-items: center !important;
+    min-width: 0 !important;
+  }
+
+  .logo-integro-sidebar {
+    width: 174px !important;
+    max-width: 100% !important;
+    height: auto !important;
+    display: block !important;
+    object-fit: contain !important;
+  }
+
+  .logo-integro-text {
+    font-size: 28px !important;
+    font-weight: 900 !important;
+    letter-spacing: -1px !important;
+    color: #fff !important;
+    line-height: 1 !important;
+  }
+
+  .logo-integro-text span {
+    color: #ff8a00 !important;
+  }
+
+  .user-card-premium {
+    padding: 13px !important;
+    border-radius: 16px !important;
+    margin: 4px 8px 22px !important;
+    background: rgba(255,255,255,.045) !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    box-shadow: none !important;
+  }
+
+  .company-avatar {
+    width: 38px !important;
+    height: 38px !important;
+    border-radius: 11px !important;
+    background: linear-gradient(135deg,#3b82f6,#8b5cf6) !important;
+    display: grid !important;
+    place-items: center !important;
+    color: #fff !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    letter-spacing: .3px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .sidebar-profile-info {
+    min-width: 0 !important;
+    flex: 1 !important;
+  }
+
+  .profile-label {
+    display: block !important;
+    font-size: 10px !important;
+    color: #85a8cf !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .5px !important;
+    margin-bottom: 3px !important;
+  }
+
+  .user-card-premium strong {
+    display: block !important;
+    font-size: 13px !important;
+    font-weight: 600 !important;
+    line-height: 1.25 !important;
+    color: #f8fafc !important;
+    margin: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .user-card-premium small {
+    display: block !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    color: #a9bed8 !important;
+    margin-top: 2px !important;
+    margin-bottom: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .user-card-premium .role-pill {
+    display: inline-block !important;
+    width: max-content !important;
+    margin-top: 5px !important;
+    padding: 3px 7px !important;
+    border-radius: 999px !important;
+    background: rgba(255,255,255,.08) !important;
+    color: #cbd5e1 !important;
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .35px !important;
+  }
+
+  .profile-system-date {
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+    border-top: 1px solid rgba(255,255,255,.08) !important;
+  }
+
+  .profile-system-date span {
+    display: block !important;
+    color: #85a8cf !important;
+    font-size: 10px !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .4px !important;
+  }
+
+  .profile-system-date strong {
+    display: block !important;
+    margin-top: 3px !important;
+    color: #f8fafc !important;
+    font-size: 12px !important;
+  }
+
+  .menu-group-title {
+    margin: 24px 10px 9px !important;
+    color: #85a8cf !important;
+    font-size: 10px !important;
+    font-weight: 650 !important;
+    text-transform: uppercase !important;
+    letter-spacing: .85px !important;
+  }
+
+  .menu-item {
+    min-height: 42px !important;
+    height: auto !important;
+    margin: 0 8px 4px !important;
+    padding: 8px 10px !important;
+    border-radius: 11px !important;
+    color: #d8e5f4 !important;
+    font-size: 13.5px !important;
+    font-weight: 500 !important;
+    gap: 10px !important;
+    border: 1px solid transparent !important;
+    box-shadow: none !important;
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    cursor: pointer !important;
+    transition: .18s ease !important;
+    background: transparent !important;
+  }
+
+  .menu-item:hover {
+    background: rgba(255,255,255,.055) !important;
+    border-color: rgba(255,255,255,.07) !important;
+    box-shadow: none !important;
+    color: #fff !important;
+  }
+
+  .menu-item.active {
+    background: linear-gradient(135deg,#123a6d,#0c2c55) !important;
+    color: #fff !important;
+    border-color: rgba(255,255,255,.08) !important;
+    box-shadow: none !important;
+  }
+
+  .menu-item.active::before {
+    content: "" !important;
+    width: 3px !important;
+    height: 22px !important;
+    border-radius: 999px !important;
+    background: linear-gradient(180deg,#ffb100,#ff8a00) !important;
+    position: absolute !important;
+    left: 0 !important;
+  }
+
+  .menu-icon {
+    width: 22px !important;
+    height: 22px !important;
+    display: grid !important;
+    place-items: center !important;
+    background: transparent !important;
+    border: 0 !important;
+    color: #b8cce4 !important;
+    font-size: 20px !important;
+    font-weight: 350 !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+  }
+
+  .menu-item.active .menu-icon,
+  .menu-item:hover .menu-icon {
+    color: #fff !important;
+  }
+
+  .menu-label {
+    flex: 1 !important;
+    min-width: 0 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  .menu-item .chevron {
+    margin-left: auto !important;
+    color: #9fb7d3 !important;
+    font-size: 18px !important;
+    line-height: 1 !important;
+    opacity: .85 !important;
+  }
+
+  .menu-item.active .chevron {
+    color: #fff !important;
+  }
+
+  .menu-badge,
+  .menu-new {
+    min-width: 24px !important;
+    height: 22px !important;
+    border-radius: 999px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 0 7px !important;
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    color: #fff !important;
+    margin-left: auto !important;
+  }
+
+  .menu-badge {
+    background: #ef4444 !important;
+  }
+
+  .menu-new {
+    background: #16c784 !important;
+  }
+
+  .mobile-menu-btn {
+    position: fixed !important;
+    top: 14px !important;
+    left: 14px !important;
+    width: 54px !important;
+    height: 54px !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    border: 1px solid var(--line) !important;
+    color: var(--text) !important;
+    font-size: 26px !important;
+    font-weight: 900 !important;
+    box-shadow: 0 18px 45px rgba(15,23,42,.08) !important;
+    display: none !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 1300 !important;
+  }
+
+  .topbar .hamburger,
+  .hamburger {
+    display: none !important;
+  }
+
+  .overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(2,6,23,.58) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    transition: .2s !important;
+    z-index: 1190 !important;
+    pointer-events: none !important;
+  }
+
+  .overlay.show,
+  .overlay.open,
+  .overlay.active {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  @media(max-width:980px) {
+    .mobile-menu-btn {
+      display: flex !important;
+    }
+
+    .sidebar {
+      width: min(86vw, 310px) !important;
+      max-width: min(86vw, 310px) !important;
+      transform: translateX(-100%) !important;
+      box-shadow: 20px 0 50px rgba(15,23,42,.35) !important;
+    }
+
+    .sidebar.show,
+    .sidebar.open,
+    .sidebar.active {
+      transform: translateX(0) !important;
+    }
+
+    .main {
+      margin-left: 0 !important;
+      width: 100% !important;
+      padding: 18px !important;
+      padding-top: 82px !important;
+    }
+  }
+
+  @media(max-width:700px) {
+    .main {
+      padding-left: 14px !important;
+      padding-right: 14px !important;
+      padding-top: 82px !important;
+    }
+  }
+</style>
+
+<script id="integro-vendedor-menu-premium-final-js">
+(function () {
+  "use strict";
+
+  function byId(id) {
+    return document.getElementById(id);
+  }
+
+  function qsa(selector, root) {
+    return Array.from((root || document).querySelectorAll(selector));
+  }
+
+  function textoSeguro(valor, fallback) {
+    const texto = String(valor || "").trim();
+    return texto || fallback || "";
+  }
+
+  function iniciaisEmpresa(nome) {
+    const limpo = textoSeguro(nome, "VE");
+    const partes = limpo
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (!partes.length) return "VE";
+
+    if (partes.length === 1) {
+      return partes[0].slice(0, 2).toUpperCase();
+    }
+
+    return (partes[0][0] + partes[1][0]).toUpperCase();
+  }
+
+  function garantirMaterialSymbols() {
+    const existe = qsa("link").some(link =>
+      String(link.href || "").includes("Material+Symbols+Rounded")
+    );
+
+    if (existe) return;
+
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap";
+    document.head.appendChild(link);
+  }
+
+  function garantirBotaoMobile() {
+    if (byId("mobileMenuBtnVendedor")) return;
+
+    const btn = document.createElement("button");
+    btn.id = "mobileMenuBtnVendedor";
+    btn.className = "mobile-menu-btn";
+    btn.type = "button";
+    btn.setAttribute("aria-label", "Abrir menu");
+    btn.innerHTML = "☰";
+    btn.onclick = function () {
+      if (typeof window.toggleSidebar === "function") {
+        window.toggleSidebar(true);
+      }
+    };
+
+    document.body.insertBefore(btn, document.body.firstChild);
+  }
+
+  function montarMenuVendedor() {
+    const sidebar = byId("sidebar");
+    if (!sidebar) return;
+
+    sidebar.innerHTML = `
+      <div class="brand-premium">
+        <div class="brand-logo-wrap">
+          <img
+            src="assets/logo-integro.png"
+            alt="ÍNTEGRO"
+            class="logo-integro-sidebar"
+            onerror="this.style.display='none';this.nextElementSibling.style.display='block';"
+          >
+          <div class="logo-integro-text" style="display:none;">ÍNTE<span>GRO</span></div>
+        </div>
+      </div>
+
+      <div class="user-card-premium sidebar-profile-card">
+        <div class="company-avatar" id="empresaAvatar">VE</div>
+
+        <div class="sidebar-profile-info">
+          <span class="profile-label">Empresa</span>
+          <strong id="empresaNome">Empresa</strong>
+          <small id="vendedorNome">Carregando...</small>
+          <small class="role-pill" id="vendedorCargo">Vendedor</small>
+
+          <div class="profile-system-date">
+            <span>Data do sistema</span>
+            <strong id="menuDataAtual">Hoje</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu-group-title">Principal</div>
+
+      <div class="menu-item active" data-modulo="dashboard" onclick="trocarTela('dashboard', this)">
+        <span class="menu-icon material-symbols-rounded">dashboard</span>
+        <span class="menu-label">Dashboard</span>
+        <span class="chevron">›</span>
+      </div>
+
+      <div class="menu-group-title">Operação</div>
+
+      <div class="menu-item" data-modulo="clientes" onclick="trocarTela('clientes', this)">
+        <span class="menu-icon material-symbols-rounded">groups</span>
+        <span class="menu-label">Clientes</span>
+        <span class="chevron">›</span>
+      </div>
+
+      <div class="menu-item" data-modulo="vendas" onclick="trocarTela('vendas', this); abrirAbaVendasCobrancas('vendas')">
+        <span class="menu-icon material-symbols-rounded">shopping_cart</span>
+        <span class="menu-label">Vendas/Cobranças</span>
+        <span class="chevron">›</span>
+      </div>
+
+      <div class="menu-item" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes', this)">
+        <span class="menu-icon material-symbols-rounded">task</span>
+        <span class="menu-label">Solicitações</span>
+        <span class="chevron">›</span>
+      </div>
+
+      <div class="menu-item" data-modulo="caixa" onclick="trocarTela('caixa', this)">
+        <span class="menu-icon material-symbols-rounded">record_voice_over</span>
+        <span class="menu-label">Indicações</span>
+        <span class="chevron">›</span>
+      </div>
+
+      <div class="menu-group-title">Comunicação</div>
+
+      <div class="menu-item" data-modulo="notificacoes" onclick="trocarTela('notificacoes', this)">
+        <span class="menu-icon material-symbols-rounded">notifications</span>
+        <span class="menu-label">Notificações</span>
+        <span class="menu-badge" id="badgeNotificacoes">0</span>
+      </div>
+
+      <div class="menu-item" data-modulo="chatInterno" onclick="trocarTela('chatInterno', this)">
+        <span class="menu-icon material-symbols-rounded">chat</span>
+        <span class="menu-label">Chat interno</span>
+        <span class="menu-new">Novo</span>
+      </div>
+
+      <div class="menu-group-title">Sistema</div>
+
+      <div class="menu-item" onclick="logout()">
+        <span class="menu-icon material-symbols-rounded">logout</span>
+        <span class="menu-label">Sair</span>
+        <span class="chevron">×</span>
+      </div>
+    `;
+  }
+
+  function atualizarPerfilMenuVendedor() {
+    const usuario =
+      window.usuarioLogado ||
+      (() => {
+        try {
+          return JSON.parse(localStorage.getItem("usuario") || "{}");
+        } catch (erro) {
+          return {};
+        }
+      })();
+
+    const nome =
+      textoSeguro(usuario.nome, "") ||
+      textoSeguro(usuario.nomeCompleto, "") ||
+      textoSeguro(usuario.displayName, "") ||
+      textoSeguro(usuario.email, "Vendedor");
+
+    const empresa =
+      textoSeguro(usuario.clientePlataformaNome, "") ||
+      textoSeguro(usuario.empresaNome, "") ||
+      textoSeguro(usuario.nomeEmpresa, "") ||
+      textoSeguro(usuario.clienteNome, "Empresa");
+
+    const cargo =
+      textoSeguro(usuario.cargoNome, "") ||
+      textoSeguro(usuario.cargo, "") ||
+      textoSeguro(usuario.tipoUsuario, "Vendedor");
+
+    const vendedorNomeEl = byId("vendedorNome");
+    const empresaNomeEl = byId("empresaNome");
+    const vendedorCargoEl = byId("vendedorCargo");
+    const empresaAvatarEl = byId("empresaAvatar");
+
+    if (vendedorNomeEl) vendedorNomeEl.innerText = nome;
+    if (empresaNomeEl) empresaNomeEl.innerText = empresa;
+    if (vendedorCargoEl) vendedorCargoEl.innerText = cargo;
+    if (empresaAvatarEl) empresaAvatarEl.innerText = iniciaisEmpresa(empresa);
+
+    atualizarDataMenuVendedor();
+  }
+
+  function atualizarDataMenuVendedor() {
+    const data = new Date();
+    const menuDataEl = byId("menuDataAtual");
+
+    if (menuDataEl) {
+      menuDataEl.innerText = data.toLocaleDateString("pt-BR");
+    }
+  }
+
+  function corrigirTelaInicial() {
+    const dashboard = byId("dashboard");
+
+    if (dashboard) {
+      qsa(".screen").forEach(screen => {
+        if (screen.id === "dashboard") {
+          screen.style.display = "block";
+          screen.classList.add("active");
+        } else if (!screen.style.display || screen.style.display === "block") {
+          screen.style.display = screen.id === "dashboard" ? "block" : "none";
+          screen.classList.remove("active");
+        }
+      });
+    }
+
+    qsa(".menu-item").forEach(item => {
+      item.classList.toggle("active", item.dataset.modulo === "dashboard");
+    });
+  }
+
+  function patchPreencherUsuario() {
+    const original = window.preencherUsuarioLogadoNaTela;
+
+    window.preencherUsuarioLogadoNaTela = function () {
+      if (typeof original === "function") {
+        original.apply(this, arguments);
+      }
+
+      setTimeout(atualizarPerfilMenuVendedor, 0);
+    };
+  }
+
+  function patchAtualizarDataPainel() {
+    const original = window.atualizarDataPainel;
+
+    window.atualizarDataPainel = function () {
+      if (typeof original === "function") {
+        original.apply(this, arguments);
+      }
+
+      atualizarDataMenuVendedor();
+    };
+  }
+
+  function patchTrocarTela() {
+    const original = window.trocarTela;
+
+    window.trocarTela = function (id, el) {
+      if (typeof original === "function") {
+        original.call(this, id, el);
+      } else {
+        qsa(".screen").forEach(screen => {
+          screen.style.display = "none";
+          screen.classList.remove("active");
+        });
+
+        const atual = byId(id);
+        if (atual) {
+          atual.style.display = "block";
+          atual.classList.add("active");
+        }
+      }
+
+      qsa(".menu-item").forEach(item => {
+        item.classList.remove("active");
+      });
+
+      if (el && el.classList && el.classList.contains("menu-item")) {
+        el.classList.add("active");
+      } else {
+        const item = qsa(".menu-item").find(menu => menu.dataset.modulo === id);
+        if (item) item.classList.add("active");
+      }
+
+      if (id === "vendas" && typeof window.abrirAbaVendasCobrancas === "function") {
+        setTimeout(function () {
+          window.abrirAbaVendasCobrancas("vendas");
+        }, 0);
+      }
+
+      if (id === "solicitacoes" && typeof window.renderSolicitacoes === "function") {
+        setTimeout(window.renderSolicitacoes, 0);
+      }
+
+      if (id === "caixa" && typeof window.renderIndicacoes === "function") {
+        setTimeout(window.renderIndicacoes, 0);
+      }
+
+      if (typeof window.toggleSidebar === "function") {
+        window.toggleSidebar(false);
+      }
+    };
+  }
+
+  function patchToggleSidebar() {
+    window.toggleSidebar = function (force) {
+      const sidebar = byId("sidebar");
+      const overlay = byId("overlay");
+
+      if (!sidebar || !overlay) return;
+
+      const deveAbrir = typeof force === "boolean"
+        ? force
+        : !sidebar.classList.contains("show");
+
+      sidebar.classList.toggle("show", deveAbrir);
+      sidebar.classList.toggle("open", deveAbrir);
+      sidebar.classList.toggle("active", deveAbrir);
+
+      overlay.classList.toggle("show", deveAbrir);
+      overlay.classList.toggle("open", deveAbrir);
+      overlay.classList.toggle("active", deveAbrir);
+
+      document.body.classList.toggle("menu-aberto", deveAbrir);
+    };
+  }
+
+  function patchContadorNotificacoes() {
+    const original = window.atualizarContadorNotificacoes;
+
+    window.atualizarContadorNotificacoes = function () {
+      if (typeof original === "function") {
+        original.apply(this, arguments);
+      }
+
+      const lista = window.notificacoesCache || [];
+      const pendentes = lista.filter(n =>
+        !n.lida &&
+        !["LIDA", "ARQUIVADA", "CANCELADA"].includes(String(n.status || "").toUpperCase())
+      ).length;
+
+      const badge = byId("badgeNotificacoes");
+      if (badge) {
+        badge.innerText = pendentes;
+        badge.style.display = pendentes > 0 ? "inline-flex" : "none";
+      }
+    };
+  }
+
+  function iniciarMenuPadraoVendedor() {
+    garantirMaterialSymbols();
+    garantirBotaoMobile();
+    montarMenuVendedor();
+    patchToggleSidebar();
+    patchPreencherUsuario();
+    patchAtualizarDataPainel();
+    patchTrocarTela();
+    patchContadorNotificacoes();
+    atualizarPerfilMenuVendedor();
+    atualizarDataMenuVendedor();
+    corrigirTelaInicial();
+
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && typeof window.toggleSidebar === "function") {
+        window.toggleSidebar(false);
+      }
+    });
+
+    const overlay = byId("overlay");
+    if (overlay) {
+      overlay.onclick = function () {
+        if (typeof window.toggleSidebar === "function") {
+          window.toggleSidebar(false);
+        }
+      };
+    }
+
+    setTimeout(atualizarPerfilMenuVendedor, 300);
+    setTimeout(atualizarPerfilMenuVendedor, 1000);
+
+    console.info("[ÍNTEGRO] Menu premium do vendedor aplicado com sucesso.");
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", iniciarMenuPadraoVendedor);
+  } else {
+    iniciarMenuPadraoVendedor();
+  }
+})();
+</script>
+
 </body>
 
 </html>
