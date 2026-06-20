@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
+  <link href="css/integro-theme.css" rel="stylesheet">
 
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
@@ -1651,6 +1652,355 @@ body.integro-booting .layout{
   }
 }
 
+
+
+/* ===== DASHBOARD FASE 3 - KPIS ESSENCIAIS ===== */
+.dashboard-kpis-clean{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  align-items:stretch;
+}
+.dashboard-kpis-clean .kpi-card{
+  min-height:150px;
+  padding:22px;
+}
+.dashboard-kpis-clean .kpi-content{
+  flex:1;
+  min-width:0;
+}
+.dashboard-kpis-clean .kpi-icon .material-symbols-rounded{
+  font-size:28px!important;
+  line-height:1;
+}
+.dashboard-hidden-kpis{
+  display:none!important;
+}
+.kpi-trend{
+  margin-top:10px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  font-size:12px;
+  line-height:1.25;
+  font-weight:900;
+}
+.kpi-trend .trend-arrow{
+  width:22px;
+  height:22px;
+  border-radius:999px;
+  display:inline-grid;
+  place-items:center;
+  background:#f1f5f9;
+  color:#64748b;
+  flex-shrink:0;
+}
+.kpi-trend.up{color:#15803d;}
+.kpi-trend.up .trend-arrow{background:#dcfce7;color:#15803d;}
+.kpi-trend.down{color:#b91c1c;}
+.kpi-trend.down .trend-arrow{background:#fee2e2;color:#b91c1c;}
+.kpi-trend.neutral{color:#64748b;}
+.kpi-progress{
+  margin-top:12px;
+  display:grid;
+  gap:7px;
+}
+.progress-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  color:#526780;
+  font-size:12px;
+  font-weight:900;
+}
+.progress-head strong{
+  color:var(--text);
+  font-size:12px;
+}
+.progress-bar{
+  height:8px;
+  width:100%;
+  border-radius:999px;
+  overflow:hidden;
+  background:#eef2f7;
+}
+.progress-bar span{
+  display:block;
+  width:0%;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,var(--green),#22c55e);
+  transition:width .35s ease;
+}
+.kpi-progress .kpi-sub{
+  margin-top:0;
+  font-size:12px;
+}
+@media(max-width:1300px){
+  .dashboard-kpis-clean{grid-template-columns:repeat(2,minmax(0,1fr));}
+}
+@media(max-width:760px){
+  .dashboard-kpis-clean{grid-template-columns:1fr;}
+  .dashboard-kpis-clean .kpi-card{min-height:auto;}
+}
+
+
+
+/* ===== DASHBOARD FASE 4 - MÉTRICAS GERENCIAIS E GAVETAS ===== */
+.dashboard-kpis-clean .kpi-card[data-dashboard-card]{
+  cursor:pointer;
+  transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+}
+.dashboard-kpis-clean .kpi-card[data-dashboard-card]:hover{
+  transform:translateY(-2px);
+  border-color:rgba(255,138,0,.28);
+  box-shadow:0 22px 55px rgba(15,23,42,.10);
+}
+.dashboard-kpis-clean .kpi-sub strong{font-weight:900;color:var(--text);}
+.dashboard-kpis-clean .kpi-sub .positive{color:var(--green);font-weight:900;}
+.dashboard-kpis-clean .kpi-sub .negative{color:var(--red);font-weight:900;}
+.kpi-mini-line{
+  margin-top:9px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  color:#526780;
+  font-size:12px;
+  font-weight:900;
+  line-height:1.25;
+}
+.kpi-mini-dot{
+  width:8px;
+  height:8px;
+  border-radius:999px;
+  background:var(--orange);
+  flex-shrink:0;
+}
+.dashboard-insight{
+  position:fixed;
+  inset:0;
+  display:none;
+  z-index:22000;
+}
+.dashboard-insight.show{display:block;}
+.dashboard-insight-overlay{
+  position:absolute;
+  inset:0;
+  background:rgba(2,6,23,.56);
+  backdrop-filter:blur(3px);
+}
+.dashboard-insight-panel{
+  position:absolute;
+  top:0;
+  right:0;
+  height:100%;
+  width:min(720px,100%);
+  background:#f8fafc;
+  box-shadow:-24px 0 70px rgba(15,23,42,.25);
+  display:flex;
+  flex-direction:column;
+}
+.dashboard-insight-head{
+  padding:24px;
+  background:#fff;
+  border-bottom:1px solid var(--line);
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  gap:16px;
+}
+.dashboard-insight-head h3{
+  margin:0;
+  color:var(--text);
+  font-size:22px;
+  font-weight:900;
+  letter-spacing:-.4px;
+}
+.dashboard-insight-head p{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:700;
+  line-height:1.45;
+}
+.dashboard-insight-close{
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:#f1f5f9;
+  color:var(--text);
+  font-size:24px;
+  font-weight:900;
+}
+.dashboard-insight-body{
+  padding:22px;
+  overflow:auto;
+  flex:1;
+}
+.insight-filters{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr auto;
+  gap:10px;
+  margin-bottom:16px;
+}
+.insight-filters select,
+.insight-filters input,
+.insight-filters button{
+  height:44px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  padding:0 12px;
+  background:#fff;
+  color:var(--text);
+  font-weight:800;
+  outline:none;
+}
+.insight-filters button{
+  background:linear-gradient(135deg,var(--orange2),var(--orange));
+  color:#fff;
+  border:0;
+}
+.insight-chart-card,
+.insight-list-card{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:22px;
+  box-shadow:var(--shadow);
+  padding:18px;
+  margin-bottom:16px;
+}
+.insight-chart-card h4,
+.insight-list-card h4{
+  color:var(--text);
+  margin:0 0 14px;
+  font-size:16px;
+  font-weight:900;
+}
+.insight-chart-wrap{
+  width:100%;
+  min-height:280px;
+  border-radius:18px;
+  background:linear-gradient(180deg,#f8fafc,#fff);
+  border:1px solid #e5eaf1;
+  overflow:hidden;
+}
+.insight-chart-wrap svg{width:100%;height:280px;display:block;}
+.insight-summary-grid{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin-bottom:16px;
+}
+.insight-summary-item{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:16px;
+  box-shadow:var(--shadow);
+}
+.insight-summary-item small{
+  display:block;
+  color:#526780;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+.insight-summary-item strong{
+  display:block;
+  color:var(--text);
+  font-size:21px;
+  font-weight:900;
+}
+.insight-client-row{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:12px;
+  padding:14px 0;
+  border-bottom:1px solid var(--line);
+}
+.insight-client-row:last-child{border-bottom:0;}
+.insight-client-row strong{
+  display:block;
+  color:var(--text);
+  font-size:14px;
+  font-weight:900;
+  margin-bottom:5px;
+}
+.insight-client-row small{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:750;
+  line-height:1.55;
+}
+.insight-badges{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+}
+.insight-badge{
+  display:inline-flex;
+  align-items:center;
+  height:24px;
+  border-radius:999px;
+  padding:0 9px;
+  background:#f1f5f9;
+  color:#475569;
+  font-size:11px;
+  font-weight:900;
+}
+.insight-badge.red{background:#fee2e2;color:#991b1b;}
+.insight-badge.orange{background:#ffedd5;color:#c2410c;}
+.insight-badge.green{background:#dcfce7;color:#15803d;}
+.insight-value-box{
+  text-align:right;
+  white-space:nowrap;
+}
+.insight-value-box strong{
+  color:var(--red);
+  font-size:15px;
+}
+.insight-value-box small{
+  color:#64748b;
+}
+.empty-insight{
+  border:2px dashed #cbd5e1;
+  border-radius:18px;
+  padding:28px;
+  background:#f8fafc;
+  color:#64748b;
+  font-weight:800;
+  text-align:center;
+}
+@media(max-width:760px){
+  .dashboard-insight-panel{width:100%;}
+  .dashboard-insight-head{padding:20px;}
+  .dashboard-insight-body{padding:16px;}
+  .insight-filters{grid-template-columns:1fr;}
+  .insight-summary-grid{grid-template-columns:1fr;}
+  .insight-client-row{grid-template-columns:1fr;}
+  .insight-value-box{text-align:left;}
+}
+
+
+
+/* ===== ESTABILIZAÇÃO VISUAL - EVITA PISCADAS EM CARDS/TABELAS ===== */
+.section-card,
+.kpi-card,
+.panel,
+.caixas-table-wrap{
+  backface-visibility:hidden;
+  transform:translateZ(0);
+}
+.caixas-table tbody tr,
+.kpi-card{
+  transition:background-color .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+body.integro-data-refreshing .section-card{
+  pointer-events:auto;
+}
+
 </style>
 </head>
 
@@ -1680,13 +2030,21 @@ body.integro-booting .layout{
         </div>
         <button class="collapse-btn" type="button" onclick="toggleCollapseSidebar()" aria-label="Recolher menu">‹</button>
       </div>
+      <div class="user-card user-card-premium sidebar-profile-card">
+        <div class="profile-photo-wrap">
+          <div class="company-avatar profile-avatar" id="empresaAvatar">AE</div>
+        </div>
 
-      <div class="user-card user-card-premium">
-        <div class="company-avatar" id="empresaAvatar">CL</div>
-        <div class="user-info">
+        <div class="user-info sidebar-profile-info">
+          <span class="profile-label">Empresa</span>
           <strong id="empresaNome">Empresa</strong>
-          <small id="userNome">Usuário</small>
-          <small class="role-pill" id="userCargo">master_local</small>
+          <small class="profile-user-name" id="userNome">Usuário</small>
+          <small class="role-pill" id="userCargo">MASTER_LOCAL</small>
+
+          <div class="profile-system-date">
+            <span>Data do sistema</span>
+            <strong id="menuDataAtual">Hoje</strong>
+          </div>
         </div>
       </div>
 
@@ -1816,93 +2174,64 @@ body.integro-booting .layout{
 
     <main class="main">
       <section id="dashboard" class="screen active">
-        <div class="topbar">
-  <div style="display:flex;align-items:center;gap:14px;">
-    <div>
-      <h2>Dashboard</h2>
-      <p>Visão operacional da empresa.</p>
-    </div>
-  </div>
-
-  <div class="top-actions">
-    <button class="top-btn" id="topData">Hoje</button>
-    <button class="top-btn notification" type="button" onclick="abrirNotificacoes()">🔔<span id="notificationCount" data-notification-count>0</span></button>
-    <button class="top-btn" type="button" onclick="carregarTudo()">Atualizar</button>
-  </div>
+        <div class="dashboard-header-clean">
+  <h2>Dashboard</h2>
 </div>
-
-        <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-icon ico-orange">$</div>
-            <div>
+        <div class="kpi-grid dashboard-kpis-clean">
+          <div class="kpi-card kpi-card-wide kpi-carteira-card" data-dashboard-card="carteira-final" title="Clique para acompanhar a evolução da carteira">
+            <div class="kpi-icon ico-orange"><span class="material-symbols-rounded">account_balance_wallet</span></div>
+            <div class="kpi-content">
               <div class="kpi-label">Carteira Final</div>
               <div class="kpi-value" id="kpiCarteira">R$ 0,00</div>
-              <div class="kpi-sub">Total em aberto</div>
+              <div class="kpi-trend neutral" id="kpiCarteiraTrend">
+                <span class="trend-arrow">—</span>
+                <span>Comparando com o último caixa fechado</span>
+              </div>
+              <div class="kpi-mini-line"><span class="kpi-mini-dot"></span><span>Clique para ver gráfico e filtros</span></div>
             </div>
           </div>
 
-          <div class="kpi-card">
-            <div class="kpi-icon ico-green">↓</div>
-            <div>
+          <div class="kpi-card kpi-card-wide kpi-recebido-card" data-dashboard-card="recebido-hoje" title="Clique para ver previsto x recebido">
+            <div class="kpi-icon ico-green"><span class="material-symbols-rounded">south</span></div>
+            <div class="kpi-content">
               <div class="kpi-label">Recebido Hoje</div>
               <div class="kpi-value" id="kpiRecebidoHoje">R$ 0,00</div>
-              <div class="kpi-sub">Dados carregados do Firestore</div>
+              <div class="kpi-progress" id="recebidoProgressBox">
+                <div class="progress-head">
+                  <span id="recebidoProgressLabel">Pretendido hoje</span>
+                  <strong id="recebidoProgressPct">0%</strong>
+                </div>
+                <div class="progress-bar"><span id="recebidoProgressFill"></span></div>
+                <div class="kpi-sub" id="recebidoProgressSub">Recebido até o momento</div>
+              </div>
             </div>
           </div>
 
-          <div class="kpi-card">
-            <div class="kpi-icon ico-blue">♙</div>
-            <div>
-              <div class="kpi-label">Clientes Ativos</div>
-              <div class="kpi-value" id="kpiClientes">0</div>
-              <div class="kpi-sub">Clientes com saldo ou status ativo</div>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-icon ico-red">⚠</div>
-            <div>
-              <div class="kpi-label">Inadimplência</div>
+          <div class="kpi-card" data-dashboard-card="inadimplencia" title="Clique para ver clientes com mais de 10 dias de atraso">
+            <div class="kpi-icon ico-red"><span class="material-symbols-rounded">warning</span></div>
+            <div class="kpi-content">
+              <div class="kpi-label">Inadimplência +10 dias</div>
               <div class="kpi-value" id="kpiInadimplencia">R$ 0,00</div>
-              <div class="kpi-sub">Saldo vencido ou marcado inadimplente</div>
+              <div class="kpi-sub" id="kpiInadimplenciaSub">0% da carteira • 0 cliente(s)</div>
+              <div class="kpi-mini-line"><span class="kpi-mini-dot"></span><span>Clique para ver clientes e equipes</span></div>
             </div>
           </div>
 
-          <div class="kpi-card">
-            <div class="kpi-icon ico-orange">▣</div>
-            <div>
-              <div class="kpi-label">Caixas Abertos</div>
-              <div class="kpi-value" id="kpiCaixas">0</div>
-              <div class="kpi-sub">Caixas com status aberto</div>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-icon ico-purple">🛒</div>
-            <div>
+          <div class="kpi-card" data-dashboard-card="vendas-hoje" title="Clique para ver vendas do dia">
+            <div class="kpi-icon ico-purple"><span class="material-symbols-rounded">shopping_cart</span></div>
+            <div class="kpi-content">
               <div class="kpi-label">Vendas Hoje</div>
-              <div class="kpi-value" id="kpiVendasHoje">0</div>
-              <div class="kpi-sub">R$ 0,00 em vendas</div>
+              <div class="kpi-value" id="kpiVendasHoje">R$ 0,00</div>
+              <div class="kpi-sub" id="kpiVendasHojeSub">0 cliente(s) vendidos • sem comparação</div>
             </div>
           </div>
+        </div>
 
-          <div class="kpi-card">
-            <div class="kpi-icon ico-cyan">▤</div>
-            <div>
-              <div class="kpi-label">Solicitações Pendentes</div>
-              <div class="kpi-value" id="kpiSolicitacoes">0</div>
-              <div class="kpi-sub orange-text">Aguardando aprovação</div>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-icon ico-orange">☷</div>
-            <div>
-              <div class="kpi-label">Usuários</div>
-              <div class="kpi-value" id="kpiUsuarios">0</div>
-              <div class="kpi-sub">Usuários cadastrados na empresa</div>
-            </div>
-          </div>
+        <div class="dashboard-hidden-kpis" aria-hidden="true">
+          <span id="kpiClientes">0</span>
+          <span id="kpiCaixas">0</span>
+          <span id="kpiSolicitacoes">0</span>
+          <span id="kpiUsuarios">0</span>
         </div>
 
         <div class="dashboard-row">
@@ -5078,38 +5407,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     return (idC && idC === e.id) || (nomeC && nomeC === nomeE) || (String(e.id).startsWith("nome:") && e.id === chaveEquipePorNome(nomeC)) || (c.vendedorId && vendedoresIds.includes(c.vendedorId));
   }
 
-  function resumoEquipe(e){
-    const vendedores = getVendedoresAtivos().filter(v => vendedorDaEquipe(v, e));
-    const vIds = vendedores.map(v => v.id);
-    const caixas = getCaixas().filter(c => caixaDaEquipe(c, e, vIds));
-    const abertos = caixas.filter(c => String(c.status || "").toUpperCase() === "ABERTO" && c.ativo !== false);
-    const fechados = caixas.filter(c => String(c.status || "").toUpperCase() === "FECHADO");
-
-    const caixaInicial = abertos.reduce((s,c)=>s+num(c.valorInicial ?? c.saldoInicial),0);
-    const caixaAtual = abertos.reduce((s,c)=>s+num(c.saldoAtual ?? c.valorAtual ?? c.valorCalculadoFechamento ?? c.valorInicial),0);
-    let estado = "SEM_CAIXA";
-    if (abertos.length && vendedores.length && abertos.length >= vendedores.length) estado = "ABERTO";
-    else if (abertos.length) estado = "PARCIAL";
-    else if (fechados.length) estado = "FECHADO";
-
-    const ultima = caixas.slice().sort((a,b)=>tempo(b.atualizadoEm||b.fechadoEm||b.abertoEm||b.criadoEm||b.dataCaixa)-tempo(a.atualizadoEm||a.fechadoEm||a.abertoEm||a.criadoEm||a.dataCaixa))[0];
-    const progresso = vendedores.length ? Math.round((fechados.length / vendedores.length)*100) : (fechados.length ? 100 : 0);
-
-    return {
-      equipe:e,
-      vendedores,
-      caixas,
-      abertos,
-      fechados,
-      supervisor:e.supervisorNome || e.responsavelNome || e.gerenteNome || "-",
-      estado,
-      caixaInicial,
-      caixaAtual,
-      progresso,
-      ultima
-    };
-  }
-
+  
   function linhasEquipes(){
     return [...montarMapaEquipes().values()].map(resumoEquipe).sort((a,b)=>String(a.equipe.nome||"").localeCompare(String(b.equipe.nome||"")));
   }
@@ -5253,35 +5551,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     `;
   }
 
-  async function criarCaixaParaVendedorFinal(v, valorInicial){
-    const db = getDb();
-    if (!db) throw new Error("Firebase não conectado.");
-    const hoje = new Date().toISOString().slice(0,10);
-    const tenantId = getTenantIdPrincipal();
-    return db.collection(colecao("CAIXAS")).add({
-      clientePlataformaId: tenantId,
-      clientePlataformaNome: getEmpresaNome(),
-      empresaId: v.empresaId || tenantId,
-      vendedorId: v.id,
-      vendedorNome: v.nome || v.nomeCompleto || v.email || "Vendedor",
-      equipeId: equipeIdRegistro(v),
-      equipeNome: equipeNomeRegistro(v),
-      status: "ABERTO",
-      ativo: true,
-      excluido: false,
-      valorInicial: num(valorInicial),
-      saldoInicial: num(valorInicial),
-      valorAtual: num(valorInicial),
-      saldoAtual: num(valorInicial),
-      dataCaixa: hoje,
-      dataAbertura: hoje,
-      abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      abertoPorUid: getUsuarioLogado()?.authUid || getUsuarioLogado()?.id || "",
-      abertoPorNome: getNomeUsuario()
-    });
-  }
-
+  
   async function abrirCaixaMassivoFinal(){
     const ids = [...SupervisaoCaixasIntegro.selecionadas];
     if (!ids.length) return alert("Selecione pelo menos uma equipe.");
@@ -5386,7 +5656,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
   };
 
-  document.addEventListener("usuario-validado", () => setTimeout(window.renderCaixasPremium, 250));
+  document.addEventListener("usuario-validado", () => setTimeout(() => window.renderCaixasPremium(true), 250));
   document.addEventListener("DOMContentLoaded", () => setTimeout(() => { if ($("caixas")) window.renderCaixasPremium(); }, 1200));
   getAuth()?.onAuthStateChanged?.(() => setTimeout(() => { if ($("caixas")) window.renderCaixasPremium(); }, 600));
 })();
@@ -5665,7 +5935,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         const unsub = database.collection(col(nome)).where("clientePlataformaId","==",tenant).onSnapshot(snap => {
           CX[chave] = snap.docs.map(doc => ({id:doc.id, ...doc.data()}));
           window[`${chave}Cache`] = CX[chave];
-          renderTelaCaixas();
+          agendarRenderTelaCaixas(220);
         }, e => console.warn(`[Caixas] realtime ${nome}:`, e?.message || e));
         CX.unsubs.push(unsub);
       }catch(e){
@@ -5818,6 +6088,38 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       sec.appendChild(card);
     }
     return card;
+  }
+
+  /* ===== ESTABILIZAÇÃO DE RENDERIZAÇÃO =====
+     Evita as "piscadas" causadas por várias leituras realtime
+     chegando em sequência no Firebase. Em vez de redesenhar a tela
+     a cada snapshot, agrupamos as atualizações e renderizamos uma vez.
+  */
+  let __caixasRenderTimer = null;
+  let __caixasCargaInicial = null;
+  let __caixasUltimoFingerprint = "";
+
+  function fingerprintCaixas(){
+    try{
+      return JSON.stringify({
+        e: CX.equipes.length,
+        u: CX.usuarios.length,
+        c: CX.caixas.map(x => [x.id, x.status, x.ativo, x.valorInicial, x.saldoAtual, x.carteiraInicial, x.carteiraFinal, x.atualizadoEm?.seconds || x.fechadoEm?.seconds || x.abertoEm?.seconds || x.criadoEm?.seconds || x.dataCaixa]).slice(0,250),
+        s: [...CX.selecionadas].sort()
+      });
+    }catch(_){
+      return String(Date.now());
+    }
+  }
+
+  function agendarRenderTelaCaixas(delay = 180, force = false){
+    clearTimeout(__caixasRenderTimer);
+    __caixasRenderTimer = setTimeout(() => {
+      const fp = fingerprintCaixas();
+      if (!force && fp === __caixasUltimoFingerprint) return;
+      __caixasUltimoFingerprint = fp;
+      renderTelaCaixas();
+    }, delay);
   }
 
 
@@ -6509,10 +6811,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       .sort((a,b) => ts(b.fechadoEm || b.atualizadoEm || b.dataFechamento || b.criadoEm || b.dataCaixa) - ts(a.fechadoEm || a.atualizadoEm || a.dataFechamento || a.criadoEm || a.dataCaixa));
   }
 
-  function valorInicialPorUltimoFechamento(equipe, vendedor){
-    const ultimo = caixasFechadosDaEquipe(equipe, vendedor)[0];
-    return ultimo ? valorFinalCaixaFechado(ultimo) : 0;
-  }
+ 
 
   async function registrarLogCaixa(tipoAcao, detalhe, extras){
     try{
@@ -6535,45 +6834,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
   }
 
-  async function criarCaixaParaVendedor(v, equipe, valorInicial){
-    const database = db();
-    if (!database) throw new Error("Firebase não conectado.");
-    const hoje = new Date().toISOString().slice(0,10);
-    const tenant = tenantPrincipal();
-
-    const idEquipe = idDoc(equipe) || equipeId(equipe);
-    const idVendedor = idDoc(v) || v.authUid || v.uid;
-
-    return database.collection(col("CAIXAS")).add({
-      clientePlataformaId: tenant,
-      clientePlataformaNome: (usuario() || {}).clientePlataformaNome || (usuario() || {}).empresaNome || "",
-      empresaId: (usuario() || {}).empresaId || tenant,
-      equipeId: idEquipe,
-      equipeNome: equipe.nome || equipeNome(equipe),
-      vendedorId: idVendedor,
-      vendedorNome: v.nome || v.nomeCompleto || v.email || "Vendedor",
-      status: "ABERTO",
-      ativo: true,
-      excluido: false,
-      valorInicial: n(valorInicial),
-      saldoInicial: n(valorInicial),
-      valorAtual: n(valorInicial),
-      saldoAtual: n(valorInicial),
-      carteiraInicial: 0,
-      carteiraFinal: 0,
-      vendas: 0,
-      recolhido: 0,
-      ingressos: 0,
-      despesas: 0,
-      dataCaixa: hoje,
-      dataAbertura: hoje,
-      abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      abertoPorUid: usuario()?.authUid || usuario()?.id || "",
-      abertoPorNome: usuario()?.nome || usuario()?.nomeCompleto || usuario()?.email || "Usuário"
-    });
-  }
+  
 
   async function abrirSelecionadas(){
     const selecionadas = linhas().filter(r => CX.selecionadas.has(r.id));
@@ -6636,59 +6897,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
   }
 
-  async function fecharSelecionadas(){
-    const database = db();
-    if (!database) return alert("Firebase não conectado.");
-
-    const selecionadas = linhas().filter(r => CX.selecionadas.has(r.id));
-    if (!selecionadas.length) return alert("Selecione pelo menos uma equipe.");
-
-    const elegiveis = selecionadas.filter(r => r.estado === "ABERTO");
-    if (!elegiveis.length){
-      return alert("Fechamento permitido apenas para equipes com caixa ABERTO.");
-    }
-
-    const caixas = [];
-    elegiveis.forEach(r => r.caixasAbertos.forEach(c => {
-      if (!caixas.find(x => idDoc(x) === idDoc(c))) caixas.push(c);
-    }));
-
-    if (!caixas.length) return alert("Nenhum caixa aberto nas equipes selecionadas.");
-    if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?\n\nEquipes com caixa fechado ou sem caixa serão ignoradas.`)) return;
-
-    for (const c of caixas){
-      const saldo = valorCaixaAtual(c);
-      await database.collection(col("CAIXAS")).doc(idDoc(c)).update({
-        status:"FECHADO",
-        ativo:false,
-        valorRealFechamento: saldo,
-        valorCalculadoFechamento: saldo,
-        divergenciaFechamento:false,
-        fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        fechadoPorUid: usuario()?.authUid || usuario()?.id || "",
-        fechadoPorNome: usuario()?.nome || usuario()?.nomeCompleto || usuario()?.email || "Usuário"
-      });
-
-      await registrarLogCaixa(
-        "FECHAMENTO_CAIXA",
-        `Caixa fechado com saldo final de ${money(saldo)}.`,
-        {
-          caixaId: idDoc(c),
-          equipeId: equipeId(c),
-          equipeNome: equipeNome(c),
-          vendedorId: vendedorId(c),
-          vendedorNome: c.vendedorNome || c.usuarioNome || "",
-          valorFinal: saldo
-        }
-      );
-    }
-
-    CX.selecionadas.clear();
-    await carregarDados();
-    renderTelaCaixas();
-    alert("Fechamento de caixa concluído.");
-  }
+  
 
   function toggleEquipe(id, checked){
     if (checked) CX.selecionadas.add(String(id));
@@ -6742,10 +6951,18 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     alert("Menu de ações preparado para: atualizar dados, exportar relatório e ações individuais futuras.");
   };
 
-  window.renderCaixasPremium = function(){
+  window.renderCaixasPremium = function(force = false){
     iniciarRealtime();
-    carregarDados().then(renderTelaCaixas);
-    renderTelaCaixas();
+
+    if (!__caixasCargaInicial || force){
+      __caixasCargaInicial = carregarDados()
+        .then(() => agendarRenderTelaCaixas(40, true))
+        .finally(() => { __caixasCargaInicial = null; });
+    }else{
+      agendarRenderTelaCaixas(120, force);
+    }
+
+    return __caixasCargaInicial;
   };
 
   window.renderCaixas = window.renderCaixasPremium;
@@ -6827,12 +7044,11 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   window.trocarTela = function(tela, el){
     if (typeof trocarAnterior === "function") trocarAnterior(tela, el);
     if (tela === "caixas"){
-      setTimeout(window.renderCaixasPremium, 80);
-      setTimeout(window.renderCaixasPremium, 500);
+      setTimeout(() => window.renderCaixasPremium(), 120);
     }
   };
 
-  document.addEventListener("usuario-validado", () => setTimeout(window.renderCaixasPremium, 250));
+  document.addEventListener("usuario-validado", () => setTimeout(() => window.renderCaixasPremium(true), 250));
   document.addEventListener("DOMContentLoaded", () => setTimeout(() => { if ($("caixas")) window.renderCaixasPremium(); }, 1000));
   auth()?.onAuthStateChanged?.(() => setTimeout(() => { if ($("caixas")) window.renderCaixasPremium(); }, 700));
 })();
@@ -10597,12 +10813,15 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     setLoaderStep("Carregando dados da empresa...");
     await chamarSeExistir("carregarTudo", 3500);
 
+    setLoaderStep("Atualizando indicadores reais...");
+    await chamarSeExistir("prepararDashboardAntesDoLoading", 8500);
+
     setLoaderStep("Organizando permissões e módulos...");
-    await esperar(350);
+    await esperar(250);
 
     setLoaderStep("Preparando painel...");
     organizarMenuIntegro();
-    await esperar(450);
+    await esperar(300);
 
     const loader = document.getElementById("integroBootLoader");
     if(loader) loader.classList.add("hide");
@@ -12333,6 +12552,8 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 }
 </style>
 
+
+
 <script>
 /* ===== MENU PADRÃO COM ACCORDION E CONTROLE POR PERMISSÃO ===== */
 (function(){
@@ -12878,6 +13099,3079 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   document.addEventListener('DOMContentLoaded', function(){
     if(qs('#vendas.active')) window.renderVendas();
   });
+})();
+</script>
+
+<style id="integro-menu-padrao-corrigido-final">
+/* =========================================================
+   ÍNTEGRO — MENU LATERAL PADRÃO CORRIGIDO
+   Correções desta versão:
+   1. O menu inicia oculto no desktop após o loading.
+   2. Ao clicar em recolher, o menu oculta 100%.
+   3. Quando oculto, o botão hambúrguer aparece para reabrir.
+   4. No mobile, o menu funciona como gaveta lateral com overlay.
+   5. Neutraliza as regras antigas de mini-sidebar sem quebrar o layout.
+   ========================================================= */
+:root{
+  --integro-sidebar-width:315px;
+  --integro-sidebar-hidden-x:-340px;
+  --integro-sidebar-mobile-width:290px;
+}
+
+html,
+body{
+  overflow-x:hidden !important;
+}
+
+html body .layout{
+  min-height:100vh !important;
+}
+
+html body .mobile-menu-btn{
+  position:fixed !important;
+  top:18px !important;
+  left:18px !important;
+  width:52px !important;
+  height:52px !important;
+  border-radius:16px !important;
+  background:#fff !important;
+  border:1px solid var(--line) !important;
+  color:var(--text) !important;
+  font-size:26px !important;
+  font-weight:900 !important;
+  box-shadow:var(--shadow) !important;
+  align-items:center !important;
+  justify-content:center !important;
+  z-index:10001 !important;
+}
+
+@media(min-width:761px){
+  html body .layout > aside#sidebar.sidebar{
+    position:fixed !important;
+    inset:0 auto 0 0 !important;
+    width:var(--integro-sidebar-width) !important;
+    max-width:var(--integro-sidebar-width) !important;
+    padding:26px 18px !important;
+    transform:translateX(0) !important;
+    opacity:1 !important;
+    visibility:visible !important;
+    pointer-events:auto !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    z-index:9999 !important;
+    transition:transform .25s ease, opacity .2s ease, visibility .2s ease !important;
+  }
+
+  html body .layout > main.main{
+    margin-left:var(--integro-sidebar-width) !important;
+    width:calc(100% - var(--integro-sidebar-width)) !important;
+    padding:28px 34px !important;
+    transition:margin-left .25s ease, width .25s ease, padding .25s ease !important;
+  }
+
+  html body.sidebar-hidden .layout > aside#sidebar.sidebar,
+  html body .layout > aside#sidebar.sidebar.collapsed{
+    width:var(--integro-sidebar-width) !important;
+    max-width:var(--integro-sidebar-width) !important;
+    padding:26px 18px !important;
+    transform:translateX(var(--integro-sidebar-hidden-x)) !important;
+    opacity:0 !important;
+    visibility:hidden !important;
+    pointer-events:none !important;
+    overflow:hidden !important;
+  }
+
+  html body.sidebar-hidden .layout > main.main,
+  html body .layout > aside#sidebar.sidebar.collapsed + main.main{
+    margin-left:0 !important;
+    width:100% !important;
+    padding:28px 34px 28px 92px !important;
+  }
+
+  html body:not(.sidebar-hidden) .layout > aside#sidebar.sidebar:not(.collapsed) + main.main{
+    margin-left:var(--integro-sidebar-width) !important;
+    width:calc(100% - var(--integro-sidebar-width)) !important;
+    padding:28px 34px !important;
+  }
+
+  html body:not(.sidebar-hidden) .mobile-menu-btn{
+    display:none !important;
+  }
+
+  html body.sidebar-hidden .mobile-menu-btn,
+  html body:has(#sidebar.collapsed) .mobile-menu-btn{
+    display:flex !important;
+  }
+
+  html body .overlay{
+    display:none !important;
+  }
+}
+
+@media(max-width:760px){
+  html body .mobile-menu-btn{
+    display:flex !important;
+    top:14px !important;
+    left:14px !important;
+  }
+
+  html body .layout > aside#sidebar.sidebar,
+  html body.sidebar-hidden .layout > aside#sidebar.sidebar,
+  html body .layout > aside#sidebar.sidebar.collapsed{
+    position:fixed !important;
+    inset:0 auto 0 0 !important;
+    width:var(--integro-sidebar-mobile-width) !important;
+    max-width:86vw !important;
+    padding:26px 18px !important;
+    transform:translateX(-110%) !important;
+    opacity:1 !important;
+    visibility:visible !important;
+    pointer-events:auto !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    z-index:9999 !important;
+    transition:transform .25s ease !important;
+  }
+
+  html body .layout > aside#sidebar.sidebar.show{
+    transform:translateX(0) !important;
+    box-shadow:20px 0 50px rgba(15,23,42,.35) !important;
+  }
+
+  html body .layout > main.main,
+  html body.sidebar-hidden .layout > main.main,
+  html body .layout > aside#sidebar.sidebar.collapsed + main.main{
+    margin-left:0 !important;
+    width:100% !important;
+    padding:84px 16px 18px !important;
+  }
+
+  html body .overlay{
+    display:block !important;
+  }
+
+  html body .overlay.show,
+  html body .overlay.open,
+  html body .overlay.active{
+    opacity:1 !important;
+    visibility:visible !important;
+  }
+
+  html body.menu-mobile-open{
+    overflow:hidden !important;
+  }
+
+  html body .sidebar.collapsed .brand-logo-wrap,
+  html body .sidebar.collapsed .user-card-premium,
+  html body .sidebar.collapsed .menu-item{
+    justify-content:flex-start !important;
+  }
+
+  html body .sidebar.collapsed .logo-integro-sidebar{
+    width:174px !important;
+    max-width:100% !important;
+    object-fit:contain !important;
+  }
+
+  html body .sidebar.collapsed .menu-group-title{
+    display:block !important;
+  }
+
+  html body .sidebar.collapsed .menu-label,
+  html body .sidebar.collapsed .chevron,
+  html body .sidebar.collapsed .badge,
+  html body .sidebar.collapsed .user-info{
+    display:block !important;
+  }
+
+  html body .sidebar.collapsed .menu-subitem{
+    display:flex !important;
+  }
+}
+</style>
+
+
+<style id="integro-fase1-dashboard-limpo">
+/* ===== FASE 1 — DASHBOARD LIMPO E MENU OCULTO INICIAL ===== */
+.dashboard-header-clean{
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  margin:0 0 26px;
+  padding:0;
+  background:transparent;
+  border:0;
+  box-shadow:none;
+}
+
+.dashboard-header-clean h2{
+  margin:0;
+  font-size:30px;
+  line-height:1.1;
+  font-weight:900;
+  letter-spacing:-1px;
+  color:var(--text);
+}
+
+.sidebar-date-card{
+  margin:0 8px 22px;
+  padding:12px 13px;
+  min-height:52px;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  border-radius:15px;
+  background:rgba(255,255,255,.045);
+  border:1px solid rgba(255,255,255,.08);
+  color:#dbeafe;
+}
+
+.sidebar-date-card .material-symbols-rounded{
+  width:32px;
+  height:32px;
+  display:grid;
+  place-items:center;
+  border-radius:10px;
+  color:#ffb100;
+  background:rgba(255,177,0,.10);
+  font-size:20px!important;
+}
+
+.sidebar-date-card small{
+  display:block;
+  color:#85a8cf;
+  font-size:10px;
+  font-weight:700;
+  text-transform:uppercase;
+  letter-spacing:.55px;
+  margin-bottom:2px;
+}
+
+.sidebar-date-card strong{
+  display:block;
+  color:#fff;
+  font-size:13px;
+  font-weight:800;
+}
+
+@media(max-width:760px){
+  .dashboard-header-clean{
+    margin-top:0;
+    margin-bottom:18px;
+  }
+
+  .dashboard-header-clean h2{
+    font-size:27px;
+  }
+}
+</style>
+
+<script id="integro-menu-padrao-corrigido-final-js">
+/* =========================================================
+   ÍNTEGRO — CONTROLE FINAL DO MENU LATERAL
+   Inicia o desktop com o menu oculto e mantém o botão hambúrguer
+   disponível para abrir o menu quando necessário.
+   ========================================================= */
+(function(){
+  'use strict';
+
+  function getEls(){
+    return {
+      sidebar: document.getElementById('sidebar'),
+      overlay: document.getElementById('overlay'),
+      body: document.body,
+      menuBtn: document.querySelector('.mobile-menu-btn'),
+      collapseBtn: document.querySelector('.collapse-btn')
+    };
+  }
+
+  function isMobile(){
+    return window.innerWidth <= 760;
+  }
+
+  function setAria(open){
+    const { menuBtn, collapseBtn } = getEls();
+    if(menuBtn) menuBtn.setAttribute('aria-expanded', String(open));
+    if(collapseBtn) collapseBtn.setAttribute('aria-expanded', String(open));
+  }
+
+  function abrirDesktop(){
+    const { sidebar, overlay, body } = getEls();
+    if(!sidebar) return;
+
+    sidebar.classList.remove('collapsed', 'show');
+    body.classList.remove('sidebar-hidden', 'menu-mobile-open');
+    if(overlay) overlay.classList.remove('show', 'open', 'active');
+    setAria(true);
+  }
+
+  function fecharDesktop(){
+    const { sidebar, overlay, body } = getEls();
+    if(!sidebar) return;
+
+    sidebar.classList.add('collapsed');
+    sidebar.classList.remove('show');
+    body.classList.add('sidebar-hidden');
+    body.classList.remove('menu-mobile-open');
+    if(overlay) overlay.classList.remove('show', 'open', 'active');
+    setAria(false);
+  }
+
+  function abrirMobile(){
+    const { sidebar, overlay, body } = getEls();
+    if(!sidebar) return;
+
+    sidebar.classList.remove('collapsed');
+    sidebar.classList.add('show');
+    body.classList.remove('sidebar-hidden');
+    body.classList.add('menu-mobile-open');
+    if(overlay) overlay.classList.add('show');
+    setAria(true);
+  }
+
+  function fecharMobile(){
+    const { sidebar, overlay, body } = getEls();
+    if(!sidebar) return;
+
+    sidebar.classList.remove('show', 'collapsed');
+    body.classList.remove('sidebar-hidden', 'menu-mobile-open');
+    if(overlay) overlay.classList.remove('show', 'open', 'active');
+    setAria(false);
+  }
+
+  window.toggleSidebar = function(forceOpen){
+    const { sidebar, body } = getEls();
+    if(!sidebar) return;
+
+    if(isMobile()){
+      const deveAbrir = typeof forceOpen === 'boolean'
+        ? forceOpen
+        : !sidebar.classList.contains('show');
+
+      if(deveAbrir) abrirMobile();
+      else fecharMobile();
+      return;
+    }
+
+    const estaFechado = body.classList.contains('sidebar-hidden') || sidebar.classList.contains('collapsed');
+    const deveAbrir = typeof forceOpen === 'boolean' ? forceOpen : estaFechado;
+
+    if(deveAbrir) abrirDesktop();
+    else fecharDesktop();
+  };
+
+  window.toggleCollapseSidebar = function(){
+    window.toggleSidebar();
+  };
+
+  window.abrirMenuMobile = function(){
+    window.toggleSidebar(true);
+  };
+
+  window.fecharMenuMobile = function(){
+    window.toggleSidebar(false);
+  };
+
+  function estadoInicialSeguro(){
+    if(isMobile()){
+      fecharMobile();
+      return;
+    }
+
+    fecharDesktop();
+  }
+
+  function aoRedimensionar(){
+    if(isMobile()){
+      fecharMobile();
+      return;
+    }
+
+    const { sidebar, body } = getEls();
+    if(!sidebar) return;
+
+    if(body.classList.contains('sidebar-hidden') || sidebar.classList.contains('collapsed')){
+      fecharDesktop();
+    }else{
+      abrirDesktop();
+    }
+  }
+
+  function atualizarDataMenuLateral(){
+    const el = document.getElementById('menuDataAtual');
+    if(!el) return;
+
+    const hoje = new Date();
+    el.textContent = hoje.toLocaleDateString('pt-BR', {
+      day:'2-digit',
+      month:'2-digit',
+      year:'numeric'
+    });
+  }
+
+  function aplicarEstadoInicialAposLoading(){
+    const { body } = getEls();
+    if(!body || isMobile()) return;
+
+    const iniciou = body.dataset.menuInicialOculto === 'true';
+    if(iniciou) return;
+
+    if(!body.classList.contains('integro-booting')){
+      fecharDesktop();
+      body.dataset.menuInicialOculto = 'true';
+    }
+  }
+
+  document.addEventListener('click', function(ev){
+    if(!isMobile()) return;
+
+    const item = ev.target.closest && ev.target.closest('#sidebar .menu-item, #sidebar .menu-subitem');
+    const sair = ev.target.closest && ev.target.closest('[data-modulo="sair"]');
+
+    if(item && !sair){
+      window.setTimeout(function(){ window.toggleSidebar(false); }, 120);
+    }
+  });
+
+  document.addEventListener('DOMContentLoaded', function(){
+    atualizarDataMenuLateral();
+    window.requestAnimationFrame(estadoInicialSeguro);
+    window.setTimeout(aplicarEstadoInicialAposLoading, 700);
+    window.setTimeout(aplicarEstadoInicialAposLoading, 1400);
+    window.setTimeout(aplicarEstadoInicialAposLoading, 2400);
+  });
+
+  window.addEventListener('load', function(){
+    atualizarDataMenuLateral();
+    window.requestAnimationFrame(estadoInicialSeguro);
+    window.setTimeout(aplicarEstadoInicialAposLoading, 700);
+    window.setTimeout(aplicarEstadoInicialAposLoading, 1400);
+    window.setTimeout(aplicarEstadoInicialAposLoading, 2400);
+  });
+
+  window.addEventListener('resize', aoRedimensionar);
+})();
+</script>
+
+
+
+<style id="integro-fase2-profile-card-clean">
+/* ===== FASE 2 — CARD DO USUÁRIO / EMPRESA MAIS CLEAN ===== */
+html body .sidebar .user-card.user-card-premium.sidebar-profile-card{
+  margin:6px 8px 24px !important;
+  padding:16px !important;
+  min-height:auto !important;
+  display:flex !important;
+  align-items:flex-start !important;
+  gap:13px !important;
+  border-radius:18px !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.060),rgba(255,255,255,.035)) !important;
+  border:1px solid rgba(255,255,255,.085) !important;
+  box-shadow:none !important;
+}
+
+html body .sidebar .profile-photo-wrap{
+  width:42px;
+  height:42px;
+  flex:0 0 42px;
+}
+
+html body .sidebar .profile-avatar.company-avatar{
+  width:42px !important;
+  height:42px !important;
+  border-radius:13px !important;
+  display:grid !important;
+  place-items:center !important;
+  background:linear-gradient(135deg,#6366f1,#7c3aed) !important;
+  color:#fff !important;
+  font-size:13px !important;
+  font-weight:800 !important;
+  letter-spacing:.2px !important;
+  overflow:hidden !important;
+  background-size:cover !important;
+  background-position:center !important;
+}
+
+html body .sidebar .profile-avatar.has-photo{
+  color:transparent !important;
+  font-size:0 !important;
+}
+
+html body .sidebar .sidebar-profile-info{
+  flex:1;
+  min-width:0;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:flex-start !important;
+  gap:2px !important;
+}
+
+html body .sidebar .profile-label{
+  display:block;
+  color:#86a8cc;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.65px;
+  line-height:1;
+  text-transform:uppercase;
+  margin-bottom:2px;
+}
+
+html body .sidebar .sidebar-profile-info #empresaNome{
+  display:block !important;
+  max-width:100%;
+  color:#f8fafc !important;
+  font-size:13.5px !important;
+  line-height:1.2 !important;
+  font-weight:750 !important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  margin:0 !important;
+}
+
+html body .sidebar .profile-user-name{
+  display:block !important;
+  max-width:100%;
+  color:#a9bed8 !important;
+  font-size:12px !important;
+  line-height:1.25 !important;
+  font-weight:450 !important;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  margin:1px 0 5px !important;
+}
+
+html body .sidebar .sidebar-profile-info .role-pill{
+  display:inline-flex !important;
+  align-items:center;
+  width:auto !important;
+  max-width:100%;
+  margin:0 0 9px !important;
+  padding:4px 8px !important;
+  border-radius:999px !important;
+  background:rgba(255,255,255,.080) !important;
+  color:#d9e6f5 !important;
+  font-size:10px !important;
+  line-height:1 !important;
+  font-weight:700 !important;
+  letter-spacing:.35px !important;
+  text-transform:uppercase !important;
+}
+
+html body .sidebar .profile-system-date{
+  width:100%;
+  padding-top:9px;
+  border-top:1px solid rgba(255,255,255,.075);
+}
+
+html body .sidebar .profile-system-date span{
+  display:block;
+  color:#86a8cc;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:.55px;
+  line-height:1;
+  text-transform:uppercase;
+  margin-bottom:5px;
+}
+
+html body .sidebar .profile-system-date strong{
+  display:block;
+  color:#ffffff !important;
+  font-size:13px !important;
+  line-height:1 !important;
+  font-weight:800 !important;
+  letter-spacing:.2px;
+}
+
+html body.sidebar-hidden .sidebar .user-card.user-card-premium.sidebar-profile-card,
+html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
+  opacity:0;
+  pointer-events:none;
+}
+
+@media(max-width:760px){
+  html body .sidebar .user-card.user-card-premium.sidebar-profile-card{
+    margin-top:8px !important;
+    margin-bottom:22px !important;
+  }
+}
+</style>
+
+<script id="integro-fase2-profile-card-clean-js">
+/* ===== FASE 2 — Atualização do card clean do usuário/empresa ===== */
+(function(){
+  'use strict';
+
+  function getUsuarioSidebar(){
+    try{
+      return window.usuarioLogado ||
+        window.currentUserData ||
+        window.usuarioAtual ||
+        window.userData ||
+        (window.State && typeof window.State.getUsuarioLogado === 'function' ? window.State.getUsuarioLogado() : null) ||
+        JSON.parse(localStorage.getItem('usuarioLogado') || 'null') ||
+        {};
+    }catch(e){
+      return window.usuarioLogado || window.currentUserData || {};
+    }
+  }
+
+  function textoSeguro(valor){
+    return String(valor || '').trim();
+  }
+
+  function iniciais(nome){
+    const partes = textoSeguro(nome).split(/\s+/).filter(Boolean);
+    if(!partes.length) return 'US';
+    if(partes.length === 1) return partes[0].slice(0,2).toUpperCase();
+    return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+  }
+
+  function atualizarAvatarUsuario(u){
+    const avatar = document.getElementById('empresaAvatar');
+    if(!avatar) return;
+
+    const foto = textoSeguro(u.fotoUrl || u.fotoURL || u.photoURL || u.avatarUrl || u.imagemUrl || u.foto);
+    const nomeUsuario = textoSeguro(document.getElementById('userNome')?.textContent || u.nome || u.nomeCompleto || u.displayName || u.email);
+
+    if(foto){
+      avatar.style.backgroundImage = `url("${foto.replace(/"/g, '%22')}")`;
+      avatar.textContent = '';
+      avatar.classList.add('has-photo');
+      return;
+    }
+
+    avatar.style.backgroundImage = '';
+    avatar.classList.remove('has-photo');
+    avatar.textContent = iniciais(nomeUsuario);
+  }
+
+  function atualizarData(){
+    const el = document.getElementById('menuDataAtual');
+    if(!el) return;
+    el.textContent = new Date().toLocaleDateString('pt-BR', {
+      day:'2-digit',
+      month:'2-digit',
+      year:'numeric'
+    });
+  }
+
+  function ajustarCargo(){
+    const cargo = document.getElementById('userCargo');
+    if(!cargo) return;
+    cargo.textContent = textoSeguro(cargo.textContent).toUpperCase() || 'MASTER_LOCAL';
+  }
+
+  function atualizarProfileCard(){
+    const u = getUsuarioSidebar();
+    atualizarData();
+    ajustarCargo();
+    atualizarAvatarUsuario(u || {});
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    atualizarProfileCard();
+    setTimeout(atualizarProfileCard, 500);
+    setTimeout(atualizarProfileCard, 1200);
+    setTimeout(atualizarProfileCard, 2500);
+  });
+
+  window.addEventListener('load', function(){
+    atualizarProfileCard();
+    setTimeout(atualizarProfileCard, 800);
+    setTimeout(atualizarProfileCard, 1800);
+  });
+
+  window.atualizarProfileCardSidebarIntegro = atualizarProfileCard;
+})();
+</script>
+
+
+
+<script id="integro-dashboard-fase3-kpis-js">
+(function(){
+  "use strict";
+
+  const MONEY_LOCALE = "pt-BR";
+
+  function byId(id){ return document.getElementById(id); }
+  function text(el, value){ if(el) el.textContent = value; }
+  function arr(name){ return Array.isArray(window[name]) ? window[name] : []; }
+
+  function num(value){
+    if(value == null || value === "") return 0;
+    if(typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if(typeof value === "object"){
+      if(typeof value.toDate === "function") return 0;
+      if("valor" in value) return num(value.valor);
+    }
+    const clean = String(value)
+      .replace(/R\$|\s/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .replace(/[^0-9.-]/g, "");
+    const n = Number(clean);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function money(value){
+    return Number(num(value)).toLocaleString(MONEY_LOCALE, {
+      style:"currency",
+      currency:"BRL"
+    });
+  }
+
+  function parseMoneyFromDom(id){
+    return num(byId(id)?.textContent || 0);
+  }
+
+  function toDate(value){
+    if(!value) return null;
+    if(value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if(typeof value.toDate === "function"){
+      const d = value.toDate();
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    if(typeof value === "object" && typeof value.seconds === "number"){
+      return new Date(value.seconds * 1000);
+    }
+    const s = String(value).trim();
+    if(!s) return null;
+    const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if(br) return new Date(Number(br[3]), Number(br[2])-1, Number(br[1]));
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function isoLocal(date){
+    if(!(date instanceof Date)) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,"0");
+    const d = String(date.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function todayISO(){ return isoLocal(new Date()); }
+  function yesterdayISO(){
+    const d = new Date();
+    d.setDate(d.getDate()-1);
+    return isoLocal(d);
+  }
+
+  function dataRegistro(item){
+    return isoLocal(toDate(
+      item?.dataCaixa ||
+      item?.dataFechamento ||
+      item?.fechadoEm ||
+      item?.dataAbertura ||
+      item?.abertoEm ||
+      item?.dataVenda ||
+      item?.dataPagamento ||
+      item?.data ||
+      item?.criadoEm ||
+      item?.createdAt
+    ));
+  }
+
+  function statusNormalizado(item){
+    return String(item?.status || item?.statusCaixa || item?.statusVenda || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  }
+
+  function isCancelado(item){
+    return statusNormalizado(item).includes("CANCEL");
+  }
+
+  function valorCarteiraCaixa(c){
+    return num(
+      c?.carteiraFinal ??
+      c?.carteiraAtual ??
+      c?.carteira ??
+      c?.saldoCarteira ??
+      c?.totalCarteiraFinal ??
+      c?.saldoFinal ??
+      c?.carteiraFinalDia ??
+      0
+    );
+  }
+
+  function carteiraPorData(iso){
+    const caixas = arr("caixasCache")
+      .filter(c => !isCancelado(c) && dataRegistro(c) === iso);
+
+    const somaCaixas = caixas.reduce((s,c) => s + valorCarteiraCaixa(c), 0);
+    if(somaCaixas > 0) return somaCaixas;
+
+    if(iso === todayISO()){
+      const domValue = parseMoneyFromDom("kpiCarteira");
+      if(domValue > 0) return domValue;
+    }
+
+    return num(localStorage.getItem(`integroCarteiraFinal_${iso}`));
+  }
+
+  function valorPagamento(p){
+    return num(p?.valorPago ?? p?.valorRecebido ?? p?.valor ?? p?.total ?? p?.amount ?? 0);
+  }
+
+  function recebidoHojeCalculado(){
+    const hoje = todayISO();
+    const pagamentosHoje = arr("pagamentosCache")
+      .filter(p => !isCancelado(p) && dataRegistro(p) === hoje)
+      .reduce((s,p) => s + valorPagamento(p), 0);
+
+    return pagamentosHoje > 0 ? pagamentosHoje : parseMoneyFromDom("kpiRecebidoHoje");
+  }
+
+  function vencimentoParcela(parcela){
+    return isoLocal(toDate(
+      parcela?.dataVencimento ||
+      parcela?.vencimento ||
+      parcela?.dataCobranca ||
+      parcela?.dataPrevista ||
+      parcela?.data ||
+      parcela?.criadoEm
+    ));
+  }
+
+  function valorParcela(parcela){
+    return num(parcela?.valorParcela ?? parcela?.valor ?? parcela?.total ?? parcela?.valorPrevisto ?? 0);
+  }
+
+  function valorMetaConfigurada(){
+    const fontes = [
+      window.INTEGRO_META_RECEBIMENTO_DIA,
+      window.metaRecebimentoDia,
+      window.metaDiariaRecebimento,
+      window.empresaConfig?.metaRecebimentoDia,
+      window.empresaConfig?.metaDiariaRecebimento,
+      window.configEmpresa?.metaRecebimentoDia,
+      localStorage.getItem("integroMetaRecebimentoDia"),
+      localStorage.getItem("metaRecebimentoDia")
+    ];
+    for(const f of fontes){
+      const v = num(f);
+      if(v > 0) return v;
+    }
+    return 0;
+  }
+
+  function recebidoPrevistoHoje(){
+    const metaManual = valorMetaConfigurada();
+    if(metaManual > 0) return metaManual;
+
+    const hoje = todayISO();
+    let previsto = 0;
+
+    arr("cobrancasCache").forEach(c => {
+      if(!isCancelado(c) && dataRegistro(c) === hoje){
+        previsto += num(c?.valorPrevisto ?? c?.valorParcela ?? c?.valor ?? c?.total ?? 0);
+      }
+    });
+
+    arr("vendasCache").forEach(v => {
+      if(isCancelado(v)) return;
+      const parcelas = Array.isArray(v?.parcelas) ? v.parcelas : [];
+      parcelas.forEach(p => {
+        if(vencimentoParcela(p) === hoje && !isCancelado(p)){
+          previsto += valorParcela(p);
+        }
+      });
+    });
+
+    return previsto;
+  }
+
+  function atualizarTrendCarteira(){
+    const atual = carteiraPorData(todayISO());
+    const anterior = carteiraPorData(yesterdayISO());
+    const el = byId("kpiCarteiraTrend");
+    if(!el) return;
+
+    if(atual > 0){
+      localStorage.setItem(`integroCarteiraFinal_${todayISO()}`, String(atual));
+    }
+
+    if(!anterior || anterior <= 0 || !atual){
+      el.className = "kpi-trend neutral";
+      el.innerHTML = '<span class="trend-arrow">—</span><span>Sem comparação com o dia anterior</span>';
+      return;
+    }
+
+    const diff = atual - anterior;
+    const pct = Math.abs((diff / anterior) * 100);
+    const pctTxt = pct.toLocaleString("pt-BR", {minimumFractionDigits:1, maximumFractionDigits:1});
+    const direcao = diff >= 0 ? "up" : "down";
+    const verbo = diff >= 0 ? "Subiu" : "Desceu";
+    const arrow = diff >= 0 ? "↑" : "↓";
+
+    el.className = `kpi-trend ${direcao}`;
+    el.innerHTML = `<span class="trend-arrow">${arrow}</span><span>${verbo} ${pctTxt}% vs. dia anterior</span>`;
+  }
+
+  function atualizarProgressoRecebido(){
+    const recebido = recebidoHojeCalculado();
+    const meta = recebidoPrevistoHoje();
+    const fill = byId("recebidoProgressFill");
+    const pctEl = byId("recebidoProgressPct");
+    const label = byId("recebidoProgressLabel");
+    const sub = byId("recebidoProgressSub");
+
+    if(recebido > 0 && byId("kpiRecebidoHoje")){
+      text(byId("kpiRecebidoHoje"), money(recebido));
+    }
+
+    if(!fill || !pctEl || !label || !sub) return;
+
+    if(!meta || meta <= 0){
+      fill.style.width = "0%";
+      text(pctEl, "0%");
+      text(label, "Meta do dia não configurada");
+      text(sub, "Configure a meta ou use cobranças previstas para calcular o progresso.");
+      return;
+    }
+
+    const pct = Math.max(0, Math.min(100, (recebido / meta) * 100));
+    const faltante = Math.max(0, meta - recebido);
+    fill.style.width = `${pct.toFixed(1)}%`;
+    text(pctEl, `${pct.toFixed(0)}%`);
+    text(label, `Meta do dia: ${money(meta)}`);
+    text(sub, faltante > 0 ? `Faltam ${money(faltante)} para a meta` : "Meta do dia atingida");
+  }
+
+  function atualizarDashboardFase3(){
+    atualizarTrendCarteira();
+    atualizarProgressoRecebido();
+  }
+
+  window.atualizarDashboardFase3 = atualizarDashboardFase3;
+
+  /* O disparo automático desta fase foi centralizado no controlador final
+     para evitar múltiplas renderizações no boot do Master Local. */
+  document.addEventListener("integro-dashboard-estavel", () => {
+    atualizarDashboardFase3();
+  });
+})();
+</script>
+
+
+
+<script id="integro-dashboard-fase4-gerencial-js">
+(function(){
+  "use strict";
+
+  const MONEY_LOCALE = "pt-BR";
+  const DIA_MS = 24 * 60 * 60 * 1000;
+
+  function byId(id){ return document.getElementById(id); }
+  function qs(sel, root=document){ return root.querySelector(sel); }
+  function qsa(sel, root=document){ return Array.from(root.querySelectorAll(sel)); }
+  function text(el, value){ if(el) el.textContent = value; }
+  function html(el, value){ if(el) el.innerHTML = value; }
+
+  function cacheArray(name){
+    if(Array.isArray(window[name])) return window[name];
+    const map = {
+      caixasCache:"getCaixas",
+      vendasCache:"getVendas",
+      pagamentosCache:"getPagamentos",
+      clientesCache:"getClientes",
+      equipesCache:"getEquipes",
+      usuariosCache:"getUsuarios",
+      cobrancasCache:"getCobrancas"
+    };
+    const getter = map[name];
+    if(window.State && getter && typeof window.State[getter] === "function"){
+      const v = window.State[getter]();
+      if(Array.isArray(v)) return v;
+    }
+    if(name === "clientesCache" && Array.isArray(window.clientesEmpresaMasterCache)) return window.clientesEmpresaMasterCache;
+    return [];
+  }
+
+  function num(value){
+    if(value == null || value === "") return 0;
+    if(typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if(typeof value === "object"){
+      if(typeof value.toDate === "function") return 0;
+      if("valor" in value) return num(value.valor);
+    }
+    const clean = String(value)
+      .replace(/R\$|\s/g, "")
+      .replace(/\./g, "")
+      .replace(",", ".")
+      .replace(/[^0-9.-]/g, "");
+    const n = Number(clean);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function money(value){
+    return Number(num(value)).toLocaleString(MONEY_LOCALE, {style:"currency", currency:"BRL"});
+  }
+
+  function pctText(value, digits=1){
+    return Number(value || 0).toLocaleString("pt-BR", {minimumFractionDigits:digits, maximumFractionDigits:digits}) + "%";
+  }
+
+  function normalize(value){
+    return String(value ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  }
+
+  function toDate(value){
+    if(!value) return null;
+    if(value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if(typeof value.toDate === "function"){
+      const d = value.toDate();
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    if(typeof value === "object" && typeof value.seconds === "number") return new Date(value.seconds * 1000);
+    const s = String(value).trim();
+    if(!s) return null;
+    const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if(br) return new Date(Number(br[3]), Number(br[2])-1, Number(br[1]));
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function isoLocal(date){
+    if(!(date instanceof Date)) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,"0");
+    const d = String(date.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+
+  function dateFromISO(iso){
+    const [y,m,d] = String(iso).split("-").map(Number);
+    return new Date(y, (m || 1)-1, d || 1);
+  }
+
+  function addDays(iso, qtd){
+    const d = dateFromISO(iso);
+    d.setDate(d.getDate()+qtd);
+    return isoLocal(d);
+  }
+
+  function todayISO(){ return isoLocal(new Date()); }
+  function yesterdayISO(){ return addDays(todayISO(), -1); }
+
+  function dateISOFromItem(item){
+    return isoLocal(toDate(
+      item?.dataCaixa || item?.dataFechamento || item?.fechadoEm || item?.dataAbertura || item?.abertoEm ||
+      item?.dataVenda || item?.dataPagamento || item?.dataRecebimento || item?.dataCobranca || item?.vencimento ||
+      item?.data || item?.criadoEm || item?.createdAt
+    ));
+  }
+
+  function dateTimeFromItem(item){
+    return toDate(
+      item?.dataFechamento || item?.fechadoEm || item?.dataCaixa || item?.dataAbertura || item?.abertoEm ||
+      item?.dataVenda || item?.dataPagamento || item?.dataRecebimento || item?.data || item?.criadoEm || item?.createdAt
+    );
+  }
+
+  function isCancelado(item){
+    return normalize(item?.status || item?.statusCaixa || item?.statusVenda || item?.situacao).includes("CANCEL") || item?.excluido === true;
+  }
+
+  function isPago(item){
+    const st = normalize(item?.status || item?.statusParcela || item?.situacao);
+    return st.includes("PAGO") || st.includes("QUITADO") || item?.pago === true || item?.quitado === true;
+  }
+
+  function isCaixaFechado(c){
+    const st = normalize(c?.status || c?.statusCaixa || c?.estado);
+    return st.includes("FECH") || st.includes("ENCERR") || c?.fechado === true || !!c?.dataFechamento || !!c?.fechadoEm;
+  }
+
+  function idOf(item){ return String(item?.id || item?.uid || item?.docId || item?.codigo || ""); }
+  function clienteIdOf(item){ return String(item?.clienteId || item?.idCliente || item?.clienteDocId || item?.cliente || ""); }
+  function equipeIdOf(item){ return String(item?.equipeId || item?.unidadeId || item?.timeId || item?.grupoId || ""); }
+  function vendedorIdOf(item){ return String(item?.vendedorId || item?.usuarioId || item?.responsavelId || item?.cobradorId || ""); }
+
+  function equipeNomeById(id){
+    if(!id) return "Não informado";
+    const eq = cacheArray("equipesCache").find(e => String(e.id || e.uid || e.docId) === String(id));
+    return eq?.nome || eq?.nomeEquipe || eq?.unidadeNome || eq?.titulo || "Não informado";
+  }
+
+  function equipeNome(item){
+    return item?.equipeNome || item?.nomeEquipe || item?.unidadeNome || item?.unidade || item?.equipe || equipeNomeById(equipeIdOf(item));
+  }
+
+  function valorCarteiraCaixa(c){
+    return num(c?.carteiraFinal ?? c?.carteiraAtual ?? c?.carteira ?? c?.saldoCarteira ?? c?.totalCarteiraFinal ?? c?.saldoFinal ?? c?.carteiraFinalDia ?? 0);
+  }
+
+  function valorVenda(v){
+    return num(v?.valorTotal ?? v?.valorVenda ?? v?.valorEmprestado ?? v?.valorPrincipal ?? v?.valor ?? v?.total ?? v?.amount ?? 0);
+  }
+
+  function valorPagamento(p){
+    return num(p?.valorPago ?? p?.valorRecebido ?? p?.valorPagamento ?? p?.valor ?? p?.total ?? p?.amount ?? 0);
+  }
+
+  function saldoCliente(c){
+    return num(c?.saldoDevedor ?? c?.saldo ?? c?.valorEmAberto ?? c?.carteiraFinal ?? c?.saldoAberto ?? c?.totalAberto ?? c?.valorCarteira ?? 0);
+  }
+
+  function parseMoneyFromDom(id){ return num(byId(id)?.textContent || 0); }
+
+  function snapshotCarteiraAte(isoLimite){
+    const caixas = cacheArray("caixasCache")
+      .filter(c => !isCancelado(c) && isCaixaFechado(c))
+      .filter(c => {
+        const iso = dateISOFromItem(c);
+        return iso && iso <= isoLimite && valorCarteiraCaixa(c) > 0;
+      });
+
+    const porChave = new Map();
+    caixas.forEach(c => {
+      const chave = equipeIdOf(c) || vendedorIdOf(c) || idOf(c) || JSON.stringify(c).slice(0,40);
+      const atual = porChave.get(chave);
+      const dt = dateTimeFromItem(c)?.getTime() || 0;
+      const atualDt = atual ? (dateTimeFromItem(atual)?.getTime() || 0) : -1;
+      if(!atual || dt >= atualDt) porChave.set(chave, c);
+    });
+
+    const total = Array.from(porChave.values()).reduce((s,c) => s + valorCarteiraCaixa(c), 0);
+    return total;
+  }
+
+  function carteiraAtualReferencia(){
+    return snapshotCarteiraAte(todayISO()) || parseMoneyFromDom("kpiCarteira") || 0;
+  }
+
+  function atualizarCarteiraCard(){
+    const atual = carteiraAtualReferencia();
+    const anterior = snapshotCarteiraAte(yesterdayISO());
+    const el = byId("kpiCarteiraTrend");
+
+    if(atual > 0 && byId("kpiCarteira")) text(byId("kpiCarteira"), money(atual));
+    if(!el) return;
+
+    if(!anterior || anterior <= 0 || !atual){
+      el.className = "kpi-trend neutral";
+      el.innerHTML = '<span class="trend-arrow">—</span><span>Sem último caixa fechado para comparar</span>';
+      return;
+    }
+
+    const diff = atual - anterior;
+    const pct = Math.abs((diff / anterior) * 100);
+    const up = diff >= 0;
+    el.className = `kpi-trend ${up ? "up" : "down"}`;
+    el.innerHTML = `<span class="trend-arrow">${up ? "↑" : "↓"}</span><span>${up ? "Subiu" : "Desceu"} ${pctText(pct)} vs. último caixa fechado</span>`;
+  }
+
+  function vencimentoISO(item){
+    return isoLocal(toDate(item?.dataVencimento || item?.vencimento || item?.dataCobranca || item?.dataPrevista || item?.dataParcela || item?.data || item?.createdAt));
+  }
+
+  function valorParcela(p){
+    return num(p?.valorParcela ?? p?.valorPrevisto ?? p?.valor ?? p?.total ?? p?.saldo ?? 0);
+  }
+
+  function previstoReceberNoDia(iso=todayISO()){
+    let total = 0;
+
+    cacheArray("cobrancasCache").forEach(c => {
+      if(isCancelado(c) || isPago(c)) return;
+      const data = vencimentoISO(c) || dateISOFromItem(c);
+      if(data === iso) total += num(c?.valorPrevisto ?? c?.valorParcela ?? c?.valorCobrado ?? c?.valor ?? c?.total ?? 0);
+    });
+
+    cacheArray("vendasCache").forEach(v => {
+      if(isCancelado(v)) return;
+      const parcelas = Array.isArray(v?.parcelas) ? v.parcelas : [];
+      parcelas.forEach(p => {
+        if(isCancelado(p) || isPago(p)) return;
+        if(vencimentoISO(p) === iso) total += valorParcela(p);
+      });
+    });
+
+    const metaManual = num(window.INTEGRO_META_RECEBIMENTO_DIA ?? window.metaRecebimentoDia ?? window.metaDiariaRecebimento ?? window.empresaConfig?.metaRecebimentoDia ?? localStorage.getItem("integroMetaRecebimentoDia"));
+    return total > 0 ? total : metaManual;
+  }
+
+  function recebidoNoDia(iso=todayISO()){
+    const total = cacheArray("pagamentosCache")
+      .filter(p => !isCancelado(p) && dateISOFromItem(p) === iso)
+      .reduce((s,p) => s + valorPagamento(p), 0);
+    if(total > 0) return total;
+    return iso === todayISO() ? parseMoneyFromDom("kpiRecebidoHoje") : 0;
+  }
+
+  function atualizarRecebidoCard(){
+    const recebido = recebidoNoDia(todayISO());
+    const previsto = previstoReceberNoDia(todayISO());
+    const fill = byId("recebidoProgressFill");
+    const pctEl = byId("recebidoProgressPct");
+    const label = byId("recebidoProgressLabel");
+    const sub = byId("recebidoProgressSub");
+
+    if(byId("kpiRecebidoHoje")) text(byId("kpiRecebidoHoje"), money(recebido));
+    if(!fill || !pctEl || !label || !sub) return;
+
+    if(!previsto || previsto <= 0){
+      fill.style.width = "0%";
+      text(pctEl, "0%");
+      text(label, "Pretendido hoje não encontrado");
+      text(sub, "Sem cobranças previstas para hoje nas equipes.");
+      return;
+    }
+
+    const pct = Math.max(0, Math.min(100, (recebido / previsto) * 100));
+    const falta = Math.max(0, previsto - recebido);
+    fill.style.width = `${pct.toFixed(1)}%`;
+    text(pctEl, `${pct.toFixed(0)}%`);
+    text(label, `Pretendido hoje: ${money(previsto)}`);
+    text(sub, falta > 0 ? `Faltam ${money(falta)} para o previsto das equipes` : "Previsto do dia atingido");
+  }
+
+  function diasAtrasoPorVencimento(iso){
+    if(!iso) return 0;
+    const diff = Math.floor((dateFromISO(todayISO()) - dateFromISO(iso)) / DIA_MS);
+    return Math.max(0, diff);
+  }
+
+  function pagamentosPorCliente(idCliente, nomeCliente){
+    return cacheArray("pagamentosCache").filter(p => {
+      const cid = clienteIdOf(p);
+      if(cid && idCliente && cid === idCliente) return true;
+      return nomeCliente && normalize(p?.clienteNome || p?.nomeCliente || p?.cliente) === normalize(nomeCliente);
+    });
+  }
+
+  function clientesInadimplentes10Mais(){
+    const clientesMap = new Map();
+    cacheArray("clientesCache").forEach(c => {
+      const id = idOf(c) || clienteIdOf(c) || normalize(c?.nome || c?.nomeCliente || c?.cliente);
+      if(id) clientesMap.set(id, c);
+    });
+
+    const atrasosPorCliente = new Map();
+
+    function registrarAtraso(ref, venda, parcela, valorVencido, dias){
+      if(dias <= 10) return;
+      const cid = clienteIdOf(ref) || clienteIdOf(venda) || idOf(ref) || normalize(ref?.nome || ref?.nomeCliente || venda?.clienteNome || venda?.nomeCliente || venda?.cliente);
+      if(!cid) return;
+      const atual = atrasosPorCliente.get(cid) || {dias:0, vencido:0, venda};
+      atual.dias = Math.max(atual.dias, dias);
+      atual.vencido += Math.max(0, valorVencido);
+      atual.venda = atual.venda || venda;
+      atrasosPorCliente.set(cid, atual);
+    }
+
+    cacheArray("vendasCache").forEach(v => {
+      if(isCancelado(v)) return;
+      const parcelas = Array.isArray(v?.parcelas) ? v.parcelas : [];
+      parcelas.forEach(p => {
+        if(isCancelado(p) || isPago(p)) return;
+        const venc = vencimentoISO(p);
+        const dias = diasAtrasoPorVencimento(venc);
+        registrarAtraso(v, v, p, valorParcela(p), dias);
+      });
+      const diasCampo = num(v?.diasAtraso ?? v?.atrasoDias ?? v?.diasEmAtraso);
+      if(diasCampo > 10) registrarAtraso(v, v, null, num(v?.valorVencido ?? v?.saldoVencido ?? v?.saldoDevedor ?? v?.saldo ?? 0), diasCampo);
+    });
+
+    cacheArray("clientesCache").forEach(c => {
+      const diasCampo = num(c?.diasAtraso ?? c?.atrasoDias ?? c?.diasEmAtraso ?? c?.maiorAtraso);
+      const st = normalize(c?.status || c?.situacao);
+      const saldo = saldoCliente(c);
+      if(diasCampo > 10 || (saldo > 0 && (st.includes("INAD") || st.includes("ATRAS")) && diasCampo > 10)){
+        registrarAtraso(c, null, null, num(c?.valorVencido ?? c?.saldoVencido ?? saldo), diasCampo);
+      }
+    });
+
+    const resultado = [];
+    atrasosPorCliente.forEach((info, cid) => {
+      const cliente = clientesMap.get(cid) || Array.from(clientesMap.values()).find(c => normalize(c?.nome || c?.nomeCliente) === normalize(cid)) || {};
+      const venda = info.venda || {};
+      const nome = cliente?.nome || cliente?.nomeCliente || venda?.clienteNome || venda?.nomeCliente || venda?.cliente || "Cliente sem nome";
+      const saldo = saldoCliente(cliente) || num(venda?.saldoDevedor ?? venda?.saldo ?? venda?.valorEmAberto ?? info.vencido);
+      const pagamentos = pagamentosPorCliente(idOf(cliente) || cid, nome);
+      const totalPago = pagamentos.reduce((s,p) => s + valorPagamento(p), 0);
+      const ultima = pagamentos.map(p => dateISOFromItem(p)).filter(Boolean).sort().pop() || "Sem pagamentos";
+      resultado.push({
+        id: cid,
+        nome,
+        documento: cliente?.documento || cliente?.cpf || cliente?.cnpj || venda?.documento || "",
+        telefone: cliente?.telefone || cliente?.telefonePrincipal || cliente?.whatsapp || "",
+        equipe: equipeNome(cliente) !== "Não informado" ? equipeNome(cliente) : equipeNome(venda),
+        vendedor: cliente?.vendedorNome || venda?.vendedorNome || venda?.usuarioNome || "",
+        dias: info.dias,
+        vencido: info.vencido,
+        saldo,
+        totalPago,
+        pagamentosCount: pagamentos.length,
+        ultima
+      });
+    });
+
+    return resultado.sort((a,b) => b.saldo - a.saldo || b.dias - a.dias);
+  }
+
+  function atualizarInadimplenciaCard(){
+    const clientes = clientesInadimplentes10Mais();
+    const valor = clientes.reduce((s,c) => s + Math.max(0, c.saldo || c.vencido), 0);
+    const carteira = carteiraAtualReferencia() || parseMoneyFromDom("kpiCarteira");
+    const pct = carteira > 0 ? (valor / carteira) * 100 : 0;
+    text(byId("kpiInadimplencia"), money(valor));
+    const sub = byId("kpiInadimplenciaSub") || qs('[data-dashboard-card="inadimplencia"] .kpi-sub');
+    if(sub) sub.innerHTML = `<strong>${pctText(pct)}</strong> da carteira • ${clientes.length} cliente(s) +10 dias`;
+  }
+
+  function vendasNoDia(iso=todayISO()){
+    const vendas = cacheArray("vendasCache").filter(v => !isCancelado(v) && dateISOFromItem(v) === iso);
+    const total = vendas.reduce((s,v) => s + valorVenda(v), 0);
+    const clientes = new Set();
+    vendas.forEach(v => clientes.add(clienteIdOf(v) || normalize(v?.clienteNome || v?.nomeCliente || v?.cliente || idOf(v))));
+    return {vendas,total,clientesQtd:[...clientes].filter(Boolean).length};
+  }
+
+  function atualizarVendasCard(){
+    const hoje = vendasNoDia(todayISO());
+    const ontem = vendasNoDia(yesterdayISO());
+    text(byId("kpiVendasHoje"), money(hoje.total));
+    const sub = byId("kpiVendasHojeSub") || qs('[data-dashboard-card="vendas-hoje"] .kpi-sub');
+    if(!sub) return;
+    let comp = "sem comparação";
+    if(ontem.total > 0){
+      const diff = hoje.total - ontem.total;
+      comp = `<span class="${diff >= 0 ? "positive" : "negative"}">${diff >= 0 ? "↑" : "↓"} ${pctText(Math.abs(diff / ontem.total * 100))}</span> vs. dia anterior`;
+    }
+    sub.innerHTML = `${hoje.clientesQtd} cliente(s) vendidos • ${comp}`;
+  }
+
+  function atualizarDashboardGerencial(){
+    atualizarCarteiraCard();
+    atualizarRecebidoCard();
+    atualizarInadimplenciaCard();
+    atualizarVendasCard();
+  }
+
+  function ensureDrawer(){
+    let drawer = byId("dashboardInsightDrawer");
+    if(drawer) return drawer;
+    drawer = document.createElement("div");
+    drawer.id = "dashboardInsightDrawer";
+    drawer.className = "dashboard-insight";
+    drawer.innerHTML = `
+      <div class="dashboard-insight-overlay" data-close-dashboard-insight></div>
+      <aside class="dashboard-insight-panel" role="dialog" aria-modal="true">
+        <div class="dashboard-insight-head">
+          <div><h3 id="dashboardInsightTitle">Detalhes</h3><p id="dashboardInsightSubtitle"></p></div>
+          <button class="dashboard-insight-close" type="button" data-close-dashboard-insight>×</button>
+        </div>
+        <div class="dashboard-insight-body" id="dashboardInsightBody"></div>
+      </aside>`;
+    document.body.appendChild(drawer);
+    qsa("[data-close-dashboard-insight]", drawer).forEach(el => el.addEventListener("click", fecharDrawer));
+    return drawer;
+  }
+
+  function abrirDrawer(titulo, subtitulo, conteudo){
+    const drawer = ensureDrawer();
+    text(byId("dashboardInsightTitle"), titulo);
+    text(byId("dashboardInsightSubtitle"), subtitulo);
+    html(byId("dashboardInsightBody"), conteudo);
+    drawer.classList.add("show");
+    document.body.style.overflow = "hidden";
+  }
+
+  function fecharDrawer(){
+    const drawer = byId("dashboardInsightDrawer");
+    if(drawer) drawer.classList.remove("show");
+    document.body.style.overflow = "";
+  }
+
+  function datasEntre(inicio, fim){
+    const out = [];
+    let cur = inicio;
+    while(cur && cur <= fim && out.length < 370){
+      out.push(cur);
+      cur = addDays(cur, 1);
+    }
+    return out;
+  }
+
+  function periodoCarteira(tipo="7d", inicioCustom="", fimCustom=""){
+    const fim = todayISO();
+    if(tipo === "mes"){
+      const d = new Date();
+      const inicio = isoLocal(new Date(d.getFullYear(), d.getMonth(), 1));
+      return datasEntre(inicio, fim);
+    }
+    if(tipo === "30d") return datasEntre(addDays(fim, -29), fim);
+    if(tipo === "custom" && inicioCustom && fimCustom) return datasEntre(inicioCustom, fimCustom);
+    return datasEntre(addDays(fim, -6), fim);
+  }
+
+  function montarSvgCarteira(datas){
+    const valores = datas.map(d => ({data:d, valor:snapshotCarteiraAte(d)}));
+    const max = Math.max(1, ...valores.map(v => v.valor));
+    const min = Math.min(...valores.map(v => v.valor));
+    const width = 680, height = 280, pad = 34;
+    const span = Math.max(1, max - min);
+    const pts = valores.map((v,i) => {
+      const x = pad + (i * ((width - pad*2) / Math.max(1, valores.length-1)));
+      const y = height - pad - (((v.valor - min) / span) * (height - pad*2));
+      return {x,y,...v};
+    });
+    const poly = pts.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    const circles = pts.map(p => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#ff8a00"><title>${p.data} • ${money(p.valor)}</title></circle>`).join("");
+    const labels = pts.filter((_,i)=> i===0 || i===pts.length-1 || i%Math.ceil(pts.length/4)===0).map(p => `<text x="${p.x.toFixed(1)}" y="262" text-anchor="middle" font-size="10" font-weight="800" fill="#64748b">${p.data.slice(5).split("-").reverse().join("/")}</text>`).join("");
+    return `<svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <defs><linearGradient id="carteiraArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a00" stop-opacity=".22"/><stop offset="1" stop-color="#ff8a00" stop-opacity="0"/></linearGradient></defs>
+      <line x1="${pad}" y1="${height-pad}" x2="${width-pad}" y2="${height-pad}" stroke="#e2e8f0" stroke-width="1"/>
+      <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${height-pad}" stroke="#e2e8f0" stroke-width="1"/>
+      <polygon points="${pad},${height-pad} ${poly} ${width-pad},${height-pad}" fill="url(#carteiraArea)"/>
+      <polyline points="${poly}" fill="none" stroke="#ff8a00" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      ${circles}${labels}
+      <text x="${pad+4}" y="24" font-size="12" font-weight="900" fill="#071a33">Maior: ${money(max)}</text>
+    </svg>`;
+  }
+
+  function renderCarteiraDrawer(tipo="7d", ini="", fim=""){
+    const datas = periodoCarteira(tipo, ini, fim);
+    const atual = carteiraAtualReferencia();
+    const anterior = snapshotCarteiraAte(yesterdayISO());
+    const diff = anterior ? atual - anterior : 0;
+    const filtros = `<div class="insight-filters">
+      <select id="carteiraFiltroPeriodo">
+        <option value="7d" ${tipo==="7d"?"selected":""}>Últimos 7 dias</option>
+        <option value="30d" ${tipo==="30d"?"selected":""}>Últimos 30 dias</option>
+        <option value="mes" ${tipo==="mes"?"selected":""}>Mês atual</option>
+        <option value="custom" ${tipo==="custom"?"selected":""}>Personalizado</option>
+      </select>
+      <input type="date" id="carteiraFiltroInicio" value="${ini || datas[0] || todayISO()}">
+      <input type="date" id="carteiraFiltroFim" value="${fim || datas[datas.length-1] || todayISO()}">
+      <button type="button" id="aplicarFiltroCarteira">Aplicar</button>
+    </div>`;
+    const resumo = `<div class="insight-summary-grid">
+      <div class="insight-summary-item"><small>Carteira atual</small><strong>${money(atual)}</strong></div>
+      <div class="insight-summary-item"><small>Último caixa anterior</small><strong>${anterior ? money(anterior) : "Sem dados"}</strong></div>
+      <div class="insight-summary-item"><small>Variação</small><strong class="${diff >= 0 ? "positive" : "negative"}">${anterior ? `${diff >= 0 ? "+" : ""}${money(diff)}` : "Sem comparação"}</strong></div>
+    </div>`;
+    abrirDrawer("Carteira Final", "Acompanhamento da evolução da carteira baseado no último caixa fechado de cada equipe/vendedor.", `${filtros}${resumo}<div class="insight-chart-card"><h4>Crescimento da carteira</h4><div class="insight-chart-wrap">${montarSvgCarteira(datas)}</div></div>`);
+    const btn = byId("aplicarFiltroCarteira");
+    if(btn) btn.addEventListener("click", () => renderCarteiraDrawer(byId("carteiraFiltroPeriodo")?.value || "7d", byId("carteiraFiltroInicio")?.value || "", byId("carteiraFiltroFim")?.value || ""));
+  }
+
+  function renderInadimplenciaDrawer(){
+    const clientes = clientesInadimplentes10Mais();
+    const total = clientes.reduce((s,c) => s + Math.max(0, c.saldo || c.vencido), 0);
+    const carteira = carteiraAtualReferencia();
+    const pct = carteira ? total / carteira * 100 : 0;
+    const resumo = `<div class="insight-summary-grid">
+      <div class="insight-summary-item"><small>Valor em risco</small><strong>${money(total)}</strong></div>
+      <div class="insight-summary-item"><small>% da carteira</small><strong>${pctText(pct)}</strong></div>
+      <div class="insight-summary-item"><small>Clientes +10 dias</small><strong>${clientes.length}</strong></div>
+    </div>`;
+    const lista = clientes.length ? clientes.map(c => `<div class="insight-client-row">
+      <div>
+        <strong>${c.nome}</strong>
+        <small>${c.documento ? `Doc.: ${c.documento} • ` : ""}${c.telefone ? `Tel.: ${c.telefone} • ` : ""}Equipe: ${c.equipe || "Não informado"}${c.vendedor ? ` • Vendedor: ${c.vendedor}` : ""}</small>
+        <div class="insight-badges">
+          <span class="insight-badge red">${c.dias} dias de atraso</span>
+          <span class="insight-badge orange">Vencido: ${money(c.vencido)}</span>
+          <span class="insight-badge green">Pago: ${money(c.totalPago)}</span>
+          <span class="insight-badge">${c.pagamentosCount} pagamento(s)</span>
+          <span class="insight-badge">Último: ${c.ultima}</span>
+        </div>
+      </div>
+      <div class="insight-value-box"><strong>${money(c.saldo || c.vencido)}</strong><small>representa na carteira</small></div>
+    </div>`).join("") : `<div class="empty-insight">Nenhum cliente com mais de 10 dias de atraso encontrado.</div>`;
+    abrirDrawer("Inadimplência +10 dias", "Clientes com atraso superior a 10 dias, equipe, saldo representado e histórico resumido de pagamentos.", `${resumo}<div class="insight-list-card"><h4>Clientes atrasados</h4>${lista}</div>`);
+  }
+
+  function renderVendasDrawer(){
+    const hoje = vendasNoDia(todayISO());
+    const ontem = vendasNoDia(yesterdayISO());
+    const resumo = `<div class="insight-summary-grid">
+      <div class="insight-summary-item"><small>Valor vendido hoje</small><strong>${money(hoje.total)}</strong></div>
+      <div class="insight-summary-item"><small>Clientes vendidos</small><strong>${hoje.clientesQtd}</strong></div>
+      <div class="insight-summary-item"><small>Dia anterior</small><strong>${money(ontem.total)}</strong></div>
+    </div>`;
+    const lista = hoje.vendas.length ? hoje.vendas.map(v => `<div class="insight-client-row">
+      <div><strong>${v?.clienteNome || v?.nomeCliente || v?.cliente || "Cliente não informado"}</strong><small>Equipe: ${equipeNome(v)}${v?.vendedorNome ? ` • Vendedor: ${v.vendedorNome}` : ""} • Data: ${dateISOFromItem(v) || "hoje"}</small></div>
+      <div class="insight-value-box"><strong style="color:var(--text)">${money(valorVenda(v))}</strong><small>valor da venda</small></div>
+    </div>`).join("") : `<div class="empty-insight">Nenhuma venda registrada hoje.</div>`;
+    abrirDrawer("Vendas Hoje", "Valor somado das vendas, quantidade de clientes vendidos e comparação com o dia anterior.", `${resumo}<div class="insight-list-card"><h4>Vendas registradas hoje</h4>${lista}</div>`);
+  }
+
+  function renderRecebidoDrawer(){
+    const recebido = recebidoNoDia(todayISO());
+    const previsto = previstoReceberNoDia(todayISO());
+    const pct = previsto ? recebido / previsto * 100 : 0;
+    const resumo = `<div class="insight-summary-grid">
+      <div class="insight-summary-item"><small>Recebido</small><strong>${money(recebido)}</strong></div>
+      <div class="insight-summary-item"><small>Pretendido</small><strong>${money(previsto)}</strong></div>
+      <div class="insight-summary-item"><small>Progresso</small><strong>${pctText(pct)}</strong></div>
+    </div>`;
+    abrirDrawer("Recebido Hoje", "Progresso do valor recebido contra o valor pretendido pelas equipes para o dia atual.", `${resumo}<div class="insight-list-card"><h4>Leitura</h4><div class="empty-insight">A barra do card considera cobranças/parcelas previstas para hoje. Quando não houver previsão, pode ser usado o campo de meta diária configurado.</div></div>`);
+  }
+
+  function bindCards(){
+    qsa("[data-dashboard-card]").forEach(card => {
+      if(card.dataset.boundFase4 === "1") return;
+      card.dataset.boundFase4 = "1";
+      card.addEventListener("click", () => {
+        const tipo = card.dataset.dashboardCard;
+        if(tipo === "carteira-final") return renderCarteiraDrawer("7d");
+        if(tipo === "inadimplencia") return renderInadimplenciaDrawer();
+        if(tipo === "vendas-hoje") return renderVendasDrawer();
+        if(tipo === "recebido-hoje") return renderRecebidoDrawer();
+      });
+    });
+  }
+
+  window.atualizarDashboardGerencial = atualizarDashboardGerencial;
+
+  /* O disparo automático desta fase foi centralizado no controlador final.
+     Esta fase fica apenas responsável pelos cliques/gavetas para não sobrescrever
+     os valores reais dos cards após o carregamento. */
+  document.addEventListener("integro-dashboard-estavel", () => {
+    bindCards();
+  });
+})();
+</script>
+
+
+<!-- ===== FASE 5 - LINKAGEM REAL FIRESTORE / TENANT / USUÁRIO ===== -->
+<style id="integro-dashboard-fase5-dados-reais-css">
+  .dashboard-insight-panel{width:min(920px,100%);} 
+  .insight-chart-wrap.real-chart{height:360px;min-height:360px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:10px;}
+  .insight-chart-legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:10px 0 0;color:#526780;font-size:12px;font-weight:800;}
+  .insight-chart-legend span{display:inline-flex;align-items:center;gap:6px;}
+  .insight-chart-legend i{width:10px;height:10px;border-radius:999px;background:#ff8a00;display:inline-block;}
+  .integro-data-alert{border:1px solid #fed7aa;background:#fff7ed;color:#9a3412;border-radius:14px;padding:12px 14px;font-size:13px;font-weight:800;line-height:1.45;margin-bottom:14px;}
+  .real-empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:16px;padding:18px;color:#64748b;font-weight:800;text-align:center;}
+  .real-table{width:100%;border-collapse:separate;border-spacing:0 8px;}
+  .real-table th{font-size:11px;text-transform:uppercase;color:#64748b;background:transparent;padding:8px;text-align:left;}
+  .real-table td{font-size:13px;color:#334155;background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:12px 8px;font-weight:750;}
+  .real-table td:first-child{border-left:1px solid var(--line);border-radius:12px 0 0 12px;}
+  .real-table td:last-child{border-right:1px solid var(--line);border-radius:0 12px 12px 0;}
+</style>
+
+<script id="integro-dashboard-fase5-dados-reais-js">
+(function(){
+  "use strict";
+
+  const DIA = 24 * 60 * 60 * 1000;
+  const LOG_PREFIX = "[ÍNTEGRO Dashboard Real]";
+  const byId = (id) => document.getElementById(id);
+  const qsa = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+  const text = (el, value) => { if(el) el.textContent = value; };
+  const html = (el, value) => { if(el) el.innerHTML = value; };
+  const money = (v) => Number(num(v)).toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+  const pct = (v, d=1) => Number(v || 0).toLocaleString("pt-BR", {minimumFractionDigits:d, maximumFractionDigits:d}) + "%";
+  const esc = (v) => String(v ?? "").replace(/[&<>\"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m]));
+  const norm = (v) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  const arr = (v) => Array.isArray(v) ? v : [];
+
+  function num(value){
+    if(value == null || value === "") return 0;
+    if(typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if(typeof value === "object"){
+      if(typeof value.toDate === "function" || typeof value.seconds === "number") return 0;
+      if("valor" in value) return num(value.valor);
+    }
+    const clean = String(value).replace(/R\$|\s/g, "").replace(/\./g, "").replace(",", ".").replace(/[^0-9.-]/g, "");
+    const n = Number(clean);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function toDate(value){
+    if(!value) return null;
+    if(value instanceof Date) return Number.isNaN(value.getTime()) ? null : value;
+    if(typeof value.toDate === "function"){
+      const d = value.toDate();
+      return Number.isNaN(d.getTime()) ? null : d;
+    }
+    if(typeof value === "object" && typeof value.seconds === "number") return new Date(value.seconds * 1000);
+    const s = String(value).trim();
+    if(!s) return null;
+    const br = s.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if(br) return new Date(Number(br[3]), Number(br[2])-1, Number(br[1]));
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  function isoLocal(date){
+    if(!(date instanceof Date)) return "";
+    const y = date.getFullYear();
+    const m = String(date.getMonth()+1).padStart(2,"0");
+    const d = String(date.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+  function todayISO(){ return isoLocal(new Date()); }
+  function addDays(iso, qtd){
+    const [y,m,d] = String(iso).split("-").map(Number);
+    const dt = new Date(y, (m||1)-1, d||1);
+    dt.setDate(dt.getDate()+qtd);
+    return isoLocal(dt);
+  }
+  function brData(iso){
+    const s = String(iso || "").slice(0,10);
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s.split("-").reverse().join("/") : s;
+  }
+  function dateISO(item){
+    return isoLocal(toDate(
+      item?.dataCaixa || item?.dataFechamento || item?.fechadoEm || item?.dataAbertura || item?.abertoEm ||
+      item?.dataVenda || item?.dataPagamento || item?.dataRecebimento || item?.dataCobranca || item?.vencimento ||
+      item?.dataVencimento || item?.dataPrevista || item?.dataParcela || item?.data || item?.criadoEm || item?.createdAt || item?.atualizadoEm
+    ));
+  }
+  function dateTime(item){ return toDate(item?.dataFechamento || item?.fechadoEm || item?.dataCaixa || item?.data || item?.criadoEm || item?.createdAt) || new Date(0); }
+
+  function db(){ return window.firebase?.firestore ? firebase.firestore() : null; }
+  function currentUser(){ return window.usuarioLogado || window.currentUserData || window.userData || window.State?.getUsuarioLogado?.() || {}; }
+  function authUid(){ return firebase?.auth?.().currentUser?.uid || currentUser().authUid || currentUser().uid || currentUser().id || ""; }
+  function tenantIds(){
+    const u = currentUser();
+    return [
+      window.State?.getTenantId?.(), u.clientePlataformaId, u.empresaId, u.tenantId,
+      localStorage.getItem("clientePlataformaId"), localStorage.getItem("empresaId"), localStorage.getItem("tenantId")
+    ].filter(Boolean).map(String).filter((v,i,a)=>a.indexOf(v)===i);
+  }
+  function tenantPrincipal(){ return tenantIds()[0] || ""; }
+  function role(){ return norm(currentUser().tipoUsuario || currentUser().tipo || currentUser().cargoNome || currentUser().perfil || currentUser().role); }
+  function isMasterLike(){ const r = role(); return r.includes("MASTER") || r.includes("ADMIN") || r.includes("FINANCEIRO") || r.includes("DIRETOR"); }
+  function isSupervisor(){ return role().includes("SUPERV"); }
+  function isVendedor(){ return role().includes("VENDEDOR") || role().includes("COBRADOR"); }
+
+  function tenantOf(r){ return String(r?.clientePlataformaId || r?.empresaId || r?.tenantId || r?.clienteId || ""); }
+  function belongsTenant(r){
+    const ids = tenantIds();
+    const t = tenantOf(r);
+    return !ids.length || !t || ids.includes(t);
+  }
+  function idOf(r){ return String(r?.id || r?.uid || r?.docId || r?.authUid || ""); }
+  function equipeIdOf(r){ return String(r?.equipeId || r?.equipeUid || r?.unidadeId || r?.timeId || r?.grupoId || ""); }
+  function vendedorIdOf(r){ return String(r?.vendedorId || r?.usuarioId || r?.userId || r?.responsavelId || r?.cobradorId || r?.solicitanteId || ""); }
+  function clienteIdOf(r){ return String(r?.clienteId || r?.idCliente || r?.clienteDocId || r?.clienteUid || ""); }
+  function nomeEquipe(r){ return r?.equipeNome || r?.nomeEquipe || r?.unidadeNome || r?.unidade || r?.equipe || "Não informado"; }
+  function nomeCliente(r){ return r?.clienteNome || r?.nomeCliente || r?.cliente || r?.nome || r?.nomeCompleto || "Cliente não informado"; }
+  function status(r){ return norm(r?.status || r?.statusCaixa || r?.statusVenda || r?.statusParcela || r?.situacao || ""); }
+  function isCancelado(r){ return status(r).includes("CANCEL") || r?.excluido === true; }
+  function isPago(r){ const s = status(r); return s.includes("PAGO") || s.includes("QUITADO") || r?.pago === true || r?.quitado === true; }
+  function isCaixaFechado(r){ const s = status(r); return s.includes("FECH") || s.includes("ENCERR") || r?.fechado === true || !!r?.dataFechamento || !!r?.fechadoEm; }
+
+  function colecaoConfig(chave, fallback){
+    const c = window.CONFIG?.COLECOES || window.CONFIG?.colecoes || {};
+    return c[chave] || c[chave?.toLowerCase?.()] || fallback;
+  }
+
+  const COLLECTIONS = {
+    equipes: [colecaoConfig("EQUIPES", "equipes")],
+    usuarios: [colecaoConfig("USUARIOS", "usuarios"), colecaoConfig("USUARIOS_CLIENTES", "usuarios_clientes")],
+    caixas: [colecaoConfig("CAIXAS", "caixas")],
+    vendas: [colecaoConfig("VENDAS", "vendas")],
+    pagamentos: [colecaoConfig("PAGAMENTOS", "pagamentos"), "recebimentos"],
+    clientes: [colecaoConfig("CLIENTES_OPERACIONAIS", "clientes_operacionais"), "clientes"],
+    cobrancas: [colecaoConfig("COBRANCAS", "cobrancas"), "parcelas", "parcelas_cobranca"]
+  };
+
+  const CACHES = {
+    equipes:"equipesCache", usuarios:"usuariosCache", caixas:"caixasCache", vendas:"vendasCache",
+    pagamentos:"pagamentosCache", clientes:"clientesCache", cobrancas:"cobrancasCache"
+  };
+
+  async function queryCollection(name){
+    const database = db();
+    if(!database) return [];
+    const ids = tenantIds();
+    const docs = new Map();
+    const addSnap = (snap) => snap.docs.forEach(d => docs.set(d.id, {id:d.id, ...d.data()}));
+    const fields = ["clientePlataformaId", "empresaId", "tenantId"];
+
+    for(const tid of ids){
+      for(const field of fields){
+        try { addSnap(await database.collection(name).where(field, "==", tid).get()); }
+        catch(e) { /* campo/index pode não existir; segue fallback */ }
+      }
+    }
+
+    if(!docs.size){
+      try { addSnap(await database.collection(name).get()); }
+      catch(e) { console.warn(LOG_PREFIX, "não carregou coleção", name, e?.message || e); }
+    }
+
+    return Array.from(docs.values()).filter(belongsTenant);
+  }
+
+  async function loadAllRealData(){
+    const result = {};
+    for(const [key, names] of Object.entries(COLLECTIONS)){
+      const merged = new Map();
+      for(const name of [...new Set(names.filter(Boolean))]){
+        const rows = await queryCollection(name);
+        rows.forEach(r => merged.set(`${name}:${r.id || JSON.stringify(r).slice(0,80)}`, r));
+      }
+      result[key] = Array.from(merged.values());
+    }
+
+    const allowedEquipes = computeAllowedEquipes(result.equipes, result.usuarios);
+    const allowedEquipeIds = new Set(allowedEquipes.map(e => idOf(e)).filter(Boolean));
+    const allowedEquipeNames = new Set(allowedEquipes.map(e => norm(nomeEquipe(e) === "Não informado" ? (e.nome || e.nomeEquipe || e.unidadeNome) : nomeEquipe(e))).filter(Boolean));
+
+    for(const key of ["caixas","vendas","pagamentos","clientes","cobrancas"]){
+      result[key] = result[key].filter(r => userCanSeeRecord(r, allowedEquipeIds, allowedEquipeNames));
+    }
+    result.equipes = allowedEquipes;
+    result.usuarios = result.usuarios.filter(u => isMasterLike() || userCanSeeRecord(u, allowedEquipeIds, allowedEquipeNames) || idOf(u) === authUid());
+
+    Object.entries(CACHES).forEach(([key, cache]) => { window[cache] = result[key] || []; });
+    window.clientesEmpresaMasterCache = result.clientes || [];
+    window.__integroDashboardRealData = {...result, tenantId:tenantPrincipal(), carregadoEm:new Date().toISOString()};
+    return result;
+  }
+
+  function computeAllowedEquipes(equipes, usuarios){
+    if(isMasterLike()) return equipes.filter(e => e.ativo !== false && e.excluido !== true);
+    const uid = authUid();
+    const u = currentUser();
+    const idsUsuario = [uid, u.id, u.uid, u.authUid, u.usuarioId].filter(Boolean).map(String);
+    const equipesUsuario = new Set([
+      ...arr(u.equipesIds), ...arr(u.equipeIds), ...arr(u.equipes), u.equipeId, u.unidadeId, u.timeId
+    ].filter(Boolean).map(String));
+
+    return equipes.filter(e => {
+      if(e.ativo === false || e.excluido === true) return false;
+      const eid = idOf(e) || String(e.equipeId || e.unidadeId || "");
+      if(eid && equipesUsuario.has(eid)) return true;
+      const responsaveis = [
+        e.supervisorId, e.supervisorUid, e.responsavelId, e.usuarioId, e.vendedorId,
+        ...arr(e.usuariosIds), ...arr(e.usuarios), ...arr(e.vendedoresIds), ...arr(e.vendedores), ...arr(e.membrosIds), ...arr(e.membros)
+      ].map(x => typeof x === "object" ? (x.id || x.uid || x.authUid || x.usuarioId || x.vendedorId) : x).filter(Boolean).map(String);
+      return idsUsuario.some(id => responsaveis.includes(id));
+    });
+  }
+
+  function userCanSeeRecord(r, allowedEquipeIds, allowedEquipeNames){
+    if(!belongsTenant(r)) return false;
+    if(isMasterLike()) return true;
+    const uid = authUid();
+    const ids = [uid, currentUser().id, currentUser().uid, currentUser().authUid].filter(Boolean).map(String);
+    if(ids.includes(vendedorIdOf(r)) || ids.includes(String(r?.criadoPorId || r?.abertoPorId || r?.fechadoPorId || ""))) return true;
+    const eid = equipeIdOf(r);
+    if(eid && allowedEquipeIds.has(eid)) return true;
+    const en = norm(nomeEquipe(r));
+    if(en && allowedEquipeNames.has(en)) return true;
+    return false;
+  }
+
+  function cache(name){ return arr(window[CACHES[name]]); }
+  function valorCarteiraCaixa(c){ return num(c?.carteiraFinal ?? c?.carteiraAtual ?? c?.carteira ?? c?.saldoCarteira ?? c?.totalCarteiraFinal ?? c?.saldoFinal ?? c?.carteiraFinalDia); }
+  function valorVenda(v){ return num(v?.valorTotal ?? v?.valorVenda ?? v?.valorEmprestado ?? v?.valorPrincipal ?? v?.valor ?? v?.total); }
+  function valorPagamento(p){ return num(p?.valorPago ?? p?.valorRecebido ?? p?.valorPagamento ?? p?.valor ?? p?.total); }
+  function valorParcela(p){ return num(p?.valorParcela ?? p?.valorPrevisto ?? p?.valorCobrado ?? p?.saldo ?? p?.valor ?? p?.total); }
+  function saldoCliente(c){ return num(c?.saldoDevedor ?? c?.saldo ?? c?.valorEmAberto ?? c?.carteiraFinal ?? c?.saldoAberto ?? c?.totalAberto ?? c?.valorCarteira); }
+
+  function carteiraFallbackClientes(){
+    const clientes = cache("clientes");
+    const totalClientes = clientes.reduce((s,c)=>s+Math.max(0,saldoCliente(c)),0);
+    if(totalClientes > 0) return totalClientes;
+    return cache("vendas").reduce((s,v)=>s+Math.max(0,num(v?.saldoDevedor ?? v?.saldo ?? v?.valorEmAberto)),0);
+  }
+
+  function snapshotCarteiraAte(iso){
+    const caixas = cache("caixas")
+      .filter(c => !isCancelado(c) && isCaixaFechado(c) && valorCarteiraCaixa(c) > 0)
+      .filter(c => dateISO(c) && dateISO(c) <= iso);
+
+    const ultimos = new Map();
+    caixas.forEach(c => {
+      const chave = equipeIdOf(c) || vendedorIdOf(c) || nomeEquipe(c) || idOf(c);
+      const atual = ultimos.get(chave);
+      if(!atual || dateTime(c).getTime() >= dateTime(atual).getTime()) ultimos.set(chave, c);
+    });
+    const total = Array.from(ultimos.values()).reduce((s,c)=>s+valorCarteiraCaixa(c),0);
+    return total || (iso >= todayISO() ? carteiraFallbackClientes() : 0);
+  }
+
+  function recebidoNoDia(iso){
+    const pag = cache("pagamentos").filter(p=>!isCancelado(p) && dateISO(p)===iso).reduce((s,p)=>s+valorPagamento(p),0);
+    if(pag > 0) return pag;
+    return cache("caixas").filter(c=>!isCancelado(c) && dateISO(c)===iso).reduce((s,c)=>s+num(c.recebido ?? c.totalRecebido ?? c.recebimentos ?? c.valorRecebido),0);
+  }
+
+  function previstoNoDia(iso){
+    let total = 0;
+    cache("cobrancas").forEach(c => {
+      if(isCancelado(c) || isPago(c)) return;
+      const d = dateISO(c);
+      if(d === iso) total += valorParcela(c);
+    });
+    cache("vendas").forEach(v => {
+      if(isCancelado(v)) return;
+      arr(v.parcelas).forEach(p => {
+        if(isCancelado(p) || isPago(p)) return;
+        const d = dateISO(p);
+        if(d === iso) total += valorParcela(p);
+      });
+    });
+    return total;
+  }
+
+  function vendasNoDia(iso){
+    const vendas = cache("vendas").filter(v=>!isCancelado(v) && dateISO(v)===iso);
+    const total = vendas.reduce((s,v)=>s+valorVenda(v),0);
+    const clientes = new Set(vendas.map(v => clienteIdOf(v) || norm(nomeCliente(v))).filter(Boolean));
+    return {vendas,total,qtdClientes:clientes.size};
+  }
+
+  function clientesInadimplentes(){
+    const hoje = new Date(todayISO()+"T00:00:00");
+    const mapa = new Map();
+
+    function addAtraso(base, parcela){
+      const venc = toDate(parcela?.dataVencimento || parcela?.vencimento || parcela?.dataCobranca || parcela?.dataPrevista || parcela?.dataParcela || parcela?.data);
+      if(!venc || isCancelado(parcela) || isPago(parcela)) return;
+      const dias = Math.floor((hoje - new Date(isoLocal(venc)+"T00:00:00")) / DIA);
+      if(dias <= 10) return;
+      const cid = clienteIdOf(base) || clienteIdOf(parcela) || norm(nomeCliente(base) || nomeCliente(parcela));
+      if(!cid) return;
+      const atual = mapa.get(cid) || {base, vencido:0, dias:0};
+      atual.vencido += valorParcela(parcela);
+      atual.dias = Math.max(atual.dias, dias);
+      mapa.set(cid, atual);
+    }
+
+    cache("cobrancas").forEach(c => addAtraso(c,c));
+    cache("vendas").forEach(v => arr(v.parcelas).forEach(p => addAtraso(v,p)));
+    cache("clientes").forEach(c => {
+      const dias = num(c.diasAtraso ?? c.atraso ?? c.diasEmAtraso);
+      if(dias > 10 || norm(c.statusCliente || c.status || c.situacao).includes("INAD")){
+        const cid = idOf(c) || clienteIdOf(c) || norm(nomeCliente(c));
+        const atual = mapa.get(cid) || {base:c, vencido:0, dias:0};
+        atual.vencido = Math.max(atual.vencido, num(c.valorVencido ?? c.valorAtrasado ?? c.inadimplencia ?? saldoCliente(c)));
+        atual.dias = Math.max(atual.dias, dias || 11);
+        mapa.set(cid, atual);
+      }
+    });
+
+    return Array.from(mapa.entries()).map(([cid, info]) => {
+      const c = cache("clientes").find(x => idOf(x)===cid || clienteIdOf(x)===cid || norm(nomeCliente(x))===cid) || info.base || {};
+      const pags = cache("pagamentos").filter(p => (clienteIdOf(p) && clienteIdOf(p)===cid) || norm(nomeCliente(p))===norm(nomeCliente(c)));
+      return {
+        id:cid,
+        nome:nomeCliente(c),
+        documento:c.documento || c.cpf || c.cnpj || "",
+        telefone:c.telefone || c.telefonePrincipal || c.whatsapp || "",
+        equipe:nomeEquipe(c) !== "Não informado" ? nomeEquipe(c) : nomeEquipe(info.base),
+        vendedor:c.vendedorNome || info.base?.vendedorNome || info.base?.usuarioNome || "",
+        dias:info.dias,
+        vencido:info.vencido,
+        saldo:Math.max(saldoCliente(c), info.vencido),
+        totalPago:pags.reduce((s,p)=>s+valorPagamento(p),0),
+        pagamentos:pags.length,
+        ultimoPagamento:pags.map(dateISO).filter(Boolean).sort().pop() || "Sem pagamentos"
+      };
+    }).sort((a,b)=>b.saldo-a.saldo || b.dias-a.dias);
+  }
+
+  function updateCards(){
+    const hoje = todayISO();
+    const ontem = addDays(hoje,-1);
+    const carteira = snapshotCarteiraAte(hoje);
+    const carteiraAnterior = snapshotCarteiraAte(ontem);
+    const recebido = recebidoNoDia(hoje);
+    const previsto = previstoNoDia(hoje);
+    const inad = clientesInadimplentes();
+    const inadValor = inad.reduce((s,c)=>s+Math.max(0,c.saldo || c.vencido),0);
+    const inadPct = carteira ? inadValor/carteira*100 : 0;
+    const vendas = vendasNoDia(hoje);
+    const vendasAnt = vendasNoDia(ontem);
+
+    text(byId("kpiCarteira"), money(carteira));
+    const trend = byId("kpiCarteiraTrend");
+    if(trend){
+      if(carteiraAnterior > 0){
+        const diff = carteira - carteiraAnterior;
+        trend.className = `kpi-trend ${diff >= 0 ? "up" : "down"}`;
+        trend.innerHTML = `<span class="trend-arrow">${diff >= 0 ? "↑" : "↓"}</span><span>${diff >= 0 ? "Subiu" : "Desceu"} ${pct(Math.abs(diff/carteiraAnterior*100))} vs. último caixa fechado</span>`;
+      } else {
+        trend.className = "kpi-trend neutral";
+        trend.innerHTML = `<span class="trend-arrow">—</span><span>Sem último caixa fechado para comparar</span>`;
+      }
+    }
+
+    text(byId("kpiRecebidoHoje"), money(recebido));
+    const fill = byId("recebidoProgressFill"), pctEl = byId("recebidoProgressPct"), label = byId("recebidoProgressLabel"), sub = byId("recebidoProgressSub");
+    if(fill && pctEl && label && sub){
+      const p = previsto ? Math.min(100, recebido/previsto*100) : 0;
+      fill.style.width = p.toFixed(1)+"%";
+      text(pctEl, pct(p,0));
+      text(label, previsto ? `Pretendido hoje: ${money(previsto)}` : "Pretendido hoje não encontrado");
+      text(sub, previsto ? `Recebido ${money(recebido)} de ${money(previsto)}` : "Sem cobranças/parcelas previstas para hoje no banco.");
+    }
+
+    text(byId("kpiInadimplencia"), money(inadValor));
+    const inadSub = byId("kpiInadimplenciaSub") || document.querySelector('[data-dashboard-card="inadimplencia"] .kpi-sub');
+    if(inadSub) inadSub.innerHTML = `<strong>${pct(inadPct)}</strong> da carteira • ${inad.length} cliente(s) +10 dias`;
+
+    text(byId("kpiVendasHoje"), money(vendas.total));
+    const vendasSub = byId("kpiVendasHojeSub") || document.querySelector('[data-dashboard-card="vendas-hoje"] .kpi-sub');
+    if(vendasSub){
+      const comp = vendasAnt.total ? `${vendas.total >= vendasAnt.total ? "↑" : "↓"} ${pct(Math.abs((vendas.total-vendasAnt.total)/vendasAnt.total*100))} vs. dia anterior` : "sem venda no dia anterior";
+      vendasSub.innerHTML = `${vendas.qtdClientes} cliente(s) vendidos • ${comp}`;
+    }
+  }
+
+  function ensureDrawer(){
+    let drawer = byId("dashboardInsightDrawer");
+    if(drawer) return drawer;
+    drawer = document.createElement("div");
+    drawer.id = "dashboardInsightDrawer";
+    drawer.className = "dashboard-insight";
+    drawer.innerHTML = `<div class="dashboard-insight-overlay" data-close-real></div><aside class="dashboard-insight-panel" role="dialog" aria-modal="true"><div class="dashboard-insight-head"><div><h3 id="dashboardInsightTitle">Detalhes</h3><p id="dashboardInsightSubtitle"></p></div><button class="dashboard-insight-close" type="button" data-close-real>×</button></div><div class="dashboard-insight-body" id="dashboardInsightBody"></div></aside>`;
+    document.body.appendChild(drawer);
+    qsa("[data-close-real]", drawer).forEach(x => x.addEventListener("click", closeDrawer));
+    return drawer;
+  }
+  function openDrawer(title, subtitle, content){
+    const d = ensureDrawer();
+    text(byId("dashboardInsightTitle"), title);
+    text(byId("dashboardInsightSubtitle"), subtitle);
+    html(byId("dashboardInsightBody"), content);
+    d.classList.add("show");
+    document.body.style.overflow = "hidden";
+  }
+  function closeDrawer(){ const d=byId("dashboardInsightDrawer"); if(d) d.classList.remove("show"); document.body.style.overflow=""; }
+
+  function datasPeriodo(tipo, ini, fim){
+    const hoje = todayISO();
+    let inicio = addDays(hoje,-6), final = hoje;
+    if(tipo === "30d") inicio = addDays(hoje,-29);
+    if(tipo === "mes") inicio = isoLocal(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    if(tipo === "custom" && ini && fim){ inicio = ini; final = fim; }
+    const out = [];
+    for(let d=inicio; d<=final && out.length<370; d=addDays(d,1)) out.push(d);
+    return out;
+  }
+
+  function chartCarteira(datas){
+    const data = datas.map(d => ({data:d, valor:snapshotCarteiraAte(d)}));
+    const valores = data.map(x=>x.valor);
+    const max = Math.max(1, ...valores);
+    const min = Math.min(0, ...valores);
+    const W=820,H=330,L=96,R=28,T=28,B=46;
+    const x = (i) => L + (i * ((W-L-R)/Math.max(1,data.length-1)));
+    const y = (v) => H-B - ((v-min)/Math.max(1,max-min))*(H-T-B);
+    const pts = data.map((d,i)=>({x:x(i), y:y(d.valor), ...d}));
+    const poly = pts.map(p=>`${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
+    const ticks = [0,.25,.5,.75,1].map(k => min + (max-min)*k);
+    const labels = pts.filter((_,i)=>i===0||i===pts.length-1||i%Math.max(1,Math.ceil(pts.length/5))===0);
+    const circles = pts.map(p=>`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="4" fill="#ff8a00"><title>${brData(p.data)} • ${money(p.valor)}</title></circle>`).join("");
+    return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="100%" preserveAspectRatio="none">
+      <defs><linearGradient id="realCarteiraArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff8a00" stop-opacity=".22"/><stop offset="1" stop-color="#ff8a00" stop-opacity="0"/></linearGradient></defs>
+      ${ticks.map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#e2e8f0" stroke-dasharray="5 7"/><text x="${L-10}" y="${(y(v)+4).toFixed(1)}" text-anchor="end" font-size="11" font-weight="800" fill="#64748b">${money(v)}</text>`).join("")}
+      <polygon points="${L},${H-B} ${poly} ${W-R},${H-B}" fill="url(#realCarteiraArea)"/>
+      <polyline points="${poly}" fill="none" stroke="#ff8a00" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      ${circles}
+      ${labels.map(p=>`<text x="${p.x.toFixed(1)}" y="${H-14}" text-anchor="middle" font-size="11" font-weight="800" fill="#64748b">${brData(p.data).slice(0,5)}</text>`).join("")}
+    </svg>`;
+  }
+
+  function renderCarteira(tipo="7d", ini="", fim=""){
+    const datas = datasPeriodo(tipo, ini, fim);
+    const atual = snapshotCarteiraAte(todayISO());
+    const anterior = snapshotCarteiraAte(addDays(todayISO(),-1));
+    const diff = atual - anterior;
+    openDrawer("Carteira Final", "Evolução real da carteira pelo último caixa fechado de cada equipe/vendedor da empresa do usuário logado.", `
+      <div class="integro-data-alert">Fonte: caixas fechados filtrados por clientePlataformaId/empresaId/tenantId e permissões do usuário.</div>
+      <div class="insight-filters">
+        <select id="realCarteiraPeriodo"><option value="7d" ${tipo==="7d"?"selected":""}>Últimos 7 dias</option><option value="30d" ${tipo==="30d"?"selected":""}>Últimos 30 dias</option><option value="mes" ${tipo==="mes"?"selected":""}>Mês atual</option><option value="custom" ${tipo==="custom"?"selected":""}>Personalizado</option></select>
+        <input type="date" id="realCarteiraIni" value="${ini || datas[0] || todayISO()}">
+        <input type="date" id="realCarteiraFim" value="${fim || datas[datas.length-1] || todayISO()}">
+        <button type="button" id="realCarteiraAplicar">Aplicar</button>
+      </div>
+      <div class="insight-summary-grid"><div class="insight-summary-item"><small>Carteira atual</small><strong>${money(atual)}</strong></div><div class="insight-summary-item"><small>Último caixa anterior</small><strong>${anterior ? money(anterior) : "Sem dados"}</strong></div><div class="insight-summary-item"><small>Variação</small><strong class="${diff>=0?"positive":"negative"}">${anterior ? (diff>=0?"+":"") + money(diff) : "Sem comparação"}</strong></div></div>
+      <div class="insight-chart-card"><h4>Crescimento da carteira</h4><div class="insight-chart-wrap real-chart">${chartCarteira(datas)}</div><div class="insight-chart-legend"><span><i></i> Valor da carteira no período</span></div></div>`);
+    byId("realCarteiraAplicar")?.addEventListener("click", () => renderCarteira(byId("realCarteiraPeriodo")?.value || "7d", byId("realCarteiraIni")?.value || "", byId("realCarteiraFim")?.value || ""));
+  }
+
+  function renderRecebido(){
+    const recebido = recebidoNoDia(todayISO());
+    const previsto = previstoNoDia(todayISO());
+    openDrawer("Recebido Hoje", "Comparativo do recebido até o momento contra o valor que todas as equipes pretendem receber hoje.", `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Recebido</small><strong>${money(recebido)}</strong></div><div class="insight-summary-item"><small>Pretendido</small><strong>${money(previsto)}</strong></div><div class="insight-summary-item"><small>Progresso</small><strong>${previsto ? pct(recebido/previsto*100) : "0%"}</strong></div></div><div class="real-empty">O pretendido é calculado por cobranças/parcelas vencendo hoje, filtradas pela empresa e pelas equipes compatíveis com o usuário logado.</div>`);
+  }
+
+  function renderInadimplencia(){
+    const dados = clientesInadimplentes();
+    const total = dados.reduce((s,c)=>s+Math.max(0,c.saldo||c.vencido),0);
+    const carteira = snapshotCarteiraAte(todayISO());
+    const rows = dados.map(c => `<tr><td><strong>${esc(c.nome)}</strong><br><small>${esc(c.documento || c.telefone || "")}</small></td><td>${esc(c.equipe)}</td><td>${esc(c.vendedor || "-")}</td><td>${c.dias}</td><td>${money(c.vencido)}</td><td>${money(c.saldo)}</td><td>${c.pagamentos} pag. • ${esc(brData(c.ultimoPagamento))}</td></tr>`).join("");
+    openDrawer("Inadimplência +10 dias", "Clientes com mais de 10 dias de atraso, valor representado, equipe e relatório resumido de pagamentos.", `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Valor em risco</small><strong>${money(total)}</strong></div><div class="insight-summary-item"><small>% da carteira</small><strong>${carteira ? pct(total/carteira*100) : "0%"}</strong></div><div class="insight-summary-item"><small>Clientes</small><strong>${dados.length}</strong></div></div>${dados.length ? `<table class="real-table"><thead><tr><th>Cliente</th><th>Equipe</th><th>Vendedor</th><th>Dias</th><th>Vencido</th><th>Carteira</th><th>Pagamentos</th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="real-empty">Nenhum cliente com mais de 10 dias de atraso encontrado para esta empresa/usuário.</div>`}`);
+  }
+
+  function renderVendas(){
+    const hoje = vendasNoDia(todayISO());
+    const rows = hoje.vendas.map(v => `<tr><td>${esc(nomeCliente(v))}</td><td>${esc(nomeEquipe(v))}</td><td>${esc(v.vendedorNome || v.usuarioNome || "-")}</td><td>${money(valorVenda(v))}</td><td>${esc(brData(dateISO(v)))}</td></tr>`).join("");
+    openDrawer("Vendas Hoje", "Valor total vendido, clientes vendidos e registros filtrados pela empresa/usuário.", `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Valor vendido</small><strong>${money(hoje.total)}</strong></div><div class="insight-summary-item"><small>Clientes vendidos</small><strong>${hoje.qtdClientes}</strong></div><div class="insight-summary-item"><small>Quantidade de vendas</small><strong>${hoje.vendas.length}</strong></div></div>${hoje.vendas.length ? `<table class="real-table"><thead><tr><th>Cliente</th><th>Equipe</th><th>Vendedor</th><th>Valor</th><th>Data</th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="real-empty">Nenhuma venda registrada hoje para esta empresa/usuário.</div>`}`);
+  }
+
+  async function refreshRealDashboard(){
+    await loadAllRealData();
+    updateCards();
+    console.info(LOG_PREFIX, "dados vinculados", window.__integroDashboardRealData);
+  }
+
+  window.atualizarDashboardGerencialReal = refreshRealDashboard;
+
+  document.addEventListener("click", function(ev){
+    const card = ev.target.closest?.("[data-dashboard-card]");
+    if(!card) return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    const tipo = card.dataset.dashboardCard;
+    if(tipo === "carteira-final") return renderCarteira("7d");
+    if(tipo === "recebido-hoje") return renderRecebido();
+    if(tipo === "inadimplencia") return renderInadimplencia();
+    if(tipo === "vendas-hoje") return renderVendas();
+  }, true);
+
+  /* O boot e refresh do dashboard real agora são feitos uma única vez
+     pelo controlador final, após autenticação, tenant e caches mínimos. */
+  document.addEventListener("integro-dashboard-carregar-real", () => {
+    refreshRealDashboard();
+  });
+})();
+</script>
+
+
+
+<script id="integro-dashboard-controlador-estavel-js">
+/* =========================================================
+   ÍNTEGRO — CONTROLADOR ESTÁVEL DO DASHBOARD MASTER LOCAL
+   Objetivo:
+   - Eliminar piscadas nos cards após o loading.
+   - Evitar que fases antigas sobrescrevam os dados reais.
+   - Fazer apenas 1 atualização real após autenticação/tenant/caches.
+   - Reprocessar somente quando o usuário pedir refresh ou quando carregarTudo finalizar.
+========================================================= */
+(function(){
+  "use strict";
+
+  const LOG = "[ÍNTEGRO Dashboard Estável]";
+  const ESTADO = {
+    iniciado:false,
+    carregando:false,
+    agendado:false,
+    preloading:false,
+    prontoParaExibir:false,
+    ultimoHash:"",
+    ultimoRun:0
+  };
+
+  function user(){
+    try{
+      return window.usuarioLogado ||
+        window.currentUserData ||
+        window.userData ||
+        window.State?.getUsuarioLogado?.() ||
+        {};
+    }catch(e){
+      return {};
+    }
+  }
+
+  function tenant(){
+    const u = user();
+    try{
+      return String(
+        window.State?.getTenantId?.() ||
+        u.clientePlataformaId ||
+        u.empresaId ||
+        u.tenantId ||
+        localStorage.getItem("clientePlataformaId") ||
+        localStorage.getItem("empresaId") ||
+        localStorage.getItem("tenantId") ||
+        ""
+      );
+    }catch(e){
+      return "";
+    }
+  }
+
+  function authReady(){
+    try{
+      if(window.firebase?.auth && firebase.auth().currentUser) return true;
+    }catch(e){}
+    const u = user();
+    return !!(u && (u.id || u.uid || u.authUid || u.email));
+  }
+
+  function contextoPronto(){
+    return authReady() && !!tenant();
+  }
+
+  function sleep(ms){
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  async function aguardarContexto(maxMs){
+    const inicio = Date.now();
+    while(Date.now() - inicio < maxMs){
+      if(contextoPronto()) return true;
+      await sleep(120);
+    }
+    return contextoPronto();
+  }
+
+  function snapshotCards(){
+    const ids = [
+      "kpiCarteira",
+      "kpiRecebidoHoje",
+      "kpiVendasHoje",
+      "kpiInadimplencia",
+      "kpiCarteiraTrend",
+      "kpiInadimplenciaSub",
+      "kpiVendasHojeSub",
+      "recebidoProgressPct",
+      "recebidoProgressSub"
+    ];
+    return ids.map(id => {
+      const el = document.getElementById(id);
+      return `${id}:${el ? el.textContent : ""}`;
+    }).join("|");
+  }
+
+  function travarVisual(travar){
+    document.body.classList.toggle("integro-dashboard-atualizando", !!travar);
+  }
+
+  async function executarDashboardEstavel(origem){
+    if(ESTADO.carregando) return;
+    const agora = Date.now();
+    const origemTexto = String(origem || "auto");
+    const ehPreLoading = origemTexto.includes("loading") || ESTADO.preloading;
+    if(!ehPreLoading && agora - ESTADO.ultimoRun < 900) return;
+
+    ESTADO.carregando = true;
+    ESTADO.ultimoRun = agora;
+    travarVisual(true);
+
+    try{
+      await aguardarContexto(6500);
+
+      if(typeof window.atualizarDashboardGerencialReal === "function"){
+        await window.atualizarDashboardGerencialReal();
+      }
+
+      /* Atualiza somente complementos visuais que não devem recalcular a fonte principal. */
+      document.dispatchEvent(new CustomEvent("integro-dashboard-estavel", { detail:{ origem: origem || "auto" } }));
+
+      const hash = snapshotCards();
+      if(hash !== ESTADO.ultimoHash){
+        ESTADO.ultimoHash = hash;
+        console.info(LOG, "cards estabilizados", origem || "auto");
+      }
+    }catch(erro){
+      console.warn(LOG, "falha ao estabilizar dashboard", erro);
+    }finally{
+      travarVisual(false);
+      ESTADO.carregando = false;
+    }
+  }
+
+  function agendarDashboardEstavel(origem, atraso){
+    const origemTexto = String(origem || "auto");
+
+    /* Enquanto o loading está ativo, não deixa eventos soltos renderizarem o dashboard.
+       O único carregamento permitido nesse momento é o chamado direto pelo próprio loading. */
+    if(document.body.classList.contains("integro-booting") && !origemTexto.includes("loading")){
+      return;
+    }
+
+    if(ESTADO.agendado) return;
+    ESTADO.agendado = true;
+    setTimeout(async () => {
+      ESTADO.agendado = false;
+      await executarDashboardEstavel(origem);
+    }, Number(atraso || 0));
+  }
+
+  window.prepararDashboardAntesDoLoading = async function(){
+    ESTADO.preloading = true;
+    try{
+      await aguardarContexto(6500);
+
+      /* Primeira passada: busca dados reais e escreve nos cards ainda com a tela oculta. */
+      await executarDashboardEstavel("loading-primeira-passada");
+
+      /* Segunda passada curta: absorve promises/timestamps que chegam logo após o cache inicial,
+         mas ainda antes de liberar a interface para o usuário. */
+      await sleep(220);
+      await executarDashboardEstavel("loading-passada-final");
+
+      ESTADO.prontoParaExibir = true;
+      return true;
+    }finally{
+      ESTADO.preloading = false;
+      ESTADO.ultimoRun = Date.now();
+    }
+  };
+
+  const carregarTudoOriginal = window.carregarTudo;
+  if(typeof carregarTudoOriginal === "function" && !carregarTudoOriginal.__dashboardEstavelWrapped){
+    const wrapped = async function(...args){
+      const resultado = await carregarTudoOriginal.apply(this, args);
+      agendarDashboardEstavel("carregarTudo", 180);
+      return resultado;
+    };
+    wrapped.__dashboardEstavelWrapped = true;
+    window.carregarTudo = wrapped;
+  }
+
+  function podeAgendarEventoInicial(){
+    return !ESTADO.prontoParaExibir && !document.body.classList.contains("integro-booting");
+  }
+
+  document.addEventListener("usuario-validado", () => {
+    if(podeAgendarEventoInicial()) agendarDashboardEstavel("usuario-validado", 220);
+  });
+  document.addEventListener("integro-dados-carregados", () => {
+    if(podeAgendarEventoInicial()) agendarDashboardEstavel("dados-carregados", 120);
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if(podeAgendarEventoInicial()) agendarDashboardEstavel("DOMContentLoaded", 650);
+  });
+
+  window.addEventListener("load", () => {
+    if(podeAgendarEventoInicial()) agendarDashboardEstavel("load", 850);
+  });
+
+  try{
+    if(window.firebase?.auth){
+      firebase.auth().onAuthStateChanged(() => {
+        if(podeAgendarEventoInicial()) agendarDashboardEstavel("auth", 420);
+      });
+    }
+  }catch(e){}
+
+  window.atualizarDashboardEstavelIntegro = function(){
+    return executarDashboardEstavel("manual");
+  };
+})();
+</script>
+
+<style id="integro-dashboard-controlador-estavel-css">
+/* Mantém os cards visualmente estáveis durante atualização interna. */
+body.integro-dashboard-atualizando .dashboard-kpis-clean .kpi-card,
+body.integro-dashboard-atualizando #dashboard .kpi-card{
+  opacity:1!important;
+  animation:none!important;
+  transition:box-shadow .15s ease,border-color .15s ease!important;
+}
+body.integro-dashboard-atualizando #dashboard .kpi-value,
+body.integro-dashboard-atualizando #dashboard .kpi-sub,
+body.integro-dashboard-atualizando #dashboard .kpi-trend{
+  animation:none!important;
+}
+</style>
+
+
+<script id="integro-correcao-caixas-reais-v6">
+(function(){
+  "use strict";
+
+  const ICX = {
+    num(valor){
+      if (valor === null || valor === undefined || valor === "") return 0;
+      if (typeof valor === "number") return Number.isFinite(valor) ? valor : 0;
+      const txt = String(valor)
+        .replace("R$", "")
+        .replace(/\s/g, "")
+        .replace(/\./g, "")
+        .replace(",", ".");
+      const n = Number(txt);
+      return Number.isFinite(n) ? n : 0;
+    },
+
+    upper(valor){
+      return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+    },
+
+    id(obj){
+      return String(obj?.id || obj?.docId || obj?._id || obj?.uid || obj?.authUid || "");
+    },
+
+    db(){
+      try{
+        if (typeof db === "function") return db();
+        if (typeof getDb === "function") return getDb();
+        if (window.firebase?.firestore) return firebase.firestore();
+      }catch(e){}
+      return null;
+    },
+
+    collectionName(nome){
+      try{ if (typeof col === "function") return col(nome); }catch(e){}
+      try{ if (typeof colecao === "function") return colecao(nome); }catch(e){}
+      const key = String(nome || "").toUpperCase();
+      if (window.CONFIG?.COLECOES?.[key]) return window.CONFIG.COLECOES[key];
+      return String(nome || "").toLowerCase();
+    },
+
+    user(){
+      try{ if (typeof usuario === "function") return usuario() || {}; }catch(e){}
+      try{ if (typeof getUsuarioLogado === "function") return getUsuarioLogado() || {}; }catch(e){}
+      return window.usuarioLogado || window.currentUserData || {};
+    },
+
+    tenant(){
+      try{ if (typeof tenantPrincipal === "function") return tenantPrincipal(); }catch(e){}
+      const u = ICX.user();
+      return u.clientePlataformaId || u.tenantId || u.empresaId || u.clienteId || "";
+    },
+
+    money(valor){
+      try{ if (typeof money === "function") return money(valor); }catch(e){}
+      return ICX.num(valor).toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+    },
+
+    arr(nome){
+      try{ if (typeof arr === "function") return arr(nome) || []; }catch(e){}
+      return window[nome] || [];
+    },
+
+    caixas(){
+      try{ if (typeof caixasBase === "function") return caixasBase() || []; }catch(e){}
+      return ICX.arr("caixasCache");
+    },
+
+    vendas(){
+      try{ if (typeof vendasBase === "function") return vendasBase() || []; }catch(e){}
+      return ICX.arr("vendasCache");
+    },
+
+    pagamentos(){
+      try{ if (typeof pagamentosBase === "function") return pagamentosBase() || []; }catch(e){}
+      return ICX.arr("pagamentosCache");
+    },
+
+    solicitacoes(){
+      try{ if (typeof solicitacoesBase === "function") return solicitacoesBase() || []; }catch(e){}
+      return ICX.arr("solicitacoesCache");
+    },
+
+    equipes(){
+      try{ if (typeof equipesAtivas === "function") return equipesAtivas() || []; }catch(e){}
+      return ICX.arr("equipesCache").filter(e => e.ativo !== false && e.excluido !== true);
+    },
+
+    vendedores(){
+      try{ if (typeof vendedoresAtivos === "function") return vendedoresAtivos() || []; }catch(e){}
+      return ICX.arr("usuariosCache").filter(u => {
+        const t = ICX.upper(u.tipoUsuario || u.cargoNome || u.cargo || u.perfil);
+        return u.ativo !== false && u.excluido !== true && (t.includes("VENDEDOR") || t.includes("COBRADOR"));
+      });
+    },
+
+    date(valor){
+      if (!valor) return "";
+      if (typeof valor === "string") return valor.slice(0, 10);
+      if (valor?.toDate) return valor.toDate().toISOString().slice(0, 10);
+      if (valor instanceof Date) return valor.toISOString().slice(0, 10);
+      return "";
+    },
+
+    timestamp(valor){
+      if (!valor) return 0;
+      if (valor?.toDate) return valor.toDate().getTime();
+      if (valor instanceof Date) return valor.getTime();
+      const t = new Date(valor).getTime();
+      return Number.isFinite(t) ? t : 0;
+    },
+
+    dataRegistro(obj){
+      return ICX.date(
+        obj?.dataCaixa ||
+        obj?.dataAbertura ||
+        obj?.dataFechamento ||
+        obj?.dataVenda ||
+        obj?.dataPagamento ||
+        obj?.dataVencimento ||
+        obj?.data ||
+        obj?.criadoEm ||
+        obj?.abertoEm ||
+        obj?.fechadoEm
+      );
+    },
+
+    tsCaixa(c){
+      return ICX.timestamp(
+        c?.fechadoEm ||
+        c?.atualizadoEm ||
+        c?.dataFechamento ||
+        c?.abertoEm ||
+        c?.criadoEm ||
+        c?.dataCaixa ||
+        c?.data
+      );
+    },
+
+    statusCaixa(c){
+      return ICX.upper(c?.status || c?.estado || "SEM_CAIXA");
+    },
+
+    equipeId(obj){
+      try{
+        if (typeof equipeId === "function") return String(equipeId(obj) || "");
+      }catch(e){}
+      return String(obj?.equipeId || obj?.unidadeId || obj?.timeId || obj?.equipe || obj?.idEquipe || "");
+    },
+
+    vendedorId(obj){
+      try{
+        if (typeof vendedorId === "function") return String(vendedorId(obj) || "");
+      }catch(e){}
+      return String(obj?.vendedorId || obj?.usuarioId || obj?.userId || obj?.uid || obj?.authUid || obj?.idVendedor || "");
+    },
+
+    caixaId(obj){
+      return String(obj?.caixaId || obj?.idCaixa || obj?.caixaRef || obj?.refCaixa || "");
+    },
+
+    vendedorNaEquipe(vendedor, equipe){
+      try{ if (typeof vendedorNaEquipe === "function") return vendedorNaEquipe(vendedor, equipe); }catch(e){}
+      const eId = ICX.id(equipe) || ICX.equipeId(equipe);
+      const ids = [
+        vendedor?.equipeId,
+        vendedor?.unidadeId,
+        vendedor?.timeId,
+        vendedor?.equipe
+      ].filter(Boolean).map(String);
+
+      if (Array.isArray(vendedor?.equipesIds)) ids.push(...vendedor.equipesIds.map(String));
+      if (Array.isArray(vendedor?.equipes)) {
+        vendedor.equipes.forEach(e => ids.push(String(e?.id || e?.equipeId || e)));
+      }
+
+      return ids.includes(String(eId));
+    },
+
+    vendedoresDaEquipe(equipe){
+      const lista = ICX.vendedores().filter(v => ICX.vendedorNaEquipe(v, equipe));
+      return lista.length ? lista : [];
+    },
+
+    registroDaEquipe(obj, equipe, vendedores){
+      try{
+        const ids = (vendedores || []).map(v => ICX.id(v) || ICX.vendedorId(v)).filter(Boolean).map(String);
+        if (typeof registroDaEquipe === "function") return registroDaEquipe(obj, equipe, ids);
+      }catch(e){}
+
+      const eId = String(ICX.id(equipe) || ICX.equipeId(equipe));
+      const objEquipeId = ICX.equipeId(obj);
+      if (eId && objEquipeId && String(objEquipeId) === eId) return true;
+
+      const vendedoresIds = (vendedores || []).map(v => ICX.id(v) || ICX.vendedorId(v)).filter(Boolean).map(String);
+      const objVendedorId = ICX.vendedorId(obj);
+      return !!(objVendedorId && vendedoresIds.includes(String(objVendedorId)));
+    },
+
+    registrosDaEquipe(lista, equipe, vendedores){
+      return (lista || []).filter(item => ICX.registroDaEquipe(item, equipe, vendedores));
+    },
+
+    vendaTotalComJuros(venda){
+      const direto = ICX.num(
+        venda?.valorTotal ??
+        venda?.valorFinal ??
+        venda?.valorTotalVenda ??
+        venda?.totalComJuros ??
+        venda?.valorContrato ??
+        venda?.saldoDevedor ??
+        venda?.valorEmAberto
+      );
+      if (direto > 0) return direto;
+
+      const valorParcela = ICX.num(venda?.valorParcela ?? venda?.parcelaValor);
+      const qtdParcelas = ICX.num(venda?.parcelas ?? venda?.qtdParcelas ?? venda?.quantidadeParcelas);
+      if (valorParcela > 0 && qtdParcelas > 0) return valorParcela * qtdParcelas;
+
+      const principal = ICX.num(venda?.valorEmprestado ?? venda?.valorVenda ?? venda?.valorLiberado ?? venda?.valor ?? venda?.principal);
+      const jurosValor = ICX.num(venda?.valorJuros ?? venda?.jurosValor);
+      const jurosPct = ICX.num(venda?.taxaJuros ?? venda?.juros ?? venda?.percentualJuros);
+
+      if (principal <= 0) return 0;
+      if (jurosValor > 0) return principal + jurosValor;
+      if (jurosPct > 0) return principal + (principal * jurosPct / 100);
+      return principal;
+    },
+
+    vendaPrincipal(venda){
+      return ICX.num(venda?.valorEmprestado ?? venda?.valorLiberado ?? venda?.valorVenda ?? venda?.valor ?? venda?.principal);
+    },
+
+    pagamentoValor(pagamento){
+      return ICX.num(pagamento?.valorPago ?? pagamento?.valorRecebido ?? pagamento?.valor ?? pagamento?.totalPago ?? pagamento?.recebido);
+    },
+
+    valorFinalCaixa(caixa){
+      return ICX.num(
+        caixa?.valorRealFechamento ??
+        caixa?.valorCalculadoFechamento ??
+        caixa?.valorFechamento ??
+        caixa?.valorFinal ??
+        caixa?.saldoFinal ??
+        caixa?.caixaFinal ??
+        caixa?.saldoAtual ??
+        caixa?.valorAtual ??
+        caixa?.caixaAtual ??
+        caixa?.valorInicial ??
+        caixa?.saldoInicial
+      );
+    },
+
+    carteiraInicialCaixa(caixa){
+      return ICX.num(caixa?.carteiraInicial ?? caixa?.valorCarteiraInicial ?? caixa?.carteiraAbertura);
+    },
+
+    carteiraFinalInformada(caixa){
+      return ICX.num(caixa?.carteiraFinal ?? caixa?.carteiraAtual ?? caixa?.saldoCarteira ?? caixa?.valorCarteiraFinal);
+    },
+
+    registrosDoCaixa(caixa, lista){
+      const caixaId = ICX.id(caixa);
+      const equipeIdRef = ICX.equipeId(caixa);
+      const vendedorIdRef = ICX.vendedorId(caixa);
+      const dataRef = ICX.dataRegistro(caixa);
+
+      return (lista || []).filter(reg => {
+        const regCaixaId = ICX.caixaId(reg);
+        if (caixaId && regCaixaId && String(regCaixaId) === String(caixaId)) return true;
+
+        const mesmaEquipe = !equipeIdRef || !ICX.equipeId(reg) || String(ICX.equipeId(reg)) === String(equipeIdRef);
+        const mesmoVendedor = !vendedorIdRef || !ICX.vendedorId(reg) || String(ICX.vendedorId(reg)) === String(vendedorIdRef);
+        const mesmaData = !dataRef || !ICX.dataRegistro(reg) || ICX.dataRegistro(reg) === dataRef;
+
+        return mesmaEquipe && mesmoVendedor && mesmaData;
+      });
+    },
+
+    movimentoCaixa(caixa){
+      const vendas = ICX.registrosDoCaixa(caixa, ICX.vendas()).filter(v => {
+        const st = ICX.upper(v.status || v.statusVenda);
+        return !["CANCELADO", "CANCELADA", "EXCLUIDO", "EXCLUIDA"].includes(st);
+      });
+
+      const pagamentos = ICX.registrosDoCaixa(caixa, ICX.pagamentos()).filter(p => {
+        const st = ICX.upper(p.status);
+        return !["CANCELADO", "CANCELADA", "ESTORNADO"].includes(st);
+      });
+
+      const solicitacoes = ICX.registrosDoCaixa(caixa, ICX.solicitacoes()).filter(s => {
+        const st = ICX.upper(s.status);
+        return ["APROVADO", "APROVADA", "CONFIRMADO"].includes(st);
+      });
+
+      const vendasCarteira = vendas.reduce((s,v) => s + ICX.vendaTotalComJuros(v), 0) || ICX.num(caixa?.totalVendas ?? caixa?.valorVendas ?? caixa?.vendas);
+      const vendasCaixa = vendas.reduce((s,v) => s + ICX.vendaPrincipal(v), 0) || ICX.num(caixa?.valorLiberado ?? caixa?.valorEmprestadoLiberado);
+      const recebido = pagamentos.reduce((s,p) => s + ICX.pagamentoValor(p), 0) || ICX.num(caixa?.totalRecebido ?? caixa?.recebido ?? caixa?.recolhido ?? caixa?.recebimentos);
+
+      const ingressos = solicitacoes
+        .filter(s => ICX.upper(s.tipo || s.tipoSolicitacao).includes("INGRESSO"))
+        .reduce((s,x) => s + ICX.num(x.valor), 0) || ICX.num(caixa?.ingressos ?? caixa?.totalIngressos);
+
+      const despesas = solicitacoes
+        .filter(s => ["GASTO", "DESPESA"].includes(ICX.upper(s.tipo || s.tipoSolicitacao)))
+        .reduce((s,x) => s + ICX.num(x.valor), 0) || ICX.num(caixa?.despesas ?? caixa?.gastos ?? caixa?.totalDespesas);
+
+      const retiradas = solicitacoes
+        .filter(s => ICX.upper(s.tipo || s.tipoSolicitacao).includes("RETIRADA") || ICX.upper(s.tipo || s.tipoSolicitacao).includes("RETIRO"))
+        .reduce((s,x) => s + ICX.num(x.valor), 0) || ICX.num(caixa?.retiradas ?? caixa?.retiros ?? caixa?.totalRetiradas);
+
+      const caixaInicial = ICX.num(caixa?.valorInicial ?? caixa?.saldoInicial ?? caixa?.caixaInicial);
+      const carteiraInicial = ICX.carteiraInicialCaixa(caixa);
+      const caixaAtual = caixaInicial + recebido + ingressos - vendasCaixa - despesas - retiradas;
+      const carteiraCalculada = carteiraInicial + vendasCarteira - recebido;
+      const carteiraInformada = ICX.carteiraFinalInformada(caixa);
+
+      return {
+        caixaInicial,
+        carteiraInicial,
+        vendasCarteira,
+        vendasCaixa,
+        recebido,
+        ingressos,
+        despesas,
+        retiradas,
+        caixaAtual,
+        carteiraFinal: carteiraInformada !== 0 ? carteiraInformada : carteiraCalculada
+      };
+    },
+
+    carteiraFinalCaixa(caixa){
+      const informada = ICX.carteiraFinalInformada(caixa);
+      if (informada !== 0) return informada;
+      return ICX.movimentoCaixa(caixa).carteiraFinal;
+    },
+
+    ultimosFechados(equipe, vendedor){
+      const vendedores = vendedor ? [vendedor] : ICX.vendedoresDaEquipe(equipe);
+      const caixas = ICX.registrosDaEquipe(ICX.caixas(), equipe, vendedores)
+        .filter(c => c.excluido !== true)
+        .filter(c => ["FECHADO", "FECHADA"].includes(ICX.statusCaixa(c)));
+
+      const vId = vendedor ? String(ICX.id(vendedor) || ICX.vendedorId(vendedor)) : "";
+      const filtrados = vId ? caixas.filter(c => String(ICX.vendedorId(c)) === vId) : caixas;
+
+      return filtrados.sort((a,b) => ICX.tsCaixa(b) - ICX.tsCaixa(a));
+    },
+
+    ultimoFechado(equipe, vendedor){
+      return ICX.ultimosFechados(equipe, vendedor)[0] || null;
+    },
+
+    snapshotAbertura(equipe, vendedor){
+      const ultimo = ICX.ultimoFechado(equipe, vendedor);
+      if (ultimo){
+        return {
+          caixaInicial: ICX.valorFinalCaixa(ultimo),
+          carteiraInicial: ICX.carteiraFinalCaixa(ultimo),
+          origem: "ULTIMO_CAIXA_FECHADO",
+          ultimoCaixaId: ICX.id(ultimo)
+        };
+      }
+
+      return {
+        caixaInicial: 0,
+        carteiraInicial: 0,
+        origem: "SEM_CAIXA_ANTERIOR",
+        ultimoCaixaId: ""
+      };
+    },
+
+    snapshotsEquipe(equipe){
+      const vendedores = ICX.vendedoresDaEquipe(equipe);
+      if (!vendedores.length) return [ICX.snapshotAbertura(equipe, null)];
+      return vendedores.map(v => ICX.snapshotAbertura(equipe, v));
+    },
+
+    resumoAberturaEquipe(equipe){
+      const snaps = ICX.snapshotsEquipe(equipe);
+      return {
+        caixaInicial: snaps.reduce((s,x) => s + ICX.num(x.caixaInicial), 0),
+        carteiraInicial: snaps.reduce((s,x) => s + ICX.num(x.carteiraInicial), 0)
+      };
+    },
+
+    caixasAtuaisEquipe(equipe){
+      const vendedores = ICX.vendedoresDaEquipe(equipe);
+      const caixas = ICX.registrosDaEquipe(ICX.caixas(), equipe, vendedores).filter(c => c.excluido !== true);
+      const abertos = caixas.filter(c => ["ABERTO", "ABERTA"].includes(ICX.statusCaixa(c)) && c.ativo !== false);
+      if (abertos.length) return {estado:"ABERTO", caixas:abertos, abertos};
+
+      const porVendedor = [];
+      vendedores.forEach(v => {
+        const ultimo = ICX.ultimoFechado(equipe, v);
+        if (ultimo && !porVendedor.find(c => ICX.id(c) === ICX.id(ultimo))) porVendedor.push(ultimo);
+      });
+
+      if (!porVendedor.length){
+        const ultimoEquipe = ICX.ultimoFechado(equipe, null);
+        if (ultimoEquipe) porVendedor.push(ultimoEquipe);
+      }
+
+      return {
+        estado: porVendedor.length ? "FECHADO" : "SEM_CAIXA",
+        caixas: porVendedor,
+        abertos:[]
+      };
+    },
+
+    nomeEquipe(equipe){
+      try{ if (typeof equipeNome === "function") return equipeNome(equipe); }catch(e){}
+      return equipe?.nome || equipe?.nomeEquipe || "Equipe";
+    },
+
+    dataBR(valor){
+      try{ if (typeof dataBR === "function") return dataBR(valor); }catch(e){}
+      const d = ICX.date(valor);
+      if (!d) return "-";
+      const [a,m,dd] = d.split("-");
+      return `${dd}/${m}/${a}`;
+    },
+
+    dataHoraBR(valor){
+      try{ if (typeof dataHoraBR === "function") return dataHoraBR(valor); }catch(e){}
+      return ICX.dataBR(valor);
+    }
+  };
+
+  window.valorInicialPorUltimoFechamento = function(equipe, vendedor){
+    return ICX.snapshotAbertura(equipe, vendedor).caixaInicial;
+  };
+
+  window.valorCarteiraPorUltimoFechamento = function(equipe, vendedor){
+    return ICX.snapshotAbertura(equipe, vendedor).carteiraInicial;
+  };
+
+  window.calcularMovimentoCaixaIntegro = function(caixa){
+    return ICX.movimentoCaixa(caixa);
+  };
+
+  window.resumoEquipe = function(equipe){
+    const eId = String(ICX.id(equipe) || ICX.equipeId(equipe));
+    const vendedores = ICX.vendedoresDaEquipe(equipe);
+    const atual = ICX.caixasAtuaisEquipe(equipe);
+    const caixas = atual.caixas;
+    const ultima = caixas.slice().sort((a,b) => ICX.tsCaixa(b) - ICX.tsCaixa(a))[0] || null;
+
+    const movimentos = caixas.map(c => ICX.movimentoCaixa(c));
+    const caixaInicial = movimentos.reduce((s,m) => s + m.caixaInicial, 0);
+    const caixaAtual = atual.estado === "FECHADO"
+      ? caixas.reduce((s,c) => s + ICX.valorFinalCaixa(c), 0)
+      : movimentos.reduce((s,m) => s + m.caixaAtual, 0);
+
+    const carteiraInicial = movimentos.reduce((s,m) => s + m.carteiraInicial, 0);
+    const carteiraFinal = caixas.reduce((s,c) => s + ICX.carteiraFinalCaixa(c), 0);
+
+    const vendas = movimentos.reduce((s,m) => s + m.vendasCarteira, 0);
+    const recolhido = movimentos.reduce((s,m) => s + m.recebido, 0);
+    const ingressos = movimentos.reduce((s,m) => s + m.ingressos, 0);
+    const despesas = movimentos.reduce((s,m) => s + m.despesas + m.retiradas, 0);
+
+    return {
+      id: eId,
+      equipe,
+      nome: ICX.nomeEquipe(equipe),
+      data: ICX.dataBR(ultima?.dataCaixa || ultima?.dataAbertura || ultima?.abertoEm || ultima?.criadoEm || ultima?.fechadoEm),
+      estado: atual.estado,
+      caixaInicial,
+      caixaAtual,
+      carteiraInicial,
+      carteiraFinal,
+      vendas,
+      recolhido,
+      ingressos,
+      despesas,
+      ultimaSync: ultima ? ICX.dataHoraBR(ultima.atualizadoEm || ultima.fechadoEm || ultima.abertoEm || ultima.criadoEm || ultima.dataCaixa) : "-",
+      caixas,
+      caixasAbertos: atual.abertos,
+      abertos: atual.abertos,
+      vendedores
+    };
+  };
+
+  window.linhas = function(){
+    return ICX.equipes().map(window.resumoEquipe).sort((a,b) => String(a.nome).localeCompare(String(b.nome)));
+  };
+
+  window.criarCaixaParaVendedor = async function(vendedor, equipe, snapshot){
+    const database = ICX.db();
+    if (!database) throw new Error("Firebase não conectado.");
+
+    const snap = snapshot && typeof snapshot === "object"
+      ? snapshot
+      : { caixaInicial: ICX.num(snapshot), carteiraInicial: 0, origem:"MANUAL", ultimoCaixaId:"" };
+
+    const hoje = new Date().toISOString().slice(0, 10);
+    const user = ICX.user();
+    const tenant = ICX.tenant();
+    const equipeIdFinal = String(ICX.id(equipe) || ICX.equipeId(equipe));
+    const vendedorIdFinal = String(ICX.id(vendedor) || ICX.vendedorId(vendedor));
+
+    return database.collection(ICX.collectionName("CAIXAS")).add({
+      clientePlataformaId: tenant,
+      tenantId: tenant,
+      empresaId: user.empresaId || tenant,
+      clientePlataformaNome: user.clientePlataformaNome || user.empresaNome || "",
+
+      equipeId: equipeIdFinal,
+      equipeNome: ICX.nomeEquipe(equipe),
+
+      vendedorId: vendedorIdFinal,
+      usuarioId: vendedorIdFinal,
+      vendedorNome: vendedor?.nome || vendedor?.nomeCompleto || vendedor?.email || "Equipe",
+
+      status: "ABERTO",
+      ativo: true,
+      excluido: false,
+
+      valorInicial: ICX.num(snap.caixaInicial),
+      saldoInicial: ICX.num(snap.caixaInicial),
+      caixaInicial: ICX.num(snap.caixaInicial),
+      valorAtual: ICX.num(snap.caixaInicial),
+      saldoAtual: ICX.num(snap.caixaInicial),
+      caixaAtual: ICX.num(snap.caixaInicial),
+
+      carteiraInicial: ICX.num(snap.carteiraInicial),
+      carteiraFinal: ICX.num(snap.carteiraInicial),
+
+      vendas: 0,
+      totalVendas: 0,
+      valorVendas: 0,
+      valorLiberado: 0,
+
+      recolhido: 0,
+      recebido: 0,
+      totalRecebido: 0,
+
+      ingressos: 0,
+      despesas: 0,
+      retiradas: 0,
+
+      origemAbertura: snap.origem || "ULTIMO_CAIXA_FECHADO",
+      ultimoCaixaFechadoId: snap.ultimoCaixaId || "",
+
+      dataCaixa: hoje,
+      dataAbertura: hoje,
+
+      abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+
+      abertoPorUid: user.authUid || user.uid || user.id || "",
+      abertoPorNome: user.nome || user.nomeCompleto || user.email || "Usuário"
+    });
+  };
+
+  window.abrirSelecionadas = async function(){
+    const selecionadas = window.linhas().filter(r => window.CX?.selecionadas?.has(String(r.id)));
+    if (!selecionadas.length) return alert("Selecione pelo menos uma equipe.");
+
+    const elegiveis = selecionadas.filter(r => ["FECHADO", "SEM_CAIXA"].includes(r.estado));
+    const bloqueadas = selecionadas.filter(r => r.estado === "ABERTO");
+
+    if (!elegiveis.length){
+      return alert("Abertura permitida apenas para equipes com caixa FECHADO ou SEM CAIXA.");
+    }
+
+    const resumo = elegiveis.map(r => {
+      const snap = ICX.resumoAberturaEquipe(r.equipe);
+      return `${r.nome}: novo caixa inicial ${ICX.money(snap.caixaInicial)} | carteira inicial ${ICX.money(snap.carteiraInicial)}`;
+    }).join("\n");
+
+    if (!confirm(
+      `Abrir caixa para ${elegiveis.length} equipe(s)?\n\n${resumo}\n\n` +
+      "O caixa inicial será o saldo final do último caixa fechado.\n" +
+      "A carteira inicial será a carteira final do último caixa fechado."
+    )) return;
+
+    let criados = 0;
+    let ignorados = bloqueadas.length;
+
+    for (const r of elegiveis){
+      const vendedores = r.vendedores.length ? r.vendedores : [{id:"", nome:"Equipe"}];
+
+      for (const v of vendedores){
+        const idV = String(ICX.id(v) || ICX.vendedorId(v));
+        const jaAberto = r.caixasAbertos.some(c => !idV || String(ICX.vendedorId(c)) === idV);
+        if (jaAberto){
+          ignorados++;
+          continue;
+        }
+
+        const snap = ICX.snapshotAbertura(r.equipe, idV ? v : null);
+        await window.criarCaixaParaVendedor(v, r.equipe, snap);
+
+        try{
+          if (typeof registrarLogCaixa === "function"){
+            await registrarLogCaixa("ABERTURA_CAIXA", `Caixa aberto para ${r.nome} com saldo inicial de ${ICX.money(snap.caixaInicial)} e carteira inicial de ${ICX.money(snap.carteiraInicial)}.`, {
+              equipeId: r.id,
+              equipeNome: r.nome,
+              vendedorId: idV,
+              vendedorNome: v.nome || v.nomeCompleto || v.email || "Equipe",
+              valorInicial: snap.caixaInicial,
+              carteiraInicial: snap.carteiraInicial,
+              origemAbertura: snap.origem,
+              ultimoCaixaFechadoId: snap.ultimoCaixaId || ""
+            });
+          }
+        }catch(e){ console.warn("Log de abertura não registrado:", e); }
+
+        criados++;
+      }
+    }
+
+    if (window.CX?.selecionadas) window.CX.selecionadas.clear();
+    if (typeof carregarDados === "function") await carregarDados();
+    if (typeof renderTelaCaixas === "function") renderTelaCaixas();
+
+    alert(`Abertura concluída.\nCaixa(s) criado(s): ${criados}${ignorados ? `\nIgnorado(s): ${ignorados}` : ""}`);
+  };
+
+  window.calcularMovimentoCaixa = function(caixa){
+    return ICX.movimentoCaixa(caixa);
+  };
+
+  window.fecharSelecionadas = async function(){
+    const database = ICX.db();
+    if (!database) return alert("Firebase não conectado.");
+
+    const selecionadas = window.linhas().filter(r => window.CX?.selecionadas?.has(String(r.id)));
+    if (!selecionadas.length) return alert("Selecione pelo menos uma equipe.");
+
+    const caixas = [];
+    selecionadas.filter(r => r.estado === "ABERTO").forEach(r => {
+      r.caixasAbertos.forEach(c => {
+        if (!caixas.find(x => ICX.id(x) === ICX.id(c))) caixas.push(c);
+      });
+    });
+
+    if (!caixas.length) return alert("Nenhum caixa aberto encontrado nas equipes selecionadas.");
+    if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
+
+    for (const c of caixas){
+      const mov = ICX.movimentoCaixa(c);
+      await database.collection(ICX.collectionName("CAIXAS")).doc(ICX.id(c)).update({
+        status: "FECHADO",
+        ativo: false,
+
+        valorRealFechamento: mov.caixaAtual,
+        valorCalculadoFechamento: mov.caixaAtual,
+        saldoFinal: mov.caixaAtual,
+        valorFinal: mov.caixaAtual,
+        caixaFinal: mov.caixaAtual,
+
+        carteiraInicial: mov.carteiraInicial,
+        carteiraFinal: mov.carteiraFinal,
+
+        vendas: mov.vendasCarteira,
+        totalVendas: mov.vendasCarteira,
+        valorVendas: mov.vendasCarteira,
+        valorLiberado: mov.vendasCaixa,
+
+        recolhido: mov.recebido,
+        recebido: mov.recebido,
+        totalRecebido: mov.recebido,
+
+        ingressos: mov.ingressos,
+        despesas: mov.despesas,
+        retiradas: mov.retiradas,
+
+        divergenciaFechamento: false,
+
+        fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+
+        fechadoPorUid: ICX.user().authUid || ICX.user().uid || ICX.user().id || "",
+        fechadoPorNome: ICX.user().nome || ICX.user().nomeCompleto || ICX.user().email || "Usuário"
+      });
+    }
+
+    if (window.CX?.selecionadas) window.CX.selecionadas.clear();
+    if (typeof carregarDados === "function") await carregarDados();
+    if (typeof renderTelaCaixas === "function") renderTelaCaixas();
+
+    alert("Fechamento de caixa concluído.");
+  };
+
+  window.criarCaixaParaVendedorFinal = async function(vendedor, equipe, snapshot){
+    return window.criarCaixaParaVendedor(vendedor, equipe, snapshot);
+  };
+
+  window.abrirCaixaMassivoFinal = async function(){
+    const selecionadas = [...(window.SupervisaoCaixasIntegro?.selecionadas || [])];
+    if (!selecionadas.length) return alert("Selecione pelo menos uma equipe.");
+
+    const mapa = typeof montarMapaEquipes === "function" ? montarMapaEquipes() : new Map(ICX.equipes().map(e => [String(ICX.id(e) || ICX.equipeId(e)), e]));
+    const equipes = selecionadas.map(id => mapa.get(String(id))).filter(Boolean);
+    if (!equipes.length) return alert("Nenhuma equipe válida selecionada.");
+
+    const resumo = equipes.map(e => {
+      const snap = ICX.resumoAberturaEquipe(e);
+      return `${ICX.nomeEquipe(e)}: novo caixa inicial ${ICX.money(snap.caixaInicial)} | carteira inicial ${ICX.money(snap.carteiraInicial)}`;
+    }).join("\n");
+
+    if (!confirm(`Abrir caixa para ${equipes.length} equipe(s)?\n\n${resumo}`)) return;
+
+    let criados = 0;
+    for (const equipe of equipes){
+      const linha = window.resumoEquipe(equipe);
+      if (linha.estado === "ABERTO") continue;
+
+      const vendedores = linha.vendedores.length ? linha.vendedores : [{id:"", nome:"Equipe"}];
+      for (const v of vendedores){
+        const snap = ICX.snapshotAbertura(equipe, ICX.id(v) || ICX.vendedorId(v) ? v : null);
+        await window.criarCaixaParaVendedor(v, equipe, snap);
+        criados++;
+      }
+    }
+
+    if (window.SupervisaoCaixasIntegro?.selecionadas) window.SupervisaoCaixasIntegro.selecionadas.clear();
+    if (typeof carregarDadosCaixasReais === "function") await carregarDadosCaixasReais();
+    else if (typeof carregarDados === "function") await carregarDados();
+
+    if (typeof renderCaixasPremiumFinal === "function") renderCaixasPremiumFinal();
+    else if (typeof renderTelaCaixas === "function") renderTelaCaixas();
+
+    alert(`Abertura massiva concluída.\nCaixa(s) criado(s): ${criados}`);
+  };
+
+  window.fecharCaixaMassivoFinal = async function(){
+    const database = ICX.db();
+    if (!database) return alert("Firebase não conectado.");
+
+    const selecionadas = [...(window.SupervisaoCaixasIntegro?.selecionadas || [])];
+    if (!selecionadas.length) return alert("Selecione pelo menos uma equipe.");
+
+    const mapa = typeof montarMapaEquipes === "function" ? montarMapaEquipes() : new Map(ICX.equipes().map(e => [String(ICX.id(e) || ICX.equipeId(e)), e]));
+    const caixas = [];
+
+    selecionadas.forEach(id => {
+      const equipe = mapa.get(String(id));
+      if (!equipe) return;
+      const linha = window.resumoEquipe(equipe);
+      linha.caixasAbertos.forEach(c => {
+        if (!caixas.find(x => ICX.id(x) === ICX.id(c))) caixas.push(c);
+      });
+    });
+
+    if (!caixas.length) return alert("Nenhum caixa aberto encontrado nas equipes selecionadas.");
+    if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
+
+    for (const c of caixas){
+      const mov = ICX.movimentoCaixa(c);
+      await database.collection(ICX.collectionName("CAIXAS")).doc(ICX.id(c)).update({
+        status:"FECHADO",
+        ativo:false,
+        valorRealFechamento:mov.caixaAtual,
+        valorCalculadoFechamento:mov.caixaAtual,
+        saldoFinal:mov.caixaAtual,
+        valorFinal:mov.caixaAtual,
+        carteiraInicial:mov.carteiraInicial,
+        carteiraFinal:mov.carteiraFinal,
+        vendas:mov.vendasCarteira,
+        totalVendas:mov.vendasCarteira,
+        valorVendas:mov.vendasCarteira,
+        valorLiberado:mov.vendasCaixa,
+        recolhido:mov.recebido,
+        recebido:mov.recebido,
+        totalRecebido:mov.recebido,
+        ingressos:mov.ingressos,
+        despesas:mov.despesas,
+        retiradas:mov.retiradas,
+        divergenciaFechamento:false,
+        fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+        fechadoPorUid: ICX.user().authUid || ICX.user().uid || ICX.user().id || "",
+        fechadoPorNome: ICX.user().nome || ICX.user().nomeCompleto || ICX.user().email || "Usuário"
+      });
+    }
+
+    if (window.SupervisaoCaixasIntegro?.selecionadas) window.SupervisaoCaixasIntegro.selecionadas.clear();
+    if (typeof carregarDadosCaixasReais === "function") await carregarDadosCaixasReais();
+    else if (typeof carregarDados === "function") await carregarDados();
+
+    if (typeof renderCaixasPremiumFinal === "function") renderCaixasPremiumFinal();
+    else if (typeof renderTelaCaixas === "function") renderTelaCaixas();
+
+    alert("Fechamento massivo concluído.");
+  };
+
+  console.info("[ÍNTEGRO] Correção de caixas reais aplicada: abertura usa último fechamento e carteira acompanha vendas com juros menos recebimentos.");
 })();
 </script>
 

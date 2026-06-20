@@ -4,9 +4,6 @@
 // ========================================
 
 const CONFIG = {
-  // ===============================
-  // MAPEAMENTO DE ROTAS
-  // ===============================
   ROTAS_POR_TIPO: {
     master_global: "master-global.html",
     master_local: "master-local.html",
@@ -23,9 +20,6 @@ const CONFIG = {
     "financeiro.html": "financeiro"
   },
 
-  // ===============================
-  // TIPOS DE USUÁRIO
-  // ===============================
   TIPOS_USUARIO: {
     MASTER_GLOBAL: "master_global",
     MASTER_LOCAL: "master_local",
@@ -34,9 +28,6 @@ const CONFIG = {
     FINANCEIRO: "financeiro"
   },
 
-  // ===============================
-  // STATUS DE USUÁRIO
-  // ===============================
   STATUS_USUARIO: {
     ATIVO: "ATIVO",
     INATIVO: "INATIVO",
@@ -59,46 +50,73 @@ const CONFIG = {
 
   STATUS_SOLICITACAO: {
     PENDENTE: "PENDENTE",
-    APROVADO: "APROVADO",
-    REJEITADO: "REJEITADO"
+    APROVADA: "APROVADA",
+    RECUSADA: "RECUSADA",
+    CANCELADA: "CANCELADA"
   },
 
-  // ===============================
-  // LIMITES DE QUERIES
-  // ===============================
+  STATUS_CONTA: {
+    PENDENTE: "PENDENTE",
+    VENCIDA: "VENCIDA",
+    PAGA: "PAGA",
+    CANCELADA: "CANCELADA",
+    AGENDADA: "AGENDADA"
+  },
+
+  FREQUENCIAS: {
+    DIARIA: "DIÁRIA",
+    SEMANAL: "SEMANAL",
+    QUINZENAL: "QUINZENAL",
+    MENSAL: "MENSAL",
+    BIMESTRAL: "BIMESTRAL",
+    TRIMESTRAL: "TRIMESTRAL",
+    SEMESTRAL: "SEMESTRAL",
+    ANUAL: "ANUAL",
+    PERSONALIZADA: "PERSONALIZADA"
+  },
+
   LIMITS: {
-  USUARIOS: 300,
-  CARGOS: 200,
-  EQUIPES: 200,
-  CAIXAS: 300,
-  CLIENTES: 500,
-  VENDAS: 500,
-  PARCELAS: 1000,
-  PAGAMENTOS: 300,
-  SOLICITACOES: 300,
-  LOGS: 300
+    USUARIOS: 300,
+    CARGOS: 200,
+    EQUIPES: 200,
+    CAIXAS: 300,
+    CLIENTES: 500,
+    VENDAS: 500,
+    PARCELAS: 1000,
+    PAGAMENTOS: 300,
+    SOLICITACOES: 300,
+    LOGS: 300,
 
+    CATEGORIAS_FINANCEIRAS: 200,
+    FORMAS_PAGAMENTO: 100,
+    FORNECEDORES: 500,
+    CONTAS_PAGAR: 2000,
+    PAGAMENTOS_CONTAS: 2000,
+    RECORRENCIAS_FINANCEIRAS: 500
   },
 
-  // ===============================
-  // COLEÇÕES FIRESTORE
-  // ===============================
   COLECOES: {
-  USUARIOS: "usuarios",
-  CARGOS: "cargos",
-  EQUIPES: "equipes",
-  CAIXAS: "caixas",
-  CLIENTES: "clientes",
-  VENDAS: "vendas",
-  PARCELAS: "parcelas",
-  PAGAMENTOS: "pagamentos",
-  SOLICITACOES: "solicitacoes",
-  LOGS: "logs"
-},
+    USUARIOS: "usuarios",
+    CARGOS: "cargos",
+    EQUIPES: "equipes",
+    CAIXAS: "caixas",
 
-  // ===============================
-  // MENSAGENS DE ERRO
-  // ===============================
+    CLIENTES: "clientes",
+    VENDAS: "vendas",
+    PARCELAS: "parcelas",
+    PAGAMENTOS: "pagamentos",
+
+    SOLICITACOES: "solicitacoes",
+    LOGS: "logs",
+
+    CATEGORIAS_FINANCEIRAS: "categoriasFinanceiras",
+    FORMAS_PAGAMENTO: "formasPagamento",
+    FORNECEDORES: "fornecedores",
+    CONTAS_PAGAR: "contasPagar",
+    PAGAMENTOS_CONTAS: "pagamentosContas",
+    RECORRENCIAS_FINANCEIRAS: "recorrenciasFinanceiras"
+  },
+
   ERROS: {
     EMAIL_INVALIDO: "Email ou senha inválidos.",
     CONEXAO_FALHA: "Falha de conexão. Verifique sua internet e tente novamente.",
@@ -113,20 +131,13 @@ const CONFIG = {
     ACESSO_BLOQUEADO: "Acesso bloqueado para este usuário."
   },
 
-  // ===============================
-  // TIMEOUTS
-  // ===============================
   TIMEOUTS: {
     TOAST: 3500,
     DEBOUNCE: 400
   },
 
-  // ===============================
-  // OUTROS
-  // ===============================
   SENHA_PADRAO: "123456",
   TENANT_ID_KEY: "clientePlataformaId"
 };
 
-// Fazer CONFIG disponível globalmente
 window.CONFIG = CONFIG;

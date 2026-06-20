@@ -107,6 +107,34 @@ const UIHelpers = {
   },
 
   // ===============================
+  // LOADING
+  // ===============================
+  showLoading(texto = "Carregando...") {
+    let loading = document.getElementById("globalLoading");
+
+    if (!loading) {
+      loading = document.createElement("div");
+      loading.id = "globalLoading";
+      loading.innerHTML = `
+        <div class="loading-box">
+          <div class="loading-spinner"></div>
+          <span id="loadingText">${texto}</span>
+        </div>
+      `;
+      document.body.appendChild(loading);
+    }
+
+    const textoEl = document.getElementById("loadingText");
+    if (textoEl) textoEl.innerText = texto;
+    loading.style.display = "flex";
+  },
+
+  hideLoading() {
+    const loading = document.getElementById("globalLoading");
+    if (loading) loading.style.display = "none";
+  },
+
+  // ===============================
   // ALERTA
   // ===============================
   alerta(mensagem) {
@@ -125,6 +153,14 @@ function getInputValue(elementId) {
 
 function limparInput(elementId) {
   UIHelpers.limparInput(elementId);
+}
+
+function showLoading(texto = "Carregando...") {
+  UIHelpers.showLoading(texto);
+}
+
+function hideLoading() {
+  UIHelpers.hideLoading();
 }
 
 // Fazer UIHelpers disponível globalmente

@@ -102,6 +102,28 @@ document.addEventListener("usuario-validado", (event) => {
 
 document.addEventListener("DOMContentLoaded", () => {
   preencherUsuarioLayout();
+  aplicarEstadoSidebarSalvo();
+});
+
+function aplicarEstadoSidebarSalvo() {
+  const sidebar = document.getElementById("sidebar");
+  if (!sidebar || window.innerWidth <= 900) return;
+
+  if (localStorage.getItem("integroSidebarCollapsed") === "true") {
+    sidebar.classList.add("collapsed");
+  }
+}
+
+document.addEventListener("click", (event) => {
+  const botaoCollapse = event.target?.closest?.(".collapse-btn");
+  if (!botaoCollapse || window.innerWidth <= 900) return;
+
+  setTimeout(() => {
+    const sidebar = document.getElementById("sidebar");
+    if (sidebar) {
+      localStorage.setItem("integroSidebarCollapsed", String(sidebar.classList.contains("collapsed")));
+    }
+  }, 0);
 });
 
 // ===============================
