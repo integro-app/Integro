@@ -1083,6 +1083,14 @@
     display: none !important;
   }
 
+  .brand-logo-wrap .logo-integro-sidebar {
+    display: none !important;
+  }
+
+  .brand-logo-wrap .logo-integro-text {
+    display: block !important;
+  }
+
   body.tela-operacao-vendedor .topbar {
     min-height: 0 !important;
     padding: 0 !important;
@@ -1221,7 +1229,7 @@
     border-radius: 18px;
     padding: 14px;
     display: grid;
-    grid-template-columns: 6px minmax(180px, .75fr) minmax(360px, 1.35fr) 150px;
+    grid-template-columns: 6px minmax(190px, .75fr) minmax(360px, 1.35fr) 290px;
     gap: 12px;
     align-items: stretch;
     box-shadow: 0 8px 20px rgba(15,23,42,.04);
@@ -1301,7 +1309,7 @@
 
   .cobranca-actions-clean {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     align-items: stretch;
     justify-content: stretch;
@@ -1313,32 +1321,52 @@
     padding: 0 10px !important;
     border-radius: 12px !important;
     font-size: 12px !important;
+    font-weight: 900 !important;
     box-shadow: none !important;
     white-space: nowrap;
   }
 
   .cobranca-actions-clean .acao-pagar {
-    background: #ecfdf5 !important;
-    border: 1px solid #bbf7d0 !important;
-    color: #166534 !important;
+    background: #009b2f !important;
+    border: 1px solid #008629 !important;
+    color: #fff !important;
   }
 
   .cobranca-actions-clean button[onclick*="abrirPagamentoCliente"] {
-    background: #ecfdf5 !important;
-    border: 1px solid #bbf7d0 !important;
-    color: #166534 !important;
+    background: #009b2f !important;
+    border: 1px solid #008629 !important;
+    color: #fff !important;
   }
 
   .cobranca-actions-clean .acao-nao-pagou {
-    background: #fef2f2 !important;
-    border: 1px solid #fecaca !important;
-    color: #991b1b !important;
+    background: #ef111f !important;
+    border: 1px solid #dc0b18 !important;
+    color: #fff !important;
+  }
+
+  .btn-nao-pago-clean {
+    background: #ef111f !important;
+    border: 1px solid #dc0b18 !important;
+    color: #fff !important;
+  }
+
+  .btn-pago-clean {
+    background: #009b2f !important;
+    border: 1px solid #008629 !important;
+    color: #fff !important;
   }
 
   .cobranca-actions-clean button[onclick*="registrarNaoPagamentoVenda"] {
-    background: #fef2f2 !important;
-    border: 1px solid #fecaca !important;
-    color: #991b1b !important;
+    background: #ef111f !important;
+    border: 1px solid #dc0b18 !important;
+    color: #fff !important;
+  }
+
+  .btn-cobrar-clean,
+  .cobranca-actions-clean button[onclick*="abrirWhatsAppClienteCobranca"] {
+    background: #062f66 !important;
+    border: 1px solid #052756 !important;
+    color: #fff !important;
   }
 
   .cobranca-actions-clean .acao-detalhes,
@@ -1355,8 +1383,22 @@
 
   .fechar-caixa-final-clean {
     margin-top: 14px;
-    display: flex;
-    justify-content: flex-end;
+    display: grid;
+    gap: 10px;
+    justify-content: stretch;
+  }
+
+  .fechar-caixa-final-clean .fechamento-status-clean {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    margin: 0 !important;
+    padding: 12px 14px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    color: #64748b;
+    font-weight: 900;
   }
 
   .fechar-caixa-final-clean .btn {
@@ -1364,6 +1406,7 @@
     height: 44px !important;
     border-radius: 14px !important;
     padding: 0 18px !important;
+    justify-self: end;
   }
 
   .fechar-caixa-final-clean .btn:disabled {
@@ -1406,7 +1449,7 @@
 
   @media (max-width: 1199px) {
     .cobranca-card-clean {
-      grid-template-columns: 6px 1fr 128px;
+      grid-template-columns: 6px 1fr;
       align-items: start;
     }
 
@@ -1415,8 +1458,9 @@
     }
 
     .cobranca-actions-clean {
-      grid-column: 3;
-      grid-row: 1 / span 2;
+      grid-column: 2;
+      grid-row: auto;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
@@ -1500,7 +1544,7 @@
       padding: 11px;
       border-radius: 16px;
       gap: 10px;
-      grid-template-columns: 5px 1fr 84px;
+      grid-template-columns: 5px 1fr;
     }
 
     .cobranca-lateral-clean {
@@ -1519,16 +1563,16 @@
 
     .cobranca-actions-clean {
       display: grid;
-      grid-template-columns: 1fr;
-      width: 84px;
-      grid-column: 3;
-      grid-row: 1;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      width: 100%;
+      grid-column: 2 / -1;
+      grid-row: auto;
     }
 
     .cobranca-actions-clean .btn {
       width: 100%;
-      padding: 0 !important;
-      font-size: 0 !important;
+      padding: 0 8px !important;
+      font-size: 12px !important;
       min-width: 38px;
       height: 38px !important;
       min-height: 38px !important;
@@ -1771,10 +1815,10 @@
           </button>
 
 
-          <button onclick="trocarTela('vendas', this); abrirAbaVendasCobrancas('vendas')">
+          <button onclick="trocarTela('cobrancas', this)">
             <span class="menu-left">
               <span>🧾</span>
-              Vendas/Cobranças
+              Cobranças
             </span>
             <span>›</span>
           </button>
@@ -3021,6 +3065,7 @@
             <div id="listaCobrancas" class="grid" style="gap:14px;"></div>
 
             <div class="fechar-caixa-final-clean">
+              <div id="statusFechamentoCobrancasFinal" class="fechamento-status-clean"></div>
               <button
                 id="btnFecharCaixaCobrancas"
                 class="btn btn-primary"
@@ -4288,7 +4333,7 @@
       </script>
 
       <!-- COBRANÇAS -->
-      <!-- Tela de cobranças incorporada à tela Vendas/Cobranças. -->
+      <!-- Tela de cobranças incorporada à tela Cobranças. -->
 
       <div
         id="modalFiltrosCobranca"
@@ -5045,6 +5090,104 @@
                 </button>
                 <button class="btn" title="Registrar não pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${item.vendaId}')">
                   <span>×</span> Não
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        function abrirWhatsAppClienteCobranca(clienteId, vendaId) {
+          const item = montarCobrancasPorVenda().find(x => x.vendaId === vendaId) || {};
+          const cliente = (clientesCache || []).find(c => c.id === clienteId) || item.cliente || {};
+          const bruto =
+            cliente.telefone ||
+            cliente.telefonePrincipal ||
+            item.telefone ||
+            item.telefonePrincipal ||
+            cliente.whatsapp ||
+            cliente.celular ||
+            cliente.telefones?.[0]?.numero ||
+            "";
+          let digitos = String(bruto).replace(/\D/g, "");
+
+          if (!digitos) {
+            alert("Cliente não possui telefone cadastrado para cobrança.");
+            return;
+          }
+
+          if (!digitos.startsWith("55")) {
+            digitos = "55" + digitos;
+          }
+
+          window.open(`https://wa.me/${digitos}`, "_blank", "noopener,noreferrer");
+        }
+
+        function cardCobrancaCliente(item) {
+          const cor =
+            item.pagoHoje ? "#16a34a" :
+            item.naoPagoHoje ? "#dc2626" :
+            item.comCobrancaHoje ? "#f97316" :
+            "#94a3b8";
+
+          const label =
+            item.situacao === "ATRASADO" ? `Atrasado ${item.diasIndicador} dias` :
+            item.situacao === "ADIANTADO" ? `Adiantado ${item.diasIndicador} parcelas` :
+            "Em dia";
+
+          const nomeDestaque = item.clienteApelido || item.apelido || item.clienteNome || "Cliente";
+          const nomeCompleto = item.nomeCompleto || item.clienteNome || "";
+          const acoesBloqueadas = caixaEstaFechado();
+          const progressoAtual = Math.max(0, Number(item.progresso || 0));
+          const totalParcelas = Math.max(Number(item.totalParcelas || 1), 1);
+          const progressoPercentual = Math.max(0, Math.min(100, Math.round((progressoAtual / totalParcelas) * 100)));
+          const iniciais = String(nomeDestaque || "CL")
+            .trim()
+            .split(/\s+/)
+            .slice(0, 2)
+            .map(p => p[0])
+            .join("")
+            .toUpperCase();
+
+          return `
+            <div class="venda-cobranca-card cobranca-card-clean">
+              <div class="cobranca-lateral-clean" style="background:${cor};"></div>
+
+              <div class="cobranca-cliente-clean" onclick="abrirOpcoesCobranca('${item.vendaId}')" style="cursor:pointer;min-width:0;">
+                <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+                  <div style="width:52px;height:52px;border-radius:18px;display:grid;place-items:center;background:${cor}18;border:1px solid ${cor}44;color:${cor};font-weight:900;font-size:18px;flex-shrink:0;">${iniciais}</div>
+                  <div style="min-width:0;">
+                    <strong>${nomeDestaque}</strong>
+                    ${nomeCompleto && nomeCompleto !== nomeDestaque ? `<small>${nomeCompleto}</small>` : ""}
+                    <small class="badge-situacao-geral" style="display:inline-flex;margin-top:7px;color:${cor};font-weight:900;">
+                      ${label}
+                    </small>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cobranca-card-grid cobranca-metricas-clean">
+                <div class="cobranca-mini-clean"><span>Vr. parcela</span><strong>${moeda(item.valorParcela)}</strong></div>
+                <div class="cobranca-mini-clean"><span>Saldo devedor</span><strong>${moeda(item.saldoDevedor)}</strong></div>
+                <div class="cobranca-mini-clean"><span>Progresso</span><strong>${formatarNumeroCurto(progressoAtual)} de ${totalParcelas}</strong></div>
+                <div class="cobranca-mini-clean"><span>Próxima cobrança</span><strong>${item.proximaCobrancaTexto}</strong></div>
+                <div class="cobranca-progress-clean" style="grid-column:1/-1;display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;margin-top:3px;">
+                  <strong style="color:#ff6b00;font-size:12px;">${progressoPercentual}%</strong>
+                  <div class="cobranca-progresso-wrap" title="${progressoPercentual}% das parcelas">
+                    <div class="cobranca-progresso-fill" style="width:${progressoPercentual}%;"></div>
+                  </div>
+                  <strong style="color:#64748b;font-size:12px;">${formatarNumeroCurto(progressoAtual)} de ${totalParcelas}</strong>
+                </div>
+              </div>
+
+              <div class="cobranca-actions-clean">
+                <button class="btn btn-cobrar-clean" title="Cobrar pelo WhatsApp" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${item.clienteId}','${item.vendaId}')">
+                  <span>☏</span> Cobrar
+                </button>
+                <button class="btn btn-nao-pago-clean" title="Registrar não pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${item.vendaId}')">
+                  <span>×</span> Não pago
+                </button>
+                <button class="btn btn-pago-clean" title="Registrar pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${item.vendaId}')">
+                  <span>✓</span> Pago
                 </button>
               </div>
             </div>
@@ -7609,7 +7752,8 @@ async function verificarCaixaAbertoDiaAnterior() {
         function atualizarEstadoBotaoFechamento() {
           const botao = document.getElementById("btnFecharCaixaCobrancas");
           const status = document.getElementById("statusFechamentoCobrancas");
-          if (!botao && !status) return;
+          const statusFinal = document.getElementById("statusFechamentoCobrancasFinal");
+          if (!botao && !status && !statusFinal) return;
 
           const pendencias = getPendenciasRotaHoje();
           const fechado = caixaEstaFechado();
@@ -7634,6 +7778,15 @@ async function verificarCaixaAbertoDiaAnterior() {
                 ? `Faltam ${pendencias.length} cliente(s) para visitar/tabular.`
                 : "Todos os clientes da rota foram tabulados. Fechamento liberado.";
             status.style.color = fechado || pendencias.length ? "#b45309" : "#166534";
+          }
+
+          if (statusFinal) {
+            statusFinal.innerHTML = fechado
+              ? `<span>🔒</span><span>Caixa fechado. Ações operacionais bloqueadas.</span>`
+              : pendencias.length
+                ? `<span>ⓘ</span><span>Faltam ${pendencias.length} cliente(s) para visitar/tabular.</span>`
+                : `<span>✓</span><span>Todos os clientes da rota foram tabulados. Fechamento liberado.</span>`;
+            statusFinal.style.color = fechado || pendencias.length ? "#b45309" : "#166534";
           }
         }
 
@@ -10195,13 +10348,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     sidebar.innerHTML = `
       <div class="brand-premium">
         <div class="brand-logo-wrap">
-          <img
-            src="assets/logo-integro.png"
-            alt="ÍNTEGRO"
-            class="logo-integro-sidebar"
-            onerror="this.style.display='none';this.nextElementSibling.style.display='block';"
-          >
-          <div class="logo-integro-text" style="display:none;">ÍNTE<span>GRO</span></div>
+          <div class="logo-integro-text" style="display:block;">ÍNTE<span>GRO</span></div>
         </div>
       </div>
 
@@ -10223,29 +10370,23 @@ async function verificarCaixaAbertoDiaAnterior() {
 
       <div class="menu-group-title">Principal</div>
 
-      <div class="menu-item active" data-modulo="dashboard" onclick="trocarTela('dashboard', this)">
+      <div class="menu-item" data-modulo="dashboard" onclick="trocarTela('dashboard', this)">
         <span class="menu-icon material-symbols-rounded">dashboard</span>
         <span class="menu-label">Dashboard</span>
         <span class="chevron">›</span>
       </div>
 
-      <div class="menu-group-title">Operação</div>
+      <div class="menu-item active" data-modulo="cobrancas" onclick="trocarTela('cobrancas', this)">
+        <span class="menu-icon material-symbols-rounded">point_of_sale</span>
+        <span class="menu-label">Cobranças</span>
+        <span class="chevron">›</span>
+      </div>
+
+      <div class="menu-group-title">Clientes</div>
 
       <div class="menu-item" data-modulo="clientes" onclick="trocarTela('clientes', this)">
-        <span class="menu-icon material-symbols-rounded">groups</span>
-        <span class="menu-label">Clientes</span>
-        <span class="chevron">›</span>
-      </div>
-
-      <div class="menu-item" data-modulo="vendas" onclick="trocarTela('vendas', this); abrirAbaVendasCobrancas('vendas')">
-        <span class="menu-icon material-symbols-rounded">shopping_cart</span>
-        <span class="menu-label">Vendas/Cobranças</span>
-        <span class="chevron">›</span>
-      </div>
-
-      <div class="menu-item" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes', this)">
-        <span class="menu-icon material-symbols-rounded">task</span>
-        <span class="menu-label">Solicitações</span>
+        <span class="menu-icon material-symbols-rounded">search</span>
+        <span class="menu-label">Consultar</span>
         <span class="chevron">›</span>
       </div>
 
@@ -10255,18 +10396,18 @@ async function verificarCaixaAbertoDiaAnterior() {
         <span class="chevron">›</span>
       </div>
 
-      <div class="menu-group-title">Comunicação</div>
+      <div class="menu-group-title">Operação</div>
+
+      <div class="menu-item" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes', this)">
+        <span class="menu-icon material-symbols-rounded">task</span>
+        <span class="menu-label">Solicitações</span>
+        <span class="chevron">›</span>
+      </div>
 
       <div class="menu-item" data-modulo="notificacoes" onclick="trocarTela('notificacoes', this)">
         <span class="menu-icon material-symbols-rounded">notifications</span>
         <span class="menu-label">Notificações</span>
         <span class="menu-badge" id="badgeNotificacoes">0</span>
-      </div>
-
-      <div class="menu-item" data-modulo="chatInterno" onclick="trocarTela('chatInterno', this)">
-        <span class="menu-icon material-symbols-rounded">chat</span>
-        <span class="menu-label">Chat interno</span>
-        <span class="menu-new">Novo</span>
       </div>
 
       <div class="menu-group-title">Sistema</div>
@@ -10330,23 +10471,23 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   function corrigirTelaInicial() {
-    const dashboard = byId("dashboard");
+    qsa(".screen").forEach(screen => {
+      const ativo = screen.id === "vendas";
+      screen.style.display = ativo ? "block" : "none";
+      screen.classList.toggle("active", ativo);
+    });
 
-    if (dashboard) {
-      qsa(".screen").forEach(screen => {
-        if (screen.id === "dashboard") {
-          screen.style.display = "block";
-          screen.classList.add("active");
-        } else if (!screen.style.display || screen.style.display === "block") {
-          screen.style.display = screen.id === "dashboard" ? "block" : "none";
-          screen.classList.remove("active");
-        }
-      });
-    }
+    document.body.classList.add("tela-operacao-vendedor");
 
     qsa(".menu-item").forEach(item => {
-      item.classList.toggle("active", item.dataset.modulo === "dashboard");
+      item.classList.toggle("active", item.dataset.modulo === "cobrancas");
     });
+
+    if (typeof window.abrirAbaVendasCobrancas === "function") {
+      setTimeout(function () {
+        window.abrirAbaVendasCobrancas("cobrancas");
+      }, 0);
+    }
   }
 
   function patchPreencherUsuario() {
@@ -10377,15 +10518,19 @@ async function verificarCaixaAbertoDiaAnterior() {
     const original = window.trocarTela;
 
     window.trocarTela = function (id, el) {
+      const moduloSolicitado = el?.dataset?.modulo || id;
+      const idOriginal = id;
+
       if (typeof original === "function") {
         original.call(this, id, el);
       } else {
+        const telaId = id === "cobrancas" ? "vendas" : id;
         qsa(".screen").forEach(screen => {
           screen.style.display = "none";
           screen.classList.remove("active");
         });
 
-        const atual = byId(id);
+        const atual = byId(telaId);
         if (atual) {
           atual.style.display = "block";
           atual.classList.add("active");
@@ -10399,21 +10544,23 @@ async function verificarCaixaAbertoDiaAnterior() {
       if (el && el.classList && el.classList.contains("menu-item")) {
         el.classList.add("active");
       } else {
-        const item = qsa(".menu-item").find(menu => menu.dataset.modulo === id);
+        const item = qsa(".menu-item").find(menu => menu.dataset.modulo === moduloSolicitado || menu.dataset.modulo === idOriginal);
         if (item) item.classList.add("active");
       }
 
-      if (id === "vendas" && typeof window.abrirAbaVendasCobrancas === "function") {
+      document.body.classList.toggle("tela-operacao-vendedor", idOriginal === "vendas" || idOriginal === "cobrancas");
+
+      if ((idOriginal === "vendas" || idOriginal === "cobrancas") && typeof window.abrirAbaVendasCobrancas === "function") {
         setTimeout(function () {
-          window.abrirAbaVendasCobrancas("vendas");
+          window.abrirAbaVendasCobrancas("cobrancas");
         }, 0);
       }
 
-      if (id === "solicitacoes" && typeof window.renderSolicitacoes === "function") {
+      if (idOriginal === "solicitacoes" && typeof window.renderSolicitacoes === "function") {
         setTimeout(window.renderSolicitacoes, 0);
       }
 
-      if (id === "caixa" && typeof window.renderIndicacoes === "function") {
+      if (idOriginal === "caixa" && typeof window.renderIndicacoes === "function") {
         setTimeout(window.renderIndicacoes, 0);
       }
 
