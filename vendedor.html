@@ -1070,6 +1070,480 @@
 
   </style>
 
+<style id="integro-vendas-cobrancas-clean">
+  #vendas .panel {
+    padding: 18px;
+  }
+
+  .operacao-header-clean {
+    display: none;
+  }
+
+  body.tela-operacao-vendedor .date-chip {
+    display: none !important;
+  }
+
+  body.tela-operacao-vendedor .topbar {
+    min-height: 0 !important;
+    padding: 0 !important;
+    margin-bottom: 12px !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.tela-operacao-vendedor .top-left > div,
+  body.tela-operacao-vendedor #pageTitle,
+  body.tela-operacao-vendedor #pageSubtitle,
+  body.tela-operacao-vendedor #btnTopNovoCliente {
+    display: none !important;
+  }
+
+  @media (min-width: 981px) {
+    body.tela-operacao-vendedor .topbar {
+      display: none !important;
+    }
+  }
+
+  .operacao-tabs-clean {
+    display: flex !important;
+    grid-template-columns: none !important;
+    align-items: center !important;
+    gap: 4px !important;
+    margin-bottom: 14px !important;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .operacao-tabs-clean .tab-operacao-clean {
+    width: auto !important;
+    min-height: 40px !important;
+    height: 40px !important;
+    padding: 0 14px !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    color: #64748b !important;
+    font-size: 14px !important;
+    font-weight: 900 !important;
+    position: relative;
+  }
+
+  .operacao-tabs-clean .tab-operacao-clean.active {
+    color: #061a35 !important;
+  }
+
+  .operacao-tabs-clean .tab-operacao-clean.active::after {
+    content: "";
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    bottom: -1px;
+    height: 3px;
+    border-radius: 999px 999px 0 0;
+    background: linear-gradient(135deg, #ffb100, #ff8a00);
+  }
+
+  .nova-venda-clean {
+    margin-left: auto !important;
+    min-height: 38px !important;
+    height: 38px !important;
+    padding: 0 14px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    box-shadow: none !important;
+  }
+
+  .operacao-toolbar-clean {
+    display: grid !important;
+    grid-template-columns: minmax(320px, 1fr) auto !important;
+    gap: 8px !important;
+    align-items: center;
+    margin-bottom: 10px !important;
+  }
+
+  .operacao-toolbar-clean #buscaCobrancaInput {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .operacao-toolbar-clean button[onclick*="abrirFiltrosCobranca"] {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .operacao-toolbar-clean #ordenarCobrancas {
+    display: none !important;
+  }
+
+  .operacao-toolbar-clean .link-limpar-clean {
+    grid-column: 1;
+    grid-row: 2;
+    justify-self: start;
+  }
+
+  .operacao-toolbar-clean #btnFecharCaixaCobrancas {
+    display: none !important;
+  }
+
+  .operacao-toolbar-clean input,
+  .operacao-toolbar-clean select {
+    height: 42px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+  }
+
+  .operacao-toolbar-clean .btn {
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 12px !important;
+    border-radius: 12px !important;
+    font-size: 13px !important;
+    box-shadow: none !important;
+    white-space: nowrap;
+  }
+
+  .link-limpar-clean {
+    background: transparent !important;
+    border: 0 !important;
+    color: #64748b !important;
+    text-decoration: underline;
+    min-width: auto !important;
+  }
+
+  .fechamento-status-clean {
+    display: none !important;
+  }
+
+  .cobranca-card-clean {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 18px;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 6px minmax(180px, .75fr) minmax(360px, 1.35fr) 150px;
+    gap: 12px;
+    align-items: stretch;
+    box-shadow: 0 8px 20px rgba(15,23,42,.04);
+  }
+
+  .cobranca-lateral-clean {
+    width: 6px;
+    height: 100%;
+    min-height: 86px;
+    border-radius: 999px;
+  }
+
+  .cobranca-cliente-clean strong {
+    display: block;
+    color: #0f172a;
+    font-size: 15px;
+    line-height: 1.2;
+  }
+
+  .cobranca-cliente-clean small {
+    display: block;
+    color: #64748b;
+    font-size: 12px;
+    font-weight: 800;
+    margin-top: 4px;
+  }
+
+  .cobranca-card-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+    gap: 6px;
+  }
+
+  .cobranca-progresso-wrap {
+    grid-column: 1 / -1;
+    height: 8px;
+    border-radius: 999px;
+    background: #e2e8f0;
+    overflow: hidden;
+    margin-top: 2px;
+  }
+
+  .cobranca-progresso-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(135deg, #ffb100, #ff8a00);
+    min-width: 4px;
+  }
+
+  .cobranca-mini-clean {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 6px 7px;
+    min-width: 0;
+  }
+
+  .cobranca-mini-clean span {
+    display: block;
+    color: #64748b;
+    font-size: 9px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .35px;
+    margin-bottom: 2px;
+  }
+
+  .cobranca-mini-clean strong {
+    display: block;
+    color: #0f172a;
+    font-size: 11px;
+    font-weight: 900;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cobranca-actions-clean {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: stretch;
+    justify-content: stretch;
+  }
+
+  .cobranca-actions-clean .btn {
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 10px !important;
+    border-radius: 12px !important;
+    font-size: 12px !important;
+    box-shadow: none !important;
+    white-space: nowrap;
+  }
+
+  .cobranca-actions-clean .acao-pagar {
+    background: #ecfdf5 !important;
+    border: 1px solid #bbf7d0 !important;
+    color: #166534 !important;
+  }
+
+  .cobranca-actions-clean button[onclick*="abrirPagamentoCliente"] {
+    background: #ecfdf5 !important;
+    border: 1px solid #bbf7d0 !important;
+    color: #166534 !important;
+  }
+
+  .cobranca-actions-clean .acao-nao-pagou {
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+    color: #991b1b !important;
+  }
+
+  .cobranca-actions-clean button[onclick*="registrarNaoPagamentoVenda"] {
+    background: #fef2f2 !important;
+    border: 1px solid #fecaca !important;
+    color: #991b1b !important;
+  }
+
+  .cobranca-actions-clean .acao-detalhes,
+  .cobranca-actions-clean .acao-historico {
+    background: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #334155 !important;
+  }
+
+  .cobranca-actions-clean button[onclick*="abrirOpcoesCobranca"],
+  .cobranca-actions-clean button[onclick*="abrirHistoricoPagamentosVenda"] {
+    display: none !important;
+  }
+
+  .fechar-caixa-final-clean {
+    margin-top: 14px;
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  .fechar-caixa-final-clean .btn {
+    min-height: 44px !important;
+    height: 44px !important;
+    border-radius: 14px !important;
+    padding: 0 18px !important;
+  }
+
+  .fechar-caixa-final-clean .btn:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    filter: grayscale(.15);
+  }
+
+  #abaVendasDia .venda-cobranca-card {
+    border-radius: 18px !important;
+    padding: 14px !important;
+    box-shadow: 0 8px 20px rgba(15,23,42,.04) !important;
+  }
+
+  #abaVendasDia .busca-grid {
+    grid-template-columns: repeat(6, minmax(90px, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  #abaVendasDia .busca-grid > div {
+    border-radius: 12px !important;
+    padding: 9px !important;
+  }
+
+  .filtro-chip-clean {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .filtro-chip-clean button {
+    width: 42px !important;
+    height: 24px !important;
+  }
+
+  @media (max-width: 1199px) {
+    .cobranca-card-clean {
+      grid-template-columns: 6px 1fr 128px;
+      align-items: start;
+    }
+
+    .cobranca-card-grid {
+      grid-column: 2;
+    }
+
+    .cobranca-actions-clean {
+      grid-column: 3;
+      grid-row: 1 / span 2;
+    }
+  }
+
+  @media (max-width: 780px) {
+    #vendas .panel {
+      padding: 12px;
+      border-radius: 18px;
+    }
+
+    body.tela-operacao-vendedor .topbar {
+      padding: 12px !important;
+      min-height: auto !important;
+      gap: 8px !important;
+    }
+
+    body.tela-operacao-vendedor .date-chip {
+      display: none !important;
+    }
+
+    body.tela-operacao-vendedor #pageTitle {
+      font-size: 21px !important;
+    }
+
+    body.tela-operacao-vendedor #pageSubtitle {
+      font-size: 12px !important;
+      margin-top: 2px !important;
+    }
+
+    .operacao-tabs-clean {
+      margin-bottom: 10px !important;
+    }
+
+    .operacao-tabs-clean .tab-operacao-clean {
+      flex: 1;
+      height: 36px !important;
+      min-height: 36px !important;
+      font-size: 13px !important;
+    }
+
+    .nova-venda-clean {
+      position: fixed;
+      right: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom));
+      z-index: 40;
+      height: 44px !important;
+      border-radius: 999px !important;
+      box-shadow: 0 14px 28px rgba(255,138,0,.28) !important;
+    }
+
+    .operacao-toolbar-clean {
+      grid-template-columns: minmax(0, 1fr) auto !important;
+      gap: 8px !important;
+    }
+
+    .operacao-toolbar-clean #buscaCobrancaInput {
+      grid-column: 1;
+      grid-row: 1;
+    }
+
+    .operacao-toolbar-clean button[onclick*="abrirFiltrosCobranca"] {
+      grid-column: 2;
+      grid-row: 1;
+    }
+
+    .operacao-toolbar-clean select,
+    .operacao-toolbar-clean .link-limpar-clean,
+    .operacao-toolbar-clean #btnFecharCaixaCobrancas {
+      grid-column: 1 / -1;
+      grid-row: auto;
+    }
+
+    .operacao-toolbar-clean input,
+    .operacao-toolbar-clean .btn,
+    .operacao-toolbar-clean select {
+      height: 38px !important;
+      min-height: 38px !important;
+      font-size: 12px !important;
+    }
+
+    .cobranca-card-clean {
+      padding: 11px;
+      border-radius: 16px;
+      gap: 10px;
+      grid-template-columns: 5px 1fr 84px;
+    }
+
+    .cobranca-lateral-clean {
+      min-height: 72px;
+    }
+
+    .cobranca-card-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 6px;
+      grid-column: 2 / -1;
+    }
+
+    .cobranca-mini-clean {
+      padding: 5px 6px;
+    }
+
+    .cobranca-actions-clean {
+      display: grid;
+      grid-template-columns: 1fr;
+      width: 84px;
+      grid-column: 3;
+      grid-row: 1;
+    }
+
+    .cobranca-actions-clean .btn {
+      width: 100%;
+      padding: 0 !important;
+      font-size: 0 !important;
+      min-width: 38px;
+      height: 38px !important;
+      min-height: 38px !important;
+    }
+
+    .cobranca-actions-clean .btn span {
+      font-size: 15px;
+    }
+
+    #abaVendasDia .busca-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+  }
+</style>
+
 
 <style id="integro-sidebar-drawer-fix">
   body.menu-aberto { overflow: hidden; }
@@ -2420,7 +2894,7 @@
 
 
           <div
-            class="operacao-tabs"
+            class="operacao-tabs operacao-tabs-clean"
             style="
               display:grid;
               grid-template-columns:auto auto 1fr auto;
@@ -2431,30 +2905,33 @@
           >
             <button
               id="tabVendasDiaBtn"
-              class="btn btn-primary"
+              class="btn tab-operacao-clean"
+              style="order:2;"
               onclick="abrirAbaVendasCobrancas('vendas')"
             >
-              Vendas do dia
+              Vendas
             </button>
 
             <button
               id="tabCobrancasBtn"
-              class="btn btn-light"
+              class="btn tab-operacao-clean active"
+              style="order:1;"
               onclick="abrirAbaVendasCobrancas('cobrancas')"
             >
               Cobranças
             </button>
 
             <button
-              class="btn btn-primary"
+              id="btnNovaVendaOperacao"
+              class="btn btn-primary nova-venda-clean"
               onclick="abrirListaNovaVenda()"
-              style="justify-self:end;"
+              style="justify-self:end;display:none;order:3;"
             >
               + Nova venda
             </button>
           </div>
 
-          <div id="abaVendasDia" style="display:block;">
+          <div id="abaVendasDia" style="display:none;">
             <div
               id="contadorVendasDia"
               style="
@@ -2468,18 +2945,18 @@
             <div id="listaVendasDia" class="grid" style="gap:14px;"></div>
           </div>
 
-          <div id="abaCobrancas" style="display:none;">
+          <div id="abaCobrancas" style="display:block;">
             <div style="
               display:grid;
               grid-template-columns:1fr auto auto 180px auto;
               gap:12px;
               margin-bottom:20px;
-            " class="busca-grid">
+            " class="busca-grid operacao-toolbar-clean">
 
               <input
                 id="buscaCobrancaInput"
-                placeholder="Buscar cliente na cobrança"
-                onkeydown="if(event.key === 'Enter') renderCobrancas()"
+                placeholder="Buscar cliente, apelido ou telefone"
+                oninput="debounceInputCobrancas()"
                 style="
                   height:52px;
                   border-radius:16px;
@@ -2492,11 +2969,11 @@
                 "
               >
 
-              <button class="btn btn-primary" onclick="renderCobrancas()">
+              <button class="btn btn-primary" onclick="renderCobrancas()" style="display:none;">
                 Buscar
               </button>
 
-              <button class="btn btn-light" onclick="limparBuscaCobrancas()">
+              <button class="btn btn-light link-limpar-clean" onclick="limparBuscaCobrancas()" style="display:none;">
                 Limpar
               </button>
 
@@ -2542,6 +3019,17 @@
             ></div>
 
             <div id="listaCobrancas" class="grid" style="gap:14px;"></div>
+
+            <div class="fechar-caixa-final-clean">
+              <button
+                id="btnFecharCaixaCobrancas"
+                class="btn btn-primary"
+                type="button"
+                onclick="validarEAbrirFechamentoCaixa()"
+              >
+                Fechar caixa
+              </button>
+            </div>
           </div>
 
         </div>
@@ -2550,11 +3038,12 @@
 
       <script>
 
-        function abrirAbaVendasCobrancas(aba = "vendas") {
+        function abrirAbaVendasCobrancas(aba = "cobrancas") {
           const abaVendas = document.getElementById("abaVendasDia");
           const abaCobrancas = document.getElementById("abaCobrancas");
           const btnVendas = document.getElementById("tabVendasDiaBtn");
           const btnCobrancas = document.getElementById("tabCobrancasBtn");
+          const btnNovaVenda = document.getElementById("btnNovaVendaOperacao");
 
           if (!abaVendas || !abaCobrancas) return;
 
@@ -2563,17 +3052,34 @@
           abaVendas.style.display = mostrarCobrancas ? "none" : "block";
           abaCobrancas.style.display = mostrarCobrancas ? "block" : "none";
 
-          if (btnVendas) btnVendas.className = mostrarCobrancas ? "btn btn-light" : "btn btn-primary";
-          if (btnCobrancas) btnCobrancas.className = mostrarCobrancas ? "btn btn-primary" : "btn btn-light";
+          if (btnVendas) {
+            btnVendas.className = "btn tab-operacao-clean" + (mostrarCobrancas ? "" : " active");
+          }
+          if (btnCobrancas) {
+            btnCobrancas.className = "btn tab-operacao-clean" + (mostrarCobrancas ? " active" : "");
+          }
+          if (btnNovaVenda) {
+            btnNovaVenda.style.display = mostrarCobrancas ? "none" : "inline-flex";
+          }
+
+          const titulo = document.getElementById("pageTitle");
+          const subtitulo = document.getElementById("pageSubtitle");
+          if (titulo) titulo.innerText = mostrarCobrancas ? "Cobranças" : "Vendas";
+          if (subtitulo) subtitulo.innerText = mostrarCobrancas
+            ? "Rota do dia, pagamentos e não pagamentos."
+            : "Vendas registradas no dia.";
 
           if (mostrarCobrancas) {
             renderCobrancas();
+            atualizarEstadoBotaoFechamento();
           } else {
             renderVendasDia();
           }
         }
 
         function abrirListaNovaVenda() {
+          if (!garantirCaixaAberto("O caixa estÃ¡ fechado. NÃ£o Ã© possÃ­vel criar nova venda.")) return;
+
           const clientesElegiveis = (clientesCache || []).filter(c => {
             const saldo = Number(c.saldoDevedor || c.saldo || 0);
             return c.excluido !== true && saldo <= 0.01;
@@ -2893,7 +3399,9 @@
 
           const saldo = Number(cliente.saldoDevedor || cliente.saldo || 0);
 
-          if (saldo > 1) {
+          if (!garantirCaixaAberto("O caixa estÃ¡ fechado. NÃ£o Ã© possÃ­vel criar nova venda.")) return;
+
+          if (saldo > 0.01 || clienteTemVendaAtiva(clienteId)) {
             alert("Cliente possui saldo devedor ativo. Nova venda bloqueada.");
             return;
           }
@@ -3875,24 +4383,32 @@
           let lista = montarCobrancasPorVenda();
 
           lista = lista.filter(item => {
-            const texto =
-              `${item.clienteNome || ""} ${item.clienteId || ""}`.toLowerCase();
+            const texto = textoBuscaCobranca(item);
 
             if (termo && !texto.includes(termo)) return false;
 
-            const filtroCobranca =
-              (item.comCobrancaHoje && filtros.includes("com_cobranca_hoje")) ||
-              (!item.comCobrancaHoje && filtros.includes("sem_cobranca_hoje"));
+            const filtrosStatusDia = filtros.filter(f =>
+              ["com_cobranca_hoje", "sem_cobranca_hoje", "pendentes", "pagos", "nao_pagos"].includes(f)
+            );
+            const filtrosSituacao = filtros.filter(f =>
+              ["atrasados", "em_dia", "adiantados"].includes(f)
+            );
 
-            const filtroOperacao =
-              (item.pendenteHoje && filtros.includes("pendentes")) ||
-              (item.pagoHoje && filtros.includes("pagos")) ||
-              (item.naoPagoHoje && filtros.includes("nao_pagos")) ||
-              (!item.comCobrancaHoje && item.saldoDevedor > 0.01 && filtros.includes("pendentes"));
+            const passaStatusDia = !filtrosStatusDia.length || filtrosStatusDia.some(f =>
+              (f === "com_cobranca_hoje" && item.comCobrancaHoje) ||
+              (f === "sem_cobranca_hoje" && !item.comCobrancaHoje) ||
+              (f === "pendentes" && item.pendenteHoje) ||
+              (f === "pagos" && item.pagoHoje) ||
+              (f === "nao_pagos" && item.naoPagoHoje)
+            );
 
-            
+            const passaSituacao = !filtrosSituacao.length || filtrosSituacao.some(f =>
+              (f === "atrasados" && item.situacao === "ATRASADO") ||
+              (f === "em_dia" && item.situacao === "EM_DIA") ||
+              (f === "adiantados" && item.situacao === "ADIANTADO")
+            );
 
-            return filtroCobranca && filtroOperacao;
+            return passaStatusDia && passaSituacao;
           });
 
           lista = ordenarCobrancas(lista);
@@ -3912,6 +4428,41 @@
                 </p>
               </div>
             `;
+
+          atualizarEstadoBotaoFechamento();
+          atualizarToolbarCobrancas();
+          aplicarBloqueioCaixaFechado();
+        }
+
+        function atualizarToolbarCobrancas() {
+          const termo = (document.getElementById("buscaCobrancaInput")?.value || "").trim();
+          const limpar = Array.from(document.querySelectorAll("#abaCobrancas button"))
+            .find(btn => (btn.getAttribute("onclick") || "").includes("limparBuscaCobrancas"));
+          const filtrosPadrao = ["com_cobranca_hoje", "pendentes"].sort().join("|");
+          const filtrosAtuais = [...(filtrosCobrancaEstado || [])].sort().join("|");
+          const temFiltro = filtrosAtuais !== filtrosPadrao;
+          if (limpar) limpar.style.display = termo || temFiltro ? "inline-flex" : "none";
+        }
+
+        function textoBuscaCobranca(item) {
+          const cliente = item.cliente || {};
+
+          return `
+            ${item.clienteNome || ""}
+            ${item.clienteApelido || ""}
+            ${item.nomeCompleto || ""}
+            ${item.apelido || ""}
+            ${item.telefone || ""}
+            ${item.telefonePrincipal || ""}
+            ${item.documento || ""}
+            ${item.clienteId || ""}
+            ${cliente.nome || ""}
+            ${cliente.nomeCompleto || ""}
+            ${cliente.apelido || ""}
+            ${cliente.telefone || ""}
+            ${cliente.telefonePrincipal || ""}
+            ${cliente.documento || ""}
+          `.toLowerCase();
         }
 
         function getFiltrosCobrancaAtivos() {
@@ -3937,6 +4488,9 @@
   ${toggleFiltroCobranca("sem_cobranca_hoje", "Sem cobrança hoje", contagens.sem_cobranca_hoje)}
   ${toggleFiltroCobranca("pendentes", "Pendentes", contagens.pendentes)}
   ${toggleFiltroCobranca("pagos", "Pagos hoje", contagens.pagos)}
+  ${toggleFiltroCobranca("atrasados", "Atrasados", contagens.atrasados)}
+  ${toggleFiltroCobranca("em_dia", "Em dia", contagens.em_dia)}
+  ${toggleFiltroCobranca("adiantados", "Adiantados", contagens.adiantados)}
   ${toggleFiltroCobranca("nao_pagos", "Não pagos hoje", contagens.nao_pagos)}
 `;
 
@@ -4019,13 +4573,73 @@
           abrirFiltrosCobranca();
         }
 
+        function abrirFiltrosCobranca() {
+          const modal = document.getElementById("modalFiltrosCobranca");
+          const body = document.getElementById("modalFiltrosCobrancaBody");
+          if (!modal || !body) return;
+
+          const contagens = contarFiltrosCobranca();
+          const ordenacao = document.getElementById("ordenarCobrancas")?.value || "prioridade_rota";
+          const grupo = (titulo, itens) => `
+            <div style="display:grid;gap:10px;">
+              <strong style="font-size:13px;color:#061a35;text-transform:uppercase;letter-spacing:.5px;">${titulo}</strong>
+              ${itens.join("")}
+            </div>
+          `;
+
+          body.innerHTML = `
+            ${grupo("Estado da cobrança", [
+              toggleFiltroCobranca("pendentes", "Pendentes", contagens.pendentes),
+              toggleFiltroCobranca("pagos", "Pagos hoje", contagens.pagos),
+              toggleFiltroCobranca("nao_pagos", "Não pagos hoje", contagens.nao_pagos)
+            ])}
+            ${grupo("Rota", [
+              toggleFiltroCobranca("com_cobranca_hoje", "Com cobrança hoje", contagens.com_cobranca_hoje),
+              toggleFiltroCobranca("sem_cobranca_hoje", "Sem cobrança hoje", contagens.sem_cobranca_hoje)
+            ])}
+            ${grupo("Situação geral", [
+              toggleFiltroCobranca("em_dia", "Em dia", contagens.em_dia),
+              toggleFiltroCobranca("atrasados", "Atrasados", contagens.atrasados),
+              toggleFiltroCobranca("adiantados", "Adiantados", contagens.adiantados)
+            ])}
+            <div style="display:grid;gap:10px;">
+              <strong style="font-size:13px;color:#061a35;text-transform:uppercase;letter-spacing:.5px;">Ordenação</strong>
+              <select class="form-input" onchange="document.getElementById('ordenarCobrancas').value=this.value; renderCobrancas();" style="height:44px;border-radius:12px;">
+                <option value="prioridade_rota" ${ordenacao === "prioridade_rota" ? "selected" : ""}>Prioridade da rota</option>
+                <option value="nome_az" ${ordenacao === "nome_az" ? "selected" : ""}>Nome A-Z</option>
+                <option value="saldo_maior" ${ordenacao === "saldo_maior" ? "selected" : ""}>Saldo maior</option>
+                <option value="atrasado" ${ordenacao === "atrasado" ? "selected" : ""}>Mais atrasados</option>
+              </select>
+            </div>
+          `;
+
+          body.querySelectorAll(".filtro-chip-clean").forEach(chip => {
+            const valor = chip.dataset.filtro;
+            chip.onclick = () => alternarFiltroCobranca(valor);
+          });
+
+          modal.style.display = "flex";
+        }
+
+        function toggleFiltroCobranca(valor, texto, quantidade) {
+          const ativo = filtrosCobrancaEstado.includes(valor);
+          return `
+            <div class="filtro-chip-clean" data-filtro="${valor}" role="button" tabindex="0">
+              <strong style="font-size:13px;color:#0f172a;">${texto} <span style="color:#64748b;">(${quantidade || 0})</span></strong>
+              <button type="button" aria-label="${texto}" style="border:0;border-radius:999px;background:${ativo ? "#22c55e" : "#cbd5e1"};position:relative;cursor:pointer;">
+                <span style="position:absolute;top:3px;${ativo ? "right:3px;" : "left:3px;"}width:18px;height:18px;border-radius:50%;background:#fff;"></span>
+              </button>
+            </div>
+          `;
+        }
+
         function contarFiltrosCobranca() {
           const lista = montarCobrancasPorVenda();
 
           return {
             com_cobranca_hoje: lista.filter(i => i.comCobrancaHoje).length,
             sem_cobranca_hoje: lista.filter(i => !i.comCobrancaHoje).length,
-            pendentes: lista.filter(i => i.saldoDevedor > 0.01).length,
+            pendentes: lista.filter(i => i.pendenteHoje).length,
             pagos: lista.filter(i => i.pagoHoje).length,
             nao_pagos: lista.filter(i => i.naoPagoHoje).length,
             em_dia: lista.filter(i => i.situacao === "EM_DIA").length,
@@ -4042,6 +4656,7 @@
           );
 
           return vendasAtivas.map(venda => {
+            const cliente = (clientesCache || []).find(c => c.id === venda.clienteId) || {};
             const parcelasVenda = (parcelasCache || [])
               .filter(p => p.vendaId === venda.id && p.excluido !== true)
               .sort((a, b) =>
@@ -4086,7 +4701,14 @@
             return {
               vendaId: venda.id,
               clienteId: venda.clienteId,
-              clienteNome: venda.clienteNome || "Cliente",
+              clienteNome: venda.clienteNome || venda.nomeCliente || cliente.nome || cliente.nomeCompleto || cliente.apelido || "Cliente",
+              clienteApelido: venda.clienteApelido || venda.apelidoCliente || cliente.apelido || "",
+              nomeCompleto: venda.nomeCompleto || venda.clienteNomeCompleto || cliente.nomeCompleto || cliente.nome || "",
+              apelido: venda.apelido || venda.clienteApelido || cliente.apelido || "",
+              telefone: venda.telefone || venda.clienteTelefone || cliente.telefone || "",
+              telefonePrincipal: venda.telefonePrincipal || cliente.telefonePrincipal || "",
+              documento: venda.documento || venda.clienteDocumento || cliente.documento || "",
+              cliente,
               saldoDevedor: Number(venda.saldoDevedor || 0),
               valorParcela,
               totalParcelas,
@@ -4174,11 +4796,24 @@
         }
 
         function ordenarCobrancas(lista) {
-          const ordenacao = document.getElementById("ordenarCobrancas")?.value || "nome_az";
+          const ordenacao = document.getElementById("ordenarCobrancas")?.value || "prioridade_rota";
+          const nomeItem = item => String(item.clienteApelido || item.clienteNome || "").toLowerCase();
+          const atrasoItem = item => item.situacao === "ATRASADO" ? Number(String(item.diasIndicador).replace(",", ".")) : 0;
+          const prioridadeItem = item => {
+            if (item.pendenteHoje && item.situacao === "ATRASADO") return 1;
+            if (item.pendenteHoje) return 2;
+            if (item.naoPagoHoje) return 3;
+            if (item.pagoHoje) return 4;
+            return 5;
+          };
 
           const ordenadores = {
-            nome_az: (a, b) => a.clienteNome.localeCompare(b.clienteNome),
-            nome_za: (a, b) => b.clienteNome.localeCompare(a.clienteNome),
+            prioridade_rota: (a, b) =>
+              prioridadeItem(a) - prioridadeItem(b) ||
+              atrasoItem(b) - atrasoItem(a) ||
+              b.saldoDevedor - a.saldoDevedor,
+            nome_az: (a, b) => nomeItem(a).localeCompare(nomeItem(b)),
+            nome_za: (a, b) => nomeItem(b).localeCompare(nomeItem(a)),
             saldo_maior: (a, b) => b.saldoDevedor - a.saldoDevedor,
             saldo_menor: (a, b) => a.saldoDevedor - b.saldoDevedor,
             parcela_maior: (a, b) => b.valorParcela - a.valorParcela,
@@ -4196,14 +4831,15 @@
             }
           };
 
-          return lista.sort(ordenadores[ordenacao] || ordenadores.nome_az);
+          return lista.sort(ordenadores[ordenacao] || ordenadores.prioridade_rota);
         }
 
         function cardCobrancaCliente(item) {
           const cor =
-            item.situacao === "ATRASADO" ? "#ef4444" :
-            item.situacao === "ADIANTADO" ? "#0ea5e9" :
-            "#22c55e";
+            item.pagoHoje ? "#22c55e" :
+            item.naoPagoHoje ? "#ef4444" :
+            item.comCobrancaHoje ? "#f97316" :
+            "#94a3b8";
 
           const label =
             item.situacao === "ATRASADO" ? `Atrasado ${item.diasIndicador}` :
@@ -4215,6 +4851,10 @@
             item.naoPagoHoje ? "Não pago hoje" :
             item.comCobrancaHoje ? "Pendente hoje" :
             "Fora da rota de hoje";
+
+          const nomeDestaque = item.clienteApelido || item.apelido || item.clienteNome;
+          const nomeCompleto = item.nomeCompleto || item.clienteNome;
+          const acoesBloqueadas = caixaEstaFechado();
 
           return `
             <div
@@ -4235,8 +4875,14 @@
 
               <div onclick="abrirOpcoesCobranca('${item.vendaId}')" style="cursor:pointer;min-width:0;">
                 <strong style="display:block;font-size:16px;margin-bottom:6px;">
-                  ${item.clienteNome}
+                  ${nomeDestaque}
                 </strong>
+
+                ${nomeCompleto && nomeCompleto !== nomeDestaque ? `
+                  <small style="display:block;color:#64748b;font-weight:800;margin-bottom:4px;">
+                    ${nomeCompleto}
+                  </small>
+                ` : ""}
 
                 <small style="display:block;color:#64748b;font-weight:800;margin-bottom:4px;">
                   Saldo devedor: ${moeda(item.saldoDevedor)}
@@ -4259,6 +4905,7 @@
                 <button
                   class="btn btn-primary"
                   style="width:100%;"
+                  ${acoesBloqueadas ? "disabled" : ""}
                   onclick="event.stopPropagation(); abrirPagamentoCliente('${item.vendaId}')"
                 >
                   Registrar pagamento
@@ -4267,9 +4914,137 @@
                 <button
                   class="btn btn-light"
                   style="width:100%;"
+                  ${acoesBloqueadas ? "disabled" : ""}
                   onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${item.vendaId}')"
                 >
                   Não pagamento
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        function cardCobrancaCliente(item) {
+          const cor =
+            item.pagoHoje ? "#22c55e" :
+            item.naoPagoHoje ? "#ef4444" :
+            item.comCobrancaHoje ? "#f97316" :
+            "#94a3b8";
+          const label =
+            item.situacao === "ATRASADO" ? `Atrasado ${item.diasIndicador}` :
+            item.situacao === "ADIANTADO" ? `Adiantado ${item.diasIndicador}` :
+            "Em dia";
+          const statusDia =
+            item.pagoHoje ? "Pago hoje" :
+            item.naoPagoHoje ? "Não pago hoje" :
+            item.comCobrancaHoje ? "Pendente" :
+            "Fora da rota";
+          const nomeDestaque = item.clienteApelido || item.apelido || item.clienteNome;
+          const nomeCompleto = item.nomeCompleto || item.clienteNome;
+          const acoesBloqueadas = caixaEstaFechado();
+          const pagamentoHoje = item.pagoHoje
+            ? moeda((pagamentosHojeCache || [])
+                .filter(p => p.vendaId === item.vendaId)
+                .reduce((total, p) => total + Number(p.valor || p.valorPago || 0), 0))
+            : "-";
+
+          return `
+            <div class="venda-cobranca-card cobranca-card-clean">
+              <div class="cobranca-lateral-clean" style="background:${cor};"></div>
+
+              <div class="cobranca-cliente-clean" onclick="abrirOpcoesCobranca('${item.vendaId}')" style="cursor:pointer;min-width:0;">
+                <strong>${nomeDestaque}</strong>
+                ${nomeCompleto && nomeCompleto !== nomeDestaque ? `<small>${nomeCompleto}</small>` : ""}
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                  <span class="chip" style="background:${cor};border-color:${cor};color:#fff;">${statusDia}</span>
+                  <span class="chip">${label}</span>
+                </div>
+              </div>
+
+              <div class="cobranca-card-grid">
+                <div class="cobranca-mini-clean"><span>Vr. parcela</span><strong>${moeda(item.valorParcela)}</strong></div>
+                <div class="cobranca-mini-clean"><span>Progresso</span><strong>${item.progressoTexto}</strong></div>
+                <div class="cobranca-mini-clean"><span>Pagamento</span><strong>${pagamentoHoje}</strong></div>
+                <div class="cobranca-mini-clean"><span>Saldo devedor</span><strong>${moeda(item.saldoDevedor)}</strong></div>
+                <div class="cobranca-mini-clean"><span>Próxima</span><strong>${item.proximaCobrancaTexto}</strong></div>
+                <div class="cobranca-mini-clean"><span>Situação</span><strong>${label}</strong></div>
+              </div>
+
+              <div class="cobranca-actions-clean">
+                <button class="btn btn-primary" title="Registrar pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${item.vendaId}')">
+                  <span>✓</span> Pagar
+                </button>
+                <button class="btn btn-light" title="Registrar não pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${item.vendaId}')">
+                  <span>×</span> Não pagou
+                </button>
+                <button class="btn btn-light" title="Detalhes" onclick="event.stopPropagation(); abrirOpcoesCobranca('${item.vendaId}')">
+                  <span>i</span> Detalhes
+                </button>
+                <button class="btn btn-light" title="Histórico" onclick="event.stopPropagation(); abrirHistoricoPagamentosVenda('${item.vendaId}')">
+                  <span>↺</span> Histórico
+                </button>
+              </div>
+            </div>
+          `;
+        }
+
+        function cardCobrancaCliente(item) {
+          const cor =
+            item.pagoHoje ? "#22c55e" :
+            item.naoPagoHoje ? "#ef4444" :
+            item.comCobrancaHoje ? "#f97316" :
+            "#94a3b8";
+          const label =
+            item.situacao === "ATRASADO" ? `Atrasado ${item.diasIndicador}` :
+            item.situacao === "ADIANTADO" ? `Adiantado ${item.diasIndicador}` :
+            "Em dia";
+          const statusDia =
+            item.pagoHoje ? "Pago hoje" :
+            item.naoPagoHoje ? "Não pago hoje" :
+            item.comCobrancaHoje ? "Pendente" :
+            "Fora da rota";
+          const nomeDestaque = item.clienteApelido || item.apelido || item.clienteNome;
+          const nomeCompleto = item.nomeCompleto || item.clienteNome;
+          const acoesBloqueadas = caixaEstaFechado();
+          const pagamentoHoje = item.pagoHoje
+            ? moeda((pagamentosHojeCache || [])
+                .filter(p => p.vendaId === item.vendaId)
+                .reduce((total, p) => total + Number(p.valor || p.valorPago || 0), 0))
+            : "-";
+          const progressoAtual = Number(item.progresso || 0);
+          const totalParcelas = Math.max(Number(item.totalParcelas || 1), 1);
+          const progressoPercentual = Math.max(0, Math.min(100, Math.round((progressoAtual / totalParcelas) * 100)));
+
+          return `
+            <div class="venda-cobranca-card cobranca-card-clean">
+              <div class="cobranca-lateral-clean" style="background:${cor};"></div>
+
+              <div class="cobranca-cliente-clean" onclick="abrirOpcoesCobranca('${item.vendaId}')" style="cursor:pointer;min-width:0;">
+                <strong>${nomeDestaque}</strong>
+                ${nomeCompleto && nomeCompleto !== nomeDestaque ? `<small>${nomeCompleto}</small>` : ""}
+                <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
+                  <span class="chip" style="background:${cor};border-color:${cor};color:#fff;">${statusDia}</span>
+                  <span class="chip">${label}</span>
+                </div>
+              </div>
+
+              <div class="cobranca-card-grid">
+                <div class="cobranca-mini-clean"><span>Vr. parcela</span><strong>${moeda(item.valorParcela)}</strong></div>
+                <div class="cobranca-mini-clean"><span>Progresso</span><strong>${item.progressoTexto}</strong></div>
+                <div class="cobranca-mini-clean"><span>Pagamento</span><strong>${pagamentoHoje}</strong></div>
+                <div class="cobranca-mini-clean"><span>Saldo devedor</span><strong>${moeda(item.saldoDevedor)}</strong></div>
+                <div class="cobranca-mini-clean"><span>Situação</span><strong>${label}</strong></div>
+                <div class="cobranca-progresso-wrap" title="${progressoPercentual}% das parcelas">
+                  <div class="cobranca-progresso-fill" style="width:${progressoPercentual}%;"></div>
+                </div>
+              </div>
+
+              <div class="cobranca-actions-clean">
+                <button class="btn" title="Registrar pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${item.vendaId}')">
+                  <span>✓</span> Pagar
+                </button>
+                <button class="btn" title="Registrar não pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${item.vendaId}')">
+                  <span>×</span> Não
                 </button>
               </div>
             </div>
@@ -4328,6 +5103,8 @@
             alert("Cobrança não encontrada.");
             return;
           }
+
+          if (!garantirCaixaAberto("O caixa estÃ¡ fechado. NÃ£o Ã© possÃ­vel registrar pagamento.")) return;
 
           abrirDrawer(
             "Registrar pagamento",
@@ -4515,6 +5292,8 @@
               alert("Cobrança não encontrada.");
               return;
             }
+
+            if (!garantirCaixaAberto("O caixa estÃ¡ fechado. NÃ£o Ã© possÃ­vel registrar nÃ£o pagamento.")) return;
 
             const ref = db.collection("historicoCobrancas").doc();
 
@@ -5457,8 +6236,11 @@
 
               preencherUsuarioLogadoNaTela();
               atualizarDataPainel();
+              padronizarMenuVendedor();
 
               await carregarTudo();
+              abrirTelaInicialVendedor();
+              aplicarBloqueioCaixaFechado();
 
             } catch (erro) {
               console.error("Erro ao iniciar vendedor:", erro);
@@ -5467,6 +6249,204 @@
           });
 
         });
+
+        function padronizarMenuVendedor() {
+          const sidebar = document.getElementById("sidebar");
+          if (!sidebar) return;
+
+          const secoes = sidebar.querySelectorAll(".menu-section");
+          if (!secoes.length) return;
+
+          const markup = `
+            <div class="menu-section">
+              <div class="menu-title">Principal</div>
+              <div class="menu">
+                <button type="button" onclick="trocarTela('dashboard', this)">
+                  <span class="menu-left"><span>⌂</span>Dashboard</span>
+                  <span>›</span>
+                </button>
+                <button type="button" class="active" data-menu-target="cobrancas" onclick="trocarTela('cobrancas', this)">
+                  <span class="menu-left"><span>▤</span>Cobranças</span>
+                  <span>›</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="menu-section">
+              <div class="menu-title">Clientes</div>
+              <div class="menu">
+                <button type="button" onclick="trocarTela('clientes', this)">
+                  <span class="menu-left"><span>👥</span>Consultar</span>
+                  <span>›</span>
+                </button>
+                <button type="button" onclick="trocarTela('caixa', this)">
+                  <span class="menu-left"><span>◎</span>Indicações</span>
+                  <span>›</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="menu-section">
+              <div class="menu-title">Operação</div>
+              <div class="menu">
+                <button type="button" onclick="trocarTela('solicitacoes', this)">
+                  <span class="menu-left"><span>◇</span>Solicitações</span>
+                  <span>›</span>
+                </button>
+                <button type="button" onclick="trocarTela('notificacoes', this)">
+                  <span class="menu-left"><span>🔔</span>Notificações</span>
+                  <span class="menu-badge" id="badgeNotificacoes">0</span>
+                </button>
+              </div>
+            </div>
+
+            <div class="menu-section">
+              <div class="menu-title">Sistema</div>
+              <div class="menu">
+                <button type="button" onclick="logout()">
+                  <span class="menu-left"><span>×</span>Sair</span>
+                </button>
+              </div>
+            </div>
+          `;
+
+          secoes.forEach(secao => secao.remove());
+          sidebar.insertAdjacentHTML("beforeend", markup);
+
+          if (typeof atualizarContadorNotificacoes === "function") {
+            atualizarContadorNotificacoes();
+          }
+
+          prepararTelaOperacaoVendedor();
+        }
+
+        function abrirTelaInicialVendedor() {
+          trocarTela("cobrancas");
+        }
+
+        let debounceTimerCobrancas = null;
+        let debounceTimerClientes = null;
+
+        function prepararTelaOperacaoVendedor() {
+          const btnVendas = document.getElementById("tabVendasDiaBtn");
+          const btnCobrancas = document.getElementById("tabCobrancasBtn");
+          const inputCobranca = document.getElementById("buscaCobrancaInput");
+          const ordenar = document.getElementById("ordenarCobrancas");
+          const gridCobranca = inputCobranca?.closest?.(".busca-grid");
+          const inputCliente = document.getElementById("buscaClienteInput");
+          const tabs = document.querySelector("#vendas .operacao-tabs");
+          const btnNovaVenda = Array.from(tabs?.querySelectorAll("button") || [])
+            .find(btn => (btn.getAttribute("onclick") || "").includes("abrirListaNovaVenda"));
+
+          if (tabs) tabs.classList.add("operacao-tabs-clean");
+
+          if (btnCobrancas) {
+            btnCobrancas.innerText = "Cobranças";
+            btnCobrancas.style.order = "1";
+            btnCobrancas.classList.add("tab-operacao-clean");
+          }
+
+          if (btnVendas) {
+            btnVendas.innerText = "Vendas";
+            btnVendas.style.order = "2";
+            btnVendas.classList.add("tab-operacao-clean");
+          }
+
+          if (btnNovaVenda) {
+            btnNovaVenda.id = "btnNovaVendaOperacao";
+            btnNovaVenda.classList.add("nova-venda-clean");
+            btnNovaVenda.style.order = "3";
+          }
+
+          if (inputCobranca) {
+            inputCobranca.placeholder = "Buscar cliente, apelido ou telefone";
+            inputCobranca.style.order = "1";
+            inputCobranca.onkeydown = null;
+            inputCobranca.oninput = debounceInputCobrancas;
+          }
+
+          if (gridCobranca) {
+            gridCobranca.classList.add("operacao-toolbar-clean");
+            const botaoBusca = Array.from(gridCobranca.querySelectorAll("button"))
+              .find(btn => (btn.textContent || "").trim().toLowerCase() === "buscar");
+            if (botaoBusca) botaoBusca.style.display = "none";
+
+            const botaoLimpar = Array.from(gridCobranca.querySelectorAll("button"))
+              .find(btn => (btn.getAttribute("onclick") || "").includes("limparBuscaCobrancas"));
+            if (botaoLimpar) {
+              botaoLimpar.classList.add("link-limpar-clean");
+              botaoLimpar.innerText = "Limpar";
+              botaoLimpar.style.order = "4";
+            }
+
+            const botaoFiltros = Array.from(gridCobranca.querySelectorAll("button"))
+              .find(btn => (btn.getAttribute("onclick") || "").includes("abrirFiltrosCobranca"));
+            if (botaoFiltros) {
+              botaoFiltros.style.order = "2";
+            }
+
+            if (!document.getElementById("btnFecharCaixaCobrancas")) {
+              gridCobranca.insertAdjacentHTML("beforeend", `
+                <button
+                  id="btnFecharCaixaCobrancas"
+                  class="btn btn-primary"
+                  type="button"
+                  onclick="validarEAbrirFechamentoCaixa()"
+                >
+                  Fechar caixa
+                </button>
+              `);
+            }
+            const botaoFechar = document.getElementById("btnFecharCaixaCobrancas");
+            if (botaoFechar) botaoFechar.style.order = "5";
+
+            if (!document.getElementById("statusFechamentoCobrancas")) {
+              gridCobranca.insertAdjacentHTML("afterend", `
+                <div id="statusFechamentoCobrancas" class="fechamento-status-clean" style="color:#64748b;font-weight:800;font-size:13px;"></div>
+              `);
+            }
+          }
+
+          if (ordenar) {
+            ordenar.style.order = "3";
+            ordenar.innerHTML = `
+              <option value="prioridade_rota">Prioridade da rota</option>
+              <option value="nome_az">Nome A-Z</option>
+              <option value="saldo_maior">Saldo maior</option>
+              <option value="atrasado">Mais atrasados</option>
+            `;
+            ordenar.onchange = renderCobrancas;
+          }
+
+          if (inputCliente) {
+            inputCliente.onkeydown = null;
+            inputCliente.oninput = debounceInputClientes;
+          }
+
+          ["filtroClienteStatus", "filtroClienteDataInicial", "filtroClienteDataFinal"].forEach(id => {
+            const campo = document.getElementById(id);
+            if (campo) campo.onchange = () => {
+              if (clientesBuscaExecutada || (inputCliente?.value || "").trim()) debounceInputClientes();
+            };
+          });
+        }
+
+        function debounceInputCobrancas() {
+          clearTimeout(debounceTimerCobrancas);
+          debounceTimerCobrancas = setTimeout(() => {
+            renderCobrancas();
+          }, 280);
+        }
+
+        function debounceInputClientes() {
+          clearTimeout(debounceTimerClientes);
+          debounceTimerClientes = setTimeout(() => {
+            const termo = (document.getElementById("buscaClienteInput")?.value || "").trim();
+            if (termo || clientesBuscaExecutada) {
+              buscarClientes();
+            }
+          }, 280);
+        }
 
         function lerUsuarioLocal() {
           const chaves = ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario"];
@@ -5667,6 +6647,10 @@
         // =========================
 
         function trocarTela(id, el = null) {
+          const telaSolicitada = id;
+          if (id === "cobrancas") {
+            id = "vendas";
+          }
 
           document.querySelectorAll(".screen").forEach(screen => {
             screen.style.display = "none";
@@ -5680,6 +6664,7 @@
           }
 
           atual.style.display = "block";
+          document.body.classList.toggle("tela-operacao-vendedor", id === "vendas");
 
           document.querySelectorAll(".menu button").forEach(btn => {
             btn.classList.remove("active");
@@ -5689,7 +6674,11 @@
             el.classList.add("active");
           } else {
             const menu = Array.from(document.querySelectorAll(".menu button"))
-              .find(btn => btn.getAttribute("onclick")?.includes("'" + id + "'"));
+              .find(btn =>
+                btn.dataset.menuTarget === telaSolicitada ||
+                btn.getAttribute("onclick")?.includes("'" + telaSolicitada + "'") ||
+                btn.getAttribute("onclick")?.includes("'" + id + "'")
+              );
 
             if (menu) menu.classList.add("active");
           }
@@ -5729,9 +6718,19 @@
             ]
           };
 
-          if (titulos[id]) {
-            document.getElementById("pageTitle").innerText = titulos[id][0];
-            document.getElementById("pageSubtitle").innerText = titulos[id][1];
+          titulos.cobrancas = [
+            "Cobranças",
+            "Rota do dia, pagamentos, não pagamentos, renovações e vendas novas."
+          ];
+          titulos.vendas = [
+            "Vendas",
+            "Vendas do dia, renovações e carteira gerada."
+          ];
+
+          const tituloAtual = titulos[telaSolicitada] || titulos[id];
+          if (tituloAtual) {
+            document.getElementById("pageTitle").innerText = tituloAtual[0];
+            document.getElementById("pageSubtitle").innerText = tituloAtual[1];
           }
 
           const btnTopNovoCliente = document.getElementById("btnTopNovoCliente");
@@ -5741,12 +6740,6 @@
           }
 
           if (id === "vendas") {
-            abrirAbaVendasCobrancas("vendas");
-            renderVendasDia();
-            renderCobrancas();
-          }
-          if (id === "cobrancas") {
-            trocarTela("vendas", el);
             abrirAbaVendasCobrancas("cobrancas");
           }
           if (id === "solicitacoes") renderSolicitacoes();
@@ -5783,6 +6776,8 @@
             renderCobrancas();
             renderSolicitacoes();
             renderIndicacoes();
+            atualizarEstadoBotaoFechamento();
+            aplicarBloqueioCaixaFechado();
 
           } catch (erro) {
 
@@ -6536,10 +7531,10 @@ async function verificarCaixaAbertoDiaAnterior() {
 
           atualizarIndicadorCarteira(carteiraInicial, carteiraFinal);
 
-          const totalClientes = Math.max(clientesDia, 1);
-          const visitadosHoje = (historicoCobrancasCache || []).filter(h =>
-            String(h.data || "") === hojeISO()
-          ).length;
+          const cobrancasDashboard = montarCobrancasPorVenda();
+          const rotaDashboard = cobrancasDashboard.filter(i => i.comCobrancaHoje);
+          const totalClientes = Math.max(rotaDashboard.length, 1);
+          const visitadosHoje = rotaDashboard.filter(i => i.pagoHoje || i.naoPagoHoje).length;
 
           const progresso = Math.min(100, Math.round((visitadosHoje / totalClientes) * 100));
 
@@ -6600,6 +7595,99 @@ async function verificarCaixaAbertoDiaAnterior() {
           }
 
           return true;
+        }
+
+        function getPendenciasRotaHoje() {
+          const lista = montarCobrancasPorVenda();
+          return lista.filter(item =>
+            item.comCobrancaHoje &&
+            !item.pagoHoje &&
+            !item.naoPagoHoje
+          );
+        }
+
+        function atualizarEstadoBotaoFechamento() {
+          const botao = document.getElementById("btnFecharCaixaCobrancas");
+          const status = document.getElementById("statusFechamentoCobrancas");
+          if (!botao && !status) return;
+
+          const pendencias = getPendenciasRotaHoje();
+          const fechado = caixaEstaFechado();
+          const bloqueado = fechado || pendencias.length > 0;
+
+          if (botao) {
+            botao.disabled = bloqueado;
+            botao.style.opacity = bloqueado ? ".55" : "1";
+            botao.style.cursor = bloqueado ? "not-allowed" : "pointer";
+            botao.innerText = fechado ? "Caixa fechado" : "Fechar caixa";
+            botao.title = fechado
+              ? "Caixa fechado."
+              : pendencias.length
+                ? "Fechamento bloqueado por pendências da rota."
+                : "Todos os clientes da rota foram tabulados.";
+          }
+
+          if (status) {
+            status.innerText = fechado
+              ? "Caixa fechado. Ações operacionais bloqueadas."
+              : pendencias.length
+                ? `Faltam ${pendencias.length} cliente(s) para visitar/tabular.`
+                : "Todos os clientes da rota foram tabulados. Fechamento liberado.";
+            status.style.color = fechado || pendencias.length ? "#b45309" : "#166534";
+          }
+        }
+
+        function validarEAbrirFechamentoCaixa() {
+          const pendencias = getPendenciasRotaHoje();
+
+          if (pendencias.length) {
+            alert(`Faltam ${pendencias.length} cliente(s) para visitar/tabular.`);
+            atualizarEstadoBotaoFechamento();
+            return;
+          }
+
+          abrirFechamentoCaixa();
+        }
+
+        function aplicarBloqueioCaixaFechado() {
+          const fechado = caixaEstaFechado();
+          document.body.classList.toggle("caixa-fechado", fechado);
+
+          ["vendas", "solicitacoes", "caixa"].forEach(id => {
+            const section = document.getElementById(id);
+            if (!section) return;
+
+            let aviso = section.querySelector(".aviso-caixa-fechado");
+            if (fechado && !aviso) {
+              section.insertAdjacentHTML("afterbegin", `
+                <div class="aviso-caixa-fechado" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:18px;padding:14px;margin-bottom:16px;color:#9a3412;font-weight:900;">
+                  Caixa fechado. Ações operacionais bloqueadas para este vendedor.
+                </div>
+              `);
+            }
+            if (!fechado && aviso) aviso.remove();
+
+            section.querySelectorAll("button").forEach(btn => {
+              const onclick = btn.getAttribute("onclick") || "";
+              const critico =
+                onclick.includes("abrirPagamentoCliente") ||
+                onclick.includes("registrarNaoPagamentoVenda") ||
+                onclick.includes("abrirListaNovaVenda") ||
+                onclick.includes("abrirNovaVenda") ||
+                onclick.includes("abrirNovaSolicitacao") ||
+                onclick.includes("salvarSolicitacaoFinanceira") ||
+                onclick.includes("abrirFormularioLancamentoCaixa") ||
+                onclick.includes("salvarLancamentoCaixa");
+
+              if (critico) {
+                btn.disabled = fechado;
+                btn.style.opacity = fechado ? ".55" : "";
+                btn.style.cursor = fechado ? "not-allowed" : "";
+              }
+            });
+          });
+
+          atualizarEstadoBotaoFechamento();
         }
 
         function categoriasPadraoMovimentacao(tipo) {
@@ -7090,6 +8178,12 @@ async function verificarCaixaAbertoDiaAnterior() {
         }
 
         function abrirFechamentoCaixa() {
+          const pendencias = getPendenciasRotaHoje();
+          if (pendencias.length) {
+            alert(`Faltam ${pendencias.length} cliente(s) para visitar/tabular.`);
+            atualizarEstadoBotaoFechamento();
+            return;
+          }
           if (!garantirCaixaAberto("Este caixa já está fechado.")) return;
 
           const resumo = calcularResumoCaixaAtual();
@@ -7207,6 +8301,8 @@ async function verificarCaixaAbertoDiaAnterior() {
             await carregarSolicitacoes();
             await carregarCaixaAtual();
             atualizarDashboard();
+            atualizarEstadoBotaoFechamento();
+            aplicarBloqueioCaixaFechado();
             fecharDrawer();
 
             alert(possuiDivergencia
@@ -7341,9 +8437,13 @@ async function verificarCaixaAbertoDiaAnterior() {
           const el = document.getElementById("resumoDia");
           if (!el) return;
 
-          const vendasAtivas = getVendasAtivasDashboard();
-          const totalRota = vendasAtivas.length;
-          const visitadosHoje = (historicoCobrancasCache || []).filter(h => String(h.data || "") === hojeISO()).length;
+          const cobrancas = montarCobrancasPorVenda();
+          const rotaHoje = cobrancas.filter(i => i.comCobrancaHoje);
+          const totalRota = rotaHoje.length;
+          const visitadosHoje = rotaHoje.filter(i => i.pagoHoje || i.naoPagoHoje).length;
+          const pagosHoje = rotaHoje.filter(i => i.pagoHoje).length;
+          const naoPagosHoje = rotaHoje.filter(i => i.naoPagoHoje).length;
+          const inadimplencia = cobrancas.filter(i => i.situacao === "ATRASADO").length;
           const restantes = Math.max(0, totalRota - visitadosHoje);
           const percentual = totalRota > 0 ? Math.min(100, Math.round((visitadosHoje / totalRota) * 100)) : 0;
 
@@ -7390,6 +8490,11 @@ async function verificarCaixaAbertoDiaAnterior() {
               statusTxt(p.status || "PENDENTE") === "PENDENTE" &&
               String(p.dataVencimento || "") < hojeISO()
             ).length;
+          const cobrancasResumo = montarCobrancasPorVenda();
+          const rotaResumo = cobrancasResumo.filter(i => i.comCobrancaHoje);
+          const pagosResumo = rotaResumo.filter(i => i.pagoHoje).length;
+          const naoPagosResumo = rotaResumo.filter(i => i.naoPagoHoje).length;
+          const restantesResumo = rotaResumo.filter(i => i.pendenteHoje).length;
 
           el.innerHTML = `
 
@@ -7446,6 +8551,13 @@ async function verificarCaixaAbertoDiaAnterior() {
               </p>
             </div>
 
+            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:22px;padding:16px;">
+              <strong>${rotaResumo.length} cobranças hoje</strong>
+              <p style="color:#64748b;font-weight:700;margin-top:6px;">
+                ${pagosResumo} pagos, ${naoPagosResumo} não pagos e ${restantesResumo} pendentes.
+              </p>
+            </div>
+
           `;
 
         }
@@ -7490,7 +8602,9 @@ async function verificarCaixaAbertoDiaAnterior() {
             </div>
           `;
 
-          await carregarClientes();
+          if (!clientesCache.length) {
+            await carregarClientes();
+          }
 
           const termo =
             (
