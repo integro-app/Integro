@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>ÍNTEGRO • Master Local</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2010,7 +2010,7 @@ body.integro-data-refreshing .section-card{
     <div class="integro-loader-card">
       <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
       <div class="integro-loader-title">Preparando seu painel</div>
-      <div class="integro-loader-step" id="integroLoaderStep">Validando acesso...</div>
+      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
       <div class="integro-loader-bar"><span></span></div>
     </div>
   </div>
@@ -10807,7 +10807,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   async function iniciarLoadingPremium(){
     document.body.classList.add("integro-booting");
 
-    setLoaderStep("Validando acesso...");
+    setLoaderStep("Carregando painel...");
     await esperar(300);
 
     setLoaderStep("Carregando dados da empresa...");

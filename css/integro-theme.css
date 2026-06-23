@@ -38,6 +38,34 @@ textarea {
   font-family: inherit;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  overscroll-behavior: none;
+}
+
+button,
+a,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+@media (max-width: 780px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  body {
+    min-width: 0;
+    overflow-x: hidden;
+  }
+}
+
 button {
   transition: transform .18s ease, box-shadow .18s ease, filter .18s ease, background .18s ease;
 }

@@ -773,7 +773,7 @@ function trocarTela(id, el = null) {
   const atual = document.getElementById(id);
 
   if (!atual) {
-    UIHelpers.alerta("Tela não encontrada: " + id);
+    console.warn("Tela não encontrada:", id);
     return;
   }
 
