@@ -20,9 +20,110 @@
     .main{margin-left:300px;padding:24px}.topbar{min-height:82px;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;margin-bottom:20px}.topbar h1{font-size:28px;font-weight:900}.topbar p{color:var(--muted);font-weight:700;margin-top:3px}.hamburger{display:none;width:50px;height:50px;border:1px solid var(--line);background:#fff;border-radius:14px;font-size:24px;font-weight:900}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{height:46px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--text);font-weight:900;padding:0 16px;cursor:pointer}.btn-primary{border:0;background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
     .screen{display:none}.screen.active{display:block}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:20px}.card small{display:block;color:var(--muted);font-weight:900;margin-bottom:10px}.card strong{font-size:28px;font-weight:900}.card p,.muted{color:var(--muted);font-weight:700;margin-top:8px}.panel{margin-top:18px}.empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:18px;padding:18px;color:#475569;font-weight:800}
     @media(max-width:900px){.sidebar{transform:translateX(-105%);transition:.25s}.sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}.main{margin-left:0;padding:14px}.hamburger{display:block}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}}
+
+    /* ===== LOADING PREMIUM ÍNTEGRO COM PORCENTAGEM ===== */
+    body.integro-booting{
+      overflow:hidden;
+    }
+
+    body.integro-booting .sidebar,
+    body.integro-booting .main,
+    body.integro-booting .overlay{
+      opacity:0;
+      pointer-events:none;
+    }
+
+    .integro-boot-loader{
+      position:fixed;
+      inset:0;
+      z-index:20000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(circle at 20% 20%,rgba(255,138,0,.18),transparent 34%),
+        linear-gradient(135deg,#061a35,#092b61 55%,#071a33);
+      color:#fff;
+      transition:.35s ease;
+    }
+
+    .integro-boot-loader.hide{
+      opacity:0;
+      visibility:hidden;
+    }
+
+    .integro-loader-card{
+      width:min(460px,calc(100% - 36px));
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
+      box-shadow:0 30px 80px rgba(0,0,0,.28);
+      backdrop-filter:blur(14px);
+      border-radius:28px;
+      padding:34px;
+      text-align:center;
+    }
+
+    .integro-loader-logo{
+      font-size:34px;
+      font-weight:900;
+      letter-spacing:-1px;
+      margin-bottom:10px;
+    }
+
+    .integro-loader-logo span{
+      color:var(--orange2);
+    }
+
+    .integro-loader-title{
+      font-size:18px;
+      font-weight:900;
+      margin-bottom:8px;
+    }
+
+    .integro-loader-step{
+      color:#dbeafe;
+      font-weight:800;
+      min-height:22px;
+      line-height:1.35;
+    }
+
+    .integro-loader-percent{
+      margin-top:18px;
+      font-size:38px;
+      line-height:1;
+      font-weight:900;
+      letter-spacing:-1px;
+    }
+
+    .integro-loader-bar{
+      height:10px;
+      border-radius:999px;
+      margin-top:22px;
+      overflow:hidden;
+      background:rgba(255,255,255,.15);
+    }
+
+    .integro-loader-bar span{
+      display:block;
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background:linear-gradient(90deg,var(--orange2),var(--orange));
+      transition:width .35s ease;
+    }
   </style>
 </head>
-<body>
+<body class="integro-booting">
+  <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
+    <div class="integro-loader-card">
+      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
+      <div class="integro-loader-title">Preparando seu painel</div>
+      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel do supervisor...</div>
+      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
+      <div class="integro-loader-bar"><span id="integroLoaderBar"></span></div>
+    </div>
+  </div>
+
   <div id="overlay" class="overlay" onclick="toggleSidebar(false)"></div>
   <aside id="sidebar" class="sidebar">
     <div class="logo">INTE<span>GRO</span></div>
@@ -72,17 +173,166 @@
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    document.addEventListener("usuario-validado", async () => carregarTudoSupervisor());
-    async function carregarTudoSupervisor(){
-      preencherUsuarioLayout();
-      await carregarNotificacoesLayout(State.getUsuario());
+    window.__supervisorBootRodando = false;
+    window.__supervisorBootFinalizado = false;
+
+    function setLoaderSupervisor(percentual, etapa) {
+      const pct = Math.max(0, Math.min(100, Number(percentual || 0)));
+      const stepEl = document.getElementById("integroLoaderStep");
+      const percentEl = document.getElementById("integroLoaderPercent");
+      const barEl = document.getElementById("integroLoaderBar");
+
+      if (stepEl && etapa) stepEl.innerText = etapa;
+      if (percentEl) percentEl.innerText = `${pct}%`;
+      if (barEl) barEl.style.width = `${pct}%`;
     }
+
+    function liberarSistemaSupervisor() {
+      setLoaderSupervisor(100, "Painel pronto.");
+      setTimeout(() => {
+        const loader = document.getElementById("integroBootLoader");
+        if (loader) loader.classList.add("hide");
+        document.body.classList.remove("integro-booting");
+        window.__supervisorBootFinalizado = true;
+      }, 350);
+    }
+
+    function obterUsuarioSupervisorAtual() {
+      try {
+        if (window.State && typeof State.getUsuario === "function") {
+          return State.getUsuario();
+        }
+      } catch (e) {
+        console.warn("Falha ao obter usuário do State:", e);
+      }
+      return null;
+    }
+
+    function aguardarUsuarioSupervisorValidado() {
+      return new Promise((resolve) => {
+        const usuarioAtual = obterUsuarioSupervisorAtual();
+        if (usuarioAtual) {
+          resolve(usuarioAtual);
+          return;
+        }
+
+        let resolvido = false;
+
+        const concluir = () => {
+          if (resolvido) return;
+          resolvido = true;
+          resolve(obterUsuarioSupervisorAtual());
+        };
+
+        document.addEventListener("usuario-validado", concluir, { once: true });
+
+        setTimeout(() => {
+          concluir();
+        }, 3000);
+      });
+    }
+
+    async function iniciarLoadingSupervisor() {
+      if (window.__supervisorBootRodando || window.__supervisorBootFinalizado) return;
+
+      window.__supervisorBootRodando = true;
+
+      try {
+        setLoaderSupervisor(0, "Carregando painel do supervisor...");
+
+        setLoaderSupervisor(12, "Validando estrutura inicial...");
+        if (typeof protegerPaginaAtual === "function") {
+          protegerPaginaAtual();
+        }
+
+        setLoaderSupervisor(28, "Validando sessão e permissões...");
+        await aguardarUsuarioSupervisorValidado();
+
+        setLoaderSupervisor(45, "Carregando perfil do supervisor...");
+        if (typeof preencherUsuarioLayout === "function") {
+          preencherUsuarioLayout();
+        }
+
+        setLoaderSupervisor(65, "Carregando notificações e alertas...");
+        if (typeof carregarNotificacoesLayout === "function") {
+          await carregarNotificacoesLayout(obterUsuarioSupervisorAtual());
+        }
+
+        setLoaderSupervisor(82, "Preparando indicadores da equipe...");
+        await carregarTudoSupervisor({ viaLoading: true });
+
+        setLoaderSupervisor(94, "Organizando painel operacional...");
+        setTimeout(() => {
+          liberarSistemaSupervisor();
+        }, 180);
+
+      } catch (erro) {
+        console.error("Erro no loading do supervisor:", erro);
+        setLoaderSupervisor(100, "Não foi possível validar todos os dados. Liberando painel...");
+        setTimeout(() => {
+          document.body.classList.remove("integro-booting");
+          const loader = document.getElementById("integroBootLoader");
+          if (loader) loader.classList.add("hide");
+        }, 650);
+      } finally {
+        window.__supervisorBootRodando = false;
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      iniciarLoadingSupervisor();
+    });
+
+    document.addEventListener("usuario-validado", async () => {
+      if (window.__supervisorBootRodando) return;
+      await carregarTudoSupervisor();
+      if (!window.__supervisorBootFinalizado) {
+        liberarSistemaSupervisor();
+      }
+    });
+
+    async function carregarTudoSupervisor(opcoes = {}) {
+      const viaLoading = Boolean(opcoes.viaLoading);
+
+      if (!viaLoading) {
+        setLoaderSupervisor(72, "Atualizando dados do supervisor...");
+      }
+
+      if (typeof preencherUsuarioLayout === "function") {
+        preencherUsuarioLayout();
+      }
+
+      if (typeof carregarNotificacoesLayout === "function") {
+        await carregarNotificacoesLayout(obterUsuarioSupervisorAtual());
+      }
+
+      if (!viaLoading) {
+        setLoaderSupervisor(100, "Atualização concluída.");
+      }
+    }
+
     function trocarTela(id, el){
       document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));
       document.getElementById(id)?.classList.add("active");
       document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("active"));
       el?.classList.add("active");
       if (window.innerWidth <= 900) toggleSidebar(false);
+    }
+
+    function toggleSidebar(abrir) {
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("overlay");
+      if (!sidebar || !overlay) return;
+
+      const deveAbrir = typeof abrir === "boolean" ? abrir : !sidebar.classList.contains("show");
+      sidebar.classList.toggle("show", deveAbrir);
+      overlay.classList.toggle("show", deveAbrir);
+    }
+
+    function abrirNotificacoes() {
+      const botao = Array.from(document.querySelectorAll(".menu button"))
+        .find(b => b.getAttribute("onclick")?.includes("notificacoes"));
+      trocarTela("notificacoes", botao || null);
     }
   </script>
 </body>

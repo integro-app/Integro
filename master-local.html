@@ -1223,25 +1223,28 @@ body.integro-booting .layout{
   font-weight:800;
   min-height:22px;
 }
+.integro-loader-percent{
+  margin-top:18px;
+  color:#fff;
+  font-size:34px;
+  line-height:1;
+  font-weight:900;
+  letter-spacing:-1px;
+}
 .integro-loader-bar{
   height:10px;
   border-radius:999px;
-  margin-top:24px;
+  margin-top:18px;
   overflow:hidden;
   background:rgba(255,255,255,.15);
 }
 .integro-loader-bar span{
   display:block;
   height:100%;
-  width:35%;
+  width:0%;
   border-radius:999px;
   background:linear-gradient(90deg,var(--orange2),var(--orange));
-  animation:integroLoading 1.15s ease-in-out infinite;
-}
-@keyframes integroLoading{
-  0%{transform:translateX(-110%);width:35%}
-  50%{width:62%}
-  100%{transform:translateX(310%);width:35%}
+  transition:width .28s ease;
 }
 .menu-subitem.integro-submenu-hidden{
   display:none !important;
@@ -2011,7 +2014,10 @@ body.integro-data-refreshing .section-card{
       <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
       <div class="integro-loader-title">Preparando seu painel</div>
       <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
-      <div class="integro-loader-bar"><span></span></div>
+      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
+      <div class="integro-loader-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span id="integroLoaderBarFill"></span>
+      </div>
     </div>
   </div>
 
@@ -10783,9 +10789,29 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     configurarGrupoExpansivel(itemConfiguracoes, "configuracoes", null);
   }
 
-  function setLoaderStep(msg){
+  let integroLoaderPercentualAtual = 0;
+
+  function limitarPercentualLoader(valor){
+    return Math.max(0, Math.min(100, Math.round(Number(valor) || 0)));
+  }
+
+  function setLoaderProgress(percentual){
+    const valor = limitarPercentualLoader(percentual);
+    integroLoaderPercentualAtual = valor;
+
+    const texto = document.getElementById("integroLoaderPercent");
+    const barra = document.getElementById("integroLoaderBarFill");
+    const barraWrap = document.querySelector(".integro-loader-bar");
+
+    if(texto) texto.textContent = valor + "%";
+    if(barra) barra.style.width = valor + "%";
+    if(barraWrap) barraWrap.setAttribute("aria-valuenow", String(valor));
+  }
+
+  function setLoaderStep(msg, percentual){
     const el = document.getElementById("integroLoaderStep");
     if(el) el.textContent = msg;
+    if(typeof percentual !== "undefined") setLoaderProgress(percentual);
   }
 
   function esperar(ms){
@@ -10804,24 +10830,53 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
   }
 
+  async function executarEtapaLoading(msg, inicio, fim, acao){
+    setLoaderStep(msg, inicio);
+
+    let progressoFake = limitarPercentualLoader(inicio);
+    const limiteDuranteExecucao = Math.max(progressoFake, limitarPercentualLoader(fim) - 3);
+
+    const timer = setInterval(() => {
+      if(progressoFake < limiteDuranteExecucao){
+        const incremento = Math.max(1, Math.ceil((limiteDuranteExecucao - progressoFake) * 0.16));
+        progressoFake = Math.min(limiteDuranteExecucao, progressoFake + incremento);
+        setLoaderProgress(progressoFake);
+      }
+    }, 180);
+
+    try{
+      if(typeof acao === "function") await acao();
+    }finally{
+      clearInterval(timer);
+      setLoaderStep(msg, fim);
+      await esperar(120);
+    }
+  }
+
   async function iniciarLoadingPremium(){
     document.body.classList.add("integro-booting");
+    setLoaderProgress(0);
 
-    setLoaderStep("Carregando painel...");
-    await esperar(300);
+    await executarEtapaLoading("Carregando painel...", 5, 15, async () => {
+      await esperar(300);
+    });
 
-    setLoaderStep("Carregando dados da empresa...");
-    await chamarSeExistir("carregarTudo", 3500);
+    await executarEtapaLoading("Carregando dados da empresa...", 15, 45, async () => {
+      await chamarSeExistir("carregarTudo", 3500);
+    });
 
-    setLoaderStep("Atualizando indicadores reais...");
-    await chamarSeExistir("prepararDashboardAntesDoLoading", 8500);
+    await executarEtapaLoading("Atualizando indicadores reais...", 45, 78, async () => {
+      await chamarSeExistir("prepararDashboardAntesDoLoading", 8500);
+    });
 
-    setLoaderStep("Organizando permissões e módulos...");
-    await esperar(250);
+    await executarEtapaLoading("Organizando permissões e módulos...", 78, 90, async () => {
+      await esperar(250);
+    });
 
-    setLoaderStep("Preparando painel...");
-    organizarMenuIntegro();
-    await esperar(300);
+    await executarEtapaLoading("Preparando painel...", 90, 100, async () => {
+      organizarMenuIntegro();
+      await esperar(300);
+    });
 
     const loader = document.getElementById("integroBootLoader");
     if(loader) loader.classList.add("hide");

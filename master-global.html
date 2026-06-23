@@ -23,8 +23,123 @@
       .hamburger{display:flex}
     }
   </style>
+
+  <style id="integro-boot-loading-percentual-global">
+    body.integro-booting{
+      overflow:hidden;
+    }
+
+    body.integro-booting .sidebar,
+    body.integro-booting .main,
+    body.integro-booting .overlay,
+    body.integro-booting .drawer,
+    body.integro-booting .drawer-overlay{
+      opacity:0;
+      pointer-events:none;
+    }
+
+    .integro-boot-loader{
+      position:fixed;
+      inset:0;
+      z-index:20000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(circle at 20% 20%,rgba(255,138,0,.18),transparent 34%),
+        linear-gradient(135deg,#061a35,#092b61 55%,#071a33);
+      color:#fff;
+      transition:opacity .35s ease, visibility .35s ease;
+    }
+
+    .integro-boot-loader.hide{
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+    }
+
+    .integro-loader-card{
+      width:min(460px,calc(100% - 36px));
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
+      box-shadow:0 30px 80px rgba(0,0,0,.28);
+      backdrop-filter:blur(14px);
+      border-radius:28px;
+      padding:34px;
+      text-align:center;
+    }
+
+    .integro-loader-logo{
+      font-size:34px;
+      font-weight:900;
+      letter-spacing:-1px;
+      margin-bottom:10px;
+    }
+
+    .integro-loader-logo span{
+      color:var(--orange2);
+    }
+
+    .integro-loader-title{
+      font-size:18px;
+      font-weight:900;
+      margin-bottom:8px;
+    }
+
+    .integro-loader-step{
+      color:#dbeafe;
+      font-weight:800;
+      min-height:22px;
+      line-height:1.35;
+    }
+
+    .integro-loader-percent{
+      margin-top:18px;
+      font-size:38px;
+      line-height:1;
+      font-weight:900;
+      letter-spacing:-1px;
+    }
+
+    .integro-loader-bar{
+      height:12px;
+      border-radius:999px;
+      margin-top:18px;
+      overflow:hidden;
+      background:rgba(255,255,255,.15);
+    }
+
+    .integro-loader-bar span{
+      display:block;
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background:linear-gradient(90deg,var(--orange2),var(--orange));
+      transition:width .28s ease;
+    }
+
+    .integro-loader-caption{
+      margin-top:14px;
+      color:#bcd3ef;
+      font-size:12px;
+      font-weight:800;
+      line-height:1.45;
+    }
+  </style>
 </head>
-<body>
+<body class="integro-booting">
+
+  <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
+    <div class="integro-loader-card">
+      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
+      <div class="integro-loader-title">Preparando Master Global</div>
+      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
+      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
+      <div class="integro-loader-bar"><span id="integroLoaderProgress"></span></div>
+      <div class="integro-loader-caption">Validando acesso, dados globais e permissões da plataforma.</div>
+    </div>
+  </div>
+
   <div id="sidebarOverlay" class="overlay"></div>
   <aside id="sidebar" class="sidebar">
     <div class="logo">ÍNTE<span>GRO</span></div>
@@ -51,13 +166,43 @@
   <script>
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false; let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[];
     const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
+
+    let integroBootPercentualAtual = 0;
+
+    function atualizarLoadingPremium(percentual, texto){
+      const valor = Math.max(0, Math.min(100, Number(percentual) || 0));
+      integroBootPercentualAtual = valor;
+      const barra = document.getElementById('integroLoaderProgress');
+      const numero = document.getElementById('integroLoaderPercent');
+      const etapa = document.getElementById('integroLoaderStep');
+      if(barra) barra.style.width = valor + '%';
+      if(numero) numero.innerText = Math.round(valor) + '%';
+      if(etapa && texto) etapa.innerText = texto;
+    }
+
+    function finalizarLoadingPremium(){
+      atualizarLoadingPremium(100, 'Sistema pronto.');
+      const loader = document.getElementById('integroBootLoader');
+      document.body.classList.remove('integro-booting');
+      if(loader){
+        loader.classList.add('hide');
+        setTimeout(()=>{
+          if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
+        }, 420);
+      }
+    }
+
+    function aguardar(ms){
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     document.addEventListener('DOMContentLoaded',()=>{bindEventosFixos(); iniciarMasterGlobal();});
     function bindEventosFixos(){safe('btnMenu',e=>e.onclick=abrirSidebar);safe('sidebarOverlay',e=>e.onclick=fecharSidebar);safe('drawerOverlay',e=>e.onclick=fecharDrawer);safe('btnLogout',e=>e.onclick=logout);safe('btnAtualizar',e=>e.onclick=carregarTudo);safe('btnAcaoPrincipal',e=>e.onclick=abrirFormCliente);document.querySelectorAll('.menu button[data-screen]').forEach(btn=>btn.onclick=()=>trocarTela(btn.dataset.screen,btn));document.querySelectorAll('[data-kpi]').forEach(card=>card.onclick=()=>abrirResumoKpi(card.dataset.kpi));document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}})}
-    async function iniciarMasterGlobal(){try{if(typeof firebase==='undefined')throw new Error('Firebase não carregou. Confira js/firebase-config.js e internet.'); if(!firebase.apps.length && typeof firebaseConfig!=='undefined')firebase.initializeApp(firebaseConfig); mgDb=window.db || firebase.firestore(); mgAuth=window.auth || firebase.auth(); fireOk=true; await validarSessaoMasterGlobal(); await carregarTudo();}catch(e){console.error('Erro inicial:',e); abrirDrawer('Erro de inicialização','O layout continua funcionando, mas o Firebase não carregou.',`<div class="notice">${esc(e.message||e)}</div>`); renderTudo();}}
+    async function iniciarMasterGlobal(){try{atualizarLoadingPremium(4,'Iniciando Master Global...'); await aguardar(80); if(typeof firebase==='undefined')throw new Error('Firebase não carregou. Confira js/firebase-config.js e internet.'); atualizarLoadingPremium(14,'Conectando ao Firebase...'); if(!firebase.apps.length && typeof firebaseConfig!=='undefined')firebase.initializeApp(firebaseConfig); mgDb=window.db || firebase.firestore(); mgAuth=window.auth || firebase.auth(); fireOk=true; atualizarLoadingPremium(26,'Validando sessão e permissões...'); await validarSessaoMasterGlobal(); atualizarLoadingPremium(42,'Carregando dados globais...'); await carregarTudo(true); atualizarLoadingPremium(96,'Preparando interface...'); await aguardar(180); finalizarLoadingPremium();}catch(e){console.error('Erro inicial:',e); finalizarLoadingPremium(); abrirDrawer('Erro de inicialização','O layout continua funcionando, mas o Firebase não carregou.',`<div class="notice">${esc(e.message||e)}</div>`); renderTudo();}}
     async function validarSessaoMasterGlobal(){const user=mgAuth.currentUser||await new Promise(r=>mgAuth.onAuthStateChanged(r));let local=null;try{local=JSON.parse(localStorage.getItem('usuario')||'null')||JSON.parse(localStorage.getItem('usuarioLogado')||'null')||JSON.parse(localStorage.getItem('usuarioAtual')||'null')}catch(e){} usuarioLogado=await buscarUsuarioFirestore(user,local); if(!usuarioLogado)throw new Error('Sessão não encontrada. Faça login novamente.'); const tipo=String(usuarioLogado.tipoUsuario||usuarioLogado.funcao||'').toLowerCase(); if(tipo!=='master_global')throw new Error('Acesso negado: tipoUsuario precisa ser master_global.'); if(String(usuarioLogado.status||'ATIVO').toUpperCase()!=='ATIVO'||usuarioLogado.acessoLiberado===false)throw new Error('Usuário inativo ou acesso bloqueado.'); localStorage.setItem('usuario',JSON.stringify(usuarioLogado)); setText('usuarioNome',usuarioLogado.nome||usuarioLogado.nomeCompleto||usuarioLogado.email||'Master Global'); setText('usuarioEmpresa',usuarioLogado.clientePlataformaNome||usuarioLogado.empresaNome||'ÍNTEGRO'); setText('usuarioPerfil',usuarioLogado.cargoNome||usuarioLogado.cargo||'Master Global')}
     async function buscarUsuarioFirestore(user,local){const candidatos=[]; if(user?.uid)candidatos.push(['authUid',user.uid],['uid',user.uid]); if(local?.authUid)candidatos.push(['authUid',local.authUid],['uid',local.authUid]); if(user?.email)candidatos.push(['email',user.email]); if(local?.email)candidatos.push(['email',local.email]); for(const [campo,valor] of candidatos){try{const s=await mgDb.collection('usuarios').where(campo,'==',valor).limit(1).get(); if(!s.empty)return{id:s.docs[0].id,...s.docs[0].data()}}catch(e){console.warn(e)}} if(local?.id){try{const d=await mgDb.collection('usuarios').doc(local.id).get(); if(d.exists)return{id:d.id,...d.data()}}catch(e){console.warn(e)}} return local}
     async function getCol(col,lim=1000,ord=null){const arr=[]; if(!fireOk||!db)return arr; try{let r=mgDb.collection(col); if(ord)r=r.orderBy(ord,'desc'); const s=await r.limit(lim).get(); s.forEach(d=>arr.push({id:d.id,...d.data()}));}catch(e){console.warn('Falha ao carregar '+col,e)} return arr}
-    async function carregarTudo(){clientesIntegro=await getCol('clientes_integro'); usuariosSistema=await getCol('usuarios',1500); departamentos=await getCol('departamentos_integro'); planos=await getCol('planos'); notificacoes=await getCol('notificacoes',200,'criadoEm'); logs=await getCol('logs',200,'criadoEm'); renderTudo()}
+    async function carregarTudo(modoBoot=false){if(modoBoot)atualizarLoadingPremium(50,'Carregando clientes da plataforma...'); clientesIntegro=await getCol('clientes_integro'); if(modoBoot)atualizarLoadingPremium(62,'Carregando usuários e masters locais...'); usuariosSistema=await getCol('usuarios',1500); if(modoBoot)atualizarLoadingPremium(72,'Carregando departamentos e planos...'); departamentos=await getCol('departamentos_integro'); planos=await getCol('planos'); if(modoBoot)atualizarLoadingPremium(82,'Carregando notificações e auditoria...'); notificacoes=await getCol('notificacoes',200,'criadoEm'); logs=await getCol('logs',200,'criadoEm'); if(modoBoot)atualizarLoadingPremium(90,'Atualizando indicadores do painel...'); renderTudo()}
     function renderTudo(){renderDashboard();renderClientes();renderMasters();renderUsuariosInternos();renderDepartamentos();renderPlanos();renderNotificacoes();renderLogs()}
     function renderDashboard(){const ativos=clientesIntegro.filter(c=>c.acessoLiberado!==false&&!['BLOQUEADO','INATIVO'].includes(status(c.status))).length;const bloqueados=clientesIntegro.filter(c=>c.acessoLiberado===false||['BLOQUEADO','INATIVO'].includes(status(c.status))).length;const teste=clientesIntegro.filter(c=>c.testeAtivo===true).length;const masters=getMastersLocais().length,internos=getUsuariosInternos().length,pend=notificacoes.filter(n=>!['LIDA','RESOLVIDA'].includes(status(n.status))).length;setText('kpiClientes',clientesIntegro.length);setText('kpiAtivos',ativos);setText('kpiTeste',teste);setText('kpiMasters',masters);setText('kpiBloqueados',bloqueados);setText('kpiInternos',internos);setText('kpiPlanos',planos.length);setText('kpiNotificacoes',pend);setText('badgeNotificacoes',pend);setText('notificationCount',pend);byId('resumoOperacional').innerHTML=[box('Clientes ativos',ativos+' com acesso liberado'),box('Masters locais',masters+' administrador(es)'),box('Usuários internos',internos+' funcionário(s)')].join('');byId('alertasGlobais').innerHTML=(bloqueados||teste)?[bloqueados?box('Clientes bloqueados',bloqueados+' sem acesso'):'',teste?box('Clientes em teste',teste+' em período experimental'):''].join(''):empty('Nenhum alerta crítico no momento.')}
     function renderClientes(){const termo=val('buscaClientes').toLowerCase();let lista=clientesIntegro.filter(c=>match(c,termo,['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone']));setText('contadorClientes',`${lista.length} cliente(s) exibido(s).`);byId('listaClientes').innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente encontrado.')}

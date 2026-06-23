@@ -1863,9 +1863,130 @@
     }
   }
 </style>
+
+<style id="integro-boot-loader-percentual-vendedor">
+  /* ===== LOADING PREMIUM ÍNTEGRO - VENDEDOR COM PORCENTAGEM ===== */
+  body.integro-booting {
+    overflow: hidden !important;
+  }
+
+  body.integro-booting .app {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  .integro-boot-loader {
+    position: fixed;
+    inset: 0;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background:
+      radial-gradient(circle at 20% 20%, rgba(255, 138, 0, .18), transparent 34%),
+      linear-gradient(135deg, #061a35, #092b61 55%, #071a33);
+    color: #fff;
+    transition: .35s ease;
+  }
+
+  .integro-boot-loader.hide {
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .integro-loader-card {
+    width: min(460px, calc(100% - 36px));
+    border: 1px solid rgba(255, 255, 255, .14);
+    background: rgba(255, 255, 255, .08);
+    box-shadow: 0 30px 80px rgba(0, 0, 0, .28);
+    backdrop-filter: blur(14px);
+    border-radius: 28px;
+    padding: 34px;
+    text-align: center;
+  }
+
+  .integro-loader-logo {
+    font-size: 34px;
+    font-weight: 900;
+    letter-spacing: -1px;
+    margin-bottom: 10px;
+  }
+
+  .integro-loader-logo span {
+    color: var(--orange-2);
+  }
+
+  .integro-loader-title {
+    font-size: 18px;
+    font-weight: 900;
+    margin-bottom: 8px;
+  }
+
+  .integro-loader-step {
+    color: #dbeafe;
+    font-weight: 800;
+    min-height: 22px;
+  }
+
+  .integro-loader-percent {
+    margin-top: 18px;
+    color: #fff;
+    font-size: 34px;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: -1px;
+  }
+
+  .integro-loader-bar {
+    height: 10px;
+    border-radius: 999px;
+    margin-top: 18px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, .15);
+  }
+
+  .integro-loader-bar span {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--orange-2), var(--orange));
+    transition: width .28s ease;
+  }
+
+  @media(max-width: 700px) {
+    .integro-loader-card {
+      padding: 28px 22px;
+      border-radius: 24px;
+    }
+
+    .integro-loader-logo {
+      font-size: 30px;
+    }
+
+    .integro-loader-percent {
+      font-size: 32px;
+    }
+  }
+</style>
+
 </head>
 
-<body>
+<body class="integro-booting">
+
+
+  <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
+    <div class="integro-loader-card">
+      <div class="integro-loader-logo">ÍNTE<span>GRO</span></div>
+      <div class="integro-loader-title">Preparando seu painel</div>
+      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
+      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
+      <div class="integro-loader-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span id="integroLoaderBarFill"></span>
+      </div>
+    </div>
+  </div>
+
 
   <div class="overlay" id="overlay" onclick="toggleSidebar(false)"></div>
 
@@ -6457,64 +6578,188 @@
         var categoriasMovimentacaoCache = [];
         var clientesBuscaExecutada = false;
 
+
+        // =========================
+        // LOADING PREMIUM PERCENTUAL
+        // =========================
+
+        let integroLoaderPercentualAtual = 0;
+
+        function limitarPercentualLoader(valor) {
+          return Math.max(0, Math.min(100, Math.round(Number(valor) || 0)));
+        }
+
+        function setLoaderProgress(percentual) {
+          const valor = limitarPercentualLoader(percentual);
+          integroLoaderPercentualAtual = valor;
+
+          const texto = document.getElementById("integroLoaderPercent");
+          const barra = document.getElementById("integroLoaderBarFill");
+          const barraWrap = document.querySelector(".integro-loader-bar");
+
+          if (texto) texto.textContent = valor + "%";
+          if (barra) barra.style.width = valor + "%";
+          if (barraWrap) barraWrap.setAttribute("aria-valuenow", String(valor));
+        }
+
+        function setLoaderStep(msg, percentual) {
+          const el = document.getElementById("integroLoaderStep");
+          if (el) el.textContent = msg;
+          if (typeof percentual !== "undefined") setLoaderProgress(percentual);
+        }
+
+        function esperar(ms) {
+          return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function executarEtapaLoading(msg, inicio, fim, acao) {
+          setLoaderStep(msg, inicio);
+
+          let progressoFake = limitarPercentualLoader(inicio);
+          const limiteDuranteExecucao = Math.max(progressoFake, limitarPercentualLoader(fim) - 3);
+
+          const timer = setInterval(() => {
+            if (progressoFake < limiteDuranteExecucao) {
+              const incremento = Math.max(1, Math.ceil((limiteDuranteExecucao - progressoFake) * 0.16));
+              progressoFake = Math.min(limiteDuranteExecucao, progressoFake + incremento);
+              setLoaderProgress(progressoFake);
+            }
+          }, 180);
+
+          try {
+            if (typeof acao === "function") await acao();
+          } finally {
+            clearInterval(timer);
+            setLoaderStep(msg, fim);
+            await esperar(120);
+          }
+        }
+
+        function iniciarLoadingPremiumVendedor() {
+          document.body.classList.add("integro-booting");
+          setLoaderStep("Carregando painel...", 0);
+        }
+
+        async function finalizarLoadingPremiumVendedor() {
+          setLoaderStep("Painel pronto.", 100);
+          await esperar(220);
+
+          const loader = document.getElementById("integroBootLoader");
+          if (loader) loader.classList.add("hide");
+
+          document.body.classList.remove("integro-booting");
+
+          setTimeout(() => {
+            if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+          }, 420);
+        }
+
+        function manterLoadingPorBloqueio(mensagem) {
+          setLoaderStep(mensagem || "Acesso bloqueado.", Math.max(integroLoaderPercentualAtual, 92));
+        }
+
+        function bloquearERedirecionar(mensagem, destino = "index.html") {
+          manterLoadingPorBloqueio(mensagem || "Redirecionando para o login...");
+          window.__integroRedirecionando = true;
+
+          try {
+            alert(mensagem || "Acesso não autorizado.");
+          } catch (_) {}
+
+          window.location.href = destino;
+
+          const erro = new Error("REDIRECIONANDO_LOGIN");
+          erro.__integroRedirecionando = true;
+          throw erro;
+        }
+
+
         // =========================
         // INIT
         // =========================
 
         document.addEventListener("DOMContentLoaded", () => {
 
+          iniciarLoadingPremiumVendedor();
+
           firebase.auth().onAuthStateChanged(async (authUser) => {
             try {
-              if (!authUser) {
-                const usuarioLocal = lerUsuarioLocal();
-                if (!usuarioLocal) {
-                  alert("Sessão expirada. Faça login novamente.");
-                  window.location.href = "index.html";
-                  return;
+              await executarEtapaLoading("Validando sessão...", 3, 14, async () => {
+                if (!authUser) {
+                  const usuarioLocal = lerUsuarioLocal();
+                  if (!usuarioLocal) {
+                    bloquearERedirecionar("Sessão expirada. Faça login novamente.");
+                  }
+                  usuarioLogado = usuarioLocal;
+                } else {
+                  usuarioLogado = await buscarUsuarioLogadoFirebase(authUser);
                 }
-                usuarioLogado = usuarioLocal;
-              } else {
-                usuarioLogado = await buscarUsuarioLogadoFirebase(authUser);
-              }
+              });
 
               if (!usuarioLogado) {
-                alert("Usuário autenticado, mas não encontrado no cadastro interno.");
-                window.location.href = "index.html";
+                bloquearERedirecionar("Usuário autenticado, mas não encontrado no cadastro interno.");
+              }
+
+              await executarEtapaLoading("Validando acesso do vendedor...", 14, 26, async () => {
+                const tipo = String(usuarioLogado.tipoUsuario || usuarioLogado.perfil || usuarioLogado.cargoNome || "").toLowerCase();
+
+                if (tipo && !tipo.includes("vendedor")) {
+                  bloquearERedirecionar("Acesso negado para este perfil.");
+                }
+
+                if (["INATIVO", "BLOQUEADO"].includes(String(usuarioLogado.status || "").toUpperCase()) || usuarioLogado.acessoLiberado === false) {
+                  bloquearERedirecionar("Seu acesso está inativo ou bloqueado.");
+                }
+
+                tenantId =
+                  usuarioLogado.clientePlataformaId ||
+                  usuarioLogado.empresaId ||
+                  usuarioLogado.tenantId ||
+                  usuarioLogado.clienteId ||
+                  "";
+
+                localStorage.setItem("usuario", JSON.stringify(usuarioLogado));
+              });
+
+              await executarEtapaLoading("Preparando dados do vendedor...", 26, 38, async () => {
+                preencherUsuarioLogadoNaTela();
+                atualizarDataPainel();
+                padronizarMenuVendedor();
+              });
+
+              await executarEtapaLoading("Validando caixa aberto...", 38, 52, async () => {
+                if (typeof carregarCaixaAtual === "function") {
+                  await carregarCaixaAtual();
+                }
+              });
+
+              if (!window.caixaAtual || !window.caixaAtual.id || String(window.caixaAtual.status || "ABERTO").toUpperCase() !== "ABERTO") {
+                manterLoadingPorBloqueio("Caixa fechado. Encerrando acesso do vendedor...");
                 return;
               }
 
-              const tipo = String(usuarioLogado.tipoUsuario || usuarioLogado.perfil || usuarioLogado.cargoNome || "").toLowerCase();
-              if (tipo && !tipo.includes("vendedor")) {
-                alert("Acesso negado para este perfil.");
-                window.location.href = "index.html";
-                return;
-              }
+              await executarEtapaLoading("Carregando rota de cobrança...", 52, 82, async () => {
+                await carregarTudo();
+              });
 
-              if (["INATIVO", "BLOQUEADO"].includes(String(usuarioLogado.status || "").toUpperCase()) || usuarioLogado.acessoLiberado === false) {
-                alert("Seu acesso está inativo ou bloqueado.");
-                window.location.href = "index.html";
-                return;
-              }
+              await executarEtapaLoading("Atualizando clientes do caixa...", 82, 94, async () => {
+                abrirTelaInicialVendedor();
+                aplicarBloqueioCaixaFechado();
+                if (typeof renderCobrancas === "function") renderCobrancas();
+                if (typeof atualizarEstadoBotaoFechamento === "function") atualizarEstadoBotaoFechamento();
+              });
 
-              tenantId =
-                usuarioLogado.clientePlataformaId ||
-                usuarioLogado.empresaId ||
-                usuarioLogado.tenantId ||
-                usuarioLogado.clienteId ||
-                "";
+              await executarEtapaLoading("Preparando sistema...", 94, 100, async () => {
+                await esperar(180);
+              });
 
-              localStorage.setItem("usuario", JSON.stringify(usuarioLogado));
-
-              preencherUsuarioLogadoNaTela();
-              atualizarDataPainel();
-              padronizarMenuVendedor();
-
-              await carregarTudo();
-              abrirTelaInicialVendedor();
-              aplicarBloqueioCaixaFechado();
+              await finalizarLoadingPremiumVendedor();
 
             } catch (erro) {
+              if (erro && (erro.__integroRedirecionando || window.__integroRedirecionando)) return;
+
               console.error("Erro ao iniciar vendedor:", erro);
+              setLoaderStep("Erro ao carregar o painel.", Math.max(integroLoaderPercentualAtual, 92));
               alert("Erro ao iniciar vendedor:\n\n" + erro.message);
             }
           });
@@ -16344,6 +16589,1288 @@ async function verificarCaixaAbertoDiaAnterior() {
   setTimeout(garantirBotaoNovoClienteRedondo, 400);
   setTimeout(garantirBotaoNovoClienteRedondo, 1200);
   setTimeout(garantirBotaoNovoClienteRedondo, 2500);
+})();
+</script>
+
+<script id="integro-patch-ciclo-caixa-atual">
+(function () {
+  "use strict";
+
+  function getDbPatch() {
+    if (window.db) return window.db;
+    if (typeof db !== "undefined") return db;
+    return null;
+  }
+
+  function getUsuarioAtualPatch() {
+    return window.usuarioLogado || {};
+  }
+
+  function getTenantAtualPatch() {
+    return window.tenantId || "";
+  }
+
+  function getCaixaAtualIdPatch() {
+    return String(window.caixaAtual && window.caixaAtual.id ? window.caixaAtual.id : "");
+  }
+
+  function getRegistroCaixaIdPatch(registro) {
+    return String(
+      (registro && (
+        registro.caixaId ||
+        registro.idCaixa ||
+        registro.caixaID ||
+        registro.caixa?.id ||
+        registro.caixaAtualId
+      )) || ""
+    );
+  }
+
+  function statusCanceladoPatch(registro) {
+    return [
+      registro?.status,
+      registro?.statusVenda,
+      registro?.statusPagamento,
+      registro?.statusParcela
+    ].some(valor => String(valor || "").toUpperCase() === "CANCELADO");
+  }
+
+  function registroPertenceAoVendedorPatch(registro = {}) {
+    const usuario = getUsuarioAtualPatch();
+    const idsUsuario = [
+      usuario.id,
+      usuario.uid,
+      usuario.authUid,
+      usuario.usuarioId
+    ].filter(Boolean).map(String);
+
+    if (!idsUsuario.length) return true;
+
+    const idsRegistro = [
+      registro.vendedorId,
+      registro.usuarioId,
+      registro.abertoPorUid,
+      registro.criadoPorId,
+      registro.criadoPorUid
+    ].filter(Boolean).map(String);
+
+    if (!idsRegistro.length) return true;
+
+    return idsRegistro.some(id => idsUsuario.includes(id));
+  }
+
+  function registroPertenceAoTenantPatch(registro = {}) {
+    const tenant = String(getTenantAtualPatch() || "");
+    if (!tenant) return true;
+
+    const tenantRegistro = String(
+      registro.clientePlataformaId ||
+      registro.empresaId ||
+      registro.tenantId ||
+      ""
+    );
+
+    return !tenantRegistro || tenantRegistro === tenant;
+  }
+
+  function registroPertenceAoCaixaAtualPatch(registro = {}) {
+    const caixaId = getCaixaAtualIdPatch();
+    if (!caixaId) return false;
+    return getRegistroCaixaIdPatch(registro) === caixaId;
+  }
+
+  function movimentoValidoDoCaixaAtualPatch(registro = {}) {
+    return registro &&
+      registro.excluido !== true &&
+      registroPertenceAoCaixaAtualPatch(registro) &&
+      registroPertenceAoVendedorPatch(registro) &&
+      registroPertenceAoTenantPatch(registro);
+  }
+
+  function chaveUnicaPatch(registro) {
+    return String(registro?.id || registro?.docId || JSON.stringify(registro || {}));
+  }
+
+  function unicosPorIdPatch(lista = []) {
+    const mapa = new Map();
+    (lista || []).forEach(item => {
+      const chave = chaveUnicaPatch(item);
+      if (!mapa.has(chave)) mapa.set(chave, item);
+    });
+    return Array.from(mapa.values());
+  }
+
+  function tempoRegistroPatch(registro = {}) {
+    const candidatos = [
+      registro.dataAbertura,
+      registro.dataCaixa,
+      registro.data,
+      registro.abertoEmTexto,
+      registro.criadoEmTexto,
+      registro.atualizadoEmTexto,
+      registro.abertoEm,
+      registro.criadoEm,
+      registro.atualizadoEm
+    ];
+
+    for (const valor of candidatos) {
+      if (!valor) continue;
+
+      if (typeof valor === "number") {
+        return valor < 1000000000000 ? valor * 1000 : valor;
+      }
+
+      if (valor && typeof valor.toMillis === "function") {
+        return valor.toMillis();
+      }
+
+      if (valor && typeof valor.toDate === "function") {
+        return valor.toDate().getTime();
+      }
+
+      if (typeof valor === "string") {
+        const texto = valor.length === 10 ? `${valor}T00:00:00` : valor;
+        const ms = new Date(texto).getTime();
+        if (!Number.isNaN(ms)) return ms;
+      }
+    }
+
+    return 0;
+  }
+
+  async function consultarColecaoPorCaixaAtualPatch(nomeColecao, limite = 500) {
+    const banco = getDbPatch();
+    const caixaId = getCaixaAtualIdPatch();
+
+    if (!banco || !caixaId) return [];
+
+    let registros = [];
+
+    try {
+      const snap = await banco.collection(nomeColecao)
+        .where("caixaId", "==", caixaId)
+        .limit(limite)
+        .get();
+
+      snap.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
+    } catch (erroConsultaCaixa) {
+      console.warn(`Falha ao consultar ${nomeColecao} por caixaId. Aplicando filtro local.`, erroConsultaCaixa);
+
+      try {
+        let ref = banco.collection(nomeColecao).limit(limite);
+        const tenant = getTenantAtualPatch();
+
+        if (tenant) {
+          ref = banco.collection(nomeColecao)
+            .where("clientePlataformaId", "==", tenant)
+            .limit(limite);
+        }
+
+        const snapFallback = await ref.get();
+        snapFallback.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
+      } catch (erroFallback) {
+        console.warn(`Falha ao consultar ${nomeColecao} no fallback.`, erroFallback);
+        registros = [];
+      }
+    }
+
+    return unicosPorIdPatch(registros).filter(movimentoValidoDoCaixaAtualPatch);
+  }
+
+  window.pertenceAoCaixaAtual = function pertenceAoCaixaAtualCicloAtual(registro) {
+    return registroPertenceAoCaixaAtualPatch(registro);
+  };
+
+  window.caixaEstaFechado = function caixaEstaFechadoCicloAtual() {
+    if (!window.caixaAtual || !window.caixaAtual.id) return true;
+    return String(window.caixaAtual.status || "").toUpperCase() === "FECHADO";
+  };
+
+  window.carregarCaixaAtual = async function carregarCaixaAtualMaisRecente() {
+    const banco = getDbPatch();
+    const usuario = getUsuarioAtualPatch();
+
+    window.caixaAtual = null;
+
+    if (!banco || !usuario) {
+      localStorage.removeItem("caixaAtual");
+      return;
+    }
+
+    const idsUsuario = [
+      usuario.id,
+      usuario.uid,
+      usuario.authUid,
+      usuario.usuarioId
+    ].filter(Boolean).map(String);
+
+    const campos = ["usuarioId", "vendedorId", "abertoPorUid"];
+    const encontrados = [];
+    const tenant = getTenantAtualPatch();
+
+    for (const campo of campos) {
+      for (const idUsuario of idsUsuario) {
+        try {
+          let ref = banco.collection("caixas")
+            .where(campo, "==", idUsuario)
+            .where("status", "==", "ABERTO")
+            .limit(20);
+
+          if (tenant) {
+            ref = banco.collection("caixas")
+              .where("clientePlataformaId", "==", tenant)
+              .where(campo, "==", idUsuario)
+              .where("status", "==", "ABERTO")
+              .limit(20);
+          }
+
+          const snap = await ref.get();
+          snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+        } catch (erro) {
+          console.warn("Falha ao buscar caixa aberto pelo campo:", campo, erro);
+        }
+      }
+    }
+
+    const caixasValidos = unicosPorIdPatch(encontrados)
+      .filter(caixa => caixa.excluido !== true && registroPertenceAoTenantPatch(caixa))
+      .sort((a, b) => tempoRegistroPatch(b) - tempoRegistroPatch(a));
+
+    if (!caixasValidos.length) {
+      localStorage.removeItem("caixaAtual");
+      return;
+    }
+
+    window.caixaAtual = caixasValidos[0];
+    localStorage.setItem("caixaAtual", JSON.stringify(window.caixaAtual));
+
+    if (typeof window.verificarCaixaAbertoDiaAnterior === "function") {
+      await window.verificarCaixaAbertoDiaAnterior();
+    }
+  };
+
+  window.carregarPagamentosHoje = async function carregarPagamentosDoCaixaAtual() {
+    const pagamentos = await consultarColecaoPorCaixaAtualPatch("pagamentos", 700);
+
+    window.pagamentosHojeCache = pagamentos.filter(p =>
+      !statusCanceladoPatch(p) &&
+      String(p.status || "CONFIRMADO").toUpperCase() !== "CANCELADO"
+    );
+  };
+
+  window.carregarHistoricoCobrancas = async function carregarHistoricoCobrancasDoCaixaAtual() {
+    const historicos = await consultarColecaoPorCaixaAtualPatch("historicoCobrancas", 700);
+
+    window.historicoCobrancasCache = historicos.filter(h =>
+      String(h.tipo || h.tipoHistorico || "").toUpperCase() === "NAO_PAGAMENTO" &&
+      !statusCanceladoPatch(h)
+    );
+  };
+
+  window.getRecebimentosCaixaAtual = function getRecebimentosCaixaAtualCiclo() {
+    const todosPagamentos = unicosPorIdPatch([
+      ...(window.pagamentosHojeCache || []),
+      ...(window.pagamentosCache || [])
+    ]);
+
+    return todosPagamentos.filter(p =>
+      movimentoValidoDoCaixaAtualPatch(p) &&
+      !statusCanceladoPatch(p) &&
+      String(p.status || "CONFIRMADO").toUpperCase() !== "CANCELADO"
+    );
+  };
+
+  window.getVendasCaixaAtual = function getVendasCaixaAtualCiclo() {
+    return (window.vendasCache || []).filter(v =>
+      movimentoValidoDoCaixaAtualPatch(v) &&
+      String(v.statusVenda || v.status || "").toUpperCase() !== "CANCELADO"
+    );
+  };
+
+  window.getVendasHojeDashboard = function getVendasDoCaixaAtualDashboard() {
+    return window.getVendasCaixaAtual();
+  };
+
+  window.getSolicitacoesCaixaDashboard = function getSolicitacoesCaixaDashboardCiclo(tipos = []) {
+    return (window.solicitacoesCache || []).filter(s => {
+      const tipo = String(s.tipo || s.tipoSolicitacao || "").toUpperCase();
+      const status = String(s.status || "").toUpperCase();
+      const aprovada = ["APROVADO", "APROVADA"].includes(status);
+
+      return tipos.includes(tipo) &&
+        aprovada &&
+        movimentoValidoDoCaixaAtualPatch(s) &&
+        !statusCanceladoPatch(s);
+    });
+  };
+
+  window.getLancamentosCaixaAtual = function getLancamentosCaixaAtualCiclo(tipo, statusFn) {
+    return (window.solicitacoesCache || []).filter(s =>
+      String(s.tipo || s.tipoSolicitacao || "").toUpperCase() === tipo &&
+      movimentoValidoDoCaixaAtualPatch(s) &&
+      s.excluido !== true &&
+      (typeof statusFn === "function" ? statusFn(s.status) : true)
+    );
+  };
+
+  window.montarCobrancasPorVenda = function montarCobrancasPorVendaCicloAtual() {
+    const vendasAtivas = (window.vendasCache || []).filter(v =>
+      v.excluido !== true &&
+      String(v.statusVenda || v.status || "").toUpperCase() !== "CANCELADO" &&
+      Number(v.saldoDevedor || 0) > 0.01
+    );
+
+    return vendasAtivas.map(venda => {
+      const cliente = (window.clientesCache || []).find(c => c.id === venda.clienteId) || {};
+      const parcelasVenda = (window.parcelasCache || [])
+        .filter(p => p.vendaId === venda.id && p.excluido !== true)
+        .sort((a, b) => Number(a.numeroParcela || 0) - Number(b.numeroParcela || 0));
+
+      const pagamentosVendaCaixaAtual = (window.pagamentosHojeCache || []).filter(p =>
+        String(p.vendaId || "") === String(venda.id || "") &&
+        movimentoValidoDoCaixaAtualPatch(p) &&
+        !statusCanceladoPatch(p)
+      );
+
+      const valorPagoCaixaAtual = pagamentosVendaCaixaAtual.reduce((total, p) =>
+        total + Number(p.valorPago || p.valorRecebido || p.valor || 0), 0
+      );
+
+      const naoPagamentosVendaCaixaAtual = (window.historicoCobrancasCache || []).filter(h =>
+        String(h.vendaId || "") === String(venda.id || "") &&
+        String(h.tipo || h.tipoHistorico || "").toUpperCase() === "NAO_PAGAMENTO" &&
+        movimentoValidoDoCaixaAtualPatch(h) &&
+        !statusCanceladoPatch(h)
+      );
+
+      const valorParcela = Number(venda.valorParcela || parcelasVenda[0]?.valor || 0);
+      const totalParcelas = Number(venda.quantidadeParcelas || parcelasVenda.length || 1);
+      const totalPagoHistorico = parcelasVenda.reduce((soma, p) => soma + Number(p.valorPago || 0), 0);
+      const progresso = valorParcela > 0 ? totalPagoHistorico / valorParcela : 0;
+
+      const esperado = typeof window.calcularParcelasEsperadas === "function"
+        ? window.calcularParcelasEsperadas(venda, totalParcelas)
+        : 0;
+      const diferenca = esperado - progresso;
+
+      let situacao = "EM_DIA";
+      let diasIndicador = 0;
+
+      if (diferenca > 0.05) {
+        situacao = "ATRASADO";
+        diasIndicador = typeof window.formatarNumeroCurto === "function"
+          ? window.formatarNumeroCurto(diferenca)
+          : String(diferenca);
+      }
+
+      if (diferenca < -0.05) {
+        situacao = "ADIANTADO";
+        diasIndicador = typeof window.formatarNumeroCurto === "function"
+          ? window.formatarNumeroCurto(Math.abs(diferenca))
+          : String(Math.abs(diferenca));
+      }
+
+      const proximaData = typeof window.obterProximaCobranca === "function"
+        ? window.obterProximaCobranca(venda, parcelasVenda)
+        : (venda.dataPrimeiraCobranca || null);
+
+      const comCobrancaHoje = typeof window.temCobrancaHojeOuAtrasada === "function"
+        ? window.temCobrancaHojeOuAtrasada(venda, parcelasVenda, proximaData)
+        : false;
+
+      const progressoTexto = typeof window.formatarNumeroCurto === "function"
+        ? `${window.formatarNumeroCurto(progresso)}/${totalParcelas}`
+        : `${progresso}/${totalParcelas}`;
+
+      return {
+        vendaId: venda.id,
+        clienteId: venda.clienteId,
+        clienteNome: venda.clienteNome || venda.nomeCliente || cliente.nome || cliente.nomeCompleto || cliente.apelido || "Cliente",
+        clienteApelido: venda.clienteApelido || venda.apelidoCliente || cliente.apelido || "",
+        nomeCompleto: venda.nomeCompleto || venda.clienteNomeCompleto || cliente.nomeCompleto || cliente.nome || "",
+        apelido: venda.apelido || venda.clienteApelido || cliente.apelido || "",
+        telefone: venda.telefone || venda.clienteTelefone || cliente.telefone || "",
+        telefonePrincipal: venda.telefonePrincipal || cliente.telefonePrincipal || "",
+        whatsappNumero: venda.whatsappNumero || cliente.whatsappNumero || "",
+        telefoneE164: venda.telefoneE164 || cliente.telefoneE164 || "",
+        documento: venda.documento || venda.clienteDocumento || cliente.documento || "",
+        cliente,
+        saldoDevedor: Number(venda.saldoDevedor || 0),
+        valorParcela,
+        totalParcelas,
+        progresso,
+        progressoTexto,
+        situacao,
+        diasIndicador,
+        venda,
+        parcelas: parcelasVenda,
+        comCobrancaHoje,
+        pendenteHoje: comCobrancaHoje && pagamentosVendaCaixaAtual.length === 0 && naoPagamentosVendaCaixaAtual.length === 0,
+        pagoHoje: pagamentosVendaCaixaAtual.length > 0,
+        valorPagoHoje: valorPagoCaixaAtual,
+        naoPagoHoje: naoPagamentosVendaCaixaAtual.length > 0,
+        proximaCobranca: proximaData,
+        proximaCobrancaTexto: typeof window.formatarProximaCobranca === "function"
+          ? window.formatarProximaCobranca(proximaData, parcelasVenda)
+          : (proximaData || "Sem cobrança")
+      };
+    });
+  };
+
+  if (typeof window.renderVendasDia === "function") {
+    const renderVendasDiaOriginalPatch = window.renderVendasDia;
+
+    window.renderVendasDia = function renderVendasDiaSomenteCaixaAtual() {
+      const vendasOriginais = window.vendasCache;
+
+      try {
+        if (Array.isArray(vendasOriginais)) {
+          window.vendasCache = vendasOriginais.filter(v =>
+            movimentoValidoDoCaixaAtualPatch(v) &&
+            String(v.statusVenda || v.status || "").toUpperCase() !== "CANCELADO"
+          );
+        }
+
+        return renderVendasDiaOriginalPatch.apply(this, arguments);
+      } finally {
+        window.vendasCache = vendasOriginais;
+      }
+    };
+  }
+
+  window.carregarTudo = async function carregarTudoComCicloDoCaixaAtual() {
+    try {
+      if (typeof window.carregarCaixaAtual === "function") {
+        await window.carregarCaixaAtual();
+      }
+
+      await Promise.all([
+        typeof window.carregarClientes === "function" ? window.carregarClientes() : Promise.resolve(),
+        typeof window.carregarVendas === "function" ? window.carregarVendas() : Promise.resolve(),
+        typeof window.carregarParcelas === "function" ? window.carregarParcelas() : Promise.resolve(),
+        typeof window.carregarPagamentosHistorico === "function" ? window.carregarPagamentosHistorico() : Promise.resolve(),
+        typeof window.carregarPagamentosHoje === "function" ? window.carregarPagamentosHoje() : Promise.resolve(),
+        typeof window.carregarSolicitacoes === "function" ? window.carregarSolicitacoes() : Promise.resolve(),
+        typeof window.carregarIndicacoes === "function" ? window.carregarIndicacoes() : Promise.resolve(),
+        typeof window.carregarCategoriasMovimentacao === "function" ? window.carregarCategoriasMovimentacao() : Promise.resolve(),
+        typeof window.carregarNotificacoes === "function" ? window.carregarNotificacoes() : Promise.resolve(),
+        typeof window.carregarHistoricoCobrancas === "function" ? window.carregarHistoricoCobrancas() : Promise.resolve()
+      ]);
+
+      if (typeof window.atualizarDashboard === "function") window.atualizarDashboard();
+      if (window.clientesBuscaExecutada && typeof window.buscarClientes === "function") await window.buscarClientes(false);
+      if (typeof window.renderVendasDia === "function") window.renderVendasDia();
+      if (typeof window.renderCobrancas === "function") window.renderCobrancas();
+      if (typeof window.renderSolicitacoes === "function") window.renderSolicitacoes();
+      if (typeof window.renderIndicacoes === "function") window.renderIndicacoes();
+      if (typeof window.atualizarEstadoBotaoFechamento === "function") window.atualizarEstadoBotaoFechamento();
+      if (typeof window.aplicarBloqueioCaixaFechado === "function") window.aplicarBloqueioCaixaFechado();
+    } catch (erro) {
+      console.error("Erro ao carregar dados do vendedor:", erro);
+      alert("Erro ao carregar dados:\n\n" + erro.message);
+    }
+  };
+
+  window.__integroPatchCicloCaixaAtual = true;
+})();
+</script>
+<script id="patch-caixa-fechado-rota-novo-dia">
+(function () {
+  if (window.__integroPatchCaixaFechadoRotaNovoDia) return;
+  window.__integroPatchCaixaFechadoRotaNovoDia = true;
+
+  let logoutAutomaticoEmExecucao = false;
+  let monitorCaixaFechadoIniciado = false;
+
+  function dataLocalISO(data = new Date()) {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  function hojeOperacionalISO() {
+    if (typeof window.hojeISO === "function") {
+      try { return window.hojeISO(); } catch (_) {}
+    }
+    return dataLocalISO();
+  }
+
+  function normalizarTexto(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toUpperCase();
+  }
+
+  function statusCaixa(valor) {
+    return normalizarTexto(valor?.status || valor?.situacao || valor?.estado || "");
+  }
+
+  function caixaAbertoValido(caixa) {
+    return !!caixa && !!caixa.id && caixa.excluido !== true && statusCaixa(caixa) === "ABERTO";
+  }
+
+  function getBanco() {
+    if (window.db) return window.db;
+    if (window.firebase && firebase.firestore) return firebase.firestore();
+    return null;
+  }
+
+  function getUsuarioAtual() {
+    if (window.usuarioLogado) return window.usuarioLogado;
+
+    const chaves = ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario"];
+    for (const chave of chaves) {
+      try {
+        const valor = JSON.parse(localStorage.getItem(chave) || "null");
+        if (valor && typeof valor === "object") return valor;
+      } catch (_) {}
+    }
+
+    return null;
+  }
+
+  function getTenantAtual() {
+    const usuario = getUsuarioAtual() || {};
+    return String(
+      window.tenantId ||
+      usuario.clientePlataformaId ||
+      usuario.empresaId ||
+      usuario.tenantId ||
+      usuario.clienteId ||
+      ""
+    );
+  }
+
+  function idsUsuarioAtual() {
+    const usuario = getUsuarioAtual() || {};
+    return Array.from(new Set([
+      usuario.id,
+      usuario.uid,
+      usuario.authUid,
+      usuario.usuarioId,
+      usuario.vendedorId,
+      usuario.email
+    ].filter(Boolean).map(String)));
+  }
+
+  function tempoCaixa(caixa) {
+    const campos = [
+      caixa.dataAbertura,
+      caixa.abertoEm,
+      caixa.criadoEm,
+      caixa.criadoEmTexto,
+      caixa.dataCaixa,
+      caixa.data
+    ];
+
+    for (const valor of campos) {
+      if (!valor) continue;
+      if (typeof valor.toDate === "function") return valor.toDate().getTime();
+      if (typeof valor === "string") {
+        const texto = valor.length === 10 ? `${valor}T00:00:00` : valor;
+        const ms = new Date(texto).getTime();
+        if (!Number.isNaN(ms)) return ms;
+      }
+      if (typeof valor === "number") return valor;
+    }
+
+    return 0;
+  }
+
+  async function forcarLogoutCaixaFechado(mensagem) {
+    if (logoutAutomaticoEmExecucao) return;
+    logoutAutomaticoEmExecucao = true;
+
+    try {
+      alert(mensagem || "Seu caixa está fechado. Solicite a abertura de um novo caixa para acessar o sistema.");
+    } catch (_) {}
+
+    try {
+      if (window.firebase?.auth) {
+        await firebase.auth().signOut();
+      }
+    } catch (erro) {
+      console.warn("Falha ao deslogar Firebase após caixa fechado:", erro);
+    }
+
+    try {
+      ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario", "caixaAtual"].forEach(chave => localStorage.removeItem(chave));
+    } catch (_) {}
+
+    window.location.href = "index.html";
+  }
+
+  async function buscarCaixaAbertoDoVendedor() {
+    const banco = getBanco();
+    const ids = idsUsuarioAtual();
+    const tenant = getTenantAtual();
+
+    if (!banco || !ids.length) return null;
+
+    const camposUsuario = ["usuarioId", "vendedorId", "abertoPorUid", "userId", "uid"];
+    const encontrados = [];
+
+    for (const campo of camposUsuario) {
+      for (const idUsuario of ids) {
+        try {
+          let ref = banco.collection("caixas")
+            .where(campo, "==", idUsuario)
+            .where("status", "==", "ABERTO")
+            .limit(20);
+
+          if (tenant) {
+            ref = banco.collection("caixas")
+              .where("clientePlataformaId", "==", tenant)
+              .where(campo, "==", idUsuario)
+              .where("status", "==", "ABERTO")
+              .limit(20);
+          }
+
+          const snap = await ref.get();
+          snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+        } catch (erro) {
+          console.warn("Falha ao buscar caixa aberto para controle de acesso:", campo, erro);
+        }
+      }
+    }
+
+    const unicos = new Map();
+    encontrados.forEach(caixa => {
+      if (caixa?.id && caixaAbertoValido(caixa)) unicos.set(caixa.id, caixa);
+    });
+
+    return Array.from(unicos.values()).sort((a, b) => tempoCaixa(b) - tempoCaixa(a))[0] || null;
+  }
+
+  async function verificarAcessoCaixaAberto() {
+    if (caixaAbertoValido(window.caixaAtual)) return true;
+
+    const caixaAberto = await buscarCaixaAbertoDoVendedor();
+
+    if (caixaAberto) {
+      window.caixaAtual = caixaAberto;
+      try { localStorage.setItem("caixaAtual", JSON.stringify(caixaAberto)); } catch (_) {}
+      return true;
+    }
+
+    try { localStorage.removeItem("caixaAtual"); } catch (_) {}
+
+    await forcarLogoutCaixaFechado(
+      "Seu caixa está fechado ou ainda não foi aberto. Solicite a abertura de um novo caixa para acessar o sistema."
+    );
+
+    return false;
+  }
+
+  async function verificarStatusDocumentoCaixaAtual() {
+    const banco = getBanco();
+    const caixaId = window.caixaAtual?.id;
+
+    if (!banco || !caixaId) {
+      return verificarAcessoCaixaAberto();
+    }
+
+    try {
+      const doc = await banco.collection("caixas").doc(caixaId).get();
+
+      if (!doc.exists) {
+        await forcarLogoutCaixaFechado("Seu caixa não está mais disponível. Faça login novamente após a abertura de um novo caixa.");
+        return false;
+      }
+
+      const dados = { id: doc.id, ...doc.data() };
+
+      if (!caixaAbertoValido(dados)) {
+        await forcarLogoutCaixaFechado("Seu caixa foi fechado. O acesso do vendedor foi encerrado automaticamente.");
+        return false;
+      }
+
+      window.caixaAtual = { ...(window.caixaAtual || {}), ...dados };
+      try { localStorage.setItem("caixaAtual", JSON.stringify(window.caixaAtual)); } catch (_) {}
+      return true;
+    } catch (erro) {
+      console.warn("Falha ao verificar status do caixa atual:", erro);
+      return true;
+    }
+  }
+
+  const carregarCaixaAtualAnterior = window.carregarCaixaAtual;
+  window.carregarCaixaAtual = async function carregarCaixaAtualComControleDeAcesso() {
+    if (typeof carregarCaixaAtualAnterior === "function") {
+      try {
+        await carregarCaixaAtualAnterior.apply(this, arguments);
+      } catch (erro) {
+        console.warn("Falha no carregamento original do caixa atual:", erro);
+      }
+    }
+
+    await verificarAcessoCaixaAberto();
+    return window.caixaAtual;
+  };
+
+  const carregarTudoAnterior = window.carregarTudo;
+  window.carregarTudo = async function carregarTudoComControleCaixaAberto() {
+    const acessoLiberado = await verificarAcessoCaixaAberto();
+    if (!acessoLiberado) return;
+
+    if (typeof carregarTudoAnterior === "function") {
+      return carregarTudoAnterior.apply(this, arguments);
+    }
+  };
+
+  function iniciarMonitorCaixaFechado() {
+    if (monitorCaixaFechadoIniciado) return;
+    monitorCaixaFechadoIniciado = true;
+
+    setInterval(verificarStatusDocumentoCaixaAtual, 30000);
+    window.addEventListener("focus", verificarStatusDocumentoCaixaAtual);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) verificarStatusDocumentoCaixaAtual();
+    });
+  }
+
+  function normalizarFrequenciaVenda(venda) {
+    const texto = normalizarTexto(
+      venda?.frequencia ||
+      venda?.periodicidade ||
+      venda?.tipoCobranca ||
+      venda?.cicloCobranca ||
+      venda?.recorrencia ||
+      "DIARIA"
+    );
+
+    if (texto.includes("SEMAN")) return "SEMANAL";
+    if (texto.includes("QUINZ")) return "QUINZENAL";
+    if (texto.includes("MES") || texto.includes("MENS")) return "MENSAL";
+    if (texto.includes("DIA")) return "DIARIA";
+
+    return "DIARIA";
+  }
+
+  function vendaEhPeriodica(venda) {
+    return ["SEMANAL", "QUINZENAL", "MENSAL"].includes(normalizarFrequenciaVenda(venda));
+  }
+
+  function dataParcelaPendente(parcela) {
+    return String(
+      parcela?.dataVencimento ||
+      parcela?.dataPrevista ||
+      parcela?.vencimento ||
+      parcela?.dataCobranca ||
+      ""
+    ).slice(0, 10);
+  }
+
+  window.temCobrancaHojeOuAtrasada = function temCobrancaHojeOuAtrasadaNovoCiclo(venda, parcelasVenda = [], proximaData = null) {
+    const saldo = Number(venda?.saldoDevedor || venda?.saldoAtual || venda?.valorAberto || 0);
+    if (saldo <= 0.01) return false;
+
+    const hoje = hojeOperacionalISO();
+
+    const temParcelaVencidaOuHoje = (parcelasVenda || []).some(parcela => {
+      const status = normalizarTexto(parcela?.status || parcela?.statusParcela || "PENDENTE");
+      const data = dataParcelaPendente(parcela);
+      return status !== "PAGA" && status !== "QUITADA" && data && data <= hoje;
+    });
+
+    if (temParcelaVencidaOuHoje) return true;
+
+    if (vendaEhPeriodica(venda)) {
+      const proxima = String(proximaData || venda?.proximaCobranca || venda?.dataProximaCobranca || venda?.dataPrimeiraCobranca || "").slice(0, 10);
+      return !!proxima && proxima <= hoje;
+    }
+
+    // Regra operacional: em novo caixa, toda venda diária/default com saldo devedor positivo volta para a rota.
+    return true;
+  };
+
+  const montarCobrancasAnterior = window.montarCobrancasPorVenda;
+  window.montarCobrancasPorVenda = function montarCobrancasNovoCicloCaixa() {
+    const lista = typeof montarCobrancasAnterior === "function"
+      ? montarCobrancasAnterior.apply(this, arguments)
+      : [];
+
+    return (lista || []).map(item => {
+      const venda = item.venda || {};
+      const parcelas = item.parcelas || [];
+      const proxima = item.proximaCobranca || null;
+      const comCobrancaHoje = window.temCobrancaHojeOuAtrasada(venda, parcelas, proxima);
+      const pagoNoCaixa = !!item.pagoHoje;
+      const naoPagoNoCaixa = !!item.naoPagoHoje;
+
+      return {
+        ...item,
+        comCobrancaHoje,
+        pendenteHoje: comCobrancaHoje && !pagoNoCaixa && !naoPagoNoCaixa
+      };
+    });
+  };
+
+  iniciarMonitorCaixaFechado();
+})();
+</script>
+
+
+<style id="patch-ajustes-operacionais-vendedor-css">
+  body.tela-operacao-vendedor .cobranca-status-row .cobranca-chip-status:first-child {
+    display: inline-flex !important;
+  }
+
+  body.tela-operacao-vendedor .cobranca-card-clean.status-pendente .cobranca-lateral-clean {
+    background: #e5e7eb !important;
+    border-color: #dbe5f0 !important;
+  }
+
+  #btnFecharCaixaCobrancas span {
+    pointer-events: none;
+  }
+</style>
+<script id="patch-ajustes-operacionais-vendedor-20260623">
+(function () {
+  "use strict";
+
+  if (window.__integroPatchAjustesOperacionaisVendedor20260623) return;
+  window.__integroPatchAjustesOperacionaisVendedor20260623 = true;
+  window.__integroCaixaEmVerificacao = true;
+
+  function byId(id) {
+    return document.getElementById(id);
+  }
+
+  function htmlSeguro(valor) {
+    return String(valor ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function texto(valor, padrao = "") {
+    const final = valor === undefined || valor === null ? "" : String(valor).trim();
+    return final || padrao;
+  }
+
+  function normalizarTexto(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toUpperCase();
+  }
+
+  function numeroSeguro(valor) {
+    if (typeof window.numero === "function") {
+      try {
+        const n = window.numero(valor);
+        if (Number.isFinite(n)) return n;
+      } catch (_) {}
+    }
+
+    if (typeof valor === "number") return Number.isFinite(valor) ? valor : 0;
+
+    const textoNumero = String(valor ?? "")
+      .replace(/R\$/gi, "")
+      .replace(/\s/g, "")
+      .replace(/\./g, "")
+      .replace(/,/g, ".")
+      .replace(/[^0-9.-]/g, "");
+
+    const n = Number(textoNumero);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function moeda(valor) {
+    if (typeof window.moeda === "function") {
+      try { return window.moeda(valor); } catch (_) {}
+    }
+
+    return numeroSeguro(valor).toLocaleString("pt-BR", {
+      style: "currency",
+      currency: "BRL"
+    });
+  }
+
+  function numeroCurto(valor) {
+    const n = numeroSeguro(valor);
+    if (Number.isInteger(n)) return String(n).padStart(n >= 0 && n < 10 ? 2 : 1, "0");
+    return n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+  }
+
+  function iniciais(nome) {
+    const partes = String(nome || "CL").trim().split(/\s+/).filter(Boolean).slice(0, 2);
+    if (!partes.length) return "CL";
+    if (partes.length === 1) return partes[0].slice(0, 2).toUpperCase();
+    return (partes[0][0] + partes[1][0]).toUpperCase();
+  }
+
+  function telefoneRealItem(item) {
+    const cliente = item?.cliente || {};
+    const telefoneObj = Array.isArray(cliente.telefones)
+      ? cliente.telefones.find(t => t && (t.numero || t.numeroE164 || t.telefoneE164))
+      : null;
+
+    return texto(
+      item?.telefonePrincipal ||
+      item?.telefone ||
+      cliente.telefonePrincipal ||
+      cliente.telefone ||
+      cliente.whatsapp ||
+      cliente.celular ||
+      telefoneObj?.numeroE164 ||
+      telefoneObj?.telefoneE164 ||
+      telefoneObj?.numero ||
+      "",
+      ""
+    );
+  }
+
+  function statusVendaNormalizado(item) {
+    const venda = item?.venda || item || {};
+    return normalizarTexto(
+      item?.statusVenda ||
+      item?.status ||
+      venda.statusVenda ||
+      venda.status ||
+      venda.situacaoVenda ||
+      venda.situacao ||
+      ""
+    );
+  }
+
+  function saldoDevedorItem(item) {
+    const venda = item?.venda || {};
+    const candidatos = [
+      item?.saldoDevedor,
+      item?.saldoAtual,
+      item?.valorAberto,
+      item?.saldo,
+      venda.saldoDevedor,
+      venda.saldoAtual,
+      venda.valorAberto,
+      venda.saldo
+    ];
+
+    for (const valor of candidatos) {
+      if (valor === undefined || valor === null || valor === "") continue;
+      return numeroSeguro(valor);
+    }
+
+    return 0;
+  }
+
+  function vendaQuitadaOuInativa(item) {
+    const status = statusVendaNormalizado(item);
+    return [
+      "QUITADO",
+      "QUITADA",
+      "PAGO",
+      "PAGA",
+      "FINALIZADO",
+      "FINALIZADA",
+      "ENCERRADO",
+      "ENCERRADA",
+      "CANCELADO",
+      "CANCELADA"
+    ].includes(status);
+  }
+
+  function itemDeveAparecerNaCobranca(item) {
+    if (!item) return false;
+    if (item.excluido === true || item.venda?.excluido === true) return false;
+    if (vendaQuitadaOuInativa(item)) return false;
+    return saldoDevedorItem(item) > 0.01;
+  }
+
+  function statusVisualCobranca(item) {
+    const situacao = normalizarTexto(item?.situacao || "EM_DIA");
+    const diasBruto = String(item?.diasIndicador || 0).replace(",", ".");
+    const dias = Number(diasBruto);
+    const diasLabel = texto(item?.diasIndicador, "");
+
+    if (situacao === "ADIANTADO") {
+      return {
+        label: `Adiantado ${htmlSeguro(diasLabel)}`.trim(),
+        cor: "#2563eb",
+        fundo: "rgba(37,99,235,.10)",
+        borda: "rgba(37,99,235,.28)"
+      };
+    }
+
+    if (situacao === "ATRASADO") {
+      if (dias >= 15) return { label: `Atrasado ${htmlSeguro(diasLabel)} dias`, cor: "#dc2626", fundo: "rgba(220,38,38,.10)", borda: "rgba(220,38,38,.30)" };
+      if (dias >= 10) return { label: `Atrasado ${htmlSeguro(diasLabel)} dias`, cor: "#f97316", fundo: "rgba(249,115,22,.12)", borda: "rgba(249,115,22,.32)" };
+      if (dias >= 5) return { label: `Atrasado ${htmlSeguro(diasLabel)} dias`, cor: "#ca8a04", fundo: "rgba(234,179,8,.16)", borda: "rgba(234,179,8,.36)" };
+      return { label: `Atrasado ${htmlSeguro(diasLabel)} dias`, cor: "#eab308", fundo: "rgba(234,179,8,.10)", borda: "rgba(234,179,8,.28)" };
+    }
+
+    return { label: "Em dia", cor: "#16a34a", fundo: "rgba(22,163,74,.10)", borda: "rgba(22,163,74,.28)" };
+  }
+
+  function gradienteProgressoCobranca(item) {
+    const situacao = normalizarTexto(item?.situacao || "EM_DIA");
+    const dias = Number(String(item?.diasIndicador || 0).replace(",", "."));
+
+    if (situacao === "ADIANTADO") return "linear-gradient(135deg,#38bdf8,#2563eb)";
+    if (situacao === "ATRASADO" && dias >= 15) return "linear-gradient(135deg,#fb7185,#dc2626)";
+    if (situacao === "ATRASADO" && dias >= 10) return "linear-gradient(135deg,#fb923c,#f97316)";
+    if (situacao === "ATRASADO") return "linear-gradient(135deg,#facc15,#eab308)";
+    return "linear-gradient(135deg,#4ade80,#16a34a)";
+  }
+
+  function textoParcelasPagas(atual, total) {
+    return `${numeroCurto(Math.max(0, numeroSeguro(atual)))} de ${numeroCurto(Math.max(0, numeroSeguro(total)))}`;
+  }
+
+  function caixaFechadoResolvido() {
+    if (window.__integroCaixaEmVerificacao) return false;
+
+    const caixa = window.caixaAtual;
+    if (!caixa || !caixa.id) return true;
+
+    const status = normalizarTexto(caixa.status || caixa.situacao || caixa.estado || "ABERTO");
+    return status === "FECHADO" || status === "FECHADA" || status === "ENCERRADO" || status === "ENCERRADA";
+  }
+
+  const caixaEstaFechadoAnterior = window.caixaEstaFechado;
+  window.caixaEstaFechado = function caixaEstaFechadoSemFalsoAlarmeInicial() {
+    if (window.__integroCaixaEmVerificacao) return false;
+
+    if (typeof caixaEstaFechadoAnterior === "function") {
+      try {
+        const resultadoOriginal = caixaEstaFechadoAnterior.apply(this, arguments);
+        if (window.caixaAtual && window.caixaAtual.id) return !!resultadoOriginal;
+      } catch (_) {}
+    }
+
+    return caixaFechadoResolvido();
+  };
+
+  function caixaBloqueadaParaAcao() {
+    return !!window.__integroCaixaEmVerificacao || caixaFechadoResolvido();
+  }
+
+  const montarCobrancasAnterior = window.montarCobrancasPorVenda;
+  if (typeof montarCobrancasAnterior === "function") {
+    window.montarCobrancasPorVenda = function montarCobrancasFiltrandoQuitadosESaldoZerado() {
+      const lista = montarCobrancasAnterior.apply(this, arguments) || [];
+      return lista
+        .filter(itemDeveAparecerNaCobranca)
+        .map(item => ({
+          ...item,
+          saldoDevedor: saldoDevedorItem(item),
+          pendenteHoje: !!item.comCobrancaHoje && !item.pagoHoje && !item.naoPagoHoje
+        }));
+    };
+  }
+
+  window.cardCobrancaCliente = function cardCobrancaClienteAjustadoOperacional(item) {
+    const situacao = statusVisualCobranca(item);
+
+    // Barra lateral representa somente a ação do caixa atual:
+    // cinza claro/branco = pendente, verde = pagou, vermelho = não pagou.
+    const lateral = item.pagoHoje
+      ? "#16a34a"
+      : item.naoPagoHoje
+        ? "#dc2626"
+        : "#e5e7eb";
+
+    const lateralBorda = item.pagoHoje
+      ? "rgba(22,163,74,.35)"
+      : item.naoPagoHoje
+        ? "rgba(220,38,38,.35)"
+        : "#dbe5f0";
+
+    const nomeDestaque = texto(item.clienteApelido || item.apelido || item.clienteNome, "Cliente");
+    const nomeCompleto = texto(item.nomeCompleto || item.clienteNome, "");
+    const telefone = telefoneRealItem(item);
+    const inic = iniciais(nomeDestaque);
+    const acoesBloqueadas = caixaBloqueadaParaAcao();
+
+    const progressoAtual = Math.max(0, numeroSeguro(item.progresso || 0));
+    const totalParcelas = Math.max(numeroSeguro(item.totalParcelas || 1), 1);
+    const progressoPercentual = Math.max(0, Math.min(100, Math.round((progressoAtual / totalParcelas) * 100)));
+    const progressoTexto = textoParcelasPagas(progressoAtual, totalParcelas);
+    const progressoGradiente = gradienteProgressoCobranca(item);
+    const valorPagoHoje = numeroSeguro(item.valorPagoHoje || 0);
+
+    return `
+      <div class="venda-cobranca-card cobranca-card-clean ${item.pagoHoje ? "status-pago" : item.naoPagoHoje ? "status-nao-pago" : "status-pendente"}" data-venda-id="${htmlSeguro(item.vendaId)}" style="--cobranca-situacao-cor:${situacao.cor};--cobranca-progress-gradient:${progressoGradiente};">
+        <div class="cobranca-lateral-clean" style="background:${lateral};border:1px solid ${lateralBorda};"></div>
+
+        <div class="cobranca-cliente-clean" onclick="abrirOpcoesCobranca('${htmlSeguro(item.vendaId)}')" style="cursor:pointer;">
+          <div class="cobranca-cliente-head">
+            <div class="cobranca-avatar-clean" style="background:${situacao.fundo};border:1px solid ${situacao.borda};color:${situacao.cor};">${htmlSeguro(inic)}</div>
+            <div style="min-width:0;flex:1;">
+              <div class="cobranca-nome-linha">
+                <strong class="nome-cliente-cobranca">${htmlSeguro(nomeDestaque)}</strong>
+                <button class="btn btn-cobrar-clean btn-cobrar-inline" title="Enviar mensagem" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${htmlSeguro(item.clienteId)}','${htmlSeguro(item.vendaId)}')">
+                  <span>➤</span>
+                </button>
+              </div>
+              ${telefone ? `<span class="telefone-cobranca-desktop">${htmlSeguro(telefone)}</span>` : ""}
+              ${nomeCompleto && nomeCompleto !== nomeDestaque ? `<span class="telefone-cobranca-desktop desktop-only-cobranca">${htmlSeguro(nomeCompleto)}</span>` : ""}
+              <div class="cobranca-status-row">
+                <span class="cobranca-chip-status" style="background:${situacao.fundo};border:1px solid ${situacao.borda};color:${situacao.cor};">${situacao.label}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cobranca-card-grid cobranca-metricas-clean">
+          <div class="cobranca-mini-clean cobranca-mini-progresso"><span>Parcelas</span><strong>${progressoTexto}</strong></div>
+          <div class="cobranca-mini-clean"><span>Parcela devida</span><strong>${moeda(item.valorParcela)}</strong></div>
+          <div class="cobranca-mini-clean"><span>Saldo devedor</span><strong class="valor-alerta">${moeda(item.saldoDevedor)}</strong></div>
+          <div class="cobranca-progress-clean">
+            <strong style="color:#64748b;font-size:12px;font-weight:900;">Progresso de pagamento</strong>
+            <div class="cobranca-progresso-wrap" title="${progressoPercentual}% das parcelas">
+              <div class="cobranca-progresso-fill" style="width:${progressoPercentual}%;"></div>
+            </div>
+            <strong style="color:var(--cobranca-situacao-cor,#64748b);font-size:12px;font-weight:900;">${progressoPercentual}%</strong>
+          </div>
+          <div class="cobranca-mini-clean cobranca-mini-pago-hoje"><span>Pago hoje</span><strong>${moeda(valorPagoHoje)}</strong></div>
+        </div>
+
+        <div class="cobranca-actions-clean">
+          <button class="btn btn-cobrar-clean" title="Cobrar pelo WhatsApp" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${htmlSeguro(item.clienteId)}','${htmlSeguro(item.vendaId)}')">
+            <span>💬</span> Cobrar
+          </button>
+          <button class="btn btn-nao-pago-clean ${item.naoPagoHoje ? "is-active" : ""}" title="Registrar não pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${htmlSeguro(item.vendaId)}')">
+            <span>×</span> Não pago
+          </button>
+          <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" title="Registrar pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${htmlSeguro(item.vendaId)}')">
+            <span>✓</span> Pago
+          </button>
+          <button class="btn btn-mais-cobranca-clean desktop-only-cobranca" title="Mais opções" onclick="event.stopPropagation(); abrirOpcoesCobranca('${htmlSeguro(item.vendaId)}')">•••</button>
+        </div>
+      </div>
+    `;
+  };
+
+  function pendenciasRota() {
+    try {
+      if (typeof window.getPendenciasRotaHoje === "function") {
+        return window.getPendenciasRotaHoje() || [];
+      }
+    } catch (_) {}
+
+    try {
+      return (window.montarCobrancasPorVenda?.() || []).filter(item =>
+        item.comCobrancaHoje && !item.pagoHoje && !item.naoPagoHoje
+      );
+    } catch (_) {
+      return [];
+    }
+  }
+
+  window.atualizarEstadoBotaoFechamento = function atualizarEstadoBotaoFechamentoComCadeado() {
+    const botao = byId("btnFecharCaixaCobrancas");
+    const status = byId("statusFechamentoCobrancas");
+    const statusFinal = byId("statusFechamentoCobrancasFinal");
+    if (!botao && !status && !statusFinal) return;
+
+    const carregandoCaixa = !!window.__integroCaixaEmVerificacao;
+    const fechado = !carregandoCaixa && caixaFechadoResolvido();
+    const pendencias = carregandoCaixa ? [] : pendenciasRota();
+    const bloqueado = carregandoCaixa || fechado || pendencias.length > 0;
+
+    const textoBotao = fechado ? "Caixa fechado" : "Fechar caixa";
+    const titulo = carregandoCaixa
+      ? "Validando caixa aberto."
+      : fechado
+        ? "Caixa fechado."
+        : pendencias.length
+          ? "Fechamento bloqueado por pendências da rota."
+          : "Todos os clientes da rota foram tabulados.";
+
+    if (botao) {
+      botao.disabled = bloqueado;
+      botao.style.opacity = bloqueado ? ".55" : "1";
+      botao.style.cursor = bloqueado ? "not-allowed" : "pointer";
+      botao.title = titulo;
+      botao.innerHTML = `<span aria-hidden="true" style="margin-right:8px;display:inline-flex;align-items:center;">🔒</span><span>${textoBotao}</span>`;
+    }
+
+    const mensagem = carregandoCaixa
+      ? "Validando caixa aberto."
+      : fechado
+        ? "Caixa fechado. Ações operacionais bloqueadas."
+        : pendencias.length
+          ? "Fechamento de caixa bloqueado."
+          : "Todos os clientes da rota foram tabulados. Fechamento liberado.";
+
+    const cor = carregandoCaixa
+      ? "#64748b"
+      : (fechado || pendencias.length ? "#b45309" : "#166534");
+
+    if (status) {
+      status.innerText = mensagem;
+      status.style.color = cor;
+    }
+
+    if (statusFinal) {
+      statusFinal.innerHTML = carregandoCaixa
+        ? `<span>ⓘ</span><span>${mensagem}</span>`
+        : fechado
+          ? `<span>🔒</span><span>${mensagem}</span>`
+          : pendencias.length
+            ? `<span>ⓘ</span><span>${mensagem}</span>`
+            : `<span>✓</span><span>${mensagem}</span>`;
+      statusFinal.style.color = cor;
+    }
+  };
+
+  const aplicarBloqueioAnterior = window.aplicarBloqueioCaixaFechado;
+  window.aplicarBloqueioCaixaFechado = function aplicarBloqueioCaixaSemAvisoFalsoInicial() {
+    if (window.__integroCaixaEmVerificacao) {
+      document.body.classList.remove("caixa-fechado");
+      document.querySelectorAll(".aviso-caixa-fechado").forEach(el => el.remove());
+      window.atualizarEstadoBotaoFechamento();
+      return;
+    }
+
+    if (typeof aplicarBloqueioAnterior === "function") {
+      aplicarBloqueioAnterior.apply(this, arguments);
+    } else {
+      window.atualizarEstadoBotaoFechamento();
+    }
+  };
+
+  const carregarTudoAnterior = window.carregarTudo;
+  if (typeof carregarTudoAnterior === "function") {
+    window.carregarTudo = async function carregarTudoSemFalsoCaixaFechado() {
+      window.__integroCaixaEmVerificacao = true;
+
+      try {
+        return await carregarTudoAnterior.apply(this, arguments);
+      } finally {
+        window.__integroCaixaEmVerificacao = false;
+        try { window.renderCobrancas?.(); } catch (_) {}
+        try { window.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
+        try { window.aplicarBloqueioCaixaFechado?.(); } catch (_) {}
+      }
+    };
+  }
+
+  const carregarCaixaAtualAnterior = window.carregarCaixaAtual;
+  if (typeof carregarCaixaAtualAnterior === "function") {
+    window.carregarCaixaAtual = async function carregarCaixaAtualSemAlertaVisualPrematuro() {
+      window.__integroCaixaEmVerificacao = true;
+      try {
+        const caixa = await carregarCaixaAtualAnterior.apply(this, arguments);
+        return caixa;
+      } finally {
+        window.__integroCaixaEmVerificacao = false;
+      }
+    };
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try { window.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
+  });
 })();
 </script>
 

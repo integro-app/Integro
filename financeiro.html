@@ -186,10 +186,105 @@
       .calendar-head{display:none}
       .calendar-day{min-height:auto}
     }
+
+
+    /* ===== LOADING PREMIUM ÍNTEGRO - FINANCEIRO ===== */
+    body.integro-booting{overflow:hidden;}
+    body.integro-booting .layout,
+    body.integro-booting .mobile-menu-btn{
+      opacity:0;
+      pointer-events:none;
+    }
+    .integro-boot-loader{
+      position:fixed;
+      inset:0;
+      z-index:20000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(circle at 20% 20%,rgba(255,138,0,.18),transparent 34%),
+        linear-gradient(135deg,#061a35,#092b61 55%,#071a33);
+      color:#fff;
+      transition:.35s ease;
+    }
+    .integro-boot-loader.hide{
+      opacity:0;
+      visibility:hidden;
+    }
+    .integro-loader-card{
+      width:min(460px,calc(100% - 36px));
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
+      box-shadow:0 30px 80px rgba(0,0,0,.28);
+      backdrop-filter:blur(14px);
+      border-radius:28px;
+      padding:34px;
+      text-align:center;
+    }
+    .integro-loader-logo{
+      font-size:34px;
+      font-weight:900;
+      letter-spacing:-1px;
+      margin-bottom:10px;
+    }
+    .integro-loader-logo span{color:var(--orange2);}
+    .integro-loader-title{
+      font-size:18px;
+      font-weight:900;
+      margin-bottom:8px;
+    }
+    .integro-loader-step{
+      color:#dbeafe;
+      font-weight:800;
+      min-height:22px;
+    }
+    .integro-loader-percent{
+      margin-top:20px;
+      font-size:34px;
+      font-weight:900;
+      letter-spacing:-1px;
+      color:#fff;
+    }
+    .integro-loader-bar{
+      height:10px;
+      border-radius:999px;
+      margin-top:14px;
+      overflow:hidden;
+      background:rgba(255,255,255,.15);
+    }
+    .integro-loader-bar span{
+      display:block;
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background:linear-gradient(90deg,var(--orange2),var(--orange));
+      transition:width .32s ease;
+    }
+    .integro-loader-hint{
+      margin-top:14px;
+      color:#bfdbfe;
+      font-size:12px;
+      font-weight:750;
+      line-height:1.45;
+    }
+
   </style>
 </head>
 
-<body>
+<body class="integro-booting">
+
+  <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
+    <div class="integro-loader-card">
+      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
+      <div class="integro-loader-title">Preparando financeiro</div>
+      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel financeiro...</div>
+      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
+      <div class="integro-loader-bar"><span id="integroLoaderBarFill"></span></div>
+      <div class="integro-loader-hint">Validando acesso, agenda, contas, caixas e solicitações.</div>
+    </div>
+  </div>
+
   <button class="mobile-menu-btn" type="button" onclick="toggleSidebarFinanceiro(true)" aria-label="Abrir menu">☰</button>
   <div class="layout">
     <div class="overlay" id="overlay" onclick="toggleSidebarFinanceiro(false)"></div>
@@ -336,10 +431,91 @@
     let caixasFinanceiroMock = [];
     let logsFinanceirosMock = [];
 
+
+    let financeiroBootFinalizado = false;
+
+    function sleepFinanceiroBoot(ms = 120) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function setLoaderFinanceiroStep(texto, porcentagem = 0) {
+      const percentual = Math.max(0, Math.min(100, Number(porcentagem) || 0));
+      const step = document.getElementById("integroLoaderStep");
+      const percent = document.getElementById("integroLoaderPercent");
+      const fill = document.getElementById("integroLoaderBarFill");
+      if (step) step.innerText = texto || "Carregando...";
+      if (percent) percent.innerText = `${percentual}%`;
+      if (fill) fill.style.width = `${percentual}%`;
+    }
+
+    async function executarEtapaFinanceiro(texto, porcentagem, callback) {
+      setLoaderFinanceiroStep(texto, porcentagem);
+      await sleepFinanceiroBoot(120);
+      if (typeof callback === "function") {
+        const retorno = callback();
+        if (retorno && typeof retorno.then === "function") await retorno;
+      }
+    }
+
+    function liberarSistemaFinanceiro() {
+      financeiroBootFinalizado = true;
+      setLoaderFinanceiroStep("Financeiro pronto.", 100);
+      setTimeout(() => {
+        const loader = document.getElementById("integroBootLoader");
+        if (loader) loader.classList.add("hide");
+        document.body.classList.remove("integro-booting");
+        setTimeout(() => {
+          if (loader) loader.style.display = "none";
+        }, 380);
+      }, 260);
+    }
+
+    async function iniciarLoadingFinanceiro() {
+      try {
+        setLoaderFinanceiroStep("Iniciando painel financeiro...", 0);
+
+        await executarEtapaFinanceiro("Preparando estrutura da tela...", 12, () => {
+          const dataTopo = document.getElementById("topDataFinanceiro");
+          if (dataTopo) dataTopo.innerText = new Date().toLocaleDateString("pt-BR");
+        });
+
+        await executarEtapaFinanceiro("Validando acesso do usuário...", 30, async () => {
+          if (typeof protegerPaginaAtual === "function") {
+            const retorno = protegerPaginaAtual();
+            if (retorno && typeof retorno.then === "function") await retorno;
+          }
+        });
+
+        await executarEtapaFinanceiro("Carregando dados do perfil financeiro...", 45, () => {
+          if (typeof preencherUsuarioLayout === "function") preencherUsuarioLayout();
+        });
+
+        await executarEtapaFinanceiro("Carregando contas, fornecedores e solicitações...", 68, () => {
+          carregarFinanceiroMock();
+        });
+
+        await executarEtapaFinanceiro("Atualizando caixas, relatórios e auditoria...", 86, () => {
+          renderDashboardFinanceiro();
+          renderContas();
+          renderSolicitacoesFinanceiras();
+          renderCaixasFinanceiro();
+          renderFornecedores();
+          renderRelatoriosFinanceiro();
+          renderAuditoriaFinanceira();
+          renderConfiguracoesFinanceiras();
+        });
+
+        await executarEtapaFinanceiro("Liberando sistema financeiro...", 96);
+        liberarSistemaFinanceiro();
+      } catch (erro) {
+        console.error("Erro no loading financeiro:", erro);
+        setLoaderFinanceiroStep("Não foi possível concluir toda a validação, liberando tela com segurança...", 100);
+        liberarSistemaFinanceiro();
+      }
+    }
+
     document.addEventListener("DOMContentLoaded", () => {
-      document.getElementById("topDataFinanceiro").innerText = new Date().toLocaleDateString("pt-BR");
-      carregarFinanceiroMock();
-      if (typeof protegerPaginaAtual === "function") protegerPaginaAtual();
+      iniciarLoadingFinanceiro();
     });
 
     document.addEventListener("usuario-validado", () => {
