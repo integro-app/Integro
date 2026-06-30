@@ -408,10 +408,9 @@ function moeda(valor) {
 }
 
 function hojeISO() {
-
-  return new Date()
-    .toISOString()
-    .split("T")[0];
+  return window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Sao_Paulo"
+  });
 
 }
 

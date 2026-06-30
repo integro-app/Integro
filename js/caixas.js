@@ -1028,7 +1028,9 @@ async function salvarAberturaMassivaCaixas() {
 }
 
 async function criarCaixaParaVendedor(vendedor, valorInicial = 0, observacao = "") {
-  const hoje = new Date().toISOString().split("T")[0];
+  const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", {
+    timeZone: "America/Sao_Paulo"
+  });
 
   const docRef = await db.collection(CONFIG.COLECOES.CAIXAS).add({
     vendedorId: vendedor.id,

@@ -114,7 +114,9 @@ async function carregarVendas() {
 
 async function carregarPagamentosHoje() {
   try {
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", {
+      timeZone: "America/Sao_Paulo"
+    });
     const tenantId = State.getTenantId();
 
     let ref = db.collection(CONFIG.COLECOES.PAGAMENTOS).where("data", "==", hoje);

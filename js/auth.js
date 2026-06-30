@@ -182,10 +182,15 @@ function protegerPaginaAtual() {
 // ===============================
 
 async function logout() {
+  const usuarioAtual = State?.getUsuario?.() || null;
   try {
     await auth.signOut();
   } finally {
-    State.limparSessao();
+    if (State?.limparSessao) {
+      State.limparSessao();
+    } else if (window.IntegroOperacional?.limparSessaoLocal) {
+      window.IntegroOperacional.limparSessaoLocal({ usuario: usuarioAtual, limparFila: true });
+    }
     window.location.href = "index.html";
   }
 }

@@ -6555,6 +6555,8 @@
       <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
       <script src="js/firebase-config.js"></script>
+      <script src="js/utils/operational.js"></script>
+      <script src="js/services/financial-operations.js"></script>
 
       <script>
 
@@ -6686,14 +6688,10 @@
             try {
               await executarEtapaLoading("Validando sessão...", 3, 14, async () => {
                 if (!authUser) {
-                  const usuarioLocal = lerUsuarioLocal();
-                  if (!usuarioLocal) {
-                    bloquearERedirecionar("Sessão expirada. Faça login novamente.");
-                  }
-                  usuarioLogado = usuarioLocal;
-                } else {
-                  usuarioLogado = await buscarUsuarioLogadoFirebase(authUser);
+                  window.IntegroOperacional?.limparSessaoLocal?.({ limparFila: false });
+                  bloquearERedirecionar("Sessão expirada. Faça login novamente.");
                 }
+                usuarioLogado = await buscarUsuarioLogadoFirebase(authUser);
               });
 
               if (!usuarioLogado) {
@@ -6993,10 +6991,6 @@
             }
           }
 
-          if (local && (local.id || local.email)) {
-            return { authUid: authUser.uid, email: authUser.email, ...local };
-          }
-
           return null;
         }
 
@@ -7128,7 +7122,9 @@
         }
 
         function hojeISO() {
-          return new Date().toISOString().split("T")[0];
+          return window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", {
+            timeZone: "America/Sao_Paulo"
+          });
         }
 
         function atualizarDataPainel() {
@@ -10168,9 +10164,14 @@ async function verificarCaixaAbertoDiaAnterior() {
 
           function logout(){
 
+            const usuarioSaindo = usuarioLogado;
             firebase.auth().signOut().finally(() => {
 
-              ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario", "caixaAtual"].forEach(chave => localStorage.removeItem(chave));
+              if (window.IntegroOperacional?.limparSessaoLocal) {
+                window.IntegroOperacional.limparSessaoLocal({ usuario: usuarioSaindo, limparFila: true });
+              } else {
+                ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario", "caixaAtual"].forEach(chave => localStorage.removeItem(chave));
+              }
 
               window.location.href = "index.html";
 
@@ -17874,6 +17875,1848 @@ async function verificarCaixaAbertoDiaAnterior() {
 })();
 </script>
 
+
+
+<script id="patch-regras-operacionais-caixa-vendedor-20260623">
+(function () {
+  "use strict";
+
+  if (window.__integroPatchRegrasOperacionaisCaixaVendedor20260623) return;
+  window.__integroPatchRegrasOperacionaisCaixaVendedor20260623 = true;
+
+  const FILTROS_PADRAO_COBRANCA = ["com_cobranca_hoje", "pendentes"];
+  let logoutOperacionalEmExecucao = false;
+  let validacaoCaixaEmAndamento = false;
+  let monitorOperacionalIniciado = false;
+
+  function hojeLocalISO(data = new Date()) {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, "0");
+    const dia = String(data.getDate()).padStart(2, "0");
+    return `${ano}-${mes}-${dia}`;
+  }
+
+  function hojeISOOperacional() {
+    if (typeof window.hojeISO === "function") {
+      try { return window.hojeISO(); } catch (_) {}
+    }
+    return hojeLocalISO();
+  }
+
+  function normalizar(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toUpperCase();
+  }
+
+  function banco() {
+    if (window.db) return window.db;
+    if (window.firebase && firebase.firestore) return firebase.firestore();
+    try { if (typeof db !== "undefined") return db; } catch (_) {}
+    return null;
+  }
+
+  function usuarioAtual() {
+    if (window.usuarioLogado) return window.usuarioLogado;
+
+    const chaves = ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario"];
+    for (const chave of chaves) {
+      try {
+        const valor = JSON.parse(localStorage.getItem(chave) || "null");
+        if (valor && typeof valor === "object") return valor;
+      } catch (_) {}
+    }
+
+    return null;
+  }
+
+  function tenantAtual() {
+    const usuario = usuarioAtual() || {};
+    return String(
+      window.tenantId ||
+      usuario.clientePlataformaId ||
+      usuario.empresaId ||
+      usuario.tenantId ||
+      usuario.clienteId ||
+      ""
+    );
+  }
+
+  function idsUsuario() {
+    const usuario = usuarioAtual() || {};
+    return Array.from(new Set([
+      usuario.id,
+      usuario.uid,
+      usuario.authUid,
+      usuario.usuarioId,
+      usuario.vendedorId,
+      usuario.email
+    ].filter(Boolean).map(String)));
+  }
+
+  function pertenceAoTenant(registro = {}) {
+    const tenant = tenantAtual();
+    if (!tenant) return true;
+    const tenantRegistro = String(registro.clientePlataformaId || registro.empresaId || registro.tenantId || "");
+    return !tenantRegistro || tenantRegistro === tenant;
+  }
+
+  function pertenceAoUsuario(registro = {}) {
+    const ids = idsUsuario();
+    if (!ids.length) return true;
+
+    const campos = [
+      registro.vendedorId,
+      registro.usuarioId,
+      registro.abertoPorUid,
+      registro.userId,
+      registro.uid,
+      registro.email,
+      registro.criadoPorId,
+      registro.criadoPorUid
+    ].filter(Boolean).map(String);
+
+    if (!campos.length) return true;
+    return campos.some(id => ids.includes(id));
+  }
+
+  function statusCaixa(caixa = {}) {
+    return normalizar(caixa.status || caixa.situacao || caixa.estado || "");
+  }
+
+  function caixaAberto(caixa) {
+    return !!caixa && !!caixa.id && caixa.excluido !== true && statusCaixa(caixa) === "ABERTO";
+  }
+
+  function dataFromValor(valor) {
+    if (!valor) return null;
+
+    if (typeof valor.toDate === "function") {
+      const data = valor.toDate();
+      return Number.isNaN(data.getTime()) ? null : data;
+    }
+
+    if (typeof valor === "number") {
+      const ms = valor < 1000000000000 ? valor * 1000 : valor;
+      const data = new Date(ms);
+      return Number.isNaN(data.getTime()) ? null : data;
+    }
+
+    if (typeof valor === "string") {
+      const limpo = valor.trim();
+      if (/^\d{4}-\d{2}-\d{2}/.test(limpo)) {
+        return new Date(limpo.length === 10 ? `${limpo}T00:00:00` : limpo);
+      }
+      const data = new Date(limpo);
+      return Number.isNaN(data.getTime()) ? null : data;
+    }
+
+    return null;
+  }
+
+  function dataOperacionalCaixa(caixa = {}) {
+    const campos = [
+      caixa.dataCaixa,
+      caixa.dataOperacional,
+      caixa.dataAbertura,
+      caixa.data,
+      caixa.abertoEmTexto,
+      caixa.criadoEmTexto,
+      caixa.aberturaEmTexto,
+      caixa.abertoEm,
+      caixa.criadoEm
+    ];
+
+    for (const valor of campos) {
+      if (!valor) continue;
+      if (typeof valor === "string" && /^\d{4}-\d{2}-\d{2}/.test(valor.trim())) {
+        return valor.trim().slice(0, 10);
+      }
+      const data = dataFromValor(valor);
+      if (data && !Number.isNaN(data.getTime())) return hojeLocalISO(data);
+    }
+
+    return "";
+  }
+
+  function tempoCaixa(caixa = {}) {
+    const campos = [
+      caixa.dataAbertura,
+      caixa.abertoEm,
+      caixa.criadoEm,
+      caixa.criadoEmTexto,
+      caixa.dataCaixa,
+      caixa.data
+    ];
+
+    for (const valor of campos) {
+      const data = dataFromValor(valor);
+      if (data && !Number.isNaN(data.getTime())) return data.getTime();
+    }
+
+    return 0;
+  }
+
+  function deduplicar(lista = []) {
+    const mapa = new Map();
+    (lista || []).forEach(item => {
+      const chave = String(item?.id || item?.docId || JSON.stringify(item || {}));
+      if (!mapa.has(chave)) mapa.set(chave, item);
+    });
+    return Array.from(mapa.values());
+  }
+
+  function timestampServidorOuTexto() {
+    try {
+      if (window.firebase?.firestore?.FieldValue?.serverTimestamp) {
+        return firebase.firestore.FieldValue.serverTimestamp();
+      }
+    } catch (_) {}
+    return new Date().toISOString();
+  }
+
+  async function notificarSupervisorCaixaIrregular(tipo, mensagem, caixas = []) {
+    const dbRef = banco();
+    const usuario = usuarioAtual() || {};
+    const tenant = tenantAtual();
+    const hoje = hojeISOOperacional();
+    const primeiroCaixa = caixas[0] || window.caixaAtual || {};
+    const chave = `notificacao_${tipo}_${primeiroCaixa.id || "sem_caixa"}_${hoje}`;
+
+    try {
+      if (localStorage.getItem(chave) === "1") return;
+      localStorage.setItem(chave, "1");
+    } catch (_) {}
+
+    if (!dbRef) return;
+
+    try {
+      await dbRef.collection("notificacoes").add({
+        tipo,
+        titulo: tipo === "MULTIPLOS_CAIXAS_ABERTOS" ? "Múltiplos caixas abertos" : "Caixa irregular do vendedor",
+        mensagem,
+        clientePlataformaId: tenant || primeiroCaixa.clientePlataformaId || null,
+        vendedorId: usuario.id || usuario.uid || usuario.authUid || "",
+        vendedorNome: usuario.nome || usuario.nomeCompleto || usuario.email || "",
+        caixasIds: caixas.map(c => c.id).filter(Boolean),
+        caixaId: primeiroCaixa.id || "",
+        dataCaixa: dataOperacionalCaixa(primeiroCaixa) || "",
+        status: "PENDENTE",
+        publico: "SUPERVISOR",
+        criadoEm: timestampServidorOuTexto(),
+        criadoEmTexto: new Date().toISOString()
+      });
+    } catch (erro) {
+      console.warn("Falha ao notificar supervisor sobre caixa irregular:", erro);
+    }
+  }
+
+  async function encerrarAcessoVendedor(mensagem, tipoNotificacao, caixas = []) {
+    if (logoutOperacionalEmExecucao) return false;
+    logoutOperacionalEmExecucao = true;
+
+    try { await notificarSupervisorCaixaIrregular(tipoNotificacao || "CAIXA_OPERACIONAL_INVALIDO", mensagem, caixas); } catch (_) {}
+
+    try {
+      if (typeof window.manterLoadingPorBloqueio === "function") {
+        window.manterLoadingPorBloqueio(mensagem || "Acesso bloqueado.");
+      }
+    } catch (_) {}
+
+    try { alert(mensagem || "Acesso bloqueado. Solicite regularização do caixa ao supervisor."); } catch (_) {}
+
+    try {
+      if (window.firebase?.auth) await firebase.auth().signOut();
+    } catch (erro) {
+      console.warn("Falha ao encerrar sessão Firebase:", erro);
+    }
+
+    try {
+      ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario", "caixaAtual"].forEach(chave => localStorage.removeItem(chave));
+    } catch (_) {}
+
+    window.__integroRedirecionando = true;
+    window.location.href = "index.html";
+    return false;
+  }
+
+  async function buscarCaixasAbertosDoVendedor() {
+    const dbRef = banco();
+    const ids = idsUsuario();
+    const tenant = tenantAtual();
+
+    if (!dbRef || !ids.length) return [];
+
+    const campos = ["usuarioId", "vendedorId", "abertoPorUid", "userId", "uid"];
+    const encontrados = [];
+
+    for (const campo of campos) {
+      for (const idUsuario of ids) {
+        try {
+          let ref = dbRef.collection("caixas")
+            .where(campo, "==", idUsuario)
+            .where("status", "==", "ABERTO")
+            .limit(25);
+
+          if (tenant) {
+            ref = dbRef.collection("caixas")
+              .where("clientePlataformaId", "==", tenant)
+              .where(campo, "==", idUsuario)
+              .where("status", "==", "ABERTO")
+              .limit(25);
+          }
+
+          const snap = await ref.get();
+          snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+        } catch (erroConsultaComTenant) {
+          try {
+            const snapFallback = await dbRef.collection("caixas")
+              .where(campo, "==", idUsuario)
+              .where("status", "==", "ABERTO")
+              .limit(25)
+              .get();
+
+            snapFallback.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+          } catch (erroFallback) {
+            console.warn("Falha ao buscar caixa aberto:", campo, erroFallback || erroConsultaComTenant);
+          }
+        }
+      }
+    }
+
+    return deduplicar(encontrados)
+      .filter(caixa => caixaAberto(caixa) && pertenceAoTenant(caixa) && pertenceAoUsuario(caixa))
+      .sort((a, b) => tempoCaixa(b) - tempoCaixa(a));
+  }
+
+  function gravarCaixaAtual(caixa) {
+    window.caixaAtual = caixa || null;
+    try { caixaAtual = caixa || null; } catch (_) {}
+
+    if (caixa?.id) {
+      try { localStorage.setItem("caixaAtual", JSON.stringify(caixa)); } catch (_) {}
+    } else {
+      try { localStorage.removeItem("caixaAtual"); } catch (_) {}
+    }
+  }
+
+  async function validarCaixaOperacionalAtual() {
+    if (validacaoCaixaEmAndamento) return !!(window.caixaAtual && window.caixaAtual.id);
+
+    const dbRef = banco();
+    const ids = idsUsuario();
+    if (!dbRef || !ids.length) return !!(window.caixaAtual && window.caixaAtual.id);
+
+    validacaoCaixaEmAndamento = true;
+
+    try {
+      const caixas = await buscarCaixasAbertosDoVendedor();
+      const hoje = hojeISOOperacional();
+
+      if (!caixas.length) {
+        gravarCaixaAtual(null);
+        await encerrarAcessoVendedor(
+          "Nenhum caixa aberto foi encontrado para hoje. Solicite a abertura do caixa ao supervisor.",
+          "CAIXA_NAO_ABERTO",
+          []
+        );
+        return false;
+      }
+
+      const caixasAntigos = caixas.filter(caixa => {
+        const data = dataOperacionalCaixa(caixa);
+        return data && data < hoje;
+      });
+
+      if (caixasAntigos.length) {
+        gravarCaixaAtual(caixasAntigos[0]);
+        await encerrarAcessoVendedor(
+          `Existe caixa aberto de dia anterior (${dataOperacionalCaixa(caixasAntigos[0])}). O vendedor não pode operar até o supervisor fechar ou regularizar este caixa.`,
+          "CAIXA_ABERTO_DIA_ANTERIOR",
+          caixasAntigos
+        );
+        return false;
+      }
+
+      const caixasHojeOuSemData = caixas.filter(caixa => {
+        const data = dataOperacionalCaixa(caixa);
+        return !data || data === hoje;
+      });
+
+      if (caixas.length > 1 || caixasHojeOuSemData.length !== 1) {
+        gravarCaixaAtual(caixasHojeOuSemData[0] || caixas[0] || null);
+        await encerrarAcessoVendedor(
+          "Existe mais de um caixa aberto para este vendedor. Solicite regularização ao supervisor antes de continuar.",
+          "MULTIPLOS_CAIXAS_ABERTOS",
+          caixas
+        );
+        return false;
+      }
+
+      const caixaUnico = caixasHojeOuSemData[0];
+      gravarCaixaAtual(caixaUnico);
+      return true;
+    } finally {
+      validacaoCaixaEmAndamento = false;
+    }
+  }
+
+  async function verificarDocumentoCaixaOperacional() {
+    const dbRef = banco();
+    const caixaId = window.caixaAtual?.id;
+    if (!dbRef || !caixaId) return validarCaixaOperacionalAtual();
+
+    try {
+      const doc = await dbRef.collection("caixas").doc(caixaId).get();
+      if (!doc.exists) {
+        gravarCaixaAtual(null);
+        await encerrarAcessoVendedor(
+          "O caixa atual não está mais disponível. Solicite a abertura de um novo caixa.",
+          "CAIXA_NAO_ENCONTRADO",
+          []
+        );
+        return false;
+      }
+
+      const caixaDoc = { id: doc.id, ...doc.data() };
+      if (!caixaAberto(caixaDoc)) {
+        gravarCaixaAtual(caixaDoc);
+        await encerrarAcessoVendedor(
+          "Seu caixa foi fechado. O acesso do vendedor foi encerrado automaticamente.",
+          "CAIXA_FECHADO_AUTOMATICO",
+          [caixaDoc]
+        );
+        return false;
+      }
+
+      return validarCaixaOperacionalAtual();
+    } catch (erro) {
+      console.warn("Falha ao verificar documento do caixa atual:", erro);
+      return true;
+    }
+  }
+
+  function statusVendaEncerrada(venda = {}) {
+    const status = normalizar(venda.statusVenda || venda.status || venda.situacao || "");
+    return ["CANCELADO", "CANCELADA", "QUITADO", "QUITADA", "PAGO", "PAGA", "FINALIZADO", "FINALIZADA", "ENCERRADO", "ENCERRADA", "EXCLUIDO", "EXCLUIDA"].includes(status);
+  }
+
+  function vendaComSaldoOperacional(venda = {}) {
+    if (!venda || venda.excluido === true) return false;
+    if (statusVendaEncerrada(venda)) return false;
+    const saldo = Number(venda.saldoDevedor ?? venda.saldoAtual ?? venda.valorAberto ?? venda.saldo ?? 0);
+    return saldo > 0.01;
+  }
+
+  function statusMovimentoCancelado(registro = {}) {
+    return [registro.status, registro.statusPagamento, registro.statusHistorico, registro.statusParcela]
+      .some(valor => normalizar(valor) === "CANCELADO" || normalizar(valor) === "CANCELADA");
+  }
+
+  function pertenceAoCaixaAtual(registro = {}) {
+    const caixaId = String(window.caixaAtual?.id || "");
+    if (!caixaId) return false;
+    return String(registro.caixaId || registro.idCaixa || registro.caixaID || registro.caixaAtualId || "") === caixaId;
+  }
+
+  function pagamentoAtivoDoCaixa(vendaId) {
+    return deduplicar([...(window.pagamentosHojeCache || []), ...(window.pagamentosCache || [])]).filter(p =>
+      String(p.vendaId || "") === String(vendaId || "") &&
+      pertenceAoCaixaAtual(p) &&
+      !statusMovimentoCancelado(p)
+    );
+  }
+
+  function naoPagamentoAtivoDoCaixa(vendaId) {
+    return (window.historicoCobrancasCache || []).filter(h =>
+      String(h.vendaId || "") === String(vendaId || "") &&
+      normalizar(h.tipo || h.tipoHistorico) === "NAO_PAGAMENTO" &&
+      pertenceAoCaixaAtual(h) &&
+      !statusMovimentoCancelado(h)
+    );
+  }
+
+  function dataParcela(parcela = {}) {
+    return String(parcela.dataVencimento || parcela.dataPrevista || parcela.vencimento || parcela.dataCobranca || "").slice(0, 10);
+  }
+
+  function frequenciaVenda(venda = {}) {
+    const txt = normalizar(venda.frequencia || venda.periodicidade || venda.tipoCobranca || venda.cicloCobranca || venda.recorrencia || "DIARIA");
+    if (txt.includes("SEMAN")) return "SEMANAL";
+    if (txt.includes("QUINZ")) return "QUINZENAL";
+    if (txt.includes("MES") || txt.includes("MENS")) return "MENSAL";
+    return "DIARIA";
+  }
+
+  window.temCobrancaHojeOuAtrasada = function temCobrancaHojeOuAtrasadaOperacional(venda, parcelasVenda = [], proximaData = null) {
+    if (!vendaComSaldoOperacional(venda)) return false;
+
+    const hoje = hojeISOOperacional();
+    const parcelaVencidaOuHoje = (parcelasVenda || []).some(parcela => {
+      const status = normalizar(parcela.status || parcela.statusParcela || "PENDENTE");
+      const data = dataParcela(parcela);
+      return !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(status) && data && data <= hoje;
+    });
+
+    if (parcelaVencidaOuHoje) return true;
+
+    if (["SEMANAL", "QUINZENAL", "MENSAL"].includes(frequenciaVenda(venda))) {
+      const proxima = String(proximaData || venda.proximaCobranca || venda.dataProximaCobranca || venda.dataPrimeiraCobranca || "").slice(0, 10);
+      return !!proxima && proxima <= hoje;
+    }
+
+    return true;
+  };
+
+  const montarCobrancasAnterior = window.montarCobrancasPorVenda;
+  window.montarCobrancasPorVenda = function montarCobrancasComRegrasOperacionais() {
+    const base = typeof montarCobrancasAnterior === "function" ? montarCobrancasAnterior.apply(this, arguments) : [];
+    const porVenda = new Map();
+
+    (base || []).forEach(item => {
+      const venda = item.venda || (window.vendasCache || []).find(v => String(v.id) === String(item.vendaId)) || {};
+      if (!vendaComSaldoOperacional(venda)) return;
+
+      const parcelas = item.parcelas || (window.parcelasCache || []).filter(p => String(p.vendaId) === String(item.vendaId));
+      const proxima = item.proximaCobranca || null;
+      const comCobrancaHoje = window.temCobrancaHojeOuAtrasada(venda, parcelas, proxima);
+      if (!comCobrancaHoje && !item.pagoHoje && !item.naoPagoHoje) {
+        // Mantém a venda disponível somente se o filtro "sem cobrança hoje" for usado pelo usuário.
+      }
+
+      const pagamentos = pagamentoAtivoDoCaixa(item.vendaId);
+      const pagoHoje = pagamentos.length > 0;
+      const naoPagoHoje = !pagoHoje && naoPagamentoAtivoDoCaixa(item.vendaId).length > 0;
+      const valorPagoHoje = pagamentos.reduce((total, p) => total + Number(p.valorPago || p.valorRecebido || p.valor || 0), 0);
+
+      porVenda.set(String(item.vendaId), {
+        ...item,
+        venda,
+        parcelas,
+        saldoDevedor: Number(venda.saldoDevedor ?? item.saldoDevedor ?? 0),
+        comCobrancaHoje,
+        pagoHoje,
+        naoPagoHoje,
+        valorPagoHoje,
+        pendenteHoje: comCobrancaHoje && !pagoHoje && !naoPagoHoje
+      });
+    });
+
+    return Array.from(porVenda.values());
+  };
+
+  function garantirFiltrosPadraoCobranca() {
+    try {
+      if (!Array.isArray(filtrosCobrancaEstado) || filtrosCobrancaEstado.length === 0) {
+        filtrosCobrancaEstado = [...FILTROS_PADRAO_COBRANCA];
+      }
+    } catch (_) {
+      window.filtrosCobrancaEstado = [...FILTROS_PADRAO_COBRANCA];
+    }
+  }
+
+  const getFiltrosAnterior = window.getFiltrosCobrancaAtivos;
+  window.getFiltrosCobrancaAtivos = function getFiltrosCobrancaAtivosOperacional() {
+    garantirFiltrosPadraoCobranca();
+    if (typeof getFiltrosAnterior === "function") {
+      try {
+        const filtros = getFiltrosAnterior.apply(this, arguments);
+        if (Array.isArray(filtros) && filtros.length) return filtros;
+      } catch (_) {}
+    }
+    try { return filtrosCobrancaEstado; } catch (_) { return window.filtrosCobrancaEstado || [...FILTROS_PADRAO_COBRANCA]; }
+  };
+
+  const renderCobrancasAnterior = window.renderCobrancas;
+  window.renderCobrancas = function renderCobrancasComFiltroSeguro() {
+    garantirFiltrosPadraoCobranca();
+    if (typeof renderCobrancasAnterior === "function") {
+      return renderCobrancasAnterior.apply(this, arguments);
+    }
+  };
+
+  async function consultarMovimentosPorVendaECaixa(colecao, vendaId) {
+    const dbRef = banco();
+    const caixaId = window.caixaAtual?.id;
+    if (!dbRef || !caixaId || !vendaId) return [];
+
+    const encontrados = [];
+    try {
+      const snap = await dbRef.collection(colecao)
+        .where("caixaId", "==", caixaId)
+        .where("vendaId", "==", vendaId)
+        .limit(50)
+        .get();
+      snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+    } catch (erroConsultaComposta) {
+      try {
+        const snap = await dbRef.collection(colecao)
+          .where("caixaId", "==", caixaId)
+          .limit(200)
+          .get();
+        snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+      } catch (erroFallback) {
+        console.warn(`Falha ao consultar ${colecao} do caixa atual:`, erroFallback || erroConsultaComposta);
+      }
+    }
+
+    return deduplicar(encontrados).filter(item => String(item.vendaId || "") === String(vendaId || ""));
+  }
+
+  async function existePagamentoConfirmadoNoCaixa(vendaId) {
+    const doBanco = await consultarMovimentosPorVendaECaixa("pagamentos", vendaId);
+    const todos = deduplicar([...doBanco, ...pagamentoAtivoDoCaixa(vendaId)]);
+    return todos.some(p => !statusMovimentoCancelado(p));
+  }
+
+  async function historicosNaoPagamentoAtivosNoCaixa(vendaId) {
+    const doBanco = await consultarMovimentosPorVendaECaixa("historicoCobrancas", vendaId);
+    const todos = deduplicar([...doBanco, ...naoPagamentoAtivoDoCaixa(vendaId)]);
+    return todos.filter(h => normalizar(h.tipo || h.tipoHistorico) === "NAO_PAGAMENTO" && !statusMovimentoCancelado(h));
+  }
+
+  async function cancelarNaoPagamentosDoCaixa(vendaId, motivo) {
+    const dbRef = banco();
+    const historicos = await historicosNaoPagamentoAtivosNoCaixa(vendaId);
+    if (!dbRef || !historicos.length) return 0;
+
+    const batch = dbRef.batch();
+    historicos.forEach(hist => {
+      if (!hist.id) return;
+      batch.update(dbRef.collection("historicoCobrancas").doc(hist.id), {
+        status: "CANCELADO",
+        cancelado: true,
+        canceladoEm: timestampServidorOuTexto(),
+        canceladoEmTexto: new Date().toISOString(),
+        canceladoPorId: usuarioAtual()?.id || "",
+        motivoCancelamento: motivo || "Pagamento registrado no mesmo caixa."
+      });
+    });
+
+    await batch.commit();
+    return historicos.length;
+  }
+
+  const registrarNaoPagamentoOriginal = window.registrarNaoPagamentoVenda;
+  window.registrarNaoPagamentoVenda = async function registrarNaoPagamentoVendaOperacional(vendaId) {
+    if (!(await validarCaixaOperacionalAtual())) return;
+
+    const item = (window.montarCobrancasPorVenda?.() || []).find(x => String(x.vendaId) === String(vendaId));
+    if (!item) {
+      alert("Cobrança não encontrada na rota do caixa atual.");
+      return;
+    }
+
+    if (!vendaComSaldoOperacional(item.venda || {})) {
+      alert("Esta venda já está quitada ou encerrada e não pode receber marcação de não pagamento.");
+      try { await window.carregarTudo?.(); } catch (_) {}
+      return;
+    }
+
+    if (!item.comCobrancaHoje) {
+      alert("Esta venda não possui cobrança prevista ou atrasada para o caixa atual.");
+      return;
+    }
+
+    if (item.pagoHoje || await existePagamentoConfirmadoNoCaixa(vendaId)) {
+      alert("Este cliente já possui pagamento registrado neste caixa. Não é possível marcar como não pago.");
+      try { await window.carregarTudo?.(); } catch (_) {}
+      return;
+    }
+
+    if (item.naoPagoHoje || (await historicosNaoPagamentoAtivosNoCaixa(vendaId)).length) {
+      alert("Não pagamento já registrado neste caixa para este cliente.");
+      try { await window.carregarTudo?.(); } catch (_) {}
+      return;
+    }
+
+    if (typeof registrarNaoPagamentoOriginal === "function") {
+      return registrarNaoPagamentoOriginal.apply(this, arguments);
+    }
+  };
+
+  const salvarPagamentoOriginal = window.salvarPagamentoCliente;
+  window.salvarPagamentoCliente = async function salvarPagamentoClienteOperacional(vendaId) {
+    if (!(await validarCaixaOperacionalAtual())) return;
+
+    const item = (window.montarCobrancasPorVenda?.() || []).find(x => String(x.vendaId) === String(vendaId));
+    if (item && !vendaComSaldoOperacional(item.venda || {})) {
+      alert("Esta venda já está quitada ou encerrada. Não é possível registrar novo pagamento.");
+      try { await window.carregarTudo?.(); } catch (_) {}
+      return;
+    }
+
+    let retorno;
+    if (typeof salvarPagamentoOriginal === "function") {
+      retorno = await salvarPagamentoOriginal.apply(this, arguments);
+    }
+
+    try {
+      if (await existePagamentoConfirmadoNoCaixa(vendaId)) {
+        await cancelarNaoPagamentosDoCaixa(vendaId, "Pagamento registrado no mesmo caixa. Marcação de não pagamento cancelada automaticamente.");
+        await window.carregarTudo?.();
+      }
+    } catch (erro) {
+      console.warn("Falha ao cancelar não pagamento após pagamento:", erro);
+    }
+
+    return retorno;
+  };
+
+  async function carregarColecaoComFallback(nome, limite = 5000, tenantCampo = true) {
+    const dbRef = banco();
+    const tenant = tenantAtual();
+    const registros = [];
+    if (!dbRef) return registros;
+
+    if (tenant && tenantCampo) {
+      try {
+        const snap = await dbRef.collection(nome).where("clientePlataformaId", "==", tenant).limit(limite).get();
+        snap.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
+        return deduplicar(registros);
+      } catch (erroTenant) {
+        console.warn(`Falha ao carregar ${nome} por tenant. Usando fallback.`, erroTenant);
+      }
+    }
+
+    try {
+      const snap = await dbRef.collection(nome).limit(limite).get();
+      snap.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
+    } catch (erro) {
+      console.warn(`Falha ao carregar ${nome}.`, erro);
+    }
+
+    return deduplicar(registros);
+  }
+
+  const carregarVendasOriginal = window.carregarVendas;
+  window.carregarVendas = async function carregarVendasOperacional() {
+    const registros = await carregarColecaoComFallback("vendas", 5000, true);
+    if (!registros.length && typeof carregarVendasOriginal === "function") return carregarVendasOriginal.apply(this, arguments);
+
+    const lista = registros.filter(v =>
+      v.excluido !== true &&
+      pertenceAoTenant(v) &&
+      pertenceAoUsuario(v)
+    );
+
+    window.vendasCache = lista;
+    try { vendasCache = lista; } catch (_) {}
+  };
+
+  const carregarParcelasOriginal = window.carregarParcelas;
+  window.carregarParcelas = async function carregarParcelasOperacional() {
+    const registros = await carregarColecaoComFallback("parcelas", 8000, true);
+    if (!registros.length && typeof carregarParcelasOriginal === "function") return carregarParcelasOriginal.apply(this, arguments);
+
+    const vendasIds = new Set((window.vendasCache || []).map(v => String(v.id)));
+    const lista = registros.filter(p =>
+      p.excluido !== true &&
+      pertenceAoTenant(p) &&
+      (
+        pertenceAoUsuario(p) ||
+        (p.vendaId && vendasIds.has(String(p.vendaId)))
+      )
+    );
+
+    window.parcelasCache = lista;
+    try { parcelasCache = lista; } catch (_) {}
+  };
+
+  const carregarTudoOriginal = window.carregarTudo;
+  window.carregarTudo = async function carregarTudoComRegrasOperacionais() {
+    try {
+      window.__integroCaixaEmVerificacao = true;
+      if (!(await window.carregarCaixaAtual?.())) return;
+    } finally {
+      window.__integroCaixaEmVerificacao = false;
+    }
+
+    try {
+      if (typeof window.carregarClientes === "function") await window.carregarClientes();
+      if (typeof window.carregarVendas === "function") await window.carregarVendas();
+      if (typeof window.carregarParcelas === "function") await window.carregarParcelas();
+
+      await Promise.all([
+        typeof window.carregarPagamentosHistorico === "function" ? window.carregarPagamentosHistorico() : Promise.resolve(),
+        typeof window.carregarPagamentosHoje === "function" ? window.carregarPagamentosHoje() : Promise.resolve(),
+        typeof window.carregarSolicitacoes === "function" ? window.carregarSolicitacoes() : Promise.resolve(),
+        typeof window.carregarIndicacoes === "function" ? window.carregarIndicacoes() : Promise.resolve(),
+        typeof window.carregarCategoriasMovimentacao === "function" ? window.carregarCategoriasMovimentacao() : Promise.resolve(),
+        typeof window.carregarNotificacoes === "function" ? window.carregarNotificacoes() : Promise.resolve(),
+        typeof window.carregarHistoricoCobrancas === "function" ? window.carregarHistoricoCobrancas() : Promise.resolve()
+      ]);
+
+      garantirFiltrosPadraoCobranca();
+
+      try { window.atualizarDashboard?.(); } catch (erro) { console.warn("Falha ao atualizar dashboard:", erro); }
+      try { if (window.clientesBuscaExecutada) await window.buscarClientes?.(false); } catch (erro) { console.warn("Falha ao atualizar busca de clientes:", erro); }
+      try { window.renderVendasDia?.(); } catch (erro) { console.warn("Falha ao renderizar vendas do dia:", erro); }
+      try { window.renderCobrancas?.(); } catch (erro) { console.warn("Falha ao renderizar cobranças:", erro); }
+      try { window.renderSolicitacoes?.(); } catch (erro) { console.warn("Falha ao renderizar solicitações:", erro); }
+      try { window.renderIndicacoes?.(); } catch (erro) { console.warn("Falha ao renderizar indicações:", erro); }
+      try { window.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
+      try { window.aplicarBloqueioCaixaFechado?.(); } catch (_) {}
+    } catch (erro) {
+      console.error("Erro ao carregar dados operacionais do vendedor:", erro);
+      if (typeof carregarTudoOriginal === "function") {
+        console.warn("Tentando fallback do carregamento anterior.");
+        return carregarTudoOriginal.apply(this, arguments);
+      }
+      alert("Erro ao carregar dados do vendedor:\n\n" + (erro.message || erro));
+    }
+  };
+
+  const carregarCaixaAtualOriginal = window.carregarCaixaAtual;
+  window.carregarCaixaAtual = async function carregarCaixaAtualComRegraUnicaDiaria() {
+    const dbRef = banco();
+    const ids = idsUsuario();
+
+    if (!dbRef || !ids.length) {
+      if (typeof carregarCaixaAtualOriginal === "function") return carregarCaixaAtualOriginal.apply(this, arguments);
+      return window.caixaAtual || null;
+    }
+
+    const ok = await validarCaixaOperacionalAtual();
+    return ok ? window.caixaAtual : null;
+  };
+
+  function iniciarMonitorOperacional() {
+    if (monitorOperacionalIniciado) return;
+    monitorOperacionalIniciado = true;
+    setInterval(verificarDocumentoCaixaOperacional, 30000);
+    window.addEventListener("focus", verificarDocumentoCaixaOperacional);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) verificarDocumentoCaixaOperacional();
+    });
+  }
+
+  window.verificarCaixaOperacionalVendedor = validarCaixaOperacionalAtual;
+
+  document.addEventListener("DOMContentLoaded", () => {
+    garantirFiltrosPadraoCobranca();
+    try { window.renderCobrancas?.(); } catch (_) {}
+  });
+
+  iniciarMonitorOperacional();
+})();
+
+</script>
+<style id="integro-sync-fluido-vendedor-css">
+  .integro-sync-toast {
+    position: fixed;
+    right: 18px;
+    bottom: calc(18px + env(safe-area-inset-bottom));
+    z-index: 25000;
+    max-width: min(420px, calc(100vw - 32px));
+    background: #061a35;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.14);
+    border-radius: 18px;
+    padding: 14px 16px;
+    box-shadow: 0 22px 55px rgba(2,6,23,.30);
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.35;
+    opacity: 0;
+    transform: translateY(12px);
+    pointer-events: none;
+    transition: .22s ease;
+  }
+
+  .integro-sync-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .integro-sync-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 28px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 950;
+    letter-spacing: .2px;
+    border: 1px solid #dbe5f0;
+    background: #f8fafc;
+    color: #475569;
+  }
+
+  .integro-sync-status-chip::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #94a3b8;
+  }
+
+  .integro-sync-status-chip.sync-pendente {
+    background: #fff7ed;
+    border-color: #fed7aa;
+    color: #9a3412;
+  }
+
+  .integro-sync-status-chip.sync-pendente::before {
+    background: #ff8a00;
+  }
+
+  .integro-sync-status-chip.sync-ok {
+    background: #ecfdf5;
+    border-color: #bbf7d0;
+    color: #166534;
+  }
+
+  .integro-sync-status-chip.sync-ok::before {
+    background: #22c55e;
+  }
+
+  .integro-sync-status-chip.sync-erro {
+    background: #fef2f2;
+    border-color: #fecaca;
+    color: #991b1b;
+  }
+
+  .integro-sync-status-chip.sync-erro::before {
+    background: #ef4444;
+  }
+
+  .integro-payment-note {
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    color: #9a3412;
+    border-radius: 18px;
+    padding: 12px 14px;
+    font-size: 13px;
+    font-weight: 900;
+    line-height: 1.45;
+  }
+
+  @media(max-width: 700px) {
+    .integro-sync-toast {
+      right: 14px;
+      left: 14px;
+      bottom: calc(14px + env(safe-area-inset-bottom));
+      max-width: none;
+    }
+  }
+</style>
+
+<script id="integro-sync-fluido-pagamentos-vendedor-20260623">
+(function(){
+  "use strict";
+
+  if (window.__integroSyncFluidoPagamentosVendedorInstalado) return;
+  window.__integroSyncFluidoPagamentosVendedorInstalado = true;
+
+  const FILA_LEGADA_KEY = "integro:vendedor:filaSync:v1";
+  const LOCKS = new Set();
+  let sincronizacaoEmAndamento = false;
+
+  function obterDb(){
+    try { if (window.db) return window.db; } catch (_) {}
+    try { if (typeof db !== "undefined") return db; } catch (_) {}
+    try { if (window.firebase && firebase.firestore) return firebase.firestore(); } catch (_) {}
+    return null;
+  }
+
+  function obterUsuario(){
+    try { if (window.usuarioLogado) return window.usuarioLogado; } catch (_) {}
+    try { if (typeof usuarioLogado !== "undefined") return usuarioLogado; } catch (_) {}
+    try { return JSON.parse(localStorage.getItem("usuario") || "null") || {}; } catch (_) {}
+    return {};
+  }
+
+  function obterCaixa(){
+    try { if (window.caixaAtual) return window.caixaAtual; } catch (_) {}
+    try { if (typeof caixaAtual !== "undefined") return caixaAtual; } catch (_) {}
+    return null;
+  }
+
+  function obterTenant(){
+    try { if (window.tenantId) return window.tenantId; } catch (_) {}
+    try { if (typeof tenantId !== "undefined") return tenantId; } catch (_) {}
+    return "";
+  }
+
+  function num(valor){
+    if (typeof valor === "number") return Number.isFinite(valor) ? valor : 0;
+    const limpo = String(valor ?? "0").replace(/\./g, "").replace(",", ".").replace(/[^\d.-]/g, "");
+    const n = Number(limpo);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function moeda(valor){
+    try {
+      return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    } catch (_) {
+      return "R$ " + Number(valor || 0).toFixed(2);
+    }
+  }
+
+  function hojeISO(){
+    try {
+      if (window.IntegroOperacional?.hojeSP) return window.IntegroOperacional.hojeSP();
+      if (typeof window.hojeISO === "function") return window.hojeISO();
+    } catch (_) {}
+    return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  }
+
+  function serverTimestamp(){
+    try {
+      if (window.firebase && firebase.firestore && firebase.firestore.FieldValue) {
+        return firebase.firestore.FieldValue.serverTimestamp();
+      }
+    } catch (_) {}
+    return new Date().toISOString();
+  }
+
+  function increment(valor){
+    try {
+      if (window.firebase && firebase.firestore && firebase.firestore.FieldValue && firebase.firestore.FieldValue.increment) {
+        return firebase.firestore.FieldValue.increment(valor);
+      }
+    } catch (_) {}
+    return valor;
+  }
+
+  function normalizar(txt){
+    return String(txt || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .trim();
+  }
+
+  function statusCancelado(registro){
+    return ["status", "statusPagamento", "statusHistorico", "statusParcela"].some(campo => {
+      const st = normalizar(registro && registro[campo]);
+      return st === "CANCELADO" || st === "CANCELADA" || st === "EXCLUIDO" || st === "EXCLUIDA";
+    }) || registro?.cancelado === true || registro?.excluido === true;
+  }
+
+  function filaKey(){
+    return window.IntegroOperacional?.chaveFilaOffline?.(obterUsuario()) || "";
+  }
+
+  function opIdPagamento(vendaId, caixaId, parcelaId){
+    const tenant = obterTenant();
+    if (window.IntegroPagamento?.pagamentoIdDeterministico) {
+      return window.IntegroPagamento.pagamentoIdDeterministico({
+        clientePlataformaId: tenant,
+        caixaId,
+        vendaId,
+        parcelaId
+      });
+    }
+    return ("pg_" + tenant + "_" + caixaId + "_" + vendaId + "_" + parcelaId)
+      .replace(/[\/\\#?[\].\s:*]/g, "_")
+      .slice(0, 900);
+  }
+
+  function chavePagamento(vendaId, caixaId){
+    return String(caixaId || "") + "::" + String(vendaId || "");
+  }
+
+  function lerFila(){
+    try {
+      const chave = filaKey();
+      if (!chave) return [];
+      // A fila legada não é importada nem apagada: não possui UID/tenant
+      // confiáveis e deve passar por auditoria/migração explícita.
+      void localStorage.getItem(FILA_LEGADA_KEY);
+      const arr = JSON.parse(localStorage.getItem(chave) || "[]");
+      return Array.isArray(arr) ? arr : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function salvarFila(fila){
+    const limpa = (fila || [])
+      .filter(Boolean)
+      .sort((a, b) => String(b.atualizadoEmTexto || b.criadoEmTexto || "").localeCompare(String(a.atualizadoEmTexto || a.criadoEmTexto || "")))
+      .slice(0, 200);
+    const chave = filaKey();
+    if (!chave) throw new Error("Sessão inválida para salvar fila offline.");
+    localStorage.setItem(chave, JSON.stringify(limpa));
+  }
+
+  function atualizarOperacaoLocal(opAtualizada){
+    const fila = lerFila();
+    const idx = fila.findIndex(op => op.operacaoId === opAtualizada.operacaoId);
+    if (idx >= 0) {
+      fila[idx] = { ...fila[idx], ...opAtualizada, atualizadoEmTexto: new Date().toISOString() };
+    } else {
+      fila.push({ ...opAtualizada, criadoEmTexto: opAtualizada.criadoEmTexto || new Date().toISOString(), atualizadoEmTexto: new Date().toISOString() });
+    }
+    salvarFila(fila);
+    return opAtualizada;
+  }
+
+  function obterOperacaoLocalPagamento(vendaId, caixaId){
+    return lerFila()
+      .filter(op =>
+        String(op.vendaId || "") === String(vendaId || "") &&
+        String(op.caixaId || "") === String(caixaId || "") &&
+        op.tipo === "PAGAMENTO_VENDEDOR" &&
+        op.statusSync !== "CANCELADO"
+      )
+      .sort((a, b) => String(b.atualizadoEmTexto || b.criadoEmTexto || "").localeCompare(String(a.atualizadoEmTexto || a.criadoEmTexto || "")))[0] || null;
+  }
+
+  function todosPagamentosCache(){
+    const lista = [];
+    try { if (Array.isArray(window.pagamentosHojeCache)) lista.push(...window.pagamentosHojeCache); } catch (_) {}
+    try { if (Array.isArray(window.pagamentosCache)) lista.push(...window.pagamentosCache); } catch (_) {}
+    try { if (typeof pagamentosHojeCache !== "undefined" && Array.isArray(pagamentosHojeCache)) lista.push(...pagamentosHojeCache); } catch (_) {}
+    try { if (typeof pagamentosCache !== "undefined" && Array.isArray(pagamentosCache)) lista.push(...pagamentosCache); } catch (_) {}
+
+    const mapa = new Map();
+    lista.forEach(p => {
+      const id = String(p.id || p.operacaoId || p.idempotencyKey || Math.random());
+      if (!mapa.has(id)) mapa.set(id, p);
+    });
+    return Array.from(mapa.values());
+  }
+
+  function pagamentoAtivoLocal(vendaId, caixaId){
+    const opLocal = obterOperacaoLocalPagamento(vendaId, caixaId);
+    if (opLocal && ["PENDENTE", "SINCRONIZANDO", "ERRO"].includes(String(opLocal.statusSync || ""))) {
+      return {
+        id: opLocal.operacaoId,
+        operacaoId: opLocal.operacaoId,
+        vendaId,
+        parcelaId: opLocal.parcelaId || "",
+        caixaId,
+        clienteId: opLocal.clienteId,
+        clienteNome: opLocal.clienteNome,
+        valor: opLocal.valor,
+        valorPago: opLocal.valor,
+        valorRecebido: opLocal.valor,
+        observacao: opLocal.observacao,
+        status: "CONFIRMADO",
+        syncStatus: opLocal.statusSync,
+        localPendente: true,
+        otimismoRevertido: opLocal.otimismoRevertido === true,
+        criadoEmTexto: opLocal.criadoEmTexto
+      };
+    }
+
+    return todosPagamentosCache()
+      .filter(p =>
+        String(p.vendaId || "") === String(vendaId || "") &&
+        String(p.caixaId || "") === String(caixaId || "") &&
+        !statusCancelado(p)
+      )
+      .sort((a, b) => String(b.criadoEmTexto || b.data || "").localeCompare(String(a.criadoEmTexto || a.data || "")))[0] || null;
+  }
+
+  function removerPagamentoCache(vendaId, caixaId, parcelaId = ""){
+    const filtro = p => !(
+      String(p.vendaId || "") === String(vendaId || "") &&
+      String(p.caixaId || "") === String(caixaId || "") &&
+      (!parcelaId || String(p.parcelaId || "") === String(parcelaId))
+    );
+    try { window.pagamentosHojeCache = (window.pagamentosHojeCache || []).filter(filtro); } catch (_) {}
+    try { window.pagamentosCache = (window.pagamentosCache || []).filter(filtro); } catch (_) {}
+    try { if (typeof pagamentosHojeCache !== "undefined") pagamentosHojeCache = (pagamentosHojeCache || []).filter(filtro); } catch (_) {}
+    try { if (typeof pagamentosCache !== "undefined") pagamentosCache = (pagamentosCache || []).filter(filtro); } catch (_) {}
+  }
+
+  function aplicarDeltaCaixaLocal(op){
+    const delta = num(op.valor) - num(op.valorAnteriorLocal || 0);
+    if (Math.abs(delta) < 0.001) return;
+
+    try {
+      const cx = obterCaixa();
+      if (cx) {
+        const saldoAtual = num(cx.saldoAtual ?? cx.valorAtual ?? cx.saldo ?? 0) + delta;
+        cx.saldoAtual = saldoAtual;
+        cx.valorAtual = saldoAtual;
+        cx.saldo = saldoAtual;
+        window.caixaAtual = cx;
+        try { if (typeof caixaAtual !== "undefined") caixaAtual = cx; } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  function reverterDeltaCaixaLocal(op){
+    const delta = num(op.valor) - num(op.valorAnteriorLocal || 0);
+    if (Math.abs(delta) < 0.001) return;
+
+    try {
+      const cx = obterCaixa();
+      if (cx) {
+        const saldoAtual = num(cx.saldoAtual ?? cx.valorAtual ?? cx.saldo ?? 0) - delta;
+        cx.saldoAtual = saldoAtual;
+        cx.valorAtual = saldoAtual;
+        cx.saldo = saldoAtual;
+        window.caixaAtual = cx;
+        try { if (typeof caixaAtual !== "undefined") caixaAtual = cx; } catch (_) {}
+      }
+    } catch (_) {}
+  }
+
+  function inserirPagamentoCache(op, statusSync){
+    const pagamento = {
+      id: op.operacaoId,
+      operacaoId: op.operacaoId,
+      idempotencyKey: op.operacaoId,
+      vendaId: op.vendaId,
+      parcelaId: op.parcelaId || "",
+      clienteId: op.clienteId,
+      clienteNome: op.clienteNome,
+      vendedorId: op.vendedorId,
+      vendedorAuthUid: op.uid || "",
+      vendedorNome: op.vendedorNome,
+      caixaId: op.caixaId,
+      valorCentavos: op.valorCentavos,
+      valor: op.valor,
+      valorPago: op.valor,
+      valorRecebido: op.valor,
+      observacao: op.observacao || "",
+      status: "CONFIRMADO",
+      syncStatus: statusSync || op.statusSync || "PENDENTE",
+      data: hojeISO(),
+      clientePlataformaId: op.clientePlataformaId || "",
+      criadoEmTexto: op.criadoEmTexto || new Date().toISOString()
+    };
+
+    removerPagamentoCache(op.vendaId, op.caixaId, op.parcelaId);
+
+    try { window.pagamentosHojeCache = [...(window.pagamentosHojeCache || []), pagamento]; } catch (_) {}
+    try { window.pagamentosCache = [...(window.pagamentosCache || []), pagamento]; } catch (_) {}
+    try { if (typeof pagamentosHojeCache !== "undefined") pagamentosHojeCache = [...(pagamentosHojeCache || []), pagamento]; } catch (_) {}
+    try { if (typeof pagamentosCache !== "undefined") pagamentosCache = [...(pagamentosCache || []), pagamento]; } catch (_) {}
+
+    try {
+      const historicos = window.historicoCobrancasCache || [];
+      historicos.forEach(h => {
+        if (String(h.vendaId || "") === String(op.vendaId) && String(h.caixaId || "") === String(op.caixaId) && normalizar(h.tipo || h.tipoHistorico) === "NAO_PAGAMENTO") {
+          h.status = "CANCELADO";
+          h.cancelado = true;
+          h.motivoCancelamento = "Pagamento registrado/corrigido no mesmo caixa.";
+        }
+      });
+    } catch (_) {}
+  }
+
+  function atualizarTelaRapida(){
+    try { window.renderCobrancas?.(); } catch (_) {}
+    try { window.renderVendasDia?.(); } catch (_) {}
+    try { window.atualizarDashboard?.(); } catch (_) {}
+    try { window.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
+  }
+
+  async function registrarAuditoriaPagamentoBloqueado(op, erro){
+    const dbx = obterDb();
+    if (!dbx || !op) return false;
+    try {
+      await dbx.collection("logs").add({
+        tipoAcao: "PAGAMENTO_OFFLINE_BLOQUEADO",
+        origem: "vendedor",
+        clientePlataformaId: op.clientePlataformaId || "",
+        caixaId: op.caixaId || "",
+        vendaId: op.vendaId || "",
+        parcelaId: op.parcelaId || "",
+        operacaoId: op.operacaoId || "",
+        usuarioId: op.vendedorId || "",
+        usuarioAuthUid: op.uid || "",
+        valorCentavos: op.valorCentavos || 0,
+        motivo: erro?.message || String(erro || "Caixa fechado"),
+        dataOperacional: hojeISO(),
+        criadoEm: serverTimestamp(),
+        criadoEmTexto: new Date().toISOString()
+      });
+      return true;
+    } catch (erroLog) {
+      console.warn("Não foi possível auditar o pagamento bloqueado:", erroLog);
+      return false;
+    }
+  }
+
+  function toast(msg, tipo){
+    let el = document.getElementById("integroSyncToast");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "integroSyncToast";
+      el.className = "integro-sync-toast";
+      document.body.appendChild(el);
+    }
+
+    el.textContent = msg;
+    el.dataset.tipo = tipo || "info";
+    el.classList.add("show");
+    clearTimeout(el.__timer);
+    el.__timer = setTimeout(() => el.classList.remove("show"), 3400);
+  }
+
+  function setBotaoProcessando(vendaId, processando, texto){
+    const botoes = Array.from(document.querySelectorAll("button"));
+    const alvo = botoes.find(btn => (btn.getAttribute("onclick") || "").includes("salvarPagamentoCliente") && (btn.getAttribute("onclick") || "").includes(String(vendaId)));
+    if (!alvo) return;
+    if (processando) {
+      alvo.dataset.textoOriginal = alvo.innerHTML;
+      alvo.disabled = true;
+      alvo.style.opacity = ".72";
+      alvo.style.cursor = "not-allowed";
+      alvo.innerHTML = texto || "Registrando...";
+    } else {
+      alvo.disabled = false;
+      alvo.style.opacity = "";
+      alvo.style.cursor = "";
+      if (alvo.dataset.textoOriginal) alvo.innerHTML = alvo.dataset.textoOriginal;
+    }
+  }
+
+  async function consultarPagamentosBancoVendaCaixa(vendaId, caixaId){
+    const dbx = obterDb();
+    const encontrados = [];
+    if (!dbx || !vendaId || !caixaId) return encontrados;
+
+    try {
+      const snap = await dbx.collection("pagamentos")
+        .where("caixaId", "==", caixaId)
+        .where("vendaId", "==", vendaId)
+        .limit(50)
+        .get();
+      snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+      return encontrados;
+    } catch (erroComposto) {
+      try {
+        const snap = await dbx.collection("pagamentos")
+          .where("caixaId", "==", caixaId)
+          .limit(250)
+          .get();
+        snap.forEach(doc => {
+          const data = { id: doc.id, ...doc.data() };
+          if (String(data.vendaId || "") === String(vendaId || "")) encontrados.push(data);
+        });
+      } catch (erroFallback) {
+        console.warn("Falha ao consultar pagamentos existentes:", erroFallback || erroComposto);
+      }
+    }
+
+    return encontrados;
+  }
+
+  async function consultarPagamentosAtivosVenda(vendaId){
+    const dbx = obterDb();
+    const encontrados = [];
+    if (!dbx || !vendaId) return encontrados;
+
+    try {
+      const snap = await dbx.collection("pagamentos")
+        .where("vendaId", "==", vendaId)
+        .limit(1000)
+        .get();
+      snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+    } catch (erro) {
+      console.warn("Falha ao consultar pagamentos da venda para recálculo:", erro);
+      todosPagamentosCache().forEach(p => {
+        if (String(p.vendaId || "") === String(vendaId || "")) encontrados.push(p);
+      });
+    }
+
+    return encontrados.filter(p => !statusCancelado(p));
+  }
+
+  async function consultarParcelasVenda(vendaId){
+    const dbx = obterDb();
+    const encontrados = [];
+    if (!dbx || !vendaId) return encontrados;
+
+    try {
+      const snap = await dbx.collection("parcelas")
+        .where("vendaId", "==", vendaId)
+        .limit(500)
+        .get();
+      snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+    } catch (erro) {
+      console.warn("Falha ao consultar parcelas da venda para recálculo:", erro);
+      try {
+        (window.parcelasCache || []).forEach(p => {
+          if (String(p.vendaId || "") === String(vendaId || "")) encontrados.push(p);
+        });
+      } catch (_) {}
+    }
+
+    return encontrados.sort((a, b) => Number(a.numeroParcela || a.numero || 0) - Number(b.numeroParcela || b.numero || 0));
+  }
+
+  function vendaCache(vendaId){
+    try { return (window.vendasCache || []).find(v => String(v.id) === String(vendaId)) || {}; } catch (_) {}
+    return {};
+  }
+
+  function totalVendaEstimado(venda, parcelas){
+    const totalParcelas = (parcelas || []).reduce((s, p) => s + num(p.valor || p.valorParcela || p.valorPrevisto || 0), 0);
+    const candidatos = [
+      totalParcelas,
+      num(venda.valorTotal),
+      num(venda.valorFinal),
+      num(venda.valorComJuros),
+      num(venda.totalComJuros),
+      num(venda.valorAPagar),
+      num(venda.valorVenda),
+      num(venda.valorEmprestado) + num(venda.valorJuros)
+    ].filter(v => v > 0);
+
+    return candidatos.length ? Math.max(...candidatos) : 0;
+  }
+
+  async function recalcularVendaParcelas(vendaId, clienteId){
+    const dbx = obterDb();
+    if (!dbx || !vendaId) return;
+
+    const [pagamentosAtivos, parcelas] = await Promise.all([
+      consultarPagamentosAtivosVenda(vendaId),
+      consultarParcelasVenda(vendaId)
+    ]);
+
+    const venda = vendaCache(vendaId);
+    const totalPago = pagamentosAtivos.reduce((s, p) => s + num(p.valorPago || p.valorRecebido || p.valor || 0), 0);
+    const totalVenda = totalVendaEstimado(venda, parcelas);
+    const saldo = Math.max(0, totalVenda - totalPago);
+
+    const batch = dbx.batch();
+
+    let restantePago = totalPago;
+    parcelas.forEach(parcela => {
+      if (!parcela.id) return;
+      const valorParcela = num(parcela.valor || parcela.valorParcela || parcela.valorPrevisto || 0);
+      const pagoParcela = Math.max(0, Math.min(restantePago, valorParcela));
+      restantePago -= pagoParcela;
+
+      const statusParcela = pagoParcela >= valorParcela - 0.01
+        ? "PAGA"
+        : pagoParcela > 0.01
+          ? "PARCIAL"
+          : "PENDENTE";
+
+      batch.update(dbx.collection("parcelas").doc(parcela.id), {
+        valorPago: pagoParcela,
+        saldoParcela: Math.max(0, valorParcela - pagoParcela),
+        status: statusParcela,
+        statusParcela,
+        dataPagamento: statusParcela === "PAGA" ? hojeISO() : null,
+        atualizadoEm: serverTimestamp()
+      });
+    });
+
+    batch.update(dbx.collection("vendas").doc(vendaId), {
+      totalPago,
+      saldoDevedor: saldo,
+      saldoAtual: saldo,
+      statusVenda: saldo <= 0.01 ? "QUITADO" : "ATIVA",
+      status: saldo <= 0.01 ? "QUITADO" : "ATIVA",
+      atualizadoEm: serverTimestamp()
+    });
+
+    if (clienteId) {
+      batch.update(dbx.collection("clientes").doc(clienteId), {
+        saldoDevedor: saldo,
+        saldo: saldo,
+        status: saldo <= 0.01 ? "QUITADO" : "ATIVO",
+        atualizadoEm: serverTimestamp()
+      });
+    }
+
+    await batch.commit();
+  }
+
+  async function cancelarNaoPagamentosBanco(op){
+    const dbx = obterDb();
+    if (!dbx || !op?.vendaId || !op?.caixaId) return;
+
+    const historicos = [];
+    try {
+      const snap = await dbx.collection("historicoCobrancas")
+        .where("caixaId", "==", op.caixaId)
+        .where("vendaId", "==", op.vendaId)
+        .limit(50)
+        .get();
+      snap.forEach(doc => historicos.push({ id: doc.id, ...doc.data() }));
+    } catch (_) {
+      try {
+        const snap = await dbx.collection("historicoCobrancas")
+          .where("caixaId", "==", op.caixaId)
+          .limit(200)
+          .get();
+        snap.forEach(doc => {
+          const item = { id: doc.id, ...doc.data() };
+          if (String(item.vendaId || "") === String(op.vendaId || "")) historicos.push(item);
+        });
+      } catch (erro) {
+        console.warn("Falha ao consultar não pagamentos para cancelamento:", erro);
+      }
+    }
+
+    const ativos = historicos.filter(h => normalizar(h.tipo || h.tipoHistorico) === "NAO_PAGAMENTO" && !statusCancelado(h));
+    if (!ativos.length) return;
+
+    const batch = dbx.batch();
+    ativos.forEach(h => {
+      batch.update(dbx.collection("historicoCobrancas").doc(h.id), {
+        status: "CANCELADO",
+        cancelado: true,
+        canceladoEm: serverTimestamp(),
+        canceladoEmTexto: new Date().toISOString(),
+        motivoCancelamento: "Pagamento registrado/corrigido no mesmo caixa.",
+        canceladoPorId: op.vendedorId || ""
+      });
+    });
+    await batch.commit();
+  }
+
+  async function registrarLogPagamento(op, valorAnterior, delta, modo){
+    const dbx = obterDb();
+    if (!dbx) return;
+    try {
+      await dbx.collection("logs").add({
+        tipoAcao: modo === "CORRECAO" ? "CORRIGIR_PAGAMENTO" : "REGISTRAR_PAGAMENTO",
+        origem: "vendedor",
+        vendaId: op.vendaId,
+        clienteId: op.clienteId,
+        clienteNome: op.clienteNome,
+        caixaId: op.caixaId,
+        usuarioId: op.vendedorId,
+        usuarioNome: op.vendedorNome,
+        detalhe: modo === "CORRECAO"
+          ? `Pagamento corrigido de ${moeda(valorAnterior)} para ${moeda(op.valor)}. Diferença: ${moeda(delta)}.`
+          : `Pagamento registrado no valor de ${moeda(op.valor)}.`,
+        criadoEm: serverTimestamp(),
+        criadoEmTexto: new Date().toISOString(),
+        clientePlataformaId: op.clientePlataformaId || ""
+      });
+    } catch (erro) {
+      console.warn("Falha ao registrar log de pagamento:", erro);
+    }
+  }
+
+  async function sincronizarPagamento(op){
+    if (!window.IntegroPagamento?.registrarPagamentoTransacional) {
+      throw new Error("Núcleo transacional de pagamento não carregado.");
+    }
+
+    const usuario = obterUsuario();
+    const uidAtual = usuario?.authUid || usuario?.uid || "";
+    const tenantAtual = obterTenant();
+    const caixaAtualId = obterCaixa()?.id || "";
+
+    if (
+      !op?.parcelaId ||
+      String(op.uid || "") !== String(uidAtual) ||
+      String(op.clientePlataformaId || "") !== String(tenantAtual) ||
+      String(op.caixaId || "") !== String(caixaAtualId)
+    ) {
+      throw new Error("Operação offline não pertence ao usuário, tenant ou caixa atual.");
+    }
+
+    const resultado = await window.IntegroPagamento.registrarPagamentoTransacional({
+      ...op,
+      usuario,
+      valorCentavos: op.valorCentavos,
+      origem: "vendedor"
+    });
+
+    // Não movimenta dinheiro. Apenas encerra o marcador de não pagamento
+    // correspondente depois que a transação financeira foi confirmada.
+    try {
+      await cancelarNaoPagamentosBanco(op);
+    } catch (erroHistorico) {
+      console.warn("Pagamento confirmado, mas o marcador de não pagamento não foi atualizado:", erroHistorico);
+    }
+    return resultado;
+  }
+
+  async function sincronizarFilaLocalIntegro(){
+    if (sincronizacaoEmAndamento) return;
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return;
+
+    const dbx = obterDb();
+    if (!dbx) return;
+
+    const fila = lerFila();
+    const usuarioAtualFila = obterUsuario();
+    const uidAtualFila = usuarioAtualFila?.authUid || usuarioAtualFila?.uid || "";
+    const tenantAtualFila = obterTenant();
+    const caixaAtualFila = obterCaixa()?.id || "";
+    const candidatos = fila.filter(op =>
+      op.tipo === "PAGAMENTO_VENDEDOR" &&
+      ["PENDENTE", "ERRO", "SINCRONIZANDO"].includes(String(op.statusSync || "PENDENTE"))
+    );
+    candidatos
+      .filter(op =>
+        String(op.uid || "") !== String(uidAtualFila) ||
+        String(op.clientePlataformaId || "") !== String(tenantAtualFila) ||
+        String(op.caixaId || "") !== String(caixaAtualFila)
+      )
+      .forEach(op => atualizarOperacaoLocal({
+        ...op,
+        statusSync: "ERRO_CONTEXTO",
+        status: "ERRO_CONTEXTO",
+        ultimoErro: "Operação pertence a outro usuário, tenant ou caixa.",
+        atualizadoEmTexto: new Date().toISOString()
+      }));
+    const pendentes = candidatos.filter(op =>
+      String(op.uid || "") === String(uidAtualFila) &&
+      String(op.clientePlataformaId || "") === String(tenantAtualFila) &&
+      String(op.caixaId || "") === String(caixaAtualFila)
+    );
+
+    if (!pendentes.length) return;
+
+    sincronizacaoEmAndamento = true;
+    let sincronizouAlgo = false;
+
+    try {
+      for (const op of pendentes) {
+        try {
+          atualizarOperacaoLocal({ ...op, statusSync: "SINCRONIZANDO", status: "SINCRONIZANDO", tentativas: Number(op.tentativas || 0) + 1 });
+          inserirPagamentoCache(op, "SINCRONIZANDO");
+
+          const resultado = await sincronizarPagamento(op);
+
+          atualizarOperacaoLocal({
+            ...op,
+            statusSync: "SINCRONIZADO",
+            status: "SINCRONIZADO",
+            sincronizadoEmTexto: new Date().toISOString(),
+            ultimoErro: "",
+            resultadoSync: resultado
+          });
+
+          inserirPagamentoCache({ ...op, valor: num(op.valor) }, "SINCRONIZADO");
+          sincronizouAlgo = true;
+        } catch (erroOp) {
+          console.warn("Falha ao sincronizar operação local:", erroOp);
+          const caixaFechado = erroOp?.code === "ERRO_BLOQUEADO_CAIXA_FECHADO";
+          atualizarOperacaoLocal({
+            ...op,
+            statusSync: caixaFechado ? "ERRO_BLOQUEADO_CAIXA_FECHADO" : "ERRO",
+            status: caixaFechado ? "ERRO_BLOQUEADO_CAIXA_FECHADO" : "ERRO",
+            ultimoErro: erroOp.message || String(erroOp),
+            otimismoRevertido: true,
+            atualizadoEmTexto: new Date().toISOString()
+          });
+          if (op.otimismoRevertido !== true) reverterDeltaCaixaLocal(op);
+          removerPagamentoCache(op.vendaId, op.caixaId, op.parcelaId);
+          if (caixaFechado) {
+            await registrarAuditoriaPagamentoBloqueado(op, erroOp);
+            toast("Pagamento não sincronizado: o caixa está fechado.", "erro");
+          }
+        }
+      }
+
+      atualizarTelaRapida();
+
+      if (sincronizouAlgo) {
+        toast("Operações sincronizadas com segurança.", "ok");
+        try { await window.carregarTudo?.(); } catch (_) {}
+      }
+    } finally {
+      sincronizacaoEmAndamento = false;
+    }
+  }
+
+  function montarOperacaoPagamento(vendaId, valor, observacao){
+    const item = (window.montarCobrancasPorVenda?.() || []).find(x => String(x.vendaId) === String(vendaId));
+    const caixa = obterCaixa();
+    const usuario = obterUsuario();
+    const caixaId = caixa?.id || "";
+
+    if (!item) throw new Error("Cobrança não encontrada na rota atual.");
+    if (!caixaId) throw new Error("Caixa aberto não encontrado.");
+    if (valor <= 0) throw new Error("Informe um valor válido.");
+    const existente = pagamentoAtivoLocal(vendaId, caixaId);
+    if (existente && !existente.parcelaId) {
+      throw new Error("Pagamento legado sem parcela identificada. Solicite regularização antes de corrigir.");
+    }
+    const valorAnterior = existente?.otimismoRevertido === true
+      ? 0
+      : num(existente?.valorPago || existente?.valorRecebido || existente?.valor || 0);
+    if (valor > num(item.saldoDevedor) + valorAnterior + 0.01) {
+      throw new Error("O pagamento não pode ser maior que o saldo devedor disponível.");
+    }
+    const parcelasVenda = (item.parcelas || window.parcelasCache || [])
+      .filter(p => String(p.vendaId || vendaId) === String(vendaId))
+      .sort((a, b) => Number(a.numeroParcela || 0) - Number(b.numeroParcela || 0));
+    const parcela = (existente?.parcelaId
+      ? parcelasVenda.find(p => String(p.id) === String(existente.parcelaId))
+      : null) || parcelasVenda.find(p => !["PAGA", "QUITADA"].includes(normalizar(p.status || p.statusParcela)));
+    if (!parcela?.id) throw new Error("Parcela pendente não encontrada para este pagamento.");
+
+    const tenantAtual = obterTenant() || item.venda?.clientePlataformaId || "";
+    const uidAtual = usuario?.authUid || usuario?.uid || "";
+    if (!tenantAtual || !uidAtual) throw new Error("Sessão ou tenant inválido para registrar pagamento.");
+    const operacaoId = opIdPagamento(vendaId, caixaId, parcela.id);
+    const idExistente = String(
+      existente?.operacaoId ||
+      existente?.idempotencyKey ||
+      existente?.id ||
+      ""
+    );
+    if (existente && idExistente !== operacaoId) {
+      throw new Error("Pagamento legado com ID não determinístico. Solicite regularização antes de corrigir.");
+    }
+    const valorCentavos = window.IntegroOperacional?.moedaParaCentavos?.(valor) ?? Math.round(num(valor) * 100);
+
+    return {
+      tipo: "PAGAMENTO_VENDEDOR",
+      operacaoId,
+      idempotencyKey: operacaoId,
+      chave: `${chavePagamento(vendaId, caixaId)}::${parcela.id}`,
+      uid: uidAtual,
+      vendaId: String(vendaId),
+      parcelaId: String(parcela.id),
+      clienteId: item.clienteId || item.venda?.clienteId || "",
+      clienteNome: item.clienteNome || item.cliente?.nome || "",
+      vendedorId: usuario?.id || usuario?.uid || "",
+      vendedorNome: usuario?.nome || usuario?.nomeCompleto || usuario?.email || "",
+      caixaId,
+      valorCentavos,
+      valor: num(valor),
+      valorAnteriorLocal: valorAnterior,
+      modoLocal: existente ? "CORRECAO" : "CRIACAO",
+      observacao: observacao || "",
+      statusSync: "PENDENTE",
+      status: "PENDENTE",
+      tentativas: 0,
+      ultimoErro: "",
+      otimismoRevertido: false,
+      criadoEmLocal: window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString(),
+      criadoEmTexto: new Date().toISOString(),
+      clientePlataformaId: tenantAtual
+    };
+  }
+
+  function abrirPagamentoComModoCorrecao(vendaId){
+    const abrirOriginal = window.__integroAbrirPagamentoOriginalFluido;
+    if (typeof abrirOriginal !== "function") return;
+
+    abrirOriginal.apply(this, arguments);
+
+    setTimeout(() => {
+      const caixa = obterCaixa();
+      const existente = pagamentoAtivoLocal(vendaId, caixa?.id || "");
+      if (!existente) return;
+
+      const valorExistente = num(existente.valorPago || existente.valorRecebido || existente.valor || 0);
+      const input = document.getElementById("pagamentoValor");
+      const obs = document.getElementById("pagamentoObs");
+      const titulo = document.getElementById("drawerTitle");
+      const subtitulo = document.getElementById("drawerSubtitle");
+
+      if (input) {
+        input.value = valorExistente.toFixed(2);
+        input.dataset.modoPagamento = "CORRECAO";
+        input.dataset.operacaoId = existente.operacaoId || existente.id || "";
+      }
+
+      if (obs && !obs.value) {
+        obs.value = existente.observacao || "";
+      }
+
+      if (titulo) titulo.innerText = "Corrigir pagamento";
+      if (subtitulo) subtitulo.innerText = "Ajuste controlado no caixa atual";
+
+      const body = document.getElementById("drawerBody");
+      if (body && !body.querySelector(".integro-payment-note")) {
+        const nota = document.createElement("div");
+        nota.className = "integro-payment-note";
+        nota.innerHTML = `
+          Pagamento já registrado neste caixa: <strong>${moeda(valorExistente)}</strong>.<br>
+          Ao salvar, o sistema corrige o pagamento existente, ajusta caixa, saldo devedor e parcelas, sem criar duplicidade.
+          <div style="margin-top:10px;">
+            <span class="integro-sync-status-chip ${existente.syncStatus === "ERRO" ? "sync-erro" : existente.syncStatus === "SINCRONIZADO" ? "sync-ok" : "sync-pendente"}">
+              ${existente.syncStatus === "ERRO" ? "Falha na sincronização" : existente.syncStatus === "SINCRONIZADO" ? "Sincronizado" : "Pendente de sincronização"}
+            </span>
+          </div>
+        `;
+        body.prepend(nota);
+      }
+
+      const botoes = Array.from(document.querySelectorAll("button"));
+      const botao = botoes.find(btn => (btn.getAttribute("onclick") || "").includes("salvarPagamentoCliente") && (btn.getAttribute("onclick") || "").includes(String(vendaId)));
+      if (botao) botao.innerHTML = "Salvar correção";
+    }, 60);
+  }
+
+  if (!window.__integroAbrirPagamentoOriginalFluido && typeof window.abrirPagamentoCliente === "function") {
+    window.__integroAbrirPagamentoOriginalFluido = window.abrirPagamentoCliente;
+    window.abrirPagamentoCliente = abrirPagamentoComModoCorrecao;
+  }
+
+  window.salvarPagamentoCliente = async function salvarPagamentoClienteFluido(vendaId){
+    const caixa = obterCaixa();
+    const lockKey = chavePagamento(vendaId, caixa?.id || "");
+
+    if (LOCKS.has(lockKey)) {
+      toast("Pagamento já está sendo processado. Aguarde a sincronização.", "info");
+      return;
+    }
+
+    LOCKS.add(lockKey);
+    setBotaoProcessando(vendaId, true, "Salvando...");
+
+    try {
+      if (typeof window.verificarCaixaOperacionalVendedor === "function") {
+        const ok = await window.verificarCaixaOperacionalVendedor();
+        if (!ok) return;
+      } else if (typeof window.validarCaixaOperacionalVendedor === "function") {
+        const ok = await window.validarCaixaOperacionalVendedor();
+        if (!ok) return;
+      } else if (typeof window.garantirCaixaAberto === "function" && !window.garantirCaixaAberto("O caixa está fechado. Não é possível registrar pagamento.")) {
+        return;
+      }
+
+      const valor = num(document.getElementById("pagamentoValor")?.value || 0);
+      const observacao = String(document.getElementById("pagamentoObs")?.value || "").trim();
+      const op = montarOperacaoPagamento(vendaId, valor, observacao);
+
+      atualizarOperacaoLocal(op);
+      aplicarDeltaCaixaLocal(op);
+      inserirPagamentoCache(op, "PENDENTE");
+      atualizarTelaRapida();
+
+      try { window.fecharDrawer?.(); } catch (_) {}
+
+      toast(op.modoLocal === "CORRECAO"
+        ? "Correção salva. Sincronizando em segundo plano."
+        : "Pagamento salvo. Sincronizando em segundo plano.", "info");
+
+      setTimeout(() => sincronizarFilaLocalIntegro(), 80);
+    } catch (erro) {
+      alert(erro.message || String(erro));
+    } finally {
+      setBotaoProcessando(vendaId, false);
+      setTimeout(() => LOCKS.delete(lockKey), 900);
+    }
+  };
+
+  window.sincronizarFilaVendedorIntegro = sincronizarFilaLocalIntegro;
+
+  window.addEventListener("online", () => {
+    toast("Internet restabelecida. Sincronizando pendências.", "info");
+    sincronizarFilaLocalIntegro();
+  });
+
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) sincronizarFilaLocalIntegro();
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    setTimeout(sincronizarFilaLocalIntegro, 1500);
+  });
+
+  setInterval(sincronizarFilaLocalIntegro, 120000);
+})();
+</script>
 </body>
 
 </html>

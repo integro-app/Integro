@@ -1,0 +1,229 @@
+rules_version = '2';
+
+/*
+ * ÍNTEGRO — regras iniciais de segurança.
+ *
+ * NÃO PUBLICAR sem antes:
+ * 1. popular custom claims role e clientePlataformaId via backend confiável; ou
+ * 2. migrar usuários para documentos /usuarios/{auth.uid}.
+ *
+ * O cadastro atual usa IDs aleatórios em parte dos usuários. Regras Firestore
+ * não podem buscar um usuário por campo authUid, por isso claims são a fonte
+ * confiável desta primeira versão.
+ */
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function perfil() {
+      return autenticado() ? request.auth.token.role : null;
+    }
+
+    function tenant() {
+      return autenticado() ? request.auth.token.clientePlataformaId : null;
+    }
+
+    function masterGlobal() {
+      return autenticado() && perfil() == "master_global";
+    }
+
+    function masterLocal() {
+      return autenticado() && perfil() == "master_local";
+    }
+
+    function supervisor() {
+      return autenticado() && perfil() == "supervisor";
+    }
+
+    function vendedor() {
+      return autenticado() && perfil() == "vendedor";
+    }
+
+    function financeiro() {
+      return autenticado() && perfil() == "financeiro";
+    }
+
+    function tenantValido(valor) {
+      return masterGlobal() || (tenant() != null && valor == tenant());
+    }
+
+    function tenantDoRecurso() {
+      return tenantValido(resource.data.clientePlataformaId);
+    }
+
+    function tenantDaEscrita() {
+      return tenantValido(request.resource.data.clientePlataformaId);
+    }
+
+    function tenantImutavel() {
+      return !("clientePlataformaId" in resource.data) ||
+        request.resource.data.clientePlataformaId == resource.data.clientePlataformaId;
+    }
+
+    function proprioVendedor(dados) {
+      return dados.vendedorAuthUid == request.auth.uid ||
+        dados.authUid == request.auth.uid ||
+        (request.auth.token.usuarioId != null &&
+          (dados.vendedorId == request.auth.token.usuarioId ||
+           dados.usuarioId == request.auth.token.usuarioId));
+    }
+
+    function equipePermitida(dados) {
+      return supervisor() &&
+        request.auth.token.equipesIds is list &&
+        dados.equipeId in request.auth.token.equipesIds;
+    }
+
+    function pagamentoIdValido(dados, pagamentoId) {
+      return pagamentoId ==
+        "pg_" + dados.clientePlataformaId + "_" + dados.caixaId + "_" +
+        dados.vendaId + "_" + dados.parcelaId;
+    }
+
+    match /usuarios/{usuarioId} {
+      allow read: if masterGlobal() ||
+        (autenticado() && resource.data.authUid == request.auth.uid) ||
+        (masterLocal() && tenantDoRecurso()) ||
+        (supervisor() && tenantDoRecurso() && equipePermitida(resource.data));
+
+      allow create: if masterGlobal() ||
+        (masterLocal() && tenantDaEscrita() &&
+          request.resource.data.tipoUsuario != "master_global");
+
+      allow update: if masterGlobal() ||
+        (masterLocal() && tenantDoRecurso() && tenantDaEscrita() && tenantImutavel() &&
+          request.resource.data.authUid == resource.data.authUid &&
+          request.resource.data.tipoUsuario != "master_global") ||
+        (autenticado() && resource.data.authUid == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"]));
+
+      allow delete: if false;
+    }
+
+    match /{colecao}/{documentoId} {
+      allow read: if colecao in [
+        "clientes", "vendas", "parcelas", "caixas",
+        "solicitacoes", "historicoCobrancas", "notificacoes",
+        "indicacoes", "categoriasMovimentacao", "logs"
+      ] && (
+        masterGlobal() ||
+        ((masterLocal() || financeiro()) && tenantDoRecurso()) ||
+        (supervisor() && tenantDoRecurso() && equipePermitida(resource.data)) ||
+        (vendedor() && tenantDoRecurso() && proprioVendedor(resource.data))
+      );
+
+      /*
+       * Escritas monetárias continuam permitidas apenas no escopo autenticado
+       * atual para compatibilidade. A próxima etapa deve restringi-las aos
+       * IDs determinísticos e invariantes das transações.
+       */
+      allow create: if colecao in [
+        "clientes", "vendas", "parcelas", "caixas",
+        "solicitacoes", "historicoCobrancas", "notificacoes",
+        "indicacoes", "logs"
+      ] && tenantDaEscrita() && (
+        masterGlobal() || masterLocal() || financeiro() || supervisor() ||
+        (vendedor() && proprioVendedor(request.resource.data))
+      );
+
+      allow update: if colecao in [
+        "clientes", "vendas", "parcelas", "caixas",
+        "solicitacoes", "historicoCobrancas", "notificacoes",
+        "indicacoes"
+      ] && tenantDoRecurso() && tenantDaEscrita() && tenantImutavel() && (
+        masterGlobal() || masterLocal() || financeiro() ||
+        (supervisor() && equipePermitida(resource.data)) ||
+        (vendedor() && proprioVendedor(resource.data) &&
+          request.resource.data.vendedorAuthUid == resource.data.vendedorAuthUid)
+      );
+
+      allow delete: if false;
+    }
+
+    match /pagamentos/{pagamentoId} {
+      allow read: if masterGlobal() ||
+        ((masterLocal() || financeiro()) && tenantDoRecurso()) ||
+        (supervisor() && tenantDoRecurso() && equipePermitida(resource.data)) ||
+        (vendedor() && tenantDoRecurso() && proprioVendedor(resource.data));
+
+      allow create: if tenantDaEscrita() &&
+        pagamentoIdValido(request.resource.data, pagamentoId) &&
+        request.resource.data.valorCentavos is int &&
+        request.resource.data.valorCentavos > 0 &&
+        (
+          masterGlobal() || masterLocal() || financeiro() ||
+          (supervisor() && equipePermitida(request.resource.data)) ||
+          (vendedor() && proprioVendedor(request.resource.data))
+        );
+
+      allow update: if tenantDoRecurso() && tenantDaEscrita() && tenantImutavel() &&
+        pagamentoIdValido(request.resource.data, pagamentoId) &&
+        request.resource.data.valorCentavos is int &&
+        request.resource.data.valorCentavos > 0 &&
+        request.resource.data.caixaId == resource.data.caixaId &&
+        request.resource.data.vendaId == resource.data.vendaId &&
+        request.resource.data.parcelaId == resource.data.parcelaId &&
+        request.resource.data.vendedorAuthUid == resource.data.vendedorAuthUid &&
+        (
+          masterGlobal() || masterLocal() || financeiro() ||
+          (supervisor() && equipePermitida(resource.data)) ||
+          (vendedor() && proprioVendedor(resource.data))
+        );
+
+      allow delete: if false;
+    }
+
+    match /{colecao}/{documentoId} {
+      allow read: if colecao in [
+        "cargos", "equipes", "permissoes_cargo", "categoriasMovimentacao",
+        "categoriasFinanceiras", "formasPagamento", "fornecedores",
+        "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
+      ] && (
+        masterGlobal() ||
+        ((masterLocal() || financeiro()) && tenantDoRecurso()) ||
+        (supervisor() && tenantDoRecurso()) ||
+        (vendedor() && tenantDoRecurso() && colecao == "categoriasMovimentacao")
+      );
+
+      allow create: if colecao in [
+        "cargos", "equipes", "permissoes_cargo", "categoriasMovimentacao",
+        "categoriasFinanceiras", "formasPagamento", "fornecedores",
+        "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
+      ] && tenantDaEscrita() && (
+        masterGlobal() || masterLocal() ||
+        (financeiro() && colecao in [
+          "categoriasFinanceiras", "formasPagamento", "fornecedores",
+          "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
+        ])
+      );
+
+      allow update: if colecao in [
+        "cargos", "equipes", "permissoes_cargo", "categoriasMovimentacao",
+        "categoriasFinanceiras", "formasPagamento", "fornecedores",
+        "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
+      ] && tenantDoRecurso() && tenantDaEscrita() && tenantImutavel() && (
+        masterGlobal() || masterLocal() ||
+        (financeiro() && colecao in [
+          "categoriasFinanceiras", "formasPagamento", "fornecedores",
+          "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
+        ])
+      );
+
+      allow delete: if false;
+    }
+
+    match /{colecao}/{documentoId} {
+      allow read, write: if masterGlobal() && colecao in [
+        "clientes_integro", "departamentos_integro", "planos",
+        "configuracoes_globais"
+      ];
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

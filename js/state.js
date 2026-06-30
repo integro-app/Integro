@@ -227,18 +227,33 @@ const State = {
   // LIMPEZA
   // ===============================
   limparSessao() {
+    const usuarioAnterior = this.usuario;
     this.usuario = null;
     this.usuarioId = null;
     this.tipoUsuario = null;
     this.tenantId = null;
     this.authUid = null;
     this.empresaNome = null;
-    localStorage.removeItem("usuario");
-    localStorage.removeItem("usuarioId");
-    localStorage.removeItem("tipoUsuario");
-    localStorage.removeItem("clientePlataformaId");
-    localStorage.removeItem("clientePlataformaNome");
-    localStorage.removeItem("caixaAtual");
+    if (window.IntegroOperacional?.limparSessaoLocal) {
+      window.IntegroOperacional.limparSessaoLocal({
+        usuario: usuarioAnterior,
+        limparFila: true
+      });
+    } else {
+      [
+        "usuario",
+        "usuarioLogado",
+        "usuarioAtual",
+        "integroUsuario",
+        "usuarioId",
+        "tipoUsuario",
+        "clientePlataformaId",
+        "clientePlataformaNome",
+        "empresaId",
+        "tenantId",
+        "caixaAtual"
+      ].forEach(chave => localStorage.removeItem(chave));
+    }
   },
 
   limparDados() {

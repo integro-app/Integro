@@ -2639,6 +2639,7 @@ body.integro-data-refreshing .section-card{
 
   <script src="js/firebase-config.js"></script>
   <script src="js/config.js"></script>
+  <script src="js/utils/operational.js"></script>
   <script src="js/state.js"></script>
   <script src="js/services/firestore.js"></script>
   <script src="js/utils/validators.js"></script>
@@ -16227,6 +16228,771 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   };
 
   console.info("[ÍNTEGRO] Correção de caixas reais aplicada: abertura usa último fechamento e carteira acompanha vendas com juros menos recebimentos.");
+})();
+</script>
+
+
+
+<script id="integro-caixas-premium-layout-20260624">
+/* ===== PATCH VISUAL PREMIUM - CAIXAS / SUPERVISÃO DE EQUIPES =====
+   Escopo: layout, menu dos 3 pontinhos, mini resumo, tabela premium e ordenação.
+   Não altera as funções Firebase nem a regra de abrir/fechar caixas já existentes.
+*/
+(function(){
+  "use strict";
+  if(window.__integroCaixasPremiumLayout20260624) return;
+  window.__integroCaixasPremiumLayout20260624 = true;
+
+  const $ = (sel, root=document) => root.querySelector(sel);
+  const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+
+  const sortState = window.__integroCaixasSortState || (window.__integroCaixasSortState = {
+    col: null,
+    dir: null
+  });
+
+  function parseMoney(txt){
+    const s = String(txt || "")
+      .replace(/\s/g, "")
+      .replace(/R\$/gi, "")
+      .replace(/[^0-9,.-]/g, "")
+      .replace(/\.(?=\d{3}(\D|$))/g, "")
+      .replace(",", ".");
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function formatMoney(v){
+    return Number(v || 0).toLocaleString("pt-BR", {style:"currency", currency:"BRL"});
+  }
+
+  function getTable(){
+    const sec = document.getElementById("caixas");
+    if(!sec) return null;
+    return sec.querySelector(".caixas-table-listview-oficial") || sec.querySelector(".caixas-table-v2") || sec.querySelector(".caixas-table");
+  }
+
+  function selectionCount(){
+    return $$("#caixas input[type='checkbox']:checked")
+      .filter(input => input.id !== "checkTodasEquipes" && !input.closest("thead"))
+      .length;
+  }
+
+  function fecharMenus(){
+    $$(".integro-caixas-bulk-menu").forEach(m => m.remove());
+  }
+
+  function criarMenuItem(label, action, enabled=true, extraClass=""){
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "integro-menu-item " + extraClass;
+    btn.innerHTML = label;
+    btn.disabled = !enabled;
+    if(enabled){
+      btn.addEventListener("click", ev => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        fecharMenus();
+        try{ action(); }catch(e){ console.warn("Falha em ação do menu de caixas:", e); }
+      });
+    }
+    return btn;
+  }
+
+  function abrirMenuAcoes(ev){
+    ev.preventDefault();
+    ev.stopPropagation();
+    fecharMenus();
+
+    const sec = document.getElementById("caixas");
+    const qtd = selectionCount();
+    const abrirBtn = sec?.querySelector(".action-open");
+    const fecharBtn = sec?.querySelector(".action-close");
+    const podeAbrir = qtd > 0 && (!abrirBtn || !abrirBtn.disabled);
+    const podeFechar = qtd > 0 && (!fecharBtn || !fecharBtn.disabled);
+    const podeSelecionadas = qtd > 0;
+
+    const menu = document.createElement("div");
+    menu.className = "integro-caixas-bulk-menu";
+
+    menu.appendChild(criarMenuItem("<span>Ver consolidado selecionadas</span>", () => window.verConsolidadoEquipesSelecionadasIntegro?.(), podeSelecionadas));
+    menu.appendChild(criarMenuItem("<span>Abrir caixas selecionados</span>", () => window.abrirCaixasSelecionadasIntegro?.(), podeAbrir, "success"));
+    menu.appendChild(criarMenuItem("<span>Fechar caixas selecionados</span>", () => window.fecharCaixasSelecionadasIntegro?.(), podeFechar, "danger"));
+
+    const sep1 = document.createElement("div");
+    sep1.className = "integro-menu-separator";
+    menu.appendChild(sep1);
+
+    menu.appendChild(criarMenuItem("<span>Atualizar lista</span>", () => {
+      if(typeof window.atualizarCaixasIntegro === "function") window.atualizarCaixasIntegro();
+      else if(typeof window.renderCaixasPremium === "function") window.renderCaixasPremium(true);
+    }, true));
+    menu.appendChild(criarMenuItem("<span>Selecionar todas as equipes</span>", () => {
+      if(typeof window.selecionarTodasEquipesCaixaIntegro === "function") window.selecionarTodasEquipesCaixaIntegro(true);
+      else if(typeof window.toggleTodasEquipesCaixaIntegro === "function") window.toggleTodasEquipesCaixaIntegro(true);
+    }, true));
+    menu.appendChild(criarMenuItem("<span>Limpar seleção</span>", () => {
+      if(typeof window.limparSelecaoEquipesCaixaIntegro === "function") window.limparSelecaoEquipesCaixaIntegro();
+      else if(typeof window.limparSelecaoCaixas === "function") window.limparSelecaoCaixas();
+    }, qtd > 0));
+
+    document.body.appendChild(menu);
+    const btn = ev.currentTarget;
+    const rect = btn.getBoundingClientRect();
+    const largura = 286;
+    menu.style.width = largura + "px";
+    menu.style.left = Math.max(12, Math.min(window.innerWidth - largura - 12, rect.right - largura)) + "px";
+    menu.style.top = Math.min(window.innerHeight - menu.offsetHeight - 12, rect.bottom + 10) + "px";
+
+    setTimeout(() => {
+      document.addEventListener("click", fecharMenus, {once:true});
+      document.addEventListener("keydown", function escMenu(e){
+        if(e.key === "Escape") fecharMenus();
+        document.removeEventListener("keydown", escMenu);
+      }, {once:true});
+    }, 0);
+  }
+
+  function atualizarHeaderTela(){
+    const sec = document.getElementById("caixas");
+    if(!sec) return;
+    const header = sec.querySelector(".section-header");
+    if(!header) return;
+    header.classList.add("caixas-premium-header");
+    const titleWrap = header.querySelector("div");
+    const h2 = header.querySelector("h2");
+    if(h2 && /supervis/i.test(h2.textContent)){
+      h2.textContent = "Supervisão de equipes";
+    }
+    if(titleWrap && !titleWrap.querySelector(".caixas-premium-subtitle")){
+      const p = document.createElement("p");
+      p.className = "caixas-premium-subtitle";
+      p.textContent = "Acompanhe caixas, carteira, vendas e movimentações das equipes em tempo real.";
+      titleWrap.appendChild(p);
+    }
+  }
+
+  function atualizarBarraAcoes(){
+    const sec = document.getElementById("caixas");
+    if(!sec) return;
+    const card = sec.querySelector(".caixas-action-card");
+    if(!card) return;
+    card.classList.add("caixas-action-card-premium");
+
+    const info = card.querySelector(".caixas-selection-info");
+    const qtd = selectionCount();
+    if(info){
+      info.classList.toggle("active", qtd > 0);
+      const icon = info.querySelector(".caixas-selection-icon");
+      if(icon) icon.textContent = qtd > 0 ? "✓" : "•";
+      const strong = info.querySelector("strong");
+      const small = info.querySelector("small");
+      if(strong) strong.textContent = qtd ? `${qtd} equipe(s) selecionada(s)` : "Nenhuma equipe selecionada";
+      if(small) small.textContent = qtd ? "Ações em massa disponíveis no menu dos três pontos." : "Selecione equipes na tabela para liberar ações em massa.";
+    }
+
+    const more = card.querySelector(".action-more");
+    if(more){
+      more.classList.add("premium-more-btn");
+      more.innerHTML = "⋮";
+      more.onclick = abrirMenuAcoes;
+    }
+  }
+
+  function atualizarMiniResumo(){
+    const sec = document.getElementById("caixas");
+    const table = getTable();
+    if(!sec || !table) return;
+    const wrap = table.closest(".caixas-table-wrap");
+    if(!wrap) return;
+
+    let box = document.getElementById("caixasPremiumResumo");
+    if(!box){
+      box = document.createElement("div");
+      box.id = "caixasPremiumResumo";
+      box.className = "caixas-premium-summary";
+      wrap.parentNode.insertBefore(box, wrap);
+    }
+
+    const rows = $$('tbody tr', table).filter(tr => tr.children.length >= 12 && !/Nenhuma equipe|Carregando/i.test(tr.textContent));
+    const total = {
+      abertos: 0,
+      caixaAtual: 0,
+      carteiraFinal: 0,
+      vendas: 0,
+      recolhido: 0,
+      divergencias: 0
+    };
+
+    rows.forEach(tr => {
+      const cells = tr.children;
+      const status = (cells[3]?.textContent || "").trim().toUpperCase();
+      if(status.includes("ABERTO")) total.abertos += 1;
+      if(status.includes("DIVERG")) total.divergencias += 1;
+      total.caixaAtual += parseMoney(cells[5]?.textContent);
+      total.carteiraFinal += parseMoney(cells[7]?.textContent);
+      total.vendas += parseMoney(cells[8]?.textContent);
+      total.recolhido += parseMoney(cells[9]?.textContent);
+    });
+
+    box.innerHTML = `
+      <div class="summary-tile"><small>Caixas abertos</small><strong>${total.abertos}</strong><span>Equipe(s) operando</span></div>
+      <div class="summary-tile money"><small>Caixa atual</small><strong>${formatMoney(total.caixaAtual)}</strong><span>Total das equipes</span></div>
+      <div class="summary-tile money"><small>Carteira final</small><strong>${formatMoney(total.carteiraFinal)}</strong><span>Saldo em carteira</span></div>
+      <div class="summary-tile money"><small>Vendas</small><strong>${formatMoney(total.vendas)}</strong><span>Movimento do caixa</span></div>
+      <div class="summary-tile money"><small>Recolhido</small><strong>${formatMoney(total.recolhido)}</strong><span>Recebido informado</span></div>
+      <div class="summary-tile alert"><small>Divergências</small><strong>${total.divergencias}</strong><span>Pontos de atenção</span></div>
+    `;
+  }
+
+  function cellText(tr, idx){
+    return (tr.children[idx]?.textContent || "").trim();
+  }
+
+  function sortValue(tr, idx){
+    const txt = cellText(tr, idx);
+    if([4,5,6,7,8,9,10,11].includes(idx)) return parseMoney(txt);
+    if(idx === 2){
+      const m = txt.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+      return m ? `${m[3]}-${m[2]}-${m[1]}` : txt;
+    }
+    if(idx === 12){
+      const m = txt.match(/(\d{2})\/(\d{2})\/(\d{4}).*?(\d{2}):(\d{2})/);
+      return m ? `${m[3]}-${m[2]}-${m[1]}T${m[4]}:${m[5]}` : txt;
+    }
+    return txt.toLocaleLowerCase("pt-BR");
+  }
+
+  function aplicarOrdenacao(table){
+    const tbody = table.tBodies[0];
+    if(!tbody) return;
+    const rows = Array.from(tbody.rows).filter(tr => tr.children.length > 3);
+    rows.forEach((tr, i) => {
+      if(!tr.dataset.defaultOrder) tr.dataset.defaultOrder = String(i);
+    });
+
+    if(sortState.dir && sortState.col != null){
+      rows.sort((a,b) => {
+        const av = sortValue(a, sortState.col);
+        const bv = sortValue(b, sortState.col);
+        let res = 0;
+        if(typeof av === "number" && typeof bv === "number") res = av - bv;
+        else res = String(av).localeCompare(String(bv), "pt-BR", {numeric:true, sensitivity:"base"});
+        return sortState.dir === "asc" ? res : -res;
+      });
+    }else{
+      rows.sort((a,b) => cellText(a,1).localeCompare(cellText(b,1), "pt-BR", {numeric:true, sensitivity:"base"}));
+    }
+
+    rows.forEach(tr => tbody.appendChild(tr));
+  }
+
+  function atualizarIndicadoresSort(table){
+    $$('thead th[data-sort-index]', table).forEach(th => {
+      const idx = Number(th.dataset.sortIndex);
+      th.classList.toggle("sort-active", sortState.col === idx && !!sortState.dir);
+      th.dataset.sortDir = sortState.col === idx && sortState.dir ? sortState.dir : "";
+      const ind = th.querySelector(".sort-indicator");
+      if(ind){
+        ind.textContent = sortState.col === idx && sortState.dir ? (sortState.dir === "asc" ? "↑" : "↓") : "";
+      }
+    });
+  }
+
+  function configurarOrdenacao(table){
+    const headers = $$('thead th', table);
+    headers.forEach((th, idx) => {
+      if(idx === 0) return;
+      th.dataset.sortIndex = String(idx);
+      th.classList.add("sortable-th-premium");
+      if(!th.querySelector(".th-label")){
+        const label = th.textContent.trim().replace(/[↕↑↓]/g, "").trim();
+        th.innerHTML = `<span class="th-label">${label}</span><span class="sort-indicator" aria-hidden="true"></span>`;
+      }
+      if(!th.dataset.sortBound){
+        th.dataset.sortBound = "1";
+        th.addEventListener("click", ev => {
+          if(ev.target.classList.contains("resize-handle")) return;
+          const col = Number(th.dataset.sortIndex);
+          if(sortState.col !== col){
+            sortState.col = col;
+            sortState.dir = "asc";
+          }else if(sortState.dir === "asc"){
+            sortState.dir = "desc";
+          }else if(sortState.dir === "desc"){
+            sortState.col = null;
+            sortState.dir = null;
+          }else{
+            sortState.col = col;
+            sortState.dir = "asc";
+          }
+          aplicarOrdenacao(table);
+          atualizarIndicadoresSort(table);
+        });
+      }
+    });
+    aplicarOrdenacao(table);
+    atualizarIndicadoresSort(table);
+  }
+
+  function formatarTabela(){
+    const table = getTable();
+    if(!table) return;
+    table.classList.add("caixas-table-premium-list");
+    const rows = $$('tbody tr', table).filter(tr => tr.children.length >= 12);
+
+    rows.forEach((tr) => {
+      const cells = Array.from(tr.children);
+      cells.forEach((td, idx) => {
+        if([4,5,6,7,8,9,10,11].includes(idx)){
+          td.classList.add("money-cell");
+          const val = parseMoney(td.textContent);
+          td.classList.toggle("valor-negativo", val < 0);
+          td.classList.toggle("valor-positivo", val > 0 && [5,7,8,9].includes(idx));
+        }
+        if([5,7,8,9].includes(idx)) td.classList.add("important-money");
+        if([2,12].includes(idx)) td.classList.add("date-cell");
+      });
+
+      const teamCell = cells[1];
+      const btn = teamCell?.querySelector("button") || teamCell?.querySelector(".unidade-link");
+      if(btn && !btn.classList.contains("team-pill-premium")){
+        const nome = btn.textContent.trim().replace(/^🏢\s*/, "");
+        const inicial = nome.charAt(0).toUpperCase() || "E";
+        btn.classList.add("team-pill-premium");
+        btn.innerHTML = `<span class="team-avatar-mini">${inicial}</span><span>${nome}</span>`;
+      }
+
+      const sync = cells[12];
+      if(sync && !sync.querySelector(".sync-stack")){
+        const txt = sync.textContent.trim();
+        const partes = txt.split(",");
+        if(partes.length >= 2){
+          sync.innerHTML = `<span class="sync-stack"><strong>${partes[0].trim()}</strong><small>${partes.slice(1).join(",").trim()}</small></span>`;
+        }
+      }
+    });
+
+    configurarOrdenacao(table);
+  }
+
+  function formatarMobile(){
+    $$("#caixas .caixa-mobile-card").forEach(card => {
+      card.classList.add("caixa-mobile-card-premium");
+    });
+  }
+
+  function aplicar(){
+    const sec = document.getElementById("caixas");
+    if(!sec) return;
+    atualizarHeaderTela();
+    atualizarBarraAcoes();
+    atualizarMiniResumo();
+    formatarTabela();
+    formatarMobile();
+  }
+
+  function scheduleApply(){
+    setTimeout(aplicar, 40);
+    setTimeout(aplicar, 180);
+    setTimeout(aplicar, 520);
+  }
+
+  const css = document.createElement("style");
+  css.id = "integro-caixas-premium-layout-css-20260624";
+  css.textContent = `
+    #caixas .section-card{
+      border-radius:30px!important;
+      border:1px solid rgba(219,228,239,.92)!important;
+      box-shadow:0 24px 70px rgba(15,23,42,.08)!important;
+      padding:26px!important;
+      background:linear-gradient(180deg,#ffffff,#fbfdff)!important;
+    }
+    #caixas .caixas-premium-header{
+      align-items:flex-start!important;
+      margin-bottom:16px!important;
+    }
+    #caixas .caixas-premium-header h2{
+      font-size:28px!important;
+      letter-spacing:-.8px!important;
+      color:#061a35!important;
+      margin:0!important;
+    }
+    #caixas .caixas-premium-subtitle{
+      margin-top:7px!important;
+      color:#64748b!important;
+      font-size:13px!important;
+      font-weight:750!important;
+      line-height:1.4!important;
+    }
+    #caixas .caixas-action-card-premium{
+      display:grid!important;
+      grid-template-columns:minmax(260px,1fr) auto!important;
+      align-items:center!important;
+      gap:16px!important;
+      padding:14px 16px!important;
+      border:1px solid #e2e8f0!important;
+      border-radius:22px!important;
+      background:linear-gradient(180deg,#ffffff,#f8fafc)!important;
+      box-shadow:0 12px 34px rgba(15,23,42,.045)!important;
+      margin-bottom:16px!important;
+    }
+    #caixas .caixas-selection-info{
+      min-width:0!important;
+      color:#64748b!important;
+    }
+    #caixas .caixas-selection-info.active{color:#0f3a6b!important;}
+    #caixas .caixas-selection-icon{
+      width:34px!important;
+      height:34px!important;
+      border-radius:13px!important;
+      background:#f8fafc!important;
+      border:1px solid #dbe4ef!important;
+      color:#64748b!important;
+      font-size:16px!important;
+    }
+    #caixas .caixas-selection-info.active .caixas-selection-icon{
+      background:#eafaf0!important;
+      border-color:#bbf7d0!important;
+      color:#15803d!important;
+    }
+    #caixas .caixas-selection-info strong{
+      font-size:13.5px!important;
+      color:#061a35!important;
+      margin-bottom:3px!important;
+    }
+    #caixas .caixas-selection-info small{
+      font-size:12px!important;
+      color:#64748b!important;
+      font-weight:750!important;
+    }
+    #caixas .caixas-action-buttons{
+      display:flex!important;
+      align-items:center!important;
+      justify-content:flex-end!important;
+      gap:8px!important;
+      flex-wrap:wrap!important;
+    }
+    #caixas .caixas-action-buttons button{
+      height:44px!important;
+      border-radius:15px!important;
+      font-size:13px!important;
+      box-shadow:none!important;
+    }
+    #caixas .caixas-action-buttons button[onclick*="verConsolidadoEquipesSelecionadas"],
+    #caixas .caixas-action-buttons .action-open,
+    #caixas .caixas-action-buttons .action-close{
+      display:none!important;
+    }
+    #caixas .caixas-action-buttons .primary-btn{
+      background:linear-gradient(135deg,#ffb100,#ff8a00)!important;
+      color:#fff!important;
+      border:0!important;
+      padding:0 18px!important;
+    }
+    #caixas .filtro-toggle-btn{
+      background:#fff!important;
+      border:1px solid #dbe4ef!important;
+      color:#061a35!important;
+      padding:0 15px!important;
+    }
+    #caixas .premium-more-btn{
+      width:46px!important;
+      min-width:46px!important;
+      padding:0!important;
+      background:#fff!important;
+      border:1px solid #dbe4ef!important;
+      color:#061a35!important;
+      font-size:24px!important;
+      line-height:1!important;
+    }
+    #caixas .premium-more-btn:hover,
+    #caixas .filtro-toggle-btn:hover{
+      background:#fff7ed!important;
+      border-color:#fed7aa!important;
+      color:#c2410c!important;
+    }
+    .integro-caixas-bulk-menu{
+      position:fixed;
+      z-index:99999;
+      border:1px solid #e2e8f0;
+      border-radius:18px;
+      background:#fff;
+      box-shadow:0 24px 60px rgba(15,23,42,.20);
+      padding:8px;
+      display:grid;
+      gap:4px;
+      animation:integroMenuIn .12s ease-out;
+    }
+    @keyframes integroMenuIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+    .integro-caixas-bulk-menu .integro-menu-item{
+      min-height:42px;
+      border-radius:13px;
+      background:#fff;
+      color:#0f172a;
+      padding:0 12px;
+      text-align:left;
+      font-size:13px;
+      font-weight:850;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .integro-caixas-bulk-menu .integro-menu-item:hover{background:#f8fafc;}
+    .integro-caixas-bulk-menu .integro-menu-item.success{color:#15803d;}
+    .integro-caixas-bulk-menu .integro-menu-item.danger{color:#be123c;}
+    .integro-caixas-bulk-menu .integro-menu-item:disabled{opacity:.45;cursor:not-allowed;}
+    .integro-caixas-bulk-menu .integro-menu-separator{height:1px;background:#e2e8f0;margin:4px 2px;}
+    #caixas .caixas-premium-summary{
+      display:grid;
+      grid-template-columns:repeat(6,minmax(0,1fr));
+      gap:10px;
+      margin:4px 0 16px;
+    }
+    #caixas .summary-tile{
+      border:1px solid #e2e8f0;
+      border-radius:18px;
+      background:#fff;
+      padding:14px 14px 13px;
+      box-shadow:0 10px 26px rgba(15,23,42,.045);
+      min-height:92px;
+      display:grid;
+      align-content:center;
+      gap:6px;
+    }
+    #caixas .summary-tile small{
+      color:#64748b;
+      font-size:10.5px;
+      line-height:1.1;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.35px;
+    }
+    #caixas .summary-tile strong{
+      color:#061a35;
+      font-size:20px;
+      line-height:1.05;
+      font-weight:950;
+      letter-spacing:-.4px;
+    }
+    #caixas .summary-tile span{
+      color:#94a3b8;
+      font-size:11px;
+      font-weight:800;
+    }
+    #caixas .summary-tile.alert strong{color:#be123c;}
+    #caixas .caixas-table-wrap{
+      border:1px solid #dbe4ef!important;
+      border-radius:22px!important;
+      overflow:auto!important;
+      box-shadow:0 12px 36px rgba(15,23,42,.045)!important;
+      background:#fff!important;
+    }
+    #caixas .caixas-table-premium-list{
+      min-width:1500px!important;
+      border-collapse:separate!important;
+      border-spacing:0!important;
+    }
+    #caixas .caixas-table-premium-list th{
+      background:#eef2f7!important;
+      color:#061a35!important;
+      border-bottom:1px solid #dbe4ef!important;
+      padding:12px 14px!important;
+      font-size:10.8px!important;
+      line-height:1.15!important;
+      font-weight:900!important;
+      text-transform:uppercase!important;
+      letter-spacing:.12px!important;
+      white-space:nowrap!important;
+      vertical-align:middle!important;
+    }
+    #caixas .caixas-table-premium-list th.sortable-th-premium{
+      cursor:pointer!important;
+      user-select:none!important;
+    }
+    #caixas .caixas-table-premium-list th.sortable-th-premium:hover{
+      background:#e2e8f0!important;
+    }
+    #caixas .caixas-table-premium-list th .th-label{
+      display:inline-flex;
+      align-items:center;
+      gap:5px;
+      vertical-align:middle;
+    }
+    #caixas .caixas-table-premium-list th .sort-indicator{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      width:16px;
+      margin-left:4px;
+      color:#64748b;
+      opacity:0;
+      font-size:12px;
+      font-weight:900;
+    }
+    #caixas .caixas-table-premium-list th.sortable-th-premium:hover .sort-indicator::before{
+      content:"↕";
+    }
+    #caixas .caixas-table-premium-list th.sort-active .sort-indicator{
+      opacity:1;
+      color:#ff8a00;
+    }
+    #caixas .caixas-table-premium-list th.sort-active .sort-indicator::before{content:"";}
+    #caixas .caixas-table-premium-list td{
+      padding:15px 14px!important;
+      border-bottom:1px solid #e8eef5!important;
+      color:#334155!important;
+      font-size:13.5px!important;
+      font-weight:800!important;
+      white-space:nowrap!important;
+      vertical-align:middle!important;
+    }
+    #caixas .caixas-table-premium-list tbody tr:nth-child(even){background:#f8fafc!important;}
+    #caixas .caixas-table-premium-list tbody tr:hover{background:#fff7ed!important;}
+    #caixas .caixas-table-premium-list .select-col{
+      width:46px!important;
+      min-width:46px!important;
+      text-align:center!important;
+    }
+    #caixas .caixas-table-premium-list input[type="checkbox"]{
+      width:16px!important;
+      height:16px!important;
+      accent-color:#ff8a00!important;
+    }
+    #caixas .money-cell{
+      text-align:right!important;
+      font-variant-numeric:tabular-nums!important;
+    }
+    #caixas .important-money{
+      color:#0f172a!important;
+      font-weight:950!important;
+    }
+    #caixas .valor-negativo{
+      color:#be123c!important;
+    }
+    #caixas .valor-positivo.important-money{
+      color:#0f3a6b!important;
+    }
+    #caixas .date-cell{
+      text-align:center!important;
+      color:#475569!important;
+    }
+    #caixas .status-badge{
+      min-width:94px!important;
+      height:28px!important;
+      gap:6px!important;
+      font-size:11px!important;
+      font-weight:900!important;
+      text-transform:capitalize!important;
+    }
+    #caixas .status-badge::before{
+      content:"";
+      width:7px;
+      height:7px;
+      border-radius:999px;
+      background:currentColor;
+      display:inline-block;
+    }
+    #caixas .team-pill-premium{
+      display:inline-flex!important;
+      align-items:center!important;
+      gap:9px!important;
+      background:transparent!important;
+      border:0!important;
+      padding:0!important;
+      color:#061a35!important;
+      font-weight:950!important;
+      text-decoration:none!important;
+      cursor:pointer!important;
+    }
+    #caixas .team-pill-premium:hover{color:#ff8a00!important;}
+    #caixas .team-avatar-mini{
+      width:28px;
+      height:28px;
+      border-radius:10px;
+      display:inline-grid;
+      place-items:center;
+      background:linear-gradient(135deg,#e0f2fe,#dbeafe);
+      color:#075985;
+      font-size:12px;
+      font-weight:950;
+      flex:0 0 28px;
+    }
+    #caixas .sync-stack{
+      display:grid;
+      gap:2px;
+      text-align:left;
+      line-height:1.1;
+    }
+    #caixas .sync-stack strong{
+      font-size:12px;
+      color:#334155;
+      font-weight:900;
+    }
+    #caixas .sync-stack small{
+      font-size:11px;
+      color:#64748b;
+      font-weight:850;
+    }
+    #caixas .caixa-mobile-card-premium{
+      border-radius:22px!important;
+      border:1px solid #dbe4ef!important;
+      box-shadow:0 12px 34px rgba(15,23,42,.07)!important;
+      background:#fff!important;
+    }
+    @media(max-width:1380px){
+      #caixas .caixas-premium-summary{grid-template-columns:repeat(3,minmax(0,1fr));}
+      #caixas .caixas-action-card-premium{grid-template-columns:1fr!important;}
+      #caixas .caixas-action-buttons{justify-content:flex-start!important;}
+    }
+    @media(max-width:760px){
+      #caixas .section-card{padding:18px!important;border-radius:24px!important;}
+      #caixas .caixas-premium-header h2{font-size:23px!important;}
+      #caixas .caixas-premium-summary{grid-template-columns:1fr!important;}
+      #caixas .caixas-action-buttons{display:grid!important;grid-template-columns:1fr auto!important;width:100%!important;}
+      #caixas .caixas-action-buttons .primary-btn,
+      #caixas .caixas-action-buttons .filtro-toggle-btn{width:100%!important;}
+    }
+  `;
+  document.head.appendChild(css);
+
+  const oldRender = window.renderCaixasPremium;
+  if(typeof oldRender === "function"){
+    window.renderCaixasPremium = function(){
+      const ret = oldRender.apply(this, arguments);
+      Promise.resolve(ret).finally(scheduleApply);
+      scheduleApply();
+      return ret;
+    };
+    window.renderCaixas = window.renderCaixasPremium;
+    window.renderizarCaixas = window.renderCaixasPremium;
+    window.renderListaCaixas = window.renderCaixasPremium;
+  }
+
+  const oldAtualizar = window.atualizarCaixasIntegro;
+  if(typeof oldAtualizar === "function"){
+    window.atualizarCaixasIntegro = function(){
+      const ret = oldAtualizar.apply(this, arguments);
+      Promise.resolve(ret).finally(scheduleApply);
+      return ret;
+    };
+  }
+
+  document.addEventListener("click", function(ev){
+    const btn = ev.target.closest("#caixas .action-more");
+    if(btn){
+      abrirMenuAcoes(ev);
+    }
+  }, true);
+
+  document.addEventListener("change", function(ev){
+    if(ev.target.closest("#caixas") && ev.target.matches("input[type='checkbox']")) scheduleApply();
+  });
+
+  document.addEventListener("DOMContentLoaded", scheduleApply);
+  document.addEventListener("usuario-validado", scheduleApply);
+  setTimeout(scheduleApply, 600);
+  setTimeout(scheduleApply, 1600);
 })();
 </script>
 
