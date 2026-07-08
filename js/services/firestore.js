@@ -4,6 +4,50 @@
 // ========================================
 
 const FirestoreService = {
+  normalizarDadosAcessoUsuario(tipoUsuario, cargo = null) {
+    const tipoSelecionado = String(tipoUsuario || "").trim().toLowerCase();
+    const acessoBase = window.IntegroOperacional?.normalizarAcessoUsuario
+      ? window.IntegroOperacional.normalizarAcessoUsuario({
+          tipoUsuario: tipoSelecionado,
+          cargoChave: cargo?.cargoChave || "",
+          cargo: cargo?.cargo || "",
+          cargoNome: cargo?.nome || cargo?.cargoNome || ""
+        })
+      : null;
+
+    const cargosCliente = ["gerente", "captador", "supervisor", "vendedor", "financeiro", "auditor"];
+    const tiposInternosLegados = ["interno_integro", "comercial_integro", "financeiro_integro", "suporte_integro"];
+    let cargoChave = cargosCliente.includes(tipoSelecionado)
+      ? tipoSelecionado
+      : (acessoBase?.cargoChave || "");
+
+    let tipoOficial = acessoBase?.tipoUsuarioOficial || tipoSelecionado;
+    if (cargosCliente.includes(tipoSelecionado)) tipoOficial = "usuario_cliente";
+    if (tiposInternosLegados.includes(tipoSelecionado)) tipoOficial = "usuario_integro";
+    if (tipoOficial !== "usuario_cliente") cargoChave = "";
+
+    const cargoNomePadrao = {
+      gerente: "Gerente",
+      captador: "Captador",
+      supervisor: "Supervisor",
+      vendedor: "Vendedor",
+      financeiro: "Financeiro",
+      auditor: "Auditor"
+    };
+
+    return {
+      tipoUsuario: tipoOficial || tipoSelecionado,
+      tipoUsuarioOficial: tipoOficial || tipoSelecionado,
+      tipoUsuarioLegado: tipoOficial !== tipoSelecionado ? tipoSelecionado : "",
+      perfilLegado: cargoChave || tipoSelecionado,
+      cargoChave,
+      cargoNome: tipoOficial === "master_local"
+        ? "Master Local"
+        : (cargo?.nome || cargo?.cargoNome || cargoNomePadrao[cargoChave] || tipoSelecionado),
+      usuarioInternoIntegro: tipoOficial === "usuario_integro"
+    };
+  },
+
   // ===============================
   // LOAD - Carregamento de coleções
   // ===============================
@@ -67,6 +111,7 @@ const FirestoreService = {
       // Buscar cargo e equipe do estado
       const cargo = State.encontrarCargoPorId(cargoId);
       const equipe = State.encontrarEquipePorId(equipeId);
+      const acessoUsuario = FirestoreService.normalizarDadosAcessoUsuario(tipoUsuario, cargo);
 
       // Criar documento em Firestore
       const docRef = await db.collection(CONFIG.COLECOES.USUARIOS).add({
@@ -75,11 +120,16 @@ const FirestoreService = {
         nomeCompleto: nome,
         email,
         telefone,
-        tipoUsuario,
+        tipoUsuario: acessoUsuario.tipoUsuario,
+        tipoUsuarioOficial: acessoUsuario.tipoUsuarioOficial,
+        tipoUsuarioLegado: acessoUsuario.tipoUsuarioLegado,
+        perfilLegado: acessoUsuario.perfilLegado,
 
         cargoId: cargoId || "",
-        cargoNome: cargo?.nome || cargo?.cargoNome || tipoUsuario,
+        cargoNome: acessoUsuario.cargoNome,
+        cargoChave: acessoUsuario.cargoChave,
         permissoes: cargo?.permissoes || {},
+        usuarioInternoIntegro: acessoUsuario.usuarioInternoIntegro,
 
         equipeId: equipeId || "",
         equipeNome: equipe?.nome || "",
@@ -134,16 +184,22 @@ const FirestoreService = {
       // Buscar cargo e equipe do estado
       const cargo = State.encontrarCargoPorId(cargoId);
       const equipe = State.encontrarEquipePorId(equipeId);
+      const acessoUsuario = FirestoreService.normalizarDadosAcessoUsuario(tipoUsuario, cargo);
 
       await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).update({
         nome,
         nomeCompleto: nome,
         telefone,
-        tipoUsuario,
+        tipoUsuario: acessoUsuario.tipoUsuario,
+        tipoUsuarioOficial: acessoUsuario.tipoUsuarioOficial,
+        tipoUsuarioLegado: acessoUsuario.tipoUsuarioLegado,
+        perfilLegado: acessoUsuario.perfilLegado,
 
         cargoId: cargoId || "",
-        cargoNome: cargo?.nome || cargo?.cargoNome || tipoUsuario,
+        cargoNome: acessoUsuario.cargoNome,
+        cargoChave: acessoUsuario.cargoChave,
         permissoes: cargo?.permissoes || {},
+        usuarioInternoIntegro: acessoUsuario.usuarioInternoIntegro,
 
         equipeId: equipeId || "",
         equipeNome: equipe?.nome || "",

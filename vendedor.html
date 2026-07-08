@@ -6557,6 +6557,7 @@
       <script src="js/firebase-config.js"></script>
       <script src="js/utils/operational.js"></script>
       <script src="js/services/financial-operations.js"></script>
+      <script src="js/services/indicacoes-service.js"></script>
 
       <script>
 
@@ -6699,9 +6700,12 @@
               }
 
               await executarEtapaLoading("Validando acesso do vendedor...", 14, 26, async () => {
+                const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
+                  ? window.IntegroOperacional.normalizarAcessoUsuario(usuarioLogado)
+                  : null;
                 const tipo = String(usuarioLogado.tipoUsuario || usuarioLogado.perfil || usuarioLogado.cargoNome || "").toLowerCase();
 
-                if (tipo && !tipo.includes("vendedor")) {
+                if (!acesso?.isVendedor && tipo && !tipo.includes("vendedor")) {
                   bloquearERedirecionar("Acesso negado para este perfil.");
                 }
 
@@ -10415,6 +10419,235 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 </style>
 
+<script id="integro-modulo-indicacoes-vendedor-service">
+(function(){
+  "use strict";
+
+  function svc(){ return window.IntegroIndicacoes; }
+  function firestore(){ return window.db || (window.firebase?.firestore ? firebase.firestore() : null); }
+  function usuario(){ return window.usuarioLogado || {}; }
+  function tenant(){ return window.tenantId || usuario().clientePlataformaId || usuario().empresaId || usuario().tenantId || ""; }
+  function esc(v){ return String(v ?? "").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m])); }
+
+  window.salvarIndicacao = async function(){
+    const servico = svc();
+    const dbi = firestore();
+    if(!servico || !dbi) return alert("Serviço de indicações indisponível.");
+
+    const nome = document.getElementById("indicacaoNome")?.value.trim() || "";
+    const telefone = document.getElementById("indicacaoTelefone")?.value.trim() || "";
+    const origem = document.getElementById("indicacaoOrigem")?.value || "Outro";
+    const observacao = document.getElementById("indicacaoObs")?.value.trim() || "";
+    const dataEntrada = document.getElementById("indicacaoDataEntrada")?.value || window.hojeISO?.() || "";
+
+    if(!nome || !telefone){
+      alert("Informe nome e telefone da indicação.");
+      return;
+    }
+
+    try{
+      await servico.criarIndicacao({
+        db: dbi,
+        usuario: usuario(),
+        clientePlataformaId: tenant(),
+        nome,
+        telefonePrincipal: telefone,
+        origemIndicacao: origem,
+        observacao,
+        dataRecebimento: dataEntrada,
+        vendedorDestinoId: usuario().id || usuario().usuarioId || "",
+        vendedorDestinoNome: usuario().nome || usuario().nomeCompleto || usuario().email || "",
+        ignorarPermissao: true
+      });
+      await window.carregarIndicacoes?.();
+      window.renderIndicacoes?.();
+      window.fecharDrawer?.();
+      alert("Indicação cadastrada com sucesso.");
+    }catch(e){
+      console.error("Erro ao salvar indicação:", e);
+      alert("Erro ao salvar indicação:\n\n" + (e.message || e));
+    }
+  };
+
+  window.abrirDetalheIndicacao = function(id){
+    const lista = window.indicacoesCache || [];
+    const i = lista.find(x => String(x.id) === String(id));
+    if(!i) return;
+
+    window.abrirDrawer?.(
+      "Indicação",
+      i.nomeClienteSnapshot || i.nome || "Lead",
+      `
+        <div style="display:grid;gap:14px;color:#334155;font-weight:800;line-height:1.6;">
+          <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:14px;">
+            <p><strong>Nome:</strong> ${esc(i.nomeClienteSnapshot || i.nome || "-")}</p>
+            <p><strong>Telefone:</strong> ${esc(i.telefonePrincipal || i.telefone || "-")}</p>
+            <p><strong>Origem:</strong> ${esc(i.origemIndicacao || i.origem || "-")}</p>
+            <p><strong>Status:</strong> ${esc(i.statusIndicacao || i.status || "RECEBIDA")}</p>
+            <p><strong>Observação:</strong> ${esc(i.observacao || "-")}</p>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;" class="busca-grid">
+            <button class="btn btn-primary" onclick="abrirWhatsAppIndicacao('${esc(id)}')">Abrir WhatsApp</button>
+            <button class="btn btn-light" onclick="iniciarAtendimentoIndicacaoVendedor('${esc(id)}')">Em atendimento</button>
+            <button class="btn btn-light" onclick="marcarNaoConvertidaIndicacaoVendedor('${esc(id)}')">Não convertida</button>
+            <button class="btn btn-light" onclick="marcarRecusadaIndicacaoVendedor('${esc(id)}')">Recusada</button>
+            <button class="btn btn-primary" onclick="converterIndicacaoEmCliente('${esc(id)}')">Abrir/criar cliente</button>
+          </div>
+          <div style="border:1px dashed #cbd5e1;border-radius:16px;padding:12px;color:#64748b;">
+            A conversão em venda permanece no fluxo atual. Esta etapa não altera cálculo financeiro.
+          </div>
+        </div>
+      `
+    );
+  };
+
+  window.iniciarAtendimentoIndicacaoVendedor = async function(id){
+    try{
+      await svc().iniciarAtendimentoIndicacao(id, usuario());
+      await window.carregarIndicacoes?.();
+      window.renderIndicacoes?.();
+      window.abrirDetalheIndicacao(id);
+    }catch(e){ alert("Não foi possível iniciar atendimento:\n\n" + (e.message || e)); }
+  };
+
+  window.marcarNaoConvertidaIndicacaoVendedor = async function(id){
+    const motivo = prompt("Motivo da não conversão:", "SEM_INTERESSE") || "OUTRO";
+    try{
+      await svc().marcarIndicacaoNaoConvertida(id, motivo, usuario());
+      await window.carregarIndicacoes?.();
+      window.renderIndicacoes?.();
+      window.fecharDrawer?.();
+    }catch(e){ alert("Não foi possível marcar não convertida:\n\n" + (e.message || e)); }
+  };
+
+  window.marcarRecusadaIndicacaoVendedor = async function(id){
+    const motivo = prompt("Motivo da recusa:", "OUTRO") || "OUTRO";
+    try{
+      await svc().marcarIndicacaoRecusada(id, motivo, usuario());
+      await window.carregarIndicacoes?.();
+      window.renderIndicacoes?.();
+      window.fecharDrawer?.();
+    }catch(e){ alert("Não foi possível marcar recusada:\n\n" + (e.message || e)); }
+  };
+})();
+</script>
+
+<script id="integro-indicacoes-vendedor-recebimento-direcionado">
+(function(){
+  "use strict";
+
+  function dbi(){ return window.db || (window.firebase?.firestore ? firebase.firestore() : null); }
+  function usuario(){ return window.usuarioLogado || {}; }
+  function tenant(){ return window.tenantId || usuario().clientePlataformaId || usuario().empresaId || usuario().tenantId || ""; }
+  function userIds(){
+    const u = usuario();
+    return [u.id, u.uid, u.usuarioId, u.userId].filter(Boolean).map(String);
+  }
+  function esc(v){
+    return String(v ?? "").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m]));
+  }
+  function statusIndicacao(item){
+    return item.statusIndicacao || item.status || "RECEBIDA";
+  }
+  function statusClasse(status){
+    const s = String(status || "").toUpperCase();
+    if (s === "CONVERTIDA") return ["#ecfdf5", "#15803d"];
+    if (s === "EM_ATENDIMENTO" || s === "EM ATENDIMENTO" || s === "NEGOCIANDO" || s === "AGENDADO") return ["#fff7ed", "#c2410c"];
+    if (s === "NAO_CONVERTIDA" || s === "NÃO CONVERTIDA" || s === "RECUSADA" || s === "INVALIDA" || s === "INVÁLIDA") return ["#fef2f2", "#b91c1c"];
+    return ["#eff6ff", "#1d4ed8"];
+  }
+  function pertenceAoVendedor(item){
+    const ids = userIds();
+    if (!ids.length) return false;
+    const candidatos = [
+      item.vendedorDestinoId,
+      item.vendedorId,
+      item.vendedorResponsavelId,
+      item.usuarioId
+    ].filter(Boolean).map(String);
+    return candidatos.some(id => ids.includes(id));
+  }
+  function pertenceAoTenant(item){
+    const t = tenant();
+    return !t || !item.clientePlataformaId || String(item.clientePlataformaId) === String(t);
+  }
+
+  window.carregarIndicacoes = async function(){
+    const db = dbi();
+    if (!db) {
+      window.indicacoesCache = [];
+      return [];
+    }
+
+    let ref = db.collection("indicacoes").limit(500);
+    if (tenant()) {
+      ref = db.collection("indicacoes").where("clientePlataformaId", "==", tenant()).limit(500);
+    }
+
+    const snap = await ref.get();
+    window.indicacoesCache = [];
+    snap.forEach(doc => {
+      const item = { id: doc.id, ...doc.data() };
+      if (pertenceAoTenant(item) && pertenceAoVendedor(item) && item.excluido !== true && item.ativo !== false) {
+        window.indicacoesCache.push(item);
+      }
+    });
+    return window.indicacoesCache;
+  };
+
+  window.cardIndicacao = function(indicacao){
+    const status = statusIndicacao(indicacao);
+    const cls = statusClasse(status);
+    const telefone = indicacao.telefonePrincipal || indicacao.telefone || "";
+    const nome = indicacao.nomeClienteSnapshot || indicacao.nome || "Lead sem nome";
+    const origem = indicacao.origemIndicacao || indicacao.origem || "-";
+    const entrada = indicacao.dataEntrada || String(indicacao.dataRecebimento || indicacao.criadoEmTexto || "").slice(0, 10) || "-";
+    return `
+      <div class="venda-cobranca-card" style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;display:grid;grid-template-columns:8px 1fr auto;gap:16px;align-items:center;box-shadow:0 10px 24px rgba(15,23,42,.04);">
+        <div style="width:8px;height:100%;min-height:96px;border-radius:999px;background:${cls[1]};"></div>
+        <div>
+          <strong style="display:block;font-size:16px;margin-bottom:6px;">${esc(nome)}</strong>
+          <small style="display:block;color:#64748b;font-weight:800;">Telefone: ${esc(telefone || "-")}</small>
+          <small style="display:block;color:#64748b;font-weight:800;">Origem: ${esc(origem)}</small>
+          <small style="display:block;color:#64748b;font-weight:800;">Entrada: ${esc(entrada)}</small>
+          <span style="display:inline-flex;margin-top:8px;background:${cls[0]};color:${cls[1]};border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;">${esc(status)}</span>
+        </div>
+        <div style="display:grid;gap:8px;min-width:170px;">
+          <button class="btn btn-primary" onclick="abrirWhatsAppIndicacao('${esc(indicacao.id)}')">WhatsApp</button>
+          <button class="btn btn-light" onclick="abrirDetalheIndicacao('${esc(indicacao.id)}')">Ver</button>
+        </div>
+      </div>
+    `;
+  };
+
+  window.renderIndicacoes = function(){
+    const resumoEl = document.getElementById("indicacoesResumo");
+    const listaEl = document.getElementById("listaIndicacoes");
+    if (!resumoEl || !listaEl) return;
+
+    const lista = window.indicacoesCache || [];
+    const total = lista.length;
+    const convertidas = lista.filter(i => String(statusIndicacao(i)).toUpperCase() === "CONVERTIDA").length;
+    const novas = lista.filter(i => ["NOVA","RECEBIDA","ATRIBUIDA","ATRIBUÍDA"].includes(String(statusIndicacao(i)).toUpperCase())).length;
+    const taxa = total ? Math.round((convertidas / total) * 100) : 0;
+
+    resumoEl.innerHTML = `
+      <div class="card"><small>Leads recebidos</small><strong>${total}</strong></div>
+      <div class="card"><small>Leads convertidos</small><strong>${convertidas}</strong></div>
+      <div class="card"><small>Novas indicações</small><strong>${novas}</strong></div>
+      <div class="card"><small>Taxa de conversão</small><strong>${taxa}%</strong></div>
+    `;
+
+    listaEl.innerHTML = lista.length
+      ? lista.map(i => window.cardIndicacao(i)).join("")
+      : `
+        <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
+          Nenhuma indicação direcionada para você no momento.
+        </div>
+      `;
+  };
+})();
+</script>
 </body>
      ========================================================= -->
 

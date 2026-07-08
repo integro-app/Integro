@@ -70,6 +70,10 @@ function abrirEditarUsuario(id) {
 function formularioUsuario(usuario = null) {
   const cargos = State.getCargos();
   const equipes = State.getEquipes();
+  const acessoUsuario = window.IntegroOperacional?.normalizarAcessoUsuario
+    ? window.IntegroOperacional.normalizarAcessoUsuario(usuario || {})
+    : null;
+  const tipoSelecionado = acessoUsuario?.perfilCompat || usuario?.tipoUsuario || "vendedor";
 
   const cargosOptions = cargos.length
     ? cargos.map(c => `
@@ -107,10 +111,13 @@ function formularioUsuario(usuario = null) {
       <div class="form-group">
         <label>Tipo de usuário</label>
         <select id="usuarioTipo">
-          <option value="vendedor" ${usuario?.tipoUsuario === "vendedor" ? "selected" : ""}>Vendedor</option>
-          <option value="supervisor" ${usuario?.tipoUsuario === "supervisor" ? "selected" : ""}>Supervisor</option>
-          <option value="financeiro" ${usuario?.tipoUsuario === "financeiro" ? "selected" : ""}>Financeiro</option>
-          <option value="master_local" ${usuario?.tipoUsuario === "master_local" ? "selected" : ""}>Master Local</option>
+          <option value="gerente" ${tipoSelecionado === "gerente" ? "selected" : ""}>Gerente</option>
+          <option value="captador" ${tipoSelecionado === "captador" ? "selected" : ""}>Captador</option>
+          <option value="vendedor" ${tipoSelecionado === "vendedor" ? "selected" : ""}>Vendedor</option>
+          <option value="supervisor" ${tipoSelecionado === "supervisor" ? "selected" : ""}>Supervisor</option>
+          <option value="financeiro" ${tipoSelecionado === "financeiro" ? "selected" : ""}>Financeiro</option>
+          <option value="auditor" ${tipoSelecionado === "auditor" ? "selected" : ""}>Auditor</option>
+          <option value="master_local" ${tipoSelecionado === "master_local" ? "selected" : ""}>Master Local</option>
         </select>
       </div>
 

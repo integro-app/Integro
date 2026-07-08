@@ -91,11 +91,17 @@ async function login() {
 // ===============================
 
 function redirecionarUsuario(usuario) {
+  const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
+    ? window.IntegroOperacional.normalizarAcessoUsuario(usuario)
+    : null;
   const tipo = String(usuario.tipoUsuario || "").toLowerCase();
-  const rota = CONFIG.ROTAS_POR_TIPO[tipo];
+  const rota =
+    acesso?.rotaPadrao ||
+    CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] ||
+    CONFIG.ROTAS_POR_TIPO[tipo];
 
   if (!rota) {
-    UIHelpers.alerta("Tipo de usuário não identificado: " + tipo);
+    UIHelpers.alerta("Tipo de usuário sem rota liberada: " + (tipo || acesso?.tipoUsuarioOficial || "-"));
     return;
   }
 
@@ -134,11 +140,21 @@ function protegerPagina(tipoObrigatorio = null) {
         return;
       }
 
+      const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
+        ? window.IntegroOperacional.normalizarAcessoUsuario(usuario)
+        : null;
       const tipoUsuario = String(usuario.tipoUsuario || "").toLowerCase();
+      const atendePerfil = window.IntegroOperacional?.usuarioAtendePerfil
+        ? window.IntegroOperacional.usuarioAtendePerfil(usuario, tipoObrigatorio)
+        : (!tipoObrigatorio || tipoUsuario === tipoObrigatorio);
 
-      if (tipoObrigatorio && tipoUsuario !== tipoObrigatorio) {
+      if (tipoObrigatorio && !atendePerfil) {
         UIHelpers.alerta(CONFIG.ERROS.ACESSO_NEGADO);
-        window.location.href = CONFIG.ROTAS_POR_TIPO[tipoUsuario] || "index.html";
+        window.location.href =
+          acesso?.rotaPadrao ||
+          CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] ||
+          CONFIG.ROTAS_POR_TIPO[tipoUsuario] ||
+          "index.html";
         return;
       }
 

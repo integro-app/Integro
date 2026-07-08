@@ -118,6 +118,116 @@
     return { centavos, valor: centavosParaNumero(centavos) };
   }
 
+  function normalizarChaveAcesso(valor) {
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function detectarCargoCliente(usuario = {}, tipoNormalizado = "") {
+    const candidatos = [
+      usuario.cargoChave,
+      usuario.cargo,
+      usuario.cargoNome,
+      usuario.funcao,
+      usuario.perfil,
+      tipoNormalizado
+    ].map(normalizarChaveAcesso);
+
+    if (candidatos.some(v => v.includes("gerente"))) return "gerente";
+    if (candidatos.some(v => v.includes("captador") || v.includes("captacao"))) return "captador";
+    if (candidatos.some(v => v.includes("supervisor"))) return "supervisor";
+    if (candidatos.some(v => v.includes("vendedor") || v.includes("vendas"))) return "vendedor";
+    if (candidatos.some(v => v.includes("financeiro"))) return "financeiro";
+    if (candidatos.some(v => v.includes("auditor") || v.includes("auditoria") || v.includes("compliance"))) return "auditor";
+
+    return "";
+  }
+
+  function normalizarAcessoUsuario(usuario = {}) {
+    const tipoOriginal = normalizarChaveAcesso(usuario.tipoUsuario || usuario.tipo || usuario.role || "");
+    const cargoChave = detectarCargoCliente(usuario, tipoOriginal);
+    const ehInternoIntegro = usuario.usuarioInternoIntegro === true || /(^|_)integro$/.test(tipoOriginal);
+
+    let tipoUsuarioOficial = tipoOriginal;
+
+    if (tipoOriginal === "master_global") {
+      tipoUsuarioOficial = "master_global";
+    } else if (tipoOriginal === "master_local") {
+      tipoUsuarioOficial = "master_local";
+    } else if (tipoOriginal === "usuario_integro" || ehInternoIntegro) {
+      tipoUsuarioOficial = "usuario_integro";
+    } else if (tipoOriginal === "usuario_cliente" || cargoChave) {
+      tipoUsuarioOficial = "usuario_cliente";
+    }
+
+    const perfilCompat =
+      tipoUsuarioOficial === "usuario_cliente"
+        ? (cargoChave || tipoOriginal || "usuario_cliente")
+        : tipoUsuarioOficial;
+
+    let rotaPadrao = "";
+    if (tipoUsuarioOficial === "master_global") rotaPadrao = "master-global.html";
+    if (tipoUsuarioOficial === "master_local") rotaPadrao = "master-local.html";
+    if (tipoUsuarioOficial === "usuario_cliente") {
+      rotaPadrao = ({
+        gerente: "master-local.html",
+        captador: "master-local.html",
+        supervisor: "supervisor.html",
+        vendedor: "vendedor.html",
+        financeiro: "financeiro.html",
+        auditor: "master-local.html"
+      })[cargoChave] || "master-local.html";
+    }
+
+    return {
+      tipoOriginal,
+      tipoUsuarioOficial,
+      cargoChave,
+      perfilCompat,
+      rotaPadrao,
+      isMasterGlobal: tipoUsuarioOficial === "master_global",
+      isUsuarioIntegro: tipoUsuarioOficial === "usuario_integro",
+      isMasterLocal: tipoUsuarioOficial === "master_local",
+      isUsuarioCliente: tipoUsuarioOficial === "usuario_cliente",
+      isGerente: tipoUsuarioOficial === "usuario_cliente" && cargoChave === "gerente",
+      isCaptador: tipoUsuarioOficial === "usuario_cliente" && cargoChave === "captador",
+      isSupervisor: tipoUsuarioOficial === "usuario_cliente" && cargoChave === "supervisor",
+      isVendedor: tipoUsuarioOficial === "usuario_cliente" && cargoChave === "vendedor",
+      isFinanceiro: tipoUsuarioOficial === "usuario_cliente" && cargoChave === "financeiro",
+      isAuditor: tipoUsuarioOficial === "usuario_cliente" && cargoChave === "auditor"
+    };
+  }
+
+  function rotaPadraoUsuario(usuario = {}) {
+    const acesso = normalizarAcessoUsuario(usuario);
+    return acesso.rotaPadrao || "";
+  }
+
+  function usuarioAtendePerfil(usuario = {}, perfilObrigatorio = "") {
+    const obrigatorio = normalizarChaveAcesso(perfilObrigatorio);
+    if (!obrigatorio) return true;
+
+    const acesso = normalizarAcessoUsuario(usuario);
+    if (acesso.tipoUsuarioOficial === obrigatorio) return true;
+    if (acesso.tipoOriginal === obrigatorio) return true;
+    if (acesso.perfilCompat === obrigatorio) return true;
+
+    if (obrigatorio === "master_local") {
+      return acesso.isMasterLocal || acesso.isGerente || acesso.isAuditor;
+    }
+
+    if (["gerente", "captador", "supervisor", "vendedor", "financeiro", "auditor"].includes(obrigatorio)) {
+      return acesso.isUsuarioCliente && acesso.cargoChave === obrigatorio;
+    }
+
+    return false;
+  }
+
   function limparFilaOfflineAtual(usuario = null) {
     try {
       const atual = usuario || JSON.parse(localStorage.getItem("usuario") || "null") || {};
@@ -172,13 +282,14 @@
 
   function temPermissao(usuario, acao, contexto = {}) {
     if (!usuario || !acao) return false;
-    const perfil = String(usuario.tipoUsuario || usuario.perfil || "").toLowerCase();
-    if (perfil === "master_global") return true;
+    const acesso = normalizarAcessoUsuario(usuario);
+    const perfil = acesso.perfilCompat;
+    if (acesso.isMasterGlobal) return true;
 
     const tenantUsuario = usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "";
     const tenantContexto = contexto.clientePlataformaId || contexto.empresaId || contexto.tenantId || "";
     if (tenantContexto && tenantUsuario !== tenantContexto) return false;
-    if (perfil === "master_local") return true;
+    if (acesso.isMasterLocal) return true;
 
     const [modulo, operacao = "ver"] = String(acao).split(".");
     const permissoes = usuario.permissoes || usuario.permissoesCargo || {};
@@ -210,6 +321,10 @@
     centavosParaMoeda,
     somarCentavos,
     normalizarValorFinanceiro,
+    normalizarChaveAcesso,
+    normalizarAcessoUsuario,
+    rotaPadraoUsuario,
+    usuarioAtendePerfil,
     limparFilaOfflineAtual,
     limparSessaoLocal,
     chaveFilaOffline,
@@ -223,5 +338,9 @@
   window.centavosParaMoeda = window.centavosParaMoeda || centavosParaMoeda;
   window.somarCentavos = window.somarCentavos || somarCentavos;
   window.normalizarValorFinanceiro = window.normalizarValorFinanceiro || normalizarValorFinanceiro;
+  window.normalizarChaveAcesso = window.normalizarChaveAcesso || normalizarChaveAcesso;
+  window.normalizarAcessoUsuario = window.normalizarAcessoUsuario || normalizarAcessoUsuario;
+  window.rotaPadraoUsuario = window.rotaPadraoUsuario || rotaPadraoUsuario;
+  window.usuarioAtendePerfil = window.usuarioAtendePerfil || usuarioAtendePerfil;
   window.temPermissao = window.temPermissao || temPermissao;
 })();

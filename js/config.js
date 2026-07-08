@@ -7,9 +7,21 @@ const CONFIG = {
   ROTAS_POR_TIPO: {
     master_global: "master-global.html",
     master_local: "master-local.html",
+    usuario_cliente: "master-local.html",
     vendedor: "vendedor.html",
     supervisor: "supervisor.html",
-    financeiro: "financeiro.html"
+    financeiro: "financeiro.html",
+    gerente: "master-local.html",
+    auditor: "master-local.html"
+  },
+
+  ROTAS_POR_CARGO_CLIENTE: {
+    gerente: "master-local.html",
+    captador: "master-local.html",
+    supervisor: "supervisor.html",
+    vendedor: "vendedor.html",
+    financeiro: "financeiro.html",
+    auditor: "master-local.html"
   },
 
   TIPO_POR_PAGINA: {
@@ -22,10 +34,28 @@ const CONFIG = {
 
   TIPOS_USUARIO: {
     MASTER_GLOBAL: "master_global",
+    USUARIO_INTEGRO: "usuario_integro",
     MASTER_LOCAL: "master_local",
+    USUARIO_CLIENTE: "usuario_cliente",
     VENDEDOR: "vendedor",
     SUPERVISOR: "supervisor",
     FINANCEIRO: "financeiro"
+  },
+
+  TIPOS_USUARIO_OFICIAIS: {
+    MASTER_GLOBAL: "master_global",
+    USUARIO_INTEGRO: "usuario_integro",
+    MASTER_LOCAL: "master_local",
+    USUARIO_CLIENTE: "usuario_cliente"
+  },
+
+  CARGOS_USUARIO_CLIENTE: {
+    GERENTE: "gerente",
+    CAPTADOR: "captador",
+    SUPERVISOR: "supervisor",
+    VENDEDOR: "vendedor",
+    FINANCEIRO: "financeiro",
+    AUDITOR: "auditor"
   },
 
   STATUS_USUARIO: {

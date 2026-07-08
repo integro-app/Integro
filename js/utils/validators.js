@@ -17,7 +17,11 @@ const Validators = {
 
     const status = String(usuario.status || "").toUpperCase();
 
-    if (!usuario.tipoUsuario) {
+    const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
+      ? window.IntegroOperacional.normalizarAcessoUsuario(usuario)
+      : null;
+
+    if (!usuario.tipoUsuario && !acesso?.tipoUsuarioOficial) {
       return {
         ok: false,
         mensagem: CONFIG.ERROS.CADASTRO_INCOMPLETO
@@ -56,6 +60,10 @@ const Validators = {
   validarTipoUsuario(tipoUsuario, tipoObrigatorio) {
     if (!tipoObrigatorio) return true;
 
+    if (window.IntegroOperacional?.usuarioAtendePerfil) {
+      return window.IntegroOperacional.usuarioAtendePerfil({ tipoUsuario }, tipoObrigatorio);
+    }
+
     return String(tipoUsuario || "").toLowerCase() === String(tipoObrigatorio || "").toLowerCase();
   },
 
@@ -83,7 +91,11 @@ const Validators = {
       erros.push("Email inválido.");
     }
 
-    if (!dados.tipoUsuario) {
+    const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
+      ? window.IntegroOperacional.normalizarAcessoUsuario(dados)
+      : null;
+
+    if (!dados.tipoUsuario && !acesso?.tipoUsuarioOficial) {
       erros.push("Tipo de usuário é obrigatório.");
     }
 

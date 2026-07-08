@@ -2074,7 +2074,7 @@ body.integro-data-refreshing .section-card{
       <div class="menu-item" data-modulo="clientes" onclick="trocarTela('clientes',this); setTimeout(()=>{ if(window.renderClientesEmpresaMaster) renderClientesEmpresaMaster(); },80)">
         <span class="menu-icon material-symbols-rounded">groups</span><span class="menu-label">Clientes</span>
       </div>
-      <div class="menu-subitem" data-modulo="clientes" onclick="trocarTela('clientes',this); setTimeout(()=>{ if(window.renderClientesEmpresaMaster) renderClientesEmpresaMaster(); },80)">Buscar cliente</div>
+      <div class="menu-subitem" data-modulo="clientes" onclick="trocarTela('clientes',this); setTimeout(()=>{ if(window.renderClientesEmpresaMaster) renderClientesEmpresaMaster(); },80)">Consultar</div>
       <div class="menu-subitem" data-modulo="clientes" onclick="trocarTela('clientes',this); setTimeout(()=>{ if(window.abrirNovoCliente) abrirNovoCliente(); },80)">Criar cliente</div>
       <div class="menu-subitem" data-modulo="indicacoes" onclick="trocarTela('indicacoes',this)">Indicações</div>
 
@@ -2091,7 +2091,6 @@ body.integro-data-refreshing .section-card{
         <span class="menu-icon material-symbols-rounded">admin_panel_settings</span><span class="menu-label">Cargos e permissões</span>
       </div>
 
-      <div class="menu-group-title" data-menu-group="aprovacoes">Aprovações</div>
       <div class="menu-item" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes',this)">
         <span class="menu-icon material-symbols-rounded">task</span><span class="menu-label">Solicitações</span><span class="badge" id="badgeSolicitacoes">0</span>
       </div>
@@ -2148,7 +2147,6 @@ body.integro-data-refreshing .section-card{
       <div class="menu-subitem" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">Logs financeiros</div>
       <div class="menu-subitem" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">Logs de usuários</div>
 
-      <div class="menu-group-title" data-menu-group="comunicacao">Comunicação</div>
       <div class="menu-item" data-modulo="notificacoes" onclick="trocarTela('notificacoes',this)">
         <span class="menu-icon material-symbols-rounded">notifications</span><span class="menu-label">Notificações</span><span class="badge" id="badgeNotificacoesMenu">0</span>
       </div>
@@ -2289,6 +2287,29 @@ body.integro-data-refreshing .section-card{
 
       <section id="usuarios" class="screen">
         <div class="section-card">
+          <div id="indicacoesModuloMasterLocalBase" style="display:none;">
+            <div id="indicacoesDashboardMasterLocal" class="grid grid-4" style="margin-bottom:18px;"></div>
+            <div class="filter-grid" style="margin-bottom:18px;">
+              <input id="indicacaoFiltroTextoML" type="search" placeholder="Buscar por nome, telefone ou documento" oninput="renderIndicacoesMasterLocal()">
+              <select id="indicacaoFiltroStatusML" onchange="renderIndicacoesMasterLocal()">
+                <option value="">Todos os status</option>
+                <option value="RECEBIDA">Recebida</option>
+                <option value="ATRIBUIDA">Atribuída</option>
+                <option value="EM_ATENDIMENTO">Em atendimento</option>
+                <option value="CONVERTIDA">Convertida</option>
+                <option value="NAO_CONVERTIDA">Não convertida</option>
+                <option value="RECUSADA">Recusada</option>
+                <option value="CANCELADA">Cancelada</option>
+              </select>
+              <input id="indicacaoFiltroVendedorML" type="search" placeholder="Vendedor" oninput="renderIndicacoesMasterLocal()">
+              <input id="indicacaoFiltroOrigemML" type="search" placeholder="Origem" oninput="renderIndicacoesMasterLocal()">
+            </div>
+            <div id="listaIndicacoesMasterLocal" class="table-wrap"></div>
+            <div class="section-card" style="margin-top:18px;">
+              <div class="section-header"><div><h3>Relatório de conversão</h3><p>Vendedores, captadores e origens com base nas indicações do Firestore.</p></div></div>
+              <div id="relatorioIndicacoesMasterLocal" class="grid grid-3"></div>
+            </div>
+          </div>
           <div class="section-header">
             <div>
               <h2>Usuários</h2>
@@ -2479,6 +2500,7 @@ body.integro-data-refreshing .section-card{
       </section>
 
       <section id="indicacoes" class="screen">
+        <script type="application/json" id="indicacoesModuloBaseAtivo">{"versao":"base"}</script>
         <div class="section-card">
           <div class="section-header">
             <div><h2>Indicações</h2><p>Leads enviados pelo marketing para os vendedores.</p></div>
@@ -2642,6 +2664,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/utils/operational.js"></script>
   <script src="js/state.js"></script>
   <script src="js/services/firestore.js"></script>
+  <script src="js/services/indicacoes-service.js"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js"></script>
@@ -10759,7 +10782,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       ocultarItemExistentePorLabel("Indicações");
 
       const subClientes = criarSubitem(
-        "Clientes",
+        "Consultar",
         "trocarTela('clientes',this); setTimeout(function(){ if(window.renderClientesEmpresaMaster) renderClientesEmpresaMaster(); },80)",
         "integroSubClientes"
       );
@@ -16993,6 +17016,1204 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   document.addEventListener("usuario-validado", scheduleApply);
   setTimeout(scheduleApply, 600);
   setTimeout(scheduleApply, 1600);
+})();
+</script>
+
+<script id="integro-modulo-indicacoes-master-local">
+(function(){
+  "use strict";
+
+  let indicacoesMasterLocalCache = [];
+
+  function dbIndicacoes(){
+    return window.db || (window.firebase?.firestore ? firebase.firestore() : null);
+  }
+
+  function usuarioAtualIndicacoes(){
+    return window.usuarioLogado || window.currentUserData || window.usuarioAtual || window.State?.getUsuario?.() || {};
+  }
+
+  function tenantIndicacoes(){
+    const u = usuarioAtualIndicacoes();
+    return u.clientePlataformaId || u.empresaId || u.tenantId || window.tenantId || window.State?.getTenantId?.() || "";
+  }
+
+  function escInd(v){
+    return String(v ?? "").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m]));
+  }
+
+  function moedaCentavosInd(v){
+    const n = Math.round(Number(v || 0)) / 100;
+    return n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+  }
+
+  function normalizarInd(v){
+    return String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  }
+
+  function usuariosIndicacoes(){
+    const listas = [
+      window.usuariosCache,
+      window.usuariosSistema,
+      window.State?.getUsuarios?.()
+    ];
+    return listas.find(Array.isArray) || [];
+  }
+
+  function equipesIndicacoes(){
+    const listas = [
+      window.equipesCache,
+      window.State?.getEquipes?.()
+    ];
+    return listas.find(Array.isArray) || [];
+  }
+
+  function vendedoresIndicacoes(){
+    return usuariosIndicacoes().filter(u=>{
+      const acesso = window.IntegroOperacional?.normalizarAcessoUsuario?.(u);
+      const texto = normalizarInd([u.tipoUsuario,u.cargoNome,u.cargo,u.cargoChave].join(" "));
+      return acesso?.isVendedor || texto.includes("vendedor") || texto.includes("vendas");
+    });
+  }
+
+  function aplicarEstiloIndicacoesMasterLocal(){
+    if(document.getElementById("integro-indicacoes-master-local-css")) return;
+    const css = document.createElement("style");
+    css.id = "integro-indicacoes-master-local-css";
+    css.textContent = `
+      #indicacoes .indicacoes-master-shell{display:grid;gap:18px;}
+      #indicacoes .indicacoes-hero{
+        border:1px solid #fed7aa;
+        border-radius:26px;
+        padding:22px;
+        background:linear-gradient(135deg,#fff7ed,#ffffff 58%,#eff6ff);
+        box-shadow:0 18px 48px rgba(15,23,42,.08);
+        display:flex;
+        justify-content:space-between;
+        gap:18px;
+        align-items:flex-start;
+      }
+      #indicacoes .indicacoes-hero h3{font-size:22px;font-weight:900;color:#071a33;margin-bottom:6px;}
+      #indicacoes .indicacoes-hero p{color:#64748b;font-weight:800;line-height:1.45;}
+      #indicacoes .indicacoes-hero-badges{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+      #indicacoes .indicacoes-hero-badges span{border-radius:999px;background:#fff;border:1px solid #e2e8f0;padding:8px 11px;font-size:12px;font-weight:900;color:#334155;}
+      #indicacoes .indicacoes-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}
+      #indicacoes .indicacao-kpi{
+        border:1px solid #e2e8f0;
+        border-radius:22px;
+        background:#fff;
+        padding:18px;
+        box-shadow:0 10px 28px rgba(15,23,42,.05);
+        display:grid;
+        gap:8px;
+        min-height:116px;
+      }
+      #indicacoes .indicacao-kpi .ico{width:42px;height:42px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,#ff8a00,#ffb100);color:#fff;font-weight:900;}
+      #indicacoes .indicacao-kpi small{text-transform:uppercase;color:#64748b;font-weight:900;font-size:11px;}
+      #indicacoes .indicacao-kpi strong{font-size:27px;font-weight:900;color:#071a33;}
+      #indicacoes .indicacoes-kpis .card{
+        border:1px solid #e2e8f0!important;
+        border-radius:22px!important;
+        background:#fff!important;
+        padding:18px!important;
+        box-shadow:0 10px 28px rgba(15,23,42,.05)!important;
+        min-height:112px;
+      }
+      #indicacoes .indicacoes-kpis .card small{text-transform:uppercase;color:#64748b!important;font-weight:900!important;font-size:11px!important;}
+      #indicacoes .indicacoes-kpis .card strong{font-size:27px!important;font-weight:900!important;color:#071a33!important;}
+      #indicacoes .indicacoes-panel{
+        border:1px solid #e2e8f0;
+        border-radius:24px;
+        background:#fff;
+        padding:18px;
+        box-shadow:0 12px 34px rgba(15,23,42,.05);
+      }
+      #indicacoes .indicacoes-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
+      #indicacoes .indicacoes-panel-head h3{font-size:18px;font-weight:900;color:#071a33;}
+      #indicacoes .indicacoes-panel-head p{font-size:13px;color:#64748b;font-weight:800;}
+      #indicacoes .indicacoes-filtros{
+        display:grid;
+        grid-template-columns:1.4fr .9fr 1fr 1fr;
+        gap:12px;
+        margin-bottom:14px;
+      }
+      #indicacoes .indicacoes-filtros input,
+      #indicacoes .indicacoes-filtros select{
+        height:46px;
+        border:1px solid #dbe4ef;
+        border-radius:14px;
+        padding:0 13px;
+        font-weight:800;
+        color:#334155;
+        background:#f8fafc;
+      }
+      #indicacoes .indicacoes-table table{width:100%;border-collapse:separate;border-spacing:0;min-width:980px;}
+      #indicacoes .indicacoes-table th{background:#f1f5f9;color:#334155;text-transform:uppercase;font-size:11px;font-weight:900;padding:13px;border-bottom:1px solid #dbe4ef;text-align:left;}
+      #indicacoes .indicacoes-table td{padding:14px 13px;border-bottom:1px solid #edf2f7;vertical-align:middle;}
+      #indicacoes .indicacao-status-pill{display:inline-flex;border-radius:999px;padding:7px 10px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:900;}
+      #indicacoes .indicacoes-relatorio-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+      #indicacoes .indicacoes-relatorio-card{border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:16px;box-shadow:0 10px 26px rgba(15,23,42,.04);}
+      #indicacoes .indicacoes-relatorio-card strong{display:block;font-size:16px;color:#071a33;margin-bottom:10px;}
+      #indicacoes .indicacoes-relatorio-card small{display:block;color:#64748b;font-weight:800;line-height:1.45;border-top:1px solid #f1f5f9;padding-top:8px;margin-top:8px;}
+      #indicacoes #relatorioIndicacoesMasterLocal .detail-card{
+        border:1px solid #e2e8f0!important;
+        border-radius:20px!important;
+        background:#fff!important;
+        padding:16px!important;
+        box-shadow:0 10px 26px rgba(15,23,42,.04)!important;
+      }
+      #indicacoes #relatorioIndicacoesMasterLocal .detail-card strong{display:block;font-size:16px;color:#071a33;margin-bottom:10px;}
+      #indicacoes #relatorioIndicacoesMasterLocal .detail-card small{display:block;color:#64748b;font-weight:800;line-height:1.45;border-top:1px solid #f1f5f9;padding-top:8px;margin-top:8px;}
+      @media(max-width:1180px){#indicacoes .indicacoes-kpis{grid-template-columns:repeat(2,1fr);}#indicacoes .indicacoes-filtros{grid-template-columns:1fr 1fr;}#indicacoes .indicacoes-relatorio-grid{grid-template-columns:1fr;}}
+      @media(max-width:760px){#indicacoes .indicacoes-hero{display:grid;}#indicacoes .indicacoes-kpis,#indicacoes .indicacoes-filtros{grid-template-columns:1fr;}}
+    `;
+    document.head.appendChild(css);
+  }
+
+  function montarLayoutIndicacoesMasterLocal(bloco){
+    if(!bloco || bloco.dataset.layoutIntegro === "premium") return;
+    bloco.className = "indicacoes-master-shell";
+    bloco.innerHTML = `
+      <div class="indicacoes-hero">
+        <div>
+          <h3>Central de indicações</h3>
+          <p>Cadastre leads, evite cliente duplicado, atribua para vendedores e acompanhe conversão por captador, origem e equipe.</p>
+        </div>
+        <div class="indicacoes-hero-badges">
+          <span>Cliente único</span>
+          <span>Deduplicação</span>
+          <span>Relatórios</span>
+        </div>
+      </div>
+      <div id="indicacoesDashboardMasterLocal" class="indicacoes-kpis"></div>
+      <div class="indicacoes-panel">
+        <div class="indicacoes-panel-head">
+          <div><h3>Consultar indicações</h3><p>Use filtros para visualizar por status, vendedor ou origem.</p></div>
+          <button class="ghost-btn" type="button" onclick="carregarIndicacoesMasterLocal()">Atualizar</button>
+        </div>
+        <div class="indicacoes-filtros">
+          <input id="indicacaoFiltroTextoML" type="search" placeholder="Buscar nome, telefone ou documento" oninput="renderIndicacoesMasterLocal()">
+          <select id="indicacaoFiltroStatusML" onchange="renderIndicacoesMasterLocal()">
+            <option value="">Todos os status</option>
+            <option value="RECEBIDA">Recebida</option>
+            <option value="ATRIBUIDA">Atribuída</option>
+            <option value="EM_ATENDIMENTO">Em atendimento</option>
+            <option value="CONVERTIDA">Convertida</option>
+            <option value="NAO_CONVERTIDA">Não convertida</option>
+            <option value="RECUSADA">Recusada</option>
+            <option value="CANCELADA">Cancelada</option>
+          </select>
+          <input id="indicacaoFiltroVendedorML" type="search" placeholder="Vendedor" oninput="renderIndicacoesMasterLocal()">
+          <input id="indicacaoFiltroOrigemML" type="search" placeholder="Origem" oninput="renderIndicacoesMasterLocal()">
+        </div>
+        <div id="listaIndicacoesMasterLocal" class="indicacoes-table table-wrap"></div>
+      </div>
+      <div class="indicacoes-panel">
+        <div class="indicacoes-panel-head">
+          <div><h3>Relatório de conversão</h3><p>Resultado consolidado por vendedor, captador e origem.</p></div>
+        </div>
+        <div id="relatorioIndicacoesMasterLocal" class="indicacoes-relatorio-grid"></div>
+      </div>
+    `;
+    bloco.dataset.layoutIntegro = "premium";
+  }
+
+  function prepararTelaIndicacoesMasterLocal(){
+    aplicarEstiloIndicacoesMasterLocal();
+    const secao = document.getElementById("indicacoes");
+    const bloco = document.getElementById("indicacoesModuloMasterLocalBase");
+    const card = secao?.querySelector(".section-card");
+    if(secao && bloco && card && bloco.parentElement?.closest("#usuarios")){
+      const header = card.querySelector(".section-header");
+      if(header?.nextSibling) card.insertBefore(bloco, header.nextSibling);
+      else card.appendChild(bloco);
+    }
+    if(bloco) bloco.style.display = "block";
+    montarLayoutIndicacoesMasterLocal(bloco);
+    const placeholder = secao?.querySelector(".placeholder-dev");
+    if(placeholder) placeholder.style.display = "none";
+    const botao = secao?.querySelector(".section-header .primary-btn");
+    if(botao){
+      botao.textContent = "Nova indicação";
+      botao.setAttribute("onclick","abrirNovaIndicacaoMasterLocal()");
+    }
+  }
+
+  async function carregarIndicacoesMasterLocal(){
+    prepararTelaIndicacoesMasterLocal();
+    const firestore = dbIndicacoes();
+    const tenant = tenantIndicacoes();
+    if(!firestore || !tenant){
+      indicacoesMasterLocalCache = [];
+      renderIndicacoesMasterLocal();
+      return [];
+    }
+
+    try{
+      const snap = await firestore.collection("indicacoes")
+        .where("clientePlataformaId","==",tenant)
+        .limit(500)
+        .get();
+      indicacoesMasterLocalCache = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+    }catch(e){
+      console.warn("Falha ao carregar indicações:", e);
+      indicacoesMasterLocalCache = [];
+    }
+    renderIndicacoesMasterLocal();
+    return indicacoesMasterLocalCache;
+  }
+
+  function aplicarFiltrosIndicacoes(lista){
+    const termo = normalizarInd(document.getElementById("indicacaoFiltroTextoML")?.value || "");
+    const status = String(document.getElementById("indicacaoFiltroStatusML")?.value || "").toUpperCase();
+    const vendedor = normalizarInd(document.getElementById("indicacaoFiltroVendedorML")?.value || "");
+    const origem = normalizarInd(document.getElementById("indicacaoFiltroOrigemML")?.value || "");
+    return (lista || []).filter(i=>{
+      const statusItem = window.IntegroIndicacoes?.normalizarStatusIndicacao?.(i.statusIndicacao || i.status) || String(i.statusIndicacao || i.status || "").toUpperCase();
+      const texto = normalizarInd([i.nomeClienteSnapshot,i.nome,i.telefonePrincipal,i.telefoneNormalizado,i.documentoNormalizado].join(" "));
+      if(termo && !texto.includes(termo)) return false;
+      if(status && statusItem !== status) return false;
+      if(vendedor && !normalizarInd([i.vendedorDestinoNome,i.vendedorNome,i.vendedorDestinoId,i.vendedorId].join(" ")).includes(vendedor)) return false;
+      if(origem && !normalizarInd(i.origemIndicacao || i.origem).includes(origem)) return false;
+      return true;
+    });
+  }
+
+  function renderDashboardIndicacoes(lista){
+    const el = document.getElementById("indicacoesDashboardMasterLocal");
+    if(!el) return;
+    const d = window.IntegroIndicacoes?.calcularDashboardIndicacoes?.(lista) || {};
+    const cards = [
+      ["Recebidas", d.recebidas || 0],
+      ["Atribuídas", d.atribuidas || 0],
+      ["Em atendimento", d.emAtendimento || 0],
+      ["Convertidas", d.convertidas || 0],
+      ["Não convertidas", d.naoConvertidas || 0],
+      ["Recusadas", d.recusadas || 0],
+      ["Conversão", `${d.taxaConversao || 0}%`],
+      ["Tempo médio", `${d.tempoMedioConversaoDias || 0} dia(s)`]
+    ];
+    el.innerHTML = cards.map(c=>`<div class="card"><small>${escInd(c[0])}</small><strong>${escInd(c[1])}</strong></div>`).join("");
+  }
+
+  function renderTabelaIndicacoes(lista){
+    const el = document.getElementById("listaIndicacoesMasterLocal");
+    if(!el) return;
+    if(!lista.length){
+      el.innerHTML = `<div class="placeholder-dev">Nenhuma indicação encontrada no Firestore para os filtros atuais.</div>`;
+      return;
+    }
+    el.innerHTML = `<table><thead><tr><th>Cliente</th><th>Telefone</th><th>Status</th><th>Origem</th><th>Vendedor</th><th>Captador</th><th>Ações</th></tr></thead><tbody>${
+      lista.map(i=>`<tr>
+        <td><strong>${escInd(i.nomeClienteSnapshot || i.nome || "Cliente")}</strong><br><small>${escInd(i.documentoNormalizado || "")}</small></td>
+        <td>${escInd(i.telefonePrincipal || i.telefoneNormalizado || "-")}</td>
+        <td>${escInd(i.statusIndicacao || i.status || "RECEBIDA")}</td>
+        <td>${escInd(i.origemIndicacao || i.origem || "-")}</td>
+        <td>${escInd(i.vendedorDestinoNome || i.vendedorNome || "-")}</td>
+        <td>${escInd(i.indicadoPorNome || "-")}</td>
+        <td>
+          <button class="ghost-btn" onclick="abrirDetalheIndicacaoMasterLocal('${escInd(i.id)}')">Ver</button>
+          <button class="ghost-btn" onclick="abrirAtribuirIndicacaoMasterLocal('${escInd(i.id)}')">Atribuir</button>
+        </td>
+      </tr>`).join("")
+    }</tbody></table>`;
+  }
+
+  function blocoRelatorio(titulo, linhas){
+    if(!linhas.length) return `<div class="detail-card"><strong>${escInd(titulo)}</strong><small>Sem dados.</small></div>`;
+    return `<div class="detail-card"><strong>${escInd(titulo)}</strong><div style="display:grid;gap:8px;margin-top:10px;">${
+      linhas.slice(0,8).map(r=>`<small><b>${escInd(r.nome)}</b><br>${r.recebidas} recebida(s) • ${r.convertidas} convertida(s) • ${r.taxaConversao}% • ${moedaCentavosInd(r.valorConvertidoCentavos)}</small>`).join("")
+    }</div></div>`;
+  }
+
+  function renderRelatorioIndicacoes(lista){
+    const el = document.getElementById("relatorioIndicacoesMasterLocal");
+    if(!el) return;
+    const svc = window.IntegroIndicacoes;
+    if(!svc){
+      el.innerHTML = `<div class="placeholder-dev">Serviço de indicações não carregado.</div>`;
+      return;
+    }
+    el.innerHTML = [
+      blocoRelatorio("Por vendedor", svc.calcularRelatorioConversaoVendedores(lista)),
+      blocoRelatorio("Por captador", svc.calcularRelatorioConversaoCaptadores(lista)),
+      blocoRelatorio("Por origem", svc.calcularRelatorioConversaoOrigem(lista))
+    ].join("");
+  }
+
+  window.renderIndicacoesMasterLocal = function(){
+    prepararTelaIndicacoesMasterLocal();
+    const lista = aplicarFiltrosIndicacoes(indicacoesMasterLocalCache);
+    renderDashboardIndicacoes(lista);
+    renderTabelaIndicacoes(lista);
+    renderRelatorioIndicacoes(lista);
+  };
+
+  window.abrirNovaIndicacaoMasterLocal = function(){
+    const vendedores = vendedoresIndicacoes();
+    const equipes = equipesIndicacoes();
+    const opVend = [`<option value="">Sem vendedor definido</option>`].concat(vendedores.map(v=>`<option value="${escInd(v.id)}">${escInd(v.nome || v.nomeCompleto || v.email || "Vendedor")}</option>`)).join("");
+    const opEquipe = [`<option value="">Sem equipe definida</option>`].concat(equipes.map(e=>`<option value="${escInd(e.id)}">${escInd(e.nome || "Equipe")}</option>`)).join("");
+    abrirDrawer("Nova indicação","Cliente operacional único + tentativa de indicação",`
+      <div class="form-grid">
+        <div class="form-group full"><label>Nome</label><input id="mlIndNome" placeholder="Nome do cliente"></div>
+        <div><label>Telefone principal</label><input id="mlIndTelefone" placeholder="(00) 00000-0000"></div>
+        <div><label>Documento opcional</label><input id="mlIndDocumento" placeholder="CPF/CNPJ"></div>
+        <div><label>Endereço/Bairro</label><input id="mlIndEndereco" placeholder="Resumo do endereço"></div>
+        <div><label>Origem</label><select id="mlIndOrigem"><option>WhatsApp</option><option>Instagram</option><option>Facebook</option><option>Indicação</option><option>Panfleto</option><option>Outro</option></select></div>
+        <div><label>Vendedor destino</label><select id="mlIndVendedor">${opVend}</select></div>
+        <div><label>Equipe destino</label><select id="mlIndEquipe">${opEquipe}</select></div>
+        <div class="form-group full"><label>Observação</label><textarea id="mlIndObs"></textarea></div>
+      </div>
+      <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="salvarIndicacaoMasterLocal()">Salvar indicação</button></div>
+    `);
+  };
+
+  window.salvarIndicacaoMasterLocal = async function(){
+    const firestore = dbIndicacoes();
+    const usuario = usuarioAtualIndicacoes();
+    if(!firestore || !window.IntegroIndicacoes) return alert("Serviço de indicações indisponível.");
+    const vendedorId = document.getElementById("mlIndVendedor")?.value || "";
+    const vendedor = vendedoresIndicacoes().find(v=>String(v.id)===String(vendedorId));
+    const equipeId = document.getElementById("mlIndEquipe")?.value || "";
+    const equipe = equipesIndicacoes().find(e=>String(e.id)===String(equipeId));
+    try{
+      await window.IntegroIndicacoes.criarIndicacao({
+        db: firestore,
+        usuario,
+        clientePlataformaId: tenantIndicacoes(),
+        nome: document.getElementById("mlIndNome")?.value || "",
+        telefonePrincipal: document.getElementById("mlIndTelefone")?.value || "",
+        documento: document.getElementById("mlIndDocumento")?.value || "",
+        enderecoResumo: document.getElementById("mlIndEndereco")?.value || "",
+        origemIndicacao: document.getElementById("mlIndOrigem")?.value || "Outro",
+        observacao: document.getElementById("mlIndObs")?.value || "",
+        vendedorDestinoId: vendedorId,
+        vendedorDestinoNome: vendedor?.nome || vendedor?.nomeCompleto || vendedor?.email || "",
+        equipeDestinoId: equipeId,
+        equipeDestinoNome: equipe?.nome || "",
+        ignorarPermissao: false
+      });
+      if(typeof fecharDrawer === "function") fecharDrawer();
+      await carregarIndicacoesMasterLocal();
+      alert("Indicação criada com sucesso.");
+    }catch(e){
+      console.error("Erro ao salvar indicação:", e);
+      alert("Não foi possível salvar a indicação:\n\n" + (e.message || e));
+    }
+  };
+
+  window.abrirDetalheIndicacaoMasterLocal = function(id){
+    const i = indicacoesMasterLocalCache.find(x=>String(x.id)===String(id));
+    if(!i) return;
+    abrirDrawer("Indicação", i.nomeClienteSnapshot || i.nome || "Cliente", `
+      <div class="detail-list">
+        <div class="detail-card"><strong>Status</strong><small>${escInd(i.statusIndicacao || i.status || "-")}</small></div>
+        <div class="detail-card"><strong>Telefone</strong><small>${escInd(i.telefonePrincipal || i.telefoneNormalizado || "-")}</small></div>
+        <div class="detail-card"><strong>Origem</strong><small>${escInd(i.origemIndicacao || i.origem || "-")}</small></div>
+        <div class="detail-card"><strong>Vendedor</strong><small>${escInd(i.vendedorDestinoNome || i.vendedorNome || "-")}</small></div>
+        <div class="detail-card"><strong>Observação</strong><small>${escInd(i.observacao || "-")}</small></div>
+      </div>
+      <div class="drawer-actions">
+        <button class="ghost-btn" onclick="abrirAtribuirIndicacaoMasterLocal('${escInd(id)}')">Atribuir/redistribuir</button>
+        <button class="ghost-btn" onclick="marcarNaoConvertidaIndicacaoMasterLocal('${escInd(id)}')">Não convertida</button>
+        <button class="ghost-btn" onclick="marcarRecusadaIndicacaoMasterLocal('${escInd(id)}')">Recusada</button>
+      </div>
+    `);
+  };
+
+  window.abrirAtribuirIndicacaoMasterLocal = function(id){
+    const vendedores = vendedoresIndicacoes();
+    const opVend = vendedores.map(v=>`<option value="${escInd(v.id)}">${escInd(v.nome || v.nomeCompleto || v.email || "Vendedor")}</option>`).join("");
+    abrirDrawer("Atribuir indicação","Selecione o vendedor destino",`
+      <div class="form-grid"><div class="form-group full"><label>Vendedor</label><select id="mlIndAtribuirVendedor">${opVend}</select></div></div>
+      <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="salvarAtribuicaoIndicacaoMasterLocal('${escInd(id)}')">Atribuir</button></div>
+    `);
+  };
+
+  window.salvarAtribuicaoIndicacaoMasterLocal = async function(id){
+    const vendedorId = document.getElementById("mlIndAtribuirVendedor")?.value || "";
+    const vendedor = vendedoresIndicacoes().find(v=>String(v.id)===String(vendedorId));
+    try{
+      await window.IntegroIndicacoes.atribuirIndicacao(id, {
+        vendedorDestinoId: vendedorId,
+        vendedorDestinoNome: vendedor?.nome || vendedor?.nomeCompleto || vendedor?.email || ""
+      }, usuarioAtualIndicacoes());
+      if(typeof fecharDrawer === "function") fecharDrawer();
+      await carregarIndicacoesMasterLocal();
+    }catch(e){ alert("Não foi possível atribuir:\n\n" + (e.message || e)); }
+  };
+
+  window.marcarNaoConvertidaIndicacaoMasterLocal = async function(id){
+    const motivo = prompt("Motivo da não conversão:", "SEM_INTERESSE") || "OUTRO";
+    await window.IntegroIndicacoes.marcarIndicacaoNaoConvertida(id, motivo, usuarioAtualIndicacoes());
+    await carregarIndicacoesMasterLocal();
+  };
+
+  window.marcarRecusadaIndicacaoMasterLocal = async function(id){
+    const motivo = prompt("Motivo da recusa:", "OUTRO") || "OUTRO";
+    await window.IntegroIndicacoes.marcarIndicacaoRecusada(id, motivo, usuarioAtualIndicacoes());
+    await carregarIndicacoesMasterLocal();
+  };
+
+  const trocarTelaAnteriorIndicacoes = window.trocarTela;
+  window.trocarTela = function(tela, el){
+    if(typeof trocarTelaAnteriorIndicacoes === "function") trocarTelaAnteriorIndicacoes(tela, el);
+    if(tela === "indicacoes") setTimeout(carregarIndicacoesMasterLocal, 80);
+  };
+
+  document.addEventListener("DOMContentLoaded", prepararTelaIndicacoesMasterLocal);
+  document.addEventListener("usuario-validado", () => setTimeout(carregarIndicacoesMasterLocal, 250));
+})();
+</script>
+
+<script id="integro-indicacoes-formulario-padrao-cliente">
+(function(){
+  "use strict";
+
+  function dbIndicacoes(){
+    return window.db || (window.firebase?.firestore ? firebase.firestore() : null);
+  }
+
+  function usuarioAtualIndicacoes(){
+    return window.usuarioLogado || window.currentUserData || window.usuarioAtual || window.State?.getUsuario?.() || {};
+  }
+
+  function tenantIndicacoes(){
+    const u = usuarioAtualIndicacoes();
+    return u.clientePlataformaId || u.empresaId || u.tenantId || window.tenantId || window.State?.getTenantId?.() || "";
+  }
+
+  function escInd(v){
+    return String(v ?? "").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m]));
+  }
+
+  function normalizarInd(v){
+    return String(v || "").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+  }
+
+  function usuariosIndicacoes(){
+    const listas = [
+      window.usuariosCache,
+      window.usuariosSistema,
+      window.State?.getUsuarios?.()
+    ];
+    return listas.find(Array.isArray) || [];
+  }
+
+  function vendedoresIndicacoes(){
+    return usuariosIndicacoes().filter(u=>{
+      const acesso = window.IntegroOperacional?.normalizarAcessoUsuario?.(u);
+      const texto = normalizarInd([u.tipoUsuario,u.cargoNome,u.cargo,u.cargoChave].join(" "));
+      return acesso?.isVendedor || texto.includes("vendedor") || texto.includes("vendas");
+    });
+  }
+
+  function garantirCssFormularioIndicacao(){
+    if(document.getElementById("integro-indicacoes-formulario-padrao-cliente-css")) return;
+    const css = document.createElement("style");
+    css.id = "integro-indicacoes-formulario-padrao-cliente-css";
+    css.textContent = `
+      .drawer-panel .indicacao-form-section{
+        background:#f8fafc;
+        border:1px solid #e2e8f0;
+        border-radius:22px;
+        padding:16px;
+        display:grid;
+        gap:14px;
+      }
+      .drawer-panel .indicacao-form-section strong{
+        font-size:16px;
+        color:#0f172a;
+      }
+      .drawer-panel .indicacao-form-grid-2{
+        display:grid;
+        grid-template-columns:1fr 1fr;
+        gap:12px;
+      }
+      .drawer-panel .indicacao-form-grid-phone{
+        display:grid;
+        grid-template-columns:1fr auto;
+        gap:12px;
+        align-items:end;
+      }
+      @media(max-width:760px){
+        .drawer-panel .indicacao-form-grid-2,
+        .drawer-panel .indicacao-form-grid-phone{
+          grid-template-columns:1fr;
+        }
+      }
+    `;
+    document.head.appendChild(css);
+  }
+
+  window.abrirNovaIndicacaoMasterLocal = function(){
+    garantirCssFormularioIndicacao();
+    const vendedores = vendedoresIndicacoes();
+    const opVend = [`<option value="">Selecionar vendedor</option>`]
+      .concat(vendedores.map(v=>`<option value="${escInd(v.id || v.uid || v.usuarioId)}">${escInd(v.nome || v.nomeCompleto || v.email || "Vendedor")}</option>`))
+      .join("");
+
+    abrirDrawer("Nova indicação","Cadastro operacional no mesmo padrão de cliente",`
+      <div style="display:grid;gap:20px;">
+        <div class="indicacao-form-section">
+          <strong>Identificação do cliente</strong>
+
+          <div>
+            <label class="form-label">Nome completo</label>
+            <input id="mlIndNome" class="form-input" placeholder="Digite o nome completo">
+          </div>
+
+          <div class="indicacao-form-grid-2 busca-grid">
+            <div>
+              <label class="form-label">Apelido / referência</label>
+              <input id="mlIndApelido" class="form-input" placeholder="Ex: João mercado">
+            </div>
+            <div>
+              <label class="form-label">Documento</label>
+              <input id="mlIndDocumento" class="form-input" placeholder="CPF/CNPJ" inputmode="numeric" autocomplete="off">
+            </div>
+          </div>
+        </div>
+
+        <div class="indicacao-form-section">
+          <strong>Telefone</strong>
+          <div class="indicacao-form-grid-phone busca-grid">
+            <div>
+              <label class="form-label">Telefone principal</label>
+              <input id="mlIndTelefone" class="form-input" placeholder="+55 11 99999-9999" inputmode="numeric">
+            </div>
+            <div>
+              <label class="form-label">WhatsApp?</label>
+              <input class="form-input" value="Sim" disabled style="min-width:96px;text-align:center;">
+            </div>
+          </div>
+        </div>
+
+        <div class="indicacao-form-section">
+          <strong>Endereço</strong>
+          <div>
+            <label class="form-label">Endereço / bairro / referência</label>
+            <input id="mlIndEndereco" class="form-input" placeholder="Resumo do endereço">
+          </div>
+        </div>
+
+        <div class="indicacao-form-section">
+          <strong>Direcionamento da indicação</strong>
+          <div class="indicacao-form-grid-2 busca-grid">
+            <div>
+              <label class="form-label">Origem</label>
+              <select id="mlIndOrigem" class="form-input">
+                <option>WhatsApp</option>
+                <option>Instagram</option>
+                <option>Facebook</option>
+                <option>Indicação</option>
+                <option>Panfleto</option>
+                <option>Outro</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Vendedor destino</label>
+              <select id="mlIndVendedor" class="form-input">${opVend}</select>
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Observação</label>
+            <textarea id="mlIndObs" class="form-textarea" placeholder="Detalhes para o vendedor atender melhor"></textarea>
+          </div>
+        </div>
+
+        <button class="primary-btn drawer-primary" style="width:100%;height:58px;" onclick="salvarIndicacaoMasterLocal()">Salvar indicação</button>
+      </div>
+    `);
+  };
+
+  window.salvarIndicacaoMasterLocal = async function(){
+    const firestore = dbIndicacoes();
+    const usuario = usuarioAtualIndicacoes();
+    if(!firestore || !window.IntegroIndicacoes) return alert("Serviço de indicações indisponível.");
+
+    const nome = document.getElementById("mlIndNome")?.value.trim() || "";
+    const telefone = document.getElementById("mlIndTelefone")?.value.trim() || "";
+    const vendedorId = document.getElementById("mlIndVendedor")?.value || "";
+    const vendedor = vendedoresIndicacoes().find(v=>String(v.id || v.uid || v.usuarioId)===String(vendedorId));
+
+    if(!nome || !telefone){
+      alert("Informe nome e telefone da indicação.");
+      return;
+    }
+    if(!vendedorId){
+      alert("Selecione o vendedor que receberá esta indicação.");
+      return;
+    }
+
+    try{
+      await window.IntegroIndicacoes.criarIndicacao({
+        db: firestore,
+        usuario,
+        clientePlataformaId: tenantIndicacoes(),
+        nome,
+        telefonePrincipal: telefone,
+        documento: document.getElementById("mlIndDocumento")?.value || "",
+        enderecoResumo: document.getElementById("mlIndEndereco")?.value || document.getElementById("mlIndApelido")?.value || "",
+        origemIndicacao: document.getElementById("mlIndOrigem")?.value || "Outro",
+        observacao: document.getElementById("mlIndObs")?.value || "",
+        vendedorDestinoId: vendedorId,
+        vendedorDestinoNome: vendedor?.nome || vendedor?.nomeCompleto || vendedor?.email || "",
+        ignorarPermissao: false
+      });
+      if(typeof fecharDrawer === "function") fecharDrawer();
+      await window.carregarIndicacoesMasterLocal?.();
+      alert("Indicação enviada ao vendedor com sucesso.");
+    }catch(e){
+      console.error("Erro ao salvar indicação:", e);
+      alert("Não foi possível salvar a indicação:\n\n" + (e.message || e));
+    }
+  };
+})();
+</script>
+
+<script id="integro-ajuste-menu-caixas-simples">
+(function(){
+  "use strict";
+
+  function normalizarMenuCaixasTexto(valor){
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function ocultarSubitensCaixasRedundantes(){
+    document.querySelectorAll('.menu-subitem[data-modulo="caixas"]').forEach(item => {
+      const texto = normalizarMenuCaixasTexto(item.textContent);
+      if (texto.includes("supervisao de equipes") || texto.includes("historico de caixas") || texto.includes("divergencias")) {
+        item.style.display = "none";
+        item.dataset.removidoMenuCaixas = "true";
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", ocultarSubitensCaixasRedundantes);
+  document.addEventListener("usuario-validado", ocultarSubitensCaixasRedundantes);
+  setTimeout(ocultarSubitensCaixasRedundantes, 300);
+  setTimeout(ocultarSubitensCaixasRedundantes, 1200);
+})();
+</script>
+
+<script id="integro-ajuste-menu-clientes-consultar">
+(function(){
+  "use strict";
+
+  function normalizarTextoMenu(valor){
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function ajustarMenuClientesConsultar(){
+    const itemClientes = Array.from(document.querySelectorAll(".menu-item")).find(item => {
+      const label = item.querySelector(".menu-label");
+      return normalizarTextoMenu(label?.textContent) === "clientes";
+    });
+    if (!itemClientes) return;
+
+    const submenusGrupo = [];
+    let atual = itemClientes.nextElementSibling || null;
+    while (atual) {
+      if (atual.classList?.contains("menu-item") || atual.classList?.contains("menu-group-title")) break;
+      if (atual.classList?.contains("menu-subitem")) submenusGrupo.push(atual);
+      atual = atual.nextElementSibling;
+    }
+
+    function onclickTexto(item){
+      return normalizarTextoMenu(item?.getAttribute("onclick") || "");
+    }
+
+    function buscarSubitem(tipo){
+      return submenusGrupo.find(item => {
+        const texto = normalizarTextoMenu(item.textContent);
+        const onclick = onclickTexto(item);
+        if (tipo === "consultar") return texto === "consultar" || texto === "clientes" || texto === "buscar cliente";
+        if (tipo === "criar") return texto === "criar cliente" || onclick.includes("abrirnovocliente");
+        if (tipo === "indicacoes") return texto === "indicacoes";
+        return false;
+      });
+    }
+
+    function criarSubitemMenu(){
+      const item = document.createElement("div");
+      item.className = "menu-subitem integro-submenu-dinamico";
+      return item;
+    }
+
+    function prepararSubitem(item, label, modulo, onclick, marcador){
+      const final = item || criarSubitemMenu();
+      final.textContent = label;
+      final.dataset.modulo = modulo;
+      final.dataset.integroOcultoPorOrganizacao = "";
+      final.dataset[marcador] = "true";
+      final.setAttribute("onclick", onclick);
+      final.style.display = "";
+      final.classList.remove("integro-submenu-hidden");
+      return final;
+    }
+
+    const consultar = prepararSubitem(
+      buscarSubitem("consultar"),
+      "Consultar",
+      "clientes",
+      "trocarTela('clientes',this); setTimeout(function(){ if(window.renderClientesEmpresaMaster) renderClientesEmpresaMaster(); },80)",
+      "submenuClientesConsultar"
+    );
+    const criar = prepararSubitem(
+      buscarSubitem("criar"),
+      "Criar Cliente",
+      "clientes",
+      "trocarTela('clientes',this); setTimeout(function(){ if(window.abrirNovoCliente) abrirNovoCliente(); },80)",
+      "submenuClientesCriar"
+    );
+    const indicacoes = prepararSubitem(
+      buscarSubitem("indicacoes"),
+      "Indicações",
+      "indicacoes",
+      "trocarTela('indicacoes',this)",
+      "submenuClientesIndicacoes"
+    );
+
+    submenusGrupo.forEach(item => {
+      if (![consultar, criar, indicacoes].includes(item)) {
+        item.style.display = "none";
+        item.dataset.integroOcultoPorOrganizacao = "true";
+      }
+    });
+
+    itemClientes.insertAdjacentElement("afterend", indicacoes);
+    itemClientes.insertAdjacentElement("afterend", criar);
+    itemClientes.insertAdjacentElement("afterend", consultar);
+  }
+
+  document.addEventListener("DOMContentLoaded", ajustarMenuClientesConsultar);
+  document.addEventListener("usuario-validado", ajustarMenuClientesConsultar);
+  setTimeout(ajustarMenuClientesConsultar, 300);
+  setTimeout(ajustarMenuClientesConsultar, 1200);
+})();
+</script>
+
+<script id="integro-ajuste-menu-cargos-configuracoes">
+(function(){
+  "use strict";
+
+  function garantirCssGruposOrganizadores(){
+    if (document.getElementById("integro-menu-grupos-organizadores-fix")) return;
+    const style = document.createElement("style");
+    style.id = "integro-menu-grupos-organizadores-fix";
+    style.textContent = `
+      #sidebar.sidebar:not(.collapsed) .menu-group-title{
+        display:block !important;
+      }
+      #sidebar.sidebar:not(.collapsed) .menu-group-title.integro-grupo-visivel{
+        display:block !important;
+      }
+      #sidebar.sidebar:not(.collapsed) .menu-group-title.integro-grupo-oculto{
+        display:block !important;
+      }
+      #sidebar.sidebar .menu-item.integro-cargos-origem-estrutura{
+        display:none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function normalizarTextoMenu(valor){
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function acharMenuItem(label){
+    return Array.from(document.querySelectorAll(".menu-item")).find(item => {
+      return normalizarTextoMenu(item.querySelector(".menu-label")?.textContent) === normalizarTextoMenu(label);
+    });
+  }
+
+  function submenusDoItem(item){
+    const lista = [];
+    let atual = item?.nextElementSibling || null;
+    while (atual) {
+      if (atual.classList?.contains("menu-item") || atual.classList?.contains("menu-group-title")) break;
+      if (atual.classList?.contains("menu-subitem")) lista.push(atual);
+      atual = atual.nextElementSibling;
+    }
+    return lista;
+  }
+
+  function ocultarItemEstruturaCargos(){
+    const item = Array.from(document.querySelectorAll('.menu-item[data-modulo="cargos"]')).find(el => {
+      return normalizarTextoMenu(el.querySelector(".menu-label")?.textContent).includes("cargos");
+    });
+    if (!item) return;
+    item.classList.add("integro-cargos-origem-estrutura");
+    item.classList.remove("active", "menu-expanded");
+    item.style.setProperty("display", "none", "important");
+    item.dataset.integroMovidoParaConfiguracoes = "true";
+  }
+
+  function criarSubitemCargos(){
+    const item = document.createElement("div");
+    item.className = "menu-subitem integro-submenu-dinamico";
+    item.dataset.modulo = "cargos";
+    item.dataset.integroSubCargosConfiguracoes = "true";
+    item.textContent = "Cargos e permissões";
+    item.setAttribute("onclick", "trocarTela('cargos',this)");
+    return item;
+  }
+
+  function itemMenuVisivel(item){
+    if (!item) return false;
+    if (item.classList?.contains("integro-cargos-origem-estrutura")) return false;
+    if (item.style.display === "none" || item.dataset.permissaoVisivel === "0") return false;
+    if (window.getComputedStyle) {
+      const estilo = window.getComputedStyle(item);
+      if (estilo.display === "none" || estilo.visibility === "hidden") return false;
+    }
+    return true;
+  }
+
+  function restaurarGruposOrganizadores(){
+    garantirCssGruposOrganizadores();
+
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+
+    sidebar.querySelectorAll(".menu-group-title").forEach(titulo => {
+      let atual = titulo.nextElementSibling;
+      let temItemVisivel = false;
+
+      while (atual) {
+        if (atual.classList?.contains("menu-group-title")) break;
+        if (
+          (atual.classList?.contains("menu-item") || atual.classList?.contains("menu-subitem")) &&
+          itemMenuVisivel(atual)
+        ) {
+          temItemVisivel = true;
+          break;
+        }
+        atual = atual.nextElementSibling;
+      }
+
+      titulo.classList.toggle("integro-grupo-visivel", temItemVisivel);
+      titulo.classList.remove("integro-grupo-oculto");
+      titulo.style.removeProperty("display");
+    });
+  }
+
+  window.restaurarGruposOrganizadoresIntegro = restaurarGruposOrganizadores;
+
+  function ajustarMenuCargosConfiguracoes(){
+    ocultarItemEstruturaCargos();
+
+    const itemConfiguracoes = acharMenuItem("Configurações");
+    if (!itemConfiguracoes) {
+      restaurarGruposOrganizadores();
+      return;
+    }
+
+    const existentes = [
+      ...submenusDoItem(itemConfiguracoes),
+      ...document.querySelectorAll('[data-integro-sub-cargos-configuracoes="true"]')
+    ].filter(Boolean);
+
+    let subCargos = existentes.find(item => {
+      return normalizarTextoMenu(item.textContent).includes("cargos");
+    });
+
+    if (!subCargos) subCargos = criarSubitemCargos();
+
+    subCargos.textContent = "Cargos e permissões";
+    subCargos.dataset.modulo = "cargos";
+    subCargos.dataset.integroSubCargosConfiguracoes = "true";
+    subCargos.dataset.integroOcultoPorOrganizacao = "";
+    subCargos.style.removeProperty("display");
+    subCargos.classList.remove("integro-submenu-hidden");
+    subCargos.setAttribute("onclick", "trocarTela('cargos',this)");
+
+    const subs = submenusDoItem(itemConfiguracoes);
+    const ultimoSub = subs[subs.length - 1];
+    if (ultimoSub) ultimoSub.insertAdjacentElement("afterend", subCargos);
+    else itemConfiguracoes.insertAdjacentElement("afterend", subCargos);
+
+    restaurarGruposOrganizadores();
+  }
+
+  function conectarReaplicacaoPermissoes(){
+    if (window.aplicarMenuPorPermissoesIntegro?.integroCargosConfigWrapped) return;
+    if (typeof window.aplicarMenuPorPermissoesIntegro !== "function") return;
+
+    const aplicarOriginal = window.aplicarMenuPorPermissoesIntegro;
+    window.aplicarMenuPorPermissoesIntegro = function(){
+      const retorno = aplicarOriginal.apply(this, arguments);
+      setTimeout(ajustarMenuCargosConfiguracoes, 0);
+      return retorno;
+    };
+    window.aplicarMenuPorPermissoesIntegro.integroCargosConfigWrapped = true;
+  }
+
+  document.addEventListener("DOMContentLoaded", ajustarMenuCargosConfiguracoes);
+  document.addEventListener("DOMContentLoaded", conectarReaplicacaoPermissoes);
+  document.addEventListener("usuario-validado", function(){
+    conectarReaplicacaoPermissoes();
+    ajustarMenuCargosConfiguracoes();
+  });
+  window.addEventListener("load", ajustarMenuCargosConfiguracoes);
+  setTimeout(ajustarMenuCargosConfiguracoes, 300);
+  setTimeout(ajustarMenuCargosConfiguracoes, 1200);
+  setTimeout(ajustarMenuCargosConfiguracoes, 2500);
+  setTimeout(conectarReaplicacaoPermissoes, 300);
+  setTimeout(conectarReaplicacaoPermissoes, 1200);
+})();
+</script>
+
+<script id="integro-ajuste-menu-estrutura-caixas-comercial">
+(function(){
+  "use strict";
+
+  function normalizarTextoMenu(valor){
+    return String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  }
+
+  function itemMenuPorModulo(modulo, labelParcial){
+    return Array.from(document.querySelectorAll(`.menu-item[data-modulo="${modulo}"]`)).find(item => {
+      if (!labelParcial) return true;
+      return normalizarTextoMenu(item.querySelector(".menu-label")?.textContent).includes(normalizarTextoMenu(labelParcial));
+    });
+  }
+
+  function submenusDoItem(item){
+    const lista = [];
+    let atual = item?.nextElementSibling || null;
+    while (atual) {
+      if (atual.classList?.contains("menu-item") || atual.classList?.contains("menu-group-title")) break;
+      if (atual.classList?.contains("menu-subitem")) lista.push(atual);
+      atual = atual.nextElementSibling;
+    }
+    return lista;
+  }
+
+  function criarSubitem(label, modulo, onclick, marcador){
+    const item = document.createElement("div");
+    item.className = "menu-subitem integro-submenu-dinamico";
+    item.textContent = label;
+    item.dataset.modulo = modulo;
+    item.dataset[marcador] = "true";
+    item.setAttribute("onclick", onclick);
+    return item;
+  }
+
+  function mostrarSubitem(item){
+    if (!item) return;
+    item.classList.remove("integro-submenu-hidden");
+    item.style.removeProperty("display");
+    item.dataset.integroOcultoPorOrganizacao = "";
+  }
+
+  function esconderItemOrigem(item, classe){
+    if (!item) return;
+    item.classList.add(classe);
+    item.classList.remove("active", "menu-expanded");
+    item.style.setProperty("display", "none", "important");
+    item.dataset.integroMovidoDeOrigem = "true";
+  }
+
+  function garantirCssMenuMovido(){
+    if (document.getElementById("integro-menu-movidos-fix")) return;
+    const style = document.createElement("style");
+    style.id = "integro-menu-movidos-fix";
+    style.textContent = `
+      #sidebar.sidebar .menu-item.integro-financeiro-origem-aprovacoes,
+      #sidebar.sidebar .menu-item.integro-solicitacoes-origem-aprovacoes{
+        display:none !important;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function trocarUsuariosEquipes(){
+    const usuarios = itemMenuPorModulo("usuarios", "usuarios");
+    const equipes = itemMenuPorModulo("equipes", "equipes");
+    if (!usuarios || !equipes) return;
+
+    const grupoEstrutura = Array.from(document.querySelectorAll(".menu-group-title")).find(el => {
+      return normalizarTextoMenu(el.textContent) === "estrutura";
+    });
+
+    if (grupoEstrutura) {
+      grupoEstrutura.insertAdjacentElement("afterend", equipes);
+      grupoEstrutura.insertAdjacentElement("afterend", usuarios);
+    } else {
+      equipes.insertAdjacentElement("beforebegin", usuarios);
+    }
+  }
+
+  function moverFinanceiroParaCaixas(){
+    const caixas = itemMenuPorModulo("caixas", "caixas");
+    const financeiroOrigem = itemMenuPorModulo("aprovacoesFinanceiro", "financeiro");
+    if (!caixas || !financeiroOrigem) return;
+
+    const submenusFinanceiro = submenusDoItem(financeiroOrigem);
+    esconderItemOrigem(financeiroOrigem, "integro-financeiro-origem-aprovacoes");
+    submenusFinanceiro.forEach(item => {
+      item.classList.add("integro-submenu-hidden");
+      item.style.setProperty("display", "none", "important");
+      item.dataset.integroOcultoPorOrganizacao = "true";
+    });
+
+    let subFinanceiro = document.querySelector('[data-integro-sub-financeiro-caixas="true"]');
+    if (!subFinanceiro) {
+      subFinanceiro = criarSubitem(
+        "Movimentações",
+        "aprovacoesFinanceiro",
+        "trocarTela('aprovacoesFinanceiro',this)",
+        "integroSubFinanceiroCaixas"
+      );
+    }
+    subFinanceiro.dataset.integroSubFinanceiroCaixas = "true";
+    subFinanceiro.textContent = "Movimentações";
+    subFinanceiro.dataset.modulo = "aprovacoesFinanceiro";
+    subFinanceiro.setAttribute("onclick", "trocarTela('aprovacoesFinanceiro',this)");
+    mostrarSubitem(subFinanceiro);
+
+    caixas.insertAdjacentElement("afterend", subFinanceiro);
+  }
+
+  function moverSolicitacoesParaComercial(){
+    const comercial = itemMenuPorModulo("aprovacoesComercial", "comercial");
+    const solicitacoesOrigem = itemMenuPorModulo("solicitacoes", "solicitacoes");
+    if (!comercial || !solicitacoesOrigem) return;
+
+    const submenusSolicitacoes = submenusDoItem(solicitacoesOrigem);
+    esconderItemOrigem(solicitacoesOrigem, "integro-solicitacoes-origem-aprovacoes");
+
+    let subSolicitacoes = document.querySelector('[data-integro-sub-solicitacoes-comercial="true"]');
+    if (!subSolicitacoes) {
+      subSolicitacoes = criarSubitem(
+        "Solicitações",
+        "solicitacoes",
+        "trocarTela('solicitacoes',this)",
+        "integroSubSolicitacoesComercial"
+      );
+    }
+    subSolicitacoes.dataset.integroSubSolicitacoesComercial = "true";
+    subSolicitacoes.textContent = "Solicitações";
+    subSolicitacoes.dataset.modulo = "solicitacoes";
+    subSolicitacoes.setAttribute("onclick", "trocarTela('solicitacoes',this)");
+    mostrarSubitem(subSolicitacoes);
+
+    const bloco = [subSolicitacoes, ...submenusSolicitacoes];
+    bloco.slice().reverse().forEach(item => {
+      mostrarSubitem(item);
+      comercial.insertAdjacentElement("afterend", item);
+    });
+  }
+
+  function moverAprovacoesParaOperacao(){
+    const clientes = itemMenuPorModulo("clientes", "clientes");
+    const aprovacoes = itemMenuPorModulo("aprovacoesComercial", "comercial") || itemMenuPorModulo("aprovacoesComercial", "aprovacoes");
+    if (!clientes || !aprovacoes) return;
+
+    const label = aprovacoes.querySelector(".menu-label");
+    if (label) label.textContent = "Aprovações";
+
+    const bloco = [aprovacoes];
+    let atual = aprovacoes.nextElementSibling;
+    while (atual) {
+      if (atual.classList?.contains("menu-item") || atual.classList?.contains("menu-group-title")) break;
+      const proximo = atual.nextElementSibling;
+      bloco.push(atual);
+      atual = proximo;
+    }
+
+    const submenusClientes = submenusDoItem(clientes);
+    const ancora = submenusClientes[submenusClientes.length - 1] || clientes;
+    bloco.slice().reverse().forEach(item => {
+      ancora.insertAdjacentElement("afterend", item);
+    });
+  }
+
+  function moverComunicacaoParaTopo(){
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+
+    const grupoComunicacao = Array.from(sidebar.querySelectorAll(".menu-group-title")).find(el => {
+      return normalizarTextoMenu(el.textContent) === "comunicacao";
+    });
+    const grupoPrincipal = Array.from(sidebar.querySelectorAll(".menu-group-title")).find(el => {
+      return normalizarTextoMenu(el.textContent) === "principal";
+    });
+    const dashboard = itemMenuPorModulo("dashboard", "dashboard");
+    if (!grupoComunicacao || !grupoPrincipal || !dashboard) return;
+
+    const bloco = [grupoComunicacao];
+    let atual = grupoComunicacao.nextElementSibling;
+    while (atual) {
+      if (atual.classList?.contains("menu-group-title")) break;
+      const proximo = atual.nextElementSibling;
+      bloco.push(atual);
+      atual = proximo;
+    }
+
+    bloco.slice().reverse().forEach(item => {
+      grupoPrincipal.insertAdjacentElement("beforebegin", item);
+    });
+  }
+
+  function ajustarMenuEstruturaCaixasComercial(){
+    garantirCssMenuMovido();
+    moverComunicacaoParaTopo();
+    trocarUsuariosEquipes();
+    moverFinanceiroParaCaixas();
+    moverSolicitacoesParaComercial();
+    moverAprovacoesParaOperacao();
+    if (typeof window.restaurarGruposOrganizadoresIntegro === "function") {
+      window.restaurarGruposOrganizadoresIntegro();
+    }
+  }
+
+  function conectarReaplicacaoPermissoes(){
+    if (window.aplicarMenuPorPermissoesIntegro?.integroMenuMovidosWrapped) return;
+    if (typeof window.aplicarMenuPorPermissoesIntegro !== "function") return;
+
+    const aplicarOriginal = window.aplicarMenuPorPermissoesIntegro;
+    window.aplicarMenuPorPermissoesIntegro = function(){
+      const retorno = aplicarOriginal.apply(this, arguments);
+      setTimeout(ajustarMenuEstruturaCaixasComercial, 0);
+      return retorno;
+    };
+    window.aplicarMenuPorPermissoesIntegro.integroMenuMovidosWrapped = true;
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    conectarReaplicacaoPermissoes();
+    ajustarMenuEstruturaCaixasComercial();
+  });
+  document.addEventListener("usuario-validado", function(){
+    conectarReaplicacaoPermissoes();
+    ajustarMenuEstruturaCaixasComercial();
+  });
+  window.addEventListener("load", ajustarMenuEstruturaCaixasComercial);
+  setTimeout(conectarReaplicacaoPermissoes, 300);
+  setTimeout(ajustarMenuEstruturaCaixasComercial, 300);
+  setTimeout(ajustarMenuEstruturaCaixasComercial, 1200);
+  setTimeout(ajustarMenuEstruturaCaixasComercial, 2500);
 })();
 </script>
 
