@@ -2665,6 +2665,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/state.js"></script>
   <script src="js/services/firestore.js"></script>
   <script src="js/services/indicacoes-service.js"></script>
+  <script src="js/services/financial-operations.js"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js"></script>
@@ -3347,31 +3348,12 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   };
 
   window.solicitarReaberturaCaixa = async function(caixaId){
-    const motivo = prompt("Informe o motivo obrigatório para reabrir o caixa:");
-    if (!motivo || !motivo.trim()) return alert("Motivo obrigatório para reabertura.");
+    const motivo = prompt("Informe o motivo obrigatorio para reabrir o caixa:");
+    if (!motivo || !motivo.trim()) return alert("Motivo obrigatorio para reabertura.");
     const d = getDadosCaixasBase().find(c => matchId(c.id, caixaId));
-    if (!d) return alert("Caixa não encontrado.");
+    if (!d) return alert("Caixa nao encontrado.");
     try {
-      if (window.firebase && firebase.firestore) {
-        await firebase.firestore().collection("caixas").doc(str(caixaId)).update({
-          status: "REABERTO",
-          reaberto: true,
-          motivoReabertura: motivo.trim(),
-          reabertoEmTexto: new Date().toISOString(),
-          reabertoPor: window.usuarioLogado?.id || window.currentUserData?.id || ""
-        });
-        await firebase.firestore().collection("logs").add({
-          tipoAcao: "REABERTURA_CAIXA",
-          caixaId: str(caixaId),
-          clientePlataformaId: window.usuarioLogado?.clientePlataformaId || window.currentUserData?.clientePlataformaId || "",
-          usuarioId: window.usuarioLogado?.id || window.currentUserData?.id || "",
-          usuarioNome: window.usuarioLogado?.nome || window.currentUserData?.nome || "",
-          detalhe: `Caixa reaberto. Motivo: ${motivo.trim()}`,
-          motivo: motivo.trim(),
-          criadoEm: new Date(),
-          criadoEmTexto: new Date().toISOString()
-        });
-      }
+      await window.reabrirCaixaTransacionalMaster(caixaId, motivo.trim());
       const caixaLocal = arr("caixasCache").find(c => matchId(getId(c), caixaId));
       if (caixaLocal) {
         caixaLocal.status = "REABERTO";
@@ -3383,27 +3365,9 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       alert("Caixa reaberto com sucesso.");
     } catch(e) {
       console.error("Erro ao reabrir caixa:", e);
-      alert("Não foi possível reabrir o caixa agora. Verifique permissões do Firestore.");
+      alert(e?.message || "Nao foi possivel reabrir o caixa agora.");
     }
   };
-
-  const oldTrocarTela = window.trocarTela;
-  window.trocarTela = function(tela, el){
-    if (typeof oldTrocarTela === "function") oldTrocarTela(tela, el);
-    document.querySelectorAll(".screen").forEach(s => { s.classList.remove("active"); s.style.display = "none"; });
-    const target = document.getElementById(tela);
-    if (target) { target.classList.add("active"); target.style.display = "block"; }
-    document.querySelectorAll(".menu-item,.menu-subitem").forEach(i => i.classList.remove("active"));
-    if (el && el.classList) el.classList.add("active");
-    if (tela === "caixas") setTimeout(renderCaixasPremium, 30);
-    if (tela === "unidades" && typeof renderUnidades === "function") setTimeout(renderUnidades, 30);
-    if (tela === "notificacoes" && typeof renderNotificacoesMaster === "function") setTimeout(renderNotificacoesMaster, 30);
-  };
-
-  setTimeout(() => {
-    if (document.getElementById("tbodyCaixasPremium")) renderCaixasPremium();
-    if (typeof renderUnidades === "function") renderUnidades();
-  }, 600);
 })();
 </script>
 
@@ -3648,22 +3612,14 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   window.fecharDrawerMaster = function(){ const d=document.getElementById("drawer"); if(d){d.classList.remove("show"); d.innerHTML="";} };
 
   window.solicitarReaberturaCaixa = async function(caixaId){
-    const motivo=prompt("Informe o motivo obrigatório para reabrir o caixa:");
-    if(!motivo || !motivo.trim()) return alert("Motivo obrigatório para reabertura.");
+    const motivo=prompt("Informe o motivo obrigatorio para reabrir o caixa:");
+    if(!motivo || !motivo.trim()) return alert("Motivo obrigatorio para reabertura.");
     try{
-      if(window.firebase && firebase.firestore){
-        await firebase.firestore().collection("caixas").doc(str(caixaId)).update({status:"REABERTO",reaberto:true,motivoReabertura:motivo.trim(),reabertoEmTexto:new Date().toISOString(),reabertoPor:window.usuarioLogado?.id||window.currentUserData?.id||""});
-        await firebase.firestore().collection("logs").add({tipoAcao:"REABERTURA_CAIXA",caixaId:str(caixaId),usuarioId:window.usuarioLogado?.id||window.currentUserData?.id||"",usuarioNome:window.usuarioLogado?.nome||window.currentUserData?.nome||"",detalhe:`Caixa reaberto. Motivo: ${motivo.trim()}`,motivo:motivo.trim(),criadoEm:new Date(),criadoEmTexto:new Date().toISOString()});
-      }
+      await window.reabrirCaixaTransacionalMaster(caixaId, motivo.trim());
       const c=arr("caixasCache").find(x=>eqId(idOf(x),caixaId)); if(c){c.status="REABERTO";c.reaberto=true;}
       fecharDrawerMaster(); renderCaixasPremium(); alert("Caixa reaberto com sucesso.");
-    }catch(e){ console.error(e); alert("Não foi possível reabrir o caixa. Verifique permissões do Firestore."); }
+    }catch(e){ console.error(e); alert(e?.message || "Nao foi possivel reabrir o caixa."); }
   };
-
-  // Bloqueia a tela antiga simples do arquivo externo e força sempre a visão premium.
-  
-  document.addEventListener("DOMContentLoaded", () => setTimeout(() => { if(document.getElementById("caixas")) renderCaixasPremium(); }, 500));
-  setTimeout(() => { if(document.getElementById("caixas")) renderCaixasPremium(); }, 900);
 })();
 </script>
 
@@ -5023,18 +4979,28 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   };
 
   window.fecharCaixaEquipe = async function(caixaIdAtual){
-    const db = getDb();
-    if(!db || !caixaIdAtual) return alert("Caixa não encontrado ou Firebase não conectado.");
-    const caixa = arr("caixasCache").find(c => eq(caixaId(c), caixaIdAtual));
-    const cc = calcCaixa(caixa);
-    const valor = prompt(`Valor físico/real do caixa (${money(cc.calculado)}):`, String(cc.calculado).replace(".", ","));
+    if(!caixaIdAtual) return alert("Caixa nao encontrado.");
+    if(!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) return alert("Nucleo transacional de fechamento indisponivel.");
+    const caixa = arr("caixasCache").find(c => eq(caixaId(c), caixaIdAtual)) || { id: caixaIdAtual };
+    const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId: caixaIdAtual });
+    const valor = prompt(`Valor fisico/real do caixa (${money(snapshot.caixaFinalEsperadoCentavos / 100)}):`, String(snapshot.caixaFinalEsperadoCentavos / 100).replace(".", ","));
     if(valor === null) return;
     const valorReal = num(valor);
     try{
-      await db.collection("caixas").doc(caixaIdAtual).update({status:"FECHADO", valorFisicoFechamento:valorReal, valorRealFechamento:valorReal, valorCalculadoFechamento:cc.calculado, divergenciaFechamento:Math.abs(valorReal-cc.calculado)>0.01, fechadoEm:new Date(), dataFechamento:new Date(), fechadoPorId:window.usuarioLogado?.id||window.currentUserData?.id||"", fechadoPorNome:window.usuarioLogado?.nome||window.currentUserData?.nome||""});
+      await window.IntegroCaixa.registrarFechamentoCaixaTransacional({
+        usuario: window.usuarioLogado || window.currentUserData || {},
+        clientePlataformaId: tenantId(),
+        caixaId: caixaIdAtual,
+        vendedorId: caixa.vendedorId || caixa.usuarioId || "",
+        vendedorAuthUid: caixa.vendedorAuthUid || caixa.vendedorUid || caixa.uid || "",
+        valorInformadoCentavos: Math.round(valorReal * 100),
+        justificativa: "Fechamento individual pelo Master Local.",
+        snapshot,
+        origem: "master_local"
+      });
       await carregarDadosCaixasFirebase(true);
       renderCaixas();
-    }catch(e){ console.error(e); alert("Erro ao fechar caixa. Veja o console."); }
+    }catch(e){ console.error(e); alert("Erro ao fechar caixa: " + (e.message || e)); }
   };
 
   window.acaoMassaCaixas = async function(tipo){
@@ -5606,10 +5572,9 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   async function fecharCaixaMassivoFinal(){
-    const db = getDb();
-    if (!db) return alert("Firebase não conectado.");
     const ids = [...SupervisaoCaixasIntegro.selecionadas];
     if (!ids.length) return alert("Selecione pelo menos uma equipe.");
+    if (!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) return alert("Nucleo transacional de fechamento indisponivel.");
     const mapa = montarMapaEquipes();
     const caixas = [];
     ids.forEach(id => {
@@ -5619,24 +5584,34 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     });
     if (!caixas.length) return alert("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm("Deseja fechar todos os caixas abertos das equipes selecionadas com o saldo atual do sistema?")) return;
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
     for (const c of caixas) {
-      const saldo = num(c.saldoAtual ?? c.valorAtual ?? c.valorInicial);
-      await db.collection(colecao("CAIXAS")).doc(c.id).update({
-        status:"FECHADO",
-        ativo:false,
-        valorRealFechamento:saldo,
-        valorCalculadoFechamento:saldo,
-        divergenciaFechamento:false,
-        fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        fechadoPorUid:getUsuarioLogado()?.authUid || getUsuarioLogado()?.id || "",
-        fechadoPorNome:getNomeUsuario()
-      });
+      try {
+        const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId: c.id });
+        const resultado = await window.IntegroCaixa.registrarFechamentoCaixaTransacional({
+          usuario: getUsuarioLogado() || {},
+          clientePlataformaId: getTenantId(),
+          caixaId: c.id,
+          vendedorId: c.vendedorId || c.usuarioId || "",
+          vendedorAuthUid: c.vendedorAuthUid || c.vendedorUid || c.uid || "",
+          valorInformadoCentavos: snapshot.caixaFinalEsperadoCentavos,
+          justificativa: "Fechamento massivo com valor esperado pelo sistema.",
+          snapshot,
+          origem: "master_local"
+        });
+        if (resultado.statusFechamento === "DIVERGENTE") resumoFechamento.divergentes++;
+        else resumoFechamento.fechados++;
+      } catch (erroCaixa) {
+        const code = String(erroCaixa?.code || "");
+        if (code.includes("PENDENCIA") || code.includes("PENDENTE") || code.includes("MULTIPLOS")) resumoFechamento.bloqueados++;
+        else resumoFechamento.erros++;
+        console.warn("Falha no fechamento transacional:", c.id, erroCaixa);
+      }
     }
     SupervisaoCaixasIntegro.selecionadas.clear();
     await carregarDadosCaixasReais();
     renderCaixasPremiumFinal();
-    alert("Fechamento massivo concluído.");
+    alert(`Fechamento massivo concluido. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}.`);
   }
 
   function toggleEquipeFinal(id, checked){
@@ -8617,6 +8592,19 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   async function atualizarSolicitacao(id, status){
     const db = getDb(); if(!db || !id) return;
     await db.collection(COL.solicitacoes).doc(id).update({ status, aprovadoPor:getUserId(), analisadoPor:getUserId(), analisadoEm:new Date(), atualizadoEm:new Date() });
+    if (status === "APROVADA" && window.IntegroFinanceiroOperacional?.registrarLancamentoSolicitacaoFinanceiraTransacional) {
+      try {
+        await window.IntegroFinanceiroOperacional.registrarLancamentoSolicitacaoFinanceiraTransacional({
+          solicitacaoId: id,
+          clientePlataformaId: getTenantId(),
+          usuario: window.usuarioLogado || window.currentUserData || {},
+          marcarAprovada: false,
+          origem: "master_local"
+        });
+      } catch (erroLedger) {
+        console.warn("Ledger financeiro nao registrado para solicitacao legada:", erroLedger);
+      }
+    }
     await salvarLog(`SOLICITACAO_${status}`, `Solicitação ${id} marcada como ${status}`);
     await carregarBase();
     await renderDetalheEquipe(window.caixaEquipeAtualNome, window.caixaEquipeDataIni, window.caixaEquipeDataFim);
@@ -16085,10 +16073,26 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     return ICX.movimentoCaixa(caixa);
   };
 
-  window.fecharSelecionadas = async function(){
-    const database = ICX.db();
-    if (!database) return alert("Firebase não conectado.");
+  async function fecharCaixaMasterLocalSeguro(caixa){
+    if (!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) {
+      throw new Error("Nucleo transacional de fechamento indisponivel.");
+    }
+    const caixaId = ICX.id(caixa);
+    const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId });
+    return window.IntegroCaixa.registrarFechamentoCaixaTransacional({
+      usuario: ICX.user(),
+      clientePlataformaId: ICX.tenant(),
+      caixaId,
+      vendedorId: caixa.vendedorId || caixa.usuarioId || "",
+      vendedorAuthUid: caixa.vendedorAuthUid || caixa.vendedorUid || caixa.uid || "",
+      valorInformadoCentavos: snapshot.caixaFinalEsperadoCentavos,
+      justificativa: "Fechamento em massa com valor esperado pelo sistema.",
+      snapshot,
+      origem: "master_local"
+    });
+  }
 
+  window.fecharSelecionadas = async function(){
     const selecionadas = window.linhas().filter(r => window.CX?.selecionadas?.has(String(r.id)));
     if (!selecionadas.length) return alert("Selecione pelo menos uma equipe.");
 
@@ -16102,49 +16106,25 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!caixas.length) return alert("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
 
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
     for (const c of caixas){
-      const mov = ICX.movimentoCaixa(c);
-      await database.collection(ICX.collectionName("CAIXAS")).doc(ICX.id(c)).update({
-        status: "FECHADO",
-        ativo: false,
-
-        valorRealFechamento: mov.caixaAtual,
-        valorCalculadoFechamento: mov.caixaAtual,
-        saldoFinal: mov.caixaAtual,
-        valorFinal: mov.caixaAtual,
-        caixaFinal: mov.caixaAtual,
-
-        carteiraInicial: mov.carteiraInicial,
-        carteiraFinal: mov.carteiraFinal,
-
-        vendas: mov.vendasCarteira,
-        totalVendas: mov.vendasCarteira,
-        valorVendas: mov.vendasCarteira,
-        valorLiberado: mov.vendasCaixa,
-
-        recolhido: mov.recebido,
-        recebido: mov.recebido,
-        totalRecebido: mov.recebido,
-
-        ingressos: mov.ingressos,
-        despesas: mov.despesas,
-        retiradas: mov.retiradas,
-
-        divergenciaFechamento: false,
-
-        fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-
-        fechadoPorUid: ICX.user().authUid || ICX.user().uid || ICX.user().id || "",
-        fechadoPorNome: ICX.user().nome || ICX.user().nomeCompleto || ICX.user().email || "Usuário"
-      });
+      try {
+        const resultado = await fecharCaixaMasterLocalSeguro(c);
+        if (resultado.statusFechamento === "DIVERGENTE") resumoFechamento.divergentes++;
+        else resumoFechamento.fechados++;
+      } catch (erroCaixa) {
+        const code = String(erroCaixa?.code || "");
+        if (code.includes("PENDENCIA") || code.includes("PENDENTE") || code.includes("MULTIPLOS")) resumoFechamento.bloqueados++;
+        else resumoFechamento.erros++;
+        console.warn("Falha no fechamento transacional:", ICX.id(c), erroCaixa);
+      }
     }
 
     if (window.CX?.selecionadas) window.CX.selecionadas.clear();
     if (typeof carregarDados === "function") await carregarDados();
     if (typeof renderTelaCaixas === "function") renderTelaCaixas();
 
-    alert("Fechamento de caixa concluído.");
+    alert(`Fechamento de caixa concluido. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}.`);
   };
 
   window.criarCaixaParaVendedorFinal = async function(vendedor, equipe, snapshot){
@@ -16190,9 +16170,6 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   };
 
   window.fecharCaixaMassivoFinal = async function(){
-    const database = ICX.db();
-    if (!database) return alert("Firebase não conectado.");
-
     const selecionadas = [...(window.SupervisaoCaixasIntegro?.selecionadas || [])];
     if (!selecionadas.length) return alert("Selecione pelo menos uma equipe.");
 
@@ -16211,33 +16188,18 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!caixas.length) return alert("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
 
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
     for (const c of caixas){
-      const mov = ICX.movimentoCaixa(c);
-      await database.collection(ICX.collectionName("CAIXAS")).doc(ICX.id(c)).update({
-        status:"FECHADO",
-        ativo:false,
-        valorRealFechamento:mov.caixaAtual,
-        valorCalculadoFechamento:mov.caixaAtual,
-        saldoFinal:mov.caixaAtual,
-        valorFinal:mov.caixaAtual,
-        carteiraInicial:mov.carteiraInicial,
-        carteiraFinal:mov.carteiraFinal,
-        vendas:mov.vendasCarteira,
-        totalVendas:mov.vendasCarteira,
-        valorVendas:mov.vendasCarteira,
-        valorLiberado:mov.vendasCaixa,
-        recolhido:mov.recebido,
-        recebido:mov.recebido,
-        totalRecebido:mov.recebido,
-        ingressos:mov.ingressos,
-        despesas:mov.despesas,
-        retiradas:mov.retiradas,
-        divergenciaFechamento:false,
-        fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        fechadoPorUid: ICX.user().authUid || ICX.user().uid || ICX.user().id || "",
-        fechadoPorNome: ICX.user().nome || ICX.user().nomeCompleto || ICX.user().email || "Usuário"
-      });
+      try {
+        const resultado = await fecharCaixaMasterLocalSeguro(c);
+        if (resultado.statusFechamento === "DIVERGENTE") resumoFechamento.divergentes++;
+        else resumoFechamento.fechados++;
+      } catch (erroCaixa) {
+        const code = String(erroCaixa?.code || "");
+        if (code.includes("PENDENCIA") || code.includes("PENDENTE") || code.includes("MULTIPLOS")) resumoFechamento.bloqueados++;
+        else resumoFechamento.erros++;
+        console.warn("Falha no fechamento transacional:", ICX.id(c), erroCaixa);
+      }
     }
 
     if (window.SupervisaoCaixasIntegro?.selecionadas) window.SupervisaoCaixasIntegro.selecionadas.clear();
@@ -16247,7 +16209,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (typeof renderCaixasPremiumFinal === "function") renderCaixasPremiumFinal();
     else if (typeof renderTelaCaixas === "function") renderTelaCaixas();
 
-    alert("Fechamento massivo concluído.");
+    alert(`Fechamento massivo concluido. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}.`);
   };
 
   console.info("[ÍNTEGRO] Correção de caixas reais aplicada: abertura usa último fechamento e carteira acompanha vendas com juros menos recebimentos.");
@@ -18217,5 +18179,84 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
 })();
 </script>
 
+<script>
+(function(){
+  "use strict";
+  window.__integroReaberturaLocks = window.__integroReaberturaLocks || new Set();
+  window.__integroTratamentoDivergenciaLocks = window.__integroTratamentoDivergenciaLocks || new Set();
+
+  function usuarioGestorCaixa(){
+    return window.usuarioLogado || window.currentUserData || {};
+  }
+
+  function tenantGestorCaixa(usuario){
+    return usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "";
+  }
+
+  window.reabrirCaixaTransacionalMaster = async function(caixaId, motivo){
+    if (!window.IntegroCaixa?.registrarReaberturaCaixaTransacional) throw new Error("Nucleo transacional de reabertura indisponivel.");
+    const lockKey = String(caixaId || "");
+    if (window.__integroReaberturaLocks.has(lockKey)) return { modo: "BLOQUEADO_CLIQUE_DUPLO", caixaId: lockKey };
+    window.__integroReaberturaLocks.add(lockKey);
+    try {
+      const usuario = usuarioGestorCaixa();
+      return await window.IntegroCaixa.registrarReaberturaCaixaTransacional({
+        caixaId: lockKey,
+        motivo,
+        usuario,
+        clientePlataformaId: tenantGestorCaixa(usuario),
+        operacaoId: `reabertura_${lockKey}_${Date.now().toString(36)}`,
+        origem: "master_local"
+      });
+    } finally {
+      window.__integroReaberturaLocks.delete(lockKey);
+    }
+  };
+
+  window.solicitarReaberturaCaixa = async function(caixaId){
+    const motivo = prompt("Informe o motivo obrigatorio para reabrir o caixa:");
+    if (!motivo || !motivo.trim()) return alert("Motivo obrigatorio para reabertura.");
+    try {
+      await window.reabrirCaixaTransacionalMaster(caixaId, motivo.trim());
+      if (typeof window.fecharDrawerMaster === "function") window.fecharDrawerMaster();
+      if (typeof window.renderCaixasPremium === "function") window.renderCaixasPremium();
+      alert("Caixa reaberto com sucesso.");
+    } catch (erro) {
+      console.error("Erro ao reabrir caixa:", erro);
+      alert(erro?.message || "Nao foi possivel reabrir o caixa agora.");
+    }
+  };
+
+  window.tratarDivergenciaCaixa = async function(caixaId, decisao){
+    const decisaoFinal = decisao || prompt("Decisao: ACEITAR_DIVERGENCIA, SOLICITAR_REGULARIZACAO ou REABRIR_CAIXA:");
+    if (!decisaoFinal) return;
+    const justificativa = prompt("Informe a justificativa obrigatoria:");
+    if (!justificativa || !justificativa.trim()) return alert("Justificativa obrigatoria.");
+    if (!window.IntegroCaixa?.registrarTratamentoDivergenciaCaixa) return alert("Nucleo transacional de divergencia indisponivel.");
+    const lockKey = `${caixaId}_${decisaoFinal}`;
+    if (window.__integroTratamentoDivergenciaLocks.has(lockKey)) return;
+    window.__integroTratamentoDivergenciaLocks.add(lockKey);
+    try {
+      const usuario = usuarioGestorCaixa();
+      await window.IntegroCaixa.registrarTratamentoDivergenciaCaixa({
+        caixaId: String(caixaId || ""),
+        decisao: String(decisaoFinal || "").trim(),
+        justificativa: justificativa.trim(),
+        usuario,
+        clientePlataformaId: tenantGestorCaixa(usuario),
+        operacaoId: `divergencia_${caixaId}_${Date.now().toString(36)}`,
+        origem: "master_local"
+      });
+      if (typeof window.renderCaixasPremium === "function") window.renderCaixasPremium();
+      alert("Tratamento de divergencia registrado.");
+    } catch (erro) {
+      console.error("Erro ao tratar divergencia:", erro);
+      alert(erro?.message || "Nao foi possivel tratar a divergencia.");
+    } finally {
+      window.__integroTratamentoDivergenciaLocks.delete(lockKey);
+    }
+  };
+})();
+</script>
 </body>
 </html>

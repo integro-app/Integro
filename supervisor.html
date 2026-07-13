@@ -169,6 +169,7 @@
   <script src="js/utils/operational.js"></script>
   <script src="js/state.js"></script>
   <script src="js/services/firestore.js"></script>
+  <script src="js/services/financial-operations.js"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js"></script>
@@ -335,6 +336,77 @@
         .find(b => b.getAttribute("onclick")?.includes("notificacoes"));
       trocarTela("notificacoes", botao || null);
     }
+
+    window.__integroSupervisorCaixaLocks = window.__integroSupervisorCaixaLocks || new Set();
+
+    function usuarioSupervisorCaixa(){
+      return obterUsuarioSupervisorAtual() || window.usuarioLogado || window.currentUserData || {};
+    }
+
+    function tenantSupervisorCaixa(usuario){
+      return usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "";
+    }
+
+    async function executarAcaoSupervisorCaixa(lockKey, acao){
+      if (window.__integroSupervisorCaixaLocks.has(lockKey)) return null;
+      window.__integroSupervisorCaixaLocks.add(lockKey);
+      try {
+        return await acao();
+      } finally {
+        window.__integroSupervisorCaixaLocks.delete(lockKey);
+      }
+    }
+
+    window.registrarReaberturaCaixaSupervisor = async function(caixaId){
+      const motivo = prompt("Informe o motivo obrigatorio para reabrir o caixa:");
+      if (!motivo || !motivo.trim()) return alert("Motivo obrigatorio para reabertura.");
+      if (!window.IntegroCaixa?.registrarReaberturaCaixaTransacional) return alert("Nucleo transacional de reabertura indisponivel.");
+      try {
+        await executarAcaoSupervisorCaixa(`reabrir_${caixaId}`, async () => {
+          const usuario = usuarioSupervisorCaixa();
+          return window.IntegroCaixa.registrarReaberturaCaixaTransacional({
+            caixaId: String(caixaId || ""),
+            motivo: motivo.trim(),
+            usuario,
+            clientePlataformaId: tenantSupervisorCaixa(usuario),
+            operacaoId: `supervisor_reabertura_${caixaId}_${Date.now().toString(36)}`,
+            origem: "supervisor"
+          });
+        });
+        alert("Caixa reaberto com sucesso.");
+        await carregarTudoSupervisor();
+      } catch (erro) {
+        console.error("Erro ao reabrir caixa pelo supervisor:", erro);
+        alert(erro?.message || "Nao foi possivel reabrir o caixa.");
+      }
+    };
+
+    window.tratarDivergenciaCaixaSupervisor = async function(caixaId, decisao){
+      const decisaoFinal = decisao || prompt("Decisao: ACEITAR_DIVERGENCIA, SOLICITAR_REGULARIZACAO ou REABRIR_CAIXA:");
+      if (!decisaoFinal) return;
+      const justificativa = prompt("Informe a justificativa obrigatoria:");
+      if (!justificativa || !justificativa.trim()) return alert("Justificativa obrigatoria.");
+      if (!window.IntegroCaixa?.registrarTratamentoDivergenciaCaixa) return alert("Nucleo transacional de divergencia indisponivel.");
+      try {
+        await executarAcaoSupervisorCaixa(`divergencia_${caixaId}_${decisaoFinal}`, async () => {
+          const usuario = usuarioSupervisorCaixa();
+          return window.IntegroCaixa.registrarTratamentoDivergenciaCaixa({
+            caixaId: String(caixaId || ""),
+            decisao: String(decisaoFinal || "").trim(),
+            justificativa: justificativa.trim(),
+            usuario,
+            clientePlataformaId: tenantSupervisorCaixa(usuario),
+            operacaoId: `supervisor_divergencia_${caixaId}_${Date.now().toString(36)}`,
+            origem: "supervisor"
+          });
+        });
+        alert("Tratamento de divergencia registrado.");
+        await carregarTudoSupervisor();
+      } catch (erro) {
+        console.error("Erro ao tratar divergencia pelo supervisor:", erro);
+        alert(erro?.message || "Nao foi possivel tratar a divergencia.");
+      }
+    };
   </script>
 </body>
 </html>

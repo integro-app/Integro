@@ -412,6 +412,7 @@
   <script src="js/utils/operational.js"></script>
   <script src="js/state.js"></script>
   <script src="js/services/firestore.js"></script>
+  <script src="js/services/financial-operations.js"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js"></script>
@@ -1672,5 +1673,492 @@
       firebase.auth().signOut().finally(() => window.location.href = "index.html");
     }
   </script>
+<script>
+(function(){
+  "use strict";
+
+  const FIN = {
+    lancamentos: [],
+    lancamentosFiltrados: [],
+    caixas: [],
+    fechamentos: [],
+    diagnosticoLegado: null,
+    resumo: null,
+    pagina: 1,
+    pageSize: 50,
+    ordenacao: "recentes",
+    filtros: {
+      periodo: "mes",
+      dataInicio: "",
+      dataFim: "",
+      tipo: "",
+      natureza: "",
+      status: "",
+      vendedor: "",
+      equipe: "",
+      caixa: "",
+      origem: "",
+      valorMin: "",
+      valorMax: "",
+      busca: ""
+    },
+    locks: new Set()
+  };
+
+  function op(){ return window.IntegroOperacional || {}; }
+  function svc(){ return window.IntegroFinanceiroOperacional; }
+  function db(){ return window.db || window.firebase?.firestore?.(); }
+  function txt(v){ return String(v ?? "").trim(); }
+  function upper(v){ return txt(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(); }
+  function esc(v){ return txt(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+  function cents(v){ return Math.round(Number(v || 0)); }
+  function moneyCents(v){ return (op().centavosParaMoeda ? op().centavosParaMoeda(cents(v)) : (cents(v) / 100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})); }
+  function hojeSP(){ return op().hojeSP ? op().hojeSP() : new Date().toISOString().slice(0,10); }
+  function addDiasSP(data, dias){ return op().adicionarDiasSP ? op().adicionarDiasSP(data, dias) : data; }
+  function usuarioAtual(){ return window.usuarioLogado || window.currentUserData || window.State?.getUsuario?.() || {}; }
+  function tenantAtual(){
+    const u = usuarioAtual();
+    return txt(window.State?.getTenantId?.() || u.clientePlataformaId || u.empresaId || u.tenantId || localStorage.getItem("clientePlataformaId"));
+  }
+  function perfilAtual(){
+    const u = usuarioAtual();
+    const acesso = op().normalizarAcessoUsuario?.(u) || {};
+    return {
+      master: acesso.isMasterGlobal || acesso.isMasterLocal || ["MASTER_LOCAL","MASTER_GLOBAL"].includes(upper(u.tipoUsuario || u.tipo || u.role)),
+      financeiro: upper(u.tipoUsuario || u.cargoChave || u.cargo).includes("FINANCEIRO"),
+      supervisor: acesso.isSupervisor || upper(u.tipoUsuario || u.cargoChave || u.cargo).includes("SUPERVISOR"),
+      vendedor: acesso.isVendedor || upper(u.tipoUsuario || u.cargoChave || u.cargo).includes("VENDEDOR"),
+      auditor: upper(u.tipoUsuario || u.cargoChave || u.cargo).includes("AUDITOR")
+    };
+  }
+  function temPermissaoFinanceiro(permissao){
+    const u = usuarioAtual();
+    const p = perfilAtual();
+    if (p.vendedor) return false;
+    if (p.master) return true;
+    if (u.permissoes?.financeiro?.[permissao] === true || u.permissoes?.caixas?.[permissao] === true) return true;
+    if (op().temPermissao) return op().temPermissao(u, `financeiro.${permissao}`, { clientePlataformaId: tenantAtual() });
+    return p.financeiro || p.auditor || p.supervisor;
+  }
+  function periodoAtual(){
+    const hoje = hojeSP();
+    const p = FIN.filtros.periodo;
+    if (p === "hoje") return { dataInicio: hoje, dataFim: hoje };
+    if (p === "7dias") return { dataInicio: addDiasSP(hoje, -6), dataFim: hoje };
+    if (p === "custom") return { dataInicio: FIN.filtros.dataInicio || hoje, dataFim: FIN.filtros.dataFim || hoje };
+    return { dataInicio: hoje.slice(0,7) + "-01", dataFim: hoje };
+  }
+  function statusClass(status){
+    const s = upper(status);
+    if (s === "ESTORNADO" || s === "CANCELADO") return "st-cancelada";
+    if (s === "PENDENTE") return "st-pendente";
+    if (s === "DIVERGENTE") return "st-vencida";
+    return "st-paga";
+  }
+  function empty(msg){ return `<div class="empty">${esc(msg)}</div>`; }
+
+  async function carregarColecaoTenant(nome, limite = 1000){
+    const database = db();
+    const tenant = tenantAtual();
+    if (!database || !tenant) return [];
+    const lista = [];
+    try {
+      const snap = await database.collection(nome).where("clientePlataformaId","==",tenant).limit(limite).get();
+      snap.forEach(doc => lista.push({ id: doc.id, ...doc.data() }));
+    } catch (_) {
+      try {
+        const snap = await database.collection(nome).limit(limite).get();
+        snap.forEach(doc => {
+          const d = { id: doc.id, ...doc.data() };
+          if ([d.clientePlataformaId,d.tenantId,d.empresaId].some(x => txt(x) === tenant)) lista.push(d);
+        });
+      } catch (e) {
+        console.warn("Falha ao carregar", nome, e);
+      }
+    }
+    return lista.filter(x => x.excluido !== true);
+  }
+
+  function aplicarFiltrosLedger(){
+    const f = FIN.filtros;
+    const busca = upper(f.busca);
+    FIN.lancamentosFiltrados = FIN.lancamentos.filter(l => {
+      const valor = cents(l.valorCentavos);
+      return (!f.tipo || upper(l.tipoLancamento) === upper(f.tipo)) &&
+        (!f.natureza || upper(l.natureza) === upper(f.natureza)) &&
+        (!f.status || upper(l.statusLancamento || "CONFIRMADO") === upper(f.status)) &&
+        (!f.vendedor || txt(l.vendedorId) === txt(f.vendedor) || txt(l.vendedorAuthUid) === txt(f.vendedor)) &&
+        (!f.equipe || txt(l.equipeId) === txt(f.equipe)) &&
+        (!f.caixa || txt(l.caixaId) === txt(f.caixa)) &&
+        (!f.origem || upper(l.origem) === upper(f.origem)) &&
+        (!f.valorMin || valor >= Math.round(Number(f.valorMin) * 100)) &&
+        (!f.valorMax || valor <= Math.round(Number(f.valorMax) * 100)) &&
+        (!busca || [l.descricao,l.observacao,l.origemId,l.lancamentoId,l.id,l.caixaId,l.vendedorId,l.equipeId].some(x => upper(x).includes(busca)));
+    });
+    ordenarLancamentos(FIN.ordenacao);
+  }
+
+  function ordenarLancamentos(ordem){
+    FIN.ordenacao = ordem || FIN.ordenacao;
+    const cmpTxt = campo => (a,b) => txt(a[campo]).localeCompare(txt(b[campo]));
+    const mapa = {
+      antigos: (a,b) => txt(a.dataOperacional).localeCompare(txt(b.dataOperacional)),
+      maior: (a,b) => cents(b.valorCentavos) - cents(a.valorCentavos),
+      menor: (a,b) => cents(a.valorCentavos) - cents(b.valorCentavos),
+      tipo: cmpTxt("tipoLancamento"),
+      vendedor: cmpTxt("vendedorId"),
+      recentes: (a,b) => txt(b.dataOperacional || b.criadoEmTexto).localeCompare(txt(a.dataOperacional || a.criadoEmTexto))
+    };
+    FIN.lancamentosFiltrados.sort(mapa[FIN.ordenacao] || mapa.recentes);
+  }
+
+  async function carregarFinanceiroReal(){
+    if (!svc()) {
+      renderErroFinanceiro("Nucleo financeiro operacional indisponivel.");
+      return;
+    }
+    if (!temPermissaoFinanceiro("podeVerFinanceiro") && !temPermissaoFinanceiro("podeVerLedgerFinanceiro")) {
+      renderErroFinanceiro("Acesso financeiro nao autorizado para este usuario.");
+      return;
+    }
+    const periodo = periodoAtual();
+    const tenant = tenantAtual();
+    FIN.resumo = await svc().calcularResumoFinanceiroPeriodo({ ...periodo, clientePlataformaId: tenant });
+    FIN.lancamentos = await svc().listarLancamentosPorPeriodo({ ...periodo, clientePlataformaId: tenant });
+    FIN.caixas = await carregarColecaoTenant("caixas", 1500);
+    FIN.fechamentos = await carregarColecaoTenant("fechamentos_caixa", 1500);
+    FIN.diagnosticoLegado = await svc().mapearLancamentosLegadosSomenteLeitura({ clientePlataformaId: tenant });
+    aplicarFiltrosLedger();
+    renderFinanceiroRealTudo();
+  }
+
+  function renderErroFinanceiro(msg){
+    ["dashboardFinanceiroCards","contasTabelaView","listaCaixasFinanceiro","listaSolicitacoesFinanceiras","listaRelatoriosFinanceiro","listaAuditoriaFinanceira","listaConfiguracoesFinanceiras"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = empty(msg);
+    });
+  }
+
+  function filtrosPeriodoHtml(){
+    return `
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('hoje')">Hoje</button>
+          <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('7dias')">Ultimos 7 dias</button>
+          <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('mes')">Mes atual</button>
+          <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('custom')">Personalizado</button>
+        </div>
+        <div class="toolbar-group">
+          <input id="finDataInicio" type="date" value="${esc(FIN.filtros.dataInicio)}" onchange="setFiltroFinanceiroReal('dataInicio',this.value)">
+          <input id="finDataFim" type="date" value="${esc(FIN.filtros.dataFim)}" onchange="setFiltroFinanceiroReal('dataFim',this.value)">
+        </div>
+      </div>
+    `;
+  }
+
+  function renderDashboardFinanceiroReal(){
+    const r = FIN.resumo || {};
+    const por = r.porTipo || {};
+    const caixasAbertos = FIN.caixas.filter(c => upper(c.status) === "ABERTO").length;
+    const caixasFechados = FIN.caixas.filter(c => upper(c.status) === "FECHADO").length;
+    const caixasDivergentes = FIN.caixas.filter(c => upper(c.status) === "DIVERGENTE").length;
+    const divergenciasPendentes = FIN.fechamentos.filter(f => (f.divergenciaAceita !== true && f.regularizacaoFinanceiraStatus !== "REGISTRADA") && cents(f.diferencaCentavos) !== 0).length;
+    const cards = [
+      ["Entradas no periodo", moneyCents(r.totalCreditosCentavos), `${FIN.lancamentos.filter(l=>upper(l.natureza)==="CREDITO").length} lancamento(s)`, "+", "grad-green", "lancamentos"],
+      ["Saidas no periodo", moneyCents(r.totalDebitosCentavos), `${FIN.lancamentos.filter(l=>upper(l.natureza)==="DEBITO").length} lancamento(s)`, "-", "grad-red", "lancamentos"],
+      ["Saldo liquido", moneyCents(r.saldoCentavos), "Creditos menos debitos", "$", r.saldoCentavos >= 0 ? "grad-blue" : "grad-orange", "relatorios"],
+      ["Pagamentos recebidos", moneyCents(por.PAGAMENTO?.creditosCentavos || 0), `${por.PAGAMENTO?.quantidade || 0} item(ns)`, "P", "grad-green", "lancamentos"],
+      ["Vendas realizadas", moneyCents(por.VENDA?.debitosCentavos || 0), `${por.VENDA?.quantidade || 0} item(ns)`, "V", "grad-navy", "lancamentos"],
+      ["Gastos", moneyCents(por.GASTO?.debitosCentavos || 0), `${por.GASTO?.quantidade || 0} item(ns)`, "G", "grad-red", "lancamentos"],
+      ["Retiradas", moneyCents(por.RETIRADA?.debitosCentavos || 0), `${por.RETIRADA?.quantidade || 0} item(ns)`, "R", "grad-orange", "lancamentos"],
+      ["Ingressos", moneyCents(por.INGRESSO?.creditosCentavos || 0), `${por.INGRESSO?.quantidade || 0} item(ns)`, "I", "grad-cyan", "lancamentos"],
+      ["Recolhimentos", moneyCents(por.RECOLHIMENTO?.debitosCentavos || 0), `${por.RECOLHIMENTO?.quantidade || 0} item(ns)`, "C", "grad-purple", "lancamentos"],
+      ["Ajustes", moneyCents((por.AJUSTE?.creditosCentavos || 0) + (por.AJUSTE?.debitosCentavos || 0)), `${por.AJUSTE?.quantidade || 0} item(ns)`, "A", "grad-blue", "lancamentos"],
+      ["Divergencias pendentes", divergenciasPendentes, `${caixasDivergentes} caixa(s) divergente(s)`, "!", "grad-red", "divergencias"],
+      ["Caixas", `${caixasAbertos}/${caixasFechados}/${caixasDivergentes}`, "Abertos / fechados / divergentes", "CX", "grad-navy", "caixas"]
+    ];
+    const el = document.getElementById("dashboardFinanceiroCards");
+    el.innerHTML = filtrosPeriodoHtml() + cards.map(c => `
+      <div class="kpi-card ${c[4]}" onclick="abrirAtalhoFinanceiroReal('${c[5]}')">
+        <div class="kpi-icon">${esc(c[3])}</div><div><div class="kpi-label">${esc(c[0])}</div><div class="kpi-value">${esc(c[1])}</div><div class="kpi-sub">${esc(c[2])}</div></div>
+      </div>
+    `).join("");
+    const agenda = document.getElementById("agendaPagamentosResumo");
+    if (agenda) agenda.innerHTML = renderTopRelatorioHtml();
+  }
+
+  function renderFiltrosLancamentos(){
+    const tipos = ["","VENDA","PAGAMENTO","INGRESSO","GASTO","RETIRADA","RECOLHIMENTO","AJUSTE","DIVERGENCIA_ACEITA","REGULARIZACAO","ESTORNO"];
+    const opts = arr => arr.map(v => `<option value="${esc(v)}" ${FIN.filtros.tipo===v||FIN.filtros.natureza===v||FIN.filtros.status===v||FIN.ordenacao===v?"selected":""}>${esc(v || "Todos")}</option>`).join("");
+    return `
+      ${filtrosPeriodoHtml()}
+      <div class="filters show">
+        <div><label>Tipo</label><select onchange="setFiltroFinanceiroReal('tipo',this.value)">${opts(tipos)}</select></div>
+        <div><label>Natureza</label><select onchange="setFiltroFinanceiroReal('natureza',this.value)">${["","CREDITO","DEBITO"].map(v=>`<option value="${v}" ${FIN.filtros.natureza===v?"selected":""}>${v||"Todas"}</option>`).join("")}</select></div>
+        <div><label>Status</label><select onchange="setFiltroFinanceiroReal('status',this.value)">${["","CONFIRMADO","PENDENTE","ESTORNADO","CANCELADO"].map(v=>`<option value="${v}" ${FIN.filtros.status===v?"selected":""}>${v||"Todos"}</option>`).join("")}</select></div>
+        <div><label>Ordenar</label><select onchange="setOrdenacaoFinanceiroReal(this.value)">${["recentes","antigos","maior","menor","tipo","vendedor"].map(v=>`<option value="${v}" ${FIN.ordenacao===v?"selected":""}>${v}</option>`).join("")}</select></div>
+        <div><label>Vendedor</label><input value="${esc(FIN.filtros.vendedor)}" oninput="setFiltroFinanceiroReal('vendedor',this.value,true)"></div>
+        <div><label>Equipe</label><input value="${esc(FIN.filtros.equipe)}" oninput="setFiltroFinanceiroReal('equipe',this.value,true)"></div>
+        <div><label>Caixa</label><input value="${esc(FIN.filtros.caixa)}" oninput="setFiltroFinanceiroReal('caixa',this.value,true)"></div>
+        <div><label>Origem</label><input value="${esc(FIN.filtros.origem)}" oninput="setFiltroFinanceiroReal('origem',this.value,true)"></div>
+        <div><label>Valor min.</label><input type="number" step="0.01" value="${esc(FIN.filtros.valorMin)}" oninput="setFiltroFinanceiroReal('valorMin',this.value,true)"></div>
+        <div><label>Valor max.</label><input type="number" step="0.01" value="${esc(FIN.filtros.valorMax)}" oninput="setFiltroFinanceiroReal('valorMax',this.value,true)"></div>
+        <div class="form-group full"><label>Busca</label><input type="search" value="${esc(FIN.filtros.busca)}" placeholder="Descricao, origemId, caixa, vendedor..." oninput="setFiltroFinanceiroReal('busca',this.value,true)"></div>
+      </div>
+    `;
+  }
+
+  function renderLancamentosFinanceiroReal(){
+    const el = document.getElementById("contasTabelaView");
+    const total = FIN.lancamentosFiltrados.length;
+    const fim = FIN.pagina * FIN.pageSize;
+    const visiveis = FIN.lancamentosFiltrados.slice(0, fim);
+    if (!el) return;
+    el.innerHTML = renderFiltrosLancamentos() + (total ? `
+      <div class="table-wrap"><table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Natureza</th><th>Descricao</th><th>Origem</th><th>Caixa</th><th>Vendedor</th><th>Equipe</th><th>Valor</th><th>Status</th><th>Criado por</th><th>Acoes</th></tr></thead>
+        <tbody>${visiveis.map(l => `
+          <tr onclick="abrirDetalheLancamentoFinanceiro('${esc(l.id || l.lancamentoId)}')">
+            <td>${esc(l.dataOperacional || "-")}</td><td>${esc(l.tipoLancamento)}</td><td>${esc(l.natureza)}</td>
+            <td>${esc(l.descricao || l.observacao || "-")}</td><td>${esc(l.origem || "-")}<br><small>${esc(l.origemId || "-")}</small></td>
+            <td>${esc(l.caixaId || "-")}</td><td>${esc(l.vendedorId || "-")}</td><td>${esc(l.equipeId || "-")}</td>
+            <td><strong>${moneyCents(l.valorCentavos)}</strong></td><td><span class="status-badge ${statusClass(l.statusLancamento)}">${esc(l.statusLancamento || "CONFIRMADO")}</span></td>
+            <td>${esc(l.criadoPorNome || l.criadoPorId || "-")}</td>
+            <td onclick="event.stopPropagation()"><button class="ghost-btn" onclick="abrirDetalheLancamentoFinanceiro('${esc(l.id || l.lancamentoId)}')">Ver</button></td>
+          </tr>`).join("")}</tbody>
+      </table></div>
+      ${fim < total ? `<div class="toolbar"><button class="ghost-btn" onclick="carregarMaisLancamentosFinanceiro()">Carregar mais (${visiveis.length}/${total})</button></div>` : ""}
+    ` : empty("Nenhum lancamento financeiro real encontrado para os filtros selecionados."));
+  }
+
+  function lancamentoPorId(id){ return FIN.lancamentos.find(l => txt(l.id || l.lancamentoId) === txt(id)); }
+
+  window.abrirDetalheLancamentoFinanceiro = function(id){
+    const l = lancamentoPorId(id);
+    if (!l) return;
+    const podeEstornar = temPermissaoFinanceiro("podeEstornarLancamento") && !["ESTORNADO","CANCELADO"].includes(upper(l.statusLancamento)) && upper(l.tipoLancamento) !== "ESTORNO";
+    const estorno = FIN.lancamentos.find(x => txt(x.reversaoDeId) === txt(l.id || l.lancamentoId) || txt(x.origemId) === txt(l.id || l.lancamentoId));
+    abrirDrawerFinanceiro("Detalhe do lancamento", l.lancamentoId || l.id, `
+      <div class="info-card">
+        <strong>${esc(l.tipoLancamento)} - ${moneyCents(l.valorCentavos)}</strong>
+        <small>ID: ${esc(l.id || l.lancamentoId)}</small><small>Natureza: ${esc(l.natureza)}</small><small>Status: ${esc(l.statusLancamento || "CONFIRMADO")}</small>
+        <small>Origem: ${esc(l.origem)} / ${esc(l.origemId)}</small><small>Caixa: ${esc(l.caixaId)}</small>
+        <small>Vendedor: ${esc(l.vendedorId)} / ${esc(l.vendedorAuthUid)}</small><small>Equipe: ${esc(l.equipeId)}</small>
+        <small>Tenant: ${esc(l.clientePlataformaId)}</small><small>Data operacional: ${esc(l.dataOperacional)}</small>
+        <small>Criado por: ${esc(l.criadoPorNome || l.criadoPorId)} (${esc(l.criadoPorCargo || "-")})</small>
+        <small>Observacao: ${esc(l.observacao || "-")}</small>
+      </div>
+      <div class="info-card"><strong>Metadados</strong><small>${esc(JSON.stringify(l.metadados || {}, null, 2))}</small></div>
+      ${estorno ? `<div class="info-card"><strong>Estorno relacionado</strong><small>${esc(estorno.id || estorno.lancamentoId)} - ${moneyCents(estorno.valorCentavos)}</small></div>` : ""}
+      <div class="drawer-actions">
+        <button class="ghost-btn" onclick="abrirCaixaFinanceiro('${esc(l.caixaId)}')">Ver caixa</button>
+        <button class="ghost-btn" onclick="abrirOrigemFinanceiro('${esc(l.origem)}','${esc(l.origemId)}')">Abrir origem</button>
+        ${podeEstornar ? `<button class="danger-btn" id="btnEstornarLancamento" onclick="estornarLancamentoFinanceiro('${esc(l.id || l.lancamentoId)}')">Estornar</button>` : ""}
+      </div>
+    `);
+  };
+
+  window.estornarLancamentoFinanceiro = async function(id){
+    if (!svc()?.registrarEstornoFinanceiro || FIN.locks.has(`estorno_${id}`)) return;
+    const motivo = prompt("Informe o motivo obrigatorio do estorno:");
+    if (!motivo || !motivo.trim()) return alert("Motivo obrigatorio.");
+    if (!confirm("Confirmar estorno? O lancamento original nao sera excluido.")) return;
+    FIN.locks.add(`estorno_${id}`);
+    const btn = document.getElementById("btnEstornarLancamento");
+    if (btn) btn.innerText = "Estornando...";
+    try {
+      await svc().registrarEstornoFinanceiro({
+        lancamentoOriginalId: id,
+        motivo: motivo.trim(),
+        operacaoId: `estorno_${id}_${Date.now().toString(36)}`,
+        clientePlataformaId: tenantAtual(),
+        usuario: usuarioAtual()
+      });
+      await carregarFinanceiroReal();
+      alert("Estorno registrado.");
+    } catch(e) {
+      console.error(e);
+      alert(e?.message || "Nao foi possivel estornar.");
+    } finally {
+      FIN.locks.delete(`estorno_${id}`);
+    }
+  };
+
+  function fechamentoDoCaixa(caixaId){ return FIN.fechamentos.find(f => txt(f.caixaId) === txt(caixaId) || txt(f.id) === `fechamento_${caixaId}`); }
+  async function diagnosticoCaixa(caixaId){
+    try { return await svc().reconciliarLedgerCaixaSomenteLeitura(caixaId); }
+    catch(e) { return { divergencias:[{ tipo:"ERRO_RECONCILIACAO", detalhe:e.message }], saldoLedger:{ saldoLedgerCentavos:0 } }; }
+  }
+  function renderCaixasFinanceiroReal(){
+    const el = document.getElementById("listaCaixasFinanceiro");
+    if (!el) return;
+    if (!FIN.caixas.length) { el.innerHTML = empty("Nenhum caixa real encontrado para este tenant."); return; }
+    el.innerHTML = `<table><thead><tr><th>Caixa</th><th>Data</th><th>Vendedor</th><th>Equipe</th><th>Status</th><th>Inicial</th><th>Esperado</th><th>Informado</th><th>Dif.</th><th>Ledger</th><th>Situacao</th><th>Acoes</th></tr></thead><tbody>
+      ${FIN.caixas.map(c => {
+        const f = fechamentoDoCaixa(c.id);
+        const inicial = cents(c.saldoInicialCentavos || c.valorInicialCentavos || 0);
+        const esperado = cents(f?.caixaFinalEsperadoCentavos || f?.valorEsperadoCentavos || c.saldoAtualCentavos || 0);
+        const informado = cents(f?.caixaFinalInformadoCentavos || f?.valorInformadoCentavos || 0);
+        const dif = cents(f?.diferencaCentavos || 0);
+        const ledger = FIN.lancamentos.filter(l => txt(l.caixaId) === txt(c.id)).reduce((t,l)=>t+(upper(l.natureza)==="CREDITO"?cents(l.valorCentavos):-cents(l.valorCentavos)), inicial);
+        const situacao = ledger === esperado ? "OK" : "DIVERGENTE";
+        return `<tr onclick="abrirCaixaFinanceiro('${esc(c.id)}')"><td>${esc(c.id)}</td><td>${esc(c.dataOperacional || c.dataCaixa || "-")}</td><td>${esc(c.vendedorNome || c.vendedorId || "-")}</td><td>${esc(c.equipeNome || c.equipeId || "-")}</td><td><span class="status-badge ${statusClass(c.status)}">${esc(c.status)}</span></td><td>${moneyCents(inicial)}</td><td>${moneyCents(esperado)}</td><td>${moneyCents(informado)}</td><td>${moneyCents(dif)}</td><td>${moneyCents(ledger)}</td><td>${situacao}</td><td onclick="event.stopPropagation()"><button class="ghost-btn" onclick="abrirCaixaFinanceiro('${esc(c.id)}')">Ver</button></td></tr>`;
+      }).join("")}
+    </tbody></table>`;
+  }
+
+  window.abrirCaixaFinanceiro = async function(caixaId){
+    const c = FIN.caixas.find(x => txt(x.id) === txt(caixaId));
+    const diag = await diagnosticoCaixa(caixaId);
+    const f = fechamentoDoCaixa(caixaId);
+    abrirDrawerFinanceiro("Caixa financeiro", caixaId, `
+      <div class="info-card"><strong>${esc(c?.vendedorNome || c?.vendedorId || "Caixa")}</strong><small>Status: ${esc(c?.status || "-")}</small><small>Data: ${esc(c?.dataOperacional || "-")}</small><small>Fechamento: ${esc(f?.id || f?.fechamentoId || "-")}</small></div>
+      <div class="info-card"><strong>Reconciliação</strong>${diag.divergencias?.length ? diag.divergencias.map(d=>`<small>${esc(d.tipo)} ${esc(d.detalhe || d.campo || "")}</small>`).join("") : "<small>Sem divergencias detectadas.</small>"}</div>
+      <div class="drawer-actions"><button class="ghost-btn" onclick="filtrarLancamentosCaixa('${esc(caixaId)}')">Ver lancamentos</button>${temPermissaoFinanceiro("podeRegularizarCaixa") ? `<button class="primary-btn" onclick="regularizarCaixaFinanceiro('${esc(caixaId)}')">Regularizar</button>` : ""}</div>
+    `);
+  };
+
+  window.regularizarCaixaFinanceiro = async function(caixaId){
+    if (!svc()?.registrarRegularizacaoFinanceiraCaixa || FIN.locks.has(`reg_${caixaId}`)) return;
+    const valor = prompt("Valor da regularizacao em reais:");
+    const natureza = prompt("Natureza: CREDITO ou DEBITO:");
+    const motivo = prompt("Motivo obrigatorio:");
+    if (!valor || !natureza || !motivo) return alert("Valor, natureza e motivo sao obrigatorios.");
+    FIN.locks.add(`reg_${caixaId}`);
+    try {
+      await svc().registrarRegularizacaoFinanceiraCaixa({
+        caixaId,
+        valor: Number(String(valor).replace(",", ".")),
+        natureza,
+        motivo,
+        operacaoId: `regularizacao_${caixaId}_${Date.now().toString(36)}`,
+        clientePlataformaId: tenantAtual(),
+        usuario: usuarioAtual()
+      });
+      await carregarFinanceiroReal();
+      alert("Regularizacao registrada.");
+    } catch(e) {
+      console.error(e);
+      alert(e?.message || "Nao foi possivel regularizar.");
+    } finally {
+      FIN.locks.delete(`reg_${caixaId}`);
+    }
+  };
+
+  function renderDivergenciasFinanceiroReal(){
+    const el = document.getElementById("listaSolicitacoesFinanceiras");
+    const divergentes = FIN.fechamentos.filter(f => cents(f.diferencaCentavos) !== 0 || upper(f.statusFechamento)==="DIVERGENTE");
+    if (!el) return;
+    el.innerHTML = divergentes.length ? divergentes.map(f => `
+      <div class="info-card">
+        <strong>${esc(f.caixaId || f.id)}</strong><small>Vendedor: ${esc(f.vendedorId || "-")} | Equipe: ${esc(f.equipeId || "-")}</small>
+        <small>Esperado: ${moneyCents(f.caixaFinalEsperadoCentavos || f.valorEsperadoCentavos)} | Informado: ${moneyCents(f.caixaFinalInformadoCentavos || f.valorInformadoCentavos)} | Dif.: ${moneyCents(f.diferencaCentavos)}</small>
+        <small>Tratamento: ${esc(f.tratamentoDivergencia?.statusTratamento || f.regularizacaoFinanceiraStatus || "PENDENTE")}</small>
+        <div class="drawer-actions"><button class="ghost-btn" onclick="abrirCaixaFinanceiro('${esc(f.caixaId)}')">Detalhes</button>${temPermissaoFinanceiro("podeRegularizarCaixa") ? `<button class="primary-btn" onclick="regularizarCaixaFinanceiro('${esc(f.caixaId)}')">Regularizar</button>` : ""}</div>
+      </div>`).join("") : empty("Nenhuma divergencia real encontrada no periodo.");
+  }
+
+  function renderTopRelatorioHtml(){
+    const maioresEntradas = FIN.lancamentos.filter(l=>upper(l.natureza)==="CREDITO").sort((a,b)=>cents(b.valorCentavos)-cents(a.valorCentavos)).slice(0,5);
+    const maioresSaidas = FIN.lancamentos.filter(l=>upper(l.natureza)==="DEBITO").sort((a,b)=>cents(b.valorCentavos)-cents(a.valorCentavos)).slice(0,5);
+    return `<div class="cards-grid"><div class="info-card"><strong>Maiores entradas</strong>${maioresEntradas.map(l=>`<small>${esc(l.tipoLancamento)} - ${moneyCents(l.valorCentavos)}</small>`).join("") || "<small>Sem entradas.</small>"}</div><div class="info-card"><strong>Maiores saidas</strong>${maioresSaidas.map(l=>`<small>${esc(l.tipoLancamento)} - ${moneyCents(l.valorCentavos)}</small>`).join("") || "<small>Sem saidas.</small>"}</div><div class="info-card"><strong>Volume</strong><small>${FIN.lancamentos.length} lancamento(s)</small><small>Ticket medio: ${moneyCents(FIN.lancamentos.reduce((t,l)=>t+cents(l.valorCentavos),0)/(FIN.lancamentos.length||1))}</small></div></div>`;
+  }
+  function renderRelatoriosFinanceiroReal(){
+    const el = document.getElementById("listaRelatoriosFinanceiro");
+    if (!el) return;
+    const grupos = {};
+    FIN.lancamentos.forEach(l => {
+      ["tipoLancamento","vendedorId","equipeId","caixaId","origem","natureza","statusLancamento"].forEach(campo => {
+        const key = `${campo}:${txt(l[campo] || "CONFIRMADO")}`;
+        grupos[key] = grupos[key] || { campo, nome: txt(l[campo] || "CONFIRMADO"), qtd:0, cred:0, deb:0 };
+        grupos[key].qtd++;
+        if (upper(l.natureza)==="CREDITO") grupos[key].cred += cents(l.valorCentavos); else grupos[key].deb += cents(l.valorCentavos);
+      });
+    });
+    el.innerHTML = renderTopRelatorioHtml() + Object.values(grupos).slice(0,80).map(g => `<div class="info-card"><strong>${esc(g.campo)}: ${esc(g.nome)}</strong><small>Creditos: ${moneyCents(g.cred)}</small><small>Debitos: ${moneyCents(g.deb)}</small><small>Saldo: ${moneyCents(g.cred-g.deb)} | Qtd: ${g.qtd}</small></div>`).join("");
+  }
+
+  function renderAuditoriaFinanceiraReal(){
+    const el = document.getElementById("listaAuditoriaFinanceira");
+    if (!el) return;
+    const diag = FIN.diagnosticoLegado;
+    el.innerHTML = `<table><thead><tr><th>Tipo</th><th>Origem</th><th>Caixa</th><th>Situação</th></tr></thead><tbody>${(diag?.ausentes || []).map(a => `<tr><td>${esc(a.tipo)}</td><td>${esc(a.origemId)}</td><td>${esc(a.caixaId || "-")}</td><td>Sem ledger oficial</td></tr>`).join("")}</tbody></table>${!(diag?.ausentes || []).length ? empty("Nenhum legado sem lançamento encontrado. Nenhuma migração automática executada.") : ""}`;
+  }
+
+  function renderConfiguracoesFinanceirasReal(){
+    const el = document.getElementById("listaConfiguracoesFinanceiras");
+    if (!el) return;
+    const perms = ["podeVerFinanceiro","podeVerLedgerFinanceiro","podeVerReconciliacao","podeEstornarLancamento","podeRegularizarCaixa","podeAceitarDivergenciaFinanceira"];
+    el.innerHTML = perms.map(p => `<div class="info-card"><strong>${esc(p)}</strong><small>${temPermissaoFinanceiro(p) ? "Permitido" : "Bloqueado"}</small></div>`).join("");
+  }
+
+  function renderFinanceiroRealTudo(){
+    renderDashboardFinanceiroReal();
+    renderContas();
+    renderLancamentosFinanceiroReal();
+    renderCaixasFinanceiroReal();
+    renderDivergenciasFinanceiroReal();
+    renderRelatoriosFinanceiroReal();
+    renderAuditoriaFinanceiraReal();
+    renderConfiguracoesFinanceirasReal();
+    const agenda = document.getElementById("agendaPagamentosResumo");
+    if (agenda) agenda.innerHTML = renderTopRelatorioHtml();
+  }
+
+  window.setPeriodoFinanceiroReal = function(periodo){ FIN.filtros.periodo = periodo; carregarFinanceiroReal(); };
+  window.setFiltroFinanceiroReal = function(campo, valor, localOnly){
+    FIN.filtros[campo] = valor;
+    FIN.pagina = 1;
+    if (campo === "dataInicio" || campo === "dataFim") FIN.filtros.periodo = "custom";
+    if (localOnly) { aplicarFiltrosLedger(); renderLancamentosFinanceiroReal(); }
+    else carregarFinanceiroReal();
+  };
+  window.setOrdenacaoFinanceiroReal = function(ordem){ ordenarLancamentos(ordem); renderLancamentosFinanceiroReal(); };
+  window.carregarMaisLancamentosFinanceiro = function(){ FIN.pagina++; renderLancamentosFinanceiroReal(); };
+  window.filtrarLancamentosCaixa = function(caixaId){ FIN.filtros.caixa = caixaId; trocarTelaFinanceiro("contas"); aplicarFiltrosLedger(); renderLancamentosFinanceiroReal(); fecharDrawerFinanceiro(); };
+  window.abrirAtalhoFinanceiroReal = function(destino){
+    if (destino === "caixas") trocarTelaFinanceiro("caixas");
+    else if (destino === "divergencias") trocarTelaFinanceiro("solicitacoes");
+    else if (destino === "relatorios") trocarTelaFinanceiro("relatorios");
+    else trocarTelaFinanceiro("contas");
+  };
+  window.abrirOrigemFinanceiro = function(origem, origemId){ alert(`Origem: ${origem}\\nID: ${origemId}`); };
+
+  const trocarTelaAntiga = window.trocarTelaFinanceiro;
+  window.trocarTelaFinanceiro = function(tela, el){
+    if (typeof trocarTelaAntiga === "function") trocarTelaAntiga(tela, el);
+    const titulos = {
+      contas:["Lançamentos","Ledger financeiro oficial e imutável."],
+      solicitacoes:["Divergências","Divergências, tratamentos e regularizações."],
+      fornecedores:["Diagnóstico legado","Registros reais ainda sem lançamento financeiro."],
+      auditoria:["Auditoria","Reconciliação, logs e rastreabilidade financeira."]
+    };
+    if (titulos[tela]) {
+      document.getElementById("pageTitle").innerText = titulos[tela][0];
+      document.getElementById("pageSubtitle").innerText = titulos[tela][1];
+    }
+    if (tela === "contas") renderLancamentosFinanceiroReal();
+    if (tela === "caixas") renderCaixasFinanceiroReal();
+    if (tela === "solicitacoes") renderDivergenciasFinanceiroReal();
+    if (tela === "fornecedores") renderAuditoriaFinanceiraReal();
+    if (tela === "relatorios") renderRelatoriosFinanceiroReal();
+    if (tela === "auditoria") renderAuditoriaFinanceiraReal();
+  };
+
+  window.carregarFinanceiroMock = carregarFinanceiroReal;
+  window.renderDashboardFinanceiro = renderDashboardFinanceiroReal;
+  window.renderCaixasFinanceiro = renderCaixasFinanceiroReal;
+  window.renderSolicitacoesFinanceiras = renderDivergenciasFinanceiroReal;
+  window.renderRelatoriosFinanceiro = renderRelatoriosFinanceiroReal;
+  window.renderAuditoriaFinanceira = renderAuditoriaFinanceiraReal;
+  window.renderFornecedores = renderAuditoriaFinanceiraReal;
+  window.exportarContasMock = function(){
+    const linhas = FIN.lancamentosFiltrados.map(l => `${l.dataOperacional};${l.tipoLancamento};${l.natureza};${l.origemId};${l.caixaId};${l.vendedorId};${l.valorCentavos};${l.statusLancamento || "CONFIRMADO"}`);
+    abrirDrawerFinanceiro("Exportação", "Listagem textual para conferência", `<textarea readonly>${esc(["data;tipo;natureza;origem;caixa;vendedor;valorCentavos;status", ...linhas].join("\\n"))}</textarea>`);
+  };
+
+  document.addEventListener("usuario-validado", () => carregarFinanceiroReal());
+})();
+</script>
 </body>
 </html>

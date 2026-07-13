@@ -1032,6 +1032,35 @@ async function criarCaixaParaVendedor(vendedor, valorInicial = 0, observacao = "
     timeZone: "America/Sao_Paulo"
   });
 
+  if (window.IntegroCaixa?.registrarAberturaCaixaTransacional) {
+    const resultado = await window.IntegroCaixa.registrarAberturaCaixaTransacional({
+      usuario: State.usuario || {},
+      clientePlataformaId: getTenantIdSeguroCaixas(),
+      clientePlataformaNome: getEmpresaNomeSeguroCaixas(),
+      vendedor,
+      vendedorId: vendedor.id,
+      vendedorAuthUid: vendedor.authUid || vendedor.uid || "",
+      vendedorNome: vendedor.nome || vendedor.nomeCompleto || vendedor.email || "",
+      equipeId: getEquipeIdDoRegistro(vendedor),
+      equipeNome: getEquipeNomeDoRegistro(vendedor),
+      valorInicial,
+      dataOperacional: hoje,
+      observacao,
+      abertoPorNome: getNomeUsuarioLogadoCaixas(),
+      origem: "master_local_caixas"
+    });
+
+    await FirestoreService.gravarLog("ABERTURA_CAIXA", {
+      caixaId: resultado.caixaId,
+      vendedorId: vendedor.id,
+      vendedorNome: vendedor.nome || vendedor.email || "",
+      valorInicial: Number(valorInicial || 0),
+      modo: resultado.modo
+    });
+
+    return resultado.caixaId;
+  }
+
   const docRef = await db.collection(CONFIG.COLECOES.CAIXAS).add({
     vendedorId: vendedor.id,
     vendedorNome: vendedor.nome || vendedor.nomeCompleto || vendedor.email || "",
@@ -1120,30 +1149,43 @@ async function fecharCaixaMassivo() {
       return;
     }
 
-    for (const caixa of caixasAbertos) {
-      const saldoSistema = Number(caixa.saldoAtual ?? caixa.valorAtual ?? caixa.valorInicial ?? 0);
+    const resumo = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
 
-      await db.collection(CONFIG.COLECOES.CAIXAS).doc(caixa.id).update({
-        status: CONFIG.STATUS_CAIXA.FECHADO,
-        ativo: false,
-        fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        fechadoEmTexto: new Date().toISOString(),
-        fechadoPorUid: State.authUid || "",
-        fechadoPorNome: getNomeUsuarioLogadoCaixas(),
-        valorRealFechamento: saldoSistema,
-        valorCalculadoFechamento: saldoSistema,
-        divergenciaFechamento: false,
-        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-      });
+    for (const caixa of caixasAbertos) {
+      try {
+        if (!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) {
+          throw new Error("Nucleo transacional de fechamento indisponivel.");
+        }
+        const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId: caixa.id });
+        const resultado = await window.IntegroCaixa.registrarFechamentoCaixaTransacional({
+          usuario: State.usuario || {},
+          clientePlataformaId: getTenantIdSeguroCaixas(),
+          caixaId: caixa.id,
+          vendedorId: caixa.vendedorId,
+          vendedorAuthUid: caixa.vendedorAuthUid || caixa.vendedorUid || "",
+          valorInformadoCentavos: snapshot.caixaFinalEsperadoCentavos,
+          justificativa: "Fechamento massivo com valor esperado pelo sistema.",
+          snapshot,
+          origem: "master_local_fechamento_massivo"
+        });
+        if (resultado.statusFechamento === "DIVERGENTE") resumo.divergentes++;
+        else resumo.fechados++;
+      } catch (erroCaixa) {
+        const codigo = String(erroCaixa?.code || "");
+        if (codigo.includes("PENDENCIA") || codigo.includes("PENDENTE") || codigo.includes("MULTIPLOS")) resumo.bloqueados++;
+        else resumo.erros++;
+        console.warn("Falha ao fechar caixa no fechamento massivo:", caixa.id, erroCaixa);
+      }
     }
 
     await FirestoreService.gravarLog("FECHAMENTO_MASSIVO_CAIXAS", {
       equipesIds: equipesSelecionadas,
-      caixasIds: caixasAbertos.map(c => c.id)
+      caixasIds: caixasAbertos.map(c => c.id),
+      resumo
     });
 
     equipesSelecionadasCaixa.clear();
-    UIHelpers.alerta("Fechamento massivo concluído.");
+    UIHelpers.alerta(`Fechamento massivo concluido. Fechados: ${resumo.fechados}. Divergentes: ${resumo.divergentes}. Bloqueados: ${resumo.bloqueados}. Erros: ${resumo.erros}.`);
     renderCaixas();
 
   } catch (erro) {

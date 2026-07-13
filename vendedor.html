@@ -2069,7 +2069,7 @@
             <span>›</span>
           </button>
 
-          <button onclick="trocarTela('caixa', this)">
+          <button onclick="trocarTela('indicacoes', this)">
             <span class="menu-left">
               <span>◎</span>
               Indicações
@@ -4140,7 +4140,7 @@
         }
 
         function formatarISOData(data) {
-          return data.toISOString().split("T")[0];
+          return window.IntegroOperacional?.hojeSP?.(data) || data.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
         }
 
         function proximoDiaTrabalhoEmpresa(dataBaseIso = hojeISO()) {
@@ -4312,7 +4312,25 @@
         }
 
         async function salvarVendaProfissional(clienteId, botao = null) {
+          const vendaLocks = window.__integroVendaLocks || (window.__integroVendaLocks = new Set());
+          const operacaoIdBotao =
+            botao?.dataset?.operacaoVendaId ||
+            (
+              "opv_" +
+              String(tenantId || "sem_tenant") + "_" +
+              String(caixaAtual?.id || "sem_caixa") + "_" +
+              String(clienteId || "sem_cliente") + "_" +
+              Date.now().toString(36) + "_" +
+              Math.random().toString(36).slice(2, 10)
+            );
+          if (botao?.dataset) botao.dataset.operacaoVendaId = operacaoIdBotao;
+
+          const lockKey = `${clienteId}::${operacaoIdBotao}`;
+          if (vendaLocks.has(lockKey)) return;
+          let vendaCriadaComSucesso = false;
+
           try {
+            vendaLocks.add(lockKey);
             const cliente = clientesCache.find(c => c.id === clienteId);
 
             if (!cliente) {
@@ -4381,13 +4399,10 @@
 
             if (botao) {
               botao.disabled = true;
-              botao.innerText = "Salvando venda...";
+              botao.innerText = "Criando venda...";
               botao.style.opacity = ".75";
               botao.style.cursor = "not-allowed";
             }
-
-            const batch = db.batch();
-            const vendaRef = db.collection("vendas").doc();
 
             const vendedorNome =
               usuarioLogado.nome ||
@@ -4401,134 +4416,29 @@
               cliente.apelido ||
               "Cliente";
 
-            batch.set(vendaRef, {
-              ativo: true,
-              excluido: false,
-
-              clienteId,
-              clienteNome,
-
-              clientePlataformaId: tenantId || null,
-              clientePlataformaNome:
-                usuarioLogado.clientePlataformaNome ||
-                usuarioLogado.empresaNome ||
-                "",
-
-              vendedorId: usuarioLogado.id,
-              vendedorNome,
-
-              caixaId: caixaAtual.id,
-
-              tipoVenda: "NOVA",
-
-              valorEmprestado: preview.valor,
-              taxaJuros: preview.juros,
-              jurosValor: preview.jurosValor,
-
-              valorTotalVenda: preview.total,
-              saldoDevedor: preview.total,
-              totalPago: 0,
-
-              valorParcela: preview.valorParcela,
-              quantidadeParcelas: preview.parcelas,
-              parcelasPagas: 0,
-              parcelasPendentes: preview.parcelas,
-
-              frequencia,
-              dataPrimeiraCobranca: primeiraCobranca,
-
-              status: "ATIVA",
-              statusVenda: "ATIVA",
-
-              data: hojeISO(),
-              dataVenda: hojeISO(),
-              criadoEmTexto: new Date().toISOString(),
-              criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            const datasCobranca = calcularDatasCobrancaVenda(preview.parcelas, primeiraCobranca, frequencia);
-
-            for (let i = 1; i <= preview.parcelas; i++) {
-              const dataVencimento = datasCobranca[i - 1] || primeiraCobranca;
-              const parcelaRef = db.collection("parcelas").doc();
-
-              batch.set(parcelaRef, {
-                ativo: true,
-                excluido: false,
-
-                vendaId: vendaRef.id,
-
-                clienteId,
-                clienteNome,
-
-                clientePlataformaId: tenantId || null,
-
-                vendedorId: usuarioLogado.id,
-                vendedorNome,
-
-                caixaId: caixaAtual.id,
-
-                numeroParcela: i,
-                totalParcelas: preview.parcelas,
-
-                valor: preview.valorParcela,
-                valorPrevisto: preview.valorParcela,
-                valorPago: 0,
-
-                dataVencimento,
-                dataPrevista: dataVencimento,
-
-                status: "PENDENTE",
-                statusParcela: "PENDENTE",
-
-                criadoEmTexto: new Date().toISOString(),
-                criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-              });
+            if (!window.IntegroVenda?.registrarVendaTransacional) {
+              throw new Error("NÃºcleo transacional de venda indisponÃ­vel.");
             }
 
-            const novoSaldoCaixa = saldoCaixaAtual - preview.valor;
-
-            batch.update(db.collection("caixas").doc(caixaAtual.id), {
-              saldoAtual: novoSaldoCaixa,
-              valorAtual: novoSaldoCaixa,
-              caixaNegativo: novoSaldoCaixa < 0,
-              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            batch.update(db.collection("clientes").doc(clienteId), {
-              saldoDevedor: preview.total,
-              saldo: preview.total,
-              status: "ATIVO",
-              statusCliente: "ATIVO",
-              ultimaVendaId: vendaRef.id,
-              ultimaVendaValor: preview.total,
-              ultimoValorEmprestado: preview.valor,
-              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            const logRef = db.collection("logs").doc();
-
-            batch.set(logRef, {
-              usuarioId: usuarioLogado.id,
-              usuarioNome: vendedorNome,
-              clientePlataformaId: tenantId || null,
-              tipoAcao: "CRIAR_VENDA",
-              origem: "vendedor",
-              detalhe:
-                "Venda criada para " +
-                clienteNome +
-                " no valor total de " +
-                moeda(preview.total),
-              vendaId: vendaRef.id,
+            const resultadoVenda = await window.IntegroVenda.registrarVendaTransacional({
+              operacaoId: operacaoIdBotao,
+              usuario: usuarioLogado,
+              clientePlataformaId: tenantId || usuarioLogado.clientePlataformaId || usuarioLogado.empresaId || usuarioLogado.tenantId || "",
+              clientePlataformaNome: usuarioLogado.clientePlataformaNome || usuarioLogado.empresaNome || "",
+              clienteOperacionalId: clienteId,
               clienteId,
+              clienteNome,
+              vendedorNome,
               caixaId: caixaAtual.id,
-              data: hojeISO(),
-              criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+              valorEmprestadoCentavos: window.IntegroOperacional?.moedaParaCentavos?.(preview.valor) ?? Math.round(Number(preview.valor || 0) * 100),
+              valorTotalCentavos: window.IntegroOperacional?.moedaParaCentavos?.(preview.total) ?? Math.round(Number(preview.total || 0) * 100),
+              jurosValorCentavos: window.IntegroOperacional?.moedaParaCentavos?.(preview.jurosValor) ?? Math.round(Number(preview.jurosValor || 0) * 100),
+              taxaJuros: preview.juros,
+              quantidadeParcelas: preview.parcelas,
+              frequencia,
+              primeiraCobranca,
+              origem: "vendedor"
             });
-
-            await batch.commit();
 
             fecharDrawer();
 
@@ -4538,18 +4448,23 @@
             renderCobrancas();
             if (clientesBuscaExecutada) await buscarClientes(false);
 
-            alert("Venda cadastrada com sucesso.");
+            alert(resultadoVenda?.modo === "IDEMPOTENTE"
+              ? "Venda jÃ¡ cadastrada anteriormente. A tela foi atualizada."
+              : "Venda cadastrada com sucesso.");
+            vendaCriadaComSucesso = true;
 
           } catch (erro) {
             console.error("Erro ao salvar venda:", erro);
             alert("Erro ao salvar venda:\n\n" + erro.message);
           } finally {
-            if (botao) {
+            if (botao && !vendaCriadaComSucesso) {
               botao.disabled = false;
               botao.innerText = "Confirmar venda";
               botao.style.opacity = "1";
               botao.style.cursor = "pointer";
+              if (botao.dataset) delete botao.dataset.operacaoVendaId;
             }
+            vendaLocks.delete(lockKey);
           }
         }
 
@@ -4566,13 +4481,7 @@
         }
 
         function addDias(dataISO, dias) {
-
-          const data =
-            new Date(dataISO + "T00:00:00");
-
-          data.setDate(data.getDate() + dias);
-
-          return data.toISOString().split("T")[0];
+          return window.IntegroOperacional?.adicionarDiasSP?.(dataISO, dias) || dataISO;
 
         }
 
@@ -5786,7 +5695,7 @@
       </section>
 
       <!-- INDICAÇÕES -->
-      <section id="caixa" class="screen" style="display:none;">
+      <section id="indicacoes" class="screen" style="display:none;">
 
         <div class="panel">
 
@@ -6797,7 +6706,7 @@
                   <span class="menu-left"><span>👥</span>Consultar</span>
                   <span>›</span>
                 </button>
-                <button type="button" onclick="trocarTela('caixa', this)">
+                <button type="button" onclick="trocarTela('indicacoes', this)">
                   <span class="menu-left"><span>◎</span>Indicações</span>
                   <span>›</span>
                 </button>
@@ -7220,7 +7129,7 @@
               "Solicitações financeiras",
               "Solicite ingresso, gasto, retirada ou ajuste."
             ],
-            caixa: [
+            indicacoes: [
               "Indicações",
               "Leads recebidos, contatos e conversões."
             ],
@@ -7259,7 +7168,10 @@
             abrirAbaVendasCobrancas("cobrancas");
           }
           if (id === "solicitacoes") renderSolicitacoes();
-          if (id === "caixa") renderIndicacoes();
+          if (id === "indicacoes") {
+            if (typeof carregarIndicacoes === "function") carregarIndicacoes().then(() => renderIndicacoes()).catch(() => renderIndicacoes());
+            else renderIndicacoes();
+          }
 
           toggleSidebar(false);
 
@@ -8742,86 +8654,65 @@ async function verificarCaixaAbertoDiaAnterior() {
           );
         }
 
-        async function confirmarFechamentoCaixa(botao = null) {
+        function contarPendenciasFilaOfflineCaixa(caixaId) {
+          const resultado = { pendentes: 0, sincronizando: 0 };
           try {
-            if (!garantirCaixaAberto("Este caixa já está fechado.")) return;
+            const chave = window.IntegroOperacional?.chaveFilaOffline?.(usuarioLogado);
+            if (!chave) return resultado;
+            const fila = JSON.parse(localStorage.getItem(chave) || "[]");
+            if (!Array.isArray(fila)) return resultado;
+            fila.forEach(item => {
+              if (String(item?.caixaId || "") !== String(caixaId || "")) return;
+              const status = String(item.statusSync || item.status || "PENDENTE").toUpperCase();
+              if (status === "SINCRONIZANDO") resultado.sincronizando++;
+              if (["PENDENTE", "ERRO", "ERRO_BLOQUEADO_CAIXA_FECHADO"].includes(status)) resultado.pendentes++;
+            });
+          } catch (_) {}
+          return resultado;
+        }
 
-            const resumo = calcularResumoCaixaAtual();
+        async function confirmarFechamentoCaixa(botao = null) {
+          const lockKeyFechamento = `fechamento::${caixaAtual?.id || "sem_caixa"}`;
+          window.__integroFechamentoLocks = window.__integroFechamentoLocks || new Set();
+          if (window.__integroFechamentoLocks.has(lockKeyFechamento)) return;
+
+          try {
+            window.__integroFechamentoLocks.add(lockKeyFechamento);
+            if (!garantirCaixaAberto("Este caixa ja esta fechado.")) return;
+
             const valorReal = converterMoedaBRParaNumero(document.getElementById("fechamentoValorReal")?.value || "");
             const observacao = (document.getElementById("fechamentoObservacao")?.value || "").trim();
 
             if (Number.isNaN(valorReal)) {
-              alert("Informe um valor físico/real válido.");
+              alert("Informe um valor fisico/real valido.");
               return;
             }
 
             if (botao) {
               botao.disabled = true;
-              botao.innerText = "Fechando...";
+              botao.innerText = "Fechando caixa...";
             }
 
-            const valorCalculado = Number(resumo.caixaAtual || 0);
-            const diferenca = Number((valorReal - valorCalculado).toFixed(2));
-            const possuiDivergencia = Math.abs(diferenca) > 0.01;
-            const batch = db.batch();
-            const caixaRef = db.collection("caixas").doc(caixaAtual.id);
-
-            batch.update(caixaRef, {
-              status: "FECHADO",
-              ativo: false,
-              valorCalculadoFechamento: valorCalculado,
-              valorFisicoFechamento: valorReal,
-              valorRealFechamento: valorReal,
-              divergenciaFechamento: diferenca,
-              fechamentoDivergente: possuiDivergencia,
-              observacaoFechamento: observacao,
-              fechadoPorId: usuarioLogado.id,
-              fechadoPorNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "",
-              fechadoEmTexto: new Date().toISOString(),
-              fechadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-              atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-            });
-
-            let solicitacaoDivergenciaId = "";
-
-            if (possuiDivergencia) {
-              const solicitacaoRef = db.collection("solicitacoes").doc();
-              solicitacaoDivergenciaId = solicitacaoRef.id;
-
-              batch.set(solicitacaoRef, {
-                tipo: "FECHAMENTO_CAIXA_DIVERGENTE",
-                tipoSolicitacao: "FECHAMENTO_CAIXA_DIVERGENTE",
-                origem: "CAIXA_ATUAL",
-                status: "PENDENTE",
-                valor: Math.abs(diferenca),
-                valorCalculado,
-                valorInformado: valorReal,
-                divergencia: diferenca,
-                observacao,
-                descricao: observacao || "Divergência no fechamento de caixa.",
-                usuarioId: usuarioLogado.id,
-                usuarioNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "",
-                vendedorId: usuarioLogado.id,
-                vendedorNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || usuarioLogado.email || "",
-                caixaId: caixaAtual.id,
-                clientePlataformaId: tenantId || null,
-                data: hojeISO(),
-                criadoEmTexto: new Date().toISOString(),
-                criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-              });
+            if (!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) {
+              throw new Error("Nucleo transacional de fechamento indisponivel.");
             }
 
-            await batch.commit();
+            const pendenciasFila = contarPendenciasFilaOfflineCaixa(caixaAtual.id);
+            if (pendenciasFila.pendentes > 0 || pendenciasFila.sincronizando > 0) {
+              throw new Error(`Existem ${pendenciasFila.pendentes + pendenciasFila.sincronizando} operacoes offline pendentes para este caixa.`);
+            }
 
-            await registrarLogLancamentoCaixa("FECHAMENTO_CAIXA", {
-              tipoLancamento: "FECHAMENTO",
-              valor: valorCalculado,
-              valorAnterior: valorCalculado,
-              valorNovo: valorReal,
-              motivo: observacao || (possuiDivergencia ? "Fechamento com divergência." : "Fechamento sem divergência."),
+            const resultadoFechamento = await window.IntegroCaixa.registrarFechamentoCaixaTransacional({
+              usuario: usuarioLogado,
+              clientePlataformaId: tenantId || usuarioLogado.clientePlataformaId || usuarioLogado.empresaId || usuarioLogado.tenantId || "",
               caixaId: caixaAtual.id,
-              lancamentoId: solicitacaoDivergenciaId
+              vendedorId: caixaAtual.vendedorId || usuarioLogado.id || usuarioLogado.usuarioId || "",
+              vendedorAuthUid: caixaAtual.vendedorAuthUid || usuarioLogado.authUid || usuarioLogado.uid || "",
+              valorInformadoCentavos: window.IntegroOperacional?.moedaParaCentavos?.(valorReal) ?? Math.round(Number(valorReal || 0) * 100),
+              justificativa: observacao,
+              filaOfflinePendente: pendenciasFila.pendentes,
+              operacaoLocalSincronizando: pendenciasFila.sincronizando > 0,
+              origem: "vendedor"
             });
 
             await carregarSolicitacoes();
@@ -8831,8 +8722,8 @@ async function verificarCaixaAbertoDiaAnterior() {
             aplicarBloqueioCaixaFechado();
             fecharDrawer();
 
-            alert(possuiDivergencia
-              ? "Caixa fechado com divergência registrada para análise."
+            alert(resultadoFechamento?.statusFechamento === "DIVERGENTE"
+              ? "Caixa fechado com divergencia registrada para analise."
               : "Caixa fechado com sucesso.");
           } catch (erro) {
             console.error("Erro ao fechar caixa:", erro);
@@ -8842,6 +8733,7 @@ async function verificarCaixaAbertoDiaAnterior() {
               botao.disabled = false;
               botao.innerText = "Confirmar fechamento";
             }
+            window.__integroFechamentoLocks.delete(lockKeyFechamento);
           }
         }
 
@@ -10541,16 +10433,16 @@ async function verificarCaixaAbertoDiaAnterior() {
   function tenant(){ return window.tenantId || usuario().clientePlataformaId || usuario().empresaId || usuario().tenantId || ""; }
   function userIds(){
     const u = usuario();
-    return [u.id, u.uid, u.usuarioId, u.userId].filter(Boolean).map(String);
+    return [u.id, u.uid, u.authUid, u.usuarioId, u.userId].filter(Boolean).map(String);
   }
   function esc(v){
     return String(v ?? "").replace(/[&<>'"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;","\"":"&quot;"}[m]));
   }
   function statusIndicacao(item){
-    return item.statusIndicacao || item.status || "RECEBIDA";
+    return window.IntegroIndicacoes?.normalizarStatusIndicacao?.(item.statusIndicacao || item.status) || item.statusIndicacao || item.status || "RECEBIDA";
   }
   function statusClasse(status){
-    const s = String(status || "").toUpperCase();
+    const s = window.IntegroIndicacoes?.normalizarStatusIndicacao?.(status) || String(status || "").toUpperCase();
     if (s === "CONVERTIDA") return ["#ecfdf5", "#15803d"];
     if (s === "EM_ATENDIMENTO" || s === "EM ATENDIMENTO" || s === "NEGOCIANDO" || s === "AGENDADO") return ["#fff7ed", "#c2410c"];
     if (s === "NAO_CONVERTIDA" || s === "NÃO CONVERTIDA" || s === "RECUSADA" || s === "INVALIDA" || s === "INVÁLIDA") return ["#fef2f2", "#b91c1c"];
@@ -10563,7 +10455,9 @@ async function verificarCaixaAbertoDiaAnterior() {
       item.vendedorDestinoId,
       item.vendedorId,
       item.vendedorResponsavelId,
-      item.usuarioId
+      item.usuarioId,
+      item.vendedorAuthUid,
+      item.vendedorUid
     ].filter(Boolean).map(String);
     return candidatos.some(id => ids.includes(id));
   }
@@ -10627,8 +10521,8 @@ async function verificarCaixaAbertoDiaAnterior() {
 
     const lista = window.indicacoesCache || [];
     const total = lista.length;
-    const convertidas = lista.filter(i => String(statusIndicacao(i)).toUpperCase() === "CONVERTIDA").length;
-    const novas = lista.filter(i => ["NOVA","RECEBIDA","ATRIBUIDA","ATRIBUÍDA"].includes(String(statusIndicacao(i)).toUpperCase())).length;
+    const convertidas = lista.filter(i => statusIndicacao(i) === "CONVERTIDA" && i.vendaId).length;
+    const novas = lista.filter(i => ["RECEBIDA","ATRIBUIDA"].includes(statusIndicacao(i))).length;
     const taxa = total ? Math.round((convertidas / total) * 100) : 0;
 
     resumoEl.innerHTML = `
@@ -11153,7 +11047,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         <span class="chevron">›</span>
       </div>
 
-      <div class="menu-item" data-modulo="caixa" onclick="trocarTela('caixa', this)">
+      <div class="menu-item" data-modulo="indicacoes" onclick="trocarTela('indicacoes', this)">
         <span class="menu-icon material-symbols-rounded">record_voice_over</span>
         <span class="menu-label">Indicações</span>
         <span class="chevron">›</span>
@@ -11323,8 +11217,14 @@ async function verificarCaixaAbertoDiaAnterior() {
         setTimeout(window.renderSolicitacoes, 0);
       }
 
-      if (idOriginal === "caixa" && typeof window.renderIndicacoes === "function") {
-        setTimeout(window.renderIndicacoes, 0);
+      if (idOriginal === "indicacoes" && typeof window.renderIndicacoes === "function") {
+        setTimeout(function () {
+          if (typeof window.carregarIndicacoes === "function") {
+            window.carregarIndicacoes().then(window.renderIndicacoes).catch(window.renderIndicacoes);
+          } else {
+            window.renderIndicacoes();
+          }
+        }, 0);
       }
 
       if (typeof window.toggleSidebar === "function") {

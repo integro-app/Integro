@@ -1,0 +1,49 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "lancamentos_financeiros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lancamentos_financeiros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "tipoLancamento", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "lancamentos_financeiros",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "caixaId", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "caixas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "indicacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorDestinoId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

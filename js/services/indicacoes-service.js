@@ -36,12 +36,16 @@
   }
 
   function normalizarStatusIndicacao(valor) {
-    return texto(valor || "RECEBIDA")
+    const status = texto(valor || "RECEBIDA")
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
       .toUpperCase()
       .replace(/[^A-Z0-9]+/g, "_")
       .replace(/^_+|_+$/g, "");
+    if (status === "NOVA") return "RECEBIDA";
+    if (status === "EM_CONTATO" || status === "NEGOCIANDO" || status === "AGENDADO") return "EM_ATENDIMENTO";
+    if (status === "NAO_CONVERTIDO") return "NAO_CONVERTIDA";
+    return status;
   }
 
   function normalizarTelefoneIndicacao(valor) {
@@ -102,12 +106,12 @@
   }
 
   function clienteTemVendaAtiva(cliente = {}) {
-    const status = normalizarStatusIndicacao(cliente.statusCliente || cliente.status || "");
-    const saldo = Number(cliente.saldoDevedor || cliente.saldoAtual || cliente.valorAtual || 0);
+    const saldoCentavos = Number.isInteger(cliente.saldoDevedorCentavos)
+      ? cliente.saldoDevedorCentavos
+      : Math.round(Number(cliente.saldoDevedor || cliente.saldoAtual || cliente.valorAtual || 0) * 100);
     return cliente.possuiVendaAtiva === true ||
       Boolean(cliente.vendaAtivaId) ||
-      saldo > 0 ||
-      STATUS_CLIENTE_BLOQUEIO_VENDA.includes(status);
+      saldoCentavos > 0;
   }
 
   function validarNovaIndicacao({ cliente = null, indicacoes = [], usuario = {}, permitirRedistribuicao = false }) {
@@ -141,6 +145,7 @@
       origem: "INDICACAO",
       possuiVendaAtiva: false,
       vendaAtivaId: null,
+      saldoDevedorCentavos: 0,
       saldoDevedor: 0,
       ativo: true
     };
@@ -227,6 +232,7 @@
     if (telefoneNormalizado) {
       consultas.push(base.where("telefoneNormalizado", "==", telefoneNormalizado).limit(1).get());
       consultas.push(base.where("telefonesNormalizados", "array-contains", telefoneNormalizado).limit(1).get());
+      consultas.push(base.where("telefonePrincipal", "==", entrada.telefonePrincipal || entrada.telefone || telefoneNormalizado).limit(1).get());
     }
 
     for (const promessa of consultas) {
@@ -244,10 +250,11 @@
     const snap = await db.collection("indicacoes")
       .where("clientePlataformaId", "==", tenant)
       .where("clienteOperacionalId", "==", clienteOperacionalId)
-      .where("statusIndicacao", "in", STATUS_ATIVOS)
-      .limit(5)
+      .limit(30)
       .get();
-    return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return snap.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(item => STATUS_ATIVOS.includes(normalizarStatusIndicacao(item.statusIndicacao || item.status)));
   }
 
   async function criarOuAtualizarClienteLead(entrada = {}) {
@@ -350,6 +357,7 @@
   }
 
   function marcarIndicacaoNaoConvertida(indicacaoId, motivo, usuario = {}) {
+    if (!texto(motivo)) throw new Error("Motivo obrigatÃ³rio para nÃ£o conversÃ£o.");
     const motivoFinal = MOTIVOS_NAO_CONVERSAO.includes(normalizarStatusIndicacao(motivo)) ? normalizarStatusIndicacao(motivo) : "OUTRO";
     const agora = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
     return atualizarStatusIndicacao(indicacaoId, {
@@ -361,10 +369,13 @@
   }
 
   function marcarIndicacaoRecusada(indicacaoId, motivo, usuario = {}) {
+    if (!texto(motivo)) throw new Error("Motivo obrigatÃ³rio para recusa.");
+    const agora = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
     return atualizarStatusIndicacao(indicacaoId, {
       statusIndicacao: "RECUSADA",
       status: "RECUSADA",
-      motivoRecusa: texto(motivo || "OUTRO")
+      motivoRecusa: texto(motivo || "OUTRO"),
+      dataRecusa: agora
     }, usuario, "INDICACAO_RECUSADA");
   }
 
@@ -393,7 +404,9 @@
   function calcularDashboardIndicacoes(indicacoes = []) {
     const total = indicacoes.length;
     const contar = status => indicacoes.filter(i => normalizarStatusIndicacao(i.statusIndicacao || i.status) === status).length;
-    const convertidas = contar("CONVERTIDA");
+    const convertidas = indicacoes.filter(i =>
+      normalizarStatusIndicacao(i.statusIndicacao || i.status) === "CONVERTIDA" && texto(i.vendaId)
+    ).length;
     return {
       recebidas: contar("RECEBIDA"),
       atribuidas: contar("ATRIBUIDA"),
@@ -441,8 +454,10 @@
       atual.recebidas++;
       if (status === "EM_ATENDIMENTO") atual.emAtendimento++;
       if (status === "CONVERTIDA") {
-        atual.convertidas++;
-        atual.valorConvertidoCentavos += Math.round(Number(item.valorVendaCentavos || 0));
+        if (texto(item.vendaId)) {
+          atual.convertidas++;
+          atual.valorConvertidoCentavos += Math.round(Number(item.valorVendaCentavos || 0));
+        }
       }
       if (status === "NAO_CONVERTIDA") atual.naoConvertidas++;
       if (status === "RECUSADA") atual.recusadas++;

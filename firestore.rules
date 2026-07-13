@@ -1,225 +1,649 @@
 rules_version = '2';
 
-/*
- * ÍNTEGRO — regras iniciais de segurança.
- *
- * NÃO PUBLICAR sem antes:
- * 1. popular custom claims role e clientePlataformaId via backend confiável; ou
- * 2. migrar usuários para documentos /usuarios/{auth.uid}.
- *
- * O cadastro atual usa IDs aleatórios em parte dos usuários. Regras Firestore
- * não podem buscar um usuário por campo authUid, por isso claims são a fonte
- * confiável desta primeira versão.
- */
 service cloud.firestore {
   match /databases/{database}/documents {
-    function autenticado() {
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    function perfil() {
-      return autenticado() ? request.auth.token.role : null;
+    function currentUid() {
+      return isAuthenticated() ? request.auth.uid : "";
     }
 
-    function tenant() {
-      return autenticado() ? request.auth.token.clientePlataformaId : null;
+    function userPath() {
+      return /databases/$(database)/documents/usuarios/$(currentUid());
     }
 
-    function masterGlobal() {
-      return autenticado() && perfil() == "master_global";
+    function userDoc() {
+      return isAuthenticated() && exists(userPath()) ? get(userPath()).data : {};
     }
 
-    function masterLocal() {
-      return autenticado() && perfil() == "master_local";
+    function userTenantId() {
+      return userDoc().clientePlataformaId;
     }
 
-    function supervisor() {
-      return autenticado() && perfil() == "supervisor";
+    function hasTenant() {
+      return userTenantId() is string && userTenantId().size() > 0;
     }
 
-    function vendedor() {
-      return autenticado() && perfil() == "vendedor";
+    function resourceTenantId() {
+      return resource.data.clientePlataformaId;
     }
 
-    function financeiro() {
-      return autenticado() && perfil() == "financeiro";
+    function requestTenantId() {
+      return request.resource.data.clientePlataformaId;
     }
 
-    function tenantValido(valor) {
-      return masterGlobal() || (tenant() != null && valor == tenant());
+    function isSameTenantRead() {
+      return hasTenant() && resourceTenantId() == userTenantId();
     }
 
-    function tenantDoRecurso() {
-      return tenantValido(resource.data.clientePlataformaId);
+    function isSameTenantWrite() {
+      return hasTenant() && requestTenantId() == userTenantId();
     }
 
-    function tenantDaEscrita() {
-      return tenantValido(request.resource.data.clientePlataformaId);
-    }
-
-    function tenantImutavel() {
+    function isTenantImmutable() {
       return !("clientePlataformaId" in resource.data) ||
         request.resource.data.clientePlataformaId == resource.data.clientePlataformaId;
     }
 
-    function proprioVendedor(dados) {
-      return dados.vendedorAuthUid == request.auth.uid ||
-        dados.authUid == request.auth.uid ||
-        (request.auth.token.usuarioId != null &&
-          (dados.vendedorId == request.auth.token.usuarioId ||
-           dados.usuarioId == request.auth.token.usuarioId));
+    function role() {
+      return userDoc().tipoUsuario;
     }
 
-    function equipePermitida(dados) {
-      return supervisor() &&
-        request.auth.token.equipesIds is list &&
-        dados.equipeId in request.auth.token.equipesIds;
+    function cargo() {
+      return userDoc().cargoChave;
     }
 
-    function pagamentoIdValido(dados, pagamentoId) {
-      return pagamentoId ==
-        "pg_" + dados.clientePlataformaId + "_" + dados.caixaId + "_" +
-        dados.vendaId + "_" + dados.parcelaId;
+    function isMasterGlobal() {
+      return role() == "master_global";
     }
 
-    match /usuarios/{usuarioId} {
-      allow read: if masterGlobal() ||
-        (autenticado() && resource.data.authUid == request.auth.uid) ||
-        (masterLocal() && tenantDoRecurso()) ||
-        (supervisor() && tenantDoRecurso() && equipePermitida(resource.data));
-
-      allow create: if masterGlobal() ||
-        (masterLocal() && tenantDaEscrita() &&
-          request.resource.data.tipoUsuario != "master_global");
-
-      allow update: if masterGlobal() ||
-        (masterLocal() && tenantDoRecurso() && tenantDaEscrita() && tenantImutavel() &&
-          request.resource.data.authUid == resource.data.authUid &&
-          request.resource.data.tipoUsuario != "master_global") ||
-        (autenticado() && resource.data.authUid == request.auth.uid &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"]));
-
-      allow delete: if false;
+    function isUsuarioIntegro() {
+      return role() == "usuario_integro";
     }
 
-    match /{colecao}/{documentoId} {
-      allow read: if colecao in [
-        "clientes", "vendas", "parcelas", "caixas",
-        "solicitacoes", "historicoCobrancas", "notificacoes",
-        "indicacoes", "categoriasMovimentacao", "logs"
-      ] && (
-        masterGlobal() ||
-        ((masterLocal() || financeiro()) && tenantDoRecurso()) ||
-        (supervisor() && tenantDoRecurso() && equipePermitida(resource.data)) ||
-        (vendedor() && tenantDoRecurso() && proprioVendedor(resource.data))
+    function isMasterLocal() {
+      return role() == "master_local";
+    }
+
+    function isGerente() {
+      return role() == "gerente";
+    }
+
+    function isSupervisor() {
+      return role() == "supervisor" || cargo() == "supervisor";
+    }
+
+    function isFinanceiro() {
+      return role() == "financeiro" || cargo() == "financeiro";
+    }
+
+    function isAuditor() {
+      return role() == "auditor" || cargo() == "auditor";
+    }
+
+    function isVendedor() {
+      return role() == "vendedor" || cargo() == "vendedor";
+    }
+
+    function isCaptador() {
+      return role() == "captador" || cargo() == "captador";
+    }
+
+    function isActiveUser() {
+      return isAuthenticated() &&
+        exists(userPath()) &&
+        userDoc().authUid == currentUid() &&
+        !(userDoc().status in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        userDoc().acessoLiberado == true;
+    }
+
+    function permMap() {
+      return userDoc().permissoes;
+    }
+
+    function hasPermission(permissionKey) {
+      return isMasterGlobal() || isUsuarioIntegro() || isMasterLocal() ||
+        (permMap()[permissionKey] == true) ||
+        (permMap().financeiro[permissionKey] == true) ||
+        (permMap().caixas[permissionKey] == true) ||
+        (permMap().indicacoes[permissionKey] == true) ||
+        (permMap().solicitacoes[permissionKey] == true);
+    }
+
+    function userEquipeIds() {
+      return userDoc().equipesIds is list ? userDoc().equipesIds :
+        (userDoc().equipeIds is list ? userDoc().equipeIds :
+        (userDoc().equipeId is string ? [userDoc().equipeId] : []));
+    }
+
+    function isTeamAllowed(data) {
+      return isMasterGlobal() || isUsuarioIntegro() || isMasterLocal() ||
+        (data.equipeId is string && data.equipeId in userEquipeIds());
+    }
+
+    function isOwnSellerData(data) {
+      return data.vendedorAuthUid == currentUid() ||
+        data.vendedorUid == currentUid() ||
+        data.uid == currentUid() ||
+        data.usuarioId == currentUid() ||
+        data.vendedorId == currentUid() ||
+        data.criadoPorId == currentUid();
+    }
+
+    function isOperationalReader(data) {
+      return isActiveUser() && (
+        isMasterGlobal() ||
+        isUsuarioIntegro() ||
+        (isSameTenantRead() && (
+          isMasterLocal() ||
+          isGerente() ||
+          isFinanceiro() ||
+          isAuditor() ||
+          (isSupervisor() && isTeamAllowed(data)) ||
+          (isVendedor() && isOwnSellerData(data))
+        ))
       );
-
-      /*
-       * Escritas monetárias continuam permitidas apenas no escopo autenticado
-       * atual para compatibilidade. A próxima etapa deve restringi-las aos
-       * IDs determinísticos e invariantes das transações.
-       */
-      allow create: if colecao in [
-        "clientes", "vendas", "parcelas", "caixas",
-        "solicitacoes", "historicoCobrancas", "notificacoes",
-        "indicacoes", "logs"
-      ] && tenantDaEscrita() && (
-        masterGlobal() || masterLocal() || financeiro() || supervisor() ||
-        (vendedor() && proprioVendedor(request.resource.data))
-      );
-
-      allow update: if colecao in [
-        "clientes", "vendas", "parcelas", "caixas",
-        "solicitacoes", "historicoCobrancas", "notificacoes",
-        "indicacoes"
-      ] && tenantDoRecurso() && tenantDaEscrita() && tenantImutavel() && (
-        masterGlobal() || masterLocal() || financeiro() ||
-        (supervisor() && equipePermitida(resource.data)) ||
-        (vendedor() && proprioVendedor(resource.data) &&
-          request.resource.data.vendedorAuthUid == resource.data.vendedorAuthUid)
-      );
-
-      allow delete: if false;
     }
 
-    match /pagamentos/{pagamentoId} {
-      allow read: if masterGlobal() ||
-        ((masterLocal() || financeiro()) && tenantDoRecurso()) ||
-        (supervisor() && tenantDoRecurso() && equipePermitida(resource.data)) ||
-        (vendedor() && tenantDoRecurso() && proprioVendedor(resource.data));
+    function isOperationalCreator(data) {
+      return isActiveUser() && (
+        isMasterGlobal() ||
+        isUsuarioIntegro() ||
+        (isSameTenantWrite() && (
+          isMasterLocal() ||
+          isGerente() ||
+          isFinanceiro() ||
+          (isSupervisor() && isTeamAllowed(data)) ||
+          (isVendedor() && isOwnSellerData(data))
+        ))
+      );
+    }
 
-      allow create: if tenantDaEscrita() &&
-        pagamentoIdValido(request.resource.data, pagamentoId) &&
-        request.resource.data.valorCentavos is int &&
-        request.resource.data.valorCentavos > 0 &&
+    function unchanged(keys) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(keys);
+    }
+
+    function criticalFinancialImmutable() {
+      return unchanged([
+        "clientePlataformaId", "caixaId", "vendedorId", "vendedorAuthUid",
+        "vendaId", "pagamentoId", "origemId", "operacaoId", "criadoEm",
+        "criadoPorId", "tipoLancamento", "natureza", "valorCentavos",
+        "fechamentoId", "reaberturaId", "dataOperacional", "equipeId"
+      ]);
+    }
+
+    function hasOnlyStatusTransition(fromList, toList) {
+      return resource.data.status in fromList &&
+        request.resource.data.status in toList;
+    }
+
+    function hasOnlyStatusLancamentoTransition() {
+      return criticalFinancialImmutable() &&
+        request.resource.data.statusLancamento in ["CONFIRMADO", "ESTORNADO", "CANCELADO"] &&
         (
-          masterGlobal() || masterLocal() || financeiro() ||
-          (supervisor() && equipePermitida(request.resource.data)) ||
-          (vendedor() && proprioVendedor(request.resource.data))
+          (resource.data.statusLancamento == "CONFIRMADO" && request.resource.data.statusLancamento == "ESTORNADO") ||
+          (resource.data.statusLancamento == "PENDENTE" && request.resource.data.statusLancamento in ["CONFIRMADO", "CANCELADO"])
         );
-
-      allow update: if tenantDoRecurso() && tenantDaEscrita() && tenantImutavel() &&
-        pagamentoIdValido(request.resource.data, pagamentoId) &&
-        request.resource.data.valorCentavos is int &&
-        request.resource.data.valorCentavos > 0 &&
-        request.resource.data.caixaId == resource.data.caixaId &&
-        request.resource.data.vendaId == resource.data.vendaId &&
-        request.resource.data.parcelaId == resource.data.parcelaId &&
-        request.resource.data.vendedorAuthUid == resource.data.vendedorAuthUid &&
-        (
-          masterGlobal() || masterLocal() || financeiro() ||
-          (supervisor() && equipePermitida(resource.data)) ||
-          (vendedor() && proprioVendedor(resource.data))
-        );
-
-      allow delete: if false;
     }
 
-    match /{colecao}/{documentoId} {
-      allow read: if colecao in [
-        "cargos", "equipes", "permissoes_cargo", "categoriasMovimentacao",
-        "categoriasFinanceiras", "formasPagamento", "fornecedores",
-        "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
-      ] && (
-        masterGlobal() ||
-        ((masterLocal() || financeiro()) && tenantDoRecurso()) ||
-        (supervisor() && tenantDoRecurso()) ||
-        (vendedor() && tenantDoRecurso() && colecao == "categoriasMovimentacao")
-      );
-
-      allow create: if colecao in [
-        "cargos", "equipes", "permissoes_cargo", "categoriasMovimentacao",
-        "categoriasFinanceiras", "formasPagamento", "fornecedores",
-        "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
-      ] && tenantDaEscrita() && (
-        masterGlobal() || masterLocal() ||
-        (financeiro() && colecao in [
-          "categoriasFinanceiras", "formasPagamento", "fornecedores",
-          "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
-        ])
-      );
-
-      allow update: if colecao in [
-        "cargos", "equipes", "permissoes_cargo", "categoriasMovimentacao",
-        "categoriasFinanceiras", "formasPagamento", "fornecedores",
-        "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
-      ] && tenantDoRecurso() && tenantDaEscrita() && tenantImutavel() && (
-        masterGlobal() || masterLocal() ||
-        (financeiro() && colecao in [
-          "categoriasFinanceiras", "formasPagamento", "fornecedores",
-          "contasPagar", "pagamentosContas", "recorrenciasFinanceiras"
-        ])
-      );
-
-      allow delete: if false;
-    }
-
-    match /{colecao}/{documentoId} {
-      allow read, write: if masterGlobal() && colecao in [
-        "clientes_integro", "departamentos_integro", "planos",
-        "configuracoes_globais"
+    function validTipoLancamento(tipo) {
+      return tipo in [
+        "VENDA", "PAGAMENTO", "INGRESSO", "GASTO", "RETIRADA",
+        "RECOLHIMENTO", "AJUSTE", "DIVERGENCIA_ACEITA",
+        "REGULARIZACAO", "ESTORNO"
       ];
+    }
+
+    function validNatureza(natureza) {
+      return natureza in ["CREDITO", "DEBITO"];
+    }
+
+    function validStatusLancamento(status) {
+      return status in ["CONFIRMADO", "PENDENTE", "ESTORNADO", "CANCELADO"];
+    }
+
+    function canReadFinance(data) {
+      return isActiveUser() && (
+        isMasterGlobal() ||
+        isUsuarioIntegro() ||
+        (isSameTenantRead() && (
+          isMasterLocal() ||
+          isAuditor() ||
+          (isFinanceiro() && hasPermission("podeVerLedgerFinanceiro")) ||
+          (isSupervisor() && hasPermission("podeVerLedgerFinanceiro") && isTeamAllowed(data))
+        ))
+      );
+    }
+
+    function canCreateLedger(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        validTipoLancamento(data.tipoLancamento) &&
+        validNatureza(data.natureza) &&
+        validStatusLancamento(data.statusLancamento) &&
+        data.valorCentavos is int &&
+        data.valorCentavos != 0 &&
+        data.operacaoId is string &&
+        data.origemId is string &&
+        (
+          isMasterLocal() ||
+          isUsuarioIntegro() ||
+          isMasterGlobal() ||
+          (isFinanceiro() && hasPermission("podeVerLedgerFinanceiro")) ||
+          (isSupervisor() && hasPermission("podeVerLedgerFinanceiro") && isTeamAllowed(data)) ||
+          (
+            isVendedor() &&
+            isOwnSellerData(data) &&
+            data.tipoLancamento in ["VENDA", "PAGAMENTO"] &&
+            !(data.tipoLancamento in ["AJUSTE", "REGULARIZACAO", "ESTORNO", "DIVERGENCIA_ACEITA"])
+          )
+        );
+    }
+
+    function canUpdateLedger() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        hasOnlyStatusLancamentoTransition() &&
+        (
+          isMasterLocal() ||
+          isUsuarioIntegro() ||
+          isMasterGlobal() ||
+          (isFinanceiro() && hasPermission("podeEstornarLancamento")) ||
+          (isSupervisor() && hasPermission("podeEstornarLancamento") && isTeamAllowed(resource.data))
+        );
+    }
+
+    function caixaStatusTransitionAllowed() {
+      return (resource.data.status == "ABERTO" && request.resource.data.status in ["FECHADO", "DIVERGENTE"]) ||
+        (resource.data.status == "FECHADO" && request.resource.data.status == "REABERTO") ||
+        (resource.data.status == "DIVERGENTE" && request.resource.data.status == "REABERTO") ||
+        (resource.data.status == "REABERTO" && request.resource.data.status in ["FECHADO", "DIVERGENTE"]);
+    }
+
+    function caixaImmutable() {
+      return unchanged(["clientePlataformaId", "vendedorId", "vendedorAuthUid", "equipeId", "dataOperacional", "caixaId", "criadoEm"]);
+    }
+
+    function canReadCaixa(data) {
+      return isOperationalReader(data) ||
+        (isFinanceiro() && isSameTenantRead() && hasPermission("podeVerReconciliacao")) ||
+        (isAuditor() && isSameTenantRead());
+    }
+
+    function canCreateCaixa(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.status == "ABERTO" &&
+        data.dataOperacional is string &&
+        data.saldoInicialCentavos is int &&
+        data.saldoAtualCentavos is int &&
+        (
+          isMasterLocal() ||
+          (isVendedor() && isOwnSellerData(data) && data.vendedorAuthUid == currentUid())
+        );
+    }
+
+    function canUpdateCaixa() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        caixaImmutable() &&
+        caixaStatusTransitionAllowed() &&
+        (
+          (resource.data.status in ["ABERTO", "REABERTO"] && request.resource.data.status in ["FECHADO", "DIVERGENTE"] &&
+            (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)) || (isSupervisor() && isTeamAllowed(resource.data)))) ||
+          (request.resource.data.status == "REABERTO" &&
+            (isMasterLocal() || (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(resource.data)) || (isFinanceiro() && hasPermission("podeReabrirCaixa"))))
+        );
+    }
+
+    function canCreateFechamento(data, fechamentoId) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.caixaId is string &&
+        fechamentoId == "fechamento_" + data.caixaId &&
+        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.clientePlataformaId == userTenantId() &&
+        data.vendedorId == get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.vendedorId &&
+        data.statusFechamento in ["FECHADO", "DIVERGENTE"] &&
+        data.caixaFinalEsperadoCentavos is int &&
+        data.caixaFinalInformadoCentavos is int &&
+        data.diferencaCentavos is int &&
+        data.snapshotAuditoria is map &&
+        (
+          isMasterLocal() ||
+          (isVendedor() && isOwnSellerData(data)) ||
+          (isSupervisor() && isTeamAllowed(data))
+        );
+    }
+
+    function fechamentoOriginalImmutable() {
+      return unchanged([
+        "clientePlataformaId", "caixaId", "vendedorId", "dataOperacional",
+        "caixaFinalEsperadoCentavos", "caixaFinalInformadoCentavos",
+        "valorEsperadoCentavos", "valorInformadoCentavos", "diferencaCentavos",
+        "snapshotAuditoria", "totalVendasCentavos", "totalPagamentosCentavos",
+        "totalIngressosCentavos", "totalGastosCentavos", "totalRetiradasCentavos",
+        "totalRecolhimentosCentavos", "totalAjustesCentavos"
+      ]);
+    }
+
+    function canUpdateFechamento() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        fechamentoOriginalImmutable() &&
+        (
+          isMasterLocal() ||
+          (isSupervisor() && isTeamAllowed(resource.data) && (hasPermission("podeReabrirCaixa") || hasPermission("podeTratarDivergencia"))) ||
+          (isFinanceiro() && (hasPermission("podeRegularizarCaixa") || hasPermission("podeAceitarDivergenciaFinanceira")))
+        );
+    }
+
+    function canCreateReabertura(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.caixaId is string &&
+        data.fechamentoId is string &&
+        data.motivo is string &&
+        data.motivo.size() > 3 &&
+        data.statusAnterior in ["FECHADO", "DIVERGENTE"] &&
+        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+        exists(/databases/$(database)/documents/fechamentos_caixa/$(data.fechamentoId)) &&
+        !isVendedor() &&
+        (
+          isMasterLocal() ||
+          (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(data)) ||
+          (isFinanceiro() && hasPermission("podeReabrirCaixa"))
+        );
+    }
+
+    function canCreateTratamento(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.caixaId is string &&
+        data.fechamentoId is string &&
+        data.justificativa is string &&
+        data.justificativa.size() > 3 &&
+        data.decisao in ["ACEITAR_DIVERGENCIA", "SOLICITAR_REGULARIZACAO", "REABRIR_CAIXA"] &&
+        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.status == "DIVERGENTE" &&
+        (
+          isMasterLocal() ||
+          (isSupervisor() && hasPermission("podeTratarDivergencia") && isTeamAllowed(data)) ||
+          (isFinanceiro() && hasPermission("podeTratarDivergencia"))
+        );
+    }
+
+    function canCreateHistorico(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.caixaId is string &&
+        data.statusNovo is string &&
+        (
+          isMasterLocal() ||
+          (isSupervisor() && isTeamAllowed(data)) ||
+          (isFinanceiro() && (hasPermission("podeReabrirCaixa") || hasPermission("podeRegularizarCaixa")))
+        );
+    }
+
+    function canCreateVenda(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.caixaId is string &&
+        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.status == "ABERTO" &&
+        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.clientePlataformaId == userTenantId() &&
+        (
+          isMasterLocal() ||
+          (isVendedor() && isOwnSellerData(data) && get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.vendedorAuthUid == currentUid())
+        );
+    }
+
+    function canCreatePagamento(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.caixaId is string &&
+        data.vendaId is string &&
+        data.parcelaId is string &&
+        data.valorCentavos is int &&
+        data.valorCentavos > 0 &&
+        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.status == "ABERTO" &&
+        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.clientePlataformaId == userTenantId() &&
+        exists(/databases/$(database)/documents/vendas/$(data.vendaId)) &&
+        exists(/databases/$(database)/documents/parcelas/$(data.parcelaId)) &&
+        get(/databases/$(database)/documents/vendas/$(data.vendaId)).data.clientePlataformaId == userTenantId() &&
+        get(/databases/$(database)/documents/parcelas/$(data.parcelaId)).data.clientePlataformaId == userTenantId() &&
+        (
+          isMasterLocal() ||
+          (isVendedor() && isOwnSellerData(data) && get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.vendedorAuthUid == currentUid())
+        );
+    }
+
+    function canUpdatePagamento() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        unchanged(["clientePlataformaId", "caixaId", "vendaId", "parcelaId", "operacaoId", "valorCentavos", "criadoEm"]) &&
+        (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)));
+    }
+
+    function canUpdateVenda() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        unchanged(["clientePlataformaId", "caixaId", "vendedorId", "vendedorAuthUid", "operacaoId", "valorEmprestadoCentavos", "valorTotalVendaCentavos", "criadoEm"]) &&
+        (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)));
+    }
+
+    function canUpdateParcela() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        unchanged(["clientePlataformaId", "vendaId", "clienteId", "clienteOperacionalId", "valorCentavos", "valorParcelaCentavos", "criadoEm"]) &&
+        (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)));
+    }
+
+    function canCreateSolicitacao(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.status == "PENDENTE" &&
+        data.valorCentavos is int &&
+        data.criadoPorId in [currentUid(), userDoc().id] &&
+        (isMasterLocal() || isSupervisor() || isFinanceiro() || isVendedor());
+    }
+
+    function canUpdateSolicitacao() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        unchanged(["clientePlataformaId", "tipo", "tipoSolicitacao", "valorCentavos", "valor", "criadoPorId", "vendedorId", "vendedorAuthUid", "criadoEm"]) &&
+        resource.data.status == "PENDENTE" &&
+        request.resource.data.status in ["APROVADA", "RECUSADA", "CANCELADA"] &&
+        (
+          isMasterLocal() ||
+          (isSupervisor() && isTeamAllowed(resource.data) && hasPermission("aprovar")) ||
+          (isFinanceiro() && hasPermission("aprovar"))
+        );
+    }
+
+    function canCreateIndicacao(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.clienteOperacionalId is string &&
+        exists(/databases/$(database)/documents/clientes_operacionais/$(data.clienteOperacionalId)) &&
+        get(/databases/$(database)/documents/clientes_operacionais/$(data.clienteOperacionalId)).data.clientePlataformaId == userTenantId() &&
+        (isMasterLocal() || (isCaptador() && hasPermission("criarIndicacao")));
+    }
+
+    function isIndicacaoDoVendedor(data) {
+      return data.vendedorDestinoId == currentUid() ||
+        data.vendedorResponsavelId == currentUid() ||
+        data.vendedorId == currentUid() ||
+        data.usuarioId == currentUid() ||
+        data.vendedorAuthUid == currentUid() ||
+        data.vendedorUid == currentUid();
+    }
+
+    function canReadIndicacao(data) {
+      return isActiveUser() && isSameTenantRead() &&
+        (isMasterLocal() || isFinanceiro() || isAuditor() || (isSupervisor() && isTeamAllowed(data)) || (isVendedor() && isIndicacaoDoVendedor(data)) || isCaptador());
+    }
+
+    function canUpdateIndicacao() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        unchanged(["clientePlataformaId", "clienteOperacionalId", "captadorId", "criadoEm"]) &&
+        (
+          isMasterLocal() ||
+          (isSupervisor() && hasPermission("redistribuirIndicacao") && isTeamAllowed(resource.data)) ||
+          (isVendedor() && isIndicacaoDoVendedor(resource.data) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "statusIndicacao", "motivo", "motivoNaoConversao", "dataAtendimento", "dataNaoConversao", "atualizadoEm"]))
+        );
+    }
+
+    function canUpdateClienteOperacional() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        unchanged(["clientePlataformaId", "criadoEm"]) &&
+        (
+          isMasterLocal() ||
+          isFinanceiro() ||
+          (isSupervisor() && isTeamAllowed(resource.data)) ||
+          (isVendedor() && isOwnSellerData(resource.data) &&
+            unchanged(["saldoDevedor", "saldoDevedorCentavos", "possuiVendaAtiva", "vendaAtivaId"]))
+        );
+    }
+
+    function canCreateLog(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        data.tipoAcao is string &&
+        data.tipoAcao.size() > 2 &&
+        (data.usuarioAuthUid == currentUid() || data.usuarioId in [currentUid(), userDoc().id] || data.usuarioId == null);
+    }
+
+    match /usuarios/{uid} {
+      allow read: if isActiveUser() && (
+        isMasterGlobal() ||
+        currentUid() == uid ||
+        (isSameTenantRead() && (isMasterLocal() || isGerente() || isSupervisor()))
+      );
+      allow create: if isAuthenticated() && currentUid() == uid &&
+        request.resource.data.authUid == currentUid() &&
+        request.resource.data.acessoLiberado == false;
+      allow update: if isActiveUser() && (
+        isMasterGlobal() ||
+        (currentUid() == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"])) ||
+        (isMasterLocal() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() && resource.data.tipoUsuario != "master_global")
+      );
+      allow delete: if false;
+    }
+
+    match /lancamentos_financeiros/{id} {
+      allow read: if canReadFinance(resource.data);
+      allow create: if canCreateLedger(request.resource.data);
+      allow update: if canUpdateLedger();
+      allow delete: if false;
+    }
+
+    match /caixas/{id} {
+      allow read: if canReadCaixa(resource.data);
+      allow create: if canCreateCaixa(request.resource.data);
+      allow update: if canUpdateCaixa();
+      allow delete: if false;
+    }
+
+    match /fechamentos_caixa/{id} {
+      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow create: if canCreateFechamento(request.resource.data, id);
+      allow update: if canUpdateFechamento();
+      allow delete: if false;
+    }
+
+    match /reaberturas_caixa/{id} {
+      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow create: if canCreateReabertura(request.resource.data);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /tratamentos_divergencia_caixa/{id} {
+      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow create: if canCreateTratamento(request.resource.data);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /historico_estados_caixa/{id} {
+      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow create: if canCreateHistorico(request.resource.data);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /pagamentos/{id} {
+      allow read: if isOperationalReader(resource.data);
+      allow create: if canCreatePagamento(request.resource.data);
+      allow update: if canUpdatePagamento();
+      allow delete: if false;
+    }
+
+    match /vendas/{id} {
+      allow read: if isOperationalReader(resource.data);
+      allow create: if canCreateVenda(request.resource.data);
+      allow update: if canUpdateVenda();
+      allow delete: if false;
+    }
+
+    match /parcelas/{id} {
+      allow read: if isOperationalReader(resource.data);
+      allow create: if isOperationalCreator(request.resource.data);
+      allow update: if canUpdateParcela();
+      allow delete: if false;
+    }
+
+    match /solicitacoes/{id} {
+      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow create: if canCreateSolicitacao(request.resource.data);
+      allow update: if canUpdateSolicitacao();
+      allow delete: if false;
+    }
+
+    match /indicacoes/{id} {
+      allow read: if canReadIndicacao(resource.data);
+      allow create: if canCreateIndicacao(request.resource.data);
+      allow update: if canUpdateIndicacao();
+      allow delete: if false;
+    }
+
+    match /clientes_operacionais/{id} {
+      allow read: if isOperationalReader(resource.data) || isCaptador();
+      allow create: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isCaptador() || isVendedor());
+      allow update: if canUpdateClienteOperacional();
+      allow delete: if false;
+    }
+
+    match /clientes/{id} {
+      allow read: if isOperationalReader(resource.data);
+      allow create: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isVendedor() || isCaptador());
+      allow update: if canUpdateClienteOperacional();
+      allow delete: if false;
+    }
+
+    match /logs/{id} {
+      allow read: if isActiveUser() && isSameTenantRead() &&
+        (isMasterLocal() || isAuditor() || isFinanceiro() || (isSupervisor() && isTeamAllowed(resource.data)));
+      allow create: if canCreateLog(request.resource.data);
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /notificacoes/{id} {
+      allow read: if isOperationalReader(resource.data);
+      allow create, update: if isOperationalCreator(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /cargos/{id} {
+      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
+      allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isUsuarioIntegro());
+      allow delete: if false;
+    }
+
+    match /equipes/{id} {
+      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
+      allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isGerente());
+      allow delete: if false;
+    }
+
+    match /permissoes_cargo/{id} {
+      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
+      allow create, update: if isActiveUser() && isSameTenantWrite() && isMasterLocal();
+      allow delete: if false;
+    }
+
+    match /categoriasMovimentacao/{id} {
+      allow read: if isActiveUser() && isSameTenantRead();
+      allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isFinanceiro());
+      allow delete: if false;
     }
 
     match /{document=**} {

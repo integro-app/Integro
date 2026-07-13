@@ -663,9 +663,7 @@ const FirestoreService = {
   // ADICIONAR DIAS EM DATA ISO
   // ===============================
   adicionarDiasDataVenda(dataISO, dias) {
-    const data = new Date(dataISO + "T00:00:00");
-    data.setDate(data.getDate() + Number(dias || 0));
-    return data.toISOString().split("T")[0];
+    return window.IntegroOperacional?.adicionarDiasSP?.(dataISO, dias) || dataISO;
   },
 
   // ===============================

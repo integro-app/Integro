@@ -1,31 +1,64 @@
 rules_version = '2';
 
-/*
- * Caminho obrigatório para novos anexos:
- * /tenants/{clientePlataformaId}/{categoria}/{arquivo}
- *
- * Requer custom claims clientePlataformaId e role, emitidas por backend.
- */
 service firebase.storage {
   match /b/{bucket}/o {
-    function autenticado() {
+    function isAuthenticated() {
       return request.auth != null;
     }
 
-    function masterGlobal() {
-      return autenticado() && request.auth.token.role == "master_global";
+    function userDoc() {
+      return isAuthenticated()
+        ? firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data
+        : {};
     }
 
-    function mesmoTenant(tenantId) {
-      return autenticado() &&
-        request.auth.token.clientePlataformaId != null &&
-        request.auth.token.clientePlataformaId == tenantId;
+    function isActiveUser() {
+      return isAuthenticated() &&
+        userDoc().authUid == request.auth.uid &&
+        userDoc().acessoLiberado == true &&
+        !(userDoc().status in ["BLOQUEADO", "INATIVO", "SUSPENSO"]);
     }
 
-    match /tenants/{tenantId}/{allPaths=**} {
-      allow read: if masterGlobal() || mesmoTenant(tenantId);
-      allow write: if (masterGlobal() || mesmoTenant(tenantId))
-        && request.resource.size < 10 * 1024 * 1024;
+    function userTenantId() {
+      return userDoc().clientePlataformaId;
+    }
+
+    function isMasterGlobal() {
+      return userDoc().tipoUsuario == "master_global";
+    }
+
+    function isSameTenant(tenantId) {
+      return isActiveUser() &&
+        userTenantId() is string &&
+        userTenantId().size() > 0 &&
+        userTenantId() == tenantId;
+    }
+
+    function allowedContentType() {
+      return request.resource.contentType.matches("image/.*") ||
+        request.resource.contentType in [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "text/plain"
+        ];
+    }
+
+    function allowedUpload() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        allowedContentType();
+    }
+
+    match /tenants/{tenantId}/{categoria}/{arquivo=**} {
+      allow read: if isMasterGlobal() || isSameTenant(tenantId);
+      allow list: if false;
+      allow create: if (isMasterGlobal() || isSameTenant(tenantId)) && allowedUpload();
+      allow update: if false;
+      allow delete: if false;
     }
 
     match /{allPaths=**} {

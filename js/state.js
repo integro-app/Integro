@@ -219,7 +219,7 @@ const State = {
   },
 
   contarVendasHoje() {
-    const hoje = new Date().toISOString().split("T")[0];
+    const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
     return this.vendas.filter(v => String(v.data || v.dataVenda || "").includes(hoje)).length;
   },
 
