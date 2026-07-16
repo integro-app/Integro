@@ -9,6 +9,16 @@
 
   const STATUS_ATIVOS = ["RECEBIDA", "ATRIBUIDA", "EM_ATENDIMENTO"];
   const STATUS_ENCERRADOS = ["NAO_CONVERTIDA", "RECUSADA", "CONVERTIDA", "DUPLICADA", "CANCELADA"];
+  const TRANSICOES_STATUS = {
+    RECEBIDA: ["ATRIBUIDA", "RECUSADA", "CANCELADA", "DUPLICADA"],
+    ATRIBUIDA: ["ATRIBUIDA", "EM_ATENDIMENTO", "RECUSADA", "CANCELADA"],
+    EM_ATENDIMENTO: ["NAO_CONVERTIDA", "RECUSADA", "CONVERTIDA", "CANCELADA"],
+    NAO_CONVERTIDA: [],
+    RECUSADA: [],
+    CONVERTIDA: [],
+    DUPLICADA: [],
+    CANCELADA: []
+  };
   const STATUS_CLIENTE_BLOQUEIO_VENDA = ["ATIVO", "INADIMPLENTE", "BLOQUEADO"];
   const MOTIVOS_NAO_CONVERSAO = [
     "SEM_INTERESSE",
@@ -98,10 +108,68 @@
     if (usuario.permissoesCargo?.indicacoes?.[permissao] === true) return true;
     if (acesso.cargoChave === "captador" && ["podeCriarIndicacao", "podeVerIndicacoesProprias"].includes(permissao)) return true;
     if (permissao === "podeVerIndicacoesProprias" && contexto.usuarioId) return true;
-    if (permissao === "podeReceberIndicacoes" && ["vendedor", "supervisor"].includes(acesso.cargoChave)) return true;
+    if (permissao === "podeReceberIndicacoes" && ["vendedor", "supervisor"].includes(acesso.cargoChave)) {
+      return usuarioNoEscopoIndicacao(usuario, contexto);
+    }
     if (window.IntegroOperacional?.temPermissao && mapa[permissao]) {
       return window.IntegroOperacional.temPermissao(usuario, mapa[permissao], contexto);
     }
+    return false;
+  }
+
+  function usuarioNoEscopoIndicacao(usuario = {}, indicacao = {}) {
+    const acesso = window.IntegroOperacional?.normalizarAcessoUsuario?.(usuario) || {};
+    if (acesso.isMasterGlobal || acesso.isMasterLocal) return true;
+
+    const usuarioId = idUsuario(usuario);
+    const tenant = tenantUsuario(usuario);
+    const tenantIndicacao = indicacao.clientePlataformaId || indicacao.empresaId || indicacao.tenantId || "";
+    if (tenant && tenantIndicacao && tenant !== tenantIndicacao) return false;
+
+    const vendedorId = texto(indicacao.vendedorId || indicacao.vendedorDestinoId);
+    const indicadoPorId = texto(indicacao.indicadoPorId || indicacao.captadorId || indicacao.criadoPor);
+    const equipeIndicacao = texto(indicacao.equipeDestinoId || indicacao.equipeId);
+    const equipesUsuario = [
+      usuario.equipeId,
+      usuario.equipeUid,
+      ...(Array.isArray(usuario.equipesIds) ? usuario.equipesIds : []),
+      ...(Array.isArray(usuario.equipeIds) ? usuario.equipeIds : [])
+    ].filter(Boolean).map(String);
+
+    if (acesso.cargoChave === "vendedor") return Boolean(usuarioId && vendedorId && usuarioId === vendedorId);
+    if (acesso.cargoChave === "captador") return Boolean(usuarioId && indicadoPorId && usuarioId === indicadoPorId);
+    if (acesso.cargoChave === "supervisor") return Boolean(equipeIndicacao && equipesUsuario.includes(String(equipeIndicacao)));
+    return false;
+  }
+
+  function validarTransicaoIndicacao(statusAtual, statusNovo) {
+    const atual = normalizarStatusIndicacao(statusAtual || "RECEBIDA");
+    const novo = normalizarStatusIndicacao(statusNovo || atual);
+    if (atual === novo) return { ok: true, atual, novo };
+    if (STATUS_ENCERRADOS.includes(atual)) {
+      return { ok: false, codigo: "INDICACAO_ENCERRADA", mensagem: "Indicação encerrada não permite nova transição.", atual, novo };
+    }
+    const permitidas = TRANSICOES_STATUS[atual] || [];
+    if (!permitidas.includes(novo)) {
+      return { ok: false, codigo: "TRANSICAO_INDICACAO_INVALIDA", mensagem: `Transição de indicação inválida: ${atual} -> ${novo}.`, atual, novo };
+    }
+    return { ok: true, atual, novo };
+  }
+
+  function usuarioPodeAtualizarIndicacao(usuario = {}, indicacao = {}, permissao = "podeEditarIndicacao") {
+    const contexto = {
+      clientePlataformaId: indicacao.clientePlataformaId || indicacao.empresaId || indicacao.tenantId || tenantUsuario(usuario),
+      equipeId: indicacao.equipeDestinoId || indicacao.equipeId,
+      vendedorId: indicacao.vendedorId || indicacao.vendedorDestinoId,
+      usuarioId: idUsuario(usuario)
+    };
+
+    if (temPermissaoIndicacao(usuario, permissao, contexto)) return true;
+    if (!usuarioNoEscopoIndicacao(usuario, indicacao)) return false;
+
+    const acesso = window.IntegroOperacional?.normalizarAcessoUsuario?.(usuario) || {};
+    if (acesso.cargoChave === "vendedor" && ["podeReceberIndicacoes", "podeMarcarNaoConvertida", "podeMarcarRecusada"].includes(permissao)) return true;
+    if (acesso.cargoChave === "captador" && permissao === "podeCancelarIndicacao") return true;
     return false;
   }
 
@@ -314,15 +382,37 @@
 
   async function atualizarStatusIndicacao(indicacaoId, dados = {}, usuario = {}, tipoLog = "INDICACAO_ATUALIZADA") {
     if (!indicacaoId) throw new Error("Indicação obrigatória.");
-    const db = dados.db || getDb();
+    const db = dados.db || usuario.db || getDb();
+    const ref = db.collection("indicacoes").doc(indicacaoId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error("Indicação não encontrada.");
+
+    const atual = { id: snap.id || indicacaoId, ...snap.data() };
+    const permissao = dados.__permissaoIndicacao || "podeEditarIndicacao";
+    const statusNovo = dados.statusIndicacao || dados.status || atual.statusIndicacao || atual.status;
+    const transicao = validarTransicaoIndicacao(atual.statusIndicacao || atual.status, statusNovo);
+    if (!transicao.ok) throw new Error(transicao.mensagem);
+
+    const tenantAtual = atual.clientePlataformaId || atual.empresaId || atual.tenantId || "";
+    const tenantOperador = tenantUsuario(usuario);
+    if (tenantAtual && tenantOperador && tenantAtual !== tenantOperador) {
+      throw new Error("Indicação pertence a outro tenant.");
+    }
+
+    if (!usuarioPodeAtualizarIndicacao(usuario, atual, permissao)) {
+      throw new Error("Usuário sem permissão ou fora do escopo da indicação.");
+    }
+
     const payload = {
       ...dados,
       db: undefined,
+      __permissaoIndicacao: undefined,
       atualizadoPor: idUsuario(usuario),
       atualizadoEm: serverTimestamp()
     };
     delete payload.db;
-    await db.collection("indicacoes").doc(indicacaoId).set(payload, { merge: true });
+    delete payload.__permissaoIndicacao;
+    await ref.set(payload, { merge: true });
     await registrarLog(db, tipoLog, usuario, { indicacaoId, ...payload });
     return true;
   }
@@ -336,9 +426,11 @@
       vendedorNome: destino.vendedorDestinoNome || destino.vendedorNome || "",
       equipeDestinoId: destino.equipeDestinoId || destino.equipeId || "",
       equipeDestinoNome: destino.equipeDestinoNome || destino.equipeNome || "",
+      db: destino.db,
       statusIndicacao: "ATRIBUIDA",
       status: "ATRIBUIDA",
-      dataAtribuicao: agora
+      dataAtribuicao: agora,
+      __permissaoIndicacao: "podeAtribuirIndicacao"
     }, usuario, "INDICACAO_ATRIBUIDA");
   }
 
@@ -352,7 +444,8 @@
     return atualizarStatusIndicacao(indicacaoId, {
       statusIndicacao: "EM_ATENDIMENTO",
       status: "EM_ATENDIMENTO",
-      dataInicioAtendimento: agora
+      dataInicioAtendimento: agora,
+      __permissaoIndicacao: "podeReceberIndicacoes"
     }, usuario, "INDICACAO_EM_ATENDIMENTO");
   }
 
@@ -364,7 +457,8 @@
       statusIndicacao: "NAO_CONVERTIDA",
       status: "NAO_CONVERTIDA",
       motivoNaoConversao: motivoFinal,
-      dataNaoConversao: agora
+      dataNaoConversao: agora,
+      __permissaoIndicacao: "podeMarcarNaoConvertida"
     }, usuario, "INDICACAO_NAO_CONVERTIDA");
   }
 
@@ -375,7 +469,8 @@
       statusIndicacao: "RECUSADA",
       status: "RECUSADA",
       motivoRecusa: texto(motivo || "OUTRO"),
-      dataRecusa: agora
+      dataRecusa: agora,
+      __permissaoIndicacao: "podeMarcarRecusada"
     }, usuario, "INDICACAO_RECUSADA");
   }
 
@@ -386,7 +481,8 @@
       status: "CANCELADA",
       motivoCancelamento: texto(motivo),
       dataCancelamento: agora,
-      ativo: false
+      ativo: false,
+      __permissaoIndicacao: "podeCancelarIndicacao"
     }, usuario, "INDICACAO_CANCELADA");
   }
 
@@ -397,7 +493,8 @@
       status: "CONVERTIDA",
       vendaId,
       valorVendaCentavos: Math.round(Number(valorVendaCentavos || 0)),
-      dataConversao: agora
+      dataConversao: agora,
+      __permissaoIndicacao: "podeReceberIndicacoes"
     }, usuario, "INDICACAO_CONVERTIDA");
   }
 
@@ -491,6 +588,9 @@
     normalizarDocumentoIndicacao,
     normalizarStatusIndicacao,
     temPermissaoIndicacao,
+    validarTransicaoIndicacao,
+    usuarioNoEscopoIndicacao,
+    usuarioPodeAtualizarIndicacao,
     clienteTemVendaAtiva,
     validarNovaIndicacao,
     montarClienteLead,

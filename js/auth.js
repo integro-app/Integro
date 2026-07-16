@@ -64,7 +64,13 @@ async function login() {
 
     let mensagem = "Erro ao realizar login.";
 
-    if (
+    if (erro.authDiagnosticCode) {
+      try {
+        await auth.signOut();
+      } catch (_) {}
+      State.limparSessao();
+      mensagem = erro.message;
+    } else if (
       erro.code === "auth/invalid-login-credentials" ||
       erro.code === "auth/wrong-password" ||
       erro.code === "auth/user-not-found"
@@ -174,6 +180,12 @@ function protegerPagina(tipoObrigatorio = null) {
 
     } catch (erro) {
       console.error("ERRO PROTEGER PÁGINA:", erro);
+      if (erro.authDiagnosticCode) {
+        try {
+          await auth.signOut();
+        } catch (_) {}
+        State.limparSessao();
+      }
       UIHelpers.alerta("Erro ao validar sessão: " + erro.message);
       window.location.href = "index.html";
     }

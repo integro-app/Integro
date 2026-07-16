@@ -15,11 +15,11 @@ service cloud.firestore {
     }
 
     function userDoc() {
-      return isAuthenticated() && exists(userPath()) ? get(userPath()).data : {};
+      return isAuthenticated() ? get(userPath()).data : {};
     }
 
     function userTenantId() {
-      return userDoc().clientePlataformaId;
+      return userDoc().get("clientePlataformaId", "");
     }
 
     function hasTenant() {
@@ -27,11 +27,11 @@ service cloud.firestore {
     }
 
     function resourceTenantId() {
-      return resource.data.clientePlataformaId;
+      return resource.data.get("clientePlataformaId", "");
     }
 
     function requestTenantId() {
-      return request.resource.data.clientePlataformaId;
+      return request.resource.data.get("clientePlataformaId", "");
     }
 
     function isSameTenantRead() {
@@ -48,11 +48,11 @@ service cloud.firestore {
     }
 
     function role() {
-      return userDoc().tipoUsuario;
+      return userDoc().get("tipoUsuario", "");
     }
 
     function cargo() {
-      return userDoc().cargoChave;
+      return userDoc().get("cargoChave", "");
     }
 
     function isMasterGlobal() {
@@ -94,42 +94,42 @@ service cloud.firestore {
     function isActiveUser() {
       return isAuthenticated() &&
         exists(userPath()) &&
-        userDoc().authUid == currentUid() &&
-        !(userDoc().status in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        userDoc().acessoLiberado == true;
+        userDoc().get("authUid", "") == currentUid() &&
+        !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        userDoc().get("acessoLiberado", false) == true;
     }
 
     function permMap() {
-      return userDoc().permissoes;
+      return userDoc().get("permissoes", {});
     }
 
     function hasPermission(permissionKey) {
       return isMasterGlobal() || isUsuarioIntegro() || isMasterLocal() ||
-        (permMap()[permissionKey] == true) ||
-        (permMap().financeiro[permissionKey] == true) ||
-        (permMap().caixas[permissionKey] == true) ||
-        (permMap().indicacoes[permissionKey] == true) ||
-        (permMap().solicitacoes[permissionKey] == true);
+        (permMap().get(permissionKey, false) == true) ||
+        (permMap().get("financeiro", {}).get(permissionKey, false) == true) ||
+        (permMap().get("caixas", {}).get(permissionKey, false) == true) ||
+        (permMap().get("indicacoes", {}).get(permissionKey, false) == true) ||
+        (permMap().get("solicitacoes", {}).get(permissionKey, false) == true);
     }
 
     function userEquipeIds() {
-      return userDoc().equipesIds is list ? userDoc().equipesIds :
-        (userDoc().equipeIds is list ? userDoc().equipeIds :
-        (userDoc().equipeId is string ? [userDoc().equipeId] : []));
+      return userDoc().get("equipesIds", []) is list ? userDoc().get("equipesIds", []) :
+        (userDoc().get("equipeIds", []) is list ? userDoc().get("equipeIds", []) :
+        (userDoc().get("equipeId", "") is string ? [userDoc().get("equipeId", "")] : []));
     }
 
     function isTeamAllowed(data) {
       return isMasterGlobal() || isUsuarioIntegro() || isMasterLocal() ||
-        (data.equipeId is string && data.equipeId in userEquipeIds());
+        (data.get("equipeId", "") is string && data.get("equipeId", "") in userEquipeIds());
     }
 
     function isOwnSellerData(data) {
-      return data.vendedorAuthUid == currentUid() ||
-        data.vendedorUid == currentUid() ||
-        data.uid == currentUid() ||
-        data.usuarioId == currentUid() ||
-        data.vendedorId == currentUid() ||
-        data.criadoPorId == currentUid();
+      return data.get("vendedorAuthUid", "") == currentUid() ||
+        data.get("vendedorUid", "") == currentUid() ||
+        data.get("uid", "") == currentUid() ||
+        data.get("usuarioId", "") == currentUid() ||
+        data.get("vendedorId", "") == currentUid() ||
+        data.get("criadoPorId", "") == currentUid();
     }
 
     function isOperationalReader(data) {
@@ -278,7 +278,7 @@ service cloud.firestore {
         data.saldoAtualCentavos is int &&
         (
           isMasterLocal() ||
-          (isVendedor() && isOwnSellerData(data) && data.vendedorAuthUid == currentUid())
+          (isVendedor() && isOwnSellerData(data) && data.keys().hasAll(["vendedorAuthUid"]) && data.get("vendedorAuthUid", "") == currentUid())
         );
     }
 
@@ -296,16 +296,17 @@ service cloud.firestore {
 
     function canCreateFechamento(data, fechamentoId) {
       return isActiveUser() && isSameTenantWrite() &&
-        data.caixaId is string &&
-        fechamentoId == "fechamento_" + data.caixaId &&
-        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
-        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.clientePlataformaId == userTenantId() &&
-        data.vendedorId == get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.vendedorId &&
-        data.statusFechamento in ["FECHADO", "DIVERGENTE"] &&
-        data.caixaFinalEsperadoCentavos is int &&
-        data.caixaFinalInformadoCentavos is int &&
-        data.diferencaCentavos is int &&
-        data.snapshotAuditoria is map &&
+        data.keys().hasAll(["caixaId", "vendedorId", "statusFechamento", "caixaFinalEsperadoCentavos", "caixaFinalInformadoCentavos", "diferencaCentavos", "snapshotAuditoria"]) &&
+        data.get("caixaId", "") is string &&
+        fechamentoId == "fechamento_" + data.get("caixaId", "") &&
+        exists(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))) &&
+        get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
+        data.get("vendedorId", "") == get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("vendedorId", "") &&
+        data.get("statusFechamento", "") in ["FECHADO", "DIVERGENTE"] &&
+        data.get("caixaFinalEsperadoCentavos", 0) is int &&
+        data.get("caixaFinalInformadoCentavos", 0) is int &&
+        data.get("diferencaCentavos", 0) is int &&
+        data.get("snapshotAuditoria", {}) is map &&
         (
           isMasterLocal() ||
           (isVendedor() && isOwnSellerData(data)) ||
@@ -386,7 +387,7 @@ service cloud.firestore {
         get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.clientePlataformaId == userTenantId() &&
         (
           isMasterLocal() ||
-          (isVendedor() && isOwnSellerData(data) && get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.vendedorAuthUid == currentUid())
+          (isVendedor() && isOwnSellerData(data) && get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.get("vendedorAuthUid", "") == currentUid())
         );
     }
 
@@ -406,7 +407,7 @@ service cloud.firestore {
         get(/databases/$(database)/documents/parcelas/$(data.parcelaId)).data.clientePlataformaId == userTenantId() &&
         (
           isMasterLocal() ||
-          (isVendedor() && isOwnSellerData(data) && get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.vendedorAuthUid == currentUid())
+          (isVendedor() && isOwnSellerData(data) && get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.get("vendedorAuthUid", "") == currentUid())
         );
     }
 
@@ -432,7 +433,8 @@ service cloud.firestore {
       return isActiveUser() && isSameTenantWrite() &&
         data.status == "PENDENTE" &&
         data.valorCentavos is int &&
-        data.criadoPorId in [currentUid(), userDoc().id] &&
+        data.keys().hasAll(["criadoPorId"]) &&
+        data.get("criadoPorId", "") in [currentUid(), userDoc().get("id", "")] &&
         (isMasterLocal() || isSupervisor() || isFinanceiro() || isVendedor());
     }
 
@@ -457,12 +459,12 @@ service cloud.firestore {
     }
 
     function isIndicacaoDoVendedor(data) {
-      return data.vendedorDestinoId == currentUid() ||
-        data.vendedorResponsavelId == currentUid() ||
-        data.vendedorId == currentUid() ||
-        data.usuarioId == currentUid() ||
-        data.vendedorAuthUid == currentUid() ||
-        data.vendedorUid == currentUid();
+      return data.get("vendedorDestinoId", "") == currentUid() ||
+        data.get("vendedorResponsavelId", "") == currentUid() ||
+        data.get("vendedorId", "") == currentUid() ||
+        data.get("usuarioId", "") == currentUid() ||
+        data.get("vendedorAuthUid", "") == currentUid() ||
+        data.get("vendedorUid", "") == currentUid();
     }
 
     function canReadIndicacao(data) {
@@ -495,9 +497,14 @@ service cloud.firestore {
 
     function canCreateLog(data) {
       return isActiveUser() && isSameTenantWrite() &&
-        data.tipoAcao is string &&
-        data.tipoAcao.size() > 2 &&
-        (data.usuarioAuthUid == currentUid() || data.usuarioId in [currentUid(), userDoc().id] || data.usuarioId == null);
+        data.keys().hasAll(["tipoAcao"]) &&
+        data.get("tipoAcao", "") is string &&
+        data.get("tipoAcao", "").size() > 2 &&
+        (
+          data.get("usuarioAuthUid", "") == currentUid() ||
+          data.get("usuarioId", "") in [currentUid(), userDoc().get("id", "")] ||
+          data.get("usuarioId", "") == ""
+        );
     }
 
     match /usuarios/{uid} {
@@ -507,8 +514,9 @@ service cloud.firestore {
         (isSameTenantRead() && (isMasterLocal() || isGerente() || isSupervisor()))
       );
       allow create: if isAuthenticated() && currentUid() == uid &&
-        request.resource.data.authUid == currentUid() &&
-        request.resource.data.acessoLiberado == false;
+        request.resource.data.keys().hasAll(["authUid", "acessoLiberado"]) &&
+        request.resource.data.get("authUid", "") == currentUid() &&
+        request.resource.data.get("acessoLiberado", true) == false;
       allow update: if isActiveUser() && (
         isMasterGlobal() ||
         (currentUid() == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"])) ||

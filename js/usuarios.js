@@ -153,7 +153,7 @@ function formularioUsuario(usuario = null) {
       ${
         usuario
           ? `<button class="ghost-btn drawer-secondary" onclick="enviarRecuperacaoSenha('${usuario.email || ""}')">Enviar redefinição de senha</button>`
-          : `<div class="password-hint">Senha padrão inicial: <strong>${CONFIG.SENHA_PADRAO}</strong></div>`
+          : `<div class="password-hint">Convite pendente: a conta Auth deve ser provisionada pelo backend antes da liberação.</div>`
       }
     </div>
   `;
@@ -195,7 +195,7 @@ async function salvarNovoUsuario() {
       tipoUsuarioCriado: tipoUsuario
     });
 
-    UIHelpers.alerta(`Usuário criado com sucesso.\n\nEmail: ${email}\nSenha: ${resultado.senha}`);
+    UIHelpers.alerta(`Usuário salvo como convite pendente.\n\nEmail: ${email}\nA conta Auth deve ser provisionada pelo backend antes da liberação.`);
 
     fecharDrawer();
     await carregarTudoMasterLocal();

@@ -97,3 +97,13 @@ test("compatibilidade preserva onclicks e wrappers antigos", () => {
   assert.match(s, /window\.renderDashboardFinanceiro\s*=\s*renderDashboardFinanceiroReal/);
   assert.match(s, /const trocarTelaAntiga = window\.trocarTelaFinanceiro/);
 });
+
+test("acoes mock operacionais ficam bloqueadas no script real", () => {
+  const s = scriptFinal();
+  assert.match(s, /bloquearAcaoMockFinanceiro/);
+  assert.match(s, /window\.salvarContaMock\s*=\s*function/);
+  assert.match(s, /window\.confirmarPagamentoMock\s*=\s*function/);
+  assert.match(s, /window\.cancelarConta\s*=\s*function/);
+  assert.match(s, /window\.duplicarConta\s*=\s*function/);
+  assert.doesNotMatch(s, /window\.abrirOrigemFinanceiro\s*=\s*function[\s\S]*?alert\(/);
+});

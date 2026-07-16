@@ -3,7 +3,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "test": "node --test tests/payment-transaction.test.js tests/indicacoes-service.test.js tests/financeiro-screen.test.js",
+    "test": "node --test tests/payment-transaction.test.js tests/indicacoes-service.test.js tests/financeiro-screen.test.js tests/auth-diagnostics.test.js tests/clientes-service.test.js tests/perfis-dedicados.test.js",
     "test:rules": "firebase emulators:exec --only firestore,storage \"node --test tests/firestore-rules.test.js\""
   },
   "devDependencies": {

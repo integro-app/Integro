@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>INTEGRO - Auditor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="css/integro-theme.css" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:"Inter",sans-serif}
+    :root{--nav:#061a35;--nav2:#092b61;--bg:#f3f7fc;--card:#fff;--text:#071a33;--muted:#64748b;--line:#e2e8f0;--orange:#ff8a00;--orange2:#ffb100;--green:#16c784;--blue:#1683ff;--red:#ff405d;--shadow:0 18px 45px rgba(15,23,42,.08)}
+    body{min-height:100vh;background:var(--bg);color:var(--text);overflow-x:hidden}
+    button,input,select{font-family:inherit}
+    button{border:0;cursor:pointer}
+    input,select{width:100%;height:46px;border:1px solid var(--line);border-radius:12px;padding:0 12px;background:#fff;color:var(--text);font-weight:800;outline:none}
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:292px;background:linear-gradient(180deg,var(--nav),var(--nav2));color:#fff;padding:24px 18px;position:fixed;inset:0 auto 0 0;overflow-y:auto;z-index:50;transition:.25s}
+    .brand{font-size:32px;font-weight:900;margin-bottom:22px}.brand span{color:var(--orange2)}
+    .user-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:16px;margin-bottom:22px}.user-card strong{display:block}.user-card small{display:block;color:#cbd5e1;font-weight:700;margin-top:4px}
+    .menu-title{color:#8fb4dc;font-size:12px;font-weight:900;text-transform:uppercase;margin:18px 6px 10px}
+    .menu-item{width:100%;height:50px;border-radius:13px;background:transparent;color:#eaf3ff;font-weight:800;text-align:left;padding:0 14px;margin-bottom:7px}.menu-item.active,.menu-item:hover{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
+    .mobile-menu-btn{position:fixed;top:14px;left:14px;width:52px;height:52px;border-radius:14px;background:#fff;border:1px solid var(--line);font-size:24px;font-weight:900;box-shadow:var(--shadow);display:none;z-index:10000}
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.58);opacity:0;visibility:hidden;transition:.2s;z-index:9998}.overlay.show{opacity:1;visibility:visible}
+    .main{margin-left:292px;width:calc(100% - 292px);padding:28px 32px}
+    .topbar{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:22px}.topbar h1{font-size:30px;font-weight:900}.topbar p{color:var(--muted);font-weight:700;margin-top:6px}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}.btn{height:46px;border-radius:12px;padding:0 15px;font-weight:900;background:#fff;border:1px solid var(--line);color:var(--text)}.btn.primary{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;border:0}
+    .status{display:none;border-radius:14px;padding:12px 14px;margin-bottom:16px;font-weight:800}.status.show{display:block}.status.info{background:#eff6ff;color:#1d4ed8}.status.err{background:#fff1f2;color:#be123c}.status.ok{background:#ecfdf5;color:#15803d}
+    .kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:18px}.kpi{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:18px}.kpi small{color:var(--muted);font-weight:900;text-transform:uppercase}.kpi strong{display:block;font-size:28px;margin-top:8px}
+    .panel{background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow);padding:20px;margin-bottom:18px}.panel-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.panel h2{font-size:20px}.filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:14px}
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px}table{width:100%;border-collapse:collapse;background:#fff}th,td{padding:12px;border-bottom:1px solid var(--line);font-size:13px;text-align:left;white-space:nowrap}th{background:var(--nav);color:#dbeafe;text-transform:uppercase;font-size:11px}tbody tr{cursor:pointer}tbody tr:hover{background:#f8fafc}.empty{border:1px dashed #cbd5e1;border-radius:14px;padding:18px;color:#475569;font-weight:800;background:#f8fafc}
+    .drawer{position:fixed;inset:0;z-index:12000;display:none}.drawer.show{display:block}.drawer-bg{position:absolute;inset:0;background:rgba(2,6,23,.58)}.drawer-content{position:absolute;right:0;top:0;height:100%;width:min(620px,100%);background:#fff;box-shadow:-22px 0 48px rgba(2,6,23,.22);display:flex;flex-direction:column}.drawer-head{padding:20px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px}.drawer-body{padding:20px;overflow:auto}.drawer-close{width:42px;height:42px;border-radius:12px;background:#f8fafc;color:#334155;font-weight:900}.kv{display:grid;grid-template-columns:170px 1fr;gap:8px;border-bottom:1px solid var(--line);padding:10px 0}.kv b{color:#475569}
+    @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:860px){.mobile-menu-btn{display:block}.sidebar{transform:translateX(-105%);z-index:9999}.sidebar.show{transform:translateX(0)}.main{margin-left:0;width:100%;padding:82px 14px 18px}.topbar{flex-direction:column}.actions{width:100%}.btn{flex:1}.kpis,.filters{grid-template-columns:1fr}.table-wrap table,.table-wrap thead,.table-wrap tbody,.table-wrap tr,.table-wrap th,.table-wrap td{display:block}.table-wrap thead{display:none}.table-wrap tr{border-bottom:1px solid var(--line);padding:10px}.table-wrap td{border:0;padding:7px 4px;white-space:normal}.table-wrap td::before{content:attr(data-label);display:block;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase;margin-bottom:2px}}
+  </style>
+</head>
+<body>
+  <button class="mobile-menu-btn" type="button" onclick="toggleMenuAuditor()">☰</button>
+  <div id="overlayAuditor" class="overlay" onclick="fecharMenuAuditor()"></div>
+  <div class="layout">
+    <aside id="sidebarAuditor" class="sidebar">
+      <div class="brand">ÍN<span>TEGRO</span></div>
+      <div class="user-card">
+        <strong id="auditorNome">Auditor</strong>
+        <small id="auditorTenant">Tenant</small>
+        <small>Somente leitura</small>
+      </div>
+      <div class="menu-title">Auditoria</div>
+      <button class="menu-item active" type="button" onclick="trocarTelaAuditor('logs')">Logs e eventos</button>
+      <button class="menu-item" type="button" onclick="trocarTelaAuditor('usuarios')">Usuários</button>
+      <button class="menu-item" type="button" onclick="trocarTelaAuditor('financeiro')">Financeiro</button>
+      <button class="menu-item" type="button" onclick="trocarTelaAuditor('caixas')">Caixas</button>
+      <button class="menu-item" type="button" onclick="trocarTelaAuditor('vendas')">Vendas</button>
+      <button class="menu-item" type="button" onclick="trocarTelaAuditor('indicacoes')">Indicações</button>
+      <div class="menu-title">Sessão</div>
+      <button class="menu-item" type="button" onclick="logout()">Sair</button>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h1>Auditoria</h1>
+          <p>Visão somente leitura por tenant, com rastreio de usuários, caixas, vendas, indicações e ledger.</p>
+        </div>
+        <div class="actions">
+          <button class="btn" type="button" onclick="carregarAuditoria()">Atualizar</button>
+          <button class="btn primary" type="button" onclick="exportarAuditoria()">Exportar CSV</button>
+        </div>
+      </div>
+      <div id="statusAuditor" class="status"></div>
+      <section class="kpis">
+        <div class="kpi"><small>Logs</small><strong id="kpiLogs">0</strong></div>
+        <div class="kpi"><small>Usuários</small><strong id="kpiUsuarios">0</strong></div>
+        <div class="kpi"><small>Ledger</small><strong id="kpiLedger">0</strong></div>
+        <div class="kpi"><small>Caixas</small><strong id="kpiCaixas">0</strong></div>
+      </section>
+      <section class="panel">
+        <div class="panel-head">
+          <h2 id="tituloAuditor">Logs e eventos</h2>
+        </div>
+        <div class="filters">
+          <input id="buscaAuditor" placeholder="Buscar" oninput="renderAuditoria()">
+          <select id="tipoAuditor" onchange="renderAuditoria()">
+            <option value="">Todos os tipos</option>
+          </select>
+          <input id="inicioAuditor" type="date" onchange="carregarAuditoria()">
+          <input id="fimAuditor" type="date" onchange="carregarAuditoria()">
+        </div>
+        <div id="conteudoAuditor"></div>
+      </section>
+    </main>
+  </div>
+  <div id="drawerAuditor" class="drawer">
+    <div class="drawer-bg" onclick="fecharDrawerAuditor()"></div>
+    <div class="drawer-content">
+      <div class="drawer-head">
+        <div>
+          <h2 id="drawerAuditorTitulo">Detalhe</h2>
+          <p id="drawerAuditorSub"></p>
+        </div>
+        <button class="drawer-close" type="button" onclick="fecharDrawerAuditor()">×</button>
+      </div>
+      <div id="drawerAuditorBody" class="drawer-body"></div>
+    </div>
+  </div>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+  <script src="js/config.js"></script>
+  <script src="js/utils/operational.js"></script>
+  <script src="js/utils/ui-helpers.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/services/firestore.js"></script>
+  <script src="js/services/indicacoes-service.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    const AUDITOR = { tela: "logs", dados: { logs: [], usuarios: [], financeiro: [], caixas: [], vendas: [], indicacoes: [] } };
+
+    function tenantAtualAuditor() {
+      return State.getTenantId();
+    }
+
+    function msgAuditor(texto, tipo = "info") {
+      const el = document.getElementById("statusAuditor");
+      if (!el) return;
+      el.className = `status show ${tipo}`;
+      el.textContent = texto;
+    }
+
+    function limparMsgAuditor() {
+      const el = document.getElementById("statusAuditor");
+      if (el) el.className = "status";
+    }
+
+    function toggleMenuAuditor() {
+      document.getElementById("sidebarAuditor")?.classList.toggle("show");
+      document.getElementById("overlayAuditor")?.classList.toggle("show");
+    }
+
+    function fecharMenuAuditor() {
+      document.getElementById("sidebarAuditor")?.classList.remove("show");
+      document.getElementById("overlayAuditor")?.classList.remove("show");
+    }
+
+    function valorDataAuditor(item) {
+      return String(item.criadoEmTexto || item.dataHora || item.data || item.createdAt || item.atualizadoEmTexto || "").slice(0, 19);
+    }
+
+    function normalizarItemAuditor(doc) {
+      return { id: doc.id, ...(doc.data ? doc.data() : doc) };
+    }
+
+    async function consultarColecaoAuditor(nome, campoTenant = "clientePlataformaId", limite = 80) {
+      const tenant = tenantAtualAuditor();
+      if (!tenant) return [];
+      try {
+        const snap = await db.collection(nome).where(campoTenant, "==", tenant).limit(limite).get();
+        return snap.docs.map(normalizarItemAuditor);
+      } catch (erro) {
+        console.warn("Falha na consulta de auditoria", nome, erro);
+        return [];
+      }
+    }
+
+    function filtrarAuditoria(lista) {
+      const termo = String(document.getElementById("buscaAuditor")?.value || "").toLowerCase();
+      const tipo = String(document.getElementById("tipoAuditor")?.value || "");
+      return lista.filter(item => {
+        const texto = JSON.stringify(item).toLowerCase();
+        const tipoItem = String(item.tipoLancamento || item.tipo || item.acao || item.status || item.statusIndicacao || "");
+        if (termo && !texto.includes(termo)) return false;
+        if (tipo && tipoItem !== tipo) return false;
+        return true;
+      });
+    }
+
+    function popularTiposAuditor(lista) {
+      const select = document.getElementById("tipoAuditor");
+      if (!select) return;
+      const atual = select.value;
+      const tipos = [...new Set(lista.map(i => i.tipoLancamento || i.tipo || i.acao || i.status || i.statusIndicacao).filter(Boolean).map(String))].sort();
+      select.innerHTML = '<option value="">Todos os tipos</option>' + tipos.map(t => `<option value="${t}">${t}</option>`).join("");
+      select.value = tipos.includes(atual) ? atual : "";
+    }
+
+    function renderAuditoria() {
+      const lista = filtrarAuditoria(AUDITOR.dados[AUDITOR.tela] || []);
+      const titulos = { logs: "Logs e eventos", usuarios: "Usuários", financeiro: "Ledger financeiro", caixas: "Caixas", vendas: "Vendas", indicacoes: "Indicações" };
+      document.getElementById("tituloAuditor").textContent = titulos[AUDITOR.tela] || "Auditoria";
+      popularTiposAuditor(AUDITOR.dados[AUDITOR.tela] || []);
+      const el = document.getElementById("conteudoAuditor");
+      if (!el) return;
+      if (!lista.length) {
+        el.innerHTML = '<div class="empty">Nenhum registro encontrado para o tenant e filtros atuais.</div>';
+        return;
+      }
+      el.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Responsável</th><th>Status</th></tr></thead>
+            <tbody>
+              ${lista.map((item, idx) => `
+                <tr onclick="abrirDetalheAuditor(${idx})">
+                  <td data-label="Data">${valorDataAuditor(item) || "-"}</td>
+                  <td data-label="Tipo">${item.tipoLancamento || item.tipo || item.acao || item.cargoChave || "-"}</td>
+                  <td data-label="Origem">${item.origemTipo || item.origemId || item.caixaId || item.vendaId || item.id}</td>
+                  <td data-label="Responsável">${item.usuarioNome || item.responsavelNome || item.vendedorNome || item.nome || item.email || "-"}</td>
+                  <td data-label="Status">${item.status || item.statusIndicacao || item.natureza || "-"}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    function abrirDetalheAuditor(indiceFiltrado) {
+      const item = filtrarAuditoria(AUDITOR.dados[AUDITOR.tela] || [])[indiceFiltrado];
+      if (!item) return;
+      document.getElementById("drawerAuditorTitulo").textContent = item.tipoLancamento || item.tipo || item.acao || item.nome || "Registro";
+      document.getElementById("drawerAuditorSub").textContent = item.id || "";
+      document.getElementById("drawerAuditorBody").innerHTML = Object.entries(item)
+        .filter(([_, v]) => typeof v !== "function")
+        .map(([k, v]) => `<div class="kv"><b>${k}</b><span>${typeof v === "object" ? JSON.stringify(v) : String(v ?? "")}</span></div>`)
+        .join("");
+      document.getElementById("drawerAuditor").classList.add("show");
+    }
+
+    function fecharDrawerAuditor() {
+      document.getElementById("drawerAuditor")?.classList.remove("show");
+    }
+
+    function trocarTelaAuditor(tela) {
+      AUDITOR.tela = tela;
+      document.querySelectorAll(".menu-item").forEach(btn => btn.classList.remove("active"));
+      [...document.querySelectorAll(".menu-item")].find(btn => btn.textContent.toLowerCase().includes(({
+        logs: "logs", usuarios: "usuários", financeiro: "financeiro", caixas: "caixas", vendas: "vendas", indicacoes: "indicações"
+      })[tela]))?.classList.add("active");
+      fecharMenuAuditor();
+      renderAuditoria();
+    }
+
+    async function carregarAuditoria() {
+      const usuario = State.getUsuario();
+      const acesso = window.IntegroOperacional?.normalizarAcessoUsuario?.(usuario) || {};
+      if (!acesso.isAuditor && !acesso.isMasterLocal && !acesso.isMasterGlobal) {
+        msgAuditor("Acesso somente leitura não liberado para este perfil.", "err");
+        return;
+      }
+      const tenant = tenantAtualAuditor();
+      if (!tenant && !acesso.isMasterGlobal) {
+        msgAuditor("Tenant obrigatório para auditoria.", "err");
+        return;
+      }
+      msgAuditor("Carregando auditoria real...");
+      const [logs, usuarios, financeiro, caixas, vendas, indicacoes] = await Promise.all([
+        consultarColecaoAuditor("logs", "clientePlataformaId", 100),
+        consultarColecaoAuditor("usuarios", "clientePlataformaId", 120),
+        consultarColecaoAuditor("lancamentos_financeiros", "clientePlataformaId", 120),
+        consultarColecaoAuditor("caixas", "clientePlataformaId", 120),
+        consultarColecaoAuditor("vendas", "clientePlataformaId", 120),
+        consultarColecaoAuditor("indicacoes", "clientePlataformaId", 120)
+      ]);
+      AUDITOR.dados = { logs, usuarios, financeiro, caixas, vendas, indicacoes };
+      document.getElementById("kpiLogs").textContent = logs.length;
+      document.getElementById("kpiUsuarios").textContent = usuarios.length;
+      document.getElementById("kpiLedger").textContent = financeiro.length;
+      document.getElementById("kpiCaixas").textContent = caixas.length;
+      limparMsgAuditor();
+      renderAuditoria();
+    }
+
+    function exportarAuditoria() {
+      const lista = filtrarAuditoria(AUDITOR.dados[AUDITOR.tela] || []);
+      if (!lista.length) {
+        msgAuditor("Não há dados para exportar.", "info");
+        return;
+      }
+      const linhas = ["id;tipo;status;data;responsavel"].concat(lista.map(i => [
+        i.id,
+        i.tipoLancamento || i.tipo || i.acao || "",
+        i.status || i.statusIndicacao || i.natureza || "",
+        valorDataAuditor(i),
+        i.usuarioNome || i.responsavelNome || i.vendedorNome || i.nome || ""
+      ].map(v => String(v ?? "").replace(/;/g, ",")).join(";")));
+      abrirDetalheAuditorTexto("Exportação CSV", linhas.join("\n"));
+    }
+
+    function abrirDetalheAuditorTexto(titulo, texto) {
+      document.getElementById("drawerAuditorTitulo").textContent = titulo;
+      document.getElementById("drawerAuditorSub").textContent = "Somente leitura";
+      document.getElementById("drawerAuditorBody").innerHTML = `<pre style="white-space:pre-wrap;font-weight:700">${texto}</pre>`;
+      document.getElementById("drawerAuditor").classList.add("show");
+    }
+
+    document.addEventListener("usuario-validado", () => {
+      const usuario = State.getUsuario();
+      document.getElementById("auditorNome").textContent = usuario?.nome || usuario?.email || "Auditor";
+      document.getElementById("auditorTenant").textContent = State.getEmpresaNome() || State.getTenantId() || "Tenant";
+      carregarAuditoria();
+    });
+  </script>
+</body>
+</html>

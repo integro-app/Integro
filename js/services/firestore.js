@@ -77,6 +77,332 @@ const FirestoreService = {
   // ===============================
   // CRIAR USUÁRIO
   // ===============================
+  normalizarDocumentoCliente(valor) {
+    return String(valor || "").replace(/\D/g, "");
+  },
+
+  normalizarTelefoneCliente(valor) {
+    let digitos = String(valor || "").replace(/\D/g, "");
+    if (digitos.startsWith("00")) digitos = digitos.slice(2);
+    if (digitos.startsWith("55") && digitos.length > 11) digitos = digitos.slice(2);
+    return digitos;
+  },
+
+  montarTelefonesNormalizadosCliente(dadosCliente = {}) {
+    const candidatos = [
+      dadosCliente.telefonePrincipal,
+      dadosCliente.telefone,
+      dadosCliente.whatsapp,
+      dadosCliente.telefoneNormalizado,
+      ...(Array.isArray(dadosCliente.telefones) ? dadosCliente.telefones : []),
+      ...(Array.isArray(dadosCliente.telefonesAdicionais) ? dadosCliente.telefonesAdicionais : []),
+      ...(Array.isArray(dadosCliente.telefonesNormalizados) ? dadosCliente.telefonesNormalizados : [])
+    ];
+
+    if (Array.isArray(dadosCliente.referencias)) {
+      dadosCliente.referencias.forEach(ref => {
+        candidatos.push(ref.telefone, ref.whatsapp, ref.telefonePrincipal);
+      });
+    }
+
+    return [...new Set(candidatos.map(FirestoreService.normalizarTelefoneCliente).filter(Boolean))];
+  },
+
+  async buscarClienteDuplicado(dadosCliente = {}, tenantId = State.getTenantId()) {
+    const documentoNormalizado = dadosCliente.documentoNormalizado || FirestoreService.normalizarDocumentoCliente(dadosCliente.documento);
+    const telefonesNormalizados = dadosCliente.telefonesNormalizados || FirestoreService.montarTelefonesNormalizadosCliente(dadosCliente);
+    const colecao = CONFIG.COLECOES.CLIENTES;
+
+    if (!tenantId) {
+      throw new Error("Tenant obrigatório para validar duplicidade de cliente.");
+    }
+
+    const testar = cliente => {
+      if (!cliente || cliente.excluido === true) return false;
+      const mesmoTenant = [cliente.clientePlataformaId, cliente.empresaId, cliente.tenantId].some(id => String(id || "") === String(tenantId));
+      if (!mesmoTenant) return false;
+      const docCliente = cliente.documentoNormalizado || FirestoreService.normalizarDocumentoCliente(cliente.documento);
+      if (documentoNormalizado && docCliente && documentoNormalizado === docCliente) return true;
+      const telsCliente = FirestoreService.montarTelefonesNormalizadosCliente(cliente);
+      return telefonesNormalizados.some(tel => telsCliente.includes(tel));
+    };
+
+    const consultas = [];
+    if (documentoNormalizado) {
+      consultas.push(db.collection(colecao).where(CONFIG.TENANT_ID_KEY, "==", tenantId).where("documentoNormalizado", "==", documentoNormalizado).limit(1).get());
+    }
+    telefonesNormalizados.slice(0, 3).forEach(telefone => {
+      consultas.push(db.collection(colecao).where(CONFIG.TENANT_ID_KEY, "==", tenantId).where("telefoneNormalizado", "==", telefone).limit(1).get());
+      consultas.push(db.collection(colecao).where(CONFIG.TENANT_ID_KEY, "==", tenantId).where("telefonesNormalizados", "array-contains", telefone).limit(1).get());
+    });
+
+    for (const consulta of consultas) {
+      try {
+        const snap = await consulta;
+        const encontrado = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).find(testar);
+        if (encontrado) return encontrado;
+      } catch (_) {}
+    }
+
+    try {
+      const snap = await db.collection(colecao).where(CONFIG.TENANT_ID_KEY, "==", tenantId).limit(500).get();
+      const encontrado = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).find(testar);
+      if (encontrado) return encontrado;
+    } catch (_) {}
+
+    return null;
+  },
+
+  CODIGOS_DIAGNOSTICO_AUTH: {
+    USER_DOC_UID_NOT_FOUND: "USER_DOC_UID_NOT_FOUND",
+    LEGACY_USER_FOUND_BY_EMAIL: "LEGACY_USER_FOUND_BY_EMAIL",
+    LEGACY_USER_WITHOUT_AUTH_UID: "LEGACY_USER_WITHOUT_AUTH_UID",
+    LEGACY_USER_AUTH_UID_MISMATCH: "LEGACY_USER_AUTH_UID_MISMATCH",
+    DUPLICATE_EMAIL_USER_DOCS: "DUPLICATE_EMAIL_USER_DOCS",
+    USER_BLOCKED: "USER_BLOCKED",
+    USER_INACTIVE: "USER_INACTIVE",
+    ACCESS_NOT_RELEASED: "ACCESS_NOT_RELEASED",
+    TENANT_BLOCKED: "TENANT_BLOCKED",
+    USER_OPERATIONAL_NOT_FOUND: "USER_OPERATIONAL_NOT_FOUND"
+  },
+
+  MENSAGENS_DIAGNOSTICO_AUTH: {
+    USER_DOC_UID_NOT_FOUND: "Documento principal do usuário não encontrado por UID.",
+    LEGACY_USER_FOUND_BY_EMAIL: "Acesso localizado por compatibilidade legada.",
+    LEGACY_USER_WITHOUT_AUTH_UID: "Seu acesso existe, mas ainda precisa ser vinculado à nova autenticação. Procure o administrador da empresa.",
+    LEGACY_USER_AUTH_UID_MISMATCH: "Este acesso está vinculado a outra autenticação. Procure o administrador.",
+    DUPLICATE_EMAIL_USER_DOCS: "Encontramos mais de um cadastro para este e-mail. O acesso precisa ser regularizado pelo administrador.",
+    USER_BLOCKED: CONFIG.ERROS.USUARIO_BLOQUEADO,
+    USER_INACTIVE: CONFIG.ERROS.USUARIO_INATIVO,
+    ACCESS_NOT_RELEASED: CONFIG.ERROS.ACESSO_BLOQUEADO,
+    TENANT_BLOCKED: "Empresa bloqueada ou sem acesso operacional. Procure o administrador.",
+    USER_OPERATIONAL_NOT_FOUND: "Usuário autenticado, mas sem cadastro operacional no ÍNTEGRO."
+  },
+
+  normalizarEmailAuth(email) {
+    return String(email || "").trim().toLowerCase();
+  },
+
+  usuarioPrecisaTenant(usuario = {}) {
+    const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
+      ? window.IntegroOperacional.normalizarAcessoUsuario(usuario)
+      : null;
+    const tipo = String(usuario.tipoUsuario || "").toLowerCase();
+    return !(acesso?.isMasterGlobal || acesso?.isUsuarioIntegro || tipo === "master_global" || tipo === "usuario_integro");
+  },
+
+  montarUsuarioAuth(doc, authUser, origemCompatibilidade = "uid") {
+    const dados = doc.data() || {};
+    return {
+      id: doc.id,
+      ...dados,
+      authUid: dados.authUid || (origemCompatibilidade === "uid" ? authUser.uid : ""),
+      email: dados.email || authUser.email || "",
+      origemResolucaoAuth: origemCompatibilidade
+    };
+  },
+
+  registrarDiagnosticoAuth(codigo, contexto = {}) {
+    const diagnostico = {
+      codigo,
+      usuarioId: contexto.usuarioId || "",
+      tenantInformado: Boolean(contexto.tenantId),
+      emailInformado: Boolean(contexto.email),
+      origem: contexto.origem || "auth"
+    };
+
+    try {
+      console.warn("[INTEGRO_AUTH_DIAG]", diagnostico);
+    } catch (_) {}
+
+    return diagnostico;
+  },
+
+  resultadoDiagnosticoAuth(ok, codigo, dados = {}) {
+    const mensagem = dados.mensagem || FirestoreService.MENSAGENS_DIAGNOSTICO_AUTH[codigo] || "Falha ao resolver usuário autenticado.";
+    return {
+      ok,
+      codigo,
+      mensagem,
+      usuario: dados.usuario || null,
+      diagnosticos: dados.diagnosticos || []
+    };
+  },
+
+  erroDiagnosticoAuth(resultado) {
+    const erro = new Error(resultado.mensagem);
+    erro.code = resultado.codigo;
+    erro.authDiagnosticCode = resultado.codigo;
+    erro.authDiagnostic = resultado;
+    return erro;
+  },
+
+  async buscarUsuarioPorDocumentoUid(authUser) {
+    if (!authUser?.uid) return null;
+    const doc = await db.collection(CONFIG.COLECOES.USUARIOS).doc(authUser.uid).get();
+    if (!doc.exists) return null;
+    return this.montarUsuarioAuth(doc, authUser, "uid");
+  },
+
+  async buscarUsuarioLegadoPorEmail(authUser) {
+    const email = this.normalizarEmailAuth(authUser?.email);
+    if (!email) return [];
+
+    const snap = await db.collection(CONFIG.COLECOES.USUARIOS)
+      .where("email", "==", email)
+      .limit(2)
+      .get();
+
+    return snap.docs.map(doc => this.montarUsuarioAuth(doc, authUser, "email_legado"));
+  },
+
+  async validarEmpresaUsuarioAuth(usuario) {
+    const tenantId = usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "";
+
+    if (!this.usuarioPrecisaTenant(usuario)) {
+      return { ok: true };
+    }
+
+    if (!tenantId) {
+      return this.resultadoDiagnosticoAuth(false, "USER_OPERATIONAL_NOT_FOUND", {
+        mensagem: "Cadastro operacional sem empresa vinculada. Procure o administrador.",
+        usuario
+      });
+    }
+
+    const statusUsuarioEmpresa = String(usuario.clientePlataformaStatus || usuario.empresaStatus || "").toUpperCase();
+    if (usuario.empresaBloqueada === true || usuario.acessoEmpresaLiberado === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusUsuarioEmpresa)) {
+      return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
+    }
+
+    try {
+      const empresaDoc = await db.collection("clientes_integro").doc(tenantId).get();
+      if (empresaDoc.exists) {
+        const empresa = empresaDoc.data() || {};
+        const statusEmpresa = String(empresa.status || empresa.situacao || "").toUpperCase();
+        if (empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) {
+          return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
+        }
+      }
+    } catch (erro) {
+      console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_SKIPPED", tenantInformado: true });
+    }
+
+    return { ok: true };
+  },
+
+  async validarUsuarioResolvidoAuth(usuario) {
+    const status = String(usuario.status || "").toUpperCase();
+
+    if (status === CONFIG.STATUS_USUARIO.BLOQUEADO) {
+      return this.resultadoDiagnosticoAuth(false, "USER_BLOCKED", { usuario });
+    }
+
+    if (status === CONFIG.STATUS_USUARIO.INATIVO) {
+      return this.resultadoDiagnosticoAuth(false, "USER_INACTIVE", { usuario });
+    }
+
+    if (usuario.acessoLiberado === false) {
+      return this.resultadoDiagnosticoAuth(false, "ACCESS_NOT_RELEASED", { usuario });
+    }
+
+    const empresa = await this.validarEmpresaUsuarioAuth(usuario);
+    if (!empresa.ok) return empresa;
+
+    return { ok: true };
+  },
+
+  async diagnosticarVinculoUsuarioAuth(authUser, diagnosticos = []) {
+    const legados = await this.buscarUsuarioLegadoPorEmail(authUser);
+
+    if (!legados.length) {
+      diagnosticos.push(this.registrarDiagnosticoAuth("USER_OPERATIONAL_NOT_FOUND", {
+        email: authUser?.email,
+        origem: "email_legado"
+      }));
+      return this.resultadoDiagnosticoAuth(false, "USER_OPERATIONAL_NOT_FOUND", { diagnosticos });
+    }
+
+    if (legados.length > 1) {
+      diagnosticos.push(this.registrarDiagnosticoAuth("DUPLICATE_EMAIL_USER_DOCS", {
+        email: authUser?.email,
+        origem: "email_legado"
+      }));
+      return this.resultadoDiagnosticoAuth(false, "DUPLICATE_EMAIL_USER_DOCS", { diagnosticos });
+    }
+
+    const usuario = legados[0];
+    const authUidLegado = String(usuario.authUid || "").trim();
+    diagnosticos.push(this.registrarDiagnosticoAuth("LEGACY_USER_FOUND_BY_EMAIL", {
+      usuarioId: usuario.id,
+      tenantId: usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "",
+      email: authUser?.email,
+      origem: "email_legado"
+    }));
+
+    if (!authUidLegado) {
+      diagnosticos.push(this.registrarDiagnosticoAuth("LEGACY_USER_WITHOUT_AUTH_UID", {
+        usuarioId: usuario.id,
+        tenantId: usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "",
+        email: authUser?.email,
+        origem: "email_legado"
+      }));
+      return this.resultadoDiagnosticoAuth(false, "LEGACY_USER_WITHOUT_AUTH_UID", { usuario, diagnosticos });
+    }
+
+    if (authUidLegado !== authUser.uid) {
+      diagnosticos.push(this.registrarDiagnosticoAuth("LEGACY_USER_AUTH_UID_MISMATCH", {
+        usuarioId: usuario.id,
+        tenantId: usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "",
+        email: authUser?.email,
+        origem: "email_legado"
+      }));
+      return this.resultadoDiagnosticoAuth(false, "LEGACY_USER_AUTH_UID_MISMATCH", { usuario, diagnosticos });
+    }
+
+    const validacao = await this.validarUsuarioResolvidoAuth(usuario);
+    if (!validacao.ok) {
+      diagnosticos.push(this.registrarDiagnosticoAuth(validacao.codigo, {
+        usuarioId: usuario.id,
+        tenantId: usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "",
+        origem: "email_legado"
+      }));
+      return this.resultadoDiagnosticoAuth(false, validacao.codigo, { usuario, diagnosticos, mensagem: validacao.mensagem });
+    }
+
+    return this.resultadoDiagnosticoAuth(true, "LEGACY_USER_FOUND_BY_EMAIL", { usuario, diagnosticos });
+  },
+
+  async resolverUsuarioAutenticado(authUser) {
+    if (!authUser?.uid) {
+      return this.resultadoDiagnosticoAuth(false, "USER_OPERATIONAL_NOT_FOUND");
+    }
+
+    const diagnosticos = [];
+    const usuarioPorUid = await this.buscarUsuarioPorDocumentoUid(authUser);
+
+    if (usuarioPorUid) {
+      const validacao = await this.validarUsuarioResolvidoAuth(usuarioPorUid);
+      if (!validacao.ok) {
+        diagnosticos.push(this.registrarDiagnosticoAuth(validacao.codigo, {
+          usuarioId: usuarioPorUid.id,
+          tenantId: usuarioPorUid.clientePlataformaId || usuarioPorUid.empresaId || usuarioPorUid.tenantId || "",
+          origem: "uid"
+        }));
+        return this.resultadoDiagnosticoAuth(false, validacao.codigo, { usuario: usuarioPorUid, diagnosticos, mensagem: validacao.mensagem });
+      }
+
+      return this.resultadoDiagnosticoAuth(true, "OK_UID", { usuario: usuarioPorUid, diagnosticos });
+    }
+
+    diagnosticos.push(this.registrarDiagnosticoAuth("USER_DOC_UID_NOT_FOUND", {
+      email: authUser.email,
+      origem: "uid"
+    }));
+
+    return this.diagnosticarVinculoUsuarioAuth(authUser, diagnosticos);
+  },
+
   async criarUsuario(dadosUsuario) {
     try {
       const {
@@ -95,19 +421,6 @@ const FirestoreService = {
         throw new Error("Nome e email são obrigatórios.");
       }
 
-      // Criar usuário no Firebase Auth
-      const secondaryApp = firebase.initializeApp(
-        firebase.app().options,
-        "createUserApp_" + Date.now()
-      );
-
-      const cred = await secondaryApp
-        .auth()
-        .createUserWithEmailAndPassword(email, CONFIG.SENHA_PADRAO);
-
-      await secondaryApp.auth().signOut();
-      await secondaryApp.delete();
-
       // Buscar cargo e equipe do estado
       const cargo = State.encontrarCargoPorId(cargoId);
       const equipe = State.encontrarEquipePorId(equipeId);
@@ -115,10 +428,10 @@ const FirestoreService = {
 
       // Criar documento em Firestore
       const docRef = await db.collection(CONFIG.COLECOES.USUARIOS).add({
-        authUid: cred.user.uid,
+        authUid: "",
         nome,
         nomeCompleto: nome,
-        email,
+        email: String(email || "").toLowerCase(),
         telefone,
         tipoUsuario: acessoUsuario.tipoUsuario,
         tipoUsuarioOficial: acessoUsuario.tipoUsuarioOficial,
@@ -134,8 +447,11 @@ const FirestoreService = {
         equipeId: equipeId || "",
         equipeNome: equipe?.nome || "",
 
-        status,
-        acessoLiberado: status !== CONFIG.STATUS_USUARIO.BLOQUEADO && status !== CONFIG.STATUS_USUARIO.INATIVO,
+        status: "CONVITE_PENDENTE",
+        statusSolicitado: status || CONFIG.STATUS_USUARIO.ATIVO,
+        acessoLiberado: false,
+        convitePendente: true,
+        provisionamentoAuth: "PENDENTE_BACKEND",
 
         clientePlataformaId: tenantId,
         clientePlataformaNome: State.getEmpresaNome(),
@@ -149,9 +465,10 @@ const FirestoreService = {
 
       return {
         id: docRef.id,
-        authUid: cred.user.uid,
+        authUid: "",
         email: email,
-        senha: CONFIG.SENHA_PADRAO
+        convitePendente: true,
+        provisionamentoAuth: "PENDENTE_BACKEND"
       };
     } catch (erro) {
       console.error("Erro ao criar usuário:", erro);
@@ -228,6 +545,18 @@ const FirestoreService = {
         throw new Error("ID do usuário é obrigatório.");
       }
 
+      if (liberar) {
+        const usuarioDoc = await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).get();
+        if (!usuarioDoc.exists) {
+          throw new Error("Usuário não encontrado.");
+        }
+
+        const usuario = usuarioDoc.data() || {};
+        if (!usuario.authUid || usuario.convitePendente === true || usuario.provisionamentoAuth === "PENDENTE_BACKEND") {
+          throw new Error("Usuário ainda aguarda provisionamento Auth pelo backend e não pode ser liberado.");
+        }
+      }
+
       await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).update({
         acessoLiberado: liberar,
         status: liberar ? CONFIG.STATUS_USUARIO.ATIVO : CONFIG.STATUS_USUARIO.BLOQUEADO,
@@ -275,27 +604,17 @@ const FirestoreService = {
     try {
       if (!authUser) return null;
 
-      let snap = await db.collection(CONFIG.COLECOES.USUARIOS)
-        .where("authUid", "==", authUser.uid)
-        .limit(1)
-        .get();
-
-      if (snap.empty) {
-        snap = await db.collection(CONFIG.COLECOES.USUARIOS)
-          .where("email", "==", String(authUser.email || "").toLowerCase())
-          .limit(1)
-          .get();
+      const resultado = await FirestoreService.resolverUsuarioAutenticado(authUser);
+      if (!resultado.ok) {
+        throw FirestoreService.erroDiagnosticoAuth(resultado);
       }
 
-      if (snap.empty) return null;
-
-      const doc = snap.docs[0];
-
       return {
-        id: doc.id,
-        ...doc.data(),
-        authUid: doc.data().authUid || authUser.uid,
-        email: doc.data().email || authUser.email
+        ...resultado.usuario,
+        __authDiagnostico: {
+          codigo: resultado.codigo,
+          diagnosticos: resultado.diagnosticos || []
+        }
       };
     } catch (erro) {
       console.error("Erro ao buscar usuário por authUid:", erro);
@@ -312,17 +631,39 @@ const FirestoreService = {
         throw new Error("Nome, documento e telefone principal são obrigatórios.");
       }
 
+      const tenantId = State.getTenantId();
+      if (!tenantId) {
+        throw new Error("Tenant obrigatório para criar cliente.");
+      }
+
+      const documentoNormalizado = FirestoreService.normalizarDocumentoCliente(dadosCliente.documento);
+      const telefonesNormalizados = FirestoreService.montarTelefonesNormalizadosCliente(dadosCliente);
+      const telefoneNormalizado = telefonesNormalizados[0] || "";
+      const duplicado = await FirestoreService.buscarClienteDuplicado({
+        ...dadosCliente,
+        documentoNormalizado,
+        telefoneNormalizado,
+        telefonesNormalizados
+      }, tenantId);
+
+      if (duplicado) {
+        throw new Error(`Cliente já cadastrado neste tenant: ${duplicado.nome || duplicado.nomeCompleto || duplicado.id}.`);
+      }
+
       const docRef = await db.collection(CONFIG.COLECOES.CLIENTES).add({
         ...dadosCliente,
 
         nomeBusca: String(dadosCliente.nome || "").toLowerCase(),
         apelidoBusca: String(dadosCliente.apelido || "").toLowerCase(),
+        documentoNormalizado,
+        telefoneNormalizado,
+        telefonesNormalizados,
 
         status: dadosCliente.status || CONFIG.STATUS_CLIENTE.SEM_VENDA,
         score: dadosCliente.score ?? 50,
         saldoDevedor: Number(dadosCliente.saldoDevedor || 0),
 
-        clientePlataformaId: State.getTenantId(),
+        clientePlataformaId: tenantId,
         clientePlataformaNome: State.getEmpresaNome(),
 
         ativo: true,
@@ -509,6 +850,14 @@ const FirestoreService = {
         throw new Error("Data da primeira cobrança é obrigatória.");
       }
 
+      const servicoTransacional = window.IntegroVenda?.registrarVendaTransacional;
+      const caixaId = dadosVenda.caixaId || dadosVenda.caixaAtualId || "";
+      const operacaoId = dadosVenda.operacaoId || "";
+
+      if (!servicoTransacional || !caixaId || !operacaoId) {
+        throw new Error("Fluxo legado de venda bloqueado. Use o núcleo transacional com caixa aberto e operacaoId.");
+      }
+
       const validacao = await FirestoreService.clientePodeReceberVenda(clienteId);
 
       if (!validacao.pode) {
@@ -522,6 +871,36 @@ const FirestoreService = {
 
       const valorTotalVenda = valorBase + (valorBase * juros / 100);
       const valorParcela = valorTotalVenda / parcelas;
+
+      const valorEmprestadoCentavos = window.IntegroOperacional?.moedaParaCentavos
+        ? window.IntegroOperacional.moedaParaCentavos(valorBase)
+        : Math.round(valorBase * 100);
+      const valorTotalCentavos = Math.round(valorEmprestadoCentavos * (1 + (juros / 100)));
+      const resultadoTransacional = await servicoTransacional({
+        clienteId,
+        clienteNome: clienteNome || validacao.cliente?.nome || validacao.cliente?.nomeCompleto || "",
+        vendedorId: vendedorId || State.usuarioId || "",
+        vendedorNome: vendedorNome || State.usuario?.nome || State.usuario?.email || "",
+        caixaId,
+        operacaoId,
+        clientePlataformaId: tenantId,
+        usuario: State.getUsuario ? State.getUsuario() : State.usuario,
+        valorEmprestadoCentavos,
+        valorTotalCentavos,
+        taxaJuros: juros,
+        quantidadeParcelas: parcelas,
+        frequencia: frequencia || "DIARIA",
+        primeiraCobranca: dataPrimeiraCobranca,
+        tipoVenda: tipoVenda || "NOVA"
+      });
+
+      return {
+        id: resultadoTransacional?.vendaId || resultadoTransacional?.id || "",
+        valorTotalVenda: valorTotalCentavos / 100,
+        valorParcela,
+        quantidadeParcelas: parcelas,
+        modo: resultadoTransacional?.modo || "TRANSACIONAL"
+      };
 
       const vendaRef = db.collection(CONFIG.COLECOES.VENDAS).doc();
       const batch = db.batch();

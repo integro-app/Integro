@@ -176,11 +176,11 @@
     if (tipoUsuarioOficial === "usuario_cliente") {
       rotaPadrao = ({
         gerente: "master-local.html",
-        captador: "master-local.html",
+        captador: "captador.html",
         supervisor: "supervisor.html",
         vendedor: "vendedor.html",
         financeiro: "financeiro.html",
-        auditor: "master-local.html"
+        auditor: "auditor.html"
       })[cargoChave] || "master-local.html";
     }
 

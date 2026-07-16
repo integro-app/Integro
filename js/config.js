@@ -12,16 +12,16 @@ const CONFIG = {
     supervisor: "supervisor.html",
     financeiro: "financeiro.html",
     gerente: "master-local.html",
-    auditor: "master-local.html"
+    auditor: "auditor.html"
   },
 
   ROTAS_POR_CARGO_CLIENTE: {
     gerente: "master-local.html",
-    captador: "master-local.html",
+    captador: "captador.html",
     supervisor: "supervisor.html",
     vendedor: "vendedor.html",
     financeiro: "financeiro.html",
-    auditor: "master-local.html"
+    auditor: "auditor.html"
   },
 
   TIPO_POR_PAGINA: {
@@ -29,7 +29,9 @@ const CONFIG = {
     "master-local.html": "master_local",
     "vendedor.html": "vendedor",
     "supervisor.html": "supervisor",
-    "financeiro.html": "financeiro"
+    "financeiro.html": "financeiro",
+    "auditor.html": "auditor",
+    "captador.html": "captador"
   },
 
   TIPOS_USUARIO: {

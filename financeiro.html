@@ -1756,6 +1756,16 @@
     return "st-paga";
   }
   function empty(msg){ return `<div class="empty">${esc(msg)}</div>`; }
+  function notificarFinanceiro(titulo, mensagem){
+    abrirDrawerFinanceiro(titulo || "Financeiro", "Aviso operacional", `<div class="info-card"><strong>${esc(mensagem || "")}</strong></div>`);
+  }
+  function bloquearAcaoMockFinanceiro(acao){
+    notificarFinanceiro(
+      "Ação indisponível",
+      `${acao} não grava dados reais. Use os fluxos oficiais de ledger, solicitações, caixa, regularização e estorno.`
+    );
+    return false;
+  }
 
   async function carregarColecaoTenant(nome, limite = 1000){
     const database = db();
@@ -1961,7 +1971,7 @@
   window.estornarLancamentoFinanceiro = async function(id){
     if (!svc()?.registrarEstornoFinanceiro || FIN.locks.has(`estorno_${id}`)) return;
     const motivo = prompt("Informe o motivo obrigatorio do estorno:");
-    if (!motivo || !motivo.trim()) return alert("Motivo obrigatorio.");
+    if (!motivo || !motivo.trim()) return notificarFinanceiro("Estorno", "Motivo obrigatorio.");
     if (!confirm("Confirmar estorno? O lancamento original nao sera excluido.")) return;
     FIN.locks.add(`estorno_${id}`);
     const btn = document.getElementById("btnEstornarLancamento");
@@ -1975,10 +1985,10 @@
         usuario: usuarioAtual()
       });
       await carregarFinanceiroReal();
-      alert("Estorno registrado.");
+      notificarFinanceiro("Estorno", "Estorno registrado.");
     } catch(e) {
       console.error(e);
-      alert(e?.message || "Nao foi possivel estornar.");
+      notificarFinanceiro("Estorno", e?.message || "Nao foi possivel estornar.");
     } finally {
       FIN.locks.delete(`estorno_${id}`);
     }
@@ -2023,7 +2033,7 @@
     const valor = prompt("Valor da regularizacao em reais:");
     const natureza = prompt("Natureza: CREDITO ou DEBITO:");
     const motivo = prompt("Motivo obrigatorio:");
-    if (!valor || !natureza || !motivo) return alert("Valor, natureza e motivo sao obrigatorios.");
+    if (!valor || !natureza || !motivo) return notificarFinanceiro("Regularizacao", "Valor, natureza e motivo sao obrigatorios.");
     FIN.locks.add(`reg_${caixaId}`);
     try {
       await svc().registrarRegularizacaoFinanceiraCaixa({
@@ -2036,10 +2046,10 @@
         usuario: usuarioAtual()
       });
       await carregarFinanceiroReal();
-      alert("Regularizacao registrada.");
+      notificarFinanceiro("Regularizacao", "Regularizacao registrada.");
     } catch(e) {
       console.error(e);
-      alert(e?.message || "Nao foi possivel regularizar.");
+      notificarFinanceiro("Regularizacao", e?.message || "Nao foi possivel regularizar.");
     } finally {
       FIN.locks.delete(`reg_${caixaId}`);
     }
@@ -2122,7 +2132,15 @@
     else if (destino === "relatorios") trocarTelaFinanceiro("relatorios");
     else trocarTelaFinanceiro("contas");
   };
-  window.abrirOrigemFinanceiro = function(origem, origemId){ alert(`Origem: ${origem}\\nID: ${origemId}`); };
+  window.abrirOrigemFinanceiro = function(origem, origemId){
+    abrirDrawerFinanceiro("Origem do lancamento", origem || "Origem", `
+      <div class="info-card">
+        <strong>${esc(origem || "-")}</strong>
+        <small>ID: ${esc(origemId || "-")}</small>
+        <small>A origem deve ser conferida no modulo operacional responsavel; nenhuma alteracao financeira direta e permitida por esta tela.</small>
+      </div>
+    `);
+  };
 
   const trocarTelaAntiga = window.trocarTelaFinanceiro;
   window.trocarTelaFinanceiro = function(tela, el){
@@ -2152,6 +2170,15 @@
   window.renderRelatoriosFinanceiro = renderRelatoriosFinanceiroReal;
   window.renderAuditoriaFinanceira = renderAuditoriaFinanceiraReal;
   window.renderFornecedores = renderAuditoriaFinanceiraReal;
+  window.salvarContaMock = function(){ return bloquearAcaoMockFinanceiro("Cadastro de conta visual"); };
+  window.salvarRecorrenciaMock = function(){ return bloquearAcaoMockFinanceiro("Recorrencia visual"); };
+  window.confirmarPagamentoMock = function(){ return bloquearAcaoMockFinanceiro("Pagamento de conta visual"); };
+  window.registrarPagamentoConta = function(){ return bloquearAcaoMockFinanceiro("Baixa de conta visual"); };
+  window.cancelarConta = function(){ return bloquearAcaoMockFinanceiro("Cancelamento de conta visual"); };
+  window.duplicarConta = function(){ return bloquearAcaoMockFinanceiro("Duplicacao de conta visual"); };
+  window.anexarComprovanteConta = function(){ return bloquearAcaoMockFinanceiro("Anexo de comprovante visual"); };
+  window.abrirNovaRecorrencia = function(){ return bloquearAcaoMockFinanceiro("Agenda de recorrencia visual"); };
+  window.abrirNovoFornecedorMock = function(){ return bloquearAcaoMockFinanceiro("Cadastro de fornecedor visual"); };
   window.exportarContasMock = function(){
     const linhas = FIN.lancamentosFiltrados.map(l => `${l.dataOperacional};${l.tipoLancamento};${l.natureza};${l.origemId};${l.caixaId};${l.vendedorId};${l.valorCentavos};${l.statusLancamento || "CONFIRMADO"}`);
     abrirDrawerFinanceiro("Exportação", "Listagem textual para conferência", `<textarea readonly>${esc(["data;tipo;natureza;origem;caixa;vendedor;valorCentavos;status", ...linhas].join("\\n"))}</textarea>`);

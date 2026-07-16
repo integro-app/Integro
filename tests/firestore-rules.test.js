@@ -285,7 +285,8 @@ test("caixa: update de data operacional e delete bloqueados", async () => {
 });
 
 test("fechamento: cria valido, outro tenant bloqueado e snapshot imutavel", async () => {
-  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "fechamentos_caixa", "fechamento_caixa_a_1_novo"), fechamento({ fechamentoId: "fechamento_caixa_a_1_novo", caixaId: "caixa_a_1" })));
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "caixas", "caixa_a_novo"), caixa({ id: "caixa_a_novo", vendedorAuthUid: profiles.vendedor1.uid })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "fechamentos_caixa", "fechamento_caixa_a_novo"), fechamento({ fechamentoId: "fechamento_caixa_a_novo", caixaId: "caixa_a_novo" })));
   await assertFails(setDoc(doc(appDb(profiles.masterA), "fechamentos_caixa", "fechamento_caixa_b_1"), fechamento({ clientePlataformaId: "tenant_b", caixaId: "caixa_b_1" })));
   await assertFails(updateDoc(doc(appDb(profiles.masterA), "fechamentos_caixa", "fechamento_caixa_a_1"), { caixaFinalEsperadoCentavos: 1 }));
 });
