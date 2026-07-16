@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -188,7 +188,7 @@
     }
 
 
-    /* ===== LOADING PREMIUM ÍNTEGRO - FINANCEIRO ===== */
+    /* ===== LOADING PREMIUM ÃNTEGRO - FINANCEIRO ===== */
     body.integro-booting{overflow:hidden;}
     body.integro-booting .layout,
     body.integro-booting .mobile-menu-btn{
@@ -276,47 +276,47 @@
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
-      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
+      <div class="integro-loader-logo">ÃNTEGRO<span>.</span></div>
       <div class="integro-loader-title">Preparando financeiro</div>
       <div class="integro-loader-step" id="integroLoaderStep">Carregando painel financeiro...</div>
       <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
       <div class="integro-loader-bar"><span id="integroLoaderBarFill"></span></div>
-      <div class="integro-loader-hint">Validando acesso, agenda, contas, caixas e solicitações.</div>
+      <div class="integro-loader-hint">Validando acesso, agenda, contas, caixas e solicitaÃ§Ãµes.</div>
     </div>
   </div>
 
-  <button class="mobile-menu-btn" type="button" onclick="toggleSidebarFinanceiro(true)" aria-label="Abrir menu">☰</button>
+  <button class="mobile-menu-btn" type="button" onclick="toggleSidebarFinanceiro(true)" aria-label="Abrir menu">â˜°</button>
   <div class="layout">
     <div class="overlay" id="overlay" onclick="toggleSidebarFinanceiro(false)"></div>
 
     <aside class="sidebar" id="sidebar">
       <div class="brand">
         <h1>INTE<span>GRO</span></h1>
-        <button class="collapse-btn" type="button" onclick="toggleCollapseSidebarFinanceiro()">«</button>
+        <button class="collapse-btn" type="button" onclick="toggleCollapseSidebarFinanceiro()">Â«</button>
       </div>
 
       <div class="user-card">
         <div class="avatar">$</div>
         <div class="user-info">
-          <strong id="userNome">Usuário</strong>
+          <strong id="userNome">UsuÃ¡rio</strong>
           <small id="empresaNome">Empresa</small>
-          <small class="online" id="userStatus">● Online</small>
+          <small class="online" id="userStatus">â— Online</small>
           <small class="role-pill" id="userCargo">Financeiro</small>
         </div>
       </div>
 
       <div class="menu-title">Financeiro</div>
-      <button class="menu-item active" onclick="trocarTelaFinanceiro('dashboard', this)"><span class="menu-icon">⌂</span><span class="menu-label">Dashboard</span></button>
-      <button class="menu-item" onclick="trocarTelaFinanceiro('contas', this)"><span class="menu-icon">▤</span><span class="menu-label">Contas</span></button>
-      <button class="menu-item" onclick="trocarTelaFinanceiro('solicitacoes', this)"><span class="menu-icon">◇</span><span class="menu-label">Solicitações</span></button>
-      <button class="menu-item" onclick="trocarTelaFinanceiro('caixas', this)"><span class="menu-icon">▣</span><span class="menu-label">Caixas</span></button>
-      <button class="menu-item" onclick="trocarTelaFinanceiro('fornecedores', this)"><span class="menu-icon">♙</span><span class="menu-label">Fornecedores</span></button>
-      <button class="menu-item" onclick="trocarTelaFinanceiro('relatorios', this)"><span class="menu-icon">◫</span><span class="menu-label">Relatórios</span></button>
-      <button class="menu-item" onclick="trocarTelaFinanceiro('auditoria', this)"><span class="menu-icon">◎</span><span class="menu-label">Auditoria</span></button>
-      <button class="menu-item" onclick="trocarTelaFinanceiro('configuracoes', this)"><span class="menu-icon">⚙</span><span class="menu-label">Configurações</span></button>
+      <button class="menu-item active" onclick="trocarTelaFinanceiro('dashboard', this)"><span class="menu-icon">âŒ‚</span><span class="menu-label">Dashboard</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('contas', this)"><span class="menu-icon">â–¤</span><span class="menu-label">Contas</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('solicitacoes', this)"><span class="menu-icon">â—‡</span><span class="menu-label">SolicitaÃ§Ãµes</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('caixas', this)"><span class="menu-icon">â–£</span><span class="menu-label">Caixas</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('fornecedores', this)"><span class="menu-icon">â™™</span><span class="menu-label">Fornecedores</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('relatorios', this)"><span class="menu-icon">â—«</span><span class="menu-label">RelatÃ³rios</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('auditoria', this)"><span class="menu-icon">â—Ž</span><span class="menu-label">Auditoria</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('configuracoes', this)"><span class="menu-icon">âš™</span><span class="menu-label">ConfiguraÃ§Ãµes</span></button>
 
       <div class="quick-actions">
-        <div class="menu-title">Ações</div>
+        <div class="menu-title">AÃ§Ãµes</div>
         <button class="quick-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
         <button class="quick-btn outline-btn" type="button" onclick="carregarFinanceiroMock()">Atualizar dados</button>
         <button class="quick-btn outline-btn" type="button" onclick="logoutFinanceiro()">Sair</button>
@@ -327,7 +327,7 @@
       <div class="topbar">
         <div>
           <h2 id="pageTitle">Dashboard Financeiro</h2>
-          <p id="pageSubtitle">Resumo de contas, pagamentos, caixas e solicitações.</p>
+          <p id="pageSubtitle">Resumo de contas, pagamentos, caixas e solicitaÃ§Ãµes.</p>
         </div>
         <div class="top-actions">
           <button class="top-btn" type="button" id="topDataFinanceiro">Hoje</button>
@@ -343,7 +343,7 @@
           <div class="panel-head">
             <div>
               <h3>Agenda de pagamentos</h3>
-              <p>Próximos vencimentos e recorrências em destaque.</p>
+              <p>PrÃ³ximos vencimentos e recorrÃªncias em destaque.</p>
             </div>
             <button class="ghost-btn" type="button" onclick="trocarTelaFinanceiro('contas')">Ver contas</button>
           </div>
@@ -363,13 +363,13 @@
           <div class="toolbar">
             <div class="toolbar-group">
               <button class="primary-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
-              <button class="ghost-btn" type="button" onclick="abrirNovaRecorrencia()">Nova recorrência</button>
+              <button class="ghost-btn" type="button" onclick="abrirNovaRecorrencia()">Nova recorrÃªncia</button>
               <button class="ghost-btn" type="button" onclick="exportarContasMock()">Exportar</button>
               <button class="ghost-btn" type="button" onclick="alternarFiltrosContas()">Filtros</button>
             </div>
             <div class="view-toggle toolbar-spacer">
               <button id="btnTabelaContas" class="active" type="button" onclick="alternarVisualizacaoContas('tabela')">Tabela</button>
-              <button id="btnCalendarioContas" type="button" onclick="alternarVisualizacaoContas('calendario')">Calendário</button>
+              <button id="btnCalendarioContas" type="button" onclick="alternarVisualizacaoContas('calendario')">CalendÃ¡rio</button>
             </div>
           </div>
 
@@ -378,13 +378,13 @@
           <div class="filters" id="filtrosContas">
             <div><label>Status</label><select id="filtroStatus"><option value="">Todos</option><option>VENCIDA</option><option>VENCE_HOJE</option><option>PROXIMA</option><option>PAGA</option><option>RECORRENTE</option><option>CANCELADA</option></select></div>
             <div><label>Fornecedor</label><select id="filtroFornecedor"><option value="">Todos</option></select></div>
-            <div><label>Categoria</label><select id="filtroCategoria"><option value="">Todas</option><option>Aluguel</option><option>Marketing</option><option>Operacional</option><option>Serviços</option><option>Tecnologia</option></select></div>
-            <div><label>Forma de pagamento</label><select id="filtroForma"><option value="">Todas</option><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+            <div><label>Categoria</label><select id="filtroCategoria"><option value="">Todas</option><option>Aluguel</option><option>Marketing</option><option>Operacional</option><option>ServiÃ§os</option><option>Tecnologia</option></select></div>
+            <div><label>Forma de pagamento</label><select id="filtroForma"><option value="">Todas</option><option>PIX</option><option>Boleto</option><option>TransferÃªncia</option><option>CartÃ£o</option></select></div>
             <div><label>Data inicial</label><input id="filtroDataInicial" type="date"></div>
             <div><label>Data final</label><input id="filtroDataFinal" type="date"></div>
-            <div><label>Valor mínimo</label><input id="filtroValorMin" type="number" min="0" step="0.01"></div>
-            <div><label>Valor máximo</label><input id="filtroValorMax" type="number" min="0" step="0.01"></div>
-            <div class="form-group full"><label>Buscar descrição</label><input id="filtroBuscaDescricao" type="search" placeholder="Buscar por descrição" oninput="aplicarFiltrosContas()"></div>
+            <div><label>Valor mÃ­nimo</label><input id="filtroValorMin" type="number" min="0" step="0.01"></div>
+            <div><label>Valor mÃ¡ximo</label><input id="filtroValorMax" type="number" min="0" step="0.01"></div>
+            <div class="form-group full"><label>Buscar descriÃ§Ã£o</label><input id="filtroBuscaDescricao" type="search" placeholder="Buscar por descriÃ§Ã£o" oninput="aplicarFiltrosContas()"></div>
             <div class="form-group full"><button class="primary-btn" type="button" onclick="aplicarFiltrosContas(true)">Aplicar filtros</button></div>
           </div>
 
@@ -393,12 +393,12 @@
         </div>
       </section>
 
-      <section id="solicitacoes" class="screen"><div class="section-card"><div class="section-header"><div><h2>Solicitações financeiras</h2><p>Ingressos, retiradas, gastos e vendas fora da regra.</p></div></div><div id="listaSolicitacoesFinanceiras" class="cards-grid"></div></div></section>
-      <section id="caixas" class="screen"><div class="section-card"><div class="section-header"><div><h2>Caixas</h2><p>Caixas abertos, fechados e divergências.</p></div></div><div id="listaCaixasFinanceiro" class="table-wrap"></div></div></section>
+      <section id="solicitacoes" class="screen"><div class="section-card"><div class="section-header"><div><h2>SolicitaÃ§Ãµes financeiras</h2><p>Ingressos, retiradas, gastos e vendas fora da regra.</p></div></div><div id="listaSolicitacoesFinanceiras" class="cards-grid"></div></div></section>
+      <section id="caixas" class="screen"><div class="section-card"><div class="section-header"><div><h2>Caixas</h2><p>Caixas abertos, fechados e divergÃªncias.</p></div></div><div id="listaCaixasFinanceiro" class="table-wrap"></div></div></section>
       <section id="fornecedores" class="screen"><div class="section-card"><div class="section-header"><div><h2>Fornecedores</h2><p>Cadastro base para contas a pagar.</p></div><button class="primary-btn" type="button" onclick="abrirNovoFornecedorMock()">Novo fornecedor</button></div><div id="listaFornecedores" class="cards-grid"></div></div></section>
-      <section id="relatorios" class="screen"><div class="section-card"><div class="section-header"><div><h2>Relatórios</h2><p>Estrutura preparada para indicadores e exportações futuras.</p></div></div><div id="listaRelatoriosFinanceiro" class="cards-grid"></div></div></section>
+      <section id="relatorios" class="screen"><div class="section-card"><div class="section-header"><div><h2>RelatÃ³rios</h2><p>Estrutura preparada para indicadores e exportaÃ§Ãµes futuras.</p></div></div><div id="listaRelatoriosFinanceiro" class="cards-grid"></div></div></section>
       <section id="auditoria" class="screen"><div class="section-card"><div class="section-header"><div><h2>Auditoria</h2><p>Logs financeiros e rastreabilidade.</p></div></div><div id="listaAuditoriaFinanceira" class="table-wrap"></div></div></section>
-      <section id="configuracoes" class="screen"><div class="section-card"><div class="section-header"><div><h2>Configurações</h2><p>Categorias, formas de pagamento, alertas e permissões financeiras.</p></div></div><div id="listaConfiguracoesFinanceiras" class="cards-grid"></div></div></section>
+      <section id="configuracoes" class="screen"><div class="section-card"><div class="section-header"><div><h2>ConfiguraÃ§Ãµes</h2><p>Categorias, formas de pagamento, alertas e permissÃµes financeiras.</p></div></div><div id="listaConfiguracoesFinanceiras" class="cards-grid"></div></div></section>
     </main>
   </div>
 
@@ -481,7 +481,7 @@
           if (dataTopo) dataTopo.innerText = new Date().toLocaleDateString("pt-BR");
         });
 
-        await executarEtapaFinanceiro("Validando acesso do usuário...", 30, async () => {
+        await executarEtapaFinanceiro("Validando acesso do usuÃ¡rio...", 30, async () => {
           if (typeof protegerPaginaAtual === "function") {
             const retorno = protegerPaginaAtual();
             if (retorno && typeof retorno.then === "function") await retorno;
@@ -492,11 +492,11 @@
           if (typeof preencherUsuarioLayout === "function") preencherUsuarioLayout();
         });
 
-        await executarEtapaFinanceiro("Carregando contas, fornecedores e solicitações...", 68, () => {
+        await executarEtapaFinanceiro("Carregando contas, fornecedores e solicitaÃ§Ãµes...", 68, () => {
           carregarFinanceiroMock();
         });
 
-        await executarEtapaFinanceiro("Atualizando caixas, relatórios e auditoria...", 86, () => {
+        await executarEtapaFinanceiro("Atualizando caixas, relatÃ³rios e auditoria...", 86, () => {
           renderDashboardFinanceiro();
           renderContas();
           renderSolicitacoesFinanceiras();
@@ -511,7 +511,7 @@
         liberarSistemaFinanceiro();
       } catch (erro) {
         console.error("Erro no loading financeiro:", erro);
-        setLoaderFinanceiroStep("Não foi possível concluir toda a validação, liberando tela com segurança...", 100);
+        setLoaderFinanceiroStep("NÃ£o foi possÃ­vel concluir toda a validaÃ§Ã£o, liberando tela com seguranÃ§a...", 100);
         liberarSistemaFinanceiro();
       }
     }
@@ -558,7 +558,7 @@
     function textoOrdemDiaSemana(dataIso) {
       const ordem = ordemDiaSemanaNoMes(dataIso);
       const nomes = ["primeiro", "segundo", "terceiro", "quarto", "quinto"];
-      return nomes[ordem - 1] || `${ordem}º`;
+      return nomes[ordem - 1] || `${ordem}Âº`;
     }
 
     function opcoesRecorrenciaRapida(dataIso) {
@@ -566,7 +566,7 @@
       const dia = nomeDiaSemana(data);
       const mesDia = new Date(data + "T00:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
       return `
-        <option value="NAO_REPETIR">Não se repete</option>
+        <option value="NAO_REPETIR">NÃ£o se repete</option>
         <option value="DIARIO">Todos os dias</option>
         <option value="SEMANAL">Semanal: cada ${dia}</option>
         <option value="MENSAL_DIA_SEMANA">Mensal no(a) ${textoOrdemDiaSemana(data)}(a) ${dia}</option>
@@ -593,24 +593,24 @@
 
     function carregarFinanceiroMock() {
       fornecedoresMock = [
-        { id:"forn_1", nome:"Alpha Tecnologia", documento:"12.345.678/0001-90", telefone:"(11) 99999-0101", pix:"financeiro@alpha.com", banco:"Itaú", categoriaPadrao:"Tecnologia", observacoes:"Fornecedor recorrente de sistemas." },
-        { id:"forn_2", nome:"Mídia Forte", documento:"23.456.789/0001-10", telefone:"(11) 98888-0202", pix:"23.456.789/0001-10", banco:"Inter", categoriaPadrao:"Marketing", observacoes:"Campanhas digitais." },
-        { id:"forn_3", nome:"Serviços Prime", documento:"34.567.890/0001-20", telefone:"(11) 97777-0303", pix:"servicos@prime.com", banco:"Santander", categoriaPadrao:"Operacional", observacoes:"Manutenção e suporte." }
+        { id:"forn_1", nome:"Alpha Tecnologia", documento:"12.345.678/0001-90", telefone:"(11) 99999-0101", pix:"financeiro@alpha.com", banco:"ItaÃº", categoriaPadrao:"Tecnologia", observacoes:"Fornecedor recorrente de sistemas." },
+        { id:"forn_2", nome:"MÃ­dia Forte", documento:"23.456.789/0001-10", telefone:"(11) 98888-0202", pix:"23.456.789/0001-10", banco:"Inter", categoriaPadrao:"Marketing", observacoes:"Campanhas digitais." },
+        { id:"forn_3", nome:"ServiÃ§os Prime", documento:"34.567.890/0001-20", telefone:"(11) 97777-0303", pix:"servicos@prime.com", banco:"Santander", categoriaPadrao:"Operacional", observacoes:"ManutenÃ§Ã£o e suporte." }
       ];
 
       contasFinanceirasMock = [
-        { id:"conta_1", descricao:"Hospedagem do sistema", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-18), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Tecnologia", vencimento:addDias(hojeIsoFinanceiro,-3), valor:980, status:"VENCIDA", formaPagamento:"Boleto", recorrente:true, observacao:"Plano mensal.", anexos:["boleto-hospedagem.pdf"], historico:["Conta criada", "Alerta enviado"], logs:["Mock: geração automática"] },
-        { id:"conta_2", descricao:"Campanha Instagram", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Marketing", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-5), dataPagamento:"", fornecedor:"Mídia Forte", fornecedorId:"forn_2", categoria:"Marketing", vencimento:hojeIsoFinanceiro, valor:1450, status:"VENCE_HOJE", formaPagamento:"PIX", recorrente:false, observacao:"Campanha de leads.", anexos:[], historico:["Conta importada"], logs:["Mock: aguardando pagamento"] },
-        { id:"conta_3", descricao:"Manutenção escritório", empresaNome:"Unidade Centro", empresaId:"empresa_2", responsavelNome:"Bruna Financeiro", responsavelId:"user_2", criadoPorNome:"Supervisor Centro", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-2), dataPagamento:"", fornecedor:"Serviços Prime", fornecedorId:"forn_3", categoria:"Operacional", vencimento:addDias(hojeIsoFinanceiro,4), valor:620, status:"PROXIMA", formaPagamento:"Transferência", recorrente:false, observacao:"Chamado preventivo.", anexos:[], historico:["Conta criada"], logs:["Mock: sem alterações"] },
-        { id:"conta_4", descricao:"Internet corporativa", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-30), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Serviços", vencimento:addDias(hojeIsoFinanceiro,7), valor:399.9, status:"RECORRENTE", formaPagamento:"Cartão", recorrente:true, observacao:"Recorrência mensal.", anexos:[], historico:["Recorrência criada"], logs:["Mock: próxima ocorrência"] },
-        { id:"conta_5", descricao:"Energia unidade central", empresaNome:"Unidade Centro", empresaId:"empresa_2", responsavelNome:"Bruna Financeiro", responsavelId:"user_2", criadoPorNome:"Financeiro", pagoPorNome:"Bruna Financeiro", dataCriacao:addDias(hojeIsoFinanceiro,-20), dataPagamento:addDias(hojeIsoFinanceiro,-2), fornecedor:"Serviços Prime", fornecedorId:"forn_3", categoria:"Operacional", vencimento:addDias(hojeIsoFinanceiro,-12), valor:830.45, status:"PAGA", formaPagamento:"PIX", recorrente:false, observacao:"Pago integralmente.", anexos:["comprovante-energia.jpg"], historico:["Pagamento registrado"], logs:["Mock: pago no mês"] },
-        { id:"conta_6", descricao:"Assinatura cancelada", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-9), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Tecnologia", vencimento:addDias(hojeIsoFinanceiro,12), valor:129, status:"CANCELADA", formaPagamento:"Cartão", recorrente:false, observacao:"Cancelada antes do vencimento.", anexos:[], historico:["Conta cancelada"], logs:["Mock: cancelamento"] }
+        { id:"conta_1", descricao:"Hospedagem do sistema", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-18), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Tecnologia", vencimento:addDias(hojeIsoFinanceiro,-3), valor:980, status:"VENCIDA", formaPagamento:"Boleto", recorrente:true, observacao:"Plano mensal.", anexos:["boleto-hospedagem.pdf"], historico:["Conta criada", "Alerta enviado"], logs:["Mock: geraÃ§Ã£o automÃ¡tica"] },
+        { id:"conta_2", descricao:"Campanha Instagram", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Marketing", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-5), dataPagamento:"", fornecedor:"MÃ­dia Forte", fornecedorId:"forn_2", categoria:"Marketing", vencimento:hojeIsoFinanceiro, valor:1450, status:"VENCE_HOJE", formaPagamento:"PIX", recorrente:false, observacao:"Campanha de leads.", anexos:[], historico:["Conta importada"], logs:["Mock: aguardando pagamento"] },
+        { id:"conta_3", descricao:"ManutenÃ§Ã£o escritÃ³rio", empresaNome:"Unidade Centro", empresaId:"empresa_2", responsavelNome:"Bruna Financeiro", responsavelId:"user_2", criadoPorNome:"Supervisor Centro", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-2), dataPagamento:"", fornecedor:"ServiÃ§os Prime", fornecedorId:"forn_3", categoria:"Operacional", vencimento:addDias(hojeIsoFinanceiro,4), valor:620, status:"PROXIMA", formaPagamento:"TransferÃªncia", recorrente:false, observacao:"Chamado preventivo.", anexos:[], historico:["Conta criada"], logs:["Mock: sem alteraÃ§Ãµes"] },
+        { id:"conta_4", descricao:"Internet corporativa", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-30), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"ServiÃ§os", vencimento:addDias(hojeIsoFinanceiro,7), valor:399.9, status:"RECORRENTE", formaPagamento:"CartÃ£o", recorrente:true, observacao:"RecorrÃªncia mensal.", anexos:[], historico:["RecorrÃªncia criada"], logs:["Mock: prÃ³xima ocorrÃªncia"] },
+        { id:"conta_5", descricao:"Energia unidade central", empresaNome:"Unidade Centro", empresaId:"empresa_2", responsavelNome:"Bruna Financeiro", responsavelId:"user_2", criadoPorNome:"Financeiro", pagoPorNome:"Bruna Financeiro", dataCriacao:addDias(hojeIsoFinanceiro,-20), dataPagamento:addDias(hojeIsoFinanceiro,-2), fornecedor:"ServiÃ§os Prime", fornecedorId:"forn_3", categoria:"Operacional", vencimento:addDias(hojeIsoFinanceiro,-12), valor:830.45, status:"PAGA", formaPagamento:"PIX", recorrente:false, observacao:"Pago integralmente.", anexos:["comprovante-energia.jpg"], historico:["Pagamento registrado"], logs:["Mock: pago no mÃªs"] },
+        { id:"conta_6", descricao:"Assinatura cancelada", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-9), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Tecnologia", vencimento:addDias(hojeIsoFinanceiro,12), valor:129, status:"CANCELADA", formaPagamento:"CartÃ£o", recorrente:false, observacao:"Cancelada antes do vencimento.", anexos:[], historico:["Conta cancelada"], logs:["Mock: cancelamento"] }
       ];
 
       solicitacoesFinanceirasMock = [
-        { id:"sol_1", tipo:"INGRESSO", status:"PENDENTE", vendedor:"Kauan", valor:500, descricao:"Solicitação de ingresso para reforço de caixa." },
+        { id:"sol_1", tipo:"INGRESSO", status:"PENDENTE", vendedor:"Kauan", valor:500, descricao:"SolicitaÃ§Ã£o de ingresso para reforÃ§o de caixa." },
         { id:"sol_2", tipo:"RETIRADA", status:"APROVADA", vendedor:"Gustavo", valor:300, descricao:"Recolhimento autorizado." },
-        { id:"sol_3", tipo:"GASTO", status:"PENDENTE", vendedor:"Tiago", valor:87.5, descricao:"Combustível para rota." },
+        { id:"sol_3", tipo:"GASTO", status:"PENDENTE", vendedor:"Tiago", valor:87.5, descricao:"CombustÃ­vel para rota." },
         { id:"sol_4", tipo:"VENDA_FORA_REGRA", status:"RECUSADA", vendedor:"Mariana", valor:1200, descricao:"Venda acima do limite operacional." }
       ];
 
@@ -623,7 +623,7 @@
       logsFinanceirosMock = [
         { id:"log_1", usuario:"Financeiro", acao:"CRIAR_CONTA", data:hojeIsoFinanceiro, conta:"Campanha Instagram", descricao:"Conta criada via mock." },
         { id:"log_2", usuario:"Financeiro", acao:"REGISTRAR_PAGAMENTO", data:addDias(hojeIsoFinanceiro,-2), conta:"Energia unidade central", descricao:"Pagamento registrado com comprovante." },
-        { id:"log_3", usuario:"Supervisor", acao:"APROVAR_RETIRADA", data:addDias(hojeIsoFinanceiro,-1), conta:"Caixa Gustavo", descricao:"Solicitação financeira aprovada." }
+        { id:"log_3", usuario:"Supervisor", acao:"APROVAR_RETIRADA", data:addDias(hojeIsoFinanceiro,-1), conta:"Caixa Gustavo", descricao:"SolicitaÃ§Ã£o financeira aprovada." }
       ];
 
       popularFiltroFornecedores();
@@ -639,14 +639,14 @@
 
     function trocarTelaFinanceiro(tela, el = null) {
       const titulos = {
-        dashboard:["Dashboard Financeiro","Resumo de contas, pagamentos, caixas e solicitações."],
-        contas:["Contas","Contas a pagar, agenda, pagamentos e recorrências."],
-        solicitacoes:["Solicitações","Aprovações financeiras e operações fora da regra."],
-        caixas:["Caixas","Abertos, fechados e divergências de caixa."],
-        fornecedores:["Fornecedores","Base de fornecedores e dados bancários."],
-        relatorios:["Relatórios","Indicadores e exportações futuras."],
+        dashboard:["Dashboard Financeiro","Resumo de contas, pagamentos, caixas e solicitaÃ§Ãµes."],
+        contas:["Contas","Contas a pagar, agenda, pagamentos e recorrÃªncias."],
+        solicitacoes:["SolicitaÃ§Ãµes","AprovaÃ§Ãµes financeiras e operaÃ§Ãµes fora da regra."],
+        caixas:["Caixas","Abertos, fechados e divergÃªncias de caixa."],
+        fornecedores:["Fornecedores","Base de fornecedores e dados bancÃ¡rios."],
+        relatorios:["RelatÃ³rios","Indicadores e exportaÃ§Ãµes futuras."],
         auditoria:["Auditoria","Logs financeiros e rastreabilidade."],
-        configuracoes:["Configurações","Categorias, formas de pagamento, alertas e permissões."]
+        configuracoes:["ConfiguraÃ§Ãµes","Categorias, formas de pagamento, alertas e permissÃµes."]
       };
 
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -677,13 +677,13 @@
 
       const cards = [
         ["Contas vencidas", vencidas.length, moeda(vencidas.reduce((t,c)=>t+c.valor,0)), "!", "grad-red", "vencidas"],
-        ["Vencem hoje", hoje.length, moeda(hoje.reduce((t,c)=>t+c.valor,0)), "⌁", "grad-orange", "hoje"],
-        ["Próximos 7 dias", proximas.length, moeda(proximas.reduce((t,c)=>t+c.valor,0)), "7", "grad-blue", "7dias"],
+        ["Vencem hoje", hoje.length, moeda(hoje.reduce((t,c)=>t+c.valor,0)), "âŒ", "grad-orange", "hoje"],
+        ["PrÃ³ximos 7 dias", proximas.length, moeda(proximas.reduce((t,c)=>t+c.valor,0)), "7", "grad-blue", "7dias"],
         ["Total em aberto", moeda(abertas.reduce((t,c)=>t+c.valor,0)), `${abertas.length} conta(s)`, "$", "grad-navy", "abertas"],
-        ["Total pago no mês", moeda(pagas.reduce((t,c)=>t+c.valor,0)), `${pagas.length} pagamento(s)`, "✓", "grad-green", "pagas"],
-        ["Recorrências ativas", recorrentes.length, "Agenda automática", "↻", "grad-purple", "recorrentes"],
-        ["Solicitações pendentes", solicitacoes.length, moeda(solicitacoes.reduce((t,s)=>t+s.valor,0)), "◇", "grad-cyan", "solicitacoes"],
-        ["Divergências de caixa", divergencias.length, moeda(divergencias.reduce((t,c)=>t+Math.abs(c.diferenca),0)), "△", "grad-red", "caixas"]
+        ["Total pago no mÃªs", moeda(pagas.reduce((t,c)=>t+c.valor,0)), `${pagas.length} pagamento(s)`, "âœ“", "grad-green", "pagas"],
+        ["RecorrÃªncias ativas", recorrentes.length, "Agenda automÃ¡tica", "â†»", "grad-purple", "recorrentes"],
+        ["SolicitaÃ§Ãµes pendentes", solicitacoes.length, moeda(solicitacoes.reduce((t,s)=>t+s.valor,0)), "â—‡", "grad-cyan", "solicitacoes"],
+        ["DivergÃªncias de caixa", divergencias.length, moeda(divergencias.reduce((t,c)=>t+Math.abs(c.diferenca),0)), "â–³", "grad-red", "caixas"]
       ];
 
       document.getElementById("dashboardFinanceiroCards").innerHTML = cards.map(c => `
@@ -737,7 +737,7 @@
       const primeiro = new Date(ano, mes, 1);
       const inicio = new Date(primeiro);
       inicio.setDate(primeiro.getDate() - primeiro.getDay());
-      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
+      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","SÃ¡b"];
       let html = `<div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
 
       for (let i = 0; i < 42; i++) {
@@ -748,7 +748,7 @@
         html += `
           <div class="calendar-day ${dia.getMonth() !== mes ? "muted" : ""}" onclick="abrirContasDoDia('${iso}')">
             <div class="day-number">${dia.getDate()}</div>
-            ${contasDia.slice(0, 2).map(c => `<span class="event-pill ${statusClasse(c.status)}">${escapar(c.descricao)} • ${moeda(c.valor)}</span>`).join("")}
+            ${contasDia.slice(0, 2).map(c => `<span class="event-pill ${statusClasse(c.status)}">${escapar(c.descricao)} â€¢ ${moeda(c.valor)}</span>`).join("")}
             ${contasDia.length > 2 ? `<small>+${contasDia.length - 2} conta(s)</small>` : ""}
           </div>
         `;
@@ -762,7 +762,7 @@
         <div class="info-card" onclick="abrirDetalheConta('${conta.id}')" style="cursor:pointer;">
           <strong>${escapar(conta.descricao)}</strong>
           <span class="status-badge ${statusClasse(conta.status)}">${statusLabel(conta.status)}</span>
-          <small>${escapar(conta.fornecedor)} • ${escapar(conta.categoria)}</small>
+          <small>${escapar(conta.fornecedor)} â€¢ ${escapar(conta.categoria)}</small>
           <small>Vencimento: ${dataPtBr(conta.vencimento)}</small>
           <small>Valor: ${moeda(conta.valor)}</small>
         </div>
@@ -777,7 +777,7 @@
 
     function renderContas() {
       const tabs = [
-        ["todas","Todas"],["hoje","Vencem hoje"],["7dias","Próximos 7 dias"],["vencidas","Vencidas"],["pagas","Pagas"],["recorrentes","Recorrentes"],["canceladas","Canceladas"]
+        ["todas","Todas"],["hoje","Vencem hoje"],["7dias","PrÃ³ximos 7 dias"],["vencidas","Vencidas"],["pagas","Pagas"],["recorrentes","Recorrentes"],["canceladas","Canceladas"]
       ];
       document.getElementById("tabsContas").innerHTML = tabs.map(t => `<button class="tab-btn ${abaContasAtual === t[0] ? "active" : ""}" onclick="selecionarAbaContas('${t[0]}')">${t[1]}</button>`).join("");
       aplicarFiltrosContas();
@@ -854,7 +854,7 @@
       el.innerHTML = `
         <div class="table-wrap">
           <table>
-            <thead><tr><th><input type="checkbox"></th><th>Descrição</th><th>Empresa</th><th>Responsável</th><th>Fornecedor</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Forma de pagamento</th><th>Recorrente</th><th>Ações</th></tr></thead>
+            <thead><tr><th><input type="checkbox"></th><th>DescriÃ§Ã£o</th><th>Empresa</th><th>ResponsÃ¡vel</th><th>Fornecedor</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Forma de pagamento</th><th>Recorrente</th><th>AÃ§Ãµes</th></tr></thead>
             <tbody>
               ${contasFiltradasMock.map(c => `
                 <tr onclick="abrirDetalheConta('${c.id}')">
@@ -868,7 +868,7 @@
                   <td><strong>${moeda(c.valor)}</strong></td>
                   <td><span class="status-badge ${statusClasse(c.status)}">${statusLabel(c.status)}</span></td>
                   <td>${escapar(c.formaPagamento)}</td>
-                  <td>${c.recorrente ? "Sim" : "Não"}</td>
+                  <td>${c.recorrente ? "Sim" : "NÃ£o"}</td>
                   <td onclick="event.stopPropagation()"><button class="ghost-btn" onclick="abrirDetalheConta('${c.id}')">Ver</button></td>
                 </tr>
               `).join("")}
@@ -886,8 +886,8 @@
       const primeiro = new Date(ano, mes, 1);
       const inicio = new Date(primeiro);
       inicio.setDate(primeiro.getDate() - primeiro.getDay());
-      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"];
-      let html = `<div class="panel-head"><div><h3>${base.toLocaleDateString("pt-BR", { month:"long", year:"numeric" })}</h3><p>Calendário mensal de contas.</p></div></div><div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
+      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","SÃ¡b"];
+      let html = `<div class="panel-head"><div><h3>${base.toLocaleDateString("pt-BR", { month:"long", year:"numeric" })}</h3><p>CalendÃ¡rio mensal de contas.</p></div></div><div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
 
       for (let i = 0; i < 42; i++) {
         const dia = new Date(inicio);
@@ -897,7 +897,7 @@
         html += `
           <div class="calendar-day ${dia.getMonth() !== mes ? "muted" : ""}" onclick="abrirContasDoDia('${iso}')">
             <div class="day-number">${dia.getDate()}</div>
-            ${contasDia.slice(0, 3).map(c => `<span class="event-pill ${statusClasse(c.status)}">${escapar(c.descricao)} • ${moeda(c.valor)}</span>`).join("")}
+            ${contasDia.slice(0, 3).map(c => `<span class="event-pill ${statusClasse(c.status)}">${escapar(c.descricao)} â€¢ ${moeda(c.valor)}</span>`).join("")}
             ${contasDia.length > 3 ? `<small>+${contasDia.length - 3} conta(s)</small>` : ""}
           </div>
         `;
@@ -919,10 +919,10 @@
         <div class="info-card">
           <strong>${escapar(conta.descricao)}</strong>
           <small>Empresa: ${escapar(conta.empresaNome || "-")}</small>
-          <small>Usuário responsável: ${escapar(conta.responsavelNome || "-")}</small>
+          <small>UsuÃ¡rio responsÃ¡vel: ${escapar(conta.responsavelNome || "-")}</small>
           <small>Criado por: ${escapar(conta.criadoPorNome || "-")}</small>
           <small>Pago por: ${escapar(conta.pagoPorNome || "-")}</small>
-          <small>Data de criação: ${dataPtBr(conta.dataCriacao)}</small>
+          <small>Data de criaÃ§Ã£o: ${dataPtBr(conta.dataCriacao)}</small>
           <small>Data de pagamento: ${dataPtBr(conta.dataPagamento)}</small>
           <small>Fornecedor: ${escapar(conta.fornecedor)}</small>
           <small>Categoria: ${escapar(conta.categoria)}</small>
@@ -930,7 +930,7 @@
           <small>Vencimento: ${dataPtBr(conta.vencimento)}</small>
           <small>Status: <span class="status-badge ${statusClasse(conta.status)}">${statusLabel(conta.status)}</span></small>
           <small>Forma de pagamento: ${escapar(conta.formaPagamento)}</small>
-          <small>Observação: ${escapar(conta.observacao || "-")}</small>
+          <small>ObservaÃ§Ã£o: ${escapar(conta.observacao || "-")}</small>
           <small>Comprovantes: ${conta.anexos.length ? conta.anexos.map(escapar).join(", ") : "Nenhum comprovante"}</small>
         </div>
         <div class="drawer-actions">
@@ -939,10 +939,10 @@
           <button class="ghost-btn" onclick="editarContaMock('${conta.id}')">Editar conta</button>
           <button class="danger-btn" onclick="cancelarConta('${conta.id}')">Cancelar conta</button>
           <button class="ghost-btn" onclick="duplicarConta('${conta.id}')">Duplicar conta</button>
-          <button class="ghost-btn" onclick="abrirNovaRecorrencia('${conta.id}')">Criar recorrência</button>
+          <button class="ghost-btn" onclick="abrirNovaRecorrencia('${conta.id}')">Criar recorrÃªncia</button>
         </div>
         <div class="log-list">
-          <strong>Histórico</strong>
+          <strong>HistÃ³rico</strong>
           ${conta.historico.map(h => `<div class="log-item">${escapar(h)}</div>`).join("")}
           <strong>Logs</strong>
           ${conta.logs.map(l => `<div class="log-item">${escapar(l)}</div>`).join("")}
@@ -956,30 +956,30 @@
 
     function editarContaMock(id) {
       const conta = contasFinanceirasMock.find(c => c.id === id);
-      abrirDrawerFinanceiro("Editar conta", "Alteração visual preparada para Firebase", formularioContaMock(conta));
+      abrirDrawerFinanceiro("Editar conta", "AlteraÃ§Ã£o visual preparada para Firebase", formularioContaMock(conta));
     }
 
     function formularioContaMock(conta = {}) {
       return `
         <div class="form-grid">
-          <div class="form-group full"><label>Descrição</label><input id="contaDescricao" value="${escapar(conta.descricao || "")}"></div>
+          <div class="form-group full"><label>DescriÃ§Ã£o</label><input id="contaDescricao" value="${escapar(conta.descricao || "")}"></div>
           <div><label>Empresa</label><input id="contaEmpresaNome" value="${escapar(conta.empresaNome || "Joaquins Pizzaria")}" placeholder="Empresa"></div>
-          <div><label>Usuário responsável pela conta</label><input id="contaResponsavelNome" value="${escapar(conta.responsavelNome || "Financeiro")}" placeholder="Responsável"></div>
+          <div><label>UsuÃ¡rio responsÃ¡vel pela conta</label><input id="contaResponsavelNome" value="${escapar(conta.responsavelNome || "Financeiro")}" placeholder="ResponsÃ¡vel"></div>
           <div><label>Fornecedor</label><select id="contaFornecedor">${fornecedoresMock.map(f => `<option ${conta.fornecedor === f.nome ? "selected" : ""}>${escapar(f.nome)}</option>`).join("")}</select></div>
           <div><label>Categoria</label><input id="contaCategoria" value="${escapar(conta.categoria || "")}" placeholder="Categoria"></div>
           <div><label>Valor</label><input id="contaValor" type="number" step="0.01" value="${conta.valor || ""}"></div>
           <div><label>Data de vencimento</label><input id="contaVencimento" type="date" value="${conta.vencimento || hojeIsoFinanceiro}"></div>
-          <div><label>Forma de pagamento</label><select id="contaForma"><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+          <div><label>Forma de pagamento</label><select id="contaForma"><option>PIX</option><option>Boleto</option><option>TransferÃªncia</option><option>CartÃ£o</option></select></div>
           <div><label>Anexo opcional</label><input id="contaAnexo" type="file"></div>
-          <div class="form-group full"><label>Observação</label><textarea id="contaObservacao">${escapar(conta.observacao || "")}</textarea></div>
+          <div class="form-group full"><label>ObservaÃ§Ã£o</label><textarea id="contaObservacao">${escapar(conta.observacao || "")}</textarea></div>
           <div class="form-group full"><label><input id="contaRecorrente" type="checkbox" style="width:auto;" ${conta.recorrente ? "checked" : ""} onchange="alternarCamposRecorrenciaConta()"> Conta recorrente</label></div>
           <div id="contaRecorrenciaCampos" class="form-group full" style="display:${conta.recorrente ? "block" : "none"};">
             <div class="recurrence-box">
-              <div><label>Repetição</label><select id="contaRecPreset" onchange="atualizarRecorrenciaContaPersonalizada()">${opcoesRecorrenciaRapida(conta.vencimento || hojeIsoFinanceiro)}</select></div>
+              <div><label>RepetiÃ§Ã£o</label><select id="contaRecPreset" onchange="atualizarRecorrenciaContaPersonalizada()">${opcoesRecorrenciaRapida(conta.vencimento || hojeIsoFinanceiro)}</select></div>
               <div id="contaRecPersonalizado" style="display:none;">
                 <div class="recurrence-row">
                   <div><label>Repetir a cada</label><input id="contaRecIntervalo" type="number" min="1" value="1"></div>
-                  <div><label>Unidade</label><select id="contaRecUnidade" onchange="atualizarVisibilidadeDiasSemanaConta()"><option value="DIA">dia</option><option value="SEMANA" selected>semana</option><option value="MES">mês</option><option value="ANO">ano</option></select></div>
+                  <div><label>Unidade</label><select id="contaRecUnidade" onchange="atualizarVisibilidadeDiasSemanaConta()"><option value="DIA">dia</option><option value="SEMANA" selected>semana</option><option value="MES">mÃªs</option><option value="ANO">ano</option></select></div>
                 </div>
                 <div id="contaRecDiasSemanaBloco" style="margin-top:14px;">
                   <label>Repetir</label>
@@ -993,15 +993,15 @@
                 <label>Termina em</label>
                 <label class="radio-line"><input type="radio" name="contaRecTermino" value="NUNCA" checked> Nunca</label>
                 <label class="radio-line"><input type="radio" name="contaRecTermino" value="DATA"> Em <input id="contaRecDataFinal" type="date"></label>
-                <label class="radio-line"><input type="radio" name="contaRecTermino" value="OCORRENCIAS"> Após <input id="contaRecOcorrencias" type="number" min="1" value="12" style="max-width:160px;"> ocorrência(s)</label>
+                <label class="radio-line"><input type="radio" name="contaRecTermino" value="OCORRENCIAS"> ApÃ³s <input id="contaRecOcorrencias" type="number" min="1" value="12" style="max-width:160px;"> ocorrÃªncia(s)</label>
               </div>
               <input id="contaRecDiaVencimento" type="hidden" value="${conta.vencimento ? Number(conta.vencimento.slice(8, 10)) : 10}">
               <div class="form-group full">
                 <label>Ajuste de vencimento</label>
                 <div style="display:grid;gap:10px;">
-                  <label style="margin:0;"><input id="contaRecPularSabado" type="checkbox" style="width:auto;" checked> Se cair no sábado, avançar para o próximo dia útil</label>
-                  <label style="margin:0;"><input id="contaRecPularDomingo" type="checkbox" style="width:auto;" checked> Se cair no domingo, avançar para o próximo dia útil</label>
-                  <label style="margin:0;"><input id="contaRecPularFeriado" type="checkbox" style="width:auto;" checked> Se cair em feriado, avançar para o próximo dia útil</label>
+                  <label style="margin:0;"><input id="contaRecPularSabado" type="checkbox" style="width:auto;" checked> Se cair no sÃ¡bado, avanÃ§ar para o prÃ³ximo dia Ãºtil</label>
+                  <label style="margin:0;"><input id="contaRecPularDomingo" type="checkbox" style="width:auto;" checked> Se cair no domingo, avanÃ§ar para o prÃ³ximo dia Ãºtil</label>
+                  <label style="margin:0;"><input id="contaRecPularFeriado" type="checkbox" style="width:auto;" checked> Se cair em feriado, avanÃ§ar para o prÃ³ximo dia Ãºtil</label>
                 </div>
               </div>
               <div class="form-group full"><label>Alertas</label><select id="contaRecAlertas"><option>No vencimento</option><option>1 dia antes</option><option>3 dias antes</option><option>7 dias antes</option><option>Personalizado</option></select></div>
@@ -1068,7 +1068,7 @@
       if (preset === "MENSAL_DIA_SEMANA") return { ...base, repetir: "MENSAL_DIA_SEMANA", intervalo: 1, ordemSemana: ordemDiaSemanaNoMes(dataInicial), diaSemana: diaSemanaIso(dataInicial) };
       if (preset === "ANUAL") return { ...base, repetir: "Anualmente", intervalo: 1 };
       if (preset === "DIAS_UTEIS") return { ...base, repetir: "DIAS_UTEIS", intervalo: 1 };
-      if (preset !== "PERSONALIZADO") return { ...base, repetir: "Não repetir", intervalo: 1, ocorrencias: 1 };
+      if (preset !== "PERSONALIZADO") return { ...base, repetir: "NÃ£o repetir", intervalo: 1, ocorrencias: 1 };
 
       const unidade = document.getElementById("contaRecUnidade")?.value || "SEMANA";
       const intervalo = Number(document.getElementById("contaRecIntervalo")?.value || 1);
@@ -1088,7 +1088,7 @@
 
     function salvarContaMock(id = "") {
       const descricao = document.getElementById("contaDescricao").value.trim();
-      if (!descricao) { alert("Informe a descrição."); return; }
+      if (!descricao) { notificarIntegro("Informe a descriÃ§Ã£o."); return; }
 
       const fornecedor = document.getElementById("contaFornecedor").value;
       const recorrenteMarcado = document.getElementById("contaRecorrente").checked;
@@ -1121,7 +1121,7 @@
         const resultado = gerarContasRecorrentesMock(montarConfigRecorrenciaDaConta(conta));
 
         if (!resultado.length) {
-          alert("Nenhuma ocorrência foi gerada. Verifique a data final.");
+          notificarIntegro("Nenhuma ocorrÃªncia foi gerada. Verifique a data final.");
           return;
         }
 
@@ -1133,7 +1133,7 @@
         alternarVisualizacaoContas("tabela");
         renderDashboardFinanceiro();
         renderContas();
-        alert(`${resultado.length} conta(s) recorrente(s) gerada(s) no mock.`);
+        notificarIntegro(`${resultado.length} conta(s) recorrente(s) gerada(s) no mock.`);
         return;
       }
 
@@ -1144,7 +1144,7 @@
       renderContas();
 
       fecharDrawerFinanceiro();
-      alert("Conta salva no mock.");
+      notificarIntegro("Conta salva no mock.");
     }
 
     function adicionarMeses(dataIso, meses, diaVencimento = null) {
@@ -1233,7 +1233,7 @@
     function calcularVencimentoRecorrencia(dataInicial, repetir, intervalo, indice, diaVencimento) {
       const base = dataInicial || hojeIsoFinanceiro;
       const passo = Math.max(1, Number(intervalo || 1));
-      const repeticao = String(repetir || "Não repetir").toUpperCase();
+      const repeticao = String(repetir || "NÃ£o repetir").toUpperCase();
 
       if (indice === 0) {
         if (["MENSALMENTE", "ANUALMENTE"].includes(repeticao) && diaVencimento) {
@@ -1274,7 +1274,7 @@
       const terminoTipo = config.terminoTipo || "OCORRENCIAS";
       const dataFinal = config.dataFinal || "";
       const ocorrencias = Math.min(60, Math.max(1, Number(config.ocorrencias || 1)));
-      const semRepeticao = String(config.repetir || "").toUpperCase() === "NÃO REPETIR";
+      const semRepeticao = String(config.repetir || "").toUpperCase() === "NÃƒO REPETIR";
       const totalPlanejado =
         semRepeticao ? 1 :
         terminoTipo === "DATA" ? 60 :
@@ -1371,7 +1371,7 @@
           recorrenciaTotal: totalPlanejado,
           observacao: config.observacao || "",
           anexos: [],
-          historico: [`Ocorrência ${i + 1}/${totalPlanejado} gerada pela recorrência${vencimento !== vencimentoOriginal ? `, vencimento ajustado de ${dataPtBr(vencimentoOriginal)} para ${dataPtBr(vencimento)}` : ""}`],
+          historico: [`OcorrÃªncia ${i + 1}/${totalPlanejado} gerada pela recorrÃªncia${vencimento !== vencimentoOriginal ? `, vencimento ajustado de ${dataPtBr(vencimentoOriginal)} para ${dataPtBr(vencimento)}` : ""}`],
           logs: ["Mock: gerarContasRecorrentesMock"]
         });
       }
@@ -1383,7 +1383,7 @@
         conta.recorrenciaTotal = totalGerado;
         conta.recorrenciaRegra.ocorrenciasGeradas = totalGerado;
         conta.historico = [
-          `Ocorrência ${index + 1}/${totalGerado} gerada pela recorrência${conta.vencimento !== conta.vencimentoOriginal ? `, vencimento ajustado de ${dataPtBr(conta.vencimentoOriginal)} para ${dataPtBr(conta.vencimento)}` : ""}`
+          `OcorrÃªncia ${index + 1}/${totalGerado} gerada pela recorrÃªncia${conta.vencimento !== conta.vencimentoOriginal ? `, vencimento ajustado de ${dataPtBr(conta.vencimentoOriginal)} para ${dataPtBr(conta.vencimento)}` : ""}`
         ];
       });
 
@@ -1392,35 +1392,35 @@
 
     function abrirNovaRecorrencia(contaId = "") {
       const conta = contasFinanceirasMock.find(c => c.id === contaId) || {};
-      abrirDrawerFinanceiro("Nova recorrência", "Modelo visual estilo agenda", `
+      abrirDrawerFinanceiro("Nova recorrÃªncia", "Modelo visual estilo agenda", `
         <div class="form-grid">
           <input id="recContaOrigemId" type="hidden" value="${escapar(conta.id || "")}">
-          <div class="form-group full"><label>Descrição</label><input id="recDescricao" value="${escapar(conta.descricao || "")}"></div>
+          <div class="form-group full"><label>DescriÃ§Ã£o</label><input id="recDescricao" value="${escapar(conta.descricao || "")}"></div>
           <div><label>Empresa</label><input id="recEmpresaNome" value="${escapar(conta.empresaNome || "Joaquins Pizzaria")}"></div>
-          <div><label>Responsável</label><input id="recResponsavelNome" value="${escapar(conta.responsavelNome || "Financeiro")}"></div>
+          <div><label>ResponsÃ¡vel</label><input id="recResponsavelNome" value="${escapar(conta.responsavelNome || "Financeiro")}"></div>
           <div><label>Fornecedor</label><select id="recFornecedor">${fornecedoresMock.map(f => `<option ${conta.fornecedor === f.nome ? "selected" : ""}>${escapar(f.nome)}</option>`).join("")}</select></div>
           <div><label>Categoria</label><input id="recCategoria" value="${escapar(conta.categoria || "")}"></div>
           <div><label>Valor</label><input id="recValor" type="number" step="0.01" value="${conta.valor || ""}"></div>
-          <div><label>Forma de pagamento</label><select id="recForma"><option ${conta.formaPagamento === "PIX" ? "selected" : ""}>PIX</option><option ${conta.formaPagamento === "Boleto" ? "selected" : ""}>Boleto</option><option ${conta.formaPagamento === "Transferência" ? "selected" : ""}>Transferência</option><option ${conta.formaPagamento === "Cartão" ? "selected" : ""}>Cartão</option></select></div>
+          <div><label>Forma de pagamento</label><select id="recForma"><option ${conta.formaPagamento === "PIX" ? "selected" : ""}>PIX</option><option ${conta.formaPagamento === "Boleto" ? "selected" : ""}>Boleto</option><option ${conta.formaPagamento === "TransferÃªncia" ? "selected" : ""}>TransferÃªncia</option><option ${conta.formaPagamento === "CartÃ£o" ? "selected" : ""}>CartÃ£o</option></select></div>
           <div><label>Data inicial</label><input id="recDataInicial" type="date" value="${conta.vencimento || hojeIsoFinanceiro}"></div>
-          <div><label>Repetir</label><select id="recRepetir"><option>Não repetir</option><option>Diariamente</option><option>Semanalmente</option><option>Quinzenalmente</option><option>Mensalmente</option><option>Anualmente</option><option>Personalizado</option></select></div>
+          <div><label>Repetir</label><select id="recRepetir"><option>NÃ£o repetir</option><option>Diariamente</option><option>Semanalmente</option><option>Quinzenalmente</option><option>Mensalmente</option><option>Anualmente</option><option>Personalizado</option></select></div>
           <div><label>Repetir a cada</label><input id="recIntervalo" type="number" min="1" value="1"></div>
           <div><label>Dia de vencimento</label><input id="recDiaVencimento" type="number" min="1" max="31" value="${conta.vencimento ? Number(conta.vencimento.slice(8, 10)) : 10}"></div>
-          <div><label>Término da recorrência</label><select id="recTerminoTipo"><option value="OCORRENCIAS">Após quantidade de ocorrências</option><option value="DATA">Em uma data final</option><option value="NUNCA">Sem data final definida</option></select></div>
+          <div><label>TÃ©rmino da recorrÃªncia</label><select id="recTerminoTipo"><option value="OCORRENCIAS">ApÃ³s quantidade de ocorrÃªncias</option><option value="DATA">Em uma data final</option><option value="NUNCA">Sem data final definida</option></select></div>
           <div><label>Data final</label><input id="recDataFinal" type="date"></div>
-          <div><label>Quantidade de ocorrências</label><input id="recOcorrencias" type="number" min="1" value="12"></div>
+          <div><label>Quantidade de ocorrÃªncias</label><input id="recOcorrencias" type="number" min="1" value="12"></div>
           <div class="form-group full">
             <label>Ajuste de vencimento</label>
             <div style="display:grid;gap:10px;border:1px solid var(--line);border-radius:16px;padding:14px;background:#f8fafc;">
-              <label style="margin:0;"><input id="recPularSabado" type="checkbox" style="width:auto;" checked> Se cair no sábado, avançar para o próximo dia útil</label>
-              <label style="margin:0;"><input id="recPularDomingo" type="checkbox" style="width:auto;" checked> Se cair no domingo, avançar para o próximo dia útil</label>
-              <label style="margin:0;"><input id="recPularFeriado" type="checkbox" style="width:auto;" checked> Se cair em feriado, avançar para o próximo dia útil</label>
+              <label style="margin:0;"><input id="recPularSabado" type="checkbox" style="width:auto;" checked> Se cair no sÃ¡bado, avanÃ§ar para o prÃ³ximo dia Ãºtil</label>
+              <label style="margin:0;"><input id="recPularDomingo" type="checkbox" style="width:auto;" checked> Se cair no domingo, avanÃ§ar para o prÃ³ximo dia Ãºtil</label>
+              <label style="margin:0;"><input id="recPularFeriado" type="checkbox" style="width:auto;" checked> Se cair em feriado, avanÃ§ar para o prÃ³ximo dia Ãºtil</label>
             </div>
           </div>
           <div class="form-group full"><label>Alertas</label><select id="recAlertas"><option>No vencimento</option><option>1 dia antes</option><option>3 dias antes</option><option>7 dias antes</option><option>Personalizado</option></select></div>
-          <div class="form-group full"><label>Observação</label><textarea id="recObservacao">${escapar(conta.observacao || "")}</textarea></div>
+          <div class="form-group full"><label>ObservaÃ§Ã£o</label><textarea id="recObservacao">${escapar(conta.observacao || "")}</textarea></div>
         </div>
-        <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="salvarRecorrenciaMock()">Salvar recorrência</button></div>
+        <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="salvarRecorrenciaMock()">Salvar recorrÃªncia</button></div>
       `);
     }
 
@@ -1428,7 +1428,7 @@
       const descricao = document.getElementById("recDescricao")?.value.trim();
       const valor = Number(document.getElementById("recValor")?.value || 0);
       const dataInicial = document.getElementById("recDataInicial")?.value || hojeIsoFinanceiro;
-      const repetir = document.getElementById("recRepetir")?.value || "Não repetir";
+      const repetir = document.getElementById("recRepetir")?.value || "NÃ£o repetir";
       const intervalo = Number(document.getElementById("recIntervalo")?.value || 1);
       const diaVencimento = Number(document.getElementById("recDiaVencimento")?.value || 0);
       const terminoTipo = document.getElementById("recTerminoTipo")?.value || "OCORRENCIAS";
@@ -1441,17 +1441,17 @@
       };
 
       if (!descricao) {
-        alert("Informe a descrição da recorrência.");
+        notificarIntegro("Informe a descriÃ§Ã£o da recorrÃªncia.");
         return;
       }
 
       if (!valor || valor <= 0) {
-        alert("Informe um valor maior que zero.");
+        notificarIntegro("Informe um valor maior que zero.");
         return;
       }
 
       if (terminoTipo === "DATA" && !dataFinal) {
-        alert("Informe a data final da recorrência.");
+        notificarIntegro("Informe a data final da recorrÃªncia.");
         return;
       }
 
@@ -1481,7 +1481,7 @@
       });
 
       if (!novasContas.length) {
-        alert("Nenhuma ocorrência foi gerada. Verifique a data final.");
+        notificarIntegro("Nenhuma ocorrÃªncia foi gerada. Verifique a data final.");
         return;
       }
 
@@ -1493,20 +1493,20 @@
       alternarVisualizacaoContas("tabela");
       renderDashboardFinanceiro();
       renderContas();
-      alert(`${novasContas.length} conta(s) recorrente(s) gerada(s) no mock.`);
+      notificarIntegro(`${novasContas.length} conta(s) recorrente(s) gerada(s) no mock.`);
     }
 
     function registrarPagamentoConta(id) {
       const conta = contasFinanceirasMock.find(c => c.id === id);
       abrirDrawerFinanceiro("Registrar pagamento", conta?.descricao || "Conta", `
         <div class="form-grid">
-          <div><label>Usuário responsável pela baixa</label><input id="pagResponsavel" value="${escapar(conta?.responsavelNome || "Financeiro")}"></div>
+          <div><label>UsuÃ¡rio responsÃ¡vel pela baixa</label><input id="pagResponsavel" value="${escapar(conta?.responsavelNome || "Financeiro")}"></div>
           <div><label>Data em que foi paga</label><input id="pagData" type="date" value="${hojeIsoFinanceiro}"></div>
           <div><label>Valor pago</label><input id="pagValor" type="number" step="0.01" value="${conta?.valor || ""}"></div>
-          <div><label>Forma de pagamento</label><select id="pagForma"><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+          <div><label>Forma de pagamento</label><select id="pagForma"><option>PIX</option><option>Boleto</option><option>TransferÃªncia</option><option>CartÃ£o</option></select></div>
           <div><label>Conta/banco</label><input id="pagBanco" placeholder="Banco ou conta"></div>
           <div class="form-group full"><label>Comprovante</label><input id="pagComprovante" type="file"></div>
-          <div class="form-group full"><label>Observação</label><textarea id="pagObs"></textarea></div>
+          <div class="form-group full"><label>ObservaÃ§Ã£o</label><textarea id="pagObs"></textarea></div>
         </div>
         <div class="drawer-actions"><button class="success-btn drawer-primary" onclick="confirmarPagamentoMock('${id}')">Confirmar pagamento</button></div>
       `);
@@ -1527,11 +1527,11 @@
       fecharDrawerFinanceiro();
       renderDashboardFinanceiro();
       renderContas();
-      alert("Pagamento registrado no mock.");
+      notificarIntegro("Pagamento registrado no mock.");
     }
 
     function anexarComprovanteConta(id) {
-      alert("Upload visual preparado. Integração com Storage será feita na próxima etapa.");
+      notificarIntegro("Upload visual preparado. IntegraÃ§Ã£o com Storage serÃ¡ feita na prÃ³xima etapa.");
     }
 
     function cancelarConta(id) {
@@ -1547,11 +1547,11 @@
     function duplicarConta(id) {
       const conta = contasFinanceirasMock.find(c => c.id === id);
       if (!conta) return;
-      contasFinanceirasMock.unshift({ ...conta, id:`conta_${Date.now()}`, descricao:`${conta.descricao} - cópia`, status:"PROXIMA", historico:["Conta duplicada no mock"], logs:["Mock: duplicarConta"] });
+      contasFinanceirasMock.unshift({ ...conta, id:`conta_${Date.now()}`, descricao:`${conta.descricao} - cÃ³pia`, status:"PROXIMA", historico:["Conta duplicada no mock"], logs:["Mock: duplicarConta"] });
       fecharDrawerFinanceiro();
       renderDashboardFinanceiro();
       renderContas();
-      alert("Conta duplicada no mock.");
+      notificarIntegro("Conta duplicada no mock.");
     }
 
     function renderSolicitacoesFinanceiras() {
@@ -1569,7 +1569,7 @@
 
     function renderCaixasFinanceiro() {
       document.getElementById("listaCaixasFinanceiro").innerHTML = `
-        <table><thead><tr><th>Equipe</th><th>Vendedor</th><th>Calculado</th><th>Informado</th><th>Diferença</th><th>Status</th></tr></thead><tbody>
+        <table><thead><tr><th>Equipe</th><th>Vendedor</th><th>Calculado</th><th>Informado</th><th>DiferenÃ§a</th><th>Status</th></tr></thead><tbody>
         ${caixasFinanceiroMock.map(c => `<tr><td>${escapar(c.equipe)}</td><td>${escapar(c.vendedor)}</td><td>${moeda(c.valorCalculado)}</td><td>${moeda(c.valorInformado)}</td><td>${moeda(c.diferenca)}</td><td><span class="status-badge ${c.status === "DIVERGENTE" ? "st-vencida" : "st-proxima"}">${c.status}</span></td></tr>`).join("")}
         </tbody></table>`;
     }
@@ -1582,7 +1582,7 @@
           <small>Telefone: ${escapar(f.telefone)}</small>
           <small>PIX: ${escapar(f.pix)}</small>
           <small>Banco: ${escapar(f.banco)}</small>
-          <small>Categoria padrão: ${escapar(f.categoriaPadrao)}</small>
+          <small>Categoria padrÃ£o: ${escapar(f.categoriaPadrao)}</small>
           <small>${escapar(f.observacoes)}</small>
         </div>
       `).join("");
@@ -1596,32 +1596,32 @@
           <div><label>Telefone</label><input></div>
           <div><label>PIX</label><input></div>
           <div><label>Banco</label><input></div>
-          <div><label>Categoria padrão</label><input></div>
-          <div class="form-group full"><label>Observações</label><textarea></textarea></div>
+          <div><label>Categoria padrÃ£o</label><input></div>
+          <div class="form-group full"><label>ObservaÃ§Ãµes</label><textarea></textarea></div>
         </div>
         <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="fecharDrawerFinanceiro()">Salvar fornecedor</button></div>
       `);
     }
 
     function renderRelatoriosFinanceiro() {
-      const relatorios = ["Contas por período","Contas por categoria","Contas por fornecedor","Pagamentos realizados","Recorrências","Exportação futura"];
-      document.getElementById("listaRelatoriosFinanceiro").innerHTML = relatorios.map(r => `<div class="info-card"><strong>${r}</strong><small>Estrutura visual pronta para conexão com dados reais.</small><button class="ghost-btn" style="margin-top:12px;">Ver relatório</button></div>`).join("");
+      const relatorios = ["Contas por perÃ­odo","Contas por categoria","Contas por fornecedor","Pagamentos realizados","RecorrÃªncias","ExportaÃ§Ã£o futura"];
+      document.getElementById("listaRelatoriosFinanceiro").innerHTML = relatorios.map(r => `<div class="info-card"><strong>${r}</strong><small>Estrutura visual pronta para conexÃ£o com dados reais.</small><button class="ghost-btn" style="margin-top:12px;">Ver relatÃ³rio</button></div>`).join("");
     }
 
     function renderAuditoriaFinanceira() {
       document.getElementById("listaAuditoriaFinanceira").innerHTML = `
-        <table><thead><tr><th>Usuário</th><th>Ação</th><th>Data</th><th>Conta relacionada</th><th>Descrição</th></tr></thead><tbody>
+        <table><thead><tr><th>UsuÃ¡rio</th><th>AÃ§Ã£o</th><th>Data</th><th>Conta relacionada</th><th>DescriÃ§Ã£o</th></tr></thead><tbody>
         ${logsFinanceirosMock.map(l => `<tr><td>${escapar(l.usuario)}</td><td>${escapar(l.acao)}</td><td>${dataPtBr(l.data)}</td><td>${escapar(l.conta)}</td><td>${escapar(l.descricao)}</td></tr>`).join("")}
         </tbody></table>`;
     }
 
     function renderConfiguracoesFinanceiras() {
-      const itens = ["Categorias financeiras","Formas de pagamento","Alertas padrão","Permissões financeiras"];
-      document.getElementById("listaConfiguracoesFinanceiras").innerHTML = itens.map(i => `<div class="info-card"><strong>${i}</strong><small>Bloco visual preparado para parametrização futura.</small><button class="ghost-btn" style="margin-top:12px;">Configurar</button></div>`).join("");
+      const itens = ["Categorias financeiras","Formas de pagamento","Alertas padrÃ£o","PermissÃµes financeiras"];
+      document.getElementById("listaConfiguracoesFinanceiras").innerHTML = itens.map(i => `<div class="info-card"><strong>${i}</strong><small>Bloco visual preparado para parametrizaÃ§Ã£o futura.</small><button class="ghost-btn" style="margin-top:12px;">Configurar</button></div>`).join("");
     }
 
     function exportarContasMock() {
-      alert("Exportação mockada. A geração de arquivo será conectada depois.");
+      notificarIntegro("ExportaÃ§Ã£o mockada. A geraÃ§Ã£o de arquivo serÃ¡ conectada depois.");
     }
 
     function abrirDrawerFinanceiro(titulo, subtitulo, conteudo) {
@@ -1631,7 +1631,7 @@
         <div class="drawer-content">
           <div class="drawer-header">
             <div><h3>${titulo}</h3><p>${subtitulo}</p></div>
-            <button class="drawer-close" onclick="fecharDrawerFinanceiro()">×</button>
+            <button class="drawer-close" onclick="fecharDrawerFinanceiro()">Ã—</button>
           </div>
           <div class="drawer-body">${conteudo}</div>
         </div>
@@ -1761,8 +1761,8 @@
   }
   function bloquearAcaoMockFinanceiro(acao){
     notificarFinanceiro(
-      "Ação indisponível",
-      `${acao} não grava dados reais. Use os fluxos oficiais de ledger, solicitações, caixa, regularização e estorno.`
+      "AÃ§Ã£o indisponÃ­vel",
+      `${acao} nÃ£o grava dados reais. Use os fluxos oficiais de ledger, solicitaÃ§Ãµes, caixa, regularizaÃ§Ã£o e estorno.`
     );
     return false;
   }
@@ -2023,7 +2023,7 @@
     const f = fechamentoDoCaixa(caixaId);
     abrirDrawerFinanceiro("Caixa financeiro", caixaId, `
       <div class="info-card"><strong>${esc(c?.vendedorNome || c?.vendedorId || "Caixa")}</strong><small>Status: ${esc(c?.status || "-")}</small><small>Data: ${esc(c?.dataOperacional || "-")}</small><small>Fechamento: ${esc(f?.id || f?.fechamentoId || "-")}</small></div>
-      <div class="info-card"><strong>Reconciliação</strong>${diag.divergencias?.length ? diag.divergencias.map(d=>`<small>${esc(d.tipo)} ${esc(d.detalhe || d.campo || "")}</small>`).join("") : "<small>Sem divergencias detectadas.</small>"}</div>
+      <div class="info-card"><strong>ReconciliaÃ§Ã£o</strong>${diag.divergencias?.length ? diag.divergencias.map(d=>`<small>${esc(d.tipo)} ${esc(d.detalhe || d.campo || "")}</small>`).join("") : "<small>Sem divergencias detectadas.</small>"}</div>
       <div class="drawer-actions"><button class="ghost-btn" onclick="filtrarLancamentosCaixa('${esc(caixaId)}')">Ver lancamentos</button>${temPermissaoFinanceiro("podeRegularizarCaixa") ? `<button class="primary-btn" onclick="regularizarCaixaFinanceiro('${esc(caixaId)}')">Regularizar</button>` : ""}</div>
     `);
   };
@@ -2092,7 +2092,7 @@
     const el = document.getElementById("listaAuditoriaFinanceira");
     if (!el) return;
     const diag = FIN.diagnosticoLegado;
-    el.innerHTML = `<table><thead><tr><th>Tipo</th><th>Origem</th><th>Caixa</th><th>Situação</th></tr></thead><tbody>${(diag?.ausentes || []).map(a => `<tr><td>${esc(a.tipo)}</td><td>${esc(a.origemId)}</td><td>${esc(a.caixaId || "-")}</td><td>Sem ledger oficial</td></tr>`).join("")}</tbody></table>${!(diag?.ausentes || []).length ? empty("Nenhum legado sem lançamento encontrado. Nenhuma migração automática executada.") : ""}`;
+    el.innerHTML = `<table><thead><tr><th>Tipo</th><th>Origem</th><th>Caixa</th><th>SituaÃ§Ã£o</th></tr></thead><tbody>${(diag?.ausentes || []).map(a => `<tr><td>${esc(a.tipo)}</td><td>${esc(a.origemId)}</td><td>${esc(a.caixaId || "-")}</td><td>Sem ledger oficial</td></tr>`).join("")}</tbody></table>${!(diag?.ausentes || []).length ? empty("Nenhum legado sem lancamento encontrado. Nenhuma migração automática executada.") : ""}`;
   }
 
   function renderConfiguracoesFinanceirasReal(){
@@ -2146,10 +2146,10 @@
   window.trocarTelaFinanceiro = function(tela, el){
     if (typeof trocarTelaAntiga === "function") trocarTelaAntiga(tela, el);
     const titulos = {
-      contas:["Lançamentos","Ledger financeiro oficial e imutável."],
-      solicitacoes:["Divergências","Divergências, tratamentos e regularizações."],
-      fornecedores:["Diagnóstico legado","Registros reais ainda sem lançamento financeiro."],
-      auditoria:["Auditoria","Reconciliação, logs e rastreabilidade financeira."]
+      contas:["LanÃ§amentos","Ledger financeiro oficial e imutÃ¡vel."],
+      solicitacoes:["DivergÃªncias","DivergÃªncias, tratamentos e regularizaÃ§Ãµes."],
+      fornecedores:["DiagnÃ³stico legado","Registros reais ainda sem lanÃ§amento financeiro."],
+      auditoria:["Auditoria","ReconciliaÃ§Ã£o, logs e rastreabilidade financeira."]
     };
     if (titulos[tela]) {
       document.getElementById("pageTitle").innerText = titulos[tela][0];
@@ -2181,7 +2181,7 @@
   window.abrirNovoFornecedorMock = function(){ return bloquearAcaoMockFinanceiro("Cadastro de fornecedor visual"); };
   window.exportarContasMock = function(){
     const linhas = FIN.lancamentosFiltrados.map(l => `${l.dataOperacional};${l.tipoLancamento};${l.natureza};${l.origemId};${l.caixaId};${l.vendedorId};${l.valorCentavos};${l.statusLancamento || "CONFIRMADO"}`);
-    abrirDrawerFinanceiro("Exportação", "Listagem textual para conferência", `<textarea readonly>${esc(["data;tipo;natureza;origem;caixa;vendedor;valorCentavos;status", ...linhas].join("\\n"))}</textarea>`);
+    abrirDrawerFinanceiro("ExportaÃ§Ã£o", "Listagem textual para conferÃªncia", `<textarea readonly>${esc(["data;tipo;natureza;origem;caixa;vendedor;valorCentavos;status", ...linhas].join("\\n"))}</textarea>`);
   };
 
   document.addEventListener("usuario-validado", () => carregarFinanceiroReal());

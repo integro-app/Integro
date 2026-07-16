@@ -1,6 +1,6 @@
-// ========================================
-// CARGOS - MASTER LOCAL ÍNTEGRO
-// CRUD de cargos + permissões por módulo
+﻿// ========================================
+// CARGOS - MASTER LOCAL ÃNTEGRO
+// CRUD de cargos + permissÃµes por mÃ³dulo
 // ========================================
 
 const MODULOS_PERMISSAO = [
@@ -71,7 +71,7 @@ async function carregarPermissoesCargo() {
     }));
 
   } catch (erro) {
-    console.error("Erro ao carregar permissões dos cargos:", erro);
+    console.error("Erro ao carregar permissÃµes dos cargos:", erro);
     permissoesCargoCache = [];
   }
 }
@@ -110,13 +110,13 @@ function renderCargos() {
       <div class="list-item">
         <div>
           <strong>${cargo.nome || "Cargo sem nome"}</strong>
-          <small>${ativo ? "Ativo" : "Inativo"} • ${usuariosVinculados} usuário(s) vinculado(s)</small>
-          <small>${qtdPermissoes} módulo(s) com permissões configuradas</small>
+          <small>${ativo ? "Ativo" : "Inativo"} â€¢ ${usuariosVinculados} usuÃ¡rio(s) vinculado(s)</small>
+          <small>${qtdPermissoes} mÃ³dulo(s) com permissÃµes configuradas</small>
         </div>
 
         <div class="item-actions">
           <button class="ghost-btn" onclick="abrirEditarCargo('${cargo.id}')">Editar</button>
-          <button class="ghost-btn" onclick="abrirPermissoesCargo('${cargo.id}')">Permissões</button>
+          <button class="ghost-btn" onclick="abrirPermissoesCargo('${cargo.id}')">PermissÃµes</button>
           <button class="${ativo ? "danger-btn" : "success-btn"}" onclick="alterarStatusCargo('${cargo.id}', ${!ativo})">
             ${ativo ? "Desativar" : "Ativar"}
           </button>
@@ -131,13 +131,13 @@ function renderCargos() {
 }
 
 // ===============================
-// FORMULÁRIO CARGO
+// FORMULÃRIO CARGO
 // ===============================
 
 function abrirNovoCargo() {
   abrirDrawer(
     "Novo cargo",
-    "Crie uma função operacional para esta empresa.",
+    "Crie uma funÃ§Ã£o operacional para esta empresa.",
     formularioCargo()
   );
 }
@@ -146,7 +146,7 @@ function abrirEditarCargo(id) {
   const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
 
   if (!cargo) {
-    alert("Cargo não encontrado.");
+    notificarIntegro("Cargo nÃ£o encontrado.");
     return;
   }
 
@@ -166,8 +166,8 @@ function formularioCargo(cargo = null) {
       </div>
 
       <div class="form-group full">
-        <label>Descrição</label>
-        <input id="cargoDescricao" placeholder="Descrição interna do cargo" value="${cargo?.descricao || ""}">
+        <label>DescriÃ§Ã£o</label>
+        <input id="cargoDescricao" placeholder="DescriÃ§Ã£o interna do cargo" value="${cargo?.descricao || ""}">
       </div>
 
       <div class="form-group">
@@ -181,7 +181,7 @@ function formularioCargo(cargo = null) {
       <div class="form-group">
         <label>Cor visual</label>
         <select id="cargoCor">
-          <option value="#ff8a00" ${cargo?.cor === "#ff8a00" ? "selected" : ""}>Laranja ÍNTEGRO</option>
+          <option value="#ff8a00" ${cargo?.cor === "#ff8a00" ? "selected" : ""}>Laranja ÃNTEGRO</option>
           <option value="#1683ff" ${cargo?.cor === "#1683ff" ? "selected" : ""}>Azul</option>
           <option value="#16c784" ${cargo?.cor === "#16c784" ? "selected" : ""}>Verde</option>
           <option value="#8b5cf6" ${cargo?.cor === "#8b5cf6" ? "selected" : ""}>Roxo</option>
@@ -192,7 +192,7 @@ function formularioCargo(cargo = null) {
 
     <div class="drawer-actions">
       <button class="primary-btn drawer-primary" onclick="${cargo ? `salvarCargo('${cargo.id}')` : "salvarCargo()"}">
-        ${cargo ? "Salvar alterações" : "Criar cargo"}
+        ${cargo ? "Salvar alteraÃ§Ãµes" : "Criar cargo"}
       </button>
     </div>
   `;
@@ -209,7 +209,7 @@ async function salvarCargo(id = null) {
     const cor = document.getElementById("cargoCor").value;
 
     if (!nome) {
-      alert("Informe o nome do cargo.");
+      notificarIntegro("Informe o nome do cargo.");
       return;
     }
 
@@ -228,7 +228,7 @@ async function salvarCargo(id = null) {
 
     if (id) {
       await db.collection("cargos").doc(id).update(dados);
-      alert("Cargo atualizado com sucesso.");
+      notificarIntegro("Cargo atualizado com sucesso.");
     } else {
       await db.collection("cargos").add({
         ...dados,
@@ -237,7 +237,7 @@ async function salvarCargo(id = null) {
         criadoPorNome: usuario?.nome || usuario?.email || ""
       });
 
-      alert("Cargo criado com sucesso.");
+      notificarIntegro("Cargo criado com sucesso.");
     }
 
     fecharDrawer();
@@ -245,7 +245,7 @@ async function salvarCargo(id = null) {
 
   } catch (erro) {
     console.error("Erro ao salvar cargo:", erro);
-    alert("Erro ao salvar cargo: " + erro.message);
+    notificarIntegro("Erro ao salvar cargo: " + erro.message);
   }
 }
 
@@ -260,24 +260,24 @@ async function alterarStatusCargo(id, ativo) {
 
   } catch (erro) {
     console.error("Erro ao alterar status do cargo:", erro);
-    alert("Erro ao alterar status do cargo: " + erro.message);
+    notificarIntegro("Erro ao alterar status do cargo: " + erro.message);
   }
 }
 
 // ===============================
-// PERMISSÕES
+// PERMISSÃ•ES
 // ===============================
 
 function abrirPermissoesCargo(id) {
   const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
 
   if (!cargo) {
-    alert("Cargo não encontrado.");
+    notificarIntegro("Cargo nÃ£o encontrado.");
     return;
   }
 
   abrirDrawer(
-    "Permissões do cargo",
+    "PermissÃµes do cargo",
     cargo.nome || "Cargo",
     formularioPermissoesCargo(cargo)
   );
@@ -311,7 +311,7 @@ function formularioPermissoesCargo(cargo) {
 
     <div class="drawer-actions">
       <button class="primary-btn drawer-primary" onclick="salvarPermissoesCargo('${cargo.id}')">
-        Salvar permissões
+        Salvar permissÃµes
       </button>
     </div>
   `;
@@ -366,14 +366,14 @@ async function salvarPermissoesCargo(cargoId) {
 
     await batch.commit();
 
-    alert("Permissões salvas com sucesso.");
+    notificarIntegro("PermissÃµes salvas com sucesso.");
 
     fecharDrawer();
     await carregarCargos();
 
   } catch (erro) {
-    console.error("Erro ao salvar permissões:", erro);
-    alert("Erro ao salvar permissões: " + erro.message);
+    console.error("Erro ao salvar permissÃµes:", erro);
+    notificarIntegro("Erro ao salvar permissÃµes: " + erro.message);
   }
 }
 
@@ -384,14 +384,14 @@ function checked(id) {
 function formatarModulo(modulo) {
   const nomes = {
     dashboard: "Dashboard",
-    usuarios: "Usuários",
+    usuarios: "UsuÃ¡rios",
     clientes: "Clientes",
     vendas: "Vendas",
-    cobrancas: "Cobranças",
+    cobrancas: "CobranÃ§as",
     caixas: "Caixas",
-    solicitacoes: "Solicitações",
-    relatorios: "Relatórios",
-    configuracoes: "Configurações",
+    solicitacoes: "SolicitaÃ§Ãµes",
+    relatorios: "RelatÃ³rios",
+    configuracoes: "ConfiguraÃ§Ãµes",
     auditoria: "Auditoria"
   };
 
@@ -404,22 +404,22 @@ async function excluirCargo(id) {
     const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
 
     if (!cargo) {
-      alert("Cargo não encontrado.");
+      notificarIntegro("Cargo nÃ£o encontrado.");
       return;
     }
 
     const usuariosVinculados = usuarios.filter(u => u.cargoId === id).length;
 
     if (usuariosVinculados > 0) {
-      alert(
-        "Não é possível excluir este cargo.\n\n" +
-        "Existem " + usuariosVinculados + " usuário(s) vinculado(s) a ele.\n\n" +
-        "Remova ou altere o cargo desses usuários antes de excluir."
+      notificarIntegro(
+        "NÃ£o Ã© possÃ­vel excluir este cargo.\n\n" +
+        "Existem " + usuariosVinculados + " usuÃ¡rio(s) vinculado(s) a ele.\n\n" +
+        "Remova ou altere o cargo desses usuÃ¡rios antes de excluir."
       );
       return;
     }
 
-    if (!confirm("Deseja excluir definitivamente o cargo '" + (cargo.nome || "sem nome") + "'?\n\nAs permissões vinculadas também serão removidas.")) {
+    if (!confirm("Deseja excluir definitivamente o cargo '" + (cargo.nome || "sem nome") + "'?\n\nAs permissÃµes vinculadas tambÃ©m serÃ£o removidas.")) {
       return;
     }
 
@@ -437,13 +437,13 @@ async function excluirCargo(id) {
 
     await batch.commit();
 
-    alert("Cargo excluído com sucesso.");
+    notificarIntegro("Cargo excluÃ­do com sucesso.");
 
     await carregarCargos();
 
   } catch (erro) {
     console.error("Erro ao excluir cargo:", erro);
-    alert("Erro ao excluir cargo: " + erro.message);
+    notificarIntegro("Erro ao excluir cargo: " + erro.message);
   }
 }
 

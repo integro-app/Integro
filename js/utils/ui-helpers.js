@@ -135,10 +135,55 @@ const UIHelpers = {
   },
 
   // ===============================
-  // ALERTA
+  // NOTIFICACAO
   // ===============================
+  notificar(mensagem, tipo = "info") {
+    const texto = String(mensagem || "").trim();
+    if (!texto) return;
+
+    let container = document.getElementById("integroToastContainer");
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "integroToastContainer";
+      container.style.cssText = [
+        "position:fixed",
+        "right:max(16px, env(safe-area-inset-right))",
+        "bottom:max(16px, env(safe-area-inset-bottom))",
+        "z-index:99999",
+        "display:grid",
+        "gap:8px",
+        "max-width:min(420px, calc(100vw - 32px))"
+      ].join(";");
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement("div");
+    toast.setAttribute("role", "status");
+    toast.style.cssText = [
+      "padding:12px 14px",
+      "border-radius:10px",
+      "box-shadow:0 14px 35px rgba(15,23,42,.22)",
+      "background:#111827",
+      "color:#fff",
+      "font:500 14px/1.35 system-ui,-apple-system,Segoe UI,sans-serif",
+      "white-space:pre-wrap"
+    ].join(";");
+
+    if (tipo === "erro" || tipo === "error") toast.style.background = "#991b1b";
+    if (tipo === "sucesso" || tipo === "success") toast.style.background = "#166534";
+    if (tipo === "aviso" || tipo === "warning") toast.style.background = "#92400e";
+
+    toast.textContent = texto;
+    container.appendChild(toast);
+    window.setTimeout(() => {
+      toast.style.opacity = "0";
+      toast.style.transition = "opacity .2s ease";
+      window.setTimeout(() => toast.remove(), 220);
+    }, tipo === "erro" || tipo === "error" ? 7000 : 4500);
+  },
+
   alerta(mensagem) {
-    alert(mensagem);
+    this.notificar(mensagem, "info");
   }
 };
 
@@ -164,4 +209,13 @@ function hideLoading() {
 }
 
 // Fazer UIHelpers disponível globalmente
+function notificarIntegro(mensagem, tipo = "info") {
+  if (window.UIHelpers && typeof window.UIHelpers.notificar === "function") {
+    window.UIHelpers.notificar(mensagem, tipo);
+    return;
+  }
+  console.warn(mensagem);
+}
+
 window.UIHelpers = UIHelpers;
+window.notificarIntegro = notificarIntegro;

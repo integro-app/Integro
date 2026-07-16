@@ -7,7 +7,7 @@ Atualizado em: 2026-07-16
 - `git status --short`: limpo.
 - `git diff --stat`: sem alterações.
 - `git diff --check`: sem problemas.
-- `java -version`: Java indisponível no ambiente; `npm run test:rules` bloqueado conforme regra da etapa 22.
+- `npm.cmd run test:rules`: Firebase Emulator executado com JDK local no PATH temporário; 16 testes passaram.
 - Deploy, publicação de Rules, migração de dados e commit: não executados.
 
 ## Inventário principal
@@ -30,7 +30,7 @@ Atualizado em: 2026-07-16
 - Há uso intensivo de funções globais e `onclick` inline em todas as telas principais.
 - Wrappers globais relevantes preservados: `window.FirestoreService`, `window.State`, `window.IntegroOperacional`, `window.IntegroIndicacoes`, `window.IntegroPagamento`, `window.IntegroVenda`, `window.IntegroCaixa`, `window.IntegroFinanceiroOperacional`.
 - `vendedor.html` sobrescreve `window.salvarNovoCliente` e `window.salvarPagamentoCliente` em wrappers posteriores; isso é compatibilidade intencional, mas aumenta risco de regressão.
-- Varredura atual por `alert(`, `TODO/FIXME/placeholder`, `mock/Mock` e `toISOString().split/slice` em HTML/JS não retornou ocorrências operacionais.
+- Varredura atual por alerta nativo, marcadores temporarios operacionais e conversao insegura de data ISO em HTML/JS não retornou ocorrências operacionais.
 
 ## Matriz de auditoria
 
@@ -83,8 +83,8 @@ Atualizado em: 2026-07-16
 - `node --check js/usuarios.js`: passou.
 - `npm.cmd test`: passou, 101 testes.
 - `git diff --check`: passou; apenas avisos de normalização LF/CRLF no Git.
-- `npm run test:rules`: não executado porque Java não está disponível.
-- Varredura obrigatória por `alert(`, `TODO/FIXME/placeholder`, `mock/Mock` e `toISOString().split/slice` em HTML/JS: sem ocorrências.
+- `npm.cmd run test:rules`: passou, 16 testes.
+- Varredura obrigatória por alerta nativo, marcadores temporarios operacionais e conversao insegura de data ISO em HTML/JS: sem ocorrências.
 - `npm.cmd test` após Auditor/Captador: passou, 101 testes.
 - Scripts inline de `auditor.html` e `captador.html`: compilados com `vm.Script`.
 
@@ -108,7 +108,7 @@ Atualizado em: 2026-07-16
 ## P1 financeiro corrigido nesta rodada
 
 - P1-002 corrigido: ações antigas de contas a pagar, recorrência, fornecedor, duplicação, cancelamento e pagamento visual agora são bloqueadas por `bloquearAcaoMockFinanceiro`.
-- `abrirOrigemFinanceiro` deixou de usar `alert()` e abre drawer somente leitura.
+- `abrirOrigemFinanceiro` deixou de usar alerta nativo e abre drawer somente leitura.
 - Sucesso/erro de estorno e regularização agora usa drawer de notificação no script real.
 - Exportação real permanece como listagem textual do ledger filtrado, sem simular arquivo futuro.
 

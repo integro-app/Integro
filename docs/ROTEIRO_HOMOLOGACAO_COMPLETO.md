@@ -106,9 +106,42 @@ Atualizado em: 2026-07-16
 
 ## Bloqueios atuais
 
-- `npm run test:rules` depende de Java disponível para o Firebase Emulator.
+- Nenhum bloqueio técnico automatizado confirmado após a homologação final.
+- Deploy, publicação de Rules e validação manual com dados reais não foram executados por regra do projeto.
 
 ## Status de execução automatizada
 
 - Testes Node transacionais, autenticação, clientes, indicações, tela financeira e perfis dedicados: `npm.cmd test` passou com 101 testes.
-- Validação de Rules: bloqueada por Java indisponível.
+- Validação de Rules com Firebase Emulator: `npm.cmd run test:rules` passou com 16 testes.
+- Scripts inline das telas `index.html`, `master-global.html`, `master-local.html`, `supervisor.html`, `financeiro.html`, `auditor.html`, `captador.html` e `vendedor.html`: compilados com sucesso.
+- `git diff --check`: passou.
+
+## Homologação técnica final
+
+- Fluxo 1 - Empresa: coberto por rotas, login, bloqueio de tenant/empresa e Rules por tenant.
+- Fluxo 2 - Estrutura: coberto por criação segura de convite, cargos/equipes/permissões e bloqueio de Auth inseguro no cliente.
+- Fluxo 3 - Cliente e venda: coberto por deduplicação de cliente, venda transacional, parcelas, caixa, carteira e ledger.
+- Fluxo 4 - Cobrança: coberto por pagamento integral/parcial, idempotência, caixa, parcela, venda, cliente e ledger.
+- Fluxo 5 - Solicitação: coberto por criação, aprovação, bloqueio de aprovação própria, escopo de equipe, ledger e delete bloqueado.
+- Fluxo 6 - Fechamento: coberto por fechamento determinístico, snapshot, divergência, idempotência e bloqueios operacionais.
+- Fluxo 7 - Divergência: coberto por aceite, regularização, reabertura, histórico preservado e supervisor fora de escopo bloqueado.
+- Fluxo 8 - Indicação: coberto por Captador/Master, dedupe, venda ativa, atribuição, atendimento, encerramento e conversão vinculada.
+- Fluxo 9 - Financeiro: coberto por ledger, período/tenant, reconciliação, regularização, estorno autorizado e imutabilidade.
+
+## Rodada visual/operacional final - 2026-07-16
+
+- Telas verificadas estruturalmente: login, Master Global, Master Local, Supervisor, Vendedor, Financeiro, Auditor e Captador.
+- Scripts inline das 8 telas compilados.
+- Recurso local ausente do logo de Master Local corrigido.
+- Feedback operacional sem alerta nativo em HTML/JS.
+- Testes gerais: 101/101.
+- Rules: 16/16.
+- `git diff --check`: passou.
+- Pendencia de roteiro manual: coletar evidencia real de console e layout nos viewports 1440x900, 1366x768, 768x1024, 390x844 e 360x800 em navegador permitido, pois o navegador embutido bloqueou alvos locais.
+
+## Homologacao publicada - bloqueio seguro 2026-07-16
+
+- Antes de publicar, foi verificado que `.firebaserc` contem apenas `default: integro-novo`.
+- Como nao existe alias/projeto separado de homologacao configurado, nenhuma publicacao foi executada.
+- Para continuar este roteiro, criar/configurar um projeto Firebase exclusivo de homologacao e publicar com `--project homolog`.
+- Evidencia do bloqueio: `docs/evidencias-homologacao/BLOQUEIO_PUBLICACAO_HOMOLOGACAO_2026-07-16.md`.

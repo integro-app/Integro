@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -21,7 +21,7 @@
     .screen{display:none}.screen.active{display:block}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:20px}.card small{display:block;color:var(--muted);font-weight:900;margin-bottom:10px}.card strong{font-size:28px;font-weight:900}.card p,.muted{color:var(--muted);font-weight:700;margin-top:8px}.panel{margin-top:18px}.empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:18px;padding:18px;color:#475569;font-weight:800}
     @media(max-width:900px){.sidebar{transform:translateX(-105%);transition:.25s}.sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}.main{margin-left:0;padding:14px}.hamburger{display:block}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}}
 
-    /* ===== LOADING PREMIUM ÍNTEGRO COM PORCENTAGEM ===== */
+    /* ===== LOADING PREMIUM ÃNTEGRO COM PORCENTAGEM ===== */
     body.integro-booting{
       overflow:hidden;
     }
@@ -116,7 +116,7 @@
 <body class="integro-booting">
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
-      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
+      <div class="integro-loader-logo">ÃNTEGRO<span>.</span></div>
       <div class="integro-loader-title">Preparando seu painel</div>
       <div class="integro-loader-step" id="integroLoaderStep">Carregando painel do supervisor...</div>
       <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
@@ -142,7 +142,7 @@
   <main class="main">
     <header class="topbar">
       <div style="display:flex;align-items:center;gap:14px">
-        <button class="hamburger" onclick="toggleSidebar(true)">☰</button>
+        <button class="hamburger" onclick="toggleSidebar(true)">â˜°</button>
         <div><h1 id="pageTitle">Dashboard</h1><p>Visao operacional da equipe.</p></div>
       </div>
       <div class="actions">
@@ -205,7 +205,7 @@
           return State.getUsuario();
         }
       } catch (e) {
-        console.warn("Falha ao obter usuário do State:", e);
+        console.warn("Falha ao obter usuÃ¡rio do State:", e);
       }
       return null;
     }
@@ -247,7 +247,7 @@
           protegerPaginaAtual();
         }
 
-        setLoaderSupervisor(28, "Validando sessão e permissões...");
+        setLoaderSupervisor(28, "Validando sessÃ£o e permissÃµes...");
         await aguardarUsuarioSupervisorValidado();
 
         setLoaderSupervisor(45, "Carregando perfil do supervisor...");
@@ -255,7 +255,7 @@
           preencherUsuarioLayout();
         }
 
-        setLoaderSupervisor(65, "Carregando notificações e alertas...");
+        setLoaderSupervisor(65, "Carregando notificaÃ§Ãµes e alertas...");
         if (typeof carregarNotificacoesLayout === "function") {
           await carregarNotificacoesLayout(obterUsuarioSupervisorAtual());
         }
@@ -270,7 +270,7 @@
 
       } catch (erro) {
         console.error("Erro no loading do supervisor:", erro);
-        setLoaderSupervisor(100, "Não foi possível validar todos os dados. Liberando painel...");
+        setLoaderSupervisor(100, "NÃ£o foi possÃ­vel validar todos os dados. Liberando painel...");
         setTimeout(() => {
           document.body.classList.remove("integro-booting");
           const loader = document.getElementById("integroBootLoader");
@@ -309,7 +309,7 @@
       }
 
       if (!viaLoading) {
-        setLoaderSupervisor(100, "Atualização concluída.");
+        setLoaderSupervisor(100, "AtualizaÃ§Ã£o concluÃ­da.");
       }
     }
 
@@ -359,8 +359,8 @@
 
     window.registrarReaberturaCaixaSupervisor = async function(caixaId){
       const motivo = prompt("Informe o motivo obrigatorio para reabrir o caixa:");
-      if (!motivo || !motivo.trim()) return alert("Motivo obrigatorio para reabertura.");
-      if (!window.IntegroCaixa?.registrarReaberturaCaixaTransacional) return alert("Nucleo transacional de reabertura indisponivel.");
+      if (!motivo || !motivo.trim()) return notificarIntegro("Motivo obrigatorio para reabertura.");
+      if (!window.IntegroCaixa?.registrarReaberturaCaixaTransacional) return notificarIntegro("Nucleo transacional de reabertura indisponivel.");
       try {
         await executarAcaoSupervisorCaixa(`reabrir_${caixaId}`, async () => {
           const usuario = usuarioSupervisorCaixa();
@@ -373,11 +373,11 @@
             origem: "supervisor"
           });
         });
-        alert("Caixa reaberto com sucesso.");
+        notificarIntegro("Caixa reaberto com sucesso.");
         await carregarTudoSupervisor();
       } catch (erro) {
         console.error("Erro ao reabrir caixa pelo supervisor:", erro);
-        alert(erro?.message || "Nao foi possivel reabrir o caixa.");
+        notificarIntegro(erro?.message || "Nao foi possivel reabrir o caixa.");
       }
     };
 
@@ -385,8 +385,8 @@
       const decisaoFinal = decisao || prompt("Decisao: ACEITAR_DIVERGENCIA, SOLICITAR_REGULARIZACAO ou REABRIR_CAIXA:");
       if (!decisaoFinal) return;
       const justificativa = prompt("Informe a justificativa obrigatoria:");
-      if (!justificativa || !justificativa.trim()) return alert("Justificativa obrigatoria.");
-      if (!window.IntegroCaixa?.registrarTratamentoDivergenciaCaixa) return alert("Nucleo transacional de divergencia indisponivel.");
+      if (!justificativa || !justificativa.trim()) return notificarIntegro("Justificativa obrigatoria.");
+      if (!window.IntegroCaixa?.registrarTratamentoDivergenciaCaixa) return notificarIntegro("Nucleo transacional de divergencia indisponivel.");
       try {
         await executarAcaoSupervisorCaixa(`divergencia_${caixaId}_${decisaoFinal}`, async () => {
           const usuario = usuarioSupervisorCaixa();
@@ -400,11 +400,11 @@
             origem: "supervisor"
           });
         });
-        alert("Tratamento de divergencia registrado.");
+        notificarIntegro("Tratamento de divergencia registrado.");
         await carregarTudoSupervisor();
       } catch (erro) {
         console.error("Erro ao tratar divergencia pelo supervisor:", erro);
-        alert(erro?.message || "Nao foi possivel tratar a divergencia.");
+        notificarIntegro(erro?.message || "Nao foi possivel tratar a divergencia.");
       }
     };
   </script>

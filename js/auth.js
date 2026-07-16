@@ -257,7 +257,11 @@ function mostrarStatusLogin(mensagem) {
     return;
   }
 
-  alert(mensagem);
+  if (window.UIHelpers && typeof window.UIHelpers.alerta === "function") {
+    window.UIHelpers.alerta(mensagem);
+  } else {
+    console.warn(mensagem);
+  }
 }
 
 // ===============================

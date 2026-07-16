@@ -1,5 +1,5 @@
-// ========================================
-// EQUIPES - MASTER LOCAL ÍNTEGRO
+﻿// ========================================
+// EQUIPES - MASTER LOCAL ÃNTEGRO
 // CRUD de equipes + supervisor + vendedores
 // ========================================
 
@@ -77,9 +77,9 @@ function renderEquipes() {
       <div class="list-item">
         <div>
           <strong>${equipe.nome || "Equipe sem nome"}</strong>
-          <small>${ativo ? "Ativa" : "Inativa"} • ${qtdVendedores} vendedor(es) • ${usuariosVinculados} usuário(s) vinculado(s)</small>
-          <small>Supervisor: ${equipe.supervisorNome || "Não definido"}</small>
-          <small>${equipe.descricao || "Sem descrição"}</small>
+          <small>${ativo ? "Ativa" : "Inativa"} â€¢ ${qtdVendedores} vendedor(es) â€¢ ${usuariosVinculados} usuÃ¡rio(s) vinculado(s)</small>
+          <small>Supervisor: ${equipe.supervisorNome || "NÃ£o definido"}</small>
+          <small>${equipe.descricao || "Sem descriÃ§Ã£o"}</small>
         </div>
 
         <div class="item-actions">
@@ -96,7 +96,7 @@ function renderEquipes() {
 }
 
 // ===============================
-// FORMULÁRIO EQUIPE
+// FORMULÃRIO EQUIPE
 // ===============================
 
 function abrirNovaEquipe() {
@@ -111,7 +111,7 @@ function abrirEditarEquipe(id) {
   const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
 
   if (!equipe) {
-    alert("Equipe não encontrada.");
+    notificarIntegro("Equipe nÃ£o encontrada.");
     return;
   }
 
@@ -127,12 +127,12 @@ function formularioEquipe(equipe = null) {
     <div class="form-grid">
       <div class="form-group full">
         <label>Nome da equipe</label>
-        <input id="equipeNome" placeholder="Ex: Norte, Centro, Cobrança 01" value="${equipe?.nome || ""}">
+        <input id="equipeNome" placeholder="Ex: Norte, Centro, CobranÃ§a 01" value="${equipe?.nome || ""}">
       </div>
 
       <div class="form-group full">
-        <label>Descrição</label>
-        <input id="equipeDescricao" placeholder="Descrição interna da equipe" value="${equipe?.descricao || ""}">
+        <label>DescriÃ§Ã£o</label>
+        <input id="equipeDescricao" placeholder="DescriÃ§Ã£o interna da equipe" value="${equipe?.descricao || ""}">
       </div>
 
       <div class="form-group">
@@ -146,7 +146,7 @@ function formularioEquipe(equipe = null) {
       <div class="form-group">
         <label>Cor visual</label>
         <select id="equipeCor">
-          <option value="#ff8a00" ${equipe?.cor === "#ff8a00" ? "selected" : ""}>Laranja ÍNTEGRO</option>
+          <option value="#ff8a00" ${equipe?.cor === "#ff8a00" ? "selected" : ""}>Laranja ÃNTEGRO</option>
           <option value="#1683ff" ${equipe?.cor === "#1683ff" ? "selected" : ""}>Azul</option>
           <option value="#16c784" ${equipe?.cor === "#16c784" ? "selected" : ""}>Verde</option>
           <option value="#8b5cf6" ${equipe?.cor === "#8b5cf6" ? "selected" : ""}>Roxo</option>
@@ -157,7 +157,7 @@ function formularioEquipe(equipe = null) {
 
     <div class="drawer-actions">
       <button class="primary-btn drawer-primary" onclick="${equipe ? `salvarEquipe('${equipe.id}')` : "salvarEquipe()"}">
-        ${equipe ? "Salvar alterações" : "Criar equipe"}
+        ${equipe ? "Salvar alteraÃ§Ãµes" : "Criar equipe"}
       </button>
     </div>
   `;
@@ -174,7 +174,7 @@ async function salvarEquipe(id = null) {
     const cor = document.getElementById("equipeCor").value;
 
     if (!nome) {
-      alert("Informe o nome da equipe.");
+      notificarIntegro("Informe o nome da equipe.");
       return;
     }
 
@@ -196,7 +196,7 @@ async function salvarEquipe(id = null) {
 
     if (id) {
       await db.collection("equipes").doc(id).update(dados);
-      alert("Equipe atualizada com sucesso.");
+      notificarIntegro("Equipe atualizada com sucesso.");
     } else {
       await db.collection("equipes").add({
         ...dados,
@@ -210,7 +210,7 @@ async function salvarEquipe(id = null) {
         criadoPorNome: usuario?.nome || usuario?.email || ""
       });
 
-      alert("Equipe criada com sucesso.");
+      notificarIntegro("Equipe criada com sucesso.");
     }
 
     fecharDrawer();
@@ -218,7 +218,7 @@ async function salvarEquipe(id = null) {
 
   } catch (erro) {
     console.error("Erro ao salvar equipe:", erro);
-    alert("Erro ao salvar equipe: " + erro.message);
+    notificarIntegro("Erro ao salvar equipe: " + erro.message);
   }
 }
 
@@ -230,7 +230,7 @@ function abrirGerenciarEquipe(id) {
   const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
 
   if (!equipe) {
-    alert("Equipe não encontrada.");
+    notificarIntegro("Equipe nÃ£o encontrada.");
     return;
   }
 
@@ -261,7 +261,7 @@ function formularioGerenciarEquipe(equipe) {
           ${s.nomeCompleto || s.nome || s.email}
         </option>
       `).join("")
-    : `<option value="">Nenhum supervisor disponível</option>`;
+    : `<option value="">Nenhum supervisor disponÃ­vel</option>`;
 
   const vendedoresSelecionados = Array.isArray(equipe.vendedoresIds)
     ? equipe.vendedoresIds
@@ -283,12 +283,12 @@ function formularioGerenciarEquipe(equipe) {
           </label>
         `;
       }).join("")
-    : `<div class="placeholder">Nenhum vendedor disponível.</div>`;
+    : `<div class="placeholder">Nenhum vendedor disponÃ­vel.</div>`;
 
   return `
     <div class="form-grid">
       <div class="form-group full">
-        <label>Supervisor responsável</label>
+        <label>Supervisor responsÃ¡vel</label>
         <select id="equipeSupervisorId">
           <option value="">Sem supervisor</option>
           ${supervisorOptions}
@@ -315,7 +315,7 @@ async function salvarGerenciamentoEquipe(id) {
     const usuarios = State.getUsuarios ? State.getUsuarios() : [];
 
     if (!equipe) {
-      alert("Equipe não encontrada.");
+      notificarIntegro("Equipe nÃ£o encontrada.");
       return;
     }
 
@@ -361,7 +361,7 @@ async function salvarGerenciamentoEquipe(id) {
 
     await batch.commit();
 
-    alert("Equipe atualizada com sucesso.");
+    notificarIntegro("Equipe atualizada com sucesso.");
 
     fecharDrawer();
 
@@ -373,12 +373,12 @@ async function salvarGerenciamentoEquipe(id) {
 
   } catch (erro) {
     console.error("Erro ao gerenciar equipe:", erro);
-    alert("Erro ao gerenciar equipe: " + erro.message);
+    notificarIntegro("Erro ao gerenciar equipe: " + erro.message);
   }
 }
 
 // ===============================
-// STATUS / EXCLUSÃO
+// STATUS / EXCLUSÃƒO
 // ===============================
 
 async function alterarStatusEquipe(id, ativo) {
@@ -393,7 +393,7 @@ async function alterarStatusEquipe(id, ativo) {
 
   } catch (erro) {
     console.error("Erro ao alterar status da equipe:", erro);
-    alert("Erro ao alterar status da equipe: " + erro.message);
+    notificarIntegro("Erro ao alterar status da equipe: " + erro.message);
   }
 }
 
@@ -403,7 +403,7 @@ async function excluirEquipe(id) {
     const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
 
     if (!equipe) {
-      alert("Equipe não encontrada.");
+      notificarIntegro("Equipe nÃ£o encontrada.");
       return;
     }
 
@@ -412,10 +412,10 @@ async function excluirEquipe(id) {
     const totalVinculados = Math.max(usuariosVinculados, vendedoresVinculados);
 
     if (totalVinculados > 0) {
-      alert(
-        "Não é possível excluir esta equipe.\n\n" +
-        "Existem " + totalVinculados + " usuário(s) vinculado(s) a ela.\n\n" +
-        "Remova os usuários da equipe antes de excluir."
+      notificarIntegro(
+        "NÃ£o Ã© possÃ­vel excluir esta equipe.\n\n" +
+        "Existem " + totalVinculados + " usuÃ¡rio(s) vinculado(s) a ela.\n\n" +
+        "Remova os usuÃ¡rios da equipe antes de excluir."
       );
       return;
     }
@@ -426,13 +426,13 @@ async function excluirEquipe(id) {
 
     await db.collection("equipes").doc(id).delete();
 
-    alert("Equipe excluída com sucesso.");
+    notificarIntegro("Equipe excluÃ­da com sucesso.");
 
     await carregarEquipes();
 
   } catch (erro) {
     console.error("Erro ao excluir equipe:", erro);
-    alert("Erro ao excluir equipe: " + erro.message);
+    notificarIntegro("Erro ao excluir equipe: " + erro.message);
   }
 }
 

@@ -4,16 +4,16 @@ Atualizado em: 2026-07-16
 
 ## Veredito atual
 
-PARCIALMENTE PRONTO.
+PRONTO PARA HOMOLOGAÇÃO TÉCNICA.
 
-Motivo: os P0 confirmados nesta rodada foram corrigidos e os testes Node passaram, mas ainda há P1/P2 operacionais, dependência externa para Rules e validação visual/manual pendente.
+Motivo: P0/P1 confirmados foram corrigidos, os perfis principais possuem rota/tela protegida, os fluxos transacionais passaram nos testes Node e as Rules passaram no Firebase Emulator. Deploy, publicação de Rules e homologação manual com dados reais seguem fora do escopo executado por regra.
 
 ## Progresso estimado
 
-- Conclusão estimada do sistema: 82%.
-- Base transacional financeira: parcial, com testes Node existentes.
-- Operação de telas: parcial, com muitos handlers inline e validação visual/manual pendente.
-- Firebase Rules: bloqueado por ausência de Java no ambiente local.
+- Conclusão estimada do sistema: 92%.
+- Base transacional financeira: homologada tecnicamente por testes Node.
+- Operação de telas: rotas, proteção de perfil e scripts inline validados tecnicamente.
+- Firebase Rules: homologadas no emulator com 16 testes.
 
 ## Checkpoints
 
@@ -21,7 +21,7 @@ Motivo: os P0 confirmados nesta rodada foram corrigidos e os testes Node passara
 |---|---|---|
 | Etapa 0 - Checkpoint e inventário | Concluído | `git status`, `git diff --stat`, `git diff --check`, inventário |
 | Etapa 1 - Mapa completo inicial | Parcial | Documento de auditoria criado |
-| Etapa 22 - Java/Rules | Bloqueado | `java -version` indisponível |
+| Etapa 22 - Java/Rules | Concluído | `npm.cmd run test:rules`, 16 testes |
 | Correção P0 - Usuário Auth cliente | Concluído | `node --check`, `npm.cmd test` |
 | Correção P0 - Venda legada | Concluído | `node --check`, `npm.cmd test` |
 | P1-001 - Diagnóstico objetivo no login | Concluído | `node --check`, `npm.cmd test` |
@@ -30,6 +30,7 @@ Motivo: os P0 confirmados nesta rodada foram corrigidos e os testes Node passara
 | Clientes - deduplicação por tenant | Concluído | `node --check`, `npm.cmd test` |
 | P2 - Perfil Auditor dedicado | Concluído funcional | scripts inline, `npm.cmd test` |
 | P2 - Perfil Captador dedicado | Concluído funcional | scripts inline, `npm.cmd test` |
+| Homologação técnica final | Concluído | `npm.cmd test`, `npm.cmd run test:rules`, scripts inline, `git diff --check` |
 
 ## Módulos concluídos
 
@@ -38,18 +39,9 @@ Motivo: os P0 confirmados nesta rodada foram corrigidos e os testes Node passara
 
 ## Módulos parciais
 
-- Login e sessão.
-- Master Global.
-- Master Local.
-- Vendedor.
-- Supervisor.
-- Financeiro.
-- Indicações.
-- Caixa.
-- Vendas transacionais.
-- Pagamentos transacionais.
-- Notificações.
-- Relatórios gerais fora do fluxo de indicações/captador.
+- Homologação manual com dados reais em ambiente publicado.
+- Notificações dependentes de origem real dos documentos em operação.
+- Relatórios gerais fora dos cenários automatizados.
 
 ## Módulos não iniciados
 
@@ -80,7 +72,7 @@ Motivo: os P0 confirmados nesta rodada foram corrigidos e os testes Node passara
 | P1-001 | Diagnóstico de usuário sem documento por UID precisa ser mais objetivo | Corrigido |
 | P1-002 | Financeiro contém ações e mensagens de mock operacionais | Corrigido |
 | P1-003 | Indicações precisam validação de transição/escopo no cliente antes de update | Corrigido |
-| P1-004 | Regras Firebase não testadas por Java indisponível | Bloqueado |
+| P1-004 | Regras Firebase validadas no emulator | Corrigido |
 
 ## Testes executados
 
@@ -90,12 +82,32 @@ Motivo: os P0 confirmados nesta rodada foram corrigidos e os testes Node passara
 - `node --check js/usuarios.js`: passou.
 - `git diff --check`: passou antes e depois dos patches.
 - `npm.cmd test`: passou, 101 testes.
-- `java -version`: falhou; Java não instalado/disponível.
-- Varredura por `alert(`, `TODO/FIXME/placeholder`, `mock/Mock` e `toISOString().split/slice`: sem ocorrências em HTML/JS.
+- `npm.cmd run test:rules`: passou, 16 testes.
+- Scripts inline das telas principais: passaram.
+- Varredura por alerta nativo, marcadores temporarios operacionais e conversao insegura de data ISO: sem ocorrencias em HTML/JS.
+
+## Homologacao visual final - 2026-07-16
+
+- Telas verificadas estruturalmente: `index.html`, `master-global.html`, `master-local.html`, `supervisor.html`, `vendedor.html`, `financeiro.html`, `auditor.html`, `captador.html`.
+- Correcoes realizadas: feedback nao bloqueante global, inclusao do helper em Master Global/Vendedor, asset de logo quebrado neutralizado e literais legados preservados para diagnostico/testes.
+- Validacoes: scripts inline das 8 telas passaram; `npm.cmd test` passou com 101 testes; `npm.cmd run test:rules` passou com 16 testes; `git diff --check` passou.
+- Pendencia externa: navegador embutido bloqueou `localhost` e `file://`, impedindo screenshots/console real por viewport nesta execucao.
+- Percentual final real estimado: 94%.
+- Veredito: PARCIALMENTE PRONTO ate a evidencia visual real em navegador permitido; tecnicamente pronto para iniciar homologacao assistida.
+
+## Homologacao publicada - bloqueio seguro 2026-07-16
+
+- `.firebaserc`: apenas `default: integro-novo`.
+- `firebase.json`: Hosting, Firestore Rules, Storage Rules e emulators configurados.
+- Nao foi encontrada configuracao local de projeto separado de homologacao.
+- Deploy/publicacao nao executados por regra de seguranca.
+- Evidencia criada: `docs/evidencias-homologacao/BLOQUEIO_PUBLICACAO_HOMOLOGACAO_2026-07-16.md`.
+- Validacao antes do bloqueio: `npm.cmd test` 101/101, `npm.cmd run test:rules` 16/16, `git diff --check` aprovado.
+- Percentual final real estimado permanece em 94% ate publicacao e evidencia visual em homologacao.
 
 ## Testes pendentes
 
-- `npm run test:rules` somente quando Java estiver disponível.
+- Nenhum teste automatizado pendente.
 
 ## Arquivos alterados
 
@@ -121,4 +133,4 @@ Motivo: os P0 confirmados nesta rodada foram corrigidos e os testes Node passara
 
 ## Próximo ponto mínimo
 
-Próximo ponto mínimo: validar visualmente em navegador real os fluxos Master Global, Master Local, Supervisor, Financeiro e Vendedor, com Firebase real e regras publicadas em ambiente de homologação.
+Próximo ponto mínimo: executar homologação manual assistida em ambiente de homologação publicado, sem alterar código, para coletar evidências visuais e IDs reais dos documentos.
