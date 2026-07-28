@@ -35,6 +35,7 @@ const integroEmAmbienteLocal = ["localhost", "127.0.0.1", "::1"].includes(
 const integroParametros = new URLSearchParams(window.location.search);
 const integroParametroEmulator = integroParametros.get("emulator");
 const integroPaginaAtual = String(window.location.pathname || "").toLowerCase();
+
 const integroPaginaLogin =
   integroPaginaAtual === "/" ||
   integroPaginaAtual.endsWith("/index.html");
@@ -51,14 +52,6 @@ if (integroEmAmbienteLocal && integroParametroEmulator === "1") {
 const integroUsarEmulator =
   integroEmAmbienteLocal &&
   sessionStorage.getItem("integro:usar-emulator") === "1";
-
-// ========================================
-// FIRESTORE SETTINGS
-// ========================================
-
-db.settings({
-  ignoreUndefinedProperties: true
-});
 
 // ========================================
 // EMULADORES LOCAIS
@@ -86,9 +79,14 @@ if (integroUsarEmulator) {
 // AUTH SETTINGS
 // ========================================
 
-auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((erro) => {
-  console.error("[ÍNTEGRO] Erro ao configurar persistência do Auth:", erro);
-});
+auth
+  .setPersistence(firebase.auth.Auth.Persistence.LOCAL)
+  .catch((erro) => {
+    console.error(
+      "[ÍNTEGRO] Erro ao configurar persistência do Auth:",
+      erro
+    );
+  });
 
 // ========================================
 // IDENTIFICAÇÃO DO AMBIENTE
