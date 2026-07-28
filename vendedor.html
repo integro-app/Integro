@@ -2240,7 +2240,7 @@
 
             <div class="panel-title">
               <div>
-                <h2>Resumo r?pido</h2>
+                <h2>Resumo rápido</h2>
                 <p>Panorama geral do dia.</p>
               </div>
             </div>
@@ -2615,7 +2615,7 @@
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="busca-grid">
                   <div>
                     <label class="form-label">Apelido / referência</label>
-                    <input id="clienteApelido" class="form-input" placeholder="Ex: Jo?o mercado">
+                    <input id="clienteApelido" class="form-input" placeholder="Ex: João mercado">
                   </div>
 
                   <div>
@@ -2711,7 +2711,7 @@
 
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="busca-grid">
                   <div>
-                    <label class="form-label">N?mero</label>
+                    <label class="form-label">Número</label>
                     <input id="clienteNumero" class="form-input" placeholder="123">
                   </div>
 
@@ -3068,7 +3068,7 @@
           const cep = (document.getElementById("clienteCep")?.value || "").replace(/\D/g, "");
 
           if (cep.length !== 8) {
-            notificarIntegro("Informe um CEP válido com 8 d?gitos.");
+            notificarIntegro("Informe um CEP válido com 8 dígitos.");
             return;
           }
 
@@ -3364,7 +3364,7 @@
         }
 
         function abrirListaNovaVenda() {
-          if (!garantirCaixaAberto("O caixa est? fechado. N?o ? poss?vel criar nova venda.")) return;
+          if (!garantirCaixaAberto("O caixa está fechado. Não é possível criar nova venda.")) return;
 
           const clientesElegiveis = (clientesCache || []).filter(c => {
             const saldo = Number(c.saldoDevedor || c.saldo || 0);
@@ -3685,7 +3685,7 @@
 
           const saldo = Number(cliente.saldoDevedor || cliente.saldo || 0);
 
-          if (!garantirCaixaAberto("O caixa est? fechado. N?o ? poss?vel criar nova venda.")) return;
+          if (!garantirCaixaAberto("O caixa está fechado. Não é possível criar nova venda.")) return;
 
           if (saldo > 0.01 || clienteTemVendaAtiva(clienteId)) {
             notificarIntegro("Cliente possui saldo devedor ativo. Nova venda bloqueada.");
@@ -3952,7 +3952,7 @@
                           color:#0f172a;
                         "
                       >
-                        <option value="DIÁRIA">Di?ria</option>
+                        <option value="DIÁRIA">Diária</option>
                         <option value="SEMANAL">Semanal</option>
                         <option value="QUINZENAL">Quinzenal</option>
                         <option value="MENSAL">Mensal</option>
@@ -4333,7 +4333,7 @@
               return;
             }
 
-            if (!garantirCaixaAberto("O caixa está fechado. Não ? possível criar venda.")) return;
+            if (!garantirCaixaAberto("O caixa está fechado. Não é possível criar venda.")) return;
 
             const saldoCliente = Number(cliente.saldoDevedor || cliente.saldo || 0);
 
@@ -5191,7 +5191,7 @@
                   <span>i</span> Detalhes
                 </button>
                 <button class="btn btn-light" title="Histórico" onclick="event.stopPropagation(); abrirHistoricoPagamentosVenda('${item.vendaId}')">
-                  <span>â†º</span> Histórico
+                  <span>↺</span> Histórico
                 </button>
               </div>
             </div>
@@ -5346,7 +5346,7 @@
 
               <div class="cobranca-actions-clean">
                 <button class="btn btn-cobrar-clean" title="Cobrar pelo WhatsApp" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${item.clienteId}','${item.vendaId}')">
-                  <span>â˜</span> Cobrar
+                  <span>☏</span> Cobrar
                 </button>
                 <button class="btn btn-nao-pago-clean" title="Registrar não pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${item.vendaId}')">
                   <span>?</span> Não pago
@@ -5412,7 +5412,7 @@
             return;
           }
 
-          if (!garantirCaixaAberto("O caixa est? fechado. N?o ? poss?vel registrar pagamento.")) return;
+          if (!garantirCaixaAberto("O caixa está fechado. Não é possível registrar pagamento.")) return;
 
           abrirDrawer(
             "Registrar pagamento",
@@ -5480,7 +5480,7 @@
               return;
             }
 
-            if (!garantirCaixaAberto("O caixa está fechado. Não ? possível registrar pagamento.")) return;
+            if (!garantirCaixaAberto("O caixa está fechado. Não é possível registrar pagamento.")) return;
 
             const valor = Number(document.getElementById("pagamentoValor").value || 0);
             const observacao = document.getElementById("pagamentoObs").value.trim();
@@ -5601,7 +5601,7 @@
               return;
             }
 
-            if (!garantirCaixaAberto("O caixa est? fechado. N?o ? poss?vel registrar n?o pagamento.")) return;
+            if (!garantirCaixaAberto("O caixa está fechado. Não é possível registrar não pagamento.")) return;
 
             const ref = db.collection("historicoCobrancas").doc();
 
@@ -6017,7 +6017,7 @@
                     margin-top:6px;
                   "
                 >
-                  Suas solicitações financeiras aparecer?o aqui.
+                  Suas solicitações financeiras aparecerão aqui.
                 </p>
               </div>
 
@@ -6071,7 +6071,7 @@
         function statusIndicacaoClasse(status) {
           const s = String(status || "NOVA").toUpperCase();
           if (s === "CONVERTIDA") return ["#ecfdf5", "#15803d"];
-          if (["SEM INTERESSE", "INV?LIDA", "INVALIDA"].includes(s)) return ["#fef2f2", "#b91c1c"];
+          if (["SEM INTERESSE", "INVÁLIDA", "INVALIDA"].includes(s)) return ["#fef2f2", "#b91c1c"];
           if (["NEGOCIANDO", "AGENDADO"].includes(s)) return ["#fff7ed", "#c2410c"];
           return ["#eff6ff", "#1d4ed8"];
         }
@@ -6097,7 +6097,7 @@
             ? indicacoesCache.map(i => cardIndicacao(i)).join("")
             : `
               <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
-                Nenhuma indicação atribu?da a você no momento.
+                Nenhuma indicação atribuída a você no momento.
               </div>
             `;
         }
@@ -6437,7 +6437,7 @@
               <div class="card card-gradient card-orange">
                 <small>Saldo atual</small>
                 <strong>${moeda(saldo)}</strong>
-                <p>Dispon?vel no caixa.</p>
+                <p>Disponível no caixa.</p>
               </div>
 
               <div class="card card-gradient card-blue">
@@ -6633,7 +6633,7 @@
                 }
 
                 if (["INATIVO", "BLOQUEADO"].includes(String(usuarioLogado.status || "").toUpperCase()) || usuarioLogado.acessoLiberado === false) {
-                  bloquearERedirecionar("Seu acesso est? inativo ou bloqueado.");
+                  bloquearERedirecionar("Seu acesso está inativo ou bloqueado.");
                 }
 
                 tenantId =
@@ -6703,7 +6703,7 @@
               <div class="menu-title">Principal</div>
               <div class="menu">
                 <button type="button" onclick="trocarTela('dashboard', this)">
-                  <span class="menu-left"><span>âŒ‚</span>Dashboard</span>
+                  <span class="menu-left"><span>⌂</span>Dashboard</span>
                   <span>?</span>
                 </button>
                 <button type="button" class="active" data-menu-target="cobrancas" onclick="trocarTela('cobrancas', this)">
@@ -7149,7 +7149,7 @@
             ],
             indicacoes: [
               "Indicações",
-              "Leads recebidos, contatos e convers?es."
+              "Leads recebidos, contatos e conversões."
             ],
             notificacoes: [
               "Notificações",
@@ -7313,7 +7313,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     await db.collection("notificacoes").add({
       tipo: "CAIXA_ABERTO_DIA_ANTERIOR",
       titulo: "Caixa aberto de dia anterior",
-      mensagem: `O vendedor ${usuarioLogado.nome || usuarioLogado.nomeCompleto || ""} est? operando com caixa aberto desde ${dataCaixa}.`,
+      mensagem: `O vendedor ${usuarioLogado.nome || usuarioLogado.nomeCompleto || ""} está operando com caixa aberto desde ${dataCaixa}.`,
       clientePlataformaId: tenantId || caixaAtual.clientePlataformaId || null,
       vendedorId: usuarioLogado.id,
       vendedorNome: usuarioLogado.nome || usuarioLogado.nomeCompleto || "",
@@ -8186,7 +8186,7 @@ async function verificarCaixaAbertoDiaAnterior() {
             statusFinal.innerHTML = fechado
               ? `<span>lock</span><span>Caixa fechado. Ações operacionais bloqueadas.</span>`
               : pendencias.length
-                ? `<span>â“˜</span><span>Fechamento de caixa bloqueado.</span>`
+                ? `<span>ⓘ</span><span>Fechamento de caixa bloqueado.</span>`
                 : `<span>?</span><span>Todos os clientes da rota foram tabulados. Fechamento liberado.</span>`;
             statusFinal.style.color = fechado || pendencias.length ? "#b45309" : "#166534";
           }
@@ -8249,7 +8249,7 @@ async function verificarCaixaAbertoDiaAnterior() {
           const listas = {
             DESPESA: ["Combustível", "Alimentação", "Manutenção", "Internet", "Material", "Outros"],
             RETIRADA: ["Recolhimento", "Repasse", "Ajuste de caixa", "Retirada autorizada", "Outros"],
-            INGRESSO: ["Aporte de caixa", "Reposi??o", "Ajuste de caixa", "Outros"]
+            INGRESSO: ["Aporte de caixa", "Reposição", "Ajuste de caixa", "Outros"]
           };
 
           return (listas[tipo] || ["Outros"]).map((nome, index) => ({
@@ -8280,7 +8280,7 @@ async function verificarCaixaAbertoDiaAnterior() {
               </select>
               ${categorias.some(c => c.padraoSistema) ? `
                 <small style="display:block;color:#64748b;font-weight:800;margin-top:8px;line-height:1.4;">
-                  Usando op??es padrão. O Master Local pode personalizar em Configurações &gt; Financeiro &gt; Categorias de movimentação.
+                  Usando opções padrão. O Master Local pode personalizar em Configurações &gt; Financeiro &gt; Categorias de movimentação.
                 </small>
               ` : ""}
             </div>
@@ -8509,7 +8509,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         }
 
         function abrirFormularioLancamentoCaixa() {
-          if (!garantirCaixaAberto("O caixa está fechado. Não ? possível lan?ar movimentação.")) return;
+          if (!garantirCaixaAberto("O caixa está fechado. Não é possível lançar movimentação.")) return;
 
           abrirDrawer(
             "Nova movimentação",
@@ -8519,7 +8519,7 @@ async function verificarCaixaAbertoDiaAnterior() {
                 <div>
                   <label class="form-label">Tipo de lançamento</label>
                   <select id="lancamentoTipo" class="form-input form-select-premium" onchange="atualizarCamposLancamentoCaixa()">
-                    <option value="GASTO">Lan?ar gasto</option>
+                    <option value="GASTO">Lançar gasto</option>
                     <option value="RETIRADA">Solicitar retirada</option>
                     <option value="INGRESSO">Solicitar ingresso</option>
                   </select>
@@ -8608,7 +8608,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
         async function salvarLancamentoCaixa(botao = null) {
           try {
-            if (!garantirCaixaAberto("O caixa está fechado. Não ? possível lan?ar movimentação.")) return;
+            if (!garantirCaixaAberto("O caixa está fechado. Não é possível lançar movimentação.")) return;
 
             const tipo = document.getElementById("lancamentoTipo")?.value || "";
             const valor = converterMoedaBRParaNumero(document.getElementById("lancamentoValor")?.value || "");
@@ -8745,7 +8745,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
           abrirDrawer(
             "Fechar caixa",
-            "Confer?ncia final do caixa atual",
+            "Conferência final do caixa atual",
             `
               <div style="display:grid;gap:18px;color:#334155;font-weight:800;">
                 <div style="background:linear-gradient(135deg,#16a34a,#065f46);border-radius:24px;padding:20px;color:#fff;box-shadow:0 18px 36px rgba(15,23,42,.16);">
@@ -8754,7 +8754,7 @@ async function verificarCaixaAbertoDiaAnterior() {
                 </div>
 
                 <div>
-                  <label class="form-label">Informe o valor f?sico/real do caixa</label>
+                  <label class="form-label">Informe o valor físico/real do caixa</label>
                   ${campoMoedaHtml("fechamentoValorReal", "0,00")}
                 </div>
 
@@ -8811,7 +8811,7 @@ async function verificarCaixaAbertoDiaAnterior() {
             }
 
             if (!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) {
-              throw new Error("N?cleo transacional de fechamento indispon?vel.");
+              throw new Error("Núcleo transacional de fechamento indisponível.");
             }
 
             const pendenciasFila = contarPendenciasFilaOfflineCaixa(caixaAtual.id);
@@ -8840,7 +8840,7 @@ async function verificarCaixaAbertoDiaAnterior() {
             fecharDrawer();
 
             notificarIntegro(resultadoFechamento?.statusFechamento === "DIVERGENTE"
-              ? "Caixa fechado com diverg?ncia registrada para analise."
+              ? "Caixa fechado com divergência registrada para análise."
               : "Caixa fechado com sucesso.");
           } catch (erro) {
             console.error("Erro ao fechar caixa:", erro);
@@ -8917,18 +8917,18 @@ async function verificarCaixaAbertoDiaAnterior() {
           const dados = {
             caixa: {
               titulo: "Caixa atual",
-              subtitulo: "Composi??o do caixa",
+              subtitulo: "Composição do caixa",
               html: `<p><strong>Saldo atual:</strong> ${moeda(saldoCaixa)}</p><p><strong>Regra:</strong> caixa inicial + recebimentos + ingressos - valor emprestado nas vendas - gastos - retiradas.</p>`
             },
             carteira: {
               titulo: "Carteira final",
               subtitulo: "Valor vendido em aberto",
-              html: `<p><strong>Carteira inicial:</strong> ${moeda(carteiraInicial)}</p><p><strong>Carteira final:</strong> ${moeda(carteiraFinal)}</p><p><strong>F?rmula:</strong> soma do saldo devedor das vendas ativas. Cada venda entra como valor emprestado + juros.</p>`
+              html: `<p><strong>Carteira inicial:</strong> ${moeda(carteiraInicial)}</p><p><strong>Carteira final:</strong> ${moeda(carteiraFinal)}</p><p><strong>Fórmula:</strong> soma do saldo devedor das vendas ativas. Cada venda entra como valor emprestado + juros.</p>`
             },
             recebido: {
               titulo: "Recebido hoje",
               subtitulo: "Pagamentos confirmados",
-              html: `<p><strong>Total recebido:</strong> ${moeda(recebidoHoje)}</p><p><strong>F?rmula:</strong> soma dos pagamentos confirmados no dia.</p>`
+              html: `<p><strong>Total recebido:</strong> ${moeda(recebidoHoje)}</p><p><strong>Fórmula:</strong> soma dos pagamentos confirmados no dia.</p>`
             },
             ativos: {
               titulo: "Clientes ativos",
@@ -9340,7 +9340,7 @@ async function verificarCaixaAbertoDiaAnterior() {
                     ${variacaoScore}
                   </span>
                   <span style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;">
-                    Empr?stimos: ${vendasCliente.length}
+                    Empréstimos: ${vendasCliente.length}
                   </span>
                 </div>
 
@@ -9411,7 +9411,7 @@ async function verificarCaixaAbertoDiaAnterior() {
                   </small>
 
                   <small style="display:block;color:#64748b;font-weight:900;">
-                    Saldo: ${moeda(saldo)} ? Score: ${c.score ?? 50}
+                    Saldo: ${moeda(saldo)} • Score: ${c.score ?? 50}
                   </small>
 
                 </div>
@@ -10222,7 +10222,7 @@ async function verificarCaixaAbertoDiaAnterior() {
             );
 
           notificarIntegro(
-          "Erro ass?ncrono:\n\n" +
+          "Erro assíncrono:\n\n" +
           (
           event.reason?.message ||
           event.reason ||
@@ -10276,7 +10276,7 @@ async function verificarCaixaAbertoDiaAnterior() {
      Cole este bloco antes de
 
 <style id="correcao-mobile-clientes-layout-definitiva">
-  /* Corre??o definitiva: CLIENTES / MOBILE
+  /* Correção definitiva: CLIENTES / MOBILE
      Mantém o desktop intacto e evita conflito com os blocos antigos de grid-column. */
   @media (max-width: 780px) {
     #clientes .clientes-busca-card-integro > .busca-grid:first-of-type,
@@ -10507,7 +10507,7 @@ async function verificarCaixaAbertoDiaAnterior() {
             <button class="btn btn-primary" onclick="converterIndicacaoEmCliente('${esc(id)}')">Abrir/criar cliente</button>
           </div>
           <div style="border:1px dashed #cbd5e1;border-radius:16px;padding:12px;color:#64748b;">
-            A conversão em venda permanece no fluxo atual. Esta etapa não altera c?lculo financeiro.
+            A conversão em venda permanece no fluxo atual. Esta etapa não altera cálculo financeiro.
           </div>
         </div>
       `
@@ -10570,7 +10570,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     const s = window.IntegroIndicacoes?.normalizarStatusIndicacao?.(status) || String(status || "").toUpperCase();
     if (s === "CONVERTIDA") return ["#ecfdf5", "#15803d"];
     if (s === "EM_ATENDIMENTO" || s === "EM ATENDIMENTO" || s === "NEGOCIANDO" || s === "AGENDADO") return ["#fff7ed", "#c2410c"];
-    if (s === "NAO_CONVERTIDA" || s === "N?O CONVERTIDA" || s === "RECUSADA" || s === "INVALIDA" || s === "INV?LIDA") return ["#fef2f2", "#b91c1c"];
+    if (s === "NAO_CONVERTIDA" || s === "NÃO CONVERTIDA" || s === "RECUSADA" || s === "INVALIDA" || s === "INVÁLIDA") return ["#fef2f2", "#b91c1c"];
     return ["#eff6ff", "#1d4ed8"];
   }
   function pertenceAoVendedor(item){
@@ -11547,7 +11547,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 
-  /* Bot?o desktop para ativar/inativar menu lateral aprovado. */
+  /* Botão desktop para ativar/inativar menu lateral aprovado. */
   .desktop-menu-toggle-integro {
     position: fixed !important;
     top: 18px !important;
@@ -11609,7 +11609,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 
-  /* Cabe?alho desktop de operação: sem header azul, pois a marca est? no menu lateral. */
+  /* Cabeçalho desktop de operação: sem header azul, pois a marca está no menu lateral. */
   .operacao-desktop-header-integro {
     display: flex;
     align-items: flex-start;
@@ -12557,8 +12557,8 @@ async function verificarCaixaAbertoDiaAnterior() {
         <div class="cobranca-card-grid cobranca-metricas-clean">
           <div class="cobranca-mini-clean"><span>? Parcela</span><strong>${moedaSegura(item.valorParcela)}</strong></div>
           <div class="cobranca-mini-clean"><span>◉ Saldo devedor</span><strong class="valor-alerta">${moedaSegura(item.saldoDevedor)}</strong></div>
-          <div class="cobranca-mini-clean"><span>â–¦ Progresso</span><strong>${formatarNumeroCurtoSeguro(progressoAtual)} de ${formatarNumeroCurtoSeguro(totalParcelas)}</strong></div>
-          <div class="cobranca-mini-clean"><span>â˜· Próxima cobrança</span><strong>${htmlSeguro(proxima)}</strong></div>
+          <div class="cobranca-mini-clean"><span>▦ Progresso</span><strong>${formatarNumeroCurtoSeguro(progressoAtual)} de ${formatarNumeroCurtoSeguro(totalParcelas)}</strong></div>
+          <div class="cobranca-mini-clean"><span>☷ Próxima cobrança</span><strong>${htmlSeguro(proxima)}</strong></div>
           <div class="cobranca-progress-clean">
             <strong style="color:#ff8a00;font-size:12px;font-weight:900;">${progressoPercentual}%</strong>
             <div class="cobranca-progresso-wrap" title="${progressoPercentual}% das parcelas">
@@ -12570,7 +12570,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
         <div class="cobranca-actions-clean">
           <button class="btn btn-cobrar-clean" title="Cobrar pelo WhatsApp" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${htmlSeguro(item.clienteId)}','${htmlSeguro(item.vendaId)}')">
-            <span>â˜</span> Cobrar
+            <span>☏</span> Cobrar
           </button>
           <button class="btn btn-nao-pago-clean ${naoPagoHoje ? "is-active" : ""}" title="Registrar não pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${htmlSeguro(item.vendaId)}')">
             <span>?</span> Não pago
@@ -12578,7 +12578,7 @@ async function verificarCaixaAbertoDiaAnterior() {
           <button class="btn btn-pago-clean ${pagoHoje ? "is-active" : ""}" title="Registrar pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${htmlSeguro(item.vendaId)}')">
             <span>?</span> Pago
           </button>
-          <button class="btn btn-mais-cobranca-clean desktop-only-cobranca" title="Mais op??es" onclick="event.stopPropagation(); abrirOpcoesCobranca('${htmlSeguro(item.vendaId)}')">?</button>
+          <button class="btn btn-mais-cobranca-clean desktop-only-cobranca" title="Mais opções" onclick="event.stopPropagation(); abrirOpcoesCobranca('${htmlSeguro(item.vendaId)}')">?</button>
         </div>
       </div>
     `;
@@ -12637,7 +12637,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
 
 <style id="integro-ajustes-11-validados-20260622">
-  /* Ajuste 01: menu vis?vel = botão de acionar menu oculto */
+  /* Ajuste 01: menu visível = botão de acionar menu oculto */
   @media (min-width:981px) {
     body:not(.sidebar-desktop-fechada) #desktopMenuToggleIntegro {
       display: none !important;
@@ -12727,7 +12727,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     grid-column: 2 !important;
   }
 
-  /* Ajuste 02: Cobrar aceso; Pago/Não pago transl?cidos at? serem acionados */
+  /* Ajuste 02: Cobrar aceso; Pago/Não pago translúcidos até serem acionados */
   .btn-cobrar-clean,
   .cobranca-actions-clean button[onclick*="abrirWhatsAppClienteCobranca"] {
     background: linear-gradient(135deg, #073b7a, #061a35) !important;
@@ -12957,7 +12957,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
 
     body.tela-operacao-vendedor .btn-cobrar-clean::before {
-      content: "â˜Ž";
+      content: "☎";
       font-size: 18px;
       line-height: 1;
     }
@@ -13139,7 +13139,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
 
     body.tela-operacao-vendedor .btn-cobrar-clean::before {
-      content: "âž¤" !important;
+      content: "➤" !important;
       color: #fff !important;
       font-size: 20px !important;
       line-height: 1 !important;
@@ -13782,7 +13782,7 @@ async function verificarCaixaAbertoDiaAnterior() {
       ["saldo_menor", "Menor saldo devedor"],
       ["parcela_maior", "Maior parcela"],
       ["parcela_menor", "Menor parcela"],
-      ["nome_az", "Ordem alfab?tica"]
+      ["nome_az", "Ordem alfabética"]
     ];
 
     select.innerHTML = opcoes
@@ -13948,7 +13948,7 @@ async function verificarCaixaAbertoDiaAnterior() {
               <div class="cobranca-nome-linha">
                 <strong class="nome-cliente-cobranca">${escapeHtml(nomeDestaque)}</strong>
                 <button class="btn btn-cobrar-clean btn-cobrar-inline" title="Enviar mensagem" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${escapeHtml(item.clienteId)}','${escapeHtml(item.vendaId)}')">
-                  <span>âž¤</span>
+                  <span>➤</span>
                 </button>
               </div>
               ${telefone ? `<span class="telefone-cobranca-desktop">${escapeHtml(telefone)}</span>` : ""}
@@ -13985,7 +13985,7 @@ async function verificarCaixaAbertoDiaAnterior() {
           <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" title="Registrar pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapeHtml(item.vendaId)}')">
             <span>?</span> Pago
           </button>
-          <button class="btn btn-mais-cobranca-clean desktop-only-cobranca" title="Mais op??es" onclick="event.stopPropagation(); abrirOpcoesCobranca('${escapeHtml(item.vendaId)}')">?</button>
+          <button class="btn btn-mais-cobranca-clean desktop-only-cobranca" title="Mais opções" onclick="event.stopPropagation(); abrirOpcoesCobranca('${escapeHtml(item.vendaId)}')">?</button>
         </div>
       </div>
     `;
@@ -14080,7 +14080,7 @@ async function verificarCaixaAbertoDiaAnterior() {
             <option value="saldo_menor" ${ordenacao === "saldo_menor" ? "selected" : ""}>Menor saldo devedor</option>
             <option value="parcela_maior" ${ordenacao === "parcela_maior" ? "selected" : ""}>Maior parcela</option>
             <option value="parcela_menor" ${ordenacao === "parcela_menor" ? "selected" : ""}>Menor parcela</option>
-            <option value="nome_az" ${ordenacao === "nome_az" ? "selected" : ""}>Ordem alfab?tica</option>
+            <option value="nome_az" ${ordenacao === "nome_az" ? "selected" : ""}>Ordem alfabética</option>
           </select>
         </div>
       </div>
@@ -15119,14 +15119,14 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
 
     #clientes .busca-grid:first-of-type button[onclick*="buscarClientes"]::before {
-      content: "âŒ•";
+      content: "⌕";
       font-size: 22px;
       font-weight: 950;
       line-height: 1;
     }
 
     #clientes .busca-grid:first-of-type button[onclick*="alternarFiltrosClientes"]::before {
-      content: "â‰¡";
+      content: "≡";
       font-size: 21px;
       font-weight: 950;
       line-height: 1;
@@ -15233,13 +15233,13 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
 
     #clientes .busca-grid:first-of-type button[onclick*="buscarClientes"]::before {
-      content: "âŒ•" !important;
+      content: "⌕" !important;
       font-size: 22px !important;
       color: #fff !important;
     }
 
     #clientes .busca-grid:first-of-type button[onclick*="alternarFiltrosClientes"]::before {
-      content: "â‰¡" !important;
+      content: "≡" !important;
       font-size: 21px !important;
       color: #ff8a00 !important;
     }
@@ -15882,7 +15882,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
 
 <style id="correcao-mobile-clientes-layout-definitiva">
-  /* Corre??o definitiva: CLIENTES / MOBILE
+  /* Correção definitiva: CLIENTES / MOBILE
      Mantém o desktop intacto e evita conflito com os blocos antigos de grid-column. */
   @media (max-width: 780px) {
     #clientes .clientes-busca-card-integro > .busca-grid:first-of-type,
@@ -16329,7 +16329,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     const select = document.createElement("select");
     select.id = id;
     select.className = "telefone-pais-select-final";
-    select.setAttribute("aria-label", "Pa?s do telefone");
+    select.setAttribute("aria-label", "País do telefone");
 
     select.innerHTML = PAISES_TELEFONE.map(p =>
       `<option value="${esc(p.codigo)}" ${p.codigo === valorInicial ? "selected" : ""}>${esc(p.label)}</option>`
@@ -16366,7 +16366,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     row.appendChild(select);
     row.appendChild(input);
 
-    input.placeholder = paisInicial === "BR" ? "DDD + n?mero" : "N?mero";
+    input.placeholder = paisInicial === "BR" ? "DDD + número" : "Número";
     input.maxLength = paisInicial === "BR" ? 15 : 18;
     input.inputMode = "numeric";
     input.value = formatarTelefoneNacional(paisInicial, nacionalInicial);
@@ -16377,7 +16377,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
     select.onchange = function () {
       const pais = paisPorCodigo(select.value);
-      input.placeholder = pais.codigo === "BR" ? "DDD + n?mero" : "N?mero";
+      input.placeholder = pais.codigo === "BR" ? "DDD + número" : "Número";
       input.maxLength = pais.codigo === "BR" ? 15 : 18;
       input.value = formatarTelefoneNacional(pais.codigo, telefoneNacional(input.value, pais.codigo));
       input.focus();
@@ -16573,7 +16573,7 @@ async function verificarCaixaAbertoDiaAnterior() {
       if (!telefoneObj.valido) {
         notificarIntegro(
           telefoneObj.pais === "BR"
-            ? "Informe o telefone principal com DDD + n?mero."
+            ? "Informe o telefone principal com DDD + número."
             : "Informe um telefone principal válido para o país selecionado."
         );
         return;
@@ -16972,20 +16972,35 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   function registroPertenceAoVendedorPatch(registro = {}) {
-    const usuario = getUsuarioAtualPatch();
-    const idsUsuario = [
+    const usuario = getUsuarioAtualPatch() || {};
+    const authUidAtual = String(
+      window.firebase?.auth?.()?.currentUser?.uid ||
+      usuario.authUid ||
+      usuario.uid ||
+      ""
+    );
+
+    const idsUsuario = Array.from(new Set([
+      authUidAtual,
       usuario.id,
       usuario.uid,
       usuario.authUid,
-      usuario.usuarioId
-    ].filter(Boolean).map(String);
+      usuario.usuarioId,
+      usuario.vendedorId,
+      usuario.email
+    ].filter(Boolean).map(String)));
 
     if (!idsUsuario.length) return true;
 
     const idsRegistro = [
+      registro.vendedorAuthUid,
+      registro.vendedorUid,
       registro.vendedorId,
       registro.usuarioId,
       registro.abertoPorUid,
+      registro.userId,
+      registro.uid,
+      registro.email,
       registro.criadoPorId,
       registro.criadoPorUid
     ].filter(Boolean).map(String);
@@ -17124,21 +17139,27 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   window.carregarCaixaAtual = async function carregarCaixaAtualMaisRecente() {
     const banco = getDbPatch();
-    const usuario = getUsuarioAtualPatch();
-
-    window.caixaAtual = null;
-
-    if (!banco || !usuario) {
-      localStorage.removeItem("caixaAtual");
-      return;
-    }
-
+    const usuario = getUsuarioAtualPatch() || {};
+    const tenant = String(getTenantAtualPatch() || "");
     const authUidAtual = String(
       window.firebase?.auth?.()?.currentUser?.uid ||
       usuario.authUid ||
       usuario.uid ||
       ""
     );
+
+    const caixaAnterior = window.caixaAtual && window.caixaAtual.id
+      ? window.caixaAtual
+      : null;
+
+    if (!banco || !tenant || !authUidAtual) {
+      if (!caixaAnterior) {
+        window.caixaAtual = null;
+        try { caixaAtual = null; } catch (_) {}
+        localStorage.removeItem("caixaAtual");
+      }
+      return caixaAnterior;
+    }
 
     const idsUsuario = Array.from(new Set([
       authUidAtual,
@@ -17149,55 +17170,102 @@ async function verificarCaixaAbertoDiaAnterior() {
       usuario.vendedorId
     ].filter(Boolean).map(String)));
 
-    const campos = [
-      "vendedorAuthUid",
-      "vendedorUid",
-      "usuarioId",
-      "vendedorId",
-      "abertoPorUid"
-    ];
-    const encontrados = [];
-    const tenant = getTenantAtualPatch();
+    const consultar = async (campo, valor) => {
+      if (!campo || !valor) return [];
+      try {
+        const snap = await banco.collection("caixas")
+          .where("clientePlataformaId", "==", tenant)
+          .where(campo, "==", String(valor))
+          .where("status", "==", "ABERTO")
+          .limit(20)
+          .get();
 
-    for (const campo of campos) {
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (erro) {
+        console.warn("[ÍNTEGRO CAIXA] Falha na consulta:", campo, erro);
+        return [];
+      }
+    };
+
+    let encontrados = await consultar("vendedorAuthUid", authUidAtual);
+
+    if (!encontrados.length) {
+      const consultasLegadas = [];
+      consultasLegadas.push(["vendedorUid", authUidAtual]);
+
       for (const idUsuario of idsUsuario) {
-        try {
-          let ref = banco.collection("caixas")
-            .where(campo, "==", idUsuario)
-            .where("status", "==", "ABERTO")
-            .limit(20);
+        consultasLegadas.push(
+          ["vendedorId", idUsuario],
+          ["usuarioId", idUsuario]
+        );
+      }
 
-          if (tenant) {
-            ref = banco.collection("caixas")
-              .where("clientePlataformaId", "==", tenant)
-              .where(campo, "==", idUsuario)
-              .where("status", "==", "ABERTO")
-              .limit(20);
-          }
+      consultasLegadas.push(["abertoPorUid", authUidAtual]);
 
-          const snap = await ref.get();
-          snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
-        } catch (erro) {
-          console.warn("Falha ao buscar caixa aberto pelo campo:", campo, erro);
-        }
+      const chaves = new Set();
+      for (const [campo, valor] of consultasLegadas) {
+        const chave = `${campo}:${valor}`;
+        if (chaves.has(chave)) continue;
+        chaves.add(chave);
+
+        const lista = await consultar(campo, valor);
+        if (lista.length) encontrados.push(...lista);
       }
     }
 
     const caixasValidos = unicosPorIdPatch(encontrados)
-      .filter(caixa => caixa.excluido !== true && registroPertenceAoTenantPatch(caixa))
+      .filter(caixa =>
+        caixa &&
+        caixa.id &&
+        caixa.excluido !== true &&
+        String(caixa.status || "").toUpperCase() === "ABERTO" &&
+        registroPertenceAoTenantPatch(caixa) &&
+        registroPertenceAoVendedorPatch(caixa)
+      )
       .sort((a, b) => tempoRegistroPatch(b) - tempoRegistroPatch(a));
 
     if (!caixasValidos.length) {
+      if (caixaAnterior &&
+          String(caixaAnterior.status || "").toUpperCase() === "ABERTO" &&
+          registroPertenceAoTenantPatch(caixaAnterior) &&
+          registroPertenceAoVendedorPatch(caixaAnterior)) {
+        return caixaAnterior;
+      }
+
+      window.caixaAtual = null;
+      try { caixaAtual = null; } catch (_) {}
       localStorage.removeItem("caixaAtual");
-      return;
+      return null;
     }
 
-    window.caixaAtual = caixasValidos[0];
-    localStorage.setItem("caixaAtual", JSON.stringify(window.caixaAtual));
+    const hoje = typeof window.hojeISO === "function"
+      ? window.hojeISO()
+      : new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+
+    const caixasHoje = caixasValidos.filter(caixa => {
+      const data = String(
+        caixa.dataOperacional ||
+        caixa.dataCaixa ||
+        caixa.dataAbertura ||
+        caixa.data ||
+        caixa.criadoEmTexto ||
+        ""
+      ).slice(0, 10);
+
+      return !data || data === hoje;
+    });
+
+    const selecionado = caixasHoje[0] || caixasValidos[0];
+
+    window.caixaAtual = selecionado;
+    try { caixaAtual = selecionado; } catch (_) {}
+    localStorage.setItem("caixaAtual", JSON.stringify(selecionado));
 
     if (typeof window.verificarCaixaAbertoDiaAnterior === "function") {
       await window.verificarCaixaAbertoDiaAnterior();
     }
+
+    return selecionado;
   };
 
   window.carregarPagamentosHoje = async function carregarPagamentosDoCaixaAtual() {
@@ -17644,7 +17712,7 @@ async function verificarCaixaAbertoDiaAnterior() {
       const doc = await banco.collection("caixas").doc(caixaId).get();
 
       if (!doc.exists) {
-        await forcarLogoutCaixaFechado("Seu caixa não est? mais disponível. Faça login novamente após a abertura de um novo caixa.");
+        await forcarLogoutCaixaFechado("Seu caixa não está mais disponível. Faça login novamente após a abertura de um novo caixa.");
         return false;
       }
 
@@ -18075,7 +18143,7 @@ async function verificarCaixaAbertoDiaAnterior() {
               <div class="cobranca-nome-linha">
                 <strong class="nome-cliente-cobranca">${htmlSeguro(nomeDestaque)}</strong>
                 <button class="btn btn-cobrar-clean btn-cobrar-inline" title="Enviar mensagem" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${htmlSeguro(item.clienteId)}','${htmlSeguro(item.vendaId)}')">
-                  <span>âž¤</span>
+                  <span>➤</span>
                 </button>
               </div>
               ${telefone ? `<span class="telefone-cobranca-desktop">${htmlSeguro(telefone)}</span>` : ""}
@@ -18111,7 +18179,7 @@ async function verificarCaixaAbertoDiaAnterior() {
           <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" title="Registrar pagamento" ${acoesBloqueadas ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${htmlSeguro(item.vendaId)}')">
             <span>?</span> Pago
           </button>
-          <button class="btn btn-mais-cobranca-clean desktop-only-cobranca" title="Mais op??es" onclick="event.stopPropagation(); abrirOpcoesCobranca('${htmlSeguro(item.vendaId)}')">?</button>
+          <button class="btn btn-mais-cobranca-clean desktop-only-cobranca" title="Mais opções" onclick="event.stopPropagation(); abrirOpcoesCobranca('${htmlSeguro(item.vendaId)}')">?</button>
         </div>
       </div>
     `;
@@ -18180,11 +18248,11 @@ async function verificarCaixaAbertoDiaAnterior() {
 
     if (statusFinal) {
       statusFinal.innerHTML = carregandoCaixa
-        ? `<span>â“˜</span><span>${mensagem}</span>`
+        ? `<span>ⓘ</span><span>${mensagem}</span>`
         : fechado
           ? `<span>lock</span><span>${mensagem}</span>`
           : pendencias.length
-            ? `<span>â“˜</span><span>${mensagem}</span>`
+            ? `<span>ⓘ</span><span>${mensagem}</span>`
             : `<span>?</span><span>${mensagem}</span>`;
       statusFinal.style.color = cor;
     }
@@ -18311,25 +18379,24 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   function idsUsuario() {
-  const usuario = usuarioAtual() || {};
+    const usuario = usuarioAtual() || {};
+    const authUidAtual = String(
+      window.firebase?.auth?.()?.currentUser?.uid ||
+      usuario.authUid ||
+      usuario.uid ||
+      ""
+    );
 
-  const authUidAtual = String(
-    window.firebase?.auth?.()?.currentUser?.uid ||
-    usuario.authUid ||
-    usuario.uid ||
-    ""
-  );
-
-  return Array.from(new Set([
-    authUidAtual,
-    usuario.id,
-    usuario.uid,
-    usuario.authUid,
-    usuario.usuarioId,
-    usuario.vendedorId,
-    usuario.email
-  ].filter(Boolean).map(String)));
-}
+    return Array.from(new Set([
+      authUidAtual,
+      usuario.id,
+      usuario.uid,
+      usuario.authUid,
+      usuario.usuarioId,
+      usuario.vendedorId,
+      usuario.email
+    ].filter(Boolean).map(String)));
+  }
 
   function pertenceAoTenant(registro = {}) {
     const tenant = tenantAtual();
@@ -18338,18 +18405,26 @@ async function verificarCaixaAbertoDiaAnterior() {
     return !tenantRegistro || tenantRegistro === tenant;
   }
 
-  const campos = [
-  registro.vendedorAuthUid,
-  registro.vendedorUid,
-  registro.vendedorId,
-  registro.usuarioId,
-  registro.abertoPorUid,
-  registro.userId,
-  registro.uid,
-  registro.email,
-  registro.criadoPorId,
-  registro.criadoPorUid
-].filter(Boolean).map(String);
+  function pertenceAoUsuario(registro = {}) {
+    const ids = idsUsuario();
+    if (!ids.length) return true;
+
+    const campos = [
+      registro.vendedorAuthUid,
+      registro.vendedorUid,
+      registro.vendedorId,
+      registro.usuarioId,
+      registro.abertoPorUid,
+      registro.userId,
+      registro.uid,
+      registro.email,
+      registro.criadoPorId,
+      registro.criadoPorUid
+    ].filter(Boolean).map(String);
+
+    if (!campos.length) return true;
+    return campos.some(id => ids.includes(id));
+  }
 
   function statusCaixa(caixa = {}) {
     return normalizar(caixa.status || caixa.situacao || caixa.estado || "");
@@ -18464,7 +18539,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     try {
       await dbRef.collection("notificacoes").add({
         tipo,
-        titulo: tipo === "MULTIPLOS_CAIXAS_ABERTOS" ? "M?ltiplos caixas abertos" : "Caixa irregular do vendedor",
+        titulo: tipo === "MULTIPLOS_CAIXAS_ABERTOS" ? "Múltiplos caixas abertos" : "Caixa irregular do vendedor",
         mensagem,
         clientePlataformaId: tenant || primeiroCaixa.clientePlataformaId || null,
         vendedorId: usuario.id || usuario.uid || usuario.authUid || "",
@@ -18512,47 +18587,57 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   async function buscarCaixasAbertosDoVendedor() {
-  const dbRef = banco();
-  const tenant = tenantAtual();
+    const dbRef = banco();
+    const tenant = tenantAtual();
+    const usuario = usuarioAtual() || {};
+    const authUid = String(
+      window.firebase?.auth?.()?.currentUser?.uid ||
+      usuario.authUid ||
+      usuario.uid ||
+      ""
+    );
 
-  const usuario = usuarioAtual() || {};
-  const authUid = String(
-    window.firebase?.auth?.()?.currentUser?.uid ||
-    usuario.authUid ||
-    usuario.uid ||
-    ""
-  );
+    if (!dbRef || !tenant || !authUid) return [];
 
-  if (!dbRef || !tenant || !authUid) {
-    console.warn("[ÍNTEGRO CAIXA] Dados insuficientes para localizar caixa.", {
-      tenant,
-      authUid,
-      usuarioId: usuario.id || ""
-    });
+    const consultar = async (campo, valor) => {
+      if (!campo || !valor) return [];
+      try {
+        const snap = await dbRef.collection("caixas")
+          .where("clientePlataformaId", "==", tenant)
+          .where(campo, "==", String(valor))
+          .where("status", "==", "ABERTO")
+          .limit(25)
+          .get();
 
-    return [];
-  }
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (erro) {
+        console.warn("[ÍNTEGRO CAIXA] Consulta não concluída:", campo, erro);
+        return [];
+      }
+    };
 
-  try {
-    const snap = await dbRef
-      .collection("caixas")
-      .where("clientePlataformaId", "==", tenant)
-      .where("vendedorAuthUid", "==", authUid)
-      .where("status", "==", "ABERTO")
-      .limit(10)
-      .get();
+    let encontrados = await consultar("vendedorAuthUid", authUid);
 
-    const encontrados = snap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    if (!encontrados.length) {
+      const ids = idsUsuario();
+      const consultasLegadas = [["vendedorUid", authUid]];
 
-    console.info("[ÍNTEGRO CAIXA] Caixa(s) localizado(s) para o vendedor:", {
-      authUid,
-      tenant,
-      quantidade: encontrados.length,
-      caixasIds: encontrados.map(caixa => caixa.id)
-    });
+      for (const id of ids) {
+        consultasLegadas.push(["vendedorId", id], ["usuarioId", id]);
+      }
+
+      consultasLegadas.push(["abertoPorUid", authUid]);
+
+      const chaves = new Set();
+      for (const [campo, valor] of consultasLegadas) {
+        const chave = `${campo}:${valor}`;
+        if (chaves.has(chave)) continue;
+        chaves.add(chave);
+
+        const lista = await consultar(campo, valor);
+        if (lista.length) encontrados.push(...lista);
+      }
+    }
 
     return deduplicar(encontrados)
       .filter(caixa =>
@@ -18561,16 +18646,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         pertenceAoUsuario(caixa)
       )
       .sort((a, b) => tempoCaixa(b) - tempoCaixa(a));
-
-  } catch (erro) {
-    console.error(
-      "[ÍNTEGRO CAIXA] Falha ao buscar caixa por vendedorAuthUid:",
-      erro
-    );
-
-    throw erro;
   }
-}
 
   function gravarCaixaAtual(caixa) {
     window.caixaAtual = caixa || null;
@@ -18584,11 +18660,16 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   async function validarCaixaOperacionalAtual() {
-    if (validacaoCaixaEmAndamento) return !!(window.caixaAtual && window.caixaAtual.id);
+    if (validacaoCaixaEmAndamento) {
+      return caixaAberto(window.caixaAtual);
+    }
 
     const dbRef = banco();
     const ids = idsUsuario();
-    if (!dbRef || !ids.length) return !!(window.caixaAtual && window.caixaAtual.id);
+
+    if (!dbRef || !ids.length) {
+      return caixaAberto(window.caixaAtual);
+    }
 
     validacaoCaixaEmAndamento = true;
 
@@ -18597,6 +18678,12 @@ async function verificarCaixaAbertoDiaAnterior() {
       const hoje = hojeISOOperacional();
 
       if (!caixas.length) {
+        if (caixaAberto(window.caixaAtual) &&
+            pertenceAoTenant(window.caixaAtual) &&
+            pertenceAoUsuario(window.caixaAtual)) {
+          return true;
+        }
+
         gravarCaixaAtual(null);
         await encerrarAcessoVendedor(
           "Nenhum caixa aberto foi encontrado para hoje. Solicite a abertura do caixa ao supervisor.",
@@ -18611,7 +18698,12 @@ async function verificarCaixaAbertoDiaAnterior() {
         return data && data < hoje;
       });
 
-      if (caixasAntigos.length) {
+      const caixasHojeOuSemData = caixas.filter(caixa => {
+        const data = dataOperacionalCaixa(caixa);
+        return !data || data === hoje;
+      });
+
+      if (!caixasHojeOuSemData.length && caixasAntigos.length) {
         gravarCaixaAtual(caixasAntigos[0]);
         await encerrarAcessoVendedor(
           `Existe caixa aberto de dia anterior (${dataOperacionalCaixa(caixasAntigos[0])}). O vendedor não pode operar até o supervisor fechar ou regularizar este caixa.`,
@@ -18621,24 +18713,38 @@ async function verificarCaixaAbertoDiaAnterior() {
         return false;
       }
 
-      const caixasHojeOuSemData = caixas.filter(caixa => {
-        const data = dataOperacionalCaixa(caixa);
-        return !data || data === hoje;
-      });
+      const caixaSelecionado = (caixasHojeOuSemData.length
+        ? caixasHojeOuSemData
+        : caixas)[0];
 
-      if (caixas.length > 1 || caixasHojeOuSemData.length !== 1) {
-        gravarCaixaAtual(caixasHojeOuSemData[0] || caixas[0] || null);
-        await encerrarAcessoVendedor(
-          "Existe mais de um caixa aberto para este vendedor. Solicite regularização ao supervisor antes de continuar.",
-          "MULTIPLOS_CAIXAS_ABERTOS",
-          caixas
-        );
-        return false;
+      gravarCaixaAtual(caixaSelecionado);
+
+      if (caixasHojeOuSemData.length > 1) {
+        console.warn("[ÍNTEGRO CAIXA] Mais de um caixa aberto foi localizado. O mais recente foi selecionado.", {
+          caixaSelecionado: caixaSelecionado.id,
+          caixasIds: caixasHojeOuSemData.map(caixa => caixa.id)
+        });
+
+        try {
+          await notificarSupervisorCaixaIrregular(
+            "MULTIPLOS_CAIXAS_ABERTOS",
+            "Existe mais de um caixa aberto para este vendedor. O sistema selecionou o caixa mais recente e solicitou regularização ao supervisor.",
+            caixasHojeOuSemData
+          );
+        } catch (_) {}
       }
 
-      const caixaUnico = caixasHojeOuSemData[0];
-      gravarCaixaAtual(caixaUnico);
       return true;
+    } catch (erro) {
+      console.error("[ÍNTEGRO CAIXA] Falha ao validar o caixa operacional:", erro);
+
+      if (caixaAberto(window.caixaAtual) &&
+          pertenceAoTenant(window.caixaAtual) &&
+          pertenceAoUsuario(window.caixaAtual)) {
+        return true;
+      }
+
+      throw erro;
     } finally {
       validacaoCaixaEmAndamento = false;
     }
@@ -18654,7 +18760,7 @@ async function verificarCaixaAbertoDiaAnterior() {
       if (!doc.exists) {
         gravarCaixaAtual(null);
         await encerrarAcessoVendedor(
-          "O caixa atual não est? mais disponível. Solicite a abertura de um novo caixa.",
+          "O caixa atual não está mais disponível. Solicite a abertura de um novo caixa.",
           "CAIXA_NAO_ENCONTRADO",
           []
         );
@@ -18891,7 +18997,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
 
     if (!vendaComSaldoOperacional(item.venda || {})) {
-      notificarIntegro("Esta venda já est? quitada ou encerrada e não pode receber marcação de não pagamento.");
+      notificarIntegro("Esta venda já está quitada ou encerrada e não pode receber marcação de não pagamento.");
       try { await window.carregarTudo?.(); } catch (_) {}
       return;
     }
@@ -18902,7 +19008,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
 
     if (item.pagoHoje || await existePagamentoConfirmadoNoCaixa(vendaId)) {
-      notificarIntegro("Este cliente já possui pagamento registrado neste caixa. Não ? possível marcar como não pago.");
+      notificarIntegro("Este cliente já possui pagamento registrado neste caixa. Não é possível marcar como não pago.");
       try { await window.carregarTudo?.(); } catch (_) {}
       return;
     }
@@ -18924,7 +19030,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
     const item = (window.montarCobrancasPorVenda?.() || []).find(x => String(x.vendaId) === String(vendaId));
     if (item && !vendaComSaldoOperacional(item.venda || {})) {
-      notificarIntegro("Esta venda já est? quitada ou encerrada. Não ? possível registrar novo pagamento.");
+      notificarIntegro("Esta venda já está quitada ou encerrada. Não é possível registrar novo pagamento.");
       try { await window.carregarTudo?.(); } catch (_) {}
       return;
     }
@@ -18949,27 +19055,97 @@ async function verificarCaixaAbertoDiaAnterior() {
   async function carregarColecaoComFallback(nome, limite = 5000, tenantCampo = true) {
     const dbRef = banco();
     const tenant = tenantAtual();
-    const registros = [];
-    if (!dbRef) return registros;
+    const usuario = usuarioAtual() || {};
+    const authUid = String(
+      window.firebase?.auth?.()?.currentUser?.uid ||
+      usuario.authUid ||
+      usuario.uid ||
+      ""
+    );
 
-    if (tenant && tenantCampo) {
+    if (!dbRef) return [];
+
+    const consultar = async (campo, valor) => {
+      if (!campo || !valor) return { sucesso: false, registros: [] };
+
       try {
-        const snap = await dbRef.collection(nome).where("clientePlataformaId", "==", tenant).limit(limite).get();
-        snap.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
-        return deduplicar(registros);
-      } catch (erroTenant) {
-        console.warn(`Falha ao carregar ${nome} por tenant. Usando fallback.`, erroTenant);
+        let ref = dbRef.collection(nome)
+          .where(campo, "==", String(valor))
+          .limit(limite);
+
+        if (tenant && tenantCampo) {
+          ref = dbRef.collection(nome)
+            .where("clientePlataformaId", "==", tenant)
+            .where(campo, "==", String(valor))
+            .limit(limite);
+        }
+
+        const snap = await ref.get();
+        return {
+          sucesso: true,
+          registros: snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+        };
+      } catch (erro) {
+        console.warn(`[ÍNTEGRO] Falha ao carregar ${nome} por ${campo}.`, erro);
+        return { sucesso: false, registros: [] };
       }
+    };
+
+    const grupos = [
+      [
+        ["vendedorAuthUid", authUid],
+        ["vendedorUid", authUid]
+      ],
+      [
+        ["vendedorId", usuario.id],
+        ["usuarioId", usuario.id],
+        ["vendedorId", authUid],
+        ["usuarioId", authUid],
+        ["criadoPorUid", authUid],
+        ["criadoPorId", usuario.id]
+      ]
+    ];
+
+    let houveConsultaValida = false;
+    const registros = [];
+    const chaves = new Set();
+
+    for (const grupo of grupos) {
+      for (const [campo, valor] of grupo) {
+        if (!valor) continue;
+
+        const chave = `${campo}:${valor}`;
+        if (chaves.has(chave)) continue;
+        chaves.add(chave);
+
+        const resultado = await consultar(campo, valor);
+        houveConsultaValida = houveConsultaValida || resultado.sucesso;
+        if (resultado.registros.length) registros.push(...resultado.registros);
+      }
+
+      if (registros.length) break;
     }
 
+    if (registros.length || houveConsultaValida) {
+      return deduplicar(registros);
+    }
+
+    // Compatibilidade com coleções compartilhadas ou documentos legados.
     try {
-      const snap = await dbRef.collection(nome).limit(limite).get();
-      snap.forEach(doc => registros.push({ id: doc.id, ...doc.data() }));
-    } catch (erro) {
-      console.warn(`Falha ao carregar ${nome}.`, erro);
-    }
+      let ref = dbRef.collection(nome).limit(limite);
 
-    return deduplicar(registros);
+      if (tenant && tenantCampo) {
+        ref = dbRef.collection(nome)
+          .where("clientePlataformaId", "==", tenant)
+          .limit(limite);
+      }
+
+      const snap = await ref.get();
+      return deduplicar(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    } catch (erro) {
+      console.warn(`[ÍNTEGRO] Não foi possível carregar ${nome}.`, erro);
+      return [];
+    }
   }
 
   const carregarVendasOriginal = window.carregarVendas;
@@ -19008,46 +19184,54 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   const carregarTudoOriginal = window.carregarTudo;
   window.carregarTudo = async function carregarTudoComRegrasOperacionais() {
+    const executarSeguro = async (nome, funcao) => {
+      if (typeof funcao !== "function") return;
+
+      try {
+        await funcao();
+      } catch (erro) {
+        console.warn(`[ÍNTEGRO] Falha ao executar ${nome}.`, erro);
+      }
+    };
+
+    window.__integroCaixaEmVerificacao = true;
+
     try {
-      window.__integroCaixaEmVerificacao = true;
-      if (!(await window.carregarCaixaAtual?.())) return;
+      const caixaValido = caixaAberto(window.caixaAtual)
+        ? true
+        : await validarCaixaOperacionalAtual();
+
+      if (!caixaValido) return;
+
+      await executarSeguro("clientes", window.carregarClientes);
+      await executarSeguro("vendas", window.carregarVendas);
+      await executarSeguro("parcelas", window.carregarParcelas);
+
+      await Promise.allSettled([
+        executarSeguro("histórico de pagamentos", window.carregarPagamentosHistorico),
+        executarSeguro("pagamentos do caixa", window.carregarPagamentosHoje),
+        executarSeguro("solicitações", window.carregarSolicitacoes),
+        executarSeguro("indicações", window.carregarIndicacoes),
+        executarSeguro("categorias de movimentação", window.carregarCategoriasMovimentacao),
+        executarSeguro("notificações", window.carregarNotificacoes),
+        executarSeguro("histórico de cobranças", window.carregarHistoricoCobrancas)
+      ]);
     } finally {
       window.__integroCaixaEmVerificacao = false;
     }
 
+    try { window.atualizarDashboard?.(); } catch (erro) { console.warn("Falha ao atualizar dashboard:", erro); }
     try {
-      if (typeof window.carregarClientes === "function") await window.carregarClientes();
-      if (typeof window.carregarVendas === "function") await window.carregarVendas();
-      if (typeof window.carregarParcelas === "function") await window.carregarParcelas();
-
-      await Promise.all([
-        typeof window.carregarPagamentosHistorico === "function" ? window.carregarPagamentosHistorico() : Promise.resolve(),
-        typeof window.carregarPagamentosHoje === "function" ? window.carregarPagamentosHoje() : Promise.resolve(),
-        typeof window.carregarSolicitacoes === "function" ? window.carregarSolicitacoes() : Promise.resolve(),
-        typeof window.carregarIndicacoes === "function" ? window.carregarIndicacoes() : Promise.resolve(),
-        typeof window.carregarCategoriasMovimentacao === "function" ? window.carregarCategoriasMovimentacao() : Promise.resolve(),
-        typeof window.carregarNotificacoes === "function" ? window.carregarNotificacoes() : Promise.resolve(),
-        typeof window.carregarHistoricoCobrancas === "function" ? window.carregarHistoricoCobrancas() : Promise.resolve()
-      ]);
-
-      garantirFiltrosPadraoCobranca();
-
-      try { window.atualizarDashboard?.(); } catch (erro) { console.warn("Falha ao atualizar dashboard:", erro); }
-      try { if (window.clientesBuscaExecutada) await window.buscarClientes?.(false); } catch (erro) { console.warn("Falha ao atualizar busca de clientes:", erro); }
-      try { window.renderVendasDia?.(); } catch (erro) { console.warn("Falha ao renderizar vendas do dia:", erro); }
-      try { window.renderCobrancas?.(); } catch (erro) { console.warn("Falha ao renderizar cobranças:", erro); }
-      try { window.renderSolicitacoes?.(); } catch (erro) { console.warn("Falha ao renderizar solicitações:", erro); }
-      try { window.renderIndicacoes?.(); } catch (erro) { console.warn("Falha ao renderizar indicações:", erro); }
-      try { window.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
-      try { window.aplicarBloqueioCaixaFechado?.(); } catch (_) {}
+      if (window.clientesBuscaExecutada) await window.buscarClientes?.(false);
     } catch (erro) {
-      console.error("Erro ao carregar dados operacionais do vendedor:", erro);
-      if (typeof carregarTudoOriginal === "function") {
-        console.warn("Tentando fallback do carregamento anterior.");
-        return carregarTudoOriginal.apply(this, arguments);
-      }
-      notificarIntegro("Erro ao carregar dados do vendedor:\n\n" + (erro.message || erro));
+      console.warn("Falha ao atualizar busca de clientes:", erro);
     }
+    try { window.renderVendasDia?.(); } catch (erro) { console.warn("Falha ao renderizar vendas do dia:", erro); }
+    try { window.renderCobrancas?.(); } catch (erro) { console.warn("Falha ao renderizar cobranças:", erro); }
+    try { window.renderSolicitacoes?.(); } catch (erro) { console.warn("Falha ao renderizar solicitações:", erro); }
+    try { window.renderIndicacoes?.(); } catch (erro) { console.warn("Falha ao renderizar indicações:", erro); }
+    try { window.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
+    try { window.aplicarBloqueioCaixaFechado?.(); } catch (_) {}
   };
 
   const carregarCaixaAtualOriginal = window.carregarCaixaAtual;
@@ -19307,7 +19491,7 @@ async function verificarCaixaAbertoDiaAnterior() {
       const chave = filaKey();
       if (!chave) return [];
       // A fila legada não ? importada nem apagada: não possui UID/tenant
-      // confi?veis e deve passar por auditoria/migração expl?cita.
+      // confiáveis e deve passar por auditoria/migração explícita.
       void localStorage.getItem(FILA_LEGADA_KEY);
       const arr = JSON.parse(localStorage.getItem(chave) || "[]");
       return Array.isArray(arr) ? arr : [];
@@ -19322,7 +19506,7 @@ async function verificarCaixaAbertoDiaAnterior() {
       .sort((a, b) => String(b.atualizadoEmTexto || b.criadoEmTexto || "").localeCompare(String(a.atualizadoEmTexto || a.criadoEmTexto || "")))
       .slice(0, 200);
     const chave = filaKey();
-    if (!chave) throw new Error("Sessão inv?lida para salvar fila offline.");
+    if (!chave) throw new Error("Sessão inválida para salvar fila offline.");
     localStorage.setItem(chave, JSON.stringify(limpa));
   }
 
@@ -19597,7 +19781,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         .get();
       snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
     } catch (erro) {
-      console.warn("Falha ao consultar pagamentos da venda para rec?lculo:", erro);
+      console.warn("Falha ao consultar pagamentos da venda para recálculo:", erro);
       todosPagamentosCache().forEach(p => {
         if (String(p.vendaId || "") === String(vendaId || "")) encontrados.push(p);
       });
@@ -19618,7 +19802,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         .get();
       snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
     } catch (erro) {
-      console.warn("Falha ao consultar parcelas da venda para rec?lculo:", erro);
+      console.warn("Falha ao consultar parcelas da venda para recálculo:", erro);
       try {
         (window.parcelasCache || []).forEach(p => {
           if (String(p.vendaId || "") === String(vendaId || "")) encontrados.push(p);
@@ -20024,7 +20208,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
       const botoes = Array.from(document.querySelectorAll("button"));
       const botao = botoes.find(btn => (btn.getAttribute("onclick") || "").includes("salvarPagamentoCliente") && (btn.getAttribute("onclick") || "").includes(String(vendaId)));
-      if (botao) botao.innerHTML = "Salvar corre??o";
+      if (botao) botao.innerHTML = "Salvar correção";
     }, 60);
   }
 
@@ -20038,7 +20222,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     const lockKey = chavePagamento(vendaId, caixa?.id || "");
 
     if (LOCKS.has(lockKey)) {
-      toast("Pagamento já est? sendo processado. Aguarde a sincronização.", "info");
+      toast("Pagamento já está sendo processado. Aguarde a sincronização.", "info");
       return;
     }
 
@@ -20052,7 +20236,7 @@ async function verificarCaixaAbertoDiaAnterior() {
       } else if (typeof window.validarCaixaOperacionalVendedor === "function") {
         const ok = await window.validarCaixaOperacionalVendedor();
         if (!ok) return;
-      } else if (typeof window.garantirCaixaAberto === "function" && !window.garantirCaixaAberto("O caixa está fechado. Não ? possível registrar pagamento.")) {
+      } else if (typeof window.garantirCaixaAberto === "function" && !window.garantirCaixaAberto("O caixa está fechado. Não é possível registrar pagamento.")) {
         return;
       }
 
@@ -20068,7 +20252,7 @@ async function verificarCaixaAbertoDiaAnterior() {
       try { window.fecharDrawer?.(); } catch (_) {}
 
       toast(op.modoLocal === "CORRECAO"
-        ? "Corre??o salva. Sincronizando em segundo plano."
+        ? "Correção salva. Sincronizando em segundo plano."
         : "Pagamento salvo. Sincronizando em segundo plano.", "info");
 
       setTimeout(() => sincronizarFilaLocalIntegro(), 80);
@@ -20494,6 +20678,28 @@ async function verificarCaixaAbertoDiaAnterior() {
   setTimeout(garantirNavegacaoClientesVendedor, 1500);
 })();
 </script>
+
+<script id="integro-vendedor-estabilidade-final-20260728">
+(function () {
+  "use strict";
+
+  if (window.__integroVendedorEstabilidadeFinal20260728) return;
+  window.__integroVendedorEstabilidadeFinal20260728 = true;
+
+  window.addEventListener("unhandledrejection", event => {
+    const erro = event?.reason;
+    if (!erro) return;
+
+    console.error("[ÍNTEGRO] Erro assíncrono não tratado:", erro);
+  });
+
+  window.addEventListener("error", event => {
+    if (!event?.error) return;
+    console.error("[ÍNTEGRO] Erro de execução:", event.error);
+  });
+})();
+</script>
+
 </body>
 
 </html>
