@@ -155,6 +155,8 @@ const FirestoreService = {
 
   CODIGOS_DIAGNOSTICO_AUTH: {
     USER_DOC_UID_NOT_FOUND: "USER_DOC_UID_NOT_FOUND",
+    LEGACY_USER_FOUND_BY_AUTH_UID: "LEGACY_USER_FOUND_BY_AUTH_UID",
+    DUPLICATE_AUTH_UID_USER_DOCS: "DUPLICATE_AUTH_UID_USER_DOCS",
     LEGACY_USER_FOUND_BY_EMAIL: "LEGACY_USER_FOUND_BY_EMAIL",
     LEGACY_USER_WITHOUT_AUTH_UID: "LEGACY_USER_WITHOUT_AUTH_UID",
     LEGACY_USER_AUTH_UID_MISMATCH: "LEGACY_USER_AUTH_UID_MISMATCH",
@@ -167,6 +169,8 @@ const FirestoreService = {
   },
 
   MENSAGENS_DIAGNOSTICO_AUTH: {
+    LEGACY_USER_FOUND_BY_AUTH_UID: "Acesso localizado pelo vinculo seguro da autenticacao.",
+    DUPLICATE_AUTH_UID_USER_DOCS: "Encontramos mais de um cadastro vinculado a esta autenticacao. Procure o administrador.",
     USER_DOC_UID_NOT_FOUND: "Documento principal do usuário não encontrado por UID.",
     LEGACY_USER_FOUND_BY_EMAIL: "Acesso localizado por compatibilidade legada.",
     LEGACY_USER_WITHOUT_AUTH_UID: "Seu acesso existe, mas ainda precisa ser vinculado à nova autenticação. Procure o administrador da empresa.",
@@ -242,6 +246,15 @@ const FirestoreService = {
     const doc = await db.collection(CONFIG.COLECOES.USUARIOS).doc(authUser.uid).get();
     if (!doc.exists) return null;
     return this.montarUsuarioAuth(doc, authUser, "uid");
+  },
+
+  async buscarUsuarioPorCampoAuthUid(authUser) {
+    if (!authUser?.uid) return [];
+    const snap = await db.collection(CONFIG.COLECOES.USUARIOS)
+      .where("authUid", "==", authUser.uid)
+      .limit(2)
+      .get();
+    return snap.docs.map(doc => this.montarUsuarioAuth(doc, authUser, "auth_uid_legado"));
   },
 
   async buscarUsuarioLegadoPorEmail(authUser) {
@@ -399,6 +412,42 @@ const FirestoreService = {
       email: authUser.email,
       origem: "uid"
     }));
+
+    const usuariosPorAuthUid = await this.buscarUsuarioPorCampoAuthUid(authUser);
+    if (usuariosPorAuthUid.length > 1) {
+      diagnosticos.push(this.registrarDiagnosticoAuth("DUPLICATE_AUTH_UID_USER_DOCS", {
+        email: authUser.email,
+        origem: "auth_uid_legado"
+      }));
+      return this.resultadoDiagnosticoAuth(false, "DUPLICATE_AUTH_UID_USER_DOCS", { diagnosticos });
+    }
+
+    if (usuariosPorAuthUid.length === 1) {
+      const usuarioPorAuthUid = usuariosPorAuthUid[0];
+      const validacao = await this.validarUsuarioResolvidoAuth(usuarioPorAuthUid);
+      diagnosticos.push(this.registrarDiagnosticoAuth("LEGACY_USER_FOUND_BY_AUTH_UID", {
+        usuarioId: usuarioPorAuthUid.id,
+        tenantId: usuarioPorAuthUid.clientePlataformaId || usuarioPorAuthUid.empresaId || usuarioPorAuthUid.tenantId || "",
+        email: authUser.email,
+        origem: "auth_uid_legado"
+      }));
+      if (!validacao.ok) {
+        diagnosticos.push(this.registrarDiagnosticoAuth(validacao.codigo, {
+          usuarioId: usuarioPorAuthUid.id,
+          tenantId: usuarioPorAuthUid.clientePlataformaId || usuarioPorAuthUid.empresaId || usuarioPorAuthUid.tenantId || "",
+          origem: "auth_uid_legado"
+        }));
+        return this.resultadoDiagnosticoAuth(false, validacao.codigo, {
+          usuario: usuarioPorAuthUid,
+          diagnosticos,
+          mensagem: validacao.mensagem
+        });
+      }
+      return this.resultadoDiagnosticoAuth(true, "LEGACY_USER_FOUND_BY_AUTH_UID", {
+        usuario: usuarioPorAuthUid,
+        diagnosticos
+      });
+    }
 
     return this.diagnosticarVinculoUsuarioAuth(authUser, diagnosticos);
   },

@@ -99,6 +99,17 @@ service cloud.firestore {
         userDoc().get("acessoLiberado", false) == true;
     }
 
+    function isOwnAuthProfile(data) {
+      return isAuthenticated() && data.get("authUid", "") == currentUid();
+    }
+
+    function isOwnEmailProfile(data) {
+      return isAuthenticated() &&
+        request.auth.token.get("email", "") is string &&
+        request.auth.token.get("email", "").size() > 0 &&
+        data.get("email", "") == request.auth.token.get("email", "");
+    }
+
     function isActiveMasterLocalFor(data) {
       let user = userDoc();
       return isAuthenticated() &&
@@ -139,6 +150,7 @@ service cloud.firestore {
     function isOwnSellerData(data) {
       return data.get("vendedorAuthUid", "") == currentUid() ||
         data.get("vendedorUid", "") == currentUid() ||
+        data.get("abertoPorUid", "") == currentUid() ||
         data.get("uid", "") == currentUid() ||
         data.get("usuarioId", "") == currentUid() ||
         data.get("vendedorId", "") == currentUid() ||
@@ -611,6 +623,13 @@ service cloud.firestore {
         chatParticipante(data);
     }
 
+    function canListConversa(data) {
+      return isActiveUser() &&
+        hasTenant() &&
+        data.clientePlataformaId == userTenantId() &&
+        currentUid() in data.participantesIds;
+    }
+
     function validTipoConversa(data) {
       return data.get("tipo", "") in ["DIRETA", "EQUIPE"];
     }
@@ -662,11 +681,20 @@ service cloud.firestore {
     }
 
     match /usuarios/{uid} {
-      allow read: if isActiveUser() && (
-        isMasterGlobal() ||
-        currentUid() == uid ||
-        (isSameTenantRead() && (isMasterLocal() || isGerente() || isSupervisor()))
-      );
+      allow get: if (isAuthenticated() && currentUid() == uid) ||
+        (isActiveUser() && (
+          isMasterGlobal() ||
+          (isSameTenantRead() && (isMasterLocal() || isGerente() || isSupervisor()))
+        ));
+      allow list: if isOwnAuthProfile(resource.data) ||
+        isOwnEmailProfile(resource.data) ||
+        (isActiveUser() && (
+          isMasterGlobal() ||
+          (isSameTenantRead() && (
+            isMasterLocal() || isGerente() || isSupervisor() || isFinanceiro() ||
+            isAuditor() || isVendedor() || isCaptador()
+          ))
+        ));
       allow create: if isAuthenticated() && currentUid() == uid &&
         request.resource.data.keys().hasAll(["authUid", "acessoLiberado"]) &&
         request.resource.data.get("authUid", "") == currentUid() &&
@@ -825,7 +853,8 @@ service cloud.firestore {
     }
 
     match /conversas/{id} {
-      allow read: if canReadConversa(resource.data);
+      allow get: if canReadConversa(resource.data);
+      allow list: if canListConversa(resource.data);
       allow create: if canCreateConversa(request.resource.data);
       allow update: if canUpdateConversa();
       allow delete: if false;

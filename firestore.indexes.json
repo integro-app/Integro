@@ -36,6 +36,31 @@
       ]
     },
     {
+      "collectionGroup": "caixas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "abertoPorUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "conversas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "participantesIds", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "permissoes_cargo",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "cargoId", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "indicacoes",
       "queryScope": "COLLECTION",
       "fields": [

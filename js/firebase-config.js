@@ -43,10 +43,12 @@ const integroEmAmbienteLocal = ["localhost", "127.0.0.1", "::1"].includes(
 );
 const integroParametros = new URLSearchParams(window.location.search);
 const integroParametroEmulator = integroParametros.get("emulator");
+const integroPaginaAtual = String(window.location.pathname || "").toLowerCase();
+const integroPaginaLogin = integroPaginaAtual === "/" || integroPaginaAtual.endsWith("/index.html");
 
 if (integroEmAmbienteLocal && integroParametroEmulator === "1") {
   sessionStorage.setItem("integro:usar-emulator", "1");
-} else if (integroParametroEmulator === "0") {
+} else if (integroParametroEmulator === "0" || (integroEmAmbienteLocal && integroPaginaLogin)) {
   sessionStorage.removeItem("integro:usar-emulator");
 }
 
@@ -58,7 +60,8 @@ const integroUsarEmulator = integroEmAmbienteLocal &&
 // ========================================
 
 db.settings({
-  ignoreUndefinedProperties: true
+  ignoreUndefinedProperties: true,
+  merge: true
 });
 
 if (integroUsarEmulator) {

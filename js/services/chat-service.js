@@ -89,15 +89,22 @@
 
   async function listarConversas() {
     const remetenteId = usuarioId();
-    if (!remetenteId) return [];
-    const snap = await db().collection(COLECAO).where("participantesIds", "array-contains", remetenteId).limit(80).get();
+    const tenant = tenantAtual();
+    if (!remetenteId || !tenant) return [];
+    const snap = await db().collection(COLECAO)
+      .where("clientePlataformaId", "==", tenant)
+      .where("participantesIds", "array-contains", remetenteId)
+      .limit(80)
+      .get();
     return snap.docs.map(normalizarDoc).sort((a, b) => String(b.ultimaMensagemEm || "").localeCompare(String(a.ultimaMensagemEm || "")));
   }
 
   function assinarConversas(callback, onErro) {
     const remetenteId = usuarioId();
-    if (!remetenteId) return () => {};
+    const tenant = tenantAtual();
+    if (!remetenteId || !tenant) return () => {};
     return db().collection(COLECAO)
+      .where("clientePlataformaId", "==", tenant)
       .where("participantesIds", "array-contains", remetenteId)
       .limit(80)
       .onSnapshot(

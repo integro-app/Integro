@@ -2868,20 +2868,20 @@ body.integro-data-refreshing .section-card{
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
-  <script src="js/firebase-config.js"></script>
+  <script src="js/firebase-config.js?v=20260728-3"></script>
   <script src="js/config.js"></script>
   <script src="js/utils/operational.js"></script>
   <script src="js/state.js"></script>
-  <script src="js/services/firestore.js"></script>
+  <script src="js/services/firestore.js?v=20260728-3"></script>
   <script src="js/services/clientes-service.js"></script>
   <script src="js/services/indicacoes-service.js"></script>
-  <script src="js/services/chat-service.js"></script>
+  <script src="js/services/chat-service.js?v=20260728-3"></script>
   <script src="js/services/financial-operations.js"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
-  <script src="js/cargos.js"></script>
+  <script src="js/cargos.js?v=20260728-3"></script>
   <script src="js/equipes.js"></script>
   <script src="js/caixas.js"></script>
   <script src="js/usuarios.js"></script>
@@ -4749,6 +4749,16 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     const authUser = firebase.auth?.().currentUser;
     if(!authUser) return u;
     try{
+      const doc = await db.collection("usuarios").doc(authUser.uid).get();
+      if(doc.exists){
+        u = {id:doc.id, ...doc.data()};
+        window.usuarioLogado = u;
+        window.currentUserData = u;
+        if(u.clientePlataformaId) localStorage.setItem("clientePlataformaId", u.clientePlataformaId);
+        return u;
+      }
+    }catch(e){ console.warn("Não foi possível resolver usuário pelo documento UID", e); }
+    try{
       const q = await db.collection("usuarios").where("authUid", "==", authUser.uid).limit(1).get();
       if(!q.empty){
         const doc = q.docs[0];
@@ -6063,29 +6073,14 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
     const nomeCol = col(nome);
     const ids = idsTenant();
-    const camposTenant = ["clientePlataformaId","empresaId","tenantId","clienteId"];
     const mapa = new Map();
 
-    for (const campo of camposTenant){
-      for (const id of ids){
-        try{
-          const snap = await database.collection(nomeCol).where(campo, "==", id).get();
-          snap.forEach(doc => mapa.set(doc.id, {id:doc.id, ...doc.data()}));
-        }catch(e){
-          console.warn(`[Caixas] Falha ao consultar ${nomeCol}.${campo}:`, e?.message || e);
-        }
-      }
-    }
-
-    if (!mapa.size){
+    for (const id of ids){
       try{
-        const snap = await database.collection(nomeCol).limit(500).get();
-        snap.forEach(doc => {
-          const item = {id:doc.id, ...doc.data()};
-          if (pertenceTenant(item)) mapa.set(doc.id, item);
-        });
+        const snap = await database.collection(nomeCol).where("clientePlataformaId", "==", id).get();
+        snap.forEach(doc => mapa.set(doc.id, {id:doc.id, ...doc.data()}));
       }catch(e){
-        console.warn(`[Caixas] Falha ao carregar ${nomeCol}:`, e?.message || e);
+        console.warn(`[Caixas] Falha ao consultar ${nomeCol}.clientePlataformaId:`, e?.message || e);
       }
     }
 
@@ -15910,12 +15905,12 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
 
   const COLLECTIONS = {
     equipes: [colecaoConfig("EQUIPES", "equipes")],
-    usuarios: [colecaoConfig("USUARIOS", "usuarios"), colecaoConfig("USUARIOS_CLIENTES", "usuarios_clientes")],
+    usuarios: [colecaoConfig("USUARIOS", "usuarios")],
     caixas: [colecaoConfig("CAIXAS", "caixas")],
     vendas: [colecaoConfig("VENDAS", "vendas")],
-    pagamentos: [colecaoConfig("PAGAMENTOS", "pagamentos"), "recebimentos"],
-    clientes: [colecaoConfig("CLIENTES_OPERACIONAIS", "clientes_operacionais"), "clientes"],
-    cobrancas: [colecaoConfig("COBRANCAS", "cobrancas"), "parcelas", "parcelas_cobranca"]
+    pagamentos: [colecaoConfig("PAGAMENTOS", "pagamentos")],
+    clientes: [colecaoConfig("CLIENTES_OPERACIONAIS", "clientes_operacionais")],
+    cobrancas: ["parcelas"]
   };
 
   const CACHES = {
@@ -15929,18 +15924,10 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     const ids = tenantIds();
     const docs = new Map();
     const addSnap = (snap) => snap.docs.forEach(d => docs.set(d.id, {id:d.id, ...d.data()}));
-    const fields = ["clientePlataformaId", "empresaId", "tenantId"];
 
     for(const tid of ids){
-      for(const field of fields){
-        try { addSnap(await database.collection(name).where(field, "==", tid).get()); }
-        catch(e) { /* campo/index pode não existir; segue fallback */ }
-      }
-    }
-
-    if(!docs.size){
-      try { addSnap(await database.collection(name).get()); }
-      catch(e) { console.warn(LOG_PREFIX, "não carregou cole??o", name, e?.message || e); }
+      try { addSnap(await database.collection(name).where("clientePlataformaId", "==", tid).get()); }
+      catch(e) { console.warn(LOG_PREFIX, "não carregou coleção", name, e?.message || e); }
     }
 
     return Array.from(docs.values()).filter(belongsTenant);

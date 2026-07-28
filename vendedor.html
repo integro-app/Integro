@@ -6474,12 +6474,12 @@
       <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
       <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
-      <script src="js/firebase-config.js"></script>
+      <script src="js/firebase-config.js?v=20260728-3"></script>
       <script src="js/utils/operational.js"></script>
       <script src="js/services/financial-operations.js"></script>
       <script src="js/services/clientes-service.js"></script>
       <script src="js/services/indicacoes-service.js"></script>
-      <script src="js/services/chat-service.js"></script>
+      <script src="js/services/chat-service.js?v=20260728-3"></script>
       <script src="js/chat-ui.js"></script>
 
       <script>
@@ -18479,49 +18479,23 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   async function buscarCaixasAbertosDoVendedor() {
     const dbRef = banco();
-    const ids = idsUsuario();
     const tenant = tenantAtual();
+    const authUid = firebase.auth?.().currentUser?.uid || usuarioAtual()?.authUid || "";
 
-    if (!dbRef || !ids.length) return [];
-
-    const campos = ["vendedorId", "usuarioId", "abertoPorUid", "userId", "uid"];
+    if (!dbRef || !tenant || !authUid) return [];
     const encontrados = [];
 
-    buscaCaixa:
-    for (const campo of campos) {
-      for (const idUsuario of ids) {
-        try {
-          let ref = dbRef.collection("caixas")
-            .where(campo, "==", idUsuario)
-            .where("status", "==", "ABERTO")
-            .limit(25);
-
-          if (tenant) {
-            ref = dbRef.collection("caixas")
-              .where("clientePlataformaId", "==", tenant)
-              .where(campo, "==", idUsuario)
-              .where("status", "==", "ABERTO")
-              .limit(25);
-          }
-
-          const snap = await ref.get();
-          snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
-          if (encontrados.length) break buscaCaixa;
-        } catch (erroConsultaComTenant) {
-          try {
-            const snapFallback = await dbRef.collection("caixas")
-              .where(campo, "==", idUsuario)
-              .where("status", "==", "ABERTO")
-              .limit(25)
-              .get();
-
-            snapFallback.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
-            if (encontrados.length) break buscaCaixa;
-          } catch (erroFallback) {
-            console.warn("Falha ao buscar caixa aberto:", campo, erroFallback || erroConsultaComTenant);
-          }
-        }
-      }
+    try {
+      const snap = await dbRef.collection("caixas")
+        .where("clientePlataformaId", "==", tenant)
+        .where("abertoPorUid", "==", authUid)
+        .where("status", "==", "ABERTO")
+        .limit(25)
+        .get();
+      snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
+    } catch (erro) {
+      console.error("Falha ao buscar o caixa aberto do vendedor:", erro);
+      throw erro;
     }
 
     return deduplicar(encontrados)

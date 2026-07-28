@@ -117,25 +117,25 @@ test("documento por UID encontrado usa fonte principal", async () => {
   assert.equal(resultado.usuario.origemResolucaoAuth, "uid");
 });
 
-test("documento por UID ausente registra diagnostico antes do legado", async () => {
+test("documento por UID ausente resolve primeiro pelo campo authUid", async () => {
   const { FirestoreService } = carregarContexto({
     "usuarios/legacy_1": usuarioBase(),
     "clientes_integro/tenant_1": { status: "ATIVO", acessoLiberado: true }
   });
   const resultado = await FirestoreService.resolverUsuarioAutenticado(authUser);
   assert.equal(resultado.ok, true);
-  assert.equal(resultado.codigo, "LEGACY_USER_FOUND_BY_EMAIL");
+  assert.equal(resultado.codigo, "LEGACY_USER_FOUND_BY_AUTH_UID");
   assert.equal(resultado.diagnosticos[0].codigo, "USER_DOC_UID_NOT_FOUND");
 });
 
-test("legado por e-mail com authUid correto permite compatibilidade", async () => {
+test("legado com authUid correto permite compatibilidade antes do e-mail", async () => {
   const { FirestoreService } = carregarContexto({
     "usuarios/legacy_1": usuarioBase(),
     "clientes_integro/tenant_1": { status: "ATIVO", acessoLiberado: true }
   });
   const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
   assert.equal(usuario.id, "legacy_1");
-  assert.equal(usuario.__authDiagnostico.codigo, "LEGACY_USER_FOUND_BY_EMAIL");
+  assert.equal(usuario.__authDiagnostico.codigo, "LEGACY_USER_FOUND_BY_AUTH_UID");
 });
 
 test("legado sem authUid bloqueia login operacional", async () => {
@@ -159,8 +159,8 @@ test("legado com authUid divergente bloqueia", async () => {
 
 test("e-mail duplicado bloqueia sem escolher aleatoriamente", async () => {
   const { FirestoreService } = carregarContexto({
-    "usuarios/legacy_1": usuarioBase(),
-    "usuarios/legacy_2": usuarioBase({ nome: "Duplicado" })
+    "usuarios/legacy_1": usuarioBase({ authUid: "" }),
+    "usuarios/legacy_2": usuarioBase({ authUid: "", nome: "Duplicado" })
   });
   const resultado = await FirestoreService.resolverUsuarioAutenticado(authUser);
   assert.equal(resultado.ok, false);

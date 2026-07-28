@@ -60,7 +60,7 @@ async function carregarPermissoesCargo() {
     let ref = db.collection("permissoes_cargo");
 
     if (tenantId) {
-      ref = ref.where("empresaId", "==", tenantId);
+      ref = ref.where("clientePlataformaId", "==", tenantId);
     }
 
     const snap = await ref.get();
@@ -323,6 +323,7 @@ async function salvarPermissoesCargo(cargoId) {
     const tenantId = State.getTenantId();
 
     const snap = await db.collection("permissoes_cargo")
+      .where("clientePlataformaId", "==", tenantId)
       .where("cargoId", "==", cargoId)
       .get();
 
@@ -428,6 +429,7 @@ async function excluirCargo(id) {
     batch.delete(db.collection("cargos").doc(id));
 
     const permissoesSnap = await db.collection("permissoes_cargo")
+      .where("clientePlataformaId", "==", State.getTenantId())
       .where("cargoId", "==", id)
       .get();
 

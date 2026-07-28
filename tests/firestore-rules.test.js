@@ -8,11 +8,16 @@ const {
   assertFails
 } = require("@firebase/rules-unit-testing");
 const {
+  collection,
   doc,
   getDoc,
+  getDocs,
+  limit,
+  query,
   setDoc,
   updateDoc,
-  deleteDoc
+  deleteDoc,
+  where
 } = require("firebase/firestore");
 
 const projectId = "integro-rules-test";
@@ -31,6 +36,7 @@ const profiles = {
   captadorA: { uid: "captador_a_uid", tenant: "tenant_a", role: "captador", permissoes: { indicacoes: { criarIndicacao: true } } },
   masterB: { uid: "master_b_uid", tenant: "tenant_b", role: "master_local" },
   bloqueado: { uid: "bloqueado_uid", tenant: "tenant_a", role: "financeiro", status: "BLOQUEADO" },
+  inativo: { uid: "inativo_uid", tenant: "tenant_a", role: "vendedor", status: "INATIVO", equipeId: "equipe_1" },
   semTenant: { uid: "sem_tenant_uid", tenant: "", role: "financeiro" },
   semPermissao: { uid: "sem_permissao_uid", tenant: "tenant_a", role: "financeiro", permissoes: {} }
 };
@@ -267,6 +273,43 @@ test("tenant: usuario A le A e nao le B", async () => {
   await assertFails(getDoc(doc(appDb(profiles.masterA), "caixas", "caixa_b_1")));
 });
 
+test("login: perfil proprio e fallback por authUid funcionam sem liberar outro usuario", async () => {
+  for (const perfil of [profiles.masterA, profiles.supervisor1, profiles.vendedor1, profiles.financeiroA]) {
+    const proprio = await assertSucceeds(getDoc(doc(appDb(perfil), "usuarios", perfil.uid)));
+    assert.equal(proprio.exists(), true);
+    const consulta = query(collection(appDb(perfil), "usuarios"), where("authUid", "==", perfil.uid), limit(2));
+    const resultado = await assertSucceeds(getDocs(consulta));
+    assert.equal(resultado.size, 1);
+  }
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor1), "usuarios"),
+    where("authUid", "==", profiles.vendedor2.uid),
+    limit(2)
+  )));
+
+  const inativo = await assertSucceeds(getDoc(doc(appDb(profiles.inativo), "usuarios", profiles.inativo.uid)));
+  assert.equal(inativo.data().status, "INATIVO");
+  await assertFails(getDoc(doc(appDb(profiles.inativo), "caixas", "caixa_a_1")));
+});
+
+test("usuarios do chat: perfis ativos listam somente o proprio tenant", async () => {
+  for (const perfil of [profiles.masterA, profiles.vendedor1, profiles.financeiroA, profiles.auditorA, profiles.captadorA]) {
+    const consulta = query(
+      collection(appDb(perfil), "usuarios"),
+      where("clientePlataformaId", "==", perfil.tenant),
+      limit(120)
+    );
+    await assertSucceeds(getDocs(consulta));
+  }
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor1), "usuarios"),
+    where("clientePlataformaId", "==", profiles.masterB.tenant),
+    limit(120)
+  )));
+});
+
 test("tenant: criacao para tenant B, troca de tenant, sem tenant, bloqueado e sem acesso sao bloqueados", async () => {
   await assertFails(setDoc(doc(appDb(profiles.masterA), "caixas", "cx_err"), caixa({ clientePlataformaId: "tenant_b" })));
   await assertFails(updateDoc(doc(appDb(profiles.masterA), "caixas", "caixa_a_1"), { clientePlataformaId: "tenant_b" }));
@@ -375,6 +418,53 @@ test("chat: participante le conversa e mensagem, outro tenant e nao participante
   await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1", "mensagens", "msg_a_1")));
   await assertFails(getDoc(doc(appDb(profiles.masterB), "conversas", "conversa_a_1")));
   await assertFails(getDoc(doc(appDb(profiles.vendedor2), "conversas", "conversa_a_1")));
+});
+
+test("caixa: vendedor consulta caixa legado pelo abertoPorUid dentro do tenant", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "caixas", "caixa_aberto_por_uid"), caixa({
+      vendedorId: "documento_legado_vendedor",
+      vendedorAuthUid: "",
+      usuarioId: "documento_legado_vendedor",
+      abertoPorUid: profiles.vendedor1.uid
+    }));
+  });
+
+  const consulta = query(
+    collection(appDb(profiles.vendedor1), "caixas"),
+    where("clientePlataformaId", "==", profiles.vendedor1.tenant),
+    where("abertoPorUid", "==", profiles.vendedor1.uid),
+    where("status", "==", "ABERTO"),
+    limit(25)
+  );
+  const resultado = await assertSucceeds(getDocs(consulta));
+  assert.equal(resultado.size, 1);
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor2), "caixas"),
+    where("clientePlataformaId", "==", profiles.vendedor2.tenant),
+    where("abertoPorUid", "==", profiles.vendedor1.uid),
+    where("status", "==", "ABERTO"),
+    limit(25)
+  )));
+});
+
+test("chat: consulta de conversas exige tenant e participante autenticado", async () => {
+  const permitida = query(
+    collection(appDb(profiles.vendedor1), "conversas"),
+    where("clientePlataformaId", "==", profiles.vendedor1.tenant),
+    where("participantesIds", "array-contains", profiles.vendedor1.uid),
+    limit(80)
+  );
+  const resultado = await assertSucceeds(getDocs(permitida));
+  assert.equal(resultado.size, 1);
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor1), "conversas"),
+    where("clientePlataformaId", "==", profiles.masterB.tenant),
+    where("participantesIds", "array-contains", profiles.vendedor1.uid),
+    limit(80)
+  )));
 });
 
 test("chat: cria direta/equipe no tenant, envia mensagem e bloqueia auditor/delete", async () => {
