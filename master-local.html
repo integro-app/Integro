@@ -16997,59 +16997,132 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     return ICX.equipes().map(window.resumoEquipe).sort((a,b) => String(a.nome).localeCompare(String(b.nome)));
   };
 
-  window.criarCaixaParaVendedor = async function(vendedor, equipe, snapshot){
+  window.criarCaixaParaVendedor = async function (vendedor, equipe, snapshot) {
     const database = ICX.db();
-    if (!database) throw new Error("Firebase não conectado.");
 
-    const snap = snapshot && typeof snapshot === "object"
-      ? snapshot
-      : { caixaInicial: ICX.num(snapshot), carteiraInicial: 0, origem:"MANUAL", ultimoCaixaId:"" };
+    if (!database) {
+      throw new Error("Firebase não conectado.");
+    }
 
-    const hoje = new Date().toISOString().slice(0, 10);
-    const user = ICX.user();
-    const tenant = ICX.tenant();
-    const equipeIdFinal = String(ICX.id(equipe) || ICX.equipeId(equipe));
-    const vendedorIdFinal = String(ICX.id(vendedor) || ICX.vendedorId(vendedor));
+    const snap =
+      snapshot && typeof snapshot === "object"
+        ? snapshot
+        : {
+            caixaInicial: ICX.num(snapshot),
+            carteiraInicial: 0,
+            origem: "MANUAL",
+            ultimoCaixaId: ""
+          };
+
+    const hoje =
+      window.IntegroOperacional?.hojeSP?.() ||
+      new Date().toLocaleDateString("en-CA", {
+        timeZone: "America/Sao_Paulo"
+      });
+
+    const user = ICX.user() || {};
+    const tenant = String(ICX.tenant() || "");
+
+    const equipeIdFinal = String(
+      ICX.id(equipe) ||
+      ICX.equipeId(equipe) ||
+      ""
+    );
+
+    const vendedorIdFinal = String(
+      ICX.id(vendedor) ||
+      ICX.vendedorId(vendedor) ||
+      ""
+    );
+
+    const vendedorAuthUid = String(
+      vendedor?.authUid ||
+      vendedor?.uid ||
+      vendedor?.firebaseUid ||
+      ""
+    );
+
+    const caixaInicial = Number(ICX.num(snap.caixaInicial) || 0);
+    const carteiraInicial = Number(ICX.num(snap.carteiraInicial) || 0);
+
+    const saldoInicialCentavos = Math.round(caixaInicial * 100);
+    const carteiraInicialCentavos = Math.round(carteiraInicial * 100);
+
+    if (!tenant) {
+      throw new Error("Tenant da empresa não identificado.");
+    }
+
+    if (!vendedorIdFinal) {
+      throw new Error("Vendedor não identificado para abertura do caixa.");
+    }
+
+    if (!vendedorAuthUid) {
+      throw new Error(
+        `O vendedor ${vendedor?.nome || vendedor?.email || vendedorIdFinal} não possui authUid vinculado.`
+      );
+    }
 
     return database.collection(ICX.collectionName("CAIXAS")).add({
       clientePlataformaId: tenant,
       tenantId: tenant,
       empresaId: user.empresaId || tenant,
-      clientePlataformaNome: user.clientePlataformaNome || user.empresaNome || "",
+      clientePlataformaNome:
+        user.clientePlataformaNome ||
+        user.empresaNome ||
+        "",
 
       equipeId: equipeIdFinal,
       equipeNome: ICX.nomeEquipe(equipe),
 
       vendedorId: vendedorIdFinal,
       usuarioId: vendedorIdFinal,
-      vendedorNome: vendedor?.nome || vendedor?.nomeCompleto || vendedor?.email || "Equipe",
+      vendedorAuthUid,
+      vendedorUid: vendedorAuthUid,
+      vendedorNome:
+        vendedor?.nome ||
+        vendedor?.nomeCompleto ||
+        vendedor?.email ||
+        "Vendedor",
 
       status: "ABERTO",
       ativo: true,
       excluido: false,
 
-      valorInicial: ICX.num(snap.caixaInicial),
-      saldoInicial: ICX.num(snap.caixaInicial),
-      caixaInicial: ICX.num(snap.caixaInicial),
-      valorAtual: ICX.num(snap.caixaInicial),
-      saldoAtual: ICX.num(snap.caixaInicial),
-      caixaAtual: ICX.num(snap.caixaInicial),
+      dataOperacional: hoje,
+      saldoInicialCentavos,
+      saldoAtualCentavos: saldoInicialCentavos,
 
-      carteiraInicial: ICX.num(snap.carteiraInicial),
-      carteiraFinal: ICX.num(snap.carteiraInicial),
+      valorInicial: caixaInicial,
+      saldoInicial: caixaInicial,
+      caixaInicial,
+      valorAtual: caixaInicial,
+      saldoAtual: caixaInicial,
+      caixaAtual: caixaInicial,
+
+      carteiraInicial,
+      carteiraFinal: carteiraInicial,
+      carteiraInicialCentavos,
+      carteiraFinalCentavos: carteiraInicialCentavos,
 
       vendas: 0,
       totalVendas: 0,
       valorVendas: 0,
       valorLiberado: 0,
+      totalVendasCentavos: 0,
 
       recolhido: 0,
       recebido: 0,
       totalRecebido: 0,
+      totalPagamentosCentavos: 0,
 
       ingressos: 0,
       despesas: 0,
       retiradas: 0,
+      totalIngressosCentavos: 0,
+      totalGastosCentavos: 0,
+      totalRetiradasCentavos: 0,
+      totalRecolhimentosCentavos: 0,
+      totalAjustesCentavos: 0,
 
       origemAbertura: snap.origem || "ULTIMO_CAIXA_FECHADO",
       ultimoCaixaFechadoId: snap.ultimoCaixaId || "",
@@ -17061,8 +17134,17 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
       atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
 
-      abertoPorUid: user.authUid || user.uid || user.id || "",
-      abertoPorNome: user.nome || user.nomeCompleto || user.email || "Usuário"
+      abertoPorUid:
+        user.authUid ||
+        user.uid ||
+        firebase.auth()?.currentUser?.uid ||
+        "",
+
+      abertoPorNome:
+        user.nome ||
+        user.nomeCompleto ||
+        user.email ||
+        "Usuário"
     });
   };
 
