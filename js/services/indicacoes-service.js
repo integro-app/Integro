@@ -204,9 +204,13 @@
       nomeBusca: texto(dados.nome || dados.nomeCliente).toLowerCase(),
       documento: texto(dados.documento),
       documentoNormalizado,
+      tipoCliente: texto(dados.tipoCliente || dados.tipoPessoa || "PF"),
       telefonePrincipal: texto(dados.telefonePrincipal || dados.telefone),
       telefoneNormalizado,
       telefonesNormalizados: telefoneNormalizado ? [telefoneNormalizado] : [],
+      paisTelefone: texto(dados.paisTelefone || dados.paisCodigo || "55"),
+      whatsappAtivo: dados.whatsappAtivo === true,
+      whatsappUrl: texto(dados.whatsappUrl),
       enderecoResumo: texto(dados.enderecoResumo || dados.endereco || dados.bairro),
       statusCliente: "LEAD",
       status: "LEAD",
@@ -234,15 +238,20 @@
       nomeClienteSnapshot: texto(dados.nome || dados.nomeCliente || cliente.nome),
       nome: texto(dados.nome || dados.nomeCliente || cliente.nome),
       documentoNormalizado,
+      tipoCliente: texto(dados.tipoCliente || cliente.tipoCliente || "PF"),
       telefoneNormalizado,
       telefonePrincipal: texto(dados.telefonePrincipal || dados.telefone || cliente.telefonePrincipal),
       telefone: texto(dados.telefonePrincipal || dados.telefone || cliente.telefonePrincipal),
+      paisTelefone: texto(dados.paisTelefone || cliente.paisTelefone || "55"),
+      whatsappAtivo: dados.whatsappAtivo === true || cliente.whatsappAtivo === true,
+      whatsappUrl: texto(dados.whatsappUrl || cliente.whatsappUrl),
       enderecoResumo: texto(dados.enderecoResumo || dados.endereco || dados.bairro || cliente.enderecoResumo),
       indicadoPorId: idUsuario(usuario),
       indicadoPorNome: nomeUsuario(usuario),
       indicadoPorCargo: cargoUsuario(usuario),
       vendedorDestinoId: vendedorId,
       vendedorDestinoNome: texto(dados.vendedorDestinoNome || dados.vendedorNome),
+      vendedorAuthUid: texto(dados.vendedorAuthUid || dados.vendedorUid || dados.vendedorDestinoAuthUid),
       vendedorId,
       vendedorNome: texto(dados.vendedorDestinoNome || dados.vendedorNome),
       equipeDestinoId: equipeId,
@@ -288,6 +297,43 @@
     } catch (erro) {
       console.warn("Falha ao registrar log de indicação:", erro);
     }
+  }
+
+  function authUidUsuario(usuario = {}) {
+    return texto(usuario.authUid || usuario.uid || window.firebase?.auth?.()?.currentUser?.uid || idUsuario(usuario));
+  }
+
+  function idNotificacaoIndicacao(partes = []) {
+    return partes.map(parte=>texto(parte).replace(/[^a-zA-Z0-9_-]/g,"_")).filter(Boolean).join("_").slice(0,240);
+  }
+
+  async function registrarNotificacaoIndicacao(db, dados = {}) {
+    const destinatarioId = texto(dados.destinatarioAuthUid || dados.destinatarioId);
+    if (!db || !destinatarioId || !dados.indicacaoId) return false;
+    const notificacaoId = idNotificacaoIndicacao(["indicacao",dados.tipo || "atualizada",dados.indicacaoId,destinatarioId]);
+    await db.collection("notificacoes").doc(notificacaoId).set({
+      clientePlataformaId: dados.clientePlataformaId || "",
+      tipo: dados.tipo || "INDICACAO_ATUALIZADA",
+      titulo: dados.titulo || "Atualização de lead",
+      mensagem: dados.mensagem || "Uma indicação foi atualizada.",
+      indicacaoId: dados.indicacaoId,
+      clienteOperacionalId: dados.clienteOperacionalId || "",
+      origemTela: "indicacoes",
+      statusIndicacao: dados.statusIndicacao || "",
+      usuarioId: destinatarioId,
+      destinatarioId,
+      vendedorId: dados.vendedorId || "",
+      vendedorAuthUid: dados.vendedorAuthUid || "",
+      criadoPorId: dados.criadoPorAuthUid || dados.criadoPorId || "",
+      criadoPorNome: dados.criadoPorNome || "",
+      lida: false,
+      status: "PENDENTE",
+      ativo: true,
+      criadoEmTexto: window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString(),
+      criadoEm: serverTimestamp(),
+      atualizadoEm: serverTimestamp()
+    }, { merge: true });
+    return true;
   }
 
   async function buscarClienteExistenteParaIndicacao(db, tenant, entrada = {}) {
@@ -371,12 +417,33 @@
     const indicacao = montarIndicacao({ ...entrada, clientePlataformaId: tenant }, cliente, usuario);
     await ref.set({
       ...indicacao,
+      clienteCriadoNaIndicacao: criado,
+      clienteReutilizadoNaIndicacao: !criado,
       criadoPor: idUsuario(usuario),
       atualizadoPor: idUsuario(usuario),
       criadoEm: serverTimestamp(),
       atualizadoEm: serverTimestamp()
     });
     await registrarLog(db, "INDICACAO_CRIADA", usuario, { indicacaoId: ref.id, clienteOperacionalId: cliente.id, clienteCriado: criado });
+    const destinoAuthUid = texto(entrada.vendedorAuthUid || entrada.vendedorUid || entrada.vendedorDestinoAuthUid || entrada.vendedorDestinoId || entrada.vendedorId);
+    if (destinoAuthUid) {
+      await registrarNotificacaoIndicacao(db, {
+        tipo:"NOVO_LEAD",
+        titulo:"Você recebeu um novo lead",
+        mensagem:`${indicacao.nomeClienteSnapshot || "Novo lead"} aguarda seu retorno. Abra a indicação para iniciar o atendimento.`,
+        indicacaoId:ref.id,
+        clienteOperacionalId:cliente.id,
+        clientePlataformaId:tenant,
+        statusIndicacao:"ATRIBUIDA",
+        destinatarioId:entrada.vendedorDestinoId || entrada.vendedorId,
+        destinatarioAuthUid:destinoAuthUid,
+        vendedorId:entrada.vendedorDestinoId || entrada.vendedorId,
+        vendedorAuthUid:destinoAuthUid,
+        criadoPorId:idUsuario(usuario),
+        criadoPorAuthUid:authUidUsuario(usuario),
+        criadoPorNome:nomeUsuario(usuario)
+      });
+    }
     return { id: ref.id, ...indicacao, clienteCriado: criado };
   }
 
@@ -414,14 +481,50 @@
     delete payload.__permissaoIndicacao;
     await ref.set(payload, { merge: true });
     await registrarLog(db, tipoLog, usuario, { indicacaoId, ...payload });
+    const statusAnterior = normalizarStatusIndicacao(atual.statusIndicacao || atual.status);
+    const statusAtualizado = normalizarStatusIndicacao(statusNovo);
+    const criadorId = texto(atual.indicadoPorAuthUid || atual.indicadoPorId || atual.criadoPor);
+    const operadorId = authUidUsuario(usuario);
+    const mensagensStatus = {
+      EM_ATENDIMENTO:["Lead em atendimento",`${atual.nomeClienteSnapshot || atual.nome || "O lead"} está sendo atendido por ${nomeUsuario(usuario) || "um vendedor"}.`],
+      NAO_CONVERTIDA:["Lead não convertido",`${atual.nomeClienteSnapshot || atual.nome || "O lead"} foi encerrado sem conversão. Motivo: ${dados.motivoNaoConversao || "não informado"}.`],
+      RECUSADA:["Lead recusado",`${atual.nomeClienteSnapshot || atual.nome || "O lead"} foi recusado. Motivo: ${dados.motivoRecusa || "não informado"}.`],
+      CONVERTIDA:["Lead convertido",`${atual.nomeClienteSnapshot || atual.nome || "O lead"} foi convertido e vinculado a uma venda.`],
+      CANCELADA:["Lead cancelado",`${atual.nomeClienteSnapshot || atual.nome || "O lead"} foi cancelado.`]
+    };
+    if (statusAnterior !== statusAtualizado && criadorId && criadorId !== operadorId && mensagensStatus[statusAtualizado]) {
+      const [titulo,mensagem] = mensagensStatus[statusAtualizado];
+      try {
+        await registrarNotificacaoIndicacao(db, {
+          tipo:`LEAD_${statusAtualizado}`,
+          titulo,
+          mensagem,
+          indicacaoId,
+          clienteOperacionalId:atual.clienteOperacionalId || "",
+          clientePlataformaId:tenantAtual || tenantOperador,
+          statusIndicacao:statusAtualizado,
+          destinatarioId:criadorId,
+          destinatarioAuthUid:criadorId,
+          vendedorId:idUsuario(usuario),
+          vendedorAuthUid:operadorId,
+          criadoPorId:idUsuario(usuario),
+          criadoPorAuthUid:operadorId,
+          criadoPorNome:nomeUsuario(usuario)
+        });
+      } catch (erro) {
+        console.warn("Falha ao comunicar atualização da indicação:", erro);
+      }
+    }
     return true;
   }
 
-  function atribuirIndicacao(indicacaoId, destino = {}, usuario = {}) {
+  async function atribuirIndicacao(indicacaoId, destino = {}, usuario = {}) {
     const agora = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
-    return atualizarStatusIndicacao(indicacaoId, {
+    const db = destino.db || usuario.db || getDb();
+    await atualizarStatusIndicacao(indicacaoId, {
       vendedorDestinoId: destino.vendedorDestinoId || destino.vendedorId || "",
       vendedorDestinoNome: destino.vendedorDestinoNome || destino.vendedorNome || "",
+      vendedorAuthUid: destino.vendedorAuthUid || destino.vendedorUid || destino.vendedorDestinoAuthUid || "",
       vendedorId: destino.vendedorDestinoId || destino.vendedorId || "",
       vendedorNome: destino.vendedorDestinoNome || destino.vendedorNome || "",
       equipeDestinoId: destino.equipeDestinoId || destino.equipeId || "",
@@ -432,6 +535,113 @@
       dataAtribuicao: agora,
       __permissaoIndicacao: "podeAtribuirIndicacao"
     }, usuario, "INDICACAO_ATRIBUIDA");
+    const snap = await db.collection("indicacoes").doc(indicacaoId).get();
+    const indicacao = snap.exists ? snap.data() : {};
+    const vendedorId = texto(destino.vendedorDestinoId || destino.vendedorId);
+    const vendedorAuthUid = texto(destino.vendedorAuthUid || destino.vendedorUid || destino.vendedorDestinoAuthUid || vendedorId);
+    await registrarNotificacaoIndicacao(db, {
+      tipo:"NOVO_LEAD",
+      titulo:"Você recebeu um novo lead",
+      mensagem:`${indicacao.nomeClienteSnapshot || indicacao.nome || "Novo lead"} aguarda seu retorno. Abra a indicação para iniciar o atendimento.`,
+      indicacaoId,
+      clienteOperacionalId:indicacao.clienteOperacionalId || "",
+      clientePlataformaId:indicacao.clientePlataformaId || tenantUsuario(usuario),
+      statusIndicacao:"ATRIBUIDA",
+      destinatarioId:vendedorId,
+      destinatarioAuthUid:vendedorAuthUid,
+      vendedorId,
+      vendedorAuthUid,
+      criadoPorId:idUsuario(usuario),
+      criadoPorAuthUid:authUidUsuario(usuario),
+      criadoPorNome:nomeUsuario(usuario)
+    });
+    return true;
+  }
+
+  async function salvarEdicaoIndicacao(indicacaoId, dados = {}, usuario = {}) {
+    if (!indicacaoId) throw new Error("Indicação obrigatória.");
+    const db = dados.db || usuario.db || getDb();
+    const ref = db.collection("indicacoes").doc(indicacaoId);
+    const snap = await ref.get();
+    if (!snap.exists) throw new Error("Indicação não encontrada.");
+    const atual = { id:snap.id || indicacaoId, ...snap.data() };
+    const nome = texto(dados.nome || dados.nomeCliente || atual.nomeClienteSnapshot || atual.nome);
+    const telefone = texto(dados.telefonePrincipal || dados.telefone || atual.telefonePrincipal || atual.telefone);
+    const telefoneNormalizado = normalizarTelefoneIndicacao(telefone);
+    const vendedorId = texto(dados.vendedorDestinoId || dados.vendedorId || atual.vendedorDestinoId || atual.vendedorId);
+    const vendedorAnteriorId = texto(atual.vendedorDestinoId || atual.vendedorId);
+    const vendedorAlterado = vendedorId !== vendedorAnteriorId;
+    const statusSolicitado = normalizarStatusIndicacao(dados.statusIndicacao || dados.status || atual.statusIndicacao || atual.status);
+    const statusNovo = vendedorAlterado ? "ATRIBUIDA" : statusSolicitado;
+    if (!nome) throw new Error("Nome do lead obrigatório.");
+    if (telefoneNormalizado.length < 10 || telefoneNormalizado.length > 11) throw new Error("Telefone do lead inválido.");
+    if (!vendedorId && ["ATRIBUIDA","EM_ATENDIMENTO"].includes(statusNovo)) throw new Error("Selecione o vendedor responsável.");
+
+    await atualizarStatusIndicacao(indicacaoId, {
+      nomeClienteSnapshot:nome,
+      nome,
+      telefonePrincipal:telefone,
+      telefone,
+      telefoneNormalizado,
+      observacao:texto(dados.observacao),
+      motivoNaoConversao:statusNovo === "NAO_CONVERTIDA" ? texto(dados.motivoNaoConversao || dados.observacao) : (atual.motivoNaoConversao || ""),
+      motivoRecusa:statusNovo === "RECUSADA" ? texto(dados.motivoRecusa || dados.observacao) : (atual.motivoRecusa || ""),
+      vendedorDestinoId:vendedorId,
+      vendedorDestinoNome:texto(dados.vendedorDestinoNome || dados.vendedorNome || atual.vendedorDestinoNome || atual.vendedorNome),
+      vendedorAuthUid:texto(dados.vendedorAuthUid || dados.vendedorUid || atual.vendedorAuthUid),
+      vendedorId,
+      vendedorNome:texto(dados.vendedorDestinoNome || dados.vendedorNome || atual.vendedorDestinoNome || atual.vendedorNome),
+      equipeDestinoId:texto(dados.equipeDestinoId || dados.equipeId || atual.equipeDestinoId || atual.equipeId),
+      equipeDestinoNome:texto(dados.equipeDestinoNome || dados.equipeNome || atual.equipeDestinoNome || atual.equipeNome),
+      statusIndicacao:statusNovo,
+      status:statusNovo,
+      dataAtribuicao:vendedorAlterado ? (window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString()) : (atual.dataAtribuicao || ""),
+      db,
+      __permissaoIndicacao:vendedorAlterado ? "podeAtribuirIndicacao" : "podeEditarIndicacao"
+    }, usuario, vendedorAlterado ? "INDICACAO_REDISTRIBUIDA" : "INDICACAO_EDITADA");
+
+    if (atual.clienteOperacionalId) {
+      const clienteRef = db.collection("clientes_operacionais").doc(atual.clienteOperacionalId);
+      const clienteSnap = await clienteRef.get();
+      const clienteAtual = clienteSnap.exists ? clienteSnap.data() : {};
+      const telefoneAnterior = normalizarTelefoneIndicacao(atual.telefonePrincipal || atual.telefoneNormalizado);
+      const telefonesNormalizados = [...new Set([
+        telefoneNormalizado,
+        ...(Array.isArray(clienteAtual.telefonesNormalizados) ? clienteAtual.telefonesNormalizados : [])
+          .map(normalizarTelefoneIndicacao)
+          .filter(numero=>numero && numero !== telefoneAnterior)
+      ].filter(Boolean))].slice(0,5);
+      await clienteRef.set({
+        nome,
+        nomeBusca:nome.toLowerCase(),
+        telefonePrincipal:telefone,
+        telefoneNormalizado,
+        telefonesNormalizados,
+        atualizadoPor:idUsuario(usuario),
+        atualizadoEm:serverTimestamp()
+      }, { merge:true });
+    }
+
+    if (vendedorAlterado) {
+      const vendedorAuthUid = texto(dados.vendedorAuthUid || dados.vendedorUid || vendedorId);
+      await registrarNotificacaoIndicacao(db, {
+        tipo:"NOVO_LEAD",
+        titulo:"Você recebeu um novo lead",
+        mensagem:`${nome} aguarda seu retorno. Abra a indicação para iniciar o atendimento.`,
+        indicacaoId,
+        clienteOperacionalId:atual.clienteOperacionalId || "",
+        clientePlataformaId:atual.clientePlataformaId || tenantUsuario(usuario),
+        statusIndicacao:"ATRIBUIDA",
+        destinatarioId:vendedorId,
+        destinatarioAuthUid:vendedorAuthUid,
+        vendedorId,
+        vendedorAuthUid,
+        criadoPorId:idUsuario(usuario),
+        criadoPorAuthUid:authUidUsuario(usuario),
+        criadoPorNome:nomeUsuario(usuario)
+      });
+    }
+    return {statusIndicacao:statusNovo,vendedorAlterado};
   }
 
   function redistribuirIndicacao(indicacaoId, destino = {}, usuario = {}) {
@@ -541,6 +751,7 @@
         nome: chave,
         recebidas: 0,
         emAtendimento: 0,
+        clientesCriados: 0,
         convertidas: 0,
         naoConvertidas: 0,
         recusadas: 0,
@@ -549,6 +760,7 @@
       };
       const status = normalizarStatusIndicacao(item.statusIndicacao || item.status);
       atual.recebidas++;
+      if (item.clienteCriadoNaIndicacao === true) atual.clientesCriados++;
       if (status === "EM_ATENDIMENTO") atual.emAtendimento++;
       if (status === "CONVERTIDA") {
         if (texto(item.vendaId)) {
@@ -598,6 +810,7 @@
     buscarClienteExistenteParaIndicacao,
     criarOuAtualizarClienteLead,
     criarIndicacao,
+    salvarEdicaoIndicacao,
     atribuirIndicacao,
     redistribuirIndicacao,
     iniciarAtendimentoIndicacao,

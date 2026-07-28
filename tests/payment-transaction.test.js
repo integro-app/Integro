@@ -942,6 +942,22 @@ test("fechamento normal grava fechamento, fecha caixa, snapshot e log uma unica 
   assert.equal(db.listar("logs").filter(l => l.tipoAcao === "CAIXA_FECHADO").length, 1);
 });
 
+test("master local fecha caixa do vendedor preservando autor e vinculo do caixa", async () => {
+  const { db, entrada } = contextoFechamentoTransacional();
+  entrada.usuario = {
+    id: "master_1",
+    authUid: "uid_master",
+    nome: "Master Local",
+    clientePlataformaId: "tenant_1"
+  };
+
+  const resultado = await registrarFechamentoCaixaTransacional(entrada);
+
+  assert.equal(resultado.statusFechamento, "FECHADO");
+  assert.equal(db.ler("fechamentos_caixa/fechamento_caixa_1").vendedorAuthUid, "uid_1");
+  assert.equal(db.listar("logs").find(l => l.tipoAcao === "CAIXA_FECHADO").usuarioAuthUid, "uid_master");
+});
+
 test("clique duplo, retry e dois dispositivos retornam fechamento idempotente sem segundo log", async () => {
   const { db, entrada } = contextoFechamentoTransacional();
   await registrarFechamentoCaixaTransacional(entrada);

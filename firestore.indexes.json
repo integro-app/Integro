@@ -43,6 +43,64 @@
         { "fieldPath": "vendedorDestinoId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "interacoes_clientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "clienteId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "direcionamentos_clientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "clienteId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ciclos_atendimento_clientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "clienteId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "clienteId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "clientes_operacionais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "statusAtendimento", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "clientes_operacionais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorId", "order": "ASCENDING" },
+        { "fieldPath": "statusAtendimento", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "clientes_operacionais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "equipeId", "order": "ASCENDING" },
+        { "fieldPath": "statusAtendimento", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

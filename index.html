@@ -38,6 +38,9 @@
     html,
     body{
       min-height:100%;
+      width:100%;
+      max-width:100vw;
+      overflow-x:hidden;
     }
 
     body{
@@ -53,6 +56,7 @@
       justify-content:center;
       padding:24px;
       overflow:hidden;
+      overflow-x:clip;
       position:relative;
     }
 
@@ -78,6 +82,7 @@
       right:-260px;
       top:76px;
       pointer-events:none;
+      z-index:0;
     }
 
     .login-page{
@@ -212,7 +217,9 @@
       top:50%;
       transform:translateY(-50%);
       width:28px;
-      height:28px;
+      min-width:42px;
+      width:42px;
+      height:42px;
       background:transparent;
       border:none;
       color:#94a3b8;
@@ -316,8 +323,9 @@
       body::after{
         width:520px;
         height:520px;
-        right:-280px;
-        top:72px;
+      right:-280px;
+      top:72px;
+      opacity:.72;
       }
 
       .login-page{
@@ -362,6 +370,7 @@
         border-radius:14px;
         font-size:14px;
         padding-left:48px;
+        padding-right:56px;
       }
 
       .input-wrap{
@@ -405,6 +414,12 @@
 
       .input{
         height:50px;
+      }
+
+      body::after{
+        width:460px;
+        height:460px;
+        right:-260px;
       }
     }
   </style>

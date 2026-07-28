@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
   <link href="css/integro-theme.css" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;font-family:"Inter",sans-serif}
@@ -20,7 +21,7 @@
     .brand{font-size:32px;font-weight:900;margin-bottom:22px}.brand span{color:var(--orange2)}
     .user-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:16px;margin-bottom:22px}.user-card strong{display:block}.user-card small{display:block;color:#cbd5e1;font-weight:700;margin-top:4px}
     .menu-title{color:#8fb4dc;font-size:12px;font-weight:900;text-transform:uppercase;margin:18px 6px 10px}
-    .menu-item{width:100%;height:50px;border-radius:13px;background:transparent;color:#eaf3ff;font-weight:800;text-align:left;padding:0 14px;margin-bottom:7px}.menu-item.active,.menu-item:hover{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
+    .menu-item{width:100%;height:50px;border-radius:13px;background:transparent;color:#eaf3ff;font-weight:800;text-align:left;padding:0 14px;margin-bottom:7px;display:flex;align-items:center;gap:10px}.menu-item .material-symbols-rounded{font-size:21px;color:inherit}.menu-item.active,.menu-item:hover{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
     .mobile-menu-btn{position:fixed;top:14px;left:14px;width:52px;height:52px;border-radius:14px;background:#fff;border:1px solid var(--line);font-size:24px;font-weight:900;box-shadow:var(--shadow);display:none;z-index:10000}
     .overlay{position:fixed;inset:0;background:rgba(2,6,23,.58);opacity:0;visibility:hidden;transition:.2s;z-index:9998}.overlay.show{opacity:1;visibility:visible}
     .main{margin-left:292px;width:calc(100% - 292px);padding:28px 32px}
@@ -35,26 +36,22 @@
     @media(max-width:860px){.mobile-menu-btn{display:block}.sidebar{transform:translateX(-105%);z-index:9999}.sidebar.show{transform:translateX(0)}.main{margin-left:0;width:100%;padding:82px 14px 18px}.topbar{flex-direction:column}.actions{width:100%}.btn{flex:1}.kpis,.filters{grid-template-columns:1fr}.table-wrap table,.table-wrap thead,.table-wrap tbody,.table-wrap tr,.table-wrap th,.table-wrap td{display:block}.table-wrap thead{display:none}.table-wrap tr{border-bottom:1px solid var(--line);padding:10px}.table-wrap td{border:0;padding:7px 4px;white-space:normal}.table-wrap td::before{content:attr(data-label);display:block;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase;margin-bottom:2px}}
   </style>
 </head>
-<body>
-  <button class="mobile-menu-btn" type="button" onclick="toggleMenuAuditor()">☰</button>
+<body class="integro-topnav-pattern">
+  <button class="mobile-menu-btn" type="button" onclick="toggleMenuAuditor()" aria-label="Abrir menu"><span class="material-symbols-rounded">menu</span></button>
   <div id="overlayAuditor" class="overlay" onclick="fecharMenuAuditor()"></div>
   <div class="layout">
     <aside id="sidebarAuditor" class="sidebar">
-      <div class="brand">ÍN<span>TEGRO</span></div>
+      <div class="brand">ÍNTE<span>GRO</span></div>
       <div class="user-card">
         <strong id="auditorNome">Auditor</strong>
         <small id="auditorTenant">Tenant</small>
         <small>Somente leitura</small>
       </div>
       <div class="menu-title">Auditoria</div>
-      <button class="menu-item active" type="button" onclick="trocarTelaAuditor('logs')">Logs e eventos</button>
-      <button class="menu-item" type="button" onclick="trocarTelaAuditor('usuarios')">Usuários</button>
-      <button class="menu-item" type="button" onclick="trocarTelaAuditor('financeiro')">Financeiro</button>
-      <button class="menu-item" type="button" onclick="trocarTelaAuditor('caixas')">Caixas</button>
-      <button class="menu-item" type="button" onclick="trocarTelaAuditor('vendas')">Vendas</button>
-      <button class="menu-item" type="button" onclick="trocarTelaAuditor('indicacoes')">Indicações</button>
+      <button class="menu-item active" data-modulo="auditoria" type="button" onclick="trocarTelaAuditor('logs')"><span class="material-symbols-rounded">policy</span>Auditoria</button>
+      <button class="menu-item" data-modulo="chat" type="button" onclick="trocarTelaAuditor('chat')"><span class="material-symbols-rounded">forum</span>Chat interno</button>
       <div class="menu-title">Sessão</div>
-      <button class="menu-item" type="button" onclick="logout()">Sair</button>
+      <button class="menu-item" type="button" onclick="logout()"><span class="material-symbols-rounded">logout</span>Sair</button>
     </aside>
     <main class="main">
       <div class="topbar">
@@ -67,6 +64,14 @@
           <button class="btn primary" type="button" onclick="exportarAuditoria()">Exportar CSV</button>
         </div>
       </div>
+      <nav class="integro-module-nav" aria-label="Áreas de auditoria">
+        <button class="integro-module-tab active" data-tela-auditor="logs" type="button" aria-selected="true" onclick="trocarTelaAuditor('logs')"><span class="material-symbols-rounded">policy</span>Logs e eventos</button>
+        <button class="integro-module-tab" data-tela-auditor="usuarios" type="button" aria-selected="false" onclick="trocarTelaAuditor('usuarios')"><span class="material-symbols-rounded">groups</span>Usuários</button>
+        <button class="integro-module-tab" data-tela-auditor="financeiro" type="button" aria-selected="false" onclick="trocarTelaAuditor('financeiro')"><span class="material-symbols-rounded">receipt_long</span>Financeiro</button>
+        <button class="integro-module-tab" data-tela-auditor="caixas" type="button" aria-selected="false" onclick="trocarTelaAuditor('caixas')"><span class="material-symbols-rounded">point_of_sale</span>Caixas</button>
+        <button class="integro-module-tab" data-tela-auditor="vendas" type="button" aria-selected="false" onclick="trocarTelaAuditor('vendas')"><span class="material-symbols-rounded">shopping_cart</span>Vendas</button>
+        <button class="integro-module-tab" data-tela-auditor="indicacoes" type="button" aria-selected="false" onclick="trocarTelaAuditor('indicacoes')"><span class="material-symbols-rounded">campaign</span>Indicações</button>
+      </nav>
       <div id="statusAuditor" class="status"></div>
       <section class="kpis">
         <div class="kpi"><small>Logs</small><strong id="kpiLogs">0</strong></div>
@@ -74,7 +79,7 @@
         <div class="kpi"><small>Ledger</small><strong id="kpiLedger">0</strong></div>
         <div class="kpi"><small>Caixas</small><strong id="kpiCaixas">0</strong></div>
       </section>
-      <section class="panel">
+      <section id="auditoriaAuditorPanel" class="panel">
         <div class="panel-head">
           <h2 id="tituloAuditor">Logs e eventos</h2>
         </div>
@@ -87,6 +92,10 @@
           <input id="fimAuditor" type="date" onchange="carregarAuditoria()">
         </div>
         <div id="conteudoAuditor"></div>
+      </section>
+      <section id="chatAuditorPanel" class="panel" style="display:none">
+        <div class="panel-head"><h2>Chat interno</h2></div>
+        <div id="integroChatRoot"></div>
       </section>
     </main>
   </div>
@@ -108,12 +117,15 @@
   <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
   <script src="js/config.js"></script>
   <script src="js/utils/operational.js"></script>
+  <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/state.js"></script>
   <script src="js/firebase-config.js"></script>
   <script src="js/services/firestore.js"></script>
   <script src="js/services/indicacoes-service.js"></script>
+  <script src="js/services/chat-service.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/chat-ui.js"></script>
   <script>
     const AUDITOR = { tela: "logs", dados: { logs: [], usuarios: [], financeiro: [], caixas: [], vendas: [], indicacoes: [] } };
 
@@ -134,13 +146,17 @@
     }
 
     function toggleMenuAuditor() {
-      document.getElementById("sidebarAuditor")?.classList.toggle("show");
-      document.getElementById("overlayAuditor")?.classList.toggle("show");
+      const sidebar = document.getElementById("sidebarAuditor");
+      const aberto = sidebar ? !sidebar.classList.contains("show") : false;
+      sidebar?.classList.toggle("show", aberto);
+      document.getElementById("overlayAuditor")?.classList.toggle("show", aberto);
+      document.body.classList.toggle("menu-mobile-open", aberto);
     }
 
     function fecharMenuAuditor() {
       document.getElementById("sidebarAuditor")?.classList.remove("show");
       document.getElementById("overlayAuditor")?.classList.remove("show");
+      document.body.classList.remove("menu-mobile-open");
     }
 
     function valorDataAuditor(item) {
@@ -233,10 +249,21 @@
     function trocarTelaAuditor(tela) {
       AUDITOR.tela = tela;
       document.querySelectorAll(".menu-item").forEach(btn => btn.classList.remove("active"));
-      [...document.querySelectorAll(".menu-item")].find(btn => btn.textContent.toLowerCase().includes(({
-        logs: "logs", usuarios: "usuários", financeiro: "financeiro", caixas: "caixas", vendas: "vendas", indicacoes: "indicações"
-      })[tela]))?.classList.add("active");
+      document.querySelector(`.menu-item[data-modulo="${tela === "chat" ? "chat" : "auditoria"}"]`)?.classList.add("active");
+      document.querySelectorAll("[data-tela-auditor]").forEach(btn => {
+        const ativo = btn.dataset.telaAuditor === tela;
+        btn.classList.toggle("active", ativo);
+        btn.setAttribute("aria-selected", String(ativo));
+      });
+      const navegacaoAuditoria = document.querySelector(".integro-module-nav");
+      if (navegacaoAuditoria) navegacaoAuditoria.hidden = tela === "chat";
       fecharMenuAuditor();
+      document.getElementById("auditoriaAuditorPanel").style.display = tela === "chat" ? "none" : "block";
+      document.getElementById("chatAuditorPanel").style.display = tela === "chat" ? "block" : "none";
+      if (tela === "chat") {
+        window.IntegroChatUI?.atualizar?.();
+        return;
+      }
       renderAuditoria();
     }
 
@@ -276,7 +303,7 @@
         msgAuditor("Não há dados para exportar.", "info");
         return;
       }
-      const linhas = ["id;tipo;status;data;responsavel"].concat(lista.map(i => [
+      const linhas = ["id;tipo;status;data;responsável"].concat(lista.map(i => [
         i.id,
         i.tipoLancamento || i.tipo || i.acao || "",
         i.status || i.statusIndicacao || i.natureza || "",

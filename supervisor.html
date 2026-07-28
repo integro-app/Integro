@@ -7,6 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
   <link href="css/integro-theme.css" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,sans-serif}
@@ -16,12 +17,13 @@
     .sidebar{position:fixed;inset:0 auto 0 0;width:300px;background:linear-gradient(180deg,var(--side),var(--side2));color:#fff;padding:22px 16px;z-index:50;overflow:auto;box-shadow:16px 0 40px rgba(2,6,23,.22)}
     .logo{font-size:34px;font-weight:900;letter-spacing:-2px;margin:0 8px 24px}.logo span{color:var(--orange2)}
     .user-card{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.07);border-radius:22px;padding:16px;margin-bottom:22px}.user-card small{display:block;color:#cbd5e1;font-weight:800;margin-top:6px}.user-card strong{display:block;font-size:16px}.status-online{display:inline-flex;margin-top:10px;color:#4ade80;font-weight:900}
-    .menu{display:grid;gap:8px}.menu button{height:50px;border:0;border-radius:14px;background:transparent;color:#e2e8f0;font-weight:900;text-align:left;padding:0 14px;cursor:pointer}.menu button.active,.menu button:hover{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
+    .menu{display:grid;gap:8px}.menu button{height:50px;border:0;border-radius:14px;background:transparent;color:#e2e8f0;font-weight:900;text-align:left;padding:0 14px;cursor:pointer;display:flex;align-items:center;gap:10px}.menu button .material-symbols-rounded{font-size:21px;color:inherit}.menu button.active,.menu button:hover{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
     .main{margin-left:300px;padding:24px}.topbar{min-height:82px;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;margin-bottom:20px}.topbar h1{font-size:28px;font-weight:900}.topbar p{color:var(--muted);font-weight:700;margin-top:3px}.hamburger{display:none;width:50px;height:50px;border:1px solid var(--line);background:#fff;border-radius:14px;font-size:24px;font-weight:900}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{height:46px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--text);font-weight:900;padding:0 16px;cursor:pointer}.btn-primary{border:0;background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
     .screen{display:none}.screen.active{display:block}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:20px}.card small{display:block;color:var(--muted);font-weight:900;margin-bottom:10px}.card strong{font-size:28px;font-weight:900}.card p,.muted{color:var(--muted);font-weight:700;margin-top:8px}.panel{margin-top:18px}.empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:18px;padding:18px;color:#475569;font-weight:800}
-    @media(max-width:900px){.sidebar{transform:translateX(-105%);transition:.25s}.sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}.main{margin-left:0;padding:14px}.hamburger{display:block}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}}
+    .clientes-toolbar{display:grid;grid-template-columns:1.5fr repeat(2,minmax(170px,.7fr)) auto;gap:10px;margin:16px 0}.clientes-toolbar input,.clientes-toolbar select,.cliente-modal input,.cliente-modal select,.cliente-modal textarea{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:10px 13px;background:#fff;color:var(--text);font:inherit}.clientes-lista{display:grid;gap:10px}.cliente-row{display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:14px}.cliente-row small{display:block;color:var(--muted);font-weight:700;margin-top:4px}.cliente-modal-wrap{position:fixed;inset:0;display:none;z-index:100}.cliente-modal-wrap.show{display:block}.cliente-modal-overlay{position:absolute;inset:0;background:rgba(2,6,23,.58)}.cliente-modal{position:absolute;right:0;top:0;bottom:0;width:min(560px,100%);background:#fff;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(2,6,23,.2)}.cliente-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:18px}.cliente-modal form{display:grid;gap:12px;margin-top:18px}.cliente-modal label{font-weight:900;font-size:13px}.cliente-modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-bottom:env(safe-area-inset-bottom)}
+    @media(max-width:900px){.sidebar{transform:translateX(-105%);transition:.25s}.sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}.main{margin-left:0;padding:14px}.hamburger{display:block}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}.clientes-toolbar{grid-template-columns:1fr}.cliente-row{grid-template-columns:1fr}.cliente-row .btn{width:100%}}
 
-    /* ===== LOADING PREMIUM ÃNTEGRO COM PORCENTAGEM ===== */
+    /* ===== LOADING PREMIUM ÍNTEGRO COM PORCENTAGEM ===== */
     body.integro-booting{
       overflow:hidden;
     }
@@ -113,10 +115,10 @@
     }
   </style>
 </head>
-<body class="integro-booting">
+<body class="integro-booting integro-topnav-pattern">
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
-      <div class="integro-loader-logo">ÃNTEGRO<span>.</span></div>
+      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
       <div class="integro-loader-title">Preparando seu painel</div>
       <div class="integro-loader-step" id="integroLoaderStep">Carregando painel do supervisor...</div>
       <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
@@ -126,7 +128,7 @@
 
   <div id="overlay" class="overlay" onclick="toggleSidebar(false)"></div>
   <aside id="sidebar" class="sidebar">
-    <div class="logo">INTE<span>GRO</span></div>
+    <div class="logo">ÍNTE<span>GRO</span></div>
     <div class="user-card">
       <strong id="userNome">Usuario</strong>
       <small id="empresaNome">Empresa</small>
@@ -134,15 +136,17 @@
       <small id="userCargo">Supervisor</small>
     </div>
     <div class="menu">
-      <button class="active" onclick="trocarTela('dashboard',this)">Dashboard</button>
-      <button onclick="trocarTela('notificacoes',this)">Notificacoes <span id="badgeNotificacoes">0</span></button>
-      <button onclick="logout()">Sair</button>
+      <button class="active" onclick="trocarTela('dashboard',this)"><span class="material-symbols-rounded">dashboard</span>Dashboard</button>
+      <button onclick="trocarTela('clientes',this)"><span class="material-symbols-rounded">groups</span>Clientes</button>
+      <button onclick="trocarTela('notificacoes',this)"><span class="material-symbols-rounded">notifications</span>Notificacoes <span id="badgeNotificacoes">0</span></button>
+      <button onclick="trocarTela('chatInterno',this)"><span class="material-symbols-rounded">forum</span>Chat interno</button>
+      <button onclick="logout()"><span class="material-symbols-rounded">logout</span>Sair</button>
     </div>
   </aside>
   <main class="main">
     <header class="topbar">
       <div style="display:flex;align-items:center;gap:14px">
-        <button class="hamburger" onclick="toggleSidebar(true)">â˜°</button>
+        <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menu"><span class="material-symbols-rounded">menu</span></button>
         <div><h1 id="pageTitle">Dashboard</h1><p>Visao operacional da equipe.</p></div>
       </div>
       <div class="actions">
@@ -151,15 +155,30 @@
       </div>
     </header>
     <section id="dashboard" class="screen active">
-      <div class="grid">
-        <div class="card"><small>Equipe</small><strong id="kpiEquipe">0</strong><p>Usuarios vinculados.</p></div>
-        <div class="card"><small>Clientes</small><strong id="kpiClientes">0</strong><p>Carteira carregada.</p></div>
-        <div class="card"><small>Vendas hoje</small><strong id="kpiVendasHoje">0</strong><p>Registros do dia.</p></div>
-        <div class="card"><small>Solicitacoes</small><strong id="kpiSolicitacoes">0</strong><p>Pendentes de aprovacao.</p></div>
+      <nav class="integro-module-nav integro-dashboard-nav" data-dashboard-navigation data-dashboard-target="dashboard" data-dashboard-initial-view="visao-geral" aria-label="Áreas do dashboard">
+        <button class="integro-module-tab active" type="button" data-dashboard-view="visao-geral" aria-selected="true"><span class="material-symbols-rounded">dashboard</span><span>Visão geral</span></button>
+        <div class="integro-dashboard-dropdown">
+          <button class="integro-module-tab" type="button" data-dashboard-menu-trigger aria-expanded="false" aria-selected="false"><span class="material-symbols-rounded">analytics</span><span data-dashboard-menu-label>Análises</span><span class="material-symbols-rounded dashboard-nav-chevron">expand_more</span></button>
+          <div class="integro-dashboard-menu" data-dashboard-menu hidden>
+            <button type="button" data-dashboard-view="comercial"><span class="material-symbols-rounded">monitoring</span>Comercial</button>
+            <button type="button" data-dashboard-view="carteira"><span class="material-symbols-rounded">account_balance_wallet</span>Carteira</button>
+            <button type="button" data-dashboard-view="equipe"><span class="material-symbols-rounded">groups</span>Equipe</button>
+            <button type="button" data-dashboard-view="operacao"><span class="material-symbols-rounded">fact_check</span>Operação</button>
+          </div>
+        </div>
+      </nav>
+      <div class="grid" data-dashboard-container>
+        <div class="card" data-dashboard-views="visao-geral,equipe"><small>Equipe</small><strong id="kpiEquipe">0</strong><p>Usuarios vinculados.</p></div>
+        <div class="card" data-dashboard-views="visao-geral,carteira"><small>Clientes</small><strong id="kpiClientes">0</strong><p>Carteira carregada.</p></div>
+        <div class="card" data-dashboard-views="visao-geral,comercial"><small>Vendas hoje</small><strong id="kpiVendasHoje">0</strong><p>Registros do dia.</p></div>
+        <div class="card" data-dashboard-views="visao-geral,operacao"><small>Solicitacoes</small><strong id="kpiSolicitacoes">0</strong><p>Pendentes de aprovacao.</p></div>
       </div>
-      <div class="panel"><h2>Resumo</h2><div id="resumoSupervisor" class="empty">Sem dados para exibir.</div></div>
+      <div class="panel" data-dashboard-views="visao-geral,comercial,carteira,equipe,operacao"><h2>Resumo</h2><div id="resumoSupervisor" class="empty">Sem dados para exibir.</div></div>
     </section>
     <section id="notificacoes" class="screen"><div class="panel"><h2>Notificacoes</h2><div id="listaNotificacoes" class="empty">Nenhuma notificacao no momento.</div></div></section>
+    <section id="clientes" class="screen"><div class="panel"><h2>Clientes da equipe</h2><p class="muted">Atendimento, direcionamento e retrabalho dentro do seu escopo.</p><div class="clientes-toolbar"><input id="buscaClientesSupervisor" type="search" placeholder="Nome, documento ou telefone"><select id="statusClientesSupervisor"><option value="">Todos os atendimentos</option><option value="AGUARDANDO_ATENDIMENTO">Aguardando</option><option value="EM_ATENDIMENTO">Em atendimento</option><option value="NAO_CONVERTIDO">Não convertido</option><option value="EM_RETRABALHO">Em retrabalho</option><option value="CONVERTIDO">Convertido</option></select><select id="equipeClientesSupervisor"><option value="">Todas as equipes permitidas</option></select><button class="btn btn-primary" onclick="carregarClientesSupervisor()">Buscar</button></div><div id="listaClientesSupervisor" class="clientes-lista"><div class="empty">Abra a tela para carregar clientes.</div></div></div></section>
+    <section id="chatInterno" class="screen"><div class="panel"><h2>Chat interno</h2><div id="integroChatRoot"></div></div></section>
+    <div id="clienteModalSupervisor" class="cliente-modal-wrap"><div class="cliente-modal-overlay" onclick="fecharClienteSupervisor()"></div><div id="clienteModalSupervisorBody" class="cliente-modal"></div></div>
   </main>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -169,11 +188,15 @@
   <script src="js/utils/operational.js"></script>
   <script src="js/state.js"></script>
   <script src="js/services/firestore.js"></script>
+  <script src="js/services/clientes-service.js"></script>
   <script src="js/services/financial-operations.js"></script>
+  <script src="js/services/chat-service.js"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/chat-ui.js"></script>
+  <script src="js/dashboard-navigation.js"></script>
   <script>
     window.__supervisorBootRodando = false;
     window.__supervisorBootFinalizado = false;
@@ -205,7 +228,7 @@
           return State.getUsuario();
         }
       } catch (e) {
-        console.warn("Falha ao obter usuÃ¡rio do State:", e);
+        console.warn("Falha ao obter usuário do State:", e);
       }
       return null;
     }
@@ -247,7 +270,7 @@
           protegerPaginaAtual();
         }
 
-        setLoaderSupervisor(28, "Validando sessÃ£o e permissÃµes...");
+        setLoaderSupervisor(28, "Validando sessão e permissões...");
         await aguardarUsuarioSupervisorValidado();
 
         setLoaderSupervisor(45, "Carregando perfil do supervisor...");
@@ -255,7 +278,7 @@
           preencherUsuarioLayout();
         }
 
-        setLoaderSupervisor(65, "Carregando notificaÃ§Ãµes e alertas...");
+        setLoaderSupervisor(65, "Carregando notificações e alertas...");
         if (typeof carregarNotificacoesLayout === "function") {
           await carregarNotificacoesLayout(obterUsuarioSupervisorAtual());
         }
@@ -270,7 +293,7 @@
 
       } catch (erro) {
         console.error("Erro no loading do supervisor:", erro);
-        setLoaderSupervisor(100, "NÃ£o foi possÃ­vel validar todos os dados. Liberando painel...");
+        setLoaderSupervisor(100, "Não foi possível validar todos os dados. Liberando painel...");
         setTimeout(() => {
           document.body.classList.remove("integro-booting");
           const loader = document.getElementById("integroBootLoader");
@@ -309,7 +332,7 @@
       }
 
       if (!viaLoading) {
-        setLoaderSupervisor(100, "AtualizaÃ§Ã£o concluÃ­da.");
+        setLoaderSupervisor(100, "Atualização concluída.");
       }
     }
 
@@ -319,6 +342,84 @@
       document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("active"));
       el?.classList.add("active");
       if (window.innerWidth <= 900) toggleSidebar(false);
+      if (id === "clientes") carregarClientesSupervisor();
+    }
+
+    function escaparClienteSupervisor(valor) {
+      return String(valor == null ? "" : valor).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+    }
+
+    window.clientesSupervisorCache = [];
+
+    async function carregarClientesSupervisor() {
+      const box = document.getElementById("listaClientesSupervisor");
+      if (!box || !window.ClientesService) return;
+      box.innerHTML = '<div class="empty">Carregando clientes da equipe...</div>';
+      try {
+        const usuario = obterUsuarioSupervisorAtual() || {};
+        const busca = document.getElementById("buscaClientesSupervisor")?.value || "";
+        const statusAtendimento = document.getElementById("statusClientesSupervisor")?.value || "";
+        const equipeId = document.getElementById("equipeClientesSupervisor")?.value || "";
+        const lista = await window.ClientesService.listarClientes({ db: window.db || firebase.firestore(), busca, statusAtendimento, equipeId, limite: 200 }, usuario);
+        window.clientesSupervisorCache = lista;
+        const equipes = [...new Set(lista.map(item => item.equipeId).filter(Boolean))];
+        const seletor = document.getElementById("equipeClientesSupervisor");
+        if (seletor && seletor.options.length <= 1) equipes.forEach(id => seletor.insertAdjacentHTML("beforeend", `<option value="${escaparClienteSupervisor(id)}">${escaparClienteSupervisor(id)}</option>`));
+        document.getElementById("kpiClientes").textContent = String(lista.length);
+        box.innerHTML = lista.length ? lista.map(cliente => `<article class="cliente-row"><div><strong>${escaparClienteSupervisor(cliente.nome || cliente.nomeCompleto || "Cliente")}</strong><small>${escaparClienteSupervisor(cliente.documento || "Sem documento")}</small></div><div><strong>${escaparClienteSupervisor(cliente.statusAtendimento || "AGUARDANDO_ATENDIMENTO")}</strong><small>Ciclo ${Number(cliente.cicloAtendimentoAtual || 1)}</small></div><div><strong>${escaparClienteSupervisor(cliente.vendedorNome || "Não direcionado")}</strong><small>Vendedor</small></div><div><strong>${escaparClienteSupervisor(cliente.equipeId || "-")}</strong><small>Equipe</small></div><button class="btn" onclick="abrirClienteSupervisor('${escaparClienteSupervisor(cliente.id)}')">Detalhes</button></article>`).join("") : '<div class="empty">Nenhum cliente encontrado no seu escopo.</div>';
+      } catch (erro) {
+        console.error("Erro ao carregar clientes do supervisor:", erro);
+        box.innerHTML = `<div class="empty">${escaparClienteSupervisor(erro.message || "Não foi possível carregar os clientes.")}</div>`;
+      }
+    }
+
+    function fecharClienteSupervisor() {
+      document.getElementById("clienteModalSupervisor")?.classList.remove("show");
+      const body = document.getElementById("clienteModalSupervisorBody");
+      if (body) body.innerHTML = "";
+    }
+
+    function abrirClienteSupervisor(id) {
+      const cliente = window.clientesSupervisorCache.find(item => String(item.id) === String(id));
+      if (!cliente) return notificarIntegro("Cliente não encontrado.");
+      const encerrado = ["NAO_CONVERTIDO","RECUSADO"].includes(String(cliente.statusAtendimento || "").toUpperCase());
+      const body = document.getElementById("clienteModalSupervisorBody");
+      if (!body) return;
+      body.innerHTML = `<div class="cliente-modal-head"><div><h2>${escaparClienteSupervisor(cliente.nome || cliente.nomeCompleto || "Cliente")}</h2><p class="muted">${escaparClienteSupervisor(cliente.documento || "Sem documento")}</p></div><button class="btn" aria-label="Fechar" onclick="fecharClienteSupervisor()">Fechar</button></div><div class="card"><small>Status de atendimento</small><strong style="font-size:20px">${escaparClienteSupervisor(cliente.statusAtendimento || "AGUARDANDO_ATENDIMENTO")}</strong><p>Vendedor: ${escaparClienteSupervisor(cliente.vendedorNome || cliente.vendedorId || "Não direcionado")}</p><p>Equipe: ${escaparClienteSupervisor(cliente.equipeId || "-")}</p><p>Tentativas: ${Number(cliente.tentativasContato || 0)} | Ciclo: ${Number(cliente.cicloAtendimentoAtual || 1)}</p></div><form onsubmit="salvarAtendimentoSupervisor(event,'${escaparClienteSupervisor(id)}')"><label>Novo status</label><select id="statusAtendimentoSupervisor"><option value="EM_ATENDIMENTO">Em atendimento</option><option value="TENTATIVA_CONTATO">Tentativa de contato</option><option value="SEM_RETORNO">Sem retorno</option><option value="RETORNO_AGENDADO">Retorno agendado</option><option value="PROPOSTA_APRESENTADA">Proposta apresentada</option><option value="NAO_CONVERTIDO">Não convertido</option><option value="RECUSADO">Recusado</option></select><label>Motivo/resultado</label><input id="motivoAtendimentoSupervisor"><label>Observação</label><textarea id="obsAtendimentoSupervisor" rows="4"></textarea><div class="cliente-modal-actions"><button id="btnAtendimentoSupervisor" class="btn btn-primary" type="submit">Registrar atendimento</button>${encerrado ? `<button class="btn" type="button" onclick="reabrirClienteSupervisor('${escaparClienteSupervisor(id)}')">Iniciar retrabalho</button>` : ""}<button class="btn" type="button" onclick="historicoClienteSupervisor('${escaparClienteSupervisor(id)}')">Histórico</button></div></form><div id="historicoSupervisor"></div>`;
+      document.getElementById("clienteModalSupervisor")?.classList.add("show");
+    }
+
+    async function salvarAtendimentoSupervisor(event, id) {
+      event?.preventDefault?.();
+      const botao = document.getElementById("btnAtendimentoSupervisor");
+      if (botao?.disabled) return;
+      try {
+        if (botao) { botao.disabled = true; botao.textContent = "Registrando..."; }
+        await ClientesService.registrarAtendimento(id, { status: document.getElementById("statusAtendimentoSupervisor")?.value, motivo: document.getElementById("motivoAtendimentoSupervisor")?.value, observacao: document.getElementById("obsAtendimentoSupervisor")?.value, canal: "OUTRO" }, obterUsuarioSupervisorAtual() || {}, { db: window.db || firebase.firestore() });
+        notificarIntegro("Atendimento registrado.");
+        fecharClienteSupervisor();
+        await carregarClientesSupervisor();
+      } catch (erro) { notificarIntegro(erro.message || "Não foi possível registrar o atendimento."); if (botao) { botao.disabled = false; botao.textContent = "Tentar novamente"; } }
+    }
+
+    async function reabrirClienteSupervisor(id) {
+      const motivo = document.getElementById("motivoAtendimentoSupervisor")?.value || "";
+      try {
+        await ClientesService.reabrirParaRetrabalho(id, { motivo }, obterUsuarioSupervisorAtual() || {}, { db: window.db || firebase.firestore() });
+        notificarIntegro("Novo ciclo de atendimento iniciado.");
+        fecharClienteSupervisor();
+        await carregarClientesSupervisor();
+      } catch (erro) { notificarIntegro(erro.message || "Não foi possível iniciar o retrabalho."); }
+    }
+
+    async function historicoClienteSupervisor(id) {
+      const box = document.getElementById("historicoSupervisor");
+      if (!box) return;
+      box.innerHTML = '<div class="empty">Carregando histórico...</div>';
+      try {
+        const eventos = await ClientesService.obterHistorico(id, obterUsuarioSupervisorAtual() || {}, { db: window.db || firebase.firestore() });
+        box.innerHTML = eventos.length ? eventos.map(item => `<div class="empty" style="margin-top:8px"><strong>${escaparClienteSupervisor(item.tipo || item.tipoAcao || item.statusNovo || "EVENTO")}</strong><small>${escaparClienteSupervisor(item.dataHoraTexto || item.criadoEmTexto || "Data no servidor")}</small></div>`).join("") : '<div class="empty">Nenhuma movimentação registrada.</div>';
+      } catch (erro) { box.innerHTML = `<div class="empty">${escaparClienteSupervisor(erro.message || "Erro ao carregar histórico.")}</div>`; }
     }
 
     function toggleSidebar(abrir) {
@@ -329,6 +430,7 @@
       const deveAbrir = typeof abrir === "boolean" ? abrir : !sidebar.classList.contains("show");
       sidebar.classList.toggle("show", deveAbrir);
       overlay.classList.toggle("show", deveAbrir);
+      document.body.classList.toggle("menu-mobile-open", deveAbrir);
     }
 
     function abrirNotificacoes() {

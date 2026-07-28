@@ -36,6 +36,23 @@ const auth = firebase.auth();
 
 const db = firebase.firestore();
 
+// Emuladores locais exigem ativacao explicita (?emulator=1). Assim, abrir o
+// sistema em localhost para uso normal continua conectado ao Firebase real.
+const integroEmAmbienteLocal = ["localhost", "127.0.0.1", "::1"].includes(
+  String(window.location.hostname || "").toLowerCase()
+);
+const integroParametros = new URLSearchParams(window.location.search);
+const integroParametroEmulator = integroParametros.get("emulator");
+
+if (integroEmAmbienteLocal && integroParametroEmulator === "1") {
+  sessionStorage.setItem("integro:usar-emulator", "1");
+} else if (integroParametroEmulator === "0") {
+  sessionStorage.removeItem("integro:usar-emulator");
+}
+
+const integroUsarEmulator = integroEmAmbienteLocal &&
+  sessionStorage.getItem("integro:usar-emulator") === "1";
+
 // ========================================
 // FIRESTORE SETTINGS
 // ========================================
@@ -43,6 +60,21 @@ const db = firebase.firestore();
 db.settings({
   ignoreUndefinedProperties: true
 });
+
+if (integroUsarEmulator) {
+  auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true });
+  db.useEmulator("127.0.0.1", 8080);
+
+  if (typeof firebase.storage === "function") {
+    firebase.storage().useEmulator("127.0.0.1", 9199);
+  }
+
+  window.__INTEGRO_EMULATOR__ = Object.freeze({
+    auth: "http://127.0.0.1:9099",
+    firestore: "127.0.0.1:8080",
+    storage: "127.0.0.1:9199"
+  });
+}
 
 // ========================================
 // AUTH SETTINGS

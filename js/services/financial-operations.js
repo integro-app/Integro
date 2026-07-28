@@ -23,6 +23,18 @@
     return firebase.firestore.FieldValue.serverTimestamp();
   }
 
+  async function referenciasDaConsulta(consulta) {
+    const snapshot = await consulta.get();
+    return (snapshot?.docs || []).map(documento => documento.ref).filter(Boolean);
+  }
+
+  async function lerReferenciasNaTransacao(transaction, referencias) {
+    const snapshots = await Promise.all(referencias.map(referencia => transaction.get(referencia)));
+    return snapshots
+      .filter(snapshot => snapshot?.exists)
+      .map(snapshot => ({ id: snapshot.id, ...snapshot.data() }));
+  }
+
   function texto(valor) {
     return String(valor ?? "").trim();
   }
@@ -460,8 +472,14 @@
 
   async function listarLancamentosCaixa(caixaId, opcoes = {}) {
     const db = opcoes.db || getDb();
-    const tenantId = texto(opcoes.clientePlataformaId || "");
-    const lancamentos = await listarPorCaixa(db, "lancamentos_financeiros", texto(caixaId), opcoes.limite || 5000);
+    let tenantId = texto(opcoes.clientePlataformaId || "");
+    if (!tenantId) {
+      const caixaSnap = await db.collection("caixas").doc(texto(caixaId)).get();
+      tenantId = caixaSnap.exists
+        ? texto(caixaSnap.data()?.clientePlataformaId || caixaSnap.data()?.tenantId || caixaSnap.data()?.empresaId)
+        : "";
+    }
+    const lancamentos = await listarPorCaixa(db, "lancamentos_financeiros", texto(caixaId), tenantId, opcoes.limite || 5000);
     return lancamentos.filter(l => {
       if (tenantId) {
         try { validarTenant(l, tenantId, "LanÃ§amento financeiro"); } catch (_) { return false; }
@@ -1403,11 +1421,12 @@
       .where("vendedorId", "==", vendedorId)
       .where("status", "==", "ABERTO")
       .limit(20);
+    const abertosReferencias = await referenciasDaConsulta(abertosQuery);
 
     return db.runTransaction(async transaction => {
-      const [caixaSnap, abertosSnap] = await Promise.all([
+      const [caixaSnap, abertos] = await Promise.all([
         transaction.get(caixaRef),
-        transaction.get(abertosQuery)
+        lerReferenciasNaTransacao(transaction, abertosReferencias)
       ]);
 
       if (caixaSnap.exists) {
@@ -1417,12 +1436,6 @@
         return { caixaId, operacaoId: caixa.operacaoId || operacaoId, modo: "IDEMPOTENTE", caixa: { id: caixaId, ...caixa } };
       }
 
-      const abertos = [];
-      if (abertosSnap?.forEach) {
-        abertosSnap.forEach(doc => abertos.push({ id: doc.id, ...doc.data() }));
-      } else if (Array.isArray(abertosSnap?.docs)) {
-        abertosSnap.docs.forEach(doc => abertos.push({ id: doc.id, ...doc.data() }));
-      }
       const abertosValidos = abertos.filter(c => c.excluido !== true && c.ativo !== false);
       const abertosHoje = abertosValidos.filter(c => texto(c.dataOperacional || c.dataCaixa || c.dataAbertura).slice(0, 10) === dataOperacional);
       const abertosAnteriores = abertosValidos.filter(c => texto(c.dataOperacional || c.dataCaixa || c.dataAbertura).slice(0, 10) && texto(c.dataOperacional || c.dataCaixa || c.dataAbertura).slice(0, 10) !== dataOperacional);
@@ -1508,14 +1521,27 @@
     return ["APROVADO", "APROVADA"].includes(normalizarStatus(valor));
   }
 
-  async function listarPorCaixa(db, colecao, caixaId, limite = 5000) {
+  async function listarPorCaixa(db, colecao, caixaId, clientePlataformaId, limite = 5000) {
+    const tenantId = texto(clientePlataformaId);
+    if (!tenantId) {
+      const erro = new Error(`Tenant obrigatório para consultar ${colecao} no fechamento.`);
+      erro.code = "ERRO_TENANT_FECHAMENTO";
+      throw erro;
+    }
     const encontrados = [];
     try {
-      const snap = await db.collection(colecao).where("caixaId", "==", caixaId).limit(limite).get();
+      const snap = await db.collection(colecao)
+        .where("clientePlataformaId", "==", tenantId)
+        .where("caixaId", "==", caixaId)
+        .limit(limite)
+        .get();
       snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
     } catch (_) {
       try {
-        const snap = await db.collection(colecao).limit(limite).get();
+        const snap = await db.collection(colecao)
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(limite)
+          .get();
         snap.forEach(doc => {
           const item = { id: doc.id, ...doc.data() };
           if (texto(item.caixaId || item.idCaixa || item.caixaID || item.caixaAtualId) === caixaId) {
@@ -1523,7 +1549,10 @@
           }
         });
       } catch (erroFallback) {
-        console.warn(`Falha ao consultar ${colecao} para fechamento:`, erroFallback);
+        const erro = new Error(`Não foi possível consultar ${colecao} para calcular o fechamento.`);
+        erro.code = erroFallback?.code || "ERRO_LEITURA_FECHAMENTO";
+        erro.cause = erroFallback;
+        throw erro;
       }
     }
     return encontrados.filter(item => item.excluido !== true);
@@ -1564,14 +1593,16 @@
     const caixaSnap = await db.collection("caixas").doc(caixaId).get();
     if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
     const caixa = { id: caixaSnap.id || caixaId, ...caixaSnap.data() };
+    const tenantId = texto(entrada.clientePlataformaId || caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId);
+    if (!tenantId) throw new Error("Caixa sem tenant válido para fechamento.");
     const dataOperacional = texto(entrada.dataOperacional || caixa.dataOperacional || caixa.dataCaixa || caixa.dataAbertura || operacional.hojeSP()).slice(0, 10);
 
     const [vendas, pagamentos, solicitacoes, parcelas, historicos] = await Promise.all([
-      listarPorCaixa(db, "vendas", caixaId),
-      listarPorCaixa(db, "pagamentos", caixaId),
-      listarPorCaixa(db, "solicitacoes", caixaId),
-      listarPorCaixa(db, "parcelas", caixaId),
-      listarPorCaixa(db, "historicoCobrancas", caixaId)
+      listarPorCaixa(db, "vendas", caixaId, tenantId),
+      listarPorCaixa(db, "pagamentos", caixaId, tenantId),
+      listarPorCaixa(db, "solicitacoes", caixaId, tenantId),
+      listarPorCaixa(db, "parcelas", caixaId, tenantId),
+      listarPorCaixa(db, "historicoCobrancas", caixaId, tenantId)
     ]);
 
     const vendasValidas = vendas.filter(statusVendaAberta);
@@ -1660,7 +1691,7 @@
     const caixaId = texto(entrada.caixaId);
     const tenantId = texto(entrada.clientePlataformaId || usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId);
     const vendedorId = texto(entrada.vendedorId || usuario.id || usuario.usuarioId);
-    const uid = texto(usuario.authUid || usuario.uid || entrada.vendedorAuthUid || "");
+    const uid = texto(entrada.vendedorAuthUid || usuario.authUid || usuario.uid || "");
     const valorInformadoCentavos = Number.isInteger(entrada.valorInformadoCentavos)
       ? entrada.valorInformadoCentavos
       : operacional.moedaParaCentavos(entrada.valorInformado || entrada.valorReal || 0);
@@ -1706,12 +1737,13 @@
       .where("vendedorId", "==", vendedorId || snapshot.caixa.vendedorId || "")
       .where("status", "==", "ABERTO")
       .limit(20);
+    const abertosReferencias = await referenciasDaConsulta(abertosQuery);
 
     return db.runTransaction(async transaction => {
-      const [caixaSnap, fechamentoSnap, abertosSnap] = await Promise.all([
+      const [caixaSnap, fechamentoSnap, abertos] = await Promise.all([
         transaction.get(caixaRef),
         transaction.get(fechamentoRef),
-        transaction.get(abertosQuery)
+        lerReferenciasNaTransacao(transaction, abertosReferencias)
       ]);
       if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
 
@@ -1726,8 +1758,6 @@
       if (texto(caixaId) !== texto(snapshot.caixa.id)) throw new Error("Snapshot de fechamento nÃ£o pertence ao caixa atual.");
       if (normalizarStatus(caixa.status) !== "ABERTO") throw new Error("Caixa jÃ¡ estÃ¡ fechado ou nÃ£o estÃ¡ aberto.");
 
-      const abertos = [];
-      if (abertosSnap?.forEach) abertosSnap.forEach(doc => abertos.push({ id: doc.id, ...doc.data() }));
       const abertosValidos = abertos.filter(c => c.excluido !== true && c.ativo !== false);
       if (abertosValidos.length > 1) {
         const erro = new Error("Existem mÃºltiplos caixas abertos para este vendedor. Regularize antes de fechar.");
@@ -1875,9 +1905,9 @@
     const [snapshot, saldoLedger, vendas, pagamentos, solicitacoes, fechamentoSnap] = await Promise.all([
       prepararSnapshotFechamentoCaixa({ caixaId, db, ignorarPendencias: true }),
       calcularSaldoLedgerCaixa(caixaId, { db, clientePlataformaId: caixa.clientePlataformaId }),
-      listarPorCaixa(db, "vendas", caixaId),
-      listarPorCaixa(db, "pagamentos", caixaId),
-      listarPorCaixa(db, "solicitacoes", caixaId),
+      listarPorCaixa(db, "vendas", caixaId, caixa.clientePlataformaId),
+      listarPorCaixa(db, "pagamentos", caixaId, caixa.clientePlataformaId),
+      listarPorCaixa(db, "solicitacoes", caixaId, caixa.clientePlataformaId),
       db.collection("fechamentos_caixa").doc(fechamentoId).get()
     ]);
     const lancamentos = saldoLedger.lancamentos;
@@ -1958,8 +1988,14 @@
   async function mapearLancamentosLegadosSomenteLeitura(opcoes = {}) {
     const db = opcoes.db || getDb();
     const caixaId = texto(opcoes.caixaId || "");
-    const tenantId = texto(opcoes.clientePlataformaId || "");
-    const origem = caixaId ? async col => listarPorCaixa(db, col, caixaId) : async col => {
+    let tenantId = texto(opcoes.clientePlataformaId || "");
+    if (caixaId && !tenantId) {
+      const caixaSnap = await db.collection("caixas").doc(caixaId).get();
+      tenantId = caixaSnap.exists
+        ? texto(caixaSnap.data()?.clientePlataformaId || caixaSnap.data()?.tenantId || caixaSnap.data()?.empresaId)
+        : "";
+    }
+    const origem = caixaId ? async col => listarPorCaixa(db, col, caixaId, tenantId) : async col => {
       const lista = [];
       const snap = tenantId
         ? await db.collection(col).where("clientePlataformaId", "==", tenantId).limit(opcoes.limite || 5000).get()

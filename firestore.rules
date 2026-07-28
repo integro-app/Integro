@@ -99,6 +99,19 @@ service cloud.firestore {
         userDoc().get("acessoLiberado", false) == true;
     }
 
+    function isActiveMasterLocalFor(data) {
+      let user = userDoc();
+      return isAuthenticated() &&
+        exists(userPath()) &&
+        user.get("authUid", "") == currentUid() &&
+        !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        user.get("acessoLiberado", false) == true &&
+        user.get("tipoUsuario", "") == "master_local" &&
+        user.get("clientePlataformaId", "") is string &&
+        user.get("clientePlataformaId", "").size() > 0 &&
+        data.get("clientePlataformaId", "") == user.get("clientePlataformaId", "");
+    }
+
     function permMap() {
       return userDoc().get("permissoes", {});
     }
@@ -265,7 +278,7 @@ service cloud.firestore {
     }
 
     function canReadCaixa(data) {
-      return isOperationalReader(data) ||
+      return isActiveMasterLocalFor(data) || isOperationalReader(data) ||
         (isFinanceiro() && isSameTenantRead() && hasPermission("podeVerReconciliacao")) ||
         (isAuditor() && isSameTenantRead());
     }
@@ -478,21 +491,100 @@ service cloud.firestore {
         (
           isMasterLocal() ||
           (isSupervisor() && hasPermission("redistribuirIndicacao") && isTeamAllowed(resource.data)) ||
-          (isVendedor() && isIndicacaoDoVendedor(resource.data) &&
-            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "statusIndicacao", "motivo", "motivoNaoConversao", "dataAtendimento", "dataNaoConversao", "atualizadoEm"]))
+          (isVendedor() && isIndicacaoDoVendedor(resource.data) && (
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "statusIndicacao", "motivo", "motivoNaoConversao", "dataAtendimento", "dataNaoConversao", "atualizadoEm"]) ||
+            (
+              request.resource.data.get("status", request.resource.data.get("statusIndicacao", "")) == "CONVERTIDA" &&
+              request.resource.data.get("vendaId", "") is string &&
+              request.resource.data.get("vendaId", "").size() > 0 &&
+              exists(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))) &&
+              get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
+              isOwnSellerData(get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data) &&
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(["status", "statusIndicacao", "vendaId", "clienteId", "clienteNome", "convertidoPorId", "convertidoPorNome", "convertidoEmTexto", "metricas", "dataConversao", "atualizadoEm"])
+            )
+          ))
         );
     }
 
-    function canUpdateClienteOperacional() {
+    function conversaoClienteValida(clienteId) {
+      return request.resource.data.get("statusAtendimento", "") != "CONVERTIDO" ||
+        resource.data.get("statusAtendimento", "") == "CONVERTIDO" ||
+        (
+          request.resource.data.get("vendaId", "") is string &&
+          request.resource.data.get("vendaId", "").size() > 0 &&
+          exists(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))) &&
+          get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
+          get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clienteId", "") in [clienteId, resource.data.get("clienteLegadoId", ""), resource.data.get("clienteOperacionalId", "")]
+        );
+    }
+
+    function canUpdateClienteOperacional(clienteId) {
       return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
         unchanged(["clientePlataformaId", "criadoEm"]) &&
+        conversaoClienteValida(clienteId) &&
         (
           isMasterLocal() ||
           isFinanceiro() ||
-          (isSupervisor() && isTeamAllowed(resource.data)) ||
+          (isSupervisor() && isTeamAllowed(resource.data) && isTeamAllowed(request.resource.data)) ||
           (isVendedor() && isOwnSellerData(resource.data) &&
+            unchanged(["vendedorId", "vendedorAuthUid", "vendedorUid", "equipeId"]) &&
             unchanged(["saldoDevedor", "saldoDevedorCentavos", "possuiVendaAtiva", "vendaAtivaId"]))
         );
+    }
+
+    function clienteEventoExiste(data) {
+      return data.get("clienteId", "") is string &&
+        data.get("clienteId", "").size() > 0 &&
+        exists(/databases/$(database)/documents/clientes_operacionais/$(data.get("clienteId", ""))) &&
+        get(/databases/$(database)/documents/clientes_operacionais/$(data.get("clienteId", ""))).data.get("clientePlataformaId", "") == userTenantId();
+    }
+
+    function clienteEventoData(data) {
+      return get(/databases/$(database)/documents/clientes_operacionais/$(data.get("clienteId", ""))).data;
+    }
+
+    function eventoClienteDoUsuario(data) {
+      return data.get("usuarioAuthUid", "") == currentUid() ||
+        data.get("usuarioId", "") in [currentUid(), userDoc().get("id", "")];
+    }
+
+    function canReadEventoCliente(data) {
+      return isActiveUser() && isSameTenantRead() && clienteEventoExiste(data) && (
+        isMasterLocal() || isGerente() || isFinanceiro() || isAuditor() ||
+        (isSupervisor() && isTeamAllowed(clienteEventoData(data))) ||
+        (isVendedor() && isOwnSellerData(clienteEventoData(data)))
+      );
+    }
+
+    function canCreateInteracaoCliente(data) {
+      return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
+        eventoClienteDoUsuario(data) &&
+        data.get("statusNovo", "") is string &&
+        data.get("statusNovo", "").size() > 2 &&
+        (
+          isMasterLocal() || isGerente() ||
+          (isSupervisor() && isTeamAllowed(clienteEventoData(data))) ||
+          (isVendedor() && isOwnSellerData(clienteEventoData(data)))
+        );
+    }
+
+    function canCreateDirecionamentoCliente(data) {
+      return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
+        eventoClienteDoUsuario(data) &&
+        data.get("vendedorDestinoId", "") is string &&
+        data.get("vendedorDestinoId", "").size() > 0 &&
+        data.get("equipeDestinoId", "") is string &&
+        data.get("equipeDestinoId", "").size() > 0 &&
+        (isMasterLocal() || isGerente() ||
+          (isSupervisor() && isTeamAllowed(clienteEventoData(data)) && isTeamAllowed(data)));
+    }
+
+    function canCreateCicloCliente(data) {
+      return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
+        eventoClienteDoUsuario(data) &&
+        data.get("ciclo", 0) is int && data.get("ciclo", 0) > 1 &&
+        data.get("motivo", "") is string && data.get("motivo", "").size() > 2 &&
+        (isMasterLocal() || isGerente() || (isSupervisor() && isTeamAllowed(clienteEventoData(data))));
     }
 
     function canCreateLog(data) {
@@ -505,6 +597,68 @@ service cloud.firestore {
           data.get("usuarioId", "") in [currentUid(), userDoc().get("id", "")] ||
           data.get("usuarioId", "") == ""
         );
+    }
+
+    function chatParticipante(data) {
+      return data.get("participantesIds", []) is list &&
+        currentUid() in data.get("participantesIds", []);
+    }
+
+    function canReadConversa(data) {
+      return isActiveUser() &&
+        hasTenant() &&
+        data.get("clientePlataformaId", "") == userTenantId() &&
+        chatParticipante(data);
+    }
+
+    function validTipoConversa(data) {
+      return data.get("tipo", "") in ["DIRETA", "EQUIPE"];
+    }
+
+    function canCreateConversa(data) {
+      return isActiveUser() && isSameTenantWrite() &&
+        !isAuditor() &&
+        validTipoConversa(data) &&
+        data.keys().hasAll(["clientePlataformaId", "tipo", "participantesIds"]) &&
+        data.get("participantesIds", []) is list &&
+        currentUid() in data.get("participantesIds", []) &&
+        (
+          data.get("tipo", "") == "DIRETA" ||
+          (
+            data.get("tipo", "") == "EQUIPE" &&
+            data.get("equipeId", "") is string &&
+            data.get("equipeId", "").size() > 0 &&
+            (isMasterLocal() || isGerente() || data.get("equipeId", "") in userEquipeIds())
+          )
+        );
+    }
+
+    function canUpdateConversa() {
+      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        !isAuditor() &&
+        chatParticipante(resource.data) &&
+        unchanged(["clientePlataformaId", "tipo", "participantesIds", "equipeId", "criadoEm"]) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["ultimaMensagem", "ultimaMensagemEm", "atualizadoEm", "naoLidasPorUsuario"]);
+    }
+
+    function canReadMensagem(conversaId) {
+      return exists(/databases/$(database)/documents/conversas/$(conversaId)) &&
+        canReadConversa(get(/databases/$(database)/documents/conversas/$(conversaId)).data);
+    }
+
+    function canCreateMensagem(conversaId, data) {
+      return isActiveUser() &&
+        exists(/databases/$(database)/documents/conversas/$(conversaId)) &&
+        !isAuditor() &&
+        canReadConversa(get(/databases/$(database)/documents/conversas/$(conversaId)).data) &&
+        data.keys().hasAll(["clientePlataformaId", "conversaId", "remetenteId", "texto", "criadoEm", "dataOperacional", "status"]) &&
+        data.get("clientePlataformaId", "") == userTenantId() &&
+        data.get("conversaId", "") == conversaId &&
+        data.get("remetenteId", "") == currentUid() &&
+        data.get("texto", "") is string &&
+        data.get("texto", "").size() > 0 &&
+        data.get("texto", "").size() <= 1200 &&
+        data.get("status", "") == "ENVIADA";
     }
 
     match /usuarios/{uid} {
@@ -525,6 +679,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /clientes_integro/{id} {
+      allow read: if isActiveUser() &&
+        (isMasterGlobal() || isUsuarioIntegro() || id == userTenantId());
+      allow create, update, delete: if false;
+    }
+
     match /lancamentos_financeiros/{id} {
       allow read: if canReadFinance(resource.data);
       allow create: if canCreateLedger(request.resource.data);
@@ -540,7 +700,15 @@ service cloud.firestore {
     }
 
     match /fechamentos_caixa/{id} {
-      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow get: if isActiveUser() && (
+        (!exists(/databases/$(database)/documents/fechamentos_caixa/$(id)) &&
+          (isMasterLocal() || isSupervisor() || isFinanceiro() || isVendedor())) ||
+        (isSameTenantRead() &&
+          (isMasterLocal() || isFinanceiro() || isAuditor() ||
+            (isSupervisor() && isTeamAllowed(resource.data)) ||
+            (isVendedor() && isOwnSellerData(resource.data))))
+      );
+      allow list: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateFechamento(request.resource.data, id);
       allow update: if canUpdateFechamento();
       allow delete: if false;
@@ -568,31 +736,36 @@ service cloud.firestore {
     }
 
     match /pagamentos/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data);
       allow create: if canCreatePagamento(request.resource.data);
       allow update: if canUpdatePagamento();
       allow delete: if false;
     }
 
     match /vendas/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data);
       allow create: if canCreateVenda(request.resource.data);
       allow update: if canUpdateVenda();
       allow delete: if false;
     }
 
     match /parcelas/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data);
       allow create: if isOperationalCreator(request.resource.data);
       allow update: if canUpdateParcela();
       allow delete: if false;
     }
 
     match /solicitacoes/{id} {
-      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateSolicitacao(request.resource.data);
       allow update: if canUpdateSolicitacao();
       allow delete: if false;
+    }
+
+    match /historicoCobrancas/{id} {
+      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data);
+      allow create, update, delete: if false;
     }
 
     match /indicacoes/{id} {
@@ -603,17 +776,38 @@ service cloud.firestore {
     }
 
     match /clientes_operacionais/{id} {
-      allow read: if isOperationalReader(resource.data) || isCaptador();
-      allow create: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isCaptador() || isVendedor());
-      allow update: if canUpdateClienteOperacional();
+      allow read: if isOperationalReader(resource.data) ||
+        (isActiveUser() && isCaptador() && isSameTenantRead());
+      allow create: if isActiveUser() && isSameTenantWrite() &&
+        (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data)));
+      allow update: if canUpdateClienteOperacional(id);
       allow delete: if false;
     }
 
     match /clientes/{id} {
       allow read: if isOperationalReader(resource.data);
-      allow create: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isVendedor() || isCaptador());
-      allow update: if canUpdateClienteOperacional();
+      allow create: if isActiveUser() && isSameTenantWrite() &&
+        (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data)));
+      allow update: if canUpdateClienteOperacional(id);
       allow delete: if false;
+    }
+
+    match /interacoes_clientes/{id} {
+      allow read: if canReadEventoCliente(resource.data);
+      allow create: if canCreateInteracaoCliente(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /direcionamentos_clientes/{id} {
+      allow read: if canReadEventoCliente(resource.data);
+      allow create: if canCreateDirecionamentoCliente(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    match /ciclos_atendimento_clientes/{id} {
+      allow read: if canReadEventoCliente(resource.data);
+      allow create: if canCreateCicloCliente(request.resource.data);
+      allow update, delete: if false;
     }
 
     match /logs/{id} {
@@ -628,6 +822,19 @@ service cloud.firestore {
       allow read: if isOperationalReader(resource.data);
       allow create, update: if isOperationalCreator(request.resource.data);
       allow delete: if false;
+    }
+
+    match /conversas/{id} {
+      allow read: if canReadConversa(resource.data);
+      allow create: if canCreateConversa(request.resource.data);
+      allow update: if canUpdateConversa();
+      allow delete: if false;
+
+      match /mensagens/{mensagemId} {
+        allow read: if canReadMensagem(id);
+        allow create: if canCreateMensagem(id, request.resource.data);
+        allow update, delete: if false;
+      }
     }
 
     match /cargos/{id} {

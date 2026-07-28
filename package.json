@@ -3,8 +3,12 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
-    "test": "node --test tests/payment-transaction.test.js tests/indicacoes-service.test.js tests/financeiro-screen.test.js tests/auth-diagnostics.test.js tests/clientes-service.test.js tests/perfis-dedicados.test.js",
-    "test:rules": "firebase emulators:exec --only firestore,storage \"node --test tests/firestore-rules.test.js\""
+    "test": "node --test tests/payment-transaction.test.js tests/indicacoes-service.test.js tests/financeiro-screen.test.js tests/auth-diagnostics.test.js tests/clientes-service.test.js tests/clientes-operacionais-service.test.js tests/perfis-dedicados.test.js",
+    "test:rules": "firebase emulators:exec --only firestore,storage \"node --test tests/firestore-rules.test.js\"",
+    "emulators:clientes": "firebase emulators:start --only auth,firestore,hosting,storage",
+    "seed:clientes": "node scripts/seed-homologacao-clientes.js",
+    "test:clientes:integration": "node --test tests/clientes-emulator.integration.test.js",
+    "homologar:clientes": "firebase emulators:exec --only auth,firestore,storage \"node scripts/seed-homologacao-clientes.js && node --test tests/clientes-emulator.integration.test.js\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.3",

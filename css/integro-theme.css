@@ -1,4 +1,4 @@
-/* ========================================
+﻿/* ========================================
    INTEGRO - Camada global de padronizacao visual
    Baseada no layout aprovado do Master Local
    ======================================== */
@@ -734,5 +734,642 @@ tbody tr:hover {
   .panel,
   .section-card {
     border-radius: 20px !important;
+  }
+}
+
+/* ===== Restauracao premium: logo, hamburger e camadas ===== */
+.material-symbols-rounded,
+.material-symbols-outlined,
+.material-symbols-sharp {
+  font-family: "Material Symbols Rounded", "Material Symbols Outlined", sans-serif;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "liga";
+}
+
+.mobile-menu-btn,
+.hamburger {
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  min-height: 52px;
+  border-radius: 16px;
+  border: 1px solid rgba(226, 232, 240, .95);
+  background: #fff;
+  color: var(--integro-text);
+  box-shadow: 0 14px 34px rgba(15, 23, 42, .10);
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.mobile-menu-btn .material-symbols-rounded,
+.hamburger .material-symbols-rounded {
+  font-size: 26px;
+}
+
+.brand-logo-wrap,
+.logo,
+.brand h1 {
+  min-width: 0;
+}
+
+.logo-integro-sidebar {
+  object-fit: contain;
+  object-position: left center;
+}
+
+.sidebar {
+  z-index: 1200;
+}
+
+.overlay,
+.drawer-overlay {
+  z-index: 1190;
+}
+
+.drawer-side {
+  z-index: 1200;
+}
+
+.drawer,
+.drawer-content,
+.modal,
+.modal-content {
+  z-index: 1300;
+}
+
+body.menu-mobile-open .mobile-menu-btn,
+body.menu-mobile-open .hamburger,
+body.menu-aberto .mobile-menu-btn,
+body.menu-aberto .hamburger,
+.sidebar.show ~ .main .hamburger,
+.sidebar.open ~ .main .hamburger,
+.sidebar.active ~ .main .hamburger {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.drawer-body,
+.modal-body {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+@media (max-width: 900px) {
+  .drawer,
+  .drawer-content,
+  .modal,
+  .modal-content {
+    max-width: 100vw;
+    max-height: 100dvh;
+  }
+
+  .drawer-body,
+  .modal-body {
+    max-height: calc(100dvh - 80px);
+    overflow-y: auto;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+  }
+
+  .top-actions,
+  .actions,
+  .drawer-actions,
+  .form-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* ===== Chat interno MVP ===== */
+.integro-chat {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) minmax(0, 1fr);
+  min-height: 560px;
+  overflow: hidden;
+  border: 1px solid rgba(226, 232, 240, .95);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, .07);
+}
+
+.integro-chat-list,
+.integro-chat-thread {
+  min-width: 0;
+}
+
+.integro-chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border-right: 1px solid rgba(226, 232, 240, .95);
+  background: #f8fafc;
+}
+
+.integro-chat-head,
+.integro-chat-thread-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.integro-chat-head h2,
+.integro-chat-thread-head h3 {
+  margin: 0;
+  color: var(--integro-text);
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.integro-chat-head p,
+.integro-chat-thread-head p {
+  margin: 4px 0 0;
+  color: #64748b;
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.integro-chat-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px;
+}
+
+.integro-chat-status {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.integro-chat-conversas {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.integro-chat-conversa {
+  width: 100%;
+  min-height: 66px;
+  padding: 12px;
+  border: 1px solid rgba(226, 232, 240, .95);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--integro-text);
+  text-align: left;
+}
+
+.integro-chat-conversa.active {
+  border-color: rgba(255, 138, 0, .45);
+  box-shadow: 0 10px 24px rgba(255, 138, 0, .12);
+}
+
+.integro-chat-conversa strong,
+.integro-chat-conversa span {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.integro-chat-conversa strong {
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.integro-chat-conversa span {
+  margin-top: 4px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.integro-chat-thread {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.integro-chat-thread-head {
+  padding: 16px;
+  border-bottom: 1px solid rgba(226, 232, 240, .95);
+}
+
+.integro-chat-mensagens {
+  display: flex;
+  flex: 1;
+  min-height: 320px;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 16px;
+  background: linear-gradient(180deg, #fff, #f8fafc);
+}
+
+.integro-chat-msg {
+  max-width: min(72%, 560px);
+  padding: 12px 14px;
+  border: 1px solid rgba(226, 232, 240, .95);
+  border-radius: 18px 18px 18px 6px;
+  background: #fff;
+  color: var(--integro-text);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, .05);
+}
+
+.integro-chat-msg.mine {
+  align-self: flex-end;
+  border-color: rgba(255, 138, 0, .26);
+  border-radius: 18px 18px 6px 18px;
+  background: #fff7ed;
+}
+
+.integro-chat-msg div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.integro-chat-msg strong {
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.integro-chat-msg small {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.integro-chat-msg p {
+  margin: 0 0 6px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+
+.integro-chat-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(226, 232, 240, .95);
+  background: #fff;
+}
+
+@media (max-width: 760px) {
+  .integro-chat {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .integro-chat-list {
+    border-right: 0;
+    border-bottom: 1px solid rgba(226, 232, 240, .95);
+  }
+
+  .integro-chat-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .integro-chat-msg {
+    max-width: 92%;
+  }
+
+  .integro-chat-form {
+    grid-template-columns: 1fr;
+    padding-bottom: calc(14px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Dashboard por visoes: resumo inicial e analises sob demanda. */
+.integro-dashboard-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.integro-dashboard-heading h2,
+.integro-dashboard-heading h1 {
+  margin: 0;
+}
+
+.integro-dashboard-heading p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.integro-dashboard-nav {
+  overflow: visible;
+  margin-bottom: 22px;
+}
+
+.integro-dashboard-dropdown {
+  position: relative;
+  display: flex;
+  min-width: 180px;
+}
+
+.integro-dashboard-dropdown > .integro-module-tab {
+  width: 100%;
+}
+
+.integro-dashboard-dropdown > .integro-module-tab .dashboard-nav-chevron {
+  margin-left: 3px;
+  font-size: 19px;
+  transition: transform .18s ease;
+}
+
+.integro-dashboard-dropdown > .integro-module-tab[aria-expanded="true"] .dashboard-nav-chevron {
+  transform: rotate(180deg);
+}
+
+.integro-dashboard-menu {
+  position: absolute;
+  z-index: 120;
+  top: calc(100% + 8px);
+  left: 8px;
+  width: 230px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, .16);
+}
+
+.integro-dashboard-menu[hidden] {
+  display: none !important;
+}
+
+.integro-dashboard-menu button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.integro-dashboard-menu button:hover,
+.integro-dashboard-menu button.active {
+  background: #fff7ed;
+  color: #c85f00;
+}
+
+.integro-dashboard-menu .material-symbols-rounded {
+  font-size: 20px;
+}
+
+[data-dashboard-views][hidden],
+[data-dashboard-container][hidden] {
+  display: none !important;
+}
+
+.dashboard-single-panel {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+
+@media (max-width: 760px) {
+  .integro-dashboard-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .integro-dashboard-nav {
+    overflow-x: auto;
+    overflow-y: visible;
+  }
+
+  .integro-dashboard-dropdown {
+    position: static;
+    min-width: 160px;
+  }
+
+  .integro-dashboard-menu {
+    position: fixed;
+    z-index: 10020;
+    top: auto;
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    left: 14px;
+    width: auto;
+    max-height: min(360px, 70vh);
+    overflow-y: auto;
+  }
+}
+
+/* Navegacao secundaria oficial: os modulos ficam na sidebar e suas areas no topo. */
+.integro-module-nav {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  min-width: 0;
+  min-height: 58px;
+  margin: 0 0 18px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+  scrollbar-width: none;
+}
+
+.integro-module-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.integro-module-nav[hidden] {
+  display: none !important;
+}
+
+.integro-module-tab {
+  box-sizing: border-box;
+  min-width: 150px;
+  min-height: 58px;
+  padding: 0 19px;
+  border: 0;
+  border-right: 1px solid #e2e8f0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: #fff;
+  color: #64748b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 850;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .18s ease, color .18s ease, border-color .18s ease;
+}
+
+.integro-module-tab:last-child {
+  border-right: 0;
+}
+
+.integro-module-tab:hover {
+  background: #fffaf5;
+  color: #0f172a;
+}
+
+.integro-module-tab.active,
+.integro-module-tab[aria-selected="true"] {
+  border-bottom-color: #ff8a00;
+  background: #fff7ed;
+  color: #c85f00;
+}
+
+.integro-module-tab .material-symbols-outlined,
+.integro-module-tab .material-symbols-rounded {
+  flex: 0 0 auto;
+  font-size: 21px;
+}
+
+body.integro-topnav-pattern .sidebar .menu-subitem,
+body.integro-topnav-pattern .sidebar .menu-subitem.submenu-open {
+  display: none !important;
+}
+
+body.integro-topnav-pattern .sidebar .menu-item .chevron {
+  display: none !important;
+}
+
+/* A lateral exibe somente modulos. Regras inline legadas nao podem reabrir submenus. */
+html body.integro-topnav-pattern #sidebar.sidebar > .menu-subitem,
+html body.integro-topnav-pattern #sidebar.sidebar > .menu-subitem.submenu-open {
+  display: none !important;
+}
+
+html body.integro-topnav-pattern #sidebar.sidebar > .menu-item.has-submenu .chevron,
+html body.integro-topnav-pattern #sidebar.sidebar > .menu-item.menu-expanded .chevron {
+  display: none !important;
+}
+
+html body.integro-topnav-pattern #sidebar.sidebar > .menu-item.integro-estrutura-origem-config {
+  display: none !important;
+}
+
+html body.integro-topnav-pattern #sidebar.sidebar > .menu-item.integro-modulo-agrupado {
+  display: none !important;
+}
+
+.integro-module-dropdown {
+  position: relative;
+  display: flex;
+  min-width: 190px;
+}
+
+.integro-module-dropdown > .integro-module-tab {
+  width: 100%;
+}
+
+.integro-module-dropdown-menu {
+  position: absolute;
+  z-index: 130;
+  top: calc(100% + 8px);
+  left: 8px;
+  width: 250px;
+  padding: 8px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 20px 45px rgba(15, 23, 42, .16);
+}
+
+.integro-module-dropdown-menu[hidden] {
+  display: none !important;
+}
+
+.integro-module-dropdown-menu button {
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  text-align: left;
+  cursor: pointer;
+}
+
+.integro-module-dropdown-menu button:hover,
+.integro-module-dropdown-menu button.active {
+  background: #fff7ed;
+  color: #c85f00;
+}
+
+.integro-module-dropdown-menu .material-symbols-rounded {
+  font-size: 20px;
+}
+
+@media (max-width: 760px) {
+  .integro-module-dropdown {
+    position: static;
+    min-width: 170px;
+  }
+
+  .integro-module-dropdown-menu {
+    position: fixed;
+    z-index: 10020;
+    top: auto;
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    left: 14px;
+    width: auto;
+    max-height: min(360px, 70vh);
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .integro-module-nav {
+    min-height: 54px;
+    margin-bottom: 14px;
+    border-radius: 14px;
+  }
+
+  .integro-module-tab {
+    min-width: 138px;
+    min-height: 54px;
+    padding: 0 14px;
+    font-size: 13px;
   }
 }
