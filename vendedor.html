@@ -17133,14 +17133,29 @@ async function verificarCaixaAbertoDiaAnterior() {
       return;
     }
 
-    const idsUsuario = [
+    const authUidAtual = String(
+      window.firebase?.auth?.()?.currentUser?.uid ||
+      usuario.authUid ||
+      usuario.uid ||
+      ""
+    );
+
+    const idsUsuario = Array.from(new Set([
+      authUidAtual,
       usuario.id,
       usuario.uid,
       usuario.authUid,
-      usuario.usuarioId
-    ].filter(Boolean).map(String);
+      usuario.usuarioId,
+      usuario.vendedorId
+    ].filter(Boolean).map(String)));
 
-    const campos = ["usuarioId", "vendedorId", "abertoPorUid"];
+    const campos = [
+      "vendedorAuthUid",
+      "vendedorUid",
+      "usuarioId",
+      "vendedorId",
+      "abertoPorUid"
+    ];
     const encontrados = [];
     const tenant = getTenantAtualPatch();
 
@@ -17482,7 +17497,15 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   function idsUsuarioAtual() {
     const usuario = getUsuarioAtual() || {};
+    const authUidAtual = String(
+      window.firebase?.auth?.()?.currentUser?.uid ||
+      usuario.authUid ||
+      usuario.uid ||
+      ""
+    );
+
     return Array.from(new Set([
+      authUidAtual,
       usuario.id,
       usuario.uid,
       usuario.authUid,
@@ -17546,7 +17569,15 @@ async function verificarCaixaAbertoDiaAnterior() {
 
     if (!banco || !ids.length) return null;
 
-    const camposUsuario = ["usuarioId", "vendedorId", "abertoPorUid", "userId", "uid"];
+    const camposUsuario = [
+      "vendedorAuthUid",
+      "vendedorUid",
+      "usuarioId",
+      "vendedorId",
+      "abertoPorUid",
+      "userId",
+      "uid"
+    ];
     const encontrados = [];
 
     for (const campo of camposUsuario) {
