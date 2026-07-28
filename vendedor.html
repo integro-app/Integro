@@ -18311,16 +18311,25 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   function idsUsuario() {
-    const usuario = usuarioAtual() || {};
-    return Array.from(new Set([
-      usuario.id,
-      usuario.uid,
-      usuario.authUid,
-      usuario.usuarioId,
-      usuario.vendedorId,
-      usuario.email
-    ].filter(Boolean).map(String)));
-  }
+  const usuario = usuarioAtual() || {};
+
+  const authUidAtual = String(
+    window.firebase?.auth?.()?.currentUser?.uid ||
+    usuario.authUid ||
+    usuario.uid ||
+    ""
+  );
+
+  return Array.from(new Set([
+    authUidAtual,
+    usuario.id,
+    usuario.uid,
+    usuario.authUid,
+    usuario.usuarioId,
+    usuario.vendedorId,
+    usuario.email
+  ].filter(Boolean).map(String)));
+}
 
   function pertenceAoTenant(registro = {}) {
     const tenant = tenantAtual();
@@ -18329,24 +18338,18 @@ async function verificarCaixaAbertoDiaAnterior() {
     return !tenantRegistro || tenantRegistro === tenant;
   }
 
-  function pertenceAoUsuario(registro = {}) {
-    const ids = idsUsuario();
-    if (!ids.length) return true;
-
-    const campos = [
-      registro.vendedorId,
-      registro.usuarioId,
-      registro.abertoPorUid,
-      registro.userId,
-      registro.uid,
-      registro.email,
-      registro.criadoPorId,
-      registro.criadoPorUid
-    ].filter(Boolean).map(String);
-
-    if (!campos.length) return true;
-    return campos.some(id => ids.includes(id));
-  }
+  const campos = [
+  registro.vendedorAuthUid,
+  registro.vendedorUid,
+  registro.vendedorId,
+  registro.usuarioId,
+  registro.abertoPorUid,
+  registro.userId,
+  registro.uid,
+  registro.email,
+  registro.criadoPorId,
+  registro.criadoPorUid
+].filter(Boolean).map(String);
 
   function statusCaixa(caixa = {}) {
     return normalizar(caixa.status || caixa.situacao || caixa.estado || "");
@@ -18509,30 +18512,65 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   async function buscarCaixasAbertosDoVendedor() {
-    const dbRef = banco();
-    const tenant = tenantAtual();
-    const authUid = firebase.auth?.().currentUser?.uid || usuarioAtual()?.authUid || "";
+  const dbRef = banco();
+  const tenant = tenantAtual();
 
-    if (!dbRef || !tenant || !authUid) return [];
-    const encontrados = [];
+  const usuario = usuarioAtual() || {};
+  const authUid = String(
+    window.firebase?.auth?.()?.currentUser?.uid ||
+    usuario.authUid ||
+    usuario.uid ||
+    ""
+  );
 
-    try {
-      const snap = await dbRef.collection("caixas")
-        .where("clientePlataformaId", "==", tenant)
-        .where("abertoPorUid", "==", authUid)
-        .where("status", "==", "ABERTO")
-        .limit(25)
-        .get();
-      snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
-    } catch (erro) {
-      console.error("Falha ao buscar o caixa aberto do vendedor:", erro);
-      throw erro;
-    }
+  if (!dbRef || !tenant || !authUid) {
+    console.warn("[ÍNTEGRO CAIXA] Dados insuficientes para localizar caixa.", {
+      tenant,
+      authUid,
+      usuarioId: usuario.id || ""
+    });
+
+    return [];
+  }
+
+  try {
+    const snap = await dbRef
+      .collection("caixas")
+      .where("clientePlataformaId", "==", tenant)
+      .where("vendedorAuthUid", "==", authUid)
+      .where("status", "==", "ABERTO")
+      .limit(10)
+      .get();
+
+    const encontrados = snap.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    console.info("[ÍNTEGRO CAIXA] Caixa(s) localizado(s) para o vendedor:", {
+      authUid,
+      tenant,
+      quantidade: encontrados.length,
+      caixasIds: encontrados.map(caixa => caixa.id)
+    });
 
     return deduplicar(encontrados)
-      .filter(caixa => caixaAberto(caixa) && pertenceAoTenant(caixa) && pertenceAoUsuario(caixa))
+      .filter(caixa =>
+        caixaAberto(caixa) &&
+        pertenceAoTenant(caixa) &&
+        pertenceAoUsuario(caixa)
+      )
       .sort((a, b) => tempoCaixa(b) - tempoCaixa(a));
+
+  } catch (erro) {
+    console.error(
+      "[ÍNTEGRO CAIXA] Falha ao buscar caixa por vendedorAuthUid:",
+      erro
+    );
+
+    throw erro;
   }
+}
 
   function gravarCaixaAtual(caixa) {
     window.caixaAtual = caixa || null;
