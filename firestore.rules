@@ -148,40 +148,45 @@ service cloud.firestore {
     }
 
     function isOwnSellerData(data) {
-      return data.get("vendedorAuthUid", "") == currentUid() ||
-        data.get("vendedorUid", "") == currentUid() ||
-        data.get("abertoPorUid", "") == currentUid() ||
-        data.get("uid", "") == currentUid() ||
-        data.get("usuarioId", "") == currentUid() ||
-        data.get("vendedorId", "") == currentUid() ||
-        data.get("criadoPorId", "") == currentUid();
+      let uid = currentUid();
+      return data.get("vendedorAuthUid", "") == uid ||
+        data.get("vendedorUid", "") == uid ||
+        data.get("abertoPorUid", "") == uid ||
+        data.get("uid", "") == uid ||
+        data.get("usuarioId", "") == uid ||
+        data.get("vendedorId", "") == uid ||
+        data.get("criadoPorId", "") == uid;
     }
 
     function isOperationalReader(data) {
+      let perfil = role();
+      let cargoAtual = cargo();
       return isActiveUser() && (
-        isMasterGlobal() ||
-        isUsuarioIntegro() ||
+        perfil == "master_global" ||
+        perfil == "usuario_integro" ||
         (isSameTenantRead() && (
-          isMasterLocal() ||
-          isGerente() ||
-          isFinanceiro() ||
-          isAuditor() ||
-          (isSupervisor() && isTeamAllowed(data)) ||
-          (isVendedor() && isOwnSellerData(data))
+          perfil == "master_local" ||
+          perfil == "gerente" ||
+          perfil == "financeiro" || cargoAtual == "financeiro" ||
+          perfil == "auditor" || cargoAtual == "auditor" ||
+          ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
+          ((perfil == "vendedor" || cargoAtual == "vendedor") && isOwnSellerData(data))
         ))
       );
     }
 
     function isOperationalCreator(data) {
+      let perfil = role();
+      let cargoAtual = cargo();
       return isActiveUser() && (
-        isMasterGlobal() ||
-        isUsuarioIntegro() ||
+        perfil == "master_global" ||
+        perfil == "usuario_integro" ||
         (isSameTenantWrite() && (
-          isMasterLocal() ||
-          isGerente() ||
-          isFinanceiro() ||
-          (isSupervisor() && isTeamAllowed(data)) ||
-          (isVendedor() && isOwnSellerData(data))
+          perfil == "master_local" ||
+          perfil == "gerente" ||
+          perfil == "financeiro" || cargoAtual == "financeiro" ||
+          ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
+          ((perfil == "vendedor" || cargoAtual == "vendedor") && isOwnSellerData(data))
         ))
       );
     }
@@ -230,14 +235,16 @@ service cloud.firestore {
     }
 
     function canReadFinance(data) {
+      let perfil = role();
+      let cargoAtual = cargo();
       return isActiveUser() && (
-        isMasterGlobal() ||
-        isUsuarioIntegro() ||
+        perfil == "master_global" ||
+        perfil == "usuario_integro" ||
         (isSameTenantRead() && (
-          isMasterLocal() ||
-          isAuditor() ||
-          (isFinanceiro() && hasPermission("podeVerLedgerFinanceiro")) ||
-          (isSupervisor() && hasPermission("podeVerLedgerFinanceiro") && isTeamAllowed(data))
+          perfil == "master_local" ||
+          perfil == "auditor" || cargoAtual == "auditor" ||
+          ((perfil == "financeiro" || cargoAtual == "financeiro") && hasPermission("podeVerLedgerFinanceiro")) ||
+          ((perfil == "supervisor" || cargoAtual == "supervisor") && hasPermission("podeVerLedgerFinanceiro") && isTeamAllowed(data))
         ))
       );
     }
@@ -493,8 +500,37 @@ service cloud.firestore {
     }
 
     function canReadIndicacao(data) {
+      let perfil = role();
+      let cargoAtual = cargo();
       return isActiveUser() && isSameTenantRead() &&
-        (isMasterLocal() || isFinanceiro() || isAuditor() || (isSupervisor() && isTeamAllowed(data)) || (isVendedor() && isIndicacaoDoVendedor(data)) || isCaptador());
+        (perfil == "master_local" ||
+          perfil == "financeiro" || cargoAtual == "financeiro" ||
+          perfil == "auditor" || cargoAtual == "auditor" ||
+          ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
+          ((perfil == "vendedor" || cargoAtual == "vendedor") && isIndicacaoDoVendedor(data)) ||
+          perfil == "captador" || cargoAtual == "captador");
+    }
+
+    function canReadNotificacao(data) {
+      let perfil = role();
+      let cargoAtual = cargo();
+      let uid = currentUid();
+      return isActiveUser() && (
+        perfil == "master_global" ||
+        perfil == "usuario_integro" ||
+        (isSameTenantRead() && (
+          perfil == "master_local" ||
+          perfil == "gerente" ||
+          data.get("usuarioId", "") == uid ||
+          data.get("destinatarioId", "") == uid ||
+          data.get("vendedorId", "") == uid ||
+          ((perfil == "supervisor" || cargoAtual == "supervisor") && data.get("publico", "") == "SUPERVISOR") ||
+          ((perfil == "financeiro" || cargoAtual == "financeiro") && data.get("publico", "") == "FINANCEIRO") ||
+          ((perfil == "auditor" || cargoAtual == "auditor") && data.get("publico", "") == "AUDITOR") ||
+          ((perfil == "vendedor" || cargoAtual == "vendedor") && data.get("publico", "") == "VENDEDOR") ||
+          ((perfil == "captador" || cargoAtual == "captador") && data.get("publico", "") == "CAPTADOR")
+        ))
+      );
     }
 
     function canUpdateIndicacao() {
@@ -764,35 +800,35 @@ service cloud.firestore {
     }
 
     match /pagamentos/{id} {
-      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data);
+      allow read: if isOperationalReader(resource.data);
       allow create: if canCreatePagamento(request.resource.data);
       allow update: if canUpdatePagamento();
       allow delete: if false;
     }
 
     match /vendas/{id} {
-      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data);
+      allow read: if isOperationalReader(resource.data);
       allow create: if canCreateVenda(request.resource.data);
       allow update: if canUpdateVenda();
       allow delete: if false;
     }
 
     match /parcelas/{id} {
-      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data);
+      allow read: if isOperationalReader(resource.data);
       allow create: if isOperationalCreator(request.resource.data);
       allow update: if canUpdateParcela();
       allow delete: if false;
     }
 
     match /solicitacoes/{id} {
-      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateSolicitacao(request.resource.data);
       allow update: if canUpdateSolicitacao();
       allow delete: if false;
     }
 
     match /historicoCobrancas/{id} {
-      allow read: if isActiveMasterLocalFor(resource.data) || isOperationalReader(resource.data);
+      allow read: if isOperationalReader(resource.data);
       allow create, update, delete: if false;
     }
 
@@ -840,14 +876,14 @@ service cloud.firestore {
 
     match /logs/{id} {
       allow read: if isActiveUser() && isSameTenantRead() &&
-        (isMasterLocal() || isAuditor() || isFinanceiro() || (isSupervisor() && isTeamAllowed(resource.data)));
+        (isMasterLocal() || isGerente() || isAuditor() || isFinanceiro() || (isSupervisor() && isTeamAllowed(resource.data)));
       allow create: if canCreateLog(request.resource.data);
       allow update: if false;
       allow delete: if false;
     }
 
     match /notificacoes/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow read: if canReadNotificacao(resource.data);
       allow create, update: if isOperationalCreator(request.resource.data);
       allow delete: if false;
     }

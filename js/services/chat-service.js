@@ -42,6 +42,21 @@
     return usuario.acessoLiberado !== false && !["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(status);
   }
 
+  function somenteLeitura(usuario = usuarioAtual()) {
+    const perfis = [
+      usuario.tipoUsuario,
+      usuario.perfil,
+      usuario.cargoChave,
+      usuario.cargoNome,
+      usuario.cargo
+    ].map(valor => String(valor || "").trim().toLowerCase());
+    return perfis.includes("auditor");
+  }
+
+  function podeEnviar(usuario = usuarioAtual()) {
+    return estaAtivo(usuario) && !somenteLeitura(usuario);
+  }
+
   function dataOperacionalSaoPaulo(data = new Date()) {
     return data.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   }
@@ -70,6 +85,7 @@
     if (!tenant) throw new Error("Tenant obrigatorio para usar o chat interno.");
     if (!remetenteId) throw new Error("Usuario autenticado obrigatorio para usar o chat interno.");
     if (!estaAtivo(usuario)) throw new Error("Usuario inativo ou bloqueado nao pode enviar mensagens.");
+    if (somenteLeitura(usuario)) throw new Error("Auditor possui acesso somente leitura ao chat interno.");
     return { usuario, tenant, remetenteId };
   }
 
@@ -266,6 +282,8 @@
     usuarioAtual,
     usuarioId,
     tenantAtual,
-    estaAtivo
+    estaAtivo,
+    podeEnviar,
+    somenteLeitura
   };
 })(window);

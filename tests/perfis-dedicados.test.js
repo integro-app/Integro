@@ -137,6 +137,26 @@ test("indicacoes do vendedor ficam dentro do modulo clientes", () => {
   assert.match(vendedor, /menuClientes\?\.classList\.add\("active"\)/);
 });
 
+test("clientes do master local preservam consulta, gestao de leads e relatorios no padrao Integro", () => {
+  assert.match(masterLocal, /class="clientes-module-nav"[\s\S]*data-clientes-tela="clientes"[\s\S]*data-clientes-tela="indicacoes"/);
+  assert.match(masterLocal, /data-leads-view="gerenciar"[\s\S]*data-leads-view="relatorios"/);
+  assert.match(masterLocal, /id="indicacoesGerenciarML"[\s\S]*id="indicacoesDashboardMasterLocal"[\s\S]*id="indicacoesConsultaML"[\s\S]*id="listaIndicacoesMasterLocal"/);
+  assert.match(masterLocal, /id="indicacoesRelatoriosViewML"[\s\S]*id="indicacoesGraficoMasterLocal"[\s\S]*id="indicacoesRelatoriosML"/);
+  assert.match(masterLocal, /indicacoes-actions-menu[\s\S]*abrirImportacaoIndicacoesIntegro[\s\S]*exportarIndicacoesMasterLocal/);
+  assert.match(masterLocal, /if \(destino === "indicacoes"\)[\s\S]*carregarIndicacoesMasterLocal/);
+  assert.match(masterLocal, /data-label="Cliente"[\s\S]*data-label="Status"/);
+  assert.match(masterLocal, /alterarGraficoIndicacoesML[\s\S]*aplicarFiltrosIndicacoes\(indicacoesMasterLocalCache\)/);
+  assert.match(masterLocal, /async function consultarIndicacoesPorTenant[\s\S]*where\("clientePlataformaId","==",tenant\)/);
+});
+
+test("clientes ficam separados de leads e abrem o cadastro completo", () => {
+  assert.match(masterLocal, /async function vincularHistoricoVendasAosClientes[\s\S]*collection\("vendas"\)[\s\S]*possuiHistoricoVenda:true/);
+  assert.match(masterLocal, /lista = lista\.filter\(clienteVisivelParaUsuario\)\.filter\(clientePossuiVenda\)/);
+  assert.match(masterLocal, /window\.abrirPerfilClienteMaster[\s\S]*formularioCadastroClienteOperacional\(false,c\)[\s\S]*preencherFormularioClienteOperacional\(c\)/);
+  assert.match(masterLocal, /window\.salvarCadastroCompletoClienteOperacional\s*=\s*async function/);
+  assert.match(masterLocal, /cliente-cadastro-drawer[\s\S]*Documentos anexos[\s\S]*Salvar altera/);
+});
+
 test("cadastro do vendedor e completo e reutiliza o cliente operacional da indicacao", () => {
   assert.match(vendedor, /id="cadastroClienteVendedorForm"/);
   assert.match(vendedor, /id="clienteCep"[\s\S]*buscarCepCliente\(\)/);

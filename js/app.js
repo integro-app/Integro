@@ -159,6 +159,16 @@ function notificacaoPertenceAoUsuario(notificacao, usuario) {
 async function carregarNotificacoesLayout(usuario = null) {
   const atual = usuario || obterUsuarioAtual();
   const tenantId = atual?.clientePlataformaId || atual?.empresaId || atual?.tenantId || "";
+  const usuarioId = String(
+    window.firebase?.auth?.()?.currentUser?.uid ||
+    atual?.authUid ||
+    atual?.uid ||
+    atual?.id ||
+    atual?.usuarioId ||
+    ""
+  );
+  const perfil = String(atual?.tipoUsuario || "").toLowerCase();
+  const cargo = String(atual?.cargoChave || atual?.perfil || "").toUpperCase();
 
   try {
     if (typeof db === "undefined" || !db?.collection) {
@@ -167,14 +177,39 @@ async function carregarNotificacoesLayout(usuario = null) {
       return [];
     }
 
-    let ref = db.collection("notificacoes").limit(100);
-    if (tenantId) {
-      ref = db.collection("notificacoes").where("clientePlataformaId", "==", tenantId).limit(100);
+    if (!tenantId && !["master_global", "usuario_integro"].includes(perfil)) {
+      throw new Error("Usuário sem tenant para consultar notificações.");
     }
 
-    const snap = await ref.get();
-    const lista = snap.docs
-      .map(doc => ({ id: doc.id, ...doc.data() }))
+    const documentos = new Map();
+    const consultar = async (campo = "", valor = "") => {
+      try {
+        let ref = db.collection("notificacoes").limit(100);
+        if (tenantId) ref = ref.where("clientePlataformaId", "==", tenantId);
+        if (campo && valor) ref = ref.where(campo, "==", valor);
+        const snap = await ref.get();
+        snap.docs.forEach(doc => documentos.set(doc.id, { id: doc.id, ...doc.data() }));
+      } catch (erro) {
+        throw new Error(`Consulta de notificações por ${campo || "tenant"} falhou: ${erro.message}`);
+      }
+    };
+
+    if (["master_global", "usuario_integro", "master_local", "gerente"].includes(perfil)) {
+      await consultar();
+    } else {
+      const consultas = [];
+      if (usuarioId) {
+        consultas.push(
+          consultar("usuarioId", usuarioId),
+          consultar("destinatarioId", usuarioId),
+          consultar("vendedorId", usuarioId)
+        );
+      }
+      if (cargo) consultas.push(consultar("publico", cargo));
+      await Promise.all(consultas);
+    }
+
+    const lista = Array.from(documentos.values())
       .filter(n => n.excluido !== true && notificacaoPertenceAoUsuario(n, atual));
 
     window.notificacoesLayout = lista;

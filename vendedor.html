@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 
 <head>
@@ -17,7 +17,7 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet">
-  <link href="css/integro-theme.css" rel="stylesheet">
+  <link href="css/integro-theme.css?v=20260729-scroll4" rel="stylesheet">
 
   <style>
     * {
@@ -2325,6 +2325,8 @@
             "
           ></div>
 
+          <div id="resumoClientesVendedor" class="clientes-kpis-vendedor" hidden></div>
+
           <div id="listaClientes" class="grid" style="gap:14px;">
             <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
               Pesquise um cliente para exibir resultados.
@@ -3675,6 +3677,42 @@
             `;
         }
 
+        function pendenciasCadastroClienteParaVenda(cliente = {}) {
+          const digitos = valor => String(valor || "").replace(/\D/g, "");
+          const documento = digitos(cliente.documentoNormalizado || cliente.documentoLimpo || cliente.documento);
+          const telefone = digitos(cliente.telefoneNormalizado || cliente.telefoneLimpo || cliente.telefonePrincipal || cliente.telefone);
+          const cep = digitos(cliente.cep);
+          const tipo = String(cliente.tipoCliente || cliente.tipoPessoa || cliente.tipoDocumento || (documento.length === 14 ? "PJ" : "PF")).toUpperCase();
+          const anexos = Array.isArray(cliente.anexos) ? cliente.anexos : (Array.isArray(cliente.documentos) ? cliente.documentos : []);
+          const pendencias = [];
+
+          if (!(cliente.nome || cliente.nomeCompleto)) pendencias.push("nome completo");
+          if (!tipo) pendencias.push("tipo de cliente");
+          if (![11,14].includes(documento.length)) pendencias.push(tipo.includes("PJ") ? "CNPJ" : "CPF");
+          if (telefone.length < 10 || telefone.length > 11) pendencias.push("telefone com DDD");
+          if (!tipo.includes("PJ") && !(cliente.dataNascimento || cliente.nascimento)) pendencias.push("data de nascimento");
+          if (cep.length !== 8) pendencias.push("CEP");
+          if (!(cliente.logradouro || cliente.endereco)) pendencias.push("logradouro");
+          if (!cliente.numero) pendencias.push("número");
+          if (!cliente.bairro) pendencias.push("bairro");
+          if (!cliente.cidade) pendencias.push("cidade");
+          if (String(cliente.estado || cliente.uf || "").trim().length !== 2) pendencias.push("estado");
+          if (!(cliente.fotoPerfilUrl || cliente.fotoUrl || cliente.fotoPerfil)) pendencias.push("foto do cliente");
+          if (!anexos.length) pendencias.push("documento anexo");
+
+          return pendencias;
+        }
+
+        function garantirCadastroClienteCompletoParaVenda(cliente) {
+          const pendencias = pendenciasCadastroClienteParaVenda(cliente);
+          if (!pendencias.length) return true;
+          notificarIntegro(
+            "Complete o cadastro do cliente antes da venda.\n\nCampos pendentes: " +
+            pendencias.join(", ") + "."
+          );
+          return false;
+        }
+
         function abrirNovaVenda(clienteId) {
           const cliente = clientesCache.find(c => c.id === clienteId);
 
@@ -3686,6 +3724,8 @@
           const saldo = Number(cliente.saldoDevedor || cliente.saldo || 0);
 
           if (!garantirCaixaAberto("O caixa está fechado. Não é possível criar nova venda.")) return;
+
+          if (!garantirCadastroClienteCompletoParaVenda(cliente)) return;
 
           if (saldo > 0.01 || clienteTemVendaAtiva(clienteId)) {
             notificarIntegro("Cliente possui saldo devedor ativo. Nova venda bloqueada.");
@@ -4332,6 +4372,8 @@
               notificarIntegro("Cliente não encontrado.");
               return;
             }
+
+            if (!garantirCadastroClienteCompletoParaVenda(cliente)) return;
 
             if (!garantirCaixaAberto("O caixa está fechado. Não é possível criar venda.")) return;
 
@@ -5721,7 +5763,7 @@
 
           </div>
 
-          <div id="indicacoesResumo" class="grid grid-4" style="margin-bottom:18px;"></div>
+          <div id="indicacoesResumo" class="grid grid-4 integro-client-kpis" style="margin-bottom:18px;"></div>
           <div id="listaIndicacoes" class="grid" style="gap:14px;"></div>
 
         </div>
@@ -6479,8 +6521,8 @@
       <script src="js/services/financial-operations.js"></script>
       <script src="js/services/clientes-service.js"></script>
       <script src="js/services/indicacoes-service.js"></script>
-      <script src="js/services/chat-service.js?v=20260728-3"></script>
-      <script src="js/chat-ui.js"></script>
+      <script src="js/services/chat-service.js?v=20260729-1"></script>
+      <script src="js/chat-ui.js?v=20260729-1"></script>
 
       <script>
 
@@ -9102,9 +9144,23 @@ async function verificarCaixaAbertoDiaAnterior() {
         // =========================
 
         function alternarFiltrosClientes() {
-          const filtros = document.getElementById("filtrosClientes");
-          if (!filtros) return;
-          filtros.style.display = filtros.style.display === "grid" ? "none" : "grid";
+          const status = document.getElementById("filtroClienteStatus")?.value || "";
+          const inicio = document.getElementById("filtroClienteDataInicial")?.value || "";
+          const fim = document.getElementById("filtroClienteDataFinal")?.value || "";
+          abrirDrawer("Filtros de clientes", "Os critérios são aplicados em conjunto.", `<div class="clientes-filtros-drawer-vendedor"><label>Status<select id="filtroClienteStatusDrawer" class="form-input"><option value="">Todos os status</option><option value="ATIVO" ${status==="ATIVO"?"selected":""}>Cliente ativo</option><option value="INATIVO" ${status==="INATIVO"?"selected":""}>Cliente inativo</option></select></label><label>Cadastro inicial<input id="filtroClienteDataInicialDrawer" type="date" class="form-input" value="${inicio}"></label><label>Cadastro final<input id="filtroClienteDataFinalDrawer" type="date" class="form-input" value="${fim}"></label><div class="cliente-op-form-actions"><button class="btn btn-light" type="button" onclick="limparFiltrosClientesVendedor()">Limpar</button><button class="btn btn-primary" type="button" onclick="aplicarFiltrosClientesVendedor()">Aplicar filtros</button></div></div>`);
+        }
+
+        function limparFiltrosClientesVendedor() {
+          ["filtroClienteStatus","filtroClienteDataInicial","filtroClienteDataFinal"].forEach(id=>{ const campo=document.getElementById(id); if(campo) campo.value=""; });
+          fecharDrawer();
+          buscarClientes();
+        }
+
+        function aplicarFiltrosClientesVendedor() {
+          const pares = [["filtroClienteStatus","filtroClienteStatusDrawer"],["filtroClienteDataInicial","filtroClienteDataInicialDrawer"],["filtroClienteDataFinal","filtroClienteDataFinalDrawer"]];
+          pares.forEach(([destino,origem])=>{ const campo=document.getElementById(destino); if(campo) campo.value=document.getElementById(origem)?.value || ""; });
+          fecharDrawer();
+          buscarClientes();
         }
 
         function clienteDataCadastroISO(cliente) {
@@ -9188,8 +9244,10 @@ async function verificarCaixaAbertoDiaAnterior() {
               `${lista.length} cliente(s) exibido(s).`;
           }
 
+          renderResumoClientesVendedor(lista);
+
           el.innerHTML = lista.length
-            ? lista.map(c => cardCliente(c)).join("")
+            ? renderTabelaClientesVendedor(lista)
             : `
 
               <div
@@ -9214,6 +9272,26 @@ async function verificarCaixaAbertoDiaAnterior() {
 
             `;
 
+        }
+
+        function possuiHistoricoVendaClienteVendedor(c) {
+          return Boolean(c.vendaAtivaId || c.ultimaVendaId || c.possuiVendaAtiva === true || c.possuiHistoricoVenda === true || Number(c.totalVendas || c.vendasRealizadas || 0) > 0 || c.vendasIds?.length || c.historicoVendas?.length || vendasDoClienteComVendedor(c.id).length);
+        }
+
+        function renderResumoClientesVendedor(lista) {
+          const box = document.getElementById("resumoClientesVendedor");
+          if (!box) return;
+          const ativo = c=>clienteTemVendaAtiva(c.id) || numero(c.saldoDevedor || c.saldo || 0) > .01 || String(c.statusCliente || c.status || "").toUpperCase()==="ATIVO";
+          const funil = window.ClientesService?.calcularRelatorio?.(lista) || {};
+          const saldo = lista.reduce((total,c)=>total+Math.max(0,numero(c.saldoDevedor || c.saldo || 0)),0);
+          const cards = [["group","Total",lista.length],["verified_user","Ativos",lista.filter(ativo).length],["person_off","Inativos",lista.filter(c=>possuiHistoricoVendaClienteVendedor(c)&&!ativo(c)).length],["account_balance_wallet","Saldo em aberto",moeda(saldo)],["support_agent","Em atendimento",Number(funil.emAtendimento||0)],["check_circle","Convertidos",Number(funil.convertidos||0)],["monitoring","Conversão",`${Number(funil.taxaConversao||0).toFixed(1).replace(".",",")}%`]];
+          box.hidden=false;
+          box.innerHTML=cards.map(([icone,titulo,valor])=>`<div class="clientes-kpi-vendedor integro-client-kpi"><span class="material-symbols-rounded">${icone}</span><div><small>${titulo}</small><strong>${valor}</strong></div></div>`).join("");
+        }
+
+        function renderTabelaClientesVendedor(lista) {
+          const esc=valor=>String(valor??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+          return `<div class="clientes-table-wrap-vendedor integro-data-frame"><table class="clientes-table-vendedor"><thead><tr><th>Cliente</th><th>Status</th><th>Telefone</th><th>Documento</th><th>Saldo em aberto</th></tr></thead><tbody>${lista.map(c=>{const ativo=clienteTemVendaAtiva(c.id)||numero(c.saldoDevedor||c.saldo||0)>.01;const status=String(c.statusAtendimento||c.statusCliente||(ativo?"ATIVO":possuiHistoricoVendaClienteVendedor(c)?"INATIVO":"AGUARDANDO_ATENDIMENTO")).replace(/_/g," ");return `<tr tabindex="0" role="button" onclick="abrirDetalheCliente('${esc(c.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ')abrirDetalheCliente('${esc(c.id)}')"><td data-label="Cliente"><strong>${esc(c.nome||c.nomeCompleto||c.apelido||"Cliente")}</strong></td><td data-label="Status"><span class="cliente-pill-vendedor">${esc(status)}</span></td><td data-label="Telefone">${esc(c.telefonePrincipal||c.telefone||c.telefoneNormalizado||"-")}</td><td data-label="Documento">${esc(c.documento||c.documentoNormalizado||"-")}</td><td data-label="Saldo">${moeda(numero(c.saldoDevedor||c.saldo||0))}</td></tr>`}).join("")}</tbody></table></div>`;
         }
 
         function clienteTemVendaAtiva(clienteId) {
@@ -10615,29 +10693,12 @@ async function verificarCaixaAbertoDiaAnterior() {
   };
 
   window.cardIndicacao = function(indicacao){
-    const status = statusIndicacao(indicacao);
-    const statusRotulo = rotuloStatusIndicacao(indicacao);
-    const cls = statusClasse(status);
+    const status = statusIndicacao(indicacao), cls = statusClasse(status);
     const telefone = indicacao.telefonePrincipal || indicacao.telefone || "";
     const nome = indicacao.nomeClienteSnapshot || indicacao.nome || "Lead sem nome";
     const origem = indicacao.origemIndicacao || indicacao.origem || "-";
     const entrada = indicacao.dataEntrada || String(indicacao.dataRecebimento || indicacao.criadoEmTexto || "").slice(0, 10) || "-";
-    return `
-      <div class="venda-cobranca-card" style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;display:grid;grid-template-columns:8px 1fr auto;gap:16px;align-items:center;box-shadow:0 10px 24px rgba(15,23,42,.04);">
-        <div style="width:8px;height:100%;min-height:96px;border-radius:999px;background:${cls[1]};"></div>
-        <div>
-          <strong style="display:block;font-size:16px;margin-bottom:6px;">${esc(nome)}</strong>
-          <small style="display:block;color:#64748b;font-weight:800;">Telefone: ${esc(telefone || "-")}</small>
-          <small style="display:block;color:#64748b;font-weight:800;">Origem: ${esc(origem)}</small>
-          <small style="display:block;color:#64748b;font-weight:800;">Entrada: ${esc(entrada)}</small>
-          <span style="display:inline-flex;margin-top:8px;background:${cls[0]};color:${cls[1]};border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900;">${esc(statusRotulo)}</span>
-        </div>
-        <div style="display:grid;gap:8px;min-width:170px;">
-          <button class="btn btn-primary" onclick="abrirWhatsAppIndicacao('${esc(indicacao.id)}')">WhatsApp</button>
-          <button class="btn btn-light" onclick="abrirDetalheIndicacao('${esc(indicacao.id)}')">Ver</button>
-        </div>
-      </div>
-    `;
+    return `<article class="lead-vendedor-card" tabindex="0" role="button" onclick="abrirDetalheIndicacao('${esc(indicacao.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ')abrirDetalheIndicacao('${esc(indicacao.id)}')"><span class="lead-vendedor-status-bar" style="background:${cls[1]}"></span><div class="lead-vendedor-main"><strong>${esc(nome)}</strong><span>${esc(telefone || "-")}</span></div><div class="lead-vendedor-meta"><small>Origem</small><strong>${esc(origem)}</strong></div><div class="lead-vendedor-meta"><small>Entrada</small><strong>${esc(entrada)}</strong></div><span class="lead-vendedor-pill" style="background:${cls[0]};color:${cls[1]}">${esc(rotuloStatusIndicacao(indicacao))}</span><button class="btn btn-light lead-vendedor-whatsapp" type="button" onclick="event.stopPropagation();abrirWhatsAppIndicacao('${esc(indicacao.id)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button></article>`;
   };
 
   window.renderIndicacoes = function(){
@@ -19101,7 +19162,6 @@ async function verificarCaixaAbertoDiaAnterior() {
         ["usuarioId", usuario.id],
         ["vendedorId", authUid],
         ["usuarioId", authUid],
-        ["criadoPorUid", authUid],
         ["criadoPorId", usuario.id]
       ]
     ];
@@ -19130,28 +19190,12 @@ async function verificarCaixaAbertoDiaAnterior() {
       return deduplicar(registros);
     }
 
-    // Compatibilidade com coleções compartilhadas ou documentos legados.
-    try {
-      let ref = dbRef.collection(nome).limit(limite);
-
-      if (tenant && tenantCampo) {
-        ref = dbRef.collection(nome)
-          .where("clientePlataformaId", "==", tenant)
-          .limit(limite);
-      }
-
-      const snap = await ref.get();
-      return deduplicar(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    } catch (erro) {
-      console.warn(`[ÍNTEGRO] Não foi possível carregar ${nome}.`, erro);
-      return [];
-    }
+    return [];
   }
 
   const carregarVendasOriginal = window.carregarVendas;
   window.carregarVendas = async function carregarVendasOperacional() {
     const registros = await carregarColecaoComFallback("vendas", 5000, true);
-    if (!registros.length && typeof carregarVendasOriginal === "function") return carregarVendasOriginal.apply(this, arguments);
 
     const lista = registros.filter(v =>
       v.excluido !== true &&
@@ -19166,7 +19210,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   const carregarParcelasOriginal = window.carregarParcelas;
   window.carregarParcelas = async function carregarParcelasOperacional() {
     const registros = await carregarColecaoComFallback("parcelas", 8000, true);
-    if (!registros.length && typeof carregarParcelasOriginal === "function") return carregarParcelasOriginal.apply(this, arguments);
 
     const vendasIds = new Set((window.vendasCache || []).map(v => String(v.id)));
     const lista = registros.filter(p =>
@@ -19180,6 +19223,56 @@ async function verificarCaixaAbertoDiaAnterior() {
 
     window.parcelasCache = lista;
     try { parcelasCache = lista; } catch (_) {}
+  };
+
+  window.carregarPagamentosHistorico = async function carregarPagamentosHistoricoOperacional() {
+    const lista = (await carregarColecaoComFallback("pagamentos", 5000, true))
+      .filter(item => item.excluido !== true && pertenceAoTenant(item) && pertenceAoUsuario(item));
+    window.pagamentosCache = lista;
+    try { pagamentosCache = lista; } catch (_) {}
+  };
+
+  window.carregarPagamentosHoje = async function carregarPagamentosHojeOperacional() {
+    const caixaId = String(window.caixaAtual?.id || "");
+    const hoje = typeof window.hojeISO === "function" ? window.hojeISO() : "";
+    const lista = (await carregarColecaoComFallback("pagamentos", 1500, true))
+      .filter(item => item.excluido !== true && pertenceAoTenant(item) && pertenceAoUsuario(item))
+      .filter(item => !caixaId || String(item.caixaId || "") === caixaId)
+      .filter(item => !hoje || !item.data || String(item.data).slice(0, 10) === hoje);
+    window.pagamentosHojeCache = lista;
+    try { pagamentosHojeCache = lista; } catch (_) {}
+  };
+
+  window.carregarSolicitacoes = async function carregarSolicitacoesOperacional() {
+    const lista = (await carregarColecaoComFallback("solicitacoes", 1500, true))
+      .filter(item => item.excluido !== true && pertenceAoTenant(item) && pertenceAoUsuario(item));
+    window.solicitacoesCache = lista;
+    try { solicitacoesCache = lista; } catch (_) {}
+  };
+
+  window.carregarIndicacoes = async function carregarIndicacoesOperacional() {
+    const lista = (await carregarColecaoComFallback("indicacoes", 1500, true))
+      .filter(item => item.excluido !== true && pertenceAoTenant(item) && pertenceAoUsuario(item));
+    window.indicacoesCache = lista;
+    try { indicacoesCache = lista; } catch (_) {}
+  };
+
+  window.carregarNotificacoes = async function carregarNotificacoesOperacional() {
+    const lista = (await carregarColecaoComFallback("notificacoes", 300, true))
+      .filter(item => item.excluido !== true && pertenceAoTenant(item) && pertenceAoUsuario(item));
+    window.notificacoesCache = lista;
+    try { notificacoesCache = lista; } catch (_) {}
+    try { window.atualizarContadorNotificacoes?.(); } catch (_) {}
+    try { window.renderizarNotificacoes?.(); } catch (_) {}
+  };
+
+  window.carregarHistoricoCobrancas = async function carregarHistoricoCobrancasOperacional() {
+    const caixaId = String(window.caixaAtual?.id || "");
+    const lista = (await carregarColecaoComFallback("historicoCobrancas", 1500, true))
+      .filter(item => item.excluido !== true && pertenceAoTenant(item) && pertenceAoUsuario(item))
+      .filter(item => !caixaId || String(item.caixaId || "") === caixaId);
+    window.historicoCobrancasCache = lista;
+    try { historicoCobrancasCache = lista; } catch (_) {}
   };
 
   const carregarTudoOriginal = window.carregarTudo;
@@ -20365,6 +20458,7 @@ async function verificarCaixaAbertoDiaAnterior() {
   .clientes-submenu-integro button.is-active { background:#fff8ef; color:#c65d00; }
   .clientes-submenu-integro button.is-active::after { content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:#ff8a00; }
   .clientes-submenu-integro .material-symbols-rounded { font-size:21px; }
+  .clientes-submenu-integro .clientes-submenu-spacer { flex:1 0 20px; min-width:20px; }
   .clientes-submenu-integro .clientes-submenu-acao {
     margin-left:auto;min-width:auto;border-right:0;border-left:1px solid #dbe4ef;
     background:#ff8a00;color:#fff;padding-inline:22px;
@@ -20519,6 +20613,26 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 </style>
 
+<style id="integro-clientes-consulta-compartilhada">
+  #clientes #filtrosClientes{display:none!important}
+  .clientes-kpis-vendedor{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px}
+  .clientes-kpi-vendedor{min-width:0;border:1px solid #e2e8f0;border-radius:16px;background:#fff;padding:16px;display:flex;align-items:center;gap:12px}
+  .clientes-kpi-vendedor>.material-symbols-rounded{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#fff4e6;color:#f97316}
+  .clientes-kpi-vendedor small{display:block;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase}
+  .clientes-kpi-vendedor strong{display:block;color:#071a33;font-size:22px;margin-top:3px}
+  .clientes-table-wrap-vendedor{width:100%;overflow-x:auto;border:1px solid #e2e8f0;border-radius:16px;background:#fff}
+  .clientes-table-vendedor{width:100%;min-width:820px;border-collapse:separate;border-spacing:0}
+  .clientes-table-vendedor th{padding:14px;background:#f1f5f9;color:#475569!important;text-align:left;text-transform:uppercase}
+  .clientes-table-vendedor td{padding:14px;border-top:1px solid #e2e8f0;font-weight:700;vertical-align:middle}
+  .cliente-pill-vendedor{display:inline-flex;padding:7px 10px;border-radius:999px;background:#eaf2ff;color:#2563eb;font-size:11px;font-weight:900;text-transform:uppercase}
+  .clientes-filtros-drawer-vendedor{display:grid;gap:14px}.clientes-filtros-drawer-vendedor label{display:grid;gap:7px;font-size:13px;font-weight:900}
+  @media(max-width:780px){.clientes-kpis-vendedor{grid-template-columns:repeat(2,minmax(0,1fr))}.clientes-table-vendedor,.clientes-table-vendedor tbody,.clientes-table-vendedor tr,.clientes-table-vendedor td{display:block;min-width:0}.clientes-table-vendedor thead{display:none}.clientes-table-vendedor tr{margin:10px;border:1px solid #e2e8f0;border-radius:14px;padding:8px}.clientes-table-vendedor td{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;border:0;padding:8px}.clientes-table-vendedor td:before{content:attr(data-label);color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase}.clientes-table-vendedor td .btn{width:100%!important}}
+  @media(max-width:480px){.clientes-kpis-vendedor{grid-template-columns:1fr}}
+</style>
+
+<style id="integro-leads-vendedor-layout-final">
+#indicacoes #listaIndicacoes{display:grid;gap:10px}.lead-vendedor-card{display:grid;grid-template-columns:5px minmax(220px,1.5fr) minmax(110px,.7fr) minmax(100px,.6fr) auto auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid #dbe4ef;border-radius:16px;background:#fff;cursor:pointer;transition:.18s ease}.lead-vendedor-card:hover,.lead-vendedor-card:focus-visible{border-color:#fdba74;box-shadow:0 9px 24px rgba(15,23,42,.07);outline:0;transform:translateY(-1px)}.lead-vendedor-status-bar{width:5px;height:100%;min-height:54px;border-radius:999px}.lead-vendedor-main,.lead-vendedor-meta{min-width:0}.lead-vendedor-main strong,.lead-vendedor-main span,.lead-vendedor-meta small,.lead-vendedor-meta strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lead-vendedor-main strong{font-size:14px}.lead-vendedor-main span,.lead-vendedor-meta small{margin-top:4px;color:#64748b;font-size:11px;font-weight:750}.lead-vendedor-meta strong{margin-top:4px;color:#334155;font-size:12px}.lead-vendedor-pill{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 10px;border-radius:999px;font-size:10px;font-weight:900;text-transform:uppercase;white-space:nowrap}.lead-vendedor-whatsapp{min-width:126px;display:inline-flex;align-items:center;justify-content:center;gap:6px}@media(max-width:900px){.lead-vendedor-card{grid-template-columns:5px minmax(0,1fr) auto}.lead-vendedor-meta{display:none}.lead-vendedor-whatsapp{grid-column:2/-1;width:100%}}@media(max-width:520px){.lead-vendedor-card{grid-template-columns:5px minmax(0,1fr)}.lead-vendedor-pill,.lead-vendedor-whatsapp{grid-column:2}.lead-vendedor-main strong,.lead-vendedor-main span{white-space:normal}}
+</style>
 <script id="integro-clientes-vendedor-submenu-final-js">
 (function () {
   "use strict";
@@ -20526,10 +20640,9 @@ async function verificarCaixaAbertoDiaAnterior() {
   function markupNavegacaoClientes(ativo) {
     return `<nav class="clientes-submenu-integro" aria-label="Áreas de Clientes">
       <button type="button" data-clientes-tab="consultar" class="${ativo === "consultar" ? "is-active" : ""}" onclick="abrirAreaClientesVendedor('clientes')"><span class="material-symbols-rounded">manage_search</span>Consultar</button>
-      <button type="button" data-clientes-tab="indicacoes" class="${ativo === "indicacoes" ? "is-active" : ""}" onclick="abrirAreaClientesVendedor('indicacoes')"><span class="material-symbols-rounded">campaign</span>Indicações</button>
-      <button type="button" data-clientes-tab="criar" class="${ativo === "criar" ? "is-active" : ""}" onclick="abrirCriacaoClienteVendedor()"><span class="material-symbols-rounded">person_add</span>Criar cliente</button>
-      ${ativo === "indicacoes" ? `<button type="button" class="clientes-submenu-acao" onclick="abrirNovaIndicacao()"><span class="material-symbols-rounded">add</span>Nova indicação</button>` : ""}
-    </nav>`;
+      <button type="button" data-clientes-tab="indicacoes" class="${ativo === "indicacoes" ? "is-active" : ""}" onclick="abrirAreaClientesVendedor('indicacoes')"><span class="material-symbols-rounded">campaign</span>Leads</button>
+      <span class="clientes-submenu-spacer" aria-hidden="true"></span>
+      <button type="button" data-clientes-tab="criar" class="clientes-submenu-acao ${ativo === "criar" ? "is-active" : ""}" onclick="abrirCriacaoClienteVendedor()"><span class="material-symbols-rounded">person_add</span>Criar cliente</button>    </nav>`;
   }
 
   function garantirNavegacaoClientesVendedor() {

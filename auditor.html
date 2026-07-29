@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
-  <link href="css/integro-theme.css" rel="stylesheet">
+  <link href="css/integro-theme.css?v=20260729-scroll4" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;font-family:"Inter",sans-serif}
     :root{--nav:#061a35;--nav2:#092b61;--bg:#f3f7fc;--card:#fff;--text:#071a33;--muted:#64748b;--line:#e2e8f0;--orange:#ff8a00;--orange2:#ffb100;--green:#16c784;--blue:#1683ff;--red:#ff405d;--shadow:0 18px 45px rgba(15,23,42,.08)}
@@ -70,7 +70,7 @@
         <button class="integro-module-tab" data-tela-auditor="financeiro" type="button" aria-selected="false" onclick="trocarTelaAuditor('financeiro')"><span class="material-symbols-rounded">receipt_long</span>Financeiro</button>
         <button class="integro-module-tab" data-tela-auditor="caixas" type="button" aria-selected="false" onclick="trocarTelaAuditor('caixas')"><span class="material-symbols-rounded">point_of_sale</span>Caixas</button>
         <button class="integro-module-tab" data-tela-auditor="vendas" type="button" aria-selected="false" onclick="trocarTelaAuditor('vendas')"><span class="material-symbols-rounded">shopping_cart</span>Vendas</button>
-        <button class="integro-module-tab" data-tela-auditor="indicacoes" type="button" aria-selected="false" onclick="trocarTelaAuditor('indicacoes')"><span class="material-symbols-rounded">campaign</span>Indicações</button>
+        <button class="integro-module-tab" data-tela-auditor="indicacoes" type="button" aria-selected="false" onclick="trocarTelaAuditor('indicacoes')"><span class="material-symbols-rounded">campaign</span>Leads</button>
       </nav>
       <div id="statusAuditor" class="status"></div>
       <section class="kpis">
@@ -123,9 +123,9 @@
   <script src="js/firebase-config.js?v=20260728-3"></script>
   <script src="js/services/firestore.js?v=20260728-3"></script>
   <script src="js/services/indicacoes-service.js"></script>
-  <script src="js/services/chat-service.js?v=20260728-3"></script>
+  <script src="js/services/chat-service.js?v=20260729-1"></script>
   <script src="js/auth.js"></script>
-  <script src="js/chat-ui.js"></script>
+  <script src="js/chat-ui.js?v=20260729-1"></script>
   <script>
     const AUDITOR = { tela: "logs", dados: { logs: [], usuarios: [], financeiro: [], caixas: [], vendas: [], indicacoes: [] } };
 
@@ -212,7 +212,7 @@
         return;
       }
       el.innerHTML = `
-        <div class="table-wrap">
+        <div class="table-wrap integro-data-frame">
           <table>
             <thead><tr><th>Data</th><th>Tipo</th><th>Origem</th><th>Responsável</th><th>Status</th></tr></thead>
             <tbody>

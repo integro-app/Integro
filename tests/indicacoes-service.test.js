@@ -32,7 +32,22 @@ function criarDbIndicacoes(documentos = {}) {
     dados,
     logs,
     collection(nome) {
+      const filtros = [];
+      let limite = Infinity;
       return {
+        where(campo, operador, valor) { filtros.push({ campo, operador, valor }); return this; },
+        limit(valor) { limite = valor; return this; },
+        async get() {
+          const docs = [];
+          for (const [chave, item] of dados.entries()) {
+            const [colecao, id] = chave.split("/");
+            if (colecao !== nome) continue;
+            const passou = filtros.every(filtro => filtro.operador === "==" && item[filtro.campo] === filtro.valor);
+            if (passou) docs.push({ id, exists: true, data: () => ({ ...item }) });
+            if (docs.length >= limite) break;
+          }
+          return { empty: docs.length === 0, docs };
+        },
         doc(id = `doc_${dados.size + 1}`) {
           return {
             id,
@@ -240,8 +255,11 @@ test("master pode atribuir indicacao e payload interno nao e gravado", async () 
   const db = criarDbIndicacoes({
     "indicacoes/ind_1": {
       clientePlataformaId: "tenant_1",
+      clienteOperacionalId: "cli_1",
       statusIndicacao: "RECEBIDA"
-    }
+    },
+    "clientes_operacionais/cli_1": { clientePlataformaId: "tenant_1", statusCliente: "LEAD" },
+    "usuarios/vend_1": { authUid: "vend_1", cargoChave: "vendedor", clientePlataformaId: "tenant_1", status: "ATIVO" }
   });
 
   await svc.atribuirIndicacao("ind_1", { vendedorId: "vend_1", equipeId: "eq_1", db }, master());
@@ -255,6 +273,64 @@ test("master pode atribuir indicacao e payload interno nao e gravado", async () 
   assert.equal(notificacao.indicacaoId, "ind_1");
   assert.equal(notificacao.destinatarioId, "vend_1");
   assert.equal(notificacao.statusIndicacao, "ATRIBUIDA");
+  const cliente = db.dados.get("clientes_operacionais/cli_1");
+  assert.equal(cliente.vendedorId, "vend_1");
+  assert.equal(cliente.equipeId, "eq_1");
+  assert.equal(cliente.statusAtendimento, "AGUARDANDO_ATENDIMENTO");
+});
+
+test("criacao atribuida valida vendedor e vincula o lead ao authUid", async () => {
+  const db = criarDbIndicacoes({
+    "usuarios/doc_vend": { authUid: "auth_vend", cargoChave: "vendedor", clientePlataformaId: "tenant_1", status: "ATIVO", nome: "Ana" }
+  });
+  const resultado = await svc.criarIndicacao({
+    db,
+    usuario: master(),
+    clientePlataformaId: "tenant_1",
+    nome: "Lead novo",
+    telefonePrincipal: "(11) 99999-1111",
+    vendedorDestinoId: "doc_vend",
+    equipeDestinoId: "eq_1"
+  });
+  const indicacao = db.dados.get(`indicacoes/${resultado.id}`);
+  const cliente = db.dados.get(`clientes_operacionais/${resultado.clienteOperacionalId}`);
+  assert.equal(indicacao.vendedorDestinoId, "doc_vend");
+  assert.equal(indicacao.vendedorAuthUid, "auth_vend");
+  assert.equal(cliente.vendedorId, "auth_vend");
+  assert.equal(cliente.vendedorDocumentoId, "doc_vend");
+  assert.equal(cliente.statusAtendimento, "AGUARDANDO_ATENDIMENTO");
+});
+
+test("vendedor reconhece indicacao pelos aliases de documento e authUid", () => {
+  const usuario = vendedor("doc_vend", { authUid: "auth_vend" });
+  assert.equal(svc.usuarioNoEscopoIndicacao(usuario, { clientePlataformaId: "tenant_1", vendedorAuthUid: "auth_vend" }), true);
+  assert.equal(svc.usuarioNoEscopoIndicacao(usuario, { clientePlataformaId: "tenant_1", vendedorDestinoId: "doc_vend" }), true);
+  assert.equal(svc.usuarioNoEscopoIndicacao(usuario, { clientePlataformaId: "tenant_1", vendedorAuthUid: "outro" }), false);
+});
+
+test("atribuicao aceita somente vendedor ativo e cliente sem historico de venda", async () => {
+  const destinoInvalido = criarDbIndicacoes({
+    "indicacoes/ind_perfil": { clientePlataformaId: "tenant_1", statusIndicacao: "RECEBIDA" },
+    "usuarios/sup_1": { authUid: "sup_1", cargoChave: "supervisor", clientePlataformaId: "tenant_1", status: "ATIVO" }
+  });
+  await assert.rejects(svc.atribuirIndicacao("ind_perfil", { vendedorId: "sup_1", db: destinoInvalido }, master()), /só pode ser atribuída a um vendedor ativo/);
+
+  const comHistorico = criarDbIndicacoes({
+    "indicacoes/ind_venda": { clientePlataformaId: "tenant_1", clienteOperacionalId: "cli_venda", statusIndicacao: "RECEBIDA" },
+    "clientes_operacionais/cli_venda": { clientePlataformaId: "tenant_1", possuiHistoricoVenda: true },
+    "usuarios/vend_1": { authUid: "vend_1", cargoChave: "vendedor", clientePlataformaId: "tenant_1", status: "ATIVO" }
+  });
+  await assert.rejects(svc.atribuirIndicacao("ind_venda", { vendedorId: "vend_1", db: comHistorico }, master()), /histórico de venda exige autorização/);
+});
+
+test("somente vendedor pode vincular a venda na conversao", async () => {
+  const db = criarDbIndicacoes({
+    "indicacoes/ind_converter": { clientePlataformaId: "tenant_1", statusIndicacao: "EM_ATENDIMENTO", vendedorId: "vend_1" }
+  });
+  await assert.rejects(async () => svc.vincularVendaIndicacao("ind_converter", "venda_1", 10000, master({ db })), /Somente o vendedor responsável/);
+  await svc.vincularVendaIndicacao("ind_converter", "venda_1", 10000, vendedor("vend_1", { db }));
+  assert.equal(db.dados.get("indicacoes/ind_converter").statusIndicacao, "CONVERTIDA");
+  assert.equal(db.dados.get("indicacoes/ind_converter").vendaId, "venda_1");
 });
 
 test("edicao da indicacao salva dados, atualiza lead vinculado e notifica novo vendedor", async () => {
@@ -272,14 +348,20 @@ test("edicao da indicacao salva dados, atualiza lead vinculado e notifica novo v
       nome: "Nome antigo",
       telefoneNormalizado: "11988880000",
       telefonesNormalizados: ["11988880000", "1133334444"]
-    }
+    },
+    "usuarios/vend_2": { authUid: "auth_vend_2", cargoChave: "vendedor", clientePlataformaId: "tenant_1", status: "ATIVO" }
   });
 
   const resultado = await svc.salvarEdicaoIndicacao("ind_edicao", {
     db,
     nome: "Nome atualizado",
     telefonePrincipal: "(11) 99999-2222",
-    observacao: "Retornar amanhã",
+    documento: "123.456.789-09",
+    tipoCliente: "PF",
+    paisTelefone: "55",
+    whatsappAtivo: true,
+    whatsappUrl: "https://wa.me/5511999992222",
+    origemIndicacao: "WHATSAPP",    observacao: "Retornar amanhã",
     statusIndicacao: "ATRIBUIDA",
     vendedorDestinoId: "vend_2",
     vendedorDestinoNome: "Vendedor Dois",
@@ -290,8 +372,23 @@ test("edicao da indicacao salva dados, atualiza lead vinculado e notifica novo v
   const cliente = db.dados.get("clientes_operacionais/cli_1");
   assert.equal(resultado.statusIndicacao, "ATRIBUIDA");
   assert.equal(indicacao.nomeClienteSnapshot, "Nome atualizado");
+  assert.equal(indicacao.documentoNormalizado, "12345678909");
+  assert.equal(indicacao.tipoCliente, "PF");
+  assert.equal(indicacao.whatsappAtivo, true);
+  assert.equal(indicacao.origemIndicacao, "WHATSAPP");
   assert.equal(indicacao.vendedorId, "vend_2");
+  assert.equal(indicacao.atualizadoPor, "master_1");
+  assert.equal(indicacao.atualizadoPorNome, "");
+  assert.equal(indicacao.atualizadoEmTexto, "2026-06-30T12:00:00-03:00");
   assert.equal(cliente.nome, "Nome atualizado");
+  assert.equal(cliente.documentoNormalizado, "12345678909");
+  assert.equal(cliente.whatsappAtivo, true);
+  assert.equal(cliente.atualizadoPor, "master_1");
   assert.deepEqual(cliente.telefonesNormalizados, ["11999992222", "1133334444"]);
+  const logEdicao = db.logs.find(item => item.nome === "logs" && item.payload.tipo === "INDICACAO_REDISTRIBUIDA");
+  assert.equal(logEdicao.payload.usuarioId, "master_1");
+  assert.equal(logEdicao.payload.dados.acao, "INDICACAO_REDISTRIBUIDA");
+  assert.equal(logEdicao.payload.dados.alteracoes.nomeClienteSnapshot.anterior, "Nome antigo");
+  assert.equal(logEdicao.payload.dados.alteracoes.nomeClienteSnapshot.atual, "Nome atualizado");
   assert.ok([...db.dados.keys()].some(chave => chave.startsWith("notificacoes/indicacao_NOVO_LEAD_ind_edicao_auth_vend_2")));
 });

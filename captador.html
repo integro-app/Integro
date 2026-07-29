@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
-  <link href="css/integro-theme.css" rel="stylesheet">
+  <link href="css/integro-theme.css?v=20260729-scroll4" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;font-family:"Inter",sans-serif}
     :root{--nav:#061a35;--nav2:#092b61;--bg:#f3f7fc;--card:#fff;--text:#071a33;--muted:#64748b;--line:#e2e8f0;--orange:#ff8a00;--orange2:#ffb100;--green:#16c784;--blue:#1683ff;--red:#ff405d;--shadow:0 18px 45px rgba(15,23,42,.08)}
@@ -51,7 +51,7 @@
         <small>Indicações</small>
       </div>
       <div class="menu-title">Operação</div>
-      <button class="menu-item active" data-modulo="indicacoes" type="button" onclick="trocarTelaCaptador('nova')"><span class="material-symbols-rounded">campaign</span>Indicações</button>
+      <button class="menu-item active" data-modulo="indicacoes" type="button" onclick="trocarTelaCaptador('minhas')"><span class="material-symbols-rounded">campaign</span>Leads</button>
       <button class="menu-item" data-modulo="chat" type="button" onclick="trocarTelaCaptador('chat')"><span class="material-symbols-rounded">forum</span>Chat interno</button>
       <div class="menu-title">Sessão</div>
       <button class="menu-item" type="button" onclick="logout()"><span class="material-symbols-rounded">logout</span>Sair</button>
@@ -62,24 +62,17 @@
           <h1>Captador</h1>
           <p>Cadastro de indicações reais, acompanhamento de status e relatório por conversão.</p>
         </div>
-        <div class="actions">
-          <button class="btn" type="button" onclick="carregarCaptador()">Atualizar</button>
-          <button class="btn primary" type="button" onclick="trocarTelaCaptador('nova')">Nova indicação</button>
-        </div>
+        <div class="actions"><button class="btn" type="button" onclick="carregarCaptador()"><span class="material-symbols-rounded">refresh</span> Atualizar</button></div>
       </div>
-      <nav class="integro-module-nav" aria-label="Áreas de indicações">
-        <button class="integro-module-tab active" data-tela-captador="nova" type="button" aria-selected="true" onclick="trocarTelaCaptador('nova')"><span class="material-symbols-rounded">add_task</span>Nova indicação</button>
-        <button class="integro-module-tab" data-tela-captador="minhas" type="button" aria-selected="false" onclick="trocarTelaCaptador('minhas')"><span class="material-symbols-rounded">manage_search</span>Minhas indicações</button>
-        <button class="integro-module-tab" data-tela-captador="relatorio" type="button" aria-selected="false" onclick="trocarTelaCaptador('relatorio')"><span class="material-symbols-rounded">monitoring</span>Relatório</button>
-      </nav>
+      <nav class="integro-module-nav" aria-label="Areas de leads"><button class="integro-module-tab active" data-tela-captador="minhas" type="button" aria-selected="true" onclick="trocarTelaCaptador('minhas')"><span class="material-symbols-rounded">manage_search</span>Gerenciar leads</button><button class="integro-module-tab" data-tela-captador="relatorio" type="button" aria-selected="false" onclick="trocarTelaCaptador('relatorio')"><span class="material-symbols-rounded">monitoring</span>Relatorios</button><span class="integro-module-nav-spacer" aria-hidden="true"></span><button class="integro-module-create" data-tela-captador="nova" type="button" aria-selected="false" onclick="trocarTelaCaptador('nova')"><span class="material-symbols-rounded">person_add</span>Criar lead</button></nav>
       <div id="statusCaptador" class="status"></div>
-      <section class="kpis">
-        <div class="kpi"><small>Recebidas</small><strong id="capRecebidas">0</strong></div>
-        <div class="kpi"><small>Em atendimento</small><strong id="capAtendimento">0</strong></div>
-        <div class="kpi"><small>Convertidas</small><strong id="capConvertidas">0</strong></div>
-        <div class="kpi"><small>Encerradas</small><strong id="capEncerradas">0</strong></div>
+      <section class="kpis integro-client-kpis">
+        <div class="kpi integro-client-kpi"><small>Recebidas</small><strong id="capRecebidas">0</strong></div>
+        <div class="kpi integro-client-kpi"><small>Em atendimento</small><strong id="capAtendimento">0</strong></div>
+        <div class="kpi integro-client-kpi"><small>Convertidas</small><strong id="capConvertidas">0</strong></div>
+        <div class="kpi integro-client-kpi"><small>Encerradas</small><strong id="capEncerradas">0</strong></div>
       </section>
-      <section id="telaNovaCaptador" class="panel">
+      <section id="telaNovaCaptador" class="panel" style="display:none">
         <div class="panel-head"><h2>Nova indicação</h2></div>
         <form id="formIndicacaoCaptador" class="grid" onsubmit="salvarIndicacaoCaptador(event)">
           <div><label>Nome do cliente</label><input id="capNomeCliente" required></div>
@@ -96,7 +89,7 @@
           </div>
         </form>
       </section>
-      <section id="telaMinhasCaptador" class="panel" style="display:none">
+      <section id="telaMinhasCaptador" class="panel">
         <div class="panel-head">
           <h2>Minhas indicações</h2>
           <select id="filtroStatusCaptador" onchange="renderCaptador()" style="max-width:220px">
@@ -141,15 +134,16 @@
   <script src="js/config.js"></script>
   <script src="js/utils/operational.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
+  <script src="js/utils/validators.js?v=20260729-1"></script>
   <script src="js/state.js"></script>
   <script src="js/firebase-config.js?v=20260728-3"></script>
   <script src="js/services/firestore.js?v=20260728-3"></script>
   <script src="js/services/indicacoes-service.js"></script>
-  <script src="js/services/chat-service.js?v=20260728-3"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/chat-ui.js"></script>
+  <script src="js/services/chat-service.js?v=20260729-1"></script>
+  <script src="js/auth.js?v=20260729-1"></script>
+  <script src="js/chat-ui.js?v=20260729-1"></script>
   <script>
-    const CAPTADOR = { tela: "nova", indicacoes: [], vendedores: [], equipes: [] };
+    const CAPTADOR = { tela: "minhas", indicacoes: [], vendedores: [], equipes: [] };
 
     function msgCaptador(texto, tipo = "info") {
       const el = document.getElementById("statusCaptador");
@@ -298,7 +292,7 @@
         return;
       }
       el.innerHTML = `
-        <div class="table-wrap">
+        <div class="table-wrap integro-data-frame">
           <table>
             <thead><tr><th>Cliente</th><th>Telefone</th><th>Status</th><th>Vendedor</th><th>Entrada</th></tr></thead>
             <tbody>
@@ -325,7 +319,7 @@
         return;
       }
       el.innerHTML = `
-        <div class="table-wrap">
+        <div class="table-wrap integro-data-frame">
           <table>
             <thead><tr><th>Captador</th><th>Recebidas</th><th>Convertidas</th><th>Não convertidas</th><th>Taxa</th></tr></thead>
             <tbody>

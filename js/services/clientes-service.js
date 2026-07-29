@@ -57,13 +57,22 @@
     ].filter(Boolean).map(String))];
   }
 
+  function vendedoresUsuario(usuario = {}) {
+    return [...new Set([
+      ...(Array.isArray(usuario.vendedoresIds) ? usuario.vendedoresIds : []),
+      ...(Array.isArray(usuario.vendedorIds) ? usuario.vendedorIds : []),
+      ...(Array.isArray(usuario.vendedoresPermitidosIds) ? usuario.vendedoresPermitidosIds : []),
+      ...(Array.isArray(usuario.usuariosIds) ? usuario.usuariosIds : [])
+    ].filter(Boolean).map(String))];
+  }
+
   function usuarioAtivo(usuario = {}) {
     const status = texto(usuario.status || "ATIVO").toUpperCase();
     return usuario.ativo !== false && !["INATIVO", "BLOQUEADO", "SUSPENSO"].includes(status);
   }
 
   function usuarioPodeAdministrarClientes(usuario = {}) {
-    return ["master_local", "gerente", "master_global", "usuario_integro"].includes(cargoUsuario(usuario));
+    return ["master_local", "master_global", "usuario_integro"].includes(cargoUsuario(usuario));
   }
 
   function clienteNoEscopo(usuario = {}, cliente = {}, acao = "ler") {
@@ -79,7 +88,11 @@
     const equipe = texto(cliente.equipeId || cliente.equipeDestinoId || cliente.unidadeId);
 
     if (cargo === "vendedor") return Boolean(uid && responsavel === uid);
-    if (cargo === "supervisor") return Boolean(equipe && equipesUsuario(usuario).includes(equipe));
+    if (["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) {
+      const equipes = equipesUsuario(usuario);
+      const vendedores = vendedoresUsuario(usuario);
+      return Boolean((equipe && equipes.includes(equipe)) || (responsavel && vendedores.includes(responsavel)));
+    }
     if (["financeiro", "auditor"].includes(cargo)) return acao === "ler";
     if (cargo === "captador") {
       const captador = texto(cliente.captadorId || cliente.indicadoPorId || cliente.criadoPor);
@@ -369,18 +382,24 @@
     const cargo = cargoUsuario(usuario);
     const usuarioId = idUsuario(usuario);
     const equipesPermitidas = equipesUsuario(usuario).slice(0, 10);
+    const vendedoresPermitidos = vendedoresUsuario(usuario).slice(0, 10);
     if (cargo === "vendedor") {
       if (!usuarioId) throw new Error("Vendedor sem vinculo de autenticacao.");
       ref = ref.where("vendedorId", "==", usuarioId);
-    } else if (cargo === "supervisor") {
-      if (!equipesPermitidas.length) return [];
-      ref = equipesPermitidas.length === 1
-        ? ref.where("equipeId", "==", equipesPermitidas[0])
-        : ref.where("equipeId", "in", equipesPermitidas);
+    } else if (["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) {
+      if (filtros.equipeId && !equipesPermitidas.includes(texto(filtros.equipeId))) return [];
+      if (filtros.vendedorId && !vendedoresPermitidos.includes(texto(filtros.vendedorId)) && !equipesPermitidas.length) return [];
+      if (equipesPermitidas.length) {
+        ref = ref.where("equipeId", equipesPermitidas.length === 1 ? "==" : "in", equipesPermitidas.length === 1 ? equipesPermitidas[0] : equipesPermitidas);
+      } else if (vendedoresPermitidos.length) {
+        ref = ref.where("vendedorId", vendedoresPermitidos.length === 1 ? "==" : "in", vendedoresPermitidos.length === 1 ? vendedoresPermitidos[0] : vendedoresPermitidos);
+      } else {
+        return [];
+      }
     }
     if (filtros.statusAtendimento) ref = ref.where("statusAtendimento", "==", texto(filtros.statusAtendimento).toUpperCase());
     if (filtros.vendedorId && cargo !== "vendedor") ref = ref.where("vendedorId", "==", texto(filtros.vendedorId));
-    if (filtros.equipeId && cargo !== "supervisor") ref = ref.where("equipeId", "==", texto(filtros.equipeId));
+    if (filtros.equipeId && !["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) ref = ref.where("equipeId", "==", texto(filtros.equipeId));
     const snap = await ref.limit(limite).get();
     const termo = normalizarBusca(filtros.busca);
     return snap.docs.map(documentoDeSnapshot)
@@ -389,6 +408,59 @@
         item.nome, item.nomeCompleto, item.documento, item.telefonePrincipal, item.telefone,
         item.cep, item.endereco, item.bairro, item.cidade, item.vendedorNome, item.codigoPublico
       ].join(" ")).includes(termo));
+  }
+
+  function possuiIndicadorHistoricoVenda(cliente = {}) {
+    return Boolean(
+      cliente.vendaAtivaId || cliente.ultimaVendaId || cliente.possuiVendaAtiva === true ||
+      cliente.possuiHistoricoVenda === true || Number(cliente.totalVendas || cliente.vendasRealizadas || 0) > 0 ||
+      (Array.isArray(cliente.vendasIds) && cliente.vendasIds.length) ||
+      (Array.isArray(cliente.historicoVendas) && cliente.historicoVendas.length)
+    );
+  }
+
+  async function excluirClienteSemHistorico(clienteId, usuario = {}, opcoes = {}) {
+    const db = opcoes.db || getDb();
+    if (!usuarioPodeAdministrarClientes(usuario) || cargoUsuario(usuario) !== "master_local") {
+      throw new Error("Somente o Master Local pode excluir clientes sem historico de venda.");
+    }
+    const cliente = await obterCliente(db, clienteId);
+    if (!clienteNoEscopo(usuario, cliente, "editar")) throw new Error("Cliente fora do escopo do usuario.");
+    if (possuiIndicadorHistoricoVenda(cliente)) throw new Error("Cliente com historico de venda nao pode ser excluido.");
+
+    const tenant = tenantUsuario(usuario);
+    const ids = [cliente.id, cliente.clienteLegadoId].filter(Boolean);
+    const consultas = [];
+    for (const id of ids) {
+      consultas.push(db.collection("vendas").where("clientePlataformaId", "==", tenant).where("clienteId", "==", id).limit(1).get());
+      consultas.push(db.collection("vendas").where("clientePlataformaId", "==", tenant).where("clienteOperacionalId", "==", id).limit(1).get());
+    }
+    const vendas = await executarConsultasUnicas(consultas);
+    if (vendas.length) throw new Error("Cliente com historico de venda nao pode ser excluido.");
+
+    const agora = dataHoraSP();
+    const payload = {
+      excluido: true,
+      ativo: false,
+      statusCliente: "INATIVO",
+      excluidoPor: idUsuario(usuario),
+      excluidoEm: serverTimestamp(),
+      atualizadoPor: idUsuario(usuario),
+      atualizadoEm: serverTimestamp(),
+      ultimaMovimentacaoTexto: agora
+    };
+    const batch = db.batch();
+    batch.set(db.collection(COLECAO_CLIENTES).doc(cliente.id), payload, { merge: true });
+    if (cliente.clienteLegadoId) batch.set(db.collection(COLECAO_LEGADA).doc(cliente.clienteLegadoId), payload, { merge: true });
+    batch.set(db.collection("logs").doc(), payloadAuditoria(usuario, {
+      tipo: "CLIENTE_EXCLUIDO",
+      tipoAcao: "CLIENTE_EXCLUIDO",
+      origem: "clientes-service",
+      clienteId: cliente.id,
+      dados: { clienteId: cliente.id, clienteLegadoId: cliente.clienteLegadoId || "", exclusaoLogica: true }
+    }));
+    await batch.commit();
+    return { ...cliente, ...payload };
   }
 
   async function validarDestino(db, tenant, destino = {}) {
@@ -629,6 +701,7 @@
     atualizarCliente,
     atualizarClienteComLegado,
     listarClientes,
+    excluirClienteSemHistorico,
     direcionarCliente,
     registrarAtendimento,
     reabrirParaRetrabalho,

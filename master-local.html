@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
-  <link href="css/integro-theme.css?v=20260728" rel="stylesheet">
+  <link href="css/integro-theme.css?v=20260729-scroll4" rel="stylesheet">
 
   <style>
     *{margin:0;padding:0;box-sizing:border-box;font-family:"Inter",sans-serif}
@@ -2135,6 +2135,12 @@ body.integro-data-refreshing .section-card{
 .clientes-module-tab .material-symbols-outlined{font-size:21px;}
 .clientes-module-tab .clientes-tab-chevron{font-size:19px;transition:transform .18s ease;}
 .clientes-module-tab[aria-expanded="true"] .clientes-tab-chevron{transform:rotate(180deg);}
+.clientes-module-nav-spacer{flex:1 0 20px;min-width:20px;}
+.clientes-module-create{min-width:168px;min-height:58px;padding:0 22px;border:0;border-left:1px solid #e2e8f0;background:#ff8a00;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:9px;font:inherit;font-size:14px;font-weight:900;white-space:nowrap;cursor:pointer;transition:background .18s ease,box-shadow .18s ease,transform .18s ease;}
+.clientes-module-create:hover{background:#e97800;box-shadow:0 8px 20px rgba(255,138,0,.22);}
+.clientes-module-create:active{transform:translateY(1px);}
+.clientes-module-create:focus-visible{outline:3px solid rgba(11,59,117,.28);outline-offset:-4px;}
+.clientes-module-create .material-symbols-outlined{font-size:21px;}
 .clientes-indicacoes-dropdown{
   position:fixed;
   z-index:12000;
@@ -2470,7 +2476,7 @@ body.integro-data-refreshing .section-card{
           <div id="indicacoesModuloMasterLocalBase" style="display:none;">
             <div id="indicacoesDashboardMasterLocal" class="grid grid-4" style="margin-bottom:18px;"></div>
             <div class="filter-grid" style="margin-bottom:18px;">
-              <input id="indicacaoFiltroTextoML" type="search" placeholder="Buscar por nome, telefone ou documento" oninput="renderIndicacoesMasterLocal()">
+              <input id="indicacaoFiltroTextoML" type="search" placeholder="Buscar por nome, telefone ou documento" onkeydown="if(event.key===&quot;Enter&quot;){event.preventDefault();buscarIndicacoesMasterLocal()}">
               <select id="indicacaoFiltroStatusML" onchange="renderIndicacoesMasterLocal()">
                 <option value="">Todos os status</option>
                 <option value="RECEBIDA">Recebida</option>
@@ -2481,8 +2487,8 @@ body.integro-data-refreshing .section-card{
                 <option value="RECUSADA">Recusada</option>
                 <option value="CANCELADA">Cancelada</option>
               </select>
-              <input id="indicacaoFiltroVendedorML" type="search" placeholder="Vendedor" oninput="renderIndicacoesMasterLocal()">
-              <input id="indicacaoFiltroOrigemML" type="search" placeholder="Origem" oninput="renderIndicacoesMasterLocal()">
+              <input id="indicacaoFiltroVendedorML" type="search" placeholder="Vendedor" onkeydown="if(event.key===&quot;Enter&quot;){event.preventDefault();buscarIndicacoesMasterLocal()}">
+              <input id="indicacaoFiltroOrigemML" type="search" placeholder="Origem" onkeydown="if(event.key===&quot;Enter&quot;){event.preventDefault();buscarIndicacoesMasterLocal()}">
             </div>
             <div id="listaIndicacoesMasterLocal" class="table-wrap"></div>
             <div class="section-card" style="margin-top:18px;">
@@ -2508,7 +2514,6 @@ body.integro-data-refreshing .section-card{
       <section id="clientes" class="screen">
         <div class="section-card">
           <nav class="clientes-module-nav" aria-label="Áreas de clientes">
-            <button class="clientes-module-tab" type="button" data-clientes-tela="adicionarCliente" aria-selected="false" onclick="navegarModuloClientesMasterLocal('adicionarCliente')"><span class="material-symbols-outlined">person_add</span> Criar cliente</button>
             <button class="clientes-module-tab active" type="button" data-clientes-tela="clientes" aria-selected="true" onclick="navegarModuloClientesMasterLocal('clientes')"><span class="material-symbols-outlined">manage_search</span> Consultar</button>
             <button class="clientes-module-tab" type="button" data-clientes-tela="indicacoes" aria-selected="false" onclick="navegarModuloClientesMasterLocal('indicacoes')"><span class="material-symbols-outlined">campaign</span> Indicações</button>
           </nav>
@@ -2675,7 +2680,6 @@ body.integro-data-refreshing .section-card{
       <section id="adicionarCliente" class="screen">
         <div class="section-card cliente-cadastro-pagina">
           <nav class="clientes-module-nav" aria-label="Áreas de clientes">
-            <button class="clientes-module-tab active" type="button" data-clientes-tela="adicionarCliente" aria-selected="true" onclick="navegarModuloClientesMasterLocal('adicionarCliente')"><span class="material-symbols-outlined">person_add</span> Criar cliente</button>
             <button class="clientes-module-tab" type="button" data-clientes-tela="clientes" aria-selected="false" onclick="navegarModuloClientesMasterLocal('clientes')"><span class="material-symbols-outlined">manage_search</span> Consultar</button>
             <button class="clientes-module-tab" type="button" data-clientes-tela="indicacoes" aria-selected="false" onclick="navegarModuloClientesMasterLocal('indicacoes')"><span class="material-symbols-outlined">campaign</span> Indicações</button>
           </nav>
@@ -2703,17 +2707,9 @@ body.integro-data-refreshing .section-card{
         <script type="application/json" id="indicacoesModuloBaseAtivo">{"versao":"base"}</script>
         <div class="section-card">
           <nav class="clientes-module-nav" aria-label="Áreas de clientes">
-            <button class="clientes-module-tab" type="button" data-clientes-tela="adicionarCliente" aria-selected="false" onclick="navegarModuloClientesMasterLocal('adicionarCliente')"><span class="material-symbols-outlined">person_add</span> Criar cliente</button>
             <button class="clientes-module-tab" type="button" data-clientes-tela="clientes" aria-selected="false" onclick="navegarModuloClientesMasterLocal('clientes')"><span class="material-symbols-outlined">manage_search</span> Consultar</button>
-            <button class="clientes-module-tab active" type="button" data-clientes-tela="indicacoes" aria-selected="true" onclick="navegarModuloClientesMasterLocal('indicacoes')"><span class="material-symbols-outlined">campaign</span> Indicações</button>
+            <button class="clientes-module-tab active" type="button" data-clientes-tela="indicacoes" aria-selected="true" onclick="navegarModuloClientesMasterLocal('indicacoes')"><span class="material-symbols-outlined">campaign</span> Leads</button>
           </nav>
-          <div class="section-header">
-            <div><h2>Indicações</h2><p>Leads cadastrados e direcionados aos vendedores para atendimento e conversão.</p></div>
-            <div class="indicacoes-page-actions">
-              <button class="ghost-btn" type="button" onclick="abrirFiltrosIndicacoesAtivosML()"><span class="material-symbols-outlined">tune</span> Filtros</button>
-              <button id="btnNovaIndicacaoMasterLocal" class="primary-btn" type="button" onclick="abrirNovaIndicacaoMasterLocal()">Nova indicação</button>
-            </div>
-          </div>
           <div class="placeholder-dev">
             Fluxo preparado: Marketing → Indicação → Vendedor → Cliente → Venda → Cobrança.<br>
             O marketing poderá redistribuir leads entre vendedores até a conversão.
@@ -2873,13 +2869,16 @@ body.integro-data-refreshing .section-card{
   <script src="js/utils/operational.js"></script>
   <script src="js/state.js"></script>
   <script src="js/services/firestore.js?v=20260728-3"></script>
+  <script src="js/vendor/exceljs.min.js?v=20260729-1"></script>
   <script src="js/services/clientes-service.js"></script>
+  <script src="js/services/clientes-importacao-service.js?v=20260729-1"></script>
+  <script src="js/clientes-importacao-ui.js?v=20260729-1"></script>
   <script src="js/services/indicacoes-service.js"></script>
-  <script src="js/services/chat-service.js?v=20260728-3"></script>
+  <script src="js/services/chat-service.js?v=20260729-1"></script>
   <script src="js/services/financial-operations.js"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20260729-2"></script>
   <script src="js/auth.js"></script>
   <script src="js/cargos.js?v=20260728-3"></script>
   <script src="js/equipes.js"></script>
@@ -2888,7 +2887,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/clientes.js"></script>
   <script src="js/vendas.js"></script>
   <script src="js/master-local.js"></script>
-<script src="js/chat-ui.js"></script>
+<script src="js/chat-ui.js?v=20260729-1"></script>
 <script src="js/dashboard-navigation.js"></script>
 
 
@@ -4805,26 +4804,13 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     const db = getDb();
     if(!db) return [];
     const tid = tenantId();
+    if(!tid) return [];
     const docsToArray = snap => snap.docs.map(doc => ({id:doc.id, ...doc.data()}));
-    const tentativas = [];
-    if(tid){
-      tentativas.push(["clientePlataformaId", tid]);
-      tentativas.push(["empresaId", tid]);
-      tentativas.push(["tenantId", tid]);
-    }
-    for(const [campo, valor] of tentativas){
-      try{
-        const snap = await db.collection(nome).where(campo, "==", valor).get();
-        const out = docsToArray(snap);
-        if(out.length) return out;
-      }catch(e){ console.warn(`Falha ao buscar ${nome} por ${campo}`, e); }
-    }
     try{
-      const snap = await db.collection(nome).get();
-      const out = docsToArray(snap);
-      return tid ? out.filter(belongsTenant) : out;
+      const snap = await db.collection(nome).where("clientePlataformaId", "==", tid).get();
+      return docsToArray(snap);
     }catch(e){
-      console.warn(`Falha ao buscar cole??o ${nome}`, e);
+      console.warn(`Falha ao buscar ${nome} pelo tenant canônico`, e);
       return [];
     }
   }
@@ -4848,7 +4834,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         getCollectionTenant("pagamentos"),
         getCollectionTenant("solicitacoes"),
         getCollectionTenant("logs"),
-        getCollectionTenant("clientes")
+        getCollectionTenant("clientes_operacionais")
       ]);
       window.equipesCache = equipes;
       window.usuariosCache = usuarios;
@@ -7541,21 +7527,16 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   async function getAll(coll, tenantAware=true){
     const database = db();
     if (!database) return [];
+    const tenant = tenantId();
+    if (tenantAware && !tenant) return [];
     try{
       let q = database.collection(coll);
-      if (tenantAware && tenantId()) q = q.where("clientePlataformaId","==",tenantId());
+      if (tenantAware) q = q.where("clientePlataformaId","==",tenant);
       const snap = await q.get();
       return snap.docs.map(d => ({id:d.id, ...d.data()}));
     }catch(e){
-      console.warn("Consulta com tenant falhou, tentando consulta simples:", coll, e);
-      try{
-        const snap = await database.collection(coll).get();
-        const arr = snap.docs.map(d => ({id:d.id, ...d.data()}));
-        return tenantId() ? arr.filter(x => !x.clientePlataformaId || x.clientePlataformaId === tenantId() || x.empresaId === tenantId()) : arr;
-      }catch(err){
-        console.warn("Não foi possível carregar cole??o:", coll, err);
-        return [];
-      }
+      console.warn("Não foi possível carregar coleção pelo tenant canônico:", coll, e);
+      return [];
     }
   }
 
@@ -8560,13 +8541,8 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       const snap = await db.collection(nome).where("clientePlataformaId", "==", tenant).get();
       return snap.docs.map(doc => ({ id:doc.id, ...doc.data() }));
     } catch(e) {
-      try {
-        const snap = await db.collection(nome).get();
-        return snap.docs.map(doc => ({ id:doc.id, ...doc.data() })).filter(r => !tenantField(r) || tenantField(r) === tenant);
-      } catch(err) {
-        console.warn("Falha ao buscar cole??o", nome, err?.message || err);
-        return [];
-      }
+      console.warn("Falha ao buscar coleção pelo tenant canônico", nome, e?.message || e);
+      return [];
     }
   }
 
@@ -10638,7 +10614,12 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   function cargoPermiteTodosClientes(){
     const u = usuarioAtual();
     const tipo = normalizarTexto(u.tipoUsuario || u.tipo || u.perfil || u.cargoNome || u.cargo || "");
-    return tipo.includes("master") || tipo.includes("supervisor") || tipo.includes("gerente") || tipo.includes("admin") || tipo.includes("operacional");
+    return tipo.includes("master local") || tipo.includes("master_local") || tipo.includes("master global") || tipo.includes("usuario integro");
+  }
+
+  function idsEscopoUsuarioClientes(chaves){
+    const u = usuarioAtual();
+    return [...new Set(chaves.flatMap(chave=>Array.isArray(u[chave]) ? u[chave] : u[chave] ? [u[chave]] : []).filter(Boolean).map(String))];
   }
 
   function clienteVisivelParaUsuario(c){
@@ -10646,7 +10627,47 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     if(tid && String(c.clientePlataformaId || c.tenantId || c.empresaId || "") !== String(tid)) return false;
     if(cargoPermiteTodosClientes()) return true;
     const uid = usuarioId();
-    return !uid || String(c.vendedorId || c.usuarioId || c.responsavelId || c.criadoPor || "") === String(uid);
+    const cargo = normalizarTexto(usuarioAtual().tipoUsuario || usuarioAtual().perfil || usuarioAtual().cargoNome || usuarioAtual().cargo || "");
+    const responsavel = String(c.vendedorAuthUid || c.vendedorUid || c.vendedorId || c.usuarioId || c.responsavelId || "");
+    if(cargo.includes("vendedor")) return Boolean(uid && responsavel === String(uid));
+    if(cargo.includes("supervisor") || cargo.includes("gerente") || cargo.includes("socio") || cargo.includes("proprietario")){
+      const equipes = idsEscopoUsuarioClientes(["equipeId","equipesIds","equipeIds"]);
+      const vendedores = idsEscopoUsuarioClientes(["vendedoresIds","vendedorIds","vendedoresPermitidosIds","usuariosIds"]);
+      const equipe = String(c.equipeId || c.equipeDestinoId || c.unidadeId || "");
+      return Boolean((equipe && equipes.includes(equipe)) || (responsavel && vendedores.includes(responsavel)));
+    }
+    return false;
+  }
+
+  function clientePossuiVenda(c){
+    return Boolean(
+      c?.vendaAtivaId || c?.ultimaVendaId || c?.possuiVendaAtiva === true ||
+      c?.possuiHistoricoVenda === true || Number(c?.totalVendas || c?.vendasRealizadas || 0) > 0 ||
+      (Array.isArray(c?.vendasIds) && c.vendasIds.length) ||
+      (Array.isArray(c?.historicoVendas) && c.historicoVendas.length)
+    );
+  }
+
+  async function vincularHistoricoVendasAosClientes(lista,database,tid){
+    let vendas = Array.isArray(window.vendasCache) ? window.vendasCache.slice() : [];
+    if(database && tid){
+      try{
+        const snap = await database.collection("vendas").where("clientePlataformaId","==",tid).limit(1000).get();
+        vendas = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+        window.vendasCache = vendas;
+      }catch(erro){
+        if(!vendas.length) console.warn("Não foi possível confirmar o histórico de vendas dos clientes.",erro);
+      }
+    }
+    const idsComVenda = new Set();
+    vendas.forEach(venda=>[
+      venda.clienteId,venda.clienteOperacionalId,venda.clienteLegadoId,
+      venda.clienteRefId,venda.cliente?.id
+    ].filter(Boolean).forEach(id=>idsComVenda.add(String(id))));
+    return (lista || []).map(cliente=>{
+      const idsCliente = [cliente.id,cliente.clienteOperacionalId,cliente.clienteLegadoId].filter(Boolean).map(String);
+      return idsCliente.some(id=>idsComVenda.has(id)) ? {...cliente,possuiHistoricoVenda:true} : cliente;
+    });
   }
 
   async function carregarClientesEmpresa(force=false){
@@ -10706,7 +10727,8 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       }
     }
 
-    lista = lista.filter(clienteVisivelParaUsuario);
+    lista = await vincularHistoricoVendasAosClientes(lista,database,tid);
+    lista = lista.filter(clienteVisivelParaUsuario).filter(clientePossuiVenda);
     window.clientesEmpresaMasterCache = lista;
     window.clientesCache = Array.isArray(window.clientesCache) && window.clientesCache.length ? window.clientesCache : lista;
     return lista;
@@ -10747,12 +10769,8 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     window.garantirNavegacaoClientesMasterLocal?.("clientes");
     const header = section.querySelector(".section-header");
     if(header){
-      header.innerHTML = `
-        <div>
-          <h2>Clientes</h2>
-          <p>${cargoPermiteTodosClientes() ? "Consulte, edite e gerencie clientes de toda a empresa vinculada ao seu cadastro." : "Consulte e gerencie os clientes vinculados ao seu usuário."}</p>
-        </div>
-      `;
+      header.hidden = true;
+      header.innerHTML = "";
     }
 
     let card = section.querySelector(".section-card");
@@ -10775,6 +10793,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         <div class="clientes-search-field"><span class="material-symbols-outlined">search</span><input id="buscaClienteMaster" type="search" placeholder="Buscar por nome, documento ou telefone"></div>
         <button class="ghost-btn" type="button" onclick="toggleFiltrosClientesMaster()"><span class="material-symbols-outlined">tune</span> Filtros</button>
         <button class="primary-btn" type="button" onclick="buscarClientesEmpresaMaster()"><span class="material-symbols-outlined">search</span> Buscar</button>
+        <button class="ghost-btn" type="button" onclick="exportarClientesIntegro(this)"><span class="material-symbols-outlined">download</span> Exportar</button>
       </div>
       <div id="filtrosClientesMaster" class="clientes-master-toolbar" hidden>
         <select id="filtroClienteStatusMaster">
@@ -10952,33 +10971,86 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   function renderResumoClientes(lista){
     const box = document.getElementById("clientesEmpresaMasterResumo");
     if(!box) return;
-    const ativos = lista.filter(c=>statusCliente(c) === "ATIVO").length;
-    const quitados = lista.filter(c=>statusCliente(c) === "QUITADO").length;
-    const inadimplentes = lista.filter(c=>statusCliente(c) === "INADIMPLENTE").length;
+    const possuiHistorico = c=>Boolean(c.vendaAtivaId || c.ultimaVendaId || c.possuiVendaAtiva === true || c.possuiHistoricoVenda === true || Number(c.totalVendas || c.vendasRealizadas || 0) > 0 || c.vendasIds?.length || c.historicoVendas?.length);
+    const estaAtivo = c=>Boolean(c.possuiVendaAtiva === true || c.vendaAtivaId || saldoCliente(c) > 0 || statusCliente(c) === "ATIVO");
+    const ativos = lista.filter(estaAtivo).length;
+    const inativos = lista.filter(c=>possuiHistorico(c) && !estaAtivo(c)).length;
     const carteira = lista.reduce((s,c)=>s + Math.max(0, saldoCliente(c)),0);
     const funil = window.ClientesService?.calcularRelatorio?.(lista) || {};
-    box.innerHTML = `
-      <div class="clientes-kpi-mini"><small>Total</small><strong>${lista.length}</strong></div>
-      <div class="clientes-kpi-mini"><small>Ativos</small><strong>${ativos}</strong></div>
-      <div class="clientes-kpi-mini"><small>Quitados</small><strong>${quitados}</strong></div>
-      <div class="clientes-kpi-mini"><small>Inadimplentes</small><strong>${inadimplentes}</strong></div>
-      <div class="clientes-kpi-mini"><small>Saldo em aberto</small><strong>${moeda(carteira)}</strong></div>
-      <div class="clientes-kpi-mini"><small>Em atendimento</small><strong>${Number(funil.emAtendimento || 0)}</strong></div>
-      <div class="clientes-kpi-mini"><small>Convertidos</small><strong>${Number(funil.convertidos || 0)}</strong></div>
-      <div class="clientes-kpi-mini"><small>Conversão</small><strong>${Number(funil.taxaConversao || 0).toFixed(1).replace(".",",")}%</strong></div>
-    `;
+    const metas = obterMetasClientesEmpresa();
+    const periodoFiltrado = Boolean(document.getElementById("filtroClienteDataInicioMaster")?.value || document.getElementById("filtroClienteDataFimMaster")?.value);
+    const cards = [
+      ["group", "Total", lista.length, "total", false],
+      ["verified_user", "Ativos", ativos, "ativos", false],
+      ["person_off", "Inativos", inativos, "inativos", false],
+      ["account_balance_wallet", "Saldo em aberto", carteira, "saldoEmAberto", true, moeda(carteira)],
+      ["support_agent", "Em atendimento", Number(funil.emAtendimento || 0), "emAtendimento", false],
+      ["check_circle", "Convertidos", Number(funil.convertidos || 0), "convertidos", false],
+      ["monitoring", "Conversão", Number(funil.taxaConversao || 0), "conversao", false, `${Number(funil.taxaConversao || 0).toFixed(1).replace(".",",")}%`]
+    ];
+    box.innerHTML = cards.map(card=>renderCardIndicadorCliente(card, metas, periodoFiltrado)).join("");
+  }
+
+  function obterMetasClientesEmpresa(){
+    const fontes = [
+      window.configuracoesEmpresaIntegro,
+      window.empresaAtual,
+      window.clientePlataformaAtual,
+      window.usuarioLogado,
+      window.currentUserData
+    ].filter(Boolean);
+    for(const fonte of fontes){
+      const metas = fonte?.configuracoesClientes?.metas || fonte?.configuracoes?.clientes?.metas || fonte?.metasClientes;
+      if(metas && typeof metas === "object") return metas;
+    }
+    return {};
+  }
+
+  async function carregarConfiguracoesIndicadoresEmpresa(){
+    const tenant = tenantId();
+    if(!tenant || window.configuracoesEmpresaIntegro?.id === tenant) return window.configuracoesEmpresaIntegro || null;
+    try{
+      const snap = await db().collection("clientes_integro").doc(tenant).get();
+      window.configuracoesEmpresaIntegro = snap.exists ? {id:snap.id,...snap.data()} : {id:tenant};
+    }catch(erro){
+      console.warn("Não foi possível carregar as metas de indicadores da empresa.", erro);
+      window.configuracoesEmpresaIntegro = {id:tenant};
+    }
+    return window.configuracoesEmpresaIntegro;
+  }
+
+  function renderCardIndicadorCliente(card, metas, periodoFiltrado){
+    const [icone, titulo, valorNumerico, chave, menorMelhor, valorExibido] = card;
+    const metaBruta = metas?.[chave];
+    const meta = Number(metaBruta?.valor ?? metaBruta);
+    const possuiMeta = Number.isFinite(meta) && meta >= 0;
+    let tendencia = "neutral";
+    let iconeTendencia = "horizontal_rule";
+    let legenda = periodoFiltrado ? "Período filtrado" : "Atualização em tempo real";
+    if(possuiMeta){
+      const diferenca = Number(valorNumerico || 0) - meta;
+      if(diferenca !== 0){
+        const favoravel = menorMelhor ? diferenca < 0 : diferenca > 0;
+        tendencia = favoravel ? "up" : "down";
+        iconeTendencia = diferenca > 0 ? "trending_up" : "trending_down";
+      }
+      legenda = `Meta ${chave === "saldoEmAberto" ? moeda(meta) : chave === "conversao" ? `${meta.toFixed(1).replace(".",",")}%` : meta.toLocaleString("pt-BR")}`;
+    }
+    return `<div class="clientes-kpi-card"><div class="clientes-kpi-icon"><span class="material-symbols-outlined">${esc(icone)}</span></div><div class="clientes-kpi-content"><small>${esc(titulo)}</small><strong>${esc(valorExibido ?? Number(valorNumerico || 0).toLocaleString("pt-BR"))}</strong><span class="clientes-kpi-trend ${tendencia}"><span class="material-symbols-outlined">${iconeTendencia}</span>${esc(legenda)}</span></div></div>`;
   }
 
   function renderListaClientesMaster(lista){
     const box = document.getElementById("clientesEmpresaMasterLista");
     if(!box) return;
     if(!lista.length){
-      box.innerHTML = `<div class="placeholder-dev">Nenhum cliente encontrado para os filtros selecionados.</div>`;
+      box.innerHTML = `<div class="placeholder-dev">Nenhum cliente encontrado para os filtros selecionados.</div><footer class="integro-table-footer" aria-live="polite">0 clientes exibidos</footer>`;
       renderResumoClientes([]);
       renderRelatoriosClientes([]);
       return;
     }
     renderResumoClientes(lista);
+    const podeExcluir = cargoPermiteTodosClientes() && normalizarTexto(usuarioAtual().tipoUsuario || usuarioAtual().perfil || usuarioAtual().cargoNome || usuarioAtual().cargo || "").includes("master local");
+    const possuiHistorico = c=>Boolean(c.vendaAtivaId || c.ultimaVendaId || c.possuiVendaAtiva === true || c.possuiHistoricoVenda === true || Number(c.totalVendas || c.vendasRealizadas || 0) > 0 || c.vendasIds?.length || c.historicoVendas?.length);
     const rows = lista.sort((a,b)=>nomeCliente(a).localeCompare(nomeCliente(b),"pt-BR")).map(c=>{
       const status = statusCliente(c);
       const cls = status === "ATIVO" ? "status-ativo" : status === "INADIMPLENTE" ? "status-inadimplente" : "status-quitado";
@@ -10986,14 +11058,14 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       const vid = c.vendedorId || c.usuarioId || c.responsavelId || "";
       return `
         <tr>
-          <td><button class="cliente-link-btn" type="button" onclick="abrirPerfilClienteMaster('${esc(c.id)}')">${esc(nomeCliente(c))}</button><small>${esc(documentoCliente(c))}</small></td>
-          <td>${esc(telefoneCliente(c))}</td>
-          <td>${esc(c.vendedorNome || nomeUsuarioPorId(vid))}</td>
-          <td>${esc(c.equipeNome || c.unidadeNome || nomeEquipePorId(eid))}</td>
-          <td><span class="score-pill">${scoreCliente(c)}</span></td>
-          <td>${moeda(saldoCliente(c))}</td>
-          <td><span class="status-badge ${cls}">${esc(status)}</span><small>${esc(String(c.statusAtendimento || "AGUARDANDO_ATENDIMENTO").replace(/_/g," "))}</small></td>
-          <td><button class="ghost-btn" type="button" onclick="abrirPerfilClienteMaster('${esc(c.id)}')">Ver perfil</button></td>
+          <td data-label="Cliente"><button class="cliente-link-btn" type="button" onclick="abrirPerfilClienteMaster('${esc(c.id)}')">${esc(nomeCliente(c))}</button><small>${esc(documentoCliente(c))}</small></td>
+          <td data-label="Telefone">${esc(telefoneCliente(c))}</td>
+          <td data-label="Vendedor">${esc(c.vendedorNome || nomeUsuarioPorId(vid))}</td>
+          <td data-label="Equipe">${esc(c.equipeNome || c.unidadeNome || nomeEquipePorId(eid))}</td>
+          <td data-label="Score"><span class="score-pill">${scoreCliente(c)}</span></td>
+          <td data-label="Saldo devedor">${moeda(saldoCliente(c))}</td>
+          <td data-label="Status"><span class="status-badge ${cls}">${esc(status)}</span><small>${esc(String(c.statusAtendimento || "AGUARDANDO_ATENDIMENTO").replace(/_/g," "))}</small></td>
+          <td data-label="Ações"><div class="cliente-operacional-acoes"><button class="ghost-btn" type="button" onclick="abrirPerfilClienteMaster('${esc(c.id)}')"><span class="material-symbols-outlined">visibility</span> Ver perfil</button>${podeExcluir && !possuiHistorico(c) ? `<button class="danger-btn" type="button" onclick="solicitarExclusaoClienteMaster('${esc(c.id)}')" title="Excluir cliente sem histórico de venda"><span class="material-symbols-outlined">delete</span></button>` : ""}</div></td>
         </tr>
       `;
     }).join("");
@@ -11004,7 +11076,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
           <thead><tr><th>Cliente</th><th>Telefone</th><th>Vendedor</th><th>Equipe</th><th>Score</th><th>Saldo devedor</th><th>Status</th><th>Ações</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
-      </div>
+      </div>\n      <footer class="integro-table-footer" aria-live="polite">${lista.length.toLocaleString("pt-BR")} ${lista.length === 1 ? "cliente exibido" : "clientes exibidos"}</footer>
     `;
     renderRelatoriosClientes(lista);
   }
@@ -11059,9 +11131,12 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   window.buscarClientesEmpresaMaster = async function(force=false){
     montarTelaClientes();
     window.clientesConsultaExecutada = true;
+    await carregarConfiguracoesIndicadoresEmpresa();
     const lista = await carregarClientesEmpresa(force);
     preencherFiltrosClientes(lista);
-    renderListaClientesMaster(filtrarClientesLista(lista));
+    const filtrados = filtrarClientesLista(lista);
+    window.clientesEmpresaMasterResultado = filtrados.slice();
+    renderListaClientesMaster(filtrados);
   };
 
   window.limparFiltrosClientesMaster = function(){
@@ -11072,6 +11147,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     });
     atualizarFiltrosCheckboxClientes();
     window.clientesConsultaExecutada = false;
+    window.clientesEmpresaMasterResultado = [];
     const resumo = document.getElementById("clientesEmpresaMasterResumo");
     const lista = document.getElementById("clientesEmpresaMasterLista");
     const relatorios = document.getElementById("relatoriosClientesMaster");
@@ -11085,54 +11161,18 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     if(!c){ notificarIntegro("Cliente não encontrado."); return; }
     const drawer = document.getElementById("drawer");
     if(!drawer) return;
-    const refs = Array.isArray(c.referencias) ? c.referencias : Array.isArray(c.telefonesReferencia) ? c.telefonesReferencia : [];
-    const tels = Array.isArray(c.telefones) ? c.telefones : [];
     drawer.classList.add("show");
     drawer.innerHTML = `
       <div class="drawer-overlay" onclick="fecharDrawerClienteMaster()"></div>
-      <div class="drawer-side">
+      <div class="drawer-side cliente-cadastro-drawer">
         <div class="drawer-side-header">
-          <div><h2>${esc(nomeCliente(c))}</h2><p style="color:var(--muted);font-weight:800;margin-top:6px;">Perfil do cliente da empresa</p></div>
+          <div><h2>${esc(nomeCliente(c))}</h2><p>Cadastro completo do cliente</p></div>
           <button class="drawer-close" type="button" aria-label="Fechar" onclick="fecharDrawerClienteMaster()">&times;</button>
         </div>
-        <div class="drawer-side-body">
-          <div class="perfil-cliente-topo">
-            <div class="foto-cliente-master">${c.fotoPerfilUrl || c.fotoPerfil?.url ? `<img src="${esc(c.fotoPerfilUrl || c.fotoPerfil.url)}" alt="Foto de ${esc(nomeCliente(c))}">` : esc(String(nomeCliente(c)).charAt(0).toUpperCase())}</div>
-            <div>
-              <h3>${esc(nomeCliente(c))}</h3>
-              <p>${esc(documentoCliente(c))}</p>
-              <span class="status-badge ${statusCliente(c)==='INADIMPLENTE'?'status-inadimplente':statusCliente(c)==='ATIVO'?'status-ativo':'status-quitado'}">${esc(statusCliente(c))}</span>
-            </div>
-          </div>
-          <div class="perfil-cliente-grid">
-            <div class="info-tile"><small>Telefone principal</small><strong>${esc(telefoneCliente(c))}</strong></div>
-            <div class="info-tile"><small>Score</small><strong>${scoreCliente(c)}</strong></div>
-            <div class="info-tile"><small>Saldo devedor</small><strong>${moeda(saldoCliente(c))}</strong></div>
-            <div class="info-tile"><small>Vendedor</small><strong>${esc(c.vendedorNome || nomeUsuarioPorId(c.vendedorId || c.usuarioId || c.responsavelId))}</strong></div>
-            <div class="info-tile"><small>Equipe</small><strong>${esc(c.equipeNome || c.unidadeNome || nomeEquipePorId(c.equipeId || c.unidadeId))}</strong></div>
-            <div class="info-tile"><small>Nascimento</small><strong>${esc(c.dataNascimento || c.nascimento || "-")}</strong></div>
-            <div class="info-tile"><small>Origem</small><strong>${esc(c.origem || c.origemCliente || "CADASTRO DIRETO")}</strong></div>
-            <div class="info-tile"><small>Atendimento</small><strong>${esc(String(c.statusAtendimento || "AGUARDANDO_ATENDIMENTO").replace(/_/g," "))}</strong></div>
-            <div class="info-tile"><small>Ciclo atual</small><strong>${Number(c.cicloAtendimentoAtual || 1)}</strong></div>
-            <div class="info-tile"><small>Tentativas</small><strong>${Number(c.tentativasContato || 0)}</strong></div>
-          </div>
-          <div class="panel" style="margin-top:18px;"><h3 style="margin-bottom:12px;">Telefones</h3>
-            ${tels.length ? tels.map(t=>`<div class="detail-card"><strong>${esc(t.numero || t.telefone || "-")}</strong><small>WhatsApp: ${t.whatsapp === false ? "Não" : "Sim"} ${t.observacao ? "? "+esc(t.observacao) : ""}</small></div>`).join("") : `<div class="placeholder-dev">Nenhum telefone adicional cadastrado.</div>`}
-          </div>
-          <div class="panel" style="margin-top:18px;"><h3 style="margin-bottom:12px;">Referências</h3>
-            ${refs.length ? refs.map(r=>`<div class="detail-card"><strong>${esc(r.nome || r.parentesco || "Referência")}</strong><small>${esc(r.telefone || r.numero || "-")}</small></div>`).join("") : `<div class="placeholder-dev">Nenhuma referência cadastrada.</div>`}
-          </div>
-          ${c.registroLegadoSemVinculo ? `<div class="placeholder-dev" style="margin-top:18px;">Cadastro legado sem vínculo operacional. Mantido somente para consulta; regularize o vínculo antes de direcionar ou atender.</div>` : `<div class="cliente-operacional-acoes">
-            <button class="ghost-btn" type="button" onclick="abrirEdicaoClienteOperacional('${esc(c.id)}')">Editar</button>
-            <button class="ghost-btn" type="button" onclick="abrirWhatsAppClienteOperacional('${esc(c.id)}')">WhatsApp</button>
-            <button class="ghost-btn" type="button" onclick="abrirAcaoClienteOperacional('${esc(c.id)}','DIRECIONAR')">Direcionar</button>
-            <button class="primary-btn" type="button" onclick="abrirAcaoClienteOperacional('${esc(c.id)}','ATENDIMENTO')">Registrar atendimento</button>
-            ${["NAO_CONVERTIDO","RECUSADO"].includes(String(c.statusAtendimento || "").toUpperCase()) ? `<button class="ghost-btn" type="button" onclick="abrirAcaoClienteOperacional('${esc(c.id)}','RETRABALHO')">Iniciar retrabalho</button>` : ""}
-            <button class="ghost-btn" type="button" onclick="abrirHistoricoClienteOperacional('${esc(c.id)}')">Ver histórico</button>
-          </div>`}
-        </div>
+        <div class="drawer-side-body">${formularioCadastroClienteOperacional(false,c)}</div>
       </div>
     `;
+    preencherFormularioClienteOperacional(c);
   };
 
   window.fecharDrawerClienteMaster = function(){
@@ -11392,15 +11432,72 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     return {nome:arquivo.name,caminho,url:await ref.getDownloadURL(),tipo:arquivo.type,tamanho:arquivo.size};
   }
 
-  function formularioCadastroClienteOperacional(emPagina=false){
-    return `<form class="cliente-op-form integro-form-caixa-alta ${emPagina?"cliente-op-form-pagina":""}" onsubmit="salvarCadastroClienteOperacional(event)">
+  function formularioCadastroClienteOperacional(emPagina=false,cliente=null){
+    const submit = cliente ? `salvarCadastroCompletoClienteOperacional(event,'${esc(cliente.id)}')` : "salvarCadastroClienteOperacional(event)";
+    return `<form class="cliente-op-form integro-form-caixa-alta ${emPagina?"cliente-op-form-pagina":""}" onsubmit="${submit}">
       <div class="cliente-form-section"><h3>Identificação</h3><div class="cliente-identificacao-layout"><label class="cliente-foto-upload"><input id="opClienteFoto" type="file" accept="image/jpeg,image/png,image/webp" onchange="previewFotoClienteCadastro(this)"><span id="opClienteFotoPreview" class="cliente-foto-preview"><span class="material-symbols-outlined">person</span></span><strong>Adicionar foto</strong><small>JPG, PNG ou WEBP</small></label><div class="cliente-identificacao-campos"><div class="cliente-op-grid"><div><label>Tipo de cliente *</label><select id="opClienteTipo" required onchange="ajustarTipoClienteCadastro()"><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></div><div><label id="opClienteDocumentoLabel">CPF *</label><input id="opClienteDocumento" required inputmode="numeric" autocomplete="off" maxlength="14" placeholder="000.000.000-00" oninput="formatarDocumentoClienteCadastro(this)"></div></div><div><label id="opClienteNomeLabel">Nome completo *</label><input id="opClienteNome" required autocomplete="name"></div><div><label>Apelido</label><input id="opClienteApelido" autocomplete="nickname" placeholder="COMO O CLIENTE É CONHECIDO"></div><div id="opClienteNascimentoWrap" class="cliente-nascimento-row"><div><label>Data de nascimento</label><input id="opClienteNascimento" type="date" onchange="calcularIdadeClienteCadastro()"></div><output id="opClienteIdade" class="cliente-idade-output">IDADE NÃO INFORMADA</output></div></div></div></div>
       <div class="cliente-form-section"><div class="cliente-form-title-row"><h3>Telefones</h3><button class="ghost-btn" type="button" onclick="adicionarTelefoneClienteCadastro()"><span class="material-symbols-outlined">add_call</span> Acrescentar telefone</button></div><div class="cliente-telefone-principal"><div class="cliente-pais-telefone"><label>País</label><select id="opClientePais" onchange="atualizarWhatsAppClienteCadastro()">${opcoesPaisesTelefoneCliente()}</select></div><div><label>Telefone principal *</label><input id="opClienteTelefone" required inputmode="tel" autocomplete="tel" maxlength="15" placeholder="(11) 99999-9999" oninput="formatarTelefoneClienteCadastro(this);atualizarWhatsAppClienteCadastro()"></div><label class="cliente-whatsapp-check"><input id="opClienteWhatsapp" type="checkbox" onchange="atualizarWhatsAppClienteCadastro()"><span>Possui WhatsApp</span></label><a id="opClienteWhatsappLink" class="cliente-whatsapp-link" target="_blank" rel="noopener" aria-disabled="true"><span class="material-symbols-outlined">chat</span> WhatsApp</a></div><div id="opClienteTelefonesAdicionais" class="cliente-telefones-adicionais"></div><small class="cliente-form-help">Até cinco telefones por cliente, incluindo o principal.</small></div>
       <div class="cliente-form-section"><h3>Endereço</h3><div class="cliente-cep-row"><div><label>CEP</label><input id="opClienteCep" inputmode="numeric" maxlength="9" placeholder="00000-000" oninput="formatarCepClienteCadastro(this)"></div><button id="btnBuscarCepCliente" class="ghost-btn" type="button" onclick="buscarCepClienteCadastro()"><span class="material-symbols-outlined">location_searching</span> Buscar CEP</button></div><div class="cliente-op-grid"><div><label>Logradouro</label><input id="opClienteLogradouro"></div><div><label>Número</label><input id="opClienteNumero"></div></div><div class="cliente-op-grid"><div><label>Complemento</label><input id="opClienteComplemento"></div><div><label>Bairro</label><input id="opClienteBairro"></div></div><div class="cliente-op-grid"><div><label>Cidade</label><input id="opClienteCidade"></div><div><label>Estado</label><input id="opClienteEstado" maxlength="2" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'')"></div></div></div>
       <div class="cliente-form-section"><h3>Origem e informações adicionais</h3><label>Origem *</label><select id="opClienteOrigem" required onchange="document.getElementById('opClienteOrigemOutro').hidden=this.value!=='OUTRO'"><option value="CADASTRO_DIRETO">Cadastro direto</option><option value="INDICACAO_CLIENTE">Indicação de cliente</option><option value="CAPTACAO_VENDEDOR">Captação de vendedor</option><option value="CAMPANHA">Campanha</option><option value="PARCEIRO">Parceiro</option><option value="LIGACAO">Ligação</option><option value="REDES_SOCIAIS">Redes sociais</option><option value="OUTRO">Outro</option></select><input id="opClienteOrigemOutro" hidden placeholder="Descreva a origem"><label>Observações</label><textarea id="opClienteObservacoes" rows="4"></textarea></div>
       <div class="cliente-form-section"><h3>Documentos anexos</h3><label class="cliente-arquivos-drop"><span class="material-symbols-outlined">upload_file</span><strong>Selecionar documentos</strong><small>PDF, imagens, Word, Excel ou texto. Máximo de 10 MB por arquivo.</small><input id="opClienteArquivos" type="file" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" onchange="listarArquivosClienteCadastro()"></label><div id="opClienteArquivosLista" class="cliente-arquivos-lista"></div></div>
-      <div class="cliente-op-form-actions"><button class="ghost-btn" type="button" onclick="${emPagina?"limparFormularioNovoCliente()":"fecharDrawerClienteMaster()"}">${emPagina?"Limpar":"Cancelar"}</button><button id="btnSalvarClienteOp" class="primary-btn" type="submit">Salvar cliente</button></div>
+      <div class="cliente-op-form-actions">${cliente ? `<button class="ghost-btn" type="button" onclick="abrirHistoricoClienteOperacional('${esc(cliente.id)}')"><span class="material-symbols-outlined">history</span> Histórico</button><button class="ghost-btn" type="button" onclick="abrirWhatsAppClienteOperacional('${esc(cliente.id)}')"><span class="material-symbols-outlined">chat</span> WhatsApp</button>` : ""}<button class="ghost-btn" type="button" onclick="${emPagina?"limparFormularioNovoCliente()":"fecharDrawerClienteMaster()"}">${emPagina?"Limpar":"Cancelar"}</button><button id="btnSalvarClienteOp" class="primary-btn" type="submit">${cliente?"Salvar alterações":"Salvar cliente"}</button></div>
     </form>`;
+  }
+
+  function definirValorCampoCliente(id,valor){
+    const campo=document.getElementById(id);
+    if(campo) campo.value=valor ?? "";
+  }
+
+  function preencherFormularioClienteOperacional(cliente){
+    if(!cliente) return;
+    const tipo=String(cliente.tipoCliente || cliente.tipoPessoa || (String(cliente.documento || cliente.documentoNormalizado || "").replace(/\D/g,"").length>11?"PJ":"PF")).toUpperCase();
+    definirValorCampoCliente("opClienteTipo",tipo.includes("JURID")?"PJ":tipo.includes("FISIC")?"PF":tipo);
+    definirValorCampoCliente("opClienteDocumento",cliente.documento || cliente.documentoNormalizado || "");
+    definirValorCampoCliente("opClienteNome",cliente.nome || cliente.nomeCompleto || cliente.razaoSocial || "");
+    definirValorCampoCliente("opClienteApelido",cliente.apelido || cliente.nomeFantasia || cliente.fantasia || "");
+    definirValorCampoCliente("opClienteNascimento",cliente.dataNascimento || cliente.nascimento || "");
+    const telefones=Array.isArray(cliente.telefones) ? cliente.telefones : [];
+    const principal=telefones.find(item=>String(item.tipo || "").toUpperCase()==="PRINCIPAL") || telefones[0] || {};
+    definirValorCampoCliente("opClientePais",principal.paisCodigo || cliente.paisTelefone || "55");
+    definirValorCampoCliente("opClienteTelefone",principal.numero || principal.telefone || cliente.telefonePrincipal || cliente.telefone || "");
+    const whatsapp=document.getElementById("opClienteWhatsapp");
+    if(whatsapp) whatsapp.checked=principal.whatsapp === true || cliente.whatsappAtivo === true;
+    definirValorCampoCliente("opClienteCep",cliente.cep || cliente.endereco?.cep || "");
+    definirValorCampoCliente("opClienteLogradouro",cliente.logradouro || cliente.endereco?.logradouro || "");
+    definirValorCampoCliente("opClienteNumero",cliente.numero || cliente.endereco?.numero || "");
+    definirValorCampoCliente("opClienteComplemento",cliente.complemento || cliente.endereco?.complemento || "");
+    definirValorCampoCliente("opClienteBairro",cliente.bairro || cliente.endereco?.bairro || "");
+    definirValorCampoCliente("opClienteCidade",cliente.cidade || cliente.endereco?.cidade || "");
+    definirValorCampoCliente("opClienteEstado",cliente.estado || cliente.uf || cliente.endereco?.estado || cliente.endereco?.uf || "");
+    definirValorCampoCliente("opClienteOrigem",cliente.origem || cliente.origemCliente || "CADASTRO_DIRETO");
+    definirValorCampoCliente("opClienteOrigemOutro",cliente.origemDescricao || "");
+    definirValorCampoCliente("opClienteObservacoes",cliente.observacoes || cliente.observacao || "");
+    const preview=document.getElementById("opClienteFotoPreview");
+    const foto=cliente.fotoPerfilUrl || cliente.fotoPerfil?.url;
+    if(preview && foto) preview.innerHTML=`<img src="${esc(foto)}" alt="Foto de ${esc(nomeCliente(cliente))}">`;
+    const adicionais=telefones.filter(item=>item!==principal && String(item.tipo || "").toUpperCase()!=="PRINCIPAL");
+    const referencias=adicionais.length ? adicionais : (Array.isArray(cliente.referencias)?cliente.referencias:[]);
+    referencias.slice(0,4).forEach(item=>{
+      window.adicionarTelefoneClienteCadastro();
+      const card=[...document.querySelectorAll(".cliente-telefone-adicional")].at(-1);
+      if(!card) return;
+      card.querySelector(".telefone-ref-nome").value=item.nomeReferencia || item.nome || item.parentesco || "";
+      card.querySelector(".telefone-ref-pais").value=item.paisCodigo || "55";
+      card.querySelector(".telefone-ref-numero").value=item.numero || item.telefone || "";
+      card.querySelector(".telefone-ref-whatsapp").checked=item.whatsapp === true;
+      window.formatarTelefoneClienteCadastro(card.querySelector(".telefone-ref-numero"));
+      window.atualizarWhatsappTelefoneAdicional(card);
+    });
+    const anexos=Array.isArray(cliente.anexos)?cliente.anexos:[];
+    const listaAnexos=document.getElementById("opClienteArquivosLista");
+    if(listaAnexos && anexos.length) listaAnexos.innerHTML=anexos.map(a=>`<a href="${esc(a.url || "#")}" target="_blank" rel="noopener"><span class="material-symbols-outlined">description</span><span>${esc(a.nome || "Documento")}</span><small>ARQUIVO SALVO</small></a>`).join("");
+    window.ajustarTipoClienteCadastro();
+    window.formatarDocumentoClienteCadastro(document.getElementById("opClienteDocumento"));
+    window.formatarTelefoneClienteCadastro(document.getElementById("opClienteTelefone"));
+    window.formatarCepClienteCadastro(document.getElementById("opClienteCep"));
+    window.calcularIdadeClienteCadastro();
+    window.atualizarWhatsAppClienteCadastro();
   }
 
   window.renderTelaAdicionarCliente = function(){
@@ -11505,6 +11602,68 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
   };
 
+  window.salvarCadastroCompletoClienteOperacional = async function(event,id){
+    event?.preventDefault?.();
+    aplicarCaixaAltaFormularioCliente(event?.currentTarget);
+    const botao=document.getElementById("btnSalvarClienteOp");
+    if(botao?.disabled) return;
+    const clienteAtual=(window.clientesEmpresaMasterCache || window.clientesCache || []).find(item=>String(item.id)===String(id));
+    if(!clienteAtual) return notificarIntegro("Cliente não encontrado para edição.");
+    try{
+      if(botao){botao.disabled=true;botao.textContent="Salvando...";}
+      const tipoCliente=String(document.getElementById("opClienteTipo")?.value || "PF").toUpperCase();
+      const juridico=tipoCliente === "PJ" || tipoCliente.includes("JURID");
+      const documento=String(document.getElementById("opClienteDocumento")?.value || "");
+      const documentoDigitos=documento.replace(/\D/g,"");
+      if(documentoDigitos.length !== (juridico?14:11)) throw new Error(`Informe um ${juridico?"CNPJ":"CPF"} válido.`);
+      const telefones=coletarTelefonesClienteCadastro();
+      if(!digitosTelefoneCliente(telefones[0]?.numero).length) throw new Error("Informe o telefone principal.");
+      const logradouro=document.getElementById("opClienteLogradouro")?.value || "";
+      const numero=document.getElementById("opClienteNumero")?.value || "";
+      const complemento=document.getElementById("opClienteComplemento")?.value || "";
+      const bairro=document.getElementById("opClienteBairro")?.value || "";
+      const cidade=document.getElementById("opClienteCidade")?.value || "";
+      const estado=document.getElementById("opClienteEstado")?.value || "";
+      const alteracoes={
+        tipoCliente,
+        nome:document.getElementById("opClienteNome")?.value,
+        apelido:document.getElementById("opClienteApelido")?.value || "",
+        documento,
+        dataNascimento:document.getElementById("opClienteNascimento")?.value || "",
+        telefonePrincipal:telefones[0]?.numero || "",
+        telefoneAdicional:telefones[1]?.numero || "",
+        paisTelefone:telefones[0]?.paisCodigo || "55",
+        whatsappAtivo:telefones[0]?.whatsapp === true,
+        whatsappUrl:telefones[0]?.whatsapp ? `https://wa.me/${telefones[0].numeroE164}` : "",
+        telefones,
+        referencias:telefones.slice(1).map(t=>({nome:t.nomeReferencia,telefone:t.numero,numeroE164:t.numeroE164,paisCodigo:t.paisCodigo,whatsapp:t.whatsapp})),
+        cep:document.getElementById("opClienteCep")?.value || "",
+        logradouro,numero,complemento,bairro,cidade,estado,uf:estado,
+        endereco:[logradouro,numero,complemento,bairro,cidade,estado].filter(Boolean).join(", "),
+        origem:document.getElementById("opClienteOrigem")?.value || "CADASTRO_DIRETO",
+        origemDescricao:document.getElementById("opClienteOrigemOutro")?.value || "",
+        observacoes:document.getElementById("opClienteObservacoes")?.value || ""
+      };
+      const fotoPerfil=await enviarFotoClienteCadastro(id);
+      const anexosNovos=await enviarAnexosClienteCadastro(id);
+      if(fotoPerfil){alteracoes.fotoPerfil=fotoPerfil;alteracoes.fotoPerfilUrl=fotoPerfil.url;}
+      if(anexosNovos.length) alteracoes.anexos=[...(Array.isArray(clienteAtual.anexos)?clienteAtual.anexos:[]),...anexosNovos];
+      if(clienteAtual.clienteLegadoId){
+        await window.ClientesService.atualizarClienteComLegado(id,clienteAtual.clienteLegadoId,alteracoes,usuarioAtual(),{db:db()});
+      }else{
+        await window.ClientesService.atualizarCliente(id,alteracoes,usuarioAtual(),{db:db()});
+      }
+      notificarIntegro("Cadastro do cliente atualizado com sucesso.");
+      window.clientesEmpresaMasterCache=[];
+      await window.buscarClientesEmpresaMaster(true);
+      window.abrirPerfilClienteMaster(id);
+    }catch(erro){
+      console.error("Erro ao atualizar o cadastro completo do cliente:",erro);
+      notificarIntegro(erro.message || "Não foi possível atualizar o cliente.");
+      if(botao){botao.disabled=false;botao.textContent="Salvar alterações";}
+    }
+  };
+
   window.abrirEdicaoClienteOperacional = function(id){
     const c=(window.clientesEmpresaMasterCache || []).find(x=>String(x.id)===String(id));
     if(!c) return notificarIntegro("Cliente não encontrado.");
@@ -11579,10 +11738,11 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
   const css = document.createElement("style");
   css.textContent = `
-    .clientes-master-searchbar{display:grid;grid-template-columns:minmax(260px,1fr) auto auto;gap:10px;margin:16px 0 12px;align-items:center;}
+    .clientes-master-searchbar{display:grid;grid-template-columns:minmax(260px,1fr) repeat(4,auto);gap:10px;margin:16px 0 12px;align-items:center;}
     .clientes-search-field{height:50px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;padding:0 14px;background:#fff;box-shadow:0 6px 18px rgba(15,23,42,.04);}
     .clientes-search-field .material-symbols-outlined{color:var(--muted);font-size:21px}.clientes-search-field input{min-width:0;width:100%;height:100%;border:0;outline:0;background:transparent;color:var(--text);font:inherit;font-weight:700;}
     .clientes-master-searchbar button{height:50px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}.clientes-master-searchbar button .material-symbols-outlined,.clientes-limpar-filtros .material-symbols-outlined{font-size:19px}
+    #indicacoes .indicacoes-actions-only{justify-content:flex-end;margin:14px 0 12px}#indicacoes .indicacoes-actions-only .indicacoes-page-actions{margin-left:auto}
     .clientes-master-toolbar{display:grid;grid-template-columns:repeat(3,minmax(150px,1fr));gap:12px;margin:0 0 18px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#f8fafc;align-items:center;}
     .clientes-master-toolbar[hidden]{display:none}.clientes-master-toolbar .clientes-limpar-filtros{height:50px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
     .clientes-filtros-side{width:min(440px,100vw)}
@@ -11593,14 +11753,19 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     .clientes-multi{position:relative;min-width:0}.clientes-multi-trigger{width:100%;min-height:52px;border:1px solid var(--line);border-radius:14px;padding:8px 12px 8px 14px;background:#fff;color:var(--text);display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left}.clientes-multi-trigger>span:first-child{min-width:0}.clientes-multi-trigger small{display:block;margin-bottom:2px;color:var(--muted);font-size:10px;font-weight:900;text-transform:uppercase}.clientes-multi-trigger strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.clientes-multi-trigger.tem-selecao{border-color:#ff9d2e;background:#fffaf3}.clientes-multi-trigger.tem-selecao strong{color:#b45309}.clientes-multi-trigger .material-symbols-outlined{font-size:20px;color:#64748b}
     .clientes-multi-popover{position:absolute;z-index:20;top:calc(100% + 6px);left:0;right:0;border:1px solid #cbd5e1;border-radius:14px;background:#fff;box-shadow:0 18px 42px rgba(15,23,42,.18);overflow:hidden}.clientes-multi-popover[hidden]{display:none}.clientes-multi-head{display:flex;align-items:center;justify-content:space-between;padding:11px 12px;border-bottom:1px solid #e2e8f0}.clientes-multi-head strong{font-size:12px}.clientes-multi-head button{border:0;background:transparent;color:#c2410c;font-size:12px;font-weight:900}.clientes-multi-opcoes{display:grid;max-height:240px;overflow:auto;padding:6px}.clientes-multi-opcoes label{min-height:42px;display:flex;align-items:center;gap:10px;padding:8px;border-radius:9px;cursor:pointer;font-size:13px;font-weight:750}.clientes-multi-opcoes label:hover{background:#f8fafc}.clientes-multi-opcoes input{width:18px!important;height:18px!important;min-height:0!important;accent-color:#ff8a00}.clientes-multi-opcoes span{min-width:0;overflow-wrap:anywhere}
     .clientes-master-toolbar input,.clientes-master-toolbar select{height:50px;border:1px solid var(--line);border-radius:14px;padding:0 14px;background:#fff;color:var(--text);font-weight:800;outline:none;}
-    .clientes-master-resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;}
+    .clientes-master-resumo{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:16px 0;}
     .clientes-consulta-inicial{min-height:220px;display:flex!important;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:8px}.clientes-consulta-inicial .material-symbols-outlined{font-size:38px;color:#94a3b8}.clientes-consulta-inicial strong{font-size:17px;color:var(--text)}.clientes-consulta-inicial small{color:var(--muted);font-weight:700}
-    .clientes-kpi-mini{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:0 10px 24px rgba(15,23,42,.04);}
-    .clientes-kpi-mini small{display:block;color:var(--muted);font-weight:900;text-transform:uppercase;font-size:11px;margin-bottom:7px;}
-    .clientes-kpi-mini strong{font-size:22px;font-weight:900;color:var(--text);}
-    .clientes-table-wrap{border:1px solid var(--line);border-radius:20px;overflow:auto;background:#fff;}
-    .clientes-master-table{min-width:1120px;}
-    .clientes-master-table th{background:#f8fafc;color:#526780;}
+    .clientes-kpi-card{min-height:112px;display:grid;grid-template-columns:46px minmax(0,1fr);align-items:center;gap:13px;padding:17px;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 24px rgba(15,23,42,.04)}
+    .clientes-kpi-icon{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;background:#fff7ed;color:#e66f00}.clientes-kpi-icon .material-symbols-outlined{font-size:23px}
+    .clientes-kpi-content{min-width:0;display:flex;flex-direction:column;gap:4px}.clientes-kpi-content>small{color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase}.clientes-kpi-content>strong{color:var(--text);font-size:25px;font-weight:900;line-height:1.05}
+    .clientes-kpi-trend{display:flex;align-items:center;gap:4px;min-width:0;color:#64748b;font-size:11px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.clientes-kpi-trend .material-symbols-outlined{font-size:16px;flex:0 0 auto}.clientes-kpi-trend.up{color:#15803d}.clientes-kpi-trend.down{color:#b91c1c}
+    .clientes-table-wrap{max-width:100%;border:1px solid var(--line);border-radius:20px;overflow-x:auto;overflow-y:hidden;background:#f8fafc;padding:10px;scrollbar-gutter:stable;}
+    .clientes-master-table{width:100%;min-width:1120px;border-collapse:separate;border-spacing:0 8px;table-layout:fixed;}
+    #clientes .clientes-master-table thead,#clientes .clientes-master-table thead tr,#clientes .clientes-master-table th{background:transparent!important;background-image:none!important;box-shadow:none!important}
+    .clientes-master-table th{padding:9px 14px!important;background:transparent!important;color:#526780!important;font-size:11px!important;font-weight:900!important;text-transform:uppercase;border:0!important;letter-spacing:0!important;text-align:left}
+    .clientes-master-table tbody tr{background:#fff;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+    .clientes-master-table td{padding:14px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:#fff;vertical-align:middle}.clientes-master-table td:first-child{border-left:1px solid var(--line);border-radius:14px 0 0 14px}.clientes-master-table td:last-child{border-right:1px solid var(--line);border-radius:0 14px 14px 0}
+    .clientes-master-table th:nth-child(1){width:34%}.clientes-master-table th:nth-child(2){width:14%}.clientes-master-table th:nth-child(3),.clientes-master-table th:nth-child(4){width:11%}.clientes-master-table th:nth-child(5){width:7%}.clientes-master-table th:nth-child(6){width:12%}.clientes-master-table th:nth-child(7){width:15%}.clientes-master-table th:nth-child(8){width:11%}
     .cliente-link-btn{background:transparent;color:var(--text);font-weight:900;font-size:14px;text-align:left;padding:0;display:block;}
     .cliente-link-btn:hover{color:var(--orange);}
     .clientes-master-table td small{display:block;margin-top:4px;color:var(--muted);font-weight:800;}
@@ -11617,7 +11782,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     .perfil-cliente-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
     .cliente-operacional-acoes,.cliente-op-form-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;}
     .cliente-op-form{display:grid;gap:12px;}
-    #adicionarCliente{touch-action:pan-y}#adicionarCliente.active{display:block;max-height:calc(100dvh - 56px);overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;scrollbar-gutter:stable;padding:0 8px 48px 0}.cliente-cadastro-pagina{width:100%;max-width:none;margin:0;overflow:visible}.cliente-cadastro-pagina .section-header .ghost-btn{display:inline-flex;align-items:center;gap:7px}.cliente-op-form-pagina{max-width:860px;margin:18px auto 0;gap:16px}.cliente-form-section{display:grid;gap:12px;padding:20px;border:1px solid var(--line);border-radius:16px;background:#fff}.cliente-form-section h3{margin:0 0 2px;font-size:16px;color:var(--text)}
+    #adicionarCliente{touch-action:pan-y}#adicionarCliente.active{display:block;max-height:calc(100dvh - 56px);overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior-y:contain;scrollbar-gutter:stable;padding:0 8px 48px 0}.cliente-cadastro-pagina{width:100%;max-width:none;margin:0;overflow:visible}.cliente-cadastro-pagina .section-header .ghost-btn{display:inline-flex;align-items:center;gap:7px}.cliente-op-form-pagina{max-width:860px;margin:18px auto 0;gap:16px}.cliente-cadastro-drawer{width:min(960px,100vw);max-width:960px}.cliente-cadastro-drawer .drawer-side-body{padding:20px 24px 32px}.cliente-cadastro-drawer .cliente-op-form{max-width:none;margin:0}.cliente-cadastro-drawer .cliente-op-form-actions{position:sticky;bottom:0;z-index:3;padding:14px 0 max(4px,env(safe-area-inset-bottom));background:#fff;box-shadow:0 -12px 22px #fff}.cliente-form-section{display:grid;gap:12px;padding:20px;border:1px solid var(--line);border-radius:16px;background:#fff}.cliente-form-section h3{margin:0 0 2px;font-size:16px;color:var(--text)}
     .cliente-identificacao-layout{display:grid;grid-template-columns:150px minmax(0,1fr);gap:20px;align-items:start}.cliente-identificacao-campos{display:grid;gap:12px}.cliente-foto-upload{display:flex!important;flex-direction:column;align-items:center;gap:6px;margin:0!important;cursor:pointer;text-align:center}.cliente-foto-upload>input{position:absolute;width:1px!important;height:1px;min-height:0!important;opacity:0}.cliente-foto-preview{width:128px;height:128px;border:1px dashed #94a3b8;border-radius:18px;background:#f8fafc;display:grid;place-items:center;overflow:hidden;transition:border-color .18s,box-shadow .18s}.cliente-foto-upload:hover .cliente-foto-preview,.cliente-foto-upload:focus-within .cliente-foto-preview{border-color:var(--orange);box-shadow:0 0 0 3px rgba(255,138,0,.14)}.cliente-foto-preview .material-symbols-outlined{font-size:48px;color:#94a3b8}.cliente-foto-preview img{width:100%;height:100%;object-fit:cover}.cliente-foto-upload strong{font-size:13px}.cliente-foto-upload small{color:var(--muted);font-size:11px}.cliente-nascimento-row{display:grid;grid-template-columns:minmax(190px,260px) auto;gap:12px;align-items:end}.cliente-idade-output{min-height:50px;display:flex;align-items:center;justify-content:center;padding:0 16px;border:1px solid #fed7aa;border-radius:12px;background:#fff7ed;color:#b45309;font-size:13px;font-weight:900;white-space:nowrap}
     .cliente-form-title-row{display:flex;align-items:center;justify-content:space-between;gap:12px}.cliente-form-title-row .ghost-btn{display:inline-flex;align-items:center;gap:7px;min-height:42px}.cliente-form-title-row .material-symbols-outlined{font-size:19px}.cliente-telefone-principal{display:grid;grid-template-columns:170px minmax(220px,1fr) auto auto;gap:12px;align-items:end}.cliente-whatsapp-check{min-height:50px;display:flex!important;align-items:center;gap:8px;margin:0!important;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:#f8fafc;white-space:nowrap}.cliente-whatsapp-check input{width:18px!important;min-height:18px!important;height:18px;accent-color:#16a34a}.cliente-whatsapp-link{min-height:50px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid #cbd5e1;border-radius:12px;background:#f1f5f9;color:#94a3b8;font-size:13px;font-weight:900;pointer-events:none;text-decoration:none}.cliente-whatsapp-link.active{border-color:#16a34a;background:#dcfce7;color:#15803d;pointer-events:auto}.cliente-whatsapp-link .material-symbols-outlined{font-size:19px}.cliente-form-help{color:var(--muted);font-size:12px;font-weight:700}.cliente-telefones-adicionais{display:grid;gap:12px}.cliente-telefone-adicional{display:grid;gap:12px;padding:14px;border:1px solid var(--line);border-radius:14px;background:#f8fafc}.cliente-telefone-adicional .icon-btn{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:#fff;color:#dc2626;border:1px solid #fecaca}.cliente-pais-numero{display:grid;grid-template-columns:190px 1fr;gap:8px}.cliente-telefone-acoes{display:flex;align-items:center;justify-content:flex-end;gap:10px}.cliente-cep-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}.cliente-cep-row .ghost-btn{height:50px;display:inline-flex;align-items:center;gap:7px}.cliente-arquivos-drop{min-height:130px;display:flex!important;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:5px;padding:18px;border:1px dashed #94a3b8;border-radius:14px;background:#f8fafc;cursor:pointer}.cliente-arquivos-drop .material-symbols-outlined{font-size:32px;color:#64748b}.cliente-arquivos-drop small{color:var(--muted);font-size:12px}.cliente-arquivos-drop input{position:absolute;width:1px!important;height:1px;min-height:0!important;opacity:0}.cliente-arquivos-lista{display:grid;gap:7px}.cliente-arquivos-lista>div{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;padding:9px 11px;border:1px solid var(--line);border-radius:10px}.cliente-arquivos-lista .material-symbols-outlined{font-size:19px;color:#64748b}.cliente-arquivos-lista small{color:var(--muted)}
     .cliente-op-form label{display:block;font-weight:900;color:var(--text);font-size:13px;margin-bottom:6px;}
@@ -11631,7 +11796,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     .cliente-op-form-pagina .cliente-op-form-actions{position:static;padding:16px 0 0;background:transparent}.cliente-op-form-pagina .cliente-op-form-actions button{min-width:160px}
     .relatorios-clientes-master{margin-top:18px}.relatorios-clientes-master summary{cursor:pointer;font-weight:900;padding:16px;border:1px solid var(--line);border-radius:14px;background:#f8fafc}.relatorios-clientes-grid{display:grid;gap:18px;margin-top:16px}.relatorios-clientes-grid h3{margin-bottom:10px}.clientes-relatorio-table{min-width:760px}
     @media(max-width:1200px){.clientes-master-toolbar{grid-template-columns:1fr 1fr}.clientes-master-resumo{grid-template-columns:repeat(2,1fr)}.cliente-telefone-principal{grid-template-columns:160px 1fr}.cliente-whatsapp-check,.cliente-whatsapp-link{width:100%}}
-    @media(max-width:700px){#adicionarCliente.active{max-height:calc(100dvh - 86px);padding-right:2px}.clientes-master-searchbar{grid-template-columns:1fr 1fr}.clientes-search-field{grid-column:1/-1}.clientes-master-searchbar .primary-btn,.clientes-master-searchbar .ghost-btn{width:100%}.clientes-master-toolbar,.clientes-master-resumo,.perfil-cliente-grid,.cliente-op-grid,.cliente-telefone-principal,.cliente-pais-numero,.cliente-cep-row,.cliente-identificacao-layout{grid-template-columns:1fr}.cliente-operacional-acoes>*{width:100%}.cliente-op-form-actions>*{flex:1}.drawer-side{width:100%;max-width:100%}.clientes-filtros-side{width:100%;max-width:100%}.cliente-form-section{padding:15px}.cliente-cadastro-pagina .section-header{align-items:flex-start}.cliente-cadastro-pagina .section-header .ghost-btn{width:100%;justify-content:center}.cliente-form-title-row{align-items:flex-start;flex-direction:column}.cliente-form-title-row .ghost-btn{width:100%;justify-content:center}.cliente-telefone-acoes{display:grid;grid-template-columns:1fr}.cliente-whatsapp-link{width:100%}.cliente-cep-row .ghost-btn{width:100%;justify-content:center}.cliente-foto-upload{justify-self:center}.cliente-nascimento-row{grid-template-columns:1fr}.cliente-idade-output{width:100%}}
+    @media(max-width:700px){#adicionarCliente.active{max-height:calc(100dvh - 86px);padding-right:2px}.clientes-master-searchbar{grid-template-columns:1fr 1fr}.clientes-search-field{grid-column:1/-1}.clientes-master-searchbar .primary-btn,.clientes-master-searchbar .ghost-btn{width:100%}.clientes-master-toolbar,.clientes-master-resumo,.perfil-cliente-grid,.cliente-op-grid,.cliente-telefone-principal,.cliente-pais-numero,.cliente-cep-row,.cliente-identificacao-layout{grid-template-columns:1fr}.cliente-operacional-acoes>*{width:100%}.cliente-op-form-actions>*{flex:1}.drawer-side{width:100%;max-width:100%}.clientes-filtros-side{width:100%;max-width:100%}.cliente-form-section{padding:15px}.cliente-cadastro-pagina .section-header{align-items:flex-start}.cliente-cadastro-pagina .section-header .ghost-btn{width:100%;justify-content:center}.cliente-form-title-row{align-items:flex-start;flex-direction:column}.cliente-form-title-row .ghost-btn{width:100%;justify-content:center}.cliente-telefone-acoes{display:grid;grid-template-columns:1fr}.cliente-whatsapp-link{width:100%}.cliente-cep-row .ghost-btn{width:100%;justify-content:center}.cliente-foto-upload{justify-self:center}.cliente-nascimento-row{grid-template-columns:1fr}.cliente-idade-output{width:100%}.clientes-table-wrap{padding:0;border:0;background:transparent;overflow:visible}.clientes-master-table,.clientes-master-table tbody,.clientes-master-table tr,.clientes-master-table td{display:block;width:100%;min-width:0}.clientes-master-table thead{display:none}.clientes-master-table tbody{display:grid;gap:12px}.clientes-master-table tr{padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;box-shadow:0 6px 18px rgba(15,23,42,.04)}.clientes-master-table td,.clientes-master-table td:first-child,.clientes-master-table td:last-child{display:grid;grid-template-columns:105px minmax(0,1fr);gap:9px;padding:8px 0;border:0;border-radius:0;background:transparent}.clientes-master-table td::before{content:attr(data-label);color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase}.clientes-master-table td:last-child{display:flex;padding-top:12px;border-top:1px solid #edf2f7}.clientes-master-table td:last-child::before{display:none}.clientes-master-table td:last-child .ghost-btn{width:100%;justify-content:center}}
   `;
   document.head.appendChild(css);
 
@@ -18145,8 +18310,10 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   let visualizacaoAnaliseIndicacoesML = "pizza";
   let visualizacaoListaIndicacoesML = "tabela";
   let agrupamentoAnaliseIndicacoesML = "vendedor";
+  let abaIndicacoesMasterLocal = "gerenciar";
   const ordenacaoIndicacoesML = {campo:"cliente",direcao:"asc"};
   const filtrosConsultaIndicacoesML = {status:[],vendedores:[],equipes:[],origens:[],captadores:[],dataInicio:"",dataFim:""};
+  let termoBuscaIndicacoesML = "";
 
   function dbIndicacoes(){
     return window.db || (window.firebase?.firestore ? firebase.firestore() : null);
@@ -18204,9 +18371,9 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const css = document.createElement("style");
     css.id = "integro-indicacoes-master-local-css";
     css.textContent = `
-      #indicacoes .indicacoes-master-shell{display:grid;gap:18px;}
+      #indicacoes .indicacoes-master-shell{display:grid;gap:14px;}
       #indicacoes .indicacoes-module-nav{
-        display:none;
+        display:flex;
         align-items:stretch;
         gap:0;
         min-width:0;
@@ -18245,6 +18412,8 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
         background:#fffaf5;
       }
       #indicacoes .indicacoes-analysis-filters[hidden]{display:none!important}
+      #indicacoes .indicacoes-analysis-filters.indicacoes-analysis-drawer{display:grid;grid-template-columns:1fr!important;gap:14px;margin-top:14px;padding:0;border:0;background:transparent}
+      #indicacoes .indicacoes-analysis-filters.indicacoes-analysis-drawer>button{width:100%;height:50px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
       #indicacoes .indicacoes-filter-field{display:grid;gap:6px;min-width:0}
       #indicacoes .indicacoes-filter-field[hidden]{display:none!important}
       #indicacoes .indicacoes-filter-field label{font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase}
@@ -18291,7 +18460,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       }
       #indicacoes .indicacoes-hero h3{font-size:22px;font-weight:900;color:#071a33;margin-bottom:6px;}
       #indicacoes .indicacoes-hero p{color:#64748b;font-weight:800;line-height:1.45;}
-      #indicacoes .indicacoes-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;}
+      #indicacoes .indicacoes-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;}
       #indicacoes .indicacao-kpi{
         border:1px solid #e2e8f0;
         border-radius:22px;
@@ -18311,19 +18480,19 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
         background:#fff!important;
         padding:18px!important;
         box-shadow:0 10px 28px rgba(15,23,42,.05)!important;
-        min-height:112px;
+        min-height:92px;
       }
       #indicacoes .indicacoes-kpis .card small{text-transform:uppercase;color:#64748b!important;font-weight:900!important;font-size:11px!important;}
       #indicacoes .indicacoes-kpis .card strong{font-size:27px!important;font-weight:900!important;color:#071a33!important;}
-      #indicacoes .indicacao-kpi-v2{min-height:104px!important;display:grid!important;grid-template-columns:44px 1fr!important;align-items:center!important;gap:13px!important;padding:16px!important;}
-      #indicacoes .indicacao-kpi-icone{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:#fff7ed;color:#e66f00}
-      #indicacoes .indicacao-kpi-icone .material-symbols-outlined{font-size:23px}
-      #indicacoes .indicacao-kpi-conteudo{min-width:0;display:flex;flex-direction:column;gap:5px}#indicacoes .indicacao-kpi-conteudo small{line-height:1.2}#indicacoes .indicacao-kpi-conteudo strong{line-height:1;font-size:26px!important}
+      #indicacoes .indicacao-kpi-v2{min-height:92px!important;display:grid!important;grid-template-columns:38px 1fr!important;align-items:center!important;gap:10px!important;padding:13px!important;border-radius:16px!important;}
+      #indicacoes .indicacao-kpi-icone{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#fff7ed;color:#e66f00}
+      #indicacoes .indicacao-kpi-icone .material-symbols-outlined{font-size:21px}
+      #indicacoes .indicacao-kpi-conteudo{min-width:0;display:flex;flex-direction:column;gap:4px}#indicacoes .indicacao-kpi-conteudo small{line-height:1.15;font-size:10px!important}#indicacoes .indicacao-kpi-conteudo strong{line-height:1;font-size:23px!important}#indicacoes .indicacao-kpi-conteudo .clientes-kpi-trend{font-size:9px;white-space:normal;line-height:1.2}
       #indicacoes .indicacoes-insights-panel{border:1px solid #e2e8f0;border-radius:20px;background:#fff;padding:18px;box-shadow:0 10px 28px rgba(15,23,42,.05)}
       #indicacoes .indicacoes-insights-head{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
       #indicacoes .indicacoes-insights-head h3{font-size:18px;color:#071a33;font-weight:900}
       #indicacoes .indicacoes-insights-head p{margin-top:3px;color:#64748b;font-size:12px;font-weight:750}
-      #indicacoes .indicacoes-chart-area{min-height:310px;display:grid;place-items:center}
+      #indicacoes .indicacoes-chart-area{min-height:250px;display:grid;place-items:center}
       #indicacoes .indicacoes-donut-layout{width:100%;display:grid;grid-template-columns:minmax(220px,.8fr) minmax(280px,1.2fr);gap:28px;align-items:center}
       #indicacoes .indicacoes-donut{width:220px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;margin:auto;position:relative;background:var(--donut-bg,#e2e8f0)}
       #indicacoes .indicacoes-donut::after{content:"";position:absolute;inset:34px;border-radius:50%;background:#fff}
@@ -18346,6 +18515,9 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
         border-radius:24px;
         background:#fff;
         padding:18px;
+        min-width:0;
+        max-width:100%;
+        box-sizing:border-box;
         box-shadow:0 12px 34px rgba(15,23,42,.05);
       }
       #indicacoes .indicacoes-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;}
@@ -18373,16 +18545,37 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
         color:#334155;
         background:#f8fafc;
       }
-      #indicacoes .indicacoes-table{padding:8px 10px 2px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc;overflow:auto}
-      #indicacoes .indicacoes-table table{width:100%;border-collapse:separate;border-spacing:0 9px;min-width:980px;}
-      #indicacoes .indicacoes-table .indicacoes-list-head,
-      #indicacoes .indicacoes-table .indicacoes-list-head tr,
-      #indicacoes .indicacoes-table .indicacoes-list-head th{
-        background:transparent!important;
+      #indicacoes .indicacoes-table{width:100%;max-width:100%;min-width:0;box-sizing:border-box;padding:8px 10px 12px;border:1px solid #e2e8f0;border-radius:16px;background:#f8fafc;overflow-x:scroll;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-gutter:stable;scrollbar-color:#94a3b8 #e7edf4;scrollbar-width:thin}
+      #indicacoes .indicacoes-table::-webkit-scrollbar{height:11px}
+      #indicacoes .indicacoes-table::-webkit-scrollbar-track{background:#e7edf4;border-radius:999px;margin:0 3px}
+      #indicacoes .indicacoes-table::-webkit-scrollbar-thumb{background:#94a3b8;border:3px solid #e7edf4;border-radius:999px}
+      #indicacoes .indicacoes-table::-webkit-scrollbar-thumb:hover{background:#64748b}
+      #indicacoes .indicacoes-empty-state{min-height:150px;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:22px;text-align:center;color:#64748b;background:#fff;border:1px dashed #cbd5e1;border-radius:14px;box-sizing:border-box}
+      #indicacoes .indicacoes-empty-state>.material-symbols-outlined{font-size:34px;color:#94a3b8}#indicacoes .indicacoes-empty-state>strong{color:#071a33;font-size:16px}#indicacoes .indicacoes-empty-state>small{max-width:520px;font-weight:700;line-height:1.45}#indicacoes .indicacoes-empty-state.error{border-color:#fecaca;background:#fffafa}#indicacoes .indicacoes-empty-state.error>.material-symbols-outlined{color:#dc2626}#indicacoes .indicacoes-empty-state .ghost-btn{margin-top:7px;display:inline-flex;align-items:center;gap:7px}
+      #indicacoes .indicacoes-table table{width:100%;min-width:1320px;max-width:none;table-layout:fixed;border-collapse:separate;border-spacing:0 9px;}
+      #indicacoes .indicacoes-table th:nth-child(1),#indicacoes .indicacoes-table td:nth-child(1){width:22%}
+      #indicacoes .indicacoes-table th:nth-child(2),#indicacoes .indicacoes-table td:nth-child(2){width:12%}
+      #indicacoes .indicacoes-table th:nth-child(3),#indicacoes .indicacoes-table td:nth-child(3){width:16%}
+      #indicacoes .indicacoes-table th:nth-child(4),#indicacoes .indicacoes-table td:nth-child(4){width:11%}
+      #indicacoes .indicacoes-table th:nth-child(5),#indicacoes .indicacoes-table td:nth-child(5){width:10%}
+      #indicacoes .indicacoes-table th:nth-child(6),#indicacoes .indicacoes-table td:nth-child(6){width:12%}
+      #indicacoes .indicacoes-table th:nth-child(7),#indicacoes .indicacoes-table td:nth-child(7){width:10%}
+      #indicacoes .indicacoes-table th:nth-child(8),#indicacoes .indicacoes-table td:nth-child(8){width:7%}
+      #indicacoes .indicacoes-table .indicacoes-list-head{
+        position:sticky;
+        top:0;
+        z-index:20;
+        isolation:isolate;
+        background:#f8fafc!important;
         background-image:none!important;
-        box-shadow:none!important;
+        box-shadow:0 -16px 0 16px #f8fafc,0 2px 0 #dbe3ed!important;
+      }
+      #indicacoes .indicacoes-table .indicacoes-list-head tr{
+        background:#f8fafc!important;
       }
       #indicacoes .indicacoes-table .indicacoes-list-head th{
+        background:#f8fafc!important;
+        background-image:none!important;
         color:#334155!important;
         text-transform:uppercase!important;
         font-size:11px!important;
@@ -18393,6 +18586,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
         text-align:left;
         letter-spacing:0!important;
         white-space:nowrap;
+        box-shadow:none!important;
       }
       #indicacoes .indicacoes-sort-btn{display:inline-flex;align-items:center;gap:6px;min-height:28px;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-transform:inherit;cursor:pointer;white-space:nowrap}
       #indicacoes .indicacoes-sort-btn:hover{color:#c2410c}
@@ -18400,7 +18594,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       #indicacoes .indicacoes-sort-icon{font-size:16px;color:#94a3b8;transition:color .18s ease,transform .18s ease}
       #indicacoes .indicacoes-list-head th.ordenacao-ativa,
       #indicacoes .indicacoes-list-head th.ordenacao-ativa .indicacoes-sort-icon{color:#c2410c!important}
-      #indicacoes .indicacoes-table td{padding:13px 14px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;background:#fff;vertical-align:middle;transition:background .18s ease,border-color .18s ease;}
+      #indicacoes .indicacoes-table td{padding:13px 14px;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;background:#fff;vertical-align:middle;overflow:hidden;text-overflow:ellipsis;transition:background .18s ease,border-color .18s ease;}
       #indicacoes .indicacoes-table td:first-child{border-left:1px solid #e2e8f0;border-radius:13px 0 0 13px}
       #indicacoes .indicacoes-table td:last-child{border-right:1px solid #e2e8f0;border-radius:0 13px 13px 0}
       #indicacoes .indicacoes-table tbody tr:hover td{background:#fffaf5;border-color:#fed7aa}
@@ -18408,18 +18602,16 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       #indicacoes .indicacao-cliente-cell{display:flex;align-items:center;gap:11px;min-width:0}
       #indicacoes .indicacao-cliente-avatar{width:38px;height:38px;flex:0 0 38px;border-radius:11px;display:grid;place-items:center;background:#fff1df;color:#d76600;font-size:12px;font-weight:900}
       #indicacoes .indicacao-cliente-info{min-width:0}#indicacoes .indicacao-cliente-info strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#071a33;font-size:13px}#indicacoes .indicacao-cliente-info small{display:block;margin-top:3px;color:#64748b;font-size:11px;font-weight:750}
-      #indicacoes .indicacoes-table td:last-child{white-space:nowrap}
-      #indicacoes .indicacoes-table td:last-child .ghost-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px}
-      #indicacoes .indicacoes-table td:last-child .material-symbols-outlined{font-size:18px}
+      #indicacoes .indicacao-data-cell{display:grid;gap:3px;white-space:normal}
+      #indicacoes .indicacao-data-cell strong{color:#334155;font-size:12px;white-space:nowrap}
+      #indicacoes .indicacao-data-cell small{color:#64748b;font-size:10px;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      #indicacoes .indicacoes-table td:first-child{white-space:nowrap}
       #indicacoes .indicacoes-table.modo-cards table,#indicacoes .indicacoes-table.modo-cards tbody,#indicacoes .indicacoes-table.modo-cards tr,#indicacoes .indicacoes-table.modo-cards td{display:block;width:100%;min-width:0}
       #indicacoes .indicacoes-table.modo-cards thead{display:none}
       #indicacoes .indicacoes-table.modo-cards tbody{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
       #indicacoes .indicacoes-table.modo-cards tr{padding:16px;border:1px solid #e2e8f0;border-radius:16px;background:#fff}
       #indicacoes .indicacoes-table.modo-cards td{display:grid;grid-template-columns:110px 1fr;gap:9px;padding:8px 0;border:0;white-space:normal}
       #indicacoes .indicacoes-table.modo-cards td::before{content:attr(data-label);color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase}
-      #indicacoes .indicacoes-table.modo-cards td:last-child{display:flex;gap:8px;padding-top:12px;border-top:1px solid #edf2f7}
-      #indicacoes .indicacoes-table.modo-cards td:last-child::before{display:none}
-      #indicacoes .indicacoes-table.modo-cards td:last-child button{flex:1}
       #indicacoes .indicacao-status-pill{display:inline-flex;border-radius:999px;padding:7px 10px;background:#eff6ff;color:#1d4ed8;font-size:11px;font-weight:900;white-space:nowrap}
       #indicacoes .indicacao-status-pill.status-convertida{background:#dcfce7;color:#15803d}
       #indicacoes .indicacao-status-pill.status-atendimento{background:#fff7ed;color:#c2410c}
@@ -18471,7 +18663,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       #drawer .indicacao-edit-field input,#drawer .indicacao-edit-field select,#drawer .indicacao-edit-field textarea{width:100%;min-width:0;min-height:50px;border:1px solid #cbd5e1;border-radius:12px;padding:11px 13px;background:#fff;color:#0f172a;font:inherit;font-size:16px;font-weight:750;outline:none}
       #drawer .indicacao-edit-field textarea{min-height:104px;resize:vertical}
       #drawer .indicacao-edit-field input:focus,#drawer .indicacao-edit-field select:focus,#drawer .indicacao-edit-field textarea:focus{border-color:#ff8a00;box-shadow:0 0 0 3px rgba(255,138,0,.12)}
-      #drawer .indicacao-edit-field select:disabled{background:#eef2f7;color:#64748b;cursor:not-allowed}
+      #drawer .indicacao-edit-field select:disabled{background:#eef2f7;color:#64748b;cursor:not-allowed}#drawer .indicacao-edit-field input[readonly]{background:#eef2f7;color:#475569;cursor:default}#drawer .indicacao-edit-audit{background:#f1f5f9}
       #drawer .indicacao-edit-note{display:flex;gap:9px;align-items:flex-start;padding:12px;border-radius:12px;background:#fff7ed;color:#9a3412;font-size:12px;font-weight:750;line-height:1.45}
       #drawer .indicacao-edit-note .material-symbols-outlined{font-size:19px}
       #drawer .indicacao-edit-save{width:100%;min-height:52px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
@@ -18496,11 +18688,26 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       .indicacoes-filtros-footer{position:sticky;bottom:0;display:grid;grid-template-columns:1fr 1.25fr;gap:10px;padding:14px 0 max(4px,env(safe-area-inset-bottom));background:#fff;box-shadow:0 -12px 22px #fff}
       .indicacoes-filtros-footer button{height:50px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
       @media(max-width:1320px){#indicacoes .indicacoes-analysis-filters{grid-template-columns:repeat(3,minmax(0,1fr)) auto auto}}
-      @media(max-width:1180px){#indicacoes .indicacoes-kpis{grid-template-columns:repeat(2,1fr);}#indicacoes .indicacoes-filtros{grid-template-columns:1fr 1fr;}#indicacoes .indicacoes-relatorio-grid{grid-template-columns:1fr;}#indicacoes .indicacoes-report-overview{grid-template-columns:repeat(2,minmax(0,1fr))}#indicacoes .indicacoes-module-nav-spacer{display:none}#indicacoes .indicacoes-analysis-filter-btn{margin-left:auto}}
-      @media(max-width:760px){#indicacoes .indicacoes-module-tab{min-width:132px;min-height:54px;padding:0 15px}#indicacoes .indicacoes-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}#indicacoes .indicacoes-filtros{grid-template-columns:1fr;}#indicacoes .indicacoes-panel-head{display:grid;align-items:start}#indicacoes .indicacoes-consulta-toolbar{grid-template-columns:1fr}#indicacoes .indicacoes-consulta-toolbar .indicacoes-filtros-busca{grid-column:auto}#indicacoes .indicacoes-consulta-toolbar button{width:100%}#indicacoes .indicacoes-table table,#indicacoes .indicacoes-table tbody,#indicacoes .indicacoes-table tr,#indicacoes .indicacoes-table td{display:block;width:100%;min-width:0}#indicacoes .indicacoes-table thead{display:none}#indicacoes .indicacoes-table tbody{display:grid;gap:12px}#indicacoes .indicacoes-table tr{padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}#indicacoes .indicacoes-table td{display:grid;grid-template-columns:105px 1fr;gap:8px;padding:8px 0;border:0}#indicacoes .indicacoes-table td::before{content:attr(data-label);color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase}#indicacoes .indicacoes-table td:last-child{display:flex;grid-template-columns:none;gap:8px;padding-top:12px;border-top:1px solid #edf2f7}#indicacoes .indicacoes-table td:last-child::before{display:none}#indicacoes .indicacoes-table td:last-child button{flex:1}}
+      #indicacoes .indicacoes-page-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap;width:100%}
+      #indicacoes .indicacoes-page-actions .indicacoes-analysis-filter-btn{min-height:48px;height:48px;padding:0 15px;border:1px solid #dbe4ef;border-radius:14px;background:#fff;box-shadow:none}
+      #indicacoes .indicacoes-subnav{display:flex;min-height:58px;border:1px solid #dbe4ef;border-radius:16px;background:#fff;overflow:hidden}
+      #indicacoes .indicacoes-subnav button{min-width:178px;min-height:58px;display:inline-flex;align-items:center;justify-content:center;gap:9px;padding:0 22px;border:0;border-right:1px solid #e2e8f0;background:#fff;color:#64748b;font:inherit;font-size:14px;font-weight:850;cursor:pointer}
+      #indicacoes .indicacoes-subnav button:hover{background:#fffaf5;color:#c85f00}#indicacoes .indicacoes-subnav button.active{background:#fff7ed;color:#c85f00;box-shadow:inset 0 -3px #ff8a00}
+      #indicacoes .indicacoes-view{display:grid;gap:16px;min-width:0}#indicacoes .indicacoes-view[hidden]{display:none!important}
+      #indicacoes .indicacoes-leads-toolbar{display:grid;grid-template-columns:minmax(280px,1fr) auto auto auto;gap:10px;align-items:stretch}#indicacoes .indicacoes-leads-toolbar .clientes-search-field{height:50px}
+      #indicacoes .indicacoes-leads-toolbar>button,#indicacoes .indicacoes-actions-menu>summary{min-height:50px;height:50px;display:inline-flex;align-items:center;justify-content:center;gap:7px;white-space:nowrap}
+      #indicacoes .indicacoes-actions-menu{position:relative}#indicacoes .indicacoes-actions-menu>summary{width:50px;padding:0;border:1px solid #dbe4ef;border-radius:14px;background:#fff;color:#071a33;cursor:pointer;list-style:none}#indicacoes .indicacoes-actions-menu>summary::-webkit-details-marker{display:none}
+      #indicacoes .indicacoes-actions-popover{position:absolute;z-index:80;top:calc(100% + 8px);right:0;width:190px;padding:7px;border:1px solid #dbe4ef;border-radius:14px;background:#fff;box-shadow:0 18px 40px rgba(15,23,42,.16)}
+      #indicacoes .indicacoes-actions-popover button{width:100%;min-height:44px;display:flex;align-items:center;gap:9px;padding:0 11px;border:0;border-radius:10px;background:transparent;color:#334155;font:inherit;font-size:13px;font-weight:800;cursor:pointer}#indicacoes .indicacoes-actions-popover button:hover{background:#fff7ed;color:#c85f00}
+      #indicacoes .indicacoes-filter-action{min-width:118px;border:1px solid #dbe4ef;border-radius:14px;background:#fff;color:#071a33;font:inherit;font-size:13px;font-weight:850;padding:0 14px;cursor:pointer}#indicacoes .indicacoes-filter-action small{display:block;color:#c85f00;font-size:9px;line-height:1.1}
+      #indicacoes .indicacoes-refresh-action{min-width:118px}#indicacoes .indicacoes-search-action{min-width:118px;border-color:#0b3b75!important;background:#0b3b75!important;color:#fff!important;box-shadow:0 8px 18px rgba(11,59,117,.18)}#indicacoes .indicacoes-search-action:hover{background:#082f5e!important;border-color:#082f5e!important}#indicacoes .indicacoes-search-action:focus-visible{outline:3px solid rgba(11,59,117,.25);outline-offset:2px}
+      @media(max-width:1380px){#indicacoes .indicacoes-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+      @media(max-width:1180px){#indicacoes .indicacoes-filtros{grid-template-columns:1fr 1fr;}#indicacoes .indicacoes-relatorio-grid{grid-template-columns:1fr;}#indicacoes .indicacoes-report-overview{grid-template-columns:repeat(2,minmax(0,1fr))}#indicacoes .indicacoes-leads-toolbar{grid-template-columns:minmax(240px,1fr) auto auto auto}}
+      @media(max-width:760px){#indicacoes .indicacoes-module-tab{min-width:132px;min-height:54px;padding:0 15px}#indicacoes .indicacoes-kpis{grid-template-columns:repeat(2,minmax(0,1fr));}#indicacoes .indicacoes-filtros{grid-template-columns:1fr;}#indicacoes .indicacoes-panel-head{display:grid;align-items:start}#indicacoes .indicacoes-consulta-toolbar{grid-template-columns:1fr}#indicacoes .indicacoes-consulta-toolbar .indicacoes-filtros-busca{grid-column:auto}#indicacoes .indicacoes-consulta-toolbar button{width:100%}#indicacoes .indicacoes-table table,#indicacoes .indicacoes-table tbody,#indicacoes .indicacoes-table tr,#indicacoes .indicacoes-table td{display:block;width:100%;min-width:0}#indicacoes .indicacoes-table thead{display:none}#indicacoes .indicacoes-table tbody{display:grid;gap:12px}#indicacoes .indicacoes-table tr{padding:14px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}#indicacoes .indicacoes-table td{display:grid;grid-template-columns:105px 1fr;gap:8px;padding:8px 0;border:0}#indicacoes .indicacoes-table td::before{content:attr(data-label);color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase}#indicacoes .indicacoes-table td:first-child{display:grid;grid-template-columns:105px 1fr;gap:8px;padding:8px 0;border-top:0}#indicacoes .indicacoes-table td:first-child::before{display:block}}
       @media(max-width:760px){#indicacoes .indicacoes-analysis-filters{grid-template-columns:1fr 1fr}#indicacoes .indicacoes-analysis-filters>button{width:100%}#indicacoes .indicacoes-donut-layout{grid-template-columns:1fr}#indicacoes .indicacoes-insights-head{align-items:flex-start;display:grid}#indicacoes .indicacoes-view-switch{width:100%;overflow-x:auto}#indicacoes .indicacoes-view-switch button{flex:1}#indicacoes .indicacoes-bar-row{grid-template-columns:1fr auto}#indicacoes .indicacoes-bar-track{grid-column:1/-1;grid-row:2}}
       @media(max-width:760px){#indicacoes .indicacoes-table{padding:0;border:0;background:transparent}#indicacoes .indicacoes-table td:first-child,#indicacoes .indicacoes-table td:last-child{border-left:0;border-right:0;border-radius:0}}
       @media(max-width:760px){#indicacoes .indicacoes-ranking-grid{grid-template-columns:1fr}}
+      @media(max-width:760px){#indicacoes .indicacoes-subnav{overflow-x:auto}#indicacoes .indicacoes-subnav button{min-width:158px;flex:1}#indicacoes .indicacoes-leads-toolbar{grid-template-columns:50px 1fr 1fr}#indicacoes .indicacoes-leads-toolbar .indicacoes-filtros-busca{grid-column:1/-1}#indicacoes .indicacoes-leads-toolbar>button{width:100%;min-width:0}}
       @media(max-width:520px){#indicacoes .indicacoes-kpis{grid-template-columns:1fr}#indicacoes .indicacoes-hero,#indicacoes .indicacoes-panel,#indicacoes .indicacoes-insights-panel{padding:16px;border-radius:18px}#indicacoes .indicacao-kpi-v2{min-height:88px!important}#indicacoes .indicacoes-analysis-filters{grid-template-columns:1fr}#indicacoes .indicacoes-donut{width:190px}#indicacoes .indicacoes-donut::after{inset:30px}#indicacoes .indicacoes-report-overview{grid-template-columns:1fr}}
       @media(max-width:520px){.indicacoes-filtro-opcoes,.indicacoes-filtro-periodo,#drawer .indicacao-edit-grid{grid-template-columns:1fr}.indicacoes-filtros-side{width:100%;max-width:100%}#drawer .indicacao-edit-field.full{grid-column:auto}}
     `;
@@ -18511,51 +18718,36 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if(!bloco || bloco.dataset.layoutIntegro === "premium") return;
     bloco.className = "indicacoes-master-shell";
     bloco.innerHTML = `
-      <nav class="indicacoes-module-nav" aria-label="Áreas de indicações">
-        <button class="indicacoes-module-tab active" type="button" data-aba-indicacoes="visao" aria-selected="true" onclick="selecionarAbaIndicacoesMasterLocal('visao')"><span class="material-symbols-outlined">dashboard</span> Visão geral</button>
-        <button class="indicacoes-module-tab" type="button" data-aba-indicacoes="consulta" aria-selected="false" onclick="selecionarAbaIndicacoesMasterLocal('consulta')"><span class="material-symbols-outlined">manage_search</span> Consultar</button>
-        <button class="indicacoes-module-tab" type="button" data-aba-indicacoes="relatorios" aria-selected="false" onclick="selecionarAbaIndicacoesMasterLocal('relatorios')"><span class="material-symbols-outlined">monitoring</span> Relatórios</button>
-        <span class="indicacoes-module-nav-spacer"></span>
-        <button class="indicacoes-analysis-filter-btn" type="button" onclick="abrirFiltrosIndicacoesAtivosML()"><span class="material-symbols-outlined">tune</span><span>Filtros<br><small id="indicacoesResumoFiltroML">Mês atual</small></span><span id="indicacoesFiltroBadgeML" class="indicacoes-filter-badge"></span></button>
+      <nav class="indicacoes-subnav" aria-label="Áreas de leads">
+        <button class="active" type="button" data-leads-view="gerenciar" aria-selected="true" onclick="selecionarAbaIndicacoesMasterLocal('gerenciar')"><span class="material-symbols-outlined">manage_search</span> Gerenciar leads</button>
+        <button type="button" data-leads-view="relatorios" aria-selected="false" onclick="selecionarAbaIndicacoesMasterLocal('relatorios')"><span class="material-symbols-outlined">monitoring</span> Relatórios</button>
       </nav>
-      <div id="indicacoesFiltrosAnaliseML" class="indicacoes-analysis-filters" hidden>
-        <div class="indicacoes-filter-field"><label for="indicacoesPeriodoML">Período</label><select id="indicacoesPeriodoML" onchange="alterarPeriodoAnaliseIndicacoesML()"><option value="MES_ATUAL">Mês atual</option><option value="ULTIMOS_30">Últimos 30 dias</option><option value="ULTIMOS_90">Últimos 90 dias</option><option value="ANO_ATUAL">Ano atual</option><option value="PERSONALIZADO">Personalizado</option><option value="TODO_PERIODO">Todo o período</option></select></div>
-        <div class="indicacoes-filter-field"><label for="indicacoesVendedorAnaliseML">Vendedor</label><select id="indicacoesVendedorAnaliseML"><option value="">Todos os vendedores</option></select></div>
-        <div class="indicacoes-filter-field"><label for="indicacoesEquipeAnaliseML">Equipe</label><select id="indicacoesEquipeAnaliseML"><option value="">Todas as equipes</option></select></div>
-        <div id="indicacoesInicioFieldML" class="indicacoes-filter-field" hidden><label for="indicacoesInicioML">Data inicial</label><input id="indicacoesInicioML" type="date"></div>
-        <div id="indicacoesFimFieldML" class="indicacoes-filter-field" hidden><label for="indicacoesFimML">Data final</label><input id="indicacoesFimML" type="date"></div>
-        <button class="ghost-btn" type="button" onclick="limparFiltrosAnaliseIndicacoesML()"><span class="material-symbols-outlined">filter_alt_off</span> Limpar</button>
-        <button class="primary-btn" type="button" onclick="aplicarFiltrosAnaliseIndicacoesML()"><span class="material-symbols-outlined">check</span> Aplicar</button>
-      </div>
-      <div id="indicacoesVisaoGeralML" class="indicacoes-visao-secao indicacoes-visao-geral">
-        <div class="indicacoes-hero">
-          <h3>Central de indicações</h3>
-          <p>Cadastre os dados iniciais do lead, evite duplicidade e direcione ao vendedor. O cadastro completo será concluído na conversão em venda.</p>
-        </div>
-        <div id="indicacoesDashboardMasterLocal" class="indicacoes-kpis"></div>
-        <div class="indicacoes-insights-panel">
-          <div class="indicacoes-insights-head">
-            <div><h3 id="indicacoesTituloGraficoML">Distribuição por status</h3><p id="indicacoesSubtituloGraficoML">Visão consolidada do período selecionado.</p></div>
-            <div class="indicacoes-view-switch" aria-label="Visualização da análise">
-              <button class="active" type="button" data-grafico-indicacoes="pizza" onclick="alterarGraficoIndicacoesML('pizza')"><span class="material-symbols-outlined">donut_large</span> Pizza</button>
-              <button type="button" data-grafico-indicacoes="barras" onclick="alterarGraficoIndicacoesML('barras')"><span class="material-symbols-outlined">bar_chart</span> Barras</button>
-              <button type="button" data-grafico-indicacoes="linha" onclick="alterarGraficoIndicacoesML('linha')"><span class="material-symbols-outlined">show_chart</span> Linha</button>
-            </div>
+      <div id="indicacoesGerenciarML" class="indicacoes-view">
+        <div id="indicacoesVisaoGeralML" class="indicacoes-visao-geral"><div id="indicacoesDashboardMasterLocal" class="indicacoes-kpis"></div></div>
+        <div id="indicacoesConsultaML" class="indicacoes-panel">
+          <div class="indicacoes-leads-toolbar">
+            <div class="indicacoes-filtros-busca"><div class="clientes-search-field"><span class="material-symbols-outlined">search</span><input id="indicacaoFiltroTextoML" type="search" placeholder="Buscar nome, telefone ou documento" onkeydown="if(event.key===&quot;Enter&quot;){event.preventDefault();buscarIndicacoesMasterLocal()}"></div></div>
+            <details class="indicacoes-actions-menu"><summary aria-label="Mais ações" title="Mais ações"><span class="material-symbols-outlined">more_horiz</span></summary><div class="indicacoes-actions-popover">
+              <button type="button" onclick="this.closest('details').removeAttribute('open');abrirImportacaoIndicacoesIntegro()"><span class="material-symbols-outlined">upload_file</span> Importar</button>
+              <button type="button" onclick="this.closest('details').removeAttribute('open');exportarIndicacoesMasterLocal()"><span class="material-symbols-outlined">download</span> Exportar</button>
+            </div></details>
+            <button class="indicacoes-filter-action" type="button" onclick="toggleFiltrosIndicacoesMasterLocal()"><span class="material-symbols-outlined">tune</span><span>Filtros<small id="indicacoesResumoFiltroML">Todos os registros</small></span><span id="indicacoesFiltroBadgeML" class="indicacoes-filter-badge"></span></button>
+            <button class="ghost-btn indicacoes-refresh-action indicacoes-search-action" type="button" onclick="buscarIndicacoesMasterLocal()"><span class="material-symbols-outlined">search</span> Buscar</button>
           </div>
+          <div class="integro-table-frame"><div id="listaIndicacoesMasterLocal" class="indicacoes-table table-wrap"></div><footer id="contadorIndicacoesMasterLocal" class="integro-table-footer" aria-live="polite">0 leads exibidos</footer></div>
+        </div>
+      </div>
+      <div id="indicacoesRelatoriosViewML" class="indicacoes-view" hidden>
+        <div class="indicacoes-insights-panel">
+          <div class="indicacoes-insights-head"><div><h3 id="indicacoesTituloGraficoML">Distribuição por status</h3><p id="indicacoesSubtituloGraficoML">Visão consolidada do período selecionado.</p></div><div class="indicacoes-view-switch" aria-label="Visualização da análise">
+            <button class="active" type="button" data-grafico-indicacoes="pizza" onclick="alterarGraficoIndicacoesML('pizza')"><span class="material-symbols-outlined">donut_large</span> Pizza</button>
+            <button type="button" data-grafico-indicacoes="barras" onclick="alterarGraficoIndicacoesML('barras')"><span class="material-symbols-outlined">bar_chart</span> Barras</button>
+            <button type="button" data-grafico-indicacoes="linha" onclick="alterarGraficoIndicacoesML('linha')"><span class="material-symbols-outlined">show_chart</span> Linha</button>
+          </div></div>
           <div id="indicacoesGraficoMasterLocal" class="indicacoes-chart-area"></div>
         </div>
+        <section id="indicacoesRelatoriosML" class="indicacoes-panel indicacoes-relatorios"><div id="relatorioIndicacoesMasterLocal" class="indicacoes-relatorio-grid"></div></section>
       </div>
-      <div id="indicacoesConsultaML" class="indicacoes-panel indicacoes-visao-secao" hidden>
-        <div class="indicacoes-panel-head">
-          <div><h3>Consultar indicações</h3><p>Pesquise primeiro e abra os filtros somente quando precisar.</p></div>
-        </div>
-        <div class="indicacoes-consulta-toolbar">
-          <div class="indicacoes-filtros-busca"><div class="clientes-search-field"><span class="material-symbols-outlined">search</span><input id="indicacaoFiltroTextoML" type="search" placeholder="Buscar nome, telefone ou documento" oninput="renderIndicacoesMasterLocal()"></div></div>
-          <button class="ghost-btn" type="button" onclick="carregarIndicacoesMasterLocal()"><span class="material-symbols-outlined">refresh</span> Atualizar</button>
-        </div>
-        <div id="listaIndicacoesMasterLocal" class="indicacoes-table table-wrap"></div>
-      </div>
-      <details id="indicacoesRelatoriosML" class="indicacoes-panel indicacoes-relatorios indicacoes-visao-secao" hidden><summary><span>Relatórios comparativos</span><span class="material-symbols-outlined indicacoes-summary-icon" aria-hidden="true">expand_more</span></summary><p>Compare vendedores, equipes, captadores e origens no período selecionado.</p><div id="relatorioIndicacoesMasterLocal" class="indicacoes-relatorio-grid"></div></details>
     `;
     bloco.dataset.layoutIntegro = "premium";
   }
@@ -18643,28 +18835,24 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   };
 
   window.selecionarAbaIndicacoesMasterLocal = function(aba){
-    const selecionada = ["visao","consulta","relatorios"].includes(aba) ? aba : "visao";
-    window.__abaIndicacoesClientesAtiva = selecionada;
-    const secoes = {
-      visao: document.getElementById("indicacoesVisaoGeralML"),
-      consulta: document.getElementById("indicacoesConsultaML"),
-      relatorios: document.getElementById("indicacoesRelatoriosML")
-    };
-    Object.entries(secoes).forEach(([chave, secao]) => {
-      if(secao) secao.hidden = chave !== selecionada;
+    abaIndicacoesMasterLocal = aba === "relatorios" ? "relatorios" : "gerenciar";
+    window.__abaIndicacoesClientesAtiva = abaIndicacoesMasterLocal;
+    document.querySelectorAll("#indicacoes [data-leads-view]").forEach(botao=>{
+      const ativo = botao.dataset.leadsView === abaIndicacoesMasterLocal;
+      botao.classList.toggle("active",ativo);
+      botao.setAttribute("aria-selected",String(ativo));
     });
-    document.querySelectorAll("#indicacoes [data-aba-indicacoes]").forEach(botao => {
-      const ativo = botao.dataset.abaIndicacoes === selecionada;
-      botao.classList.toggle("active", ativo);
-      botao.setAttribute("aria-selected", String(ativo));
-    });
-    document.querySelectorAll("#clientesIndicacoesDropdown [data-indicacoes-subarea]").forEach(botao => {
-      botao.classList.toggle("active", botao.dataset.indicacoesSubarea === selecionada);
-    });
-    const filtrosAnalise = document.getElementById("indicacoesFiltrosAnaliseML");
-    if(selecionada === "consulta" && filtrosAnalise) filtrosAnalise.hidden = true;
+    const gerenciar = document.getElementById("indicacoesGerenciarML");
+    const relatorios = document.getElementById("indicacoesRelatoriosViewML");
+    if(gerenciar) gerenciar.hidden = abaIndicacoesMasterLocal !== "gerenciar";
+    if(relatorios) relatorios.hidden = abaIndicacoesMasterLocal !== "relatorios";
     atualizarResumoFiltroIndicacoesML();
-    if(selecionada === "relatorios" && secoes.relatorios) secoes.relatorios.open = true;
+    if(!indicacoesMasterLocalCache.length && !window.__carregandoIndicacoesMasterLocal){
+      window.__carregandoIndicacoesMasterLocal = true;
+      Promise.resolve(carregarIndicacoesMasterLocal()).finally(()=>{ window.__carregandoIndicacoesMasterLocal = false; });
+    }else{
+      renderIndicacoesMasterLocal();
+    }
   };
 
   function dataIndicacaoML(item){
@@ -18678,6 +18866,21 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     return Number.isNaN(data.getTime()) ? null : data;
   }
 
+  function dataAtualizacaoIndicacaoML(item){
+    return dataIndicacaoML({
+      dataRecebimento:item?.atualizadoEm || item?.atualizadoEmTexto || item?.dataAtualizacao || item?.ultimaAtualizacao || item?.criadoEm || item?.criadoEmTexto
+    });
+  }
+
+  function formatarDataIndicacaoML(data, incluirHora=false){
+    if(!(data instanceof Date) || Number.isNaN(data.getTime())) return "-";
+    return new Intl.DateTimeFormat("pt-BR", {
+      timeZone:"America/Sao_Paulo",
+      day:"2-digit",month:"2-digit",year:"numeric",
+      ...(incluirHora ? {hour:"2-digit",minute:"2-digit"} : {})
+    }).format(data);
+  }
+
   function dataISOIndicacaoML(data){
     if(!(data instanceof Date) || Number.isNaN(data.getTime())) return "";
     const partes = new Intl.DateTimeFormat("pt-BR", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(data);
@@ -18686,7 +18889,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   }
 
   function limitesPeriodoIndicacoesML(){
-    const periodo = document.getElementById("indicacoesPeriodoML")?.value || "MES_ATUAL";
+    const periodo = document.getElementById("indicacoesPeriodoML")?.value || "TODO_PERIODO";
     const agora = new Date();
     let inicio = null;
     let fim = null;
@@ -18856,19 +19059,8 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   function atualizarResumoFiltroIndicacoesML(){
     const resumo = document.getElementById("indicacoesResumoFiltroML");
     if(!resumo) return;
-    const abaAtiva = document.querySelector("#indicacoes [data-aba-indicacoes][aria-selected='true']")?.dataset.abaIndicacoes || "visao";
-    if(abaAtiva === "consulta"){
-      const total = ["status","vendedores","equipes","origens","captadores"].reduce((s,chave)=>s+(filtrosConsultaIndicacoesML[chave]?.length||0),0) + (filtrosConsultaIndicacoesML.dataInicio?1:0) + (filtrosConsultaIndicacoesML.dataFim?1:0);
-      resumo.textContent = total ? `${total} filtro${total === 1 ? "" : "s"} ativo${total === 1 ? "" : "s"}` : "Todos os registros";
-      return;
-    }
-    const periodo = document.getElementById("indicacoesPeriodoML");
-    const vendedor = document.getElementById("indicacoesVendedorAnaliseML");
-    const equipe = document.getElementById("indicacoesEquipeAnaliseML");
-    const partes = [periodo?.selectedOptions?.[0]?.textContent || "Mês atual"];
-    if(vendedor?.value) partes.push(vendedor.selectedOptions[0]?.textContent || "Vendedor");
-    if(equipe?.value) partes.push(equipe.selectedOptions[0]?.textContent || "Equipe");
-    resumo.textContent = partes.join(" · ");
+    const total = ["status","vendedores","equipes","origens","captadores"].reduce((s,chave)=>s+(filtrosConsultaIndicacoesML[chave]?.length||0),0) + (filtrosConsultaIndicacoesML.dataInicio?1:0) + (filtrosConsultaIndicacoesML.dataFim?1:0);
+    resumo.textContent = total ? `${total} filtro${total === 1 ? "" : "s"} ativo${total === 1 ? "" : "s"}` : "Todos os registros";
   }
 
   window.toggleFiltrosAnaliseIndicacoesML = function(){
@@ -18876,10 +19068,42 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if(filtros) filtros.hidden = !filtros.hidden;
   };
 
+  window.solicitarExclusaoClienteMaster = function(id){
+    const cliente = (window.clientesEmpresaMasterCache || []).find(item=>String(item.id)===String(id));
+    if(!cliente) return notificarIntegro("Cliente não encontrado.");
+    abrirDrawerOperacional("Excluir cliente", "Esta ação mantém a auditoria e não apaga históricos.", `<div class="placeholder-dev"><span class="material-symbols-outlined">warning</span><strong>Excluir ${esc(nomeCliente(cliente))}?</strong><small>A exclusão será bloqueada se existir qualquer venda vinculada.</small></div><div class="cliente-operacional-acoes"><button class="ghost-btn" type="button" onclick="fecharDrawerClienteMaster()">Cancelar</button><button id="btnConfirmarExclusaoCliente" class="danger-btn" type="button" onclick="confirmarExclusaoClienteMaster('${esc(id)}')">Excluir cliente</button></div>`);
+  };
+
+  window.confirmarExclusaoClienteMaster = async function(id){
+    const botao = document.getElementById("btnConfirmarExclusaoCliente");
+    if(botao?.disabled) return;
+    try{
+      if(botao){ botao.disabled=true; botao.textContent="Excluindo..."; }
+      await window.ClientesService.excluirClienteSemHistorico(id, usuarioAtual(), {db:db()});
+      window.clientesEmpresaMasterCache = [];
+      fecharDrawerClienteMaster();
+      notificarIntegro("Cliente excluído com auditoria preservada.");
+      await buscarClientesEmpresaMaster(true);
+    }catch(erro){
+      notificarIntegro(erro.message || "Não foi possível excluir o cliente.");
+      if(botao){ botao.disabled=false; botao.textContent="Excluir cliente"; }
+    }
+  };
+
+  window.fecharFiltrosAnaliseIndicacoesML = function(){
+    const filtros = document.getElementById("indicacoesFiltrosAnaliseML");
+    const nav = document.querySelector("#indicacoes .indicacoes-module-nav");
+    if(filtros && nav){
+      nav.insertAdjacentElement("afterend", filtros);
+      filtros.hidden = true;
+      filtros.classList.remove("indicacoes-analysis-drawer");
+    }
+    const drawer = document.getElementById("drawer");
+    if(drawer){ drawer.className = "drawer"; drawer.innerHTML = ""; }
+  };
+
   window.abrirFiltrosIndicacoesAtivosML = function(){
-    const abaAtiva = document.querySelector("#indicacoes [data-aba-indicacoes][aria-selected='true']")?.dataset.abaIndicacoes || "visao";
-    if(abaAtiva === "consulta") return toggleFiltrosIndicacoesMasterLocal();
-    toggleFiltrosAnaliseIndicacoesML();
+    return toggleFiltrosIndicacoesMasterLocal();
   };
 
   window.alterarPeriodoAnaliseIndicacoesML = function(){
@@ -18896,16 +19120,15 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       return notificarIntegro("Informe um período personalizado válido.");
     }
     atualizarResumoFiltroIndicacoesML();
-    const filtros = document.getElementById("indicacoesFiltrosAnaliseML");
-    if(filtros) filtros.hidden = true;
     renderIndicacoesMasterLocal();
+    fecharFiltrosAnaliseIndicacoesML();
   };
 
   window.limparFiltrosAnaliseIndicacoesML = function(){
     const periodo = document.getElementById("indicacoesPeriodoML");
     const vendedor = document.getElementById("indicacoesVendedorAnaliseML");
     const equipe = document.getElementById("indicacoesEquipeAnaliseML");
-    if(periodo) periodo.value = "MES_ATUAL";
+    if(periodo) periodo.value = "TODO_PERIODO";
     if(vendedor) vendedor.value = "";
     if(equipe) equipe.value = "";
     const inicio = document.getElementById("indicacoesInicioML");
@@ -18919,12 +19142,12 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   window.alterarGraficoIndicacoesML = function(tipo){
     visualizacaoAnaliseIndicacoesML = ["pizza","barras","linha"].includes(tipo) ? tipo : "pizza";
     document.querySelectorAll("#indicacoes [data-grafico-indicacoes]").forEach(botao => botao.classList.toggle("active", botao.dataset.graficoIndicacoes === visualizacaoAnaliseIndicacoesML));
-    renderGraficoIndicacoesML(aplicarFiltroAnaliseIndicacoes(indicacoesMasterLocalCache));
+    renderGraficoIndicacoesML(aplicarFiltrosIndicacoes(indicacoesMasterLocalCache));
   };
 
   window.alterarAgrupamentoAnaliseIndicacoesML = function(tipo){
     agrupamentoAnaliseIndicacoesML = ["vendedor","equipe","origem"].includes(tipo) ? tipo : "vendedor";
-    renderGraficoIndicacoesML(aplicarFiltroAnaliseIndicacoes(indicacoesMasterLocalCache));
+    renderGraficoIndicacoesML(aplicarFiltrosIndicacoes(indicacoesMasterLocalCache));
   };
 
   window.alterarVisualizacaoListaIndicacoesML = function(tipo){
@@ -18949,15 +19172,33 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     atualizarBadgeFiltrosIndicacoesML();
     const placeholder = secao?.querySelector(".placeholder-dev");
     if(placeholder) placeholder.style.display = "none";
-    const botao = secao?.querySelector(".section-header .primary-btn");
-    if(botao){
-      botao.textContent = "Nova indicação";
-      botao.setAttribute("onclick","abrirNovaIndicacaoMasterLocal()");
-    }
+    atualizarBadgeFiltrosIndicacoesML();
   }
 
-  async function carregarIndicacoesMasterLocal(){
+  let sequenciaCargaIndicacoesML = 0;
+  let promiseCargaIndicacoesML = null;
+
+  async function consultarIndicacoesPorTenant(firestore,tenant){
+    const snap = await firestore.collection("indicacoes")
+      .where("clientePlataformaId","==",tenant)
+      .limit(500)
+      .get();
+    return snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+  }
+
+  async function carregarIndicacoesMasterLocal(forcar=false){
+    if(promiseCargaIndicacoesML && !forcar) return promiseCargaIndicacoesML;
+    const sequencia = ++sequenciaCargaIndicacoesML;
+    const executar = async()=>{
     prepararTelaIndicacoesMasterLocal();
+    window.__erroIndicacoesMasterLocal = "";
+    const lista = document.getElementById("listaIndicacoesMasterLocal");
+    if(lista && !indicacoesMasterLocalCache.length) lista.innerHTML = `<div class="indicacoes-empty-state"><span class="material-symbols-outlined">progress_activity</span><strong>Carregando indicações</strong><small>Aguarde enquanto os dados são atualizados.</small></div>`;
+    try{
+      await carregarConfiguracoesIndicadoresEmpresa();
+    }catch(erroConfiguracao){
+      console.warn("Não foi possível carregar as metas de indicações; os leads continuarão disponíveis.",erroConfiguracao);
+    }
     const firestore = dbIndicacoes();
     const tenant = tenantIndicacoes();
     if(!firestore || !tenant){
@@ -18967,23 +19208,27 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     }
 
     try{
-      const snap = await firestore.collection("indicacoes")
-        .where("clientePlataformaId","==",tenant)
-        .limit(500)
-        .get();
-      indicacoesMasterLocalCache = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+      const documentos = await consultarIndicacoesPorTenant(firestore,tenant);
+      if(sequencia !== sequenciaCargaIndicacoesML) return indicacoesMasterLocalCache;
+      indicacoesMasterLocalCache = documentos;
     }catch(e){
       console.warn("Falha ao carregar indicações:", e);
-      indicacoesMasterLocalCache = [];
+      if(sequencia !== sequenciaCargaIndicacoesML) return indicacoesMasterLocalCache;
+      window.__erroIndicacoesMasterLocal = e?.message || "Não foi possível carregar as indicações.";
     }
     preencherFiltrosAnaliseIndicacoesML();
     renderIndicacoesMasterLocal();
     return indicacoesMasterLocalCache;
+    };
+    promiseCargaIndicacoesML = executar().finally(()=>{
+      if(sequencia === sequenciaCargaIndicacoesML) promiseCargaIndicacoesML = null;
+    });
+    return promiseCargaIndicacoesML;
   }
   window.carregarIndicacoesMasterLocal = carregarIndicacoesMasterLocal;
 
   function aplicarFiltrosIndicacoes(lista){
-    const termo = normalizarInd(document.getElementById("indicacaoFiltroTextoML")?.value || "");
+    const termo = termoBuscaIndicacoesML;
     const status = filtrosConsultaIndicacoesML.status;
     const vendedores = filtrosConsultaIndicacoesML.vendedores;
     const equipes = filtrosConsultaIndicacoesML.equipes;
@@ -18992,7 +19237,8 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const dataInicio = filtrosConsultaIndicacoesML.dataInicio;
     const dataFim = filtrosConsultaIndicacoesML.dataFim;
     return (lista || []).filter(i=>{
-      const statusItem = window.IntegroIndicacoes?.normalizarStatusIndicacao?.(i.statusIndicacao || i.status) || String(i.statusIndicacao || i.status || "").toUpperCase();
+      const statusBruto = i.statusIndicacao || i.statusLead || i.situacao || i.status;
+      const statusItem = window.IntegroIndicacoes?.normalizarStatusIndicacao?.(statusBruto) || String(statusBruto || "").toUpperCase();
       const texto = normalizarInd([i.nomeClienteSnapshot,i.nome,i.telefonePrincipal,i.telefoneNormalizado,i.documentoNormalizado].join(" "));
       const vendedorId = String(i.vendedorDestinoId || i.vendedorId || "");
       const equipeId = String(i.equipeDestinoId || i.equipeId || "");
@@ -19015,15 +19261,28 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const el = document.getElementById("indicacoesDashboardMasterLocal");
     if(!el) return;
     const d = window.IntegroIndicacoes?.calcularDashboardIndicacoes?.(lista) || {};
+    const fontes = [window.configuracoesEmpresaIntegro,window.empresaAtual,window.clientePlataformaAtual,window.usuarioLogado,window.currentUserData].filter(Boolean);
+    const metas = fontes.map(f=>f?.configuracoesIndicacoes?.metas || f?.configuracoes?.indicacoes?.metas || f?.metasIndicacoes).find(m=>m && typeof m === "object") || {};
+    const periodo = document.getElementById("indicacoesPeriodoML")?.value || "TODO_PERIODO";
     const cards = [
-      ["group", "Total no período", lista.length],
-      ["inbox", "Recebidas", d.recebidas || 0],
-      ["support_agent", "Em atendimento", d.emAtendimento || 0],
-      ["check_circle", "Convertidas", d.convertidas || 0],
-      ["monitoring", "Conversão", `${d.taxaConversao || 0}%`],
-      ["schedule", "Tempo médio", `${d.tempoMedioConversaoDias || 0} dias`]
+      ["group", "Total", lista.length, "total", false],
+      ["inbox", "Recebidas", d.recebidas || 0, "recebidas", false],
+      ["support_agent", "Em atendimento", d.emAtendimento || 0, "emAtendimento", false],
+      ["check_circle", "Convertidas", d.convertidas || 0, "convertidas", false],
+      ["monitoring", "Conversão", Number(d.taxaConversao || 0), "conversao", false, `${d.taxaConversao || 0}%`],
+      ["schedule", "Tempo médio", Number(d.tempoMedioConversaoDias || 0), "tempoMedioDias", true, `${d.tempoMedioConversaoDias || 0} dias`]
     ];
-    el.innerHTML = cards.map(c=>`<div class="card indicacao-kpi-v2"><div class="indicacao-kpi-icone"><span class="material-symbols-outlined">${escInd(c[0])}</span></div><div class="indicacao-kpi-conteudo"><small>${escInd(c[1])}</small><strong>${escInd(c[2])}</strong></div></div>`).join("");
+    el.innerHTML = cards.map(c=>{
+      const metaBruta = metas?.[c[3]];
+      const meta = Number(metaBruta?.valor ?? metaBruta);
+      const possuiMeta = Number.isFinite(meta) && meta >= 0;
+      const diferenca = Number(c[2] || 0) - meta;
+      const favoravel = c[4] ? diferenca < 0 : diferenca > 0;
+      const classe = !possuiMeta || diferenca === 0 ? "neutral" : favoravel ? "up" : "down";
+      const icone = !possuiMeta || diferenca === 0 ? "horizontal_rule" : diferenca > 0 ? "trending_up" : "trending_down";
+      const legenda = possuiMeta ? `Meta ${c[3] === "conversao" ? `${meta.toFixed(1).replace(".",",")}%` : c[3] === "tempoMedioDias" ? `${meta.toLocaleString("pt-BR")} dias` : meta.toLocaleString("pt-BR")}` : periodo === "TODO_PERIODO" ? "Atualização em tempo real" : "Período filtrado";
+      return `<div class="card indicacao-kpi-v2"><div class="indicacao-kpi-icone"><span class="material-symbols-outlined">${escInd(c[0])}</span></div><div class="indicacao-kpi-conteudo"><small>${escInd(c[1])}</small><strong>${escInd(c[5] ?? c[2])}</strong><span class="clientes-kpi-trend ${classe}"><span class="material-symbols-outlined">${icone}</span>${escInd(legenda)}</span></div></div>`;
+    }).join("");
   }
 
   function agruparIndicacoesAnaliseML(lista, tipo){
@@ -19141,14 +19400,24 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     return String(nome || "C").trim().split(/\s+/).filter(Boolean).slice(0,2).map(parte=>parte[0]).join("").toUpperCase() || "C";
   }
 
+  function documentoVisualIndicacao(valor){
+    const digitos = String(valor || "").replace(/\D/g,"");
+    if(digitos.length === 11) return digitos.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/,"$1.$2.$3-$4");
+    if(digitos.length === 14) return digitos.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/,"$1.$2.$3/$4-$5");
+    return valor || "-";
+  }
+
   function valorOrdenacaoIndicacao(indicacao,campo){
     const valores = {
       cliente:indicacao.nomeClienteSnapshot || indicacao.nome,
+      documento:indicacao.documentoNormalizado || indicacao.documento,
       contato:indicacao.telefonePrincipal || indicacao.telefoneNormalizado,
       status:indicacao.statusIndicacao || indicacao.status,
       origem:indicacao.origemIndicacao || indicacao.origem,
       responsavel:indicacao.vendedorDestinoNome || indicacao.vendedorNome,
-      captador:indicacao.indicadoPorNome
+      captador:indicacao.indicadoPorNome,
+      criacao:dataIndicacaoML(indicacao)?.toISOString() || "",
+      atualizacao:dataAtualizacaoIndicacaoML(indicacao)?.toISOString() || ""
     };
     return String(valores[campo] || "").trim();
   }
@@ -19185,25 +19454,33 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const el = document.getElementById("listaIndicacoesMasterLocal");
     if(!el) return;
     el.classList.toggle("modo-cards", visualizacaoListaIndicacoesML === "cards");
+    const contador = document.getElementById("contadorIndicacoesMasterLocal");
+    if(contador) contador.textContent = `${lista.length.toLocaleString("pt-BR")} ${lista.length === 1 ? "lead exibido" : "leads exibidos"}`;
     if(!lista.length){
-      el.innerHTML = `<div class="placeholder-dev">Nenhuma indicação encontrada no Firestore para os filtros atuais.</div>`;
+      const erro = window.__erroIndicacoesMasterLocal;
+      el.innerHTML = `<div class="indicacoes-empty-state ${erro ? "error" : ""}"><span class="material-symbols-outlined">${erro ? "error" : "person_search"}</span><strong>${erro ? "Não foi possível carregar as indicações" : "Nenhuma indicação encontrada"}</strong><small>${escInd(erro || "Ajuste a pesquisa ou os filtros para consultar outro resultado.")}</small>${erro ? `<button class="ghost-btn" type="button" onclick="carregarIndicacoesMasterLocal()"><span class="material-symbols-outlined">refresh</span> Tentar novamente</button>` : ""}</div>`;
       return;
     }
+    window.__erroIndicacoesMasterLocal = "";
     const listaOrdenada = ordenarListaIndicacoes(lista);
-    el.innerHTML = `<table><thead class="indicacoes-list-head"><tr>${cabecalhoOrdenavelIndicacoes("cliente","Cliente")}${cabecalhoOrdenavelIndicacoes("contato","Contato")}${cabecalhoOrdenavelIndicacoes("status","Situação")}${cabecalhoOrdenavelIndicacoes("origem","Origem")}${cabecalhoOrdenavelIndicacoes("responsavel","Responsável")}${cabecalhoOrdenavelIndicacoes("captador","Captador")}<th>Ações</th></tr></thead><tbody>${
+    el.innerHTML = `<table><thead class="indicacoes-list-head"><tr>${cabecalhoOrdenavelIndicacoes("cliente","Nome")}${cabecalhoOrdenavelIndicacoes("documento","Documento")}${cabecalhoOrdenavelIndicacoes("contato","Contato")}${cabecalhoOrdenavelIndicacoes("status","Status")}${cabecalhoOrdenavelIndicacoes("origem","Origem")}${cabecalhoOrdenavelIndicacoes("responsavel","Responsável")}${cabecalhoOrdenavelIndicacoes("captador","Captador")}${cabecalhoOrdenavelIndicacoes("criacao","Data de criação")}${cabecalhoOrdenavelIndicacoes("atualizacao","Última atualização")}</tr></thead><tbody>${
       listaOrdenada.map(i=>`<tr onclick="abrirDetalheIndicacaoMasterLocal('${escInd(i.id)}')">
-        <td data-label="Cliente"><div class="indicacao-cliente-cell"><span class="indicacao-cliente-avatar">${escInd(iniciaisIndicacao(i.nomeClienteSnapshot || i.nome))}</span><div class="indicacao-cliente-info"><strong>${escInd(i.nomeClienteSnapshot || i.nome || "Cliente")}</strong><small>${escInd(i.documentoNormalizado || "Documento não informado")}</small></div></div></td>
+        <td data-label="Cliente"><div class="indicacao-cliente-cell"><span class="indicacao-cliente-avatar">${escInd(iniciaisIndicacao(i.nomeClienteSnapshot || i.nome))}</span><div class="indicacao-cliente-info"><strong title="${escInd(i.nomeClienteSnapshot || i.nome || "Cliente")}">${escInd(i.nomeClienteSnapshot || i.nome || "Cliente")}</strong></div></div></td>
+        <td data-label="Documento">${escInd(documentoVisualIndicacao(i.documentoNormalizado || i.documento))}</td>
         <td data-label="Telefone">${escInd(i.telefonePrincipal || i.telefoneNormalizado || "-")}</td>
         <td data-label="Status">${statusVisualIndicacao(i.statusIndicacao || i.status)}</td>
         <td data-label="Origem">${escInd(i.origemIndicacao || i.origem || "-")}</td>
         <td data-label="Vendedor">${escInd(i.vendedorDestinoNome || i.vendedorNome || "-")}</td>
         <td data-label="Captador">${escInd(i.indicadoPorNome || "-")}</td>
-        <td data-label="Ações">
-          <button class="ghost-btn" onclick="event.stopPropagation();abrirDetalheIndicacaoMasterLocal('${escInd(i.id)}')"><span class="material-symbols-outlined">visibility</span> Ver</button>
-          <button class="ghost-btn" onclick="event.stopPropagation();abrirAtribuirIndicacaoMasterLocal('${escInd(i.id)}')"><span class="material-symbols-outlined">person_add</span> Atribuir</button>
-        </td>
+        <td data-label="Data de criação"><div class="indicacao-data-cell"><strong>${escInd(formatarDataIndicacaoML(dataIndicacaoML(i)))}</strong></div></td>
+        <td data-label="Última atualização"><div class="indicacao-data-cell"><strong>${escInd(formatarDataIndicacaoML(dataAtualizacaoIndicacaoML(i),true))}</strong><small title="${escInd(i.atualizadoPorNome || i.atualizadoPor || "")}">${escInd(i.atualizadoPorNome || i.atualizadoPor || "")}</small></div></td>
       </tr>`).join("")
     }</tbody></table>`;
+    const ordemColunas = [0,3,8,5,6,7,1,2];
+    el.querySelectorAll("tr").forEach(tr=>{
+      const celulas=[...tr.children];
+      if(celulas.length===9) tr.replaceChildren(...ordemColunas.map(indice=>celulas[indice]));
+    });
   }
 
   function blocoRelatorio(titulo, linhas){
@@ -19263,14 +19540,42 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     </div></div>`;
   }
 
+  window.buscarIndicacoesMasterLocal = function(){
+    termoBuscaIndicacoesML = normalizarInd(document.getElementById("indicacaoFiltroTextoML")?.value || "");
+    renderIndicacoesMasterLocal();
+  };
+
   window.renderIndicacoesMasterLocal = function(){
     prepararTelaIndicacoesMasterLocal();
     const listaConsulta = aplicarFiltrosIndicacoes(indicacoesMasterLocalCache);
-    const listaAnalise = aplicarFiltroAnaliseIndicacoes(indicacoesMasterLocalCache);
-    renderDashboardIndicacoes(listaAnalise);
-    renderGraficoIndicacoesML(listaAnalise);
+    renderDashboardIndicacoes(listaConsulta);
+    renderGraficoIndicacoesML(listaConsulta);
     renderTabelaIndicacoes(listaConsulta);
-    renderRelatorioIndicacoes(listaAnalise);
+    renderRelatorioIndicacoes(listaConsulta);
+  };
+
+  window.exportarIndicacoesMasterLocal = function(){
+    const lista = aplicarFiltrosIndicacoes(indicacoesMasterLocalCache);
+    if(!lista.length) return notificarIntegro("Nenhum lead disponível para exportação.");
+    const limpar = valor => String(valor ?? "").replace(/[\r\n]+/g," ").trim();
+    const linhas = [["Cliente","Documento","Telefone","Status","Origem","Vendedor","Equipe","Captador","Data de criação","Última atualização"]];
+    lista.forEach(item=>linhas.push([
+      item.clienteNome || item.nomeCliente || item.nome || "",
+      item.documento || item.documentoNormalizado || item.cpfCnpj || "",
+      item.telefone || item.telefoneNormalizado || item.whatsapp || "",
+      codigoStatusIndicacaoConfigurado(item.status),
+      item.origemIndicacao || item.origem || "",
+      item.vendedorDestinoNome || item.vendedorNome || "",
+      item.equipeDestinoNome || item.equipeNome || "",
+      item.indicadoPorNome || item.captadorNome || "",
+      dataIndicacaoML(item)?.toLocaleString("pt-BR") || "",
+      dataAtualizacaoIndicacaoML(item)?.toLocaleString("pt-BR") || ""
+    ]));
+    const csv = linhas.map(linha=>linha.map(valor=>`"${limpar(valor).replaceAll('"','""')}"`).join(";")).join("\r\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF",csv],{type:"text/csv;charset=utf-8"}));
+    const link = document.createElement("a");
+    link.href=url; link.download=`leads-integro-${new Date().toLocaleDateString("sv-SE")}.csv`;
+    document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(url);
   };
 
   function codigoStatusIndicacaoConfigurado(valor){
@@ -19320,6 +19625,28 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     else input.value=digitos;
   };
 
+  window.formatarDocumentoDetalheIndicacaoML = function(input){
+    if(!input) return;
+    const tipo=String(document.getElementById("mlIndDetalheTipo")?.value||"PF").toUpperCase();
+    const pj=tipo==="PJ";
+    const d=String(input.value||"").replace(/\D/g,"").slice(0,pj?14:11);
+    input.maxLength=pj?18:14; input.placeholder=pj?"00.000.000/0000-00":"000.000.000-00";
+    input.value=pj?d.replace(/^(\d{2})(\d)/,"$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1/$2").replace(/(\d{4})(\d)/,"$1-$2"):d.replace(/^(\d{3})(\d)/,"$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/,"$1.$2.$3").replace(/\.(\d{3})(\d)/,".$1-$2");
+    const label=document.querySelector('label[for="mlIndDetalheDocumento"]'); if(label) label.textContent=pj?"CNPJ":"CPF";
+  };
+  window.atualizarWhatsappDetalheIndicacaoML = function(){
+    const ativo=document.getElementById("mlIndDetalheWhatsapp")?.checked===true;
+    const pais=String(document.getElementById("mlIndDetalhePais")?.value||"55").replace(/\D/g,"");
+    const numero=String(document.getElementById("mlIndDetalheTelefone")?.value||"").replace(/\D/g,"").replace(/^55(?=\d{10,11}$)/,"").slice(0,11);
+    const link=document.getElementById("mlIndDetalheWhatsappLink"); if(!link) return;
+    const liberado=ativo&&numero.length>=10; link.classList.toggle("active",liberado); link.setAttribute("aria-disabled",String(!liberado));
+    if(liberado) link.href=`https://wa.me/${pais}${numero}`; else link.removeAttribute("href");
+  };
+  window.atualizarEquipeDetalheIndicacaoML = function(){
+    const vendedorId=document.getElementById("mlIndDetalheVendedor")?.value||"";
+    const vendedor=vendedoresIndicacoes().find(item=>String(item.id)===String(vendedorId));
+    const equipe=document.getElementById("mlIndDetalheEquipe"); if(equipe) equipe.value=vendedor?.equipeNome||vendedor?.nomeEquipe||"SEM EQUIPE DEFINIDA";
+  };
   window.abrirDetalheIndicacaoMasterLocal = async function(id){
     const i = indicacoesMasterLocalCache.find(x=>String(x.id)===String(id));
     if(!i) return;
@@ -19329,19 +19656,51 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const vendedores = vendedoresIndicacoes();
     const opcoesVendedores = `<option value="">Sem direcionamento</option>${vendedores.map(v=>`<option value="${escInd(v.id)}" ${String(v.id)===String(i.vendedorDestinoId || i.vendedorId || "")?"selected":""}>${escInd(v.nome || v.nomeCompleto || v.email || "Vendedor")}</option>`).join("")}`;
     const opcoesStatus = status.map(item=>`<option value="${escInd(item.codigo)}" ${item.codigo===statusAtual?"selected":""}>${escInd(item.nome)}</option>`).join("");
+    const tipoBruto=normalizarInd(i.tipoCliente||i.tipoPessoa||"PF");
+    const tipoAtual=tipoBruto==="pj"||tipoBruto.includes("jurid")?"PJ":"PF";
+    const paisAtual=String(i.paisTelefone||"55").replace(/\D/g,"")||"55";
+    const opcoesPaises=PAISES_TELEFONE_INDICACAO.map(([codigo,nome])=>`<option value="${codigo}" ${codigo===paisAtual?"selected":""}>${escInd(nome)}</option>`).join("");
+    const origens=[["OUTRO","Não informada"],["WHATSAPP","WhatsApp"],["INSTAGRAM","Instagram"],["FACEBOOK","Facebook"],["INDICACAO_CLIENTE","Indicação de cliente"],["CAMPANHA","Campanha"],["PARCEIRO","Parceiro"],["LIGACAO","Ligação"],["IMPORTACAO_PLANILHA","Importação de planilha"]];
+    const origemAtual=String(i.origemIndicacao||i.origem||"OUTRO").toUpperCase();
+    if(!origens.some(([codigo])=>codigo===origemAtual)) origens.push([origemAtual,origemAtual.replaceAll("_"," ")]);
+    const opcoesOrigem=origens.map(([codigo,nome])=>`<option value="${escInd(codigo)}" ${codigo===origemAtual?"selected":""}>${escInd(nome)}</option>`).join("");
+    const vendedorAtual=vendedores.find(item=>String(item.id)===String(i.vendedorDestinoId||i.vendedorId||""));
+    const equipeAtual=vendedorAtual?.equipeNome||vendedorAtual?.nomeEquipe||i.equipeDestinoNome||i.equipeNome||"SEM EQUIPE DEFINIDA";
+    const documentoAtual=documentoVisualIndicacao(i.documento||i.documentoNormalizado||"");
+    const criadoEm=formatarDataIndicacaoML(dataIndicacaoML(i),true);
+    const atualizadoEm=formatarDataIndicacaoML(dataAtualizacaoIndicacaoML(i),true);
     abrirDrawer("Indicação", i.nomeClienteSnapshot || i.nome || "Cliente", `
-      <form class="indicacao-edit-form" onsubmit="salvarDetalheIndicacaoMasterLocal('${escInd(id)}');return false;">
-        <section class="indicacao-edit-section"><div class="indicacao-edit-grid">
-          <div class="indicacao-edit-field full"><label for="mlIndDetalheNome">Nome do cliente</label><input id="mlIndDetalheNome" maxlength="120" value="${escInd(i.nomeClienteSnapshot || i.nome || "")}" required></div>
-          <div class="indicacao-edit-field"><label for="mlIndDetalheTelefone">Telefone</label><input id="mlIndDetalheTelefone" inputmode="tel" maxlength="15" value="${escInd(i.telefonePrincipal || i.telefone || "")}" oninput="formatarTelefoneDetalheIndicacaoML(this)" required></div>
-          <div class="indicacao-edit-field"><label for="mlIndDetalheStatus">Status</label><select id="mlIndDetalheStatus">${opcoesStatus}</select></div>
-          <div class="indicacao-edit-field full"><label for="mlIndDetalheVendedor">Direcionar para</label><select id="mlIndDetalheVendedor" ${encerrada?"disabled":""}>${opcoesVendedores}</select></div>
-          <div class="indicacao-edit-field full"><label for="mlIndDetalheObservacao">Observação</label><textarea id="mlIndDetalheObservacao" maxlength="1000" placeholder="Registre informações importantes sobre o atendimento">${escInd(i.observacao || "")}</textarea></div>
+      <form class="indicacao-edit-form integro-form-caixa-alta" onsubmit="salvarDetalheIndicacaoMasterLocal('${escInd(id)}');return false;">
+        <section class="indicacao-edit-section"><strong>Identificação</strong><div class="indicacao-edit-grid">
+          <div class="indicacao-edit-field"><label for="mlIndDetalheTipo">Tipo de cliente</label><select id="mlIndDetalheTipo" onchange="formatarDocumentoDetalheIndicacaoML(document.getElementById('mlIndDetalheDocumento'))"><option value="PF" ${tipoAtual==="PF"?"selected":""}>Pessoa física</option><option value="PJ" ${tipoAtual==="PJ"?"selected":""}>Pessoa jurídica</option></select></div>
+          <div class="indicacao-edit-field"><label for="mlIndDetalheDocumento">${tipoAtual==="PJ"?"CNPJ":"CPF"}</label><input id="mlIndDetalheDocumento" inputmode="numeric" value="${escInd(documentoAtual)}" oninput="formatarDocumentoDetalheIndicacaoML(this)"></div>
+          <div class="indicacao-edit-field full"><label for="mlIndDetalheNome">Nome do cliente</label><input id="mlIndDetalheNome" maxlength="120" value="${escInd(i.nomeClienteSnapshot||i.nome||"")}" required></div>
         </div></section>
-        ${encerrada?`<div class="indicacao-edit-note"><span class="material-symbols-outlined">lock</span><span>Esta indicação está encerrada. Os dados cadastrais podem ser corrigidos, mas o responsável e o fluxo não podem ser reabertos; uma nova tentativa deve ser criada.</span></div>`:""}
+        <section class="indicacao-edit-section"><strong>Contato</strong><div class="indicacao-edit-grid">
+          <div class="indicacao-edit-field"><label for="mlIndDetalhePais">País</label><select id="mlIndDetalhePais" onchange="atualizarWhatsappDetalheIndicacaoML()">${opcoesPaises}</select></div>
+          <div class="indicacao-edit-field"><label for="mlIndDetalheTelefone">Telefone principal</label><input id="mlIndDetalheTelefone" inputmode="tel" maxlength="15" value="${escInd(i.telefonePrincipal||i.telefone||"")}" oninput="formatarTelefoneDetalheIndicacaoML(this);atualizarWhatsappDetalheIndicacaoML()" required></div>
+          <label class="indicacao-whatsapp-check"><input id="mlIndDetalheWhatsapp" type="checkbox" ${i.whatsappAtivo===true?"checked":""} onchange="atualizarWhatsappDetalheIndicacaoML()"><span>Possui WhatsApp</span></label>
+          <a id="mlIndDetalheWhatsappLink" class="indicacao-whatsapp-link" target="_blank" rel="noopener" aria-disabled="true"><span class="material-symbols-outlined">chat</span> WhatsApp</a>
+        </div></section>
+        <section class="indicacao-edit-section"><strong>Fluxo do lead</strong><div class="indicacao-edit-grid">
+          <div class="indicacao-edit-field"><label for="mlIndDetalheStatus">Status</label><select id="mlIndDetalheStatus">${opcoesStatus}</select></div>
+          <div class="indicacao-edit-field"><label for="mlIndDetalheOrigem">Origem</label><select id="mlIndDetalheOrigem">${opcoesOrigem}</select></div>
+          <div class="indicacao-edit-field full"><label for="mlIndDetalheVendedor">Direcionar para</label><select id="mlIndDetalheVendedor" onchange="atualizarEquipeDetalheIndicacaoML()" ${encerrada?"disabled":""}>${opcoesVendedores}</select></div>
+          <div class="indicacao-edit-field full"><label for="mlIndDetalheEquipe">Equipe</label><input id="mlIndDetalheEquipe" value="${escInd(equipeAtual)}" readonly></div>
+          <div class="indicacao-edit-field full"><label for="mlIndDetalheObservacao">Observação</label><textarea id="mlIndDetalheObservacao" maxlength="1000" placeholder="Registre informações importantes sobre o atendimento">${escInd(i.observacao||"")}</textarea></div>
+        </div></section>
+        <section class="indicacao-edit-section indicacao-edit-audit"><strong>Auditoria</strong><div class="indicacao-edit-grid">
+          <div class="indicacao-edit-field"><label>Captador</label><input value="${escInd(i.indicadoPorNome||i.captadorNome||"NÃO INFORMADO")}" readonly></div>
+          <div class="indicacao-edit-field"><label>Criado em</label><input value="${escInd(criadoEm||"NÃO INFORMADO")}" readonly></div>
+          <div class="indicacao-edit-field"><label>Última atualização</label><input value="${escInd(atualizadoEm||"NÃO INFORMADA")}" readonly></div>
+          <div class="indicacao-edit-field"><label>Atualizado por</label><input value="${escInd(i.atualizadoPorNome||i.atualizadoPor||"NÃO INFORMADO")}" readonly></div>
+        </div></section>        ${encerrada?`<div class="indicacao-edit-note"><span class="material-symbols-outlined">lock</span><span>Esta indicação está encerrada. Os dados cadastrais podem ser corrigidos, mas o responsável e o fluxo não podem ser reabertos; uma nova tentativa deve ser criada.</span></div>`:""}
         <button id="mlIndSalvarDetalhe" class="primary-btn indicacao-edit-save" type="submit"><span class="material-symbols-outlined">save</span> Salvar alterações</button>
       </form>
     `);
+    window.formatarDocumentoDetalheIndicacaoML(document.getElementById("mlIndDetalheDocumento"));
+    window.atualizarWhatsappDetalheIndicacaoML();
+
   };
 
   window.salvarDetalheIndicacaoMasterLocal = async function(id){
@@ -19349,6 +19708,11 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if(!indicacao) return notificarIntegro("Indicação não encontrada.");
     const nome = document.getElementById("mlIndDetalheNome")?.value.trim() || "";
     const telefone = document.getElementById("mlIndDetalheTelefone")?.value.trim() || "";
+    const documento = document.getElementById("mlIndDetalheDocumento")?.value.trim() || "";
+    const tipoCliente = document.getElementById("mlIndDetalheTipo")?.value || "PF";
+    const paisTelefone = document.getElementById("mlIndDetalhePais")?.value || "55";
+    const whatsappAtivo = document.getElementById("mlIndDetalheWhatsapp")?.checked === true;
+    const origemIndicacao = document.getElementById("mlIndDetalheOrigem")?.value || "OUTRO";
     const statusIndicacao = document.getElementById("mlIndDetalheStatus")?.value || "";
     const vendedorId = document.getElementById("mlIndDetalheVendedor")?.value || indicacao.vendedorDestinoId || indicacao.vendedorId || "";
     const observacao = document.getElementById("mlIndDetalheObservacao")?.value.trim() || "";
@@ -19363,7 +19727,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     try{
       if(botao){botao.disabled=true;botao.innerHTML='<span class="material-symbols-outlined">progress_activity</span> Salvando...';}
       await window.IntegroIndicacoes.salvarEdicaoIndicacao(id,{
-        db:dbIndicacoes(),nome,telefonePrincipal:telefone,observacao,statusIndicacao,
+        db:dbIndicacoes(),nome,documento,tipoCliente,telefonePrincipal:telefone,paisTelefone,whatsappAtivo,whatsappUrl:whatsappAtivo?`https://wa.me/${paisTelefone.replace(/\D/g,"")}${telefoneDigitos}`:"",origemIndicacao,observacao,statusIndicacao,
         vendedorDestinoId:vendedorId,
         vendedorDestinoNome:vendedor?.nome || vendedor?.nomeCompleto || vendedor?.email || indicacao.vendedorDestinoNome || "",
         vendedorAuthUid:vendedor?.authUid || vendedor?.uid || indicacao.vendedorAuthUid || vendedorId,
@@ -19573,21 +19937,13 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       .concat(equipes.map(e=>`<option value="${escInd(e.id)}">${escInd(e.nome || "Equipe")}</option>`))
       .join("");
 
-    abrirDrawer("Nova indicação","Dados essenciais para criar e direcionar o lead",`
+    abrirDrawer("Nova indicação","Informe nome e telefone para registrar o primeiro contato",`
       <form id="formNovaIndicacaoML" class="indicacao-form-shell integro-form-caixa-alta" onsubmit="salvarIndicacaoMasterLocal(event)">
-        <div class="indicacao-form-intro"><span class="material-symbols-outlined">person_add</span><div><strong>Cadastro rápido e completo</strong><small>Ao salvar, o lead será criado ou reutilizado e ficará vinculado ao responsável escolhido.</small></div></div>
+        <input id="mlIndTipoCliente" type="hidden" value="PF">
+        <input id="mlIndDocumento" type="hidden" value="">
+        <div class="indicacao-form-intro"><span class="material-symbols-outlined">campaign</span><div><strong>Entrada rápida de lead</strong><small>Nome e telefone são suficientes. O cadastro completo será exigido somente antes da venda.</small></div></div>
         <div class="indicacao-form-section">
           <strong>Identificação</strong>
-          <div class="indicacao-form-grid-2">
-            <div>
-              <label class="form-label" for="mlIndTipoCliente">Tipo de cliente *</label>
-              <select id="mlIndTipoCliente" class="form-input" required onchange="ajustarTipoClienteIndicacao()"><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select>
-            </div>
-            <div>
-              <label id="mlIndDocumentoLabel" class="form-label" for="mlIndDocumento">CPF *</label>
-              <input id="mlIndDocumento" class="form-input" required placeholder="000.000.000-00" inputmode="numeric" autocomplete="off" maxlength="14" oninput="formatarDocumentoIndicacaoCadastro(this)">
-            </div>
-          </div>
           <div><label id="mlIndNomeLabel" class="form-label" for="mlIndNome">Nome completo *</label><input id="mlIndNome" class="form-input" required autocomplete="name" placeholder="DIGITE O NOME COMPLETO"></div>
         </div>
 
@@ -19602,20 +19958,18 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
         </div>
 
         <div class="indicacao-form-section">
-          <strong>Origem e direcionamento</strong>
+          <strong>Informações opcionais</strong>
           <div class="indicacao-form-grid-2">
-            <div><label class="form-label" for="mlIndOrigem">Origem da indicação *</label><select id="mlIndOrigem" class="form-input" required><option value="WHATSAPP">WhatsApp</option><option value="INSTAGRAM">Instagram</option><option value="FACEBOOK">Facebook</option><option value="INDICACAO_CLIENTE">Indicação de cliente</option><option value="CAMPANHA">Campanha</option><option value="PARCEIRO">Parceiro</option><option value="LIGACAO">Ligação</option><option value="OUTRO">Outro</option></select></div>
+            <div><label class="form-label" for="mlIndOrigem">Origem da indicação</label><select id="mlIndOrigem" class="form-input"><option value="OUTRO">Não informada</option><option value="WHATSAPP">WhatsApp</option><option value="INSTAGRAM">Instagram</option><option value="FACEBOOK">Facebook</option><option value="INDICACAO_CLIENTE">Indicação de cliente</option><option value="CAMPANHA">Campanha</option><option value="PARCEIRO">Parceiro</option><option value="LIGACAO">Ligação</option></select></div>
             <div><label class="form-label" for="mlIndEquipe">Equipe</label><select id="mlIndEquipe" class="form-input" onchange="filtrarVendedoresIndicacaoCadastro()">${opEquipe}</select></div>
           </div>
-          <div><label class="form-label" for="mlIndVendedor">Vendedor responsável *</label><select id="mlIndVendedor" class="form-input" required onchange="sincronizarEquipeVendedorIndicacaoCadastro()">${opVend}</select></div>
+          <div><label class="form-label" for="mlIndVendedor">Vendedor responsável</label><select id="mlIndVendedor" class="form-input" onchange="sincronizarEquipeVendedorIndicacaoCadastro()">${opVend}</select></div>
           <div><label class="form-label" for="mlIndObservacao">Observações</label><textarea id="mlIndObservacao" class="form-textarea" maxlength="1000" placeholder="INFORMAÇÕES IMPORTANTES PARA O ATENDIMENTO"></textarea></div>
         </div>
 
-        <button id="btnSalvarIndicacaoML" class="primary-btn drawer-primary indicacao-form-submit" type="submit"><span class="material-symbols-outlined">send</span> Salvar e direcionar indicação</button>
+        <button id="btnSalvarIndicacaoML" class="primary-btn drawer-primary indicacao-form-submit" type="submit"><span class="material-symbols-outlined">save</span> Salvar indicação</button>
       </form>
     `);
-    helpers.carregarTiposClienteIndicacao();
-    window.ajustarTipoClienteIndicacao?.();
     window.atualizarWhatsappIndicacaoCadastro?.();
   };
 
@@ -19630,7 +19984,6 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const telefone = document.getElementById("mlIndTelefone")?.value.trim() || "";
     const documento = document.getElementById("mlIndDocumento")?.value || "";
     const documentoDigitos = documento.replace(/\D/g,"");
-    const juridico = helpers.tipoClienteJuridicoIndicacao();
     const telefoneDigitos = telefone.replace(/\D/g,"");
     const vendedorId = document.getElementById("mlIndVendedor")?.value || "";
     const vendedor = vendedoresIndicacoes().find(v=>String(v.id || v.uid || v.usuarioId)===String(vendedorId));
@@ -19639,9 +19992,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const botao = document.getElementById("btnSalvarIndicacaoML");
 
     if(!nome) return notificarIntegro("Informe o nome do cliente indicado.");
-    if(documentoDigitos.length !== (juridico ? 14 : 11)) return notificarIntegro(`Informe um ${juridico?"CNPJ":"CPF"} válido.`);
     if(telefoneDigitos.length < 10 || telefoneDigitos.length > 11) return notificarIntegro("Informe um telefone válido com DDD.");
-    if(!vendedorId) return notificarIntegro("Selecione o vendedor que receberá esta indicação.");
     if(botao?.disabled) return;
 
     try{
@@ -19674,7 +20025,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     }catch(e){
       console.error("Erro ao salvar indicação:", e);
       notificarIntegro("Não foi possível salvar a indicação:\n\n" + (e.message || e));
-      if(botao){botao.disabled=false;botao.innerHTML='<span class="material-symbols-outlined">send</span> Salvar e direcionar indicação';}
+      if(botao){botao.disabled=false;botao.innerHTML='<span class="material-symbols-outlined">save</span> Salvar indicação';}
     }
   };
 })();
@@ -19743,17 +20094,14 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
 
   function htmlNavegacaoClientes(telaAtiva){
     const itens = [
-      {tela:"adicionarCliente", icone:"person_add", label:"Criar cliente"},
       {tela:"clientes", icone:"manage_search", label:"Consultar"},
-      {tela:"indicacoes", icone:"campaign", label:"Indicações"}
+      {tela:"indicacoes", icone:"campaign", label:"Leads"}
     ];
-    return itens.map(item => {
+    const abas = itens.map(item => {
       const ativo = item.tela === telaAtiva;
-      if (item.tela === "indicacoes") {
-        return `<button class="clientes-module-tab${ativo ? " active" : ""}" type="button" data-clientes-tela="indicacoes" aria-selected="${ativo}" aria-haspopup="menu" aria-expanded="false" onclick="toggleSubmenuIndicacoesClientes(event,this)"><span class="material-symbols-outlined">${item.icone}</span> ${item.label}<span class="material-symbols-outlined clientes-tab-chevron">expand_more</span></button>`;
-      }
       return `<button class="clientes-module-tab${ativo ? " active" : ""}" type="button" data-clientes-tela="${item.tela}" aria-selected="${ativo}" onclick="navegarModuloClientesMasterLocal('${item.tela}')"><span class="material-symbols-outlined">${item.icone}</span> ${item.label}</button>`;
     }).join("");
+    return `${abas}<span class="clientes-module-nav-spacer" aria-hidden="true"></span><button class="clientes-module-create" type="button" onclick="navegarModuloClientesMasterLocal('adicionarCliente')"><span class="material-symbols-outlined">person_add</span> Criar cliente</button>`;
   }
 
   function fecharSubmenuIndicacoesClientes(){
@@ -19797,11 +20145,11 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   };
 
   window.abrirSubareaIndicacoesClientes = function(aba){
-    const selecionada = ["visao", "consulta", "relatorios"].includes(aba) ? aba : "visao";
-    window.__abaIndicacoesClientesAtiva = selecionada;
+    const destino = aba === "relatorios" ? "relatorios" : "gerenciar";
+    window.__abaIndicacoesClientesAtiva = destino;
     fecharSubmenuIndicacoesClientes();
     window.navegarModuloClientesMasterLocal("indicacoes");
-    setTimeout(() => window.selecionarAbaIndicacoesMasterLocal?.(selecionada), 100);
+    setTimeout(() => window.selecionarAbaIndicacoesMasterLocal?.(destino), 100);
   };
 
   window.garantirNavegacaoClientesMasterLocal = function(telaPreferida){
@@ -19869,6 +20217,9 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
 
     if (destino === "adicionarCliente") {
       setTimeout(() => window.renderTelaAdicionarCliente?.(), 40);
+    }
+    if (destino === "indicacoes") {
+      setTimeout(() => window.carregarIndicacoesMasterLocal?.(), 40);
     }
     if (destino !== "indicacoes") fecharSubmenuIndicacoesClientes();
   };
@@ -20731,7 +21082,6 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
 
     montarDropdownAgrupado(document.querySelector('#dashboard [data-dashboard-navigation]'), "dashboard");
     montarDropdownAgrupado(document.querySelector('.integro-module-nav[data-integro-modulo="caixas"]'), "caixas");
-    document.querySelectorAll(".clientes-module-nav").forEach(nav => montarDropdownAgrupado(nav, "clientes"));
 
     Array.from(sidebar.children).forEach((elemento, indice, filhos) => {
       if(!elemento.classList?.contains("menu-group-title")) return;

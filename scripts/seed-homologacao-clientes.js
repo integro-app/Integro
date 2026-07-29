@@ -8,6 +8,20 @@ const AUTH_BASE = process.env.FIREBASE_AUTH_EMULATOR_HOST || "127.0.0.1:9099";
 const FIRESTORE_HOST = process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8080";
 const PASSWORD = "IntegroLocal#2026";
 
+function dataOperacionalSaoPaulo(data = new Date()) {
+  const partes = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(data);
+  const valor = tipo => partes.find(parte => parte.type === tipo)?.value || "";
+  return `${valor("year")}-${valor("month")}-${valor("day")}`;
+}
+
+const AGORA = new Date();
+const DATA_OPERACIONAL = dataOperacionalSaoPaulo(AGORA);
+
 function assertLocalHost(value, nome) {
   const host = String(value).split(":")[0];
   if (!["127.0.0.1", "localhost", "::1"].includes(host)) {
@@ -37,7 +51,9 @@ async function ensureAuthUser(email) {
 }
 
 function userDoc(user, uid) {
-  const tipoUsuario = user.perfil === "master_local" ? "master_local" : "usuario_cliente";
+  const tipoUsuario = ["master_global", "master_local", "usuario_integro"].includes(user.perfil)
+    ? user.perfil
+    : "usuario_cliente";
   return {
     authUid: uid,
     uid,
@@ -64,7 +80,7 @@ function userDoc(user, uid) {
 
 function clienteBase(id, dados, uids) {
   const vendedorUid = dados.vendedorKey ? uids[dados.vendedorKey] : "";
-  const agora = Timestamp.fromDate(new Date("2026-07-27T12:00:00-03:00"));
+  const agora = Timestamp.fromDate(AGORA);
   return {
     id,
     nome: dados.nome,
@@ -103,7 +119,11 @@ function clienteBase(id, dados, uids) {
     criadoEm: agora,
     atualizadoPor: uids.master_a,
     atualizadoEm: agora,
-    ultimaMovimentacaoTexto: "27/07/2026 12:00"
+    ultimaMovimentacaoTexto: new Intl.DateTimeFormat("pt-BR", {
+      timeZone: "America/Sao_Paulo",
+      dateStyle: "short",
+      timeStyle: "short"
+    }).format(AGORA)
   };
 }
 
@@ -112,8 +132,12 @@ async function main() {
   assertLocalHost(FIRESTORE_HOST, "FIRESTORE_EMULATOR_HOST");
 
   const users = {
+    master_global: { nome: "Master Global", email: "master.global@homologacao.integro.test", perfil: "master_global", cargo: "Master Global", tenant: "tenant-a", equipesIds: [] },
     master_a: { nome: "Master Local A", email: "master.local.a@homologacao.integro.test", perfil: "master_local", cargo: "Master Local", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"], permissoes: { clientes: true } },
+    gerente_a: { nome: "Gerente A", email: "gerente.a@homologacao.integro.test", perfil: "gerente", cargo: "Gerente", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"], permissoes: { gerenciarClientes: true } },
     supervisor_a: { nome: "Supervisor A", email: "supervisor.a@homologacao.integro.test", perfil: "supervisor", cargo: "Supervisor", tenant: "tenant-a", equipeId: "equipe-a1", permissoes: { gerenciarClientes: true, redistribuirIndicacao: true } },
+    financeiro_a: { nome: "Financeiro A", email: "financeiro.a@homologacao.integro.test", perfil: "financeiro", cargo: "Financeiro", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"], permissoes: { visualizarFinanceiro: true } },
+    captador_a: { nome: "Captador A", email: "captador.a@homologacao.integro.test", perfil: "captador", cargo: "Captador", tenant: "tenant-a", equipeId: "equipe-a1", permissoes: { criarIndicacao: true } },
     vendedor_a1: { nome: "Vendedor Um", email: "vendedor.1.a@homologacao.integro.test", perfil: "vendedor", cargo: "Vendedor", tenant: "tenant-a", equipeId: "equipe-a1" },
     vendedor_a2: { nome: "Vendedor Dois", email: "vendedor.2.a@homologacao.integro.test", perfil: "vendedor", cargo: "Vendedor", tenant: "tenant-a", equipeId: "equipe-a1" },
     vendedor_a3: { nome: "Vendedor Outra Equipe", email: "vendedor.3.a@homologacao.integro.test", perfil: "vendedor", cargo: "Vendedor", tenant: "tenant-a", equipeId: "equipe-a2" },
@@ -134,7 +158,7 @@ async function main() {
   await testEnv.withSecurityRulesDisabled(async context => {
     const db = context.firestore();
     const batch = writeBatch(db);
-    const agora = Timestamp.fromDate(new Date("2026-07-27T12:00:00-03:00"));
+    const agora = Timestamp.fromDate(AGORA);
 
     batch.set(doc(db, "clientes_integro", "tenant-a"), { nome: "Empresa Homologacao A", status: "ATIVO", ativo: true, acessoLiberado: true, criadoEm: agora });
     batch.set(doc(db, "clientes_integro", "tenant-b"), { nome: "Empresa Homologacao B", status: "ATIVO", ativo: true, acessoLiberado: true, criadoEm: agora });
@@ -154,8 +178,8 @@ async function main() {
         usuarioId: vendedorId,
         abertoPorUid: vendedorId,
         equipeId,
-        dataOperacional: "2026-07-27",
-        dataCaixa: "2026-07-27",
+        dataOperacional: DATA_OPERACIONAL,
+        dataCaixa: DATA_OPERACIONAL,
         status: "ABERTO",
         ativo: true,
         excluido: false,

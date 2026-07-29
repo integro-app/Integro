@@ -1,4 +1,4 @@
-﻿/* ========================================
+/* ========================================
    INTEGRO - Camada global de padronizacao visual
    Baseada no layout aprovado do Master Local
    ======================================== */
@@ -1373,3 +1373,149 @@ html body.integro-topnav-pattern #sidebar.sidebar > .menu-item.integro-modulo-ag
     font-size: 13px;
   }
 }
+
+
+/* ===== Rolagem vertical e cabecalhos fixos ===== */
+html {
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
+body {
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
+}
+
+.drawer-body,
+.drawer-side-body,
+.modal-body,
+.cliente-modal,
+.notificacoes-drawer-body {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+html body [class*="table-wrap"],
+html body .table-responsive,
+html body .indicacoes-table {
+  width: 100%;
+  max-width: 100%;
+  max-height: min(64vh, 680px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+
+html body [class*="table-wrap"] thead th,
+html body .table-responsive thead th,
+html body .indicacoes-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 6;
+  background-clip: padding-box;
+  box-shadow: 0 1px 0 rgba(148, 163, 184, .28);
+}
+
+@media (max-width: 760px) {
+  html body [class*="table-wrap"],
+  html body .table-responsive,
+  html body .indicacoes-table {
+    max-height: min(68dvh, 620px);
+  }
+}
+
+
+/* ===== Barra vertical e contagem das tabelas ===== */
+html body [class*="table-wrap"],
+html body .table-responsive,
+html body #indicacoes .indicacoes-table {
+  overflow-y: scroll;
+  scrollbar-width: thin;
+  scrollbar-color: #94a3b8 #e7edf4;
+}
+
+html body [class*="table-wrap"]::-webkit-scrollbar,
+html body .table-responsive::-webkit-scrollbar,
+html body #indicacoes .indicacoes-table::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+html body [class*="table-wrap"]::-webkit-scrollbar-track,
+html body .table-responsive::-webkit-scrollbar-track,
+html body #indicacoes .indicacoes-table::-webkit-scrollbar-track {
+  background: #e7edf4;
+  border-radius: 999px;
+}
+
+html body [class*="table-wrap"]::-webkit-scrollbar-thumb,
+html body .table-responsive::-webkit-scrollbar-thumb,
+html body #indicacoes .indicacoes-table::-webkit-scrollbar-thumb {
+  min-height: 52px;
+  background: #94a3b8;
+  border: 3px solid #e7edf4;
+  border-radius: 999px;
+}
+
+html body [class*="table-wrap"]::-webkit-scrollbar-thumb:hover,
+html body .table-responsive::-webkit-scrollbar-thumb:hover,
+html body #indicacoes .indicacoes-table::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+.integro-table-frame {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--integro-line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.integro-table-frame > [class*="table-wrap"] {
+  border: 0;
+  border-radius: 0;
+}
+
+.integro-table-footer {
+  min-height: 46px;
+  padding: 0 16px;
+  border-top: 1px solid var(--integro-line);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  background: #f8fafc;
+  color: var(--integro-muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+/* INTEGRO CLIENTES E LEADS - PADRAO COMPARTILHADO */
+.integro-module-nav-spacer,.clientes-submenu-spacer{flex:1 0 20px;min-width:20px}
+.integro-module-create{min-width:168px;min-height:58px;padding:0 22px;border:0;border-left:1px solid #e2e8f0;background:#ff8a00;color:#fff;display:inline-flex;align-items:center;justify-content:center;gap:9px;font:inherit;font-size:14px;font-weight:900;white-space:nowrap;cursor:pointer;transition:background .18s ease,box-shadow .18s ease,transform .18s ease}
+.integro-module-create:hover{background:#e97800;box-shadow:0 8px 20px rgba(255,138,0,.22)}
+.integro-module-create:active{transform:translateY(1px)}
+.integro-module-create .material-symbols-rounded{font-size:21px}
+.integro-scope-note{display:inline-flex;align-items:center;gap:7px;color:#64748b;font-size:12px;font-weight:800}
+.integro-data-toolbar{display:grid;grid-template-columns:minmax(240px,1fr) auto auto;gap:10px;align-items:center;margin:16px 0}
+.integro-data-toolbar input{min-width:0;height:50px;border:1px solid #dbe4ef;border-radius:14px;padding:0 16px;background:#fff;color:#071a33;font:inherit;font-weight:700;outline:none}
+.integro-data-toolbar input:focus{border-color:#ff8a00;box-shadow:0 0 0 3px rgba(255,138,0,.12)}
+.integro-data-toolbar button{min-height:50px;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.integro-client-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px}
+.integro-client-kpi{min-width:0;border:1px solid #e2e8f0;border-radius:18px;background:#fff;padding:16px;display:flex;align-items:center;gap:12px}
+.integro-client-kpi>.material-symbols-rounded{width:44px;height:44px;flex:0 0 44px;border-radius:13px;display:grid;place-items:center;background:#fff4e6;color:#f97316}
+.integro-client-kpi small{display:block;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase}
+.integro-client-kpi strong{display:block;margin-top:3px;color:#071a33;font-size:23px;line-height:1.1}
+.integro-data-frame{width:100%;max-height:min(58vh,620px);overflow:auto;border:1px solid #dbe4ef;border-radius:18px;background:#f8fafc;scrollbar-width:auto;scrollbar-color:#94a3b8 #e8eef5}
+.integro-data-frame::-webkit-scrollbar{width:14px;height:14px}.integro-data-frame::-webkit-scrollbar-track{background:#e8eef5}.integro-data-frame::-webkit-scrollbar-thumb{background:#94a3b8;border:3px solid #e8eef5;border-radius:999px}
+.integro-data-frame table{width:100%;min-width:960px;border-collapse:separate;border-spacing:0;background:#f8fafc}
+.integro-data-frame thead{position:sticky;top:0;z-index:5}.integro-data-frame th{padding:15px 14px;background:#f1f5f9;color:#334155;border-bottom:1px solid #dbe4ef;font-size:11px;font-weight:900;text-align:left;text-transform:uppercase;white-space:nowrap}
+.integro-data-frame td{padding:14px;border-bottom:1px solid #e2e8f0;background:#fff;color:#334155;font-size:13px;font-weight:700}.integro-data-frame tbody tr{cursor:pointer}.integro-data-frame tbody tr:hover td{background:#fffaf5}
+@media(max-width:900px){.integro-client-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.integro-data-toolbar{grid-template-columns:1fr auto}.integro-data-toolbar input{grid-column:1/-1}.integro-module-nav-spacer,.clientes-submenu-spacer{display:none}.integro-module-create{min-width:158px;min-height:54px}}
+@media(max-width:620px){.integro-client-kpis{grid-template-columns:1fr}.integro-data-toolbar{grid-template-columns:1fr 1fr}.integro-data-toolbar input{grid-column:1/-1}.integro-module-create{flex:1 0 auto}.integro-data-frame{max-height:62vh}.integro-data-frame table,.integro-data-frame thead,.integro-data-frame tbody,.integro-data-frame tr,.integro-data-frame th,.integro-data-frame td{display:block;min-width:0}.integro-data-frame thead{display:none}.integro-data-frame tbody{display:grid;gap:10px;padding:10px}.integro-data-frame tr{border:1px solid #dbe4ef;border-radius:14px;overflow:hidden}.integro-data-frame td{display:grid;grid-template-columns:112px minmax(0,1fr);gap:10px;border:0;padding:8px 12px;white-space:normal}.integro-data-frame td:before{content:attr(data-label);color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase}}

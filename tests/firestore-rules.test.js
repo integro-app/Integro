@@ -27,6 +27,7 @@ const profiles = {
   masterGlobal: { uid: "master_global_uid", tenant: "tenant_a", role: "master_global" },
   usuarioIntegro: { uid: "usuario_integro_uid", tenant: "tenant_a", role: "usuario_integro" },
   masterA: { uid: "master_a_uid", tenant: "tenant_a", role: "master_local" },
+  gerenteA: { uid: "gerente_a_uid", tenant: "tenant_a", role: "gerente" },
   financeiroA: { uid: "financeiro_a_uid", tenant: "tenant_a", role: "financeiro", permissoes: { financeiro: { podeVerLedgerFinanceiro: true, podeEstornarLancamento: true, podeRegularizarCaixa: true, podeVerReconciliacao: true, podeTratarDivergencia: true } } },
   supervisor1: { uid: "supervisor_1_uid", tenant: "tenant_a", role: "supervisor", equipeId: "equipe_1", permissoes: { financeiro: { podeVerLedgerFinanceiro: true, podeEstornarLancamento: true }, caixas: { podeReabrirCaixa: true, podeTratarDivergencia: true }, solicitacoes: { aprovar: true } } },
   supervisor2: { uid: "supervisor_2_uid", tenant: "tenant_a", role: "supervisor", equipeId: "equipe_2", permissoes: { financeiro: { podeVerLedgerFinanceiro: true, podeEstornarLancamento: true }, caixas: { podeReabrirCaixa: true }, solicitacoes: { aprovar: true } } },
@@ -467,6 +468,37 @@ test("chat: consulta de conversas exige tenant e participante autenticado", asyn
   )));
 });
 
+test("notificacoes: destinatario e publico consultam somente o proprio escopo", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    await setDoc(doc(admin, "notificacoes", "notif_usuario_supervisor"), tenantFields({ usuarioId: profiles.supervisor1.uid, status: "PENDENTE" }));
+    await setDoc(doc(admin, "notificacoes", "notif_destinatario_supervisor"), tenantFields({ destinatarioId: profiles.supervisor1.uid, status: "PENDENTE" }));
+    await setDoc(doc(admin, "notificacoes", "notif_vendedor_supervisor"), tenantFields({ vendedorId: profiles.supervisor1.uid, status: "PENDENTE" }));
+    await setDoc(doc(admin, "notificacoes", "notif_publico_supervisor"), tenantFields({ publico: "SUPERVISOR", status: "PENDENTE" }));
+  });
+
+  for (const [campo, valor] of [
+    ["usuarioId", profiles.supervisor1.uid],
+    ["destinatarioId", profiles.supervisor1.uid],
+    ["vendedorId", profiles.supervisor1.uid],
+    ["publico", "SUPERVISOR"]
+  ]) {
+    await assertSucceeds(getDocs(query(
+      collection(appDb(profiles.supervisor1), "notificacoes"),
+      where("clientePlataformaId", "==", profiles.supervisor1.tenant),
+      where(campo, "==", valor),
+      limit(100)
+    )));
+  }
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor2), "notificacoes"),
+    where("clientePlataformaId", "==", profiles.vendedor2.tenant),
+    where("usuarioId", "==", profiles.supervisor1.uid),
+    limit(100)
+  )));
+});
+
 test("chat: cria direta/equipe no tenant, envia mensagem e bloqueia auditor/delete", async () => {
   await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "conversas", "direta_v1_sup1"), conversa({
     participantesIds: [profiles.vendedor1.uid, profiles.supervisor1.uid]
@@ -499,6 +531,8 @@ test("chat: cria direta/equipe no tenant, envia mensagem e bloqueia auditor/dele
 
 test("logs: create permitido, update/delete bloqueados", async () => {
   await assertSucceeds(setDoc(doc(appDb(profiles.financeiroA), "logs", "log_1"), tenantFields({ tipoAcao: "TESTE", usuarioId: profiles.financeiroA.uid, criadoEm: "ts" })));
+  await assertSucceeds(getDocs(query(collection(appDb(profiles.gerenteA), "logs"), where("clientePlataformaId", "==", "tenant_a"), limit(10))));
+  await assertFails(getDocs(query(collection(appDb(profiles.gerenteA), "logs"), where("clientePlataformaId", "==", "tenant_b"), limit(10))));
   await assertFails(updateDoc(doc(appDb(profiles.financeiroA), "logs", "log_1"), { tipoAcao: "EDITADO" }));
   await assertFails(deleteDoc(doc(appDb(profiles.financeiroA), "logs", "log_1")));
 });

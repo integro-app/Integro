@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
-  <link href="css/integro-theme.css" rel="stylesheet">
+  <link href="css/integro-theme.css?v=20260729-scroll4" rel="stylesheet">
   <style>
     *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,sans-serif}
     :root{--bg:#f6f8fb;--side:#061a35;--side2:#092b61;--orange:#ff8a00;--orange2:#ffb100;--text:#0f172a;--muted:#64748b;--line:#e2e8f0;--shadow:0 16px 38px rgba(15,23,42,.08)}
@@ -20,8 +20,9 @@
     .menu{display:grid;gap:8px}.menu button{height:50px;border:0;border-radius:14px;background:transparent;color:#e2e8f0;font-weight:900;text-align:left;padding:0 14px;cursor:pointer;display:flex;align-items:center;gap:10px}.menu button .material-symbols-rounded{font-size:21px;color:inherit}.menu button.active,.menu button:hover{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
     .main{margin-left:300px;padding:24px}.topbar{min-height:82px;background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);display:flex;align-items:center;justify-content:space-between;gap:16px;padding:16px 18px;margin-bottom:20px}.topbar h1{font-size:28px;font-weight:900}.topbar p{color:var(--muted);font-weight:700;margin-top:3px}.hamburger{display:none;width:50px;height:50px;border:1px solid var(--line);background:#fff;border-radius:14px;font-size:24px;font-weight:900}.actions{display:flex;gap:10px;flex-wrap:wrap}.btn{height:46px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--text);font-weight:900;padding:0 16px;cursor:pointer}.btn-primary{border:0;background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff}
     .screen{display:none}.screen.active{display:block}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}.card,.panel{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:20px}.card small{display:block;color:var(--muted);font-weight:900;margin-bottom:10px}.card strong{font-size:28px;font-weight:900}.card p,.muted{color:var(--muted);font-weight:700;margin-top:8px}.panel{margin-top:18px}.empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:18px;padding:18px;color:#475569;font-weight:800}
-    .clientes-toolbar{display:grid;grid-template-columns:1.5fr repeat(2,minmax(170px,.7fr)) auto;gap:10px;margin:16px 0}.clientes-toolbar input,.clientes-toolbar select,.cliente-modal input,.cliente-modal select,.cliente-modal textarea{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:10px 13px;background:#fff;color:var(--text);font:inherit}.clientes-lista{display:grid;gap:10px}.cliente-row{display:grid;grid-template-columns:1.4fr .8fr .8fr .8fr auto;gap:12px;align-items:center;border:1px solid var(--line);border-radius:16px;padding:14px}.cliente-row small{display:block;color:var(--muted);font-weight:700;margin-top:4px}.cliente-modal-wrap{position:fixed;inset:0;display:none;z-index:100}.cliente-modal-wrap.show{display:block}.cliente-modal-overlay{position:absolute;inset:0;background:rgba(2,6,23,.58)}.cliente-modal{position:absolute;right:0;top:0;bottom:0;width:min(560px,100%);background:#fff;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(2,6,23,.2)}.cliente-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:18px}.cliente-modal form{display:grid;gap:12px;margin-top:18px}.cliente-modal label{font-weight:900;font-size:13px}.cliente-modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-bottom:env(safe-area-inset-bottom)}
-    @media(max-width:900px){.sidebar{transform:translateX(-105%);transition:.25s}.sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}.main{margin-left:0;padding:14px}.hamburger{display:block}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}.clientes-toolbar{grid-template-columns:1fr}.cliente-row{grid-template-columns:1fr}.cliente-row .btn{width:100%}}
+    .clientes-toolbar{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:10px;margin:0 0 16px}.clientes-toolbar input,.clientes-filtros-form select,.cliente-modal input,.cliente-modal select,.cliente-modal textarea{width:100%;min-height:48px;border:1px solid var(--line);border-radius:12px;padding:10px 13px;background:#fff;color:var(--text);font:inherit}.clientes-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}.clientes-kpi{min-width:0;border:1px solid var(--line);border-radius:16px;background:#fff;padding:16px;display:flex;align-items:center;gap:12px}.clientes-kpi .material-symbols-rounded{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#fff4e6;color:#f97316}.clientes-kpi small{display:block;color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase}.clientes-kpi strong{display:block;margin-top:3px;font-size:22px}.clientes-table-wrap{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:16px}.clientes-table{width:100%;min-width:900px;border-collapse:separate;border-spacing:0}.clientes-table th{padding:14px;background:#f1f5f9;color:#475569;font-size:11px;text-align:left;text-transform:uppercase}.clientes-table td{padding:14px;border-top:1px solid var(--line);font-weight:700}.clientes-table td small{display:block;color:var(--muted);margin-top:4px}.cliente-status{display:inline-flex;padding:7px 10px;border-radius:999px;background:#eaf2ff;color:#2563eb;font-size:11px;font-weight:900;text-transform:uppercase}.cliente-modal-wrap{position:fixed;inset:0;display:none;z-index:100}.cliente-modal-wrap.show{display:block}.cliente-modal-overlay{position:absolute;inset:0;background:rgba(2,6,23,.58)}.cliente-modal{position:absolute;right:0;top:0;bottom:0;width:min(560px,100%);background:#fff;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(2,6,23,.2)}.cliente-modal-head{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:18px}.cliente-modal form{display:grid;gap:12px;margin-top:18px}.cliente-modal label{font-weight:900;font-size:13px}.cliente-modal-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;padding-bottom:env(safe-area-inset-bottom)}.clientes-filtros-form{display:grid;gap:14px}.clientes-filtros-form label{display:grid;gap:7px;font-size:13px;font-weight:900}
+    @media(max-width:900px){.sidebar{transform:translateX(-105%);transition:.25s}.sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}.main{margin-left:0;padding:14px}.hamburger{display:block}.topbar{align-items:flex-start;flex-direction:column}.grid{grid-template-columns:1fr}.actions{width:100%}.btn{flex:1}.clientes-toolbar{grid-template-columns:1fr auto}.clientes-toolbar input{grid-column:1/-1}.clientes-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.clientes-table,.clientes-table tbody,.clientes-table tr,.clientes-table td{display:block;min-width:0}.clientes-table thead{display:none}.clientes-table tr{margin:10px;border:1px solid var(--line);border-radius:14px;padding:8px}.clientes-table td{display:grid;grid-template-columns:120px minmax(0,1fr);gap:10px;border:0;padding:8px}.clientes-table td:before{content:attr(data-label);color:var(--muted);font-size:11px;font-weight:900;text-transform:uppercase}.clientes-table td .btn{width:100%}}
+    @media(max-width:520px){.clientes-kpis{grid-template-columns:1fr}.clientes-toolbar .btn{padding:0 12px}.cliente-modal{padding:18px}}
 
     /* ===== LOADING PREMIUM ÍNTEGRO COM PORCENTAGEM ===== */
     body.integro-booting{
@@ -176,9 +177,10 @@
       <div class="panel" data-dashboard-views="visao-geral,comercial,carteira,equipe,operacao"><h2>Resumo</h2><div id="resumoSupervisor" class="empty">Sem dados para exibir.</div></div>
     </section>
     <section id="notificacoes" class="screen"><div class="panel"><h2>Notificacoes</h2><div id="listaNotificacoes" class="empty">Nenhuma notificacao no momento.</div></div></section>
-    <section id="clientes" class="screen"><div class="panel"><h2>Clientes da equipe</h2><p class="muted">Atendimento, direcionamento e retrabalho dentro do seu escopo.</p><div class="clientes-toolbar"><input id="buscaClientesSupervisor" type="search" placeholder="Nome, documento ou telefone"><select id="statusClientesSupervisor"><option value="">Todos os atendimentos</option><option value="AGUARDANDO_ATENDIMENTO">Aguardando</option><option value="EM_ATENDIMENTO">Em atendimento</option><option value="NAO_CONVERTIDO">Não convertido</option><option value="EM_RETRABALHO">Em retrabalho</option><option value="CONVERTIDO">Convertido</option></select><select id="equipeClientesSupervisor"><option value="">Todas as equipes permitidas</option></select><button class="btn btn-primary" onclick="carregarClientesSupervisor()">Buscar</button></div><div id="listaClientesSupervisor" class="clientes-lista"><div class="empty">Abra a tela para carregar clientes.</div></div></div></section>
+    <section id="clientes" class="screen"><div class="panel"><nav class="integro-module-nav" aria-label="Clientes"><button class="integro-module-tab active" type="button"><span class="material-symbols-rounded">manage_search</span>Consultar</button><span class="integro-module-nav-spacer" aria-hidden="true"></span><span class="integro-scope-note"><span class="material-symbols-rounded">groups</span>Equipes permitidas</span></nav><div class="clientes-toolbar integro-data-toolbar"><input id="buscaClientesSupervisor" type="search" placeholder="Buscar por nome, documento ou telefone" onkeydown="if(event.key==='Enter')carregarClientesSupervisor()"><button class="btn" type="button" onclick="abrirFiltrosClientesSupervisor()"><span class="material-symbols-rounded">tune</span> Filtros</button><button class="btn btn-primary" type="button" onclick="carregarClientesSupervisor()"><span class="material-symbols-rounded">search</span> Buscar</button></div><div id="resumoClientesSupervisor" class="clientes-kpis integro-client-kpis" hidden></div><div id="listaClientesSupervisor"><div class="empty">Digite uma busca ou combine filtros e clique em Buscar.</div></div></div></section>
     <section id="chatInterno" class="screen"><div class="panel"><h2>Chat interno</h2><div id="integroChatRoot"></div></div></section>
     <div id="clienteModalSupervisor" class="cliente-modal-wrap"><div class="cliente-modal-overlay" onclick="fecharClienteSupervisor()"></div><div id="clienteModalSupervisorBody" class="cliente-modal"></div></div>
+    <div id="filtrosClientesSupervisorDrawer" class="cliente-modal-wrap"><div class="cliente-modal-overlay" onclick="fecharFiltrosClientesSupervisor()"></div><aside class="cliente-modal"><div class="cliente-modal-head"><div><h2>Filtros de clientes</h2><p class="muted">Os critérios são aplicados em conjunto.</p></div><button class="btn" type="button" onclick="fecharFiltrosClientesSupervisor()" aria-label="Fechar"><span class="material-symbols-rounded">close</span></button></div><div class="clientes-filtros-form"><label>Atendimento<select id="statusClientesSupervisor"><option value="">Todos os atendimentos</option><option value="AGUARDANDO_ATENDIMENTO">Aguardando</option><option value="EM_ATENDIMENTO">Em atendimento</option><option value="NAO_CONVERTIDO">Não convertido</option><option value="EM_RETRABALHO">Em retrabalho</option><option value="CONVERTIDO">Convertido</option></select></label><label>Equipe<select id="equipeClientesSupervisor"><option value="">Todas as equipes permitidas</option></select></label><div class="cliente-modal-actions"><button class="btn" type="button" onclick="limparFiltrosClientesSupervisor()">Limpar</button><button class="btn btn-primary" type="button" onclick="aplicarFiltrosClientesSupervisor()">Aplicar filtros</button></div></div></aside></div>
   </main>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -190,12 +192,12 @@
   <script src="js/services/firestore.js?v=20260728-3"></script>
   <script src="js/services/clientes-service.js"></script>
   <script src="js/services/financial-operations.js"></script>
-  <script src="js/services/chat-service.js?v=20260728-3"></script>
+  <script src="js/services/chat-service.js?v=20260729-1"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=20260729-2"></script>
   <script src="js/auth.js"></script>
-  <script src="js/chat-ui.js"></script>
+  <script src="js/chat-ui.js?v=20260729-1"></script>
   <script src="js/dashboard-navigation.js"></script>
   <script>
     window.__supervisorBootRodando = false;
@@ -342,7 +344,6 @@
       document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("active"));
       el?.classList.add("active");
       if (window.innerWidth <= 900) toggleSidebar(false);
-      if (id === "clientes") carregarClientesSupervisor();
     }
 
     function escaparClienteSupervisor(valor) {
@@ -350,6 +351,42 @@
     }
 
     window.clientesSupervisorCache = [];
+
+    function saldoClienteSupervisor(cliente = {}) {
+      if (cliente.saldoDevedorCentavos != null) return Number(cliente.saldoDevedorCentavos || 0) / 100;
+      return Number(cliente.saldoDevedor || cliente.saldo || cliente.valorEmAberto || 0);
+    }
+
+    function possuiHistoricoVendaSupervisor(cliente = {}) {
+      return Boolean(cliente.vendaAtivaId || cliente.ultimaVendaId || cliente.possuiVendaAtiva === true || cliente.possuiHistoricoVenda === true || Number(cliente.totalVendas || cliente.vendasRealizadas || 0) > 0 || cliente.vendasIds?.length || cliente.historicoVendas?.length);
+    }
+
+    function renderResumoClientesSupervisor(lista) {
+      const box = document.getElementById("resumoClientesSupervisor");
+      if (!box) return;
+      const ativos = lista.filter(item => item.possuiVendaAtiva === true || item.vendaAtivaId || saldoClienteSupervisor(item) > 0 || String(item.statusCliente || item.status || "").toUpperCase() === "ATIVO").length;
+      const inativos = lista.filter(item => possuiHistoricoVendaSupervisor(item) && !(item.possuiVendaAtiva === true || item.vendaAtivaId || saldoClienteSupervisor(item) > 0 || String(item.statusCliente || item.status || "").toUpperCase() === "ATIVO")).length;
+      const funil = ClientesService.calcularRelatorio(lista);
+      const saldo = lista.reduce((total, item) => total + Math.max(0, saldoClienteSupervisor(item)), 0);
+      const cards = [
+        ["group", "Total", lista.length], ["verified_user", "Ativos", ativos], ["person_off", "Inativos", inativos],
+        ["account_balance_wallet", "Saldo em aberto", saldo.toLocaleString("pt-BR", {style:"currency",currency:"BRL"})],
+        ["support_agent", "Em atendimento", Number(funil.emAtendimento || 0)], ["check_circle", "Convertidos", Number(funil.convertidos || 0)],
+        ["monitoring", "Conversão", `${Number(funil.taxaConversao || 0).toFixed(1).replace(".",",")}%`]
+      ];
+      box.hidden = false;
+      box.innerHTML = cards.map(([icone, titulo, valor]) => `<div class="clientes-kpi integro-client-kpi"><span class="material-symbols-rounded">${icone}</span><div><small>${titulo}</small><strong>${valor}</strong></div></div>`).join("");
+    }
+
+    function abrirFiltrosClientesSupervisor() { document.getElementById("filtrosClientesSupervisorDrawer")?.classList.add("show"); }
+    function fecharFiltrosClientesSupervisor() { document.getElementById("filtrosClientesSupervisorDrawer")?.classList.remove("show"); }
+    function limparFiltrosClientesSupervisor() {
+      const status = document.getElementById("statusClientesSupervisor");
+      const equipe = document.getElementById("equipeClientesSupervisor");
+      if (status) status.value = "";
+      if (equipe) equipe.value = "";
+    }
+    async function aplicarFiltrosClientesSupervisor() { fecharFiltrosClientesSupervisor(); await carregarClientesSupervisor(); }
 
     async function carregarClientesSupervisor() {
       const box = document.getElementById("listaClientesSupervisor");
@@ -366,7 +403,8 @@
         const seletor = document.getElementById("equipeClientesSupervisor");
         if (seletor && seletor.options.length <= 1) equipes.forEach(id => seletor.insertAdjacentHTML("beforeend", `<option value="${escaparClienteSupervisor(id)}">${escaparClienteSupervisor(id)}</option>`));
         document.getElementById("kpiClientes").textContent = String(lista.length);
-        box.innerHTML = lista.length ? lista.map(cliente => `<article class="cliente-row"><div><strong>${escaparClienteSupervisor(cliente.nome || cliente.nomeCompleto || "Cliente")}</strong><small>${escaparClienteSupervisor(cliente.documento || "Sem documento")}</small></div><div><strong>${escaparClienteSupervisor(cliente.statusAtendimento || "AGUARDANDO_ATENDIMENTO")}</strong><small>Ciclo ${Number(cliente.cicloAtendimentoAtual || 1)}</small></div><div><strong>${escaparClienteSupervisor(cliente.vendedorNome || "Não direcionado")}</strong><small>Vendedor</small></div><div><strong>${escaparClienteSupervisor(cliente.equipeId || "-")}</strong><small>Equipe</small></div><button class="btn" onclick="abrirClienteSupervisor('${escaparClienteSupervisor(cliente.id)}')">Detalhes</button></article>`).join("") : '<div class="empty">Nenhum cliente encontrado no seu escopo.</div>';
+        renderResumoClientesSupervisor(lista);
+        box.innerHTML = lista.length ? `<div class="clientes-table-wrap integro-data-frame"><table class="clientes-table"><thead><tr><th>Cliente</th><th>Telefone</th><th>Vendedor</th><th>Equipe</th><th>Saldo em aberto</th><th>Status</th><th>Ações</th></tr></thead><tbody>${lista.map(cliente => `<tr><td data-label="Cliente"><strong>${escaparClienteSupervisor(cliente.nome || cliente.nomeCompleto || "Cliente")}</strong><small>${escaparClienteSupervisor(cliente.documento || "Sem documento")}</small></td><td data-label="Telefone">${escaparClienteSupervisor(cliente.telefonePrincipal || cliente.telefone || cliente.telefoneNormalizado || "-")}</td><td data-label="Vendedor">${escaparClienteSupervisor(cliente.vendedorNome || "Não direcionado")}</td><td data-label="Equipe">${escaparClienteSupervisor(cliente.equipeNome || cliente.equipeId || "-")}</td><td data-label="Saldo">${saldoClienteSupervisor(cliente).toLocaleString("pt-BR", {style:"currency",currency:"BRL"})}</td><td data-label="Status"><span class="cliente-status">${escaparClienteSupervisor(String(cliente.statusAtendimento || cliente.statusCliente || "AGUARDANDO_ATENDIMENTO").replace(/_/g," "))}</span></td><td data-label="Ações"><button class="btn" onclick="abrirClienteSupervisor('${escaparClienteSupervisor(cliente.id)}')"><span class="material-symbols-rounded">visibility</span> Ver perfil</button></td></tr>`).join("")}</tbody></table></div>` : '<div class="empty">Nenhum cliente encontrado no seu escopo.</div>';
       } catch (erro) {
         console.error("Erro ao carregar clientes do supervisor:", erro);
         box.innerHTML = `<div class="empty">${escaparClienteSupervisor(erro.message || "Não foi possível carregar os clientes.")}</div>`;

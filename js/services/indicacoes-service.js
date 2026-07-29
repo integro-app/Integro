@@ -121,12 +121,17 @@
     const acesso = window.IntegroOperacional?.normalizarAcessoUsuario?.(usuario) || {};
     if (acesso.isMasterGlobal || acesso.isMasterLocal) return true;
 
-    const usuarioId = idUsuario(usuario);
+    const idsUsuario = [...new Set([
+      idUsuario(usuario), usuario.authUid, usuario.uid, usuario.usuarioId
+    ].filter(Boolean).map(String))];
     const tenant = tenantUsuario(usuario);
     const tenantIndicacao = indicacao.clientePlataformaId || indicacao.empresaId || indicacao.tenantId || "";
     if (tenant && tenantIndicacao && tenant !== tenantIndicacao) return false;
 
-    const vendedorId = texto(indicacao.vendedorId || indicacao.vendedorDestinoId);
+    const vendedoresIndicacao = [...new Set([
+      indicacao.vendedorId, indicacao.vendedorDestinoId, indicacao.vendedorAuthUid,
+      indicacao.vendedorUid, indicacao.vendedorDocumentoId
+    ].filter(Boolean).map(String))];
     const indicadoPorId = texto(indicacao.indicadoPorId || indicacao.captadorId || indicacao.criadoPor);
     const equipeIndicacao = texto(indicacao.equipeDestinoId || indicacao.equipeId);
     const equipesUsuario = [
@@ -136,9 +141,19 @@
       ...(Array.isArray(usuario.equipeIds) ? usuario.equipeIds : [])
     ].filter(Boolean).map(String);
 
-    if (acesso.cargoChave === "vendedor") return Boolean(usuarioId && vendedorId && usuarioId === vendedorId);
-    if (acesso.cargoChave === "captador") return Boolean(usuarioId && indicadoPorId && usuarioId === indicadoPorId);
-    if (acesso.cargoChave === "supervisor") return Boolean(equipeIndicacao && equipesUsuario.includes(String(equipeIndicacao)));
+    if (acesso.cargoChave === "vendedor") return idsUsuario.some(id => vendedoresIndicacao.includes(id));
+    if (acesso.cargoChave === "captador") return idsUsuario.includes(indicadoPorId);
+    if (["supervisor", "gerente", "socio", "proprietario"].includes(acesso.cargoChave)) {
+      const vendedoresPermitidos = [
+        ...(Array.isArray(usuario.vendedoresIds) ? usuario.vendedoresIds : []),
+        ...(Array.isArray(usuario.vendedorIds) ? usuario.vendedorIds : []),
+        ...(Array.isArray(usuario.vendedoresPermitidosIds) ? usuario.vendedoresPermitidosIds : [])
+      ].filter(Boolean).map(String);
+      return Boolean(
+        (equipeIndicacao && equipesUsuario.includes(String(equipeIndicacao))) ||
+        vendedoresIndicacao.some(id => vendedoresPermitidos.includes(id))
+      );
+    }
     return false;
   }
 
@@ -413,8 +428,24 @@
       throw new Error(validacao.mensagem);
     }
 
+    const destinoInformado = texto(entrada.vendedorAuthUid || entrada.vendedorUid || entrada.vendedorDestinoAuthUid || entrada.vendedorDestinoId || entrada.vendedorId);
+    let vendedorDestino = null;
+    if (destinoInformado) {
+      vendedorDestino = await validarDestinoVendedorIndicacao(db, entrada, usuario, { clientePlataformaId: tenant, clienteOperacionalId: cliente.id });
+      await validarClienteSemHistoricoParaAtribuicao(db, { clientePlataformaId: tenant, clienteOperacionalId: cliente.id }, usuario);
+    }
+    const vendedorDocumentoId = texto(vendedorDestino?.id || entrada.vendedorDestinoId || entrada.vendedorId);
+    const destinoAuthUid = texto(vendedorDestino?.authUid || vendedorDestino?.uid || entrada.vendedorAuthUid || entrada.vendedorUid || entrada.vendedorDestinoAuthUid || vendedorDocumentoId);
+    const dadosIndicacao = {
+      ...entrada,
+      clientePlataformaId: tenant,
+      vendedorDestinoId: vendedorDocumentoId,
+      vendedorId: vendedorDocumentoId,
+      vendedorAuthUid: destinoAuthUid,
+      vendedorDestinoNome: texto(entrada.vendedorDestinoNome || entrada.vendedorNome || nomeUsuario(vendedorDestino || {}))
+    };
     const ref = db.collection("indicacoes").doc();
-    const indicacao = montarIndicacao({ ...entrada, clientePlataformaId: tenant }, cliente, usuario);
+    const indicacao = montarIndicacao(dadosIndicacao, cliente, usuario);
     await ref.set({
       ...indicacao,
       clienteCriadoNaIndicacao: criado,
@@ -424,8 +455,20 @@
       criadoEm: serverTimestamp(),
       atualizadoEm: serverTimestamp()
     });
+    if (destinoAuthUid) {
+      await db.collection("clientes_operacionais").doc(cliente.id).set({
+        vendedorId: destinoAuthUid,
+        vendedorAuthUid: destinoAuthUid,
+        vendedorDocumentoId,
+        vendedorNome: indicacao.vendedorNome,
+        equipeId: texto(entrada.equipeDestinoId || entrada.equipeId),
+        equipeNome: texto(entrada.equipeDestinoNome || entrada.equipeNome),
+        statusAtendimento: "AGUARDANDO_ATENDIMENTO",
+        atualizadoPor: idUsuario(usuario),
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+    }
     await registrarLog(db, "INDICACAO_CRIADA", usuario, { indicacaoId: ref.id, clienteOperacionalId: cliente.id, clienteCriado: criado });
-    const destinoAuthUid = texto(entrada.vendedorAuthUid || entrada.vendedorUid || entrada.vendedorDestinoAuthUid || entrada.vendedorDestinoId || entrada.vendedorId);
     if (destinoAuthUid) {
       await registrarNotificacaoIndicacao(db, {
         tipo:"NOVO_LEAD",
@@ -470,17 +513,31 @@
       throw new Error("Usuário sem permissão ou fora do escopo da indicação.");
     }
 
+    const agoraTexto = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
     const payload = {
       ...dados,
       db: undefined,
       __permissaoIndicacao: undefined,
       atualizadoPor: idUsuario(usuario),
+      atualizadoPorNome: nomeUsuario(usuario),
+      atualizadoEmTexto: agoraTexto,
+      ultimaAlteracaoTipo: tipoLog,
       atualizadoEm: serverTimestamp()
     };
     delete payload.db;
     delete payload.__permissaoIndicacao;
+    const camposAuditoriaIgnorados = new Set(["atualizadoPor","atualizadoPorNome","atualizadoEm","atualizadoEmTexto","ultimaAlteracaoTipo"]);
+    const alteracoes = Object.fromEntries(Object.entries(payload)
+      .filter(([campo,valor]) => !camposAuditoriaIgnorados.has(campo) && JSON.stringify(atual[campo] ?? null) !== JSON.stringify(valor ?? null))
+      .map(([campo,valor]) => [campo,{ anterior:atual[campo] ?? null, atual:valor ?? null }]));
     await ref.set(payload, { merge: true });
-    await registrarLog(db, tipoLog, usuario, { indicacaoId, ...payload });
+    await registrarLog(db, tipoLog, usuario, {
+      indicacaoId,
+      clienteOperacionalId:atual.clienteOperacionalId || "",
+      acao:tipoLog,
+      alteracoes,
+      atualizadoEmTexto:agoraTexto
+    });
     const statusAnterior = normalizarStatusIndicacao(atual.statusIndicacao || atual.status);
     const statusAtualizado = normalizarStatusIndicacao(statusNovo);
     const criadorId = texto(atual.indicadoPorAuthUid || atual.indicadoPorId || atual.criadoPor);
@@ -521,6 +578,11 @@
   async function atribuirIndicacao(indicacaoId, destino = {}, usuario = {}) {
     const agora = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
     const db = destino.db || usuario.db || getDb();
+    const indicacaoSnap = await db.collection("indicacoes").doc(indicacaoId).get();
+    if (!indicacaoSnap.exists) throw new Error("Indicação não encontrada.");
+    const indicacaoAtual = { id: indicacaoSnap.id || indicacaoId, ...indicacaoSnap.data() };
+    await validarDestinoVendedorIndicacao(db, destino, usuario, indicacaoAtual);
+    await validarClienteSemHistoricoParaAtribuicao(db, indicacaoAtual, usuario);
     await atualizarStatusIndicacao(indicacaoId, {
       vendedorDestinoId: destino.vendedorDestinoId || destino.vendedorId || "",
       vendedorDestinoNome: destino.vendedorDestinoNome || destino.vendedorNome || "",
@@ -539,6 +601,19 @@
     const indicacao = snap.exists ? snap.data() : {};
     const vendedorId = texto(destino.vendedorDestinoId || destino.vendedorId);
     const vendedorAuthUid = texto(destino.vendedorAuthUid || destino.vendedorUid || destino.vendedorDestinoAuthUid || vendedorId);
+    if (indicacao.clienteOperacionalId) {
+      await db.collection("clientes_operacionais").doc(indicacao.clienteOperacionalId).set({
+        vendedorId: vendedorAuthUid,
+        vendedorAuthUid,
+        vendedorDocumentoId: vendedorId,
+        vendedorNome: texto(destino.vendedorDestinoNome || destino.vendedorNome),
+        equipeId: texto(destino.equipeDestinoId || destino.equipeId),
+        equipeNome: texto(destino.equipeDestinoNome || destino.equipeNome),
+        statusAtendimento: "AGUARDANDO_ATENDIMENTO",
+        atualizadoPor: idUsuario(usuario),
+        atualizadoEm: serverTimestamp()
+      }, { merge: true });
+    }
     await registrarNotificacaoIndicacao(db, {
       tipo:"NOVO_LEAD",
       titulo:"Você recebeu um novo lead",
@@ -558,6 +633,48 @@
     return true;
   }
 
+  async function validarDestinoVendedorIndicacao(db, destino = {}, usuario = {}, indicacao = {}) {
+    const destinoId = texto(destino.vendedorDestinoId || destino.vendedorId || destino.vendedorAuthUid || destino.vendedorUid);
+    if (!destinoId) throw new Error("Selecione um vendedor para receber a indicação.");
+    let snap = await db.collection("usuarios").doc(destinoId).get();
+    if (!snap.exists) {
+      const busca = await db.collection("usuarios").where("authUid", "==", destinoId).limit(2).get();
+      if (busca.empty || busca.docs.length !== 1) throw new Error("Vendedor de destino não encontrado.");
+      snap = busca.docs[0];
+    }
+    const vendedor = { id: snap.id || destinoId, ...snap.data() };
+    const cargo = texto(cargoUsuario(vendedor)).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, "_");
+    const status = texto(vendedor.status || "ATIVO").toUpperCase();
+    if (cargo !== "vendedor" || vendedor.ativo === false || ["INATIVO", "BLOQUEADO", "SUSPENSO"].includes(status)) {
+      throw new Error("A indicação só pode ser atribuída a um vendedor ativo.");
+    }
+    const tenant = tenantUsuario(usuario);
+    if (!tenant || tenantUsuario(vendedor) !== tenant || (indicacao.clientePlataformaId && indicacao.clientePlataformaId !== tenant)) {
+      throw new Error("Vendedor de destino pertence a outro tenant.");
+    }
+    return vendedor;
+  }
+
+  function indicadorHistoricoVendaIndicacao(cliente = {}) {
+    return Boolean(cliente.vendaAtivaId || cliente.ultimaVendaId || cliente.possuiVendaAtiva === true || cliente.possuiHistoricoVenda === true || Number(cliente.totalVendas || cliente.vendasRealizadas || 0) > 0 || cliente.vendasIds?.length || cliente.historicoVendas?.length);
+  }
+
+  async function validarClienteSemHistoricoParaAtribuicao(db, indicacao = {}, usuario = {}) {
+    const clienteId = texto(indicacao.clienteOperacionalId);
+    if (!clienteId) return true;
+    const clienteSnap = await db.collection("clientes_operacionais").doc(clienteId).get();
+    if (clienteSnap.exists && indicadorHistoricoVendaIndicacao(clienteSnap.data())) {
+      throw new Error("Cliente com histórico de venda exige autorização de gestão para nova atribuição.");
+    }
+    const vendas = await db.collection("vendas")
+      .where("clientePlataformaId", "==", tenantUsuario(usuario))
+      .where("clienteId", "==", clienteId)
+      .limit(1)
+      .get();
+    if (!vendas.empty) throw new Error("Cliente com histórico de venda exige autorização de gestão para nova atribuição.");
+    return true;
+  }
+
   async function salvarEdicaoIndicacao(indicacaoId, dados = {}, usuario = {}) {
     if (!indicacaoId) throw new Error("Indicação obrigatória.");
     const db = dados.db || usuario.db || getDb();
@@ -568,6 +685,13 @@
     const nome = texto(dados.nome || dados.nomeCliente || atual.nomeClienteSnapshot || atual.nome);
     const telefone = texto(dados.telefonePrincipal || dados.telefone || atual.telefonePrincipal || atual.telefone);
     const telefoneNormalizado = normalizarTelefoneIndicacao(telefone);
+    const documento = texto(dados.documento ?? atual.documento ?? atual.documentoNormalizado);
+    const documentoNormalizado = normalizarDocumentoIndicacao(documento);
+    const tipoCliente = texto(dados.tipoCliente || atual.tipoCliente || "PF");
+    const paisTelefone = texto(dados.paisTelefone || atual.paisTelefone || "55");
+    const whatsappAtivo = Object.prototype.hasOwnProperty.call(dados, "whatsappAtivo") ? dados.whatsappAtivo === true : atual.whatsappAtivo === true;
+    const whatsappUrl = whatsappAtivo ? texto(dados.whatsappUrl || atual.whatsappUrl) : "";
+    const origemIndicacao = texto(dados.origemIndicacao || dados.origem || atual.origemIndicacao || atual.origem || "OUTRO");
     const vendedorId = texto(dados.vendedorDestinoId || dados.vendedorId || atual.vendedorDestinoId || atual.vendedorId);
     const vendedorAnteriorId = texto(atual.vendedorDestinoId || atual.vendedorId);
     const vendedorAlterado = vendedorId !== vendedorAnteriorId;
@@ -575,14 +699,42 @@
     const statusNovo = vendedorAlterado ? "ATRIBUIDA" : statusSolicitado;
     if (!nome) throw new Error("Nome do lead obrigatório.");
     if (telefoneNormalizado.length < 10 || telefoneNormalizado.length > 11) throw new Error("Telefone do lead inválido.");
+    if (documentoNormalizado && ![11, 14].includes(documentoNormalizado.length)) throw new Error("CPF/CNPJ do lead inválido.");
     if (!vendedorId && ["ATRIBUIDA","EM_ATENDIMENTO"].includes(statusNovo)) throw new Error("Selecione o vendedor responsável.");
+
+    const identificacaoAlterada = documentoNormalizado !== normalizarDocumentoIndicacao(atual.documento || atual.documentoNormalizado) || telefoneNormalizado !== normalizarTelefoneIndicacao(atual.telefonePrincipal || atual.telefoneNormalizado);
+    if (identificacaoAlterada) {
+      const tenant = atual.clientePlataformaId || tenantUsuario(usuario);
+      const baseClientes = db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenant);
+      const consultasIdentidade = [];
+      if (documentoNormalizado) consultasIdentidade.push(baseClientes.where("documentoNormalizado", "==", documentoNormalizado).limit(2).get());
+      consultasIdentidade.push(baseClientes.where("telefoneNormalizado", "==", telefoneNormalizado).limit(2).get());
+      consultasIdentidade.push(baseClientes.where("telefonesNormalizados", "array-contains", telefoneNormalizado).limit(2).get());
+      const resultados = await Promise.all(consultasIdentidade);
+      const idVinculado = String(atual.clienteOperacionalId || "");
+      const conflito = resultados.some(resultado => resultado.docs.some(doc => String(doc.id) !== idVinculado));
+      if (conflito) throw new Error("Documento ou telefone já pertence a outro cliente deste tenant.");
+    }
+
+    if (vendedorAlterado) {
+      await validarDestinoVendedorIndicacao(db, dados, usuario, atual);
+      await validarClienteSemHistoricoParaAtribuicao(db, atual, usuario);
+    }
 
     await atualizarStatusIndicacao(indicacaoId, {
       nomeClienteSnapshot:nome,
       nome,
+      documento,
+      documentoNormalizado,
+      tipoCliente,
       telefonePrincipal:telefone,
       telefone,
       telefoneNormalizado,
+      paisTelefone,
+      whatsappAtivo,
+      whatsappUrl,
+      origemIndicacao,
+      origem:origemIndicacao,
       observacao:texto(dados.observacao),
       motivoNaoConversao:statusNovo === "NAO_CONVERTIDA" ? texto(dados.motivoNaoConversao || dados.observacao) : (atual.motivoNaoConversao || ""),
       motivoRecusa:statusNovo === "RECUSADA" ? texto(dados.motivoRecusa || dados.observacao) : (atual.motivoRecusa || ""),
@@ -614,10 +766,28 @@
       await clienteRef.set({
         nome,
         nomeBusca:nome.toLowerCase(),
+        documento,
+        documentoNormalizado,
+        tipoCliente,
         telefonePrincipal:telefone,
         telefoneNormalizado,
         telefonesNormalizados,
+        paisTelefone,
+        whatsappAtivo,
+        whatsappUrl,
+        ...(vendedorAlterado ? {
+          vendedorId:texto(dados.vendedorAuthUid || dados.vendedorUid || vendedorId),
+          vendedorAuthUid:texto(dados.vendedorAuthUid || dados.vendedorUid || vendedorId),
+          vendedorDocumentoId:vendedorId,
+          vendedorNome:texto(dados.vendedorDestinoNome || dados.vendedorNome),
+          equipeId:texto(dados.equipeDestinoId || dados.equipeId),
+          equipeNome:texto(dados.equipeDestinoNome || dados.equipeNome),
+          statusAtendimento:"AGUARDANDO_ATENDIMENTO"
+        } : {}),
         atualizadoPor:idUsuario(usuario),
+        atualizadoPorNome:nomeUsuario(usuario),
+        atualizadoEmTexto:window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString(),
+        ultimaAlteracaoTipo:"INDICACAO_EDITADA",
         atualizadoEm:serverTimestamp()
       }, { merge:true });
     }
@@ -697,6 +867,9 @@
   }
 
   function vincularVendaIndicacao(indicacaoId, vendaId, valorVendaCentavos = 0, usuario = {}) {
+    const cargo = texto(cargoUsuario(usuario)).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, "_");
+    if (cargo !== "vendedor") throw new Error("Somente o vendedor responsável pode converter a indicação em venda.");
+    if (!texto(vendaId)) throw new Error("Venda vinculada é obrigatória para converter a indicação.");
     const agora = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
     return atualizarStatusIndicacao(indicacaoId, {
       statusIndicacao: "CONVERTIDA",

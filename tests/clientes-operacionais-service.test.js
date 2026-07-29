@@ -48,6 +48,7 @@ function criarDb(iniciais = {}) {
             if (colecao !== nome) continue;
             const passou = filtros.every(filtro => {
               if (filtro.operador === "==") return valor[filtro.campo] === filtro.valor;
+              if (filtro.operador === "in") return Array.isArray(filtro.valor) && filtro.valor.includes(valor[filtro.campo]);
               if (filtro.operador === "array-contains") return Array.isArray(valor[filtro.campo]) && valor[filtro.campo].includes(filtro.valor);
               return false;
             });
@@ -215,6 +216,41 @@ test("vendedor ve somente cliente atribuido e supervisor somente sua equipe", ()
   assert.equal(ClientesService.clienteNoEscopo(usuario({ id: "vend_2", authUid: "vend_2", tipoUsuario: "vendedor" }), cliente), false);
   assert.equal(ClientesService.clienteNoEscopo(usuario({ id: "sup_1", authUid: "sup_1", tipoUsuario: "supervisor", equipesIds: ["equipe_1"] }), cliente), true);
   assert.equal(ClientesService.clienteNoEscopo(usuario({ id: "sup_2", authUid: "sup_2", tipoUsuario: "supervisor", equipesIds: ["equipe_2"] }), cliente), false);
+});
+
+test("gerente e socio veem somente equipes ou vendedores atribuidos", async () => {
+  const contexto = carregar({
+    "clientes_operacionais/a": { clientePlataformaId: "tenant_1", nome: "Equipe permitida", equipeId: "equipe_1", vendedorId: "vend_1" },
+    "clientes_operacionais/b": { clientePlataformaId: "tenant_1", nome: "Outra equipe", equipeId: "equipe_2", vendedorId: "vend_2" }
+  });
+  const gerente = usuario({ id: "ger_1", authUid: "ger_1", tipoUsuario: "gerente", equipesIds: ["equipe_1"] });
+  const socio = usuario({ id: "soc_1", authUid: "soc_1", tipoUsuario: "socio", vendedoresIds: ["vend_2"] });
+  assert.deepEqual(Array.from((await contexto.ClientesService.listarClientes({ db: contexto.db }, gerente)).map(item => item.id)), ["a"]);
+  assert.deepEqual(Array.from((await contexto.ClientesService.listarClientes({ db: contexto.db }, socio)).map(item => item.id)), ["b"]);
+});
+
+test("exclusao de cliente e logica, auditada e restrita a cadastro sem venda", async () => {
+  const contexto = carregar({
+    "clientes_operacionais/sem_venda": { clientePlataformaId: "tenant_1", nome: "Sem venda", clienteLegadoId: "legado_1" },
+    "clientes/legado_1": { clientePlataformaId: "tenant_1", nome: "Sem venda" }
+  });
+  await contexto.ClientesService.excluirClienteSemHistorico("sem_venda", usuario(), { db: contexto.db });
+  assert.equal(contexto.db.dados.get("clientes_operacionais/sem_venda").excluido, true);
+  assert.equal(contexto.db.dados.get("clientes/legado_1").excluido, true);
+  assert.ok([...contexto.db.dados.entries()].some(([caminho, valor]) => caminho.startsWith("logs/") && valor.tipo === "CLIENTE_EXCLUIDO"));
+});
+
+test("bloqueia exclusao quando existe indicador ou documento de venda", async () => {
+  const comIndicador = carregar({
+    "clientes_operacionais/com_venda": { clientePlataformaId: "tenant_1", nome: "Com venda", totalVendas: 1 }
+  });
+  await assert.rejects(comIndicador.ClientesService.excluirClienteSemHistorico("com_venda", usuario(), { db: comIndicador.db }), /historico de venda/);
+
+  const comDocumento = carregar({
+    "clientes_operacionais/com_doc": { clientePlataformaId: "tenant_1", nome: "Com documento" },
+    "vendas/venda_1": { clientePlataformaId: "tenant_1", clienteId: "com_doc" }
+  });
+  await assert.rejects(comDocumento.ClientesService.excluirClienteSemHistorico("com_doc", usuario(), { db: comDocumento.db }), /historico de venda/);
 });
 
 test("direciona para vendedor ativo do mesmo tenant e preserva origem", async () => {

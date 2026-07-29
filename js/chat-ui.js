@@ -82,6 +82,17 @@
         </section>
       </div>
     `;
+    const leitura = global.IntegroChatService?.podeEnviar?.() === false;
+    if (leitura) {
+      root.querySelector(".integro-chat-actions")?.setAttribute("hidden", "");
+      const input = el("chatTexto");
+      const botao = el("chatEnviar");
+      if (input) {
+        input.disabled = true;
+        input.placeholder = "Acesso somente leitura";
+      }
+      if (botao) botao.disabled = true;
+    }
   }
 
   function renderUsuarios() {
@@ -175,7 +186,9 @@
     estado.unsubMensagens = global.IntegroChatService.assinarMensagens(id, renderMensagens, erro => {
       el("chatMensagens").innerHTML = `<div class="empty">${esc(erro.message || "Falha ao carregar mensagens.")}</div>`;
     });
-    await global.IntegroChatService.marcarComoLida(id);
+    if (global.IntegroChatService.podeEnviar?.() !== false) {
+      await global.IntegroChatService.marcarComoLida(id);
+    }
   }
 
   async function enviar(event) {
