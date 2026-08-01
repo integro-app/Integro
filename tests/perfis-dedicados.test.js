@@ -20,13 +20,15 @@ const usuariosUI = fs.readFileSync(path.join(root, "js", "usuarios.js"), "utf8")
 const provisionamentoUsuarios = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
 const firebaseJson = fs.readFileSync(path.join(root, "firebase.json"), "utf8");
 
-test("rotas dedicadas de auditor e captador estao integradas", () => {
-  assert.match(config, /auditor:\s*"auditor\.html"/);
-  assert.match(config, /captador:\s*"captador\.html"/);
+test("auditor e captador convergem para o painel unificado com legado preservado", () => {
+  assert.match(config, /auditor:\s*"master-local\.html"/);
+  assert.match(config, /captador:\s*"master-local\.html"/);
   assert.match(config, /"auditor\.html":\s*"auditor"/);
   assert.match(config, /"captador\.html":\s*"captador"/);
   assert.match(operational, /auditor:\s*"auditor\.html"/);
   assert.match(operational, /captador:\s*"captador\.html"/);
+  assert.match(auditor, /redirect-to-master-local/);
+  assert.match(captador, /redirect-to-master-local/);
 });
 
 test("auditor tem tela somente leitura com tenant e colecoes reais", () => {

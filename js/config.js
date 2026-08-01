@@ -8,25 +8,25 @@ const CONFIG = {
     master_global: "master-global.html",
     master_local: "master-local.html",
     usuario_cliente: "master-local.html",
-    vendedor: "vendedor.html",
-    supervisor: "supervisor.html",
-    financeiro: "financeiro.html",
+    vendedor: "master-local.html",
+    supervisor: "master-local.html",
+    financeiro: "master-local.html",
     gerente: "master-local.html",
-    auditor: "auditor.html"
+    auditor: "master-local.html"
   },
 
   ROTAS_POR_CARGO_CLIENTE: {
     gerente: "master-local.html",
-    captador: "captador.html",
-    supervisor: "supervisor.html",
-    vendedor: "vendedor.html",
-    financeiro: "financeiro.html",
-    auditor: "auditor.html"
+    captador: "master-local.html",
+    supervisor: "master-local.html",
+    vendedor: "master-local.html",
+    financeiro: "master-local.html",
+    auditor: "master-local.html"
   },
 
   TIPO_POR_PAGINA: {
     "master-global.html": "master_global",
-    "master-local.html": "master_local",
+    "master-local.html": "painel_local",
     "vendedor.html": "vendedor",
     "supervisor.html": "supervisor",
     "financeiro.html": "financeiro",

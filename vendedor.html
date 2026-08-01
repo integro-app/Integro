@@ -2,6 +2,14 @@
 <html lang="pt-BR">
 
 <head>
+  <meta name="integro-legacy-entry" content="redirect-to-master-local">
+  <script>
+    (function () {
+      if (new URLSearchParams(location.search).get("legacy") === "1") return;
+      location.replace("master-local.html" + location.search + location.hash);
+    })();
+  </script>
+
 
   <meta charset="UTF-8" />
 

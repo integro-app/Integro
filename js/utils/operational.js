@@ -217,6 +217,10 @@
     if (acesso.tipoOriginal === obrigatorio) return true;
     if (acesso.perfilCompat === obrigatorio) return true;
 
+    if (obrigatorio === "painel_local") {
+      return acesso.isMasterLocal || acesso.isUsuarioCliente;
+    }
+
     if (obrigatorio === "master_local") {
       return acesso.isMasterLocal || acesso.isGerente || acesso.isAuditor;
     }
