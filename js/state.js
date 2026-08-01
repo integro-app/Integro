@@ -51,7 +51,46 @@ const State = {
   // SETTERS - DADOS
   // ===============================
   setUsuarios(data) {
-    this.usuarios = data || [];
+    const usuarios = Array.isArray(data) ? data : [];
+    const porIdentidade = new Map();
+
+    const pontuar = usuario => {
+      const id = String(usuario?.id || "");
+      const authUid = String(usuario?.authUid || "");
+      const status = String(usuario?.status || "").toUpperCase();
+      let pontos = 0;
+      if (id && authUid && id === authUid) pontos += 100;
+      if (authUid) pontos += 40;
+      if (usuario?.acessoLiberado === true) pontos += 20;
+      if (status === "ATIVO") pontos += 10;
+      if (usuario?.excluido !== true) pontos += 5;
+      return pontos;
+    };
+
+    usuarios.forEach(usuarioOriginal => {
+      const usuario = { ...usuarioOriginal };
+      const tenant = String(usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "");
+      const email = String(usuario.emailNormalizado || usuario.email || "").trim().toLowerCase();
+      const chave = email ? tenant + "|" + email : tenant + "|id:" + String(usuario.id || "");
+      const atual = porIdentidade.get(chave);
+
+      if (!atual) {
+        usuario.__documentosDuplicados = [];
+        porIdentidade.set(chave, usuario);
+        return;
+      }
+
+      const vencedor = pontuar(usuario) > pontuar(atual) ? usuario : atual;
+      const descartado = vencedor === usuario ? atual : usuario;
+      vencedor.__documentosDuplicados = [
+        ...(vencedor.__documentosDuplicados || []),
+        ...(descartado.__documentosDuplicados || []),
+        descartado.id
+      ].filter(Boolean);
+      porIdentidade.set(chave, vencedor);
+    });
+
+    this.usuarios = Array.from(porIdentidade.values());
   },
 
   setCargos(data) {

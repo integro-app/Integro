@@ -9,8 +9,16 @@ const operational = fs.readFileSync(path.join(root, "js", "utils", "operational.
 const auditor = fs.readFileSync(path.join(root, "auditor.html"), "utf8");
 const captador = fs.readFileSync(path.join(root, "captador.html"), "utf8");
 const masterLocal = fs.readFileSync(path.join(root, "master-local.html"), "utf8");
+const supervisor = fs.readFileSync(path.join(root, "supervisor.html"), "utf8");
 const vendedor = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 const chatService = fs.readFileSync(path.join(root, "js", "services", "chat-service.js"), "utf8");
+const chatUI = fs.readFileSync(path.join(root, "js", "chat-ui.js"), "utf8");
+const configuracoesMasterLocal = fs.readFileSync(path.join(root, "js", "configuracoes-master-local.js"), "utf8");
+const firestoreService = fs.readFileSync(path.join(root, "js", "services", "firestore.js"), "utf8");
+const state = fs.readFileSync(path.join(root, "js", "state.js"), "utf8");
+const usuariosUI = fs.readFileSync(path.join(root, "js", "usuarios.js"), "utf8");
+const provisionamentoUsuarios = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
+const firebaseJson = fs.readFileSync(path.join(root, "firebase.json"), "utf8");
 
 test("rotas dedicadas de auditor e captador estao integradas", () => {
   assert.match(config, /auditor:\s*"auditor\.html"/);
@@ -89,6 +97,21 @@ test("menu principal do master local usa navegacao compatível e resolve cargos 
   assert.match(masterLocal, /PERFIS_CONHECIDOS\.has\(perfil\)/);
 });
 
+test("configuracoes usam uma unica navegacao organizada por modulo", () => {
+  assert.doesNotMatch(masterLocal, /menu-subitem" data-modulo="configuracoes"/);
+  assert.match(masterLocal, /data-config-navigation-host/);
+  assert.match(masterLocal, /data-config-loading-state/);
+  assert.match(configuracoesMasterLocal, /registrarInicializacaoConfiguracoes[\s\S]*MutationObserver/);
+  assert.ok(
+    masterLocal.indexOf('js/configuracoes-master-local.js?v=20260730-4') > masterLocal.indexOf('setTimeout(aplicarPadrao, 2800)'),
+    'o script atual de configuracoes deve carregar depois dos wrappers legados do HTML'
+  );
+  assert.match(configuracoesMasterLocal, /data-config-structure-menu[\s\S]*Vis&atilde;o geral[\s\S]*Usu&aacute;rios[\s\S]*Equipes[\s\S]*Cargos e permiss&otilde;es[\s\S]*Acessos por perfil/);
+  assert.match(configuracoesMasterLocal, /abrirPaginaConfiguracaoIntegro\('catalogos'\)[\s\S]*Financeiro/);
+  assert.match(configuracoesMasterLocal, /abrirPaginaConfiguracaoIntegro\('regras'\)[\s\S]*Regras operacionais/);
+  assert.match(configuracoesMasterLocal, /global\.trocarTela\(destino\);[\s\S]*instalarNavegacaoConfiguracoes\(destino, "estrutura"\);[\s\S]*try \{/);
+  assert.doesNotMatch(configuracoesMasterLocal, /class="config-structure-nav"/);
+});
 test("notificacoes e chat permanecem interativos depois da reorganizacao do menu", () => {
   assert.match(masterLocal, /\.menu-item\.integro-comunicacao-ativa[\s\S]*pointer-events:auto\s*!important/);
   assert.match(masterLocal, /const modulos = new Set\(\["notificacoes", "chatInterno"\]\)/);
@@ -139,7 +162,10 @@ test("indicacoes do vendedor ficam dentro do modulo clientes", () => {
 
 test("clientes do master local preservam consulta, gestao de leads e relatorios no padrao Integro", () => {
   assert.match(masterLocal, /class="clientes-module-nav"[\s\S]*data-clientes-tela="clientes"[\s\S]*data-clientes-tela="indicacoes"/);
-  assert.match(masterLocal, /data-leads-view="gerenciar"[\s\S]*data-leads-view="relatorios"/);
+  assert.match(masterLocal, /toggleSubmenuIndicacoesClientes[\s\S]*data-indicacoes-subarea="gerenciar"[\s\S]*data-indicacoes-subarea="relatorios"/);
+  assert.doesNotMatch(masterLocal, /<nav class="indicacoes-subnav"/);
+  assert.match(vendedor, /toggleSubmenuLeadsVendedor[\s\S]*Gerenciar leads[\s\S]*abrirRelatoriosLeadsVendedor/);
+  assert.match(supervisor, /toggleSubmenuLeadsSupervisor[\s\S]*abrirAreaClientesSupervisor\(&quot;gerenciar-leads&quot;\)[\s\S]*abrirAreaClientesSupervisor\(&quot;relatorios-leads&quot;\)/);
   assert.match(masterLocal, /id="indicacoesGerenciarML"[\s\S]*id="indicacoesDashboardMasterLocal"[\s\S]*id="indicacoesConsultaML"[\s\S]*id="listaIndicacoesMasterLocal"/);
   assert.match(masterLocal, /id="indicacoesRelatoriosViewML"[\s\S]*id="indicacoesGraficoMasterLocal"[\s\S]*id="indicacoesRelatoriosML"/);
   assert.match(masterLocal, /indicacoes-actions-menu[\s\S]*abrirImportacaoIndicacoesIntegro[\s\S]*exportarIndicacoesMasterLocal/);
@@ -166,10 +192,44 @@ test("cadastro do vendedor e completo e reutiliza o cliente operacional da indic
   assert.match(vendedor, /documento:\s*i\.documento \|\| i\.documentoSnapshot/);
 });
 
-test("chat gera notificacao deterministica e abre a conversa de origem", () => {
-  assert.match(chatService, /const notificacaoId = `chat_\$\{normalizarId\(mensagemRef\.id\)\}_\$\{normalizarId\(destinatarioId\)\}`/);
-  assert.match(chatService, /tipo:\s*"MENSAGEM_CHAT"/);
-  assert.match(chatService, /origemTipo:\s*"CHAT_INTERNO"/);
-  assert.match(vendedor, /origemTipo\.includes\("CHAT"\)[\s\S]*IntegroChatUI\?\.selecionar/);
-  assert.match(vendedor, /badge\.style\.display = pendentes > 0 \? "inline-flex" : "none"/);
+test("chat usa somente usuarios canonicos do tenant e aplica matriz de perfis", () => {
+  assert.match(chatService, /where\("clientePlataformaId",\s*"==",\s*tenant\)/);
+  assert.match(chatService, /perfil\.id !== uid/);
+  assert.match(chatService, /canonicos\.set\(uid,\s*perfil\)/);
+  assert.match(chatService, /conversaDiretaPermitida\(usuario,\s*perfil\)/);
+  assert.match(chatService, /destinatario\.clientePlataformaId !== tenant/);
+  assert.match(chatService, /obterDiagnosticoUsuarios/);
+  assert.match(chatUI, /Usuarios aguardando vinculo de autenticacao/);
+  assert.doesNotMatch(chatUI, />Direta<\/button>/);
+  assert.doesNotMatch(chatUI, />Equipe<\/button>/);
+});
+
+test("chat concentra mensagens e nao lidas no proprio modulo", () => {
+  assert.doesNotMatch(chatService, /collection\("notificacoes"\)/);
+  assert.match(chatService, /naoLidasPorUsuario\.\$\{id\}/);
+  assert.match(chatUI, /function atualizarBadgesChat\(\)/);
+  assert.match(chatUI, /integro-chat-unread-badge/);
+  assert.match(masterLocal, /String\(n\.tipo \|\| ""\)\.toUpperCase\(\) !== "MENSAGEM_CHAT"/);
+  assert.match(vendedor, /const ehMensagemChat = String\(n\.tipo \|\| ""\)\.toUpperCase\(\) === "MENSAGEM_CHAT"/);
+});
+test("usuarios usam convite deterministico, bloqueiam email duplicado e consolidam legado", () => {
+  assert.match(firestoreService, /where\("clientePlataformaId",\s*"==",\s*tenantId\)/);
+  assert.match(firestoreService, /dados\.emailNormalizado \|\| dados\.email/);
+  assert.match(firestoreService, /const conviteId = "convite_"/);
+  assert.match(firestoreService, /\.doc\(conviteId\)/);
+  assert.match(firestoreService, /erroDuplicado\.code = "usuario\/email-duplicado"/);
+  assert.match(state, /__documentosDuplicados/);
+  assert.match(state, /id && authUid && id === authUid/);
+});
+test("usuarios exibem tabela responsiva e provisionamento seguro de primeiro acesso", () => {
+  assert.match(usuariosUI, /class="usuarios-table"/);
+  assert.match(usuariosUI, /provisionarUsuarioPendente/);
+  assert.match(usuariosUI, /sendPasswordResetEmail/);
+  assert.match(usuariosUI, /usuario\/email-duplicado/);
+  assert.match(provisionamentoUsuarios, /contexto\.auth/);
+  assert.match(provisionamentoUsuarios, /autor\.tipoUsuario !== "master_local"/);
+  assert.match(provisionamentoUsuarios, /randomBytes/);
+  assert.match(provisionamentoUsuarios, /collection\("usuarios"\)\.doc\(conta\.uid\)/);
+  assert.doesNotMatch(provisionamentoUsuarios, /123456/);
+  assert.match(firebaseJson, /"source": "functions"/);
 });

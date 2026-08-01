@@ -669,6 +669,27 @@ service cloud.firestore {
     function validTipoConversa(data) {
       return data.get("tipo", "") in ["DIRETA", "EQUIPE"];
     }
+    function chatUsuarioExisteAtivo(uid) {
+      return exists(/databases/$(database)/documents/usuarios/$(uid)) &&
+        get(/databases/$(database)/documents/usuarios/$(uid)).data.get("authUid", "") == uid &&
+        get(/databases/$(database)/documents/usuarios/$(uid)).data.get("clientePlataformaId", "") == userTenantId() &&
+        !(get(/databases/$(database)/documents/usuarios/$(uid)).data.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        get(/databases/$(database)/documents/usuarios/$(uid)).data.get("acessoLiberado", false) == true;
+    }
+
+    function chatPerfilSuperior(uid) {
+      let data = get(/databases/$(database)/documents/usuarios/$(uid)).data;
+      return data.get("tipoUsuario", "") in ["master_global", "usuario_integro", "master_local", "gerente", "supervisor", "financeiro", "auditor", "MASTER_GLOBAL", "USUARIO_INTEGRO", "MASTER_LOCAL", "GERENTE", "SUPERVISOR", "FINANCEIRO", "AUDITOR"] ||
+        data.get("cargoChave", "") in ["gerente", "supervisor", "financeiro", "auditor", "GERENTE", "SUPERVISOR", "FINANCEIRO", "AUDITOR"];
+    }
+
+    function chatDiretaPermitida(data) {
+      return data.get("participantesIds", []) is list &&
+        data.get("participantesIds", []).size() == 2 &&
+        chatUsuarioExisteAtivo(data.get("participantesIds", [])[0]) &&
+        chatUsuarioExisteAtivo(data.get("participantesIds", [])[1]) &&
+        (chatPerfilSuperior(data.get("participantesIds", [])[0]) || chatPerfilSuperior(data.get("participantesIds", [])[1]));
+    }
 
     function canCreateConversa(data) {
       return isActiveUser() && isSameTenantWrite() &&
@@ -678,12 +699,12 @@ service cloud.firestore {
         data.get("participantesIds", []) is list &&
         currentUid() in data.get("participantesIds", []) &&
         (
-          data.get("tipo", "") == "DIRETA" ||
+          (data.get("tipo", "") == "DIRETA" && chatDiretaPermitida(data)) ||
           (
             data.get("tipo", "") == "EQUIPE" &&
             data.get("equipeId", "") is string &&
             data.get("equipeId", "").size() > 0 &&
-            (isMasterLocal() || isGerente() || data.get("equipeId", "") in userEquipeIds())
+            (isMasterLocal() || isGerente() || isSupervisor() || isFinanceiro())
           )
         );
     }
@@ -706,16 +727,56 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/conversas/$(conversaId)) &&
         !isAuditor() &&
         canReadConversa(get(/databases/$(database)/documents/conversas/$(conversaId)).data) &&
+        (get(/databases/$(database)/documents/conversas/$(conversaId)).data.get("tipo", "") == "DIRETA" || (!isVendedor() && !isCaptador())) &&
         data.keys().hasAll(["clientePlataformaId", "conversaId", "remetenteId", "texto", "criadoEm", "dataOperacional", "status"]) &&
         data.get("clientePlataformaId", "") == userTenantId() &&
         data.get("conversaId", "") == conversaId &&
         data.get("remetenteId", "") == currentUid() &&
-        data.get("texto", "") is string &&
-        data.get("texto", "").size() > 0 &&
-        data.get("texto", "").size() <= 1200 &&
-        data.get("status", "") == "ENVIADA";
+        data.get("texto", "") is string && data.get("texto", "").size() <= 1200 &&
+        data.get("status", "") == "ENVIADA" &&
+        (
+          (data.get("tipo", "TEXTO") == "TEXTO" && data.get("texto", "").size() > 0) ||
+          (
+            data.get("tipo", "") == "IMAGEM" &&
+            data.keys().hasAll(["imagemUrl", "imagemPath", "imagemNome", "imagemMime", "imagemTamanho"]) &&
+            data.get("imagemUrl", "") is string && data.get("imagemUrl", "").size() > 0 &&
+            data.get("imagemPath", "") is string &&
+            data.get("imagemPath", "").matches("tenants/" + userTenantId() + "/chat/.*") &&
+            data.get("imagemMime", "").matches("image/.*") &&
+            data.get("imagemTamanho", 0) is int &&
+            data.get("imagemTamanho", 0) > 0 && data.get("imagemTamanho", 0) <= 8 * 1024 * 1024
+          )
+        );
     }
 
+    function canReadPresencaChat(data) {
+      return isActiveUser() && hasTenant() && data.get("clientePlataformaId", "") == userTenantId();
+    }
+
+    function canWriteOwnPresencaChat(uid, data) {
+      return isActiveUser() && uid == currentUid() && isSameTenantWrite() &&
+        data.keys().hasAll(["clientePlataformaId", "usuarioId", "status", "ultimaAtividadeEm", "atualizadoEm"]) &&
+        data.get("usuarioId", "") == currentUid() &&
+        data.get("status", "") in ["ONLINE", "AUSENTE", "OFFLINE"];
+    }
+    function canCreatePendingTenantUser(data) {
+      return isActiveUser() && isMasterLocal() && isSameTenantWrite() &&
+        data.keys().hasAll([
+          "authUid", "nome", "email", "tipoUsuario", "cargoId",
+          "status", "acessoLiberado", "convitePendente",
+          "provisionamentoAuth", "clientePlataformaId", "criadoPorUid"
+        ]) &&
+        data.get("authUid", "") == "" &&
+        data.get("nome", "") is string && data.get("nome", "").size() > 1 &&
+        data.get("email", "") is string && data.get("email", "").size() > 3 &&
+        data.get("cargoId", "") is string && data.get("cargoId", "").size() > 0 &&
+        !(data.get("tipoUsuario", "") in ["master_global", "usuario_integro"]) &&
+        data.get("status", "") == "CONVITE_PENDENTE" &&
+        data.get("acessoLiberado", true) == false &&
+        data.get("convitePendente", false) == true &&
+        data.get("provisionamentoAuth", "") == "PENDENTE_BACKEND" &&
+        data.get("criadoPorUid", "") == currentUid();
+    }
     match /usuarios/{uid} {
       allow get: if (isAuthenticated() && currentUid() == uid) ||
         (isActiveUser() && (
@@ -731,10 +792,12 @@ service cloud.firestore {
             isAuditor() || isVendedor() || isCaptador()
           ))
         ));
-      allow create: if isAuthenticated() && currentUid() == uid &&
+      allow create: if (
+        isAuthenticated() && currentUid() == uid &&
         request.resource.data.keys().hasAll(["authUid", "acessoLiberado"]) &&
         request.resource.data.get("authUid", "") == currentUid() &&
-        request.resource.data.get("acessoLiberado", true) == false;
+        request.resource.data.get("acessoLiberado", true) == false
+      ) || canCreatePendingTenantUser(request.resource.data);
       allow update: if isActiveUser() && (
         isMasterGlobal() ||
         (currentUid() == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"])) ||
@@ -888,6 +951,18 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /presencas_chat/{uid} {
+      allow read: if canReadPresencaChat(resource.data);
+      allow create: if canWriteOwnPresencaChat(uid, request.resource.data);
+      allow update: if canWriteOwnPresencaChat(uid, request.resource.data) &&
+        request.resource.data.get("clientePlataformaId", "") == resource.data.get("clientePlataformaId", "") &&
+        request.resource.data.get("usuarioId", "") == resource.data.get("usuarioId", "") &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "nome", "cargo", "status", "diaTrabalho", "caixaFechado", "ultimaAtividadeEm", "atualizadoEm"
+        ]);
+      allow delete: if false;
+    }
+
     match /conversas/{id} {
       allow get: if canReadConversa(resource.data);
       allow list: if canListConversa(resource.data);
@@ -920,6 +995,21 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    match /configuracoes_empresas/{tenantId} {
+      allow read: if isActiveUser() && hasTenant() && tenantId == userTenantId() &&
+        resource.data.get("clientePlataformaId", "") == userTenantId();
+      allow create: if isActiveUser() && isMasterLocal() && tenantId == userTenantId() &&
+        request.resource.data.keys().hasAll(["clientePlataformaId", "versao", "regrasOperacionais", "clientes", "leads"]) &&
+        request.resource.data.get("clientePlataformaId", "") == userTenantId();
+      allow update: if isActiveUser() && isMasterLocal() && tenantId == userTenantId() &&
+        resource.data.get("clientePlataformaId", "") == userTenantId() &&
+        request.resource.data.get("clientePlataformaId", "") == userTenantId() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "versao", "regrasOperacionais", "clientes", "leads",
+          "atualizadoPorUid", "atualizadoPorNome", "atualizadoEm", "atualizadoEmTexto"
+        ]);
+      allow delete: if false;
+    }
     match /categoriasMovimentacao/{id} {
       allow read: if isActiveUser() && isSameTenantRead();
       allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isFinanceiro());

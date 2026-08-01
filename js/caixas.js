@@ -1,7 +1,7 @@
-﻿// ========================================
-// SUPERVISÃƒO DE EQUIPES / CAIXAS - MASTER LOCAL ÃNTEGRO
+// ========================================
+// SUPERVISÃO DE EQUIPES / CAIXAS - MASTER LOCAL ÍNTEGRO
 // Tela principal: 1 linha por equipe ativa, com dados reais do Firebase
-// MantÃ©m layout premium aprovado
+// Mantém layout premium aprovado
 // ========================================
 
 let equipesSelecionadasCaixa = new Set();
@@ -66,7 +66,7 @@ function getEmpresaNomeSeguroCaixas() {
 }
 
 function getNomeUsuarioLogadoCaixas() {
-  return State.usuario?.nome || State.usuario?.nomeCompleto || State.usuario?.email || "UsuÃ¡rio";
+  return State.usuario?.nome || State.usuario?.nomeCompleto || State.usuario?.email || "Usuário";
 }
 
 function escaparHtml(valor) {
@@ -191,7 +191,7 @@ async function carregarDadosIniciaisSupervisaoCaixas() {
   const tenantId = getTenantIdSeguroCaixas();
 
   if (!tenantId) {
-    console.warn("[SUPERVISÃƒO CAIXAS] tenantId vazio.");
+    console.warn("[SUPERVISÃO CAIXAS] tenantId vazio.");
     return;
   }
 
@@ -222,7 +222,7 @@ async function carregarDadosIniciaisSupervisaoCaixas() {
     if (State.setCaixas) State.setCaixas(caixasCaixaTempoReal);
 
     console.log(
-      "[SUPERVISÃƒO CAIXAS] dados iniciais:",
+      "[SUPERVISÃO CAIXAS] dados iniciais:",
       "equipes", equipesCaixaTempoReal.length,
       "usuarios", vendedoresCaixaTempoReal.length,
       "caixas", caixasCaixaTempoReal.length
@@ -231,7 +231,7 @@ async function carregarDadosIniciaisSupervisaoCaixas() {
     renderCaixas();
 
   } catch (erro) {
-    console.error("[SUPERVISÃƒO CAIXAS] erro no carregamento inicial:", erro);
+    console.error("[SUPERVISÃO CAIXAS] erro no carregamento inicial:", erro);
   }
 }
 
@@ -239,7 +239,7 @@ function iniciarCaixasTempoReal() {
   const tenantId = getTenantIdSeguroCaixas();
 
   if (!tenantId) {
-    console.warn("[SUPERVISÃƒO CAIXAS] TenantId vazio. Dados nÃ£o serÃ£o carregados.");
+    console.warn("[SUPERVISÃO CAIXAS] TenantId vazio. Dados não serão carregados.");
     return;
   }
 
@@ -260,7 +260,7 @@ function iniciarCaixasTempoReal() {
         if (equipeDetalheAtualId) renderDetalhesEquipeSupervisao(equipeDetalheAtualId);
         else renderCaixas();
       },
-      erro => console.error("[SUPERVISÃƒO CAIXAS] erro realtime equipes:", erro)
+      erro => console.error("[SUPERVISÃO CAIXAS] erro realtime equipes:", erro)
     );
 
   unsubscribeUsuariosTempoReal = db
@@ -275,7 +275,7 @@ function iniciarCaixasTempoReal() {
         if (equipeDetalheAtualId) renderDetalhesEquipeSupervisao(equipeDetalheAtualId);
         else renderCaixas();
       },
-      erro => console.error("[SUPERVISÃƒO CAIXAS] erro realtime usuÃ¡rios:", erro)
+      erro => console.error("[SUPERVISÃO CAIXAS] erro realtime usuários:", erro)
     );
 
   unsubscribeCaixasTempoReal = db
@@ -292,7 +292,7 @@ function iniciarCaixasTempoReal() {
         if (equipeDetalheAtualId) renderDetalhesEquipeSupervisao(equipeDetalheAtualId);
         else renderCaixas();
       },
-      erro => console.error("[SUPERVISÃƒO CAIXAS] erro realtime caixas:", erro)
+      erro => console.error("[SUPERVISÃO CAIXAS] erro realtime caixas:", erro)
     );
 }
 
@@ -351,7 +351,7 @@ function getCaixasBaseSupervisao() {
 }
 
 function criarChaveEquipePorNome(nome) {
-  return `nome:${normalizarTextoCaixa(nome || "Equipe nÃ£o informada")}`;
+  return `nome:${normalizarTextoCaixa(nome || "Equipe não informada")}`;
 }
 
 function getEquipeIdDoRegistro(registro) {
@@ -369,7 +369,7 @@ function getEquipeNomeDoRegistro(registro) {
     registro?.equipeNome ||
     registro?.unidadeNome ||
     registro?.timeNome ||
-    "Equipe nÃ£o informada"
+    "Equipe não informada"
   );
 }
 
@@ -567,8 +567,8 @@ function prepararTelaCaixas() {
   card.innerHTML = `
     <div class="section-header">
       <div>
-        <h2>SupervisÃ£o de equipes</h2>
-        <p>Equipes ativas, caixas e operaÃ§Ã£o carregados automaticamente em tempo real.</p>
+        <h2>Supervisão de equipes</h2>
+        <p>Equipes ativas, caixas e operação carregados automaticamente em tempo real.</p>
       </div>
 
       <div class="top-actions">
@@ -579,7 +579,7 @@ function prepararTelaCaixas() {
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px;">
       <button class="ghost-btn" type="button" onclick="selecionarTodasEquipesVisiveis()">Selecionar equipes</button>
-      <button class="ghost-btn" type="button" onclick="limparSelecaoEquipesCaixa()">Limpar seleÃ§Ã£o</button>
+      <button class="ghost-btn" type="button" onclick="limparSelecaoEquipesCaixa()">Limpar seleção</button>
       <button class="ghost-btn" type="button" onclick="carregarDadosIniciaisSupervisaoCaixas()">Atualizar tela</button>
       <span style="display:flex;align-items:center;color:#16c784;font-weight:900;font-size:13px;">â— Tempo real</span>
     </div>
@@ -598,7 +598,7 @@ function prepararTelaCaixas() {
             <th>Caixa Inicial</th>
             <th>Caixa Final/Atual</th>
             <th>Progresso</th>
-            <th>Ãšltima SincronizaÃ§Ã£o</th>
+            <th>Última Sincronização</th>
           </tr>
         </thead>
         <tbody id="listaCaixasTabela"></tbody>
@@ -620,7 +620,7 @@ function renderCaixas() {
   const linhas = montarLinhasSupervisaoEquipes();
 
   console.log(
-    "[SUPERVISÃƒO CAIXAS] render",
+    "[SUPERVISÃO CAIXAS] render",
     "equipes", getEquipesBaseSupervisao().length,
     "vendedores", getVendedoresBaseSupervisao().length,
     "caixas", getCaixasBaseSupervisao().length,
@@ -632,7 +632,7 @@ function renderCaixas() {
       <tr>
         <td colspan="9">
           Nenhuma equipe ou caixa encontrado para esta empresa.
-          Verifique se os documentos possuem clientePlataformaId igual ao usuÃ¡rio logado.
+          Verifique se os documentos possuem clientePlataformaId igual ao usuário logado.
         </td>
       </tr>
     `;
@@ -717,7 +717,7 @@ function renderCaixas() {
 }
 
 // ========================================
-// SELEÃ‡ÃƒO
+// SELEÇÃO
 // ========================================
 
 function toggleEquipeCaixaSelecionada(equipeId, checked) {
@@ -805,10 +805,10 @@ function renderDetalhesEquipeSupervisao(equipeId) {
     card.innerHTML = `
       <div class="section-header">
         <div>
-          <h2>Equipe nÃ£o encontrada</h2>
+          <h2>Equipe não encontrada</h2>
           <p>Essa equipe pode ter sido desativada ou removida.</p>
         </div>
-        <button class="ghost-btn" type="button" onclick="voltarTelaCaixasPrincipal()">â† Voltar</button>
+        <button class="ghost-btn" type="button" onclick="voltarTelaCaixasPrincipal()">← Voltar</button>
       </div>
     `;
     return;
@@ -819,12 +819,12 @@ function renderDetalhesEquipeSupervisao(equipeId) {
   card.innerHTML = `
     <div class="section-header">
       <div>
-        <div class="breadcrumb-caixa">SupervisÃ£o â€º Equipe</div>
+        <div class="breadcrumb-caixa">Supervisão › Equipe</div>
         <h2>${escaparHtml(equipe.nome || "Equipe")}</h2>
-        <p>Detalhes da operaÃ§Ã£o da equipe. Esta tela serÃ¡ expandida na prÃ³xima etapa.</p>
+        <p>Detalhes da operação da equipe. Esta tela será expandida na próxima etapa.</p>
       </div>
 
-      <button class="ghost-btn" type="button" onclick="voltarTelaCaixasPrincipal()">â† Voltar para SupervisÃ£o</button>
+      <button class="ghost-btn" type="button" onclick="voltarTelaCaixasPrincipal()">← Voltar para Supervisão</button>
     </div>
 
     <div class="mini-operacao-grid">
@@ -854,7 +854,7 @@ function renderDetalhesEquipeSupervisao(equipeId) {
         <div class="panel-head">
           <div>
             <h3>Caixas da equipe</h3>
-            <p style="color:var(--muted);font-weight:600;margin-top:6px;">Ãšltimos caixas carregados do Firebase.</p>
+            <p style="color:var(--muted);font-weight:600;margin-top:6px;">Últimos caixas carregados do Firebase.</p>
           </div>
         </div>
 
@@ -915,15 +915,15 @@ function renderDetalhesEquipeSupervisao(equipeId) {
     <div class="panel" style="margin-top:20px;">
       <div class="panel-head">
         <div>
-          <h3>Ãrea reservada para operaÃ§Ã£o detalhada</h3>
+          <h3>Área reservada para operação detalhada</h3>
           <p style="color:var(--muted);font-weight:600;margin-top:6px;">
-            Aqui vamos encaixar a tela completa que vocÃª vai enviar: caixas de outros dias, movimentaÃ§Ãµes, histÃ³rico, auditoria e aÃ§Ãµes individuais.
+            Aqui vamos encaixar a tela completa que você vai enviar: caixas de outros dias, movimentações, histórico, auditoria e ações individuais.
           </p>
         </div>
       </div>
 
       <div class="placeholder-dev">
-        Tela de detalhes pronta para receber o prÃ³ximo cÃ³digo base.
+        Tela de detalhes pronta para receber o próximo código base.
       </div>
     </div>
   `;
@@ -957,18 +957,18 @@ function abrirCaixaMassivo() {
   });
 
   if (!vendedoresSemCaixa.length) {
-    return UIHelpers.alerta("Todos os vendedores das equipes selecionadas jÃ¡ possuem caixa aberto.");
+    return UIHelpers.alerta("Todos os vendedores das equipes selecionadas já possuem caixa aberto.");
   }
 
   abrirDrawerCompat("Abertura massiva", "Abrir caixa para vendedores das equipes selecionadas.", `
     <div class="form-grid">
       <div class="form-group full">
-        <label>Valor inicial padrÃ£o</label>
+        <label>Valor inicial padrão</label>
         <input id="valorMassivoCaixa" type="number" step="0.01" placeholder="0,00">
       </div>
 
       <div class="form-group full">
-        <label>Vendedores que receberÃ£o caixa</label>
+        <label>Vendedores que receberão caixa</label>
         <div class="team-box">
           ${
             vendedoresSemCaixa.map(v => `
@@ -1007,7 +1007,7 @@ async function salvarAberturaMassivaCaixas() {
       const vendedor = getVendedoresBaseSupervisao().find(v => v.id === vendedorId);
       if (!vendedor) continue;
 
-      await criarCaixaParaVendedor(vendedor, valorInicial, "Abertura massiva por supervisÃ£o");
+      await criarCaixaParaVendedor(vendedor, valorInicial, "Abertura massiva por supervisão");
     }
 
     await FirestoreService.gravarLog("ABERTURA_MASSIVA_CAIXAS", {
@@ -1017,7 +1017,7 @@ async function salvarAberturaMassivaCaixas() {
     });
 
     equipesSelecionadasCaixa.clear();
-    UIHelpers.alerta("Abertura massiva concluÃ­da.");
+    UIHelpers.alerta("Abertura massiva concluída.");
     fecharDrawerCompat();
     renderCaixas();
 
@@ -1213,7 +1213,7 @@ function renderCaixasPremium() {
 }
 
 // ========================================
-// INICIALIZAÃ‡ÃƒO
+// INICIALIZAÇÃO
 // ========================================
 
 document.addEventListener("DOMContentLoaded", () => {

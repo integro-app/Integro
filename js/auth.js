@@ -51,6 +51,7 @@ async function login() {
     }
 
     State.setUsuario(usuario);
+    await carregarConfiguracoesEmpresaDoUsuario(usuario);
 
     try {
       localStorage.setItem("usuarioLogado", JSON.stringify(usuario));
@@ -90,6 +91,16 @@ async function login() {
       botaoLogin.disabled = false;
       botaoLogin.innerText = botaoLogin.dataset.textoOriginal || "Entrar na plataforma";
     }
+  }
+}
+async function carregarConfiguracoesEmpresaDoUsuario(usuario) {
+  const tenant = usuario?.clientePlataformaId || usuario?.empresaId || usuario?.tenantId || "";
+  if (!tenant || !window.IntegroConfiguracoesEmpresa?.carregar) return null;
+  try {
+    return await window.IntegroConfiguracoesEmpresa.carregar(tenant);
+  } catch (erro) {
+    console.warn("Nao foi possivel carregar as configuracoes operacionais da empresa.", erro);
+    return null;
   }
 }
 // ===============================
@@ -165,6 +176,7 @@ function protegerPagina(tipoObrigatorio = null) {
       }
 
       State.setUsuario(usuario);
+      await carregarConfiguracoesEmpresaDoUsuario(usuario);
       
       try {
   localStorage.setItem("usuarioLogado", JSON.stringify(usuario));

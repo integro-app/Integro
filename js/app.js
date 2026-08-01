@@ -210,7 +210,7 @@ async function carregarNotificacoesLayout(usuario = null) {
     }
 
     const lista = Array.from(documentos.values())
-      .filter(n => n.excluido !== true && notificacaoPertenceAoUsuario(n, atual));
+      .filter(n => n.excluido !== true && String(n.tipo || "").toUpperCase() !== "MENSAGEM_CHAT" && String(n.origemTipo || "").toUpperCase() !== "CHAT_INTERNO" && notificacaoPertenceAoUsuario(n, atual));
 
     window.notificacoesLayout = lista;
     atualizarNotificacoesLayout(lista);

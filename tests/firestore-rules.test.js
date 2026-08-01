@@ -19,6 +19,7 @@ const {
   deleteDoc,
   where
 } = require("firebase/firestore");
+const { ref, uploadBytes } = require("firebase/storage");
 
 const projectId = "integro-rules-test";
 let testEnv;
@@ -294,6 +295,62 @@ test("login: perfil proprio e fallback por authUid funcionam sem liberar outro u
   await assertFails(getDoc(doc(appDb(profiles.inativo), "caixas", "caixa_a_1")));
 });
 
+test("usuarios: master local cria somente convite pendente no proprio tenant", async () => {
+  const convite = {
+    authUid: "",
+    nome: "Novo Vendedor",
+    nomeCompleto: "Novo Vendedor",
+    email: "novo@tenant-a.com",
+    emailNormalizado: "novo@tenant-a.com",
+    tipoUsuario: "vendedor",
+    tipoUsuarioOficial: "vendedor",
+    cargoId: "cargo_vendedor",
+    cargoNome: "Vendedor",
+    status: "CONVITE_PENDENTE",
+    acessoLiberado: false,
+    convitePendente: true,
+    provisionamentoAuth: "PENDENTE_BACKEND",
+    clientePlataformaId: profiles.masterA.tenant,
+    criadoPorUid: profiles.masterA.uid,
+    criadoEm: "2026-07-30T12:00:00-03:00"
+  };
+
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_a_1"), convite));
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_captador_equipes"), {
+    ...convite,
+    email: "captador@tenant-a.com",
+    emailNormalizado: "captador@tenant-a.com",
+    tipoUsuario: "captador",
+    tipoUsuarioOficial: "captador",
+    cargoId: "cargo_captador",
+    cargoNome: "Captador",
+    equipeId: "equipe_a_1",
+    equipesIds: ["equipe_a_1", "equipe_a_2"],
+    equipeIds: ["equipe_a_1", "equipe_a_2"]
+  }));
+  await assertSucceeds(getDocs(query(
+    collection(appDb(profiles.masterA), "usuarios"),
+    where("clientePlataformaId", "==", profiles.masterA.tenant),
+    limit(120)
+  )));
+  await assertFails(setDoc(doc(appDb(profiles.masterB), "usuarios", "convite_tenant_cruzado"), convite));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "usuarios", "convite_vendedor"), {
+    ...convite,
+    criadoPorUid: profiles.vendedor1.uid
+  }));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_liberado"), {
+    ...convite,
+    acessoLiberado: true
+  }));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_auth_vinculado"), {
+    ...convite,
+    authUid: "uid_indevido"
+  }));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_master_global"), {
+    ...convite,
+    tipoUsuario: "master_global"
+  }));
+});
 test("usuarios do chat: perfis ativos listam somente o proprio tenant", async () => {
   for (const perfil of [profiles.masterA, profiles.vendedor1, profiles.financeiroA, profiles.auditorA, profiles.captadorA]) {
     const consulta = query(
@@ -508,6 +565,38 @@ test("chat: cria direta/equipe no tenant, envia mensagem e bloqueia auditor/dele
     equipeId: "equipe_1",
     participantesIds: [profiles.supervisor1.uid, profiles.vendedor1.uid]
   })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "conversas", "direta_vendedores"), conversa({
+    participantesIds: [profiles.vendedor1.uid, profiles.vendedor2.uid]
+  })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.supervisor1), "conversas", "direta_sup_v2"), conversa({
+    participantesIds: [profiles.supervisor1.uid, profiles.vendedor2.uid]
+  })));  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "conversas", "direta_master_financeiro"), conversa({
+    participantesIds: [profiles.masterA.uid, profiles.financeiroA.uid]
+  })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "conversas", "direta_vendedor_financeiro"), conversa({
+    participantesIds: [profiles.vendedor1.uid, profiles.financeiroA.uid]
+  })));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "usuarios", "financeiro_legado"), userDoc({
+      uid: "financeiro_sem_canonico_uid",
+      tenant: "tenant_a",
+      role: "financeiro"
+    }));
+  });
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "conversas", "direta_legado_sem_canonico"), conversa({
+    participantesIds: [profiles.masterA.uid, "financeiro_sem_canonico_uid"]
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "conversas", "direta_outro_tenant"), conversa({
+    participantesIds: [profiles.masterA.uid, profiles.masterB.uid]
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "conversas", "equipe_vendedor"), conversa({
+    tipo: "EQUIPE",
+    equipeId: "equipe_1",
+    participantesIds: [profiles.supervisor1.uid, profiles.vendedor1.uid]
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "conversas", "equipe_1", "mensagens", "msg_equipe_v1"), mensagem({
+    conversaId: "equipe_1"
+  })));
   await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1", "mensagens", "msg_v1_2"), mensagem()));
   await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "notificacoes", "chat_msg_v1_sup1"), tenantFields({
     tipo: "MENSAGEM_CHAT",
@@ -529,6 +618,51 @@ test("chat: cria direta/equipe no tenant, envia mensagem e bloqueia auditor/dele
   await assertFails(deleteDoc(doc(appDb(profiles.masterA), "conversas", "conversa_a_1")));
 });
 
+test("chat: presenca propria e fotos respeitam tenant e modo leitura", async () => {
+  const presenca = tenantFields({
+    usuarioId: profiles.vendedor1.uid,
+    nome: "Vendedor",
+    cargo: "vendedor",
+    status: "ONLINE",
+    diaTrabalho: true,
+    caixaFechado: false,
+    ultimaAtividadeEm: "ts",
+    atualizadoEm: "ts"
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "presencas_chat", profiles.vendedor1.uid), presenca));
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterA), "presencas_chat", profiles.vendedor1.uid)));
+  await assertSucceeds(getDocs(query(
+    collection(appDb(profiles.supervisor1), "presencas_chat"),
+    where("clientePlataformaId", "==", profiles.supervisor1.tenant),
+    limit(180)
+  )));
+  await assertFails(setDoc(doc(appDb(profiles.supervisor1), "presencas_chat", profiles.vendedor1.uid), {
+    ...presenca,
+    usuarioId: profiles.supervisor1.uid
+  }));
+  await assertFails(getDoc(doc(appDb(profiles.masterB), "presencas_chat", profiles.vendedor1.uid)));
+  await assertFails(deleteDoc(doc(appDb(profiles.vendedor1), "presencas_chat", profiles.vendedor1.uid)));
+
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1", "mensagens", "foto_v1"), mensagem({
+    tipo: "IMAGEM",
+    texto: "",
+    imagemUrl: "https://firebasestorage.googleapis.com/foto.png",
+    imagemPath: `tenants/${profiles.vendedor1.tenant}/chat/conversa_a_1/foto_v1/foto.png`,
+    imagemNome: "foto.png",
+    imagemMime: "image/png",
+    imagemTamanho: 1024
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1", "mensagens", "foto_outro_tenant"), mensagem({
+    tipo: "IMAGEM",
+    texto: "",
+    imagemUrl: "https://firebasestorage.googleapis.com/foto.png",
+    imagemPath: "tenants/tenant_b/chat/conversa_a_1/foto.png",
+    imagemNome: "foto.png",
+    imagemMime: "image/png",
+    imagemTamanho: 1024
+  })));
+
+});
 test("logs: create permitido, update/delete bloqueados", async () => {
   await assertSucceeds(setDoc(doc(appDb(profiles.financeiroA), "logs", "log_1"), tenantFields({ tipoAcao: "TESTE", usuarioId: profiles.financeiroA.uid, criadoEm: "ts" })));
   await assertSucceeds(getDocs(query(collection(appDb(profiles.gerenteA), "logs"), where("clientePlataformaId", "==", "tenant_a"), limit(10))));
@@ -603,4 +737,43 @@ test("clientes: vendedor cria somente cliente proprio e nao altera cliente de ou
   await assertFails(updateDoc(doc(appDb(profiles.vendedor2), "clientes_operacionais", "cliente_a_1"), { statusAtendimento: "EM_ATENDIMENTO" }));
   await assertSucceeds(getDoc(doc(appDb(profiles.auditorA), "clientes_operacionais", "cliente_a_1")));
   await assertFails(updateDoc(doc(appDb(profiles.auditorA), "clientes_operacionais", "cliente_a_1"), { statusAtendimento: "EM_ATENDIMENTO" }));
+});
+
+test("configuracoes: Master Local grava e perfis do tenant somente leem", async () => {
+  const config = tenantFields({
+    versao: 1,
+    regrasOperacionais: {
+      vendaExigeCaixaAberto: true,
+      vendaExigeCadastroCompleto: true
+    },
+    clientes: {
+      status: [{ chave: "ATIVO", nome: "Ativo", cor: "#16a34a" }],
+      score: { ativo: true, minimo: 0, maximo: 100 },
+      atraso: { amareloDias: 5, laranjaDias: 10, vermelhoDias: 15, inadimplenteDias: 5 }
+    },
+    leads: {
+      status: [{ chave: "RECEBIDA", nome: "Recebida", cor: "#2563eb" }]
+    },
+    atualizadoPorUid: profiles.masterA.uid,
+    atualizadoPorNome: "Master A",
+    atualizadoEm: "ts",
+    atualizadoEmTexto: "2026-07-30T12:00:00.000Z"
+  });
+
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "configuracoes_empresas", "tenant_a"), config));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_a")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.supervisor1), "configuracoes_empresas", "tenant_a")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.financeiroA), "configuracoes_empresas", "tenant_a")));
+  await assertFails(getDoc(doc(appDb(profiles.masterB), "configuracoes_empresas", "tenant_a")));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_a"), {
+    "regrasOperacionais.vendaExigeCaixaAberto": false
+  }));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.masterA), "configuracoes_empresas", "tenant_a"), {
+    "regrasOperacionais.vendaExigeCaixaAberto": false,
+    atualizadoPorUid: profiles.masterA.uid,
+    atualizadoPorNome: "Master A",
+    atualizadoEm: "ts2",
+    atualizadoEmTexto: "2026-07-30T13:00:00.000Z"
+  }));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "configuracoes_empresas", "tenant_a")));
 });

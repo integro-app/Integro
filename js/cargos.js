@@ -1,6 +1,6 @@
-﻿// ========================================
-// CARGOS - MASTER LOCAL ÃNTEGRO
-// CRUD de cargos + permissÃµes por mÃ³dulo
+// ========================================
+// CARGOS - MASTER LOCAL ÍNTEGRO
+// CRUD de cargos + permissões por módulo
 // ========================================
 
 const MODULOS_PERMISSAO = [
@@ -71,7 +71,7 @@ async function carregarPermissoesCargo() {
     }));
 
   } catch (erro) {
-    console.error("Erro ao carregar permissÃµes dos cargos:", erro);
+    console.error("Erro ao carregar permissões dos cargos:", erro);
     permissoesCargoCache = [];
   }
 }
@@ -80,64 +80,29 @@ async function carregarPermissoesCargo() {
 // RENDER CARGOS
 // ===============================
 
-function renderCargos() {
-  const el = document.getElementById("listaCargos");
-  if (!el) return;
-
-  const cargos = State.getCargos ? State.getCargos() : [];
-  const usuarios = State.getUsuarios ? State.getUsuarios() : [];
-
-  if (!cargos.length) {
-    el.innerHTML = `
-      <div class="placeholder">
-        Nenhum cargo cadastrado ainda.
-        <br><br>
-        <button class="primary-btn" onclick="abrirNovoCargo()">Criar primeiro cargo</button>
-      </div>
-    `;
-    return;
-  }
-
-  el.classList.remove("placeholder");
-  el.classList.add("list");
-
-  el.innerHTML = cargos.map(cargo => {
-    const usuariosVinculados = usuarios.filter(u => u.cargoId === cargo.id).length;
-    const qtdPermissoes = permissoesCargoCache.filter(p => p.cargoId === cargo.id).length;
-    const ativo = cargo.ativo !== false;
-
-    return `
-      <div class="list-item">
-        <div>
-          <strong>${cargo.nome || "Cargo sem nome"}</strong>
-          <small>${ativo ? "Ativo" : "Inativo"} â€¢ ${usuariosVinculados} usuÃ¡rio(s) vinculado(s)</small>
-          <small>${qtdPermissoes} mÃ³dulo(s) com permissÃµes configuradas</small>
-        </div>
-
-        <div class="item-actions">
-          <button class="ghost-btn" onclick="abrirEditarCargo('${cargo.id}')">Editar</button>
-          <button class="ghost-btn" onclick="abrirPermissoesCargo('${cargo.id}')">PermissÃµes</button>
-          <button class="${ativo ? "danger-btn" : "success-btn"}" onclick="alterarStatusCargo('${cargo.id}', ${!ativo})">
-            ${ativo ? "Desativar" : "Ativar"}
-          </button>
-
-          <button class="danger-btn" onclick="excluirCargo('${cargo.id}')">
-  Excluir
-</button>
-        </div>
-      </div>
-    `;
-  }).join("");
+let filtroStatusCargosEstrutura = "";
+function abrirFiltrosCargosEstrutura(){
+  abrirDrawer("Filtros de cargos","Selecione a situação exibida.",'<div class="usuario-form-section"><div class="form-group"><label for="filtroStatusCargosDrawer">Situação</label><select id="filtroStatusCargosDrawer"><option value="">TODOS OS CARGOS</option><option value="ATIVO">ATIVOS</option><option value="INATIVO">INATIVOS</option></select></div></div><div class="drawer-actions usuario-drawer-actions"><button class="ghost-btn" onclick="filtroStatusCargosEstrutura=\'\';fecharDrawer();renderCargos()">Limpar</button><button class="primary-btn" onclick="filtroStatusCargosEstrutura=document.getElementById(\'filtroStatusCargosDrawer\').value;fecharDrawer();renderCargos()">Aplicar filtros</button></div>');
+  setTimeout(()=>{const c=document.getElementById("filtroStatusCargosDrawer");if(c)c.value=filtroStatusCargosEstrutura},0);
 }
-
-// ===============================
-// FORMULÃRIO CARGO
+function renderCargos(){
+ const el=document.getElementById("listaCargos");if(!el)return;
+ const todos=State.getCargos?State.getCargos():[],usuarios=State.getUsuarios?State.getUsuarios():[],termo=String(document.getElementById("buscaCargos")?.value||"").trim().toLowerCase();
+ const cargos=todos.filter(c=>{const ativo=c.ativo!==false;return(!filtroStatusCargosEstrutura||(filtroStatusCargosEstrutura==="ATIVO"?ativo:!ativo))&&(!termo||[c.nome,c.descricao,c.tipoUsuario].some(v=>String(v||"").toLowerCase().includes(termo)))});
+ const ativos=todos.filter(c=>c.ativo!==false).length,vinculados=usuarios.filter(u=>u.cargoId).length,configurados=new Set(permissoesCargoCache.map(p=>p.cargoId).filter(Boolean)).size;
+ const host=document.getElementById("cargosIndicadores");if(host)host.innerHTML=[["admin_panel_settings","Total",todos.length],["verified","Ativos",ativos],["block","Inativos",todos.length-ativos],["group","Usuários vinculados",vinculados],["shield","Com permissões",configurados]].map(([i,r,v])=>'<div class="estrutura-kpi"><span class="material-symbols-rounded">'+i+'</span><div><small>'+r+'</small><strong>'+v+'</strong><em>Atualização em tempo real</em></div></div>').join("");
+ const resumo=document.getElementById("cargosFiltroResumo");if(resumo)resumo.textContent=filtroStatusCargosEstrutura||"Todos os cargos";const contador=document.getElementById("cargosContador");
+ if(!cargos.length){el.innerHTML='<div class="estrutura-empty"><span class="material-symbols-rounded">admin_panel_settings</span><strong>Nenhum cargo encontrado</strong><p>Ajuste a pesquisa ou crie um novo cargo.</p></div>';if(contador)contador.textContent="0 cargos exibidos";return}
+ const linhas=cargos.map(c=>{const ativo=c.ativo!==false,uv=usuarios.filter(u=>u.cargoId===c.id).length,qp=permissoesCargoCache.filter(p=>p.cargoId===c.id).length;return '<tr><td data-label="Cargo"><div class="estrutura-identidade"><span class="usuario-avatar">'+String(c.nome||"C").slice(0,2).toUpperCase()+'</span><div><strong>'+String(c.nome||"Cargo sem nome")+'</strong><small>'+String(c.descricao||"Função operacional")+'</small></div></div></td><td data-label="Perfil">'+String(c.tipoUsuario||c.perfil||"Personalizado").replace(/_/g," ")+'</td><td data-label="Usuários">'+uv+'</td><td data-label="Permissões">'+qp+' módulo'+(qp===1?"":"s")+'</td><td data-label="Status"><span class="usuario-status '+(ativo?"is-success":"is-danger")+'">'+(ativo?"ATIVO":"INATIVO")+'</span></td><td data-label="Ações"><div class="usuario-table-actions"><button class="ghost-btn" onclick="abrirEditarCargo(\''+c.id+'\')">Editar</button><button class="ghost-btn" onclick="abrirPermissoesCargo(\''+c.id+'\')">Permissões</button><button class="'+(ativo?"danger-btn":"success-btn")+' usuario-action-muted" onclick="alterarStatusCargo(\''+c.id+'\','+(!ativo)+')">'+(ativo?"Desativar":"Ativar")+'</button><button class="danger-btn usuario-action-muted" onclick="excluirCargo(\''+c.id+'\')">Excluir</button></div></td></tr>'}).join("");
+ el.innerHTML='<div class="estrutura-table-scroll"><table class="estrutura-table"><thead><tr><th>Cargo</th><th>Perfil</th><th>Usuários</th><th>Permissões</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';if(contador)contador.textContent=cargos.length+' cargo'+(cargos.length===1?'':'s')+' exibido'+(cargos.length===1?'':'s');
+}
+// FORMUL// FORMULÁRIO CARGO
 // ===============================
 
 function abrirNovoCargo() {
   abrirDrawer(
     "Novo cargo",
-    "Crie uma funÃ§Ã£o operacional para esta empresa.",
+    "Crie uma função operacional para esta empresa.",
     formularioCargo()
   );
 }
@@ -146,7 +111,7 @@ function abrirEditarCargo(id) {
   const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
 
   if (!cargo) {
-    notificarIntegro("Cargo nÃ£o encontrado.");
+    notificarIntegro("Cargo não encontrado.");
     return;
   }
 
@@ -166,8 +131,8 @@ function formularioCargo(cargo = null) {
       </div>
 
       <div class="form-group full">
-        <label>DescriÃ§Ã£o</label>
-        <input id="cargoDescricao" placeholder="DescriÃ§Ã£o interna do cargo" value="${cargo?.descricao || ""}">
+        <label>Descrição</label>
+        <input id="cargoDescricao" placeholder="Descrição interna do cargo" value="${cargo?.descricao || ""}">
       </div>
 
       <div class="form-group">
@@ -181,7 +146,7 @@ function formularioCargo(cargo = null) {
       <div class="form-group">
         <label>Cor visual</label>
         <select id="cargoCor">
-          <option value="#ff8a00" ${cargo?.cor === "#ff8a00" ? "selected" : ""}>Laranja ÃNTEGRO</option>
+          <option value="#ff8a00" ${cargo?.cor === "#ff8a00" ? "selected" : ""}>Laranja ÍNTEGRO</option>
           <option value="#1683ff" ${cargo?.cor === "#1683ff" ? "selected" : ""}>Azul</option>
           <option value="#16c784" ${cargo?.cor === "#16c784" ? "selected" : ""}>Verde</option>
           <option value="#8b5cf6" ${cargo?.cor === "#8b5cf6" ? "selected" : ""}>Roxo</option>
@@ -192,7 +157,7 @@ function formularioCargo(cargo = null) {
 
     <div class="drawer-actions">
       <button class="primary-btn drawer-primary" onclick="${cargo ? `salvarCargo('${cargo.id}')` : "salvarCargo()"}">
-        ${cargo ? "Salvar alteraÃ§Ãµes" : "Criar cargo"}
+        ${cargo ? "Salvar alterações" : "Criar cargo"}
       </button>
     </div>
   `;
@@ -272,12 +237,12 @@ function abrirPermissoesCargo(id) {
   const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
 
   if (!cargo) {
-    notificarIntegro("Cargo nÃ£o encontrado.");
+    notificarIntegro("Cargo não encontrado.");
     return;
   }
 
   abrirDrawer(
-    "PermissÃµes do cargo",
+    "Permissões do cargo",
     cargo.nome || "Cargo",
     formularioPermissoesCargo(cargo)
   );
@@ -311,7 +276,7 @@ function formularioPermissoesCargo(cargo) {
 
     <div class="drawer-actions">
       <button class="primary-btn drawer-primary" onclick="salvarPermissoesCargo('${cargo.id}')">
-        Salvar permissÃµes
+        Salvar permissões
       </button>
     </div>
   `;
@@ -367,14 +332,14 @@ async function salvarPermissoesCargo(cargoId) {
 
     await batch.commit();
 
-    notificarIntegro("PermissÃµes salvas com sucesso.");
+    notificarIntegro("Permissões salvas com sucesso.");
 
     fecharDrawer();
     await carregarCargos();
 
   } catch (erro) {
-    console.error("Erro ao salvar permissÃµes:", erro);
-    notificarIntegro("Erro ao salvar permissÃµes: " + erro.message);
+    console.error("Erro ao salvar permissões:", erro);
+    notificarIntegro("Erro ao salvar permissões: " + erro.message);
   }
 }
 
@@ -385,14 +350,14 @@ function checked(id) {
 function formatarModulo(modulo) {
   const nomes = {
     dashboard: "Dashboard",
-    usuarios: "UsuÃ¡rios",
+    usuarios: "Usuários",
     clientes: "Clientes",
     vendas: "Vendas",
-    cobrancas: "CobranÃ§as",
+    cobrancas: "Cobranças",
     caixas: "Caixas",
-    solicitacoes: "SolicitaÃ§Ãµes",
-    relatorios: "RelatÃ³rios",
-    configuracoes: "ConfiguraÃ§Ãµes",
+    solicitacoes: "Solicitações",
+    relatorios: "Relatórios",
+    configuracoes: "Configurações",
     auditoria: "Auditoria"
   };
 
@@ -405,7 +370,7 @@ async function excluirCargo(id) {
     const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
 
     if (!cargo) {
-      notificarIntegro("Cargo nÃ£o encontrado.");
+      notificarIntegro("Cargo não encontrado.");
       return;
     }
 
@@ -413,14 +378,14 @@ async function excluirCargo(id) {
 
     if (usuariosVinculados > 0) {
       notificarIntegro(
-        "NÃ£o Ã© possÃ­vel excluir este cargo.\n\n" +
-        "Existem " + usuariosVinculados + " usuÃ¡rio(s) vinculado(s) a ele.\n\n" +
-        "Remova ou altere o cargo desses usuÃ¡rios antes de excluir."
+        "Não é possível excluir este cargo.\n\n" +
+        "Existem " + usuariosVinculados + " usuário(s) vinculado(s) a ele.\n\n" +
+        "Remova ou altere o cargo desses usuários antes de excluir."
       );
       return;
     }
 
-    if (!confirm("Deseja excluir definitivamente o cargo '" + (cargo.nome || "sem nome") + "'?\n\nAs permissÃµes vinculadas tambÃ©m serÃ£o removidas.")) {
+    if (!confirm("Deseja excluir definitivamente o cargo '" + (cargo.nome || "sem nome") + "'?\n\nAs permissões vinculadas também serão removidas.")) {
       return;
     }
 
@@ -439,7 +404,7 @@ async function excluirCargo(id) {
 
     await batch.commit();
 
-    notificarIntegro("Cargo excluÃ­do com sucesso.");
+    notificarIntegro("Cargo excluído com sucesso.");
 
     await carregarCargos();
 

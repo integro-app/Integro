@@ -17,7 +17,7 @@
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
     rel="stylesheet">
-  <link href="css/integro-theme.css?v=20260729-scroll4" rel="stylesheet">
+  <link href="css/integro-theme.css?v=20260730-chat4" rel="stylesheet">
 
   <style>
     * {
@@ -2256,14 +2256,14 @@
       <!-- CLIENTES -->
       <section id="clientes" class="screen" style="display:none;">
 
-        <div class="panel">
+        <div class="panel integro-clientes-panel">
 
           <div style="
             display:grid;
             grid-template-columns:1fr auto auto auto;
             gap:12px;
             margin-bottom:20px;
-          " class="busca-grid">
+          " class="busca-grid clientes-toolbar integro-data-toolbar">
 
             <input
               id="buscaClienteInput"
@@ -2325,7 +2325,7 @@
             "
           ></div>
 
-          <div id="resumoClientesVendedor" class="clientes-kpis-vendedor" hidden></div>
+          <div id="resumoClientesVendedor" class="clientes-kpis-vendedor integro-client-kpis" hidden></div>
 
           <div id="listaClientes" class="grid" style="gap:14px;">
             <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
@@ -6521,8 +6521,9 @@
       <script src="js/services/financial-operations.js"></script>
       <script src="js/services/clientes-service.js"></script>
       <script src="js/services/indicacoes-service.js"></script>
-      <script src="js/services/chat-service.js?v=20260729-1"></script>
-      <script src="js/chat-ui.js?v=20260729-1"></script>
+      <script src="js/services/chat-service.js?v=20260730-chat4"></script>
+      <script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
+      <script src="js/chat-ui.js?v=20260730-chat4"></script>
 
       <script>
 
@@ -6686,6 +6687,13 @@
                   "";
 
                 localStorage.setItem("usuario", JSON.stringify(usuarioLogado));
+                if (tenantId && window.IntegroConfiguracoesEmpresa?.carregar) {
+                  try {
+                    await window.IntegroConfiguracoesEmpresa.carregar(tenantId);
+                  } catch (erroConfig) {
+                    console.warn("Nao foi possivel carregar as configuracoes operacionais da empresa.", erroConfig);
+                  }
+                }
               });
 
               await executarEtapaLoading("Preparando dados do vendedor...", 26, 38, async () => {
@@ -7669,8 +7677,8 @@ async function verificarCaixaAbertoDiaAnterior() {
                 n.vendedorId === usuarioLogado.id ||
                 String(n.publico || "").toUpperCase().includes("VENDEDOR") ||
                 String(n.destinatarioTipo || "").toUpperCase().includes("VENDEDOR");
-
-              if (pertenceAoUsuario && n.excluido !== true) notificacoesCache.push(n);
+              const ehMensagemChat = String(n.tipo || "").toUpperCase() === "MENSAGEM_CHAT" || String(n.origemTipo || "").toUpperCase() === "CHAT_INTERNO";
+              if (pertenceAoUsuario && !ehMensagemChat && n.excluido !== true) notificacoesCache.push(n);
             });
 
             atualizarContadorNotificacoes();
@@ -9291,7 +9299,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
         function renderTabelaClientesVendedor(lista) {
           const esc=valor=>String(valor??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
-          return `<div class="clientes-table-wrap-vendedor integro-data-frame"><table class="clientes-table-vendedor"><thead><tr><th>Cliente</th><th>Status</th><th>Telefone</th><th>Documento</th><th>Saldo em aberto</th></tr></thead><tbody>${lista.map(c=>{const ativo=clienteTemVendaAtiva(c.id)||numero(c.saldoDevedor||c.saldo||0)>.01;const status=String(c.statusAtendimento||c.statusCliente||(ativo?"ATIVO":possuiHistoricoVendaClienteVendedor(c)?"INATIVO":"AGUARDANDO_ATENDIMENTO")).replace(/_/g," ");return `<tr tabindex="0" role="button" onclick="abrirDetalheCliente('${esc(c.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ')abrirDetalheCliente('${esc(c.id)}')"><td data-label="Cliente"><strong>${esc(c.nome||c.nomeCompleto||c.apelido||"Cliente")}</strong></td><td data-label="Status"><span class="cliente-pill-vendedor">${esc(status)}</span></td><td data-label="Telefone">${esc(c.telefonePrincipal||c.telefone||c.telefoneNormalizado||"-")}</td><td data-label="Documento">${esc(c.documento||c.documentoNormalizado||"-")}</td><td data-label="Saldo">${moeda(numero(c.saldoDevedor||c.saldo||0))}</td></tr>`}).join("")}</tbody></table></div>`;
+          return `<div class="clientes-table-wrap-vendedor integro-data-frame"><table class="clientes-table-vendedor"><thead><tr><th>Cliente</th><th>Status</th><th>Telefone</th><th>Documento</th><th>Saldo em aberto</th></tr></thead><tbody>${lista.map(c=>{const ativo=clienteTemVendaAtiva(c.id)||numero(c.saldoDevedor||c.saldo||0)>.01;const status=String(c.statusAtendimento||c.statusCliente||(ativo?"ATIVO":possuiHistoricoVendaClienteVendedor(c)?"INATIVO":"AGUARDANDO_ATENDIMENTO")).replace(/_/g," ");return `<tr tabindex="0" role="button" onclick="abrirDetalheCliente('${esc(c.id)}')" onkeydown="if(event.key==='Enter'||event.key===' ')abrirDetalheCliente('${esc(c.id)}')"><td data-label="Cliente"><strong>${esc(c.nome||c.nomeCompleto||c.apelido||"Cliente")}</strong></td><td data-label="Status"><span class="cliente-pill-vendedor">${esc(status)}</span></td><td data-label="Telefone">${esc(c.telefonePrincipal||c.telefone||c.telefoneNormalizado||"-")}</td><td data-label="Documento">${esc(c.documento||c.documentoNormalizado||"-")}</td><td data-label="Saldo">${moeda(numero(c.saldoDevedor||c.saldo||0))}</td></tr>`}).join("")}</tbody></table></div><footer class="integro-table-footer" aria-live="polite">${lista.length.toLocaleString("pt-BR")} ${lista.length === 1 ? "cliente exibido" : "clientes exibidos"}</footer>`;
         }
 
         function clienteTemVendaAtiva(clienteId) {
@@ -20640,13 +20648,80 @@ async function verificarCaixaAbertoDiaAnterior() {
   function markupNavegacaoClientes(ativo) {
     return `<nav class="clientes-submenu-integro" aria-label="Áreas de Clientes">
       <button type="button" data-clientes-tab="consultar" class="${ativo === "consultar" ? "is-active" : ""}" onclick="abrirAreaClientesVendedor('clientes')"><span class="material-symbols-rounded">manage_search</span>Consultar</button>
-      <button type="button" data-clientes-tab="indicacoes" class="${ativo === "indicacoes" ? "is-active" : ""}" onclick="abrirAreaClientesVendedor('indicacoes')"><span class="material-symbols-rounded">campaign</span>Leads</button>
+      <div class="integro-clientes-dropdown-wrap"><button type="button" data-clientes-tab="indicacoes" class="${ativo === "indicacoes" || ativo === "relatorios" ? "is-active" : ""}" aria-haspopup="menu" aria-expanded="false" onclick="toggleSubmenuLeadsVendedor(event,this)"><span class="material-symbols-rounded">campaign</span>Leads<span class="material-symbols-rounded integro-clientes-chevron">expand_more</span></button><div class="integro-clientes-dropdown" data-leads-vendedor-menu hidden><button type="button" onclick="abrirAreaClientesVendedor('indicacoes')"><span class="material-symbols-rounded">manage_search</span>Gerenciar leads</button><button type="button" onclick="abrirRelatoriosLeadsVendedor()"><span class="material-symbols-rounded">monitoring</span>Relatórios</button></div></div>
       <span class="clientes-submenu-spacer" aria-hidden="true"></span>
       <button type="button" data-clientes-tab="criar" class="clientes-submenu-acao ${ativo === "criar" ? "is-active" : ""}" onclick="abrirCriacaoClienteVendedor()"><span class="material-symbols-rounded">person_add</span>Criar cliente</button>    </nav>`;
   }
 
+  function fecharSubmenuLeadsVendedor() {
+    document.querySelectorAll("[data-leads-vendedor-menu]").forEach(menu => menu.hidden = true);
+    document.querySelectorAll(".integro-clientes-dropdown-wrap > [data-clientes-tab='indicacoes']").forEach(botao => botao.setAttribute("aria-expanded", "false"));
+  }
+
+  window.toggleSubmenuLeadsVendedor = function(evento, botao) {
+    evento?.stopPropagation?.();
+    const menu = botao?.__submenuLeadsVendedor || botao?.nextElementSibling;
+    const abrir = Boolean(menu?.hidden);
+    fecharSubmenuLeadsVendedor();
+    if (!menu || !abrir || !botao) return;
+
+    botao.__submenuLeadsVendedor = menu;
+    document.body.appendChild(menu);
+    const rect = botao.getBoundingClientRect();
+    if (window.innerWidth <= 620) {
+      menu.style.left = "12px";
+      menu.style.right = "12px";
+      menu.style.top = "auto";
+      menu.style.bottom = "calc(12px + env(safe-area-inset-bottom))";
+      menu.style.width = "auto";
+    } else {
+      menu.style.left = `${Math.max(12, Math.min(rect.left, window.innerWidth - 232))}px`;
+      menu.style.right = "auto";
+      menu.style.top = `${rect.bottom + 8}px`;
+      menu.style.bottom = "auto";
+      menu.style.width = "220px";
+    }
+    menu.style.position = "fixed";
+    menu.hidden = false;
+    botao.setAttribute("aria-expanded", "true");
+  };
+
+  function garantirRelatoriosLeadsVendedor() {
+    let tela = document.getElementById("relatoriosLeadsVendedor");
+    if(tela) return tela;
+    tela = document.createElement("section");
+    tela.id = "relatoriosLeadsVendedor";
+    tela.className = "screen";
+    tela.style.display = "none";
+    tela.innerHTML = `<div class="panel"><div id="relatoriosLeadsVendedorConteudo"></div></div>`;
+    document.querySelector(".app > .main")?.appendChild(tela);
+    return tela;
+  }
+
+  function renderRelatoriosLeadsVendedor() {
+    const box = document.getElementById("relatoriosLeadsVendedorConteudo");
+    if(!box) return;
+    const lista = Array.isArray(indicacoesCache) ? indicacoesCache : [];
+    const status = new Map();
+    lista.forEach(item => { const chave = String(item.status || "RECEBIDA").toUpperCase(); status.set(chave, (status.get(chave) || 0) + 1); });
+    const convertidas = Number(status.get("CONVERTIDA") || 0);
+    const taxa = lista.length ? Math.round(convertidas * 1000 / lista.length) / 10 : 0;
+    const barras = [...status.entries()].sort((a,b)=>b[1]-a[1]).map(([nome,total]) => `<div class="integro-lead-report-row"><strong>${nome.replaceAll("_"," ")}</strong><div><span style="width:${lista.length ? Math.max(4,total*100/lista.length) : 0}%"></span></div><b>${total}</b></div>`).join("");
+    box.innerHTML = `<div class="integro-client-kpis"><div class="integro-client-kpi"><span class="material-symbols-rounded">group</span><div><small>Total</small><strong>${lista.length}</strong></div></div><div class="integro-client-kpi"><span class="material-symbols-rounded">check_circle</span><div><small>Convertidos</small><strong>${convertidas}</strong></div></div><div class="integro-client-kpi"><span class="material-symbols-rounded">monitoring</span><div><small>Conversão</small><strong>${taxa.toLocaleString("pt-BR")}%</strong></div></div></div><section class="integro-lead-report"><h3>Distribuição por status</h3>${barras || `<div class="integro-clientes-empty"><span class="material-symbols-rounded">monitoring</span><strong>Sem dados no período</strong></div>`}</section>`;
+  }
+
+  window.abrirRelatoriosLeadsVendedor = function() {
+    fecharSubmenuLeadsVendedor();
+    const tela = garantirRelatoriosLeadsVendedor();
+    window.trocarTela?.("relatoriosLeadsVendedor");
+    garantirNavegacaoClientesVendedor();
+    document.querySelectorAll(".clientes-submenu-integro [data-clientes-tab]").forEach(botao => botao.classList.toggle("is-active", botao.dataset.clientesTab === "indicacoes"));
+    document.querySelector('.menu-item[data-modulo="clientes"]')?.classList.add("active");
+    renderRelatoriosLeadsVendedor();
+    return tela;
+  };
   function garantirNavegacaoClientesVendedor() {
-    [["clientes", "consultar"], ["indicacoes", "indicacoes"], ["cadastroClienteVendedor", "criar"]].forEach(([id, ativo]) => {
+    [["clientes", "consultar"], ["indicacoes", "indicacoes"], ["relatoriosLeadsVendedor", "relatorios"], ["cadastroClienteVendedor", "criar"]].forEach(([id, ativo]) => {
       const tela = document.getElementById(id);
       const painel = tela?.querySelector(":scope > .panel");
       if (!painel) return;
@@ -20768,10 +20843,10 @@ async function verificarCaixaAbertoDiaAnterior() {
   if (typeof trocarTelaAnterior === "function") {
     window.trocarTela = function(id, elemento) {
       const resultado = trocarTelaAnterior.apply(this, arguments);
-      document.body.classList.toggle("modulo-clientes-vendedor", id === "clientes" || id === "indicacoes" || id === "cadastroClienteVendedor");
-      if (id === "clientes" || id === "indicacoes" || id === "cadastroClienteVendedor") {
+      document.body.classList.toggle("modulo-clientes-vendedor", id === "clientes" || id === "indicacoes" || id === "relatoriosLeadsVendedor" || id === "cadastroClienteVendedor");
+      if (id === "clientes" || id === "indicacoes" || id === "relatoriosLeadsVendedor" || id === "cadastroClienteVendedor") {
         garantirNavegacaoClientesVendedor();
-        const area = id === "indicacoes" ? "indicacoes" : (id === "cadastroClienteVendedor" ? "criar" : "consultar");
+        const area = id === "indicacoes" || id === "relatoriosLeadsVendedor" ? "indicacoes" : (id === "cadastroClienteVendedor" ? "criar" : "consultar");
         document.querySelectorAll(".clientes-submenu-integro button").forEach(botao => botao.classList.toggle("is-active", botao.dataset.clientesTab === area));
         const menuClientes = document.querySelector('.menu-item[data-modulo="clientes"]');
         document.querySelectorAll(".menu-item").forEach(item => item.classList.remove("active"));
@@ -20781,11 +20856,12 @@ async function verificarCaixaAbertoDiaAnterior() {
     };
   }
 
+  document.addEventListener("click", evento => { if(!evento.target.closest(".integro-clientes-dropdown-wrap")) fecharSubmenuLeadsVendedor(); });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", garantirNavegacaoClientesVendedor);
   else garantirNavegacaoClientesVendedor();
   garantirTelaCadastroClienteVendedor();
   garantirNavegacaoClientesVendedor();
-  const telaInicialClientes = ["clientes", "indicacoes", "cadastroClienteVendedor"].some(id => document.getElementById(id)?.style.display !== "none" && getComputedStyle(document.getElementById(id)).display !== "none");
+  const telaInicialClientes = ["clientes", "indicacoes", "relatoriosLeadsVendedor", "cadastroClienteVendedor"].some(id => { const tela = document.getElementById(id); return tela instanceof Element && tela.style.display !== "none" && getComputedStyle(tela).display !== "none"; });
   document.body.classList.toggle("modulo-clientes-vendedor", telaInicialClientes);
   setTimeout(garantirNavegacaoClientesVendedor, 500);
   setTimeout(garantirNavegacaoClientesVendedor, 1500);

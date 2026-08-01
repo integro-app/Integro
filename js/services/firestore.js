@@ -461,6 +461,7 @@ const FirestoreService = {
         tipoUsuario,
         cargoId,
         equipeId,
+        equipesIds,
         status,
         tenantId
       } = dadosUsuario;
@@ -469,18 +470,78 @@ const FirestoreService = {
       if (!nome || !email) {
         throw new Error("Nome e email são obrigatórios.");
       }
+      const tenantAtual = State.getTenantId();
+      const autor = State.getUsuario?.() || State.usuario || {};
+      const authUidAtual = firebase.auth().currentUser?.uid || State.authUid || autor.authUid || "";
+      const perfilAutor = String(autor.tipoUsuario || autor.cargoChave || "").toLowerCase();
+      const emailNormalizado = String(email || "").trim().toLowerCase();
+      if (!tenantId || String(tenantId) !== String(tenantAtual || "")) {
+        throw new Error("Empresa inválida para criação do usuário.");
+      }
+      if (perfilAutor !== "master_local") {
+        throw new Error("Somente o Master Local pode criar usuários da empresa.");
+      }
+      if (!authUidAtual) {
+        throw new Error("Sessão de autenticação inválida. Entre novamente antes de criar o usuário.");
+      }
+      if (!cargoId) {
+        throw new Error("Cargo é obrigatório.");
+      }
 
-      // Buscar cargo e equipe do estado
+      const normalizarEmailUsuario = valor => String(valor || "").trim().toLowerCase();
+      const duplicadoNoEstado = (State.getUsuarios?.() || []).find(usuario =>
+        normalizarEmailUsuario(usuario.emailNormalizado || usuario.email) === emailNormalizado
+      );
+      if (duplicadoNoEstado) {
+        const erroDuplicado = new Error("Já existe um cadastro para este e-mail nesta empresa.");
+        erroDuplicado.code = "usuario/email-duplicado";
+        erroDuplicado.usuarioId = duplicadoNoEstado.id || "";
+        throw erroDuplicado;
+      }
+
+      const usuariosTenant = await db.collection(CONFIG.COLECOES.USUARIOS)
+        .where("clientePlataformaId", "==", tenantId)
+        .get();
+      const duplicadoServidor = usuariosTenant.docs.find(documento => {
+        const dados = documento.data() || {};
+        return normalizarEmailUsuario(dados.emailNormalizado || dados.email) === emailNormalizado;
+      });
+      if (duplicadoServidor) {
+        const erroDuplicado = new Error("Já existe um cadastro para este e-mail nesta empresa.");
+        erroDuplicado.code = "usuario/email-duplicado";
+        erroDuplicado.usuarioId = duplicadoServidor.id;
+        throw erroDuplicado;
+      }
+// Buscar cargo e equipe do estado
       const cargo = State.encontrarCargoPorId(cargoId);
       const equipe = State.encontrarEquipePorId(equipeId);
       const acessoUsuario = FirestoreService.normalizarDadosAcessoUsuario(tipoUsuario, cargo);
+      const idsEquipes = [...new Set((Array.isArray(equipesIds) ? equipesIds : [equipeId]).filter(Boolean).map(String))];
+      const equipesVinculadas = idsEquipes.map(id => State.encontrarEquipePorId(id)).filter(Boolean);
+      let permissoesCargo = cargo?.permissoes || {};
+      if (cargoId) {
+        try {
+          const permissaoSnap = await db.collection("permissoes_cargo").doc(cargoId).get();
+          if (permissaoSnap.exists) {
+            const dadosPermissao = permissaoSnap.data() || {};
+            permissoesCargo = dadosPermissao.permissoes || dadosPermissao;
+          }
+        } catch (erroPermissao) {
+          console.warn("Permissoes do cargo nao puderam ser carregadas; preservando base do cargo.", erroPermissao);
+        }
+      }
 
       // Criar documento em Firestore
-      const docRef = await db.collection(CONFIG.COLECOES.USUARIOS).add({
+      const conviteId = "convite_" + encodeURIComponent(tenantId + "|" + emailNormalizado)
+        .replace(/%/g, "_")
+        .slice(0, 700);
+      const docRef = db.collection(CONFIG.COLECOES.USUARIOS).doc(conviteId);
+      const dadosConvite = {
         authUid: "",
         nome,
         nomeCompleto: nome,
-        email: String(email || "").toLowerCase(),
+        email: emailNormalizado,
+        emailNormalizado,
         telefone,
         tipoUsuario: acessoUsuario.tipoUsuario,
         tipoUsuarioOficial: acessoUsuario.tipoUsuarioOficial,
@@ -490,27 +551,35 @@ const FirestoreService = {
         cargoId: cargoId || "",
         cargoNome: acessoUsuario.cargoNome,
         cargoChave: acessoUsuario.cargoChave,
-        permissoes: cargo?.permissoes || {},
+        permissoes: permissoesCargo,
+        permissoesCargo,
         usuarioInternoIntegro: acessoUsuario.usuarioInternoIntegro,
 
-        equipeId: equipeId || "",
-        equipeNome: equipe?.nome || "",
+        equipeId: equipeId || equipesVinculadas[0]?.id || "",
+        equipeNome: equipe?.nome || equipesVinculadas[0]?.nome || "",
+        equipesIds: equipesVinculadas.map(item => item.id),
+        equipeIds: equipesVinculadas.map(item => item.id),
+        equipesNomes: equipesVinculadas.map(item => item.nome || ""),
 
         status: "CONVITE_PENDENTE",
         statusSolicitado: status || CONFIG.STATUS_USUARIO.ATIVO,
         acessoLiberado: false,
         convitePendente: true,
         provisionamentoAuth: "PENDENTE_BACKEND",
+        origemCriacao: "MASTER_LOCAL_CONVITE",
 
         clientePlataformaId: tenantId,
         clientePlataformaNome: State.getEmpresaNome(),
 
         excluido: false,
 
-        criadoPorUid: State.authUid || "",
+        criadoPorUid: authUidAtual,
+        criadoPorId: State.usuarioId || authUidAtual,
         criadoPorNome: State.usuario?.nome || State.usuario?.email || "",
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      };
+
+      await docRef.set(dadosConvite);
 
       return {
         id: docRef.id,
@@ -540,17 +609,31 @@ const FirestoreService = {
         tipoUsuario,
         cargoId,
         equipeId,
+        equipesIds,
         status
       } = dadosAtualizacao;
 
       if (!nome) {
         throw new Error("Nome é obrigatório.");
       }
-
-      // Buscar cargo e equipe do estado
+// Buscar cargo e equipe do estado
       const cargo = State.encontrarCargoPorId(cargoId);
       const equipe = State.encontrarEquipePorId(equipeId);
       const acessoUsuario = FirestoreService.normalizarDadosAcessoUsuario(tipoUsuario, cargo);
+      const idsEquipes = [...new Set((Array.isArray(equipesIds) ? equipesIds : [equipeId]).filter(Boolean).map(String))];
+      const equipesVinculadas = idsEquipes.map(id => State.encontrarEquipePorId(id)).filter(Boolean);
+      let permissoesCargo = cargo?.permissoes || {};
+      if (cargoId) {
+        try {
+          const permissaoSnap = await db.collection("permissoes_cargo").doc(cargoId).get();
+          if (permissaoSnap.exists) {
+            const dadosPermissao = permissaoSnap.data() || {};
+            permissoesCargo = dadosPermissao.permissoes || dadosPermissao;
+          }
+        } catch (erroPermissao) {
+          console.warn("Permissoes do cargo nao puderam ser carregadas; preservando base do cargo.", erroPermissao);
+        }
+      }
 
       await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).update({
         nome,
@@ -564,11 +647,15 @@ const FirestoreService = {
         cargoId: cargoId || "",
         cargoNome: acessoUsuario.cargoNome,
         cargoChave: acessoUsuario.cargoChave,
-        permissoes: cargo?.permissoes || {},
+        permissoes: permissoesCargo,
+        permissoesCargo,
         usuarioInternoIntegro: acessoUsuario.usuarioInternoIntegro,
 
-        equipeId: equipeId || "",
-        equipeNome: equipe?.nome || "",
+        equipeId: equipeId || equipesVinculadas[0]?.id || "",
+        equipeNome: equipe?.nome || equipesVinculadas[0]?.nome || "",
+        equipesIds: equipesVinculadas.map(item => item.id),
+        equipeIds: equipesVinculadas.map(item => item.id),
+        equipesNomes: equipesVinculadas.map(item => item.nome || ""),
 
         status,
         acessoLiberado: status !== CONFIG.STATUS_USUARIO.BLOQUEADO && status !== CONFIG.STATUS_USUARIO.INATIVO,
@@ -1127,12 +1214,15 @@ const FirestoreService = {
   // ===============================
   async gravarLog(tipo, dados = {}) {
     try {
+      const usuarioAuthUid = firebase.auth().currentUser?.uid || State.authUid || State.usuario?.authUid || "";
       await db.collection(CONFIG.COLECOES.LOGS).add({
         tipo,
+        tipoAcao: tipo,
         dados,
-        usuarioId: State.usuarioId || "",
+        usuarioId: State.usuarioId || usuarioAuthUid || "",
+        usuarioAuthUid,
         usuarioNome: State.usuario?.nome || "",
-        clientePlataformaId: State.tenantId || "",
+        clientePlataformaId: State.getTenantId?.() || State.tenantId || "",
         criadoEm: firebase.firestore.FieldValue.serverTimestamp()
       });
       return true;

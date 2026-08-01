@@ -1,4 +1,8 @@
 {
+  "functions": {
+    "source": "functions",
+    "runtime": "nodejs20"
+  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -11,7 +15,21 @@
     "ignore": [
       "firebase.json",
       "**/.*",
-      "**/node_modules/**"
+      ".git/**",
+      ".github/**",
+      ".firebase/**",
+      "**/node_modules/**",
+      "functions/**",
+      "tests/**",
+      "scripts/**",
+      "docs/**",
+      "package.json",
+      "package-lock.json",
+      "firestore.rules",
+      "firestore.indexes.json",
+      "storage.rules",
+      "README.md",
+      "**/*.log"
     ]
   },
   "emulators": {

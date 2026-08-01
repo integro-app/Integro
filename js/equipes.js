@@ -1,5 +1,5 @@
-﻿// ========================================
-// EQUIPES - MASTER LOCAL ÃNTEGRO
+// ========================================
+// EQUIPES - MASTER LOCAL ÍNTEGRO
 // CRUD de equipes + supervisor + vendedores
 // ========================================
 
@@ -40,63 +40,23 @@ async function carregarEquipes() {
 // RENDER EQUIPES
 // ===============================
 
-function renderEquipes() {
-  const el = document.getElementById("listaEquipes");
-  if (!el) return;
-
-  const equipes = State.getEquipes ? State.getEquipes() : [];
-  const usuarios = State.getUsuarios ? State.getUsuarios() : [];
-
-  if (!equipes.length) {
-    el.innerHTML = `
-      <div class="placeholder">
-        Nenhuma equipe cadastrada ainda.
-        <br><br>
-        <button class="primary-btn" onclick="abrirNovaEquipe()">Criar primeira equipe</button>
-      </div>
-    `;
-    return;
-  }
-
-  el.classList.remove("placeholder");
-  el.classList.add("list");
-
-  el.innerHTML = equipes.map(equipe => {
-    const ativo = equipe.ativo !== false && String(equipe.status || "ATIVA").toUpperCase() !== "INATIVA";
-
-    const usuariosVinculados = usuarios.filter(u =>
-      u.equipeId === equipe.id ||
-      (Array.isArray(equipe.vendedoresIds) && equipe.vendedoresIds.includes(u.id))
-    ).length;
-
-    const qtdVendedores =
-      Number(equipe.quantidadeVendedores || 0) ||
-      (Array.isArray(equipe.vendedoresIds) ? equipe.vendedoresIds.length : 0);
-
-    return `
-      <div class="list-item">
-        <div>
-          <strong>${equipe.nome || "Equipe sem nome"}</strong>
-          <small>${ativo ? "Ativa" : "Inativa"} â€¢ ${qtdVendedores} vendedor(es) â€¢ ${usuariosVinculados} usuÃ¡rio(s) vinculado(s)</small>
-          <small>Supervisor: ${equipe.supervisorNome || "NÃ£o definido"}</small>
-          <small>${equipe.descricao || "Sem descriÃ§Ã£o"}</small>
-        </div>
-
-        <div class="item-actions">
-          <button class="ghost-btn" onclick="abrirEditarEquipe('${equipe.id}')">Editar</button>
-          <button class="ghost-btn" onclick="abrirGerenciarEquipe('${equipe.id}')">Gerenciar</button>
-          <button class="${ativo ? "danger-btn" : "success-btn"}" onclick="alterarStatusEquipe('${equipe.id}', ${!ativo})">
-            ${ativo ? "Desativar" : "Ativar"}
-          </button>
-          <button class="danger-btn" onclick="excluirEquipe('${equipe.id}')">Excluir</button>
-        </div>
-      </div>
-    `;
-  }).join("");
+let filtroStatusEquipesEstrutura = "";
+function abrirFiltrosEquipesEstrutura(){
+  abrirDrawer("Filtros de equipes","Selecione a situação exibida.",'<div class="usuario-form-section"><div class="form-group"><label for="filtroStatusEquipesDrawer">Situação</label><select id="filtroStatusEquipesDrawer"><option value="">TODAS AS EQUIPES</option><option value="ATIVA">ATIVAS</option><option value="INATIVA">INATIVAS</option></select></div></div><div class="drawer-actions usuario-drawer-actions"><button class="ghost-btn" onclick="filtroStatusEquipesEstrutura=\'\';fecharDrawer();renderEquipes()">Limpar</button><button class="primary-btn" onclick="filtroStatusEquipesEstrutura=document.getElementById(\'filtroStatusEquipesDrawer\').value;fecharDrawer();renderEquipes()">Aplicar filtros</button></div>');
+  setTimeout(()=>{const c=document.getElementById("filtroStatusEquipesDrawer");if(c)c.value=filtroStatusEquipesEstrutura},0);
 }
-
-// ===============================
-// FORMULÃRIO EQUIPE
+function renderEquipes(){
+  const el=document.getElementById("listaEquipes");if(!el)return;
+  const todas=State.getEquipes?State.getEquipes():[],usuarios=State.getUsuarios?State.getUsuarios():[],termo=String(document.getElementById("buscaEquipes")?.value||"").trim().toLowerCase();
+  const equipes=todas.filter(e=>{const ativo=e.ativo!==false&&String(e.status||"ATIVA").toUpperCase()!=="INATIVA";return(!filtroStatusEquipesEstrutura||(filtroStatusEquipesEstrutura==="ATIVA"?ativo:!ativo))&&(!termo||[e.nome,e.supervisorNome,e.descricao].some(v=>String(v||"").toLowerCase().includes(termo)))});
+  const ativas=todas.filter(e=>e.ativo!==false&&String(e.status||"ATIVA").toUpperCase()!=="INATIVA").length,semSupervisor=todas.filter(e=>!e.supervisorId&&!e.supervisorAuthUid&&!e.supervisorNome).length,vinculados=usuarios.filter(u=>u.equipeId||(u.equipesIds||u.equipeIds||[]).length).length;
+  const host=document.getElementById("equipesIndicadores");if(host)host.innerHTML=[["hub","Total",todas.length],["verified","Ativas",ativas],["block","Inativas",todas.length-ativas],["person_alert","Sem supervisor",semSupervisor],["groups","Usuários vinculados",vinculados]].map(([i,r,v])=>'<div class="estrutura-kpi"><span class="material-symbols-rounded">'+i+'</span><div><small>'+r+'</small><strong>'+v+'</strong><em>Atualização em tempo real</em></div></div>').join("");
+  const resumo=document.getElementById("equipesFiltroResumo");if(resumo)resumo.textContent=filtroStatusEquipesEstrutura||"Todas as equipes";const contador=document.getElementById("equipesContador");
+  if(!equipes.length){el.innerHTML='<div class="estrutura-empty"><span class="material-symbols-rounded">hub</span><strong>Nenhuma equipe encontrada</strong><p>Ajuste a pesquisa ou crie uma nova equipe.</p></div>';if(contador)contador.textContent="0 equipes exibidas";return}
+  const linhas=equipes.map(e=>{const ativo=e.ativo!==false&&String(e.status||"ATIVA").toUpperCase()!=="INATIVA",uv=usuarios.filter(u=>u.equipeId===e.id||(Array.isArray(u.equipesIds)&&u.equipesIds.includes(e.id))||(Array.isArray(e.vendedoresIds)&&e.vendedoresIds.includes(u.id))).length,vendedores=Number(e.quantidadeVendedores||0)||(Array.isArray(e.vendedoresIds)?e.vendedoresIds.length:0);return '<tr><td data-label="Equipe"><div class="estrutura-identidade"><span class="usuario-avatar">'+String(e.nome||"E").slice(0,2).toUpperCase()+'</span><div><strong>'+String(e.nome||"Equipe sem nome")+'</strong><small>'+String(e.descricao||"Sem descrição")+'</small></div></div></td><td data-label="Supervisor">'+String(e.supervisorNome||"Não definido")+'</td><td data-label="Vendedores">'+vendedores+'</td><td data-label="Usuários">'+uv+'</td><td data-label="Status"><span class="usuario-status '+(ativo?"is-success":"is-danger")+'">'+(ativo?"ATIVA":"INATIVA")+'</span></td><td data-label="Ações"><div class="usuario-table-actions"><button class="ghost-btn" onclick="abrirEditarEquipe(\''+e.id+'\')">Editar</button><button class="ghost-btn" onclick="abrirGerenciarEquipe(\''+e.id+'\')">Gerenciar</button><button class="'+(ativo?"danger-btn":"success-btn")+' usuario-action-muted" onclick="alterarStatusEquipe(\''+e.id+'\','+(!ativo)+')">'+(ativo?"Desativar":"Ativar")+'</button><button class="danger-btn usuario-action-muted" onclick="excluirEquipe(\''+e.id+'\')">Excluir</button></div></td></tr>'}).join("");
+  el.innerHTML='<div class="estrutura-table-scroll"><table class="estrutura-table"><thead><tr><th>Equipe</th><th>Supervisor</th><th>Vendedores</th><th>Usuários</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';if(contador)contador.textContent=equipes.length+' equipe'+(equipes.length===1?'':'s')+' exibida'+(equipes.length===1?'':'s');
+}
+// FORMUL// FORMULÁRIO EQUIPE
 // ===============================
 
 function abrirNovaEquipe() {
@@ -111,7 +71,7 @@ function abrirEditarEquipe(id) {
   const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
 
   if (!equipe) {
-    notificarIntegro("Equipe nÃ£o encontrada.");
+    notificarIntegro("Equipe não encontrada.");
     return;
   }
 
@@ -127,12 +87,12 @@ function formularioEquipe(equipe = null) {
     <div class="form-grid">
       <div class="form-group full">
         <label>Nome da equipe</label>
-        <input id="equipeNome" placeholder="Ex: Norte, Centro, CobranÃ§a 01" value="${equipe?.nome || ""}">
+        <input id="equipeNome" placeholder="Ex: Norte, Centro, Cobrança 01" value="${equipe?.nome || ""}">
       </div>
 
       <div class="form-group full">
-        <label>DescriÃ§Ã£o</label>
-        <input id="equipeDescricao" placeholder="DescriÃ§Ã£o interna da equipe" value="${equipe?.descricao || ""}">
+        <label>Descrição</label>
+        <input id="equipeDescricao" placeholder="Descrição interna da equipe" value="${equipe?.descricao || ""}">
       </div>
 
       <div class="form-group">
@@ -146,7 +106,7 @@ function formularioEquipe(equipe = null) {
       <div class="form-group">
         <label>Cor visual</label>
         <select id="equipeCor">
-          <option value="#ff8a00" ${equipe?.cor === "#ff8a00" ? "selected" : ""}>Laranja ÃNTEGRO</option>
+          <option value="#ff8a00" ${equipe?.cor === "#ff8a00" ? "selected" : ""}>Laranja ÍNTEGRO</option>
           <option value="#1683ff" ${equipe?.cor === "#1683ff" ? "selected" : ""}>Azul</option>
           <option value="#16c784" ${equipe?.cor === "#16c784" ? "selected" : ""}>Verde</option>
           <option value="#8b5cf6" ${equipe?.cor === "#8b5cf6" ? "selected" : ""}>Roxo</option>
@@ -157,7 +117,7 @@ function formularioEquipe(equipe = null) {
 
     <div class="drawer-actions">
       <button class="primary-btn drawer-primary" onclick="${equipe ? `salvarEquipe('${equipe.id}')` : "salvarEquipe()"}">
-        ${equipe ? "Salvar alteraÃ§Ãµes" : "Criar equipe"}
+        ${equipe ? "Salvar alterações" : "Criar equipe"}
       </button>
     </div>
   `;
@@ -230,7 +190,7 @@ function abrirGerenciarEquipe(id) {
   const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
 
   if (!equipe) {
-    notificarIntegro("Equipe nÃ£o encontrada.");
+    notificarIntegro("Equipe não encontrada.");
     return;
   }
 
@@ -261,7 +221,7 @@ function formularioGerenciarEquipe(equipe) {
           ${s.nomeCompleto || s.nome || s.email}
         </option>
       `).join("")
-    : `<option value="">Nenhum supervisor disponÃ­vel</option>`;
+    : `<option value="">Nenhum supervisor disponível</option>`;
 
   const vendedoresSelecionados = Array.isArray(equipe.vendedoresIds)
     ? equipe.vendedoresIds
@@ -283,12 +243,12 @@ function formularioGerenciarEquipe(equipe) {
           </label>
         `;
       }).join("")
-    : `<div class="placeholder">Nenhum vendedor disponÃ­vel.</div>`;
+    : `<div class="placeholder">Nenhum vendedor disponível.</div>`;
 
   return `
     <div class="form-grid">
       <div class="form-group full">
-        <label>Supervisor responsÃ¡vel</label>
+        <label>Supervisor responsável</label>
         <select id="equipeSupervisorId">
           <option value="">Sem supervisor</option>
           ${supervisorOptions}
@@ -315,7 +275,7 @@ async function salvarGerenciamentoEquipe(id) {
     const usuarios = State.getUsuarios ? State.getUsuarios() : [];
 
     if (!equipe) {
-      notificarIntegro("Equipe nÃ£o encontrada.");
+      notificarIntegro("Equipe não encontrada.");
       return;
     }
 
@@ -378,7 +338,7 @@ async function salvarGerenciamentoEquipe(id) {
 }
 
 // ===============================
-// STATUS / EXCLUSÃƒO
+// STATUS / EXCLUSÃO
 // ===============================
 
 async function alterarStatusEquipe(id, ativo) {
@@ -403,7 +363,7 @@ async function excluirEquipe(id) {
     const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
 
     if (!equipe) {
-      notificarIntegro("Equipe nÃ£o encontrada.");
+      notificarIntegro("Equipe não encontrada.");
       return;
     }
 
@@ -413,9 +373,9 @@ async function excluirEquipe(id) {
 
     if (totalVinculados > 0) {
       notificarIntegro(
-        "NÃ£o Ã© possÃ­vel excluir esta equipe.\n\n" +
-        "Existem " + totalVinculados + " usuÃ¡rio(s) vinculado(s) a ela.\n\n" +
-        "Remova os usuÃ¡rios da equipe antes de excluir."
+        "Não é possível excluir esta equipe.\n\n" +
+        "Existem " + totalVinculados + " usuário(s) vinculado(s) a ela.\n\n" +
+        "Remova os usuários da equipe antes de excluir."
       );
       return;
     }
@@ -426,7 +386,7 @@ async function excluirEquipe(id) {
 
     await db.collection("equipes").doc(id).delete();
 
-    notificarIntegro("Equipe excluÃ­da com sucesso.");
+    notificarIntegro("Equipe excluída com sucesso.");
 
     await carregarEquipes();
 

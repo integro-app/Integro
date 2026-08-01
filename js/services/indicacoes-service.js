@@ -830,7 +830,7 @@
   }
 
   function marcarIndicacaoNaoConvertida(indicacaoId, motivo, usuario = {}) {
-    if (!texto(motivo)) throw new Error("Motivo obrigatÃ³rio para nÃ£o conversÃ£o.");
+    if (!texto(motivo)) throw new Error("Motivo obrigatório para não conversão.");
     const motivoFinal = MOTIVOS_NAO_CONVERSAO.includes(normalizarStatusIndicacao(motivo)) ? normalizarStatusIndicacao(motivo) : "OUTRO";
     const agora = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
     return atualizarStatusIndicacao(indicacaoId, {
@@ -843,7 +843,7 @@
   }
 
   function marcarIndicacaoRecusada(indicacaoId, motivo, usuario = {}) {
-    if (!texto(motivo)) throw new Error("Motivo obrigatÃ³rio para recusa.");
+    if (!texto(motivo)) throw new Error("Motivo obrigatório para recusa.");
     const agora = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
     return atualizarStatusIndicacao(indicacaoId, {
       statusIndicacao: "RECUSADA",

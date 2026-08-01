@@ -534,6 +534,7 @@ async function carregarCategoriasMovimentacaoMasterLocal() {
 }
 
 function renderCategoriasMovimentacaoMasterLocal() {
+  renderListaCategoriasMovimentacao("INGRESSO", "listaCategoriasIngressos");
   renderListaCategoriasMovimentacao("DESPESA", "listaCategoriasDespesas");
   renderListaCategoriasMovimentacao("RETIRADA", "listaCategoriasRetiradas");
 }
@@ -562,7 +563,7 @@ function renderListaCategoriasMovimentacao(tipo, idDestino) {
     <div class="list-item">
       <div>
         <strong>${escaparHtml(c.nome || "Categoria")}</strong>
-        <small>Tipo: ${tipo === "DESPESA" ? "Despesa" : "Retirada"}</small>
+        <small>Tipo: ${tipo === "INGRESSO" ? "Ingresso" : tipo === "DESPESA" ? "Gasto" : "Retirada"}</small>
         <small>Status: ${c.ativo === false ? "Inativa" : "Ativa"}</small>
       </div>
 
@@ -608,7 +609,8 @@ function formularioCategoriaMovimentacao(categoria = null) {
       <div class="form-group full">
         <label>Tipo</label>
         <select id="categoriaMovimentacaoTipo">
-          <option value="DESPESA" ${tipo === "DESPESA" ? "selected" : ""}>Despesa</option>
+          <option value="INGRESSO" ${tipo === "INGRESSO" ? "selected" : ""}>Ingresso</option>
+          <option value="DESPESA" ${tipo === "DESPESA" ? "selected" : ""}>Gasto</option>
           <option value="RETIRADA" ${tipo === "RETIRADA" ? "selected" : ""}>Retirada</option>
         </select>
       </div>
@@ -642,7 +644,7 @@ async function salvarCategoriaMovimentacao(botao = null) {
     const nome = (document.getElementById("categoriaMovimentacaoNome")?.value || "").trim();
     const ativo = document.getElementById("categoriaMovimentacaoAtivo")?.value !== "false";
 
-    if (!["DESPESA", "RETIRADA"].includes(tipo)) {
+    if (!["INGRESSO", "DESPESA", "RETIRADA"].includes(tipo)) {
       UIHelpers.alerta("Selecione um tipo válido.");
       return;
     }

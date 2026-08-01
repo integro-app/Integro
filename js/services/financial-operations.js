@@ -62,10 +62,10 @@
   function vendaIdDeterministica({ clientePlataformaId, caixaId, clienteOperacionalId, operacaoId }) {
     const partes = [clientePlataformaId, caixaId, clienteOperacionalId, operacaoId].map(texto);
     if (partes.some(parte => !parte)) {
-      throw new Error("Tenant, caixa, cliente e operaÃ§Ã£o sÃ£o obrigatÃ³rios para a venda.");
+      throw new Error("Tenant, caixa, cliente e operação são obrigatórios para a venda.");
     }
     if (partes.some(parte => parte.includes("/"))) {
-      throw new Error("Identificador invÃ¡lido para venda determinÃ­stica.");
+      throw new Error("Identificador inválido para venda determinística.");
     }
     const id = `venda_${partes.join("_")}`;
     if (id.length > 1400) throw new Error("Identificador de venda excede o limite seguro.");
@@ -75,10 +75,10 @@
   function caixaIdDeterministico({ clientePlataformaId, vendedorId, dataOperacional }) {
     const partes = [clientePlataformaId, vendedorId, dataOperacional].map(texto);
     if (partes.some(parte => !parte)) {
-      throw new Error("Tenant, vendedor e data operacional sÃ£o obrigatÃ³rios para abrir caixa.");
+      throw new Error("Tenant, vendedor e data operacional são obrigatórios para abrir caixa.");
     }
     if (partes.some(parte => parte.includes("/"))) {
-      throw new Error("Identificador invÃ¡lido para caixa determinÃ­stico.");
+      throw new Error("Identificador inválido para caixa determinístico.");
     }
     const id = `caixa_${partes.join("_")}`;
     if (id.length > 1400) throw new Error("Identificador de caixa excede o limite seguro.");
@@ -120,8 +120,8 @@
   function calcularDatasVenda(parcelas, primeiraData, frequencia) {
     const operacional = getOperacional();
     const data = texto(primeiraData).slice(0, 10);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error("Primeira cobranÃ§a invÃ¡lida.");
-    if (data < operacional.hojeSP()) throw new Error("A primeira cobranÃ§a nÃ£o pode ser retroativa.");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error("Primeira cobrança inválida.");
+    if (data < operacional.hojeSP()) throw new Error("A primeira cobrança não pode ser retroativa.");
     const intervalo = intervaloVenda(frequencia);
     return Array.from({ length: parcelas }, (_, indice) =>
       operacional.adicionarDiasSP
@@ -302,7 +302,7 @@
     const origemId = texto(entrada.origemId || entrada.vendaId || entrada.pagamentoId || entrada.solicitacaoId || entrada.fechamentoId || entrada.lancamentoOriginalId);
     const caixaId = texto(entrada.caixaId);
     const operacaoId = texto(entrada.operacaoId);
-    if (!TIPOS_LANCAMENTO_FINANCEIRO.has(tipo)) throw new Error("Tipo de lanÃ§amento financeiro invÃ¡lido.");
+    if (!TIPOS_LANCAMENTO_FINANCEIRO.has(tipo)) throw new Error("Tipo de lançamento financeiro inválido.");
     if (tipo === "VENDA") return `lf_venda_${idSeguro(origemId)}`;
     if (tipo === "PAGAMENTO") return `lf_pagamento_${idSeguro(origemId)}`;
     if (tipo === "INGRESSO") return `lf_ingresso_${idSeguro(origemId)}`;
@@ -313,7 +313,7 @@
     if (tipo === "DIVERGENCIA_ACEITA") return `lf_divergencia_${idSeguro(origemId)}`;
     if (tipo === "REGULARIZACAO") return `lf_regularizacao_${idSeguro(caixaId)}_${idSeguro(operacaoId)}`;
     if (tipo === "ESTORNO") return `lf_estorno_${idSeguro(origemId)}_${idSeguro(operacaoId)}`;
-    throw new Error("Tipo de lanÃ§amento financeiro sem regra de ID.");
+    throw new Error("Tipo de lançamento financeiro sem regra de ID.");
   }
 
   function naturezaPadraoLancamento(tipo, entrada = {}) {
@@ -322,29 +322,29 @@
     if (["PAGAMENTO", "INGRESSO"].includes(tipo)) return "CREDITO";
     if (["VENDA", "GASTO", "RETIRADA", "RECOLHIMENTO"].includes(tipo)) return "DEBITO";
     if (["AJUSTE", "REGULARIZACAO", "ESTORNO", "DIVERGENCIA_ACEITA"].includes(tipo)) {
-      throw new Error("Natureza explÃ­cita obrigatÃ³ria para este lanÃ§amento financeiro.");
+      throw new Error("Natureza explícita obrigatória para este lançamento financeiro.");
     }
-    throw new Error("Natureza financeira invÃ¡lida.");
+    throw new Error("Natureza financeira inválida.");
   }
 
   function validarLancamentoFinanceiro(entrada = {}) {
     const tipoLancamento = normalizarStatus(entrada.tipoLancamento || entrada.tipo || entrada.origem);
-    if (!TIPOS_LANCAMENTO_FINANCEIRO.has(tipoLancamento)) throw new Error("Tipo de lanÃ§amento financeiro invÃ¡lido.");
+    if (!TIPOS_LANCAMENTO_FINANCEIRO.has(tipoLancamento)) throw new Error("Tipo de lançamento financeiro inválido.");
     const natureza = naturezaPadraoLancamento(tipoLancamento, entrada);
     const statusLancamento = normalizarStatus(entrada.statusLancamento || "CONFIRMADO");
-    if (!STATUS_LANCAMENTO_FINANCEIRO.has(statusLancamento)) throw new Error("Status de lanÃ§amento financeiro invÃ¡lido.");
+    if (!STATUS_LANCAMENTO_FINANCEIRO.has(statusLancamento)) throw new Error("Status de lançamento financeiro inválido.");
     const valorCentavos = Number.isInteger(entrada.valorCentavos)
       ? Math.abs(entrada.valorCentavos)
       : Math.abs(getOperacional().moedaParaCentavos(entrada.valor || 0));
-    if (valorCentavos <= 0) throw new Error("Valor do lanÃ§amento financeiro deve ser maior que zero.");
+    if (valorCentavos <= 0) throw new Error("Valor do lançamento financeiro deve ser maior que zero.");
     const clientePlataformaId = texto(entrada.clientePlataformaId || entrada.tenantId || entrada.empresaId);
     const caixaId = texto(entrada.caixaId);
     const origemId = texto(entrada.origemId || entrada.vendaId || entrada.pagamentoId || entrada.solicitacaoId || entrada.fechamentoId || entrada.lancamentoOriginalId);
-    if (!clientePlataformaId) throw new Error("Tenant obrigatÃ³rio para lanÃ§amento financeiro.");
-    if (!caixaId && !["ESTORNO"].includes(tipoLancamento)) throw new Error("Caixa obrigatÃ³rio para lanÃ§amento financeiro.");
-    if (!origemId && !["RECOLHIMENTO", "AJUSTE", "REGULARIZACAO"].includes(tipoLancamento)) throw new Error("Origem obrigatÃ³ria para lanÃ§amento financeiro.");
+    if (!clientePlataformaId) throw new Error("Tenant obrigatório para lançamento financeiro.");
+    if (!caixaId && !["ESTORNO"].includes(tipoLancamento)) throw new Error("Caixa obrigatório para lançamento financeiro.");
+    if (!origemId && !["RECOLHIMENTO", "AJUSTE", "REGULARIZACAO"].includes(tipoLancamento)) throw new Error("Origem obrigatória para lançamento financeiro.");
     if (["RECOLHIMENTO", "AJUSTE", "REGULARIZACAO", "ESTORNO"].includes(tipoLancamento) && !texto(entrada.operacaoId)) {
-      throw new Error("OperaÃ§Ã£o obrigatÃ³ria para lanÃ§amento financeiro determinÃ­stico.");
+      throw new Error("Operação obrigatória para lançamento financeiro determinístico.");
     }
     return { tipoLancamento, natureza, statusLancamento, valorCentavos, clientePlataformaId, caixaId, origemId };
   }
@@ -367,7 +367,7 @@
 
   function exigirPermissaoFinanceira(usuario, permissao, caixa = {}, entrada = {}) {
     if (!usuarioPodeFinanceiro(usuario, permissao, caixa, entrada)) {
-      throw new Error("UsuÃ¡rio sem permissÃ£o para esta operaÃ§Ã£o financeira.");
+      throw new Error("Usuário sem permissão para esta operação financeira.");
     }
   }
 
@@ -431,18 +431,18 @@
       ]);
       if (lancamentoSnap.exists) {
         const existente = lancamentoSnap.data();
-        validarTenant(existente, validado.clientePlataformaId, "LanÃ§amento financeiro");
+        validarTenant(existente, validado.clientePlataformaId, "Lançamento financeiro");
         if (
           normalizarStatus(existente.tipoLancamento) !== validado.tipoLancamento ||
           normalizarStatus(existente.natureza) !== validado.natureza ||
           Math.abs(Math.round(Number(existente.valorCentavos || 0))) !== validado.valorCentavos
         ) {
-          throw new Error("Conflito no lanÃ§amento financeiro determinÃ­stico.");
+          throw new Error("Conflito no lançamento financeiro determinístico.");
         }
         return { modo: "IDEMPOTENTE", lancamentoId, lancamento: existente };
       }
       const caixa = caixaSnap?.exists ? { id: validado.caixaId, ...caixaSnap.data() } : {};
-      if (caixaSnap && !caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado para lanÃ§amento financeiro.");
+      if (caixaSnap && !caixaSnap.exists) throw new Error("Caixa não encontrado para lançamento financeiro.");
       if (caixaSnap?.exists) validarTenant(caixa, validado.clientePlataformaId, "Caixa");
       const tipo = validado.tipoLancamento;
       const permissao = tipo === "AJUSTE" ? "podeCriarAjusteFinanceiro"
@@ -482,7 +482,7 @@
     const lancamentos = await listarPorCaixa(db, "lancamentos_financeiros", texto(caixaId), tenantId, opcoes.limite || 5000);
     return lancamentos.filter(l => {
       if (tenantId) {
-        try { validarTenant(l, tenantId, "LanÃ§amento financeiro"); } catch (_) { return false; }
+        try { validarTenant(l, tenantId, "Lançamento financeiro"); } catch (_) { return false; }
       }
       return l.excluido !== true && normalizarStatus(l.statusLancamento || "CONFIRMADO") !== "CANCELADO";
     });
@@ -498,7 +498,7 @@
   async function calcularSaldoLedgerCaixa(caixaId, opcoes = {}) {
     const db = opcoes.db || getDb();
     const caixaSnap = await db.collection("caixas").doc(texto(caixaId)).get();
-    if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
+    if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
     const caixa = { id: caixaId, ...caixaSnap.data() };
     const lancamentos = await listarLancamentosCaixa(caixaId, { ...opcoes, db, clientePlataformaId: opcoes.clientePlataformaId || caixa.clientePlataformaId });
     const caixaInicialCentavos = centavosDe(caixa, "saldoInicialCentavos", ["valorInicial", "caixaInicial", "saldoInicial", "valorAbertura"]);
@@ -574,9 +574,9 @@
     const lancamentoOriginalId = texto(entrada.lancamentoOriginalId || entrada.origemId);
     const motivo = texto(entrada.motivo || entrada.justificativa);
     const operacaoId = texto(entrada.operacaoId);
-    if (!lancamentoOriginalId) throw new Error("LanÃ§amento original obrigatÃ³rio para estorno.");
-    if (!motivo) throw new Error("Motivo obrigatÃ³rio para estorno.");
-    if (!operacaoId) throw new Error("OperaÃ§Ã£o obrigatÃ³ria para estorno.");
+    if (!lancamentoOriginalId) throw new Error("Lançamento original obrigatório para estorno.");
+    if (!motivo) throw new Error("Motivo obrigatório para estorno.");
+    if (!operacaoId) throw new Error("Operação obrigatória para estorno.");
     const originalRef = db.collection("lancamentos_financeiros").doc(lancamentoOriginalId);
     const estornoId = lancamentoFinanceiroIdDeterministico({ tipoLancamento: "ESTORNO", origemId: lancamentoOriginalId, lancamentoOriginalId, operacaoId });
     const estornoRef = db.collection("lancamentos_financeiros").doc(estornoId);
@@ -585,9 +585,9 @@
         transaction.get(originalRef),
         transaction.get(estornoRef)
       ]);
-      if (!originalSnap.exists) throw new Error("LanÃ§amento original nÃ£o encontrado.");
+      if (!originalSnap.exists) throw new Error("Lançamento original não encontrado.");
       const original = { id: lancamentoOriginalId, ...originalSnap.data() };
-      validarTenant(original, entrada.clientePlataformaId || usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || original.clientePlataformaId, "LanÃ§amento original");
+      validarTenant(original, entrada.clientePlataformaId || usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || original.clientePlataformaId, "Lançamento original");
       if (estornoSnap.exists) return { modo: "IDEMPOTENTE", lancamentoId: estornoId, estornoId };
       const caixaSnap = original.caixaId ? await transaction.get(db.collection("caixas").doc(original.caixaId)) : null;
       const caixa = caixaSnap?.exists ? { id: original.caixaId, ...caixaSnap.data() } : {};
@@ -646,11 +646,11 @@
     const valorCentavos = Number.isInteger(entrada.valorCentavos)
       ? Math.abs(entrada.valorCentavos)
       : Math.abs(getOperacional().moedaParaCentavos(entrada.valor || 0));
-    if (!caixaId) throw new Error("Caixa obrigatÃ³rio para regularizaÃ§Ã£o.");
-    if (!motivo) throw new Error("Motivo obrigatÃ³rio para regularizaÃ§Ã£o.");
-    if (!["CREDITO", "DEBITO"].includes(natureza)) throw new Error("Natureza obrigatÃ³ria para regularizaÃ§Ã£o.");
-    if (!operacaoId) throw new Error("OperaÃ§Ã£o obrigatÃ³ria para regularizaÃ§Ã£o.");
-    if (valorCentavos <= 0) throw new Error("Valor de regularizaÃ§Ã£o deve ser maior que zero.");
+    if (!caixaId) throw new Error("Caixa obrigatório para regularização.");
+    if (!motivo) throw new Error("Motivo obrigatório para regularização.");
+    if (!["CREDITO", "DEBITO"].includes(natureza)) throw new Error("Natureza obrigatória para regularização.");
+    if (!operacaoId) throw new Error("Operação obrigatória para regularização.");
+    if (valorCentavos <= 0) throw new Error("Valor de regularização deve ser maior que zero.");
 
     const fechamentoId = texto(entrada.fechamentoId || fechamentoIdDeterministico(caixaId));
     const lancamentoId = lancamentoFinanceiroIdDeterministico({ tipoLancamento: "REGULARIZACAO", caixaId, operacaoId });
@@ -663,15 +663,15 @@
         transaction.get(fechamentoRef),
         transaction.get(lancamentoRef)
       ]);
-      if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
-      if (!fechamentoSnap.exists) throw new Error("Fechamento nÃ£o encontrado.");
+      if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
+      if (!fechamentoSnap.exists) throw new Error("Fechamento não encontrado.");
       if (lancamentoSnap.exists) return { modo: "IDEMPOTENTE", lancamentoId, caixaId, fechamentoId };
       const caixa = { id: caixaId, ...caixaSnap.data() };
       const fechamento = fechamentoSnap.data();
       validarTenant(caixa, entrada.clientePlataformaId || usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || caixa.clientePlataformaId, "Caixa");
       exigirPermissaoFinanceira(usuario, "podeRegularizarCaixa", caixa, entrada);
       if (normalizarStatus(caixa.status) !== "DIVERGENTE" && caixa.regularizacaoSolicitada !== true && fechamento.regularizacaoSolicitada !== true) {
-        throw new Error("Caixa precisa estar DIVERGENTE ou com regularizaÃ§Ã£o solicitada.");
+        throw new Error("Caixa precisa estar DIVERGENTE ou com regularização solicitada.");
       }
       const payload = payloadLancamentoFinanceiro({
         tipoLancamento: "REGULARIZACAO",
@@ -687,7 +687,7 @@
         valorCentavos,
         dataOperacional: entrada.dataOperacional || caixa.dataOperacional || getOperacional().hojeSP(),
         usuario,
-        descricao: "RegularizaÃ§Ã£o financeira de caixa",
+        descricao: "Regularização financeira de caixa",
         observacao: motivo,
         metadados: { fechamentoId, tratamentoId: entrada.tratamentoId || fechamento.tratamentoDivergencia?.tratamentoId || "" }
       }, { caixa });
@@ -724,11 +724,11 @@
     const db = getDb();
     const usuario = entrada.usuario || {};
     const solicitacaoId = texto(entrada.solicitacaoId || entrada.origemId);
-    if (!solicitacaoId) throw new Error("SolicitaÃ§Ã£o obrigatÃ³ria para lanÃ§amento financeiro.");
+    if (!solicitacaoId) throw new Error("Solicitação obrigatória para lançamento financeiro.");
     const solicitacaoRef = db.collection("solicitacoes").doc(solicitacaoId);
     return db.runTransaction(async transaction => {
       const solicitacaoSnap = await transaction.get(solicitacaoRef);
-      if (!solicitacaoSnap.exists) throw new Error("SolicitaÃ§Ã£o nÃ£o encontrada.");
+      if (!solicitacaoSnap.exists) throw new Error("Solicitação não encontrada.");
       const solicitacao = { id: solicitacaoId, ...solicitacaoSnap.data() };
       const tipoMov = tipoMovimentoCaixa(solicitacao);
       const tipoLancamento = tipoMov.includes("INGRESSO") ? "INGRESSO"
@@ -737,15 +737,15 @@
         : tipoMov.includes("RECOLH") ? "RECOLHIMENTO"
         : tipoMov.includes("AJUSTE") ? "AJUSTE"
         : "";
-      if (!tipoLancamento) throw new Error("Tipo de solicitaÃ§Ã£o financeira nÃ£o suportado.");
+      if (!tipoLancamento) throw new Error("Tipo de solicitação financeira não suportado.");
       const natureza = tipoLancamento === "INGRESSO" ? "CREDITO"
         : tipoLancamento === "AJUSTE" ? normalizarStatus(entrada.natureza || solicitacao.natureza)
         : "DEBITO";
       const tenantId = texto(entrada.clientePlataformaId || solicitacao.clientePlataformaId || usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId);
-      validarTenant(solicitacao, tenantId, "SolicitaÃ§Ã£o");
+      validarTenant(solicitacao, tenantId, "Solicitação");
       const caixaId = texto(entrada.caixaId || solicitacao.caixaId || solicitacao.idCaixa || solicitacao.caixaAtualId);
       const caixaSnap = caixaId ? await transaction.get(db.collection("caixas").doc(caixaId)) : null;
-      if (!caixaId || !caixaSnap?.exists) throw new Error("Caixa da solicitaÃ§Ã£o nÃ£o encontrado.");
+      if (!caixaId || !caixaSnap?.exists) throw new Error("Caixa da solicitação não encontrado.");
       const caixa = { id: caixaId, ...caixaSnap.data() };
       validarTenant(caixa, tenantId, "Caixa");
       if (tipoLancamento === "AJUSTE") exigirPermissaoFinanceira(usuario, "podeCriarAjusteFinanceiro", caixa, entrada);
@@ -1135,7 +1135,7 @@
     const uid = texto(usuario.authUid || usuario.uid);
     const operacaoId = texto(entrada?.operacaoId);
     if (!tenantId || !caixaId || !clienteId || !uid || !operacaoId) {
-      throw new Error("OperaÃ§Ã£o de venda incompleta ou sessÃ£o invÃ¡lida.");
+      throw new Error("Operação de venda incompleta ou sessão inválida.");
     }
 
     const valorEmprestadoCentavos = Number.isInteger(entrada?.valorEmprestadoCentavos)
@@ -1148,7 +1148,7 @@
       ? entrada.jurosValorCentavos
       : Math.max(0, valorTotalCentavos - valorEmprestadoCentavos);
     const quantidadeParcelas = Math.round(Number(entrada?.quantidadeParcelas || entrada?.parcelas || 0));
-    if (valorEmprestadoCentavos <= 0 || valorTotalCentavos <= 0) throw new Error("Valor da venda invÃ¡lido.");
+    if (valorEmprestadoCentavos <= 0 || valorTotalCentavos <= 0) throw new Error("Valor da venda inválido.");
     if (quantidadeParcelas < 1 || quantidadeParcelas > 90) throw new Error("A quantidade de parcelas deve estar entre 1 e 90.");
 
     const vendaId = vendaIdDeterministica({
@@ -1178,11 +1178,11 @@
           transaction.get(vendaRef)
         ]);
         if (!caixaSnap.exists) {
-          const erro = new Error("Caixa nÃ£o encontrado.");
+          const erro = new Error("Caixa não encontrado.");
           erro.code = "ERRO_BLOQUEADO_CAIXA_FECHADO";
           throw erro;
         }
-        if (!clienteSnap.exists) throw new Error("Cliente operacional nÃ£o encontrado.");
+        if (!clienteSnap.exists) throw new Error("Cliente operacional não encontrado.");
 
         const caixa = caixaSnap.data();
         const cliente = clienteSnap.data();
@@ -1192,7 +1192,7 @@
         if (vendaSnap.exists) {
           const venda = vendaSnap.data();
           validarTenant(venda, tenantId, "Venda existente");
-          if (texto(venda.operacaoId) !== operacaoId) throw new Error("Conflito no identificador determinÃ­stico da venda.");
+          if (texto(venda.operacaoId) !== operacaoId) throw new Error("Conflito no identificador determinístico da venda.");
           transaction.set(db.collection("logs").doc(), {
             tipoAcao: "VENDA_IDEMPOTENTE",
             origem: entrada.origem || "vendedor",
@@ -1204,7 +1204,7 @@
             usuarioId: usuario.id || usuario.usuarioId || "",
             usuarioAuthUid: uid,
             usuarioNome: usuario.nome || usuario.nomeCompleto || usuario.email || "",
-            detalhe: "Retry de venda jÃ¡ registrada; saldos preservados.",
+            detalhe: "Retry de venda já registrada; saldos preservados.",
             dataOperacional: operacional.hojeSP(),
             criadoEm: serverTimestamp()
           });
@@ -1411,7 +1411,7 @@
       : operacional.moedaParaCentavos(entrada.valorInicial || 0);
 
     if (!tenantId || !vendedorId || !dataOperacional) {
-      throw new Error("Dados obrigatÃ³rios ausentes para abertura de caixa.");
+      throw new Error("Dados obrigatórios ausentes para abertura de caixa.");
     }
 
     const caixaId = caixaIdDeterministico({ clientePlataformaId: tenantId, vendedorId, dataOperacional });
@@ -1441,7 +1441,7 @@
       const abertosAnteriores = abertosValidos.filter(c => texto(c.dataOperacional || c.dataCaixa || c.dataAbertura).slice(0, 10) && texto(c.dataOperacional || c.dataCaixa || c.dataAbertura).slice(0, 10) !== dataOperacional);
 
       if (abertosValidos.length > 1) {
-        const erro = new Error("Existem mÃºltiplos caixas abertos para este vendedor. Solicite regularizaÃ§Ã£o.");
+        const erro = new Error("Existem múltiplos caixas abertos para este vendedor. Solicite regularização.");
         erro.code = "ERRO_MULTIPLOS_CAIXAS_ABERTOS";
         throw erro;
       }
@@ -1449,7 +1449,7 @@
         return { caixaId: abertosHoje[0].id, operacaoId: abertosHoje[0].operacaoId || operacaoId, modo: "IDEMPOTENTE", caixa: abertosHoje[0] };
       }
       if (abertosAnteriores.length) {
-        const erro = new Error("Existe caixa anterior aberto. Solicite fechamento ou regularizaÃ§Ã£o antes de abrir novo caixa.");
+        const erro = new Error("Existe caixa anterior aberto. Solicite fechamento ou regularização antes de abrir novo caixa.");
         erro.code = "ERRO_CAIXA_ANTERIOR_ABERTO";
         throw erro;
       }
@@ -1588,10 +1588,10 @@
     const db = entrada.db || getDb();
     const operacional = getOperacional();
     const caixaId = texto(entrada.caixaId);
-    if (!caixaId) throw new Error("Caixa obrigatÃ³rio para fechamento.");
+    if (!caixaId) throw new Error("Caixa obrigatório para fechamento.");
 
     const caixaSnap = await db.collection("caixas").doc(caixaId).get();
-    if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
+    if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
     const caixa = { id: caixaSnap.id || caixaId, ...caixaSnap.data() };
     const tenantId = texto(entrada.clientePlataformaId || caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId);
     if (!tenantId) throw new Error("Caixa sem tenant válido para fechamento.");
@@ -1680,7 +1680,7 @@
 
   function fechamentoIdDeterministico(caixaId) {
     const id = texto(caixaId);
-    if (!id || id.includes("/")) throw new Error("Caixa invÃ¡lido para fechamento determinÃ­stico.");
+    if (!id || id.includes("/")) throw new Error("Caixa inválido para fechamento determinístico.");
     return `fechamento_${id}`;
   }
 
@@ -1700,25 +1700,25 @@
     const snapshot = entrada.snapshot || await prepararSnapshotFechamentoCaixa({ ...entrada, db });
 
     if (entrada.filaOfflinePendente) {
-      const erro = new Error(`Existem ${entrada.filaOfflinePendente} operaÃ§Ãµes offline pendentes para este caixa.`);
+      const erro = new Error(`Existem ${entrada.filaOfflinePendente} operações offline pendentes para este caixa.`);
       erro.code = "ERRO_FILA_OFFLINE_PENDENTE";
       await registrarLogFechamentoBloqueado({ db, tipoAcao: "CAIXA_FECHAMENTO_BLOQUEADO_FILA_OFFLINE", entrada, usuario, detalhe: erro.message });
       throw erro;
     }
     if (entrada.operacaoLocalSincronizando) {
-      const erro = new Error("Existe operaÃ§Ã£o local sincronizando para este caixa.");
+      const erro = new Error("Existe operação local sincronizando para este caixa.");
       erro.code = "ERRO_FILA_OFFLINE_PENDENTE";
       await registrarLogFechamentoBloqueado({ db, tipoAcao: "CAIXA_FECHAMENTO_BLOQUEADO_FILA_OFFLINE", entrada, usuario, detalhe: erro.message });
       throw erro;
     }
     if (snapshot.pagamentosPendentes > 0) {
-      const erro = new Error("Existe pagamento pendente ou bloqueado aguardando regularizaÃ§Ã£o.");
+      const erro = new Error("Existe pagamento pendente ou bloqueado aguardando regularização.");
       erro.code = "ERRO_FECHAMENTO_PAGAMENTO_PENDENTE";
       await registrarLogFechamentoBloqueado({ db, tipoAcao: "CAIXA_FECHAMENTO_BLOQUEADO_PENDENCIAS", entrada, usuario, detalhe: erro.message });
       throw erro;
     }
     if (snapshot.pendenciasCobranca > 0 && entrada.ignorarPendencias !== true) {
-      const erro = new Error(`Existem ${snapshot.pendenciasCobranca} cobranÃ§as previstas sem situaÃ§Ã£o registrada.`);
+      const erro = new Error(`Existem ${snapshot.pendenciasCobranca} cobranças previstas sem situação registrada.`);
       erro.code = "ERRO_FECHAMENTO_PENDENCIAS";
       await registrarLogFechamentoBloqueado({ db, tipoAcao: "CAIXA_FECHAMENTO_BLOQUEADO_PENDENCIAS", entrada, usuario, detalhe: erro.message });
       throw erro;
@@ -1745,7 +1745,7 @@
         transaction.get(fechamentoRef),
         lerReferenciasNaTransacao(transaction, abertosReferencias)
       ]);
-      if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
+      if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
 
       if (fechamentoSnap.exists) {
         const fechamento = fechamentoSnap.data();
@@ -1755,12 +1755,12 @@
       const caixa = caixaSnap.data();
       validarTenant(caixa, tenantId || caixa.clientePlataformaId, "Caixa");
       validarVendedorRegistro(caixa, { id: vendedorId || caixa.vendedorId, authUid: uid || caixa.vendedorAuthUid }, "Caixa");
-      if (texto(caixaId) !== texto(snapshot.caixa.id)) throw new Error("Snapshot de fechamento nÃ£o pertence ao caixa atual.");
-      if (normalizarStatus(caixa.status) !== "ABERTO") throw new Error("Caixa jÃ¡ estÃ¡ fechado ou nÃ£o estÃ¡ aberto.");
+      if (texto(caixaId) !== texto(snapshot.caixa.id)) throw new Error("Snapshot de fechamento não pertence ao caixa atual.");
+      if (normalizarStatus(caixa.status) !== "ABERTO") throw new Error("Caixa já está fechado ou não está aberto.");
 
       const abertosValidos = abertos.filter(c => c.excluido !== true && c.ativo !== false);
       if (abertosValidos.length > 1) {
-        const erro = new Error("Existem mÃºltiplos caixas abertos para este vendedor. Regularize antes de fechar.");
+        const erro = new Error("Existem múltiplos caixas abertos para este vendedor. Regularize antes de fechar.");
         erro.code = "ERRO_MULTIPLOS_CAIXAS_ABERTOS";
         throw erro;
       }
@@ -1865,8 +1865,8 @@
       prepararSnapshotFechamentoCaixa({ caixaId, ignorarPendencias: true })
     ]);
     const divergencias = [];
-    if (!caixaSnap.exists) divergencias.push({ tipo: "CAIXA_AUSENTE", detalhe: "Caixa nÃ£o encontrado." });
-    if (!fechamentoSnap.exists) divergencias.push({ tipo: "FECHAMENTO_AUSENTE", detalhe: "Fechamento nÃ£o encontrado." });
+    if (!caixaSnap.exists) divergencias.push({ tipo: "CAIXA_AUSENTE", detalhe: "Caixa não encontrado." });
+    if (!fechamentoSnap.exists) divergencias.push({ tipo: "FECHAMENTO_AUSENTE", detalhe: "Fechamento não encontrado." });
     if (fechamentoSnap.exists) {
       const fechamento = fechamentoSnap.data();
       const esperado = centavosDe(fechamento, "caixaFinalEsperadoCentavos", ["valorCalculadoFechamento", "valorEsperado"]);
@@ -1899,7 +1899,7 @@
   async function reconciliarLedgerCaixaSomenteLeitura(caixaId, opcoes = {}) {
     const db = opcoes.db || getDb();
     const caixaSnap = await db.collection("caixas").doc(texto(caixaId)).get();
-    if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
+    if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
     const caixa = { id: caixaId, ...caixaSnap.data() };
     const fechamentoId = fechamentoIdDeterministico(caixaId);
     const [snapshot, saldoLedger, vendas, pagamentos, solicitacoes, fechamentoSnap] = await Promise.all([
@@ -2069,12 +2069,12 @@
   function validarPermissaoGestaoCaixa(usuario, caixa, permissao, entrada = {}) {
     const perfil = perfilAcessoCaixa(usuario);
     if (perfil.isVendedor && idsUsuario(usuario).includes(texto(caixa.vendedorId || caixa.usuarioId))) {
-      throw new Error("Vendedor nÃ£o pode reabrir ou tratar o prÃ³prio caixa.");
+      throw new Error("Vendedor não pode reabrir ou tratar o próprio caixa.");
     }
     if (perfil.isMasterGlobal || perfil.isMasterLocal) return true;
     if (perfil.isSupervisor) {
       if (!usuarioTemPermissaoCaixa(usuario, permissao, { clientePlataformaId: caixa.clientePlataformaId, equipeId: caixa.equipeId })) {
-        throw new Error("Supervisor sem permissÃ£o para esta operaÃ§Ã£o de caixa.");
+        throw new Error("Supervisor sem permissão para esta operação de caixa.");
       }
       if (!supervisorNoEscopoCaixa(usuario, caixa) && entrada.permissaoAdministrativa !== true) {
         throw new Error("Supervisor fora do escopo da equipe do caixa.");
@@ -2082,7 +2082,7 @@
       return true;
     }
     if (usuarioTemPermissaoCaixa(usuario, permissao, { clientePlataformaId: caixa.clientePlataformaId, equipeId: caixa.equipeId })) return true;
-    throw new Error("UsuÃ¡rio sem permissÃ£o para esta operaÃ§Ã£o de caixa.");
+    throw new Error("Usuário sem permissão para esta operação de caixa.");
   }
 
   function idSeguroOperacao(prefixo, caixaId, operacaoId) {
@@ -2103,8 +2103,8 @@
     const caixaId = texto(entrada.caixaId);
     const motivo = texto(entrada.motivo || entrada.justificativa);
     const operacaoId = texto(entrada.operacaoId || `reabertura_${caixaId}_${usuario.id || usuario.usuarioId || usuario.uid || ""}_${operacional.hojeSP()}`);
-    if (!caixaId) throw new Error("Caixa obrigatÃ³rio para reabertura.");
-    if (!motivo) throw new Error("Motivo obrigatÃ³rio para reabertura.");
+    if (!caixaId) throw new Error("Caixa obrigatório para reabertura.");
+    if (!motivo) throw new Error("Motivo obrigatório para reabertura.");
 
     const fechamentoId = fechamentoIdDeterministico(caixaId);
     const reaberturaId = idSeguroOperacao("reabertura", caixaId, operacaoId);
@@ -2120,7 +2120,7 @@
         transaction.get(fechamentoRef),
         transaction.get(reaberturaRef)
       ]);
-      if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
+      if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
       const caixa = { id: caixaId, ...caixaSnap.data() };
       if (reaberturaSnap.exists) {
         return { modo: "IDEMPOTENTE", caixaId, fechamentoId, reaberturaId, statusNovo: reaberturaSnap.data().statusNovo };
@@ -2136,7 +2136,7 @@
       if (!["FECHADO", "FECHADA", "DIVERGENTE"].includes(statusAnterior)) {
         throw new Error("Caixa deve estar FECHADO ou DIVERGENTE para reabertura.");
       }
-      if (!fechamentoSnap.exists) throw new Error("Fechamento determinÃ­stico nÃ£o encontrado para este caixa.");
+      if (!fechamentoSnap.exists) throw new Error("Fechamento determinístico não encontrado para este caixa.");
       const fechamento = fechamentoSnap.data();
 
       const posterioresQuery = db.collection("caixas")
@@ -2155,7 +2155,7 @@
         return ["ABERTO", "REABERTO", "FECHADO", "DIVERGENTE"].includes(status);
       });
       if (caixaPosterior && entrada.permissaoAdministrativa !== true) {
-        throw new Error("NÃ£o Ã© permitido reabrir caixa antigo com caixa posterior existente.");
+        throw new Error("Não é permitido reabrir caixa antigo com caixa posterior existente.");
       }
 
       const statusNovo = "REABERTO";
@@ -2255,9 +2255,9 @@
     const justificativa = texto(entrada.justificativa || entrada.motivo);
     const operacaoId = texto(entrada.operacaoId || `tratamento_${caixaId}_${decisao}_${usuario.id || usuario.usuarioId || usuario.uid || ""}`);
     if (!["ACEITAR_DIVERGENCIA", "SOLICITAR_REGULARIZACAO", "REABRIR_CAIXA"].includes(decisao)) {
-      throw new Error("DecisÃ£o de divergÃªncia invÃ¡lida.");
+      throw new Error("Decisão de divergência inválida.");
     }
-    if (!justificativa) throw new Error("Justificativa obrigatÃ³ria para tratar divergÃªncia.");
+    if (!justificativa) throw new Error("Justificativa obrigatória para tratar divergência.");
     if (decisao === "REABRIR_CAIXA") {
       return registrarReaberturaCaixaTransacional({ ...entrada, motivo: justificativa, operacaoId });
     }
@@ -2275,8 +2275,8 @@
         transaction.get(fechamentoRef),
         transaction.get(tratamentoRef)
       ]);
-      if (!caixaSnap.exists) throw new Error("Caixa nÃ£o encontrado.");
-      if (!fechamentoSnap.exists) throw new Error("Fechamento nÃ£o encontrado.");
+      if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
+      if (!fechamentoSnap.exists) throw new Error("Fechamento não encontrado.");
       if (tratamentoSnap.exists) return { modo: "IDEMPOTENTE", caixaId, fechamentoId, tratamentoId, decisao };
 
       const caixa = { id: caixaId, ...caixaSnap.data() };
@@ -2285,7 +2285,7 @@
       validarPermissaoGestaoCaixa(usuario, caixa, decisao === "ACEITAR_DIVERGENCIA" ? "podeAceitarDivergencia" : "podeSolicitarRegularizacaoCaixa", entrada);
       if (normalizarStatus(caixa.status) !== "DIVERGENTE") throw new Error("Caixa deve estar DIVERGENTE para tratamento.");
       if (fechamento.tratamentoDivergencia?.statusTratamento && entrada.permitirTratamentoDuplicado !== true) {
-        throw new Error("DivergÃªncia jÃ¡ possui tratamento registrado.");
+        throw new Error("Divergência já possui tratamento registrado.");
       }
 
       const statusTratamento = decisao === "ACEITAR_DIVERGENCIA" ? "ACEITA" : "REGULARIZACAO_SOLICITADA";
