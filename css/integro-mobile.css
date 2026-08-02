@@ -1,0 +1,330 @@
+/* ÍNTEGRO — camada responsiva unificada
+   Carregada por último para corrigir inconsistências entre telas sem alterar o desktop. */
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  width: 100%;
+  max-width: 100vw;
+  overflow-x: hidden !important;
+}
+
+img, svg, canvas, video {
+  max-width: 100%;
+  height: auto;
+}
+
+button, input, select, textarea {
+  max-width: 100%;
+}
+
+/* Evita zoom automático do Safari ao focar campos. */
+@media (max-width: 900px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  body.menu-mobile-open,
+  body.sidebar-open,
+  body.drawer-open,
+  body.modal-open {
+    overflow: hidden !important;
+    touch-action: none;
+  }
+
+  .main,
+  main,
+  .content,
+  .main-content,
+  .page-content {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-left: max(14px, env(safe-area-inset-left)) !important;
+    padding-right: max(14px, env(safe-area-inset-right)) !important;
+    padding-bottom: max(18px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .sidebar {
+    width: min(320px, 88vw) !important;
+    max-width: 88vw !important;
+    padding-top: max(20px, env(safe-area-inset-top)) !important;
+    padding-bottom: max(20px, env(safe-area-inset-bottom)) !important;
+    overscroll-behavior: contain;
+  }
+
+  .sidebar.collapsed {
+    width: min(320px, 88vw) !important;
+  }
+
+  .sidebar.collapsed + .main {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+
+  .overlay,
+  #sidebarOverlay,
+  .sidebar-overlay,
+  .drawer-overlay,
+  .modal-overlay {
+    -webkit-backdrop-filter: blur(2px);
+    backdrop-filter: blur(2px);
+  }
+
+  .topbar,
+  .top-bar,
+  .page-header,
+  .header-content,
+  .panel-title {
+    min-width: 0 !important;
+  }
+
+  .topbar h1,
+  .page-header h1,
+  .header-content h1,
+  .panel-title h2 {
+    overflow-wrap: anywhere;
+  }
+
+  .top-actions,
+  .actions,
+  .toolbar-actions,
+  .list-actions,
+  .modal-actions,
+  .drawer-actions {
+    max-width: 100%;
+  }
+
+  .btn,
+  button.btn,
+  a.btn {
+    min-height: 44px;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .grid,
+  .grid-2,
+  .grid-3,
+  .grid-4,
+  .cards-grid,
+  .kpi-grid,
+  .kpis,
+  .filters,
+  .field-grid,
+  .form-grid,
+  .dashboard-grid {
+    min-width: 0 !important;
+  }
+
+  .card,
+  .panel,
+  .list-card,
+  .kpi-card,
+  .stat-card {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .card,
+  .panel {
+    overflow-wrap: anywhere;
+  }
+
+  .table-wrap,
+  .table-container,
+  .responsive-table,
+  .table-responsive {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-inline: contain;
+  }
+
+  table {
+    max-width: 100%;
+  }
+
+  th, td {
+    overflow-wrap: anywhere;
+  }
+
+  .drawer {
+    width: 100% !important;
+    max-width: 100vw !important;
+    height: 100dvh !important;
+  }
+
+  .drawer-head {
+    padding-top: max(16px, env(safe-area-inset-top)) !important;
+  }
+
+  .drawer-body {
+    padding-bottom: max(28px, env(safe-area-inset-bottom)) !important;
+  }
+
+  .modal,
+  .modal-content,
+  .cliente-modal,
+  .dialog,
+  [role="dialog"] {
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+  }
+
+  .modal-overlay,
+  .modal-backdrop {
+    padding: 12px !important;
+    align-items: center !important;
+  }
+
+  .modal-body,
+  .dialog-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .toast,
+  .notification-toast,
+  .alert-toast {
+    left: 12px !important;
+    right: 12px !important;
+    bottom: max(12px, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: none !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .topbar,
+  .top-bar,
+  .page-header,
+  .header-content {
+    gap: 12px !important;
+  }
+
+  .top-actions,
+  .actions,
+  .toolbar-actions,
+  .modal-actions,
+  .drawer-actions {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+  }
+
+  .top-actions > *,
+  .actions > *,
+  .toolbar-actions > *,
+  .modal-actions > *,
+  .drawer-actions > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .toolbar,
+  .filters,
+  .field-grid,
+  .form-grid,
+  .grid-2,
+  .grid-3,
+  .grid-4,
+  .cards-grid,
+  .dashboard-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .kpi-grid,
+  .kpis,
+  .clientes-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .list-card {
+    min-width: 0 !important;
+  }
+
+  .form-input,
+  .form-select,
+  .form-textarea,
+  input,
+  select,
+  textarea {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+    padding-right: max(10px, env(safe-area-inset-right)) !important;
+  }
+
+  .card,
+  .panel,
+  .list-card,
+  .kpi-card,
+  .stat-card {
+    border-radius: 18px !important;
+  }
+
+  .card,
+  .panel {
+    padding: 14px !important;
+  }
+
+  .kpi-grid,
+  .kpis,
+  .clientes-kpis {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .hamburger,
+  .mobile-menu-btn,
+  .close-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  .topbar h1,
+  .page-header h1,
+  .header-content h1 {
+    font-size: clamp(20px, 7vw, 25px) !important;
+    line-height: 1.15 !important;
+  }
+
+  .drawer-head,
+  .drawer-body,
+  .modal-head,
+  .modal-body,
+  .modal-footer {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 950px) {
+  .sidebar {
+    padding-top: 12px !important;
+  }
+
+  .drawer-head {
+    position: relative !important;
+  }
+
+  .modal,
+  .modal-content,
+  [role="dialog"] {
+    max-height: calc(100dvh - 12px) !important;
+  }
+}

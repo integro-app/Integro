@@ -2,7 +2,6 @@
 
 const fs = require("node:fs");
 const path = require("node:path");
-const { listFiles } = require("firebase-tools/lib/listFiles");
 
 const root = path.resolve(__dirname, "..");
 const firebasePath = path.join(root, "firebase.json");
@@ -26,6 +25,8 @@ const requiredIgnorePatterns = [
   "firestore.indexes.json",
   "storage.rules",
   "README.md",
+  "PAINEL-UNIFICADO-FASE-1.md",
+  "RELATORIO-AUDITORIA-INTEGRO.md",
   "**/*.log"
 ];
 
@@ -42,6 +43,54 @@ const allowedRootFiles = new Set([
 const allowedDirectories = ["css/", "js/", "assets/", "images/", "img/"];
 const errors = [];
 let totalPublicFiles = 0;
+
+function normalizeRelative(filePath) {
+  return String(filePath).replaceAll("\\", "/").replace(/^\.\//, "");
+}
+
+function isIgnored(relativePath, patterns) {
+  const file = normalizeRelative(relativePath);
+  const segments = file.split("/");
+
+  return patterns.some(pattern => {
+    const normalizedPattern = normalizeRelative(pattern);
+
+    if (normalizedPattern === "**/.*") {
+      return segments.some(segment => segment.startsWith("."));
+    }
+    if (normalizedPattern === "**/node_modules/**") {
+      return segments.includes("node_modules");
+    }
+    if (normalizedPattern === "**/*.log") {
+      return file.endsWith(".log");
+    }
+    if (normalizedPattern.endsWith("/**")) {
+      const directory = normalizedPattern.slice(0, -3).replace(/^\*\*\//, "");
+      return file === directory || file.startsWith(`${directory}/`);
+    }
+
+    return file === normalizedPattern;
+  });
+}
+
+function listPublicFiles(directory, ignores) {
+  const files = [];
+  const stack = [directory];
+
+  while (stack.length) {
+    const current = stack.pop();
+    for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
+      const absolute = path.join(current, entry.name);
+      const relative = normalizeRelative(path.relative(directory, absolute));
+      if (isIgnored(relative, ignores)) continue;
+
+      if (entry.isDirectory()) stack.push(absolute);
+      else if (entry.isFile()) files.push(relative);
+    }
+  }
+
+  return files.sort();
+}
 
 if (!hostingEntries.length || hostingEntries.some(entry => !entry || typeof entry !== "object")) {
   errors.push("firebase.json: configuração de Hosting ausente ou inválida.");
@@ -70,7 +119,7 @@ if (!hostingEntries.length || hostingEntries.some(entry => !entry || typeof entr
       }
     }
 
-    const publicFiles = listFiles(absolutePublicDir, ignores).map(file => String(file).replaceAll("\\", "/"));
+    const publicFiles = listPublicFiles(absolutePublicDir, ignores);
     totalPublicFiles += publicFiles.length;
 
     for (const file of publicFiles) {
