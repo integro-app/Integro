@@ -279,6 +279,7 @@
     }
 
   </style>
+  <link href="css/integro-mobile.css?v=20260802" rel="stylesheet">
 </head>
 
 <body class="integro-booting integro-topnav-pattern">
@@ -1840,7 +1841,7 @@
 
   async function carregarFinanceiroReal(){
     if (!svc()) {
-      renderErroFinanceiro("Nucleo financeiro operacional indispon?vel.");
+      renderErroFinanceiro("Núcleo financeiro operacional indisponível.");
       return;
     }
     if (!temPermissaoFinanceiro("podeVerFinanceiro") && !temPermissaoFinanceiro("podeVerLedgerFinanceiro")) {
@@ -2004,7 +2005,7 @@
       notificarFinanceiro("Estorno", "Estorno registrado.");
     } catch(e) {
       console.error(e);
-      notificarFinanceiro("Estorno", e?.message || "N?o foi poss?vel estornar.");
+      notificarFinanceiro("Estorno", e?.message || "Não foi possível estornar.");
     } finally {
       FIN.locks.delete(`estorno_${id}`);
     }
@@ -2049,7 +2050,7 @@
     const valor = prompt("Valor da regulariza??o em reais:");
     const natureza = prompt("Natureza: CREDITO ou DEBITO:");
     const motivo = prompt("Motivo obrigat?rio:");
-    if (!valor || !natureza || !motivo) return notificarFinanceiro("Regulariza??o", "Valor, natureza e motivo s?o obrigat?rios.");
+    if (!valor || !natureza || !motivo) return notificarFinanceiro("Regularização", "Valor, natureza e motivo s?o obrigat?rios.");
     FIN.locks.add(`reg_${caixaId}`);
     try {
       await svc().registrarRegularizacaoFinanceiraCaixa({
@@ -2062,10 +2063,10 @@
         usuario: usuarioAtual()
       });
       await carregarFinanceiroReal();
-      notificarFinanceiro("Regulariza??o", "Regulariza??o registrada.");
+      notificarFinanceiro("Regularização", "Regularização registrada.");
     } catch(e) {
       console.error(e);
-      notificarFinanceiro("Regulariza??o", e?.message || "N?o foi poss?vel regularizar.");
+      notificarFinanceiro("Regularização", e?.message || "Não foi possível regularizar.");
     } finally {
       FIN.locks.delete(`reg_${caixaId}`);
     }

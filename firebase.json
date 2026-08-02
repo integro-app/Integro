@@ -29,6 +29,8 @@
       "firestore.indexes.json",
       "storage.rules",
       "README.md",
+      "RELATORIO-AUDITORIA-INTEGRO.md",
+      "PAINEL-UNIFICADO-FASE-1.md",
       "**/*.log"
     ]
   },

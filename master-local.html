@@ -2461,6 +2461,7 @@ body.integro-data-refreshing .section-card{
   }
 </style>
 
+  <link href="css/integro-mobile.css?v=20260802" rel="stylesheet">
 </head>
 
 <body class="integro-booting integro-topnav-pattern">
@@ -3936,7 +3937,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       notificarIntegro("Caixa reaberto com sucesso.");
     } catch(e) {
       console.error("Erro ao reabrir caixa:", e);
-      notificarIntegro(e?.message || "N?o foi poss?vel reabrir o caixa agora.");
+      notificarIntegro(e?.message || "Não foi possível reabrir o caixa agora.");
     }
   };
 })();
@@ -4189,7 +4190,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       await window.reabrirCaixaTransacionalMaster(caixaId, motivo.trim());
       const c=arr("caixasCache").find(x=>eqId(idOf(x),caixaId)); if(c){c.status="REABERTO";c.reaberto=true;}
       fecharDrawerMaster(); renderCaixasPremium(); notificarIntegro("Caixa reaberto com sucesso.");
-    }catch(e){ console.error(e); notificarIntegro(e?.message || "N?o foi poss?vel reabrir o caixa."); }
+    }catch(e){ console.error(e); notificarIntegro(e?.message || "Não foi possível reabrir o caixa."); }
   };
 })();
 </script>
@@ -5542,7 +5543,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
   window.fecharCaixaEquipe = async function(caixaIdAtual){
     if(!caixaIdAtual) return notificarIntegro("Caixa nao encontrado.");
-    if(!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) return notificarIntegro("N?cleo transacional de fechamento indispon?vel.");
+    if(!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) return notificarIntegro("Núcleo transacional de fechamento indisponível.");
     const caixa = arr("caixasCache").find(c => eq(caixaId(c), caixaIdAtual)) || { id: caixaIdAtual };
     const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId: caixaIdAtual });
     const valor = prompt(`Valor fisico/real do caixa (${money(snapshot.caixaFinalEsperadoCentavos / 100)}):`, String(snapshot.caixaFinalEsperadoCentavos / 100).replace(".", ","));
@@ -6136,7 +6137,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   async function fecharCaixaMassivoFinal(){
     const ids = [...SupervisaoCaixasIntegro.selecionadas];
     if (!ids.length) return notificarIntegro("Selecione pelo menos uma equipe.");
-    if (!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) return notificarIntegro("N?cleo transacional de fechamento indispon?vel.");
+    if (!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) return notificarIntegro("Núcleo transacional de fechamento indisponível.");
     const mapa = montarMapaEquipes();
     const caixas = [];
     ids.forEach(id => {
@@ -18122,7 +18123,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
 
   async function fecharCaixaMasterLocalSeguro(caixa){
     if (!window.IntegroCaixa?.registrarFechamentoCaixaTransacional) {
-      throw new Error("N?cleo transacional de fechamento indispon?vel.");
+      throw new Error("Núcleo transacional de fechamento indisponível.");
     }
     const caixaId = ICX.id(caixa);
     const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId });
@@ -21391,7 +21392,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   }
 
   window.reabrirCaixaTransacionalMaster = async function(caixaId, motivo){
-    if (!window.IntegroCaixa?.registrarReaberturaCaixaTransacional) throw new Error("N?cleo transacional de reabertura indispon?vel.");
+    if (!window.IntegroCaixa?.registrarReaberturaCaixaTransacional) throw new Error("Núcleo transacional de reabertura indisponível.");
     const lockKey = String(caixaId || "");
     if (window.__integroReaberturaLocks.has(lockKey)) return { modo: "BLOQUEADO_CLIQUE_DUPLO", caixaId: lockKey };
     window.__integroReaberturaLocks.add(lockKey);
@@ -21420,7 +21421,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       notificarIntegro("Caixa reaberto com sucesso.");
     } catch (erro) {
       console.error("Erro ao reabrir caixa:", erro);
-      notificarIntegro(erro?.message || "N?o foi poss?vel reabrir o caixa agora.");
+      notificarIntegro(erro?.message || "Não foi possível reabrir o caixa agora.");
     }
   };
 
@@ -21429,7 +21430,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!decisaoFinal) return;
     const justificativa = prompt("Informe a justificativa obrigatoria:");
     if (!justificativa || !justificativa.trim()) return notificarIntegro("Justificativa obrigatoria.");
-    if (!window.IntegroCaixa?.registrarTratamentoDivergenciaCaixa) return notificarIntegro("N?cleo transacional de divergencia indispon?vel.");
+    if (!window.IntegroCaixa?.registrarTratamentoDivergenciaCaixa) return notificarIntegro("Núcleo transacional de divergência indisponível.");
     const lockKey = `${caixaId}_${decisaoFinal}`;
     if (window.__integroTratamentoDivergenciaLocks.has(lockKey)) return;
     window.__integroTratamentoDivergenciaLocks.add(lockKey);
@@ -21448,7 +21449,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       notificarIntegro("Tratamento de divergencia registrado.");
     } catch (erro) {
       console.error("Erro ao tratar divergencia:", erro);
-      notificarIntegro(erro?.message || "N?o foi poss?vel tratar a divergencia.");
+      notificarIntegro(erro?.message || "Não foi possível tratar a divergência.");
     } finally {
       window.__integroTratamentoDivergenciaLocks.delete(lockKey);
     }
