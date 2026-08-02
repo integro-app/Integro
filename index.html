@@ -534,14 +534,26 @@
       const statusEl = document.getElementById("statusLogin");
       if (!statusEl) return;
 
-      statusEl.innerHTML = mensagem;
+      statusEl.textContent = String(mensagem || "");
       statusEl.classList.add("show");
 
-      // Auto-hide after 5 seconds
       setTimeout(() => {
         statusEl.classList.remove("show");
-      }, 5000);
+      }, 8000);
     }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const params = new URLSearchParams(window.location.search);
+      const motivo = params.get("motivo");
+      const mensagem = params.get("mensagem");
+
+      if (motivo === "caixa-fechado") {
+        mostrarStatusLogin(
+          mensagem || "O sistema do vendedor está fechado no momento. Solicite a abertura do caixa ao supervisor."
+        );
+        history.replaceState({}, document.title, window.location.pathname);
+      }
+    });
   </script>
 
 </body>

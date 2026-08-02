@@ -1979,10 +1979,9 @@
 </style>
 
   <link href="css/integro-mobile.css?v=20260802" rel="stylesheet">
-  <link rel="stylesheet" href="css/integro-mobile-final.css?v=20260802d">
 </head>
 
-<body class="integro-booting integro-topnav-pattern">
+<body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="vendedor">
 
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
@@ -1998,12 +1997,12 @@
   </div>
 
 
-  <div class="overlay" id="overlay" onclick="toggleSidebar(false)"></div>
+  <div class="overlay" id="overlay" onclick="toggleSidebar(false)" data-integro-sidebar-overlay></div>
 
   <div class="app">
 
     <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" data-integro-sidebar>
 
       <div class="logo">
         ÍNTE<span>GRO</span>
@@ -2106,7 +2105,7 @@
 
         <div class="top-left">
 
-          <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menu">
+          <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menu" data-integro-menu-trigger>
             <span class="material-symbols-rounded">menu</span>
           </button>
 
@@ -6627,6 +6626,10 @@
           if (loader) loader.classList.add("hide");
 
           document.body.classList.remove("integro-booting");
+          document.body.classList.add("integro-access-ready");
+          document.dispatchEvent(new CustomEvent("integro-app-ready", {
+            detail: { pagina: "vendedor", caixaId: window.caixaAtual?.id || null }
+          }));
 
           setTimeout(() => {
             if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
@@ -6675,7 +6678,7 @@
                 bloquearERedirecionar("Usuário autenticado, mas não encontrado no cadastro interno.");
               }
 
-              await executarEtapaLoading("Validando acesso do vendedor...", 14, 26, async () => {
+              await executarEtapaLoading("Validando acesso do vendedor...", 14, 25, async () => {
                 const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
                   ? window.IntegroOperacional.normalizarAcessoUsuario(usuarioLogado)
                   : null;
@@ -6685,7 +6688,7 @@
                   bloquearERedirecionar("Acesso negado para este perfil.");
                 }
 
-                if (["INATIVO", "BLOQUEADO"].includes(String(usuarioLogado.status || "").toUpperCase()) || usuarioLogado.acessoLiberado === false) {
+                if (["INATIVO", "BLOQUEADO", "SUSPENSO"].includes(String(usuarioLogado.status || "").toUpperCase()) || usuarioLogado.acessoLiberado === false) {
                   bloquearERedirecionar("Seu acesso está inativo ou bloqueado.");
                 }
 
@@ -6696,45 +6699,52 @@
                   usuarioLogado.clienteId ||
                   "";
 
+                if (!tenantId) {
+                  bloquearERedirecionar("Empresa do vendedor não identificada. Procure o administrador.");
+                }
+
                 localStorage.setItem("usuario", JSON.stringify(usuarioLogado));
+              });
+
+              /* Pré-validação obrigatória: nenhuma informação operacional é carregada
+                 antes de confirmar que o vendedor possui caixa aberto e válido. */
+              await executarEtapaLoading("Verificando se o sistema do vendedor está aberto...", 25, 43, async () => {
+                const acessoCaixa = await verificarAcessoCaixaAberto();
+                if (!acessoCaixa || !caixaAbertoValido(window.caixaAtual)) {
+                  const bloqueio = new Error("VENDEDOR_SEM_CAIXA_ABERTO");
+                  bloqueio.__integroRedirecionando = true;
+                  throw bloqueio;
+                }
+              });
+
+              await executarEtapaLoading("Carregando configurações da empresa...", 43, 51, async () => {
                 if (tenantId && window.IntegroConfiguracoesEmpresa?.carregar) {
                   try {
                     await window.IntegroConfiguracoesEmpresa.carregar(tenantId);
                   } catch (erroConfig) {
-                    console.warn("Nao foi possivel carregar as configuracoes operacionais da empresa.", erroConfig);
+                    console.warn("Não foi possível carregar as configurações operacionais da empresa.", erroConfig);
                   }
                 }
               });
 
-              await executarEtapaLoading("Preparando dados do vendedor...", 26, 38, async () => {
+              await executarEtapaLoading("Preparando dados do vendedor...", 51, 60, async () => {
                 preencherUsuarioLogadoNaTela();
                 atualizarDataPainel();
                 padronizarMenuVendedor();
               });
 
-              await executarEtapaLoading("Validando caixa aberto...", 38, 52, async () => {
-                if (typeof carregarCaixaAtual === "function") {
-                  await carregarCaixaAtual();
-                }
-              });
-
-              if (!window.caixaAtual || !window.caixaAtual.id || String(window.caixaAtual.status || "ABERTO").toUpperCase() !== "ABERTO") {
-                manterLoadingPorBloqueio("Caixa fechado. Encerrando acesso do vendedor...");
-                return;
-              }
-
-              await executarEtapaLoading("Carregando rota de cobrança...", 52, 82, async () => {
+              await executarEtapaLoading("Carregando rota de cobrança...", 60, 84, async () => {
                 await carregarTudo();
               });
 
-              await executarEtapaLoading("Atualizando clientes do caixa...", 82, 94, async () => {
+              await executarEtapaLoading("Atualizando clientes do caixa...", 84, 95, async () => {
                 abrirTelaInicialVendedor();
                 aplicarBloqueioCaixaFechado();
                 if (typeof renderCobrancas === "function") renderCobrancas();
                 if (typeof atualizarEstadoBotaoFechamento === "function") atualizarEstadoBotaoFechamento();
               });
 
-              await executarEtapaLoading("Preparando sistema...", 94, 100, async () => {
+              await executarEtapaLoading("Preparando sistema...", 95, 100, async () => {
                 await esperar(180);
               });
 
@@ -17706,7 +17716,8 @@ async function verificarCaixaAbertoDiaAnterior() {
       ["usuario", "usuarioLogado", "usuarioAtual", "integroUsuario", "caixaAtual"].forEach(chave => localStorage.removeItem(chave));
     } catch (_) {}
 
-    window.location.href = "index.html";
+    const motivo = encodeURIComponent(mensagem || "O sistema do vendedor está fechado no momento. Solicite a abertura do caixa ao supervisor.");
+    window.location.replace(`index.html?motivo=caixa-fechado&mensagem=${motivo}`);
   }
 
   async function buscarCaixaAbertoDoVendedor() {
@@ -17813,6 +17824,9 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   const carregarCaixaAtualAnterior = window.carregarCaixaAtual;
   window.carregarCaixaAtual = async function carregarCaixaAtualComControleDeAcesso() {
+    const acessoLiberado = await verificarAcessoCaixaAberto();
+    if (!acessoLiberado) return null;
+
     if (typeof carregarCaixaAtualAnterior === "function") {
       try {
         await carregarCaixaAtualAnterior.apply(this, arguments);
@@ -17821,7 +17835,9 @@ async function verificarCaixaAbertoDiaAnterior() {
       }
     }
 
-    await verificarAcessoCaixaAberto();
+    if (!caixaAbertoValido(window.caixaAtual)) {
+      return verificarAcessoCaixaAberto();
+    }
     return window.caixaAtual;
   };
 
@@ -20898,7 +20914,7 @@ async function verificarCaixaAbertoDiaAnterior() {
   });
 })();
 </script>
-  <script src="js/integro-mobile-navigation.js?v=20260802d"></script>
+  <script src="js/integro-mobile-navigation.js?v=20260802-final2"></script>
 </body>
 
 </html>

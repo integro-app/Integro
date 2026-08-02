@@ -124,9 +124,8 @@
     }
   </style>
   <link href="css/integro-mobile.css?v=20260802" rel="stylesheet">
-  <link rel="stylesheet" href="css/integro-mobile-final.css?v=20260802d">
 </head>
-<body class="integro-booting integro-topnav-pattern">
+<body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="supervisor">
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
       <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
@@ -137,8 +136,8 @@
     </div>
   </div>
 
-  <div id="overlay" class="overlay" onclick="toggleSidebar(false)"></div>
-  <aside id="sidebar" class="sidebar">
+  <div id="overlay" class="overlay" onclick="toggleSidebar(false)" data-integro-sidebar-overlay></div>
+  <aside id="sidebar" class="sidebar" data-integro-sidebar>
     <div class="logo">ÍNTE<span>GRO</span></div>
     <div class="user-card">
       <strong id="userNome">Usuario</strong>
@@ -157,7 +156,7 @@
   <main class="main">
     <header class="topbar">
       <div style="display:flex;align-items:center;gap:14px">
-        <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menu"><span class="material-symbols-rounded">menu</span></button>
+        <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menu" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button>
         <div><h1 id="pageTitle">Dashboard</h1><p>Visao operacional da equipe.</p></div>
       </div>
       <div class="actions">
@@ -630,6 +629,6 @@
       }
     };
   </script>
-  <script src="js/integro-mobile-navigation.js?v=20260802d"></script>
+  <script src="js/integro-mobile-navigation.js?v=20260802-final2"></script>
 </body>
 </html>

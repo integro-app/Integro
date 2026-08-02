@@ -280,10 +280,9 @@
 
   </style>
   <link href="css/integro-mobile.css?v=20260802" rel="stylesheet">
-  <link rel="stylesheet" href="css/integro-mobile-final.css?v=20260802d">
 </head>
 
-<body class="integro-booting integro-topnav-pattern">
+<body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="financeiro">
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
@@ -296,11 +295,11 @@
     </div>
   </div>
 
-  <button class="mobile-menu-btn" type="button" onclick="toggleSidebarFinanceiro(true)" aria-label="Abrir menu"><span class="material-symbols-rounded">menu</span></button>
+  <button class="mobile-menu-btn" type="button" onclick="toggleSidebarFinanceiro(true)" aria-label="Abrir menu" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button>
   <div class="layout">
-    <div class="overlay" id="overlay" onclick="toggleSidebarFinanceiro(false)"></div>
+    <div class="overlay" id="overlay" onclick="toggleSidebarFinanceiro(false)" data-integro-sidebar-overlay></div>
 
-    <aside class="sidebar" id="sidebar">
+    <aside class="sidebar" id="sidebar" data-integro-sidebar>
       <div class="brand">
         <h1>ÍNTE<span>GRO</span></h1>
         <button class="collapse-btn" type="button" onclick="toggleCollapseSidebarFinanceiro()"><span class="material-symbols-rounded">chevron_left</span></button>
@@ -2205,6 +2204,6 @@
   document.addEventListener("usuario-validado", () => carregarFinanceiroReal());
 })();
 </script>
-  <script src="js/integro-mobile-navigation.js?v=20260802d"></script>
+  <script src="js/integro-mobile-navigation.js?v=20260802-final2"></script>
 </body>
 </html>

@@ -1,50 +1,158 @@
-/* ÍNTEGRO — camada móvel final
-   Carregada no fim do documento para vencer estilos legados e garantir uso real no celular. */
+/*
+ * ÍNTEGRO — camada responsiva autoritativa
+ * Versão: 2026-08-02-final
+ *
+ * Esta folha é reinserida no fim do <body> pelo js/integro-mobile-navigation.js
+ * somente depois que todo o HTML e os estilos legados foram processados.
+ * Assim ela vence os patches antigos sem depender de <link> fora do <head>.
+ */
+
+:root {
+  --integro-mobile-breakpoint: 980px;
+  --integro-mobile-gutter: 12px;
+  --integro-mobile-control: 48px;
+  --integro-mobile-radius: 16px;
+  --integro-mobile-sidebar: min(86vw, 326px);
+  --integro-shell-z-header: 9200;
+  --integro-shell-z-overlay: 9800;
+  --integro-shell-z-sidebar: 9900;
+  --integro-shell-z-modal: 10100;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+html,
+body[data-integro-page] {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: clip;
+}
+
+body[data-integro-page],
+body[data-integro-page] * {
+  box-sizing: border-box;
+}
+
+body[data-integro-page] img,
+body[data-integro-page] svg,
+body[data-integro-page] canvas,
+body[data-integro-page] video,
+body[data-integro-page] iframe {
+  max-width: 100%;
+}
+
+/* O shell nunca aparece parcialmente durante autenticação/carregamento. */
+body[data-integro-page].integro-shell-pending [data-integro-menu-trigger],
+body[data-integro-page].integro-booting [data-integro-menu-trigger],
+body[data-integro-page].integro-shell-pending .mobile-menu-btn,
+body[data-integro-page].integro-booting .mobile-menu-btn,
+body[data-integro-page].integro-shell-pending .hamburger,
+body[data-integro-page].integro-booting .hamburger,
+body[data-integro-page].integro-shell-pending #btnMenu,
+body[data-integro-page].integro-booting #btnMenu {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Segurança estrutural também no desktop. */
+body[data-integro-page] .main,
+body[data-integro-page] main,
+body[data-integro-page] .screen,
+body[data-integro-page] .panel,
+body[data-integro-page] .card,
+body[data-integro-page] .topbar,
+body[data-integro-page] .integro-global-header,
+body[data-integro-page] .top-actions,
+body[data-integro-page] .actions {
+  min-width: 0;
+}
+
+body[data-integro-page] .table-wrap,
+body[data-integro-page] .table-container,
+body[data-integro-page] .table-responsive,
+body[data-integro-page] .responsive-table,
+body[data-integro-page] [class*="table-wrap"],
+body[data-integro-page] [class*="table-container"] {
+  max-width: 100%;
+}
 
 @media (max-width: 980px) {
-  :root { --integro-mobile-header: 68px; }
+  :root {
+    --integro-mobile-gutter: 12px;
+    --integro-mobile-control: 48px;
+  }
 
-  html, body {
+  html,
+  body[data-integro-page] {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     overflow-x: clip !important;
-  }
-
-  body {
-    position: relative !important;
-    padding: 0 !important;
     overscroll-behavior-x: none;
   }
 
-  *, *::before, *::after { box-sizing: border-box !important; }
-  img, svg, canvas, video, iframe { max-width: 100% !important; }
+  body[data-integro-page] {
+    position: relative !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
 
-  /* Conteúdo principal nunca permanece deslocado pela sidebar desktop. */
-  html body .main,
-  html body main,
-  html body .main-content,
-  html body .page-content,
-  html body .content,
-  html body #mainContent {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    left: auto !important;
+  body[data-integro-page].menu-mobile-open,
+  body[data-integro-page].drawer-open,
+  body[data-integro-page].modal-open {
+    overflow: hidden !important;
+  }
+
+  /* ===== CONTEÚDO PRINCIPAL ===== */
+  body[data-integro-page] .layout,
+  body[data-integro-page] .app {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
-    padding-left: max(12px, env(safe-area-inset-left)) !important;
-    padding-right: max(12px, env(safe-area-inset-right)) !important;
-    padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
+    margin: 0 !important;
   }
 
-  /* Sidebar: drawer móvel previsível, acima de tudo e sem largura vazando. */
-  html body .sidebar,
-  html body #sidebar {
+  body[data-integro-page] .main,
+  body[data-integro-page] main.main,
+  body[data-integro-page] .main-content,
+  body[data-integro-page] .page-content,
+  body[data-integro-page] #mainContent {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    left: auto !important;
+    right: auto !important;
+    padding-left: max(var(--integro-mobile-gutter), env(safe-area-inset-left)) !important;
+    padding-right: max(var(--integro-mobile-gutter), env(safe-area-inset-right)) !important;
+    padding-bottom: max(28px, env(safe-area-inset-bottom)) !important;
+    overflow: visible !important;
+  }
+
+  body[data-integro-page].has-external-menu-trigger .main,
+  body[data-integro-page].has-external-menu-trigger main.main {
+    padding-top: max(76px, calc(62px + env(safe-area-inset-top))) !important;
+  }
+
+  /* Master Local tem uma barra própria no topo; ela já reserva o botão. */
+  body[data-integro-page="master-local"] .main {
+    /* Reserva uma única faixa para menu, contexto, período e notificações. */
+    padding-top: max(78px, calc(68px + env(safe-area-inset-top))) !important;
+  }
+
+  /* ===== MENU LATERAL ===== */
+  body[data-integro-page] [data-integro-sidebar],
+  body[data-integro-page] .sidebar {
     position: fixed !important;
     inset: 0 auto 0 0 !important;
-    width: min(86vw, 330px) !important;
-    max-width: min(86vw, 330px) !important;
+    width: var(--integro-mobile-sidebar) !important;
+    max-width: var(--integro-mobile-sidebar) !important;
     height: 100dvh !important;
     min-height: 100dvh !important;
     margin: 0 !important;
@@ -53,257 +161,414 @@
     overflow-y: auto !important;
     overflow-x: hidden !important;
     overscroll-behavior: contain;
-    transform: translate3d(-105%,0,0) !important;
+    transform: translate3d(-104%, 0, 0) !important;
+    opacity: 1 !important;
     visibility: hidden !important;
     pointer-events: none !important;
-    opacity: 0 !important;
-    z-index: 2147483000 !important;
-    transition: transform .24s ease, opacity .18s ease, visibility .24s !important;
-  }
-
-  html body .sidebar.show,
-  html body .sidebar.open,
-  html body .sidebar.active,
-  html body.menu-mobile-open .sidebar,
-  html body.menu-aberto .sidebar,
-  html body.sidebar-open .sidebar,
-  html body #sidebar.show,
-  html body #sidebar.open,
-  html body #sidebar.active {
-    transform: translate3d(0,0,0) !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    opacity: 1 !important;
     filter: none !important;
+    -webkit-filter: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
     isolation: isolate !important;
+    z-index: var(--integro-shell-z-sidebar) !important;
+    transition: transform .22s ease, visibility .22s ease !important;
   }
 
-  /* Garante que nenhuma regra legada aplique desfoque, transparência ou
-     bloqueio de toque ao menu quando ele estiver aberto. */
-  html body.menu-mobile-open .sidebar *,
-  html body.menu-aberto .sidebar *,
-  html body.sidebar-open .sidebar *,
-  html body .sidebar.show *,
-  html body .sidebar.open *,
-  html body .sidebar.active * {
+  body[data-integro-page] [data-integro-sidebar].collapsed,
+  body[data-integro-page] .sidebar.collapsed {
+    width: var(--integro-mobile-sidebar) !important;
+    max-width: var(--integro-mobile-sidebar) !important;
+  }
+
+  body[data-integro-page].menu-mobile-open [data-integro-sidebar],
+  body[data-integro-page].menu-mobile-open .sidebar,
+  body[data-integro-page] [data-integro-sidebar].show,
+  body[data-integro-page] [data-integro-sidebar].open,
+  body[data-integro-page] [data-integro-sidebar].active,
+  body[data-integro-page] .sidebar.show,
+  body[data-integro-page] .sidebar.open,
+  body[data-integro-page] .sidebar.active {
+    transform: translate3d(0, 0, 0) !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    opacity: 1 !important;
+  }
+
+  body[data-integro-page] [data-integro-sidebar] *,
+  body[data-integro-page] .sidebar * {
     filter: none !important;
+    -webkit-filter: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    pointer-events: auto !important;
   }
 
-  html body .sidebar.collapsed,
-  html body #sidebar.collapsed {
-    width: min(86vw, 330px) !important;
-    max-width: min(86vw, 330px) !important;
-  }
-
-  /* Overlay único e clicável. */
-  html body .overlay,
-  html body #overlay,
-  html body #sidebarOverlay,
-  html body .sidebar-overlay {
+  body[data-integro-page] [data-integro-sidebar-overlay],
+  body[data-integro-page] .overlay,
+  body[data-integro-page] #overlay,
+  body[data-integro-page] #sidebarOverlay,
+  body[data-integro-page] .sidebar-overlay {
     position: fixed !important;
     inset: 0 !important;
     width: 100vw !important;
     height: 100dvh !important;
-    background: rgba(2, 10, 24, .66) !important;
-    /* Sem blur: alguns navegadores Android criam um stacking context que
-       desfoca também a sidebar e impede a navegação. */
+    margin: 0 !important;
+    display: block !important;
+    background: rgba(2, 10, 24, .68) !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    filter: none !important;
+    -webkit-filter: none !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
-    filter: none !important;
-    z-index: 2147482000 !important;
+    z-index: var(--integro-shell-z-overlay) !important;
+    transition: opacity .18s ease, visibility .18s ease !important;
   }
 
-  html body.menu-mobile-open,
-  html body.menu-aberto,
-  html body.sidebar-open,
-  html body.drawer-open,
-  html body.modal-open {
-    overflow: hidden !important;
-    touch-action: none !important;
+  body[data-integro-page].menu-mobile-open [data-integro-sidebar-overlay],
+  body[data-integro-page].menu-mobile-open .overlay,
+  body[data-integro-page] [data-integro-sidebar-overlay].show,
+  body[data-integro-page] .overlay.show,
+  body[data-integro-page] .overlay.open,
+  body[data-integro-page] .overlay.active {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
   }
 
-  /* Botão de menu sempre acessível; sem duplicatas aparentes. */
-  html body .mobile-menu-btn,
-  html body .hamburger,
-  html body #btnMenu,
-  html body [data-mobile-menu] {
-    min-width: 46px !important;
-    width: 46px !important;
-    min-height: 46px !important;
-    height: 46px !important;
-    flex: 0 0 46px !important;
+  /* ===== BOTÕES DO MENU ===== */
+  body[data-integro-page].integro-shell-ready [data-integro-menu-trigger],
+  body[data-integro-page].integro-shell-ready .mobile-menu-btn,
+  body[data-integro-page].integro-shell-ready .hamburger,
+  body[data-integro-page].integro-shell-ready #btnMenu {
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  body[data-integro-page] [data-integro-menu-trigger],
+  body[data-integro-page] .mobile-menu-btn,
+  body[data-integro-page] .hamburger,
+  body[data-integro-page] #btnMenu {
+    min-width: var(--integro-mobile-control) !important;
+    width: var(--integro-mobile-control) !important;
+    min-height: var(--integro-mobile-control) !important;
+    height: var(--integro-mobile-control) !important;
+    padding: 0 !important;
+    flex: 0 0 var(--integro-mobile-control) !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    padding: 0 !important;
     border-radius: 14px !important;
-    z-index: 2147481000 !important;
+    touch-action: manipulation;
   }
 
-  /* Cabeçalho: sem sobreposição com menu fixo. */
-  html body .topbar,
-  html body .top-bar,
-  html body .page-header,
-  html body .header-content {
-    position: relative !important;
+  body[data-integro-page].has-external-menu-trigger > [data-integro-menu-trigger],
+  body[data-integro-page].has-external-menu-trigger > .mobile-menu-btn {
+    position: fixed !important;
+    top: max(10px, env(safe-area-inset-top)) !important;
+    left: max(10px, env(safe-area-inset-left)) !important;
+    z-index: var(--integro-shell-z-header) !important;
+  }
+
+  body[data-integro-page].menu-mobile-open [data-integro-menu-trigger],
+  body[data-integro-page].menu-mobile-open .mobile-menu-btn,
+  body[data-integro-page].menu-mobile-open .hamburger,
+  body[data-integro-page].menu-mobile-open #btnMenu {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  /* ===== CABEÇALHO PADRÃO ===== */
+  body[data-integro-page] .topbar,
+  body[data-integro-page] .top-bar,
+  body[data-integro-page] .page-header,
+  body[data-integro-page] .header-content {
     width: 100% !important;
     max-width: 100% !important;
     min-width: 0 !important;
     height: auto !important;
-    min-height: 68px !important;
-    margin-left: 0 !important;
-    margin-right: 0 !important;
+    min-height: 64px !important;
+    margin: 0 0 14px !important;
     padding: 12px !important;
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 12px !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    align-items: center !important;
+    gap: 10px !important;
     overflow: visible !important;
   }
 
-  html body .top-left,
-  html body .header-left,
-  html body .topbar-left {
+  body[data-integro-page] .top-left,
+  body[data-integro-page] .header-left,
+  body[data-integro-page] .topbar-left,
+  body[data-integro-page] .topbar > div:first-child:not(.top-actions):not(.actions) {
     width: 100% !important;
     min-width: 0 !important;
     display: grid !important;
-    grid-template-columns: 46px minmax(0,1fr) !important;
+    grid-template-columns: auto minmax(0, 1fr) !important;
     align-items: center !important;
     gap: 10px !important;
   }
 
-  html body .topbar h1,
-  html body .page-header h1,
-  html body .header-content h1,
-  html body .topbar p,
-  html body .page-header p {
-    max-width: 100% !important;
-    min-width: 0 !important;
-    overflow-wrap: anywhere !important;
-    word-break: normal !important;
-  }
-
-  html body .topbar h1,
-  html body .page-header h1,
-  html body .header-content h1 {
-    font-size: clamp(20px, 6vw, 27px) !important;
-    line-height: 1.12 !important;
-  }
-
-  /* Ações: duas colunas quando possível, uma em telas estreitas. */
-  html body .top-actions,
-  html body .actions,
-  html body .toolbar-actions,
-  html body .list-actions,
-  html body .panel-actions,
-  html body .modal-actions,
-  html body .drawer-actions {
-    width: 100% !important;
-    max-width: 100% !important;
-    min-width: 0 !important;
-    display: grid !important;
-    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
-    gap: 8px !important;
-    align-items: stretch !important;
-  }
-
-  html body .top-actions > *,
-  html body .actions > *,
-  html body .toolbar-actions > *,
-  html body .list-actions > *,
-  html body .panel-actions > *,
-  html body .modal-actions > *,
-  html body .drawer-actions > * {
-    width: 100% !important;
+  body[data-integro-page] .topbar h1,
+  body[data-integro-page] .topbar h2,
+  body[data-integro-page] .page-header h1,
+  body[data-integro-page] .header-content h1 {
     max-width: 100% !important;
     min-width: 0 !important;
     margin: 0 !important;
+    font-size: clamp(20px, 5vw, 25px) !important;
+    line-height: 1.15 !important;
+    overflow-wrap: anywhere !important;
   }
 
-  html body button,
-  html body .btn,
-  html body a.btn,
-  html body .primary-btn,
-  html body .ghost-btn {
+  body[data-integro-page] .topbar p,
+  body[data-integro-page] .page-header p,
+  body[data-integro-page] .header-content p {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-top: 4px !important;
+    line-height: 1.35 !important;
+    overflow-wrap: anywhere !important;
+  }
+
+  body[data-integro-page] .top-actions,
+  body[data-integro-page] .actions {
+    width: auto !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+  }
+
+  body[data-integro-page] .top-actions .date-chip {
+    min-width: 0 !important;
+    max-width: min(42vw, 210px) !important;
+  }
+
+  /* ===== MASTER LOCAL: menu + contexto + período + sino na mesma linha ===== */
+  body[data-integro-page="master-local"] .integro-global-header {
+    position: fixed !important;
+    top: max(10px, env(safe-area-inset-top)) !important;
+    left: max(calc(var(--integro-mobile-control) + 20px), calc(env(safe-area-inset-left) + var(--integro-mobile-control) + 12px)) !important;
+    right: max(10px, env(safe-area-inset-right)) !important;
+    z-index: var(--integro-shell-z-header) !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    min-height: var(--integro-mobile-control) !important;
+    margin: 0 !important;
+    padding: 4px 6px !important;
+    display: grid !important;
+    grid-template-columns: minmax(72px, .9fr) minmax(105px, 1.35fr) 44px !important;
+    align-items: center !important;
+    gap: 7px !important;
+    border: 1px solid rgba(211, 222, 234, .96) !important;
+    border-radius: 17px !important;
+    background: rgba(246, 249, 253, .97) !important;
+    box-shadow: 0 10px 28px rgba(15, 23, 42, .08) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-global-header-spacer {
+    display: none !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-global-actions {
+    display: contents !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-contexto-estavel {
+    grid-column: 1 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    z-index: calc(var(--integro-shell-z-header) + 2) !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-contexto-trigger {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 46px !important;
+    height: 46px !important;
+    padding: 5px 7px !important;
+    grid-template-columns: 32px minmax(0, 1fr) 18px !important;
+    gap: 6px !important;
+    border-radius: 13px !important;
+    box-shadow: none !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-contexto-icon {
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 10px !important;
+    font-size: 18px !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-contexto-copy small,
+  body[data-integro-page="master-local"] .dashboard-period-trigger-copy small {
+    display: none !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-contexto-copy strong,
+  body[data-integro-page="master-local"] .dashboard-period-trigger-copy strong {
+    margin: 0 !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+  }
+
+  body[data-integro-page="master-local"] .dashboard-period-control {
+    grid-column: 2 !important;
+    position: relative !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    display: block !important;
+    z-index: calc(var(--integro-shell-z-header) + 2) !important;
+  }
+
+  body[data-integro-page="master-local"] .dashboard-period-trigger {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 46px !important;
+    height: 46px !important;
+    padding: 5px 7px !important;
+    display: grid !important;
+    grid-template-columns: 32px minmax(0, 1fr) 18px !important;
+    gap: 6px !important;
+    border-radius: 13px !important;
+    box-shadow: none !important;
+  }
+
+  body[data-integro-page="master-local"] .dashboard-period-trigger-icon {
+    width: 32px !important;
+    height: 32px !important;
+    display: grid !important;
+    place-items: center !important;
+    border-radius: 10px !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-notification-button {
+    grid-column: 3 !important;
+    position: relative !important;
+    width: 44px !important;
+    min-width: 44px !important;
+    height: 44px !important;
     min-height: 44px !important;
-    height: auto !important;
-    white-space: normal !important;
-    line-height: 1.2 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: inline-grid !important;
+    place-items: center !important;
+    border-radius: 13px !important;
+    z-index: calc(var(--integro-shell-z-header) + 2) !important;
   }
 
-  /* Grids e cards. */
-  html body .grid,
-  html body .grid-2,
-  html body .grid-3,
-  html body .grid-4,
-  html body .cards-grid,
-  html body .dashboard-grid,
-  html body .field-grid,
-  html body .form-grid,
-  html body .filters,
-  html body .toolbar,
-  html body .clientes-toolbar {
-    width: 100% !important;
-    min-width: 0 !important;
-    grid-template-columns: minmax(0,1fr) !important;
+  body[data-integro-page="master-local"] .integro-contexto-menu,
+  body[data-integro-page="master-local"] .dashboard-period-popover,
+  body[data-integro-page="master-local"] .integro-dashboard-menu {
+    position: fixed !important;
+    top: auto !important;
+    right: 10px !important;
+    bottom: calc(10px + env(safe-area-inset-bottom)) !important;
+    left: 10px !important;
+    width: auto !important;
+    max-width: none !important;
+    max-height: min(72vh, 620px) !important;
+    overflow-y: auto !important;
+    border-radius: 20px !important;
+    z-index: var(--integro-shell-z-modal) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
   }
 
-  html body .kpi-grid,
-  html body .kpis,
-  html body .clientes-kpis,
-  html body .stats-grid {
+  /* ===== GRIDS, CARDS E FORMULÁRIOS ===== */
+  body[data-integro-page] .grid,
+  body[data-integro-page] .grid-2,
+  body[data-integro-page] .grid-3,
+  body[data-integro-page] .grid-4,
+  body[data-integro-page] .cards-grid,
+  body[data-integro-page] .dashboard-grid,
+  body[data-integro-page] .field-grid,
+  body[data-integro-page] .form-grid,
+  body[data-integro-page] .filters,
+  body[data-integro-page] .toolbar,
+  body[data-integro-page] .clientes-toolbar {
     width: 100% !important;
+    max-width: 100% !important;
     min-width: 0 !important;
-    grid-template-columns: repeat(2, minmax(0,1fr)) !important;
+  }
+
+  body[data-integro-page] .grid-3,
+  body[data-integro-page] .grid-4,
+  body[data-integro-page] .cards-grid,
+  body[data-integro-page] .dashboard-grid,
+  body[data-integro-page] .kpi-grid,
+  body[data-integro-page] .kpis,
+  body[data-integro-page] .clientes-kpis,
+  body[data-integro-page] .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
     gap: 10px !important;
   }
 
-  html body .card,
-  html body .panel,
-  html body .list-card,
-  html body .kpi-card,
-  html body .stat-card,
-  html body .metric-card {
-    width: 100% !important;
+  body[data-integro-page] .grid-2,
+  body[data-integro-page] .field-grid,
+  body[data-integro-page] .form-grid,
+  body[data-integro-page] .filters,
+  body[data-integro-page] .toolbar,
+  body[data-integro-page] .clientes-toolbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body[data-integro-page] .card,
+  body[data-integro-page] .panel,
+  body[data-integro-page] .list-card,
+  body[data-integro-page] .kpi-card,
+  body[data-integro-page] .stat-card,
+  body[data-integro-page] .metric-card {
     max-width: 100% !important;
     min-width: 0 !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
-    overflow: hidden !important;
+    overflow-wrap: anywhere !important;
   }
 
-  html body .list-card {
-    grid-template-columns: minmax(0,1fr) !important;
-    align-items: stretch !important;
-  }
-
-  html body .list-bar { display: none !important; }
-
-  /* Formulários não estouram a viewport nem causam zoom no iOS. */
-  html body input,
-  html body select,
-  html body textarea,
-  html body .form-input,
-  html body .form-select,
-  html body .form-textarea {
-    width: 100% !important;
+  body[data-integro-page] input,
+  body[data-integro-page] select,
+  body[data-integro-page] textarea,
+  body[data-integro-page] .form-input,
+  body[data-integro-page] .form-select,
+  body[data-integro-page] .form-textarea {
     max-width: 100% !important;
     min-width: 0 !important;
     font-size: 16px !important;
   }
 
-  /* Tabelas: rolagem contida, sem empurrar a página inteira. */
-  html body .table-wrap,
-  html body .table-container,
-  html body .responsive-table,
-  html body .table-responsive,
-  html body [class*="table-wrap"],
-  html body [class*="table-container"] {
+  body[data-integro-page] button,
+  body[data-integro-page] .btn,
+  body[data-integro-page] a.btn,
+  body[data-integro-page] .primary-btn,
+  body[data-integro-page] .ghost-btn {
+    min-height: 44px;
+    touch-action: manipulation;
+  }
+
+  /* ===== TABELAS ===== */
+  body[data-integro-page] .table-wrap,
+  body[data-integro-page] .table-container,
+  body[data-integro-page] .responsive-table,
+  body[data-integro-page] .table-responsive,
+  body[data-integro-page] [class*="table-wrap"],
+  body[data-integro-page] [class*="table-container"] {
     display: block !important;
     width: 100% !important;
     max-width: 100% !important;
@@ -314,68 +579,69 @@
     overscroll-behavior-inline: contain;
   }
 
-  html body table {
-    width: max-content !important;
-    min-width: 100% !important;
-    max-width: none !important;
-    table-layout: auto !important;
+  body[data-integro-page] table {
+    min-width: 720px;
+    max-width: none;
   }
 
-  html body th,
-  html body td {
-    max-width: 280px !important;
-    white-space: normal !important;
-    overflow-wrap: anywhere !important;
+  body[data-integro-page] th,
+  body[data-integro-page] td {
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
-  /* Modais e gavetas ocupam a tela de maneira consistente. */
-  html body .drawer,
-  html body [class*="drawer"]:not(.drawer-overlay):not(.drawer-actions):not(.drawer-body):not(.drawer-head) {
+  /* ===== MODAIS, DRAWERS E NOTIFICAÇÕES ===== */
+  body[data-integro-page] .drawer,
+  body[data-integro-page] .drawer-side,
+  body[data-integro-page] .notificacoes-drawer-side,
+  body[data-integro-page] .notificacoes-vendedor-painel,
+  body[data-integro-page] .dashboard-insight-panel {
     max-width: 100vw !important;
   }
 
-  html body .drawer {
-    width: 100vw !important;
+  body[data-integro-page] .drawer-side,
+  body[data-integro-page] .notificacoes-drawer-side,
+  body[data-integro-page] .notificacoes-vendedor-painel,
+  body[data-integro-page] .dashboard-insight-panel {
+    width: min(100vw, 560px) !important;
     height: 100dvh !important;
     max-height: 100dvh !important;
-    border-radius: 0 !important;
   }
 
-  html body .modal,
-  html body .modal-content,
-  html body .dialog,
-  html body .cliente-modal,
-  html body [role="dialog"] {
-    width: calc(100vw - 20px) !important;
+  body[data-integro-page] .drawer-overlay,
+  body[data-integro-page] .modal-overlay,
+  body[data-integro-page] .modal-backdrop,
+  body[data-integro-page] .cliente-modal-overlay,
+  body[data-integro-page] .notificacoes-vendedor-overlay,
+  body[data-integro-page] .dashboard-insight-overlay {
+    filter: none !important;
+    -webkit-filter: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  body[data-integro-page] .modal,
+  body[data-integro-page] .modal-content,
+  body[data-integro-page] .dialog,
+  body[data-integro-page] .cliente-modal,
+  body[data-integro-page] [role="dialog"] {
     max-width: calc(100vw - 20px) !important;
     max-height: calc(100dvh - 20px) !important;
-    margin: 0 !important;
-    border-radius: 18px !important;
-    overflow: hidden !important;
   }
 
-  html body .modal-overlay,
-  html body .modal-backdrop,
-  html body [class*="modal-overlay"] {
-    padding: 10px !important;
-    align-items: center !important;
-    justify-content: center !important;
-    overflow: hidden !important;
-  }
-
-  html body .modal-body,
-  html body .dialog-body,
-  html body .drawer-body {
+  body[data-integro-page] .modal-body,
+  body[data-integro-page] .dialog-body,
+  body[data-integro-page] .drawer-body,
+  body[data-integro-page] .drawer-side-body {
     min-height: 0 !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch !important;
     padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
   }
 
-  /* Elementos fixos não cobrem o conteúdo. */
-  html body .toast,
-  html body .notification-toast,
-  html body .alert-toast {
+  body[data-integro-page] .toast,
+  body[data-integro-page] .notification-toast,
+  body[data-integro-page] .alert-toast {
     left: 10px !important;
     right: 10px !important;
     bottom: max(10px, env(safe-area-inset-bottom)) !important;
@@ -384,107 +650,164 @@
   }
 }
 
-@media (max-width: 560px) {
-  html body .top-actions,
-  html body .actions,
-  html body .toolbar-actions,
-  html body .list-actions,
-  html body .panel-actions,
-  html body .modal-actions,
-  html body .drawer-actions,
-  html body .kpi-grid,
-  html body .kpis,
-  html body .clientes-kpis,
-  html body .stats-grid {
-    grid-template-columns: minmax(0,1fr) !important;
+@media (max-width: 640px) {
+  :root {
+    --integro-mobile-gutter: 10px;
+    --integro-mobile-control: 46px;
   }
 
-  html body .main,
-  html body main,
-  html body .main-content,
-  html body .page-content,
-  html body .content,
-  html body #mainContent {
-    padding-left: max(9px, env(safe-area-inset-left)) !important;
-    padding-right: max(9px, env(safe-area-inset-right)) !important;
+  body[data-integro-page] .main,
+  body[data-integro-page] main.main,
+  body[data-integro-page] .main-content,
+  body[data-integro-page] .page-content,
+  body[data-integro-page] #mainContent {
+    padding-left: max(var(--integro-mobile-gutter), env(safe-area-inset-left)) !important;
+    padding-right: max(var(--integro-mobile-gutter), env(safe-area-inset-right)) !important;
   }
 
-  html body .card,
-  html body .panel,
-  html body .list-card,
-  html body .kpi-card,
-  html body .stat-card,
-  html body .metric-card {
+  body[data-integro-page] .topbar,
+  body[data-integro-page] .top-bar,
+  body[data-integro-page] .page-header,
+  body[data-integro-page] .header-content {
+    grid-template-columns: minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    padding: 12px !important;
+  }
+
+  body[data-integro-page] .top-actions,
+  body[data-integro-page] .actions {
+    width: 100% !important;
+    justify-content: stretch !important;
+  }
+
+  body[data-integro-page] .top-actions > *,
+  body[data-integro-page] .actions > * {
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+  }
+
+  body[data-integro-page] .top-actions .date-chip {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  body[data-integro-page] .grid,
+  body[data-integro-page] .grid-2,
+  body[data-integro-page] .grid-3,
+  body[data-integro-page] .grid-4,
+  body[data-integro-page] .cards-grid,
+  body[data-integro-page] .dashboard-grid,
+  body[data-integro-page] .kpi-grid,
+  body[data-integro-page] .kpis,
+  body[data-integro-page] .clientes-kpis,
+  body[data-integro-page] .stats-grid,
+  body[data-integro-page] .field-grid,
+  body[data-integro-page] .form-grid,
+  body[data-integro-page] .filters,
+  body[data-integro-page] .toolbar,
+  body[data-integro-page] .clientes-toolbar {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  body[data-integro-page] .card,
+  body[data-integro-page] .panel,
+  body[data-integro-page] .list-card,
+  body[data-integro-page] .kpi-card,
+  body[data-integro-page] .stat-card,
+  body[data-integro-page] .metric-card {
     border-radius: 16px !important;
   }
-}
 
-/* Hotfix Android: o overlay nunca pode ficar acima da navegação. */
-@media (max-width: 980px) {
-  html body .sidebar,
-  html body #sidebar {
-    z-index: 2147483600 !important;
+  body[data-integro-page] .drawer-side,
+  body[data-integro-page] .notificacoes-drawer-side,
+  body[data-integro-page] .notificacoes-vendedor-painel,
+  body[data-integro-page] .dashboard-insight-panel,
+  body[data-integro-page] .drawer {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    border-radius: 0 !important;
   }
 
-  html body .overlay,
-  html body #overlay,
-  html body #sidebarOverlay,
-  html body .sidebar-overlay {
-    z-index: 2147483000 !important;
+  body[data-integro-page] .modal,
+  body[data-integro-page] .modal-content,
+  body[data-integro-page] .dialog,
+  body[data-integro-page] .cliente-modal,
+  body[data-integro-page] [role="dialog"] {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 16px) !important;
+    border-radius: 16px !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-global-header {
+    grid-template-columns: minmax(64px, .8fr) minmax(94px, 1.25fr) 42px !important;
+    padding-left: 5px !important;
+    gap: 5px !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-contexto-trigger,
+  body[data-integro-page="master-local"] .dashboard-period-trigger {
+    grid-template-columns: 28px minmax(0, 1fr) 16px !important;
+    gap: 4px !important;
+    padding: 4px 5px !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-contexto-icon,
+  body[data-integro-page="master-local"] .dashboard-period-trigger-icon {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 17px !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-notification-button {
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
   }
 }
 
-/* 2026-08-02d — correção estrutural do menu Android.
-   O menu não pode aparecer durante o boot e nenhum overlay pode desfocá-lo. */
-@media (max-width: 980px) {
-  body.integro-booting .mobile-menu-btn,
-  body.integro-booting .hamburger,
-  body.integro-booting #btnMenu,
-  body.integro-booting [data-mobile-menu] {
-    display: none !important;
+@media (max-width: 390px) {
+  body[data-integro-page="master-local"] .integro-global-header {
+    grid-template-columns: minmax(58px, .72fr) minmax(86px, 1.28fr) 40px !important;
+    padding-right: 5px !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-contexto-copy strong,
+  body[data-integro-page="master-local"] .dashboard-period-trigger-copy strong {
+    font-size: 11px !important;
+  }
+
+  body[data-integro-page="master-local"] .integro-notification-button {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+  }
+}
+
+@media (min-width: 981px) {
+  /* Desktop: o botão externo só aparece quando o menu realmente está oculto. */
+  body[data-integro-page].integro-shell-pending [data-integro-menu-trigger],
+  body[data-integro-page].integro-booting [data-integro-menu-trigger] {
+    opacity: 0 !important;
     visibility: hidden !important;
     pointer-events: none !important;
   }
 
-  html body .overlay,
-  html body #overlay,
-  html body #sidebarOverlay,
-  html body .sidebar-overlay {
-    filter: none !important;
+  body[data-integro-page] [data-integro-sidebar-overlay] {
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+}
 
-  html body .sidebar,
-  html body #sidebar,
-  html body .sidebar * ,
-  html body #sidebar * {
-    filter: none !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
-  html body .sidebar.show,
-  html body .sidebar.open,
-  html body .sidebar.active,
-  html body #sidebar.show,
-  html body #sidebar.open,
-  html body #sidebar.active {
-    z-index: 2147483640 !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-  }
-
-  html body .overlay.show,
-  html body .overlay.open,
-  html body .overlay.active,
-  html body #overlay.show,
-  html body #overlay.open,
-  html body #overlay.active,
-  html body #sidebarOverlay.show,
-  html body #sidebarOverlay.open,
-  html body #sidebarOverlay.active {
-    z-index: 2147483000 !important;
+@media (prefers-reduced-motion: reduce) {
+  body[data-integro-page] *,
+  body[data-integro-page] *::before,
+  body[data-integro-page] *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
   }
 }

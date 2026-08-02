@@ -204,11 +204,6 @@ service cloud.firestore {
       ]);
     }
 
-    function hasOnlyStatusTransition(fromList, toList) {
-      return resource.data.status in fromList &&
-        request.resource.data.status in toList;
-    }
-
     function hasOnlyStatusLancamentoTransition() {
       return criticalFinancialImmutable() &&
         request.resource.data.statusLancamento in ["CONFIRMADO", "ESTORNADO", "CANCELADO"] &&

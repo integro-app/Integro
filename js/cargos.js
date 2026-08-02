@@ -230,7 +230,7 @@ async function alterarStatusCargo(id, ativo) {
 }
 
 // ===============================
-// PERMISSÃ•ES
+// PERMISSÕES
 // ===============================
 
 function abrirPermissoesCargo(id) {

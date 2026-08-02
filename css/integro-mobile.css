@@ -1,3 +1,17 @@
+
+/* Shell crítico: impede que controles apareçam antes da autenticação e do CSS final. */
+body[data-integro-page].integro-shell-pending [data-integro-menu-trigger],
+body[data-integro-page].integro-booting [data-integro-menu-trigger],
+body[data-integro-page].integro-shell-pending .mobile-menu-btn,
+body[data-integro-page].integro-booting .mobile-menu-btn,
+body[data-integro-page].integro-shell-pending .hamburger,
+body[data-integro-page].integro-booting .hamburger,
+body[data-integro-page].integro-shell-pending #btnMenu,
+body[data-integro-page].integro-booting #btnMenu {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
 /* ÍNTEGRO — camada responsiva unificada
    Carregada por último para corrigir inconsistências entre telas sem alterar o desktop. */
 
