@@ -3216,7 +3216,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/firebase-config.js?v=20260728-3"></script>
   <script src="js/config.js"></script>
   <script src="js/utils/operational.js"></script>
-  <script src="js/services/access-control.js?v=20260801-1"></script>
+  <script src="js/services/access-control.js?v=20260802-permissoes1"></script>
   <script src="js/state.js"></script>
   <script src="js/services/firestore.js?v=20260728-3"></script>
   <script src="js/vendor/exceljs.min.js?v=20260729-1"></script>
@@ -3238,7 +3238,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/clientes.js"></script>
   <script src="js/vendas.js"></script>
   <script src="js/master-local.js"></script>
-  <script src="js/painel-unificado.js?v=20260801-1"></script>
+  <script src="js/painel-unificado.js?v=20260802-permissoes1"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
   <script src="js/perfis-unificados.js?v=20260801-1"></script>
 <script src="js/chat-ui.js?v=20260730-chat4"></script>
@@ -14044,8 +14044,17 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       .replace(/[\s-]+/g, "_");
   }
 
+  let usuarioValidadoMenu = null;
+
   function getUsuarioAtual(){
-    return window.usuarioLogado || window.currentUserData || window.usuarioAtual || window.userData || {};
+    return usuarioValidadoMenu ||
+      window.IntegroPainel?.usuario ||
+      window.State?.getUsuario?.() ||
+      window.usuarioLogado ||
+      window.currentUserData ||
+      window.usuarioAtual ||
+      window.userData ||
+      {};
   }
 
   function getPerfilAtual(){
@@ -14075,6 +14084,11 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
   window.temAcessoModuloIntegro = function(modulo){
     if(!modulo || modulo === "sair") return true;
+
+    const usuario = getUsuarioAtual();
+    if(usuario && Object.keys(usuario).length && typeof window.IntegroPainel?.podeModulo === "function"){
+      return window.IntegroPainel.podeModulo(usuario, modulo);
+    }
 
     const perfil = getPerfilAtual();
     if(PERFIS_ADMIN.has(perfil)) return true;
@@ -14154,6 +14168,20 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     if(typeof aplicarPermissoesAnterior === "function") aplicarPermissoesAnterior();
     window.aplicarMenuPorPermissoesIntegro();
   };
+
+  document.addEventListener("usuario-validado", event => {
+    usuarioValidadoMenu = event.detail || window.State?.getUsuario?.() || null;
+    window.setTimeout(() => {
+      window.aplicarMenuPorPermissoesIntegro();
+      atualizarEmpresaAvatar();
+    }, 0);
+  });
+
+  document.addEventListener("integro-painel-permissoes-aplicadas", event => {
+    usuarioValidadoMenu = event.detail?.usuario || usuarioValidadoMenu || window.State?.getUsuario?.() || null;
+    window.aplicarMenuPorPermissoesIntegro();
+    atualizarEmpresaAvatar();
+  });
 
   setTimeout(()=>{
     window.aplicarMenuPorPermissoesIntegro();
@@ -23216,8 +23244,16 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   function itemPermitido(modulo){
     const item = itemOriginal(modulo);
     if(!item) return false;
+
+    const usuario = window.IntegroPainel?.usuario || window.State?.getUsuario?.() || window.usuarioLogado || window.currentUserData || null;
+    if(usuario && typeof window.IntegroPainel?.podeModulo === "function" && !window.IntegroPainel.podeModulo(usuario, modulo)){
+      return false;
+    }
+    if(typeof window.temAcessoModuloIntegro === "function" && !window.temAcessoModuloIntegro(modulo)) return false;
+    if(item.hidden) return false;
     if(item.dataset.permissaoVisivel === "0") return false;
     if(item.getAttribute("aria-hidden") === "true") return false;
+    if(item.classList.contains("integro-sem-permissao")) return false;
     if(item.style.display === "none") return false;
     return true;
   }
@@ -23225,7 +23261,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   function primeiroModuloPermitido(grupo){
     if(!grupo) return null;
     if(itemPermitido(grupo.padrao)) return grupo.padrao;
-    return grupo.modulos.find(itemPermitido) || grupo.padrao || grupo.modulos[0] || null;
+    return grupo.modulos.find(itemPermitido) || null;
   }
 
   function acionarModulo(modulo){
@@ -23246,6 +23282,10 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     botao.type = "button";
     botao.className = "menu-item integro-menu-direto integro-nav-clone integro-sidebar-main-item";
     botao.dataset.integroSidebarGroupId = config.id;
+    botao.hidden = true;
+    botao.disabled = true;
+    botao.setAttribute("aria-hidden","true");
+    botao.setAttribute("tabindex","-1");
     botao.setAttribute("aria-label",config.label);
     botao.innerHTML = `<span class="menu-icon material-symbols-rounded">${config.icon}</span><span class="menu-label">${config.label}</span>`;
     botao.addEventListener("click", () => {
@@ -23502,16 +23542,35 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     atualizarVisibilidadeMenu();
   }
 
+  function definirVisibilidadeItem(item, visivel){
+    if(!item) return;
+    item.hidden = !visivel;
+    item.disabled = !visivel;
+    item.setAttribute("aria-hidden",String(!visivel));
+    if(visivel){
+      item.style.removeProperty("display");
+      if(item.getAttribute("tabindex") === "-1") item.removeAttribute("tabindex");
+    }else{
+      item.style.setProperty("display","none","important");
+      item.setAttribute("tabindex","-1");
+      item.classList.remove("active");
+    }
+  }
+
   function atualizarVisibilidadeMenu(){
     const menu = document.querySelector("#sidebar .integro-sidebar-menu-compacto");
     if(!menu) return;
+
+    ["dashboard","chatInterno"].forEach(modulo => {
+      definirVisibilidadeItem(menu.querySelector(`[data-modulo="${modulo}"]`), itemPermitido(modulo));
+    });
+
     GRUPOS.forEach(grupo => {
       const botao = menu.querySelector(`[data-integro-sidebar-group-id="${grupo.id}"]`);
-      if(!botao) return;
-      const podeVer = grupo.modulos.some(itemPermitido);
-      botao.hidden = !podeVer;
-      botao.setAttribute("aria-hidden",String(!podeVer));
+      definirVisibilidadeItem(botao, grupo.modulos.some(itemPermitido));
     });
+
+    definirVisibilidadeItem(menu.querySelector('[data-modulo="sair"]'), true);
   }
 
   function normalizarTela(telaId){
@@ -23580,6 +23639,16 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     criarSeletorContextual();
     instalarWrappers();
     atualizarTudo();
+
+    const sidebar = document.getElementById("sidebar");
+    if(sidebar && sidebar.dataset.integroPermissionObserver !== "true"){
+      sidebar.dataset.integroPermissionObserver = "true";
+      new MutationObserver(() => atualizarVisibilidadeMenu()).observe(sidebar,{
+        subtree:true,
+        attributes:true,
+        attributeFilter:["hidden","aria-hidden","style","class","data-permissao-visivel"]
+      });
+    }
   }
 
   document.addEventListener("click", evento => {
@@ -23590,6 +23659,10 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
 
   document.addEventListener("DOMContentLoaded", iniciar);
   document.addEventListener("usuario-validado", () => { instalarWrappers(); atualizarTudo(); });
+  document.addEventListener("integro-painel-permissoes-aplicadas", () => {
+    atualizarVisibilidadeMenu();
+    atualizarTudo();
+  });
   window.addEventListener("load", () => { instalarWrappers(); atualizarTudo(); });
   window.addEventListener("resize", fecharSeletor);
   window.setTimeout(iniciar,450);

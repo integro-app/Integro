@@ -41,3 +41,17 @@ test('auditor permanece somente leitura', () => {
   assert.equal(acesso.pode(usuario, 'financeiro.estornar', { clientePlataformaId: 't1' }), false);
   assert.equal(acesso.escopoConsulta(usuario).somenteLeitura, true);
 });
+
+
+test('vendedor não recebe permissões de aprovação e supervisor mantém aprovação comercial', () => {
+  const acesso = carregar();
+  const vendedor = { tipoUsuario: 'vendedor', id: 'v1', authUid: 'u1', clientePlataformaId: 't1' };
+  const supervisor = { tipoUsuario: 'supervisor', equipesIds: ['e1'], clientePlataformaId: 't1' };
+  const financeiro = { tipoUsuario: 'financeiro', clientePlataformaId: 't1' };
+
+  assert.equal(acesso.pode(vendedor, 'vendas.aprovar', { clientePlataformaId: 't1' }), false);
+  assert.equal(acesso.pode(vendedor, 'solicitacoes.aprovar', { clientePlataformaId: 't1' }), false);
+  assert.equal(acesso.pode(supervisor, 'vendas.aprovar', { clientePlataformaId: 't1', equipeId: 'e1' }), true);
+  assert.equal(acesso.pode(financeiro, 'vendas.aprovar', { clientePlataformaId: 't1' }), false);
+  assert.equal(acesso.pode(financeiro, 'solicitacoes.aprovar', { clientePlataformaId: 't1' }), true);
+});

@@ -12,7 +12,7 @@
     cargos: "usuarios.ver",
     solicitacoes: "solicitacoes.ver",
     aprovacoesFinanceiro: "solicitacoes.aprovar",
-    aprovacoesComercial: "vendas.ver",
+    aprovacoesComercial: "vendas.aprovar",
     financeiro: "financeiro.ver",
     monitoramento: "equipe.ver",
     contratosDigitais: "clientes.ver",
@@ -25,6 +25,21 @@
     notificacoes: "dashboard.ver",
     minhaConta: "dashboard.ver",
     sair: "dashboard.ver"
+  });
+
+
+  const PERMISSOES_ALTERNATIVAS_POR_MODULO = Object.freeze({
+    aprovacoesFinanceiro: Object.freeze([
+      "solicitacoes.aprovar",
+      "solicitacoes.aprovaringresso",
+      "solicitacoes.aprovardespesa",
+      "solicitacoes.aprovarretirada",
+      "solicitacoes.aprovarajuste"
+    ]),
+    aprovacoesComercial: Object.freeze([
+      "vendas.aprovar",
+      "solicitacoes.aprovarvenda"
+    ])
   });
 
   const TELA_INICIAL_POR_PERFIL = Object.freeze({
@@ -53,6 +68,22 @@
     return window.IntegroAcesso?.pode?.(usuario, permissao, contexto || {}) === true;
   }
 
+  function permissoesModulo(modulo) {
+    const chave = String(modulo || "").trim();
+    const alternativas = PERMISSOES_ALTERNATIVAS_POR_MODULO[chave];
+    if (alternativas?.length) return alternativas.slice();
+    const permissao = permissaoModulo(chave);
+    return permissao ? [permissao] : [];
+  }
+
+  function podeModulo(usuario, modulo, contexto) {
+    const perfil = acesso(usuario).perfil;
+    if (perfil === "master_local") return true;
+    const permissoes = permissoesModulo(modulo);
+    if (!permissoes.length) return false;
+    return permissoes.some(permissao => pode(usuario, permissao, contexto));
+  }
+
   function aplicarPermissoesNosMenus(usuario, raiz = document) {
     const perfil = acesso(usuario).perfil;
 
@@ -61,7 +92,7 @@
       const permissao = elemento.dataset.permissao || permissaoModulo(modulo);
       if (permissao && !elemento.dataset.permissao) elemento.dataset.permissao = permissao;
 
-      const permitido = perfil === "master_local" || pode(usuario, permissao);
+      const permitido = perfil === "master_local" || podeModulo(usuario, modulo);
       elemento.hidden = !permitido;
       elemento.setAttribute("aria-hidden", String(!permitido));
       elemento.classList.toggle("integro-sem-permissao", !permitido);
@@ -87,7 +118,7 @@
       const modulo = tela.dataset.modulo || tela.id;
       const permissao = tela.dataset.permissao || permissaoModulo(modulo);
       if (permissao && !tela.dataset.permissao) tela.dataset.permissao = permissao;
-      const permitido = perfil === "master_local" || !permissao || pode(usuario, permissao);
+      const permitido = perfil === "master_local" || (!permissao ? false : podeModulo(usuario, modulo));
       tela.dataset.acessoPermitido = String(permitido);
       if (!permitido) {
         tela.style.display = "none";
@@ -177,6 +208,8 @@
     PERMISSAO_POR_MODULO,
     TELA_INICIAL_POR_PERFIL,
     permissaoModulo,
+    permissoesModulo,
+    podeModulo,
     aplicar,
     aplicarPermissoesNosMenus,
     aplicarPermissoesNasTelas,

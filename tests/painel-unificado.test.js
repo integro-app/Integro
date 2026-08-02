@@ -27,3 +27,13 @@ test("painel aplica permissões após usuario-validado", () => {
   assert.match(painel, /aplicarPermissoesNosMenus/);
   assert.match(painel, /aplicarPermissoesNasTelas/);
 });
+
+
+test("aprovações usam permissões próprias e o menu compacto sincroniza após aplicar o perfil", () => {
+  assert.match(painel, /aprovacoesComercial:\s*"vendas\.aprovar"/);
+  assert.match(painel, /PERMISSOES_ALTERNATIVAS_POR_MODULO/);
+  assert.match(painel, /function podeModulo\(/);
+  assert.match(html, /integro-painel-permissoes-aplicadas/);
+  assert.match(html, /grupo\.modulos\.some\(itemPermitido\)/);
+  assert.match(html, /item\.style\.setProperty\("display","none","important"\)/);
+});

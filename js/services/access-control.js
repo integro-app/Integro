@@ -15,13 +15,13 @@
     master_local: ["*"],
     gerente: [
       "dashboard.ver", "clientes.ver", "clientes.criar", "clientes.editar", "clientes.direcionar",
-      "vendas.ver", "cobrancas.ver", "caixas.ver", "solicitacoes.ver", "relatorios.ver",
+      "vendas.ver", "vendas.aprovar", "cobrancas.ver", "caixas.ver", "solicitacoes.ver", "solicitacoes.aprovar", "relatorios.ver",
       "usuarios.ver", "equipes.ver"
     ],
     supervisor: [
       "dashboard.ver", "clientes.ver", "clientes.editar", "clientes.direcionar", "clientes.atender",
       "vendas.ver", "cobrancas.ver", "caixas.ver", "caixas.fechar", "caixas.reabrir",
-      "solicitacoes.ver", "solicitacoes.aprovar", "equipe.ver", "relatorios.ver"
+      "solicitacoes.ver", "solicitacoes.aprovar", "vendas.aprovar", "equipe.ver", "relatorios.ver"
     ],
     vendedor: [
       "dashboard.ver", "clientes.ver", "clientes.criar", "clientes.editar_proprio", "clientes.atender",
