@@ -18411,7 +18411,7 @@ async function verificarCaixaAbertoDiaAnterior() {
   if (window.__integroPatchRegrasOperacionaisCaixaVendedor20260623) return;
   window.__integroPatchRegrasOperacionaisCaixaVendedor20260623 = true;
 
-  const FILTROS_PADRAO_COBRANCA = ["com_cobranca_hoje", "pendentes"];
+  const FILTROS_PADRAO_COBRANCA = [];
   let logoutOperacionalEmExecucao = false;
   let validacaoCaixaEmAndamento = false;
   let monitorOperacionalIniciado = false;
@@ -21020,17 +21020,50 @@ async function verificarCaixaAbertoDiaAnterior() {
           totalParcelas: numero(venda.quantidadeParcelas || parcelasVenda.length || 1),
           progresso: 0,
           progressoTexto: `0/${numero(venda.quantidadeParcelas || parcelasVenda.length || 1)}`,
-          situacao: "EM_DIA",
-          diasIndicador: 0,
+          situacao: (() => {
+            const hoje = new Date((typeof hojeISO === "function" ? hojeISO() : new Date().toISOString().slice(0, 10)) + "T00:00:00");
+            const primeiraPendente = parcelasVenda
+              .filter(p => !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(String(p.status || p.statusParcela || "PENDENTE").toUpperCase()))
+              .sort((a, b) => String(a.dataVencimento || a.dataPrevista || "").localeCompare(String(b.dataVencimento || b.dataPrevista || "")))[0];
+            const data = String(primeiraPendente?.dataVencimento || primeiraPendente?.dataPrevista || venda.dataPrimeiraCobranca || "").slice(0, 10);
+            if (!data) return "EM_DIA";
+            const vencimento = new Date(data + "T00:00:00");
+            return vencimento < hoje ? "ATRASADO" : vencimento > hoje ? "ADIANTADO" : "EM_DIA";
+          })(),
+          diasIndicador: (() => {
+            const hoje = new Date((typeof hojeISO === "function" ? hojeISO() : new Date().toISOString().slice(0, 10)) + "T00:00:00");
+            const primeiraPendente = parcelasVenda
+              .filter(p => !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(String(p.status || p.statusParcela || "PENDENTE").toUpperCase()))
+              .sort((a, b) => String(a.dataVencimento || a.dataPrevista || "").localeCompare(String(b.dataVencimento || b.dataPrevista || "")))[0];
+            const data = String(primeiraPendente?.dataVencimento || primeiraPendente?.dataPrevista || venda.dataPrimeiraCobranca || "").slice(0, 10);
+            if (!data) return 0;
+            return Math.abs(Math.floor((new Date(data + "T00:00:00") - hoje) / 86400000));
+          })(),
           venda,
           parcelas: parcelasVenda,
-          comCobrancaHoje: true,
-          pendenteHoje: true,
+          comCobrancaHoje: (() => {
+            const hoje = typeof hojeISO === "function" ? hojeISO() : new Date().toISOString().slice(0, 10);
+            return parcelasVenda.some(p => {
+              const status = String(p.status || p.statusParcela || "PENDENTE").toUpperCase();
+              const data = String(p.dataVencimento || p.dataPrevista || "").slice(0, 10);
+              return !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(status) && data && data <= hoje;
+            });
+          })(),
+          pendenteHoje: (() => {
+            const hoje = typeof hojeISO === "function" ? hojeISO() : new Date().toISOString().slice(0, 10);
+            return parcelasVenda.some(p => {
+              const status = String(p.status || p.statusParcela || "PENDENTE").toUpperCase();
+              const data = String(p.dataVencimento || p.dataPrevista || "").slice(0, 10);
+              return !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(status) && data && data <= hoje;
+            });
+          })(),
           pagoHoje: false,
           valorPagoHoje: 0,
           naoPagoHoje: false,
           proximaCobranca: venda.dataPrimeiraCobranca || parcelasVenda[0]?.dataVencimento || null,
-          proximaCobrancaTexto: "Pendente"
+          proximaCobrancaTexto: typeof formatarProximaCobranca === "function"
+            ? formatarProximaCobranca(venda.dataPrimeiraCobranca || parcelasVenda[0]?.dataVencimento || null)
+            : "Pendente"
         });
       });
 

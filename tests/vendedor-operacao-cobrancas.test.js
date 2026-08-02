@@ -21,3 +21,17 @@ test('carregamento operacional inclui clientes antes de renderizar cobranças', 
   assert.match(html, /Promise\.all\(\[\s*carregarCaixaAtual\(\),\s*carregarClientes\(\),\s*carregarVendas\(\)/);
   assert.match(html, /window\.montarCobrancasPorVenda = function montarCobrancasDaCarteiraDoVendedor/);
 });
+
+
+test('card operacional de cobrança preserva todos os dados e ações', () => {
+  assert.match(html, /cobranca-lateral-clean/);
+  assert.match(html, /nome-cliente-cobranca/);
+  assert.match(html, /Parcela devida/);
+  assert.match(html, /Saldo devedor/);
+  assert.match(html, /Pago hoje/);
+  assert.match(html, /statusVisualCobranca\(item\)/);
+  assert.match(html, /registrarNaoPagamentoVenda/);
+  assert.match(html, /abrirPagamentoCliente/);
+  assert.match(html, /abrirWhatsAppClienteCobranca/);
+  assert.match(html, /abrirHistoricoPagamentosVenda/);
+});
