@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>ÍNTEGRO • Master Local</title>
-  <meta name="integro-build" content="20260731-menu-estavel-v1">
+  <meta name="integro-build" content="20260802-loader-permissoes-fix1">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12397,40 +12397,45 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   async function iniciarLoadingPremium(){
+    const loader = document.getElementById("integroBootLoader");
     document.body.classList.add("integro-booting");
     setLoaderProgress(0);
 
-    await executarEtapaLoading("Carregando painel...", 5, 15, async () => {
-      await esperar(300);
-    });
+    try{
+      await executarEtapaLoading("Carregando painel...", 5, 15, async () => {
+        await esperar(300);
+      });
 
-    await executarEtapaLoading("Carregando dados da empresa...", 15, 45, async () => {
-      await chamarSeExistir("carregarTudo", 3500);
-    });
+      await executarEtapaLoading("Carregando dados da empresa...", 15, 45, async () => {
+        await chamarSeExistir("carregarTudo", 3500);
+      });
 
-    await executarEtapaLoading("Atualizando indicadores reais...", 45, 78, async () => {
-      await chamarSeExistir("prepararDashboardAntesDoLoading", 8500);
-    });
+      await executarEtapaLoading("Atualizando indicadores reais...", 45, 78, async () => {
+        await chamarSeExistir("prepararDashboardAntesDoLoading", 8500);
+      });
 
-    await executarEtapaLoading("Organizando permissões e m?dulos...", 78, 90, async () => {
+      await executarEtapaLoading("Organizando permissões e módulos...", 78, 90, async () => {
+        await esperar(250);
+      });
+
+      await executarEtapaLoading("Preparando painel...", 90, 100, async () => {
+        organizarMenuIntegro();
+        await esperar(300);
+      });
+    }catch(erro){
+      console.error("[ÍNTEGRO] Falha controlada ao preparar o painel:", erro);
+      setLoaderStep("Concluindo abertura do painel...", 100);
       await esperar(250);
-    });
+    }finally{
+      if(loader) loader.classList.add("hide");
+      document.body.classList.remove("integro-booting");
 
-    await executarEtapaLoading("Preparando painel...", 90, 100, async () => {
-      organizarMenuIntegro();
-      await esperar(300);
-    });
-
-    const loader = document.getElementById("integroBootLoader");
-    if(loader) loader.classList.add("hide");
-
-    document.body.classList.remove("integro-booting");
-
-    setTimeout(() => {
-      if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
-      organizarMenuIntegro();
-      if(typeof window.atualizarBadgeNotificacoes === "function") window.atualizarBadgeNotificacoes();
-    }, 420);
+      setTimeout(() => {
+        if(loader && loader.parentNode) loader.parentNode.removeChild(loader);
+        organizarMenuIntegro();
+        if(typeof window.atualizarBadgeNotificacoes === "function") window.atualizarBadgeNotificacoes();
+      }, 420);
+    }
   }
 
   window.organizarMenuIntegro = organizarMenuIntegro;
@@ -23544,17 +23549,35 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
 
   function definirVisibilidadeItem(item, visivel){
     if(!item) return;
-    item.hidden = !visivel;
-    item.disabled = !visivel;
-    item.setAttribute("aria-hidden",String(!visivel));
-    if(visivel){
-      item.style.removeProperty("display");
-      if(item.getAttribute("tabindex") === "-1") item.removeAttribute("tabindex");
-    }else{
-      item.style.setProperty("display","none","important");
-      item.setAttribute("tabindex","-1");
-      item.classList.remove("active");
+    const deveOcultar = !Boolean(visivel);
+
+    if(item.hidden !== deveOcultar) item.hidden = deveOcultar;
+    if(item.disabled !== deveOcultar) item.disabled = deveOcultar;
+
+    const ariaEsperado = String(deveOcultar);
+    if(item.getAttribute("aria-hidden") !== ariaEsperado){
+      item.setAttribute("aria-hidden",ariaEsperado);
     }
+
+    if(deveOcultar){
+      if(item.style.display !== "none" || item.style.getPropertyPriority("display") !== "important"){
+        item.style.setProperty("display","none","important");
+      }
+      if(item.getAttribute("tabindex") !== "-1") item.setAttribute("tabindex","-1");
+      if(item.classList.contains("active")) item.classList.remove("active");
+    }else{
+      if(item.style.display) item.style.removeProperty("display");
+      if(item.getAttribute("tabindex") === "-1") item.removeAttribute("tabindex");
+    }
+  }
+
+  let visibilidadeMenuFrame = 0;
+  function agendarAtualizacaoVisibilidadeMenu(){
+    if(visibilidadeMenuFrame) return;
+    visibilidadeMenuFrame = window.requestAnimationFrame(() => {
+      visibilidadeMenuFrame = 0;
+      atualizarVisibilidadeMenu();
+    });
   }
 
   function atualizarVisibilidadeMenu(){
@@ -23643,11 +23666,19 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const sidebar = document.getElementById("sidebar");
     if(sidebar && sidebar.dataset.integroPermissionObserver !== "true"){
       sidebar.dataset.integroPermissionObserver = "true";
-      new MutationObserver(() => atualizarVisibilidadeMenu()).observe(sidebar,{
+      const observer = new MutationObserver(mutations => {
+        const possuiMudancaExterna = mutations.some(mutation => {
+          const alvo = mutation.target?.nodeType === 1 ? mutation.target : mutation.target?.parentElement;
+          return alvo && !alvo.closest(".integro-sidebar-menu-compacto");
+        });
+        if(possuiMudancaExterna) agendarAtualizacaoVisibilidadeMenu();
+      });
+      observer.observe(sidebar,{
         subtree:true,
         attributes:true,
         attributeFilter:["hidden","aria-hidden","style","class","data-permissao-visivel"]
       });
+      window.__integroPermissionMenuObserver = observer;
     }
   }
 

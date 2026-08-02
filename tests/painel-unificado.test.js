@@ -37,3 +37,17 @@ test("aprovações usam permissões próprias e o menu compacto sincroniza após
   assert.match(html, /grupo\.modulos\.some\(itemPermitido\)/);
   assert.match(html, /item\.style\.setProperty\("display","none","important"\)/);
 });
+
+
+test("observador do menu ignora mutações do próprio menu compacto e evita loop de renderização", () => {
+  assert.match(html, /!alvo\.closest\("\.integro-sidebar-menu-compacto"\)/);
+  assert.match(html, /function agendarAtualizacaoVisibilidadeMenu\(/);
+  assert.match(html, /if\(visibilidadeMenuFrame\) return/);
+  assert.match(html, /if\(item\.hidden !== deveOcultar\)/);
+});
+
+test("loader do master local sempre é encerrado em finally", () => {
+  assert.match(html, /async function iniciarLoadingPremium\(\)[\s\S]*?finally\s*\{/);
+  assert.match(html, /document\.body\.classList\.remove\("integro-booting"\)/);
+  assert.match(html, /loader\) loader\.classList\.add\("hide"\)/);
+});
