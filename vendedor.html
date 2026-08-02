@@ -2065,7 +2065,7 @@
           <button onclick="trocarTela('cobrancas', this)">
             <span class="menu-left">
               <span class="material-symbols-rounded">receipt_long</span>
-              Cobranças
+              Operação
             </span>
             <span class="material-symbols-rounded">chevron_right</span>
           </button>
@@ -3361,9 +3361,9 @@
 
           const titulo = document.getElementById("pageTitle");
           const subtitulo = document.getElementById("pageSubtitle");
-          if (titulo) titulo.innerText = mostrarCobrancas ? "Cobranças" : "Vendas";
+          if (titulo) titulo.innerText = "Operação";
           if (subtitulo) subtitulo.innerText = mostrarCobrancas
-            ? "Rota do dia, pagamentos e não pagamentos."
+            ? "Clientes com saldo devedor, pagamentos e não pagamentos."
             : "Vendas registradas no dia.";
 
           if (mostrarCobrancas) {
@@ -4622,10 +4622,7 @@
 
       <script>
 
-        let filtrosCobrancaEstado = [
-  "com_cobranca_hoje",
-  "pendentes"
-];
+        let filtrosCobrancaEstado = [];
 
         function renderCobrancas() {
           const el = document.getElementById("listaCobrancas");
@@ -7232,8 +7229,8 @@
           };
 
           titulos.cobrancas = [
-            "Cobranças",
-            "Rota do dia, pagamentos, não pagamentos, renovações e vendas novas."
+            "Operação",
+            "Cobranças da carteira e vendas do vendedor."
           ];
           titulos.vendas = [
             "Vendas",
@@ -7275,6 +7272,7 @@
 
             await Promise.all([
               carregarCaixaAtual(),
+              carregarClientes(),
               carregarVendas(),
               carregarParcelas(),
               carregarPagamentosHistorico(),
@@ -11264,7 +11262,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
       <div class="menu-item active" data-modulo="cobrancas" onclick="trocarTela('cobrancas', this)">
         <span class="menu-icon material-symbols-rounded">point_of_sale</span>
-        <span class="menu-label">Cobranças</span>
+        <span class="menu-label">Operação</span>
         <span class="chevron material-symbols-rounded">chevron_right</span>
       </div>
 
@@ -20914,6 +20912,165 @@ async function verificarCaixaAbertoDiaAnterior() {
   });
 })();
 </script>
+
+<script id="integro-operacao-vendedor-carteira-devedora-20260802">
+(function () {
+  "use strict";
+
+  if (window.__integroOperacaoCarteiraDevedora20260802) return;
+  window.__integroOperacaoCarteiraDevedora20260802 = true;
+
+  const numero = valor => {
+    const n = Number(valor || 0);
+    return Number.isFinite(n) ? n : 0;
+  };
+
+  const statusAtivo = venda => {
+    const status = String(venda?.statusVenda || venda?.status || "").toUpperCase();
+    return venda?.excluido !== true && !["CANCELADO", "QUITADO", "FINALIZADO"].includes(status);
+  };
+
+  const saldoCliente = cliente => numero(
+    cliente?.saldoDevedor ??
+    cliente?.saldoAtual ??
+    cliente?.saldo ??
+    cliente?.valorEmAberto ??
+    0
+  );
+
+  const vendedorAtualId = () => String(
+    window.usuarioLogado?.uid ||
+    window.usuarioLogado?.authUid ||
+    window.usuarioAtual?.uid ||
+    window.firebase?.auth?.()?.currentUser?.uid ||
+    ""
+  );
+
+  const pertenceAoVendedor = (registro, uid) => {
+    if (!uid) return true;
+    const vinculo = String(
+      registro?.vendedorId ||
+      registro?.vendedorUid ||
+      registro?.usuarioId ||
+      registro?.responsavelId ||
+      registro?.authUid ||
+      ""
+    );
+    return !vinculo || vinculo === uid;
+  };
+
+  const montarBaseOriginal = window.montarCobrancasPorVenda;
+
+  window.montarCobrancasPorVenda = function montarCobrancasDaCarteiraDoVendedor() {
+    const baseOriginal = typeof montarBaseOriginal === "function"
+      ? montarBaseOriginal.apply(this, arguments) || []
+      : [];
+
+    const porCliente = new Map();
+    baseOriginal.forEach(item => {
+      if (numero(item?.saldoDevedor) > 0.01) {
+        porCliente.set(String(item.clienteId || item.vendaId), item);
+      }
+    });
+
+    const uid = vendedorAtualId();
+    const clientes = Array.isArray(window.clientesCache) ? window.clientesCache : [];
+    const vendas = Array.isArray(window.vendasCache) ? window.vendasCache : [];
+    const parcelas = Array.isArray(window.parcelasCache) ? window.parcelasCache : [];
+
+    clientes
+      .filter(cliente => cliente?.excluido !== true)
+      .filter(cliente => saldoCliente(cliente) > 0.01)
+      .filter(cliente => pertenceAoVendedor(cliente, uid))
+      .forEach(cliente => {
+        const clienteId = String(cliente.id || cliente.clienteId || "");
+        if (!clienteId || porCliente.has(clienteId)) return;
+
+        const venda = vendas
+          .filter(item => String(item.clienteId || "") === clienteId)
+          .filter(statusAtivo)
+          .filter(item => pertenceAoVendedor(item, uid))
+          .sort((a, b) => numero(b.criadoEmMs || b.dataCriacaoMs) - numero(a.criadoEmMs || a.dataCriacaoMs))[0];
+
+        if (!venda) return;
+
+        const itemOriginalDaVenda = baseOriginal.find(item => String(item.vendaId || "") === String(venda.id || ""));
+        if (itemOriginalDaVenda) {
+          itemOriginalDaVenda.saldoDevedor = saldoCliente(cliente);
+          porCliente.set(clienteId, itemOriginalDaVenda);
+          return;
+        }
+
+        const parcelasVenda = parcelas.filter(p => String(p.vendaId || "") === String(venda.id || "") && p.excluido !== true);
+        const valorParcela = numero(venda.valorParcela || parcelasVenda[0]?.valor || parcelasVenda[0]?.valorParcela);
+
+        porCliente.set(clienteId, {
+          vendaId: venda.id,
+          clienteId,
+          clienteNome: cliente.nome || cliente.nomeCompleto || cliente.apelido || venda.clienteNome || "Cliente",
+          clienteApelido: cliente.apelido || venda.clienteApelido || "",
+          nomeCompleto: cliente.nomeCompleto || cliente.nome || "",
+          apelido: cliente.apelido || "",
+          telefone: cliente.telefone || cliente.telefonePrincipal || venda.telefone || "",
+          telefonePrincipal: cliente.telefonePrincipal || cliente.telefone || "",
+          documento: cliente.documento || cliente.cpfCnpj || venda.documento || "",
+          cliente,
+          saldoDevedor: saldoCliente(cliente),
+          valorParcela,
+          totalParcelas: numero(venda.quantidadeParcelas || parcelasVenda.length || 1),
+          progresso: 0,
+          progressoTexto: `0/${numero(venda.quantidadeParcelas || parcelasVenda.length || 1)}`,
+          situacao: "EM_DIA",
+          diasIndicador: 0,
+          venda,
+          parcelas: parcelasVenda,
+          comCobrancaHoje: true,
+          pendenteHoje: true,
+          pagoHoje: false,
+          valorPagoHoje: 0,
+          naoPagoHoje: false,
+          proximaCobranca: venda.dataPrimeiraCobranca || parcelasVenda[0]?.dataVencimento || null,
+          proximaCobrancaTexto: "Pendente"
+        });
+      });
+
+    return Array.from(porCliente.values())
+      .filter(item => numero(item.saldoDevedor) > 0.01)
+      .filter(item => pertenceAoVendedor(item.venda || item.cliente || item, uid));
+  };
+
+  const abrirAbaAnterior = window.abrirAbaVendasCobrancas;
+  window.abrirAbaVendasCobrancas = function abrirOperacaoVendedor(aba = "cobrancas") {
+    const resultado = typeof abrirAbaAnterior === "function"
+      ? abrirAbaAnterior.apply(this, arguments)
+      : undefined;
+
+    const titulo = document.getElementById("pageTitle");
+    const subtitulo = document.getElementById("pageSubtitle");
+    if (titulo) titulo.textContent = "Operação";
+    if (subtitulo) subtitulo.textContent = aba === "vendas"
+      ? "Vendas registradas no dia."
+      : "Todos os clientes da carteira com saldo devedor acima de R$ 0,01.";
+
+    if (aba !== "vendas") {
+      requestAnimationFrame(() => {
+        try { window.renderCobrancas?.(); } catch (erro) { console.error("Falha ao renderizar carteira de cobranças:", erro); }
+      });
+    }
+    return resultado;
+  };
+
+  document.addEventListener("integro:usuario-validado", () => {
+    Promise.resolve()
+      .then(() => window.carregarClientes?.())
+      .then(() => window.carregarVendas?.())
+      .then(() => window.carregarParcelas?.())
+      .then(() => window.renderCobrancas?.())
+      .catch(erro => console.warn("Não foi possível atualizar a carteira de cobranças:", erro));
+  });
+})();
+</script>
+
   <script src="js/integro-mobile-navigation.js?v=20260802-final2"></script>
 </body>
 
