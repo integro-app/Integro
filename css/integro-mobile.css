@@ -75,8 +75,8 @@ button, input, select, textarea {
   .sidebar-overlay,
   .drawer-overlay,
   .modal-overlay {
-    -webkit-backdrop-filter: blur(2px);
-    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
   }
 
   .topbar,
