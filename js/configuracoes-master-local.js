@@ -292,7 +292,7 @@
   const abrirAnterior = global.abrirAbaConfiguracoes;
   global.abrirAbaConfiguracoes = function (aba) {
     if (typeof abrirAnterior === "function") abrirAnterior(aba);
-    ["estrutura","permissoes","catalogos","regras"].forEach(nome => {
+    ["estrutura","usuariosPermissoes","permissoes","catalogos","regras"].forEach(nome => {
       const box = document.getElementById(`config${nome.charAt(0).toUpperCase()}${nome.slice(1)}Box`);
       const tab = document.getElementById(`tabConfig${nome.charAt(0).toUpperCase()}${nome.slice(1)}`);
       if (box) box.style.display = nome === aba ? "block" : "none";

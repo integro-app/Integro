@@ -24,6 +24,8 @@ const State = {
   clientes: [],
   vendas: [],
   pagamentos: [],
+  parcelas: [],
+  historicoCobrancas: [],
   solicitacoes: [],
   logs: [],
 
@@ -117,6 +119,14 @@ const State = {
     this.pagamentos = data || [];
   },
 
+  setParcelas(data) {
+    this.parcelas = data || [];
+  },
+
+  setHistoricoCobrancas(data) {
+    this.historicoCobrancas = data || [];
+  },
+
   setSolicitacoes(data) {
     this.solicitacoes = data || [];
   },
@@ -177,6 +187,14 @@ const State = {
 
   getPagamentos() {
     return this.pagamentos;
+  },
+
+  getParcelas() {
+    return this.parcelas;
+  },
+
+  getHistoricoCobrancas() {
+    return this.historicoCobrancas;
   },
 
   getSolicitacoes() {

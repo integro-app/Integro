@@ -123,10 +123,12 @@
     const perfil = acesso().perfil;
     if (!perfil || perfil === "master_local") return originais.carregarTudoMasterLocal?.();
 
-    const [clientes, vendas, pagamentos, solicitacoes, caixas, usuarios, equipes, logs] = await Promise.all([
+    const [clientes, vendas, pagamentos, parcelas, historicoCobrancas, solicitacoes, caixas, usuarios, equipes, logs] = await Promise.all([
       carregarClientesPorPerfil(),
       carregarColecaoPorPerfil(CONFIG.COLECOES.VENDAS, CONFIG.LIMITS?.VENDAS || 500),
       carregarPagamentosHojePorPerfil(),
+      carregarColecaoPorPerfil(CONFIG.COLECOES.PARCELAS || "parcelas", CONFIG.LIMITS?.PARCELAS || 1200),
+      carregarColecaoPorPerfil(CONFIG.COLECOES.HISTORICO_COBRANCAS || "historicoCobrancas", CONFIG.LIMITS?.HISTORICO_COBRANCAS || 600),
       carregarColecaoPorPerfil(CONFIG.COLECOES.SOLICITACOES, CONFIG.LIMITS?.SOLICITACOES || 300),
       carregarColecaoPorPerfil(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 300),
       carregarUsuariosPorPerfil(),
@@ -137,6 +139,13 @@
     State.setClientes?.(clientes);
     State.setVendas?.(vendas);
     State.setPagamentos?.(pagamentos);
+    State.setParcelas?.(parcelas);
+    State.setHistoricoCobrancas?.(historicoCobrancas);
+    window.clientesCache = clientes;
+    window.vendasCache = vendas;
+    window.pagamentosHojeCache = pagamentos;
+    window.parcelasCache = parcelas;
+    window.historicoCobrancasCache = historicoCobrancas;
     State.setSolicitacoes?.(solicitacoes);
     State.setCaixas?.(caixas);
     State.setUsuarios?.(usuarios);

@@ -1,33 +1,24 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
 
+<html lang="pt-BR">
 <head>
-  <meta name="integro-legacy-entry" content="redirect-to-master-local">
-  <script>
+<meta content="redirect-to-master-local" name="integro-legacy-entry"/>
+<script>
     (function () {
       if (new URLSearchParams(location.search).get("legacy") === "1") return;
       location.replace("master-local.html" + location.search + location.hash);
     })();
   </script>
-
-
-  <meta charset="UTF-8" />
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-
-  <title>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<title>
     ÍNTEGRO • Vendedor
   </title>
-
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-    rel="stylesheet">
-  <link href="css/integro-theme.css?v=20260730-chat4" rel="stylesheet">
-
-  <style>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="css/integro-theme.css?v=20260730-chat4" rel="stylesheet"/>
+<style>
     * {
       margin: 0;
       padding: 0;
@@ -1077,7 +1068,6 @@
     }
 
   </style>
-
 <style id="integro-vendas-cobrancas-clean">
   #vendas .panel {
     padding: 18px;
@@ -1595,8 +1585,6 @@
     }
   }
 </style>
-
-
 <style id="integro-sidebar-drawer-fix">
   body.menu-aberto { overflow: hidden; }
 
@@ -1651,7 +1639,6 @@
     }
   }
 </style>
-
 <style id="integro-campos-premium-ajustes">
   .money-field-wrap {
     width: 100%;
@@ -1871,7 +1858,6 @@
     }
   }
 </style>
-
 <style id="integro-boot-loader-percentual-vendedor">
   /* ===== LOADING PREMIUM ÍNTEGRO - VENDEDOR COM PORCENTAGEM ===== */
   body.integro-booting {
@@ -1977,308 +1963,239 @@
     }
   }
 </style>
-
-  <link href="css/integro-mobile.css?v=20260802" rel="stylesheet">
-</head>
-
+<link href="css/integro-mobile.css?v=20260802" rel="stylesheet"/>
+</meta><link href="css/vendedor-operacao.css?v=20260803-1" rel="stylesheet"/></head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="vendedor">
-
-
-  <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
-    <div class="integro-loader-card">
-      <div class="integro-loader-logo">ÍNTE<span>GRO</span></div>
-      <div class="integro-loader-title">Preparando seu painel</div>
-      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
-      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
-      <div class="integro-loader-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <span id="integroLoaderBarFill"></span>
-      </div>
-    </div>
-  </div>
-
-
-  <div class="overlay" id="overlay" onclick="toggleSidebar(false)" data-integro-sidebar-overlay></div>
-
-  <div class="app">
-
-    <!-- SIDEBAR -->
-    <aside class="sidebar" id="sidebar" data-integro-sidebar>
-
-      <div class="logo">
+<div aria-live="polite" class="integro-boot-loader" id="integroBootLoader" role="status">
+<div class="integro-loader-card">
+<div class="integro-loader-logo">ÍNTE<span>GRO</span></div>
+<div class="integro-loader-title">Preparando seu painel</div>
+<div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
+<div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
+<div aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="integro-loader-bar" role="progressbar">
+<span id="integroLoaderBarFill"></span>
+</div>
+</div>
+</div>
+<div class="overlay" data-integro-sidebar-overlay id="overlay" onclick="toggleSidebar(false)"></div>
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sidebar" data-integro-sidebar id="sidebar">
+<div class="logo">
         ÍNTE<span>GRO</span>
-      </div>
-
-      <div class="user-card">
-        <small>Usuário logado</small>
-        <strong id="vendedorNome">Carregando...</strong>
-        <small id="empresaNome">Empresa</small>
-        <span class="status-online">Online</span>
-        <small id="vendedorCargo">Vendedor</small>
-      </div>
-
-      <div class="menu-section">
-        <div class="menu-title">Comunicação</div>
-
-        <div class="menu">
-
-          <button onclick="trocarTela('notificacoes', this)">
-            <span class="menu-left">
-              <span class="material-symbols-rounded">notifications</span>
+</div>
+<div class="user-card">
+<small>Usuário logado</small>
+<strong id="vendedorNome">Carregando...</strong>
+<small id="empresaNome">Empresa</small>
+<span class="status-online">Online</span>
+<small id="vendedorCargo">Vendedor</small>
+</div>
+<div class="menu-section">
+<div class="menu-title">Comunicação</div>
+<div class="menu">
+<button onclick="trocarTela('notificacoes', this)">
+<span class="menu-left">
+<span class="material-symbols-rounded">notifications</span>
               Notificações
             </span>
-            <span class="menu-badge" id="badgeNotificacoes">0</span>
-          </button>
-
-          <button onclick="trocarTela('chatInterno', this)">
-            <span class="menu-left">
-              <span class="material-symbols-rounded">forum</span>
+<span class="menu-badge" id="badgeNotificacoes">0</span>
+</button>
+<button onclick="trocarTela('chatInterno', this)">
+<span class="menu-left">
+<span class="material-symbols-rounded">forum</span>
               Chat interno
             </span>
-            <span class="menu-new">Novo</span>
-          </button>
-
-        </div>
-      </div>
-
-      <div class="menu-section">
-        <div class="menu-title">Operação</div>
-
-        <div class="menu">
-
-          <button class="active" onclick="trocarTela('dashboard', this)">
-            <span class="menu-left">
-              <span class="material-symbols-rounded">dashboard</span>
+<span class="menu-new">Novo</span>
+</button>
+</div>
+</div>
+<div class="menu-section">
+<div class="menu-title">Operação</div>
+<div class="menu">
+<button class="active" onclick="trocarTela('dashboard', this)">
+<span class="menu-left">
+<span class="material-symbols-rounded">dashboard</span>
               Dashboard
             </span>
-            <span class="material-symbols-rounded">chevron_right</span>
-          </button>
-
-          <button onclick="trocarTela('clientes', this)">
-            <span class="menu-left">
-              <span class="material-symbols-rounded">groups</span>
+<span class="material-symbols-rounded">chevron_right</span>
+</button>
+<button onclick="trocarTela('clientes', this)">
+<span class="menu-left">
+<span class="material-symbols-rounded">groups</span>
               Clientes
             </span>
-            <span class="material-symbols-rounded">chevron_right</span>
-          </button>
-
-
-          <button onclick="trocarTela('cobrancas', this)">
-            <span class="menu-left">
-              <span class="material-symbols-rounded">receipt_long</span>
+<span class="material-symbols-rounded">chevron_right</span>
+</button>
+<button onclick="trocarTela('cobrancas', this)">
+<span class="menu-left">
+<span class="material-symbols-rounded">receipt_long</span>
               Operação
             </span>
-            <span class="material-symbols-rounded">chevron_right</span>
-          </button>
-
-          <button onclick="trocarTela('solicitacoes', this)">
-            <span class="menu-left">
-              <span class="material-symbols-rounded">task</span>
+<span class="material-symbols-rounded">chevron_right</span>
+</button>
+<button onclick="trocarTela('solicitacoes', this)">
+<span class="menu-left">
+<span class="material-symbols-rounded">task</span>
               Solicitações
             </span>
-            <span class="material-symbols-rounded">chevron_right</span>
-          </button>
-
-        </div>
-      </div>
-
-      <div class="menu-section">
-        <div class="menu-title">Sistema</div>
-
-        <div class="menu">
-          <button onclick="logout()">
-            <span class="menu-left">
-              <span class="material-symbols-rounded">logout</span>
+<span class="material-symbols-rounded">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="menu-section">
+<div class="menu-title">Sistema</div>
+<div class="menu">
+<button onclick="logout()">
+<span class="menu-left">
+<span class="material-symbols-rounded">logout</span>
               Sair
             </span>
-            <span class="material-symbols-rounded">chevron_right</span>
-          </button>
-        </div>
-      </div>
-
-    </aside>
-
-    <!-- MAIN -->
-    <main class="main">
-
-      <!-- TOPBAR -->
-      <header class="topbar">
-
-        <div class="top-left">
-
-          <button class="hamburger" onclick="toggleSidebar(true)" aria-label="Abrir menu" data-integro-menu-trigger>
-            <span class="material-symbols-rounded">menu</span>
-          </button>
-
-          <div>
-            <h1 id="pageTitle">Dashboard do vendedor</h1>
-            <p id="pageSubtitle">Resumo do caixa, clientes, cobranças e vendas do dia.</p>
-          </div>
-
-        </div>
-
-        <div class="top-actions">
-          <div class="date-chip">
-            <span class="material-symbols-rounded" aria-hidden="true">calendar_today</span>
-            <div>
-              <div id="dataPainel">--/--/----</div>
-              <small id="diaPainel">Hoje</small>
-            </div>
-          </div>
-
-          <button
-            id="btnTopNovoCliente"
-            class="btn btn-primary"
-            onclick="abrirNovoCliente()"
-            style="display:none;"
-          >
+<span class="material-symbols-rounded">chevron_right</span>
+</button>
+</div>
+</div>
+</aside>
+<!-- MAIN -->
+<main class="main">
+<!-- TOPBAR -->
+<header class="topbar">
+<div class="top-left">
+<button aria-label="Abrir menu" class="hamburger" data-integro-menu-trigger onclick="toggleSidebar(true)">
+<span class="material-symbols-rounded">menu</span>
+</button>
+<div>
+<h1 id="pageTitle">Dashboard do vendedor</h1>
+<p id="pageSubtitle">Resumo do caixa, clientes, cobranças e vendas do dia.</p>
+</div>
+</div>
+<div class="top-actions">
+<div class="date-chip">
+<span aria-hidden="true" class="material-symbols-rounded">calendar_today</span>
+<div>
+<div id="dataPainel">--/--/----</div>
+<small id="diaPainel">Hoje</small>
+</div>
+</div>
+<button class="btn btn-primary" id="btnTopNovoCliente" onclick="abrirNovoCliente()" style="display:none;">
             Novo cliente
           </button>
-        </div>
-
-      </header>
-
-      <!-- DASHBOARD -->
-      <section id="dashboard" class="screen">
-
-        <div class="grid grid-3">
-
-          <div class="card card-gradient card-money" onclick="abrirResumoKpi('caixa')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('caixa')">
-            <div class="kpi-card">
-              <div class="kpi-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 9V4h8l3 5"></path>
-                  <path d="M4 9h18v11H4z"></path>
-                  <path d="M8 13h.01"></path>
-                  <path d="M12 13h.01"></path>
-                  <path d="M16 13h.01"></path>
-                  <path d="M8 17h8"></path>
-                  <path d="M18 4h1"></path>
-                </svg>
-              </div>
-              <div class="kpi-content">
-                <small>Caixa atual</small>
-                <strong id="kpiCaixaAtual">R$ 0,00</strong>
-                <p>Entradas: <b id="kpiCaixaEntradas">R$ 0,00</b></p>
-                <p>Saídas: <b id="kpiCaixaSaidas">R$ 0,00</b></p>
-              </div>
-            </div>
-          </div>
-
-          <div class="card card-gradient card-gold" onclick="abrirResumoKpi('carteira')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('carteira')">
-            <div class="kpi-card">
-              <div class="kpi-icon">bar_chart</div>
-              <div class="kpi-content">
-                <small>Carteira final</small>
-                <strong id="kpiCarteiraFinal">R$ 0,00</strong>
-                <p><b id="kpiCarteiraInicial">R$ 0,00</b> <span id="kpiCarteiraVariacao" style="margin-left:6px;font-weight:900;">→ 0%</span></p>
-                <p><b id="kpiCarteiraClientes">0 clientes ativos</b></p>
-              </div>
-            </div>
-          </div>
-
-          <div class="card card-gradient card-orange" onclick="abrirResumoKpi('vendas')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirResumoKpi('vendas')">
-            <div class="kpi-card">
-              <div class="kpi-icon">shopping_cart</div>
-              <div class="kpi-content">
-                <small>Vendas hoje</small>
-                <strong id="kpiVendasHoje">R$ 0,00</strong>
-                <p><b id="kpiVendasClientes">0 clientes</b></p>
-                <p><b id="kpiVendasNovas">0 novas</b> · <b id="kpiVendasRenovacoes">0 renovações</b></p>
-              </div>
-            </div>
-          </div>
-
-        </div>
-
-        <div style="
+</div>
+</header>
+<!-- DASHBOARD -->
+<section class="screen" id="dashboard">
+<div class="grid grid-3">
+<div class="card card-gradient card-money" onclick="abrirResumoKpi('caixa')" onkeydown="if(event.key==='Enter') abrirResumoKpi('caixa')" role="button" tabindex="0">
+<div class="kpi-card">
+<div aria-hidden="true" class="kpi-icon">
+<svg fill="none" height="28" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="28">
+<path d="M6 9V4h8l3 5"></path>
+<path d="M4 9h18v11H4z"></path>
+<path d="M8 13h.01"></path>
+<path d="M12 13h.01"></path>
+<path d="M16 13h.01"></path>
+<path d="M8 17h8"></path>
+<path d="M18 4h1"></path>
+</svg>
+</div>
+<div class="kpi-content">
+<small>Caixa atual</small>
+<strong id="kpiCaixaAtual">R$ 0,00</strong>
+<p>Entradas: <b id="kpiCaixaEntradas">R$ 0,00</b></p>
+<p>Saídas: <b id="kpiCaixaSaidas">R$ 0,00</b></p>
+</div>
+</div>
+</div>
+<div class="card card-gradient card-gold" onclick="abrirResumoKpi('carteira')" onkeydown="if(event.key==='Enter') abrirResumoKpi('carteira')" role="button" tabindex="0">
+<div class="kpi-card">
+<div class="kpi-icon">bar_chart</div>
+<div class="kpi-content">
+<small>Carteira final</small>
+<strong id="kpiCarteiraFinal">R$ 0,00</strong>
+<p><b id="kpiCarteiraInicial">R$ 0,00</b> <span id="kpiCarteiraVariacao" style="margin-left:6px;font-weight:900;">→ 0%</span></p>
+<p><b id="kpiCarteiraClientes">0 clientes ativos</b></p>
+</div>
+</div>
+</div>
+<div class="card card-gradient card-orange" onclick="abrirResumoKpi('vendas')" onkeydown="if(event.key==='Enter') abrirResumoKpi('vendas')" role="button" tabindex="0">
+<div class="kpi-card">
+<div class="kpi-icon">shopping_cart</div>
+<div class="kpi-content">
+<small>Vendas hoje</small>
+<strong id="kpiVendasHoje">R$ 0,00</strong>
+<p><b id="kpiVendasClientes">0 clientes</b></p>
+<p><b id="kpiVendasNovas">0 novas</b> · <b id="kpiVendasRenovacoes">0 renovações</b></p>
+</div>
+</div>
+</div>
+</div>
+<div class="dashboard-grid" style="
           display:grid;
           grid-template-columns:1.25fr .85fr;
           gap:20px;
           margin-top:20px;
-        " class="dashboard-grid">
-
-          <div class="panel">
-
-            <div class="panel-title">
-              <div>
-                <h2>Progresso do dia</h2>
-                <p>Controle de visitas, pagamentos e pendências.</p>
-              </div>
-            </div>
-
-            <div style="
+        ">
+<div class="panel">
+<div class="panel-title">
+<div>
+<h2>Progresso do dia</h2>
+<p>Controle de visitas, pagamentos e pendências.</p>
+</div>
+</div>
+<div style="
               background:#f8fafc;
               border:1px solid #e2e8f0;
               border-radius:22px;
               padding:18px;
               margin-bottom:18px;
             ">
-
-              <div style="
+<div style="
                 display:flex;
                 justify-content:space-between;
                 margin-bottom:10px;
                 font-weight:900;
               ">
-                <span>Meta de visitas</span>
-                <span id="progressoTexto">0%</span>
-              </div>
-
-              <div style="
+<span>Meta de visitas</span>
+<span id="progressoTexto">0%</span>
+</div>
+<div style="
                 height:14px;
                 background:#e2e8f0;
                 border-radius:999px;
                 overflow:hidden;
               ">
-                <div id="barraProgresso" style="
+<div id="barraProgresso" style="
                   height:100%;
                   width:0%;
                   border-radius:999px;
                   background:linear-gradient(135deg,#ffb100,#ff6b00);
                   transition:.3s;
                 "></div>
-              </div>
-
-            </div>
-
-            <div id="resumoDia" class="grid" style="gap:12px;"></div>
-
-          </div>
-
-          <div class="panel">
-
-            <div class="panel-title">
-              <div>
-                <h2>Resumo rápido</h2>
-                <p>Panorama geral do dia.</p>
-              </div>
-            </div>
-
-            <div id="alertasVendedor" class="grid" style="gap:12px;"></div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-      <!-- CLIENTES -->
-      <section id="clientes" class="screen" style="display:none;">
-
-        <div class="panel integro-clientes-panel">
-
-          <div style="
+</div>
+</div>
+<div class="grid" id="resumoDia" style="gap:12px;"></div>
+</div>
+<div class="panel">
+<div class="panel-title">
+<div>
+<h2>Resumo rápido</h2>
+<p>Panorama geral do dia.</p>
+</div>
+</div>
+<div class="grid" id="alertasVendedor" style="gap:12px;"></div>
+</div>
+</div>
+</section>
+<!-- CLIENTES -->
+<section class="screen" id="clientes" style="display:none;">
+<div class="panel integro-clientes-panel">
+<div class="busca-grid clientes-toolbar integro-data-toolbar" style="
             display:grid;
             grid-template-columns:1fr auto auto auto;
             gap:12px;
             margin-bottom:20px;
-          " class="busca-grid clientes-toolbar integro-data-toolbar">
-
-            <input
-              id="buscaClienteInput"
-              placeholder="Buscar por nome, apelido, telefone ou documento"
-              onkeydown="if(event.key === 'Enter') buscarClientes()"
-              style="
+          ">
+<input id="buscaClienteInput" onkeydown="if(event.key === 'Enter') buscarClientes()" placeholder="Buscar por nome, apelido, telefone ou documento" style="
                 height:58px;
                 border-radius:18px;
                 border:1px solid #e2e8f0;
@@ -2287,99 +2204,76 @@
                 font-weight:700;
                 outline:none;
                 width:100%;
-              "
-            >
-
-            <button class="btn btn-primary" onclick="buscarClientes()">
+              "/>
+<button class="btn btn-primary" onclick="buscarClientes()">
               Buscar
             </button>
-
-            <button class="btn btn-light" onclick="alternarFiltrosClientes()">
+<button class="btn btn-light" onclick="alternarFiltrosClientes()">
               Filtros
             </button>
-
-            <button class="btn btn-light" onclick="limparBuscaClientes()">
+<button class="btn btn-light" onclick="limparBuscaClientes()">
               Limpar
             </button>
-
-          </div>
-
-          <div
-            id="filtrosClientes"
-            style="
+</div>
+<div class="busca-grid" id="filtrosClientes" style="
               display:none;
               grid-template-columns:repeat(4,1fr);
               gap:12px;
               margin-bottom:16px;
-            "
-            class="busca-grid"
-          >
-            <select id="filtroClienteStatus" class="form-input">
-              <option value="">Todos os status</option>
-              <option value="ATIVO">Cliente Ativo</option>
-              <option value="INATIVO">Cliente Inativo</option>
-            </select>
-            <input id="filtroClienteDataInicial" type="date" class="form-input" aria-label="Data cadastro inicial">
-            <input id="filtroClienteDataFinal" type="date" class="form-input" aria-label="Data cadastro final">
-            <button class="btn btn-primary" onclick="buscarClientes()">Aplicar filtros</button>
-          </div>
-
-          <div
-            id="contadorClientes"
-            style="
+            ">
+<select class="form-input" id="filtroClienteStatus">
+<option value="">Todos os status</option>
+<option value="ATIVO">Cliente Ativo</option>
+<option value="INATIVO">Cliente Inativo</option>
+</select>
+<input aria-label="Data cadastro inicial" class="form-input" id="filtroClienteDataInicial" type="date"/>
+<input aria-label="Data cadastro final" class="form-input" id="filtroClienteDataFinal" type="date"/>
+<button class="btn btn-primary" onclick="buscarClientes()">Aplicar filtros</button>
+</div>
+<div id="contadorClientes" style="
               color:#64748b;
               font-size:13px;
               font-weight:800;
               margin-bottom:14px;
-            "
-          ></div>
-
-          <div id="resumoClientesVendedor" class="clientes-kpis-vendedor integro-client-kpis" hidden></div>
-
-          <div id="listaClientes" class="grid" style="gap:14px;">
-            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
+            "></div>
+<div class="clientes-kpis-vendedor integro-client-kpis" hidden="" id="resumoClientesVendedor"></div>
+<div class="grid" id="listaClientes" style="gap:14px;">
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:24px;padding:18px;color:#64748b;font-weight:800;">
               Pesquise um cliente para exibir resultados.
             </div>
-          </div>
-
-        </div>
-
-      </section>
-
-      <!-- NOTIFICAÇÕES -->
-      <section id="notificacoes" class="screen" style="display:none;">
-        <div class="panel">
-          <div class="panel-title">
-            <div>
-              <h2>Notificações</h2>
-              <p>Central de avisos, solicitações e comunicações internas.</p>
-            </div>
-          </div>
-
-          <div id="listaNotificacoes" class="grid" style="gap:12px;">
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:22px;padding:18px;font-weight:800;color:#475569;">
+</div>
+</div>
+</section>
+<!-- NOTIFICAÇÕES -->
+<section class="screen" id="notificacoes" style="display:none;">
+<div class="panel">
+<div class="panel-title">
+<div>
+<h2>Notificações</h2>
+<p>Central de avisos, solicitações e comunicações internas.</p>
+</div>
+</div>
+<div class="grid" id="listaNotificacoes" style="gap:12px;">
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:22px;padding:18px;font-weight:800;color:#475569;">
               Nenhuma notificação pendente no momento.
             </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- CHAT INTERNO -->
-      <section id="chatInterno" class="screen" style="display:none;">
-        <div class="panel">
-          <div class="panel-title">
-            <div>
-              <h2>Chat interno</h2>
-              <p>Comunicação entre vendedores, supervisores, financeiro e equipe administrativa.</p>
-            </div>
-          </div>
-
-          <div id="integroChatRoot"></div>
-        </div>
-      </section>
-
-      <!-- DRAWER -->
-      <aside id="drawer" style="
+</div>
+</div>
+</section>
+<!-- CHAT INTERNO -->
+<section class="screen" id="chatInterno" style="display:none;">
+<div class="panel">
+<div class="panel-title">
+<div>
+<h2>Chat interno</h2>
+<p>Comunicação entre vendedores, supervisores, financeiro e equipe administrativa.</p>
+</div>
+</div>
+<div id="integroChatRoot"></div>
+</div>
+</section>
+<!-- DRAWER -->
+<aside id="drawer" style="
           position:fixed;
           top:0;
           right:-100%;
@@ -2392,8 +2286,7 @@
           box-shadow:-20px 0 50px rgba(15,23,42,.18);
           overflow-y:auto;
         ">
-
-        <div style="
+<div style="
           position:sticky;
           top:0;
           background:#fff;
@@ -2405,9 +2298,8 @@
           align-items:center;
           justify-content:space-between;
         ">
-
-          <div>
-            <h2 id="drawerTitle" style="
+<div>
+<h2 id="drawerTitle" style="
                 font-size:26px;
                 font-weight:900;
                 letter-spacing:-1px;
@@ -2415,17 +2307,15 @@
               ">
               Novo cliente
             </h2>
-
-            <p id="drawerSubtitle" style="
+<p id="drawerSubtitle" style="
                 color:#64748b;
                 font-size:14px;
                 font-weight:600;
               ">
               Cadastro completo do cliente
             </p>
-          </div>
-
-          <button onclick="fecharDrawer()" style="
+</div>
+<button onclick="fecharDrawer()" style="
               width:46px;
               height:46px;
               border:none;
@@ -2437,20 +2327,14 @@
             ">
             ?
           </button>
-
-        </div>
-
-        <!-- BODY -->
-
-        <div id="drawerBody" style="
+</div>
+<!-- BODY -->
+<div id="drawerBody" style="
             padding:22px;
           "></div>
-
-      </aside>
-
-      <!-- DRAWER OVERLAY -->
-
-      <div id="drawerOverlay" onclick="fecharDrawer()" style="
+</aside>
+<!-- DRAWER OVERLAY -->
+<div id="drawerOverlay" onclick="fecharDrawer()" style="
           position:fixed;
           inset:0;
           background:rgba(2,6,23,.55);
@@ -2459,10 +2343,8 @@
           visibility:hidden;
           transition:.2s;
         "></div>
-
-      <!-- RESPONSIVO -->
-
-      <style>
+<!-- RESPONSIVO -->
+<style>
         @media(max-width:780px) {
 
           .dashboard-grid {
@@ -2517,11 +2399,9 @@
 
         }
       </style>
-
-      <!-- HELPERS CLIENTES -->
-      <script src="js/utils/ui-helpers.js"></script>
-
-      <script>
+<!-- HELPERS CLIENTES -->
+<script src="js/utils/ui-helpers.js"></script>
+<script>
 
         function abrirDrawer(
           titulo,
@@ -3182,78 +3062,43 @@
           };
         }
       </script>
-
-      <!-- VENDAS E COBRANÇAS -->
-      <section id="vendas" class="screen" style="display:none;">
-
-        <div class="panel">
-
-
-          <div
-            class="operacao-tabs operacao-tabs-clean"
-            style="
+<!-- VENDAS E COBRANÇAS -->
+<section class="screen" id="vendas" style="display:none;">
+<div class="panel">
+<div class="operacao-tabs operacao-tabs-clean" style="
               display:grid;
               grid-template-columns:auto auto 1fr auto;
               gap:10px;
               margin-bottom:18px;
               align-items:center;
-            "
-          >
-            <button
-              id="tabVendasDiaBtn"
-              class="btn tab-operacao-clean"
-              style="order:2;"
-              onclick="abrirAbaVendasCobrancas('vendas')"
-            >
+            ">
+<button class="btn tab-operacao-clean" id="tabVendasDiaBtn" onclick="abrirAbaVendasCobrancas('vendas')" style="order:2;">
               Vendas
             </button>
-
-            <button
-              id="tabCobrancasBtn"
-              class="btn tab-operacao-clean active"
-              style="order:1;"
-              onclick="abrirAbaVendasCobrancas('cobrancas')"
-            >
+<button class="btn tab-operacao-clean active" id="tabCobrancasBtn" onclick="abrirAbaVendasCobrancas('cobrancas')" style="order:1;">
               Cobranças
             </button>
-
-            <button
-              id="btnNovaVendaOperacao"
-              class="btn btn-primary nova-venda-clean"
-              onclick="abrirListaNovaVenda()"
-              style="justify-self:end;display:none;order:3;"
-            >
+<button class="btn btn-primary nova-venda-clean" id="btnNovaVendaOperacao" onclick="abrirListaNovaVenda()" style="justify-self:end;display:none;order:3;">
               + Nova venda
             </button>
-          </div>
-
-          <div id="abaVendasDia" style="display:none;">
-            <div
-              id="contadorVendasDia"
-              style="
+</div>
+<div id="abaVendasDia" style="display:none;">
+<div id="contadorVendasDia" style="
                 color:#64748b;
                 font-size:13px;
                 font-weight:800;
                 margin-bottom:14px;
-              "
-            ></div>
-
-            <div id="listaVendasDia" class="grid" style="gap:14px;"></div>
-          </div>
-
-          <div id="abaCobrancas" style="display:block;">
-            <div style="
+              "></div>
+<div class="grid" id="listaVendasDia" style="gap:14px;"></div>
+</div>
+<div id="abaCobrancas" style="display:block;">
+<div class="busca-grid operacao-toolbar-clean" style="
               display:grid;
               grid-template-columns:1fr auto auto 180px auto;
               gap:12px;
               margin-bottom:20px;
-            " class="busca-grid operacao-toolbar-clean">
-
-              <input
-                id="buscaCobrancaInput"
-                placeholder="Buscar cliente, apelido ou telefone"
-                oninput="debounceInputCobrancas()"
-                style="
+            ">
+<input id="buscaCobrancaInput" oninput="debounceInputCobrancas()" placeholder="Buscar cliente, apelido ou telefone" style="
                   height:52px;
                   border-radius:16px;
                   border:1px solid #e2e8f0;
@@ -3262,21 +3107,14 @@
                   font-weight:700;
                   outline:none;
                   width:100%;
-                "
-              >
-
-              <button class="btn btn-primary" onclick="renderCobrancas()" style="display:none;">
+                "/>
+<button class="btn btn-primary" onclick="renderCobrancas()" style="display:none;">
                 Buscar
               </button>
-
-              <button class="btn btn-light link-limpar-clean" onclick="limparBuscaCobrancas()" style="display:none;">
+<button class="btn btn-light link-limpar-clean" onclick="limparBuscaCobrancas()" style="display:none;">
                 Limpar
               </button>
-
-              <select
-                id="ordenarCobrancas"
-                onchange="renderCobrancas()"
-                style="
+<select id="ordenarCobrancas" onchange="renderCobrancas()" style="
                   height:50px;
                   width:180px;
                   border-radius:16px;
@@ -3285,55 +3123,38 @@
                   font-weight:800;
                   outline:none;
                   background:#fff;
-                "
-              >
-                <option value="nome_az">A → Z</option>
-                <option value="nome_za">Z → A</option>
-                <option value="saldo_maior">Saldo maior</option>
-                <option value="saldo_menor">Saldo menor</option>
-                <option value="parcela_maior">Parcela maior</option>
-                <option value="parcela_menor">Parcela menor</option>
-                <option value="em_dia">Em dia primeiro</option>
-                <option value="atrasado">Mais atrasados</option>
-                <option value="adiantado">Mais adiantados</option>
-              </select>
-
-              <button class="btn btn-light" onclick="abrirFiltrosCobranca()">
+                ">
+<option value="nome_az">A → Z</option>
+<option value="nome_za">Z → A</option>
+<option value="saldo_maior">Saldo maior</option>
+<option value="saldo_menor">Saldo menor</option>
+<option value="parcela_maior">Parcela maior</option>
+<option value="parcela_menor">Parcela menor</option>
+<option value="em_dia">Em dia primeiro</option>
+<option value="atrasado">Mais atrasados</option>
+<option value="adiantado">Mais adiantados</option>
+</select>
+<button class="btn btn-light" onclick="abrirFiltrosCobranca()">
                 Filtros
               </button>
-
-            </div>
-
-            <div
-              id="contadorCobrancas"
-              style="
+</div>
+<div id="contadorCobrancas" style="
                 color:#64748b;
                 font-size:13px;
                 font-weight:800;
                 margin-bottom:14px;
-              "
-            ></div>
-
-            <div id="listaCobrancas" class="grid" style="gap:14px;"></div>
-
-            <div class="fechar-caixa-final-clean">
-              <div id="statusFechamentoCobrancasFinal" class="fechamento-status-clean"></div>
-              <button
-                id="btnFecharCaixaCobrancas"
-                class="btn btn-primary"
-                type="button"
-                onclick="validarEAbrirFechamentoCaixa()"
-              >
+              "></div>
+<div class="grid" id="listaCobrancas" style="gap:14px;"></div>
+<div class="fechar-caixa-final-clean">
+<div class="fechamento-status-clean" id="statusFechamentoCobrancasFinal"></div>
+<button class="btn btn-primary" id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa()" type="button">
                 Fechar caixa
               </button>
-            </div>
-          </div>
-
-        </div>
-
-      </section>
-
-      <script>
+</div>
+</div>
+</div>
+</section>
+<script>
 
         function abrirAbaVendasCobrancas(aba = "cobrancas") {
           const abaVendas = document.getElementById("abaVendasDia");
@@ -4544,13 +4365,9 @@
         }
 
       </script>
-
-      <!-- COBRANÇAS -->
-      <!-- Tela de cobranças incorporada ? tela Cobranças. -->
-
-      <div
-        id="modalFiltrosCobranca"
-        style="
+<!-- COBRANÇAS -->
+<!-- Tela de cobranças incorporada ? tela Cobranças. -->
+<div id="modalFiltrosCobranca" onclick="fecharFiltrosCobranca(event)" style="
           position:fixed;
           inset:0;
           background:rgba(2,6,23,.55);
@@ -4559,21 +4376,16 @@
           align-items:center;
           justify-content:center;
           padding:18px;
-        "
-        onclick="fecharFiltrosCobranca(event)"
-      >
-        <div
-          style="
+        ">
+<div onclick="event.stopPropagation()" style="
             width:100%;
             max-width:520px;
             background:#fff;
             border-radius:28px;
             box-shadow:0 30px 80px rgba(15,23,42,.25);
             overflow:hidden;
-          "
-          onclick="event.stopPropagation()"
-        >
-          <div style="
+          ">
+<div style="
             padding:22px;
             border-bottom:1px solid #e2e8f0;
             display:flex;
@@ -4581,18 +4393,15 @@
             justify-content:space-between;
             gap:14px;
           ">
-            <div>
-              <h2 style="font-size:24px;font-weight:900;letter-spacing:-1px;margin-bottom:4px;">
+<div>
+<h2 style="font-size:24px;font-weight:900;letter-spacing:-1px;margin-bottom:4px;">
                 Filtros
               </h2>
-              <p style="color:#64748b;font-size:13px;font-weight:700;">
+<p style="color:#64748b;font-size:13px;font-weight:700;">
                 Ative ou desative os filtros da rota.
               </p>
-            </div>
-
-            <button
-              onclick="fecharFiltrosCobranca()"
-              style="
+</div>
+<button onclick="fecharFiltrosCobranca()" style="
                 width:44px;
                 height:44px;
                 border:none;
@@ -4601,26 +4410,20 @@
                 font-size:22px;
                 font-weight:900;
                 cursor:pointer;
-              "
-            >
+              ">
               ?
             </button>
-          </div>
-
-          <div
-            id="modalFiltrosCobrancaBody"
-            style="
+</div>
+<div id="modalFiltrosCobrancaBody" style="
               padding:22px;
               display:grid;
               gap:14px;
               max-height:70vh;
               overflow-y:auto;
-            "
-          ></div>
-        </div>
-      </div>
-
-      <script>
+            "></div>
+</div>
+</div>
+<script>
 
         let filtrosCobrancaEstado = [];
 
@@ -5722,61 +5525,42 @@
         }
 
       </script>
-
-      <!-- SOLICITAÇÕES -->
-      <section id="solicitacoes" class="screen" style="display:none;">
-
-        <div class="panel">
-
-          <div class="panel-title">
-
-            <div>
-              <h2>Solicitações financeiras</h2>
-              <p>
+<!-- SOLICITAÇÕES -->
+<section class="screen" id="solicitacoes" style="display:none;">
+<div class="panel">
+<div class="panel-title">
+<div>
+<h2>Solicitações financeiras</h2>
+<p>
                 Solicite ingresso de caixa, retirada, gasto ou ajuste operacional.
               </p>
-            </div>
-
-            <button class="btn btn-primary" onclick="abrirNovaSolicitacao()">
+</div>
+<button class="btn btn-primary" onclick="abrirNovaSolicitacao()">
               Nova solicitação
             </button>
-
-          </div>
-
-          <div id="listaSolicitacoes" class="grid" style="gap:14px;"></div>
-
-        </div>
-
-      </section>
-
-      <!-- INDICAÇÕES -->
-      <section id="indicacoes" class="screen" style="display:none;">
-
-        <div class="panel">
-
-          <div class="panel-title">
-
-            <div>
-              <h2>Indicações</h2>
-              <p>
+</div>
+<div class="grid" id="listaSolicitacoes" style="gap:14px;"></div>
+</div>
+</section>
+<!-- INDICAÇÕES -->
+<section class="screen" id="indicacoes" style="display:none;">
+<div class="panel">
+<div class="panel-title">
+<div>
+<h2>Indicações</h2>
+<p>
                 Leads recebidos do marketing para contato, conversão e venda.
               </p>
-            </div>
-
-            <button class="btn btn-primary" onclick="abrirNovaIndicacao()">
+</div>
+<button class="btn btn-primary" onclick="abrirNovaIndicacao()">
               Nova indicação
             </button>
-
-          </div>
-
-          <div id="indicacoesResumo" class="grid grid-4 integro-client-kpis" style="margin-bottom:18px;"></div>
-          <div id="listaIndicacoes" class="grid" style="gap:14px;"></div>
-
-        </div>
-
-      </section>
-
-      <script>
+</div>
+<div class="grid grid-4 integro-client-kpis" id="indicacoesResumo" style="margin-bottom:18px;"></div>
+<div class="grid" id="listaIndicacoes" style="gap:14px;"></div>
+</div>
+</section>
+<script>
 
         function abrirNovaSolicitacao() {
 
@@ -6507,31 +6291,27 @@
         }
 
       </script>
-
-      <style>
+<style>
         @media(max-width:900px) {
           .caixa-grid {
             grid-template-columns: 1fr !important;
           }
         }
       </style>
-
-      <!-- FIREBASE -->
-      <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-      <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-      <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-      <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
-
-      <script src="js/firebase-config.js?v=20260728-3"></script>
-      <script src="js/utils/operational.js"></script>
-      <script src="js/services/financial-operations.js"></script>
-      <script src="js/services/clientes-service.js"></script>
-      <script src="js/services/indicacoes-service.js"></script>
-      <script src="js/services/chat-service.js?v=20260730-chat4"></script>
-      <script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
-      <script src="js/chat-ui.js?v=20260730-chat4"></script>
-
-      <script>
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+<script src="js/firebase-config.js?v=20260728-3"></script>
+<script src="js/utils/operational.js"></script>
+<script src="js/services/financial-operations.js"></script>
+<script src="js/services/clientes-service.js"></script>
+<script src="js/services/indicacoes-service.js"></script>
+<script src="js/services/chat-service.js?v=20260730-chat4"></script>
+<script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
+<script src="js/chat-ui.js?v=20260730-chat4"></script>
+<script>
 
         // =========================
         // ESTADO GLOBAL
@@ -7874,8 +7654,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         }
 
       </script>
-
-      <script>
+<script>
 
         // =========================
         // DASHBOARD
@@ -10272,8 +10051,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         }
 
       </script>
-
-      <script>
+<script>
 
         // =========================
           // LOGOUT
@@ -10337,11 +10115,8 @@ async function verificarCaixaAbertoDiaAnterior() {
         });
 
       </script>
-
-    </main>
-
-  </div>
-
+</main>
+</div>
 <script>
   // Menu lateral padrão global ÍNTEGRO
   // - Fechado por padrão em desktop e mobile
@@ -10374,7 +10149,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   });
 </script>
-
 <!-- =========================================================
      ÍNTEGRO - MENU PADRÃO PREMIUM VENDEDOR
      Cole este bloco antes de
@@ -10757,7 +10531,6 @@ async function verificarCaixaAbertoDiaAnterior() {
 </script>
 
      ========================================================= -->
-
 <style id="integro-vendedor-menu-premium-final">
   /* ===== BASE MENU VENDEDOR PADRÃO ÍNTEGRO ===== */
 
@@ -11146,7 +10919,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="integro-vendedor-menu-premium-final-js">
 (function () {
   "use strict";
@@ -11530,9 +11302,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 })();
 </script>
-
-
-
 <!-- =========================================================
      ÍNTEGRO - PATCH FINAL VENDEDOR APROVADO
      Ajustes preservando Firebase, fluxos e funções existentes.
@@ -12362,7 +12131,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="integro-vendedor-final-aprovado-js-20260622">
 (function () {
   "use strict";
@@ -12721,8 +12489,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   window.addEventListener("resize", atualizarBotaoDesktopMenu);
 })();
 </script>
-
-
 <style id="integro-ajustes-11-validados-20260622">
   /* Ajuste 01: menu visível = botão de acionar menu oculto */
   @media (min-width:981px) {
@@ -13708,7 +13474,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="integro-ajustes-11-validados-20260622-js">
 (function () {
   "use strict";
@@ -14354,7 +14119,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   setInterval(garantirMenuToggleOcultoQuandoAberto, 800);
 })();
 </script>
-
 <style id="ajuste-card-cobranca-paint-final">
   @media (max-width: 780px) {
     body.tela-operacao-vendedor #listaCobrancas {
@@ -14662,7 +14426,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <style id="ajuste-card-cobranca-acoes-finais">
   @media (max-width: 780px) {
     body.tela-operacao-vendedor .cobranca-actions-clean > .btn-mais-cobranca-clean,
@@ -14706,7 +14469,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <style id="ajuste-menu-mobile-vendedor-final">
   @media (max-width: 980px) {
     body.menu-aberto .hamburger,
@@ -14743,7 +14505,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="ajuste-card-cobranca-click-final">
 (function () {
   "use strict";
@@ -14764,7 +14525,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   });
 })();
 </script>
-
 <style id="ajuste-clientes-vendedor-integro-final">
   @media (max-width: 980px) {
     .mobile-operacao-header-integro {
@@ -14997,7 +14757,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="ajuste-clientes-vendedor-integro-final">
 (function () {
   "use strict";
@@ -15061,7 +14820,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   setTimeout(ajustarClientesVendedor, 1500);
 })();
 </script>
-
 <style id="ajuste-clientes-toolbar-cobrancas-final">
   #clientes .clientes-header-integro {
     display: none !important;
@@ -15141,7 +14899,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <style id="ajuste-clientes-toolbar-grupo-final">
   #clientes .clientes-busca-card-integro {
     display: grid !important;
@@ -15228,7 +14985,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="ajuste-clientes-botao-novo-final">
 (function () {
   "use strict";
@@ -15260,7 +15016,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   setTimeout(garantirBotaoNovoClienteInline, 1500);
 })();
 </script>
-
 <style id="ajuste-clientes-toolbar-posicao-final">
   @media (max-width: 780px) {
     #clientes .clientes-busca-card-integro {
@@ -15343,7 +15098,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <style id="ajuste-clientes-novo-flutuante-final">
   @media (max-width: 780px) {
     #clientes .busca-grid:first-of-type {
@@ -15390,7 +15144,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <style id="ajuste-clientes-final-posicao-cards">
   @media (max-width: 780px) {
     #clientes .busca-grid:first-of-type {
@@ -15522,7 +15275,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="ajuste-clientes-card-compacto-final">
 (function () {
   "use strict";
@@ -15565,7 +15317,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   };
 })();
 </script>
-
 <style id="ajuste-clientes-mobile-form-final">
   @media (max-width: 780px) {
     #clientes .busca-grid:first-of-type {
@@ -15677,7 +15428,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="ajuste-clientes-form-final">
 (function () {
   "use strict";
@@ -15965,9 +15715,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   };
 })();
 </script>
-
-
-
 <style id="correcao-mobile-clientes-layout-definitiva">
   /* Correção definitiva: CLIENTES / MOBILE
      Mantém o desktop intacto e evita conflito com os blocos antigos de grid-column. */
@@ -16121,8 +15868,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
-
 <style id="ajuste-final-botao-telefone-whatsapp-clientes-20260623">
   /* AJUSTE FINAL - Clientes mobile + telefone/WhatsApp */
   @media (max-width: 780px) {
@@ -16223,7 +15968,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="ajuste-final-botao-telefone-whatsapp-clientes-20260623">
 (function () {
   "use strict";
@@ -17014,7 +16758,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   setTimeout(garantirBotaoNovoClienteRedondo, 2500);
 })();
 </script>
-
 <script id="integro-patch-ciclo-caixa-atual">
 (function () {
   "use strict";
@@ -17940,8 +17683,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   iniciarMonitorCaixaFechado();
 })();
 </script>
-
-
 <style id="patch-ajustes-operacionais-vendedor-css">
   body.tela-operacao-vendedor .cobranca-status-row .cobranca-chip-status:first-child {
     display: inline-flex !important;
@@ -18401,9 +18142,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   });
 })();
 </script>
-
-
-
 <script id="patch-regras-operacionais-caixa-vendedor-20260623">
 (function () {
   "use strict";
@@ -19494,7 +19232,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     }
   }
 </style>
-
 <script id="integro-sync-fluido-pagamentos-vendedor-20260623">
 (function(){
   "use strict";
@@ -20474,7 +20211,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     .notificacoes-vendedor-toolbar { padding-inline:16px; }
   }
 </style>
-
 <style id="integro-clientes-vendedor-submenu-final">
   .clientes-submenu-integro {
     width:100%; display:flex; align-items:stretch; min-height:58px; margin:0 0 20px;
@@ -20546,7 +20282,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     .cliente-foto-upload{justify-self:center}.cliente-idade-output{width:100%}.cliente-form-title-row{align-items:flex-start;flex-direction:column}.cliente-form-title-row .btn,.cliente-cep-row .btn{width:100%}.cliente-op-form-actions>*{flex:1;min-width:0!important}
   }
 </style>
-
 <style id="integro-vendedor-padrao-master-local-final">
   /* Camada final alinhada aos componentes aprovados do Master Local. */
   body { background:#f3f7fc!important; color:#071a33; }
@@ -20644,7 +20379,6 @@ async function verificarCaixaAbertoDiaAnterior() {
     .grid-3,.grid-4 { grid-template-columns:1fr!important; }
   }
 </style>
-
 <style id="integro-clientes-consulta-compartilhada">
   #clientes #filtrosClientes{display:none!important}
   .clientes-kpis-vendedor{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 16px}
@@ -20661,7 +20395,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   @media(max-width:780px){.clientes-kpis-vendedor{grid-template-columns:repeat(2,minmax(0,1fr))}.clientes-table-vendedor,.clientes-table-vendedor tbody,.clientes-table-vendedor tr,.clientes-table-vendedor td{display:block;min-width:0}.clientes-table-vendedor thead{display:none}.clientes-table-vendedor tr{margin:10px;border:1px solid #e2e8f0;border-radius:14px;padding:8px}.clientes-table-vendedor td{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;border:0;padding:8px}.clientes-table-vendedor td:before{content:attr(data-label);color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase}.clientes-table-vendedor td .btn{width:100%!important}}
   @media(max-width:480px){.clientes-kpis-vendedor{grid-template-columns:1fr}}
 </style>
-
 <style id="integro-leads-vendedor-layout-final">
 #indicacoes #listaIndicacoes{display:grid;gap:10px}.lead-vendedor-card{display:grid;grid-template-columns:5px minmax(220px,1.5fr) minmax(110px,.7fr) minmax(100px,.6fr) auto auto;gap:14px;align-items:center;padding:14px 16px;border:1px solid #dbe4ef;border-radius:16px;background:#fff;cursor:pointer;transition:.18s ease}.lead-vendedor-card:hover,.lead-vendedor-card:focus-visible{border-color:#fdba74;box-shadow:0 9px 24px rgba(15,23,42,.07);outline:0;transform:translateY(-1px)}.lead-vendedor-status-bar{width:5px;height:100%;min-height:54px;border-radius:999px}.lead-vendedor-main,.lead-vendedor-meta{min-width:0}.lead-vendedor-main strong,.lead-vendedor-main span,.lead-vendedor-meta small,.lead-vendedor-meta strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.lead-vendedor-main strong{font-size:14px}.lead-vendedor-main span,.lead-vendedor-meta small{margin-top:4px;color:#64748b;font-size:11px;font-weight:750}.lead-vendedor-meta strong{margin-top:4px;color:#334155;font-size:12px}.lead-vendedor-pill{display:inline-flex;align-items:center;justify-content:center;min-height:30px;padding:0 10px;border-radius:999px;font-size:10px;font-weight:900;text-transform:uppercase;white-space:nowrap}.lead-vendedor-whatsapp{min-width:126px;display:inline-flex;align-items:center;justify-content:center;gap:6px}@media(max-width:900px){.lead-vendedor-card{grid-template-columns:5px minmax(0,1fr) auto}.lead-vendedor-meta{display:none}.lead-vendedor-whatsapp{grid-column:2/-1;width:100%}}@media(max-width:520px){.lead-vendedor-card{grid-template-columns:5px minmax(0,1fr)}.lead-vendedor-pill,.lead-vendedor-whatsapp{grid-column:2}.lead-vendedor-main strong,.lead-vendedor-main span{white-space:normal}}
 </style>
@@ -20891,7 +20624,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   setTimeout(garantirNavegacaoClientesVendedor, 1500);
 })();
 </script>
-
 <script id="integro-vendedor-estabilidade-final-20260728">
 (function () {
   "use strict";
@@ -20913,198 +20645,6 @@ async function verificarCaixaAbertoDiaAnterior() {
 })();
 </script>
 
-<script id="integro-operacao-vendedor-carteira-devedora-20260802">
-(function () {
-  "use strict";
-
-  if (window.__integroOperacaoCarteiraDevedora20260802) return;
-  window.__integroOperacaoCarteiraDevedora20260802 = true;
-
-  const numero = valor => {
-    const n = Number(valor || 0);
-    return Number.isFinite(n) ? n : 0;
-  };
-
-  const statusAtivo = venda => {
-    const status = String(venda?.statusVenda || venda?.status || "").toUpperCase();
-    return venda?.excluido !== true && !["CANCELADO", "QUITADO", "FINALIZADO"].includes(status);
-  };
-
-  const saldoCliente = cliente => numero(
-    cliente?.saldoDevedor ??
-    cliente?.saldoAtual ??
-    cliente?.saldo ??
-    cliente?.valorEmAberto ??
-    0
-  );
-
-  const vendedorAtualId = () => String(
-    window.usuarioLogado?.uid ||
-    window.usuarioLogado?.authUid ||
-    window.usuarioAtual?.uid ||
-    window.firebase?.auth?.()?.currentUser?.uid ||
-    ""
-  );
-
-  const pertenceAoVendedor = (registro, uid) => {
-    if (!uid) return true;
-    const vinculo = String(
-      registro?.vendedorId ||
-      registro?.vendedorUid ||
-      registro?.usuarioId ||
-      registro?.responsavelId ||
-      registro?.authUid ||
-      ""
-    );
-    return !vinculo || vinculo === uid;
-  };
-
-  const montarBaseOriginal = window.montarCobrancasPorVenda;
-
-  window.montarCobrancasPorVenda = function montarCobrancasDaCarteiraDoVendedor() {
-    const baseOriginal = typeof montarBaseOriginal === "function"
-      ? montarBaseOriginal.apply(this, arguments) || []
-      : [];
-
-    const porCliente = new Map();
-    baseOriginal.forEach(item => {
-      if (numero(item?.saldoDevedor) > 0.01) {
-        porCliente.set(String(item.clienteId || item.vendaId), item);
-      }
-    });
-
-    const uid = vendedorAtualId();
-    const clientes = Array.isArray(window.clientesCache) ? window.clientesCache : [];
-    const vendas = Array.isArray(window.vendasCache) ? window.vendasCache : [];
-    const parcelas = Array.isArray(window.parcelasCache) ? window.parcelasCache : [];
-
-    clientes
-      .filter(cliente => cliente?.excluido !== true)
-      .filter(cliente => saldoCliente(cliente) > 0.01)
-      .filter(cliente => pertenceAoVendedor(cliente, uid))
-      .forEach(cliente => {
-        const clienteId = String(cliente.id || cliente.clienteId || "");
-        if (!clienteId || porCliente.has(clienteId)) return;
-
-        const venda = vendas
-          .filter(item => String(item.clienteId || "") === clienteId)
-          .filter(statusAtivo)
-          .filter(item => pertenceAoVendedor(item, uid))
-          .sort((a, b) => numero(b.criadoEmMs || b.dataCriacaoMs) - numero(a.criadoEmMs || a.dataCriacaoMs))[0];
-
-        if (!venda) return;
-
-        const itemOriginalDaVenda = baseOriginal.find(item => String(item.vendaId || "") === String(venda.id || ""));
-        if (itemOriginalDaVenda) {
-          itemOriginalDaVenda.saldoDevedor = saldoCliente(cliente);
-          porCliente.set(clienteId, itemOriginalDaVenda);
-          return;
-        }
-
-        const parcelasVenda = parcelas.filter(p => String(p.vendaId || "") === String(venda.id || "") && p.excluido !== true);
-        const valorParcela = numero(venda.valorParcela || parcelasVenda[0]?.valor || parcelasVenda[0]?.valorParcela);
-
-        porCliente.set(clienteId, {
-          vendaId: venda.id,
-          clienteId,
-          clienteNome: cliente.nome || cliente.nomeCompleto || cliente.apelido || venda.clienteNome || "Cliente",
-          clienteApelido: cliente.apelido || venda.clienteApelido || "",
-          nomeCompleto: cliente.nomeCompleto || cliente.nome || "",
-          apelido: cliente.apelido || "",
-          telefone: cliente.telefone || cliente.telefonePrincipal || venda.telefone || "",
-          telefonePrincipal: cliente.telefonePrincipal || cliente.telefone || "",
-          documento: cliente.documento || cliente.cpfCnpj || venda.documento || "",
-          cliente,
-          saldoDevedor: saldoCliente(cliente),
-          valorParcela,
-          totalParcelas: numero(venda.quantidadeParcelas || parcelasVenda.length || 1),
-          progresso: 0,
-          progressoTexto: `0/${numero(venda.quantidadeParcelas || parcelasVenda.length || 1)}`,
-          situacao: (() => {
-            const hoje = new Date((typeof hojeISO === "function" ? hojeISO() : new Date().toISOString().slice(0, 10)) + "T00:00:00");
-            const primeiraPendente = parcelasVenda
-              .filter(p => !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(String(p.status || p.statusParcela || "PENDENTE").toUpperCase()))
-              .sort((a, b) => String(a.dataVencimento || a.dataPrevista || "").localeCompare(String(b.dataVencimento || b.dataPrevista || "")))[0];
-            const data = String(primeiraPendente?.dataVencimento || primeiraPendente?.dataPrevista || venda.dataPrimeiraCobranca || "").slice(0, 10);
-            if (!data) return "EM_DIA";
-            const vencimento = new Date(data + "T00:00:00");
-            return vencimento < hoje ? "ATRASADO" : vencimento > hoje ? "ADIANTADO" : "EM_DIA";
-          })(),
-          diasIndicador: (() => {
-            const hoje = new Date((typeof hojeISO === "function" ? hojeISO() : new Date().toISOString().slice(0, 10)) + "T00:00:00");
-            const primeiraPendente = parcelasVenda
-              .filter(p => !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(String(p.status || p.statusParcela || "PENDENTE").toUpperCase()))
-              .sort((a, b) => String(a.dataVencimento || a.dataPrevista || "").localeCompare(String(b.dataVencimento || b.dataPrevista || "")))[0];
-            const data = String(primeiraPendente?.dataVencimento || primeiraPendente?.dataPrevista || venda.dataPrimeiraCobranca || "").slice(0, 10);
-            if (!data) return 0;
-            return Math.abs(Math.floor((new Date(data + "T00:00:00") - hoje) / 86400000));
-          })(),
-          venda,
-          parcelas: parcelasVenda,
-          comCobrancaHoje: (() => {
-            const hoje = typeof hojeISO === "function" ? hojeISO() : new Date().toISOString().slice(0, 10);
-            return parcelasVenda.some(p => {
-              const status = String(p.status || p.statusParcela || "PENDENTE").toUpperCase();
-              const data = String(p.dataVencimento || p.dataPrevista || "").slice(0, 10);
-              return !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(status) && data && data <= hoje;
-            });
-          })(),
-          pendenteHoje: (() => {
-            const hoje = typeof hojeISO === "function" ? hojeISO() : new Date().toISOString().slice(0, 10);
-            return parcelasVenda.some(p => {
-              const status = String(p.status || p.statusParcela || "PENDENTE").toUpperCase();
-              const data = String(p.dataVencimento || p.dataPrevista || "").slice(0, 10);
-              return !["PAGA", "PAGO", "QUITADA", "QUITADO", "CANCELADA", "CANCELADO"].includes(status) && data && data <= hoje;
-            });
-          })(),
-          pagoHoje: false,
-          valorPagoHoje: 0,
-          naoPagoHoje: false,
-          proximaCobranca: venda.dataPrimeiraCobranca || parcelasVenda[0]?.dataVencimento || null,
-          proximaCobrancaTexto: typeof formatarProximaCobranca === "function"
-            ? formatarProximaCobranca(venda.dataPrimeiraCobranca || parcelasVenda[0]?.dataVencimento || null)
-            : "Pendente"
-        });
-      });
-
-    return Array.from(porCliente.values())
-      .filter(item => numero(item.saldoDevedor) > 0.01)
-      .filter(item => pertenceAoVendedor(item.venda || item.cliente || item, uid));
-  };
-
-  const abrirAbaAnterior = window.abrirAbaVendasCobrancas;
-  window.abrirAbaVendasCobrancas = function abrirOperacaoVendedor(aba = "cobrancas") {
-    const resultado = typeof abrirAbaAnterior === "function"
-      ? abrirAbaAnterior.apply(this, arguments)
-      : undefined;
-
-    const titulo = document.getElementById("pageTitle");
-    const subtitulo = document.getElementById("pageSubtitle");
-    if (titulo) titulo.textContent = "Operação";
-    if (subtitulo) subtitulo.textContent = aba === "vendas"
-      ? "Vendas registradas no dia."
-      : "Todos os clientes da carteira com saldo devedor acima de R$ 0,01.";
-
-    if (aba !== "vendas") {
-      requestAnimationFrame(() => {
-        try { window.renderCobrancas?.(); } catch (erro) { console.error("Falha ao renderizar carteira de cobranças:", erro); }
-      });
-    }
-    return resultado;
-  };
-
-  document.addEventListener("integro:usuario-validado", () => {
-    Promise.resolve()
-      .then(() => window.carregarClientes?.())
-      .then(() => window.carregarVendas?.())
-      .then(() => window.carregarParcelas?.())
-      .then(() => window.renderCobrancas?.())
-      .catch(erro => console.warn("Não foi possível atualizar a carteira de cobranças:", erro));
-  });
-})();
-</script>
-
-  <script src="js/integro-mobile-navigation.js?v=20260802-final2"></script>
-</body>
-
+<script src="js/integro-mobile-navigation.js?v=20260802-final2"></script>
+<script src="js/vendedor-operacao.js?v=20260803-1"></script></body>
 </html>

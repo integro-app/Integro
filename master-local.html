@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>ÍNTEGRO • Master Local</title>
-  <meta name="integro-build" content="20260802-loader-permissoes-fix1">
+  <meta name="integro-build" content="20260803-painel-unificado-permissoes1">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -2462,6 +2462,8 @@ body.integro-data-refreshing .section-card{
 </style>
 
   <link href="css/integro-mobile.css?v=20260802" rel="stylesheet">
+  <link rel="stylesheet" href="css/vendedor-operacao.css?v=20260803-2">
+  <link rel="stylesheet" href="css/perfis-unificados.css?v=20260803-migracao2">
 </head>
 
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-local">
@@ -2509,119 +2511,9 @@ body.integro-data-refreshing .section-card{
         </div>
       </div>
 
-      <div class="menu-group-title" data-menu-group="principal">Principal</div>
-      <button class="menu-item integro-notification-legacy-hook" type="button" data-modulo="notificacoes" onclick="return abrirComunicacaoMasterLocal('notificacoes',this)" hidden aria-hidden="true" tabindex="-1">
-        <span class="menu-icon material-symbols-rounded">notifications</span><span class="menu-label">Notificações</span><span class="badge" id="badgeNotificacoesMenu">0</span>
-      </button>
-      <div class="menu-item active" data-modulo="dashboard" onclick="abrirModuloNavegacaoIntegro('dashboard',this)">
-        <span class="menu-icon material-symbols-rounded">dashboard</span><span class="menu-label">Dashboard</span>
-      </div>
-      <button class="menu-item" type="button" data-modulo="chatInterno" onclick="return abrirComunicacaoMasterLocal('chatInterno',this)" aria-label="Chat interno">
-        <span class="menu-icon material-symbols-rounded">forum</span>
-        <span class="menu-label">Chat interno</span>
-        <span id="badgeChatInterno" class="integro-chat-menu-badge" data-chat-unread-count hidden>0</span>
-      </button>
-
-      <div class="menu-group-title" data-menu-group="operacao">Operação</div>
-      <div class="menu-item" data-modulo="caixas" onclick="abrirModuloNavegacaoIntegro('caixas',this)">
-        <span class="menu-icon material-symbols-rounded">account_balance_wallet</span><span class="menu-label">Caixas</span>
-      </div>
-      <div class="menu-subitem" data-modulo="caixas" onclick="navegarSubmoduloCaixasIntegro('supervisao')">Supervisão de equipes</div>
-      <div class="menu-subitem" data-modulo="caixas" onclick="navegarSubmoduloCaixasIntegro('historico')">Histórico de caixas</div>
-
-      <div class="menu-item" data-modulo="vendas" onclick="abrirModuloNavegacaoIntegro('vendas',this)">
-        <span class="menu-icon material-symbols-rounded">shopping_cart</span><span class="menu-label">Vendas</span>
-      </div>
-
-      <div class="menu-item" data-modulo="clientes" onclick="navegarModuloClientesMasterLocal('clientes')">
-        <span class="menu-icon material-symbols-rounded">groups</span><span class="menu-label">Clientes</span>
-      </div>
-
-      <div class="menu-group-title" data-menu-group="estrutura">Estrutura</div>
-      <div class="menu-item" data-modulo="equipes" onclick="trocarTela('equipes',this)">
-        <span class="menu-icon material-symbols-rounded">hub</span><span class="menu-label">Equipes</span>
-      </div>
-
-      <div class="menu-item" data-modulo="usuarios" onclick="trocarTela('usuarios',this)">
-        <span class="menu-icon material-symbols-rounded">person</span><span class="menu-label">Usuários</span>
-      </div>
-
-      <div class="menu-item" data-modulo="cargos" onclick="trocarTela('cargos',this)">
-        <span class="menu-icon material-symbols-rounded">admin_panel_settings</span><span class="menu-label">Cargos e permissões</span>
-      </div>
-
-      <div class="menu-item" data-modulo="solicitacoes" onclick="abrirModuloNavegacaoIntegro('solicitacoes',this)">
-        <span class="menu-icon material-symbols-rounded">task</span><span class="menu-label">Solicitações</span><span class="badge" id="badgeSolicitacoes">0</span>
-      </div>
-      <div class="menu-subitem" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes',this)">Pendentes</div>
-      <div class="menu-subitem" data-modulo="solicitacoes" onclick="trocarTela('solicitacoes',this)">Histórico</div>
-
-      <div class="menu-item" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">
-        <span class="menu-icon material-symbols-rounded">request_quote</span><span class="menu-label">Financeiro</span>
-      </div>
-      <div class="menu-subitem" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">Ingressos</div>
-      <div class="menu-subitem" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">Retiradas</div>
-      <div class="menu-subitem" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">Despesas</div>
-      <div class="menu-subitem" data-modulo="aprovacoesFinanceiro" onclick="trocarTela('aprovacoesFinanceiro',this)">Ajustes</div>
-
-      <div class="menu-item" data-modulo="aprovacoesComercial" onclick="trocarTela('aprovacoesComercial',this)">
-        <span class="menu-icon material-symbols-rounded">verified</span><span class="menu-label">Comercial</span>
-      </div>
-      <div class="menu-subitem" data-modulo="aprovacoesComercial" onclick="trocarTela('aprovacoesComercial',this)">Vendas fora da regra</div>
-      <div class="menu-subitem" data-modulo="aprovacoesComercial" onclick="trocarTela('aprovacoesComercial',this)">Exceções</div>
-
-      <div class="menu-group-title" data-menu-group="monitoramento">Monitoramento</div>
-      <div class="menu-item" data-modulo="monitoramento" onclick="abrirModuloNavegacaoIntegro('monitoramento',this)">
-        <span class="menu-icon material-symbols-rounded">location_on</span><span class="menu-label">Operação em campo</span>
-      </div>
-      <div class="menu-subitem" data-modulo="monitoramento" onclick="trocarTela('monitoramento',this)">Mapa operacional</div>
-      <div class="menu-subitem" data-modulo="monitoramento" onclick="trocarTela('monitoramento',this)">Últimas localizações</div>
-
-      <div class="menu-item" data-modulo="contratosDigitais" onclick="trocarTela('contratosDigitais',this)">
-        <span class="menu-icon material-symbols-rounded">draw</span><span class="menu-label">Contratos digitais</span>
-      </div>
-      <div class="menu-subitem" data-modulo="contratosDigitais" onclick="trocarTela('contratosDigitais',this)">Assinaturas</div>
-      <div class="menu-subitem" data-modulo="contratosDigitais" onclick="trocarTela('contratosDigitais',this)">Consentimentos</div>
-      <div class="menu-subitem" data-modulo="contratosDigitais" onclick="trocarTela('contratosDigitais',this)">Selfies de validação</div>
-
-      <div class="menu-group-title" data-menu-group="gestao">Gestão</div>
-      <div class="menu-item" data-modulo="relatorios" onclick="trocarTela('relatorios',this)">
-        <span class="menu-icon material-symbols-rounded">monitoring</span><span class="menu-label">Relatórios</span>
-      </div>
-      <div class="menu-subitem" data-modulo="relatorios" onclick="trocarTela('relatorios',this)">Operacional</div>
-      <div class="menu-subitem" data-modulo="relatorios" onclick="trocarTela('relatorios',this)">Comercial</div>
-      <div class="menu-subitem" data-modulo="relatorios" onclick="trocarTela('relatorios',this)">Financeiro</div>
-
-      <div class="menu-item" data-modulo="indicadores" onclick="trocarTela('indicadores',this)">
-        <span class="menu-icon material-symbols-rounded">query_stats</span><span class="menu-label">Indicadores</span>
-      </div>
-      <div class="menu-subitem" data-modulo="indicadores" onclick="trocarTela('indicadores',this)">Equipes</div>
-      <div class="menu-subitem" data-modulo="indicadores" onclick="trocarTela('indicadores',this)">Vendedores</div>
-      <div class="menu-subitem" data-modulo="indicadores" onclick="trocarTela('indicadores',this)">Carteira e inadimplência</div>
-
-      <div class="menu-item" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">
-        <span class="menu-icon material-symbols-rounded">manage_search</span><span class="menu-label">Auditoria</span>
-      </div>
-      <div class="menu-subitem" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">Logs do sistema</div>
-      <div class="menu-subitem" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">Logs financeiros</div>
-      <div class="menu-subitem" data-modulo="auditoria" onclick="trocarTela('auditoria',this)">Logs de usuários</div>
-
-      <div class="menu-group-title" data-menu-group="configuracoes">Configurações</div>
-      <div class="menu-item" data-modulo="configuracoes" onclick="abrirModuloNavegacaoIntegro('configuracoes',this); abrirAbaConfiguracoes('estrutura'); renderConfiguracoesMasterLocal()">
-        <span class="menu-icon material-symbols-rounded">settings</span><span class="menu-label">Configurações</span>
-      </div>
-
-      <div class="menu-group-title" data-menu-group="conta">Minha conta</div>
-      <div class="menu-item" data-modulo="minhaConta" onclick="abrirModuloNavegacaoIntegro('minhaConta',this)">
-        <span class="menu-icon material-symbols-rounded">account_circle</span><span class="menu-label">Minha conta</span>
-      </div>
-      <div class="menu-subitem" data-modulo="minhaConta" onclick="trocarTela('minhaConta',this)">Perfil</div>
-      <div class="menu-subitem" data-modulo="minhaConta" onclick="trocarTela('minhaConta',this)">Segurança</div>
-
-      <div class="menu-group-title" data-menu-group="sistema">Sistema</div>
-      <div class="menu-item" data-modulo="sair" onclick="logout()">
-        <span class="menu-icon material-symbols-rounded">logout</span><span class="menu-label">Sair</span>
-      </div>
+      <nav id="integroSidebarMenu" class="integro-sidebar-menu-unificado" aria-label="Navegação principal">
+        <!-- Renderizado por js/unified-navigation.js após validar usuário, cargo e permissões. -->
+      </nav>
     </aside>
 
     <main class="main">
@@ -3074,6 +2966,18 @@ body.integro-data-refreshing .section-card{
         </div>
       </section>
 
+      <section id="supervisao" class="screen" data-permissao="equipe.ver">
+        <div class="section-card"><div id="supervisaoUnificadaRoot"></div></div>
+      </section>
+
+      <section id="captacao" class="screen">
+        <div class="section-card"><div id="captacaoUnificadaRoot"></div></div>
+      </section>
+
+      <section id="financeiro" class="screen" data-permissao="financeiro.ver">
+        <div class="section-card"><div id="financeiroUnificadoRoot"></div></div>
+      </section>
+
       <section id="relatorios" class="screen">
         <div class="section-card">
           <div class="section-header"><div><h2>Relatórios</h2><p>Área reservada para relatórios gerenciais futuros.</p></div></div>
@@ -3090,11 +2994,8 @@ body.integro-data-refreshing .section-card{
         </div>
       </section>
 
-      <section id="auditoria" class="screen">
-        <div class="section-card">
-          <div class="section-header"><div><h2>Auditoria</h2><p>Logs de ações e rastreabilidade.</p></div></div>
-          <div id="listaLogs" class="placeholder">Logs serão exibidos aqui.</div>
-        </div>
+      <section id="auditoria" class="screen" data-permissao="logs.ver">
+        <div class="section-card"><div id="auditoriaUnificadaRoot"></div></div>
       </section>
 
       <section id="cobrancas" class="screen">
@@ -3170,24 +3071,14 @@ body.integro-data-refreshing .section-card{
         <div class="section-card">
           <div data-config-navigation-host>
             <nav class="config-module-nav" data-config-navigation aria-label="Modulos das configuracoes">
-              <div class="config-module-dropdown">
-                <button class="config-module-tab active" type="button" onclick="alternarMenuEstruturaConfiguracoes(event,this)" aria-expanded="false">
-                  <span class="material-symbols-rounded">account_tree</span><span>Estrutura</span><span class="material-symbols-rounded config-module-chevron">expand_more</span>
-                </button>
-                <div class="config-module-menu" data-config-structure-menu hidden>
-                  <button type="button" onclick="abrirPaginaConfiguracaoIntegro('estrutura')"><span class="material-symbols-rounded">space_dashboard</span>Vis&atilde;o geral</button>
-                  <button type="button" onclick="abrirEstruturaConfiguracao('usuarios')"><span class="material-symbols-rounded">group</span>Usu&aacute;rios</button>
-                  <button type="button" onclick="abrirEstruturaConfiguracao('equipes')"><span class="material-symbols-rounded">hub</span>Equipes</button>
-                  <button type="button" onclick="abrirEstruturaConfiguracao('cargos')"><span class="material-symbols-rounded">admin_panel_settings</span>Cargos e permiss&otilde;es</button>
-                  <button type="button" onclick="abrirPaginaConfiguracaoIntegro('permissoes')"><span class="material-symbols-rounded">shield_person</span>Acessos por perfil</button>
-                </div>
-              </div>
-              <button class="config-module-tab" type="button" onclick="abrirPaginaConfiguracaoIntegro('catalogos')"><span class="material-symbols-rounded">payments</span><span>Financeiro</span></button>
-              <button class="config-module-tab" type="button" onclick="abrirPaginaConfiguracaoIntegro('regras')"><span class="material-symbols-rounded">rule_settings</span><span>Regras operacionais</span></button>
+              <button id="tabConfigUsuariosPermissoes" class="config-module-tab active" type="button" onclick="IntegroUsuariosPermissoes.abrir('usuarios')"><span class="material-symbols-rounded">manage_accounts</span><span>Usuários e permissões</span></button>
+              <button id="tabConfigCatalogos" class="config-module-tab" type="button" onclick="abrirPaginaConfiguracaoIntegro('catalogos')"><span class="material-symbols-rounded">payments</span><span>Financeiro</span></button>
+              <button id="tabConfigRegras" class="config-module-tab" type="button" onclick="abrirPaginaConfiguracaoIntegro('regras')"><span class="material-symbols-rounded">rule_settings</span><span>Regras operacionais</span></button>
             </nav>
           </div>
 
-          <div id="configEstruturaBox" class="config-page">
+          <div id="configUsuariosPermissoesBox" class="config-page"></div>
+          <div id="configEstruturaBox" class="config-page" style="display:none;">
             <div class="config-note" data-config-loading-state><span class="material-symbols-rounded">settings</span><div><strong>Carregando configura&ccedil;&otilde;es</strong><p>Preparando Estrutura, acessos e regras da empresa.</p></div></div>
           </div>
           <div id="configPermissoesBox" class="config-page" style="display:none;"></div>
@@ -13465,20 +13356,24 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   "use strict";
 
   const PERMISSOES_MODULOS_PADRAO = [
-    { id:"dashboard", nome:"Dashboard", desc:"Indicadores e visão geral.", acoes:["ver"] },
+    { id:"dashboard", nome:"Dashboard", desc:"Tela inicial e perspectivas do painel.", acoes:["ver","visao_geral","comercial","carteira","equipe","operacao"] },
+    { id:"chat_interno", nome:"Chat interno", desc:"Comunicação entre usuários autorizados da empresa.", acoes:["ver"] },
+    { id:"operacao", nome:"Operação", desc:"Área operacional com cobranças e vendas.", acoes:["ver","cobrancas","vendas","registrar_pagamento","registrar_nao_pagamento","criar_venda"] },
     { id:"caixas", nome:"Caixas", desc:"Abertura, fechamento, reabertura e auditoria de caixas.", acoes:["ver","abrir","fechar","reabrir","fecharDivergente","verTodos"] },
     { id:"vendas", nome:"Vendas", desc:"Vendas, renovações e aprovações fora da regra.", acoes:["ver","criar","editar","excluir","aprovar","recusar"] },
-    { id:"clientes", nome:"Clientes", desc:"Consulta e gestão dos clientes da empresa.", acoes:["ver","criar","editar","excluir","verTodos"] },
+    { id:"cobrancas", nome:"Cobranças", desc:"Carteira, recebimentos e não pagamentos.", acoes:["ver","receber","nao_pagamento","verTodos"] },
+    { id:"clientes", nome:"Clientes", desc:"Consulta e gestão dos clientes da empresa.", acoes:["ver","criar","editar","excluir","direcionar","atender","verTodos"] },
     { id:"equipes", nome:"Equipes", desc:"Gestão de equipes, vendedores e regras comerciais.", acoes:["ver","criar","editar","excluir","inativar","configurarRegras"] },
     { id:"notificacoes", nome:"Notificações", desc:"Avisos, solicitações e caixa de entrada de trabalho.", acoes:["ver","marcar","excluir","abrirOrigem"] },
-    { id:"solicitacoes", nome:"Solicitacoes", desc:"Criacao e decisao de movimentacoes operacionais.", acoes:["ver","criarIngresso","criarGasto","criarRetirada","criarAjuste","aprovarIngresso","aprovarDespesa","aprovarRetirada","aprovarVenda","recusar"] },
-    { id:"financeiro", nome:"Financeiro", desc:"Ledger, regularizacao, reconciliacao e estorno.", acoes:["ver","podeVerLedgerFinanceiro","podeVerReconciliacao","podeRegularizarCaixa","podeEstornarLancamento"] },
+    { id:"solicitacoes", nome:"Solicitações", desc:"Criação e decisão de movimentações operacionais.", acoes:["ver","criar","aprovar","recusar","criarIngresso","criarGasto","criarRetirada","criarAjuste","aprovarIngresso","aprovarDespesa","aprovarRetirada","aprovarVenda"] },
+    { id:"financeiro", nome:"Financeiro", desc:"Ledger, regularização, reconciliação e estorno.", acoes:["ver","reconciliar","regularizar","estornar","podeVerLedgerFinanceiro","podeVerReconciliacao","podeRegularizarCaixa","podeEstornarLancamento"] },
     { id:"relatorios", nome:"Relatórios", desc:"Relatórios gerenciais e exportações.", acoes:["ver","exportar"] },
-    { id:"auditoria", nome:"Auditoria", desc:"Logs e rastreabilidade.", acoes:["ver","verTodos"] },
-    { id:"usuarios", nome:"Usuários", desc:"Criação e manuten??o de usuários.", acoes:["ver","criar","editar","excluir","bloquear"] },
-    { id:"cargos", nome:"Cargos", desc:"Cargos e n?veis operacionais.", acoes:["ver","criar","editar","excluir"] },
+    { id:"indicadores", nome:"Indicadores", desc:"Indicadores operacionais e comerciais.", acoes:["ver"] },
+    { id:"logs", nome:"Auditoria", desc:"Logs e rastreabilidade.", acoes:["ver","verTodos"] },
+    { id:"usuarios", nome:"Usuários", desc:"Criação, edição, bloqueio e permissões individuais.", acoes:["ver","criar","editar","excluir","bloquear","permissoes"] },
     { id:"configuracoes", nome:"Configurações", desc:"Parâmetros da empresa e permissões.", acoes:["ver","editar","permissoes"] },
-    { id:"indicacoes", nome:"Leads", desc:"Criacao, direcionamento e gestao de leads.", acoes:["ver","criar","editar","excluir","direcionar","redistribuir","gerenciar","exportar"] }
+    { id:"minha_conta", nome:"Minha conta", desc:"Perfil e segurança do usuário.", acoes:["ver","editar"] },
+    { id:"indicacoes", nome:"Leads", desc:"Criação, direcionamento e gestão de leads.", acoes:["ver","criar","editar","excluir","direcionar","redistribuir","gerenciar","exportar"] }
   ];
 
   const LABEL_ACOES = {
@@ -21701,6 +21596,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if(modulo === "dashboard") setTimeout(() => window.IntegroDashboardNavigation?.iniciar?.(), 0);
 
     if(window.innerWidth <= 760 && typeof window.toggleSidebar === "function") window.toggleSidebar(false);
+    document.dispatchEvent(new CustomEvent("integro-tela-alterada", { detail:{ tela:modulo, moduloPai:moduloPai || modulo } }));
     return true;
   };
 
@@ -24812,6 +24708,15 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   else boot();
 })();
 </script>
+  <script src="js/modules/unified-module-utils.js?v=20260803-migracao2"></script>
+  <script src="js/modules/financeiro-unificado.js?v=20260803-migracao2"></script>
+  <script src="js/modules/auditoria-unificada.js?v=20260803-migracao2"></script>
+  <script src="js/modules/captador-unificado.js?v=20260803-migracao2"></script>
+  <script src="js/modules/supervisor-operacao-unificada.js?v=20260803-migracao2"></script>
+  <script src="js/unified-navigation.js?v=20260803-unificado1"></script>
+  <script src="js/usuarios-permissoes-config.js?v=20260803-unificado1"></script>
   <script src="js/integro-mobile-navigation.js?v=20260802-final2"></script>
+  <script src="js/vendedor-operacao.js?v=20260803-2"></script>
+  <script src="js/vendedor-unificado.js?v=20260803-2"></script>
 </body>
 </html>

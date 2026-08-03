@@ -3,35 +3,43 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 
-const html = fs.readFileSync(path.join(__dirname, '..', 'vendedor.html'), 'utf8');
+const root = path.join(__dirname, '..');
+const html = fs.readFileSync(path.join(root, 'vendedor.html'), 'utf8');
+const js = fs.readFileSync(path.join(root, 'js', 'vendedor-operacao.js'), 'utf8');
+const unificado = fs.readFileSync(path.join(root, 'js', 'vendedor-unificado.js'), 'utf8');
 
-test('menu do vendedor apresenta Operação com abas Cobranças e Vendas', () => {
+ test('menu do vendedor apresenta Operação com abas Cobranças e Vendas', () => {
   assert.match(html, /data-modulo="cobrancas"[\s\S]*?<span class="menu-label">Operação<\/span>/);
-  assert.match(html, /id="tabCobrancasBtn"[\s\S]*?>\s*Cobranças\s*<\/button>/);
-  assert.match(html, /id="tabVendasDiaBtn"[\s\S]*?>\s*Vendas\s*<\/button>/);
+  assert.match(unificado, /id="tabCobrancasBtn"[\s\S]*?>Cobranças<\/button>/);
+  assert.match(unificado, /id="tabVendasDiaBtn"[\s\S]*?>Vendas<\/button>/);
 });
 
-test('cobranças inicia sem filtro restritivo e exige saldo acima de um centavo', () => {
-  assert.match(html, /let filtrosCobrancaEstado = \[\];/);
-  assert.match(html, /saldoCliente\(cliente\) > 0\.01/);
-  assert.match(html, /Todos os clientes da carteira com saldo devedor acima de R\$ 0,01/);
+test('cobranças exige saldo acima de um centavo e cobrança prevista para a data do caixa', () => {
+  assert.match(js, /clientesValidos\.filter\(cliente => saldoCliente\(cliente\) > 0\.01\)/);
+  assert.match(js, /saldoVenda\(item\) > 0\.01/);
+  assert.match(js, /item\.comCobrancaHoje && item\.saldoDevedor > 0\.01/);
+  assert.match(js, /cobrança prevista para a data do caixa/);
 });
 
-test('carregamento operacional inclui clientes antes de renderizar cobranças', () => {
+test('carregamento operacional usa a camada consolidada depois dos caches', () => {
   assert.match(html, /Promise\.all\(\[\s*carregarCaixaAtual\(\),\s*carregarClientes\(\),\s*carregarVendas\(\)/);
-  assert.match(html, /window\.montarCobrancasPorVenda = function montarCobrancasDaCarteiraDoVendedor/);
+  assert.match(html, /js\/vendedor-operacao\.js\?v=20260803-1/);
+  assert.match(js, /global\.montarCobrancasPorVenda = dadosAtuais/);
+  assert.match(js, /clientesCache/);
+  assert.match(js, /vendasCache/);
+  assert.match(js, /parcelasCache/);
 });
 
-
-test('card operacional de cobrança preserva todos os dados e ações', () => {
-  assert.match(html, /cobranca-lateral-clean/);
-  assert.match(html, /nome-cliente-cobranca/);
-  assert.match(html, /Parcela devida/);
-  assert.match(html, /Saldo devedor/);
-  assert.match(html, /Pago hoje/);
-  assert.match(html, /statusVisualCobranca\(item\)/);
-  assert.match(html, /registrarNaoPagamentoVenda/);
-  assert.match(html, /abrirPagamentoCliente/);
-  assert.match(html, /abrirWhatsAppClienteCobranca/);
-  assert.match(html, /abrirHistoricoPagamentosVenda/);
+test('card operacional de cobrança preserva os dados e as duas ações diárias', () => {
+  assert.match(js, /cobranca-lateral-clean/);
+  assert.match(js, /apelido-cliente-cobranca/);
+  assert.match(js, /nome-cliente-cobranca/);
+  assert.match(js, /Parcela esperada/);
+  assert.match(js, /Parcela paga no dia/);
+  assert.match(js, /Saldo devedor/);
+  assert.match(js, /Progresso de parcelas/);
+  assert.match(js, /registrarNaoPagamentoVenda/);
+  assert.match(js, /abrirPagamentoCliente/);
+  assert.match(js, /abrirWhatsAppClienteCobranca/);
+  assert.doesNotMatch(js, /abrirHistoricoPagamentosVenda/);
 });

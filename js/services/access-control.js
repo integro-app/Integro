@@ -16,29 +16,29 @@
     gerente: [
       "dashboard.ver", "clientes.ver", "clientes.criar", "clientes.editar", "clientes.direcionar",
       "vendas.ver", "vendas.aprovar", "cobrancas.ver", "caixas.ver", "solicitacoes.ver", "solicitacoes.aprovar", "relatorios.ver",
-      "usuarios.ver", "equipes.ver"
+      "usuarios.ver", "equipes.ver", "chat_interno.ver", "indicacoes.ver"
     ],
     supervisor: [
       "dashboard.ver", "clientes.ver", "clientes.editar", "clientes.direcionar", "clientes.atender",
       "vendas.ver", "cobrancas.ver", "caixas.ver", "caixas.fechar", "caixas.reabrir",
-      "solicitacoes.ver", "solicitacoes.aprovar", "vendas.aprovar", "equipe.ver", "relatorios.ver"
+      "solicitacoes.ver", "solicitacoes.aprovar", "chat_interno.ver", "vendas.aprovar", "equipe.ver", "relatorios.ver", "chat_interno.ver", "indicacoes.ver"
     ],
     vendedor: [
       "dashboard.ver", "clientes.ver", "clientes.criar", "clientes.editar_proprio", "clientes.atender",
       "vendas.ver", "vendas.criar", "cobrancas.ver", "cobrancas.receber", "cobrancas.nao_pagamento",
-      "caixa.ver_proprio", "solicitacoes.ver_proprio", "solicitacoes.criar"
+      "caixa.ver_proprio", "solicitacoes.ver_proprio", "solicitacoes.criar", "chat_interno.ver", "operacao.ver", "operacao.cobrancas", "operacao.vendas"
     ],
     financeiro: [
       "dashboard.ver", "clientes.ver", "vendas.ver", "caixas.ver", "financeiro.ver",
       "financeiro.reconciliar", "financeiro.regularizar", "financeiro.estornar", "relatorios.ver",
-      "solicitacoes.ver", "solicitacoes.aprovar"
+      "solicitacoes.ver", "solicitacoes.aprovar", "chat_interno.ver"
     ],
     auditor: [
       "dashboard.ver", "clientes.ver", "vendas.ver", "caixas.ver", "financeiro.ver",
-      "financeiro.reconciliar", "relatorios.ver", "logs.ver"
+      "financeiro.reconciliar", "relatorios.ver", "logs.ver", "chat_interno.ver"
     ],
     captador: [
-      "dashboard.ver", "clientes.ver_proprio", "clientes.criar", "indicacoes.ver_proprio", "indicacoes.criar"
+      "dashboard.ver", "clientes.ver_proprio", "clientes.criar", "indicacoes.ver_proprio", "indicacoes.criar", "chat_interno.ver"
     ]
   });
 
@@ -75,7 +75,7 @@
   }
 
   function permissoesExplicitas(usuario = {}) {
-    const origem = usuario.permissoes || usuario.permissoesCargo || {};
+    const origem = usuario.permissoesUsuario || usuario.permissoes || usuario.permissoesCargo || {};
     const permitidas = new Set();
     const negadas = new Set();
 
@@ -115,7 +115,13 @@
     const explicitas = permissoesExplicitas(usuario);
     const aliases = aliasesPermissao(chave);
     if (aliases.some(item => explicitas.negadas.has(item))) return false;
-    if (aliases.some(item => explicitas.permitidas.has(item))) return true;
+    if (aliases.some(item => explicitas.permitidas.has(item))) return validarEscopo(acesso, contexto);
+
+    // Quando o cargo/usuario possui uma matriz salva, ela passa a ser a fonte oficial.
+    // Permissoes ausentes deixam de herdar silenciosamente o perfil padrao.
+    const origemExplicita = usuario.permissoesUsuario || usuario.permissoes || usuario.permissoesCargo;
+    const matrizConfigurada = Boolean(origemExplicita && typeof origemExplicita === "object" && Object.keys(origemExplicita).length);
+    if (matrizConfigurada) return false;
 
     const padrao = MATRIZ_PADRAO[acesso.perfil] || [];
     if (padrao.includes("*") || padrao.includes(chave)) return validarEscopo(acesso, contexto);

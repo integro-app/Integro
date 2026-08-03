@@ -3,10 +3,13 @@
 
   const PERMISSAO_POR_MODULO = Object.freeze({
     dashboard: "dashboard.ver",
+    operacao: "operacao.ver",
     clientes: "clientes.ver",
     vendas: "vendas.ver",
     cobrancas: "cobrancas.ver",
     caixas: "caixas.ver",
+    supervisao: "equipe.ver",
+    captacao: "indicacoes.ver_proprio",
     equipes: "equipes.ver",
     usuarios: "usuarios.ver",
     cargos: "usuarios.ver",
@@ -21,9 +24,9 @@
     auditoria: "logs.ver",
     configuracoes: "configuracoes.ver",
     indicacoes: "indicacoes.ver_proprio",
-    chatInterno: "dashboard.ver",
-    notificacoes: "dashboard.ver",
-    minhaConta: "dashboard.ver",
+    chatInterno: "chat_interno.ver",
+    notificacoes: "notificacoes.ver",
+    minhaConta: "minha_conta.ver",
     sair: "dashboard.ver"
   });
 
@@ -39,6 +42,10 @@
     aprovacoesComercial: Object.freeze([
       "vendas.aprovar",
       "solicitacoes.aprovarvenda"
+    ]),
+    captacao: Object.freeze([
+      "indicacoes.ver_proprio",
+      "indicacoes.ver"
     ])
   });
 
@@ -47,9 +54,9 @@
     gerente: "dashboard",
     supervisor: "dashboard",
     vendedor: "dashboard",
-    financeiro: "aprovacoesFinanceiro",
+    financeiro: "financeiro",
     auditor: "auditoria",
-    captador: "clientes"
+    captador: "captacao"
   });
 
   let usuarioAtual = null;
@@ -85,6 +92,10 @@
   }
 
   function aplicarPermissoesNosMenus(usuario, raiz = document) {
+    if (raiz === document && window.IntegroNavegacaoUnificada?.renderizar) {
+      window.IntegroNavegacaoUnificada.renderizar(usuario);
+      return;
+    }
     const perfil = acesso(usuario).perfil;
 
     raiz.querySelectorAll("#sidebar [data-modulo]").forEach(elemento => {
@@ -132,7 +143,7 @@
   function primeiraTelaPermitida(usuario) {
     const perfil = acesso(usuario).perfil;
     const preferida = TELA_INICIAL_POR_PERFIL[perfil] || "dashboard";
-    const candidatos = [preferida, "dashboard", "clientes", "vendas", "caixas", "solicitacoes"];
+    const candidatos = [preferida, "dashboard", "supervisao", "captacao", "financeiro", "clientes", "vendas", "caixas", "solicitacoes", "auditoria"];
 
     for (const id of candidatos) {
       const tela = document.getElementById(id);

@@ -19,6 +19,7 @@ const state = fs.readFileSync(path.join(root, "js", "state.js"), "utf8");
 const usuariosUI = fs.readFileSync(path.join(root, "js", "usuarios.js"), "utf8");
 const provisionamentoUsuarios = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
 const firebaseJson = fs.readFileSync(path.join(root, "firebase.json"), "utf8");
+const read = relative => fs.readFileSync(path.join(root, relative), "utf8");
 
 test("auditor e captador convergem para o painel unificado com legado preservado", () => {
   assert.match(config, /auditor:\s*"master-local\.html"/);
@@ -58,76 +59,43 @@ test("captador cria indicacao real e filtra indicacoes proprias", () => {
 
 test("modulos reorganizados do master local preservam navegacao e inicializacao", () => {
   for (const modulo of [
-    "notificacoes",
-    "chatInterno",
-    "relatorios",
-    "indicadores",
-    "auditoria",
-    "aprovacoesComercial",
-    "aprovacoesFinanceiro",
-    "contratosDigitais"
-  ]) {
-    assert.match(masterLocal, new RegExp(`<section id=["']${modulo}["']`));
-  }
-  assert.match(masterLocal, /onclick="return abrirComunicacaoMasterLocal\('notificacoes',this\)"/);
-  assert.match(masterLocal, /onclick="return abrirComunicacaoMasterLocal\('chatInterno',this\)"/);
+    "notificacoes", "chatInterno", "relatorios", "indicadores", "auditoria",
+    "aprovacoesComercial", "aprovacoesFinanceiro", "contratosDigitais"
+  ]) assert.match(masterLocal, new RegExp(`<section id=["']${modulo}["']`));
+  assert.match(masterLocal, /id="integroSidebarMenu"/);
+  assert.match(masterLocal, /js\/unified-navigation\.js/);
   assert.match(masterLocal, /window\.abrirModuloNavegacaoIntegro\s*=\s*function/);
-  assert.match(masterLocal, /window\.renderNotificacoesMaster\?\.\(\)/);
-  assert.match(masterLocal, /window\.IntegroChatUI\?\.atualizar\?\.\(\)/);
-  assert.match(masterLocal, /window\.abrirModuloNavegacaoIntegro\(moduloDestino, null, moduloPai\)/);
-});
-
-test("menu principal do master local usa navegacao compatível e resolve cargos oficiais", () => {
-  for (const modulo of [
-    "dashboard",
-    "notificacoes",
-    "chatInterno",
-    "caixas",
-    "vendas",
-    "solicitacoes",
-    "monitoramento",
-    "configuracoes",
-    "minhaConta"
-  ]) {
-    const funcao = ["notificacoes", "chatInterno"].includes(modulo)
-      ? "abrirComunicacaoMasterLocal"
-      : "abrirModuloNavegacaoIntegro";
-    assert.match(masterLocal, new RegExp(`data-modulo=["']${modulo}["'][^>]+onclick=["'][^"']*${funcao}\\('${modulo}'`));
-  }
-  assert.match(masterLocal, /u\.perfilOficial[\s\S]*u\.perfil[\s\S]*u\.cargoChave[\s\S]*u\.tipoUsuario/);
-  assert.match(masterLocal, /PERFIS_ADMIN[^;]+"socio"[^;]+"proprietario"/);
-  assert.match(masterLocal, /PERFIS_CONHECIDOS\.has\(perfil\)/);
-});
-
-test("configuracoes usam uma unica navegacao organizada por modulo", () => {
-  assert.doesNotMatch(masterLocal, /menu-subitem" data-modulo="configuracoes"/);
-  assert.match(masterLocal, /data-config-navigation-host/);
-  assert.match(masterLocal, /data-config-loading-state/);
-  assert.match(configuracoesMasterLocal, /registrarInicializacaoConfiguracoes[\s\S]*MutationObserver/);
-  assert.ok(
-    masterLocal.indexOf('js/configuracoes-master-local.js?v=20260730-4') > masterLocal.indexOf('setTimeout(aplicarPadrao, 2800)'),
-    'o script atual de configuracoes deve carregar depois dos wrappers legados do HTML'
-  );
-  assert.match(configuracoesMasterLocal, /data-config-structure-menu[\s\S]*Vis&atilde;o geral[\s\S]*Usu&aacute;rios[\s\S]*Equipes[\s\S]*Cargos e permiss&otilde;es[\s\S]*Acessos por perfil/);
-  assert.match(configuracoesMasterLocal, /abrirPaginaConfiguracaoIntegro\('catalogos'\)[\s\S]*Financeiro/);
-  assert.match(configuracoesMasterLocal, /abrirPaginaConfiguracaoIntegro\('regras'\)[\s\S]*Regras operacionais/);
-  assert.match(configuracoesMasterLocal, /global\.trocarTela\(destino\);[\s\S]*instalarNavegacaoConfiguracoes\(destino, "estrutura"\);[\s\S]*try \{/);
-  assert.doesNotMatch(configuracoesMasterLocal, /class="config-structure-nav"/);
-});
-test("notificacoes e chat permanecem interativos depois da reorganizacao do menu", () => {
-  assert.match(masterLocal, /\.menu-item\.integro-comunicacao-ativa[\s\S]*pointer-events:auto\s*!important/);
-  assert.match(masterLocal, /const modulos = new Set\(\["notificacoes", "chatInterno"\]\)/);
-  assert.match(masterLocal, /sidebar\.addEventListener\("click", navegar, true\)/);
-  assert.match(masterLocal, /evento\.stopImmediatePropagation\(\)/);
-  assert.match(masterLocal, /window\.abrirComunicacaoMasterLocal\(item\.dataset\.modulo, item\)/);
   assert.match(masterLocal, /window\.abrirComunicacaoMasterLocal\s*=\s*function/);
-  assert.match(masterLocal, /document\.querySelectorAll\("#sidebar > \.menu-item"\)[\s\S]*classList\.remove\("active"\)/);
-  assert.match(masterLocal, /data-menu-group="principal"[\s\S]*data-modulo="notificacoes"[\s\S]*data-modulo="dashboard"[\s\S]*data-modulo="chatInterno"/);
-  assert.doesNotMatch(masterLocal, /function moverComunicacaoParaTopo/);
-  assert.doesNotMatch(masterLocal, /dashboard\.insertAdjacentElement\("beforebegin", notificacoes\)/);
-  assert.match(masterLocal, /\.menu-item:not\(\.active\):hover[\s\S]*\.integro-menu-hover/);
-  assert.match(masterLocal, /sidebar\.addEventListener\("pointerover"/);
-  assert.match(masterLocal, /left:-320px\s*!important[\s\S]*sidebar\.show[\s\S]*left:0\s*!important/);
+});
+
+test("menu principal e montado por uma unica fonte autoritativa", () => {
+  const navegacao = read("js/unified-navigation.js");
+  assert.match(navegacao, /const CATALOGO/);
+  assert.match(navegacao, /id:\s*"dashboard"/);
+  assert.match(navegacao, /id:\s*"operacao"/);
+  assert.match(navegacao, /id:\s*"configuracoes"/);
+  assert.match(navegacao, /host\.innerHTML = html\.join/);
+  assert.match(navegacao, /sanitizarSidebar/);
+  assert.doesNotMatch(masterLocal, /data-menu-group="principal"[\s\S]*data-menu-group="sistema"/);
+});
+
+test("configuracoes concentram usuarios equipes cargos e permissoes", () => {
+  const unificado = read("js/usuarios-permissoes-config.js");
+  assert.match(masterLocal, /id="tabConfigUsuariosPermissoes"/);
+  assert.match(masterLocal, /id="configUsuariosPermissoesBox"/);
+  assert.match(masterLocal, /js\/usuarios-permissoes-config\.js/);
+  assert.match(unificado, /data-up-tab="usuarios"/);
+  assert.match(unificado, /data-up-tab="equipes"/);
+  assert.match(unificado, /data-up-tab="cargos"/);
+  assert.match(unificado, /abrirPermissoesUsuario/);
+  assert.match(unificado, /permissoesUsuario/);
+});
+
+test("notificacoes e chat permanecem interativos no menu unificado", () => {
+  const navegacao = read("js/unified-navigation.js");
+  assert.match(navegacao, /id:\s*"chatInterno"[\s\S]*abrir:\s*"chat"/);
+  assert.match(navegacao, /abrirComunicacaoMasterLocal/);
+  assert.match(masterLocal, /window\.abrirGavetaNotificacoesMaster\s*=\s*function/);
 });
 
 test("notificacoes abrem em gaveta e so sao lidas ao abrir a origem", () => {
