@@ -23075,7 +23075,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   };
 
   const GRUPOS = [
-    { id:"operacao", label:"Operação", icon:"business_center", padrao:"caixas", modulos:["caixas","vendas","clientes"] },
+    { id:"operacao", label:"Operação", icon:"business_center", padrao:"operacao", modulos:["operacao","caixas","vendas","clientes"] },
     { id:"aprovacoes", label:"Aprovações", icon:"task_alt", padrao:"solicitacoes", modulos:["solicitacoes","aprovacoesFinanceiro","aprovacoesComercial"] },
     { id:"gestao", label:"Gestão", icon:"account_tree", padrao:"equipes", modulos:["equipes","usuarios","cargos","relatorios","indicadores","auditoria"] },
     { id:"campo", label:"Campo e contratos", icon:"location_on", padrao:"monitoramento", modulos:["monitoramento","contratosDigitais"] },
@@ -23083,6 +23083,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   ];
 
   const PAI_POR_TELA = {
+    cobrancas:"operacao",
     adicionarCliente:"clientes",
     indicacoes:"clientes",
     unidades:"caixas",
@@ -23094,6 +23095,8 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   const ROTULOS = {
     dashboard:"Dashboard",
     chatInterno:"Chat interno",
+    operacao:"Operação",
+    cobrancas:"Cobranças",
     caixas:"Caixas",
     vendas:"Vendas",
     clientes:"Clientes",
@@ -23115,7 +23118,8 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   };
 
   const ICONES = {
-    dashboard:"space_dashboard",chatInterno:"forum",caixas:"account_balance_wallet",vendas:"shopping_cart",
+    dashboard:"space_dashboard",chatInterno:"forum",operacao:"business_center",cobrancas:"request_quote",
+    caixas:"account_balance_wallet",vendas:"shopping_cart",
     clientes:"groups",equipes:"hub",usuarios:"person",cargos:"admin_panel_settings",solicitacoes:"task",
     aprovacoesFinanceiro:"request_quote",aprovacoesComercial:"verified",monitoramento:"location_on",
     contratosDigitais:"draw",relatorios:"monitoring",indicadores:"query_stats",auditoria:"manage_search",
@@ -23332,23 +23336,29 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       modulo:id
     })) : [];
 
-    const candidatos = Array.from(tela.querySelectorAll(".clientes-module-nav, .integro-module-nav"));
+    const candidatos = Array.from(tela.querySelectorAll(".clientes-module-nav, .integro-module-nav, .vendedor-operacao-tabs"));
     const nav = candidatos.find(el => !el.matches("[data-dashboard-navigation]")) || null;
     if(!nav) return itensGrupo;
 
-    const botoes = Array.from(nav.querySelectorAll(".clientes-module-tab, .integro-module-tab")).filter(el =>
+    const botoes = Array.from(nav.querySelectorAll(".clientes-module-tab, .integro-module-tab, .tab-operacao-clean")).filter(el =>
       !el.matches("[data-integro-estrutura-trigger]") && !el.closest(".integro-contexto-estavel")
     );
     const vistos = new Set();
     const internos = botoes.map(el => ({
       fonte:el,
       rotulo:textoLimpo(el),
-      icone:iconeDoElemento(el,"view_list"),
+      icone:iconeDoElemento(el, el.id === "tabVendasDiaBtn" ? "shopping_cart" : "request_quote"),
       ativo:el.classList.contains("active"),
       secao:ROTULOS[modulo] || "Nesta área",
       tipo:"subarea",
       modulo
     })).filter(item => item.rotulo && !vistos.has(item.rotulo) && vistos.add(item.rotulo));
+
+    const usuario = window.IntegroPainel?.usuario || window.State?.getUsuario?.() || window.usuarioLogado || null;
+    const perfilAtual = window.IntegroAcesso?.acessoUsuario?.(usuario || {})?.perfil || "";
+    if(perfilAtual === "vendedor" && modulo === "operacao" && internos.length){
+      return internos;
+    }
 
     return [...itensGrupo,...internos];
   }
@@ -23581,7 +23591,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   document.addEventListener("click", evento => {
     if(!evento.target.closest("#integroContextoEstavel")) fecharSeletor();
     if(evento.target.closest("#sidebar .menu-item[data-modulo]")) window.setTimeout(atualizarTudo,80);
-    if(evento.target.closest(".integro-module-tab,.clientes-module-tab,[data-dashboard-view]")) window.setTimeout(atualizarTudo,60);
+    if(evento.target.closest(".integro-module-tab,.clientes-module-tab,.tab-operacao-clean,[data-dashboard-view]")) window.setTimeout(atualizarTudo,60);
   },true);
 
   document.addEventListener("DOMContentLoaded", iniciar);
@@ -24713,10 +24723,10 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/modules/auditoria-unificada.js?v=20260803-migracao2"></script>
   <script src="js/modules/captador-unificado.js?v=20260803-migracao2"></script>
   <script src="js/modules/supervisor-operacao-unificada.js?v=20260803-migracao2"></script>
-  <script src="js/unified-navigation.js?v=20260803-unificado1"></script>
+  <script src="js/unified-navigation.js?v=20260803-unificado2"></script>
   <script src="js/usuarios-permissoes-config.js?v=20260803-unificado1"></script>
   <script src="js/integro-mobile-navigation.js?v=20260802-final2"></script>
-  <script src="js/vendedor-operacao.js?v=20260803-2"></script>
-  <script src="js/vendedor-unificado.js?v=20260803-2"></script>
+  <script src="js/vendedor-operacao.js?v=20260803-3"></script>
+  <script src="js/vendedor-unificado.js?v=20260803-3"></script>
 </body>
 </html>

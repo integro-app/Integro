@@ -10,9 +10,9 @@ const state = fs.readFileSync(path.join(root, "js", "state.js"), "utf8");
 const unificado = fs.readFileSync(path.join(root, "js", "vendedor-unificado.js"), "utf8");
 const operacao = fs.readFileSync(path.join(root, "js", "vendedor-operacao.js"), "utf8");
 
- test("painel unificado carrega a operação específica do vendedor", () => {
-  assert.match(master, /js\/vendedor-operacao\.js\?v=20260803-2/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260803-2/);
+test("painel unificado carrega a operação específica do vendedor", () => {
+  assert.match(master, /js\/vendedor-operacao\.js\?v=20260803-3/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260803-3/);
   assert.match(master, /css\/vendedor-operacao\.css\?v=20260803-2/);
   assert.match(unificado, /Clientes com cobrança prevista para a data do caixa/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
@@ -34,6 +34,15 @@ test("operação abre cobranças por padrão e possui ferramentas solicitadas", 
   assert.match(operacao, /item\.comCobrancaHoje && item\.saldoDevedor > 0\.01/);
 });
 
+test("seletor contextual do vendedor mostra Cobranças e Vendas em Operação", () => {
+  assert.match(master, /padrao:"operacao",\s*modulos:\["operacao","caixas","vendas","clientes"\]/);
+  assert.match(master, /cobrancas:"operacao"/);
+  assert.match(master, /\.vendedor-operacao-tabs/);
+  assert.match(master, /\.tab-operacao-clean/);
+  assert.match(master, /perfilAtual === "vendedor" && modulo === "operacao" && internos\.length/);
+  assert.match(master, /return internos/);
+});
+
 test("card de cobrança contém whatsapp, situação, parcelas e somente ações diárias", () => {
   assert.match(operacao, /cobranca-whatsapp-btn/);
   assert.match(operacao, /Parcela esperada/);
@@ -46,13 +55,24 @@ test("card de cobrança contém whatsapp, situação, parcelas e somente ações
   assert.doesNotMatch(operacao, /<span>Histórico<\/span>/);
 });
 
-test("vendas usam a data do caixa, filtros, busca e nova venda", () => {
-  assert.match(unificado, /function dataCaixa\(\)/);
-  assert.match(unificado, /dataVenda !== data/);
+test("vendas exibem histórico por padrão e permitem filtrar pela data do caixa", () => {
+  assert.match(unificado, /id="filtroPeriodoVendaVendedor"/);
+  assert.match(unificado, /<option value="todas">Todas as vendas<\/option>/);
+  assert.match(unificado, /periodoFiltro === "caixa" && dataVenda !== dataCaixaAtual/);
+  assert.match(unificado, /rotulosPeriodo = \{ todas: "em todo o histórico"/);
+  assert.match(unificado, /Data da venda/);
   assert.match(unificado, /buscaVendaVendedorInput/);
   assert.match(unificado, /toggleFiltrosVendasVendedor/);
   assert.match(unificado, /btnNovaVendaOperacao/);
   assert.match(unificado, /IntegroVenda\.registrarVendaTransacional/);
+});
+
+test("vendas legadas podem ser reconhecidas pelo cliente vinculado ao vendedor", () => {
+  assert.match(unificado, /!pertenceAoVendedor\(v\) && !pertenceAoVendedor\(cliente\)/);
+  assert.match(perfis, /function idsVendasReferenciadas\(clientes = \[\]\)/);
+  assert.match(perfis, /vendaAtivaId/);
+  assert.match(perfis, /function carregarVendasVendedor\(clientes = \[\]\)/);
+  assert.match(perfis, /db\.collection\(CONFIG\.COLECOES\.VENDAS\)\.doc\(id\)\.get\(\)/);
 });
 
 test("perfil unificado do vendedor carrega parcelas e histórico antes de renderizar", () => {

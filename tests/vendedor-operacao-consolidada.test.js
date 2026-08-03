@@ -59,6 +59,23 @@ test("não pagamento do dia usa barra vermelha quando não houve pagamento", () 
   assert.equal(operacao.statusVisual(lista[0]).chave, "NAO_PAGO");
 });
 
+
+test("venda legada sem vendedor explícito é aceita quando o cliente pertence ao vendedor", () => {
+  const dados = base({
+    vendas: [
+      { id: "venda-legada", clienteId: "cli-1", saldoDevedor: 180, valorParcela: 60, quantidadeParcelas: 4, clientePlataformaId: "tenant-1", status: "ATIVA" }
+    ],
+    parcelas: [
+      { id: "p-legada", vendaId: "venda-legada", numeroParcela: 1, valor: 60, status: "PENDENTE", dataVencimento: "2026-08-03", clientePlataformaId: "tenant-1" }
+    ]
+  });
+  const lista = operacao.montarCarteira(dados);
+  assert.equal(lista.length, 1);
+  assert.equal(lista[0].vendaId, "venda-legada");
+  assert.equal(lista[0].clienteId, "cli-1");
+  assert.equal(lista[0].comCobrancaHoje, true);
+});
+
 test("vínculo vazio não libera carteira de outro vendedor", () => {
   assert.equal(operacao.pertenceAoVendedor({}, usuario), false);
   assert.equal(operacao.pertenceAoVendedor({ vendedorId: "vend-2" }, usuario), false);

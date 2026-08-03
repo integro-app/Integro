@@ -17,6 +17,13 @@
   const idsUsuario = usuario => new Set([usuario?.id, usuario?.usuarioId, usuario?.uid, usuario?.authUid, usuario?.email].filter(Boolean).map(String));
   const vendedorRegistro = registro => texto(registro?.vendedorId || registro?.vendedorUid || registro?.vendedorAuthUid || registro?.usuarioId || registro?.responsavelId || registro?.vendedorEmail);
 
+  function dataRegistro(registro) {
+    const valor = registro?.dataOperacional || registro?.dataVenda || registro?.data || registro?.criadoEmTexto || registro?.criadoEm;
+    if (valor?.toDate) return valor.toDate().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    if (valor instanceof Date) return valor.toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    return texto(valor).slice(0, 10);
+  }
+
   function pertenceAoVendedor(registro, usuario = usuarioAtual || State.getUsuario?.()) {
     const ids = idsUsuario(usuario || {});
     const vinculo = vendedorRegistro(registro);
@@ -91,6 +98,7 @@
           </div>
           <div id="filtrosVendasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
+              <label><span>Período</span><select id="filtroPeriodoVendaVendedor"><option value="todas">Todas as vendas</option><option value="caixa">Data do caixa</option><option value="7">Últimos 7 dias</option><option value="30">Últimos 30 dias</option></select></label>
               <label><span>Status</span><select id="filtroStatusVendaVendedor"><option value="todos">Todos</option><option value="ATIVA">Ativas</option><option value="QUITADA">Quitadas</option><option value="CANCELADA">Canceladas</option></select></label>
               <label><span>Tipo</span><select id="filtroTipoVendaVendedor"><option value="todos">Todos</option><option value="NOVA">Nova</option><option value="RENOVACAO">Renovação</option></select></label>
             </div>
@@ -137,42 +145,59 @@
   }
 
   function vendasFiltradas() {
-    const data = dataCaixa();
+    const dataCaixaAtual = dataCaixa();
     const termo = texto(document.getElementById("buscaVendaVendedorInput")?.value).toLowerCase();
+    const periodoFiltro = texto(document.getElementById("filtroPeriodoVendaVendedor")?.value || "todas").toLowerCase();
     const statusFiltro = texto(document.getElementById("filtroStatusVendaVendedor")?.value || "todos").toUpperCase();
     const tipoFiltro = texto(document.getElementById("filtroTipoVendaVendedor")?.value || "todos").toUpperCase();
+    const clientes = State.getClientes?.() || [];
+    const hojeRef = hoje();
+    const limitePeriodo = periodoFiltro === "7" || periodoFiltro === "30" ? Number(periodoFiltro) : 0;
+
     return (State.getVendas?.() || []).filter(v => {
-      const dataVenda = texto(v.dataOperacional || v.dataVenda || v.data || v.criadoEmTexto).slice(0, 10);
-      if (dataVenda !== data) return false;
-      if (!pertenceAoVendedor(v)) return false;
+      const cliente = clientes.find(c => texto(c.id || c.clienteId || c.clienteOperacionalId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
+      if (!pertenceAoVendedor(v) && !pertenceAoVendedor(cliente)) return false;
+
+      const dataVenda = dataRegistro(v);
+      if (periodoFiltro === "caixa" && dataVenda !== dataCaixaAtual) return false;
+      if (limitePeriodo > 0) {
+        if (!dataVenda) return false;
+        const inicio = new Date(`${hojeRef}T00:00:00`);
+        inicio.setDate(inicio.getDate() - (limitePeriodo - 1));
+        const dataItem = new Date(`${dataVenda}T00:00:00`);
+        if (Number.isNaN(dataItem.getTime()) || dataItem < inicio || dataVenda > hojeRef) return false;
+      }
+
       const status = texto(v.statusVenda || v.status || "ATIVA").toUpperCase();
-      const tipo = texto(v.tipoVenda || v.tipo || "NOVA").toUpperCase().replace("Ç", "C").replace("Ã", "A");
+      const tipo = texto(v.tipoVenda || v.tipo || "NOVA").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
       if (statusFiltro !== "TODOS" && !status.includes(statusFiltro)) return false;
       if (tipoFiltro !== "TODOS" && !tipo.includes(tipoFiltro)) return false;
-      const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
       const busca = [v.clienteNome, v.nomeCliente, cliente.nome, cliente.nomeCompleto, cliente.apelido, cliente.documento, v.codigo, v.numero, v.id].join(" ").toLowerCase();
       return !termo || busca.includes(termo);
-    });
+    }).sort((a, b) => dataRegistro(b).localeCompare(dataRegistro(a)) || texto(b.id).localeCompare(texto(a.id)));
   }
 
   function renderVendasDia() {
     const el = document.getElementById("listaVendasDia");
     if (!el) return;
     const vendas = vendasFiltradas();
+    const periodo = texto(document.getElementById("filtroPeriodoVendaVendedor")?.value || "todas").toLowerCase();
     const data = dataCaixa();
     const total = vendas.reduce((s, v) => s + numero(v.valorEmprestado || v.valorVenda || v.valor), 0);
+    const rotulosPeriodo = { todas: "em todo o histórico", caixa: `na data do caixa (${data.split("-").reverse().join("/")})`, "7": "nos últimos 7 dias", "30": "nos últimos 30 dias" };
     const contador = document.getElementById("contadorVendasDia");
-    if (contador) contador.textContent = `${vendas.length} venda(s) na data do caixa (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}`;
+    if (contador) contador.textContent = `${vendas.length} venda(s) ${rotulosPeriodo[periodo] || rotulosPeriodo.todas} • Total vendido: ${moeda(total)}`;
     el.innerHTML = vendas.length ? vendas.map(v => {
       const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
       return `<article class="vendedor-venda-card">
         <div class="vendedor-venda-identidade"><strong>${texto(cliente.apelido || v.clienteApelido || cliente.nome || cliente.nomeCompleto || v.clienteNome || "Cliente")}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || v.clienteNome || "")}</small><small>${texto(v.codigo || v.numero || v.id || "")}</small></div>
+        <div><span>Data da venda</span><strong>${dataRegistro(v) ? dataRegistro(v).split("-").reverse().join("/") : "Não informada"}</strong></div>
         <div><span>Valor vendido</span><strong>${moeda(v.valorEmprestado || v.valorVenda || v.valor || 0)}</strong></div>
         <div><span>Carteira gerada</span><strong>${moeda(v.valorTotalVenda || v.saldoDevedor || 0)}</strong></div>
         <div><span>Parcela</span><strong>${moeda(v.valorParcela || 0)}</strong></div>
         <div><span>Status</span><strong>${texto(v.statusVenda || v.status || "ATIVA")}</strong></div>
       </article>`;
-    }).join("") : '<div class="empty-state-operacao"><strong>Nenhuma venda encontrada</strong><p>Não há vendas registradas na data do caixa para os filtros informados.</p></div>';
+    }).join("") : '<div class="empty-state-operacao"><strong>Nenhuma venda encontrada</strong><p>Não há vendas vinculadas a este vendedor para os filtros informados.</p></div>';
   }
 
   function abrirAba(aba = "cobrancas") {
@@ -188,7 +213,7 @@
     const titulo = document.getElementById("vendedorOperacaoTitulo");
     const subtitulo = document.getElementById("vendedorOperacaoSubtitulo");
     if (titulo) titulo.textContent = abaAtual === "cobrancas" ? "Cobranças" : "Vendas";
-    if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com cobrança prevista para a data do caixa." : "Vendas feitas na data do caixa.";
+    if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com cobrança prevista para a data do caixa." : "Vendas vinculadas ao vendedor, incluindo o histórico que compõe a carteira.";
     if (abaAtual === "cobrancas") {
       window.IntegroVendedorOperacao?.instalar?.();
       window.renderCobrancas?.();
@@ -277,7 +302,14 @@
 
   function toggleFiltros(id) { const painel = document.getElementById(id); if (painel) painel.hidden = !painel.hidden; }
   function limparCobrancas() { ["buscaCobrancaInput", "filtroStatusCobranca", "filtroSituacaoCobranca", "ordenarCobrancas"].forEach((id, i) => { const el = document.getElementById(id); if (el) el.value = i === 0 ? "" : (id === "ordenarCobrancas" ? "nome_az" : "todos"); }); window.renderCobrancas?.(); }
-  function limparVendas() { ["buscaVendaVendedorInput", "filtroStatusVendaVendedor", "filtroTipoVendaVendedor"].forEach((id, i) => { const el = document.getElementById(id); if (el) el.value = i === 0 ? "" : "todos"; }); renderVendasDia(); }
+  function limparVendas() {
+    ["buscaVendaVendedorInput", "filtroPeriodoVendaVendedor", "filtroStatusVendaVendedor", "filtroTipoVendaVendedor"].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = id === "buscaVendaVendedorInput" ? "" : (id === "filtroPeriodoVendaVendedor" ? "todas" : "todos");
+    });
+    renderVendasDia();
+  }
 
   function abrirListaNovaVenda() {
     const caixa = caixaAberto();

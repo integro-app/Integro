@@ -110,8 +110,15 @@
     const vendasValidas = vendas
       .filter(vendaAtiva)
       .filter(item => pertenceAoTenant(item, usuario))
-      .filter(item => pertenceAoVendedor(item, usuario))
-      .filter(item => saldoVenda(item) > 0.01);
+      .filter(item => {
+        const clienteId = id(item.clienteId || item.clienteOperacionalId);
+        const clienteVinculado = clientesPorId.get(clienteId);
+        return pertenceAoVendedor(item, usuario) || pertenceAoVendedor(clienteVinculado, usuario);
+      })
+      .filter(item => {
+        const clienteId = id(item.clienteId || item.clienteOperacionalId);
+        return saldoVenda(item) > 0.01 || saldoCliente(clientesPorId.get(clienteId)) > 0.01;
+      });
 
     const vendasPorCliente = new Map();
     vendasValidas.forEach(venda => {
@@ -136,6 +143,11 @@
       candidatos.set(clienteId, { cliente, venda });
     });
 
+    const registroFilhoPermitido = item => {
+      const vinculos = idsRegistroVendedor(item);
+      return !vinculos.length || pertenceAoVendedor(item, usuario);
+    };
+
     return Array.from(candidatos.entries()).map(([clienteId, origem]) => {
       const cliente = origem.cliente || {};
       const venda = origem.venda || {};
@@ -143,20 +155,20 @@
       const parcelasVenda = parcelas
         .filter(item => item?.excluido !== true)
         .filter(item => pertenceAoTenant(item, usuario))
-        .filter(item => pertenceAoVendedor(item, usuario))
+        .filter(registroFilhoPermitido)
         .filter(item => id(item.vendaId) === vendaId)
         .sort((a, b) => numero(a.numeroParcela) - numero(b.numeroParcela) || dataParcela(a).localeCompare(dataParcela(b)));
 
       const pagamentos = pagamentosHoje
         .filter(item => item?.excluido !== true && maiusculo(item?.status) !== "CANCELADO")
         .filter(item => pertenceAoTenant(item, usuario))
-        .filter(item => pertenceAoVendedor(item, usuario))
+        .filter(registroFilhoPermitido)
         .filter(item => id(item.vendaId) === vendaId)
         .filter(item => !dataIso(item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.data || item.dataPagamento || item.criadoEmTexto) === hoje);
 
       const naoPagamentos = historico
         .filter(item => pertenceAoTenant(item, usuario))
-        .filter(item => pertenceAoVendedor(item, usuario))
+        .filter(registroFilhoPermitido)
         .filter(item => id(item.vendaId) === vendaId)
         .filter(item => maiusculo(item.tipo || item.acao || item.status) === "NAO_PAGAMENTO")
         .filter(item => dataIso(item.data || item.criadoEmTexto) === hoje);
@@ -390,7 +402,7 @@
     const titulo = global.document?.getElementById("pageTitle");
     const subtitulo = global.document?.getElementById("pageSubtitle");
     if (titulo) titulo.textContent = "Operação";
-    if (subtitulo) subtitulo.textContent = mostrarCobrancas ? "Carteira de cobranças e situação diária dos clientes." : "Vendas registradas no dia.";
+    if (subtitulo) subtitulo.textContent = mostrarCobrancas ? "Carteira de cobranças e situação diária dos clientes." : "Vendas vinculadas ao vendedor, incluindo o histórico da carteira.";
     if (mostrarCobrancas) renderizar(); else global.renderVendasDia?.();
   }
 

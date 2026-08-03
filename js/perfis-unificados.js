@@ -69,6 +69,46 @@
     ];
   }
 
+  function idsVendasReferenciadas(clientes = []) {
+    const ids = new Set();
+    clientes.forEach(cliente => {
+      [
+        cliente?.vendaAtivaId,
+        cliente?.ultimaVendaId,
+        cliente?.vendaId
+      ].filter(Boolean).forEach(valor => ids.add(String(valor)));
+
+      [cliente?.vendasIds, cliente?.historicoVendas].forEach(lista => {
+        if (!Array.isArray(lista)) return;
+        lista.forEach(item => {
+          const valor = typeof item === "object" ? (item?.id || item?.vendaId) : item;
+          if (valor) ids.add(String(valor));
+        });
+      });
+    });
+    return [...ids];
+  }
+
+  async function carregarVendasVendedor(clientes = []) {
+    const diretas = await consultar(CONFIG.COLECOES.VENDAS, camposProprios(), CONFIG.LIMITS?.VENDAS || 500);
+    const conhecidas = new Set(diretas.map(item => String(item.id)));
+    const referencias = idsVendasReferenciadas(clientes).filter(id => !conhecidas.has(id)).slice(0, 300);
+    if (!referencias.length) return diretas;
+
+    const db = dbAtual();
+    const extras = [];
+    for (let i = 0; i < referencias.length; i += 25) {
+      const bloco = referencias.slice(i, i + 25);
+      const resultados = await Promise.allSettled(bloco.map(id => db.collection(CONFIG.COLECOES.VENDAS).doc(id).get()));
+      resultados.forEach(resultado => {
+        if (resultado.status !== "fulfilled") return;
+        const doc = resultado.value;
+        if (doc?.exists) extras.push(docData(doc));
+      });
+    }
+    return deduplicar([diretas, extras]).filter(item => item.excluido !== true);
+  }
+
   async function carregarClientesPorPerfil() {
     const perfil = acesso().perfil;
     if (window.ClientesService?.listarClientes && ["vendedor", "supervisor", "captador"].includes(perfil)) {
@@ -123,9 +163,11 @@
     const perfil = acesso().perfil;
     if (!perfil || perfil === "master_local") return originais.carregarTudoMasterLocal?.();
 
-    const [clientes, vendas, pagamentos, parcelas, historicoCobrancas, solicitacoes, caixas, usuarios, equipes, logs] = await Promise.all([
-      carregarClientesPorPerfil(),
-      carregarColecaoPorPerfil(CONFIG.COLECOES.VENDAS, CONFIG.LIMITS?.VENDAS || 500),
+    const clientes = await carregarClientesPorPerfil();
+    const [vendas, pagamentos, parcelas, historicoCobrancas, solicitacoes, caixas, usuarios, equipes, logs] = await Promise.all([
+      perfil === "vendedor"
+        ? carregarVendasVendedor(clientes)
+        : carregarColecaoPorPerfil(CONFIG.COLECOES.VENDAS, CONFIG.LIMITS?.VENDAS || 500),
       carregarPagamentosHojePorPerfil(),
       carregarColecaoPorPerfil(CONFIG.COLECOES.PARCELAS || "parcelas", CONFIG.LIMITS?.PARCELAS || 1200),
       carregarColecaoPorPerfil(CONFIG.COLECOES.HISTORICO_COBRANCAS || "historicoCobrancas", CONFIG.LIMITS?.HISTORICO_COBRANCAS || 600),
@@ -210,6 +252,7 @@
     carregarTudo: carregarTudoPerfilUnificado,
     carregarColecaoPorPerfil,
     carregarClientesPorPerfil,
+    carregarVendasVendedor,
     get ativo() { return instalado; }
   });
 })();
