@@ -87,6 +87,22 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     return core.texto(usuario.id || usuario.usuarioId || uid);
   }
 
+  async function localizarClienteNaTransacao(transaction, clienteId) {
+    const operacionalRef = db.collection("clientes_operacionais").doc(clienteId);
+    const operacionalSnap = await transaction.get(operacionalRef);
+    if (operacionalSnap.exists) {
+      return { ref: operacionalRef, snap: operacionalSnap, colecao: "clientes_operacionais" };
+    }
+
+    const legadoRef = db.collection("clientes").doc(clienteId);
+    const legadoSnap = await transaction.get(legadoRef);
+    if (legadoSnap.exists) {
+      return { ref: legadoRef, snap: legadoSnap, colecao: "clientes" };
+    }
+
+    return { ref: operacionalRef, snap: operacionalSnap, colecao: "clientes_operacionais" };
+  }
+
   async function registrarVenda(dadosRecebidos, contexto) {
     const entrada = dadosRecebidos?.entrada || dadosRecebidos || {};
     const sessao = await usuarioAtivo(contexto);
@@ -118,18 +134,19 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
 
     const vendaId = core.vendaIdDeterministica({ tenantId, caixaId, clienteId, operacaoId });
     const caixaRef = db.collection("caixas").doc(caixaId);
-    const clienteRef = db.collection("clientes").doc(clienteId);
     const vendaRef = db.collection("vendas").doc(vendaId);
     const vendedorId = idUsuario(uid, usuario);
     const vendedorNome = nomeUsuario(usuario);
     const dataOperacional = core.hojeSP();
 
     return db.runTransaction(async transaction => {
-      const [caixaSnap, clienteSnap, vendaSnap] = await Promise.all([
+      const [caixaSnap, clienteLocalizado, vendaSnap] = await Promise.all([
         transaction.get(caixaRef),
-        transaction.get(clienteRef),
+        localizarClienteNaTransacao(transaction, clienteId),
         transaction.get(vendaRef)
       ]);
+      const clienteRef = clienteLocalizado.ref;
+      const clienteSnap = clienteLocalizado.snap;
       if (!caixaSnap.exists) erro("not-found", "Caixa não encontrado.");
       if (!clienteSnap.exists) erro("not-found", "Cliente não encontrado.");
       const caixa = caixaSnap.data() || {};
@@ -356,9 +373,18 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       validarRegistroDoVendedor(parcela, tenantId, uid, usuario, "Parcela");
       if (core.texto(parcela.vendaId) !== vendaId) erro("failed-precondition", "Parcela não pertence à venda.");
 
-      const clienteId = validarId(entrada.clienteId || venda.clienteId || venda.clienteOperacionalId || parcela.clienteId, "Cliente");
-      const clienteRef = db.collection("clientes").doc(clienteId);
-      const clienteSnap = await transaction.get(clienteRef);
+      const clienteId = validarId(
+        entrada.clienteOperacionalId ||
+        entrada.clienteId ||
+        venda.clienteOperacionalId ||
+        venda.clienteId ||
+        parcela.clienteOperacionalId ||
+        parcela.clienteId,
+        "Cliente"
+      );
+      const clienteLocalizado = await localizarClienteNaTransacao(transaction, clienteId);
+      const clienteRef = clienteLocalizado.ref;
+      const clienteSnap = clienteLocalizado.snap;
       if (!clienteSnap.exists) erro("not-found", "Cliente não encontrado.");
       const cliente = clienteSnap.data() || {};
       validarTenant(cliente, tenantId, "Cliente");

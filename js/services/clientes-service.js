@@ -378,36 +378,68 @@
     const tenant = tenantUsuario(usuario);
     if (!tenant || !usuarioAtivo(usuario)) throw new Error("Sessao sem tenant operacional valido.");
     const limite = Math.min(Math.max(Number(filtros.limite || 50), 1), 200);
-    let ref = db.collection(COLECAO_CLIENTES).where("clientePlataformaId", "==", tenant);
     const cargo = cargoUsuario(usuario);
-    const usuarioId = idUsuario(usuario);
     const equipesPermitidas = equipesUsuario(usuario).slice(0, 10);
     const vendedoresPermitidos = vendedoresUsuario(usuario).slice(0, 10);
+    let documentos = [];
+
     if (cargo === "vendedor") {
-      if (!usuarioId) throw new Error("Vendedor sem vinculo de autenticacao.");
-      ref = ref.where("vendedorId", "==", usuarioId);
-    } else if (["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) {
-      if (filtros.equipeId && !equipesPermitidas.includes(texto(filtros.equipeId))) return [];
-      if (filtros.vendedorId && !vendedoresPermitidos.includes(texto(filtros.vendedorId)) && !equipesPermitidas.length) return [];
-      if (equipesPermitidas.length) {
-        ref = ref.where("equipeId", equipesPermitidas.length === 1 ? "==" : "in", equipesPermitidas.length === 1 ? equipesPermitidas[0] : equipesPermitidas);
-      } else if (vendedoresPermitidos.length) {
-        ref = ref.where("vendedorId", vendedoresPermitidos.length === 1 ? "==" : "in", vendedoresPermitidos.length === 1 ? vendedoresPermitidos[0] : vendedoresPermitidos);
-      } else {
-        return [];
+      const identidades = [...new Set([
+        usuario.authUid, usuario.uid, usuario.id, usuario.usuarioId, usuario.vendedorId
+      ].filter(Boolean).map(String))];
+      if (!identidades.length) throw new Error("Vendedor sem vinculo de autenticacao.");
+
+      const camposResponsavel = ["vendedorAuthUid", "vendedorUid", "vendedorId", "usuarioId", "responsavelId"];
+      const consultas = [];
+      camposResponsavel.forEach(campo => identidades.forEach(valor => {
+        consultas.push(
+          db.collection(COLECAO_CLIENTES)
+            .where("clientePlataformaId", "==", tenant)
+            .where(campo, "==", valor)
+            .limit(limite)
+            .get()
+        );
+      }));
+
+      const resultados = await Promise.allSettled(consultas);
+      const falhas = resultados.filter(resultado => resultado.status === "rejected");
+      documentos = resultados
+        .filter(resultado => resultado.status === "fulfilled")
+        .flatMap(resultado => resultado.value.docs.map(documentoDeSnapshot));
+
+      if (!documentos.length && falhas.length === resultados.length) throw falhas[0].reason;
+    } else {
+      let ref = db.collection(COLECAO_CLIENTES).where("clientePlataformaId", "==", tenant);
+      if (["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) {
+        if (filtros.equipeId && !equipesPermitidas.includes(texto(filtros.equipeId))) return [];
+        if (filtros.vendedorId && !vendedoresPermitidos.includes(texto(filtros.vendedorId)) && !equipesPermitidas.length) return [];
+        if (equipesPermitidas.length) {
+          ref = ref.where("equipeId", equipesPermitidas.length === 1 ? "==" : "in", equipesPermitidas.length === 1 ? equipesPermitidas[0] : equipesPermitidas);
+        } else if (vendedoresPermitidos.length) {
+          ref = ref.where("vendedorId", vendedoresPermitidos.length === 1 ? "==" : "in", vendedoresPermitidos.length === 1 ? vendedoresPermitidos[0] : vendedoresPermitidos);
+        } else {
+          return [];
+        }
       }
+      if (filtros.statusAtendimento) ref = ref.where("statusAtendimento", "==", texto(filtros.statusAtendimento).toUpperCase());
+      if (filtros.vendedorId && !["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) ref = ref.where("vendedorId", "==", texto(filtros.vendedorId));
+      if (filtros.equipeId && !["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) ref = ref.where("equipeId", "==", texto(filtros.equipeId));
+      const snap = await ref.limit(limite).get();
+      documentos = snap.docs.map(documentoDeSnapshot);
     }
-    if (filtros.statusAtendimento) ref = ref.where("statusAtendimento", "==", texto(filtros.statusAtendimento).toUpperCase());
-    if (filtros.vendedorId && cargo !== "vendedor") ref = ref.where("vendedorId", "==", texto(filtros.vendedorId));
-    if (filtros.equipeId && !["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) ref = ref.where("equipeId", "==", texto(filtros.equipeId));
-    const snap = await ref.limit(limite).get();
+
+    const unicos = new Map();
+    documentos.forEach(item => item?.id && unicos.set(String(item.id), item));
     const termo = normalizarBusca(filtros.busca);
-    return snap.docs.map(documentoDeSnapshot)
+    const statusFiltro = texto(filtros.statusAtendimento).toUpperCase();
+    return [...unicos.values()]
       .filter(item => item.excluido !== true && clienteNoEscopo(usuario, item, "ler"))
+      .filter(item => !statusFiltro || texto(item.statusAtendimento).toUpperCase() === statusFiltro)
       .filter(item => !termo || normalizarBusca([
         item.nome, item.nomeCompleto, item.documento, item.telefonePrincipal, item.telefone,
         item.cep, item.endereco, item.bairro, item.cidade, item.vendedorNome, item.codigoPublico
-      ].join(" ")).includes(termo));
+      ].join(" ")).includes(termo))
+      .slice(0, limite);
   }
 
   function possuiIndicadorHistoricoVenda(cliente = {}) {

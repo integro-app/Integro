@@ -12,6 +12,13 @@ document.addEventListener("usuario-validado", async (event) => {
 
   preencherUsuarioTopo();
 
+  const perfil = window.IntegroAcesso?.acessoUsuario?.(usuario || {})?.perfil || usuario?.tipoUsuario || "";
+  if (perfil && perfil !== "master_local" && window.IntegroPerfisUnificados?.carregarTudo) {
+    window.IntegroPerfisUnificados.ativar?.(usuario);
+    await window.IntegroPerfisUnificados.carregarTudo();
+    return;
+  }
+
   await carregarTudoMasterLocal();
 });
 

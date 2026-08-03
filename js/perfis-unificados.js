@@ -60,13 +60,22 @@
 
   function camposProprios() {
     const escopo = acesso();
-    return [
-      ["vendedorAuthUid", escopo.authUid],
-      ["vendedorUid", escopo.authUid],
-      ["uid", escopo.authUid],
-      ["vendedorId", escopo.usuarioId],
-      ["usuarioId", escopo.usuarioId]
+    const usuario = usuarioAtual || escopo.usuario || State.getUsuario?.() || {};
+    const identidades = [...new Set([
+      escopo.authUid,
+      escopo.usuarioId,
+      window.firebase?.auth?.()?.currentUser?.uid,
+      usuario.authUid,
+      usuario.uid,
+      usuario.id,
+      usuario.usuarioId,
+      usuario.vendedorId
+    ].filter(Boolean).map(String))];
+    const campos = [
+      "vendedorAuthUid", "vendedorUid", "uid", "abertoPorUid",
+      "vendedorId", "usuarioId", "userId", "responsavelId", "criadoPorId"
     ];
+    return campos.flatMap(campo => identidades.map(valor => [campo, valor]));
   }
 
   function identidadesProprias() {

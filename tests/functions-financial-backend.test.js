@@ -87,3 +87,10 @@ test("cliente web usa callables e não depende da transação protegida por regr
   assert.match(funcoes, /exports\.registrarVendaOperacional/);
   assert.match(funcoes, /exports\.registrarPagamentoOperacional/);
 });
+
+test("backend financeiro localiza cliente operacional e preserva fallback legado", () => {
+  const callables = ler("functions/financial-callables.js");
+  assert.match(callables, /db\.collection\("clientes_operacionais"\)\.doc\(clienteId\)/);
+  assert.match(callables, /db\.collection\("clientes"\)\.doc\(clienteId\)/);
+  assert.equal((callables.match(/localizarClienteNaTransacao\(transaction, clienteId\)/g) || []).length, 3);
+});
