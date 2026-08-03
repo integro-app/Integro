@@ -112,3 +112,14 @@ exports.provisionarUsuario = functions
 
     return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: true };
   });
+
+const { criarOperacoesFinanceiras } = require("./financial-callables");
+const operacoesFinanceiras = criarOperacoesFinanceiras({ admin, functions, db });
+
+exports.registrarVendaOperacional = functions
+  .region("southamerica-east1")
+  .https.onCall(operacoesFinanceiras.registrarVenda);
+
+exports.registrarPagamentoOperacional = functions
+  .region("southamerica-east1")
+  .https.onCall(operacoesFinanceiras.registrarPagamento);

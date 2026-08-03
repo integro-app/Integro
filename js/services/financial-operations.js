@@ -23,6 +23,25 @@
     return firebase.firestore.FieldValue.serverTimestamp();
   }
 
+  function backendFinanceiroDisponivel() {
+    return !window.__INTEGRO_FORCE_LOCAL_FINANCIAL_OPERATIONS &&
+      typeof window.firebase?.functions === "function";
+  }
+
+  async function chamarBackendFinanceiro(nome, entrada = {}) {
+    if (!backendFinanceiroDisponivel()) throw new Error("Backend financeiro indisponível.");
+    const instancia = typeof firebase.app === "function" && typeof firebase.app().functions === "function"
+      ? firebase.app().functions("southamerica-east1")
+      : firebase.functions("southamerica-east1");
+    const callable = instancia.httpsCallable(nome);
+    const payload = Object.fromEntries(
+      Object.entries(entrada || {}).filter(([, valor]) => valor !== undefined && typeof valor !== "function")
+    );
+    delete payload.usuario;
+    const resposta = await callable({ entrada: payload });
+    return resposta?.data || {};
+  }
+
   async function referenciasDaConsulta(consulta) {
     const snapshot = await consulta.get();
     return (snapshot?.docs || []).map(documento => documento.ref).filter(Boolean);
@@ -817,6 +836,19 @@
       throw new Error("Operação de pagamento incompleta ou sessão inválida.");
     }
 
+    if (backendFinanceiroDisponivel()) {
+      return chamarBackendFinanceiro("registrarPagamentoOperacional", {
+        caixaId,
+        vendaId,
+        parcelaId,
+        clienteId: entrada?.clienteId,
+        clienteNome: entrada?.clienteNome,
+        valorCentavos: valorNovoCentavos,
+        observacao: entrada?.observacao || "",
+        origem: entrada?.origem || "vendedor"
+      });
+    }
+
     const pagamentoId = pagamentoIdDeterministico({
       clientePlataformaId: tenantId,
       caixaId,
@@ -982,6 +1014,7 @@
         saldoAtualCentavos: calculo.novoSaldoCaixaCentavos,
         saldoAtual: reais(calculo.novoSaldoCaixaCentavos),
         valorAtual: reais(calculo.novoSaldoCaixaCentavos),
+        ultimoPagamentoId: pagamentoId,
         atualizadoEm: serverTimestamp()
       };
       if ("caixaAtual" in caixa) {
@@ -1150,6 +1183,24 @@
     const quantidadeParcelas = Math.round(Number(entrada?.quantidadeParcelas || entrada?.parcelas || 0));
     if (valorEmprestadoCentavos <= 0 || valorTotalCentavos <= 0) throw new Error("Valor da venda inválido.");
     if (quantidadeParcelas < 1 || quantidadeParcelas > 90) throw new Error("A quantidade de parcelas deve estar entre 1 e 90.");
+
+    if (backendFinanceiroDisponivel()) {
+      return chamarBackendFinanceiro("registrarVendaOperacional", {
+        caixaId,
+        clienteId,
+        clienteOperacionalId: clienteId,
+        clienteNome: entrada?.clienteNome,
+        operacaoId,
+        valorEmprestadoCentavos,
+        valorTotalCentavos,
+        taxaJuros: Number(entrada?.taxaJuros || 0),
+        quantidadeParcelas,
+        frequencia: entrada?.frequencia || "DIARIA",
+        primeiraCobranca: entrada?.primeiraCobranca || entrada?.dataPrimeiraCobranca,
+        tipoVenda: entrada?.tipoVenda || "NOVA",
+        origem: entrada?.origem || "vendedor"
+      });
+    }
 
     const vendaId = vendaIdDeterministica({
       clientePlataformaId: tenantId,
