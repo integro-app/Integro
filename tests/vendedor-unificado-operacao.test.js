@@ -12,7 +12,7 @@ const operacao = fs.readFileSync(path.join(root, "js", "vendedor-operacao.js"), 
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20260803-3/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260803-3/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260803-4/);
   assert.match(master, /css\/vendedor-operacao\.css\?v=20260803-2/);
   assert.match(unificado, /Clientes com cobrança prevista para a data do caixa/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
@@ -89,4 +89,20 @@ test("operação unificada preserva pagamento e não pagamento transacionais", (
   assert.match(unificado, /collection\("historicoCobrancas"\)\.add/);
   assert.match(unificado, /window\.abrirPagamentoCliente = abrirPagamento/);
   assert.match(unificado, /window\.registrarNaoPagamentoVenda = registrarNaoPagamento/);
+});
+
+
+test("caixa aberto do vendedor reconhece aliases legados e é recarregado antes da venda", () => {
+  assert.match(master, /js\/perfis-unificados\.js\?v=20260803-4/);
+  assert.match(perfis, /function camposCaixaProprio\(\)/);
+  assert.match(perfis, /\["vendedorId", id\]/);
+  assert.match(perfis, /\["abertoPorUid", uid\]/);
+  assert.match(perfis, /function carregarCaixasVendedor\(\)/);
+  assert.match(perfis, /Promise\.allSettled\(consultas\)/);
+  assert.match(perfis, /window\.caixaAtual = aberto/);
+  assert.match(unificado, /registro\?\.abertoPorUid/);
+  assert.match(unificado, /async function garantirCaixaAberto\(\)/);
+  assert.match(unificado, /carregarCaixasVendedor\?\.\(\)/);
+  assert.match(unificado, /async function abrirListaNovaVenda\(\)/);
+  assert.match(unificado, /const caixa = await garantirCaixaAberto\(\)/);
 });

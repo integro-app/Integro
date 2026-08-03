@@ -14,8 +14,28 @@
   const moeda = valor => numero(valor).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   const hoje = () => window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   const perfil = usuario => window.IntegroAcesso?.acessoUsuario?.(usuario || {})?.perfil || "";
-  const idsUsuario = usuario => new Set([usuario?.id, usuario?.usuarioId, usuario?.uid, usuario?.authUid, usuario?.email].filter(Boolean).map(String));
-  const vendedorRegistro = registro => texto(registro?.vendedorId || registro?.vendedorUid || registro?.vendedorAuthUid || registro?.usuarioId || registro?.responsavelId || registro?.vendedorEmail);
+  const idsUsuario = usuario => new Set([
+    usuario?.id,
+    usuario?.usuarioId,
+    usuario?.vendedorId,
+    usuario?.uid,
+    usuario?.authUid,
+    window.firebase?.auth?.()?.currentUser?.uid,
+    usuario?.email
+  ].filter(Boolean).map(String));
+  const vinculosVendedorRegistro = registro => [
+    registro?.vendedorId,
+    registro?.vendedorUid,
+    registro?.vendedorAuthUid,
+    registro?.usuarioId,
+    registro?.abertoPorUid,
+    registro?.userId,
+    registro?.uid,
+    registro?.responsavelId,
+    registro?.criadoPorId,
+    registro?.criadoPorUid,
+    registro?.vendedorEmail
+  ].filter(Boolean).map(String);
 
   function dataRegistro(registro) {
     const valor = registro?.dataOperacional || registro?.dataVenda || registro?.data || registro?.criadoEmTexto || registro?.criadoEm;
@@ -26,8 +46,7 @@
 
   function pertenceAoVendedor(registro, usuario = usuarioAtual || State.getUsuario?.()) {
     const ids = idsUsuario(usuario || {});
-    const vinculo = vendedorRegistro(registro);
-    return Boolean(vinculo && ids.has(vinculo));
+    return vinculosVendedorRegistro(registro).some(vinculo => ids.has(vinculo));
   }
 
   function caches() {
@@ -242,20 +261,61 @@
 
   function caixaAberto() {
     const usuario = usuarioAtual || State.getUsuario?.() || {};
-    const ids = idsUsuario(usuario);
-    return (State.getCaixas?.() || []).find(caixa => {
-      const status = texto(caixa.status).toUpperCase();
-      const vendedor = vendedorRegistro(caixa);
-      return status === "ABERTO" && caixa.ativo !== false && ids.has(vendedor);
+    const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
+    const caixas = [...(State.getCaixas?.() || [])];
+
+    if (window.caixaAtual) caixas.push(window.caixaAtual);
+    try {
+      const salvo = localStorage.getItem("caixaAtual");
+      if (salvo) caixas.push(JSON.parse(salvo));
+    } catch (_) {}
+
+    const mapa = new Map();
+    caixas.forEach(caixa => {
+      const id = texto(caixa?.id || caixa?.caixaId || caixa?.docId);
+      if (id && !mapa.has(id)) mapa.set(id, { ...caixa, id });
     });
+
+    const candidatos = [...mapa.values()].filter(caixa => {
+      const status = texto(caixa.status || caixa.situacao || caixa.estado).toUpperCase();
+      const tenantCaixa = texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId);
+      return status === "ABERTO" &&
+        caixa.ativo !== false &&
+        caixa.excluido !== true &&
+        (!tenantCaixa || !tenantId || tenantCaixa === tenantId) &&
+        pertenceAoVendedor(caixa, usuario);
+    }).sort((a, b) => dataRegistro(b).localeCompare(dataRegistro(a)) || texto(b.id).localeCompare(texto(a.id)));
+
+    const caixa = candidatos[0] || null;
+    if (caixa) {
+      window.caixaAtual = caixa;
+      const atuais = State.getCaixas?.() || [];
+      if (!atuais.some(item => texto(item?.id) === texto(caixa.id))) State.setCaixas?.([caixa, ...atuais]);
+      try { localStorage.setItem("caixaAtual", JSON.stringify(caixa)); } catch (_) {}
+    }
+    return caixa;
+  }
+
+  async function garantirCaixaAberto() {
+    let caixa = caixaAberto();
+    if (caixa) return caixa;
+
+    try {
+      await window.IntegroPerfisUnificados?.carregarCaixasVendedor?.();
+    } catch (erro) {
+      console.warn("[ÍNTEGRO VENDEDOR] Não foi possível atualizar o caixa antes da operação.", erro);
+    }
+
+    caixa = caixaAberto();
+    return caixa;
   }
 
   async function confirmarPagamento(vendaId) {
     const registro = item(vendaId);
     if (!registro) return UIHelpers?.alerta?.("Cobrança não encontrada.");
     const parcela = registro.parcelas.find(p => !["PAGA", "PAGO", "QUITADA", "QUITADO"].includes(texto(p.status || p.statusParcela).toUpperCase()));
-    const caixa = caixaAberto();
-    if (!caixa) return UIHelpers?.alerta?.("O caixa do vendedor está fechado.");
+    const caixa = await garantirCaixaAberto();
+    if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
     if (!parcela) return UIHelpers?.alerta?.("Não existe parcela pendente para esta venda.");
     const campo = document.getElementById("vendedorPagamentoValor");
     const valor = numero(String(campo?.value || "0").replace(".", "").replace(",", "."));
@@ -283,7 +343,7 @@
 
   async function registrarNaoPagamento(vendaId) {
     const registro = item(vendaId);
-    const caixa = caixaAberto();
+    const caixa = await garantirCaixaAberto();
     if (!registro || !caixa) return UIHelpers?.alerta?.("Cobrança ou caixa aberto não encontrado.");
     const motivo = prompt("Informe o motivo do não pagamento:", "Cliente não realizou o pagamento");
     if (!motivo) return;
@@ -311,9 +371,9 @@
     renderVendasDia();
   }
 
-  function abrirListaNovaVenda() {
-    const caixa = caixaAberto();
-    if (!caixa) return UIHelpers?.alerta?.("O caixa está fechado. Não é possível criar nova venda.");
+  async function abrirListaNovaVenda() {
+    const caixa = await garantirCaixaAberto();
+    if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
     const clientes = (State.getClientes?.() || []).filter(c => pertenceAoVendedor(c) && c.excluido !== true && numero(c.saldoDevedor || c.saldoAtual || c.saldo) <= 0.01 && !c.vendaAtivaId && c.possuiVendaAtiva !== true);
     modalBase("Nova venda", clientes.length ? `<div class="vendedor-clientes-venda">${clientes.map(c => `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${texto(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${texto(c.nomeCompleto || c.nome || "")}</small><span>Selecionar</span></button>`).join("")}</div>` : '<div class="empty-state-operacao"><strong>Nenhum cliente disponível</strong><p>Somente clientes quitados e vinculados ao vendedor podem receber nova venda.</p></div>');
   }
@@ -327,7 +387,7 @@
 
   async function confirmarNovaVenda() {
     const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(clienteNovaVendaId));
-    const caixa = caixaAberto();
+    const caixa = await garantirCaixaAberto();
     if (!cliente || !caixa) return UIHelpers?.alerta?.("Cliente ou caixa aberto não encontrado.");
     const valor = numero(texto(document.getElementById("novaVendaValor")?.value).replace(".", "").replace(",", "."));
     const juros = numero(texto(document.getElementById("novaVendaJuros")?.value).replace(",", "."));
@@ -386,6 +446,8 @@
   document.addEventListener("DOMContentLoaded", () => setTimeout(() => aplicar(State.getUsuario?.()), 0));
 
   window.obterDataCaixaVendedor = dataCaixa;
+  window.obterCaixaAbertoVendedor = caixaAberto;
+  window.atualizarCaixaAbertoVendedor = garantirCaixaAberto;
   window.abrirOperacaoVendedor = abrirOperacao;
   window.abrirAbaVendasCobrancas = abrirAba;
   window.renderVendasDia = renderVendasDia;

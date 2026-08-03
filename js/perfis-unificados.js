@@ -69,6 +69,119 @@
     ];
   }
 
+  function identidadesProprias() {
+    const escopo = acesso();
+    const usuario = usuarioAtual || escopo.usuario || State.getUsuario?.() || {};
+    const authAtual = window.firebase?.auth?.()?.currentUser?.uid || "";
+    return [...new Set([
+      escopo.usuarioId,
+      escopo.authUid,
+      authAtual,
+      usuario.id,
+      usuario.usuarioId,
+      usuario.vendedorId,
+      usuario.authUid,
+      usuario.uid
+    ].filter(Boolean).map(String))];
+  }
+
+  function camposCaixaProprio() {
+    const escopo = acesso();
+    const usuario = usuarioAtual || escopo.usuario || State.getUsuario?.() || {};
+    const authAtual = window.firebase?.auth?.()?.currentUser?.uid || "";
+    const uids = [...new Set([
+      escopo.authUid,
+      authAtual,
+      usuario.authUid,
+      usuario.uid
+    ].filter(Boolean).map(String))];
+    const ids = identidadesProprias();
+    const pares = [];
+
+    uids.forEach(uid => {
+      pares.push(["vendedorAuthUid", uid], ["vendedorUid", uid], ["uid", uid], ["abertoPorUid", uid]);
+    });
+    ids.forEach(id => {
+      pares.push(["vendedorId", id], ["usuarioId", id], ["userId", id], ["responsavelId", id]);
+    });
+
+    const unicos = new Map();
+    pares.forEach(([campo, valor]) => {
+      if (!campo || !valor) return;
+      unicos.set(`${campo}:${valor}`, [campo, valor]);
+    });
+    return [...unicos.values()];
+  }
+
+  function statusCaixa(caixa = {}) {
+    return String(caixa.status || caixa.situacao || caixa.estado || "").trim().toUpperCase();
+  }
+
+  function caixaPertenceAoVendedor(caixa = {}) {
+    const escopo = acesso();
+    const tenant = String(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId || "");
+    if (tenant && escopo.tenantId && tenant !== String(escopo.tenantId)) return false;
+
+    const identidades = new Set(identidadesProprias());
+    const vinculos = [
+      caixa.vendedorId,
+      caixa.vendedorAuthUid,
+      caixa.vendedorUid,
+      caixa.usuarioId,
+      caixa.abertoPorUid,
+      caixa.userId,
+      caixa.uid,
+      caixa.responsavelId,
+      caixa.criadoPorId,
+      caixa.criadoPorUid
+    ].filter(Boolean).map(String);
+    return vinculos.some(valor => identidades.has(valor));
+  }
+
+  function caixaPersistido() {
+    const candidatos = [window.caixaAtual];
+    try {
+      const salvo = localStorage.getItem("caixaAtual");
+      if (salvo) candidatos.push(JSON.parse(salvo));
+    } catch (_) {}
+    return candidatos.filter(Boolean);
+  }
+
+  function tempoCaixa(caixa = {}) {
+    const valor = caixa.atualizadoEm || caixa.abertoEm || caixa.criadoEm || caixa.dataOperacional || caixa.dataCaixa || caixa.dataAbertura || caixa.data;
+    if (valor?.toMillis) return valor.toMillis();
+    if (valor?.toDate) return valor.toDate().getTime();
+    const numero = Number(valor);
+    if (Number.isFinite(numero) && numero > 0) return numero < 1000000000000 ? numero * 1000 : numero;
+    const data = new Date(String(valor || ""));
+    return Number.isNaN(data.getTime()) ? 0 : data.getTime();
+  }
+
+  async function carregarCaixasVendedor() {
+    const limite = CONFIG.LIMITS?.CAIXAS || 300;
+    const consultas = camposCaixaProprio().map(campo => consultar(CONFIG.COLECOES.CAIXAS, [campo], limite));
+    const resultados = await Promise.allSettled(consultas);
+    const remotos = resultados
+      .filter(resultado => resultado.status === "fulfilled")
+      .flatMap(resultado => resultado.value || []);
+
+    resultados.filter(resultado => resultado.status === "rejected").forEach(resultado => {
+      console.warn("[ÍNTEGRO VENDEDOR] Consulta alternativa de caixa não concluída.", resultado.reason);
+    });
+
+    const caixas = deduplicar([remotos, caixaPersistido()])
+      .filter(caixa => caixa?.id && caixa.excluido !== true && caixaPertenceAoVendedor(caixa));
+    const aberto = caixas
+      .filter(caixa => statusCaixa(caixa) === "ABERTO" && caixa.ativo !== false)
+      .sort((a, b) => tempoCaixa(b) - tempoCaixa(a))[0] || null;
+
+    if (aberto) {
+      window.caixaAtual = aberto;
+      try { localStorage.setItem("caixaAtual", JSON.stringify(aberto)); } catch (_) {}
+    }
+    return caixas;
+  }
+
   function idsVendasReferenciadas(clientes = []) {
     const ids = new Set();
     clientes.forEach(cliente => {
@@ -172,7 +285,9 @@
       carregarColecaoPorPerfil(CONFIG.COLECOES.PARCELAS || "parcelas", CONFIG.LIMITS?.PARCELAS || 1200),
       carregarColecaoPorPerfil(CONFIG.COLECOES.HISTORICO_COBRANCAS || "historicoCobrancas", CONFIG.LIMITS?.HISTORICO_COBRANCAS || 600),
       carregarColecaoPorPerfil(CONFIG.COLECOES.SOLICITACOES, CONFIG.LIMITS?.SOLICITACOES || 300),
-      carregarColecaoPorPerfil(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 300),
+      perfil === "vendedor"
+        ? carregarCaixasVendedor()
+        : carregarColecaoPorPerfil(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 300),
       carregarUsuariosPorPerfil(),
       carregarEquipesPorPerfil(),
       perfil === "auditor" ? consultar(CONFIG.COLECOES.LOGS, [], CONFIG.LIMITS?.LOGS || 300) : []
@@ -253,6 +368,7 @@
     carregarColecaoPorPerfil,
     carregarClientesPorPerfil,
     carregarVendasVendedor,
+    carregarCaixasVendedor,
     get ativo() { return instalado; }
   });
 })();
