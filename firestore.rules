@@ -154,6 +154,8 @@ service cloud.firestore {
         data.get("abertoPorUid", "") == uid ||
         data.get("uid", "") == uid ||
         data.get("usuarioId", "") == uid ||
+        data.get("userId", "") == uid ||
+        data.get("responsavelId", "") == uid ||
         data.get("vendedorId", "") == uid ||
         data.get("criadoPorId", "") == uid;
     }
@@ -499,6 +501,7 @@ service cloud.firestore {
       let cargoAtual = cargo();
       return isActiveUser() && isSameTenantRead() &&
         (perfil == "master_local" ||
+          perfil == "gerente" ||
           perfil == "financeiro" || cargoAtual == "financeiro" ||
           perfil == "auditor" || cargoAtual == "auditor" ||
           ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
@@ -991,7 +994,8 @@ service cloud.firestore {
     }
 
     match /configuracoes_empresas/{tenantId} {
-      allow read: if isActiveUser() && hasTenant() && tenantId == userTenantId() &&
+      allow get: if isActiveUser() && hasTenant() && tenantId == userTenantId();
+      allow list: if isActiveUser() && hasTenant() &&
         resource.data.get("clientePlataformaId", "") == userTenantId();
       allow create: if isActiveUser() && isMasterLocal() && tenantId == userTenantId() &&
         request.resource.data.keys().hasAll(["clientePlataformaId", "versao", "regrasOperacionais", "clientes", "leads"]) &&

@@ -54,6 +54,7 @@
   }
 
   function acessoUsuario(usuario = {}) {
+    usuario = usuario && typeof usuario === "object" ? usuario : {};
     const normalizado = window.IntegroOperacional?.normalizarAcessoUsuario?.(usuario) || {};
     const perfil = normalizarChave(
       normalizado.cargoChave ||
@@ -75,6 +76,7 @@
   }
 
   function permissoesExplicitas(usuario = {}) {
+    usuario = usuario && typeof usuario === "object" ? usuario : {};
     const origem = usuario.permissoesUsuario || usuario.permissoes || usuario.permissoesCargo || {};
     const permitidas = new Set();
     const negadas = new Set();

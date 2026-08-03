@@ -129,6 +129,7 @@
   }
 
   function detectarCargoCliente(usuario = {}, tipoNormalizado = "") {
+    usuario = usuario && typeof usuario === "object" ? usuario : {};
     const candidatos = [
       usuario.cargoChave,
       usuario.cargo,
@@ -149,6 +150,7 @@
   }
 
   function normalizarAcessoUsuario(usuario = {}) {
+    usuario = usuario && typeof usuario === "object" ? usuario : {};
     const tipoOriginal = normalizarChaveAcesso(usuario.tipoUsuario || usuario.tipo || usuario.role || "");
     const cargoChave = detectarCargoCliente(usuario, tipoOriginal);
     const ehInternoIntegro = usuario.usuarioInternoIntegro === true || /(^|_)integro$/.test(tipoOriginal);

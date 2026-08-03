@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>ÍNTEGRO • Master Local</title>
+  <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
   <meta name="integro-build" content="20260803-painel-unificado-permissoes1">
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3106,9 +3107,10 @@ body.integro-data-refreshing .section-card{
 
   <script src="js/firebase-config.js?v=20260728-3"></script>
   <script src="js/config.js"></script>
-  <script src="js/utils/operational.js"></script>
-  <script src="js/services/access-control.js?v=20260802-permissoes1"></script>
+  <script src="js/utils/operational.js?v=20260803-console1"></script>
+  <script src="js/services/access-control.js?v=20260803-console1"></script>
   <script src="js/state.js"></script>
+  <script src="js/runtime-profile-guard.js?v=20260803-console1"></script>
   <script src="js/services/firestore.js?v=20260728-3"></script>
   <script src="js/vendor/exceljs.min.js?v=20260729-1"></script>
   <script src="js/services/clientes-service.js"></script>
@@ -3124,7 +3126,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/auth.js"></script>
   <script src="js/cargos.js?v=20260730-4"></script>
   <script src="js/equipes.js?v=20260730-4"></script>
-  <script src="js/caixas.js"></script>
+  <script src="js/caixas.js?v=20260803-console1"></script>
   <script src="js/usuarios.js?v=20260730-4"></script>
   <script src="js/clientes.js"></script>
   <script src="js/vendas.js"></script>
@@ -5069,6 +5071,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
   let carregandoFirebase = false;
   window.carregarDadosCaixasFirebase = async function(force=false){
+    if (!window.IntegroRuntime?.permiteGestaoCaixas?.()) return true;
     const db = getDb();
     if(!db) return false;
     if(carregandoFirebase) return false;
@@ -6326,6 +6329,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   async function carregarDados(){
+    if (!window.IntegroRuntime?.permiteGestaoCaixas?.()) return;
     if (CX.carregando) return;
     CX.carregando = true;
     try{
@@ -6357,6 +6361,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   function iniciarRealtime(){
+    if (!window.IntegroRuntime?.permiteGestaoCaixas?.()) return;
     const database = db();
     const tenant = tenantPrincipal();
     if (!database || !tenant || CX.realtimeAtivo) return;
@@ -7430,6 +7435,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   async function atualizar(){
+    if (!window.IntegroRuntime?.permiteGestaoCaixas?.()) return;
     await carregarDados();
     renderTelaCaixas();
   }
@@ -7470,6 +7476,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   };
 
   window.renderCaixasPremium = function(force = false){
+    if (!window.IntegroRuntime?.permiteGestaoCaixas?.()) return Promise.resolve();
     iniciarRealtime();
 
     if (force || (!__caixasDadosCarregados && !__caixasCargaInicial)){
@@ -9218,7 +9225,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
   const COL_NOTIFICACOES = "notificacoes";
   const COL_LOGS = "logs";
-  let unsubscribeNotificacoesIntegro = null;
+  let unsubscribeNotificacoesIntegro = [];
 
   function db(){
     return (window.firebase && firebase.firestore) ? firebase.firestore() : null;
@@ -9244,6 +9251,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   function usuarioAtual(){
     const authUser = auth()?.currentUser || {};
     const u =
+      window.State?.getUsuario?.() ||
       window.usuarioLogado ||
       window.currentUserData ||
       window.userData ||
@@ -9581,38 +9589,75 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
   }
 
+  function referenciasNotificacoesEscopo(database, user){
+    const acesso = window.IntegroAcesso?.acessoUsuario?.(window.State?.getUsuario?.() || {}) || {};
+    const tenant = user.clientePlataformaId || acesso.tenantId || "";
+    const uid = firebase.auth?.().currentUser?.uid || acesso.authUid || user.id || "";
+    const perfil = String(acesso.perfil || "").toLowerCase();
+    if (!tenant || !uid || !perfil) return [];
+
+    const base = () => database.collection(COL_NOTIFICACOES).where("clientePlataformaId", "==", tenant);
+    if (["master_local", "gerente"].includes(perfil)) return [base()];
+
+    const publico = ({ supervisor:"SUPERVISOR", financeiro:"FINANCEIRO", auditor:"AUDITOR", vendedor:"VENDEDOR", captador:"CAPTADOR" })[perfil] || "";
+    const refs = [
+      base().where("usuarioId", "==", uid),
+      base().where("destinatarioId", "==", uid),
+      base().where("vendedorId", "==", uid)
+    ];
+    if (publico) refs.push(base().where("publico", "==", publico));
+    return refs;
+  }
+
+  async function carregarNotificacoesEscopoIntegro(){
+    const database = db();
+    const user = usuarioAtual();
+    const refs = database ? referenciasNotificacoesEscopo(database, user) : [];
+    if (!refs.length) return [];
+    const resultados = await Promise.allSettled(refs.map(ref => ref.get()));
+    const mapa = new Map();
+    resultados.forEach(resultado => {
+      if (resultado.status !== "fulfilled") return;
+      resultado.value.docs.forEach(doc => mapa.set(doc.id, normalizarNotificacao(doc.id, doc.data())));
+    });
+    const lista = [...mapa.values()];
+    window.notificacoesCache = lista;
+    atualizarBadgesNotificacoes();
+    return lista;
+  }
+
+  function pararListenerNotificacoes(){
+    unsubscribeNotificacoesIntegro.forEach(unsub => { try { unsub(); } catch (_) {} });
+    unsubscribeNotificacoesIntegro = [];
+  }
+
   function iniciarListenerNotificacoes(){
     const database = db();
-    if (!database) {
-      setTimeout(iniciarListenerNotificacoes, 500);
-      return;
-    }
-
-    if (unsubscribeNotificacoesIntegro) {
-      try{ unsubscribeNotificacoesIntegro(); }catch(e){}
-      unsubscribeNotificacoesIntegro = null;
-    }
-
     const user = usuarioAtual();
-    let ref = database.collection(COL_NOTIFICACOES);
+    if (!database || !window.IntegroRuntime?.contextoValidado?.()) return;
 
-    if (user.clientePlataformaId){
-      ref = ref.where("clientePlataformaId", "==", user.clientePlataformaId);
-    }
+    pararListenerNotificacoes();
+    const refs = referenciasNotificacoesEscopo(database, user);
+    if (!refs.length) return;
 
-    unsubscribeNotificacoesIntegro = ref.onSnapshot(snapshot=>{
-      window.notificacoesCache = snapshot.docs.map(doc => normalizarNotificacao(doc.id, doc.data()));
-
+    const porConsulta = new Map();
+    const sincronizar = () => {
+      const mapa = new Map();
+      porConsulta.forEach(lista => lista.forEach(item => mapa.set(item.id, item)));
+      window.notificacoesCache = [...mapa.values()];
       atualizarBadgesNotificacoes();
-
       const telaAtiva = document.getElementById("notificacoes");
-      if ((telaAtiva && telaAtiva.classList.contains("active")) || document.getElementById("notificacoesDrawerRoot")){
-        renderNotificacoes();
-      }
-    }, erro=>{
-      console.warn("Erro ao carregar notificações:", erro);
-      window.notificacoesCache = Array.isArray(window.notificacoesCache) ? window.notificacoesCache : [];
-      atualizarBadgesNotificacoes();
+      if ((telaAtiva && telaAtiva.classList.contains("active")) || document.getElementById("notificacoesDrawerRoot")) renderNotificacoes();
+    };
+
+    refs.forEach((ref, indice) => {
+      const unsub = ref.onSnapshot(snapshot => {
+        porConsulta.set(indice, snapshot.docs.map(doc => normalizarNotificacao(doc.id, doc.data())));
+        sincronizar();
+      }, erro => {
+        console.warn("Não foi possível acompanhar as notificações permitidas para este perfil.", erro);
+      });
+      unsubscribeNotificacoesIntegro.push(unsub);
     });
   }
 
@@ -9629,17 +9674,12 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   };
 
   window.iniciarNotificacoesIntegro = iniciarListenerNotificacoes;
+  window.carregarNotificacoesEscopoIntegro = carregarNotificacoesEscopoIntegro;
 
-  if (auth()){
-    auth().onAuthStateChanged(()=>setTimeout(iniciarListenerNotificacoes, 350));
-  }else{
-    setTimeout(iniciarListenerNotificacoes, 800);
-  }
-
-  setTimeout(()=>{
-    iniciarListenerNotificacoes();
-    atualizarBadgesNotificacoes();
-  }, 1200);
+  window.IntegroRuntime?.quandoUsuarioValidado?.(() => {
+    setTimeout(iniciarListenerNotificacoes, 120);
+    setTimeout(atualizarBadgesNotificacoes, 180);
+  });
 })();
 </script>
 
@@ -9820,7 +9860,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     return window.firebase && firebase.firestore ? firebase.firestore() : null;
   }
   function authUser(){
-    return window.usuarioLogado || window.currentUserData || {};
+    return window.State?.getUsuario?.() || window.usuarioLogado || window.currentUserData || {};
   }
   function tenantId(){
     return String(authUser().clientePlataformaId || window.State?.getTenantId?.() || localStorage.getItem("clientePlataformaId") || "");
@@ -9921,6 +9961,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   async function carregarEquipesGestao(force){
+    if (!window.IntegroRuntime?.permiteConsultaAmpla?.()) return Array.isArray(window.equipesCache) ? window.equipesCache : [];
     const database = db();
     const tid = tenantId();
 
@@ -9948,6 +9989,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   async function carregarUsuariosGestao(force){
+    if (!window.IntegroRuntime?.permiteConsultaAmpla?.()) return [authUser()].filter(Boolean);
     const database = db();
     const tid = tenantId();
 
@@ -10519,18 +10561,20 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     return arr.filter(n => n.excluida !== true && n.status !== "EXCLUIDA");
   }
   async function carregarNotificacoesGestao(force){
+    if(!force && Array.isArray(window.notificacoesCache) && window.notificacoesCache.length) return getNotifs();
+    if (!window.IntegroRuntime?.permiteConsultaAmpla?.()) {
+      const listaEscopo = await window.carregarNotificacoesEscopoIntegro?.();
+      return Array.isArray(listaEscopo) ? listaEscopo : getNotifs();
+    }
+
     const database = db();
     const tid = tenantId();
-    if(!force && Array.isArray(window.notificacoesCache) && window.notificacoesCache.length) return getNotifs();
-
     let lista = [];
-    if(database){
+    if(database && tid){
       try{
-        let ref = database.collection(COL_NOTIFICACOES);
-        if(tid) ref = ref.where("clientePlataformaId","==",tid);
-        const snap = await ref.get();
+        const snap = await database.collection(COL_NOTIFICACOES).where("clientePlataformaId","==",tid).get();
         lista = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-      }catch(e){ console.warn("Falha ao carregar notificações:", e); }
+      }catch(e){ console.warn("Falha ao carregar notificações de gestão:", e); }
     }
     window.notificacoesCache = lista;
     return getNotifs();
@@ -10750,13 +10794,15 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     renderTelaEquipesGestao();
   };
 
-  setTimeout(async ()=>{
-    ajustarMenuEquipes();
-    await carregarNotificacoesGestao(true);
-    window.atualizarBadgeNotificacoes();
-    const active = document.querySelector(".screen.active")?.id;
-    if(active === "unidades") renderTelaEquipesGestao();
-  }, 900);
+  window.IntegroRuntime?.quandoUsuarioValidado?.(() => {
+    setTimeout(async ()=>{
+      ajustarMenuEquipes();
+      await carregarNotificacoesGestao(true);
+      window.atualizarBadgeNotificacoes();
+      const active = document.querySelector(".screen.active")?.id;
+      if(active === "unidades" && window.IntegroRuntime?.permiteConsultaAmpla?.()) renderTelaEquipesGestao();
+    }, 180);
+  });
 })();
 </script>
 
@@ -11270,6 +11316,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
     return window.configuracoesEmpresaIntegro;
   }
+  window.carregarConfiguracoesIndicadoresEmpresa = carregarConfiguracoesIndicadoresEmpresa;
 
   function renderCardIndicadorCliente(card, metas, periodoFiltrado){
     const [icone, titulo, valorNumerico, chave, menorMelhor, valorExibido] = card;
@@ -11383,7 +11430,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   window.buscarClientesEmpresaMaster = async function(force=false){
     montarTelaClientes();
     window.clientesConsultaExecutada = true;
-    await carregarConfiguracoesIndicadoresEmpresa();
+    await window.carregarConfiguracoesIndicadoresEmpresa?.();
     const lista = await carregarClientesEmpresa(force);
     preencherFiltrosClientes(lista);
     const filtrados = filtrarClientesLista(lista);
@@ -12287,10 +12334,21 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
   }
 
+  let loadingPremiumIniciado = false;
+
   async function iniciarLoadingPremium(){
+    if (loadingPremiumIniciado) return;
+    loadingPremiumIniciado = true;
     const loader = document.getElementById("integroBootLoader");
     document.body.classList.add("integro-booting");
     setLoaderProgress(0);
+
+    const usuario = await window.IntegroRuntime?.aguardarUsuarioValidado?.(10000);
+    if (!usuario) {
+      if(loader) loader.classList.add("hide");
+      document.body.classList.remove("integro-booting");
+      return;
+    }
 
     try{
       await executarEtapaLoading("Carregando painel...", 5, 15, async () => {
@@ -12331,17 +12389,11 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
 
   window.organizarMenuIntegro = organizarMenuIntegro;
 
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", function(){
-      setTimeout(iniciarLoadingPremium, 120);
-      setTimeout(organizarMenuIntegro, 900);
-      setTimeout(organizarMenuIntegro, 1800);
-    });
-  }else{
-    setTimeout(iniciarLoadingPremium, 120);
-    setTimeout(organizarMenuIntegro, 900);
-    setTimeout(organizarMenuIntegro, 1800);
-  }
+  window.IntegroRuntime?.quandoUsuarioValidado?.(() => {
+    setTimeout(iniciarLoadingPremium, 40);
+    setTimeout(organizarMenuIntegro, 600);
+    setTimeout(organizarMenuIntegro, 1400);
+  });
 })();
 </script>
 
@@ -16354,7 +16406,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   function dateTime(item){ return toDate(item?.dataFechamento || item?.fechadoEm || item?.dataCaixa || item?.data || item?.criadoEm || item?.createdAt) || new Date(0); }
 
   function db(){ return window.firebase?.firestore ? firebase.firestore() : null; }
-  function currentUser(){ return window.usuarioLogado || window.currentUserData || window.userData || window.State?.getUsuarioLogado?.() || {}; }
+  function currentUser(){ return window.State?.getUsuario?.() || window.usuarioLogado || window.currentUserData || window.userData || {}; }
   function authUid(){ return firebase?.auth?.().currentUser?.uid || currentUser().authUid || currentUser().uid || currentUser().id || ""; }
   function tenantIds(){
     const u = currentUser();
@@ -16423,7 +16475,33 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     return Array.from(docs.values()).filter(belongsTenant);
   }
 
+  function dadosDoEstadoPorEscopo(){
+    return {
+      equipes: window.State?.getEquipes?.() || window.equipesCache || [],
+      usuarios: window.State?.getUsuarios?.() || window.usuariosCache || [],
+      caixas: window.State?.getCaixas?.() || window.caixasCache || [],
+      vendas: window.State?.getVendas?.() || window.vendasCache || [],
+      pagamentos: window.State?.getPagamentos?.() || window.pagamentosCache || [],
+      clientes: window.State?.getClientes?.() || window.clientesCache || [],
+      cobrancas: window.State?.getParcelas?.() || window.parcelasCache || [],
+      lancamentos: window.lancamentosFinanceirosCache || []
+    };
+  }
+
+  function publicarDadosDashboard(result){
+    Object.entries(CACHES).forEach(([key, cache]) => { window[cache] = result[key] || []; });
+    window.clientesEmpresaMasterCache = result.clientes || [];
+    window.__integroDashboardRealData = {...result, tenantId:tenantPrincipal(), carregadoEm:new Date().toISOString()};
+    return result;
+  }
+
   async function loadAllRealData(){
+    if (!window.IntegroRuntime?.contextoValidado?.()) return publicarDadosDashboard(dadosDoEstadoPorEscopo());
+
+    if (!window.IntegroRuntime?.permiteConsultaAmpla?.()) {
+      return publicarDadosDashboard(dadosDoEstadoPorEscopo());
+    }
+
     const result = {};
     for(const [key, names] of Object.entries(COLLECTIONS)){
       const merged = new Map();
@@ -16444,10 +16522,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     result.equipes = allowedEquipes;
     result.usuarios = result.usuarios.filter(u => isMasterLike() || userCanSeeRecord(u, allowedEquipeIds, allowedEquipeNames) || idOf(u) === authUid());
 
-    Object.entries(CACHES).forEach(([key, cache]) => { window[cache] = result[key] || []; });
-    window.clientesEmpresaMasterCache = result.clientes || [];
-    window.__integroDashboardRealData = {...result, tenantId:tenantPrincipal(), carregadoEm:new Date().toISOString()};
-    return result;
+    return publicarDadosDashboard(result);
   }
 
   function computeAllowedEquipes(equipes, usuarios){
@@ -17134,10 +17209,10 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
 
   function user(){
     try{
-      return window.usuarioLogado ||
+      return window.State?.getUsuario?.() ||
+        window.usuarioLogado ||
         window.currentUserData ||
         window.userData ||
-        window.State?.getUsuarioLogado?.() ||
         {};
     }catch(e){
       return {};
@@ -17163,11 +17238,8 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function authReady(){
-    try{
-      if(window.firebase?.auth && firebase.auth().currentUser) return true;
-    }catch(e){}
     const u = user();
-    return !!(u && (u.id || u.uid || u.authUid || u.email));
+    return !!(window.State?.isAuthenticated?.() && u && (u.id || u.uid || u.authUid || u.email));
   }
 
   function contextoPronto(){
@@ -19843,11 +19915,32 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   let promiseCargaIndicacoesML = null;
 
   async function consultarIndicacoesPorTenant(firestore,tenant){
-    const snap = await firestore.collection("indicacoes")
-      .where("clientePlataformaId","==",tenant)
-      .limit(500)
-      .get();
-    return snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+    const acesso = window.IntegroRuntime?.acessoAtual?.() || {};
+    const perfil = acesso.perfil || "";
+    const base = () => firestore.collection("indicacoes").where("clientePlataformaId","==",tenant);
+    const mapa = new Map();
+    const adicionar = snap => snap.docs.forEach(doc => mapa.set(doc.id, {id:doc.id,...doc.data()}));
+
+    if (window.IntegroRuntime?.permiteIndicacoesAmplas?.()) {
+      adicionar(await base().limit(500).get());
+      return [...mapa.values()];
+    }
+
+    if (perfil === "supervisor") {
+      for (const equipeId of acesso.equipeIds || []) adicionar(await base().where("equipeId","==",String(equipeId)).limit(500).get());
+      return [...mapa.values()];
+    }
+
+    if (perfil === "vendedor") {
+      const uid = firebase.auth?.().currentUser?.uid || acesso.authUid || "";
+      if (!uid) return [];
+      const campos = ["vendedorDestinoId","vendedorResponsavelId","vendedorId","usuarioId","vendedorAuthUid","vendedorUid"];
+      const resultados = await Promise.allSettled(campos.map(campo => base().where(campo,"==",uid).limit(500).get()));
+      resultados.forEach(resultado => { if (resultado.status === "fulfilled") adicionar(resultado.value); });
+      return [...mapa.values()];
+    }
+
+    return [];
   }
 
   async function carregarIndicacoesMasterLocal(forcar=false){
@@ -19859,7 +19952,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const lista = document.getElementById("listaIndicacoesMasterLocal");
     if(lista && !indicacoesMasterLocalCache.length) lista.innerHTML = `<div class="indicacoes-empty-state"><span class="material-symbols-outlined">progress_activity</span><strong>Carregando indicações</strong><small>Aguarde enquanto os dados são atualizados.</small></div>`;
     try{
-      await carregarConfiguracoesIndicadoresEmpresa();
+      await window.carregarConfiguracoesIndicadoresEmpresa?.();
     }catch(erroConfiguracao){
       console.warn("Não foi possível carregar as metas de indicações; os leads continuarão disponíveis.",erroConfiguracao);
     }

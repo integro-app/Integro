@@ -1202,7 +1202,16 @@ function abrirNovoCaixa() {
   return abrirCaixaMassivo();
 }
 
+function podeInicializarSupervisaoCaixas(usuario = State?.getUsuario?.()) {
+  if (window.IntegroRuntime?.permiteGestaoCaixas) {
+    return window.IntegroRuntime.permiteGestaoCaixas();
+  }
+  const perfil = window.IntegroAcesso?.acessoUsuario?.(usuario || {})?.perfil || "";
+  return ["master_local", "gerente", "supervisor", "financeiro", "auditor"].includes(perfil);
+}
+
 function renderCaixasPremium() {
+  if (!podeInicializarSupervisaoCaixas()) return;
   prepararTelaCaixas();
 
   if (!caixasRealtimeIniciado) {
@@ -1221,6 +1230,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("usuario-validado", () => {
+  if (!podeInicializarSupervisaoCaixas()) return;
   prepararTelaCaixas();
   iniciarCaixasTempoReal();
 });
@@ -1228,3 +1238,5 @@ document.addEventListener("usuario-validado", () => {
 window.addEventListener("beforeunload", () => {
   pararCaixasTempoReal();
 });
+
+window.podeInicializarSupervisaoCaixas = podeInicializarSupervisaoCaixas;

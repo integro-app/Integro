@@ -777,3 +777,43 @@ test("configuracoes: Master Local grava e perfis do tenant somente leem", async 
   }));
   await assertFails(deleteDoc(doc(appDb(profiles.masterA), "configuracoes_empresas", "tenant_a")));
 });
+test("configuracoes: leitura de documento ainda inexistente retorna vazio no proprio tenant", async () => {
+  const snap = await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_a")));
+  assert.equal(snap.exists(), false);
+  await assertFails(getDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_b")));
+});
+
+test("clientes: consultas por aliases legados do proprio vendedor permanecem autorizadas", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    await setDoc(doc(admin, "clientes_operacionais", "cliente_alias_user"), tenantFields({
+      userId: profiles.vendedor1.uid,
+      saldoDevedorCentavos: 0,
+      criadoEm: "ts"
+    }));
+    await setDoc(doc(admin, "clientes_operacionais", "cliente_alias_responsavel"), tenantFields({
+      responsavelId: profiles.vendedor1.uid,
+      saldoDevedorCentavos: 0,
+      criadoEm: "ts"
+    }));
+  });
+
+  await assertSucceeds(getDocs(query(
+    collection(appDb(profiles.vendedor1), "clientes_operacionais"),
+    where("clientePlataformaId", "==", "tenant_a"),
+    where("userId", "==", profiles.vendedor1.uid),
+    limit(10)
+  )));
+  await assertSucceeds(getDocs(query(
+    collection(appDb(profiles.vendedor1), "clientes_operacionais"),
+    where("clientePlataformaId", "==", "tenant_a"),
+    where("responsavelId", "==", profiles.vendedor1.uid),
+    limit(10)
+  )));
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor2), "clientes_operacionais"),
+    where("clientePlataformaId", "==", "tenant_a"),
+    where("userId", "==", profiles.vendedor1.uid),
+    limit(10)
+  )));
+});
