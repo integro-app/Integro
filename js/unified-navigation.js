@@ -3,14 +3,15 @@
 
   const CATALOGO = Object.freeze([
     { grupo: "Principal", itens: [
-      { id: "dashboard", rotulo: "Dashboard", icone: "dashboard", permissao: "dashboard.ver", abrir: "tela" },
-      { id: "chatInterno", rotulo: "Chat interno", icone: "forum", permissao: "chat_interno.ver", abrir: "chat" }
+      { id: "chatInterno", rotulo: "Chat", icone: "forum", permissao: "chat_interno.ver", abrir: "chat" },
+      { id: "dashboard", rotulo: "Dashboard", icone: "dashboard", permissao: "dashboard.ver", abrir: "tela" }
     ]},
     { grupo: "Operação", itens: [
       { id: "operacao", rotulo: "Operação", icone: "business_center", permissoes: ["operacao.ver", "cobrancas.ver", "vendas.ver"], abrir: "operacao" },
       { id: "supervisao", rotulo: "Equipe", icone: "supervisor_account", permissao: "equipe.ver", abrir: "tela" },
       { id: "captacao", rotulo: "Captação", icone: "campaign", permissoes: ["indicacoes.ver_proprio", "indicacoes.ver"], abrir: "tela" },
       { id: "clientes", rotulo: "Clientes", icone: "groups", permissao: "clientes.ver", abrir: "clientes" },
+      { id: "movimentacoes", rotulo: "Movimentações", icone: "sync_alt", permissoes: ["financeiro.movimentacoes", "solicitacoes.criar", "caixa.ver_proprio", "caixas.ver"], abrir: "tela" },
       { id: "caixas", rotulo: "Caixas", icone: "account_balance_wallet", permissao: "caixas.ver", abrir: "tela" },
       { id: "solicitacoes", rotulo: "Solicitações", icone: "task", permissao: "solicitacoes.ver", abrir: "tela" },
       { id: "aprovacoesFinanceiro", rotulo: "Aprovações financeiras", icone: "request_quote", permissoes: ["solicitacoes.aprovar", "financeiro.aprovar"], abrir: "tela" },

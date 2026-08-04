@@ -334,9 +334,15 @@
   }
 
   function filtrosAtivos() {
-    const status = texto(global.document?.getElementById("filtroStatusCobranca")?.value || "todos");
-    const situacao = texto(global.document?.getElementById("filtroSituacaoCobranca")?.value || "todos");
-    return { status, situacao };
+    const marcado = id => global.document?.getElementById(id)?.checked === true;
+    return {
+      pendentes: marcado("filtroCobrancaPendente"),
+      pagos: marcado("filtroCobrancaPago"),
+      naoPagos: marcado("filtroCobrancaNaoPago"),
+      atrasados: marcado("filtroCobrancaAtrasado"),
+      emDia: marcado("filtroCobrancaEmDia"),
+      adiantados: marcado("filtroCobrancaAdiantado")
+    };
   }
 
   function aplicarFiltros(lista) {
@@ -345,12 +351,10 @@
     return lista.filter(item => {
       const busca = [item.clienteNome, item.clienteApelido, item.telefone, item.documento].join(" ").toLowerCase();
       if (termo && !busca.includes(termo)) return false;
-      if (filtros.status === "pendentes" && !item.pendenteHoje) return false;
-      if (filtros.status === "pagos" && !item.pagoHoje) return false;
-      if (filtros.status === "nao_pagos" && !item.naoPagoHoje) return false;
-      if (filtros.situacao === "atrasados" && item.situacao !== "ATRASADO") return false;
-      if (filtros.situacao === "em_dia" && item.situacao !== "EM_DIA") return false;
-      if (filtros.situacao === "adiantados" && item.situacao !== "ADIANTADO") return false;
+      const filtraStatus = filtros.pendentes || filtros.pagos || filtros.naoPagos;
+      const filtraSituacao = filtros.atrasados || filtros.emDia || filtros.adiantados;
+      if (filtraStatus && !((filtros.pendentes && item.pendenteHoje) || (filtros.pagos && item.pagoHoje) || (filtros.naoPagos && item.naoPagoHoje))) return false;
+      if (filtraSituacao && !((filtros.atrasados && item.situacao === "ATRASADO") || (filtros.emDia && item.situacao === "EM_DIA") || (filtros.adiantados && item.situacao === "ADIANTADO"))) return false;
       return true;
     });
   }

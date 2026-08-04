@@ -21,10 +21,28 @@ const Validators = {
       ? window.IntegroOperacional.normalizarAcessoUsuario(usuario)
       : null;
 
-    if (!usuario.tipoUsuario && !acesso?.tipoUsuarioOficial) {
+    const tenantId = String(usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId || "").trim();
+    const isMasterGlobal = acesso?.isMasterGlobal || String(usuario.tipoUsuario || usuario.tipo || "").toLowerCase() === "master_global";
+    const perfilValido = Boolean(
+      acesso?.tipoUsuarioOficial ||
+      usuario.tipoUsuario ||
+      usuario.tipo ||
+      usuario.cargo ||
+      usuario.cargoChave ||
+      usuario.perfil
+    );
+
+    if (!perfilValido) {
       return {
         ok: false,
         mensagem: CONFIG.ERROS.CADASTRO_INCOMPLETO
+      };
+    }
+
+    if (!isMasterGlobal && !tenantId) {
+      return {
+        ok: false,
+        mensagem: "Cadastro operacional sem empresa vinculada. Procure o administrador."
       };
     }
 

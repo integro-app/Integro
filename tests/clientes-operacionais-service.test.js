@@ -240,6 +240,27 @@ test("exclusao de cliente e logica, auditada e restrita a cadastro sem venda", a
   assert.ok([...contexto.db.dados.entries()].some(([caminho, valor]) => caminho.startsWith("logs/") && valor.tipo === "CLIENTE_EXCLUIDO"));
 });
 
+test("vendedor exclui somente cliente criado por ele e sem historico", async () => {
+  const contexto = carregar({
+    "clientes_operacionais/criado": { clientePlataformaId: "tenant_1", nome: "Criado", vendedorId: "vend_1", criadoPor: "vend_1" },
+    "clientes_operacionais/outro": { clientePlataformaId: "tenant_1", nome: "Outro", vendedorId: "vend_1", criadoPor: "master_1" }
+  });
+  const vendedor = usuario({ id: "vend_1", authUid: "vend_1", tipoUsuario: "vendedor" });
+  await contexto.ClientesService.excluirClienteSemHistorico("criado", vendedor, { db: contexto.db });
+  assert.equal(contexto.db.dados.get("clientes_operacionais/criado").excluido, true);
+  await assert.rejects(contexto.ClientesService.excluirClienteSemHistorico("outro", vendedor, { db: contexto.db }), /vendedor criador/);
+});
+
+test("vendedor retorna cliente sem venda para leads com motivo", async () => {
+  const contexto = carregar({
+    "clientes_operacionais/lead_1": { clientePlataformaId: "tenant_1", nome: "Lead", vendedorId: "vend_1", criadoPor: "captador_1" }
+  });
+  const vendedor = usuario({ id: "vend_1", authUid: "vend_1", tipoUsuario: "vendedor" });
+  await contexto.ClientesService.retornarClienteParaLeads("lead_1", { motivo: "Sem interesse" }, vendedor, { db: contexto.db });
+  assert.equal(contexto.db.dados.get("clientes_operacionais/lead_1").statusAtendimento, "RETORNADO_LEADS");
+  assert.equal(contexto.db.dados.get("clientes_operacionais/lead_1").retornadoLeads, true);
+});
+
 test("bloqueia exclusao quando existe indicador ou documento de venda", async () => {
   const comIndicador = carregar({
     "clientes_operacionais/com_venda": { clientePlataformaId: "tenant_1", nome: "Com venda", totalVendas: 1 }

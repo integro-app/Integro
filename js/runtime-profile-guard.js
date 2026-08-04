@@ -3,6 +3,7 @@
 
   let usuarioValidado = null;
   const callbacks = new Set();
+  const execucoes = new Map();
 
   function usuarioAtual() {
     return usuarioValidado || global.State?.getUsuario?.() || null;
@@ -42,6 +43,29 @@
 
   function permiteIndicacoesAmplas() {
     return ["master_local", "gerente", "financeiro", "auditor", "captador"].includes(perfilAtual());
+  }
+
+  function permiteModulo(modulo, usuario = usuarioAtual()) {
+    const perfil = acessoAtual(usuario).perfil;
+    const matriz = {
+      vendedor: new Set(["dashboard", "operacao", "cobrancas", "vendas", "clientes", "movimentacoes", "chat", "notificacoes"]),
+      captador: new Set(["dashboard", "captacao", "clientes", "chat", "notificacoes"]),
+      supervisor: new Set(["dashboard", "supervisao", "caixas", "cobrancas", "vendas", "clientes", "solicitacoes", "chat", "notificacoes"]),
+      financeiro: new Set(["dashboard", "financeiro", "caixas", "cobrancas", "clientes", "solicitacoes", "relatorios", "auditoria", "chat", "notificacoes"]),
+      auditor: new Set(["dashboard", "auditoria", "financeiro", "caixas", "clientes", "relatorios", "chat", "notificacoes"]),
+      gerente: new Set(["*"]),
+      master_local: new Set(["*"])
+    };
+    const permitidos = matriz[perfil];
+    return Boolean(permitidos && (permitidos.has("*") || permitidos.has(String(modulo || ""))));
+  }
+
+  function executarUmaVez(chave, executor) {
+    if (!chave || typeof executor !== "function") return Promise.resolve(null);
+    if (execucoes.has(chave)) return execucoes.get(chave);
+    const promessa = Promise.resolve().then(executor).finally(() => execucoes.delete(chave));
+    execucoes.set(chave, promessa);
+    return promessa;
   }
 
   function executarCallbacks(usuario) {
@@ -94,6 +118,8 @@
     permiteConsultaAmpla,
     permiteGestaoCaixas,
     permiteIndicacoesAmplas,
+    permiteModulo,
+    executarUmaVez,
     quandoUsuarioValidado,
     aguardarUsuarioValidado
   });

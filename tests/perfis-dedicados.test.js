@@ -26,8 +26,8 @@ test("auditor e captador convergem para o painel unificado com legado preservado
   assert.match(config, /captador:\s*"master-local\.html"/);
   assert.match(config, /"auditor\.html":\s*"auditor"/);
   assert.match(config, /"captador\.html":\s*"captador"/);
-  assert.match(operational, /auditor:\s*"auditor\.html"/);
-  assert.match(operational, /captador:\s*"captador\.html"/);
+  assert.match(operational, /if \(tipoUsuarioOficial === "usuario_cliente"\) rotaPadrao = "master-local\.html"/);
+  assert.doesNotMatch(operational, /captador:\s*"captador\.html"/);
   assert.match(auditor, /redirect-to-master-local/);
   assert.match(captador, /redirect-to-master-local/);
 });

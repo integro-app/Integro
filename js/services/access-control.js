@@ -26,7 +26,7 @@
     vendedor: [
       "dashboard.ver", "clientes.ver", "clientes.criar", "clientes.editar_proprio", "clientes.atender",
       "vendas.ver", "vendas.criar", "cobrancas.ver", "cobrancas.receber", "cobrancas.nao_pagamento",
-      "caixa.ver_proprio", "solicitacoes.ver_proprio", "solicitacoes.criar", "chat_interno.ver", "operacao.ver", "operacao.cobrancas", "operacao.vendas"
+      "caixa.ver_proprio", "caixas.ver", "solicitacoes.ver_proprio", "solicitacoes.criar", "financeiro.movimentacoes", "chat_interno.ver", "operacao.ver", "operacao.cobrancas", "operacao.vendas"
     ],
     financeiro: [
       "dashboard.ver", "clientes.ver", "vendas.ver", "caixas.ver", "financeiro.ver",

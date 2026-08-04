@@ -6,20 +6,35 @@
 let categoriasMovimentacaoMasterLocal = [];
 
 // Listener de usuário validado
-document.addEventListener("usuario-validado", async (event) => {
-  const usuario = event.detail;
+document.addEventListener("usuario-validado", event => {
+  const usuario = event.detail || null;
+  if (!usuario) return;
   State.setUsuario(usuario);
-
   preencherUsuarioTopo();
 
-  const perfil = window.IntegroAcesso?.acessoUsuario?.(usuario || {})?.perfil || usuario?.tipoUsuario || "";
-  if (perfil && perfil !== "master_local" && window.IntegroPerfisUnificados?.carregarTudo) {
-    window.IntegroPerfisUnificados.ativar?.(usuario);
-    await window.IntegroPerfisUnificados.carregarTudo();
-    return;
-  }
+  const iniciar = async () => {
+    const perfil = window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil || "";
+    if (!perfil) throw new Error("Perfil operacional não identificado.");
 
-  await carregarTudoMasterLocal();
+    if (perfil !== "master_local") {
+      window.IntegroPerfisUnificados?.ativar?.(usuario);
+      if (!window.IntegroPerfisUnificados?.carregarTudo) {
+        throw new Error("Carregador unificado de perfil indisponível.");
+      }
+      await window.IntegroPerfisUnificados.carregarTudo();
+      return;
+    }
+    await carregarTudoMasterLocal();
+  };
+
+  const chave = `bootstrap:${window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil || "desconhecido"}`;
+  const execucao = window.IntegroRuntime?.executarUmaVez
+    ? window.IntegroRuntime.executarUmaVez(chave, iniciar)
+    : iniciar();
+  Promise.resolve(execucao).catch(erro => {
+    console.error("[ÍNTEGRO] Falha na inicialização do painel local.", erro);
+    window.UIHelpers?.alerta?.("Não foi possível carregar o painel. Recarregue a página.");
+  });
 });
 
 function preencherUsuarioTopo() {

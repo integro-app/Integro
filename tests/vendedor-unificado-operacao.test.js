@@ -9,11 +9,16 @@ const perfis = fs.readFileSync(path.join(root, "js", "perfis-unificados.js"), "u
 const state = fs.readFileSync(path.join(root, "js", "state.js"), "utf8");
 const unificado = fs.readFileSync(path.join(root, "js", "vendedor-unificado.js"), "utf8");
 const operacao = fs.readFileSync(path.join(root, "js", "vendedor-operacao.js"), "utf8");
+const nav = fs.readFileSync(path.join(root, "js", "unified-navigation.js"), "utf8");
+const guard = fs.readFileSync(path.join(root, "js", "runtime-profile-guard.js"), "utf8");
+const accessControl = fs.readFileSync(path.join(root, "js", "services", "access-control.js"), "utf8");
+const financeiro = fs.readFileSync(path.join(root, "js", "services", "financial-operations.js"), "utf8");
+const rules = fs.readFileSync(path.join(root, "firestore.rules"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
-  assert.match(master, /js\/vendedor-operacao\.js\?v=20260803-3/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260803-4/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20260803-2/);
+  assert.match(master, /js\/vendedor-operacao\.js\?v=20260804-clientes14/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260804-movimentacoes2/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20260804-clientes14/);
   assert.match(unificado, /Clientes com cobrança prevista para a data do caixa/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -50,16 +55,17 @@ test("card de cobrança contém whatsapp, situação, parcelas e somente ações
   assert.match(operacao, /Saldo devedor/);
   assert.match(operacao, /Progresso de parcelas/);
   assert.match(operacao, />Pago</);
-  assert.match(operacao, />Não pagamento</);
+  assert.match(operacao, />N(?:�o|ão) pagamento</);
   assert.doesNotMatch(operacao, /<span>Detalhes<\/span>/);
   assert.doesNotMatch(operacao, /<span>Histórico<\/span>/);
 });
 
-test("vendas exibem histórico por padrão e permitem filtrar pela data do caixa", () => {
-  assert.match(unificado, /id="filtroPeriodoVendaVendedor"/);
-  assert.match(unificado, /<option value="todas">Todas as vendas<\/option>/);
-  assert.match(unificado, /periodoFiltro === "caixa" && dataVenda !== dataCaixaAtual/);
-  assert.match(unificado, /rotulosPeriodo = \{ todas: "em todo o histórico"/);
+test("vendas mostram somente vendas do dia do caixa e usam filtros por checkbox", () => {
+  assert.doesNotMatch(unificado, /id="filtroPeriodoVendaVendedor"/);
+  assert.match(unificado, /dataVenda !== dataCaixaAtual/);
+  assert.match(unificado, /no dia do caixa/);
+  assert.match(unificado, /filtroVendaAtiva/);
+  assert.match(unificado, /filtroVendaRenovacao/);
   assert.match(unificado, /Data da venda/);
   assert.match(unificado, /buscaVendaVendedorInput/);
   assert.match(unificado, /toggleFiltrosVendasVendedor/);
@@ -67,6 +73,28 @@ test("vendas exibem histórico por padrão e permitem filtrar pela data do caixa
   assert.match(unificado, /IntegroVenda\.registrarVendaTransacional/);
 });
 
+test("menu contextual de clientes do vendedor usa rotulos operacionais", () => {
+  assert.match(master, /Gerenciar clientes/);
+  assert.match(master, /Criar cliente/);
+  assert.match(master, /textoLimpo\(el\)/);
+  assert.match(master, /material-symbols-rounded,.material-symbols-outlined/);
+});
+
+test("clientes do vendedor ficam em tela propria com gestao e retorno para leads", () => {
+  assert.doesNotMatch(unificado, /id="tabClientesOperacaoBtn"/);
+  assert.match(unificado, /function renderClientesVendedor/);
+  assert.match(unificado, /vendedor-clientes-gestao/);
+  assert.match(unificado, /filtroClientesLeadsVendedor/);
+  assert.match(unificado, /abrirFormularioClienteVendedor/);
+  assert.match(unificado, /vendedor-cliente-pagina/);
+  assert.match(unificado, /voltarGerenciarClientesVendedor/);
+  assert.match(unificado, /clienteFormularioAbertoId && !forcarLista/);
+  assert.match(unificado, /clienteId \|\| "__novo__"/);
+  assert.match(master, /renderClientesVendedor\?\.\(\{ forcar: true \}\)/);
+  assert.match(unificado, /excluirClienteVendedor/);
+  assert.match(unificado, /retornarClienteLeadsVendedor/);
+  assert.match(unificado, /ClientesService\?\.retornarClienteParaLeads/);
+});
 test("vendas legadas podem ser reconhecidas pelo cliente vinculado ao vendedor", () => {
   assert.match(unificado, /!pertenceAoVendedor\(v\) && !pertenceAoVendedor\(cliente\)/);
   assert.match(perfis, /function idsVendasReferenciadas\(clientes = \[\]\)/);
@@ -105,4 +133,106 @@ test("caixa aberto do vendedor reconhece aliases legados e é recarregado antes 
   assert.match(unificado, /carregarCaixasVendedor\?\.\(\)/);
   assert.match(unificado, /async function abrirListaNovaVenda\(\)/);
   assert.match(unificado, /const caixa = await garantirCaixaAberto\(\)/);
+});
+
+
+test("perfil vendedor remove periodo do topo e usa notificacoes na lateral", () => {
+  assert.match(master, /body\.perfil-vendedor #dashboardPeriodoToolbar/);
+  assert.match(master, /body\.perfil-vendedor #integroNotificationButton/);
+  assert.match(master, /integro-notificacoes-menu-lateral/);
+  assert.match(master, /badgeNotificacoesMenu/);
+});
+
+test("clientes do vendedor limpam blocos legados sem depender do buscar", () => {
+  assert.match(unificado, /MutationObserver\(mudancas =>/);
+  assert.match(unificado, /limparBlocosClientesLegadosVendedor/);
+  assert.match(unificado, /clientesEmpresaMasterLista/);
+  assert.match(unificado, /integro-tela-alterada/);
+});
+
+
+test("shell do vendedor tem failsafe para esconder periodo e mover notificacoes", () => {
+  assert.match(master, /integro-vendedor-shell-failsafe-final/);
+  assert.match(master, /prepararNotificacoesLaterais/);
+  assert.match(master, /dashboardPeriodoToolbar/);
+  assert.match(master, /integroNotificationButton/);
+});
+
+
+test("loader do painel nao fica preso em zero sem contornar autenticacao", () => {
+  assert.match(master, /authUser/);
+  assert.match(master, /aguardarUsuarioValidado\?\.\(7000\)/);
+  assert.match(master, /Voltando ao login/);
+  assert.match(master, /firebase\?\.auth\?\.\(\)\?\.signOut/);
+  assert.doesNotMatch(master, /new MutationObserver\(\(\) => prepararNotificacoesLaterais\(\)\)\.observe\(document\.documentElement/);
+});
+
+
+test("clientes vendedor usa gaveta de filtros e contador abaixo", () => {
+  assert.match(unificado, /drawerFiltrosClientes/);
+  assert.match(unificado, /filtroClientesDataInicioVendedor/);
+  assert.match(unificado, /filtroClientesDataFimVendedor/);
+  assert.match(unificado, /vendedor-clientes-contador-final/);
+  assert.match(unificado, /kpi-ativos/);
+  assert.match(unificado, /kpi-inativos/);
+  assert.match(unificado, /kpi-leads/);
+  assert.doesNotMatch(unificado, /vendedor-novo-cliente-btn" type="button" onclick="abrirFormularioClienteVendedor\(\)"/);
+});
+
+
+test("botao vender respeita saldo ativo e navega para vendas", () => {
+  assert.match(unificado, /clientePossuiVendaAtiva/);
+  assert.match(unificado, /vendedor-cliente-btn-whatsapp/);
+  assert.match(unificado, /vendedor-cliente-btn-vender/);
+  assert.match(unificado, /Nome completo/);
+  assert.match(unificado, /Documento/);
+  assert.match(unificado, /Data cadastro/);
+  assert.match(unificado, /Data atualiza/);
+  assert.match(unificado, /scoreCliente\(cliente\)/);
+  assert.doesNotMatch(unificado, /<span>Saldo devedor<\/span>/);
+  assert.match(unificado, /saldo devedor ativo/);
+  assert.match(unificado, /window\.trocarTela\?\.\("cobrancas"/);
+  assert.match(unificado, /abrirAba\("vendas"\)/);
+  assert.match(unificado, /renderVendasDia\(\)/);
+});
+
+
+test("cliente ativo com saldo zerado pode renovar", () => {
+  assert.match(unificado, /function clientePossuiVendaAtiva/);
+  assert.match(unificado, /saldoCliente\(cliente\) >= 0\.01/);
+  assert.doesNotMatch(unificado, /statusCliente \|\| cliente\.status\)\.toUpperCase\(\)\.includes\("ATIVO"\)/);
+  assert.doesNotMatch(unificado, /saldoCliente\(cliente\) >= 0\.01 \|\| cliente\.vendaAtivaId/);
+  assert.match(unificado, /const ativo = clientePossuiVendaAtiva\(cliente\)/);
+});
+
+
+test("criacao de cliente vendedor envia tenant e usuario no contrato do service", () => {
+  assert.match(unificado, /const tenantId = texto\(State\.getTenantId\?\.\(\)/);
+  assert.match(unificado, /clientePlataformaId: tenantId/);
+  assert.match(unificado, /criarClienteComLegado\(\{ dados: payload, usuario, clientePlataformaId: tenantId/);
+  assert.match(unificado, /vendedorAuthUid: authUid/);
+  assert.match(unificado, /criadoPor: authUid/);
+  assert.doesNotMatch(unificado, /criarClienteComLegado\?\.\(payload, usuario/);
+});
+
+test("vendedor possui modulo movimentacoes com ingresso, gasto e retirada no caixa", () => {
+  assert.match(nav, /id: "movimentacoes"/);
+  assert.match(nav, /rotulo: "Movimenta/);
+  assert.match(nav, /financeiro.movimentacoes/);
+  assert.match(master, /<section id="movimentacoes" class="screen">/);
+  assert.match(master, /renderMovimentacoesVendedor?.()/);
+  assert.match(master, /vendedor: \["dashboard","vendas","cobrancas","clientes","movimentacoes"/);
+  assert.match(guard, /"movimentacoes"/);
+  assert.match(accessControl, /"financeiro.movimentacoes"/);
+  assert.match(accessControl, /"caixas.ver"/);
+  assert.match(unificado, /function renderMovimentacoesVendedor/);
+  assert.match(unificado, /async function registrarMovimentacaoVendedor/);
+  assert.doesNotMatch(unificado, /collection("solicitacoes").add/);
+  assert.match(unificado, /IntegroFinanceiroOperacional.criarLancamentoFinanceiroTransacional/);
+  assert.match(unificado, /tipoLancamento: tipo/);
+  assert.match(unificado, /["INGRESSO", "GASTO", "RETIRADA"]/);
+  assert.match(financeiro, /saldoAtualCentavos: novoSaldoCentavos/);
+  assert.ok(financeiro.includes("[campoTotal]: atualTotalTipo + payload.valorCentavos"));
+  assert.match(rules, /function canUpdateCaixaMovimentacao/);
+  assert.ok(rules.includes('data.tipoLancamento in ["VENDA", "PAGAMENTO", "INGRESSO", "GASTO", "RETIRADA"]'));
 });

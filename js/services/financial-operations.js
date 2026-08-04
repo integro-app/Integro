@@ -115,6 +115,17 @@
     return 0;
   }
 
+  function saldoClienteParaBloqueioVenda(cliente = {}) {
+    const operacional = getOperacional();
+    const camposReais = ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"];
+    for (const campo of camposReais) {
+      if (cliente?.[campo] !== undefined && cliente?.[campo] !== null && cliente?.[campo] !== "") {
+        return operacional.moedaParaCentavos(cliente[campo]);
+      }
+    }
+    return centavosDe(cliente, "saldoDevedorCentavos");
+  }
+
   function reais(centavos) {
     return getOperacional().centavosParaNumero(centavos);
   }
@@ -474,6 +485,23 @@
       }
       const payload = payloadLancamentoFinanceiro({ ...entrada, lancamentoId }, { caixa });
       transaction.set(lancamentoRef, payload);
+      if (caixaRef && caixaSnap?.exists && ["INGRESSO", "GASTO", "RETIRADA"].includes(payload.tipoLancamento)) {
+        const deltaCentavos = impactoLancamentoCentavos(payload);
+        const saldoAtualCentavos = centavosDe(caixa, "saldoAtualCentavos", ["saldoAtual", "valorAtual", "caixaAtual", "saldo"]);
+        const campoTotal = payload.tipoLancamento === "INGRESSO" ? "totalIngressosCentavos"
+          : payload.tipoLancamento === "GASTO" ? "totalGastosCentavos"
+          : "totalRetiradasCentavos";
+        const atualTotalTipo = Math.round(Number(caixa[campoTotal] || 0));
+        const novoSaldoCentavos = saldoAtualCentavos + deltaCentavos;
+        transaction.update(caixaRef, {
+          saldoAtualCentavos: novoSaldoCentavos,
+          saldoAtual: reais(novoSaldoCentavos),
+          valorAtual: reais(novoSaldoCentavos),
+          caixaAtual: reais(novoSaldoCentavos),
+          [campoTotal]: atualTotalTipo + payload.valorCentavos,
+          atualizadoEm: serverTimestamp()
+        });
+      }
       transaction.set(db.collection("logs").doc(), {
         tipoAcao: "LANCAMENTO_FINANCEIRO_CRIADO",
         clientePlataformaId: payload.clientePlataformaId,
@@ -1072,12 +1100,10 @@
         saldoDevedorCentavos: calculo.novoSaldoClienteCentavos,
         saldoDevedor: reais(calculo.novoSaldoClienteCentavos),
         saldo: reais(calculo.novoSaldoClienteCentavos),
-        status: statusAtivoAnterior(cliente.status, calculo.novoSaldoClienteCentavos, "ATIVO"),
-        statusCliente: statusAtivoAnterior(
-          cliente.statusCliente || cliente.status,
-          calculo.novoSaldoClienteCentavos,
-          "ATIVO"
-        ),
+        status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
+        statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
+        possuiVendaAtiva: calculo.novoSaldoClienteCentavos > 0,
+        vendaAtivaId: calculo.novoSaldoClienteCentavos > 0 ? texto(cliente.vendaAtivaId || vendaId) : "",
         atualizadoEm: serverTimestamp()
       });
 
@@ -1262,12 +1288,8 @@
           return { vendaId, operacaoId, modo: "IDEMPOTENTE" };
         }
 
-        const saldoClienteCentavos = centavosDe(cliente, "saldoDevedorCentavos", ["saldoDevedor", "saldo"]);
-        if (
-          saldoClienteCentavos > 0 ||
-          cliente.possuiVendaAtiva === true ||
-          texto(cliente.vendaAtivaId)
-        ) {
+        const saldoClienteCentavos = saldoClienteParaBloqueioVenda(cliente);
+        if (saldoClienteCentavos > 0) {
           const erro = new Error("Cliente possui saldo devedor ativo. Nova venda bloqueada.");
           erro.code = "ERRO_BLOQUEADO_CLIENTE_ATIVO";
           throw erro;

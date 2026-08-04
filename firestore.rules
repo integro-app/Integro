@@ -157,7 +157,8 @@ service cloud.firestore {
         data.get("userId", "") == uid ||
         data.get("responsavelId", "") == uid ||
         data.get("vendedorId", "") == uid ||
-        data.get("criadoPorId", "") == uid;
+        data.get("criadoPorId", "") == uid ||
+        data.get("criadoPor", "") == uid;
     }
 
     function isOperationalReader(data) {
@@ -264,7 +265,7 @@ service cloud.firestore {
           (
             isVendedor() &&
             isOwnSellerData(data) &&
-            data.tipoLancamento in ["VENDA", "PAGAMENTO"] &&
+            data.tipoLancamento in ["VENDA", "PAGAMENTO", "INGRESSO", "GASTO", "RETIRADA"] &&
             !(data.tipoLancamento in ["AJUSTE", "REGULARIZACAO", "ESTORNO", "DIVERGENCIA_ACEITA"])
           )
         );
@@ -311,15 +312,27 @@ service cloud.firestore {
         );
     }
 
+    function canUpdateCaixaMovimentacao() {
+      return caixaImmutable() &&
+        resource.data.status in ["ABERTO", "REABERTO"] &&
+        request.resource.data.status == resource.data.status &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          "saldoAtualCentavos", "saldoAtual", "valorAtual", "caixaAtual",
+          "totalIngressosCentavos", "totalGastosCentavos", "totalRetiradasCentavos", "atualizadoEm"
+        ]) &&
+        (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)));
+    }
+
     function canUpdateCaixa() {
       return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
-        caixaImmutable() &&
-        caixaStatusTransitionAllowed() &&
         (
-          (resource.data.status in ["ABERTO", "REABERTO"] && request.resource.data.status in ["FECHADO", "DIVERGENTE"] &&
-            (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)) || (isSupervisor() && isTeamAllowed(resource.data)))) ||
-          (request.resource.data.status == "REABERTO" &&
-            (isMasterLocal() || (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(resource.data)) || (isFinanceiro() && hasPermission("podeReabrirCaixa"))))
+          canUpdateCaixaMovimentacao() ||
+          (caixaImmutable() && caixaStatusTransitionAllowed() && (
+            (resource.data.status in ["ABERTO", "REABERTO"] && request.resource.data.status in ["FECHADO", "DIVERGENTE"] &&
+              (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)) || (isSupervisor() && isTeamAllowed(resource.data)))) ||
+            (request.resource.data.status == "REABERTO" &&
+              (isMasterLocal() || (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(resource.data)) || (isFinanceiro() && hasPermission("podeReabrirCaixa"))))
+          ))
         );
     }
 
@@ -570,10 +583,11 @@ service cloud.firestore {
         conversaoClienteValida(clienteId) &&
         (
           isMasterLocal() ||
+          isGerente() ||
           isFinanceiro() ||
           (isSupervisor() && isTeamAllowed(resource.data) && isTeamAllowed(request.resource.data)) ||
           (isVendedor() && isOwnSellerData(resource.data) &&
-            unchanged(["vendedorId", "vendedorAuthUid", "vendedorUid", "equipeId"]) &&
+            unchanged(["vendedorId", "vendedorAuthUid", "vendedorUid", "equipeId", "supervisorId", "gerenteId", "masterLocalId", "empresaId", "hierarquiaIds"]) &&
             unchanged(["saldoDevedor", "saldoDevedorCentavos", "possuiVendaAtiva", "vendaAtivaId"]))
         );
     }
@@ -910,7 +924,8 @@ service cloud.firestore {
     }
 
     match /clientes/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow read: if isOperationalReader(resource.data) ||
+        (isActiveUser() && isCaptador() && isSameTenantRead());
       allow create: if isActiveUser() && isSameTenantWrite() &&
         (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data)));
       allow update: if canUpdateClienteOperacional(id);

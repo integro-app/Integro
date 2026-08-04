@@ -175,16 +175,7 @@
     let rotaPadrao = "";
     if (tipoUsuarioOficial === "master_global") rotaPadrao = "master-global.html";
     if (tipoUsuarioOficial === "master_local") rotaPadrao = "master-local.html";
-    if (tipoUsuarioOficial === "usuario_cliente") {
-      rotaPadrao = ({
-        gerente: "master-local.html",
-        captador: "captador.html",
-        supervisor: "supervisor.html",
-        vendedor: "vendedor.html",
-        financeiro: "financeiro.html",
-        auditor: "auditor.html"
-      })[cargoChave] || "master-local.html";
-    }
+    if (tipoUsuarioOficial === "usuario_cliente") rotaPadrao = "master-local.html";
 
     return {
       tipoOriginal,

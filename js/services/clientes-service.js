@@ -66,6 +66,29 @@
     ].filter(Boolean).map(String))];
   }
 
+  function idsHierarquiaUsuario(usuario = {}) {
+    return [...new Set([
+      tenantUsuario(usuario),
+      usuario.masterLocalId, usuario.gerenteId, usuario.supervisorId, usuario.captadorId,
+      usuario.equipeId, idUsuario(usuario), usuario.authUid, usuario.uid
+    ].filter(Boolean).map(String))];
+  }
+
+  function montarVinculosHierarquia({ tenant, usuario = {}, vendedor = {}, equipe = {}, atual = {} } = {}) {
+    const vendedorAuthUid = texto(vendedor.authUid || vendedor.uid || vendedor.id || atual.vendedorAuthUid || atual.vendedorId);
+    const vendedorId = texto(vendedor.id || vendedor.usuarioId || vendedorAuthUid || atual.vendedorId);
+    const equipeId = texto(equipe.id || vendedor.equipeId || atual.equipeId);
+    const supervisorId = texto(equipe.supervisorAuthUid || equipe.supervisorId || vendedor.supervisorId || atual.supervisorId);
+    const gerenteId = texto(equipe.gerenteAuthUid || equipe.gerenteId || vendedor.gerenteId || atual.gerenteId);
+    const masterLocalId = texto(vendedor.masterLocalId || equipe.masterLocalId || usuario.masterLocalId || atual.masterLocalId || tenant);
+    const captadorId = texto(atual.captadorId || atual.indicadoPorId || atual.criadoPorCaptadorId);
+    const hierarquiaIds = [...new Set([tenant, masterLocalId, gerenteId, supervisorId, captadorId, equipeId, vendedorId, vendedorAuthUid].filter(Boolean).map(String))];
+    return {
+      empresaId: tenant, masterLocalId, gerenteId, supervisorId, captadorId, equipeId,
+      vendedorId, vendedorAuthUid, hierarquiaIds
+    };
+  }
+
   function usuarioAtivo(usuario = {}) {
     const status = texto(usuario.status || "ATIVO").toUpperCase();
     return usuario.ativo !== false && !["INATIVO", "BLOQUEADO", "SUSPENSO"].includes(status);
@@ -87,17 +110,24 @@
     const responsavel = texto(cliente.vendedorAuthUid || cliente.vendedorUid || cliente.vendedorId || cliente.responsavelId || cliente.usuarioId);
     const equipe = texto(cliente.equipeId || cliente.equipeDestinoId || cliente.unidadeId);
 
-    if (cargo === "vendedor") return Boolean(uid && responsavel === uid);
-    if (["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) {
+    if (cargo === "vendedor") return Boolean(uid && (responsavel === uid || (Array.isArray(cliente.hierarquiaIds) && cliente.hierarquiaIds.includes(uid))));
+    if (["gerente", "socio", "proprietario"].includes(cargo)) {
       const equipes = equipesUsuario(usuario);
       const vendedores = vendedoresUsuario(usuario);
-      return Boolean((equipe && equipes.includes(equipe)) || (responsavel && vendedores.includes(responsavel)));
+      const ids = idsHierarquiaUsuario(usuario);
+      return Boolean(
+        cliente.gerenteId === uid ||
+        (equipe && equipes.includes(equipe)) ||
+        (responsavel && vendedores.includes(responsavel)) ||
+        ids.some(id => Array.isArray(cliente.hierarquiaIds) && cliente.hierarquiaIds.includes(id))
+      );
     }
-    if (["financeiro", "auditor"].includes(cargo)) return acao === "ler";
-    if (cargo === "captador") {
-      const captador = texto(cliente.captadorId || cliente.indicadoPorId || cliente.criadoPor);
-      return acao === "ler" && Boolean(uid && captador === uid);
+    if (cargo === "supervisor") {
+      const equipes = equipesUsuario(usuario);
+      const vendedores = vendedoresUsuario(usuario);
+      return Boolean(cliente.supervisorId === uid || (equipe && equipes.includes(equipe)) || (responsavel && vendedores.includes(responsavel)));
     }
+    if (["financeiro", "auditor", "captador"].includes(cargo)) return acao === "ler";
     return false;
   }
 
@@ -234,6 +264,7 @@
     const payload = {
       ...dados,
       clientePlataformaId: tenant,
+      ...montarVinculosHierarquia({ tenant, usuario, vendedor: cargoUsuario(usuario) === "vendedor" ? usuario : {}, atual: dados }),
       ativo: true,
       excluido: false,
       cicloAtendimentoAtual: 1,
@@ -285,14 +316,13 @@
       dados.equipeId ||
       (cargo === "vendedor" ? (usuario.equipeId || usuario.equipesIds?.[0] || usuario.equipeIds?.[0]) : "")
     );
+    const vinculos = montarVinculosHierarquia({ tenant, usuario, vendedor: cargo === "vendedor" ? usuario : { id: vendedorId, authUid: vendedorId, equipeId }, atual: dados });
     const operacional = {
       ...dados,
       ...auditoria,
+      ...vinculos,
       clienteLegadoId: legadoRef.id,
-      vendedorId,
-      vendedorAuthUid: vendedorId,
       vendedorNome: texto(dados.vendedorNome || (vendedorId ? (usuario.nome || usuario.email) : "")),
-      equipeId,
       ativo: true,
       excluido: false,
       cicloAtendimentoAtual: Number(operacionalAtual?.cicloAtendimentoAtual || 1),
@@ -302,10 +332,8 @@
       ...dados,
       ...auditoria,
       clienteOperacionalId: operacionalRef.id,
-      vendedorId,
-      vendedorAuthUid: vendedorId,
+      ...vinculos,
       vendedorNome: operacional.vendedorNome,
-      equipeId,
       status: dados.status || "QUITADO",
       statusCliente: dados.statusCliente || dados.status || "QUITADO",
       saldoDevedor: Number(dados.saldoDevedor || 0),
@@ -384,30 +412,38 @@
     let documentos = [];
 
     if (cargo === "vendedor") {
-      const identidades = [...new Set([
-        usuario.authUid, usuario.uid, usuario.id, usuario.usuarioId, usuario.vendedorId
-      ].filter(Boolean).map(String))];
-      if (!identidades.length) throw new Error("Vendedor sem vinculo de autenticacao.");
+      const authUid = texto(usuario.authUid || usuario.uid);
+      const usuarioId = texto(usuario.id || usuario.usuarioId || usuario.vendedorId);
+      if (!authUid && !usuarioId) throw new Error("Vendedor sem vínculo de autenticação.");
 
-      const camposResponsavel = ["vendedorAuthUid", "vendedorUid", "vendedorId", "usuarioId", "responsavelId"];
-      const consultas = [];
-      camposResponsavel.forEach(campo => identidades.forEach(valor => {
-        consultas.push(
-          db.collection(COLECAO_CLIENTES)
+      const tentativas = [];
+      if (authUid) {
+        tentativas.push(["vendedorAuthUid", authUid], ["vendedorUid", authUid]);
+      }
+      if (usuarioId && usuarioId !== authUid) {
+        tentativas.push(["vendedorId", usuarioId], ["usuarioId", usuarioId], ["responsavelId", usuarioId]);
+      } else if (usuarioId) {
+        tentativas.push(["vendedorId", usuarioId]);
+      }
+
+      let ultimoErro = null;
+      for (const [campo, valor] of tentativas) {
+        try {
+          const snap = await db.collection(COLECAO_CLIENTES)
             .where("clientePlataformaId", "==", tenant)
             .where(campo, "==", valor)
             .limit(limite)
-            .get()
-        );
-      }));
+            .get();
+          snap.docs.forEach(doc => documentos.push(documentoDeSnapshot(doc)));
+          if (documentos.length) break;
+        } catch (erro) {
+          ultimoErro = erro;
+        }
+      }
 
-      const resultados = await Promise.allSettled(consultas);
-      const falhas = resultados.filter(resultado => resultado.status === "rejected");
-      documentos = resultados
-        .filter(resultado => resultado.status === "fulfilled")
-        .flatMap(resultado => resultado.value.docs.map(documentoDeSnapshot));
-
-      if (!documentos.length && falhas.length === resultados.length) throw falhas[0].reason;
+      if (!documentos.length && ultimoErro) {
+        throw ultimoErro;
+      }
     } else {
       let ref = db.collection(COLECAO_CLIENTES).where("clientePlataformaId", "==", tenant);
       if (["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) {
@@ -451,12 +487,27 @@
     );
   }
 
+  function clienteCriadoPeloUsuario(cliente = {}, usuario = {}) {
+    const uid = idUsuario(usuario);
+    if (!uid) return false;
+    return [
+      cliente.criadoPor,
+      cliente.criadoPorId,
+      cliente.criadoPorUid,
+      cliente.usuarioCriacaoId,
+      cliente.vendedorCriadorId
+    ].map(texto).filter(Boolean).includes(uid);
+  }
+
   async function excluirClienteSemHistorico(clienteId, usuario = {}, opcoes = {}) {
     const db = opcoes.db || getDb();
-    if (!usuarioPodeAdministrarClientes(usuario) || cargoUsuario(usuario) !== "master_local") {
-      throw new Error("Somente o Master Local pode excluir clientes sem historico de venda.");
-    }
     const cliente = await obterCliente(db, clienteId);
+    const cargo = cargoUsuario(usuario);
+    const podeMaster = usuarioPodeAdministrarClientes(usuario) && cargo === "master_local";
+    const podeVendedorCriador = cargo === "vendedor" && clienteCriadoPeloUsuario(cliente, usuario);
+    if (!podeMaster && !podeVendedorCriador) {
+      throw new Error("Somente o Master Local ou o vendedor criador pode excluir cliente sem historico de venda.");
+    }
     if (!clienteNoEscopo(usuario, cliente, "editar")) throw new Error("Cliente fora do escopo do usuario.");
     if (possuiIndicadorHistoricoVenda(cliente)) throw new Error("Cliente com historico de venda nao pode ser excluido.");
 
@@ -492,6 +543,31 @@
       dados: { clienteId: cliente.id, clienteLegadoId: cliente.clienteLegadoId || "", exclusaoLogica: true }
     }));
     await batch.commit();
+    return { ...cliente, ...payload };
+  }
+
+  async function retornarClienteParaLeads(clienteId, entrada = {}, usuario = {}, opcoes = {}) {
+    const db = opcoes.db || getDb();
+    const cliente = await obterCliente(db, clienteId);
+    if (cargoUsuario(usuario) !== "vendedor") throw new Error("Somente o vendedor responsavel pode retornar o cliente para leads.");
+    if (!clienteNoEscopo(usuario, cliente, "editar")) throw new Error("Cliente fora do escopo do usuario.");
+    if (possuiIndicadorHistoricoVenda(cliente)) throw new Error("Cliente com historico de venda nao pode retornar para leads.");
+    const motivo = texto(entrada.motivo);
+    if (!motivo) throw new Error("Motivo e obrigatorio para retornar o cliente ao setor de leads.");
+    const agora = dataHoraSP();
+    const payload = {
+      statusAtendimento: "RETORNADO_LEADS",
+      statusCliente: "LEAD_RETORNADO",
+      retornadoLeads: true,
+      motivoRetornoLeads: motivo,
+      vendedorRetornoId: idUsuario(usuario),
+      dataRetornoLeadsTexto: agora,
+      ultimaMovimentacaoTexto: agora,
+      atualizadoPor: idUsuario(usuario),
+      atualizadoEm: serverTimestamp()
+    };
+    await db.collection(COLECAO_CLIENTES).doc(clienteId).set(payload, { merge: true });
+    await registrarLog(db, "CLIENTE_RETORNADO_LEADS", usuario, { clienteId, motivo });
     return { ...cliente, ...payload };
   }
 
@@ -542,11 +618,15 @@
       observacao: texto(destino.observacao)
     });
     await ref.set(evento);
+    let equipeDados = { id: validado.equipeId };
+    try {
+      const equipeSnap = await db.collection("equipes").doc(validado.equipeId).get();
+      if (equipeSnap.exists) equipeDados = { id: equipeSnap.id, ...equipeSnap.data() };
+    } catch (_) {}
+    const vinculos = montarVinculosHierarquia({ tenant: tenantUsuario(usuario), usuario, vendedor: validado.vendedor, equipe: equipeDados, atual: cliente });
     await db.collection(COLECAO_CLIENTES).doc(clienteId).set({
-      vendedorId: validado.vendedorId,
-      vendedorAuthUid: validado.vendedorId,
+      ...vinculos,
       vendedorNome: texto(validado.vendedor.nome || validado.vendedor.email),
-      equipeId: validado.equipeId,
       statusAtendimento: "AGUARDANDO_ATENDIMENTO",
       direcionadoEmTexto: agora,
       ultimaMovimentacaoTexto: agora,
@@ -734,6 +814,7 @@
     atualizarClienteComLegado,
     listarClientes,
     excluirClienteSemHistorico,
+    retornarClienteParaLeads,
     direcionarCliente,
     registrarAtendimento,
     reabrirParaRetrabalho,

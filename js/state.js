@@ -46,7 +46,7 @@ const State = {
     this.empresaNome = usuario.clientePlataformaNome || usuario.empresaNome || "";
 
     // Salvar em localStorage para persistência
-    this._salvarEmLocalStorage();
+    this._salvarCompatibilidadeSessao();
   },
 
   // ===============================
@@ -333,17 +333,18 @@ const State = {
   // ===============================
   // PERSISTÊNCIA
   // ===============================
-  _salvarEmLocalStorage() {
-    localStorage.setItem("usuario", JSON.stringify(this.usuario));
-    localStorage.setItem("usuarioId", this.usuarioId);
-    localStorage.setItem("tipoUsuario", this.tipoUsuario);
-    localStorage.setItem("clientePlataformaId", this.tenantId);
-    localStorage.setItem("clientePlataformaNome", this.empresaNome);
+  _salvarCompatibilidadeSessao() {
+    try {
+      sessionStorage.setItem("usuarioId", this.usuarioId || "");
+      sessionStorage.setItem("tipoUsuario", this.tipoUsuario || "");
+      sessionStorage.setItem("clientePlataformaId", this.tenantId || "");
+      sessionStorage.setItem("clientePlataformaNome", this.empresaNome || "");
+    } catch (_) {}
   },
 
   restaurarDoLocalStorage() {
     try {
-      const usuarioJson = localStorage.getItem("usuario");
+      const usuarioJson = sessionStorage.getItem("usuario");
       if (usuarioJson) {
         const usuario = JSON.parse(usuarioJson);
         this.setUsuario(usuario);

@@ -83,24 +83,70 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     return core.texto(usuario.nome || usuario.nomeCompleto || usuario.email);
   }
 
+  function saldoRealCentavos(valor) {
+    if (valor === undefined || valor === null || core.texto(valor) === "") return null;
+    const direto = Number(valor);
+    if (Number.isFinite(direto)) return Math.round(direto * 100);
+    const normalizado = core.texto(valor)
+      .replace(/[^\d,.-]/g, "")
+      .replace(/\.(?=\d{3}(?:\D|$))/g, "")
+      .replace(",", ".");
+    const convertido = Number(normalizado);
+    return Number.isFinite(convertido) ? Math.round(convertido * 100) : null;
+  }
+
+  function saldoClienteParaBloqueioVenda(cliente = {}) {
+    const camposReais = ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"];
+    for (const campo of camposReais) {
+      const centavos = saldoRealCentavos(cliente?.[campo]);
+      if (centavos !== null) return centavos;
+    }
+    return core.centavosDe(cliente, "saldoDevedorCentavos");
+  }
+
   function idUsuario(uid, usuario) {
     return core.texto(usuario.id || usuario.usuarioId || uid);
   }
 
-  async function localizarClienteNaTransacao(transaction, clienteId) {
-    const operacionalRef = db.collection("clientes_operacionais").doc(clienteId);
-    const operacionalSnap = await transaction.get(operacionalRef);
-    if (operacionalSnap.exists) {
-      return { ref: operacionalRef, snap: operacionalSnap, colecao: "clientes_operacionais" };
+  async function localizarClienteNaTransacao(transaction, clienteId, aliases = {}) {
+    const candidatos = [...new Set([
+      clienteId, aliases.clienteOperacionalId, aliases.clienteLegadoId, aliases.clienteId
+    ].map(core.texto).filter(Boolean))];
+
+    for (const id of candidatos) {
+      const operacionalRef = db.collection("clientes_operacionais").doc(id);
+      const operacionalSnap = await transaction.get(operacionalRef);
+      if (operacionalSnap.exists) {
+        return { ref: operacionalRef, snap: operacionalSnap, colecao: "clientes_operacionais", idCanonico: operacionalSnap.id };
+      }
     }
 
-    const legadoRef = db.collection("clientes").doc(clienteId);
-    const legadoSnap = await transaction.get(legadoRef);
-    if (legadoSnap.exists) {
-      return { ref: legadoRef, snap: legadoSnap, colecao: "clientes" };
+    for (const id of candidatos) {
+      const porLegado = db.collection("clientes_operacionais").where("clienteLegadoId", "==", id).limit(2);
+      const snap = await transaction.get(porLegado);
+      if (!snap.empty && snap.docs.length === 1) {
+        return { ref: snap.docs[0].ref, snap: snap.docs[0], colecao: "clientes_operacionais", idCanonico: snap.docs[0].id };
+      }
     }
 
-    return { ref: operacionalRef, snap: operacionalSnap, colecao: "clientes_operacionais" };
+    for (const id of candidatos) {
+      const legadoRef = db.collection("clientes").doc(id);
+      const legadoSnap = await transaction.get(legadoRef);
+      if (legadoSnap.exists) {
+        const operacionalId = core.texto(legadoSnap.data()?.clienteOperacionalId);
+        if (operacionalId) {
+          const operacionalRef = db.collection("clientes_operacionais").doc(operacionalId);
+          const operacionalSnap = await transaction.get(operacionalRef);
+          if (operacionalSnap.exists) {
+            return { ref: operacionalRef, snap: operacionalSnap, colecao: "clientes_operacionais", idCanonico: operacionalSnap.id };
+          }
+        }
+        return { ref: legadoRef, snap: legadoSnap, colecao: "clientes", idCanonico: legadoSnap.id };
+      }
+    }
+
+    const ref = db.collection("clientes_operacionais").doc(clienteId);
+    return { ref, snap: await transaction.get(ref), colecao: "clientes_operacionais", idCanonico: clienteId };
   }
 
   async function registrarVenda(dadosRecebidos, contexto) {
@@ -142,11 +188,12 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     return db.runTransaction(async transaction => {
       const [caixaSnap, clienteLocalizado, vendaSnap] = await Promise.all([
         transaction.get(caixaRef),
-        localizarClienteNaTransacao(transaction, clienteId),
+        localizarClienteNaTransacao(transaction, clienteId, entrada),
         transaction.get(vendaRef)
       ]);
       const clienteRef = clienteLocalizado.ref;
       const clienteSnap = clienteLocalizado.snap;
+      const clienteIdCanonico = core.texto(clienteLocalizado.idCanonico || clienteId);
       if (!caixaSnap.exists) erro("not-found", "Caixa não encontrado.");
       if (!clienteSnap.exists) erro("not-found", "Cliente não encontrado.");
       const caixa = caixaSnap.data() || {};
@@ -162,8 +209,8 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         return { ok: true, modo: "IDEMPOTENTE", vendaId, operacaoId };
       }
 
-      const saldoClienteCentavos = core.centavosDe(cliente, "saldoDevedorCentavos", ["saldoDevedor", "saldo"]);
-      if (saldoClienteCentavos > 0 || cliente.possuiVendaAtiva === true || core.texto(cliente.vendaAtivaId)) {
+      const saldoClienteCentavos = saldoClienteParaBloqueioVenda(cliente);
+      if (saldoClienteCentavos > 0) {
         erro("failed-precondition", "Cliente possui saldo devedor ativo. Nova venda bloqueada.");
       }
 
@@ -178,8 +225,8 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         excluido: false,
         operacaoId,
         idempotencyKey: vendaId,
-        clienteId,
-        clienteOperacionalId: clienteId,
+        clienteId: clienteIdCanonico,
+        clienteOperacionalId: clienteIdCanonico,
         clienteNome,
         clientePlataformaId: tenantId,
         clientePlataformaNome: core.texto(usuario.clientePlataformaNome || usuario.empresaNome),
@@ -224,8 +271,8 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
           excluido: false,
           clientePlataformaId: tenantId,
           vendaId,
-          clienteId,
-          clienteOperacionalId: clienteId,
+          clienteId: clienteIdCanonico,
+          clienteOperacionalId: clienteIdCanonico,
           clienteNome,
           vendedorId,
           vendedorAuthUid: uid,
@@ -382,7 +429,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         parcela.clienteId,
         "Cliente"
       );
-      const clienteLocalizado = await localizarClienteNaTransacao(transaction, clienteId);
+      const clienteLocalizado = await localizarClienteNaTransacao(transaction, clienteId, entrada);
       const clienteRef = clienteLocalizado.ref;
       const clienteSnap = clienteLocalizado.snap;
       if (!clienteSnap.exists) erro("not-found", "Cliente não encontrado.");
@@ -536,8 +583,10 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         saldoDevedorCentavos: calculo.novoSaldoClienteCentavos,
         saldoDevedor: core.reais(calculo.novoSaldoClienteCentavos),
         saldo: core.reais(calculo.novoSaldoClienteCentavos),
-        status: core.statusAtivoAnterior(cliente.status, calculo.novoSaldoClienteCentavos, "ATIVO"),
-        statusCliente: core.statusAtivoAnterior(cliente.statusCliente || cliente.status, calculo.novoSaldoClienteCentavos, "ATIVO"),
+        status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
+        statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
+        possuiVendaAtiva: calculo.novoSaldoClienteCentavos > 0,
+        vendaAtivaId: calculo.novoSaldoClienteCentavos > 0 ? core.texto(cliente.vendaAtivaId || vendaId) : "",
         atualizadoEm: agora
       });
 

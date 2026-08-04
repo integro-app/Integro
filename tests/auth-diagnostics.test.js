@@ -217,11 +217,11 @@ test("redirecionamento por perfil permanece compatível", () => {
     [{ tipoUsuario: "usuario_integro" }, ""],
     [{ tipoUsuario: "master_local" }, "master-local.html"],
     [{ tipoUsuario: "usuario_cliente", cargoChave: "gerente" }, "master-local.html"],
-    [{ tipoUsuario: "usuario_cliente", cargoChave: "supervisor" }, "supervisor.html"],
-    [{ tipoUsuario: "usuario_cliente", cargoChave: "financeiro" }, "financeiro.html"],
-    [{ tipoUsuario: "usuario_cliente", cargoChave: "auditor" }, "auditor.html"],
-    [{ tipoUsuario: "usuario_cliente", cargoChave: "vendedor" }, "vendedor.html"],
-    [{ tipoUsuario: "usuario_cliente", cargoChave: "captador" }, "captador.html"]
+    [{ tipoUsuario: "usuario_cliente", cargoChave: "supervisor" }, "master-local.html"],
+    [{ tipoUsuario: "usuario_cliente", cargoChave: "financeiro" }, "master-local.html"],
+    [{ tipoUsuario: "usuario_cliente", cargoChave: "auditor" }, "master-local.html"],
+    [{ tipoUsuario: "usuario_cliente", cargoChave: "vendedor" }, "master-local.html"],
+    [{ tipoUsuario: "usuario_cliente", cargoChave: "captador" }, "master-local.html"]
   ];
 
   casos.forEach(([usuario, rota]) => {

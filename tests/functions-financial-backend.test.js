@@ -91,6 +91,25 @@ test("cliente web usa callables e não depende da transação protegida por regr
 test("backend financeiro localiza cliente operacional e preserva fallback legado", () => {
   const callables = ler("functions/financial-callables.js");
   assert.match(callables, /db\.collection\("clientes_operacionais"\)\.doc\(clienteId\)/);
-  assert.match(callables, /db\.collection\("clientes"\)\.doc\(clienteId\)/);
-  assert.equal((callables.match(/localizarClienteNaTransacao\(transaction, clienteId\)/g) || []).length, 3);
+  assert.match(callables, /db\.collection\("clientes"\)\.doc\(id\)/);
+  assert.match(callables, /where\("clienteLegadoId", "==", id\)/);
+  assert.equal((callables.match(/localizarClienteNaTransacao\(transaction, clienteId, entrada\)/g) || []).length, 2);
+});
+test("backend de venda bloqueia somente por saldo monetario real", () => {
+  const callables = ler("functions/financial-callables.js");
+  assert.match(callables, /function saldoClienteParaBloqueioVenda/);
+  assert.match(callables, /const camposReais = \["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"\]/);
+  assert.match(callables, /const saldoClienteCentavos = saldoClienteParaBloqueioVenda\(cliente\)/);
+  assert.doesNotMatch(callables, /saldoClienteCentavos > 0 \|\| cliente\.possuiVendaAtiva/);
+  assert.doesNotMatch(callables, /saldoClienteCentavos > 0 \|\| core\.texto\(cliente\.vendaAtivaId\)/);
+});
+test("backend limpa flags de venda ativa quando pagamento quita saldo", () => {
+  const callables = ler("functions/financial-callables.js");
+  assert.match(callables, /possuiVendaAtiva: calculo\.novoSaldoClienteCentavos > 0/);
+  assert.match(callables, /vendaAtivaId: calculo\.novoSaldoClienteCentavos > 0 \? core\.texto\(cliente\.vendaAtivaId \|\| vendaId\) : ""/);
+});
+test("backend marca cliente sem saldo como inativo", () => {
+  const callables = ler("functions/financial-callables.js");
+  assert.match(callables, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
+  assert.match(callables, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
 });

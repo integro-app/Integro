@@ -3,6 +3,7 @@
 
   let usuarioAtual = null;
   let instalado = false;
+  let carregamentoAtual = null;
   const originais = {};
 
   function acesso(usuario = usuarioAtual || {}) {
@@ -282,25 +283,36 @@
   }
 
   async function carregarTudoPerfilUnificado() {
-    const perfil = acesso().perfil;
-    if (!perfil || perfil === "master_local") return originais.carregarTudoMasterLocal?.();
+    if (carregamentoAtual) return carregamentoAtual;
+    carregamentoAtual = (async () => {
+      const perfil = acesso().perfil;
+      if (!perfil || perfil === "master_local") return originais.carregarTudoMasterLocal?.();
 
-    const clientes = await carregarClientesPorPerfil();
-    const [vendas, pagamentos, parcelas, historicoCobrancas, solicitacoes, caixas, usuarios, equipes, logs] = await Promise.all([
-      perfil === "vendedor"
-        ? carregarVendasVendedor(clientes)
-        : carregarColecaoPorPerfil(CONFIG.COLECOES.VENDAS, CONFIG.LIMITS?.VENDAS || 500),
-      carregarPagamentosHojePorPerfil(),
-      carregarColecaoPorPerfil(CONFIG.COLECOES.PARCELAS || "parcelas", CONFIG.LIMITS?.PARCELAS || 1200),
-      carregarColecaoPorPerfil(CONFIG.COLECOES.HISTORICO_COBRANCAS || "historicoCobrancas", CONFIG.LIMITS?.HISTORICO_COBRANCAS || 600),
-      carregarColecaoPorPerfil(CONFIG.COLECOES.SOLICITACOES, CONFIG.LIMITS?.SOLICITACOES || 300),
-      perfil === "vendedor"
-        ? carregarCaixasVendedor()
-        : carregarColecaoPorPerfil(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 300),
-      carregarUsuariosPorPerfil(),
-      carregarEquipesPorPerfil(),
-      perfil === "auditor" ? consultar(CONFIG.COLECOES.LOGS, [], CONFIG.LIMITS?.LOGS || 300) : []
-    ]);
+      const clientes = await carregarClientesPorPerfil();
+      const seguro = async (nome, executor, padrao = []) => {
+        try {
+          return await executor();
+        } catch (erro) {
+          console.error(`[ÍNTEGRO ${perfil.toUpperCase()}] Falha ao carregar ${nome}.`, erro);
+          return padrao;
+        }
+      };
+
+      const [vendas, pagamentos, parcelas, historicoCobrancas, solicitacoes, caixas, usuarios, equipes, logs] = await Promise.all([
+        seguro("vendas", () => perfil === "vendedor"
+          ? carregarVendasVendedor(clientes)
+          : carregarColecaoPorPerfil(CONFIG.COLECOES.VENDAS, CONFIG.LIMITS?.VENDAS || 500)),
+        seguro("pagamentos", carregarPagamentosHojePorPerfil),
+        seguro("parcelas", () => carregarColecaoPorPerfil(CONFIG.COLECOES.PARCELAS || "parcelas", CONFIG.LIMITS?.PARCELAS || 1200)),
+        seguro("histórico de cobranças", () => carregarColecaoPorPerfil(CONFIG.COLECOES.HISTORICO_COBRANCAS || "historicoCobrancas", CONFIG.LIMITS?.HISTORICO_COBRANCAS || 600)),
+        seguro("solicitações", () => carregarColecaoPorPerfil(CONFIG.COLECOES.SOLICITACOES, CONFIG.LIMITS?.SOLICITACOES || 300)),
+        seguro("caixas", () => perfil === "vendedor"
+          ? carregarCaixasVendedor()
+          : carregarColecaoPorPerfil(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 300)),
+        seguro("usuários", carregarUsuariosPorPerfil),
+        seguro("equipes", carregarEquipesPorPerfil),
+        perfil === "auditor" ? seguro("logs", () => consultar(CONFIG.COLECOES.LOGS, [], CONFIG.LIMITS?.LOGS || 300)) : []
+      ]);
 
     State.setClientes?.(clientes);
     State.setVendas?.(vendas);
@@ -324,9 +336,17 @@
     try { window.renderCaixas?.(); } catch (e) { console.warn(e); }
     try { window.renderSolicitacoes?.(); } catch (e) { console.warn(e); }
 
-    document.dispatchEvent(new CustomEvent("integro-perfil-dados-carregados", {
-      detail: { usuario: usuarioAtual, perfil, escopo: window.IntegroAcesso?.escopoConsulta?.(usuarioAtual) }
-    }));
+      document.dispatchEvent(new CustomEvent("integro-perfil-dados-carregados", {
+        detail: { usuario: usuarioAtual, perfil, escopo: window.IntegroAcesso?.escopoConsulta?.(usuarioAtual) }
+      }));
+      return { clientes, vendas, pagamentos, parcelas, historicoCobrancas, solicitacoes, caixas, usuarios, equipes, logs };
+    })();
+
+    try {
+      return await carregamentoAtual;
+    } finally {
+      carregamentoAtual = null;
+    }
   }
 
   function protegerAcoes() {

@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const path = require("node:path");
 
 global.window = global;
 global.IntegroOperacional = {
@@ -664,11 +665,21 @@ test("cliente ativo, caixa fechado, tenant incorreto e vendedor incorreto bloque
   ), erro => erro.code === "ERRO_BLOQUEADO_CAIXA_FECHADO");
 
   const ativo = contextoVendaTransacional();
-  ativo.db.atualizar("clientes/cliente_1", { possuiVendaAtiva: true });
+  ativo.db.atualizar("clientes/cliente_1", { saldoDevedorCentavos: 1 });
   await assert.rejects(
     registrarVendaTransacional(ativo.entrada),
     erro => erro.code === "ERRO_BLOQUEADO_CLIENTE_ATIVO"
   );
+
+  const legadoQuitado = contextoVendaTransacional();
+  legadoQuitado.db.atualizar("clientes/cliente_1", {
+    possuiVendaAtiva: true,
+    vendaAtivaId: "venda_quitada",
+    saldoDevedorCentavos: 25000,
+    saldoDevedor: 0,
+    saldo: 0
+  });
+  await assert.doesNotReject(registrarVendaTransacional(legadoQuitado.entrada));
 
   const fechado = contextoVendaTransacional();
   fechado.db.atualizar("caixas/caixa_1", { status: "FECHADO" });
@@ -1838,4 +1849,14 @@ test("leituras do financeiro por período calculam resumo real", async () => {
   assert.equal(resumo.totalDebitosCentavos, 2700);
   assert.equal(resumo.saldoCentavos, 3300);
   assert.equal(resumo.porTipo.PAGAMENTO.creditosCentavos, 5000);
+});
+test("fallback local limpa flags de venda ativa quando pagamento quita saldo", () => {
+  const codigo = fs.readFileSync(path.join(__dirname, "..", "js", "services", "financial-operations.js"), "utf8");
+  assert.match(codigo, /possuiVendaAtiva: calculo\.novoSaldoClienteCentavos > 0/);
+  assert.match(codigo, /vendaAtivaId: calculo\.novoSaldoClienteCentavos > 0 \? texto\(cliente\.vendaAtivaId \|\| vendaId\) : ""/);
+});
+test("fallback local marca cliente sem saldo como inativo", () => {
+  const codigo = fs.readFileSync(path.join(__dirname, "..", "js", "services", "financial-operations.js"), "utf8");
+  assert.match(codigo, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
+  assert.match(codigo, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
 });

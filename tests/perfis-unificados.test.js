@@ -39,3 +39,14 @@ test("entradas legadas redirecionam ao painel e mantêm fallback explícito", ()
     assert.match(html, /location\.replace\("master-local\.html"/);
   }
 });
+
+
+test("vendedor usa carregamento único e consulta canônica de clientes", () => {
+  const perfis = read("js/perfis-unificados.js");
+  const clientes = read("js/services/clientes-service.js");
+  const master = read("js/master-local.js");
+  assert.match(perfis, /if \(carregamentoAtual\) return carregamentoAtual/);
+  assert.match(clientes, /\["vendedorAuthUid", authUid\]/);
+  assert.match(clientes, /for \(const \[campo, valor\] of tentativas\)/);
+  assert.match(master, /executarUmaVez/);
+});

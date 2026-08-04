@@ -729,6 +729,25 @@ test("clientes: vendedor cria somente cliente proprio e nao altera cliente de ou
   });
   await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_novo_v1"), proprio));
   await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "clientes", "cliente_legado_v1"), proprio));
+  const criadoPeloService = clienteOperacional({
+    vendedorId: "doc_legado_vendedor",
+    vendedorAuthUid: profiles.vendedor1.uid,
+    vendedorUid: profiles.vendedor1.uid,
+    criadoPor: profiles.vendedor1.uid,
+    criadoPorId: profiles.vendedor1.uid,
+    documentoNormalizado: "22345678901",
+    telefoneNormalizado: "11999990002",
+    telefonesNormalizados: ["11999990002"]
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_service_v1"), criadoPeloService));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "clientes", "cliente_service_legado_v1"), criadoPeloService));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "logs", "log_cliente_service_v1"), tenantFields({
+    tipoAcao: "CLIENTE_CRIADO",
+    usuarioAuthUid: profiles.vendedor1.uid,
+    usuarioId: profiles.vendedor1.uid,
+    clienteId: "cliente_service_v1",
+    criadoEm: "ts"
+  })));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_outro_v2"), {
     ...proprio,
     vendedorId: profiles.vendedor2.uid,
