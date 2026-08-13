@@ -1,0 +1,307 @@
+/* =========================================================
+   ÍNTEGRO DESIGN SYSTEM • Camada segura e progressiva
+   Versão: 2026-08-05-v2
+
+   REGRA DE COMPATIBILIDADE:
+   - Não sobrescreve body, layout, sidebar, menu, topbar, login,
+     loader ou componentes legados já aprovados.
+   - Só estiliza elementos que aderirem explicitamente por
+     data-integro-ui-component="...".
+   - Mantém os tokens disponíveis para migração gradual.
+   ========================================================= */
+
+:root {
+  /* Marca */
+  --it-navy-950: #041326;
+  --it-navy-900: #071a33;
+  --it-navy-850: #0a2346;
+  --it-navy-800: #0d2d59;
+  --it-blue-600: #1677ff;
+  --it-blue-100: #eaf3ff;
+  --it-orange-600: #f57c00;
+  --it-orange-500: #ff8a00;
+  --it-orange-400: #ffa31a;
+  --it-orange-100: #fff2df;
+
+  /* Neutros */
+  --it-white: #ffffff;
+  --it-slate-950: #0f172a;
+  --it-slate-900: #172033;
+  --it-slate-700: #334155;
+  --it-slate-600: #475569;
+  --it-slate-500: #64748b;
+  --it-slate-400: #94a3b8;
+  --it-slate-300: #cbd5e1;
+  --it-slate-200: #e2e8f0;
+  --it-slate-100: #f1f5f9;
+  --it-slate-50: #f8fafc;
+  --it-canvas: #f3f6fa;
+
+  /* Estados */
+  --it-success-600: #0f9f68;
+  --it-success-100: #e8f8f1;
+  --it-danger-600: #dc3545;
+  --it-danger-100: #fff0f2;
+  --it-warning-700: #b85c00;
+  --it-warning-100: #fff4dd;
+  --it-info-600: #1677ff;
+  --it-info-100: #eaf3ff;
+  --it-purple-600: #7c3aed;
+  --it-purple-100: #f2ebff;
+
+  /* Tipografia e escala */
+  --it-font: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --it-text-xs: 0.6875rem;
+  --it-text-sm: 0.8125rem;
+  --it-text-md: 0.9375rem;
+  --it-text-lg: 1.0625rem;
+  --it-text-xl: 1.25rem;
+  --it-text-2xl: clamp(1.45rem, 1.2rem + .7vw, 1.9rem);
+
+  /* Espaçamento */
+  --it-space-1: 4px;
+  --it-space-2: 8px;
+  --it-space-3: 12px;
+  --it-space-4: 16px;
+  --it-space-5: 20px;
+  --it-space-6: 24px;
+  --it-space-8: 32px;
+  --it-space-10: 40px;
+
+  /* Componentes */
+  --it-control-h: 44px;
+  --it-control-h-lg: 48px;
+  --it-radius-sm: 10px;
+  --it-radius-md: 14px;
+  --it-radius-lg: 18px;
+  --it-radius-xl: 22px;
+  --it-radius-pill: 999px;
+  --it-border: 1px solid var(--it-slate-200);
+  --it-shadow-xs: 0 1px 2px rgba(15, 23, 42, .04);
+  --it-shadow-sm: 0 8px 24px rgba(15, 23, 42, .06);
+  --it-shadow-md: 0 16px 38px rgba(15, 23, 42, .08);
+  --it-shadow-overlay: 0 28px 80px rgba(2, 6, 23, .22);
+  --it-focus: 0 0 0 3px rgba(245, 124, 0, .16);
+
+  /* Shell responsivo */
+  --it-mobile-breakpoint: 980px;
+  --it-mobile-gutter: 12px;
+  --it-mobile-control: 48px;
+  --it-mobile-radius: 16px;
+  --it-mobile-sidebar: min(86vw, 326px);
+  --it-z-header: 9200;
+  --it-z-overlay: 9800;
+  --it-z-sidebar: 9900;
+  --it-z-modal: 10100;
+
+  /* Aliases de compatibilidade: definidos somente aqui durante a migração dos HTML legados. */
+  --bg: var(--it-canvas);
+  --card: var(--it-white);
+  --text: var(--it-navy-900);
+  --muted: var(--it-slate-500);
+  --line: var(--it-slate-200);
+  --nav: var(--it-navy-950);
+  --nav2: var(--it-navy-800);
+  --side: var(--it-navy-900);
+  --side2: var(--it-navy-800);
+  --sidebar: var(--it-navy-900);
+  --sidebar-2: var(--it-navy-800);
+  --orange: var(--it-orange-500);
+  --orange2: var(--it-orange-400);
+  --orange-2: var(--it-orange-400);
+  --green: var(--it-success-600);
+  --blue: var(--it-blue-600);
+  --red: var(--it-danger-600);
+  --purple: var(--it-purple-600);
+  --cyan: #0f9f94;
+  --shadow: var(--it-shadow-sm);
+  --iv-navy: var(--it-navy-950);
+  --iv-navy-2: var(--it-navy-800);
+  --iv-orange: var(--it-orange-500);
+  --iv-orange-2: var(--it-orange-400);
+  --iv-border: var(--it-slate-200);
+  --iv-soft: var(--it-slate-50);
+  --iv-text: var(--it-slate-950);
+  --iv-muted: var(--it-slate-500);
+  --iv-green: var(--it-success-600);
+  --iv-red: var(--it-danger-600);
+  --iv-blue-soft: var(--it-blue-100);
+  --integro-sidebar-width: 315px;
+  --integro-sidebar-hidden-x: -340px;
+  --integro-sidebar-mobile-width: 290px;
+}
+
+/* A camada v2 é estritamente opt-in. */
+[data-integro-ui-component] {
+  box-sizing: border-box;
+}
+
+[data-integro-ui-component] *,
+[data-integro-ui-component] *::before,
+[data-integro-ui-component] *::after {
+  box-sizing: border-box;
+}
+
+[data-integro-ui-component="surface"] {
+  border: var(--it-border);
+  border-radius: var(--it-radius-lg);
+  background: var(--it-white);
+  box-shadow: var(--it-shadow-sm);
+}
+
+[data-integro-ui-component="button"] {
+  min-height: var(--it-control-h);
+  padding: 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--it-slate-200);
+  border-radius: var(--it-radius-md);
+  background: var(--it-white);
+  color: var(--it-navy-900);
+  font-family: var(--it-font);
+  font-size: var(--it-text-sm);
+  font-weight: 750;
+  line-height: 1;
+  cursor: pointer;
+}
+
+[data-integro-ui-component="button"][data-variant="primary"] {
+  border-color: var(--it-orange-500);
+  background: linear-gradient(135deg, var(--it-orange-500), var(--it-orange-600));
+  color: var(--it-white);
+}
+
+[data-integro-ui-component="button"][data-variant="success"] {
+  border-color: var(--it-success-600);
+  background: var(--it-success-600);
+  color: var(--it-white);
+}
+
+[data-integro-ui-component="button"][data-variant="danger"] {
+  border-color: var(--it-danger-600);
+  background: var(--it-danger-600);
+  color: var(--it-white);
+}
+
+[data-integro-ui-component="button"]:disabled,
+[data-integro-ui-component="button"][aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
+[data-integro-ui-component="field"] {
+  width: 100%;
+  min-height: var(--it-control-h);
+  padding: 10px 12px;
+  border: 1px solid var(--it-slate-300);
+  border-radius: var(--it-radius-md);
+  background: var(--it-white);
+  color: var(--it-slate-900);
+  font-family: var(--it-font);
+  font-size: var(--it-text-sm);
+}
+
+[data-integro-ui-component="field"]:focus,
+[data-integro-ui-component="button"]:focus-visible {
+  outline: none;
+  border-color: var(--it-orange-500);
+  box-shadow: var(--it-focus);
+}
+
+[data-integro-ui-component="badge"] {
+  min-height: 24px;
+  padding: 4px 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--it-radius-pill);
+  background: var(--it-slate-100);
+  color: var(--it-slate-700);
+  font-family: var(--it-font);
+  font-size: var(--it-text-xs);
+  font-weight: 800;
+  line-height: 1;
+}
+
+[data-integro-ui-component="table-region"] {
+  width: 100%;
+  overflow: auto;
+  border: var(--it-border);
+  border-radius: var(--it-radius-lg);
+  background: var(--it-white);
+}
+
+[data-integro-ui-component="table"] {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--it-font);
+}
+
+[data-integro-ui-component="table"] th,
+[data-integro-ui-component="table"] td {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--it-slate-200);
+  text-align: left;
+  vertical-align: middle;
+}
+
+[data-integro-ui-component="table"] th {
+  background: var(--it-slate-50);
+  color: var(--it-slate-600);
+  font-size: var(--it-text-xs);
+  font-weight: 850;
+  letter-spacing: .45px;
+  text-transform: uppercase;
+}
+
+/* Utilitários seguros para novos módulos. */
+.integro-ds-stack { display: grid; gap: var(--it-space-4); }
+.integro-ds-row { display: flex; align-items: center; gap: var(--it-space-3); flex-wrap: wrap; }
+.integro-ds-actions { display: flex; align-items: center; justify-content: flex-end; gap: var(--it-space-2); flex-wrap: wrap; }
+.integro-ds-muted { color: var(--it-slate-500); }
+.integro-ds-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+@media (max-width: 1180px) {
+  [data-integro-ui-component="surface"] { border-radius: var(--it-radius-md); }
+}
+
+@media (max-width: 980px) {
+  :root { --it-mobile-gutter: 12px; --it-mobile-control: 48px; }
+  .integro-ds-actions > [data-integro-ui-component="button"] { flex: 1 1 auto; }
+}
+
+@media (max-width: 720px) {
+  [data-integro-ui-component="button"] { min-height: 46px; }
+  [data-integro-ui-component="table-region"] { border-radius: var(--it-radius-md); }
+}
+
+@media (max-width: 460px) {
+  :root { --it-mobile-gutter: 10px; --it-mobile-control: 46px; }
+  .integro-ds-row,
+  .integro-ds-actions { align-items: stretch; flex-direction: column; }
+  .integro-ds-row > *,
+  .integro-ds-actions > * { width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-integro-ui-component] *,
+  [data-integro-ui-component] *::before,
+  [data-integro-ui-component] *::after {
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

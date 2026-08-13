@@ -1,0 +1,740 @@
+/* ÍNTEGRO — interface única v19. Fonte visual: integro-design-system.css */
+/* 2 — o período deixa de ocupar o topo global; datas ficam nos filtros de cada tela. */
+html body #dashboardPeriodoToolbar,
+html body .dashboard-periodo-toolbar-global,
+html body [data-periodo-global]{display:none!important}
+
+/* 1 — barra horizontal oficial para submódulos. */
+html body #integroContextoEstavel{display:none!important}
+html body .screen>.integro-module-nav,
+html body .screen>.section-card>.integro-module-nav,
+html body .screen .clientes-module-nav,
+html body [data-dashboard-navigation],
+html body .unified-profile-tabs,
+html body .config-module-nav,
+html body .subnav-tabs,
+html body .indicacoes-module-nav,
+html body .vendedor-operacao-tabs,
+html body .integro-operation-nav,
+html body .integro-account-nav,
+html body .integro-horizontal-module-nav{
+  display:flex!important;
+  align-items:center;
+  gap:6px;
+  width:100%;
+  min-height:50px;
+  padding:6px 10px;
+  margin:0 0 14px;
+  overflow-x:auto;
+  overflow-y:hidden;
+  border:1px solid var(--it-slate-200);
+  border-radius:16px;
+  background:#f6f9fd;
+  box-shadow:0 8px 22px rgba(16,35,63,.04);
+  scrollbar-width:thin;
+}
+html body .integro-horizontal-module-nav[hidden]{display:none!important}
+html body .integro-horizontal-module-nav button[hidden],
+html body .unified-profile-tabs button[hidden]{display:none!important}
+html body .integro-horizontal-module-nav button,
+html body .unified-profile-tabs button,
+html body .integro-module-nav button,
+html body .clientes-module-nav button,
+html body .config-module-nav button,
+html body .subnav-tabs button,
+html body .indicacoes-module-nav button,
+html body .vendedor-operacao-tabs button,
+html body [data-dashboard-navigation] button{
+  appearance:none;
+  flex:0 0 auto;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:38px;
+  padding:8px 13px;
+  border:0!important;
+  border-radius:11px!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  color:#52637d!important;
+  font:700 14px/1.1 inherit!important;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+html body .integro-horizontal-module-nav button:hover,
+html body .unified-profile-tabs button:hover,
+html body .integro-module-nav button:hover,
+html body .clientes-module-nav button:hover,
+html body [data-dashboard-navigation] button:hover{background:#fff!important;color:var(--it-navy-900)!important}
+html body .integro-horizontal-module-nav button.active,
+html body .integro-horizontal-module-nav button[aria-selected="true"],
+html body .unified-profile-tabs button.active,
+html body .unified-profile-tabs button[aria-selected="true"],
+html body .integro-module-nav button.active,
+html body .clientes-module-nav button.active,
+html body .config-module-nav button.active,
+html body .subnav-tabs button.active,
+html body .indicacoes-module-nav button.active,
+html body .vendedor-operacao-tabs button.active,
+html body [data-dashboard-navigation] button.active{
+  background:#fff!important;
+  color:var(--it-navy-900)!important;
+  box-shadow:0 4px 12px rgba(18,44,78,.13)!important;
+}
+html body .integro-horizontal-module-nav .material-symbols-rounded,
+html body .integro-horizontal-module-nav .material-symbols-outlined,
+html body .unified-profile-tabs .material-symbols-rounded,
+html body .unified-profile-tabs .material-symbols-outlined,
+html body .integro-module-nav .material-symbols-rounded,
+html body .integro-module-nav .material-symbols-outlined,
+html body .clientes-module-nav .material-symbols-rounded,
+html body .clientes-module-nav .material-symbols-outlined,
+html body [data-dashboard-navigation] .material-symbols-rounded,
+html body [data-dashboard-navigation] .material-symbols-outlined{color:var(--it-orange-500)!important;font-size:19px!important}
+
+/* O menu suspenso do dashboard passa a ser uma barra estática. */
+html body [data-dashboard-menu-trigger]{display:none!important}
+html body [data-dashboard-menu]{
+  position:static!important;
+  inset:auto!important;
+  display:flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  transform:none!important;
+  pointer-events:auto!important;
+  width:100%!important;
+  max-width:none!important;
+  padding:0!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+}
+html body [data-dashboard-menu][hidden]{display:flex!important}
+html body [data-dashboard-menu] .dashboard-navigation-title,
+html body [data-dashboard-menu] .dashboard-menu-title{display:none!important}
+
+/* 3 — sidebar enxuta e estável. */
+html body #integroSidebarMenu.integro-sidebar-menu-unificado{display:flex;flex-direction:column;gap:5px;padding:8px 12px 18px}
+html body #integroSidebarMenu .menu-item{position:relative;width:100%;min-height:42px}
+html body #integroSidebarMenu .integro-chat-menu-badge{margin-left:auto}
+
+/* 6 — cards KPI padronizados e semânticos. */
+html body :is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi]){
+  position:relative;
+  overflow:hidden;
+  min-height:138px;
+  padding:18px!important;
+  border:0!important;
+  border-radius:19px!important;
+  background:linear-gradient(135deg,var(--it-blue-600),#2e7be6)!important;
+  color:#fff!important;
+  box-shadow:0 11px 24px rgba(10,36,74,.14)!important;
+}
+html body :is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi])::after{
+  content:"";position:absolute;left:18px;right:18px;bottom:12px;height:3px;border-radius:999px;background:rgba(255,255,255,.16)
+}
+html body :is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi]) :is(h3,h4,strong,.value,.metric-value,.kpi-value){color:#fff!important}
+html body :is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi]) :is(p,small,span,.subtitle,.label){color:rgba(255,255,255,.88)!important}
+html body :is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi]) :is(.clientes-kpi-icon,.integro-kpi-icon,.icon,.metric-icon){
+  display:inline-flex;align-items:center;justify-content:center;min-width:42px;min-height:42px;padding:8px;border:1px solid rgba(255,255,255,.3)!important;border-radius:12px!important;background:rgba(255,255,255,.12)!important;color:#fff!important
+}
+html body :is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi]) :is(.material-symbols-rounded,.material-symbols-outlined){color:#fff!important}
+html body :is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi]) small:first-of-type{text-transform:uppercase;letter-spacing:.045em;font-weight:800}
+html body :is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi]) :is(.kpi-value,.metric-value,.clientes-kpi-value,.unified-kpi-value,.stat-value,.summary-value){font-size:clamp(22px,2vw,31px)!important;line-height:1.05!important}
+html body :is(.kpi-breakdown,.metric-breakdown,.kpi-subgrid,.summary-breakdown) strong{font-size:14px!important;line-height:1.15!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html body .integro-tone-positive{background:linear-gradient(135deg,#1fb67b,var(--it-success-600))!important}
+html body .integro-tone-negative{background:linear-gradient(135deg,#ef4d6d,var(--it-danger-600))!important}
+html body .integro-tone-neutral{background:linear-gradient(135deg,#397fe4,var(--it-blue-600))!important}
+html body .integro-tone-warning{background:linear-gradient(135deg,#ff9f16,var(--it-orange-500))!important}
+html body .integro-tone-commercial{background:linear-gradient(135deg,#9554ef,var(--it-purple-600))!important}
+html body .clientes-master-resumo{display:grid!important;grid-template-columns:repeat(4,minmax(190px,1fr));gap:12px!important}
+html body .clientes-kpi-card{display:flex!important;align-items:flex-start!important;gap:13px!important}
+html body .clientes-kpi-content{display:flex;min-width:0;flex-direction:column;gap:5px}
+html body .clientes-kpi-trend{display:flex;align-items:center;gap:4px;font-size:11px;font-weight:700}
+
+/* 5 — estrutura fixa da tela Clientes. */
+html body #clientes.active>.section-card,
+html body #clientes[style*="display: block"]>.section-card{display:flex!important;flex-direction:column;min-height:calc(100vh - 118px);max-height:calc(100vh - 92px);overflow:hidden}
+html body #clientesEmpresaMasterArea{display:flex;flex:1;min-height:0;flex-direction:column;gap:12px;overflow:hidden}
+html body #clientesEmpresaMasterResumo{order:1;flex:0 0 auto}
+html body #clientesEmpresaMasterArea>.clientes-master-searchbar{order:2;position:relative;z-index:3;flex:0 0 auto;background:#fff}
+html body #clientesEmpresaMasterArea>#filtrosClientesMaster{order:3}
+html body #clientesEmpresaMasterLista{order:4;display:flex;flex:1;min-height:230px;flex-direction:column;overflow:hidden}
+html body #clientesEmpresaMasterLista>.clientes-table-wrap{flex:1;min-height:0;overflow:auto;border:1px solid var(--it-slate-200);border-radius:16px;background:#eef4fa;padding:10px}
+html body #clientesEmpresaMasterLista table{background:transparent}
+html body #clientesEmpresaMasterLista thead{position:sticky;top:0;z-index:2}
+html body #clientesEmpresaMasterLista thead th{background:#edf4fb!important;box-shadow:0 1px 0 var(--it-slate-200)}
+html body #clientesEmpresaMasterLista>.integro-table-footer{flex:0 0 auto}
+html body #relatoriosClientesMaster{order:5;flex:0 0 auto;max-height:34vh;overflow:auto}
+html body .clientes-master-searchbar{display:grid!important;grid-template-columns:minmax(240px,1fr) auto auto auto;gap:9px;align-items:center}
+html body .clientes-periodo-filtro{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px;border:1px solid var(--it-slate-200);border-radius:14px;background:#f7faff}
+html body .clientes-periodo-filtro>strong{grid-column:1/-1;color:var(--it-navy-900)}
+html body .clientes-periodo-atalhos{grid-column:1/-1;display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+html body .clientes-periodo-atalhos button{min-height:36px;border:1px solid var(--it-slate-200);border-radius:9px;background:#fff;color:#405575;font-weight:800;cursor:pointer}
+html body .clientes-periodo-atalhos button.active{border-color:#ffb259;background:#fff5e8;color:#c86100}
+html body .clientes-periodo-campo{display:flex;flex-direction:column;gap:5px}
+html body .clientes-periodo-campo span{text-transform:uppercase;font-size:10px;font-weight:800;color:#6c7e98}
+html body .clientes-periodo-campo input{width:100%;min-height:40px;padding:8px 10px;border:1px solid var(--it-slate-200);border-radius:10px;background:#fff;color:var(--it-navy-900);font-weight:700}
+
+/* 4 — chat azul, com hierarquia de aplicativo de mensagens. */
+html body .integro-chat-unified{height:min(720px,calc(100vh - 150px));min-height:520px;border:1px solid #aac9ef;border-radius:20px;overflow:hidden;background:#eaf3ff;box-shadow:0 16px 40px rgba(5,40,83,.15)}
+html body .integro-chat-unified .integro-chat-list{width:330px;min-width:280px;border-right:1px solid rgba(255,255,255,.22);background:linear-gradient(180deg,#0b3c72,#082a51);color:#fff}
+html body .integro-chat-unified .integro-chat-head{padding:17px 16px 12px}
+html body .integro-chat-unified .integro-chat-head h2,
+html body .integro-chat-unified .integro-chat-head p{color:#fff!important}
+html body .integro-chat-head-actions{display:flex;align-items:center;gap:6px}
+html body .integro-chat-new-group{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:7px 10px;border:1px solid rgba(255,255,255,.25);border-radius:10px;background:rgba(255,255,255,.12);color:#fff;font-weight:800;cursor:pointer}
+html body .integro-chat-unified .integro-chat-search{margin:0 14px 10px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.12);color:#fff}
+html body .integro-chat-unified .integro-chat-search input{color:#fff;background:transparent}
+html body .integro-chat-unified .integro-chat-search input::placeholder{color:rgba(255,255,255,.72)}
+html body .integro-chat-unified .integro-chat-status{padding:0 16px 8px;color:rgba(255,255,255,.72);font-size:11px;font-weight:700}
+html body .integro-chat-unified .integro-chat-conversas{padding:0 8px 12px;overflow-y:auto}
+html body .integro-chat-unified .integro-chat-conversa{border:0;border-radius:13px;background:transparent;color:#fff}
+html body .integro-chat-unified .integro-chat-conversa:hover{background:rgba(255,255,255,.09)}
+html body .integro-chat-unified .integro-chat-conversa.active{background:#fff;color:var(--it-navy-950);box-shadow:0 8px 20px rgba(0,15,39,.22)}
+html body .integro-chat-unified .integro-chat-conversa:not(.active) :is(strong,small,.integro-chat-preview){color:rgba(255,255,255,.9)!important}
+html body .integro-chat-unified .integro-chat-thread{position:relative;background-color:#edf5ff;background-image:radial-gradient(rgba(30,91,157,.07) 1px,transparent 1px);background-size:18px 18px}
+html body .integro-chat-unified .integro-chat-thread-head{min-height:72px;border-bottom:1px solid #cfe0f3;background:#fff}
+html body .integro-chat-unified .integro-chat-mensagens{padding:22px;gap:7px}
+html body .integro-chat-unified .integro-chat-msg{max-width:min(72%,620px);border:1px solid #d7e3f0;border-radius:6px 16px 16px 16px;background:#fff;box-shadow:0 3px 9px rgba(17,54,92,.08)}
+html body .integro-chat-unified .integro-chat-msg.mine{border-color:#abd5ff;border-radius:16px 6px 16px 16px;background:#d9edff}
+html body .integro-chat-unified .integro-chat-msg p{white-space:pre-wrap;word-break:break-word}
+html body .integro-chat-unified .integro-chat-form{position:relative;display:flex;align-items:flex-end;gap:6px;margin:10px 12px 12px;padding:7px;border:1px solid #c4d7eb;border-radius:25px;background:#fff;box-shadow:0 5px 16px rgba(12,54,96,.1)}
+html body .integro-chat-unified .integro-chat-form textarea{flex:1;resize:none;min-height:24px;max-height:120px;padding:7px 3px;border:0;outline:0;background:transparent;color:var(--it-navy-900);font:500 14px/1.35 inherit}
+html body .integro-chat-composer-action,
+html body .integro-chat-unified .integro-chat-send{display:inline-flex;flex:0 0 38px;align-items:center;justify-content:center;width:38px;height:38px;border:0;border-radius:50%;cursor:pointer}
+html body .integro-chat-composer-action{background:transparent;color:#58708e}
+html body .integro-chat-unified .integro-chat-send{background:linear-gradient(135deg,#ff9d13,#ff7a00);color:#fff;box-shadow:0 5px 12px rgba(255,122,0,.28)}
+html body .integro-chat-emoji-menu{position:absolute;left:14px;bottom:72px;z-index:8;display:grid;grid-template-columns:repeat(6,38px);gap:4px;padding:9px;border:1px solid var(--it-slate-200);border-radius:14px;background:#fff;box-shadow:0 14px 32px rgba(10,42,80,.18)}
+html body .integro-chat-emoji-menu[hidden]{display:none!important}
+html body .integro-chat-emoji-menu button{height:36px;border:0;border-radius:8px;background:transparent;font-size:20px;cursor:pointer}
+html body .integro-chat-group-modal{position:absolute;inset:0;z-index:40;display:flex;align-items:center;justify-content:center}
+html body .integro-chat-group-modal[hidden]{display:none!important}
+html body .integro-chat-group-backdrop{position:absolute;inset:0;background:rgba(4,24,49,.65);backdrop-filter:blur(3px)}
+html body .integro-chat-group-card{position:relative;z-index:2;width:min(520px,calc(100% - 30px));max-height:88%;display:flex;flex-direction:column;overflow:hidden;border-radius:18px;background:#fff;box-shadow:0 24px 70px rgba(0,20,50,.35)}
+html body .integro-chat-group-card>header,
+html body .integro-chat-group-card>footer{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 18px;border-bottom:1px solid var(--it-slate-200)}
+html body .integro-chat-group-card>footer{justify-content:flex-end;border-top:1px solid var(--it-slate-200);border-bottom:0}
+html body .integro-chat-group-name,
+html body .integro-chat-history,
+html body .integro-chat-group-participants{margin:14px 18px 0}
+html body .integro-chat-group-name{display:flex;flex-direction:column;gap:6px;font-weight:800}
+html body .integro-chat-group-name input{min-height:42px;padding:9px 11px;border:1px solid var(--it-slate-200);border-radius:10px}
+html body .integro-chat-history{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0;border:0}
+html body .integro-chat-history legend{grid-column:1/-1;font-weight:800;margin-bottom:5px}
+html body .integro-chat-history label{display:flex;gap:9px;padding:10px;border:1px solid var(--it-slate-200);border-radius:11px;background:#f7faff}
+html body .integro-chat-history label span{display:flex;flex-direction:column;gap:2px}
+html body .integro-chat-group-participants{display:flex;min-height:0;flex-direction:column;gap:5px;padding-bottom:14px;overflow-y:auto}
+html body .integro-chat-group-participants>label{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:9px;padding:8px;border-radius:10px}
+html body .integro-chat-group-participants>label:hover{background:#f1f6fc}
+html body .integro-chat-avatar.mini{width:34px;height:34px;font-size:11px}
+html body .integro-chat-temporary{font-family:'Material Symbols Rounded';font-size:14px;vertical-align:middle}
+
+@media(max-width:1100px){
+  html body .clientes-master-resumo{grid-template-columns:repeat(2,minmax(180px,1fr))}
+}
+@media(max-width:760px){
+  html body .integro-horizontal-module-nav,
+  html body .unified-profile-tabs,
+  html body .integro-module-nav,
+  html body .clientes-module-nav{border-radius:12px;padding:5px}
+  html body .clientes-master-resumo{grid-template-columns:1fr}
+  html body .clientes-master-searchbar{grid-template-columns:1fr 1fr!important}
+  html body .clientes-search-field{grid-column:1/-1}
+  html body .clientes-master-searchbar .primary-btn{grid-column:auto}
+  html body .clientes-periodo-filtro{grid-template-columns:1fr}
+  html body .clientes-periodo-atalhos{grid-template-columns:1fr 1fr}
+  html body .clientes-periodo-campo{grid-column:1/-1}
+  html body .integro-chat-unified{height:calc(100vh - 110px);min-height:480px;display:block}
+  html body .integro-chat-unified .integro-chat-list{width:100%;height:42%;min-width:0;border-right:0;border-bottom:1px solid rgba(255,255,255,.25)}
+  html body .integro-chat-unified .integro-chat-thread{height:58%}
+  html body .integro-chat-new-group span:last-child{display:none}
+  html body .integro-chat-unified .integro-chat-msg{max-width:88%}
+}
+
+/* Notificações pertencem ao menu principal unificado. */
+html body #integroSidebarMenu>.integro-notificacoes-menu-lateral{display:none!important}
+
+
+/* Apenas uma barra de submódulos por tela, sempre no topo do conteúdo. */
+html body .screen>.integro-horizontal-module-nav[data-nav-unified]{
+  flex:0 0 auto!important;
+  width:100%!important;
+  margin:0 0 14px!important;
+}
+
+/* Dashboard: o antigo dropdown vira uma barra horizontal completa, sem o cartão estreito legado. */
+html body #dashboard>.integro-dashboard-nav-single[data-dashboard-navigation]{
+  position:relative!important;
+  display:flex!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:none!important;
+  min-height:50px!important;
+  margin:0 0 14px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+}
+html body #dashboard>.integro-dashboard-nav-single .integro-dashboard-dropdown{
+  position:static!important;
+  display:flex!important;
+  width:100%!important;
+  min-width:max-content!important;
+}
+html body #dashboard>.integro-dashboard-nav-single [data-dashboard-menu-trigger]{display:none!important}
+html body #dashboard>.integro-dashboard-nav-single [data-dashboard-menu]{
+  position:static!important;
+  inset:auto!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:max-content!important;
+  max-width:none!important;
+  max-height:none!important;
+  padding:0!important;
+  overflow:visible!important;
+  border:0!important;
+  background:transparent!important;
+  box-shadow:none!important;
+  visibility:visible!important;
+  opacity:1!important;
+  transform:none!important;
+  pointer-events:auto!important;
+}
+html body #dashboard>.integro-dashboard-nav-single [data-dashboard-menu][hidden]{display:flex!important}
+html body #dashboard .dashboard-menu-heading,
+html body #dashboard .dashboard-option-copy small,
+html body #dashboard .dashboard-option-check{display:none!important}
+html body #dashboard [data-dashboard-view]{min-height:38px!important;padding:8px 13px!important}
+html body #dashboard [data-dashboard-view] .dashboard-option-copy{display:block!important}
+html body #dashboard [data-dashboard-view] .dashboard-option-copy strong{font-size:14px!important;line-height:1.1!important;color:inherit!important}
+
+/* Cards complexos: valores auxiliares não podem crescer e virar reticências. */
+html body .dashboard-kpis-primary .kpi-breakdown strong,
+html body .dashboard-kpis-primary .kpi-breakdown span strong,
+html body .dashboard-kpis-primary .kpi-sub strong{
+  font-size:13px!important;
+  line-height:1.15!important;
+  letter-spacing:0!important;
+}
+html body .dashboard-kpis-primary .kpi-breakdown span{min-width:0!important}
+
+/* Ledger: textos técnicos longos ficam contidos em sua coluna. */
+html body #finViewLancamentos .unified-table{table-layout:fixed!important;min-width:1080px!important}
+html body #finViewLancamentos .unified-table th:nth-child(1){width:11%}
+html body #finViewLancamentos .unified-table th:nth-child(2){width:11%}
+html body #finViewLancamentos .unified-table th:nth-child(3){width:11%}
+html body #finViewLancamentos .unified-table th:nth-child(4){width:22%}
+html body #finViewLancamentos .unified-table th:nth-child(5){width:18%}
+html body #finViewLancamentos .unified-table th:nth-child(6){width:12%}
+html body #finViewLancamentos .unified-table th:nth-child(7){width:8%}
+html body #finViewLancamentos .unified-table th:nth-child(8){width:10%}
+html body #finViewLancamentos .unified-table td{
+  min-width:0!important;
+  max-width:0!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+  white-space:nowrap!important;
+}
+html body #finViewLancamentos .unified-table td :is(strong,span){max-width:100%}
+
+@media(max-width:760px){
+  html body #dashboard>.integro-dashboard-nav-single .integro-dashboard-dropdown{min-width:max-content!important}
+  html body #finViewLancamentos .unified-table td{max-width:none!important;white-space:normal!important;overflow-wrap:anywhere!important}
+}
+
+/* Dashboard padronizado com o mesmo esqueleto estrutural dos demais módulos. */
+html body #dashboard.dashboard-standardized{
+  width:100%;
+  min-width:0;
+}
+html body #dashboard.dashboard-standardized>.dashboard-section-card{
+  width:100%;
+  min-width:0;
+  padding:22px!important;
+  border:1px solid var(--it-slate-200)!important;
+  border-radius:22px!important;
+  background:#fff!important;
+  box-shadow:0 16px 38px rgba(15,35,64,.08)!important;
+}
+html body #dashboard .dashboard-page-header{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:18px!important;
+  margin:0 0 16px!important;
+}
+html body #dashboard .dashboard-page-title{min-width:0}
+html body #dashboard .dashboard-page-title h2{
+  margin:0!important;
+  color:var(--it-navy-900)!important;
+  font-size:30px!important;
+  line-height:1.08!important;
+  letter-spacing:-.7px!important;
+  font-weight:900!important;
+}
+html body #dashboard .dashboard-page-title p{
+  margin:6px 0 0!important;
+  color:#65758c!important;
+  font-size:14px!important;
+  line-height:1.35!important;
+  font-weight:650!important;
+}
+html body #dashboard .dashboard-page-actions{
+  position:relative;
+  z-index:90;
+  display:flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+}
+html body #dashboard #dashboardPeriodoToolbar{
+  display:flex!important;
+  position:relative!important;
+  z-index:90!important;
+  margin:0!important;
+  justify-content:flex-end!important;
+}
+html body #dashboard .dashboard-period-trigger,
+html body #dashboard .dashboard-refresh-btn{
+  min-height:42px!important;
+  border:1px solid var(--it-slate-200)!important;
+  border-radius:12px!important;
+  background:#fff!important;
+  color:var(--it-navy-900)!important;
+  box-shadow:none!important;
+  transform:none!important;
+}
+html body #dashboard .dashboard-period-trigger{
+  padding:6px 11px 6px 8px!important;
+}
+html body #dashboard .dashboard-period-trigger-icon{
+  width:30px!important;
+  height:30px!important;
+  border-radius:9px!important;
+}
+html body #dashboard .dashboard-period-trigger-copy small{font-size:8.5px!important}
+html body #dashboard .dashboard-period-trigger-copy strong{max-width:150px!important;font-size:12.5px!important}
+html body #dashboard .dashboard-refresh-btn{
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  padding:0 14px!important;
+  font-weight:850!important;
+  cursor:pointer!important;
+}
+html body #dashboard .dashboard-refresh-btn:hover,
+html body #dashboard .dashboard-period-trigger:hover{
+  border-color:#c8d6e6!important;
+  background:#f9fbfe!important;
+}
+html body #dashboard .dashboard-refresh-btn .material-symbols-rounded{
+  color:#183553!important;
+  font-size:19px!important;
+}
+
+/* Navegação do Dashboard: mesma barra horizontal do Financeiro, sem dropdown legado. */
+html body #dashboard>.dashboard-section-card>.integro-dashboard-nav-standard{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  gap:6px!important;
+  width:100%!important;
+  min-width:0!important;
+  min-height:50px!important;
+  margin:0 0 18px!important;
+  padding:6px 10px!important;
+  overflow-x:auto!important;
+  overflow-y:hidden!important;
+  border:1px solid var(--it-slate-200)!important;
+  border-radius:16px!important;
+  background:#f6f9fd!important;
+  box-shadow:0 8px 22px rgba(16,35,63,.04)!important;
+  scrollbar-width:none!important;
+}
+html body #dashboard>.dashboard-section-card>.integro-dashboard-nav-standard::-webkit-scrollbar{display:none!important}
+html body #dashboard .integro-dashboard-nav-standard [data-dashboard-view]{
+  appearance:none!important;
+  position:relative!important;
+  display:inline-flex!important;
+  visibility:visible!important;
+  opacity:1!important;
+  flex:0 0 auto!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  width:auto!important;
+  min-width:0!important;
+  min-height:38px!important;
+  padding:8px 13px!important;
+  border:0!important;
+  border-radius:11px!important;
+  background:transparent!important;
+  color:#52637d!important;
+  box-shadow:none!important;
+  white-space:nowrap!important;
+  cursor:pointer!important;
+}
+html body #dashboard .integro-dashboard-nav-standard [data-dashboard-view] .material-symbols-rounded{
+  color:var(--it-orange-500)!important;
+  font-size:19px!important;
+}
+html body #dashboard .integro-dashboard-nav-standard [data-dashboard-view].active,
+html body #dashboard .integro-dashboard-nav-standard [data-dashboard-view][aria-selected="true"]{
+  background:#fff!important;
+  color:var(--it-navy-900)!important;
+  box-shadow:0 4px 12px rgba(18,44,78,.13)!important;
+}
+
+/* Cards em grade completa e alinhada ao restante da interface. */
+html body #dashboard .dashboard-kpis-primary{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:12px!important;
+  width:100%!important;
+  min-width:0!important;
+  margin:0 0 18px!important;
+}
+html body #dashboard .dashboard-kpis-primary .kpi-card{
+  min-width:0!important;
+  min-height:174px!important;
+  padding:17px 17px 46px!important;
+  border-radius:18px!important;
+}
+html body #dashboard .dashboard-kpis-primary .kpi-icon{
+  width:44px!important;
+  height:44px!important;
+  border-radius:13px!important;
+}
+html body #dashboard .dashboard-kpis-primary .kpi-value{
+  font-size:clamp(23px,1.7vw,30px)!important;
+}
+html body #dashboard .dashboard-kpis-primary .kpi-breakdown{
+  gap:7px!important;
+  margin-top:10px!important;
+}
+html body #dashboard .dashboard-kpis-primary .kpi-breakdown span{
+  padding:6px 8px!important;
+}
+
+/* Blocos analíticos seguem a mesma borda, raio e densidade do Financeiro. */
+html body #dashboard .dashboard-analytics-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,2.05fr) minmax(300px,.95fr)!important;
+  gap:16px!important;
+  width:100%!important;
+  min-width:0!important;
+  margin:0 0 18px!important;
+}
+html body #dashboard .dashboard-analytics-grid>.panel,
+html body #dashboard .bottom-grid>.panel{
+  min-width:0!important;
+  margin:0!important;
+  padding:18px!important;
+  border:1px solid var(--it-slate-200)!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  box-shadow:0 8px 22px rgba(16,35,63,.045)!important;
+}
+html body #dashboard .dashboard-evolution-panel,
+html body #dashboard .dashboard-team-ranking-panel{min-height:390px!important}
+html body #dashboard .dashboard-evolution-chart{height:300px!important}
+html body #dashboard .dashboard-empty-state{min-height:218px!important}
+html body #dashboard .bottom-grid{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:16px!important;
+  width:100%!important;
+  min-width:0!important;
+}
+html body #dashboard .bottom-grid table{width:100%!important}
+
+@media(max-width:1320px){
+  html body #dashboard .dashboard-kpis-primary{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:1050px){
+  html body #dashboard .dashboard-kpis-primary{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  html body #dashboard .dashboard-analytics-grid{grid-template-columns:1fr!important}
+  html body #dashboard .dashboard-team-ranking-panel{min-height:auto!important}
+}
+@media(max-width:760px){
+  html body #dashboard.dashboard-standardized>.dashboard-section-card{padding:14px!important;border-radius:18px!important}
+  html body #dashboard .dashboard-page-header{align-items:flex-start!important;flex-direction:column!important}
+  html body #dashboard .dashboard-page-title h2{font-size:25px!important}
+  html body #dashboard .dashboard-page-actions{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto}
+  html body #dashboard #dashboardPeriodoToolbar{width:100%!important}
+  html body #dashboard .dashboard-period-trigger{width:100%!important;justify-content:flex-start!important}
+  html body #dashboard .dashboard-period-trigger-copy{flex:1!important}
+  html body #dashboard .dashboard-kpis-primary{grid-template-columns:1fr!important;gap:10px!important}
+  html body #dashboard .dashboard-kpis-primary .kpi-card{min-height:156px!important}
+  html body #dashboard .dashboard-evolution-chart{height:270px!important}
+}
+
+/* O vendedor permanece preso ao período do próprio caixa. */
+html body.perfil-vendedor #dashboard #dashboardPeriodoToolbar{display:none!important}
+
+
+/* =========================================================
+   PADRÃO ESTRUTURAL ÚNICO — v19
+   ========================================================= */
+html body[data-integro-page]:not([data-integro-page="login"]) .integro-page-header-standard,
+html body[data-integro-page]:not([data-integro-page="login"]) .topbar,
+html body[data-integro-page]:not([data-integro-page="login"]) .unified-profile-head{
+  min-height:58px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  margin:0 0 14px;padding:0;background:transparent;border:0;box-shadow:none;
+}
+html body[data-integro-page] .integro-page-header-standard h1,
+html body[data-integro-page] .integro-page-header-standard h2,
+html body[data-integro-page] .topbar h1,
+html body[data-integro-page] .topbar h2,
+html body[data-integro-page] .unified-profile-head h2{
+  margin:0;color:var(--it-navy-900);font-family:var(--it-font);font-size:var(--it-text-2xl);font-weight:900;letter-spacing:-.035em;line-height:1.08;
+}
+/* Texto abaixo do nome principal do módulo: proibido no padrão v19. */
+html body[data-integro-page] .topbar>div:first-child>p,
+html body[data-integro-page] .topbar>.top-left>div>p,
+html body[data-integro-page] .unified-profile-head>div:first-child>p,
+html body[data-integro-page] .integro-page-header-standard>div:first-child>p,
+html body[data-integro-page] .dashboard-page-header>div:first-child>p{display:none!important}
+html body[data-integro-page] .integro-page-actions,
+html body[data-integro-page] .unified-profile-actions,
+html body[data-integro-page] .top-actions,
+html body[data-integro-page] .actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+html body[data-integro-page] .unified-profile-module{
+  width:100%;padding:18px;border:1px solid var(--it-slate-200);border-radius:var(--it-radius-lg);background:var(--it-white);box-shadow:var(--it-shadow-sm);
+}
+html body[data-integro-page] .unified-profile-actions select,
+html body[data-integro-page] .top-actions select,
+html body[data-integro-page] select[data-integro-ui-component="field"]{
+  appearance:none;background-color:var(--it-white);background-image:linear-gradient(45deg,transparent 50%,var(--it-slate-500) 50%),linear-gradient(135deg,var(--it-slate-500) 50%,transparent 50%);
+  background-position:calc(100% - 17px) calc(50% - 2px),calc(100% - 12px) calc(50% - 2px);background-size:5px 5px,5px 5px;background-repeat:no-repeat;padding-right:34px;
+}
+html body[data-integro-page] .unified-table-wrap,
+html body[data-integro-page] .caixas-table-wrap,
+html body[data-integro-page] .integro-data-frame{max-width:100%;overflow:auto}
+html body[data-integro-page] .unified-table{min-width:760px;table-layout:fixed}
+html body[data-integro-page] .unified-table td,
+html body[data-integro-page] .unified-table th{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+html body[data-integro-page] #finViewResumo .unified-table{min-width:980px!important}
+html body[data-integro-page] #finViewResumo .unified-table td,
+html body[data-integro-page] #finViewResumo .unified-table th{overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+html body[data-integro-page] .config-page-header-standard{margin-bottom:14px}
+@media(max-width:980px){
+  html body[data-integro-page] .unified-profile-module{padding:14px;border-radius:var(--it-radius-md)}
+  html body[data-integro-page] .integro-page-header-standard,html body[data-integro-page] .topbar,html body[data-integro-page] .unified-profile-head{align-items:stretch}
+  html body[data-integro-page] .integro-page-actions,html body[data-integro-page] .unified-profile-actions,html body[data-integro-page] .top-actions,html body[data-integro-page] .actions{width:100%;justify-content:flex-start}
+}
+
+
+/* =========================================================
+   ESTRUTURA COMPARTILHADA EXATA — v20
+   Referência: Dashboard aprovado.
+   Ordem obrigatória: cabeçalho -> submenu -> conteúdo.
+   ========================================================= */
+html body[data-integro-page]:not([data-integro-page="login"]) main .screen.integro-shared-screen{
+  width:100%!important;min-width:0!important;margin:0!important;padding:0!important;
+}
+html body[data-integro-page]:not([data-integro-page="login"]) main .screen.integro-shared-screen>.section-card.integro-shared-surface{
+  width:100%!important;min-width:0!important;margin:0!important;padding:22px!important;
+  border:1px solid var(--it-slate-200)!important;border-radius:22px!important;background:#fff!important;
+  box-shadow:0 16px 38px rgba(15,35,64,.08)!important;overflow:visible!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-module,
+html body[data-integro-page] .integro-shared-surface .unified-profile-module.integro-shared-module{
+  width:100%!important;min-width:0!important;margin:0!important;padding:0!important;border:0!important;
+  border-radius:0!important;background:transparent!important;box-shadow:none!important;
+}
+html body[data-integro-page] .integro-shared-surface :is(#financeiroUnificadoRoot,#auditoriaUnificadaRoot){
+  width:100%!important;min-width:0!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-header{
+  display:flex!important;align-items:center!important;justify-content:space-between!important;gap:18px!important;
+  width:100%!important;min-width:0!important;min-height:42px!important;margin:0 0 16px!important;padding:0!important;
+  border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-header>div:first-child{min-width:0!important}
+html body[data-integro-page] .integro-shared-surface .integro-shared-header :is(h1,h2){
+  margin:0!important;color:var(--it-navy-900)!important;font-family:var(--it-font)!important;
+  font-size:30px!important;font-weight:900!important;line-height:1.08!important;letter-spacing:-.7px!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-header>div:first-child>p{display:none!important}
+html body[data-integro-page] .integro-shared-surface .integro-shared-actions{
+  display:flex!important;flex:0 0 auto!important;align-items:center!important;justify-content:flex-end!important;
+  gap:10px!important;width:auto!important;min-width:0!important;flex-wrap:wrap!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-actions select{
+  flex:0 0 auto!important;width:180px!important;min-width:160px!important;max-width:220px!important;
+  min-height:42px!important;margin:0!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-actions button{
+  flex:0 0 auto!important;min-height:42px!important;margin:0!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-nav-host{width:100%!important;margin:0!important;padding:0!important}
+html body[data-integro-page] .integro-shared-surface .integro-shared-nav{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:6px!important;
+  width:100%!important;min-width:0!important;min-height:50px!important;margin:0 0 18px!important;padding:6px 10px!important;
+  overflow-x:auto!important;overflow-y:hidden!important;border:1px solid var(--it-slate-200)!important;
+  border-radius:16px!important;background:#f6f9fd!important;box-shadow:0 8px 22px rgba(16,35,63,.04)!important;
+  scrollbar-width:none!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-nav::-webkit-scrollbar{display:none!important}
+html body[data-integro-page] .integro-shared-surface .integro-shared-nav>button{
+  appearance:none!important;display:inline-flex!important;visibility:visible!important;opacity:1!important;
+  flex:0 0 auto!important;align-items:center!important;justify-content:center!important;gap:8px!important;
+  width:auto!important;min-width:0!important;min-height:38px!important;margin:0!important;padding:8px 13px!important;
+  border:0!important;border-radius:11px!important;background:transparent!important;color:#52637d!important;
+  box-shadow:none!important;white-space:nowrap!important;cursor:pointer!important;font-weight:800!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-nav>button :is(.material-symbols-rounded,.material-symbols-outlined){
+  color:var(--it-orange-500)!important;font-size:19px!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-nav>button:is(.active,[aria-selected="true"]){
+  background:#fff!important;color:var(--it-navy-900)!important;box-shadow:0 4px 12px rgba(18,44,78,.13)!important;
+}
+html body[data-integro-page] .integro-shared-surface .unified-readonly-banner{margin:0 0 16px!important}
+html body[data-integro-page] .integro-shared-surface .unified-status:not(.show):empty{display:none!important;margin:0!important;padding:0!important}
+html body[data-integro-page] #configuracoes .config-page-header-standard{margin:0 0 16px!important}
+html body[data-integro-page] #configuracoes [data-config-navigation-host]{margin:0!important;padding:0!important}
+html body[data-integro-page] #clientes .clientes-master-resumo,
+html body[data-integro-page] #clientes .clientes-master-searchbar,
+html body[data-integro-page] #vendas .vendas-master-toolbar{width:100%!important;min-width:0!important}
+
+@media(max-width:760px){
+  html body[data-integro-page] main .screen.integro-shared-screen>.section-card.integro-shared-surface{
+    padding:14px!important;border-radius:18px!important;
+  }
+  html body[data-integro-page] .integro-shared-surface .integro-shared-header{
+    align-items:stretch!important;flex-direction:column!important;
+  }
+  html body[data-integro-page] .integro-shared-surface .integro-shared-header :is(h1,h2){font-size:25px!important}
+  html body[data-integro-page] .integro-shared-surface .integro-shared-actions{
+    width:100%!important;justify-content:flex-start!important;
+  }
+  html body[data-integro-page] .integro-shared-surface .integro-shared-actions select{
+    width:100%!important;max-width:none!important;
+  }
+}
+/* Correção de largura do título em cabeçalhos sem ações (Minha conta e similares). */
+html body[data-integro-page] .integro-shared-surface .integro-shared-header>div:first-child{
+  flex:1 1 auto!important;width:auto!important;max-width:none!important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-header :is(h1,h2){white-space:nowrap!important;}
+@media(max-width:420px){
+  html body[data-integro-page] .integro-shared-surface .integro-shared-header :is(h1,h2){white-space:normal!important;}
+}
+
+/* v24.4 — sino de notificações do vendedor no cartão de usuário */
+html body .sidebar .integro-user-card-com-sino{position:relative!important;padding-right:56px!important}
+html body .sidebar .integro-notification-bell{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:11px;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08);color:#e8f1ff;display:grid;place-items:center;cursor:pointer;z-index:4;transition:background .16s ease,transform .16s ease,border-color .16s ease;box-shadow:none}
+html body .sidebar .integro-notification-bell:hover,html body .sidebar .integro-notification-bell:focus-visible{background:rgba(255,255,255,.15);border-color:rgba(255,153,0,.65);transform:translateY(-1px);outline:none}
+html body .sidebar .integro-notification-bell.has-unread{color:#fff;border-color:rgba(255,153,0,.48)}
+html body .sidebar .integro-notification-bell>.material-symbols-rounded{font-size:21px}
+html body .sidebar .integro-notification-bell-badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;background:#ff8a00;color:#fff;border:2px solid #071a33;font-size:10px;font-weight:950;line-height:1;box-shadow:0 5px 13px rgba(255,138,0,.3)}
+html body .sidebar .integro-notification-bell-badge[hidden]{display:none!important}
+html body .notificacao-destino-highlight{animation:integroNotifDestino 2.6s ease}
+@keyframes integroNotifDestino{0%,25%{box-shadow:0 0 0 3px rgba(255,138,0,.28),0 12px 30px rgba(15,23,42,.08)}100%{box-shadow:none}}

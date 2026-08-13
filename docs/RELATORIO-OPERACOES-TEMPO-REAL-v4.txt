@@ -1,0 +1,31 @@
+ÍNTEGRO — RELATÓRIO DE VALIDAÇÃO v4
+
+Base: Integro-SaaS-Padronizado-20260805-v3-movimentacoes
+Entrega: sincronização hierárquica de operações em tempo real
+
+Arquivos principais alterados:
+- master-local.html
+- js/services/realtime-operations-service.js
+- js/modules/financeiro-unificado.js
+- js/state.js
+- js/perfis-unificados.js
+- js/runtime-profile-guard.js
+- js/config.js
+- firestore.rules
+- firestore.indexes.json
+- package.json
+- tests/realtime-operations.test.js
+
+Validação automatizada:
+- 279 testes aprovados
+- 8 telas HTML validadas, sem avisos
+- 86 scripts inline validados
+- 85 arquivos JavaScript externos validados
+- 65 arquivos da superfície pública do Hosting conferidos
+- Functions com sintaxe aprovada
+
+Limitação do ambiente de validação:
+- O teste com Firebase Emulator não foi executado porque o binário firebase-tools não está instalado neste ambiente de trabalho.
+- As regras foram cobertas pelos testes estáticos existentes e pelos novos testes de arquitetura, mas ainda precisam de homologação no Emulator ou no projeto Firebase quando o serviço de publicação estiver disponível.
+
+Nenhum commit, push ou deploy foi realizado.

@@ -1,0 +1,1023 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const {
+  initializeTestEnvironment,
+  assertSucceeds,
+  assertFails
+} = require("@firebase/rules-unit-testing");
+const {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  where
+} = require("firebase/firestore");
+const { ref, uploadBytes } = require("firebase/storage");
+
+const projectId = "integro-rules-test";
+let testEnv;
+
+const profiles = {
+  masterGlobal: { uid: "master_global_uid", tenant: "tenant_a", role: "master_global" },
+  usuarioIntegro: { uid: "usuario_integro_uid", tenant: "tenant_a", role: "usuario_integro" },
+  masterA: { uid: "master_a_uid", tenant: "tenant_a", role: "master_local" },
+  gerenteA: { uid: "gerente_a_uid", tenant: "tenant_a", role: "gerente" },
+  administrativoA: { uid: "administrativo_a_uid", tenant: "tenant_a", role: "administrativo" },
+  gerenteFinanceiroA: { uid: "gerente_fin_a_uid", tenant: "tenant_a", role: "gerente", permissoes: { financeiro: { ver: true, podeVerLedgerFinanceiro: true, criarLancamento: true, podeCriarLancamentoFinanceiro: true, podeEstornarLancamento: true, aprovar: true } } },
+  financeiroA: { uid: "financeiro_a_uid", tenant: "tenant_a", role: "financeiro", permissoes: { financeiro: { podeVerLedgerFinanceiro: true, criarLancamento: true, aprovar: true, podeEstornarLancamento: true, podeRegularizarCaixa: true, podeVerReconciliacao: true, podeTratarDivergencia: true } } },
+  supervisor1: { uid: "supervisor_1_uid", tenant: "tenant_a", role: "supervisor", equipeId: "equipe_1", permissoes: { financeiro: { podeVerLedgerFinanceiro: true, podeEstornarLancamento: true }, caixas: { podeReabrirCaixa: true, podeTratarDivergencia: true }, solicitacoes: { aprovar: true } } },
+  supervisor2: { uid: "supervisor_2_uid", tenant: "tenant_a", role: "supervisor", equipeId: "equipe_2", permissoes: { financeiro: { podeVerLedgerFinanceiro: true, podeEstornarLancamento: true }, caixas: { podeReabrirCaixa: true }, solicitacoes: { aprovar: true } } },
+  auditorA: { uid: "auditor_a_uid", tenant: "tenant_a", role: "auditor" },
+  vendedor1: { uid: "vendedor_1_uid", tenant: "tenant_a", role: "vendedor", equipeId: "equipe_1" },
+  vendedor2: { uid: "vendedor_2_uid", tenant: "tenant_a", role: "vendedor", equipeId: "equipe_2" },
+  captadorA: { uid: "captador_a_uid", tenant: "tenant_a", role: "captador", permissoes: { indicacoes: { criarIndicacao: true } } },
+  masterB: { uid: "master_b_uid", tenant: "tenant_b", role: "master_local" },
+  bloqueado: { uid: "bloqueado_uid", tenant: "tenant_a", role: "financeiro", status: "BLOQUEADO" },
+  inativo: { uid: "inativo_uid", tenant: "tenant_a", role: "vendedor", status: "INATIVO", equipeId: "equipe_1" },
+  semTenant: { uid: "sem_tenant_uid", tenant: "", role: "financeiro" },
+  semPermissao: { uid: "sem_permissao_uid", tenant: "tenant_a", role: "financeiro", permissoes: {} }
+};
+
+function appDb(profile) {
+  return testEnv.authenticatedContext(profile.uid).firestore();
+}
+
+async function seedDoc(tx, collection, id, data) {
+  await tx.set(doc(tx.firestore(), collection, id), data);
+}
+
+function userDoc(profile) {
+  return {
+    authUid: profile.uid,
+    clientePlataformaId: profile.tenant,
+    tipoUsuario: profile.role,
+    cargoChave: profile.role,
+    status: profile.status || "ATIVO",
+    acessoLiberado: profile.acessoLiberado !== false,
+    equipeId: profile.equipeId || "",
+    equipesIds: profile.equipeId ? [profile.equipeId] : [],
+    permissoes: profile.permissoes || {}
+  };
+}
+
+async function seedBase() {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    for (const profile of Object.values(profiles)) {
+      await setDoc(doc(admin, "usuarios", profile.uid), userDoc(profile));
+    }
+    await setDoc(doc(admin, "caixas", "caixa_a_1"), caixa({ id: "caixa_a_1", vendedorAuthUid: profiles.vendedor1.uid }));
+    await setDoc(doc(admin, "caixas", "caixa_a_2"), caixa({ id: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid, equipeId: "equipe_2" }));
+    await setDoc(doc(admin, "caixas", "caixa_fechado"), caixa({ id: "caixa_fechado", status: "FECHADO", vendedorAuthUid: profiles.vendedor1.uid }));
+    await setDoc(doc(admin, "caixas", "caixa_b_1"), caixa({ id: "caixa_b_1", clientePlataformaId: "tenant_b", vendedorId: "vend_b", vendedorAuthUid: "vend_b_uid" }));
+    await setDoc(doc(admin, "vendas", "venda_a_1"), venda());
+    await setDoc(doc(admin, "parcelas", "parcela_a_1"), parcela());
+    await setDoc(doc(admin, "clientes_operacionais", "cliente_a_1"), clienteOperacional());
+    await setDoc(doc(admin, "lancamentos_financeiros", "lf_pagamento_1"), ledger({ tipoLancamento: "PAGAMENTO", origemId: "pagamento_1" }));
+    await setDoc(doc(admin, "lancamentos_financeiros", "lf_gasto_aberto"), ledger({ tipoLancamento: "GASTO", natureza: "DEBITO", origem: "GASTO", origemId: "gasto_aberto", operacaoId: "gasto_aberto", valorCentavos: 500 }));
+    await setDoc(doc(admin, "lancamentos_financeiros", "lf_gasto_fechado"), ledger({ caixaId: "caixa_fechado", tipoLancamento: "GASTO", natureza: "DEBITO", origem: "GASTO", origemId: "gasto_fechado", operacaoId: "gasto_fechado", valorCentavos: 500 }));
+    await setDoc(doc(admin, "fechamentos_caixa", "fechamento_caixa_a_1"), fechamento());
+    await setDoc(doc(admin, "indicacoes", "indicacao_a_1"), indicacao({ vendedorDestinoId: profiles.vendedor1.uid }));
+    await setDoc(doc(admin, "indicacoes", "indicacao_a_2"), indicacao({ vendedorDestinoId: profiles.vendedor2.uid }));
+    await setDoc(doc(admin, "solicitacoes", "sol_a_1"), solicitacao());
+    await setDoc(doc(admin, "conversas", "conversa_a_1"), conversa());
+    await setDoc(doc(admin, "conversas", "conversa_a_1", "mensagens", "msg_a_1"), mensagem());
+  });
+}
+
+function tenantFields(extra = {}) {
+  return { clientePlataformaId: "tenant_a", equipeId: "equipe_1", ...extra };
+}
+
+function caixa(extra = {}) {
+  return tenantFields({
+    caixaId: extra.id || "caixa_a_1",
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    status: "ABERTO",
+    dataOperacional: "2026-07-13",
+    saldoInicialCentavos: 10000,
+    saldoAtualCentavos: 10000,
+    criadoEm: "ts",
+    ...extra
+  });
+}
+
+function ledger(extra = {}) {
+  return tenantFields({
+    caixaId: "caixa_a_1",
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    tipoLancamento: "AJUSTE",
+    natureza: "CREDITO",
+    origem: "AJUSTE",
+    origemId: "origem_1",
+    operacaoId: "op_1",
+    valorCentavos: 1000,
+    statusLancamento: "CONFIRMADO",
+    criadoPorId: profiles.financeiroA.uid,
+    criadoEm: "ts",
+    dataOperacional: "2026-07-13",
+    ...extra
+  });
+}
+
+function fechamento(extra = {}) {
+  return tenantFields({
+    fechamentoId: "fechamento_caixa_a_1",
+    caixaId: "caixa_a_1",
+    vendedorId: profiles.vendedor1.uid,
+    statusFechamento: "FECHADO",
+    dataOperacional: "2026-07-13",
+    caixaFinalEsperadoCentavos: 10000,
+    caixaFinalInformadoCentavos: 10000,
+    valorEsperadoCentavos: 10000,
+    valorInformadoCentavos: 10000,
+    diferencaCentavos: 0,
+    snapshotAuditoria: { caixaId: "caixa_a_1" },
+    ...extra
+  });
+}
+
+function venda(extra = {}) {
+  return tenantFields({
+    caixaId: "caixa_a_1",
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    operacaoId: "op_venda_1",
+    valorEmprestadoCentavos: 1000,
+    valorTotalVendaCentavos: 1200,
+    criadoEm: "ts",
+    ...extra
+  });
+}
+
+function parcela(extra = {}) {
+  return tenantFields({
+    caixaId: "caixa_a_1",
+    vendaId: "venda_a_1",
+    clienteId: "cliente_a_1",
+    clienteOperacionalId: "cliente_a_1",
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    valorCentavos: 1200,
+    valorParcelaCentavos: 1200,
+    valorPagoCentavos: 0,
+    criadoEm: "ts",
+    ...extra
+  });
+}
+
+function pagamento(extra = {}) {
+  return tenantFields({
+    caixaId: "caixa_a_1",
+    vendaId: "venda_a_1",
+    parcelaId: "parcela_a_1",
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    valorCentavos: 100,
+    operacaoId: "pg_op",
+    criadoEm: "ts",
+    ...extra
+  });
+}
+
+function clienteOperacional(extra = {}) {
+  return tenantFields({
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    saldoDevedorCentavos: 0,
+    possuiVendaAtiva: false,
+    criadoEm: "ts",
+    ...extra
+  });
+}
+
+function indicacao(extra = {}) {
+  return tenantFields({
+    clienteOperacionalId: "cliente_a_1",
+    captadorId: profiles.captadorA.uid,
+    status: "ATRIBUIDA",
+    criadoEm: "ts",
+    ...extra
+  });
+}
+
+function solicitacao(extra = {}) {
+  return tenantFields({
+    tipo: "INGRESSO",
+    status: "PENDENTE",
+    valorCentavos: 1000,
+    criadoPorId: profiles.vendedor1.uid,
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    criadoEm: "ts",
+    ...extra
+  });
+}
+
+function conversa(extra = {}) {
+  return tenantFields({
+    tipo: "DIRETA",
+    participantesIds: [profiles.masterA.uid, profiles.vendedor1.uid],
+    participantesNomes: {
+      [profiles.masterA.uid]: "Master",
+      [profiles.vendedor1.uid]: "Vendedor"
+    },
+    ultimaMensagem: "",
+    ultimaMensagemEm: "",
+    criadoEm: "ts",
+    atualizadoEm: "ts",
+    ...extra
+  });
+}
+
+function mensagem(extra = {}) {
+  return tenantFields({
+    conversaId: "conversa_a_1",
+    remetenteId: profiles.vendedor1.uid,
+    remetenteNome: "Vendedor",
+    remetenteCargo: "vendedor",
+    texto: "Ola equipe",
+    criadoEm: "ts",
+    dataOperacional: "2026-07-13",
+    status: "ENVIADA",
+    ...extra
+  });
+}
+
+test.before(async () => {
+  testEnv = await initializeTestEnvironment({
+    projectId,
+    firestore: {
+      rules: fs.readFileSync(path.join(__dirname, "..", "firestore.rules"), "utf8")
+    },
+    storage: {
+      rules: fs.readFileSync(path.join(__dirname, "..", "storage.rules"), "utf8")
+    }
+  });
+});
+
+test.beforeEach(async () => {
+  await testEnv.clearFirestore();
+  await seedBase();
+});
+
+test.after(async () => {
+  await testEnv.cleanup();
+});
+
+test("tenant: usuario A le A e nao le B", async () => {
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterA), "caixas", "caixa_a_1")));
+  await assertFails(getDoc(doc(appDb(profiles.masterA), "caixas", "caixa_b_1")));
+});
+
+test("login: perfil proprio e fallback por authUid funcionam sem liberar outro usuario", async () => {
+  for (const perfil of [profiles.masterA, profiles.supervisor1, profiles.vendedor1, profiles.financeiroA]) {
+    const proprio = await assertSucceeds(getDoc(doc(appDb(perfil), "usuarios", perfil.uid)));
+    assert.equal(proprio.exists(), true);
+    const consulta = query(collection(appDb(perfil), "usuarios"), where("authUid", "==", perfil.uid), limit(2));
+    const resultado = await assertSucceeds(getDocs(consulta));
+    assert.equal(resultado.size, 1);
+  }
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor1), "usuarios"),
+    where("authUid", "==", profiles.vendedor2.uid),
+    limit(2)
+  )));
+
+  const inativo = await assertSucceeds(getDoc(doc(appDb(profiles.inativo), "usuarios", profiles.inativo.uid)));
+  assert.equal(inativo.data().status, "INATIVO");
+  await assertFails(getDoc(doc(appDb(profiles.inativo), "caixas", "caixa_a_1")));
+});
+
+test("usuarios: master local cria somente convite pendente no proprio tenant", async () => {
+  const convite = {
+    authUid: "",
+    nome: "Novo Vendedor",
+    nomeCompleto: "Novo Vendedor",
+    email: "novo@tenant-a.com",
+    emailNormalizado: "novo@tenant-a.com",
+    tipoUsuario: "vendedor",
+    tipoUsuarioOficial: "vendedor",
+    cargoId: "cargo_vendedor",
+    cargoNome: "Vendedor",
+    status: "CONVITE_PENDENTE",
+    acessoLiberado: false,
+    convitePendente: true,
+    provisionamentoAuth: "PENDENTE_BACKEND",
+    clientePlataformaId: profiles.masterA.tenant,
+    criadoPorUid: profiles.masterA.uid,
+    criadoEm: "2026-07-30T12:00:00-03:00"
+  };
+
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_a_1"), convite));
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_captador_equipes"), {
+    ...convite,
+    email: "captador@tenant-a.com",
+    emailNormalizado: "captador@tenant-a.com",
+    tipoUsuario: "captador",
+    tipoUsuarioOficial: "captador",
+    cargoId: "cargo_captador",
+    cargoNome: "Captador",
+    equipeId: "equipe_a_1",
+    equipesIds: ["equipe_a_1", "equipe_a_2"],
+    equipeIds: ["equipe_a_1", "equipe_a_2"]
+  }));
+  await assertSucceeds(getDocs(query(
+    collection(appDb(profiles.masterA), "usuarios"),
+    where("clientePlataformaId", "==", profiles.masterA.tenant),
+    limit(120)
+  )));
+  await assertFails(setDoc(doc(appDb(profiles.masterB), "usuarios", "convite_tenant_cruzado"), convite));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "usuarios", "convite_vendedor"), {
+    ...convite,
+    criadoPorUid: profiles.vendedor1.uid
+  }));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_liberado"), {
+    ...convite,
+    acessoLiberado: true
+  }));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_auth_vinculado"), {
+    ...convite,
+    authUid: "uid_indevido"
+  }));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "usuarios", "convite_master_global"), {
+    ...convite,
+    tipoUsuario: "master_global"
+  }));
+});
+test("usuarios do chat: perfis ativos listam somente o proprio tenant", async () => {
+  for (const perfil of [profiles.masterA, profiles.vendedor1, profiles.financeiroA, profiles.auditorA, profiles.captadorA]) {
+    const consulta = query(
+      collection(appDb(perfil), "usuarios"),
+      where("clientePlataformaId", "==", perfil.tenant),
+      limit(120)
+    );
+    await assertSucceeds(getDocs(consulta));
+  }
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor1), "usuarios"),
+    where("clientePlataformaId", "==", profiles.masterB.tenant),
+    limit(120)
+  )));
+});
+
+test("tenant: criacao para tenant B, troca de tenant, sem tenant, bloqueado e sem acesso sao bloqueados", async () => {
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "caixas", "cx_err"), caixa({ clientePlataformaId: "tenant_b" })));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "caixas", "caixa_a_1"), { clientePlataformaId: "tenant_b" }));
+  await assertFails(getDoc(doc(appDb(profiles.semTenant), "caixas", "caixa_a_1")));
+  await assertFails(getDoc(doc(appDb(profiles.bloqueado), "caixas", "caixa_a_1")));
+  const semAcesso = { ...profiles.semPermissao, uid: "sem_acesso_uid", acessoLiberado: false };
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "usuarios", semAcesso.uid), userDoc(semAcesso)));
+  await assertFails(getDoc(doc(appDb(semAcesso), "caixas", "caixa_a_1")));
+});
+
+test("ledger: financeiro e auditor leem, vendedor nao cria ajuste/estorno, master cria regularizacao", async () => {
+  await assertSucceeds(getDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.auditorA), "lancamentos_financeiros", "lf_pagamento_1")));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "lancamentos_financeiros", "lf_ajuste_v"), ledger({ criadoPorId: profiles.vendedor1.uid })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "lancamentos_financeiros", "lf_estorno_v"), ledger({ tipoLancamento: "ESTORNO", natureza: "DEBITO", origemId: "lf_pagamento_1", criadoPorId: profiles.vendedor1.uid })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "lancamentos_financeiros", "lf_regularizacao_1"), ledger({ tipoLancamento: "REGULARIZACAO", natureza: "CREDITO", origemId: "fechamento_caixa_a_1" })));
+});
+
+test("ledger: supervisor autorizado dentro da equipe, fora bloqueado", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.supervisor1), "lancamentos_financeiros", "lf_ingresso_sup"), ledger({ tipoLancamento: "INGRESSO", natureza: "CREDITO", origemId: "sol_1", criadoPorId: profiles.supervisor1.uid })));
+  await assertFails(setDoc(doc(appDb(profiles.supervisor2), "lancamentos_financeiros", "lf_ingresso_sup2"), ledger({ tipoLancamento: "INGRESSO", natureza: "CREDITO", origemId: "sol_1", criadoPorId: profiles.supervisor2.uid })));
+});
+
+test("ledger: update valor/origem bloqueado, estorno autorizado permitido e delete bloqueado", async () => {
+  await assertFails(updateDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1"), { valorCentavos: 999 }));
+  await assertFails(updateDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1"), { origemId: "outra" }));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1"), { statusLancamento: "ESTORNADO" }));
+  await assertFails(deleteDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1")));
+});
+
+test("caixa: vendedor cria proprio, outro bloqueado, le proprio e nao le outro", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_novo_v1"), caixa({ caixaId: "caixa_novo_v1" })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_outro"), caixa({ vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid })));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1")));
+  await assertFails(getDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_2")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterA), "fechamentos_caixa", "fechamento_inexistente")));
+  await assertFails(getDoc(doc(appDb(profiles.masterB), "fechamentos_caixa", "fechamento_caixa_a_1")));
+});
+
+test("caixa: fechamento proprio permitido, vendedor reabre bloqueado, supervisor equipe reabre e outra equipe bloqueia", async () => {
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1"), { status: "FECHADO" }));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_fechado"), { status: "REABERTO" }));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.supervisor1), "caixas", "caixa_fechado"), { status: "REABERTO" }));
+  await assertFails(updateDoc(doc(appDb(profiles.supervisor2), "caixas", "caixa_fechado"), { status: "REABERTO" }));
+});
+
+test("caixa: update de data operacional e delete bloqueados", async () => {
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "caixas", "caixa_a_1"), { dataOperacional: "2026-07-14" }));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "caixas", "caixa_a_1")));
+});
+
+test("fechamento: cria valido, outro tenant bloqueado e snapshot imutavel", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "caixas", "caixa_a_novo"), caixa({ id: "caixa_a_novo", vendedorAuthUid: profiles.vendedor1.uid })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "fechamentos_caixa", "fechamento_caixa_a_novo"), fechamento({ fechamentoId: "fechamento_caixa_a_novo", caixaId: "caixa_a_novo" })));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "fechamentos_caixa", "fechamento_caixa_b_1"), fechamento({ clientePlataformaId: "tenant_b", caixaId: "caixa_b_1" })));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "fechamentos_caixa", "fechamento_caixa_a_1"), { caixaFinalEsperadoCentavos: 1 }));
+});
+
+test("historico: create permitido, update/delete bloqueados", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "historico_estados_caixa", "hist_1"), tenantFields({ caixaId: "caixa_a_1", statusAnterior: "ABERTO", statusNovo: "FECHADO" })));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "historico_estados_caixa", "hist_1"), { statusNovo: "REABERTO" }));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "historico_estados_caixa", "hist_1")));
+});
+
+test("pagamento/venda: vendedor cria venda propria, caixa de outro bloqueia, pagamento proprio permitido e caixa fechado bloqueia", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_nova"), venda({ operacaoId: "op_nova" })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_outro"), venda({ caixaId: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_ok"), pagamento()));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_fechado"), pagamento({ caixaId: "caixa_fechado" })));
+});
+
+test("pagamento/venda: alteração de valor original e delete bloqueados", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "pagamentos", "pg_exist"), pagamento()));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_exist"), { valorCentavos: 200 }));
+  await assertFails(deleteDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_a_1")));
+});
+
+test("indicacoes: captador cria, vendedor le atribuida, outro nao, marca atendimento, redistribui/delete bloqueados", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.captadorA), "indicacoes", "indicacao_nova"), indicacao({ status: "RECEBIDA" })));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "indicacoes", "indicacao_a_1")));
+  await assertFails(getDoc(doc(appDb(profiles.vendedor1), "indicacoes", "indicacao_a_2")));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "indicacao_a_1"), { status: "EM_ATENDIMENTO" }));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "indicacao_a_1"), { vendedorDestinoId: profiles.vendedor2.uid }));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "indicacao_a_1"), { status: "CONVERTIDA", statusIndicacao: "CONVERTIDA", vendaId: "venda_a_1", atualizadoEm: "ts2" }));
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "indicacoes", "indicacao_sem_venda"), indicacao({ vendedorDestinoId: profiles.vendedor1.uid })));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "indicacao_sem_venda"), { status: "CONVERTIDA", statusIndicacao: "CONVERTIDA", vendaId: "venda_inexistente", atualizadoEm: "ts2" }));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "indicacoes", "indicacao_a_1")));
+});
+
+test("leads: regras aceitam os payloads reais do vendedor e bloqueiam alteracoes fora do fluxo", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    await setDoc(doc(admin, "indicacoes", "lead_atendimento"), indicacao({
+      status: "ATRIBUIDA", statusIndicacao: "ATRIBUIDA", statusLead: "NOVO_LEAD",
+      vendedorDestinoId: profiles.vendedor1.uid, vendedorAuthUid: profiles.vendedor1.uid
+    }));
+    await setDoc(doc(admin, "indicacoes", "lead_recusa"), indicacao({
+      status: "ATRIBUIDA", statusIndicacao: "ATRIBUIDA", statusLead: "NOVO_LEAD",
+      vendedorDestinoId: profiles.vendedor1.uid, vendedorAuthUid: profiles.vendedor1.uid
+    }));
+    await setDoc(doc(admin, "indicacoes", "lead_devolucao"), indicacao({
+      clienteOperacionalId: "cliente_lead_devolucao",
+      status: "ATRIBUIDA", statusIndicacao: "ATRIBUIDA", statusLead: "NOVO_LEAD",
+      vendedorDestinoId: profiles.vendedor1.uid, vendedorDestinoNome: "Vendedor 1",
+      vendedorAuthUid: profiles.vendedor1.uid, vendedorDestinoAuthUid: profiles.vendedor1.uid,
+      vendedorId: profiles.vendedor1.uid, vendedorNome: "Vendedor 1",
+      equipeDestinoId: "equipe_1", equipeDestinoNome: "Equipe 1"
+    }));
+    await setDoc(doc(admin, "clientes_operacionais", "cliente_lead_devolucao"), clienteOperacional({
+      statusCliente: "LEAD", status: "LEAD", statusAtendimento: "AGUARDANDO_ATENDIMENTO",
+      vendedorId: profiles.vendedor1.uid, vendedorAuthUid: profiles.vendedor1.uid,
+      vendedorDocumentoId: profiles.vendedor1.uid, vendedorNome: "Vendedor 1",
+      equipeId: "equipe_1", equipeNome: "Equipe 1"
+    }));
+    await setDoc(doc(admin, "indicacoes", "lead_conversao"), indicacao({
+      status: "EM_ATENDIMENTO", statusIndicacao: "EM_ATENDIMENTO", statusLead: "EM_ATENDIMENTO",
+      vendedorDestinoId: profiles.vendedor1.uid, vendedorAuthUid: profiles.vendedor1.uid
+    }));
+  });
+
+  const auditoriaAtendimento = {
+    atualizadoPor: profiles.vendedor1.uid,
+    atualizadoPorNome: "Vendedor 1",
+    atualizadoEmTexto: "2026-08-12T14:00:00-03:00",
+    ultimaAlteracaoTipo: "INDICACAO_EM_ATENDIMENTO",
+    atualizadoEm: "ts2"
+  };
+
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "lead_atendimento"), {
+    status: "EM_ATENDIMENTO", statusIndicacao: "EM_ATENDIMENTO", statusLead: "EM_ATENDIMENTO",
+    dataInicioAtendimento: "2026-08-12T14:00:00-03:00",
+    ...auditoriaAtendimento
+  }));
+
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "lead_atendimento"), {
+    status: "NAO_CONVERTIDA", statusIndicacao: "NAO_CONVERTIDA", statusLead: "NAO_CONVERTIDA",
+    motivoNaoConversao: "SEM_INTERESSE", dataNaoConversao: "2026-08-12T14:10:00-03:00",
+    atualizadoPor: profiles.vendedor1.uid, atualizadoPorNome: "Vendedor 1",
+    atualizadoEmTexto: "2026-08-12T14:10:00-03:00", ultimaAlteracaoTipo: "INDICACAO_NAO_CONVERTIDA", atualizadoEm: "ts3"
+  }));
+
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "lead_recusa"), {
+    status: "RECUSADA", statusIndicacao: "RECUSADA", statusLead: "RECUSADA",
+    motivoRecusa: "SEM PERFIL", dataRecusa: "2026-08-12T14:20:00-03:00",
+    atualizadoPor: profiles.vendedor1.uid, atualizadoPorNome: "Vendedor 1",
+    atualizadoEmTexto: "2026-08-12T14:20:00-03:00", ultimaAlteracaoTipo: "INDICACAO_RECUSADA", atualizadoEm: "ts4"
+  }));
+
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "lead_devolucao"), {
+    status: "DEVOLVIDA", statusIndicacao: "DEVOLVIDA", statusLead: "DEVOLVIDA",
+    motivoDevolucao: "Fora da rota", dataDevolucao: "2026-08-12T14:30:00-03:00",
+    vendedorDestinoId: "", vendedorDestinoNome: "", vendedorAuthUid: "", vendedorDestinoAuthUid: "",
+    vendedorUid: "", vendedorDocumentoId: "", vendedorId: "", vendedorNome: "",
+    equipeDestinoId: "", equipeDestinoNome: "", equipeId: "", equipeNome: "",
+    atualizadoPor: profiles.vendedor1.uid, atualizadoPorNome: "Vendedor 1",
+    atualizadoEmTexto: "2026-08-12T14:30:00-03:00", ultimaAlteracaoTipo: "INDICACAO_DEVOLVIDA", atualizadoEm: "ts5"
+  }));
+
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_lead_devolucao"), {
+    vendedorId: "", vendedorAuthUid: "", vendedorUid: "", vendedorDocumentoId: "", vendedorNome: "",
+    equipeId: "", equipeNome: "", statusAtendimento: "AGUARDANDO_REDISTRIBUICAO",
+    atualizadoPor: profiles.vendedor1.uid, atualizadoPorNome: "Vendedor 1",
+    atualizadoEmTexto: "2026-08-12T14:30:00-03:00", atualizadoEm: "ts5"
+  }));
+
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "lead_conversao"), {
+    status: "CONVERTIDA", statusIndicacao: "CONVERTIDA", statusLead: "CONVERTIDA",
+    vendaId: "venda_a_1", valorVendaCentavos: 15000, dataConversao: "2026-08-12T14:40:00-03:00",
+    atualizadoPor: profiles.vendedor1.uid, atualizadoPorNome: "Vendedor 1",
+    atualizadoEmTexto: "2026-08-12T14:40:00-03:00", ultimaAlteracaoTipo: "INDICACAO_CONVERTIDA", atualizadoEm: "ts6"
+  }));
+
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "indicacoes", "lead_conversao"), {
+    vendedorDestinoId: profiles.vendedor2.uid
+  }));
+});
+
+test("leads: notificacao direcionada nao vira publica para todos os vendedores", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    await setDoc(doc(admin, "notificacoes", "lead_direcionada_v1"), tenantFields({
+      usuarioId: profiles.vendedor1.uid,
+      destinatarioId: profiles.vendedor1.uid,
+      destinatarioAuthUid: profiles.vendedor1.uid,
+      publico: "VENDEDOR",
+      tipo: "NOVO_LEAD",
+      status: "PENDENTE"
+    }));
+    await setDoc(doc(admin, "notificacoes", "lead_publica_vendedor"), tenantFields({
+      publico: "VENDEDOR",
+      tipo: "AVISO_VENDEDORES",
+      status: "PENDENTE"
+    }));
+  });
+
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "notificacoes", "lead_direcionada_v1")));
+  await assertFails(getDoc(doc(appDb(profiles.vendedor2), "notificacoes", "lead_direcionada_v1")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor2), "notificacoes", "lead_publica_vendedor")));
+});
+
+test("indicacoes: outro tenant bloqueado", async () => {
+  await assertFails(getDoc(doc(appDb(profiles.masterB), "indicacoes", "indicacao_a_1")));
+});
+
+test("solicitacoes: vendedor cria pendente, aprovar propria bloqueia, supervisor aprova equipe, fora bloqueia, valor/delete bloqueados", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "solicitacoes", "sol_nova"), solicitacao()));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "solicitacoes", "sol_a_1"), { status: "APROVADA" }));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.supervisor1), "solicitacoes", "sol_a_1"), { status: "APROVADA" }));
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "solicitacoes", "sol_a_2"), solicitacao()));
+  await assertFails(updateDoc(doc(appDb(profiles.supervisor2), "solicitacoes", "sol_a_2"), { status: "APROVADA" }));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "solicitacoes", "sol_a_2"), { valorCentavos: 2 }));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "solicitacoes", "sol_a_2")));
+});
+
+test("financeiro administrativo: gerente autorizado consulta/cria e perfis autorizados atualizam caixa", async () => {
+  await assertSucceeds(getDoc(doc(appDb(profiles.gerenteFinanceiroA), "lancamentos_financeiros", "lf_gasto_aberto")));
+  await assertSucceeds(setDoc(doc(appDb(profiles.gerenteFinanceiroA), "lancamentos_financeiros", "lf_gasto_gerente"), ledger({
+    tipoLancamento: "GASTO",
+    natureza: "DEBITO",
+    origem: "LANCAMENTO_ADMINISTRATIVO",
+    origemId: "gasto_gerente",
+    operacaoId: "gasto_gerente",
+    criadoPorId: profiles.gerenteFinanceiroA.uid
+  })));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.financeiroA), "caixas", "caixa_a_1"), {
+    saldoAtualCentavos: 9500,
+    saldoAtual: 95,
+    valorAtual: 95,
+    caixaAtual: 95,
+    totalGastosCentavos: 500,
+    atualizadoEm: "ts2"
+  }));
+});
+
+test("financeiro administrativo: cancelamento auditado somente em caixa aberto", async () => {
+  const cancelamento = {
+    statusLancamento: "CANCELADO",
+    canceladoPorId: profiles.masterA.uid,
+    canceladoPorNome: "Master A",
+    motivoCancelamento: "Correção",
+    canceladoEm: "ts2",
+    atualizadoEm: "ts2"
+  };
+  await assertSucceeds(updateDoc(doc(appDb(profiles.masterA), "lancamentos_financeiros", "lf_gasto_aberto"), cancelamento));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "lancamentos_financeiros", "lf_gasto_fechado"), cancelamento));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "lancamentos_financeiros", "lf_pagamento_1"), cancelamento));
+});
+
+test("solicitacoes financeiras: financeiro aprova ou recusa com resposta e vendedor nao decide", async () => {
+  await assertSucceeds(updateDoc(doc(appDb(profiles.financeiroA), "solicitacoes", "sol_a_1"), {
+    status: "APROVADA",
+    statusSolicitacao: "APROVADA",
+    lancamentoFinanceiroId: "lf_ingresso_sol_a_1",
+    aprovadoPor: profiles.financeiroA.uid,
+    aprovadoPorNome: "Financeiro",
+    analisadoPor: profiles.financeiroA.uid,
+    analisadoPorNome: "Financeiro",
+    respostaFinanceiro: "Aprovada",
+    analisadoEm: "ts2",
+    atualizadoEm: "ts2"
+  }));
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "solicitacoes", "sol_recusa"), solicitacao()));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.financeiroA), "solicitacoes", "sol_recusa"), {
+    status: "RECUSADA",
+    statusSolicitacao: "RECUSADA",
+    respostaFinanceiro: "Comprovante ausente",
+    motivoRecusa: "Comprovante ausente",
+    analisadoPor: profiles.financeiroA.uid,
+    analisadoPorNome: "Financeiro",
+    recusadoPor: profiles.financeiroA.uid,
+    recusadoPorNome: "Financeiro",
+    analisadoEm: "ts2",
+    recusadoEm: "ts2",
+    atualizadoEm: "ts2"
+  }));
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "solicitacoes", "sol_vendedor_decide"), solicitacao()));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "solicitacoes", "sol_vendedor_decide"), { status: "APROVADA", statusSolicitacao: "APROVADA" }));
+});
+
+test("chat: participante le conversa e mensagem, outro tenant e nao participante bloqueados", async () => {
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1", "mensagens", "msg_a_1")));
+  await assertFails(getDoc(doc(appDb(profiles.masterB), "conversas", "conversa_a_1")));
+  await assertFails(getDoc(doc(appDb(profiles.vendedor2), "conversas", "conversa_a_1")));
+});
+
+test("caixa: vendedor consulta caixa legado pelo abertoPorUid dentro do tenant", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "caixas", "caixa_aberto_por_uid"), caixa({
+      vendedorId: "documento_legado_vendedor",
+      vendedorAuthUid: "",
+      usuarioId: "documento_legado_vendedor",
+      abertoPorUid: profiles.vendedor1.uid
+    }));
+  });
+
+  const consulta = query(
+    collection(appDb(profiles.vendedor1), "caixas"),
+    where("clientePlataformaId", "==", profiles.vendedor1.tenant),
+    where("abertoPorUid", "==", profiles.vendedor1.uid),
+    where("status", "==", "ABERTO"),
+    limit(25)
+  );
+  const resultado = await assertSucceeds(getDocs(consulta));
+  assert.equal(resultado.size, 1);
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor2), "caixas"),
+    where("clientePlataformaId", "==", profiles.vendedor2.tenant),
+    where("abertoPorUid", "==", profiles.vendedor1.uid),
+    where("status", "==", "ABERTO"),
+    limit(25)
+  )));
+});
+
+test("chat: consulta de conversas exige tenant e participante autenticado", async () => {
+  const permitida = query(
+    collection(appDb(profiles.vendedor1), "conversas"),
+    where("clientePlataformaId", "==", profiles.vendedor1.tenant),
+    where("participantesIds", "array-contains", profiles.vendedor1.uid),
+    limit(80)
+  );
+  const resultado = await assertSucceeds(getDocs(permitida));
+  assert.equal(resultado.size, 1);
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor1), "conversas"),
+    where("clientePlataformaId", "==", profiles.masterB.tenant),
+    where("participantesIds", "array-contains", profiles.vendedor1.uid),
+    limit(80)
+  )));
+});
+
+test("notificacoes: destinatario e publico consultam somente o proprio escopo", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    await setDoc(doc(admin, "notificacoes", "notif_usuario_supervisor"), tenantFields({ usuarioId: profiles.supervisor1.uid, status: "PENDENTE" }));
+    await setDoc(doc(admin, "notificacoes", "notif_destinatario_supervisor"), tenantFields({ destinatarioId: profiles.supervisor1.uid, status: "PENDENTE" }));
+    await setDoc(doc(admin, "notificacoes", "notif_vendedor_supervisor"), tenantFields({ vendedorId: profiles.supervisor1.uid, status: "PENDENTE" }));
+    await setDoc(doc(admin, "notificacoes", "notif_publico_supervisor"), tenantFields({ publico: "SUPERVISOR", status: "PENDENTE" }));
+  });
+
+  for (const [campo, valor] of [
+    ["usuarioId", profiles.supervisor1.uid],
+    ["destinatarioId", profiles.supervisor1.uid],
+    ["vendedorId", profiles.supervisor1.uid],
+    ["publico", "SUPERVISOR"]
+  ]) {
+    await assertSucceeds(getDocs(query(
+      collection(appDb(profiles.supervisor1), "notificacoes"),
+      where("clientePlataformaId", "==", profiles.supervisor1.tenant),
+      where(campo, "==", valor),
+      limit(100)
+    )));
+  }
+
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor2), "notificacoes"),
+    where("clientePlataformaId", "==", profiles.vendedor2.tenant),
+    where("usuarioId", "==", profiles.supervisor1.uid),
+    limit(100)
+  )));
+});
+
+test("chat: cria direta/equipe no tenant, envia mensagem e bloqueia auditor/delete", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "conversas", "direta_v1_sup1"), conversa({
+    participantesIds: [profiles.vendedor1.uid, profiles.supervisor1.uid]
+  })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.supervisor1), "conversas", "equipe_1"), conversa({
+    tipo: "EQUIPE",
+    equipeId: "equipe_1",
+    participantesIds: [profiles.supervisor1.uid, profiles.vendedor1.uid]
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "conversas", "direta_vendedores"), conversa({
+    participantesIds: [profiles.vendedor1.uid, profiles.vendedor2.uid]
+  })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.supervisor1), "conversas", "direta_sup_v2"), conversa({
+    participantesIds: [profiles.supervisor1.uid, profiles.vendedor2.uid]
+  })));  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "conversas", "direta_master_financeiro"), conversa({
+    participantesIds: [profiles.masterA.uid, profiles.financeiroA.uid]
+  })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "conversas", "direta_vendedor_financeiro"), conversa({
+    participantesIds: [profiles.vendedor1.uid, profiles.financeiroA.uid]
+  })));
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "usuarios", "financeiro_legado"), userDoc({
+      uid: "financeiro_sem_canonico_uid",
+      tenant: "tenant_a",
+      role: "financeiro"
+    }));
+  });
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "conversas", "direta_legado_sem_canonico"), conversa({
+    participantesIds: [profiles.masterA.uid, "financeiro_sem_canonico_uid"]
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "conversas", "direta_outro_tenant"), conversa({
+    participantesIds: [profiles.masterA.uid, profiles.masterB.uid]
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "conversas", "equipe_vendedor"), conversa({
+    tipo: "EQUIPE",
+    equipeId: "equipe_1",
+    participantesIds: [profiles.supervisor1.uid, profiles.vendedor1.uid]
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "conversas", "equipe_1", "mensagens", "msg_equipe_v1"), mensagem({
+    conversaId: "equipe_1"
+  })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1", "mensagens", "msg_v1_2"), mensagem()));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "notificacoes", "chat_msg_v1_sup1"), tenantFields({
+    tipo: "MENSAGEM_CHAT",
+    origemTipo: "CHAT_INTERNO",
+    conversaId: "conversa_a_1",
+    usuarioId: profiles.supervisor1.uid,
+    destinatarioId: profiles.supervisor1.uid,
+    remetenteId: profiles.vendedor1.uid,
+    criadoPorId: profiles.vendedor1.uid,
+    lida: false,
+    status: "PENDENTE"
+  })));
+  await assertSucceeds(getDoc(doc(appDb(profiles.supervisor1), "notificacoes", "chat_msg_v1_sup1")));
+  await assertFails(getDoc(doc(appDb(profiles.vendedor2), "notificacoes", "chat_msg_v1_sup1")));
+  await assertFails(setDoc(doc(appDb(profiles.auditorA), "conversas", "chat_auditor"), conversa({
+    participantesIds: [profiles.auditorA.uid, profiles.masterA.uid]
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.auditorA), "conversas", "conversa_a_1", "mensagens", "msg_auditor"), mensagem({ remetenteId: profiles.auditorA.uid })));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "conversas", "conversa_a_1")));
+});
+
+test("chat: presenca propria e fotos respeitam tenant e modo leitura", async () => {
+  const presenca = tenantFields({
+    usuarioId: profiles.vendedor1.uid,
+    nome: "Vendedor",
+    cargo: "vendedor",
+    status: "ONLINE",
+    diaTrabalho: true,
+    caixaFechado: false,
+    ultimaAtividadeEm: "ts",
+    atualizadoEm: "ts"
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "presencas_chat", profiles.vendedor1.uid), presenca));
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterA), "presencas_chat", profiles.vendedor1.uid)));
+  await assertSucceeds(getDocs(query(
+    collection(appDb(profiles.supervisor1), "presencas_chat"),
+    where("clientePlataformaId", "==", profiles.supervisor1.tenant),
+    limit(180)
+  )));
+  await assertFails(setDoc(doc(appDb(profiles.supervisor1), "presencas_chat", profiles.vendedor1.uid), {
+    ...presenca,
+    usuarioId: profiles.supervisor1.uid
+  }));
+  await assertFails(getDoc(doc(appDb(profiles.masterB), "presencas_chat", profiles.vendedor1.uid)));
+  await assertFails(deleteDoc(doc(appDb(profiles.vendedor1), "presencas_chat", profiles.vendedor1.uid)));
+
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1", "mensagens", "foto_v1"), mensagem({
+    tipo: "IMAGEM",
+    texto: "",
+    imagemUrl: "https://firebasestorage.googleapis.com/foto.png",
+    imagemPath: `tenants/${profiles.vendedor1.tenant}/chat/conversa_a_1/foto_v1/foto.png`,
+    imagemNome: "foto.png",
+    imagemMime: "image/png",
+    imagemTamanho: 1024
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "conversas", "conversa_a_1", "mensagens", "foto_outro_tenant"), mensagem({
+    tipo: "IMAGEM",
+    texto: "",
+    imagemUrl: "https://firebasestorage.googleapis.com/foto.png",
+    imagemPath: "tenants/tenant_b/chat/conversa_a_1/foto.png",
+    imagemNome: "foto.png",
+    imagemMime: "image/png",
+    imagemTamanho: 1024
+  })));
+
+});
+test("logs: create permitido, update/delete bloqueados", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.financeiroA), "logs", "log_1"), tenantFields({ tipoAcao: "TESTE", usuarioId: profiles.financeiroA.uid, criadoEm: "ts" })));
+  await assertSucceeds(getDocs(query(collection(appDb(profiles.gerenteA), "logs"), where("clientePlataformaId", "==", "tenant_a"), limit(10))));
+  await assertFails(getDocs(query(collection(appDb(profiles.gerenteA), "logs"), where("clientePlataformaId", "==", "tenant_b"), limit(10))));
+  await assertFails(updateDoc(doc(appDb(profiles.financeiroA), "logs", "log_1"), { tipoAcao: "EDITADO" }));
+  await assertFails(deleteDoc(doc(appDb(profiles.financeiroA), "logs", "log_1")));
+});
+
+test("clientes: interacao respeita vendedor/equipe/tenant e permanece imutavel", async () => {
+  const evento = tenantFields({
+    clienteId: "cliente_a_1",
+    tipo: "TENTATIVA_CONTATO",
+    statusNovo: "TENTATIVA_CONTATO",
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    usuarioId: profiles.vendedor1.uid,
+    usuarioAuthUid: profiles.vendedor1.uid,
+    criadoEm: "ts"
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "interacoes_clientes", "int_1"), evento));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor2), "interacoes_clientes", "int_2"), { ...evento, usuarioId: profiles.vendedor2.uid, usuarioAuthUid: profiles.vendedor2.uid }));
+  await assertSucceeds(getDoc(doc(appDb(profiles.supervisor1), "interacoes_clientes", "int_1")));
+  await assertFails(getDoc(doc(appDb(profiles.supervisor2), "interacoes_clientes", "int_1")));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "interacoes_clientes", "int_1"), { statusNovo: "CONVERTIDO" }));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "interacoes_clientes", "int_1")));
+});
+
+test("clientes: direcionamento e ciclo exigem gestor no escopo e sao imutaveis", async () => {
+  const direcionamento = tenantFields({
+    clienteId: "cliente_a_1",
+    tipo: "DIRECIONAMENTO_INICIAL",
+    vendedorId: profiles.vendedor1.uid,
+    vendedorDestinoId: profiles.vendedor1.uid,
+    equipeDestinoId: "equipe_1",
+    usuarioId: profiles.masterA.uid,
+    usuarioAuthUid: profiles.masterA.uid,
+    criadoEm: "ts"
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "direcionamentos_clientes", "dir_1"), direcionamento));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "direcionamentos_clientes", "dir_2"), { ...direcionamento, usuarioId: profiles.vendedor1.uid, usuarioAuthUid: profiles.vendedor1.uid }));
+  await assertFails(setDoc(doc(appDb(profiles.supervisor2), "direcionamentos_clientes", "dir_3"), { ...direcionamento, usuarioId: profiles.supervisor2.uid, usuarioAuthUid: profiles.supervisor2.uid }));
+
+  const ciclo = tenantFields({
+    clienteId: "cliente_a_1",
+    ciclo: 2,
+    motivo: "Nova tentativa autorizada",
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    usuarioId: profiles.supervisor1.uid,
+    usuarioAuthUid: profiles.supervisor1.uid,
+    criadoEm: "ts"
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.supervisor1), "ciclos_atendimento_clientes", "cliente_a_1_2"), ciclo));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "ciclos_atendimento_clientes", "cliente_a_1_2")));
+});
+
+test("clientes: vendedor cria somente cliente proprio e nao altera cliente de outro vendedor", async () => {
+  const proprio = clienteOperacional({
+    vendedorId: profiles.vendedor1.uid,
+    vendedorAuthUid: profiles.vendedor1.uid,
+    documentoNormalizado: "12345678901",
+    telefoneNormalizado: "11999990001",
+    telefonesNormalizados: ["11999990001"]
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_novo_v1"), proprio));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "clientes", "cliente_legado_v1"), proprio));
+  const criadoPeloService = clienteOperacional({
+    vendedorId: "doc_legado_vendedor",
+    vendedorAuthUid: profiles.vendedor1.uid,
+    vendedorUid: profiles.vendedor1.uid,
+    criadoPor: profiles.vendedor1.uid,
+    criadoPorId: profiles.vendedor1.uid,
+    documentoNormalizado: "22345678901",
+    telefoneNormalizado: "11999990002",
+    telefonesNormalizados: ["11999990002"]
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_service_v1"), criadoPeloService));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "clientes", "cliente_service_legado_v1"), criadoPeloService));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "logs", "log_cliente_service_v1"), tenantFields({
+    tipoAcao: "CLIENTE_CRIADO",
+    usuarioAuthUid: profiles.vendedor1.uid,
+    usuarioId: profiles.vendedor1.uid,
+    clienteId: "cliente_service_v1",
+    criadoEm: "ts"
+  })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_outro_v2"), {
+    ...proprio,
+    vendedorId: profiles.vendedor2.uid,
+    vendedorAuthUid: profiles.vendedor2.uid
+  }));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor2), "clientes_operacionais", "cliente_a_1"), { statusAtendimento: "EM_ATENDIMENTO" }));
+  await assertSucceeds(getDoc(doc(appDb(profiles.auditorA), "clientes_operacionais", "cliente_a_1")));
+  await assertFails(updateDoc(doc(appDb(profiles.auditorA), "clientes_operacionais", "cliente_a_1"), { statusAtendimento: "EM_ATENDIMENTO" }));
+});
+
+test("configuracoes: Master Local grava e perfis do tenant somente leem", async () => {
+  const config = tenantFields({
+    versao: 2,
+    empresa: { nomeExibicao: "Empresa A", fusoHorario: "America/Sao_Paulo", moeda: "BRL", idioma: "pt-BR" },
+    operacao: { diasTrabalho: [1,2,3,4,5,6], horarioInicio: "08:00", horarioFim: "20:00", sessaoMinutos: 30 },
+    financeiro: { ingressoExigeAprovacao: true, observacaoObrigatoria: false, comprovanteObrigatorio: false, permitirEdicaoCaixaAberto: true, permitirCancelamentoCaixaAberto: true },
+    relatorios: { periodoPadrao: "MES_ATUAL", formatoPadrao: "CSV", incluirCancelados: false, tipos: { financeiro: true } },
+    regrasOperacionais: {
+      vendaExigeCaixaAberto: true,
+      vendaExigeCadastroCompleto: true
+    },
+    clientes: {
+      status: [{ chave: "ATIVO", nome: "Ativo", cor: "#16a34a" }],
+      score: { ativo: true, minimo: 0, maximo: 100 },
+      atraso: { amareloDias: 5, laranjaDias: 10, vermelhoDias: 15, inadimplenteDias: 5 }
+    },
+    leads: {
+      status: [{ chave: "RECEBIDA", nome: "Recebida", cor: "#2563eb" }]
+    },
+    atualizadoPorUid: profiles.masterA.uid,
+    atualizadoPorNome: "Master A",
+    atualizadoEm: "ts",
+    atualizadoEmTexto: "2026-07-30T12:00:00.000Z"
+  });
+
+  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "configuracoes_empresas", "tenant_a"), config));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_a")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.supervisor1), "configuracoes_empresas", "tenant_a")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.financeiroA), "configuracoes_empresas", "tenant_a")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.administrativoA), "configuracoes_empresas", "tenant_a")));
+  await assertFails(getDoc(doc(appDb(profiles.masterB), "configuracoes_empresas", "tenant_a")));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_a"), {
+    "regrasOperacionais.vendaExigeCaixaAberto": false
+  }));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.masterA), "configuracoes_empresas", "tenant_a"), {
+    "regrasOperacionais.vendaExigeCaixaAberto": false,
+    atualizadoPorUid: profiles.masterA.uid,
+    atualizadoPorNome: "Master A",
+    atualizadoEm: "ts2",
+    atualizadoEmTexto: "2026-07-30T13:00:00.000Z"
+  }));
+  await assertFails(deleteDoc(doc(appDb(profiles.masterA), "configuracoes_empresas", "tenant_a")));
+});
+test("configuracoes: leitura de documento ainda inexistente retorna vazio no proprio tenant", async () => {
+  const snap = await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_a")));
+  assert.equal(snap.exists(), false);
+  await assertFails(getDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_b")));
+});
+
+test("clientes: consultas por aliases legados do proprio vendedor permanecem autorizadas", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    await setDoc(doc(admin, "clientes_operacionais", "cliente_alias_user"), tenantFields({
+      userId: profiles.vendedor1.uid,
+      saldoDevedorCentavos: 0,
+      criadoEm: "ts"
+    }));
+    await setDoc(doc(admin, "clientes_operacionais", "cliente_alias_responsavel"), tenantFields({
+      responsavelId: profiles.vendedor1.uid,
+      saldoDevedorCentavos: 0,
+      criadoEm: "ts"
+    }));
+  });
+
+  await assertSucceeds(getDocs(query(
+    collection(appDb(profiles.vendedor1), "clientes_operacionais"),
+    where("clientePlataformaId", "==", "tenant_a"),
+    where("userId", "==", profiles.vendedor1.uid),
+    limit(10)
+  )));
+  await assertSucceeds(getDocs(query(
+    collection(appDb(profiles.vendedor1), "clientes_operacionais"),
+    where("clientePlataformaId", "==", "tenant_a"),
+    where("responsavelId", "==", profiles.vendedor1.uid),
+    limit(10)
+  )));
+  await assertFails(getDocs(query(
+    collection(appDb(profiles.vendedor2), "clientes_operacionais"),
+    where("clientePlataformaId", "==", "tenant_a"),
+    where("userId", "==", profiles.vendedor1.uid),
+    limit(10)
+  )));
+});

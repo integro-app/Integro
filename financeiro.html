@@ -1,0 +1,2196 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta name="integro-legacy-entry" content="redirect-to-master-local">
+  <script>
+    (function () {
+      if (new URLSearchParams(location.search).get("legacy") === "1") return;
+      location.replace("master-local.html" + location.search + location.hash);
+    })();
+  </script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>INTEGRO - Financeiro</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
+  <link href="css/integro-theme.css?v=20260730-chat4" rel="stylesheet">
+
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:"Inter",sans-serif}
+    
+
+    body{min-height:100vh;background:linear-gradient(135deg,#f6f9fd,#eef4fb);color:var(--text);overflow-x:hidden}
+    button,input,select,textarea{font-family:inherit}
+    button{border:0;cursor:pointer}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:14px;padding:13px 14px;background:#fff;color:var(--text);font-weight:700;outline:none}
+    textarea{min-height:92px;resize:vertical}
+    label{display:block;color:#475569;font-size:13px;font-weight:900;margin-bottom:8px}
+
+    .layout{display:flex;min-height:100vh}
+    .sidebar{width:300px;background:linear-gradient(180deg,var(--nav),var(--nav2));color:#fff;padding:26px 20px;position:fixed;inset:0 auto 0 0;overflow-y:auto;z-index:50;transition:.25s}
+    .sidebar.collapsed{width:88px}
+    .brand{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+    .brand h1{font-size:32px;font-weight:900;letter-spacing:-1px}
+    .brand span{color:var(--orange2)}
+    .collapse-btn{width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.10);color:#fff;font-size:20px;border:1px solid rgba(255,255,255,.15)}
+    .mobile-menu-btn{position:fixed;top:14px;left:14px;width:54px;height:54px;border-radius:16px;background:#fff;border:1px solid var(--line);color:var(--text);font-size:26px;font-weight:900;box-shadow:var(--shadow);display:none;align-items:center;justify-content:center;z-index:10000}
+    .overlay{position:fixed;inset:0;background:rgba(2,6,23,.58);opacity:0;visibility:hidden;transition:.2s;z-index:9998}
+    .overlay.show,.overlay.open,.overlay.active{opacity:1;visibility:visible}
+
+    .user-card{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:18px;display:flex;gap:14px;align-items:center;margin-bottom:28px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
+    .avatar{width:54px;height:54px;border-radius:18px;background:linear-gradient(135deg,var(--orange2),var(--orange));display:grid;place-items:center;font-size:24px;font-weight:900;flex-shrink:0}
+    .user-card strong{display:block;font-size:16px;margin-bottom:3px}
+    .user-card small{display:block;color:#cbd5e1;font-weight:700;margin-bottom:3px}
+    .online{color:#7dffb1!important}
+    .role-pill{display:inline-block;margin-top:6px;background:rgba(0,0,0,.25);border-radius:8px;padding:4px 8px;font-size:12px;color:#fff!important}
+    .menu-title{color:#8fb4dc;font-size:12px;font-weight:900;text-transform:uppercase;margin:22px 6px 12px;letter-spacing:.6px}
+    .menu-item{height:52px;border-radius:14px;display:flex;align-items:center;gap:12px;color:#eaf3ff;font-weight:800;padding:0 14px;margin-bottom:7px;transition:.2s;background:transparent;width:100%;text-align:left}
+    .menu-item:hover,.menu-item.active{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;box-shadow:0 12px 26px rgba(255,138,0,.25)}
+    .menu-icon{width:24px;text-align:center;font-size:18px;flex-shrink:0}
+    .quick-actions{margin-top:26px;border-top:1px solid rgba(255,255,255,.12);padding-top:20px}
+    .quick-btn{width:100%;height:54px;border-radius:14px;color:#fff;font-weight:900;margin-bottom:10px;background:linear-gradient(135deg,var(--orange2),var(--orange))}
+    .outline-btn{background:transparent;border:1px solid rgba(255,255,255,.25)}
+    .sidebar.collapsed .brand h1,.sidebar.collapsed .user-info,.sidebar.collapsed .menu-title,.sidebar.collapsed .menu-label,.sidebar.collapsed .quick-actions{display:none}
+    .sidebar.collapsed .menu-item{justify-content:center}
+
+    .main{margin-left:300px;width:calc(100% - 300px);padding:28px 34px;transition:.25s}
+    .sidebar.collapsed + .main{margin-left:88px;width:calc(100% - 88px)}
+    .topbar{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-bottom:26px}
+    .topbar h2{font-size:30px;font-weight:900;letter-spacing:-1px}
+    .topbar p{margin-top:6px;color:var(--muted);font-weight:600}
+    .top-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .top-btn{height:54px;padding:0 18px;border-radius:14px;background:#fff;border:1px solid var(--line);color:var(--text);font-weight:800;box-shadow:var(--shadow)}
+    .primary-btn,.ghost-btn,.danger-btn,.success-btn{height:46px;border-radius:14px;padding:0 16px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+    .primary-btn{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;box-shadow:0 12px 26px rgba(255,138,0,.22)}
+    .ghost-btn{background:#fff;color:var(--text);border:1px solid var(--line)}
+    .danger-btn{background:#fff1f2;color:#be123c;border:1px solid #fecdd3}
+    .success-btn{background:#ecfdf5;color:#15803d;border:1px solid #bbf7d0}
+
+    .screen{display:none}
+    .screen.active{display:block}
+    .kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin-bottom:22px}
+    .kpi-card{border-radius:22px;padding:22px;box-shadow:var(--shadow);min-height:150px;display:flex;align-items:center;gap:18px;overflow:hidden;color:#fff;position:relative}
+    .kpi-card[onclick]{cursor:pointer;transition:transform .18s ease,box-shadow .18s ease,filter .18s ease}
+    .kpi-card[onclick]:hover{transform:translateY(-3px);box-shadow:0 22px 52px rgba(15,23,42,.14);filter:saturate(1.04)}
+    .kpi-card::after{content:"";position:absolute;right:-32px;bottom:-36px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.14)}
+    .kpi-icon{width:62px;height:62px;border-radius:20px;display:grid;place-items:center;font-size:28px;flex-shrink:0;background:rgba(255,255,255,.18);z-index:1}
+    .kpi-card>div:last-child{z-index:1}
+    .kpi-label{font-size:13px;text-transform:uppercase;font-weight:900;color:rgba(255,255,255,.84);letter-spacing:.4px;margin-bottom:8px}
+    .kpi-value{font-size:28px;font-weight:900;color:#fff;line-height:1}
+    .kpi-sub{margin-top:10px;font-size:13px;color:rgba(255,255,255,.84);font-weight:700}
+    .grad-red{background:linear-gradient(135deg,#ef4444,#991b1b)}
+    .grad-orange{background:linear-gradient(135deg,var(--orange2),var(--orange))}
+    .grad-blue{background:linear-gradient(135deg,#38bdf8,#1d4ed8)}
+    .grad-green{background:linear-gradient(135deg,#22c55e,#15803d)}
+    .grad-purple{background:linear-gradient(135deg,#a78bfa,#7c3aed)}
+    .grad-cyan{background:linear-gradient(135deg,#2dd4bf,#047857)}
+    .grad-navy{background:linear-gradient(135deg,#092b61,#061a35)}
+
+    .panel,.section-card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);padding:24px;margin-bottom:22px}
+    .panel-head,.section-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px}
+    .panel h3,.section-header h2{font-weight:900}
+    .section-header p,.panel-head p{color:var(--muted);font-weight:600;margin-top:6px}
+    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+    .toolbar-group{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .toolbar-spacer{margin-left:auto}
+    .tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .tab-btn{height:42px;border-radius:999px;padding:0 14px;background:#f8fafc;border:1px solid var(--line);font-weight:900;color:#475569}
+    .tab-btn.active{background:linear-gradient(135deg,var(--orange2),var(--orange));color:#fff;border-color:transparent}
+    .filters{display:none;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px;background:#f8fafc;border:1px solid var(--line);border-radius:18px;padding:16px}
+    .filters.show{display:grid}
+    .view-toggle{display:inline-flex;background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:4px;gap:4px}
+    .view-toggle button{height:38px;border-radius:10px;padding:0 12px;background:transparent;color:#64748b;font-weight:900}
+    .view-toggle button.active{background:#fff;color:var(--orange);box-shadow:0 8px 18px rgba(15,23,42,.08)}
+
+    .table-wrap{overflow:auto;border:1px solid var(--line);border-radius:18px}
+    table{width:100%;border-collapse:collapse;background:#fff}
+    th,td{padding:14px;border-bottom:1px solid var(--line);text-align:left;font-size:14px;vertical-align:middle;white-space:nowrap}
+    th{background:linear-gradient(135deg,var(--nav),var(--nav2));color:#dbeafe;text-transform:uppercase;font-size:12px;font-weight:900}
+    tbody tr{cursor:pointer}
+    tbody tr:hover{background:#f8fafc}
+    .status-badge{display:inline-flex;align-items:center;border-radius:999px;padding:7px 10px;font-size:12px;font-weight:900}
+    .st-vencida{background:#fef2f2;color:#991b1b}
+    .st-hoje{background:#fff7ed;color:#c2410c}
+    .st-proxima{background:#eff6ff;color:#1d4ed8}
+    .st-paga,.st-aprovada{background:#ecfdf5;color:#15803d}
+    .st-cancelada,.st-recusada{background:#f1f5f9;color:#475569}
+    .st-pendente{background:#fefce8;color:#a16207}
+    .st-recorrente{background:#f5f3ff;color:#6d28d9}
+
+    .calendar{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:10px}
+    .calendar-head{background:#f8fafc;color:#475569;font-weight:900;text-align:center;border-radius:12px;padding:10px}
+    .calendar-day{min-height:130px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:10px;cursor:pointer;box-shadow:0 8px 22px rgba(15,23,42,.04)}
+    .calendar-day.muted{opacity:.45}
+    .day-number{font-weight:900;margin-bottom:8px}
+    .event-pill{display:block;border-radius:999px;padding:6px 8px;font-size:11px;font-weight:900;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mini-calendar .calendar-day{min-height:104px}
+    .mini-calendar .event-pill{font-size:10px;padding:5px 7px}
+
+    .cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+    .info-card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 10px 28px rgba(15,23,42,.05)}
+    .info-card strong{display:block;font-size:17px;margin-bottom:8px}
+    .info-card small{display:block;color:var(--muted);font-weight:800;margin-top:4px}
+    .empty{border:1px dashed #cbd5e1;background:#f8fafc;border-radius:18px;padding:18px;color:#475569;font-weight:800}
+
+    .drawer{position:fixed;inset:0;z-index:12000;display:none}
+    .drawer.show{display:block}
+    .drawer-overlay{position:absolute;inset:0;background:rgba(2,6,23,.58)}
+    .drawer-content{position:absolute;right:0;top:0;height:100%;width:min(560px,100%);background:#fff;box-shadow:-22px 0 48px rgba(2,6,23,.22);display:flex;flex-direction:column}
+    .drawer-header{padding:22px 24px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+    .drawer-header h3{font-size:22px;font-weight:900}
+    .drawer-header p{color:var(--muted);font-weight:700;margin-top:5px}
+    .drawer-close{width:44px;height:44px;border-radius:14px;background:#f8fafc;color:#334155;font-weight:900;font-size:18px}
+    .drawer-body{padding:24px;overflow:auto;display:grid;gap:16px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .form-group.full{grid-column:1/-1}
+    .drawer-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+    .drawer-primary{flex:1}
+    .recurrence-box{border:1px solid var(--line);border-radius:18px;padding:16px;background:#f8fafc;display:grid;gap:14px}
+    .recurrence-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .weekday-row{display:flex;gap:8px;flex-wrap:wrap}
+    .weekday-chip{width:34px;height:34px;border-radius:999px;background:#e8f0fe;color:#1d4ed8;font-weight:900}
+    .weekday-chip.active{background:#0b57d0;color:#fff}
+    .radio-row{display:grid;gap:10px}
+    .radio-line{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;color:#475569;font-weight:800}
+    .radio-line input[type="radio"],.radio-line input[type="checkbox"]{width:auto}
+    .log-list{display:grid;gap:10px}
+    .log-item{border:1px solid var(--line);border-radius:14px;padding:12px;background:#f8fafc}
+    .log-item small{display:block;color:var(--muted);font-weight:800;margin-top:4px}
+
+    @media(max-width:1180px){.kpi-grid,.cards-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:900px){
+      .mobile-menu-btn{display:flex}
+      .sidebar{transform:translateX(-105%);z-index:9999}
+      .sidebar.show,.sidebar.open,.sidebar.active{transform:translateX(0)}
+      .sidebar.collapsed{width:300px}
+      .sidebar.collapsed .brand h1,.sidebar.collapsed .user-info,.sidebar.collapsed .menu-title,.sidebar.collapsed .menu-label,.sidebar.collapsed .quick-actions{display:block}
+      .main,.sidebar.collapsed + .main{margin-left:0;width:100%;padding:84px 14px 18px}
+      .topbar{align-items:flex-start;flex-direction:column}
+      .top-actions,.toolbar,.toolbar-group{width:100%}
+      .top-btn,.primary-btn,.ghost-btn,.danger-btn,.success-btn{flex:1}
+      .toolbar-spacer{margin-left:0}
+      .kpi-grid,.cards-grid,.filters,.form-grid{grid-template-columns:1fr}
+      .recurrence-row{grid-template-columns:1fr}
+      .calendar{grid-template-columns:1fr}
+      .calendar-head{display:none}
+      .calendar-day{min-height:auto}
+    }
+
+
+    /* ===== LOADING PREMIUM ÍNTEGRO - FINANCEIRO ===== */
+    body.integro-booting{overflow:hidden;}
+    body.integro-booting .layout,
+    body.integro-booting .mobile-menu-btn{
+      opacity:0;
+      pointer-events:none;
+    }
+    .integro-boot-loader{
+      position:fixed;
+      inset:0;
+      z-index:20000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:
+        radial-gradient(circle at 20% 20%,rgba(255,138,0,.18),transparent 34%),
+        linear-gradient(135deg,#061a35,#092b61 55%,#071a33);
+      color:#fff;
+      transition:.35s ease;
+    }
+    .integro-boot-loader.hide{
+      opacity:0;
+      visibility:hidden;
+    }
+    .integro-loader-card{
+      width:min(460px,calc(100% - 36px));
+      border:1px solid rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
+      box-shadow:0 30px 80px rgba(0,0,0,.28);
+      backdrop-filter:blur(14px);
+      border-radius:28px;
+      padding:34px;
+      text-align:center;
+    }
+    .integro-loader-logo{
+      font-size:34px;
+      font-weight:900;
+      letter-spacing:-1px;
+      margin-bottom:10px;
+    }
+    .integro-loader-logo span{color:var(--orange2);}
+    .integro-loader-title{
+      font-size:18px;
+      font-weight:900;
+      margin-bottom:8px;
+    }
+    .integro-loader-step{
+      color:#dbeafe;
+      font-weight:800;
+      min-height:22px;
+    }
+    .integro-loader-percent{
+      margin-top:20px;
+      font-size:34px;
+      font-weight:900;
+      letter-spacing:-1px;
+      color:#fff;
+    }
+    .integro-loader-bar{
+      height:10px;
+      border-radius:999px;
+      margin-top:14px;
+      overflow:hidden;
+      background:rgba(255,255,255,.15);
+    }
+    .integro-loader-bar span{
+      display:block;
+      height:100%;
+      width:0%;
+      border-radius:999px;
+      background:linear-gradient(90deg,var(--orange2),var(--orange));
+      transition:width .32s ease;
+    }
+    .integro-loader-hint{
+      margin-top:14px;
+      color:#bfdbfe;
+      font-size:12px;
+      font-weight:750;
+      line-height:1.45;
+    }
+
+  </style>
+  <link href="css/integro-mobile.css?v=20260806-v19" rel="stylesheet">
+  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2">
+  <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20">
+</head>
+
+<body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="financeiro">
+
+  <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
+    <div class="integro-loader-card">
+      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
+      <div class="integro-loader-title">Preparando financeiro</div>
+      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel financeiro...</div>
+      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
+      <div class="integro-loader-bar"><span id="integroLoaderBarFill"></span></div>
+      <div class="integro-loader-hint">Validando acesso, agenda, contas, caixas e solicitações.</div>
+    </div>
+  </div>
+
+  <button class="mobile-menu-btn" type="button" onclick="toggleSidebarFinanceiro(true)" aria-label="Abrir menu" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button>
+  <div class="layout">
+    <div class="overlay" id="overlay" onclick="toggleSidebarFinanceiro(false)" data-integro-sidebar-overlay></div>
+
+    <aside class="sidebar" id="sidebar" data-integro-sidebar>
+      <div class="brand">
+        <h1>ÍNTE<span>GRO</span></h1>
+        <button class="collapse-btn" type="button" onclick="toggleCollapseSidebarFinanceiro()"><span class="material-symbols-rounded">chevron_left</span></button>
+      </div>
+
+      <div class="user-card">
+        <div class="avatar">$</div>
+        <div class="user-info">
+          <strong id="userNome">Usuário</strong>
+          <small id="empresaNome">Empresa</small>
+          <small class="online" id="userStatus">● Online</small>
+          <small class="role-pill" id="userCargo">Financeiro</small>
+        </div>
+      </div>
+
+      <div class="menu-title">Financeiro</div>
+      <button class="menu-item active" onclick="trocarTelaFinanceiro('dashboard', this)"><span class="menu-icon material-symbols-rounded">dashboard</span><span class="menu-label">Dashboard</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('contas', this)"><span class="menu-icon material-symbols-rounded">receipt_long</span><span class="menu-label">Contas</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('solicitacoes', this)"><span class="menu-icon material-symbols-rounded">request_quote</span><span class="menu-label">Solicitações</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('caixas', this)"><span class="menu-icon material-symbols-rounded">point_of_sale</span><span class="menu-label">Caixas</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('fornecedores', this)"><span class="menu-icon material-symbols-rounded">storefront</span><span class="menu-label">Fornecedores</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('relatorios', this)"><span class="menu-icon material-symbols-rounded">bar_chart</span><span class="menu-label">Relatórios</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('auditoria', this)"><span class="menu-icon material-symbols-rounded">policy</span><span class="menu-label">Auditoria</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('chatInterno', this)"><span class="menu-icon material-symbols-rounded">forum</span><span class="menu-label">Chat interno</span></button>
+      <button class="menu-item" onclick="trocarTelaFinanceiro('configuracoes', this)"><span class="menu-icon material-symbols-rounded">settings</span><span class="menu-label">Configurações</span></button>
+
+      <div class="quick-actions">
+        <div class="menu-title">Ações</div>
+        <button class="quick-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
+        <button class="quick-btn outline-btn" type="button" onclick="carregarFinanceiroMock()">Atualizar dados</button>
+        <button class="quick-btn outline-btn" type="button" onclick="logoutFinanceiro()">Sair</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h2 id="pageTitle">Dashboard Financeiro</h2>
+        </div>
+        <div class="top-actions">
+          <button class="top-btn" type="button" id="topDataFinanceiro">Hoje</button>
+          <button class="top-btn" type="button" onclick="carregarFinanceiroMock()">Atualizar</button>
+          <button class="primary-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
+        </div>
+      </div>
+
+      <section id="dashboard" class="screen active">
+        <div class="kpi-grid" id="dashboardFinanceiroCards"></div>
+
+        <div class="panel" data-integro-ui-component="surface">
+          <div class="panel-head" data-integro-ui-component="surface">
+            <div>
+              <h3>Agenda de pagamentos</h3>
+              <p>Próximos vencimentos e recorrências em destaque.</p>
+            </div>
+            <button class="ghost-btn" type="button" onclick="trocarTelaFinanceiro('contas')">Ver contas</button>
+          </div>
+          <div id="agendaPagamentosResumo" class="mini-calendar"></div>
+        </div>
+      </section>
+
+      <section id="contas" class="screen">
+        <div class="section-card" data-integro-ui-component="surface">
+          <div class="section-header">
+            <div>
+              <h2>Contas</h2>
+              <p>Contas a pagar, pagas, vencidas, recorrentes e canceladas.</p>
+            </div>
+          </div>
+
+          <div class="toolbar">
+            <div class="toolbar-group">
+              <button class="primary-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
+              <button class="ghost-btn" type="button" onclick="abrirNovaRecorrencia()">Nova recorrência</button>
+              <button class="ghost-btn" type="button" onclick="exportarContasMock()">Exportar</button>
+              <button class="ghost-btn" type="button" onclick="alternarFiltrosContas()">Filtros</button>
+            </div>
+            <div class="view-toggle toolbar-spacer">
+              <button id="btnTabelaContas" class="active" type="button" onclick="alternarVisualizacaoContas('tabela')">Tabela</button>
+              <button id="btnCalendarioContas" type="button" onclick="alternarVisualizacaoContas('calendario')">Calendário</button>
+            </div>
+          </div>
+
+          <div class="tabs" id="tabsContas"></div>
+
+          <div class="filters" id="filtrosContas">
+            <div><label>Status</label><select id="filtroStatus"><option value="">Todos</option><option>VENCIDA</option><option>VENCE_HOJE</option><option>PROXIMA</option><option>PAGA</option><option>RECORRENTE</option><option>CANCELADA</option></select></div>
+            <div><label>Fornecedor</label><select id="filtroFornecedor"><option value="">Todos</option></select></div>
+            <div><label>Categoria</label><select id="filtroCategoria"><option value="">Todas</option><option>Aluguel</option><option>Marketing</option><option>Operacional</option><option>Serviços</option><option>Tecnologia</option></select></div>
+            <div><label>Forma de pagamento</label><select id="filtroForma"><option value="">Todas</option><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+            <div><label>Data inicial</label><input id="filtroDataInicial" type="date"></div>
+            <div><label>Data final</label><input id="filtroDataFinal" type="date"></div>
+            <div><label>Valor mínimo</label><input id="filtroValorMin" type="number" min="0" step="0.01"></div>
+            <div><label>Valor máximo</label><input id="filtroValorMax" type="number" min="0" step="0.01"></div>
+            <div class="form-group full"><label>Buscar descrição</label><input id="filtroBuscaDescricao" type="search" placeholder="Buscar por descrição" oninput="aplicarFiltrosContas()"></div>
+            <div class="form-group full"><button class="primary-btn" type="button" onclick="aplicarFiltrosContas(true)">Aplicar filtros</button></div>
+          </div>
+
+          <div id="contasTabelaView"></div>
+          <div id="contasCalendarioView" style="display:none;"></div>
+        </div>
+      </section>
+
+      <section id="solicitacoes" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Solicitações financeiras</h2><p>Ingressos, retiradas, gastos e vendas fora da regra.</p></div></div><div id="listaSolicitacoesFinanceiras" class="cards-grid"></div></div></section>
+      <section id="caixas" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Caixas</h2><p>Caixas abertos, fechados e divergências.</p></div></div><div id="listaCaixasFinanceiro" class="table-wrap"></div></div></section>
+      <section id="fornecedores" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Fornecedores</h2><p>Cadastro base para contas a pagar.</p></div><button class="primary-btn" type="button" onclick="abrirNovoFornecedorMock()">Novo fornecedor</button></div><div id="listaFornecedores" class="cards-grid"></div></div></section>
+      <section id="relatorios" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Relatórios</h2><p>Estrutura preparada para indicadores e exportações futuras.</p></div></div><div id="listaRelatoriosFinanceiro" class="cards-grid"></div></div></section>
+      <section id="auditoria" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Auditoria</h2><p>Logs financeiros e rastreabilidade.</p></div></div><div id="listaAuditoriaFinanceira" class="table-wrap"></div></div></section>
+      <section id="chatInterno" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Chat interno</h2><p>Comunicação com gestores, equipes e operação.</p></div></div><div id="integroChatRoot"></div></div></section>
+      <section id="configuracoes" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Configurações</h2><p>Categorias, formas de pagamento, alertas e permissões financeiras.</p></div></div><div id="listaConfiguracoesFinanceiras" class="cards-grid"></div></div></section>
+    </main>
+  </div>
+
+  <div class="drawer" id="drawer"></div>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="js/firebase-config.js?v=20260728-3"></script>
+  <script src="js/config.js"></script>
+  <script src="js/utils/operational.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/services/firestore.js?v=20260728-3"></script>
+  <script src="js/services/financial-operations.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+  <script src="js/services/chat-service.js?v=20260730-chat4"></script>
+  <script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
+  <script src="js/utils/validators.js"></script>
+  <script src="js/utils/ui-helpers.js"></script>
+  <script src="js/app.js?v=20260812-v24-6"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/chat-ui.js?v=20260730-chat4"></script>
+
+  <script>
+    const hojeFinanceiro = new Date();
+    const hojeIsoFinanceiro = hojeFinanceiro.toISOString().slice(0, 10);
+    const feriadosFinanceirosExtrasMock = [];
+    let abaContasAtual = "todas";
+    let modoVisualizacaoContas = "tabela";
+    let filtroRapidoContas = "";
+    let contasFiltradasMock = [];
+
+    let contasFinanceirasMock = [];
+    let fornecedoresMock = [];
+    let solicitacoesFinanceirasMock = [];
+    let caixasFinanceiroMock = [];
+    let logsFinanceirosMock = [];
+
+
+    let financeiroBootFinalizado = false;
+
+    function sleepFinanceiroBoot(ms = 120) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function setLoaderFinanceiroStep(texto, porcentagem = 0) {
+      const percentual = Math.max(0, Math.min(100, Number(porcentagem) || 0));
+      const step = document.getElementById("integroLoaderStep");
+      const percent = document.getElementById("integroLoaderPercent");
+      const fill = document.getElementById("integroLoaderBarFill");
+      if (step) step.innerText = texto || "Carregando...";
+      if (percent) percent.innerText = `${percentual}%`;
+      if (fill) fill.style.width = `${percentual}%`;
+    }
+
+    async function executarEtapaFinanceiro(texto, porcentagem, callback) {
+      setLoaderFinanceiroStep(texto, porcentagem);
+      await sleepFinanceiroBoot(120);
+      if (typeof callback === "function") {
+        const retorno = callback();
+        if (retorno && typeof retorno.then === "function") await retorno;
+      }
+    }
+
+    function liberarSistemaFinanceiro() {
+      financeiroBootFinalizado = true;
+      setLoaderFinanceiroStep("Financeiro pronto.", 100);
+      setTimeout(() => {
+        const loader = document.getElementById("integroBootLoader");
+        if (loader) loader.classList.add("hide");
+        document.body.classList.remove("integro-booting");
+        setTimeout(() => {
+          if (loader) loader.style.display = "none";
+        }, 380);
+      }, 260);
+    }
+
+    async function iniciarLoadingFinanceiro() {
+      try {
+        setLoaderFinanceiroStep("Iniciando painel financeiro...", 0);
+
+        await executarEtapaFinanceiro("Preparando estrutura da tela...", 12, () => {
+          const dataTopo = document.getElementById("topDataFinanceiro");
+          if (dataTopo) dataTopo.innerText = new Date().toLocaleDateString("pt-BR");
+        });
+
+        await executarEtapaFinanceiro("Validando acesso do usuário...", 30, async () => {
+          if (typeof protegerPaginaAtual === "function") {
+            const retorno = protegerPaginaAtual();
+            if (retorno && typeof retorno.then === "function") await retorno;
+          }
+        });
+
+        await executarEtapaFinanceiro("Carregando dados do perfil financeiro...", 45, () => {
+          if (typeof preencherUsuarioLayout === "function") preencherUsuarioLayout();
+        });
+
+        await executarEtapaFinanceiro("Carregando contas, fornecedores e solicitações...", 68, () => {
+          carregarFinanceiroMock();
+        });
+
+        await executarEtapaFinanceiro("Atualizando caixas, relatórios e auditoria...", 86, () => {
+          renderDashboardFinanceiro();
+          renderContas();
+          renderSolicitacoesFinanceiras();
+          renderCaixasFinanceiro();
+          renderFornecedores();
+          renderRelatoriosFinanceiro();
+          renderAuditoriaFinanceira();
+          renderConfiguracoesFinanceiras();
+        });
+
+        await executarEtapaFinanceiro("Liberando sistema financeiro...", 96);
+        liberarSistemaFinanceiro();
+      } catch (erro) {
+        console.error("Erro no loading financeiro:", erro);
+        setLoaderFinanceiroStep("Não foi possível concluir toda a validação, liberando tela com segurança...", 100);
+        liberarSistemaFinanceiro();
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      iniciarLoadingFinanceiro();
+    });
+
+    document.addEventListener("usuario-validado", () => {
+      if (typeof preencherUsuarioLayout === "function") preencherUsuarioLayout();
+    });
+
+    function moeda(valor) {
+      return Number(valor || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    }
+
+    function dataPtBr(valor) {
+      if (!valor) return "-";
+      return new Date(valor + "T00:00:00").toLocaleDateString("pt-BR");
+    }
+
+    function addDias(data, dias) {
+      const d = new Date(data + "T00:00:00");
+      d.setDate(d.getDate() + dias);
+      return d.toISOString().slice(0, 10);
+    }
+
+    function escapar(valor = "") {
+      return String(valor).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    function diaSemanaIso(dataIso) {
+      return new Date(dataIso + "T00:00:00").getDay();
+    }
+
+    function nomeDiaSemana(dataIso) {
+      return new Date(dataIso + "T00:00:00").toLocaleDateString("pt-BR", { weekday: "long" });
+    }
+
+    function ordemDiaSemanaNoMes(dataIso) {
+      return Math.ceil(Number(String(dataIso).slice(8, 10)) / 7);
+    }
+
+    function textoOrdemDiaSemana(dataIso) {
+      const ordem = ordemDiaSemanaNoMes(dataIso);
+      const nomes = ["primeiro", "segundo", "terceiro", "quarto", "quinto"];
+      return nomes[ordem - 1] || `${ordem}?`;
+    }
+
+    function opcoesRecorrenciaRapida(dataIso) {
+      const data = dataIso || hojeIsoFinanceiro;
+      const dia = nomeDiaSemana(data);
+      const mesDia = new Date(data + "T00:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "long" });
+      return `
+        <option value="NAO_REPETIR">Não se repete</option>
+        <option value="DIARIO">Todos os dias</option>
+        <option value="SEMANAL">Semanal: cada ${dia}</option>
+        <option value="MENSAL_DIA_SEMANA">Mensal no(a) ${textoOrdemDiaSemana(data)}(a) ${dia}</option>
+        <option value="ANUAL">Anual em ${mesDia}</option>
+        <option value="DIAS_UTEIS">Todos os dias da semana (segunda a sexta-feira)</option>
+        <option value="PERSONALIZADO">Personalizar...</option>
+      `;
+    }
+
+    function statusClasse(status) {
+      const s = String(status || "").toUpperCase();
+      if (s === "VENCIDA") return "st-vencida";
+      if (s === "VENCE_HOJE") return "st-hoje";
+      if (s === "PAGA" || s === "APROVADA") return "st-paga";
+      if (s === "CANCELADA" || s === "RECUSADA") return "st-cancelada";
+      if (s === "RECORRENTE") return "st-recorrente";
+      if (s === "PENDENTE") return "st-pendente";
+      return "st-proxima";
+    }
+
+    function statusLabel(status) {
+      return String(status || "").replace(/_/g, " ");
+    }
+
+    function carregarFinanceiroMock() {
+      fornecedoresMock = [
+        { id:"forn_1", nome:"Alpha Tecnologia", documento:"12.345.678/0001-90", telefone:"(11) 99999-0101", pix:"financeiro@alpha.com", banco:"Itaú", categoriaPadrao:"Tecnologia", observacoes:"Fornecedor recorrente de sistemas." },
+        { id:"forn_2", nome:"Mídia Forte", documento:"23.456.789/0001-10", telefone:"(11) 98888-0202", pix:"23.456.789/0001-10", banco:"Inter", categoriaPadrao:"Marketing", observacoes:"Campanhas digitais." },
+        { id:"forn_3", nome:"Serviços Prime", documento:"34.567.890/0001-20", telefone:"(11) 97777-0303", pix:"servicos@prime.com", banco:"Santander", categoriaPadrao:"Operacional", observacoes:"Manutenção e suporte." }
+      ];
+
+      contasFinanceirasMock = [
+        { id:"conta_1", descricao:"Hospedagem do sistema", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-18), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Tecnologia", vencimento:addDias(hojeIsoFinanceiro,-3), valor:980, status:"VENCIDA", formaPagamento:"Boleto", recorrente:true, observacao:"Plano mensal.", anexos:["boleto-hospedagem.pdf"], historico:["Conta criada", "Alerta enviado"], logs:["Mock: geração automática"] },
+        { id:"conta_2", descricao:"Campanha Instagram", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Marketing", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-5), dataPagamento:"", fornecedor:"Mídia Forte", fornecedorId:"forn_2", categoria:"Marketing", vencimento:hojeIsoFinanceiro, valor:1450, status:"VENCE_HOJE", formaPagamento:"PIX", recorrente:false, observacao:"Campanha de leads.", anexos:[], historico:["Conta importada"], logs:["Mock: aguardando pagamento"] },
+        { id:"conta_3", descricao:"Manutenção escritório", empresaNome:"Unidade Centro", empresaId:"empresa_2", responsavelNome:"Bruna Financeiro", responsavelId:"user_2", criadoPorNome:"Supervisor Centro", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-2), dataPagamento:"", fornecedor:"Serviços Prime", fornecedorId:"forn_3", categoria:"Operacional", vencimento:addDias(hojeIsoFinanceiro,4), valor:620, status:"PROXIMA", formaPagamento:"Transferência", recorrente:false, observacao:"Chamado preventivo.", anexos:[], historico:["Conta criada"], logs:["Mock: sem alterações"] },
+        { id:"conta_4", descricao:"Internet corporativa", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-30), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Serviços", vencimento:addDias(hojeIsoFinanceiro,7), valor:399.9, status:"RECORRENTE", formaPagamento:"Cartão", recorrente:true, observacao:"Recorrência mensal.", anexos:[], historico:["Recorrência criada"], logs:["Mock: próxima ocorrência"] },
+        { id:"conta_5", descricao:"Energia unidade central", empresaNome:"Unidade Centro", empresaId:"empresa_2", responsavelNome:"Bruna Financeiro", responsavelId:"user_2", criadoPorNome:"Financeiro", pagoPorNome:"Bruna Financeiro", dataCriacao:addDias(hojeIsoFinanceiro,-20), dataPagamento:addDias(hojeIsoFinanceiro,-2), fornecedor:"Serviços Prime", fornecedorId:"forn_3", categoria:"Operacional", vencimento:addDias(hojeIsoFinanceiro,-12), valor:830.45, status:"PAGA", formaPagamento:"PIX", recorrente:false, observacao:"Pago integralmente.", anexos:["comprovante-energia.jpg"], historico:["Pagamento registrado"], logs:["Mock: pago no mês"] },
+        { id:"conta_6", descricao:"Assinatura cancelada", empresaNome:"Joaquins Pizzaria", empresaId:"empresa_1", responsavelNome:"Financeiro", responsavelId:"user_1", criadoPorNome:"Admin Master", pagoPorNome:"", dataCriacao:addDias(hojeIsoFinanceiro,-9), dataPagamento:"", fornecedor:"Alpha Tecnologia", fornecedorId:"forn_1", categoria:"Tecnologia", vencimento:addDias(hojeIsoFinanceiro,12), valor:129, status:"CANCELADA", formaPagamento:"Cartão", recorrente:false, observacao:"Cancelada antes do vencimento.", anexos:[], historico:["Conta cancelada"], logs:["Mock: cancelamento"] }
+      ];
+
+      solicitacoesFinanceirasMock = [
+        { id:"sol_1", tipo:"INGRESSO", status:"PENDENTE", vendedor:"Kauan", valor:500, descricao:"Solicitação de ingresso para reforço de caixa." },
+        { id:"sol_2", tipo:"RETIRADA", status:"APROVADA", vendedor:"Gustavo", valor:300, descricao:"Recolhimento autorizado." },
+        { id:"sol_3", tipo:"GASTO", status:"PENDENTE", vendedor:"Tiago", valor:87.5, descricao:"Combustível para rota." },
+        { id:"sol_4", tipo:"VENDA_FORA_REGRA", status:"RECUSADA", vendedor:"Mariana", valor:1200, descricao:"Venda acima do limite operacional." }
+      ];
+
+      caixasFinanceiroMock = [
+        { id:"cx_1", equipe:"Equipe Norte", vendedor:"Kauan", status:"ABERTO", valorCalculado:1520, valorInformado:0, diferenca:0 },
+        { id:"cx_2", equipe:"Equipe Centro", vendedor:"Gustavo", status:"FECHADO", valorCalculado:2310, valorInformado:2310, diferenca:0 },
+        { id:"cx_3", equipe:"Equipe Sul", vendedor:"Mariana", status:"DIVERGENTE", valorCalculado:1840, valorInformado:1760, diferenca:-80 }
+      ];
+
+      logsFinanceirosMock = [
+        { id:"log_1", usuario:"Financeiro", acao:"CRIAR_CONTA", data:hojeIsoFinanceiro, conta:"Campanha Instagram", descricao:"Conta criada via mock." },
+        { id:"log_2", usuario:"Financeiro", acao:"REGISTRAR_PAGAMENTO", data:addDias(hojeIsoFinanceiro,-2), conta:"Energia unidade central", descricao:"Pagamento registrado com comprovante." },
+        { id:"log_3", usuario:"Supervisor", acao:"APROVAR_RETIRADA", data:addDias(hojeIsoFinanceiro,-1), conta:"Caixa Gustavo", descricao:"Solicitação financeira aprovada." }
+      ];
+
+      popularFiltroFornecedores();
+      renderDashboardFinanceiro();
+      renderContas();
+      renderSolicitacoesFinanceiras();
+      renderCaixasFinanceiro();
+      renderFornecedores();
+      renderRelatoriosFinanceiro();
+      renderAuditoriaFinanceira();
+      renderConfiguracoesFinanceiras();
+    }
+
+    function trocarTelaFinanceiro(tela, el = null) {
+      const titulos = {
+        dashboard:["Dashboard Financeiro","Resumo de contas, pagamentos, caixas e solicitações."],
+        contas:["Contas","Contas a pagar, agenda, pagamentos e recorrências."],
+        solicitacoes:["Solicitações","Aprovações financeiras e operações fora da regra."],
+        caixas:["Caixas","Abertos, fechados e divergências de caixa."],
+        fornecedores:["Fornecedores","Base de fornecedores e dados banc?rios."],
+        relatorios:["Relatórios","Indicadores e exportações futuras."],
+        auditoria:["Auditoria","Logs financeiros e rastreabilidade."],
+        configuracoes:["Configurações","Categorias, formas de pagamento, alertas e permissões."]
+      };
+
+      document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+      document.getElementById(tela)?.classList.add("active");
+      document.querySelectorAll(".menu-item").forEach(b => b.classList.remove("active"));
+      if (el) {
+        el.classList.add("active");
+      } else {
+        const menu = Array.from(document.querySelectorAll(".menu-item"))
+          .find(btn => btn.getAttribute("onclick")?.includes(`'${tela}'`) || btn.getAttribute("onclick")?.includes(`\"${tela}\"`));
+        if (menu) menu.classList.add("active");
+      }
+      document.getElementById("pageTitle").innerText = titulos[tela]?.[0] || "Financeiro";
+      document.getElementById("pageSubtitle").innerText = titulos[tela]?.[1] || "";
+      if (tela === "contas") renderContas();
+      if (window.innerWidth <= 900) toggleSidebarFinanceiro(false);
+    }
+
+    function renderDashboardFinanceiro() {
+      const vencidas = contasFinanceirasMock.filter(c => c.status === "VENCIDA");
+      const hoje = contasFinanceirasMock.filter(c => c.vencimento === hojeIsoFinanceiro && c.status !== "PAGA" && c.status !== "CANCELADA");
+      const proximas = contasFinanceirasMock.filter(c => c.vencimento > hojeIsoFinanceiro && c.vencimento <= addDias(hojeIsoFinanceiro, 7) && c.status !== "PAGA" && c.status !== "CANCELADA");
+      const abertas = contasFinanceirasMock.filter(c => !["PAGA","CANCELADA"].includes(c.status));
+      const pagas = contasFinanceirasMock.filter(c => c.status === "PAGA");
+      const recorrentes = contasFinanceirasMock.filter(c => c.recorrente);
+      const solicitacoes = solicitacoesFinanceirasMock.filter(s => s.status === "PENDENTE");
+      const divergencias = caixasFinanceiroMock.filter(c => Number(c.diferenca || 0) !== 0);
+
+      const cards = [
+        ["Contas vencidas", vencidas.length, moeda(vencidas.reduce((t,c)=>t+c.valor,0)), "!", "grad-red", "vencidas"],
+        ["Vencem hoje", hoje.length, moeda(hoje.reduce((t,c)=>t+c.valor,0)), "⌁", "grad-orange", "hoje"],
+        ["Próximos 7 dias", proximas.length, moeda(proximas.reduce((t,c)=>t+c.valor,0)), "7", "grad-blue", "7dias"],
+        ["Total em aberto", moeda(abertas.reduce((t,c)=>t+c.valor,0)), `${abertas.length} conta(s)`, "$", "grad-navy", "abertas"],
+        ["Total pago no mês", moeda(pagas.reduce((t,c)=>t+c.valor,0)), `${pagas.length} pagamento(s)`, "?", "grad-green", "pagas"],
+        ["Recorrências ativas", recorrentes.length, "Agenda automática", "R", "grad-purple", "recorrentes"],
+        ["Solicitações pendentes", solicitacoes.length, moeda(solicitacoes.reduce((t,s)=>t+s.valor,0)), "S", "grad-cyan", "solicitacoes"],
+        ["Divergências de caixa", divergencias.length, moeda(divergencias.reduce((t,c)=>t+Math.abs(c.diferenca),0)), "!", "grad-red", "caixas"]
+      ];
+
+      document.getElementById("dashboardFinanceiroCards").innerHTML = cards.map(c => `
+        <div class="kpi-card ${c[4]}" onclick="abrirAtalhoDashboardFinanceiro('${c[5]}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter') abrirAtalhoDashboardFinanceiro('${c[5]}')">
+          <div class="kpi-icon">${c[3]}</div>
+          <div>
+            <div class="kpi-label">${c[0]}</div>
+            <div class="kpi-value">${c[1]}</div>
+            <div class="kpi-sub">${c[2]}</div>
+          </div>
+        </div>
+      `).join("");
+
+      renderMiniCalendarioDashboard();
+    }
+
+    function abrirAtalhoDashboardFinanceiro(destino) {
+      if (destino === "solicitacoes") {
+        trocarTelaFinanceiro("solicitacoes");
+        return;
+      }
+
+      if (destino === "caixas") {
+        trocarTelaFinanceiro("caixas");
+        return;
+      }
+
+      const filtroStatus = document.getElementById("filtroStatus");
+      if (filtroStatus) filtroStatus.value = "";
+
+      if (destino === "abertas") {
+        abaContasAtual = "todas";
+        filtroRapidoContas = "abertas";
+      } else {
+        filtroRapidoContas = "";
+        abaContasAtual = destino;
+      }
+
+      trocarTelaFinanceiro("contas");
+      alternarVisualizacaoContas("tabela");
+      renderContas();
+    }
+
+    function renderMiniCalendarioDashboard() {
+      const el = document.getElementById("agendaPagamentosResumo");
+      if (!el) return;
+
+      const base = new Date(hojeIsoFinanceiro + "T00:00:00");
+      const ano = base.getFullYear();
+      const mes = base.getMonth();
+      const primeiro = new Date(ano, mes, 1);
+      const inicio = new Date(primeiro);
+      inicio.setDate(primeiro.getDate() - primeiro.getDay());
+      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","S?b"];
+      let html = `<div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
+
+      for (let i = 0; i < 42; i++) {
+        const dia = new Date(inicio);
+        dia.setDate(inicio.getDate() + i);
+        const iso = dia.toISOString().slice(0, 10);
+        const contasDia = contasFinanceirasMock.filter(c => c.vencimento === iso);
+        html += `
+          <div class="calendar-day ${dia.getMonth() !== mes ? "muted" : ""}" onclick="abrirContasDoDia('${iso}')">
+            <div class="day-number">${dia.getDate()}</div>
+            ${contasDia.slice(0, 2).map(c => `<span class="event-pill ${statusClasse(c.status)}">${escapar(c.descricao)} • ${moeda(c.valor)}</span>`).join("")}
+            ${contasDia.length > 2 ? `<small>+${contasDia.length - 2} conta(s)</small>` : ""}
+          </div>
+        `;
+      }
+
+      el.innerHTML = html + `</div>`;
+    }
+
+    function cardContaResumo(conta) {
+      return `
+        <div class="info-card" onclick="abrirDetalheConta('${conta.id}')" style="cursor:pointer;">
+          <strong>${escapar(conta.descricao)}</strong>
+          <span class="status-badge ${statusClasse(conta.status)}">${statusLabel(conta.status)}</span>
+          <small>${escapar(conta.fornecedor)} • ${escapar(conta.categoria)}</small>
+          <small>Vencimento: ${dataPtBr(conta.vencimento)}</small>
+          <small>Valor: ${moeda(conta.valor)}</small>
+        </div>
+      `;
+    }
+
+    function popularFiltroFornecedores() {
+      const select = document.getElementById("filtroFornecedor");
+      if (!select) return;
+      select.innerHTML = `<option value="">Todos</option>${fornecedoresMock.map(f => `<option>${escapar(f.nome)}</option>`).join("")}`;
+    }
+
+    function renderContas() {
+      const tabs = [
+        ["todas","Todas"],["hoje","Vencem hoje"],["7dias","Próximos 7 dias"],["vencidas","Vencidas"],["pagas","Pagas"],["recorrentes","Recorrentes"],["canceladas","Canceladas"]
+      ];
+      document.getElementById("tabsContas").innerHTML = tabs.map(t => `<button class="tab-btn ${abaContasAtual === t[0] ? "active" : ""}" onclick="selecionarAbaContas('${t[0]}')">${t[1]}</button>`).join("");
+      aplicarFiltrosContas();
+    }
+
+    function selecionarAbaContas(aba) {
+      abaContasAtual = aba;
+      filtroRapidoContas = "";
+      renderContas();
+    }
+
+    function alternarFiltrosContas() {
+      document.getElementById("filtrosContas")?.classList.toggle("show");
+    }
+
+    function aplicarFiltrosContas(fecharPainel = false) {
+      const status = document.getElementById("filtroStatus")?.value || "";
+      const fornecedor = document.getElementById("filtroFornecedor")?.value || "";
+      const categoria = document.getElementById("filtroCategoria")?.value || "";
+      const forma = document.getElementById("filtroForma")?.value || "";
+      const dataInicial = document.getElementById("filtroDataInicial")?.value || "";
+      const dataFinal = document.getElementById("filtroDataFinal")?.value || "";
+      const valorMin = Number(document.getElementById("filtroValorMin")?.value || 0);
+      const valorMax = Number(document.getElementById("filtroValorMax")?.value || 0);
+      const busca = (document.getElementById("filtroBuscaDescricao")?.value || "").toLowerCase();
+
+      contasFiltradasMock = contasFinanceirasMock.filter(c => {
+        const porAba =
+          abaContasAtual === "todas" ||
+          (abaContasAtual === "hoje" && c.vencimento === hojeIsoFinanceiro) ||
+          (abaContasAtual === "7dias" && c.vencimento > hojeIsoFinanceiro && c.vencimento <= addDias(hojeIsoFinanceiro, 7)) ||
+          (abaContasAtual === "vencidas" && c.status === "VENCIDA") ||
+          (abaContasAtual === "pagas" && c.status === "PAGA") ||
+          (abaContasAtual === "recorrentes" && c.recorrente) ||
+          (abaContasAtual === "canceladas" && c.status === "CANCELADA");
+
+        return porAba &&
+          (!filtroRapidoContas || !["PAGA","CANCELADA"].includes(c.status)) &&
+          (!status || c.status === status) &&
+          (!fornecedor || c.fornecedor === fornecedor) &&
+          (!categoria || c.categoria === categoria) &&
+          (!forma || c.formaPagamento === forma) &&
+          (!dataInicial || c.vencimento >= dataInicial) &&
+          (!dataFinal || c.vencimento <= dataFinal) &&
+          (!valorMin || c.valor >= valorMin) &&
+          (!valorMax || c.valor <= valorMax) &&
+          (!busca || c.descricao.toLowerCase().includes(busca));
+      });
+
+      if (modoVisualizacaoContas === "tabela") renderTabelaContas();
+      else renderCalendarioContas();
+
+      if (fecharPainel) {
+        document.getElementById("filtrosContas")?.classList.remove("show");
+      }
+    }
+
+    function alternarVisualizacaoContas(modo) {
+      modoVisualizacaoContas = modo;
+      document.getElementById("btnTabelaContas").classList.toggle("active", modo === "tabela");
+      document.getElementById("btnCalendarioContas").classList.toggle("active", modo === "calendario");
+      document.getElementById("contasTabelaView").style.display = modo === "tabela" ? "block" : "none";
+      document.getElementById("contasCalendarioView").style.display = modo === "calendario" ? "block" : "none";
+      aplicarFiltrosContas();
+    }
+
+    function renderTabelaContas() {
+      const el = document.getElementById("contasTabelaView");
+      if (!contasFiltradasMock.length) {
+        el.innerHTML = `<div class="empty">Nenhuma conta encontrada para os filtros selecionados.</div>`;
+        return;
+      }
+
+      el.innerHTML = `
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th><input type="checkbox"></th><th>Descrição</th><th>Empresa</th><th>Responsável</th><th>Fornecedor</th><th>Categoria</th><th>Vencimento</th><th>Valor</th><th>Status</th><th>Forma de pagamento</th><th>Recorrente</th><th>Ações</th></tr></thead>
+            <tbody>
+              ${contasFiltradasMock.map(c => `
+                <tr onclick="abrirDetalheConta('${c.id}')">
+                  <td onclick="event.stopPropagation()"><input type="checkbox"></td>
+                  <td><strong>${escapar(c.descricao)}</strong></td>
+                  <td>${escapar(c.empresaNome || "-")}</td>
+                  <td>${escapar(c.responsavelNome || "-")}</td>
+                  <td>${escapar(c.fornecedor)}</td>
+                  <td>${escapar(c.categoria)}</td>
+                  <td>${dataPtBr(c.vencimento)}</td>
+                  <td><strong>${moeda(c.valor)}</strong></td>
+                  <td><span class="status-badge ${statusClasse(c.status)}">${statusLabel(c.status)}</span></td>
+                  <td>${escapar(c.formaPagamento)}</td>
+                  <td>${c.recorrente ? "Sim" : "Não"}</td>
+                  <td onclick="event.stopPropagation()"><button class="ghost-btn" onclick="abrirDetalheConta('${c.id}')">Ver</button></td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderCalendarioContas() {
+      const el = document.getElementById("contasCalendarioView");
+      const base = new Date(hojeIsoFinanceiro + "T00:00:00");
+      const ano = base.getFullYear();
+      const mes = base.getMonth();
+      const primeiro = new Date(ano, mes, 1);
+      const inicio = new Date(primeiro);
+      inicio.setDate(primeiro.getDate() - primeiro.getDay());
+      const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","S?b"];
+      let html = `<div class="panel-head" data-integro-ui-component="surface"><div><h3>${base.toLocaleDateString("pt-BR", { month:"long", year:"numeric" })}</h3><p>Calendário mensal de contas.</p></div></div><div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
+
+      for (let i = 0; i < 42; i++) {
+        const dia = new Date(inicio);
+        dia.setDate(inicio.getDate() + i);
+        const iso = dia.toISOString().slice(0, 10);
+        const contasDia = contasFiltradasMock.filter(c => c.vencimento === iso);
+        html += `
+          <div class="calendar-day ${dia.getMonth() !== mes ? "muted" : ""}" onclick="abrirContasDoDia('${iso}')">
+            <div class="day-number">${dia.getDate()}</div>
+            ${contasDia.slice(0, 3).map(c => `<span class="event-pill ${statusClasse(c.status)}">${escapar(c.descricao)} • ${moeda(c.valor)}</span>`).join("")}
+            ${contasDia.length > 3 ? `<small>+${contasDia.length - 3} conta(s)</small>` : ""}
+          </div>
+        `;
+      }
+
+      el.innerHTML = html + `</div>`;
+    }
+
+    function abrirContasDoDia(data) {
+      const contas = contasFinanceirasMock.filter(c => c.vencimento === data);
+      abrirDrawerFinanceiro("Contas do dia", dataPtBr(data), contas.length ? contas.map(cardContaResumo).join("") : `<div class="empty">Nenhuma conta neste dia.</div>`);
+    }
+
+    function abrirDetalheConta(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      if (!conta) return;
+
+      abrirDrawerFinanceiro("Detalhe da conta", conta.descricao, `
+        <div class="info-card">
+          <strong>${escapar(conta.descricao)}</strong>
+          <small>Empresa: ${escapar(conta.empresaNome || "-")}</small>
+          <small>Usuário responsável: ${escapar(conta.responsavelNome || "-")}</small>
+          <small>Criado por: ${escapar(conta.criadoPorNome || "-")}</small>
+          <small>Pago por: ${escapar(conta.pagoPorNome || "-")}</small>
+          <small>Data de criação: ${dataPtBr(conta.dataCriacao)}</small>
+          <small>Data de pagamento: ${dataPtBr(conta.dataPagamento)}</small>
+          <small>Fornecedor: ${escapar(conta.fornecedor)}</small>
+          <small>Categoria: ${escapar(conta.categoria)}</small>
+          <small>Valor: ${moeda(conta.valor)}</small>
+          <small>Vencimento: ${dataPtBr(conta.vencimento)}</small>
+          <small>Status: <span class="status-badge ${statusClasse(conta.status)}">${statusLabel(conta.status)}</span></small>
+          <small>Forma de pagamento: ${escapar(conta.formaPagamento)}</small>
+          <small>Observação: ${escapar(conta.observacao || "-")}</small>
+          <small>Comprovantes: ${conta.anexos.length ? conta.anexos.map(escapar).join(", ") : "Nenhum comprovante"}</small>
+        </div>
+        <div class="drawer-actions">
+          <button class="success-btn" onclick="registrarPagamentoConta('${conta.id}')">Registrar pagamento</button>
+          <button class="ghost-btn" onclick="anexarComprovanteConta('${conta.id}')">Anexar comprovante</button>
+          <button class="ghost-btn" onclick="editarContaMock('${conta.id}')">Editar conta</button>
+          <button class="danger-btn" onclick="cancelarConta('${conta.id}')">Cancelar conta</button>
+          <button class="ghost-btn" onclick="duplicarConta('${conta.id}')">Duplicar conta</button>
+          <button class="ghost-btn" onclick="abrirNovaRecorrencia('${conta.id}')">Criar recorrência</button>
+        </div>
+        <div class="log-list">
+          <strong>Histórico</strong>
+          ${conta.historico.map(h => `<div class="log-item">${escapar(h)}</div>`).join("")}
+          <strong>Logs</strong>
+          ${conta.logs.map(l => `<div class="log-item">${escapar(l)}</div>`).join("")}
+        </div>
+      `);
+    }
+
+    function abrirNovaConta() {
+      abrirDrawerFinanceiro("Nova conta", "Cadastro visual preparado para Firebase", formularioContaMock());
+    }
+
+    function editarContaMock(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      abrirDrawerFinanceiro("Editar conta", "Alteração visual preparada para Firebase", formularioContaMock(conta));
+    }
+
+    function formularioContaMock(conta = {}) {
+      return `
+        <div class="form-grid">
+          <div class="form-group full"><label>Descrição</label><input id="contaDescricao" value="${escapar(conta.descricao || "")}"></div>
+          <div><label>Empresa</label><input id="contaEmpresaNome" value="${escapar(conta.empresaNome || "Joaquins Pizzaria")}" placeholder="Empresa"></div>
+          <div><label>Usuário responsável pela conta</label><input id="contaResponsavelNome" value="${escapar(conta.responsavelNome || "Financeiro")}" placeholder="Responsável"></div>
+          <div><label>Fornecedor</label><select id="contaFornecedor">${fornecedoresMock.map(f => `<option ${conta.fornecedor === f.nome ? "selected" : ""}>${escapar(f.nome)}</option>`).join("")}</select></div>
+          <div><label>Categoria</label><input id="contaCategoria" value="${escapar(conta.categoria || "")}" placeholder="Categoria"></div>
+          <div><label>Valor</label><input id="contaValor" type="number" step="0.01" value="${conta.valor || ""}"></div>
+          <div><label>Data de vencimento</label><input id="contaVencimento" type="date" value="${conta.vencimento || hojeIsoFinanceiro}"></div>
+          <div><label>Forma de pagamento</label><select id="contaForma"><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+          <div><label>Anexo opcional</label><input id="contaAnexo" type="file"></div>
+          <div class="form-group full"><label>Observação</label><textarea id="contaObservacao">${escapar(conta.observacao || "")}</textarea></div>
+          <div class="form-group full"><label><input id="contaRecorrente" type="checkbox" style="width:auto;" ${conta.recorrente ? "checked" : ""} onchange="alternarCamposRecorrenciaConta()"> Conta recorrente</label></div>
+          <div id="contaRecorrenciaCampos" class="form-group full" style="display:${conta.recorrente ? "block" : "none"};">
+            <div class="recurrence-box">
+              <div><label>Repetição</label><select id="contaRecPreset" onchange="atualizarRecorrenciaContaPersonalizada()">${opcoesRecorrenciaRapida(conta.vencimento || hojeIsoFinanceiro)}</select></div>
+              <div id="contaRecPersonalizado" style="display:none;">
+                <div class="recurrence-row">
+                  <div><label>Repetir a cada</label><input id="contaRecIntervalo" type="number" min="1" value="1"></div>
+                  <div><label>Unidade</label><select id="contaRecUnidade" onchange="atualizarVisibilidadeDiasSemanaConta()"><option value="DIA">dia</option><option value="SEMANA" selected>semana</option><option value="MES">mês</option><option value="ANO">ano</option></select></div>
+                </div>
+                <div id="contaRecDiasSemanaBloco" style="margin-top:14px;">
+                  <label>Repetir</label>
+                  <input id="contaRecDiasSemana" type="hidden" value="${diaSemanaIso(conta.vencimento || hojeIsoFinanceiro)}">
+                  <div class="weekday-row">
+                    ${["D","S","T","Q","Q","S","S"].map((d, i) => `<button type="button" class="weekday-chip ${i === diaSemanaIso(conta.vencimento || hojeIsoFinanceiro) ? "active" : ""}" data-dia="${i}" onclick="toggleDiaSemanaRecorrencia(this)">${d}</button>`).join("")}
+                  </div>
+                </div>
+              </div>
+              <div class="radio-row">
+                <label>Termina em</label>
+                <label class="radio-line"><input type="radio" name="contaRecTermino" value="NUNCA" checked> Nunca</label>
+                <label class="radio-line"><input type="radio" name="contaRecTermino" value="DATA"> Em <input id="contaRecDataFinal" type="date"></label>
+                <label class="radio-line"><input type="radio" name="contaRecTermino" value="OCORRENCIAS"> Após <input id="contaRecOcorrencias" type="number" min="1" value="12" style="max-width:160px;"> ocorrência(s)</label>
+              </div>
+              <input id="contaRecDiaVencimento" type="hidden" value="${conta.vencimento ? Number(conta.vencimento.slice(8, 10)) : 10}">
+              <div class="form-group full">
+                <label>Ajuste de vencimento</label>
+                <div style="display:grid;gap:10px;">
+                  <label style="margin:0;"><input id="contaRecPularSabado" type="checkbox" style="width:auto;" checked> Se cair no sábado, avançar para o próximo dia útil</label>
+                  <label style="margin:0;"><input id="contaRecPularDomingo" type="checkbox" style="width:auto;" checked> Se cair no domingo, avançar para o próximo dia útil</label>
+                  <label style="margin:0;"><input id="contaRecPularFeriado" type="checkbox" style="width:auto;" checked> Se cair em feriado, avançar para o próximo dia útil</label>
+                </div>
+              </div>
+              <div class="form-group full"><label>Alertas</label><select id="contaRecAlertas"><option>No vencimento</option><option>1 dia antes</option><option>3 dias antes</option><option>7 dias antes</option><option>Personalizado</option></select></div>
+            </div>
+          </div>
+        </div>
+        <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="salvarContaMock('${conta.id || ""}')">Salvar conta</button></div>
+      `;
+    }
+
+    function alternarCamposRecorrenciaConta() {
+      const campos = document.getElementById("contaRecorrenciaCampos");
+      const marcado = document.getElementById("contaRecorrente")?.checked;
+      if (campos) campos.style.display = marcado ? "block" : "none";
+      if (marcado) atualizarRecorrenciaContaPersonalizada();
+    }
+
+    function atualizarRecorrenciaContaPersonalizada() {
+      const preset = document.getElementById("contaRecPreset")?.value || "";
+      const bloco = document.getElementById("contaRecPersonalizado");
+      if (bloco) bloco.style.display = preset === "PERSONALIZADO" ? "block" : "none";
+      atualizarVisibilidadeDiasSemanaConta();
+    }
+
+    function atualizarVisibilidadeDiasSemanaConta() {
+      const unidade = document.getElementById("contaRecUnidade")?.value || "SEMANA";
+      const bloco = document.getElementById("contaRecDiasSemanaBloco");
+      if (bloco) bloco.style.display = unidade === "SEMANA" ? "block" : "none";
+    }
+
+    function toggleDiaSemanaRecorrencia(botao) {
+      botao.classList.toggle("active");
+      const selecionados = Array.from(document.querySelectorAll(".weekday-chip.active"))
+        .map(btn => btn.dataset.dia)
+        .join(",");
+      document.getElementById("contaRecDiasSemana").value = selecionados;
+    }
+
+    function terminoRecorrênciaConta() {
+      return document.querySelector('input[name="contaRecTermino"]:checked')?.value || "NUNCA";
+    }
+
+    function montarConfigRecorrênciaDaConta(conta) {
+      const preset = document.getElementById("contaRecPreset")?.value || "MENSAL_DIA_SEMANA";
+      const terminoTipo = terminoRecorrênciaConta();
+      const dataInicial = conta.vencimento || hojeIsoFinanceiro;
+      const base = {
+        ...conta,
+        dataInicial,
+        terminoTipo,
+        dataFinal: document.getElementById("contaRecDataFinal")?.value || "",
+        ocorrencias: Number(document.getElementById("contaRecOcorrencias")?.value || 12),
+        diaVencimento: Number(document.getElementById("contaRecDiaVencimento")?.value || dataInicial.slice(8, 10)),
+        regrasDiaUtil: {
+          pularSabado: document.getElementById("contaRecPularSabado")?.checked || false,
+          pularDomingo: document.getElementById("contaRecPularDomingo")?.checked || false,
+          pularFeriado: document.getElementById("contaRecPularFeriado")?.checked || false
+        },
+        alerta: document.getElementById("contaRecAlertas")?.value || "No vencimento"
+      };
+
+      if (preset === "DIARIO") return { ...base, repetir: "Diariamente", intervalo: 1 };
+      if (preset === "SEMANAL") return { ...base, repetir: "Semanalmente", intervalo: 1, diasSemana: [diaSemanaIso(dataInicial)] };
+      if (preset === "MENSAL_DIA_SEMANA") return { ...base, repetir: "MENSAL_DIA_SEMANA", intervalo: 1, ordemSemana: ordemDiaSemanaNoMes(dataInicial), diaSemana: diaSemanaIso(dataInicial) };
+      if (preset === "ANUAL") return { ...base, repetir: "Anualmente", intervalo: 1 };
+      if (preset === "DIAS_UTEIS") return { ...base, repetir: "DIAS_UTEIS", intervalo: 1 };
+      if (preset !== "PERSONALIZADO") return { ...base, repetir: "Não repetir", intervalo: 1, ocorrencias: 1 };
+
+      const unidade = document.getElementById("contaRecUnidade")?.value || "SEMANA";
+      const intervalo = Number(document.getElementById("contaRecIntervalo")?.value || 1);
+      const diasSemana = (document.getElementById("contaRecDiasSemana")?.value || "")
+        .split(",")
+        .filter(Boolean)
+        .map(Number);
+
+      return {
+        ...base,
+        repetir: unidade === "DIA" ? "Diariamente" : unidade === "SEMANA" ? "Semanalmente" : unidade === "MES" ? "Mensalmente" : "Anualmente",
+        intervalo,
+        unidadePersonalizada: unidade,
+        diasSemana: unidade === "SEMANA" ? diasSemana : []
+      };
+    }
+
+    function salvarContaMock(id = "") {
+      const descricao = document.getElementById("contaDescricao").value.trim();
+      if (!descricao) { notificarIntegro("Informe a descrição."); return; }
+
+      const fornecedor = document.getElementById("contaFornecedor").value;
+      const recorrenteMarcado = document.getElementById("contaRecorrente").checked;
+      const conta = {
+        id: id || `conta_${Date.now()}`,
+        descricao,
+        empresaNome: document.getElementById("contaEmpresaNome").value || "Empresa",
+        empresaId: id ? contasFinanceirasMock.find(c => c.id === id)?.empresaId || "empresa_mock" : "empresa_mock",
+        responsavelNome: document.getElementById("contaResponsavelNome").value || "Financeiro",
+        responsavelId: id ? contasFinanceirasMock.find(c => c.id === id)?.responsavelId || "user_mock" : "user_mock",
+        criadoPorNome: id ? contasFinanceirasMock.find(c => c.id === id)?.criadoPorNome || "Financeiro" : "Financeiro",
+        pagoPorNome: id ? contasFinanceirasMock.find(c => c.id === id)?.pagoPorNome || "" : "",
+        dataCriacao: id ? contasFinanceirasMock.find(c => c.id === id)?.dataCriacao || hojeIsoFinanceiro : hojeIsoFinanceiro,
+        dataPagamento: id ? contasFinanceirasMock.find(c => c.id === id)?.dataPagamento || "" : "",
+        fornecedor,
+        fornecedorId: fornecedoresMock.find(f => f.nome === fornecedor)?.id || "",
+        categoria: document.getElementById("contaCategoria").value || "Sem categoria",
+        vencimento: document.getElementById("contaVencimento").value || hojeIsoFinanceiro,
+        valor: Number(document.getElementById("contaValor").value || 0),
+        status: "PROXIMA",
+        formaPagamento: document.getElementById("contaForma").value,
+        recorrente: recorrenteMarcado,
+        observacao: document.getElementById("contaObservacao").value,
+        anexos: [],
+        historico: ["Conta salva no mock"],
+        logs: ["Mock: salvarContaMock"]
+      };
+
+      if (recorrenteMarcado) {
+        const resultado = gerarContasRecorrentesMock(montarConfigRecorrênciaDaConta(conta));
+
+        if (!resultado.length) {
+          notificarIntegro("Nenhuma ocorrência foi gerada. Verifique a data final.");
+          return;
+        }
+
+        contasFinanceirasMock = [...resultado, ...contasFinanceirasMock];
+        fecharDrawerFinanceiro();
+        abaContasAtual = "recorrentes";
+        filtroRapidoContas = "";
+        trocarTelaFinanceiro("contas");
+        alternarVisualizacaoContas("tabela");
+        renderDashboardFinanceiro();
+        renderContas();
+        notificarIntegro(`${resultado.length} conta(s) recorrente(s) gerada(s) no mock.`);
+        return;
+      }
+
+      const idx = contasFinanceirasMock.findIndex(c => c.id === id);
+      if (idx >= 0) contasFinanceirasMock[idx] = conta;
+      else contasFinanceirasMock.unshift(conta);
+      renderDashboardFinanceiro();
+      renderContas();
+
+      fecharDrawerFinanceiro();
+      notificarIntegro("Conta salva no mock.");
+    }
+
+    function adicionarMeses(dataIso, meses, diaVencimento = null) {
+      const base = new Date(dataIso + "T00:00:00");
+      const alvo = new Date(base);
+      alvo.setMonth(alvo.getMonth() + meses);
+
+      if (diaVencimento) {
+        const ultimoDia = new Date(alvo.getFullYear(), alvo.getMonth() + 1, 0).getDate();
+        alvo.setDate(Math.min(Number(diaVencimento), ultimoDia));
+      }
+
+      return alvo.toISOString().slice(0, 10);
+    }
+
+    function pascoaAno(ano) {
+      const a = ano % 19;
+      const b = Math.floor(ano / 100);
+      const c = ano % 100;
+      const d = Math.floor(b / 4);
+      const e = b % 4;
+      const f = Math.floor((b + 8) / 25);
+      const g = Math.floor((b - f + 1) / 3);
+      const h = (19 * a + b - d - g + 15) % 30;
+      const i = Math.floor(c / 4);
+      const k = c % 4;
+      const l = (32 + 2 * e + 2 * i - h - k) % 7;
+      const m = Math.floor((a + 11 * h + 22 * l) / 451);
+      const mes = Math.floor((h + l - 7 * m + 114) / 31);
+      const dia = ((h + l - 7 * m + 114) % 31) + 1;
+      return new Date(ano, mes - 1, dia);
+    }
+
+    function isoDeData(data) {
+      return data.toISOString().slice(0, 10);
+    }
+
+    function addDiasDate(data, dias) {
+      const d = new Date(data);
+      d.setDate(d.getDate() + dias);
+      return d;
+    }
+
+    function feriadosFinanceirosAno(ano) {
+      const pascoa = pascoaAno(ano);
+      return [
+        `${ano}-01-01`,
+        `${ano}-04-21`,
+        `${ano}-05-01`,
+        `${ano}-09-07`,
+        `${ano}-10-12`,
+        `${ano}-11-02`,
+        `${ano}-11-15`,
+        `${ano}-12-25`,
+        isoDeData(addDiasDate(pascoa, -47)),
+        isoDeData(addDiasDate(pascoa, -2)),
+        isoDeData(addDiasDate(pascoa, 60)),
+        ...feriadosFinanceirosExtrasMock
+      ];
+    }
+
+    function ehFeriadoFinanceiro(dataIso) {
+      const ano = Number(String(dataIso).slice(0, 4));
+      return feriadosFinanceirosAno(ano).includes(dataIso);
+    }
+
+    function ajustarParaProximoDiaUtil(dataIso, regras = {}) {
+      let data = dataIso;
+      let guard = 0;
+
+      while (guard < 10) {
+        const diaSemana = new Date(data + "T00:00:00").getDay();
+        const devePular =
+          (regras.pularSabado && diaSemana === 6) ||
+          (regras.pularDomingo && diaSemana === 0) ||
+          (regras.pularFeriado && ehFeriadoFinanceiro(data));
+
+        if (!devePular) return data;
+        data = addDias(data, 1);
+        guard++;
+      }
+
+      return data;
+    }
+
+    function calcularVencimentoRecorrência(dataInicial, repetir, intervalo, indice, diaVencimento) {
+      const base = dataInicial || hojeIsoFinanceiro;
+      const passo = Math.max(1, Number(intervalo || 1));
+      const repeticao = String(repetir || "Não repetir").toUpperCase();
+
+      if (indice === 0) {
+        if (["MENSALMENTE", "ANUALMENTE"].includes(repeticao) && diaVencimento) {
+          return adicionarMeses(base, 0, diaVencimento);
+        }
+        return base;
+      }
+
+      if (repeticao === "DIARIAMENTE" || repeticao === "PERSONALIZADO") return addDias(base, indice * passo);
+      if (repeticao === "SEMANALMENTE") return addDias(base, indice * 7 * passo);
+      if (repeticao === "QUINZENALMENTE") return addDias(base, indice * 15 * passo);
+      if (repeticao === "MENSALMENTE") return adicionarMeses(base, indice * passo, diaVencimento);
+      if (repeticao === "ANUALMENTE") return adicionarMeses(base, indice * 12 * passo, diaVencimento);
+      return base;
+    }
+
+    function dataMensalPorOrdemSemana(dataInicial, meses, ordemSemana, diaSemana) {
+      const base = new Date(dataInicial + "T00:00:00");
+      const alvo = new Date(base.getFullYear(), base.getMonth() + meses, 1);
+      const primeiroDiaSemana = alvo.getDay();
+      const deslocamento = (Number(diaSemana) - primeiroDiaSemana + 7) % 7;
+      alvo.setDate(1 + deslocamento + (Number(ordemSemana || 1) - 1) * 7);
+
+      if (alvo.getMonth() !== new Date(base.getFullYear(), base.getMonth() + meses, 1).getMonth()) {
+        alvo.setDate(alvo.getDate() - 7);
+      }
+
+      return alvo.toISOString().slice(0, 10);
+    }
+
+    function semanaRelativa(dataInicial, dataIso) {
+      const inicio = new Date(dataInicial + "T00:00:00");
+      const data = new Date(dataIso + "T00:00:00");
+      return Math.floor((data - inicio) / (7 * 24 * 60 * 60 * 1000));
+    }
+
+    function gerarContasRecorrentesMock(config) {
+      const terminoTipo = config.terminoTipo || "OCORRENCIAS";
+      const dataFinal = config.dataFinal || "";
+      const ocorrencias = Math.min(60, Math.max(1, Number(config.ocorrencias || 1)));
+      const semRepeticao = String(config.repetir || "").toUpperCase() === "N?O REPETIR";
+      const totalPlanejado =
+        semRepeticao ? 1 :
+        terminoTipo === "DATA" ? 60 :
+        terminoTipo === "NUNCA" ? 60 :
+        ocorrencias;
+      const recorrenciaId = `rec_${Date.now()}`;
+      const novasContas = [];
+
+      if (terminoTipo === "DATA" && !dataFinal) return [];
+
+      const usarVarreduraSemanal =
+        config.repetir === "DIAS_UTEIS" ||
+        (config.repetir === "Semanalmente" && Array.isArray(config.diasSemana) && config.diasSemana.length);
+
+      let cursor = config.dataInicial || hojeIsoFinanceiro;
+      let tentativas = 0;
+
+      for (let i = 0; i < totalPlanejado; i++) {
+        let vencimentoOriginal = "";
+
+        if (usarVarreduraSemanal) {
+          while (tentativas < 3700) {
+            const dia = diaSemanaIso(cursor);
+            const semana = semanaRelativa(config.dataInicial || hojeIsoFinanceiro, cursor);
+            const bateDiaUtil = config.repetir === "DIAS_UTEIS" && dia >= 1 && dia <= 5;
+            const bateDiaPersonalizado = config.repetir === "Semanalmente" && (config.diasSemana || []).includes(dia) && semana % Math.max(1, Number(config.intervalo || 1)) === 0;
+
+            if (bateDiaUtil || bateDiaPersonalizado) {
+              vencimentoOriginal = cursor;
+              cursor = addDias(cursor, 1);
+              tentativas++;
+              break;
+            }
+
+            cursor = addDias(cursor, 1);
+            tentativas++;
+          }
+        } else if (config.repetir === "MENSAL_DIA_SEMANA") {
+          vencimentoOriginal = dataMensalPorOrdemSemana(
+            config.dataInicial || hojeIsoFinanceiro,
+            i * Math.max(1, Number(config.intervalo || 1)),
+            config.ordemSemana || 1,
+            config.diaSemana ?? diaSemanaIso(config.dataInicial || hojeIsoFinanceiro)
+          );
+        } else {
+          vencimentoOriginal = calcularVencimentoRecorrência(
+            config.dataInicial || hojeIsoFinanceiro,
+            config.repetir || "Mensalmente",
+            config.intervalo || 1,
+            i,
+            config.diaVencimento || null
+          );
+        }
+
+        if (!vencimentoOriginal) break;
+
+        if (terminoTipo === "DATA" && dataFinal && vencimentoOriginal > dataFinal) break;
+
+        const vencimento = ajustarParaProximoDiaUtil(vencimentoOriginal, config.regrasDiaUtil || {});
+
+        novasContas.push({
+          id: `conta_rec_${Date.now()}_${i + 1}`,
+          descricao: config.descricao || "Conta recorrente",
+          empresaNome: config.empresaNome || "Empresa",
+          empresaId: config.empresaId || "empresa_mock",
+          responsavelNome: config.responsavelNome || "Financeiro",
+          responsavelId: config.responsavelId || "user_mock",
+          criadoPorNome: config.criadoPorNome || "Financeiro",
+          pagoPorNome: "",
+          dataCriacao: hojeIsoFinanceiro,
+          dataPagamento: "",
+          fornecedor: config.fornecedor || "",
+          fornecedorId: config.fornecedorId || "",
+          categoria: config.categoria || "Sem categoria",
+          vencimento,
+          vencimentoOriginal,
+          valor: Number(config.valor || 0),
+          status: "RECORRENTE",
+          formaPagamento: config.formaPagamento || "PIX",
+          recorrente: true,
+          recorrenciaId,
+          recorrenciaRegra: {
+            repetir: config.repetir || "Mensalmente",
+            intervalo: Number(config.intervalo || 1),
+            diaVencimento: config.diaVencimento || null,
+            dataInicial: config.dataInicial || hojeIsoFinanceiro,
+            terminoTipo,
+            dataFinal: terminoTipo === "DATA" ? dataFinal : null,
+            ocorrencias: totalPlanejado,
+            ajustarParaDiaUtil: config.regrasDiaUtil || {},
+            alerta: config.alerta || "No vencimento"
+          },
+          recorrenciaNumero: i + 1,
+          recorrenciaTotal: totalPlanejado,
+          observacao: config.observacao || "",
+          anexos: [],
+          historico: [`Ocorrência ${i + 1}/${totalPlanejado} gerada pela recorrência${vencimento !== vencimentoOriginal ? `, vencimento ajustado de ${dataPtBr(vencimentoOriginal)} para ${dataPtBr(vencimento)}` : ""}`],
+          logs: ["Mock: gerarContasRecorrentesMock"]
+        });
+      }
+
+      const totalGerado = novasContas.length;
+      novasContas.forEach((conta, index) => {
+        conta.descricao = `${config.descricao || "Conta recorrente"} ${totalGerado > 1 ? `(${index + 1}/${totalGerado})` : ""}`.trim();
+        conta.recorrenciaNumero = index + 1;
+        conta.recorrenciaTotal = totalGerado;
+        conta.recorrenciaRegra.ocorrenciasGeradas = totalGerado;
+        conta.historico = [
+          `Ocorrência ${index + 1}/${totalGerado} gerada pela recorrência${conta.vencimento !== conta.vencimentoOriginal ? `, vencimento ajustado de ${dataPtBr(conta.vencimentoOriginal)} para ${dataPtBr(conta.vencimento)}` : ""}`
+        ];
+      });
+
+      return novasContas;
+    }
+
+    function abrirNovaRecorrencia(contaId = "") {
+      const conta = contasFinanceirasMock.find(c => c.id === contaId) || {};
+      abrirDrawerFinanceiro("Nova recorrência", "Modelo visual estilo agenda", `
+        <div class="form-grid">
+          <input id="recContaOrigemId" type="hidden" value="${escapar(conta.id || "")}">
+          <div class="form-group full"><label>Descrição</label><input id="recDescricao" value="${escapar(conta.descricao || "")}"></div>
+          <div><label>Empresa</label><input id="recEmpresaNome" value="${escapar(conta.empresaNome || "Joaquins Pizzaria")}"></div>
+          <div><label>Responsável</label><input id="recResponsavelNome" value="${escapar(conta.responsavelNome || "Financeiro")}"></div>
+          <div><label>Fornecedor</label><select id="recFornecedor">${fornecedoresMock.map(f => `<option ${conta.fornecedor === f.nome ? "selected" : ""}>${escapar(f.nome)}</option>`).join("")}</select></div>
+          <div><label>Categoria</label><input id="recCategoria" value="${escapar(conta.categoria || "")}"></div>
+          <div><label>Valor</label><input id="recValor" type="number" step="0.01" value="${conta.valor || ""}"></div>
+          <div><label>Forma de pagamento</label><select id="recForma"><option ${conta.formaPagamento === "PIX" ? "selected" : ""}>PIX</option><option ${conta.formaPagamento === "Boleto" ? "selected" : ""}>Boleto</option><option ${conta.formaPagamento === "Transferência" ? "selected" : ""}>Transferência</option><option ${conta.formaPagamento === "Cartão" ? "selected" : ""}>Cartão</option></select></div>
+          <div><label>Data inicial</label><input id="recDataInicial" type="date" value="${conta.vencimento || hojeIsoFinanceiro}"></div>
+          <div><label>Repetir</label><select id="recRepetir"><option>Não repetir</option><option>Diariamente</option><option>Semanalmente</option><option>Quinzenalmente</option><option>Mensalmente</option><option>Anualmente</option><option>Personalizado</option></select></div>
+          <div><label>Repetir a cada</label><input id="recIntervalo" type="number" min="1" value="1"></div>
+          <div><label>Dia de vencimento</label><input id="recDiaVencimento" type="number" min="1" max="31" value="${conta.vencimento ? Number(conta.vencimento.slice(8, 10)) : 10}"></div>
+          <div><label>Término da recorrência</label><select id="recTerminoTipo"><option value="OCORRENCIAS">Após quantidade de ocorrências</option><option value="DATA">Em uma data final</option><option value="NUNCA">Sem data final definida</option></select></div>
+          <div><label>Data final</label><input id="recDataFinal" type="date"></div>
+          <div><label>Quantidade de ocorrências</label><input id="recOcorrencias" type="number" min="1" value="12"></div>
+          <div class="form-group full">
+            <label>Ajuste de vencimento</label>
+            <div style="display:grid;gap:10px;border:1px solid var(--line);border-radius:16px;padding:14px;background:#f8fafc;">
+              <label style="margin:0;"><input id="recPularSabado" type="checkbox" style="width:auto;" checked> Se cair no sábado, avançar para o próximo dia útil</label>
+              <label style="margin:0;"><input id="recPularDomingo" type="checkbox" style="width:auto;" checked> Se cair no domingo, avançar para o próximo dia útil</label>
+              <label style="margin:0;"><input id="recPularFeriado" type="checkbox" style="width:auto;" checked> Se cair em feriado, avançar para o próximo dia útil</label>
+            </div>
+          </div>
+          <div class="form-group full"><label>Alertas</label><select id="recAlertas"><option>No vencimento</option><option>1 dia antes</option><option>3 dias antes</option><option>7 dias antes</option><option>Personalizado</option></select></div>
+          <div class="form-group full"><label>Observação</label><textarea id="recObservacao">${escapar(conta.observacao || "")}</textarea></div>
+        </div>
+        <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="salvarRecorrenciaMock()">Salvar recorrência</button></div>
+      `);
+    }
+
+    function salvarRecorrenciaMock() {
+      const descricao = document.getElementById("recDescricao")?.value.trim();
+      const valor = Number(document.getElementById("recValor")?.value || 0);
+      const dataInicial = document.getElementById("recDataInicial")?.value || hojeIsoFinanceiro;
+      const repetir = document.getElementById("recRepetir")?.value || "Não repetir";
+      const intervalo = Number(document.getElementById("recIntervalo")?.value || 1);
+      const diaVencimento = Number(document.getElementById("recDiaVencimento")?.value || 0);
+      const terminoTipo = document.getElementById("recTerminoTipo")?.value || "OCORRENCIAS";
+      const dataFinal = document.getElementById("recDataFinal")?.value || "";
+      const ocorrencias = Math.min(60, Math.max(1, Number(document.getElementById("recOcorrencias")?.value || 1)));
+      const regrasDiaUtil = {
+        pularSabado: document.getElementById("recPularSabado")?.checked || false,
+        pularDomingo: document.getElementById("recPularDomingo")?.checked || false,
+        pularFeriado: document.getElementById("recPularFeriado")?.checked || false
+      };
+
+      if (!descricao) {
+        notificarIntegro("Informe a descrição da recorrência.");
+        return;
+      }
+
+      if (!valor || valor <= 0) {
+        notificarIntegro("Informe um valor maior que zero.");
+        return;
+      }
+
+      if (terminoTipo === "DATA" && !dataFinal) {
+        notificarIntegro("Informe a data final da recorrência.");
+        return;
+      }
+
+      const fornecedor = document.getElementById("recFornecedor")?.value || "";
+      const fornecedorId = fornecedoresMock.find(f => f.nome === fornecedor)?.id || "";
+      const novasContas = gerarContasRecorrentesMock({
+        descricao,
+        valor,
+        dataInicial,
+        repetir,
+        intervalo,
+        diaVencimento,
+        terminoTipo,
+        dataFinal,
+        ocorrencias,
+        regrasDiaUtil,
+        fornecedor,
+        fornecedorId,
+        empresaNome: document.getElementById("recEmpresaNome")?.value || "Empresa",
+        empresaId: "empresa_mock",
+        responsavelNome: document.getElementById("recResponsavelNome")?.value || "Financeiro",
+        responsavelId: "user_mock",
+        categoria: document.getElementById("recCategoria")?.value || "Sem categoria",
+        formaPagamento: document.getElementById("recForma")?.value || "PIX",
+        observacao: document.getElementById("recObservacao")?.value || "",
+        alerta: document.getElementById("recAlertas")?.value || "No vencimento"
+      });
+
+      if (!novasContas.length) {
+        notificarIntegro("Nenhuma ocorrência foi gerada. Verifique a data final.");
+        return;
+      }
+
+      contasFinanceirasMock = [...novasContas, ...contasFinanceirasMock];
+      fecharDrawerFinanceiro();
+      abaContasAtual = "recorrentes";
+      filtroRapidoContas = "";
+      trocarTelaFinanceiro("contas");
+      alternarVisualizacaoContas("tabela");
+      renderDashboardFinanceiro();
+      renderContas();
+      notificarIntegro(`${novasContas.length} conta(s) recorrente(s) gerada(s) no mock.`);
+    }
+
+    function registrarPagamentoConta(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      abrirDrawerFinanceiro("Registrar pagamento", conta?.descricao || "Conta", `
+        <div class="form-grid">
+          <div><label>Usuário responsável pela baixa</label><input id="pagResponsavel" value="${escapar(conta?.responsavelNome || "Financeiro")}"></div>
+          <div><label>Data em que foi paga</label><input id="pagData" type="date" value="${hojeIsoFinanceiro}"></div>
+          <div><label>Valor pago</label><input id="pagValor" type="number" step="0.01" value="${conta?.valor || ""}"></div>
+          <div><label>Forma de pagamento</label><select id="pagForma"><option>PIX</option><option>Boleto</option><option>Transferência</option><option>Cartão</option></select></div>
+          <div><label>Conta/banco</label><input id="pagBanco" placeholder="Banco ou conta"></div>
+          <div class="form-group full"><label>Comprovante</label><input id="pagComprovante" type="file"></div>
+          <div class="form-group full"><label>Observação</label><textarea id="pagObs"></textarea></div>
+        </div>
+        <div class="drawer-actions"><button class="success-btn drawer-primary" onclick="confirmarPagamentoMock('${id}')">Confirmar pagamento</button></div>
+      `);
+    }
+
+    function confirmarPagamentoMock(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      if (conta) {
+        conta.status = "PAGA";
+        conta.pagoPorNome = document.getElementById("pagResponsavel")?.value || "Financeiro";
+        conta.dataPagamento = document.getElementById("pagData")?.value || hojeIsoFinanceiro;
+        conta.valorPago = Number(document.getElementById("pagValor")?.value || conta.valor || 0);
+        conta.formaPagamento = document.getElementById("pagForma")?.value || conta.formaPagamento;
+        conta.contaBancoPagamento = document.getElementById("pagBanco")?.value || "";
+        conta.historico.push("Pagamento registrado no mock");
+        conta.logs.push("Mock: confirmarPagamentoMock");
+      }
+      fecharDrawerFinanceiro();
+      renderDashboardFinanceiro();
+      renderContas();
+      notificarIntegro("Pagamento registrado no mock.");
+    }
+
+    function anexarComprovanteConta(id) {
+      notificarIntegro("Upload visual preparado. Integração com Storage será feita na próxima etapa.");
+    }
+
+    function cancelarConta(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      if (!conta || !confirm("Cancelar esta conta no mock?")) return;
+      conta.status = "CANCELADA";
+      conta.logs.push("Mock: cancelarConta");
+      fecharDrawerFinanceiro();
+      renderDashboardFinanceiro();
+      renderContas();
+    }
+
+    function duplicarConta(id) {
+      const conta = contasFinanceirasMock.find(c => c.id === id);
+      if (!conta) return;
+      contasFinanceirasMock.unshift({ ...conta, id:`conta_${Date.now()}`, descricao:`${conta.descricao} - cópia`, status:"PROXIMA", historico:["Conta duplicada no mock"], logs:["Mock: duplicarConta"] });
+      fecharDrawerFinanceiro();
+      renderDashboardFinanceiro();
+      renderContas();
+      notificarIntegro("Conta duplicada no mock.");
+    }
+
+    function renderSolicitacoesFinanceiras() {
+      document.getElementById("listaSolicitacoesFinanceiras").innerHTML = solicitacoesFinanceirasMock.map(s => `
+        <div class="info-card">
+          <strong>${s.tipo}</strong>
+          <span class="status-badge ${statusClasse(s.status)}">${statusLabel(s.status)}</span>
+          <small>Vendedor: ${escapar(s.vendedor)}</small>
+          <small>Valor: ${moeda(s.valor)}</small>
+          <small>${escapar(s.descricao)}</small>
+          <div class="drawer-actions"><button class="success-btn">Aprovar</button><button class="danger-btn">Recusar</button><button class="ghost-btn">Ver detalhes</button></div>
+        </div>
+      `).join("");
+    }
+
+    function renderCaixasFinanceiro() {
+      document.getElementById("listaCaixasFinanceiro").innerHTML = `
+        <table><thead><tr><th>Equipe</th><th>Vendedor</th><th>Calculado</th><th>Informado</th><th>Diferença</th><th>Status</th></tr></thead><tbody>
+        ${caixasFinanceiroMock.map(c => `<tr><td>${escapar(c.equipe)}</td><td>${escapar(c.vendedor)}</td><td>${moeda(c.valorCalculado)}</td><td>${moeda(c.valorInformado)}</td><td>${moeda(c.diferenca)}</td><td><span class="status-badge ${c.status === "DIVERGENTE" ? "st-vencida" : "st-proxima"}">${c.status}</span></td></tr>`).join("")}
+        </tbody></table>`;
+    }
+
+    function renderFornecedores() {
+      document.getElementById("listaFornecedores").innerHTML = fornecedoresMock.map(f => `
+        <div class="info-card">
+          <strong>${escapar(f.nome)}</strong>
+          <small>Documento: ${escapar(f.documento)}</small>
+          <small>Telefone: ${escapar(f.telefone)}</small>
+          <small>PIX: ${escapar(f.pix)}</small>
+          <small>Banco: ${escapar(f.banco)}</small>
+          <small>Categoria padrão: ${escapar(f.categoriaPadrao)}</small>
+          <small>${escapar(f.observacoes)}</small>
+        </div>
+      `).join("");
+    }
+
+    function abrirNovoFornecedorMock() {
+      abrirDrawerFinanceiro("Novo fornecedor", "Cadastro visual preparado para Firebase", `
+        <div class="form-grid">
+          <div class="form-group full"><label>Nome</label><input></div>
+          <div><label>Documento</label><input></div>
+          <div><label>Telefone</label><input></div>
+          <div><label>PIX</label><input></div>
+          <div><label>Banco</label><input></div>
+          <div><label>Categoria padrão</label><input></div>
+          <div class="form-group full"><label>Observações</label><textarea></textarea></div>
+        </div>
+        <div class="drawer-actions"><button class="primary-btn drawer-primary" onclick="fecharDrawerFinanceiro()">Salvar fornecedor</button></div>
+      `);
+    }
+
+    function renderRelatoriosFinanceiro() {
+      const relatorios = ["Contas por período","Contas por categoria","Contas por fornecedor","Pagamentos realizados","Recorrências","Exportação futura"];
+      document.getElementById("listaRelatoriosFinanceiro").innerHTML = relatorios.map(r => `<div class="info-card"><strong>${r}</strong><small>Estrutura visual pronta para conexão com dados reais.</small><button class="ghost-btn" style="margin-top:12px;">Ver relatório</button></div>`).join("");
+    }
+
+    function renderAuditoriaFinanceira() {
+      document.getElementById("listaAuditoriaFinanceira").innerHTML = `
+        <table><thead><tr><th>Usuário</th><th>Ação</th><th>Data</th><th>Conta relacionada</th><th>Descrição</th></tr></thead><tbody>
+        ${logsFinanceirosMock.map(l => `<tr><td>${escapar(l.usuario)}</td><td>${escapar(l.acao)}</td><td>${dataPtBr(l.data)}</td><td>${escapar(l.conta)}</td><td>${escapar(l.descricao)}</td></tr>`).join("")}
+        </tbody></table>`;
+    }
+
+    function renderConfiguracoesFinanceiras() {
+      const itens = ["Categorias financeiras","Formas de pagamento","Alertas padrão","Permissões financeiras"];
+      document.getElementById("listaConfiguracoesFinanceiras").innerHTML = itens.map(i => `<div class="info-card"><strong>${i}</strong><small>Bloco visual preparado para parametrização futura.</small><button class="ghost-btn" style="margin-top:12px;">Configurar</button></div>`).join("");
+    }
+
+    function exportarContasMock() {
+      notificarIntegro("Exportação mockada. A geração de arquivo será conectada depois.");
+    }
+
+    function abrirDrawerFinanceiro(titulo, subtitulo, conteudo) {
+      const drawer = document.getElementById("drawer");
+      drawer.innerHTML = `
+        <div class="drawer-overlay" onclick="fecharDrawerFinanceiro()"></div>
+        <div class="drawer-content">
+          <div class="drawer-header">
+            <div><h3>${titulo}</h3><p>${subtitulo}</p></div>
+            <button class="drawer-close" onclick="fecharDrawerFinanceiro()">?</button>
+          </div>
+          <div class="drawer-body">${conteudo}</div>
+        </div>
+      `;
+      drawer.classList.add("show");
+    }
+
+    function fecharDrawerFinanceiro() {
+      const drawer = document.getElementById("drawer");
+      drawer.classList.remove("show");
+      setTimeout(() => { drawer.innerHTML = ""; }, 200);
+    }
+
+    function toggleSidebarFinanceiro(force) {
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("overlay");
+      const abrir = typeof force === "boolean" ? force : !sidebar.classList.contains("show");
+      sidebar.classList.toggle("show", abrir);
+      sidebar.classList.toggle("open", abrir);
+      sidebar.classList.toggle("active", abrir);
+      overlay.classList.toggle("show", abrir);
+      overlay.classList.toggle("open", abrir);
+      overlay.classList.toggle("active", abrir);
+      document.body.classList.toggle("menu-mobile-open", abrir);
+    }
+
+    function toggleCollapseSidebarFinanceiro() {
+      if (window.innerWidth <= 900) {
+        toggleSidebarFinanceiro(false);
+        return;
+      }
+      document.getElementById("sidebar").classList.toggle("collapsed");
+    }
+
+    function logoutFinanceiro() {
+      if (typeof logout === "function") {
+        logout();
+        return;
+      }
+      firebase.auth().signOut().finally(() => window.location.href = "index.html");
+    }
+  </script>
+<script>
+(function(){
+  "use strict";
+
+  const FIN = {
+    lancamentos: [],
+    lancamentosFiltrados: [],
+    caixas: [],
+    fechamentos: [],
+    diagnosticoLegado: null,
+    resumo: null,
+    pagina: 1,
+    pageSize: 50,
+    ordenacao: "recentes",
+    filtros: {
+      periodo: "mes",
+      dataInicio: "",
+      dataFim: "",
+      tipo: "",
+      natureza: "",
+      status: "",
+      vendedor: "",
+      equipe: "",
+      caixa: "",
+      origem: "",
+      valorMin: "",
+      valorMax: "",
+      busca: ""
+    },
+    locks: new Set()
+  };
+
+  function op(){ return window.IntegroOperacional || {}; }
+  function svc(){ return window.IntegroFinanceiroOperacional; }
+  function db(){ return window.db || window.firebase?.firestore?.(); }
+  function txt(v){ return String(v ?? "").trim(); }
+  function upper(v){ return txt(v).normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase(); }
+  function esc(v){ return txt(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
+  function cents(v){ return Math.round(Number(v || 0)); }
+  function moneyCents(v){ return (op().centavosParaMoeda ? op().centavosParaMoeda(cents(v)) : (cents(v) / 100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"})); }
+  function hojeSP(){ return op().hojeSP ? op().hojeSP() : new Date().toISOString().slice(0,10); }
+  function addDiasSP(data, dias){ return op().adicionarDiasSP ? op().adicionarDiasSP(data, dias) : data; }
+  function usuarioAtual(){ return window.usuarioLogado || window.currentUserData || window.State?.getUsuario?.() || {}; }
+  function tenantAtual(){
+    const u = usuarioAtual();
+    return txt(window.State?.getTenantId?.() || u.clientePlataformaId || u.empresaId || u.tenantId || localStorage.getItem("clientePlataformaId"));
+  }
+  function perfilAtual(){
+    const u = usuarioAtual();
+    const acesso = op().normalizarAcessoUsuario?.(u) || {};
+    return {
+      master: acesso.isMasterGlobal || acesso.isMasterLocal || ["MASTER_LOCAL","MASTER_GLOBAL"].includes(upper(u.tipoUsuario || u.tipo || u.role)),
+      financeiro: upper(u.tipoUsuario || u.cargoChave || u.cargo).includes("FINANCEIRO"),
+      supervisor: acesso.isSupervisor || upper(u.tipoUsuario || u.cargoChave || u.cargo).includes("SUPERVISOR"),
+      vendedor: acesso.isVendedor || upper(u.tipoUsuario || u.cargoChave || u.cargo).includes("VENDEDOR"),
+      auditor: upper(u.tipoUsuario || u.cargoChave || u.cargo).includes("AUDITOR")
+    };
+  }
+  function temPermissaoFinanceiro(permissao){
+    const u = usuarioAtual();
+    const p = perfilAtual();
+    if (p.vendedor) return false;
+    if (p.master) return true;
+    if (u.permissoes?.financeiro?.[permissao] === true || u.permissoes?.caixas?.[permissao] === true) return true;
+    if (op().temPermissao) return op().temPermissao(u, `financeiro.${permissao}`, { clientePlataformaId: tenantAtual() });
+    return p.financeiro || p.auditor || p.supervisor;
+  }
+  function periodoAtual(){
+    const hoje = hojeSP();
+    const p = FIN.filtros.periodo;
+    if (p === "hoje") return { dataInicio: hoje, dataFim: hoje };
+    if (p === "7dias") return { dataInicio: addDiasSP(hoje, -6), dataFim: hoje };
+    if (p === "custom") return { dataInicio: FIN.filtros.dataInicio || hoje, dataFim: FIN.filtros.dataFim || hoje };
+    return { dataInicio: hoje.slice(0,7) + "-01", dataFim: hoje };
+  }
+  function statusClass(status){
+    const s = upper(status);
+    if (s === "ESTORNADO" || s === "CANCELADO") return "st-cancelada";
+    if (s === "PENDENTE") return "st-pendente";
+    if (s === "DIVERGENTE") return "st-vencida";
+    return "st-paga";
+  }
+  function empty(msg){ return `<div class="empty">${esc(msg)}</div>`; }
+  function notificarFinanceiro(titulo, mensagem){
+    abrirDrawerFinanceiro(titulo || "Financeiro", "Aviso operacional", `<div class="info-card"><strong>${esc(mensagem || "")}</strong></div>`);
+  }
+  function bloquearAcaoMockFinanceiro(acao){
+    notificarFinanceiro(
+      "Ação indisponível",
+      `${acao} não grava dados reais. Use os fluxos oficiais de ledger, solicitações, caixa, regularização e estorno.`
+    );
+    return false;
+  }
+
+  async function carregarColecaoTenant(nome, limite = 1000){
+    const database = db();
+    const tenant = tenantAtual();
+    if (!database || !tenant) return [];
+    const lista = [];
+    try {
+      const snap = await database.collection(nome).where("clientePlataformaId","==",tenant).limit(limite).get();
+      snap.forEach(doc => lista.push({ id: doc.id, ...doc.data() }));
+    } catch (_) {
+      try {
+        const snap = await database.collection(nome).limit(limite).get();
+        snap.forEach(doc => {
+          const d = { id: doc.id, ...doc.data() };
+          if ([d.clientePlataformaId,d.tenantId,d.empresaId].some(x => txt(x) === tenant)) lista.push(d);
+        });
+      } catch (e) {
+        console.warn("Falha ao carregar", nome, e);
+      }
+    }
+    return lista.filter(x => x.excluido !== true);
+  }
+
+  function aplicarFiltrosLedger(){
+    const f = FIN.filtros;
+    const busca = upper(f.busca);
+    FIN.lancamentosFiltrados = FIN.lancamentos.filter(l => {
+      const valor = cents(l.valorCentavos);
+      return (!f.tipo || upper(l.tipoLancamento) === upper(f.tipo)) &&
+        (!f.natureza || upper(l.natureza) === upper(f.natureza)) &&
+        (!f.status || upper(l.statusLancamento || "CONFIRMADO") === upper(f.status)) &&
+        (!f.vendedor || txt(l.vendedorId) === txt(f.vendedor) || txt(l.vendedorAuthUid) === txt(f.vendedor)) &&
+        (!f.equipe || txt(l.equipeId) === txt(f.equipe)) &&
+        (!f.caixa || txt(l.caixaId) === txt(f.caixa)) &&
+        (!f.origem || upper(l.origem) === upper(f.origem)) &&
+        (!f.valorMin || valor >= Math.round(Number(f.valorMin) * 100)) &&
+        (!f.valorMax || valor <= Math.round(Number(f.valorMax) * 100)) &&
+        (!busca || [l.descricao,l.observacao,l.origemId,l.lancamentoId,l.id,l.caixaId,l.vendedorId,l.equipeId].some(x => upper(x).includes(busca)));
+    });
+    ordenarLancamentos(FIN.ordenacao);
+  }
+
+  function ordenarLancamentos(ordem){
+    FIN.ordenacao = ordem || FIN.ordenacao;
+    const cmpTxt = campo => (a,b) => txt(a[campo]).localeCompare(txt(b[campo]));
+    const mapa = {
+      antigos: (a,b) => txt(a.dataOperacional).localeCompare(txt(b.dataOperacional)),
+      maior: (a,b) => cents(b.valorCentavos) - cents(a.valorCentavos),
+      menor: (a,b) => cents(a.valorCentavos) - cents(b.valorCentavos),
+      tipo: cmpTxt("tipoLancamento"),
+      vendedor: cmpTxt("vendedorId"),
+      recentes: (a,b) => txt(b.dataOperacional || b.criadoEmTexto).localeCompare(txt(a.dataOperacional || a.criadoEmTexto))
+    };
+    FIN.lancamentosFiltrados.sort(mapa[FIN.ordenacao] || mapa.recentes);
+  }
+
+  async function carregarFinanceiroReal(){
+    if (!svc()) {
+      renderErroFinanceiro("Núcleo financeiro operacional indisponível.");
+      return;
+    }
+    if (!temPermissaoFinanceiro("podeVerFinanceiro") && !temPermissaoFinanceiro("podeVerLedgerFinanceiro")) {
+      renderErroFinanceiro("Acesso financeiro nao autorizado para este usuario.");
+      return;
+    }
+    const periodo = periodoAtual();
+    const tenant = tenantAtual();
+    FIN.resumo = await svc().calcularResumoFinanceiroPeriodo({ ...periodo, clientePlataformaId: tenant });
+    FIN.lancamentos = await svc().listarLancamentosPorPeriodo({ ...periodo, clientePlataformaId: tenant });
+    FIN.caixas = await carregarColecaoTenant("caixas", 1500);
+    FIN.fechamentos = await carregarColecaoTenant("fechamentos_caixa", 1500);
+    FIN.diagnosticoLegado = await svc().mapearLancamentosLegadosSomenteLeitura({ clientePlataformaId: tenant });
+    aplicarFiltrosLedger();
+    renderFinanceiroRealTudo();
+  }
+
+  function renderErroFinanceiro(msg){
+    ["dashboardFinanceiroCards","contasTabelaView","listaCaixasFinanceiro","listaSolicitacoesFinanceiras","listaRelatoriosFinanceiro","listaAuditoriaFinanceira","listaConfiguracoesFinanceiras"].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = empty(msg);
+    });
+  }
+
+  function filtrosPeriodoHtml(){
+    return `
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('hoje')">Hoje</button>
+          <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('7dias')">Ultimos 7 dias</button>
+          <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('mes')">Mes atual</button>
+          <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('custom')">Personalizado</button>
+        </div>
+        <div class="toolbar-group">
+          <input id="finDataInicio" type="date" value="${esc(FIN.filtros.dataInicio)}" onchange="setFiltroFinanceiroReal('dataInicio',this.value)">
+          <input id="finDataFim" type="date" value="${esc(FIN.filtros.dataFim)}" onchange="setFiltroFinanceiroReal('dataFim',this.value)">
+        </div>
+      </div>
+    `;
+  }
+
+  function renderDashboardFinanceiroReal(){
+    const r = FIN.resumo || {};
+    const por = r.porTipo || {};
+    const caixasAbertos = FIN.caixas.filter(c => upper(c.status) === "ABERTO").length;
+    const caixasFechados = FIN.caixas.filter(c => upper(c.status) === "FECHADO").length;
+    const caixasDivergentes = FIN.caixas.filter(c => upper(c.status) === "DIVERGENTE").length;
+    const divergenciasPendentes = FIN.fechamentos.filter(f => (f.divergenciaAceita !== true && f.regularizacaoFinanceiraStatus !== "REGISTRADA") && cents(f.diferencaCentavos) !== 0).length;
+    const cards = [
+      ["Entradas no periodo", moneyCents(r.totalCreditosCentavos), `${FIN.lancamentos.filter(l=>upper(l.natureza)==="CREDITO").length} lançamento(s)`, "+", "grad-green", "lancamentos"],
+      ["Saidas no periodo", moneyCents(r.totalDebitosCentavos), `${FIN.lancamentos.filter(l=>upper(l.natureza)==="DEBITO").length} lançamento(s)`, "-", "grad-red", "lancamentos"],
+      ["Saldo liquido", moneyCents(r.saldoCentavos), "Creditos menos debitos", "$", r.saldoCentavos >= 0 ? "grad-blue" : "grad-orange", "relatorios"],
+      ["Pagamentos recebidos", moneyCents(por.PAGAMENTO?.creditosCentavos || 0), `${por.PAGAMENTO?.quantidade || 0} item(ns)`, "P", "grad-green", "lancamentos"],
+      ["Vendas realizadas", moneyCents(por.VENDA?.debitosCentavos || 0), `${por.VENDA?.quantidade || 0} item(ns)`, "V", "grad-navy", "lancamentos"],
+      ["Gastos", moneyCents(por.GASTO?.debitosCentavos || 0), `${por.GASTO?.quantidade || 0} item(ns)`, "G", "grad-red", "lancamentos"],
+      ["Retiradas", moneyCents(por.RETIRADA?.debitosCentavos || 0), `${por.RETIRADA?.quantidade || 0} item(ns)`, "R", "grad-orange", "lancamentos"],
+      ["Ingressos", moneyCents(por.INGRESSO?.creditosCentavos || 0), `${por.INGRESSO?.quantidade || 0} item(ns)`, "I", "grad-cyan", "lancamentos"],
+      ["Recolhimentos", moneyCents(por.RECOLHIMENTO?.debitosCentavos || 0), `${por.RECOLHIMENTO?.quantidade || 0} item(ns)`, "C", "grad-purple", "lancamentos"],
+      ["Ajustes", moneyCents((por.AJUSTE?.creditosCentavos || 0) + (por.AJUSTE?.debitosCentavos || 0)), `${por.AJUSTE?.quantidade || 0} item(ns)`, "A", "grad-blue", "lancamentos"],
+      ["Divergencias pendentes", divergenciasPendentes, `${caixasDivergentes} caixa(s) divergente(s)`, "!", "grad-red", "divergencias"],
+      ["Caixas", `${caixasAbertos}/${caixasFechados}/${caixasDivergentes}`, "Abertos / fechados / divergentes", "CX", "grad-navy", "caixas"]
+    ];
+    const el = document.getElementById("dashboardFinanceiroCards");
+    el.innerHTML = filtrosPeriodoHtml() + cards.map(c => `
+      <div class="kpi-card ${c[4]}" onclick="abrirAtalhoFinanceiroReal('${c[5]}')">
+        <div class="kpi-icon">${esc(c[3])}</div><div><div class="kpi-label">${esc(c[0])}</div><div class="kpi-value">${esc(c[1])}</div><div class="kpi-sub">${esc(c[2])}</div></div>
+      </div>
+    `).join("");
+    const agenda = document.getElementById("agendaPagamentosResumo");
+    if (agenda) agenda.innerHTML = renderTopRelatorioHtml();
+  }
+
+  function renderFiltrosLancamentos(){
+    const tipos = ["","VENDA","PAGAMENTO","INGRESSO","GASTO","RETIRADA","RECOLHIMENTO","AJUSTE","DIVERGENCIA_ACEITA","REGULARIZACAO","ESTORNO"];
+    const opts = arr => arr.map(v => `<option value="${esc(v)}" ${FIN.filtros.tipo===v||FIN.filtros.natureza===v||FIN.filtros.status===v||FIN.ordenacao===v?"selected":""}>${esc(v || "Todos")}</option>`).join("");
+    return `
+      ${filtrosPeriodoHtml()}
+      <div class="filters show">
+        <div><label>Tipo</label><select onchange="setFiltroFinanceiroReal('tipo',this.value)">${opts(tipos)}</select></div>
+        <div><label>Natureza</label><select onchange="setFiltroFinanceiroReal('natureza',this.value)">${["","CREDITO","DEBITO"].map(v=>`<option value="${v}" ${FIN.filtros.natureza===v?"selected":""}>${v||"Todas"}</option>`).join("")}</select></div>
+        <div><label>Status</label><select onchange="setFiltroFinanceiroReal('status',this.value)">${["","CONFIRMADO","PENDENTE","ESTORNADO","CANCELADO"].map(v=>`<option value="${v}" ${FIN.filtros.status===v?"selected":""}>${v||"Todos"}</option>`).join("")}</select></div>
+        <div><label>Ordenar</label><select onchange="setOrdenacaoFinanceiroReal(this.value)">${["recentes","antigos","maior","menor","tipo","vendedor"].map(v=>`<option value="${v}" ${FIN.ordenacao===v?"selected":""}>${v}</option>`).join("")}</select></div>
+        <div><label>Vendedor</label><input value="${esc(FIN.filtros.vendedor)}" oninput="setFiltroFinanceiroReal('vendedor',this.value,true)"></div>
+        <div><label>Equipe</label><input value="${esc(FIN.filtros.equipe)}" oninput="setFiltroFinanceiroReal('equipe',this.value,true)"></div>
+        <div><label>Caixa</label><input value="${esc(FIN.filtros.caixa)}" oninput="setFiltroFinanceiroReal('caixa',this.value,true)"></div>
+        <div><label>Origem</label><input value="${esc(FIN.filtros.origem)}" oninput="setFiltroFinanceiroReal('origem',this.value,true)"></div>
+        <div><label>Valor min.</label><input type="number" step="0.01" value="${esc(FIN.filtros.valorMin)}" oninput="setFiltroFinanceiroReal('valorMin',this.value,true)"></div>
+        <div><label>Valor max.</label><input type="number" step="0.01" value="${esc(FIN.filtros.valorMax)}" oninput="setFiltroFinanceiroReal('valorMax',this.value,true)"></div>
+        <div class="form-group full"><label>Busca</label><input type="search" value="${esc(FIN.filtros.busca)}" placeholder="Descricao, origemId, caixa, vendedor..." oninput="setFiltroFinanceiroReal('busca',this.value,true)"></div>
+      </div>
+    `;
+  }
+
+  function renderLancamentosFinanceiroReal(){
+    const el = document.getElementById("contasTabelaView");
+    const total = FIN.lancamentosFiltrados.length;
+    const fim = FIN.pagina * FIN.pageSize;
+    const visiveis = FIN.lancamentosFiltrados.slice(0, fim);
+    if (!el) return;
+    el.innerHTML = renderFiltrosLancamentos() + (total ? `
+      <div class="table-wrap"><table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Natureza</th><th>Descricao</th><th>Origem</th><th>Caixa</th><th>Vendedor</th><th>Equipe</th><th>Valor</th><th>Status</th><th>Criado por</th><th>Acoes</th></tr></thead>
+        <tbody>${visiveis.map(l => `
+          <tr onclick="abrirDetalheLancamentoFinanceiro('${esc(l.id || l.lancamentoId)}')">
+            <td>${esc(l.dataOperacional || "-")}</td><td>${esc(l.tipoLancamento)}</td><td>${esc(l.natureza)}</td>
+            <td>${esc(l.descricao || l.observacao || "-")}</td><td>${esc(l.origem || "-")}<br><small>${esc(l.origemId || "-")}</small></td>
+            <td>${esc(l.caixaId || "-")}</td><td>${esc(l.vendedorId || "-")}</td><td>${esc(l.equipeId || "-")}</td>
+            <td><strong>${moneyCents(l.valorCentavos)}</strong></td><td><span class="status-badge ${statusClass(l.statusLancamento)}">${esc(l.statusLancamento || "CONFIRMADO")}</span></td>
+            <td>${esc(l.criadoPorNome || l.criadoPorId || "-")}</td>
+            <td onclick="event.stopPropagation()"><button class="ghost-btn" onclick="abrirDetalheLancamentoFinanceiro('${esc(l.id || l.lancamentoId)}')">Ver</button></td>
+          </tr>`).join("")}</tbody>
+      </table></div>
+      ${fim < total ? `<div class="toolbar"><button class="ghost-btn" onclick="carregarMaisLancamentosFinanceiro()">Carregar mais (${visiveis.length}/${total})</button></div>` : ""}
+    ` : empty("Nenhum lancamento financeiro real encontrado para os filtros selecionados."));
+  }
+
+  function lancamentoPorId(id){ return FIN.lancamentos.find(l => txt(l.id || l.lancamentoId) === txt(id)); }
+
+  window.abrirDetalheLancamentoFinanceiro = function(id){
+    const l = lancamentoPorId(id);
+    if (!l) return;
+    const podeEstornar = temPermissaoFinanceiro("podeEstornarLancamento") && !["ESTORNADO","CANCELADO"].includes(upper(l.statusLancamento)) && upper(l.tipoLancamento) !== "ESTORNO";
+    const estorno = FIN.lancamentos.find(x => txt(x.reversaoDeId) === txt(l.id || l.lancamentoId) || txt(x.origemId) === txt(l.id || l.lancamentoId));
+    abrirDrawerFinanceiro("Detalhe do lançamento", l.lancamentoId || l.id, `
+      <div class="info-card">
+        <strong>${esc(l.tipoLancamento)} - ${moneyCents(l.valorCentavos)}</strong>
+        <small>ID: ${esc(l.id || l.lancamentoId)}</small><small>Natureza: ${esc(l.natureza)}</small><small>Status: ${esc(l.statusLancamento || "CONFIRMADO")}</small>
+        <small>Origem: ${esc(l.origem)} / ${esc(l.origemId)}</small><small>Caixa: ${esc(l.caixaId)}</small>
+        <small>Vendedor: ${esc(l.vendedorId)} / ${esc(l.vendedorAuthUid)}</small><small>Equipe: ${esc(l.equipeId)}</small>
+        <small>Tenant: ${esc(l.clientePlataformaId)}</small><small>Data operacional: ${esc(l.dataOperacional)}</small>
+        <small>Criado por: ${esc(l.criadoPorNome || l.criadoPorId)} (${esc(l.criadoPorCargo || "-")})</small>
+        <small>Observacao: ${esc(l.observacao || "-")}</small>
+      </div>
+      <div class="info-card"><strong>Metadados</strong><small>${esc(JSON.stringify(l.metadados || {}, null, 2))}</small></div>
+      ${estorno ? `<div class="info-card"><strong>Estorno relacionado</strong><small>${esc(estorno.id || estorno.lancamentoId)} - ${moneyCents(estorno.valorCentavos)}</small></div>` : ""}
+      <div class="drawer-actions">
+        <button class="ghost-btn" onclick="abrirCaixaFinanceiro('${esc(l.caixaId)}')">Ver caixa</button>
+        <button class="ghost-btn" onclick="abrirOrigemFinanceiro('${esc(l.origem)}','${esc(l.origemId)}')">Abrir origem</button>
+        ${podeEstornar ? `<button class="danger-btn" id="btnEstornarLancamento" onclick="estornarLancamentoFinanceiro('${esc(l.id || l.lancamentoId)}')">Estornar</button>` : ""}
+      </div>
+    `);
+  };
+
+  window.estornarLancamentoFinanceiro = async function(id){
+    if (!svc()?.registrarEstornoFinanceiro || FIN.locks.has(`estorno_${id}`)) return;
+    const motivo = prompt("Informe o motivo obrigatorio do estorno:");
+    if (!motivo || !motivo.trim()) return notificarFinanceiro("Estorno", "Motivo obrigat?rio.");
+    if (!confirm("Confirmar estorno? O lançamento original nao sera excluido.")) return;
+    FIN.locks.add(`estorno_${id}`);
+    const btn = document.getElementById("btnEstornarLancamento");
+    if (btn) btn.innerText = "Estornando...";
+    try {
+      await svc().registrarEstornoFinanceiro({
+        lancamentoOriginalId: id,
+        motivo: motivo.trim(),
+        operacaoId: `estorno_${id}_${Date.now().toString(36)}`,
+        clientePlataformaId: tenantAtual(),
+        usuario: usuarioAtual()
+      });
+      await carregarFinanceiroReal();
+      notificarFinanceiro("Estorno", "Estorno registrado.");
+    } catch(e) {
+      console.error(e);
+      notificarFinanceiro("Estorno", e?.message || "Não foi possível estornar.");
+    } finally {
+      FIN.locks.delete(`estorno_${id}`);
+    }
+  };
+
+  function fechamentoDoCaixa(caixaId){ return FIN.fechamentos.find(f => txt(f.caixaId) === txt(caixaId) || txt(f.id) === `fechamento_${caixaId}`); }
+  async function diagnosticoCaixa(caixaId){
+    try { return await svc().reconciliarLedgerCaixaSomenteLeitura(caixaId); }
+    catch(e) { return { divergencias:[{ tipo:"ERRO_RECONCILIACAO", detalhe:e.message }], saldoLedger:{ saldoLedgerCentavos:0 } }; }
+  }
+  function renderCaixasFinanceiroReal(){
+    const el = document.getElementById("listaCaixasFinanceiro");
+    if (!el) return;
+    if (!FIN.caixas.length) { el.innerHTML = empty("Nenhum caixa real encontrado para este tenant."); return; }
+    el.innerHTML = `<table><thead><tr><th>Caixa</th><th>Data</th><th>Vendedor</th><th>Equipe</th><th>Status</th><th>Inicial</th><th>Esperado</th><th>Informado</th><th>Dif.</th><th>Ledger</th><th>Situacao</th><th>Acoes</th></tr></thead><tbody>
+      ${FIN.caixas.map(c => {
+        const f = fechamentoDoCaixa(c.id);
+        const inicial = cents(c.saldoInicialCentavos || c.valorInicialCentavos || 0);
+        const esperado = cents(f?.caixaFinalEsperadoCentavos || f?.valorEsperadoCentavos || c.saldoAtualCentavos || 0);
+        const informado = cents(f?.caixaFinalInformadoCentavos || f?.valorInformadoCentavos || 0);
+        const dif = cents(f?.diferencaCentavos || 0);
+        const ledger = FIN.lancamentos.filter(l => txt(l.caixaId) === txt(c.id)).reduce((t,l)=>t+(upper(l.natureza)==="CREDITO"?cents(l.valorCentavos):-cents(l.valorCentavos)), inicial);
+        const situacao = ledger === esperado ? "OK" : "DIVERGENTE";
+        return `<tr onclick="abrirCaixaFinanceiro('${esc(c.id)}')"><td>${esc(c.id)}</td><td>${esc(c.dataOperacional || c.dataCaixa || "-")}</td><td>${esc(c.vendedorNome || c.vendedorId || "-")}</td><td>${esc(c.equipeNome || c.equipeId || "-")}</td><td><span class="status-badge ${statusClass(c.status)}">${esc(c.status)}</span></td><td>${moneyCents(inicial)}</td><td>${moneyCents(esperado)}</td><td>${moneyCents(informado)}</td><td>${moneyCents(dif)}</td><td>${moneyCents(ledger)}</td><td>${situacao}</td><td onclick="event.stopPropagation()"><button class="ghost-btn" onclick="abrirCaixaFinanceiro('${esc(c.id)}')">Ver</button></td></tr>`;
+      }).join("")}
+    </tbody></table>`;
+  }
+
+  window.abrirCaixaFinanceiro = async function(caixaId){
+    const c = FIN.caixas.find(x => txt(x.id) === txt(caixaId));
+    const diag = await diagnosticoCaixa(caixaId);
+    const f = fechamentoDoCaixa(caixaId);
+    abrirDrawerFinanceiro("Caixa financeiro", caixaId, `
+      <div class="info-card"><strong>${esc(c?.vendedorNome || c?.vendedorId || "Caixa")}</strong><small>Status: ${esc(c?.status || "-")}</small><small>Data: ${esc(c?.dataOperacional || "-")}</small><small>Fechamento: ${esc(f?.id || f?.fechamentoId || "-")}</small></div>
+      <div class="info-card"><strong>Reconciliação</strong>${diag.divergencias?.length ? diag.divergencias.map(d=>`<small>${esc(d.tipo)} ${esc(d.detalhe || d.campo || "")}</small>`).join("") : "<small>Sem divergencias detectadas.</small>"}</div>
+      <div class="drawer-actions"><button class="ghost-btn" onclick="filtrarLancamentosCaixa('${esc(caixaId)}')">Ver lancamentos</button>${temPermissaoFinanceiro("podeRegularizarCaixa") ? `<button class="primary-btn" onclick="regularizarCaixaFinanceiro('${esc(caixaId)}')">Regularizar</button>` : ""}</div>
+    `);
+  };
+
+  window.regularizarCaixaFinanceiro = async function(caixaId){
+    if (!svc()?.registrarRegularizacaoFinanceiraCaixa || FIN.locks.has(`reg_${caixaId}`)) return;
+    const valor = prompt("Valor da regulariza??o em reais:");
+    const natureza = prompt("Natureza: CREDITO ou DEBITO:");
+    const motivo = prompt("Motivo obrigat?rio:");
+    if (!valor || !natureza || !motivo) return notificarFinanceiro("Regularização", "Valor, natureza e motivo s?o obrigat?rios.");
+    FIN.locks.add(`reg_${caixaId}`);
+    try {
+      await svc().registrarRegularizacaoFinanceiraCaixa({
+        caixaId,
+        valor: Number(String(valor).replace(",", ".")),
+        natureza,
+        motivo,
+        operacaoId: `regularizacao_${caixaId}_${Date.now().toString(36)}`,
+        clientePlataformaId: tenantAtual(),
+        usuario: usuarioAtual()
+      });
+      await carregarFinanceiroReal();
+      notificarFinanceiro("Regularização", "Regularização registrada.");
+    } catch(e) {
+      console.error(e);
+      notificarFinanceiro("Regularização", e?.message || "Não foi possível regularizar.");
+    } finally {
+      FIN.locks.delete(`reg_${caixaId}`);
+    }
+  };
+
+  function renderDivergenciasFinanceiroReal(){
+    const el = document.getElementById("listaSolicitacoesFinanceiras");
+    const divergentes = FIN.fechamentos.filter(f => cents(f.diferencaCentavos) !== 0 || upper(f.statusFechamento)==="DIVERGENTE");
+    if (!el) return;
+    el.innerHTML = divergentes.length ? divergentes.map(f => `
+      <div class="info-card">
+        <strong>${esc(f.caixaId || f.id)}</strong><small>Vendedor: ${esc(f.vendedorId || "-")} | Equipe: ${esc(f.equipeId || "-")}</small>
+        <small>Esperado: ${moneyCents(f.caixaFinalEsperadoCentavos || f.valorEsperadoCentavos)} | Informado: ${moneyCents(f.caixaFinalInformadoCentavos || f.valorInformadoCentavos)} | Dif.: ${moneyCents(f.diferencaCentavos)}</small>
+        <small>Tratamento: ${esc(f.tratamentoDivergencia?.statusTratamento || f.regularizacaoFinanceiraStatus || "PENDENTE")}</small>
+        <div class="drawer-actions"><button class="ghost-btn" onclick="abrirCaixaFinanceiro('${esc(f.caixaId)}')">Detalhes</button>${temPermissaoFinanceiro("podeRegularizarCaixa") ? `<button class="primary-btn" onclick="regularizarCaixaFinanceiro('${esc(f.caixaId)}')">Regularizar</button>` : ""}</div>
+      </div>`).join("") : empty("Nenhuma divergencia real encontrada no periodo.");
+  }
+
+  function renderTopRelatorioHtml(){
+    const maioresEntradas = FIN.lancamentos.filter(l=>upper(l.natureza)==="CREDITO").sort((a,b)=>cents(b.valorCentavos)-cents(a.valorCentavos)).slice(0,5);
+    const maioresSaidas = FIN.lancamentos.filter(l=>upper(l.natureza)==="DEBITO").sort((a,b)=>cents(b.valorCentavos)-cents(a.valorCentavos)).slice(0,5);
+    return `<div class="cards-grid"><div class="info-card"><strong>Maiores entradas</strong>${maioresEntradas.map(l=>`<small>${esc(l.tipoLancamento)} - ${moneyCents(l.valorCentavos)}</small>`).join("") || "<small>Sem entradas.</small>"}</div><div class="info-card"><strong>Maiores saidas</strong>${maioresSaidas.map(l=>`<small>${esc(l.tipoLancamento)} - ${moneyCents(l.valorCentavos)}</small>`).join("") || "<small>Sem saidas.</small>"}</div><div class="info-card"><strong>Volume</strong><small>${FIN.lancamentos.length} lançamento(s)</small><small>Ticket medio: ${moneyCents(FIN.lancamentos.reduce((t,l)=>t+cents(l.valorCentavos),0)/(FIN.lancamentos.length||1))}</small></div></div>`;
+  }
+  function renderRelatoriosFinanceiroReal(){
+    const el = document.getElementById("listaRelatoriosFinanceiro");
+    if (!el) return;
+    const grupos = {};
+    FIN.lancamentos.forEach(l => {
+      ["tipoLancamento","vendedorId","equipeId","caixaId","origem","natureza","statusLancamento"].forEach(campo => {
+        const key = `${campo}:${txt(l[campo] || "CONFIRMADO")}`;
+        grupos[key] = grupos[key] || { campo, nome: txt(l[campo] || "CONFIRMADO"), qtd:0, cred:0, deb:0 };
+        grupos[key].qtd++;
+        if (upper(l.natureza)==="CREDITO") grupos[key].cred += cents(l.valorCentavos); else grupos[key].deb += cents(l.valorCentavos);
+      });
+    });
+    el.innerHTML = renderTopRelatorioHtml() + Object.values(grupos).slice(0,80).map(g => `<div class="info-card"><strong>${esc(g.campo)}: ${esc(g.nome)}</strong><small>Creditos: ${moneyCents(g.cred)}</small><small>Debitos: ${moneyCents(g.deb)}</small><small>Saldo: ${moneyCents(g.cred-g.deb)} | Qtd: ${g.qtd}</small></div>`).join("");
+  }
+
+  function renderAuditoriaFinanceiraReal(){
+    const el = document.getElementById("listaAuditoriaFinanceira");
+    if (!el) return;
+    const diag = FIN.diagnosticoLegado;
+    el.innerHTML = `<table><thead><tr><th>Tipo</th><th>Origem</th><th>Caixa</th><th>Situação</th></tr></thead><tbody>${(diag?.ausentes || []).map(a => `<tr><td>${esc(a.tipo)}</td><td>${esc(a.origemId)}</td><td>${esc(a.caixaId || "-")}</td><td>Sem ledger oficial</td></tr>`).join("")}</tbody></table>${!(diag?.ausentes || []).length ? empty("Nenhum legado sem lancamento encontrado. Nenhuma migração automática executada.") : ""}`;
+  }
+
+  function renderConfiguracoesFinanceirasReal(){
+    const el = document.getElementById("listaConfiguracoesFinanceiras");
+    if (!el) return;
+    const perms = ["podeVerFinanceiro","podeVerLedgerFinanceiro","podeVerReconciliacao","podeEstornarLancamento","podeRegularizarCaixa","podeAceitarDivergenciaFinanceira"];
+    el.innerHTML = perms.map(p => `<div class="info-card"><strong>${esc(p)}</strong><small>${temPermissaoFinanceiro(p) ? "Permitido" : "Bloqueado"}</small></div>`).join("");
+  }
+
+  function renderFinanceiroRealTudo(){
+    renderDashboardFinanceiroReal();
+    renderContas();
+    renderLancamentosFinanceiroReal();
+    renderCaixasFinanceiroReal();
+    renderDivergenciasFinanceiroReal();
+    renderRelatoriosFinanceiroReal();
+    renderAuditoriaFinanceiraReal();
+    renderConfiguracoesFinanceirasReal();
+    const agenda = document.getElementById("agendaPagamentosResumo");
+    if (agenda) agenda.innerHTML = renderTopRelatorioHtml();
+  }
+
+  window.setPeriodoFinanceiroReal = function(periodo){ FIN.filtros.periodo = periodo; carregarFinanceiroReal(); };
+  window.setFiltroFinanceiroReal = function(campo, valor, localOnly){
+    FIN.filtros[campo] = valor;
+    FIN.pagina = 1;
+    if (campo === "dataInicio" || campo === "dataFim") FIN.filtros.periodo = "custom";
+    if (localOnly) { aplicarFiltrosLedger(); renderLancamentosFinanceiroReal(); }
+    else carregarFinanceiroReal();
+  };
+  window.setOrdenacaoFinanceiroReal = function(ordem){ ordenarLancamentos(ordem); renderLancamentosFinanceiroReal(); };
+  window.carregarMaisLancamentosFinanceiro = function(){ FIN.pagina++; renderLancamentosFinanceiroReal(); };
+  window.filtrarLancamentosCaixa = function(caixaId){ FIN.filtros.caixa = caixaId; trocarTelaFinanceiro("contas"); aplicarFiltrosLedger(); renderLancamentosFinanceiroReal(); fecharDrawerFinanceiro(); };
+  window.abrirAtalhoFinanceiroReal = function(destino){
+    if (destino === "caixas") trocarTelaFinanceiro("caixas");
+    else if (destino === "divergencias") trocarTelaFinanceiro("solicitacoes");
+    else if (destino === "relatorios") trocarTelaFinanceiro("relatorios");
+    else trocarTelaFinanceiro("contas");
+  };
+  window.abrirOrigemFinanceiro = function(origem, origemId){
+    abrirDrawerFinanceiro("Origem do lançamento", origem || "Origem", `
+      <div class="info-card">
+        <strong>${esc(origem || "-")}</strong>
+        <small>ID: ${esc(origemId || "-")}</small>
+        <small>A origem deve ser conferida no modulo operacional responsável; nenhuma alteração financeira direta e permitida por esta tela.</small>
+      </div>
+    `);
+  };
+
+  const trocarTelaAntiga = window.trocarTelaFinanceiro;
+  window.trocarTelaFinanceiro = function(tela, el){
+    if (typeof trocarTelaAntiga === "function") trocarTelaAntiga(tela, el);
+    const titulos = {
+      contas:["Lançamentos","Ledger financeiro oficial e imutável."],
+      solicitacoes:["Divergências","Divergências, tratamentos e regularizações."],
+      fornecedores:["Diagnóstico legado","Registros reais ainda sem lançamento financeiro."],
+      auditoria:["Auditoria","Reconciliação, logs e rastreabilidade financeira."]
+    };
+    if (titulos[tela]) {
+      document.getElementById("pageTitle").innerText = titulos[tela][0];
+      document.getElementById("pageSubtitle").innerText = titulos[tela][1];
+    }
+    if (tela === "contas") renderLancamentosFinanceiroReal();
+    if (tela === "caixas") renderCaixasFinanceiroReal();
+    if (tela === "solicitacoes") renderDivergenciasFinanceiroReal();
+    if (tela === "fornecedores") renderAuditoriaFinanceiraReal();
+    if (tela === "relatorios") renderRelatoriosFinanceiroReal();
+    if (tela === "auditoria") renderAuditoriaFinanceiraReal();
+  };
+
+  window.carregarFinanceiroMock = carregarFinanceiroReal;
+  window.renderDashboardFinanceiro = renderDashboardFinanceiroReal;
+  window.renderCaixasFinanceiro = renderCaixasFinanceiroReal;
+  window.renderSolicitacoesFinanceiras = renderDivergenciasFinanceiroReal;
+  window.renderRelatoriosFinanceiro = renderRelatoriosFinanceiroReal;
+  window.renderAuditoriaFinanceira = renderAuditoriaFinanceiraReal;
+  window.renderFornecedores = renderAuditoriaFinanceiraReal;
+  window.salvarContaMock = function(){ return bloquearAcaoMockFinanceiro("Cadastro de conta visual"); };
+  window.salvarRecorrenciaMock = function(){ return bloquearAcaoMockFinanceiro("Recorrência visual"); };
+  window.confirmarPagamentoMock = function(){ return bloquearAcaoMockFinanceiro("Pagamento de conta visual"); };
+  window.registrarPagamentoConta = function(){ return bloquearAcaoMockFinanceiro("Baixa de conta visual"); };
+  window.cancelarConta = function(){ return bloquearAcaoMockFinanceiro("Cancelamento de conta visual"); };
+  window.duplicarConta = function(){ return bloquearAcaoMockFinanceiro("Duplicação de conta visual"); };
+  window.anexarComprovanteConta = function(){ return bloquearAcaoMockFinanceiro("Anexo de comprovante visual"); };
+  window.abrirNovaRecorrencia = function(){ return bloquearAcaoMockFinanceiro("Agenda de recorrência visual"); };
+  window.abrirNovoFornecedorMock = function(){ return bloquearAcaoMockFinanceiro("Cadastro de fornecedor visual"); };
+  window.exportarContasMock = function(){
+    const linhas = FIN.lancamentosFiltrados.map(l => `${l.dataOperacional};${l.tipoLancamento};${l.natureza};${l.origemId};${l.caixaId};${l.vendedorId};${l.valorCentavos};${l.statusLancamento || "CONFIRMADO"}`);
+    abrirDrawerFinanceiro("Exportação", "Listagem textual para conferência", `<textarea readonly>${esc(["data;tipo;natureza;origem;caixa;vendedor;valorCentavos;status", ...linhas].join("\\n"))}</textarea>`);
+  };
+
+  document.addEventListener("usuario-validado", () => carregarFinanceiroReal());
+})();
+</script>
+  <script src="js/integro-mobile-navigation.js?v=20260806-v19"></script>
+  <script src="js/integro-ui.js?v=20260805-v2"></script>
+  <script src="js/integro-interface.js?v=20260806-v20"></script>
+</body>
+</html>

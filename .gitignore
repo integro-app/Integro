@@ -1,0 +1,30 @@
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+rules-test.log
+*.log
+
+# Node
+node_modules/
+functions/node_modules/
+
+# Variáveis locais e credenciais administrativas
+.env
+.env.*
+!.env.example
+*service-account*.json
+serviceAccount*.json
+firebase-adminsdk*.json
+
+# Cobertura, temporários e IDE
+coverage/
+.tmp/
+tmp/
+.vscode/
+
+# Sistema
+.DS_Store
+Thumbs.db
+
+*.zip

@@ -1,0 +1,497 @@
+/* Operação do vendedor — camada autoritativa desktop e mobile */
+#listaCobrancas {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
+  min-width: 0;
+}
+
+.cobranca-card-operacional {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(250px, .9fr) minmax(420px, 1.5fr) minmax(250px, auto);
+  align-items: center;
+  gap: 18px;
+  overflow: hidden;
+  width: 100%;
+  min-width: 0;
+  padding: 18px 18px 18px 24px;
+  border: 1px solid #e2e8f0;
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, .06);
+}
+
+.cobranca-card-operacional .cobranca-lateral-clean {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7px;
+}
+
+.cobranca-card-operacional .cobranca-cliente-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.cobranca-card-operacional .cobranca-avatar-clean {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  display: grid;
+  place-items: center;
+  border: 1px solid;
+  border-radius: 17px;
+  font-weight: 900;
+}
+
+.cobranca-card-operacional .cobranca-identidade-clean { min-width: 0; }
+.cobranca-card-operacional .nome-cliente-cobranca,
+.cobranca-card-operacional .apelido-cliente-cobranca,
+.cobranca-card-operacional .telefone-cobranca-desktop {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cobranca-card-operacional .nome-cliente-cobranca { color:#0f172a; font-size:16px; font-weight:900; }
+.cobranca-card-operacional .apelido-cliente-cobranca,
+.cobranca-card-operacional .telefone-cobranca-desktop { margin-top:3px; color:#64748b; font-size:12px; font-weight:700; }
+.cobranca-card-operacional .cobranca-status-row { display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.cobranca-card-operacional .cobranca-chip-status { display:inline-flex; padding:5px 9px; border:1px solid #e2e8f0; border-radius:999px; color:#475569; background:#f8fafc; font-size:11px; font-weight:900; }
+
+.cobranca-card-operacional .cobranca-metricas-clean {
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap:10px;
+  min-width:0;
+}
+.cobranca-card-operacional .cobranca-mini-clean { min-width:0; padding:10px 12px; border:1px solid #edf2f7; border-radius:14px; background:#f8fafc; }
+.cobranca-card-operacional .cobranca-mini-clean span { display:block; color:#64748b; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+.cobranca-card-operacional .cobranca-mini-clean strong { display:block; margin-top:4px; overflow:hidden; color:#0f172a; font-size:13px; font-weight:900; text-overflow:ellipsis; white-space:nowrap; }
+.cobranca-card-operacional .cobranca-progress-clean { grid-column:1/-1; display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:9px; }
+.cobranca-card-operacional .cobranca-progress-clean strong { color:#64748b; font-size:11px; }
+.cobranca-card-operacional .cobranca-progresso-wrap { height:7px; overflow:hidden; border-radius:999px; background:#e2e8f0; }
+.cobranca-card-operacional .cobranca-progresso-fill { display:block; height:100%; border-radius:inherit; background:#ff6b00; }
+
+.cobranca-card-operacional .cobranca-actions-clean { display:grid; grid-template-columns:repeat(2, minmax(105px, 1fr)); gap:8px; }
+.cobranca-card-operacional .cobranca-actions-clean .btn { min-height:42px; justify-content:center; white-space:nowrap; }
+.cobranca-card-operacional .btn-cobrar-clean { border-color:#16a34a; color:#15803d; background:#f0fdf4; }
+.cobranca-card-operacional .btn-pago-clean { border-color:#2563eb; color:#1d4ed8; background:#eff6ff; }
+.cobranca-card-operacional .btn-nao-pago-clean { border-color:#dc2626; color:#b91c1c; background:#fef2f2; }
+
+.empty-state-operacao { padding:28px; border:1px dashed #cbd5e1; border-radius:20px; background:#fff; text-align:center; }
+.empty-state-operacao strong { color:#0f172a; }
+.empty-state-operacao p { margin-top:6px; color:#64748b; font-weight:700; }
+
+@media (max-width: 1180px) {
+  .cobranca-card-operacional { grid-template-columns:minmax(230px, .9fr) minmax(360px, 1.4fr); }
+  .cobranca-card-operacional .cobranca-actions-clean { grid-column:1/-1; grid-template-columns:repeat(5, minmax(0,1fr)); }
+}
+
+@media (max-width: 760px) {
+  #vendas .panel { padding:12px !important; overflow:visible !important; }
+  #vendas .operacao-tabs-clean { grid-template-columns:1fr 1fr !important; gap:8px !important; }
+  #vendas #btnNovaVendaOperacao { grid-column:1/-1; width:100%; }
+  #abaCobrancas .operacao-toolbar-clean { grid-template-columns:minmax(0,1fr) auto !important; gap:8px !important; }
+  #abaCobrancas .operacao-toolbar-clean #ordenarCobrancas { grid-column:1/-1; width:100% !important; }
+  .cobranca-card-operacional { grid-template-columns:minmax(0,1fr); gap:14px; padding:16px 14px 16px 20px; border-radius:18px; }
+  .cobranca-card-operacional .cobranca-metricas-clean { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .cobranca-card-operacional .cobranca-actions-clean { grid-column:auto; grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .cobranca-card-operacional .cobranca-actions-clean .btn:last-child { grid-column:1/-1; }
+}
+
+@media (max-width: 390px) {
+  .cobranca-card-operacional .cobranca-metricas-clean { grid-template-columns:minmax(0,1fr); }
+  .cobranca-card-operacional .cobranca-actions-clean { grid-template-columns:minmax(0,1fr); }
+  .cobranca-card-operacional .cobranca-actions-clean .btn:last-child { grid-column:auto; }
+}
+
+/* Painel unificado do vendedor */
+.vendedor-operacao-unificada { min-width:0; }
+.vendedor-operacao-header { align-items:center; }
+.vendedor-operacao-status { display:inline-flex; padding:8px 12px; border-radius:999px; background:#fff7ed; color:#c2410c; font-size:12px; font-weight:900; }
+.vendedor-operacao-tabs { display:grid; grid-template-columns:repeat(2,minmax(120px,180px)); gap:8px; margin:18px 0; }
+.vendedor-operacao-toolbar { display:grid; grid-template-columns:minmax(0,1fr) 190px; gap:10px; margin-bottom:12px; }
+.vendedor-operacao-toolbar input,.vendedor-operacao-toolbar select { min-height:48px; width:100%; border:1px solid #dbe4ef; border-radius:14px; padding:0 14px; background:#fff; font:inherit; font-weight:700; color:#0f172a; }
+.vendedor-operacao-contador { margin:8px 0 14px; color:#64748b; font-size:13px; font-weight:800; }
+.vendedor-vendas-dia { display:grid; gap:12px; }
+.vendedor-venda-card { display:grid; grid-template-columns:minmax(220px,1.3fr) repeat(3,minmax(120px,.7fr)); gap:12px; align-items:center; padding:16px; border:1px solid #e2e8f0; border-radius:18px; background:#fff; }
+.vendedor-venda-card div { min-width:0; }
+.vendedor-venda-card span,.vendedor-venda-card small { display:block; color:#64748b; font-size:11px; font-weight:800; }
+.vendedor-venda-card strong { display:block; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#0f172a; }
+.vendedor-operacao-modal { position:fixed; inset:0; z-index:30000; display:none; place-items:center; padding:18px; background:rgba(2,6,23,.62); }
+.vendedor-operacao-modal.open { display:grid; }
+.vendedor-operacao-modal-card { width:min(560px,100%); max-height:min(85vh,760px); overflow:auto; border-radius:22px; background:#fff; box-shadow:0 30px 90px rgba(2,6,23,.3); }
+.vendedor-operacao-modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:18px 20px; border-bottom:1px solid #e2e8f0; }
+.vendedor-operacao-modal-head h3 { margin:0; color:#0f172a; }
+.vendedor-operacao-modal-head button { width:40px; height:40px; border:0; border-radius:12px; background:#f1f5f9; font-size:24px; cursor:pointer; }
+.vendedor-operacao-modal-body { display:grid; gap:12px; padding:20px; }
+.vendedor-operacao-modal-body label { font-weight:900; color:#334155; }
+.vendedor-operacao-modal-body input { min-height:50px; border:1px solid #cbd5e1; border-radius:14px; padding:0 14px; font-size:16px; }
+.vendedor-operacao-modal-actions { display:flex; justify-content:flex-end; gap:10px; padding:16px 20px; border-top:1px solid #e2e8f0; }
+.vendedor-modal-cliente { color:#0f172a; font-weight:900; }
+.vendedor-detalhes-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.vendedor-detalhes-grid div { padding:12px; border-radius:14px; background:#f8fafc; }
+.vendedor-detalhes-grid span,.vendedor-detalhes-grid strong { display:block; }
+.vendedor-detalhes-grid span { color:#64748b; font-size:11px; font-weight:800; }
+.vendedor-detalhes-grid strong { margin-top:4px; color:#0f172a; }
+.vendedor-historico-item { display:grid; grid-template-columns:1fr auto; gap:5px 12px; padding:12px; border:1px solid #e2e8f0; border-radius:14px; }
+.vendedor-historico-item small { grid-column:1/-1; color:#64748b; }
+@media(max-width:760px){
+  .vendedor-operacao-status{display:none}
+  .vendedor-operacao-tabs{grid-template-columns:1fr 1fr}
+  .vendedor-operacao-toolbar{grid-template-columns:1fr}
+  .vendedor-venda-card{grid-template-columns:1fr 1fr}
+  .vendedor-venda-card>div:first-child{grid-column:1/-1}
+  .vendedor-detalhes-grid{grid-template-columns:1fr}
+  .vendedor-operacao-modal-actions{display:grid;grid-template-columns:1fr 1fr}
+}
+
+/* ===== Alinhamento final do vendedor: Dashboard + Operação ===== */
+.vendedor-operacao-unificada{padding:26px!important;overflow:visible!important}
+.vendedor-operacao-header{margin-bottom:4px}
+.vendedor-operacao-header h2{margin:0;color:#0b213d;font-size:28px;letter-spacing:-.6px}
+.vendedor-operacao-header p{margin:5px 0 0;color:#64748b;font-weight:700}
+.vendedor-operacao-tabs{display:flex!important;gap:8px!important;margin:18px 0!important}
+.vendedor-operacao-tabs .tab-operacao-clean{min-width:140px;min-height:44px;border-radius:13px}
+
+.vendedor-operacao-barra{display:grid;grid-template-columns:minmax(280px,1fr) 120px 120px;gap:12px;align-items:center;margin:12px 0 14px}
+.vendedor-vendas-barra{grid-template-columns:minmax(280px,1fr) 120px 120px 150px}
+.vendedor-operacao-busca{height:48px;display:flex;align-items:center;gap:9px;padding:0 14px;border:1px solid #d9e3ef;border-radius:14px;background:#fff}
+.vendedor-operacao-busca .material-symbols-rounded{color:#7b8da5;font-size:21px}
+.vendedor-operacao-busca input{width:100%;min-width:0;border:0!important;outline:0;background:transparent;font:inherit;font-weight:700;color:#102a48}
+.vendedor-operacao-busca input::placeholder{color:#8b98a9}
+.vendedor-filtro-btn,.vendedor-buscar-btn,.vendedor-nova-venda-btn{height:48px!important;justify-content:center!important;border-radius:14px!important;white-space:nowrap}
+.vendedor-filtros-panel{margin:-2px 0 16px;padding:16px;border:1px solid #dce6f1;border-radius:16px;background:#f8fafc}
+.vendedor-filtros-panel[hidden]{display:none!important}
+.vendedor-filtros-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.vendedor-filtros-grid label{display:grid;gap:7px;color:#43546a;font-size:12px;font-weight:900}
+.vendedor-filtros-grid select{height:44px;border:1px solid #d5e0ec;border-radius:12px;padding:0 12px;background:#fff;color:#102a48;font:inherit;font-weight:700}
+.vendedor-filtros-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:14px}
+
+#listaCobrancas{display:grid!important;gap:12px!important}
+.cobranca-card-operacional{position:relative;display:grid!important;grid-template-columns:minmax(260px,.9fr) minmax(480px,1.65fr) 170px!important;gap:18px!important;align-items:center!important;padding:18px 18px 18px 25px!important;border:1px solid #dfe7f0!important;border-radius:18px!important;background:#fff!important;box-shadow:0 7px 22px rgba(15,36,61,.055)!important;overflow:hidden!important}
+.cobranca-card-operacional .cobranca-lateral-clean{position:absolute;inset:0 auto 0 0;width:7px}
+.cobranca-cliente-clean{min-width:0}
+.cobranca-cliente-linha{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.cobranca-identidade-clean{min-width:0}
+.cobranca-card-operacional .apelido-cliente-cobranca{display:block!important;color:#0c2340!important;font-size:17px!important;font-weight:900!important;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cobranca-card-operacional .nome-cliente-cobranca{display:block!important;margin-top:3px!important;color:#6b7d93!important;font-size:12px!important;font-weight:750!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cobranca-whatsapp-btn{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border:1px solid #b7e4c7;border-radius:11px;background:#effcf3;color:#138a45;cursor:pointer}
+.cobranca-whatsapp-btn:disabled{opacity:.4;cursor:not-allowed}
+.cobranca-whatsapp-btn .material-symbols-rounded{font-size:20px}
+.cobranca-status-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:11px}
+.cobranca-chip-status{display:inline-flex;padding:5px 9px;border:1px solid #dfe7ef;border-radius:999px;background:#f8fafc;color:#52657c;font-size:10px;font-weight:900}
+.cobranca-card-operacional .cobranca-progress-clean{display:grid!important;grid-template-columns:1fr!important;gap:6px!important;margin-top:13px}
+.cobranca-progresso-topo{display:flex;justify-content:space-between;gap:12px;color:#64748b;font-size:10px;font-weight:850}
+.cobranca-progresso-wrap{height:7px;overflow:hidden;border-radius:999px;background:#e7edf4}
+.cobranca-progresso-fill{display:block;height:100%;border-radius:inherit;background:#ff7a00}
+.cobranca-metricas-clean{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important}
+.cobranca-mini-clean{min-width:0;padding:11px 12px!important;border:1px solid #e9eef4!important;border-radius:13px!important;background:#f8fafc!important}
+.cobranca-mini-clean span{display:block;color:#738399;font-size:9.5px;font-weight:900;text-transform:uppercase;letter-spacing:.03em}
+.cobranca-mini-clean strong{display:block;margin-top:5px;color:#0c2340;font-size:13px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cobranca-actions-clean{display:grid!important;grid-template-columns:1fr!important;gap:9px!important}
+.cobranca-actions-clean .btn{min-height:46px!important;justify-content:center!important;border-radius:13px!important;font-weight:900!important;white-space:nowrap}
+.cobranca-actions-clean .material-symbols-rounded{font-size:19px}
+.btn-pago-clean{border-color:#9bd7af!important;background:#effcf3!important;color:#148744!important}
+.btn-nao-pago-clean{border-color:#f2b0b0!important;background:#fff2f2!important;color:#b62525!important}
+
+.vendedor-venda-card{display:grid!important;grid-template-columns:minmax(230px,1.3fr) repeat(4,minmax(120px,.65fr))!important;gap:12px!important;align-items:center!important;padding:16px 18px!important;border:1px solid #e0e8f1!important;border-radius:16px!important;background:#fff!important;box-shadow:0 6px 18px rgba(15,36,61,.045)!important}
+.vendedor-venda-identidade strong{font-size:15px;color:#0c2340}
+.vendedor-venda-identidade small{margin-top:3px}
+
+.vendedor-clientes-venda{display:grid;gap:9px}
+.vendedor-clientes-venda button{display:grid;grid-template-columns:1fr auto;gap:3px 12px;align-items:center;width:100%;padding:14px;border:1px solid #e0e8f1;border-radius:14px;background:#fff;text-align:left;cursor:pointer}
+.vendedor-clientes-venda button strong{color:#0c2340;font-size:15px}.vendedor-clientes-venda button small{color:#708198}.vendedor-clientes-venda button span{grid-row:1/3;grid-column:2;color:#f06b00;font-weight:900}
+.vendedor-nova-venda-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.vendedor-nova-venda-cliente{grid-column:1/-1;padding:13px;border-radius:13px;background:#f8fafc}.vendedor-nova-venda-cliente strong,.vendedor-nova-venda-cliente small{display:block}
+.vendedor-nova-venda-form label{display:grid;gap:6px}.vendedor-nova-venda-form input,.vendedor-nova-venda-form select{height:46px;border:1px solid #ced9e6;border-radius:12px;padding:0 12px;background:#fff;font:inherit}
+
+@media(max-width:1180px){
+ .cobranca-card-operacional{grid-template-columns:minmax(240px,.8fr) minmax(420px,1.5fr)!important}
+ .cobranca-actions-clean{grid-column:1/-1!important;grid-template-columns:1fr 1fr!important}
+ .vendedor-vendas-barra{grid-template-columns:minmax(240px,1fr) 110px 110px 145px}
+ .vendedor-venda-card{grid-template-columns:minmax(220px,1.2fr) repeat(2,minmax(120px,.7fr))!important}
+}
+@media(max-width:760px){
+ .vendedor-operacao-unificada{padding:14px!important;border-radius:18px!important}
+ .vendedor-operacao-header h2{font-size:23px}
+ .vendedor-operacao-tabs{display:grid!important;grid-template-columns:1fr 1fr!important}
+ .vendedor-operacao-barra,.vendedor-vendas-barra{grid-template-columns:minmax(0,1fr) auto auto!important;gap:8px!important}
+ .vendedor-nova-venda-btn{grid-column:1/-1;width:100%}
+ .vendedor-filtro-btn,.vendedor-buscar-btn{min-width:48px;padding:0 12px!important;font-size:0}
+ .vendedor-filtro-btn .material-symbols-rounded,.vendedor-buscar-btn .material-symbols-rounded{font-size:21px}
+ .vendedor-filtros-grid{grid-template-columns:1fr}
+ .cobranca-card-operacional{grid-template-columns:1fr!important;gap:13px!important;padding:16px 13px 16px 20px!important}
+ .cobranca-metricas-clean{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .cobranca-actions-clean{grid-column:auto!important;grid-template-columns:1fr 1fr!important}
+ .vendedor-venda-card{grid-template-columns:1fr 1fr!important}.vendedor-venda-identidade{grid-column:1/-1}
+ .vendedor-nova-venda-form{grid-template-columns:1fr}
+ .vendedor-nova-venda-cliente{grid-column:auto}
+}
+@media(max-width:390px){
+ .cobranca-metricas-clean{grid-template-columns:1fr!important}
+ .cobranca-actions-clean{grid-template-columns:1fr!important}
+}
+
+
+.vendedor-clientes-gestao{padding:26px!important;overflow:visible!important}
+.vendedor-clientes-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:16px 0}
+.vendedor-clientes-kpis>div{padding:14px 16px;border:1px solid #e2e8f0;border-radius:14px;background:#fff}
+.vendedor-clientes-kpis small{display:block;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase}
+.vendedor-clientes-kpis strong{display:block;margin-top:4px;color:#0b213d;font-size:22px;font-weight:950}
+.vendedor-clientes-barra{grid-template-columns:minmax(280px,1fr) 120px 120px!important}
+.vendedor-switches{display:grid;grid-template-columns:repeat(4,minmax(160px,1fr));gap:10px}
+.vendedor-switch{display:grid!important;grid-template-columns:42px minmax(0,1fr);grid-template-rows:auto auto;column-gap:10px;align-items:center;padding:12px;border:1px solid #dce6f1;border-radius:14px;background:#fff;cursor:pointer}
+.vendedor-switch input{position:absolute;opacity:0;pointer-events:none}
+.vendedor-switch>span{grid-row:1/3;width:42px;height:24px;border-radius:999px;background:#dbe4ef;position:relative;transition:.18s ease}
+.vendedor-switch>span:after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.2);transition:.18s ease}
+.vendedor-switch input:checked+span{background:#ff8a00}
+.vendedor-switch input:checked+span:after{transform:translateX(18px)}
+.vendedor-switch strong{color:#102a48;font-size:13px;font-weight:950}
+.vendedor-switch small{color:#64748b;font-size:11px;font-weight:800}
+.vendedor-check{display:flex!important;align-items:center;gap:9px;min-height:44px;padding:0 12px;border:1px solid #d5e0ec;border-radius:12px;background:#fff;color:#102a48;font-weight:900;cursor:pointer}
+.vendedor-check input{width:18px;height:18px;accent-color:#ff8a00}
+.vendedor-clientes-lista{display:grid;gap:12px}
+.vendedor-cliente-card{display:grid;grid-template-columns:minmax(220px,1.2fr) repeat(3,minmax(120px,.55fr)) auto;gap:12px;align-items:center;padding:16px 18px;border:1px solid #e2e8f0;border-left:4px solid #94a3b8;border-radius:16px;background:#fff;box-shadow:0 10px 26px rgba(15,23,42,.05)}
+.vendedor-cliente-card.is-active{border-left-color:#16a34a}.vendedor-cliente-card.is-inactive{border-left-color:#64748b}
+.vendedor-cliente-card span,.vendedor-cliente-card small{display:block;color:#64748b;font-size:11px;font-weight:850}.vendedor-cliente-card strong{display:block;margin-top:3px;color:#0f172a;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.vendedor-cliente-main small{margin-top:3px}.vendedor-cliente-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}.vendedor-cliente-actions .ghost-btn,.vendedor-cliente-actions .danger-btn,.vendedor-novo-cliente-btn{min-height:40px;display:inline-flex;align-items:center;gap:6px}.vendedor-cliente-actions .material-symbols-rounded,.vendedor-novo-cliente-btn .material-symbols-rounded{font-size:18px}
+.vendedor-cliente-form{grid-template-columns:1fr 1fr}.vendedor-cliente-form label:first-child,.vendedor-cliente-form label:last-child{grid-column:1/-1}
+@media (max-width:900px){.vendedor-clientes-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.vendedor-switches{grid-template-columns:1fr 1fr}.vendedor-cliente-card{grid-template-columns:1fr 1fr}.vendedor-cliente-main,.vendedor-cliente-actions{grid-column:1/-1}.vendedor-clientes-barra{grid-template-columns:minmax(0,1fr) auto auto!important}}
+@media (max-width:560px){.vendedor-clientes-gestao{padding:14px!important;border-radius:18px!important}.vendedor-clientes-kpis,.vendedor-switches,.vendedor-cliente-card,.vendedor-cliente-form{grid-template-columns:1fr}.vendedor-cliente-actions{justify-content:stretch}.vendedor-cliente-actions button{flex:1 1 140px}.vendedor-clientes-barra{grid-template-columns:1fr!important}.vendedor-clientes-barra button{width:100%;justify-content:center}}
+
+
+/* Ajuste visual da gestão de clientes do vendedor */
+.vendedor-clientes-head{align-items:center}.vendedor-novo-cliente-btn{min-height:46px;border-radius:14px!important;box-shadow:0 12px 26px rgba(255,138,0,.22)}
+.vendedor-clientes-kpis-color>div{position:relative;min-height:108px;border:0!important;border-radius:18px!important;color:#fff;overflow:hidden;box-shadow:0 18px 38px rgba(15,23,42,.16)}
+.vendedor-clientes-kpis-color>div:after{content:"";position:absolute;inset:auto -30px -45px auto;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.16)}
+.vendedor-clientes-kpis-color .material-symbols-rounded{float:left;margin-right:12px;width:44px;height:44px;display:inline-flex;align-items:center;justify-content:center;border-radius:14px;background:rgba(255,255,255,.2);font-size:24px}.vendedor-clientes-kpis-color small,.vendedor-clientes-kpis-color strong{color:#fff!important}.vendedor-clientes-kpis-color strong{font-size:26px!important}.kpi-orange{background:linear-gradient(135deg,#ff9800,#ff7a00)}.kpi-blue{background:linear-gradient(135deg,#3b82f6,#1d4ed8)}.kpi-green{background:linear-gradient(135deg,#22c55e,#059669)}.kpi-purple{background:linear-gradient(135deg,#8b5cf6,#6d28d9)}
+.vendedor-cliente-card{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}.vendedor-cliente-card:hover{transform:translateY(-1px);box-shadow:0 18px 40px rgba(15,23,42,.10);border-color:#b8c9dc}.vendedor-cliente-card:focus-visible{outline:3px solid rgba(255,138,0,.35);outline-offset:3px}.vendedor-cliente-card.is-lead{background:linear-gradient(90deg,#fff 0%,#fff 72%,#f5f3ff 100%)}.vendedor-cliente-card.is-active{background:linear-gradient(90deg,#fff 0%,#fff 72%,#ecfdf5 100%)}.vendedor-cliente-card.is-inactive:not(.is-lead){background:linear-gradient(90deg,#fff 0%,#fff 72%,#f8fafc 100%)}
+.vendedor-operacao-modal-card{width:min(920px,100%)!important}.vendedor-cliente-form-completo{display:grid;gap:16px}.cliente-form-tabs{display:flex;gap:8px;overflow:auto;padding-bottom:2px}.cliente-form-tabs button{min-height:42px;padding:0 14px;border:1px solid #dbe4ef;border-radius:12px;background:#fff;color:#102a48;font-weight:900;cursor:pointer;white-space:nowrap}.cliente-form-tabs button.active{background:#071a33;color:#fff;border-color:#071a33}.cliente-form-panel{display:none;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.cliente-form-panel.active{display:grid}.cliente-form-panel label{display:grid;gap:7px;color:#334155;font-size:12px;font-weight:900}.cliente-form-panel input,.cliente-form-panel select,.cliente-form-panel textarea{width:100%;min-height:46px;border:1px solid #d5e0ec;border-radius:12px;padding:0 12px;background:#fff;color:#102a48;font:inherit;font-weight:700}.cliente-form-panel textarea{min-height:110px;padding:12px;resize:vertical}.cliente-foto-field,.cliente-docs-field,.cliente-form-panel label:has(textarea),.cliente-form-section-head,.cliente-score-box,.cliente-form-note{grid-column:1/-1}.cliente-form-check,.cliente-mini-check{display:flex!important;align-items:center;gap:9px}.cliente-form-check input,.cliente-mini-check input{width:18px;height:18px;min-height:18px;accent-color:#ff8a00}.cliente-form-section-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.cliente-ref-row{display:grid;grid-template-columns:1fr 180px 120px 44px;gap:8px;align-items:center;margin-bottom:8px}.cliente-ref-row .ghost-btn{min-width:44px;padding:0}.cliente-score-box{padding:18px;border:1px solid #dbe4ef;border-radius:16px;background:linear-gradient(135deg,#f8fafc,#fff)}.cliente-score-box strong{font-size:42px;color:#071a33}.cliente-score-box span,.cliente-score-box small{display:block;color:#64748b;font-weight:800}.cliente-score-box div{height:10px;margin:12px 0;border-radius:999px;background:#e2e8f0;overflow:hidden}.cliente-score-box i{display:block;width:calc(var(--score) * 1%);height:100%;border-radius:inherit;background:linear-gradient(90deg,#ef4444,#f59e0b,#22c55e)}.cliente-form-note{margin:0;padding:12px;border-radius:12px;background:#fff7ed;color:#9a3412;font-weight:800}
+@media (max-width:760px){.vendedor-clientes-head{display:grid!important;gap:12px}.vendedor-novo-cliente-btn{width:100%;justify-content:center}.cliente-form-panel,.cliente-ref-row{grid-template-columns:1fr}.vendedor-operacao-modal-card{max-height:92vh!important}.vendedor-operacao-modal-actions{display:grid!important;grid-template-columns:1fr!important}.vendedor-operacao-modal-actions button{width:100%;justify-content:center}}
+
+#clientes[data-vendedor-clientes-montado="true"] > :not(.vendedor-clientes-gestao):not(.vendedor-cliente-pagina){display:none!important}
+#clientes[data-vendedor-clientes-montado="true"] .clientes-module-nav,#clientes[data-vendedor-clientes-montado="true"] #clientesEmpresaMasterLista,#clientes[data-vendedor-clientes-montado="true"] #listaClientes{display:none!important}
+
+
+/* Correção de contraste dos cards de clientes */
+.vendedor-clientes-kpis-color > div{color:#fff!important;border:0!important;background:#071a33!important}
+.vendedor-clientes-kpis-color > div.kpi-orange{background:linear-gradient(135deg,#ff9800,#ff7a00)!important}
+.vendedor-clientes-kpis-color > div.kpi-blue{background:linear-gradient(135deg,#3b82f6,#1d4ed8)!important}
+.vendedor-clientes-kpis-color > div.kpi-green{background:linear-gradient(135deg,#22c55e,#059669)!important}
+.vendedor-clientes-kpis-color > div.kpi-purple{background:linear-gradient(135deg,#8b5cf6,#6d28d9)!important}
+.vendedor-clientes-kpis-color > div small,
+.vendedor-clientes-kpis-color > div strong,
+.vendedor-clientes-kpis-color > div .material-symbols-rounded{color:#fff!important;opacity:1!important;visibility:visible!important}
+
+
+/* Garantia final: cards de resumo sempre visiveis na tela de clientes do vendedor */
+.vendedor-clientes-kpis-color > div{display:flex!important;align-items:flex-start!important;gap:12px!important;min-height:108px!important;padding:18px!important;opacity:1!important;visibility:visible!important}
+.vendedor-clientes-kpis-color > div > div{position:relative!important;z-index:1!important;display:block!important;min-width:0!important}
+.vendedor-clientes-kpis-color > div small{display:block!important;margin:0 0 4px!important;font-size:11px!important;line-height:1.1!important;text-transform:uppercase!important;color:#fff!important}
+.vendedor-clientes-kpis-color > div strong{display:block!important;margin:0!important;font-size:28px!important;line-height:1!important;color:#fff!important}
+.vendedor-clientes-kpis-color > div .material-symbols-rounded{position:relative!important;z-index:1!important;flex:0 0 44px!important;color:#fff!important;font-family:'Material Symbols Rounded'!important}
+
+
+/* Tela Clientes do vendedor: neutraliza blocos legados injetados após o primeiro render */
+#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-gestao > .vendedor-operacao-barra ~ .vendedor-operacao-barra,
+#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-gestao > .vendedor-clientes-lista ~ .vendedor-operacao-barra,
+#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-gestao > .vendedor-clientes-lista ~ .placeholder-dev,
+#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-gestao > .vendedor-clientes-lista ~ #listaClientes,
+#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-gestao > .vendedor-clientes-lista ~ #clientesEmpresaMasterLista{display:none!important;}
+
+
+/* Ajuste final da tela Gerenciar clientes do vendedor */
+.vendedor-clientes-gestao{padding:26px!important;display:grid!important;gap:16px!important;overflow:hidden!important}
+.vendedor-clientes-head,.vendedor-novo-cliente-btn{display:none!important}
+.vendedor-clientes-kpis{margin:0!important;gap:12px!important}
+.vendedor-clientes-kpis-color > div.kpi-total{background:linear-gradient(135deg,#ff9800,#ff7a00)!important}
+.vendedor-clientes-kpis-color > div.kpi-ativos{background:linear-gradient(135deg,#22c55e,#059669)!important}
+.vendedor-clientes-kpis-color > div.kpi-inativos{background:linear-gradient(135deg,#94a3b8,#64748b)!important}
+.vendedor-clientes-kpis-color > div.kpi-leads{background:linear-gradient(135deg,#facc15,#eab308)!important;color:#fff!important}
+.vendedor-clientes-barra{margin:0!important;display:grid!important;grid-template-columns:minmax(280px,1fr) 120px 120px!important;gap:12px!important;align-items:center!important}
+.vendedor-clientes-lista{margin:0!important;display:grid!important;gap:12px!important}
+.vendedor-clientes-contador-final{margin:0!important;padding-top:0!important;color:#64748b!important;font-weight:900!important}
+.vendedor-filtros-drawer[hidden]{display:none!important}
+.vendedor-filtros-drawer{position:fixed;inset:0;z-index:30000;display:block!important}
+.vendedor-filtros-overlay{position:absolute;inset:0;background:rgba(2,6,23,.42);backdrop-filter:blur(2px)}
+.vendedor-filtros-side{position:absolute;right:0;top:0;height:100%;width:min(420px,100%);background:#fff;box-shadow:-24px 0 70px rgba(15,23,42,.26);display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
+.vendedor-filtros-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px;border-bottom:1px solid #e2e8f0}.vendedor-filtros-head h3{margin:0;color:#071a33;font-size:22px}.vendedor-filtros-head p{margin:4px 0 0;color:#64748b;font-weight:800}
+.vendedor-filtros-body{padding:18px 20px;overflow:auto;display:grid;align-content:start;gap:20px}.vendedor-filtros-body section{display:grid;gap:12px}.vendedor-filtros-body section>strong{color:#071a33;font-size:13px;text-transform:uppercase}.vendedor-filtros-periodo{display:grid;grid-template-columns:1fr 1fr;gap:10px}.vendedor-filtros-periodo label{display:grid;gap:6px;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase}.vendedor-filtros-periodo input{min-height:46px;border:1px solid #d5e0ec;border-radius:12px;padding:0 12px;color:#071a33;font:inherit;font-weight:800}.vendedor-filtros-switches{grid-template-columns:1fr!important}.vendedor-filtros-actions{padding:16px 20px;border-top:1px solid #e2e8f0;background:#fff;display:grid;grid-template-columns:1fr 1fr;gap:10px}.vendedor-filtros-actions button{width:100%;justify-content:center}
+#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-gestao > :not(.vendedor-clientes-kpis):not(.vendedor-clientes-tabs):not(.vendedor-clientes-barra):not(.vendedor-clientes-chips):not(.vendedor-clientes-resultados):not(.vendedor-clientes-contador-final):not(.vendedor-filtros-drawer){display:none!important}
+@media(max-width:760px){.vendedor-clientes-gestao{padding:16px!important}.vendedor-clientes-kpis{grid-template-columns:1fr!important}.vendedor-clientes-barra{grid-template-columns:1fr!important}.vendedor-filtros-periodo,.vendedor-filtros-actions{grid-template-columns:1fr}.vendedor-filtros-side{width:100%}}
+
+
+/* BotÃµes do card de cliente */
+.vendedor-cliente-actions .vendedor-cliente-btn-whatsapp,
+.vendedor-cliente-actions .vendedor-cliente-btn-vender{min-height:44px!important;border-radius:14px!important;padding:0 16px!important;font-weight:950!important;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease,background .16s ease,color .16s ease!important}
+.vendedor-cliente-actions .vendedor-cliente-btn-whatsapp{border-color:rgba(37,211,102,.28)!important;background:#fff!important;color:#102a48!important}
+.vendedor-cliente-actions .vendedor-cliente-btn-whatsapp:hover:not(:disabled),
+.vendedor-cliente-actions .vendedor-cliente-btn-whatsapp:focus-visible:not(:disabled){background:linear-gradient(135deg,#25d366,#128c7e)!important;border-color:#25d366!important;color:#fff!important;box-shadow:0 14px 26px rgba(37,211,102,.28)!important;transform:translateY(-1px)}
+.vendedor-cliente-actions .vendedor-cliente-btn-vender{background:linear-gradient(135deg,#071a33,#123f73)!important;border:1px solid #123f73!important;color:#fff!important;box-shadow:0 10px 22px rgba(7,26,51,.18)!important}
+.vendedor-cliente-actions .vendedor-cliente-btn-vender:hover:not(:disabled),
+.vendedor-cliente-actions .vendedor-cliente-btn-vender:focus-visible:not(:disabled){background:linear-gradient(135deg,#0b2b55,#1d5fc4)!important;border-color:#1d5fc4!important;box-shadow:0 16px 30px rgba(29,95,196,.3)!important;transform:translateY(-1px)}
+.vendedor-cliente-actions .vendedor-cliente-btn-vender:disabled,
+.vendedor-cliente-actions .vendedor-cliente-btn-whatsapp:disabled{opacity:.46!important;cursor:not-allowed!important;filter:saturate(.45)!important;box-shadow:none!important;transform:none!important}
+
+.vendedor-cliente-pagina{padding:26px!important;display:grid!important;gap:18px!important;overflow:visible!important}
+.vendedor-cliente-pagina-head{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:16px;padding-bottom:14px;border-bottom:1px solid #e2e8f0}
+.vendedor-cliente-pagina-head .ghost-btn{min-height:44px;border-radius:14px}
+.vendedor-cliente-pagina-head small{display:block;color:#64748b;font-size:12px;font-weight:950;text-transform:uppercase}
+.vendedor-cliente-pagina-head h2{margin:2px 0 3px;color:#071a33;font-size:28px;line-height:1.05}
+.vendedor-cliente-pagina-head p{margin:0;color:#64748b;font-weight:800}
+.vendedor-cliente-pagina .vendedor-cliente-form-completo{padding:0}
+.vendedor-cliente-pagina-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:16px;border-top:1px solid #e2e8f0}
+@media(max-width:760px){.vendedor-cliente-pagina{padding:16px!important;border-radius:18px!important}.vendedor-cliente-pagina-head{grid-template-columns:1fr}.vendedor-cliente-pagina-actions{display:grid;grid-template-columns:1fr}.vendedor-cliente-pagina-actions button{width:100%;justify-content:center}}
+
+/* Cards de clientes: estado visual alinhado aos KPIs */
+.vendedor-cliente-card{grid-template-columns:minmax(220px,1.25fr) minmax(118px,.7fr) minmax(150px,.9fr) minmax(72px,.35fr) minmax(110px,.55fr) minmax(112px,.55fr) minmax(126px,.6fr) auto!important;border-left-width:5px!important;gap:12px!important;background:#fff!important;overflow:hidden!important}
+.vendedor-cliente-card.is-active{border-left-color:#22c55e!important;background:linear-gradient(90deg,#ffffff 0%,#ffffff 74%,#ecfdf5 100%)!important}
+.vendedor-cliente-card.is-inactive{border-left-color:#94a3b8!important;background:linear-gradient(90deg,#ffffff 0%,#ffffff 74%,#f1f5f9 100%)!important}
+.vendedor-cliente-cell{min-width:0;display:grid;gap:3px}.vendedor-cliente-cell span{color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase}.vendedor-cliente-cell strong{color:#0f172a;font-size:14px;font-weight:950;line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vendedor-cliente-nome strong{font-size:15px}.vendedor-cliente-score strong{display:inline-flex;width:38px;height:30px;align-items:center;justify-content:center;border-radius:10px;background:#f8fafc;border:1px solid #dbe4ef;color:#071a33}
+@media(max-width:1180px){.vendedor-cliente-card{grid-template-columns:repeat(4,minmax(0,1fr))!important}.vendedor-cliente-nome,.vendedor-cliente-actions{grid-column:1/-1!important}}
+@media(max-width:680px){.vendedor-cliente-card{grid-template-columns:1fr 1fr!important;padding:14px!important}.vendedor-cliente-nome,.vendedor-cliente-actions{grid-column:1/-1!important}.vendedor-cliente-actions{justify-content:stretch!important}.vendedor-cliente-actions button{flex:1 1 140px!important}}
+
+/* Módulo Movimentações do vendedor */
+.vendedor-movimentacoes-shell{padding:26px!important;display:grid!important;gap:18px!important;overflow:visible!important}
+.vendedor-mov-head{display:flex!important;justify-content:space-between!important;align-items:center!important;gap:16px!important}.vendedor-mov-head h2{margin:0;color:#071a33;font-size:28px;line-height:1.05}.vendedor-mov-head p{margin:4px 0 0;color:#64748b;font-weight:800}.vendedor-mov-head .primary-btn{min-height:48px;white-space:nowrap}
+.vendedor-mov-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.vendedor-mov-kpis>div{position:relative;min-width:0;min-height:104px;padding:18px;border:0;border-radius:18px;color:#fff;overflow:hidden;box-shadow:0 18px 38px rgba(15,23,42,.15);display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center}.vendedor-mov-kpis>div>div{position:relative;z-index:1;min-width:0}.vendedor-mov-kpis>div:after{content:"";position:absolute;right:-34px;bottom:-48px;width:122px;height:122px;border-radius:50%;background:rgba(255,255,255,.16)}.vendedor-mov-kpi-icon{position:relative;z-index:1;width:44px;height:44px;border-radius:14px;background:rgba(255,255,255,.2);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-family:"Inter",sans-serif;font-size:22px;font-weight:950;line-height:1;white-space:nowrap}.vendedor-mov-kpis small,.vendedor-mov-kpis strong{position:relative;z-index:1;display:block;max-width:100%;color:#fff!important}.vendedor-mov-kpis small{font-size:10px;font-weight:950;line-height:1.2;text-transform:uppercase}.vendedor-mov-kpis strong{margin-top:5px;font-size:clamp(20px,1.45vw,26px);font-weight:950;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.vendedor-mov-kpis .kpi-caixa{background:linear-gradient(135deg,#071a33,#123f73)}.vendedor-mov-kpis .kpi-ingresso{background:linear-gradient(135deg,#2563eb,#1d4ed8)}.vendedor-mov-kpis .kpi-gasto{background:linear-gradient(135deg,#ef4444,#be123c)}.vendedor-mov-kpis .kpi-retirada{background:linear-gradient(135deg,#ff9800,#ff7a00)}
+.vendedor-mov-lista{display:grid;gap:10px;border:1px solid #e2e8f0;border-radius:18px;background:#fff;padding:18px;box-shadow:0 12px 28px rgba(15,23,42,.05)}.vendedor-mov-lista-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:2px}.vendedor-mov-lista-head h3{margin:0;color:#071a33;font-size:18px}.vendedor-mov-lista-head span{color:#64748b;font-size:12px;font-weight:900}
+.vendedor-mov-card{display:grid;grid-template-columns:minmax(170px,1.2fr) minmax(150px,1fr) minmax(110px,.65fr) minmax(120px,.75fr) minmax(145px,.85fr) minmax(145px,.85fr);gap:12px;align-items:center;padding:16px 16px 16px 21px;border:1px solid #e2e8f0;border-left:6px solid #94a3b8;border-radius:17px;background:#fff;box-shadow:0 8px 22px rgba(15,23,42,.045)}.vendedor-mov-card.ingresso{border-left-color:#2563eb;background:linear-gradient(90deg,#fff 0%,#fff 78%,#eff6ff 100%)}.vendedor-mov-card.gasto{border-left-color:#ef4444;background:linear-gradient(90deg,#fff 0%,#fff 78%,#fef2f2 100%)}.vendedor-mov-card.retirada{border-left-color:#f97316;background:linear-gradient(90deg,#fff 0%,#fff 78%,#fff7ed 100%)}.vendedor-mov-card>div{min-width:0}.vendedor-mov-card span{display:block;color:#64748b;font-size:10px;font-weight:950;text-transform:uppercase}.vendedor-mov-card strong{display:block;margin-top:3px;color:#0f172a;font-size:14px;font-weight:950;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.vendedor-mov-card-main strong{font-size:15px}.vendedor-mov-card-main small{display:block;margin-top:5px;color:#64748b;font-size:10px;font-weight:850;line-height:1.3;text-transform:none}.vendedor-mov-valor{font-size:15px!important}.vendedor-mov-valor.valor-ingresso{color:#1d4ed8!important}.vendedor-mov-valor.valor-gasto{color:#dc2626!important}.vendedor-mov-valor.valor-retirada{color:#ea580c!important}.vendedor-mov-card p{grid-column:1/-1;margin:0;padding-top:8px;border-top:1px solid #edf2f7;color:#64748b;font-size:12px;font-weight:800}.vendedor-mov-card p b{color:#334155}.vendedor-mov-resposta{padding:10px!important;border:0!important;border-radius:12px;background:#eff6ff;color:#1e3a8a!important}.vendedor-mov-card-actions{grid-column:1/-1;display:flex;justify-content:flex-end}.vendedor-mov-card-actions .danger-btn{display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 13px;border-radius:12px}.vendedor-mov-status{display:inline-flex!important;width:max-content;max-width:100%;padding:5px 8px;border-radius:999px;background:#f1f5f9}.vendedor-mov-status.status-pendente{background:#fff7ed;color:#c2410c}.vendedor-mov-status.status-aprovada,.vendedor-mov-status.status-aprovado,.vendedor-mov-status.status-confirmada,.vendedor-mov-status.status-confirmado{background:#ecfdf5;color:#047857}.vendedor-mov-status.status-recusada,.vendedor-mov-status.status-recusado,.vendedor-mov-status.status-cancelada,.vendedor-mov-status.status-cancelado,.vendedor-mov-status.status-estornado{background:#fef2f2;color:#b91c1c}.vendedor-mov-alerta{margin:0;padding:12px;border-radius:12px;background:#fff7ed;color:#9a3412;font-weight:850}
+.vendedor-mov-drawer{position:fixed;inset:0;z-index:50000;display:flex;justify-content:flex-end;visibility:hidden;background:rgba(2,6,23,.58);opacity:0;transition:opacity .2s,visibility .2s}.vendedor-mov-drawer.open{visibility:visible;opacity:1}.vendedor-mov-drawer-card{width:min(480px,100%);height:100%;overflow:auto;background:#fff;box-shadow:-24px 0 70px rgba(2,6,23,.28);transform:translateX(100%);transition:transform .24s ease}.vendedor-mov-drawer.open .vendedor-mov-drawer-card{transform:translateX(0)}.vendedor-mov-drawer-card>header{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:22px;border-bottom:1px solid #e2e8f0;background:#fff}.vendedor-mov-drawer-card>header small{display:block;color:#64748b;font-size:11px;font-weight:950;text-transform:uppercase}.vendedor-mov-drawer-card>header h3{margin:3px 0 0;color:#071a33;font-size:23px}.vendedor-mov-drawer-card>header button{width:42px;height:42px;border:0;border-radius:13px;background:#f1f5f9;color:#071a33;font-size:28px;line-height:1}.vendedor-mov-form{display:grid;gap:15px;padding:22px}.vendedor-mov-form label{display:grid;gap:7px;color:#334155;font-size:12px;font-weight:950}.vendedor-mov-opcional{display:inline;color:#94a3b8;font-size:11px;font-weight:800}.vendedor-mov-form input,.vendedor-mov-form select,.vendedor-mov-form textarea{width:100%;min-height:50px;border:1px solid #d5e0ec;border-radius:14px;padding:0 13px;background:#fff;color:#102a48;font:inherit;font-weight:800;outline:none}.vendedor-mov-form textarea{min-height:120px;padding:13px;resize:vertical}.vendedor-mov-form input:focus,.vendedor-mov-form select:focus,.vendedor-mov-form textarea:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}.vendedor-mov-form select:disabled{background:#f8fafc;color:#94a3b8}.vendedor-mov-ajuda{margin:0;padding:12px;border-radius:13px;background:#f8fafc;color:#64748b;font-size:12px;font-weight:800;line-height:1.45}.vendedor-mov-drawer-actions{position:sticky;bottom:0;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px -22px -22px;padding:16px 22px;background:#fff;border-top:1px solid #e2e8f0}.vendedor-mov-drawer-actions button{min-height:48px;justify-content:center}.vendedor-mov-drawer-open{overflow:hidden}
+@media(max-width:1380px){.vendedor-mov-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:1200px){.vendedor-mov-card{grid-template-columns:repeat(3,minmax(0,1fr))}.vendedor-mov-card p,.vendedor-mov-card-actions{grid-column:1/-1}}
+@media(max-width:980px){.vendedor-mov-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.vendedor-mov-card{grid-template-columns:1fr 1fr}}
+@media(max-width:620px){.vendedor-movimentacoes-shell{padding:16px!important;border-radius:18px!important}.vendedor-mov-head{align-items:stretch!important;flex-direction:column}.vendedor-mov-head .primary-btn{width:100%;justify-content:center}.vendedor-mov-kpis{grid-template-columns:1fr}.vendedor-mov-lista{padding:12px}.vendedor-mov-card{grid-template-columns:1fr 1fr;padding:14px 13px 14px 18px}.vendedor-mov-card-main{grid-column:1/-1}.vendedor-mov-card p,.vendedor-mov-card-actions{grid-column:1/-1}.vendedor-mov-card-actions .danger-btn{width:100%;justify-content:center}.vendedor-mov-drawer-card{width:100%}.vendedor-mov-drawer-actions{grid-template-columns:1fr}.vendedor-mov-drawer-card>header,.vendedor-mov-form{padding-left:16px;padding-right:16px}.vendedor-mov-drawer-actions{margin-left:-16px;margin-right:-16px;padding-left:16px;padding-right:16px}}
+@media(max-width:390px){.vendedor-mov-card{grid-template-columns:1fr}.vendedor-mov-card-main{grid-column:auto}.vendedor-mov-card p,.vendedor-mov-card-actions{grid-column:auto}}
+
+
+/* Ajustes clientes vendedor - pesquisa sob demanda, cabeçalho e status */
+.vendedor-clientes-head{display:grid;grid-template-columns:minmax(220px,1.25fr) minmax(118px,.7fr) minmax(150px,.9fr) minmax(72px,.35fr) minmax(110px,.55fr) minmax(112px,.55fr) minmax(126px,.6fr) auto;gap:12px;align-items:center;padding:0 18px 8px;margin-top:4px;color:#5f7391;font-size:11px;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+.vendedor-clientes-head > div{white-space:nowrap}
+.vendedor-clientes-head-actions{text-align:center}
+.vendedor-clientes-estado-inicial{padding:28px 24px!important;border:1px dashed #bfd0e5!important;background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)!important;color:#071a33}
+.vendedor-clientes-estado-inicial strong{color:#071a33!important}
+.vendedor-cliente-status .vendedor-status-badge{margin-top:4px}
+.vendedor-status-badge{display:inline-flex;align-items:center;justify-content:center;min-height:32px;padding:6px 12px;border-radius:999px;border:1px solid transparent;font-size:11px;font-weight:900;letter-spacing:.02em;text-transform:uppercase;line-height:1.1;white-space:nowrap}
+.vendedor-status-badge.is-ativo,.vendedor-status-badge.is-convertido{background:#e9fbef;border-color:#86efac;color:#0f7a38}
+.vendedor-status-badge.is-inativo{background:#eef2f7;border-color:#cbd5e1;color:#475569}
+.vendedor-status-badge.is-aguardando{background:#fff6db;border-color:#f7d66b;color:#9a6700}
+.vendedor-status-badge.is-atendimento{background:#e8f1ff;border-color:#a8c5ff;color:#0b4aa2}
+.vendedor-status-badge.is-alerta{background:#fff1f2;border-color:#fda4af;color:#b42318}
+.vendedor-status-badge.is-neutro{background:#edf4ff;border-color:#c7dbff;color:#071a33}
+.vendedor-cliente-card.status-is-atendimento{border-left-color:#1d4ed8!important;background:linear-gradient(90deg,#ffffff 0%,#ffffff 74%,#eff6ff 100%)!important}
+.vendedor-cliente-card.status-is-aguardando{border-left-color:#eab308!important;background:linear-gradient(90deg,#ffffff 0%,#ffffff 74%,#fffbeb 100%)!important}
+.vendedor-cliente-card.status-is-alerta{border-left-color:#e11d48!important;background:linear-gradient(90deg,#ffffff 0%,#ffffff 74%,#fff1f2 100%)!important}
+.vendedor-cliente-card.status-is-convertido{border-left-color:#16a34a!important;background:linear-gradient(90deg,#ffffff 0%,#ffffff 74%,#ecfdf5 100%)!important}
+@media(min-width:761px){.vendedor-cliente-card .vendedor-cliente-cell>span{display:none!important}.vendedor-cliente-card .vendedor-cliente-cell strong,.vendedor-cliente-card .vendedor-status-badge{margin-top:0!important}}
+@media(max-width:1180px){.vendedor-clientes-head{grid-template-columns:repeat(4,minmax(0,1fr))}.vendedor-clientes-head-actions{grid-column:1/-1;text-align:left}}
+@media(max-width:760px){.vendedor-clientes-head{display:none!important}.vendedor-clientes-estado-inicial{padding:20px 18px!important}.vendedor-cliente-card .vendedor-cliente-cell>span{display:block!important}}
+
+.cliente-form-lead-box{margin-bottom:16px;padding:14px 16px;border:1px solid #d7e3f4;border-radius:16px;background:linear-gradient(180deg,#f8fbff 0%,#ffffff 100%)}
+.cliente-form-lead-box strong{display:block;color:#071a33;font-size:14px;margin-bottom:4px}
+.cliente-form-lead-box p{margin:0 0 10px;color:#5f7391;font-size:13px}
+.cliente-lead-status-field{display:block!important}
+.cliente-lead-status-field select{width:100%;margin-top:6px}
+.cliente-lead-status-field small{display:block;margin-top:6px;color:#5f7391;font-size:12px}
+.vendedor-clientes-head{position:sticky;top:0;z-index:2;background:#f8fafc;border:1px solid #dbe4f0;border-radius:14px;padding:12px 18px;margin-bottom:2px;box-shadow:0 6px 16px rgba(15,23,42,.04)}
+.vendedor-cliente-cell.vendedor-cliente-status{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:4px}
+.vendedor-cliente-cell.vendedor-cliente-status .vendedor-status-badge{max-width:100%;overflow:hidden;text-overflow:ellipsis}
+
+#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-head{display:grid!important}
+@media(max-width:760px){#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-head{display:none!important}}
+
+/* v24 — Clientes do vendedor: tabela desktop + cards mobile + drawer comercial */
+.vendedor-clientes-v24{gap:14px!important;background:#fff!important}
+.vendedor-clientes-tabs{display:flex!important;align-items:center;gap:8px;padding:5px;border:1px solid #dbe4ef;border-radius:15px;background:#f5f8fc;width:max-content;max-width:100%}
+.vendedor-clientes-tabs button{display:inline-flex;align-items:center;gap:8px;min-height:42px;padding:0 16px;border:0;border-radius:11px;background:transparent;color:#63758e;font:inherit;font-size:13px;font-weight:900;cursor:pointer;transition:.16s ease}
+.vendedor-clientes-tabs button .material-symbols-rounded{font-size:19px}
+.vendedor-clientes-tabs button:hover{color:#071a33;background:#eef4fb}
+.vendedor-clientes-tabs button.active{background:#fff;color:#071a33;box-shadow:0 5px 15px rgba(15,23,42,.09)}
+.vendedor-clientes-tabs button.active:before{content:"";width:4px;height:20px;border-radius:999px;background:#ff8a00}
+.vendedor-clientes-chips{display:flex!important;flex-wrap:wrap;gap:8px;margin-top:-3px}
+.vendedor-cliente-chip{min-height:34px;padding:0 13px;border:1px solid #dbe4ef;border-radius:999px;background:#fff;color:#64748b;font:inherit;font-size:12px;font-weight:900;cursor:pointer;transition:.15s ease}
+.vendedor-cliente-chip:hover{border-color:#a8bfd9;color:#173a61;background:#f8fbff}
+.vendedor-cliente-chip.active{border-color:#173a61;background:#071a33;color:#fff;box-shadow:0 6px 15px rgba(7,26,51,.13)}
+.vendedor-clientes-resultados{display:block!important;min-width:0}
+.vendedor-clientes-table-wrap{display:block;overflow:auto;border:1px solid #dbe4ef;border-radius:16px;background:#fff;box-shadow:0 10px 28px rgba(15,23,42,.045)}
+.vendedor-clientes-table{width:100%;min-width:1240px;table-layout:fixed;border-collapse:separate;border-spacing:0;color:#102a48;font-size:13px}
+.vendedor-clientes-table col.col-nome{width:22%}
+.vendedor-clientes-table col.col-documento{width:13%}
+.vendedor-clientes-table col.col-tipo{width:9%}
+.vendedor-clientes-table col.col-status{width:14%}
+.vendedor-clientes-table col.col-origem{width:11%}
+.vendedor-clientes-table col.col-movimento{width:13%}
+.vendedor-clientes-table col.col-score{width:7%}
+.vendedor-clientes-table col.col-acoes{width:11%}
+.vendedor-clientes-table thead th{position:sticky;top:0;z-index:2;padding:13px 14px;border-bottom:1px solid #dbe4ef;background:#f6f9fc;color:#61748e;font-size:10px;font-weight:950;letter-spacing:.04em;text-align:left;text-transform:uppercase;white-space:nowrap}
+.vendedor-clientes-table thead th:first-child{padding-left:19px}
+.vendedor-clientes-table tbody tr{position:relative;cursor:pointer;transition:background .14s ease,box-shadow .14s ease}
+.vendedor-clientes-table tbody tr:hover{background:#f8fbff;box-shadow:inset 0 0 0 1px #d8e6f5}
+.vendedor-clientes-table tbody tr:focus-visible{outline:2px solid #ff9b24;outline-offset:-2px}
+.vendedor-clientes-table td{padding:14px;border-bottom:1px solid #edf2f7;vertical-align:middle;font-weight:800;white-space:nowrap}
+.vendedor-clientes-table tbody tr:last-child td{border-bottom:0}
+.vendedor-clientes-table td:first-child{padding-left:19px;white-space:normal;box-shadow:inset 4px 0 0 #94a3b8}
+.vendedor-clientes-table tbody tr.status-is-aguardando td:first-child{box-shadow:inset 4px 0 0 #eab308}
+.vendedor-clientes-table tbody tr.status-is-atendimento td:first-child{box-shadow:inset 4px 0 0 #2563eb}
+.vendedor-clientes-table tbody tr.status-is-tentativa td:first-child{box-shadow:inset 4px 0 0 #f97316}
+.vendedor-clientes-table tbody tr.status-is-retorno td:first-child{box-shadow:inset 4px 0 0 #7c3aed}
+.vendedor-clientes-table tbody tr.status-is-alerta td:first-child{box-shadow:inset 4px 0 0 #e11d48}
+.vendedor-clientes-table tbody tr.status-is-ativo td:first-child,.vendedor-clientes-table tbody tr.status-is-convertido td:first-child{box-shadow:inset 4px 0 0 #16a34a}
+.vendedor-clientes-table th:nth-child(7),.vendedor-clientes-table td:nth-child(7){text-align:center}
+.vendedor-clientes-table th:nth-child(8),.vendedor-clientes-table td:nth-child(8){text-align:center}
+.vendedor-clientes-table td{overflow:hidden;text-overflow:ellipsis}
+.vendedor-clientes-table td:nth-child(4){overflow:visible}
+.vendedor-clientes-table td:nth-child(8){overflow:visible}
+.vendedor-clientes-table td:nth-child(8) .vendedor-table-actions{justify-content:center}
+.vendedor-cliente-table-nome{display:grid;gap:3px;min-width:0}.vendedor-cliente-table-nome strong{color:#0b1f38;font-size:13px;font-weight:950;line-height:1.2}.vendedor-cliente-table-nome small{color:#7b8ba0;font-size:11px;font-weight:800;line-height:1.2}
+.vendedor-tipo-badge{display:inline-flex;align-items:center;min-height:27px;padding:4px 9px;border-radius:999px;font-size:10px;font-weight:950;text-transform:uppercase}.vendedor-tipo-badge.lead{background:#fff7d6;color:#8a6300;border:1px solid #f5d35f}.vendedor-tipo-badge.cliente{background:#edf4ff;color:#174b87;border:1px solid #c8dcf6}
+.vendedor-score-badge{display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:30px;padding:0 8px;border:1px solid #d6e1ed;border-radius:9px;background:#f8fafc;color:#071a33;font-size:12px;font-weight:950}.vendedor-score-badge.grande{min-width:50px;height:42px;border-radius:12px;font-size:16px}
+.vendedor-table-actions{display:flex;align-items:center;justify-content:flex-end;gap:6px}.vendedor-table-actions .icon-action{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid #dbe4ef;border-radius:10px;background:#fff;color:#34516f;cursor:pointer;transition:.14s ease}.vendedor-table-actions .icon-action .material-symbols-rounded{font-size:19px}.vendedor-table-actions .icon-action:hover:not(:disabled){border-color:#9db5cf;background:#f1f6fc;color:#071a33;transform:translateY(-1px)}.vendedor-table-actions .icon-action.primary{border-color:#123f73;background:#071a33;color:#fff}.vendedor-table-actions .icon-action.primary:hover:not(:disabled){background:#123f73}.vendedor-table-actions .icon-action:disabled{opacity:.32;cursor:not-allowed}
+.vendedor-status-badge{min-height:28px!important;padding:5px 9px!important;font-size:9px!important;letter-spacing:.025em!important}
+.vendedor-status-badge.is-tentativa{background:#fff4e8;border-color:#fdba74;color:#b45309}.vendedor-status-badge.is-retorno{background:#f3e8ff;border-color:#d8b4fe;color:#6d28d9}
+.vendedor-clientes-mobile{display:none}
+.vendedor-clientes-estado-inicial{display:grid!important;place-items:center;text-align:center;min-height:190px}.vendedor-clientes-estado-inicial>.material-symbols-rounded{display:flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:16px;background:#eef4fb;color:#173a61;font-size:28px;margin-bottom:2px}.vendedor-clientes-estado-inicial p{max-width:520px;margin:5px 0 0;color:#74859b;font-size:13px;font-weight:750}
+
+/* drawer comercial do cliente */
+#drawer.show .drawer-content:has(.vendedor-cliente-drawer-v24){width:min(600px,100%)}
+.vendedor-cliente-drawer-v24{display:grid;gap:16px;min-height:calc(100vh - 140px)}
+.vendedor-cliente-drawer-identidade{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:16px;border:1px solid #dbe4ef;border-radius:16px;background:linear-gradient(145deg,#f7faff,#fff)}
+.vendedor-cliente-drawer-identidade h3{margin:8px 0 3px;color:#071a33;font-size:20px;line-height:1.15}.vendedor-cliente-drawer-identidade p{margin:0;color:#71839a;font-size:12px;font-weight:800}
+.vendedor-cliente-drawer-tabs{display:flex;gap:6px;padding-bottom:8px;border-bottom:1px solid #e4ebf3}.vendedor-cliente-drawer-tabs button{min-height:36px;padding:0 12px;border:0;border-radius:10px;background:transparent;color:#71839a;font:inherit;font-size:12px;font-weight:900;cursor:pointer}.vendedor-cliente-drawer-tabs button.active{background:#071a33;color:#fff}
+.vendedor-cliente-drawer-panel{display:none}.vendedor-cliente-drawer-panel.active{display:block}
+.vendedor-cliente-resumo-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.vendedor-cliente-resumo-item{display:grid;gap:6px;padding:12px 13px;border:1px solid #e1e8f0;border-radius:13px;background:#fff}.vendedor-cliente-resumo-item.full{grid-column:1/-1}.vendedor-cliente-resumo-item>span,.vendedor-cliente-drawer-observacao>span{color:#78899e;font-size:10px;font-weight:950;text-transform:uppercase;letter-spacing:.035em}.vendedor-cliente-resumo-item>strong{color:#102a48;font-size:13px;font-weight:950}.vendedor-cliente-drawer-observacao{margin-top:10px;padding:13px;border-radius:13px;background:#f7f9fc}.vendedor-cliente-drawer-observacao p{margin:5px 0 0;color:#40566f;font-size:13px;font-weight:750;line-height:1.45}
+.vendedor-lead-acao-box{display:grid;gap:13px;padding:15px;border:1px solid #d7e3f4;border-radius:16px;background:#f8fbff}.vendedor-lead-acao-box>div:first-child{display:flex;align-items:center;gap:10px}.vendedor-lead-acao-box>div:first-child>.material-symbols-rounded{display:flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:12px;background:#e7f0fc;color:#123f73}.vendedor-lead-acao-box>div:first-child strong{display:block;color:#071a33;font-size:14px}.vendedor-lead-acao-box>div:first-child p{margin:2px 0 0;color:#71839a;font-size:12px;font-weight:750}.vendedor-lead-acao-box label{display:grid;gap:6px;color:#40566f;font-size:11px;font-weight:950;text-transform:uppercase}.vendedor-lead-acao-box select,.vendedor-lead-acao-box textarea,.vendedor-lead-acao-box input{width:100%;border:1px solid #cddbea;border-radius:12px;background:#fff;color:#102a48;font:inherit;font-weight:800;outline:none}.vendedor-lead-acao-box select,.vendedor-lead-acao-box input{min-height:44px;padding:0 11px}.vendedor-lead-acao-box textarea{min-height:92px;padding:11px;resize:vertical}.vendedor-lead-acao-box select:focus,.vendedor-lead-acao-box textarea:focus,.vendedor-lead-acao-box input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.1)}.vendedor-lead-acao-box .cliente-lead-status-field small{text-transform:none}.cliente-drawer-retorno[hidden]{display:none!important}.vendedor-lead-acao-box>.primary-btn{justify-self:end;min-width:150px}
+.vendedor-cliente-historico{display:grid;gap:9px}.vendedor-historico-item{display:grid;grid-template-columns:34px minmax(0,1fr);gap:10px;padding:12px;border:1px solid #e1e8f0;border-radius:13px;background:#fff}.vendedor-historico-item>.material-symbols-rounded{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:#eef4fb;color:#315a85;font-size:18px}.vendedor-historico-item strong{display:block;color:#102a48;font-size:12px}.vendedor-historico-item p{margin:3px 0;color:#5f738b;font-size:12px;line-height:1.35}.vendedor-historico-item small{color:#94a3b8;font-size:10px;font-weight:800}.vendedor-historico-loading,.vendedor-historico-vazio{display:grid;place-items:center;gap:5px;min-height:150px;text-align:center;color:#71839a}.vendedor-historico-vazio p{margin:0;font-size:12px}
+.vendedor-cliente-drawer-actions{position:sticky;bottom:-20px;z-index:3;display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:auto;padding:14px 0 0;background:linear-gradient(180deg,rgba(255,255,255,0),#fff 18%,#fff);border-top:1px solid #e5ecf3}.vendedor-cliente-drawer-actions .primary-btn{grid-column:1/-1}.vendedor-cliente-drawer-actions button{justify-content:center;min-height:44px}
+
+@media(max-width:900px){.vendedor-clientes-table-wrap{display:none}.vendedor-clientes-mobile{display:grid;gap:10px}.vendedor-cliente-mobile-card{position:relative;display:grid;gap:12px;padding:14px 14px 14px 18px;border:1px solid #dbe4ef;border-radius:15px;background:#fff;box-shadow:0 7px 20px rgba(15,23,42,.05);overflow:hidden}.vendedor-cliente-mobile-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#94a3b8}.vendedor-cliente-mobile-card.status-is-aguardando:before{background:#eab308}.vendedor-cliente-mobile-card.status-is-atendimento:before{background:#2563eb}.vendedor-cliente-mobile-card.status-is-tentativa:before{background:#f97316}.vendedor-cliente-mobile-card.status-is-retorno:before{background:#7c3aed}.vendedor-cliente-mobile-card.status-is-alerta:before{background:#e11d48}.vendedor-cliente-mobile-card.status-is-ativo:before,.vendedor-cliente-mobile-card.status-is-convertido:before{background:#16a34a}.vendedor-cliente-mobile-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.vendedor-cliente-mobile-top h3{margin:7px 0 3px;color:#071a33;font-size:15px}.vendedor-cliente-mobile-top p{margin:0;color:#71839a;font-size:12px;font-weight:800}.vendedor-cliente-mobile-meta{display:flex;flex-wrap:wrap;align-items:center;gap:7px}.vendedor-cliente-mobile-meta>span:not(.vendedor-status-badge){padding:5px 8px;border-radius:8px;background:#f4f7fa;color:#60758e;font-size:10px;font-weight:850}.vendedor-cliente-mobile-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.vendedor-cliente-mobile-actions button{justify-content:center;min-height:40px}}
+@media(max-width:760px){.vendedor-clientes-tabs{width:100%;display:grid!important;grid-template-columns:1fr 1fr}.vendedor-clientes-tabs button{justify-content:center;padding:0 9px}.vendedor-clientes-tabs button.active:before{display:none}.vendedor-clientes-chips{overflow:auto;flex-wrap:nowrap;padding-bottom:3px}.vendedor-cliente-chip{flex:0 0 auto}.vendedor-clientes-kpis{grid-template-columns:1fr 1fr!important}.vendedor-cliente-resumo-grid{grid-template-columns:1fr}.vendedor-cliente-resumo-item.full{grid-column:auto}.vendedor-cliente-drawer-actions{grid-template-columns:1fr}.vendedor-cliente-drawer-actions .primary-btn{grid-column:auto}}
+@media(max-width:460px){.vendedor-clientes-kpis{grid-template-columns:1fr!important}.vendedor-cliente-mobile-actions{grid-template-columns:1fr}}
+
+/* v24.2 — pesquisa isolada por aba + status do lead em destaque no drawer */
+.vendedor-lead-status-destaque{display:grid;gap:12px;padding:15px;border:1px solid #cfdceb;border-left:5px solid #94a3b8;border-radius:16px;background:linear-gradient(145deg,#f8fbff,#fff);box-shadow:0 8px 22px rgba(15,23,42,.05)}
+.vendedor-lead-status-destaque.status-is-aguardando{border-left-color:#eab308;background:linear-gradient(145deg,#fffbed,#fff)}
+.vendedor-lead-status-destaque.status-is-atendimento{border-left-color:#2563eb;background:linear-gradient(145deg,#eff6ff,#fff)}
+.vendedor-lead-status-destaque.status-is-tentativa{border-left-color:#f97316;background:linear-gradient(145deg,#fff7ed,#fff)}
+.vendedor-lead-status-destaque.status-is-retorno{border-left-color:#7c3aed;background:linear-gradient(145deg,#f7f1ff,#fff)}
+.vendedor-lead-status-destaque.status-is-alerta{border-left-color:#e11d48;background:linear-gradient(145deg,#fff1f2,#fff)}
+.vendedor-lead-status-destaque-head{display:flex;align-items:flex-start;gap:11px}
+.vendedor-lead-status-destaque-head>.material-symbols-rounded{display:flex;align-items:center;justify-content:center;flex:0 0 42px;width:42px;height:42px;border-radius:12px;background:#071a33;color:#fff;font-size:21px}
+.vendedor-lead-status-destaque-head small{display:block;color:#71839a;font-size:10px;font-weight:950;letter-spacing:.045em;text-transform:uppercase}
+.vendedor-lead-status-destaque-head strong{display:block;margin-top:2px;color:#071a33;font-size:15px;font-weight:950}
+.vendedor-lead-status-destaque-head p{margin:3px 0 0;color:#71839a;font-size:11px;font-weight:750;line-height:1.35}
+.vendedor-lead-status-destaque-controles{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+.vendedor-lead-status-destaque .cliente-lead-status-field{display:grid!important;gap:5px;margin:0;color:#40566f;font-size:10px;font-weight:950;text-transform:uppercase}
+.vendedor-lead-status-destaque .cliente-lead-status-field select{width:100%;min-height:46px;margin:0;padding:0 12px;border:1px solid #bfd0e3;border-radius:12px;background:#fff;color:#102a48;font:inherit;font-size:13px;font-weight:900;outline:none}
+.vendedor-lead-status-destaque .cliente-lead-status-field select:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.11)}
+.vendedor-lead-status-destaque .cliente-lead-status-field small{margin:0;color:#8493a7;font-size:10px;font-weight:750;text-transform:none}
+.vendedor-lead-status-destaque-controles>.primary-btn{min-height:46px;min-width:142px;justify-content:center}
+.vendedor-lead-status-observacao,.vendedor-lead-status-destaque .cliente-drawer-retorno{display:grid;gap:6px;color:#40566f;font-size:10px;font-weight:950;text-transform:uppercase}
+.vendedor-lead-status-observacao textarea{width:100%;min-height:72px;padding:10px 11px;border:1px solid #cddbea;border-radius:12px;background:#fff;color:#102a48;font:inherit;font-size:12px;font-weight:750;line-height:1.4;resize:vertical;outline:none;text-transform:none}
+.vendedor-lead-status-destaque .cliente-drawer-retorno input{width:100%;min-height:44px;padding:0 11px;border:1px solid #cddbea;border-radius:12px;background:#fff;color:#102a48;font:inherit;font-size:12px;font-weight:800;outline:none}
+.vendedor-lead-status-observacao textarea:focus,.vendedor-lead-status-destaque .cliente-drawer-retorno input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+@media(max-width:620px){.vendedor-lead-status-destaque-controles{grid-template-columns:1fr}.vendedor-lead-status-destaque-controles>.primary-btn{width:100%}}

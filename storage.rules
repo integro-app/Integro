@@ -1,0 +1,78 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return isAuthenticated()
+        ? firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data
+        : {};
+    }
+
+    function isActiveUser() {
+      return isAuthenticated() &&
+        userDoc().get("authUid", "") == request.auth.uid &&
+        userDoc().get("acessoLiberado", false) == true &&
+        !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]);
+    }
+
+    function userTenantId() {
+      return userDoc().get("clientePlataformaId", "");
+    }
+
+    function isMasterGlobal() {
+      return userDoc().get("tipoUsuario", "") == "master_global";
+    }
+
+    function isAuditor() {
+      return userDoc().get("tipoUsuario", "") == "auditor" || userDoc().get("cargoChave", "") == "auditor";
+    }
+
+    function isSameTenant(tenantId) {
+      return isActiveUser() &&
+        userTenantId() is string &&
+        userTenantId().size() > 0 &&
+        userTenantId() == tenantId;
+    }
+
+    function allowedContentType() {
+      return request.resource.contentType.matches("image/.*") ||
+        request.resource.contentType in [
+          "application/pdf",
+          "application/msword",
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+          "application/vnd.ms-excel",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "text/plain"
+        ];
+    }
+
+    function allowedUpload() {
+      return request.resource != null &&
+        request.resource.size > 0 &&
+        request.resource.size < 10 * 1024 * 1024 &&
+        allowedContentType();
+    }
+
+    match /tenants/{tenantId}/{categoria}/{arquivo=**} {
+      allow read: if isMasterGlobal() || isSameTenant(tenantId);
+      allow list: if false;
+      allow create: if (isMasterGlobal() || isSameTenant(tenantId)) &&
+        (categoria != "chat" || !isAuditor()) &&
+        (categoria != "chat" ? allowedUpload() : (
+          request.resource != null &&
+          request.resource.size > 0 && request.resource.size <= 8 * 1024 * 1024 &&
+          request.resource.contentType.matches("image/.*")
+        ));
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

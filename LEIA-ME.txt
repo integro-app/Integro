@@ -1,0 +1,20 @@
+PATCH CIRÚRGICO — MÓDULO CAIXAS EM BRANCO
+
+Arquivo alterado:
+- master-local.html
+
+Correção:
+- O controlador canônico de Caixas tratava a ausência temporária de IntegroRuntime.permiteGestaoCaixas como permissão negada.
+- A função renderCaixasPremium concluía sem erro, mas retornava antes de montar a tela.
+- Agora a validação usa o runtime quando disponível e, como fallback seguro, usa podeInicializarSupervisaoCaixas do controlador js/caixas.js.
+- Nenhuma permissão foi liberada indiscriminadamente.
+- Nenhum ID, coleção, layout ou regra Firestore foi alterado.
+
+Aplicação:
+1. Faça backup do master-local.html atual.
+2. Substitua pelo master-local.html deste patch.
+3. Recarregue com Ctrl+F5.
+4. Abra Operação > Caixas.
+
+Validação local:
+- 48 scripts inline JavaScript passaram em node --check.
