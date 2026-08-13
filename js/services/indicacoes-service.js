@@ -380,6 +380,23 @@
     if (ehNovoLead && vendedorAuthUid !== destinatarioAuthUid) {
       throw new Error("Destinatário da notificação do lead diverge do vendedor atribuído.");
     }
+    if (window.IntegroNotifications?.emit) {
+      await window.IntegroNotifications.emit({
+        ...dados,
+        destinatarioAuthUid,
+        destinatarioUsuarioId: vendedorDocumentoId,
+        categoria: "CLIENTES",
+        origemModulo: "CLIENTES",
+        origemEvento: dados.origemEvento || dados.tipo || "INDICACAO_ATUALIZADA",
+        origemTipo: "INDICACAO",
+        origemId: dados.indicacaoId,
+        entidadeTipo: "LEAD",
+        entidadeId: dados.clienteOperacionalId || "",
+        eventoId: dados.eventoId || dados.atribuicaoId || `${dados.tipo || "INDICACAO"}:${dados.indicacaoId}:${dados.criadoEmTexto || dados.dataAtribuicao || "evento"}`,
+        rota: { tela:"clientes", aba:"leads", entidadeId:dados.clienteOperacionalId || "", acao:"ABRIR_DRAWER" }
+      }, { db });
+      return true;
+    }
     const notificacaoId = idNotificacaoIndicacao(["indicacao",dados.tipo || "atualizada",dados.indicacaoId,destinatarioAuthUid]);
     await db.collection("notificacoes").doc(notificacaoId).set({
       clientePlataformaId: dados.clientePlataformaId || "",
@@ -579,7 +596,8 @@
         vendedorAuthUid:destinoAuthUid,
         criadoPorId:idUsuario(usuario),
         criadoPorAuthUid:authUidUsuario(usuario),
-        criadoPorNome:nomeUsuario(usuario)
+        criadoPorNome:nomeUsuario(usuario),
+        eventoId:`CRIACAO_ATRIBUIDA:${ref.id}`
       });
     }
     return { id: ref.id, ...indicacao, clienteCriado: criado };
@@ -732,7 +750,9 @@
       vendedorAuthUid,
       criadoPorId:idUsuario(usuario),
       criadoPorAuthUid:authUidUsuario(usuario),
-      criadoPorNome:nomeUsuario(usuario)
+      criadoPorNome:nomeUsuario(usuario),
+      eventoId:`ATRIBUICAO:${indicacaoId}:${agora}`,
+      dataAtribuicao:agora
     });
     return true;
   }
@@ -919,7 +939,8 @@
         vendedorAuthUid,
         criadoPorId:idUsuario(usuario),
         criadoPorAuthUid:authUidUsuario(usuario),
-        criadoPorNome:nomeUsuario(usuario)
+        criadoPorNome:nomeUsuario(usuario),
+        eventoId:`REDISTRIBUICAO:${indicacaoId}:${vendedorAuthUid}:${new Date().toISOString()}`
       });
     }
     return {statusIndicacao:statusNovo,vendedorAlterado};

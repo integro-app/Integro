@@ -172,6 +172,7 @@ function notificacaoPertenceAoUsuario(notificacao, usuario) {
 }
 
 async function carregarNotificacoesLayout(usuario = null) {
+  if (window.IntegroNotifications?.list) return window.IntegroNotifications.list();
   const atual = usuario || obterUsuarioAtual();
   const tenantId = atual?.clientePlataformaId || atual?.empresaId || atual?.tenantId || "";
   const usuarioId = String(
@@ -267,6 +268,7 @@ function atualizarNotificacoesLayout(lista = window.notificacoesLayout || []) {
 }
 
 function abrirNotificacoes() {
+  if (window.IntegroNotificationCenter?.open) { window.IntegroNotificationCenter.open(); return; }
   if (typeof trocarTela === "function" && document.getElementById("notificacoes")) {
     trocarTela("notificacoes");
     return;

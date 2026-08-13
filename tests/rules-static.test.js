@@ -49,3 +49,31 @@ test("notificacao direcionada nao usa publico como atalho para outro vendedor", 
   assert.match(rules, /!notificacaoDirecionada\(data\)/);
   assert.match(rules, /destinatarioAuthUid != "" && destinatarioAuthUid == currentUid\(\)/);
 });
+
+test("leads: operador autorizado pode atribuir e sincronizar cliente sem ampliar escopo", () => {
+  assert.match(rules, /function operadorLeadsPodeAtualizarIndicacao\(\)/);
+  assert.match(rules, /hasPermission\("podeAtribuirIndicacao"\)/);
+  assert.match(rules, /hasPermission\("podeRedistribuirIndicacao"\)/);
+  assert.match(rules, /function operadorLeadsPodeSincronizarCliente\(\)/);
+  assert.match(rules, /alterados\.hasOnly\(camposDirecionamento\)/);
+  assert.match(rules, /"vendedorAuthUid"/);
+  assert.match(rules, /"statusAtendimento"/);
+});
+
+test("leads: operador com permissao indicacoes.criar pode criar cliente-base lead com invariantes", () => {
+  assert.match(rules, /function canCreateLeadByPermission\(\)/);
+  assert.match(rules, /hasPermission\("indicacoes\.criar"\)/);
+  const bloco = rules.match(/function canCreateClienteLead\(data\) \{[\s\S]*?\n    \}/)?.[0] || "";
+  assert.match(bloco, /!isVendedor\(\)/);
+  assert.match(bloco, /statusCliente", ""\) == "LEAD"/);
+  assert.match(bloco, /possuiVendaAtiva", false\) == false/);
+  assert.match(bloco, /saldoDevedorCentavos", 0\) == 0/);
+  assert.match(bloco, /data\.keys\(\)\.hasOnly/);
+  assert.match(rules, /allow create: if canCreateClienteLead\(request\.resource\.data\)/);
+});
+
+test("leads: indicacao nova aceita operador autorizado sem permitir criacao pelo vendedor", () => {
+  const bloco = rules.match(/function canCreateIndicacao\(data\) \{[\s\S]*?\n    \}/)?.[0] || "";
+  assert.match(bloco, /!isVendedor\(\)/);
+  assert.match(bloco, /canCreateLeadByPermission\(\)/);
+});

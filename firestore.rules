@@ -140,6 +140,31 @@ service cloud.firestore {
         (permMap().get("solicitacoes", {}).get(permissionKey, false) == true);
     }
 
+
+    // Permissões de Leads podem existir no formato atual (indicacoes.criar),
+    // no mapa aninhado (indicacoes: { criar: true }) ou em chaves legadas.
+    function canCreateLeadByPermission() {
+      return hasPermission("indicacoes.criar") || hasPermission("criar") ||
+        hasPermission("criarIndicacao") || hasPermission("podeCriarIndicacao");
+    }
+
+    function canAssignLeadByPermission() {
+      return hasPermission("indicacoes.atribuir") || hasPermission("indicacoes.direcionar") ||
+        hasPermission("atribuir") || hasPermission("direcionar") ||
+        hasPermission("atribuirIndicacao") || hasPermission("podeAtribuirIndicacao");
+    }
+
+    function canRedistributeLeadByPermission() {
+      return hasPermission("indicacoes.distribuir") || hasPermission("indicacoes.redistribuir") ||
+        hasPermission("distribuir") || hasPermission("redistribuir") ||
+        hasPermission("redistribuirIndicacao") || hasPermission("podeRedistribuirIndicacao");
+    }
+
+    function canEditLeadByPermission() {
+      return hasPermission("indicacoes.editar") || hasPermission("editar") ||
+        hasPermission("editarIndicacao") || hasPermission("podeEditarIndicacao");
+    }
+
     function userEquipeIds() {
       return userDoc().get("equipesIds", []) is list ? userDoc().get("equipesIds", []) :
         (userDoc().get("equipeIds", []) is list ? userDoc().get("equipeIds", []) :
@@ -645,7 +670,8 @@ service cloud.firestore {
         data.clienteOperacionalId is string &&
         exists(/databases/$(database)/documents/clientes_operacionais/$(data.clienteOperacionalId)) &&
         get(/databases/$(database)/documents/clientes_operacionais/$(data.clienteOperacionalId)).data.clientePlataformaId == userTenantId() &&
-        (isMasterLocal() || (isCaptador() && hasPermission("criarIndicacao")));
+        !isVendedor() &&
+        (isMasterLocal() || isGerente() || isCaptador() || canCreateLeadByPermission());
     }
 
     function isIndicacaoDoVendedor(data) {
@@ -724,7 +750,9 @@ service cloud.firestore {
           "clientePlataformaId", "tipo", "titulo", "mensagem", "origemTipo", "origemId",
           "origemTela", "acaoTipo", "indicacaoId", "clienteOperacionalId", "solicitacaoId",
           "movimentacaoId", "caixaId", "usuarioId", "destinatarioId", "destinatarioAuthUid",
-          "vendedorId", "vendedorAuthUid", "vendedorDocumentoId", "publico", "criadoPorId", "criadoPorNome", "criadoEm"
+          "destinatarioUsuarioId", "vendedorId", "vendedorAuthUid", "vendedorDocumentoId", "publico",
+          "tenantId", "categoria", "prioridade", "origemModulo", "origemEvento", "entidadeTipo", "entidadeId",
+          "eventoId", "idempotencyKey", "rota", "criadoPorId", "criadoPorAuthUid", "criadoPorNome", "criadoEm"
         ]) &&
         alterados.hasOnly([
           "lida", "status", "excluido", "excluida", "visualizadaEmTexto",
@@ -798,12 +826,22 @@ service cloud.firestore {
       );
     }
 
+    function operadorLeadsPodeAtualizarIndicacao() {
+      return hasPermission("podeEditarIndicacao") ||
+        hasPermission("podeAtribuirIndicacao") ||
+        hasPermission("podeRedistribuirIndicacao") ||
+        hasPermission("editarIndicacao") ||
+        hasPermission("atribuirIndicacao") ||
+        hasPermission("redistribuirIndicacao");
+    }
+
     function canUpdateIndicacao() {
       return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
         unchanged(["clientePlataformaId", "clienteOperacionalId", "captadorId", "criadoEm"]) &&
         (
           isMasterLocal() ||
-          (isSupervisor() && hasPermission("redistribuirIndicacao") && isTeamAllowed(resource.data)) ||
+          (isSupervisor() && operadorLeadsPodeAtualizarIndicacao() && isTeamAllowed(resource.data)) ||
+          ((!isVendedor()) && operadorLeadsPodeAtualizarIndicacao()) ||
           vendedorPodeAtualizarIndicacao()
         );
     }
@@ -837,6 +875,54 @@ service cloud.firestore {
         ]);
     }
 
+    function operadorLeadsPodeSincronizarCliente() {
+      let alterados = request.resource.data.diff(resource.data).affectedKeys();
+      let podeAtribuir = canAssignLeadByPermission() || canRedistributeLeadByPermission();
+      let podeEditar = canEditLeadByPermission();
+      let camposDirecionamento = [
+        "vendedorId", "vendedorAuthUid", "vendedorUid", "vendedorDocumentoId", "vendedorNome",
+        "equipeId", "equipeNome", "statusAtendimento",
+        "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
+      ];
+      let camposCadastroLead = [
+        "nome", "nomeBusca", "documento", "documentoNormalizado", "tipoCliente",
+        "telefonePrincipal", "telefoneNormalizado", "telefonesNormalizados", "paisTelefone",
+        "whatsappAtivo", "whatsappUrl",
+        "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
+      ];
+      return !isVendedor() && (
+        (podeAtribuir && alterados.hasOnly(camposDirecionamento)) ||
+        (podeEditar && alterados.hasOnly([
+          "vendedorId", "vendedorAuthUid", "vendedorUid", "vendedorDocumentoId", "vendedorNome",
+          "equipeId", "equipeNome", "statusAtendimento",
+          "nome", "nomeBusca", "documento", "documentoNormalizado", "tipoCliente",
+          "telefonePrincipal", "telefoneNormalizado", "telefonesNormalizados", "paisTelefone",
+          "whatsappAtivo", "whatsappUrl",
+          "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
+        ]))
+      );
+    }
+
+    function canCreateClienteLead(data) {
+      return isActiveUser() && isSameTenantWrite() && !isVendedor() &&
+        (isMasterLocal() || isGerente() || isCaptador() || canCreateLeadByPermission()) &&
+        data.get("statusCliente", "") == "LEAD" &&
+        data.get("status", "") == "LEAD" &&
+        data.get("origem", "") == "INDICACAO" &&
+        data.get("possuiVendaAtiva", false) == false &&
+        data.get("vendaAtivaId", null) == null &&
+        data.get("saldoDevedorCentavos", 0) == 0 &&
+        data.get("saldoDevedor", 0) == 0 &&
+        data.keys().hasOnly([
+          "clientePlataformaId", "nome", "nomeBusca", "documento", "documentoNormalizado",
+          "tipoCliente", "telefonePrincipal", "telefoneNormalizado", "telefonesNormalizados",
+          "paisTelefone", "whatsappAtivo", "whatsappUrl", "enderecoResumo",
+          "statusCliente", "status", "origem", "possuiVendaAtiva", "vendaAtivaId",
+          "saldoDevedorCentavos", "saldoDevedor", "ativo",
+          "criadoPor", "criadoEm", "atualizadoPor", "atualizadoEm"
+        ]);
+    }
+
     function canUpdateClienteOperacional(clienteId) {
       return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
         unchanged(["clientePlataformaId", "criadoEm"]) &&
@@ -845,6 +931,7 @@ service cloud.firestore {
           isMasterLocal() ||
           isGerente() ||
           isFinanceiro() ||
+          operadorLeadsPodeSincronizarCliente() ||
           (isSupervisor() && isTeamAllowed(resource.data) && isTeamAllowed(request.resource.data)) ||
           vendedorPodeDevolverClienteLead() ||
           (isVendedor() && isOwnSellerData(resource.data) &&
@@ -1188,8 +1275,9 @@ service cloud.firestore {
     match /clientes_operacionais/{id} {
       allow read: if isOperationalReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
-      allow create: if isActiveUser() && isSameTenantWrite() &&
-        (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data)));
+      allow create: if canCreateClienteLead(request.resource.data) ||
+        (isActiveUser() && isSameTenantWrite() &&
+          (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data))));
       allow update: if canUpdateClienteOperacional(id);
       allow delete: if false;
     }
@@ -1197,8 +1285,9 @@ service cloud.firestore {
     match /clientes/{id} {
       allow read: if isOperationalReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
-      allow create: if isActiveUser() && isSameTenantWrite() &&
-        (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data)));
+      allow create: if canCreateClienteLead(request.resource.data) ||
+        (isActiveUser() && isSameTenantWrite() &&
+          (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data))));
       allow update: if canUpdateClienteOperacional(id);
       allow delete: if false;
     }

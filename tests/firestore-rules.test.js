@@ -1021,3 +1021,23 @@ test("clientes: consultas por aliases legados do proprio vendedor permanecem aut
     limit(10)
   )));
 });
+
+// v25.2 regressão: operador de Leads com permissão explícita pode criar o cliente-base LEAD
+// sem abrir criação genérica de clientes financeiros/vendas.
+test('rules: criação de lead respeita matriz indicacoes.criar e mantém invariantes financeiros', () => {
+  const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+  assert.match(rules, /function canCreateLeadByPermission\(\)/);
+  assert.match(rules, /hasPermission\("indicacoes\.criar"\)/);
+  assert.match(rules, /function canCreateClienteLead\(data\)/);
+  assert.match(rules, /data\.get\("statusCliente", ""\) == "LEAD"/);
+  assert.match(rules, /data\.get\("possuiVendaAtiva", false\) == false/);
+  assert.match(rules, /data\.get\("saldoDevedorCentavos", 0\) == 0/);
+  assert.match(rules, /allow create: if canCreateClienteLead\(request\.resource\.data\)/);
+});
+
+test('rules: criação de indicação aceita operador autorizado e continua bloqueando vendedor', () => {
+  const rules = fs.readFileSync(path.join(__dirname, '..', 'firestore.rules'), 'utf8');
+  const trecho = rules.match(/function canCreateIndicacao\(data\) \{[\s\S]*?\n    \}/)?.[0] || '';
+  assert.match(trecho, /!isVendedor\(\)/);
+  assert.match(trecho, /canCreateLeadByPermission\(\)/);
+});
