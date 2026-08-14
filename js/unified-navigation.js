@@ -2,12 +2,10 @@
   "use strict";
 
   /*
-   * v13 — a lateral exibe somente os dez módulos principais aprovados.
-   * As áreas complementares continuam registradas em SUBMODULOS e são
-   * abertas pelas barras horizontais internas de cada módulo.
+   * v26 — Financeiro possui duas superfícies independentes:
+   * - Financeiro (perfil financeiro): Controle Financeiro Empresarial.
+   * - Movimentações/Aprovações: Financeiro Operacional ligado a caixas/ledger.
    */
-  // Rótulos preservados para compatibilidade documental: Cobranças e vendas; Configurações da empresa.
-  // Regra histórica de rótulo: perfil(usuario) !== "vendedor" ? "Movimentações" : "Movimentações".
   const CATALOGO = Object.freeze([
     { id: "operacao", rotulo: "Operação", icone: "business_center", permissoes: ["operacao.ver", "cobrancas.ver", "vendas.ver"], abrir: "operacao" },
     { id: "dashboard", rotulo: "Dashboard", icone: "dashboard", permissao: "dashboard.ver", abrir: "tela" },
@@ -105,6 +103,29 @@
     return CATALOGO.find(item => item.id === id) || SUBMODULOS.find(item => item.id === id) || null;
   }
 
+  function abrirFinanceiroOperacional(tab, elemento, moduloAtivo = "movimentacoes") {
+    global.__integroFinanceiroModo = "operacional";
+    if (typeof global.__abrirFinanceiroUnificado === "function") global.__abrirFinanceiroUnificado(tab);
+    else {
+      global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
+      global.setTimeout?.(() => global.IntegroFinanceiroUnificado?.openTab?.(tab), 0);
+    }
+    global.setTimeout?.(() => ativarItem(moduloAtivo), 0);
+    return true;
+  }
+
+  function abrirFinanceiroEmpresarial(elemento) {
+    global.__integroFinanceiroModo = "empresarial";
+    if (typeof global.IntegroControleFinanceiroUI?.openEnterprise === "function") {
+      global.IntegroControleFinanceiroUI.openEnterprise();
+    } else {
+      global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
+      global.setTimeout?.(() => global.IntegroControleFinanceiroUI?.load?.(true), 0);
+    }
+    global.setTimeout?.(() => ativarItem("financeiro"), 0);
+    return true;
+  }
+
   function abrir(item, elemento) {
     if (!item) return false;
     if (item.abrir === "sair") return global.logout?.();
@@ -117,31 +138,21 @@
       return global.abrirComunicacaoMasterLocal?.("notificacoes", elemento) ?? global.trocarTela?.("notificacoes", elemento);
     }
     if (item.abrir === "clientes") return global.navegarModuloClientesMasterLocal?.("clientes") ?? global.trocarTela?.("clientes", elemento);
+
     if (item.id === "movimentacoes" && perfil(usuarioAtual) !== "vendedor") {
-      if (typeof global.__abrirFinanceiroUnificado === "function") global.__abrirFinanceiroUnificado("lancamentos");
-      else {
-        global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
-        global.setTimeout?.(() => global.IntegroFinanceiroUnificado?.openTab?.("lancamentos"), 0);
-      }
-      global.setTimeout?.(() => ativarItem("movimentacoes"), 0);
-      return true;
+      return abrirFinanceiroOperacional("lancamentos", elemento, "movimentacoes");
     }
+
     if (item.id === "financeiro") {
-      if (typeof global.__abrirFinanceiroUnificado === "function") global.__abrirFinanceiroUnificado("resumo");
-      else {
-        global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
-        global.setTimeout?.(() => global.IntegroFinanceiroUnificado?.openTab?.("resumo"), 0);
-      }
-      global.setTimeout?.(() => ativarItem("financeiro"), 0);
-      return true;
+      if (perfil(usuarioAtual) === "financeiro") return abrirFinanceiroEmpresarial(elemento);
+      return abrirFinanceiroOperacional("resumo", elemento, "financeiro");
     }
+
     if (item.abrir === "financeiro-aprovacoes") {
-      global.__abrirFinanceiroUnificado?.("aprovacoes") || global.abrirModuloNavegacaoIntegro?.("financeiro", elemento);
-      return true;
+      return abrirFinanceiroOperacional("aprovacoes", elemento, "operacao");
     }
     if (item.abrir === "financeiro-relatorios") {
-      global.__abrirFinanceiroUnificado?.("relatorios") || global.abrirModuloNavegacaoIntegro?.("financeiro", elemento);
-      return true;
+      return abrirFinanceiroOperacional("relatorios", elemento, "financeiro");
     }
     if (item.abrir === "configuracoes") {
       global.abrirModuloNavegacaoIntegro?.("configuracoes", elemento) ?? global.trocarTela?.("configuracoes", elemento);
@@ -222,8 +233,7 @@
     if (!host || !usuarioAtual) return false;
     const perfilAtual = perfil(usuarioAtual);
     const itens = CATALOGO.filter(item => permitido(usuarioAtual, item) && !(perfilAtual === "vendedor" && item.id === "notificacoes"));
-    const html = itens.map(itemHtml);
-    host.innerHTML = html.join("");
+    host.innerHTML = itens.map(itemHtml).join("");
     sanitizarSidebar();
     aplicarSubmodulos(usuarioAtual);
     garantirSinoNotificacoes(usuarioAtual);
@@ -256,6 +266,7 @@
 
   global.IntegroNavegacaoUnificada = Object.freeze({
     CATALOGO, SUBMODULOS, MODULO_PAI, renderizar, permitido, abrir, abrirPorId, ativarItem, aplicarSubmodulos,
+    abrirFinanceiroOperacional, abrirFinanceiroEmpresarial,
     sanitizarSidebar, itemPorId, garantirSinoNotificacoes, get usuario() { return usuarioAtual; }
   });
 })(window);
