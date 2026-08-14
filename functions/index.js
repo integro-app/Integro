@@ -123,3 +123,6 @@ exports.registrarVendaOperacional = functions
 exports.registrarPagamentoOperacional = functions
   .region("southamerica-east1")
   .https.onCall(operacoesFinanceiras.registrarPagamento);
+
+const { criarProcessadorLembretesFinanceiros } = require("./enterprise-finance-reminders");
+exports.processarLembretesFinanceirosEmpresariais = criarProcessadorLembretesFinanceiros({ functions, admin, db });
