@@ -7,6 +7,9 @@ const root = path.join(__dirname, "..");
 const service = fs.readFileSync(path.join(root, "js", "services", "enterprise-finance-service.js"), "utf8");
 const ui = fs.readFileSync(path.join(root, "js", "modules", "controle-financeiro-empresarial.js"), "utf8");
 const utils = fs.readFileSync(path.join(root, "js", "modules", "unified-module-utils.js"), "utf8");
+const notificationRouter = fs.readFileSync(path.join(root, "js", "routers", "notification-router.js"), "utf8");
+const reminderFunction = fs.readFileSync(path.join(root, "functions", "enterprise-finance-reminders.js"), "utf8");
+const functionsIndex = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
 const storageRules = fs.readFileSync(path.join(root, "storage.rules"), "utf8");
 const indexes = JSON.parse(fs.readFileSync(path.join(root, "firestore.indexes.json"), "utf8"));
 
@@ -71,6 +74,27 @@ test("lembretes ficam em colecao própria e vinculados à conta", () => {
   assert.match(ui, /Lembretes de pagamento/);
   assert.match(ui, /7 dias antes/);
   assert.match(ui, /No dia/);
+});
+
+test("lembretes possuem processador backend idempotente e notificacao central", () => {
+  assert.match(reminderFunction, /pubsub\.schedule\("every 60 minutes"\)/);
+  assert.match(reminderFunction, /timeZone\("America\/Sao_Paulo"\)/);
+  assert.match(reminderFunction, /financeiro_lembretes/);
+  assert.match(reminderFunction, /financeiro_contas/);
+  assert.match(reminderFunction, /collection\("notificacoes"\)/);
+  assert.match(reminderFunction, /cfe_lembrete_/);
+  assert.match(reminderFunction, /idempotencyKey/);
+  assert.match(reminderFunction, /CONTA_FINANCEIRA_VENCIDA/);
+  assert.match(reminderFunction, /CONTROLE_FINANCEIRO/);
+  assert.match(functionsIndex, /processarLembretesFinanceirosEmpresariais/);
+});
+
+test("notificacao financeira abre o controle empresarial e a conta correta", () => {
+  assert.match(notificationRouter, /openEnterpriseFinance/);
+  assert.match(notificationRouter, /__integroFinanceiroModo\s*=\s*"empresarial"/);
+  assert.match(notificationRouter, /IntegroControleFinanceiroUI\?\.openDetail/);
+  assert.match(notificationRouter, /CONTA_FINANCEIRA/);
+  assert.match(notificationRouter, /CONTROLE_FINANCEIRO/);
 });
 
 test("anexos e comprovantes usam Storage exclusivo do financeiro empresarial", () => {
@@ -145,6 +169,7 @@ test("interface declara explicitamente que caixas operacionais não entram no co
 test("perfil financeiro ativa controle empresarial automaticamente sem sobrescrever master local", () => {
   assert.match(ui, /profile\(\)!=="financeiro"/);
   assert.match(ui, /function openEnterprise/);
+  assert.match(ui, /isOperationalMode/);
   assert.doesNotMatch(ui, /profile\(\)==="master_local".*setTimeout\(.*load/s);
 });
 
