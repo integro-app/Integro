@@ -135,14 +135,21 @@
   if (global.__integroControleFinanceiroV26Loader) return;
   global.__integroControleFinanceiroV26Loader = true;
 
-  function loadScript(src) {
+  function loadScript(src, marker = src) {
     return new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[data-v26-financeiro-src="${src}"]`);
-      if (existing) { if (existing.dataset.loaded === "1") resolve(); else existing.addEventListener("load", resolve, { once:true }); return; }
+      const existing = document.querySelector(`script[data-v26-financeiro-src="${marker}"]`);
+      if (existing) {
+        if (existing.dataset.loaded === "1") resolve();
+        else {
+          existing.addEventListener("load", resolve, { once:true });
+          existing.addEventListener("error", reject, { once:true });
+        }
+        return;
+      }
       const script = document.createElement("script");
       script.src = src;
       script.async = false;
-      script.dataset.v26FinanceiroSrc = src;
+      script.dataset.v26FinanceiroSrc = marker;
       script.addEventListener("load", () => { script.dataset.loaded = "1"; resolve(); }, { once:true });
       script.addEventListener("error", reject, { once:true });
       document.head.appendChild(script);
@@ -151,8 +158,11 @@
 
   async function bootControleFinanceiroV26() {
     try {
-      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26");
-      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26");
+      if (!global.firebase?.storage) {
+        await loadScript("https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js", "firebase-storage-compat-9.22.0");
+      }
+      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26-2", "enterprise-finance-service-v26-2");
+      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26-2", "controle-financeiro-empresarial-v26-2");
       global.setTimeout?.(() => {
         const perfil = global.IntegroAcesso?.acessoUsuario?.(global.State?.getUsuario?.() || global.usuarioLogado || {})?.perfil || "";
         if (perfil === "financeiro" && document.getElementById("financeiro")?.classList.contains("active")) global.IntegroControleFinanceiroUI?.load?.();
