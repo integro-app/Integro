@@ -27,6 +27,15 @@ service firebase.storage {
       return userDoc().get("tipoUsuario", "") == "master_global";
     }
 
+    function isMasterLocal() {
+      return userDoc().get("tipoUsuario", "") == "master_local";
+    }
+
+    function isFinanceiro() {
+      return userDoc().get("tipoUsuario", "") == "financeiro" ||
+        userDoc().get("cargoChave", "") == "financeiro";
+    }
+
     function isAuditor() {
       return userDoc().get("tipoUsuario", "") == "auditor" || userDoc().get("cargoChave", "") == "auditor";
     }
@@ -36,6 +45,26 @@ service firebase.storage {
         userTenantId() is string &&
         userTenantId().size() > 0 &&
         userTenantId() == tenantId;
+    }
+
+    function controlFinanceMap() {
+      return userDoc().get("permissoes", {}).get("controleFinanceiro", {});
+    }
+
+    function canReadEnterpriseFinance(tenantId) {
+      return isSameTenant(tenantId) && (
+        isMasterLocal() || isFinanceiro() ||
+        controlFinanceMap().get("ver", false) == true
+      );
+    }
+
+    function canWriteEnterpriseFinance(tenantId) {
+      return isSameTenant(tenantId) && (
+        isMasterLocal() || isFinanceiro() ||
+        controlFinanceMap().get("editar", false) == true ||
+        controlFinanceMap().get("baixar", false) == true ||
+        controlFinanceMap().get("anexar", false) == true
+      );
     }
 
     function allowedContentType() {
@@ -58,9 +87,13 @@ service firebase.storage {
     }
 
     match /tenants/{tenantId}/{categoria}/{arquivo=**} {
-      allow read: if isMasterGlobal() || isSameTenant(tenantId);
+      allow read: if isMasterGlobal() ||
+        (categoria == "financeiro" ? canReadEnterpriseFinance(tenantId) : isSameTenant(tenantId));
       allow list: if false;
-      allow create: if (isMasterGlobal() || isSameTenant(tenantId)) &&
+      allow create: if (
+          isMasterGlobal() ||
+          (categoria == "financeiro" ? canWriteEnterpriseFinance(tenantId) : isSameTenant(tenantId))
+        ) &&
         (categoria != "chat" || !isAuditor()) &&
         (categoria != "chat" ? allowedUpload() : (
           request.resource != null &&
@@ -68,7 +101,7 @@ service firebase.storage {
           request.resource.contentType.matches("image/.*")
         ));
       allow update: if false;
-      allow delete: if false;
+      allow delete: if categoria == "financeiro" && canWriteEnterpriseFinance(tenantId);
     }
 
     match /{allPaths=**} {
