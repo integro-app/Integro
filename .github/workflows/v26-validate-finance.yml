@@ -1,0 +1,34 @@
+name: v26 validate enterprise finance
+
+on:
+  push:
+    branches:
+      - agent/v26-controle-financeiro-empresarial
+    paths:
+      - .github/workflows/v26-validate-finance.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/v26-controle-financeiro-empresarial
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Full static verification
+        run: npm run verify
+      - name: Enterprise finance emulator rules
+        run: npm run test:enterprise:rules
