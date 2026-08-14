@@ -1,0 +1,86 @@
+// ÍNTEGRO v26 — fragmento de integração para firestore.rules
+// Este fragmento é propositalmente separado do ledger operacional.
+// Integrar ao ruleset principal somente após homologação dos testes de Rules.
+
+function canReadEnterpriseFinance() {
+  return isActiveUser() && hasTenant() && (
+    isMasterLocal() || isFinanceiro() ||
+    hasPermission("controleFinanceiro.ver") || hasPermission("controleFinanceiroVer")
+  );
+}
+
+function canEditEnterpriseFinance() {
+  return isActiveUser() && hasTenant() && (
+    isMasterLocal() || isFinanceiro() ||
+    hasPermission("controleFinanceiro.editar") || hasPermission("controleFinanceiroEditar")
+  );
+}
+
+function canPayEnterpriseFinance() {
+  return isActiveUser() && hasTenant() && (
+    isMasterLocal() || isFinanceiro() ||
+    hasPermission("controleFinanceiro.baixar") || hasPermission("controleFinanceiroBaixar")
+  );
+}
+
+function enterpriseSameTenantRead() {
+  return canReadEnterpriseFinance() && resource.data.clientePlataformaId == userTenantId();
+}
+
+function enterpriseSameTenantWrite() {
+  return canEditEnterpriseFinance() && request.resource.data.clientePlataformaId == userTenantId();
+}
+
+match /financeiro_contas/{id} {
+  allow read: if enterpriseSameTenantRead();
+  allow create: if enterpriseSameTenantWrite();
+  allow update: if enterpriseSameTenantRead() && enterpriseSameTenantWrite() && isTenantImmutable();
+  allow delete: if false;
+}
+
+match /financeiro_pagamentos/{id} {
+  allow read: if enterpriseSameTenantRead();
+  allow create: if canPayEnterpriseFinance() && request.resource.data.clientePlataformaId == userTenantId();
+  allow update, delete: if false;
+}
+
+match /financeiro_fornecedores/{id} {
+  allow read: if enterpriseSameTenantRead();
+  allow create: if enterpriseSameTenantWrite();
+  allow update: if enterpriseSameTenantRead() && enterpriseSameTenantWrite() && isTenantImmutable();
+  allow delete: if false;
+}
+
+match /financeiro_categorias/{id} {
+  allow read: if enterpriseSameTenantRead();
+  allow create: if enterpriseSameTenantWrite();
+  allow update: if enterpriseSameTenantRead() && enterpriseSameTenantWrite() && isTenantImmutable();
+  allow delete: if false;
+}
+
+match /financeiro_centros_custo/{id} {
+  allow read: if enterpriseSameTenantRead();
+  allow create: if enterpriseSameTenantWrite();
+  allow update: if enterpriseSameTenantRead() && enterpriseSameTenantWrite() && isTenantImmutable();
+  allow delete: if false;
+}
+
+match /financeiro_recorrencias/{id} {
+  allow read: if enterpriseSameTenantRead();
+  allow create: if enterpriseSameTenantWrite();
+  allow update: if enterpriseSameTenantRead() && enterpriseSameTenantWrite() && isTenantImmutable();
+  allow delete: if false;
+}
+
+match /financeiro_lembretes/{id} {
+  allow read: if enterpriseSameTenantRead();
+  allow create: if enterpriseSameTenantWrite();
+  allow update: if enterpriseSameTenantRead() && enterpriseSameTenantWrite() && isTenantImmutable();
+  allow delete: if false;
+}
+
+match /financeiro_auditoria/{id} {
+  allow read: if enterpriseSameTenantRead();
+  allow create: if canEditEnterpriseFinance() && request.resource.data.clientePlataformaId == userTenantId();
+  allow update, delete: if false;
+}
