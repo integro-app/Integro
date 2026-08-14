@@ -129,3 +129,39 @@
 
   global.IntegroModuloUtils = Object.freeze({ text, key, upper, esc, db, user, access, tenant, today, addDays, moneyCents, money, docData, timestamp, dateValue, dateLabel, can, notify, openDrawer, closeDrawer, queryTenant, queryScope, detailsHtml });
 })(window);
+
+(function (global) {
+  "use strict";
+  if (global.__integroControleFinanceiroV26Loader) return;
+  global.__integroControleFinanceiroV26Loader = true;
+
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-v26-financeiro-src="${src}"]`);
+      if (existing) { if (existing.dataset.loaded === "1") resolve(); else existing.addEventListener("load", resolve, { once:true }); return; }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = false;
+      script.dataset.v26FinanceiroSrc = src;
+      script.addEventListener("load", () => { script.dataset.loaded = "1"; resolve(); }, { once:true });
+      script.addEventListener("error", reject, { once:true });
+      document.head.appendChild(script);
+    });
+  }
+
+  async function bootControleFinanceiroV26() {
+    try {
+      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26");
+      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26");
+      global.setTimeout?.(() => {
+        const perfil = global.IntegroAcesso?.acessoUsuario?.(global.State?.getUsuario?.() || global.usuarioLogado || {})?.perfil || "";
+        if (perfil === "financeiro" && document.getElementById("financeiro")?.classList.contains("active")) global.IntegroControleFinanceiroUI?.load?.();
+      }, 0);
+    } catch (error) {
+      console.error("ERRO_BOOT_CONTROLE_FINANCEIRO_V26", error);
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootControleFinanceiroV26, { once:true });
+  else bootControleFinanceiroV26();
+})(window);
