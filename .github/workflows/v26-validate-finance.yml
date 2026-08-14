@@ -32,3 +32,4 @@ jobs:
         run: npm run verify
       - name: Enterprise finance emulator rules
         run: npm run test:enterprise:rules
+      # rerun marker: financeiro-screen now validates the unified operational module
