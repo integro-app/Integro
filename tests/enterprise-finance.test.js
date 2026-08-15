@@ -5,6 +5,8 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const service = fs.readFileSync(path.join(root, "js", "services", "enterprise-finance-service.js"), "utf8");
+const paymentGuard = fs.readFileSync(path.join(root, "js", "services", "enterprise-finance-payment-guard.js"), "utf8");
+const paymentBackend = fs.readFileSync(path.join(root, "functions", "enterprise-finance-payments.js"), "utf8");
 const ui = fs.readFileSync(path.join(root, "js", "modules", "controle-financeiro-empresarial.js"), "utf8");
 const utils = fs.readFileSync(path.join(root, "js", "modules", "unified-module-utils.js"), "utf8");
 const notificationRouter = fs.readFileSync(path.join(root, "js", "routers", "notification-router.js"), "utf8");
@@ -34,8 +36,7 @@ test("contas possuem status temporal, pagamento parcial e cancelamento protegido
   assert.match(service, /Conta com pagamento não pode ser cancelada diretamente/);
 });
 
-test("baixa de pagamento é transacional e separa juros multa desconto e desembolso", () => {
-  assert.match(service, /runTransaction/);
+test("baixa de pagamento separa juros multa desconto e desembolso", () => {
   assert.match(service, /REGISTRAR_PAGAMENTO/);
   assert.match(service, /jurosCentavos/);
   assert.match(service, /multaCentavos/);
@@ -44,6 +45,30 @@ test("baixa de pagamento é transacional e separa juros multa desconto e desembo
   assert.match(ui, /Juros/);
   assert.match(ui, /Multa/);
   assert.match(ui, /Desconto/);
+});
+
+test("runtime da baixa empresarial usa callable idempotente e não o ledger operacional", () => {
+  assert.match(paymentGuard, /registrarPagamentoFinanceiroEmpresarial/);
+  assert.match(paymentGuard, /operacaoId/);
+  assert.match(paymentGuard, /randomUUID/);
+  assert.match(paymentGuard, /IntegroControleFinanceiro = Object\.freeze/);
+  assert.doesNotMatch(paymentGuard, /lancamentos_financeiros/);
+  assert.doesNotMatch(paymentBackend, /lancamentos_financeiros/);
+  assert.doesNotMatch(paymentBackend, /collection\(["']caixas["']\)/);
+});
+
+test("pagamento empresarial é transacional idempotente e audita antes/depois", () => {
+  assert.match(paymentBackend, /db\.runTransaction/);
+  assert.match(paymentBackend, /cfp_/);
+  assert.match(paymentBackend, /idempotencyKey/);
+  assert.match(paymentBackend, /if \(pagamentoSnap\.exists\)/);
+  assert.match(paymentBackend, /modo:\s*"IDEMPOTENTE"/);
+  assert.match(paymentBackend, /financeiro_pagamentos/);
+  assert.match(paymentBackend, /financeiro_auditoria/);
+  assert.match(paymentBackend, /antes:/);
+  assert.match(paymentBackend, /depois:/);
+  assert.match(paymentBackend, /valorPagoCentavos > saldoAntesCentavos/);
+  assert.match(functionsIndex, /registrarPagamentoFinanceiroEmpresarial/);
 });
 
 test("parcelamento gera contas independentes com grupo e sequencia", () => {
@@ -173,10 +198,12 @@ test("perfil financeiro ativa controle empresarial automaticamente sem sobrescre
   assert.doesNotMatch(ui, /profile\(\)==="master_local".*setTimeout\(.*load/s);
 });
 
-test("bootstrap v26 carrega Storage serviço e interface sem alterar master-local html", () => {
+test("bootstrap v26 carrega Storage serviço guardas e interfaces", () => {
   assert.match(utils, /firebase-storage-compat-9\.22\.0/);
-  assert.match(utils, /enterprise-finance-service-v26-2/);
-  assert.match(utils, /controle-financeiro-empresarial-v26-2/);
+  assert.match(utils, /enterprise-finance-service-v26-5/);
+  assert.match(utils, /enterprise-finance-payment-guard-v26-5/);
+  assert.match(utils, /enterprise-finance-operation-approval-guard-v26-5/);
+  assert.match(utils, /controle-financeiro-empresarial-v26-5/);
   assert.match(utils, /__integroControleFinanceiroV26Loader/);
 });
 
