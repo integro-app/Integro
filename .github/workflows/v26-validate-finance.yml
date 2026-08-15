@@ -4,12 +4,15 @@ on:
   push:
     branches:
       - agent/v26-controle-financeiro-empresarial
+      - agent/v26.1-financeiro-premium-clean
     paths:
       - '.github/workflows/v26-validate-finance.yml'
+      - 'css/controle-financeiro-premium.css'
       - 'js/services/enterprise-finance-service.js'
       - 'js/services/enterprise-finance-operation-bridge.js'
       - 'js/modules/controle-financeiro-empresarial.js'
       - 'js/modules/controle-financeiro-operacao-bridge.js'
+      - 'js/modules/controle-financeiro-premium.js'
       - 'js/modules/unified-module-utils.js'
       - 'js/unified-navigation.js'
       - 'js/routers/notification-router.js'
@@ -31,8 +34,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: agent/v26-controle-financeiro-empresarial
       - uses: actions/setup-node@v4
         with:
           node-version: 22
