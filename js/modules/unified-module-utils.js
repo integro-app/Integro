@@ -161,11 +161,16 @@
       if (!global.firebase?.storage) {
         await loadScript("https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js", "firebase-storage-compat-9.22.0");
       }
-      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26-2", "enterprise-finance-service-v26-2");
-      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26-2", "controle-financeiro-empresarial-v26-2");
+      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26-3", "enterprise-finance-service-v26-3");
+      if (!global.IntegroControleFinanceiroOperacao) await loadScript("js/services/enterprise-finance-operation-bridge.js?v=20260814-v26-3", "enterprise-finance-operation-bridge-v26-3");
+      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26-3", "controle-financeiro-empresarial-v26-3");
+      if (!global.IntegroControleFinanceiroOperacaoUI) await loadScript("js/modules/controle-financeiro-operacao-bridge.js?v=20260814-v26-3", "controle-financeiro-operacao-bridge-v26-3");
       global.setTimeout?.(() => {
-        const perfil = global.IntegroAcesso?.acessoUsuario?.(global.State?.getUsuario?.() || global.usuarioLogado || {})?.perfil || "";
-        if (perfil === "financeiro" && document.getElementById("financeiro")?.classList.contains("active")) global.IntegroControleFinanceiroUI?.load?.();
+        if (global.__integroFinanceiroModo === "operacional") return;
+        if (document.getElementById("financeiro")?.classList.contains("active")) {
+          global.IntegroControleFinanceiroUI?.load?.();
+          global.IntegroControleFinanceiroOperacaoUI?.load?.();
+        }
       }, 0);
     } catch (error) {
       console.error("ERRO_BOOT_CONTROLE_FINANCEIRO_V26", error);
