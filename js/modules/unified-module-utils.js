@@ -88,44 +88,29 @@
   async function queryScope(collection, options = {}) {
     const a = access();
     if (a.perfil === "vendedor") {
-      const variants = [
-        ["vendedorAuthUid", a.authUid], ["vendedorUid", a.authUid], ["uid", a.authUid],
-        ["vendedorId", a.usuarioId], ["usuarioId", a.usuarioId]
-      ].filter(([, value]) => value);
+      const variants = [["vendedorAuthUid", a.authUid], ["vendedorUid", a.authUid], ["uid", a.authUid], ["vendedorId", a.usuarioId], ["usuarioId", a.usuarioId]].filter(([, value]) => value);
       const map = new Map();
-      for (const [field, value] of variants) {
-        try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {}
-      }
+      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
       return [...map.values()];
     }
     if (a.perfil === "supervisor" && a.equipeIds?.length) {
       const map = new Map();
       for (let i = 0; i < a.equipeIds.length; i += 10) {
         const block = a.equipeIds.slice(i, i + 10);
-        try {
-          const found = await queryTenant(collection, { ...options, where: [["equipeId", block.length === 1 ? "==" : "in", block.length === 1 ? block[0] : block]] });
-          found.forEach(item => map.set(item.id, item));
-        } catch (_) {}
+        try { const found = await queryTenant(collection, { ...options, where: [["equipeId", block.length === 1 ? "==" : "in", block.length === 1 ? block[0] : block]] }); found.forEach(item => map.set(item.id, item)); } catch (_) {}
       }
       return [...map.values()];
     }
     if (a.perfil === "captador") {
-      const variants = [
-        ["captadorId", a.usuarioId], ["indicadoPorId", a.usuarioId], ["criadoPor", a.usuarioId],
-        ["captadorId", a.authUid], ["indicadoPorId", a.authUid], ["criadoPor", a.authUid]
-      ].filter(([, value]) => value);
+      const variants = [["captadorId", a.usuarioId], ["indicadoPorId", a.usuarioId], ["criadoPor", a.usuarioId], ["captadorId", a.authUid], ["indicadoPorId", a.authUid], ["criadoPor", a.authUid]].filter(([, value]) => value);
       const map = new Map();
-      for (const [field, value] of variants) {
-        try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {}
-      }
+      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
       return [...map.values()];
     }
     return queryTenant(collection, options);
   }
 
-  function detailsHtml(item = {}) {
-    return `<div class="unified-drawer-grid">${Object.entries(item).filter(([, value]) => typeof value !== "function").map(([name, value]) => `<div class="unified-drawer-row"><b>${esc(name)}</b><span>${esc(typeof value === "object" && value !== null ? JSON.stringify(value) : value)}</span></div>`).join("")}</div>`;
-  }
+  function detailsHtml(item = {}) { return `<div class="unified-drawer-grid">${Object.entries(item).filter(([, value]) => typeof value !== "function").map(([name, value]) => `<div class="unified-drawer-row"><b>${esc(name)}</b><span>${esc(typeof value === "object" && value !== null ? JSON.stringify(value) : value)}</span></div>`).join("")}</div>`; }
 
   global.IntegroModuloUtils = Object.freeze({ text, key, upper, esc, db, user, access, tenant, today, addDays, moneyCents, money, docData, timestamp, dateValue, dateLabel, can, notify, openDrawer, closeDrawer, queryTenant, queryScope, detailsHtml });
 })(window);
@@ -140,16 +125,11 @@
       const existing = document.querySelector(`script[data-v26-financeiro-src="${marker}"]`);
       if (existing) {
         if (existing.dataset.loaded === "1") resolve();
-        else {
-          existing.addEventListener("load", resolve, { once:true });
-          existing.addEventListener("error", reject, { once:true });
-        }
+        else { existing.addEventListener("load", resolve, { once:true }); existing.addEventListener("error", reject, { once:true }); }
         return;
       }
       const script = document.createElement("script");
-      script.src = src;
-      script.async = false;
-      script.dataset.v26FinanceiroSrc = marker;
+      script.src = src; script.async = false; script.dataset.v26FinanceiroSrc = marker;
       script.addEventListener("load", () => { script.dataset.loaded = "1"; resolve(); }, { once:true });
       script.addEventListener("error", reject, { once:true });
       document.head.appendChild(script);
@@ -158,15 +138,14 @@
 
   async function bootControleFinanceiroV26() {
     try {
-      if (!global.firebase?.storage) {
-        await loadScript("https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js", "firebase-storage-compat-9.22.0");
-      }
+      if (!global.firebase?.storage) await loadScript("https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js", "firebase-storage-compat-9.22.0");
       if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26-5", "enterprise-finance-service-v26-5");
       if (!global.IntegroEnterpriseFinancePaymentGuard) await loadScript("js/services/enterprise-finance-payment-guard.js?v=20260814-v26-5", "enterprise-finance-payment-guard-v26-5");
       if (!global.IntegroEnterpriseResourceApprovalGuard) await loadScript("js/services/enterprise-finance-operation-approval-guard.js?v=20260814-v26-5", "enterprise-finance-operation-approval-guard-v26-5");
       if (!global.IntegroControleFinanceiroOperacao) await loadScript("js/services/enterprise-finance-operation-bridge.js?v=20260814-v26-5", "enterprise-finance-operation-bridge-v26-5");
       if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26-5", "controle-financeiro-empresarial-v26-5");
       if (!global.IntegroControleFinanceiroOperacaoUI) await loadScript("js/modules/controle-financeiro-operacao-bridge.js?v=20260814-v26-5", "controle-financeiro-operacao-bridge-v26-5");
+      if (!global.IntegroControleFinanceiroPremium) await loadScript("js/modules/controle-financeiro-premium.js?v=20260815-v26-1", "controle-financeiro-premium-v26-1");
       global.IntegroEnterpriseFinancePaymentGuard?.install?.();
       global.IntegroEnterpriseResourceApprovalGuard?.instalar?.();
       global.setTimeout?.(() => {
@@ -174,11 +153,10 @@
         if (document.getElementById("financeiro")?.classList.contains("active")) {
           global.IntegroControleFinanceiroUI?.load?.();
           global.IntegroControleFinanceiroOperacaoUI?.load?.();
+          global.IntegroControleFinanceiroPremium?.enhance?.();
         }
       }, 0);
-    } catch (error) {
-      console.error("ERRO_BOOT_CONTROLE_FINANCEIRO_V26", error);
-    }
+    } catch (error) { console.error("ERRO_BOOT_CONTROLE_FINANCEIRO_V26", error); }
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootControleFinanceiroV26, { once:true });
