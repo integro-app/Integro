@@ -131,5 +131,12 @@ exports.aprovarRetiradaRecursoEmpresa = functions
   .region("southamerica-east1")
   .https.onCall(operacaoRecursoEmpresarial.aprovarRetirada);
 
+const { criarPagamentosFinanceirosEmpresariais } = require("./enterprise-finance-payments");
+const pagamentosFinanceirosEmpresariais = criarPagamentosFinanceirosEmpresariais({ admin, functions, db });
+
+exports.registrarPagamentoFinanceiroEmpresarial = functions
+  .region("southamerica-east1")
+  .https.onCall(pagamentosFinanceirosEmpresariais.registrarPagamento);
+
 const { criarProcessadorLembretesFinanceiros } = require("./enterprise-finance-reminders");
 exports.processarLembretesFinanceirosEmpresariais = criarProcessadorLembretesFinanceiros({ functions, admin, db });
