@@ -2,9 +2,9 @@
   "use strict";
 
   /*
-   * v26 — Financeiro possui duas superfícies independentes:
-   * - Financeiro (perfil financeiro): Controle Financeiro Empresarial.
-   * - Movimentações/Aprovações: Financeiro Operacional ligado a caixas/ledger.
+   * v26 — duas superfícies financeiras independentes dentro do ÍNTEGRO:
+   * - Financeiro: Controle Financeiro Empresarial (contas, agenda, fornecedores e recursos da empresa).
+   * - Movimentações/Aprovações: Financeiro Operacional ligado exclusivamente a caixas/ledger.
    */
   const CATALOGO = Object.freeze([
     { id: "operacao", rotulo: "Operação", icone: "business_center", permissoes: ["operacao.ver", "cobrancas.ver", "vendas.ver"], abrir: "operacao" },
@@ -12,7 +12,7 @@
     { id: "chatInterno", rotulo: "Chat", icone: "forum", permissao: "chat_interno.ver", abrir: "chat" },
     { id: "clientes", rotulo: "Clientes", icone: "groups", permissao: "clientes.ver", abrir: "clientes" },
     { id: "movimentacoes", rotulo: "Movimentações", icone: "sync_alt", permissoes: ["financeiro.movimentacoes", "solicitacoes.criar", "caixa.ver_proprio"], abrir: "tela" },
-    { id: "financeiro", rotulo: "Financeiro", icone: "payments", permissao: "financeiro.ver", abrir: "tela" },
+    { id: "financeiro", rotulo: "Financeiro", icone: "payments", permissoes: ["controleFinanceiro.ver", "financeiro.ver"], abrir: "tela" },
     { id: "auditoria", rotulo: "Auditoria", icone: "manage_search", permissao: "logs.ver", abrir: "tela" },
     { id: "notificacoes", rotulo: "Notificações", icone: "notifications", sempre: true, abrir: "notificacoes" },
     { id: "configuracoes", rotulo: "Configurações", icone: "settings", permissao: "configuracoes.ver", abrir: "configuracoes" },
@@ -25,7 +25,7 @@
     { id: "captacao", pai: "operacao", rotulo: "Leads e captação", icone: "campaign", permissoes: ["indicacoes.ver_proprio", "indicacoes.ver"], abrir: "tela" },
     { id: "supervisao", pai: "operacao", rotulo: "Gestão de equipes", icone: "supervisor_account", permissao: "equipe.ver", abrir: "tela" },
     { id: "caixas", pai: "operacao", rotulo: "Caixas", icone: "account_balance_wallet", permissao: "caixas.ver", abrir: "tela" },
-    { id: "relatorios", pai: "financeiro", rotulo: "Relatórios", icone: "monitoring", permissao: "relatorios.ver", abrir: "financeiro-relatorios" }
+    { id: "relatorios", pai: "financeiro", rotulo: "Relatórios", icone: "monitoring", permissoes: ["controleFinanceiro.ver", "relatorios.ver"], abrir: "financeiro-empresarial-relatorios" }
   ]);
 
   const MODULO_PAI = Object.freeze({
@@ -54,6 +54,10 @@
     return global.IntegroAcesso?.pode?.(usuario || {}, permissao, {}) === true;
   }
 
+  function permissoesControleFinanceiro(usuario) {
+    return usuario?.permissoes?.controleFinanceiro || usuario?.permissoesUsuario?.controleFinanceiro || usuario?.permissoesCargo?.controleFinanceiro || {};
+  }
+
   function permitido(usuario, item) {
     if (!item) return false;
     if (item.sempre) return true;
@@ -67,6 +71,11 @@
       if (perfilAtual === "master_local") return true;
       if (!["gerente", "financeiro", "administrativo", "supervisor", "auditor"].includes(perfilAtual)) return false;
       return ["financeiro.ver", "caixas.ver", "relatorios.ver", "logs.ver"].some(chave => pode(usuario, chave));
+    }
+    if (item.id === "financeiro" || item.id === "relatorios") {
+      if (["master_local", "financeiro"].includes(perfilAtual)) return true;
+      const permission = permissoesControleFinanceiro(usuario);
+      return permission.ver === true || pode(usuario, "controleFinanceiro.ver");
     }
     if (perfilAtual === "master_local") return true;
     const lista = item.permissoes || [item.permissao];
@@ -114,7 +123,7 @@
     return true;
   }
 
-  function abrirFinanceiroEmpresarial(elemento) {
+  function abrirFinanceiroEmpresarial(elemento, tab = "dashboard") {
     global.__integroFinanceiroModo = "empresarial";
     if (typeof global.IntegroControleFinanceiroUI?.openEnterprise === "function") {
       global.IntegroControleFinanceiroUI.openEnterprise();
@@ -122,7 +131,10 @@
       global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
       global.setTimeout?.(() => global.IntegroControleFinanceiroUI?.load?.(true), 0);
     }
-    global.setTimeout?.(() => ativarItem("financeiro"), 0);
+    global.setTimeout?.(() => {
+      global.IntegroControleFinanceiroUI?.openTab?.(tab);
+      ativarItem("financeiro");
+    }, 0);
     return true;
   }
 
@@ -144,15 +156,14 @@
     }
 
     if (item.id === "financeiro") {
-      if (perfil(usuarioAtual) === "financeiro") return abrirFinanceiroEmpresarial(elemento);
-      return abrirFinanceiroOperacional("resumo", elemento, "financeiro");
+      return abrirFinanceiroEmpresarial(elemento, "dashboard");
     }
 
     if (item.abrir === "financeiro-aprovacoes") {
       return abrirFinanceiroOperacional("aprovacoes", elemento, "operacao");
     }
-    if (item.abrir === "financeiro-relatorios") {
-      return abrirFinanceiroOperacional("relatorios", elemento, "financeiro");
+    if (item.abrir === "financeiro-empresarial-relatorios") {
+      return abrirFinanceiroEmpresarial(elemento, "relatorios");
     }
     if (item.abrir === "configuracoes") {
       global.abrirModuloNavegacaoIntegro?.("configuracoes", elemento) ?? global.trocarTela?.("configuracoes", elemento);
