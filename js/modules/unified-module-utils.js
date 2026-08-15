@@ -161,10 +161,12 @@
       if (!global.firebase?.storage) {
         await loadScript("https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js", "firebase-storage-compat-9.22.0");
       }
-      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26-3", "enterprise-finance-service-v26-3");
-      if (!global.IntegroControleFinanceiroOperacao) await loadScript("js/services/enterprise-finance-operation-bridge.js?v=20260814-v26-3", "enterprise-finance-operation-bridge-v26-3");
-      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26-3", "controle-financeiro-empresarial-v26-3");
-      if (!global.IntegroControleFinanceiroOperacaoUI) await loadScript("js/modules/controle-financeiro-operacao-bridge.js?v=20260814-v26-3", "controle-financeiro-operacao-bridge-v26-3");
+      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26-4", "enterprise-finance-service-v26-4");
+      if (!global.IntegroEnterpriseResourceApprovalGuard) await loadScript("js/services/enterprise-finance-operation-approval-guard.js?v=20260814-v26-4", "enterprise-finance-operation-approval-guard-v26-4");
+      if (!global.IntegroControleFinanceiroOperacao) await loadScript("js/services/enterprise-finance-operation-bridge.js?v=20260814-v26-4", "enterprise-finance-operation-bridge-v26-4");
+      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26-4", "controle-financeiro-empresarial-v26-4");
+      if (!global.IntegroControleFinanceiroOperacaoUI) await loadScript("js/modules/controle-financeiro-operacao-bridge.js?v=20260814-v26-4", "controle-financeiro-operacao-bridge-v26-4");
+      global.IntegroEnterpriseResourceApprovalGuard?.instalar?.();
       global.setTimeout?.(() => {
         if (global.__integroFinanceiroModo === "operacional") return;
         if (document.getElementById("financeiro")?.classList.contains("active")) {
