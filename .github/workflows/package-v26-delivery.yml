@@ -1,0 +1,35 @@
+name: package v26 delivery
+
+on:
+  push:
+    branches:
+      - agent/package-v26-20260815
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout v26 delivery commit
+        uses: actions/checkout@v4
+        with:
+          ref: d400e40fccf9304c3e6451cf68b23706972c6c23
+          fetch-depth: 1
+
+      - name: Create delivery ZIP
+        run: |
+          zip -r Integro-GitHub-v26-Controle-Financeiro-Empresarial-20260815.zip . \
+            -x '.git/*' \
+               'node_modules/*' \
+               'functions/node_modules/*' \
+               '.firebase/*'
+
+      - name: Upload delivery package
+        uses: actions/upload-artifact@v4
+        with:
+          name: Integro-GitHub-v26-Controle-Financeiro-Empresarial-20260815
+          path: Integro-GitHub-v26-Controle-Financeiro-Empresarial-20260815.zip
+          if-no-files-found: error
+          retention-days: 7
