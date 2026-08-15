@@ -5,10 +5,13 @@ const path = require("node:path");
 
 const root = path.join(__dirname, "..");
 const bridge = fs.readFileSync(path.join(root, "js", "services", "enterprise-finance-operation-bridge.js"), "utf8");
+const approvalGuard = fs.readFileSync(path.join(root, "js", "services", "enterprise-finance-operation-approval-guard.js"), "utf8");
 const bridgeUi = fs.readFileSync(path.join(root, "js", "modules", "controle-financeiro-operacao-bridge.js"), "utf8");
 const navigation = fs.readFileSync(path.join(root, "js", "unified-navigation.js"), "utf8");
 const loader = fs.readFileSync(path.join(root, "js", "modules", "unified-module-utils.js"), "utf8");
 const operationalUi = fs.readFileSync(path.join(root, "js", "modules", "financeiro-unificado.js"), "utf8");
+const backend = fs.readFileSync(path.join(root, "functions", "enterprise-finance-operation.js"), "utf8");
+const functionsIndex = fs.readFileSync(path.join(root, "functions", "index.js"), "utf8");
 
 test("ponte observa caixas e solicitacoes sem escrever diretamente no ledger operacional", () => {
   assert.match(bridge, /caixas:\s*["']caixas["']/);
@@ -50,9 +53,11 @@ test("financeiro empresarial e movimentacoes operacionais possuem rotas separada
   assert.doesNotMatch(navigation, /if\s*\(perfil\(usuarioAtual\)\s*===\s*"financeiro"\)\s*return abrirFinanceiroEmpresarial/);
 });
 
-test("loader integra servico e interface da ponte ao painel unificado", () => {
+test("loader integra ponte e guarda transacional ao painel unificado", () => {
+  assert.match(loader, /enterprise-finance-operation-approval-guard\.js/);
   assert.match(loader, /enterprise-finance-operation-bridge\.js/);
   assert.match(loader, /controle-financeiro-operacao-bridge\.js/);
+  assert.match(loader, /IntegroEnterpriseResourceApprovalGuard/);
   assert.match(loader, /IntegroControleFinanceiroOperacaoUI/);
 });
 
@@ -60,4 +65,38 @@ test("pai RECURSO_EMPRESA não entra nas aprovacoes operacionais mas filhas RETI
   assert.match(operationalUi, /if \(raw\.includes\("RETIR"\)/);
   assert.doesNotMatch(operationalUi, /raw\.includes\("RECURSO_EMPRESA"\)/);
   assert.match(operationalUi, /registrarLancamentoSolicitacaoFinanceiraTransacional/);
+});
+
+test("retirada empresarial é desviada do cliente para callable dedicado", () => {
+  assert.match(approvalGuard, /ehRetiradaRecursoEmpresa/);
+  assert.match(approvalGuard, /CONTROLE_FINANCEIRO_EMPRESARIAL/);
+  assert.match(approvalGuard, /aprovarRetiradaRecursoEmpresa/);
+  assert.match(approvalGuard, /if \(!ehRetiradaRecursoEmpresa\(item \|\| \{\}\)\) return original\(entrada\)/);
+  assert.doesNotMatch(approvalGuard, /runTransaction/);
+});
+
+test("callable valida saldo dentro da mesma transacao que altera caixa e ledger", () => {
+  assert.match(backend, /db\.runTransaction/);
+  assert.match(backend, /transaction\.get\(caixaRef\)/);
+  assert.match(backend, /saldoAtualCentavos < valorCentavos/);
+  assert.match(backend, /Saldo do caixa insuficiente/);
+  assert.match(backend, /transaction\.set\(lancamentoRef/);
+  assert.match(backend, /transaction\.update\(caixaRef/);
+  assert.match(backend, /novoSaldoCentavos = saldoAtualCentavos - valorCentavos/);
+  assert.match(backend, /lf_retirada_/);
+});
+
+test("callable de retirada empresarial possui idempotencia e escopo de tenant", () => {
+  assert.match(backend, /validarTenant\(solicitacao, sessao\.tenantId/);
+  assert.match(backend, /validarTenant\(caixa, sessao\.tenantId/);
+  assert.match(backend, /if \(lancamentoSnap\.exists\)/);
+  assert.match(backend, /modo:\s*"IDEMPOTENTE"/);
+  assert.match(backend, /SUPERVISOR/);
+  assert.match(backend, /supervisorNoEscopo/);
+});
+
+test("functions index exporta aprovacao segura do recurso empresarial", () => {
+  assert.match(functionsIndex, /criarOperacaoRecursoEmpresarial/);
+  assert.match(functionsIndex, /aprovarRetiradaRecursoEmpresa/);
+  assert.match(functionsIndex, /southamerica-east1/);
 });
