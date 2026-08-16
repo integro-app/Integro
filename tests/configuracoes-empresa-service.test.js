@@ -8,7 +8,7 @@ test("configuracoes: aplica padroes operacionais seguros", () => {
   assert.equal(config.regrasOperacionais.vendaExigeCadastroCompleto, true);
   assert.equal(config.regrasOperacionais.exclusaoClienteComHistorico, false);
   assert.equal(config.clientes.atraso.vermelhoDias, 15);
-  assert.ok(config.leads.status.some(item => item.chave === "CONVERTIDA"));
+  assert.ok(config.leads.status.some(item => item.chave === "CONVERTIDO"));
 });
 
 test("configuracoes: normaliza status e remove duplicidade", () => {
@@ -32,9 +32,8 @@ test("configuracoes: rejeita faixas de atraso fora de ordem", () => {
 test("configuracoes: rejeita intervalo de score invalido", () => {
   assert.throws(() => Configuracoes.validar({
     clientes: { score: { minimo: 100, maximo: 50 } }
-  }), /score minimo deve ser menor/i);
+  }), /score mínimo deve ser menor/i);
 });
-
 
 test("configuracoes: inclui empresa operacao financeiro e relatorios", () => {
   const config = Configuracoes.normalizar({});
@@ -46,5 +45,5 @@ test("configuracoes: inclui empresa operacao financeiro e relatorios", () => {
 
 test("configuracoes: exige jornada operacional valida", () => {
   assert.throws(() => Configuracoes.validar({ operacao: { diasTrabalho: [], horarioInicio: "08:00", horarioFim: "18:00" } }), /ao menos um dia/i);
-  assert.throws(() => Configuracoes.validar({ operacao: { diasTrabalho: [1], horarioInicio: "18:00", horarioFim: "08:00" } }), /horario final/i);
+  assert.throws(() => Configuracoes.validar({ operacao: { diasTrabalho: [1], horarioInicio: "18:00", horarioFim: "08:00" } }), /horário final/i);
 });
