@@ -198,13 +198,17 @@ test("perfil financeiro ativa controle empresarial automaticamente sem sobrescre
   assert.doesNotMatch(ui, /profile\(\)==="master_local".*setTimeout\(.*load/s);
 });
 
-test("bootstrap v26 carrega Storage serviço guardas e interfaces", () => {
+test("bootstrap v27 carrega somente o financeiro empresarial e seus guardas", () => {
   assert.match(utils, /firebase-storage-compat-9\.22\.0/);
-  assert.match(utils, /enterprise-finance-service-v26-5/);
-  assert.match(utils, /enterprise-finance-payment-guard-v26-5/);
-  assert.match(utils, /enterprise-finance-operation-approval-guard-v26-5/);
-  assert.match(utils, /controle-financeiro-empresarial-v26-5/);
-  assert.match(utils, /__integroControleFinanceiroV26Loader/);
+  assert.match(utils, /v27-policy-service\.js/);
+  assert.match(utils, /enterprise-finance-service\.js\?v=20260816-v27-1/);
+  assert.match(utils, /enterprise-finance-v27-guard\.js/);
+  assert.match(utils, /enterprise-finance-payment-guard\.js\?v=20260816-v27-1/);
+  assert.match(utils, /controle-financeiro-empresarial\.js\?v=20260816-v27-1/);
+  assert.match(utils, /__integroControleFinanceiroV27Loader/);
+  assert.doesNotMatch(utils, /enterprise-finance-operation-bridge\.js/);
+  assert.doesNotMatch(utils, /controle-financeiro-operacao-bridge\.js/);
+  assert.doesNotMatch(utils, /enterprise-finance-operation-approval-guard\.js/);
 });
 
 test("indices compostos cobrem todas as consultas ordenadas do controle empresarial", () => {
