@@ -110,7 +110,7 @@ exports.provisionarUsuario = functions
     }, { merge: false });
     await lote.commit();
 
-    return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: true };
+    return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: false };
   });
 
 const { criarOperacoesFinanceiras } = require("./financial-callables");
@@ -124,12 +124,8 @@ exports.registrarPagamentoOperacional = functions
   .region("southamerica-east1")
   .https.onCall(operacoesFinanceiras.registrarPagamento);
 
-const { criarOperacaoRecursoEmpresarial } = require("./enterprise-finance-operation");
-const operacaoRecursoEmpresarial = criarOperacaoRecursoEmpresarial({ admin, functions, db });
-
-exports.aprovarRetiradaRecursoEmpresa = functions
-  .region("southamerica-east1")
-  .https.onCall(operacaoRecursoEmpresarial.aprovarRetirada);
+// V27: o Financeiro Empresarial permanece independente do caixa/ledger operacional.
+// A antiga ponte de retirada de recurso empresarial deixa de ser exportada nesta versão.
 
 const { criarPagamentosFinanceirosEmpresariais } = require("./enterprise-finance-payments");
 const pagamentosFinanceirosEmpresariais = criarPagamentosFinanceirosEmpresariais({ admin, functions, db });
@@ -140,3 +136,14 @@ exports.registrarPagamentoFinanceiroEmpresarial = functions
 
 const { criarProcessadorLembretesFinanceiros } = require("./enterprise-finance-reminders");
 exports.processarLembretesFinanceirosEmpresariais = criarProcessadorLembretesFinanceiros({ functions, admin, db });
+
+const { criarAdministracaoV27 } = require("./v27-admin");
+const adminV27 = criarAdministracaoV27({ admin, functions, db });
+
+exports.iniciarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.iniciarSessao);
+exports.validarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.validarSessao);
+exports.encerrarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.encerrarSessao);
+exports.redefinirSenhaUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.resetPassword);
+exports.desbloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.desbloquearUsuario);
+exports.bloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.bloquearUsuario);
+exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.invalidarSessoes);
