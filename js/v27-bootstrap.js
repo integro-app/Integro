@@ -1,0 +1,59 @@
+(function (global) {
+  "use strict";
+  if (global.__INTEGRO_V27_BOOTSTRAP__) return;
+  global.__INTEGRO_V27_BOOTSTRAP__ = true;
+  global.__INTEGRO_VERSION__ = "27.0.0-homologacao";
+
+  const loaded = new Map();
+  function loadScript(src, key = src) {
+    if (loaded.has(key)) return loaded.get(key);
+    const promise = new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-integro-v27-module="${key}"]`);
+      if (existing) {
+        existing.addEventListener("load", resolve, { once: true });
+        existing.addEventListener("error", reject, { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = false;
+      script.dataset.integroV27Module = key;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+    loaded.set(key, promise);
+    return promise;
+  }
+  function waitFor(predicate, timeout = 20000) {
+    return new Promise((resolve, reject) => {
+      const started = Date.now();
+      const check = () => {
+        try { if (predicate()) return resolve(true); } catch (_) {}
+        if (Date.now() - started >= timeout) return reject(new Error("Tempo esgotado aguardando módulo V27."));
+        setTimeout(check, 150);
+      };
+      check();
+    });
+  }
+
+  async function boot() {
+    try {
+      if (!global.IntegroV27Policy) await loadScript("js/services/v27-policy-service.js?v=20260816-v27-1", "policy");
+      await loadScript("js/services/v27-user-lifecycle.js?v=20260816-v27-1", "user-lifecycle");
+
+      waitFor(() => Boolean(global.IntegroChatService), 30000)
+        .then(() => loadScript("js/services/chat-v27-guard.js?v=20260816-v27-1", "chat-guard"))
+        .then(() => global.IntegroChatV27Guard?.install?.())
+        .catch(() => {});
+
+      document.documentElement.dataset.integroVersion = "27";
+      document.dispatchEvent(new CustomEvent("integro-v27-pronto", { detail: { version: global.__INTEGRO_VERSION__ } }));
+    } catch (error) {
+      console.error("[ÍNTEGRO V27] Falha no bootstrap.", error);
+    }
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
+  else boot();
+})(window);
