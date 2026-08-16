@@ -148,6 +148,10 @@ exports.desbloquearUsuarioV27 = functions.region("southamerica-east1").https.onC
 exports.bloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.bloquearUsuario);
 exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.invalidarSessoes);
 
+const { criarConfiguracoesV27 } = require("./v27-config");
+const configuracoesV27 = criarConfiguracoesV27({ admin, functions, db });
+exports.salvarConfiguracoesEmpresaV27 = functions.region("southamerica-east1").https.onCall(configuracoesV27.salvar);
+
 const { criarChatV27 } = require("./v27-chat");
 const chatV27 = criarChatV27({ admin, functions, db });
 exports.atualizarEstadoMensagensChatV27 = functions.region("southamerica-east1").https.onCall(chatV27.atualizarEstadoMensagens);
