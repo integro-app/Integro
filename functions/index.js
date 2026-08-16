@@ -147,3 +147,7 @@ exports.redefinirSenhaUsuarioV27 = functions.region("southamerica-east1").https.
 exports.desbloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.desbloquearUsuario);
 exports.bloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.bloquearUsuario);
 exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.invalidarSessoes);
+
+const { criarManutencaoV27 } = require("./v27-maintenance");
+const manutencaoV27 = criarManutencaoV27({ admin, functions, db });
+exports.limparNotificacoesLixeiraV27 = manutencaoV27.limparNotificacoesAgendada;
