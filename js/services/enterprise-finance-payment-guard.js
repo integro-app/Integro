@@ -18,9 +18,7 @@
   }
   function functionsInstance() {
     if (typeof global.firebase?.functions !== "function") return null;
-    if (typeof global.firebase.app === "function" && typeof global.firebase.app().functions === "function") {
-      return global.firebase.app().functions("southamerica-east1");
-    }
+    if (typeof global.firebase.app === "function" && typeof global.firebase.app().functions === "function") return global.firebase.app().functions("southamerica-east1");
     return global.firebase.functions("southamerica-east1");
   }
 
@@ -28,7 +26,6 @@
     const instance = functionsInstance();
     if (!instance) throw new Error("Backend seguro indisponível para registrar o pagamento empresarial.");
     const idempotency = text(input.operacaoId || input.idempotencyKey || operationId());
-    // Mantém a mesma chave no objeto de entrada enquanto a mesma ação estiver em andamento.
     input.operacaoId = idempotency;
     const callable = instance.httpsCallable("registrarPagamentoFinanceiroEmpresarial");
     const response = await callable({ entrada: {
@@ -41,7 +38,13 @@
       dataPagamento: text(input.dataPagamento),
       formaPagamento: text(input.formaPagamento),
       bancoContaId: text(input.bancoContaId),
-      observacao: text(input.observacao)
+      observacao: text(input.observacao),
+      modoPagamento: text(input.modoPagamento || input.modo),
+      quitarIntegralmente: input.quitarIntegralmente === true,
+      reprogramarSaldo: input.reprogramarSaldo === true,
+      novoVencimentoSaldo: text(input.novoVencimentoSaldo),
+      motivoDiferenca: text(input.motivoDiferenca),
+      comprovantes: Array.isArray(input.comprovantes) ? input.comprovantes : []
     }});
     const result = response?.data || {};
     return {
@@ -50,7 +53,9 @@
       pagamentoId: result.pagamentoId,
       modo: result.modo,
       saldoCentavos: result.saldoCentavos,
-      statusConta: result.status
+      statusConta: result.status,
+      diferencaQuitacaoCentavos: result.diferencaQuitacaoCentavos,
+      saldoReprogramadoContaId: result.saldoReprogramadoContaId
     };
   }
 
@@ -60,18 +65,13 @@
       if (++attempts <= MAX_ATTEMPTS) global.setTimeout(install, 100);
       return false;
     }
-    if (service.__enterprisePaymentGuardV26 === true) return true;
-    global.IntegroControleFinanceiro = Object.freeze({
-      ...service,
-      registrarPagamento: registrarPagamentoBackend,
-      __enterprisePaymentGuardV26: true
-    });
+    if (service.__enterprisePaymentGuardV27 === true) return true;
+    global.IntegroControleFinanceiro = Object.freeze({ ...service, registrarPagamento: registrarPagamentoBackend, __enterprisePaymentGuardV27: true });
     return true;
   }
 
   install();
   document.addEventListener("DOMContentLoaded", install, { once: true });
   document.addEventListener("usuario-validado", install);
-
   global.IntegroEnterpriseFinancePaymentGuard = Object.freeze({ install, registrarPagamentoBackend, operationId });
 })(window);
