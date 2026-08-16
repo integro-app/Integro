@@ -106,19 +106,10 @@
   async function markRead(id) { return updateOwn(id, { lida: true, status: "LIDA", lidaEm: serverTimestamp(), lidaPor: authUid() }); }
   async function markUnread(id) { return updateOwn(id, { lida: false, status: "PENDENTE", lidaEm: null, lidaPor: "" }); }
   async function remove(id) {
-    const retentionDays = Math.max(1, Number((global.configuracoesEmpresa || global.configEmpresa || {})?.notificacoes?.retencaoLixeiraDias || 30));
-    const purgeAt = new Date(Date.now() + retentionDays * 86400000);
-    return updateOwn(id, {
-      excluida: true, excluido: true, excluidaEm: serverTimestamp(), excluidaEmTexto: new Date().toISOString(), excluidaPor: authUid(),
-      excluirDefinitivamenteAposTexto: purgeAt.toISOString(),
-      excluirDefinitivamenteApos: global.firebase?.firestore?.Timestamp?.fromDate?.(purgeAt) || purgeAt
-    });
+    return updateOwn(id, { excluida: true, excluido: true, excluidaEm: serverTimestamp(), excluidaEmTexto: new Date().toISOString(), excluidaPor: authUid() });
   }
   async function restore(id) {
-    return updateOwn(id, {
-      excluida: false, excluido: false, restauradaEm: serverTimestamp(), restauradaEmTexto: new Date().toISOString(), restauradaPor: authUid(),
-      excluirDefinitivamenteAposTexto: null, excluirDefinitivamenteApos: null
-    });
+    return updateOwn(id, { excluida: false, excluido: false });
   }
 
   function safeId(value) { return text(value).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 220); }
