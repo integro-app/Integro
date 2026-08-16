@@ -1,0 +1,4 @@
+ÍNTEGRO V27.0 — HOMOLOGAÇÃO
+Build: 2026-08-16
+Objetivo: pacote completo para teste dos fluxos aprovados.
+Sem deploy ou merge em produção.
