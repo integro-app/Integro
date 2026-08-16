@@ -117,48 +117,48 @@
 
 (function (global) {
   "use strict";
-  if (global.__integroControleFinanceiroV26Loader) return;
-  global.__integroControleFinanceiroV26Loader = true;
+  if (global.__integroControleFinanceiroV27Loader) return;
+  global.__integroControleFinanceiroV27Loader = true;
 
   function loadScript(src, marker = src) {
     return new Promise((resolve, reject) => {
-      const existing = document.querySelector(`script[data-v26-financeiro-src="${marker}"]`);
+      const existing = document.querySelector(`script[data-v27-financeiro-src="${marker}"]`);
       if (existing) {
         if (existing.dataset.loaded === "1") resolve();
         else { existing.addEventListener("load", resolve, { once:true }); existing.addEventListener("error", reject, { once:true }); }
         return;
       }
       const script = document.createElement("script");
-      script.src = src; script.async = false; script.dataset.v26FinanceiroSrc = marker;
+      script.src = src; script.async = false; script.dataset.v27FinanceiroSrc = marker;
       script.addEventListener("load", () => { script.dataset.loaded = "1"; resolve(); }, { once:true });
       script.addEventListener("error", reject, { once:true });
       document.head.appendChild(script);
     });
   }
 
-  async function bootControleFinanceiroV26() {
+  async function bootControleFinanceiroV27() {
     try {
       if (!global.firebase?.storage) await loadScript("https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js", "firebase-storage-compat-9.22.0");
-      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260814-v26-5", "enterprise-finance-service-v26-5");
-      if (!global.IntegroEnterpriseFinancePaymentGuard) await loadScript("js/services/enterprise-finance-payment-guard.js?v=20260814-v26-5", "enterprise-finance-payment-guard-v26-5");
-      if (!global.IntegroEnterpriseResourceApprovalGuard) await loadScript("js/services/enterprise-finance-operation-approval-guard.js?v=20260814-v26-5", "enterprise-finance-operation-approval-guard-v26-5");
-      if (!global.IntegroControleFinanceiroOperacao) await loadScript("js/services/enterprise-finance-operation-bridge.js?v=20260814-v26-5", "enterprise-finance-operation-bridge-v26-5");
-      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260814-v26-5", "controle-financeiro-empresarial-v26-5");
-      if (!global.IntegroControleFinanceiroOperacaoUI) await loadScript("js/modules/controle-financeiro-operacao-bridge.js?v=20260814-v26-5", "controle-financeiro-operacao-bridge-v26-5");
-      if (!global.IntegroControleFinanceiroPremium) await loadScript("js/modules/controle-financeiro-premium.js?v=20260815-v26-1", "controle-financeiro-premium-v26-1");
+      if (!global.IntegroV27Policy) await loadScript("js/services/v27-policy-service.js?v=20260816-v27-1", "v27-policy-service");
+      if (!global.IntegroControleFinanceiro) await loadScript("js/services/enterprise-finance-service.js?v=20260816-v27-1", "enterprise-finance-service-v27");
+      if (!global.IntegroEnterpriseFinanceV27Guard) await loadScript("js/services/enterprise-finance-v27-guard.js?v=20260816-v27-1", "enterprise-finance-v27-guard");
+      if (!global.IntegroEnterpriseFinancePaymentGuard) await loadScript("js/services/enterprise-finance-payment-guard.js?v=20260816-v27-1", "enterprise-finance-payment-guard-v27");
+      if (!global.IntegroControleFinanceiroUI) await loadScript("js/modules/controle-financeiro-empresarial.js?v=20260816-v27-1", "controle-financeiro-empresarial-v27");
+      if (!global.IntegroControleFinanceiroPremium) await loadScript("js/modules/controle-financeiro-premium.js?v=20260816-v27-1", "controle-financeiro-premium-v27");
+
+      // V27: nenhuma ponte entre Controle Financeiro Empresarial e caixa/ledger operacional é carregada.
+      global.IntegroEnterpriseFinanceV27Guard?.install?.();
       global.IntegroEnterpriseFinancePaymentGuard?.install?.();
-      global.IntegroEnterpriseResourceApprovalGuard?.instalar?.();
       global.setTimeout?.(() => {
         if (global.__integroFinanceiroModo === "operacional") return;
         if (document.getElementById("financeiro")?.classList.contains("active")) {
           global.IntegroControleFinanceiroUI?.load?.();
-          global.IntegroControleFinanceiroOperacaoUI?.load?.();
           global.IntegroControleFinanceiroPremium?.enhance?.();
         }
       }, 0);
-    } catch (error) { console.error("ERRO_BOOT_CONTROLE_FINANCEIRO_V26", error); }
+    } catch (error) { console.error("ERRO_BOOT_CONTROLE_FINANCEIRO_V27", error); }
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootControleFinanceiroV26, { once:true });
-  else bootControleFinanceiroV26();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootControleFinanceiroV27, { once:true });
+  else bootControleFinanceiroV27();
 })(window);
