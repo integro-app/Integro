@@ -2,7 +2,7 @@
   "use strict";
   if (global.__INTEGRO_V27_BOOTSTRAP__) return;
   global.__INTEGRO_V27_BOOTSTRAP__ = true;
-  global.__INTEGRO_VERSION__ = "27.0.0-homologacao";
+  global.__INTEGRO_VERSION__ = "27.1.0-homologacao";
 
   const loaded = new Map();
   function loadScript(src, key = src) {
@@ -31,7 +31,7 @@
       const started = Date.now();
       const check = () => {
         try { if (predicate()) return resolve(true); } catch (_) {}
-        if (Date.now() - started >= timeout) return reject(new Error("Tempo esgotado aguardando módulo V27."));
+        if (Date.now() - started >= timeout) return reject(new Error("Tempo esgotado aguardando módulo V27.1."));
         setTimeout(check, 150);
       };
       check();
@@ -40,23 +40,23 @@
 
   async function boot() {
     try {
-      if (!global.IntegroV27Policy) await loadScript("js/services/v27-policy-service.js?v=20260816-v27-1", "policy");
-      await loadScript("js/services/v27-user-lifecycle.js?v=20260816-v27-1", "user-lifecycle");
+      if (!global.IntegroV27Policy) await loadScript("js/services/v27-policy-service.js?v=20260817-v27-1", "policy");
+      await loadScript("js/services/v27-user-lifecycle.js?v=20260817-v27-1", "user-lifecycle");
 
       waitFor(() => Boolean(global.IntegroConfiguracoesEmpresa))
-        .then(() => loadScript("js/services/v27-config-save-guard.js?v=20260816-v27-1", "config-save-guard"))
+        .then(() => loadScript("js/services/v27-config-save-guard.js?v=20260817-v27-1", "config-save-guard"))
         .then(() => global.IntegroV27ConfigSaveGuard?.install?.())
         .catch(() => {});
 
       waitFor(() => Boolean(global.IntegroChatService))
-        .then(() => loadScript("js/services/chat-v27-guard.js?v=20260816-v27-1", "chat-guard"))
+        .then(() => loadScript("js/services/chat-v27-guard.js?v=20260817-v27-1", "chat-guard"))
         .then(() => global.IntegroChatV27Guard?.install?.())
         .catch(() => {});
 
-      document.documentElement.dataset.integroVersion = "27";
+      document.documentElement.dataset.integroVersion = "27.1";
       document.dispatchEvent(new CustomEvent("integro-v27-pronto", { detail: { version: global.__INTEGRO_VERSION__ } }));
     } catch (error) {
-      console.error("[ÍNTEGRO V27] Falha no bootstrap.", error);
+      console.error("[ÍNTEGRO V27.1] Falha no bootstrap.", error);
     }
   }
 
