@@ -41,16 +41,16 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((erro) => {
   console.error("[ÍNTEGRO] Erro ao configurar persistência do Auth:", erro);
 });
 
-console.info("[ÍNTEGRO Firebase]", { ambiente: window.location.hostname, projeto: firebaseConfig.projectId, emulator: integroUsarEmulator, versao: "27" });
+console.info("[ÍNTEGRO Firebase]", { ambiente: window.location.hostname, projeto: firebaseConfig.projectId, emulator: integroUsarEmulator, versao: "27.1" });
 
 window.auth = auth;
 window.db = db;
 
-// V27: carrega as políticas transversais sem exigir alterações em cada página legado.
+// V27.1: carrega as políticas transversais sem exigir alterações em cada página legado.
 (function carregarBootstrapV27() {
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
-  script.src = "js/v27-bootstrap.js?v=20260816-v27-1";
+  script.src = "js/v27-bootstrap.js?v=20260817-v27-1";
   script.async = false;
   script.dataset.integroV27Bootstrap = "1";
   document.head.appendChild(script);
