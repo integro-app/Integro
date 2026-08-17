@@ -1,4 +1,5 @@
-ÍNTEGRO V27.0 — HOMOLOGAÇÃO
-Build: 2026-08-16
-Objetivo: pacote completo para teste dos fluxos aprovados.
+ÍNTEGRO V27.1 — HOMOLOGAÇÃO
+Build: 2026-08-17
+Objetivo: pacote atualizado para teste dos fluxos aprovados.
+Inclui correções da validação V27, identificação de versão 27.1 e pacote de homologação dedicado.
 Sem deploy ou merge em produção.
