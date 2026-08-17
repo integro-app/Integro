@@ -1,9 +1,9 @@
-name: v27 validate and package
+name: v27.1 validate and package
 
 on:
   push:
     branches:
-      - agent/v27-fluxos-integrados
+      - agent/v27.1-homologacao
   workflow_dispatch:
 
 permissions:
@@ -26,8 +26,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: V27 focused tests
-        run: npm run test:v27
+      - name: V27.1 focused tests
+        run: npm run test:v27.1
 
       - name: JavaScript syntax
         run: npm run test:js
@@ -42,15 +42,15 @@ jobs:
         shell: bash
         run: |
           mkdir -p dist
-          zip -r dist/Integro-V27-Homologacao-20260816.zip . \
+          zip -r dist/Integro-V27.1-Homologacao-20260817.zip . \
             -x '.git/*' 'node_modules/*' '.firebase/*' 'dist/*' '*.log'
-          sha256sum dist/Integro-V27-Homologacao-20260816.zip > dist/Integro-V27-Homologacao-20260816.sha256
+          sha256sum dist/Integro-V27.1-Homologacao-20260817.zip > dist/Integro-V27.1-Homologacao-20260817.sha256
 
-      - name: Upload V27 homologation artifact
+      - name: Upload V27.1 homologation artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Integro-V27-Homologacao-20260816
+          name: Integro-V27.1-Homologacao-20260817
           path: |
-            dist/Integro-V27-Homologacao-20260816.zip
-            dist/Integro-V27-Homologacao-20260816.sha256
+            dist/Integro-V27.1-Homologacao-20260817.zip
+            dist/Integro-V27.1-Homologacao-20260817.sha256
           retention-days: 14
