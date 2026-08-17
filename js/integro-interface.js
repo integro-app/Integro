@@ -1,5 +1,7 @@
 (function (global) {
   "use strict";
+  if (global.__INTEGRO_INTERFACE_INSTALLED__ && global.IntegroInterface) return;
+  global.__INTEGRO_INTERFACE_INSTALLED__ = true;
 
   const BUILD = "20260806-v20";
   const MODULOS_OPERACAO = [
@@ -347,3 +349,4 @@
   });
   global.IntegroInterface = api;
 })(window);
+

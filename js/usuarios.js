@@ -200,7 +200,7 @@ async function provisionarConviteUsuario(conviteId, email) {
     erro.code = "functions/indisponivel";
     throw erro;
   }
-  const callable = firebase.functions("southamerica-east1").httpsCallable("provisionarUsuario");
+  const callable = firebase.app().functions("southamerica-east1").httpsCallable("provisionarUsuario");
   const resposta = await callable({ conviteId });
   if (!resposta?.data?.ok) throw new Error("O provisionamento não foi confirmado pelo servidor.");
   await auth.sendPasswordResetEmail(email);

@@ -47,13 +47,13 @@ test("leads: rules permitem payload operacional do vendedor sem abrir redistribu
 test("notificacao direcionada nao usa publico como atalho para outro vendedor", () => {
   assert.match(rules, /function notificacaoDirecionada\(data\)/);
   assert.match(rules, /!notificacaoDirecionada\(data\)/);
-  assert.match(rules, /destinatarioAuthUid != "" && destinatarioAuthUid == currentUid\(\)/);
+  assert.match(rules, /isCurrentUserValue\(destinatarioAuthUid\)/);
 });
 
 test("leads: operador autorizado pode atribuir e sincronizar cliente sem ampliar escopo", () => {
   assert.match(rules, /function operadorLeadsPodeAtualizarIndicacao\(\)/);
-  assert.match(rules, /hasPermission\("podeAtribuirIndicacao"\)/);
-  assert.match(rules, /hasPermission\("podeRedistribuirIndicacao"\)/);
+  assert.match(rules, /let indicacoes = permissoes\.get\("indicacoes", \{\}\)/);
+  assert.match(rules, /indicacoes\.get\("podeRedistribuirIndicacao", false\) == true/);
   assert.match(rules, /function operadorLeadsPodeSincronizarCliente\(\)/);
   assert.match(rules, /alterados\.hasOnly\(camposDirecionamento\)/);
   assert.match(rules, /"vendedorAuthUid"/);

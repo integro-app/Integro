@@ -88,44 +88,29 @@
   async function queryScope(collection, options = {}) {
     const a = access();
     if (a.perfil === "vendedor") {
-      const variants = [
-        ["vendedorAuthUid", a.authUid], ["vendedorUid", a.authUid], ["uid", a.authUid],
-        ["vendedorId", a.usuarioId], ["usuarioId", a.usuarioId]
-      ].filter(([, value]) => value);
+      const variants = [["vendedorAuthUid", a.authUid], ["vendedorUid", a.authUid], ["uid", a.authUid], ["vendedorId", a.usuarioId], ["usuarioId", a.usuarioId]].filter(([, value]) => value);
       const map = new Map();
-      for (const [field, value] of variants) {
-        try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {}
-      }
+      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
       return [...map.values()];
     }
     if (a.perfil === "supervisor" && a.equipeIds?.length) {
       const map = new Map();
       for (let i = 0; i < a.equipeIds.length; i += 10) {
         const block = a.equipeIds.slice(i, i + 10);
-        try {
-          const found = await queryTenant(collection, { ...options, where: [["equipeId", block.length === 1 ? "==" : "in", block.length === 1 ? block[0] : block]] });
-          found.forEach(item => map.set(item.id, item));
-        } catch (_) {}
+        try { const found = await queryTenant(collection, { ...options, where: [["equipeId", block.length === 1 ? "==" : "in", block.length === 1 ? block[0] : block]] }); found.forEach(item => map.set(item.id, item)); } catch (_) {}
       }
       return [...map.values()];
     }
     if (a.perfil === "captador") {
-      const variants = [
-        ["captadorId", a.usuarioId], ["indicadoPorId", a.usuarioId], ["criadoPor", a.usuarioId],
-        ["captadorId", a.authUid], ["indicadoPorId", a.authUid], ["criadoPor", a.authUid]
-      ].filter(([, value]) => value);
+      const variants = [["captadorId", a.usuarioId], ["indicadoPorId", a.usuarioId], ["criadoPor", a.usuarioId], ["captadorId", a.authUid], ["indicadoPorId", a.authUid], ["criadoPor", a.authUid]].filter(([, value]) => value);
       const map = new Map();
-      for (const [field, value] of variants) {
-        try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {}
-      }
+      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
       return [...map.values()];
     }
     return queryTenant(collection, options);
   }
 
-  function detailsHtml(item = {}) {
-    return `<div class="unified-drawer-grid">${Object.entries(item).filter(([, value]) => typeof value !== "function").map(([name, value]) => `<div class="unified-drawer-row"><b>${esc(name)}</b><span>${esc(typeof value === "object" && value !== null ? JSON.stringify(value) : value)}</span></div>`).join("")}</div>`;
-  }
+  function detailsHtml(item = {}) { return `<div class="unified-drawer-grid">${Object.entries(item).filter(([, value]) => typeof value !== "function").map(([name, value]) => `<div class="unified-drawer-row"><b>${esc(name)}</b><span>${esc(typeof value === "object" && value !== null ? JSON.stringify(value) : value)}</span></div>`).join("")}</div>`; }
 
   global.IntegroModuloUtils = Object.freeze({ text, key, upper, esc, db, user, access, tenant, today, addDays, moneyCents, money, docData, timestamp, dateValue, dateLabel, can, notify, openDrawer, closeDrawer, queryTenant, queryScope, detailsHtml });
-})(window);
+})(typeof window !== "undefined" ? window : globalThis);

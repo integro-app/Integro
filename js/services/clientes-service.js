@@ -213,16 +213,83 @@
     return (await executarConsultasUnicas(consultas)).filter(item => item.id !== ignorarId && item.excluido !== true);
   }
 
-  function validarDuplicidades(duplicidades, dados, permitirTelefoneDuplicado = false) {
+  function politicaDuplicidadeCadastro() {
+    const config = window.configuracoesEmpresa || window.configEmpresa || {};
+    const politica = texto(config?.clientes?.duplicidade?.cadastro || "BLOQUEAR").toUpperCase();
+    return ["BLOQUEAR", "PERMITIR", "EXIGIR_AUTORIZACAO"].includes(politica) ? politica : "BLOQUEAR";
+  }
+
+  function idSeguroDuplicidade(valor) {
+    return texto(valor).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 420);
+  }
+
+  function chaveDuplicidade(dados = {}) {
+    const documento = normalizarDocumento(dados.documento || dados.cpf || dados.cnpj);
+    const telefones = telefonesNormalizados(dados).sort();
+    return idSeguroDuplicidade(`doc_${documento || "sem"}_tel_${telefones.join("_") || "sem"}`);
+  }
+
+  async function autorizacaoDuplicidadeAtiva(db, usuario, chave) {
+    const uid = idUsuario(usuario);
+    if (!uid || !chave) return false;
+    try {
+      const ref = db.collection("clientes_duplicidade_autorizacoes").doc(`dup_${idSeguroDuplicidade(uid)}_${chave}`);
+      const snap = await ref.get();
+      if (!snap.exists) return false;
+      const dados = snap.data() || {};
+      return texto(dados.usuarioAuthUid) === uid && texto(dados.chaveDuplicidade) === chave && texto(dados.status).toUpperCase() === "ATIVA" && Number(dados.expiraEmMs || 0) > Date.now();
+    } catch (_) { return false; }
+  }
+
+  async function solicitarAutorizacaoDuplicidade(db, usuario, dados, duplicidades) {
+    const chave = chaveDuplicidade(dados);
+    if (await autorizacaoDuplicidadeAtiva(db, usuario, chave)) return { autorizado: true, chave };
+    const functions = window.firebase?.app?.().functions?.("southamerica-east1");
+    const callable = functions?.httpsCallable?.("solicitarCadastroDuplicadoV27");
+    if (!callable) throw new Error("Fluxo de autorização de duplicidade indisponível.");
+    const resultado = await callable({
+      chaveDuplicidade: chave,
+      documentoNormalizado: normalizarDocumento(dados.documento || dados.cpf || dados.cnpj),
+      telefonesNormalizados: telefonesNormalizados(dados),
+      clientesIds: duplicidades.map(item => item.id).filter(Boolean)
+    });
+    return { ...(resultado?.data || {}), chave };
+  }
+
+  async function validarDuplicidades(duplicidades, dados, permitirTelefoneDuplicado = false, usuario = {}) {
+    if (!duplicidades.length) return { duplicidades: [], politica: politicaDuplicidadeCadastro() };
+    const politica = politicaDuplicidadeCadastro();
+    if (politica === "PERMITIR") return { duplicidades, politica };
+
     const documento = normalizarDocumento(dados.documento || dados.cpf || dados.cnpj);
     const documentoExato = duplicidades.find(item => normalizarDocumento(item.documento || item.cpf || item.cnpj) === documento);
-    if (documentoExato) throw new Error("CPF ou CNPJ ja cadastrado neste tenant.");
-    if (duplicidades.length && !permitirTelefoneDuplicado) {
-      const erro = new Error("Telefone ja vinculado a outro cliente neste tenant.");
-      erro.code = "CLIENTE_TELEFONE_DUPLICADO";
-      erro.clientes = duplicidades.map(item => ({ id: item.id, nome: item.nome || item.nomeCompleto }));
-      throw erro;
+    const conflitoTelefone = duplicidades.length && !permitirTelefoneDuplicado;
+
+    if (politica === "EXIGIR_AUTORIZACAO" && (documentoExato || conflitoTelefone)) {
+      const db = getDb();
+      const autorizacao = await solicitarAutorizacaoDuplicidade(db, usuario, dados, duplicidades);
+      if (autorizacao.autorizado === true) return { duplicidades, politica, autorizado: true };
+      const nomes = duplicidades.slice(0, 3).map(item => item.nome || item.nomeCompleto || "Cliente existente").join(", ");
+      const erroAutorizacao = new Error(`Cadastro semelhante já existe (${nomes}). A solicitação de autorização foi enviada ao Supervisor/Gerente.`);
+      erroAutorizacao.code = "CLIENTE_DUPLICIDADE_AUTORIZACAO";
+      erroAutorizacao.solicitacaoId = autorizacao.solicitacaoId || "";
+      erroAutorizacao.clientes = duplicidades.map(item => ({ id: item.id, nome: item.nome || item.nomeCompleto }));
+      throw erroAutorizacao;
     }
+
+    if (documentoExato) {
+      const erroDocumento = new Error(`CPF ou CNPJ já cadastrado para ${documentoExato.nome || documentoExato.nomeCompleto || "outro cliente"}.`);
+      erroDocumento.code = "CLIENTE_DOCUMENTO_DUPLICADO";
+      erroDocumento.clientes = [{ id: documentoExato.id, nome: documentoExato.nome || documentoExato.nomeCompleto }];
+      throw erroDocumento;
+    }
+    if (conflitoTelefone) {
+      const erroTelefone = new Error(`Telefone já vinculado a outro cliente: ${duplicidades.slice(0, 3).map(item => item.nome || item.nomeCompleto || "Cliente").join(", ")}.`);
+      erroTelefone.code = "CLIENTE_TELEFONE_DUPLICADO";
+      erroTelefone.clientes = duplicidades.map(item => ({ id: item.id, nome: item.nome || item.nomeCompleto }));
+      throw erroTelefone;
+    }
+    return { duplicidades, politica };
   }
 
   function payloadAuditoria(usuario, extra = {}) {
@@ -262,7 +329,7 @@
     if (!usuarioAtivo(usuario)) throw new Error("Usuario inativo nao pode criar cliente.");
     const dados = montarDadosNormalizados(entrada.dados || entrada);
     const duplicidades = await buscarDuplicidades(db, tenant, dados);
-    validarDuplicidades(duplicidades, dados, entrada.permitirTelefoneDuplicado === true && usuarioPodeAdministrarClientes(usuario));
+    await validarDuplicidades(duplicidades, dados, entrada.permitirTelefoneDuplicado === true && usuarioPodeAdministrarClientes(usuario), usuario);
 
     const ref = db.collection(COLECAO_CLIENTES).doc();
     const payload = {
@@ -298,7 +365,7 @@
       if (!clienteNoEscopo(usuario, operacionalAtual, "editar")) throw new Error("Cliente da indicacao fora do escopo do vendedor.");
     }
     const duplicidades = await buscarDuplicidades(db, tenant, dados, clienteOperacionalIdExistente);
-    validarDuplicidades(duplicidades, dados, false);
+    await validarDuplicidades(duplicidades, dados, false, usuario);
 
     const operacionalRef = db.collection(COLECAO_CLIENTES).doc(clienteOperacionalIdExistente || undefined);
     const legadoRef = db.collection(COLECAO_LEGADA).doc();
@@ -365,7 +432,7 @@
     if (!clienteNoEscopo(usuario, atual, "editar")) throw new Error("Usuario sem permissao para editar este cliente.");
     const dados = montarDadosNormalizados({ ...atual, ...alteracoes });
     const duplicidades = await buscarDuplicidades(db, tenantUsuario(usuario), dados, clienteId);
-    validarDuplicidades(duplicidades, dados, opcoes.permitirTelefoneDuplicado === true && usuarioPodeAdministrarClientes(usuario));
+    await validarDuplicidades(duplicidades, dados, opcoes.permitirTelefoneDuplicado === true && usuarioPodeAdministrarClientes(usuario), usuario);
 
     const camposProtegidos = ["clientePlataformaId", "criadoEm", "criadoPor", "saldoDevedor", "saldoDevedorCentavos", "vendaAtivaId", "possuiVendaAtiva"];
     const payload = { ...dados };
@@ -386,7 +453,7 @@
     if (!clienteNoEscopo(usuario, atual, "editar")) throw new Error("Usuario sem permissao para editar este cliente.");
     const dados = montarDadosNormalizados({ ...atual, ...alteracoes });
     const duplicidades = await buscarDuplicidades(db, tenantUsuario(usuario), dados, clienteOperacionalId);
-    validarDuplicidades(duplicidades, dados, false);
+    await validarDuplicidades(duplicidades, dados, false, usuario);
     const camposProtegidos = ["clientePlataformaId", "criadoEm", "criadoPor", "saldoDevedor", "saldoDevedorCentavos", "vendaAtivaId", "possuiVendaAtiva"];
     const payload = { ...dados, atualizadoPor: idUsuario(usuario), atualizadoEm: serverTimestamp() };
     camposProtegidos.forEach(campo => delete payload[campo]);

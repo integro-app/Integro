@@ -88,8 +88,8 @@ test("dashboard usa o mesmo esqueleto visual do Financeiro", () => {
 });
 
 test("movimentações abre lançamentos e financeiro abre resumo", () => {
-  assert.match(nav, /item\.id === "movimentacoes"[\s\S]*__abrirFinanceiroUnificado\("lancamentos"\)/);
-  assert.match(nav, /item\.id === "financeiro"[\s\S]*__abrirFinanceiroUnificado\("resumo"\)/);
+  assert.match(nav, /item\.id === "movimentacoes"[\s\S]*abrirFinanceiroOperacional\("lancamentos"/);
+  assert.match(nav, /item\.id === "financeiro"[\s\S]*abrirFinanceiroEmpresarial/);
 });
 
 test("datas de clientes aceitam ISO, formato brasileiro e timestamp", () => {

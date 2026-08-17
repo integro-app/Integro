@@ -1,9 +1,12 @@
 (function (global) {
   "use strict";
+  if (global.__INTEGRO_DATA_RUNTIME_INSTALLED__ && global.IntegroDataRuntime) return;
+  global.__INTEGRO_DATA_RUNTIME_INSTALLED__ = true;
 
   const cache = new Map();
   const pendentes = new Map();
   const listeners = new Map();
+  const assinaturas = new Map();
   const metricas = {
     consultas: 0,
     consultasCache: 0,
@@ -145,46 +148,65 @@
     const db = opcoes.db || global.db || global.firebase?.firestore?.();
     const colecao = texto(opcoes.colecao);
     const tenantId = texto(opcoes.tenantId || tenantAtual());
-    const chave = texto(opcoes.chave || `${opcoes.escopo || "global"}:${colecao}`);
+    const filtros = Array.isArray(opcoes.filtros) ? opcoes.filtros : [];
+    const limite = Math.max(1, Number(opcoes.limite || 200));
+    const ordem = Array.isArray(opcoes.ordem) ? opcoes.ordem : [];
+    const assinatura = chaveConsulta({ colecao, tenantId, filtros, limite, ordem });
+    const chave = texto(opcoes.chave || `${opcoes.escopo || "global"}:${assinatura}`);
     const escopo = texto(opcoes.escopo || "global");
     if (!db || !colecao || !tenantId || !chave || typeof opcoes.aoAtualizar !== "function") return () => {};
 
     const atual = listeners.get(chave);
     if (atual) return atual.parar;
 
-    const ref = construirRef({
-      db,
-      colecao,
-      tenantId,
-      filtros: Array.isArray(opcoes.filtros) ? opcoes.filtros : [],
-      limite: Math.max(1, Number(opcoes.limite || 200)),
-      ordem: Array.isArray(opcoes.ordem) ? opcoes.ordem : []
-    });
+    let grupo = assinaturas.get(assinatura);
+    if (!grupo) {
+      const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
+      grupo = { assinatura, colecao, tenantId, inscritos: new Map(), unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora() };
+      grupo.unsubscribe = ref.onSnapshot(snapshot => {
+        const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
+        metricas.documentosRecebidos += dados.length;
+        registrarColecao(colecao, "documentos", dados.length);
+        grupo.ultimoDados = dados;
+        grupo.ultimoSnapshot = snapshot;
+        [...grupo.inscritos.values()].forEach(inscrito => {
+          try { inscrito.aoAtualizar(dados.map(item => ({ ...item })), snapshot); }
+          catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
+        });
+      }, erro => {
+        metricas.erros++;
+        registrarColecao(colecao, "erros", 1);
+        [...grupo.inscritos.values()].forEach(inscrito => {
+          try { inscrito.aoErro?.(erro); }
+          catch (_) {}
+        });
+      });
+      assinaturas.set(assinatura, grupo);
+      metricas.listenersAbertos++;
+      registrarColecao(colecao, "listeners", 1);
+    }
 
     let encerrado = false;
-    const unsubscribe = ref.onSnapshot(snapshot => {
-      const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
-      metricas.documentosRecebidos += dados.length;
-      registrarColecao(colecao, "documentos", dados.length);
-      opcoes.aoAtualizar(dados, snapshot);
-    }, erro => {
-      metricas.erros++;
-      registrarColecao(colecao, "erros", 1);
-      opcoes.aoErro?.(erro);
-    });
-
     const parar = () => {
       if (encerrado) return;
       encerrado = true;
-      try { unsubscribe?.(); } catch (_) {}
       listeners.delete(chave);
-      metricas.listenersEncerrados++;
-      registrarColecao(colecao, "listeners", -1);
+      const atualGrupo = assinaturas.get(assinatura);
+      atualGrupo?.inscritos.delete(chave);
+      if (atualGrupo && atualGrupo.inscritos.size === 0) {
+        try { atualGrupo.unsubscribe?.(); } catch (_) {}
+        assinaturas.delete(assinatura);
+        metricas.listenersEncerrados++;
+        registrarColecao(colecao, "listeners", -1);
+      }
     };
 
-    listeners.set(chave, { chave, escopo, colecao, tenantId, parar, criadoEm: agora() });
-    metricas.listenersAbertos++;
-    registrarColecao(colecao, "listeners", 1);
+    grupo.inscritos.set(chave, { chave, escopo, colecao, tenantId, aoAtualizar: opcoes.aoAtualizar, aoErro: opcoes.aoErro, criadoEm: agora() });
+    listeners.set(chave, { chave, assinatura, escopo, colecao, tenantId, parar, criadoEm: agora() });
+    if (grupo.ultimoDados) {
+      try { opcoes.aoAtualizar(grupo.ultimoDados.map(item => ({ ...item })), grupo.ultimoSnapshot); }
+      catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
+    }
     return parar;
   }
 
@@ -207,7 +229,9 @@
       cacheEntradas: cache.size,
       consultasPendentes: pendentes.size,
       listenersAtivos: listeners.size,
-      listeners: [...listeners.values()].map(({ chave, escopo, colecao, tenantId, criadoEm }) => ({ chave, escopo, colecao, tenantId, criadoEm })),
+      assinaturasAtivas: assinaturas.size,
+      listeners: [...listeners.values()].map(({ chave, assinatura, escopo, colecao, tenantId, criadoEm }) => ({ chave, assinatura, escopo, colecao, tenantId, criadoEm })),
+      assinaturas: [...assinaturas.values()].map(({ assinatura, colecao, tenantId, inscritos, criadoEm }) => ({ assinatura, colecao, tenantId, consumidores: inscritos.size, criadoEm })),
       porColecao: JSON.parse(JSON.stringify(metricas.porColecao))
     };
   }
@@ -239,3 +263,11 @@
   global.IntegroDataRuntime = api;
   global.IntegroPerformance = Object.freeze({ diagnostico, limparCache: () => cache.clear(), pararListeners: pararTodos });
 })(window);
+
+
+
+
+
+
+
+

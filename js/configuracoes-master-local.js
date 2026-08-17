@@ -1,479 +1,117 @@
 (function (global) {
   "use strict";
+  if (global.__INTEGRO_CONFIG_V272__) return;
+  global.__INTEGRO_CONFIG_V272__ = true;
 
   let configuracaoAtual = null;
+  let abaAtual = "empresa";
 
-  function tenantId() {
-    return global.State?.getTenantId?.() || global.usuarioLogado?.clientePlataformaId || global.currentUserData?.clientePlataformaId || "";
-  }
-
-  function usuario() {
-    return global.State?.getUsuario?.() || global.usuarioLogado || global.currentUserData || {};
-  }
-
-  function escapar(valor) {
-    return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
-  }
-
-  function avisar(mensagem) {
-    if (global.notificarIntegro) global.notificarIntegro(mensagem);
-    else global.UIHelpers?.alerta?.(mensagem);
-  }
-
-  async function carregarConfiguracoesEmpresaMasterLocal(forcar = false) {
-    if (configuracaoAtual && !forcar) return configuracaoAtual;
-    const id = tenantId();
-    if (!id) throw new Error("Empresa nao identificada na sessao.");
-    configuracaoAtual = await global.IntegroConfiguracoesEmpresa.carregar(id);
-    return configuracaoAtual;
-  }
-
-  const MODULOS_ESTRUTURA = [
-    { id: "usuarios", nome: "Usuarios", icone: "group", descricao: "Criar, editar, bloquear e provisionar" },
-    { id: "equipes", nome: "Equipes", icone: "hub", descricao: "Supervisor, vendedores e escopo operacional" },
-    { id: "cargos", nome: "Cargos e permissoes", icone: "admin_panel_settings", descricao: "Perfis, telas e acoes permitidas" }
+  const ABAS = [
+    ["empresa","domain","Empresa"],
+    ["dashboard","dashboard","Dashboard"],
+    ["operacional","point_of_sale","Operacional/Vendas"],
+    ["clientes","groups","Clientes"],
+    ["leads","person_search","Leads"],
+    ["movimentacoes","swap_horiz","Movimentações"],
+    ["financeiro","payments","Financeiro"],
+    ["chat","forum","Chat"],
+    ["notificacoes","notifications","Notificações"],
+    ["usuariosPermissoes","manage_accounts","Usuários e Permissões"],
+    ["seguranca","security","Segurança"],
+    ["integracoes","hub","Integrações"]
   ];
-  const ROTULOS_ESTRUTURA = {
-    configuracoes: "Estrutura",
-    usuarios: "Usuarios",
-    equipes: "Equipes",
-    cargos: "Cargos e permissoes",
-    permissoes: "Acessos"
+
+  const BOXES = {
+    empresa:"configEmpresaBox", dashboard:"configDashboardBox", operacional:"configOperacionalBox",
+    clientes:"configClientesBox", leads:"configLeadsBox", movimentacoes:"configCatalogosBox",
+    financeiro:"configFinanceiroV27Box", chat:"configChatBox", notificacoes:"configNotificacoesBox",
+    usuariosPermissoes:"configUsuariosPermissoesBox", seguranca:"configSegurancaBox", integracoes:"configIntegracoesBox"
   };
 
-  function navegacaoConfiguracoesHtml(moduloAtivo = "configuracoes", abaAtiva = "estrutura") {
-    const contextoEstrutura = ["configuracoes", "usuarios", "equipes", "cargos"].includes(moduloAtivo) && !["empresa", "catalogos", "regras", "relatorios"].includes(abaAtiva);
-    const chaveEstrutura = moduloAtivo === "configuracoes" ? (abaAtiva === "permissoes" ? "permissoes" : "configuracoes") : moduloAtivo;
-    const rotuloEstrutura = ROTULOS_ESTRUTURA[chaveEstrutura] || "Estrutura";
-    return `
-      <nav class="config-module-nav" data-config-navigation aria-label="Modulos das configuracoes">
-        <button class="config-module-tab ${abaAtiva === "empresa" ? "active" : ""}" type="button" onclick="abrirPaginaConfiguracaoIntegro('empresa')"><span class="material-symbols-rounded">domain</span><span>Empresa</span></button>
-        <div class="config-module-dropdown">
-          <button class="config-module-tab ${contextoEstrutura ? "active" : ""}" type="button" onclick="alternarMenuEstruturaConfiguracoes(event,this)" aria-expanded="false">
-            <span class="material-symbols-rounded">account_tree</span><span>${rotuloEstrutura}</span><span class="material-symbols-rounded config-module-chevron">expand_more</span>
-          </button>
-          <div class="config-module-menu" data-config-structure-menu hidden>
-            <button type="button" onclick="abrirPaginaConfiguracaoIntegro('estrutura')"><span class="material-symbols-rounded">space_dashboard</span>Vis&atilde;o geral</button>
-            <button type="button" onclick="abrirEstruturaConfiguracao('usuarios')"><span class="material-symbols-rounded">group</span>Usu&aacute;rios</button>
-            <button type="button" onclick="abrirEstruturaConfiguracao('equipes')"><span class="material-symbols-rounded">hub</span>Equipes</button>
-            <button type="button" onclick="abrirEstruturaConfiguracao('cargos')"><span class="material-symbols-rounded">admin_panel_settings</span>Cargos e permiss&otilde;es</button>
-            <button type="button" onclick="abrirPaginaConfiguracaoIntegro('permissoes')"><span class="material-symbols-rounded">shield_person</span>Acessos por perfil</button>
-          </div>
-        </div>
-        <button class="config-module-tab ${abaAtiva === "catalogos" ? "active" : ""}" type="button" onclick="abrirPaginaConfiguracaoIntegro('catalogos')"><span class="material-symbols-rounded">payments</span><span>Financeiro</span></button>
-        <button class="config-module-tab ${abaAtiva === "regras" ? "active" : ""}" type="button" onclick="abrirPaginaConfiguracaoIntegro('regras')"><span class="material-symbols-rounded">rule_settings</span><span>Regras operacionais</span></button>
-        <button class="config-module-tab ${abaAtiva === "relatorios" ? "active" : ""}" type="button" onclick="abrirPaginaConfiguracaoIntegro('relatorios')"><span class="material-symbols-rounded">analytics</span><span>Relatórios</span></button>
-      </nav>`;
+  function tenantId(){return global.State?.getTenantId?.()||global.usuarioLogado?.clientePlataformaId||global.currentUserData?.clientePlataformaId||"";}
+  function usuario(){return global.State?.getUsuario?.()||global.usuarioLogado||global.currentUserData||{};}
+  function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]);}
+  function avisar(msg){global.notificarIntegro?.(msg)||global.UIHelpers?.alerta?.(msg);}
+  function checked(v){return v===true?"checked":"";}
+  function num(v,d=0){const n=Number(v);return Number.isFinite(n)?n:d;}
+  function statusRow(item,grupo){return `<div class="config-status-row" data-status-grupo="${grupo}"><input data-status-chave value="${esc(item.chave||"")}" aria-label="Chave"><input data-status-nome value="${esc(item.nome||"")}" aria-label="Nome"><input data-status-cor type="color" value="${esc(item.cor||"#64748b")}" aria-label="Cor"><label class="config-check"><input data-status-ativo type="checkbox" ${item.ativo!==false?"checked":""}> Ativo</label><button class="icon-btn" type="button" onclick="removerStatusConfiguracao(this)" title="Remover"><span class="material-symbols-rounded">delete</span></button></div>`;}
+  function paymentRow(item){return `<div class="config-status-row" data-payment-row><input data-payment-key value="${esc(item.chave||"")}" aria-label="Chave"><input data-payment-name value="${esc(item.nome||"")}" aria-label="Nome"><label class="config-check"><input data-payment-active type="checkbox" ${item.ativo!==false?"checked":""}> Ativa</label><button class="icon-btn" type="button" onclick="removerFormaPagamentoConfig(this)" title="Remover"><span class="material-symbols-rounded">delete</span></button></div>`;}
+  function switchField(id,label,value,help=""){return `<label class="config-switch"><input id="${id}" type="checkbox" ${checked(value)}><span><strong>${label}</strong><small>${help}</small></span></label>`;}
+  function saveBar(id,label="Salvar configurações"){return `<div class="config-save-bar"><span>Alterações ficam restritas à empresa atual e são auditadas.</span><button id="${id}" class="primary-btn" type="submit"><span class="material-symbols-rounded">save</span>${label}</button></div>`;}
+
+  function ensureBoxes(){
+    const card=document.querySelector("#configuracoes > .section-card"); if(!card)return;
+    const oldIds=["configEstruturaBox","configPermissoesBox","configRegrasBox","configRelatoriosBox"];
+    oldIds.forEach(id=>{const el=document.getElementById(id);if(el)el.style.display="none";});
+    Object.values(BOXES).forEach(id=>{if(document.getElementById(id))return;const div=document.createElement("div");div.id=id;div.className="config-page";div.style.display="none";card.appendChild(div);});
   }
 
-  function instalarNavegacaoConfiguracoes(moduloAtivo = "configuracoes", abaAtiva = "estrutura") {
-    document.querySelectorAll('.integro-module-nav[data-integro-modulo="configuracoes"]').forEach(nav => nav.remove());
-    let host = null;
-    if (moduloAtivo === "configuracoes") {
-      host = document.querySelector("#configuracoes [data-config-navigation-host]");
-    } else {
-      const tela = document.getElementById(moduloAtivo);
-      const painel = tela?.querySelector(":scope > .section-card") || tela;
-      if (painel) {
-        host = painel.querySelector(":scope > [data-config-shared-navigation]");
-        if (!host) {
-          host = document.createElement("div");
-          host.dataset.configSharedNavigation = "true";
-          painel.prepend(host);
-        }
-      }
-    }
-    if (host) {
-      host.innerHTML = navegacaoConfiguracoesHtml(moduloAtivo, abaAtiva);
-      const nav = host.querySelector(".config-module-nav");
-      const acoes = {
-        usuarios: ["person_add", "Novo usuário", "abrirNovoUsuario()"],
-        equipes: ["add_business", "Nova equipe", "abrirNovaEquipe()"],
-        cargos: ["add_moderator", "Novo cargo", "abrirNovoCargo()"]
-      };
-      const acao = acoes[moduloAtivo];
-      if (nav && acao) nav.insertAdjacentHTML("beforeend", '<button class="config-module-create" type="button" onclick="' + acao[2] + '"><span class="material-symbols-rounded">' + acao[0] + '</span>' + acao[1] + '</button>');
-    }
+  function navHtml(active=abaAtual){return `<nav class="config-module-nav config-module-nav-v272 integro-shared-nav" data-config-navigation aria-label="Módulos das configurações">${ABAS.map(([id,icon,label])=>`<button id="tabConfig${id[0].toUpperCase()+id.slice(1)}" class="config-module-tab${active===id?" active":""}" type="button" onclick="abrirPaginaConfiguracaoIntegro('${id}')"><span class="material-symbols-rounded">${icon}</span><span>${label}</span></button>`).join("")}</nav>`;}
+  function installNav(){ensureBoxes();const host=document.querySelector("#configuracoes [data-config-navigation-host]");if(host)host.innerHTML=navHtml();}
+  function showOnly(aba){ensureBoxes();Object.entries(BOXES).forEach(([key,id])=>{const box=document.getElementById(id);if(box)box.style.display=key===aba?"block":"none";});document.querySelectorAll("#configuracoes .config-module-tab").forEach(btn=>btn.classList.toggle("active",btn.id===`tabConfig${aba[0].toUpperCase()+aba.slice(1)}`));}
+
+  async function load(force=false){if(configuracaoAtual&&!force)return configuracaoAtual;const id=tenantId();if(!id)throw new Error("Empresa não identificada na sessão.");configuracaoAtual=await global.IntegroConfiguracoesEmpresa.carregar(id);return configuracaoAtual;}
+  async function savePatch(sections,buttonId,message){const button=document.getElementById(buttonId);try{if(button)button.disabled=true;configuracaoAtual=await global.IntegroConfiguracoesEmpresa.salvar(tenantId(),{...configuracaoAtual,...sections},usuario());global.IntegroDataRuntime?.invalidar?.("configuracoes_empresas");await global.FirestoreService?.gravarLog?.("CONFIGURACOES_EMPRESA_ATUALIZADAS",{secoes:Object.keys(sections),versao:configuracaoAtual.versao,build:"27.2"});avisar(message);document.dispatchEvent(new CustomEvent("integro-configuracoes-atualizadas",{detail:{config:configuracaoAtual,secoes:Object.keys(sections)}}));return configuracaoAtual;}finally{if(button?.isConnected)button.disabled=false;}}
+
+  function renderEmpresa(c){const box=document.getElementById(BOXES.empresa);if(!box)return;const e=c.empresa||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesEmpresaGeral(event)"><section class="config-block"><div class="config-block-head"><div><h3>Empresa</h3><p>Identidade visual e preferências gerais. Dados cadastrais sensíveis são alterados somente pelo suporte ÍNTEGRO após validação.</p></div></div><div class="config-form-grid"><label>Nome de exibição<input id="cfgEmpresaNome" maxlength="120" value="${esc(e.nomeExibicao||usuario().clientePlataformaNome||usuario().empresaNome||"")}"></label><label>Fuso horário<select id="cfgEmpresaFuso">${["America/Sao_Paulo","America/Manaus","America/Cuiaba","America/Recife"].map(x=>`<option value="${x}" ${e.fusoHorario===x?"selected":""}>${x.replace("America/","").replace("Sao_Paulo","Brasília / São Paulo")}</option>`).join("")}</select></label><label>Moeda<input disabled value="Real brasileiro (BRL)"></label><label>Idioma<input disabled value="Português (Brasil)"></label></div></section><div class="config-note"><span class="material-symbols-rounded">verified_user</span><div><strong>Dados cadastrais protegidos</strong><p>Razão social, documento e demais dados sensíveis não são editados pelo Master Local nesta tela.</p></div></div>${saveBar("cfgEmpresaSalvar","Salvar empresa")}</form>`;}
+
+  function renderDashboard(c){const box=document.getElementById(BOXES.dashboard);if(!box)return;const d=c.dashboard||{};const r=c.relatorios||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesDashboard(event)"><section class="config-block"><div class="config-block-head"><div><h3>Dashboard e insights</h3><p>Define a abertura padrão e como os indicadores são apresentados.</p></div></div><div class="config-form-grid"><label>Período padrão<select id="cfgDashPeriodo"><option value="HOJE" ${d.periodoPadrao==="HOJE"?"selected":""}>Hoje</option><option value="7_DIAS" ${d.periodoPadrao==="7_DIAS"?"selected":""}>Últimos 7 dias</option><option value="MES_ATUAL" ${!d.periodoPadrao||d.periodoPadrao==="MES_ATUAL"?"selected":""}>Mês atual</option></select></label><label>Formato padrão de relatório<select id="cfgRelFormato"><option value="PDF" ${r.formatoPadrao!=="EXCEL"?"selected":""}>PDF</option><option value="EXCEL" ${r.formatoPadrao==="EXCEL"?"selected":""}>Excel</option></select></label></div><div class="config-switch-grid">${switchField("cfgDashInsights","Insights automáticos",d.insightsAtivos!==false,"Mostra variações e pontos de atenção com base nos dados.")}${switchField("cfgDashComparativo","Comparar períodos",r.comparativoPeriodo!==false,"Permite comparar o período atual com o período anterior.")}</div></section>${saveBar("cfgDashSalvar","Salvar dashboard")}</form>`;}
+
+  function workdaysHtml(days=[]){return ["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"].map((name,i)=>`<label class="config-check config-day-check"><input data-cfg-day type="checkbox" value="${i}" ${days.includes(i)?"checked":""}>${name}</label>`).join("");}
+  function renderOperacional(c){const box=document.getElementById(BOXES.operacional);if(!box)return;const o=c.operacao||{},r=c.regrasOperacionais||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesOperacionais(event)"><section class="config-block"><div class="config-block-head"><div><h3>Operação e vendas</h3><p>Jornada e regras que controlam os fluxos comerciais.</p></div></div><div class="config-days-grid">${workdaysHtml(o.diasTrabalho||[])}</div><div class="config-form-grid"><label>Início<input id="cfgOpInicio" type="time" value="${esc(o.horarioInicio||"08:00")}"></label><label>Fim<input id="cfgOpFim" type="time" value="${esc(o.horarioFim||"20:00")}"></label></div><div class="config-switch-grid">${switchField("cfgOpCaixa","Venda exige caixa aberto",r.vendaExigeCaixaAberto!==false,"Vendedor precisa estar com o caixa do dia aberto.")}${switchField("cfgOpCadastro","Venda exige cadastro completo",r.vendaExigeCadastroCompleto!==false,"Evita contratos com dados incompletos.")}${switchField("cfgOpSaldo","Bloquear nova venda com saldo ativo",r.vendaExigeClienteSemVendaAtiva!==false,"A exceção pode seguir para análise quando habilitada em Clientes.")}</div></section>${saveBar("cfgOpSalvar","Salvar operação")}</form>`;}
+
+  function renderClientes(c){const box=document.getElementById(BOXES.clientes);if(!box)return;const x=c.clientes||{},a=x.atraso||{},s=x.score||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesClientes(event)"><section class="config-block"><div class="config-block-head"><div><h3>Status e inadimplência</h3><p>Cores e faixas de atraso usadas em toda a carteira.</p></div><button class="secondary-btn" type="button" onclick="adicionarStatusConfiguracao('clientes')"><span class="material-symbols-rounded">add</span>Status</button></div><div id="cfgStatusClientes">${(x.status||[]).map(i=>statusRow(i,"clientes")).join("")}</div><div class="config-form-grid"><label>Amarelo a partir de<input id="cfgCliAmarelo" type="number" min="1" value="${num(a.amareloDias,5)}"></label><label>Laranja a partir de<input id="cfgCliLaranja" type="number" min="1" value="${num(a.laranjaDias,10)}"></label><label>Vermelho a partir de<input id="cfgCliVermelho" type="number" min="1" value="${num(a.vermelhoDias,15)}"></label><label>Inadimplente a partir de<input id="cfgCliInad" type="number" min="1" value="${num(a.inadimplenteDias,5)}"></label></div></section><section class="config-block"><h3>Duplicidade e novas vendas</h3><div class="config-form-grid"><label>Cadastro duplicado<select id="cfgCliDupCadastro">${["BLOQUEAR","PERMITIR","EXIGIR_AUTORIZACAO"].map(v=>`<option value="${v}" ${x.duplicidade?.cadastro===v?"selected":""}>${v.replaceAll("_"," ")}</option>`).join("")}</select></label><label>Venda duplicada<select id="cfgCliDupVenda">${["BLOQUEAR","PERMITIR","EXIGIR_AUTORIZACAO"].map(v=>`<option value="${v}" ${x.duplicidade?.venda===v?"selected":""}>${v.replaceAll("_"," ")}</option>`).join("")}</select></label></div><div class="config-switch-grid">${switchField("cfgCliSaldoAnalise","Permitir análise de nova venda com saldo ativo",x.vendaComSaldoAtivo?.permitirAnalise===true,"A venda não é liberada automaticamente; segue para Supervisor/Gerente.")}${switchField("cfgCliScore","Calcular score automaticamente",s.ativo!==false,"Mantém o indicador de qualidade do relacionamento.")}</div><div class="config-note"><span class="material-symbols-rounded">done_all</span><div><strong>Renovação sem carência</strong><p>Cliente quitado e sem pendências pode comprar novamente imediatamente.</p></div></div></section>${saveBar("cfgCliSalvar","Salvar clientes")}</form>`;}
+
+  function renderLeads(c){const box=document.getElementById(BOXES.leads);if(!box)return;const l=c.leads||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesLeads(event)"><section class="config-block"><div class="config-block-head"><div><h3>Leads</h3><p>Status e automações do funil comercial.</p></div><button class="secondary-btn" type="button" onclick="adicionarStatusConfiguracao('leads')"><span class="material-symbols-rounded">add</span>Status</button></div><div id="cfgStatusLeads">${(l.status||[]).map(i=>statusRow(i,"leads")).join("")}</div><div class="config-switch-grid">${switchField("cfgLeadAuto","Ao abrir Novo, mudar para Em atendimento",l.abrirNovoMudaParaAtendimento!==false,"Registra o início real do atendimento.")}${switchField("cfgLeadCriar","Permitir criação de leads",c.regrasOperacionais?.leadPermiteCriacao!==false,"Respeita as permissões do cargo e do usuário.")}</div><div class="config-note"><span class="material-symbols-rounded">account_tree</span><div><strong>Redistribuição protegida</strong><p>Supervisor redistribui apenas leads não atendidos dentro da própria equipe; mudança de equipe depende de Gerente ou Master Local.</p></div></div></section>${saveBar("cfgLeadSalvar","Salvar leads")}</form>`;}
+
+  function ensureMovementMarkup(){const box=document.getElementById(BOXES.movimentacoes);if(!box)return;box.innerHTML=`<div class="config-block-head"><div><h3>Movimentações operacionais</h3><p>Categorias usadas em ingressos, gastos e retiradas dos caixas. Este módulo permanece separado do Controle Financeiro Empresarial.</p></div><button class="primary-btn" type="button" onclick="abrirNovaCategoriaMovimentacao()"><span class="material-symbols-rounded">add</span>Nova categoria</button></div><div class="config-catalog-grid"><section class="config-block"><h3>Ingressos</h3><div id="listaCategoriasIngressos" class="list"></div></section><section class="config-block"><h3>Gastos</h3><div id="listaCategoriasDespesas" class="list"></div></section><section class="config-block"><h3>Retiradas</h3><div id="listaCategoriasRetiradas" class="list"></div></section></div>`;global.renderCategoriasMovimentacaoMasterLocal?.();}
+
+  function renderFinanceiro(c){const box=document.getElementById(BOXES.financeiro);if(!box)return;const f=c.financeiro||{},o=f.orcamento||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesFinanceiras(event)"><section class="config-block"><div class="config-block-head"><div><h3>Controle Financeiro Empresarial</h3><p>Políticas do financeiro independente dos caixas operacionais.</p></div></div><div class="config-form-grid"><label>Próximo vencimento<input id="cfgFinNear" type="number" min="1" max="60" value="${num(f.proximoVencimentoDias,7)}"><small>dias antes</small></label><label>1º alerta do orçamento<input id="cfgFinBudget1" type="number" min="1" value="${num(o.alertaPercentual1,80)}"><small>%</small></label><label>2º alerta do orçamento<input id="cfgFinBudget2" type="number" min="1" value="${num(o.alertaPercentual2,100)}"><small>%</small></label></div><div class="config-switch-grid">${switchField("cfgFinCentro","Habilitar centro de custo",f.centroCustoAtivo===true,"Categoria responde o que foi gasto; centro de custo, qual área consumiu.")}${switchField("cfgFinComp","Comprovante obrigatório na baixa",f.comprovantePagamentoObrigatorio===true,"Exige evidência antes de concluir o pagamento.")}${switchField("cfgFinRetro","Exigir aprovação em baixa retroativa",f.baixaRetroativaExigeAprovacao===true,"Pagamento com data anterior a hoje entra em Aprovações.")}${switchField("cfgFinBudget","Habilitar orçamento por categoria/centro",o.ativo===true,"Alertas não bloqueiam lançamentos mesmo ao ultrapassar o limite.")}${switchField("cfgFinDefinir","Permitir categoria A definir",f.categoriaADefinirAtiva!==false,"Disponível para operadores sem permissão de criar categoria.")}</div></section><section class="config-block"><div class="config-block-head"><div><h3>Formas de pagamento</h3><p>PIX, dinheiro, boleto, cartão e cheque vêm ativos por padrão. Novas formas podem ser adicionadas sem apagar o histórico.</p></div><button class="secondary-btn" type="button" onclick="adicionarFormaPagamentoConfig()"><span class="material-symbols-rounded">add</span>Forma</button></div><div id="cfgPaymentMethods">${(f.formasPagamento||[]).map(paymentRow).join("")}</div></section>${saveBar("cfgFinSalvar","Salvar financeiro")}</form>`;}
+
+  function renderChat(c){const box=document.getElementById(BOXES.chat);if(!box)return;const x=c.chat||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesChat(event)"><section class="config-block"><h3>Chat interno</h3><div class="config-form-grid"><label>Retenção temporária padrão<input id="cfgChatHours" type="number" min="1" max="720" value="${num(x.historicoTemporarioHorasPadrao,24)}"><small>horas</small></label><label>Exclusão de mensagem<select id="cfgChatDelete"><option value="NAO_PERMITIR" ${x.modoExclusao==="NAO_PERMITIR"?"selected":""}>Não permitir</option><option value="APAGAR_PARA_MIM" ${x.modoExclusao==="APAGAR_PARA_MIM"?"selected":""}>Apagar para mim</option><option value="APAGAR_PARA_TODOS" ${x.modoExclusao==="APAGAR_PARA_TODOS"?"selected":""}>Apagar para todos</option></select></label></div><div class="config-switch-grid">${switchField("cfgChatSeparate","Chat separado do sino geral",x.separarDoSinoGeral!==false,"O contador do chat representa conversas não lidas.")}${switchField("cfgChatRead","Marcar conversa como lida ao abrir",x.marcarConversaLidaAoAbrir!==false,"Atualiza o badge imediatamente.")}</div><div class="config-note"><span class="material-symbols-rounded">shield_person</span><div><strong>Hierarquia aplicada</strong><p>Vendedor conversa dentro da hierarquia permitida; Supervisor atua na própria equipe; Gerente/Master podem criar grupos do tenant.</p></div></div></section>${saveBar("cfgChatSalvar","Salvar chat")}</form>`;}
+
+  function renderNotifications(c){const box=document.getElementById(BOXES.notificacoes);if(!box)return;const n=c.notificacoes||{},f=c.financeiro?.notificacoes||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesNotificacoes(event)"><section class="config-block"><h3>Central de notificações</h3><div class="config-form-grid"><label>Retenção da lixeira<input id="cfgNotifTrash" type="number" min="1" max="365" value="${num(n.retencaoLixeiraDias,30)}"><small>dias</small></label></div><div class="config-switch-grid">${switchField("cfgNotifSound","Som padrão ativo",n.somPadraoAtivo!==false,"Cada usuário pode silenciar o som sem alterar os tipos recebidos.")}${switchField("cfgNotifOutside","Fechar ao clicar fora",n.fecharAoClicarFora!==false,"Na web também fecha pela tecla Esc.")}${switchField("cfgNotifNearCreator","Próximo vencimento → criador",f.proximoVencimentoCriador!==false,"Controle Financeiro Empresarial.")}${switchField("cfgNotifNearResp","Próximo vencimento → responsável",f.proximoVencimentoResponsavel!==false,"Controle Financeiro Empresarial.")}${switchField("cfgNotifTodayMgmt","Vence hoje → gerência",f.venceHojeGerencia!==false,"Alerta Gerente e perfis definidos.")}</div></section>${saveBar("cfgNotifSalvar","Salvar notificações")}</form>`;}
+
+  function renderSecurity(c){const box=document.getElementById(BOXES.seguranca);if(!box)return;const s=c.seguranca||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesSeguranca(event)"><section class="config-block"><div class="config-block-head"><div><h3>Sessão e segurança</h3><p>Políticas de autenticação aplicadas ao tenant.</p></div></div><div class="config-form-grid"><label>Inatividade<input id="cfgSecIdle" type="number" min="5" max="720" value="${num(s.sessaoInatividadeMinutos,15)}"><small>minutos</small></label><label>Tentativas inválidas<input id="cfgSecTries" type="number" min="1" max="20" value="${num(s.maxTentativasLogin,5)}"></label></div><div class="config-switch-grid">${switchField("cfgSecSingle","Uma única sessão por usuário",s.sessaoUnica!==false,"Segundo login é negado enquanto a sessão anterior estiver válida.")}</div><div class="config-note"><span class="material-symbols-rounded">key</span><div><strong>Recuperação de senha protegida</strong><p>Não existe recuperação autônoma por e-mail: um superior autorizado redefine a senha e as sessões ativas são invalidadas.</p></div></div></section>${saveBar("cfgSecSalvar","Salvar segurança")}</form>`;}
+
+  function renderIntegrations(c){const box=document.getElementById(BOXES.integracoes);if(!box)return;box.innerHTML=`<section class="config-block"><div class="config-block-head"><div><h3>Integrações</h3><p>Ponto central para conectores externos do tenant.</p></div></div><div class="config-note"><span class="material-symbols-rounded">hub</span><div><strong>Nenhuma integração externa habilitada nesta homologação</strong><p>O módulo está separado e preparado para futuros conectores. Nenhum dado é enviado a terceiros por esta tela.</p></div></div></section>`;}
+
+  function collectStatus(id){return [...document.querySelectorAll(`#${id} .config-status-row`)].map(row=>({chave:row.querySelector("[data-status-chave]")?.value||"",nome:row.querySelector("[data-status-nome]")?.value||"",cor:row.querySelector("[data-status-cor]")?.value||"#64748b",ativo:row.querySelector("[data-status-ativo]")?.checked!==false}));}
+  function collectPayments(){return [...document.querySelectorAll("#cfgPaymentMethods [data-payment-row]")].map(row=>({chave:row.querySelector("[data-payment-key]")?.value||"",nome:row.querySelector("[data-payment-name]")?.value||"",ativo:row.querySelector("[data-payment-active]")?.checked!==false}));}
+
+  global.adicionarStatusConfiguracao=function(grupo){const id=grupo==="leads"?"cfgStatusLeads":"cfgStatusClientes",dest=document.getElementById(id);if(!dest)return;dest.insertAdjacentHTML("beforeend",statusRow({chave:"NOVO_STATUS",nome:"Novo status",cor:"#64748b",ativo:true},grupo));dest.lastElementChild?.querySelector("[data-status-nome]")?.focus();};
+  global.removerStatusConfiguracao=function(btn){const row=btn?.closest(".config-status-row"),parent=row?.parentElement;if(!row||!parent)return;if(parent.children.length<=1)return avisar("Mantenha ao menos um status.");row.remove();};
+  global.adicionarFormaPagamentoConfig=function(){const d=document.getElementById("cfgPaymentMethods");if(!d)return;d.insertAdjacentHTML("beforeend",paymentRow({chave:"NOVA_FORMA",nome:"Nova forma",ativo:true}));};
+  global.removerFormaPagamentoConfig=function(btn){const row=btn?.closest("[data-payment-row]");if(row)row.remove();};
+
+  global.salvarConfiguracoesEmpresaGeral=async function(e){e?.preventDefault?.();try{const c=await savePatch({empresa:{...configuracaoAtual.empresa,nomeExibicao:document.getElementById("cfgEmpresaNome")?.value||"",fusoHorario:document.getElementById("cfgEmpresaFuso")?.value||"America/Sao_Paulo"}},"cfgEmpresaSalvar","Empresa atualizada.");renderEmpresa(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  global.salvarConfiguracoesDashboard=async function(e){e?.preventDefault?.();try{const c=await savePatch({dashboard:{...(configuracaoAtual.dashboard||{}),periodoPadrao:document.getElementById("cfgDashPeriodo")?.value||"MES_ATUAL",insightsAtivos:document.getElementById("cfgDashInsights")?.checked!==false,cardsClicaveis:true},relatorios:{...configuracaoAtual.relatorios,formatoPadrao:document.getElementById("cfgRelFormato")?.value||"PDF",comparativoPeriodo:document.getElementById("cfgDashComparativo")?.checked!==false}},"cfgDashSalvar","Dashboard atualizado.");renderDashboard(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  global.salvarConfiguracoesOperacionais=async function(e){e?.preventDefault?.();try{const dias=[...document.querySelectorAll("[data-cfg-day]:checked")].map(i=>Number(i.value));const c=await savePatch({operacao:{...configuracaoAtual.operacao,diasTrabalho:dias,horarioInicio:document.getElementById("cfgOpInicio")?.value,horarioFim:document.getElementById("cfgOpFim")?.value},regrasOperacionais:{...configuracaoAtual.regrasOperacionais,vendaExigeCaixaAberto:document.getElementById("cfgOpCaixa")?.checked===true,vendaExigeCadastroCompleto:document.getElementById("cfgOpCadastro")?.checked===true,vendaExigeClienteSemVendaAtiva:document.getElementById("cfgOpSaldo")?.checked===true}},"cfgOpSalvar","Operação e vendas atualizadas.");renderOperacional(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  global.salvarConfiguracoesClientes=async function(e){e?.preventDefault?.();try{const c=await savePatch({clientes:{...configuracaoAtual.clientes,status:collectStatus("cfgStatusClientes"),atraso:{amareloDias:document.getElementById("cfgCliAmarelo")?.value,laranjaDias:document.getElementById("cfgCliLaranja")?.value,vermelhoDias:document.getElementById("cfgCliVermelho")?.value,inadimplenteDias:document.getElementById("cfgCliInad")?.value},duplicidade:{cadastro:document.getElementById("cfgCliDupCadastro")?.value,venda:document.getElementById("cfgCliDupVenda")?.value},vendaComSaldoAtivo:{permitirAnalise:document.getElementById("cfgCliSaldoAnalise")?.checked===true},score:{...configuracaoAtual.clientes.score,ativo:document.getElementById("cfgCliScore")?.checked!==false}}},"cfgCliSalvar","Clientes atualizados.");renderClientes(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  global.salvarConfiguracoesLeads=async function(e){e?.preventDefault?.();try{const c=await savePatch({leads:{...configuracaoAtual.leads,status:collectStatus("cfgStatusLeads"),abrirNovoMudaParaAtendimento:document.getElementById("cfgLeadAuto")?.checked!==false},regrasOperacionais:{...configuracaoAtual.regrasOperacionais,leadPermiteCriacao:document.getElementById("cfgLeadCriar")?.checked!==false}},"cfgLeadSalvar","Leads atualizados.");renderLeads(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  global.salvarConfiguracoesFinanceiras=async function(e){e?.preventDefault?.();try{const c=await savePatch({financeiro:{...configuracaoAtual.financeiro,proximoVencimentoDias:document.getElementById("cfgFinNear")?.value,centroCustoAtivo:document.getElementById("cfgFinCentro")?.checked===true,comprovantePagamentoObrigatorio:document.getElementById("cfgFinComp")?.checked===true,baixaRetroativaExigeAprovacao:document.getElementById("cfgFinRetro")?.checked===true,categoriaADefinirAtiva:document.getElementById("cfgFinDefinir")?.checked!==false,formasPagamento:collectPayments(),orcamento:{...configuracaoAtual.financeiro.orcamento,ativo:document.getElementById("cfgFinBudget")?.checked===true,alertaPercentual1:document.getElementById("cfgFinBudget1")?.value,alertaPercentual2:document.getElementById("cfgFinBudget2")?.value,bloquearAoUltrapassar:false}}},"cfgFinSalvar","Financeiro atualizado.");renderFinanceiro(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  global.salvarConfiguracoesChat=async function(e){e?.preventDefault?.();try{const c=await savePatch({chat:{...configuracaoAtual.chat,historicoTemporarioHorasPadrao:document.getElementById("cfgChatHours")?.value,modoExclusao:document.getElementById("cfgChatDelete")?.value,separarDoSinoGeral:document.getElementById("cfgChatSeparate")?.checked!==false,marcarConversaLidaAoAbrir:document.getElementById("cfgChatRead")?.checked!==false}},"cfgChatSalvar","Chat atualizado.");renderChat(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  global.salvarConfiguracoesNotificacoes=async function(e){e?.preventDefault?.();try{const c=await savePatch({notificacoes:{...configuracaoAtual.notificacoes,retencaoLixeiraDias:document.getElementById("cfgNotifTrash")?.value,somPadraoAtivo:document.getElementById("cfgNotifSound")?.checked!==false,fecharAoClicarFora:document.getElementById("cfgNotifOutside")?.checked!==false,usuarioEscolheTipos:false},financeiro:{...configuracaoAtual.financeiro,notificacoes:{...configuracaoAtual.financeiro.notificacoes,proximoVencimentoCriador:document.getElementById("cfgNotifNearCreator")?.checked!==false,proximoVencimentoResponsavel:document.getElementById("cfgNotifNearResp")?.checked!==false,venceHojeGerencia:document.getElementById("cfgNotifTodayMgmt")?.checked!==false}}},"cfgNotifSalvar","Notificações atualizadas.");renderNotifications(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  global.salvarConfiguracoesSeguranca=async function(e){e?.preventDefault?.();try{const c=await savePatch({seguranca:{...configuracaoAtual.seguranca,sessaoInatividadeMinutos:document.getElementById("cfgSecIdle")?.value,maxTentativasLogin:document.getElementById("cfgSecTries")?.value,sessaoUnica:document.getElementById("cfgSecSingle")?.checked!==false,recuperacaoSenhaViaSuperior:true,trocaSenhaEncerraSessoes:true},operacao:{...configuracaoAtual.operacao,sessaoMinutos:document.getElementById("cfgSecIdle")?.value}},"cfgSecSalvar","Segurança atualizada.");renderSecurity(c);}catch(err){console.error(err);avisar(err.message||"Não foi possível salvar.");}};
+  // Compatibilidade com chamadas anteriores do módulo.
+  global.salvarConfiguracoesRelatorios=global.salvarConfiguracoesDashboard;
+
+  function renderAll(c){renderEmpresa(c);renderDashboard(c);renderOperacional(c);renderClientes(c);renderLeads(c);ensureMovementMarkup();renderFinanceiro(c);renderChat(c);renderNotifications(c);renderSecurity(c);renderIntegrations(c);}
+
+  async function openTab(tab="empresa"){
+    const aliases={catalogos:"movimentacoes",regras:"operacional",estrutura:"usuariosPermissoes",permissoes:"usuariosPermissoes",relatorios:"dashboard"};
+    abaAtual=aliases[tab]||tab;if(!BOXES[abaAtual])abaAtual="empresa";
+    global.abrirModuloNavegacaoIntegro?.("configuracoes",null);installNav();showOnly(abaAtual);
+    try{const c=await load();renderAll(c);showOnly(abaAtual);if(abaAtual==="movimentacoes")global.renderCategoriasMovimentacaoMasterLocal?.();if(abaAtual==="usuariosPermissoes")setTimeout(()=>global.IntegroUsuariosPermissoes?.abrir?.("usuarios"),0);}catch(err){console.error("[ÍNTEGRO Config V27.2]",err);const box=document.getElementById(BOXES[abaAtual]);if(box)box.innerHTML=`<div class="config-note"><span class="material-symbols-rounded">error</span><div><strong>Configurações indisponíveis</strong><p>${esc(err.message||"Tente novamente.")}</p></div></div>`;}
   }
 
-  global.alternarMenuEstruturaConfiguracoes = function (evento, botao) {
-    evento?.stopPropagation?.();
-    const menu = botao?.parentElement?.querySelector("[data-config-structure-menu]");
-    if (!menu) return;
-    const abrir = menu.hidden;
-    document.querySelectorAll("[data-config-structure-menu]").forEach(item => { item.hidden = true; });
-    menu.hidden = !abrir;
-    botao.setAttribute("aria-expanded", String(abrir));
-  };
+  global.abrirPaginaConfiguracaoIntegro=openTab;
+  global.abrirEstruturaConfiguracao=function(modulo){global.IntegroUsuariosPermissoes?.abrir?.(["usuarios","equipes","cargos"].includes(modulo)?modulo:"usuarios");};
+  const abrirAnterior=global.abrirAbaConfiguracoes;
+  global.abrirAbaConfiguracoes=function(aba){const aliases={catalogos:"movimentacoes",regras:"operacional",estrutura:"usuariosPermissoes",permissoes:"usuariosPermissoes",relatorios:"dashboard"};const next=aliases[aba]||aba;if(BOXES[next]){abaAtual=next;installNav();showOnly(next);if(next==="movimentacoes")global.renderCategoriasMovimentacaoMasterLocal?.();return;}if(typeof abrirAnterior==="function")return abrirAnterior(aba);};
+  global.renderConfiguracoesMasterLocal=async function(){installNav();try{const c=await load();renderAll(c);showOnly(abaAtual);}catch(err){console.error(err);}};
 
-  global.abrirPaginaConfiguracaoIntegro = async function (aba = "estrutura") {
-    document.querySelectorAll("[data-config-structure-menu]").forEach(menu => { menu.hidden = true; });
-    global.abrirModuloNavegacaoIntegro?.("configuracoes", null);
-    global.abrirAbaConfiguracoes?.(aba);
-    if (["empresa", "estrutura"].includes(aba)) await global.renderConfiguracoesMasterLocal?.();
-    instalarNavegacaoConfiguracoes("configuracoes", aba);
-  };
-
-  async function abrirModuloEstrutura(modulo) {
-    const destino = modulo === "unidades" ? "equipes" : modulo;
-    if (!MODULOS_ESTRUTURA.some(item => item.id === destino)) return;
-
-    if (typeof global.abrirModuloNavegacaoIntegro === "function") {
-      global.abrirModuloNavegacaoIntegro(destino, null, "configuracoes");
-    } else if (typeof global.trocarTela === "function") {
-      global.trocarTela(destino);
-    }
-    instalarNavegacaoConfiguracoes(destino, "estrutura");
-
-    try {
-      if (destino === "usuarios" && typeof global.carregarUsuarios === "function") await global.carregarUsuarios();
-      if (destino === "equipes" && typeof global.carregarEquipes === "function") await global.carregarEquipes();
-      if (destino === "cargos" && typeof global.carregarCargos === "function") await global.carregarCargos();
-    } catch (erro) {
-      console.error(`Erro ao carregar ${destino}:`, erro);
-      avisar("Nao foi possivel atualizar os dados de Estrutura.");
-    }
-
-    global.renderUsuarios?.();
-    global.renderEquipes?.();
-    global.renderCargos?.();
-  }
-
-  function renderEstrutura() {
-    const box = document.getElementById("configEstruturaBox");
-    if (!box) return;
-    const totais = {
-      usuarios: (global.State?.getUsuarios?.() || []).length,
-      equipes: (global.State?.getEquipes?.() || []).length,
-      cargos: (global.State?.getCargos?.() || []).length
-    };
-    box.innerHTML = `
-
-      <div class="config-resumo-grid">
-        ${MODULOS_ESTRUTURA.map(item => `<button class="config-link-card" type="button" onclick="abrirEstruturaConfiguracao('${item.id}')"><span class="material-symbols-rounded">${item.icone}</span><span><small>${item.nome.toUpperCase()}</small><strong>${totais[item.id]}</strong><em>${item.descricao}</em></span><span class="material-symbols-rounded config-link-arrow">arrow_forward</span></button>`).join("")}
-      </div>
-      <div class="config-note"><span class="material-symbols-rounded">info</span><div><strong>Ordem recomendada</strong><p>Cadastre cargos e permissoes, crie as equipes e depois convide os usuarios vinculando cargo e equipes permitidas.</p></div></div>`;
-  }
-
-  function renderCatalogos() {
-    global.renderCategoriasMovimentacaoMasterLocal?.();
-  }
-
-
-  function diasTrabalhoHtml(dias = []) {
-    const nomes = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-    return nomes.map((nome, dia) => `<label class="config-check config-day-check"><input data-config-dia type="checkbox" value="${dia}" ${dias.includes(dia) ? "checked" : ""}>${nome}</label>`).join("");
-  }
-
-  function renderEmpresa(config) {
-    const box = document.getElementById("configEmpresaBox");
-    if (!box) return;
-    const empresa = config.empresa || {};
-    const operacao = config.operacao || {};
-    box.innerHTML = `<form class="config-company-form" onsubmit="salvarConfiguracoesEmpresaGeral(event)">
-      <section class="config-block"><div class="config-block-head"><div><h3>Identidade da empresa</h3><p>Informações usadas no painel, relatórios e documentos operacionais.</p></div></div><div class="config-form-grid">
-        <label>Nome de exibição<input id="configEmpresaNome" maxlength="120" value="${escapar(empresa.nomeExibicao || usuario().clientePlataformaNome || usuario().empresaNome || "")}" placeholder="Nome da empresa"></label>
-        <label>Fuso horário<select id="configEmpresaFuso"><option value="America/Sao_Paulo" ${empresa.fusoHorario === "America/Sao_Paulo" ? "selected" : ""}>Brasília / São Paulo</option><option value="America/Manaus" ${empresa.fusoHorario === "America/Manaus" ? "selected" : ""}>Manaus</option><option value="America/Cuiaba" ${empresa.fusoHorario === "America/Cuiaba" ? "selected" : ""}>Cuiabá</option><option value="America/Recife" ${empresa.fusoHorario === "America/Recife" ? "selected" : ""}>Recife</option></select></label>
-        <label>Moeda<input value="Real brasileiro (BRL)" disabled></label><label>Idioma<input value="Português (Brasil)" disabled></label>
-      </div></section>
-      <section class="config-block"><div class="config-block-head"><div><h3>Jornada operacional</h3><p>Define os dias, horários e expiração de sessão usados na operação.</p></div></div><div class="config-days-grid">${diasTrabalhoHtml(operacao.diasTrabalho || [])}</div><div class="config-form-grid">
-        <label>Início<input id="configHorarioInicio" type="time" value="${escapar(operacao.horarioInicio || "08:00")}"></label>
-        <label>Fim<input id="configHorarioFim" type="time" value="${escapar(operacao.horarioFim || "20:00")}"></label>
-        <label>Expiração da sessão<input id="configSessaoMinutos" type="number" min="10" max="720" value="${Number(operacao.sessaoMinutos || 30)}"><small>minutos</small></label>
-      </div></section>
-      <div class="config-save-bar"><span>As alterações são aplicadas apenas ao tenant atual.</span><button id="salvarConfigEmpresaBtn" class="primary-btn" type="submit"><span class="material-symbols-rounded">save</span>Salvar empresa</button></div>
-    </form>`;
-  }
-
-  function renderFinanceiro(config) {
-    const box = document.getElementById("configCatalogosBox");
-    if (!box) return;
-    const f = config.financeiro || {};
-    let ajustes = document.getElementById("configFinanceiroAjustes");
-    if (!ajustes) {
-      ajustes = document.createElement("form");
-      ajustes.id = "configFinanceiroAjustes";
-      ajustes.className = "config-block config-finance-rules";
-      ajustes.onsubmit = global.salvarConfiguracoesFinanceiras;
-      box.prepend(ajustes);
-    }
-    ajustes.innerHTML = `<div class="config-block-head"><div><h3>Políticas financeiras</h3><p>Regras para ingresso, comprovantes e correções em caixas ativos.</p></div></div><div class="config-switch-grid">
-      ${[["configFinAprovarIngresso","ingressoExigeAprovacao","Ingresso do vendedor exige aprovação"],["configFinObservacao","observacaoObrigatoria","Observação obrigatória em lançamentos"],["configFinComprovante","comprovanteObrigatorio","Comprovante obrigatório"],["configFinEditar","permitirEdicaoCaixaAberto","Permitir edição auditada em caixa aberto"],["configFinCancelar","permitirCancelamentoCaixaAberto","Permitir cancelamento auditado em caixa aberto"]].map(([id,chave,nome]) => `<label class="config-switch"><input id="${id}" type="checkbox" ${f[chave] ? "checked" : ""}><span><strong>${nome}</strong><small>Aplicado aos perfis autorizados e preservando auditoria.</small></span></label>`).join("")}
-      </div><div class="config-inline-actions"><button id="salvarConfigFinanceiroBtn" class="primary-btn" type="submit"><span class="material-symbols-rounded">save</span>Salvar políticas</button></div>`;
-    global.renderCategoriasMovimentacaoMasterLocal?.();
-  }
-
-  function renderRelatorios(config) {
-    const box = document.getElementById("configRelatoriosBox");
-    if (!box) return;
-    const r = config.relatorios || {};
-    const tipos = r.tipos || {};
-    const rotulos = { financeiro:"Financeiro", caixas:"Caixas", vendas:"Vendas", recebimentos:"Recebimentos", clientes:"Clientes", inadimplencia:"Inadimplência", leads:"Leads", auditoria:"Auditoria" };
-    box.innerHTML = `<form onsubmit="salvarConfiguracoesRelatorios(event)"><section class="config-block"><div class="config-block-head"><div><h3>Padrões de relatórios</h3><p>Defina a abertura inicial e os conjuntos disponíveis para exportação.</p></div></div><div class="config-form-grid">
-      <label>Período padrão<select id="configRelPeriodo"><option value="HOJE" ${r.periodoPadrao === "HOJE" ? "selected" : ""}>Hoje</option><option value="7_DIAS" ${r.periodoPadrao === "7_DIAS" ? "selected" : ""}>Últimos 7 dias</option><option value="MES_ATUAL" ${r.periodoPadrao === "MES_ATUAL" ? "selected" : ""}>Mês atual</option><option value="PERSONALIZADO" ${r.periodoPadrao === "PERSONALIZADO" ? "selected" : ""}>Personalizado</option></select></label>
-      <label>Formato padrão<select id="configRelFormato"><option value="CSV" ${r.formatoPadrao === "CSV" ? "selected" : ""}>CSV</option><option value="PDF" ${r.formatoPadrao === "PDF" ? "selected" : ""}>PDF</option></select></label>
-      <label class="config-check config-check-field"><input id="configRelCancelados" type="checkbox" ${r.incluirCancelados ? "checked" : ""}> Incluir cancelados por padrão</label>
-    </div></section><section class="config-block"><h3>Relatórios disponíveis</h3><div class="config-switch-grid">${Object.entries(rotulos).map(([chave,nome]) => `<label class="config-switch"><input data-config-relatorio="${chave}" type="checkbox" ${tipos[chave] !== false ? "checked" : ""}><span><strong>${nome}</strong><small>Disponível conforme a permissão do usuário.</small></span></label>`).join("")}</div></section><div class="config-save-bar"><span>Os filtros ainda respeitam tenant, equipe e vendedor.</span><button id="salvarConfigRelatoriosBtn" class="primary-btn" type="submit"><span class="material-symbols-rounded">save</span>Salvar relatórios</button></div></form>`;
-  }
-
-  async function salvarParcial(secao, dados, botaoId, mensagem) {
-    const botao = document.getElementById(botaoId);
-    try {
-      if (botao) botao.disabled = true;
-      configuracaoAtual = await global.IntegroConfiguracoesEmpresa.salvar(tenantId(), { ...configuracaoAtual, [secao]: { ...(configuracaoAtual?.[secao] || {}), ...dados } }, usuario());
-      global.IntegroDataRuntime?.invalidar?.("configuracoes_empresas");
-      await global.FirestoreService?.gravarLog?.("CONFIGURACOES_EMPRESA_ATUALIZADAS", { secao, versao: configuracaoAtual.versao });
-      avisar(mensagem);
-      return configuracaoAtual;
-    } finally {
-      if (botao?.isConnected) botao.disabled = false;
-    }
-  }
-
-  global.salvarConfiguracoesEmpresaGeral = async function(evento) {
-    evento?.preventDefault?.();
-    const botao = document.getElementById("salvarConfigEmpresaBtn");
-    try {
-      if (botao) botao.disabled = true;
-      const diasTrabalho = [...document.querySelectorAll("[data-config-dia]:checked")].map(input => Number(input.value));
-      const proximaConfiguracao = {
-        ...configuracaoAtual,
-        empresa: {
-          ...(configuracaoAtual?.empresa || {}),
-          nomeExibicao: document.getElementById("configEmpresaNome")?.value || "",
-          fusoHorario: document.getElementById("configEmpresaFuso")?.value || "America/Sao_Paulo"
-        },
-        operacao: {
-          ...(configuracaoAtual?.operacao || {}),
-          diasTrabalho,
-          horarioInicio: document.getElementById("configHorarioInicio")?.value,
-          horarioFim: document.getElementById("configHorarioFim")?.value,
-          sessaoMinutos: document.getElementById("configSessaoMinutos")?.value
-        }
-      };
-      configuracaoAtual = await global.IntegroConfiguracoesEmpresa.salvar(tenantId(), proximaConfiguracao, usuario());
-      global.IntegroDataRuntime?.invalidar?.("configuracoes_empresas");
-      await global.FirestoreService?.gravarLog?.("CONFIGURACOES_EMPRESA_ATUALIZADAS", { secoes: ["empresa", "operacao"], versao: configuracaoAtual.versao });
-      avisar("Configurações da empresa salvas.");
-      renderEmpresa(configuracaoAtual);
-    } catch (erro) {
-      console.error(erro);
-      avisar(erro.message || "Não foi possível salvar a empresa.");
-    } finally {
-      if (botao?.isConnected) botao.disabled = false;
-    }
-  };
-
-  global.salvarConfiguracoesFinanceiras = async function(evento) {
-    evento?.preventDefault?.();
-    try {
-      const config = await salvarParcial("financeiro", { ingressoExigeAprovacao: document.getElementById("configFinAprovarIngresso")?.checked === true, observacaoObrigatoria: document.getElementById("configFinObservacao")?.checked === true, comprovanteObrigatorio: document.getElementById("configFinComprovante")?.checked === true, permitirEdicaoCaixaAberto: document.getElementById("configFinEditar")?.checked === true, permitirCancelamentoCaixaAberto: document.getElementById("configFinCancelar")?.checked === true }, "salvarConfigFinanceiroBtn", "Políticas financeiras salvas.");
-      renderFinanceiro(config);
-    } catch (erro) { console.error(erro); avisar(erro.message || "Não foi possível salvar as políticas financeiras."); }
-  };
-
-  global.salvarConfiguracoesRelatorios = async function(evento) {
-    evento?.preventDefault?.();
-    try {
-      const tipos = {};
-      document.querySelectorAll("[data-config-relatorio]").forEach(input => tipos[input.dataset.configRelatorio] = input.checked === true);
-      const config = await salvarParcial("relatorios", { periodoPadrao: document.getElementById("configRelPeriodo")?.value, formatoPadrao: document.getElementById("configRelFormato")?.value, incluirCancelados: document.getElementById("configRelCancelados")?.checked === true, tipos }, "salvarConfigRelatoriosBtn", "Configurações de relatórios salvas.");
-      renderRelatorios(config);
-    } catch (erro) { console.error(erro); avisar(erro.message || "Não foi possível salvar os relatórios."); }
-  };
-
-  function linhaStatus(item, grupo, indice) {
-    return `<div class="config-status-row" data-status-grupo="${grupo}">
-      <input data-status-chave value="${escapar(item.chave)}" aria-label="Chave do status">
-      <input data-status-nome value="${escapar(item.nome)}" aria-label="Nome do status">
-      <input data-status-cor type="color" value="${escapar(item.cor)}" aria-label="Cor do status">
-      <label class="config-check"><input data-status-ativo type="checkbox" ${item.ativo !== false ? "checked" : ""}> Ativo</label>
-      <button class="icon-btn" type="button" onclick="removerStatusConfiguracao(this)" title="Remover status"><span class="material-symbols-rounded">delete</span></button>
-    </div>`;
-  }
-
-  function renderRegras(config) {
-    const box = document.getElementById("configRegrasBox");
-    if (!box) return;
-    const r = config.regrasOperacionais;
-    const s = config.clientes.score;
-    const a = config.clientes.atraso;
-    box.innerHTML = `
-      <form id="formConfiguracoesOperacionais" onsubmit="salvarConfiguracoesOperacionais(event)">
-        <section class="config-block"><h3>Regras da operacao</h3><div class="config-switch-grid">
-          ${[
-            ["vendaExigeCaixaAberto","Venda exige caixa aberto"],
-            ["vendaExigeCadastroCompleto","Venda exige cadastro completo"],
-            ["vendaExigeClienteSemVendaAtiva","Bloquear nova venda ativa duplicada"],
-            ["leadPermiteCriacao","Permitir criacao de leads"],
-            ["leadExigeAutorizacaoComHistorico","Exigir autorizacao para redistribuir cliente com historico"],
-            ["exclusaoClienteComHistorico","Permitir exclusao de cliente com historico"]
-          ].map(([chave,nome])=>`<label class="config-switch"><input id="regra_${chave}" type="checkbox" ${r[chave] ? "checked" : ""}><span><strong>${nome}</strong><small>${chave === "exclusaoClienteComHistorico" ? "Recomendado manter desativado" : "Aplica-se aos perfis abaixo do Master Local"}</small></span></label>`).join("")}
-        </div></section>
-
-        <section class="config-block"><div class="config-block-head"><h3>Status de clientes</h3><button class="secondary-btn" type="button" onclick="adicionarStatusConfiguracao('clientes')"><span class="material-symbols-rounded">add</span>Adicionar</button></div><div id="configStatusClientes">${config.clientes.status.map((item,i)=>linhaStatus(item,"clientes",i)).join("")}</div></section>
-        <section class="config-block"><div class="config-block-head"><h3>Status de leads</h3><button class="secondary-btn" type="button" onclick="adicionarStatusConfiguracao('leads')"><span class="material-symbols-rounded">add</span>Adicionar</button></div><div id="configStatusLeads">${config.leads.status.map((item,i)=>linhaStatus(item,"leads",i)).join("")}</div></section>
-
-        <section class="config-block"><h3>Score do cliente</h3><div class="config-form-grid">
-          <label>Venda quitada<input id="scorePontosVendaQuitada" type="number" min="-100" max="100" value="${s.pontosVendaQuitada}"></label>
-          <label>Pagamento em dia<input id="scorePontosPagamentoEmDia" type="number" min="-100" max="100" value="${s.pontosPagamentoEmDia}"></label>
-          <label>Dia em atraso<input id="scorePontosAtraso" type="number" min="-100" max="100" value="${s.pontosAtraso}"></label>
-          <label>Score minimo<input id="scoreMinimo" type="number" value="${s.minimo}"></label>
-          <label>Score maximo<input id="scoreMaximo" type="number" value="${s.maximo}"></label>
-          <label class="config-check config-check-field"><input id="scoreAtivo" type="checkbox" ${s.ativo ? "checked" : ""}> Calcular score automaticamente</label>
-        </div></section>
-
-        <section class="config-block"><h3>Atraso e inadimplencia</h3><div class="config-form-grid">
-          <label>Amarelo a partir de<input id="atrasoAmareloDias" type="number" min="1" value="${a.amareloDias}"><small>dias</small></label>
-          <label>Laranja a partir de<input id="atrasoLaranjaDias" type="number" min="1" value="${a.laranjaDias}"><small>dias</small></label>
-          <label>Vermelho a partir de<input id="atrasoVermelhoDias" type="number" min="1" value="${a.vermelhoDias}"><small>dias</small></label>
-          <label>Considerar inadimplente<input id="inadimplenteDias" type="number" min="1" value="${a.inadimplenteDias}"><small>dias</small></label>
-        </div></section>
-        <div class="config-save-bar"><span id="configSalvaInfo">Alteracoes geram auditoria por usuario e data.</span><button id="salvarConfiguracoesEmpresaBtn" class="primary-btn" type="submit"><span class="material-symbols-rounded">save</span>Salvar configuracoes</button></div>
-      </form>`;
-  }
-
-  function coletarStatus(id) {
-    return [...document.querySelectorAll(`#${id} .config-status-row`)].map(row => ({
-      chave: row.querySelector("[data-status-chave]")?.value || "",
-      nome: row.querySelector("[data-status-nome]")?.value || "",
-      cor: row.querySelector("[data-status-cor]")?.value || "#64748b",
-      ativo: row.querySelector("[data-status-ativo]")?.checked !== false
-    }));
-  }
-
-  global.adicionarStatusConfiguracao = function (grupo) {
-    const destino = document.getElementById(grupo === "leads" ? "configStatusLeads" : "configStatusClientes");
-    if (!destino) return;
-    destino.insertAdjacentHTML("beforeend", linhaStatus({ chave:"NOVO_STATUS", nome:"Novo status", cor:"#64748b", ativo:true }, grupo, destino.children.length));
-    destino.lastElementChild?.querySelector("[data-status-nome]")?.focus();
-  };
-
-  global.removerStatusConfiguracao = function (botao) {
-    const linha = botao?.closest(".config-status-row");
-    const grupo = linha?.parentElement;
-    if (!linha || !grupo || grupo.children.length <= 1) return avisar("Mantenha ao menos um status configurado.");
-    linha.remove();
-  };
-
-  global.salvarConfiguracoesOperacionais = async function (evento) {
-    evento?.preventDefault?.();
-    const botao = document.getElementById("salvarConfiguracoesEmpresaBtn");
-    try {
-      if (botao) { botao.disabled = true; botao.innerHTML = '<span class="material-symbols-rounded">hourglass_top</span>Salvando...'; }
-      const regras = {};
-      Object.keys(configuracaoAtual.regrasOperacionais).forEach(chave => regras[chave] = document.getElementById(`regra_${chave}`)?.checked === true);
-      const entrada = {
-        ...configuracaoAtual,
-        regrasOperacionais: regras,
-        clientes: {
-          ...configuracaoAtual.clientes,
-          status: coletarStatus("configStatusClientes"),
-          score: {
-            ativo: document.getElementById("scoreAtivo")?.checked === true,
-            pontosVendaQuitada: document.getElementById("scorePontosVendaQuitada")?.value,
-            pontosPagamentoEmDia: document.getElementById("scorePontosPagamentoEmDia")?.value,
-            pontosAtraso: document.getElementById("scorePontosAtraso")?.value,
-            minimo: document.getElementById("scoreMinimo")?.value,
-            maximo: document.getElementById("scoreMaximo")?.value
-          },
-          atraso: {
-            amareloDias: document.getElementById("atrasoAmareloDias")?.value,
-            laranjaDias: document.getElementById("atrasoLaranjaDias")?.value,
-            vermelhoDias: document.getElementById("atrasoVermelhoDias")?.value,
-            inadimplenteDias: document.getElementById("inadimplenteDias")?.value
-          }
-        },
-        leads: { ...configuracaoAtual.leads, status: coletarStatus("configStatusLeads") }
-      };
-      configuracaoAtual = await global.IntegroConfiguracoesEmpresa.salvar(tenantId(), entrada, usuario());
-      await global.FirestoreService?.gravarLog?.("CONFIGURACOES_EMPRESA_ATUALIZADAS", { versao: configuracaoAtual.versao });
-      renderRegras(configuracaoAtual);
-      avisar("Configuracoes salvas e aplicadas a empresa.");
-    } catch (erro) {
-      console.error("Erro ao salvar configuracoes da empresa:", erro);
-      avisar(erro.message || "Nao foi possivel salvar as configuracoes.");
-    } finally {
-      if (botao?.isConnected) { botao.disabled = false; botao.innerHTML = '<span class="material-symbols-rounded">save</span>Salvar configuracoes'; }
-    }
-  };
-
-  global.abrirEstruturaConfiguracao = abrirModuloEstrutura;
-
-  global.renderConfiguracoesMasterLocal = async function () {
-    instalarNavegacaoConfiguracoes("configuracoes", "empresa");
-    renderEstrutura();
-    try {
-      const config = await carregarConfiguracoesEmpresaMasterLocal();
-      renderEmpresa(config);
-      renderFinanceiro(config);
-      renderRegras(config);
-      renderRelatorios(config);
-    } catch (erro) {
-      console.error("Erro ao carregar regras da empresa:", erro);
-      const regrasBox = document.getElementById("configRegrasBox");
-      if (regrasBox && !regrasBox.children.length) regrasBox.innerHTML = '<div class="config-note"><span class="material-symbols-rounded">error</span><div><strong>Regras indisponiveis</strong><p>Tente novamente sem interromper o acesso a Usuarios, Equipes e Cargos.</p></div></div>';
-    }
-  };
-
-  const abrirAnterior = global.abrirAbaConfiguracoes;
-  global.abrirAbaConfiguracoes = function (aba) {
-    if (typeof abrirAnterior === "function") abrirAnterior(aba);
-    ["empresa","estrutura","usuariosPermissoes","permissoes","catalogos","regras","relatorios"].forEach(nome => {
-      const box = document.getElementById(`config${nome.charAt(0).toUpperCase()}${nome.slice(1)}Box`);
-      const tab = document.getElementById(`tabConfig${nome.charAt(0).toUpperCase()}${nome.slice(1)}`);
-      if (box) box.style.display = nome === aba ? "block" : "none";
-      tab?.classList.toggle("active", nome === aba);
-    });
-    if (aba === "empresa") carregarConfiguracoesEmpresaMasterLocal().then(renderEmpresa).catch(erro => avisar(erro.message));
-    if (aba === "estrutura") renderEstrutura();
-    if (aba === "permissoes") setTimeout(() => global.renderPermissoesConfig?.(), 40);
-    if (aba === "catalogos") carregarConfiguracoesEmpresaMasterLocal().then(renderFinanceiro).catch(erro => avisar(erro.message));
-    if (aba === "regras") carregarConfiguracoesEmpresaMasterLocal().then(renderRegras).catch(erro => avisar(erro.message));
-    if (aba === "relatorios") carregarConfiguracoesEmpresaMasterLocal().then(renderRelatorios).catch(erro => avisar(erro.message));
-  };
-
-  function configuracoesEstaAtiva() {
-    const tela = document.getElementById("configuracoes");
-    if (!tela) return false;
-    return tela.classList.contains("active") || tela.style.display === "block";
-  }
-
-  function registrarInicializacaoConfiguracoes() {
-    const tela = document.getElementById("configuracoes");
-    if (!tela || tela.dataset.configInitRegistrado === "true") return;
-    tela.dataset.configInitRegistrado = "true";
-
-    let agendamento = 0;
-    const garantirConteudo = () => {
-      global.clearTimeout(agendamento);
-      agendamento = global.setTimeout(() => {
-        if (!configuracoesEstaAtiva()) return;
-        global.renderConfiguracoesMasterLocal?.();
-      }, 0);
-    };
-
-    document.querySelector('#sidebar > .menu-item[data-modulo="configuracoes"]')
-      ?.addEventListener("click", garantirConteudo, true);
-
-    new MutationObserver(garantirConteudo).observe(tela, {
-      attributes: true,
-      attributeFilter: ["class", "style"]
-    });
-
-    garantirConteudo();
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", registrarInicializacaoConfiguracoes, { once: true });
-  } else {
-    registrarInicializacaoConfiguracoes();
-  }
-
-  document.addEventListener("click", evento => {
-    if (!evento.target.closest?.(".config-module-dropdown")) {
-      document.querySelectorAll("[data-config-structure-menu]").forEach(menu => { menu.hidden = true; });
-      document.querySelectorAll(".config-module-dropdown > button").forEach(botao => botao.setAttribute("aria-expanded", "false"));
-    }
-  });
+  function init(){ensureBoxes();installNav();document.querySelector('#sidebar > .menu-item[data-modulo="configuracoes"]')?.addEventListener("click",()=>setTimeout(()=>global.renderConfiguracoesMasterLocal?.(),0),true);if(document.getElementById("configuracoes")?.classList.contains("active"))global.renderConfiguracoesMasterLocal?.();}
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
+  document.addEventListener("usuario-validado",()=>setTimeout(init,0));
 })(window);

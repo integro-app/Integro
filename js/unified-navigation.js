@@ -1,20 +1,20 @@
 (function (global) {
   "use strict";
+  if (global.__INTEGRO_UNIFIED_NAVIGATION_INSTALLED__ && global.IntegroNavegacaoUnificada) return;
+  global.__INTEGRO_UNIFIED_NAVIGATION_INSTALLED__ = true;
 
   /*
-   * v13 — a lateral exibe somente os dez módulos principais aprovados.
-   * As áreas complementares continuam registradas em SUBMODULOS e são
-   * abertas pelas barras horizontais internas de cada módulo.
+   * v26 - duas superfícies financeiras independentes dentro do ÍNTEGRO:
+   * - Financeiro: Controle Financeiro Empresarial (contas, agenda, fornecedores e recursos da empresa).
+   * - Movimentações/Aprovações: Financeiro Operacional ligado exclusivamente a caixas/ledger.
    */
-  // Rótulos preservados para compatibilidade documental: Cobranças e vendas; Configurações da empresa.
-  // Regra histórica de rótulo: perfil(usuario) !== "vendedor" ? "Movimentações" : "Movimentações".
   const CATALOGO = Object.freeze([
     { id: "operacao", rotulo: "Operação", icone: "business_center", permissoes: ["operacao.ver", "cobrancas.ver", "vendas.ver"], abrir: "operacao" },
     { id: "dashboard", rotulo: "Dashboard", icone: "dashboard", permissao: "dashboard.ver", abrir: "tela" },
     { id: "chatInterno", rotulo: "Chat", icone: "forum", permissao: "chat_interno.ver", abrir: "chat" },
     { id: "clientes", rotulo: "Clientes", icone: "groups", permissao: "clientes.ver", abrir: "clientes" },
     { id: "movimentacoes", rotulo: "Movimentações", icone: "sync_alt", permissoes: ["financeiro.movimentacoes", "solicitacoes.criar", "caixa.ver_proprio"], abrir: "tela" },
-    { id: "financeiro", rotulo: "Financeiro", icone: "payments", permissao: "financeiro.ver", abrir: "tela" },
+    { id: "financeiro", rotulo: "Financeiro", icone: "payments", permissoes: ["controleFinanceiro.ver", "financeiro.ver"], abrir: "tela" },
     { id: "auditoria", rotulo: "Auditoria", icone: "manage_search", permissao: "logs.ver", abrir: "tela" },
     { id: "notificacoes", rotulo: "Notificações", icone: "notifications", sempre: true, abrir: "notificacoes" },
     { id: "configuracoes", rotulo: "Configurações", icone: "settings", permissao: "configuracoes.ver", abrir: "configuracoes" },
@@ -27,7 +27,7 @@
     { id: "captacao", pai: "operacao", rotulo: "Leads e captação", icone: "campaign", permissoes: ["indicacoes.ver_proprio", "indicacoes.ver"], abrir: "tela" },
     { id: "supervisao", pai: "operacao", rotulo: "Gestão de equipes", icone: "supervisor_account", permissao: "equipe.ver", abrir: "tela" },
     { id: "caixas", pai: "operacao", rotulo: "Caixas", icone: "account_balance_wallet", permissao: "caixas.ver", abrir: "tela" },
-    { id: "relatorios", pai: "financeiro", rotulo: "Relatórios", icone: "monitoring", permissao: "relatorios.ver", abrir: "financeiro-relatorios" }
+    { id: "relatorios", pai: "financeiro", rotulo: "Relatórios", icone: "monitoring", permissoes: ["controleFinanceiro.ver", "relatorios.ver"], abrir: "financeiro-empresarial-relatorios" }
   ]);
 
   const MODULO_PAI = Object.freeze({
@@ -56,6 +56,10 @@
     return global.IntegroAcesso?.pode?.(usuario || {}, permissao, {}) === true;
   }
 
+  function permissoesControleFinanceiro(usuario) {
+    return usuario?.permissoes?.controleFinanceiro || usuario?.permissoesUsuario?.controleFinanceiro || usuario?.permissoesCargo?.controleFinanceiro || {};
+  }
+
   function permitido(usuario, item) {
     if (!item) return false;
     if (item.sempre) return true;
@@ -69,6 +73,11 @@
       if (perfilAtual === "master_local") return true;
       if (!["gerente", "financeiro", "administrativo", "supervisor", "auditor"].includes(perfilAtual)) return false;
       return ["financeiro.ver", "caixas.ver", "relatorios.ver", "logs.ver"].some(chave => pode(usuario, chave));
+    }
+    if (item.id === "financeiro" || item.id === "relatorios") {
+      if (["master_local", "financeiro"].includes(perfilAtual)) return true;
+      const permission = permissoesControleFinanceiro(usuario);
+      return permission.ver === true || pode(usuario, "controleFinanceiro.ver");
     }
     if (perfilAtual === "master_local") return true;
     const lista = item.permissoes || [item.permissao];
@@ -105,6 +114,32 @@
     return CATALOGO.find(item => item.id === id) || SUBMODULOS.find(item => item.id === id) || null;
   }
 
+  function abrirFinanceiroOperacional(tab, elemento, moduloAtivo = "movimentacoes") {
+    global.__integroFinanceiroModo = "operacional";
+    if (typeof global.__abrirFinanceiroUnificado === "function") global.__abrirFinanceiroUnificado(tab);
+    else {
+      global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
+      global.setTimeout?.(() => global.IntegroFinanceiroUnificado?.openTab?.(tab), 0);
+    }
+    global.setTimeout?.(() => ativarItem(moduloAtivo), 0);
+    return true;
+  }
+
+  function abrirFinanceiroEmpresarial(elemento, tab = "dashboard") {
+    global.__integroFinanceiroModo = "empresarial";
+    if (typeof global.IntegroControleFinanceiroUI?.openEnterprise === "function") {
+      global.IntegroControleFinanceiroUI.openEnterprise();
+    } else {
+      global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
+      global.setTimeout?.(() => global.IntegroControleFinanceiroUI?.load?.(true), 0);
+    }
+    global.setTimeout?.(() => {
+      global.IntegroControleFinanceiroUI?.openTab?.(tab);
+      ativarItem("financeiro");
+    }, 0);
+    return true;
+  }
+
   function abrir(item, elemento) {
     if (!item) return false;
     if (item.abrir === "sair") return global.logout?.();
@@ -117,31 +152,20 @@
       return global.abrirComunicacaoMasterLocal?.("notificacoes", elemento) ?? global.trocarTela?.("notificacoes", elemento);
     }
     if (item.abrir === "clientes") return global.navegarModuloClientesMasterLocal?.("clientes") ?? global.trocarTela?.("clientes", elemento);
+
     if (item.id === "movimentacoes" && perfil(usuarioAtual) !== "vendedor") {
-      if (typeof global.__abrirFinanceiroUnificado === "function") global.__abrirFinanceiroUnificado("lancamentos");
-      else {
-        global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
-        global.setTimeout?.(() => global.IntegroFinanceiroUnificado?.openTab?.("lancamentos"), 0);
-      }
-      global.setTimeout?.(() => ativarItem("movimentacoes"), 0);
-      return true;
+      return abrirFinanceiroOperacional("lancamentos", elemento, "movimentacoes");
     }
+
     if (item.id === "financeiro") {
-      if (typeof global.__abrirFinanceiroUnificado === "function") global.__abrirFinanceiroUnificado("resumo");
-      else {
-        global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
-        global.setTimeout?.(() => global.IntegroFinanceiroUnificado?.openTab?.("resumo"), 0);
-      }
-      global.setTimeout?.(() => ativarItem("financeiro"), 0);
-      return true;
+      return abrirFinanceiroEmpresarial(elemento, "dashboard");
     }
+
     if (item.abrir === "financeiro-aprovacoes") {
-      global.__abrirFinanceiroUnificado?.("aprovacoes") || global.abrirModuloNavegacaoIntegro?.("financeiro", elemento);
-      return true;
+      return abrirFinanceiroOperacional("aprovacoes", elemento, "operacao");
     }
-    if (item.abrir === "financeiro-relatorios") {
-      global.__abrirFinanceiroUnificado?.("relatorios") || global.abrirModuloNavegacaoIntegro?.("financeiro", elemento);
-      return true;
+    if (item.abrir === "financeiro-empresarial-relatorios") {
+      return abrirFinanceiroEmpresarial(elemento, "relatorios");
     }
     if (item.abrir === "configuracoes") {
       global.abrirModuloNavegacaoIntegro?.("configuracoes", elemento) ?? global.trocarTela?.("configuracoes", elemento);
@@ -222,8 +246,7 @@
     if (!host || !usuarioAtual) return false;
     const perfilAtual = perfil(usuarioAtual);
     const itens = CATALOGO.filter(item => permitido(usuarioAtual, item) && !(perfilAtual === "vendedor" && item.id === "notificacoes"));
-    const html = itens.map(itemHtml);
-    host.innerHTML = html.join("");
+    host.innerHTML = itens.map(itemHtml).join("");
     sanitizarSidebar();
     aplicarSubmodulos(usuarioAtual);
     garantirSinoNotificacoes(usuarioAtual);
@@ -256,6 +279,8 @@
 
   global.IntegroNavegacaoUnificada = Object.freeze({
     CATALOGO, SUBMODULOS, MODULO_PAI, renderizar, permitido, abrir, abrirPorId, ativarItem, aplicarSubmodulos,
+    abrirFinanceiroOperacional, abrirFinanceiroEmpresarial,
     sanitizarSidebar, itemPorId, garantirSinoNotificacoes, get usuario() { return usuarioAtual; }
   });
 })(window);
+

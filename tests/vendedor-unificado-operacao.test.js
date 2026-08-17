@@ -271,10 +271,11 @@ test("fluxo visual de lead inicia atendimento antes da conversao e encerra acoes
   assert.match(converter, /statusAtual === "ATRIBUIDA"/);
   assert.match(converter, /IntegroIndicacoes\.iniciarAtendimentoIndicacao\(id, usuarioLogado\)/);
   assert.match(converter, /abrirNovoCliente\(/);
-
+  const guard = fs.readFileSync(path.join(root, "js", "services", "v27-lead-open-guard.js"), "utf8");
+  assert.match(guard, /normalizarStatus\(item\) !== "ATRIBUIDA"/);
+  assert.match(guard, /iniciarAtendimentoIndicacao\(id, usuario\(\)\)/);
   const detalhe = vendedorHtml.match(/window\.abrirDetalheIndicacao = function\(id\)\{[\s\S]*?window\.iniciarAtendimentoIndicacaoVendedor/)?.[0] || "";
   assert.match(detalhe, /const encerrado = \["NAO_CONVERTIDA", "RECUSADA", "CONVERTIDA", "CANCELADA", "DUPLICADA"\]/);
-  assert.match(detalhe, /novoLead \? `<button[^`]+Iniciar atendimento/);
   assert.match(detalhe, /emAtendimento \? `<button[^`]+Não convertida/);
   assert.match(detalhe, /!encerrado \? `<button[^`]+Converter em venda/);
 });

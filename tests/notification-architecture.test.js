@@ -29,12 +29,14 @@ test('frontend notification service queries only canonical auth uid', () => {
   assert.match(source,/destinatarioAuthUid !== uid/);
 });
 
-test('single notification center overrides legacy entry points', () => {
+test('single notification center overrides legacy entry points and uses V27 drawer toggle', () => {
   const source = read('js/modules/notification-center.js');
   assert.match(source,/global\.carregarNotificacoes =/);
-  assert.match(source,/global\.abrirGavetaNotificacoesVendedor = open/);
-  assert.match(source,/global\.abrirGavetaNotificacoesMaster = open/);
-  assert.match(source,/global\.abrirNotificacoes = open/);
+  assert.match(source,/global\.abrirGavetaNotificacoesVendedor = toggle/);
+  assert.match(source,/global\.abrirGavetaNotificacoesMaster = toggle/);
+  assert.match(source,/global\.abrirNotificacoes = toggle/);
+  assert.match(source,/data-filter="LIXEIRA"/);
+  assert.match(source,/event\.key === "Escape"/);
 });
 
 test('lead notifications emit through centralized notification service when available', () => {
@@ -57,12 +59,12 @@ test('firestore rules protect immutable notification routing fields', () => {
   for (const field of ['destinatarioAuthUid','idempotencyKey','rota','entidadeId','eventoId']) assert.match(source,new RegExp(`"${field}"`));
 });
 
-test('authenticated pages load v25 notification stack', () => {
+test('authenticated pages keep loading the centralized notification stack', () => {
   const pages=['vendedor.html','master-local.html','supervisor.html','financeiro.html','auditor.html','captador.html','master-global.html'];
   for (const page of pages){
     const source=read(page);
-    assert.match(source,/notification-store\.js\?v=20260813-v25/);
-    assert.match(source,/notification-service\.js\?v=20260813-v25/);
-    assert.match(source,/notification-center\.js\?v=20260813-v25/);
+    assert.match(source,/notification-store\.js\?/);
+    assert.match(source,/notification-service\.js\?/);
+    assert.match(source,/notification-center\.js\?/);
   }
 });

@@ -45,12 +45,12 @@ test("consultas do vendedor priorizam caixa deterministico e fallback legado tar
   assert.match(perfis, /carregarLancamentosVendedor\(caixas/);
 });
 
-test("configuracoes empresariais cobrem empresa financeiro operacao e relatorios", () => {
-  assert.match(master, /configEmpresaBox/);
-  assert.match(master, /configRelatoriosBox/);
+test("configuracoes empresariais cobrem os 12 módulos aprovados da V27.2", () => {
+  for (const label of ["Empresa","Dashboard","Operacional/Vendas","Clientes","Leads","Movimentações","Financeiro","Chat","Notificações","Usuários e Permissões","Segurança","Integrações"])
+    assert.match(config, new RegExp(label));
   assert.match(config, /renderEmpresa/);
   assert.match(config, /renderFinanceiro/);
-  assert.match(config, /renderRelatorios/);
+  assert.match(config, /renderDashboard/);
 });
 
 
@@ -61,11 +61,12 @@ test("controlador legado de caixas nao abre listeners paralelos", () => {
   assert.doesNotMatch(legado, /configs\.forEach/);
 });
 
-test("configuracao geral salva empresa e operacao em uma unica gravacao", () => {
-  const salvarEmpresa = config.match(/global\.salvarConfiguracoesEmpresaGeral[\s\S]*?\n  \};/)?.[0] || "";
-  assert.match(salvarEmpresa, /proximaConfiguracao/);
-  assert.equal((salvarEmpresa.match(/IntegroConfiguracoesEmpresa\.salvar/g) || []).length, 1);
-  assert.doesNotMatch(salvarEmpresa, /salvarParcial\("empresa"/);
+test("configuracoes salvam cada seção com uma única gravação normalizada", () => {
+  const patch = config.match(/async function savePatch[\s\S]*?\n  }/)?.[0] || "";
+  assert.match(patch, /IntegroConfiguracoesEmpresa\.salvar/);
+  assert.equal((patch.match(/IntegroConfiguracoesEmpresa\.salvar/g) || []).length, 1);
+  assert.match(config, /salvarConfiguracoesEmpresaGeral/);
+  assert.match(config, /salvarConfiguracoesOperacionais/);
 });
 
 test("servico de acesso reconhece o cargo administrativo", () => {

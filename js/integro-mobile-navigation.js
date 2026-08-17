@@ -1,5 +1,7 @@
 (function () {
   "use strict";
+  if (window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__) return;
+  window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__ = true;
 
   const STYLE_ID = "integroResponsiveAuthoritative";
   const STYLE_HREF = "css/integro-mobile.css?v=20260806-v19";
@@ -433,3 +435,4 @@
     attemptShellReady();
   }, 1200);
 })();
+

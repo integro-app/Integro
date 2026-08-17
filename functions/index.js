@@ -110,7 +110,7 @@ exports.provisionarUsuario = functions
     }, { merge: false });
     await lote.commit();
 
-    return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: true };
+    return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: false };
   });
 
 const { criarOperacoesFinanceiras } = require("./financial-callables");
@@ -123,3 +123,62 @@ exports.registrarVendaOperacional = functions
 exports.registrarPagamentoOperacional = functions
   .region("southamerica-east1")
   .https.onCall(operacoesFinanceiras.registrarPagamento);
+
+// V27: o Financeiro Empresarial permanece independente do caixa/ledger operacional.
+// A antiga ponte de retirada de recurso empresarial deixa de ser exportada nesta versão.
+
+const { criarPagamentosFinanceirosEmpresariais } = require("./enterprise-finance-payments");
+const pagamentosFinanceirosEmpresariais = criarPagamentosFinanceirosEmpresariais({ admin, functions, db });
+
+exports.registrarPagamentoFinanceiroEmpresarial = functions
+  .region("southamerica-east1")
+  .https.onCall(pagamentosFinanceirosEmpresariais.registrarPagamento);
+
+const { criarFluxosFinanceirosV27 } = require("./v27-finance-workflows");
+const fluxosFinanceirosV27 = criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceirosEmpresariais });
+exports.solicitarAtribuicaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(fluxosFinanceirosV27.solicitarAtribuicao);
+exports.solicitarAlteracaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(fluxosFinanceirosV27.solicitarAlteracao);
+exports.decidirSolicitacaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(fluxosFinanceirosV27.decidirSolicitacao);
+exports.estornarPagamentoFinanceiroEmpresarialV27 = functions.region("southamerica-east1").https.onCall(fluxosFinanceirosV27.estornarPagamento);
+
+const { criarProcessadorLembretesFinanceiros } = require("./enterprise-finance-reminders");
+exports.processarLembretesFinanceirosEmpresariais = criarProcessadorLembretesFinanceiros({ functions, admin, db });
+
+const { criarAdministracaoV27 } = require("./v27-admin");
+const adminV27 = criarAdministracaoV27({ admin, functions, db });
+
+exports.iniciarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.iniciarSessao);
+exports.validarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.validarSessao);
+exports.encerrarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.encerrarSessao);
+exports.registrarFalhaLoginV27 = functions.region("southamerica-east1").https.onCall(adminV27.registrarFalhaLogin);
+exports.redefinirSenhaUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.resetPassword);
+exports.desbloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.desbloquearUsuario);
+exports.bloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.bloquearUsuario);
+exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.invalidarSessoes);
+
+const { criarTransferenciasV27 } = require("./v27-transferencias");
+const transferenciasV27 = criarTransferenciasV27({ admin, functions, db });
+exports.transferirResponsabilidadeV27 = functions.region("southamerica-east1").https.onCall(transferenciasV27.transferir);
+exports.decidirTransferenciaClienteV27 = functions.region("southamerica-east1").https.onCall(transferenciasV27.decidir);
+
+const { criarAprovacoesVendaV27 } = require("./v27-sales-approvals");
+const aprovacoesVendaV27 = criarAprovacoesVendaV27({ admin, functions, db });
+exports.decidirVendaComSaldoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesVendaV27.decidir);
+
+const { criarAprovacoesClientesV27 } = require("./v27-client-approvals");
+const aprovacoesClientesV27 = criarAprovacoesClientesV27({ admin, functions, db });
+exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.solicitar);
+exports.decidirCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.decidir);
+
+const { criarConfiguracoesV27 } = require("./v27-config");
+const configuracoesV27 = criarConfiguracoesV27({ admin, functions, db });
+exports.salvarConfiguracoesEmpresaV27 = functions.region("southamerica-east1").https.onCall(configuracoesV27.salvar);
+
+const { criarChatV27 } = require("./v27-chat");
+const chatV27 = criarChatV27({ admin, functions, db });
+exports.atualizarEstadoMensagensChatV27 = functions.region("southamerica-east1").https.onCall(chatV27.atualizarEstadoMensagens);
+exports.excluirMensagemChatV27 = functions.region("southamerica-east1").https.onCall(chatV27.excluirMensagem);
+
+const { criarManutencaoV27 } = require("./v27-maintenance");
+const manutencaoV27 = criarManutencaoV27({ admin, functions, db });
+exports.limparNotificacoesLixeiraV27 = manutencaoV27.limparNotificacoesAgendada;

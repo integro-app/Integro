@@ -1,5 +1,7 @@
 (function (global) {
   "use strict";
+  if (global.__INTEGRO_REALTIME_OPERATIONS_INSTALLED__ && global.IntegroOperacoesTempoReal) return;
+  global.__INTEGRO_REALTIME_OPERATIONS_INSTALLED__ = true;
 
   const SCOPE = "sessao:operacoes-tempo-real";
   const BROAD_PROFILES = new Set(["master_local", "gerente", "financeiro", "administrativo", "auditor"]);
@@ -572,3 +574,4 @@
     get active() { return state.started; }
   });
 })(window);
+

@@ -1,0 +1,22 @@
+ÍNTEGRO V27.2 — CONSOLIDAÇÃO E ESTABILIZAÇÃO
+Build: 2026-08-17
+Base: agent/v27.1-homologacao
+Branch: agent/v27.2-consolidacao
+Objetivo: consolidar os fluxos funcionais aprovados na V27, eliminar sobreposições e travamentos de runtime e preparar um pacote único para homologação integrada.
+
+Principais correções V27.2:
+- bootstrap único V27.2, sem carregadores financeiros sobrepostos;
+- financeiro empresarial independente dos caixas/ledger operacional;
+- remoção do ciclo render -> Firestore -> render do Financeiro Premium;
+- bridges legados de financeiro/caixa neutralizados para instalações atualizadas por sobreposição;
+- configurações empresariais consolidadas nos 12 módulos aprovados;
+- sessão única, inatividade, bloqueio por tentativas e reset por superior;
+- análise real para nova venda com saldo ativo;
+- política real de cadastro duplicado: bloquear, permitir ou exigir autorização;
+- transferência e saneamento de carteira/leads via backend;
+- Lead novo inicia atendimento ao ser aberto pelo vendedor;
+- Controle Financeiro com pagar/receber, recorrência, categorias, centros de custo, baixa parcial/valor real, aprovações, orçamento, relatórios, PDF/Excel e histórico;
+- regras Firestore alinhadas aos novos fluxos e autorizações temporárias;
+- suíte específica V27.2 adicionada ao pipeline.
+
+Esta build não deve ser considerada produção até a homologação integrada no projeto Firebase do tenant de teste e o deploy coordenado das Functions/rules.

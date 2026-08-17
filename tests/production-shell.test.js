@@ -11,8 +11,8 @@ const theme = read("css/integro-theme.css");
 
 test("navegacao oficial expoe apenas modulos operacionais reais", () => {
   assert.match(navigation, /Dashboard/);
-  assert.match(navigation, /Cobranças e vendas/);
-  assert.match(navigation, /Configurações da empresa/);
+  assert.match(navigation, /Operação/);
+  assert.match(navigation, /Configurações/);
   assert.doesNotMatch(navigation, /contratosDigitais/);
   assert.doesNotMatch(navigation, /monitoramento/);
   assert.doesNotMatch(navigation, /documentacao/);
@@ -27,7 +27,8 @@ test("operacao administrativa abre a tela real de vendas", () => {
 test("minha conta possui perfil real e redefinicao segura de senha", () => {
   assert.match(master, /id="minhaContaRoot"/);
   assert.match(master, /js\/minha-conta\.js/);
-  assert.match(account, /sendPasswordResetEmail/);
+  assert.doesNotMatch(account, /sendPasswordResetEmail/);
+  assert.match(account, /Sessão e Segurança/);
   assert.match(account, /buscarUsuarioPorAuthUid/);
   assert.match(account, /IntegroMinhaConta/);
 });

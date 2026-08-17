@@ -32,7 +32,8 @@
     if (!backendFinanceiroDisponivel()) throw new Error("Backend financeiro indisponível.");
     const instancia = typeof firebase.app === "function" && typeof firebase.app().functions === "function"
       ? firebase.app().functions("southamerica-east1")
-      : firebase.functions("southamerica-east1");
+      : null;
+    if (!instancia) throw new Error("Backend financeiro indisponível.");
     const callable = instancia.httpsCallable(nome);
     const payload = Object.fromEntries(
       Object.entries(entrada || {}).filter(([, valor]) => valor !== undefined && typeof valor !== "function")

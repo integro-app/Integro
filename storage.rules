@@ -6,14 +6,17 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function hasUserDoc() {
+      return isAuthenticated() &&
+        firestore.exists(/databases/(default)/documents/usuarios/$(request.auth.uid));
+    }
+
     function userDoc() {
-      return isAuthenticated()
-        ? firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data
-        : {};
+      return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data;
     }
 
     function isActiveUser() {
-      return isAuthenticated() &&
+      return hasUserDoc() &&
         userDoc().get("authUid", "") == request.auth.uid &&
         userDoc().get("acessoLiberado", false) == true &&
         !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]);
@@ -24,11 +27,20 @@ service firebase.storage {
     }
 
     function isMasterGlobal() {
-      return userDoc().get("tipoUsuario", "") == "master_global";
+      return hasUserDoc() && userDoc().get("tipoUsuario", "") == "master_global";
+    }
+
+    function isMasterLocal() {
+      return hasUserDoc() && userDoc().get("tipoUsuario", "") == "master_local";
+    }
+
+    function isFinanceiro() {
+      return hasUserDoc() && (userDoc().get("tipoUsuario", "") == "financeiro" ||
+        userDoc().get("cargoChave", "") == "financeiro");
     }
 
     function isAuditor() {
-      return userDoc().get("tipoUsuario", "") == "auditor" || userDoc().get("cargoChave", "") == "auditor";
+      return hasUserDoc() && (userDoc().get("tipoUsuario", "") == "auditor" || userDoc().get("cargoChave", "") == "auditor");
     }
 
     function isSameTenant(tenantId) {
@@ -38,8 +50,30 @@ service firebase.storage {
         userTenantId() == tenantId;
     }
 
+    function controlFinanceMap() {
+      return userDoc().get("permissoes", {}).get("controleFinanceiro", {});
+    }
+
+    function canReadEnterpriseFinance(tenantId) {
+      return isSameTenant(tenantId) && (
+        isMasterLocal() || isFinanceiro() ||
+        controlFinanceMap().get("ver", false) == true
+      );
+    }
+
+    function canWriteEnterpriseFinance(tenantId) {
+      return isSameTenant(tenantId) && (
+        isMasterLocal() || isFinanceiro() ||
+        controlFinanceMap().get("editar", false) == true ||
+        controlFinanceMap().get("baixar", false) == true ||
+        controlFinanceMap().get("anexar", false) == true
+      );
+    }
+
     function allowedContentType() {
-      return request.resource.contentType.matches("image/.*") ||
+      return request.resource != null &&
+        request.resource.contentType is string &&
+        (request.resource.contentType.matches("image/.*") ||
         request.resource.contentType in [
           "application/pdf",
           "application/msword",
@@ -47,7 +81,7 @@ service firebase.storage {
           "application/vnd.ms-excel",
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
           "text/plain"
-        ];
+        ]);
     }
 
     function allowedUpload() {
@@ -58,9 +92,13 @@ service firebase.storage {
     }
 
     match /tenants/{tenantId}/{categoria}/{arquivo=**} {
-      allow read: if isMasterGlobal() || isSameTenant(tenantId);
+      allow read: if isMasterGlobal() ||
+        (categoria == "financeiro" ? canReadEnterpriseFinance(tenantId) : isSameTenant(tenantId));
       allow list: if false;
-      allow create: if (isMasterGlobal() || isSameTenant(tenantId)) &&
+      allow create: if (
+          isMasterGlobal() ||
+          (categoria == "financeiro" ? canWriteEnterpriseFinance(tenantId) : isSameTenant(tenantId))
+        ) &&
         (categoria != "chat" || !isAuditor()) &&
         (categoria != "chat" ? allowedUpload() : (
           request.resource != null &&
@@ -68,7 +106,7 @@ service firebase.storage {
           request.resource.contentType.matches("image/.*")
         ));
       allow update: if false;
-      allow delete: if false;
+      allow delete: if categoria == "financeiro" && canWriteEnterpriseFinance(tenantId);
     }
 
     match /{allPaths=**} {

@@ -4,342 +4,260 @@
       "collectionGroup": "lancamentos_financeiros",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dataOperacional",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "lancamentos_financeiros",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "tipoLancamento",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dataOperacional",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "tipoLancamento", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "lancamentos_financeiros",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "caixaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dataOperacional",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "caixaId", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "caixas",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "vendedorId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "caixas",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "abertoPorUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "abertoPorUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "conversas",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "participantesIds",
-          "arrayConfig": "CONTAINS"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "participantesIds", "arrayConfig": "CONTAINS" }
       ]
     },
     {
       "collectionGroup": "permissoes_cargo",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "cargoId",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "cargoId", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "indicacoes",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "vendedorDestinoId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorDestinoId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "interacoes_clientes",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "clienteId",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "clienteId", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "direcionamentos_clientes",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "clienteId",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "clienteId", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "ciclos_atendimento_clientes",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "clienteId",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "clienteId", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "logs",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "clienteId",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "clienteId", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "clientes_operacionais",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "statusAtendimento",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "statusAtendimento", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "clientes_operacionais",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "vendedorId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "statusAtendimento",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorId", "order": "ASCENDING" },
+        { "fieldPath": "statusAtendimento", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "clientes_operacionais",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "equipeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "statusAtendimento",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "equipeId", "order": "ASCENDING" },
+        { "fieldPath": "statusAtendimento", "order": "ASCENDING" }
       ]
     },
     {
       "collectionGroup": "lancamentos_financeiros",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "equipeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dataOperacional",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "equipeId", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "lancamentos_financeiros",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "vendedorAuthUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dataOperacional",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorAuthUid", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "lancamentos_financeiros",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "vendedorId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dataOperacional",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorId", "order": "ASCENDING" },
+        { "fieldPath": "dataOperacional", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "solicitacoes",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "criadoEm",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "criadoEm", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "solicitacoes",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "equipeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "criadoEm",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "equipeId", "order": "ASCENDING" },
+        { "fieldPath": "criadoEm", "order": "DESCENDING" }
       ]
     },
     {
       "collectionGroup": "solicitacoes",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientePlataformaId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "vendedorAuthUid",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "criadoEm",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorAuthUid", "order": "ASCENDING" },
+        { "fieldPath": "criadoEm", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_contas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vencimento", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_pagamentos",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "dataPagamento", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_fornecedores",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "nome", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_categorias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "nome", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_centros_custo",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "nome", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_empresas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "nome", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_contas_bancarias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "nome", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_recorrencias",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "proximaGeracao", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_lembretes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "dataLembrete", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_auditoria",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "criadoEmTexto", "order": "DESCENDING" }
       ]
     }
   ],

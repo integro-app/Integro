@@ -1,0 +1,54 @@
+/* ÍNTEGRO v26.1 — Controle Financeiro Premium */
+[data-controle-financeiro-empresarial] {
+  --cf-bg: #f6f8fb;
+  --cf-card: #ffffff;
+  --cf-line: #e7ecf3;
+  --cf-text: #10223f;
+  --cf-muted: #6f7d90;
+  --cf-primary: #0b294d;
+  --cf-accent: #f28c28;
+  --cf-ok: #18864b;
+  --cf-warn: #c98400;
+  --cf-danger: #c73b3b;
+  --cf-info: #2468c9;
+}
+[data-controle-financeiro-empresarial] .cfe-premium-toolbar,
+[data-controle-financeiro-empresarial] .cfe-premium-summary,
+[data-controle-financeiro-empresarial] .cfe-premium-grid { display:grid; gap:14px; }
+[data-controle-financeiro-empresarial] .cfe-premium-summary { grid-template-columns:repeat(6,minmax(145px,1fr)); margin:14px 0 18px; }
+[data-controle-financeiro-empresarial] .cfe-premium-card { background:var(--cf-card); border:1px solid var(--cf-line); border-radius:18px; padding:16px; box-shadow:0 8px 24px rgba(7,26,51,.06); min-width:0; }
+[data-controle-financeiro-empresarial] .cfe-premium-card small { display:block; color:var(--cf-muted); font-size:11px; font-weight:800; letter-spacing:.055em; text-transform:uppercase; }
+[data-controle-financeiro-empresarial] .cfe-premium-card strong { display:block; margin-top:7px; color:var(--cf-text); font-size:21px; line-height:1.1; }
+[data-controle-financeiro-empresarial] .cfe-premium-card span { display:block; color:var(--cf-muted); font-size:12px; margin-top:7px; }
+[data-controle-financeiro-empresarial] .cfe-premium-card.is-danger { border-left:4px solid var(--cf-danger); }
+[data-controle-financeiro-empresarial] .cfe-premium-card.is-warn { border-left:4px solid var(--cf-warn); }
+[data-controle-financeiro-empresarial] .cfe-premium-card.is-ok { border-left:4px solid var(--cf-ok); }
+[data-controle-financeiro-empresarial] .cfe-premium-card.is-info { border-left:4px solid var(--cf-info); }
+[data-controle-financeiro-empresarial] .cfe-premium-toolbar { grid-template-columns:1fr auto auto auto; align-items:center; padding:14px; background:#fff; border:1px solid var(--cf-line); border-radius:16px; margin-bottom:14px; }
+[data-controle-financeiro-empresarial] .cfe-premium-search { min-height:42px; border:1px solid #dce3ed; border-radius:12px; padding:0 14px; width:100%; }
+[data-controle-financeiro-empresarial] .cfe-premium-filter-panel { display:none; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:12px; padding:14px; margin-bottom:14px; background:#fff; border:1px solid var(--cf-line); border-radius:16px; }
+[data-controle-financeiro-empresarial] .cfe-premium-filter-panel.is-open { display:grid; }
+[data-controle-financeiro-empresarial] .cfe-premium-filter-panel label { color:var(--cf-muted); font-size:12px; font-weight:700; }
+[data-controle-financeiro-empresarial] .cfe-premium-filter-panel input,
+[data-controle-financeiro-empresarial] .cfe-premium-filter-panel select { width:100%; min-height:40px; margin-top:6px; border:1px solid #dce3ed; border-radius:10px; padding:0 10px; background:#fff; }
+[data-controle-financeiro-empresarial] .cfe-premium-chip-row { display:flex; flex-wrap:wrap; gap:8px; grid-column:1/-1; }
+[data-controle-financeiro-empresarial] .cfe-premium-chip { border:1px solid #dce3ed; background:#fff; color:var(--cf-primary); border-radius:999px; padding:8px 12px; font-size:12px; font-weight:800; cursor:pointer; }
+[data-controle-financeiro-empresarial] .cfe-premium-chip:hover { border-color:var(--cf-accent); color:#b85e09; }
+[data-controle-financeiro-empresarial] .cfe-money { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+[data-controle-financeiro-empresarial] .cfe-status { display:inline-flex; align-items:center; padding:5px 9px; border-radius:999px; font-size:11px; font-weight:800; white-space:nowrap; background:#edf2f7; color:#536174; }
+[data-controle-financeiro-empresarial] .cfe-status[data-status="PAGA"] { background:#e8f7ef; color:#14733f; }
+[data-controle-financeiro-empresarial] .cfe-status[data-status="VENCIDA"] { background:#fdecec; color:#b72d2d; }
+[data-controle-financeiro-empresarial] .cfe-status[data-status="VENCE_HOJE"] { background:#fff4db; color:#9c6900; }
+[data-controle-financeiro-empresarial] .cfe-status[data-status="PARCIALMENTE_PAGA"] { background:#fff0df; color:#b65d08; }
+[data-controle-financeiro-empresarial] .cfe-doc-dropzone { border:2px dashed #cfd8e5; border-radius:16px; min-height:126px; display:flex; align-items:center; justify-content:center; text-align:center; padding:20px; background:#fafcff; transition:.2s ease; }
+[data-controle-financeiro-empresarial] .cfe-doc-dropzone:hover,
+[data-controle-financeiro-empresarial] .cfe-doc-dropzone.is-dragging { border-color:var(--cf-accent); background:#fff9f2; }
+[data-controle-financeiro-empresarial] .cfe-detail-tabs { display:flex; gap:8px; border-bottom:1px solid var(--cf-line); margin:0 0 16px; padding-bottom:10px; overflow:auto; }
+[data-controle-financeiro-empresarial] .cfe-detail-tabs button { border:0; background:transparent; color:var(--cf-muted); font-weight:800; padding:8px 10px; border-radius:9px; white-space:nowrap; cursor:pointer; }
+[data-controle-financeiro-empresarial] .cfe-detail-tabs button.active { background:#eef3f9; color:var(--cf-primary); }
+[data-controle-financeiro-empresarial] .cfe-calendar-day { min-height:92px; border:1px solid var(--cf-line); border-radius:12px; background:#fff; padding:10px; cursor:pointer; }
+[data-controle-financeiro-empresarial] .cfe-calendar-day strong { color:var(--cf-text); }
+[data-controle-financeiro-empresarial] .cfe-calendar-day span { color:var(--cf-muted); font-size:11px; display:block; margin-top:5px; }
+[data-controle-financeiro-empresarial] .cfe-operational-disclaimer { padding:12px 14px; border:1px solid #cfe0f6; border-radius:12px; background:#f5f9ff; color:#36536f; font-size:12px; margin-bottom:14px; }
+@media (max-width:1280px){[data-controle-financeiro-empresarial] .cfe-premium-summary{grid-template-columns:repeat(3,minmax(150px,1fr));}[data-controle-financeiro-empresarial] .cfe-premium-filter-panel{grid-template-columns:repeat(2,minmax(160px,1fr));}}
+@media (max-width:760px){[data-controle-financeiro-empresarial] .cfe-premium-summary{grid-template-columns:repeat(2,minmax(0,1fr));}[data-controle-financeiro-empresarial] .cfe-premium-toolbar{grid-template-columns:1fr 1fr;}[data-controle-financeiro-empresarial] .cfe-premium-toolbar .cfe-premium-search{grid-column:1/-1;}[data-controle-financeiro-empresarial] .cfe-premium-filter-panel{grid-template-columns:1fr;}}

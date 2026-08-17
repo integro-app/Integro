@@ -111,7 +111,8 @@ test('v24.4 atribui lead usando o auth uid validado do vendedor', () => {
 test('v24.4 rules aceitam vinculo legado do proprio vendedor e permitem gerir notificacao propria', () => {
   const rules = fs.readFileSync(path.join(root, 'firestore.rules'), 'utf8');
   assert.match(rules, /function currentUserIds\(\)/);
-  assert.match(rules, /data\.get\("vendedorDocumentoId", ""\) in ids/);
+  assert.match(rules, /function isCurrentUserValue\(value\)/);
+  assert.match(rules, /isCurrentUserValue\(data\.get\("vendedorDocumentoId", ""\)\)/);
   assert.match(rules, /function canUpdateOwnNotificacao\(\)/);
   assert.match(rules, /"lida"[\s\S]*"excluida"[\s\S]*"atualizadoEm"/);
   assert.match(rules, /allow update: if isOperationalCreator\(request\.resource\.data\) \|\| canUpdateOwnNotificacao\(\)/);
@@ -203,6 +204,6 @@ test('v24.6 rules tornam destinatarioAuthUid soberano para notificacao direciona
   const inicio = rules.indexOf('function notificacaoDoUsuario');
   const fim = rules.indexOf('function canReadNotificacao', inicio);
   const bloco = rules.slice(inicio, fim);
-  assert.match(bloco, /destinatarioAuthUid != "" && destinatarioAuthUid == currentUid\(\)/);
+  assert.match(bloco, /isCurrentUserValue\(destinatarioAuthUid\)/);
   assert.match(bloco, /destinatarioAuthUid == ""/);
 });

@@ -1,7 +1,43 @@
 // ========================================
-// AUTH.JS - ÍNTEGRO OFICIAL
-// Login, sessão, proteção de rota e logout
+// AUTH.JS - ÍNTEGRO OFICIAL V27
+// Login, sessão única, proteção de rota e logout
 // ========================================
+
+var __integroV27SessionLoader = window.__integroV27SessionLoader || null;
+
+function garantirServicoSessaoV27() {
+  if (window.IntegroV27Session) return Promise.resolve(window.IntegroV27Session);
+  if (__integroV27SessionLoader) return __integroV27SessionLoader;
+  __integroV27SessionLoader = new Promise((resolve, reject) => {
+    const existente = document.querySelector('script[data-integro-v27-session="1"]');
+    if (existente) {
+      if (window.IntegroV27Session) return resolve(window.IntegroV27Session);
+      existente.addEventListener("load", () => resolve(window.IntegroV27Session), { once: true });
+      existente.addEventListener("error", reject, { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "js/services/v27-session-service.js?v=20260817-v27-2";
+    script.async = false;
+    script.dataset.integroV27Session = "1";
+    script.onload = () => resolve(window.IntegroV27Session);
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  return __integroV27SessionLoader;
+}
+
+async function registrarFalhaLoginV27(email) {
+  try {
+    const fn = typeof firebase?.app === "function" && typeof firebase.app().functions === "function" ? firebase.app().functions("southamerica-east1") : null;
+    if (!fn) return null;
+    const response = await fn.httpsCallable("registrarFalhaLoginV27")({ email:String(email || "").trim().toLowerCase() });
+    return response?.data || null;
+  } catch (erro) {
+    console.warn("[ÍNTEGRO V27.2] Não foi possível registrar a falha de login.", erro);
+    return null;
+  }
+}
 
 // ===============================
 // LOGIN
@@ -10,9 +46,7 @@
 async function login() {
   const emailInput = document.getElementById("email");
   const senhaInput = document.getElementById("senha");
-  const botaoLogin =
-    document.querySelector("button[onclick='login()']") ||
-    document.querySelector("#btnLogin");
+  const botaoLogin = document.querySelector("button[onclick='login()']") || document.querySelector("#btnLogin");
 
   const email = (emailInput?.value || "").trim().toLowerCase();
   const senha = (senhaInput?.value || "").trim();
@@ -23,15 +57,14 @@ async function login() {
   }
 
   try {
-  if (botaoLogin) {
-  botaoLogin.disabled = true;
-  botaoLogin.dataset.textoOriginal = botaoLogin.innerText;
-  botaoLogin.innerText = "Entrando...";
-}
+    if (botaoLogin) {
+      botaoLogin.disabled = true;
+      botaoLogin.dataset.textoOriginal = botaoLogin.innerText;
+      botaoLogin.innerText = "Entrando...";
+    }
 
     const credencial = await auth.signInWithEmailAndPassword(email, senha);
     const authUser = credencial.user;
-
     const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
 
     if (!usuario) {
@@ -42,7 +75,6 @@ async function login() {
     }
 
     const validacao = Validators.validarUsuario(usuario);
-
     if (!validacao.ok) {
       await auth.signOut();
       State.limparSessao();
@@ -53,19 +85,26 @@ async function login() {
     State.setUsuario(usuario);
     await carregarConfiguracoesEmpresaDoUsuario(usuario);
 
-
+    // V27: uma única sessão ativa por usuário, independentemente do dispositivo.
+    const sessao = await garantirServicoSessaoV27();
+    if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
+    try {
+      await sessao.start();
+    } catch (erroSessao) {
+      await auth.signOut().catch(() => {});
+      State.limparSessao();
+      throw erroSessao;
+    }
 
     redirecionarUsuario(usuario);
-
   } catch (erro) {
     console.error("ERRO LOGIN:", erro);
-
     let mensagem = "Erro ao realizar login.";
 
-    if (erro.authDiagnosticCode) {
-      try {
-        await auth.signOut();
-      } catch (_) {}
+    if (erro?.code === "SESSION_ALREADY_ACTIVE") {
+      mensagem = erro.message || "Usuário já possui uma sessão ativa.";
+    } else if (erro.authDiagnosticCode) {
+      try { await auth.signOut(); } catch (_) {}
       State.limparSessao();
       mensagem = erro.message;
     } else if (
@@ -73,7 +112,10 @@ async function login() {
       erro.code === "auth/wrong-password" ||
       erro.code === "auth/user-not-found"
     ) {
-      mensagem = CONFIG.ERROS.EMAIL_INVALIDO;
+      const falha = await registrarFalhaLoginV27(email);
+      mensagem = falha?.bloqueado ? "Acesso bloqueado após o limite de tentativas inválidas. Solicite o desbloqueio ao seu superior." : CONFIG.ERROS.EMAIL_INVALIDO;
+    } else if (erro.code === "auth/user-disabled") {
+      mensagem = "Este acesso está bloqueado. Solicite o desbloqueio ao seu Supervisor, Gerente ou Master Local.";
     } else if (erro.code === "auth/network-request-failed") {
       mensagem = CONFIG.ERROS.CONEXAO_FALHA;
     } else if (erro.code === "auth/too-many-requests") {
@@ -90,6 +132,7 @@ async function login() {
     }
   }
 }
+
 async function carregarConfiguracoesEmpresaDoUsuario(usuario) {
   const tenant = usuario?.clientePlataformaId || usuario?.empresaId || usuario?.tenantId || "";
   if (!tenant || !window.IntegroConfiguracoesEmpresa?.carregar) return null;
@@ -100,25 +143,19 @@ async function carregarConfiguracoesEmpresaDoUsuario(usuario) {
     return null;
   }
 }
+
 // ===============================
 // REDIRECIONAMENTO
 // ===============================
 
 function redirecionarUsuario(usuario) {
-  const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
-    ? window.IntegroOperacional.normalizarAcessoUsuario(usuario)
-    : null;
+  const acesso = window.IntegroOperacional?.normalizarAcessoUsuario ? window.IntegroOperacional.normalizarAcessoUsuario(usuario) : null;
   const tipo = String(usuario.tipoUsuario || "").toLowerCase();
-  const rota =
-    acesso?.rotaPadrao ||
-    CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] ||
-    CONFIG.ROTAS_POR_TIPO[tipo];
-
+  const rota = acesso?.rotaPadrao || CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] || CONFIG.ROTAS_POR_TIPO[tipo];
   if (!rota) {
     UIHelpers.alerta("Tipo de usuário sem rota liberada: " + (tipo || acesso?.tipoUsuarioOficial || "-"));
     return;
   }
-
   window.location.href = rota;
 }
 
@@ -136,7 +173,6 @@ function protegerPagina(tipoObrigatorio = null) {
       }
 
       const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
-
       if (!usuario) {
         await auth.signOut();
         State.limparSessao();
@@ -145,7 +181,6 @@ function protegerPagina(tipoObrigatorio = null) {
       }
 
       const validacao = Validators.validarUsuario(usuario);
-
       if (!validacao.ok) {
         UIHelpers.alerta(validacao.mensagem);
         await auth.signOut();
@@ -154,9 +189,7 @@ function protegerPagina(tipoObrigatorio = null) {
         return;
       }
 
-      const acesso = window.IntegroOperacional?.normalizarAcessoUsuario
-        ? window.IntegroOperacional.normalizarAcessoUsuario(usuario)
-        : null;
+      const acesso = window.IntegroOperacional?.normalizarAcessoUsuario ? window.IntegroOperacional.normalizarAcessoUsuario(usuario) : null;
       const tipoUsuario = String(usuario.tipoUsuario || "").toLowerCase();
       const atendePerfil = window.IntegroOperacional?.usuarioAtendePerfil
         ? window.IntegroOperacional.usuarioAtendePerfil(usuario, tipoObrigatorio)
@@ -164,31 +197,28 @@ function protegerPagina(tipoObrigatorio = null) {
 
       if (tipoObrigatorio && !atendePerfil) {
         UIHelpers.alerta(CONFIG.ERROS.ACESSO_NEGADO);
-        window.location.href =
-          acesso?.rotaPadrao ||
-          CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] ||
-          CONFIG.ROTAS_POR_TIPO[tipoUsuario] ||
-          "index.html";
+        window.location.href = acesso?.rotaPadrao || CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] || CONFIG.ROTAS_POR_TIPO[tipoUsuario] || "index.html";
         return;
       }
 
       State.setUsuario(usuario);
       await carregarConfiguracoesEmpresaDoUsuario(usuario);
 
+      const sessao = await garantirServicoSessaoV27();
+      const retomada = await sessao?.resume?.();
+      if (!retomada) {
+        await auth.signOut().catch(() => {});
+        State.limparSessao();
+        window.location.href = "index.html?motivo=sessao_invalida";
+        return;
+      }
 
-      // Disparar evento de usuário validado para outras partes da aplicação
-      document.dispatchEvent(
-        new CustomEvent("usuario-validado", {
-          detail: usuario
-        })
-      );
-
+      document.dispatchEvent(new CustomEvent("usuario-validado", { detail: usuario }));
     } catch (erro) {
       console.error("ERRO PROTEGER PÁGINA:", erro);
-      if (erro.authDiagnosticCode) {
-        try {
-          await auth.signOut();
-        } catch (_) {}
+      try { await window.IntegroV27Session?.end?.({ silent: true }); } catch (_) {}
+      if (erro.authDiagnosticCode || erro?.code === "functions/failed-precondition") {
+        try { await auth.signOut(); } catch (_) {}
         State.limparSessao();
       }
       UIHelpers.alerta("Erro ao validar sessão: " + erro.message);
@@ -197,16 +227,10 @@ function protegerPagina(tipoObrigatorio = null) {
   });
 }
 
-// ===============================
-// PROTEGER POR ARQUIVO AUTOMÁTICO
-// ===============================
-
 function protegerPaginaAtual() {
   const pagina = location.pathname.split("/").pop() || "index.html";
   const tipoObrigatorio = CONFIG.TIPO_POR_PAGINA[pagina];
-
   if (!tipoObrigatorio) return;
-
   protegerPagina(tipoObrigatorio);
 }
 
@@ -217,76 +241,50 @@ function protegerPaginaAtual() {
 async function logout() {
   const usuarioAtual = State?.getUsuario?.() || null;
   try {
+    await garantirServicoSessaoV27().then(servico => servico?.end?.({ silent: true })).catch(() => {});
     await auth.signOut();
   } finally {
-    if (State?.limparSessao) {
-      State.limparSessao();
-    } else if (window.IntegroOperacional?.limparSessaoLocal) {
-      window.IntegroOperacional.limparSessaoLocal({ usuario: usuarioAtual, limparFila: true });
-    }
+    if (State?.limparSessao) State.limparSessao();
+    else if (window.IntegroOperacional?.limparSessaoLocal) window.IntegroOperacional.limparSessaoLocal({ usuario: usuarioAtual, limparFila: true });
     window.location.href = "index.html";
   }
 }
 
 // ===============================
-// RECUPERAR SENHA
+// RECUPERAR SENHA V27
 // ===============================
 
 async function recuperarSenha() {
   const email = (document.getElementById("email")?.value || "").trim().toLowerCase();
-
-  if (!email) {
-    UIHelpers.alerta("Digite seu email para recuperar a senha.");
-    return;
-  }
-
-  try {
-    await auth.sendPasswordResetEmail(email);
-    UIHelpers.alerta("Enviamos um link de recuperação para o email informado.");
-  } catch (erro) {
-    console.error("ERRO RECUPERAR SENHA:", erro);
-    UIHelpers.alerta("Erro ao enviar recuperação: " + erro.message);
-  }
+  const mensagem = email
+    ? `A recuperação de senha do ÍNTEGRO é feita por um superior autorizado. Solicite o reset ao seu Supervisor, Gerente ou Master Local para o usuário ${email}.`
+    : "A recuperação de senha do ÍNTEGRO é feita por um superior autorizado. Solicite o reset ao seu Supervisor, Gerente ou Master Local.";
+  UIHelpers.alerta(mensagem);
 }
-
-// ===============================
-// UI LOGIN
-// ===============================
 
 function mostrarStatusLogin(mensagem) {
   const status = document.getElementById("statusLogin");
-
   if (status) {
     status.style.display = "block";
     status.innerText = mensagem;
     return;
   }
-
-  if (window.UIHelpers && typeof window.UIHelpers.alerta === "function") {
-    window.UIHelpers.alerta(mensagem);
-  } else {
-    console.warn(mensagem);
-  }
+  if (window.UIHelpers && typeof window.UIHelpers.alerta === "function") window.UIHelpers.alerta(mensagem);
+  else console.warn(mensagem);
 }
 
-// ===============================
-// ENTER PARA LOGIN
-// ===============================
-
-document.addEventListener("DOMContentLoaded", () => {
-  const senha = document.getElementById("senha");
-
-  if (senha) {
-    senha.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        login();
-      }
-    });
-  }
-
+if (!window.__INTEGRO_AUTH_DOM_BINDINGS__) {
+  window.__INTEGRO_AUTH_DOM_BINDINGS__ = true;
+  document.addEventListener("DOMContentLoaded", () => {
+    garantirServicoSessaoV27().catch(erro => console.warn("[ÍNTEGRO V27] Serviço de sessão ainda não carregou.", erro));
+    const senha = document.getElementById("senha");
+    if (senha && !senha.dataset.integroLoginEnterBound) {
+      senha.dataset.integroLoginEnterBound = "1";
+      senha.addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+    }
     const paginaAtual = location.pathname.split("/").pop() || "index.html";
+    if (paginaAtual !== "index.html") protegerPaginaAtual();
+  });
+}
 
-  if (paginaAtual !== "index.html") {
-    protegerPaginaAtual();
-  }
-});
+

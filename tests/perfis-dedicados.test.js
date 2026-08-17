@@ -74,7 +74,7 @@ test("menu principal e montado por uma unica fonte autoritativa", () => {
   assert.match(navegacao, /id:\s*"dashboard"/);
   assert.match(navegacao, /id:\s*"operacao"/);
   assert.match(navegacao, /id:\s*"configuracoes"/);
-  assert.match(navegacao, /host\.innerHTML = html\.join/);
+  assert.match(navegacao, /host\.innerHTML = itens\.map\(itemHtml\)\.join/);
   assert.match(navegacao, /sanitizarSidebar/);
   assert.doesNotMatch(masterLocal, /data-menu-group="principal"[\s\S]*data-menu-group="sistema"/);
 });

@@ -193,7 +193,7 @@ test("bloqueia CPF duplicado no mesmo tenant e permite em tenant diferente", asy
   });
   await assert.rejects(contexto.ClientesService.criarCliente({
     db: contexto.db, usuario: usuario(), dados: { nome: "Duplicado", documento: "123.456.789-00", telefonePrincipal: "11955556666" }
-  }), /CPF ou CNPJ ja cadastrado/);
+  }), /CPF ou CNPJ j[aá] cadastrado/);
   const criado = await contexto.ClientesService.criarCliente({
     db: contexto.db, usuario: usuario(), dados: { nome: "Permitido", documento: "987.654.321-00", telefonePrincipal: "11977778888" }
   });

@@ -149,6 +149,74 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     return { ref, snap: await transaction.get(ref), colecao: "clientes_operacionais", idCanonico: clienteId };
   }
 
+  function idSeguro(valor) {
+    return core.texto(valor).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 220);
+  }
+
+  function papelUsuario(usuario = {}) {
+    return core.normalizarStatus(usuario.tipoUsuario || usuario.cargoChave || usuario.cargo || usuario.perfil);
+  }
+
+  function equipesUsuario(usuario = {}) {
+    return [...new Set([
+      ...(Array.isArray(usuario.equipeIds) ? usuario.equipeIds : []),
+      ...(Array.isArray(usuario.equipesIds) ? usuario.equipesIds : []),
+      usuario.equipeId
+    ].map(core.texto).filter(Boolean))];
+  }
+
+  function configuracaoAnaliseSaldo(config = {}) {
+    const clientes = config.clientes || {};
+    const regra = clientes.vendaComSaldoAtivo || clientes.novaVendaComSaldoAtivo || {};
+    return regra.permitirAnalise === true || regra.exigirAnalise === true || clientes.permitirNovaVendaComSaldoAtivo === true;
+  }
+
+  function autorizacaoVendaComSaldoValida(cliente = {}, uid, valorEmprestadoCentavos) {
+    const expira = Number(cliente.vendaComSaldoAutorizadaAteMs || 0);
+    return cliente.vendaComSaldoAutorizada === true &&
+      core.texto(cliente.vendaComSaldoAutorizadaParaUid) === core.texto(uid) &&
+      Number(cliente.vendaComSaldoAutorizadaValorCentavos || 0) === Number(valorEmprestadoCentavos || 0) &&
+      expira > Date.now();
+  }
+
+  async function notificarAnaliseVenda({ tenantId, vendedorUid, vendedorNome, equipeId, solicitacaoId, clienteNome, valorEmprestadoCentavos }) {
+    const usuarios = await db.collection("usuarios").where("clientePlataformaId", "==", tenantId).limit(1000).get();
+    const destinatarios = usuarios.docs
+      .map(doc => ({ id: doc.id, ...(doc.data() || {}) }))
+      .filter(usuario => {
+        const status = core.normalizarStatus(usuario.status);
+        if (usuario.acessoLiberado !== true || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(status)) return false;
+        const papel = papelUsuario(usuario);
+        if (["MASTER_LOCAL", "GERENTE"].includes(papel)) return true;
+        if (papel !== "SUPERVISOR") return false;
+        if (!equipeId) return true;
+        return equipesUsuario(usuario).includes(core.texto(equipeId));
+      });
+    const agoraTexto = new Date().toISOString();
+    await Promise.all(destinatarios.map(destino => {
+      const destinoUid = core.texto(destino.authUid || destino.uid || destino.id);
+      if (!destinoUid) return null;
+      return db.collection("notificacoes").doc(`venda_saldo_${idSeguro(solicitacaoId)}_${idSeguro(destinoUid)}`).set({
+        clientePlataformaId: tenantId,
+        destinatarioAuthUid: destinoUid,
+        usuarioAuthUid: destinoUid,
+        usuarioUid: destinoUid,
+        tipo: "VENDA_COM_SALDO_ATIVO_APROVACAO",
+        titulo: "Nova venda aguardando análise",
+        mensagem: `${vendedorNome || "Vendedor"} solicitou nova venda para ${clienteNome || "cliente"} no valor de R$ ${(Number(valorEmprestadoCentavos || 0) / 100).toFixed(2).replace(".", ",")}.`,
+        prioridade: "ALTA",
+        origemModulo: "VENDAS",
+        entidadeTipo: "SOLICITACAO",
+        entidadeId: solicitacaoId,
+        rota: { tela: "movimentacoes", aba: "solicitacoes", acao: "VENDA_COM_SALDO_ATIVO" },
+        lida: false,
+        naLixeira: false,
+        criadoEmTexto: agoraTexto,
+        criadoEm: ts()
+      }, { merge: true });
+    }));
+  }
+
   async function registrarVenda(dadosRecebidos, contexto) {
     const entrada = dadosRecebidos?.entrada || dadosRecebidos || {};
     const sessao = await usuarioAtivo(contexto);
@@ -184,8 +252,12 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     const vendedorId = idUsuario(uid, usuario);
     const vendedorNome = nomeUsuario(usuario);
     const dataOperacional = core.hojeSP();
+    const configuracaoSnap = await db.collection("configuracoes_empresa").doc(tenantId).get().catch(() => null);
+    const configuracaoEmpresa = configuracaoSnap?.exists ? (configuracaoSnap.data() || {}) : {};
+    const permitirAnaliseSaldoAtivo = configuracaoAnaliseSaldo(configuracaoEmpresa);
+    const solicitacaoSaldoId = `vsa_${idSeguro(tenantId)}_${idSeguro(uid)}_${idSeguro(clienteId)}_${valorEmprestadoCentavos}_${dataOperacional.replace(/-/g, "")}`;
 
-    return db.runTransaction(async transaction => {
+    const resultado = await db.runTransaction(async transaction => {
       const [caixaSnap, clienteLocalizado, vendaSnap] = await Promise.all([
         transaction.get(caixaRef),
         localizarClienteNaTransacao(transaction, clienteId, entrada),
@@ -210,8 +282,61 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       }
 
       const saldoClienteCentavos = saldoClienteParaBloqueioVenda(cliente);
-      if (saldoClienteCentavos > 0) {
-        erro("failed-precondition", "Cliente possui saldo devedor ativo. Nova venda bloqueada.");
+      const autorizacaoSaldoAtivo = autorizacaoVendaComSaldoValida(cliente, uid, valorEmprestadoCentavos);
+      if (saldoClienteCentavos > 0 && !autorizacaoSaldoAtivo) {
+        if (!permitirAnaliseSaldoAtivo) {
+          erro("failed-precondition", "Cliente possui saldo devedor ativo. Nova venda bloqueada pela política da empresa.");
+        }
+        const solicitacaoRef = db.collection("solicitacoes").doc(solicitacaoSaldoId);
+        const solicitacaoSnap = await transaction.get(solicitacaoRef);
+        const solicitacaoExistente = solicitacaoSnap.exists ? (solicitacaoSnap.data() || {}) : {};
+        const statusSolicitacao = core.normalizarStatus(solicitacaoExistente.status);
+        if (statusSolicitacao === "APROVADA") {
+          erro("failed-precondition", "A autorização desta venda expirou ou já foi consumida. Solicite nova análise.");
+        }
+        const agora = ts();
+        transaction.set(solicitacaoRef, {
+          clientePlataformaId: tenantId,
+          tipo: "VENDA_COM_SALDO_ATIVO",
+          status: statusSolicitacao === "PENDENTE" ? "PENDENTE" : "PENDENTE",
+          clienteId: clienteIdCanonico,
+          clienteOperacionalId: clienteIdCanonico,
+          clienteColecao: clienteLocalizado.colecao,
+          clienteNome: core.texto(entrada.clienteNome || cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente"),
+          saldoAtualCentavos: saldoClienteCentavos,
+          valorEmprestadoCentavos,
+          valorCentavos: valorEmprestadoCentavos,
+          valor: core.reais(valorEmprestadoCentavos),
+          valorTotalVendaCentavos: valorTotalCentavos,
+          taxaJuros,
+          quantidadeParcelas,
+          frequencia,
+          primeiraCobranca,
+          caixaId,
+          vendedorAuthUid: uid,
+          vendedorUid: uid,
+          vendedorId,
+          vendedorNome,
+          solicitanteAuthUid: uid,
+          solicitanteNome: vendedorNome,
+          criadoPorId: uid,
+          equipeId: core.texto(caixa.equipeId || usuario.equipeId),
+          operacaoSolicitadaId: operacaoId,
+          solicitadoEmTexto: new Date().toISOString(),
+          solicitadoEm: agora,
+          atualizadoEm: agora
+        }, { merge: true });
+        return {
+          ok: true,
+          pendente: true,
+          modo: "ANALISE_SALDO_ATIVO",
+          solicitacaoId: solicitacaoSaldoId,
+          clienteId: clienteIdCanonico,
+          clienteNome: core.texto(entrada.clienteNome || cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente"),
+          equipeId: core.texto(caixa.equipeId || usuario.equipeId),
+          saldoClienteCentavos,
+          valorEmprestadoCentavos
+        };
       }
 
       const saldoCaixaCentavos = core.centavosDe(caixa, "saldoAtualCentavos", ["saldoAtual", "valorAtual", "caixaAtual", "saldo"]);
@@ -349,6 +474,11 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         ultimaVendaValor: core.reais(valorTotalCentavos),
         ultimoValorEmprestadoCentavos: valorEmprestadoCentavos,
         ultimoValorEmprestado: core.reais(valorEmprestadoCentavos),
+        vendaComSaldoAutorizada: false,
+        vendaComSaldoAutorizadaParaUid: "",
+        vendaComSaldoAutorizadaValorCentavos: 0,
+        vendaComSaldoAutorizadaAteMs: 0,
+        vendaComSaldoAutorizacaoSolicitacaoId: "",
         atualizadoEm: agora
       });
 
@@ -379,6 +509,19 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         quantidadeParcelas
       };
     });
+
+    if (resultado?.pendente === true) {
+      await notificarAnaliseVenda({
+        tenantId,
+        vendedorUid: uid,
+        vendedorNome,
+        equipeId: resultado.equipeId,
+        solicitacaoId: resultado.solicitacaoId,
+        clienteNome: resultado.clienteNome,
+        valorEmprestadoCentavos: resultado.valorEmprestadoCentavos
+      }).catch(falha => console.error("[V27.2] Falha ao notificar análise de venda com saldo ativo:", falha));
+    }
+    return resultado;
   }
 
   async function registrarPagamento(dadosRecebidos, contexto) {

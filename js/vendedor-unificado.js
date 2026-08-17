@@ -102,6 +102,30 @@
     return saldoCliente(cliente) >= 0.01;
   }
 
+  function configuracaoVendaComSaldoAtivo() {
+    const config = window.configuracoesEmpresa || window.configEmpresa || {};
+    const clientes = config.clientes || {};
+    return clientes.vendaComSaldoAtivo || clientes.novaVendaComSaldoAtivo || {};
+  }
+
+  function empresaPermiteAnaliseVendaComSaldo() {
+    const clientes = (window.configuracoesEmpresa || window.configEmpresa || {}).clientes || {};
+    const regra = configuracaoVendaComSaldoAtivo();
+    return regra.permitirAnalise === true || regra.exigirAnalise === true || clientes.permitirNovaVendaComSaldoAtivo === true;
+  }
+
+  function autorizacaoVendaComSaldoCliente(cliente = {}, valorCentavos = null) {
+    const uid = texto(window.firebase?.auth?.()?.currentUser?.uid || usuarioAtual?.authUid || usuarioAtual?.uid);
+    const expira = Number(cliente.vendaComSaldoAutorizadaAteMs || 0);
+    if (cliente.vendaComSaldoAutorizada !== true || texto(cliente.vendaComSaldoAutorizadaParaUid) !== uid || expira <= Date.now()) return false;
+    return valorCentavos === null || Number(cliente.vendaComSaldoAutorizadaValorCentavos || 0) === Number(valorCentavos || 0);
+  }
+
+  function clientePodeIniciarNovaVenda(cliente = {}) {
+    if (!clientePossuiVendaAtiva(cliente)) return true;
+    return empresaPermiteAnaliseVendaComSaldo() || autorizacaoVendaComSaldoCliente(cliente);
+  }
+
   function clienteTemHistoricoVenda(cliente = {}) {
     return Boolean(cliente.vendaAtivaId || cliente.ultimaVendaId || cliente.possuiVendaAtiva === true || cliente.possuiHistoricoVenda === true || numero(cliente.totalVendas || cliente.vendasRealizadas) > 0 || (Array.isArray(cliente.vendasIds) && cliente.vendasIds.length) || (Array.isArray(cliente.historicoVendas) && cliente.historicoVendas.length));
   }
@@ -331,7 +355,7 @@
       <td>${esc(origemClienteVendedor(cliente))}</td>
       <td>${ultimoMovimentoCliente(cliente)}</td>
       <td><span class="vendedor-score-badge">${scoreCliente(cliente)}</span></td>
-      <td><div class="vendedor-table-actions"><button type="button" class="icon-action" title="WhatsApp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span></button><button type="button" class="icon-action" title="Ver detalhes" onclick="event.stopPropagation();abrirDrawerClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">visibility</span></button><button type="button" class="icon-action primary" title="Vender" ${ativo ? "disabled" : ""} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span></button></div></td>
+      <td><div class="vendedor-table-actions"><button type="button" class="icon-action" title="WhatsApp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span></button><button type="button" class="icon-action" title="Ver detalhes" onclick="event.stopPropagation();abrirDrawerClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">visibility</span></button><button type="button" class="icon-action primary" title="Vender" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span></button></div></td>
     </tr>`;
   }
 
@@ -344,7 +368,7 @@
     return `<article class="vendedor-cliente-mobile-card status-${meta.classe}" onclick="abrirDrawerClienteVendedor('${esc(clienteId)}')">
       <div class="vendedor-cliente-mobile-top"><div><span class="vendedor-tipo-badge ${clienteEmFluxoLead(cliente) ? "lead" : "cliente"}">${tipoRegistroClienteVendedor(cliente)}</span><h3>${esc(cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente")}</h3><p>${esc(cliente.documento || cliente.cpfCnpj || "Sem documento")}</p></div><span class="vendedor-score-badge">${scoreCliente(cliente)}</span></div>
       <div class="vendedor-cliente-mobile-meta">${badgeStatusCliente(status)}<span>${esc(origemClienteVendedor(cliente))}</span><span>${ultimoMovimentoCliente(cliente)}</span></div>
-      <div class="vendedor-cliente-mobile-actions"><button type="button" class="ghost-btn" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button><button type="button" class="primary-btn" ${ativo ? "disabled" : ""} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>Vender</button></div>
+      <div class="vendedor-cliente-mobile-actions"><button type="button" class="ghost-btn" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button><button type="button" class="primary-btn" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>Vender</button></div>
     </article>`;
   }
 
@@ -1925,16 +1949,18 @@
   async function abrirListaNovaVenda() {
     const caixa = await garantirCaixaAberto();
     if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
-    const clientes = (State.getClientes?.() || []).filter(c => pertenceAoVendedor(c) && c.excluido !== true && !clientePossuiVendaAtiva(c));
-    modalBase("Nova venda", clientes.length ? `<div class="vendedor-clientes-venda">${clientes.map(c => `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${texto(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${texto(c.nomeCompleto || c.nome || "")}</small><span>Selecionar</span></button>`).join("")}</div>` : '<div class="empty-state-operacao"><strong>Nenhum cliente disponível</strong><p>Somente clientes quitados e vinculados ao vendedor podem receber nova venda.</p></div>');
+    const clientes = (State.getClientes?.() || []).filter(c => pertenceAoVendedor(c) && c.excluido !== true && clientePodeIniciarNovaVenda(c));
+    modalBase("Nova venda", clientes.length ? `<div class="vendedor-clientes-venda">${clientes.map(c => { const ativo = clientePossuiVendaAtiva(c); const autorizado = autorizacaoVendaComSaldoCliente(c); return `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${texto(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${texto(c.nomeCompleto || c.nome || "")}${ativo ? autorizado ? " · Autorização disponível" : " · Saldo ativo — sujeito à análise" : ""}</small><span>Selecionar</span></button>`; }).join("")}</div>` : '<div class="empty-state-operacao"><strong>Nenhum cliente disponível</strong><p>Não há clientes elegíveis para nova venda conforme a política atual da empresa.</p></div>');
   }
 
   function selecionarClienteNovaVenda(clienteId) {
     clienteNovaVendaId = clienteId;
     const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(clienteId));
     if (!cliente) return;
-    if (clientePossuiVendaAtiva(cliente)) return UIHelpers?.alerta?.("Cliente com saldo devedor ativo. A venda so e liberada apos quitacao.");
-    modalBase("Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div><label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
+    const saldoAtivo = clientePossuiVendaAtiva(cliente);
+    if (saldoAtivo && !clientePodeIniciarNovaVenda(cliente)) return UIHelpers?.alerta?.("Cliente com saldo devedor ativo. A política da empresa exige quitação antes de uma nova venda.");
+    const avisoSaldo = saldoAtivo ? `<div class="vendedor-venda-alerta-saldo"><span class="material-symbols-rounded">policy</span><div><strong>Cliente possui saldo ativo</strong><small>${autorizacaoVendaComSaldoCliente(cliente) ? "Existe uma autorização temporária. Ela vale somente para o mesmo valor aprovado." : "Ao registrar, a venda será enviada para análise do Supervisor/Gerente antes de ser liberada."}</small></div></div>` : "";
+    modalBase("Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
   }
 
   async function confirmarNovaVenda() {
@@ -1951,8 +1977,12 @@
     const botao = document.getElementById("confirmarNovaVendaVendedorBtn");
     if (botao) botao.disabled = true;
     try {
-      await window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId: `venda_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: "NOVA", origem: "painel_unificado_vendedor" });
+      const resultadoVenda = await window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId: `venda_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: "NOVA", origem: "painel_unificado_vendedor" });
       fecharModal();
+      if (resultadoVenda?.pendente === true || resultadoVenda?.modo === "ANALISE_SALDO_ATIVO") {
+        UIHelpers?.alerta?.("Venda enviada para análise do Supervisor/Gerente. Você será avisado quando houver uma decisão.");
+        return;
+      }
       await window.IntegroPerfisUnificados?.carregarTudo?.();
       caches();
       const itemOperacao = document.querySelector('#sidebar [data-modulo="operacao"], #sidebar [data-modulo="cobrancas"]');

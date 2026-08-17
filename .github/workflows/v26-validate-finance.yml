@@ -1,0 +1,49 @@
+name: v26 validate enterprise finance
+
+on:
+  push:
+    branches:
+      - agent/v26-controle-financeiro-empresarial
+      - agent/v26.1-financeiro-premium-clean
+    paths:
+      - '.github/workflows/v26-validate-finance.yml'
+      - 'css/controle-financeiro-premium.css'
+      - 'js/services/enterprise-finance-service.js'
+      - 'js/services/enterprise-finance-operation-bridge.js'
+      - 'js/modules/controle-financeiro-empresarial.js'
+      - 'js/modules/controle-financeiro-operacao-bridge.js'
+      - 'js/modules/controle-financeiro-premium.js'
+      - 'js/modules/unified-module-utils.js'
+      - 'js/unified-navigation.js'
+      - 'js/routers/notification-router.js'
+      - 'functions/**'
+      - 'firestore.rules'
+      - 'firestore.indexes.json'
+      - 'storage.rules'
+      - 'tests/enterprise-finance*.test.js'
+      - 'tests/financeiro-screen.test.js'
+      - 'package.json'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Full static verification
+        run: npm run verify
+      - name: Enterprise finance emulator rules
+        run: npm run test:enterprise:rules
