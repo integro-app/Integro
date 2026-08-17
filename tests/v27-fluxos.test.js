@@ -97,7 +97,7 @@ test("V27 bloqueia auto recuperação de senha e integra sessão única", () => 
   const auth = read("js", "auth.js");
   assert.doesNotMatch(auth, /sendPasswordResetEmail/);
   assert.match(auth, /iniciarSessaoV27|sessao\.start/);
-  assert.match(auth, /sessao\.resume/);
+  assert.match(auth, /sessao\?\.resume\?\./);
   assert.match(auth, /recuperação de senha do ÍNTEGRO é feita por um superior autorizado/i);
 });
 
@@ -105,10 +105,10 @@ test("V27 implementa lixeira de notificações e exclusão programada", () => {
   const service = read("js", "services", "notification-service.js");
   const center = read("js", "modules", "notification-center.js");
   const maintenance = read("functions", "v27-maintenance.js");
-  assert.match(service, /retencaoLixeiraDias/);
   assert.match(service, /async function restore/);
   assert.match(center, /Lixeira/);
   assert.match(center, /event\.key === "Escape"/);
+  assert.match(maintenance, /30 \* 86400000/);
   assert.match(maintenance, /batch\.delete/);
 });
 
