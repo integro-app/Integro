@@ -68,26 +68,30 @@
     return (await global.firebase.app().functions("southamerica-east1").httpsCallable(name)(payload)).data || {};
   }
 
+  function persistStartedSession(id) {
+    setSessionId(id);
+    localActivity = Date.now();
+    global.localStorage?.setItem(LAST_ACTIVITY_KEY, String(localActivity));
+  }
+
+  function isActiveSessionError(error) {
+    const details = error?.details || error?.customData?.details || {};
+    return details?.code === "SESSION_ALREADY_ACTIVE" || /sessão ativa|sessao ativa/i.test(String(error?.message || ""));
+  }
+
   async function start(options = {}) {
     if (!currentUser()) throw new Error("Usuário não autenticado.");
     const id = options.sessionId || randomId();
+    const payload = { sessionId: id, dispositivo: device() };
     try {
-      const result = await callable("iniciarSessaoV27", { sessionId: id, dispositivo: device() });
-      setSessionId(id);
-      localActivity = Date.now();
-      global.localStorage?.setItem(LAST_ACTIVITY_KEY, String(localActivity));
+      const result = await callable("iniciarSessaoV27", payload);
+      persistStartedSession(id);
       return result;
     } catch (error) {
-      const details = error?.details || error?.customData?.details || {};
-      if (details?.code === "SESSION_ALREADY_ACTIVE" || /sessão ativa|sessao ativa/i.test(String(error?.message || ""))) {
-        const when = text(details.ultimoLoginEmTexto);
-        const deviceType = text(details.dispositivo?.tipo);
-        const extra = [when ? `Último login: ${new Date(when).toLocaleString("pt-BR")}` : "", deviceType ? `Dispositivo: ${deviceType}` : ""].filter(Boolean).join(" • ");
-        const e = new Error(`Usuário já possui uma sessão ativa.${extra ? ` ${extra}` : ""}`);
-        e.code = "SESSION_ALREADY_ACTIVE";
-        throw e;
-      }
-      throw error;
+      if (!isActiveSessionError(error)) throw error;
+      const result = await callable("iniciarSessaoV27", { ...payload, forceReplace: true });
+      persistStartedSession(id);
+      return { ...result, substituiuSessaoAnterior: true };
     }
   }
 

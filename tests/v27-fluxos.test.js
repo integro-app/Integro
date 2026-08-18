@@ -97,6 +97,8 @@ test("V27 bloqueia auto recuperação de senha e integra sessão única", () => 
   const auth = read("js", "auth.js");
   assert.doesNotMatch(auth, /sendPasswordResetEmail/);
   assert.match(auth, /iniciarSessaoV27|sessao\.start/);
+  assert.match(auth, /session-replace1/);
+  assert.match(auth, /login novo assume a sessão e derruba o dispositivo anterior/i);
   assert.match(auth, /sessao\?\.resume\?\./);
   assert.match(auth, /recuperação de senha do ÍNTEGRO é feita por um superior autorizado/i);
 });
@@ -120,6 +122,17 @@ test("V27 backend financeiro suporta quitação por valor real e reprogramação
   assert.match(backend, /diferencaQuitacaoCentavos/);
 });
 
+test("V27 sessão nova substitui sessão ativa anterior", () => {
+  const session = read("js", "services", "v27-session-service.js");
+  const backend = read("functions", "v27-admin.js");
+  assert.match(session, /isActiveSessionError/);
+  assert.match(session, /forceReplace:\s*true/);
+  assert.doesNotMatch(session, /Usuário já possui uma sessão ativa\.\$\{extra/);
+  assert.match(backend, /replacingActiveSession/);
+  assert.match(backend, /!replacingActiveSession/);
+  assert.match(backend, /sessaoAnteriorEncerradaEmTexto/);
+});
+
 test("V27.1 usa instância compat correta do Firebase Functions com região", () => {
   const arquivos = [
     ["js", "usuarios.js"],
@@ -134,7 +147,10 @@ test("V27.1 usa instância compat correta do Firebase Functions com região", ()
     const source = read(...partes);
     assert.doesNotMatch(source, /(?:global\.)?firebase\.functions\(\s*["']southamerica-east1["']\s*\)/);
   }
-  assert.match(read("js", "services", "v27-session-service.js"), /firebase\.app\(\)\.functions\("southamerica-east1"\)/);
+  const session = read("js", "services", "v27-session-service.js");
+  assert.match(session, /firebase\.app\(\)\.functions\("southamerica-east1"\)/);
+  assert.match(session, /forceReplace:\s*true/);
+  assert.match(session, /substituiuSessaoAnterior/);
 });
 
 test("V27 especificação consolidada acompanha o build", () => {

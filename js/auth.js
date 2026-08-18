@@ -17,7 +17,7 @@ function garantirServicoSessaoV27() {
       return;
     }
     const script = document.createElement("script");
-    script.src = "js/services/v27-session-service.js?v=20260817-v27-2";
+    script.src = "js/services/v27-session-service.js?v=20260818-session-replace1";
     script.async = false;
     script.dataset.integroV27Session = "1";
     script.onload = () => resolve(window.IntegroV27Session);
@@ -85,7 +85,7 @@ async function login() {
     State.setUsuario(usuario);
     await carregarConfiguracoesEmpresaDoUsuario(usuario);
 
-    // V27: uma única sessão ativa por usuário, independentemente do dispositivo.
+    // V27: o login novo assume a sessão e derruba o dispositivo anterior.
     const sessao = await garantirServicoSessaoV27();
     if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
     try {
@@ -102,7 +102,7 @@ async function login() {
     let mensagem = "Erro ao realizar login.";
 
     if (erro?.code === "SESSION_ALREADY_ACTIVE") {
-      mensagem = erro.message || "Usuário já possui uma sessão ativa.";
+      mensagem = "Não foi possível substituir a sessão anterior. Tente novamente.";
     } else if (erro.authDiagnosticCode) {
       try { await auth.signOut(); } catch (_) {}
       State.limparSessao();

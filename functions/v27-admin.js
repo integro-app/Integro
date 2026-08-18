@@ -109,7 +109,8 @@ function criarAdministracaoV27({ admin, functions, db }) {
       const snap = await tx.get(ref);
       existing = snap.exists ? snap.data() || {} : null;
       const existingAlive = existing && Number(existing.expiresAtMs || 0) > now && existing.encerrada !== true;
-      if (existingAlive && text(existing.sessionId) !== sessionId) {
+      const replacingActiveSession = existingAlive && text(existing.sessionId) !== sessionId && data?.forceReplace === true;
+      if (existingAlive && text(existing.sessionId) !== sessionId && !replacingActiveSession) {
         error("failed-precondition", "Usuário já possui uma sessão ativa.", {
           code: "SESSION_ALREADY_ACTIVE",
           ultimoLoginEmTexto: text(existing.iniciadoEmTexto),
@@ -122,14 +123,16 @@ function criarAdministracaoV27({ admin, functions, db }) {
         sessionId,
         dispositivo: deviceLabel(data?.dispositivo || {}),
         inactivityMinutes: inactivity,
-        iniciadoEmTexto: existingAlive && existing?.iniciadoEmTexto ? existing.iniciadoEmTexto : new Date(now).toISOString(),
+        iniciadoEmTexto: replacingActiveSession || !existingAlive ? new Date(now).toISOString() : existing.iniciadoEmTexto,
         ultimaAtividadeEmTexto: new Date(now).toISOString(),
+        substituiuSessaoAnterior: replacingActiveSession,
+        sessaoAnteriorEncerradaEmTexto: replacingActiveSession ? new Date(now).toISOString() : (existing?.sessaoAnteriorEncerradaEmTexto || ""),
         expiresAtMs,
         encerrada: false,
         atualizadoEm: serverTimestamp()
       }, { merge: true });
     });
-    return { ok: true, sessionId, inactivityMinutes: inactivity, expiresAtMs };
+    return { ok: true, sessionId, inactivityMinutes: inactivity, expiresAtMs, substituiuSessaoAnterior: Boolean(data?.forceReplace) };
   }
 
   async function validarSessao(data, context) {
