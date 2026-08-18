@@ -28,8 +28,8 @@ test("todas as telas internas usam o shell responsivo autoritativo", () => {
     assert.match(html, /data-integro-sidebar(?:\s|>)/i, file);
     assert.match(html, /data-integro-sidebar-overlay(?:\s|>)/i, file);
     assert.match(html, /data-integro-menu-trigger(?:\s|>)/i, file);
-    assert.match(html, /js\/integro-mobile-navigation\.js\?v=20260818-appshell1/i, file);
-    assert.match(html, /css\/integro-mobile\.css\?v=20260818-appshell1/i, file);
+    assert.match(html, /js\/integro-mobile-navigation\.js\?v=20260818-mobilecompact1/i, file);
+    assert.match(html, /css\/integro-mobile\.css\?v=20260818-mobilecompact1/i, file);
     assert.doesNotMatch(html, /integro-mobile-final\.css/i, `${file}: não pode carregar uma segunda camada mobile`);
   }
 });
@@ -40,6 +40,9 @@ test("camada final mantém sidebar nítida, cabeçalho do master alinhado e view
 
   assert.match(css, /body\[data-integro-page\]\.menu-mobile-open \[data-integro-sidebar\]/);
   assert.match(css, /modo aplicativo mobile travado/);
+  assert.match(css, /compactação visual mobile/);
+  assert.match(css, /grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)\s*!important/);
+  assert.match(css, /min-height:\s*76px\s*!important/);
   assert.match(css, /body\[data-integro-page\]\.integro-mobile-app-mode/);
   assert.match(css, /height:\s*var\(--integro-visual-vh\)\s*!important/);
   assert.match(css, /overflow:\s*hidden\s*!important/);
@@ -50,7 +53,7 @@ test("camada final mantém sidebar nítida, cabeçalho do master alinhado e view
   assert.match(css, /grid-template-columns:\s*minmax\(72px, \.9fr\) minmax\(105px, 1\.35fr\) 44px/);
 
   assert.match(js, /loadAuthoritativeStylesheet/);
-  assert.match(js, /integro-mobile\.css\?v=20260818-appshell1/);
+  assert.match(js, /integro-mobile\.css\?v=20260818-mobilecompact1/);
   assert.match(js, /integro-mobile-app-mode/);
   assert.match(js, /syncVisualViewport/);
   assert.match(js, /visualViewport/);

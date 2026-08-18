@@ -4,7 +4,7 @@
   window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__ = true;
 
   const STYLE_ID = "integroResponsiveAuthoritative";
-  const STYLE_HREF = "css/integro-mobile.css?v=20260818-appshell1";
+  const STYLE_HREF = "css/integro-mobile.css?v=20260818-mobilecompact1";
   const MOBILE_QUERY = window.matchMedia("(max-width: 980px)");
   const body = document.body;
 
