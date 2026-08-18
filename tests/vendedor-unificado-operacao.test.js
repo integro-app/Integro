@@ -18,7 +18,7 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20260818-cobrancas-saldo1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-cobrancas-saldo1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v272-perf1/);
   assert.match(master, /css\/vendedor-operacao\.css\?v=20260812-[^"\s<]+/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
@@ -123,7 +123,7 @@ test("operação unificada preserva pagamento e não pagamento transacionais", (
 
 
 test("caixa aberto do vendedor reconhece aliases legados e é recarregado antes da venda", () => {
-  assert.match(master, /js\/perfis-unificados\.js\?v=20260805-[^"\s<]+/);
+  assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
   assert.match(perfis, /function camposCaixaProprio\(\)/);
   assert.match(perfis, /\["vendedorId", id\]/);
   assert.match(perfis, /\["abertoPorUid", uid\]/);
@@ -252,10 +252,23 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /carregarLancamentosVendedor\(caixas, alvo, \{ forcar: true \}\)/);
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
-  assert.match(master, /js\/perfis-unificados\.js\?v=20260805-dashboard-caixa-v8/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-cobrancas-saldo1/);
+  assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v272-perf1/);
 });
 
+
+test("ações críticas do vendedor usam refresh parcial em vez de recarga completa", () => {
+  assert.match(unificado, /function agendarRefreshOperacaoVendedor/);
+  assert.match(unificado, /function refreshOperacaoVendedorParcial/);
+  assert.match(unificado, /agendarRefreshOperacaoVendedor\(\{ render: "cobrancas" \}\)/);
+  assert.match(unificado, /agendarRefreshOperacaoVendedor\(\{ render: "vendas" \}\)/);
+  const blocoPagamento = unificado.match(/async function confirmarPagamento[\s\S]*?function abrirPagamento/)?.[0] || "";
+  const blocoNaoPagamento = unificado.match(/async function registrarNaoPagamento[\s\S]*?function toggleFiltros/)?.[0] || "";
+  const blocoVenda = unificado.match(/async function confirmarNovaVenda[\s\S]*?function abrirOperacao/)?.[0] || "";
+  assert.doesNotMatch(blocoPagamento, /carregarTudo/);
+  assert.doesNotMatch(blocoNaoPagamento, /carregarTudo/);
+  assert.doesNotMatch(blocoVenda, /carregarTudo/);
+});
 
 test("leads do vendedor usam consulta dedicada e conversao pelo servico oficial", () => {
   assert.match(vendedorHtml, /function carregarIndicacoesVendedor\(\)/);

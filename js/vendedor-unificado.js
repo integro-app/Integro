@@ -83,6 +83,60 @@
     };
   }
 
+  let refreshOperacaoTimer = 0;
+  let refreshOperacaoPromessa = null;
+
+  function agendarRefreshOperacaoVendedor(opcoes = {}) {
+    window.clearTimeout(refreshOperacaoTimer);
+    refreshOperacaoTimer = window.setTimeout(() => {
+      refreshOperacaoVendedorParcial(opcoes).catch(erro => {
+        console.warn("[ÍNTEGRO VENDEDOR] Atualização parcial falhou.", erro);
+      });
+    }, Number(opcoes.delayMs ?? 20));
+  }
+
+  async function refreshOperacaoVendedorParcial({ render = "cobrancas", clientes = true } = {}) {
+    if (refreshOperacaoPromessa) return refreshOperacaoPromessa;
+    const svc = window.IntegroPerfisUnificados;
+    if (!svc?.carregarColecaoPorPerfil) {
+      await svc?.carregarTudo?.();
+      caches();
+      return;
+    }
+    refreshOperacaoPromessa = (async () => {
+      const colecoes = window.CONFIG?.COLECOES || {};
+      const limites = window.CONFIG?.LIMITS || {};
+      const listaClientes = clientes && svc.carregarClientesPorPerfil
+        ? await svc.carregarClientesPorPerfil()
+        : (State.getClientes?.() || []);
+      const [caixas, vendas, pagamentos, parcelas, historico] = await Promise.all([
+        svc.carregarCaixasVendedor?.() || [],
+        svc.carregarVendasVendedor?.(listaClientes) || [],
+        svc.carregarColecaoPorPerfil(colecoes.PAGAMENTOS || "pagamentos", limites.PAGAMENTOS || 500),
+        svc.carregarColecaoPorPerfil(colecoes.PARCELAS || "parcelas", limites.PARCELAS || 1200),
+        svc.carregarColecaoPorPerfil(colecoes.HISTORICO_COBRANCAS || "historicoCobrancas", limites.HISTORICO_COBRANCAS || 600)
+      ]);
+      State.setClientes?.(listaClientes);
+      State.setCaixas?.(caixas);
+      State.setVendas?.(vendas);
+      State.setPagamentos?.(pagamentos);
+      State.setParcelas?.(parcelas);
+      State.setHistoricoCobrancas?.(historico);
+      window.caixasCache = caixas;
+      caches();
+      if (render === "vendas") renderVendasDia();
+      else if (render === "clientes") renderClientesVendedor({ forcar: true });
+      else window.renderCobrancas?.();
+      recalcularDashboardVendedor("refresh-parcial-vendedor");
+      document.dispatchEvent(new CustomEvent("integro-vendedor-operacao-atualizada", { detail: { render } }));
+    })();
+    try {
+      return await refreshOperacaoPromessa;
+    } finally {
+      refreshOperacaoPromessa = null;
+    }
+  }
+
   function idCliente(cliente = {}) {
     return texto(cliente.id || cliente.clienteId || cliente.clienteOperacionalId);
   }
@@ -1115,8 +1169,7 @@
       if (clienteId) { if (!window.ClientesService?.atualizarCliente) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.atualizarCliente(clienteId, payload, usuario, { db: window.db || window.firebase?.firestore?.() }); }
       else { if (!window.ClientesService?.criarClienteComLegado) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.criarClienteComLegado({ dados: payload, usuario, clientePlataformaId: tenantId, permitirTelefoneDuplicado: false, db: window.db || window.firebase?.firestore?.() }); }
       fecharModal();
-      await window.IntegroPerfisUnificados?.carregarTudo?.();
-      caches();
+      await recarregarClientesVendedorDados();
       voltarGerenciarClientes();
       UIHelpers?.alerta?.("Cliente salvo com sucesso.");
     } catch (erro) {
@@ -1129,8 +1182,7 @@
     if (!confirm("Excluir este cliente? Isso so e permitido para cadastro criado por voce e sem historico de venda.")) return;
     try {
       await window.ClientesService?.excluirClienteSemHistorico?.(clienteId, usuarioAtual || State.getUsuario?.(), { db: window.db || window.firebase?.firestore?.() });
-      await window.IntegroPerfisUnificados?.carregarTudo?.();
-      caches();
+      await recarregarClientesVendedorDados();
       renderClientesVendedor();
       UIHelpers?.alerta?.("Cliente excluido com sucesso.");
     } catch (erro) {
@@ -1144,8 +1196,7 @@
     if (!motivo) return;
     try {
       await devolverLeadAoSetorVendedor(clienteId, motivo, usuarioAtual || State.getUsuario?.() || {}, window.db || window.firebase?.firestore?.());
-      await window.IntegroPerfisUnificados?.carregarTudo?.();
-      caches();
+      await recarregarClientesVendedorDados();
       renderClientesVendedor();
       UIHelpers?.alerta?.("Cliente retornado ao setor de leads.");
     } catch (erro) {
@@ -1894,9 +1945,7 @@
     try {
       await window.IntegroPagamento.registrarPagamentoTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, vendaId: registro.vendaId, parcelaId: parcela.id, clienteId: registro.clienteId, clienteNome: registro.clienteNome, valor });
       fecharModal();
-      await window.IntegroPerfisUnificados?.carregarTudo?.();
-      caches();
-      window.renderCobrancas?.();
+      agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Pagamento registrado com sucesso.");
     } catch (erro) {
       console.error(erro);
@@ -1936,9 +1985,7 @@
     try {
       await (window.db || firebase.firestore()).collection("historicoCobrancas").doc(historicoId).set({ id: historicoId, operacaoId: historicoId, idempotencyKey: historicoId, tipo: "NAO_PAGAMENTO", status: "REGISTRADO", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, clientePlataformaId: State.getTenantId?.(), tenantId: State.getTenantId?.(), caixaId: caixa.id || caixa.caixaId || "", vendedorId: usuario.id || usuario.usuarioId || "", vendedorAuthUid: usuario.authUid || usuario.uid || "", uid: usuario.authUid || usuario.uid || "", motivo, observacao, data: dataCaixa(), dataOperacional: dataCaixa(), criadoEmTexto: new Date().toISOString(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
       fecharModal();
-      await window.IntegroPerfisUnificados?.carregarTudo?.();
-      caches();
-      window.renderCobrancas?.();
+      agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Não pagamento registrado.");
     } catch (erro) {
       console.error(erro);
@@ -2000,8 +2047,7 @@
         UIHelpers?.alerta?.("Venda enviada para análise do Supervisor/Gerente. Você será avisado quando houver uma decisão.");
         return;
       }
-      await window.IntegroPerfisUnificados?.carregarTudo?.();
-      caches();
+      agendarRefreshOperacaoVendedor({ render: "vendas" });
       const itemOperacao = document.querySelector('#sidebar [data-modulo="operacao"], #sidebar [data-modulo="cobrancas"]');
       window.trocarTela?.("cobrancas", itemOperacao || null);
       setTimeout(() => { abrirAba("vendas"); renderVendasDia(); }, 80);

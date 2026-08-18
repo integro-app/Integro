@@ -4,7 +4,7 @@
   window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__ = true;
 
   const STYLE_ID = "integroResponsiveAuthoritative";
-  const STYLE_HREF = "css/integro-mobile.css?v=20260818-v272-mobile1";
+  const STYLE_HREF = "css/integro-mobile.css?v=20260818-v272-perf1";
   const MOBILE_QUERY = window.matchMedia("(max-width: 980px)");
   const body = document.body;
 
@@ -355,6 +355,21 @@
   let touchLastY = 0;
   let touchTracking = false;
   let touchHorizontal = false;
+  let touchMoveArmed = false;
+
+  function resetTouchGesture() {
+    touchTracking = false;
+    touchHorizontal = false;
+    if (touchMoveArmed) {
+      document.removeEventListener("touchmove", onTouchMove, { passive: false });
+      touchMoveArmed = false;
+    }
+  }
+
+  function armTouchMove() {
+    if (touchMoveArmed) return;
+      touchMoveArmed = true;
+  }
 
   function canStartSidebarGesture(event) {
     if (!isMobile() || !shellReady || !event.touches || event.touches.length !== 1) return false;
@@ -371,6 +386,7 @@
     touchStartY = touchLastY = point.clientY;
     touchTracking = true;
     touchHorizontal = false;
+    armTouchMove();
   }
 
   function onTouchMove(event) {
@@ -385,8 +401,7 @@
     }
     if (touchHorizontal && event.cancelable) event.preventDefault();
     if (Math.abs(dy) > 28 && Math.abs(dy) > Math.abs(dx) * 1.25) {
-      touchTracking = false;
-      touchHorizontal = false;
+      resetTouchGesture();
     }
   }
 
@@ -394,7 +409,7 @@
     if (!touchTracking) return;
     const dx = touchLastX - touchStartX;
     const dy = touchLastY - touchStartY;
-    touchTracking = false;
+    resetTouchGesture();
     const horizontal = Math.abs(dx) >= 64 && Math.abs(dx) > Math.abs(dy) * 1.35;
     if (!horizontal) return;
     if (!menuIsOpen() && dx > 0 && touchStartX <= 24) openSidebar();
@@ -416,7 +431,7 @@
   document.addEventListener("touchstart", onTouchStart, { passive: true });
   document.addEventListener("touchmove", onTouchMove, { passive: false });
   document.addEventListener("touchend", onTouchEnd, { passive: true });
-  document.addEventListener("touchcancel", () => { touchTracking = false; touchHorizontal = false; }, { passive: true });
+  document.addEventListener("touchcancel", resetTouchGesture, { passive: true });
   document.addEventListener("click", (event) => {
     if (!isMobile() || !shellReady) return;
 

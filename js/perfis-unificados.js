@@ -680,13 +680,13 @@
     originais.carregarTudoMasterLocal = window.carregarTudoMasterLocal;
     window.carregarTudoMasterLocal = carregarTudoPerfilUnificado;
     window.carregarTudo = carregarTudoPerfilUnificado;
-    let frameProtecao = 0;
+    let protecaoTimer = 0;
     const agendarProtecao = () => {
-      if (frameProtecao) return;
-      frameProtecao = (window.requestAnimationFrame || window.setTimeout)(() => {
-        frameProtecao = 0;
+      if (protecaoTimer) return;
+      protecaoTimer = window.setTimeout(() => {
+        protecaoTimer = 0;
         protegerAcoes();
-      }, 16);
+      }, 120);
     };
     const observer = new MutationObserver(agendarProtecao);
     observer.observe(document.documentElement, { childList: true, subtree: true });
