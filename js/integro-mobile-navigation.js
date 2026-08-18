@@ -4,7 +4,7 @@
   window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__ = true;
 
   const STYLE_ID = "integroResponsiveAuthoritative";
-  const STYLE_HREF = "css/integro-mobile.css?v=20260818-mobilecompact1";
+  const STYLE_HREF = "css/integro-mobile.css?v=20260818-v272-mobile1";
   const MOBILE_QUERY = window.matchMedia("(max-width: 980px)");
   const body = document.body;
 
@@ -349,6 +349,57 @@
     history.pushState({ integroMobileGuard: true }, "", location.href);
   }
 
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchLastX = 0;
+  let touchLastY = 0;
+  let touchTracking = false;
+  let touchHorizontal = false;
+
+  function canStartSidebarGesture(event) {
+    if (!isMobile() || !shellReady || !event.touches || event.touches.length !== 1) return false;
+    if (event.target.closest("input, textarea, select, button, a, [contenteditable='true'], .modal, .dialog, .drawer, [role='dialog']")) return false;
+    const point = event.touches[0];
+    if (menuIsOpen()) return point.clientX <= Math.min(window.innerWidth || 0, 360);
+    return point.clientX <= 24;
+  }
+
+  function onTouchStart(event) {
+    if (!canStartSidebarGesture(event)) return;
+    const point = event.touches[0];
+    touchStartX = touchLastX = point.clientX;
+    touchStartY = touchLastY = point.clientY;
+    touchTracking = true;
+    touchHorizontal = false;
+  }
+
+  function onTouchMove(event) {
+    if (!touchTracking || !event.touches || event.touches.length !== 1) return;
+    const point = event.touches[0];
+    touchLastX = point.clientX;
+    touchLastY = point.clientY;
+    const dx = touchLastX - touchStartX;
+    const dy = touchLastY - touchStartY;
+    if (!touchHorizontal && Math.abs(dx) > 16 && Math.abs(dx) > Math.abs(dy) * 1.35) {
+      touchHorizontal = true;
+    }
+    if (touchHorizontal && event.cancelable) event.preventDefault();
+    if (Math.abs(dy) > 28 && Math.abs(dy) > Math.abs(dx) * 1.25) {
+      touchTracking = false;
+      touchHorizontal = false;
+    }
+  }
+
+  function onTouchEnd() {
+    if (!touchTracking) return;
+    const dx = touchLastX - touchStartX;
+    const dy = touchLastY - touchStartY;
+    touchTracking = false;
+    const horizontal = Math.abs(dx) >= 64 && Math.abs(dx) > Math.abs(dy) * 1.35;
+    if (!horizontal) return;
+    if (!menuIsOpen() && dx > 0 && touchStartX <= 24) openSidebar();
+    else if (menuIsOpen() && dx < 0) closeSidebar({ restoreFocus: false });
+  }
   document.addEventListener("usuario-validado", () => {
     usuarioValidado = true;
     attemptShellReady();
@@ -362,6 +413,10 @@
     attemptShellReady();
   });
 
+  document.addEventListener("touchstart", onTouchStart, { passive: true });
+  document.addEventListener("touchmove", onTouchMove, { passive: false });
+  document.addEventListener("touchend", onTouchEnd, { passive: true });
+  document.addEventListener("touchcancel", () => { touchTracking = false; touchHorizontal = false; }, { passive: true });
   document.addEventListener("click", (event) => {
     if (!isMobile() || !shellReady) return;
 

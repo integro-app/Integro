@@ -316,7 +316,7 @@
 
         <div class="cobranca-actions-clean">
           <button class="btn btn-pago-clean" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
-          <button class="btn btn-nao-pago-clean" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); registrarNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
+          <button class="btn btn-nao-pago-clean" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
         </div>
       </article>`;
   }
@@ -330,7 +330,7 @@
       historico: obterCache("historicoCobrancasCache"),
       usuario: obterUsuario(),
       hoje: (typeof global.obterDataCaixaVendedor === "function" ? global.obterDataCaixaVendedor() : hojeIso())
-    }).filter(item => item.comCobrancaHoje && item.saldoDevedor > 0.01);
+    }).filter(item => item.saldoDevedor > 0.01);
   }
 
   function filtrosAtivos() {
@@ -380,11 +380,11 @@
     if (!listaEl) return [];
     const lista = ordenar(aplicarFiltros(dadosAtuais()));
     const contador = global.document.getElementById("contadorCobrancas");
-    if (contador) contador.textContent = `${lista.length} cliente(s) com cobrança prevista para a data do caixa.`;
+    if (contador) contador.textContent = `${lista.length} cliente(s) com saldo devedor em aberto.`;
     listaEl.innerHTML = lista.length ? lista.map(card).join("") : `
       <div class="empty-state-operacao">
         <strong>Nenhum cliente encontrado</strong>
-        <p>Não há clientes com cobrança prevista para a data do caixa nos filtros selecionados.</p>
+        <p>Não há clientes com saldo devedor em aberto nos filtros selecionados.</p>
       </div>`;
     try { global.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
     try { global.aplicarBloqueioCaixaFechado?.(); } catch (_) {}

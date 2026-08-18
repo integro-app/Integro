@@ -14,16 +14,16 @@ const unificado = fs.readFileSync(path.join(root, 'js', 'vendedor-unificado.js')
   assert.match(unificado, /id="tabVendasDiaBtn"[\s\S]*?>Vendas<\/button>/);
 });
 
-test('cobranças exige saldo acima de um centavo e cobrança prevista para a data do caixa', () => {
+test('cobranças exibe clientes com saldo devedor em aberto', () => {
   assert.match(js, /clientesValidos\.filter\(cliente => saldoCliente\(cliente\) > 0\.01\)/);
   assert.match(js, /saldoVenda\(item\) > 0\.01/);
-  assert.match(js, /item\.comCobrancaHoje && item\.saldoDevedor > 0\.01/);
-  assert.match(js, /cobrança prevista para a data do caixa/);
+  assert.match(js, /item\.saldoDevedor > 0\.01/);
+  assert.match(js, /saldo devedor em aberto/);
 });
 
 test('carregamento operacional usa a camada consolidada depois dos caches', () => {
   assert.match(html, /Promise\.all\(\[\s*carregarCaixaAtual\(\),\s*carregarClientes\(\),\s*carregarVendas\(\)/);
-  assert.match(html, /js\/vendedor-operacao\.js\?v=20260803-1/);
+  assert.match(html, /js\/vendedor-operacao\.js\?v=20260818-cobrancas-saldo1/);
   assert.match(js, /global\.montarCobrancasPorVenda = dadosAtuais/);
   assert.match(js, /clientesCache/);
   assert.match(js, /vendasCache/);
@@ -38,7 +38,7 @@ test('card operacional de cobrança preserva os dados e as duas ações diárias
   assert.match(js, /Parcela paga no dia/);
   assert.match(js, /Saldo devedor/);
   assert.match(js, /Progresso de parcelas/);
-  assert.match(js, /registrarNaoPagamentoVenda/);
+  assert.match(js, /abrirNaoPagamentoVenda/);
   assert.match(js, /abrirPagamentoCliente/);
   assert.match(js, /abrirWhatsAppClienteCobranca/);
   assert.doesNotMatch(js, /abrirHistoricoPagamentosVenda/);

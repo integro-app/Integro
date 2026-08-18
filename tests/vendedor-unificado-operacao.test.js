@@ -17,10 +17,10 @@ const rules = fs.readFileSync(path.join(root, "firestore.rules"), "utf8");
 const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
-  assert.match(master, /js\/vendedor-operacao\.js\?v=20260804-clientes14/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260812-[^"\s<]+/);
+  assert.match(master, /js\/vendedor-operacao\.js\?v=20260818-cobrancas-saldo1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-cobrancas-saldo1/);
   assert.match(master, /css\/vendedor-operacao\.css\?v=20260812-[^"\s<]+/);
-  assert.match(unificado, /Clientes com cobrança prevista para a data do caixa/);
+  assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
 
@@ -37,7 +37,7 @@ test("operação abre cobranças por padrão e possui ferramentas solicitadas", 
   assert.match(unificado, /buscaCobrancaInput/);
   assert.match(unificado, /toggleFiltrosCobrancasVendedor/);
   assert.match(unificado, /buscarCobrancasVendedor/);
-  assert.match(operacao, /item\.comCobrancaHoje && item\.saldoDevedor > 0\.01/);
+  assert.match(operacao, /item\.saldoDevedor > 0\.01/);
 });
 
 test("seletor contextual do vendedor mostra Cobranças e Vendas em Operação", () => {
@@ -115,9 +115,10 @@ test("perfil unificado do vendedor carrega parcelas e histórico antes de render
 
 test("operação unificada preserva pagamento e não pagamento transacionais", () => {
   assert.match(unificado, /IntegroPagamento\.registrarPagamentoTransacional/);
-  assert.match(unificado, /collection\("historicoCobrancas"\)\.add/);
+  assert.match(unificado, /collection\("historicoCobrancas"\)\.doc\(historicoId\)\.set/);
   assert.match(unificado, /window\.abrirPagamentoCliente = abrirPagamento/);
-  assert.match(unificado, /window\.registrarNaoPagamentoVenda = registrarNaoPagamento/);
+  assert.match(unificado, /window\.registrarNaoPagamentoVenda = abrirNaoPagamento/);
+  assert.match(unificado, /window\.confirmarNaoPagamentoVendedorUnificado = registrarNaoPagamento/);
 });
 
 
@@ -252,7 +253,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20260805-dashboard-caixa-v8/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260812-clientes-v24-4/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-cobrancas-saldo1/);
 });
 
 

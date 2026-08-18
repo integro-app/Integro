@@ -468,7 +468,7 @@
         <div class="section-header vendedor-operacao-header">
           <div>
             <h2 id="vendedorOperacaoTitulo">Cobranças</h2>
-            <p id="vendedorOperacaoSubtitulo">Clientes com cobrança prevista para a data do caixa.</p>
+            <p id="vendedorOperacaoSubtitulo">Clientes com saldo devedor em aberto.</p>
           </div>
         </div>
 
@@ -672,7 +672,7 @@
     const titulo = document.getElementById("vendedorOperacaoTitulo");
     const subtitulo = document.getElementById("vendedorOperacaoSubtitulo");
     if (titulo) titulo.textContent = abaAtual === "cobrancas" ? "Cobrancas" : "Vendas";
-    if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com cobranca prevista para a data do caixa." : "Vendas vinculadas ao vendedor, incluindo o histórico que compoe a carteira.";
+    if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com saldo devedor em aberto." : "Vendas vinculadas ao vendedor, incluindo o histórico que compoe a carteira.";
     if (abaAtual === "cobrancas") {
       window.IntegroVendedorOperacao?.instalar?.();
       window.renderCobrancas?.();
@@ -1910,15 +1910,32 @@
     modalBase("Registrar pagamento", `<p class="vendedor-modal-cliente">${registro.clienteApelido || registro.clienteNome}</p><small>${registro.clienteNome}</small><label>Valor recebido</label><input id="vendedorPagamentoValor" inputmode="decimal" value="${numero(registro.valorParcela).toFixed(2).replace(".", ",")}"><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarPagamentoVendedorUnificado('${registro.vendaId}')">Confirmar pagamento</button>`);
   }
 
+  function naoPagamentoIdDeterministico(registro = {}, caixa = {}) {
+    const bruto = [State.getTenantId?.(), caixa.id || caixa.caixaId, registro.vendaId, dataCaixa()].map(texto).join("_");
+    return `nao_pagamento_${bruto.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '')}`;
+  }
+
+  async function abrirNaoPagamento(vendaId) {
+    const registro = item(vendaId);
+    const caixa = await garantirCaixaAberto();
+    if (!registro || !caixa) return UIHelpers?.alerta?.("Cobrança ou caixa aberto não encontrado.");
+    modalBase("Não pagamento", `<div class="vendedor-nova-venda-form vendedor-nao-pagamento-form"><div class="vendedor-nova-venda-cliente"><strong>${esc(registro.clienteApelido || registro.clienteNome)}</strong><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small></div><label>Motivo<select id="vendedorNaoPagamentoMotivo"><option value="Cliente não realizou o pagamento">Cliente não realizou o pagamento</option><option value="Cliente ausente">Cliente ausente</option><option value="Reagendado com o cliente">Reagendado com o cliente</option><option value="Cliente recusou pagamento">Cliente recusou pagamento</option><option value="Outro motivo">Outro motivo</option></select></label><label>Observação<textarea id="vendedorNaoPagamentoObservacao" rows="3" placeholder="Informe detalhes da visita ou próxima ação"></textarea></label></div>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorNaoPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarNaoPagamentoVendedorUnificado('${texto(registro.vendaId)}')">Registrar não pagamento</button>`);
+  }
+
   async function registrarNaoPagamento(vendaId) {
     const registro = item(vendaId);
     const caixa = await garantirCaixaAberto();
     if (!registro || !caixa) return UIHelpers?.alerta?.("Cobrança ou caixa aberto não encontrado.");
-    const motivo = prompt("Informe o motivo do não pagamento:", "Cliente não realizou o pagamento");
-    if (!motivo) return;
+    const motivo = texto(document.getElementById("vendedorNaoPagamentoMotivo")?.value || "Cliente não realizou o pagamento");
+    const observacao = texto(document.getElementById("vendedorNaoPagamentoObservacao")?.value || "");
+    if (!motivo) return UIHelpers?.alerta?.("Informe o motivo do não pagamento.");
+    const botao = document.getElementById("vendedorNaoPagamentoConfirmar");
+    if (botao) botao.disabled = true;
     const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const historicoId = naoPagamentoIdDeterministico(registro, caixa);
     try {
-      await (window.db || firebase.firestore()).collection("historicoCobrancas").add({ tipo: "NAO_PAGAMENTO", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, vendedorId: usuario.id || usuario.usuarioId || "", vendedorAuthUid: usuario.authUid || usuario.uid || "", motivo, data: dataCaixa(), criadoEmTexto: new Date().toISOString(), criadoEm: firebase.firestore.FieldValue.serverTimestamp() });
+      await (window.db || firebase.firestore()).collection("historicoCobrancas").doc(historicoId).set({ id: historicoId, operacaoId: historicoId, idempotencyKey: historicoId, tipo: "NAO_PAGAMENTO", status: "REGISTRADO", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, clientePlataformaId: State.getTenantId?.(), tenantId: State.getTenantId?.(), caixaId: caixa.id || caixa.caixaId || "", vendedorId: usuario.id || usuario.usuarioId || "", vendedorAuthUid: usuario.authUid || usuario.uid || "", uid: usuario.authUid || usuario.uid || "", motivo, observacao, data: dataCaixa(), dataOperacional: dataCaixa(), criadoEmTexto: new Date().toISOString(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      fecharModal();
       await window.IntegroPerfisUnificados?.carregarTudo?.();
       caches();
       window.renderCobrancas?.();
@@ -1926,7 +1943,7 @@
     } catch (erro) {
       console.error(erro);
       UIHelpers?.alerta?.(erro?.message || "Não foi possível registrar o não pagamento.");
-    }
+    } finally { if (botao) botao.disabled = false; }
   }
 
   function toggleFiltros(id) { const painel = document.getElementById(id); if (painel) painel.hidden = !painel.hidden; }
@@ -2107,7 +2124,9 @@
   window.limparFiltrosVendasVendedor = limparVendas;
   window.abrirPagamentoCliente = abrirPagamento;
   window.confirmarPagamentoVendedorUnificado = confirmarPagamento;
-  window.registrarNaoPagamentoVenda = registrarNaoPagamento;
+  window.abrirNaoPagamentoVenda = abrirNaoPagamento;
+  window.registrarNaoPagamentoVenda = abrirNaoPagamento;
+  window.confirmarNaoPagamentoVendedorUnificado = registrarNaoPagamento;
   window.fecharModalVendedorOperacao = fecharModal;
   window.abrirListaNovaVendaVendedor = abrirListaNovaVenda;
   window.selecionarClienteNovaVendaVendedor = selecionarClienteNovaVenda;

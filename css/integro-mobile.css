@@ -1,4 +1,4 @@
-/* ÍNTEGRO — camada mobile única mobilecompact1 */
+/* ÍNTEGRO — camada mobile única v27.2 */
 
 /* Shell crítico: impede que controles apareçam antes da autenticação e do CSS final. */
 body[data-integro-page].integro-shell-pending [data-integro-menu-trigger],
@@ -1632,5 +1632,176 @@ body[data-integro-page] [class*="table-container"] {
 
   body[data-integro-page].integro-mobile-app-mode .vendedor-cliente-card {
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important;
+  }
+}
+
+/* ÍNTEGRO v27.2 — mobile global como superfície de app */
+@media (max-width: 980px) {
+  body[data-integro-page].integro-mobile-app-mode {
+    --it-mobile-gutter: 12px;
+    --integro-mobile-gutter: 12px;
+    --it-mobile-control: 42px;
+    background: #fff !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .main,
+  body[data-integro-page].integro-mobile-app-mode main.main,
+  body[data-integro-page].integro-mobile-app-mode .main-content,
+  body[data-integro-page].integro-mobile-app-mode .page-content,
+  body[data-integro-page].integro-mobile-app-mode #mainContent {
+    background: #fff !important;
+    padding-top: max(58px, calc(50px + env(safe-area-inset-top))) !important;
+    padding-left: max(12px, env(safe-area-inset-left)) !important;
+    padding-right: max(12px, env(safe-area-inset-right)) !important;
+  }
+
+  body[data-integro-page="master-local"].integro-mobile-app-mode .main,
+  body[data-integro-page="vendedor"].integro-mobile-app-mode .main {
+    padding-top: max(58px, calc(50px + env(safe-area-inset-top))) !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode [data-integro-menu-trigger],
+  body[data-integro-page].integro-mobile-app-mode .mobile-menu-btn,
+  body[data-integro-page].integro-mobile-app-mode .hamburger,
+  body[data-integro-page].integro-mobile-app-mode #btnMenu {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    left: max(8px, env(safe-area-inset-left)) !important;
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+    border-radius: 13px !important;
+    box-shadow: 0 8px 20px rgba(7, 26, 51, .12) !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .topbar,
+  body[data-integro-page].integro-mobile-app-mode .integro-global-header,
+  body[data-integro-page].integro-mobile-app-mode .page-header,
+  body[data-integro-page].integro-mobile-app-mode .header-content,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-header,
+  body[data-integro-page].integro-mobile-app-mode .section-header {
+    min-height: 44px !important;
+    margin: 0 0 10px !important;
+    padding: 0 !important;
+    gap: 8px !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .topbar h1,
+  body[data-integro-page].integro-mobile-app-mode .topbar h2,
+  body[data-integro-page].integro-mobile-app-mode .page-header h1,
+  body[data-integro-page].integro-mobile-app-mode .header-content h1,
+  body[data-integro-page].integro-mobile-app-mode .section-header h2,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-header h2 {
+    font-size: 21px !important;
+    line-height: 1.12 !important;
+    margin: 0 !important;
+    letter-spacing: 0 !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .topbar p,
+  body[data-integro-page].integro-mobile-app-mode .page-header p,
+  body[data-integro-page].integro-mobile-app-mode .header-content p,
+  body[data-integro-page].integro-mobile-app-mode .section-header p,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-header p {
+    display: none !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .screen > .section-card,
+  body[data-integro-page].integro-mobile-app-mode .screen > .panel,
+  body[data-integro-page].integro-mobile-app-mode .screen > .card,
+  body[data-integro-page].integro-mobile-app-mode .page-card,
+  body[data-integro-page].integro-mobile-app-mode .content-card,
+  body[data-integro-page].integro-mobile-app-mode .clientes-section-card,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-unificada,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-clientes-gestao {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .operacao-tabs-clean,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-tabs,
+  body[data-integro-page].integro-mobile-app-mode .tabs,
+  body[data-integro-page].integro-mobile-app-mode .tabbar {
+    width: 100% !important;
+    display: grid !important;
+    grid-auto-flow: column !important;
+    grid-auto-columns: 1fr !important;
+    gap: 6px !important;
+    margin: 0 0 10px !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .tab-operacao-clean,
+  body[data-integro-page].integro-mobile-app-mode .tabs button,
+  body[data-integro-page].integro-mobile-app-mode .tabbar button {
+    min-height: 40px !important;
+    height: 40px !important;
+    padding: 0 10px !important;
+    border-radius: 12px !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .empty-state-operacao,
+  body[data-integro-page].integro-mobile-app-mode .empty-state,
+  body[data-integro-page].integro-mobile-app-mode .placeholder-dev {
+    min-height: 0 !important;
+    padding: 16px 12px !important;
+    border-radius: 14px !important;
+    border-style: solid !important;
+    margin: 8px 0 0 !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .empty-state-operacao .material-symbols-rounded,
+  body[data-integro-page].integro-mobile-app-mode .empty-state .material-symbols-rounded {
+    font-size: 24px !important;
+    margin-bottom: 4px !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .drawer,
+  body[data-integro-page].integro-mobile-app-mode .drawer-side,
+  body[data-integro-page].integro-mobile-app-mode #drawer {
+    width: min(100vw, 100%) !important;
+    max-width: 100vw !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .modal,
+  body[data-integro-page].integro-mobile-app-mode .modal-content,
+  body[data-integro-page].integro-mobile-app-mode .dialog,
+  body[data-integro-page].integro-mobile-app-mode .cliente-modal,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-modal,
+  body[data-integro-page].integro-mobile-app-mode [role="dialog"] {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(var(--integro-visual-vh) - 16px) !important;
+    border-radius: 18px !important;
+  }
+}
+
+@media (max-width: 430px) {
+  body[data-integro-page].integro-mobile-app-mode {
+    --it-mobile-gutter: 10px;
+    --integro-mobile-gutter: 10px;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .main,
+  body[data-integro-page].integro-mobile-app-mode main.main {
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+    padding-right: max(10px, env(safe-area-inset-right)) !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .kpi-card,
+  body[data-integro-page].integro-mobile-app-mode .stat-card,
+  body[data-integro-page].integro-mobile-app-mode .metric-card,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-clientes-kpis-color > div,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-mov-kpis > div,
+  body[data-integro-page].integro-mobile-app-mode .indicacao-kpi-v2 {
+    min-height: 66px !important;
+    padding: 8px !important;
   }
 }
