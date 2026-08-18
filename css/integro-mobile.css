@@ -1,4 +1,4 @@
-/* ÍNTEGRO — camada mobile única v19 */
+/* ÍNTEGRO — camada mobile única appshell1 */
 
 /* Shell crítico: impede que controles apareçam antes da autenticação e do CSS final. */
 body[data-integro-page].integro-shell-pending [data-integro-menu-trigger],
@@ -1130,5 +1130,171 @@ body[data-integro-page] [class*="table-container"] {
     transition-duration: .01ms !important;
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
+  }
+}
+
+
+/* ÍNTEGRO — modo aplicativo mobile travado */
+:root {
+  --integro-visual-vh: 100dvh;
+}
+
+@media (max-width: 980px) {
+  html:has(body[data-integro-page].integro-mobile-app-mode),
+  body[data-integro-page].integro-mobile-app-mode {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: var(--integro-visual-vh) !important;
+    min-height: var(--integro-visual-vh) !important;
+    max-height: var(--integro-visual-vh) !important;
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+    touch-action: pan-y !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode {
+    position: fixed !important;
+    inset: 0 !important;
+    background: #eef4fb !important;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .layout,
+  body[data-integro-page].integro-mobile-app-mode .app {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: var(--integro-visual-vh) !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    display: block !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .main,
+  body[data-integro-page].integro-mobile-app-mode main.main,
+  body[data-integro-page].integro-mobile-app-mode .main-content,
+  body[data-integro-page].integro-mobile-app-mode .page-content,
+  body[data-integro-page].integro-mobile-app-mode #mainContent {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: var(--integro-visual-vh) !important;
+    max-height: var(--integro-visual-vh) !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain !important;
+    scroll-behavior: smooth;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode.integro-mobile-locked .main,
+  body[data-integro-page].integro-mobile-app-mode.integro-mobile-locked main.main {
+    overflow: hidden !important;
+    touch-action: none !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .screen,
+  body[data-integro-page].integro-mobile-app-mode section,
+  body[data-integro-page].integro-mobile-app-mode .section-card,
+  body[data-integro-page].integro-mobile-app-mode .panel,
+  body[data-integro-page].integro-mobile-app-mode .card,
+  body[data-integro-page].integro-mobile-app-mode .list-card,
+  body[data-integro-page].integro-mobile-app-mode .kpi-card,
+  body[data-integro-page].integro-mobile-app-mode .stat-card,
+  body[data-integro-page].integro-mobile-app-mode .metric-card {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-wrap: anywhere;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .topbar,
+  body[data-integro-page].integro-mobile-app-mode .integro-global-header,
+  body[data-integro-page].integro-mobile-app-mode .page-header,
+  body[data-integro-page].integro-mobile-app-mode .header-content {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: var(--it-z-header, var(--integro-shell-z-header, 9200)) !important;
+    max-width: 100% !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode [data-integro-menu-trigger],
+  body[data-integro-page].integro-mobile-app-mode .mobile-menu-btn,
+  body[data-integro-page].integro-mobile-app-mode .hamburger,
+  body[data-integro-page].integro-mobile-app-mode #btnMenu {
+    position: fixed !important;
+    top: max(12px, env(safe-area-inset-top)) !important;
+    left: max(12px, env(safe-area-inset-left)) !important;
+    width: 48px !important;
+    height: 48px !important;
+    min-width: 48px !important;
+    min-height: 48px !important;
+    border-radius: 16px !important;
+    z-index: calc(var(--it-z-sidebar, var(--integro-shell-z-sidebar, 9900)) + 5) !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode.menu-mobile-open [data-integro-menu-trigger],
+  body[data-integro-page].integro-mobile-app-mode.menu-mobile-open .mobile-menu-btn,
+  body[data-integro-page].integro-mobile-app-mode.menu-mobile-open .hamburger,
+  body[data-integro-page].integro-mobile-app-mode.menu-mobile-open #btnMenu {
+    opacity: 0 !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode [data-integro-sidebar],
+  body[data-integro-page].integro-mobile-app-mode .sidebar {
+    height: var(--integro-visual-vh) !important;
+    min-height: var(--integro-visual-vh) !important;
+    max-height: var(--integro-visual-vh) !important;
+    border-radius: 0 !important;
+    contain: layout paint style;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode [data-integro-sidebar-overlay],
+  body[data-integro-page].integro-mobile-app-mode .overlay,
+  body[data-integro-page].integro-mobile-app-mode #overlay,
+  body[data-integro-page].integro-mobile-app-mode #sidebarOverlay,
+  body[data-integro-page].integro-mobile-app-mode .sidebar-overlay {
+    height: var(--integro-visual-vh) !important;
+    max-height: var(--integro-visual-vh) !important;
+    touch-action: none !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .drawer-side,
+  body[data-integro-page].integro-mobile-app-mode .notificacoes-drawer-side,
+  body[data-integro-page].integro-mobile-app-mode .notificacoes-vendedor-painel,
+  body[data-integro-page].integro-mobile-app-mode .dashboard-insight-panel,
+  body[data-integro-page].integro-mobile-app-mode .drawer,
+  body[data-integro-page].integro-mobile-app-mode .modal,
+  body[data-integro-page].integro-mobile-app-mode .modal-content,
+  body[data-integro-page].integro-mobile-app-mode .dialog,
+  body[data-integro-page].integro-mobile-app-mode .cliente-modal,
+  body[data-integro-page].integro-mobile-app-mode [role="dialog"] {
+    max-height: calc(var(--integro-visual-vh) - 16px) !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode table,
+  body[data-integro-page].integro-mobile-app-mode .table-wrap,
+  body[data-integro-page].integro-mobile-app-mode .table-container,
+  body[data-integro-page].integro-mobile-app-mode .responsive-table,
+  body[data-integro-page].integro-mobile-app-mode .table-responsive,
+  body[data-integro-page].integro-mobile-app-mode [class*="table-wrap"],
+  body[data-integro-page].integro-mobile-app-mode [class*="table-container"] {
+    max-width: 100% !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .table-wrap,
+  body[data-integro-page].integro-mobile-app-mode .table-container,
+  body[data-integro-page].integro-mobile-app-mode .responsive-table,
+  body[data-integro-page].integro-mobile-app-mode .table-responsive,
+  body[data-integro-page].integro-mobile-app-mode [class*="table-wrap"],
+  body[data-integro-page].integro-mobile-app-mode [class*="table-container"] {
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch;
   }
 }

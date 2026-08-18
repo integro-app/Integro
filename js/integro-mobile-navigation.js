@@ -4,7 +4,7 @@
   window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__ = true;
 
   const STYLE_ID = "integroResponsiveAuthoritative";
-  const STYLE_HREF = "css/integro-mobile.css?v=20260806-v19";
+  const STYLE_HREF = "css/integro-mobile.css?v=20260818-appshell1";
   const MOBILE_QUERY = window.matchMedia("(max-width: 980px)");
   const body = document.body;
 
@@ -83,10 +83,18 @@
     body.classList.toggle("integro-viewport-mobile", width <= 640);
     body.classList.toggle("integro-viewport-tablet", width > 640 && width <= 980);
     body.classList.toggle("integro-viewport-desktop", width > 980);
+    body.classList.toggle("integro-mobile-app-mode", width <= 980);
 
     const externalTrigger = Array.from(document.querySelectorAll(SELECTORS.trigger))
       .some((trigger) => trigger.parentElement === body);
     body.classList.toggle("has-external-menu-trigger", externalTrigger);
+  }
+
+  function syncVisualViewport() {
+    const height = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 0;
+    if (height > 0) {
+      document.documentElement.style.setProperty("--integro-visual-vh", `${height}px`);
+    }
   }
 
   function bootFinished() {
@@ -213,6 +221,7 @@
     sidebar.classList.add("show");
     body.classList.remove("sidebar-hidden", "menu-aberto", "sidebar-open");
     body.classList.add("menu-mobile-open");
+    body.classList.add("integro-mobile-locked");
     overlays().forEach((overlay) => overlay.classList.add("show"));
     forceMenuVisualState(true);
     setMenuAria(true);
@@ -232,6 +241,7 @@
     if (isMobile()) sidebar.classList.remove("collapsed");
     overlays().forEach((overlay) => overlay.classList.remove("show", "open", "active"));
     body.classList.remove("menu-mobile-open", "menu-aberto", "sidebar-open");
+    body.classList.remove("integro-mobile-locked");
     forceMenuVisualState(false);
     setMenuAria(false);
 
@@ -398,6 +408,7 @@
   });
 
   function handleViewportChange() {
+    syncVisualViewport();
     setViewportClasses();
     if (isMobile()) {
       if (shellReady) armHistoryGuard();
@@ -410,7 +421,10 @@
 
   window.addEventListener("resize", handleViewportChange, { passive: true });
   window.addEventListener("orientationchange", handleViewportChange, { passive: true });
+  window.visualViewport?.addEventListener?.("resize", handleViewportChange, { passive: true });
+  window.visualViewport?.addEventListener?.("scroll", syncVisualViewport, { passive: true });
   window.addEventListener("pageshow", () => {
+    syncVisualViewport();
     setViewportClasses();
     if (isMobile() && shellReady) armHistoryGuard();
   });
@@ -424,6 +438,7 @@
     loaderObserver.observe(loader, { attributes: true, attributeFilter: ["class", "style"] });
   }
 
+  syncVisualViewport();
   setViewportClasses();
   loadAuthoritativeStylesheet().then(attemptShellReady);
 
