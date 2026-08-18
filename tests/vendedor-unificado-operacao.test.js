@@ -18,8 +18,8 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20260818-cobrancas-saldo1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20260812-[^"\s<]+/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v273-card1/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20260818-v273-card1/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -185,12 +185,18 @@ test("clientes vendedor usa gaveta de filtros e contador abaixo", () => {
 test("botao vender respeita saldo ativo e navega para vendas", () => {
   assert.match(unificado, /clientePossuiVendaAtiva/);
   assert.match(unificado, /vendedor-table-actions/);
+  assert.match(unificado, /icon-action whatsapp/);
+  assert.match(unificado, /situacao-\$\{situacao\.classe\}/);
   assert.match(unificado, /abrirWhatsAppClienteVendedor/);
   assert.match(unificado, /selecionarClienteNovaVendaVendedor/);
-  assert.match(unificado, /<th>Nome<\/th>/);
+  assert.match(unificado, /<th>Nome completo<\/th>/);
   assert.match(unificado, /<th>Documento<\/th>/);
   assert.match(unificado, /<th>Status<\/th>/);
-  assert.match(unificado, /Último movimento/);
+  assert.match(unificado, /Data cadastro/);
+  assert.match(unificado, /Última atualização/);
+  assert.match(unificado, /situacaoFinanceiraCliente/);
+  assert.match(unificado, /data-cliente-drawer-tab="vendas"/);
+  assert.match(unificado, /data-cliente-drawer-tab="pagamentos"/);
   assert.match(unificado, /scoreCliente\(cliente\)/);
   assert.doesNotMatch(unificado, /<span>Saldo devedor<\/span>/);
   assert.match(unificado, /saldo devedor ativo/);
@@ -253,7 +259,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v272-perf1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v273-card1/);
 });
 
 

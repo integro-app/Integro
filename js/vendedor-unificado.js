@@ -368,6 +368,20 @@
     return { classe: "is-neutro", rotulo };
   }
 
+  function situacaoFinanceiraCliente(cliente = {}) {
+    if (clienteEmFluxoLead(cliente)) return { classe: "is-lead", rotulo: "Lead recebido" };
+    if (clientePossuiVendaAtiva(cliente)) return { classe: "is-active", rotulo: "Em aberto" };
+    return { classe: "is-inactive", rotulo: "Quitado / inativo" };
+  }
+
+  function dataCadastroCliente(cliente = {}) {
+    return dataClienteFormatada(cliente.criadoEm || cliente.criadoEmTexto || cliente.dataCadastro || cliente.createdAt);
+  }
+
+  function dataAtualizacaoCliente(cliente = {}) {
+    return dataClienteFormatada(cliente.atualizadoEm || cliente.atualizadoEmTexto || cliente.ultimaMovimentacaoTexto || cliente.updatedAt || cliente.dataAtualizacao || cliente.criadoEm || cliente.criadoEmTexto);
+  }
+
   function badgeStatusCliente(status = "") {
     const meta = statusClienteMeta(status);
     return `<span class="vendedor-status-badge ${meta.classe}">${esc(meta.rotulo)}</span>`;
@@ -388,41 +402,41 @@
   function tabelaClientesVendedor(lista = []) {
     return `<div class="vendedor-clientes-table-wrap"><table class="vendedor-clientes-table">
       <colgroup>
-        <col class="col-nome"><col class="col-documento"><col class="col-tipo"><col class="col-status"><col class="col-origem"><col class="col-movimento"><col class="col-score"><col class="col-acoes">
+        <col class="col-nome"><col class="col-documento"><col class="col-status"><col class="col-score"><col class="col-origem"><col class="col-cadastro"><col class="col-atualizacao"><col class="col-acoes">
       </colgroup>
-      <thead><tr><th>Nome</th><th>Documento</th><th>Tipo</th><th>Status</th><th>Origem</th><th>Último movimento</th><th>Score</th><th>Ações</th></tr></thead><tbody>${lista.map(linhaTabelaClienteVendedor).join("")}</tbody></table></div>`;
+      <thead><tr><th>Nome completo</th><th>Documento</th><th>Status</th><th>Score</th><th>Origem</th><th>Data cadastro</th><th>Última atualização</th><th>Ações</th></tr></thead><tbody>${lista.map(linhaTabelaClienteVendedor).join("")}</tbody></table></div>`;
   }
 
   function linhaTabelaClienteVendedor(cliente) {
     const clienteId = idCliente(cliente);
-    const ativo = clientePossuiVendaAtiva(cliente);
     const status = statusClienteVendedor(cliente);
     const meta = statusClienteMeta(status);
+    const situacao = situacaoFinanceiraCliente(cliente);
     const whatsapp = telefoneWhatsappCliente(cliente);
-    const telefoneExibicao = texto(cliente.telefonePrincipal || cliente.telefone || cliente.celular || "");
-    const apelido = texto(cliente.apelido);
-    return `<tr class="status-${meta.classe}" tabindex="0" onclick="abrirDrawerClienteVendedor('${esc(clienteId)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawerClienteVendedor('${esc(clienteId)}')}">
-      <td><div class="vendedor-cliente-table-nome"><strong>${esc(cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente")}</strong><small>${esc(apelido || telefoneExibicao)}</small></div></td>
+    const nome = cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente";
+    return `<tr class="status-${meta.classe} situacao-${situacao.classe}" tabindex="0" title="Abrir opções do cliente" onclick="abrirDrawerClienteVendedor('${esc(clienteId)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawerClienteVendedor('${esc(clienteId)}')}">
+      <td><div class="vendedor-cliente-table-nome"><strong>${esc(nome)}</strong><small>${esc(situacao.rotulo)}</small></div></td>
       <td>${esc(cliente.documento || cliente.cpfCnpj || "-")}</td>
-      <td><span class="vendedor-tipo-badge ${clienteEmFluxoLead(cliente) ? "lead" : "cliente"}">${tipoRegistroClienteVendedor(cliente)}</span></td>
       <td>${badgeStatusCliente(status)}</td>
-      <td>${esc(origemClienteVendedor(cliente))}</td>
-      <td>${ultimoMovimentoCliente(cliente)}</td>
       <td><span class="vendedor-score-badge">${scoreCliente(cliente)}</span></td>
-      <td><div class="vendedor-table-actions"><button type="button" class="icon-action" title="WhatsApp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span></button><button type="button" class="icon-action" title="Ver detalhes" onclick="event.stopPropagation();abrirDrawerClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">visibility</span></button><button type="button" class="icon-action primary" title="Vender" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span></button></div></td>
+      <td>${esc(origemClienteVendedor(cliente))}</td>
+      <td>${dataCadastroCliente(cliente)}</td>
+      <td>${dataAtualizacaoCliente(cliente)}</td>
+      <td><div class="vendedor-table-actions"><button type="button" class="icon-action whatsapp" title="WhatsApp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span></button><button type="button" class="icon-action primary" title="Vender" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span></button></div></td>
     </tr>`;
   }
 
   function cardClienteMobileVendedor(cliente) {
     const clienteId = idCliente(cliente);
     const status = statusClienteVendedor(cliente);
-    const ativo = clientePossuiVendaAtiva(cliente);
     const whatsapp = telefoneWhatsappCliente(cliente);
     const meta = statusClienteMeta(status);
-    return `<article class="vendedor-cliente-mobile-card status-${meta.classe}" onclick="abrirDrawerClienteVendedor('${esc(clienteId)}')">
-      <div class="vendedor-cliente-mobile-top"><div><span class="vendedor-tipo-badge ${clienteEmFluxoLead(cliente) ? "lead" : "cliente"}">${tipoRegistroClienteVendedor(cliente)}</span><h3>${esc(cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente")}</h3><p>${esc(cliente.documento || cliente.cpfCnpj || "Sem documento")}</p></div><span class="vendedor-score-badge">${scoreCliente(cliente)}</span></div>
-      <div class="vendedor-cliente-mobile-meta">${badgeStatusCliente(status)}<span>${esc(origemClienteVendedor(cliente))}</span><span>${ultimoMovimentoCliente(cliente)}</span></div>
-      <div class="vendedor-cliente-mobile-actions"><button type="button" class="ghost-btn" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button><button type="button" class="primary-btn" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>Vender</button></div>
+    const situacao = situacaoFinanceiraCliente(cliente);
+    const nome = cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente";
+    return `<article class="vendedor-cliente-mobile-card status-${meta.classe} situacao-${situacao.classe}" tabindex="0" title="Abrir opções do cliente" onclick="abrirDrawerClienteVendedor('${esc(clienteId)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawerClienteVendedor('${esc(clienteId)}')}">
+      <div class="vendedor-cliente-mobile-top"><div><span class="vendedor-tipo-badge ${clienteEmFluxoLead(cliente) ? "lead" : "cliente"}">${tipoRegistroClienteVendedor(cliente)}</span><h3>${esc(nome)}</h3><p>${esc(cliente.documento || cliente.cpfCnpj || "Sem documento")}</p></div><span class="vendedor-score-badge">${scoreCliente(cliente)}</span></div>
+      <div class="vendedor-cliente-mobile-meta">${badgeStatusCliente(status)}<span>${esc(origemClienteVendedor(cliente))}</span><span>Cadastro: ${dataCadastroCliente(cliente)}</span><span>Atualização: ${dataAtualizacaoCliente(cliente)}</span></div>
+      <div class="vendedor-cliente-mobile-actions"><button type="button" class="ghost-btn vendedor-cliente-btn-whatsapp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button><button type="button" class="primary-btn vendedor-cliente-btn-vender" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>Vender</button></div>
     </article>`;
   }
 
@@ -817,6 +831,28 @@
     return `<div class="vendedor-cliente-resumo-item ${classe}"><span>${esc(rotulo)}</span><strong>${valor}</strong></div>`;
   }
 
+  function pertenceAoClienteRegistro(registro = {}, clienteId = "") {
+    const cliente = clientePorId(clienteId) || {};
+    const ids = new Set([clienteId, cliente.id, cliente.clienteId, cliente.clienteOperacionalId].filter(Boolean).map(String));
+    return [registro.clienteId, registro.clienteOperacionalId, registro.clienteUid, registro.idCliente, registro.cliente?.id, registro.cliente?.clienteId].filter(Boolean).some(valor => ids.has(String(valor)));
+  }
+
+  function dataHistoricoRegistro(registro = {}) {
+    return dataClienteFormatada(registro.dataVenda || registro.dataPagamento || registro.dataOperacional || registro.data || registro.criadoEm || registro.criadoEmTexto || registro.atualizadoEm);
+  }
+
+  function historicoVendasClienteHtml(clienteId) {
+    const lista = (window.vendasCache || State.getVendas?.() || []).filter(item => pertenceAoClienteRegistro(item, clienteId)).slice(0, 25);
+    if (!lista.length) return `<div class="vendedor-historico-vazio"><span class="material-symbols-rounded">receipt_long</span><strong>Sem vendas</strong><p>Nenhuma venda encontrada para este cliente.</p></div>`;
+    return lista.map(item => `<article class="vendedor-historico-item"><span class="material-symbols-rounded">receipt_long</span><div><strong>${moeda(numero(item.valorTotalVenda || item.valorTotal || item.valor || item.total || 0))}</strong><p>${esc(texto(item.status || item.statusVenda || "Venda registrada"))} · saldo ${moeda(numero(item.saldoDevedor || item.saldoAtual || item.valorEmAberto || 0))}</p><small>${dataHistoricoRegistro(item)}</small></div></article>`).join("");
+  }
+
+  function historicoPagamentosClienteHtml(clienteId) {
+    const lista = (window.pagamentosHojeCache || State.getPagamentos?.() || []).filter(item => pertenceAoClienteRegistro(item, clienteId)).slice(0, 25);
+    if (!lista.length) return `<div class="vendedor-historico-vazio"><span class="material-symbols-rounded">payments</span><strong>Sem pagamentos</strong><p>Nenhum pagamento encontrado para este cliente.</p></div>`;
+    return lista.map(item => `<article class="vendedor-historico-item"><span class="material-symbols-rounded">payments</span><div><strong>${moeda(numero(item.valorPago || item.valorRecebido || item.valor || item.total || 0))}</strong><p>${esc(texto(item.status || item.tipo || "Pagamento registrado"))}</p><small>${dataHistoricoRegistro(item)}</small></div></article>`).join("");
+  }
+
   function conteudoDrawerCliente(cliente = {}) {
     const clienteId = idCliente(cliente);
     const emLead = clienteEmFluxoLead(cliente);
@@ -827,6 +863,8 @@
     const documento = texto(cliente.documento || cliente.cpfCnpj || "-");
     const tabs = [
       `<button type="button" class="active" data-cliente-drawer-tab="resumo" onclick="abrirAbaDrawerClienteVendedor('resumo')">Resumo</button>`,
+      `<button type="button" data-cliente-drawer-tab="vendas" onclick="abrirAbaDrawerClienteVendedor('vendas')">Vendas</button>`,
+      `<button type="button" data-cliente-drawer-tab="pagamentos" onclick="abrirAbaDrawerClienteVendedor('pagamentos')">Pagamentos</button>`,
       `<button type="button" data-cliente-drawer-tab="historico" onclick="abrirAbaDrawerClienteVendedor('historico')">Histórico</button>`
     ];
     const statusLeadDestaque = emLead ? `<section id="clienteDrawerStatusDestaque" class="vendedor-lead-status-destaque status-${statusClienteMeta(status).classe}">
@@ -844,11 +882,15 @@
           ${emLead ? "" : resumoCampoDrawer("Status", badgeStatusCliente(status), "full")}
           ${resumoCampoDrawer("Origem", esc(origemClienteVendedor(cliente)))}
           ${resumoCampoDrawer("Último movimento", ultimoMovimentoCliente(cliente))}
-          ${resumoCampoDrawer("Data de cadastro", dataClienteFormatada(cliente.criadoEm || cliente.criadoEmTexto || cliente.dataCadastro || cliente.createdAt))}
+          ${resumoCampoDrawer("Data de cadastro", dataCadastroCliente(cliente))}
+          ${resumoCampoDrawer("Última atualização", dataAtualizacaoCliente(cliente))}
+          ${resumoCampoDrawer("Situação financeira", esc(situacaoFinanceiraCliente(cliente).rotulo))}
           ${resumoCampoDrawer("Saldo", moeda(saldoCliente(cliente)))}
         </div>
         <div class="vendedor-cliente-drawer-observacao"><span>Observação cadastrada</span><p>${esc(cliente.observacao || cliente.observacoes || "Nenhuma observação registrada.")}</p></div>
       </section>
+      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="vendas"><div class="vendedor-cliente-historico">${historicoVendasClienteHtml(clienteId)}</div></section>
+      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="pagamentos"><div class="vendedor-cliente-historico">${historicoPagamentosClienteHtml(clienteId)}</div></section>
       <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="historico"><div id="clienteDrawerHistorico" class="vendedor-cliente-historico"><div class="vendedor-historico-loading"><span class="material-symbols-rounded">history</span>Carregando histórico...</div></div></section>
       <div class="vendedor-cliente-drawer-actions">
         <button class="ghost-btn" type="button" ${whatsapp ? "" : "disabled"} onclick="abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button>

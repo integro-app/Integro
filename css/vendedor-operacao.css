@@ -495,3 +495,39 @@
 .vendedor-lead-status-destaque .cliente-drawer-retorno input{width:100%;min-height:44px;padding:0 11px;border:1px solid #cddbea;border-radius:12px;background:#fff;color:#102a48;font:inherit;font-size:12px;font-weight:800;outline:none}
 .vendedor-lead-status-observacao textarea:focus,.vendedor-lead-status-destaque .cliente-drawer-retorno input:focus{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
 @media(max-width:620px){.vendedor-lead-status-destaque-controles{grid-template-columns:1fr}.vendedor-lead-status-destaque-controles>.primary-btn{width:100%}}
+
+
+/* v27.3 — cards de clientes: situacao financeira e drawer completo */
+.vendedor-clientes-table{min-width:1320px!important}
+.vendedor-clientes-table col.col-nome{width:23%!important}
+.vendedor-clientes-table col.col-documento{width:13%!important}
+.vendedor-clientes-table col.col-status{width:15%!important}
+.vendedor-clientes-table col.col-score{width:7%!important}
+.vendedor-clientes-table col.col-origem{width:12%!important}
+.vendedor-clientes-table col.col-cadastro{width:11%!important}
+.vendedor-clientes-table col.col-atualizacao{width:11%!important}
+.vendedor-clientes-table col.col-acoes{width:8%!important}
+.vendedor-clientes-table tbody tr.situacao-is-lead td:first-child{box-shadow:inset 5px 0 0 #eab308!important}
+.vendedor-clientes-table tbody tr.situacao-is-active td:first-child{box-shadow:inset 5px 0 0 #16a34a!important}
+.vendedor-clientes-table tbody tr.situacao-is-inactive td:first-child{box-shadow:inset 5px 0 0 #64748b!important}
+.vendedor-clientes-table tbody tr.situacao-is-lead:hover{background:#fffdf0!important}
+.vendedor-clientes-table tbody tr.situacao-is-active:hover{background:#f0fdf4!important}
+.vendedor-clientes-table tbody tr.situacao-is-inactive:hover{background:#f8fafc!important}
+.vendedor-clientes-table th:nth-child(4),.vendedor-clientes-table td:nth-child(4),.vendedor-clientes-table th:nth-child(6),.vendedor-clientes-table td:nth-child(6),.vendedor-clientes-table th:nth-child(7),.vendedor-clientes-table td:nth-child(7),.vendedor-clientes-table th:nth-child(8),.vendedor-clientes-table td:nth-child(8){text-align:center!important}
+.vendedor-clientes-table td:nth-child(3),.vendedor-clientes-table td:nth-child(4),.vendedor-clientes-table td:nth-child(8){overflow:visible!important}
+.vendedor-clientes-table td:nth-child(5),.vendedor-clientes-table td:nth-child(6),.vendedor-clientes-table td:nth-child(7){color:#334155;font-size:12px}
+.vendedor-table-actions .icon-action.whatsapp{border-color:rgba(37,211,102,.28)!important;color:#128c7e!important;background:#fff!important}
+.vendedor-table-actions .icon-action.whatsapp:hover:not(:disabled),.vendedor-table-actions .icon-action.whatsapp:focus-visible:not(:disabled){background:linear-gradient(135deg,#25d366,#128c7e)!important;border-color:#25d366!important;color:#fff!important;box-shadow:0 12px 24px rgba(37,211,102,.28);transform:translateY(-1px)}
+.vendedor-table-actions .icon-action.primary{background:linear-gradient(135deg,#071a33,#123f73)!important;border-color:#123f73!important;color:#fff!important}
+.vendedor-table-actions .icon-action.primary:hover:not(:disabled),.vendedor-table-actions .icon-action.primary:focus-visible:not(:disabled){background:linear-gradient(135deg,#0b2b55,#1d5fc4)!important;border-color:#1d5fc4!important;box-shadow:0 14px 26px rgba(29,95,196,.28);transform:translateY(-1px)}
+.vendedor-cliente-mobile-card.situacao-is-lead:before{background:#eab308!important}
+.vendedor-cliente-mobile-card.situacao-is-active:before{background:#16a34a!important}
+.vendedor-cliente-mobile-card.situacao-is-inactive:before{background:#64748b!important}
+.vendedor-cliente-mobile-card.situacao-is-lead{background:linear-gradient(90deg,#fff 0%,#fff 70%,#fffbe6 100%)!important}
+.vendedor-cliente-mobile-card.situacao-is-active{background:linear-gradient(90deg,#fff 0%,#fff 70%,#ecfdf5 100%)!important}
+.vendedor-cliente-mobile-card.situacao-is-inactive{background:linear-gradient(90deg,#fff 0%,#fff 70%,#f8fafc 100%)!important}
+.vendedor-cliente-drawer-tabs{flex-wrap:wrap!important}
+.vendedor-cliente-drawer-tabs button{flex:1 1 auto;justify-content:center;white-space:nowrap}
+.vendedor-cliente-resumo-item .vendedor-status-badge{width:max-content;max-width:100%}
+@media(max-width:900px){.vendedor-cliente-mobile-meta{display:grid!important;grid-template-columns:1fr 1fr;align-items:stretch}.vendedor-cliente-mobile-meta>.vendedor-status-badge{width:max-content;max-width:100%}}
+@media(max-width:460px){.vendedor-cliente-mobile-meta{grid-template-columns:1fr!important}}
