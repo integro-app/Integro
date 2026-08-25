@@ -115,7 +115,8 @@ test("perfil unificado do vendedor carrega parcelas e histórico antes de render
 
 test("operação unificada preserva pagamento e não pagamento transacionais", () => {
   assert.match(unificado, /IntegroPagamento\.registrarPagamentoTransacional/);
-  assert.match(unificado, /collection\("historicoCobrancas"\)\.doc\(historicoId\)\.set/);
+  assert.match(unificado, /IntegroCobranca\.registrarNaoPagamentoTransacional/);
+  assert.doesNotMatch(unificado, /collection\("historicoCobrancas"\)\.doc\(historicoId\)\.set/);
   assert.match(unificado, /window\.abrirPagamentoCliente = abrirPagamento/);
   assert.match(unificado, /window\.registrarNaoPagamentoVenda = abrirNaoPagamento/);
   assert.match(unificado, /window\.confirmarNaoPagamentoVendedorUnificado = registrarNaoPagamento/);

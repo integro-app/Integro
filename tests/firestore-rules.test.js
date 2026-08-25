@@ -76,6 +76,7 @@ async function seedBase() {
     await setDoc(doc(admin, "caixas", "caixa_a_1"), caixa({ id: "caixa_a_1", vendedorAuthUid: profiles.vendedor1.uid }));
     await setDoc(doc(admin, "caixas", "caixa_a_2"), caixa({ id: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid, equipeId: "equipe_2" }));
     await setDoc(doc(admin, "caixas", "caixa_fechado"), caixa({ id: "caixa_fechado", status: "FECHADO", vendedorAuthUid: profiles.vendedor1.uid }));
+    await setDoc(doc(admin, "caixas", "caixa_reaberto"), caixa({ id: "caixa_reaberto", status: "REABERTO", vendedorAuthUid: profiles.vendedor1.uid }));
     await setDoc(doc(admin, "caixas", "caixa_b_1"), caixa({ id: "caixa_b_1", clientePlataformaId: "tenant_b", vendedorId: "vend_b", vendedorAuthUid: "vend_b_uid" }));
     await setDoc(doc(admin, "vendas", "venda_a_1"), venda());
     await setDoc(doc(admin, "parcelas", "parcela_a_1"), parcela());
@@ -84,6 +85,7 @@ async function seedBase() {
     await setDoc(doc(admin, "lancamentos_financeiros", "lf_gasto_aberto"), ledger({ tipoLancamento: "GASTO", natureza: "DEBITO", origem: "GASTO", origemId: "gasto_aberto", operacaoId: "gasto_aberto", valorCentavos: 500 }));
     await setDoc(doc(admin, "lancamentos_financeiros", "lf_gasto_fechado"), ledger({ caixaId: "caixa_fechado", tipoLancamento: "GASTO", natureza: "DEBITO", origem: "GASTO", origemId: "gasto_fechado", operacaoId: "gasto_fechado", valorCentavos: 500 }));
     await setDoc(doc(admin, "fechamentos_caixa", "fechamento_caixa_a_1"), fechamento());
+    await setDoc(doc(admin, "fechamentos_caixa", "fechamento_caixa_reaberto"), fechamento({ fechamentoId: "fechamento_caixa_reaberto", caixaId: "caixa_reaberto", reaberto: true }));
     await setDoc(doc(admin, "indicacoes", "indicacao_a_1"), indicacao({ vendedorDestinoId: profiles.vendedor1.uid }));
     await setDoc(doc(admin, "indicacoes", "indicacao_a_2"), indicacao({ vendedorDestinoId: profiles.vendedor2.uid }));
     await setDoc(doc(admin, "solicitacoes", "sol_a_1"), solicitacao());
@@ -436,11 +438,38 @@ test("historico: create permitido, update/delete bloqueados", async () => {
   await assertFails(deleteDoc(doc(appDb(profiles.masterA), "historico_estados_caixa", "hist_1")));
 });
 
+test("historico refechamento: cria somente para caixa reaberto e permanece imutavel", async () => {
+  const payload = fechamento({
+    fechamentoId: "fechamento_caixa_reaberto",
+    caixaId: "caixa_reaberto",
+    modo: "REFECHAMENTO",
+    statusAnterior: "REABERTO",
+    statusNovo: "FECHADO",
+    vendedorAuthUid: profiles.vendedor1.uid,
+    autorId: profiles.vendedor1.uid,
+    snapshotAuditoria: { caixaId: "caixa_reaberto" }
+  });
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "historico_fechamentos_caixa", "hist_refechamento_ok"), payload));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "historico_fechamentos_caixa", "hist_refechamento_fechado"), { ...payload, caixaId: "caixa_fechado", fechamentoId: "fechamento_caixa_fechado" }));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor2), "historico_fechamentos_caixa", "hist_refechamento_outro_vendedor"), payload));
+  await assertFails(setDoc(doc(appDb(profiles.masterB), "historico_fechamentos_caixa", "hist_refechamento_outro_tenant"), { ...payload, clientePlataformaId: "tenant_b" }));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "historico_fechamentos_caixa", "hist_refechamento_ok"), { statusNovo: "DIVERGENTE" }));
+  await assertFails(deleteDoc(doc(appDb(profiles.vendedor1), "historico_fechamentos_caixa", "hist_refechamento_ok")));
+});
+
 test("pagamento/venda: vendedor cria venda propria, caixa de outro bloqueia, pagamento proprio permitido e caixa fechado bloqueia", async () => {
   await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_nova"), venda({ operacaoId: "op_nova" })));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_outro"), venda({ caixaId: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid })));
   await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_ok"), pagamento()));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_fechado"), pagamento({ caixaId: "caixa_fechado" })));
+});
+
+test("pagamento/venda: caixa reaberto permite proprio vendedor e bloqueia fechado, outro vendedor e outro tenant", async () => {
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_reaberta"), venda({ caixaId: "caixa_reaberto", operacaoId: "op_venda_reaberta" })));
+  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_reaberto"), pagamento({ caixaId: "caixa_reaberto", operacaoId: "pg_op_reaberto" })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_reaberta_outro_vendedor"), venda({ caixaId: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid, operacaoId: "op_outro_vendedor" })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_reaberto_outro_vendedor"), pagamento({ caixaId: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid, operacaoId: "pg_outro_vendedor" })));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "vendas", "venda_reaberta_outro_tenant"), venda({ caixaId: "caixa_b_1", clientePlataformaId: "tenant_b", vendedorId: "vend_b", vendedorAuthUid: "vend_b_uid", operacaoId: "op_tenant_b" })));
 });
 
 test("pagamento/venda: alteração de valor original e delete bloqueados", async () => {

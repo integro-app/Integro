@@ -84,7 +84,9 @@ test("vínculo vazio não libera carteira de outro vendedor", () => {
 
 test("vendedor.html carrega uma única camada autoritativa de operação", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "vendedor.html"), "utf8");
-  assert.match(html, /css\/vendedor-operacao\.css\?v=20260812-clientes-v24-4/);
-  assert.match(html, /js\/vendedor-operacao\.js\?v=20260803-1/);
+  const cssOperacao = html.match(/css\/vendedor-operacao\.css\?v=[^"\']+/g) || [];
+  const jsOperacao = html.match(/js\/vendedor-operacao\.js\?v=[^"\']+/g) || [];
+  assert.equal(cssOperacao.length, 1);
+  assert.equal(jsOperacao.length, 1);
   assert.doesNotMatch(html, /integro-operacao-vendedor-carteira-devedora-20260802/);
 });

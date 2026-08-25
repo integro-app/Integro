@@ -142,13 +142,21 @@
   }
 
   function saldoCliente(cliente = {}) {
-    const camposReais = ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"];
+    if (cliente.saldoDevedor !== undefined && cliente.saldoDevedor !== null && texto(cliente.saldoDevedor) !== "") {
+      const saldoOficial = numero(cliente.saldoDevedor);
+      return saldoOficial <= 0 ? 0 : saldoOficial;
+    }
+    if (Number.isFinite(Number(cliente.saldoDevedorCentavos))) {
+      const saldoCentavos = Number(cliente.saldoDevedorCentavos);
+      return saldoCentavos <= 0 ? 0 : saldoCentavos / 100;
+    }
+    const camposReais = ["saldoAtual", "saldo", "valorEmAberto"];
     for (const campo of camposReais) {
       if (cliente[campo] !== undefined && cliente[campo] !== null && texto(cliente[campo]) !== "") {
-        return numero(cliente[campo]);
+        const saldo = numero(cliente[campo]);
+        if (saldo > 0.01) return saldo;
       }
     }
-    if (Number.isFinite(Number(cliente.saldoDevedorCentavos))) return Number(cliente.saldoDevedorCentavos) / 100;
     return 0;
   }
 
@@ -568,6 +576,10 @@
           </div>
           <div id="contadorCobrancas" class="vendedor-operacao-contador"></div>
           <div id="listaCobrancas"></div>
+          <div class="fechar-caixa-final-clean vendedor-fechamento-operacao">
+            <div class="fechamento-status-clean" id="statusFechamentoCobrancasFinal"></div>
+            <button class="btn btn-primary" id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa()" type="button"><span class="material-symbols-rounded">lock</span>Fechar caixa</button>
+          </div>
         </div>
 
         <div id="abaVendasDia" style="display:none">
@@ -1279,7 +1291,7 @@
     const candidatos = [...mapa.values()].filter(caixa => {
       const status = texto(caixa.status || caixa.situacao || caixa.estado).toUpperCase();
       const tenantCaixa = texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId);
-      return status === "ABERTO" &&
+      return ["ABERTO", "REABERTO"].includes(status) &&
         caixa.ativo !== false &&
         caixa.excluido !== true &&
         (!tenantCaixa || !tenantId || tenantCaixa === tenantId) &&
@@ -2025,7 +2037,7 @@
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const historicoId = naoPagamentoIdDeterministico(registro, caixa);
     try {
-      await (window.db || firebase.firestore()).collection("historicoCobrancas").doc(historicoId).set({ id: historicoId, operacaoId: historicoId, idempotencyKey: historicoId, tipo: "NAO_PAGAMENTO", status: "REGISTRADO", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, clientePlataformaId: State.getTenantId?.(), tenantId: State.getTenantId?.(), caixaId: caixa.id || caixa.caixaId || "", vendedorId: usuario.id || usuario.usuarioId || "", vendedorAuthUid: usuario.authUid || usuario.uid || "", uid: usuario.authUid || usuario.uid || "", motivo, observacao, data: dataCaixa(), dataOperacional: dataCaixa(), criadoEmTexto: new Date().toISOString(), atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(), criadoEm: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+      await window.IntegroCobranca.registrarNaoPagamentoTransacional({ usuario, clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id || caixa.caixaId || "", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, operacaoId: historicoId, motivo, observacao, dataOperacional: dataCaixa(), origem: "painel_unificado_vendedor" });
       fecharModal();
       agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Não pagamento registrado.");

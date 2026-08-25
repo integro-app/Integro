@@ -680,6 +680,8 @@ test("cliente ativo, caixa fechado, tenant incorreto e vendedor incorreto bloque
     vendaAtivaId: "venda_quitada",
     saldoDevedorCentavos: 25000,
     saldoDevedor: 0,
+    saldoAtual: 250,
+    valorEmAberto: 250,
     saldo: 0
   });
   await assert.doesNotReject(registrarVendaTransacional(legadoQuitado.entrada));
@@ -1887,6 +1889,8 @@ test("fallback local limpa flags de venda ativa quando pagamento quita saldo", (
   const codigo = fs.readFileSync(path.join(__dirname, "..", "js", "services", "financial-operations.js"), "utf8");
   assert.match(codigo, /possuiVendaAtiva: calculo\.novoSaldoClienteCentavos > 0/);
   assert.match(codigo, /vendaAtivaId: calculo\.novoSaldoClienteCentavos > 0 \? texto\(cliente\.vendaAtivaId \|\| vendaId\) : ""/);
+  assert.match(codigo, /saldoAtual: reais\(calculo\.novoSaldoClienteCentavos\)/);
+  assert.match(codigo, /valorEmAberto: reais\(calculo\.novoSaldoClienteCentavos\)/);
 });
 test("fallback local marca cliente sem saldo como inativo", () => {
   const codigo = fs.readFileSync(path.join(__dirname, "..", "js", "services", "financial-operations.js"), "utf8");

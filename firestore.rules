@@ -651,6 +651,7 @@ service cloud.firestore {
         fechamentoId == "fechamento_" + data.get("caixaId", "") &&
         exists(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))) &&
         get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
+        get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("status", "") in ["ABERTO", "REABERTO"] &&
         data.get("vendedorId", "") == get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("vendedorId", "") &&
         data.get("statusFechamento", "") in ["FECHADO", "DIVERGENTE"] &&
         data.get("caixaFinalEsperadoCentavos", 0) is int &&
@@ -682,6 +683,30 @@ service cloud.firestore {
           isMasterLocal() ||
           (isSupervisor() && isTeamAllowed(resource.data) && (hasPermission("podeReabrirCaixa") || hasPermission("podeTratarDivergencia"))) ||
           (isFinanceiro() && (hasPermission("podeRegularizarCaixa") || hasPermission("podeAceitarDivergenciaFinanceira")))
+        );
+    }
+
+    function canRefecharFechamento() {
+      let data = request.resource.data;
+      let caixa = get(/databases/$(database)/documents/caixas/$(data.caixaId)).data;
+      return isActiveUser() && isSameTenantWrite() &&
+        data.caixaId is string &&
+        data.fechamentoId is string &&
+        data.modo == "REFECHAMENTO" &&
+        data.statusAnterior == "REABERTO" &&
+        data.statusNovo in ["FECHADO", "DIVERGENTE"] &&
+        data.snapshotAuditoria is map &&
+        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+        exists(/databases/$(database)/documents/fechamentos_caixa/$(data.fechamentoId)) &&
+        data.fechamentoId == "fechamento_" + data.caixaId &&
+        caixa.get("clientePlataformaId", "") == userTenantId() &&
+        caixa.get("status", "") == "REABERTO" &&
+        data.get("vendedorId", "") == caixa.get("vendedorId", "") &&
+        (
+          isMasterLocal() ||
+          (isVendedor() && isOwnSellerData(caixa) && isOwnSellerData(data)) ||
+          (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(data)) ||
+          (isFinanceiro() && (hasPermission("podeReabrirCaixa") || hasPermission("podeRegularizarCaixa")))
         );
     }
 
@@ -733,7 +758,7 @@ service cloud.firestore {
       return isActiveUser() && isSameTenantWrite() &&
         data.caixaId is string &&
         exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
-        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.status == "ABERTO" &&
+        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
         get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.clientePlataformaId == userTenantId() &&
         (
           isMasterLocal() ||
@@ -749,7 +774,7 @@ service cloud.firestore {
         data.valorCentavos is int &&
         data.valorCentavos > 0 &&
         exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
-        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.status == "ABERTO" &&
+        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
         get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.clientePlataformaId == userTenantId() &&
         exists(/databases/$(database)/documents/vendas/$(data.vendaId)) &&
         exists(/databases/$(database)/documents/parcelas/$(data.parcelaId)) &&
@@ -1388,6 +1413,13 @@ service cloud.firestore {
       allow list: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateFechamento(request.resource.data, id);
       allow update: if canUpdateFechamento();
+      allow delete: if false;
+    }
+
+    match /historico_fechamentos_caixa/{id} {
+      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow create: if canRefecharFechamento();
+      allow update: if false;
       allow delete: if false;
     }
 

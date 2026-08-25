@@ -124,6 +124,10 @@ exports.registrarPagamentoOperacional = functions
   .region("southamerica-east1")
   .https.onCall(operacoesFinanceiras.registrarPagamento);
 
+exports.registrarNaoPagamentoOperacional = functions
+  .region("southamerica-east1")
+  .https.onCall(operacoesFinanceiras.registrarNaoPagamento);
+
 // V27: o Financeiro Empresarial permanece independente do caixa/ledger operacional.
 // A antiga ponte de retirada de recurso empresarial deixa de ser exportada nesta versão.
 

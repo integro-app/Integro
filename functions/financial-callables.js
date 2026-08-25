@@ -96,12 +96,16 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
   }
 
   function saldoClienteParaBloqueioVenda(cliente = {}) {
-    const camposReais = ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"];
-    for (const campo of camposReais) {
-      const centavos = saldoRealCentavos(cliente?.[campo]);
-      if (centavos !== null) return centavos;
+    const saldoOficial = saldoRealCentavos(cliente?.saldoDevedor);
+    if (saldoOficial !== null) return saldoOficial <= 0 ? 0 : saldoOficial;
+    if (Number.isInteger(cliente?.saldoDevedorCentavos)) {
+      return cliente.saldoDevedorCentavos <= 0 ? 0 : cliente.saldoDevedorCentavos;
     }
-    return core.centavosDe(cliente, "saldoDevedorCentavos");
+    for (const campo of ["saldoAtual", "saldo", "valorEmAberto"]) {
+      const centavos = saldoRealCentavos(cliente?.[campo]);
+      if (centavos !== null && centavos > 1) return centavos;
+    }
+    return 0;
   }
 
   function idUsuario(uid, usuario) {
@@ -252,8 +256,13 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     const vendedorId = idUsuario(uid, usuario);
     const vendedorNome = nomeUsuario(usuario);
     const dataOperacional = core.hojeSP();
-    const configuracaoSnap = await db.collection("configuracoes_empresa").doc(tenantId).get().catch(() => null);
-    const configuracaoEmpresa = configuracaoSnap?.exists ? (configuracaoSnap.data() || {}) : {};
+    const [configuracaoAtualSnap, configuracaoLegadaSnap] = await Promise.all([
+      db.collection("configuracoes_empresas").doc(tenantId).get().catch(() => null),
+      db.collection("configuracoes_empresa").doc(tenantId).get().catch(() => null)
+    ]);
+    const configuracaoEmpresa = configuracaoAtualSnap?.exists
+      ? (configuracaoAtualSnap.data() || {})
+      : (configuracaoLegadaSnap?.exists ? (configuracaoLegadaSnap.data() || {}) : {});
     const permitirAnaliseSaldoAtivo = configuracaoAnaliseSaldo(configuracaoEmpresa);
     const solicitacaoSaldoId = `vsa_${idSeguro(tenantId)}_${idSeguro(uid)}_${idSeguro(clienteId)}_${valorEmprestadoCentavos}_${dataOperacional.replace(/-/g, "")}`;
 
@@ -726,6 +735,8 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         saldoDevedorCentavos: calculo.novoSaldoClienteCentavos,
         saldoDevedor: core.reais(calculo.novoSaldoClienteCentavos),
         saldo: core.reais(calculo.novoSaldoClienteCentavos),
+        saldoAtual: core.reais(calculo.novoSaldoClienteCentavos),
+        valorEmAberto: core.reais(calculo.novoSaldoClienteCentavos),
         status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
         statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
         possuiVendaAtiva: calculo.novoSaldoClienteCentavos > 0,
@@ -768,7 +779,83 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     });
   }
 
-  return { registrarVenda, registrarPagamento };
+  async function registrarNaoPagamento(dados, contexto) {
+    const { uid, usuario, tenantId } = await usuarioAtivo(contexto);
+    const entrada = dados?.entrada || dados || {};
+    const caixaId = validarId(entrada.caixaId, "Caixa");
+    const vendaId = validarId(entrada.vendaId, "Venda");
+    const clienteIdInformado = core.texto(entrada.clienteId);
+    const dataOperacional = core.texto(entrada.dataOperacional || core.hojeSP()).slice(0, 10);
+    const motivo = core.texto(entrada.motivo || "Cliente não realizou o pagamento");
+    if (!motivo) erro("invalid-argument", "Motivo obrigatório para registrar não pagamento.");
+    const baseHistorico = [tenantId, caixaId, vendaId, dataOperacional].join("_");
+    const historicoId = validarId(entrada.operacaoId || ("nao_pagamento_" + core.texto(baseHistorico).replace(/[^a-zA-Z0-9_-]+/g, "_")), "Histórico");
+    const caixaRef = db.collection("caixas").doc(caixaId);
+    const vendaRef = db.collection("vendas").doc(vendaId);
+    const historicoRef = db.collection("historicoCobrancas").doc(historicoId);
+
+    return db.runTransaction(async transaction => {
+      const [caixaSnap, vendaSnap, historicoSnap] = await Promise.all([
+        transaction.get(caixaRef),
+        transaction.get(vendaRef),
+        transaction.get(historicoRef)
+      ]);
+      if (!caixaSnap.exists) erro("not-found", "Caixa não encontrado.");
+      if (!vendaSnap.exists) erro("not-found", "Venda não encontrada.");
+      const caixa = caixaSnap.data() || {};
+      const venda = vendaSnap.data() || {};
+      validarCaixa(caixa, tenantId, uid, usuario);
+      validarRegistroDoVendedor(venda, tenantId, uid, usuario, "Venda");
+      if (historicoSnap.exists) return { ok: true, modo: "IDEMPOTENTE", historicoId };
+
+      const vendedorId = idUsuario(uid, usuario);
+      const vendedorNome = nomeUsuario(usuario);
+      const clienteId = clienteIdInformado || core.texto(venda.clienteId || venda.clienteOperacionalId);
+      transaction.set(historicoRef, {
+        id: historicoId,
+        operacaoId: historicoId,
+        idempotencyKey: historicoId,
+        tipo: "NAO_PAGAMENTO",
+        status: "REGISTRADO",
+        vendaId,
+        clienteId,
+        clienteNome: entrada.clienteNome || venda.clienteNome || "",
+        clientePlataformaId: tenantId,
+        tenantId,
+        caixaId,
+        vendedorId,
+        vendedorAuthUid: uid,
+        vendedorUid: uid,
+        vendedorNome,
+        uid,
+        motivo,
+        observacao: core.texto(entrada.observacao),
+        data: dataOperacional,
+        dataOperacional,
+        criadoEmTexto: new Date().toISOString(),
+        criadoEm: ts(),
+        atualizadoEm: ts()
+      }, { merge: false });
+      transaction.set(db.collection("logs").doc(), {
+        tipoAcao: "COBRANCA_NAO_PAGAMENTO",
+        origem: entrada.origem || "vendedor",
+        clientePlataformaId: tenantId,
+        caixaId,
+        vendaId,
+        clienteId,
+        historicoId,
+        usuarioId: vendedorId,
+        usuarioAuthUid: uid,
+        usuarioNome: vendedorNome,
+        motivo,
+        dataOperacional,
+        criadoEm: ts()
+      });
+      return { ok: true, modo: "CRIACAO", historicoId };
+    });
+  }
+
+  return { registrarVenda, registrarPagamento, registrarNaoPagamento };
 }
 
 module.exports = { criarOperacoesFinanceiras };

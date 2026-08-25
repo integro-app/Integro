@@ -255,7 +255,7 @@
     }
 
     let remotos = diretos.filter(caixa => caixaPertenceAoVendedor(caixa));
-    if (!remotos.some(caixa => statusCaixa(caixa) === "ABERTO")) {
+    if (!remotos.some(caixa => ["ABERTO", "REABERTO"].includes(statusCaixa(caixa)))) {
       remotos = deduplicar([
         remotos,
         await consultar(CONFIG.COLECOES.CAIXAS, camposProprios(CONFIG.COLECOES.CAIXAS), limite, { cacheMs: 3000, forcar })
@@ -270,7 +270,7 @@
     const caixas = deduplicar([caixaPersistido(), remotos])
       .filter(caixa => caixa?.id && caixa.excluido !== true && caixaPertenceAoVendedor(caixa));
     const aberto = caixas
-      .filter(caixa => statusCaixa(caixa) === "ABERTO" && caixa.ativo !== false)
+      .filter(caixa => ["ABERTO", "REABERTO"].includes(statusCaixa(caixa)) && caixa.ativo !== false)
       .sort((a, b) => tempoCaixa(b) - tempoCaixa(a))[0] || null;
 
     if (aberto) {

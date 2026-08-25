@@ -178,13 +178,23 @@
 
   function saldoClienteParaBloqueioVenda(cliente = {}) {
     const operacional = getOperacional();
-    const camposReais = ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"];
+    const saldoOficial = cliente?.saldoDevedor;
+    if (saldoOficial !== undefined && saldoOficial !== null && saldoOficial !== "") {
+      const saldoOficialCentavos = operacional.moedaParaCentavos(saldoOficial);
+      if (saldoOficialCentavos <= 0) return 0;
+      return saldoOficialCentavos;
+    }
+    if (Number.isInteger(cliente?.saldoDevedorCentavos)) {
+      return cliente.saldoDevedorCentavos <= 0 ? 0 : cliente.saldoDevedorCentavos;
+    }
+    const camposReais = ["saldoAtual", "saldo", "valorEmAberto"];
     for (const campo of camposReais) {
       if (cliente?.[campo] !== undefined && cliente?.[campo] !== null && cliente?.[campo] !== "") {
-        return operacional.moedaParaCentavos(cliente[campo]);
+        const centavos = operacional.moedaParaCentavos(cliente[campo]);
+        if (centavos > 1) return centavos;
       }
     }
-    return centavosDe(cliente, "saldoDevedorCentavos");
+    return 0;
   }
 
   function reais(centavos) {
@@ -1565,6 +1575,8 @@
         saldoDevedorCentavos: calculo.novoSaldoClienteCentavos,
         saldoDevedor: reais(calculo.novoSaldoClienteCentavos),
         saldo: reais(calculo.novoSaldoClienteCentavos),
+        saldoAtual: reais(calculo.novoSaldoClienteCentavos),
+        valorEmAberto: reais(calculo.novoSaldoClienteCentavos),
         status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
         statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
         possuiVendaAtiva: calculo.novoSaldoClienteCentavos > 0,
@@ -1957,7 +1969,7 @@
     const abertosQuery = db.collection("caixas")
       .where("clientePlataformaId", "==", tenantId)
       .where("vendedorId", "==", vendedorId)
-      .where("status", "==", "ABERTO")
+      .where("status", "in", ["ABERTO", "REABERTO"])
       .limit(20);
     const abertosReferencias = await referenciasDaConsulta(abertosQuery);
 
@@ -2273,7 +2285,7 @@
     const abertosQuery = db.collection("caixas")
       .where("clientePlataformaId", "==", tenantId || snapshot.caixa.clientePlataformaId || "")
       .where("vendedorId", "==", vendedorId || snapshot.caixa.vendedorId || "")
-      .where("status", "==", "ABERTO")
+      .where("status", "in", ["ABERTO", "REABERTO"])
       .limit(20);
     const abertosReferencias = await referenciasDaConsulta(abertosQuery);
 
@@ -2285,16 +2297,16 @@
       ]);
       if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
 
-      if (fechamentoSnap.exists) {
-        const fechamento = fechamentoSnap.data();
-        return { fechamentoId, caixaId, modo: "IDEMPOTENTE", statusFechamento: fechamento.statusFechamento || fechamento.status || "", fechamento };
-      }
-
+      const fechamentoExistente = fechamentoSnap.exists ? (fechamentoSnap.data() || {}) : null;
       const caixa = caixaSnap.data();
       validarTenant(caixa, tenantId || caixa.clientePlataformaId, "Caixa");
       validarVendedorRegistro(caixa, { id: vendedorId || caixa.vendedorId, authUid: uid || caixa.vendedorAuthUid }, "Caixa");
       if (texto(caixaId) !== texto(snapshot.caixa.id)) throw new Error("Snapshot de fechamento não pertence ao caixa atual.");
-      if (normalizarStatus(caixa.status) !== "ABERTO") throw new Error("Caixa já está fechado ou não está aberto.");
+      if (fechamentoExistente && !resourceFallbackFechamentoReaberto(fechamentoExistente)) {
+        return { fechamentoId, caixaId, modo: "IDEMPOTENTE", statusFechamento: fechamentoExistente.statusFechamento || fechamentoExistente.status || "", fechamento: fechamentoExistente };
+      }
+      const statusCaixa = normalizarStatus(caixa.status);
+      if (!["ABERTO", "REABERTO"].includes(statusCaixa)) throw new Error("Caixa já está fechado ou não está aberto.");
 
       const abertosValidos = abertos.filter(c => c.excluido !== true && c.ativo !== false);
       if (abertosValidos.length > 1) {
@@ -2351,7 +2363,27 @@
         atualizadoEm: serverTimestamp()
       };
 
-      transaction.set(fechamentoRef, payload);
+      const refechamento = fechamentoExistente && resourceFallbackFechamentoReaberto(fechamentoExistente);
+      transaction.set(fechamentoRef, {
+        ...payload,
+        modo: refechamento ? "REFECHAMENTO" : "CRIACAO",
+        totalReaberturas: Math.max(Number(fechamentoExistente?.totalReaberturas || 0), Number(payload.totalReaberturas || 0))
+      }, { merge: refechamento });
+      if (refechamento) {
+        transaction.set(db.collection("historico_fechamentos_caixa").doc(idSeguroOperacao("fechamento", caixaId, entrada.operacaoId || agoraLocal)), {
+          ...payload,
+          modo: "REFECHAMENTO",
+          fechamentoId,
+          caixaId,
+          fechamentoAnterior: fechamentoExistente || {},
+          statusAnterior: "REABERTO",
+          statusNovo: statusFechamento,
+          autorId: usuario.id || usuario.usuarioId || "",
+          autorNome: usuario.nome || usuario.nomeCompleto || usuario.email || "",
+          dataHora: agoraLocal,
+          criadoEm: serverTimestamp()
+        });
+      }
       transaction.update(caixaRef, {
         status: statusFechamento,
         ativo: false,
@@ -2392,6 +2424,10 @@
 
       return { fechamentoId, caixaId, modo: "CRIACAO", statusFechamento, diferencaCentavos, snapshot: payload };
     });
+  }
+
+  function resourceFallbackFechamentoReaberto(fechamento = {}) {
+    return fechamento.reaberto === true || texto(fechamento.reaberturaId || fechamento.motivoReabertura || fechamento.reabertoEm || fechamento.reabertoEmTexto) !== "";
   }
 
   async function reconciliarCaixaSomenteLeitura(caixaId) {
@@ -2439,16 +2475,18 @@
     const caixaSnap = await db.collection("caixas").doc(texto(caixaId)).get();
     if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
     const caixa = { id: caixaId, ...caixaSnap.data() };
+    const tenantId = texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId || "");
     const fechamentoId = fechamentoIdDeterministico(caixaId);
-    const [snapshot, saldoLedger, vendas, pagamentos, solicitacoes, fechamentoSnap] = await Promise.all([
-      prepararSnapshotFechamentoCaixa({ caixaId, db, ignorarPendencias: true }),
-      calcularSaldoLedgerCaixa(caixaId, { db, clientePlataformaId: caixa.clientePlataformaId }),
-      listarPorCaixa(db, "vendas", caixaId, caixa.clientePlataformaId),
-      listarPorCaixa(db, "pagamentos", caixaId, caixa.clientePlataformaId),
-      listarPorCaixa(db, "solicitacoes", caixaId, caixa.clientePlataformaId),
-      db.collection("fechamentos_caixa").doc(fechamentoId).get()
+    const [snapshot, saldoLedger, vendas, pagamentos, solicitacoes, fechamentoSnap, lancamentosCaixa] = await Promise.all([
+      prepararSnapshotFechamentoCaixa({ caixaId, db, clientePlataformaId: tenantId, ignorarPendencias: true }),
+      calcularSaldoLedgerCaixa(caixaId, { db, clientePlataformaId: tenantId }),
+      listarPorCaixa(db, "vendas", caixaId, tenantId),
+      listarPorCaixa(db, "pagamentos", caixaId, tenantId),
+      listarPorCaixa(db, "solicitacoes", caixaId, tenantId),
+      db.collection("fechamentos_caixa").doc(fechamentoId).get(),
+      listarPorCaixa(db, "lancamentos_financeiros", caixaId, tenantId)
     ]);
-    const lancamentos = saldoLedger.lancamentos;
+    const lancamentos = saldoLedger.lancamentos.length ? saldoLedger.lancamentos : lancamentosCaixa;
     const divergencias = [];
     const adicionar = (tipo, detalhe = {}) => divergencias.push({ tipo, ...detalhe });
     const ativos = l => normalizarStatus(l.statusLancamento || "CONFIRMADO") !== "CANCELADO";
@@ -2923,6 +2961,104 @@
     });
   }
 
+  function naoPagamentoIdDeterministico({ clientePlataformaId, caixaId, vendaId, dataOperacional }) {
+    const bruto = [clientePlataformaId, caixaId, vendaId, dataOperacional].map(texto).join("_");
+    return "nao_pagamento_" + bruto.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+  }
+
+  async function registrarNaoPagamentoTransacional(entrada = {}) {
+    const db = getDb();
+    const operacional = getOperacional();
+    const usuario = entrada?.usuario || {};
+    const tenantId = texto(entrada?.clientePlataformaId || usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId);
+    const caixaId = texto(entrada?.caixaId);
+    const vendaId = texto(entrada?.vendaId);
+    const clienteId = texto(entrada?.clienteId);
+    const uid = texto(usuario.authUid || usuario.uid);
+    const dataOperacional = texto(entrada?.dataOperacional || operacional.hojeSP()).slice(0, 10);
+    const motivo = texto(entrada?.motivo || "Cliente não realizou o pagamento");
+    if (!tenantId || !caixaId || !vendaId || !uid || !motivo) {
+      throw new Error("Operação de não pagamento incompleta ou sessão inválida.");
+    }
+
+    if (backendFinanceiroDisponivel()) {
+      return chamarBackendFinanceiro("registrarNaoPagamentoOperacional", {
+        caixaId,
+        vendaId,
+        clienteId,
+        clienteNome: entrada?.clienteNome,
+        dataOperacional,
+        motivo,
+        observacao: entrada?.observacao || "",
+        origem: entrada?.origem || "vendedor"
+      });
+    }
+
+    const historicoId = texto(entrada?.operacaoId) || naoPagamentoIdDeterministico({ clientePlataformaId: tenantId, caixaId, vendaId, dataOperacional });
+    const caixaRef = db.collection("caixas").doc(caixaId);
+    const vendaRef = db.collection("vendas").doc(vendaId);
+    const historicoRef = db.collection("historicoCobrancas").doc(historicoId);
+    const logRef = db.collection("logs").doc();
+
+    return db.runTransaction(async transaction => {
+      const [caixaSnap, vendaSnap, historicoSnap] = await Promise.all([
+        transaction.get(caixaRef),
+        transaction.get(vendaRef),
+        transaction.get(historicoRef)
+      ]);
+      if (!caixaSnap.exists) throw new Error("Caixa não encontrado.");
+      if (!vendaSnap.exists) throw new Error("Venda não encontrada.");
+      const caixa = caixaSnap.data() || {};
+      const venda = vendaSnap.data() || {};
+      validarCaixaPagamento(caixa, tenantId, usuario);
+      validarTenant(venda, tenantId, "Venda");
+      validarVendedorRegistro(venda, usuario, "Venda");
+      if (historicoSnap.exists) return { historicoId, modo: "IDEMPOTENTE" };
+
+      const payload = {
+        id: historicoId,
+        operacaoId: historicoId,
+        idempotencyKey: historicoId,
+        tipo: "NAO_PAGAMENTO",
+        status: "REGISTRADO",
+        vendaId,
+        clienteId: clienteId || venda.clienteId || venda.clienteOperacionalId || "",
+        clienteNome: entrada?.clienteNome || venda.clienteNome || "",
+        clientePlataformaId: tenantId,
+        tenantId,
+        caixaId,
+        vendedorId: usuario.id || usuario.usuarioId || venda.vendedorId || "",
+        vendedorAuthUid: uid,
+        vendedorUid: uid,
+        uid,
+        motivo,
+        observacao: entrada?.observacao || "",
+        data: dataOperacional,
+        dataOperacional,
+        criadoEmTexto: new Date().toISOString(),
+        criadoEm: serverTimestamp(),
+        atualizadoEm: serverTimestamp()
+      };
+      transaction.set(historicoRef, payload, { merge: false });
+      transaction.set(logRef, {
+        tipoAcao: "COBRANCA_NAO_PAGAMENTO",
+        origem: entrada?.origem || "vendedor",
+        clientePlataformaId: tenantId,
+        caixaId,
+        vendaId,
+        clienteId: payload.clienteId,
+        historicoId,
+        usuarioId: usuario.id || usuario.usuarioId || "",
+        usuarioAuthUid: uid,
+        usuarioNome: usuario.nome || usuario.nomeCompleto || usuario.email || "",
+        motivo,
+        dataOperacional,
+        criadoEm: serverTimestamp()
+      });
+      return { historicoId, modo: "CRIACAO" };
+    });
+  }
+
   window.IntegroPagamento = {
     pagamentoIdDeterministico,
     calcularPagamento,
@@ -2936,6 +3072,11 @@
     validarCaixaVenda,
     calcularParcelasVenda,
     registrarVendaTransacional
+  };
+
+  window.IntegroCobranca = {
+    naoPagamentoIdDeterministico,
+    registrarNaoPagamentoTransacional
   };
 
   window.IntegroCaixa = {

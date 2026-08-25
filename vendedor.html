@@ -7099,14 +7099,14 @@
     try {
       let ref = db.collection("caixas")
         .where(campo, "==", usuarioLogado.id)
-        .where("status", "==", "ABERTO")
+        .where("status", "in", ["ABERTO", "REABERTO"])
         .limit(1);
 
       if (tenantId) {
         ref = db.collection("caixas")
           .where("clientePlataformaId", "==", tenantId)
           .where(campo, "==", usuarioLogado.id)
-          .where("status", "==", "ABERTO")
+          .where("status", "in", ["ABERTO", "REABERTO"])
           .limit(1);
       }
 
@@ -17055,7 +17055,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         const snap = await banco.collection("caixas")
           .where("clientePlataformaId", "==", tenant)
           .where(campo, "==", String(valor))
-          .where("status", "==", "ABERTO")
+          .where("status", "in", ["ABERTO", "REABERTO"])
           .limit(20)
           .get();
 
@@ -17407,7 +17407,7 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   function caixaAbertoValido(caixa) {
-    return !!caixa && !!caixa.id && caixa.excluido !== true && statusCaixa(caixa) === "ABERTO";
+    return !!caixa && !!caixa.id && caixa.excluido !== true && ["ABERTO", "REABERTO"].includes(statusCaixa(caixa));
   }
 
   function getBanco() {
@@ -17536,14 +17536,14 @@ async function verificarCaixaAbertoDiaAnterior() {
         try {
           let ref = banco.collection("caixas")
             .where(campo, "==", idUsuario)
-            .where("status", "==", "ABERTO")
+            .where("status", "in", ["ABERTO", "REABERTO"])
             .limit(20);
 
           if (tenant) {
             ref = banco.collection("caixas")
               .where("clientePlataformaId", "==", tenant)
               .where(campo, "==", idUsuario)
-              .where("status", "==", "ABERTO")
+              .where("status", "in", ["ABERTO", "REABERTO"])
               .limit(20);
           }
 
@@ -18320,7 +18320,7 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   function caixaAberto(caixa) {
-    return !!caixa && !!caixa.id && caixa.excluido !== true && statusCaixa(caixa) === "ABERTO";
+    return !!caixa && !!caixa.id && caixa.excluido !== true && ["ABERTO", "REABERTO"].includes(statusCaixa(caixa));
   }
 
   function dataFromValor(valor) {
@@ -18494,7 +18494,7 @@ async function verificarCaixaAbertoDiaAnterior() {
         const snap = await dbRef.collection("caixas")
           .where("clientePlataformaId", "==", tenant)
           .where(campo, "==", String(valor))
-          .where("status", "==", "ABERTO")
+          .where("status", "in", ["ABERTO", "REABERTO"])
           .limit(25)
           .get();
 
