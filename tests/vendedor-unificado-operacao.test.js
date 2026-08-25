@@ -300,3 +300,24 @@ test("fluxo visual de lead inicia atendimento antes da conversao e encerra acoes
   assert.match(detalhe, /emAtendimento \? `<button[^`]+Não convertida/);
   assert.match(detalhe, /!encerrado \? `<button[^`]+Converter em venda/);
 });
+
+
+test("vendedor v27.3 tem operação assíncrona com status, rollback e feedback imediato", () => {
+  assert.ok(unificado.includes(`OPERACAO_SYNC_STATUS = ["QUEUED", "PROCESSING", "CONFIRMED", "FAILED"]`));
+  assert.match(unificado, /async function executarOperacaoAssincrona/);
+  assert.ok(unificado.includes("rollback?.(erro)"));
+  assert.match(unificado, /feedbackMs/);
+  assert.match(unificado, /IntegroVendedorAsync/);
+  assert.ok(unificado.includes(`renderizar?.("PROCESSING")`));
+  assert.ok(unificado.includes(`medirInteracao?.("vendedor.`));
+  assert.match(unificado, /pagamentoIdDeterministico/);
+  assert.match(unificado, /operacaoId: historicoId/);
+});
+
+test("card de cobrança exibe estado de sincronização da baixa", () => {
+  assert.ok(operacao.includes("IntegroVendedorAsync?.statusDaCobranca"));
+  assert.match(operacao, /sync-processing/);
+  assert.match(operacao, /sync-confirmed/);
+  assert.match(operacao, /sync-failed/);
+  assert.match(operacao, /vendedor-sync-badge/);
+});

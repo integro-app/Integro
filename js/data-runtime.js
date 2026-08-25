@@ -11,6 +11,8 @@
     consultas: 0,
     consultasCache: 0,
     consultasDeduplicadas: 0,
+    prefetches: 0,
+    interacoes: [],
     documentosRecebidos: 0,
     listenersAbertos: 0,
     listenersEncerrados: 0,
@@ -222,6 +224,21 @@
     [...cache.keys()].forEach(chave => { if (!alvo || chave.includes(alvo)) cache.delete(chave); });
   }
 
+  function medirInteracao(nome, inicio = agora()) {
+    const duracaoMs = Math.max(0, agora() - Number(inicio || agora()));
+    metricas.interacoes.push({ nome: texto(nome) || "interacao", duracaoMs, em: agora() });
+    if (metricas.interacoes.length > 60) metricas.interacoes.splice(0, metricas.interacoes.length - 60);
+    return duracaoMs;
+  }
+
+  function prefetch(opcoes = {}) {
+    metricas.prefetches++;
+    return consultarTenant({ cacheMs: 45000, ...opcoes }).catch(erro => {
+      metricas.erros++;
+      return [];
+    });
+  }
+
   function diagnostico() {
     return {
       ...metricas,
@@ -249,6 +266,7 @@
 
   const api = Object.freeze({
     consultarTenant,
+    prefetch,
     lerDocumento,
     ouvir,
     parar,
@@ -256,6 +274,7 @@
     pararTodos,
     invalidar,
     diagnostico,
+    medirInteracao,
     definirTelaAtiva,
     get telaAtiva() { return telaAtiva; }
   });

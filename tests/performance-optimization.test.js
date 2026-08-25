@@ -83,3 +83,12 @@ test("dashboard reutiliza o bootstrap e consulta apenas dados ausentes", () => {
   assert.match(carga, /listarLancamentosPorPeriodo/);
   assert.match(master, /cacheMs:\s*45000/);
 });
+
+
+test("runtime v27.3 expõe prefetch cache-first e métrica de interação", () => {
+  assert.ok(runtime.includes("function prefetch(opcoes = {})"));
+  assert.match(runtime, /cacheMs:\s*45000/);
+  assert.match(runtime, /function medirInteracao/);
+  assert.match(runtime, /feedback|interacoes/);
+  assert.match(runtime, /prefetches/);
+});

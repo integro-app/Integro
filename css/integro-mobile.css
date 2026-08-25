@@ -1805,3 +1805,65 @@ body[data-integro-page] [class*="table-container"] {
     padding: 8px !important;
   }
 }
+
+/* v27.3 compactacao global mobile: superficie branca mobile e menos wrappers externos */
+@media (max-width: 700px) {
+  body[data-integro-page].integro-mobile-app-mode {
+    background: #fff !important;
+    --integro-mobile-gutter: 7px;
+    --it-mobile-gutter: 7px;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .main,
+  body[data-integro-page].integro-mobile-app-mode main.main,
+  body[data-integro-page].integro-mobile-app-mode .main-content,
+  body[data-integro-page].integro-mobile-app-mode #mainContent {
+    background: #fff !important;
+    padding-left: max(7px, env(safe-area-inset-left)) !important;
+    padding-right: max(7px, env(safe-area-inset-right)) !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .section-card,
+  body[data-integro-page].integro-mobile-app-mode .panel,
+  body[data-integro-page].integro-mobile-app-mode .card-shell,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-unificada,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-clientes-gestao {
+    padding: 8px !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-header,
+  body[data-integro-page].integro-mobile-app-mode .section-header {
+    margin-bottom: 4px !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .vendedor-clientes-kpis-color > div,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-mov-kpis > div,
+  body[data-integro-page].integro-mobile-app-mode .kpi-card,
+  body[data-integro-page].integro-mobile-app-mode .stat-card,
+  body[data-integro-page].integro-mobile-app-mode .metric-card {
+    min-height: 64px !important;
+    padding: 8px !important;
+    border-radius: 12px !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .empty-state-operacao,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-clientes-estado-inicial {
+    min-height: auto !important;
+    padding: 16px 10px !important;
+  }
+}
+
+@media (max-width: 390px) {
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-barra,
+  body[data-integro-page].integro-mobile-app-mode .vendedor-clientes-barra {
+    grid-template-columns: minmax(0, 1fr) 42px 42px !important;
+    gap: 6px !important;
+  }
+
+  body[data-integro-page].integro-mobile-app-mode .vendedor-cliente-mobile-actions,
+  body[data-integro-page].integro-mobile-app-mode .cobranca-actions-clean {
+    grid-template-columns: 1fr !important;
+  }
+}

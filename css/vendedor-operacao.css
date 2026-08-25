@@ -531,3 +531,15 @@
 .vendedor-cliente-resumo-item .vendedor-status-badge{width:max-content;max-width:100%}
 @media(max-width:900px){.vendedor-cliente-mobile-meta{display:grid!important;grid-template-columns:1fr 1fr;align-items:stretch}.vendedor-cliente-mobile-meta>.vendedor-status-badge{width:max-content;max-width:100%}}
 @media(max-width:460px){.vendedor-cliente-mobile-meta{grid-template-columns:1fr!important}}
+
+
+/* v27.3 — feedback assincrono do vendedor */
+.vendedor-sync-badge{position:relative;overflow:hidden}
+.vendedor-sync-badge.sync-processing{border-color:#93c5fd!important;background:#eff6ff!important;color:#1d4ed8!important}
+.vendedor-sync-badge.sync-processing:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.72),transparent);animation:integro-sync-slide 1s linear infinite}
+.vendedor-sync-badge.sync-confirmed{border-color:#86efac!important;background:#f0fdf4!important;color:#15803d!important}
+.vendedor-sync-badge.sync-failed{border-color:#fecaca!important;background:#fef2f2!important;color:#b91c1c!important}
+.vendedor-operacao-processing{pointer-events:none!important;opacity:.88!important;box-shadow:0 0 0 3px rgba(37,99,235,.12)!important}
+.vendedor-operacao-processing .material-symbols-rounded{animation:integro-sync-spin .9s linear infinite}
+@keyframes integro-sync-spin{to{transform:rotate(360deg)}}
+@keyframes integro-sync-slide{to{transform:translateX(100%)}}

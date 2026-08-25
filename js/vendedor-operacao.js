@@ -282,6 +282,15 @@
     const percentual = Math.max(0, Math.min(100, Math.round((progresso / total) * 100)));
     const bloquear = !item.podeOperar || (typeof global.caixaEstaFechado === "function" && global.caixaEstaFechado());
     const whatsapp = telefoneWhatsapp(item.telefone);
+    const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
+    const syncMeta = sync?.status === "PROCESSING" || sync?.status === "QUEUED"
+      ? { classe: "sync-processing", texto: "Sincronizando" }
+      : sync?.status === "CONFIRMED"
+        ? { classe: "sync-confirmed", texto: "Confirmado" }
+        : sync?.status === "FAILED"
+          ? { classe: "sync-failed", texto: "Falhou" }
+          : null;
+    const syncBadge = syncMeta ? '<span class="cobranca-chip-status vendedor-sync-badge ' + syncMeta.classe + '">' + escapar(syncMeta.texto) + '</span>' : "";
 
     return `
       <article class="cobranca-card-operacional ${status.classe}" data-cliente-id="${escapar(item.clienteId)}" data-venda-id="${escapar(item.vendaId)}">
@@ -300,6 +309,7 @@
           <div class="cobranca-status-row">
             <span class="cobranca-chip-status" style="color:${status.chave === 'PENDENTE' ? '#64748b' : status.cor};background:${status.cor}18;border-color:${status.cor}55">${escapar(status.titulo)}</span>
             <span class="cobranca-chip-status">${escapar(situacaoVisual(item))}</span>
+            ${syncBadge}
           </div>
           <div class="cobranca-progress-clean">
             <div class="cobranca-progresso-topo"><span>Progresso de parcelas</span><strong>${escapar(item.progressoTexto)}</strong></div>

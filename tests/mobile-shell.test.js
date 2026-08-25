@@ -71,3 +71,15 @@ test("camada final mantém sidebar nítida, cabeçalho do master alinhado e view
   assert.match(js, /window\.addEventListener\("popstate"/);
   assert.match(js, /closeVisibleTransient/);
 });
+
+
+test("mobile v27.3 reduz wrappers e preserva modo app", () => {
+  const css = read("css/integro-mobile.css");
+  assert.match(css, /v27.3 compactacao global mobile/);
+  assert.match(css, /superficie branca mobile/);
+  assert.match(css, /menos wrappers externos/);
+  assert.ok(css.includes("background: #fff !important"));
+  assert.ok(css.includes("box-shadow: none !important"));
+  assert.ok(css.includes("min-height: 64px !important"));
+  assert.ok(css.includes("grid-template-columns: minmax(0, 1fr) 42px 42px !important"));
+});

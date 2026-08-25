@@ -23,6 +23,9 @@
   const MOVIMENTOS_SESSAO_PREFIXO = "integro:movimentacoes-vendedor:v2";
   const MOVIMENTOS_SESSAO_TTL_MS = 48 * 60 * 60 * 1000;
   const MOVIMENTOS_SESSAO_LIMITE = 120;
+  const OPERACAO_SYNC_STATUS = ["QUEUED", "PROCESSING", "CONFIRMED", "FAILED"];
+  const operacoesAssincronas = new Map();
+  const metricasVendedorV273 = { feedbackMs: [], cacheHits: 0, rendersEvitados: 0, operacoes: { queued: 0, processing: 0, confirmed: 0, failed: 0 } };
 
   const texto = valor => String(valor ?? "").trim();
   const numero = valor => {
@@ -33,6 +36,81 @@
   const esc = valor => texto(valor).replace(/[&<>"']/g, caractere => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" }[caractere]));
   const hoje = () => window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
   const perfil = usuario => window.IntegroAcesso?.acessoUsuario?.(usuario || {})?.perfil || "";
+  const operacaoChave = valor => texto(valor).replace(/[^a-zA-Z0-9:_-]+/g, "_").replace(/^_+|_+$/g, "");
+
+  function registrarFeedbackOperacao(inicio) {
+    const duracao = Math.max(0, Date.now() - Number(inicio || Date.now()));
+    metricasVendedorV273.feedbackMs.push(duracao);
+    if (metricasVendedorV273.feedbackMs.length > 80) metricasVendedorV273.feedbackMs.splice(0, metricasVendedorV273.feedbackMs.length - 80);
+    return duracao;
+  }
+
+  function registrarOperacaoAssincrona(id, dados = {}) {
+    const chave = operacaoChave(id);
+    if (!chave) return null;
+    const status = OPERACAO_SYNC_STATUS.includes(texto(dados.status).toUpperCase()) ? texto(dados.status).toUpperCase() : "QUEUED";
+    const aliases = Array.isArray(dados.aliases) ? dados.aliases.map(operacaoChave).filter(Boolean) : [];
+    const anterior = operacoesAssincronas.get(chave) || {};
+    const chaves = [...new Set([...(anterior.chaves || []), chave, ...aliases])];
+    const registro = { ...anterior, ...dados, id: chave, status, chaves, atualizadoEm: Date.now() };
+    chaves.forEach(alias => operacoesAssincronas.set(alias, registro));
+    const contador = status.toLowerCase();
+    if (metricasVendedorV273.operacoes[contador] !== undefined) metricasVendedorV273.operacoes[contador]++;
+    window.dispatchEvent?.(new CustomEvent("integro-vendedor-operacao-sync", { detail: registro }));
+    return registro;
+  }
+
+  function removerOperacaoAssincrona(id) {
+    const registro = operacoesAssincronas.get(operacaoChave(id));
+    (registro?.chaves || [id]).forEach(chave => operacoesAssincronas.delete(operacaoChave(chave)));
+  }
+
+  function statusOperacaoCobranca(registro = {}) {
+    const vendaId = texto(registro.vendaId || registro.id);
+    if (!vendaId) return null;
+    return operacoesAssincronas.get("cobranca:" + vendaId) || operacoesAssincronas.get("venda:" + vendaId) || null;
+  }
+
+  function setBotaoProcessando(botao, textoProcessando = "Sincronizando") {
+    if (!botao) return () => {};
+    const htmlOriginal = botao.innerHTML;
+    botao.disabled = true;
+    botao.dataset.syncStatus = "PROCESSING";
+    botao.classList.add("vendedor-operacao-processing");
+    botao.innerHTML = '<span class="material-symbols-rounded">sync</span>' + esc(textoProcessando);
+    return () => {
+      botao.innerHTML = htmlOriginal;
+      botao.disabled = false;
+      botao.classList.remove("vendedor-operacao-processing");
+      delete botao.dataset.syncStatus;
+    };
+  }
+
+  async function executarOperacaoAssincrona({ id, tipo, aliases = [], botao = null, textoProcessando = "Sincronizando", executar, rollback, renderizar }) {
+    const inicio = Date.now();
+    const restaurarBotao = setBotaoProcessando(botao, textoProcessando);
+    registrarOperacaoAssincrona(id, { tipo, status: "QUEUED", aliases });
+    try { renderizar?.("QUEUED"); } catch (_) {}
+    await Promise.resolve();
+    registrarOperacaoAssincrona(id, { tipo, status: "PROCESSING", aliases });
+    try { renderizar?.("PROCESSING"); } catch (_) {}
+    try {
+      const resultado = await executar();
+      registrarOperacaoAssincrona(id, { tipo, status: "CONFIRMED", aliases });
+      try { renderizar?.("CONFIRMED"); } catch (_) {}
+      return resultado;
+    } catch (erro) {
+      try { rollback?.(erro); } catch (_) {}
+      registrarOperacaoAssincrona(id, { tipo, status: "FAILED", aliases, erro: erro?.message || "Falha na sincronizacao" });
+      try { renderizar?.("FAILED"); } catch (_) {}
+      throw erro;
+    } finally {
+      restaurarBotao();
+      registrarFeedbackOperacao(inicio);
+      window.IntegroDataRuntime?.medirInteracao?.("vendedor." + texto(tipo).toLowerCase(), inicio);
+      window.setTimeout(() => removerOperacaoAssincrona(id), 7000);
+    }
+  }
   const idsUsuario = usuario => new Set([
     usuario?.id,
     usuario?.usuarioId,
@@ -1995,22 +2073,37 @@
     const valor = numero(String(campo?.value || "0").replace(".", "").replace(",", "."));
     if (valor <= 0) return UIHelpers?.alerta?.("Informe um valor válido.");
     const botao = document.getElementById("vendedorPagamentoConfirmar");
-    if (botao) botao.disabled = true;
+    const operacaoId = pagamentoIdDeterministico(registro, parcela, caixa, valor);
+    const aliases = ["cobranca:" + texto(registro.vendaId), "venda:" + texto(registro.vendaId)];
     try {
-      await window.IntegroPagamento.registrarPagamentoTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, vendaId: registro.vendaId, parcelaId: parcela.id, clienteId: registro.clienteId, clienteNome: registro.clienteNome, valor });
+      await executarOperacaoAssincrona({
+        id: operacaoId,
+        tipo: "PAGAMENTO",
+        aliases,
+        botao,
+        textoProcessando: "Sincronizando pagamento",
+        executar: () => window.IntegroPagamento.registrarPagamentoTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, vendaId: registro.vendaId, parcelaId: parcela.id, clienteId: registro.clienteId, clienteNome: registro.clienteNome, valor, operacaoId }),
+        renderizar: () => window.renderCobrancas?.(),
+        rollback: () => window.renderCobrancas?.()
+      });
       fecharModal();
       agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Pagamento registrado com sucesso.");
     } catch (erro) {
       console.error(erro);
       UIHelpers?.alerta?.(erro?.message || "Não foi possível registrar o pagamento.");
-    } finally { if (botao) botao.disabled = false; }
+    }
   }
 
   function abrirPagamento(vendaId) {
     const registro = item(vendaId);
     if (!registro) return UIHelpers?.alerta?.("Cobrança não encontrada.");
     modalBase("Registrar pagamento", `<p class="vendedor-modal-cliente">${registro.clienteApelido || registro.clienteNome}</p><small>${registro.clienteNome}</small><label>Valor recebido</label><input id="vendedorPagamentoValor" inputmode="decimal" value="${numero(registro.valorParcela).toFixed(2).replace(".", ",")}"><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarPagamentoVendedorUnificado('${registro.vendaId}')">Confirmar pagamento</button>`);
+  }
+
+  function pagamentoIdDeterministico(registro = {}, parcela = {}, caixa = {}, valor = 0) {
+    const bruto = [State.getTenantId?.(), caixa.id || caixa.caixaId, registro.vendaId, parcela.id || parcela.parcelaId, numero(valor).toFixed(2), dataCaixa()].map(texto).join("_");
+    return `pagamento_${bruto.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '')}`;
   }
 
   function naoPagamentoIdDeterministico(registro = {}, caixa = {}) {
@@ -2033,18 +2126,27 @@
     const observacao = texto(document.getElementById("vendedorNaoPagamentoObservacao")?.value || "");
     if (!motivo) return UIHelpers?.alerta?.("Informe o motivo do não pagamento.");
     const botao = document.getElementById("vendedorNaoPagamentoConfirmar");
-    if (botao) botao.disabled = true;
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const historicoId = naoPagamentoIdDeterministico(registro, caixa);
+    const aliases = ["cobranca:" + texto(registro.vendaId), "venda:" + texto(registro.vendaId)];
     try {
-      await window.IntegroCobranca.registrarNaoPagamentoTransacional({ usuario, clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id || caixa.caixaId || "", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, operacaoId: historicoId, motivo, observacao, dataOperacional: dataCaixa(), origem: "painel_unificado_vendedor" });
+      await executarOperacaoAssincrona({
+        id: historicoId,
+        tipo: "NAO_PAGAMENTO",
+        aliases,
+        botao,
+        textoProcessando: "Sincronizando baixa",
+        executar: () => window.IntegroCobranca.registrarNaoPagamentoTransacional({ usuario, clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id || caixa.caixaId || "", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, operacaoId: historicoId, motivo, observacao, dataOperacional: dataCaixa(), origem: "painel_unificado_vendedor" }),
+        renderizar: () => window.renderCobrancas?.(),
+        rollback: () => window.renderCobrancas?.()
+      });
       fecharModal();
       agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Não pagamento registrado.");
     } catch (erro) {
       console.error(erro);
       UIHelpers?.alerta?.(erro?.message || "Não foi possível registrar o não pagamento.");
-    } finally { if (botao) botao.disabled = false; }
+    }
   }
 
   function toggleFiltros(id) { const painel = document.getElementById(id); if (painel) painel.hidden = !painel.hidden; }
@@ -2093,9 +2195,18 @@
     if (valor <= 0 || parcelas < 1) return UIHelpers?.alerta?.("Informe valor e quantidade de parcelas válidos.");
     const total = valor + (valor * Math.max(0, juros) / 100);
     const botao = document.getElementById("confirmarNovaVendaVendedorBtn");
-    if (botao) botao.disabled = true;
+    const operacaoId = "venda_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
     try {
-      const resultadoVenda = await window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId: `venda_${Date.now()}_${Math.random().toString(36).slice(2,8)}`, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: "NOVA", origem: "painel_unificado_vendedor" });
+      const resultadoVenda = await executarOperacaoAssincrona({
+        id: operacaoId,
+        tipo: "VENDA",
+        aliases: ["cliente:" + texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId)],
+        botao,
+        textoProcessando: "Registrando venda",
+        executar: () => window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: "NOVA", origem: "painel_unificado_vendedor" }),
+        renderizar: () => renderVendasDia?.(),
+        rollback: () => { renderClientesVendedor?.({ forcar: true }); renderVendasDia?.(); }
+      });
       fecharModal();
       if (resultadoVenda?.pendente === true || resultadoVenda?.modo === "ANALISE_SALDO_ATIVO") {
         UIHelpers?.alerta?.("Venda enviada para análise do Supervisor/Gerente. Você será avisado quando houver uma decisão.");
@@ -2109,7 +2220,7 @@
     } catch (erro) {
       console.error(erro);
       UIHelpers?.alerta?.(erro?.message || "Não foi possível registrar a venda.");
-    } finally { if (botao) botao.disabled = false; }
+    }
   }
 
   function abrirOperacao(itemMenu) {
@@ -2195,6 +2306,12 @@
   window.atualizarCamposStatusLeadVendedor = atualizarCamposStatusLeadVendedor;
   window.salvarStatusLeadDrawerVendedor = salvarStatusLeadDrawer;
   window.editarCadastroCompletoClienteVendedor = editarCadastroCompletoCliente;
+  window.IntegroVendedorAsync = Object.freeze({
+    statusDaCobranca: statusOperacaoCobranca,
+    statusPorId: id => operacoesAssincronas.get(operacaoChave(id)) || null,
+    diagnostico: () => ({ ...metricasVendedorV273, pendentes: [...operacoesAssincronas.values()].filter((item, index, lista) => lista.indexOf(item) === index).map(({ id, tipo, status, atualizadoEm }) => ({ id, tipo, status, atualizadoEm })) })
+  });
+
   window.venderClienteDrawerVendedor = venderClienteDrawer;
   window.renderMovimentacoesVendedor = renderMovimentacoesVendedor;
   window.obterMovimentacoesCaixaVendedor = movimentosDoCaixaVendedor;
