@@ -108,6 +108,7 @@ async function seed() {
     for (const p of Object.values(profiles)) await setDoc(doc(db, "usuarios", p.uid), userData(p));
     await setDoc(doc(db, "financeiro_contas", "conta_a"), accountData());
     await setDoc(doc(db, "financeiro_contas", "conta_b"), accountData(profiles.financeB, { clientePlataformaId: "tenant_b", criadoPorAuthUid: profiles.financeB.uid }));
+    await setDoc(doc(db, "financeiro_pagamentos", "pag_backend"), paymentData(profiles.payer));
     await setDoc(doc(db, "financeiro_fornecedores", "fornecedor_1"), { clientePlataformaId: "tenant_a", nome: "Imobiliária", atualizadoEmTexto: "ts" });
   });
 }
@@ -149,15 +150,17 @@ test("usuário somente leitura lê mas não cria nem edita", async () => {
   await assertFails(updateDoc(doc(db, "financeiro_contas", "conta_a"), { observacao: "tentativa", atualizadoEmTexto: "novo" }));
 });
 
-test("editor administrativo cria e altera campos administrativos", async () => {
+test("editor administrativo cria conta, mas alteração administrativa direta é backend-only", async () => {
   const db = ctx(profiles.editor).firestore();
   await assertSucceeds(setDoc(doc(db, "financeiro_contas", "conta_editor"), accountData(profiles.editor)));
-  await assertSucceeds(updateDoc(doc(db, "financeiro_contas", "conta_a"), { observacao: "ajustada", atualizadoEmTexto: "2026-08-14T21:00:00-03:00" }));
+  await assertFails(updateDoc(doc(db, "financeiro_contas", "conta_a"), { observacao: "ajustada", atualizadoEmTexto: "2026-08-14T21:00:00-03:00" }));
+  await assertSucceeds(updateDoc(doc(db, "financeiro_contas", "conta_a"), { anexos: [{ path: "tenants/tenant_a/financeiro/contas/conta_a/doc.pdf" }], atualizadoEmTexto: "2026-08-14T21:00:00-03:00", atualizadoEm: "ts2" }));
 });
 
-test("perfil de baixa registra pagamento mas não altera cadastro administrativo", async () => {
+test("perfil de baixa usa backend para criar pagamento e só anexa comprovante no cliente", async () => {
   const db = ctx(profiles.payer).firestore();
-  await assertSucceeds(setDoc(doc(db, "financeiro_pagamentos", "pag_payer"), paymentData(profiles.payer)));
+  await assertFails(setDoc(doc(db, "financeiro_pagamentos", "pag_payer"), paymentData(profiles.payer)));
+  await assertSucceeds(updateDoc(doc(db, "financeiro_pagamentos", "pag_backend"), { comprovantes: [{ path: "tenants/tenant_a/financeiro/pagamentos/pag_backend/recibo.pdf" }], atualizadoEmTexto: "2026-08-14T21:00:00-03:00", atualizadoEm: "ts2" }));
   await assertFails(updateDoc(doc(db, "financeiro_contas", "conta_a"), { descricao: "alterada", atualizadoEmTexto: "novo" }));
 });
 

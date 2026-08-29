@@ -107,8 +107,17 @@
       if (clienteId) clientesPorId.set(clienteId, cliente);
     });
 
+    const vendasComPagamentoHoje = new Set(
+      pagamentosHoje
+        .filter(item => item?.excluido !== true && maiusculo(item?.status) !== "CANCELADO")
+        .filter(item => pertenceAoTenant(item, usuario))
+        .filter(item => !dataIso(item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.data || item.dataPagamento || item.criadoEmTexto) === hoje)
+        .map(item => id(item.vendaId))
+        .filter(Boolean)
+    );
+
     const vendasValidas = vendas
-      .filter(vendaAtiva)
+      .filter(item => vendaAtiva(item) || vendasComPagamentoHoje.has(id(item.id || item.vendaId)))
       .filter(item => pertenceAoTenant(item, usuario))
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
@@ -117,7 +126,7 @@
       })
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
-        return saldoVenda(item) > 0.01 || saldoCliente(clientesPorId.get(clienteId)) > 0.01;
+        return saldoVenda(item) > 0.01 || saldoCliente(clientesPorId.get(clienteId)) > 0.01 || vendasComPagamentoHoje.has(id(item.id || item.vendaId));
       });
 
     const vendasPorCliente = new Map();
@@ -226,7 +235,7 @@
         proximaCobrancaTexto: formatarProximaCobranca(proximaData, hoje),
         podeOperar: Boolean(vendaId)
       };
-    }).filter(item => item.saldoDevedor > 0.01);
+    }).filter(item => item.saldoDevedor > 0.01 || item.pagoHoje || item.naoPagoHoje);
   }
 
   function formatarNumero(valor) {
@@ -280,9 +289,11 @@
     const total = Math.max(1, numero(item.totalParcelas));
     const progresso = Math.max(0, numero(item.progresso));
     const percentual = Math.max(0, Math.min(100, Math.round((progresso / total) * 100)));
-    const bloquear = !item.podeOperar || (typeof global.caixaEstaFechado === "function" && global.caixaEstaFechado());
-    const whatsapp = telefoneWhatsapp(item.telefone);
     const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
+    const sincronizando = sync?.status === "PROCESSING" || sync?.status === "QUEUED";
+    const bloquear = !item.podeOperar || sincronizando || (typeof global.caixaEstaFechado === "function" && global.caixaEstaFechado());
+    const bloquearNaoPagamento = bloquear || item.pagoHoje;
+    const whatsapp = telefoneWhatsapp(item.telefone);
     const syncMeta = sync?.status === "PROCESSING" || sync?.status === "QUEUED"
       ? { classe: "sync-processing", texto: "Sincronizando" }
       : sync?.status === "CONFIRMED"
@@ -325,8 +336,8 @@
         </div>
 
         <div class="cobranca-actions-clean">
-          <button class="btn btn-pago-clean" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
-          <button class="btn btn-nao-pago-clean" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
+          <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
+          <button class="btn btn-nao-pago-clean ${item.naoPagoHoje ? "is-active" : ""}" type="button" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
         </div>
       </article>`;
   }
@@ -340,7 +351,7 @@
       historico: obterCache("historicoCobrancasCache"),
       usuario: obterUsuario(),
       hoje: (typeof global.obterDataCaixaVendedor === "function" ? global.obterDataCaixaVendedor() : hojeIso())
-    }).filter(item => item.saldoDevedor > 0.01);
+    }).filter(item => item.saldoDevedor > 0.01 || item.pagoHoje || item.naoPagoHoje);
   }
 
   function filtrosAtivos() {

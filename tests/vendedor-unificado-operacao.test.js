@@ -9,6 +9,7 @@ const perfis = fs.readFileSync(path.join(root, "js", "perfis-unificados.js"), "u
 const state = fs.readFileSync(path.join(root, "js", "state.js"), "utf8");
 const unificado = fs.readFileSync(path.join(root, "js", "vendedor-unificado.js"), "utf8");
 const operacao = fs.readFileSync(path.join(root, "js", "vendedor-operacao.js"), "utf8");
+const cssOperacao = fs.readFileSync(path.join(root, "css", "vendedor-operacao.css"), "utf8");
 const nav = fs.readFileSync(path.join(root, "js", "unified-navigation.js"), "utf8");
 const guard = fs.readFileSync(path.join(root, "js", "runtime-profile-guard.js"), "utf8");
 const accessControl = fs.readFileSync(path.join(root, "js", "services", "access-control.js"), "utf8");
@@ -17,9 +18,9 @@ const rules = fs.readFileSync(path.join(root, "firestore.rules"), "utf8");
 const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
-  assert.match(master, /js\/vendedor-operacao\.js\?v=20260818-cobrancas-saldo1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v273-card1/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20260818-v273-card1/);
+  assert.match(master, /js\/vendedor-operacao\.js\?v=20260827-payment-edit1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260827-payment-edit1/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20260827-optimistic1/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -260,7 +261,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v273-card1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20260827-payment-edit1/);
 });
 
 
@@ -312,6 +313,37 @@ test("vendedor v27.3 tem operação assíncrona com status, rollback e feedback 
   assert.ok(unificado.includes(`medirInteracao?.("vendedor.`));
   assert.match(unificado, /pagamentoIdDeterministico/);
   assert.match(unificado, /operacaoId: historicoId/);
+});
+
+test("pagamento e não pagamento atualizam o card antes da resposta do backend", () => {
+  assert.match(unificado, /function aplicarBaixaCobrancaOtimista/);
+  assert.match(unificado, /__integroOtimista: true/);
+  assert.match(unificado, /State\.setPagamentos\?\.\(\[\.\.\.atuais\.filter/);
+  assert.match(unificado, /State\.setHistoricoCobrancas\?\.\(\[\.\.\.atuais\.filter/);
+  assert.match(unificado, /status === "QUEUED" && !rollbackOtimista/);
+  assert.match(unificado, /rollbackOtimista\?\.\(\)/);
+  assert.match(unificado, /aplicarBaixaCobrancaOtimista\(\{ tipo: "PAGAMENTO"/);
+  assert.match(unificado, /aplicarBaixaCobrancaOtimista\(\{ tipo: "NAO_PAGAMENTO"/);
+  assert.match(unificado, /fecharModal\(\);/);
+  assert.match(operacao, /const sincronizando = sync\?\.status === "PROCESSING" \|\| sync\?\.status === "QUEUED"/);
+  assert.match(cssOperacao, /\.btn-pago-clean\.is-active/);
+  assert.match(cssOperacao, /\.btn-nao-pago-clean\.is-active/);
+});
+
+test("edição do pagamento usa total acumulado e mantém uma única baixa por caixa, venda e parcela", () => {
+  const blocoId = unificado.match(/function pagamentoIdDeterministico[\s\S]*?function naoPagamentoIdDeterministico/)?.[0] || "";
+  assert.match(unificado, /function selecionarPagamentoEditavel/);
+  assert.match(unificado, /function mesmaBaixaPagamento/);
+  assert.match(unificado, /valorTotalPagamento\(pagamento\)/);
+  assert.match(unificado, /Total recebido neste caixa/);
+  assert.match(unificado, /O caixa será ajustado somente pela diferença/);
+  assert.match(unificado, /pagamento \? "Editar pagamento" : "Registrar pagamento"/);
+  assert.match(unificado, /const \{ parcela \} = selecionarPagamentoEditavel\(registro, caixa\)/);
+  assert.match(unificado, /!mesmaBaixaPagamento\(item, \{ registro, parcela, caixa, operacaoId \}\)/);
+  assert.match(blocoId, /IntegroPagamento\.pagamentoIdDeterministico\(dados\)/);
+  assert.doesNotMatch(blocoId, /numero\(valor\)|dataCaixa\(\)/);
+  assert.match(operacao, /const bloquearNaoPagamento = bloquear \|\| item\.pagoHoje/);
+  assert.match(operacao, /item\.saldoDevedor > 0\.01 \|\| item\.pagoHoje \|\| item\.naoPagoHoje/);
 });
 
 test("card de cobrança exibe estado de sincronização da baixa", () => {

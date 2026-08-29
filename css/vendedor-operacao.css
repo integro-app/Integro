@@ -197,6 +197,12 @@
 .cobranca-actions-clean .material-symbols-rounded{font-size:19px}
 .btn-pago-clean{border-color:#9bd7af!important;background:#effcf3!important;color:#148744!important}
 .btn-nao-pago-clean{border-color:#f2b0b0!important;background:#fff2f2!important;color:#b62525!important}
+.cobranca-card-operacional{transition:border-color .18s ease,background-color .18s ease,box-shadow .18s ease}
+.cobranca-card-operacional.is-paid{border-color:#86d7a4!important;background:linear-gradient(90deg,#fff 0%,#fff 72%,#f0fdf4 100%)!important}
+.cobranca-card-operacional.is-unpaid{border-color:#f2a8a8!important;background:linear-gradient(90deg,#fff 0%,#fff 72%,#fff1f2 100%)!important}
+.btn-pago-clean.is-active{border-color:#16a34a!important;background:#16a34a!important;color:#fff!important;box-shadow:0 9px 20px rgba(22,163,74,.2)!important}
+.btn-nao-pago-clean.is-active{border-color:#dc2626!important;background:#dc2626!important;color:#fff!important;box-shadow:0 9px 20px rgba(220,38,38,.2)!important}
+.cobranca-actions-clean .btn:disabled{cursor:wait!important}
 
 .vendedor-venda-card{display:grid!important;grid-template-columns:minmax(230px,1.3fr) repeat(4,minmax(120px,.65fr))!important;gap:12px!important;align-items:center!important;padding:16px 18px!important;border:1px solid #e0e8f1!important;border-radius:16px!important;background:#fff!important;box-shadow:0 6px 18px rgba(15,36,61,.045)!important}
 .vendedor-venda-identidade strong{font-size:15px;color:#0c2340}

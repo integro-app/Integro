@@ -233,30 +233,13 @@ service cloud.firestore {
         "clientePlataformaId", "criadoPorAuthUid", "criadoPorId", "criadoPorNome", "criadoEm", "criadoEmTexto",
         "parcelamentoId", "parcelaNumero", "parcelasTotal", "recorrenciaId", "recorrente"
       ]);
-      let editFields = [
-        "descricao", "tipoMovimento", "statusV27", "empresaId", "empresaNome", "fornecedorId", "fornecedorNome",
-        "categoriaId", "categoriaNome", "centroCustoId", "centroCustoNome",
-        "responsavelAuthUid", "responsavelNome", "responsavelSolicitadoAuthUid", "responsavelSolicitadoNome", "atribuicaoStatus", "valorCentavos", "saldoCentavos",
-        "vencimento", "competencia", "formaPagamentoPrevista", "bancoContaId",
-        "linhaDigitavel", "chavePix", "observacao", "atualizadoEmTexto", "atualizadoEm"
-      ];
-      let paymentFields = [
-        "valorPagoCentavos", "saldoCentavos", "status", "ultimaDataPagamento",
-        "atualizadoEmTexto", "atualizadoEm"
-      ];
       let attachmentFields = ["anexos", "atualizadoEmTexto", "atualizadoEm"];
-      let cancelFields = [
-        "status", "motivoCancelamento", "canceladoPorAuthUid", "canceladoEmTexto",
-        "atualizadoEmTexto", "atualizadoEm"
-      ];
-      return tenantOk && immutableOk && (
-        (canEditEnterpriseFinance(request.resource.data) && changed.hasOnly(editFields)) ||
-        (canPayEnterpriseFinance(request.resource.data) && changed.hasOnly(paymentFields)) ||
-        (canAttachEnterpriseFinance(request.resource.data) && changed.hasOnly(attachmentFields)) ||
-        (canEditEnterpriseFinance(request.resource.data) && changed.hasOnly(cancelFields) &&
-          request.resource.data.get("status", "") == "CANCELADA" &&
-          resource.data.get("valorPagoCentavos", 0) == 0)
-      );
+      // V27.3: alterações administrativas, baixas e cancelamentos são backend-only.
+      // O cliente só pode anexar metadados; o backend aplica aprovação, histórico,
+      // idempotência e transação sem expor um caminho alternativo pelas Rules.
+      return tenantOk && immutableOk &&
+        canAttachEnterpriseFinance(request.resource.data) &&
+        changed.hasOnly(attachmentFields);
     }
 
     function validEnterprisePaymentCreate(data) {
@@ -1609,7 +1592,9 @@ service cloud.firestore {
 
     match /financeiro_pagamentos/{id} {
       allow read: if canReadEnterpriseFinance(resource.data);
-      allow create: if validEnterprisePaymentCreate(request.resource.data);
+      // Baixa é exclusivamente transacional pela callable
+      // registrarPagamentoFinanceiroEmpresarial.
+      allow create: if false;
       allow update: if validEnterprisePaymentUpdate();
       allow delete: if false;
     }

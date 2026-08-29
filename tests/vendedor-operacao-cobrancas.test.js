@@ -23,7 +23,7 @@ test('cobranças exibe clientes com saldo devedor em aberto', () => {
 
 test('carregamento operacional usa a camada consolidada depois dos caches', () => {
   assert.match(html, /Promise\.all\(\[\s*carregarCaixaAtual\(\),\s*carregarClientes\(\),\s*carregarVendas\(\)/);
-  assert.match(html, /js\/vendedor-operacao\.js\?v=20260818-cobrancas-saldo1/);
+  assert.match(html, /js\/vendedor-operacao\.js\?v=20260827-payment-edit1/);
   assert.match(js, /global\.montarCobrancasPorVenda = dadosAtuais/);
   assert.match(js, /clientesCache/);
   assert.match(js, /vendasCache/);

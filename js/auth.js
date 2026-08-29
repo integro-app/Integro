@@ -5,6 +5,65 @@
 
 var __integroV27SessionLoader = window.__integroV27SessionLoader || null;
 
+function agoraLogin() {
+  return typeof performance !== "undefined" && typeof performance.now === "function"
+    ? performance.now()
+    : Date.now();
+}
+
+function atualizarCarregamentoLogin(etapa, percentual, detalhe) {
+  const loader = document.getElementById("loginFlowLoader");
+  const etapaEl = document.getElementById("loginFlowStep");
+  const detalheEl = document.getElementById("loginFlowHint");
+  const barraEl = document.getElementById("loginFlowProgress");
+  const valor = Math.max(0, Math.min(100, Number(percentual) || 0));
+
+  if (!loader) return;
+  if (etapaEl) etapaEl.textContent = String(etapa || "Preparando seu acesso...");
+  if (detalheEl && detalhe) detalheEl.textContent = String(detalhe);
+  if (barraEl) {
+    barraEl.style.width = valor + "%";
+    barraEl.setAttribute("aria-valuenow", String(valor));
+  }
+
+  loader.hidden = false;
+  loader.setAttribute("aria-hidden", "false");
+  document.body.classList.add("login-em-andamento");
+  requestAnimationFrame(() => loader.classList.add("is-visible"));
+}
+
+function ocultarCarregamentoLogin() {
+  const loader = document.getElementById("loginFlowLoader");
+  if (!loader) return;
+  loader.classList.remove("is-visible");
+  loader.setAttribute("aria-hidden", "true");
+  loader.hidden = true;
+  document.body.classList.remove("login-em-andamento");
+}
+
+function marcarEtapaLogin(metricas, etapa) {
+  metricas[etapa] = Math.round(agoraLogin() - metricas.inicio);
+}
+
+function publicarMetricasLogin(metricas) {
+  const resultado = Object.freeze({ ...metricas, total: Math.round(agoraLogin() - metricas.inicio) });
+  window.__integroUltimaMetricaLogin = resultado;
+  document.dispatchEvent(new CustomEvent("integro-login-metrica", { detail: resultado }));
+}
+
+function prepararContinuidadeCarregamentoLogin(percentual) {
+  try {
+    sessionStorage.setItem("integroLoadingContinuo", JSON.stringify({
+      percentual: Math.max(0, Math.min(100, Number(percentual) || 0)),
+      expiraEm: Date.now() + 30000
+    }));
+  } catch (_) {}
+}
+
+function limparContinuidadeCarregamentoLogin() {
+  try { sessionStorage.removeItem("integroLoadingContinuo"); } catch (_) {}
+}
+
 function garantirServicoSessaoV27() {
   if (window.IntegroV27Session) return Promise.resolve(window.IntegroV27Session);
   if (__integroV27SessionLoader) return __integroV27SessionLoader;
@@ -50,6 +109,8 @@ async function login() {
 
   const email = (emailInput?.value || "").trim().toLowerCase();
   const senha = (senhaInput?.value || "").trim();
+  const metricas = { inicio: agoraLogin() };
+  let manterCarregamentoAteRedirecionar = false;
 
   if (!email || !senha) {
     UIHelpers.alerta("Preencha email e senha.");
@@ -63,9 +124,14 @@ async function login() {
       botaoLogin.innerText = "Entrando...";
     }
 
+    atualizarCarregamentoLogin("Validando suas credenciais", 12, "Conectando com segurança ao ÍNTEGRO");
     const credencial = await auth.signInWithEmailAndPassword(email, senha);
+    marcarEtapaLogin(metricas, "autenticacao");
     const authUser = credencial.user;
+
+    atualizarCarregamentoLogin("Identificando seu perfil", 38, "Aplicando permissões e regras de acesso");
     const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
+    marcarEtapaLogin(metricas, "perfil");
 
     if (!usuario) {
       await auth.signOut();
@@ -83,20 +149,33 @@ async function login() {
     }
 
     State.setUsuario(usuario);
-    await carregarConfiguracoesEmpresaDoUsuario(usuario);
+    atualizarCarregamentoLogin("Preparando seu ambiente", 68, "Sincronizando empresa e sessão de acesso");
 
     // V27: o login novo assume a sessão e derruba o dispositivo anterior.
-    const sessao = await garantirServicoSessaoV27();
-    if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
+    // As configurações da empresa e a sessão são independentes e podem ser
+    // preparadas em paralelo sem remover nenhuma validação de segurança.
     try {
-      await sessao.start();
+      await Promise.all([
+        carregarConfiguracoesEmpresaDoUsuario(usuario),
+        (async () => {
+          const sessao = await garantirServicoSessaoV27();
+          if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
+          return sessao.start();
+        })()
+      ]);
     } catch (erroSessao) {
       await auth.signOut().catch(() => {});
       State.limparSessao();
       throw erroSessao;
     }
 
-    redirecionarUsuario(usuario);
+    marcarEtapaLogin(metricas, "ambiente");
+    atualizarCarregamentoLogin("Abrindo seu painel", 100, "Tudo pronto. Só mais um instante...");
+    marcarEtapaLogin(metricas, "redirecionamento");
+    publicarMetricasLogin(metricas);
+    prepararContinuidadeCarregamentoLogin(100);
+    manterCarregamentoAteRedirecionar = redirecionarUsuario(usuario) !== false;
+    if (!manterCarregamentoAteRedirecionar) limparContinuidadeCarregamentoLogin();
   } catch (erro) {
     console.error("ERRO LOGIN:", erro);
     let mensagem = "Erro ao realizar login.";
@@ -126,6 +205,7 @@ async function login() {
 
     UIHelpers.alerta(mensagem);
   } finally {
+    if (!manterCarregamentoAteRedirecionar) ocultarCarregamentoLogin();
     if (botaoLogin) {
       botaoLogin.disabled = false;
       botaoLogin.innerText = botaoLogin.dataset.textoOriginal || "Entrar na plataforma";
@@ -154,9 +234,10 @@ function redirecionarUsuario(usuario) {
   const rota = acesso?.rotaPadrao || CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] || CONFIG.ROTAS_POR_TIPO[tipo];
   if (!rota) {
     UIHelpers.alerta("Tipo de usuário sem rota liberada: " + (tipo || acesso?.tipoUsuarioOficial || "-"));
-    return;
+    return false;
   }
   window.location.href = rota;
+  return true;
 }
 
 // ===============================

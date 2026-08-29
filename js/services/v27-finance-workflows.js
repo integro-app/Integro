@@ -22,8 +22,11 @@
   async function solicitarAtribuicao(contaId, responsavelAuthUid, responsavelNome) {
     return call("solicitarAtribuicaoFinanceiraV27", { contaId:text(contaId), responsavelAuthUid:text(responsavelAuthUid), responsavelNome:text(responsavelNome) });
   }
-  async function solicitarAlteracao(contaId, patch, tipo="EDICAO", motivo="") {
-    return call("solicitarAlteracaoFinanceiraV27", { contaId:text(contaId), patch:patch || {}, tipo:text(tipo).toUpperCase(), motivo:text(motivo) });
+  async function solicitarAlteracao(contaId, patch, tipo="EDICAO", motivo="", opcoes={}) {
+    return call("solicitarAlteracaoFinanceiraV27", {
+      contaId:text(contaId), patch:patch || {}, tipo:text(tipo).toUpperCase(), motivo:text(motivo),
+      escopo:text(opcoes.escopo || "SOMENTE_ESTA").toUpperCase()
+    });
   }
   async function decidir(solicitacaoId, decisao, motivo="") {
     return call("decidirSolicitacaoFinanceiraV27", { solicitacaoId:text(solicitacaoId), decisao:text(decisao).toUpperCase(), motivo:text(motivo) });

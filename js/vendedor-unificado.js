@@ -161,6 +161,120 @@
     };
   }
 
+  function snapshotBaixaCobranca() {
+    return {
+      pagamentos: [...(State.getPagamentos?.() || [])],
+      historico: [...(State.getHistoricoCobrancas?.() || [])]
+    };
+  }
+
+  function restaurarSnapshotBaixaCobranca(snapshot = {}) {
+    State.setPagamentos?.([...(snapshot.pagamentos || [])]);
+    State.setHistoricoCobrancas?.([...(snapshot.historico || [])]);
+    caches();
+  }
+
+  function vinculosBaixaOtimista(usuario = {}) {
+    const authUid = texto(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
+    const vendedorId = texto(usuario.vendedorId || usuario.usuarioId || usuario.id || authUid);
+    const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
+    return {
+      clientePlataformaId: tenantId,
+      tenantId,
+      empresaId: tenantId,
+      vendedorId,
+      vendedorAuthUid: authUid,
+      authUid
+    };
+  }
+
+  function valorTotalPagamento(registro = {}) {
+    const valorDireto = registro.valorPago ?? registro.valorRecebido ?? registro.valor;
+    if (valorDireto !== undefined && valorDireto !== null && valorDireto !== "") return numero(valorDireto);
+    return numero(registro.valorCentavos) / 100;
+  }
+
+  function pagamentosEditaveisDaCobranca(registro = {}, caixa = {}) {
+    const vendaId = texto(registro.vendaId);
+    const caixaId = texto(caixa.id || caixa.caixaId);
+    const hoje = dataCaixa();
+    return (State.getPagamentos?.() || [])
+      .filter(item => item?.excluido !== true && texto(item?.status).toUpperCase() !== "CANCELADO")
+      .filter(item => texto(item.vendaId) === vendaId)
+      .filter(item => !texto(item.caixaId) || texto(item.caixaId) === caixaId)
+      .filter(item => !dataRegistro(item) || dataRegistro(item) === hoje);
+  }
+
+  function selecionarPagamentoEditavel(registro = {}, caixa = {}) {
+    const pagamentos = pagamentosEditaveisDaCobranca(registro, caixa);
+    const parcelas = Array.isArray(registro.parcelas) ? registro.parcelas : [];
+    const pagamento = pagamentos[pagamentos.length - 1] || null;
+    const parcelaDoPagamento = pagamento
+      ? parcelas.find(item => texto(item.id || item.parcelaId) === texto(pagamento.parcelaId))
+      : null;
+    const parcelaPendente = parcelas.find(item => !["PAGA", "PAGO", "QUITADA", "QUITADO"].includes(texto(item.status || item.statusParcela).toUpperCase()));
+    return { pagamento, parcela: parcelaDoPagamento || parcelaPendente || null };
+  }
+
+  function mesmaBaixaPagamento(item = {}, { registro = {}, parcela = {}, caixa = {}, operacaoId = "" } = {}) {
+    if (texto(item.id || item.pagamentoId || item.operacaoId) === texto(operacaoId)) return true;
+    const mesmoCaixa = !texto(item.caixaId) || texto(item.caixaId) === texto(caixa.id || caixa.caixaId);
+    return mesmoCaixa &&
+      texto(item.vendaId) === texto(registro.vendaId) &&
+      texto(item.parcelaId) === texto(parcela.id || parcela.parcelaId);
+  }
+
+  function aplicarBaixaCobrancaOtimista({ tipo, registro, parcela, caixa, valor = 0, operacaoId, motivo = "", observacao = "" } = {}) {
+    const snapshot = snapshotBaixaCobranca();
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const agora = new Date().toISOString();
+    const base = {
+      id: operacaoId,
+      operacaoId,
+      vendaId: texto(registro?.vendaId),
+      clienteId: texto(registro?.clienteId),
+      clienteNome: texto(registro?.clienteNome),
+      caixaId: texto(caixa?.id || caixa?.caixaId),
+      data: dataCaixa(),
+      dataOperacional: dataCaixa(),
+      criadoEmTexto: agora,
+      atualizadoEmTexto: agora,
+      origem: "painel_unificado_vendedor",
+      __integroOtimista: true,
+      ...vinculosBaixaOtimista(usuario)
+    };
+
+    if (tipo === "PAGAMENTO") {
+      const pagamento = {
+        ...base,
+        pagamentoId: operacaoId,
+        parcelaId: texto(parcela?.id || parcela?.parcelaId),
+        valorPago: numero(valor),
+        valorRecebido: numero(valor),
+        valor: numero(valor),
+        status: "CONFIRMADO",
+        dataPagamento: dataCaixa()
+      };
+      const atuais = State.getPagamentos?.() || [];
+      State.setPagamentos?.([...atuais.filter(item => !mesmaBaixaPagamento(item, { registro, parcela, caixa, operacaoId })), pagamento]);
+    } else {
+      const historico = {
+        ...base,
+        historicoId: operacaoId,
+        tipo: "NAO_PAGAMENTO",
+        acao: "NAO_PAGAMENTO",
+        status: "ATIVO",
+        motivo,
+        observacao
+      };
+      const atuais = State.getHistoricoCobrancas?.() || [];
+      State.setHistoricoCobrancas?.([...atuais.filter(item => texto(item.id || item.historicoId || item.operacaoId) !== texto(operacaoId)), historico]);
+    }
+
+    caches();
+    return () => restaurarSnapshotBaixaCobranca(snapshot);
+  }
+
   let refreshOperacaoTimer = 0;
   let refreshOperacaoPromessa = null;
 
@@ -2065,16 +2179,17 @@
   async function confirmarPagamento(vendaId) {
     const registro = item(vendaId);
     if (!registro) return UIHelpers?.alerta?.("Cobrança não encontrada.");
-    const parcela = registro.parcelas.find(p => !["PAGA", "PAGO", "QUITADA", "QUITADO"].includes(texto(p.status || p.statusParcela).toUpperCase()));
     const caixa = await garantirCaixaAberto();
     if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
+    const { parcela } = selecionarPagamentoEditavel(registro, caixa);
     if (!parcela) return UIHelpers?.alerta?.("Não existe parcela pendente para esta venda.");
     const campo = document.getElementById("vendedorPagamentoValor");
     const valor = numero(String(campo?.value || "0").replace(".", "").replace(",", "."));
     if (valor <= 0) return UIHelpers?.alerta?.("Informe um valor válido.");
     const botao = document.getElementById("vendedorPagamentoConfirmar");
-    const operacaoId = pagamentoIdDeterministico(registro, parcela, caixa, valor);
+    const operacaoId = pagamentoIdDeterministico(registro, parcela, caixa);
     const aliases = ["cobranca:" + texto(registro.vendaId), "venda:" + texto(registro.vendaId)];
+    let rollbackOtimista = null;
     try {
       await executarOperacaoAssincrona({
         id: operacaoId,
@@ -2083,10 +2198,18 @@
         botao,
         textoProcessando: "Sincronizando pagamento",
         executar: () => window.IntegroPagamento.registrarPagamentoTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, vendaId: registro.vendaId, parcelaId: parcela.id, clienteId: registro.clienteId, clienteNome: registro.clienteNome, valor, operacaoId }),
-        renderizar: () => window.renderCobrancas?.(),
-        rollback: () => window.renderCobrancas?.()
+        renderizar: status => {
+          if (status === "QUEUED" && !rollbackOtimista) {
+            rollbackOtimista = aplicarBaixaCobrancaOtimista({ tipo: "PAGAMENTO", registro, parcela, caixa, valor, operacaoId });
+            fecharModal();
+          }
+          window.renderCobrancas?.();
+        },
+        rollback: () => {
+          rollbackOtimista?.();
+          window.renderCobrancas?.();
+        }
       });
-      fecharModal();
       agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Pagamento registrado com sucesso.");
     } catch (erro) {
@@ -2095,15 +2218,30 @@
     }
   }
 
-  function abrirPagamento(vendaId) {
+  async function abrirPagamento(vendaId) {
     const registro = item(vendaId);
     if (!registro) return UIHelpers?.alerta?.("Cobrança não encontrada.");
-    modalBase("Registrar pagamento", `<p class="vendedor-modal-cliente">${registro.clienteApelido || registro.clienteNome}</p><small>${registro.clienteNome}</small><label>Valor recebido</label><input id="vendedorPagamentoValor" inputmode="decimal" value="${numero(registro.valorParcela).toFixed(2).replace(".", ",")}"><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarPagamentoVendedorUnificado('${registro.vendaId}')">Confirmar pagamento</button>`);
+    const caixa = await garantirCaixaAberto();
+    if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor.");
+    const { pagamento, parcela } = selecionarPagamentoEditavel(registro, caixa);
+    if (!parcela) return UIHelpers?.alerta?.("Não existe parcela disponível para esta venda.");
+    const valorAtual = pagamento ? valorTotalPagamento(pagamento) : numero(registro.valorParcela);
+    const titulo = pagamento ? "Editar pagamento" : "Registrar pagamento";
+    modalBase(titulo, `<p class="vendedor-modal-cliente">${registro.clienteApelido || registro.clienteNome}</p><small>${registro.clienteNome}</small><label>Total recebido neste caixa</label><input id="vendedorPagamentoValor" inputmode="decimal" value="${valorAtual.toFixed(2).replace(".", ",")}"><small>Informe o total acumulado. Se já lançou R$ 40,00 e recebeu mais R$ 40,00, altere para R$ 80,00. O caixa será ajustado somente pela diferença.</small><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarPagamentoVendedorUnificado('${registro.vendaId}')">${pagamento ? "Salvar alteração" : "Confirmar pagamento"}</button>`);
   }
 
-  function pagamentoIdDeterministico(registro = {}, parcela = {}, caixa = {}, valor = 0) {
-    const bruto = [State.getTenantId?.(), caixa.id || caixa.caixaId, registro.vendaId, parcela.id || parcela.parcelaId, numero(valor).toFixed(2), dataCaixa()].map(texto).join("_");
-    return `pagamento_${bruto.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '')}`;
+  function pagamentoIdDeterministico(registro = {}, parcela = {}, caixa = {}) {
+    const dados = {
+      clientePlataformaId: State.getTenantId?.(),
+      caixaId: caixa.id || caixa.caixaId,
+      vendaId: registro.vendaId,
+      parcelaId: parcela.id || parcela.parcelaId
+    };
+    if (typeof window.IntegroPagamento?.pagamentoIdDeterministico === "function") {
+      return window.IntegroPagamento.pagamentoIdDeterministico(dados);
+    }
+    const bruto = [dados.clientePlataformaId, dados.caixaId, dados.vendaId, dados.parcelaId].map(texto).join("_");
+    return "pg_" + bruto.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
   }
 
   function naoPagamentoIdDeterministico(registro = {}, caixa = {}) {
@@ -2115,6 +2253,7 @@
     const registro = item(vendaId);
     const caixa = await garantirCaixaAberto();
     if (!registro || !caixa) return UIHelpers?.alerta?.("Cobrança ou caixa aberto não encontrado.");
+    if (registro.pagoHoje) return UIHelpers?.alerta?.("Este cliente já possui pagamento neste caixa. Use o botão Pago para alterar o total.");
     modalBase("Não pagamento", `<div class="vendedor-nova-venda-form vendedor-nao-pagamento-form"><div class="vendedor-nova-venda-cliente"><strong>${esc(registro.clienteApelido || registro.clienteNome)}</strong><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small></div><label>Motivo<select id="vendedorNaoPagamentoMotivo"><option value="Cliente não realizou o pagamento">Cliente não realizou o pagamento</option><option value="Cliente ausente">Cliente ausente</option><option value="Reagendado com o cliente">Reagendado com o cliente</option><option value="Cliente recusou pagamento">Cliente recusou pagamento</option><option value="Outro motivo">Outro motivo</option></select></label><label>Observação<textarea id="vendedorNaoPagamentoObservacao" rows="3" placeholder="Informe detalhes da visita ou próxima ação"></textarea></label></div>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorNaoPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarNaoPagamentoVendedorUnificado('${texto(registro.vendaId)}')">Registrar não pagamento</button>`);
   }
 
@@ -2122,6 +2261,7 @@
     const registro = item(vendaId);
     const caixa = await garantirCaixaAberto();
     if (!registro || !caixa) return UIHelpers?.alerta?.("Cobrança ou caixa aberto não encontrado.");
+    if (registro.pagoHoje) return UIHelpers?.alerta?.("Este cliente já possui pagamento neste caixa. Use o botão Pago para alterar o total.");
     const motivo = texto(document.getElementById("vendedorNaoPagamentoMotivo")?.value || "Cliente não realizou o pagamento");
     const observacao = texto(document.getElementById("vendedorNaoPagamentoObservacao")?.value || "");
     if (!motivo) return UIHelpers?.alerta?.("Informe o motivo do não pagamento.");
@@ -2129,6 +2269,7 @@
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const historicoId = naoPagamentoIdDeterministico(registro, caixa);
     const aliases = ["cobranca:" + texto(registro.vendaId), "venda:" + texto(registro.vendaId)];
+    let rollbackOtimista = null;
     try {
       await executarOperacaoAssincrona({
         id: historicoId,
@@ -2137,10 +2278,18 @@
         botao,
         textoProcessando: "Sincronizando baixa",
         executar: () => window.IntegroCobranca.registrarNaoPagamentoTransacional({ usuario, clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id || caixa.caixaId || "", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, operacaoId: historicoId, motivo, observacao, dataOperacional: dataCaixa(), origem: "painel_unificado_vendedor" }),
-        renderizar: () => window.renderCobrancas?.(),
-        rollback: () => window.renderCobrancas?.()
+        renderizar: status => {
+          if (status === "QUEUED" && !rollbackOtimista) {
+            rollbackOtimista = aplicarBaixaCobrancaOtimista({ tipo: "NAO_PAGAMENTO", registro, caixa, operacaoId: historicoId, motivo, observacao });
+            fecharModal();
+          }
+          window.renderCobrancas?.();
+        },
+        rollback: () => {
+          rollbackOtimista?.();
+          window.renderCobrancas?.();
+        }
       });
-      fecharModal();
       agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Não pagamento registrado.");
     } catch (erro) {

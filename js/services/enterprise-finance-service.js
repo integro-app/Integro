@@ -1,6 +1,5 @@
 (function (global) {
   "use strict";
-
   const COLLECTIONS = Object.freeze({
     contas: "financeiro_contas",
     pagamentos: "financeiro_pagamentos",
@@ -259,7 +258,7 @@
   async function salvarFornecedor(input = {}, id = "") {
     assertBase(); const a = actor(); const data = {
       clientePlataformaId: tenantId(), nome: text(input.nome), documento: text(input.documento), telefone: text(input.telefone), whatsapp: text(input.whatsapp), email: text(input.email),
-      chavePix: text(input.chavePix), banco: text(input.banco), agencia: text(input.agencia), conta: text(input.conta), categoriaPadraoId: text(input.categoriaPadraoId), categoriaPadraoNome: text(input.categoriaPadraoNome), observacoes: text(input.observacoes),
+      chavePix: text(input.chavePix), banco: text(input.banco), agencia: text(input.agencia), conta: text(input.conta), categoriaPadraoId: text(input.categoriaPadraoId), categoriaPadraoNome: text(input.categoriaPadraoNome), observacoes: text(input.observacoes || input.observacao), ativo: input.ativo !== false, status: input.ativo === false ? "INATIVO" : "ATIVO",
       atualizadoEmTexto: nowIso(), atualizadoEm: serverTimestamp()
     };
     if (!data.nome) throw new Error("Nome do fornecedor é obrigatório.");
@@ -321,7 +320,7 @@
     assertBase(); const a=actor(); const start=text(input.dataInicio || input.vencimento); if(!start)throw new Error("Data inicial da recorrência é obrigatória.");
     const data={
       clientePlataformaId:tenantId(), descricao:text(input.descricao), empresaId:text(input.empresaId), empresaNome:text(input.empresaNome), fornecedorId:text(input.fornecedorId), fornecedorNome:text(input.fornecedorNome), categoriaId:text(input.categoriaId), categoriaNome:text(input.categoriaNome), centroCustoId:text(input.centroCustoId), centroCustoNome:text(input.centroCustoNome),
-      valorCentavos:Math.abs(cents(input.valorCentavos ?? input.valor)), tipoMovimento:["PAGAR","RECEBER"].includes(text(input.tipoMovimento).toUpperCase())?text(input.tipoMovimento).toUpperCase():"PAGAR", unidade:text(input.unidade || "MES").toUpperCase(), intervalo:Math.max(1,Number(input.intervalo||1)), dataInicio:start, dataFim:text(input.dataFim), limiteOcorrencias:Math.max(0,Number(input.limiteOcorrencias||0)), ocorrenciasGeradas:0, proximaGeracao:start, ativo:true,
+      valorCentavos:Math.abs(cents(input.valorCentavos ?? input.valor)), tipoMovimento:["PAGAR","RECEBER"].includes(text(input.tipoMovimento).toUpperCase())?text(input.tipoMovimento).toUpperCase():"PAGAR", frequencia:text(input.frequencia || input.unidade || "MES").toUpperCase(), unidade:text(input.unidade || "MES").toUpperCase(), intervalo:Math.max(1,Number(input.intervalo||1)), dataInicio:start, dataFim:text(input.dataFim), limiteOcorrencias:Math.max(0,Number(input.limiteOcorrencias||0)), ocorrenciasGeradas:0, proximaGeracao:start, ativo:true,
       regraDia:["FIXO","NESIMO_DIA_UTIL","ULTIMO_DIA_UTIL"].includes(text(input.regraDia).toUpperCase())?text(input.regraDia).toUpperCase():"FIXO", nDiaUtil:Math.max(1,Math.min(23,Number(input.nDiaUtil||1))), ajusteFimSemana:["POSTERGAR","ANTECIPAR","MANTER"].includes(text(input.ajusteFimSemana).toUpperCase())?text(input.ajusteFimSemana).toUpperCase():"POSTERGAR", feriados:Array.isArray(input.feriados)?input.feriados.map(text).filter(Boolean).slice(0,100):[],
       formaPagamentoPrevista:text(input.formaPagamentoPrevista), bancoContaId:text(input.bancoContaId), observacao:text(input.observacao), criadoPorAuthUid:a.authUid,criadoPorNome:a.nome,criadoEmTexto:nowIso(),atualizadoEmTexto:nowIso(),criadoEm:serverTimestamp(),atualizadoEm:serverTimestamp()
     };

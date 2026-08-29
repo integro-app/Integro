@@ -90,6 +90,26 @@ test("pagamento normal aplica uma única vez o delta em centavos", () => {
   assert.equal(statusParcelaAposPagamento(5600, 10000, "2026-06-30"), "PARCIAL");
 });
 
+test("alteração do total de R$ 40 para R$ 80 acrescenta somente R$ 40 ao caixa", () => {
+  const resultado = calcularPagamento({
+    valorNovoCentavos: 8000,
+    valorAnteriorCentavos: 4000,
+    saldoCaixaCentavos: 14000,
+    valorParcelaCentavos: 10000,
+    valorPagoParcelaCentavos: 4000,
+    saldoVendaCentavos: 96000,
+    totalPagoVendaCentavos: 4000,
+    saldoClienteCentavos: 96000
+  });
+
+  assert.equal(resultado.deltaCentavos, 4000);
+  assert.equal(resultado.novoSaldoCaixaCentavos, 18000);
+  assert.equal(resultado.novoValorPagoParcelaCentavos, 8000);
+  assert.equal(resultado.novoSaldoVendaCentavos, 92000);
+  assert.equal(resultado.novoTotalPagoVendaCentavos, 8000);
+  assert.equal(resultado.novoSaldoClienteCentavos, 92000);
+});
+
 test("correção de R$ 56 para R$ 40 aplica delta negativo de R$ 16", () => {
   const resultado = calcularPagamento({
     valorNovoCentavos: 4000,
@@ -521,6 +541,30 @@ test("correção transacional substitui R$ 56 por R$ 40 em todos os saldos", asy
   assert.equal(db.ler("vendas/venda_1").saldoDevedorCentavos, 96000);
   assert.equal(db.ler("clientes/cliente_1").saldoDevedorCentavos, 96000);
   assert.match(db.listar("logs")[1].detalhe, /Pagamento corrigido/);
+});
+
+test("correção transacional de R$ 40 para R$ 80 grava o total e somente o delta no caixa", async () => {
+  const { db, entrada } = contextoTransacional();
+  await global.IntegroPagamento.registrarPagamentoTransacional({
+    ...entrada,
+    valorCentavos: 4000
+  });
+  const correcao = await global.IntegroPagamento.registrarPagamentoTransacional({
+    ...entrada,
+    valorCentavos: 8000
+  });
+  const pagamentoId = "pg_tenant_1_caixa_1_venda_1_parcela_1";
+
+  assert.equal(correcao.modo, "CORRECAO");
+  assert.equal(correcao.valorAnteriorCentavos, 4000);
+  assert.equal(correcao.valorNovoCentavos, 8000);
+  assert.equal(correcao.deltaCentavos, 4000);
+  assert.equal(db.ler("caixas/caixa_1").saldoAtualCentavos, 18000);
+  assert.equal(db.ler(`pagamentos/${pagamentoId}`).valorCentavos, 8000);
+  assert.equal(db.ler(`lancamentos_financeiros/lf_pagamento_${pagamentoId}`).valorCentavos, 8000);
+  assert.equal(db.ler("parcelas/parcela_1").valorPagoCentavos, 8000);
+  assert.equal(db.ler("vendas/venda_1").totalPagoCentavos, 8000);
+  assert.equal(db.ler("clientes/cliente_1").saldoDevedorCentavos, 92000);
 });
 
 test("caixa fechado aborta a transação inteira sem criar pagamento", async () => {

@@ -1,0 +1,1141 @@
+{
+  "generatedAt": "2026-08-25T13:21:28.796Z",
+  "scope": "auditoria estatica funcional sem deploy",
+  "totals": {
+    "modules": 46,
+    "html": 8,
+    "services": 24,
+    "tests": 45,
+    "collections": 50,
+    "functions": 26,
+    "indexes": 31,
+    "status": {
+      "RISCO": 23,
+      "PARCIAL": 23
+    }
+  },
+  "modules": {
+    "autenticacao": {
+      "numero": "01",
+      "nome": "Autenticação",
+      "status": "RISCO",
+      "evidence": [
+        "js/auth.js",
+        "js/services/firestore.js",
+        "firestore.rules:1324"
+      ],
+      "missingOrRisk": "Login Auth + documento usuarios + tenant + perfil + logout existem; sem E2E contra usuários reais nesta auditoria.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "sessao_e_seguranca": {
+      "numero": "02",
+      "nome": "Sessão e Segurança",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/v27-session-service.js",
+        "functions/v27-admin.js",
+        "functions/index.js"
+      ],
+      "missingOrRisk": "Sessão única por Callable, forceReplace no segundo login, heartbeat e inatividade; colecao sessoes_usuarios é backend-only sem match direto nas Rules.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "master_global": {
+      "numero": "03",
+      "nome": "Master Global",
+      "status": "PARCIAL",
+      "evidence": [
+        "master-global.html",
+        "firestore.rules:1353"
+      ],
+      "missingOrRisk": "Tela e leitura de clientes_integro existem; criação/alteração global de empresas/planos não foi comprovada ponta a ponta com Function própria.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "master_local_administracao": {
+      "numero": "04",
+      "nome": "Master Local / Administração",
+      "status": "PARCIAL",
+      "evidence": [
+        "master-local.html",
+        "js/usuarios.js",
+        "js/equipes.js",
+        "js/cargos.js"
+      ],
+      "missingOrRisk": "Administração tenant existe, mas parte de CRUD de usuários/equipes/cargos ainda opera direto no frontend com Rules permissivas por perfil.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "usuarios": {
+      "numero": "05",
+      "nome": "Usuários",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/services/firestore.js",
+        "functions/index.js",
+        "js/services/v27-user-lifecycle.js"
+      ],
+      "missingOrRisk": "Convite Firestore + provisionamento Auth via Function existem; inativação com saneamento completo de carteira/leads não foi comprovada.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "permissoes": {
+      "numero": "06",
+      "nome": "Permissões",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/services/access-control.js",
+        "js/painel-unificado.js",
+        "firestore.rules"
+      ],
+      "missingOrRisk": "Modelo por cargo/permissões existe e controla menu/UI; comparação fina entre todas as ações, Rules e Functions ainda incompleta.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "equipes": {
+      "numero": "07",
+      "nome": "Equipes",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/equipes.js",
+        "firestore.rules:1541"
+      ],
+      "missingOrRisk": "CRUD e vínculo supervisor/vendedores existem; isolamento de supervisor depende de campos consistentes e não tem E2E completo.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "clientes": {
+      "numero": "08",
+      "nome": "Clientes",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/clientes-service.js",
+        "js/vendedor-unificado.js",
+        "firestore.rules:1455"
+      ],
+      "missingOrRisk": "Cadastro, edição, duplicidade, WhatsApp, histórico e escopo existem; há dualidade clientes/clientes_operacionais e parte dos testes é estrutural.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "vendas": {
+      "numero": "09",
+      "nome": "Vendas",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/financial-operations.js",
+        "functions/financial-callables.js"
+      ],
+      "missingOrRisk": "Venda transacional gera venda, parcelas, ledger, caixa e cliente; há fallback client-side e dependência de configuração singular/plural.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "parcelas": {
+      "numero": "10",
+      "nome": "Parcelas",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/financial-operations.js",
+        "firestore.rules:1429"
+      ],
+      "missingOrRisk": "Parcelas são coleção própria gerada na transação de venda e baixada no pagamento; faltam índices compostos explícitos para alguns filtros operacionais.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "cobrancas": {
+      "numero": "11",
+      "nome": "Cobranças",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/vendedor-operacao.js",
+        "js/vendedor-unificado.js",
+        "firestore.rules:1443"
+      ],
+      "missingOrRisk": "Carteira é montada de vendas/parcelas/pagamentos reais; não pagamento tem incompatibilidade crítica com Rules.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "pagamentos": {
+      "numero": "12",
+      "nome": "Pagamentos",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/financial-operations.js",
+        "functions/financial-callables.js"
+      ],
+      "missingOrRisk": "Pagamento transacional atualiza parcela, venda, cliente, caixa, ledger e log; precisa E2E em emulator/produção para todos cenários parcial/antecipado.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "nao_pagamento_visita": {
+      "numero": "13",
+      "nome": "Não Pagamento / Visita",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/vendedor-unificado.js:2028",
+        "firestore.rules:1443"
+      ],
+      "missingOrRisk": "UI e gravação do evento existem, mas frontend grava historicoCobrancas enquanto Rules bloqueiam create/update/delete.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "caixa": {
+      "numero": "14",
+      "nome": "Caixa",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/financial-operations.js",
+        "js/caixas.js"
+      ],
+      "missingOrRisk": "Abertura/fechamento/reabertura transacionais existem; fechamento depende de eventos de cobrança/visita consistentes.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "movimentacoes_operacionais": {
+      "numero": "15",
+      "nome": "Movimentações Operacionais",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/vendedor-unificado.js",
+        "js/modules/movimentacoes-unificadas.js",
+        "functions/enterprise-finance-operation.js"
+      ],
+      "missingOrRisk": "Ingresso/gasto/retirada conectam a solicitacoes/lancamentos e caixa; regras de aprovação e permissões precisam E2E por perfil.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "fechamento_de_caixa": {
+      "numero": "16",
+      "nome": "Fechamento de Caixa",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/financial-operations.js"
+      ],
+      "missingOrRisk": "Cálculo e fechamento transacional existem; pendências de visita podem ser afetadas pelo bloqueio de não pagamento.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "supervisor": {
+      "numero": "17",
+      "nome": "Supervisor",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/supervisor-unificado.js",
+        "js/modules/supervisor-operacao-unificada.js"
+      ],
+      "missingOrRisk": "Tela unificada e escopo por equipe existem; aprovações/redistribuições precisam validação completa com dados de equipes reais.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "leads": {
+      "numero": "18",
+      "nome": "Leads",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/services/indicacoes-service.js",
+        "js/services/v27-lead-open-guard.js"
+      ],
+      "missingOrRisk": "Indicação/lead, status e conversão existem; fluxo de abertura automática e redistribuição tem guardas parciais.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "indicacoes_captador": {
+      "numero": "19",
+      "nome": "Indicações / Captador",
+      "status": "RISCO",
+      "evidence": [
+        "js/modules/captador-unificado.js",
+        "js/services/indicacoes-service.js"
+      ],
+      "missingOrRisk": "Captador e indicacoes-service têm deduplicação, notificação e conversão; precisa E2E de escopo captador/vendedor/supervisor.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "transferencia_de_leads": {
+      "numero": "20",
+      "nome": "Transferência de Leads",
+      "status": "PARCIAL",
+      "evidence": [
+        "functions/v27-transferencias.js",
+        "js/services/v27-user-lifecycle.js"
+      ],
+      "missingOrRisk": "Function de transferência aceita tipo LEAD conceitualmente; decisão/export de UI e Rules backend-only não provam fluxo completo.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "transferencia_de_clientes": {
+      "numero": "21",
+      "nome": "Transferência de Clientes",
+      "status": "RISCO",
+      "evidence": [
+        "functions/v27-transferencias.js"
+      ],
+      "missingOrRisk": "Solicitação/decisão backend e preservação de histórico existem; falta teste integrado com carteira/vendas/parcelas.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "inativacao_de_usuario": {
+      "numero": "22",
+      "nome": "Inativação de Usuário",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/services/v27-policy-service.js",
+        "js/services/v27-user-lifecycle.js"
+      ],
+      "missingOrRisk": "Há policy service que detecta clientes ativos; tela de saneamento em lote/item a item não foi comprovada.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "financeiro_operacional": {
+      "numero": "23",
+      "nome": "Financeiro Operacional",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/financial-operations.js",
+        "js/modules/financeiro-unificado.js"
+      ],
+      "missingOrRisk": "Ledger operacional existe e é alimentado por venda/pagamento/movimentações; risco em consultas amplas e reconciliação por frontend.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "controle_financeiro_empresarial": {
+      "numero": "24",
+      "nome": "Controle Financeiro Empresarial",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/enterprise-finance-service.js",
+        "functions/enterprise-finance-payments.js"
+      ],
+      "missingOrRisk": "Módulo independente com contas, pagamentos, categorias, centros, recorrência, anexos, auditoria e Functions; nem todas configs/relatórios têm E2E.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "anexos_storage": {
+      "numero": "25",
+      "nome": "Anexos / Storage",
+      "status": "PARCIAL",
+      "evidence": [
+        "storage.rules",
+        "js/services/enterprise-finance-service.js"
+      ],
+      "missingOrRisk": "Storage rules por tenants e upload financeiro existem; anexos de cliente/documentos gerais não ficaram comprovados ponta a ponta.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "notificacoes": {
+      "numero": "26",
+      "nome": "Notificações",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/notification-service.js",
+        "js/modules/notification-center.js",
+        "functions/v27-maintenance.js"
+      ],
+      "missingOrRisk": "Serviço, central, lixeira e cleanup existem; criar no frontend ainda é permitido em alguns casos e navegação por rota precisa E2E.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "chat": {
+      "numero": "27",
+      "nome": "Chat",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/services/chat-service.js",
+        "js/chat-ui.js",
+        "functions/v27-chat.js"
+      ],
+      "missingOrRisk": "Conversas, mensagens, presença e regras existem; entrega/leitura/contador e grupos precisam validação funcional real, não só estrutural.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "configuracoes_da_empresa": {
+      "numero": "28",
+      "nome": "Configurações da Empresa",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/services/configuracoes-empresa-service.js",
+        "functions/v27-config.js"
+      ],
+      "missingOrRisk": "Salvar via Function existe; nem toda configuração salva foi comprovada como consumida pelos módulos.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "minha_conta": {
+      "numero": "29",
+      "nome": "Minha Conta",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/minha-conta.js",
+        "js/services/v27-session-service.js"
+      ],
+      "missingOrRisk": "Edição de foto/telefone básica existe; segurança/dispositivo/alteração de senha self-service não comprovadas.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "auditoria": {
+      "numero": "30",
+      "nome": "Auditoria",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/modules/auditoria-unificada.js",
+        "firestore.rules:1493"
+      ],
+      "missingOrRisk": "Logs e auditoria unificada existem; imutabilidade depende das Rules e nem todos eventos críticos têm backend obrigatório.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "relatorios": {
+      "numero": "31",
+      "nome": "Relatórios",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/master-local.js",
+        "js/modules/controle-financeiro-empresarial.js"
+      ],
+      "missingOrRisk": "Relatórios e exportações aparecem em módulos, mas origem/cálculo por relatório não está totalmente provada.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "dashboards": {
+      "numero": "32",
+      "nome": "Dashboards",
+      "status": "RISCO",
+      "evidence": [
+        "js/master-local.js",
+        "js/vendedor-unificado.js",
+        "js/modules/financeiro-unificado.js"
+      ],
+      "missingOrRisk": "Cards usam caches/coleções reais; há limites e agregação no cliente que podem não escalar.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "navegacao": {
+      "numero": "33",
+      "nome": "Navegação",
+      "status": "RISCO",
+      "evidence": [
+        "js/unified-navigation.js",
+        "js/painel-unificado.js"
+      ],
+      "missingOrRisk": "Menu unificado por perfil e testes existem; arquivos HTML dedicados/legados seguem hospedados e podem divergir.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "mobile": {
+      "numero": "34",
+      "nome": "Mobile",
+      "status": "RISCO",
+      "evidence": [
+        "css/integro-mobile.css",
+        "js/integro-mobile-navigation.js"
+      ],
+      "missingOrRisk": "Modo app mobile e testes estruturais existem; ainda falta E2E visual em aparelhos/viewport para todos módulos.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "offline": {
+      "numero": "35",
+      "nome": "Offline",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/data-runtime.js",
+        "js/utils/operational.js"
+      ],
+      "missingOrRisk": "Há runtime/cache e alguns sinais de idempotência; fila offline segregada por tenant+UID para venda/pagamento/movimentação não foi comprovada.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "timezone": {
+      "numero": "36",
+      "nome": "Timezone",
+      "status": "RISCO",
+      "evidence": [
+        "js/utils/operational.js",
+        "js/services/financial-operations.js"
+      ],
+      "missingOrRisk": "Helpers America/Sao_Paulo existem; ainda há mistura de new Date().toISOString e timestamps que pode afetar datas.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "integracoes": {
+      "numero": "37",
+      "nome": "Integrações",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/vendedor-unificado.js",
+        "js/services/enterprise-finance-service.js"
+      ],
+      "missingOrRisk": "WhatsApp link, ViaCEP e Firebase estão presentes; integrações bancárias/PIX/API externa são inexistentes ou preparadas.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "firestore_rules": {
+      "numero": "38",
+      "nome": "Firestore Rules",
+      "status": "RISCO",
+      "evidence": [
+        "firestore.rules"
+      ],
+      "missingOrRisk": "Rules cobrem a maioria das coleções e bloqueiam fallback geral; há mismatch historicoCobrancas e coleções backend-only sem match.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "indices_firestore": {
+      "numero": "39",
+      "nome": "Índices Firestore",
+      "status": "PARCIAL",
+      "evidence": [
+        "firestore.indexes.json"
+      ],
+      "missingOrRisk": "31 índices definidos; faltam índices prováveis para duplicidade de clientes e algumas consultas por data/status.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "cloud_functions": {
+      "numero": "40",
+      "nome": "Cloud Functions",
+      "status": "RISCO",
+      "evidence": [
+        "functions/index.js"
+      ],
+      "missingOrRisk": "26 exports, quase todas southamerica-east1, cobrindo sessão, Auth provision, vendas/pagamentos e v27; alguns fluxos críticos ainda têm fallback frontend.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "funcoes_orfas_legado": {
+      "numero": "41",
+      "nome": "Funções Órfãs / Legado",
+      "status": "PARCIAL",
+      "evidence": [
+        "vendedor.html",
+        "supervisor.html",
+        "financeiro.html",
+        "js/clientes.js"
+      ],
+      "missingOrRisk": "Há wrappers e telas dedicadas antigas mantidas; não foi removido nada, mas há risco de divergência entre painel unificado e HTMLs dedicados.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "colecoes_orfas_ou_duplicadas": {
+      "numero": "42",
+      "nome": "Coleções Órfãs ou Duplicadas",
+      "status": "RISCO",
+      "evidence": [
+        "docs/_auditoria-inventario-gerado.json"
+      ],
+      "missingOrRisk": "Clientes e configurações possuem nomes paralelos; algumas coleções aparecem só em reset/homologação.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "campos_duplicados_aliases": {
+      "numero": "43",
+      "nome": "Campos Duplicados / Aliases",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/clientes-service.js",
+        "js/services/firestore.js"
+      ],
+      "missingOrRisk": "tenantId/empresaId/clientePlataformaId e vendedorId/vendedorAuthUid/responsavelId coexistem; helpers mitigam, mas Rules/queries podem divergir.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "contratos_entre_modulos": {
+      "numero": "44",
+      "nome": "Contratos Entre Módulos",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/financial-operations.js",
+        "js/services/indicacoes-service.js"
+      ],
+      "missingOrRisk": "Venda/pagamento têm contrato forte; não pagamento, transferência, lead convertido e dashboards ainda têm elos parciais.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "performance_e_fluidez": {
+      "numero": "45",
+      "nome": "Performance e Fluidez",
+      "status": "RISCO",
+      "evidence": [
+        "js/services/realtime-operations-service.js",
+        "js/integro-interface.js"
+      ],
+      "missingOrRisk": "Melhorias recentes reduziram reload completo; ainda existem onSnapshot, MutationObservers e consultas limitadas/amplas a revisar.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    },
+    "testes": {
+      "numero": "46",
+      "nome": "Testes",
+      "status": "PARCIAL",
+      "evidence": [
+        "tests/*.test.js",
+        "package.json"
+      ],
+      "missingOrRisk": "45 testes existem, mas muitos são estruturais por regex; há Rules/emulator scripts, porém E2E funcional completo não foi executado nesta auditoria.",
+      "productionDataStructure": "SIM_COM_AJUSTES"
+    }
+  },
+  "collections": [
+    {
+      "name": "caixas",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, vendedorId:ASCENDING, status:ASCENDING",
+        "clientePlataformaId:ASCENDING, abertoPorUid:ASCENDING, status:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "functions/enterprise-finance-operation.js",
+        "functions/financial-callables.js",
+        "js/services/financial-operations.js",
+        "master-local.html",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "cargos",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "js/cargos.js",
+        "master-local.html"
+      ]
+    },
+    {
+      "name": "categoriasMovimentacao",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "js/master-local.js",
+        "js/vendedor-unificado.js",
+        "scripts/apply-enterprise-finance-rules-v26.js",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "ciclos_atendimento_clientes",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, clienteId:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules"
+      ]
+    },
+    {
+      "name": "clientes",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/financial-callables.js",
+        "js/services/financial-operations.js",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "clientes_duplicidade_autorizacoes",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/v27-client-approvals.js",
+        "js/services/clientes-service.js"
+      ]
+    },
+    {
+      "name": "clientes_integro",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/scripts/reset-homologacao-tenant.js",
+        "js/services/firestore.js",
+        "master-global.html",
+        "master-local.html"
+      ]
+    },
+    {
+      "name": "clientes_operacionais",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, statusAtendimento:ASCENDING",
+        "clientePlataformaId:ASCENDING, vendedorId:ASCENDING, statusAtendimento:ASCENDING",
+        "clientePlataformaId:ASCENDING, equipeId:ASCENDING, statusAtendimento:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "functions/financial-callables.js",
+        "functions/v27-client-approvals.js",
+        "functions/v27-transferencias.js",
+        "js/services/indicacoes-service.js",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "clientes_plataforma",
+      "rules": false,
+      "indexes": [],
+      "uses": [
+        "functions/scripts/reset-homologacao-tenant.js"
+      ]
+    },
+    {
+      "name": "conversas",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, participantesIds:CONTAINS"
+      ],
+      "uses": [
+        "firestore.rules",
+        "functions/v27-chat.js",
+        "js/services/chat-v27-guard.js"
+      ]
+    },
+    {
+      "name": "departamentos_integro",
+      "rules": false,
+      "indexes": [],
+      "uses": [
+        "master-global.html"
+      ]
+    },
+    {
+      "name": "direcionamentos_clientes",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, clienteId:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules"
+      ]
+    },
+    {
+      "name": "equipes",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "js/equipes.js",
+        "js/services/clientes-service.js",
+        "master-local.html"
+      ]
+    },
+    {
+      "name": "fechamentos_caixa",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "js/services/financial-operations.js"
+      ]
+    },
+    {
+      "name": "financeiro_auditoria",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, criadoEmTexto:DESCENDING"
+      ],
+      "uses": [
+        "docs/FIRESTORE-CONTROLE-FINANCEIRO-v26.fragment.rules",
+        "firestore.rules",
+        "functions/enterprise-finance-operation.js",
+        "functions/enterprise-finance-payments.js",
+        "functions/v27-finance-workflows.js",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_categorias",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, nome:ASCENDING"
+      ],
+      "uses": [
+        "docs/FIRESTORE-CONTROLE-FINANCEIRO-v26.fragment.rules",
+        "firestore.rules",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_centros_custo",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, nome:ASCENDING"
+      ],
+      "uses": [
+        "docs/FIRESTORE-CONTROLE-FINANCEIRO-v26.fragment.rules",
+        "firestore.rules",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_contas",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, vencimento:ASCENDING"
+      ],
+      "uses": [
+        "docs/FIRESTORE-CONTROLE-FINANCEIRO-v26.fragment.rules",
+        "firestore.rules",
+        "functions/enterprise-finance-payments.js",
+        "functions/enterprise-finance-reminders.js",
+        "functions/v27-finance-workflows.js",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_contas_bancarias",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, nome:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_empresas",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, nome:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_exportacoes",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules"
+      ]
+    },
+    {
+      "name": "financeiro_fornecedores",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, nome:ASCENDING"
+      ],
+      "uses": [
+        "docs/FIRESTORE-CONTROLE-FINANCEIRO-v26.fragment.rules",
+        "firestore.rules",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_lembretes",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, dataLembrete:ASCENDING"
+      ],
+      "uses": [
+        "docs/FIRESTORE-CONTROLE-FINANCEIRO-v26.fragment.rules",
+        "firestore.rules",
+        "functions/enterprise-finance-reminders.js",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_orcamentos",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules"
+      ]
+    },
+    {
+      "name": "financeiro_pagamentos",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, dataPagamento:DESCENDING"
+      ],
+      "uses": [
+        "docs/FIRESTORE-CONTROLE-FINANCEIRO-v26.fragment.rules",
+        "firestore.rules",
+        "functions/enterprise-finance-payments.js",
+        "functions/v27-finance-workflows.js",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_recorrencias",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, proximaGeracao:ASCENDING"
+      ],
+      "uses": [
+        "docs/FIRESTORE-CONTROLE-FINANCEIRO-v26.fragment.rules",
+        "firestore.rules",
+        "scripts/apply-enterprise-finance-rules-v26.js"
+      ]
+    },
+    {
+      "name": "financeiro_solicitacoes",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/enterprise-finance-payments.js",
+        "functions/v27-finance-workflows.js"
+      ]
+    },
+    {
+      "name": "historico_estados_caixa",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "js/services/financial-operations.js"
+      ]
+    },
+    {
+      "name": "historicoCobrancas",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "js/vendedor-unificado.js",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "indicacoes",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, vendedorDestinoId:ASCENDING, status:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "functions/v27-transferencias.js",
+        "js/services/clientes-service.js",
+        "js/services/indicacoes-service.js",
+        "master-local.html",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "interacoes_clientes",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, clienteId:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules"
+      ]
+    },
+    {
+      "name": "lancamentos_financeiros",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, dataOperacional:DESCENDING",
+        "clientePlataformaId:ASCENDING, tipoLancamento:ASCENDING, dataOperacional:DESCENDING",
+        "clientePlataformaId:ASCENDING, caixaId:ASCENDING, dataOperacional:DESCENDING",
+        "clientePlataformaId:ASCENDING, equipeId:ASCENDING, dataOperacional:DESCENDING",
+        "clientePlataformaId:ASCENDING, vendedorAuthUid:ASCENDING, dataOperacional:DESCENDING",
+        "clientePlataformaId:ASCENDING, vendedorId:ASCENDING, dataOperacional:DESCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "functions/enterprise-finance-operation.js",
+        "functions/financial-callables.js",
+        "js/services/financial-operations.js"
+      ]
+    },
+    {
+      "name": "logs",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, clienteId:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "functions/enterprise-finance-operation.js",
+        "functions/financial-callables.js",
+        "functions/index.js",
+        "functions/scripts/reset-homologacao-tenant.js",
+        "functions/v27-sales-approvals.js",
+        "js/services/clientes-service.js",
+        "js/services/financial-operations.js",
+        "js/services/indicacoes-service.js",
+        "master-global.html",
+        "master-local.html",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "mensagens",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/v27-chat.js",
+        "js/services/chat-v27-guard.js"
+      ]
+    },
+    {
+      "name": "notificacoes",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/enterprise-finance-operation.js",
+        "functions/enterprise-finance-payments.js",
+        "functions/enterprise-finance-reminders.js",
+        "functions/financial-callables.js",
+        "functions/notification-core.js",
+        "functions/v27-client-approvals.js",
+        "functions/v27-finance-workflows.js",
+        "functions/v27-maintenance.js",
+        "functions/v27-sales-approvals.js",
+        "functions/v27-transferencias.js",
+        "js/app.js"
+      ]
+    },
+    {
+      "name": "pagamentos",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/financial-callables.js",
+        "js/services/financial-operations.js",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "parcelas",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/financial-callables.js",
+        "js/services/financial-operations.js",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "permissoes_cargo",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, cargoId:ASCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "js/cargos.js",
+        "js/services/firestore.js",
+        "master-local.html"
+      ]
+    },
+    {
+      "name": "planos",
+      "rules": false,
+      "indexes": [],
+      "uses": [
+        "master-global.html"
+      ]
+    },
+    {
+      "name": "presencas_chat",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules"
+      ]
+    },
+    {
+      "name": "reaberturas_caixa",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "js/services/financial-operations.js"
+      ]
+    },
+    {
+      "name": "sessoes_usuarios",
+      "rules": false,
+      "indexes": [],
+      "uses": [
+        "functions/v27-admin.js"
+      ]
+    },
+    {
+      "name": "solicitacoes",
+      "rules": true,
+      "indexes": [
+        "clientePlataformaId:ASCENDING, criadoEm:DESCENDING",
+        "clientePlataformaId:ASCENDING, equipeId:ASCENDING, criadoEm:DESCENDING",
+        "clientePlataformaId:ASCENDING, vendedorAuthUid:ASCENDING, criadoEm:DESCENDING"
+      ],
+      "uses": [
+        "firestore.rules",
+        "functions/enterprise-finance-operation.js",
+        "functions/financial-callables.js",
+        "functions/v27-client-approvals.js",
+        "functions/v27-sales-approvals.js",
+        "js/services/financial-operations.js",
+        "js/services/v27-sales-approval-service.js",
+        "js/vendedor-unificado.js",
+        "tests/vendedor-unificado-operacao.test.js",
+        "vendedor.html"
+      ]
+    },
+    {
+      "name": "transferencias_solicitacoes",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/v27-transferencias.js",
+        "js/services/v27-user-lifecycle.js"
+      ]
+    },
+    {
+      "name": "tratamentos_divergencia_caixa",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "js/services/financial-operations.js"
+      ]
+    },
+    {
+      "name": "usuarios",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/enterprise-finance-operation.js",
+        "functions/enterprise-finance-payments.js",
+        "functions/enterprise-finance-reminders.js",
+        "functions/financial-callables.js",
+        "functions/index.js",
+        "functions/v27-admin.js",
+        "functions/v27-chat.js",
+        "functions/v27-client-approvals.js",
+        "functions/v27-config.js",
+        "functions/v27-finance-workflows.js",
+        "functions/v27-sales-approvals.js"
+      ]
+    },
+    {
+      "name": "vendas",
+      "rules": true,
+      "indexes": [],
+      "uses": [
+        "firestore.rules",
+        "functions/financial-callables.js",
+        "js/services/clientes-service.js",
+        "js/services/financial-operations.js",
+        "js/services/indicacoes-service.js",
+        "master-local.html",
+        "vendedor.html"
+      ]
+    }
+  ],
+  "criticalFindings": [
+    {
+      "priority": "P0",
+      "module": "nao_pagamento",
+      "status": "PARCIAL",
+      "evidence": [
+        "js/vendedor-unificado.js:2028",
+        "firestore.rules:1443"
+      ],
+      "problem": "Frontend grava historicoCobrancas mas Rules bloqueiam create/update/delete.",
+      "recommendation": "Mover registro para Cloud Function transacional ou ajustar Rules com validação forte."
+    },
+    {
+      "priority": "P0",
+      "module": "configuracoes",
+      "status": "PARCIAL",
+      "evidence": [
+        "functions/financial-callables.js:255",
+        "firestore.rules:1553"
+      ],
+      "problem": "Uso divergente configuracoes_empresa/configuracoes_empresas.",
+      "recommendation": "Unificar coleção/config contrato e testar política de saldo ativo."
+    },
+    {
+      "priority": "P1",
+      "module": "indices",
+      "status": "PARCIAL",
+      "evidence": [
+        "firestore.indexes.json"
+      ],
+      "problem": "Índices prováveis ausentes para clientes/documentos/telefones/parcelas/notificações.",
+      "recommendation": "Executar emulator/produção controlada para capturar índices necessários."
+    },
+    {
+      "priority": "P1",
+      "module": "testes",
+      "status": "PARCIAL",
+      "evidence": [
+        "tests/*.test.js"
+      ],
+      "problem": "Muitos testes são estruturais por regex e não provam fluxo ponta a ponta.",
+      "recommendation": "Criar E2E emulator para Auth, venda, pagamento, não pagamento, transferência e financeiro."
+    }
+  ]
+}

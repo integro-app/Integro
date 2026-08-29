@@ -130,6 +130,8 @@
   <link href="css/integro-mobile.css?v=20260818-v272-perf1" rel="stylesheet">
   <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2">
   <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20">
+  <link rel="stylesheet" href="css/integro-loading.css?v=20260827-single1">
+  <script src="js/integro-loading-handoff.js?v=20260827-single1"></script>
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-global">
 
@@ -172,6 +174,7 @@
     const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
 
     let integroBootPercentualAtual = 0;
+    const integroLoadingContinuo = window.__integroLoginLoadingConcluido === true;
 
     function atualizarLoadingPremium(percentual, texto){
       const valor = Math.max(0, Math.min(100, Number(percentual) || 0));
@@ -186,6 +189,7 @@
 
     function finalizarLoadingPremium(){
       atualizarLoadingPremium(100, 'Sistema pronto.');
+      try{sessionStorage.removeItem('integroLoadingContinuo')}catch(_){}
       const loader = document.getElementById('integroBootLoader');
       document.body.classList.remove('integro-booting');
       if(loader){

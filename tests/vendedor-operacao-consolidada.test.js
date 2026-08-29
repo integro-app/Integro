@@ -59,6 +59,31 @@ test("não pagamento do dia usa barra vermelha quando não houve pagamento", () 
   assert.equal(operacao.statusVisual(lista[0]).chave, "NAO_PAGO");
 });
 
+test("pagamento converte visualmente o não pagamento anterior do mesmo dia", () => {
+  const lista = operacao.montarCarteira(base({
+    pagamentosHoje: [{ vendaId: "venda-1", caixaId: "caixa-1", parcelaId: "p2", valorPago: 80, data: "2026-08-03", vendedorId: "vend-1", clientePlataformaId: "tenant-1" }],
+    historico: [{ vendaId: "venda-1", caixaId: "caixa-1", tipo: "NAO_PAGAMENTO", data: "2026-08-03", vendedorId: "vend-1", clientePlataformaId: "tenant-1" }]
+  }));
+
+  assert.equal(lista[0].valorPagoHoje, 80);
+  assert.equal(lista[0].pagoHoje, true);
+  assert.equal(lista[0].naoPagoHoje, false);
+  assert.equal(operacao.statusVisual(lista[0]).chave, "PAGO");
+});
+
+test("pagamento do caixa atual continua no card após quitar o saldo para permitir correção", () => {
+  const lista = operacao.montarCarteira(base({
+    clientes: [{ id: "cli-1", nome: "Maria da Silva", saldoDevedor: 0, vendedorId: "vend-1", clientePlataformaId: "tenant-1" }],
+    vendas: [{ id: "venda-1", clienteId: "cli-1", saldoDevedor: 0, valorParcela: 100, quantidadeParcelas: 1, vendedorId: "vend-1", clientePlataformaId: "tenant-1", status: "QUITADO" }],
+    parcelas: [{ id: "p1", vendaId: "venda-1", numeroParcela: 1, valor: 100, valorPago: 100, status: "PAGA", dataVencimento: "2026-08-03", vendedorId: "vend-1", clientePlataformaId: "tenant-1" }],
+    pagamentosHoje: [{ vendaId: "venda-1", caixaId: "caixa-1", parcelaId: "p1", valorPago: 100, data: "2026-08-03", vendedorId: "vend-1", clientePlataformaId: "tenant-1" }]
+  }));
+
+  assert.equal(lista.length, 1);
+  assert.equal(lista[0].saldoDevedor, 0);
+  assert.equal(lista[0].pagoHoje, true);
+});
+
 
 test("venda legada sem vendedor explícito é aceita quando o cliente pertence ao vendedor", () => {
   const dados = base({

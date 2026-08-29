@@ -189,6 +189,15 @@
       ]
     },
     {
+      "collectionGroup": "financeiro_contas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "recorrenciaId", "order": "ASCENDING" },
+        { "fieldPath": "vencimento", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "financeiro_pagamentos",
       "queryScope": "COLLECTION",
       "fields": [

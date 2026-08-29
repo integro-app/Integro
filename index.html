@@ -312,6 +312,102 @@
       display:block;
     }
 
+    .login-flow-loader{
+      position:fixed;
+      inset:0;
+      z-index:10000;
+      display:grid;
+      place-items:center;
+      padding:24px;
+      background:rgba(4,13,28,.88);
+      backdrop-filter:blur(18px);
+      opacity:0;
+      visibility:hidden;
+      transition:opacity .22s ease, visibility .22s ease;
+    }
+
+    .login-flow-loader[hidden]{ display:none; }
+
+    .login-flow-loader.is-visible{
+      opacity:1;
+      visibility:visible;
+    }
+
+    .login-flow-card{
+      width:min(430px, 100%);
+      padding:34px 30px 30px;
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:26px;
+      background:linear-gradient(145deg,rgba(17,35,61,.96),rgba(7,20,40,.97));
+      box-shadow:0 28px 80px rgba(0,0,0,.42);
+      text-align:center;
+    }
+
+    .login-flow-brand{
+      margin-bottom:24px;
+      font-size:29px;
+      font-weight:950;
+      letter-spacing:-1.5px;
+      color:#fff;
+    }
+
+    .login-flow-brand span{ color:var(--orange-2); }
+
+    .login-flow-spinner{
+      width:52px;
+      height:52px;
+      margin:0 auto 22px;
+      border:4px solid rgba(255,255,255,.12);
+      border-top-color:var(--orange-2);
+      border-radius:50%;
+      animation:loginFlowSpin .8s linear infinite;
+    }
+
+    .login-flow-card h2{
+      margin:0 0 9px;
+      color:#fff;
+      font-size:21px;
+      line-height:1.25;
+    }
+
+    .login-flow-step{
+      min-height:21px;
+      margin:0 0 22px;
+      color:#cbd9ea;
+      font-size:14px;
+      font-weight:700;
+    }
+
+    .login-flow-track{
+      height:7px;
+      overflow:hidden;
+      border-radius:999px;
+      background:rgba(255,255,255,.1);
+    }
+
+    .login-flow-progress{
+      width:0;
+      height:100%;
+      border-radius:inherit;
+      background:linear-gradient(90deg,var(--orange),#ffb25c);
+      box-shadow:0 0 18px rgba(255,107,0,.5);
+      transition:width .32s ease;
+    }
+
+    .login-flow-hint{
+      margin:13px 0 0;
+      color:#8195ad;
+      font-size:12px;
+    }
+
+    @keyframes loginFlowSpin{ to{ transform:rotate(360deg); } }
+
+    @media(prefers-reduced-motion:reduce){
+      .login-flow-spinner{ animation-duration:1.8s; }
+      .login-flow-loader,
+      .login-flow-progress{ transition:none; }
+    }
+
     @media(max-width:760px){
       body{
         min-height:100dvh;
@@ -424,6 +520,7 @@
     }
   </style>
   <link href="css/integro-mobile.css?v=20260818-v272-perf1" rel="stylesheet">
+  <link href="css/integro-loading.css?v=20260827-single1" rel="stylesheet">
 </head>
 
 <body>
@@ -498,9 +595,23 @@
 
   </main>
 
+  <section id="loginFlowLoader" class="login-flow-loader" role="status" aria-live="polite" aria-hidden="true" hidden>
+    <div class="login-flow-card">
+      <div class="login-flow-brand" aria-label="ÍNTEGRO">ÍNTE<span>GRO</span></div>
+      <div class="login-flow-spinner" aria-hidden="true"></div>
+      <h2>Acessando sua conta</h2>
+      <p id="loginFlowStep" class="login-flow-step">Preparando seu acesso...</p>
+      <div class="login-flow-track">
+        <div id="loginFlowProgress" class="login-flow-progress" role="progressbar" aria-label="Progresso do acesso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
+      </div>
+      <p id="loginFlowHint" class="login-flow-hint">Conectando com segurança ao ÍNTEGRO</p>
+    </div>
+  </section>
+
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
 
   <!-- Infraestrutura -->
   <script src="js/firebase-config.js?v=20260728-3"></script>
@@ -510,6 +621,8 @@
 
   <!-- Serviços -->
   <script src="js/services/firestore.js?v=20260728-3"></script>
+  <script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
+  <script src="js/services/v27-session-service.js?v=20260827-login-flow1"></script>
 
   <!-- Utilitários -->
   <script src="js/utils/validators.js"></script>
@@ -517,7 +630,7 @@
 
   <!-- Core da aplicação -->
   <script src="js/app.js?v=20260812-v24-6"></script>
-  <script src="js/auth.js?v=3"></script>
+  <script src="js/auth.js?v=20260827-single-loading1"></script>
 
   <!-- Helpers de login -->
   <script>

@@ -112,12 +112,15 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
   async function requestChange(data, context) {
     const { uid, user, tenantId } = await session(context); if (!canEdit(user)) error("permission-denied", "Sem permissão para alterar lançamento.");
     const account = await accountById(data?.contaId, tenantId); const requestType = norm(data?.tipo || "EDICAO"); const patch = safePatch(data?.patch || {});
+    const scope = norm(data?.escopo || "SOMENTE_ESTA");
+    if (!["SOMENTE_ESTA","ESTA_E_PROXIMAS"].includes(scope)) error("invalid-argument", "Escopo de alteração inválido.");
+    if (scope === "ESTA_E_PROXIMAS" && !text(account.recorrenciaId)) error("failed-precondition", "Este lançamento não pertence a uma recorrência.");
     const isCancellation = ["CANCELAMENTO","EXCLUSAO"].includes(requestType);
     if (!isCancellation && !Object.keys(patch).length) error("invalid-argument", "Nenhuma alteração válida informada.");
     if (["PAGA","PAGO","CANCELADA"].includes(norm(account.status))) error("failed-precondition", "Lançamento efetivado ou cancelado não pode ser editado.");
     if (isCancellation && Number(account.valorPagoCentavos || 0) > 0) error("failed-precondition", "Lançamento com pagamento não pode ser cancelado.");
     const isCreator = text(account.criadoPorAuthUid) === uid;
-    if (isCreator && sameBusinessDay(account.criadoEmTexto)) {
+    if (isCreator && sameBusinessDay(account.criadoEmTexto) && scope === "SOMENTE_ESTA") {
       if (isCancellation) {
         const direct={status:"CANCELADA",statusV27:"CANCELADA",motivoCancelamento:text(data?.motivo || "Cancelamento pelo criador no mesmo dia"),canceladoPorAuthUid:uid,canceladoEm:ts(),canceladoEmTexto:nowText(),atualizadoEm:ts(),atualizadoEmTexto:nowText()};
         await db.collection("financeiro_contas").doc(account.id).set(direct,{merge:true});
@@ -130,7 +133,7 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
       return { ok:true, aprovado:true };
     }
     const requestId = `fe_${idSafe(account.id)}_${Date.now()}`;
-    const request = { clientePlataformaId:tenantId, tipo:requestType, status:"PENDENTE", contaId:account.id, patch, motivo:text(data?.motivo), solicitanteAuthUid:uid, solicitanteNome:text(user.nome || user.nomeCompleto || user.email), criadoEmTexto:nowText(), criadoEm:ts(), atualizadoEmTexto:nowText(), atualizadoEm:ts() };
+    const request = { clientePlataformaId:tenantId, tipo:requestType, status:"PENDENTE", contaId:account.id, patch, motivo:text(data?.motivo), escopo:scope, recorrenciaId:text(account.recorrenciaId), corteVencimento:text(account.vencimento), solicitanteAuthUid:uid, solicitanteNome:text(user.nome || user.nomeCompleto || user.email), criadoEmTexto:nowText(), criadoEm:ts(), atualizadoEmTexto:nowText(), atualizadoEm:ts() };
     await db.collection("financeiro_solicitacoes").doc(requestId).set(request);
     await notifyApprovers(tenantId, requestId, "Alteração financeira pendente", `${request.solicitanteNome} solicitou alteração em ${account.descricao || "um lançamento"}.`);
     return { ok:true, aprovado:false, solicitacaoId:requestId };
@@ -160,6 +163,20 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
         batch.set(db.collection("financeiro_contas").doc(account.id),{status:"CANCELADA",statusV27:"CANCELADA",motivoCancelamento:text(req.motivo||"Cancelamento aprovado"),canceladoPorAuthUid:uid,canceladoEm:ts(),canceladoEmTexto:nowText(),atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});
       } else if (norm(req.tipo) === "PAGAMENTO_RETROATIVO") {
         // O pagamento já foi aplicado de forma idempotente pelo serviço seguro acima.
+      } else if (norm(req.escopo) === "ESTA_E_PROXIMAS" && text(req.recorrenciaId)) {
+        const future = await db.collection("financeiro_contas")
+          .where("clientePlataformaId", "==", tenantId)
+          .where("recorrenciaId", "==", text(req.recorrenciaId))
+          .where("vencimento", ">=", text(req.corteVencimento || account.vencimento))
+          .limit(400).get();
+        const patch = safePatch(req.patch || {});
+        future.docs.forEach(doc => {
+          const item = doc.data() || {};
+          if (Number(item.valorPagoCentavos || 0) > 0 || ["PAGA","PAGO","CANCELADA"].includes(norm(item.status))) return;
+          const update = { ...patch, atualizadoEm:ts(), atualizadoEmTexto:nowText() };
+          if (patch.valorCentavos !== undefined) update.saldoCentavos = Number(patch.valorCentavos);
+          batch.set(doc.ref, update, { merge:true });
+        });
       } else {
         const patch = safePatch(req.patch || {}); if (patch.valorCentavos !== undefined) { const paid=Number(account.valorPagoCentavos||0); if(Number(patch.valorCentavos)<paid) error("failed-precondition","Valor não pode ser menor que o já pago."); patch.saldoCentavos=Number(patch.valorCentavos)-paid; }
         batch.set(db.collection("financeiro_contas").doc(account.id), { ...patch, atualizadoEm:ts(), atualizadoEmTexto:nowText() }, { merge:true });
