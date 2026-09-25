@@ -413,6 +413,18 @@ test("caixa: vendedor cria proprio, outro bloqueado, le proprio e nao le outro",
   await assertFails(getDoc(doc(appDb(profiles.masterB), "fechamentos_caixa", "fechamento_caixa_a_1")));
 });
 
+test("ownership: Auth UID canônico prevalece sobre alias conflitante", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "caixas", "caixa_alias_conflitante"), caixa({
+      id: "caixa_alias_conflitante",
+      vendedorAuthUid: profiles.vendedor2.uid,
+      vendedorId: profiles.vendedor1.uid
+    }));
+  });
+  await assertFails(getDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_alias_conflitante")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor2), "caixas", "caixa_alias_conflitante")));
+});
+
 test("caixa: fechamento proprio permitido, vendedor reabre bloqueado, supervisor equipe reabre e outra equipe bloqueia", async () => {
   await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1"), { status: "FECHADO" }));
   await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_fechado"), { status: "REABERTO" }));
@@ -457,16 +469,17 @@ test("historico refechamento: cria somente para caixa reaberto e permanece imuta
   await assertFails(deleteDoc(doc(appDb(profiles.vendedor1), "historico_fechamentos_caixa", "hist_refechamento_ok")));
 });
 
-test("pagamento/venda: vendedor cria venda propria, caixa de outro bloqueia, pagamento proprio permitido e caixa fechado bloqueia", async () => {
-  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_nova"), venda({ operacaoId: "op_nova" })));
+test("pagamento/venda: gravações diretas do navegador são bloqueadas e o backend é obrigatório", async () => {
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_nova"), venda({ operacaoId: "op_nova" })));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_outro"), venda({ caixaId: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid })));
-  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_ok"), pagamento()));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_ok"), pagamento()));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "parcelas", "parcela_nova"), parcela({ vendaId: "venda_nova" })));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_fechado"), pagamento({ caixaId: "caixa_fechado" })));
 });
 
-test("pagamento/venda: caixa reaberto permite proprio vendedor e bloqueia fechado, outro vendedor e outro tenant", async () => {
-  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_reaberta"), venda({ caixaId: "caixa_reaberto", operacaoId: "op_venda_reaberta" })));
-  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_reaberto"), pagamento({ caixaId: "caixa_reaberto", operacaoId: "pg_op_reaberto" })));
+test("pagamento/venda: caixa reaberto também exige o backend transacional", async () => {
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_reaberta"), venda({ caixaId: "caixa_reaberto", operacaoId: "op_venda_reaberta" })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_reaberto"), pagamento({ caixaId: "caixa_reaberto", operacaoId: "pg_op_reaberto" })));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "vendas", "venda_reaberta_outro_vendedor"), venda({ caixaId: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid, operacaoId: "op_outro_vendedor" })));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "pagamentos", "pg_reaberto_outro_vendedor"), pagamento({ caixaId: "caixa_a_2", vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid, operacaoId: "pg_outro_vendedor" })));
   await assertFails(setDoc(doc(appDb(profiles.masterA), "vendas", "venda_reaberta_outro_tenant"), venda({ caixaId: "caixa_b_1", clientePlataformaId: "tenant_b", vendedorId: "vend_b", vendedorAuthUid: "vend_b_uid", operacaoId: "op_tenant_b" })));

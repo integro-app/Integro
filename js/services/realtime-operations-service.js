@@ -111,9 +111,9 @@
       : (Array.isArray(global.caixasCache) ? global.caixasCache : []);
   }
 
-  function boxId(box = {}) { return text(box.id || box.caixaId || box.docId); }
-  function boxTeamId(box = {}) { return text(box.equipeId || box.equipeUid || box.unidadeId || box.timeId); }
-  function boxStatus(box = {}) { return upper(box.status || box.statusCaixa || box.situacao || box.estado); }
+  function boxId(box = {}) { box = box || {}; return text(box.id || box.caixaId || box.docId); }
+  function boxTeamId(box = {}) { box = box || {}; return text(box.equipeId || box.equipeUid || box.unidadeId || box.timeId); }
+  function boxStatus(box = {}) { box = box || {}; return upper(box.status || box.statusCaixa || box.situacao || box.estado); }
   function isOpenBox(box = {}) {
     const status = boxStatus(box);
     return box.ativo !== false && box.excluido !== true && (status === "ABERTO" || status === "REABERTO" || box.aberto === true);
@@ -129,6 +129,7 @@
   }
 
   function sellerOwnsBox(box = {}, current = state.access || {}) {
+    box = box || {};
     const ids = new Set([current.usuarioId, current.authUid].filter(Boolean).map(String));
     const links = [
       box.vendedorId, box.vendedorAuthUid, box.vendedorUid, box.usuarioId,

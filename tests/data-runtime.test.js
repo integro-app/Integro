@@ -123,3 +123,38 @@ test("runtime e idempotente quando o script e executado duas vezes", () => {
   assert.equal(listenersDocumento.filter(item => item.nome === "integro-tela-alterada").length, 1);
   assert.equal(listenersDocumento.filter(item => item.nome === "usuario-validado").length, 1);
 });
+
+test("10 ciclos de navegação encerram listeners da tela anterior sem crescimento", () => {
+  const { runtime } = carregarRuntime();
+  const fake = bancoFake();
+  const telas = ["dashboard", "clientes", "operacao", "caixas"];
+  let picoListeners = 0;
+  let picoAssinaturas = 0;
+
+  for (let ciclo = 0; ciclo < 10; ciclo++) {
+    for (const tela of telas) {
+      runtime.definirTelaAtiva(tela);
+      const opcoes = {
+        db: fake.db, colecao: `colecao_${tela}`, tenantId: "tenant_a",
+        chave: `listener:${tela}`, escopo: `tela:${tela}`, aoAtualizar() {}
+      };
+      const pararA = runtime.ouvir(opcoes);
+      const pararB = runtime.ouvir(opcoes);
+      assert.equal(pararA, pararB, `listener duplicado em ${tela}`);
+      const diagnostico = runtime.diagnostico();
+      picoListeners = Math.max(picoListeners, diagnostico.listenersAtivos);
+      picoAssinaturas = Math.max(picoAssinaturas, diagnostico.assinaturasAtivas);
+      assert.equal(diagnostico.listenersAtivos, 1, `ciclo ${ciclo + 1}, tela ${tela}`);
+      assert.equal(diagnostico.assinaturasAtivas, 1, `ciclo ${ciclo + 1}, tela ${tela}`);
+    }
+  }
+
+  runtime.definirTelaAtiva("final");
+  const final = runtime.diagnostico();
+  assert.equal(final.listenersAtivos, 0);
+  assert.equal(final.assinaturasAtivas, 0);
+  assert.equal(picoListeners, 1);
+  assert.equal(picoAssinaturas, 1);
+  assert.equal(fake.metricas().snapshots, 40);
+  assert.equal(fake.metricas().unsubs, 40);
+});

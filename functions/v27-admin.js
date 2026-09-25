@@ -1,10 +1,11 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const { FieldValue } = require("firebase-admin/firestore");
 const { persistNotification } = require("./notification-core");
 
 function criarAdministracaoV27({ admin, functions, db }) {
-  const serverTimestamp = () => admin.firestore.FieldValue.serverTimestamp();
+  const serverTimestamp = () => FieldValue.serverTimestamp();
   const nowMs = () => Date.now();
   const text = value => String(value ?? "").trim();
   const upper = value => text(value).toUpperCase();

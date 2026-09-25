@@ -133,11 +133,11 @@ async function main() {
 
   const users = {
     master_global: { nome: "Master Global", email: "master.global@homologacao.integro.test", perfil: "master_global", cargo: "Master Global", tenant: "tenant-a", equipesIds: [] },
-    master_a: { nome: "Master Local A", email: "master.local.a@homologacao.integro.test", perfil: "master_local", cargo: "Master Local", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"], permissoes: { clientes: true } },
-    gerente_a: { nome: "Gerente A", email: "gerente.a@homologacao.integro.test", perfil: "gerente", cargo: "Gerente", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"], permissoes: { gerenciarClientes: true } },
-    supervisor_a: { nome: "Supervisor A", email: "supervisor.a@homologacao.integro.test", perfil: "supervisor", cargo: "Supervisor", tenant: "tenant-a", equipeId: "equipe-a1", permissoes: { gerenciarClientes: true, redistribuirIndicacao: true } },
-    financeiro_a: { nome: "Financeiro A", email: "financeiro.a@homologacao.integro.test", perfil: "financeiro", cargo: "Financeiro", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"], permissoes: { visualizarFinanceiro: true } },
-    captador_a: { nome: "Captador A", email: "captador.a@homologacao.integro.test", perfil: "captador", cargo: "Captador", tenant: "tenant-a", equipeId: "equipe-a1", permissoes: { criarIndicacao: true } },
+    master_a: { nome: "Master Local A", email: "master.local.a@homologacao.integro.test", perfil: "master_local", cargo: "Master Local", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"] },
+    gerente_a: { nome: "Gerente A", email: "gerente.a@homologacao.integro.test", perfil: "gerente", cargo: "Gerente", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"] },
+    supervisor_a: { nome: "Supervisor A", email: "supervisor.a@homologacao.integro.test", perfil: "supervisor", cargo: "Supervisor", tenant: "tenant-a", equipeId: "equipe-a1" },
+    financeiro_a: { nome: "Financeiro A", email: "financeiro.a@homologacao.integro.test", perfil: "financeiro", cargo: "Financeiro", tenant: "tenant-a", equipesIds: ["equipe-a1", "equipe-a2"] },
+    captador_a: { nome: "Captador A", email: "captador.a@homologacao.integro.test", perfil: "captador", cargo: "Captador", tenant: "tenant-a", equipeId: "equipe-a1" },
     vendedor_a1: { nome: "Vendedor Um", email: "vendedor.1.a@homologacao.integro.test", perfil: "vendedor", cargo: "Vendedor", tenant: "tenant-a", equipeId: "equipe-a1" },
     vendedor_a2: { nome: "Vendedor Dois", email: "vendedor.2.a@homologacao.integro.test", perfil: "vendedor", cargo: "Vendedor", tenant: "tenant-a", equipeId: "equipe-a1" },
     vendedor_a3: { nome: "Vendedor Outra Equipe", email: "vendedor.3.a@homologacao.integro.test", perfil: "vendedor", cargo: "Vendedor", tenant: "tenant-a", equipeId: "equipe-a2" },

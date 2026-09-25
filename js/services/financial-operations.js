@@ -28,6 +28,20 @@
       typeof window.firebase?.functions === "function";
   }
 
+  function operacaoFinanceiraLocalPermitida() {
+    // O fallback transacional local existe somente para testes unitários do
+    // domínio. Em qualquer navegador, operações de venda/cobrança devem passar
+    // pelas Cloud Functions, que validam sessão, tenant e idempotência.
+    return typeof window.document === "undefined";
+  }
+
+  function exigirBackendFinanceiro() {
+    if (operacaoFinanceiraLocalPermitida()) return;
+    const erro = new Error("Backend financeiro indisponível. Nenhuma alteração foi realizada.");
+    erro.code = "ERRO_BACKEND_FINANCEIRO_INDISPONIVEL";
+    throw erro;
+  }
+
   async function chamarBackendFinanceiro(nome, entrada = {}) {
     if (!backendFinanceiroDisponivel()) throw new Error("Backend financeiro indisponível.");
     const instancia = typeof firebase.app === "function" && typeof firebase.app().functions === "function"
@@ -290,7 +304,7 @@
 
   function validarCaixaPagamento(caixa, tenantId, usuario) {
     const statusCaixa = normalizarStatus(caixa?.status);
-    if (statusCaixa !== "ABERTO") {
+    if (!["ABERTO", "REABERTO"].includes(statusCaixa)) {
       const erro = new Error(`Caixa ${statusCaixa || "FECHADO"}: pagamento bloqueado.`);
       erro.code = "ERRO_BLOQUEADO_CAIXA_FECHADO";
       throw erro;
@@ -302,7 +316,7 @@
 
   function validarCaixaVenda(caixa, tenantId, usuario) {
     const statusCaixa = normalizarStatus(caixa?.status);
-    if (statusCaixa !== "ABERTO") {
+    if (!["ABERTO", "REABERTO"].includes(statusCaixa)) {
       const erro = new Error(`Caixa ${statusCaixa || "FECHADO"}: venda bloqueada.`);
       erro.code = "ERRO_BLOQUEADO_CAIXA_FECHADO";
       throw erro;
@@ -663,13 +677,20 @@
   }
 
   async function listarLancamentosPorPeriodo({ dataInicio, dataFim, clientePlataformaId, db: dbEntrada } = {}) {
+    const tenantId = texto(clientePlataformaId);
+    if (!tenantId) {
+      const erro = new Error("Empresa obrigatória para consultar lançamentos financeiros.");
+      erro.code = "TENANT_OBRIGATORIO";
+      throw erro;
+    }
     const db = dbEntrada || getDb();
     const inicio = texto(dataInicio || "0000-00-00").slice(0, 10);
     const fim = texto(dataFim || "9999-99-99").slice(0, 10);
     const todos = [];
-    const snap = clientePlataformaId
-      ? await db.collection("lancamentos_financeiros").where("clientePlataformaId", "==", clientePlataformaId).limit(10000).get()
-      : await db.collection("lancamentos_financeiros").limit(10000).get();
+    const snap = await db.collection("lancamentos_financeiros")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(10000)
+      .get();
     snap.forEach(doc => todos.push({ id: doc.id, ...doc.data() }));
     return todos.filter(l => {
       const data = texto(l.dataOperacional || l.data || l.criadoEmTexto).slice(0, 10);
@@ -1352,6 +1373,8 @@
       });
     }
 
+    exigirBackendFinanceiro();
+
     const pagamentoId = pagamentoIdDeterministico({
       clientePlataformaId: tenantId,
       caixaId,
@@ -1704,6 +1727,8 @@
         origem: entrada?.origem || "vendedor"
       });
     }
+
+    exigirBackendFinanceiro();
 
     const vendaId = vendaIdDeterministica({
       clientePlataformaId: tenantId,
@@ -2993,6 +3018,8 @@
         origem: entrada?.origem || "vendedor"
       });
     }
+
+    exigirBackendFinanceiro();
 
     const historicoId = texto(entrada?.operacaoId) || naoPagamentoIdDeterministico({ clientePlataformaId: tenantId, caixaId, vendaId, dataOperacional });
     const caixaRef = db.collection("caixas").doc(caixaId);

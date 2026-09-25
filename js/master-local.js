@@ -645,17 +645,13 @@ function setText(id, valor) {
 
 async function carregarCategoriasMovimentacaoMasterLocal(forcar = false) {
   try {
-    let ref = db.collection("categoriasMovimentacao").limit(300);
-
-    if (State.getTenantId()) {
-      ref = db.collection("categoriasMovimentacao")
-        .where("clientePlataformaId", "==", State.getTenantId())
-        .limit(300);
-    }
-
     const runtime = window.IntegroDataRuntime;
-    const tenantId = State.getTenantId();
-    const lista = runtime?.consultarTenant && tenantId
+    const tenantId = String(State.getTenantId?.() || "").trim();
+    if (!tenantId) {
+      categoriasMovimentacaoMasterLocal = [];
+      return categoriasMovimentacaoMasterLocal;
+    }
+    const lista = runtime?.consultarTenant
       ? await runtime.consultarTenant({
           db,
           colecao: "categoriasMovimentacao",
@@ -665,14 +661,19 @@ async function carregarCategoriasMovimentacaoMasterLocal(forcar = false) {
           forcar,
           chave: `categorias-movimentacao:${tenantId}`
         })
-      : (await ref.get()).docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      : (await db.collection("categoriasMovimentacao")
+          .where("clientePlataformaId", "==", tenantId)
+          .limit(300)
+          .get()).docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     categoriasMovimentacaoMasterLocal = lista
       .filter(c => c.excluido !== true)
       .sort((a, b) => String(a.nome || "").localeCompare(String(b.nome || "")));
+    return categoriasMovimentacaoMasterLocal;
   } catch (erro) {
     console.error("Erro ao carregar categorias de movimentação:", erro);
     categoriasMovimentacaoMasterLocal = [];
+    return categoriasMovimentacaoMasterLocal;
   }
 }
 

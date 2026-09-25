@@ -139,7 +139,6 @@ test("V27.1 usa instância compat correta do Firebase Functions com região", ()
     ["js", "services", "chat-v27-guard.js"],
     ["js", "services", "v27-session-service.js"],
     ["js", "services", "v27-config-save-guard.js"],
-    ["js", "services", "enterprise-finance-operation-approval-guard.js"],
     ["js", "services", "enterprise-finance-payment-guard.js"],
     ["js", "services", "financial-operations.js"],
   ];

@@ -4,8 +4,9 @@
   <meta name="integro-legacy-entry" content="redirect-to-master-local">
   <script>
     (function () {
-      if (new URLSearchParams(location.search).get("legacy") === "1") return;
-      location.replace("master-local.html" + location.search + location.hash);
+      const params = new URLSearchParams(location.search);
+      params.delete("legacy");
+      location.replace("master-local.html" + (params.size ? `?${params}` : "") + location.hash);
     })();
   </script>
 

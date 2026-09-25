@@ -14,6 +14,8 @@
   let stylesheetReady = false;
   let shellReady = false;
   let historyArmed = false;
+  let bodyObserver = null;
+  let loaderObserver = null;
 
   const SELECTORS = {
     trigger: "[data-integro-menu-trigger], .mobile-menu-btn, .hamburger, #btnMenu",
@@ -116,6 +118,10 @@
     if (shellReady || !stylesheetReady || !bootFinished() || !hasValidatedUser()) return;
 
     shellReady = true;
+    bodyObserver?.disconnect();
+    loaderObserver?.disconnect();
+    bodyObserver = null;
+    loaderObserver = null;
     body.classList.remove("integro-shell-pending");
     body.classList.add("integro-shell-ready");
 
@@ -499,12 +505,12 @@
     if (isMobile() && shellReady) armHistoryGuard();
   });
 
-  const bodyObserver = new MutationObserver(attemptShellReady);
+  bodyObserver = new MutationObserver(attemptShellReady);
   bodyObserver.observe(body, { attributes: true, attributeFilter: ["class"] });
 
   const loader = document.getElementById("integroBootLoader");
   if (loader) {
-    const loaderObserver = new MutationObserver(attemptShellReady);
+    loaderObserver = new MutationObserver(attemptShellReady);
     loaderObserver.observe(loader, { attributes: true, attributeFilter: ["class", "style"] });
   }
 

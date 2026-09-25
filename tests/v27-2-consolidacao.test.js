@@ -20,7 +20,6 @@ const salesApprovals = read("functions", "v27-sales-approvals.js");
 const clientApprovals = read("functions", "v27-client-approvals.js");
 const index = read("functions", "index.js");
 const rules = read("firestore.rules");
-const bridge = read("js", "modules", "controle-financeiro-operacao-bridge.js");
 
 test("V27.2 identifica build e bootstrap consolidados", () => {
   assert.match(bootstrap, /27\.2\.0-consolidacao/);
@@ -42,10 +41,8 @@ test("V27.2 guard de configurações não usa polling nem observer global", () =
   assert.match(configGuard, /integro-configuracoes-atualizadas/);
 });
 
-test("V27.2 neutraliza bridges legados que cruzavam caixa e financeiro empresarial", () => {
-  assert.match(bridge, /disabled:\s*true/);
-  assert.doesNotMatch(bridge, /MutationObserver/);
-  assert.doesNotMatch(bridge, /collection\(/);
+test("V27.2 remove bridges legados que cruzavam caixa e financeiro empresarial", () => {
+  assert.equal(fs.existsSync(path.join(root, "js", "modules", "controle-financeiro-operacao-bridge.js")), false);
   assert.doesNotMatch(bootstrap, /controle-financeiro-operacao-bridge/);
 });
 

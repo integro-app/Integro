@@ -30,11 +30,15 @@ if (integroEmAmbienteLocal && integroParametroEmulator === "1") {
 
 const integroUsarEmulator = integroEmAmbienteLocal && sessionStorage.getItem("integro:usar-emulator") === "1";
 
+if (integroEmAmbienteLocal && integroParametros.get("instrument") === "1") sessionStorage.setItem("integro:instrumentar", "1");
+if (integroParametros.get("instrument") === "0") sessionStorage.removeItem("integro:instrumentar");
+
 if (integroUsarEmulator) {
   auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true });
   db.useEmulator("127.0.0.1", 8080);
+  if (typeof firebase.functions === "function") firebase.app().functions("southamerica-east1").useEmulator("127.0.0.1", 5001);
   if (typeof firebase.storage === "function") firebase.storage().useEmulator("127.0.0.1", 9199);
-  window.__INTEGRO_EMULATOR__ = Object.freeze({ auth: "http://127.0.0.1:9099", firestore: "127.0.0.1:8080", storage: "127.0.0.1:9199" });
+  window.__INTEGRO_EMULATOR__ = Object.freeze({ auth: "http://127.0.0.1:9099", firestore: "127.0.0.1:8080", functions: "127.0.0.1:5001", storage: "127.0.0.1:9199" });
 }
 
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((erro) => {

@@ -14,6 +14,7 @@
   let clienteFormularioAbertoId = "";
   let observadorClientesVendedor = null;
   let limpandoClientesVendedor = false;
+  const timersLimpezaClientesVendedor = new Set();
   let categoriasMovimentacaoVendedor = [];
   let categoriasMovimentacaoTenant = "";
   let carregandoCategoriasMovimentacao = null;
@@ -456,6 +457,25 @@
     observadorClientesVendedor.observe(tela, { childList: true, subtree: true });
   }
 
+  function pararObservacaoClientesVendedor() {
+    observadorClientesVendedor?.disconnect();
+    observadorClientesVendedor = null;
+    timersLimpezaClientesVendedor.forEach(timer => window.clearTimeout(timer));
+    timersLimpezaClientesVendedor.clear();
+  }
+
+  function agendarLimpezaClientesVendedor() {
+    timersLimpezaClientesVendedor.forEach(timer => window.clearTimeout(timer));
+    timersLimpezaClientesVendedor.clear();
+    [0, 80, 300].forEach(ms => {
+      const timer = window.setTimeout(() => {
+        timersLimpezaClientesVendedor.delete(timer);
+        limparBlocosClientesLegadosVendedor();
+      }, ms);
+      timersLimpezaClientesVendedor.add(timer);
+    });
+  }
+
   function statusClienteVendedor(cliente = {}) {
     return texto(cliente.statusAtendimento || cliente.statusCliente || cliente.status || (clientePossuiVendaAtiva(cliente) ? "ATIVO" : "INATIVO")).toUpperCase();
   }
@@ -670,7 +690,7 @@
         ${drawerFiltrosClientes()}
       </div>`;
     limparBlocosClientesLegadosVendedor();
-    [0, 50, 150, 300, 700, 1200].forEach(ms => setTimeout(limparBlocosClientesLegadosVendedor, ms));
+    agendarLimpezaClientesVendedor();
   }
 
   function switchCliente(id, titulo, subtitulo) {
@@ -2425,6 +2445,7 @@
   });
   document.addEventListener("integro-tela-alterada", evento => {
     if (evento.detail?.tela === "clientes") setTimeout(() => renderClientesVendedor(), 0);
+    else pararObservacaoClientesVendedor();
     if (evento.detail?.tela === "dashboard") setTimeout(() => sincronizarMovimentosDashboardVendedor(false), 0);
     if (evento.detail?.tela === "movimentacoes") setTimeout(async () => {
       renderMovimentacoesVendedor();

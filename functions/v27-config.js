@@ -1,7 +1,8 @@
 "use strict";
+const { FieldValue } = require("firebase-admin/firestore");
 
 function criarConfiguracoesV27({ admin, functions, db }) {
-  const ts = () => admin.firestore.FieldValue.serverTimestamp();
+  const ts = () => FieldValue.serverTimestamp();
   const text = value => String(value ?? "").trim();
   const lower = value => text(value).toLowerCase();
   const upper = value => text(value).toUpperCase();

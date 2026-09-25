@@ -21,11 +21,12 @@ test("operação do vendedor reconhece caixa aberto e reaberto em toda a camada 
   assert.match(htmlVendedor, /where\("status", "in", \["ABERTO", "REABERTO"\]\)/);
 });
 
-test("rules permitem venda e pagamento somente em caixa ABERTO ou REABERTO", () => {
-  const matches = rules.match(/data\.status in \["ABERTO", "REABERTO"\]/g) || [];
-  assert.ok(matches.length >= 2);
-  assert.match(rules, /function canCreateVenda\(data\)/);
-  assert.match(rules, /function canCreatePagamento\(data\)/);
+test("rules deixam venda, parcela e pagamento exclusivamente no backend", () => {
+  for (const colecao of ["vendas", "parcelas", "pagamentos"]) {
+    const bloco = rules.match(new RegExp(`match /${colecao}/\\{id\\} \\{([\\s\\S]*?)\\n    \\}`))?.[1] || "";
+    assert.match(bloco, /allow create, update: if false;/, `${colecao} não pode aceitar gravação direta do navegador`);
+  }
+  assert.match(financeiro, /ERRO_BACKEND_FINANCEIRO_INDISPONIVEL/);
 });
 
 test("não pagamento não grava Firestore direto pelo navegador", () => {

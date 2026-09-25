@@ -1,4 +1,5 @@
 "use strict";
+const { FieldValue } = require("firebase-admin/firestore");
 
 function criarProcessadorLembretesFinanceiros({ functions, admin, db }) {
   function texto(value) { return String(value ?? "").trim(); }
@@ -63,8 +64,8 @@ function criarProcessadorLembretesFinanceiros({ functions, admin, db }) {
       criadoPorAuthUid: "SISTEMA",
       criadoPorNome: "ÍNTEGRO",
       criadoEmTexto: new Date().toISOString(),
-      criadoEm: admin.firestore.FieldValue.serverTimestamp(),
-      atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
+      criadoEm: FieldValue.serverTimestamp(),
+      atualizadoEm: FieldValue.serverTimestamp()
     };
   }
 
@@ -109,7 +110,7 @@ function criarProcessadorLembretesFinanceiros({ functions, admin, db }) {
       const account = accountSnap.data() || {};
       if (texto(account.clientePlataformaId) !== texto(reminder.clientePlataformaId)) continue;
       if (["PAGA", "CANCELADA"].includes(texto(account.status).toUpperCase()) || Number(account.saldoCentavos || 0) <= 0) {
-        await reminderDoc.ref.set({ status: "CANCELADO", motivoCancelamento: "CONTA_QUITADA_OU_CANCELADA", atualizadoEm: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+        await reminderDoc.ref.set({ status: "CANCELADO", motivoCancelamento: "CONTA_QUITADA_OU_CANCELADA", atualizadoEm: FieldValue.serverTimestamp() }, { merge: true });
         continue;
       }
 
@@ -124,9 +125,9 @@ function criarProcessadorLembretesFinanceiros({ functions, admin, db }) {
       batch.set(reminderDoc.ref, {
         status: "ENVIADO",
         enviadoEmTexto: new Date().toISOString(),
-        enviadoEm: admin.firestore.FieldValue.serverTimestamp(),
+        enviadoEm: FieldValue.serverTimestamp(),
         destinatariosAuthUid: recipients,
-        atualizadoEm: admin.firestore.FieldValue.serverTimestamp()
+        atualizadoEm: FieldValue.serverTimestamp()
       }, { merge: true });
       await batch.commit();
       remindersProcessed++;

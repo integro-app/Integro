@@ -25,6 +25,8 @@ test('vendedor acessa somente o proprio escopo', () => {
   assert.equal(acesso.pode(usuario, 'cobrancas.receber', { clientePlataformaId: 't1', vendedorAuthUid: 'uid1' }), true);
   assert.equal(acesso.pode(usuario, 'cobrancas.receber', { clientePlataformaId: 't1', vendedorAuthUid: 'uid2' }), false);
   assert.equal(acesso.pode(usuario, 'financeiro.estornar', { clientePlataformaId: 't1' }), false);
+  assert.equal(acesso.pode(usuario, 'cobrancas.receber', { clientePlataformaId: 't1', vendedorId: 'doc1', vendedorAuthUid: 'uid2' }), false);
+  assert.equal(acesso.pode(usuario, 'cobrancas.receber', { clientePlataformaId: 't1', vendedorAuthUid: 'uid1', vendedorUid: 'uid2' }), true);
 });
 
 test('supervisor fica restrito as equipes', () => {
@@ -72,4 +74,34 @@ test("todos os perfis locais acessam a propria conta", () => {
     const usuario = { id: `${perfil}_1`, authUid: `${perfil}_uid`, clientePlataformaId: "tenant_1", tipoUsuario: perfil, cargoChave: perfil };
     assert.equal(acesso.pode(usuario, "minha_conta.ver", {}), true);
   });
+});
+
+test("os oito perfis locais preservam tenant, equipe, ownership, escrita e financeiro", () => {
+  const acesso = carregar();
+  const base = { id: "usuario_1", authUid: "uid_1", clientePlataformaId: "tenant_1", equipeId: "equipe_1", equipesIds: ["equipe_1"] };
+  const cenarios = [
+    ["master_local", "financeiro.estornar", {}, null, true],
+    ["gerente", "clientes.editar", {}, "financeiro.estornar", true],
+    ["administrativo", "clientes.criar", {}, "financeiro.estornar", true],
+    ["supervisor", "caixas.fechar", { equipeId: "equipe_1" }, "financeiro.estornar", true],
+    ["vendedor", "vendas.criar", { vendedorAuthUid: "uid_1" }, "solicitacoes.aprovar", true],
+    ["financeiro", "financeiro.estornar", {}, "clientes.criar", true],
+    ["auditor", "financeiro.ver", {}, "financeiro.estornar", false],
+    ["captador", "indicacoes.criar", { captadorId: "usuario_1" }, "financeiro.ver", true]
+  ];
+
+  for (const [perfil, permitida, contexto, negada, escritaEsperada] of cenarios) {
+    const usuario = { ...base, tipoUsuario: perfil, cargoChave: perfil };
+    assert.equal(acesso.pode(usuario, permitida, { clientePlataformaId: "tenant_1", ...contexto }), true, `${perfil}: acesso permitido`);
+    assert.equal(acesso.pode(usuario, permitida, { clientePlataformaId: "tenant_2", ...contexto }), false, `${perfil}: tenant isolado`);
+    if (negada) assert.equal(acesso.pode(usuario, negada, { clientePlataformaId: "tenant_1" }), false, `${perfil}: acesso negado`);
+    assert.equal(acesso.escopoConsulta(usuario).somenteLeitura, !escritaEsperada, `${perfil}: modo de escrita`);
+  }
+
+  const supervisor = { ...base, tipoUsuario: "supervisor", cargoChave: "supervisor" };
+  assert.equal(acesso.pode(supervisor, "caixas.fechar", { clientePlataformaId: "tenant_1", equipeId: "equipe_2" }), false);
+  const vendedor = { ...base, tipoUsuario: "vendedor", cargoChave: "vendedor" };
+  assert.equal(acesso.pode(vendedor, "vendas.criar", { clientePlataformaId: "tenant_1", vendedorAuthUid: "uid_2" }), false);
+  const captador = { ...base, tipoUsuario: "captador", cargoChave: "captador" };
+  assert.equal(acesso.pode(captador, "indicacoes.criar", { clientePlataformaId: "tenant_1", captadorId: "usuario_2" }), false);
 });

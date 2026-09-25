@@ -1,11 +1,12 @@
 "use strict";
 
 const core = require("./financial-core");
+const { FieldValue } = require("firebase-admin/firestore");
 
 function criarAprovacoesVendaV27({ admin, functions, db }) {
   const texto = core.texto;
   const normalizar = core.normalizarStatus;
-  const ts = () => admin.firestore.FieldValue.serverTimestamp();
+  const ts = () => FieldValue.serverTimestamp();
   const agoraTexto = () => new Date().toISOString();
   const erro = (codigo, mensagem) => { throw new functions.https.HttpsError(codigo, mensagem); };
 

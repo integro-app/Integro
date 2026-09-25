@@ -162,6 +162,13 @@ test("runtime abre somente os listeners necessários para cada vínculo", () => 
   assert.ok(sellerRuntime.listeners.some(listener => listener.filtros[0][2] === "box-v1"));
 });
 
+test("vendedor sem caixa atual inicia o tempo real sem erro e sem filtro inválido", () => {
+  const runtime = executeServiceFor({ perfil: "vendedor", clientePlataformaId: "tenant-a", id: "v1", authUid: "auth-v1" });
+  assert.equal(runtime.sandbox.IntegroOperacoesTempoReal.diagnostic().caixaIds.length, 0);
+  assert.ok(runtime.listeners.every(listener => listener.filtros[0][2]));
+  assert.equal(runtime.listeners.filter(listener => listener.filtros[0][0] === "caixaId").length, 0);
+});
+
 test("regras permitem leitura hierárquica sem ampliar permissões de escrita", () => {
   const financeRead = rules.match(/function canReadFinance\(data\) \{[\s\S]*?\n\s*\}/)?.[0] || "";
   assert.match(financeRead, /perfil == "master_local"/);

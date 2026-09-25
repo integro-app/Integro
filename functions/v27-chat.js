@@ -1,11 +1,12 @@
 "use strict";
+const { FieldValue } = require("firebase-admin/firestore");
 
 function criarChatV27({ admin, functions, db }) {
-  const ts = () => admin.firestore.FieldValue.serverTimestamp();
+  const ts = () => FieldValue.serverTimestamp();
   const text = value => String(value ?? "").trim();
   const upper = value => text(value).toUpperCase();
   const lower = value => text(value).toLowerCase();
-  const arrayUnion = value => admin.firestore.FieldValue.arrayUnion(value);
+  const arrayUnion = value => FieldValue.arrayUnion(value);
 
   function fail(code, message) { throw new functions.https.HttpsError(code, message); }
 

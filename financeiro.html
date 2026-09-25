@@ -4,8 +4,9 @@
   <meta name="integro-legacy-entry" content="redirect-to-master-local">
   <script>
     (function () {
-      if (new URLSearchParams(location.search).get("legacy") === "1") return;
-      location.replace("master-local.html" + location.search + location.hash);
+      const params = new URLSearchParams(location.search);
+      params.delete("legacy");
+      location.replace("master-local.html" + (params.size ? `?${params}` : "") + location.hash);
     })();
   </script>
 
@@ -405,6 +406,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
   <script src="js/firebase-config.js?v=20260728-3"></script>
   <script src="js/config.js"></script>
   <script src="js/utils/operational.js"></script>

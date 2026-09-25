@@ -1,9 +1,10 @@
 "use strict";
 
 const core = require("./financial-core");
+const { FieldValue } = require("firebase-admin/firestore");
 
 function criarOperacoesFinanceiras({ admin, functions, db }) {
-  const ts = () => admin.firestore.FieldValue.serverTimestamp();
+  const ts = () => FieldValue.serverTimestamp();
 
   function erro(codigo, mensagem) {
     throw new functions.https.HttpsError(codigo, mensagem);
@@ -28,15 +29,12 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
 
   function pertenceAoUsuario(dados = {}, uid, usuario = {}) {
     const ids = idsUsuario(uid, usuario);
-    return [
-      dados.vendedorAuthUid,
-      dados.vendedorUid,
-      dados.abertoPorUid,
-      dados.uid,
-      dados.usuarioId,
-      dados.vendedorId,
-      dados.criadoPorId
-    ].map(core.texto).some(valor => valor && ids.has(valor));
+    const authUidCanonico = core.texto(dados.vendedorAuthUid);
+    const vendedorIdCanonico = core.texto(dados.vendedorId);
+    if (authUidCanonico) return ids.has(authUidCanonico);
+    if (vendedorIdCanonico) return ids.has(vendedorIdCanonico);
+    return [dados.vendedorUid, dados.abertoPorUid, dados.uid, dados.usuarioId, dados.criadoPorId]
+      .map(core.texto).some(valor => valor && ids.has(valor));
   }
 
   async function usuarioAtivo(contexto) {
@@ -70,7 +68,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
 
   function validarCaixa(caixa, tenantId, uid, usuario) {
     validarTenant(caixa, tenantId, "Caixa");
-    if (core.normalizarStatus(caixa.status) !== "ABERTO") erro("failed-precondition", "O caixa está fechado.");
+    if (!["ABERTO", "REABERTO"].includes(core.normalizarStatus(caixa.status))) erro("failed-precondition", "O caixa está fechado.");
     if (!pertenceAoUsuario(caixa, uid, usuario)) erro("permission-denied", "Caixa não pertence ao vendedor autenticado.");
   }
 

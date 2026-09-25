@@ -84,6 +84,17 @@ test("dashboard reutiliza o bootstrap e consulta apenas dados ausentes", () => {
   assert.match(master, /cacheMs:\s*45000/);
 });
 
+test("consultas financeiras e categorias nunca fazem fallback sem tenant", () => {
+  const periodo = ler("js/services/financial-operations.js").match(/async function listarLancamentosPorPeriodo[\s\S]*?\n  }/)?.[0] || "";
+  const categorias = masterJs.match(/async function carregarCategoriasMovimentacaoMasterLocal[\s\S]*?\n}/)?.[0] || "";
+  assert.match(periodo, /TENANT_OBRIGATORIO/);
+  assert.match(periodo, /where\("clientePlataformaId", "==", tenantId\)/);
+  assert.doesNotMatch(periodo, /:\s*await db\.collection\("lancamentos_financeiros"\)\.limit/);
+  assert.match(categorias, /if \(!tenantId\)/);
+  assert.match(categorias, /where\("clientePlataformaId", "==", tenantId\)/);
+  assert.doesNotMatch(categorias, /collection\("categoriasMovimentacao"\)\.limit\(300\)/);
+});
+
 
 test("runtime v27.3 expõe prefetch cache-first e métrica de interação", () => {
   assert.ok(runtime.includes("function prefetch(opcoes = {})"));

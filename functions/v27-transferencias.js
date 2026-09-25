@@ -1,7 +1,8 @@
 "use strict";
 const core=require("./financial-core");
+const {FieldValue}=require("firebase-admin/firestore");
 function criarTransferenciasV27({admin,functions,db}){
-  const text=core.texto,norm=core.normalizarStatus,ts=()=>admin.firestore.FieldValue.serverTimestamp(),now=()=>new Date().toISOString();
+  const text=core.texto,norm=core.normalizarStatus,ts=()=>FieldValue.serverTimestamp(),now=()=>new Date().toISOString();
   const err=(c,m)=>{throw new functions.https.HttpsError(c,m);};
   const role=u=>norm(u.tipoUsuario||u.perfil||u.cargoChave||u.cargo);
   const active=u=>u&&u.acessoLiberado===true&&!["INATIVO","BLOQUEADO","SUSPENSO"].includes(norm(u.status));

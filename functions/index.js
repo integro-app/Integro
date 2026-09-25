@@ -3,8 +3,13 @@
 const crypto = require("node:crypto");
 const functions = require("firebase-functions/v1");
 const admin = require("firebase-admin");
+const { FieldValue } = require("firebase-admin/firestore");
 
 admin.initializeApp();
+// O emulator runtime pode envolver admin.firestore e remover propriedades
+// estáticas do namespace compat. Mantém uma única fonte de timestamp válida
+// tanto no Node 22 de produção quanto no runtime local de homologação.
+if (!admin.firestore.FieldValue) admin.firestore.FieldValue = FieldValue;
 const db = admin.firestore();
 
 function erroHttps(codigo, mensagem) {
@@ -68,7 +73,7 @@ exports.provisionarUsuario = functions
     }
 
     const canonicoRef = db.collection("usuarios").doc(conta.uid);
-    const agora = admin.firestore.FieldValue.serverTimestamp();
+    const agora = FieldValue.serverTimestamp();
     const dadosCanonicos = {
       ...convite,
       authUid: conta.uid,

@@ -3121,6 +3121,7 @@ body.integro-data-refreshing .section-card{
 
   <div class="drawer" id="drawer"></div>
 
+  <script src="js/lifecycle-instrumentation.js?v=20260925-rc1"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
@@ -25321,6 +25322,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
 </script>
   <script src="js/modules/unified-module-utils.js?v=20260803-migracao2"></script>
   <script src="js/modules/financeiro-unificado.js?v=20260805-producao-otimizada1"></script>
+  <script src="js/modules/movimentacoes-unificadas.js?v=20260813-v26"></script>
   <script src="js/modules/auditoria-unificada.js?v=20260803-migracao2"></script>
   <script src="js/modules/captador-unificado.js?v=20260803-migracao2"></script>
   <script src="js/modules/supervisor-operacao-unificada.js?v=20260803-migracao2"></script>
@@ -25371,6 +25373,11 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
 
   document.addEventListener("integro-tela-alterada", event=>{
     if(event.detail?.tela === "aprovacoesFinanceiro") window.__abrirFinanceiroUnificado("aprovacoes");
+    if(event.detail?.tela === "movimentacoes") {
+      const usuario = window.State?.getUsuario?.() || window.IntegroPainel?.usuario || {};
+      const perfil = window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil || "";
+      if(perfil !== "vendedor") window.IntegroMovimentacoesUnificadas?.load(false);
+    }
   });
 })();
 </script>

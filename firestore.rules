@@ -329,17 +329,33 @@ service cloud.firestore {
     }
 
     function isOwnSellerData(data) {
-      return isCurrentUserValue(data.get("vendedorAuthUid", "")) ||
-        isCurrentUserValue(data.get("vendedorUid", "")) ||
-        isCurrentUserValue(data.get("vendedorDocumentoId", "")) ||
-        isCurrentUserValue(data.get("abertoPorUid", "")) ||
-        isCurrentUserValue(data.get("uid", "")) ||
-        isCurrentUserValue(data.get("usuarioId", "")) ||
-        isCurrentUserValue(data.get("userId", "")) ||
-        isCurrentUserValue(data.get("responsavelId", "")) ||
-        isCurrentUserValue(data.get("vendedorId", "")) ||
-        isCurrentUserValue(data.get("criadoPorId", "")) ||
-        isCurrentUserValue(data.get("criadoPor", ""));
+      // O Auth UID canônico é soberano. Aliases só participam quando os campos
+      // canônicos ainda não existem em um documento legado, impedindo que um
+      // alias conflitante amplie ownership e reduzindo o custo das Rules.
+      let ids = currentUserIds();
+      let authUid = data.get("vendedorAuthUid", "");
+      let vendedorId = data.get("vendedorId", "");
+      return isNonEmptyString(authUid)
+        ? authUid in ids
+        : (isNonEmptyString(vendedorId)
+          ? vendedorId in ids
+          : ((isNonEmptyString(data.get("vendedorUid", "")) && data.get("vendedorUid", "") in ids) ||
+            (isNonEmptyString(data.get("vendedorDocumentoId", "")) && data.get("vendedorDocumentoId", "") in ids) ||
+            (isNonEmptyString(data.get("abertoPorUid", "")) && data.get("abertoPorUid", "") in ids) ||
+            (isNonEmptyString(data.get("uid", "")) && data.get("uid", "") in ids) ||
+            (isNonEmptyString(data.get("usuarioId", "")) && data.get("usuarioId", "") in ids) ||
+            (isNonEmptyString(data.get("userId", "")) && data.get("userId", "") in ids) ||
+            (isNonEmptyString(data.get("responsavelId", "")) && data.get("responsavelId", "") in ids) ||
+            (isNonEmptyString(data.get("criadoPorId", "")) && data.get("criadoPorId", "") in ids) ||
+            (isNonEmptyString(data.get("criadoPor", "")) && data.get("criadoPor", "") in ids)));
+    }
+
+    function isOwnClienteSeller(data) {
+      // Clientes operacionais normalizados sempre carregam o Auth UID
+      // canônico. vendedorId permanece como compatibilidade imediata.
+      let uid = currentUid();
+      return data.get("vendedorAuthUid", "") == uid ||
+        data.get("vendedorId", "") == uid;
     }
 
     function isOperationalReader(data) {
@@ -1033,16 +1049,19 @@ service cloud.firestore {
         );
     }
 
+    function vendaConversaoClienteValida(clienteId, vendaId) {
+      // get() de documento inexistente falha fechado; uma única leitura evita
+      // repetir toda a avaliação no caminho positivo de conversão.
+      let venda = get(/databases/$(database)/documents/vendas/$(vendaId)).data;
+      return venda.get("clientePlataformaId", "") == userTenantId() &&
+        venda.get("clienteId", "") in [clienteId, resource.data.get("clienteLegadoId", ""), resource.data.get("clienteOperacionalId", "")];
+    }
+
     function conversaoClienteValida(clienteId) {
+      let vendaId = request.resource.data.get("vendaId", "");
       return request.resource.data.get("statusAtendimento", "") != "CONVERTIDO" ||
         resource.data.get("statusAtendimento", "") == "CONVERTIDO" ||
-        (
-          request.resource.data.get("vendaId", "") is string &&
-          request.resource.data.get("vendaId", "").size() > 0 &&
-          exists(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))) &&
-          get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
-          get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clienteId", "") in [clienteId, resource.data.get("clienteLegadoId", ""), resource.data.get("clienteOperacionalId", "")]
-        );
+        (vendaId is string && vendaId.size() > 0 && vendaConversaoClienteValida(clienteId, vendaId));
     }
 
     function vendedorPodeDevolverClienteLead() {
@@ -1111,21 +1130,25 @@ service cloud.firestore {
     }
 
     function canUpdateClienteOperacional(clienteId) {
+      let perfil = role();
+      let cargoAtual = cargo();
+      let vendedor = perfil == "vendedor" || cargoAtual == "vendedor";
+      let gestor = perfil == "master_local" || perfil == "gerente" || cargoAtual == "gerente" ||
+        perfil == "financeiro" || cargoAtual == "financeiro";
+      let supervisor = perfil == "supervisor" || cargoAtual == "supervisor";
       return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
         unchanged(["clientePlataformaId", "criadoEm"]) &&
-        (
-          vendedorPodeDevolverClienteLead() ||
-          (conversaoClienteValida(clienteId) && (
-            isMasterLocal() ||
-            isGerente() ||
-            isFinanceiro() ||
-            operadorLeadsPodeSincronizarCliente() ||
-            (isSupervisor() && isTeamAllowed(resource.data) && isTeamAllowed(request.resource.data)) ||
-            (isVendedor() && isOwnSellerData(resource.data) &&
+        (vendedor
+          ? (vendedorPodeDevolverClienteLead() ||
+            (isOwnClienteSeller(resource.data) &&
               unchanged(["vendedorId", "vendedorAuthUid", "vendedorUid", "equipeId", "supervisorId", "gerenteId", "masterLocalId", "empresaId", "hierarquiaIds"]) &&
-              unchanged(["saldoDevedor", "saldoDevedorCentavos", "possuiVendaAtiva", "vendaAtivaId"]))
-          ))
-        );
+              unchanged(["saldoDevedor", "saldoDevedorCentavos", "possuiVendaAtiva", "vendaAtivaId"]) &&
+              conversaoClienteValida(clienteId)))
+          : (gestor
+            ? conversaoClienteValida(clienteId)
+            : (supervisor
+              ? (conversaoClienteValida(clienteId) && isTeamAllowed(resource.data) && isTeamAllowed(request.resource.data))
+              : (conversaoClienteValida(clienteId) && operadorLeadsPodeSincronizarCliente()))));
     }
 
     function clienteEventoExiste(data) {
@@ -1429,22 +1452,22 @@ service cloud.firestore {
 
     match /pagamentos/{id} {
       allow read: if isOperationalReader(resource.data);
-      allow create: if canCreatePagamento(request.resource.data);
-      allow update: if canUpdatePagamento();
+      // Escrita exclusivamente pelo backend transacional (Admin SDK).
+      allow create, update: if false;
       allow delete: if false;
     }
 
     match /vendas/{id} {
       allow read: if isOperationalReader(resource.data);
-      allow create: if canCreateVenda(request.resource.data);
-      allow update: if canUpdateVenda();
+      // Escrita exclusivamente pelo backend transacional (Admin SDK).
+      allow create, update: if false;
       allow delete: if false;
     }
 
     match /parcelas/{id} {
       allow read: if isOperationalReader(resource.data);
-      allow create: if isOperationalCreator(request.resource.data);
-      allow update: if canUpdateParcela();
+      // Parcelas são geradas e liquidadas junto da venda/pagamento no backend.
+      allow create, update: if false;
       allow delete: if false;
     }
 
@@ -1657,7 +1680,12 @@ service cloud.firestore {
     // V27.2: aprovações são escritas exclusivamente pelo backend privilegiado.
     match /financeiro_solicitacoes/{id} {
       allow read: if canReadEnterpriseFinance(resource.data) &&
-        (canApproveEnterpriseFinance(resource.data) || resource.data.get("solicitanteAuthUid", "") == currentUid() || resource.data.get("responsavelNovoAuthUid", "") == currentUid());
+        (
+          isMasterLocal() || isGerente() || isSupervisorFinanceiro() || isResponsavelFinanceiro() ||
+          controlFinanceMap().get("aprovar", false) == true ||
+          resource.data.get("solicitanteAuthUid", "") == currentUid() ||
+          resource.data.get("responsavelNovoAuthUid", "") == currentUid()
+        );
       allow create, update, delete: if false;
     }
 

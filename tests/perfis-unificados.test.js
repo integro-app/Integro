@@ -14,6 +14,16 @@ test("rotas locais convergem para o painel unificado", () => {
   assert.match(config, /"master-local\.html": "painel_local"/);
 });
 
+test("os oito perfis implementados têm rota canônica", () => {
+  const config = read("js/config.js");
+  const perfis = read("js/services/access-control.js");
+  for (const perfil of ["master_local", "gerente", "administrativo", "supervisor", "vendedor", "financeiro", "auditor", "captador"]) {
+    assert.match(perfis, new RegExp(`(?:${perfil.toUpperCase()}: \\"${perfil}\\"|${perfil}: \\[)`), `${perfil} deve existir na matriz oficial`);
+    if (perfil === "master_local") assert.match(config, /master_local: "master-local\.html"/);
+    else assert.match(config, new RegExp(`${perfil}: \\"master-local\\.html\\"`));
+  }
+});
+
 test("master local aceita todos os perfis locais e carrega adaptador", () => {
   const operational = read("js/utils/operational.js");
   const html = read("master-local.html");
@@ -31,12 +41,13 @@ test("adaptador aplica escopo por vendedor equipe e captador", () => {
   assert.match(code, /MutationObserver/);
 });
 
-test("entradas legadas redirecionam ao painel e mantêm fallback explícito", () => {
+test("entradas legadas redirecionam obrigatoriamente ao painel canônico", () => {
   for (const file of ["vendedor.html", "supervisor.html", "financeiro.html", "auditor.html", "captador.html"]) {
     const html = read(file);
     assert.match(html, /redirect-to-master-local/);
-    assert.match(html, /legacy/);
+    assert.match(html, /params\.delete\("legacy"\)/);
     assert.match(html, /location\.replace\("master-local\.html"/);
+    assert.doesNotMatch(html, /get\("legacy"\)\s*===\s*"1"/);
   }
 });
 
@@ -49,4 +60,10 @@ test("vendedor usa carregamento único e consulta canônica de clientes", () => 
   assert.match(clientes, /\["vendedorAuthUid", authUid\]/);
   assert.match(clientes, /for \(const \[campo, valor\] of tentativas\)/);
   assert.match(master, /executarUmaVez/);
+});
+
+test("massa de homologação não substitui a matriz padrão por permissões legadas incompletas", () => {
+  const seed = read("scripts/seed-homologacao-clientes.js");
+  assert.doesNotMatch(seed, /permissoes:\s*\{\s*(gerenciarClientes|visualizarFinanceiro|criarIndicacao|clientes)/);
+  assert.match(seed, /permissoes: user\.permissoes \|\| \{\}/);
 });

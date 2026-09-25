@@ -1,9 +1,10 @@
 "use strict";
 
 const core = require("./financial-core");
+const { FieldValue } = require("firebase-admin/firestore");
 
 function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
-  const ts = () => admin.firestore.FieldValue.serverTimestamp();
+  const ts = () => FieldValue.serverTimestamp();
   const texto = core.texto;
   const status = core.normalizarStatus;
 

@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const core = require("../functions/financial-core");
 
 const raiz = path.join(__dirname, "..");
@@ -88,6 +89,45 @@ test("cliente web usa callables e não depende da transação protegida por regr
   assert.match(funcoes, /exports\.registrarPagamentoOperacional/);
 });
 
+test("telas financeiras carregam Functions antes do serviço operacional", () => {
+  for (const arquivo of ["vendedor.html", "supervisor.html", "financeiro.html", "master-local.html"]) {
+    const html = ler(arquivo);
+    const functionsSdk = html.indexOf("firebase-functions-compat.js");
+    const financialService = html.indexOf("js/services/financial-operations.js");
+    assert.ok(functionsSdk >= 0, `${arquivo} precisa carregar o SDK de Functions`);
+    assert.ok(financialService >= 0, `${arquivo} precisa carregar o serviço financeiro`);
+    assert.ok(functionsSdk < financialService, `${arquivo} precisa carregar Functions antes do serviço financeiro`);
+  }
+});
+
+test("navegador bloqueia operação financeira quando o backend está indisponível", async () => {
+  const firestore = () => ({});
+  firestore.FieldValue = { serverTimestamp: () => ({}) };
+  const contexto = {
+    console,
+    document: {},
+    firebase: { firestore },
+    IntegroOperacional: {
+      moedaParaCentavos: valor => Math.round(Number(valor || 0) * 100),
+      hojeSP: () => "2026-09-25",
+      dataHoraSP: () => "2026-09-25T12:00:00-03:00"
+    }
+  };
+  contexto.window = contexto;
+  vm.runInNewContext(ler("js/services/financial-operations.js"), contexto);
+  await assert.rejects(
+    contexto.IntegroPagamento.registrarPagamentoTransacional({
+      usuario: { authUid: "vendedor_1", clientePlataformaId: "tenant_1" },
+      clientePlataformaId: "tenant_1",
+      caixaId: "caixa_1",
+      vendaId: "venda_1",
+      parcelaId: "parcela_1",
+      valorCentavos: 100
+    }),
+    erro => erro?.code === "ERRO_BACKEND_FINANCEIRO_INDISPONIVEL"
+  );
+});
+
 test("backend financeiro localiza cliente operacional e preserva fallback legado", () => {
   const callables = ler("functions/financial-callables.js");
   assert.match(callables, /db\.collection\("clientes_operacionais"\)\.doc\(clienteId\)/);
@@ -113,4 +153,25 @@ test("backend marca cliente sem saldo como inativo", () => {
   const callables = ler("functions/financial-callables.js");
   assert.match(callables, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
   assert.match(callables, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
+});
+
+test("backend aceita caixa reaberto e prioriza ownership canônico", () => {
+  const callables = ler("functions/financial-callables.js");
+  assert.match(callables, /\["ABERTO", "REABERTO"\]\.includes\(core\.normalizarStatus\(caixa\.status\)\)/);
+  assert.match(callables, /if \(authUidCanonico\) return ids\.has\(authUidCanonico\)/);
+  assert.match(callables, /if \(vendedorIdCanonico\) return ids\.has\(vendedorIdCanonico\)/);
+});
+
+test("bootstrap das Functions recompõe FieldValue no runtime do emulador", () => {
+  const index = ler("functions/index.js");
+  assert.match(index, /require\("firebase-admin\/firestore"\)/);
+  assert.match(index, /if \(!admin\.firestore\.FieldValue\) admin\.firestore\.FieldValue = FieldValue/);
+});
+
+test("módulos de Functions usam FieldValue modular compatível com o emulador", () => {
+  for (const arquivo of ["v27-admin.js", "financial-callables.js", "enterprise-finance-payments.js", "enterprise-finance-reminders.js", "v27-chat.js", "v27-client-approvals.js", "v27-config.js", "v27-finance-workflows.js", "v27-sales-approvals.js", "v27-transferencias.js"]) {
+    const fonte = ler(`functions/${arquivo}`);
+    assert.match(fonte, /firebase-admin\/firestore/);
+    assert.doesNotMatch(fonte, /admin\.firestore\.FieldValue/);
+  }
 });

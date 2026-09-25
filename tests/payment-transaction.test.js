@@ -53,6 +53,7 @@ const {
   calcularSaldoLedgerCaixa,
   reconciliarLedgerCaixaSomenteLeitura,
   mapearLancamentosLegadosSomenteLeitura,
+  listarLancamentosPorPeriodo,
   calcularResumoFinanceiroPeriodo
 } = global.IntegroFinanceiroOperacional;
 
@@ -174,6 +175,13 @@ test("caixa fechado bloqueia pagamento com código operacional", () => {
     ),
     erro => erro.code === "ERRO_BLOQUEADO_CAIXA_FECHADO"
   );
+});
+
+test("caixa reaberto permite venda, pagamento e nova movimentação", () => {
+  const caixa = { status: "REABERTO", clientePlataformaId: "tenant_1", vendedorId: "usuario_1", vendedorAuthUid: "uid_1" };
+  const usuario = { id: "usuario_1", authUid: "uid_1" };
+  assert.equal(validarCaixaPagamento(caixa, "tenant_1", usuario), true);
+  assert.equal(validarCaixaVenda(caixa, "tenant_1", usuario), true);
 });
 
 test("caixa de outro tenant ou vendedor é bloqueado", () => {
@@ -1929,6 +1937,13 @@ test("leituras do financeiro por período calculam resumo real", async () => {
   assert.equal(resumo.saldoCentavos, 3300);
   assert.equal(resumo.porTipo.PAGAMENTO.creditosCentavos, 5000);
 });
+
+test("leitura financeira por período falha fechada sem tenant", async () => {
+  await assert.rejects(
+    listarLancamentosPorPeriodo({ dataInicio: "2026-06-01", dataFim: "2026-06-30", db: {} }),
+    erro => erro?.code === "TENANT_OBRIGATORIO"
+  );
+});
 test("fallback local limpa flags de venda ativa quando pagamento quita saldo", () => {
   const codigo = fs.readFileSync(path.join(__dirname, "..", "js", "services", "financial-operations.js"), "utf8");
   assert.match(codigo, /possuiVendaAtiva: calculo\.novoSaldoClienteCentavos > 0/);
@@ -1940,4 +1955,62 @@ test("fallback local marca cliente sem saldo como inativo", () => {
   const codigo = fs.readFileSync(path.join(__dirname, "..", "js", "services", "financial-operations.js"), "utf8");
   assert.match(codigo, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
   assert.match(codigo, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
+});
+
+test("regressão encadeada do vendedor cobre abertura até refechamento no mesmo estado", async () => {
+  const { db, entrada: aberturaBase } = contextoCaixaTransacional();
+  const vendedor = { id: "vendedor_1", authUid: "uid_vendedor", nome: "Vendedor", tipoUsuario: "VENDEDOR", cargoChave: "VENDEDOR", clientePlataformaId: "tenant_1", equipeId: "equipe_1" };
+  const abertura = { ...aberturaBase, usuario: vendedor, vendedor, valorInicialCentavos: 100000 };
+  const aberta = await registrarAberturaCaixaTransacional(abertura);
+  const caixaId = aberta.caixaId;
+  db.atualizar("clientes/cliente_fluxo", { clientePlataformaId: "tenant_1", nome: "Cliente Fluxo", saldoDevedorCentavos: 0, saldoDevedor: 0, status: "INATIVO", statusCliente: "INATIVO" });
+
+  const vendaBase = {
+    usuario: vendedor, clientePlataformaId: "tenant_1", caixaId,
+    clienteId: "cliente_fluxo", clienteOperacionalId: "cliente_fluxo", clienteNome: "Cliente Fluxo",
+    valorEmprestadoCentavos: 10000, valorTotalCentavos: 12000, jurosValorCentavos: 2000,
+    taxaJuros: 20, quantidadeParcelas: 4, primeiraCobranca: "2026-06-30", frequencia: "DIARIA"
+  };
+  const primeiraVenda = await registrarVendaTransacional({ ...vendaBase, operacaoId: "fluxo_venda_1" });
+  await assert.rejects(registrarVendaTransacional({ ...vendaBase, operacaoId: "fluxo_venda_bloqueada" }), erro => erro.code === "ERRO_BLOQUEADO_CLIENTE_ATIVO");
+
+  await global.IntegroCobranca.registrarNaoPagamentoTransacional({
+    usuario: vendedor, clientePlataformaId: "tenant_1", caixaId, vendaId: primeiraVenda.vendaId,
+    clienteId: "cliente_fluxo", dataOperacional: "2026-06-30", motivo: "Cliente ausente", operacaoId: "fluxo_nao_pagamento"
+  });
+  const parcelasPrimeira = db.listar("parcelas").filter(item => item.vendaId === primeiraVenda.vendaId).sort((a, b) => a.numeroParcela - b.numeroParcela);
+  await global.IntegroPagamento.registrarPagamentoTransacional({ usuario: vendedor, clientePlataformaId: "tenant_1", caixaId, vendaId: primeiraVenda.vendaId, parcelaId: parcelasPrimeira[0].id || parcelasPrimeira[0].caminho.split("/").pop(), clienteId: "cliente_fluxo", valorCentavos: 1000 });
+  for (const [indice, parcela] of parcelasPrimeira.entries()) {
+    const parcelaId = parcela.id || parcela.caminho.split("/").pop();
+    await global.IntegroPagamento.registrarPagamentoTransacional({
+      usuario: vendedor, clientePlataformaId: "tenant_1", caixaId, vendaId: primeiraVenda.vendaId,
+      parcelaId, clienteId: "cliente_fluxo", valorCentavos: parcela.valorCentavos,
+      operacaoId: indice === 1 ? "fluxo_antecipacao" : undefined
+    });
+  }
+  assert.equal(db.ler("clientes/cliente_fluxo").saldoDevedorCentavos, 0);
+
+  const segundaVenda = await registrarVendaTransacional({ ...vendaBase, operacaoId: "fluxo_venda_2", valorEmprestadoCentavos: 4000, valorTotalCentavos: 4800, jurosValorCentavos: 800, quantidadeParcelas: 2 });
+  const parcelasSegunda = db.listar("parcelas").filter(item => item.vendaId === segundaVenda.vendaId);
+  for (const parcela of parcelasSegunda) {
+    await global.IntegroPagamento.registrarPagamentoTransacional({ usuario: vendedor, clientePlataformaId: "tenant_1", caixaId, vendaId: segundaVenda.vendaId, parcelaId: parcela.id || parcela.caminho.split("/").pop(), clienteId: "cliente_fluxo", valorCentavos: parcela.valorCentavos });
+  }
+
+  const snapshotDivergente = await prepararSnapshotFechamentoCaixa({ caixaId, clientePlataformaId: "tenant_1", vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid });
+  const fechamento = await registrarFechamentoCaixaTransacional({ usuario: vendedor, clientePlataformaId: "tenant_1", caixaId, vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid, snapshot: snapshotDivergente, valorInformadoCentavos: snapshotDivergente.caixaFinalEsperadoCentavos - 1, justificativa: "Divergência conferida no fluxo completo" });
+  assert.equal(fechamento.statusFechamento, "DIVERGENTE");
+
+  const gestor = usuarioMasterCaixa();
+  await registrarReaberturaCaixaTransacional({ caixaId, clientePlataformaId: "tenant_1", usuario: gestor, motivo: "Conferência e nova movimentação", operacaoId: "fluxo_reabertura" });
+  await criarLancamentoFinanceiroTransacional({ usuario: gestor, clientePlataformaId: "tenant_1", caixaId, vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid, equipeId: "equipe_1", tipoLancamento: "GASTO", natureza: "DEBITO", valorCentavos: 100, origemId: "fluxo_gasto_reaberto", operacaoId: "fluxo_gasto_reaberto", dataOperacional: "2026-06-30", permissaoAdministrativa: true });
+  const snapshotFinal = await prepararSnapshotFechamentoCaixa({ caixaId, clientePlataformaId: "tenant_1", vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid });
+  const refechamento = await registrarFechamentoCaixaTransacional({ usuario: vendedor, clientePlataformaId: "tenant_1", caixaId, vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid, snapshot: snapshotFinal, valorInformadoCentavos: snapshotFinal.caixaFinalEsperadoCentavos, justificativa: "Refechamento após ajuste", operacaoId: "fluxo_refechamento" });
+
+  assert.equal(refechamento.statusFechamento, "FECHADO");
+  assert.equal(db.ler(`caixas/${caixaId}`).status, "FECHADO");
+  assert.equal(db.listar("historico_fechamentos_caixa").length, 1);
+  assert.equal(db.listar("historicoCobrancas").filter(item => item.tipo === "NAO_PAGAMENTO").length, 1);
+  assert.equal(db.listar("vendas").length, 2);
+  assert.equal(db.listar("pagamentos").length, 6);
+  assert.equal(db.listar("lancamentos_financeiros").filter(item => item.tipoLancamento === "GASTO").length, 1);
 });

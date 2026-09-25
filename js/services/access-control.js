@@ -140,16 +140,20 @@
     if (!contexto || !Object.keys(contexto).length) return true;
     if ([PERFIS.MASTER_LOCAL, PERFIS.GERENTE, PERFIS.ADMINISTRATIVO, PERFIS.FINANCEIRO, PERFIS.AUDITOR].includes(acesso.perfil)) return true;
 
-    const vendedorId = texto(contexto.vendedorId || contexto.usuarioId);
-    const vendedorAuthUid = texto(contexto.vendedorAuthUid || contexto.vendedorUid || contexto.uid);
+    const vendedorId = texto(contexto.vendedorId);
+    const vendedorAuthUid = texto(contexto.vendedorAuthUid);
+    const vendedorIdLegado = texto(contexto.usuarioId);
+    const vendedorAuthUidLegado = texto(contexto.vendedorUid || contexto.uid);
     const equipeId = texto(contexto.equipeId || contexto.equipeDestinoId);
 
     if (acesso.perfil === PERFIS.VENDEDOR) {
-      return Boolean(
-        (!vendedorId && !vendedorAuthUid) ||
-        (vendedorId && vendedorId === acesso.usuarioId) ||
-        (vendedorAuthUid && vendedorAuthUid === acesso.authUid)
-      );
+      // Identificadores canônicos têm precedência. Um alias legado conflitante
+      // nunca pode ampliar o escopo de leitura ou de ação do vendedor.
+      if (vendedorAuthUid) return vendedorAuthUid === acesso.authUid;
+      if (vendedorId) return vendedorId === acesso.usuarioId;
+      if (vendedorAuthUidLegado) return vendedorAuthUidLegado === acesso.authUid;
+      if (vendedorIdLegado) return vendedorIdLegado === acesso.usuarioId;
+      return true;
     }
     if (acesso.perfil === PERFIS.SUPERVISOR) {
       return !equipeId || acesso.equipeIds.includes(equipeId);
