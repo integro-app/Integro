@@ -33,7 +33,7 @@
 
   async function loadIfMissing(test, src, key) {
     if (test()) return true;
-    return loadScript(`${src}?v=${VERSION}`, key);
+    return loadScript(`${src}?v=${VERSION}&build=20261006-comprovantes`, key);
   }
 
   async function ensureFinance() {

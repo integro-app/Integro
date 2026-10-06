@@ -824,9 +824,20 @@
     const cliente = await obterCliente(db, clienteId);
     if (!clienteNoEscopo(usuario, cliente, "ler")) throw new Error("Cliente fora do escopo de consulta.");
     const tenant = tenantUsuario(usuario);
-    const colecoes = [COLECAO_INTERACOES, COLECAO_DIRECIONAMENTOS, COLECAO_CICLOS, "logs"];
+    const cargo = cargoUsuario(usuario);
+    if (cargo === "captador") return [];
+    const colecoes = [COLECAO_INTERACOES, COLECAO_DIRECIONAMENTOS, COLECAO_CICLOS];
+    if (cargo !== "vendedor") colecoes.push("logs");
     const resultados = await Promise.all(colecoes.map(async colecao => {
-      const snap = await db.collection(colecao).where("clientePlataformaId", "==", tenant).where("clienteId", "==", clienteId).limit(200).get();
+      const filtros = [["clienteId", "==", clienteId]];
+      if (colecao === "logs" && cargo === "supervisor") filtros.push(["equipeId", "==", texto(cliente.equipeId)]);
+      if (window.IntegroDataRuntime?.consultarTenant) {
+        const rows = await window.IntegroDataRuntime.consultarTenant({db,colecao,tenantId:tenant,filtros,limite:200,cacheMs:30000});
+        return rows.map(row=>({...row,colecao}));
+      }
+      let query = db.collection(colecao).where("clientePlataformaId", "==", tenant);
+      filtros.forEach(([field,operator,value])=>query=query.where(field,operator,value));
+      const snap = await query.limit(200).get();
       return snap.docs.map(doc => ({ id: doc.id, colecao, ...doc.data() }));
     }));
     const itens = resultados.flat();

@@ -372,6 +372,7 @@ function renderDashboardMasterLocal() {
   renderTopClientes(clientes, vendasValidas);
   renderPerformanceEquipe(usuarios, vendasValidas);
   renderResumoVendas(vendasValidas);
+  window.IntegroCentralGestao?.render?.();
 }
 
 function setTextSafe(id, valor) {

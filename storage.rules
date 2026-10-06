@@ -55,19 +55,56 @@ service firebase.storage {
     }
 
     function canReadEnterpriseFinance(tenantId) {
-      return isSameTenant(tenantId) && (
+      return isSameTenant(tenantId) && !isMasterGlobal() && !isCommercialUser() && (
         isMasterLocal() || isFinanceiro() ||
+        isFinancialSupervisor() || userDoc().get("responsavelFinanceiro", false) == true ||
         controlFinanceMap().get("ver", false) == true
       );
     }
 
+    function isCommercialUser() {
+      return userDoc().get("tipoUsuario", "") in ["vendedor", "captador"] ||
+        userDoc().get("cargoChave", "") in ["vendedor", "captador"];
+    }
+
+    function isFinancialSupervisor() {
+      return userDoc().get("tipoUsuario", "") == "supervisor_financeiro" ||
+        userDoc().get("cargoChave", "") == "supervisor_financeiro" ||
+        ((userDoc().get("tipoUsuario", "") == "supervisor" || userDoc().get("cargoChave", "") == "supervisor") &&
+          userDoc().get("departamento", "") == "FINANCEIRO");
+    }
+
     function canWriteEnterpriseFinance(tenantId) {
-      return isSameTenant(tenantId) && (
-        isMasterLocal() || isFinanceiro() ||
+      return canReadEnterpriseFinance(tenantId) && !isAuditor() && (
         controlFinanceMap().get("editar", false) == true ||
-        controlFinanceMap().get("baixar", false) == true ||
         controlFinanceMap().get("anexar", false) == true
       );
+    }
+
+    function canDeleteEnterpriseFinance(tenantId) {
+      return canReadEnterpriseFinance(tenantId) && !isAuditor() &&
+        (isMasterLocal() || controlFinanceMap().get("editar", false) == true ||
+          controlFinanceMap().get("anexar", false) == true);
+    }
+
+    function financialAccountExists(tenantId, contaId) {
+      return firestore.exists(/databases/(default)/documents/financeiro_contas/$(contaId)) &&
+        firestore.get(/databases/(default)/documents/financeiro_contas/$(contaId)).data.get("clientePlataformaId", "") == tenantId;
+    }
+
+    function financialRecordExists(tenantId, kind, id) {
+      return (kind == "contas" && financialAccountExists(tenantId, id)) ||
+        (kind == "pagamentos" && firestore.exists(/databases/(default)/documents/financeiro_pagamentos/$(id)) &&
+          firestore.get(/databases/(default)/documents/financeiro_pagamentos/$(id)).data.get("clientePlataformaId", "") == tenantId &&
+          financialAccountExists(tenantId, firestore.get(/databases/(default)/documents/financeiro_pagamentos/$(id)).data.get("contaId", "")));
+    }
+
+    function financialUploadMetadata(tenantId, kind, id) {
+      return request.resource.metadata.get("tenantId", "") == tenantId &&
+        request.resource.metadata.get("authUid", "") == request.auth.uid &&
+        ((kind == "contas" && request.resource.metadata.get("contaId", "") == id) ||
+          (kind == "pagamentos" && request.resource.metadata.get("pagamentoId", "") == id &&
+            request.resource.metadata.get("contaId", "") == firestore.get(/databases/(default)/documents/financeiro_pagamentos/$(id)).data.get("contaId", "")));
     }
 
     function allowedContentType() {
@@ -92,13 +129,9 @@ service firebase.storage {
     }
 
     match /tenants/{tenantId}/{categoria}/{arquivo=**} {
-      allow read: if isMasterGlobal() ||
-        (categoria == "financeiro" ? canReadEnterpriseFinance(tenantId) : isSameTenant(tenantId));
+      allow read: if categoria != "financeiro" && (isMasterGlobal() || isSameTenant(tenantId));
       allow list: if false;
-      allow create: if (
-          isMasterGlobal() ||
-          (categoria == "financeiro" ? canWriteEnterpriseFinance(tenantId) : isSameTenant(tenantId))
-        ) &&
+      allow create: if categoria != "financeiro" && (isMasterGlobal() || isSameTenant(tenantId)) &&
         (categoria != "chat" || !isAuditor()) &&
         (categoria != "chat" ? allowedUpload() : (
           request.resource != null &&
@@ -106,7 +139,16 @@ service firebase.storage {
           request.resource.contentType.matches("image/.*")
         ));
       allow update: if false;
-      allow delete: if categoria == "financeiro" && canWriteEnterpriseFinance(tenantId);
+      allow delete: if false;
+    }
+
+    match /tenants/{tenantId}/financeiro/{kind}/{id}/{filename} {
+      allow get: if canReadEnterpriseFinance(tenantId) && financialRecordExists(tenantId, kind, id);
+      allow list: if false;
+      allow create: if resource == null && canWriteEnterpriseFinance(tenantId) && financialRecordExists(tenantId, kind, id) &&
+        financialUploadMetadata(tenantId, kind, id) && allowedUpload();
+      allow update: if false;
+      allow delete: if canDeleteEnterpriseFinance(tenantId) && financialRecordExists(tenantId, kind, id);
     }
 
     match /{allPaths=**} {

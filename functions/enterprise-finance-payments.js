@@ -1,6 +1,7 @@
 "use strict";
 
 const core = require("./financial-core");
+const {createHash} = require("node:crypto");
 const { FieldValue } = require("firebase-admin/firestore");
 
 function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
@@ -10,7 +11,7 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
 
   function erro(codigo, mensagem) { throw new functions.https.HttpsError(codigo, mensagem); }
   function idSeguro(valor) { return texto(valor).replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 500); }
-  function perfil(usuario = {}) { return status(usuario.tipoUsuario || usuario.tipo || usuario.role || usuario.perfil || usuario.cargoChave || usuario.cargo); }
+  function perfil(usuario = {}) { return [usuario.tipoUsuario,usuario.tipo,usuario.role,usuario.perfil,usuario.cargoChave,usuario.cargo].map(status).find(p=>["MASTER_LOCAL","GERENTE","FINANCEIRO","SUPERVISOR_FINANCEIRO","SUPERVISOR","VENDEDOR"].includes(p)) || status(usuario.tipoUsuario); }
   function mapasPermissao(usuario = {}) { return [usuario.permissoes, usuario.permissoesUsuario, usuario.permissoesCargo].filter(Boolean); }
   function permissaoGlobalPagamento(usuario = {}) {
     const role = perfil(usuario);
@@ -73,18 +74,26 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
   async function criarSolicitacaoPagamentoRetroativo({ entrada, uid, usuario, tenantId, conta }) {
     const requestId = `fpr_${idSeguro(entrada.contaId)}_${idSeguro(entrada.operacaoId)}`;
     const ref = db.collection("financeiro_solicitacoes").doc(requestId);
+    const pagamentoEntrada=sanitizarEntradaPagamento(entrada);
+    const fingerprint=createHash("sha256").update(JSON.stringify(pagamentoEntrada)).digest("hex");
     const existente = await ref.get();
     if (existente.exists) {
       const dados = existente.data() || {};
       if (texto(dados.clientePlataformaId) !== tenantId || texto(dados.contaId) !== texto(entrada.contaId)) erro("already-exists", "Conflito na solicitação retroativa.");
+      if(dados.solicitanteAuthUid!==uid || dados.fingerprint&&dados.fingerprint!==fingerprint)erro("already-exists","Conflito na chave da solicitação retroativa.");
+      if(status(dados.status)!=="PENDENTE")erro("failed-precondition","Solicitação retroativa já decidida. Consulte o resultado antes de tentar novamente.");
       return { ok:true, pendente: String(dados.status || "PENDENTE").toUpperCase() === "PENDENTE", solicitacaoId:requestId, modo:"APROVACAO_PENDENTE", contaId:entrada.contaId };
     }
     const nome = texto(usuario.nome || usuario.nomeCompleto || usuario.email);
     const agoraTexto = new Date().toISOString();
-    await ref.set({
+    await db.runTransaction(async transaction=>{
+      const current=await transaction.get(ref);
+      if(current.exists){const data=current.data();if(data.solicitanteAuthUid!==uid||data.fingerprint!==fingerprint)erro("already-exists","Conflito na chave da solicitação retroativa.");if(status(data.status)!=="PENDENTE")erro("failed-precondition","Solicitação retroativa já decidida.");return;}
+      transaction.set(ref,{
       clientePlataformaId:tenantId, tipo:"PAGAMENTO_RETROATIVO", status:"PENDENTE", contaId:texto(entrada.contaId),
-      pagamentoEntrada:sanitizarEntradaPagamento(entrada), solicitanteAuthUid:uid, solicitanteNome:nome,
+      pagamentoEntrada,fingerprint, solicitanteAuthUid:uid, solicitanteNome:nome,
       descricaoConta:texto(conta.descricao), criadoEmTexto:agoraTexto, criadoEm:ts(), atualizadoEmTexto:agoraTexto, atualizadoEm:ts()
+      });
     });
     const usuarios = await db.collection("usuarios").where("clientePlataformaId", "==", tenantId).limit(1000).get();
     const batch = db.batch(); let qtd = 0;
@@ -119,6 +128,20 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
     const reprogramarSaldo = modo === "PARCIAL_REPROGRAMAR" || entrada.reprogramarSaldo === true;
     const novoVencimentoSaldo = texto(entrada.novoVencimentoSaldo);
     const motivoDiferenca = status(entrada.motivoDiferenca || "");
+    const paymentDate = texto(entrada.dataPagamento) || core.hojeSP();
+    const parsedPaymentDate=new Date(`${paymentDate}T12:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(paymentDate) || !Number.isFinite(parsedPaymentDate.getTime()) || parsedPaymentDate.toISOString().slice(0,10) !== paymentDate || paymentDate > core.hojeSP()) erro("invalid-argument", "Informe uma data de pagamento válida, até hoje.");
+    if (!texto(entrada.formaPagamento)) erro("invalid-argument", "Informe a forma de pagamento.");
+    const financeiroConfig = await configuracaoFinanceira(tenantId);
+    const comprovantes = Array.isArray(entrada.comprovantes) ? entrada.comprovantes : [];
+    if (financeiroConfig.comprovantePagamentoObrigatorio === true && !comprovantes.length) erro("failed-precondition", "O comprovante é obrigatório nesta empresa.");
+    for (const arquivo of comprovantes) {
+      const path = texto(arquivo.path);
+      if (!path.startsWith(`tenants/${tenantId}/financeiro/contas/${contaId}/`) || path.includes("..")) erro("permission-denied", "Comprovante fora da conta ou empresa.");
+      const [metadata] = await admin.storage().bucket().file(path).getMetadata();
+      if(!/^image\//.test(metadata.contentType||"")&&!['application/pdf','application/msword','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.ms-excel','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','text/plain'].includes(metadata.contentType))erro("failed-precondition","Formato de comprovante inválido.");
+      if (Number(metadata.size) <= 0 || Number(metadata.size) >= 10*1024*1024 || metadata.metadata?.tenantId !== tenantId || metadata.metadata?.contaId !== contaId) erro("failed-precondition", "Comprovante inválido.");
+    }
     if (reprogramarSaldo && !/^\d{4}-\d{2}-\d{2}$/.test(novoVencimentoSaldo)) erro("invalid-argument", "Informe a nova data de vencimento do saldo restante.");
 
     const pagamentoId = `cfp_${idSeguro(contaId)}_${idSeguro(operacaoId)}`;
@@ -129,9 +152,11 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
 
     // V27.2: quando a empresa exige aprovação, a baixa retroativa vira solicitação e só é efetivada após decisão.
     const dataPagamentoSolicitada = texto(entrada.dataPagamento) || core.hojeSP();
+    const fingerprint = createHash("sha256").update(JSON.stringify(sanitizarEntradaPagamento({...entrada,dataPagamento:dataPagamentoSolicitada}))).digest("hex");
     if (dataPagamentoSolicitada < core.hojeSP() && opcoes.aprovacaoInterna !== true) {
       const config = await configuracaoFinanceira(tenantId);
       if (config.baixaRetroativaExigeAprovacao === true) {
+        const existingPayment=await pagamentoRef.get();if(existingPayment.exists){const p=existingPayment.data();if(texto(p.clientePlataformaId)!==tenantId||Number(p.valorPagoCentavos)!==valorPagoCentavos||p.fingerprint&&p.fingerprint!==fingerprint)erro("already-exists","Conflito na chave idempotente.");const account=await contaRef.get();if(!account.exists)erro("not-found","Conta empresarial não encontrada.");validarTenant(account.data(),tenantId);if(!podePagarConta(usuario,uid,account.data()))erro("permission-denied","Usuário sem responsabilidade ou permissão para registrar esta baixa.");return {ok:true,modo:"IDEMPOTENTE",pagamentoId,pagamento:p,saldoCentavos:account.data().saldoCentavos,status:account.data().status};}
         const contaSnap = await contaRef.get();
         if (!contaSnap.exists) erro("not-found", "Conta empresarial não encontrada.");
         const conta = { id:contaId, ...contaSnap.data() }; validarTenant(conta, tenantId);
@@ -141,7 +166,9 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
     }
 
     return db.runTransaction(async transaction => {
-      const [contaSnap, pagamentoSnap] = await Promise.all([transaction.get(contaRef), transaction.get(pagamentoRef)]);
+      const approvalRef=opcoes.aprovacaoSolicitacaoId?db.collection("financeiro_solicitacoes").doc(opcoes.aprovacaoSolicitacaoId):null;
+      const [contaSnap, pagamentoSnap,approvalSnap] = await Promise.all([transaction.get(contaRef), transaction.get(pagamentoRef),approvalRef?transaction.get(approvalRef):null]);
+      if(approvalRef&&(!approvalSnap.exists||texto(approvalSnap.data().clientePlataformaId)!==tenantId||!["PENDENTE","APROVADA"].includes(status(approvalSnap.data().status))))erro("failed-precondition","Solicitação retroativa indisponível.");
       if (!contaSnap.exists) erro("not-found", "Conta empresarial não encontrada.");
       const conta = { id: contaId, ...contaSnap.data() };
       validarTenant(conta, tenantId);
@@ -149,8 +176,8 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
 
       if (pagamentoSnap.exists) {
         const existente = pagamentoSnap.data() || {};
-        if (texto(existente.contaId) !== contaId || Number(existente.valorPagoCentavos || 0) !== valorPagoCentavos || texto(existente.clientePlataformaId) !== tenantId) erro("already-exists", "Conflito na chave idempotente deste pagamento.");
-        return { ok: true, modo: "IDEMPOTENTE", pagamentoId, contaId, valorPagoCentavos, saldoCentavos: Number(conta.saldoCentavos || 0), status: texto(conta.status), saldoReprogramadoContaId: texto(existente.saldoReprogramadoContaId) };
+        if (texto(existente.contaId) !== contaId || Number(existente.valorPagoCentavos || 0) !== valorPagoCentavos || texto(existente.clientePlataformaId) !== tenantId || existente.fingerprint && existente.fingerprint !== fingerprint || texto(existente.pagoPorAuthUid) !== uid) erro("already-exists", "Conflito na chave idempotente deste pagamento.");
+        return { ok: true, modo: "IDEMPOTENTE", pagamentoId, pagamento: existente, contaId, valorPagoCentavos, saldoCentavos: Number(conta.saldoCentavos || 0), status: texto(conta.status), saldoReprogramadoContaId: texto(existente.saldoReprogramadoContaId) };
       }
 
       if (status(conta.status) === "CANCELADA") erro("failed-precondition", "Conta cancelada não pode receber pagamento.");
@@ -174,6 +201,7 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
       let diferencaQuitacaoCentavos = 0;
 
       if (quitarValorReal) {
+        if (valorPagoCentavos !== saldoAntesCentavos && !["DESCONTO","JUROS","MULTA","CORRECAO","AJUSTE","OUTRO"].includes(motivoDiferenca)) erro("invalid-argument", "Informe o motivo da diferença para quitar pelo valor real.");
         saldoDepoisCentavos = 0;
         novoStatus = "PAGA";
         diferencaQuitacaoCentavos = valorPagoCentavos - saldoAntesCentavos;
@@ -207,7 +235,7 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
       }
 
       const pagamento = {
-        clientePlataformaId: tenantId, contaId, operacaoId, idempotencyKey: pagamentoId,
+        clientePlataformaId: tenantId, contaId, operacaoId, idempotencyKey: pagamentoId, fingerprint,
         modoPagamento: quitarValorReal ? "QUITAR_VALOR_REAL" : reprogramarSaldo ? "PARCIAL_REPROGRAMAR" : "NORMAL",
         valorPagoCentavos, jurosCentavos, multaCentavos, descontoCentavos, valorEfetivoCentavos,
         valorPrevistoSaldoCentavos: saldoAntesCentavos,
@@ -235,6 +263,7 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
         atualizadoEm: ts()
       };
 
+      if(approvalRef){const request=approvalSnap.data();if(status(request.status)!=="PENDENTE")erro("failed-precondition","Solicitação já foi decidida.");transaction.set(approvalRef,{status:"APROVADA",pagamentoId,decisaoPorAuthUid:uid,decisaoPorNome:operadorNome,decididoEmTexto:agoraTexto,decididoEm:ts(),atualizadoEm:ts()},{merge:true});const requester=texto(request.solicitanteAuthUid);if(requester)transaction.set(db.collection("notificacoes").doc(`retro_aprovada_${idSeguro(opcoes.aprovacaoSolicitacaoId)}_${idSeguro(requester)}`),{clientePlataformaId:tenantId,destinatarioAuthUid:requester,usuarioAuthUid:requester,usuarioUid:requester,tipo:"FINANCEIRO_APROVADO",titulo:"Pagamento retroativo aprovado",mensagem:"A baixa solicitada foi efetivada.",origemModulo:"FINANCEIRO_EMPRESARIAL",entidadeTipo:"SOLICITACAO_FINANCEIRA",entidadeId:opcoes.aprovacaoSolicitacaoId,rota:{tela:"financeiro",aba:"aprovacoes"},lida:false,naLixeira:false,criadoEmTexto:agoraTexto,criadoEm:ts()});}
       transaction.set(pagamentoRef, pagamento);
       transaction.update(contaRef, atualizacaoConta);
       transaction.set(auditoriaRef, {

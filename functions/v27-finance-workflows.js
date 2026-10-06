@@ -11,7 +11,7 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
   const idSafe = value => text(value).replace(/[^a-zA-Z0-9_-]+/g, "_").slice(0, 300);
   const error = (code, message) => { throw new functions.https.HttpsError(code, message); };
 
-  function role(user = {}) { return norm(user.tipoUsuario || user.tipo || user.role || user.perfil || user.cargoChave || user.cargo); }
+  function role(user = {}) { return [user.tipoUsuario,user.tipo,user.role,user.perfil,user.cargoChave,user.cargo].map(norm).find(p=>["MASTER_LOCAL","GERENTE","FINANCEIRO","SUPERVISOR_FINANCEIRO"].includes(p)) || norm(user.tipoUsuario); }
   function controlFinance(user = {}) {
     return user.permissoes?.controleFinanceiro || user.permissoesUsuario?.controleFinanceiro || user.permissoesCargo?.controleFinanceiro || {};
   }
@@ -144,7 +144,7 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     const { uid, user, tenantId } = await session(context); if (!canApprove(user)) error("permission-denied", "Usuário sem permissão de aprovação financeira.");
     const requestId = text(data?.solicitacaoId); if (!requestId || requestId.includes("/")) error("invalid-argument", "Solicitação inválida.");
     const ref = db.collection("financeiro_solicitacoes").doc(requestId); const snap = await ref.get(); if (!snap.exists) error("not-found", "Solicitação não encontrada.");
-    const req = { id:requestId, ...snap.data() }; if (text(req.clientePlataformaId) !== tenantId) error("permission-denied", "Solicitação fora da empresa atual."); if (norm(req.status) !== "PENDENTE") error("failed-precondition", "Solicitação já foi decidida.");
+    const req = { id:requestId, ...snap.data() }; if (text(req.clientePlataformaId) !== tenantId) error("permission-denied", "Solicitação fora da empresa atual."); if (norm(req.status) !== "PENDENTE") {const expected=norm(data?.decisao)==="APROVAR"?"APROVADA":"REJEITADA";if(norm(req.status)===expected)return {ok:true,status:expected,modo:"IDEMPOTENTE"};error("failed-precondition", "Solicitação já foi decidida.");}
     const decision = norm(data?.decisao); if (!["APROVAR","REJEITAR"].includes(decision)) error("invalid-argument", "Decisão inválida.");
     const reason = text(data?.motivo); if (decision === "REJEITAR" && reason.length < 3) error("invalid-argument", "Informe o motivo da rejeição.");
     const account = await accountById(req.contaId, tenantId);
@@ -156,7 +156,13 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
         aprovadoPorAuthUid:uid, aprovadoPorNome:text(user.nome || user.nomeCompleto || user.email)
       });
     }
-    const batch = db.batch();
+    if (pagamentoAprovado) return {ok:true,status:"APROVADA",pagamentoId:pagamentoAprovado.pagamentoId};
+    return db.runTransaction(async batch=>{
+    const currentRequest=await batch.get(ref),currentAccount=await batch.get(db.collection("financeiro_contas").doc(account.id));
+    if(!currentRequest.exists||!currentAccount.exists)error("not-found","Solicitação ou conta indisponível.");
+    if(norm(currentRequest.data().status)!=="PENDENTE"){const expected=decision==="APROVAR"?"APROVADA":"REJEITADA";if(norm(currentRequest.data().status)===expected)return {ok:true,status:expected,modo:"IDEMPOTENTE"};error("failed-precondition","Solicitação já foi decidida.");}
+    Object.assign(account,currentAccount.data());if(text(account.clientePlataformaId)!==tenantId)error("permission-denied","Conta fora da empresa.");
+    if(decision==="APROVAR"&&["PAGA","PAGO","CANCELADA"].includes(norm(account.status)))error("failed-precondition","Lançamento efetivado ou cancelado não pode ser alterado.");
     if (decision === "APROVAR") {
       if (norm(req.tipo) === "ATRIBUICAO") batch.set(db.collection("financeiro_contas").doc(account.id), { responsavelAuthUid:req.responsavelNovoAuthUid, responsavelNome:req.responsavelNovoNome, responsavelSolicitadoAuthUid:"", responsavelSolicitadoNome:"", atribuicaoStatus:"APROVADA", atualizadoEm:ts(), atualizadoEmTexto:nowText() }, { merge:true });
       else if (["CANCELAMENTO","EXCLUSAO"].includes(norm(req.tipo))) {
@@ -165,19 +171,25 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
       } else if (norm(req.tipo) === "PAGAMENTO_RETROATIVO") {
         // O pagamento já foi aplicado de forma idempotente pelo serviço seguro acima.
       } else if (norm(req.escopo) === "ESTA_E_PROXIMAS" && text(req.recorrenciaId)) {
-        const future = await db.collection("financeiro_contas")
+        const recurrenceRef=db.collection("financeiro_recorrencias").doc(text(req.recorrenciaId));
+        const recurrenceSnap=await batch.get(recurrenceRef);
+        if(!recurrenceSnap.exists||text(recurrenceSnap.data().clientePlataformaId)!==tenantId)error("failed-precondition","Recorrência indisponível.");
+        const future = await batch.get(db.collection("financeiro_contas")
           .where("clientePlataformaId", "==", tenantId)
           .where("recorrenciaId", "==", text(req.recorrenciaId))
           .where("vencimento", ">=", text(req.corteVencimento || account.vencimento))
-          .limit(400).get();
+          .limit(400));
         const patch = safePatch(req.patch || {});
+        const recurrenceUpdate={...patch,atualizadoEm:ts(),atualizadoEmTexto:nowText()};delete recurrenceUpdate.vencimento;
+        if(patch.vencimento){const delta=Math.round((new Date(patch.vencimento+"T12:00:00Z")-new Date(text(req.corteVencimento||account.vencimento)+"T12:00:00Z"))/86400000);recurrenceUpdate.proximaGeracao=core.adicionarDiasISO(text(recurrenceSnap.data().proximaGeracao||recurrenceSnap.data().dataInicio),delta);}
         future.docs.forEach(doc => {
           const item = doc.data() || {};
           if (Number(item.valorPagoCentavos || 0) > 0 || ["PAGA","PAGO","CANCELADA"].includes(norm(item.status))) return;
-          const update = { ...patch, atualizadoEm:ts(), atualizadoEmTexto:nowText() };
+          if(text(item.vencimento)<core.hojeSP())return;const update = { ...patch, atualizadoEm:ts(), atualizadoEmTexto:nowText() };if(patch.vencimento){const delta=Math.round((new Date(patch.vencimento+"T12:00:00Z")-new Date(text(req.corteVencimento||account.vencimento)+"T12:00:00Z"))/86400000);update.vencimento=core.adicionarDiasISO(text(item.vencimento),delta);}
           if (patch.valorCentavos !== undefined) update.saldoCentavos = Number(patch.valorCentavos);
           batch.set(doc.ref, update, { merge:true });
         });
+        batch.set(recurrenceRef,recurrenceUpdate,{merge:true});
       } else {
         const patch = safePatch(req.patch || {}); if (patch.valorCentavos !== undefined) { const paid=Number(account.valorPagoCentavos||0); if(Number(patch.valorCentavos)<paid) error("failed-precondition","Valor não pode ser menor que o já pago."); patch.saldoCentavos=Number(patch.valorCentavos)-paid; }
         batch.set(db.collection("financeiro_contas").doc(account.id), { ...patch, atualizadoEm:ts(), atualizadoEmTexto:nowText() }, { merge:true });
@@ -186,8 +198,9 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     batch.set(ref, { status:decision === "APROVAR" ? "APROVADA" : "REJEITADA", decisaoPorAuthUid:uid, decisaoPorNome:text(user.nome || user.email), motivoDecisao:reason, pagamentoId:text(pagamentoAprovado?.pagamentoId), decididoEmTexto:nowText(), decididoEm:ts(), atualizadoEmTexto:nowText(), atualizadoEm:ts() }, { merge:true });
     const requester = text(req.solicitanteAuthUid); if (requester) batch.set(notifyRef(requester, `${requestId}_decision`), notification(tenantId, requester, { tipo:decision === "APROVAR" ? "FINANCEIRO_APROVADO" : "FINANCEIRO_REJEITADO", titulo:decision === "APROVAR" ? "Solicitação aprovada" : "Solicitação rejeitada", mensagem:decision === "APROVAR" ? `A solicitação sobre ${account.descricao || "o lançamento"} foi aprovada.` : `A solicitação foi rejeitada: ${reason}`, entidadeTipo:"SOLICITACAO_FINANCEIRA", entidadeId:requestId }), { merge:true });
     if (decision === "APROVAR" && norm(req.tipo) === "ATRIBUICAO" && req.responsavelNovoAuthUid) batch.set(notifyRef(req.responsavelNovoAuthUid, `${requestId}_assigned`), notification(tenantId, req.responsavelNovoAuthUid, { tipo:"FINANCEIRO_ATRIBUIDO", titulo:"Lançamento atribuído a você", mensagem:`${account.descricao || "Um lançamento"} agora está sob sua responsabilidade.`, entidadeId:account.id }), { merge:true });
-    batch.set(db.collection("financeiro_auditoria").doc(`audit_${idSafe(requestId)}_${Date.now()}`), { clientePlataformaId:tenantId, acao:`SOLICITACAO_${decision}`, entidadeTipo:"SOLICITACAO_FINANCEIRA", entidadeId:requestId, antes:req, depois:{...req,status:decision}, usuarioAuthUid:uid, usuarioNome:text(user.nome || user.email), criadoEmTexto:nowText(), criadoEm:ts() });
-    await batch.commit(); return { ok:true, status:decision === "APROVAR" ? "APROVADA" : "REJEITADA" };
+    batch.set(db.collection("financeiro_auditoria").doc(`audit_${idSafe(requestId)}_decision`), { clientePlataformaId:tenantId, acao:`SOLICITACAO_${decision}`, entidadeTipo:"SOLICITACAO_FINANCEIRA", entidadeId:requestId, antes:req, depois:{...req,status:decision}, usuarioAuthUid:uid, usuarioNome:text(user.nome || user.email), criadoEmTexto:nowText(), criadoEm:ts() });
+    return { ok:true, status:decision === "APROVAR" ? "APROVADA" : "REJEITADA" };
+    });
   }
 
   async function reversePayment(data, context) {
@@ -195,16 +208,16 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     const paymentId = text(data?.pagamentoId), reason = text(data?.motivo); if (!paymentId || paymentId.includes("/")) error("invalid-argument", "Pagamento inválido."); if (reason.length < 3) error("invalid-argument", "Motivo do estorno é obrigatório.");
     const paymentRef = db.collection("financeiro_pagamentos").doc(paymentId); let result;
     await db.runTransaction(async tx => {
-      const paySnap = await tx.get(paymentRef); if (!paySnap.exists) error("not-found", "Pagamento não encontrado."); const pay = paySnap.data(); if (text(pay.clientePlataformaId) !== tenantId) error("permission-denied", "Pagamento fora da empresa atual."); if (pay.estornado === true) error("failed-precondition", "Pagamento já foi estornado.");
+      const paySnap = await tx.get(paymentRef); if (!paySnap.exists) error("not-found", "Pagamento não encontrado."); const pay = paySnap.data(); if (text(pay.clientePlataformaId) !== tenantId) error("permission-denied", "Pagamento fora da empresa atual."); if (pay.estornado === true) {result={contaId:text(pay.contaId),modo:"IDEMPOTENTE"};return;}
       const accountRef = db.collection("financeiro_contas").doc(text(pay.contaId)); const accSnap = await tx.get(accountRef); if (!accSnap.exists) error("not-found", "Conta vinculada não encontrada."); const account=accSnap.data(); if(text(account.clientePlataformaId)!==tenantId)error("permission-denied","Conta fora da empresa atual.");
       const linkedId=text(pay.saldoReprogramadoContaId); let linked=null, linkedRef=null; if(linkedId){linkedRef=db.collection("financeiro_contas").doc(linkedId);const linkedSnap=await tx.get(linkedRef);if(linkedSnap.exists){linked=linkedSnap.data();if(Number(linked.valorPagoCentavos||0)>0)error("failed-precondition","O saldo reprogramado já recebeu pagamento e precisa ser tratado antes do estorno.");}}
-      const amount=Number(pay.valorPagoCentavos||0), paidAfter=Math.max(0,Number(account.valorPagoCentavos||0)-amount); const balanceBefore=Number(pay.valorPrevistoSaldoCentavos||0); const restoredBalance=Math.max(balanceBefore, Number(account.saldoCentavos||0)+amount); const status=paidAfter>0?"PARCIALMENTE_PAGA":"A_VENCER";
+      const amount=Number(pay.valorPagoCentavos||0), paidAfter=Math.max(0,Number(account.valorPagoCentavos||0)-amount); const balanceBefore=Number(pay.valorPrevistoSaldoCentavos||0); const restoredBalance=Number(account.saldoCentavos||0)+amount+(linked?Number(linked.saldoCentavos||0):0)-(norm(pay.modoPagamento)==="QUITAR_VALOR_REAL"?Number(pay.diferencaQuitacaoCentavos||0):0); const status=paidAfter>0?"PARCIALMENTE_PAGA":"A_VENCER";
       tx.set(accountRef,{valorPagoCentavos:paidAfter,saldoCentavos:restoredBalance,status,statusV27:paidAfter>0?"PAGAMENTO_PARCIAL":"AGUARDANDO_VENCIMENTO",atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});
       if(linkedRef&&linked)tx.set(linkedRef,{status:"CANCELADA",statusV27:"CANCELADA",motivoCancelamento:`Estorno do pagamento ${paymentId}`,canceladoPorAuthUid:uid,canceladoEm:ts(),canceladoEmTexto:nowText(),atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});
       tx.set(paymentRef,{estornado:true,status:"ESTORNADO",motivoEstorno:reason,estornadoPorAuthUid:uid,estornadoPorNome:text(user.nome||user.email),estornadoEm:ts(),estornadoEmTexto:nowText(),atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});
       result={contaId:text(pay.contaId),saldoCentavos:restoredBalance,status};
+      tx.set(db.collection("financeiro_auditoria").doc(`estorno_${idSafe(paymentId)}`),{clientePlataformaId:tenantId,acao:"ESTORNAR_PAGAMENTO",entidadeTipo:"PAGAMENTO",entidadeId:paymentId,antes:pay,depois:{...result,motivo:reason},usuarioAuthUid:uid,usuarioNome:text(user.nome||user.email),criadoEmTexto:nowText(),criadoEm:ts()});
     });
-    await db.collection("financeiro_auditoria").add({clientePlataformaId:tenantId,acao:"ESTORNAR_PAGAMENTO",entidadeTipo:"PAGAMENTO",entidadeId:paymentId,depois:{...result,motivo:reason},usuarioAuthUid:uid,usuarioNome:text(user.nome||user.email),criadoEmTexto:nowText(),criadoEm:ts()});
     return {ok:true,...result};
   }
 

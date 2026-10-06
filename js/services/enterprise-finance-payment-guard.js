@@ -68,8 +68,14 @@
       return false;
     }
     if (service.__enterprisePaymentGuardV27 === true) return true;
-    global.IntegroControleFinanceiro = Object.freeze({ ...service, registrarPagamento: registrarPagamentoBackend, __enterprisePaymentGuardV27: true });
+    global.IntegroControleFinanceiro = Object.freeze({ ...service, registrarPagamento: registrarPagamentoBackend, gerarOcorrenciasRecorrencia: gerarOcorrenciasBackend, __enterprisePaymentGuardV27: true });
     return true;
+  }
+
+  async function gerarOcorrenciasBackend(recorrenciaId,options={}) {
+    const instance=functionsInstance();if(!instance)throw new Error("Backend seguro indisponível para gerar recorrências.");
+    const result=await instance.httpsCallable("gerarOcorrenciasFinanceirasV27")({recorrenciaId:text(recorrenciaId),ate:text(options.ate),max:Number(options.max||120)});
+    return result.data?.contas||[];
   }
 
   install();

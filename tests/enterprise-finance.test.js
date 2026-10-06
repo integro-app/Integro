@@ -138,7 +138,8 @@ test("Storage restringe pasta financeiro ao controle empresarial", () => {
   assert.match(storageRules, /controlFinanceMap/);
   assert.match(storageRules, /canReadEnterpriseFinance/);
   assert.match(storageRules, /canWriteEnterpriseFinance/);
-  assert.match(storageRules, /categoria == "financeiro"/);
+  assert.match(storageRules, /match \/tenants\/\{tenantId\}\/financeiro\/\{kind\}\/\{id\}\/\{filename\}/);
+  assert.match(storageRules, /categoria != "financeiro" && \(isMasterGlobal\(\) \|\| isSameTenant\(tenantId\)\)/);
   assert.match(storageRules, /get\("anexar", false\)/);
 });
 
@@ -168,7 +169,7 @@ test("interface entrega visão geral lançamentos calendário fornecedores cadas
   assert.match(ui, /Novo lançamento/);
   assert.match(ui, /Registrar pagamento|Registrar recebimento/);
   assert.match(ui, /Próximo vencimento/);
-  assert.match(ui, /Pago hoje/);
+  assert.match(ui, /Pago\/recebido hoje/);
   assert.match(ui, /Exportar PDF/);
   assert.match(ui, /Exportar PDF\/Excel/);
   assert.match(ui, /exportExcel/);

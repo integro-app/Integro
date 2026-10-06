@@ -256,12 +256,33 @@
   }
 
   async function salvarCategoria(input = {}, id = "") {
+    assertBase();
+    const visited = new Set(id ? [id] : []);
+    let parentId = text(input.paiId);
+    while (parentId) {
+      if (visited.has(parentId)) throw new Error("A hierarquia de categorias não pode formar um ciclo.");
+      visited.add(parentId);
+      const snap = await db().collection(COLLECTIONS.categorias).doc(parentId).get();
+      if (!snap.exists || snap.data().clientePlataformaId !== tenantId()) throw new Error("Categoria pai inválida.");
+      parentId = text(snap.data().paiId);
+    }
     const result = await saveCatalog(COLLECTIONS.categorias, "CATEGORIA", input, id);
     const extra = { paiId: text(input.paiId), paiNome: text(input.paiNome), cor: /^#[0-9a-f]{6}$/i.test(text(input.cor)) ? text(input.cor).toLowerCase() : "#64748b" };
     await db().collection(COLLECTIONS.categorias).doc(result.id).update(extra);
     return { ...result, ...extra };
   }
-  async function salvarCentroCusto(input, id = "") { return saveCatalog(COLLECTIONS.centrosCusto, "CENTRO_CUSTO", input, id); }
+  async function salvarCentroCusto(input = {}, id = "") {
+    assertBase();
+    const empresaId = text(input.empresaId);
+    if (empresaId) {
+      const snap = await db().collection(COLLECTIONS.empresas).doc(empresaId).get();
+      if (!snap.exists || snap.data().clientePlataformaId !== tenantId()) throw new Error("Empresa do centro de custo inválida.");
+    }
+    const result = await saveCatalog(COLLECTIONS.centrosCusto, "CENTRO_CUSTO", input, id);
+    const extra = { empresaId, empresaNome: text(input.empresaNome) };
+    await db().collection(COLLECTIONS.centrosCusto).doc(result.id).update(extra);
+    return { ...result, ...extra };
+  }
   async function salvarEmpresa(input = {}, id = "") {
     const result = await saveCatalog(COLLECTIONS.empresas, "EMPRESA", input, id);
     const extra = { documento: text(input.documento), nomeFantasia: text(input.nomeFantasia) };
@@ -365,19 +386,69 @@
     unique.forEach(days=>{const id=`lem_${contaId}_${days}`;ids.push(id);batch.set(db().collection(COLLECTIONS.lembretes).doc(id),{clientePlataformaId:tenantId(),contaId,diasAntes:days,dataLembrete:addDays(account.vencimento,-days),vencimento:account.vencimento,descricao:account.descricao,valorCentavos:account.valorCentavos,responsavelAuthUid:text(responsavelAuthUid||account.responsavelAuthUid),status:"PENDENTE",criadoEmTexto:nowIso(),atualizadoEmTexto:nowIso(),criadoEm:serverTimestamp(),atualizadoEm:serverTimestamp()},{merge:true});}); await batch.commit(); await audit("CONFIGURAR_LEMBRETES","CONTA",contaId,null,{diasAntes:unique,lembretesIds:ids}); return ids;
   }
 
+  function acessoComprovantes(usuario = user()) {
+    const roles=[usuario.tipoUsuario,usuario.cargoChave].map(text),has=r=>roles.includes(r),perms=usuario.permissoes?.controleFinanceiro||{};
+    const active=usuario.authUid===authUid()&&usuario.acessoLiberado===true&&!['BLOQUEADO','INATIVO','SUSPENSO'].includes(usuario.status)&&text(usuario.clientePlataformaId)===tenantId()&&Boolean(tenantId());
+    const forbidden=has('master_global')||has('vendedor')||has('captador');
+    const financial=has('supervisor_financeiro')||has('supervisor')&&usuario.departamento==='FINANCEIRO';
+    const read=active&&!forbidden&&(has('master_local')||has('financeiro')||financial||usuario.responsavelFinanceiro===true||perms.ver===true);
+    const write=read&&!has('auditor')&&(perms.anexar===true||perms.editar===true);
+    return {ler:read,anexar:write,excluir:read&&!has('auditor')&&(has('master_local')||write)};
+  }
+
+  async function autorizarComprovante(contaId, permission) {
+    assertBase();
+    const session=authUid(),tenant=tenantId(),userSnap=await db().collection('usuarios').doc(session).get({source:'server'});
+    if(!userSnap.exists||!acessoComprovantes(userSnap.data())[permission])throw new Error('Você não tem permissão para acessar este comprovante.');
+    if(!contaId||String(contaId).includes('/'))throw new Error('Conta inválida.');
+    const accountRef=db().collection(COLLECTIONS.contas).doc(contaId),account=await accountRef.get({source:'server'});
+    if(!account.exists||account.data().clientePlataformaId!==tenant)throw new Error('Conta não encontrada ou sem acesso.');
+    if(session!==authUid()||tenant!==tenantId())throw new Error('A sessão mudou. Abra o comprovante novamente.');
+    return {accountRef,account,session,tenant};
+  }
+
+  async function validarVinculoComprovante(contaId,anexo,options,permission) {
+    const context=await autorizarComprovante(contaId,permission),paymentId=text(options.pagamentoId);
+    const recordRef=paymentId?db().collection(COLLECTIONS.pagamentos).doc(paymentId):context.accountRef;
+    if(paymentId.includes('/'))throw new Error('Pagamento inválido.');
+    const record=paymentId?await recordRef.get({source:'server'}):context.account;
+    if(!record.exists||record.data().clientePlataformaId!==context.tenant||paymentId&&record.data().contaId!==contaId)throw new Error('Pagamento não encontrado ou sem acesso.');
+    const field=paymentId?'comprovantes':'anexos',files=Array.isArray(record.data()[field])?record.data()[field]:[];
+    const folder=paymentId?`pagamentos/${paymentId}`:`contas/${contaId}`,prefix=`tenants/${context.tenant}/financeiro/${folder}/`;
+    if(!anexo?.path?.startsWith(prefix)||anexo.path.slice(prefix.length).includes('/')||anexo.path.includes('..')||!files.some(f=>f.path===anexo.path))throw new Error('Comprovante não pertence ao registro financeiro.');
+    return {...context,recordRef,record,field,files};
+  }
+
+  async function abrirComprovante(contaId,anexo,options={}) {
+    const context=await validarVinculoComprovante(contaId,anexo,options,'ler');
+    const bucket=storage()?.ref().bucket;if(!bucket)throw new Error('Storage indisponível.');
+    let origin='https://firebasestorage.googleapis.com';
+    if(global.__INTEGRO_EMULATOR__?.storage){const host=global.__INTEGRO_EMULATOR__.storage;if(!/^127\.0\.0\.1:\d+$/.test(host))throw new Error('Emulador inválido.');origin=`http://${host}`;}
+    const token=await global.firebase.auth().currentUser.getIdToken();
+    const response=await global.fetch(`${origin}/v0/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(anexo.path)}?alt=media`,{headers:{Authorization:`Firebase ${token}`},cache:'no-store'});
+    if(!response.ok)throw new Error(response.status===401||response.status===403?'Você não tem acesso a este comprovante. Solicite revisão das permissões.':'Não foi possível abrir o comprovante. Tente novamente.');
+    const blob=await response.blob();if(blob.size>=MAX_FILE_BYTES)throw new Error('Comprovante excede o tamanho permitido.');
+    if(context.session!==authUid()||context.tenant!==tenantId())throw new Error('A sessão mudou. Abra o comprovante novamente.');
+    return blob;
+  }
+
   async function anexarArquivo(contaId, file, options = {}) {
-    assertBase(); if(!file)throw new Error("Selecione um arquivo."); if(!storage())throw new Error("Firebase Storage indisponível."); if(Number(file.size||0)<=0||Number(file.size)>MAX_FILE_BYTES)throw new Error("O arquivo deve ter até 10 MB."); const mime=text(file.type); if(!(mime.startsWith("image/")||ALLOWED_FILE_TYPES.includes(mime)))throw new Error("Tipo de arquivo não permitido.");
-    const accountRef=db().collection(COLLECTIONS.contas).doc(contaId); const snap=await accountRef.get(); if(!snap.exists||snap.data().clientePlataformaId!==tenantId())throw new Error("Conta não encontrada."); const paymentId=text(options.pagamentoId); const folder=paymentId?`pagamentos/${paymentId}`:`contas/${contaId}`; const id=`arq_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; const path=`tenants/${tenantId()}/financeiro/${folder}/${id}_${slug(file.name)}`;
-    const ref=storage().ref(path); await ref.put(file,{contentType:mime,customMetadata:{tenantId:tenantId(),contaId,pagamentoId,authUid:authUid()}}); const url=await ref.getDownloadURL(); const meta={id,path,url,nome:text(file.name),mime,tamanho:Number(file.size||0),tipo:text(options.tipo||"DOCUMENTO"),enviadoPorAuthUid:authUid(),enviadoPorNome:actor().nome,enviadoEmTexto:nowIso()};
+    assertBase(); if(!file)throw new Error("Selecione um arquivo."); if(!storage())throw new Error("Firebase Storage indisponível."); if(Number(file.size||0)<=0||Number(file.size)>=MAX_FILE_BYTES)throw new Error("O arquivo deve ter até 10 MB."); const mime=text(file.type); if(!(mime.startsWith("image/")||ALLOWED_FILE_TYPES.includes(mime)))throw new Error("Tipo de arquivo não permitido.");
+    const {accountRef}=await autorizarComprovante(contaId,'anexar');const paymentId=text(options.pagamentoId);if(paymentId.includes('/'))throw new Error('Pagamento inválido.');
+    if(paymentId){const payment=await db().collection(COLLECTIONS.pagamentos).doc(paymentId).get({source:'server'});if(!payment.exists||payment.data().clientePlataformaId!==tenantId()||payment.data().contaId!==contaId)throw new Error('Pagamento não encontrado ou sem acesso.');}
+    const folder=paymentId?`pagamentos/${paymentId}`:`contas/${contaId}`; const id=`arq_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; const path=`tenants/${tenantId()}/financeiro/${folder}/${id}_${slug(file.name)}`;
+    const ref=storage().ref(path); await ref.put(file,{contentType:mime,customMetadata:{tenantId:tenantId(),contaId,pagamentoId:paymentId,authUid:authUid()}}); const meta={id,path,nome:text(file.name),mime,tamanho:Number(file.size||0),tipo:text(options.tipo||"DOCUMENTO"),enviadoPorAuthUid:authUid(),enviadoPorNome:actor().nome,enviadoEmTexto:nowIso()};
     if(paymentId){const pRef=db().collection(COLLECTIONS.pagamentos).doc(paymentId);const pSnap=await pRef.get();if(!pSnap.exists||pSnap.data().clientePlataformaId!==tenantId()||pSnap.data().contaId!==contaId)throw new Error("Pagamento não encontrado.");await pRef.update({comprovantes:fieldValue().arrayUnion(meta)});} else {await accountRef.update({anexos:fieldValue().arrayUnion(meta),atualizadoEmTexto:nowIso(),atualizadoEm:serverTimestamp()});}
-    await audit(paymentId?"ANEXAR_COMPROVANTE":"ANEXAR_DOCUMENTO","CONTA",contaId,null,meta,{pagamentoId}); return meta;
+    await audit(paymentId?"ANEXAR_COMPROVANTE":"ANEXAR_DOCUMENTO","CONTA",contaId,null,meta,{pagamentoId:paymentId}); return meta;
   }
 
   async function removerArquivo(contaId, anexo, options = {}) {
-    assertBase(); if(!anexo?.path)throw new Error("Anexo inválido."); const paymentId=text(options.pagamentoId); const refDoc=paymentId?db().collection(COLLECTIONS.pagamentos).doc(paymentId):db().collection(COLLECTIONS.contas).doc(contaId); const snap=await refDoc.get(); if(!snap.exists||snap.data().clientePlataformaId!==tenantId())throw new Error("Registro não encontrado."); const field=paymentId?"comprovantes":"anexos"; const listFiles=Array.isArray(snap.data()[field])?snap.data()[field]:[]; const filtered=listFiles.filter(item=>item.path!==anexo.path); await refDoc.update({[field]:filtered,atualizadoEmTexto:nowIso(),atualizadoEm:serverTimestamp()}); if(storage())await storage().ref(anexo.path).delete().catch(()=>{}); await audit("REMOVER_ANEXO","CONTA",contaId,anexo,null,{pagamentoId}); return true;
+    const {recordRef,field,files}=await validarVinculoComprovante(contaId,anexo,options,'excluir');const paymentId=text(options.pagamentoId);if(!storage())throw new Error('Storage indisponível.');await storage().ref(anexo.path).delete();await recordRef.update({[field]:files.filter(f=>f.path!==anexo.path),atualizadoEmTexto:nowIso(),atualizadoEm:serverTimestamp()});await audit('REMOVER_ANEXO','CONTA',contaId,anexo,null,{pagamentoId:paymentId});return true;
   }
 
   function resumoRelatorios(accounts = [], payments = []) {
+    accounts = accounts.filter(a => String(a.status || "").toUpperCase() !== "CANCELADA");
+    payments = payments.filter(p => p.estornado !== true && !["ESTORNADO", "CANCELADO"].includes(String(p.status || "").toUpperCase()));
     const active=accounts.filter(a=>!["PAGA","CANCELADA"].includes(a.statusCalculado||normalizeStatus(a))); const sum=(list,field="saldoCentavos")=>list.reduce((n,x)=>n+Number(x[field]??x.valorCentavos??0),0); const group=(list,key,field)=>list.reduce((map,item)=>{const k=text(item[key])||"Não informado";map[k]=(map[k]||0)+Number(item[field]??item.valorCentavos??0);return map;},{});
     return {totalAbertoCentavos:sum(active),totalPagoCentavos:sum(payments,"valorEfetivoCentavos"),porCategoria:group(accounts,"categoriaNome","valorCentavos"),porFornecedor:group(accounts,"fornecedorNome","valorCentavos"),porEmpresa:group(accounts,"empresaNome","valorCentavos"),porCentroCusto:group(accounts,"centroCustoNome","valorCentavos"),porFormaPagamento:group(payments,"formaPagamento","valorEfetivoCentavos"),aPagarCentavos:sum(active.filter(a=>text(a.tipoMovimento||"PAGAR").toUpperCase()==="PAGAR")),aReceberCentavos:sum(active.filter(a=>text(a.tipoMovimento).toUpperCase()==="RECEBER"))};
   }
@@ -395,6 +466,6 @@
   global.IntegroControleFinanceiro = Object.freeze({
     COLLECTIONS, MAX_FILE_BYTES, normalizeStatus, normalizeStatusV27, listarContas, listarPagamentos, listarFornecedores, listarCategorias, listarCentrosCusto, listarEmpresas, listarContasBancarias, listarRecorrencias, listarLembretes, listarAuditoria, listarSolicitacoes, listarOrcamentos, listarResponsaveis,
     criarConta, atualizarConta, registrarPagamento, cancelarConta, duplicarConta, salvarFornecedor, salvarCategoria, salvarCentroCusto, salvarEmpresa, salvarContaBancaria,
-    criarParcelamento, criarRecorrencia, gerarOcorrenciasRecorrencia, salvarLembretes, anexarArquivo, removerArquivo, resumoRelatorios, recurrenceNext, recurrenceDate, isBusinessDay, adjustBusinessDay, registrarExportacao, salvarOrcamento
+    criarParcelamento, criarRecorrencia, gerarOcorrenciasRecorrencia, salvarLembretes, acessoComprovantes, abrirComprovante, anexarArquivo, removerArquivo, resumoRelatorios, recurrenceNext, recurrenceDate, isBusinessDay, adjustBusinessDay, registrarExportacao, salvarOrcamento
   });
 })(window);

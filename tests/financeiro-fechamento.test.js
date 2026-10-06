@@ -50,7 +50,7 @@ test("listagem, calendário e pagamento têm interação granular", () => {
 test("dashboard e exportação incluem saúde financeira e contexto", () => {
   assert.match(ui, /Resultado previsto/);
   assert.match(ui, /Resultado realizado hoje/);
-  assert.match(ui, /Projeção em 30 dias/);
+  assert.match(ui, /Projeção financeira/);
   assert.match(ui, /Empresa: \$\{company\}/);
   assert.match(ui, /Filtros: tipo=/);
   assert.match(ui, /alertaPercentual1\|\|80/);

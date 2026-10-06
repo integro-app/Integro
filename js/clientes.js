@@ -69,6 +69,7 @@ function abrirNovoCliente() {
 }
 
 function abrirVerCliente(id) {
+  if (window.IntegroCliente360) return window.IntegroCliente360.open(id);
   const cliente = encontrarClientePorId(id);
 
   if (!cliente) {
@@ -612,6 +613,8 @@ function prepararTelaClientes() {
   const input = document.getElementById("buscaClientes");
 
   if (input) {
+    let buscaTimer;
+    input.addEventListener("input", () => { clearTimeout(buscaTimer); buscaTimer=setTimeout(renderClientes,180); });
     input.addEventListener("keydown", function(event) {
       if (event.key === "Enter") {
         event.preventDefault();

@@ -2582,6 +2582,7 @@
       saldoLedger,
       snapshot,
       divergencias,
+      comparativo:{caixaCentavos:saldoCaixaCentavos,ledgerCentavos:saldoLedger.saldoLedgerCentavos,pagamentosCentavos:snapshot.totalPagamentosCentavos||0,ingressosCentavos:snapshot.totalIngressosCentavos||0,gastosCentavos:snapshot.totalGastosCentavos||0,retiradasCentavos:snapshot.totalRetiradasCentavos||0,recolhimentosCentavos:snapshot.totalRecolhimentosCentavos||0,ajustesCentavos:snapshot.totalAjustesCentavos||0,vendasCentavos:snapshot.totalVendasCentavos||0,saldoInicialCentavos:snapshot.caixaInicialCentavos||0,saldoPorOrigensCentavos:snapshot.caixaFinalEsperadoCentavos,pagamentos:pagamentos.length,movimentacoes:solicitacoes.length},
       lancamentos
     };
   }

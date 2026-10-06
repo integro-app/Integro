@@ -4,14 +4,14 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require("@firebase/rules-unit-testing");
 const { doc, getDoc, setDoc, updateDoc, collection, query, where, orderBy, limit, getDocs } = require("firebase/firestore");
-const { ref, uploadBytes } = require("firebase/storage");
+const { ref, uploadBytes, getMetadata, deleteObject, listAll } = require("firebase/storage");
 
 const projectId = "integro-novo";
 let env;
 
 const profiles = {
   master: { uid: "cfe_master", tenant: "tenant_a", role: "master_local" },
-  finance: { uid: "cfe_finance", tenant: "tenant_a", role: "financeiro" },
+  finance: { uid: "cfe_finance", tenant: "tenant_a", role: "financeiro", permissoes:{controleFinanceiro:{anexar:true}} },
   vendor: { uid: "cfe_vendor", tenant: "tenant_a", role: "vendedor" },
   financeB: { uid: "cfe_finance_b", tenant: "tenant_b", role: "financeiro" },
   viewer: { uid: "cfe_viewer", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true } } },
@@ -19,7 +19,19 @@ const profiles = {
   editor: { uid: "cfe_editor", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true, editar: true, anexar: true } } },
   payer: { uid: "cfe_payer", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true, baixar: true, anexar: true } } },
   config: { uid: "cfe_config", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true, configurar: true } } },
-  blocked: { uid: "cfe_blocked", tenant: "tenant_a", role: "financeiro", status: "BLOQUEADO" }
+  blocked: { uid: "cfe_blocked", tenant: "tenant_a", role: "financeiro", status: "BLOQUEADO" },
+  manager: {uid:'cfe_manager',tenant:'tenant_a',role:'gerente',permissoes:{controleFinanceiro:{ver:true}}},
+  managerWithout: {uid:'cfe_manager_no',tenant:'tenant_a',role:'gerente'},
+  financialSupervisor: {uid:'cfe_sup_fin',tenant:'tenant_a',role:'supervisor_financeiro'},
+  supervisor: {uid:'cfe_sup',tenant:'tenant_a',role:'supervisor'},
+  supervisorExplicit: {uid:'cfe_sup_exp',tenant:'tenant_a',role:'supervisor',permissoes:{controleFinanceiro:{ver:true}}},
+  responsible: {uid:'cfe_resp',tenant:'tenant_a',role:'administrativo',responsavelFinanceiro:true},
+  auditor: {uid:'cfe_auditor',tenant:'tenant_a',role:'auditor'},
+  auditorAllowed: {uid:'cfe_auditor_yes',tenant:'tenant_a',role:'auditor',permissoes:{controleFinanceiro:{ver:true,anexar:true,editar:true}}},
+  global: {uid:'cfe_global',tenant:'tenant_a',role:'master_global',permissoes:{controleFinanceiro:{ver:true,anexar:true,editar:true}}},
+  financeReader: {uid:'cfe_fin_reader',tenant:'tenant_a',role:'financeiro'},
+  captador: {uid:'cfe_captador',tenant:'tenant_a',role:'captador',permissoes:{controleFinanceiro:{ver:true,anexar:true}}},
+  vendorExplicit: {uid:'cfe_vendor_exp',tenant:'tenant_a',role:'vendedor',permissoes:{controleFinanceiro:{ver:true,anexar:true}}}
 };
 
 function userData(p) {
@@ -30,6 +42,7 @@ function userData(p) {
     cargoChave: p.role,
     status: p.status || "ATIVO",
     acessoLiberado: true,
+    responsavelFinanceiro:p.responsavelFinanceiro===true,
     permissoes: p.permissoes || {}
   };
 }
@@ -111,6 +124,7 @@ async function seed() {
     await setDoc(doc(db, "financeiro_contas", "conta_b"), accountData(profiles.financeB, { clientePlataformaId: "tenant_b", criadoPorAuthUid: profiles.financeB.uid }));
     await setDoc(doc(db, "financeiro_pagamentos", "pag_backend"), paymentData(profiles.payer));
     await setDoc(doc(db, "financeiro_fornecedores", "fornecedor_1"), { clientePlataformaId: "tenant_a", nome: "Imobiliária", atualizadoEmTexto: "ts" });
+    await uploadBytes(ref(context.storage(),'tenants/tenant_a/financeiro/contas/conta_a/fixture.pdf'),new Uint8Array([37,80,68,70]),{contentType:'application/pdf'});
   });
 }
 
@@ -216,7 +230,7 @@ test("usuário bloqueado não acessa controle financeiro", async () => {
 
 test("Storage financeiro aceita PDF do financeiro e bloqueia vendedor e outro tenant", async () => {
   const bytes = new Uint8Array([37, 80, 68, 70, 45, 49, 46, 55]);
-  await assertSucceeds(uploadBytes(ref(ctx(profiles.finance).storage(), "tenants/tenant_a/financeiro/contas/conta_a/boleto.pdf"), bytes, { contentType: "application/pdf" }));
+  await assertSucceeds(uploadBytes(ref(ctx(profiles.finance).storage(), "tenants/tenant_a/financeiro/contas/conta_a/boleto.pdf"), bytes, { contentType: "application/pdf",customMetadata:{tenantId:'tenant_a',contaId:'conta_a',authUid:profiles.finance.uid} }));
   await assertFails(uploadBytes(ref(ctx(profiles.vendor).storage(), "tenants/tenant_a/financeiro/contas/conta_a/vendor.pdf"), bytes, { contentType: "application/pdf" }));
   await assertFails(uploadBytes(ref(ctx(profiles.financeB).storage(), "tenants/tenant_a/financeiro/contas/conta_a/outro-tenant.pdf"), bytes, { contentType: "application/pdf" }));
 });
@@ -228,4 +242,35 @@ test("Storage financeiro rejeita tipo de arquivo não permitido", async () => {
 test("master local mantém acesso empresarial sem depender de caixas", async () => {
   const snap = await assertSucceeds(getDoc(doc(ctx(profiles.master).firestore(), "financeiro_contas", "conta_a")));
   assert.equal(snap.exists(), true);
+});
+
+const fixturePath='tenants/tenant_a/financeiro/contas/conta_a/fixture.pdf';
+for(const [name,allowed]of [['master',true],['finance',true],['manager',true],['managerWithout',false],['financialSupervisor',true],['supervisor',false],['supervisorExplicit',true],['responsible',true],['vendor',false],['vendorExplicit',false],['captador',false],['auditor',false],['auditorAllowed',true],['financeB',false],['blocked',false],['global',false]]){
+  test(`Storage comprovante: leitura ${name} ${allowed?'permitida':'negada'}`,async()=>{await (allowed?assertSucceeds:assertFails)(getMetadata(ref(ctx(profiles[name]).storage(),fixturePath)));});
+}
+const upload=(profile,path='tenants/tenant_a/financeiro/contas/conta_a/new.pdf',extra={},size=4)=>uploadBytes(ref(ctx(profile).storage(),path),new Uint8Array(size),{contentType:'application/pdf',customMetadata:{tenantId:'tenant_a',contaId:'conta_a',authUid:profile.uid},...extra});
+test('Storage comprovante: editor com permissão explícita pode upload',async()=>assertSucceeds(upload(profiles.editor)));
+for(const name of ['master','financeReader','manager','auditorAllowed','global'])test(`Storage comprovante: upload ${name} sem autorização de escrita negado`,async()=>assertFails(upload(profiles[name])));
+test('Storage comprovante: exclusão master local permitida',async()=>assertSucceeds(deleteObject(ref(ctx(profiles.master).storage(),fixturePath))));
+test('Storage comprovante: exclusão financeiro autorizado permitida',async()=>assertSucceeds(deleteObject(ref(ctx(profiles.finance).storage(),fixturePath))));
+for(const name of ['viewer','manager','auditorAllowed','global'])test(`Storage comprovante: exclusão ${name} negada`,async()=>assertFails(deleteObject(ref(ctx(profiles[name]).storage(),fixturePath))));
+test('Storage comprovante: update de objeto existente permanece negado',async()=>assertFails(upload(profiles.finance,fixturePath)));
+test('Storage comprovante: arquivo maior que 10 MB negado',async()=>assertFails(upload(profiles.finance,undefined,{},10*1024*1024+1)));
+test('Storage comprovante: MIME proibido negado mesmo com metadata válida',async()=>assertFails(upload(profiles.finance,undefined,{contentType:'application/x-msdownload'})));
+test('Storage comprovante: metadata de outro tenant negada',async()=>assertFails(upload(profiles.finance,undefined,{customMetadata:{tenantId:'tenant_b',contaId:'conta_a',authUid:profiles.finance.uid}})));
+test('Storage comprovante: upload sem metadata negado',async()=>assertFails(upload(profiles.finance,undefined,{customMetadata:{}})));
+test('Storage comprovante: conta inexistente bloqueia leitura e upload',async()=>{await env.withSecurityRulesDisabled(async c=>uploadBytes(ref(c.storage(),'tenants/tenant_a/financeiro/contas/missing/doc.pdf'),new Uint8Array([1]),{contentType:'application/pdf'}));await assertFails(getMetadata(ref(ctx(profiles.finance).storage(),'tenants/tenant_a/financeiro/contas/missing/doc.pdf')));await assertFails(upload(profiles.finance,'tenants/tenant_a/financeiro/contas/missing/new.pdf'));});
+test('Storage comprovante: conhecer path de conta de outro tenant não concede leitura',async()=>{await env.withSecurityRulesDisabled(async c=>uploadBytes(ref(c.storage(),'tenants/tenant_a/financeiro/contas/conta_b/doc.pdf'),new Uint8Array([1]),{contentType:'application/pdf'}));await assertFails(getMetadata(ref(ctx(profiles.finance).storage(),'tenants/tenant_a/financeiro/contas/conta_b/doc.pdf')));});
+test('Storage comprovante: documento Firestore associado respeita matriz de leitura',async()=>{for(const name of ['master','finance','manager','financialSupervisor','responsible','auditorAllowed'])await assertSucceeds(getDoc(doc(ctx(profiles[name]).firestore(),'financeiro_contas','conta_a')));for(const name of ['supervisor','vendor','auditor','financeB'])await assertFails(getDoc(doc(ctx(profiles[name]).firestore(),'financeiro_contas','conta_a')));});
+test('Storage comprovante: pagamento exige vínculo a conta do tenant',async()=>{await assertSucceeds(upload(profiles.finance,'tenants/tenant_a/financeiro/pagamentos/pag_backend/new.pdf',{customMetadata:{tenantId:'tenant_a',contaId:'conta_a',pagamentoId:'pag_backend',authUid:profiles.finance.uid}}));await assertFails(upload(profiles.finance,'tenants/tenant_a/financeiro/pagamentos/missing/new.pdf'));});
+test('Storage comprovante: listagem e caminho financeiro arbitrário negados',async()=>{await assertFails(listAll(ref(ctx(profiles.master).storage(),'tenants/tenant_a/financeiro/contas/conta_a')));await assertFails(upload(profiles.finance,'tenants/tenant_a/financeiro/avulso/doc.pdf'));});
+test('Storage comprovante: não autenticado e usuário sem tenant negados',async()=>{await assertFails(getMetadata(ref(env.unauthenticatedContext().storage(),fixturePath)));await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),'usuarios','cfe_no_tenant'),{authUid:'cfe_no_tenant',tipoUsuario:'financeiro',acessoLiberado:true,status:'ATIVO'}));await assertFails(getMetadata(ref(env.authenticatedContext('cfe_no_tenant').storage(),fixturePath)));});
+test('Storage comprovante: download de bytes exige sessão e nega após bloqueio',async()=>{
+  const {createMockUserToken}=require('@firebase/util'),host=process.env.FIREBASE_STORAGE_EMULATOR_HOST||'127.0.0.1:9199';assert.match(host,/^127\.0\.0\.1:\d+$/);
+  const bucket=ref(ctx(profiles.master).storage(),fixturePath).bucket,url=`http://${host}/v0/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(fixturePath)}?alt=media`;
+  const headers={Authorization:`Firebase ${createMockUserToken({sub:profiles.master.uid},projectId)}`};
+  const response=await fetch(url,{headers});assert.equal(response.status,200);assert.equal((await response.arrayBuffer()).byteLength,4);
+  assert.equal((await fetch(url)).status,403);
+  await env.withSecurityRulesDisabled(async c=>updateDoc(doc(c.firestore(),'usuarios',profiles.master.uid),{status:'BLOQUEADO'}));
+  assert.equal((await fetch(url,{headers})).status,403);
 });

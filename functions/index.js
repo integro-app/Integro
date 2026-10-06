@@ -152,6 +152,10 @@ exports.estornarPagamentoFinanceiroEmpresarialV27 = functions.region("southameri
 
 const { criarProcessadorLembretesFinanceiros } = require("./enterprise-finance-reminders");
 exports.processarLembretesFinanceirosEmpresariais = criarProcessadorLembretesFinanceiros({ functions, admin, db });
+const { criarRecorrenciasFinanceiras } = require("./enterprise-finance-recurrences");
+const recorrenciasFinanceiras = criarRecorrenciasFinanceiras({ db, functions });
+exports.gerarOcorrenciasFinanceirasV27 = functions.region("southamerica-east1").https.onCall(recorrenciasFinanceiras.callable);
+exports.processarRecorrenciasFinanceirasEmpresariais = functions.region("southamerica-east1").pubsub.schedule("every day 01:15").timeZone("America/Sao_Paulo").onRun(recorrenciasFinanceiras.scheduled);
 
 const { criarAdministracaoV27 } = require("./v27-admin");
 const adminV27 = criarAdministracaoV27({ admin, functions, db });

@@ -121,6 +121,47 @@ async function main() {
       resultado.perfis.push(resumo);
     }
 
+    if (process.env.INTEGRO_HOMOLOG_CONSTRUCAO === "1") {
+      const profile = perfisExecutados[0][0];
+      if (["master_local","gerente","supervisor","vendedor"].includes(profile)) {
+        await esperar("window.IntegroCliente360 && window.State?.getClientes?.()?.length > 0",30000);
+        await avaliar("window.trocarTela?.('clientes'); true");
+        await sleep(300);
+        const opened = await avaliar("IntegroCliente360.open(State.getClientes().find(c=>ClientesService.clienteNoEscopo(State.getUsuario(),c,'ler')))");
+        if (!opened) throw new Error(profile+": Cliente 360 não abriu");
+        await esperar("document.querySelectorAll('[data-c360-tab]').length===6");
+        await avaliar("IntegroCliente360.openTab('historico')");
+        await esperar("!document.getElementById('c360Panel')?.hasAttribute('aria-busy')");
+        if (await avaliar("!!document.querySelector('#c360Panel .cliente360-loading')")) throw new Error(profile+": histórico não atualizou "+await avaliar("document.getElementById('c360Panel').innerText"));
+        for (const [width,height] of viewports) {
+          await cdp.enviar("Emulation.setDeviceMetricsOverride",{width,height,deviceScaleFactor:1,mobile:width<600});
+          await sleep(80);
+          const check=await avaliar("(()=>{const r=document.querySelector('.cliente360').getBoundingClientRect();return {left:r.left,right:r.right,width:innerWidth,scroll:document.documentElement.scrollWidth}})()");
+          if(check.right>check.width+2||check.left< -2||check.scroll>check.width+2)throw new Error(profile+": Cliente 360 fora do viewport "+JSON.stringify(check));
+          resultado.responsividade.push({component:"cliente360",profile,width,height,passed:true});
+        }
+        await avaliar("IntegroModuloUtils.closeDrawer(); window.trocarTela?.('dashboard'); true");
+      }
+      if (["master_local","gerente","supervisor"].includes(profile)) {
+        await esperar("document.querySelectorAll('#gestaoFinal .gestao-final-kpis>button').length===8");
+        await avaliar("IntegroCentralGestao.openView('approvals'); IntegroCentralGestao.loadApprovals(true)");
+        await esperar("!IntegroCentralGestao.state.loading");
+        if(await avaliar("!!IntegroCentralGestao.state.errors?.length"))throw new Error(profile+": consulta de aprovações falhou "+await avaliar("JSON.stringify(IntegroCentralGestao.state.errors)"));
+      }
+      if (["master_local","financeiro"].includes(profile)) {
+        await esperar("window.IntegroControleFinanceiroUI");
+        await avaliar("IntegroControleFinanceiroUI.openEnterprise(); true");
+        await esperar("document.querySelectorAll('[data-cfe-summary]>.unified-kpi').length===8");
+        await avaliar("IntegroControleFinanceiroUI.openTab('relatorios')");
+        await esperar("document.querySelector('.cfe-report-filters')");
+        await avaliar("IntegroControleFinanceiroUI.setReportPeriod('MES'); true");
+        const expectedDate=await avaliar("IntegroControleFinanceiroUI.state.filters.start");
+        await avaliar("document.getElementById('cfeReportInicio').value='2026-01-01'; IntegroControleFinanceiroUI.readFilters(); true");
+        if(await avaliar("IntegroControleFinanceiroUI.state.filters.start")!=="2026-01-01")throw new Error("Filtro do relatório foi sobrescrito por aba oculta");
+        resultado.responsividade.push({component:"financeiro-relatorio",profile,passed:true,previousStart:expectedDate});
+      }
+    }
+
     if (perfisExecutados.some(item => item[0] === "vendedor")) for (const [width, height] of viewports) {
       await cdp.enviar("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: 1, mobile: width <= 980 });
       await sleep(250);

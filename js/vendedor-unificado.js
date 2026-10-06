@@ -580,6 +580,9 @@
     ] };
   }
 
+  let clienteBuscaTimer;
+  function agendarBuscaClienteVendedor(){clearTimeout(clienteBuscaTimer);clienteBuscaTimer=setTimeout(executarPesquisaClientesVendedor,180);}
+  window.agendarBuscaClienteVendedor=agendarBuscaClienteVendedor;
   function executarPesquisaClientesVendedor() {
     clientesPesquisaExecutadaPorAba[clientesAbaAtual] = true;
     clientesPesquisaExecutada = true;
@@ -705,7 +708,7 @@
           <button type="button" class="${clientesAbaAtual === "carteira" ? "active" : ""}" onclick="trocarAbaClientesVendedor('carteira')"><span class="material-symbols-rounded">group</span>Minha carteira</button>
         </div>
         <div class="vendedor-operacao-barra vendedor-clientes-barra">
-          <label class="vendedor-operacao-busca" for="buscaClientesVendedorInput"><span class="material-symbols-rounded">search</span><input id="buscaClientesVendedorInput" type="search" placeholder="Buscar por nome, documento ou telefone" value="${esc(buscaAnterior)}" onkeydown="if(event.key==='Enter'){event.preventDefault();executarPesquisaClientesVendedor()}"></label>
+          <label class="vendedor-operacao-busca" for="buscaClientesVendedorInput"><span class="material-symbols-rounded">search</span><input id="buscaClientesVendedorInput" type="search" oninput="agendarBuscaClienteVendedor()" placeholder="Buscar por nome, documento ou telefone" value="${esc(buscaAnterior)}" onkeydown="if(event.key==='Enter'){event.preventDefault();executarPesquisaClientesVendedor()}"></label>
           <button class="ghost-btn vendedor-filtro-btn" type="button" onclick="abrirFiltrosClientesVendedor()"><span class="material-symbols-rounded">tune</span>Filtros</button>
           <button class="primary-btn vendedor-buscar-btn" type="button" onclick="executarPesquisaClientesVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
         </div>
@@ -1180,8 +1183,8 @@
         </div>
         <div class="vendedor-cliente-drawer-observacao"><span>Observação cadastrada</span><p>${esc(cliente.observacao || cliente.observacoes || "Nenhuma observação registrada.")}</p></div>
       </section>
-      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="vendas"><div class="vendedor-cliente-historico">${historicoVendasClienteHtml(clienteId)}</div></section>
-      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="pagamentos"><div class="vendedor-cliente-historico">${historicoPagamentosClienteHtml(clienteId)}</div></section>
+      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="vendas"><div class="vendedor-cliente-historico"></div></section>
+      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="pagamentos"><div class="vendedor-cliente-historico"></div></section>
       <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="historico"><div id="clienteDrawerHistorico" class="vendedor-cliente-historico"><div class="vendedor-historico-loading"><span class="material-symbols-rounded">history</span>Carregando histórico...</div></div></section>
       <div class="vendedor-cliente-drawer-actions">
         <button class="ghost-btn" type="button" ${whatsapp ? "" : "disabled"} onclick="abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button>
@@ -1194,14 +1197,17 @@
   async function abrirDrawerCliente(clienteId) {
     const cliente = clientePorId(clienteId);
     if (!cliente) return UIHelpers?.alerta?.("Cliente não encontrado.");
+    if (!clienteEmFluxoLead(cliente) && window.IntegroCliente360) return window.IntegroCliente360.open(clienteId);
     clienteDrawerAbertoId = clienteId;
     if (typeof window.abrirDrawer !== "function") return abrirFormularioCliente(clienteId);
     window.abrirDrawer(clienteEmFluxoLead(cliente) ? "Atendimento do lead" : "Cliente", cliente.nomeCompleto || cliente.nome || cliente.apelido || "", conteudoDrawerCliente(cliente));
     atualizarCamposStatusLeadVendedor("clienteDrawerStatusLead");
-    carregarHistoricoDrawerCliente(clienteId);
+    // Histórico é consultado somente quando a aba é aberta.
   }
 
   function abrirAbaDrawerCliente(aba = "resumo") {
+    if (aba === "historico") carregarHistoricoDrawerCliente(clienteDrawerAbertoId);
+    if (aba === "vendas" || aba === "pagamentos") { const panel = document.querySelector(`[data-cliente-drawer-panel="${aba}"] .vendedor-cliente-historico`); if (panel) panel.innerHTML = aba === "vendas" ? historicoVendasClienteHtml(clienteDrawerAbertoId) : historicoPagamentosClienteHtml(clienteDrawerAbertoId); }
     document.querySelectorAll("[data-cliente-drawer-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.clienteDrawerTab === aba));
     document.querySelectorAll("[data-cliente-drawer-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.clienteDrawerPanel === aba));
   }
