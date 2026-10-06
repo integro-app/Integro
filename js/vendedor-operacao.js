@@ -422,6 +422,7 @@
       .reduce((soma, item) => soma + Math.round(valorPagamento(item) * 100), 0);
     return {
       recebidoHoje: recebidoCentavos / 100,
+      previstoHoje: carteira.filter(item => item.comCobrancaHoje).reduce((total,item) => total + Math.round(Number(item.valorParcela || 0)*100),0)/100,
       pendentes: pendentes.length,
       atrasados: pendentes.filter(item => item.situacao === "ATRASADO").length,
       visitados: carteira.filter(item => item.pagoHoje || item.naoPagoHoje).length,

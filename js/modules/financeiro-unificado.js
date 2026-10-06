@@ -748,7 +748,13 @@
 
   function comparisonHtml(c={}) { return `<div class="unified-panel"><h3>Caixa × ledger × pagamentos × movimentações</h3><div class="unified-kpi-grid">${[["Saldo do caixa",c.caixaCentavos],["Saldo do ledger",c.ledgerCentavos],["Saldo pelas origens",c.saldoPorOrigensCentavos],["Pagamentos confirmados",c.pagamentosCentavos]].map(([label,value])=>`<div class="unified-kpi"><small>${label}</small><strong>${U().moneyCents(value)}</strong></div>`).join("")}</div><div class="unified-details">${[["Saldo inicial",c.saldoInicialCentavos],["Vendas",c.vendasCentavos],["Ingressos",c.ingressosCentavos],["Gastos",c.gastosCentavos],["Retiradas",c.retiradasCentavos],["Recolhimentos",c.recolhimentosCentavos],["Ajustes",c.ajustesCentavos]].map(([label,value])=>`<div><strong>${label}</strong><span>${U().moneyCents(value)}</span></div>`).join("")}</div><p>Consulta somente leitura. Divergências precisam de tratamento explícito.</p></div>`; }
   async function openBox(id) {
-    const box = state.boxes.find(item => String(item.id) === String(id)); if (!box) return;
+    let box = state.boxes.find(item => String(item.id) === String(id));
+    if (!box) {
+      try { const snap=await U().db().collection('caixas').doc(String(id)).get({source:'server'});
+        if(!snap.exists||String(snap.data().clientePlataformaId)!==String(U().tenant()))throw new Error('Caixa não encontrado ou fora do seu acesso.');
+        box={id:snap.id,...snap.data()};
+      } catch(error) { U().notify(global.UIHelpers?.mensagemErro?.(error)||'Não foi possível abrir este caixa.','err');return false; }
+    }
     U().openDrawer("Diagnóstico do caixa", box.vendedorNome || box.id, `<div class="unified-empty"><div><span class="material-symbols-rounded">sync</span><strong>Reconciliando caixa e ledger...</strong></div></div>`);
     try {
       const result = await service().reconciliarLedgerCaixaSomenteLeitura(id, { db: U().db(), clientePlataformaId: U().tenant() });

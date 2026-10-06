@@ -138,6 +138,7 @@ const UIHelpers = {
   // NOTIFICACAO
   // ===============================
   notificar(mensagem, tipo = "info") {
+    tipo = ({err:'erro',ok:'sucesso',alerta:'aviso',warning:'aviso',error:'erro',success:'sucesso',processando:'info',offline:'aviso',sincronizando:'info'})[tipo] || tipo;
     const texto = String(mensagem || "").trim();
     if (!texto) return;
 
@@ -159,6 +160,7 @@ const UIHelpers = {
 
     const toast = document.createElement("div");
     toast.setAttribute("role", "status");
+    toast.setAttribute("aria-live", tipo === 'erro' ? 'assertive' : 'polite');
     toast.style.cssText = [
       "padding:12px 14px",
       "border-radius:10px",
@@ -182,8 +184,25 @@ const UIHelpers = {
     }, tipo === "erro" || tipo === "error" ? 7000 : 4500);
   },
 
-  alerta(mensagem) {
-    this.notificar(mensagem, "info");
+  alerta(mensagem, tipo = "info") {
+    this.notificar(mensagem, tipo);
+  },
+
+  mensagemErro(error, fallback = "Não foi possível concluir. Tente novamente.") {
+    const code = String(error?.code || ''), message = String(error?.message || error || '');
+    if (/unauthenticated|auth\/.*expired|auth\/user-token-expired/i.test(code + message)) return 'Sua sessão expirou. Entre novamente para continuar.';
+    if (/permission-denied|unauthorized|403/i.test(code + message)) return 'Você não possui acesso a esta ação ou este registro.';
+    if (/storage\/object-not-found|not-found|404/i.test(code)) return 'Este registro ou arquivo não está mais disponível.';
+    if (/unavailable|network|offline|fetch|deadline-exceeded/i.test(code + message)) return 'Não foi possível conectar. Confira a internet e tente novamente; consulte o resultado antes de repetir um pagamento.';
+    if (/internal|FirebaseError|https:\/\/|stack|UNAVAILABLE/i.test(code + message)) return fallback;
+    return message || fallback;
+  },
+
+  debounce(task, delay = 220) {
+    let timer;
+    const run = function (...args) { window.clearTimeout(timer); timer = window.setTimeout(() => task.apply(this, args), delay); };
+    run.cancel = () => window.clearTimeout(timer);
+    return run;
   },
 
   resolverAlvo(alvo) {
@@ -256,3 +275,17 @@ function notificarIntegro(mensagem, tipo = "info") {
 
 window.UIHelpers = UIHelpers;
 window.notificarIntegro = notificarIntegro;
+
+// O aviso descreve a conexão, sem presumir que uma operação foi confirmada.
+function atualizarConexaoIntegro() {
+  const offline = window.navigator?.onLine === false;
+  let badge = document.getElementById('integroConnectionStatus');
+  if (offline && !badge) {
+    badge = document.createElement('div');badge.id='integroConnectionStatus';badge.setAttribute('role','status');
+    badge.textContent='Sem conexão. Ações pendentes ainda não estão confirmadas.';document.body?.appendChild(badge);
+  }
+  if (!offline && badge) { badge.remove();UIHelpers.notificar('Conexão restabelecida. Confira as ações pendentes antes de repetir.','info'); }
+}
+window.addEventListener?.('offline', atualizarConexaoIntegro);
+window.addEventListener?.('online', atualizarConexaoIntegro);
+document.addEventListener?.('DOMContentLoaded', atualizarConexaoIntegro);

@@ -106,14 +106,14 @@
       if(!current(session)||session.tab!==tab)return;
       const m={...model(session.client,session.data,U().today()),...(session.summary||{})};global.document.getElementById('c360Kpis').innerHTML=kpis(m);global.document.getElementById('c360Status').textContent=m.status;
       const collect=global.document.querySelector('[data-c360-action="collect"]');if(collect)collect.hidden=m.debt<=0;
-      if(tab==='resumo')panel.innerHTML=`<p>${esc(session.client.observacao||session.client.observacoes||'Nenhuma observação cadastrada.')}</p><p>Cadastro: ${esc(date(session.client.criadoEmTexto||session.client.criadoEm||session.client.dataCadastro).slice(0,10)||'Não informado')}</p><small>Resumo confirmado pelo backend quando disponível. As demais abas carregam somente ao abrir.</small>`;
+      if(tab==='resumo')panel.innerHTML=`<p>${esc(session.client.observacao||session.client.observacoes||'Nenhuma observação cadastrada.')}</p><p>Cadastro: ${esc(date(session.client.criadoEmTexto||session.client.criadoEm||session.client.dataCadastro).slice(0,10)||'Não informado')}</p><small>Consulte os detalhes nas abas acima.</small>`;
       else if(tab==='historico')panel.innerHTML=`<ol class="cliente360-timeline">${timeline(session.client,m,session.history).map(e=>`<li><strong>${esc(e.type)}</strong> <small>${esc(e.at.slice(0,19))}</small><p>${esc(e.description||'')}${e.amount!=null?' · '+U().moneyCents(e.amount):''}</p></li>`).join('')}</ol>`;
       else panel.innerHTML=records({vendas:m.sales,parcelas:m.installments,pagamentos:m.paymentHistory,visitas:m.visits}[tab],tab);
       panel.querySelectorAll('[data-c360-sale]').forEach(b=>b.addEventListener('click',async()=>{await openTab('parcelas');if(current(session)&&session.tab==='parcelas'){const saleId=b.dataset.c360Sale;panel.innerHTML=records(model(session.client,session.data,U().today()).installments.filter(p=>text(p.vendaId)===saleId),'parcelas');}}));
     };
     render();if(session.loaded.has(tab))return;
     panel.setAttribute('aria-busy','true');const loading=global.document.createElement('p');loading.className='cliente360-loading';loading.textContent='Atualizando esta aba…';panel.prepend(loading);
-    try{await loadTab(session,tab);render();}catch(error){if(current(session)&&session.tab===tab){loading.textContent=error.message||'Não foi possível atualizar esta aba.';const retry=global.document.createElement('button');retry.className='ghost-btn';retry.textContent='Tentar novamente';retry.addEventListener('click',()=>openTab(tab));loading.append(retry);}}finally{if(current(session)&&session.tab===tab)panel.removeAttribute('aria-busy');}
+    try{await loadTab(session,tab);render();}catch(error){if(current(session)&&session.tab===tab){loading.textContent=global.UIHelpers?.mensagemErro?.(error)||'Não foi possível atualizar esta aba. Tente novamente.';const retry=global.document.createElement('button');retry.className='ghost-btn';retry.textContent='Tentar novamente';retry.addEventListener('click',()=>openTab(tab));loading.append(retry);}}finally{if(current(session)&&session.tab===tab)panel.removeAttribute('aria-busy');}
   }
   function action(kind){
     if(!active||!current(active))return;const {client,options}=active,id=client.id,role=U().access().perfil;

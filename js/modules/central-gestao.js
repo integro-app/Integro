@@ -26,7 +26,7 @@
     });
     return {clients,critical,sales,payments,installments,visits,boxes,performance,openBoxes,divergent,received:received(payments.filter(p=>day(p)===today)),expected:expected(due),overdue,salesToday:sales.filter(v=>day(v)===today).length,activeSellers:sellers.length,requests:valid(data.requests).filter(pending)};
   }
-  const state={team:'',seller:'',view:'overview',approvals:[],loading:null,loadedAt:0,context:'',locks:new Set()};
+  const state={team:'',seller:'',view:'overview',approvals:[],loading:null,loadedAt:0,context:'',locks:new Set(),focusId:''};
   function financeApprover(){return ['master_local','gerente','supervisor_financeiro'].includes(U()?.access().perfil)||U()?.user().responsavelFinanceiro===true||U()?.user().permissoes?.controleFinanceiro?.aprovar===true;}
   function permitted(){return ['master_local','gerente','supervisor'].includes(U()?.access().perfil)||financeApprover();}
   function context(){return [U()?.tenant(),U()?.access().authUid,U()?.access().perfil,(U()?.access().equipeIds||[]).join(',')].join('|');}
@@ -66,6 +66,7 @@
     host.querySelectorAll('[data-gestao-box]').forEach(b=>b.addEventListener('click',async()=>{const id=b.dataset.gestaoBox;if(global.IntegroFinanceiroUnificado){await global.IntegroFinanceiroUnificado.load();global.IntegroFinanceiroUnificado.openBox(id);}else global.abrirDetalheCaixaDrawer?.(id);}));
   }
   function openView(view){state.view=view;renderContent();if(view==='approvals')void loadApprovals();global.document.getElementById('gestaoContent')?.scrollIntoView({block:'nearest',behavior:'smooth'});}
+  async function openRequest(id){state.focusId=text(id);state.view='approvals';await loadApprovals(true);renderContent();const host=global.document.getElementById('gestaoContent'),index=state.approvals.findIndex(r=>text(r.id)===state.focusId);if(index<0){U().notify('Esta solicitação já foi decidida ou está fora do seu acesso.','aviso');return false;}const card=host?.querySelectorAll('.gestao-approval')[index];if(card){card.tabIndex=-1;card.classList.add('gestao-approval-highlight');card.focus();card.scrollIntoView({block:'nearest'});}return true;}
   async function loadApprovals(force=false){
     if(!permitted())return;if(state.loading)return state.loading;if(!force&&Date.now()-state.loadedAt<30000)return;
     const ctx=context();state.loading=(async()=>{
@@ -75,7 +76,7 @@
       const finance=canFinance&&global.IntegroControleFinanceiro?global.IntegroControleFinanceiro.listarSolicitacoes():Promise.resolve([]);
       const results=await Promise.allSettled([operations,transfers,finance]);if(ctx!==context())return;
       state.approvals=results.flatMap((r,i)=>r.status==='fulfilled'?r.value.filter(pending).map(item=>({...item,source:['operational','transfer','enterprise'][i]})):[]);
-      state.errors=results.filter(r=>r.status==='rejected').map(r=>r.reason?.message||'Consulta indisponível');state.loadedAt=Date.now();
+      state.errors=results.filter(r=>r.status==='rejected').map(r=>global.UIHelpers?.mensagemErro?.(r.reason)||'Consulta indisponível. Tente novamente.');state.loadedAt=Date.now();
     })();try{await state.loading;}finally{if(ctx===context()){state.loading=null;updatePendingCount();if(state.view==='approvals')renderContent();}}
   }
   function updatePendingCount(){const host=global.document.getElementById('gestaoFinal');if(!host)return;const count=state.loadedAt?state.approvals.length:model().requests.length;const button=host.querySelector('[data-gestao-view="approvals"]');if(button){button.textContent=`Central de aprovações · ${count} pendente(s)`;button.dataset.pendingCount=String(count);}host.querySelectorAll('.gestao-attention [data-gestao-view="approvals"]').forEach(b=>{b.textContent=`${count} decisão(ões) pendente(s)`;b.hidden=count===0;});}
@@ -93,27 +94,27 @@
   async function decide(r,decision){
     if(!canDecide(r)||state.locks.has(r.source+':'+r.id))return;const reason=text(global.document.getElementById('gestaoDecisionReason')?.value);
     if(decision==='REJEITAR'&&reason.length<3){U().notify('Informe o motivo da rejeição.','err');return;}
-    const key=r.source+':'+r.id,ctx=context(),button=global.document.getElementById('gestaoConfirmDecision'),status=global.document.getElementById('gestaoDecisionStatus');state.locks.add(key);button.dataset.operationState='QUEUED';button.disabled=true;button.dataset.operationState='PROCESSING';status.textContent='PROCESSING · registrando decisão…';
+    const key=r.source+':'+r.id,ctx=context(),button=global.document.getElementById('gestaoConfirmDecision'),status=global.document.getElementById('gestaoDecisionStatus');state.locks.add(key);button.dataset.operationState='QUEUED';button.disabled=true;button.dataset.operationState='PROCESSING';status.textContent='Registrando decisão…';
     try{
       const callable=r.source==='transfer'?'decidirTransferenciaClienteV27':r.source==='enterprise'?'decidirSolicitacaoFinanceiraV27':upper(r.tipo)==='CADASTRO_DUPLICADO'?'decidirCadastroDuplicadoV27':'decidirVendaComSaldoV27';
       const result=(await global.firebase.app().functions('southamerica-east1').httpsCallable(callable)({solicitacaoId:r.id,decisao:decision,motivo:reason})).data;
-      if(ctx!==context())return;button.dataset.operationState='CONFIRMED';status.textContent='CONFIRMED · decisão registrada';state.approvals=state.approvals.filter(item=>item.source+':'+item.id!==key);state.loadedAt=Date.now();
+      if(ctx!==context())return;button.dataset.operationState='CONFIRMED';status.textContent='Decisão registrada';state.approvals=state.approvals.filter(item=>item.source+':'+item.id!==key);state.loadedAt=Date.now();
       if(r.source==='enterprise')await global.IntegroControleFinanceiroUI?.refreshAccount?.(r.contaId).catch(e=>U().notify('Decisão confirmada; consulta pendente: '+e.message,'aviso'));
       else if(decision==='APROVAR'&&(r.itemId||result?.clienteId||r.clienteOperacionalId||r.clienteId))await C().refresh(r.itemId||result?.clienteId||r.clienteOperacionalId||r.clienteId).catch(e=>U().notify('Decisão confirmada; consulta pendente: '+e.message,'aviso'));
       const S=global.State;S?.setSolicitacoes?.((S.getSolicitacoes?.()||[]).map(item=>item.id===r.id?{...item,status:decision==='APROVAR'?'APROVADA':'REJEITADA'}:item));
       U().closeDrawer();renderContent();updatePendingCount();U().notify('Decisão registrada. Os envolvidos serão notificados.','ok');
-    }catch(error){if(ctx===context()){button.dataset.operationState='FAILED';status.textContent='FAILED · '+(error.message||'Falha ao registrar');button.disabled=false;}}finally{state.locks.delete(key);}
+    }catch(error){if(ctx===context()){button.dataset.operationState='FAILED';status.textContent=global.UIHelpers?.mensagemErro?.(error)||'Não foi possível registrar. Tente novamente.';button.disabled=false;}}finally{state.locks.delete(key);}
   }
   function openTransfer(client){
     if(!permitted())return;const sellers=model().performance.map(p=>p.seller).filter(u=>text(u.authUid||u.id)!==owner(client));
     U().openDrawer('Transferir cliente',client.nomeCompleto||client.nome,`<p>Origem: ${U().esc(client.vendedorNome||client.responsavelNome||owner(client))} · Equipe: ${U().esc(client.equipeNome||client.equipeId||'Sem equipe')}</p><label>Destino<select id="gestaoTransferDestination">${sellers.map(u=>`<option value="${U().esc(u.authUid||u.id)}">${U().esc(u.nome||u.email)} · ${U().esc(u.equipeNome||u.equipeId||'Sem equipe')}</option>`).join('')}</select></label><label>Motivo<textarea id="gestaoTransferReason"></textarea></label><p>Responsável pela operação: ${U().esc(U().user().nome||U().access().authUid)}</p><div class="drawer-actions"><button id="gestaoConfirmTransfer" class="primary-btn" ${sellers.length?'':'disabled'}>Confirmar transferência${U().access().perfil==='supervisor'?' para aprovação':''}</button></div><p id="gestaoTransferStatus" role="status"></p>`);
     const operationId=global.crypto?.randomUUID?.()||('transfer_'+Date.now());global.document.getElementById('gestaoConfirmTransfer').addEventListener('click',async()=>{
-      const reason=text(global.document.getElementById('gestaoTransferReason').value),destination=global.document.getElementById('gestaoTransferDestination').value,button=global.document.getElementById('gestaoConfirmTransfer'),status=global.document.getElementById('gestaoTransferStatus');if(button.disabled)return;if(reason.length<3){U().notify('Informe o motivo da transferência.','err');return;}button.dataset.operationState='QUEUED';button.disabled=true;button.dataset.operationState='PROCESSING';status.textContent='PROCESSING · transferindo…';
+      const reason=text(global.document.getElementById('gestaoTransferReason').value),destination=global.document.getElementById('gestaoTransferDestination').value,button=global.document.getElementById('gestaoConfirmTransfer'),status=global.document.getElementById('gestaoTransferStatus');if(button.disabled)return;if(reason.length<3){U().notify('Informe o motivo da transferência.','err');return;}button.dataset.operationState='QUEUED';button.disabled=true;button.dataset.operationState='PROCESSING';status.textContent='Transferindo…';
       try{const result=await global.firebase.app().functions('southamerica-east1').httpsCallable('transferirResponsabilidadeV27')({tipo:'CLIENTE',itemId:client.clienteOperacionalId||client.id,destinoAuthUid:destination,motivo:reason,operacaoId:operationId});button.dataset.operationState='CONFIRMED';status.textContent='CONFIRMED';if(!result.data.pendente){const target=sellers.find(u=>text(u.authUid||u.id)===destination);await C().refresh(client.clienteOperacionalId||client.id).catch(e=>U().notify('Transferência confirmada; consulta pendente: '+e.message,'aviso'));}else if(result.data.solicitacaoId){state.approvals.push({id:result.data.solicitacaoId,source:'transfer',tipo:'TRANSFERENCIA_CLIENTE',status:'PENDENTE',itemId:client.clienteOperacionalId||client.id,solicitanteAuthUid:U().access().authUid,destinoAuthUid:destination,motivo:reason,clientePlataformaId:U().tenant()});state.loadedAt=Date.now();}U().closeDrawer();renderContent();updatePendingCount();U().notify(result.data.pendente?'Transferência enviada para aprovação.':'Cliente transferido e envolvidos notificados.','ok');}
-      catch(error){status.textContent='FAILED · '+error.message;button.disabled=false;}
+      catch(error){status.textContent=global.UIHelpers?.mensagemErro?.(error)||'Não foi possível transferir. Tente novamente.';button.disabled=false;}
     });
   }
-  const api=Object.freeze({snapshot,render,openView,openTransfer,loadApprovals,canDecide,openDecision,decide,updatePendingCount,get state(){return state;}});global.IntegroCentralGestao=api;
+  const api=Object.freeze({snapshot,render,openView,openRequest,openTransfer,loadApprovals,canDecide,openDecision,decide,updatePendingCount,get state(){return state;}});global.IntegroCentralGestao=api;
   if(typeof module!=='undefined'&&module.exports)module.exports=api;
   if(global.document){global.document.addEventListener('integro-tela-alterada',e=>{if(e.detail?.tela==='dashboard')render();});global.document.addEventListener('usuario-validado',render);global.document.addEventListener('integro-v272-pronto',render);}
 })(typeof window!=='undefined'?window:globalThis);

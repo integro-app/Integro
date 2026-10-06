@@ -114,11 +114,12 @@
     return CATALOGO.find(item => item.id === id) || SUBMODULOS.find(item => item.id === id) || null;
   }
 
+  function abrirTelaBase(id,elemento){if(typeof global.abrirModuloNavegacaoIntegro==='function')return global.abrirModuloNavegacaoIntegro(id,elemento);return global.trocarTela?.(id,elemento);}
   function abrirFinanceiroOperacional(tab, elemento, moduloAtivo = "movimentacoes") {
     global.__integroFinanceiroModo = "operacional";
     if (typeof global.__abrirFinanceiroUnificado === "function") global.__abrirFinanceiroUnificado(tab);
     else {
-      global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
+      abrirTelaBase("financeiro", elemento);
       global.setTimeout?.(() => global.IntegroFinanceiroUnificado?.openTab?.(tab), 0);
     }
     global.setTimeout?.(() => ativarItem(moduloAtivo), 0);
@@ -130,7 +131,7 @@
     if (typeof global.IntegroControleFinanceiroUI?.openEnterprise === "function") {
       global.IntegroControleFinanceiroUI.openEnterprise();
     } else {
-      global.abrirModuloNavegacaoIntegro?.("financeiro", elemento) ?? global.trocarTela?.("financeiro", elemento);
+      abrirTelaBase("financeiro", elemento);
       global.setTimeout?.(() => global.IntegroControleFinanceiroUI?.load?.(true), 0);
     }
     global.setTimeout?.(() => {
@@ -168,7 +169,7 @@
       return abrirFinanceiroEmpresarial(elemento, "relatorios");
     }
     if (item.abrir === "configuracoes") {
-      global.abrirModuloNavegacaoIntegro?.("configuracoes", elemento) ?? global.trocarTela?.("configuracoes", elemento);
+      abrirTelaBase("configuracoes", elemento);
       setTimeout(() => global.abrirPaginaConfiguracaoIntegro?.("empresa"), 0);
       return true;
     }
@@ -176,7 +177,7 @@
       if (perfil(usuarioAtual) === "vendedor" && typeof global.abrirOperacaoVendedor === "function") return global.abrirOperacaoVendedor(elemento);
       return global.trocarTela?.("vendas", elemento);
     }
-    return global.abrirModuloNavegacaoIntegro?.(item.id, elemento) ?? global.trocarTela?.(item.id, elemento);
+    return abrirTelaBase(item.id, elemento);
   }
 
   function abrirPorId(id, elemento) {
@@ -261,7 +262,11 @@
 
   function ativarItem(modulo) {
     const principal = MODULO_PAI[modulo] || modulo;
-    document.querySelectorAll("#integroSidebarMenu .menu-item").forEach(item => item.classList.toggle("active", item.dataset.modulo === principal));
+    document.querySelectorAll("#integroSidebarMenu .menu-item").forEach(item => {
+      const active = item.dataset.modulo === principal;
+      item.classList.toggle("active", active);
+      if (active) item.setAttribute('aria-current', 'page'); else item.removeAttribute('aria-current');
+    });
   }
 
   document.addEventListener("usuario-validado", evento => setTimeout(() => renderizar(evento.detail), 0));

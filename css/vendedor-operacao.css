@@ -564,7 +564,7 @@
 .vendedor-hoje-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .vendedor-hoje-head h2 { margin:0; font-size:24px; color:#0f172a; }
 .vendedor-hoje-caixa { font-size:12px; font-weight:700; color:#475569; }
-.vendedor-hoje-resumo { display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; margin:16px 0; }
+.vendedor-hoje-resumo { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:16px 0; }
 .vendedor-hoje-resumo small,.vendedor-hoje-proxima small { display:block; color:#64748b; font-size:12px; }
 .vendedor-hoje-resumo strong { display:block; font-size:22px; color:#0f172a; }
 .vendedor-hoje-proxima { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; padding-top:12px; border-top:1px solid #e2e8f0; }

@@ -60,6 +60,12 @@
     const screen = text(route.tela || notification.origemTela || "").toLowerCase();
     const type = text(notification.entidadeTipo || notification.origemTipo || notification.tipo).toUpperCase();
     closeCenter();
+    const action=text(route.acao).toUpperCase(),entityId=text(route.entidadeId||notification.entidadeId||notification.solicitacaoId||notification.origemId);
+    if(action==='APROVACOES'||type==='SOLICITACAO_TRANSFERENCIA'||type==='SOLICITACAO_VENDA'){
+      activateScreen('dashboard');global.IntegroCentralGestao?.render?.();
+      if(entityId&&global.IntegroCentralGestao?.openRequest)await global.IntegroCentralGestao.openRequest(entityId);else global.IntegroCentralGestao?.openView?.('approvals');return true;
+    }
+    if(type.includes('CAIXA')&&entityId){activateScreen('movimentacoes');const ui=global.IntegroFinanceiroUnificado;if(ui?.openBox)await ui.openBox(entityId);else global.abrirDetalheCaixaDrawer?.(entityId);return true;}
     if(text(route.acao).toUpperCase()==='CLIENTE_360'||type==='CLIENTE'||type==='CARTEIRA'){return openClient(notification,route);}
 
     if (screen === "clientes" || screen === "indicacoes" || type.includes("LEAD") || type === "INDICACAO") {

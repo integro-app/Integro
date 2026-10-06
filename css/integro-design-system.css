@@ -305,3 +305,14 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Acabamento dos componentes existentes, preservando suas permissões e ações. */
+body[data-integro-page] :is(.unified-profile-module,.gestao-final){max-width:1440px;margin-inline:auto}
+body[data-integro-page] :is(.unified-profile-head,.unified-panel-head){align-items:center;gap:16px}
+body[data-integro-page] :is(button,a,input,select,textarea,summary):focus-visible{outline:3px solid #2563eb;outline-offset:3px}
+.cfe-work-queue{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.cfe-work-queue button{min-height:44px}
+.cfe-compact-filters{margin:12px 0;border:1px solid #dbe3ed;border-radius:12px;padding:12px}.cfe-compact-filters summary{cursor:pointer;min-height:44px;display:flex;align-items:center;font-weight:600}.cfe-compact-filters[open] summary{margin-bottom:12px}
+.gestao-attention{padding:12px;background:#fff8e6;border-left:4px solid #d97706;border-radius:8px}.gestao-approval-highlight{outline:3px solid #2563eb;outline-offset:3px}
+.cliente360 header{border-bottom:1px solid #e2e8f0;padding-bottom:12px}.cliente360 header h3{font-size:22px}.cliente360-tabs{scrollbar-width:thin}
+#integroConnectionStatus{position:fixed;left:50%;transform:translateX(-50%);top:max(8px,env(safe-area-inset-top));z-index:100001;max-width:calc(100vw - 24px);padding:10px 14px;border-radius:10px;background:#92400e;color:white;font:600 13px/1.4 system-ui;box-shadow:0 5px 20px #0002}
+@media(max-width:600px){.cfe-compact-filters[open]{position:fixed;inset:auto 0 0;max-height:75dvh;overflow:auto;z-index:50001;background:#fff;margin:0;padding:16px 16px max(16px,env(safe-area-inset-bottom));border-radius:18px 18px 0 0;box-shadow:0 -8px 32px #0003}.cfe-compact-filters .unified-filterbar{display:grid;grid-template-columns:minmax(0,1fr)}.cfe-work-queue{flex-wrap:nowrap;overflow:auto;padding-bottom:6px}.cfe-work-queue button{flex-shrink:0}.vendedor-hoje-acoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}.vendedor-hoje-acoes .primary-btn{grid-column:1/-1;min-height:48px}.vendedor-hoje-acoes .ghost-btn{min-height:44px}.drawer-actions{padding-bottom:max(12px,env(safe-area-inset-bottom))}.cliente360-tabs{scroll-padding-inline:8px}}

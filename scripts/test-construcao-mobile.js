@@ -7,7 +7,7 @@ const os = require("node:os");
 const { spawn } = require("node:child_process");
 const root = path.resolve(__dirname, "..");
 const chromePath = process.env.CHROME_PATH || "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
-const widths = [360, 375, 390, 412, 430, 1366, 1920];
+const widths = [360, 375, 390, 412, 430, 1366, 1440, 1920];
 
 async function main() {
   if (!fs.existsSync(chromePath)) throw new Error("Chrome não encontrado; defina CHROME_PATH.");
@@ -62,6 +62,13 @@ async function main() {
       await evaluate(`(async()=>{document.getElementById('dashboard').hidden=true;IntegroControleFinanceiroUI.state.accounts=[{id:'a1',descricao:'Conta',valorCentavos:9000,saldoCentavos:9000,vencimento:'2026-10-06',tipoMovimento:'PAGAR'}];await IntegroControleFinanceiroUI.openTab('dashboard');})()`);
       const finance=await evaluate(`({scroll:document.documentElement.scrollWidth,width:innerWidth,kpis:document.querySelectorAll('[data-cfe-summary]>.unified-kpi').length,buttons:[...document.querySelectorAll('[data-cfe-summary]>[role=button]')].length})`);assert.equal(finance.kpis,8);assert.equal(finance.buttons,8);assert.ok(finance.scroll<=width,JSON.stringify(finance));
       await evaluate(`document.querySelector('[data-cfe-summary] [role=button]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));`);assert.equal(await evaluate('IntegroControleFinanceiroUI.state.filters.onlyOpen'),true);await evaluate("IntegroControleFinanceiroUI.openTab('dashboard')");results.push({component:'financeiro',width,passed:true});
+    }
+    for(const width of widths){
+      await send('Emulation.setDeviceMetricsOverride',{width,height:800,deviceScaleFactor:1,mobile:width<600});
+      await evaluate("(async()=>{document.getElementById('holder').innerHTML='';document.getElementById('dashboard').hidden=true;await IntegroControleFinanceiroUI.openTab('contas');document.querySelector('.cfe-compact-filters').open=true;})()");
+      const filters=await evaluate("({scroll:document.documentElement.scrollWidth,queues:document.querySelectorAll('.cfe-work-queue button').length,filterHeight:document.querySelector('.cfe-compact-filters').getBoundingClientRect().height,summaryHeight:document.querySelector('.cfe-compact-filters summary').getBoundingClientRect().height})");
+      assert.equal(filters.queues,5);assert.ok(filters.scroll<=width,JSON.stringify(filters));assert.ok(filters.summaryHeight>=44);if(width<600)assert.ok(filters.filterHeight<=600,JSON.stringify(filters));
+      await evaluate("document.querySelector('.cfe-compact-filters').open=false;");results.push({component:'filtros-financeiro',width,passed:true});
     }
     for(const width of widths.filter(w=>w<600)){
       await send('Emulation.setDeviceMetricsOverride',{width,height:420,deviceScaleFactor:1,mobile:true});

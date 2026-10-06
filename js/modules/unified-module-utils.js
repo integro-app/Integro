@@ -58,6 +58,7 @@
   }
   function can(permission, context = {}) { return global.IntegroAcesso?.pode?.(user(), permission, context) === true; }
   function notify(message, type = "info") {
+    if (type === 'err' || type === 'erro' || type === 'error') message = global.UIHelpers?.mensagemErro?.(message) || message;
     if (global.UIHelpers?.alerta) return global.UIHelpers.alerta(message, type);
     if (global.notificarIntegro) return global.notificarIntegro(message);
     console[type === "err" ? "error" : "log"](message);
