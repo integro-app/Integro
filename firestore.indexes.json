@@ -1,6 +1,32 @@
 {
   "indexes": [
     {
+      "collectionGroup": "financeiro_solicitacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "criadoEmTexto", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_solicitacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "solicitanteAuthUid", "order": "ASCENDING" },
+        { "fieldPath": "criadoEmTexto", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "financeiro_solicitacoes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "responsavelNovoAuthUid", "order": "ASCENDING" },
+        { "fieldPath": "criadoEmTexto", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "lancamentos_financeiros",
       "queryScope": "COLLECTION",
       "fields": [

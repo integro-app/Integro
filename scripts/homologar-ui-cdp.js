@@ -25,7 +25,7 @@ const perfis = [
 const perfilSelecionado = String(process.env.INTEGRO_HOMOLOG_PROFILE || "").trim();
 const perfisExecutados = perfilSelecionado ? perfis.filter(item => item[0] === perfilSelecionado) : perfis;
 if (!perfisExecutados.length) throw new Error(`Perfil de homologação inválido: ${perfilSelecionado}`);
-const viewports = [[1366, 768], [1920, 1080], [390, 844], [360, 800]];
+const viewports = [[1366, 768], [1920, 1080], [360, 800], [375, 812], [390, 844], [412, 915], [430, 932]];
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 async function esperarHttp(url, tentativas = 80) {
@@ -103,6 +103,9 @@ async function main() {
       if (rota === "master-local.html") await esperar(`(document.body.classList.contains('integro-access-ready') || !!window.State?.getUsuario?.()) && window.IntegroAcesso?.acessoUsuario?.(window.State?.getUsuario?.()||{})?.perfil === ${JSON.stringify(perfil)}`, 30000);
       if (rota === "master-local.html") await esperar(`(()=>{const modulos=[...document.querySelectorAll('#integroSidebarMenu [data-modulo]')].filter(x=>getComputedStyle(x).display!=='none'&&!x.hidden).map(x=>x.dataset.modulo);return ['dashboard','minhaConta','sair'].every(item=>modulos.includes(item))})()`, 30000);
       else await sleep(600);
+      if (perfil === "vendedor") {
+        await esperar("document.querySelectorAll('#vendedorHoje').length === 1 && document.getElementById('vendedorHoje').textContent.includes('Recebido confirmado')", 20000);
+      }
       const resumo = await avaliar(`(()=>({perfilEsperado:${JSON.stringify(perfil)},url:location.pathname,perfil:window.IntegroAcesso?.acessoUsuario?.(window.State?.getUsuario?.()||{})?.perfil||window.State?.getUsuario?.()?.tipoUsuario||'',tenant:window.State?.getTenantId?.()||window.State?.getUsuario?.()?.clientePlataformaId||'',menu:[...document.querySelectorAll('#integroSidebarMenu [data-modulo]')].filter(x=>getComputedStyle(x).display!=='none'&&!x.hidden).map(x=>x.dataset.modulo),logout:typeof window.logout==='function'}))()`);
       if (!resumo.url.endsWith("/" + rota)) throw new Error(`${perfil}: rota incorreta ${resumo.url}`);
       if (perfil !== "master_global" && resumo.perfil !== perfil) throw new Error(`${perfil}: sessão retornou ${resumo.perfil}`);

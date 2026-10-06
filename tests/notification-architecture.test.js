@@ -68,3 +68,51 @@ test('authenticated pages keep loading the centralized notification stack', () =
     assert.match(source,/notification-center\.js\?/);
   }
 });
+test("abrir notificação navega antes de concluir a gravação de leitura", async () => {
+  const vm = require("node:vm");
+  const source = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "js", "services", "notification-service.js"), "utf8");
+  let concluirLeitura;
+  let navegacoes = 0;
+  const contexto = {
+    console, setTimeout,
+    document: { addEventListener() {} }, addEventListener() {},
+    db: { collection: () => ({ doc: () => ({ set: () => new Promise(resolve => { concluirLeitura = resolve; }) }) }) },
+    IntegroNotificationRouter: { open() { navegacoes++; return true; } }
+  };
+  contexto.window = contexto;
+  vm.createContext(contexto);
+  vm.runInContext(source, contexto);
+  assert.equal(await contexto.IntegroNotifications.open({ id: "n1", lida: false }), true);
+  assert.equal(navegacoes, 1);
+  assert.equal(typeof concluirLeitura, "function");
+  concluirLeitura();
+});
+
+test("notificações reiniciam listener ao trocar tenant e descartam callbacks da sessão anterior", () => {
+  const vm = require("node:vm");
+  const source = fs.readFileSync(path.join(__dirname, "..", "js", "services", "notification-service.js"), "utf8");
+  const callbacks = [];
+  let tenant = "tenant_a", encerrados = 0;
+  const ref = { where() { return this; }, limit() { return this; }, onSnapshot(callback) { callbacks.push(callback); return () => { encerrados++; }; } };
+  const contexto = {
+    console, setTimeout, document: { addEventListener() {} }, addEventListener() {},
+    State: { getUsuario: () => ({ authUid: "u1" }), getTenantId: () => tenant },
+    db: { collection: () => ref }
+  };
+  contexto.window = contexto;
+  vm.createContext(contexto);
+  vm.runInContext(source, contexto);
+  contexto.IntegroNotifications.subscribe();
+  tenant = "tenant_b";
+  contexto.IntegroNotifications.subscribe();
+  assert.equal(encerrados, 1);
+  assert.equal(callbacks.length, 2);
+  const snapshot = { docChanges: () => [], docs: [{ id: "n1", data: () => ({ destinatarioAuthUid: "u1", clientePlataformaId: "tenant_b" }) }] };
+  callbacks[0](snapshot);
+  assert.equal(contexto.notificacoesCache.length, 0);
+  callbacks[1](snapshot);
+  assert.equal(contexto.notificacoesCache.length, 1);
+  contexto.IntegroNotifications.unsubscribe();
+  assert.equal(contexto.notificacoesCache.length, 0);
+  assert.equal(encerrados, 2);
+});

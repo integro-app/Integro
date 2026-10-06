@@ -21,6 +21,26 @@
   };
 
   let telaAtiva = "";
+  let geracaoCache = 0;
+  const bancos = new WeakMap();
+  let proximoBanco = 0;
+  const MAX_CACHE_ENTRADAS = 160;
+
+  function salvarCache(chave, entrada) {
+    const instante = agora();
+    for (const [id, item] of cache) {
+      if (item.expiraEm <= instante) cache.delete(id);
+    }
+    cache.delete(chave);
+    cache.set(chave, entrada);
+    while (cache.size > MAX_CACHE_ENTRADAS) cache.delete(cache.keys().next().value);
+  }
+
+  function chaveSegura(db, chave) {
+    if (!bancos.has(db)) bancos.set(db, ++proximoBanco);
+    const uid = global.firebase?.auth?.()?.currentUser?.uid || global.State?.getUsuario?.()?.authUid || global.State?.getUsuario?.()?.id || "";
+    return JSON.stringify([bancos.get(db), texto(uid), tenantAtual(), chave]);
+  }
 
   function agora() { return Date.now(); }
   function texto(valor) { return String(valor ?? "").trim(); }
@@ -72,18 +92,19 @@
     const forcar = opcoes.forcar === true;
     if (!db || !colecao || !tenantId) return [];
 
-    const chave = opcoes.chave || chaveConsulta({ colecao, tenantId, filtros, limite, ordem });
+    const chave = chaveSegura(db, [opcoes.chave || "", chaveConsulta({ colecao, tenantId, filtros, limite, ordem })]);
     const salvo = cache.get(chave);
     if (!forcar && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
       metricas.consultasCache++;
       return salvo.dados.map(item => ({ ...item }));
     }
-    if (!forcar && pendentes.has(chave)) {
+    if (pendentes.has(chave)) {
       metricas.consultasDeduplicadas++;
       return pendentes.get(chave);
     }
 
-    const promessa = (async () => {
+    const geracao = geracaoCache;
+    const promessa = Promise.resolve().then(async () => {
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
@@ -92,16 +113,16 @@
         const dados = snap.docs.map(docData).filter(item => item.excluido !== true);
         metricas.documentosRecebidos += dados.length;
         registrarColecao(colecao, "documentos", dados.length);
-        if (cacheMs > 0) cache.set(chave, { dados, expiraEm: agora() + cacheMs, colecao, tenantId });
+        if (cacheMs > 0 && geracao === geracaoCache) salvarCache(chave, { dados, expiraEm: agora() + cacheMs, colecao, tenantId });
         return dados.map(item => ({ ...item }));
       } catch (erro) {
         metricas.erros++;
         registrarColecao(colecao, "erros", 1);
         throw erro;
       } finally {
-        pendentes.delete(chave);
+        if (pendentes.get(chave) === promessa) pendentes.delete(chave);
       }
-    })();
+    });
     pendentes.set(chave, promessa);
     return promessa;
   }
@@ -111,18 +132,19 @@
     const colecao = texto(opcoes.colecao);
     const id = texto(opcoes.id);
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
-    const chave = opcoes.chave || `doc:${colecao}:${id}`;
     if (!db || !colecao || !id) return null;
+    const chave = chaveSegura(db, [opcoes.chave || "", `doc:${colecao}:${id}`]);
     const salvo = cache.get(chave);
     if (opcoes.forcar !== true && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
       metricas.consultasCache++;
       return salvo.dados ? { ...salvo.dados } : null;
     }
-    if (opcoes.forcar !== true && pendentes.has(chave)) {
+    if (pendentes.has(chave)) {
       metricas.consultasDeduplicadas++;
       return pendentes.get(chave);
     }
-    const promessa = (async () => {
+    const geracao = geracaoCache;
+    const promessa = Promise.resolve().then(async () => {
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
@@ -132,16 +154,16 @@
           metricas.documentosRecebidos++;
           registrarColecao(colecao, "documentos", 1);
         }
-        if (cacheMs > 0) cache.set(chave, { dados, expiraEm: agora() + cacheMs, colecao });
+        if (cacheMs > 0 && geracao === geracaoCache) salvarCache(chave, { dados, expiraEm: agora() + cacheMs, colecao });
         return dados ? { ...dados } : null;
       } catch (erro) {
         metricas.erros++;
         registrarColecao(colecao, "erros", 1);
         throw erro;
       } finally {
-        pendentes.delete(chave);
+        if (pendentes.get(chave) === promessa) pendentes.delete(chave);
       }
-    })();
+    });
     pendentes.set(chave, promessa);
     return promessa;
   }
@@ -153,8 +175,9 @@
     const filtros = Array.isArray(opcoes.filtros) ? opcoes.filtros : [];
     const limite = Math.max(1, Number(opcoes.limite || 200));
     const ordem = Array.isArray(opcoes.ordem) ? opcoes.ordem : [];
-    const assinatura = chaveConsulta({ colecao, tenantId, filtros, limite, ordem });
-    const chave = texto(opcoes.chave || `${opcoes.escopo || "global"}:${assinatura}`);
+    if (!db || !colecao || !tenantId) return () => {};
+    const assinatura = chaveSegura(db, chaveConsulta({ colecao, tenantId, filtros, limite, ordem }));
+    const chave = chaveSegura(db, [opcoes.chave || opcoes.escopo || "global", assinatura]);
     const escopo = texto(opcoes.escopo || "global");
     if (!db || !colecao || !tenantId || !chave || typeof opcoes.aoAtualizar !== "function") return () => {};
 
@@ -204,7 +227,7 @@
     };
 
     grupo.inscritos.set(chave, { chave, escopo, colecao, tenantId, aoAtualizar: opcoes.aoAtualizar, aoErro: opcoes.aoErro, criadoEm: agora() });
-    listeners.set(chave, { chave, assinatura, escopo, colecao, tenantId, parar, criadoEm: agora() });
+    listeners.set(chave, { chave, chaveOriginal: texto(opcoes.chave), assinatura, escopo, colecao, tenantId, parar, criadoEm: agora() });
     if (grupo.ultimoDados) {
       try { opcoes.aoAtualizar(grupo.ultimoDados.map(item => ({ ...item })), grupo.ultimoSnapshot); }
       catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
@@ -212,7 +235,9 @@
     return parar;
   }
 
-  function parar(chave) { listeners.get(texto(chave))?.parar?.(); }
+  function parar(chave) {
+    [...listeners.values()].filter(item => item.chave === chave || item.chaveOriginal === texto(chave)).forEach(item => item.parar());
+  }
   function pararEscopo(escopo) {
     const alvo = texto(escopo);
     [...listeners.values()].filter(item => item.escopo === alvo).forEach(item => item.parar());
@@ -220,8 +245,10 @@
   function pararTodos() { [...listeners.values()].forEach(item => item.parar()); }
 
   function invalidar(prefixo = "") {
+    geracaoCache++;
     const alvo = texto(prefixo);
     [...cache.keys()].forEach(chave => { if (!alvo || chave.includes(alvo)) cache.delete(chave); });
+    [...pendentes.keys()].forEach(chave => { if (!alvo || chave.includes(alvo)) pendentes.delete(chave); });
   }
 
   function medirInteracao(nome, inicio = agora()) {
@@ -262,7 +289,7 @@
   document.addEventListener("integro-tela-alterada", evento => definirTelaAtiva(evento.detail?.tela || ""));
   document.addEventListener("usuario-validado", () => invalidar("doc:usuarios:"));
   global.addEventListener?.("beforeunload", pararTodos);
-  global.firebase?.auth?.()?.onAuthStateChanged?.(usuario => { if (!usuario) { pararTodos(); cache.clear(); } });
+  global.firebase?.auth?.()?.onAuthStateChanged?.(() => { pararTodos(); invalidar(); });
 
   const api = Object.freeze({
     consultarTenant,
@@ -280,7 +307,7 @@
   });
 
   global.IntegroDataRuntime = api;
-  global.IntegroPerformance = Object.freeze({ diagnostico, limparCache: () => cache.clear(), pararListeners: pararTodos });
+  global.IntegroPerformance = Object.freeze({ diagnostico, limparCache: () => invalidar(), pararListeners: pararTodos });
 })(window);
 
 

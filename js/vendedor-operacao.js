@@ -157,30 +157,35 @@
       return !vinculos.length || pertenceAoVendedor(item, usuario);
     };
 
+    // Indexar uma vez evita percorrer toda a carteira para cada cliente.
+    const agruparPorVenda = (registros, aceitar) => {
+      const grupos = new Map();
+      registros.forEach(item => {
+        if (!pertenceAoTenant(item, usuario) || !registroFilhoPermitido(item) || !aceitar(item)) return;
+        const chave = id(item.vendaId);
+        const grupo = grupos.get(chave) || [];
+        grupo.push(item);
+        grupos.set(chave, grupo);
+      });
+      return grupos;
+    };
+    const parcelasPorVenda = agruparPorVenda(parcelas, item => item?.excluido !== true);
+    const pagamentosPorVenda = agruparPorVenda(pagamentosHoje, item =>
+      item?.excluido !== true && maiusculo(item?.status) !== "CANCELADO" &&
+      (!dataIso(item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.data || item.dataPagamento || item.criadoEmTexto) === hoje));
+    const visitasPorVenda = agruparPorVenda(historico, item =>
+      maiusculo(item.tipo || item.acao || item.status) === "NAO_PAGAMENTO" && dataIso(item.data || item.criadoEmTexto) === hoje);
+
     return Array.from(candidatos.entries()).map(([clienteId, origem]) => {
       const cliente = origem.cliente || {};
       const venda = origem.venda || {};
       const vendaId = id(venda.id || venda.vendaId);
-      const parcelasVenda = parcelas
-        .filter(item => item?.excluido !== true)
-        .filter(item => pertenceAoTenant(item, usuario))
-        .filter(registroFilhoPermitido)
-        .filter(item => id(item.vendaId) === vendaId)
+      const parcelasVenda = (parcelasPorVenda.get(vendaId) || [])
         .sort((a, b) => numero(a.numeroParcela) - numero(b.numeroParcela) || dataParcela(a).localeCompare(dataParcela(b)));
 
-      const pagamentos = pagamentosHoje
-        .filter(item => item?.excluido !== true && maiusculo(item?.status) !== "CANCELADO")
-        .filter(item => pertenceAoTenant(item, usuario))
-        .filter(registroFilhoPermitido)
-        .filter(item => id(item.vendaId) === vendaId)
-        .filter(item => !dataIso(item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.data || item.dataPagamento || item.criadoEmTexto) === hoje);
+      const pagamentos = pagamentosPorVenda.get(vendaId) || [];
 
-      const naoPagamentos = historico
-        .filter(item => pertenceAoTenant(item, usuario))
-        .filter(registroFilhoPermitido)
-        .filter(item => id(item.vendaId) === vendaId)
-        .filter(item => maiusculo(item.tipo || item.acao || item.status) === "NAO_PAGAMENTO")
-        .filter(item => dataIso(item.data || item.criadoEmTexto) === hoje);
+      const naoPagamentos = visitasPorVenda.get(vendaId) || [];
 
       const parcelaNominal = valorParcela(venda, parcelasVenda);
       const totalParcelas = Math.max(1, numero(venda.quantidadeParcelas || venda.numeroParcelas || parcelasVenda.length || 1));
@@ -381,8 +386,14 @@
   }
 
   function ordenar(lista) {
-    const tipo = global.document?.getElementById("ordenarCobrancas")?.value || "nome_az";
+    const tipo = global.document?.getElementById("ordenarCobrancas")?.value || "prioridade_rota";
     const ordenadores = {
+      prioridade_rota: (a, b) => Number(a.pagoHoje || a.naoPagoHoje) - Number(b.pagoHoje || b.naoPagoHoje)
+        || Number(b.situacao === "ATRASADO") - Number(a.situacao === "ATRASADO")
+        || b.diasIndicador * Number(b.situacao === "ATRASADO") - a.diasIndicador * Number(a.situacao === "ATRASADO")
+        || Number(b.comCobrancaHoje) - Number(a.comCobrancaHoje)
+        || (a.proximaCobranca || "9999").localeCompare(b.proximaCobranca || "9999")
+        || (a.clienteApelido || a.clienteNome).localeCompare(b.clienteApelido || b.clienteNome, "pt-BR"),
       nome_az: (a, b) => (a.clienteApelido || a.clienteNome).localeCompare(b.clienteApelido || b.clienteNome, "pt-BR"),
       nome_za: (a, b) => (b.clienteApelido || b.clienteNome).localeCompare(a.clienteApelido || a.clienteNome, "pt-BR"),
       saldo_maior: (a, b) => b.saldoDevedor - a.saldoDevedor,
@@ -393,20 +404,48 @@
       atrasado: (a, b) => Number(b.situacao === "ATRASADO") - Number(a.situacao === "ATRASADO") || b.diasIndicador - a.diasIndicador,
       adiantado: (a, b) => Number(b.situacao === "ADIANTADO") - Number(a.situacao === "ADIANTADO") || b.diasIndicador - a.diasIndicador
     };
-    return [...lista].sort(ordenadores[tipo] || ordenadores.nome_az);
+    return [...lista].sort(ordenadores[tipo] || ordenadores.prioridade_rota);
+  }
+
+  function resumoHoje({ carteira = [], pagamentos = [], usuario = {}, hoje = hojeIso() } = {}) {
+    const vendasDaCarteira = new Set(carteira.map(item => id(item.vendaId)).filter(Boolean));
+    const pendentes = carteira.filter(item => item.pendenteHoje);
+    const priorizados = [...pendentes].sort((a, b) =>
+      Number(b.situacao === "ATRASADO") - Number(a.situacao === "ATRASADO") ||
+      b.diasIndicador * Number(b.situacao === "ATRASADO") - a.diasIndicador * Number(a.situacao === "ATRASADO") ||
+      (a.proximaCobranca || "9999").localeCompare(b.proximaCobranca || "9999") ||
+      (a.clienteApelido || a.clienteNome).localeCompare(b.clienteApelido || b.clienteNome, "pt-BR"));
+    const recebidoCentavos = pagamentos.filter(item => item.excluido !== true && item.__integroOtimista !== true && item.estornado !== true && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(maiusculo(item.status)))
+      .filter(item => pertenceAoTenant(item, usuario))
+      .filter(item => pertenceAoVendedor(item, usuario) || (idsRegistroVendedor(item).length === 0 && vendasDaCarteira.has(id(item.vendaId))))
+      .filter(item => dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto) === hoje)
+      .reduce((soma, item) => soma + Math.round(valorPagamento(item) * 100), 0);
+    return {
+      recebidoHoje: recebidoCentavos / 100,
+      pendentes: pendentes.length,
+      atrasados: pendentes.filter(item => item.situacao === "ATRASADO").length,
+      visitados: carteira.filter(item => item.pagoHoje || item.naoPagoHoje).length,
+      proxima: priorizados[0] || null
+    };
   }
 
   function renderizar() {
     const listaEl = global.document?.getElementById("listaCobrancas");
     if (!listaEl) return [];
-    const lista = ordenar(aplicarFiltros(dadosAtuais()));
+    const carteira = dadosAtuais();
+    global.IntegroVendedorUnificado?.renderHoje?.(carteira);
+    const lista = ordenar(aplicarFiltros(carteira));
     const contador = global.document.getElementById("contadorCobrancas");
     if (contador) contador.textContent = `${lista.length} cliente(s) com saldo devedor em aberto.`;
-    listaEl.innerHTML = lista.length ? lista.map(card).join("") : `
+    const html = lista.length ? lista.map(card).join("") : `
       <div class="empty-state-operacao">
         <strong>Nenhum cliente encontrado</strong>
         <p>Não há clientes com saldo devedor em aberto nos filtros selecionados.</p>
       </div>`;
+    if (listaEl.__integroCarteiraHtml !== html) {
+      listaEl.innerHTML = html;
+      listaEl.__integroCarteiraHtml = html;
+    }
     try { global.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
     try { global.aplicarBloqueioCaixaFechado?.(); } catch (_) {}
     return lista;
@@ -471,6 +510,7 @@
   return {
     instalar,
     montarCarteira,
+    resumoHoje,
     pertenceAoVendedor,
     pertenceAoTenant,
     statusVisual,

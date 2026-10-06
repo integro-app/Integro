@@ -5,6 +5,7 @@
 
   let unsubscribeRealtime = null;
   let currentAuthUid = "";
+  let currentTenantId = "";
   let initialSnapshotReceived = false;
   const text = value => String(value ?? "").trim();
   const upper = value => text(value).toUpperCase();
@@ -54,9 +55,11 @@
   async function list(options = {}) {
     const database = db();
     const uid = authUid();
+    const tenant = tenantId();
     if (!database || !uid) return storeSet([]);
     const limit = Math.max(1, Math.min(Number(options.limit || 100), 200));
     const snapshot = await database.collection("notificacoes").where("destinatarioAuthUid", "==", uid).limit(limit).get();
+    if (uid !== authUid() || tenant !== tenantId()) return [];
     return storeSet(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   }
 
@@ -69,15 +72,17 @@
   function subscribe() {
     const database = db();
     const uid = authUid();
-    if (!database || !uid || typeof database.collection !== "function") return function () {};
-    if (unsubscribeRealtime && currentAuthUid === uid) return unsubscribeRealtime;
-    try { unsubscribeRealtime?.(); } catch (_) {}
-    unsubscribeRealtime = null;
+    const tenant = tenantId();
+    if (!database || !uid || typeof database.collection !== "function") { unsubscribe(); return function () {}; }
+    if (unsubscribeRealtime && currentAuthUid === uid && currentTenantId === tenant) return unsubscribeRealtime;
+    unsubscribe();
     currentAuthUid = uid;
+    currentTenantId = tenant;
     initialSnapshotReceived = false;
     unsubscribeRealtime = database.collection("notificacoes")
       .where("destinatarioAuthUid", "==", uid).limit(100)
       .onSnapshot(snapshot => {
+        if (uid !== authUid() || tenant !== tenantId()) return;
         const added = snapshot.docChanges().filter(change => change.type === "added").map(change => ({ id: change.doc.id, ...change.doc.data() }));
         storeSet(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         if (initialSnapshotReceived) {
@@ -95,8 +100,11 @@
     try { unsubscribeRealtime?.(); } catch (_) {}
     unsubscribeRealtime = null;
     currentAuthUid = "";
+    currentTenantId = "";
     initialSnapshotReceived = false;
     global.IntegroNotificationStore?.clear?.();
+    global.notificacoesLayout = [];
+    global.notificacoesCache = [];
   }
 
   async function updateOwn(id, patch) {
@@ -157,8 +165,9 @@
 
   async function open(notification) {
     if (!notification?.id || notification.excluida === true) return false;
-    if (notification.lida !== true) await markRead(notification.id).catch(() => {});
-    return global.IntegroNotificationRouter?.open?.(notification) || false;
+    const opened = global.IntegroNotificationRouter?.open?.(notification) || false;
+    if (notification.lida !== true) markRead(notification.id).catch(() => {});
+    return opened;
   }
   function install() { const uid = authUid(); if (!uid) return false; subscribe(); return true; }
 
@@ -168,5 +177,6 @@
   document.addEventListener("usuario-validado", () => setTimeout(install, 0));
   document.addEventListener("integro-painel-permissoes-aplicadas", () => setTimeout(install, 0));
   global.addEventListener?.("beforeunload", unsubscribe);
+  global.firebase?.auth?.()?.onAuthStateChanged?.(usuario => { if (!usuario) unsubscribe(); });
 })(window);
 

@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { initializeTestEnvironment, assertSucceeds, assertFails } = require("@firebase/rules-unit-testing");
-const { doc, getDoc, setDoc, updateDoc } = require("firebase/firestore");
+const { doc, getDoc, setDoc, updateDoc, collection, query, where, orderBy, limit, getDocs } = require("firebase/firestore");
 const { ref, uploadBytes } = require("firebase/storage");
 
 const projectId = "integro-novo";
@@ -15,6 +15,7 @@ const profiles = {
   vendor: { uid: "cfe_vendor", tenant: "tenant_a", role: "vendedor" },
   financeB: { uid: "cfe_finance_b", tenant: "tenant_b", role: "financeiro" },
   viewer: { uid: "cfe_viewer", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true } } },
+  approver: { uid: "cfe_approver", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true, aprovar: true } } },
   editor: { uid: "cfe_editor", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true, editar: true, anexar: true } } },
   payer: { uid: "cfe_payer", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true, baixar: true, anexar: true } } },
   config: { uid: "cfe_config", tenant: "tenant_a", role: "administrativo", permissoes: { controleFinanceiro: { ver: true, configurar: true } } },
@@ -131,6 +132,33 @@ test.after(async () => env.cleanup());
 test("financeiro lê e cria conta empresarial no próprio tenant", async () => {
   await assertSucceeds(getDoc(doc(ctx(profiles.finance).firestore(), "financeiro_contas", "conta_a")));
   await assertSucceeds(setDoc(doc(ctx(profiles.finance).firestore(), "financeiro_contas", "nova_conta"), accountData()));
+});
+
+test("solicitações: financeiro lê vínculo próprio e aprovador lê o tenant sem ampliar acesso", async () => {
+  await env.withSecurityRulesDisabled(async context => {
+    const db = context.firestore();
+    for (const [id, solicitante, responsavel] of [
+      ["propria", profiles.finance.uid, profiles.payer.uid],
+      ["destinada", profiles.payer.uid, profiles.finance.uid],
+      ["outra", profiles.payer.uid, profiles.payer.uid]
+    ]) await setDoc(doc(db, "financeiro_solicitacoes", id), {
+      clientePlataformaId: "tenant_a", solicitanteAuthUid: solicitante,
+      responsavelNovoAuthUid: responsavel, criadoEmTexto: "2026-10-05"
+    });
+  });
+  const database = ctx(profiles.finance).firestore();
+  const base = collection(database, "financeiro_solicitacoes");
+  const tenant = where("clientePlataformaId", "==", "tenant_a");
+  await assertFails(getDocs(query(base, tenant)));
+  const propria = await assertSucceeds(getDocs(query(base, tenant, where("solicitanteAuthUid", "==", profiles.finance.uid), orderBy("criadoEmTexto", "desc"), limit(1000))));
+  assert.equal(propria.size, 1);
+  const destinada = await assertSucceeds(getDocs(query(base, tenant, where("responsavelNovoAuthUid", "==", profiles.finance.uid), orderBy("criadoEmTexto", "desc"), limit(1000))));
+  assert.equal(destinada.size, 1);
+  await assertFails(getDoc(doc(database, "financeiro_solicitacoes", "outra")));
+  const aprovador = ctx(profiles.approver).firestore();
+  assert.equal((await assertSucceeds(getDocs(query(collection(aprovador, "financeiro_solicitacoes"), tenant)))).size, 3);
+  await assertFails(getDocs(query(collection(ctx(profiles.financeB).firestore(), "financeiro_solicitacoes"), tenant)));
+  await assertFails(updateDoc(doc(database, "financeiro_solicitacoes", "propria"), { status: "APROVADA" }));
 });
 
 test("vendedor não lê nem cria contas empresariais", async () => {

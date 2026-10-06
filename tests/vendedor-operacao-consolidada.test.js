@@ -8,6 +8,48 @@ const operacao = require(path.join(__dirname, "..", "js", "vendedor-operacao.js"
 
 const usuario = { id: "vend-1", authUid: "auth-1", clientePlataformaId: "tenant-1" };
 
+test("Hoje prioriza atrasados pendentes e avança após a baixa", () => {
+  const carteira = [
+    { vendaId: "v1", clienteNome: "Hoje", pendenteHoje: true, situacao: "EM_DIA", diasIndicador: 0, proximaCobranca: "2026-08-03" },
+    { vendaId: "v2", clienteNome: "Atrasado", pendenteHoje: true, situacao: "ATRASADO", diasIndicador: 3, proximaCobranca: "2026-07-31" }
+  ];
+  assert.equal(operacao.resumoHoje({ carteira }).proxima.vendaId, "v2");
+  carteira[1].pendenteHoje = false;
+  carteira[1].naoPagoHoje = true;
+  const resumo = operacao.resumoHoje({ carteira });
+  assert.equal(resumo.proxima.vendaId, "v1");
+  assert.equal(resumo.pendentes, 1);
+  assert.equal(resumo.visitados, 1);
+  carteira[1].pendenteHoje = true;
+  carteira[1].naoPagoHoje = false;
+  assert.equal(operacao.resumoHoje({ carteira }).proxima.vendaId, "v2");
+});
+
+test("Hoje soma apenas dinheiro confirmado do vendedor, tenant e data corretos", () => {
+  const pagamento = { vendedorId: "vend-1", clientePlataformaId: "tenant-1", dataOperacional: "2026-08-03", valorPago: 10.25 };
+  const resumo = operacao.resumoHoje({ usuario, hoje: "2026-08-03", pagamentos: [
+    pagamento, { ...pagamento, valorPago: 20.10 },
+    { ...pagamento, __integroOtimista: true }, { ...pagamento, estornado: true },
+    { ...pagamento, status: "CANCELADO" }, { ...pagamento, vendedorId: "vend-2" },
+    { ...pagamento, clientePlataformaId: "tenant-2" }, { ...pagamento, dataOperacional: "2026-08-02" }
+  ] });
+  assert.equal(resumo.recebidoHoje, 30.35);
+});
+
+test("carteira indexa parcelas uma vez em vez de varrer todas para cada cliente", () => {
+  const clientes = [], vendas = [], parcelas = [];
+  let leiturasVendaId = 0;
+  for (let i = 0; i < 100; i++) {
+    clientes.push({ id: `cli-${i}`, vendedorId: "vend-1", clientePlataformaId: "tenant-1", saldoDevedor: 100 });
+    vendas.push({ id: `v-${i}`, clienteId: `cli-${i}`, vendedorId: "vend-1", clientePlataformaId: "tenant-1", saldoDevedor: 100 });
+    for (let p = 0; p < 4; p++) parcelas.push({ get vendaId() { leiturasVendaId++; return `v-${i}`; }, valor: 25, valorPago: 0, numeroParcela: p + 1, dataVencimento: "2026-08-03" });
+  }
+  const lista = operacao.montarCarteira({ clientes, vendas, parcelas, usuario, hoje: "2026-08-03" });
+  assert.equal(lista.length, 100);
+  assert.equal(leiturasVendaId, 400);
+  assert.equal(lista[0].parcelas.length, 4);
+});
+
 function base(overrides = {}) {
   return {
     clientes: [

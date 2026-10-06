@@ -123,14 +123,14 @@
 .vendedor-venda-card strong { display:block; margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#0f172a; }
 .vendedor-operacao-modal { position:fixed; inset:0; z-index:30000; display:none; place-items:center; padding:18px; background:rgba(2,6,23,.62); }
 .vendedor-operacao-modal.open { display:grid; }
-.vendedor-operacao-modal-card { width:min(560px,100%); max-height:min(85vh,760px); overflow:auto; border-radius:22px; background:#fff; box-shadow:0 30px 90px rgba(2,6,23,.3); }
+.vendedor-operacao-modal-card { width:min(560px,100%); max-height:min(85vh,760px); display:flex; flex-direction:column; overflow:hidden; border-radius:22px; background:#fff; box-shadow:0 30px 90px rgba(2,6,23,.3); }
 .vendedor-operacao-modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:18px 20px; border-bottom:1px solid #e2e8f0; }
 .vendedor-operacao-modal-head h3 { margin:0; color:#0f172a; }
 .vendedor-operacao-modal-head button { width:40px; height:40px; border:0; border-radius:12px; background:#f1f5f9; font-size:24px; cursor:pointer; }
-.vendedor-operacao-modal-body { display:grid; gap:12px; padding:20px; }
+.vendedor-operacao-modal-body { display:grid; gap:12px; padding:20px; min-height:0; overflow-y:auto; overscroll-behavior:contain; }
 .vendedor-operacao-modal-body label { font-weight:900; color:#334155; }
 .vendedor-operacao-modal-body input { min-height:50px; border:1px solid #cbd5e1; border-radius:14px; padding:0 14px; font-size:16px; }
-.vendedor-operacao-modal-actions { display:flex; justify-content:flex-end; gap:10px; padding:16px 20px; border-top:1px solid #e2e8f0; }
+.vendedor-operacao-modal-actions { display:flex; justify-content:flex-end; flex-shrink:0; gap:10px; padding:16px 20px; border-top:1px solid #e2e8f0; background:#fff; }
 .vendedor-modal-cliente { color:#0f172a; font-weight:900; }
 .vendedor-detalhes-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
 .vendedor-detalhes-grid div { padding:12px; border-radius:14px; background:#f8fafc; }
@@ -140,6 +140,17 @@
 .vendedor-historico-item { display:grid; grid-template-columns:1fr auto; gap:5px 12px; padding:12px; border:1px solid #e2e8f0; border-radius:14px; }
 .vendedor-historico-item small { grid-column:1/-1; color:#64748b; }
 @media(max-width:760px){
+  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-modal {
+    width:100%!important; max-width:100%!important;
+    height:var(--integro-visual-vh,100dvh); max-height:none!important;
+    padding:8px; place-items:end center; border-radius:0!important;
+  }
+  .vendedor-operacao-modal-card {
+    max-height:calc(var(--integro-visual-vh,100dvh) - 16px);
+    border-radius:20px 20px 12px 12px;
+  }
+  .vendedor-operacao-modal-head { flex-shrink:0; }
+  .vendedor-operacao-modal-actions { padding-bottom:max(12px,env(safe-area-inset-bottom)); }
   .vendedor-operacao-status{display:none}
   .vendedor-operacao-tabs{grid-template-columns:1fr 1fr}
   .vendedor-operacao-toolbar{grid-template-columns:1fr}
@@ -549,3 +560,23 @@
 .vendedor-operacao-processing .material-symbols-rounded{animation:integro-sync-spin .9s linear infinite}
 @keyframes integro-sync-spin{to{transform:rotate(360deg)}}
 @keyframes integro-sync-slide{to{transform:translateX(100%)}}
+.vendedor-hoje { margin-bottom:16px; padding:16px; border:1px solid #e2e8f0; border-radius:16px; background:#fff; }
+.vendedor-hoje-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.vendedor-hoje-head h2 { margin:0; font-size:24px; color:#0f172a; }
+.vendedor-hoje-caixa { font-size:12px; font-weight:700; color:#475569; }
+.vendedor-hoje-resumo { display:grid; grid-template-columns:2fr 1fr 1fr; gap:12px; margin:16px 0; }
+.vendedor-hoje-resumo small,.vendedor-hoje-proxima small { display:block; color:#64748b; font-size:12px; }
+.vendedor-hoje-resumo strong { display:block; font-size:22px; color:#0f172a; }
+.vendedor-hoje-proxima { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; padding-top:12px; border-top:1px solid #e2e8f0; }
+.vendedor-hoje-proxima strong,.vendedor-hoje-proxima span { display:block; overflow-wrap:anywhere; }
+.vendedor-hoje-proxima strong { margin:4px 0; color:#0f172a; }
+.vendedor-hoje-acoes { display:flex; flex-wrap:wrap; gap:8px; }
+.vendedor-hoje-acoes button { min-height:44px; }
+.vendedor-hoje-vazio { color:#64748b; margin-bottom:0; }
+@media(max-width:760px) {
+  .vendedor-hoje { padding:12px; }
+  .vendedor-hoje-resumo { grid-template-columns:1fr 1fr; }
+  .vendedor-hoje-resumo>div:first-child { grid-column:1/-1; }
+  .vendedor-hoje-acoes { display:grid; grid-template-columns:1fr 1fr; width:100%; }
+  .vendedor-hoje-acoes button:last-child { grid-column:1/-1; }
+}

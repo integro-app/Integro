@@ -74,6 +74,13 @@
     const database = options.db || db();
     const tenantId = options.tenantId || tenant();
     if (!database || !tenantId) return [];
+    if (global.IntegroDataRuntime?.consultarTenant) {
+      return global.IntegroDataRuntime.consultarTenant({
+        db: database, colecao: collection, tenantId,
+        filtros: options.where || [], limite: options.limit || 1000,
+        cacheMs: options.cacheMs || 0, forcar: options.forcar === true
+      });
+    }
     let ref = database.collection(collection).where("clientePlataformaId", "==", tenantId);
     if (options.where) {
       for (const [field, operator, value] of options.where) {
@@ -90,21 +97,22 @@
     if (a.perfil === "vendedor") {
       const variants = [["vendedorAuthUid", a.authUid], ["vendedorUid", a.authUid], ["uid", a.authUid], ["vendedorId", a.usuarioId], ["usuarioId", a.usuarioId]].filter(([, value]) => value);
       const map = new Map();
-      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
+      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [...(options.where || []), [field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
       return [...map.values()];
     }
-    if (a.perfil === "supervisor" && a.equipeIds?.length) {
+    if (a.perfil === "supervisor") {
+      if (!a.equipeIds?.length) return [];
       const map = new Map();
       for (let i = 0; i < a.equipeIds.length; i += 10) {
         const block = a.equipeIds.slice(i, i + 10);
-        try { const found = await queryTenant(collection, { ...options, where: [["equipeId", block.length === 1 ? "==" : "in", block.length === 1 ? block[0] : block]] }); found.forEach(item => map.set(item.id, item)); } catch (_) {}
+        try { const found = await queryTenant(collection, { ...options, where: [...(options.where || []), ["equipeId", block.length === 1 ? "==" : "in", block.length === 1 ? block[0] : block]] }); found.forEach(item => map.set(item.id, item)); } catch (_) {}
       }
       return [...map.values()];
     }
     if (a.perfil === "captador") {
       const variants = [["captadorId", a.usuarioId], ["indicadoPorId", a.usuarioId], ["criadoPor", a.usuarioId], ["captadorId", a.authUid], ["indicadoPorId", a.authUid], ["criadoPor", a.authUid]].filter(([, value]) => value);
       const map = new Map();
-      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [[field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
+      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [...(options.where || []), [field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
       return [...map.values()];
     }
     return queryTenant(collection, options);

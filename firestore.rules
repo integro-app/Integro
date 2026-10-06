@@ -1681,10 +1681,10 @@ service cloud.firestore {
     match /financeiro_solicitacoes/{id} {
       allow read: if canReadEnterpriseFinance(resource.data) &&
         (
-          isMasterLocal() || isGerente() || isSupervisorFinanceiro() || isResponsavelFinanceiro() ||
-          controlFinanceMap().get("aprovar", false) == true ||
           resource.data.get("solicitanteAuthUid", "") == currentUid() ||
-          resource.data.get("responsavelNovoAuthUid", "") == currentUid()
+          resource.data.get("responsavelNovoAuthUid", "") == currentUid() ||
+          controlFinanceMap().get("aprovar", false) == true ||
+          isMasterLocal() || isGerente() || isSupervisorFinanceiro() || isResponsavelFinanceiro()
         );
       allow create, update, delete: if false;
     }

@@ -64,7 +64,16 @@
 
   async function list(name, options = {}) {
     assertBase();
+    if (global.IntegroDataRuntime?.consultarTenant) {
+      return global.IntegroDataRuntime.consultarTenant({
+        db: db(), colecao: name, tenantId: tenantId(),
+        filtros: options.where || [],
+        ordem: options.orderBy ? [[options.orderBy, options.direction || "asc"]] : [],
+        limite: options.limit || 1000
+      });
+    }
     let query = tenantRef(name);
+    for (const [field, operator, value] of options.where || []) query = query.where(field, operator, value);
     if (options.orderBy) query = query.orderBy(options.orderBy, options.direction || "asc");
     if (options.limit) query = query.limit(options.limit);
     const snap = await query.get();
@@ -117,7 +126,20 @@
   async function listarRecorrencias() { return list(COLLECTIONS.recorrencias, { orderBy: "proximaGeracao", direction: "asc", limit: 1000 }); }
   async function listarLembretes() { return list(COLLECTIONS.lembretes, { orderBy: "dataLembrete", direction: "asc", limit: 3000 }); }
   async function listarAuditoria() { return list(COLLECTIONS.auditoria, { orderBy: "criadoEmTexto", direction: "desc", limit: 3000 }); }
-  async function listarSolicitacoes() { return list(COLLECTIONS.solicitacoes, { orderBy: "criadoEmTexto", direction: "desc", limit: 1000 }); }
+  async function listarSolicitacoes() {
+    assertBase();
+    const u = user();
+    const roles = [u.tipoUsuario, u.cargoChave];
+    const gestor = roles.some(role => ["master_local", "gerente", "supervisor_financeiro"].includes(role)) ||
+      (roles.includes("supervisor") && u.departamento === "FINANCEIRO") ||
+      u.responsavelFinanceiro === true || u.permissoes?.controleFinanceiro?.aprovar === true;
+    const options = { orderBy: "criadoEmTexto", direction: "desc", limit: 1000 };
+    if (gestor) return list(COLLECTIONS.solicitacoes, options);
+    const grupos = await Promise.all(["solicitanteAuthUid", "responsavelNovoAuthUid"].map(field =>
+      list(COLLECTIONS.solicitacoes, { ...options, where: [[field, "==", authUid()]] })));
+    const unicos = new Map(grupos.flat().map(row => [row.id, row]));
+    return [...unicos.values()].sort((a, b) => text(b.criadoEmTexto).localeCompare(text(a.criadoEmTexto))).slice(0, 1000);
+  }
   async function listarOrcamentos() { return list(COLLECTIONS.orcamentos, { orderBy: "periodoInicio", direction: "desc", limit: 1000 }); }
   async function listarResponsaveis() {
     assertBase();

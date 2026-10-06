@@ -1774,7 +1774,6 @@ body[data-integro-page] [class*="table-container"] {
   body[data-integro-page].integro-mobile-app-mode .modal-content,
   body[data-integro-page].integro-mobile-app-mode .dialog,
   body[data-integro-page].integro-mobile-app-mode .cliente-modal,
-  body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-modal,
   body[data-integro-page].integro-mobile-app-mode [role="dialog"] {
     width: calc(100vw - 16px) !important;
     max-width: calc(100vw - 16px) !important;
