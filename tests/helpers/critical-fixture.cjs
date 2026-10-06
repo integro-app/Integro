@@ -1,0 +1,18 @@
+const {criarPagamentosFinanceirosEmpresariais}=require('../../functions/enterprise-finance-payments');
+const {criarTransferenciasV27}=require('../../functions/v27-transferencias');
+const {criarFluxosFinanceirosV27}=require('../../functions/v27-finance-workflows');
+const core=require('../../functions/financial-core');
+const recurrence=require('../../functions/enterprise-finance-recurrences');
+class HttpsError extends Error{constructor(code,message){super(message);this.code=code;}}
+function memoryDb(initial={}){
+ const records=new Map(Object.entries(initial)),snapshot=(path)=>({id:path.split('/').pop(),ref:doc(path),exists:records.has(path),data:()=>records.get(path)});
+ function doc(path){return {path,id:path.split('/').pop(),get:async()=>snapshot(path),set:async(value,opts)=>records.set(path,opts?.merge?{...records.get(path),...value}:value),update:async value=>records.set(path,{...records.get(path),...value})};}
+ function collection(name,filters=[],cap=Infinity,after=""){return {name,filters,doc:id=>doc(name+'/'+(id||'new')),where:(key,op,value)=>collection(name,[...filters,[key,op,value]],cap,after),limit(n){return collection(name,filters,n,after);},startAfter(doc){return collection(name,filters,cap,doc.ref.path);},async get(){const docs=[...records.keys()].filter(p=>p.startsWith(name+'/')&&!p.slice(name.length+1).includes('/')&&filters.every(([k,op,v])=>op==='>='?records.get(p)[k]>=v:records.get(p)[k]===v)).filter(p=>p>after).sort().slice(0,cap).map(snapshot);return {docs,empty:!docs.length};},async add(value){const ref=doc(name+'/'+records.size);await ref.set(value);return ref;}};}
+ let queue=Promise.resolve();
+ const db={collection,records,runTransaction(fn){const work=queue.then(async()=>{const writes=[];let wrote=false;const tx={async get(ref){if(wrote)throw new Error('Firestore exige leituras antes de escritas');return ref.get();},set(ref,value,opts){wrote=true;writes.push(()=>ref.set(value,opts));},update(ref,value){wrote=true;writes.push(()=>ref.update(value));}};const result=await fn(tx);for(const write of writes)await write();return result;});queue=work.catch(()=>{});return work;},batch(){const writes=[];return{set(ref,value,opts){writes.push(()=>ref.set(value,opts));},async commit(){for(const write of writes)await write();}}}};return db;
+}
+const user=(id,role='master_local',team='e1',tenant='a')=>({id,authUid:id,tipoUsuario:role,clientePlataformaId:tenant,equipeId:team,nome:id,acessoLiberado:true,status:'ATIVO'});
+const account={clientePlataformaId:'a',descricao:'Conta',valorCentavos:100000,valorPagoCentavos:0,saldoCentavos:100000,status:'A_VENCER',criadoPorAuthUid:'master',responsavelAuthUid:'master'};
+function fixture(extra={}){const db=memoryDb({'usuarios/master':user('master'),'usuarios/sup':user('sup','supervisor'),'usuarios/source':user('source','vendedor'),'usuarios/dest':user('dest','vendedor'),'financeiro_contas/c1':account,'clientes_operacionais/client':{id:'client',clientePlataformaId:'a',equipeId:'e1',vendedorAuthUid:'source',vendedorNome:'Origem'},...extra});const admin={storage:()=>({bucket:()=>({file:()=>({getMetadata:async()=>[{size:500,metadata:{tenantId:'a',contaId:'c1'},contentType:'application/pdf'}]})})})};const deps={db,admin,functions:{https:{HttpsError}}};const payments=criarPagamentosFinanceirosEmpresariais(deps);return{db,payments,transfers:criarTransferenciasV27(deps),finance:criarFluxosFinanceirosV27({...deps,pagamentosFinanceirosEmpresariais:payments})};}
+
+module.exports={memoryDb,fixture,HttpsError,user,account};

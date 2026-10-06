@@ -63,6 +63,21 @@ async function main() {
       const finance=await evaluate(`({scroll:document.documentElement.scrollWidth,width:innerWidth,kpis:document.querySelectorAll('[data-cfe-summary]>.unified-kpi').length,buttons:[...document.querySelectorAll('[data-cfe-summary]>[role=button]')].length})`);assert.equal(finance.kpis,8);assert.equal(finance.buttons,8);assert.ok(finance.scroll<=width,JSON.stringify(finance));
       await evaluate(`document.querySelector('[data-cfe-summary] [role=button]').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));`);assert.equal(await evaluate('IntegroControleFinanceiroUI.state.filters.onlyOpen'),true);await evaluate("IntegroControleFinanceiroUI.openTab('dashboard')");results.push({component:'financeiro',width,passed:true});
     }
+    for(const width of widths.filter(w=>w<600)){
+      await send('Emulation.setDeviceMetricsOverride',{width,height:420,deviceScaleFactor:1,mobile:true});
+      await evaluate(`document.getElementById('dashboard').hidden=true;document.querySelectorAll('[data-cfe-view]').forEach(e=>e.hidden=true);document.getElementById('holder').style.cssText='height:390px;overflow:auto;width:100%;';`);
+      for(const [component,action] of [
+        ['pagamento',"await IntegroControleFinanceiroUI.openPayment('a1')"],
+        ['aprovacao',"IntegroCentralGestao.openDecision({id:'r1',source:'enterprise',tipo:'PAGAMENTO_RETROATIVO'},'APROVAR')"],
+        ['estorno',"IntegroControleFinanceiroUI.openReversePayment('p1')"],
+        ['cliente360',"IntegroCliente360.open(client)"],
+        ['transferencia',"IntegroCentralGestao.openTransfer(client)"]]){
+        await evaluate(`(async()=>{${action};document.getElementById('holder').scrollTop=100000;document.querySelector('#holder textarea,#holder input')?.focus();})()`);
+        const geometry=await evaluate(`(()=>{const b=document.querySelector('#holder .drawer-actions button'),r=b?.getBoundingClientRect();return {scroll:document.documentElement.scrollWidth,right:r?.right,bottom:r?.bottom,top:r?.top,height:r?.height};})()`);
+        assert.ok(geometry.scroll<=width,JSON.stringify({component,width,geometry}));assert.ok(geometry.height>=44&&geometry.top>=0&&geometry.bottom<=420&&geometry.right<=width,JSON.stringify({component,width,geometry}));
+        results.push({component,width,viewportHeight:420,keyboardViewportSimulation:true,passed:true});
+      }
+    }
     process.stdout.write(JSON.stringify({cases:results},null,2)+'\n');
   } finally {
     socket?.close();

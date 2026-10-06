@@ -151,8 +151,8 @@ test("backend limpa flags de venda ativa quando pagamento quita saldo", () => {
 });
 test("backend marca cliente sem saldo como inativo", () => {
   const callables = ler("functions/financial-callables.js");
-  assert.match(callables, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
-  assert.match(callables, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
+  assert.match(callables, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "QUITADO"/);
+  assert.match(callables, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "QUITADO"/);
 });
 
 test("backend aceita caixa reaberto e prioriza ownership canônico", () => {

@@ -1951,10 +1951,10 @@ test("fallback local limpa flags de venda ativa quando pagamento quita saldo", (
   assert.match(codigo, /saldoAtual: reais\(calculo\.novoSaldoClienteCentavos\)/);
   assert.match(codigo, /valorEmAberto: reais\(calculo\.novoSaldoClienteCentavos\)/);
 });
-test("fallback local marca cliente sem saldo como inativo", () => {
+test("fallback local marca cliente sem saldo como quitado", () => {
   const codigo = fs.readFileSync(path.join(__dirname, "..", "js", "services", "financial-operations.js"), "utf8");
-  assert.match(codigo, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
-  assert.match(codigo, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
+  assert.match(codigo, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "QUITADO"/);
+  assert.match(codigo, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "QUITADO"/);
 });
 
 test("regressão encadeada do vendedor cobre abertura até refechamento no mesmo estado", async () => {

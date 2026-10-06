@@ -118,6 +118,9 @@
     return rows.map(row => ({ ...row, statusV27: normalizeStatusV27(row), statusCalculado: normalizeStatus(row) }));
   }
   async function listarPagamentos() { return list(COLLECTIONS.pagamentos, { orderBy: "dataPagamento", direction: "desc", limit: 3000 }); }
+  async function obterConta(id){assertBase();const snap=await db().collection(COLLECTIONS.contas).doc(id).get({source:'server'});if(!snap.exists||snap.data().clientePlataformaId!==tenantId())throw new Error('Conta não encontrada ou sem acesso.');const row={id:snap.id,...snap.data()};return {...row,statusV27:normalizeStatusV27(row),statusCalculado:normalizeStatus(row)};}
+  async function listarPagamentosConta(contaId){assertBase();const snap=await tenantRef(COLLECTIONS.pagamentos).where('contaId','==',contaId).limit(1000).get({source:'server'});return snap.docs.map(d=>({id:d.id,...d.data()}));}
+  async function obterSolicitacao(id){assertBase();const snap=await db().collection(COLLECTIONS.solicitacoes).doc(id).get({source:'server'});if(!snap.exists||snap.data().clientePlataformaId!==tenantId())throw new Error('Solicitação não encontrada ou sem acesso.');return {id:snap.id,...snap.data()};}
   async function listarFornecedores() { return list(COLLECTIONS.fornecedores, { orderBy: "nome", direction: "asc", limit: 1500 }); }
   async function listarCategorias() { return list(COLLECTIONS.categorias, { orderBy: "nome", direction: "asc", limit: 800 }); }
   async function listarCentrosCusto() { return list(COLLECTIONS.centrosCusto, { orderBy: "nome", direction: "asc", limit: 800 }); }
@@ -464,7 +467,7 @@
   }
 
   global.IntegroControleFinanceiro = Object.freeze({
-    COLLECTIONS, MAX_FILE_BYTES, normalizeStatus, normalizeStatusV27, listarContas, listarPagamentos, listarFornecedores, listarCategorias, listarCentrosCusto, listarEmpresas, listarContasBancarias, listarRecorrencias, listarLembretes, listarAuditoria, listarSolicitacoes, listarOrcamentos, listarResponsaveis,
+    COLLECTIONS, MAX_FILE_BYTES, normalizeStatus, normalizeStatusV27, obterConta, listarPagamentosConta, obterSolicitacao, listarContas, listarPagamentos, listarFornecedores, listarCategorias, listarCentrosCusto, listarEmpresas, listarContasBancarias, listarRecorrencias, listarLembretes, listarAuditoria, listarSolicitacoes, listarOrcamentos, listarResponsaveis,
     criarConta, atualizarConta, registrarPagamento, cancelarConta, duplicarConta, salvarFornecedor, salvarCategoria, salvarCentroCusto, salvarEmpresa, salvarContaBancaria,
     criarParcelamento, criarRecorrencia, gerarOcorrenciasRecorrencia, salvarLembretes, acessoComprovantes, abrirComprovante, anexarArquivo, removerArquivo, resumoRelatorios, recurrenceNext, recurrenceDate, isBusinessDay, adjustBusinessDay, registrarExportacao, salvarOrcamento
   });

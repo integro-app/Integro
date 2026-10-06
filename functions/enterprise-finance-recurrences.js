@@ -31,7 +31,8 @@ function criarRecorrenciasFinanceiras({db,functions}){
       if(tenant&&text(rec.clientePlataformaId)!==tenant)error('permission-denied','Recorrência de outra empresa.');
       if(rec.ativo===false)return [];
       if(!Number.isSafeInteger(Number(rec.valorCentavos))||Number(rec.valorCentavos)<=0||!text(rec.categoriaId)||!text(rec.clientePlataformaId))error('failed-precondition','Recorrência sem valor, categoria ou empresa válida.');
-      let cursor=text(rec.proximaGeracao||rec.dataInicio),count=Number(rec.ocorrenciasGeradas||0);const entries=[];
+      let cursor=text(rec.proximaGeracao||rec.dataInicio),count=Number(rec.ocorrenciasGeradas||0);const entries=[],today=core.hojeSP();
+      let skipped=0;while(cursor&&cursor<today&&(!rec.dataFim||cursor<=rec.dataFim)&&(!rec.limiteOcorrencias||count<Number(rec.limiteOcorrencias))){if(++skipped>36600)error('failed-precondition','Recorrência muito desatualizada.');count++;cursor=nextDate(cursor,rec.unidade,rec.intervalo);}
       while(cursor&&cursor<=horizon&&entries.length<Math.min(120,Math.max(1,max))){
         if(rec.dataFim&&cursor>rec.dataFim||rec.limiteOcorrencias&&count>=Number(rec.limiteOcorrencias))break;
         const due=dueDate(cursor,rec),accountId='rec_'+id+'_'+cursor.replace(/-/g,''),accountRef=db.collection('financeiro_contas').doc(accountId),existing=await tx.get(accountRef);
@@ -40,7 +41,7 @@ function criarRecorrenciasFinanceiras({db,functions}){
       }
       const now=new Date().toISOString(),rows=[];
       entries.forEach(entry=>{
-        if(entry.existing)return;
+        if(entry.existing||entry.due<today)return;
         const row={clientePlataformaId:rec.clientePlataformaId,descricao:rec.descricao,tipoMovimento:rec.tipoMovimento||'PAGAR',valorCentavos:Number(rec.valorCentavos),valorPagoCentavos:0,saldoCentavos:Number(rec.valorCentavos),vencimento:entry.due,recorrenciaId:id,recorrente:true,status:'A_VENCER',statusV27:'AGUARDANDO_VENCIMENTO',anexos:[],criadoPorAuthUid:uid||rec.criadoPorAuthUid,criadoPorNome:actor,criadoEmTexto:now,criadoEm:ts(),atualizadoEmTexto:now,atualizadoEm:ts()};
         ['empresaId','empresaNome','fornecedorId','fornecedorNome','categoriaId','categoriaNome','centroCustoId','centroCustoNome','responsavelAuthUid','responsavelNome','formaPagamentoPrevista','bancoContaId','observacao'].forEach(key=>row[key]=text(rec[key]));
         if(!row.responsavelAuthUid)row.responsavelAuthUid=rec.criadoPorAuthUid;

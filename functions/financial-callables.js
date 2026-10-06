@@ -51,7 +51,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     ) {
       erro("permission-denied", "Usuário sem acesso operacional.");
     }
-    const perfil = core.normalizarStatus(usuario.tipoUsuario || usuario.cargoChave || usuario.cargo);
+    const perfil = [usuario.tipoUsuario, usuario.cargoChave, usuario.cargo].map(core.normalizarStatus).find(value => ["VENDEDOR", "MASTER_LOCAL"].includes(value)) || core.normalizarStatus(usuario.tipoUsuario);
     if (!perfil.includes("VENDEDOR") && perfil !== "MASTER_LOCAL") {
       erro("permission-denied", "Perfil sem permissão para esta operação.");
     }
@@ -735,8 +735,8 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         saldo: core.reais(calculo.novoSaldoClienteCentavos),
         saldoAtual: core.reais(calculo.novoSaldoClienteCentavos),
         valorEmAberto: core.reais(calculo.novoSaldoClienteCentavos),
-        status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
-        statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
+        status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "QUITADO",
+        statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "QUITADO",
         possuiVendaAtiva: calculo.novoSaldoClienteCentavos > 0,
         vendaAtivaId: calculo.novoSaldoClienteCentavos > 0 ? core.texto(cliente.vendaAtivaId || vendaId) : "",
         atualizadoEm: agora

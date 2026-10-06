@@ -11,7 +11,7 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
   const erro = (codigo, mensagem) => { throw new functions.https.HttpsError(codigo, mensagem); };
 
   function papel(usuario = {}) {
-    return normalizar(usuario.tipoUsuario || usuario.perfil || usuario.cargoChave || usuario.cargo);
+    return [usuario.tipoUsuario,usuario.perfil,usuario.cargoChave,usuario.cargo].map(normalizar).find(r=>['MASTER_LOCAL','GERENTE','SUPERVISOR'].includes(r))||normalizar(usuario.tipoUsuario);
   }
 
   function ativo(usuario = {}) {
@@ -48,7 +48,7 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
     if (["MASTER_LOCAL", "GERENTE"].includes(perfil)) return true;
     if (perfil !== "SUPERVISOR") return false;
     const equipeSolicitacao = texto(solicitacao.equipeId);
-    if (!equipeSolicitacao) return true;
+    if (!equipeSolicitacao) return false;
     return equipes(usuario).includes(equipeSolicitacao);
   }
 
@@ -56,10 +56,10 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
     return texto(valor).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 240);
   }
 
-  async function notificarVendedor({ tenantId, vendedorUid, solicitacaoId, aprovada, motivo }) {
+  async function notificarVendedor({ tenantId, vendedorUid, solicitacaoId, aprovada, motivo, lote, clienteId }) {
     if (!vendedorUid) return;
     const ref = db.collection("notificacoes").doc(`venda_saldo_dec_${idSeguro(solicitacaoId)}_${idSeguro(vendedorUid)}`);
-    await ref.set({
+    const notification={
       clientePlataformaId: tenantId,
       destinatarioAuthUid: vendedorUid,
       usuarioAuthUid: vendedorUid,
@@ -73,12 +73,12 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
       origemModulo: "VENDAS",
       entidadeTipo: "SOLICITACAO",
       entidadeId: solicitacaoId,
-      rota: { tela: "cobrancas", aba: "vendas" },
+      rota: { tela: "clientes", entidadeId:clienteId, acao:"CLIENTE_360" },
       lida: false,
       naLixeira: false,
       criadoEmTexto: agoraTexto(),
       criadoEm: ts()
-    }, { merge: true });
+    };if(lote)lote.set(ref,notification,{merge:true});else await ref.set(notification,{merge:true});
   }
 
   async function decidir(dadosRecebidos, contexto) {
@@ -87,25 +87,27 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
     const solicitacaoId = texto(entrada.solicitacaoId);
     const decisao = normalizar(entrada.decisao);
     const motivo = texto(entrada.motivo);
-    if (!solicitacaoId) erro("invalid-argument", "Solicitação não informada.");
+    if (!solicitacaoId || solicitacaoId.includes("/")) erro("invalid-argument", "Solicitação não informada.");
     if (!["APROVAR", "REJEITAR"].includes(decisao)) erro("invalid-argument", "Decisão inválida.");
     if (decisao === "REJEITAR" && motivo.length < 3) erro("invalid-argument", "Informe o motivo da rejeição.");
 
+    return db.runTransaction(async lote=>{
     const solicitacaoRef = db.collection("solicitacoes").doc(solicitacaoId);
-    const solicitacaoSnap = await solicitacaoRef.get();
+    const solicitacaoSnap = await lote.get(solicitacaoRef);
     if (!solicitacaoSnap.exists) erro("not-found", "Solicitação não encontrada.");
     const solicitacao = { id: solicitacaoSnap.id, ...(solicitacaoSnap.data() || {}) };
     if (texto(solicitacao.clientePlataformaId) !== tenantId) erro("permission-denied", "Solicitação fora da empresa atual.");
     if (normalizar(solicitacao.tipo || solicitacao.tipoSolicitacao) !== "VENDA_COM_SALDO_ATIVO") erro("failed-precondition", "Solicitação não pertence ao fluxo de nova venda.");
-    if (normalizar(solicitacao.status) !== "PENDENTE") erro("failed-precondition", "Solicitação já foi decidida.");
-    if (!podeDecidir(usuario, solicitacao)) erro("permission-denied", "Sem permissão para decidir esta solicitação.");
+    const expected=decisao==="APROVAR"?"APROVADA":"REJEITADA";
+    const actorSnap=await lote.get(db.collection("usuarios").doc(uid));if(!actorSnap.exists||!ativo(actorSnap.data())||texto(actorSnap.data().clientePlataformaId)!==tenantId)erro("permission-denied","Decisor sem acesso.");if (!podeDecidir(actorSnap.data(), solicitacao)) erro("permission-denied", "Sem permissão para decidir esta solicitação.");
+    if(normalizar(solicitacao.status)===expected)return {ok:true,status:expected,modo:"IDEMPOTENTE",clienteId:texto(solicitacao.clienteOperacionalId||solicitacao.clienteId)};if(normalizar(solicitacao.status)!=="PENDENTE")erro("failed-precondition","Solicitação já foi decidida.");
 
     const clienteColecao = texto(solicitacao.clienteColecao || "clientes_operacionais");
     if (!["clientes_operacionais", "clientes"].includes(clienteColecao)) erro("failed-precondition", "Referência do cliente inválida.");
     const clienteId = texto(solicitacao.clienteOperacionalId || solicitacao.clienteId);
     if (!clienteId) erro("failed-precondition", "Cliente não identificado na solicitação.");
     const clienteRef = db.collection(clienteColecao).doc(clienteId);
-    const clienteSnap = await clienteRef.get();
+    const clienteSnap = await lote.get(clienteRef);
     if (!clienteSnap.exists) erro("not-found", "Cliente não encontrado.");
     const cliente = clienteSnap.data() || {};
     if (texto(cliente.clientePlataformaId) !== tenantId) erro("permission-denied", "Cliente fora da empresa atual.");
@@ -118,7 +120,7 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
       }
     }
 
-    const lote = db.batch();
+
     const camposDecisao = {
       status: decisao === "APROVAR" ? "APROVADA" : "REJEITADA",
       statusSolicitacao: decisao === "APROVAR" ? "APROVADA" : "RECUSADA",
@@ -145,7 +147,7 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
       }, { merge: true });
     }
 
-    lote.set(db.collection("logs").doc(), {
+    lote.set(db.collection("logs").doc("venda_saldo_dec_"+idSeguro(solicitacaoId)), {
       tipo: "VENDA_COM_SALDO_ATIVO_DECISAO",
       tipoAcao: decisao === "APROVAR" ? "VENDA_COM_SALDO_ATIVO_APROVADA" : "VENDA_COM_SALDO_ATIVO_REJEITADA",
       clientePlataformaId: tenantId,
@@ -160,17 +162,18 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
       criadoEmTexto: agoraTexto(),
       criadoEm: ts()
     });
-    await lote.commit();
+
 
     await notificarVendedor({
       tenantId,
       vendedorUid,
       solicitacaoId,
       aprovada: decisao === "APROVAR",
-      motivo
-    }).catch(falha => console.error("[V27.2] Falha ao notificar decisão da venda:", falha));
+      motivo,lote,clienteId
+    });
 
-    return { ok: true, status: decisao === "APROVAR" ? "APROVADA" : "REJEITADA", solicitacaoId };
+    return { ok: true, status: decisao === "APROVAR" ? "APROVADA" : "REJEITADA", solicitacaoId,clienteId };
+    });
   }
 
   return { decidir };

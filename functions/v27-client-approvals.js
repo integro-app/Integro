@@ -10,7 +10,7 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
   const agoraTexto = () => new Date().toISOString();
   const erro = (codigo, mensagem) => { throw new functions.https.HttpsError(codigo, mensagem); };
   const idSeguro = valor => texto(valor).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 420);
-  const papel = usuario => normalizar(usuario?.tipoUsuario || usuario?.perfil || usuario?.cargoChave || usuario?.cargo);
+  const papel=usuario=>[usuario?.tipoUsuario,usuario?.perfil,usuario?.cargoChave,usuario?.cargo].map(normalizar).find(r=>['MASTER_LOCAL','GERENTE','SUPERVISOR'].includes(r))||normalizar(usuario?.tipoUsuario);
   const ativo = usuario => usuario && usuario.acessoLiberado === true && !["INATIVO", "BLOQUEADO", "SUSPENSO"].includes(normalizar(usuario.status));
   const equipes = usuario => [...new Set([...(Array.isArray(usuario?.equipeIds) ? usuario.equipeIds : []), ...(Array.isArray(usuario?.equipesIds) ? usuario.equipesIds : []), usuario?.equipeId].map(texto).filter(Boolean))];
 
@@ -36,7 +36,7 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     if (["MASTER_LOCAL", "GERENTE"].includes(perfil)) return true;
     if (perfil !== "SUPERVISOR") return false;
     const equipeId = texto(solicitacao.equipeId);
-    return !equipeId || equipes(usuario).includes(equipeId);
+    return Boolean(equipeId)&&equipes(usuario).includes(equipeId);
   }
 
   async function notificarAprovadores(tenantId, solicitacao) {
@@ -136,15 +136,16 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     const motivo = texto(entrada.motivo);
     if (!["APROVAR", "REJEITAR"].includes(decisao)) erro("invalid-argument", "Decisão inválida.");
     if (decisao === "REJEITAR" && motivo.length < 3) erro("invalid-argument", "Informe o motivo da rejeição.");
+    if(!solicitacaoId||solicitacaoId.includes("/"))erro("invalid-argument","Solicitação inválida.");return db.runTransaction(async lote=>{
     const ref = db.collection("solicitacoes").doc(solicitacaoId);
-    const snap = await ref.get();
+    const snap = await lote.get(ref);
     if (!snap.exists) erro("not-found", "Solicitação não encontrada.");
     const sol = { id: snap.id, ...(snap.data() || {}) };
     if (texto(sol.clientePlataformaId) !== tenantId || normalizar(sol.tipo) !== "CADASTRO_DUPLICADO") erro("permission-denied", "Solicitação inválida.");
-    if (normalizar(sol.status) !== "PENDENTE") erro("failed-precondition", "Solicitação já foi decidida.");
-    if (!autorizador(usuario, sol)) erro("permission-denied", "Sem permissão para autorizar este cadastro.");
+    const expected=decisao==="APROVAR"?"APROVADA":"REJEITADA";
+    const actorSnap=await lote.get(db.collection("usuarios").doc(uid));if(!actorSnap.exists||!ativo(actorSnap.data())||texto(actorSnap.data().clientePlataformaId)!==tenantId)erro("permission-denied","Decisor sem acesso.");if (!autorizador(actorSnap.data(), sol)) erro("permission-denied", "Sem permissão para autorizar este cadastro.");if(normalizar(sol.status)===expected)return {ok:true,status:expected,modo:"IDEMPOTENTE"};if(normalizar(sol.status)!=="PENDENTE")erro("failed-precondition","Solicitação já foi decidida.");
 
-    const lote = db.batch();
+
     lote.set(ref, {
       status: decisao === "APROVAR" ? "APROVADA" : "REJEITADA",
       statusSolicitacao: decisao === "APROVAR" ? "APROVADA" : "RECUSADA",
@@ -170,10 +171,10 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
         criadoEm: ts()
       }, { merge: true });
     }
-    await lote.commit();
+    lote.set(db.collection("logs").doc("dup_dec_"+idSeguro(solicitacaoId)),{clientePlataformaId:tenantId,solicitacaoId,tipoAcao:"CADASTRO_DUPLICADO_"+expected,usuarioAuthUid:uid,solicitanteAuthUid:sol.solicitanteAuthUid,motivo,criadoEmTexto:agoraTexto(),criadoEm:ts()});
 
     const destinoUid = texto(sol.solicitanteAuthUid);
-    if (destinoUid) await db.collection("notificacoes").doc(`dup_dec_${idSeguro(solicitacaoId)}_${idSeguro(destinoUid)}`).set({
+    if (destinoUid) lote.set(db.collection("notificacoes").doc(`dup_dec_${idSeguro(solicitacaoId)}_${idSeguro(destinoUid)}`),{
       clientePlataformaId: tenantId,
       destinatarioAuthUid: destinoUid,
       usuarioAuthUid: destinoUid,
@@ -192,6 +193,7 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
       criadoEm: ts()
     }, { merge: true });
     return { ok: true, status: decisao === "APROVAR" ? "APROVADA" : "REJEITADA" };
+    });
   }
 
   return { solicitar, decidir };

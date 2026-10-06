@@ -1600,8 +1600,8 @@
         saldo: reais(calculo.novoSaldoClienteCentavos),
         saldoAtual: reais(calculo.novoSaldoClienteCentavos),
         valorEmAberto: reais(calculo.novoSaldoClienteCentavos),
-        status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
-        statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
+        status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "QUITADO",
+        statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "QUITADO",
         possuiVendaAtiva: calculo.novoSaldoClienteCentavos > 0,
         vendaAtivaId: calculo.novoSaldoClienteCentavos > 0 ? texto(cliente.vendaAtivaId || vendaId) : "",
         atualizadoEm: serverTimestamp()

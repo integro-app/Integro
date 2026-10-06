@@ -167,12 +167,14 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
 
     return db.runTransaction(async transaction => {
       const approvalRef=opcoes.aprovacaoSolicitacaoId?db.collection("financeiro_solicitacoes").doc(opcoes.aprovacaoSolicitacaoId):null;
-      const [contaSnap, pagamentoSnap,approvalSnap] = await Promise.all([transaction.get(contaRef), transaction.get(pagamentoRef),approvalRef?transaction.get(approvalRef):null]);
+      const [contaSnap, pagamentoSnap,approvalSnap,actorSnap] = await Promise.all([transaction.get(contaRef), transaction.get(pagamentoRef),approvalRef?transaction.get(approvalRef):null,transaction.get(db.collection('usuarios').doc(uid))]);
+      const liveActor=actorSnap.exists?actorSnap.data():{};
+      if(liveActor.authUid!==uid||liveActor.acessoLiberado!==true||texto(liveActor.clientePlataformaId)!==tenantId||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(liveActor.status)))erro('permission-denied','Usuário sem acesso.');
       if(approvalRef&&(!approvalSnap.exists||texto(approvalSnap.data().clientePlataformaId)!==tenantId||!["PENDENTE","APROVADA"].includes(status(approvalSnap.data().status))))erro("failed-precondition","Solicitação retroativa indisponível.");
       if (!contaSnap.exists) erro("not-found", "Conta empresarial não encontrada.");
       const conta = { id: contaId, ...contaSnap.data() };
       validarTenant(conta, tenantId);
-      if (!podePagarConta(usuario, uid, conta)) erro("permission-denied", "Usuário sem responsabilidade ou permissão para registrar esta baixa.");
+      if (!(approvalRef?podeAprovarFinanceiro(liveActor):podePagarConta(liveActor, uid, conta))) erro("permission-denied", "Usuário sem responsabilidade ou permissão para registrar esta baixa.");
 
       if (pagamentoSnap.exists) {
         const existente = pagamentoSnap.data() || {};
@@ -263,7 +265,7 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
         atualizadoEm: ts()
       };
 
-      if(approvalRef){const request=approvalSnap.data();if(status(request.status)!=="PENDENTE")erro("failed-precondition","Solicitação já foi decidida.");transaction.set(approvalRef,{status:"APROVADA",pagamentoId,decisaoPorAuthUid:uid,decisaoPorNome:operadorNome,decididoEmTexto:agoraTexto,decididoEm:ts(),atualizadoEm:ts()},{merge:true});const requester=texto(request.solicitanteAuthUid);if(requester)transaction.set(db.collection("notificacoes").doc(`retro_aprovada_${idSeguro(opcoes.aprovacaoSolicitacaoId)}_${idSeguro(requester)}`),{clientePlataformaId:tenantId,destinatarioAuthUid:requester,usuarioAuthUid:requester,usuarioUid:requester,tipo:"FINANCEIRO_APROVADO",titulo:"Pagamento retroativo aprovado",mensagem:"A baixa solicitada foi efetivada.",origemModulo:"FINANCEIRO_EMPRESARIAL",entidadeTipo:"SOLICITACAO_FINANCEIRA",entidadeId:opcoes.aprovacaoSolicitacaoId,rota:{tela:"financeiro",aba:"aprovacoes"},lida:false,naLixeira:false,criadoEmTexto:agoraTexto,criadoEm:ts()});}
+      if(approvalRef){const request=approvalSnap.data();if(status(request.status)!=="PENDENTE")erro("failed-precondition","Solicitação já foi decidida.");transaction.set(approvalRef,{status:"APROVADA",pagamentoId,decisaoPorAuthUid:uid,decisaoPorNome:operadorNome,decididoEmTexto:agoraTexto,decididoEm:ts(),atualizadoEm:ts()},{merge:true});const requester=texto(request.solicitanteAuthUid);if(requester)transaction.set(db.collection("notificacoes").doc(`retro_aprovada_${idSeguro(opcoes.aprovacaoSolicitacaoId)}_${idSeguro(requester)}`),{clientePlataformaId:tenantId,destinatarioAuthUid:requester,usuarioAuthUid:requester,usuarioUid:requester,tipo:"FINANCEIRO_APROVADO",titulo:"Pagamento retroativo aprovado",mensagem:"A baixa solicitada foi efetivada.",origemModulo:"FINANCEIRO_EMPRESARIAL",entidadeTipo:"SOLICITACAO_FINANCEIRA",entidadeId:opcoes.aprovacaoSolicitacaoId,rota:{tela:"financeiro",aba:"contas",modulo:"CONTROLE_FINANCEIRO",entidadeId:contaId},lida:false,naLixeira:false,criadoEmTexto:agoraTexto,criadoEm:ts()});}
       transaction.set(pagamentoRef, pagamento);
       transaction.update(contaRef, atualizacaoConta);
       transaction.set(auditoriaRef, {

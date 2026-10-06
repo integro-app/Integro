@@ -138,6 +138,8 @@ exports.registrarNaoPagamentoOperacional = functions
 
 const { criarPagamentosFinanceirosEmpresariais } = require("./enterprise-finance-payments");
 const pagamentosFinanceirosEmpresariais = criarPagamentosFinanceirosEmpresariais({ admin, functions, db });
+const {criarCliente360}=require('./cliente-360');
+exports.obterCliente360V27=functions.region('southamerica-east1').https.onCall(criarCliente360({db,functions}).callable);
 
 exports.registrarPagamentoFinanceiroEmpresarial = functions
   .region("southamerica-east1")

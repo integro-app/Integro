@@ -58,8 +58,8 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     return {
       clientePlataformaId: tenantId, destinatarioAuthUid: uid, usuarioAuthUid: uid, usuarioUid: uid,
       tipo: data.tipo || "FINANCEIRO", titulo: data.titulo || "Controle Financeiro", mensagem: data.mensagem || "Existe uma atualização financeira.",
-      prioridade: data.prioridade || "NORMAL", origemModulo: "FINANCEIRO_EMPRESARIAL", entidadeTipo: data.entidadeTipo || "CONTA", entidadeId: data.entidadeId || "",
-      rota: data.rota || { tela:"financeiro", aba:"contas", entidadeId:data.entidadeId || "" }, lida:false, naLixeira:false,
+      prioridade: data.prioridade || "NORMAL", origemModulo: "FINANCEIRO_EMPRESARIAL", entidadeTipo: data.entidadeTipo || "CONTA_FINANCEIRA", entidadeId: data.entidadeId || "",
+      rota: data.rota || { tela:"financeiro", aba:"contas",modulo:"CONTROLE_FINANCEIRO", entidadeId:data.contaId||data.entidadeId || "" }, lida:false, naLixeira:false,
       criadoEmTexto: nowText(), criadoEm: ts()
     };
   }
@@ -159,6 +159,7 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     if (pagamentoAprovado) return {ok:true,status:"APROVADA",pagamentoId:pagamentoAprovado.pagamentoId};
     return db.runTransaction(async batch=>{
     const currentRequest=await batch.get(ref),currentAccount=await batch.get(db.collection("financeiro_contas").doc(account.id));
+    const actorSnap=await batch.get(db.collection('usuarios').doc(user.id||uid));if(!actorSnap.exists||!active(actorSnap.data())||!canApprove(actorSnap.data())||text(actorSnap.data().clientePlataformaId)!==tenantId)error('permission-denied','Decisor sem acesso.');
     if(!currentRequest.exists||!currentAccount.exists)error("not-found","Solicitação ou conta indisponível.");
     if(norm(currentRequest.data().status)!=="PENDENTE"){const expected=decision==="APROVAR"?"APROVADA":"REJEITADA";if(norm(currentRequest.data().status)===expected)return {ok:true,status:expected,modo:"IDEMPOTENTE"};error("failed-precondition","Solicitação já foi decidida.");}
     Object.assign(account,currentAccount.data());if(text(account.clientePlataformaId)!==tenantId)error("permission-denied","Conta fora da empresa.");
@@ -196,7 +197,7 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
       }
     } else if (norm(req.tipo) === "ATRIBUICAO") batch.set(db.collection("financeiro_contas").doc(account.id), { responsavelSolicitadoAuthUid:"", responsavelSolicitadoNome:"", atribuicaoStatus:"REJEITADA", atualizadoEm:ts(), atualizadoEmTexto:nowText() }, { merge:true });
     batch.set(ref, { status:decision === "APROVAR" ? "APROVADA" : "REJEITADA", decisaoPorAuthUid:uid, decisaoPorNome:text(user.nome || user.email), motivoDecisao:reason, pagamentoId:text(pagamentoAprovado?.pagamentoId), decididoEmTexto:nowText(), decididoEm:ts(), atualizadoEmTexto:nowText(), atualizadoEm:ts() }, { merge:true });
-    const requester = text(req.solicitanteAuthUid); if (requester) batch.set(notifyRef(requester, `${requestId}_decision`), notification(tenantId, requester, { tipo:decision === "APROVAR" ? "FINANCEIRO_APROVADO" : "FINANCEIRO_REJEITADO", titulo:decision === "APROVAR" ? "Solicitação aprovada" : "Solicitação rejeitada", mensagem:decision === "APROVAR" ? `A solicitação sobre ${account.descricao || "o lançamento"} foi aprovada.` : `A solicitação foi rejeitada: ${reason}`, entidadeTipo:"SOLICITACAO_FINANCEIRA", entidadeId:requestId }), { merge:true });
+    const requester = text(req.solicitanteAuthUid); if (requester) batch.set(notifyRef(requester, `${requestId}_decision`), notification(tenantId, requester, { tipo:decision === "APROVAR" ? "FINANCEIRO_APROVADO" : "FINANCEIRO_REJEITADO", titulo:decision === "APROVAR" ? "Solicitação aprovada" : "Solicitação rejeitada", mensagem:decision === "APROVAR" ? `A solicitação sobre ${account.descricao || "o lançamento"} foi aprovada.` : `A solicitação foi rejeitada: ${reason}`, entidadeTipo:"SOLICITACAO_FINANCEIRA", entidadeId:requestId,contaId:account.id }), { merge:true });
     if (decision === "APROVAR" && norm(req.tipo) === "ATRIBUICAO" && req.responsavelNovoAuthUid) batch.set(notifyRef(req.responsavelNovoAuthUid, `${requestId}_assigned`), notification(tenantId, req.responsavelNovoAuthUid, { tipo:"FINANCEIRO_ATRIBUIDO", titulo:"Lançamento atribuído a você", mensagem:`${account.descricao || "Um lançamento"} agora está sob sua responsabilidade.`, entidadeId:account.id }), { merge:true });
     batch.set(db.collection("financeiro_auditoria").doc(`audit_${idSafe(requestId)}_decision`), { clientePlataformaId:tenantId, acao:`SOLICITACAO_${decision}`, entidadeTipo:"SOLICITACAO_FINANCEIRA", entidadeId:requestId, antes:req, depois:{...req,status:decision}, usuarioAuthUid:uid, usuarioNome:text(user.nome || user.email), criadoEmTexto:nowText(), criadoEm:ts() });
     return { ok:true, status:decision === "APROVAR" ? "APROVADA" : "REJEITADA" };

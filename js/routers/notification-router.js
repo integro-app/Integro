@@ -42,17 +42,17 @@
 
   async function openEnterpriseFinance(notification, route) {
     global.__integroFinanceiroModo = "empresarial";
-    if (typeof global.IntegroControleFinanceiroUI?.openEnterprise === "function") {
-      global.IntegroControleFinanceiroUI.openEnterprise();
-    } else {
-      activateScreen("financeiro");
-    }
+    activateScreen('financeiro');
     const entityId = text(route.entidadeId || notification.contaFinanceiraId || notification.entidadeId || notification.origemId);
     if (!entityId) return;
-    setTimeout(async () => {
-      try { await global.IntegroControleFinanceiroUI?.load?.(true); } catch (_) {}
-      try { global.IntegroControleFinanceiroUI?.openDetail?.(entityId); } catch (_) {}
-    }, 280);
+    try{const ui=global.IntegroControleFinanceiroUI;if(route.aba==='aprovacoes'){await ui?.openTab?.('aprovacoes');return;}await ui?.refreshAccount?.(entityId);global.IntegroControleFinanceiroUI?.openDetail?.(entityId);}catch(error){global.IntegroModuloUtils?.notify?.(error.message||'Conta não encontrada ou sem acesso.','err');}
+  }
+  async function openClient(notification,route){
+    const id=text(route.entidadeId||notification.clienteOperacionalId||notification.clienteId);if(!id)return false;
+    activateScreen('clientes');try{let client=(global.State?.getClientes?.()||[]).find(c=>[c.id,c.clienteId,c.clienteOperacionalId,c.clienteLegadoId].map(text).includes(id));
+      if(!client){const db=global.db||global.firebase?.firestore?.(),snap=await db.collection('clientes_operacionais').doc(id).get({source:'server'});if(snap.exists)client={id:snap.id,...snap.data()};}
+      if(!client||!global.IntegroCliente360?.open?.(client))throw new Error('Cliente não encontrado ou fora do seu escopo.');return true;
+    }catch(error){global.IntegroModuloUtils?.notify?.(error.message||'Não foi possível abrir o cliente.','err');return false;}
   }
 
   async function open(notification = {}) {
@@ -60,6 +60,7 @@
     const screen = text(route.tela || notification.origemTela || "").toLowerCase();
     const type = text(notification.entidadeTipo || notification.origemTipo || notification.tipo).toUpperCase();
     closeCenter();
+    if(text(route.acao).toUpperCase()==='CLIENTE_360'||type==='CLIENTE'||type==='CARTEIRA'){return openClient(notification,route);}
 
     if (screen === "clientes" || screen === "indicacoes" || type.includes("LEAD") || type === "INDICACAO") {
       await openLead(notification, route);
@@ -69,7 +70,7 @@
       await openMovement(notification, route);
       return true;
     }
-    if (screen === "financeiro" && (type.includes("CONTA_FINANCEIRA") || type.includes("CONTROLE_FINANCEIRO") || text(route.modulo).toUpperCase() === "CONTROLE_FINANCEIRO")) {
+    if (screen === "financeiro" && (type.includes("CONTA_FINANCEIRA") || type.includes("SOLICITACAO_FINANCEIRA") || type.includes("CONTROLE_FINANCEIRO") || text(route.modulo).toUpperCase() === "CONTROLE_FINANCEIRO")) {
       await openEnterpriseFinance(notification, route);
       return true;
     }
@@ -80,5 +81,5 @@
     return false;
   }
 
-  global.IntegroNotificationRouter = Object.freeze({ open, openEnterpriseFinance });
+  global.IntegroNotificationRouter = Object.freeze({ open, openEnterpriseFinance,openClient });
 })(window);
