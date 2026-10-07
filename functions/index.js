@@ -197,3 +197,9 @@ exports.excluirMensagemChatV27 = functions.region("southamerica-east1").https.on
 const { criarManutencaoV27 } = require("./v27-maintenance");
 const manutencaoV27 = criarManutencaoV27({ admin, functions, db });
 exports.limparNotificacoesLixeiraV27 = manutencaoV27.limparNotificacoesAgendada;
+
+const { criarCicloCaixa } = require("./box-lifecycle");
+const cicloCaixa = criarCicloCaixa({ db, functions });
+exports.abrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(cicloCaixa.abrir);
+exports.reabrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(cicloCaixa.reabrir);
+exports.consultarDatasCaixaEquipe = functions.region("southamerica-east1").https.onCall(cicloCaixa.datasEquipe);

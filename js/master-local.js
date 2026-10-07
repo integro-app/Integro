@@ -80,6 +80,10 @@ async function carregarTudoMasterLocal(forcar = false) {
       }
     });
 
+    if (document.body?.classList?.contains("integro-booting")) {
+      const falha = resultados.find(resultado => resultado.status === "rejected");
+      if (falha) throw falha.reason;
+    }
     renderDashboardMasterLocal();
     if (typeof renderClientes === "function") renderClientes();
 
@@ -194,6 +198,7 @@ async function carregarUsuarios(forcar = false) {
   } catch (erro) {
     console.error("Erro ao carregar usuários:", erro);
     State.setUsuarios([]);
+    if (document.body?.classList?.contains("integro-booting")) throw erro;
   }
 }
 
@@ -210,6 +215,7 @@ async function carregarClientes(forcar = false) {
   } catch (erro) {
     console.error("Erro ao carregar clientes:", erro);
     State.setClientes([]);
+    if (document.body?.classList?.contains("integro-booting")) throw erro;
   }
 }
 
@@ -226,6 +232,7 @@ async function carregarVendas(forcar = false) {
   } catch (erro) {
     console.error("Erro ao carregar vendas:", erro);
     State.setVendas([]);
+    if (document.body?.classList?.contains("integro-booting")) throw erro;
   }
 }
 
@@ -267,6 +274,7 @@ async function carregarPagamentosHoje(forcar = false) {
   } catch (erro) {
     console.error("Erro ao carregar pagamentos:", erro);
     State.setPagamentos([]);
+    if (document.body?.classList?.contains("integro-booting")) throw erro;
   }
 }
 
@@ -283,6 +291,7 @@ async function carregarSolicitacoes(forcar = false) {
   } catch (erro) {
     console.error("Erro ao carregar solicitações:", erro);
     State.setSolicitacoes([]);
+    if (document.body?.classList?.contains("integro-booting")) throw erro;
   }
 }
 
@@ -313,6 +322,7 @@ async function carregarLogs(forcar = false) {
 }
 
 function renderDashboardMasterLocal() {
+  if (window.IntegroAcesso?.acessoUsuario?.(State.getUsuario?.())?.perfil === "vendedor" && window.renderDashboardCaixaVendedor) return window.renderDashboardCaixaVendedor();
   const clientes = State.getClientes ? State.getClientes() : [];
   const caixas = State.getCaixas ? State.getCaixas() : [];
   const vendas = State.getVendas ? State.getVendas() : [];

@@ -241,19 +241,12 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       : (Number.isFinite(Number(entrada.valorTotalVenda)) ? Math.round(Number(entrada.valorTotalVenda) * 100) : valorTotalCentavos);
     if (Math.abs(totalInformado - valorTotalCentavos) > 1) erro("invalid-argument", "O valor total não corresponde ao principal e aos juros.");
 
-    let parcelas;
-    try {
-      parcelas = core.calcularParcelas({ valorTotalCentavos, quantidadeParcelas, primeiraCobranca, frequencia });
-    } catch (falha) {
-      erro("invalid-argument", falha.message);
-    }
-
     const vendaId = core.vendaIdDeterministica({ tenantId, caixaId, clienteId, operacaoId });
     const caixaRef = db.collection("caixas").doc(caixaId);
     const vendaRef = db.collection("vendas").doc(vendaId);
     const vendedorId = idUsuario(uid, usuario);
     const vendedorNome = nomeUsuario(usuario);
-    const dataOperacional = core.hojeSP();
+    let dataOperacional = core.hojeSP();
     const [configuracaoAtualSnap, configuracaoLegadaSnap] = await Promise.all([
       db.collection("configuracoes_empresas").doc(tenantId).get().catch(() => null),
       db.collection("configuracoes_empresa").doc(tenantId).get().catch(() => null)
@@ -278,6 +271,13 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       const caixa = caixaSnap.data() || {};
       const cliente = clienteSnap.data() || {};
       validarCaixa(caixa, tenantId, uid, usuario);
+      dataOperacional = core.texto(caixa.dataOperacional || caixa.dataCaixa || core.hojeSP()).slice(0, 10);
+      let parcelas;
+      try {
+        parcelas = core.calcularParcelas({ valorTotalCentavos, quantidadeParcelas, primeiraCobranca, frequencia, hoje:dataOperacional });
+      } catch (falha) {
+        erro("invalid-argument", falha.message);
+      }
       validarTenant(cliente, tenantId, "Cliente");
       if (!pertenceAoUsuario(cliente, uid, usuario)) erro("permission-denied", "Cliente não pertence ao vendedor autenticado.");
 
@@ -391,6 +391,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         statusVenda: "ATIVA",
         data: dataOperacional,
         dataVenda: dataOperacional,
+        dataOperacional,
         criadoEmTexto: new Date().toISOString(),
         criadoEm: agora,
         atualizadoEm: agora
@@ -441,6 +442,10 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         atualizadoEm: agora
       };
       if (Object.prototype.hasOwnProperty.call(caixa, "saldo")) atualizacaoCaixa.saldo = core.reais(novoSaldoCaixaCentavos);
+      if (Number.isInteger(caixa.carteiraFinalCentavos)) {
+        atualizacaoCaixa.carteiraFinalCentavos = caixa.carteiraFinalCentavos + valorTotalCentavos;
+        atualizacaoCaixa.carteiraFinal = core.reais(atualizacaoCaixa.carteiraFinalCentavos);
+      }
       transaction.update(caixaRef, atualizacaoCaixa);
 
       transaction.set(db.collection("lancamentos_financeiros").doc(core.lancamentoVendaId(vendaId)), {
@@ -549,7 +554,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     const pagamentoRef = db.collection("pagamentos").doc(pagamentoId);
     const vendedorId = idUsuario(uid, usuario);
     const vendedorNome = nomeUsuario(usuario);
-    const dataOperacional = core.hojeSP();
+    let dataOperacional = core.hojeSP();
 
     return db.runTransaction(async transaction => {
       const [caixaSnap, vendaSnap, parcelaSnap, pagamentoSnap] = await Promise.all([
@@ -566,6 +571,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       const parcela = parcelaSnap.data() || {};
       const pagamentoAnterior = pagamentoSnap.exists ? pagamentoSnap.data() || {} : null;
       validarCaixa(caixa, tenantId, uid, usuario);
+      dataOperacional = core.texto(caixa.dataOperacional || caixa.dataCaixa || core.hojeSP()).slice(0, 10);
       validarRegistroDoVendedor(venda, tenantId, uid, usuario, "Venda");
       validarRegistroDoVendedor(parcela, tenantId, uid, usuario, "Parcela");
       if (core.texto(parcela.vendaId) !== vendaId) erro("failed-precondition", "Parcela não pertence à venda.");
@@ -694,6 +700,10 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       };
       if (Object.prototype.hasOwnProperty.call(caixa, "caixaAtual")) atualizacaoCaixa.caixaAtual = core.reais(calculo.novoSaldoCaixaCentavos);
       if (Object.prototype.hasOwnProperty.call(caixa, "saldo")) atualizacaoCaixa.saldo = core.reais(calculo.novoSaldoCaixaCentavos);
+      if (Number.isInteger(caixa.carteiraFinalCentavos)) {
+        atualizacaoCaixa.carteiraFinalCentavos = Math.max(0, caixa.carteiraFinalCentavos - calculo.deltaCentavos);
+        atualizacaoCaixa.carteiraFinal = core.reais(atualizacaoCaixa.carteiraFinalCentavos);
+      }
       transaction.update(caixaRef, atualizacaoCaixa);
 
       transaction.update(parcelaRef, {
@@ -783,27 +793,27 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     const caixaId = validarId(entrada.caixaId, "Caixa");
     const vendaId = validarId(entrada.vendaId, "Venda");
     const clienteIdInformado = core.texto(entrada.clienteId);
-    const dataOperacional = core.texto(entrada.dataOperacional || core.hojeSP()).slice(0, 10);
     const motivo = core.texto(entrada.motivo || "Cliente não realizou o pagamento");
     if (!motivo) erro("invalid-argument", "Motivo obrigatório para registrar não pagamento.");
-    const baseHistorico = [tenantId, caixaId, vendaId, dataOperacional].join("_");
-    const historicoId = validarId(entrada.operacaoId || ("nao_pagamento_" + core.texto(baseHistorico).replace(/[^a-zA-Z0-9_-]+/g, "_")), "Histórico");
     const caixaRef = db.collection("caixas").doc(caixaId);
     const vendaRef = db.collection("vendas").doc(vendaId);
-    const historicoRef = db.collection("historicoCobrancas").doc(historicoId);
 
     return db.runTransaction(async transaction => {
-      const [caixaSnap, vendaSnap, historicoSnap] = await Promise.all([
+      const [caixaSnap, vendaSnap] = await Promise.all([
         transaction.get(caixaRef),
-        transaction.get(vendaRef),
-        transaction.get(historicoRef)
+        transaction.get(vendaRef)
       ]);
       if (!caixaSnap.exists) erro("not-found", "Caixa não encontrado.");
       if (!vendaSnap.exists) erro("not-found", "Venda não encontrada.");
       const caixa = caixaSnap.data() || {};
       const venda = vendaSnap.data() || {};
       validarCaixa(caixa, tenantId, uid, usuario);
+      const dataOperacional = core.texto(caixa.dataOperacional || caixa.dataCaixa || core.hojeSP()).slice(0, 10);
       validarRegistroDoVendedor(venda, tenantId, uid, usuario, "Venda");
+      const baseHistorico = [tenantId, caixaId, vendaId, dataOperacional].join("_");
+      const historicoId = validarId(entrada.operacaoId || ("nao_pagamento_" + core.texto(baseHistorico).replace(/[^a-zA-Z0-9_-]+/g, "_")), "Histórico");
+      const historicoRef = db.collection("historicoCobrancas").doc(historicoId);
+      const historicoSnap = await transaction.get(historicoRef);
       if (historicoSnap.exists) return { ok: true, modo: "IDEMPOTENTE", historicoId };
 
       const vendedorId = idUsuario(uid, usuario);

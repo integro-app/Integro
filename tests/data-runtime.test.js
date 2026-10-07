@@ -44,6 +44,21 @@ function bancoFake() {
   return { db: { collection: () => ref }, metricas: () => ({ gets, snapshots, unsubs }) };
 }
 
+test("bootstrap ignora cache anterior e aguarda dados confirmados pelo servidor", async () => {
+  const { runtime, contexto } = carregarRuntime();
+  const options = [];
+  const ref = {
+    where() { return this; }, limit() { return this; },
+    async get(option) { options.push(option); return { docs: [] }; }
+  };
+  const query = { db: { collection: () => ref }, colecao: "caixas", tenantId: "tenant_a", cacheMs: 30000 };
+  await runtime.consultarTenant(query);
+  contexto.document.body = { classList: { contains: name => name === "integro-booting" } };
+  await runtime.consultarTenant(query);
+  assert.equal(options.length, 2);
+  assert.equal(options[1].source, "server");
+});
+
 test("runtime deduplica consultas simultaneas e reutiliza cache", async () => {
   const { runtime } = carregarRuntime();
   const fake = bancoFake();

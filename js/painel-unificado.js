@@ -61,9 +61,9 @@
     gerente: "dashboard",
     supervisor: "dashboard",
     vendedor: "dashboard",
-    financeiro: "financeiro",
-    auditor: "auditoria",
-    captador: "captacao"
+    financeiro: "dashboard",
+    auditor: "dashboard",
+    captador: "dashboard"
   });
 
   let usuarioAtual = null;

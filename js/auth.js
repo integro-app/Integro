@@ -248,6 +248,7 @@ function protegerPagina(tipoObrigatorio = null) {
   auth.onAuthStateChanged(async (authUser) => {
     try {
       if (!authUser) {
+        if (window.__integroLogoutEmAndamento) return;
         State.limparSessao();
         window.location.href = "index.html";
         return;
@@ -320,15 +321,14 @@ function protegerPaginaAtual() {
 // ===============================
 
 async function logout() {
-  const usuarioAtual = State?.getUsuario?.() || null;
-  try {
+  return window.IntegroLogout.solicitar(async () => {
+    const usuarioAtual = State?.getUsuario?.() || null;
     await garantirServicoSessaoV27().then(servico => servico?.end?.({ silent: true })).catch(() => {});
     await auth.signOut();
-  } finally {
     if (State?.limparSessao) State.limparSessao();
-    else if (window.IntegroOperacional?.limparSessaoLocal) window.IntegroOperacional.limparSessaoLocal({ usuario: usuarioAtual, limparFila: true });
-    window.location.href = "index.html";
-  }
+    else window.IntegroOperacional?.limparSessaoLocal?.({ usuario: usuarioAtual, limparFila: true });
+    limparContinuidadeCarregamentoLogin();
+  });
 }
 
 // ===============================

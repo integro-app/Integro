@@ -120,6 +120,46 @@ function carregar(iniciais = {}) {
   return contexto;
 }
 
+test("bootstrap lista clientes no navegador sem depender da variável global do Node", async () => {
+  for (const perfil of ["vendedor", "master_local"]) {
+    const contexto = carregar({
+      "clientes_operacionais/c1": { clientePlataformaId: "tenant_1", vendedorAuthUid: "uid_seller", vendedorId: "seller", nome: "Cliente", statusAtendimento: "RECEBIDO" }
+    });
+    contexto.document = { body: { classList: { contains: () => true } } };
+    const options = [];
+    const collection = contexto.db.collection.bind(contexto.db);
+    contexto.db.collection = name => {
+      const query = collection(name);
+      const get = query.get.bind(query);
+      query.get = opts => { options.push(opts); return get(); };
+      return query;
+    };
+    assert.equal(contexto.global, undefined);
+    const rows = await contexto.ClientesService.listarClientes({ db: contexto.db }, usuario({ id: "seller", authUid: "uid_seller", tipoUsuario: perfil }));
+    assert.deepEqual(Array.from(rows, row => row.id), ["c1"]);
+    assert.equal(options[0].source, "server");
+  }
+});
+
+test("consulta canônica vazia não falha por alias legado sem permissão", async () => {
+  const contexto = carregar();
+  contexto.document = { body: { classList: { contains: () => true } } };
+  contexto.db.collection = () => {
+    let field;
+    const ref = {
+      where(name) { if (name !== "clientePlataformaId") field = name; return ref; },
+      limit() { return ref; },
+      async get() {
+        if (field !== "vendedorAuthUid") throw Object.assign(Error("permission-denied"), { code: "permission-denied" });
+        return { docs: [] };
+      }
+    };
+    return ref;
+  };
+  const rows = await contexto.ClientesService.listarClientes({ db: contexto.db }, usuario({ id: "seller", authUid: "uid_seller", tipoUsuario: "vendedor" }));
+  assert.equal(rows.length, 0);
+});
+
 test("normaliza documento, telefone e busca sem acentos", () => {
   const { ClientesService } = carregar();
   assert.equal(ClientesService.normalizarDocumento("123.456.789-00"), "12345678900");

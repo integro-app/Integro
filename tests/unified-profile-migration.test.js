@@ -72,9 +72,9 @@ test("navegação e matriz de permissões reconhecem módulos migrados", () => {
   assert.match(panel, /supervisao:\s*["']equipe\.ver["']/);
   assert.match(panel, /captacao:\s*["']indicacoes\.ver_proprio["']/);
   assert.match(panel, /captacao:\s*Object\.freeze\(\[/);
-  assert.match(panel, /financeiro:\s*["']financeiro["']/);
-  assert.match(panel, /auditor:\s*["']auditoria["']/);
-  assert.match(panel, /captador:\s*["']captacao["']/);
+  assert.match(panel, /financeiro:\s*["']dashboard["']/);
+  assert.match(panel, /auditor:\s*["']dashboard["']/);
+  assert.match(panel, /captador:\s*["']dashboard["']/);
 
   assert.match(navigation, /id:\s*["']supervisao["']/);
   assert.match(navigation, /id:\s*["']captacao["']/);

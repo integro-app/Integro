@@ -5,7 +5,7 @@
   },
   "firestore": {
     "rules": "firestore.rules",
-    "indexes": "firestore.indexes.json"
+    "indexes": "firestore.release.indexes.json"
   },
   "storage": {
     "rules": "storage.rules"

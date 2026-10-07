@@ -26,7 +26,7 @@ test("submenus usam barra horizontal oficial e o período fica dentro do Dashboa
 test("sidebar principal contém os módulos aprovados e notificações no menu", () => {
   const catalogo = nav.match(/const CATALOGO = Object\.freeze\(\[([\s\S]*?)\n  \]\);/)?.[1] || "";
   const ids = [...catalogo.matchAll(/id:\s*"([^"]+)"/g)].map(match => match[1]);
-  assert.deepEqual(ids, ["operacao","dashboard","chatInterno","clientes","movimentacoes","financeiro","auditoria","notificacoes","configuracoes","minhaConta","sair"]);
+  assert.deepEqual(ids, ["dashboard","operacao","chatInterno","clientes","movimentacoes","financeiro","auditoria","notificacoes","configuracoes","minhaConta","sair"]);
   assert.match(nav, /const SUBMODULOS/);
   assert.match(nav, /pai:\s*"operacao"/);
 });

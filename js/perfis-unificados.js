@@ -59,13 +59,13 @@
           filtros: campo ? [[campo, "==", String(valor)]] : [],
           limite,
           cacheMs,
-          forcar: opcoes.forcar === true,
+          forcar: opcoes.forcar === true || document.body?.classList?.contains("integro-booting"),
           chave: `perfil:${escopo.perfil}:${colecao}:${campo || "tenant"}:${valor || ""}:${limite}`
         });
       }
       let ref = db.collection(colecao).where("clientePlataformaId", "==", escopo.tenantId);
       if (campo) ref = ref.where(campo, "==", String(valor));
-      const snap = await ref.limit(limite).get();
+      const snap = await ref.limit(limite).get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
       return snap.docs.map(docData);
     };
 
@@ -73,6 +73,7 @@
     resultados.filter(item => item.status === "rejected").forEach(item => {
       console.warn(`[ÍNTEGRO] Consulta de ${colecao} não concluída.`, item.reason);
     });
+    if (document.body?.classList?.contains("integro-booting") && resultados.length && resultados.every(item => item.status === "rejected")) throw resultados[0].reason;
     return deduplicar(resultados.filter(item => item.status === "fulfilled").map(item => item.value))
       .filter(item => item.excluido !== true);
   }
@@ -89,7 +90,7 @@
         .where("clientePlataformaId", "==", escopo.tenantId)
         .where("equipeId", bloco.length === 1 ? "==" : "in", bloco.length === 1 ? bloco[0] : bloco)
         .limit(limite);
-      const snap = await ref.get();
+      const snap = await ref.get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
       resultados.push(snap.docs.map(docData));
     }
     return deduplicar(resultados).filter(item => item.excluido !== true);
@@ -574,6 +575,7 @@
           return await executor();
         } catch (erro) {
           console.error(`[ÍNTEGRO ${perfil.toUpperCase()}] Falha ao carregar ${nome}.`, erro);
+          if (document.body?.classList?.contains("integro-booting")) throw erro;
           return padrao;
         }
       };

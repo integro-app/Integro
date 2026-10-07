@@ -37,18 +37,14 @@
   visibility: hidden;
 }
 
-/* O card do login já concluiu o acesso. O bootstrap do painel continua sem
-   apresentar um segundo card durante a troca de documento. */
-html.integro-login-loading-concluido .integro-boot-loader {
-  display: none !important;
-}
-
-html.integro-login-loading-concluido body.integro-booting .layout,
-html.integro-login-loading-concluido body.integro-booting .app,
-html.integro-login-loading-concluido body.integro-booting .sidebar,
-html.integro-login-loading-concluido body.integro-booting .main {
-  opacity: 1 !important;
-  visibility: visible !important;
+/* O painel permanece oculto até concluir dados e indicadores. */
+body.integro-booting .layout,
+body.integro-booting .app,
+body.integro-booting .sidebar,
+body.integro-booting .main {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none;
 }
 
 .login-flow-card,
@@ -166,6 +162,24 @@ html.integro-login-loading-concluido body.integro-booting .main {
 
 .integro-loader-percent { order: 5; }
 .integro-loader-percent::after { content: " concluído"; }
+
+.integro-boot-failed .integro-loader-logo::after {
+  animation: none;
+  border-color: #ff8a00;
+}
+
+.integro-loader-card [data-boot-retry] {
+  order: 6;
+  min-height: 48px;
+  margin-top: 20px;
+  padding: 12px 20px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--integro-loading-orange);
+  color: #07182c;
+  font: 700 15px Inter, Arial, sans-serif;
+  cursor: pointer;
+}
 
 @keyframes integroLoadingSpin {
   to { transform: rotate(360deg); }

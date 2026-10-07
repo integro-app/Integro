@@ -89,7 +89,7 @@
     const limite = Math.max(1, Number(opcoes.limite || 200));
     const ordem = Array.isArray(opcoes.ordem) ? opcoes.ordem : [];
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
-    const forcar = opcoes.forcar === true;
+    const forcar = opcoes.forcar === true || document.body?.classList?.contains("integro-booting") === true;
     if (!db || !colecao || !tenantId) return [];
 
     const chave = chaveSegura(db, [opcoes.chave || "", chaveConsulta({ colecao, tenantId, filtros, limite, ordem })]);
@@ -109,7 +109,7 @@
       registrarColecao(colecao, "consultas", 1);
       try {
         const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
-        const snap = await ref.get();
+        const snap = await ref.get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
         const dados = snap.docs.map(docData).filter(item => item.excluido !== true);
         metricas.documentosRecebidos += dados.length;
         registrarColecao(colecao, "documentos", dados.length);
@@ -148,7 +148,7 @@
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
-        const snap = await db.collection(colecao).doc(id).get();
+        const snap = await db.collection(colecao).doc(id).get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
         const dados = snap.exists ? docData(snap) : null;
         if (dados) {
           metricas.documentosRecebidos++;

@@ -404,8 +404,9 @@ test("ledger: update valor/origem bloqueado, estorno autorizado permitido e dele
   await assertFails(deleteDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1")));
 });
 
-test("caixa: vendedor cria proprio, outro bloqueado, le proprio e nao le outro", async () => {
-  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_novo_v1"), caixa({ caixaId: "caixa_novo_v1" })));
+test("caixa: criação direta bloqueada, vendedor le proprio e nao le outro", async () => {
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_novo_v1"), caixa({ caixaId: "caixa_novo_v1" })));
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "caixas", "caixa_novo_master"), caixa({ caixaId: "caixa_novo_master" })));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_outro"), caixa({ vendedorId: profiles.vendedor2.uid, vendedorAuthUid: profiles.vendedor2.uid })));
   await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1")));
   await assertFails(getDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_2")));
@@ -425,10 +426,12 @@ test("ownership: Auth UID canônico prevalece sobre alias conflitante", async ()
   await assertSucceeds(getDoc(doc(appDb(profiles.vendedor2), "caixas", "caixa_alias_conflitante")));
 });
 
-test("caixa: fechamento proprio permitido, vendedor reabre bloqueado, supervisor equipe reabre e outra equipe bloqueia", async () => {
+test("caixa: fechamento proprio permitido e reabertura direta bloqueada para todos", async () => {
   await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1"), { status: "FECHADO" }));
   await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_fechado"), { status: "REABERTO" }));
-  await assertSucceeds(updateDoc(doc(appDb(profiles.supervisor1), "caixas", "caixa_fechado"), { status: "REABERTO" }));
+  await assertFails(updateDoc(doc(appDb(profiles.supervisor1), "caixas", "caixa_fechado"), { status: "REABERTO" }));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "caixas", "caixa_fechado"), { status: "ABERTO" }));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA), "caixas", "caixa_fechado"), { status: "REABERTO" }));
   await assertFails(updateDoc(doc(appDb(profiles.supervisor2), "caixas", "caixa_fechado"), { status: "REABERTO" }));
 });
 

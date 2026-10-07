@@ -1205,7 +1205,7 @@
         validarVendedorCaixa(caixa, usuario);
         validarVendedorRegistro(lancamento, usuario, "Lançamento financeiro");
         if (!["GASTO", "RETIRADA"].includes(normalizarStatus(lancamento.tipoLancamento))) throw new Error("O vendedor só pode excluir gastos ou retiradas próprios.");
-        if (texto(lancamento.dataOperacional).slice(0, 10) !== getOperacional().hojeSP()) throw new Error("O vendedor só pode excluir lançamentos do caixa atual.");
+        if (texto(lancamento.dataOperacional).slice(0, 10) !== texto(caixa.dataOperacional || caixa.dataCaixa || getOperacional().hojeSP()).slice(0, 10)) throw new Error("O vendedor só pode excluir lançamentos do caixa atual.");
       } else if (!usuarioAdministradorFinanceiro(usuario, caixa, entrada)) {
         throw new Error("Usuário sem permissão para cancelar este lançamento.");
       }
@@ -1967,6 +1967,8 @@
   }
 
   async function registrarAberturaCaixaTransacional(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("abrirCaixaOperacional", entrada);
+    exigirBackendFinanceiro();
     const db = getDb();
     const operacional = getOperacional();
     const usuario = entrada.usuario || {};
@@ -2699,6 +2701,8 @@
   }
 
   async function registrarReaberturaCaixaTransacional(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("reabrirCaixaOperacional", entrada);
+    exigirBackendFinanceiro();
     const db = getDb();
     const operacional = getOperacional();
     const usuario = entrada.usuario || {};
@@ -2756,7 +2760,7 @@
         if (!dataCaixa || !data || data <= dataCaixa) return false;
         return ["ABERTO", "REABERTO", "FECHADO", "DIVERGENTE"].includes(status);
       });
-      if (caixaPosterior && entrada.permissaoAdministrativa !== true) {
+      if (caixaPosterior) {
         throw new Error("Não é permitido reabrir caixa antigo com caixa posterior existente.");
       }
 

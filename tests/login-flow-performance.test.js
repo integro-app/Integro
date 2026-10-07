@@ -71,14 +71,15 @@ test("todas as telas com bootstrap carregam o padrão visual único", () => {
   });
 });
 
-test("login conclui o único card e oculta o carregamento interno antes da primeira pintura", () => {
+test("painel mantém carregamento visível após login até concluir os dados", () => {
   const masterLocal = fs.readFileSync(path.join(raiz, "master-local.html"), "utf8");
   const masterGlobal = fs.readFileSync(path.join(raiz, "master-global.html"), "utf8");
   const handoff = fs.readFileSync(path.join(raiz, "js", "integro-loading-handoff.js"), "utf8");
   assert.match(auth, /sessionStorage\.setItem\("integroLoadingContinuo"/);
   assert.match(auth, /prepararContinuidadeCarregamentoLogin\(100\)/);
   assert.match(handoff, /document\.documentElement\.classList\.add\("integro-login-loading-concluido"\)/);
-  assert.match(loadingCss, /html\.integro-login-loading-concluido \.integro-boot-loader \{\s*display:\s*none !important/);
+  assert.doesNotMatch(loadingCss, /html\.integro-login-loading-concluido \.integro-boot-loader \{\s*display:\s*none !important/);
+  assert.match(loadingCss, /body\.integro-booting \.main[\s\S]*?visibility:\s*hidden !important/);
   assert.match(masterLocal, /js\/integro-loading-handoff\.js\?v=20260827-single1/);
   assert.match(masterGlobal, /js\/integro-loading-handoff\.js\?v=20260827-single1/);
   assert.match(loadingCss, /\.integro-loader-logo \{\s*display:\s*block/);

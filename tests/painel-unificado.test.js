@@ -46,8 +46,9 @@ test("observador do menu ignora mutações do próprio menu compacto e evita loo
   assert.match(html, /if\(item\.hidden !== deveOcultar\)/);
 });
 
-test("loader do master local sempre é encerrado em finally", () => {
-  assert.match(html, /async function iniciarLoadingPremium\(\)[\s\S]*?finally\s*\{/);
+test("loader do master local permanece na tela se os dados falharem", () => {
+  assert.match(html, /Não foi possível atualizar os dados\. Tente novamente\./);
+  assert.match(html, /retry\.onclick = \(\) => \{ retry\.remove\(\); iniciarLoadingPremium\(\); \}/);
   assert.match(html, /document\.body\.classList\.remove\("integro-booting"\)/);
   assert.match(html, /loader\) loader\.classList\.add\("hide"\)/);
 });

@@ -2513,6 +2513,22 @@ body.integro-data-refreshing .section-card{
 </style>
 <link href="css/integro-loading.css?v=20260827-single1" rel="stylesheet">
 <script src="js/integro-loading-handoff.js?v=20260827-single1"></script>
+<link rel="stylesheet" href="css/logout-flow.css?v=20261007">
+<script src="js/logout-flow.js?v=20261007"></script>
+<style>
+body.perfil-vendedor #dashboard .bottom-grid,
+body.perfil-vendedor #dashboard .dashboard-analytics-grid,
+body.perfil-vendedor #dashboard [data-dashboard-navigation],
+body.perfil-vendedor #dashboard .kpi-trend,
+body.perfil-vendedor #dashboard .kpi-workday-compare,
+body.perfil-vendedor #dashboard .kpi-progress,
+body.perfil-vendedor #dashboard .kpi-breakdown,
+body.perfil-vendedor #dashboard .kpi-sparkline,
+body.perfil-vendedor #dashboard .kpi-sub:not([data-seller-box-caption]),
+body.perfil-vendedor #vendedorHoje {display:none!important;}
+body.perfil-vendedor #dashboard .kpi-card:focus-visible {outline:3px solid #80baff;outline-offset:3px;}
+</style>
+<link rel="stylesheet" href="css/caixa-date-ui.css?v=20261007-2">
 </head>
 
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-local">
@@ -5444,17 +5460,15 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     const db = getDb();
     if(!db) return notificarIntegro("Firebase não conectado.");
     try{
-      const hoje = new Date().toISOString().slice(0,10);
-      if(!row.vendedores.length){
-        await db.collection("caixas").add({clientePlataformaId:tenantId(), equipeId:row.equipeId, equipeNome:row.unidade, status:"ABERTO", valorInicial:num(valor), saldoInicial:num(valor), saldoAtual:num(valor), valorAtual:num(valor), dataCaixa:hoje, dataAbertura:hoje, ativo:true, criadoEm:new Date(), abertoEm:new Date(), abertoPorId:window.usuarioLogado?.id||window.currentUserData?.id||"", abertoPorNome:window.usuarioLogado?.nome||window.currentUserData?.nome||""});
-      }else{
-        for(const v of row.vendedores){
-          await db.collection("caixas").add({clientePlataformaId:tenantId(), equipeId:row.equipeId, equipeNome:row.unidade, vendedorId:vendedorId(v), vendedorNome:v.nome||v.nomeCompleto||v.email||"Vendedor", status:"ABERTO", valorInicial:num(valor), saldoInicial:num(valor), saldoAtual:num(valor), valorAtual:num(valor), dataCaixa:hoje, dataAbertura:hoje, ativo:true, criadoEm:new Date(), abertoEm:new Date(), abertoPorId:window.usuarioLogado?.id||window.currentUserData?.id||"", abertoPorNome:window.usuarioLogado?.nome||window.currentUserData?.nome||""});
-        }
+      if(!row.vendedores.length) return notificarIntegro("Vincule um vendedor à equipe antes de abrir o caixa.");
+      for(const v of row.vendedores){
+        const equipe = {id:row.equipeId,nome:row.unidade};
+        const snapshot = window.snapshotAberturaCaixaVendedor?.(v,equipe) || {caixaInicial:num(valor),carteiraInicial:0};
+        await window.criarCaixaParaVendedor(v,equipe,snapshot);
       }
       await carregarDadosCaixasFirebase(true);
       renderCaixas();
-    }catch(e){ console.error(e); notificarIntegro("Erro ao abrir caixa. Veja o console."); }
+    }catch(e){ console.error(e); notificarIntegro(e.message || "Não foi possível abrir o caixa."); }
   };
 
   window.fecharCaixaEquipe = async function(caixaIdAtual){
@@ -12459,16 +12473,9 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     return new Promise(resolve => setTimeout(resolve, esperaEfetiva));
   }
 
-  async function chamarSeExistir(nome, tempoMaximo){
-    if(typeof window[nome] !== "function") return;
-    try{
-      await Promise.race([
-        Promise.resolve(window[nome]()),
-        esperar(tempoMaximo || 2800)
-      ]);
-    }catch(e){
-      console.warn("Falha controlada em " + nome + ":", e);
-    }
+  async function chamarSeExistir(nome){
+    if(typeof window[nome] !== "function") throw new Error("Carregador indisponível: " + nome);
+    return await window[nome]();
   }
 
   async function executarEtapaLoading(msg, inicio, fim, acao){
@@ -12501,6 +12508,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     loadingPremiumIniciado = true;
     const loader = document.getElementById("integroBootLoader");
     document.body.classList.add("integro-booting");
+    loader?.classList.remove("integro-boot-failed");
     setLoaderProgress(0);
 
     const authUser = window.firebase?.auth?.()?.currentUser || null;
@@ -12521,11 +12529,11 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
       });
 
       await executarEtapaLoading("Carregando dados da empresa...", 15, 45, async () => {
-        await chamarSeExistir("carregarTudo", 3500);
+        await chamarSeExistir("carregarTudo");
       });
 
       await executarEtapaLoading("Atualizando indicadores reais...", 45, 78, async () => {
-        await chamarSeExistir("prepararDashboardAntesDoLoading", 8500);
+        await chamarSeExistir("prepararDashboardAntesDoLoading");
       });
 
       await executarEtapaLoading("Organizando permissões e módulos...", 78, 90, async () => {
@@ -12537,10 +12545,20 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         await esperar(300);
       });
     }catch(erro){
-      console.error("[ÍNTEGRO] Falha controlada ao preparar o painel:", erro);
-      setLoaderStep("Concluindo abertura do painel...", 100);
-      await esperar(250);
-    }finally{
+      console.error("[ÍNTEGRO] Falha ao preparar o painel:", erro);
+      loader?.classList.add("integro-boot-failed");
+      setLoaderStep("Não foi possível atualizar os dados. Tente novamente.");
+      loadingPremiumIniciado = false;
+      if (loader && !loader.querySelector("[data-boot-retry]")) {
+        const retry = document.createElement("button");
+        retry.type = "button";
+        retry.dataset.bootRetry = "true";
+        retry.textContent = "Tentar novamente";
+        retry.onclick = () => { retry.remove(); iniciarLoadingPremium(); };
+        loader.querySelector(".integro-loader-card")?.appendChild(retry);
+      }
+      return;
+    }
       try { sessionStorage.removeItem("integroLoadingContinuo"); } catch(_) {}
       if(loader) loader.classList.add("hide");
       document.body.classList.remove("integro-booting");
@@ -12551,7 +12569,6 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         organizarMenuIntegro();
         if(typeof window.atualizarBadgeNotificacoes === "function") window.atualizarBadgeNotificacoes();
       }, 420);
-    }
   }
 
   window.organizarMenuIntegro = organizarMenuIntegro;
@@ -17294,6 +17311,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function updateCards(){
+    if (isVendedor() && window.renderDashboardCaixaVendedor) return window.renderDashboardCaixaVendedor();
     const periodo = periodoAtual();
     DASHBOARD_PERIODO.inicio = periodo.inicio;
     DASHBOARD_PERIODO.fim = periodo.fim;
@@ -17560,6 +17578,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     ev.stopPropagation();
     ev.stopImmediatePropagation();
     const tipo = card.dataset.dashboardCard;
+    if (isVendedor() && window.detalheDashboardCaixaVendedor) { const detalhe = window.detalheDashboardCaixaVendedor(tipo); if (detalhe) return openDrawer(detalhe.titulo, detalhe.subtitulo, detalhe.html); }
     if(tipo === "carteira-final") return renderCarteira("7d");
     if(tipo === "recebido-hoje") return renderRecebido();
     if(tipo === "caixa-atual") return renderCaixaAtual();
@@ -17676,7 +17695,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   async function executarDashboardEstavel(origem){
-    if(ESTADO.carregando) return;
+    while(ESTADO.carregando) await sleep(20);
     const agora = Date.now();
     const origemTexto = String(origem || "auto");
     const ehPreLoading = origemTexto.includes("loading") || ESTADO.preloading;
@@ -17703,6 +17722,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
       }
     }catch(erro){
       console.warn(LOG, "falha ao estabilizar dashboard", erro);
+      if(ehPreLoading) throw erro;
     }finally{
       travarVisual(false);
       ESTADO.carregando = false;
@@ -17739,6 +17759,8 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
       await sleep(220);
       await executarDashboardEstavel("loading-passada-final");
 
+      await window.sincronizarMovimentosDashboardVendedor?.(true);
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
       ESTADO.prontoParaExibir = true;
       return true;
     }finally{
@@ -17850,15 +17872,27 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     },
 
     user(){
-      try{ if (typeof usuario === "function") return usuario() || {}; }catch(e){}
-      try{ if (typeof getUsuarioLogado === "function") return getUsuarioLogado() || {}; }catch(e){}
+      try{
+        const state = window.State || (typeof State !== "undefined" ? State : null);
+        const atual = state?.getUsuario?.();
+        if (atual) return atual;
+      }catch(e){}
+      try{ if (typeof usuario === "function") { const atual = usuario(); if (atual && Object.keys(atual).length) return atual; } }catch(e){}
+      try{ if (typeof getUsuarioLogado === "function") { const atual = getUsuarioLogado(); if (atual && Object.keys(atual).length) return atual; } }catch(e){}
       return window.usuarioLogado || window.currentUserData || {};
     },
 
     tenant(){
-      try{ if (typeof tenantPrincipal === "function") return tenantPrincipal(); }catch(e){}
+      try{
+        const state = window.State || (typeof State !== "undefined" ? State : null);
+        const atual = state?.getTenantId?.();
+        if (String(atual || "").trim()) return String(atual).trim();
+      }catch(e){}
       const u = ICX.user();
-      return u.clientePlataformaId || u.tenantId || u.empresaId || u.clienteId || "";
+      const atual = u.clientePlataformaId || u.tenantId || u.empresaId;
+      if (String(atual || "").trim()) return String(atual).trim();
+      try{ if (typeof tenantPrincipal === "function") return String(tenantPrincipal() || "").trim(); }catch(e){}
+      return "";
     },
 
     money(valor){
@@ -18296,6 +18330,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     return ICX.equipes().map(window.resumoEquipe).sort((a,b) => String(a.nome).localeCompare(String(b.nome)));
   };
 
+  window.snapshotAberturaCaixaVendedor = (vendedor,equipe) => ICX.snapshotAbertura(equipe,vendedor);
   window.criarCaixaParaVendedor = async function (vendedor, equipe, snapshot) {
     const database = ICX.db();
 
@@ -18361,90 +18396,15 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       );
     }
 
-    return database.collection(ICX.collectionName("CAIXAS")).add({
-      clientePlataformaId: tenant,
-      tenantId: tenant,
-      empresaId: user.empresaId || tenant,
-      clientePlataformaNome:
-        user.clientePlataformaNome ||
-        user.empresaNome ||
-        "",
-
-      equipeId: equipeIdFinal,
-      equipeNome: ICX.nomeEquipe(equipe),
-
-      vendedorId: vendedorIdFinal,
-      usuarioId: vendedorIdFinal,
-      vendedorAuthUid,
-      vendedorUid: vendedorAuthUid,
-      vendedorNome:
-        vendedor?.nome ||
-        vendedor?.nomeCompleto ||
-        vendedor?.email ||
-        "Vendedor",
-
-      status: "ABERTO",
-      ativo: true,
-      excluido: false,
-
-      dataOperacional: hoje,
-      saldoInicialCentavos,
-      saldoAtualCentavos: saldoInicialCentavos,
-
-      valorInicial: caixaInicial,
-      saldoInicial: caixaInicial,
-      caixaInicial,
-      valorAtual: caixaInicial,
-      saldoAtual: caixaInicial,
-      caixaAtual: caixaInicial,
-
-      carteiraInicial,
-      carteiraFinal: carteiraInicial,
-      carteiraInicialCentavos,
-      carteiraFinalCentavos: carteiraInicialCentavos,
-
-      vendas: 0,
-      totalVendas: 0,
-      valorVendas: 0,
-      valorLiberado: 0,
-      totalVendasCentavos: 0,
-
-      recolhido: 0,
-      recebido: 0,
-      totalRecebido: 0,
-      totalPagamentosCentavos: 0,
-
-      ingressos: 0,
-      despesas: 0,
-      retiradas: 0,
-      totalIngressosCentavos: 0,
-      totalGastosCentavos: 0,
-      totalRetiradasCentavos: 0,
-      totalRecolhimentosCentavos: 0,
-      totalAjustesCentavos: 0,
-
-      origemAbertura: snap.origem || "ULTIMO_CAIXA_FECHADO",
-      ultimoCaixaFechadoId: snap.ultimoCaixaId || "",
-
-      dataCaixa: hoje,
-      dataAbertura: hoje,
-
-      abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-
-      abertoPorUid:
-        user.authUid ||
-        user.uid ||
-        firebase.auth()?.currentUser?.uid ||
-        "",
-
-      abertoPorNome:
-        user.nome ||
-        user.nomeCompleto ||
-        user.email ||
-        "Usuário"
+    if (!window.IntegroCaixa?.registrarAberturaCaixaTransacional) throw new Error("Serviço de abertura de caixa indisponível.");
+    const result = await window.IntegroCaixa.registrarAberturaCaixaTransacional({
+      usuario:user, clientePlataformaId:tenant, vendedor, vendedorId:vendedorIdFinal,
+      vendedorAuthUid, vendedorNome:vendedor.nome || vendedor.email || "", equipeId:equipeIdFinal, equipeNome:ICX.nomeEquipe(equipe),
+      valorInicialCentavos:saldoInicialCentavos, carteiraInicialCentavos,
+      dataOperacional:snap.dataOperacional || hoje, motivoRetroativo:snap.motivoRetroativo || "",
+      origemAbertura:snap.origem, ultimoCaixaFechadoId:snap.ultimoCaixaId || ""
     });
+    return {id:result.caixaId,...result};
   };
 
   window.abrirSelecionadas = async function(){
@@ -23770,7 +23730,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     menu.className = "integro-sidebar-menu-compacto integro-sidebar-menu-principal";
     menu.setAttribute("aria-label","Menu principal");
 
-    ["chatInterno","dashboard"].forEach(modulo => {
+    ["dashboard","chatInterno"].forEach(modulo => {
       const item = itemOriginal(modulo);
       if(!item) return;
       item.classList.add("integro-menu-direto");
@@ -25334,6 +25294,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/usuarios-permissoes-config.js?v=20260803-unificado1"></script>
   <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1"></script>
   <script src="js/vendedor-operacao.js?v=20260827-payment-edit1"></script>
+  <script src="js/services/seller-box-dashboard.js?v=20261007"></script>
   <script src="js/vendedor-unificado.js?v=20260827-payment-edit1&build=20261006"></script>
 
 <script id="integro-financeiro-admin-unificado-router">
@@ -25451,5 +25412,6 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/routers/notification-router.js?v=20260813-v25"></script>
   <script src="js/services/notification-service.js?v=20260813-v25"></script>
   <script src="js/modules/notification-center.js?v=20260813-v25"></script>
+<script src="js/caixa-team-date-ui.js?v=20261007-2"></script>
 </body>
 </html>

@@ -498,13 +498,15 @@
       }
 
       let ultimoErro = null;
+      let consultasConcluidas = 0;
       for (const [campo, valor] of tentativas) {
         try {
           const snap = await db.collection(COLECAO_CLIENTES)
             .where("clientePlataformaId", "==", tenant)
             .where(campo, "==", valor)
             .limit(limite)
-            .get();
+            .get(window.document?.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
+          consultasConcluidas++;
           snap.docs.forEach(doc => documentos.push(documentoDeSnapshot(doc)));
           if (documentos.length) break;
         } catch (erro) {
@@ -512,7 +514,7 @@
         }
       }
 
-      if (!documentos.length && ultimoErro) {
+      if (!documentos.length && !consultasConcluidas && ultimoErro) {
         throw ultimoErro;
       }
     } else {
@@ -531,7 +533,7 @@
       if (filtros.statusAtendimento) ref = ref.where("statusAtendimento", "==", texto(filtros.statusAtendimento).toUpperCase());
       if (filtros.vendedorId && !["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) ref = ref.where("vendedorId", "==", texto(filtros.vendedorId));
       if (filtros.equipeId && !["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) ref = ref.where("equipeId", "==", texto(filtros.equipeId));
-      const snap = await ref.limit(limite).get();
+      const snap = await ref.limit(limite).get(window.document?.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
       documentos = snap.docs.map(documentoDeSnapshot);
     }
 

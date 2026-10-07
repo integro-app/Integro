@@ -1402,8 +1402,12 @@ service cloud.firestore {
 
     match /caixas/{id} {
       allow read: if canReadCaixa(resource.data);
-      allow create: if canCreateCaixa(request.resource.data);
-      allow update: if canUpdateCaixa();
+      allow create: if false; // Abertura e trava por vendedor exclusivamente no backend.
+      // Restringe ainda mais as atualizações: nenhuma abertura de caixa fechado
+      // pode vir do cliente. O Admin SDK usa a validação do último caixa no servidor.
+      allow update: if canUpdateCaixa()
+        && (resource.data.status in ["ABERTO", "REABERTO"]
+          || !(request.resource.data.status in ["ABERTO", "REABERTO"]));
       allow delete: if false;
     }
 

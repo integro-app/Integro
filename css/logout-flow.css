@@ -1,0 +1,14 @@
+.integro-logout-dialog{position:fixed;inset:0;margin:auto;box-sizing:border-box;width:min(420px,calc(100% - 32px));height:fit-content;max-width:calc(100% - 32px);max-height:calc(100vh - 32px);max-height:calc(100dvh - 32px);overflow:auto;padding:32px;border:1px solid #29415e;border-radius:20px;background:#0b203a;color:#edf4ff;font-family:Inter,Arial,sans-serif;text-align:center;box-shadow:0 24px 80px #0006;overflow-wrap:anywhere}
+.integro-logout-dialog::backdrop{background:#031020c9;backdrop-filter:blur(5px)}
+.integro-logout-dialog h2{margin:0 0 20px;font-size:21px;line-height:1.4}
+.integro-logout-dialog p{color:#b6c8df;line-height:1.6}
+.integro-logout-actions{display:flex;gap:12px;justify-content:center;margin-top:24px}
+.integro-logout-actions button{flex:1;min-height:46px;border:1px solid #415873;border-radius:10px;background:#18314f;color:#fff;font:600 15px Inter,Arial,sans-serif;cursor:pointer}
+.integro-logout-actions [data-logout-yes]{background:#ff9800;border-color:#ff9800;color:#07182c}
+.integro-logout-actions button:focus-visible{outline:3px solid #80baff;outline-offset:3px}
+.integro-logout-dialog.is-loading{width:100%;max-width:none;height:100vh;height:100dvh;max-height:none;margin:0;border:0;border-radius:0;align-content:center;background:#071a30}
+.integro-logout-spinner{width:44px;height:44px;margin:0 auto 24px;border:4px solid #ffffff26;border-top-color:#ff9800;border-radius:50%;animation:integro-logout-spin 1s linear infinite}
+@keyframes integro-logout-spin{to{transform:rotate(360deg)}}
+@media(max-width:480px){.integro-logout-dialog{padding:24px 20px;border-radius:16px}.integro-logout-dialog h2{font-size:19px}.integro-logout-actions{gap:10px;margin-top:20px}.integro-logout-actions button{min-height:48px}}
+@media(max-height:400px){.integro-logout-dialog{padding:20px}.integro-logout-dialog h2{margin-bottom:12px}.integro-logout-actions{margin-top:16px}.integro-logout-spinner{width:32px;height:32px;margin-bottom:12px}}
+@media(prefers-reduced-motion:reduce){.integro-logout-spinner{animation:none}}

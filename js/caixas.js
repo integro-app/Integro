@@ -251,6 +251,7 @@ async function carregarDadosIniciaisSupervisaoCaixas(forcar = false, incluirEstr
     if (telaCaixasAtiva()) renderCaixas();
   } catch (erro) {
     console.error("[SUPERVISÃO CAIXAS] erro no carregamento inicial:", erro);
+    if (document.body?.classList?.contains("integro-booting")) throw erro;
   }
 }
 

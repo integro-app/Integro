@@ -849,6 +849,66 @@
     return tela;
   }
 
+
+  function resumoDashboardCaixaVendedor() {
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const caixa = caixaAberto();
+    const ledger = deduplicarMovimentos([
+      movimentosDoCaixaVendedor(caixa),
+      State.getLancamentosFinanceiros?.() || [],
+      window.lancamentosFinanceirosCache || []
+    ]);
+    return window.IntegroSellerBoxDashboard.summarize({ caixa, usuario, lancamentos: ledger, vendas: State.getVendas?.() || [], pagamentos: State.getPagamentos?.() || [] });
+  }
+
+  function renderDashboardCaixaVendedor() {
+    if (perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return null;
+    const dashboard = document.getElementById("dashboard");
+    if (!dashboard || !window.IntegroSellerBoxDashboard) return null;
+    const resumo = resumoDashboardCaixaVendedor();
+    document.getElementById("vendedorHoje")?.remove();
+    const cards = [
+      ["carteira-final", "Carteira final", "kpiCarteira", resumo.carteira],
+      ["caixa-atual", "Caixa atual", "kpiCaixaAtual", resumo.saldo],
+      ["vendas-hoje", "Vendas", "kpiVendasHoje", resumo.vendas],
+      ["recebido-hoje", "Entradas", "kpiRecebidoHoje", resumo.entradas],
+      ["gastos-hoje", "Saídas (gastos)", "kpiGastosHoje", resumo.gastos]
+    ];
+    cards.forEach(([id, label, valueId, value]) => {
+      const card = dashboard.querySelector('[data-dashboard-card="' + id + '"]');
+      if (!card) return;
+      card.hidden = false;
+      card.setAttribute("role", "button");
+      card.setAttribute("tabindex", "0");
+      card.setAttribute("aria-label", label + ": " + moeda(value));
+      card.title = "Consultar " + label.toLowerCase() + " do caixa aberto";
+      const labelEl = card.querySelector(".kpi-label");
+      if (labelEl) labelEl.textContent = label;
+      const valueEl = document.getElementById(valueId);
+      if (valueEl) valueEl.textContent = moeda(value);
+      let sub = card.querySelector("[data-seller-box-caption]");
+      if (!sub) { sub = document.createElement("div"); sub.className = "kpi-sub"; sub.dataset.sellerBoxCaption = "true"; card.querySelector(".kpi-content")?.appendChild(sub); }
+      sub.textContent = resumo.caixa ? "Caixa aberto · " + dataClienteFormatada(resumo.caixa.dataOperacional || resumo.caixa.dataCaixa || resumo.caixa.dataAbertura || resumo.caixa.abertoEm) : "Nenhum caixa aberto";
+      if (!card.dataset.sellerKeyboardReady) {
+        card.dataset.sellerKeyboardReady = "true";
+        card.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); card.click(); } });
+      }
+    });
+    return resumo;
+  }
+
+  function detalheDashboardCaixaVendedor(card) {
+    const resumo = resumoDashboardCaixaVendedor();
+    const names = { "carteira-final": "Carteira final", "caixa-atual": "Caixa atual", "vendas-hoje": "Vendas", "recebido-hoje": "Entradas", "gastos-hoje": "Saídas (gastos)" };
+    const keys = { "carteira-final": "carteira", "caixa-atual": "saldo", "vendas-hoje": "vendas", "recebido-hoje": "entradas", "gastos-hoje": "gastos" };
+    const key = keys[card];
+    if (!key) return null;
+    const rows = resumo.detalhes[key] || [];
+    const table = rows.length ? '<table class="real-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>' + rows.map(item => '<tr><td>' + esc(item.clienteNome || item.descricao || item.historico || item.observacao || "Movimentação") + '</td><td>' + esc(window.IntegroMovimentacoesView.type(item)) + '</td><td>' + moeda(window.IntegroMovimentacoesView.value(item)) + '</td></tr>').join("") + '</tbody></table>' : '';
+    const info = !resumo.caixa ? "Nenhum caixa aberto para este vendedor." : key === "carteira" ? "Saldo da carteira vinculado ao caixa aberto, sem somar caixas anteriores." : key === "saldo" ? "Saldo atual confirmado do caixa aberto." : rows.length ? "" : "Nenhum lançamento confirmado neste caixa.";
+    return { titulo: names[card], subtitulo: "Dados do caixa aberto do vendedor", html: '<div class="insight-summary-grid"><div class="insight-summary-item"><small>' + names[card] + '</small><strong>' + moeda(resumo[key]) + '</strong></div></div>' + (info ? '<div class="real-empty">' + info + '</div>' : '') + table };
+  }
+
   function configurarDashboardVendedor() {
     const dashboard = document.getElementById("dashboard");
     if (!dashboard) return;
@@ -870,10 +930,12 @@
     if (label) label.textContent = "Visão geral";
     try { window.IntegroDashboardNavigation?.selecionar?.("visao-geral"); } catch (_) {}
     dashboard.querySelector('[data-dashboard-view="visao-geral"]')?.click();
+    renderDashboardCaixaVendedor();
     sincronizarMovimentosDashboardVendedor(false);
   }
 
   function renderHoje(carteira = null) {
+    if (perfil(usuarioAtual || State.getUsuario?.()) === "vendedor") { document.getElementById("vendedorHoje")?.remove(); return; }
     if (perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
     const dashboard = document.getElementById("dashboard");
     const operacao = window.IntegroVendedorOperacao;
@@ -903,6 +965,7 @@
   function recalcularDashboardVendedor(origem = "vendedor") {
     try {
       renderHoje();
+      renderDashboardCaixaVendedor();
       if (typeof window.renderizarDashboardGerencialComCache === "function") {
         return window.renderizarDashboardGerencialComCache({ tempoReal: true, origem });
       }
@@ -937,6 +1000,7 @@
         sincronizacaoDashboardEm = Date.now();
       } catch (erro) {
         console.warn("[ÍNTEGRO VENDEDOR] Não foi possível reconstruir imediatamente o resumo do caixa atual.", erro);
+        if (document.body?.classList?.contains("integro-booting")) throw erro;
       } finally {
         sincronizacaoDashboardMovimentos = null;
       }
@@ -2547,6 +2611,8 @@
   });
   document.addEventListener("DOMContentLoaded", () => setTimeout(() => aplicar(State.getUsuario?.()), 0));
 
+  window.renderDashboardCaixaVendedor = renderDashboardCaixaVendedor;
+  window.detalheDashboardCaixaVendedor = detalheDashboardCaixaVendedor;
   window.obterDataCaixaVendedor = dataCaixa;
   window.obterCaixaAbertoVendedor = caixaAberto;
   window.atualizarCaixaAbertoVendedor = garantirCaixaAberto;
