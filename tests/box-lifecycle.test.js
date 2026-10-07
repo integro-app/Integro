@@ -145,3 +145,27 @@ test('venda, pagamento, correção e não pagamento usam a data do caixa retroat
   assert.equal(db.records.get('historicoCobrancas/'+unpaid.historicoId).dataOperacional,monday);
   for (const [key,value] of db.records) if (key.startsWith('lancamentos_financeiros/')) assert.equal(value.dataOperacional,monday);
 });
+
+test('carrega saldo negativo do fechamento sem substituir pelo saldo calculado ou entrada manual',async()=>{
+  const {api,db} = setup({'caixas/latest':{...box(tuesday),valorRealFechamentoCentavos:-472100,saldoAtualCentavos:-537100,carteiraFinalCentavos:0}});
+  const result = await api.abrir({...input(today),valorInicialCentavos:99900},ctx('master'));
+  assert.equal(result.caixa.saldoInicialCentavos,-472100);
+  assert.equal(result.caixa.saldoAtualCentavos,-472100);
+  assert.equal(result.caixa.valorInicial,-4721);
+  assert.equal(result.caixa.ultimoCaixaFechadoId,'latest');
+  assert.equal(db.records.get('caixas/latest').valorRealFechamentoCentavos,-472100);
+  assert.equal((await api.abrir(input(today),ctx('master'))).modo,'IDEMPOTENTE');
+});
+
+test('carrega saldo negativo de fechamento legado em reais',async()=>{
+  const {api} = setup({'caixas/latest':{...box(tuesday),saldoAtualCentavos:undefined,valorRealFechamento:-4721,carteiraFinalCentavos:0}});
+  assert.equal((await api.abrir(input(today),ctx('master'))).caixa.saldoInicialCentavos,-472100);
+});
+
+test('continua negando abertura manual negativa e carteira negativa',async()=>{
+  const fresh = setup();
+  await assert.rejects(fresh.api.abrir({...input(today),valorInicialCentavos:-100},ctx('master')),denied('invalid-argument'));
+  await assert.rejects(fresh.api.abrir({...input(today),carteiraInicialCentavos:-100},ctx('master')),denied('invalid-argument'));
+  const previous = setup({'caixas/latest':{...box(tuesday),carteiraFinalCentavos:-100}});
+  await assert.rejects(previous.api.abrir(input(today),ctx('master')),denied('invalid-argument'));
+});

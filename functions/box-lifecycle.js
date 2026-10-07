@@ -95,7 +95,9 @@ function criarCicloCaixa({ db, functions }) {
       if (last && !["FECHADO","FECHADA"].includes(core.normalizarStatus(last.status))) fail("failed-precondition","Regularize o último caixa antes de abrir outro.");
       const initial = last ? (Number.isInteger(last.valorRealFechamentoCentavos) ? last.valorRealFechamentoCentavos : core.centavosDe(last,"saldoAtualCentavos",["valorRealFechamento","valorCalculadoFechamento","caixaFinal","saldoAtual","valorAtual"])) : core.inteiro(input.valorInicialCentavos ?? core.inteiro(Number(input.valorInicial || 0)*100));
       const wallet = last ? core.centavosDe(last,"carteiraFinalCentavos",["carteiraFinal"]) : core.inteiro(input.carteiraInicialCentavos);
-      if (initial < 0 || wallet < 0) fail("invalid-argument","Saldo inicial inválido.");
+      // O saldo de um fechamento pode ser negativo e deve ser carregado sem
+      // alterar o histórico. Valores manuais negativos continuam proibidos.
+      if ((!last && initial < 0) || wallet < 0) fail("invalid-argument","Saldo inicial inválido.");
       const boxId = "caixa_" + who.tenant + "_" + sellerId + "_" + day;
       const payload = { clientePlataformaId:who.tenant,vendedorId:sellerId,vendedorAuthUid:seller.authUid,vendedorUid:seller.authUid,vendedorNome:seller.nome || seller.nomeCompleto || seller.email || "",equipeId:seller.equipeId || "",equipeNome:seller.equipeNome || input.equipeNome || "",dataOperacional:day,dataCaixa:day,dataAbertura:day,status:"ABERTO",ativo:true,excluido:false,saldoInicialCentavos:initial,saldoAtualCentavos:initial,valorInicial:initial/100,saldoInicial:initial/100,saldoAtual:initial/100,valorAtual:initial/100,caixaAtual:initial/100,carteiraInicialCentavos:wallet,carteiraFinalCentavos:wallet,carteiraInicial:wallet/100,carteiraFinal:wallet/100,ultimoCaixaFechadoId:last?.id || "",retroativo:retro,motivoRetroativo:retro ? reason : "",abertoPorUid:who.uid,abertoPorNome:who.user.nome || who.user.email || "",criadoEm:FieldValue.serverTimestamp(),abertoEm:FieldValue.serverTimestamp(),atualizadoEm:FieldValue.serverTimestamp() };
       transaction.set(db.collection("caixas").doc(boxId),payload);
