@@ -112,30 +112,6 @@ service cloud.firestore {
         userDoc().get("acessoLiberado", false) == true;
     }
 
-    function isOwnAuthProfile(data) {
-      return isAuthenticated() && data.get("authUid", "") == currentUid();
-    }
-
-    function isOwnEmailProfile(data) {
-      return isAuthenticated() &&
-        request.auth.token.get("email", "") is string &&
-        request.auth.token.get("email", "").size() > 0 &&
-        data.get("email", "") == request.auth.token.get("email", "");
-    }
-
-    function isActiveMasterLocalFor(data) {
-      let user = userDoc();
-      return isAuthenticated() &&
-        exists(userPath()) &&
-        user.get("authUid", "") == currentUid() &&
-        !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        user.get("acessoLiberado", false) == true &&
-        user.get("tipoUsuario", "") == "master_local" &&
-        user.get("clientePlataformaId", "") is string &&
-        user.get("clientePlataformaId", "").size() > 0 &&
-        data.get("clientePlataformaId", "") == user.get("clientePlataformaId", "");
-    }
-
     function permMap() {
       return userDoc().get("permissoes", {});
     }
@@ -148,7 +124,6 @@ service cloud.firestore {
         (permMap().get("indicacoes", {}).get(permissionKey, false) == true) ||
         (permMap().get("solicitacoes", {}).get(permissionKey, false) == true);
     }
-
 
     // BEGIN CONTROLE FINANCEIRO EMPRESARIAL V26 HELPERS
     function controlFinanceMap() {
@@ -209,39 +184,6 @@ service cloud.firestore {
         (isMasterLocal() || isGerente() || isSupervisorFinanceiro() || isResponsavelFinanceiro() || controlFinanceMap().get("aprovar", false) == true);
     }
 
-    function canExportEnterpriseFinance(data) {
-      return isActiveUser() &&
-        data.get("clientePlataformaId", "") == userTenantId() &&
-        (isMasterLocal() || isGerente() || isResponsavelFinanceiro() || controlFinanceMap().get("exportar", false) == true);
-    }
-
-    function validEnterpriseAccountCreate(data) {
-      return canEditEnterpriseFinance(data) &&
-        data.get("descricao", "") is string && data.get("descricao", "").size() > 0 &&
-        data.get("vencimento", "") is string && data.get("vencimento", "").size() == 10 &&
-        data.get("valorCentavos", 0) is int && data.get("valorCentavos", 0) > 0 &&
-        data.get("valorPagoCentavos", -1) == 0 &&
-        data.get("saldoCentavos", 0) == data.get("valorCentavos", 0) &&
-        data.get("criadoPorAuthUid", "") == currentUid() &&
-        data.get("status", "") == "A_VENCER";
-    }
-
-    function validEnterpriseAccountUpdate() {
-      let changed = request.resource.data.diff(resource.data).affectedKeys();
-      let tenantOk = isTenantImmutable() && isSameTenantRead() && isSameTenantWrite();
-      let immutableOk = unchanged([
-        "clientePlataformaId", "criadoPorAuthUid", "criadoPorId", "criadoPorNome", "criadoEm", "criadoEmTexto",
-        "parcelamentoId", "parcelaNumero", "parcelasTotal", "recorrenciaId", "recorrente"
-      ]);
-      let attachmentFields = ["anexos", "atualizadoEmTexto", "atualizadoEm"];
-      // V27.3: alterações administrativas, baixas e cancelamentos são backend-only.
-      // O cliente só pode anexar metadados; o backend aplica aprovação, histórico,
-      // idempotência e transação sem expor um caminho alternativo pelas Rules.
-      return tenantOk && immutableOk &&
-        canAttachEnterpriseFinance(request.resource.data) &&
-        changed.hasOnly(attachmentFields);
-    }
-
     function validEnterprisePaymentCreate(data) {
       return canPayEnterpriseFinance(data) &&
         data.get("contaId", "") is string && data.get("contaId", "").size() > 0 &&
@@ -253,28 +195,7 @@ service cloud.firestore {
         data.get("pagoPorAuthUid", "") == currentUid();
     }
 
-    function validEnterprisePaymentUpdate() {
-      let changed = request.resource.data.diff(resource.data).affectedKeys();
-      return isTenantImmutable() && isSameTenantRead() && isSameTenantWrite() &&
-        canAttachEnterpriseFinance(request.resource.data) &&
-        unchanged([
-          "clientePlataformaId", "contaId", "valorPagoCentavos", "jurosCentavos", "multaCentavos",
-          "descontoCentavos", "valorEfetivoCentavos", "dataPagamento", "formaPagamento", "bancoContaId",
-          "observacao", "pagoPorAuthUid", "pagoPorId", "pagoPorNome", "criadoEm", "criadoEmTexto"
-        ]) &&
-        changed.hasOnly(["comprovantes", "atualizadoEmTexto", "atualizadoEm"]);
-    }
-
-    function validEnterpriseAuditCreate(data) {
-      return canReadEnterpriseFinance(data) &&
-        (canEditEnterpriseFinance(data) || canPayEnterpriseFinance(data) || canConfigureEnterpriseFinance(data) || canAttachEnterpriseFinance(data)) &&
-        data.get("usuarioAuthUid", "") == currentUid() &&
-        data.get("acao", "") is string && data.get("acao", "").size() > 2 &&
-        data.get("entidadeTipo", "") is string && data.get("entidadeTipo", "").size() > 0 &&
-        data.get("entidadeId", "") is string && data.get("entidadeId", "").size() > 0;
-    }
     // END CONTROLE FINANCEIRO EMPRESARIAL V26 HELPERS
-
 
     // Permissões de Leads podem existir no formato atual (indicacoes.criar),
     // no mapa aninhado (indicacoes: { criar: true }) ou em chaves legadas.
@@ -376,59 +297,8 @@ service cloud.firestore {
       );
     }
 
-    function isOperationalCreator(data) {
-      let perfil = role();
-      let cargoAtual = cargo();
-      return isActiveUser() && (
-        perfil == "master_global" ||
-        perfil == "usuario_integro" ||
-        (isSameTenantWrite() && (
-          perfil == "master_local" ||
-          perfil == "gerente" || cargoAtual == "gerente" ||
-          perfil == "administrativo" || cargoAtual == "administrativo" || cargoAtual == "adm" ||
-          perfil == "financeiro" || cargoAtual == "financeiro" ||
-          ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
-          ((perfil == "vendedor" || cargoAtual == "vendedor") && isOwnSellerData(data))
-        ))
-      );
-    }
-
     function unchanged(keys) {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(keys);
-    }
-
-    function criticalFinancialImmutable() {
-      return unchanged([
-        "clientePlataformaId", "caixaId", "vendedorId", "vendedorAuthUid",
-        "vendaId", "pagamentoId", "origemId", "operacaoId", "criadoEm",
-        "criadoPorId", "tipoLancamento", "natureza", "valorCentavos",
-        "fechamentoId", "reaberturaId", "dataOperacional", "equipeId"
-      ]);
-    }
-
-    function hasOnlyStatusLancamentoTransition() {
-      return criticalFinancialImmutable() &&
-        request.resource.data.statusLancamento in ["CONFIRMADO", "ESTORNADO", "CANCELADO"] &&
-        (
-          (resource.data.statusLancamento == "CONFIRMADO" && request.resource.data.statusLancamento == "ESTORNADO") ||
-          (resource.data.statusLancamento == "PENDENTE" && request.resource.data.statusLancamento in ["CONFIRMADO", "CANCELADO"])
-        );
-    }
-
-    function validTipoLancamento(tipo) {
-      return tipo in [
-        "VENDA", "PAGAMENTO", "INGRESSO", "GASTO", "RETIRADA",
-        "RECOLHIMENTO", "AJUSTE", "DIVERGENCIA_ACEITA",
-        "REGULARIZACAO", "ESTORNO"
-      ];
-    }
-
-    function validNatureza(natureza) {
-      return natureza in ["CREDITO", "DEBITO"];
-    }
-
-    function validStatusLancamento(status) {
-      return status in ["CONFIRMADO", "PENDENTE", "ESTORNADO", "CANCELADO"];
     }
 
     function sellerOwnsLedger(data) {
@@ -467,138 +337,6 @@ service cloud.firestore {
       );
     }
 
-    function canProbeMissingLedgerId(id) {
-      let perfil = role();
-      let cargoAtual = cargo();
-      return isActiveUser() && (
-        isMasterGlobal() ||
-        isUsuarioIntegro() ||
-        isMasterLocal() ||
-        perfil == "financeiro" || cargoAtual == "financeiro" ||
-        ((perfil == "gerente" || cargoAtual == "gerente") && (hasPermission("podeVerLedgerFinanceiro") || hasPermission("criarLancamento"))) ||
-        perfil == "supervisor" || cargoAtual == "supervisor" ||
-        (
-          (perfil == "vendedor" || cargoAtual == "vendedor") &&
-          id.matches("lf_(venda|pagamento|gasto|retirada)_.*")
-        )
-      );
-    }
-
-    function canCreateLedger(data) {
-      return isActiveUser() && isSameTenantWrite() &&
-        validTipoLancamento(data.tipoLancamento) &&
-        validNatureza(data.natureza) &&
-        validStatusLancamento(data.statusLancamento) &&
-        data.valorCentavos is int &&
-        data.valorCentavos != 0 &&
-        data.operacaoId is string &&
-        data.origemId is string &&
-        (
-          isMasterLocal() ||
-          isUsuarioIntegro() ||
-          isMasterGlobal() ||
-          (isGerente() && (
-            hasPermission("podeVerLedgerFinanceiro") ||
-            hasPermission("criarLancamento") ||
-            hasPermission("podeCriarLancamentoFinanceiro") ||
-            hasPermission("aprovar")
-          )) ||
-          (isFinanceiro() && (
-            hasPermission("podeVerLedgerFinanceiro") ||
-            hasPermission("criarLancamento") ||
-            hasPermission("aprovar")
-          )) ||
-          (isSupervisor() && (
-            hasPermission("podeVerLedgerFinanceiro") ||
-            hasPermission("criarLancamento") ||
-            hasPermission("aprovar")
-          ) && isTeamAllowed(data)) ||
-          (
-            isVendedor() &&
-            isOwnSellerData(data) &&
-            data.tipoLancamento in ["VENDA", "PAGAMENTO", "GASTO", "RETIRADA"]
-          )
-        );
-    }
-
-    function sellerCanCancelOwnLedger() {
-      let caixaId = resource.data.get("caixaId", "");
-      return isVendedor() &&
-        sellerOwnsLedger(resource.data) &&
-        resource.data.get("tipoLancamento", "") in ["GASTO", "RETIRADA"] &&
-        resource.data.get("statusLancamento", "CONFIRMADO") == "CONFIRMADO" &&
-        request.resource.data.get("statusLancamento", "") == "CANCELADO" &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "statusLancamento", "canceladoPorId", "canceladoPorNome",
-          "motivoCancelamento", "canceladoEm", "atualizadoEm"
-        ]) &&
-        caixaId is string &&
-        caixaId.size() > 0 &&
-        exists(/databases/$(database)/documents/caixas/$(caixaId)) &&
-        get(/databases/$(database)/documents/caixas/$(caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
-        isOwnSellerData(get(/databases/$(database)/documents/caixas/$(caixaId)).data);
-    }
-
-    function adminCanCancelConfirmedLedger() {
-      let caixaId = resource.data.get("caixaId", "");
-      return resource.data.get("tipoLancamento", "") in ["INGRESSO", "GASTO", "RETIRADA"] &&
-        resource.data.get("statusLancamento", "CONFIRMADO") == "CONFIRMADO" &&
-        request.resource.data.get("statusLancamento", "") == "CANCELADO" &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "statusLancamento", "substituidoPorLancamentoId",
-          "canceladoPorId", "canceladoPorNome", "motivoCancelamento",
-          "canceladoEm", "atualizadoEm"
-        ]) &&
-        caixaId is string &&
-        caixaId.size() > 0 &&
-        exists(/databases/$(database)/documents/caixas/$(caixaId)) &&
-        get(/databases/$(database)/documents/caixas/$(caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
-        (
-          isMasterGlobal() ||
-          isUsuarioIntegro() ||
-          isMasterLocal() ||
-          (isGerente() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento"))) ||
-          (isFinanceiro() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento"))) ||
-          (isSupervisor() && isTeamAllowed(resource.data) && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento")))
-        );
-    }
-
-    function canUpdateLedger() {
-      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
-        criticalFinancialImmutable() &&
-        (
-          sellerCanCancelOwnLedger() ||
-          adminCanCancelConfirmedLedger() ||
-          (
-            hasOnlyStatusLancamentoTransition() &&
-            (
-              isMasterLocal() ||
-              isUsuarioIntegro() ||
-              isMasterGlobal() ||
-              (isFinanceiro() && hasPermission("podeEstornarLancamento")) ||
-              (isSupervisor() && hasPermission("podeEstornarLancamento") && isTeamAllowed(resource.data))
-            )
-          )
-        );
-    }
-
-    function caixaStatusTransitionAllowed() {
-      return (resource.data.status == "ABERTO" && request.resource.data.status in ["FECHADO", "DIVERGENTE"]) ||
-        (resource.data.status == "FECHADO" && request.resource.data.status == "REABERTO") ||
-        (resource.data.status == "DIVERGENTE" && request.resource.data.status == "REABERTO") ||
-        (resource.data.status == "REABERTO" && request.resource.data.status in ["FECHADO", "DIVERGENTE"]);
-    }
-
-    function caixaImmutable() {
-      return unchanged(["clientePlataformaId", "vendedorId", "vendedorAuthUid", "equipeId", "dataOperacional", "caixaId", "criadoEm"]);
-    }
-
-    function canReadCaixa(data) {
-      return isActiveMasterLocalFor(data) || isOperationalReader(data) ||
-        (isFinanceiro() && isSameTenantRead() && hasPermission("podeVerReconciliacao")) ||
-        (isAuditor() && isSameTenantRead());
-    }
-
     function canCreateCaixa(data) {
       return isActiveUser() && isSameTenantWrite() &&
         data.status == "ABERTO" &&
@@ -608,148 +346,6 @@ service cloud.firestore {
         (
           isMasterLocal() ||
           (isVendedor() && isOwnSellerData(data) && data.keys().hasAll(["vendedorAuthUid"]) && data.get("vendedorAuthUid", "") == currentUid())
-        );
-    }
-
-    function canUpdateCaixaMovimentacao() {
-      return caixaImmutable() &&
-        resource.data.status in ["ABERTO", "REABERTO"] &&
-        request.resource.data.status == resource.data.status &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "saldoAtualCentavos", "saldoAtual", "valorAtual", "caixaAtual",
-          "totalIngressosCentavos", "totalGastosCentavos", "totalRetiradasCentavos", "atualizadoEm"
-        ]) &&
-        (
-          isMasterGlobal() ||
-          isUsuarioIntegro() ||
-          isMasterLocal() ||
-          (isGerente() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento") || hasPermission("aprovar"))) ||
-          (isFinanceiro() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento") || hasPermission("aprovar") || hasPermission("podeVerLedgerFinanceiro"))) ||
-          (isSupervisor() && isTeamAllowed(resource.data) && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento") || hasPermission("aprovar") || hasPermission("podeVerLedgerFinanceiro"))) ||
-          (isVendedor() && isOwnSellerData(resource.data))
-        );
-    }
-
-    function canUpdateCaixa() {
-      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
-        (
-          canUpdateCaixaMovimentacao() ||
-          (caixaImmutable() && caixaStatusTransitionAllowed() && (
-            (resource.data.status in ["ABERTO", "REABERTO"] && request.resource.data.status in ["FECHADO", "DIVERGENTE"] &&
-              (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)) || (isSupervisor() && isTeamAllowed(resource.data)))) ||
-            (request.resource.data.status == "REABERTO" &&
-              (isMasterLocal() || (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(resource.data)) || (isFinanceiro() && hasPermission("podeReabrirCaixa"))))
-          ))
-        );
-    }
-
-    function canCreateFechamento(data, fechamentoId) {
-      return isActiveUser() && isSameTenantWrite() &&
-        data.keys().hasAll(["caixaId", "vendedorId", "statusFechamento", "caixaFinalEsperadoCentavos", "caixaFinalInformadoCentavos", "diferencaCentavos", "snapshotAuditoria"]) &&
-        data.get("caixaId", "") is string &&
-        fechamentoId == "fechamento_" + data.get("caixaId", "") &&
-        exists(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))) &&
-        get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
-        get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("status", "") in ["ABERTO", "REABERTO"] &&
-        data.get("vendedorId", "") == get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("vendedorId", "") &&
-        data.get("statusFechamento", "") in ["FECHADO", "DIVERGENTE"] &&
-        data.get("caixaFinalEsperadoCentavos", 0) is int &&
-        data.get("caixaFinalInformadoCentavos", 0) is int &&
-        data.get("diferencaCentavos", 0) is int &&
-        data.get("snapshotAuditoria", {}) is map &&
-        (
-          isMasterLocal() ||
-          (isVendedor() && isOwnSellerData(data)) ||
-          (isSupervisor() && isTeamAllowed(data))
-        );
-    }
-
-    function fechamentoOriginalImmutable() {
-      return unchanged([
-        "clientePlataformaId", "caixaId", "vendedorId", "dataOperacional",
-        "caixaFinalEsperadoCentavos", "caixaFinalInformadoCentavos",
-        "valorEsperadoCentavos", "valorInformadoCentavos", "diferencaCentavos",
-        "snapshotAuditoria", "totalVendasCentavos", "totalPagamentosCentavos",
-        "totalIngressosCentavos", "totalGastosCentavos", "totalRetiradasCentavos",
-        "totalRecolhimentosCentavos", "totalAjustesCentavos"
-      ]);
-    }
-
-    function canUpdateFechamento() {
-      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
-        fechamentoOriginalImmutable() &&
-        (
-          isMasterLocal() ||
-          (isSupervisor() && isTeamAllowed(resource.data) && (hasPermission("podeReabrirCaixa") || hasPermission("podeTratarDivergencia"))) ||
-          (isFinanceiro() && (hasPermission("podeRegularizarCaixa") || hasPermission("podeAceitarDivergenciaFinanceira")))
-        );
-    }
-
-    function canRefecharFechamento() {
-      let data = request.resource.data;
-      let caixa = get(/databases/$(database)/documents/caixas/$(data.caixaId)).data;
-      return isActiveUser() && isSameTenantWrite() &&
-        data.caixaId is string &&
-        data.fechamentoId is string &&
-        data.modo == "REFECHAMENTO" &&
-        data.statusAnterior == "REABERTO" &&
-        data.statusNovo in ["FECHADO", "DIVERGENTE"] &&
-        data.snapshotAuditoria is map &&
-        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
-        exists(/databases/$(database)/documents/fechamentos_caixa/$(data.fechamentoId)) &&
-        data.fechamentoId == "fechamento_" + data.caixaId &&
-        caixa.get("clientePlataformaId", "") == userTenantId() &&
-        caixa.get("status", "") == "REABERTO" &&
-        data.get("vendedorId", "") == caixa.get("vendedorId", "") &&
-        (
-          isMasterLocal() ||
-          (isVendedor() && isOwnSellerData(caixa) && isOwnSellerData(data)) ||
-          (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(data)) ||
-          (isFinanceiro() && (hasPermission("podeReabrirCaixa") || hasPermission("podeRegularizarCaixa")))
-        );
-    }
-
-    function canCreateReabertura(data) {
-      return isActiveUser() && isSameTenantWrite() &&
-        data.caixaId is string &&
-        data.fechamentoId is string &&
-        data.motivo is string &&
-        data.motivo.size() > 3 &&
-        data.statusAnterior in ["FECHADO", "DIVERGENTE"] &&
-        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
-        exists(/databases/$(database)/documents/fechamentos_caixa/$(data.fechamentoId)) &&
-        !isVendedor() &&
-        (
-          isMasterLocal() ||
-          (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(data)) ||
-          (isFinanceiro() && hasPermission("podeReabrirCaixa"))
-        );
-    }
-
-    function canCreateTratamento(data) {
-      return isActiveUser() && isSameTenantWrite() &&
-        data.caixaId is string &&
-        data.fechamentoId is string &&
-        data.justificativa is string &&
-        data.justificativa.size() > 3 &&
-        data.decisao in ["ACEITAR_DIVERGENCIA", "SOLICITAR_REGULARIZACAO", "REABRIR_CAIXA"] &&
-        exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
-        get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.status == "DIVERGENTE" &&
-        (
-          isMasterLocal() ||
-          (isSupervisor() && hasPermission("podeTratarDivergencia") && isTeamAllowed(data)) ||
-          (isFinanceiro() && hasPermission("podeTratarDivergencia"))
-        );
-    }
-
-    function canCreateHistorico(data) {
-      return isActiveUser() && isSameTenantWrite() &&
-        data.caixaId is string &&
-        data.statusNovo is string &&
-        (
-          isMasterLocal() ||
-          (isSupervisor() && isTeamAllowed(data)) ||
-          (isFinanceiro() && (hasPermission("podeReabrirCaixa") || hasPermission("podeRegularizarCaixa")))
         );
     }
 
@@ -801,252 +397,6 @@ service cloud.firestore {
       return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
         unchanged(["clientePlataformaId", "vendaId", "clienteId", "clienteOperacionalId", "valorCentavos", "valorParcelaCentavos", "criadoEm"]) &&
         (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)));
-    }
-
-    function canCreateSolicitacao(data) {
-      return isActiveUser() && isSameTenantWrite() &&
-        data.status == "PENDENTE" &&
-        data.valorCentavos is int &&
-        data.keys().hasAll(["criadoPorId"]) &&
-        data.get("criadoPorId", "") in [currentUid(), userDoc().get("id", "")] &&
-        (isMasterLocal() || isSupervisor() || isFinanceiro() || isVendedor());
-    }
-
-    function sellerCanCancelOwnSolicitacao() {
-      let caixaId = resource.data.get("caixaId", "");
-      return isVendedor() &&
-        isOwnSellerData(resource.data) &&
-        resource.data.get("status", "PENDENTE") == "PENDENTE" &&
-        request.resource.data.get("status", "") == "CANCELADA" &&
-        request.resource.data.get("statusSolicitacao", "") == "CANCELADA" &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          "status", "statusSolicitacao", "canceladoPorId", "canceladoPorNome",
-          "motivoCancelamento", "canceladoEm", "atualizadoEm"
-        ]) &&
-        caixaId is string &&
-        caixaId.size() > 0 &&
-        exists(/databases/$(database)/documents/caixas/$(caixaId)) &&
-        get(/databases/$(database)/documents/caixas/$(caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
-        isOwnSellerData(get(/databases/$(database)/documents/caixas/$(caixaId)).data);
-    }
-
-    function podeAprovarSolicitacao() {
-      let permissoes = permMap();
-      let solicitacoes = permissoes.get("solicitacoes", {});
-      let financeiro = permissoes.get("financeiro", {});
-      return permissoes.get("aprovar", false) == true ||
-        permissoes.get("aprovarIngresso", false) == true ||
-        permissoes.get("podeAprovarSolicitacaoFinanceira", false) == true ||
-        solicitacoes.get("aprovar", false) == true ||
-        solicitacoes.get("aprovarIngresso", false) == true ||
-        solicitacoes.get("podeAprovarSolicitacaoFinanceira", false) == true ||
-        financeiro.get("aprovar", false) == true ||
-        financeiro.get("aprovarIngresso", false) == true ||
-        financeiro.get("podeAprovarSolicitacaoFinanceira", false) == true;
-    }
-
-    function canUpdateSolicitacao() {
-      let statusAtual = resource.data.get("statusSolicitacao", resource.data.get("status", "PENDENTE"));
-      let statusNovo = request.resource.data.get("statusSolicitacao", request.resource.data.get("status", ""));
-      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
-        unchanged(["clientePlataformaId", "tipo", "tipoSolicitacao", "valorCentavos", "valor", "criadoPorId", "vendedorId", "vendedorAuthUid", "criadoEm"]) &&
-        statusAtual == "PENDENTE" &&
-        statusNovo in ["APROVADA", "RECUSADA", "CANCELADA"] &&
-        (
-          (isSupervisor() && isTeamAllowed(resource.data) && podeAprovarSolicitacao()) ||
-          ((isGerente() || isFinanceiro()) && podeAprovarSolicitacao()) ||
-          isMasterLocal() ||
-          isUsuarioIntegro() ||
-          isMasterGlobal() ||
-          sellerCanCancelOwnSolicitacao()
-        );
-    }
-
-    function canCreateIndicacao(data) {
-      return isActiveUser() && isSameTenantWrite() &&
-        data.clienteOperacionalId is string &&
-        exists(/databases/$(database)/documents/clientes_operacionais/$(data.clienteOperacionalId)) &&
-        get(/databases/$(database)/documents/clientes_operacionais/$(data.clienteOperacionalId)).data.clientePlataformaId == userTenantId() &&
-        !isVendedor() &&
-        (isMasterLocal() || isGerente() || isCaptador() || canCreateLeadByPermission());
-    }
-
-    function isIndicacaoDoVendedor(data) {
-      let authUidCanonico = data.get("vendedorAuthUid", "") != ""
-        ? data.get("vendedorAuthUid", "")
-        : (data.get("vendedorDestinoAuthUid", "") != "" ? data.get("vendedorDestinoAuthUid", "") : data.get("vendedorUid", ""));
-      return isCurrentUserValue(authUidCanonico) ||
-        (authUidCanonico == "" && (
-          isCurrentUserValue(data.get("vendedorDestinoId", "")) ||
-          isCurrentUserValue(data.get("vendedorResponsavelId", "")) ||
-          isCurrentUserValue(data.get("vendedorId", "")) ||
-          isCurrentUserValue(data.get("usuarioId", "")) ||
-          isCurrentUserValue(data.get("vendedorDocumentoId", ""))
-        ));
-    }
-
-    function notificacaoDirecionada(data) {
-      return data.get("usuarioId", "") != "" ||
-        data.get("destinatarioId", "") != "" ||
-        data.get("destinatarioAuthUid", "") != "";
-    }
-
-    function canReadIndicacao(data) {
-      let perfil = role();
-      let cargoAtual = cargo();
-      return isActiveUser() && isSameTenantRead() &&
-        (perfil == "master_local" ||
-          perfil == "gerente" ||
-          perfil == "financeiro" || cargoAtual == "financeiro" ||
-          perfil == "auditor" || cargoAtual == "auditor" ||
-          ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
-          ((perfil == "vendedor" || cargoAtual == "vendedor") && isIndicacaoDoVendedor(data)) ||
-          perfil == "captador" || cargoAtual == "captador");
-    }
-
-    function notificacaoDoUsuario(data) {
-      let destinatarioAuthUid = data.get("destinatarioAuthUid", "");
-      return isCurrentUserValue(destinatarioAuthUid) ||
-        (destinatarioAuthUid == "" && (
-          isCurrentUserValue(data.get("usuarioId", "")) ||
-          isCurrentUserValue(data.get("destinatarioId", "")) ||
-          isCurrentUserValue(data.get("vendedorAuthUid", "")) ||
-          isCurrentUserValue(data.get("vendedorId", "")) ||
-          isCurrentUserValue(data.get("vendedorDocumentoId", ""))
-        ));
-    }
-
-    function canReadNotificacao(data) {
-      let perfil = role();
-      let cargoAtual = cargo();
-      return isActiveUser() && (
-        perfil == "master_global" ||
-        perfil == "usuario_integro" ||
-        (isSameTenantRead() && (
-          perfil == "master_local" ||
-          perfil == "gerente" ||
-          notificacaoDoUsuario(data) ||
-          (!notificacaoDirecionada(data) && (
-            ((perfil == "supervisor" || cargoAtual == "supervisor") && data.get("publico", "") == "SUPERVISOR") ||
-            ((perfil == "financeiro" || cargoAtual == "financeiro") && data.get("publico", "") == "FINANCEIRO") ||
-            ((perfil == "auditor" || cargoAtual == "auditor") && data.get("publico", "") == "AUDITOR") ||
-            ((perfil == "vendedor" || cargoAtual == "vendedor") && data.get("publico", "") == "VENDEDOR") ||
-            ((perfil == "captador" || cargoAtual == "captador") && data.get("publico", "") == "CAPTADOR")
-          ))
-        ))
-      );
-    }
-
-    function canUpdateOwnNotificacao() {
-      let alterados = request.resource.data.diff(resource.data).affectedKeys();
-      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
-        notificacaoDoUsuario(resource.data) &&
-        unchanged([
-          "clientePlataformaId", "tipo", "titulo", "mensagem", "origemTipo", "origemId",
-          "origemTela", "acaoTipo", "indicacaoId", "clienteOperacionalId", "solicitacaoId",
-          "movimentacaoId", "caixaId", "usuarioId", "destinatarioId", "destinatarioAuthUid",
-          "destinatarioUsuarioId", "vendedorId", "vendedorAuthUid", "vendedorDocumentoId", "publico",
-          "tenantId", "categoria", "prioridade", "origemModulo", "origemEvento", "entidadeTipo", "entidadeId",
-          "eventoId", "idempotencyKey", "rota", "criadoPorId", "criadoPorAuthUid", "criadoPorNome", "criadoEm"
-        ]) &&
-        alterados.hasOnly([
-          "lida", "status", "excluido", "excluida", "visualizadaEmTexto",
-          "lidaEm", "lidaPor", "excluidaEm", "excluidaEmTexto", "excluidaPor",
-          "atualizadoEm", "atualizadoEmTexto"
-        ]);
-    }
-
-    function statusIndicacaoRules(data) {
-      return data.get("statusIndicacao", data.get("status", ""));
-    }
-
-    function vendedorPodeAtualizarIndicacao() {
-      let statusAnterior = statusIndicacaoRules(resource.data);
-      let statusNovo = statusIndicacaoRules(request.resource.data);
-      let alterados = request.resource.data.diff(resource.data).affectedKeys();
-      return isVendedor() && isIndicacaoDoVendedor(resource.data) && (
-        (
-          statusNovo == "EM_ATENDIMENTO" &&
-          statusAnterior in ["ATRIBUIDA", "EM_ATENDIMENTO"] &&
-          alterados.hasOnly([
-            "status", "statusIndicacao", "statusLead", "dataInicioAtendimento",
-            "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
-          ])
-        ) ||
-        (
-          statusNovo == "NAO_CONVERTIDA" &&
-          statusAnterior == "EM_ATENDIMENTO" &&
-          alterados.hasOnly([
-            "status", "statusIndicacao", "statusLead", "motivoNaoConversao", "dataNaoConversao",
-            "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
-          ])
-        ) ||
-        (
-          statusNovo == "RECUSADA" &&
-          statusAnterior in ["ATRIBUIDA", "EM_ATENDIMENTO"] &&
-          alterados.hasOnly([
-            "status", "statusIndicacao", "statusLead", "motivoRecusa", "dataRecusa",
-            "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
-          ])
-        ) ||
-        (
-          statusNovo == "DEVOLVIDA" &&
-          statusAnterior in ["ATRIBUIDA", "EM_ATENDIMENTO"] &&
-          request.resource.data.get("vendedorDestinoId", "") == "" &&
-          request.resource.data.get("vendedorAuthUid", "") == "" &&
-          request.resource.data.get("vendedorDestinoAuthUid", "") == "" &&
-          request.resource.data.get("vendedorId", "") == "" &&
-          request.resource.data.get("equipeDestinoId", "") == "" &&
-          alterados.hasOnly([
-            "status", "statusIndicacao", "statusLead", "motivoDevolucao", "dataDevolucao",
-            "vendedorDestinoId", "vendedorDestinoNome", "vendedorAuthUid", "vendedorDestinoAuthUid",
-            "vendedorUid", "vendedorDocumentoId", "vendedorId", "vendedorNome",
-            "equipeDestinoId", "equipeDestinoNome", "equipeId", "equipeNome",
-            "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
-          ])
-        ) ||
-        (
-          statusNovo == "CONVERTIDA" &&
-          statusAnterior == "EM_ATENDIMENTO" &&
-          request.resource.data.get("vendaId", "") is string &&
-          request.resource.data.get("vendaId", "").size() > 0 &&
-          exists(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))) &&
-          get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
-          isOwnSellerData(get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data) &&
-          alterados.hasOnly([
-            "status", "statusIndicacao", "statusLead", "vendaId", "valorVendaCentavos", "dataConversao",
-            "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
-          ])
-        )
-      );
-    }
-
-    function operadorLeadsPodeAtualizarIndicacao() {
-      let permissoes = permMap();
-      let indicacoes = permissoes.get("indicacoes", {});
-      return permissoes.get("podeEditarIndicacao", false) == true ||
-        permissoes.get("podeAtribuirIndicacao", false) == true ||
-        permissoes.get("podeRedistribuirIndicacao", false) == true ||
-        permissoes.get("editarIndicacao", false) == true ||
-        permissoes.get("atribuirIndicacao", false) == true ||
-        permissoes.get("redistribuirIndicacao", false) == true ||
-        indicacoes.get("podeEditarIndicacao", false) == true ||
-        indicacoes.get("podeAtribuirIndicacao", false) == true ||
-        indicacoes.get("podeRedistribuirIndicacao", false) == true ||
-        indicacoes.get("editarIndicacao", false) == true ||
-        indicacoes.get("atribuirIndicacao", false) == true ||
-        indicacoes.get("redistribuirIndicacao", false) == true;
-    }
-
-    function canUpdateIndicacao() {
-      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
-        unchanged(["clientePlataformaId", "clienteOperacionalId", "captadorId", "criadoEm"]) &&
-        (
-          vendedorPodeAtualizarIndicacao() ||
-          isMasterLocal() ||
-          (isSupervisor() && operadorLeadsPodeAtualizarIndicacao() && isTeamAllowed(resource.data)) ||
-          ((!isVendedor()) && operadorLeadsPodeAtualizarIndicacao())
-        );
     }
 
     function vendaConversaoClienteValida(clienteId, vendaId) {
@@ -1175,184 +525,37 @@ service cloud.firestore {
       );
     }
 
-    function canCreateInteracaoCliente(data) {
-      return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
-        eventoClienteDoUsuario(data) &&
-        data.get("statusNovo", "") is string &&
-        data.get("statusNovo", "").size() > 2 &&
-        (
-          isMasterLocal() || isGerente() ||
-          (isSupervisor() && isTeamAllowed(clienteEventoData(data))) ||
-          (isVendedor() && isOwnSellerData(clienteEventoData(data)))
-        );
-    }
-
-    function canCreateDirecionamentoCliente(data) {
-      return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
-        eventoClienteDoUsuario(data) &&
-        data.get("vendedorDestinoId", "") is string &&
-        data.get("vendedorDestinoId", "").size() > 0 &&
-        data.get("equipeDestinoId", "") is string &&
-        data.get("equipeDestinoId", "").size() > 0 &&
-        (isMasterLocal() || isGerente() ||
-          (isSupervisor() && isTeamAllowed(clienteEventoData(data)) && isTeamAllowed(data)));
-    }
-
-    function canCreateCicloCliente(data) {
-      return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
-        eventoClienteDoUsuario(data) &&
-        data.get("ciclo", 0) is int && data.get("ciclo", 0) > 1 &&
-        data.get("motivo", "") is string && data.get("motivo", "").size() > 2 &&
-        (isMasterLocal() || isGerente() || (isSupervisor() && isTeamAllowed(clienteEventoData(data))));
-    }
-
-    function canCreateLog(data) {
-      return isActiveUser() && isSameTenantWrite() &&
-        data.keys().hasAll(["tipoAcao"]) &&
-        data.get("tipoAcao", "") is string &&
-        data.get("tipoAcao", "").size() > 2 &&
-        (
-          data.get("usuarioAuthUid", "") == currentUid() ||
-          data.get("usuarioId", "") in [currentUid(), userDoc().get("id", "")] ||
-          data.get("usuarioId", "") == ""
-        );
-    }
-
-    function chatParticipante(data) {
-      return data.get("participantesIds", []) is list &&
-        currentUid() in data.get("participantesIds", []);
-    }
-
-    function canReadConversa(data) {
-      return isActiveUser() &&
-        hasTenant() &&
-        data.get("clientePlataformaId", "") == userTenantId() &&
-        chatParticipante(data);
-    }
-
-    function canListConversa(data) {
-      return isActiveUser() &&
-        hasTenant() &&
-        data.clientePlataformaId == userTenantId() &&
-        currentUid() in data.participantesIds;
-    }
-
-    function validTipoConversa(data) {
-      return data.get("tipo", "") in ["DIRETA", "EQUIPE"];
-    }
-    function chatUsuarioExisteAtivo(uid) {
-      return exists(/databases/$(database)/documents/usuarios/$(uid)) &&
-        get(/databases/$(database)/documents/usuarios/$(uid)).data.get("authUid", "") == uid &&
-        get(/databases/$(database)/documents/usuarios/$(uid)).data.get("clientePlataformaId", "") == userTenantId() &&
-        !(get(/databases/$(database)/documents/usuarios/$(uid)).data.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        get(/databases/$(database)/documents/usuarios/$(uid)).data.get("acessoLiberado", false) == true;
-    }
-
-    function chatPerfilSuperior(uid) {
-      let data = get(/databases/$(database)/documents/usuarios/$(uid)).data;
-      return data.get("tipoUsuario", "") in ["master_global", "usuario_integro", "master_local", "gerente", "supervisor", "financeiro", "auditor", "MASTER_GLOBAL", "USUARIO_INTEGRO", "MASTER_LOCAL", "GERENTE", "SUPERVISOR", "FINANCEIRO", "AUDITOR"] ||
-        data.get("cargoChave", "") in ["gerente", "supervisor", "financeiro", "auditor", "GERENTE", "SUPERVISOR", "FINANCEIRO", "AUDITOR"];
-    }
-
-    function chatDiretaPermitida(data) {
-      return data.get("participantesIds", []) is list &&
-        data.get("participantesIds", []).size() == 2 &&
-        chatUsuarioExisteAtivo(data.get("participantesIds", [])[0]) &&
-        chatUsuarioExisteAtivo(data.get("participantesIds", [])[1]) &&
-        (chatPerfilSuperior(data.get("participantesIds", [])[0]) || chatPerfilSuperior(data.get("participantesIds", [])[1]));
-    }
-
-    function canCreateConversa(data) {
-      return isActiveUser() && isSameTenantWrite() &&
-        !isAuditor() &&
-        validTipoConversa(data) &&
-        data.keys().hasAll(["clientePlataformaId", "tipo", "participantesIds"]) &&
-        data.get("participantesIds", []) is list &&
-        currentUid() in data.get("participantesIds", []) &&
-        (
-          (data.get("tipo", "") == "DIRETA" && chatDiretaPermitida(data)) ||
-          (
-            data.get("tipo", "") == "EQUIPE" &&
-            data.get("equipeId", "") is string &&
-            data.get("equipeId", "").size() > 0 &&
-            (isMasterLocal() || isGerente() || isSupervisor() || isFinanceiro())
-          )
-        );
-    }
-
-    function canUpdateConversa() {
-      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
-        !isAuditor() &&
-        chatParticipante(resource.data) &&
-        unchanged(["clientePlataformaId", "tipo", "participantesIds", "equipeId", "criadoEm"]) &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["ultimaMensagem", "ultimaMensagemEm", "atualizadoEm", "naoLidasPorUsuario"]);
-    }
-
-    function canReadMensagem(conversaId) {
-      return exists(/databases/$(database)/documents/conversas/$(conversaId)) &&
-        canReadConversa(get(/databases/$(database)/documents/conversas/$(conversaId)).data);
-    }
-
-    function canCreateMensagem(conversaId, data) {
-      return isActiveUser() &&
-        exists(/databases/$(database)/documents/conversas/$(conversaId)) &&
-        !isAuditor() &&
-        canReadConversa(get(/databases/$(database)/documents/conversas/$(conversaId)).data) &&
-        (
-          get(/databases/$(database)/documents/conversas/$(conversaId)).data.get("tipo", "") == "DIRETA" ||
-          !isVendedor() && !isCaptador() ||
-          get(/databases/$(database)/documents/conversas/$(conversaId)).data.get("subtipo", "") == "GRUPO"
-        ) &&
-        data.keys().hasAll(["clientePlataformaId", "conversaId", "remetenteId", "texto", "criadoEm", "dataOperacional", "status"]) &&
-        data.get("clientePlataformaId", "") == userTenantId() &&
-        data.get("conversaId", "") == conversaId &&
-        data.get("remetenteId", "") == currentUid() &&
-        data.get("texto", "") is string && data.get("texto", "").size() <= 1200 &&
-        data.get("status", "") == "ENVIADA" &&
-        (
-          (data.get("tipo", "TEXTO") == "TEXTO" && data.get("texto", "").size() > 0) ||
-          (
-            data.get("tipo", "") == "IMAGEM" &&
-            data.keys().hasAll(["imagemUrl", "imagemPath", "imagemNome", "imagemMime", "imagemTamanho"]) &&
-            data.get("imagemUrl", "") is string && data.get("imagemUrl", "").size() > 0 &&
-            data.get("imagemPath", "") is string &&
-            data.get("imagemPath", "").matches("tenants/" + userTenantId() + "/chat/.*") &&
-            data.get("imagemMime", "").matches("image/.*") &&
-            data.get("imagemTamanho", 0) is int &&
-            data.get("imagemTamanho", 0) > 0 && data.get("imagemTamanho", 0) <= 8 * 1024 * 1024
-          )
-        );
-    }
-
-    function canReadPresencaChat(data) {
-      return isActiveUser() && hasTenant() && data.get("clientePlataformaId", "") == userTenantId();
-    }
-
-    function canWriteOwnPresencaChat(uid, data) {
-      return isActiveUser() && uid == currentUid() && isSameTenantWrite() &&
-        data.keys().hasAll(["clientePlataformaId", "usuarioId", "status", "ultimaAtividadeEm", "atualizadoEm"]) &&
-        data.get("usuarioId", "") == currentUid() &&
-        data.get("status", "") in ["ONLINE", "AUSENTE", "OFFLINE"];
-    }
-    function canCreatePendingTenantUser(data) {
-      return isActiveUser() && isMasterLocal() && isSameTenantWrite() &&
-        data.keys().hasAll([
-          "authUid", "nome", "email", "tipoUsuario", "cargoId",
-          "status", "acessoLiberado", "convitePendente",
-          "provisionamentoAuth", "clientePlataformaId", "criadoPorUid"
-        ]) &&
-        data.get("authUid", "") == "" &&
-        data.get("nome", "") is string && data.get("nome", "").size() > 1 &&
-        data.get("email", "") is string && data.get("email", "").size() > 3 &&
-        data.get("cargoId", "") is string && data.get("cargoId", "").size() > 0 &&
-        !(data.get("tipoUsuario", "") in ["master_global", "usuario_integro"]) &&
-        data.get("status", "") == "CONVITE_PENDENTE" &&
-        data.get("acessoLiberado", true) == false &&
-        data.get("convitePendente", false) == true &&
-        data.get("provisionamentoAuth", "") == "PENDENTE_BACKEND" &&
-        data.get("criadoPorUid", "") == currentUid();
-    }
     match /usuarios/{uid} {
+      function isOwnAuthProfile(data) {
+        return isAuthenticated() && data.get("authUid", "") == currentUid();
+      }
+
+      function isOwnEmailProfile(data) {
+        return isAuthenticated() &&
+          request.auth.token.get("email", "") is string &&
+          request.auth.token.get("email", "").size() > 0 &&
+          data.get("email", "") == request.auth.token.get("email", "");
+      }
+
+      function canCreatePendingTenantUser(data) {
+        return isActiveUser() && isMasterLocal() && isSameTenantWrite() &&
+          data.keys().hasAll([
+            "authUid", "nome", "email", "tipoUsuario", "cargoId",
+            "status", "acessoLiberado", "convitePendente",
+            "provisionamentoAuth", "clientePlataformaId", "criadoPorUid"
+          ]) &&
+          data.get("authUid", "") == "" &&
+          data.get("nome", "") is string && data.get("nome", "").size() > 1 &&
+          data.get("email", "") is string && data.get("email", "").size() > 3 &&
+          data.get("cargoId", "") is string && data.get("cargoId", "").size() > 0 &&
+          !(data.get("tipoUsuario", "") in ["master_global", "usuario_integro"]) &&
+          data.get("status", "") == "CONVITE_PENDENTE" &&
+          data.get("acessoLiberado", true) == false &&
+          data.get("convitePendente", false) == true &&
+          data.get("provisionamentoAuth", "") == "PENDENTE_BACKEND" &&
+          data.get("criadoPorUid", "") == currentUid();
+      }
+
       allow get: if (isAuthenticated() && currentUid() == uid) ||
         (isActiveUser() && (
           isMasterGlobal() ||
@@ -1388,6 +591,155 @@ service cloud.firestore {
     }
 
     match /lancamentos_financeiros/{id} {
+      function criticalFinancialImmutable() {
+        return unchanged([
+          "clientePlataformaId", "caixaId", "vendedorId", "vendedorAuthUid",
+          "vendaId", "pagamentoId", "origemId", "operacaoId", "criadoEm",
+          "criadoPorId", "tipoLancamento", "natureza", "valorCentavos",
+          "fechamentoId", "reaberturaId", "dataOperacional", "equipeId"
+        ]);
+      }
+
+      function hasOnlyStatusLancamentoTransition() {
+        return criticalFinancialImmutable() &&
+          request.resource.data.statusLancamento in ["CONFIRMADO", "ESTORNADO", "CANCELADO"] &&
+          (
+            (resource.data.statusLancamento == "CONFIRMADO" && request.resource.data.statusLancamento == "ESTORNADO") ||
+            (resource.data.statusLancamento == "PENDENTE" && request.resource.data.statusLancamento in ["CONFIRMADO", "CANCELADO"])
+          );
+      }
+
+      function validTipoLancamento(tipo) {
+        return tipo in [
+          "VENDA", "PAGAMENTO", "INGRESSO", "GASTO", "RETIRADA",
+          "RECOLHIMENTO", "AJUSTE", "DIVERGENCIA_ACEITA",
+          "REGULARIZACAO", "ESTORNO"
+        ];
+      }
+
+      function validNatureza(natureza) {
+        return natureza in ["CREDITO", "DEBITO"];
+      }
+
+      function validStatusLancamento(status) {
+        return status in ["CONFIRMADO", "PENDENTE", "ESTORNADO", "CANCELADO"];
+      }
+
+      function canProbeMissingLedgerId(id) {
+        let perfil = role();
+        let cargoAtual = cargo();
+        return isActiveUser() && (
+          isMasterGlobal() ||
+          isUsuarioIntegro() ||
+          isMasterLocal() ||
+          perfil == "financeiro" || cargoAtual == "financeiro" ||
+          ((perfil == "gerente" || cargoAtual == "gerente") && (hasPermission("podeVerLedgerFinanceiro") || hasPermission("criarLancamento"))) ||
+          perfil == "supervisor" || cargoAtual == "supervisor" ||
+          (
+            (perfil == "vendedor" || cargoAtual == "vendedor") &&
+            id.matches("lf_(venda|pagamento|gasto|retirada)_.*")
+          )
+        );
+      }
+
+      function canCreateLedger(data) {
+        return isActiveUser() && isSameTenantWrite() &&
+          validTipoLancamento(data.tipoLancamento) &&
+          validNatureza(data.natureza) &&
+          validStatusLancamento(data.statusLancamento) &&
+          data.valorCentavos is int &&
+          data.valorCentavos != 0 &&
+          data.operacaoId is string &&
+          data.origemId is string &&
+          (
+            isMasterLocal() ||
+            isUsuarioIntegro() ||
+            isMasterGlobal() ||
+            (isGerente() && (
+              hasPermission("podeVerLedgerFinanceiro") ||
+              hasPermission("criarLancamento") ||
+              hasPermission("podeCriarLancamentoFinanceiro") ||
+              hasPermission("aprovar")
+            )) ||
+            (isFinanceiro() && (
+              hasPermission("podeVerLedgerFinanceiro") ||
+              hasPermission("criarLancamento") ||
+              hasPermission("aprovar")
+            )) ||
+            (isSupervisor() && (
+              hasPermission("podeVerLedgerFinanceiro") ||
+              hasPermission("criarLancamento") ||
+              hasPermission("aprovar")
+            ) && isTeamAllowed(data)) ||
+            (
+              isVendedor() &&
+              isOwnSellerData(data) &&
+              data.tipoLancamento in ["VENDA", "PAGAMENTO", "GASTO", "RETIRADA"]
+            )
+          );
+      }
+
+      function sellerCanCancelOwnLedger() {
+        let caixaId = resource.data.get("caixaId", "");
+        return isVendedor() &&
+          sellerOwnsLedger(resource.data) &&
+          resource.data.get("tipoLancamento", "") in ["GASTO", "RETIRADA"] &&
+          resource.data.get("statusLancamento", "CONFIRMADO") == "CONFIRMADO" &&
+          request.resource.data.get("statusLancamento", "") == "CANCELADO" &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "statusLancamento", "canceladoPorId", "canceladoPorNome",
+            "motivoCancelamento", "canceladoEm", "atualizadoEm"
+          ]) &&
+          caixaId is string &&
+          caixaId.size() > 0 &&
+          exists(/databases/$(database)/documents/caixas/$(caixaId)) &&
+          get(/databases/$(database)/documents/caixas/$(caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
+          isOwnSellerData(get(/databases/$(database)/documents/caixas/$(caixaId)).data);
+      }
+
+      function adminCanCancelConfirmedLedger() {
+        let caixaId = resource.data.get("caixaId", "");
+        return resource.data.get("tipoLancamento", "") in ["INGRESSO", "GASTO", "RETIRADA"] &&
+          resource.data.get("statusLancamento", "CONFIRMADO") == "CONFIRMADO" &&
+          request.resource.data.get("statusLancamento", "") == "CANCELADO" &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "statusLancamento", "substituidoPorLancamentoId",
+            "canceladoPorId", "canceladoPorNome", "motivoCancelamento",
+            "canceladoEm", "atualizadoEm"
+          ]) &&
+          caixaId is string &&
+          caixaId.size() > 0 &&
+          exists(/databases/$(database)/documents/caixas/$(caixaId)) &&
+          get(/databases/$(database)/documents/caixas/$(caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
+          (
+            isMasterGlobal() ||
+            isUsuarioIntegro() ||
+            isMasterLocal() ||
+            (isGerente() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento"))) ||
+            (isFinanceiro() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento"))) ||
+            (isSupervisor() && isTeamAllowed(resource.data) && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento")))
+          );
+      }
+
+      function canUpdateLedger() {
+        return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+          criticalFinancialImmutable() &&
+          (
+            sellerCanCancelOwnLedger() ||
+            adminCanCancelConfirmedLedger() ||
+            (
+              hasOnlyStatusLancamentoTransition() &&
+              (
+                isMasterLocal() ||
+                isUsuarioIntegro() ||
+                isMasterGlobal() ||
+                (isFinanceiro() && hasPermission("podeEstornarLancamento")) ||
+                (isSupervisor() && hasPermission("podeEstornarLancamento") && isTeamAllowed(resource.data))
+              )
+            )
+          );
+      }
+
       // A transação consulta primeiro o ID determinístico para garantir idempotência.
       // O GET de documento inexistente é limitado aos perfis operacionais autorizados.
       allow get: if (
@@ -1401,6 +753,68 @@ service cloud.firestore {
     }
 
     match /caixas/{id} {
+      function isActiveMasterLocalFor(data) {
+        let user = userDoc();
+        return isAuthenticated() &&
+          exists(userPath()) &&
+          user.get("authUid", "") == currentUid() &&
+          !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+          user.get("acessoLiberado", false) == true &&
+          user.get("tipoUsuario", "") == "master_local" &&
+          user.get("clientePlataformaId", "") is string &&
+          user.get("clientePlataformaId", "").size() > 0 &&
+          data.get("clientePlataformaId", "") == user.get("clientePlataformaId", "");
+      }
+
+      function caixaStatusTransitionAllowed() {
+        return (resource.data.status == "ABERTO" && request.resource.data.status in ["FECHADO", "DIVERGENTE"]) ||
+          (resource.data.status == "FECHADO" && request.resource.data.status == "REABERTO") ||
+          (resource.data.status == "DIVERGENTE" && request.resource.data.status == "REABERTO") ||
+          (resource.data.status == "REABERTO" && request.resource.data.status in ["FECHADO", "DIVERGENTE"]);
+      }
+
+      function caixaImmutable() {
+        return unchanged(["clientePlataformaId", "vendedorId", "vendedorAuthUid", "equipeId", "dataOperacional", "caixaId", "criadoEm"]);
+      }
+
+      function canReadCaixa(data) {
+        return isActiveMasterLocalFor(data) || isOperationalReader(data) ||
+          (isFinanceiro() && isSameTenantRead() && hasPermission("podeVerReconciliacao")) ||
+          (isAuditor() && isSameTenantRead());
+      }
+
+      function canUpdateCaixaMovimentacao() {
+        return caixaImmutable() &&
+          resource.data.status in ["ABERTO", "REABERTO"] &&
+          request.resource.data.status == resource.data.status &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "saldoAtualCentavos", "saldoAtual", "valorAtual", "caixaAtual",
+            "totalIngressosCentavos", "totalGastosCentavos", "totalRetiradasCentavos", "atualizadoEm"
+          ]) &&
+          (
+            isMasterGlobal() ||
+            isUsuarioIntegro() ||
+            isMasterLocal() ||
+            (isGerente() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento") || hasPermission("aprovar"))) ||
+            (isFinanceiro() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento") || hasPermission("aprovar") || hasPermission("podeVerLedgerFinanceiro"))) ||
+            (isSupervisor() && isTeamAllowed(resource.data) && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento") || hasPermission("aprovar") || hasPermission("podeVerLedgerFinanceiro"))) ||
+            (isVendedor() && isOwnSellerData(resource.data))
+          );
+      }
+
+      function canUpdateCaixa() {
+        return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+          (
+            canUpdateCaixaMovimentacao() ||
+            (caixaImmutable() && caixaStatusTransitionAllowed() && (
+              (resource.data.status in ["ABERTO", "REABERTO"] && request.resource.data.status in ["FECHADO", "DIVERGENTE"] &&
+                (isMasterLocal() || (isVendedor() && isOwnSellerData(resource.data)) || (isSupervisor() && isTeamAllowed(resource.data)))) ||
+              (request.resource.data.status == "REABERTO" &&
+                (isMasterLocal() || (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(resource.data)) || (isFinanceiro() && hasPermission("podeReabrirCaixa"))))
+            ))
+          );
+      }
+
       allow read: if canReadCaixa(resource.data);
       allow create: if false; // Abertura e trava por vendedor exclusivamente no backend.
       // Restringe ainda mais as atualizações: nenhuma abertura de caixa fechado
@@ -1412,6 +826,48 @@ service cloud.firestore {
     }
 
     match /fechamentos_caixa/{id} {
+      function canCreateFechamento(data, fechamentoId) {
+        return isActiveUser() && isSameTenantWrite() &&
+          data.keys().hasAll(["caixaId", "vendedorId", "statusFechamento", "caixaFinalEsperadoCentavos", "caixaFinalInformadoCentavos", "diferencaCentavos", "snapshotAuditoria"]) &&
+          data.get("caixaId", "") is string &&
+          fechamentoId == "fechamento_" + data.get("caixaId", "") &&
+          exists(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))) &&
+          get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
+          get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("status", "") in ["ABERTO", "REABERTO"] &&
+          data.get("vendedorId", "") == get(/databases/$(database)/documents/caixas/$(data.get("caixaId", ""))).data.get("vendedorId", "") &&
+          data.get("statusFechamento", "") in ["FECHADO", "DIVERGENTE"] &&
+          data.get("caixaFinalEsperadoCentavos", 0) is int &&
+          data.get("caixaFinalInformadoCentavos", 0) is int &&
+          data.get("diferencaCentavos", 0) is int &&
+          data.get("snapshotAuditoria", {}) is map &&
+          (
+            isMasterLocal() ||
+            (isVendedor() && isOwnSellerData(data)) ||
+            (isSupervisor() && isTeamAllowed(data))
+          );
+      }
+
+      function fechamentoOriginalImmutable() {
+        return unchanged([
+          "clientePlataformaId", "caixaId", "vendedorId", "dataOperacional",
+          "caixaFinalEsperadoCentavos", "caixaFinalInformadoCentavos",
+          "valorEsperadoCentavos", "valorInformadoCentavos", "diferencaCentavos",
+          "snapshotAuditoria", "totalVendasCentavos", "totalPagamentosCentavos",
+          "totalIngressosCentavos", "totalGastosCentavos", "totalRetiradasCentavos",
+          "totalRecolhimentosCentavos", "totalAjustesCentavos"
+        ]);
+      }
+
+      function canUpdateFechamento() {
+        return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+          fechamentoOriginalImmutable() &&
+          (
+            isMasterLocal() ||
+            (isSupervisor() && isTeamAllowed(resource.data) && (hasPermission("podeReabrirCaixa") || hasPermission("podeTratarDivergencia"))) ||
+            (isFinanceiro() && (hasPermission("podeRegularizarCaixa") || hasPermission("podeAceitarDivergenciaFinanceira")))
+          );
+      }
+
       allow get: if isActiveUser() && (
         (!exists(/databases/$(database)/documents/fechamentos_caixa/$(id)) &&
           (isMasterLocal() || isSupervisor() || isFinanceiro() || isVendedor())) ||
@@ -1427,6 +883,30 @@ service cloud.firestore {
     }
 
     match /historico_fechamentos_caixa/{id} {
+      function canRefecharFechamento() {
+        let data = request.resource.data;
+        let caixa = get(/databases/$(database)/documents/caixas/$(data.caixaId)).data;
+        return isActiveUser() && isSameTenantWrite() &&
+          data.caixaId is string &&
+          data.fechamentoId is string &&
+          data.modo == "REFECHAMENTO" &&
+          data.statusAnterior == "REABERTO" &&
+          data.statusNovo in ["FECHADO", "DIVERGENTE"] &&
+          data.snapshotAuditoria is map &&
+          exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+          exists(/databases/$(database)/documents/fechamentos_caixa/$(data.fechamentoId)) &&
+          data.fechamentoId == "fechamento_" + data.caixaId &&
+          caixa.get("clientePlataformaId", "") == userTenantId() &&
+          caixa.get("status", "") == "REABERTO" &&
+          data.get("vendedorId", "") == caixa.get("vendedorId", "") &&
+          (
+            isMasterLocal() ||
+            (isVendedor() && isOwnSellerData(caixa) && isOwnSellerData(data)) ||
+            (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(data)) ||
+            (isFinanceiro() && (hasPermission("podeReabrirCaixa") || hasPermission("podeRegularizarCaixa")))
+          );
+      }
+
       allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canRefecharFechamento();
       allow update: if false;
@@ -1434,6 +914,23 @@ service cloud.firestore {
     }
 
     match /reaberturas_caixa/{id} {
+      function canCreateReabertura(data) {
+        return isActiveUser() && isSameTenantWrite() &&
+          data.caixaId is string &&
+          data.fechamentoId is string &&
+          data.motivo is string &&
+          data.motivo.size() > 3 &&
+          data.statusAnterior in ["FECHADO", "DIVERGENTE"] &&
+          exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+          exists(/databases/$(database)/documents/fechamentos_caixa/$(data.fechamentoId)) &&
+          !isVendedor() &&
+          (
+            isMasterLocal() ||
+            (isSupervisor() && hasPermission("podeReabrirCaixa") && isTeamAllowed(data)) ||
+            (isFinanceiro() && hasPermission("podeReabrirCaixa"))
+          );
+      }
+
       allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateReabertura(request.resource.data);
       allow update: if false;
@@ -1441,6 +938,22 @@ service cloud.firestore {
     }
 
     match /tratamentos_divergencia_caixa/{id} {
+      function canCreateTratamento(data) {
+        return isActiveUser() && isSameTenantWrite() &&
+          data.caixaId is string &&
+          data.fechamentoId is string &&
+          data.justificativa is string &&
+          data.justificativa.size() > 3 &&
+          data.decisao in ["ACEITAR_DIVERGENCIA", "SOLICITAR_REGULARIZACAO", "REABRIR_CAIXA"] &&
+          exists(/databases/$(database)/documents/caixas/$(data.caixaId)) &&
+          get(/databases/$(database)/documents/caixas/$(data.caixaId)).data.status == "DIVERGENTE" &&
+          (
+            isMasterLocal() ||
+            (isSupervisor() && hasPermission("podeTratarDivergencia") && isTeamAllowed(data)) ||
+            (isFinanceiro() && hasPermission("podeTratarDivergencia"))
+          );
+      }
+
       allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateTratamento(request.resource.data);
       allow update: if false;
@@ -1448,6 +961,17 @@ service cloud.firestore {
     }
 
     match /historico_estados_caixa/{id} {
+      function canCreateHistorico(data) {
+        return isActiveUser() && isSameTenantWrite() &&
+          data.caixaId is string &&
+          data.statusNovo is string &&
+          (
+            isMasterLocal() ||
+            (isSupervisor() && isTeamAllowed(data)) ||
+            (isFinanceiro() && (hasPermission("podeReabrirCaixa") || hasPermission("podeRegularizarCaixa")))
+          );
+      }
+
       allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateHistorico(request.resource.data);
       allow update: if false;
@@ -1476,6 +1000,65 @@ service cloud.firestore {
     }
 
     match /solicitacoes/{id} {
+      function canCreateSolicitacao(data) {
+        return isActiveUser() && isSameTenantWrite() &&
+          data.status == "PENDENTE" &&
+          data.valorCentavos is int &&
+          data.keys().hasAll(["criadoPorId"]) &&
+          data.get("criadoPorId", "") in [currentUid(), userDoc().get("id", "")] &&
+          (isMasterLocal() || isSupervisor() || isFinanceiro() || isVendedor());
+      }
+
+      function sellerCanCancelOwnSolicitacao() {
+        let caixaId = resource.data.get("caixaId", "");
+        return isVendedor() &&
+          isOwnSellerData(resource.data) &&
+          resource.data.get("status", "PENDENTE") == "PENDENTE" &&
+          request.resource.data.get("status", "") == "CANCELADA" &&
+          request.resource.data.get("statusSolicitacao", "") == "CANCELADA" &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            "status", "statusSolicitacao", "canceladoPorId", "canceladoPorNome",
+            "motivoCancelamento", "canceladoEm", "atualizadoEm"
+          ]) &&
+          caixaId is string &&
+          caixaId.size() > 0 &&
+          exists(/databases/$(database)/documents/caixas/$(caixaId)) &&
+          get(/databases/$(database)/documents/caixas/$(caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
+          isOwnSellerData(get(/databases/$(database)/documents/caixas/$(caixaId)).data);
+      }
+
+      function podeAprovarSolicitacao() {
+        let permissoes = permMap();
+        let solicitacoes = permissoes.get("solicitacoes", {});
+        let financeiro = permissoes.get("financeiro", {});
+        return permissoes.get("aprovar", false) == true ||
+          permissoes.get("aprovarIngresso", false) == true ||
+          permissoes.get("podeAprovarSolicitacaoFinanceira", false) == true ||
+          solicitacoes.get("aprovar", false) == true ||
+          solicitacoes.get("aprovarIngresso", false) == true ||
+          solicitacoes.get("podeAprovarSolicitacaoFinanceira", false) == true ||
+          financeiro.get("aprovar", false) == true ||
+          financeiro.get("aprovarIngresso", false) == true ||
+          financeiro.get("podeAprovarSolicitacaoFinanceira", false) == true;
+      }
+
+      function canUpdateSolicitacao() {
+        let statusAtual = resource.data.get("statusSolicitacao", resource.data.get("status", "PENDENTE"));
+        let statusNovo = request.resource.data.get("statusSolicitacao", request.resource.data.get("status", ""));
+        return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+          unchanged(["clientePlataformaId", "tipo", "tipoSolicitacao", "valorCentavos", "valor", "criadoPorId", "vendedorId", "vendedorAuthUid", "criadoEm"]) &&
+          statusAtual == "PENDENTE" &&
+          statusNovo in ["APROVADA", "RECUSADA", "CANCELADA"] &&
+          (
+            (isSupervisor() && isTeamAllowed(resource.data) && podeAprovarSolicitacao()) ||
+            ((isGerente() || isFinanceiro()) && podeAprovarSolicitacao()) ||
+            isMasterLocal() ||
+            isUsuarioIntegro() ||
+            isMasterGlobal() ||
+            sellerCanCancelOwnSolicitacao()
+          );
+      }
+
       allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateSolicitacao(request.resource.data);
       allow update: if canUpdateSolicitacao();
@@ -1488,6 +1071,135 @@ service cloud.firestore {
     }
 
     match /indicacoes/{id} {
+      function canCreateIndicacao(data) {
+        return isActiveUser() && isSameTenantWrite() &&
+          data.clienteOperacionalId is string &&
+          exists(/databases/$(database)/documents/clientes_operacionais/$(data.clienteOperacionalId)) &&
+          get(/databases/$(database)/documents/clientes_operacionais/$(data.clienteOperacionalId)).data.clientePlataformaId == userTenantId() &&
+          !isVendedor() &&
+          (isMasterLocal() || isGerente() || isCaptador() || canCreateLeadByPermission());
+      }
+
+      function isIndicacaoDoVendedor(data) {
+        let authUidCanonico = data.get("vendedorAuthUid", "") != ""
+          ? data.get("vendedorAuthUid", "")
+          : (data.get("vendedorDestinoAuthUid", "") != "" ? data.get("vendedorDestinoAuthUid", "") : data.get("vendedorUid", ""));
+        return isCurrentUserValue(authUidCanonico) ||
+          (authUidCanonico == "" && (
+            isCurrentUserValue(data.get("vendedorDestinoId", "")) ||
+            isCurrentUserValue(data.get("vendedorResponsavelId", "")) ||
+            isCurrentUserValue(data.get("vendedorId", "")) ||
+            isCurrentUserValue(data.get("usuarioId", "")) ||
+            isCurrentUserValue(data.get("vendedorDocumentoId", ""))
+          ));
+      }
+
+      function canReadIndicacao(data) {
+        let perfil = role();
+        let cargoAtual = cargo();
+        return isActiveUser() && isSameTenantRead() &&
+          (perfil == "master_local" ||
+            perfil == "gerente" ||
+            perfil == "financeiro" || cargoAtual == "financeiro" ||
+            perfil == "auditor" || cargoAtual == "auditor" ||
+            ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
+            ((perfil == "vendedor" || cargoAtual == "vendedor") && isIndicacaoDoVendedor(data)) ||
+            perfil == "captador" || cargoAtual == "captador");
+      }
+
+      function statusIndicacaoRules(data) {
+        return data.get("statusIndicacao", data.get("status", ""));
+      }
+
+      function vendedorPodeAtualizarIndicacao() {
+        let statusAnterior = statusIndicacaoRules(resource.data);
+        let statusNovo = statusIndicacaoRules(request.resource.data);
+        let alterados = request.resource.data.diff(resource.data).affectedKeys();
+        return isVendedor() && isIndicacaoDoVendedor(resource.data) && (
+          (
+            statusNovo == "EM_ATENDIMENTO" &&
+            statusAnterior in ["ATRIBUIDA", "EM_ATENDIMENTO"] &&
+            alterados.hasOnly([
+              "status", "statusIndicacao", "statusLead", "dataInicioAtendimento",
+              "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
+            ])
+          ) ||
+          (
+            statusNovo == "NAO_CONVERTIDA" &&
+            statusAnterior == "EM_ATENDIMENTO" &&
+            alterados.hasOnly([
+              "status", "statusIndicacao", "statusLead", "motivoNaoConversao", "dataNaoConversao",
+              "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
+            ])
+          ) ||
+          (
+            statusNovo == "RECUSADA" &&
+            statusAnterior in ["ATRIBUIDA", "EM_ATENDIMENTO"] &&
+            alterados.hasOnly([
+              "status", "statusIndicacao", "statusLead", "motivoRecusa", "dataRecusa",
+              "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
+            ])
+          ) ||
+          (
+            statusNovo == "DEVOLVIDA" &&
+            statusAnterior in ["ATRIBUIDA", "EM_ATENDIMENTO"] &&
+            request.resource.data.get("vendedorDestinoId", "") == "" &&
+            request.resource.data.get("vendedorAuthUid", "") == "" &&
+            request.resource.data.get("vendedorDestinoAuthUid", "") == "" &&
+            request.resource.data.get("vendedorId", "") == "" &&
+            request.resource.data.get("equipeDestinoId", "") == "" &&
+            alterados.hasOnly([
+              "status", "statusIndicacao", "statusLead", "motivoDevolucao", "dataDevolucao",
+              "vendedorDestinoId", "vendedorDestinoNome", "vendedorAuthUid", "vendedorDestinoAuthUid",
+              "vendedorUid", "vendedorDocumentoId", "vendedorId", "vendedorNome",
+              "equipeDestinoId", "equipeDestinoNome", "equipeId", "equipeNome",
+              "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
+            ])
+          ) ||
+          (
+            statusNovo == "CONVERTIDA" &&
+            statusAnterior == "EM_ATENDIMENTO" &&
+            request.resource.data.get("vendaId", "") is string &&
+            request.resource.data.get("vendaId", "").size() > 0 &&
+            exists(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))) &&
+            get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
+            isOwnSellerData(get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data) &&
+            alterados.hasOnly([
+              "status", "statusIndicacao", "statusLead", "vendaId", "valorVendaCentavos", "dataConversao",
+              "atualizadoPor", "atualizadoPorNome", "atualizadoEmTexto", "ultimaAlteracaoTipo", "atualizadoEm"
+            ])
+          )
+        );
+      }
+
+      function operadorLeadsPodeAtualizarIndicacao() {
+        let permissoes = permMap();
+        let indicacoes = permissoes.get("indicacoes", {});
+        return permissoes.get("podeEditarIndicacao", false) == true ||
+          permissoes.get("podeAtribuirIndicacao", false) == true ||
+          permissoes.get("podeRedistribuirIndicacao", false) == true ||
+          permissoes.get("editarIndicacao", false) == true ||
+          permissoes.get("atribuirIndicacao", false) == true ||
+          permissoes.get("redistribuirIndicacao", false) == true ||
+          indicacoes.get("podeEditarIndicacao", false) == true ||
+          indicacoes.get("podeAtribuirIndicacao", false) == true ||
+          indicacoes.get("podeRedistribuirIndicacao", false) == true ||
+          indicacoes.get("editarIndicacao", false) == true ||
+          indicacoes.get("atribuirIndicacao", false) == true ||
+          indicacoes.get("redistribuirIndicacao", false) == true;
+      }
+
+      function canUpdateIndicacao() {
+        return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+          unchanged(["clientePlataformaId", "clienteOperacionalId", "captadorId", "criadoEm"]) &&
+          (
+            vendedorPodeAtualizarIndicacao() ||
+            isMasterLocal() ||
+            (isSupervisor() && operadorLeadsPodeAtualizarIndicacao() && isTeamAllowed(resource.data)) ||
+            ((!isVendedor()) && operadorLeadsPodeAtualizarIndicacao())
+          );
+      }
+
       allow read: if canReadIndicacao(resource.data);
       allow create: if canCreateIndicacao(request.resource.data);
       allow update: if canUpdateIndicacao();
@@ -1515,24 +1227,67 @@ service cloud.firestore {
     }
 
     match /interacoes_clientes/{id} {
+      function canCreateInteracaoCliente(data) {
+        return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
+          eventoClienteDoUsuario(data) &&
+          data.get("statusNovo", "") is string &&
+          data.get("statusNovo", "").size() > 2 &&
+          (
+            isMasterLocal() || isGerente() ||
+            (isSupervisor() && isTeamAllowed(clienteEventoData(data))) ||
+            (isVendedor() && isOwnSellerData(clienteEventoData(data)))
+          );
+      }
+
       allow read: if canReadEventoCliente(resource.data);
       allow create: if canCreateInteracaoCliente(request.resource.data);
       allow update, delete: if false;
     }
 
     match /direcionamentos_clientes/{id} {
+      function canCreateDirecionamentoCliente(data) {
+        return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
+          eventoClienteDoUsuario(data) &&
+          data.get("vendedorDestinoId", "") is string &&
+          data.get("vendedorDestinoId", "").size() > 0 &&
+          data.get("equipeDestinoId", "") is string &&
+          data.get("equipeDestinoId", "").size() > 0 &&
+          (isMasterLocal() || isGerente() ||
+            (isSupervisor() && isTeamAllowed(clienteEventoData(data)) && isTeamAllowed(data)));
+      }
+
       allow read: if canReadEventoCliente(resource.data);
       allow create: if canCreateDirecionamentoCliente(request.resource.data);
       allow update, delete: if false;
     }
 
     match /ciclos_atendimento_clientes/{id} {
+      function canCreateCicloCliente(data) {
+        return isActiveUser() && isSameTenantWrite() && clienteEventoExiste(data) &&
+          eventoClienteDoUsuario(data) &&
+          data.get("ciclo", 0) is int && data.get("ciclo", 0) > 1 &&
+          data.get("motivo", "") is string && data.get("motivo", "").size() > 2 &&
+          (isMasterLocal() || isGerente() || (isSupervisor() && isTeamAllowed(clienteEventoData(data))));
+      }
+
       allow read: if canReadEventoCliente(resource.data);
       allow create: if canCreateCicloCliente(request.resource.data);
       allow update, delete: if false;
     }
 
     match /logs/{id} {
+      function canCreateLog(data) {
+        return isActiveUser() && isSameTenantWrite() &&
+          data.keys().hasAll(["tipoAcao"]) &&
+          data.get("tipoAcao", "") is string &&
+          data.get("tipoAcao", "").size() > 2 &&
+          (
+            data.get("usuarioAuthUid", "") == currentUid() ||
+            data.get("usuarioId", "") in [currentUid(), userDoc().get("id", "")] ||
+            data.get("usuarioId", "") == ""
+          );
+      }
+
       allow read: if isActiveUser() && isSameTenantRead() &&
         (isMasterLocal() || isGerente() || isAuditor() || isFinanceiro() || (isSupervisor() && isTeamAllowed(resource.data)));
       allow create: if canCreateLog(request.resource.data);
@@ -1541,6 +1296,81 @@ service cloud.firestore {
     }
 
     match /notificacoes/{id} {
+      function isOperationalCreator(data) {
+        let perfil = role();
+        let cargoAtual = cargo();
+        return isActiveUser() && (
+          perfil == "master_global" ||
+          perfil == "usuario_integro" ||
+          (isSameTenantWrite() && (
+            perfil == "master_local" ||
+            perfil == "gerente" || cargoAtual == "gerente" ||
+            perfil == "administrativo" || cargoAtual == "administrativo" || cargoAtual == "adm" ||
+            perfil == "financeiro" || cargoAtual == "financeiro" ||
+            ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
+            ((perfil == "vendedor" || cargoAtual == "vendedor") && isOwnSellerData(data))
+          ))
+        );
+      }
+
+      function notificacaoDirecionada(data) {
+        return data.get("usuarioId", "") != "" ||
+          data.get("destinatarioId", "") != "" ||
+          data.get("destinatarioAuthUid", "") != "";
+      }
+
+      function notificacaoDoUsuario(data) {
+        let destinatarioAuthUid = data.get("destinatarioAuthUid", "");
+        return isCurrentUserValue(destinatarioAuthUid) ||
+          (destinatarioAuthUid == "" && (
+            isCurrentUserValue(data.get("usuarioId", "")) ||
+            isCurrentUserValue(data.get("destinatarioId", "")) ||
+            isCurrentUserValue(data.get("vendedorAuthUid", "")) ||
+            isCurrentUserValue(data.get("vendedorId", "")) ||
+            isCurrentUserValue(data.get("vendedorDocumentoId", ""))
+          ));
+      }
+
+      function canReadNotificacao(data) {
+        let perfil = role();
+        let cargoAtual = cargo();
+        return isActiveUser() && (
+          perfil == "master_global" ||
+          perfil == "usuario_integro" ||
+          (isSameTenantRead() && (
+            perfil == "master_local" ||
+            perfil == "gerente" ||
+            notificacaoDoUsuario(data) ||
+            (!notificacaoDirecionada(data) && (
+              ((perfil == "supervisor" || cargoAtual == "supervisor") && data.get("publico", "") == "SUPERVISOR") ||
+              ((perfil == "financeiro" || cargoAtual == "financeiro") && data.get("publico", "") == "FINANCEIRO") ||
+              ((perfil == "auditor" || cargoAtual == "auditor") && data.get("publico", "") == "AUDITOR") ||
+              ((perfil == "vendedor" || cargoAtual == "vendedor") && data.get("publico", "") == "VENDEDOR") ||
+              ((perfil == "captador" || cargoAtual == "captador") && data.get("publico", "") == "CAPTADOR")
+            ))
+          ))
+        );
+      }
+
+      function canUpdateOwnNotificacao() {
+        let alterados = request.resource.data.diff(resource.data).affectedKeys();
+        return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+          notificacaoDoUsuario(resource.data) &&
+          unchanged([
+            "clientePlataformaId", "tipo", "titulo", "mensagem", "origemTipo", "origemId",
+            "origemTela", "acaoTipo", "indicacaoId", "clienteOperacionalId", "solicitacaoId",
+            "movimentacaoId", "caixaId", "usuarioId", "destinatarioId", "destinatarioAuthUid",
+            "destinatarioUsuarioId", "vendedorId", "vendedorAuthUid", "vendedorDocumentoId", "publico",
+            "tenantId", "categoria", "prioridade", "origemModulo", "origemEvento", "entidadeTipo", "entidadeId",
+            "eventoId", "idempotencyKey", "rota", "criadoPorId", "criadoPorAuthUid", "criadoPorNome", "criadoEm"
+          ]) &&
+          alterados.hasOnly([
+            "lida", "status", "excluido", "excluida", "visualizadaEmTexto",
+            "lidaEm", "lidaPor", "excluidaEm", "excluidaEmTexto", "excluidaPor",
+            "atualizadoEm", "atualizadoEmTexto"
+          ]);
+      }
+
       allow read: if canReadNotificacao(resource.data);
       allow create: if isOperationalCreator(request.resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantWrite());
@@ -1549,6 +1379,17 @@ service cloud.firestore {
     }
 
     match /presencas_chat/{uid} {
+      function canReadPresencaChat(data) {
+        return isActiveUser() && hasTenant() && data.get("clientePlataformaId", "") == userTenantId();
+      }
+
+      function canWriteOwnPresencaChat(uid, data) {
+        return isActiveUser() && uid == currentUid() && isSameTenantWrite() &&
+          data.keys().hasAll(["clientePlataformaId", "usuarioId", "status", "ultimaAtividadeEm", "atualizadoEm"]) &&
+          data.get("usuarioId", "") == currentUid() &&
+          data.get("status", "") in ["ONLINE", "AUSENTE", "OFFLINE"];
+      }
+
       allow read: if canReadPresencaChat(resource.data);
       allow create: if canWriteOwnPresencaChat(uid, request.resource.data);
       allow update: if canWriteOwnPresencaChat(uid, request.resource.data) &&
@@ -1561,6 +1402,113 @@ service cloud.firestore {
     }
 
     match /conversas/{id} {
+      function chatParticipante(data) {
+        return data.get("participantesIds", []) is list &&
+          currentUid() in data.get("participantesIds", []);
+      }
+
+      function canReadConversa(data) {
+        return isActiveUser() &&
+          hasTenant() &&
+          data.get("clientePlataformaId", "") == userTenantId() &&
+          chatParticipante(data);
+      }
+
+      function canListConversa(data) {
+        return isActiveUser() &&
+          hasTenant() &&
+          data.clientePlataformaId == userTenantId() &&
+          currentUid() in data.participantesIds;
+      }
+
+      function validTipoConversa(data) {
+        return data.get("tipo", "") in ["DIRETA", "EQUIPE"];
+      }
+
+      function chatUsuarioExisteAtivo(uid) {
+        return exists(/databases/$(database)/documents/usuarios/$(uid)) &&
+          get(/databases/$(database)/documents/usuarios/$(uid)).data.get("authUid", "") == uid &&
+          get(/databases/$(database)/documents/usuarios/$(uid)).data.get("clientePlataformaId", "") == userTenantId() &&
+          !(get(/databases/$(database)/documents/usuarios/$(uid)).data.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+          get(/databases/$(database)/documents/usuarios/$(uid)).data.get("acessoLiberado", false) == true;
+      }
+
+      function chatPerfilSuperior(uid) {
+        let data = get(/databases/$(database)/documents/usuarios/$(uid)).data;
+        return data.get("tipoUsuario", "") in ["master_global", "usuario_integro", "master_local", "gerente", "supervisor", "financeiro", "auditor", "MASTER_GLOBAL", "USUARIO_INTEGRO", "MASTER_LOCAL", "GERENTE", "SUPERVISOR", "FINANCEIRO", "AUDITOR"] ||
+          data.get("cargoChave", "") in ["gerente", "supervisor", "financeiro", "auditor", "GERENTE", "SUPERVISOR", "FINANCEIRO", "AUDITOR"];
+      }
+
+      function chatDiretaPermitida(data) {
+        return data.get("participantesIds", []) is list &&
+          data.get("participantesIds", []).size() == 2 &&
+          chatUsuarioExisteAtivo(data.get("participantesIds", [])[0]) &&
+          chatUsuarioExisteAtivo(data.get("participantesIds", [])[1]) &&
+          (chatPerfilSuperior(data.get("participantesIds", [])[0]) || chatPerfilSuperior(data.get("participantesIds", [])[1]));
+      }
+
+      function canCreateConversa(data) {
+        return isActiveUser() && isSameTenantWrite() &&
+          !isAuditor() &&
+          validTipoConversa(data) &&
+          data.keys().hasAll(["clientePlataformaId", "tipo", "participantesIds"]) &&
+          data.get("participantesIds", []) is list &&
+          currentUid() in data.get("participantesIds", []) &&
+          (
+            (data.get("tipo", "") == "DIRETA" && chatDiretaPermitida(data)) ||
+            (
+              data.get("tipo", "") == "EQUIPE" &&
+              data.get("equipeId", "") is string &&
+              data.get("equipeId", "").size() > 0 &&
+              (isMasterLocal() || isGerente() || isSupervisor() || isFinanceiro())
+            )
+          );
+      }
+
+      function canUpdateConversa() {
+        return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+          !isAuditor() &&
+          chatParticipante(resource.data) &&
+          unchanged(["clientePlataformaId", "tipo", "participantesIds", "equipeId", "criadoEm"]) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(["ultimaMensagem", "ultimaMensagemEm", "atualizadoEm", "naoLidasPorUsuario"]);
+      }
+
+      function canReadMensagem(conversaId) {
+        return exists(/databases/$(database)/documents/conversas/$(conversaId)) &&
+          canReadConversa(get(/databases/$(database)/documents/conversas/$(conversaId)).data);
+      }
+
+      function canCreateMensagem(conversaId, data) {
+        return isActiveUser() &&
+          exists(/databases/$(database)/documents/conversas/$(conversaId)) &&
+          !isAuditor() &&
+          canReadConversa(get(/databases/$(database)/documents/conversas/$(conversaId)).data) &&
+          (
+            get(/databases/$(database)/documents/conversas/$(conversaId)).data.get("tipo", "") == "DIRETA" ||
+            !isVendedor() && !isCaptador() ||
+            get(/databases/$(database)/documents/conversas/$(conversaId)).data.get("subtipo", "") == "GRUPO"
+          ) &&
+          data.keys().hasAll(["clientePlataformaId", "conversaId", "remetenteId", "texto", "criadoEm", "dataOperacional", "status"]) &&
+          data.get("clientePlataformaId", "") == userTenantId() &&
+          data.get("conversaId", "") == conversaId &&
+          data.get("remetenteId", "") == currentUid() &&
+          data.get("texto", "") is string && data.get("texto", "").size() <= 1200 &&
+          data.get("status", "") == "ENVIADA" &&
+          (
+            (data.get("tipo", "TEXTO") == "TEXTO" && data.get("texto", "").size() > 0) ||
+            (
+              data.get("tipo", "") == "IMAGEM" &&
+              data.keys().hasAll(["imagemUrl", "imagemPath", "imagemNome", "imagemMime", "imagemTamanho"]) &&
+              data.get("imagemUrl", "") is string && data.get("imagemUrl", "").size() > 0 &&
+              data.get("imagemPath", "") is string &&
+              data.get("imagemPath", "").matches("tenants/" + userTenantId() + "/chat/.*") &&
+              data.get("imagemMime", "").matches("image/.*") &&
+              data.get("imagemTamanho", 0) is int &&
+              data.get("imagemTamanho", 0) > 0 && data.get("imagemTamanho", 0) <= 8 * 1024 * 1024
+            )
+          );
+      }
+
       allow get: if canReadConversa(resource.data);
       allow list: if canListConversa(resource.data);
       allow create: if canCreateConversa(request.resource.data);
@@ -1611,6 +1559,33 @@ service cloud.firestore {
 
     // BEGIN CONTROLE FINANCEIRO EMPRESARIAL V26 MATCHES
     match /financeiro_contas/{id} {
+      function validEnterpriseAccountCreate(data) {
+        return canEditEnterpriseFinance(data) &&
+          data.get("descricao", "") is string && data.get("descricao", "").size() > 0 &&
+          data.get("vencimento", "") is string && data.get("vencimento", "").size() == 10 &&
+          data.get("valorCentavos", 0) is int && data.get("valorCentavos", 0) > 0 &&
+          data.get("valorPagoCentavos", -1) == 0 &&
+          data.get("saldoCentavos", 0) == data.get("valorCentavos", 0) &&
+          data.get("criadoPorAuthUid", "") == currentUid() &&
+          data.get("status", "") == "A_VENCER";
+      }
+
+      function validEnterpriseAccountUpdate() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        let tenantOk = isTenantImmutable() && isSameTenantRead() && isSameTenantWrite();
+        let immutableOk = unchanged([
+          "clientePlataformaId", "criadoPorAuthUid", "criadoPorId", "criadoPorNome", "criadoEm", "criadoEmTexto",
+          "parcelamentoId", "parcelaNumero", "parcelasTotal", "recorrenciaId", "recorrente"
+        ]);
+        let attachmentFields = ["anexos", "atualizadoEmTexto", "atualizadoEm"];
+        // V27.3: alterações administrativas, baixas e cancelamentos são backend-only.
+        // O cliente só pode anexar metadados; o backend aplica aprovação, histórico,
+        // idempotência e transação sem expor um caminho alternativo pelas Rules.
+        return tenantOk && immutableOk &&
+          canAttachEnterpriseFinance(request.resource.data) &&
+          changed.hasOnly(attachmentFields);
+      }
+
       allow read: if canReadEnterpriseFinance(resource.data);
       allow create: if validEnterpriseAccountCreate(request.resource.data);
       allow update: if validEnterpriseAccountUpdate();
@@ -1618,6 +1593,18 @@ service cloud.firestore {
     }
 
     match /financeiro_pagamentos/{id} {
+      function validEnterprisePaymentUpdate() {
+        let changed = request.resource.data.diff(resource.data).affectedKeys();
+        return isTenantImmutable() && isSameTenantRead() && isSameTenantWrite() &&
+          canAttachEnterpriseFinance(request.resource.data) &&
+          unchanged([
+            "clientePlataformaId", "contaId", "valorPagoCentavos", "jurosCentavos", "multaCentavos",
+            "descontoCentavos", "valorEfetivoCentavos", "dataPagamento", "formaPagamento", "bancoContaId",
+            "observacao", "pagoPorAuthUid", "pagoPorId", "pagoPorNome", "criadoEm", "criadoEmTexto"
+          ]) &&
+          changed.hasOnly(["comprovantes", "atualizadoEmTexto", "atualizadoEm"]);
+      }
+
       allow read: if canReadEnterpriseFinance(resource.data);
       // Baixa é exclusivamente transacional pela callable
       // registrarPagamentoFinanceiroEmpresarial.
@@ -1676,6 +1663,15 @@ service cloud.firestore {
     }
 
     match /financeiro_auditoria/{id} {
+      function validEnterpriseAuditCreate(data) {
+        return canReadEnterpriseFinance(data) &&
+          (canEditEnterpriseFinance(data) || canPayEnterpriseFinance(data) || canConfigureEnterpriseFinance(data) || canAttachEnterpriseFinance(data)) &&
+          data.get("usuarioAuthUid", "") == currentUid() &&
+          data.get("acao", "") is string && data.get("acao", "").size() > 2 &&
+          data.get("entidadeTipo", "") is string && data.get("entidadeTipo", "").size() > 0 &&
+          data.get("entidadeId", "") is string && data.get("entidadeId", "").size() > 0;
+      }
+
       allow read: if canReadEnterpriseFinance(resource.data);
       allow create: if validEnterpriseAuditCreate(request.resource.data);
       allow update, delete: if false;
@@ -1701,6 +1697,12 @@ service cloud.firestore {
     }
 
     match /financeiro_exportacoes/{id} {
+      function canExportEnterpriseFinance(data) {
+        return isActiveUser() &&
+          data.get("clientePlataformaId", "") == userTenantId() &&
+          (isMasterLocal() || isGerente() || isResponsavelFinanceiro() || controlFinanceMap().get("exportar", false) == true);
+      }
+
       allow read: if canReadEnterpriseFinance(resource.data);
       allow create: if canExportEnterpriseFinance(request.resource.data) && request.resource.data.get("usuarioAuthUid", "") == currentUid();
       allow update, delete: if false;
