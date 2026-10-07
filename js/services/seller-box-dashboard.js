@@ -54,7 +54,32 @@
       const sale = vendas.find(sale => text(sale.id) === text(item.vendaId || item.origemId || item.id));
       return total + (amount(sale || item, ["valorTotalVenda", "valorTotal", "valor"]) ?? value(item));
     }, 0);
-    result.carteira = Math.max(0, carteira ?? ((initialWallet ?? 0) + contractTotal - sum(allReceipts))) / 100;
+    // A carteira é o saldo ainda a receber, inclusive de vendas originadas
+    // em caixas anteriores. O movimento do dia continua limitado ao caixa aberto.
+    const walletSales = [...new Map(vendas.filter(sale => {
+      const saleTenant = text(sale.clientePlataformaId || sale.tenantId || sale.empresaId);
+      if (tenant && saleTenant && tenant !== saleTenant) return false;
+      if (!view.isEffective(sale)) return false;
+      const authOwner = text(sale.vendedorAuthUid || sale.vendedorUid);
+      if (authOwner) return identities.has(authOwner);
+      const owner = text(sale.vendedorId || sale.usuarioId);
+      return owner ? identities.has(owner) || owners.includes(owner) : inBox(sale);
+    }).map((sale, index) => [text(sale.id) || `wallet:${index}`, sale])).values()];
+    const hasBalances = walletSales.some(sale => amount(sale, ["saldoDevedor", "saldoAtual", "valorAberto"]) !== null);
+    if (hasBalances) {
+      const balances = walletSales.map(sale => {
+        const status = text(sale.statusVenda || sale.status).toUpperCase();
+        if (["QUITADO", "QUITADA", "PAGO", "PAGA", "FINALIZADO", "FINALIZADA"].includes(status)) return { sale, remaining: 0 };
+        const balance = amount(sale, ["saldoDevedor", "saldoAtual", "valorAberto"]);
+        const paid = amount(sale, ["totalPago", "valorTotalPago", "valorPago", "valorRecebido"]);
+        const received = paid ?? pagamentos.filter(payment => text(payment.vendaId) === text(sale.id) && view.isEffective(payment)).reduce((total, payment) => total + (amount(payment, ["valor", "valorPago", "valorRecebido"]) ?? 0), 0);
+        return { sale, remaining: Math.max(0, balance ?? ((amount(sale, ["valorTotalVenda", "valorTotal", "valor"]) ?? 0) - received)) };
+      });
+      result.carteira = balances.reduce((total, item) => total + item.remaining, 0) / 100;
+      result.detalhes.carteira = balances.filter(item => item.remaining > 0).map(({ sale, remaining }) => ({ ...sale, tipoLancamento: "VENDA", valorCentavos: remaining, valorEmprestadoCentavos: remaining }));
+    } else {
+      result.carteira = Math.max(0, carteira ?? ((initialWallet ?? 0) + contractTotal - sum(allReceipts))) / 100;
+    }
     return result;
   }
   global.IntegroSellerBoxDashboard = Object.freeze({ summarize });

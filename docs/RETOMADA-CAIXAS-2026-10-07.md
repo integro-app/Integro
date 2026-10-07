@@ -52,3 +52,9 @@ Uma tentativa real de abertura foi bloqueada com “Saldo inicial inválido”. 
 A abertura agora preserva o saldo assinado do fechamento anterior. Não modifica o caixa fechado nem substitui o saldo por zero ou pelo valor calculado. A primeira abertura continua rejeitando valor manual negativo; a carteira negativa também continua bloqueada. Os 33 testes de ciclo de caixa e backend financeiro passaram, incluindo regressões para saldo negativo em centavos, legado em reais e repetição idempotente.
 
 Deploy de abrirCaixaOperacional concluído com sucesso em southamerica-east1. O teste autenticado online confirmou a abertura com saldo herdado de -472100 centavos, a preservação do caixa fechado anterior e a repetição idempotente. Todos os dados temporários foram removidos.
+
+## Carteira do dashboard do vendedor — 07/10/2026
+
+O dashboard priorizava carteiraFinalCentavos salvo no caixa atual, mesmo quando esse valor era zero e havia vendas anteriores ainda em cobrança. A carteira agora usa os saldos devedores das vendas pertencentes ao vendedor e à empresa, inclusive vendas originadas em caixas anteriores. Valores em centavos prevalecem, quitações permanecem zeradas e pagamentos não são descontados novamente de saldos já atualizados. Entradas, vendas, gastos e caixa continuam vinculados ao caixa em trabalho. O detalhe da carteira lista os saldos restantes das vendas.
+
+Passaram 47 testes de dashboard, ledger e operação do vendedor, além da validação HTML de oito telas. A regressão sobre a leitura dos dados reais resultou em carteira de R$ 1.106,00, entradas do caixa de R$ 91,00 e duas vendas com saldo a receber. Nenhum registro financeiro real foi alterado. Os parâmetros de versão dos scripts foram atualizados para renovar o cache do navegador.

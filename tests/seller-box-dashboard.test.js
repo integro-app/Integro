@@ -57,3 +57,36 @@ test('venda sem ledger mantém o mesmo valor no card e no detalhe', () => {
   assert.equal(context.window.IntegroMovimentacoesView.value(result.detalhes.vendas[0]), 100);
   assert.equal(result.carteira, 1120);
 });
+
+test('carteira inclui saldo pendente de vendas anteriores sem alterar as entradas do caixa atual', () => {
+  const sale = (id, remaining, extra = {}) => ({ id, caixaId:'previous', vendedorAuthUid:'uid', clientePlataformaId:'tenant', status:'ATIVA', saldoDevedorCentavos:remaining, ...extra });
+  const first = sale('v1',49000,{valorTotalVenda:700});
+  const result = summarize({ caixa:{...caixa,carteiraInicialCentavos:0,carteiraFinalCentavos:0},usuario,
+    vendas:[first,first,sale('v2',61600,{valorTotalVenda:1120}),sale('foreign-owner',999999,{vendedorAuthUid:'other'}),sale('foreign-tenant',999999,{clientePlataformaId:'other'}),sale('cancelled',999999,{status:'CANCELADA'}),sale('settled',0,{status:'QUITADO'}),sale('zero-active',0,{valorTotalVenda:700})],
+    lancamentos:[row('p1','PAGAMENTO',3500),row('p2','PAGAMENTO',5600),row('old','PAGAMENTO',99999,{caixaId:'previous'})]
+  });
+  assert.equal(result.carteira,1106);
+  assert.equal(result.entradas,91);
+  assert.equal(result.vendas,0);
+  assert.equal(result.detalhes.carteira.length,2);
+  assert.equal(result.detalhes.carteira.reduce((total,sale)=>total+context.window.IntegroMovimentacoesView.value(sale),0),1106);
+});
+
+test('saldo devedor atualizado prevalece sobre carteira salva e não desconta pagamento duas vezes', () => {
+  const sales = [{id:'v',caixaId:'previous',vendedorAuthUid:'uid',clientePlataformaId:'tenant',saldoDevedorCentavos:49000,saldoDevedor:700,valorTotalVenda:700,status:'ATIVA'}];
+  const result = summarize({caixa:{...caixa,carteiraFinalCentavos:999999},usuario,vendas:sales,pagamentos:[{id:'p',vendaId:'v',caixaId:'open',valor:35}]});
+  assert.equal(result.carteira,490);
+  const next = summarize({caixa,usuario,vendas:[{...sales[0],saldoDevedorCentavos:45500}],pagamentos:[{id:'p',vendaId:'v',caixaId:'open',valor:70}]});
+  assert.equal(next.carteira,455);
+});
+
+test('quitação mantém carteira zero e legado documental do vendedor pertence à carteira', () => {
+  const result = summarize({caixa:{...caixa,carteiraFinalCentavos:50000},usuario,vendas:[
+    {id:'settled',vendedorId:'seller',caixaId:'previous',saldoDevedorCentavos:0,valorTotalVenda:700,status:'QUITADO'},
+    {id:'active',vendedorId:'seller',caixaId:'previous',saldoDevedor:56,status:'ATIVA'},
+    {id:'foreign',vendedorAuthUid:'other',vendedorId:'seller',saldoDevedorCentavos:999999,status:'ATIVA'}
+  ]});
+  assert.equal(result.carteira,56);
+  const zero = summarize({caixa:{...caixa,carteiraFinalCentavos:50000},usuario,vendas:[{id:'settled',vendedorId:'seller',saldoDevedorCentavos:0,status:'QUITADO'}]});
+  assert.equal(zero.carteira,0);
+});
