@@ -32,9 +32,15 @@ Hosting ao vivo publicado: https://integro-novo.web.app
 
 Preview: https://integro-novo--caixas-retroativos-v4ed4wqo.web.app
 
-## Pendência separada: Storage
+## Storage concluído
 
-O CLI informou que Firebase Storage não está configurado para o projeto ao consultar o bucket padrão. As regras Storage NÃO foram publicadas. Nenhum bucket foi criado ou alterado para resolver o HTTP 503, pois essa pendência é independente da compilação das regras Firestore.
+Em 07/10/2026, foi criado e ativado o bucket padrão integro-novo.firebasestorage.app na região SOUTHAMERICA-EAST1 (São Paulo). O projeto já tinha faturamento habilitado. A configuração do aplicativo já apontava para esse bucket.
+
+As regras de storage.rules foram publicadas. Ruleset ativo: projects/integro-novo/rulesets/abd353e7-6517-47fa-91ae-3fd0013906eb. A fonte publicada corresponde ao arquivo local por SHA-256.
+
+Com autorização explícita, a conta interna service-234462716664@gcp-sa-firebasestorage.iam.gserviceaccount.com recebeu roles/firebaserules.firestoreServiceAgent. Esse papel contém datastore.entities.get e permite que as regras Storage consultem os documentos de usuário e empresa no Firestore. As regras continuam controlando o acesso aos arquivos.
+
+Os oito testes online passaram: envio e leitura de foto pela própria empresa; bloqueio de leitura por outra empresa e sem sessão; bloqueio de envio por outra empresa; envio e leitura de comprovante financeiro pela própria empresa; bloqueio de leitura do comprovante por outra empresa. Foram usados usuários, documentos e arquivos temporários, removidos ao final sem erros de limpeza. A validação foi concluída às 21:14 UTC (18:14 em São Paulo).
 
 ## Configuração versionada
 
