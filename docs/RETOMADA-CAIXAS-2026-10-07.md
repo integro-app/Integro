@@ -50,3 +50,5 @@ A configuração .release-prod.firebase.json utiliza firestore.release.indexes.j
 Uma tentativa real de abertura foi bloqueada com “Saldo inicial inválido”. A leitura de diagnóstico encontrou um último caixa fechado com valorRealFechamentoCentavos de -472100, que a abertura rejeitava ao transferir o saldo para o novo dia.
 
 A abertura agora preserva o saldo assinado do fechamento anterior. Não modifica o caixa fechado nem substitui o saldo por zero ou pelo valor calculado. A primeira abertura continua rejeitando valor manual negativo; a carteira negativa também continua bloqueada. Os 33 testes de ciclo de caixa e backend financeiro passaram, incluindo regressões para saldo negativo em centavos, legado em reais e repetição idempotente.
+
+Deploy de abrirCaixaOperacional concluído com sucesso em southamerica-east1. O teste autenticado online confirmou a abertura com saldo herdado de -472100 centavos, a preservação do caixa fechado anterior e a repetição idempotente. Todos os dados temporários foram removidos.
