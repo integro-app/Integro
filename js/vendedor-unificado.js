@@ -153,7 +153,8 @@
 
   function pertenceAoVendedor(registro, usuario = usuarioAtual || State.getUsuario?.()) {
     const ids = idsUsuario(usuario || {});
-    return vinculosVendedorRegistro(registro).some(vinculo => ids.has(vinculo));
+    const canonico = texto(registro?.vendedorAuthUid || registro?.vendedorId);
+    return canonico ? ids.has(canonico) : vinculosVendedorRegistro(registro).some(vinculo => ids.has(vinculo));
   }
 
   function caches() {
@@ -234,7 +235,10 @@
       texto(item.parcelaId) === texto(parcela.id || parcela.parcelaId);
   }
 
+  let revisaoCobrancas = 0;
+
   function aplicarBaixaCobrancaOtimista({ tipo, registro, parcela, caixa, valor = 0, operacaoId, motivo = "", observacao = "" } = {}) {
+    revisaoCobrancas++;
     const snapshot = snapshotBaixaCobranca();
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const agora = new Date().toISOString();
@@ -288,6 +292,7 @@
       const ehDaOperacao = item => item.__integroOtimista === true && texto(item.operacaoId) === texto(operacaoId);
       // Uma resposta realtime já confirmada nunca deve ser desfeita pelo rollback.
       if (!atuais.some(ehDaOperacao)) return;
+      revisaoCobrancas++;
       const anteriores = (pagamentos ? snapshot.pagamentos : snapshot.historico).filter(item => pagamentos
         ? mesmaBaixaPagamento(item, { registro, parcela, caixa, operacaoId })
         : texto(item.id || item.historicoId || item.operacaoId) === texto(operacaoId));
@@ -303,6 +308,7 @@
 
   let refreshOperacaoTimer = 0;
   let refreshOperacaoPromessa = null;
+  let refreshOperacaoRepetir = null;
 
   function agendarRefreshOperacaoVendedor(opcoes = {}) {
     window.clearTimeout(refreshOperacaoTimer);
@@ -314,14 +320,17 @@
   }
 
   async function refreshOperacaoVendedorParcial({ render = "cobrancas", clientes = true } = {}) {
-    if (refreshOperacaoPromessa) return refreshOperacaoPromessa;
+    if (refreshOperacaoPromessa) { refreshOperacaoRepetir = { render, clientes }; return refreshOperacaoPromessa; }
+    if ([...operacoesAssincronas.values()].some(item => ["QUEUED", "PROCESSING"].includes(item.status))) return;
     const svc = window.IntegroPerfisUnificados;
     if (!svc?.carregarColecaoPorPerfil) {
       await svc?.carregarTudo?.();
       caches();
       return;
     }
+    const revisaoInicial = revisaoCobrancas;
     refreshOperacaoPromessa = (async () => {
+      ["clientes", "vendas", "pagamentos", "parcelas", "historicoCobrancas", "caixas"].forEach(nome => window.IntegroDataRuntime?.invalidar?.(nome));
       const colecoes = window.CONFIG?.COLECOES || {};
       const limites = window.CONFIG?.LIMITS || {};
       const listaClientes = clientes && svc.carregarClientesPorPerfil
@@ -334,6 +343,7 @@
         svc.carregarColecaoPorPerfil(colecoes.PARCELAS || "parcelas", limites.PARCELAS || 1200),
         svc.carregarColecaoPorPerfil(colecoes.HISTORICO_COBRANCAS || "historicoCobrancas", limites.HISTORICO_COBRANCAS || 600)
       ]);
+      if (revisaoInicial !== revisaoCobrancas) { refreshOperacaoRepetir = { render, clientes }; return; }
       State.setClientes?.(listaClientes);
       State.setCaixas?.(caixas);
       State.setVendas?.(vendas);
@@ -352,6 +362,7 @@
       return await refreshOperacaoPromessa;
     } finally {
       refreshOperacaoPromessa = null;
+      if (refreshOperacaoRepetir) { const repetir = refreshOperacaoRepetir; refreshOperacaoRepetir = null; agendarRefreshOperacaoVendedor(repetir); }
     }
   }
 
@@ -804,6 +815,7 @@
           </div>
           <div id="filtrosCobrancasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
+              <label class="vendedor-check"><input id="filtroCobrancaCarteiraCompleta" type="checkbox"><span>Todos os clientes da carteira (inclui cobranças futuras)</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaPendente" type="checkbox"><span>Sem baixa</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaPago" type="checkbox"><span>Pagos</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaNaoPago" type="checkbox"><span>Não pagos</span></label>
@@ -942,8 +954,8 @@
     if (!dashboard || !operacao?.resumoHoje) return;
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const dados = caches();
-    const lista = carteira || operacao.montarCarteira({ clientes: dados.clientes, vendas: dados.vendas, parcelas: dados.parcelas, pagamentosHoje: dados.pagamentos, historico: dados.historico, usuario, hoje: dataCaixa() });
-    const resumo = operacao.resumoHoje({ carteira: lista, pagamentos: dados.pagamentos, usuario, hoje: dataCaixa() });
+    const lista = carteira || operacao.montarCarteira({ clientes: dados.clientes, vendas: dados.vendas, parcelas: dados.parcelas, pagamentosHoje: dados.pagamentos, historico: dados.historico, usuario, caixaId: caixaAberto()?.id || "", hoje: dataCaixa() });
+    const resumo = operacao.resumoHoje({ carteira: lista, pagamentos: dados.pagamentos, usuario, caixaId: caixaAberto()?.id || "", hoje: dataCaixa() });
     const caixa = caixaAberto();
     let central = document.getElementById("vendedorHoje");
     if (!central) {
@@ -1109,6 +1121,7 @@
       document.body.appendChild(modal);
     }
     if (!modal.classList.contains("open")) focoAnteriorModal = document.activeElement;
+    modal.classList.remove("is-fechamento");
     modal.innerHTML = `<div class="vendedor-operacao-modal-card" role="dialog" aria-modal="true" aria-labelledby="vendedorModalTitulo"><div class="vendedor-operacao-modal-head"><h3 id="vendedorModalTitulo">${esc(titulo)}</h3><button type="button" aria-label="Fechar" onclick="fecharModalVendedorOperacao()">×</button></div><div class="vendedor-operacao-modal-body">${conteudo}</div>${acoes ? `<div class="vendedor-operacao-modal-actions">${acoes}</div>` : ""}</div>`;
     modal.classList.add("open");
     (modal.querySelector("input, select, textarea") || modal.querySelector("button"))?.focus({ preventScroll: true });
@@ -1118,6 +1131,82 @@
     document.getElementById("vendedorOperacaoModal")?.classList.remove("open");
     if (focoAnteriorModal?.isConnected) focoAnteriorModal.focus({ preventScroll: true });
     focoAnteriorModal = null;
+  }
+
+  let snapshotFechamentoVendedor = null;
+  let fechamentoVendedorEmAndamento = false;
+
+  function pendenciasFechamentoVendedor(caixa, usuario, conferirRota = true) {
+    const pendentes = [...operacoesAssincronas.values()].some(item => ["QUEUED", "PROCESSING"].includes(item.status));
+    if (pendentes) throw new Error("Aguarde a sincronização das operações antes de fechar o caixa.");
+    const chave = window.IntegroOperacional.chaveFilaOffline(usuario);
+    const fila = JSON.parse(localStorage.getItem(chave) || "[]");
+    if (!Array.isArray(fila)) throw new Error("Não foi possível conferir as operações offline.");
+    const offline = fila.filter(item => texto(item.caixaId) === texto(caixa.id) && ["PENDENTE", "SINCRONIZANDO", "ERRO", "ERRO_BLOQUEADO_CAIXA_FECHADO"].includes(texto(item.statusSync || item.status || "PENDENTE").toUpperCase()));
+    if (offline.length) throw new Error("Existem operações offline pendentes para este caixa.");
+    const rota = window.montarCobrancasPorVenda?.() || [];
+    if (conferirRota && rota.some(item => item.comCobrancaHoje && !item.pagoHoje && !item.naoPagoHoje)) throw new Error("Conclua as pendências da rota antes de fechar o caixa.");
+  }
+
+  async function abrirFechamentoVendedor() {
+    if (fechamentoVendedorEmAndamento) return;
+    snapshotFechamentoVendedor = null;
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    if (perfil(usuario) !== "vendedor") return;
+    try {
+      const caixa = await garantirCaixaAberto();
+      if (!caixa) throw new Error("Nenhum caixa aberto ou reaberto foi localizado.");
+      pendenciasFechamentoVendedor(caixa, usuario, false);
+      modalBase("Fechar caixa", '<p role="status">Conferindo o resumo do caixa atual…</p>');
+      const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId: caixa.id, clientePlataformaId: State.getTenantId?.() || usuario.clientePlataformaId, usuario });
+      const pendencias = numero(snapshot.pendenciasCobranca) + numero(snapshot.pagamentosPendentes);
+      snapshotFechamentoVendedor = snapshot;
+      const linhas = [["Recebimentos", snapshot.totalPagamentosCentavos], ["Ingressos", snapshot.totalIngressosCentavos], ["Vendas / empréstimos", snapshot.totalVendasCentavos], ["Despesas", snapshot.totalGastosCentavos], ["Retiradas", snapshot.totalRetiradasCentavos], ["Recolhimentos", snapshot.totalRecolhimentosCentavos], ["Ajustes", snapshot.totalAjustesCentavos]];
+      const visitadas = numero(snapshot.totalVisitadas), total = numero(snapshot.totalCobrancas);
+      modalBase("Fechamento de caixa", `<section class="vendedor-fechamento-resumo" aria-label="Resumo do caixa atual"><small>Caixa ${esc(caixa.id)} · ${esc(snapshot.dataOperacional || dataCaixa())}</small><div class="vendedor-fechamento-saldos"><div><span>Caixa atual calculado</span><strong>${moeda(snapshot.caixaFinalEsperadoCentavos / 100)}</strong></div><div><span>Caixa inicial</span><strong>${moeda(numero(snapshot.caixaInicialCentavos) / 100)}</strong></div></div><dl class="vendedor-fechamento-metricas">${linhas.map(([label, valor]) => `<div><dt>${esc(label)}</dt><dd>${moeda(numero(valor) / 100)}</dd></div>`).join("")}</dl><div class="vendedor-fechamento-visitas"><span>Clientes visitados</span><strong>${visitadas} de ${total}</strong><progress max="${Math.max(1,total)}" value="${visitadas}"></progress></div></section>${pendencias ? `<p class="vendedor-fechamento-pendente" role="status">Existem ${pendencias} pendência(s). Conclua as cobranças e sincronizações para confirmar o fechamento.</p>` : ""}<label for="vendedorFechamentoValor">Valor físico/real do caixa</label><input id="vendedorFechamentoValor" inputmode="decimal" placeholder="0,00" autocomplete="off"><label for="vendedorFechamentoJustificativa">Observação</label><textarea id="vendedorFechamentoJustificativa" placeholder="Obrigatória se houver divergência"></textarea>`, '<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorFechamentoConfirmar" class="primary-btn" type="button" onclick="confirmarFechamentoCaixaVendedorUnificado()">Confirmar fechamento</button>');
+      document.getElementById("vendedorOperacaoModal")?.classList.add("is-fechamento");
+      const confirmar = document.getElementById("vendedorFechamentoConfirmar");
+      if (confirmar) confirmar.disabled = pendencias > 0;
+    } catch (erro) {
+      snapshotFechamentoVendedor = null;
+      fecharModal();
+      UIHelpers.alerta(erro.message || "Não foi possível conferir o caixa.");
+    }
+  }
+
+  async function confirmarFechamentoVendedor() {
+    if (fechamentoVendedorEmAndamento || !snapshotFechamentoVendedor) return;
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const snapshot = snapshotFechamentoVendedor;
+    if (numero(snapshot.pendenciasCobranca) + numero(snapshot.pagamentosPendentes) > 0) return UIHelpers.alerta("Conclua as pendências e abra novamente o resumo do caixa.");
+    const valorTexto = texto(document.getElementById("vendedorFechamentoValor")?.value);
+    const valor = Number(valorTexto.replace(/\./g, "").replace(",", "."));
+    const justificativa = texto(document.getElementById("vendedorFechamentoJustificativa")?.value);
+    if (!valorTexto || !/^-?\d+(?:\.\d{3})*(?:,\d{1,2})?$/.test(valorTexto) || !Number.isFinite(valor)) return UIHelpers.alerta("Informe um valor físico/real válido.");
+    const centavos = Math.round(valor * 100);
+    if (centavos !== snapshot.caixaFinalEsperadoCentavos && !justificativa) return UIHelpers.alerta("Informe uma justificativa para a divergência.");
+    let restaurar = () => {};
+    try {
+      pendenciasFechamentoVendedor(snapshot.caixa, usuario, false);
+      fechamentoVendedorEmAndamento = true;
+      restaurar = setBotaoProcessando(document.getElementById("vendedorFechamentoConfirmar"), "Fechando caixa…");
+      const resultado = await window.IntegroCaixa.registrarFechamentoCaixaTransacional({ usuario, clientePlataformaId: State.getTenantId?.() || usuario.clientePlataformaId, caixaId: snapshot.caixa.id, vendedorId: snapshot.caixa.vendedorId, vendedorAuthUid: snapshot.caixa.vendedorAuthUid || usuario.authUid, valorInformadoCentavos: centavos, justificativa, snapshot, origem: "vendedor_unificado" });
+      const fechado = { ...snapshot.caixa, status: resultado.statusFechamento, ativo: false, fechado: true };
+      window.caixaAtual = fechado;
+      State.setCaixas?.((State.getCaixas?.() || []).map(item => texto(item.id) === texto(fechado.id) ? fechado : item));
+      snapshotFechamentoVendedor = null;
+      fecharModal();
+      await window.IntegroLogout.encerrar(async () => {
+        await window.IntegroV27Session?.end?.({ silent: true });
+        await window.firebase.auth().signOut();
+        window.IntegroOperacional.limparSessaoLocal({ usuario, limparFila: false });
+      }, { destino: "index.html?motivo=caixa-fechado&mensagem=" + encodeURIComponent("Caixa fechado. Solicite a abertura ou reabertura para entrar novamente.") });
+    } catch (erro) {
+      UIHelpers.alerta(erro.message || "Não foi possível fechar o caixa.");
+    } finally {
+      restaurar();
+      fechamentoVendedorEmAndamento = false;
+    }
   }
 
   function clientePorId(clienteId) {
@@ -1617,7 +1706,7 @@
 
   function item(vendaId) {
     caches();
-    return window.IntegroVendedorOperacao?.montarCarteira?.({ clientes: window.clientesCache, vendas: window.vendasCache, parcelas: window.parcelasCache, pagamentosHoje: window.pagamentosHojeCache, historico: window.historicoCobrancasCache, usuario: usuarioAtual || State.getUsuario?.(), hoje: dataCaixa() }).find(registro => texto(registro.vendaId) === texto(vendaId));
+    return window.IntegroVendedorOperacao?.montarCarteira?.({ clientes: window.clientesCache, vendas: window.vendasCache, parcelas: window.parcelasCache, pagamentosHoje: window.pagamentosHojeCache, historico: window.historicoCobrancasCache, usuario: usuarioAtual || State.getUsuario?.(), caixaId: caixaAberto()?.id || "", hoje: dataCaixa() }).find(registro => texto(registro.vendaId) === texto(vendaId));
   }
 
   function caixaAberto() {
@@ -1643,7 +1732,7 @@
       return ["ABERTO", "REABERTO"].includes(status) &&
         caixa.ativo !== false &&
         caixa.excluido !== true &&
-        (!tenantCaixa || !tenantId || tenantCaixa === tenantId) &&
+        (tenantCaixa === tenantId && Boolean(tenantId)) &&
         pertenceAoVendedor(caixa, usuario);
     }).sort((a, b) => dataRegistro(b).localeCompare(dataRegistro(a)) || texto(b.id).localeCompare(texto(a.id)));
 
@@ -2069,12 +2158,23 @@
     </article>`;
   }
 
+  let filtroMovimentacoesVendedor = { usuario: "", tipo: "" };
+  function selecionarTipoMovimentacoesVendedor(tipo) {
+    if (!["", "INGRESSO", "GASTO", "RETIRADA"].includes(tipo)) return false;
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    if (perfil(usuario) !== "vendedor") return false;
+    filtroMovimentacoesVendedor = { usuario: texto(usuario.authUid || usuario.uid || usuario.id), tipo };
+    renderMovimentacoesVendedor();return true;
+  }
   function renderMovimentacoesVendedor() {
     const tela = document.getElementById("movimentacoes");
     if (!tela || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
     const caixa = caixaAberto();
-    const movimentos = caixa ? movimentosDoCaixaVendedor(caixa) : [];
-    const totais = totaisMovimentacoes(movimentos);
+    const todos = caixa ? movimentosDoCaixaVendedor(caixa) : [];
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const tipoSelecionado = filtroMovimentacoesVendedor.usuario === texto(usuario.authUid || usuario.uid || usuario.id) ? filtroMovimentacoesVendedor.tipo : "";
+    const movimentos = tipoSelecionado ? todos.filter(item => tipoMovimento(item).includes(tipoSelecionado === "RETIRADA" ? "RETIR" : tipoSelecionado)) : todos;
+    const totais = totaisMovimentacoes(todos);
     tela.innerHTML = `
       <div class="section-card vendedor-movimentacoes-shell integro-shared-surface">
         <div class="section-header vendedor-mov-head integro-shared-header">
@@ -2088,7 +2188,7 @@
           <div class="kpi-retirada"><span class="vendedor-mov-kpi-icon" aria-hidden="true">↗</span><div><small>Retiradas confirmadas</small><strong>${moeda(totais.retiradas)}</strong></div></div>
         </div>
         ${caixa ? "" : '<p class="vendedor-mov-alerta">Abra um caixa para criar ou consultar as movimentações do dia.</p>'}
-        <section class="vendedor-mov-lista"><div class="vendedor-mov-lista-head"><h3>Lançamentos do caixa aberto</h3><span>${movimentos.length} registro(s)</span></div>${movimentos.length ? movimentos.map(item => cardMovimentacaoVendedor(item, caixa)).join("") : '<div class="empty-state-operacao"><strong>Nenhuma movimentação encontrada</strong><p>Os lançamentos deste caixa aparecerão aqui.</p></div>'}</section>
+        <section class="vendedor-mov-lista"><div class="vendedor-mov-lista-head"><h3>${({INGRESSO:"Ingressos",GASTO:"Gastos",RETIRADA:"Retiros"})[tipoSelecionado] || "Lançamentos do caixa aberto"}</h3><span>${movimentos.length} registro(s)</span></div>${movimentos.length ? movimentos.map(item => cardMovimentacaoVendedor(item, caixa)).join("") : '<div class="empty-state-operacao"><strong>Nenhuma movimentação encontrada</strong><p>Os lançamentos deste caixa aparecerão aqui.</p></div>'}</section>
       </div>
       <div id="gavetaMovimentacaoVendedor" class="vendedor-mov-drawer" aria-hidden="true" onclick="if(event.target===this)fecharGavetaMovimentacaoVendedor()">
         <aside class="vendedor-mov-drawer-card" role="dialog" aria-modal="true" aria-labelledby="tituloGavetaMovimentacaoVendedor">
@@ -2476,7 +2576,7 @@
   function limparCobrancas() {
     const busca = document.getElementById("buscaCobrancaInput");
     if (busca) busca.value = "";
-    ["filtroCobrancaPendente", "filtroCobrancaPago", "filtroCobrancaNaoPago", "filtroCobrancaAtrasado", "filtroCobrancaEmDia", "filtroCobrancaAdiantado"].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+    ["filtroCobrancaCarteiraCompleta", "filtroCobrancaPendente", "filtroCobrancaPago", "filtroCobrancaNaoPago", "filtroCobrancaAtrasado", "filtroCobrancaEmDia", "filtroCobrancaAdiantado"].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
     const ordem = document.getElementById("ordenarCobrancas");
     if (ordem) ordem.value = "prioridade_rota";
     window.renderCobrancas?.();
@@ -2548,7 +2648,12 @@
 
   function abrirOperacao(itemMenu) {
     window.trocarTela?.("cobrancas", itemMenu);
-    setTimeout(() => abrirAba("cobrancas"), 0);
+    setTimeout(async () => {
+      abrirAba("cobrancas");
+      const lista = document.getElementById("listaCobrancas");
+      if (lista) { lista.__integroCarteiraHtml = null; lista.innerHTML = '<p role="status">Atualizando cobranças do caixa aberto…</p>'; }
+      try { await refreshOperacaoVendedorParcial(); } catch (erro) { window.renderCobrancas?.(); UIHelpers.alerta(erro.message || "Não foi possível atualizar as cobranças."); } finally { window.renderCobrancas?.(); }
+    }, 0);
   }
 
   function abrirDashboardInicial() {
@@ -2595,6 +2700,8 @@
   });
   document.addEventListener("integro-operacoes-tempo-real-atualizadas", () => {
     if (!instalado) return;
+    caches();
+    if (abaAtual === "cobrancas") window.renderCobrancas?.(); else renderVendasDia();
     recalcularDashboardVendedor("operacoes-tempo-real");
   });
   document.addEventListener("integro-tela-alterada", evento => {
@@ -2611,11 +2718,14 @@
   });
   document.addEventListener("DOMContentLoaded", () => setTimeout(() => aplicar(State.getUsuario?.()), 0));
 
+  window.validarEAbrirFechamentoCaixa = abrirFechamentoVendedor;
+  window.confirmarFechamentoCaixaVendedorUnificado = confirmarFechamentoVendedor;
   window.renderDashboardCaixaVendedor = renderDashboardCaixaVendedor;
   window.detalheDashboardCaixaVendedor = detalheDashboardCaixaVendedor;
   window.obterDataCaixaVendedor = dataCaixa;
   window.obterCaixaAbertoVendedor = caixaAberto;
   window.atualizarCaixaAbertoVendedor = garantirCaixaAberto;
+  window.obterCaixaAbertoVendedor = caixaAberto;
   window.abrirOperacaoVendedor = abrirOperacao;
   window.abrirAbaVendasCobrancas = abrirAba;
   window.renderVendasDia = renderVendasDia;
@@ -2674,5 +2784,5 @@
   window.abrirListaNovaVendaVendedor = abrirListaNovaVenda;
   window.selecionarClienteNovaVendaVendedor = selecionarClienteNovaVenda;
   window.confirmarNovaVendaVendedor = confirmarNovaVenda;
-  window.IntegroVendedorUnificado = Object.freeze({ aplicar, montarTela, renderHoje, renderVendasDia, renderClientesVendedor, renderMovimentacoesVendedor, abrirAba, get ativo() { return instalado; } });
+  window.IntegroVendedorUnificado = Object.freeze({ aplicar, montarTela, renderHoje, renderVendasDia, renderClientesVendedor, renderMovimentacoesVendedor, selecionarTipoMovimentacoesVendedor, abrirAba, get ativo() { return instalado; } });
 })();

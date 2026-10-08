@@ -1618,6 +1618,7 @@ test("IDs determinísticos do ledger seguem padrão oficial", () => {
 
 test("cria ingresso, gasto, retirada, recolhimento e ajustes com naturezas oficiais", async () => {
   const { db, usuario, caixaId } = contextoLedgerTransacional();
+  await db.collection("caixas").doc(caixaId).update({status:"FECHADO"});
   const base = { usuario, clientePlataformaId: "tenant_1", caixaId, operacaoId: "op_base" };
   await criarLancamentoFinanceiroTransacional({ ...base, tipoLancamento: "INGRESSO", origemId: "ing_1", valorCentavos: 1000 });
   await criarLancamentoFinanceiroTransacional({ ...base, tipoLancamento: "GASTO", origemId: "gasto_1", valorCentavos: 300 });
@@ -1636,6 +1637,7 @@ test("cria ingresso, gasto, retirada, recolhimento e ajustes com naturezas ofici
 
 test("retry idempotente e conflito de lançamento duplicado são bloqueados", async () => {
   const { db, usuario, caixaId } = contextoLedgerTransacional();
+  await db.collection("caixas").doc(caixaId).update({status:"FECHADO"});
   const entrada = { usuario, clientePlataformaId: "tenant_1", caixaId, tipoLancamento: "INGRESSO", origemId: "ing_1", valorCentavos: 1000 };
   const primeiro = await criarLancamentoFinanceiroTransacional(entrada);
   const retry = await criarLancamentoFinanceiroTransacional(entrada);
@@ -1683,8 +1685,10 @@ test("recusa financeira e atomica e nao movimenta o caixa", async () => {
 
 test("edicao e cancelamento administrativo recalculam o caixa sem apagar auditoria", async () => {
   const { db, usuario, caixaId } = contextoLedgerTransacional();
+  await db.collection("caixas").doc(caixaId).update({status:"FECHADO"});
   const criado = await criarLancamentoFinanceiroTransacional({ usuario, clientePlataformaId: "tenant_1", caixaId, tipoLancamento: "GASTO", origemId: "gasto_editar", operacaoId: "gasto_editar", valorCentavos: 1000, observacao: "Original" });
   assert.equal(db.ler("caixas/caixa_ledger").saldoAtualCentavos, 9000);
+  await db.collection("caixas").doc(caixaId).update({status:"REABERTO"});
   const editado = await editarLancamentoFinanceiroAdministrativoTransacional({ usuario, clientePlataformaId: "tenant_1", lancamentoId: criado.lancamentoId, tipoLancamento: "GASTO", valorCentavos: 400, motivoEdicao: "Valor correto", operacaoId: "edicao_gasto_1", observacao: "Corrigido", permissaoAdministrativa: true });
   assert.equal(db.ler(`lancamentos_financeiros/${criado.lancamentoId}`).statusLancamento, "CANCELADO");
   assert.equal(db.ler(`lancamentos_financeiros/${editado.lancamentoId}`).valorCentavos, 400);
@@ -1762,6 +1766,7 @@ test("regularização financeira exige divergência, cria lançamento e atualiza
 
 test("estorno cria lançamento oposto e retry não duplica", async () => {
   const { db, usuario, caixaId } = contextoLedgerTransacional();
+  await db.collection("caixas").doc(caixaId).update({status:"FECHADO"});
   await criarLancamentoFinanceiroTransacional({ usuario, clientePlataformaId: "tenant_1", caixaId, tipoLancamento: "INGRESSO", origemId: "ing_1", valorCentavos: 1000 });
   const estorno = await registrarEstornoFinanceiro({
     usuario,
@@ -2002,7 +2007,7 @@ test("regressão encadeada do vendedor cobre abertura até refechamento no mesmo
 
   const gestor = usuarioMasterCaixa();
   await registrarReaberturaCaixaTransacional({ caixaId, clientePlataformaId: "tenant_1", usuario: gestor, motivo: "Conferência e nova movimentação", operacaoId: "fluxo_reabertura" });
-  await criarLancamentoFinanceiroTransacional({ usuario: gestor, clientePlataformaId: "tenant_1", caixaId, vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid, equipeId: "equipe_1", tipoLancamento: "GASTO", natureza: "DEBITO", valorCentavos: 100, origemId: "fluxo_gasto_reaberto", operacaoId: "fluxo_gasto_reaberto", dataOperacional: "2026-06-30", permissaoAdministrativa: true });
+  await criarLancamentoFinanceiroTransacional({ usuario: vendedor, clientePlataformaId: "tenant_1", caixaId, vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid, equipeId: "equipe_1", tipoLancamento: "GASTO", natureza: "DEBITO", valorCentavos: 100, origemId: "fluxo_gasto_reaberto", operacaoId: "fluxo_gasto_reaberto", dataOperacional: "2026-06-30", permissaoAdministrativa: true });
   const snapshotFinal = await prepararSnapshotFechamentoCaixa({ caixaId, clientePlataformaId: "tenant_1", vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid });
   const refechamento = await registrarFechamentoCaixaTransacional({ usuario: vendedor, clientePlataformaId: "tenant_1", caixaId, vendedorId: vendedor.id, vendedorAuthUid: vendedor.authUid, snapshot: snapshotFinal, valorInformadoCentavos: snapshotFinal.caixaFinalEsperadoCentavos, justificativa: "Refechamento após ajuste", operacaoId: "fluxo_refechamento" });
 
@@ -2013,4 +2018,42 @@ test("regressão encadeada do vendedor cobre abertura até refechamento no mesmo
   assert.equal(db.listar("vendas").length, 2);
   assert.equal(db.listar("pagamentos").length, 6);
   assert.equal(db.listar("lancamentos_financeiros").filter(item => item.tipoLancamento === "GASTO").length, 1);
+});
+
+
+test("fechamento do vendedor mantém escopo mesmo no fallback de índice e confere vendas antigas na rota", async () => {
+  const { db, entrada } = contextoFechamentoTransacional({
+    "vendas/antiga": { clientePlataformaId:"tenant_1", vendedorAuthUid:"uid_1", vendedorId:"usuario_1", caixaId:"antigo", clienteId:"c2", saldoDevedorCentavos:10000, valorEmprestadoCentavos:900000, status:"ATIVA" },
+    "parcelas/antiga": { clientePlataformaId:"tenant_1", vendedorAuthUid:"uid_1", caixaId:"antigo", vendaId:"antiga", valorCentavos:10000, valorPagoCentavos:0, dataVencimento:"2026-06-30" },
+    "parcelas/futura": { clientePlataformaId:"tenant_1", vendedorAuthUid:"uid_1", caixaId:"caixa_1", vendaId:"antiga", valorCentavos:10000, dataOperacional:"2026-06-30", dataVencimento:"2026-07-30" },
+    "historicoCobrancas/visita": { clientePlataformaId:"tenant_1", vendedorAuthUid:"uid_1", caixaId:"caixa_1", vendaId:"antiga", tipo:"NAO_PAGAMENTO", dataOperacional:"2026-06-30" }
+  });
+  entrada.usuario.tipoUsuario = "vendedor";
+  const collection = db.collection.bind(db);
+  let scopedFallbacks=0;
+  function wrap(ref) {
+    return {
+      ...ref,
+      where:(...args)=>wrap(ref.where(...args)),
+      limit:n=>wrap(ref.limit(n)),
+      get:async (...args)=>{
+        const filters=(ref.filtros||[]).map(f=>f.campo);
+        assert.ok(filters.includes("clientePlataformaId"));
+        assert.ok(filters.includes("vendedorAuthUid")||filters.includes("vendedorId"), "consulta sem vendedor");
+        if(filters.includes("caixaId"))throw Object.assign(Error("índice"),{code:"failed-precondition"});
+        scopedFallbacks++;
+        return ref.get(...args);
+      }
+    };
+  }
+  db.collection = name => wrap(collection(name));
+  global.IntegroVendedorOperacao=require("../js/vendedor-operacao.js");
+  try {
+    const snapshot=await prepararSnapshotFechamentoCaixa(entrada);
+    assert.equal(snapshot.caixaFinalEsperadoCentavos,13300);
+    assert.equal(snapshot.totalVendasCentavos,2000);
+    assert.equal(snapshot.pendenciasCobranca,0);
+    assert.equal(snapshot.totalNaoPagas,1);
+    assert.ok(scopedFallbacks>0);
+  } finally { delete global.IntegroVendedorOperacao; }
 });

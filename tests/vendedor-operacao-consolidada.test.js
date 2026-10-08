@@ -157,3 +157,77 @@ test("vendedor.html carrega uma única camada autoritativa de operação", () =>
   assert.equal(jsOperacao.length, 1);
   assert.doesNotMatch(html, /integro-operacao-vendedor-carteira-devedora-20260802/);
 });
+
+
+test("baixas pertencem ao caixa aberto, inclusive caixa reaberto de outro dia", () => {
+  const d = base({ caixaId: "aberto", hoje: "2026-08-02", pagamentosHoje: [
+    { vendaId: "venda-1", caixaId: "antigo", valorCentavos: 6000, dataOperacional: "2026-08-02", clientePlataformaId: "tenant-1", vendedorAuthUid: "auth-1" },
+    { vendaId: "venda-1", caixaId: "aberto", valorCentavos: 2500, dataOperacional: "2026-08-02", data: "2026-08-03", clientePlataformaId: "tenant-1", vendedorAuthUid: "auth-1" }
+  ] });
+  const item = operacao.montarCarteira(d)[0];
+  assert.equal(item.valorPagoHoje, 25);
+  assert.equal(item.pagoHoje, true);
+  d.pagamentosHoje.pop();
+  assert.equal(operacao.montarCarteira(d)[0].pagoHoje, false);
+  d.historico = [{ vendaId: "venda-1", caixaId: "aberto", tipo: "NAO_PAGAMENTO", dataOperacional: "2026-08-02", data: "2026-08-03", clientePlataformaId: "tenant-1", vendedorAuthUid: "auth-1" }];
+  assert.equal(operacao.montarCarteira(d)[0].naoPagoHoje, true);
+  d.historico[0].cancelado = true;
+  assert.equal(operacao.montarCarteira(d)[0].naoPagoHoje, false);
+});
+
+test("vínculo canônico conflitante não é liberado pelo cliente ou alias", () => {
+  assert.equal(operacao.pertenceAoVendedor({ vendedorAuthUid: "outro", vendedorId: "vend-1" }, usuario), false);
+  const d = base();
+  d.vendas[0].vendedorAuthUid = "outro";
+  assert.equal(operacao.montarCarteira(d).length, 0);
+});
+
+test("saldo e parcelas usam centavos canônicos e saldo quitado não reaparece pelo cache do cliente", () => {
+  const d = base();
+  d.vendas[0].saldoDevedorCentavos = 0;
+  d.vendas[0].status = "QUITADO";
+  assert.equal(operacao.montarCarteira(d).length, 0);
+  d.vendas[0].status = "ATIVA";
+  d.vendas[0].saldoDevedorCentavos = 12500;
+  d.vendas[0].valorParcelaCentavos = 5000;
+  d.parcelas = [{ vendaId: "venda-1", valorCentavos: 5000, valorPagoCentavos: 2500, dataVencimento: "2026-08-02" }];
+  const item = operacao.montarCarteira(d)[0];
+  assert.equal(item.saldoDevedor, 125);
+  assert.equal(item.valorParcela, 50);
+  assert.equal(item.progresso, 0.5);
+  assert.equal(item.pendenteHoje, true);
+});
+
+
+function filtrosCobrancaTeste() {
+  const vm = require('node:vm'), elementos = new Map();
+  const env = { console };env.window=env;vm.createContext(env);
+  vm.runInContext(fs.readFileSync(path.join(__dirname,'../js/vendedor-operacao.js'),'utf8'),env);
+  env.document={getElementById:id=>elementos.get(id),querySelector:()=>null,querySelectorAll:()=>[],addEventListener(){}};
+  env.IntegroVendedorOperacao.instalar();
+  return {env,elementos,filtrar:lista=>env.IntegroVendedorOperacao._internals.aplicarFiltros(lista)};
+}
+
+test("sem filtros mostra toda a rota do caixa, com baixas e sem baixas; carteira completa inclui futuras",()=>{
+  const t=filtrosCobrancaTeste();
+  const rota=[{clienteNome:'Pendente',comCobrancaHoje:true,pendenteHoje:true},{clienteNome:'Pago',pagoHoje:true},{clienteNome:'Não pago',naoPagoHoje:true},{clienteNome:'Futuro',comCobrancaHoje:false,situacao:'ADIANTADO'}];
+  assert.equal(t.filtrar(rota).length,3);
+  t.elementos.set('filtroCobrancaCarteiraCompleta',{checked:true});
+  assert.equal(t.filtrar(rota).length,4);
+  t.elementos.set('filtroCobrancaPendente',{checked:true});
+  assert.equal(t.filtrar(rota).length,1);
+  t.elementos.set('filtroCobrancaPendente',{checked:false});
+  t.elementos.set('buscaCobrancaInput',{value:'Futuro'});
+  assert.equal(t.filtrar(rota)[0].clienteNome,'Futuro');
+});
+
+test("render da lista restaura cards após carregamento e contador usa apenas resultados visíveis",()=>{
+  const {env,elementos}=filtrosCobrancaTeste();
+  env.usuarioAtual=usuario;env.obterCaixaAbertoVendedor=()=>({id:'aberto'});env.obterDataCaixaVendedor=()=> '2026-08-03';
+  const d=base({caixaId:'aberto'});env.clientesCache=d.clientes;env.vendasCache=d.vendas;env.parcelasCache=d.parcelas;
+  const lista={innerHTML:''}, contador={textContent:''};elementos.set('listaCobrancas',lista);elementos.set('contadorCobrancas',contador);
+  env.renderCobrancas();const cards=lista.innerHTML;assert.match(cards,/Maria da Silva/);
+  lista.__integroCarteiraHtml=null;lista.innerHTML='Atualizando cobranças do caixa aberto…';env.renderCobrancas();
+  assert.equal(lista.innerHTML,cards);
+  elementos.set('filtroCobrancaPago',{checked:true});env.renderCobrancas();assert.match(contador.textContent,/0 cliente.*0 pago/);
+});

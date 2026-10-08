@@ -16,9 +16,11 @@ function atualizarCarregamentoLogin(etapa, percentual, detalhe) {
   const etapaEl = document.getElementById("loginFlowStep");
   const detalheEl = document.getElementById("loginFlowHint");
   const barraEl = document.getElementById("loginFlowProgress");
+  const percentualEl = document.getElementById("loginFlowPercent");
   const valor = Math.max(0, Math.min(100, Number(percentual) || 0));
 
   if (!loader) return;
+  if (percentualEl) percentualEl.textContent = valor + "%";
   if (etapaEl) etapaEl.textContent = String(etapa || "Preparando seu acesso...");
   if (detalheEl && detalhe) detalheEl.textContent = String(detalhe);
   if (barraEl) {
@@ -76,7 +78,7 @@ function garantirServicoSessaoV27() {
       return;
     }
     const script = document.createElement("script");
-    script.src = "js/services/v27-session-service.js?v=20260818-session-replace1";
+    script.src = "js/services/v27-session-service.js?v=20261008-login-caixa1";
     script.async = false;
     script.dataset.integroV27Session = "1";
     script.onload = () => resolve(window.IntegroV27Session);
@@ -96,6 +98,30 @@ async function registrarFalhaLoginV27(email) {
     console.warn("[ÍNTEGRO V27.2] Não foi possível registrar a falha de login.", erro);
     return null;
   }
+}
+
+async function verificarCaixaVendedorParaAcesso(usuario, authUser) {
+  const acesso = window.IntegroAcesso?.acessoUsuario?.(usuario);
+  if (acesso?.perfil && acesso.perfil !== "vendedor") return null;
+  const valores = [acesso?.perfil, usuario.tipoUsuario, usuario.cargoChave, usuario.cargo].map(v => String(v || "").toLowerCase());
+  if (!valores.includes("vendedor")) return null;
+  const uid = String(authUser?.uid || usuario.authUid || usuario.uid || "");
+  const tenant = String(usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId || "");
+  const erroCaixa = (message, code = "CAIXA_FECHADO") => Object.assign(new Error(message), { code, caixaAccessError: true });
+  if (!uid || !tenant) throw erroCaixa("Não foi possível confirmar o vínculo do vendedor.", "CAIXA_ACESSO_INVALIDO");
+  let snap;
+  try {
+    const banco = window.db || firebase.firestore();
+    snap = await banco.collection("caixas").where("clientePlataformaId", "==", tenant).where("vendedorAuthUid", "==", uid).limit(5000).get({ source: "server" });
+  } catch (_) {
+    throw erroCaixa("Não foi possível conferir o caixa no servidor. Tente novamente.", "CAIXA_ACESSO_INDISPONIVEL");
+  }
+  const caixa = snap.docs.map(doc => ({ ...doc.data(), id: doc.id })).find(item =>
+    String(item.clientePlataformaId) === tenant && String(item.vendedorAuthUid) === uid &&
+    ["ABERTO", "REABERTO"].includes(String(item.status || "").toUpperCase()) && item.ativo !== false && item.excluido !== true);
+  if (!caixa) throw erroCaixa("Caixa fechado. Solicite a abertura ou reabertura ao supervisor para entrar no sistema.");
+  window.caixaAtual = caixa;
+  return caixa;
 }
 
 // ===============================
@@ -148,21 +174,16 @@ async function login() {
       return;
     }
 
+    await verificarCaixaVendedorParaAcesso(usuario, authUser);
     State.setUsuario(usuario);
     atualizarCarregamentoLogin("Preparando seu ambiente", 68, "Sincronizando empresa e sessão de acesso");
 
     // V27: o login novo assume a sessão e derruba o dispositivo anterior.
-    // As configurações da empresa e a sessão são independentes e podem ser
-    // preparadas em paralelo sem remover nenhuma validação de segurança.
+    // A sessão é obrigatória; as configurações são carregadas no painel de destino.
     try {
-      await Promise.all([
-        carregarConfiguracoesEmpresaDoUsuario(usuario),
-        (async () => {
-          const sessao = await garantirServicoSessaoV27();
-          if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
-          return sessao.start();
-        })()
-      ]);
+      const sessao = await garantirServicoSessaoV27();
+      if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
+      await sessao.start();
     } catch (erroSessao) {
       await auth.signOut().catch(() => {});
       State.limparSessao();
@@ -170,17 +191,22 @@ async function login() {
     }
 
     marcarEtapaLogin(metricas, "ambiente");
-    atualizarCarregamentoLogin("Abrindo seu painel", 100, "Tudo pronto. Só mais um instante...");
+    atualizarCarregamentoLogin("Carregando seu painel", 72, "Validando sessão e carregando os dados principais");
     marcarEtapaLogin(metricas, "redirecionamento");
     publicarMetricasLogin(metricas);
-    prepararContinuidadeCarregamentoLogin(100);
+    prepararContinuidadeCarregamentoLogin(72);
     manterCarregamentoAteRedirecionar = redirecionarUsuario(usuario) !== false;
     if (!manterCarregamentoAteRedirecionar) limparContinuidadeCarregamentoLogin();
   } catch (erro) {
     console.error("ERRO LOGIN:", erro);
     let mensagem = "Erro ao realizar login.";
 
-    if (erro?.code === "SESSION_ALREADY_ACTIVE") {
+    if (erro.caixaAccessError || erro?.details?.code === "CAIXA_FECHADO") {
+      await auth.signOut().catch(() => {});
+      State.limparSessao();
+      window.caixaAtual = null;
+      mensagem = erro.message;
+    } else if (erro?.code === "SESSION_ALREADY_ACTIVE") {
       mensagem = "Não foi possível substituir a sessão anterior. Tente novamente.";
     } else if (erro.authDiagnosticCode) {
       try { await auth.signOut(); } catch (_) {}
@@ -283,11 +309,12 @@ function protegerPagina(tipoObrigatorio = null) {
         return;
       }
 
+      await verificarCaixaVendedorParaAcesso(usuario, authUser);
       State.setUsuario(usuario);
-      await carregarConfiguracoesEmpresaDoUsuario(usuario);
-
-      const sessao = await garantirServicoSessaoV27();
-      const retomada = await sessao?.resume?.();
+      const [, retomada] = await Promise.all([
+        carregarConfiguracoesEmpresaDoUsuario(usuario),
+        garantirServicoSessaoV27().then(sessao => sessao?.resume?.())
+      ]);
       if (!retomada) {
         await auth.signOut().catch(() => {});
         State.limparSessao();
@@ -299,9 +326,14 @@ function protegerPagina(tipoObrigatorio = null) {
     } catch (erro) {
       console.error("ERRO PROTEGER PÁGINA:", erro);
       try { await window.IntegroV27Session?.end?.({ silent: true }); } catch (_) {}
-      if (erro.authDiagnosticCode || erro?.code === "functions/failed-precondition") {
+      if (erro.caixaAccessError || erro.authDiagnosticCode || erro?.code === "functions/failed-precondition") {
         try { await auth.signOut(); } catch (_) {}
         State.limparSessao();
+      }
+      window.caixaAtual = null;
+      if (erro.caixaAccessError) {
+        window.location.replace("index.html?motivo=caixa-fechado&mensagem=" + encodeURIComponent(erro.message));
+        return;
       }
       UIHelpers.alerta("Erro ao validar sessão: " + erro.message);
       window.location.href = "index.html";

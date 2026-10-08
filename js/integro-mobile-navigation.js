@@ -21,7 +21,7 @@
     trigger: "[data-integro-menu-trigger], .mobile-menu-btn, .hamburger, #btnMenu",
     sidebar: "[data-integro-sidebar], #sidebar, .sidebar",
     overlay: "[data-integro-sidebar-overlay], #overlay, #sidebarOverlay, .sidebar-overlay, .overlay",
-    menuItem: "[data-integro-sidebar] .menu-item, [data-integro-sidebar] .menu-subitem, [data-integro-sidebar] .menu button, [data-integro-sidebar] a, .sidebar .menu-item, .sidebar .menu-subitem, .sidebar .menu button, .sidebar a",
+    menuItem: ".sidebar [data-iv-nav-child], [data-integro-sidebar] .menu-item, [data-integro-sidebar] .menu-subitem, [data-integro-sidebar] .menu button, [data-integro-sidebar] a, .sidebar .menu-item, .sidebar .menu-subitem, .sidebar .menu button, .sidebar a",
     close: "[data-close], [data-dismiss], .close-btn, .drawer-close, .modal-close, .notificacoes-vendedor-fechar, [aria-label='Fechar'], [aria-label='Close']",
     transient: [
       ".drawer.show",

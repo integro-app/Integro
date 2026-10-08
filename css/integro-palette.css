@@ -1,0 +1,120 @@
+/* Paleta oficial ÍNTEGRO — referência: carregamento de acesso aprovado.
+   Azul profundo, laranja e neutros. Verde/vermelho ficam reservados a estados. */
+:root {
+  --integro-brand-navy: #071428;
+  --integro-brand-navy-soft: #11233d;
+  --integro-brand-orange: #ff8a00;
+  --integro-brand-orange-soft: #ffb25c;
+  --integro-brand-caption: #8195ad;
+  --integro-brand-border: #dce4ee;
+  --integro-brand-canvas: #f4f6fa;
+  --integro-brand-gradient: linear-gradient(145deg, #11233d, #071428);
+  --integro-brand-accent: linear-gradient(135deg, #ffb25c, #ff8a00);
+}
+html body[data-integro-page]:not([data-integro-page="login"]) {
+  --it-navy-950: var(--integro-brand-navy);
+  --it-navy-900: var(--integro-brand-navy);
+  --it-navy-850: var(--integro-brand-navy-soft);
+  --it-navy-800: #193552;
+  --it-blue-600: #193552;
+  --it-blue-100: #edf2f7;
+  --it-purple-600: #193552;
+  --it-purple-100: #edf2f7;
+  --it-orange-600: #e87900;
+  --it-orange-500: var(--integro-brand-orange);
+  --it-orange-400: var(--integro-brand-orange-soft);
+  --it-orange-100: #fff2df;
+  --it-info-600: #193552;
+  --it-info-100: #edf2f7;
+  --it-canvas: var(--integro-brand-canvas);
+  --orange: var(--integro-brand-orange);
+  --orange2: var(--integro-brand-orange-soft);
+  --orange-2: var(--integro-brand-orange-soft);
+  --blue: #193552;
+  --purple: #193552;
+  --nav: var(--integro-brand-navy);
+  --nav2: var(--integro-brand-navy-soft);
+  --iv-border: var(--integro-brand-border);
+  --cf-primary: var(--integro-brand-navy);
+  --cf-accent: var(--integro-brand-orange);
+  --cf-info: #193552;
+  --cf-bg: var(--integro-brand-canvas);
+  color: var(--integro-brand-navy);
+  background-color: var(--integro-brand-canvas);
+  accent-color: var(--integro-brand-orange);
+  /* Mantém as cores e medidas do carregamento já aprovado. */
+  --integro-loading-orange: #ffa31a;
+  --integro-loading-orange-strong: #ff8a00;
+}
+html body[data-integro-page] .sidebar,
+html body[data-integro-page] .integro-chat-unified .integro-chat-list {
+  background: var(--integro-brand-gradient) !important;
+}
+html body[data-integro-page] :is(.company-avatar,.seller-avatar,.user-avatar,.profile-avatar) {
+  background: var(--integro-brand-gradient) !important;
+  color: #fff !important;
+}
+/* Cores dos indicadores são decorativas; estados continuam nos chips e ações. */
+html body[data-integro-page] :is(#dashboard,#caixas,#financeiro,#movimentacoes,#clientes,#configuracoes,.screen,.unified-profile-module)
+:is(.kpi-card,.kpi,.clientes-kpi-card,.unified-kpi,.metric-card,.stat-card,.summary-card,.summary-tile,.analytics-kpi,.consolidado-kpi,.caixas-kpi,.estrutura-kpi,.analise-kpi,.integro-client-kpi,.card-gradient,[data-integro-kpi],.cx-stat,.cx-panel-head,.dashboard-kpi,.kpi-badge,.card-blue,.card-green,.card-purple,.card-red,.grad-blue,.grad-green,.grad-purple,.grad-red,.grad-cyan,.grad-petrol,.grad-navy),
+html body[data-integro-page] .vendedor-mov-kpis > div {
+  background: var(--integro-brand-gradient) !important;
+  color: #fff !important;
+}
+html body[data-integro-page] :is(#dashboard,#caixas,#financeiro,#movimentacoes,#clientes,.screen,.unified-profile-module)
+:is(.integro-tone-warning,.dashboard-tone-orange,.card-orange,.grad-orange,.cx-stat.orange,.cx-panel-head.orange),
+html body[data-integro-page] .vendedor-mov-kpis .kpi-retirada {
+  background: var(--integro-brand-accent) !important;
+  color: #fff !important;
+}
+/* Todos os cards de indicadores mantêm texto branco. */
+html body[data-integro-page] :is(#dashboard,#caixas,#financeiro,#movimentacoes,#clientes,.screen,.unified-profile-module)
+:is(.integro-tone-warning,.dashboard-tone-orange,.card-orange,.grad-orange,.cx-stat.orange,.cx-panel-head.orange) :is(h3,h4,strong,span,p,small,.value,.label,.material-symbols-rounded,.material-symbols-outlined),
+html body[data-integro-page] .vendedor-mov-kpis .kpi-retirada :is(strong,small,span) {
+  color: #fff !important;
+}
+html body[data-integro-page] :is(.primary-btn,.btn-primary,.orange-btn,.dashboard-period-btn.primary,.integro-chat-send),
+html body[data-integro-page] [data-integro-ui-component="button"][data-variant="primary"] {
+  background: var(--integro-brand-accent) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 5px 14px rgba(255,138,0,.16) !important;
+}
+html body[data-integro-page] :is(.primary-btn,.btn-primary,.orange-btn) :is(span,.material-symbols-rounded,.material-symbols-outlined) { color: inherit !important; }
+html body[data-integro-page] :is(.ico-blue,.ico-purple) { background:#edf2f7 !important; color:#193552 !important; }
+html body[data-integro-page] :is(input,select,textarea):focus-visible {
+  outline: 2px solid var(--integro-brand-orange) !important;
+  outline-offset: 2px;
+  border-color: var(--integro-brand-orange) !important;
+}
+html body[data-integro-page] :is(.cx-progress progress,progress) { accent-color:var(--integro-brand-orange); }
+html body[data-integro-page] .dashboard-ranking-bar span { background:var(--integro-brand-accent) !important; }
+/* Gráficos de categorias usam tons distintos da mesma família da marca. */
+html body[data-integro-page] :is(#cfeChartCategory,#cfeChartPayment) svg > path:nth-of-type(8n+1) { fill:#071428; }
+html body[data-integro-page] :is(#cfeChartCategory,#cfeChartPayment) svg > path:nth-of-type(8n+2) { fill:#ff8a00; }
+html body[data-integro-page] :is(#cfeChartCategory,#cfeChartPayment) svg > path:nth-of-type(8n+3) { fill:#35516f; }
+html body[data-integro-page] :is(#cfeChartCategory,#cfeChartPayment) svg > path:nth-of-type(8n+4) { fill:#ffb25c; }
+html body[data-integro-page] :is(#cfeChartCategory,#cfeChartPayment) svg > path:nth-of-type(8n+5) { fill:#607994; }
+html body[data-integro-page] :is(#cfeChartCategory,#cfeChartPayment) svg > path:nth-of-type(8n+6) { fill:#b65f00; }
+html body[data-integro-page] :is(#cfeChartCategory,#cfeChartPayment) svg > path:nth-of-type(8n+7) { fill:#8195ad; }
+html body[data-integro-page] :is(#cfeChartCategory,#cfeChartPayment) svg > path:nth-of-type(8n+8) { fill:#f4cd9c; }
+
+html body[data-integro-page] #dashboard .dashboard-chart-legend [data-serie="novas"] i { background:#ff8a00 !important; }
+html body[data-integro-page] #dashboard .dashboard-chart-legend [data-serie="renovadas"] i { background:#193552 !important; }
+
+html body[data-integro-page] .movu-kpis > div { background:var(--integro-brand-gradient)!important; color:#fff!important; }
+html body[data-integro-page] .movu-kpis :is(small,strong,.material-symbols-rounded) { color:#fff!important; }
+html body[data-integro-page] .movu-kpis > div > .material-symbols-rounded { background:rgba(255,255,255,.12)!important; }
+
+/* Movimentações: variáveis próprias permitem personalização futura por empresa. */
+:root {
+  --integro-movement-income: #15803d;
+  --integro-movement-expense: #dc2626;
+  --integro-movement-withdrawal: #2563eb;
+}
+html body[data-integro-page] .movu-kpis > .income { background:var(--integro-movement-income)!important; }
+html body[data-integro-page] .movu-kpis > .expense { background:var(--integro-movement-expense)!important; }
+html body[data-integro-page] .movu-kpis > .withdraw { background:var(--integro-movement-withdrawal)!important; }
+html body[data-integro-page] .movu-badge.tipo-ingresso { background:var(--integro-movement-income);color:#fff; }
+html body[data-integro-page] .movu-badge.tipo-gasto { background:var(--integro-movement-expense);color:#fff; }
+html body[data-integro-page] .movu-badge.tipo-retirada { background:var(--integro-movement-withdrawal);color:#fff; }

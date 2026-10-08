@@ -396,3 +396,14 @@ test("relatorio calcula conversao e trata conjunto vazio", () => {
   assert.equal(relatorio.retrabalhados, 1);
   assert.equal(relatorio.taxaConversaoAposRetrabalho, 100);
 });
+
+
+test("carteira une vínculos autorizados em vez de parar nos dois primeiros clientes", async () => {
+  const dados = {};
+  for (let i=0;i<5;i++) dados[`clientes_operacionais/c${i}`] = { nome:`Cliente ${i}`, clientePlataformaId:"tenant_1", ...(i<2 ? {vendedorAuthUid:"uid_seller"} : {vendedorId:"seller"}) };
+  dados["clientes_operacionais/invasor"] = { nome:"Outro", clientePlataformaId:"tenant_1", vendedorAuthUid:"outro", vendedorId:"seller" };
+  const contexto = carregar(dados);
+  const rows = await contexto.ClientesService.listarClientes({ db: contexto.db }, usuario({id:"seller",authUid:"uid_seller",tipoUsuario:"vendedor"}));
+  assert.equal(rows.length,5);
+  assert.ok(!rows.some(c=>c.id==="invasor"));
+});

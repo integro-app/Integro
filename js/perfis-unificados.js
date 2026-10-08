@@ -538,6 +538,10 @@
   async function carregarPagamentosHojePorPerfil() {
     const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
     const lista = await carregarColecaoPorPerfil(CONFIG.COLECOES.PAGAMENTOS, CONFIG.LIMITS?.PAGAMENTOS || 500);
+    if (acesso().perfil === "vendedor") {
+      const caixa = window.obterCaixaAbertoVendedor?.() || window.caixaAtual;
+      return caixa?.id ? lista.filter(p => String(p.caixaId || p.idCaixa || "") === String(caixa.id)) : lista;
+    }
     return lista.filter(p => String(p.dataOperacional || p.data || "").slice(0, 10) === hoje);
   }
 

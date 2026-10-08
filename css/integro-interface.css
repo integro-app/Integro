@@ -785,3 +785,9 @@ html body .movu-new-form .full{grid-column:1/-1}
   html body .movu-toolbar button{justify-content:center}
   html body .movu-table{min-width:760px}
 }
+
+/* O seletor de período pertence exclusivamente ao Dashboard ativo. */
+html body #dashboard:not(.active) #dashboardPeriodoToolbar,
+html body #dashboard #dashboardPeriodoToolbar[hidden] { display:none!important; }
+
+html body .movu-table .movu-responsavel { min-width:150px; max-width:230px; overflow-wrap:anywhere; font-size:12px; }

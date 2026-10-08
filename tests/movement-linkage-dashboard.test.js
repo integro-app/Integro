@@ -75,7 +75,7 @@ test("payload oficial grava vínculos de vendedor e equipe em toda movimentaçã
 
 test("menu Movimentações aparece para perfis hierárquicos e abre o ledger", () => {
   assert.match(navigation, /\["gerente", "financeiro", "administrativo", "supervisor", "auditor"\]/);
-  assert.match(navigation, /abrirFinanceiroOperacional\("lancamentos"/);
+  assert.match(navigation, /abrirTelaBase\("movimentacoes"[^]*IntegroMovimentacoesUnificadas\?\.load/);
   assert.match(navigation, /id: "movimentacoes", rotulo: "Movimentações"/);
   assert.match(navigation, /\["gerente", "financeiro", "administrativo", "supervisor", "auditor"\]\.includes\(perfilAtual\)/);
 });

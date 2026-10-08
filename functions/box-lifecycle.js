@@ -37,24 +37,32 @@ function criarCicloCaixa({ db, functions }) {
   }
   const boxDay = box => String(box.dataOperacional || box.dataCaixa || "").slice(0,10);
   const isOpen = box => ["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status));
-  async function teamHistory(reader, who, teamId) {
-    const members = await reader.get(db.collection("usuarios").where("clientePlataformaId","==",who.tenant));
-    const sellerIds = new Set(members.docs.filter(doc => String(doc.data().equipeId) === teamId).map(doc => doc.id));
-    const snap = await reader.get(db.collection("caixas").where("clientePlataformaId","==",who.tenant));
-    return snap.docs.map(doc => ({...doc.data(),id:doc.id})).filter(box => String(box.equipeId) === teamId || sellerIds.has(box.vendedorId));
+  async function teamHistory(reader, who, teamId, members) {
+    // Preserve caixas legados sem equipeId, consultando apenas os membros da equipe.
+    const teamQuery = db.collection("caixas").where("clientePlataformaId","==",who.tenant).where("equipeId","==",teamId);
+    const [memberSnap, teamSnap] = await Promise.all([
+      members || reader.get(db.collection("usuarios").where("clientePlataformaId","==",who.tenant).where("equipeId","==",teamId)),
+      reader.get(teamQuery)
+    ]);
+    const legacy = await Promise.all(memberSnap.docs.map(member => reader.get(db.collection("caixas").where("clientePlataformaId","==",who.tenant).where("vendedorId","==",member.id))));
+    const union = new Map();
+    for (const snap of [teamSnap,...legacy]) for (const doc of snap.docs) union.set(doc.id,{...doc.data(),id:doc.id});
+    return [...union.values()];
   }
   async function datasEquipe(data, context) {
     const who = await actor(context), teamId = id(data?.equipeId);
     if (who.role === "VENDEDOR") fail("permission-denied","Somente responsáveis podem consultar abertura por equipe.");
     scope(who,{clientePlataformaId:who.tenant,equipeId:teamId});
-    const members = await db.collection("usuarios").where("clientePlataformaId","==",who.tenant).get();
+    const members = await db.collection("usuarios").where("clientePlataformaId","==",who.tenant).where("equipeId","==",teamId).get();
     const sellers = members.docs.filter(doc => {
       const seller = doc.data();
       return String(seller.equipeId) === teamId && roleOf(seller) === "VENDEDOR" && seller.authUid && seller.acessoLiberado === true && seller.ativo !== false && !["INATIVO","BLOQUEADO","SUSPENSO"].includes(core.normalizarStatus(seller.status));
     }).map(doc => ({id:doc.id,nome:doc.data().nome || doc.data().nomeCompleto || doc.data().email || doc.id}));
     if (!sellers.length) fail("failed-precondition","A equipe não possui vendedores com acesso ativo.");
-    const history = await teamHistory({get:ref=>ref.get()},who,teamId);
-    const control = await db.collection("controle_caixas").doc(who.tenant + "_equipe_" + teamId).get();
+    const [history,control] = await Promise.all([
+      teamHistory({get:ref=>ref.get()},who,teamId,members),
+      db.collection("controle_caixas").doc(who.tenant + "_equipe_" + teamId).get()
+    ]);
     const latest = [control.exists ? control.data().dataOperacional : "",...history.map(boxDay)].filter(Boolean).sort().pop() || "";
     const open = history.filter(box => box.excluido !== true && isOpen(box));
     const pending = sellers.filter(seller => !history.some(box => box.vendedorId === seller.id && boxDay(box) === latest));
@@ -77,15 +85,16 @@ function criarCicloCaixa({ db, functions }) {
       if (roleOf(seller) !== "VENDEDOR" || !seller.authUid || seller.acessoLiberado !== true || seller.ativo === false || ["INATIVO","BLOQUEADO","SUSPENSO"].includes(core.normalizarStatus(seller.status))) fail("failed-precondition","Vendedor sem acesso ativo.");
       const teamId = seller.equipeId ? id(seller.equipeId) : "";
       const teamControl = teamId ? db.collection("controle_caixas").doc(who.tenant + "_equipe_" + teamId) : null;
+      let sellerHistory;
       if (teamControl) {
-        const control = await transaction.get(teamControl);
-        const teamBoxes = await teamHistory(transaction,who,teamId);
+        const [control,teamBoxes] = await Promise.all([transaction.get(teamControl),teamHistory(transaction,who,teamId)]);
+        sellerHistory = teamBoxes.filter(box => box.vendedorId === sellerId && box.excluido !== true).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
         const latest = [control.exists ? control.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
         if (latest > day) fail("failed-precondition","Já existe caixa posterior na equipe. Os dias anteriores estão bloqueados.");
         if (teamBoxes.some(box => box.vendedorId === sellerId && boxDay(box) === day && box.excluido === true)) fail("failed-precondition","Essa data já foi usada pelo vendedor e não pode ser criada novamente.");
         if (teamBoxes.some(box => box.excluido !== true && isOpen(box) && boxDay(box) !== day)) fail("failed-precondition","Feche os caixas abertos da equipe antes de abrir outro dia.");
       }
-      const history = await boxes(transaction,who,sellerId);
+      const history = sellerHistory || await boxes(transaction,who,sellerId);
       const open = history.filter(box => ["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status)));
       if (open.length === 1 && String(open[0].dataOperacional || open[0].dataCaixa) === day) return { modo:"IDEMPOTENTE", caixaId:open[0].id, caixa:open[0] };
       if (open.length) fail("failed-precondition","Feche o caixa aberto antes de abrir outro dia.");
@@ -93,7 +102,7 @@ function criarCicloCaixa({ db, functions }) {
       const last = history[0];
       if (last && String(last.dataOperacional || last.dataCaixa) > day) fail("failed-precondition","Abra os caixas em ordem cronológica. Já existe caixa de data posterior.");
       if (last && !["FECHADO","FECHADA"].includes(core.normalizarStatus(last.status))) fail("failed-precondition","Regularize o último caixa antes de abrir outro.");
-      const initial = last ? (Number.isInteger(last.valorRealFechamentoCentavos) ? last.valorRealFechamentoCentavos : core.centavosDe(last,"saldoAtualCentavos",["valorRealFechamento","valorCalculadoFechamento","caixaFinal","saldoAtual","valorAtual"])) : core.inteiro(input.valorInicialCentavos ?? core.inteiro(Number(input.valorInicial || 0)*100));
+      const initial = last ? (Number.isInteger(last.saldoAposMovimentacoesCentavos) ? last.saldoAposMovimentacoesCentavos : Number.isInteger(last.valorRealFechamentoCentavos) ? last.valorRealFechamentoCentavos : core.centavosDe(last,"saldoAtualCentavos",["valorRealFechamento","valorCalculadoFechamento","caixaFinal","saldoAtual","valorAtual"])) : core.inteiro(input.valorInicialCentavos ?? core.inteiro(Number(input.valorInicial || 0)*100));
       const wallet = last ? core.centavosDe(last,"carteiraFinalCentavos",["carteiraFinal"]) : core.inteiro(input.carteiraInicialCentavos);
       // O saldo de um fechamento pode ser negativo e deve ser carregado sem
       // alterar o histórico. Valores manuais negativos continuam proibidos.
@@ -137,7 +146,7 @@ function criarCicloCaixa({ db, functions }) {
       if (!closure.exists) fail("failed-precondition","Fechamento não encontrado.");
       const reopeningRef = db.collection("reaberturas_caixa").doc();
       const authorName = who.user.nome || who.user.email || "";
-      transaction.update(ref,{status:"REABERTO",ativo:true,fechado:false,reaberto:true,ultimoStatusAnterior:box.status,ultimaReaberturaId:reopeningRef.id,reabertoPorUid:who.uid,reabertoPorNome:authorName,motivoReabertura:reason,reabertoEm:FieldValue.serverTimestamp(),atualizadoEm:FieldValue.serverTimestamp()});
+      transaction.update(ref,{saldoAposMovimentacoesCentavos:FieldValue.delete(),status:"REABERTO",ativo:true,fechado:false,reaberto:true,ultimoStatusAnterior:box.status,ultimaReaberturaId:reopeningRef.id,reabertoPorUid:who.uid,reabertoPorNome:authorName,motivoReabertura:reason,reabertoEm:FieldValue.serverTimestamp(),atualizadoEm:FieldValue.serverTimestamp()});
       transaction.update(closureRef,{status:"REABERTO",reaberto:true,reaberturaId:reopeningRef.id,motivoReabertura:reason,reabertoPorId:who.uid,reabertoPorNome:authorName,totalReaberturas:core.inteiro(closure.data().totalReaberturas)+1,atualizadoEm:FieldValue.serverTimestamp()});
       transaction.set(reopeningRef,{caixaId:boxId,fechamentoId:closureRef.id,clientePlataformaId:who.tenant,vendedorId:box.vendedorId,motivo:reason,statusAnterior:box.status,statusNovo:"REABERTO",usuarioAuthUid:who.uid,reabertoPorId:who.uid,reabertoPorNome:authorName,snapshotAnterior:closure.data(),criadoEm:FieldValue.serverTimestamp()});
       transaction.set(db.collection("historico_estados_caixa").doc(),{caixaId:boxId,clientePlataformaId:who.tenant,statusAnterior:box.status,statusNovo:"REABERTO",motivo:reason,autorId:who.uid,autorNome:authorName,fechamentoId:closureRef.id,reaberturaId:reopeningRef.id,criadoEm:FieldValue.serverTimestamp()});

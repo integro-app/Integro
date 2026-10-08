@@ -15,13 +15,13 @@ function carregar() {
     getPagamentos: () => pagamentos, setPagamentos: value => { pagamentos = value; },
     getHistoricoCobrancas: () => historico, setHistoricoCobrancas: value => { historico = value; }
   };
-  const contexto = { State, console, Date, CustomEvent: class {}, setTimeout: fn => { timers.push(fn); }, dispatchEvent() {} };
+  const contexto = { State, console, Date, CustomEvent: class {}, setTimeout: fn => { timers.push(fn); }, clearTimeout() {}, dispatchEvent() {} };
   contexto.window = contexto;
   vm.createContext(contexto);
   // Executar o código real dos helpers sem instalar a UI ou abrir conexões.
-  vm.runInContext(fonte.slice(0, fonte.indexOf("  let refreshOperacaoTimer")) +
-    '\nfunction dataCaixa() { return "2026-10-05"; }\nwindow.helpers = { executarOperacaoAssincrona, aplicarBaixaCobrancaOtimista, statusOperacaoCobranca };})();', contexto);
-  return { ...contexto.helpers, State, timers };
+  vm.runInContext(fonte.slice(0, fonte.indexOf("  function idCliente(")) +
+    '\nfunction dataCaixa() { return "2026-10-05"; }\nwindow.helpers = { executarOperacaoAssincrona, aplicarBaixaCobrancaOtimista, statusOperacaoCobranca, refreshOperacaoVendedorParcial };})();', contexto);
+  return { ...contexto.helpers, State, timers, contexto };
 }
 
 test("cliques concorrentes na mesma cobrança executam o backend uma vez", async () => {
@@ -82,4 +82,16 @@ test("rollback de visita preserva pagamento confirmado em paralelo", () => {
   assert.equal(h.State.getHistoricoCobrancas().length, 1);
   assert.equal(h.State.getHistoricoCobrancas()[0].id, "visita2");
   assert.equal(h.State.getPagamentos()[0].id, "pagamento2");
+});
+
+
+test("consulta iniciada antes da baixa não sobrescreve o pagamento recente e agenda nova leitura", async () => {
+  const h=carregar();let liberar;
+  h.contexto.IntegroPerfisUnificados={carregarColecaoPorPerfil:colecao=>colecao==='pagamentos'?new Promise(resolve=>liberar=resolve):Promise.resolve([])};
+  const consulta=h.refreshOperacaoVendedorParcial({clientes:false});
+  h.aplicarBaixaCobrancaOtimista({tipo:'PAGAMENTO',registro:{vendaId:'venda1'},parcela:{id:'p1'},caixa:{id:'c1'},valor:20,operacaoId:'op1'});
+  liberar([]);
+  await consulta;
+  assert.equal(h.State.getPagamentos()[0].valorPago,20);
+  assert.equal(h.timers.length,1);
 });

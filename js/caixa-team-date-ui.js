@@ -7,7 +7,7 @@
   function available(day, info) {
     return !!day && !!info && day <= info.hoje && (day === info.dataParaConcluir || (!info.temCaixaAberto && (!info.ultimaData || day > info.ultimaData)));
   }
-  global.IntegroCaixaDatas = { disponivel:available };
+  global.IntegroCaixaDatas = { disponivel:available, abrir:open };
   function open() {
     if (!allowed() || document.getElementById("caixaDateDialog")) return;
     const sellers = (state()?.getUsuarios?.() || []).filter(item => global.IntegroAcesso?.acessoUsuario?.(item)?.perfil === "vendedor" && item.ativo !== false && !["INATIVO","BLOQUEADO","SUSPENSO"].includes(String(item.status || "").toUpperCase()) && global.IntegroAcesso?.validarEscopo?.(global.IntegroAcesso.acessoUsuario(user()),item) !== false);
@@ -75,22 +75,22 @@
       dialog.querySelector("[data-cancel]").disabled = true;
       render();
       try {
-        for (const member of members) {
+        const result = await global.IntegroAberturaCaixa.executar(members.map(member => async () => {
           error.textContent = "Abrindo caixa " + (completed+1) + " de " + members.length + "…";
           const seller = sellers.find(item=>String(item.id || item.authUid) === member.id);
           if (!seller) throw new Error("Os vendedores da equipe mudaram. Atualize a tela Caixas.");
           const snapshot = global.snapshotAberturaCaixaVendedor?.(seller,team) || {caixaInicial:0,carteiraInicial:0};
           await global.criarCaixaParaVendedor(seller,team,{...snapshot,dataOperacional:day,motivoRetroativo:reason.value.trim()});
           completed++;
-        }
+        }));
+        if (!result) { delete dialog.dataset.saving; select.disabled = reason.disabled = false; dialog.querySelector("[data-cancel]").disabled = false; render(); return; }
         close();
-        global.IntegroDataRuntime?.invalidar?.();
-        try { await global.carregarTudo?.(); } catch (refreshError) { console.error("Caixas abertos; atualização da tela falhou.",refreshError); }
-        global.renderCaixas?.(); global.notificarIntegro?.("Caixas da equipe abertos para a data selecionada.");
+        global.__integroRenderCaixasCanonical?.(); global.notificarIntegro?.("Caixas da equipe abertos para a data selecionada.");
       } catch (failure) {
         delete dialog.dataset.saving;
         select.disabled = reason.disabled = false;
         dialog.querySelector("[data-cancel]").disabled = false;
+        global.__integroRenderCaixasCanonical?.();
         await load();
         error.textContent = completed + " de " + members.length + " caixas abertos. " + (failure.message || "Não foi possível concluir a abertura.") + " Os caixas já abertos foram preservados.";
       }

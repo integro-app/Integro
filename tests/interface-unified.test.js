@@ -80,15 +80,15 @@ test("dashboard usa o mesmo esqueleto visual do Financeiro", () => {
   assert.match(master, /dashboard-page-header/);
   assert.match(master, /integro-dashboard-nav-standard/);
   const trecho = master.slice(master.indexOf('id="dashboard"'), master.indexOf('id="usuarios"'));
-  assert.equal((trecho.match(/data-dashboard-view=/g) || []).length, 5);
+  assert.deepEqual([...trecho.matchAll(/data-dashboard-view="([^"]+)"/g)].map(m=>m[1]), ["visao-geral", "equipe"]);
   assert.doesNotMatch(trecho, /data-dashboard-menu-trigger/);
   assert.match(css, /dashboard-section-card/);
   assert.match(css, /grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
   assert.match(css, /kpi-breakdown span strong/);
 });
 
-test("movimentações abre lançamentos e financeiro abre resumo", () => {
-  assert.match(nav, /item\.id === "movimentacoes"[\s\S]*abrirFinanceiroOperacional\("lancamentos"/);
+test("movimentações abre seu módulo e financeiro abre resumo", () => {
+  assert.match(nav, /item\.id === "movimentacoes"[\s\S]*abrirTelaBase\("movimentacoes"[\s\S]*IntegroMovimentacoesUnificadas\?\.load/);
   assert.match(nav, /item\.id === "financeiro"[\s\S]*abrirFinanceiroEmpresarial/);
 });
 
@@ -155,4 +155,35 @@ test("financeiro e auditoria respeitam cabeçalho, submenu e conteúdo", () => {
   assert.ok(financeiro.indexOf("integro-shared-nav") < financeiro.indexOf("finCustomPeriod"));
   assert.ok(auditoria.indexOf("integro-shared-header") < auditoria.indexOf("integro-shared-nav"));
   assert.ok(auditoria.indexOf("integro-shared-nav") < auditoria.indexOf("unified-readonly-banner"));
+});
+
+
+test("seletor de período aparece somente no Dashboard e fecha ao sair", () => {
+  const vm = require("node:vm");
+  const source = ui.slice(ui.indexOf("  function normalizarNavegacoes()"), ui.indexOf("  function dataSaoPaulo("));
+  let active = "dashboard";
+  let open = true;
+  let expanded = "true";
+  const toolbar = { hidden: false, dataset: {}, closest: () => true, setAttribute() {} };
+  const context = { document: { body: { classList: { contains: () => false } },
+    getElementById: id => ({ dashboardPeriodoToolbar: toolbar,
+      dashboardPeriodoPopover: { classList: { remove: () => { open = false; } } },
+      dashboardPeriodoTrigger: { setAttribute: (_, value) => { expanded = value; } }
+    })[id], querySelectorAll: () => [] }, telaAtiva: () => active, montarBarrasInternas() {} };
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  context.normalizarNavegacoes();
+  assert.equal(toolbar.hidden, false);
+  for (const screen of ["vendas", "cobrancas", "caixas", "clientes", "financeiro", "movimentacoes", "configuracoes"]) {
+    active = screen;
+    context.normalizarNavegacoes();
+    assert.equal(toolbar.hidden, true, screen);
+    assert.equal(open, false);
+    assert.equal(expanded, "false");
+  }
+  active = "dashboard";
+  context.normalizarNavegacoes();
+  assert.equal(toolbar.hidden, false);
+  assert.equal(open, false);
+  assert.match(css, /#dashboard:not\(\.active\) #dashboardPeriodoToolbar/);
 });

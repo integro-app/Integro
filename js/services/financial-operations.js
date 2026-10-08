@@ -543,6 +543,10 @@
     const db = getDb();
     const usuario = entrada.usuario || {};
     const validado = validarLancamentoFinanceiro(entrada);
+    if (["INGRESSO", "GASTO", "RETIRADA"].includes(validado.tipoLancamento) && !perfilAcessoCaixa(usuario).isVendedor) {
+      if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("registrarMovimentacaoAdministrativa", {...entrada, operacaoId: entrada.operacaoId || validado.origemId, valorCentavos:validado.valorCentavos, tipoLancamento:validado.tipoLancamento});
+      exigirBackendFinanceiro();
+    }
     const lancamentoId = texto(entrada.lancamentoId) || lancamentoFinanceiroIdDeterministico({ ...entrada, tipoLancamento: validado.tipoLancamento, origemId: validado.origemId });
     const caixaRef = validado.caixaId ? db.collection("caixas").doc(validado.caixaId) : null;
     const lancamentoRef = db.collection("lancamentos_financeiros").doc(lancamentoId);
@@ -570,8 +574,8 @@
       const perfilOperador = perfilAcessoCaixa(usuario);
       if (caixaSnap?.exists && ["INGRESSO", "GASTO", "RETIRADA"].includes(tipo)) {
         const statusCaixa = normalizarStatus(caixa.status || caixa.statusCaixa);
-        if (!["ABERTO", "REABERTO"].includes(statusCaixa)) {
-          throw new Error("O caixa precisa estar aberto ou reaberto para receber a movimentação.");
+        if (perfilOperador.isVendedor ? !["ABERTO", "REABERTO"].includes(statusCaixa) : !["FECHADO", "FECHADA"].includes(statusCaixa)) {
+          throw new Error(perfilOperador.isVendedor ? "O caixa precisa estar aberto ou reaberto para receber a movimentação." : "Administradores só podem lançar em caixa fechado.");
         }
         if (perfilOperador.isVendedor) {
           validarVendedorCaixa(caixa, usuario);
@@ -2098,41 +2102,43 @@
     return ["APROVADO", "APROVADA"].includes(normalizarStatus(valor));
   }
 
-  async function listarPorCaixa(db, colecao, caixaId, clientePlataformaId, limite = 5000) {
+  async function listarPorCaixa(db, colecao, caixaId, clientePlataformaId, limite = 5000, usuarioEntrada) {
     const tenantId = texto(clientePlataformaId);
-    if (!tenantId) {
-      const erro = new Error(`Tenant obrigatório para consultar ${colecao} no fechamento.`);
-      erro.code = "ERRO_TENANT_FECHAMENTO";
+    if (!tenantId) throw new Error(`Tenant obrigatório para consultar ${colecao} no fechamento.`);
+    const usuario = usuarioEntrada || (typeof State !== "undefined" ? State.getUsuario?.() : null) || window.usuarioLogado || {};
+    const perfil = texto(window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil || usuario.tipoUsuario || usuario.perfil || usuario.cargo).toLowerCase();
+    const proprio = perfil === "vendedor";
+    const authUid = texto(usuario.authUid || usuario.uid || window.firebase?.auth?.()?.currentUser?.uid);
+    const usuarioId = texto(usuario.id || usuario.usuarioId || usuario.vendedorId);
+    const vinculos = proprio ? [["vendedorAuthUid", authUid], ["vendedorId", usuarioId]].filter(([,valor]) => valor) : [[null, null]];
+    if (!vinculos.length) throw new Error("Vendedor sem vínculo válido para conferir o caixa.");
+    const resultados = await Promise.allSettled(vinculos.map(async ([campo, valor]) => {
+      const base = () => {
+        let ref = db.collection(colecao).where("clientePlataformaId", "==", tenantId);
+        if (campo) ref = ref.where(campo, "==", valor);
+        return ref;
+      };
+      let snap;
+      try { snap = await (caixaId ? base().where("caixaId", "==", caixaId) : base()).limit(limite).get({ source: "server" }); }
+      catch (_) { snap = await base().limit(limite).get({ source: "server" }); }
+      const rows = [];
+      snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
+      return rows;
+    }));
+    if (resultados.every(r => r.status === "rejected")) {
+      const erro = new Error(`Não foi possível consultar ${colecao} para calcular o fechamento.`);
+      erro.cause = resultados[0].reason;
+      erro.code = erro.cause?.code || "ERRO_LEITURA_FECHAMENTO";
       throw erro;
     }
-    const encontrados = [];
-    try {
-      const snap = await db.collection(colecao)
-        .where("clientePlataformaId", "==", tenantId)
-        .where("caixaId", "==", caixaId)
-        .limit(limite)
-        .get();
-      snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
-    } catch (_) {
-      try {
-        const snap = await db.collection(colecao)
-          .where("clientePlataformaId", "==", tenantId)
-          .limit(limite)
-          .get();
-        snap.forEach(doc => {
-          const item = { id: doc.id, ...doc.data() };
-          if (texto(item.caixaId || item.idCaixa || item.caixaID || item.caixaAtualId) === caixaId) {
-            encontrados.push(item);
-          }
-        });
-      } catch (erroFallback) {
-        const erro = new Error(`Não foi possível consultar ${colecao} para calcular o fechamento.`);
-        erro.code = erroFallback?.code || "ERRO_LEITURA_FECHAMENTO";
-        erro.cause = erroFallback;
-        throw erro;
-      }
-    }
-    return encontrados.filter(item => item.excluido !== true);
+    const mapa = new Map();
+    resultados.filter(r => r.status === "fulfilled").flatMap(r => r.value).forEach(item => {
+      const tenant = texto(item.clientePlataformaId || item.tenantId || item.empresaId);
+      const dono = texto(item.vendedorAuthUid || item.vendedorId);
+      const permitido = !proprio || (dono && [authUid, usuarioId].includes(dono));
+      if (tenant === tenantId && permitido && item.excluido !== true && (!caixaId || texto(item.caixaId || item.idCaixa || item.caixaID || item.caixaAtualId) === caixaId)) mapa.set(item.id, item);
+    });
+    return [...mapa.values()];
   }
 
   function tipoMovimentoCaixa(item = {}) {
@@ -2174,16 +2180,24 @@
     if (!tenantId) throw new Error("Caixa sem tenant válido para fechamento.");
     const dataOperacional = texto(entrada.dataOperacional || caixa.dataOperacional || caixa.dataCaixa || caixa.dataAbertura || operacional.hojeSP()).slice(0, 10);
 
+    const usuario = entrada.usuario || (typeof State !== "undefined" ? State.getUsuario?.() : null) || {};
+    const perfil = texto(window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil || usuario.tipoUsuario || usuario.perfil || usuario.cargo).toLowerCase();
+    if (perfil === "vendedor") {
+      const ids = [usuario.id, usuario.usuarioId, usuario.authUid, usuario.uid].filter(Boolean).map(String);
+      if (!ids.includes(texto(caixa.vendedorAuthUid || caixa.vendedorId))) throw new Error("Caixa fora do vínculo do vendedor.");
+    }
+    const conferirRota = perfil === "vendedor" && Boolean(window.IntegroVendedorOperacao?.montarCarteira);
+    if (texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId) !== tenantId) throw new Error("Caixa fora do tenant atual da sessão.");
     const [vendas, pagamentos, solicitacoes, parcelas, historicos] = await Promise.all([
-      listarPorCaixa(db, "vendas", caixaId, tenantId),
-      listarPorCaixa(db, "pagamentos", caixaId, tenantId),
-      listarPorCaixa(db, "solicitacoes", caixaId, tenantId),
-      listarPorCaixa(db, "parcelas", caixaId, tenantId),
-      listarPorCaixa(db, "historicoCobrancas", caixaId, tenantId)
+      listarPorCaixa(db, "vendas", conferirRota ? "" : caixaId, tenantId, 5000, usuario),
+      listarPorCaixa(db, "pagamentos", caixaId, tenantId, 5000, usuario),
+      listarPorCaixa(db, "solicitacoes", caixaId, tenantId, 5000, usuario),
+      listarPorCaixa(db, "parcelas", conferirRota ? "" : caixaId, tenantId, 5000, usuario),
+      listarPorCaixa(db, "historicoCobrancas", caixaId, tenantId, 5000, usuario)
     ]);
 
-    const vendasValidas = vendas.filter(statusVendaAberta);
-    const pagamentosConfirmados = pagamentos.filter(p => statusConfirmadoCaixa(p.status || p.statusPagamento || "CONFIRMADO"));
+    const vendasValidas = vendas.filter(statusVendaAberta).filter(v => !conferirRota || texto(v.caixaId || v.idCaixa) === caixaId);
+    const pagamentosConfirmados = pagamentos.filter(p => p.cancelado !== true && p.estornado !== true && statusConfirmadoCaixa(p.status || p.statusPagamento || "CONFIRMADO"));
     const movimentosAprovados = solicitacoes.filter(s => statusAprovadoCaixa(s.status || s.statusSolicitacao));
     const gastosConfirmados = solicitacoes.filter(s => {
       const tipo = tipoMovimentoCaixa(s);
@@ -2216,7 +2230,7 @@
       totalAjustesCentavos;
 
     const parcelasPrevistas = parcelas.filter(p => {
-      const data = dataOperacionalRegistro(p);
+      const data = texto(p.dataVencimento || p.dataPrevista || p.vencimento || p.dataCobranca || dataOperacionalRegistro(p)).slice(0, 10);
       return !data || data <= dataOperacional;
     });
     const totalPagas = parcelasPrevistas.filter(p =>
@@ -2228,6 +2242,7 @@
       return tipo === "NAO_PAGAMENTO" && h.cancelado !== true && h.excluido !== true;
     });
     const totalNaoPagas = naoPagamentos.length;
+    const rota = conferirRota ? window.IntegroVendedorOperacao.montarCarteira({ vendas, parcelas, pagamentosHoje: pagamentos, historico: historicos, usuario, caixaId, hoje: dataOperacional }).filter(item => item.comCobrancaHoje || item.pagoHoje || item.naoPagoHoje) : null;
 
     return {
       versaoCalculo: "fechamento_caixa_v1",
@@ -2244,11 +2259,11 @@
       totalRetiradasCentavos,
       totalRecolhimentosCentavos,
       totalAjustesCentavos,
-      totalCobrancas: parcelasPrevistas.length,
-      totalVisitadas: Math.min(parcelasPrevistas.length, totalPagas + totalNaoPagas),
-      totalPagas,
-      totalNaoPagas,
-      pendenciasCobranca: Math.max(0, parcelasPrevistas.length - totalPagas - totalNaoPagas),
+      totalCobrancas: rota ? rota.length : parcelasPrevistas.length,
+      totalVisitadas: rota ? rota.filter(r => r.pagoHoje || r.naoPagoHoje).length : Math.min(parcelasPrevistas.length, totalPagas + totalNaoPagas),
+      totalPagas: rota ? rota.filter(r => r.pagoHoje).length : totalPagas,
+      totalNaoPagas: rota ? rota.filter(r => r.naoPagoHoje).length : totalNaoPagas,
+      pendenciasCobranca: rota ? rota.filter(r => r.pendenteHoje).length : Math.max(0, parcelasPrevistas.length - totalPagas - totalNaoPagas),
       pagamentosPendentes: pagamentos.filter(p => ["PENDENTE", "SINCRONIZANDO", "ERRO_BLOQUEADO_CAIXA_FECHADO"].includes(normalizarStatus(p.statusSync || p.status))).length,
       vendasIds: vendasValidas.map(v => v.id).filter(Boolean).slice(0, 500),
       pagamentosIds: pagamentosConfirmados.map(p => p.id).filter(Boolean).slice(0, 500)
@@ -2309,12 +2324,23 @@
 
     const caixaRef = db.collection("caixas").doc(caixaId);
     const fechamentoRef = db.collection("fechamentos_caixa").doc(fechamentoId);
-    const abertosQuery = db.collection("caixas")
-      .where("clientePlataformaId", "==", tenantId || snapshot.caixa.clientePlataformaId || "")
-      .where("vendedorId", "==", vendedorId || snapshot.caixa.vendedorId || "")
-      .where("status", "in", ["ABERTO", "REABERTO"])
-      .limit(20);
-    const abertosReferencias = await referenciasDaConsulta(abertosQuery);
+    const vinculosCaixa = [["vendedorAuthUid", uid], ["vendedorId", vendedorId || snapshot.caixa.vendedorId]].filter(([,valor]) => valor);
+    const consultasAbertos = await Promise.allSettled(vinculosCaixa.map(async ([campo, valor]) => {
+      const base = () => db.collection("caixas")
+        .where("clientePlataformaId", "==", tenantId || snapshot.caixa.clientePlataformaId || "")
+        .where(campo, "==", valor);
+      let snap;
+      try { snap = await base().where("status", "in", ["ABERTO", "REABERTO"]).limit(20).get(); }
+      catch (erro) {
+        if (erro?.code !== "failed-precondition") throw erro;
+        snap = await base().limit(5000).get();
+      }
+      return (snap.docs || []).filter(doc => ["ABERTO", "REABERTO"].includes(normalizarStatus(doc.data().status))).map(doc => doc.ref);
+    }));
+    if (consultasAbertos.every(r => r.status === "rejected")) throw consultasAbertos[0].reason;
+    const mapaAbertos = new Map();
+    consultasAbertos.filter(r => r.status === "fulfilled").flatMap(r => r.value).forEach(ref => mapaAbertos.set(ref.id || ref.path, ref));
+    const abertosReferencias = [...mapaAbertos.values()];
 
     return db.runTransaction(async transaction => {
       const [caixaSnap, fechamentoSnap, abertos] = await Promise.all([
@@ -2331,6 +2357,10 @@
       if (texto(caixaId) !== texto(snapshot.caixa.id)) throw new Error("Snapshot de fechamento não pertence ao caixa atual.");
       if (fechamentoExistente && !resourceFallbackFechamentoReaberto(fechamentoExistente)) {
         return { fechamentoId, caixaId, modo: "IDEMPOTENTE", statusFechamento: fechamentoExistente.statusFechamento || fechamentoExistente.status || "", fechamento: fechamentoExistente };
+      }
+      const camposConferencia = ["atualizadoEm", "saldoAtualCentavos", "saldoAtual", "valorAtual", "ultimaReaberturaId"];
+      if (camposConferencia.some(campo => JSON.stringify(caixa[campo] ?? null) !== JSON.stringify(snapshot.caixa[campo] ?? null))) {
+        throw new Error("O caixa recebeu uma atualização durante a conferência. Reabra o resumo e confira os valores novamente.");
       }
       const statusCaixa = normalizarStatus(caixa.status);
       if (!["ABERTO", "REABERTO"].includes(statusCaixa)) throw new Error("Caixa já está fechado ou não está aberto.");
@@ -2391,13 +2421,16 @@
       };
 
       const refechamento = fechamentoExistente && resourceFallbackFechamentoReaberto(fechamentoExistente);
+      const refechamentoId = refechamento ? idSeguroOperacao("fechamento", caixaId, entrada.operacaoId || agoraLocal) : "";
       transaction.set(fechamentoRef, {
         ...payload,
+        reaberto: false,
+        refechamentoId,
         modo: refechamento ? "REFECHAMENTO" : "CRIACAO",
         totalReaberturas: Math.max(Number(fechamentoExistente?.totalReaberturas || 0), Number(payload.totalReaberturas || 0))
       }, { merge: refechamento });
       if (refechamento) {
-        transaction.set(db.collection("historico_fechamentos_caixa").doc(idSeguroOperacao("fechamento", caixaId, entrada.operacaoId || agoraLocal)), {
+        transaction.set(db.collection("historico_fechamentos_caixa").doc(refechamentoId), {
           ...payload,
           modo: "REFECHAMENTO",
           fechamentoId,
@@ -2454,7 +2487,7 @@
   }
 
   function resourceFallbackFechamentoReaberto(fechamento = {}) {
-    return fechamento.reaberto === true || texto(fechamento.reaberturaId || fechamento.motivoReabertura || fechamento.reabertoEm || fechamento.reabertoEmTexto) !== "";
+    return fechamento.reaberto === true || (fechamento.reaberto !== false && texto(fechamento.reaberturaId || fechamento.motivoReabertura || fechamento.reabertoEm || fechamento.reabertoEmTexto) !== "");
   }
 
   async function reconciliarCaixaSomenteLeitura(caixaId) {

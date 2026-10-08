@@ -129,24 +129,30 @@
   </style>
   <link href="css/integro-mobile.css?v=20260818-v272-perf1" rel="stylesheet">
   <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2">
-  <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20">
-  <link rel="stylesheet" href="css/integro-loading.css?v=20260827-single1">
-  <script src="js/integro-loading-handoff.js?v=20260827-single1"></script>
+  <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261008-responsavel1">
+  <link rel="stylesheet" href="css/integro-loading.css?v=20260827-single1&build=20261008-cardfixo1">
+  <script src="js/integro-loading-handoff.js?v=20260827-single1&build=20261008-continuo2"></script>
 <link rel="stylesheet" href="css/logout-flow.css?v=20261007">
-<script src="js/logout-flow.js?v=20261007"></script>
+<script src="js/logout-flow.js?v=20261008-login-caixa1"></script>
+  <link rel="stylesheet" href="css/integro-visual.css?v=20261008-premium3">
+  <script defer src="js/integro-menu-categorias.js?v=20261008-mov-direto1"></script>
+  <link rel="stylesheet" href="css/integro-palette.css?v=20261008-movimentacoes1&build=20261008-mov-hoje1">
+  <link rel="stylesheet" href="css/integro-logo.css?v=20261008-amarelo1">
+  <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261008-busca2">
+  <script defer src="js/integro-filter-drawer.js?v=20261008-vendas3"></script>
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-global">
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
-      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
-      <div class="integro-loader-title">Preparando Master Global</div>
+      <div class="integro-loader-logo" aria-label="ÍNTEGRO">ÍNTE<span>GRO</span></div>
+      <div class="integro-loader-title">Preparando seu acesso</div>
       <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
       <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
       <div class="integro-loader-bar"><span id="integroLoaderProgress"></span></div>
-      <div class="integro-loader-caption">Validando acesso, dados globais e permissões da plataforma.</div>
     </div>
   </div>
+<script>window.IntegroLoadingContinuo?.iniciar();</script>
 
   <div id="sidebarOverlay" class="overlay" data-integro-sidebar-overlay></div>
   <aside id="sidebar" class="sidebar" data-integro-sidebar>
@@ -179,7 +185,7 @@
     const integroLoadingContinuo = window.__integroLoginLoadingConcluido === true;
 
     function atualizarLoadingPremium(percentual, texto){
-      const valor = Math.max(0, Math.min(100, Number(percentual) || 0));
+      const valor = window.IntegroLoadingContinuo?.percentual(percentual) ?? Math.max(0, Math.min(100, Number(percentual) || 0));
       integroBootPercentualAtual = valor;
       const barra = document.getElementById('integroLoaderProgress');
       const numero = document.getElementById('integroLoaderPercent');
@@ -260,9 +266,9 @@
     });
     Object.assign(window,{abrirFormCliente,salvarClienteIntegro,abrirFormMasterLocal,salvarMasterLocal,abrirFormUsuarioInterno,salvarUsuarioInterno,abrirFormDepartamento,salvarDepartamento,abrirFormPlano,salvarPlano,abrirFormNotificacao,salvarNotificacao,renderClientes,limparBusca,fecharDrawer,alternarAcessoCliente,ativarTesteCliente,alternarAcessoUsuario,marcarNotificacaoLida,salvarConfiguracoesGlobais,carregarLogs,renderLogs,abrirDetalheCliente,abrirDetalheUsuario});
   </script>
-  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1"></script>
+  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261008-categorias1"></script>
   <script src="js/integro-ui.js?v=20260805-v2"></script>
-  <script src="js/integro-interface.js?v=20260806-v20"></script>
+  <script src="js/integro-interface.js?v=20260806-v20&build=20261008-prioridade1"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25"></script>

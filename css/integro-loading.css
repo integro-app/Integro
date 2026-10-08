@@ -205,3 +205,33 @@ body.integro-booting .main {
   .login-flow-progress,
   .integro-loader-bar span { transition: none; }
 }
+
+/* O acesso e o painel compartilham o mesmo cartão durante a navegação. */
+.login-flow-card .integro-loader-percent{margin:13px 0 0;order:initial}
+
+.login-flow-loader,.integro-boot-loader{background:#071323}
+.login-flow-card,.integro-loader-card{font-family:Inter,Arial,sans-serif}
+
+/* Dimensões constantes em todas as etapas do acesso. */
+.login-flow-loader, .integro-boot-loader { box-sizing: border-box; }
+.login-flow-card, .integro-loader-card {
+  width: min(430px, calc(100vw - 48px));
+  height: 380px;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+}
+.login-flow-card > *, .integro-loader-card > * { flex-shrink: 0; }
+.login-flow-step, .integro-loader-step {
+  height: 42px;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* Falhas permitem acomodar a mensagem e a ação de tentar novamente. */
+.integro-boot-failed .integro-loader-card { height: auto; }
+
+@media (max-width: 520px) {
+  .login-flow-card, .integro-loader-card { width: min(430px, calc(100vw - 36px)); }
+}

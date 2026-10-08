@@ -45,6 +45,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     if (values.some(v => v === "gerente" || v.includes("gerente"))) return "gerente";
     if (values.some(v => v === "supervisor" || v.includes("supervisor"))) return "supervisor";
     if (values.some(v => v === "financeiro" || v.includes("finance"))) return "financeiro";
+    if (values.includes("vendedor")) return "vendedor";
     return values.find(Boolean) || "";
   }
 
@@ -90,11 +91,22 @@ function criarAdministracaoV27({ admin, functions, db }) {
     };
   }
 
+  async function exigirCaixaVendedor(actor, uid) {
+    if (role(actor) !== "vendedor") return;
+    const snap = await db.collection("caixas").where("clientePlataformaId", "==", tenant(actor)).where("vendedorAuthUid", "==", uid).limit(5000).get();
+    if (!snap.docs.some(doc => {
+      const caixa = doc.data();
+      return tenant(caixa) === tenant(actor) && text(caixa.vendedorAuthUid) === uid &&
+        ["ABERTO", "REABERTO"].includes(upper(caixa.status)) && caixa.ativo !== false && caixa.excluido !== true;
+    })) error("failed-precondition", "Caixa fechado. Solicite a abertura ou reabertura ao supervisor para entrar no sistema.", { code: "CAIXA_FECHADO" });
+  }
+
   async function iniciarSessao(data, context) {
     const actor = await actorContext(context);
     const uid = context.auth.uid;
     const tenantId = tenant(actor);
     if (!tenantId) error("failed-precondition", "Empresa não identificada.");
+    await exigirCaixaVendedor(actor, uid);
     const config = await configForTenant(tenantId);
     const inactivity = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 15), 720));
     if (Number(actor.tentativasLoginFalhas || 0) > 0) {
@@ -139,6 +151,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
   async function validarSessao(data, context) {
     const actor = await actorContext(context);
     const uid = context.auth.uid;
+    await exigirCaixaVendedor(actor, uid);
     const sessionId = text(data?.sessionId);
     const ref = db.collection("sessoes_usuarios").doc(uid);
     const snap = await ref.get();

@@ -44,7 +44,7 @@ async function main() {
     };
     await send("Page.enable");
     const { frameTree } = await send("Page.getFrameTree");
-    const css = ["vendedor-operacao.css", "integro-design-system.css", "integro-mobile.css", "integro-mobile-final.css"]
+    const css = ["vendedor-operacao.css", "integro-design-system.css", "integro-mobile.css", "integro-mobile-final.css", "integro-visual.css"]
       .map(file => fs.readFileSync(path.join(root, "css", file), "utf8")).join("\n");
     const source = fs.readFileSync(path.join(root, "js", "vendedor-unificado.js"), "utf8");
     const modalCode = source.slice(source.indexOf("  function modalBase("), source.indexOf("  function clientePorId("));

@@ -62,3 +62,6 @@ test('Falha ao encerrar não redireciona como se a sessão estivesse encerrada',
   env.buttons.button.onclick();
   assert.equal(await result, false);
 });
+
+test('logout automático exibe loading sem segunda confirmação',async()=>{const env=setup();let finish;const result=env.window.IntegroLogout.encerrar(()=>new Promise(resolve=>{finish=resolve}),{destino:'index.html?motivo=caixa-fechado'});await Promise.resolve();assert.match(env.dialog.innerHTML,/Encerrando sua sessão/);assert.equal(env.window.__integroLogoutEmAndamento,true);assert.equal(env.redirected,undefined);finish();assert.equal(await result,true);assert.equal(env.redirected,'index.html?motivo=caixa-fechado')});
+test('logout automático com falha permite tentar novamente e impede Escape',async()=>{const env=setup();let calls=0;const result=env.window.IntegroLogout.encerrar(async()=>{if(++calls===1)throw Error('offline')});await new Promise(resolve=>setTimeout(resolve,0));assert.equal(env.redirected,undefined);env.events.cancel({preventDefault(){}});assert.equal(env.buttons.button.textContent,'Tentar sair novamente');await env.buttons.button.onclick();assert.equal(await result,true);assert.equal(calls,2);assert.equal(env.redirected,'index.html')});

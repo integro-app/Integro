@@ -642,41 +642,72 @@ service cloud.firestore {
         );
       }
 
+      // Administração cria os três movimentos somente pelo backend (caixa fechado).
+      // No navegador permanecem as baixas do vendedor, aprovações e correções auditadas.
+      function validMovementCreation(data, seller, tenant) {
+        let boxId = data.get("caixaId", "");
+        let box = get(/databases/$(database)/documents/caixas/$(boxId)).data;
+        return !(data.tipoLancamento in ["INGRESSO", "GASTO", "RETIRADA"]) || (
+          box.get("clientePlataformaId", "") == tenant &&
+          box.get("status", "") in ["ABERTO", "REABERTO"] && (
+            (seller && data.tipoLancamento in ["GASTO", "RETIRADA"] && isOwnSellerData(box)) ||
+            (!seller && (validMovementApproval(data, box, tenant) || validMovementCorrection(data, tenant)))
+          )
+        );
+      }
+      function validMovementApproval(data, box, tenant) {
+        let sourceId = data.get("origemId", "");
+        let path = /databases/$(database)/documents/solicitacoes/$(sourceId);
+        return exists(path) &&
+          get(path).data.get("clientePlataformaId", "") == tenant &&
+          get(path).data.get("caixaId", "") == data.caixaId &&
+          get(path).data.get("criadoPorId", "") in [box.get("vendedorAuthUid", ""), box.get("vendedorId", "")] &&
+          get(path).data.get("tipoSolicitacao", get(path).data.get("tipo", "")) == data.tipoLancamento &&
+          get(path).data.get("valorCentavos", get(path).data.get("valor", 0) * 100) == data.valorCentavos &&
+          get(path).data.get("status", get(path).data.get("statusSolicitacao", "")) in ["PENDENTE", "PENDENTE_APROVACAO"] &&
+          getAfter(path).data.get("status", "") == "APROVADA" &&
+          getAfter(path).data.get("lancamentoFinanceiroId", "") == data.lancamentoId &&
+          getAfter(path).data.get("aprovadoPor", "") == currentUid();
+      }
+      function validMovementCorrection(data, tenant) {
+        let originalId = data.get("metadados", {}).get("substituiLancamentoId", "");
+        let path = /databases/$(database)/documents/lancamentos_financeiros/$(originalId);
+        return data.get("origem", "") == "EDICAO_ADMINISTRATIVA" && exists(path) &&
+          get(path).data.get("clientePlataformaId", "") == tenant &&
+          get(path).data.get("caixaId", "") == data.caixaId &&
+          get(path).data.get("statusLancamento", "") == "CONFIRMADO" &&
+          getAfter(path).data.get("statusLancamento", "") == "CANCELADO" &&
+          getAfter(path).data.get("substituidoPorLancamentoId", "") == data.lancamentoId &&
+          getAfter(path).data.get("canceladoPorId", "") == currentUid();
+      }
+
+      function ledgerPermission(user, key) {
+        let permissions = user.get("permissoes", {});
+        return permissions.get(key, false) == true ||
+          permissions.get("financeiro", {}).get(key, false) == true ||
+          permissions.get("caixas", {}).get(key, false) == true ||
+          permissions.get("solicitacoes", {}).get(key, false) == true;
+      }
       function canCreateLedger(data) {
-        return isActiveUser() && isSameTenantWrite() &&
-          validTipoLancamento(data.tipoLancamento) &&
-          validNatureza(data.natureza) &&
-          validStatusLancamento(data.statusLancamento) &&
-          data.valorCentavos is int &&
-          data.valorCentavos != 0 &&
-          data.operacaoId is string &&
-          data.origemId is string &&
+        let user = userDoc();
+        let roles = [user.get("tipoUsuario", ""), user.get("cargoChave", "")];
+        let seller = "vendedor" in roles;
+        let tenant = user.get("clientePlataformaId", "");
+        let teams = user.get("equipesIds", user.get("equipeIds", [user.get("equipeId", "")]));
+        return isActiveUser() && tenant != "" && data.clientePlataformaId == tenant &&
+          validTipoLancamento(data.tipoLancamento) && validNatureza(data.natureza) &&
+          validStatusLancamento(data.statusLancamento) && data.valorCentavos is int &&
+          data.valorCentavos != 0 && data.operacaoId is string && data.origemId is string &&
           (
-            isMasterLocal() ||
-            isUsuarioIntegro() ||
-            isMasterGlobal() ||
-            (isGerente() && (
-              hasPermission("podeVerLedgerFinanceiro") ||
-              hasPermission("criarLancamento") ||
-              hasPermission("podeCriarLancamentoFinanceiro") ||
-              hasPermission("aprovar")
-            )) ||
-            (isFinanceiro() && (
-              hasPermission("podeVerLedgerFinanceiro") ||
-              hasPermission("criarLancamento") ||
-              hasPermission("aprovar")
-            )) ||
-            (isSupervisor() && (
-              hasPermission("podeVerLedgerFinanceiro") ||
-              hasPermission("criarLancamento") ||
-              hasPermission("aprovar")
-            ) && isTeamAllowed(data)) ||
-            (
-              isVendedor() &&
-              isOwnSellerData(data) &&
-              data.tipoLancamento in ["VENDA", "PAGAMENTO", "GASTO", "RETIRADA"]
-            )
-          );
+            (seller && isOwnSellerData(data) && data.tipoLancamento in ["VENDA", "PAGAMENTO", "GASTO", "RETIRADA"]) ||
+            (!seller && (
+              user.get("tipoUsuario", "") in ["master_local", "usuario_integro", "master_global"] ||
+              (("gerente" in roles || "financeiro" in roles || ("supervisor" in roles && data.get("equipeId", "") in teams)) && (
+                ledgerPermission(user, "podeVerLedgerFinanceiro") || ledgerPermission(user, "criarLancamento") ||
+                ledgerPermission(user, "podeCriarLancamentoFinanceiro") || ledgerPermission(user, "aprovar")
+              ))
+            ))
+          ) && validMovementCreation(data, seller, tenant);
       }
 
       function sellerCanCancelOwnLedger() {
@@ -858,6 +889,35 @@ service cloud.firestore {
         ]);
       }
 
+      function canRecloseOwnBox() {
+        let uid = request.auth.uid;
+        let user = get(/databases/$(database)/documents/usuarios/$(uid)).data;
+        let data = request.resource.data;
+        let caixa = get(/databases/$(database)/documents/caixas/$(resource.data.caixaId)).data;
+        let caixaDepois = getAfter(/databases/$(database)/documents/caixas/$(resource.data.caixaId)).data;
+        let historyPath = /databases/$(database)/documents/historico_fechamentos_caixa/$(data.get("refechamentoId", ""));
+        let history = getAfter(historyPath).data;
+        let ids = currentUserIds();
+        return user.get("authUid", "") == uid && user.get("acessoLiberado", false) == true &&
+          !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+          (user.get("tipoUsuario", "") == "vendedor" || user.get("cargoChave", "") == "vendedor") &&
+          user.get("clientePlataformaId", "") != "" &&
+          resource.data.clientePlataformaId == user.clientePlataformaId &&
+          caixa.clientePlataformaId == user.clientePlataformaId &&
+          resource.data.vendedorId == caixa.vendedorId &&
+          (caixa.get("vendedorAuthUid", "") != "" ? caixa.vendedorAuthUid in ids : caixa.vendedorId in ids) &&
+          unchanged(["clientePlataformaId", "caixaId", "vendedorId", "equipeId", "dataOperacional", "totalReaberturas"]) &&
+          data.get("vendedorAuthUid", uid) == uid &&
+          caixa.status == "REABERTO" && caixaDepois.status == data.statusFechamento &&
+          data.statusFechamento in ["FECHADO", "DIVERGENTE"] && data.reaberto == false &&
+          !exists(historyPath) && history.caixaId == resource.data.caixaId &&
+          history.fechamentoAnterior == resource.data && history.snapshotAuditoria == data.snapshotAuditoria &&
+          history.statusNovo == data.statusFechamento &&
+          history.caixaFinalEsperadoCentavos == data.caixaFinalEsperadoCentavos &&
+          history.caixaFinalInformadoCentavos == data.caixaFinalInformadoCentavos &&
+          history.diferencaCentavos == data.diferencaCentavos;
+      }
+
       function canUpdateFechamento() {
         return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
           fechamentoOriginalImmutable() &&
@@ -878,7 +938,7 @@ service cloud.firestore {
       );
       allow list: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow create: if canCreateFechamento(request.resource.data, id);
-      allow update: if canUpdateFechamento();
+      allow update: if (isAuthenticated() && resource.data.get("reaberto", false) == true && canRecloseOwnBox()) || canUpdateFechamento();
       allow delete: if false;
     }
 

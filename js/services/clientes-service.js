@@ -114,7 +114,12 @@
     const responsavel = texto(cliente.vendedorAuthUid || cliente.vendedorUid || cliente.vendedorId || cliente.responsavelId || cliente.usuarioId);
     const equipe = texto(cliente.equipeId || cliente.equipeDestinoId || cliente.unidadeId);
 
-    if (cargo === "vendedor") return Boolean(uid && (responsavel === uid || (Array.isArray(cliente.hierarquiaIds) && cliente.hierarquiaIds.includes(uid))));
+    if (cargo === "vendedor") {
+      const ids = new Set([usuario.authUid, usuario.uid, usuario.id, usuario.usuarioId, usuario.vendedorId].filter(Boolean).map(String));
+      const canonico = texto(cliente.vendedorAuthUid || cliente.vendedorId);
+      if (canonico) return ids.has(canonico);
+      return Boolean(responsavel && ids.has(responsavel));
+    }
     if (["gerente", "socio", "proprietario"].includes(cargo)) {
       const equipes = equipesUsuario(usuario);
       const vendedores = vendedoresUsuario(usuario);
@@ -508,7 +513,7 @@
             .get(window.document?.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
           consultasConcluidas++;
           snap.docs.forEach(doc => documentos.push(documentoDeSnapshot(doc)));
-          if (documentos.length) break;
+          // Unir todos os vínculos autorizados: o primeiro resultado pode ser parcial.
         } catch (erro) {
           ultimoErro = erro;
         }

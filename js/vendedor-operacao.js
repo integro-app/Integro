@@ -67,6 +67,8 @@
   const pertenceAoVendedor = (registro, usuario, { permitirSemVinculo = false } = {}) => {
     const esperados = idsUsuario(usuario);
     if (!esperados.size) return false;
+    const canonico = id(registro?.vendedorAuthUid || registro?.vendedorId);
+    if (canonico) return esperados.has(canonico);
     const vinculados = idsRegistroVendedor(registro);
     if (!vinculados.length) return permitirSemVinculo;
     return vinculados.some(valor => esperados.has(valor));
@@ -83,19 +85,27 @@
 
   const vendaAtiva = venda => venda?.excluido !== true && !STATUS_ENCERRADOS.has(maiusculo(venda?.statusVenda || venda?.status));
 
-  const saldoVenda = venda => numero(primeiroValor(venda, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
+  const saldoVenda = venda => venda?.saldoDevedorCentavos != null ? numero(venda.saldoDevedorCentavos) / 100 : numero(primeiroValor(venda, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
   const saldoCliente = cliente => numero(primeiroValor(cliente, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
 
-  const valorPagamento = pagamento => numero(primeiroValor(pagamento, ["valorPago", "valorRecebido", "valor", "valorCentavos"])) / (pagamento?.valorCentavos && !pagamento?.valorPago && !pagamento?.valorRecebido && !pagamento?.valor ? 100 : 1);
-  const valorParcela = (venda, parcelas) => numero(primeiroValor(venda, ["valorParcela", "parcelaValor"])) || numero(primeiroValor(parcelas?.[0], ["valorParcela", "valor", "valorPrevisto"]));
+  const valorPagamento = pagamento => pagamento?.valorCentavos != null ? numero(pagamento.valorCentavos) / 100 : numero(primeiroValor(pagamento, ["valorPago", "valorRecebido", "valor"]));
+  const valorParcela = (venda, parcelas) => venda?.valorParcelaCentavos != null ? numero(venda.valorParcelaCentavos) / 100 : numero(primeiroValor(venda, ["valorParcela", "parcelaValor"])) || (parcelas?.[0]?.valorCentavos != null ? numero(parcelas[0].valorCentavos) / 100 : numero(primeiroValor(parcelas?.[0], ["valorParcela", "valor", "valorPrevisto"])));
 
   const dataParcela = parcela => dataIso(primeiroValor(parcela, ["dataVencimento", "dataPrevista", "vencimento", "dataCobranca"]));
-  const parcelaPaga = parcela => STATUS_PAGOS.has(maiusculo(parcela?.statusParcela || parcela?.status)) || numero(parcela?.valorPago) >= numero(primeiroValor(parcela, ["valorParcela", "valor", "valorPrevisto"])) - 0.009;
+  const parcelaPaga = parcela => {
+    const previsto = parcela?.valorCentavos != null ? numero(parcela.valorCentavos) / 100 : numero(primeiroValor(parcela, ["valorParcela", "valor", "valorPrevisto"]));
+    const pago = parcela?.valorPagoCentavos != null ? numero(parcela.valorPagoCentavos) / 100 : numero(parcela?.valorPago);
+    return STATUS_PAGOS.has(maiusculo(parcela?.statusParcela || parcela?.status)) || (previsto > 0 && pago >= previsto - 0.009);
+  };
 
   const obterUsuario = () => global.usuarioLogado || global.usuarioAtual || global.firebase?.auth?.()?.currentUser || {};
   const obterCache = nome => Array.isArray(global[nome]) ? global[nome] : [];
 
-  function montarCarteira({ clientes = [], vendas = [], parcelas = [], pagamentosHoje = [], historico = [], usuario = {}, hoje = hojeIso() } = {}) {
+  function montarCarteira({ clientes = [], vendas = [], parcelas = [], pagamentosHoje = [], historico = [], usuario = {}, hoje = hojeIso(), caixaId = "" } = {}) {
+    const movimentoAtual = item => caixaId
+      ? id(item.caixaId || item.idCaixa || item.caixaAtualId) === id(caixaId)
+      : (!dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto) === hoje);
+    const movimentoValido = item => item?.excluido !== true && item?.cancelado !== true && item?.estornado !== true && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(maiusculo(item?.status));
     const clientesValidos = clientes
       .filter(item => item?.excluido !== true)
       .filter(item => pertenceAoTenant(item, usuario))
@@ -109,9 +119,9 @@
 
     const vendasComPagamentoHoje = new Set(
       pagamentosHoje
-        .filter(item => item?.excluido !== true && maiusculo(item?.status) !== "CANCELADO")
+        .filter(movimentoValido)
         .filter(item => pertenceAoTenant(item, usuario))
-        .filter(item => !dataIso(item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.data || item.dataPagamento || item.criadoEmTexto) === hoje)
+        .filter(movimentoAtual)
         .map(item => id(item.vendaId))
         .filter(Boolean)
     );
@@ -122,7 +132,8 @@
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
         const clienteVinculado = clientesPorId.get(clienteId);
-        return pertenceAoVendedor(item, usuario) || pertenceAoVendedor(clienteVinculado, usuario);
+        return (!clientesPorId.has(clienteId) && clientes.some(c => id(c.id || c.clienteId) === clienteId)) ? false :
+          pertenceAoVendedor(item, usuario) || (!idsRegistroVendedor(item).length && pertenceAoVendedor(clienteVinculado, usuario));
       })
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
@@ -142,12 +153,13 @@
     const candidatos = new Map();
     vendasValidas.forEach(venda => {
       const clienteId = id(venda.clienteId || venda.clienteOperacionalId);
-      if (clienteId) candidatos.set(clienteId, { cliente: clientesPorId.get(clienteId) || {}, venda });
+      if (clienteId && !candidatos.has(clienteId)) candidatos.set(clienteId, { cliente: clientesPorId.get(clienteId) || {}, venda: (vendasPorCliente.get(clienteId) || [venda])[0] });
     });
 
     clientesValidos.filter(cliente => saldoCliente(cliente) > 0.01).forEach(cliente => {
       const clienteId = id(cliente.id || cliente.clienteId || cliente.clienteOperacionalId);
       if (!clienteId || candidatos.has(clienteId)) return;
+      if (vendas.some(item => id(item.clienteId || item.clienteOperacionalId) === clienteId)) return;
       const venda = (vendasPorCliente.get(clienteId) || [])[0] || null;
       candidatos.set(clienteId, { cliente, venda });
     });
@@ -171,10 +183,9 @@
     };
     const parcelasPorVenda = agruparPorVenda(parcelas, item => item?.excluido !== true);
     const pagamentosPorVenda = agruparPorVenda(pagamentosHoje, item =>
-      item?.excluido !== true && maiusculo(item?.status) !== "CANCELADO" &&
-      (!dataIso(item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.data || item.dataPagamento || item.criadoEmTexto) === hoje));
+      movimentoValido(item) && movimentoAtual(item));
     const visitasPorVenda = agruparPorVenda(historico, item =>
-      maiusculo(item.tipo || item.acao || item.status) === "NAO_PAGAMENTO" && dataIso(item.data || item.criadoEmTexto) === hoje);
+      movimentoValido(item) && maiusculo(item.tipo || item.acao || item.status) === "NAO_PAGAMENTO" && movimentoAtual(item));
 
     return Array.from(candidatos.entries()).map(([clienteId, origem]) => {
       const cliente = origem.cliente || {};
@@ -189,7 +200,7 @@
 
       const parcelaNominal = valorParcela(venda, parcelasVenda);
       const totalParcelas = Math.max(1, numero(venda.quantidadeParcelas || venda.numeroParcelas || parcelasVenda.length || 1));
-      const valorPagoTotalParcelas = parcelasVenda.reduce((soma, item) => soma + numero(item.valorPago), 0);
+      const valorPagoTotalParcelas = parcelasVenda.reduce((soma, item) => soma + (item.valorPagoCentavos != null ? numero(item.valorPagoCentavos) / 100 : numero(item.valorPago)), 0);
       const parcelasPagasInteiras = parcelasVenda.filter(parcelaPaga).length;
       const progresso = parcelaNominal > 0 ? Math.max(parcelasPagasInteiras, valorPagoTotalParcelas / parcelaNominal) : parcelasPagasInteiras;
       const pendentes = parcelasVenda.filter(item => !parcelaPaga(item));
@@ -212,7 +223,7 @@
       const pagoHoje = valorPagoHoje > 0.009;
       const naoPagoHoje = !pagoHoje && naoPagamentos.length > 0;
       const pendenteHoje = comCobrancaHoje && !pagoHoje && !naoPagoHoje;
-      const saldo = Math.max(saldoVenda(venda), saldoCliente(cliente));
+      const saldo = vendaId ? saldoVenda(venda) : saldoCliente(cliente);
 
       return {
         vendaId,
@@ -309,7 +320,7 @@
     const syncBadge = syncMeta ? '<span class="cobranca-chip-status vendedor-sync-badge ' + syncMeta.classe + '">' + escapar(syncMeta.texto) + '</span>' : "";
 
     return `
-      <article class="cobranca-card-operacional ${status.classe}" data-cliente-id="${escapar(item.clienteId)}" data-venda-id="${escapar(item.vendaId)}">
+      <article class="cobranca-card-operacional ${status.classe}" data-cliente-id="${escapar(item.clienteId)}" data-venda-id="${escapar(item.vendaId)}" tabindex="0" title="Abrir opções do cliente" onclick="abrirOpcoesCardCobranca(event,this)" onkeydown="if(event.target===this &amp;&amp; (event.key==='Enter'||event.key===' ')){event.preventDefault();abrirOpcoesCardCobranca(event,this)}">
         <span class="cobranca-lateral-clean" style="background:${status.cor}" aria-hidden="true"></span>
 
         <div class="cobranca-cliente-clean">
@@ -355,6 +366,7 @@
       pagamentosHoje: obterCache("pagamentosHojeCache"),
       historico: obterCache("historicoCobrancasCache"),
       usuario: obterUsuario(),
+      caixaId: global.obterCaixaAbertoVendedor?.()?.id || global.caixaAtual?.id || "",
       hoje: (typeof global.obterDataCaixaVendedor === "function" ? global.obterDataCaixaVendedor() : hojeIso())
     }).filter(item => item.saldoDevedor > 0.01 || item.pagoHoje || item.naoPagoHoje);
   }
@@ -362,6 +374,7 @@
   function filtrosAtivos() {
     const marcado = id => global.document?.getElementById(id)?.checked === true;
     return {
+      carteiraCompleta: marcado("filtroCobrancaCarteiraCompleta"),
       pendentes: marcado("filtroCobrancaPendente"),
       pagos: marcado("filtroCobrancaPago"),
       naoPagos: marcado("filtroCobrancaNaoPago"),
@@ -375,6 +388,7 @@
     const termo = texto(global.document?.getElementById("buscaCobrancaInput")?.value).toLowerCase();
     const filtros = filtrosAtivos();
     return lista.filter(item => {
+      if (!filtros.carteiraCompleta && !item.comCobrancaHoje && !item.pagoHoje && !item.naoPagoHoje) return false;
       const busca = [item.clienteNome, item.clienteApelido, item.telefone, item.documento].join(" ").toLowerCase();
       if (termo && !busca.includes(termo)) return false;
       const filtraStatus = filtros.pendentes || filtros.pagos || filtros.naoPagos;
@@ -437,7 +451,7 @@
     global.IntegroVendedorUnificado?.renderHoje?.(carteira);
     const lista = ordenar(aplicarFiltros(carteira));
     const contador = global.document.getElementById("contadorCobrancas");
-    if (contador) contador.textContent = `${lista.length} cliente(s) com saldo devedor em aberto.`;
+    if (contador) contador.textContent = `${lista.length} cliente(s) ${filtrosAtivos().carteiraCompleta ? "na carteira completa" : "na rota do caixa atual"} · ${lista.filter(item => item.pagoHoje).length} pago(s) · ${lista.filter(item => item.naoPagoHoje).length} não pagamento(s).`;
     const html = lista.length ? lista.map(card).join("") : `
       <div class="empty-state-operacao">
         <strong>Nenhum cliente encontrado</strong>
@@ -488,6 +502,10 @@
   function instalar() {
     if (global.__integroVendedorOperacaoConsolidada) return;
     global.__integroVendedorOperacaoConsolidada = true;
+    global.abrirOpcoesCardCobranca = (evento, card) => {
+      if (evento.target?.closest?.("button,a,input,select,textarea,label,[role=button]")) return;
+      return global.abrirDrawerClienteVendedor?.(card.dataset.clienteId);
+    };
     global.montarCobrancasPorVenda = dadosAtuais;
     global.cardCobrancaCliente = card;
     global.renderCobrancas = renderizar;
@@ -517,6 +535,6 @@
     statusVisual,
     situacaoVisual,
     formatarProximaCobranca,
-    _internals: { numero, saldoVenda, saldoCliente, vendaAtiva, dataParcela, parcelaPaga, diasEntre }
+    _internals: { aplicarFiltros, numero, saldoVenda, saldoCliente, vendaAtiva, dataParcela, parcelaPaga, diasEntre }
   };
 });

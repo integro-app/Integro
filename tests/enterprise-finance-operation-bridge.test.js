@@ -20,7 +20,7 @@ test("bridges legados foram removidos fisicamente", () => {
 });
 
 test("financeiro empresarial e movimentações operacionais possuem rotas separadas", () => {
-  assert.match(navigation, /if \(item\.id === "movimentacoes"[^]*abrirFinanceiroOperacional\("lancamentos"/);
+  assert.match(navigation, /if \(item\.id === "movimentacoes"[^]*abrirTelaBase\("movimentacoes"[^]*IntegroMovimentacoesUnificadas\?\.load/);
   assert.match(navigation, /if \(item\.id === "financeiro"\)[^]*abrirFinanceiroEmpresarial\(elemento, "dashboard"\)/);
   assert.match(navigation, /\["master_local", "financeiro"\]\.includes\(perfilAtual\)/);
 });

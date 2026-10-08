@@ -1925,14 +1925,21 @@
 </style>
 <link href="css/integro-mobile.css?v=20260818-v272-perf1" rel="stylesheet"/>
 </meta><link href="css/vendedor-operacao.css?v=20260827-optimistic1" rel="stylesheet"/>  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2">
-  <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20">
-  <link rel="stylesheet" href="css/integro-loading.css?v=20260827-single1">
+  <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261008-responsavel1">
+  <link rel="stylesheet" href="css/integro-loading.css?v=20260827-single1&build=20261008-cardfixo1">
+  <script src="js/integro-loading-handoff.js?v=20260827-single1&build=20261008-continuo2"></script>
+  <link rel="stylesheet" href="css/integro-visual.css?v=20261008-premium3">
+  <script defer src="js/integro-menu-categorias.js?v=20261008-mov-direto1"></script>
+  <link rel="stylesheet" href="css/integro-palette.css?v=20261008-movimentacoes1&build=20261008-mov-hoje1">
+  <link rel="stylesheet" href="css/integro-logo.css?v=20261008-amarelo1">
+  <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261008-busca2">
+  <script defer src="js/integro-filter-drawer.js?v=20261008-vendas3"></script>
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="vendedor">
 <div aria-live="polite" class="integro-boot-loader" id="integroBootLoader" role="status">
 <div class="integro-loader-card">
 <div class="integro-loader-logo">ÍNTE<span>GRO</span></div>
-<div class="integro-loader-title">Preparando seu painel</div>
+<div class="integro-loader-title">Preparando seu acesso</div>
 <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
 <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
 <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="integro-loader-bar" role="progressbar">
@@ -1940,6 +1947,7 @@
 </div>
 </div>
 </div>
+<script>window.IntegroLoadingContinuo?.iniciar();</script>
 <div class="overlay" data-integro-sidebar-overlay id="overlay" onclick="toggleSidebar(false)"></div>
 <div class="app">
 <!-- SIDEBAR -->
@@ -4275,7 +4283,8 @@
               quantidadeParcelas: preview.parcelas,
               frequencia,
               primeiraCobranca,
-              origem: "vendedor"
+              origem: "vendedor",
+              snapshot: window.__integroSnapshotFechamento
             });
 
             if (cliente.clienteOperacionalId && window.ClientesService?.converterCliente) {
@@ -6307,7 +6316,9 @@
 <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 <script src="js/firebase-config.js?v=20260728-3"></script>
 <script src="js/utils/operational.js"></script>
-<script src="js/services/financial-operations.js?v=20260812-v24-4"></script>
+<link rel="stylesheet" href="css/logout-flow.css">
+<script src="js/logout-flow.js?v=20261008-login-caixa1"></script>
+<script src="js/services/financial-operations.js?v=20261008-login-caixa1&build=20261008-admin-fechado1"></script>
 <script src="js/services/clientes-service.js?v=20260812-clientes-v24-4"></script>
 <script src="js/services/indicacoes-service.js?v=20260813-leads-v25-1"></script>
 <script src="js/services/chat-service.js?v=20260730-chat4"></script>
@@ -6347,7 +6358,7 @@
         }
 
         function setLoaderProgress(percentual) {
-          const valor = limitarPercentualLoader(percentual);
+          const valor = window.IntegroLoadingContinuo?.percentual(percentual) ?? limitarPercentualLoader(percentual);
           integroLoaderPercentualAtual = valor;
 
           const texto = document.getElementById("integroLoaderPercent");
@@ -6388,7 +6399,7 @@
           } finally {
             clearInterval(timer);
             setLoaderStep(msg, fim);
-            await esperar(120);
+
           }
         }
 
@@ -6399,7 +6410,7 @@
 
         async function finalizarLoadingPremiumVendedor() {
           setLoaderStep("Painel pronto.", 100);
-          await esperar(220);
+
 
           const loader = document.getElementById("integroBootLoader");
           if (loader) loader.classList.add("hide");
@@ -6444,6 +6455,7 @@
           iniciarLoadingPremiumVendedor();
 
           firebase.auth().onAuthStateChanged(async (authUser) => {
+            if (window.__integroLogoutEmAndamento) return;
             try {
               await executarEtapaLoading("Validando sessão...", 3, 14, async () => {
                 if (!authUser) {
@@ -6498,16 +6510,6 @@
                 }
               });
 
-              await executarEtapaLoading("Carregando configurações da empresa...", 43, 51, async () => {
-                if (tenantId && window.IntegroConfiguracoesEmpresa?.carregar) {
-                  try {
-                    await window.IntegroConfiguracoesEmpresa.carregar(tenantId);
-                  } catch (erroConfig) {
-                    console.warn("Não foi possível carregar as configurações operacionais da empresa.", erroConfig);
-                  }
-                }
-              });
-
               await executarEtapaLoading("Preparando dados do vendedor...", 51, 60, async () => {
                 preencherUsuarioLogadoNaTela();
                 atualizarDataPainel();
@@ -6515,7 +6517,12 @@
               });
 
               await executarEtapaLoading("Carregando rota de cobrança...", 60, 84, async () => {
-                await carregarTudo();
+                await Promise.all([
+                  tenantId && window.IntegroConfiguracoesEmpresa?.carregar
+                    ? window.IntegroConfiguracoesEmpresa.carregar(tenantId)
+                    : Promise.resolve(),
+                  carregarTudo({ somenteEssenciais: true })
+                ]);
               });
 
               await executarEtapaLoading("Atualizando clientes do caixa...", 84, 95, async () => {
@@ -6526,10 +6533,11 @@
               });
 
               await executarEtapaLoading("Preparando sistema...", 95, 100, async () => {
-                await esperar(180);
+
               });
 
               await finalizarLoadingPremiumVendedor();
+              window.carregarDadosSecundariosVendedor?.().catch(erro => console.warn("Falha ao atualizar dados secundários.", erro));
 
             } catch (erro) {
               if (erro && (erro.__integroRedirecionando || window.__integroRedirecionando)) return;
@@ -8624,7 +8632,7 @@ async function verificarCaixaAbertoDiaAnterior() {
           }
         }
 
-        function abrirFechamentoCaixa() {
+        async function abrirFechamentoCaixa() {
           const pendencias = getPendenciasRotaHoje();
           if (pendencias.length) {
             notificarIntegro("Fechamento de caixa bloqueado. Conclua as pendências da rota antes de fechar.");
@@ -8633,7 +8641,15 @@ async function verificarCaixaAbertoDiaAnterior() {
           }
           if (!garantirCaixaAberto("Este caixa já está fechado.")) return;
 
-          const resumo = calcularResumoCaixaAtual();
+          let snapshot;
+          try {
+            snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId: caixaAtual.id, clientePlataformaId: tenantId });
+          } catch (erro) {
+            notificarIntegro("Não foi possível conferir o caixa: " + erro.message);
+            return;
+          }
+          window.__integroSnapshotFechamento = snapshot;
+          const linhasResumo = [["Saldo inicial", snapshot.caixaInicialCentavos], ["Recebimentos", snapshot.totalPagamentosCentavos], ["Ingressos", snapshot.totalIngressosCentavos], ["Vendas / empréstimos", snapshot.totalVendasCentavos], ["Despesas", snapshot.totalGastosCentavos], ["Retiradas", snapshot.totalRetiradasCentavos], ["Recolhimentos", snapshot.totalRecolhimentosCentavos], ["Ajustes", snapshot.totalAjustesCentavos]];
 
           abrirDrawer(
             "Fechar caixa",
@@ -8642,17 +8658,18 @@ async function verificarCaixaAbertoDiaAnterior() {
               <div style="display:grid;gap:18px;color:#334155;font-weight:800;">
                 <div style="background:linear-gradient(135deg,#16a34a,#065f46);border-radius:24px;padding:20px;color:#fff;box-shadow:0 18px 36px rgba(15,23,42,.16);">
                   <small style="display:block;color:rgba(255,255,255,.85);font-weight:900;text-transform:uppercase;">Valor calculado do caixa</small>
-                  <strong style="display:block;font-size:30px;margin-top:8px;">${moeda(resumo.caixaAtual)}</strong>
+                  <strong style="display:block;font-size:30px;margin-top:8px;">${moeda(snapshot.caixaFinalEsperadoCentavos / 100)}</strong>
                 </div>
+                <dl aria-label="Resumo do caixa atual" style="margin:0;display:grid;gap:10px">${linhasResumo.map(([label, valor]) => `<div style="display:flex;justify-content:space-between;gap:16px"><dt>${label}</dt><dd style="margin:0">${moeda(valor / 100)}</dd></div>`).join("")}</dl>
 
                 <div>
-                  <label class="form-label">Informe o valor físico/real do caixa</label>
-                  ${campoMoedaHtml("fechamentoValorReal", "0,00")}
+                  <label class="form-label" for="fechamentoValorReal">Informe o valor físico/real do caixa</label>
+                  ${campoMoedaHtml("fechamentoValorReal", "")}
                 </div>
 
                 <div>
                   <label class="form-label">Observação</label>
-                  <textarea id="fechamentoObservacao" class="form-textarea" placeholder="Observação opcional"></textarea>
+                  <textarea id="fechamentoObservacao" class="form-textarea" placeholder="Obrigatória se o valor informado diferir do calculado"></textarea>
                 </div>
 
                 <button class="btn btn-primary" style="width:100%;height:60px;font-size:16px;" onclick="confirmarFechamentoCaixa(this)">
@@ -8680,6 +8697,15 @@ async function verificarCaixaAbertoDiaAnterior() {
           return resultado;
         }
 
+
+        window.encerrarSessaoAposFechamentoCaixa = function (status) {
+          const mensagem = status === "DIVERGENTE" ? "Caixa fechado com divergência registrada para análise. Solicite a abertura ou reabertura para entrar novamente." : "Caixa fechado com sucesso. Solicite a abertura ou reabertura para entrar novamente.";
+          return window.IntegroLogout.encerrar(async () => {
+            await firebase.auth().signOut();
+            window.IntegroOperacional.limparSessaoLocal({ usuario: usuarioLogado, limparFila: true });
+          }, { destino: `index.html?motivo=caixa-fechado&mensagem=${encodeURIComponent(mensagem)}` });
+        };
+
         async function confirmarFechamentoCaixa(botao = null) {
           const lockKeyFechamento = `fechamento::${caixaAtual?.id || "sem_caixa"}`;
           window.__integroFechamentoLocks = window.__integroFechamentoLocks || new Set();
@@ -8689,10 +8715,11 @@ async function verificarCaixaAbertoDiaAnterior() {
             window.__integroFechamentoLocks.add(lockKeyFechamento);
             if (!garantirCaixaAberto("Este caixa ja esta fechado.")) return;
 
-            const valorReal = converterMoedaBRParaNumero(document.getElementById("fechamentoValorReal")?.value || "");
+            const valorTexto = (document.getElementById("fechamentoValorReal")?.value || "").trim();
+            const valorReal = converterMoedaBRParaNumero(valorTexto);
             const observacao = (document.getElementById("fechamentoObservacao")?.value || "").trim();
 
-            if (Number.isNaN(valorReal)) {
+            if (!valorTexto || !Number.isFinite(valorReal)) {
               notificarIntegro("Informe um valor fisico/real valido.");
               return;
             }
@@ -8724,16 +8751,14 @@ async function verificarCaixaAbertoDiaAnterior() {
               origem: "vendedor"
             });
 
-            await carregarSolicitacoes();
-            await carregarCaixaAtual();
-            atualizarDashboard();
-            atualizarEstadoBotaoFechamento();
+            caixaAtual.status = resultadoFechamento.statusFechamento;
+            caixaAtual.ativo = false;
+            caixaAtual.fechado = true;
+            window.caixaAtual = caixaAtual;
+            window.__integroSnapshotFechamento = null;
             aplicarBloqueioCaixaFechado();
             fecharDrawer();
-
-            notificarIntegro(resultadoFechamento?.statusFechamento === "DIVERGENTE"
-              ? "Caixa fechado com divergência registrada para análise."
-              : "Caixa fechado com sucesso.");
+            await window.encerrarSessaoAposFechamentoCaixa(resultadoFechamento.statusFechamento);
           } catch (erro) {
             console.error("Erro ao fechar caixa:", erro);
             notificarIntegro("Erro ao fechar caixa: " + erro.message);
@@ -17494,7 +17519,7 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   async function forcarLogoutCaixaFechado(mensagem) {
-    if (logoutAutomaticoEmExecucao) return;
+    if (window.__integroLogoutEmAndamento || logoutAutomaticoEmExecucao) return;
     logoutAutomaticoEmExecucao = true;
 
     try {
@@ -17518,58 +17543,33 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   async function buscarCaixaAbertoDoVendedor() {
-    const banco = getBanco();
-    const ids = idsUsuarioAtual();
-    const tenant = getTenantAtual();
-
-    if (!banco || !ids.length) return null;
-
-    const camposUsuario = [
-      "vendedorAuthUid",
-      "vendedorUid",
-      "usuarioId",
-      "vendedorId",
-      "abertoPorUid",
-      "userId",
-      "uid"
-    ];
-    const encontrados = [];
-
-    for (const campo of camposUsuario) {
-      for (const idUsuario of ids) {
-        try {
-          let ref = banco.collection("caixas")
-            .where(campo, "==", idUsuario)
-            .where("status", "in", ["ABERTO", "REABERTO"])
-            .limit(20);
-
-          if (tenant) {
-            ref = banco.collection("caixas")
-              .where("clientePlataformaId", "==", tenant)
-              .where(campo, "==", idUsuario)
-              .where("status", "in", ["ABERTO", "REABERTO"])
-              .limit(20);
-          }
-
-          const snap = await ref.get();
-          snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
-        } catch (erro) {
-          console.warn("Falha ao buscar caixa aberto para controle de acesso:", campo, erro);
-        }
+    const banco = getBanco(), ids = idsUsuarioAtual(), tenant = getTenantAtual();
+    if (!banco || !ids.length || !tenant) return null;
+    const usuario = getUsuarioAtual() || {};
+    const uid = window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid;
+    const consultar = async (campo, valor) => {
+      if (!valor) return [];
+      try {
+        const snap = await banco.collection("caixas")
+          .where("clientePlataformaId", "==", tenant).where(campo, "==", String(valor))
+          .where("status", "in", ["ABERTO", "REABERTO"]).limit(20).get({ source: "server" });
+        return snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(caixaAbertoValido);
+      } catch (erro) {
+        console.warn("Falha ao buscar caixa aberto para controle de acesso:", campo, erro);
+        return [];
       }
+    };
+    const canonicos = await consultar("vendedorAuthUid", uid);
+    let encontrados = canonicos;
+    if (!encontrados.length) {
+      const campos = ["vendedorUid", "usuarioId", "vendedorId", "abertoPorUid", "userId", "uid"];
+      encontrados = (await Promise.all(campos.flatMap(campo => ids.map(valor => consultar(campo, valor))))).flat();
     }
-
-    const unicos = new Map();
-    encontrados.forEach(caixa => {
-      if (caixa?.id && caixaAbertoValido(caixa)) unicos.set(caixa.id, caixa);
-    });
-
-    return Array.from(unicos.values()).sort((a, b) => tempoCaixa(b) - tempoCaixa(a))[0] || null;
+    const unicos = new Map(encontrados.map(caixa => [caixa.id, caixa]));
+    return [...unicos.values()].sort((a, b) => tempoCaixa(b) - tempoCaixa(a))[0] || null;
   }
 
   async function verificarAcessoCaixaAberto() {
-    if (caixaAbertoValido(window.caixaAtual)) return true;
-
     const caixaAberto = await buscarCaixaAbertoDoVendedor();
 
     if (caixaAberto) {
@@ -18451,7 +18451,7 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   async function encerrarAcessoVendedor(mensagem, tipoNotificacao, caixas = []) {
-    if (logoutOperacionalEmExecucao) return false;
+    if (window.__integroLogoutEmAndamento || logoutOperacionalEmExecucao) return false;
     logoutOperacionalEmExecucao = true;
 
     try { await notificarSupervisorCaixaIrregular(tipoNotificacao || "CAIXA_OPERACIONAL_INVALIDO", mensagem, caixas); } catch (_) {}
@@ -18500,7 +18500,7 @@ async function verificarCaixaAbertoDiaAnterior() {
           .where(campo, "==", String(valor))
           .where("status", "in", ["ABERTO", "REABERTO"])
           .limit(25)
-          .get();
+          .get({ source: "server" });
 
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       } catch (erro) {
@@ -18554,7 +18554,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   async function validarCaixaOperacionalAtual() {
     if (validacaoCaixaEmAndamento) {
-      return caixaAberto(window.caixaAtual);
+      return false;
     }
 
     const dbRef = banco();
@@ -18571,12 +18571,6 @@ async function verificarCaixaAbertoDiaAnterior() {
       const hoje = hojeISOOperacional();
 
       if (!caixas.length) {
-        if (caixaAberto(window.caixaAtual) &&
-            pertenceAoTenant(window.caixaAtual) &&
-            pertenceAoUsuario(window.caixaAtual)) {
-          return true;
-        }
-
         gravarCaixaAtual(null);
         await encerrarAcessoVendedor(
           "Nenhum caixa aberto foi encontrado para hoje. Solicite a abertura do caixa ao supervisor.",
@@ -18630,12 +18624,6 @@ async function verificarCaixaAbertoDiaAnterior() {
       return true;
     } catch (erro) {
       console.error("[ÍNTEGRO CAIXA] Falha ao validar o caixa operacional:", erro);
-
-      if (caixaAberto(window.caixaAtual) &&
-          pertenceAoTenant(window.caixaAtual) &&
-          pertenceAoUsuario(window.caixaAtual)) {
-        return true;
-      }
 
       throw erro;
     } finally {
@@ -19011,18 +18999,18 @@ async function verificarCaixaAbertoDiaAnterior() {
     const chaves = new Set();
 
     for (const grupo of grupos) {
-      for (const [campo, valor] of grupo) {
-        if (!valor) continue;
-
-        const chave = `${campo}:${valor}`;
-        if (chaves.has(chave)) continue;
+      const consultas = grupo.filter(([campo, valor]) => {
+        if (!valor) return false;
+        const chave = campo + ":" + valor;
+        if (chaves.has(chave)) return false;
         chaves.add(chave);
-
-        const resultado = await consultar(campo, valor);
+        return true;
+      });
+      const resultados = await Promise.all(consultas.map(([campo, valor]) => consultar(campo, valor)));
+      for (const resultado of resultados) {
         houveConsultaValida = houveConsultaValida || resultado.sucesso;
-        if (resultado.registros.length) registros.push(...resultado.registros);
+        registros.push(...resultado.registros);
       }
-
       if (registros.length) break;
     }
 
@@ -19072,10 +19060,10 @@ async function verificarCaixaAbertoDiaAnterior() {
     try { pagamentosCache = lista; } catch (_) {}
   };
 
-  window.carregarPagamentosHoje = async function carregarPagamentosHojeOperacional() {
+  window.carregarPagamentosHoje = async function carregarPagamentosHojeOperacional(opcoes = {}) {
     const caixaId = String(window.caixaAtual?.id || "");
     const hoje = typeof window.hojeISO === "function" ? window.hojeISO() : "";
-    const lista = (await carregarColecaoComFallback("pagamentos", 1500, true))
+    const lista = (opcoes.usarHistorico ? (window.pagamentosCache || []) : await carregarColecaoComFallback("pagamentos", 1500, true))
       .filter(item => item.excluido !== true && pertenceAoTenant(item) && pertenceAoUsuario(item))
       .filter(item => !caixaId || String(item.caixaId || "") === caixaId)
       .filter(item => !hoje || !item.data || String(item.data).slice(0, 10) === hoje);
@@ -19315,8 +19303,23 @@ async function verificarCaixaAbertoDiaAnterior() {
     try { historicoCobrancasCache = lista; } catch (_) {}
   };
 
+  let dadosSecundariosEmAndamento = null;
+  window.carregarDadosSecundariosVendedor = function () {
+    if (dadosSecundariosEmAndamento) return dadosSecundariosEmAndamento;
+    dadosSecundariosEmAndamento = Promise.allSettled([
+      window.carregarIndicacoes?.(),
+      window.carregarCategoriasMovimentacao?.(),
+      window.carregarNotificacoes?.()
+    ]).then(resultados => {
+      for (const resultado of resultados) if (resultado.status === "rejected") console.warn("Falha ao carregar dados secundários do vendedor.", resultado.reason);
+      window.renderIndicacoes?.();
+      window.iniciarNotificacoesTempoRealVendedor?.();
+    }).finally(() => { dadosSecundariosEmAndamento = null; });
+    return dadosSecundariosEmAndamento;
+  };
+
   const carregarTudoOriginal = window.carregarTudo;
-  window.carregarTudo = async function carregarTudoComRegrasOperacionais() {
+  window.carregarTudo = async function carregarTudoComRegrasOperacionais(opcoes = {}) {
     const executarSeguro = async (nome, funcao) => {
       if (typeof funcao !== "function") return;
 
@@ -19336,19 +19339,17 @@ async function verificarCaixaAbertoDiaAnterior() {
 
       if (!caixaValido) return;
 
-      await executarSeguro("clientes", window.carregarClientes);
-      await executarSeguro("vendas", window.carregarVendas);
-      await executarSeguro("parcelas", window.carregarParcelas);
-
-      await Promise.allSettled([
-        executarSeguro("histórico de pagamentos", window.carregarPagamentosHistorico),
-        executarSeguro("pagamentos do caixa", window.carregarPagamentosHoje),
-        executarSeguro("solicitações", window.carregarSolicitacoes),
-        executarSeguro("indicações", window.carregarIndicacoes),
-        executarSeguro("categorias de movimentação", window.carregarCategoriasMovimentacao),
-        executarSeguro("notificações", window.carregarNotificacoes),
-        executarSeguro("histórico de cobranças", window.carregarHistoricoCobrancas)
+      await Promise.all([
+        window.carregarClientes(),
+        window.carregarVendas(),
+        window.carregarPagamentosHistorico(),
+        window.carregarSolicitacoes(),
+        window.carregarHistoricoCobrancas()
       ]);
+      await Promise.all([window.carregarParcelas(), window.carregarPagamentosHoje({ usarHistorico: true })]);
+
+      if (!opcoes.somenteEssenciais) await window.carregarDadosSecundariosVendedor();
+
     } finally {
       window.__integroCaixaEmVerificacao = false;
     }
@@ -19395,16 +19396,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   document.addEventListener("DOMContentLoaded", () => {
     garantirFiltrosPadraoCobranca();
-    try { window.renderCobrancas?.(); } catch (_) {}
-    setTimeout(() => {
-      window.carregarNotificacoes?.();
-      iniciarNotificacoesTempoRealVendedor();
-    }, 700);
   });
-  document.addEventListener("usuario-validado", () => setTimeout(() => {
-    window.carregarNotificacoes?.();
-    iniciarNotificacoesTempoRealVendedor();
-  }, 250));
 
   iniciarMonitorOperacional();
 })();
@@ -20923,9 +20915,9 @@ async function verificarCaixaAbertoDiaAnterior() {
 })();
 </script>
 
-<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1"></script>
+<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261008-categorias1"></script>
 <script src="js/vendedor-operacao.js?v=20260827-payment-edit1"></script>  <script src="js/integro-ui.js?v=20260805-v2"></script>
-  <script src="js/integro-interface.js?v=20260806-v20"></script>
+  <script src="js/integro-interface.js?v=20260806-v20&build=20261008-prioridade1"></script>
 
 <style id="integro-vendedor-leads-recebidos-fix-v20">
   .menu-item .menu-badge.leads-vendedor-badge{margin-left:auto;min-width:22px;height:22px;padding:0 6px;border-radius:999px;display:none;align-items:center;justify-content:center;background:#ff8a00;color:#fff;font-size:10px;font-weight:950}

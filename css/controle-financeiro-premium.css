@@ -5,12 +5,12 @@
   --cf-line: #e7ecf3;
   --cf-text: #10223f;
   --cf-muted: #6f7d90;
-  --cf-primary: #0b294d;
-  --cf-accent: #f28c28;
+  --cf-primary: var(--integro-brand-navy, #071428);
+  --cf-accent: var(--integro-brand-orange, #ff8a00);
   --cf-ok: #18864b;
   --cf-warn: #c98400;
   --cf-danger: #c73b3b;
-  --cf-info: #2468c9;
+  --cf-info: #193552;
 }
 [data-controle-financeiro-empresarial] .cfe-premium-toolbar,
 [data-controle-financeiro-empresarial] .cfe-premium-summary,

@@ -17,7 +17,8 @@ const {
   setDoc,
   updateDoc,
   deleteDoc,
-  where
+  where,
+  writeBatch
 } = require("firebase/firestore");
 const { ref, uploadBytes } = require("firebase/storage");
 
@@ -393,7 +394,7 @@ test("ledger: financeiro e auditor leem, vendedor nao cria ajuste/estorno, maste
 });
 
 test("ledger: supervisor autorizado dentro da equipe, fora bloqueado", async () => {
-  await assertSucceeds(setDoc(doc(appDb(profiles.supervisor1), "lancamentos_financeiros", "lf_ingresso_sup"), ledger({ tipoLancamento: "INGRESSO", natureza: "CREDITO", origemId: "sol_1", criadoPorId: profiles.supervisor1.uid })));
+  await assertFails(setDoc(doc(appDb(profiles.supervisor1), "lancamentos_financeiros", "lf_ingresso_sup"), ledger({ tipoLancamento: "INGRESSO", natureza: "CREDITO", origemId: "sol_1", criadoPorId: profiles.supervisor1.uid })));
   await assertFails(setDoc(doc(appDb(profiles.supervisor2), "lancamentos_financeiros", "lf_ingresso_sup2"), ledger({ tipoLancamento: "INGRESSO", natureza: "CREDITO", origemId: "sol_1", criadoPorId: profiles.supervisor2.uid })));
 });
 
@@ -633,7 +634,7 @@ test("solicitacoes: vendedor cria pendente, aprovar propria bloqueia, supervisor
 
 test("financeiro administrativo: gerente autorizado consulta/cria e perfis autorizados atualizam caixa", async () => {
   await assertSucceeds(getDoc(doc(appDb(profiles.gerenteFinanceiroA), "lancamentos_financeiros", "lf_gasto_aberto")));
-  await assertSucceeds(setDoc(doc(appDb(profiles.gerenteFinanceiroA), "lancamentos_financeiros", "lf_gasto_gerente"), ledger({
+  await assertFails(setDoc(doc(appDb(profiles.gerenteFinanceiroA), "lancamentos_financeiros", "lf_gasto_gerente"), ledger({
     tipoLancamento: "GASTO",
     natureza: "DEBITO",
     origem: "LANCAMENTO_ADMINISTRATIVO",
@@ -1086,3 +1087,69 @@ test('rules: criação de indicação aceita operador autorizado e continua bloq
   assert.match(trecho, /!isVendedor\(\)/);
   assert.match(trecho, /canCreateLeadByPermission\(\)/);
 });
+
+ test("vendedor refechar exige caixa reaberto e histórico anterior na mesma gravação", async () => {
+ const db = appDb(profiles.vendedor1);
+ const closureRef = doc(db,"fechamentos_caixa","fechamento_caixa_reaberto");
+ const previous = (await getDoc(closureRef)).data();
+ const updated = {...previous,reaberto:false,statusFechamento:"FECHADO",refechamentoId:"hist_atomic",caixaFinalEsperadoCentavos:11000,caixaFinalInformadoCentavos:11000,snapshotAuditoria:{caixaId:"caixa_reaberto",conferido:true}};
+ await assertFails(setDoc(closureRef,updated));
+ const batch = writeBatch(db);
+ batch.set(closureRef,updated);
+ batch.update(doc(db,"caixas","caixa_reaberto"),{status:"FECHADO"});
+ batch.set(doc(db,"historico_fechamentos_caixa","hist_atomic"),{...updated,fechamentoId:"fechamento_caixa_reaberto",caixaId:"caixa_reaberto",modo:"REFECHAMENTO",statusAnterior:"REABERTO",statusNovo:"FECHADO",fechamentoAnterior:previous});
+ await assertSucceeds(batch.commit());
+ await assertFails(updateDoc(closureRef,{caixaFinalInformadoCentavos:1}));
+ });
+
+
+test("fechamento: consultas do vendedor exigem empresa e vínculo canônico", async () => {
+  const p=profiles.vendedor1, db=appDb(p);
+  for(const nome of ["vendas","pagamentos","parcelas","solicitacoes","historicoCobrancas"]){
+    await assertSucceeds(getDocs(query(collection(db,nome),where("clientePlataformaId","==",p.tenant),where("vendedorAuthUid","==",p.uid),where("caixaId","==","caixa_a_1"),limit(5000))));
+    await assertSucceeds(getDocs(query(collection(db,nome),where("clientePlataformaId","==",p.tenant),where("vendedorAuthUid","==",p.uid),limit(5000))));
+    await assertFails(getDocs(query(collection(db,nome),where("clientePlataformaId","==",p.tenant),where("caixaId","==","caixa_a_1"),limit(5000))));
+    await assertFails(getDocs(query(collection(db,nome),where("clientePlataformaId","==","tenant_b"),where("vendedorAuthUid","==",p.uid),limit(5000))));
+  }
+});
+
+
+test("fechamento: transação real do módulo publicado fecha caixa do vendedor com valor negativo", async () => {
+  const vm=require('node:vm');
+  const firebase=require('firebase/compat/app');require('firebase/compat/firestore');
+  const p={...profiles.vendedor1,uid:'vendedor_sdk_uid',role:'vendedor'}, caixaId='caixa_fechamento_sdk';
+  const box=caixa({vendedorId:'documento_vendedor',vendedorAuthUid:p.uid,saldoInicialCentavos:-472100,saldoAtualCentavos:-389300,status:'ABERTO'});
+  await testEnv.withSecurityRulesDisabled(async c=>{const seed=c.firestore();await setDoc(doc(seed,'usuarios',p.uid),{...userDoc(p),cargoChave:'vendedor'});await setDoc(doc(seed,'caixas',caixaId),box);});
+  const app=firebase.initializeApp({projectId},'fechamento_sdk_'+Date.now());
+  const db=app.firestore();const [host,port]=(process.env.FIRESTORE_EMULATOR_HOST||'127.0.0.1:8080').split(':');
+  db.useEmulator(host,Number(port),{mockUserToken:{sub:p.uid,user_id:p.uid}});
+  const env={console,db,firebase:{firestore:Object.assign(()=>db,{FieldValue:firebase.firestore.FieldValue})},IntegroOperacional:{hojeSP:()=> '2026-10-07',dataHoraSP:()=> '2026-10-08T11:00:00-03:00',centavosParaNumero:n=>n/100}};env.window=env;vm.createContext(env);
+  Function('window','firebase',fs.readFileSync(path.join(__dirname,'../js/services/financial-operations.js'),'utf8'))(env,env.firebase);
+  const snapshot={caixa:{id:caixaId,...box},versaoCalculo:'fechamento_caixa_v1',dataOperacional:box.dataOperacional,caixaInicialCentavos:-472100,caixaFinalEsperadoCentavos:-389300,carteiraInicialCentavos:0,carteiraFinalCentavos:0,totalVendasCentavos:130000,totalPagamentosCentavos:212800,totalIngressosCentavos:0,totalGastosCentavos:0,totalRetiradasCentavos:0,totalRecolhimentosCentavos:0,totalAjustesCentavos:0,totalCobrancas:5,totalVisitadas:5,totalPagas:5,totalNaoPagas:0,pendenciasCobranca:0,pagamentosPendentes:0};
+  try {
+    await assertFails(db.collection('caixas').where('clientePlataformaId','==',p.tenant).where('vendedorId','==','documento_vendedor').where('status','in',['ABERTO','REABERTO']).limit(20).get());
+    await assertSucceeds(env.IntegroCaixa.registrarFechamentoCaixaTransacional({usuario:{id:'documento_vendedor',authUid:p.uid,tipoUsuario:'vendedor',clientePlataformaId:p.tenant},caixaId,clientePlataformaId:p.tenant,vendedorId:'documento_vendedor',vendedorAuthUid:p.uid,valorInformadoCentavos:-389300,snapshot}));
+    assert.equal((await getDoc(doc(appDb(p),'caixas',caixaId))).data().status,'FECHADO');
+  } finally { await app.delete(); }
+});
+
+ test("movimentos: administrador não cria diretamente; vendedor mantém gastos e retiros no caixa aberto",async()=>{
+  for(const profile of [profiles.masterA,profiles.financeiroA,profiles.gerenteFinanceiroA])for(const tipo of ["INGRESSO","GASTO","RETIRADA"])for(const caixaId of ["caixa_a_1","caixa_fechado"]){
+   await assertFails(setDoc(doc(appDb(profile),"lancamentos_financeiros",`lf_guard_${profile.uid}_${tipo}_${caixaId}`),ledger({caixaId,tipoLancamento:tipo,natureza:tipo==="INGRESSO"?"CREDITO":"DEBITO",origem:"LANCAMENTO_ADMINISTRATIVO",criadoPorId:profile.uid})));
+  }
+  for(const tipo of ["GASTO","RETIRADA"]){await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1),"lancamentos_financeiros",`lf_${tipo.toLowerCase()}_seller_guard`),ledger({tipoLancamento:tipo,natureza:"DEBITO",criadoPorId:profiles.vendedor1.uid})));await assertFails(setDoc(doc(appDb(profiles.vendedor1),"lancamentos_financeiros",`lf_${tipo.toLowerCase()}_closed_guard`),ledger({caixaId:"caixa_fechado",tipoLancamento:tipo,natureza:"DEBITO",criadoPorId:profiles.vendedor1.uid})));}
+ });
+ test("movimentos: aprovação atômica preservada e referência falsa bloqueada",async()=>{
+  await testEnv.withSecurityRulesDisabled(async context=>setDoc(doc(context.firestore(),"solicitacoes","sol_a_1"),solicitacao({caixaId:"caixa_a_1"})));
+  const database=appDb(profiles.financeiroA), entryId="lf_ingresso_sol_guard";
+  const payload=ledger({lancamentoId:entryId,tipoLancamento:"INGRESSO",natureza:"CREDITO",origemId:"sol_a_1",valorCentavos:1000,criadoPorId:profiles.financeiroA.uid});
+  await assertFails(setDoc(doc(database,"lancamentos_financeiros",entryId),payload));
+  const batch=writeBatch(database);batch.set(doc(database,"lancamentos_financeiros",entryId),payload);batch.update(doc(database,"solicitacoes","sol_a_1"),{status:"APROVADA",statusSolicitacao:"APROVADA",lancamentoFinanceiroId:entryId,aprovadoPor:profiles.financeiroA.uid});await assertSucceeds(batch.commit());
+ });
+
+ test("movimentos: correção mantém substituição auditada no caixa aberto",async()=>{
+  const database=appDb(profiles.masterA), entryId="lf_gasto_correction_guard";
+  const payload=ledger({lancamentoId:entryId,tipoLancamento:"GASTO",natureza:"DEBITO",origem:"EDICAO_ADMINISTRATIVA",criadoPorId:profiles.masterA.uid,metadados:{substituiLancamentoId:"lf_gasto_aberto"}});
+  await assertFails(setDoc(doc(database,"lancamentos_financeiros",entryId),payload));
+  const batch=writeBatch(database);batch.set(doc(database,"lancamentos_financeiros",entryId),payload);batch.update(doc(database,"lancamentos_financeiros","lf_gasto_aberto"),{statusLancamento:"CANCELADO",substituidoPorLancamentoId:entryId,canceladoPorId:profiles.masterA.uid,canceladoPorNome:"Master",motivoCancelamento:"Correção",canceladoEm:"ts2",atualizadoEm:"ts2"});await assertSucceeds(batch.commit());
+ });

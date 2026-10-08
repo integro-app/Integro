@@ -10,6 +10,8 @@
   let installed = false;
   let functionLoader = null;
   let localActivity = Date.now();
+  let ultimaValidacao = null;
+  let retomadaEmAndamento = null;
 
   function text(value) { return String(value ?? "").trim(); }
   function randomId() {
@@ -99,6 +101,7 @@
     const id = sessionId();
     if (!id || !currentUser()) return false;
     const result = await callable("validarSessaoV27", { sessionId: id });
+    if (result?.ok === true) ultimaValidacao = { uid: currentUser()?.uid, id, em: Date.now() };
     return result?.ok === true;
   }
 
@@ -120,6 +123,7 @@
     if (heartbeatTimer) clearInterval(heartbeatTimer);
     if (inactivityTimer) clearInterval(inactivityTimer);
     heartbeatTimer = inactivityTimer = null;
+    ultimaValidacao = null;
   }
 
   async function expireNow() {
@@ -158,12 +162,22 @@
   }
 
   async function resume() {
-    if (!currentUser()) return false;
-    if (!sessionId()) return false;
-    await heartbeat();
-    registerActivity();
-    runTimers();
-    return true;
+    const usuario = currentUser(), id = sessionId();
+    if (!usuario || !id) return false;
+    if (retomadaEmAndamento) return retomadaEmAndamento;
+    retomadaEmAndamento = (async () => {
+      const recente = ultimaValidacao?.uid === usuario.uid && ultimaValidacao.id === id && Date.now() - ultimaValidacao.em < 5000;
+      if (!recente && !(await heartbeat())) return false;
+      registerActivity();
+      // Reusar a verificação da mesma sessão evita outra chamada após usuario-validado.
+      if (!heartbeatTimer) {
+        const validacao = ultimaValidacao;
+        runTimers();
+        ultimaValidacao = validacao;
+      }
+      return true;
+    })().finally(() => { retomadaEmAndamento = null; });
+    return retomadaEmAndamento;
   }
 
   async function invalidateUserSessions(targetUid = "") {

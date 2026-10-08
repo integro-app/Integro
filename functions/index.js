@@ -203,3 +203,6 @@ const cicloCaixa = criarCicloCaixa({ db, functions });
 exports.abrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(cicloCaixa.abrir);
 exports.reabrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(cicloCaixa.reabrir);
 exports.consultarDatasCaixaEquipe = functions.region("southamerica-east1").https.onCall(cicloCaixa.datasEquipe);
+
+const {criarMovimentacoesAdministrativas}=require("./admin-movements");
+exports.registrarMovimentacaoAdministrativa=functions.region("southamerica-east1").https.onCall(criarMovimentacoesAdministrativas({db,functions}).registrar);

@@ -112,6 +112,13 @@
     return state.boxes.find(box => String(box.id) === id) || null;
   }
 
+  function closedBoxes() {
+    return state.boxes.filter(box => ["FECHADO","FECHADA"].includes(U().upper(box.status||box.statusCaixa)) && box.excluido!==true && !state.boxes.some(other => other.excluido!==true && (
+      (["ABERTO","REABERTO"].includes(U().upper(other.status||other.statusCaixa)) && ((box.vendedorId && other.vendedorId===box.vendedorId) || (box.equipeId && other.equipeId===box.equipeId))) ||
+      (box.vendedorId && other.vendedorId===box.vendedorId && String(other.dataOperacional||other.dataCaixa||"")>String(box.dataOperacional||box.dataCaixa||""))
+    )));
+  }
+
   function openBoxes() {
     return state.boxes.filter(box => ["ABERTO", "REABERTO"].includes(U().upper(box.status || box.statusCaixa)));
   }
@@ -145,7 +152,7 @@
     const boxId = String(item?.caixaId || preset.boxId || "");
     const type = U().upper(item?.tipoLancamento || preset.type || "");
     const categoryId = String(item?.categoriaId || item?.metadados?.categoriaId || "");
-    const boxes = openBoxes();
+    const boxes = editing ? openBoxes() : closedBoxes();
     return `<div class="unified-filterbar" style="display:grid;grid-template-columns:1fr;gap:12px">
       <label>Caixa<select id="finMovCaixa" ${editing ? "disabled" : ""}><option value="">Selecione o caixa</option>${boxes.map(box => `<option value="${U().esc(box.id)}"${String(box.id) === boxId ? " selected" : ""}>${U().esc(box.vendedorNome || box.nomeVendedor || box.vendedorId || "Caixa")} • ${U().esc(box.dataOperacional || box.data || "-")} • ${U().esc(box.status || "")}</option>`).join("")}</select></label>
       <label>Tipo<select id="finMovTipo" onchange="IntegroFinanceiroUnificado.updateMovementCategories()"><option value="">Selecione</option><option value="INGRESSO"${type === "INGRESSO" ? " selected" : ""}>Ingresso</option><option value="GASTO"${type === "GASTO" ? " selected" : ""}>Gasto</option><option value="RETIRADA"${type === "RETIRADA" ? " selected" : ""}>Retirada</option></select></label>
@@ -578,6 +585,11 @@
 
   function empty(message) { return `<div class="unified-empty"><div><span class="material-symbols-rounded">manage_search</span><strong>${U().esc(message)}</strong></div></div>`; }
 
+  function openType(value) {
+    if (!['','INGRESSO','GASTO','RETIRADA','RECOLHIMENTO','AJUSTE'].includes(value)) return false;
+    state.filters.type=value;state.page=1;applyFilters();openTab('lancamentos');return true;
+  }
+
   function openTab(tab) {
     state.activeTab = tab;
     document.querySelectorAll("[data-fin-tab]").forEach(button => button.classList.toggle("active", button.dataset.finTab === tab));
@@ -643,7 +655,7 @@
 
   function openNewMovement(preset = {}) {
     if (!canManageMovements()) return U().notify("Usuário sem permissão para criar lançamentos.", "err");
-    if (!openBoxes().length) return U().notify("Não existe caixa aberto ou reaberto para receber o lançamento.", "err");
+    if (!closedBoxes().length) return U().notify("Lançamentos administrativos exigem o último caixa fechado e nenhum caixa aberto na equipe ou vendedor.", "err");
     U().openDrawer("Novo lançamento", "O lançamento válido impactará automaticamente o caixa selecionado.", movementFormHtml(null, preset || {}));
     setTimeout(updateMovementCategories, 0);
   }
@@ -676,7 +688,7 @@
     if (!boxId || !["INGRESSO", "GASTO", "RETIRADA"].includes(type) || !category || valueCents <= 0) return U().notify("Preencha caixa, tipo, categoria e valor.", "err");
     if (editingId && !editReason) return U().notify("Informe o motivo da edição.", "err");
     const box = state.boxes.find(item => String(item.id) === String(boxId));
-    if (!box || !["ABERTO", "REABERTO"].includes(U().upper(box.status || box.statusCaixa))) return U().notify("O caixa precisa estar aberto ou reaberto.", "err");
+    if (!box || !(editingId ? openBoxes() : closedBoxes()).includes(box)) return U().notify(editingId ? "Reabra o caixa para editar." : "Selecione o último caixa fechado, sem caixas abertos na equipe ou vendedor.", "err");
     const lock = `${editingId ? "edit" : "new"}:${editingId || boxId}`;
     if (state.locks.has(lock)) return;
     state.locks.add(lock);
@@ -809,5 +821,5 @@
   });
   document.addEventListener("DOMContentLoaded", () => setTimeout(() => activate(U()?.user?.()), 0));
 
-  global.IntegroFinanceiroUnificado = Object.freeze({ mount, load, applyRealtimeData, openTab, setPeriod, applyCustomPeriod, readFilters, clearFilters, setSort, loadMore, openEntry, openNewMovement, openEditMovement, updateMovementCategories, saveMovement, deleteMovement, reverse, openBox, regularize, exportCsv, renderApprovals, readApprovalFilters, clearApprovalFilters, openApproval, openApproveRequest, approveRequest, openRejectRequest, rejectRequest, get state() { return state; } });
+  global.IntegroFinanceiroUnificado = Object.freeze({ mount, load, applyRealtimeData, openTab, openType, setPeriod, applyCustomPeriod, readFilters, clearFilters, setSort, loadMore, openEntry, openNewMovement, openEditMovement, updateMovementCategories, saveMovement, deleteMovement, reverse, openBox, regularize, exportCsv, renderApprovals, readApprovalFilters, clearApprovalFilters, openApproval, openApproveRequest, approveRequest, openRejectRequest, rejectRequest, get state() { return state; } });
 })(window);

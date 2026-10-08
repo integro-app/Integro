@@ -17,7 +17,7 @@
 
   function ensureCss() {
     if (document.getElementById("controleFinanceiroPremiumCss")) return;
-    const link=document.createElement("link"); link.id="controleFinanceiroPremiumCss"; link.rel="stylesheet"; link.href="css/controle-financeiro-premium.css?v=20260817-v27-2"; document.head.appendChild(link);
+    const link=document.createElement("link"); link.id="controleFinanceiroPremiumCss"; link.rel="stylesheet"; link.href="css/controle-financeiro-premium.css?v=20260817-v27-2&build=20261008-paleta1"; document.head.appendChild(link);
   }
   function syncFromUi() {
     const uiState = UI()?.state;

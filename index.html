@@ -520,7 +520,8 @@
     }
   </style>
   <link href="css/integro-mobile.css?v=20260818-v272-perf1" rel="stylesheet">
-  <link href="css/integro-loading.css?v=20260827-single1" rel="stylesheet">
+  <link href="css/integro-loading.css?v=20260827-single1&build=20261008-cardfixo1" rel="stylesheet">
+  <link rel="stylesheet" href="css/integro-logo.css?v=20261008-amarelo1">
 </head>
 
 <body>
@@ -599,12 +600,13 @@
     <div class="login-flow-card">
       <div class="login-flow-brand" aria-label="ÍNTEGRO">ÍNTE<span>GRO</span></div>
       <div class="login-flow-spinner" aria-hidden="true"></div>
-      <h2>Acessando sua conta</h2>
+      <h2>Preparando seu acesso</h2>
       <p id="loginFlowStep" class="login-flow-step">Preparando seu acesso...</p>
       <div class="login-flow-track">
         <div id="loginFlowProgress" class="login-flow-progress" role="progressbar" aria-label="Progresso do acesso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
       </div>
-      <p id="loginFlowHint" class="login-flow-hint">Conectando com segurança ao ÍNTEGRO</p>
+      <p id="loginFlowPercent" class="integro-loader-percent">0%</p>
+      <p id="loginFlowHint" class="login-flow-hint" hidden>Conectando com segurança ao ÍNTEGRO</p>
     </div>
   </section>
 
@@ -622,7 +624,7 @@
   <!-- Serviços -->
   <script src="js/services/firestore.js?v=20260728-3"></script>
   <script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
-  <script src="js/services/v27-session-service.js?v=20260827-login-flow1"></script>
+  <script src="js/services/v27-session-service.js?v=20261008-login-caixa1"></script>
 
   <!-- Utilitários -->
   <script src="js/utils/validators.js"></script>
@@ -630,7 +632,7 @@
 
   <!-- Core da aplicação -->
   <script src="js/app.js?v=20260812-v24-6"></script>
-  <script src="js/auth.js?v=20260827-single-loading1"></script>
+  <script src="js/auth.js?v=20261008-login-caixa1&build=20261008-continuo2"></script>
 
   <!-- Helpers de login -->
   <script>

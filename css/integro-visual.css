@@ -1,0 +1,230 @@
+/* ÍNTEGRO — evolução visual compartilhada. Login, loaders e cards KPI preservados. */
+html body[data-integro-page]:not([data-integro-page="login"]) {
+  --iv-border: #e3e9f1;
+  --iv-muted: #607087;
+  --iv-field: #f8fafc;
+  background-color: #f4f6fa;
+}
+/* A estrutura existente controla o posicionamento e a abertura do menu. */
+html body[data-integro-page] .sidebar {
+  background: linear-gradient(180deg, #071a33 0%, #0a2346 100%) !important;
+  border-right: 1px solid rgba(255,255,255,.08);
+  box-shadow: 8px 0 30px rgba(7,26,51,.06);
+}
+html body[data-integro-page] #integroSidebarMenu.integro-sidebar-menu-unificado {
+  gap: 6px;
+  padding: 12px 14px 24px;
+}
+html body[data-integro-page] #integroSidebarMenu .menu-item {
+  min-height: 46px !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #c6d4e6 !important;
+  background:transparent !important;
+  box-shadow: none !important;
+}
+html body[data-integro-page] #integroSidebarMenu .menu-item:hover {
+  background: rgba(255,255,255,.06) !important;
+  color: #fff !important;
+}
+html body[data-integro-page] #integroSidebarMenu .menu-item.active {
+  background: #123458 !important;
+  border-color: rgba(125,170,225,.18) !important;
+  color: #fff !important;
+}
+html body[data-integro-page] #integroSidebarMenu .menu-item.active::before {
+  background: #ff8a00 !important;
+  border-radius: 0 4px 4px 0;
+}
+html body[data-integro-page] .sidebar .menu-subitem {
+  border-radius: 9px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  color: #b7c8df !important;
+  box-shadow: none !important;
+}
+html body[data-integro-page] .sidebar .menu-subitem.active {
+  color: #fff !important;
+  background: rgba(255,138,0,.12) !important;
+}
+/* Superfícies: menos sombras e mais espaço entre as áreas de trabalho. */
+html body[data-integro-page] main .screen.integro-shared-screen > .section-card.integro-shared-surface {
+  padding: 28px !important;
+  border-color: var(--iv-border) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 4px 20px rgba(15,35,64,.035) !important;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-header,
+html body[data-integro-page] :is(.integro-page-header-standard,.cx-head) {
+  gap: 16px !important;
+  margin-bottom: 22px !important;
+  align-items: center;
+}
+html body[data-integro-page] .integro-shared-surface .integro-shared-header :is(h1,h2),
+html body[data-integro-page] :is(.integro-page-header-standard,.cx-head) :is(h1,h2) {
+  font-size: clamp(24px, 1.6vw + 8px, 30px) !important;
+  font-weight: 750 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -.7px !important;
+}
+html body[data-integro-page] .cx-head p { font-size: 13px; color: var(--iv-muted); line-height: 1.5; }
+/* Submenus contínuos: mesma indicação de seleção no desktop e no celular. */
+html body[data-integro-page] :is(.integro-shared-surface,.screen,.unified-profile-module) :is(.integro-shared-nav,.integro-horizontal-module-nav,.unified-profile-tabs,.clientes-module-nav,.config-module-nav,.vendedor-operacao-tabs,[data-dashboard-navigation]),
+html body[data-integro-page] [data-caixas-supervisao] .cx-tabs {
+  display: flex !important;
+  gap: 6px !important;
+  min-height: 50px !important;
+  padding: 0 0 8px !important;
+  margin: 0 0 22px !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--iv-border) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scrollbar-width: thin !important;
+  scroll-padding-inline: 8px;
+}
+html body[data-integro-page] :is(.integro-shared-surface,.screen,.unified-profile-module) :is(.integro-shared-nav,.integro-horizontal-module-nav,.unified-profile-tabs,.clientes-module-nav,.config-module-nav,.vendedor-operacao-tabs,[data-dashboard-navigation]) > button,
+html body[data-integro-page] [data-caixas-supervisao] .cx-tabs > button {
+  position: relative;
+  flex: 0 0 auto !important;
+  min-height: 44px !important;
+  padding: 10px 14px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--iv-muted) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  white-space: nowrap;
+  box-shadow: none !important;
+}
+html body[data-integro-page] :is(.integro-shared-surface,.screen,.unified-profile-module) :is(.integro-shared-nav,.integro-horizontal-module-nav,.unified-profile-tabs,.clientes-module-nav,.config-module-nav,.vendedor-operacao-tabs,[data-dashboard-navigation]) > button:is(.active,[aria-selected="true"]),
+html body[data-integro-page] [data-caixas-supervisao] .cx-tabs > button.active {
+  background: #fff2df !important;
+  color: #071a33 !important;
+  font-weight: 700 !important;
+  box-shadow: inset 0 -2px 0 #ff8a00 !important;
+}
+/* Controles somente nas áreas de filtros: campos financeiros e modais mantêm suas regras. */
+html body[data-integro-page] :is(.cx-filters,.cx-searchbar,.unified-filterbar,.clientes-master-searchbar,.vendedor-filtros-grid,.vendedor-filtros-periodo) :is(input:not([type="checkbox"]):not([type="radio"]),select) {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 44px !important;
+  border: 1px solid #d9e2ee !important;
+  border-radius: 11px !important;
+  background-color: #fff !important;
+  color: #17314f !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  box-shadow: none !important;
+}
+html body[data-integro-page] :is(.cx-filters,.unified-filterbar,.vendedor-filtros-grid) label {
+  font-weight: 600 !important;
+  font-size: 12px;
+  color: var(--iv-muted);
+}
+html body[data-integro-page] main :is(.ghost-btn,.secondary-btn) {
+  min-height: 44px;
+  border-radius: 11px;
+  box-shadow: none;
+}
+html body[data-integro-page] main :is(button,input,select,summary,a):focus-visible {
+  outline: 3px solid rgba(22,119,255,.45);
+  outline-offset: 3px;
+}
+html body[data-integro-page] .cx-searchbar { display:flex; gap:12px; align-items:center; margin:0 0 14px; }
+html body[data-integro-page] .cx-searchbar label { flex:1; min-width:0; }
+html body[data-integro-page] .cx-searchbar input { width:100%; padding:12px 14px; }
+html body[data-integro-page] .cx-filter-options { border:1px solid var(--iv-border); border-radius:12px; margin:0 0 20px; background:var(--iv-field); }
+html body[data-integro-page] .cx-filter-options summary { min-height:48px; padding:12px 16px; cursor:pointer; color:#17314f; font-size:13px; font-weight:600; }
+html body[data-integro-page] .cx-filter-options summary span { color:var(--iv-muted); font-weight:400; margin-left:8px; }
+html body[data-integro-page] .cx-filter-options .cx-filters { padding:4px 16px 16px; margin:0; grid-template-columns:repeat(2,minmax(0,1fr)); }
+html body[data-integro-page] .cx-filter-options button { padding:8px 14px; }
+html body[data-integro-page] :is(.cx-table-scroll,.unified-table-wrap) { border-color:var(--iv-border); }
+html body[data-integro-page] .cx-table-scroll :is(th,td) { padding:16px 14px; }
+html body[data-integro-page] .cx-table-scroll th { background:#f8fafc; color:#607087; font-weight:600; letter-spacing:.025em; }
+html body[data-integro-page] .cx-table-scroll tbody tr:hover { background:#f8fafc; }
+@media(max-width:760px) {
+  html body[data-integro-page] main .screen.integro-shared-screen > .section-card.integro-shared-surface { padding:16px !important; border-radius:18px !important; }
+  html body[data-integro-page] .integro-shared-surface .integro-shared-header { flex-wrap:wrap !important; gap:12px !important; }
+  html body[data-integro-page] .integro-shared-surface .integro-shared-actions { max-width:100%; flex-wrap:wrap !important; }
+  html body[data-integro-page] .integro-shared-surface .integro-shared-actions :is(button,select) { min-height:44px !important; min-width:0 !important; }
+  html body[data-integro-page] .cx-filter-options .cx-filters { grid-template-columns:1fr; }
+  html body[data-integro-page] .cx-filter-options summary span { display:block; margin:4px 0 0; }
+  html body[data-integro-page] .cx-head { align-items:flex-start; }
+}
+@media(prefers-reduced-motion:reduce) {
+  html body[data-integro-page] :is(.integro-shared-nav,.cx-tabs) button { transition:none !important; }
+}
+
+html body[data-integro-page] .cx-filter-options .cx-filters > button { grid-column:1/-1; justify-self:end; }
+html body[data-integro-page] .cx-head { flex-wrap:nowrap; }
+html body[data-integro-page] .cx-head > div { flex:1; min-width:0; }
+html body[data-integro-page] .cx-head > button { flex-shrink:0; }
+/* A mesma informação vira uma ficha legível sem arrastar colunas no celular. */
+@media(max-width:760px) {
+  html body[data-integro-page] .cx-table-scroll { overflow:visible; border:0; background:transparent; }
+  html body[data-integro-page] .cx-table-scroll table { width:100%; min-width:0 !important; display:block; }
+  html body[data-integro-page] .cx-table-scroll thead { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); }
+  html body[data-integro-page] .cx-table-scroll tbody { display:grid; gap:12px; }
+  html body[data-integro-page] .cx-table-scroll tbody tr { position:relative; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); padding:14px; background:#fff; border:1px solid var(--iv-border); border-radius:14px; }
+  html body[data-integro-page] .cx-table-scroll td { display:block; min-width:0; width:auto; padding:9px 4px; white-space:normal; border:0; font-size:13px; }
+  html body[data-integro-page] .cx-table-scroll td:first-child:not([colspan]) { position:absolute; top:20px; left:14px; padding:0; }
+  html body[data-integro-page] .cx-table-scroll td:nth-child(2),
+  html body[data-integro-page] .cx-table-scroll td:nth-child(3) { grid-column:1/-1; padding-left:32px; }
+  html body[data-integro-page] .cx-table-scroll td:last-child { grid-column:1/-1; }
+  html body[data-integro-page] .cx-table-scroll td[data-label]::before { content:attr(data-label); display:block; color:var(--iv-muted); font-size:11px; font-weight:500; margin-bottom:6px; }
+  html body[data-integro-page] .cx-table-scroll td[colspan] { grid-column:1/-1; }
+  html body[data-integro-page] .cx-table-scroll .cx-progress { min-width:0; }
+  html body[data-integro-page] .cx-table-scroll .cx-progress progress { min-width:0; width:100%; }
+}
+
+
+/* Categorias e submenus na navegação principal. */
+html body[data-integro-page] #integroSidebarMenu .iv-sidebar-children { display:grid; gap:4px; margin:0 0 8px 14px; padding:6px 0 6px 10px; border-left:1px solid rgba(255,138,0,.3); }
+html body[data-integro-page] #integroSidebarMenu .iv-sidebar-children[hidden] { display:none !important; }
+html body[data-integro-page] #integroSidebarMenu .iv-nav-child {
+  display:flex; align-items:center; justify-content:flex-start !important; gap:10px; width:100%; min-height:44px;
+  padding:10px 12px; border:1px solid transparent; border-radius:10px;
+  background:transparent; color:#c6d4e6; text-align:left !important;
+  font:500 12px/1.35 Inter,Arial,sans-serif; cursor:pointer;
+}
+html body[data-integro-page] #integroSidebarMenu .iv-nav-child .material-symbols-rounded { font-size:18px; flex-shrink:0; }
+html body[data-integro-page] #integroSidebarMenu button.menu-item:hover,
+html body[data-integro-page] #integroSidebarMenu button.iv-nav-child:hover {
+  background:rgba(255,255,255,.055) !important; border-color:rgba(180,205,235,.12) !important; color:#fff !important;
+}
+html body[data-integro-page] #integroSidebarMenu button.menu-item:is(.active,:focus-visible) {
+  background:linear-gradient(135deg,#193552,#112840) !important;
+  border-color:rgba(160,193,231,.15) !important; color:#f3f7fc !important;
+  box-shadow:inset 3px 0 0 #dfa35f !important;
+}
+html body[data-integro-page] #integroSidebarMenu button.iv-nav-child:is(.active,:focus-visible) {
+  background:rgba(255,178,90,.09) !important; border-color:rgba(255,178,90,.15) !important;
+  color:#f4f7fc !important; box-shadow:inset 2px 0 0 #dfa35f !important;
+}
+html body[data-integro-page] #integroSidebarMenu button.menu-item:is(.active,:hover,:focus-visible) .menu-label { color:#f3f7fc !important; }
+html body[data-integro-page] #integroSidebarMenu button:is(.active,:hover,:focus-visible) :is(.menu-icon,.material-symbols-rounded,.iv-nav-icon) { color:#efb878 !important; }
+html body[data-integro-page] #integroSidebarMenu :is(.menu-item,.iv-nav-child) { transition:background .16s ease,border-color .16s ease,color .16s ease; }
+html body[data-integro-page] #integroSidebarMenu button:focus-visible { outline:2px solid #ffbd66; outline-offset:2px; }
+html body[data-integro-page] :is(.integro-shared-surface,.screen,.unified-profile-module) :is(.integro-shared-nav,.integro-horizontal-module-nav,.unified-profile-tabs,.clientes-module-nav,.config-module-nav,.vendedor-operacao-tabs,[data-dashboard-navigation]).iv-in-sidebar,
+html body[data-integro-page] .screen .movu-tabs.iv-in-sidebar { display:none !important; }
+html body[data-integro-page] .sidebar.collapsed #integroSidebarMenu .iv-sidebar-children { display:none !important; }
+
+html body[data-integro-page] #integroSidebarMenu .iv-nav-child .material-symbols-rounded { width:20px; text-align:center; }
+
+/* A navegação dos módulos vive exclusivamente no menu principal. */
+html body[data-integro-page].integro-menu-categorias :is(.integro-shared-surface,.screen,.unified-profile-module) :is(.integro-shared-nav,.integro-horizontal-module-nav,.integro-module-nav,.unified-profile-tabs,.clientes-module-nav,.config-module-nav,.vendedor-operacao-tabs,.vendedor-clientes-tabs,.indicacoes-module-nav,.subnav-tabs,[data-dashboard-navigation]),
+html body[data-integro-page].integro-menu-categorias .screen .movu-tabs { display:none !important; }
+
+html body[data-integro-page] #integroSidebarMenu .iv-nav-icon { width:20px; height:20px; display:inline-flex; flex:0 0 20px; color:inherit; }
+html body[data-integro-page] #integroSidebarMenu .menu-icon { display:inline-flex; align-items:center; justify-content:center; flex:0 0 22px; }
+html body[data-integro-page] #integroSidebarMenu :is(.menu-icon,.iv-nav-icon) svg { width:20px; height:20px; display:block; }
+
+html body[data-integro-page].integro-menu-categorias main :is(#dashboard,#clientes,#configuracoes,#auditoria,#vendas,#cobrancas,#operacao,#financeiro,#movimentacoes,#captacao,#indicacoes,#supervisao,#equipes,#caixas,#minhaConta,#notificacoes).screen :is(.integro-shared-nav,.integro-horizontal-module-nav,.integro-module-nav,.unified-profile-tabs,.clientes-module-nav,.config-module-nav,.vendedor-operacao-tabs,.vendedor-clientes-tabs,.indicacoes-module-nav,.subnav-tabs,[data-dashboard-navigation],.movu-tabs) { display:none !important; }

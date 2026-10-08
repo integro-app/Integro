@@ -12,14 +12,14 @@ const login = fs.readFileSync(path.join(root, "index.html"), "utf8");
 test("vendedor valida perfil, tenant e caixa antes de carregar informações operacionais", () => {
   const inicio = vendedor.indexOf('document.addEventListener("DOMContentLoaded", () => {');
   const preflight = vendedor.indexOf('Verificando se o sistema do vendedor está aberto...', inicio);
-  const configuracoes = vendedor.indexOf('Carregando configurações da empresa...', inicio);
+  const configuracoes = vendedor.indexOf('IntegroConfiguracoesEmpresa?.carregar', vendedor.indexOf('Carregando rota de cobrança...', inicio));
   const preparar = vendedor.indexOf('Preparando dados do vendedor...', inicio);
   const rota = vendedor.indexOf('Carregando rota de cobrança...', inicio);
 
   assert.ok(inicio >= 0);
   assert.ok(preflight > inicio, "pré-validação do caixa ausente");
   assert.ok(configuracoes > preflight, "configurações carregadas antes do caixa");
-  assert.ok(preparar > configuracoes, "interface preparada antes do preflight");
+  assert.ok(preparar > preflight, "interface preparada antes do preflight");
   assert.ok(rota > preparar, "dados operacionais carregados antes do preflight");
   assert.match(vendedor.slice(preflight, configuracoes), /verificarAcessoCaixaAberto\(\)/);
   assert.match(vendedor.slice(preflight, configuracoes), /caixaAbertoValido\(window\.caixaAtual\)/);
