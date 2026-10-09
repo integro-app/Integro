@@ -22,10 +22,15 @@ const index = read("functions", "index.js");
 const rules = read("firestore.rules");
 
 test("V27.2 identifica build e bootstrap consolidados", () => {
-  assert.match(bootstrap, /27\.2\.0-consolidacao/);
-  assert.match(bootstrap, /20260817-v27-2/);
+  assert.match(bootstrap, /27\.2\.1-fechamento-caixa/);
+  const build = bootstrap.match(/const VERSION = "([^"]+)"/)?.[1];
+  assert.equal(build, "20261007-fechamento-caixa");
+  const bootstrapSrc = firebaseConfig.match(/script\.src = "([^"]*v27-bootstrap\.js[^"]*)"/)?.[1];
+  assert.ok(bootstrapSrc, "Firebase deve carregar o bootstrap versionado");
+  const bootstrapUrl = new URL(bootstrapSrc, "https://integro.test/");
+  assert.equal(bootstrapUrl.searchParams.get("v"), build);
+  assert.equal(bootstrapUrl.searchParams.get("build"), build);
   assert.match(firebaseConfig, /versao:\s*"27\.2"/);
-  assert.match(firebaseConfig, /v27-bootstrap\.js\?v=20260817-v27-2/);
 });
 
 test("V27.2 elimina o loop de renderização do financeiro premium", () => {
