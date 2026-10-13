@@ -692,10 +692,10 @@
 
 /* Modelo compacto de cobranças solicitado para o celular. */
 @media (max-width: 760px) {
-  .vendedor-operacao-unificada:has(#abaCobrancas:not([style*="none"])) .vendedor-operacao-header { justify-content:center!important; text-align:center!important; }
+  .vendedor-operacao-unificada:has(#abaCobrancas:not([style*="none"])) .vendedor-operacao-header { justify-content:flex-start!important; text-align:left!important; }
   .vendedor-operacao-unificada:has(#abaCobrancas:not([style*="none"])) .vendedor-operacao-header > div { width:100%; }
   .vendedor-operacao-unificada:has(#abaCobrancas:not([style*="none"])) .vendedor-operacao-tabs { display:none!important; }
-  #vendedorOperacaoTitulo { text-align:center!important; font-size:20px!important; }
+  #vendedorOperacaoTitulo { text-align:left!important; font-size:20px!important; }
   #abaCobrancas .vendedor-operacao-barra { display:grid!important; grid-template-columns:minmax(0,1fr) 42px 42px!important; gap:6px!important; }
   #abaCobrancas .vendedor-operacao-busca { grid-column:1!important; grid-row:1!important; min-width:0!important; height:42px!important; }
   #abaCobrancas .vendedor-operacao-busca input { min-width:0!important; width:100%!important; font-size:12px!important; }
@@ -717,4 +717,25 @@
   #listaCobrancas .cobranca-actions-clean .btn { font-size:12px!important; gap:5px!important; }
   #listaCobrancas .cobranca-actions-clean .btn-nao-pago-clean { order:0!important; background:#e98688!important; }
   #listaCobrancas .cobranca-actions-clean .btn-pago-clean { order:1!important; }
+}
+
+/* Cabeçalho de cobranças na mesma linha do menu mobile. */
+@media (max-width:760px) {
+  body[data-integro-page].integro-mobile-app-mode:has(.screen.active #abaCobrancas:not([style*="none"])) :is(.main,.main-content,#mainContent) { padding-top:max(8px,env(safe-area-inset-top))!important; }
+  .vendedor-operacao-unificada:has(#abaCobrancas:not([style*="none"])) { margin-top:0!important; padding-top:0!important; border:0!important; border-radius:0!important; }
+  .vendedor-operacao-header:has(#vendedorOperacaoTitulo) { display:flex!important; align-items:center!important; box-sizing:border-box!important; min-height:42px!important; height:42px!important; margin:0 0 8px!important; padding:0 0 0 52px!important; }
+  #vendedorOperacaoTitulo { margin:0!important; line-height:42px!important; }
+  #abaCobrancas > .vendedor-operacao-barra { margin:0 0 10px!important; padding:0!important; align-items:center!important; grid-template-rows:42px!important; }
+  #abaCobrancas .vendedor-operacao-busca { min-height:42px!important; max-height:42px!important; margin:0!important; padding:0 10px!important; box-sizing:border-box!important; width:100%!important; }
+  #abaCobrancas .vendedor-operacao-barra > button { margin:0!important; box-sizing:border-box!important; align-self:center!important; }
+}
+
+@media (max-width:760px) {
+  #statusFechamentoCobrancasFinal { display:none!important; }
+  #btnFecharCaixaCobrancas:disabled { opacity:.35!important; filter:grayscale(.35)!important; box-shadow:none!important; cursor:not-allowed!important; }
+  #btnFecharCaixaCobrancas:not(:disabled) { opacity:1!important; filter:none!important; }
+}
+
+@media (max-width:760px) {
+  #listaCobrancas .cobranca-status-row > .cobranca-chip-status:nth-child(2) { display:none!important; }
 }
