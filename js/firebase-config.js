@@ -54,7 +54,7 @@ window.db = db;
 (function carregarBootstrapV27() {
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
-  script.src = "js/v27-bootstrap.js?v=20261007-fechamento-caixa&build=20261007-fechamento-caixa";
+  script.src = "js/v27-bootstrap.js?v=20261013-mobile1&build=20261013-mobile1";
   script.async = false;
   script.dataset.integroV27Bootstrap = "1";
   document.head.appendChild(script);

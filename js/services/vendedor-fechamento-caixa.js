@@ -13,6 +13,7 @@
   let fechamentoEmAndamento = false;
   let acessoEmVerificacao = false;
   let observer = null;
+  let limparViewportDialogo = null;
 
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor)
@@ -204,12 +205,50 @@
       .integro-fechamento-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 22px 22px}.integro-fechamento-actions button{min-height:46px;padding:0 18px;border-radius:14px;border:0;font-weight:800;cursor:pointer}.integro-fechamento-actions .secundario{background:#f1f5f9;color:#0f172a}.integro-fechamento-actions .primario{background:#f97316;color:#fff}.integro-fechamento-actions button:disabled{opacity:.45;cursor:not-allowed}
       .integro-encerramento{padding:30px 24px 26px;text-align:center}.integro-encerramento .spinner{width:48px;height:48px;margin:0 auto 18px;border:4px solid #e2e8f0;border-top-color:#f97316;border-radius:50%;animation:integroFechamentoSpin .8s linear infinite}.integro-encerramento h2{margin:0 0 7px}.integro-encerramento>p{margin:0 0 20px;color:#64748b}.integro-encerramento-etapas{display:grid;gap:9px;text-align:left}.integro-encerramento-etapa{padding:12px 14px;border:1px solid #e2e8f0;border-radius:14px;color:#64748b;font-weight:700}.integro-encerramento-etapa.processando{border-color:#fdba74;background:#fff7ed;color:#9a3412}.integro-encerramento-etapa.ok{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.integro-encerramento-etapa.erro{border-color:#fecaca;background:#fef2f2;color:#991b1b}.integro-encerramento-erro{margin-top:16px;padding:14px;border-radius:14px;background:#fef2f2;color:#991b1b;text-align:left}
       @keyframes integroFechamentoSpin{to{transform:rotate(360deg)}}
-      @media(max-width:560px){.integro-fechamento-dialog{width:calc(100vw - 12px);max-height:calc(100vh - 12px);border-radius:20px}.integro-fechamento-head{padding:18px 16px 8px}.integro-fechamento-body{padding:10px 16px 18px}.integro-fechamento-grid{grid-template-columns:1fr}.integro-fechamento-card.destaque{grid-column:auto}.integro-fechamento-actions{padding:0 16px 18px;position:sticky;bottom:0;background:#fff}.integro-fechamento-actions button{flex:1}.integro-fechamento-head h2{font-size:21px}}
+      @media(max-width:760px){
+        body:has(#integroVendedorFechamentoDialog[open]){overflow:hidden!important;overscroll-behavior:none}
+        #integroVendedorFechamentoDialog[open]{position:fixed;inset:var(--integro-fechamento-topo,0px) 0 auto;margin:0;width:100%;max-width:100%;height:100vh;height:var(--integro-fechamento-altura,100dvh);max-height:100vh;max-height:var(--integro-fechamento-altura,100dvh);border-radius:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;overflow:hidden;box-sizing:border-box;background:#fff;overscroll-behavior:none}
+        #integroVendedorFechamentoDialog .integro-fechamento-head{padding:calc(14px + env(safe-area-inset-top,0px)) 16px 12px;border-bottom:1px solid #e2e8f0;background:#fff;gap:10px}
+        #integroVendedorFechamentoDialog .integro-fechamento-head h2{font-size:20px;line-height:1.25}
+        #integroVendedorFechamentoDialog .integro-fechamento-head p{font-size:13px;line-height:1.4;margin-top:5px}
+        #integroVendedorFechamentoDialog .integro-fechamento-close{flex:0 0 44px;width:44px;height:44px}
+        #integroVendedorFechamentoDialog .integro-fechamento-body{min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px 16px 18px}
+        #integroVendedorFechamentoDialog .integro-fechamento-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+        #integroVendedorFechamentoDialog .integro-fechamento-card{min-width:0;padding:11px 12px;border-radius:12px}
+        #integroVendedorFechamentoDialog .integro-fechamento-card.destaque{grid-column:1/-1}
+        #integroVendedorFechamentoDialog .integro-fechamento-card small{font-size:12px;margin-bottom:4px}
+        #integroVendedorFechamentoDialog .integro-fechamento-card strong{font-size:17px;overflow-wrap:anywhere}
+        #integroVendedorFechamentoDialog .integro-fechamento-card.destaque strong{font-size:24px}
+        #integroVendedorFechamentoDialog .integro-fechamento-conferencia{margin-top:14px;padding:12px;border-radius:12px}
+        #integroVendedorFechamentoDialog .integro-fechamento-conferencia label{font-size:14px;line-height:1.4}
+        #integroVendedorFechamentoDialog .integro-fechamento-conferencia input{height:48px;box-sizing:border-box;font-size:18px}
+        #integroVendedorFechamentoDialog .integro-fechamento-actions{position:static;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid #e2e8f0;background:#fff}
+        #integroVendedorFechamentoDialog .integro-fechamento-actions button{width:100%;min-width:0;min-height:48px;height:auto;padding:10px 8px;font-size:13px;line-height:1.3;border-radius:12px}
+        #integroVendedorFechamentoDialog .integro-encerramento{grid-row:1/-1;min-height:0;overflow-y:auto;padding:calc(24px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px))}
+      }
     `;
     document.head.appendChild(style);
   }
 
+  function acompanharViewportDialogo(dialog) {
+    const viewport = global.visualViewport;
+    if (!viewport) return;
+    const ajustar = () => {
+      dialog.style.setProperty("--integro-fechamento-altura", `${viewport.height}px`);
+      dialog.style.setProperty("--integro-fechamento-topo", `${viewport.offsetTop}px`);
+    };
+    viewport.addEventListener("resize", ajustar);
+    viewport.addEventListener("scroll", ajustar);
+    ajustar();
+    limparViewportDialogo = () => {
+      viewport.removeEventListener("resize", ajustar);
+      viewport.removeEventListener("scroll", ajustar);
+    };
+  }
+
   function removerDialogo() {
+    limparViewportDialogo?.();
+    limparViewportDialogo = null;
     const atual = global.document?.getElementById("integroVendedorFechamentoDialog");
     if (!atual) return;
     try { atual.close?.(); } catch (_) {}
@@ -229,6 +268,7 @@
     });
     document.body.appendChild(dialog);
     dialog.showModal();
+    acompanharViewportDialogo(dialog);
     return dialog;
   }
 
@@ -455,7 +495,9 @@
         if (!conferencia.confere) return;
         executarFechamento(dialog, caixa, conferencia.informadoCentavos);
       });
-      setTimeout(() => input?.focus(), 20);
+      if (!global.matchMedia?.("(max-width: 760px)").matches) {
+        setTimeout(() => input?.focus({ preventScroll: true }), 20);
+      }
     } catch (erro) {
       removerDialogo();
       console.error("[ÍNTEGRO] Não foi possível preparar o fechamento.", erro);
@@ -472,14 +514,16 @@
     const pendentes = cobrancasPendentesHoje();
     const sincronizando = operacoesAindaSincronizando();
     const bloqueado = fechamentoEmAndamento || !caixa || pendentes > 0 || sincronizando > 0;
-    botao.disabled = bloqueado;
-    botao.dataset.integroFechamentoVendedor = "dupla-confirmacao";
-    botao.setAttribute("aria-disabled", String(bloqueado));
+    if (botao.disabled !== bloqueado) botao.disabled = bloqueado;
+    if (botao.dataset.integroFechamentoVendedor !== "dupla-confirmacao") botao.dataset.integroFechamentoVendedor = "dupla-confirmacao";
+    if (botao.getAttribute("aria-disabled") !== String(bloqueado)) botao.setAttribute("aria-disabled", String(bloqueado));
     if (status) {
-      if (!caixa) status.textContent = "Caixa fechado. Um responsável precisa abrir ou reabrir o caixa.";
-      else if (sincronizando > 0) status.textContent = "Aguarde a sincronização das operações antes de fechar.";
-      else if (pendentes > 0) status.textContent = `Fechamento bloqueado: ${pendentes} cobrança(s) ainda sem baixa.`;
-      else status.textContent = "Rota concluída. Fechamento liberado com dupla conferência.";
+      const mensagem = !caixa ? "Caixa fechado. Um responsável precisa abrir ou reabrir o caixa."
+        : sincronizando > 0 ? "Aguarde a sincronização das operações antes de fechar."
+        : pendentes > 0 ? `Fechamento bloqueado: ${pendentes} cobrança(s) ainda sem baixa.`
+        : "Rota concluída. Fechamento liberado com dupla conferência.";
+      // textContent substitui o nó mesmo quando o texto é igual e dispara o observer.
+      if (status.textContent !== mensagem) status.textContent = mensagem;
     }
   }
 

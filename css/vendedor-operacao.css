@@ -1,4 +1,73 @@
 /* Operação do vendedor — camada autoritativa desktop e mobile */
+/* Cobranças: ações no fluxo do cartão em telas pequenas. */
+@media (max-width: 760px) {
+  #listaCobrancas .cobranca-card-operacional {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 14px 12px 14px 18px !important;
+  }
+  #listaCobrancas .cobranca-card-operacional > .cobranca-cliente-clean,
+  #listaCobrancas .cobranca-card-operacional > .cobranca-metricas-clean,
+  #listaCobrancas .cobranca-card-operacional > .cobranca-actions-clean {
+    position: static !important;
+    inset: auto !important;
+    grid-area: auto !important;
+    grid-column: 1 / -1 !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    transform: none !important;
+  }
+  #listaCobrancas .cobranca-cliente-clean { order: 0 !important; }
+  #listaCobrancas .cobranca-metricas-clean {
+    order: 1 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 7px !important;
+  }
+  #listaCobrancas .cobranca-mini-clean strong {
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+  }
+  #listaCobrancas .cobranca-actions-clean {
+    order: 2 !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 8px !important;
+    height: auto !important;
+  }
+  #listaCobrancas .cobranca-actions-clean .btn {
+    position: static !important;
+    inset: auto !important;
+    grid-area: auto !important;
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 44px !important;
+    margin: 0 !important;
+    padding: 10px 12px !important;
+    border-radius: 10px !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+    transform: none !important;
+  }
+  #listaCobrancas .cobranca-actions-clean .btn > span {
+    width: auto !important;
+    white-space: nowrap !important;
+    word-break: normal !important;
+    overflow-wrap: normal !important;
+  }
+}
 #listaCobrancas {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -600,3 +669,22 @@
 .vendedor-fechamento-visitas progress{grid-column:1/-1;width:100%;height:12px;accent-color:#ff8a00}
 .vendedor-operacao-modal.is-fechamento textarea{width:100%;min-height:78px;padding:12px;border:1px solid #cbd5e1;border-radius:14px;font:inherit;box-sizing:border-box}
 @media(max-width:480px){.vendedor-fechamento-saldos{grid-template-columns:1fr;padding:14px}.vendedor-fechamento-metricas{gap:10px}.vendedor-fechamento-saldos strong{font-size:22px}}
+
+/* Espaçamento entre a rota, o aviso e a ação de fechamento. */
+#abaCobrancas .vendedor-fechamento-operacao{display:flex;flex-direction:column;align-items:flex-start;gap:12px;margin-top:20px}
+#abaCobrancas .vendedor-fechamento-operacao .fechamento-status-clean{margin:0;line-height:1.5}
+#abaCobrancas .vendedor-fechamento-operacao > button{margin:0!important}
+@media(max-width:600px){#abaCobrancas .vendedor-fechamento-operacao{margin-top:16px;gap:10px}}
+
+/* Ações integradas à borda direita: duas metades da altura do card. */
+.cobranca-card-operacional{--cobranca-actions-width:160px;grid-template-columns:minmax(240px,.9fr) minmax(0,1.65fr)!important;padding:18px calc(var(--cobranca-actions-width) + 20px) 18px 25px!important;min-height:112px;box-sizing:border-box}
+.cobranca-card-operacional .cobranca-actions-clean{position:absolute;inset:0 0 0 auto;width:var(--cobranca-actions-width);display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:repeat(2,minmax(0,1fr));gap:0!important;margin:0;padding:0;align-items:stretch}
+.cobranca-card-operacional .cobranca-actions-clean .btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:100%!important;min-height:44px!important;box-sizing:border-box;border:0!important;border-radius:0!important;margin:0!important;padding:12px!important;color:#fff!important;font-size:12px;line-height:1.3;white-space:normal;box-shadow:none!important;cursor:pointer!important}
+.cobranca-card-operacional .cobranca-actions-clean .btn-pago-clean{background:#16a34a!important}
+.cobranca-card-operacional .cobranca-actions-clean .btn-nao-pago-clean{background:#dc2626!important;border-top:1px solid rgba(255,255,255,.3)!important}
+.cobranca-card-operacional .cobranca-actions-clean .btn:hover:not(:disabled){filter:brightness(.93)}
+.cobranca-card-operacional .cobranca-actions-clean .btn:focus-visible{outline:3px solid #fff;outline-offset:-5px}
+.cobranca-card-operacional .cobranca-actions-clean .btn.is-active{box-shadow:inset 0 0 0 3px rgba(255,255,255,.75)!important}
+.cobranca-card-operacional .cobranca-actions-clean .btn:disabled{cursor:not-allowed!important}
+@media(max-width:1100px){.cobranca-card-operacional{--cobranca-actions-width:134px;grid-template-columns:minmax(0,1fr)!important}.cobranca-card-operacional .cobranca-metricas-clean{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:600px){.cobranca-card-operacional{--cobranca-actions-width:96px;padding:16px calc(var(--cobranca-actions-width) + 14px) 16px 20px!important}.cobranca-card-operacional .cobranca-actions-clean .btn{flex-direction:column;gap:7px;padding:10px 8px!important}.cobranca-card-operacional .cobranca-actions-clean .btn span:last-child{white-space:normal;text-align:center}}

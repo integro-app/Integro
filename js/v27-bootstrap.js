@@ -5,7 +5,7 @@
   global.__INTEGRO_VERSION__ = "27.2.1-fechamento-caixa";
 
   const loaded = new Map();
-  const VERSION = "20261007-fechamento-caixa";
+  const VERSION = "20261013-mobile1";
   const page = String(global.location?.pathname || "").toLowerCase();
 
   function loadScript(src, key = src) {
@@ -33,7 +33,7 @@
 
   async function loadIfMissing(test, src, key) {
     if (test()) return true;
-    return loadScript(`${src}?v=${VERSION}&build=20261007-fechamento-caixa`, key);
+    return loadScript(`${src}?v=${VERSION}&build=20261013-mobile1`, key);
   }
 
   async function ensureFinance() {
