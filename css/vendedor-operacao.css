@@ -408,7 +408,7 @@
 .vendedor-filtros-side{position:absolute;right:0;top:0;height:100%;width:min(420px,100%);background:#fff;box-shadow:-24px 0 70px rgba(15,23,42,.26);display:grid;grid-template-rows:auto 1fr auto;overflow:hidden}
 .vendedor-filtros-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:20px;border-bottom:1px solid #e2e8f0}.vendedor-filtros-head h3{margin:0;color:#071a33;font-size:22px}.vendedor-filtros-head p{margin:4px 0 0;color:#64748b;font-weight:800}
 .vendedor-filtros-body{padding:18px 20px;overflow:auto;display:grid;align-content:start;gap:20px}.vendedor-filtros-body section{display:grid;gap:12px}.vendedor-filtros-body section>strong{color:#071a33;font-size:13px;text-transform:uppercase}.vendedor-filtros-periodo{display:grid;grid-template-columns:1fr 1fr;gap:10px}.vendedor-filtros-periodo label{display:grid;gap:6px;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase}.vendedor-filtros-periodo input{min-height:46px;border:1px solid #d5e0ec;border-radius:12px;padding:0 12px;color:#071a33;font:inherit;font-weight:800}.vendedor-filtros-switches{grid-template-columns:1fr!important}.vendedor-filtros-actions{padding:16px 20px;border-top:1px solid #e2e8f0;background:#fff;display:grid;grid-template-columns:1fr 1fr;gap:10px}.vendedor-filtros-actions button{width:100%;justify-content:center}
-#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-gestao > :not(.vendedor-clientes-kpis):not(.vendedor-clientes-tabs):not(.vendedor-clientes-barra):not(.vendedor-clientes-chips):not(.vendedor-clientes-resultados):not(.vendedor-clientes-contador-final):not(.vendedor-filtros-drawer){display:none!important}
+#clientes[data-vendedor-clientes-montado="true"] .vendedor-clientes-gestao > :not(.vendedor-clientes-heading):not(.vendedor-clientes-kpis):not(.vendedor-clientes-tabs):not(.vendedor-clientes-barra):not(.vendedor-clientes-chips):not(.vendedor-clientes-resultados):not(.vendedor-clientes-contador-final):not(.vendedor-filtros-drawer){display:none!important}
 @media(max-width:760px){.vendedor-clientes-gestao{padding:16px!important}.vendedor-clientes-kpis{grid-template-columns:1fr!important}.vendedor-clientes-barra{grid-template-columns:1fr!important}.vendedor-filtros-periodo,.vendedor-filtros-actions{grid-template-columns:1fr}.vendedor-filtros-side{width:100%}}
 
 
@@ -738,4 +738,50 @@
 
 @media (max-width:760px) {
   #listaCobrancas .cobranca-status-row > .cobranca-chip-status:nth-child(2) { display:none!important; }
+}
+
+/* A barra compartilhada substitui os controles originais de cobranças. */
+#abaCobrancas .cobrancas-query-action > svg { display:none; }
+@media(max-width:760px){
+  .vendedor-operacao-unificada:has(#abaCobrancas:not([style*="none"])) .vendedor-operacao-header { padding:0 52px!important;justify-content:center!important;text-align:center!important; }
+  #vendedorOperacaoTitulo {text-align:center!important;}
+  html body[data-integro-page] #abaCobrancas .vendedor-operacao-barra [data-ig-filter-source]{display:none!important;}
+  html body[data-integro-page] #abaCobrancas .ig-querybar{display:grid!important;grid-template-columns:minmax(0,1fr) 42px 42px!important;grid-column:1/-1;grid-row:1;gap:6px!important;margin:0!important;width:100%!important;}
+  html body[data-integro-page] #abaCobrancas .ig-query-field{height:42px!important;min-height:42px!important;padding:0 8px!important;gap:6px!important;margin:0!important;}
+  html body[data-integro-page] #abaCobrancas .ig-query-field>input{font-size:16px!important;min-height:0!important;height:40px!important;padding:0!important;}
+  html body[data-integro-page] #abaCobrancas .ig-querybar>.cobrancas-query-action{display:flex!important;align-items:center;justify-content:center;width:42px!important;min-width:42px!important;height:42px!important;min-height:42px!important;padding:0!important;font-size:0!important;border-radius:8px!important;}
+  #abaCobrancas .cobrancas-query-action>span{display:none!important;}
+  #abaCobrancas .cobrancas-query-action>svg{display:block!important;width:22px;height:22px;flex-shrink:0;}
+}
+
+.vendedor-clientes-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;}
+.vendedor-clientes-heading h2{margin:0;font-size:22px;}.vendedor-clientes-heading p{margin:4px 0 0;color:#64748b;}
+@media(max-width:760px){
+ html body .vendedor-clientes-gestao{padding:12px!important;border-radius:14px!important;}
+ html body .vendedor-clientes-heading{align-items:flex-start;gap:8px;}
+ html body .vendedor-clientes-heading h2{font-size:20px;}.vendedor-clientes-heading p{font-size:12px;}
+ html body .vendedor-clientes-heading>button{min-height:44px;padding:8px 10px;white-space:nowrap;font-size:12px;}
+ html body .vendedor-clientes-gestao .vendedor-clientes-kpis{gap:6px;margin-bottom:14px;}
+ html body .vendedor-clientes-gestao .vendedor-clientes-kpis>div{padding:10px!important;min-height:68px!important;}
+ html body .vendedor-clientes-gestao .vendedor-clientes-barra{display:grid!important;grid-template-columns:minmax(0,1fr) 42px 42px!important;gap:6px!important;margin:12px 0!important;}
+ html body .vendedor-clientes-gestao .vendedor-operacao-busca{grid-column:1;grid-row:1;min-width:0!important;width:100%!important;margin:0!important;height:42px!important;padding:0 8px!important;box-sizing:border-box;}
+ html body .vendedor-clientes-gestao .vendedor-operacao-busca input{font-size:16px!important;min-width:0;}
+ html body .vendedor-clientes-gestao .vendedor-clientes-barra>button{width:42px!important;min-width:42px!important;height:42px!important;min-height:42px!important;padding:0!important;font-size:0!important;display:flex!important;align-items:center;justify-content:center;margin:0!important;}
+ html body .vendedor-clientes-gestao .vendedor-buscar-btn{grid-column:2;grid-row:1;}
+ html body .vendedor-clientes-gestao .vendedor-filtro-btn{grid-column:3;grid-row:1;}
+ html body .vendedor-clientes-gestao .vendedor-clientes-barra>button>.material-symbols-rounded{display:block!important;font-size:22px!important;}
+ html body .vendedor-clientes-gestao .vendedor-clientes-chips{display:flex;overflow-x:auto;flex-wrap:nowrap;gap:6px;padding-bottom:8px;}
+ html body .vendedor-clientes-gestao .vendedor-cliente-chip{white-space:nowrap;min-height:36px;}
+ html body .vendedor-cliente-mobile-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;}
+ html body .vendedor-cliente-mobile-actions>button{min-height:44px;white-space:normal!important;font-size:12px!important;}
+}
+
+@media(max-width:760px){
+ html body[data-integro-page] #clientes .vendedor-clientes-gestao{display:flex!important;flex-direction:column!important;gap:12px!important;}
+ html body[data-integro-page] #clientes .vendedor-clientes-table-wrap,html body[data-integro-page] #clientes .vendedor-clientes-tabs{display:none!important;}
+ html body[data-integro-page] #clientes .vendedor-clientes-mobile{display:grid!important;gap:12px;}
+ html body[data-integro-page] #clientes .vendedor-cliente-mobile-actions{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;}
+ html body[data-integro-page] #clientes .vendedor-cliente-mobile-actions>button{width:100%!important;min-width:0!important;}
+ html body[data-integro-page] #clientes .vendedor-clientes-chips{min-height:44px!important;overflow-x:auto!important;flex-shrink:0;}
+ html body[data-integro-page] #clientes .vendedor-clientes-heading{display:flex!important;}
 }

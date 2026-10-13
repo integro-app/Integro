@@ -7,9 +7,9 @@
   let abaAtual = "cobrancas";
   let clienteNovaVendaId = "";
   let filtrosClientesAbertos = false;
-  let clientesPesquisaExecutada = false;
-  const clientesPesquisaExecutadaPorAba = { leads: false, carteira: false };
-  let clientesAbaAtual = "leads";
+  let clientesPesquisaExecutada = true;
+  const clientesPesquisaExecutadaPorAba = { leads: true, carteira: true };
+  let clientesAbaAtual = "carteira";
   let filtroRapidoClientesVendedor = "todos";
   let clienteDrawerAbertoId = "";
   let clienteFormularioAbertoId = "";
@@ -600,7 +600,7 @@
     renderClientesVendedor({ pesquisado: true });
   }
 
-  function trocarAbaClientesVendedor(aba = "leads") {
+  function trocarAbaClientesVendedor(aba = "carteira") {
     clientesAbaAtual = ["leads", "carteira"].includes(aba) ? aba : "leads";
     clientesPesquisaExecutada = clientesPesquisaExecutadaPorAba[clientesAbaAtual] === true;
     filtroRapidoClientesVendedor = "todos";
@@ -695,7 +695,12 @@
     return `<article class="vendedor-cliente-mobile-card status-${meta.classe} situacao-${situacao.classe}" tabindex="0" title="Abrir opções do cliente" onclick="abrirDrawerClienteVendedor('${esc(clienteId)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawerClienteVendedor('${esc(clienteId)}')}">
       <div class="vendedor-cliente-mobile-top"><div><span class="vendedor-tipo-badge ${clienteEmFluxoLead(cliente) ? "lead" : "cliente"}">${tipoRegistroClienteVendedor(cliente)}</span><h3>${esc(nome)}</h3><p>${esc(cliente.documento || cliente.cpfCnpj || "Sem documento")}</p></div><span class="vendedor-score-badge">${scoreCliente(cliente)}</span></div>
       <div class="vendedor-cliente-mobile-meta">${badgeStatusCliente(status)}<span>${esc(origemClienteVendedor(cliente))}</span><span>Cadastro: ${dataCadastroCliente(cliente)}</span><span>Atualização: ${dataAtualizacaoCliente(cliente)}</span></div>
-      <div class="vendedor-cliente-mobile-actions"><button type="button" class="ghost-btn vendedor-cliente-btn-whatsapp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button><button type="button" class="primary-btn vendedor-cliente-btn-vender" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>Vender</button></div>
+      <div class="vendedor-cliente-mobile-actions">
+        <button type="button" class="ghost-btn" onclick="event.stopPropagation();${clienteEmFluxoLead(cliente) ? "abrirDrawerClienteVendedor" : "editarCadastroCompletoClienteVendedor"}('${esc(clienteId)}')">${clienteEmFluxoLead(cliente) ? "Atender lead" : "Editar cliente"}</button>
+        <button type="button" class="primary-btn" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')">${clienteEmFluxoLead(cliente) ? "Converter em venda" : "Nova venda"}</button>
+        ${clienteEmFluxoLead(cliente) ? `<button type="button" class="ghost-btn" onclick="event.stopPropagation();prepararDevolucaoLeadVendedor('${esc(clienteId)}')">Devolver lead</button>` : ""}
+        <button type="button" class="ghost-btn vendedor-cliente-btn-whatsapp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')">WhatsApp</button>
+      </div>
     </article>`;
   }
 
@@ -708,11 +713,12 @@
     const buscaAnterior = preservarValor("buscaClientesVendedorInput");
     const lista = clientesPesquisaExecutada ? clientesFiltradosVendedor() : [];
     const estadoInicial = `<div class="empty-state-operacao vendedor-keep vendedor-clientes-estado-inicial"><span class="material-symbols-rounded">manage_search</span><strong>Pesquise para visualizar</strong><p>A carteira não é desenhada automaticamente. Use a busca ou os filtros e clique em Buscar.</p></div>`;
-    const estadoVazio = `<div class="empty-state-operacao vendedor-keep"><span class="material-symbols-rounded">person_search</span><strong>Nenhum resultado encontrado</strong><p>Ajuste a pesquisa, a aba ou os filtros.</p></div>`;
+    const estadoVazio = `<div class="empty-state-operacao vendedor-keep"><span class="material-symbols-rounded">person_search</span><strong>${clientesAbaAtual === "leads" ? "Nenhum lead nesta lista" : "Nenhum cliente nesta lista"}</strong><p>${clientesAbaAtual === "leads" ? "Os leads atribuídos a você aparecem aqui. Confira também os filtros." : "Cadastre um cliente ou ajuste a busca e os filtros."}</p></div>`;
     tela.dataset.vendedorClientesMontado = "true";
     observarClientesVendedor();
     tela.innerHTML = `
       <div class="section-card vendedor-clientes-gestao vendedor-clientes-v24">
+        <header class="vendedor-clientes-heading vendedor-keep"><div><h2>${clientesAbaAtual === "carteira" ? "Minha carteira" : "Leads recebidos"}</h2><p>${clientesAbaAtual === "carteira" ? "Cadastre e gerencie seus clientes." : "Atenda, converta ou devolva os leads recebidos."}</p></div>${clientesAbaAtual === "carteira" ? '<button type="button" class="primary-btn" onclick="abrirFormularioClienteVendedor()"><span class="material-symbols-rounded">person_add</span>Novo cliente</button>' : ""}</header>
         ${kpisClientesVendedor(lista)}
         <div class="vendedor-clientes-tabs" role="tablist" aria-label="Clientes do vendedor">
           <button type="button" class="${clientesAbaAtual === "leads" ? "active" : ""}" onclick="trocarAbaClientesVendedor('leads')"><span class="material-symbols-rounded">campaign</span>Leads recebidos</button>
@@ -1658,6 +1664,10 @@
         criadoPorId: authUid,
         equipeId: usuario.equipeId || usuario.equipesIds?.[0] || usuario.equipeIds?.[0] || ""
       };
+      if (clienteId) {
+        // Edição cadastral não redistribui carteira nem muda autoria/origem.
+        ["clientePlataformaId","tenantId","empresaId","vendedorId","vendedorAuthUid","vendedorUid","criadoPor","criadoPorId","equipeId","origem"].forEach(campo => delete payload[campo]);
+      }
       if (clienteId) { if (!window.ClientesService?.atualizarCliente) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.atualizarCliente(clienteId, payload, usuario, { db: window.db || window.firebase?.firestore?.() }); }
       else { if (!window.ClientesService?.criarClienteComLegado) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.criarClienteComLegado({ dados: payload, usuario, clientePlataformaId: tenantId, permitirTelefoneDuplicado: false, db: window.db || window.firebase?.firestore?.() }); }
       fecharModal();
@@ -2771,6 +2781,12 @@
   window.removerReferenciaTelefoneClienteVendedor = removerReferenciaTelefone;
   window.buscarCepClienteVendedor = buscarCepCliente;
   window.excluirClienteVendedor = excluirCliente;
+  window.prepararDevolucaoLeadVendedor = async clienteId => {
+    await abrirDrawerCliente(clienteId);
+    const select=document.getElementById('clienteDrawerStatusLead');
+    if(select){select.value='RETORNADO_LEADS';select.dispatchEvent(new Event('change',{bubbles:true}));}
+    document.getElementById('clienteDrawerObservacaoLead')?.focus();
+  };
   window.retornarClienteLeadsVendedor = retornarClienteLeads;
   window.abrirWhatsAppClienteVendedor = abrirWhatsAppCliente;
   window.toggleFiltrosVendasVendedor = () => toggleFiltros("filtrosVendasVendedor");

@@ -1128,7 +1128,9 @@ test("fechamento: transação real do módulo publicado fecha caixa do vendedor 
   const snapshot={caixa:{id:caixaId,...box},versaoCalculo:'fechamento_caixa_v1',dataOperacional:box.dataOperacional,caixaInicialCentavos:-472100,caixaFinalEsperadoCentavos:-389300,carteiraInicialCentavos:0,carteiraFinalCentavos:0,totalVendasCentavos:130000,totalPagamentosCentavos:212800,totalIngressosCentavos:0,totalGastosCentavos:0,totalRetiradasCentavos:0,totalRecolhimentosCentavos:0,totalAjustesCentavos:0,totalCobrancas:5,totalVisitadas:5,totalPagas:5,totalNaoPagas:0,pendenciasCobranca:0,pagamentosPendentes:0};
   try {
     await assertFails(db.collection('caixas').where('clientePlataformaId','==',p.tenant).where('vendedorId','==','documento_vendedor').where('status','in',['ABERTO','REABERTO']).limit(20).get());
-    await assertSucceeds(env.IntegroCaixa.registrarFechamentoCaixaTransacional({usuario:{id:'documento_vendedor',authUid:p.uid,tipoUsuario:'vendedor',clientePlataformaId:p.tenant},caixaId,clientePlataformaId:p.tenant,vendedorId:'documento_vendedor',vendedorAuthUid:p.uid,valorInformadoCentavos:-389300,snapshot}));
+    // A sessão pode usar o Auth UID, enquanto o caixa mantém o ID documental legado.
+    await assertFails(env.IntegroCaixa.registrarFechamentoCaixaTransacional({usuario:{id:p.uid,authUid:p.uid,tipoUsuario:'vendedor',clientePlataformaId:p.tenant},caixaId,clientePlataformaId:p.tenant,valorInformadoCentavos:-389300,snapshot}));
+    await assertSucceeds(env.IntegroCaixa.registrarFechamentoCaixaTransacional({usuario:{id:p.uid,authUid:p.uid,tipoUsuario:'vendedor',clientePlataformaId:p.tenant},caixaId,clientePlataformaId:p.tenant,vendedorId:'documento_vendedor',vendedorAuthUid:p.uid,valorInformadoCentavos:-389300,snapshot}));
     assert.equal((await getDoc(doc(appDb(p),'caixas',caixaId))).data().status,'FECHADO');
   } finally { await app.delete(); }
 });

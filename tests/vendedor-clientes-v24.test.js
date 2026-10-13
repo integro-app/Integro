@@ -8,7 +8,7 @@ const js = fs.readFileSync(path.join(root, 'js', 'vendedor-unificado.js'), 'utf8
 const css = fs.readFileSync(path.join(root, 'css', 'vendedor-operacao.css'), 'utf8');
 
 test('v24 separa leads recebidos e minha carteira', () => {
-  assert.match(js, /clientesAbaAtual = "leads"/);
+  assert.match(js, /clientesAbaAtual = "carteira"/);
   assert.match(js, /Leads recebidos/);
   assert.match(js, /Minha carteira/);
   assert.match(js, /clienteEmFluxoLead/);
@@ -53,7 +53,7 @@ test('v24.1 alinha cabecalho e corpo pela mesma grade de colunas', () => {
 });
 
 test('v24.2 isola a execucao da pesquisa por aba', () => {
-  assert.match(js, /clientesPesquisaExecutadaPorAba = \{ leads: false, carteira: false \}/);
+  assert.match(js, /clientesPesquisaExecutadaPorAba = \{ leads: true, carteira: true \}/);
   assert.match(js, /clientesPesquisaExecutadaPorAba\[clientesAbaAtual\] = true/);
   assert.match(js, /clientesPesquisaExecutada = clientesPesquisaExecutadaPorAba\[clientesAbaAtual\] === true/);
 });

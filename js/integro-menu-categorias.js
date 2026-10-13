@@ -29,12 +29,13 @@
       const active=document.querySelector('main .screen.active')?.id||'';
       document.querySelectorAll('.integro-horizontal-module-nav[data-nav-unified="operacao"]').forEach(b=>{if(!b.classList.contains('iv-in-sidebar'))b.classList.add('iv-in-sidebar');});
       if(seller()){
-        return [['cobrancas','Cobranças','request_quote','cobrancas.ver'],['vendas','Vendas','shopping_cart','vendas.ver']].filter(([tab,name,icon,permission])=>global.IntegroAcesso?.pode?.(user(),permission,{})||global.IntegroAcesso?.pode?.(user(),'operacao.'+tab,{})).map(([tab,name,icon])=>({key:'operacao:'+tab,label:name,icon,active:document.getElementById(tab==='cobrancas'?'tabCobrancasBtn':'tabVendasDiaBtn')?.classList.contains('active'),run:()=>{navigation().abrirPorId('operacao');global.abrirAbaVendasCobrancas?.(tab);}}));
+        return [['cobrancas','Cobranças','request_quote','cobrancas.ver'],['vendas','Vendas','shopping_cart','vendas.ver']].filter(([tab,name,icon,permission])=>global.IntegroAcesso?.pode?.(user(),permission,{})||global.IntegroAcesso?.pode?.(user(),'operacao.'+tab,{})).map(([tab,name,icon])=>({key:'operacao:'+tab,label:name,icon,active:document.getElementById(tab==='cobrancas'?'tabCobrancasBtn':'tabVendasDiaBtn')?.classList.contains('active'),run:()=>{navigation().abrirPorId('operacao');setTimeout(()=>global.abrirAbaVendasCobrancas?.(tab),0);}}));
       }
       return ids.filter(([id])=>permitted(id)).map(([id,name,icon])=>({key:id,label:name,icon,active:id===(['vendas','cobrancas'].includes(active)?'operacao':active),run:()=>navigation().abrirPorId(id)}));
     }
     if(parent==='clientes'){
       const current=mirrored(parent).filter(item=>!['Leads e captação','Captação'].includes(item.label));
+      if(seller())current.sort((a,b)=>(a.label==='Minha carteira'?0:1)-(b.label==='Minha carteira'?0:1));
       if(!permitted('captacao'))return current;
       const active=document.querySelector('main .screen.active')?.id||'';
       const base=current.length?current:[{key:'clientes:carteira',label:'Clientes',icon:'groups',active:active==='clientes',run:()=>navigation().abrirPorId('clientes')}];

@@ -432,6 +432,8 @@
         usuario: usuarioAtual(),
         clientePlataformaId: tenantUsuario(),
         caixaId: texto(caixa.id || caixa.caixaId || caixa.docId),
+        vendedorId: snapshotAtualizado.caixa.vendedorId,
+        vendedorAuthUid: snapshotAtualizado.caixa.vendedorAuthUid || usuarioAtual().authUid,
         snapshot: snapshotAtualizado,
         valorInformadoCentavos,
         ignorarPendencias: false,

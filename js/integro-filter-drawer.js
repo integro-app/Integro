@@ -123,6 +123,14 @@
     const input=document.createElement('input');input.type='search';input.placeholder=original.placeholder||'Buscar registros';input.setAttribute('aria-label',original.getAttribute('aria-label')||input.placeholder);input.value=original.value;input.dataset.igQueryInput='true';input.autocomplete='off';
     const submit=document.createElement('button');submit.type='button';submit.className='primary-btn ig-query-submit';submit.textContent='Buscar';submit.dataset.igQuerySubmit='true';
     label.append(icon,input);bar.append(label,submit);config.trigger.before(bar);if(config.clear){bar.append(config.clear);config.clear.addEventListener('click',()=>{input.value='';schedule();});}bar.append(config.trigger);config.trigger.textContent='Filtros';
+    if(config.sources[0].id==='filtrosCobrancasVendedor'){
+      for(const [button,label,shape] of [[submit,'Buscar cobranças','<circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path>'],[config.trigger,'Filtros de exibição','<path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"></path>']]){
+        button.classList.add('cobrancas-query-action');button.setAttribute('aria-label',label);button.title=label;
+        const caption=document.createElement('span');caption.textContent=button.textContent;
+        const svg=icon.cloneNode(false);svg.innerHTML=shape;svg.setAttribute('aria-hidden','true');
+        button.replaceChildren(svg,caption);
+      }
+    }
     const advanced=fields(config).some(f=>f!==original&&f.id!=='cfePremiumSearch')||buttons(config).some(b=>!/^buscar$|aplicar|limpar/.test(normal(text(b))));
     config.trigger.hidden=!!config.generated&&!advanced;
     if(config.trigger.hidden){const toolbar=config.sources[0].parentElement;const native=[...toolbar.querySelectorAll('button')].find(button=>button!==config.trigger&&!button.hasAttribute('data-ig-filter-trigger')&&!config.sources.some(source=>source.contains(button))&&/filtros/.test(normal(text(button))));if(native)bar.append(native);}
@@ -140,6 +148,13 @@
     if(first.id==='painelFiltrosVendas'){const toolbar=root.querySelector('.vendas-master-toolbar');config.apply=toolbar?.querySelector('.vendas-search-btn');config.clear=toolbar?.querySelector('.vendas-clear-btn');if(config.apply)config.apply.dataset.igFilterSource='true';}
     if(first.matches('.vendedor-clientes-chips')){const native=root.querySelector('.vendedor-filtros-body');if(native&&!owners.has(native)){sources.push(native);config.apply=root.querySelector('.vendedor-filtros-actions .primary-btn');}}
     // Busca do mesmo conjunto de filtros (sem mover controles ou perder listeners).
+    if(first.id==='filtrosCobrancasVendedor'){
+      const toolbar=root.querySelector('#abaCobrancas > .vendedor-operacao-barra');
+      const search=toolbar?.querySelector('label[for="buscaCobrancaInput"]');
+      if(search)sources.push(search);
+      config.apply=toolbar?.querySelector('.vendedor-buscar-btn');
+      if(config.apply)config.apply.dataset.igFilterSource='true';
+    }
     if(first.id==="movuFilters"){
       const toolbar=first.previousElementSibling;const search=toolbar?.querySelector('.movu-search');if(search)sources.push(search);config.apply=toolbar?.querySelector('.primary-btn');if(config.apply)config.apply.dataset.igFilterSource="true";
     }
@@ -156,7 +171,7 @@
   function scan(){
     scheduled=false;
     for(const config of configs)if(!config.sources.every(source=>source.isConnected)){if(current?.config===config)close(false);for(const source of config.sources){owners.delete(source);source.removeAttribute("data-ig-filter-source");}config.apply?.removeAttribute("data-ig-filter-source");config.trigger.removeAttribute("data-ig-filter-trigger");if(config.search?.bar.isConnected){config.search.bar.before(config.trigger);if(config.clear)config.search.bar.before(config.clear);config.search.bar.remove();}if(config.generated)config.trigger.remove();configs.delete(config);}
-    const found=[...document.querySelectorAll(SELECTORS.join(','))].filter(el=>!owners.has(el)&&!el.parentElement?.closest('[data-ig-filter-source]')&&!el.closest('.ig-filter-layer,form,.cliente-modal,.vendedor-filtros-side,.modal-content')&&(!el.closest('.drawer-side,.drawer-content')||el.matches('.insight-filters'))&&(el.closest('main')||el.id==='dashboardPeriodoPopover')&&(el.querySelector(controls)||el.matches('.vendedor-clientes-chips,.cfe-work-queue')));
+    const found=[...document.querySelectorAll(SELECTORS.join(','))].filter(el=>!owners.has(el)&&!el.parentElement?.closest('[data-ig-filter-source]')&&!el.closest('.vendedor-clientes-gestao,.ig-filter-layer,form,.cliente-modal,.vendedor-filtros-side,.modal-content')&&(!el.closest('.drawer-side,.drawer-content')||el.matches('.insight-filters'))&&(el.closest('main')||el.id==='dashboardPeriodoPopover')&&(el.querySelector(controls)||el.matches('.vendedor-clientes-chips,.cfe-work-queue')));
     for(const node of found){if(owners.has(node)||found.some(parent=>parent!==node&&parent.contains(node)))continue;
       const group=[node];
       if(node.matches('.cfe-work-queue,.cfe-compact-filters,.cfe-premium-filter-panel')){const panel=node.closest('.unified-panel');if(panel)group.push(...[...panel.querySelectorAll('.cfe-work-queue,.cfe-compact-filters,.cfe-premium-filter-panel')].filter(s=>s!==node&&!owners.has(s)));}
@@ -165,7 +180,7 @@
     }
     document.querySelectorAll('main input[type=search],main input[placeholder],main input[id*=filtro i],main select[aria-label],main select[id*=filtro i],main [data-cx-records]').forEach(field=>{
       if(field.matches('input[placeholder]')&&field.type!=='search'&&!/buscar|pesquis|filtrar/.test(normal(field.placeholder))&&!/filtro/i.test(field.id))return;
-      if(field.closest('.ig-querybar,[data-ig-filter-source],.ig-filter-layer,form,.drawer-side,.drawer-content,.cliente-modal,.modal-content,.vendedor-filtros-side'))return;
+      if(field.closest('.vendedor-clientes-gestao,.integro-chat,.ig-querybar,[data-ig-filter-source],.ig-filter-layer,form,.drawer-side,.drawer-content,.cliente-modal,.modal-content,.vendedor-filtros-side'))return;
       const context=field.closest('.unified-panel,.section-card,.panel,[data-cfe-view],.screen')||field.parentElement;
       const config=[...configs].find(c=>c.sources[0].closest('.unified-panel,.section-card,.panel,[data-cfe-view],.screen')===context);
       const wrapper=document.createElement('div');wrapper.className='ig-filter-standalone';const anchor=field.closest('label')||field;anchor.before(wrapper);wrapper.append(anchor);

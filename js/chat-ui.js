@@ -158,7 +158,27 @@
     });
   }
 
+  function atualizarViewportChat() {
+    const shell=containerChat()?.querySelector('.integro-chat');
+    if(!shell)return;
+    const viewport=global.visualViewport;
+    shell.style.setProperty('--chat-viewport-height', (viewport?.height || global.innerHeight)+'px');
+    shell.style.setProperty('--chat-viewport-top', (viewport?.offsetTop || 0)+'px');
+  }
+  function voltarConversas() {
+    containerChat()?.querySelector('.integro-chat')?.classList.remove('conversa-aberta');
+    el('chatTexto')?.blur();
+    if(el('chatEmojiMenu'))el('chatEmojiMenu').hidden=true;
+    containerChat()?.querySelector('.integro-chat-conversa.active')?.focus({preventScroll:true});
+  }
+  global.visualViewport?.addEventListener('resize',atualizarViewportChat);
+  global.visualViewport?.addEventListener('scroll',atualizarViewportChat);
+  global.addEventListener?.('resize',atualizarViewportChat);
+
   function renderBase(root) {
+    if(!document.getElementById('integroChatMobileStyles')){
+      const link=document.createElement('link');link.id='integroChatMobileStyles';link.rel='stylesheet';link.href='css/integro-chat-mobile.css?v=20261013-mobile4';document.head.appendChild(link);
+    }
     root.dataset.chatReady = "1";
     root.innerHTML = `
       <div class="integro-chat integro-chat-unified">
@@ -176,6 +196,7 @@
         </aside>
         <section class="integro-chat-thread">
           <div class="integro-chat-thread-head">
+            <button class="integro-chat-back" type="button" aria-label="Voltar às conversas" onclick="IntegroChatUI.voltarConversas()"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg></button>
             <span id="chatAvatar" class="integro-chat-avatar large">IN</span>
             <div class="integro-chat-thread-identidade"><h3 id="chatTitulo">Selecione uma conversa</h3><p id="chatSubtitulo"><span class="integro-presenca-dot offline"></span>As mensagens aparecem em tempo real</p></div>
           </div>
@@ -194,6 +215,7 @@
         </section>
         <div id="chatGrupoModal" class="integro-chat-group-modal" hidden></div>
       </div>`;
+    atualizarViewportChat();
     const podeGrupo = global.IntegroChatService?.podeCriarGrupo?.() === true;
     if (el("chatCriarGrupo")) el("chatCriarGrupo").hidden = !podeGrupo;
     if (global.IntegroChatService?.podeEnviar?.() === false) {
@@ -291,6 +313,7 @@
         }, erro => console.warn("Presença do chat indisponível:", erro.message));
       }
       renderUsuarios();
+      if(estado.conversaAtual && !estado.unsubMensagens) await selecionar(estado.conversaAtual);
     } catch (erro) {
       if (el("chatStatus")) el("chatStatus").textContent = erro.message || "Falha ao iniciar chat.";
     }
@@ -317,6 +340,8 @@
 
   async function selecionar(id) {
     estado.conversaAtual = id;
+    containerChat()?.querySelector(".integro-chat")?.classList.add("conversa-aberta");
+    atualizarViewportChat();
     renderConversas();
     const conversa = estado.conversas.find(c => c.id === id) || { id };
     atualizarCabecalho(conversa);
@@ -329,7 +354,7 @@
     if (conversa.naoLidasPorUsuario) conversa.naoLidasPorUsuario[global.IntegroChatService.usuarioId()] = 0;
     renderConversas();
     atualizarBadgesChat();
-    el("chatTexto")?.focus();
+    if(!global.matchMedia?.("(max-width:760px)").matches)el("chatTexto")?.focus();
   }
 
   function abrirModalGrupo() {
@@ -436,7 +461,7 @@
   }
 
   global.IntegroChatUI = {
-    atualizar, renderConversas, renderUsuarios, abrirDireta, abrirDiretaPorId, abrirEquipe, selecionar, enviar,
+    voltarConversas, atualizar, renderConversas, renderUsuarios, abrirDireta, abrirDiretaPorId, abrirEquipe, selecionar, enviar,
     selecionarImagem, cancelarImagem, atualizarBadgesChat, abrirModalGrupo, fecharModalGrupo, criarGrupo,
     toggleEmojis, inserirEmoji, ajustarCompositor, teclaCompositor, encerrarDetalhes: encerrarDetalhesChat
   };
