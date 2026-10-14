@@ -889,14 +889,15 @@
     const cards = [
       ["carteira-final", "Carteira final", "kpiCarteira", resumo.carteira],
       ["caixa-atual", "Caixa atual", "kpiCaixaAtual", resumo.saldo],
+      ["recebido-hoje", "Recebido", "kpiRecebidoHoje", resumo.entradas],
       ["vendas-hoje", "Vendas", "kpiVendasHoje", resumo.vendas],
-      ["recebido-hoje", "Entradas", "kpiRecebidoHoje", resumo.entradas],
       ["gastos-hoje", "Saídas", "kpiGastosHoje", resumo.saidas]
     ];
-    cards.forEach(([id, label, valueId, value]) => {
+    cards.forEach(([id, label, valueId, value], index) => {
       const card = dashboard.querySelector('[data-dashboard-card="' + id + '"]');
       if (!card) return;
       card.hidden = false;
+      card.style.order = String(index);
       card.setAttribute("role", "button");
       card.setAttribute("tabindex", "0");
       card.setAttribute("aria-label", label + ": " + moeda(value));
