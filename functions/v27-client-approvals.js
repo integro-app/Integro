@@ -212,6 +212,12 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     if (!["CPF","CNPJ"].includes(tipo) || documento.length !== (tipo === "CPF" ? 11 : 14)) erro("invalid-argument", "Informe CPF ou CNPJ completo.");
     if (dados.clientePlataformaId && dados.clientePlataformaId !== tenantId) erro("permission-denied", "Empresa fora da sessão.");
     const ignorarId = texto(entrada.ignorarId);
+    if (!ignorarId) {
+      const obrigatorios = ["segmento","nome","tipoCliente","tipoDocumento","documento","telefonePais","telefonePrincipal","cep","endereco","numero","bairro","cidade","uf"];
+      if (obrigatorios.some(campo => !texto(dados[campo]))) erro("invalid-argument", "Preencha segmento, identificação, telefone e endereço completo do cliente.");
+      if (!["PF","PJ"].includes(dados.tipoCliente) || dados.tipoCliente !== (tipo === "CNPJ" ? "PJ" : "PF")) erro("invalid-argument", "Tipo de cliente incompatível com CPF/CNPJ.");
+      if (digitos(dados.cep).length !== 8 || !/^[a-z]{2}$/i.test(texto(dados.uf))) erro("invalid-argument", "Informe CEP com 8 dígitos e UF com 2 letras.");
+    }
     const chave = require("crypto").createHash("sha256").update(tenantId + ":" + documento).digest("hex");
     const ref = db.collection("clientes_operacionais").doc("cad_" + chave);
     const legadoRef = db.collection("clientes").doc("cad_" + chave);

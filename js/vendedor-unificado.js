@@ -1526,12 +1526,12 @@
         </nav>
         <section class="cliente-form-panel active" data-cliente-form-panel="dados">
           ${veioLeads ? `<div class="cliente-form-lead-box"><strong>Gestão do lead</strong><p>Atualize o status do lead sem sair do cadastro.</p>${selectStatusLead(cliente || {})}</div>` : ""}
-          <label>Segmento<input id="clienteVendedorSegmento" value="${esc(cliente?.segmento || "")}" maxlength="100"></label>
+          <label>Segmento<input id="clienteVendedorSegmento" required value="${esc(cliente?.segmento || "")}" maxlength="100"></label>
           <label>Nome completo<input id="clienteVendedorNome" value="${esc(cliente?.nomeCompleto || cliente?.nome || "")}" autocomplete="name" required></label>
-          <label>Tipo de cliente<select id="clienteVendedorTipoCliente" onchange="document.getElementById('clienteVendedorTipoDocumento').value=this.value==='PJ'?'CNPJ':'CPF';formatarDocumentoFormularioClienteVendedor()"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
-          <label>Tipo de documento<select id="clienteVendedorTipoDocumento" onchange="formatarDocumentoFormularioClienteVendedor()"><option value="CPF" ${texto(cliente?.tipoDocumento || (String(cliente?.documento || cliente?.cpfCnpj || "").replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF")) === "CPF" ? "selected" : ""}>CPF</option><option value="CNPJ" ${texto(cliente?.tipoDocumento || (String(cliente?.documento || cliente?.cpfCnpj || "").replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF")) === "CNPJ" ? "selected" : ""}>CNPJ</option></select></label>
+          <label>Tipo de cliente<select id="clienteVendedorTipoCliente" required onchange="document.getElementById('clienteVendedorTipoDocumento').value=this.value==='PJ'?'CNPJ':'CPF';formatarDocumentoFormularioClienteVendedor()"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
+          <label>Tipo de documento<select id="clienteVendedorTipoDocumento" required onchange="formatarDocumentoFormularioClienteVendedor()"><option value="CPF" ${texto(cliente?.tipoDocumento || (String(cliente?.documento || cliente?.cpfCnpj || "").replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF")) === "CPF" ? "selected" : ""}>CPF</option><option value="CNPJ" ${texto(cliente?.tipoDocumento || (String(cliente?.documento || cliente?.cpfCnpj || "").replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF")) === "CNPJ" ? "selected" : ""}>CNPJ</option></select></label>
           <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" maxlength="18" oninput="formatarDocumentoFormularioClienteVendedor()" required></label>
-          <label>País do telefone<select id="clienteVendedorTelefonePais" onchange="formatarTelefoneFormularioClienteVendedor()">${[["55","Brasil (+55)"],["351","Portugal (+351)"],["1","Estados Unidos / Canadá (+1)"],["54","Argentina (+54)"],["595","Paraguai (+595)"],["598","Uruguai (+598)"]].map(([ddi,nome])=>`<option value="${ddi}" ${String(cliente?.telefonePais || "55") === ddi ? "selected" : ""}>${nome}</option>`).join("")}</select></label>
+          <label>País do telefone<select id="clienteVendedorTelefonePais" required onchange="formatarTelefoneFormularioClienteVendedor()">${[["55","Brasil (+55)"],["351","Portugal (+351)"],["1","Estados Unidos / Canadá (+1)"],["54","Argentina (+54)"],["595","Paraguai (+595)"],["598","Uruguai (+598)"]].map(([ddi,nome])=>`<option value="${ddi}" ${String(cliente?.telefonePais || "55") === ddi ? "selected" : ""}>${nome}</option>`).join("")}</select></label>
           <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" maxlength="15" oninput="formatarTelefoneFormularioClienteVendedor()" required></label>
           <label class="cliente-form-check"><input role="switch" id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
           <label>Observacao<textarea id="clienteVendedorObservacao">${esc(cliente?.observacao || cliente?.observacoes || "")}</textarea></label>
@@ -1545,13 +1545,13 @@
           <div id="clienteReferenciasTelefoneLista">${refs.map(htmlReferenciaTelefone).join("")}</div>
         </section>
         <section class="cliente-form-panel" data-cliente-form-panel="endereco">
-          <label>CEP<input id="clienteVendedorCep" value="${esc(cliente?.cep || "")}" inputmode="numeric" onblur="buscarCepClienteVendedor()"></label>
-          <label>Rua<input id="clienteVendedorEndereco" value="${esc(cliente?.endereco || cliente?.logradouro || "")}"></label>
-          <label>Numero<input id="clienteVendedorNumero" value="${esc(cliente?.numero || cliente?.numeroEndereco || "")}"></label>
+          <label>CEP<input id="clienteVendedorCep" required value="${esc(cliente?.cep || "")}" inputmode="numeric" onblur="buscarCepClienteVendedor()"></label>
+          <label>Rua<input id="clienteVendedorEndereco" required value="${esc(cliente?.endereco || cliente?.logradouro || "")}"></label>
+          <label>Numero<input id="clienteVendedorNumero" required value="${esc(cliente?.numero || cliente?.numeroEndereco || "")}"></label>
           <label>Complemento<input id="clienteVendedorComplemento" value="${esc(cliente?.complemento || "")}"></label>
-          <label>Bairro<input id="clienteVendedorBairro" value="${esc(cliente?.bairro || "")}"></label>
-          <label>Cidade<input id="clienteVendedorCidade" value="${esc(cliente?.cidade || "")}"></label>
-          <label>UF<input id="clienteVendedorUf" maxlength="2" value="${esc(cliente?.uf || cliente?.estado || "")}"></label>
+          <label>Bairro<input id="clienteVendedorBairro" required value="${esc(cliente?.bairro || "")}"></label>
+          <label>Cidade<input id="clienteVendedorCidade" required value="${esc(cliente?.cidade || "")}"></label>
+          <label>UF<input id="clienteVendedorUf" required maxlength="2" value="${esc(cliente?.uf || cliente?.estado || "")}"></label>
         </section>
         <section class="cliente-form-panel" data-cliente-form-panel="bancarios">
           <label>Banco<input id="clienteVendedorBanco" value="${esc(valorCliente(cliente, ["banco", "bancoNome"], ""))}"></label>
@@ -1665,6 +1665,19 @@
     const statusOriginal = texto(clienteAtual?.statusAtendimento || clienteAtual?.statusCliente || clienteAtual?.status || "AGUARDANDO_ATENDIMENTO").toUpperCase();
     const statusAtendimento = texto(document.getElementById("clienteVendedorStatusAtendimento")?.value || statusOriginal || "AGUARDANDO_ATENDIMENTO").toUpperCase();
     const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
+    if (!clienteId) {
+      const obrigatorios = [["clienteVendedorSegmento","Segmento","dados"],["clienteVendedorNome","Nome completo","dados"],["clienteVendedorTipoCliente","Tipo de cliente","dados"],["clienteVendedorTipoDocumento","Tipo de documento","dados"],["clienteVendedorDocumento","Documento","dados"],["clienteVendedorTelefonePais","País do telefone","dados"],["clienteVendedorTelefone","Telefone principal","dados"],["clienteVendedorCep","CEP","endereco"],["clienteVendedorEndereco","Rua","endereco"],["clienteVendedorNumero","Número","endereco"],["clienteVendedorBairro","Bairro","endereco"],["clienteVendedorCidade","Cidade","endereco"],["clienteVendedorUf","UF","endereco"]];
+      const faltante = obrigatorios.find(([id]) => !texto(document.getElementById(id)?.value));
+      if (faltante) {
+        abrirAbaFormularioCliente(faltante[2]);
+        document.getElementById(faltante[0])?.focus?.();
+        return UIHelpers?.alerta?.("Preencha o campo obrigatório: " + faltante[1] + ".");
+      }
+      if (texto(document.getElementById("clienteVendedorCep")?.value).replace(/\D/g, "").length !== 8 || !/^[a-z]{2}$/i.test(texto(document.getElementById("clienteVendedorUf")?.value))) {
+        abrirAbaFormularioCliente("endereco");
+        return UIHelpers?.alerta?.("Informe CEP com 8 dígitos e UF com 2 letras.");
+      }
+    }
     if (!nome || !documento || !telefone) return UIHelpers?.alerta?.("Informe nome, documento e telefone principal.");
     if (!tenantId) return UIHelpers?.alerta?.("Empresa/tenant nao identificado para criar cliente. Atualize a sessao e tente novamente.");
     const tipoDocumento = document.getElementById("clienteVendedorTipoDocumento")?.value || "CPF";
