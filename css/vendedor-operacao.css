@@ -812,3 +812,6 @@
 .seller-box-balance .insight-summary-item.is-exit :is(small,strong){color:#b91c1c!important}
 .seller-box-balance .insight-summary-item.is-balance{background:#eff6ff!important;border-color:#bfdbfe!important;border-left:4px solid #2563eb!important}
 .seller-box-balance .insight-summary-item.is-balance :is(small,strong){color:#1d4ed8!important}
+.seller-box-balance .insight-summary-item.is-current-balance{margin-top:10px;padding:20px!important;background:#dbeafe!important;border:2px solid #2563eb!important;border-left-width:6px!important;box-shadow:0 4px 14px #2563eb20!important}
+.seller-box-balance .insight-summary-item.is-current-balance small{font-size:13px!important;font-weight:900!important}
+.seller-box-balance .insight-summary-item.is-current-balance strong{font-size:32px!important;font-weight:900!important;line-height:1.2!important}
