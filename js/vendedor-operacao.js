@@ -283,6 +283,15 @@
     return "Em dia";
   }
 
+  function corSituacao(item, config = global.configuracoesEmpresa || global.configEmpresa || {}) {
+    const c=config.clientes||{},faixas=c.atraso||{},cores={ADIANTADO:'#2563eb',EM_DIA:'#16a34a',ATENCAO:'#eab308',ATRASO:'#f97316',ATRASO_GRAVE:'#dc2626'};
+    for(const status of Array.isArray(c.status)?c.status:[]) if(status.ativo!==false&&/^#[0-9a-f]{6}$/i.test(status.cor||'')) cores[maiusculo(status.chave)]=status.cor;
+    const amarelo=Number(faixas.amareloDias||5),vermelho=Number(faixas.vermelhoDias||10),laranja=Number(faixas.laranjaDias||vermelho),dias=numero(item.diasIndicador);
+    if(item.situacao==='ADIANTADO')return cores.ADIANTADO;
+    if(item.situacao==='ATRASADO'){if(dias>=vermelho)return cores.ATRASO_GRAVE;if(laranja<vermelho&&dias>=laranja)return cores.ATRASO;if(dias>=amarelo)return cores.ATENCAO;}
+    return cores.EM_DIA;
+  }
+
   function moeda(valor) {
     try {
       if (typeof global.moeda === "function") return global.moeda(numero(valor));
@@ -303,6 +312,7 @@
 
   function card(item) {
     const status = statusVisual(item);
+    const corFinanceira = corSituacao(item);
     const nome = item.clienteNome || "Cliente";
     const apelido = item.clienteApelido || nome;
     const total = Math.max(1, numero(item.totalParcelas));
@@ -338,7 +348,7 @@
           </div>
           <div class="cobranca-status-row">
             <span class="cobranca-chip-status" style="color:${status.chave === 'PENDENTE' ? '#64748b' : status.cor};background:${status.cor}18;border-color:${status.cor}55">${escapar(status.titulo)}</span>
-            <span class="cobranca-chip-status">${escapar(situacaoVisual(item))}</span>
+            <span class="cobranca-chip-status" style="color:${corFinanceira};background:${corFinanceira}18;border-color:${corFinanceira}55">${escapar(situacaoVisual(item))}</span>
             ${syncBadge}
           </div>
           <div class="cobranca-progress-clean">
@@ -351,7 +361,7 @@
           <div class="cobranca-mini-clean"><span>Parcela esperada</span><strong>${moeda(item.valorParcela)}</strong></div>
           <div class="cobranca-mini-clean"><span>Parcela paga no dia</span><strong>${item.valorPagoHoje > 0 ? moeda(item.valorPagoHoje) : "R$ 0,00"}</strong></div>
           <div class="cobranca-mini-clean"><span>Saldo devedor</span><strong>${moeda(item.saldoDevedor)}</strong></div>
-          <div class="cobranca-mini-clean"><span>Situação</span><strong>${escapar(situacaoVisual(item))}</strong></div>
+          <div class="cobranca-mini-clean"><span>Situação</span><strong style="color:${corFinanceira}">${escapar(situacaoVisual(item))}</strong></div>
         </div>
 
         <div class="cobranca-actions-clean">
@@ -538,6 +548,7 @@
     pertenceAoTenant,
     statusVisual,
     situacaoVisual,
+    corSituacao,
     formatarProximaCobranca,
     _internals: { aplicarFiltros, numero, saldoVenda, saldoCliente, vendaAtiva, dataParcela, parcelaPaga, diasEntre }
   };

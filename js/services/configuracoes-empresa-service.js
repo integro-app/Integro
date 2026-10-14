@@ -114,7 +114,7 @@
     clientes: {
       status: STATUS_CLIENTES_PADRAO,
       score: { ativo: true, pontosVendaQuitada: 20, pontosPagamentoEmDia: 3, pontosAtraso: -2, minimo: 0, maximo: 100 },
-      atraso: { amareloDias: 5, laranjaDias: 10, vermelhoDias: 15, inadimplenteDias: 5 },
+      atraso: { amareloDias: 5, laranjaDias: 10, vermelhoDias: 10, inadimplenteDias: 5 },
       duplicidade: { cadastro: "BLOQUEAR", venda: "BLOQUEAR" },
       vendaComSaldoAtivo: { permitirAnalise: false },
       carenciaAposQuitacaoDias: 0,
@@ -283,7 +283,7 @@
         atraso: {
           amareloDias: inteiro(atraso.amareloDias, 5, 1, 3650),
           laranjaDias: inteiro(atraso.laranjaDias, 10, 1, 3650),
-          vermelhoDias: inteiro(atraso.vermelhoDias, 15, 1, 3650),
+          vermelhoDias: inteiro(atraso.vermelhoDias, 10, 1, 3650),
           inadimplenteDias: inteiro(atraso.inadimplenteDias, 5, 1, 3650)
         },
         duplicidade: {
@@ -313,7 +313,7 @@
   function validar(config) {
     const normalizada = normalizar(config);
     const atraso = normalizada.clientes.atraso;
-    if (!(atraso.amareloDias < atraso.laranjaDias && atraso.laranjaDias < atraso.vermelhoDias)) throw new Error("As faixas de atraso devem ser crescentes: amarelo, laranja e vermelho.");
+    if (!(atraso.amareloDias < atraso.laranjaDias && atraso.laranjaDias <= atraso.vermelhoDias)) throw new Error("As faixas de atraso devem ser crescentes: amarelo, laranja e vermelho.");
     if (normalizada.clientes.score.minimo >= normalizada.clientes.score.maximo) throw new Error("O score mínimo deve ser menor que o score máximo.");
     if (!normalizada.operacao.diasTrabalho.length) throw new Error("Selecione ao menos um dia de trabalho.");
     if (normalizada.operacao.horarioInicio >= normalizada.operacao.horarioFim) throw new Error("O horário final da operação deve ser posterior ao horário inicial.");

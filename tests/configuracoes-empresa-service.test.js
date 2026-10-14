@@ -7,7 +7,7 @@ test("configuracoes: aplica padroes operacionais seguros", () => {
   assert.equal(config.regrasOperacionais.vendaExigeCaixaAberto, true);
   assert.equal(config.regrasOperacionais.vendaExigeCadastroCompleto, true);
   assert.equal(config.regrasOperacionais.exclusaoClienteComHistorico, false);
-  assert.equal(config.clientes.atraso.vermelhoDias, 15);
+  assert.equal(config.clientes.atraso.vermelhoDias, 10);
   assert.ok(config.leads.status.some(item => item.chave === "CONVERTIDO"));
 });
 
@@ -47,3 +47,5 @@ test("configuracoes: exige jornada operacional valida", () => {
   assert.throws(() => Configuracoes.validar({ operacao: { diasTrabalho: [], horarioInicio: "08:00", horarioFim: "18:00" } }), /ao menos um dia/i);
   assert.throws(() => Configuracoes.validar({ operacao: { diasTrabalho: [1], horarioInicio: "18:00", horarioFim: "08:00" } }), /horário final/i);
 });
+
+test('configuracoes: padrão permite vermelho aos dez dias sem faixa laranja intermediária',()=>{const c=Configuracoes.validar({});assert.equal(c.clientes.atraso.amareloDias,5);assert.equal(c.clientes.atraso.laranjaDias,c.clientes.atraso.vermelhoDias);});
