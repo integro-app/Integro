@@ -545,7 +545,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     const valorNovoCentavos = Number.isInteger(entrada.valorCentavos)
       ? entrada.valorCentavos
       : Math.round(Number(entrada.valor || 0) * 100);
-    if (valorNovoCentavos <= 0) erro("invalid-argument", "O pagamento deve ser maior que zero.");
+    if (!Number.isSafeInteger(valorNovoCentavos) || valorNovoCentavos <= 0) erro("invalid-argument", "O pagamento deve ser maior que zero.");
 
     const pagamentoId = core.pagamentoIdDeterministico({ tenantId, caixaId, vendaId, parcelaId });
     const caixaRef = db.collection("caixas").doc(caixaId);
@@ -577,21 +577,21 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       if (core.texto(parcela.vendaId) !== vendaId) erro("failed-precondition", "Parcela não pertence à venda.");
 
       const clienteId = validarId(
-        entrada.clienteOperacionalId ||
-        entrada.clienteId ||
         venda.clienteOperacionalId ||
         venda.clienteId ||
         parcela.clienteOperacionalId ||
         parcela.clienteId,
         "Cliente"
       );
-      const clienteLocalizado = await localizarClienteNaTransacao(transaction, clienteId, entrada);
+      const clienteLocalizado = await localizarClienteNaTransacao(transaction, clienteId, venda);
       const clienteRef = clienteLocalizado.ref;
       const clienteSnap = clienteLocalizado.snap;
       if (!clienteSnap.exists) erro("not-found", "Cliente não encontrado.");
       const cliente = clienteSnap.data() || {};
       validarTenant(cliente, tenantId, "Cliente");
       if (!pertenceAoUsuario(cliente, uid, usuario)) erro("permission-denied", "Cliente não pertence ao vendedor autenticado.");
+      const idsClientePagamento = new Set([clienteLocalizado.idCanonico, venda.clienteId, venda.clienteOperacionalId, cliente.clienteLegadoId, cliente.clienteOperacionalId].map(core.texto).filter(Boolean));
+      if ([entrada.clienteId, entrada.clienteOperacionalId].map(core.texto).some(id => id && !idsClientePagamento.has(id))) erro("failed-precondition", "Cliente informado não pertence à venda.");
 
       if (pagamentoAnterior) {
         validarRegistroDoVendedor(pagamentoAnterior, tenantId, uid, usuario, "Pagamento");
@@ -602,7 +602,8 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         ) erro("already-exists", "Conflito no identificador do pagamento.");
       }
 
-      const valorAnteriorCentavos = pagamentoAnterior
+      const pagamentoCancelado = pagamentoAnterior && ["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(core.normalizarStatus(pagamentoAnterior.status));
+      const valorAnteriorCentavos = pagamentoAnterior && !pagamentoCancelado
         ? core.centavosDe(pagamentoAnterior, "valorCentavos", ["valorPago", "valorRecebido", "valor"])
         : 0;
       let calculo;
@@ -661,6 +662,9 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         dataOperacional,
         criadoEm: pagamentoAnterior?.criadoEm || agora,
         atualizadoEm: agora,
+        cancelado: false,
+        canceladoEm: null,
+        motivoCancelamento: "",
         corrigido: modo === "CORRECAO",
         corrigidoEm: modo === "CORRECAO" ? agora : null
       }, { merge: true });

@@ -149,7 +149,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
     const alvoCentavos = acao === "PAGAMENTO"
       ? (Number.isInteger(entrada.valorCentavos) ? entrada.valorCentavos : Math.round(Number(entrada.valor || 0) * 100))
       : 0;
-    if (acao === "PAGAMENTO" && alvoCentavos <= 0) fail("invalid-argument", "Informe um valor de pagamento válido.");
+    if (acao === "PAGAMENTO" && (!Number.isSafeInteger(alvoCentavos) || alvoCentavos <= 0)) fail("invalid-argument", "Informe um valor de pagamento válido.");
 
     const caixaRef = db.collection("caixas").doc(caixaId);
     const vendaRef = db.collection("vendas").doc(vendaId);
@@ -164,13 +164,16 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
       if (!pertence(caixa, uid, usuario) || !pertence(venda, uid, usuario)) fail("permission-denied", "Caixa ou venda não pertence ao vendedor autenticado.");
 
       const dataOperacional = txt(caixa.dataOperacional || caixa.dataCaixa || core.hojeSP()).slice(0, 10);
-      const localizado = await clienteNaTransacao(transaction, [entrada.clienteId, venda.clienteOperacionalId, venda.clienteId]);
+      const localizado = await clienteNaTransacao(transaction, [venda.clienteOperacionalId, venda.clienteId]);
       if (!localizado?.snap?.exists) fail("not-found", "Cliente não encontrado.");
       const cliente = localizado.snap.data() || {};
       tenant(cliente, tenantId, "Cliente");
+      if (!pertence(cliente, uid, usuario)) fail("permission-denied", "Cliente não pertence ao vendedor autenticado.");
+      const idsCliente = new Set([localizado.id, venda.clienteOperacionalId, venda.clienteId, cliente.clienteLegadoId, cliente.clienteOperacionalId].map(txt).filter(Boolean));
+      if ([entrada.clienteId, entrada.clienteOperacionalId].map(txt).some(id => id && !idsCliente.has(id))) fail("failed-precondition", "Cliente informado não pertence à venda.");
 
       const parcelasSnap = await transaction.get(db.collection("parcelas").where("vendaId", "==", vendaId));
-      const parcelas = parcelasSnap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      const parcelas = parcelasSnap.docs.map(doc => ({ ...(doc.data() || {}), id: doc.id }));
       if (!parcelas.length) fail("failed-precondition", "A venda não possui parcelas disponíveis para receber pagamento.");
       parcelas.forEach(parcela => {
         tenant(parcela, tenantId, "Parcela");
@@ -193,6 +196,10 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
       for (const [parcelaId, snap] of pagamentoSnaps) {
         const dadosPagamento = snap.exists ? (snap.data() || {}) : null;
         pagamentoDados.set(parcelaId, { snap, dados: dadosPagamento });
+        if (dadosPagamento) {
+          tenant(dadosPagamento, tenantId, "Pagamento");
+          if (!pertence(dadosPagamento, uid, usuario) || txt(dadosPagamento.caixaId) !== caixaId || txt(dadosPagamento.vendaId) !== vendaId || txt(dadosPagamento.parcelaId) !== parcelaId) fail("permission-denied", "Pagamento incompatível com a baixa.");
+        }
         if (dadosPagamento && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(norm(dadosPagamento.status))) {
           pagamentosAtuais[parcelaId] = pagamentoValor(dadosPagamento);
         }
@@ -229,6 +236,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
       const totalPagoVendaAtualCentavos = core.centavosDe(venda, "totalPagoCentavos", ["totalPago"]);
       const saldoClienteAtualCentavos = core.centavosDe(cliente, "saldoDevedorCentavos", ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]);
       const novoSaldoCaixaCentavos = saldoCaixaAtualCentavos + delta;
+      const carteiraCaixaCentavos = Number.isInteger(caixa.carteiraFinalCentavos) ? Math.max(0, caixa.carteiraFinalCentavos - delta) : null;
       const novoSaldoVendaCentavos = Math.max(0, saldoVendaAtualCentavos - delta);
       const novoTotalPagoVendaCentavos = Math.max(0, totalPagoVendaAtualCentavos + delta);
       const novoSaldoClienteCentavos = Math.max(0, saldoClienteAtualCentavos - delta);
@@ -238,7 +246,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
       const motivo = txt(entrada.motivo || (acao === "PAGAMENTO" ? "Ajuste de pagamento antes do fechamento" : "Cliente não realizou o pagamento"));
 
       if (delta !== 0) {
-        transaction.update(caixaRef, { saldoAtualCentavos: novoSaldoCaixaCentavos, saldoAtual: core.reais(novoSaldoCaixaCentavos), valorAtual: core.reais(novoSaldoCaixaCentavos), caixaAtual: core.reais(novoSaldoCaixaCentavos), atualizadoEm: agora });
+        transaction.update(caixaRef, { ...(carteiraCaixaCentavos !== null ? { carteiraFinalCentavos: carteiraCaixaCentavos, carteiraFinal: core.reais(carteiraCaixaCentavos) } : {}), saldoAtualCentavos: novoSaldoCaixaCentavos, saldoAtual: core.reais(novoSaldoCaixaCentavos), valorAtual: core.reais(novoSaldoCaixaCentavos), caixaAtual: core.reais(novoSaldoCaixaCentavos), atualizadoEm: agora });
         transaction.update(localizado.ref, {
           saldoDevedorCentavos: novoSaldoClienteCentavos,
           saldoDevedor: core.reais(novoSaldoClienteCentavos),
@@ -395,6 +403,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
         valorNovoCentavos: alvoCentavos,
         deltaCentavos: delta,
         saldoCaixaCentavos: novoSaldoCaixaCentavos,
+        carteiraCaixaCentavos,
         saldoVendaCentavos: novoSaldoVendaCentavos,
         totalPagoVendaCentavos: novoTotalPagoVendaCentavos,
         saldoClienteCentavos: novoSaldoClienteCentavos,

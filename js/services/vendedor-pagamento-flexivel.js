@@ -14,7 +14,6 @@
   const texto = valor => String(valor ?? "").trim();
   const normalizar = valor => texto(valor).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/\s+/g, "_");
   const centavosValor = valor => {
-    if (Number.isInteger(valor)) return valor;
     const numero = Number(valor ?? 0);
     return Number.isFinite(numero) ? Math.round(numero * 100) : 0;
   };
@@ -208,6 +207,7 @@
     const caixaId = texto(caixa.id || caixa.caixaId);
     const atualizarCaixa = registro => idRegistro(registro) === caixaId ? {
       ...registro,
+      ...(Number.isInteger(resultado.carteiraCaixaCentavos) ? { carteiraFinalCentavos: resultado.carteiraCaixaCentavos, carteiraFinal: reais(resultado.carteiraCaixaCentavos) } : {}),
       saldoAtualCentavos: resultado.saldoCaixaCentavos,
       saldoAtual: reais(resultado.saldoCaixaCentavos),
       valorAtual: reais(resultado.saldoCaixaCentavos),

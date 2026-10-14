@@ -133,7 +133,8 @@ test("backend financeiro localiza cliente operacional e preserva fallback legado
   assert.match(callables, /db\.collection\("clientes_operacionais"\)\.doc\(clienteId\)/);
   assert.match(callables, /db\.collection\("clientes"\)\.doc\(id\)/);
   assert.match(callables, /where\("clienteLegadoId", "==", id\)/);
-  assert.equal((callables.match(/localizarClienteNaTransacao\(transaction, clienteId, entrada\)/g) || []).length, 2);
+  assert.match(callables, /localizarClienteNaTransacao\(transaction, clienteId, entrada\)/);
+  assert.match(callables, /localizarClienteNaTransacao\(transaction, clienteId, venda\)/);
 });
 test("backend de venda bloqueia somente por saldo monetario real", () => {
   const callables = ler("functions/financial-callables.js");
