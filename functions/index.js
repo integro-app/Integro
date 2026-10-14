@@ -62,17 +62,19 @@ exports.provisionarUsuario = functions
 
     const senhaInicial = global ? String(dados?.senhaInicial || "") : "";
     if (senhaInicial && (senhaInicial.length < 6 || senhaInicial.length > 128)) erroHttps("invalid-argument", "A senha inicial deve ter entre 6 e 128 caracteres.");
+    const provisionUid = "provision_" + crypto.createHash("sha256").update(JSON.stringify([tenant, conviteId, email])).digest("hex");
     let conta;
     try {
       conta = await admin.auth().getUserByEmail(email);
       const canonicoExistente = await db.collection("usuarios").doc(conta.uid).get();
-      if (!canonicoExistente.exists || String(canonicoExistente.data()?.clientePlataformaId || "") !== tenant) {
+      if ((!canonicoExistente.exists && conta.uid !== provisionUid) || (canonicoExistente.exists && String(canonicoExistente.data()?.clientePlataformaId || "") !== tenant)) {
         erroHttps("already-exists", "O e-mail ja possui autenticacao sem vinculo com esta empresa.");
       }
     } catch (erro) {
       if (erro instanceof functions.https.HttpsError) throw erro;
       if (erro?.code !== "auth/user-not-found") throw erro;
       conta = await admin.auth().createUser({
+        uid: provisionUid,
         email,
         displayName: String(convite.nomeCompleto || convite.nome || "Usuario Integro"),
         password: senhaInicial || senhaTemporaria(),

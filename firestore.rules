@@ -626,7 +626,7 @@ function empresaPermitida(user) {
         request.resource.data.get("nome", "").size() > 1 &&
         request.resource.data.get("email", "").size() > 3 &&
         (request.resource.data.tipoUsuario == "usuario_integro" ||
-          exists(/databases/$(database)/documents/clientes_integro/$(request.resource.data.get("clientePlataformaId", ""))))
+          existsAfter(/databases/$(database)/documents/clientes_integro/$(request.resource.data.get("clientePlataformaId", ""))))
       );
       allow update: if isActiveUser() && (
         isMasterGlobal() ||
