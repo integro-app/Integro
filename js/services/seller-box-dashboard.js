@@ -9,14 +9,14 @@
     }
     return null;
   }
-  function summarize({ caixa, usuario = {}, lancamentos = [], vendas = [], pagamentos = [] } = {}) {
+  function summarize({ caixa, usuario = {}, lancamentos = [], vendas = [], pagamentos = [], historico = false } = {}) {
     const view = global.IntegroMovimentacoesView;
     const tenant = text(usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
     const identities = new Set([usuario.id, usuario.usuarioId, usuario.authUid, usuario.uid, usuario.vendedorId].filter(Boolean).map(text));
     const boxId = text(caixa?.id || caixa?.caixaId || caixa?.docId);
     const boxTenant = text(caixa?.clientePlataformaId || caixa?.tenantId || caixa?.empresaId);
     const owners = [caixa?.vendedorAuthUid, caixa?.vendedorUid, caixa?.vendedorId, caixa?.usuarioId].filter(Boolean).map(text);
-    const open = caixa && ["ABERTO", "REABERTO"].includes(text(caixa.status || caixa.situacao || caixa.estado).toUpperCase()) && caixa.ativo !== false && caixa.excluido !== true && (!tenant || !boxTenant || tenant === boxTenant) && owners.some(id => identities.has(id));
+    const open = caixa && (["ABERTO", "REABERTO"].includes(text(caixa.status || caixa.situacao || caixa.estado).toUpperCase()) || historico && /^(FECH|CONFER)/.test(text(caixa.status || caixa.situacao || caixa.estado).toUpperCase())) && caixa.ativo !== false && caixa.excluido !== true && (!tenant || !boxTenant || tenant === boxTenant) && owners.some(id => identities.has(id));
     const result = { caixa: open ? caixa : null, carteira: 0, saldo: 0, vendas: 0, entradas: 0, gastos: 0, saidas: 0, inicial: 0, novas: 0, renovadas: 0, ingressos: 0, recebimentos: 0, retiros: 0, detalhes: { vendas: [], entradas: [], gastos: [] } };
     if (!open || !boxId) return result;
     const inBox = item => {
@@ -94,5 +94,10 @@
     }
     return result;
   }
-  global.IntegroSellerBoxDashboard = Object.freeze({ summarize });
+  function compare(current, previous) {
+    if (!Number.isFinite(previous)) return { difference:null, percent:null, direction:'unknown' };
+    const difference = cents(current) - cents(previous);
+    return { difference:difference / 100, percent:cents(previous) === 0 ? null : difference / Math.abs(cents(previous)) * 100, direction:difference === 0 ? 'same' : difference > 0 ? 'up' : 'down' };
+  }
+  global.IntegroSellerBoxDashboard = Object.freeze({ summarize, compare });
 })(window);

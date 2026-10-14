@@ -821,3 +821,9 @@ body.perfil-vendedor #dashboard [data-dashboard-card="carteira-final"] :is(.kpi-
 body.perfil-vendedor #dashboard [data-dashboard-card="caixa-atual"]{background:linear-gradient(135deg,#3b82f6,#2563eb)!important;box-shadow:0 12px 26px #2563eb26!important}
 body.perfil-vendedor #dashboard [data-dashboard-card="recebido-hoje"]{background:linear-gradient(135deg,#10b981,#059669)!important;box-shadow:0 12px 26px #05966926!important}
 body.perfil-vendedor #dashboard :is([data-dashboard-card="vendas-hoje"],[data-dashboard-card="gastos-hoje"]){background:linear-gradient(135deg,#fb923c,#f97316)!important;box-shadow:0 12px 26px #f9731626!important}
+.seller-dashboard-insights{margin-top:20px;padding:22px!important}
+.seller-dashboard-insights>header{display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:16px}
+.seller-dashboard-insights h3{margin:0 0 6px;color:#0f172a}.seller-dashboard-insights p,.seller-insight-reference{color:#64748b;font-size:13px;line-height:1.5}
+.seller-dashboard-insights label{display:grid;gap:6px;font-size:12px;font-weight:700;min-width:220px}.seller-dashboard-insights select{padding:10px;border:1px solid #dbe4ef;border-radius:10px;background:#fff;color:#0f172a}
+.seller-insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.seller-insight-grid article{padding:16px;border:1px solid #dbe4ef;border-radius:14px;background:#f8fafc}.seller-insight-grid small,.seller-insight-grid strong{display:block}.seller-insight-grid strong{font-size:22px;margin-top:8px}.seller-insight-grid span{font-size:12px;color:#64748b}
+@media(max-width:760px){.seller-dashboard-insights>header{display:grid}.seller-dashboard-insights label{min-width:0}.seller-insight-grid{grid-template-columns:1fr}}

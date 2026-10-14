@@ -80,6 +80,12 @@
     if (isExcludedPage()) return false;
     if (!markDocument()) return false;
     updateViewport();
+    if (!document.querySelector('script[data-integro-financial-colors]')) {
+      const script = document.createElement('script');
+      script.src = 'js/financial-colors.js?v=20261014-colors1';
+      script.dataset.integroFinancialColors = '1';
+      document.head.appendChild(script);
+    }
     global.addEventListener("resize", updateViewport, { passive: true });
     document.dispatchEvent(new CustomEvent("integro-design-system-ready", {
       detail: { version: VERSION, mode: "safe-opt-in" }

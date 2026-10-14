@@ -916,7 +916,57 @@
     });
     const detalheAberto = document.querySelector("#dashboardInsightBody .seller-box-launch");
     if (detalheAberto?.closest(".dashboard-insight.show")) document.getElementById("dashboardInsightBody").innerHTML = detalheDashboardCaixaVendedor("caixa-atual").html;
+    renderInsightsCaixaVendedor();
     return resumo;
+  }
+
+  const historicoInsightsCaixa = new Map();
+  let insightsCarregando = '';
+  async function renderInsightsCaixaVendedor() {
+    const dashboard = document.getElementById("dashboard");
+    if (!dashboard || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
+    let box = document.getElementById("sellerDashboardInsights");
+    if (!box) {
+      box = document.createElement("section"); box.id = "sellerDashboardInsights"; box.className = "section-card seller-dashboard-insights";
+      box.innerHTML = '<header><div><h3>Análise do seu caixa</h3><p>Caixa em andamento comparado com caixas concluídos. Os valores atuais são parciais.</p></div><label>Comparar com<select id="sellerInsightReference"><option value="1">Último caixa concluído</option><option value="7">Média dos últimos 7 caixas</option></select></label></header><div id="sellerInsightContent"></div>';
+      dashboard.appendChild(box);
+      document.getElementById("sellerInsightReference").addEventListener("change", renderInsightsCaixaVendedor);
+    }
+    const content = document.getElementById("sellerInsightContent");
+    const current = resumoDashboardCaixaVendedor();
+    if (!current.caixa) { content.textContent = "Abra um caixa para acompanhar sua evolução."; return; }
+    const user = usuarioAtual || State.getUsuario?.() || {}, tenant = texto(State.getTenantId?.()), uid = texto(user.authUid || user.uid || user.id);
+    const count = Number(document.getElementById("sellerInsightReference").value) === 7 ? 7 : 1;
+    const identities = new Set([uid,user.id,user.usuarioId,user.vendedorId].filter(Boolean).map(texto));
+    const day = c => window.IntegroMovimentacoesView.dateISO(c);
+    const previous = (State.getCaixas?.() || []).filter(c => texto(c.id) !== texto(current.caixa.id) && texto(c.clientePlataformaId || c.empresaId || c.tenantId) === tenant && identities.has(texto(c.vendedorAuthUid || c.vendedorId || c.usuarioId)) && /^(FECH|CONFER)/.test(texto(c.status || c.situacao).toUpperCase()) && c.excluido !== true && day(c) && day(c) < day(current.caixa)).sort((a,b)=>day(b).localeCompare(day(a))).slice(0,count);
+    if (!previous.length) { content.textContent = "Ainda não há caixa concluído anterior para comparação."; return; }
+    const token = [tenant,uid,current.caixa.id,count].join(':');
+    if (insightsCarregando === token) return;
+    insightsCarregando = token; content.textContent = "Carregando comparação...";
+    try {
+      const references = await Promise.all(previous.map(async c => {
+        const key = [tenant,uid,c.id].join(':');
+        if (!historicoInsightsCaixa.has(key)) {
+          const snap = await (window.db || window.firebase.firestore()).collection("lancamentos_financeiros").where("clientePlataformaId","==",tenant).where("vendedorAuthUid","==",uid).where("caixaId","==",c.id).get();
+          historicoInsightsCaixa.set(key,snap.docs.map(d=>({id:d.id,...d.data()})));
+        }
+        const reference = window.IntegroSellerBoxDashboard.summarize({ caixa:c,usuario:user,historico:true,lancamentos:historicoInsightsCaixa.get(key),vendas:State.getVendas?.() || [],pagamentos:State.getPagamentos?.() || [] });
+        reference.carteira = c.carteiraFinalCentavos != null ? Number(c.carteiraFinalCentavos)/100 : c.carteiraFinal != null ? Number(c.carteiraFinal) : null;
+        return reference;
+      }));
+      if (texto(State.getTenantId?.()) !== tenant || texto(caixaAberto()?.id) !== texto(current.caixa.id) || Number(document.getElementById("sellerInsightReference")?.value) !== count) return;
+      const latest = resumoDashboardCaixaVendedor();
+      const labels = [["carteira","Carteira final"],["saldo","Caixa atual"],["recebimentos","Recolhido"],["vendas","Vendas"],["saidas","Saídas"]];
+      content.innerHTML = '<p class="seller-insight-reference">Referência: ' + previous.length + ' caixa(s) concluído(s), de ' + esc(dataClienteFormatada(day(previous[previous.length-1]))) + ' a ' + esc(dataClienteFormatada(day(previous[0]))) + '.</p><div class="seller-insight-grid">' + labels.map(([key,label]) => {
+        const valid = references.every(r=>Number.isFinite(r[key]));
+        const base = valid ? references.reduce((n,r)=>n+r[key],0)/references.length : null;
+        const comparison = window.IntegroSellerBoxDashboard.compare(latest[key],base);
+        const message = comparison.direction === 'unknown' ? 'Sem histórico suficiente para este indicador.' : comparison.direction === 'same' ? 'Mesmo valor da referência.' : (comparison.direction === 'up' ? 'Cresceu ' : 'Diminuiu ') + (comparison.percent == null ? moeda(Math.abs(comparison.difference)) + ' (referência zerada)' : Math.abs(comparison.percent).toLocaleString('pt-BR',{maximumFractionDigits:1}) + '%') + ' em relação à referência.';
+        return '<article><small>' + label + '</small><strong>' + moeda(latest[key]) + '</strong><p>' + esc(message) + '</p>' + (base == null ? '' : '<span>Referência: ' + moeda(base) + '</span>') + '</article>';
+      }).join('') + '</div><p class="seller-insight-reference">Comparação histórica. Acima ou abaixo do esperado depende de uma meta definida pela gestão.</p>';
+    } catch(error) { content.textContent = "Não foi possível consultar a comparação agora. Os valores do caixa continuam disponíveis nos cards."; console.warn('[ÍNTEGRO insights]',error?.code || error?.message); }
+    finally { if (insightsCarregando === token) insightsCarregando = ''; }
   }
 
   function detalheDashboardCaixaVendedor(card) {

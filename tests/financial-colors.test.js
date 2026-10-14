@@ -1,0 +1,4 @@
+const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
+const src=fs.readFileSync('js/financial-colors.js','utf8');const ctx={};vm.createContext(ctx);vm.runInContext(src.slice(src.indexOf('  function financialTone('),src.indexOf('  function installFinancialColors(')),ctx);
+test('paleta compartilhada associa minicards à mesma categoria dos cards oficiais',()=>{for(const [label,tone]of [['Carteira final','wallet'],['Caixa inicial','balance'],['Caixa atual','balance'],['Recebido','entry'],['Ingressos','entry'],['Recolhido','entry'],['Vendas renovadas','exit'],['Gastos','exit'],['Retiros','exit'],['Saídas','exit']])assert.equal(ctx.financialTone(label),tone,label)});
+test('situação do cliente mantém suas próprias cores e faixas',()=>{assert.equal(ctx.financialTone('Situação'),'');assert.equal(ctx.financialTone('Atrasado 10 dias'),'')});
