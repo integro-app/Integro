@@ -913,7 +913,7 @@
         card.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); card.click(); } });
       }
     });
-    const detalheAberto = document.querySelector("#dashboardInsightBody .seller-box-balance");
+    const detalheAberto = document.querySelector("#dashboardInsightBody .seller-box-launch");
     if (detalheAberto?.closest(".dashboard-insight.show")) document.getElementById("dashboardInsightBody").innerHTML = detalheDashboardCaixaVendedor("caixa-atual").html;
     return resumo;
   }
@@ -931,9 +931,11 @@
       return { titulo:"Caixa do vendedor", subtitulo:resumo.caixa ? "Movimentações confirmadas do caixa ativo · " + dataClienteFormatada(resumo.caixa.dataOperacional || resumo.caixa.dataCaixa || resumo.caixa.dataAbertura || resumo.caixa.abertoEm) : "Nenhum caixa aberto para este vendedor.", html: '<div class="seller-box-launch"><button class="primary-btn" type="button" onclick="abrirGavetaMovimentacaoVendedor()" ' + (resumo.caixa ? '' : 'disabled') + '>Fazer lançamento</button></div>' + html };
     }
     const rows = resumo.detalhes[key] || [];
-    const table = rows.length ? '<table class="real-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>' + rows.map(item => '<tr><td>' + esc(item.clienteNome || item.descricao || item.historico || item.observacao || "Movimentação") + '</td><td>' + esc(window.IntegroMovimentacoesView.type(item)) + '</td><td>' + moeda(window.IntegroMovimentacoesView.value(item)) + '</td></tr>').join("") + '</tbody></table>' : '';
+    const cor = key === "entradas" ? "is-entry" : ["saidas","vendas"].includes(key) ? "is-exit" : "is-balance";
+    const table = rows.length ? '<div class="insight-summary-grid seller-box-balance">' + rows.map(item => '<div class="insight-summary-item ' + cor + '"><small>' + esc(item.clienteNome || item.descricao || item.historico || item.observacao || "Movimentação") + ' · ' + esc(window.IntegroMovimentacoesView.type(item)) + '</small><strong>' + moeda(window.IntegroMovimentacoesView.value(item)) + '</strong></div>').join("") + '</div>' : '';
+
     const info = !resumo.caixa ? "Nenhum caixa aberto para este vendedor." : key === "carteira" ? "Saldo restante a receber das vendas do vendedor, incluindo vendas de dias anteriores. Os pagamentos já registrados foram descontados." : key === "saldo" ? "Saldo atual confirmado do caixa aberto." : rows.length ? "" : "Nenhum lançamento confirmado neste caixa.";
-    return { titulo: names[card], subtitulo: "Dados do caixa aberto do vendedor", html: '<div class="insight-summary-grid"><div class="insight-summary-item"><small>' + names[card] + '</small><strong>' + moeda(resumo[key]) + '</strong></div></div>' + (info ? '<div class="real-empty">' + info + '</div>' : '') + table };
+    return { titulo: names[card], subtitulo: "Dados do caixa aberto do vendedor", html: '<div class="insight-summary-grid seller-box-balance"><div class="insight-summary-item ' + cor + '"><small>' + names[card] + '</small><strong>' + moeda(resumo[key]) + '</strong></div></div>' + (info ? '<div class="real-empty">' + info + '</div>' : '') + table };
   }
 
   function configurarDashboardVendedor() {
