@@ -311,7 +311,9 @@ const FirestoreService = {
       if (empresaDoc.exists) {
         const empresa = empresaDoc.data() || {};
         const statusEmpresa = String(empresa.status || empresa.situacao || "").toUpperCase();
-        if (empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) {
+        const fimTeste = empresa.dataFimTeste?.toMillis ? empresa.dataFimTeste.toMillis() : Date.parse(empresa.dataFimTeste);
+        const testeExpirado = empresa.testeAtivo === true && empresa.dataFimTeste && (!Number.isFinite(fimTeste) || fimTeste <= Date.now());
+        if (testeExpirado || empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) {
           return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
         }
       }

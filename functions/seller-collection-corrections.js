@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 
 const core = require("./financial-core");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -95,6 +96,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
     }
     const tenantId = txt(usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
     if (!tenantId) fail("failed-precondition", "Usuário sem empresa vinculada.");
+    await exigirEmpresaOperacional({ db, functions, usuario, tenantId });
     return { uid, usuario, tenantId };
   }
   function tenant(d, tenantId, nome) {

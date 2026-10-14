@@ -234,7 +234,7 @@
     atualizarPagamentos(item, caixa, resultado);
     atualizarParcelas(resultado);
     atualizarVendaClienteCaixa(item, caixa, resultado);
-    atualizarHistoricoPagamento(item, caixa);
+    if (normalizar(resultado.acao) !== "NAO_PAGAMENTO") atualizarHistoricoPagamento(item, caixa);
     global.renderCobrancas?.();
     setTimeout(() => {
       global.renderCobrancas?.();

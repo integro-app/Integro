@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 const core = require("./financial-core");
 const { FieldValue } = require("firebase-admin/firestore");
 
@@ -18,7 +19,9 @@ function criarCicloCaixa({ db, functions }) {
     if (!user || user.authUid !== uid || user.acessoLiberado !== true || ["INATIVO","BLOQUEADO","SUSPENSO"].includes(core.normalizarStatus(user.status))) fail("permission-denied", "Sessão sem acesso operacional.");
     const role = roleOf(user);
     if (!role) fail("permission-denied", "Perfil sem permissão para gerir caixa.");
-    return { uid, user, role, tenant: id(user.clientePlataformaId) };
+    const tenant = id(user.clientePlataformaId);
+    await exigirEmpresaOperacional({ db, functions, usuario: user, tenantId: tenant });
+    return { uid, user, role, tenant };
   }
   function roleOf(user) {
     return [user.cargoChave,user.tipoUsuario,user.perfil,user.cargoNome,user.cargo].map(value => core.normalizarStatus(value).replace(/\s+/g,"_")).find(role => ["MASTER_LOCAL","GERENTE","SUPERVISOR","VENDEDOR"].includes(role));

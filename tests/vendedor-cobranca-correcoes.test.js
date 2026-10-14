@@ -208,3 +208,32 @@ test('saldo em reais inteiros de pagamento legado é convertido para centavos', 
   vm.runInNewContext(read('js/services/vendedor-pagamento-flexivel.js'), { window });
   assert.equal(window.IntegroVendedorPagamentoFlexivel.totalPagoNoCaixa('sale', { id: 'box' }), 3500);
 });
+
+test('não pagamento restaura caches de parcelas, cliente, venda e caixa sem esperar realtime', async () => {
+  const vm=require('node:vm');
+  let clientes=[{id:'client',saldoDevedorCentavos:0,status:'QUITADO'}],vendas=[{id:'sale',saldoDevedorCentavos:0,status:'QUITADO'}],parcelas=[{id:'p1',status:'PAGA',valorPagoCentavos:3500}],pagamentos=[{id:'pg1',vendaId:'sale',caixaId:'box',status:'CONFIRMADO',valorCentavos:3500}],historico=[],caixas=[{id:'box',status:'ABERTO',saldoAtualCentavos:103500,carteiraFinalCentavos:0}];
+  const resultado={acao:'NAO_PAGAMENTO',clienteId:'client',historicoId:'h1',saldoCaixaCentavos:100000,carteiraCaixaCentavos:3500,saldoClienteCentavos:3500,saldoVendaCentavos:3500,totalPagoVendaCentavos:0,parcelasPagas:0,parcelasPendentes:1,alocacoes:[{parcelaId:'p1',pagamentoId:'pg1',valorCentavos:0,novoValorPagoParcelaCentavos:0,saldoParcelaCentavos:3500,statusParcela:'PENDENTE',dataPagamento:null}]};
+  const window={State:{getClientes:()=>clientes,setClientes:v=>clientes=v,getVendas:()=>vendas,setVendas:v=>vendas=v,getParcelas:()=>parcelas,setParcelas:v=>parcelas=v,getPagamentos:()=>pagamentos,setPagamentos:v=>pagamentos=v,getHistoricoCobrancas:()=>historico,setHistoricoCobrancas:v=>historico=v,getCaixas:()=>caixas,setCaixas:v=>caixas=v},obterCaixaAbertoVendedor:()=>caixas[0],IntegroVendedorOperacao:{montarCarteira:()=>[{vendaId:'sale',clienteId:'client',parcelas,pagoHoje:true}]},firebase:{app:()=>({functions:()=>({httpsCallable:()=>async()=>({data:resultado})})})}};
+  const document={getElementById:()=>null};const context=vm.createContext({window,document,setTimeout(){},console});
+  vm.runInContext(read('js/services/vendedor-pagamento-flexivel.js'),context);
+  vm.runInContext(read('js/services/vendedor-cobranca-correcoes.js'),context);
+  await window.IntegroVendedorCobrancaCorrecoes.salvarNaoPagamento('sale');
+  assert.equal(clientes[0].status,'ATIVO');assert.equal(clientes[0].saldoDevedorCentavos,3500);
+  assert.equal(vendas[0].saldoDevedorCentavos,3500);assert.equal(parcelas[0].valorPagoCentavos,0);
+  assert.equal(caixas[0].saldoAtualCentavos,100000);assert.equal(caixas[0].carteiraFinalCentavos,3500);
+  assert.equal(pagamentos[0].status,'CANCELADO');assert.equal(historico[0].status,'REGISTRADO');
+});
+
+test('empresa bloqueada e teste vencido negam pagamento, venda e abertura antes de movimentar', async () => {
+  const {criarCicloCaixa}=require('../functions/box-lifecycle');
+  for(const empresa of [{acessoLiberado:false},{ativo:false},{status:'BLOQUEADO'},{testeAtivo:true,dataFimTeste:'2000-01-01T00:00:00.000Z'}]){
+    const f=fixtureBaixa({'clientes_integro/a':empresa});const before=JSON.stringify([...f.db.records]);
+    await assert.rejects(f.api.corrigir(baixa,ctx),rejectCode('permission-denied'));
+    await assert.rejects(f.original.registrarPagamento({...baixa,valorCentavos:1000},ctx),rejectCode('permission-denied'));
+    await assert.rejects(f.original.registrarVenda({caixaId:'box',clienteId:'client'},ctx),rejectCode('permission-denied'));
+    await assert.rejects(criarCicloCaixa({db:f.db,functions:{https:{HttpsError}}}).abrir({vendedorId:'seller'},ctx),rejectCode('permission-denied'));
+    assert.equal(JSON.stringify([...f.db.records]),before);
+  }
+  const f=fixtureBaixa({'clientes_integro/a':{testeAtivo:true,dataFimTeste:'2099-01-01T00:00:00.000Z'}});
+  await f.api.corrigir(baixa,ctx);assert.equal(f.db.records.get('caixas/box').saldoAtualCentavos,108000);
+});

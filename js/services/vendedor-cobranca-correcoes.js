@@ -136,6 +136,10 @@
     const vendaId = texto(item?.vendaId);
     const caixaId = texto(caixa?.id || caixa?.caixaId);
     const agora = new Date().toISOString();
+    if (acao === "PAGAMENTO" && resultado.alocacoes && global.IntegroVendedorPagamentoFlexivel?.aplicarResultado) {
+      global.IntegroVendedorPagamentoFlexivel.aplicarResultado(item, caixa, resultado);
+      return;
+    }
     const pagamentos = [...(global.State?.getPagamentos?.() || global.pagamentosHojeCache || [])];
     const historicos = [...(global.State?.getHistoricoCobrancas?.() || global.historicoCobrancasCache || [])];
     const ehDaBaixa = registro => texto(registro.vendaId) === vendaId && (!texto(registro.caixaId) || texto(registro.caixaId) === caixaId);
@@ -198,6 +202,7 @@
     global.State?.setHistoricoCobrancas?.(historicos);
     global.pagamentosHojeCache = pagamentos;
     global.historicoCobrancasCache = historicos;
+    if (acao === "NAO_PAGAMENTO" && resultado.alocacoes) global.IntegroVendedorPagamentoFlexivel?.aplicarResultado?.(item, caixa, resultado);
     global.renderCobrancas?.();
     setTimeout(() => {
       global.renderCobrancas?.();
