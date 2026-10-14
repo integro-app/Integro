@@ -361,7 +361,7 @@
           <div class="cobranca-mini-clean"><span>Parcela esperada</span><strong>${moeda(item.valorParcela)}</strong></div>
           <div class="cobranca-mini-clean"><span>Parcela paga no dia</span><strong>${item.valorPagoHoje > 0 ? moeda(item.valorPagoHoje) : "R$ 0,00"}</strong></div>
           <div class="cobranca-mini-clean"><span>Saldo devedor</span><strong>${moeda(item.saldoDevedor)}</strong></div>
-          <div class="cobranca-mini-clean" style="background:${corFinanceira}18;border-color:${corFinanceira}55"><span>Situação</span><strong style="color:${corFinanceira}">${escapar(situacaoVisual(item))}</strong></div>
+          <div class="cobranca-mini-clean" style="background:${corFinanceira}18!important;border-color:${corFinanceira}55!important"><span>Situação</span><strong style="color:${corFinanceira}">${escapar(situacaoVisual(item))}</strong></div>
         </div>
 
         <div class="cobranca-actions-clean">
