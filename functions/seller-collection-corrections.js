@@ -3,6 +3,69 @@
 const core = require("./financial-core");
 const { FieldValue } = require("firebase-admin/firestore");
 
+function idParcela(parcela = {}) {
+  return core.texto(parcela.id || parcela.parcelaId || parcela.docId);
+}
+
+function dataParcela(parcela = {}) {
+  return core.texto(parcela.dataVencimento || parcela.dataPrevista || parcela.vencimento || parcela.dataCobranca).slice(0, 10);
+}
+
+function ordenarParcelas(parcelas = []) {
+  return [...parcelas].sort((a, b) => {
+    const numeroA = Number(a.numeroParcela || a.numero || 0);
+    const numeroB = Number(b.numeroParcela || b.numero || 0);
+    if (numeroA !== numeroB) return numeroA - numeroB;
+    return dataParcela(a).localeCompare(dataParcela(b)) || idParcela(a).localeCompare(idParcela(b));
+  });
+}
+
+function distribuirPagamentoParcelas({ parcelas = [], pagamentosAtuais = {}, valorAlvoCentavos = 0, hoje = core.hojeSP() } = {}) {
+  const alvo = Math.max(0, core.inteiro(valorAlvoCentavos));
+  let restante = alvo;
+  let totalAnteriorCentavos = 0;
+  const alocacoes = ordenarParcelas(parcelas).map(parcela => {
+    const parcelaId = idParcela(parcela);
+    if (!parcelaId) throw new Error("Parcela sem identificador.");
+    const anteriorCaixaCentavos = Math.max(0, core.inteiro(pagamentosAtuais[parcelaId] || 0));
+    const valorParcelaCentavos = core.centavosDe(parcela, "valorCentavos", ["valor", "valorPrevisto", "valorParcela"]);
+    const valorPagoRegistradoCentavos = core.centavosDe(parcela, "valorPagoCentavos", ["valorPago"]);
+    const valorPagoAntesCaixaCentavos = Math.max(0, valorPagoRegistradoCentavos - anteriorCaixaCentavos);
+    const capacidadeCentavos = Math.max(0, valorParcelaCentavos - valorPagoAntesCaixaCentavos);
+    const valorCentavos = Math.min(restante, capacidadeCentavos);
+    restante -= valorCentavos;
+    totalAnteriorCentavos += anteriorCaixaCentavos;
+    const novoValorPagoParcelaCentavos = valorPagoAntesCaixaCentavos + valorCentavos;
+    const saldoParcelaCentavos = Math.max(0, valorParcelaCentavos - novoValorPagoParcelaCentavos);
+    const statusParcela = core.statusParcela(
+      novoValorPagoParcelaCentavos,
+      valorParcelaCentavos,
+      parcela.dataVencimento || parcela.dataPrevista || parcela.vencimento,
+      hoje
+    );
+    return {
+      parcelaId,
+      valorParcelaCentavos,
+      anteriorCaixaCentavos,
+      valorCentavos,
+      deltaCentavos: valorCentavos - anteriorCaixaCentavos,
+      novoValorPagoParcelaCentavos,
+      saldoParcelaCentavos,
+      statusParcela,
+      dataPagamento: statusParcela === "PAGA" ? hoje : null
+    };
+  });
+  if (restante > 0) throw new Error("O pagamento não pode ultrapassar o saldo devedor da venda.");
+  return {
+    alocacoes,
+    totalAnteriorCentavos,
+    totalNovoCentavos: alvo,
+    deltaCentavos: alvo - totalAnteriorCentavos,
+    parcelasPagas: alocacoes.filter(item => item.statusParcela === "PAGA").length,
+    parcelasPendentes: alocacoes.filter(item => item.statusParcela !== "PAGA").length
+  };
+}
+
 function criarCorrecoesBaixaVendedor({ db, functions }) {
   const ts = () => FieldValue.serverTimestamp();
   const fail = (code, message) => { throw new functions.https.HttpsError(code, message); };
@@ -24,7 +87,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
     const snap = await db.collection("usuarios").doc(uid).get();
     if (!snap.exists) fail("permission-denied", "Perfil operacional não encontrado.");
     const usuario = snap.data() || {};
-    if (txt(usuario.authUid) !== uid || usuario.acessoLiberado !== true || ["BLOQUEADO","INATIVO","SUSPENSO"].includes(norm(usuario.status))) {
+    if (txt(usuario.authUid) !== uid || usuario.acessoLiberado !== true || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(norm(usuario.status))) {
       fail("permission-denied", "Usuário sem acesso operacional.");
     }
     if (![usuario.tipoUsuario, usuario.cargoChave, usuario.cargo, usuario.perfil].map(norm).includes("VENDEDOR")) {
@@ -48,113 +111,301 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
     return null;
   }
   function histId(tenantId, caixaId, vendaId, data) {
-    return `nao_pagamento_${[tenantId,caixaId,vendaId,data].map(txt).join("_").replace(/[^a-zA-Z0-9_-]+/g,"_")}`;
+    return `nao_pagamento_${[tenantId, caixaId, vendaId, data].map(txt).join("_").replace(/[^a-zA-Z0-9_-]+/g, "_")}`;
   }
-  function pagamentoValor(p = {}) { return core.centavosDe(p, "valorCentavos", ["valorPago","valorRecebido","valor"]); }
-  function ativo(saldo) { return saldo > 0 ? "ATIVA" : "QUITADO"; }
+  function pagamentoValor(p = {}) {
+    return core.centavosDe(p, "valorCentavos", ["valorPago", "valorRecebido", "valor"]);
+  }
+  function ativo(saldo) {
+    return saldo > 0 ? "ATIVA" : "QUITADO";
+  }
   function logPayload(tipoAcao, c, detalhe) {
-    return { tipoAcao, origem:"correcao_baixa_vendedor", clientePlataformaId:c.tenantId, caixaId:c.caixaId, vendaId:c.vendaId,
-      parcelaId:c.parcelaId || "", clienteId:c.clienteId || "", usuarioId:txt(c.usuario.id || c.usuario.usuarioId || c.uid),
-      usuarioAuthUid:c.uid, usuarioNome:txt(c.usuario.nome || c.usuario.nomeCompleto || c.usuario.email), motivo:txt(c.motivo), detalhe:txt(detalhe), criadoEm:ts() };
+    return {
+      tipoAcao,
+      origem: "correcao_baixa_vendedor",
+      clientePlataformaId: c.tenantId,
+      caixaId: c.caixaId,
+      vendaId: c.vendaId,
+      parcelaId: c.parcelaId || "",
+      clienteId: c.clienteId || "",
+      usuarioId: txt(c.usuario.id || c.usuario.usuarioId || c.uid),
+      usuarioAuthUid: c.uid,
+      usuarioNome: txt(c.usuario.nome || c.usuario.nomeCompleto || c.usuario.email),
+      motivo: txt(c.motivo),
+      detalhe: txt(detalhe),
+      criadoEm: ts()
+    };
   }
 
   async function corrigir(dados, contexto) {
     const entrada = dados?.entrada || dados || {};
     const { uid, usuario, tenantId } = await ator(contexto);
     const acao = norm(entrada.acao);
-    if (!["PAGAMENTO","NAO_PAGAMENTO"].includes(acao)) fail("invalid-argument", "Ação de correção inválida.");
-    const caixaId = txt(entrada.caixaId), vendaId = txt(entrada.vendaId), parcelaId = txt(entrada.parcelaId);
+    if (!["PAGAMENTO", "NAO_PAGAMENTO"].includes(acao)) fail("invalid-argument", "Ação de correção inválida.");
+    const caixaId = txt(entrada.caixaId);
+    const vendaId = txt(entrada.vendaId);
+    const parcelaIdInformada = txt(entrada.parcelaId);
     if (!caixaId || !vendaId || caixaId.includes("/") || vendaId.includes("/")) fail("invalid-argument", "Caixa ou venda inválidos.");
-    const alvoCentavos = acao === "PAGAMENTO" ? (Number.isInteger(entrada.valorCentavos) ? entrada.valorCentavos : Math.round(Number(entrada.valor || 0) * 100)) : 0;
-    if (acao === "PAGAMENTO" && (!parcelaId || alvoCentavos <= 0)) fail("invalid-argument", "Parcela e valor válido são obrigatórios para pagamento.");
+    const alvoCentavos = acao === "PAGAMENTO"
+      ? (Number.isInteger(entrada.valorCentavos) ? entrada.valorCentavos : Math.round(Number(entrada.valor || 0) * 100))
+      : 0;
+    if (acao === "PAGAMENTO" && alvoCentavos <= 0) fail("invalid-argument", "Informe um valor de pagamento válido.");
 
     const caixaRef = db.collection("caixas").doc(caixaId);
     const vendaRef = db.collection("vendas").doc(vendaId);
     return db.runTransaction(async transaction => {
       const [caixaSnap, vendaSnap] = await Promise.all([transaction.get(caixaRef), transaction.get(vendaRef)]);
       if (!caixaSnap.exists || !vendaSnap.exists) fail("not-found", !caixaSnap.exists ? "Caixa não encontrado." : "Venda não encontrada.");
-      const caixa = caixaSnap.data() || {}, venda = vendaSnap.data() || {};
-      tenant(caixa, tenantId, "Caixa"); tenant(venda, tenantId, "Venda");
-      if (!["ABERTO","REABERTO"].includes(norm(caixa.status))) fail("failed-precondition", "O caixa já foi fechado. As baixas não podem mais ser alteradas.");
+      const caixa = caixaSnap.data() || {};
+      const venda = vendaSnap.data() || {};
+      tenant(caixa, tenantId, "Caixa");
+      tenant(venda, tenantId, "Venda");
+      if (!["ABERTO", "REABERTO"].includes(norm(caixa.status))) fail("failed-precondition", "O caixa já foi fechado. As baixas não podem mais ser alteradas.");
       if (!pertence(caixa, uid, usuario) || !pertence(venda, uid, usuario)) fail("permission-denied", "Caixa ou venda não pertence ao vendedor autenticado.");
 
-      const dataOperacional = txt(caixa.dataOperacional || caixa.dataCaixa || core.hojeSP()).slice(0,10);
+      const dataOperacional = txt(caixa.dataOperacional || caixa.dataCaixa || core.hojeSP()).slice(0, 10);
       const localizado = await clienteNaTransacao(transaction, [entrada.clienteId, venda.clienteOperacionalId, venda.clienteId]);
       if (!localizado?.snap?.exists) fail("not-found", "Cliente não encontrado.");
-      const cliente = localizado.snap.data() || {}; tenant(cliente, tenantId, "Cliente");
+      const cliente = localizado.snap.data() || {};
+      tenant(cliente, tenantId, "Cliente");
 
-      let parcela = null, parcelaRef = null;
-      if (parcelaId) {
-        parcelaRef = db.collection("parcelas").doc(parcelaId);
-        const snap = await transaction.get(parcelaRef);
-        if (!snap.exists) fail("not-found", "Parcela não encontrada.");
-        parcela = snap.data() || {}; tenant(parcela, tenantId, "Parcela");
-        if (txt(parcela.vendaId) !== vendaId) fail("failed-precondition", "Parcela não pertence à venda informada.");
+      const parcelasSnap = await transaction.get(db.collection("parcelas").where("vendaId", "==", vendaId));
+      const parcelas = parcelasSnap.docs.map(doc => ({ id: doc.id, ...(doc.data() || {}) }));
+      if (!parcelas.length) fail("failed-precondition", "A venda não possui parcelas disponíveis para receber pagamento.");
+      parcelas.forEach(parcela => {
+        tenant(parcela, tenantId, "Parcela");
+        if (!pertence(parcela, uid, usuario)) fail("permission-denied", "Parcela não pertence ao vendedor autenticado.");
+      });
+      if (parcelaIdInformada && !parcelas.some(parcela => idParcela(parcela) === parcelaIdInformada)) {
+        fail("failed-precondition", "A parcela informada não pertence à venda.");
       }
-      const pagamentoId = parcelaId ? core.pagamentoIdDeterministico({ tenantId, caixaId, vendaId, parcelaId }) : "";
-      const pagamentoRef = pagamentoId ? db.collection("pagamentos").doc(pagamentoId) : null;
-      const ledgerRef = pagamentoId ? db.collection("lancamentos_financeiros").doc(core.lancamentoPagamentoId(pagamentoId)) : null;
+
+      const parcelaRefs = new Map(parcelas.map(parcela => [idParcela(parcela), db.collection("parcelas").doc(idParcela(parcela))]));
+      const pagamentoRefs = new Map();
+      for (const parcela of parcelas) {
+        const parcelaId = idParcela(parcela);
+        const pagamentoId = core.pagamentoIdDeterministico({ tenantId, caixaId, vendaId, parcelaId });
+        pagamentoRefs.set(parcelaId, { pagamentoId, ref: db.collection("pagamentos").doc(pagamentoId) });
+      }
+      const pagamentoSnaps = await Promise.all([...pagamentoRefs.entries()].map(async ([parcelaId, item]) => [parcelaId, await transaction.get(item.ref)]));
+      const pagamentosAtuais = {};
+      const pagamentoDados = new Map();
+      for (const [parcelaId, snap] of pagamentoSnaps) {
+        const dadosPagamento = snap.exists ? (snap.data() || {}) : null;
+        pagamentoDados.set(parcelaId, { snap, dados: dadosPagamento });
+        if (dadosPagamento && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(norm(dadosPagamento.status))) {
+          pagamentosAtuais[parcelaId] = pagamentoValor(dadosPagamento);
+        }
+      }
+
+      const totalAnteriorCentavos = Object.values(pagamentosAtuais).reduce((soma, valor) => soma + core.inteiro(valor), 0);
+      const saldoVendaAtualCentavos = core.centavosDe(venda, "saldoDevedorCentavos", ["saldoDevedor", "saldoAtual"]);
+      const limiteRecebivelCentavos = Math.max(0, saldoVendaAtualCentavos + totalAnteriorCentavos);
+      if (acao === "PAGAMENTO" && alvoCentavos > limiteRecebivelCentavos) {
+        fail("failed-precondition", "O pagamento não pode ultrapassar o saldo devedor da venda.");
+      }
+
+      let distribuicao;
+      try {
+        distribuicao = distribuirPagamentoParcelas({ parcelas, pagamentosAtuais, valorAlvoCentavos: alvoCentavos, hoje: dataOperacional });
+      } catch (erro) {
+        fail("failed-precondition", erro.message);
+      }
+
       const historicoId = histId(tenantId, caixaId, vendaId, dataOperacional);
       const historicoRef = db.collection("historicoCobrancas").doc(historicoId);
-      const [pagSnap, ledgerSnap, histSnap] = await Promise.all([
-        pagamentoRef ? transaction.get(pagamentoRef) : Promise.resolve(null), ledgerRef ? transaction.get(ledgerRef) : Promise.resolve(null), transaction.get(historicoRef)
-      ]);
-      const pag = pagSnap?.exists ? (pagSnap.data() || {}) : null;
-      const pagAtivo = pag && !["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA"].includes(norm(pag.status));
-      const anterior = pagAtivo ? pagamentoValor(pag) : 0;
-      if (acao === "NAO_PAGAMENTO" && pagAtivo && !parcelaRef) fail("failed-precondition", "Parcela do pagamento não identificada para desfazer a baixa.");
+      const histSnap = await transaction.get(historicoRef);
 
-      let delta = alvoCentavos - anterior;
-      let novoPagoParcela = 0, valorParcela = 0, statusParcela = "";
-      if (parcelaRef) {
-        valorParcela = core.centavosDe(parcela, "valorCentavos", ["valor","valorPrevisto","valorParcela"]);
-        const pagoAtual = core.centavosDe(parcela, "valorPagoCentavos", ["valorPago"]);
-        const limiteParcela = Math.max(0, valorParcela - pagoAtual + anterior);
-        const saldoVenda = core.centavosDe(venda, "saldoDevedorCentavos", ["saldoDevedor","saldoAtual"]);
-        if (alvoCentavos > limiteParcela || alvoCentavos > Math.max(0, saldoVenda + anterior)) fail("failed-precondition", "O pagamento informado ultrapassa o saldo disponível.");
-        novoPagoParcela = Math.max(0, pagoAtual + delta);
-        statusParcela = core.statusParcela(novoPagoParcela, valorParcela, parcela.dataVencimento || parcela.dataPrevista || parcela.vencimento, dataOperacional);
+      const ledgerRefs = new Map();
+      for (const alocacao of distribuicao.alocacoes) {
+        if (alocacao.valorCentavos <= 0 && alocacao.anteriorCaixaCentavos <= 0) continue;
+        const pagamentoId = pagamentoRefs.get(alocacao.parcelaId).pagamentoId;
+        const ref = db.collection("lancamentos_financeiros").doc(core.lancamentoPagamentoId(pagamentoId));
+        ledgerRefs.set(alocacao.parcelaId, { ref, snap: await transaction.get(ref) });
       }
 
+      const delta = distribuicao.deltaCentavos;
+      const saldoCaixaAtualCentavos = core.centavosDe(caixa, "saldoAtualCentavos", ["saldoAtual", "valorAtual", "caixaAtual", "saldo"]);
+      const totalPagoVendaAtualCentavos = core.centavosDe(venda, "totalPagoCentavos", ["totalPago"]);
+      const saldoClienteAtualCentavos = core.centavosDe(cliente, "saldoDevedorCentavos", ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]);
+      const novoSaldoCaixaCentavos = saldoCaixaAtualCentavos + delta;
+      const novoSaldoVendaCentavos = Math.max(0, saldoVendaAtualCentavos - delta);
+      const novoTotalPagoVendaCentavos = Math.max(0, totalPagoVendaAtualCentavos + delta);
+      const novoSaldoClienteCentavos = Math.max(0, saldoClienteAtualCentavos - delta);
       const agora = ts();
+      const vendedorId = txt(usuario.id || usuario.usuarioId || uid);
+      const vendedorNome = txt(usuario.nome || usuario.nomeCompleto || usuario.email);
+      const motivo = txt(entrada.motivo || (acao === "PAGAMENTO" ? "Ajuste de pagamento antes do fechamento" : "Cliente não realizou o pagamento"));
+
       if (delta !== 0) {
-        const saldoCaixa = core.centavosDe(caixa, "saldoAtualCentavos", ["saldoAtual","valorAtual","caixaAtual","saldo"]);
-        const saldoVenda = core.centavosDe(venda, "saldoDevedorCentavos", ["saldoDevedor","saldoAtual"]);
-        const totalPago = core.centavosDe(venda, "totalPagoCentavos", ["totalPago"]);
-        const saldoCliente = core.centavosDe(cliente, "saldoDevedorCentavos", ["saldoDevedor","saldoAtual","saldo","valorEmAberto"]);
-        const novoCaixa = saldoCaixa + delta, novoSaldoVenda = Math.max(0, saldoVenda - delta), novoTotalPago = Math.max(0, totalPago + delta), novoCliente = Math.max(0, saldoCliente - delta);
-        transaction.update(caixaRef, { saldoAtualCentavos:novoCaixa, saldoAtual:core.reais(novoCaixa), valorAtual:core.reais(novoCaixa), caixaAtual:core.reais(novoCaixa), atualizadoEm:agora });
-        if (parcelaRef) {
-          const eraPaga = ["PAGA","PAGO","QUITADA","QUITADO"].includes(norm(parcela.statusParcela || parcela.status));
-          const agoraPaga = statusParcela === "PAGA";
-          transaction.update(parcelaRef, { valorPagoCentavos:novoPagoParcela, valorPago:core.reais(novoPagoParcela), saldoParcelaCentavos:Math.max(0,valorParcela-novoPagoParcela), saldoParcela:core.reais(Math.max(0,valorParcela-novoPagoParcela)), status:statusParcela, statusParcela, dataPagamento:agoraPaga?dataOperacional:null, atualizadoEm:agora });
-          const vendaUpdate = { saldoDevedorCentavos:novoSaldoVenda, saldoDevedor:core.reais(novoSaldoVenda), saldoAtual:core.reais(novoSaldoVenda), totalPagoCentavos:novoTotalPago, totalPago:core.reais(novoTotalPago), status:ativo(novoSaldoVenda), statusVenda:ativo(novoSaldoVenda), atualizadoEm:agora };
-          if (Number.isFinite(Number(venda.parcelasPagas)) && eraPaga !== agoraPaga) vendaUpdate.parcelasPagas = Math.max(0, Number(venda.parcelasPagas||0)+(agoraPaga?1:-1));
-          if (Number.isFinite(Number(venda.parcelasPendentes)) && eraPaga !== agoraPaga) vendaUpdate.parcelasPendentes = Math.max(0, Number(venda.parcelasPendentes||0)+(agoraPaga?-1:1));
-          transaction.update(vendaRef, vendaUpdate);
+        transaction.update(caixaRef, { saldoAtualCentavos: novoSaldoCaixaCentavos, saldoAtual: core.reais(novoSaldoCaixaCentavos), valorAtual: core.reais(novoSaldoCaixaCentavos), caixaAtual: core.reais(novoSaldoCaixaCentavos), atualizadoEm: agora });
+        transaction.update(localizado.ref, {
+          saldoDevedorCentavos: novoSaldoClienteCentavos,
+          saldoDevedor: core.reais(novoSaldoClienteCentavos),
+          saldo: core.reais(novoSaldoClienteCentavos),
+          saldoAtual: core.reais(novoSaldoClienteCentavos),
+          valorEmAberto: core.reais(novoSaldoClienteCentavos),
+          status: novoSaldoClienteCentavos > 0 ? "ATIVO" : "QUITADO",
+          statusCliente: novoSaldoClienteCentavos > 0 ? "ATIVO" : "QUITADO",
+          possuiVendaAtiva: novoSaldoClienteCentavos > 0,
+          vendaAtivaId: novoSaldoClienteCentavos > 0 ? txt(cliente.vendaAtivaId || vendaId) : "",
+          atualizadoEm: agora
+        });
+      }
+
+      for (const alocacao of distribuicao.alocacoes) {
+        const parcelaRef = parcelaRefs.get(alocacao.parcelaId);
+        if (alocacao.deltaCentavos !== 0) {
+          transaction.update(parcelaRef, {
+            valorPagoCentavos: alocacao.novoValorPagoParcelaCentavos,
+            valorPago: core.reais(alocacao.novoValorPagoParcelaCentavos),
+            saldoParcelaCentavos: alocacao.saldoParcelaCentavos,
+            saldoParcela: core.reais(alocacao.saldoParcelaCentavos),
+            status: alocacao.statusParcela,
+            statusParcela: alocacao.statusParcela,
+            dataPagamento: alocacao.dataPagamento,
+            atualizadoEm: agora
+          });
         }
-        transaction.update(localizado.ref, { saldoDevedorCentavos:novoCliente, saldoDevedor:core.reais(novoCliente), saldo:core.reais(novoCliente), saldoAtual:core.reais(novoCliente), valorEmAberto:core.reais(novoCliente), status:novoCliente>0?"ATIVO":"QUITADO", statusCliente:novoCliente>0?"ATIVO":"QUITADO", possuiVendaAtiva:novoCliente>0, vendaAtivaId:novoCliente>0?txt(cliente.vendaAtivaId||vendaId):"", atualizadoEm:agora });
+        const pagamentoInfo = pagamentoRefs.get(alocacao.parcelaId);
+        const pagamentoAnterior = pagamentoDados.get(alocacao.parcelaId);
+        const ledgerInfo = ledgerRefs.get(alocacao.parcelaId);
+        if (alocacao.valorCentavos > 0) {
+          transaction.set(pagamentoInfo.ref, {
+            operacaoId: pagamentoInfo.pagamentoId,
+            idempotencyKey: pagamentoInfo.pagamentoId,
+            clientePlataformaId: tenantId,
+            caixaId,
+            vendaId,
+            parcelaId: alocacao.parcelaId,
+            clienteId: localizado.id,
+            vendedorId,
+            vendedorAuthUid: uid,
+            vendedorUid: uid,
+            vendedorNome,
+            valorCentavos: alocacao.valorCentavos,
+            valor: core.reais(alocacao.valorCentavos),
+            valorPago: core.reais(alocacao.valorCentavos),
+            valorRecebido: core.reais(alocacao.valorCentavos),
+            valorAnteriorCentavos: alocacao.anteriorCaixaCentavos,
+            deltaCentavos: alocacao.deltaCentavos,
+            valorTotalRecebidoNoCaixaCentavos: alvoCentavos,
+            status: "CONFIRMADO",
+            syncStatus: "SINCRONIZADO",
+            data: dataOperacional,
+            dataOperacional,
+            criadoEm: pagamentoAnterior?.dados?.criadoEm || agora,
+            atualizadoEm: agora,
+            corrigido: Boolean(totalAnteriorCentavos > 0 || histSnap.exists),
+            corrigidoEm: agora,
+            cancelado: false,
+            canceladoEm: null,
+            motivoCancelamento: "",
+            observacao: txt(entrada.observacao)
+          }, { merge: true });
+          transaction.set(ledgerInfo.ref, {
+            clientePlataformaId: tenantId,
+            caixaId,
+            vendedorId,
+            vendedorAuthUid: uid,
+            tipoLancamento: "PAGAMENTO",
+            natureza: "CREDITO",
+            origem: "PAGAMENTO",
+            origemId: pagamentoInfo.pagamentoId,
+            operacaoId: pagamentoInfo.pagamentoId,
+            valorCentavos: alocacao.valorCentavos,
+            valor: core.reais(alocacao.valorCentavos),
+            dataOperacional,
+            statusLancamento: "CONFIRMADO",
+            criadoEm: ledgerInfo.snap.exists ? (ledgerInfo.snap.data()?.criadoEm || agora) : agora,
+            atualizadoEm: agora,
+            criadoPorId: vendedorId,
+            criadoPorNome: vendedorNome,
+            canceladoEm: null,
+            motivoCancelamento: "",
+            metadados: { vendaId, parcelaId: alocacao.parcelaId, origemTela: "correcao_baixa_vendedor", valorTotalRecebidoNoCaixaCentavos: alvoCentavos }
+          }, { merge: true });
+        } else if (alocacao.anteriorCaixaCentavos > 0 && pagamentoAnterior?.snap?.exists) {
+          transaction.update(pagamentoInfo.ref, { status: "CANCELADO", cancelado: true, canceladoEm: agora, canceladoPorAuthUid: uid, motivoCancelamento: motivo, atualizadoEm: agora });
+          if (ledgerInfo?.snap?.exists) transaction.update(ledgerInfo.ref, { statusLancamento: "CANCELADO", canceladoEm: agora, canceladoPorId: uid, motivoCancelamento: motivo, atualizadoEm: agora });
+        }
       }
 
-      const vendedorId = txt(usuario.id || usuario.usuarioId || uid), vendedorNome = txt(usuario.nome || usuario.nomeCompleto || usuario.email);
-      const motivo = txt(entrada.motivo || (acao === "PAGAMENTO" ? "Correção de pagamento antes do fechamento" : "Cliente não realizou o pagamento"));
+      transaction.update(vendaRef, {
+        saldoDevedorCentavos: novoSaldoVendaCentavos,
+        saldoDevedor: core.reais(novoSaldoVendaCentavos),
+        saldoAtual: core.reais(novoSaldoVendaCentavos),
+        totalPagoCentavos: novoTotalPagoVendaCentavos,
+        totalPago: core.reais(novoTotalPagoVendaCentavos),
+        parcelasPagas: distribuicao.parcelasPagas,
+        parcelasPendentes: distribuicao.parcelasPendentes,
+        status: ativo(novoSaldoVendaCentavos),
+        statusVenda: ativo(novoSaldoVendaCentavos),
+        atualizadoEm: agora
+      });
+
       if (acao === "PAGAMENTO") {
-        transaction.set(pagamentoRef, { operacaoId:pagamentoId, idempotencyKey:pagamentoId, clientePlataformaId:tenantId, caixaId, vendaId, parcelaId, clienteId:localizado.id, vendedorId, vendedorAuthUid:uid, vendedorUid:uid, vendedorNome, valorCentavos:alvoCentavos, valor:core.reais(alvoCentavos), valorPago:core.reais(alvoCentavos), valorRecebido:core.reais(alvoCentavos), valorAnteriorCentavos:anterior, deltaCentavos:delta, status:"CONFIRMADO", syncStatus:"SINCRONIZADO", data:dataOperacional, dataOperacional, criadoEm:pag?.criadoEm||agora, atualizadoEm:agora, corrigido:Boolean(pag||histSnap.exists), corrigidoEm:agora, cancelado:false, motivoCancelamento:"", observacao:txt(entrada.observacao) }, {merge:true});
-        transaction.set(ledgerRef, { clientePlataformaId:tenantId, caixaId, vendedorId, vendedorAuthUid:uid, tipoLancamento:"PAGAMENTO", natureza:"CREDITO", origem:"PAGAMENTO", origemId:pagamentoId, operacaoId:pagamentoId, valorCentavos:alvoCentavos, valor:core.reais(alvoCentavos), dataOperacional, statusLancamento:"CONFIRMADO", criadoEm:ledgerSnap?.exists?(ledgerSnap.data()?.criadoEm||agora):agora, atualizadoEm:agora, criadoPorId:vendedorId, criadoPorNome:vendedorNome, canceladoEm:null, motivoCancelamento:"", metadados:{vendaId,parcelaId,origemTela:"correcao_baixa_vendedor"} }, {merge:true});
-        if (histSnap.exists && !["CANCELADO","CANCELADA"].includes(norm(histSnap.data()?.status))) transaction.update(historicoRef, {status:"CANCELADO",cancelado:true,canceladoEm:agora,canceladoPorAuthUid:uid,motivoCancelamento:"Baixa corrigida para pagamento antes do fechamento do caixa.",atualizadoEm:agora});
-        transaction.set(db.collection("logs").doc(), logPayload(anterior>0?"COBRANCA_PAGAMENTO_CORRIGIDO":"COBRANCA_BAIXA_ALTERADA_PARA_PAGAMENTO", {tenantId,caixaId,vendaId,parcelaId,clienteId:localizado.id,uid,usuario,motivo}, `Pagamento ajustado de ${core.reais(anterior)} para ${core.reais(alvoCentavos)}.`));
-        return {ok:true,acao,modo:anterior>0?"CORRECAO":"CRIACAO",pagamentoId,historicoId,parcelaId,valorAnteriorCentavos:anterior,valorNovoCentavos:alvoCentavos,deltaCentavos:delta};
+        if (histSnap.exists && !["CANCELADO", "CANCELADA"].includes(norm(histSnap.data()?.status))) transaction.update(historicoRef, { status: "CANCELADO", cancelado: true, canceladoEm: agora, canceladoPorAuthUid: uid, motivoCancelamento: "Baixa corrigida para pagamento antes do fechamento do caixa.", atualizadoEm: agora });
+        transaction.set(db.collection("logs").doc(), logPayload(
+          totalAnteriorCentavos > 0 ? "COBRANCA_PAGAMENTO_CORRIGIDO" : "COBRANCA_BAIXA_ALTERADA_PARA_PAGAMENTO",
+          { tenantId, caixaId, vendaId, parcelaId: parcelaIdInformada, clienteId: localizado.id, uid, usuario, motivo },
+          `Pagamento total ajustado de ${core.reais(totalAnteriorCentavos)} para ${core.reais(alvoCentavos)} e distribuído automaticamente por ${distribuicao.alocacoes.filter(item => item.valorCentavos > 0).length} parcela(s).`
+        ));
+      } else {
+        transaction.set(historicoRef, {
+          id: historicoId,
+          operacaoId: historicoId,
+          idempotencyKey: historicoId,
+          tipo: "NAO_PAGAMENTO",
+          acao: "NAO_PAGAMENTO",
+          status: "REGISTRADO",
+          vendaId,
+          clienteId: localizado.id,
+          clienteNome: txt(entrada.clienteNome || venda.clienteNome || cliente.nome || cliente.nomeCompleto),
+          clientePlataformaId: tenantId,
+          caixaId,
+          vendedorId,
+          vendedorAuthUid: uid,
+          vendedorUid: uid,
+          vendedorNome,
+          motivo,
+          observacao: txt(entrada.observacao),
+          data: dataOperacional,
+          dataOperacional,
+          cancelado: false,
+          canceladoEm: null,
+          criadoEm: histSnap.exists ? (histSnap.data()?.criadoEm || agora) : agora,
+          atualizadoEm: agora
+        }, { merge: true });
+        transaction.set(db.collection("logs").doc(), logPayload(
+          totalAnteriorCentavos > 0 ? "COBRANCA_BAIXA_ALTERADA_PARA_NAO_PAGAMENTO" : (histSnap.exists ? "COBRANCA_NAO_PAGAMENTO_CORRIGIDO" : "COBRANCA_NAO_PAGAMENTO"),
+          { tenantId, caixaId, vendaId, parcelaId: parcelaIdInformada, clienteId: localizado.id, uid, usuario, motivo },
+          totalAnteriorCentavos > 0 ? `Pagamento total de ${core.reais(totalAnteriorCentavos)} cancelado antes do fechamento.` : "Não pagamento registrado/corrigido antes do fechamento."
+        ));
       }
 
-      if (pagAtivo) {
-        transaction.update(pagamentoRef, {status:"CANCELADO",cancelado:true,canceladoEm:agora,canceladoPorAuthUid:uid,motivoCancelamento:motivo,atualizadoEm:agora});
-        if (ledgerSnap?.exists) transaction.update(ledgerRef, {statusLancamento:"CANCELADO",canceladoEm:agora,canceladoPorId:uid,motivoCancelamento:motivo,atualizadoEm:agora});
-      }
-      transaction.set(historicoRef, { id:historicoId,operacaoId:historicoId,idempotencyKey:historicoId,tipo:"NAO_PAGAMENTO",acao:"NAO_PAGAMENTO",status:"REGISTRADO",vendaId,clienteId:localizado.id,clienteNome:txt(entrada.clienteNome||venda.clienteNome||cliente.nome||cliente.nomeCompleto),clientePlataformaId:tenantId,caixaId,vendedorId,vendedorAuthUid:uid,vendedorUid:uid,vendedorNome,motivo,observacao:txt(entrada.observacao),data:dataOperacional,dataOperacional,cancelado:false,canceladoEm:null,criadoEm:histSnap.exists?(histSnap.data()?.criadoEm||agora):agora,atualizadoEm:agora }, {merge:true});
-      transaction.set(db.collection("logs").doc(), logPayload(pagAtivo?"COBRANCA_BAIXA_ALTERADA_PARA_NAO_PAGAMENTO":(histSnap.exists?"COBRANCA_NAO_PAGAMENTO_CORRIGIDO":"COBRANCA_NAO_PAGAMENTO"), {tenantId,caixaId,vendaId,parcelaId,clienteId:localizado.id,uid,usuario,motivo}, pagAtivo?`Pagamento de ${core.reais(anterior)} cancelado antes do fechamento.`:"Não pagamento registrado/corrigido antes do fechamento."));
-      return {ok:true,acao,modo:pagAtivo?"INVERSAO":(histSnap.exists?"CORRECAO":"CRIACAO"),historicoId,pagamentoId,parcelaId,valorAnteriorCentavos:anterior,valorNovoCentavos:0,deltaCentavos:delta};
+      return {
+        ok: true,
+        acao,
+        modo: totalAnteriorCentavos > 0 ? (acao === "PAGAMENTO" ? "CORRECAO" : "INVERSAO") : (histSnap.exists ? "CORRECAO" : "CRIACAO"),
+        historicoId,
+        clienteId: localizado.id,
+        parcelaId: parcelaIdInformada || distribuicao.alocacoes.find(item => item.valorCentavos > 0)?.parcelaId || "",
+        valorAnteriorCentavos: totalAnteriorCentavos,
+        valorNovoCentavos: alvoCentavos,
+        deltaCentavos: delta,
+        saldoCaixaCentavos: novoSaldoCaixaCentavos,
+        saldoVendaCentavos: novoSaldoVendaCentavos,
+        totalPagoVendaCentavos: novoTotalPagoVendaCentavos,
+        saldoClienteCentavos: novoSaldoClienteCentavos,
+        parcelasPagas: distribuicao.parcelasPagas,
+        parcelasPendentes: distribuicao.parcelasPendentes,
+        alocacoes: distribuicao.alocacoes.map(item => ({ ...item, pagamentoId: pagamentoRefs.get(item.parcelaId)?.pagamentoId || "" }))
+      };
     });
   }
+
   return { corrigir };
 }
-module.exports = { criarCorrecoesBaixaVendedor };
+
+module.exports = { criarCorrecoesBaixaVendedor, distribuirPagamentoParcelas };
