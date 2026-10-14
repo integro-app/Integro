@@ -679,6 +679,8 @@ const FirestoreService = {
         cargoChave: acessoUsuario.cargoChave,
         permissoes: permissoesCargo,
         permissoesCargo,
+        usarPermissoesPersonalizadas: false,
+        permissoesUsuario: firebase.firestore.FieldValue.delete(),
         usuarioInternoIntegro: acessoUsuario.usuarioInternoIntegro,
 
         equipeId: equipeId || equipesVinculadas[0]?.id || "",
