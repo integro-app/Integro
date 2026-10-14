@@ -804,3 +804,4 @@
  .vendedor-cliente-form-completo :is(input,select,textarea){font-size:16px!important;scroll-margin-block:24px}
 }
 .vendedor-cliente-form-completo .cliente-form-anexos{grid-column:1/-1}
+.insight-summary-grid.seller-box-balance{grid-template-columns:minmax(0,1fr)!important}
