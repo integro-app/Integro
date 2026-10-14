@@ -170,6 +170,7 @@
         pagamentosHoje: global.State?.getPagamentos?.() || global.pagamentosHojeCache || [],
         historico: global.State?.getHistoricoCobrancas?.() || global.historicoCobrancasCache || [],
         usuario,
+        caixaId: texto(caixa.id || caixa.caixaId),
         hoje: dataCaixa(caixa)
       });
       return carteira.filter(item => item?.pendenteHoje).length;

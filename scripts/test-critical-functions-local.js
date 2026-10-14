@@ -14,7 +14,7 @@ async function main(){
  const [master,source,dest]=await Promise.all(['master.local.a','vendedor.1.a','vendedor.2.a'].map(sign)),today=core.hojeSP(),clienteId=prefix+'_cliente',caixaId=prefix+'_caixa';
  await db.collection('clientes_operacionais').doc(clienteId).set({clientePlataformaId:tenant,nome:'Cliente fictício crítico',status:'SEM_VENDA',saldoDevedorCentavos:0,vendedorAuthUid:source.localId,vendedorId:source.localId,equipeId:'equipe-a1'});
  await db.collection('caixas').doc(caixaId).set({clientePlataformaId:tenant,status:'ABERTO',vendedorAuthUid:source.localId,vendedorId:source.localId,equipeId:'equipe-a1',saldoAtualCentavos:100000,saldoInicialCentavos:100000,saldoAtual:1000,dataOperacional:today});
- const entrada={clienteId,caixaId,operacaoId:prefix+'_venda1',valorEmprestadoCentavos:10000,quantidadeParcelas:1,taxaJuros:0,frequencia:'DIARIA',primeiraCobranca:today};
+ const entrada={clienteId,caixaId,operacaoId:prefix+'_venda1',valorEmprestadoCentavos:10000,quantidadeParcelas:1,taxaJuros:0,frequencia:'DIARIA',primeiraCobranca:core.adicionarDiasISO(today,1)};
  const sale=await call(source,'registrarVendaOperacional',{entrada});assert.ok(sale.vendaId);
  const parcelas=await db.collection('parcelas').where('vendaId','==',sale.vendaId).get();assert.equal(parcelas.size,1);
  await call(source,'registrarPagamentoOperacional',{entrada:{caixaId,clienteId,vendaId:sale.vendaId,parcelaId:parcelas.docs[0].id,valorCentavos:10000,formaPagamento:'PIX',operacaoId:prefix+'_payment'}});

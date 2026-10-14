@@ -1348,7 +1348,7 @@
       <div class="vendedor-cliente-drawer-actions">
         <button class="ghost-btn" type="button" ${whatsapp ? "" : "disabled"} onclick="abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button>
         <button class="ghost-btn" type="button" onclick="editarCadastroCompletoClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">edit</span>Editar cadastro</button>
-        <button class="primary-btn" type="button" ${ativo ? 'disabled title="Cliente com venda ativa"' : ""} onclick="venderClienteDrawerVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>${emLead ? "Converter em venda" : "Vender"}</button>
+        <button class="primary-btn" type="button" ${ativo ? 'disabled title="Cliente com venda ativa"' : ""} onclick="venderClienteDrawerVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>${emLead ? "Converter em venda" : ehRenovacaoCliente(cliente) ? "Renovação" : "Vender"}</button>
       </div>
     </div>`;
   }
@@ -2599,6 +2599,9 @@
     renderVendasDia();
   }
 
+  function primeiraDataCobrancaPermitida(){const date=new Date(dataCaixa()+"T12:00:00Z");date.setUTCDate(date.getUTCDate()+1);return date.toISOString().slice(0,10);}
+  function ehRenovacaoCliente(cliente){return Math.round(saldoCliente(cliente)*100)===0 && clienteTemHistoricoVenda(cliente);}
+
   async function abrirListaNovaVenda() {
     const caixa = await garantirCaixaAberto();
     if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
@@ -2613,7 +2616,7 @@
     const saldoAtivo = clientePossuiVendaAtiva(cliente);
     if (saldoAtivo && !clientePodeIniciarNovaVenda(cliente)) return UIHelpers?.alerta?.("Cliente com saldo devedor ativo. A política da empresa exige quitação antes de uma nova venda.");
     const avisoSaldo = saldoAtivo ? `<div class="vendedor-venda-alerta-saldo"><span class="material-symbols-rounded">policy</span><div><strong>Cliente possui saldo ativo</strong><small>${autorizacaoVendaComSaldoCliente(cliente) ? "Existe uma autorização temporária. Ela vale somente para o mesmo valor aprovado." : "Ao registrar, a venda será enviada para análise do Supervisor/Gerente antes de ser liberada."}</small></div></div>` : "";
-    modalBase("Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
+    modalBase("Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" min="${primeiraDataCobrancaPermitida()}" value="${primeiraDataCobrancaPermitida()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
   }
 
   async function confirmarNovaVenda() {
@@ -2624,7 +2627,8 @@
     const juros = numero(texto(document.getElementById("novaVendaJuros")?.value).replace(",", "."));
     const parcelas = Math.round(numero(document.getElementById("novaVendaParcelas")?.value));
     const frequencia = texto(document.getElementById("novaVendaFrequencia")?.value || "DIARIA");
-    const primeiraCobranca = texto(document.getElementById("novaVendaPrimeiraCobranca")?.value || dataCaixa());
+    const primeiraCobranca = texto(document.getElementById("novaVendaPrimeiraCobranca")?.value || primeiraDataCobrancaPermitida());
+    if (primeiraCobranca < primeiraDataCobrancaPermitida()) return UIHelpers?.alerta?.("A primeira cobrança deve ser pelo menos um dia depois da data do caixa ativo.");
     if (valor <= 0 || parcelas < 1) return UIHelpers?.alerta?.("Informe valor e quantidade de parcelas válidos.");
     const total = valor + (valor * Math.max(0, juros) / 100);
     const botao = document.getElementById("confirmarNovaVendaVendedorBtn");
@@ -2636,7 +2640,7 @@
         aliases: ["cliente:" + texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId)],
         botao,
         textoProcessando: "Registrando venda",
-        executar: () => window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: "NOVA", origem: "painel_unificado_vendedor" }),
+        executar: () => window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: ehRenovacaoCliente(cliente) ? "RENOVACAO" : "NOVA", origem: "painel_unificado_vendedor" }),
         renderizar: () => renderVendasDia?.(),
         rollback: () => { renderClientesVendedor?.({ forcar: true }); renderVendasDia?.(); }
       });

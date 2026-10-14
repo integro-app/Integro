@@ -219,7 +219,9 @@
       }
 
       const valorPagoHoje = pagamentos.reduce((soma, item) => soma + valorPagamento(item), 0);
-      const comCobrancaHoje = pendentes.some(item => dataParcela(item) && dataParcela(item) <= hoje) || proximaData === hoje;
+      const parcelasRecebidasNesteCaixa = new Set(pagamentos.map(p=>id(p.parcelaId)).filter(Boolean));
+      const recebimentoAgendado = parcelasVenda.some(p=>parcelasRecebidasNesteCaixa.has(id(p.id||p.parcelaId)) && dataParcela(p) && dataParcela(p)<=hoje);
+      const comCobrancaHoje = recebimentoAgendado || pendentes.some(item => dataParcela(item) && dataParcela(item) <= hoje) || proximaData === hoje;
       const pagoHoje = valorPagoHoje > 0.009;
       const naoPagoHoje = !pagoHoje && naoPagamentos.length > 0;
       const pendenteHoje = comCobrancaHoje && !pagoHoje && !naoPagoHoje;
@@ -236,6 +238,7 @@
         telefone: texto(primeiroValor(cliente, ["telefonePrincipal", "telefone", "celular", "whatsapp"]) || primeiroValor(venda, ["telefonePrincipal", "telefone", "clienteTelefone"])),
         documento: texto(primeiroValor(cliente, ["documento", "cpfCnpj", "cpf", "cnpj"]) || primeiroValor(venda, ["documento", "clienteDocumento"])),
         saldoDevedor: saldo,
+        saldoClienteTotal: ["saldoDevedorCentavos","saldoDevedor","saldoAtual","saldo","valorEmAberto"].some(k=>cliente[k]!=null) ? saldoCliente(cliente) : saldo,
         valorParcela: parcelaNominal,
         valorPagoHoje,
         totalParcelas,
@@ -308,7 +311,7 @@
     const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
     const sincronizando = sync?.status === "PROCESSING" || sync?.status === "QUEUED";
     const bloquear = !item.podeOperar || sincronizando || (typeof global.caixaEstaFechado === "function" && global.caixaEstaFechado());
-    const bloquearNaoPagamento = bloquear || item.pagoHoje;
+    const bloquearNaoPagamento = bloquear;
     const whatsapp = telefoneWhatsapp(item.telefone);
     const syncMeta = sync?.status === "PROCESSING" || sync?.status === "QUEUED"
       ? { classe: "sync-processing", texto: "Sincronizando" }
@@ -388,7 +391,8 @@
     const termo = texto(global.document?.getElementById("buscaCobrancaInput")?.value).toLowerCase();
     const filtros = filtrosAtivos();
     return lista.filter(item => {
-      if (!filtros.carteiraCompleta && !item.comCobrancaHoje && !item.pagoHoje && !item.naoPagoHoje) return false;
+      if (filtros.carteiraCompleta && !(Number(item.saldoClienteTotal ?? item.saldoDevedor) > 0.01)) return false;
+      if (!filtros.carteiraCompleta && !item.comCobrancaHoje) return false;
       const busca = [item.clienteNome, item.clienteApelido, item.telefone, item.documento].join(" ").toLowerCase();
       if (termo && !busca.includes(termo)) return false;
       const filtraStatus = filtros.pendentes || filtros.pagos || filtros.naoPagos;

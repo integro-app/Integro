@@ -274,6 +274,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       const cliente = clienteSnap.data() || {};
       validarCaixa(caixa, tenantId, uid, usuario);
       dataOperacional = core.texto(caixa.dataOperacional || caixa.dataCaixa || core.hojeSP()).slice(0, 10);
+      if (!vendaSnap.exists && primeiraCobranca <= dataOperacional) erro("invalid-argument", "A primeira cobrança deve ser pelo menos um dia depois da data do caixa ativo.");
       let parcelas;
       try {
         parcelas = core.calcularParcelas({ valorTotalCentavos, quantidadeParcelas, primeiraCobranca, frequencia, hoje:dataOperacional });

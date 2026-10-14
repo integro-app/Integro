@@ -210,7 +210,7 @@ function filtrosCobrancaTeste() {
 
 test("sem filtros mostra toda a rota do caixa, com baixas e sem baixas; carteira completa inclui futuras",()=>{
   const t=filtrosCobrancaTeste();
-  const rota=[{clienteNome:'Pendente',comCobrancaHoje:true,pendenteHoje:true},{clienteNome:'Pago',pagoHoje:true},{clienteNome:'Não pago',naoPagoHoje:true},{clienteNome:'Futuro',comCobrancaHoje:false,situacao:'ADIANTADO'}];
+  const rota=[{clienteNome:'Pendente',saldoDevedor:100,comCobrancaHoje:true,pendenteHoje:true},{clienteNome:'Pago',saldoDevedor:50,comCobrancaHoje:true,pagoHoje:true},{clienteNome:'Não pago',saldoDevedor:100,comCobrancaHoje:true,naoPagoHoje:true},{clienteNome:'Futuro',saldoDevedor:100,comCobrancaHoje:false,situacao:'ADIANTADO'}];
   assert.equal(t.filtrar(rota).length,3);
   t.elementos.set('filtroCobrancaCarteiraCompleta',{checked:true});
   assert.equal(t.filtrar(rota).length,4);
@@ -231,3 +231,5 @@ test("render da lista restaura cards após carregamento e contador usa apenas re
   assert.equal(lista.innerHTML,cards);
   elementos.set('filtroCobrancaPago',{checked:true});env.renderCobrancas();assert.match(contador.textContent,/0 cliente.*0 pago/);
 });
+
+test('todos os clientes exige saldo superior a um centavo; baixa futura não entra na rota padrão',()=>{const t=filtrosCobrancaTeste(),rows=[{clienteNome:'Rota',saldoDevedor:0,comCobrancaHoje:true,pagoHoje:true},{clienteNome:'Centavo',saldoDevedor:0.01,comCobrancaHoje:false},{clienteNome:'Futuro',saldoDevedor:0.02,comCobrancaHoje:false,pagoHoje:true}];assert.equal(t.filtrar(rows).length,1);assert.equal(t.filtrar(rows)[0].clienteNome,'Rota');t.elementos.set('filtroCobrancaCarteiraCompleta',{checked:true});assert.equal(t.filtrar(rows).length,1);assert.equal(t.filtrar(rows)[0].clienteNome,'Futuro');});

@@ -105,6 +105,7 @@
     const render=()=>{
       if(!current(session)||session.tab!==tab)return;
       const m={...model(session.client,session.data,U().today()),...(session.summary||{})};global.document.getElementById('c360Kpis').innerHTML=kpis(m);global.document.getElementById('c360Status').textContent=m.status;
+      const saleButton=global.document.querySelector('[data-c360-action="sale"]');if(saleButton){saleButton.textContent=m.debt===0&&(m.sales?.length||m.status==='QUITADO')?'Renovação':'Nova venda';const caixa=global.obterCaixaAbertoVendedor?.()||State()?.getCaixa?.();saleButton.disabled=!caixa||!['ABERTO','REABERTO'].includes(upper(caixa.status||'ABERTO'));}
       const collect=global.document.querySelector('[data-c360-action="collect"]');if(collect)collect.hidden=m.debt<=0;
       if(tab==='resumo')panel.innerHTML=`<p>${esc(session.client.observacao||session.client.observacoes||'Nenhuma observação cadastrada.')}</p><p>Cadastro: ${esc(date(session.client.criadoEmTexto||session.client.criadoEm||session.client.dataCadastro).slice(0,10)||'Não informado')}</p><small>Consulte os detalhes nas abas acima.</small>`;
       else if(tab==='historico')panel.innerHTML=`<ol class="cliente360-timeline">${timeline(session.client,m,session.history).map(e=>`<li><strong>${esc(e.type)}</strong> <small>${esc(e.at.slice(0,19))}</small><p>${esc(e.description||'')}${e.amount!=null?' · '+U().moneyCents(e.amount):''}</p></li>`).join('')}</ol>`;

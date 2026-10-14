@@ -56,7 +56,7 @@ function distribuirPagamentoParcelas({ parcelas = [], pagamentosAtuais = {}, val
       dataPagamento: statusParcela === "PAGA" ? hoje : null
     };
   });
-  if (restante > 0) throw new Error("O pagamento não pode ultrapassar o saldo devedor da venda.");
+  if (restante > 0) throw new Error("O pagamento não pode ultrapassar o saldo devedor do cliente e da venda.");
   return {
     alocacoes,
     totalAnteriorCentavos,
@@ -209,7 +209,8 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
 
       const totalAnteriorCentavos = Object.values(pagamentosAtuais).reduce((soma, valor) => soma + core.inteiro(valor), 0);
       const saldoVendaAtualCentavos = core.centavosDe(venda, "saldoDevedorCentavos", ["saldoDevedor", "saldoAtual"]);
-      const limiteRecebivelCentavos = Math.max(0, saldoVendaAtualCentavos + totalAnteriorCentavos);
+      const saldoClienteAtualCentavos = core.centavosDe(cliente, "saldoDevedorCentavos", ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]);
+      const limiteRecebivelCentavos = Math.max(0, Math.min(saldoVendaAtualCentavos, saldoClienteAtualCentavos) + totalAnteriorCentavos);
       if (acao === "PAGAMENTO" && alvoCentavos > limiteRecebivelCentavos) {
         fail("failed-precondition", "O pagamento não pode ultrapassar o saldo devedor da venda.");
       }
@@ -236,7 +237,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
       const delta = distribuicao.deltaCentavos;
       const saldoCaixaAtualCentavos = core.centavosDe(caixa, "saldoAtualCentavos", ["saldoAtual", "valorAtual", "caixaAtual", "saldo"]);
       const totalPagoVendaAtualCentavos = core.centavosDe(venda, "totalPagoCentavos", ["totalPago"]);
-      const saldoClienteAtualCentavos = core.centavosDe(cliente, "saldoDevedorCentavos", ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]);
+
       const novoSaldoCaixaCentavos = saldoCaixaAtualCentavos + delta;
       const carteiraCaixaCentavos = Number.isInteger(caixa.carteiraFinalCentavos) ? Math.max(0, caixa.carteiraFinalCentavos - delta) : null;
       const novoSaldoVendaCentavos = Math.max(0, saldoVendaAtualCentavos - delta);
