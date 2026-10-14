@@ -785,3 +785,13 @@
  html body[data-integro-page] #clientes .vendedor-clientes-chips{min-height:44px!important;overflow-x:auto!important;flex-shrink:0;}
  html body[data-integro-page] #clientes .vendedor-clientes-heading{display:flex!important;}
 }
+/* Cadastro do vendedor: anexos ficam no final, após os dados cadastrais. */
+.vendedor-cliente-form-completo .cliente-form-anexos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border-top:1px solid #e2e8f0;padding-top:16px}
+.vendedor-cliente-form-completo .cliente-form-anexos label{display:grid;gap:7px;font-size:12px;font-weight:800;color:#334155}
+.vendedor-cliente-form-completo .cliente-form-anexos input[type=file]{width:100%;min-width:0;padding:12px;border:1px solid #dbe4ef;border-radius:12px;background:#fff}
+.vendedor-cliente-form-completo .cliente-form-check{display:flex;align-items:center;gap:10px}
+.vendedor-cliente-form-completo input[role=switch]{appearance:none;width:38px;height:22px;padding:2px;min-height:0;border-radius:12px;background:#cbd5e1;cursor:pointer}
+.vendedor-cliente-form-completo input[role=switch]::before{content:'';display:block;width:16px;height:16px;border-radius:50%;background:#fff}
+.vendedor-cliente-form-completo input[role=switch]:checked{background:#16a34a}
+.vendedor-cliente-form-completo input[role=switch]:checked::before{transform:translateX(16px)}
+@media(max-width:760px){.vendedor-cliente-form-completo .cliente-form-anexos{grid-template-columns:1fr}}

@@ -787,7 +787,8 @@
   function telefoneWhatsappCliente(cliente = {}) {
     let digitos = texto(cliente.telefonePrincipal || cliente.telefone || cliente.celular || cliente.whatsapp).replace(/\D/g, "");
     if (!digitos) return "";
-    return digitos.startsWith("55") ? digitos : `55${digitos}`;
+    const ddi = texto(cliente.telefonePais || "55");
+    return ddi === "55" && digitos.length > 11 && digitos.startsWith(ddi) ? digitos : `${ddi}${digitos}`;
   }
 
   function montarTela() {
@@ -1455,6 +1456,28 @@
     setTimeout(() => selecionarClienteNovaVenda(clienteId), 40);
   }
 
+  function formatarDocumentoFormularioCliente() {
+    const tipo = document.getElementById("clienteVendedorTipoDocumento")?.value || "CPF";
+    const campo = document.getElementById("clienteVendedorDocumento");
+    if (!campo) return;
+    const d = campo.value.replace(/\D/g, "").slice(0, tipo === "CNPJ" ? 14 : 11);
+    campo.maxLength = tipo === "CNPJ" ? 18 : 14;
+    campo.value = tipo === "CNPJ" ? d.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/(\d{3})(\d)/, "$1/$2").replace(/(\d{4})(\d)/, "$1-$2") : d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    const pessoa = document.getElementById("clienteVendedorTipoCliente");
+    if (pessoa) pessoa.value = tipo === "CNPJ" ? "PJ" : "PF";
+  }
+
+  function formatarTelefoneFormularioCliente() {
+    const campo = document.getElementById("clienteVendedorTelefone");
+    if (!campo) return;
+    const ddi = document.getElementById("clienteVendedorTelefonePais")?.value || "55";
+    let d = campo.value.replace(/\D/g, "");
+    if (ddi === "55" && d.length > 11 && d.startsWith("55")) d = d.slice(2);
+    d = d.slice(0, ddi === "55" ? 11 : 15 - ddi.length);
+    campo.maxLength = ddi === "55" ? 15 : 15 - ddi.length + Math.floor((14 - ddi.length) / 3);
+    campo.value = ddi === "55" ? d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4,5})(\d{4})$/, "$1-$2") : d.replace(/(\d{3})(?=\d)/g, "$1 ");
+  }
+
   function formularioClienteConteudo(cliente, clienteId, criado, historico, veioLeads, score, refs) {
     return `
       <div class="vendedor-cliente-form-completo">
@@ -1467,15 +1490,14 @@
         </nav>
         <section class="cliente-form-panel active" data-cliente-form-panel="dados">
           ${veioLeads ? `<div class="cliente-form-lead-box"><strong>Gestão do lead</strong><p>Atualize o status do lead sem sair do cadastro.</p>${selectStatusLead(cliente || {})}</div>` : ""}
-          <label class="cliente-foto-field"><span>Foto de perfil</span><input id="clienteVendedorFoto" type="file" accept="image/*"><small>${esc(cliente?.fotoPerfilNome || cliente?.fotoUrl || "Nenhuma foto anexada")}</small></label>
-          <label>Apelido<input id="clienteVendedorApelido" value="${esc(cliente?.apelido || "")}"></label>
+          <label>Segmento<input id="clienteVendedorSegmento" value="${esc(cliente?.segmento || "")}" maxlength="100"></label>
           <label>Nome completo<input id="clienteVendedorNome" value="${esc(cliente?.nomeCompleto || cliente?.nome || "")}" autocomplete="name" required></label>
-          <label>Tipo de cliente<select id="clienteVendedorTipoCliente"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
-          <label>Tipo de documento<select id="clienteVendedorTipoDocumento"><option value="CPF" ${texto(cliente?.tipoDocumento || "CPF") === "CPF" ? "selected" : ""}>CPF</option><option value="CNPJ" ${texto(cliente?.tipoDocumento) === "CNPJ" ? "selected" : ""}>CNPJ</option><option value="RG" ${texto(cliente?.tipoDocumento) === "RG" ? "selected" : ""}>RG</option></select></label>
-          <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" required></label>
-          <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" required></label>
-          <label class="cliente-form-check"><input id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
-          <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Ate a integracao de Storage, os nomes ficam preparados no cadastro.")}</small></label>
+          <label>Tipo de cliente<select id="clienteVendedorTipoCliente" onchange="document.getElementById('clienteVendedorTipoDocumento').value=this.value==='PJ'?'CNPJ':'CPF';formatarDocumentoFormularioClienteVendedor()"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
+          <label>Tipo de documento<select id="clienteVendedorTipoDocumento" onchange="formatarDocumentoFormularioClienteVendedor()"><option value="CPF" ${texto(cliente?.tipoDocumento || (String(cliente?.documento || cliente?.cpfCnpj || "").replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF")) === "CPF" ? "selected" : ""}>CPF</option><option value="CNPJ" ${texto(cliente?.tipoDocumento || (String(cliente?.documento || cliente?.cpfCnpj || "").replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF")) === "CNPJ" ? "selected" : ""}>CNPJ</option></select></label>
+          <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" maxlength="18" oninput="formatarDocumentoFormularioClienteVendedor()" required></label>
+          <label>País do telefone<select id="clienteVendedorTelefonePais" onchange="formatarTelefoneFormularioClienteVendedor()">${[["55","Brasil (+55)"],["351","Portugal (+351)"],["1","Estados Unidos / Canadá (+1)"],["54","Argentina (+54)"],["595","Paraguai (+595)"],["598","Uruguai (+598)"]].map(([ddi,nome])=>`<option value="${ddi}" ${String(cliente?.telefonePais || "55") === ddi ? "selected" : ""}>${nome}</option>`).join("")}</select></label>
+          <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" maxlength="15" oninput="formatarTelefoneFormularioClienteVendedor()" required></label>
+          <label class="cliente-form-check"><input role="switch" id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
         </section>
         <section class="cliente-form-panel" data-cliente-form-panel="referencias">
           <div class="cliente-form-section-head"><strong>Telefones de referencia</strong><button class="ghost-btn" type="button" onclick="adicionarReferenciaTelefoneClienteVendedor()"><span class="material-symbols-rounded">add</span>Adicionar</button></div>
@@ -1502,6 +1524,10 @@
           <label>Tipo de conta<select id="clienteVendedorTipoConta"><option value="CORRENTE">Corrente</option><option value="POUPANCA">Poupanca</option><option value="PAGAMENTO">Pagamento</option></select></label>
           <label>Chave Pix<input id="clienteVendedorPix" value="${esc(valorCliente(cliente, ["pix", "chavePix"], ""))}"></label>
         </section>
+        <section class="cliente-form-anexos" aria-label="Anexos do cliente">
+          <label class="cliente-foto-field"><span>Foto de perfil</span><input id="clienteVendedorFoto" type="file" accept="image/*"><small>${esc(cliente?.fotoPerfilNome || cliente?.fotoUrl || "Nenhuma foto anexada")}</small></label>
+          <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Nenhum documento selecionado")}</small></label>
+        </section>
       </div>`;
   }
 
@@ -1527,11 +1553,13 @@
       <div class="section-card vendedor-cliente-pagina">
         <header class="vendedor-cliente-pagina-head">
           <button class="ghost-btn" type="button" onclick="voltarGerenciarClientesVendedor()"><span class="material-symbols-rounded">arrow_back</span>Voltar</button>
-          <div><small>Clientes</small><h2>${cliente ? "Cadastro do cliente" : "Criar cliente"}</h2><p>${cliente ? "Atualize os dados do cadastro e salve as alteracoes." : "Cadastre o cliente com dados completos e vinculo do vendedor atual."}</p></div>
+          <div><h2>${cliente ? "Cadastro do cliente" : "Criar cliente"}</h2></div>
         </header>
         ${formularioClienteConteudo(cliente, clienteId, criado, historico, veioLeads, score, refs)}
         <footer class="vendedor-cliente-pagina-actions">${acoesFormularioCliente(clienteId, criado, historico, veioLeads)}</footer>
       </div>`;
+    formatarDocumentoFormularioCliente();
+    formatarTelefoneFormularioCliente();
     limparBlocosClientesLegadosVendedor();
     setTimeout(() => document.getElementById("clienteVendedorNome")?.focus(), 0);
   }
@@ -1596,7 +1624,7 @@
   async function salvarCliente(clienteId = "") {
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const nome = texto(document.getElementById("clienteVendedorNome")?.value);
-    const apelido = texto(document.getElementById("clienteVendedorApelido")?.value);
+    const segmento = texto(document.getElementById("clienteVendedorSegmento")?.value);
     const documento = texto(document.getElementById("clienteVendedorDocumento")?.value);
     const telefone = texto(document.getElementById("clienteVendedorTelefone")?.value);
     const clienteAtual = clienteId ? clientePorId(clienteId) : null;
@@ -1606,6 +1634,11 @@
     const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
     if (!nome || !documento || !telefone) return UIHelpers?.alerta?.("Informe nome, documento e telefone principal.");
     if (!tenantId) return UIHelpers?.alerta?.("Empresa/tenant nao identificado para criar cliente. Atualize a sessao e tente novamente.");
+    const tipoDocumento = document.getElementById("clienteVendedorTipoDocumento")?.value || "CPF";
+    if (documento.replace(/\D/g, "").length !== (tipoDocumento === "CNPJ" ? 14 : 11)) return UIHelpers?.alerta?.("Informe o documento completo para o tipo selecionado.");
+    const ddi = document.getElementById("clienteVendedorTelefonePais")?.value || "55";
+    const numero = telefone.replace(/\D/g, "");
+    if (ddi === "55" ? ![10,11].includes(numero.length) : numero.length < 6 || numero.length + ddi.length > 15) return UIHelpers?.alerta?.("Informe um telefone válido para o país selecionado.");
     const botao = document.getElementById("salvarClienteVendedorBtn");
     if (botao) botao.disabled = true;
     try {
@@ -1631,6 +1664,7 @@
         documento,
         tipoCliente: texto(document.getElementById("clienteVendedorTipoCliente")?.value || "PF"),
         tipoDocumento: texto(document.getElementById("clienteVendedorTipoDocumento")?.value || "CPF"),
+        telefonePais: document.getElementById("clienteVendedorTelefonePais")?.value || "55",
         telefonePrincipal: telefone,
         telefone,
         telefonePrincipalWhatsapp: document.getElementById("clienteVendedorTelefoneWhatsapp")?.checked === true,
@@ -2779,6 +2813,8 @@
   window.limparFiltrosClientesVendedor = limparFiltrosClientes;
   window.abrirFormularioClienteVendedor = abrirFormularioCliente;
   window.voltarGerenciarClientesVendedor = voltarGerenciarClientes;
+  window.formatarDocumentoFormularioClienteVendedor = formatarDocumentoFormularioCliente;
+  window.formatarTelefoneFormularioClienteVendedor = formatarTelefoneFormularioCliente;
   window.salvarClienteVendedor = salvarCliente;
   window.abrirAbaFormularioClienteVendedor = abrirAbaFormularioCliente;
   window.adicionarReferenciaTelefoneClienteVendedor = adicionarReferenciaTelefone;

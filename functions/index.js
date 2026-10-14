@@ -234,3 +234,5 @@ exports.confirmarPagamentoAssinatura = functions.region("southamerica-east1").ht
 exports.consultarAvisosAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(assinaturasPlataforma.avisos);
 exports.marcarAvisoAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(assinaturasPlataforma.marcarAviso);
 exports.suportePlataformaV27=functions.region('southamerica-east1').https.onCall(require('./platform-support').criarSuportePlataforma({db,functions}).callable);
+
+exports.cadastrarClienteVendedorV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.cadastrarVendedor);

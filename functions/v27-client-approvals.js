@@ -198,7 +198,68 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     });
   }
 
-  return { solicitar, decidir };
+  async function cadastrarVendedor(entrada = {}, ctx) {
+    const { uid, usuario, tenantId } = await sessao(ctx);
+    const perfil = [usuario.cargoChave, usuario.tipoUsuario, usuario.perfil, usuario.cargo].map(normalizar);
+    if (!perfil.includes("VENDEDOR")) erro("permission-denied", "Cadastro disponível apenas ao vendedor da empresa.");
+    const permissao = usuario.permissoesUsuario?.clientes || usuario.permissoes?.clientes || usuario.permissoesCargo?.clientes;
+    const acaoPermitida = entrada.acao === "VALIDAR" && entrada.ignorarId ? "editar" : "criar";
+    if (permissao?.[acaoPermitida] === false || permissao?.[acaoPermitida === "editar" ? "podeEditar" : "podeCriar"] === false) erro("permission-denied", "O cargo não permite esta ação em clientes.");
+    const dados = entrada.dados || {};
+    const digitos = v => texto(v).replace(/\D/g, "");
+    const documento = digitos(dados.documento);
+    const tipo = texto(dados.tipoDocumento || (documento.length === 14 ? "CNPJ" : "CPF"));
+    if (!["CPF","CNPJ"].includes(tipo) || documento.length !== (tipo === "CPF" ? 11 : 14)) erro("invalid-argument", "Informe CPF ou CNPJ completo.");
+    if (dados.clientePlataformaId && dados.clientePlataformaId !== tenantId) erro("permission-denied", "Empresa fora da sessão.");
+    const ignorarId = texto(entrada.ignorarId);
+    const chave = require("crypto").createHash("sha256").update(tenantId + ":" + documento).digest("hex");
+    const ref = db.collection("clientes_operacionais").doc("cad_" + chave);
+    const legadoRef = db.collection("clientes").doc("cad_" + chave);
+    return db.runTransaction(async tx => {
+      const atual = await tx.get(ref);
+      if (ignorarId) {
+        const proprio = await tx.get(db.collection("clientes_operacionais").doc(ignorarId));
+        const c = proprio.exists ? proprio.data() : {};
+        if (c.clientePlataformaId !== tenantId || ![uid,usuario.id].includes(texto(c.vendedorAuthUid || c.vendedorId))) erro("permission-denied", "Cliente fora da carteira.");
+      }
+      const conflitosTelefone = new Map();
+      for (const colecao of ["clientes_operacionais","clientes","indicacoes"]) {
+        const registros = await tx.get(db.collection(colecao).where("clientePlataformaId", "==", tenantId));
+        for (const registro of registros.docs) {
+          const r = registro.data();
+          if (r.excluido === true || (ignorarId && (registro.id === ignorarId || r.clienteOperacionalId === ignorarId))) continue;
+          const valores = [r.documentoNormalizado,r.documento,r.cpfCnpj,r.cpf,r.cnpj,r.dadosCliente?.documento];
+          const telefones = [r.telefoneNormalizado,r.telefonePrincipal,r.telefone,...(r.telefonesNormalizados || [])].filter(v => typeof v === "string").map(digitos);
+          if (telefones.includes(digitos(dados.telefonePrincipal)) && colecao !== "indicacoes") conflitosTelefone.set(r.clienteOperacionalId || registro.id,{ id:r.clienteOperacionalId || registro.id });
+          if (valores.some(v => v && digitos(v) === documento)) erro("already-exists", "CPF ou CNPJ já cadastrado em um cliente ou lead desta empresa. Utilize o cadastro existente.");
+        }
+      }
+      if (entrada.acao === "VALIDAR") return { ok:true, duplicidades:[...conflitosTelefone.values()] };
+      const configuracao = await tx.get(db.collection("configuracoes_empresas").doc(tenantId));
+      const politica = texto(configuracao.data()?.clientes?.duplicidade?.cadastro || "BLOQUEAR").toUpperCase();
+      if (conflitosTelefone.size && politica !== "PERMITIR") {
+        const numeros = [...new Set((dados.telefonesNormalizados || [digitos(dados.telefonePrincipal)]).map(digitos))].sort();
+        const chaveDuplicidade = idSeguro("doc_" + documento + "_tel_" + numeros.join("_"));
+        const autorizacao = await tx.get(db.collection("clientes_duplicidade_autorizacoes").doc("dup_" + idSeguro(uid) + "_" + chaveDuplicidade));
+        const a = autorizacao.data() || {};
+        if (politica !== "EXIGIR_AUTORIZACAO" || a.usuarioAuthUid !== uid || a.clientePlataformaId !== tenantId || a.status !== "ATIVA" || Number(a.expiraEmMs || 0) <= Date.now()) erro("already-exists", "Telefone já vinculado a outro cliente da empresa.");
+      }
+      if (atual.exists) erro("already-exists", "CPF ou CNPJ já cadastrado nesta empresa.");
+      const telefone = digitos(dados.telefonePrincipal);
+      const ddi = digitos(dados.telefonePais || "55");
+      if (!texto(dados.nome) || (ddi === "55" ? ![10,11].includes(telefone.length) : telefone.length < 6 || telefone.length + ddi.length > 15)) erro("invalid-argument", "Informe nome e telefone completos.");
+      const permitidos = ["nome","nomeCompleto","segmento","documento","tipoDocumento","tipoCliente","telefonePais","telefonePrincipal","telefone","telefonePrincipalWhatsapp","telefonesReferencia","cep","endereco","numero","complemento","bairro","cidade","uf","observacao","dadosBancarios","fotoPerfilNome","documentosAnexosNomes"];
+      const cadastro = Object.fromEntries(permitidos.filter(k => dados[k] !== undefined).map(k => [k,dados[k]]));
+      const equipeId = texto(usuario.equipeId || usuario.equipesIds?.[0] || usuario.equipeIds?.[0]);
+      const base = { ...cadastro, nome:texto(dados.nome), nomeCompleto:texto(dados.nome), nomeBusca:texto(dados.nome).toLowerCase(), documentoNormalizado:documento, telefoneNormalizado:telefone, telefonesNormalizados:[telefone], statusAtendimento:"AGUARDANDO_ATENDIMENTO", origem:"CADASTRO_DIRETO", clientePlataformaId:tenantId, tenantId, empresaId:tenantId, vendedorId:uid, vendedorAuthUid:uid, vendedorUid:uid, vendedorNome:texto(usuario.nome || usuario.email), equipeId, criadoPor:uid, criadoPorId:uid, criadoEm:ts(), atualizadoPor:uid, atualizadoEm:ts(), ativo:true, excluido:false, cicloAtendimentoAtual:1, tentativasContato:0 };
+      tx.set(ref, { ...base, clienteLegadoId:legadoRef.id });
+      tx.set(legadoRef, { ...base, clienteOperacionalId:ref.id, status:"SEM_VENDA", statusCliente:"SEM_VENDA", saldoDevedor:0, saldoDevedorCentavos:0, saldo:0 });
+      tx.set(db.collection("logs").doc(), { clientePlataformaId:tenantId, tipo:"CLIENTE_CRIADO", tipoAcao:"CLIENTE_CRIADO", usuarioAuthUid:uid, criadoPor:uid, clienteId:ref.id, clienteLegadoId:legadoRef.id, criadoEm:ts() });
+      return { ok:true, clienteOperacionalId:ref.id, clienteLegadoId:legadoRef.id };
+    });
+  }
+
+  return { solicitar, decidir, cadastrarVendedor };
 }
 
 module.exports = { criarAprovacoesClientesV27 };

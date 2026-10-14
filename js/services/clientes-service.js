@@ -206,6 +206,12 @@
   }
 
   async function buscarDuplicidades(db, tenant, dados, ignorarId = "") {
+    const usuario = window.State?.getUsuario?.() || {};
+    if (cargoUsuario(usuario) === "vendedor" && window.firebase?.app) {
+      const callable = window.firebase.app().functions("southamerica-east1").httpsCallable("cadastrarClienteVendedorV27");
+      const resposta = await callable({ acao:"VALIDAR", dados, ignorarId });
+      return resposta.data?.duplicidades || [];
+    }
     const normalizados = montarDadosNormalizados(dados);
     const base = () => db.collection(COLECAO_CLIENTES).where("clientePlataformaId", "==", tenant);
     const consultas = [];
@@ -364,6 +370,14 @@
     if (!usuarioAtivo(usuario)) throw new Error("Usuario inativo nao pode criar cliente.");
     const dados = montarDadosNormalizados(entrada.dados || entrada);
     const clienteOperacionalIdExistente = texto(entrada.clienteOperacionalIdExistente);
+    if (!clienteOperacionalIdExistente && cargoUsuario(usuario) === "vendedor" && window.firebase?.app) {
+      const callable = window.firebase.app().functions("southamerica-east1").httpsCallable("cadastrarClienteVendedorV27");
+      const verificacao = await callable({ acao:"VALIDAR", dados });
+      await validarDuplicidades(verificacao.data?.duplicidades || [], dados, false, usuario);
+      const resposta = await callable({ acao:"CADASTRAR", dados });
+      if (!resposta?.data?.ok) throw new Error("Cadastro não confirmado pelo servidor.");
+      return resposta.data;
+    }
     let operacionalAtual = null;
     if (clienteOperacionalIdExistente) {
       operacionalAtual = await obterCliente(db, clienteOperacionalIdExistente);
