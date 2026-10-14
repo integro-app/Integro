@@ -17,7 +17,7 @@
     const boxTenant = text(caixa?.clientePlataformaId || caixa?.tenantId || caixa?.empresaId);
     const owners = [caixa?.vendedorAuthUid, caixa?.vendedorUid, caixa?.vendedorId, caixa?.usuarioId].filter(Boolean).map(text);
     const open = caixa && ["ABERTO", "REABERTO"].includes(text(caixa.status || caixa.situacao || caixa.estado).toUpperCase()) && caixa.ativo !== false && caixa.excluido !== true && (!tenant || !boxTenant || tenant === boxTenant) && owners.some(id => identities.has(id));
-    const result = { caixa: open ? caixa : null, carteira: 0, saldo: 0, vendas: 0, entradas: 0, gastos: 0, detalhes: { vendas: [], entradas: [], gastos: [] } };
+    const result = { caixa: open ? caixa : null, carteira: 0, saldo: 0, vendas: 0, entradas: 0, gastos: 0, inicial: 0, novas: 0, renovadas: 0, ingressos: 0, recebimentos: 0, retiros: 0, detalhes: { vendas: [], entradas: [], gastos: [] } };
     if (!open || !boxId) return result;
     const inBox = item => {
       const itemTenant = text(item.clientePlataformaId || item.tenantId || item.empresaId);
@@ -41,6 +41,17 @@
     const expenses = ledger.filter(item => view.type(item) === "GASTO");
     const value = item => amount(item, view.type(item) === "VENDA" ? ["valorEmprestado", "valor", "valorPrincipal", "valorTotal"] : ["valor", "valorPago", "valorRecebido", "valorTotal"]) ?? 0;
     const sum = items => items.reduce((total, item) => total + Math.abs(value(item)), 0);
+    const saleById = new Map(vendas.map(sale => [text(sale.id), sale]));
+    const renewal = item => {
+      const sale = saleById.get(text(item.vendaId || item.origemId || item.id)) || {};
+      return text(item.tipoVenda || item.metadados?.tipoVenda || sale.tipoVenda || sale.tipo || "NOVA").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().includes("RENOV");
+    };
+    result.inicial = (amount(caixa, ["saldoInicial", "valorInicial", "caixaInicial"]) ?? 0) / 100;
+    result.novas = sum(allSales.filter(item => !renewal(item))) / 100;
+    result.renovadas = sum(allSales.filter(renewal)) / 100;
+    result.ingressos = sum(ingresses) / 100;
+    result.recebimentos = sum(allReceipts) / 100;
+    result.retiros = sum(ledger.filter(item => ["RETIRADA", "RECOLHIMENTO"].includes(view.type(item)))) / 100;
     result.vendas = sum(allSales) / 100;
     result.entradas = sum([...allReceipts, ...ingresses]) / 100;
     result.gastos = sum(expenses) / 100;

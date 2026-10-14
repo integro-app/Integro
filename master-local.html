@@ -17526,7 +17526,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     ev.stopPropagation();
     ev.stopImmediatePropagation();
     const tipo = card.dataset.dashboardCard;
-    if (isVendedor() && window.detalheDashboardCaixaVendedor) { const detalhe = window.detalheDashboardCaixaVendedor(tipo); if (detalhe) return openDrawer(detalhe.titulo, detalhe.subtitulo, detalhe.html); }
+    if (window.detalheDashboardCaixaVendedor) { const detalhe = window.detalheDashboardCaixaVendedor(tipo); if (detalhe) return openDrawer(detalhe.titulo, detalhe.subtitulo, detalhe.html); }
     if(tipo === "carteira-final") return renderCarteira("7d");
     if(tipo === "recebido-hoje") return renderRecebido();
     if(tipo === "caixa-atual") return renderCaixaAtual();

@@ -90,3 +90,11 @@ test('quitação mantém carteira zero e legado documental do vendedor pertence 
   const zero = summarize({caixa:{...caixa,carteiraFinalCentavos:50000},usuario,vendas:[{id:'settled',vendedorId:'seller',saldoDevedorCentavos:0,status:'QUITADO'}]});
   assert.equal(zero.carteira,0);
 });
+test('detalhe de caixa separa inicial, novas, renovações, ingressos, gastos e retiros sem duplicar ledger',()=>{
+ const result=summarize({caixa:{...caixa,saldoAtualCentavos:undefined,saldoInicialCentavos:100000},usuario,lancamentos:[row('new','VENDA',10000,{origemId:'v1'}),row('renew','VENDA',20000,{origemId:'v2'}),row('pay','PAGAMENTO',5000,{origemId:'p1'}),row('in','INGRESSO',3000),row('expense','GASTO',1000),row('out','RETIRADA',2000),row('collect','RECOLHIMENTO',500)],vendas:[{id:'v1',caixaId:'open',tipoVenda:'NOVA',valorEmprestado:100},{id:'v2',caixaId:'open',tipoVenda:'RENOVAÇÃO',valorEmprestado:200}],pagamentos:[{id:'p1',caixaId:'open',valor:50}]});
+ assert.equal(result.inicial,1000);assert.equal(result.novas,100);assert.equal(result.renovadas,200);assert.equal(result.recebimentos,50);assert.equal(result.ingressos,30);assert.equal(result.gastos,10);assert.equal(result.retiros,25);assert.equal(result.saldo,745);
+});
+test('resumo vazio mantém detalhamento financeiro zerado',()=>{const r=summarize({usuario});for(const key of ['inicial','novas','renovadas','recebimentos','ingressos','gastos','retiros','saldo'])assert.equal(r[key],0)});
+test('clique em Caixa atual exibe o detalhamento somente para vendedor',()=>{
+ const source=fs.readFileSync('js/vendedor-unificado.js','utf8');const ctx={usuarioAtual:{},State:{getUsuario:()=>({})},perfil:()=> 'vendedor',resumoDashboardCaixaVendedor:()=>summarize({caixa,usuario}),moeda:v=>'R$ '+v,dataClienteFormatada:()=> '14/10/2026'};vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('  function detalheDashboardCaixaVendedor('),source.indexOf('  function configurarDashboardVendedor(')),ctx);const view=ctx.detalheDashboardCaixaVendedor('caixa-atual');for(const label of ['Caixa inicial','Vendas novas','Vendas renovadas','Ingressos','Gastos','Retiros','Caixa atual','Recebimentos de cobranças'])assert.ok(view.html.includes(label),label);ctx.perfil=()=> 'master_local';assert.equal(ctx.detalheDashboardCaixaVendedor('caixa-atual'),null);
+});

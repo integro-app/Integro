@@ -917,11 +917,17 @@
   }
 
   function detalheDashboardCaixaVendedor(card) {
+    if (perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return null;
     const resumo = resumoDashboardCaixaVendedor();
     const names = { "carteira-final": "Carteira final", "caixa-atual": "Caixa atual", "vendas-hoje": "Vendas", "recebido-hoje": "Entradas", "gastos-hoje": "Saídas (gastos)" };
     const keys = { "carteira-final": "carteira", "caixa-atual": "saldo", "vendas-hoje": "vendas", "recebido-hoje": "entradas", "gastos-hoje": "gastos" };
     const key = keys[card];
     if (!key) return null;
+    if (key === "saldo") {
+      const itens = [["Caixa inicial",resumo.inicial],["Vendas novas",resumo.novas],["Vendas renovadas",resumo.renovadas],["Recebimentos de cobranças",resumo.recebimentos],["Ingressos",resumo.ingressos],["Gastos",resumo.gastos],["Retiros",resumo.retiros],["Caixa atual",resumo.saldo]];
+      const html = '<div class="insight-summary-grid">' + itens.map(([rotulo,valor]) => '<div class="insight-summary-item"><small>' + rotulo + '</small><strong>' + moeda(valor) + '</strong></div>').join("") + '</div>';
+      return { titulo:"Caixa do vendedor", subtitulo:resumo.caixa ? "Movimentações confirmadas do caixa ativo · " + dataClienteFormatada(resumo.caixa.dataOperacional || resumo.caixa.dataCaixa || resumo.caixa.dataAbertura || resumo.caixa.abertoEm) : "Nenhum caixa aberto para este vendedor.", html };
+    }
     const rows = resumo.detalhes[key] || [];
     const table = rows.length ? '<table class="real-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>' + rows.map(item => '<tr><td>' + esc(item.clienteNome || item.descricao || item.historico || item.observacao || "Movimentação") + '</td><td>' + esc(window.IntegroMovimentacoesView.type(item)) + '</td><td>' + moeda(window.IntegroMovimentacoesView.value(item)) + '</td></tr>').join("") + '</tbody></table>' : '';
     const info = !resumo.caixa ? "Nenhum caixa aberto para este vendedor." : key === "carteira" ? "Saldo restante a receber das vendas do vendedor, incluindo vendas de dias anteriores. Os pagamentos já registrados foram descontados." : key === "saldo" ? "Saldo atual confirmado do caixa aberto." : rows.length ? "" : "Nenhum lançamento confirmado neste caixa.";
