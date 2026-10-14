@@ -1202,3 +1202,17 @@ test('Master Global grava e consulta somente auditoria global sem tenant local',
   await assertFails(getDoc(doc(appDb(profiles.masterA),'logs','global_log')));
   await assertFails(updateDoc(doc(db,'logs','global_log'),{tipoAcao:'ALTERADO'}));
 });
+
+
+test('Master Global abre todas as consultas do painel sem tenant local', async () => {
+  await testEnv.withSecurityRulesDisabled(async c => {
+    const db=c.firestore();
+    await setDoc(doc(db,'usuarios',profiles.masterGlobal.uid),{...userDoc(profiles.masterGlobal),clientePlataformaId:''});
+    for(const name of ['planos','departamentos_integro','notificacoes']) await setDoc(doc(db,name,'global_boot'),{nome:'Teste',titulo:'Teste',publico:'GLOBAL',criadoEm:new Date()});
+    await setDoc(doc(db,'logs','global_boot'),{origem:'master_global',usuarioAuthUid:profiles.masterGlobal.uid,tipoAcao:'LOGIN',criadoEm:new Date()});
+  });
+  const db=appDb(profiles.masterGlobal);
+  for(const name of ['clientes_integro','usuarios','departamentos_integro','planos']) await assertSucceeds(getDocs(query(collection(db,name),limit(1000))));
+  await assertSucceeds(getDocs(query(collection(db,'notificacoes'),limit(200))));
+  await assertSucceeds(getDocs(query(collection(db,'logs'),where('origem','==','master_global'),limit(200))));
+});
