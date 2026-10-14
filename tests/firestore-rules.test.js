@@ -71,6 +71,7 @@ function userDoc(profile) {
 async function seedBase() {
   await testEnv.withSecurityRulesDisabled(async context => {
     const admin = context.firestore();
+    for (const tenant of ["tenant_a", "tenant_b"]) await setDoc(doc(admin, "clientes_integro", tenant), { nome: tenant, status: "ATIVO", acessoLiberado: true });
     for (const profile of Object.values(profiles)) {
       await setDoc(doc(admin, "usuarios", profile.uid), userDoc(profile));
     }
@@ -1158,7 +1159,7 @@ test("fechamento: transação real do módulo publicado fecha caixa do vendedor 
 
 test('Master Local não promove usuários a perfis globais nem altera identidade Auth', async () => {
   const db = appDb(profiles.masterA);
-  for (const patch of [{tipoUsuario:'master_global'}, {tipoUsuario:'usuario_integro'}, {tipoUsuarioOficial:'master_global'}, {cargoChave:'master_global'}, {perfil:'master_global'}, {authUid:profiles.masterA.uid}]) {
+  for (const patch of [{tipoUsuario:'master_global'}, {tipoUsuario:'MASTER_GLOBAL'}, {cargoChave:'MASTER_GLOBAL'}, {tipoUsuario:'usuario_integro'}, {tipoUsuarioOficial:'master_global'}, {cargoChave:'master_global'}, {perfil:'master_global'}, {authUid:profiles.masterA.uid}]) {
     await assertFails(updateDoc(doc(db, 'usuarios', profiles.vendedor1.uid), patch));
   }
   await assertSucceeds(updateDoc(doc(db, 'usuarios', profiles.vendedor1.uid), {nome:'Vendedor atualizado'}));
@@ -1190,4 +1191,14 @@ test('Master Global cria planos, departamentos e convites pendentes; perfis loca
     await assertFails(setDoc(doc(appDb(p),'departamentos_integro','negado'),{nome:'Suporte'}));
     await assertFails(setDoc(doc(appDb(p),'usuarios','convite_global_negado'),pending));
   }
+});
+
+test('Master Global grava e consulta somente auditoria global sem tenant local', async () => {
+  const db=appDb(profiles.masterGlobal),payload={origem:'master_global',usuarioAuthUid:profiles.masterGlobal.uid,tipoAcao:'EDITAR_CLIENTE_INTEGRO'};
+  await assertSucceeds(setDoc(doc(db,'logs','global_log'),payload));
+  await assertSucceeds(getDocs(query(collection(db,'logs'),where('origem','==','master_global'))));
+  await assertFails(setDoc(doc(db,'logs','global_log_falso'),{...payload,usuarioAuthUid:profiles.masterA.uid}));
+  await assertFails(setDoc(doc(appDb(profiles.masterA),'logs','global_log_falso'),{...payload,usuarioAuthUid:profiles.masterA.uid}));
+  await assertFails(getDoc(doc(appDb(profiles.masterA),'logs','global_log')));
+  await assertFails(updateDoc(doc(db,'logs','global_log'),{tipoAcao:'ALTERADO'}));
 });

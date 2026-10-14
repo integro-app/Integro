@@ -2,6 +2,8 @@
 const core = require('./financial-core');
 function empresaLiberada(empresa = {}, agora = Date.now()) {
   if (empresa.acessoLiberado === false || empresa.ativo === false || ['BLOQUEADO','INATIVO','SUSPENSO'].includes(core.normalizarStatus(empresa.status || empresa.situacao))) return false;
+  const bloqueio = empresa.bloqueioAssinaturaEm;
+  if (bloqueio && (bloqueio.toMillis ? bloqueio.toMillis() : Date.parse(bloqueio)) <= agora) return false;
   if (empresa.testeAtivo === true && empresa.dataFimTeste) {
     const fim = empresa.dataFimTeste.toMillis ? empresa.dataFimTeste.toMillis() : Date.parse(empresa.dataFimTeste);
     if (!Number.isFinite(fim) || fim <= agora) return false;

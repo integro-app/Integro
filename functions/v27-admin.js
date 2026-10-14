@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 
 const crypto = require("node:crypto");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -62,10 +63,11 @@ function criarAdministracaoV27({ admin, functions, db }) {
     return user.acessoLiberado !== false && !["INATIVO", "BLOQUEADO", "SUSPENSO"].includes(upper(user.status || "ATIVO"));
   }
 
-  async function actorContext(context) {
+  async function actorContext(context, somenteSessao = false) {
     if (!context.auth?.uid) error("unauthenticated", "Sessão não autenticada.");
     const actor = await userProfile(context.auth.uid);
     if (!actor || !active(actor) || actor.acessoLiberado !== true || text(actor.authUid) !== context.auth.uid) error("permission-denied", "Usuário sem acesso administrativo válido.");
+    if (!somenteSessao && tenant(actor)) await exigirEmpresaOperacional({db,functions,usuario:actor,tenantId:tenant(actor)});
     return actor;
   }
 
@@ -102,7 +104,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
   }
 
   async function iniciarSessao(data, context) {
-    const actor = await actorContext(context);
+    const actor = await actorContext(context, true);
     const uid = context.auth.uid;
     const tenantId = tenant(actor);
     if (!tenantId && !["master_global", "usuario_integro"].includes(lower(actor.tipoUsuario))) error("failed-precondition", "Empresa não identificada.");
@@ -149,7 +151,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
   }
 
   async function validarSessao(data, context) {
-    const actor = await actorContext(context);
+    const actor = await actorContext(context, true);
     const uid = context.auth.uid;
     await exigirCaixaVendedor(actor, uid);
     const sessionId = text(data?.sessionId);

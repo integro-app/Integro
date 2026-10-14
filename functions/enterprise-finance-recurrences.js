@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 const core=require('./financial-core');
 const {FieldValue}=require('firebase-admin/firestore');
 const text=core.texto,upper=core.normalizarStatus;
@@ -56,6 +57,7 @@ function criarRecorrenciasFinanceiras({db,functions}){
     const uid=text(ctx?.auth?.uid);if(!uid)error('unauthenticated','Sessão não autenticada.');const snap=await db.collection('usuarios').doc(uid).get(),u=snap.exists?snap.data():{};
     if(u.authUid!==uid||u.acessoLiberado!==true||['INATIVO','BLOQUEADO','SUSPENSO'].includes(upper(u.status))||!role(u)&&u.permissoes?.controleFinanceiro?.editar!==true)error('permission-denied','Sem permissão para gerar recorrências.');
     if(!text(u.clientePlataformaId))error('failed-precondition','Usuário sem empresa vinculada.');
+    await exigirEmpresaOperacional({db,functions,usuario:u,tenantId:text(u.clientePlataformaId)});
     const id=text(data?.recorrenciaId),until=text(data?.ate)||core.adicionarDiasISO(core.hojeSP(),90);if(!id||id.includes('/')||!/^\d{4}-\d{2}-\d{2}$/.test(until))error('invalid-argument','Recorrência ou data inválida.');
     const rows=await generate(id,{tenant:text(u.clientePlataformaId),uid,actor:text(u.nome||u.email),until,max:Math.min(120,Number(data?.max)||120)});return{ok:true,contas:rows};
   }

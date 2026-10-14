@@ -53,6 +53,7 @@ exports.provisionarUsuario = functions
       if (convite.tipoUsuario === "master_local" && (!tenant || !(await db.collection("clientes_integro").doc(tenant).get()).exists)) erroHttps("failed-precondition", "Empresa do convite não encontrada.");
     } else if ([convite.tipoUsuario, convite.tipoUsuarioOficial, convite.cargoChave, convite.perfil].some(v => ["master_global", "usuario_integro"].includes(String(v || "").toLowerCase()))) erroHttps("permission-denied", "Perfis globais exigem Master Global.");
 
+    if (!global) await require("./company-access").exigirEmpresaOperacional({db,functions,usuario:autor,tenantId:tenant});
     const email = String(convite.emailNormalizado || convite.email || "").trim().toLowerCase();
     if (!email) erroHttps("failed-precondition", "Convite sem e-mail valido.");
     if (!["CONVITE_PENDENTE", "PROVISIONADO"].includes(String(convite.status || ""))) {
@@ -221,3 +222,9 @@ exports.consultarDatasCaixaEquipe = functions.region("southamerica-east1").https
 
 const {criarMovimentacoesAdministrativas}=require("./admin-movements");
 exports.registrarMovimentacaoAdministrativa=functions.region("southamerica-east1").https.onCall(criarMovimentacoesAdministrativas({db,functions}).registrar);
+
+const { criarAssinaturasPlataforma } = require("./platform-subscriptions");
+const assinaturasPlataforma = criarAssinaturasPlataforma({ db, functions });
+exports.configurarAssinaturaPlataforma = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.configurar);
+exports.consultarFinanceiroAssinatura = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.consultar);
+exports.confirmarPagamentoAssinatura = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.confirmar);

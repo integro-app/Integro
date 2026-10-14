@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 const core = require("./financial-core");
 const {FieldValue} = require("firebase-admin/firestore");
 function criarMovimentacoesAdministrativas({db,functions}) {
@@ -23,6 +24,7 @@ function criarMovimentacoesAdministrativas({db,functions}) {
       if(roles.includes("VENDEDOR")||!(roles.includes("MASTER_LOCAL")||roles.some(r=>["FINANCEIRO","GERENTE","SUPERVISOR"].includes(r))&&allowed))fail("permission-denied","Sem permissão para lançar movimentações administrativas.");
       if(!boxSnap.exists)fail("not-found","Caixa não encontrado.");
       const box=boxSnap.data(),tenant=id(user.clientePlataformaId);
+      await exigirEmpresaOperacional({ db, functions, usuario: user, tenantId: tenant });
       if(box.clientePlataformaId!==tenant||(input.clientePlataformaId&&input.clientePlataformaId!==tenant))fail("permission-denied","Caixa de outra empresa.");
       const sellerId=id(box.vendedorId), sellerSnap=await tx.get(db.collection("usuarios").doc(sellerId));
       if(!sellerSnap.exists||sellerSnap.data().clientePlataformaId!==tenant)fail("permission-denied","Vendedor sem vínculo com a empresa.");

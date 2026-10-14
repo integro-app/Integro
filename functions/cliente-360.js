@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 const core=require('./financial-core');
 const text=core.texto,upper=core.normalizarStatus;
 const cents=(r,key,legacy)=>r[key]!=null?Math.round(Number(r[key])):key==='valorParcelaCentavos'&&r.valorCentavos!=null?Math.round(Number(r.valorCentavos)):Math.round(Number(r[legacy]||0)*100);
@@ -19,6 +20,7 @@ function criarCliente360({db,functions}){
     const uid=text(context?.auth?.uid);if(!uid)error('unauthenticated','Sessão não autenticada.');
     const snap=await db.collection('usuarios').doc(uid).get(),u=snap.exists?snap.data():{},tenant=text(u.clientePlataformaId);
     if(u.authUid!==uid||u.acessoLiberado!==true||!tenant||['BLOQUEADO','INATIVO','SUSPENSO'].includes(upper(u.status)))error('permission-denied','Usuário sem acesso.');
+    await exigirEmpresaOperacional({db,functions,usuario:u,tenantId:tenant});
     if(!id||id.includes('/'))error('invalid-argument','Cliente inválido.');
     const c=await db.collection('clientes_operacionais').doc(id).get();if(!c.exists)error('not-found','Cliente não encontrado.');const client={id:c.id,...c.data()};
     const role=[u.tipoUsuario,u.cargoChave].map(upper).find(r=>['MASTER_LOCAL','GERENTE','SUPERVISOR','FINANCEIRO','AUDITOR','VENDEDOR','CAPTADOR','MASTER_GLOBAL'].includes(r));

@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 const { FieldValue } = require("firebase-admin/firestore");
 
 function criarChatV27({ admin, functions, db }) {
@@ -34,6 +35,7 @@ function criarChatV27({ admin, functions, db }) {
     if (!user || !active(user)) fail("permission-denied", "Usuário sem acesso ao chat.");
     const tenantId = tenant(user);
     if (!tenantId) fail("failed-precondition", "Empresa não identificada.");
+    await exigirEmpresaOperacional({db,functions,usuario:user,tenantId});
     return { uid, user, tenantId };
   }
   async function conversation(conversaId, sessao) {

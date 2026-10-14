@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 const core=require("./financial-core");
 const {createHash,randomUUID}=require("node:crypto");
 const {FieldValue}=require("firebase-admin/firestore");
@@ -11,7 +12,7 @@ function criarTransferenciasV27({admin,functions,db}){
   const teamIds=u=>[...(Array.isArray(u?.equipeIds)?u.equipeIds:[]),...(Array.isArray(u?.equipesIds)?u.equipesIds:[]),u?.equipeId].filter(Boolean).map(String);
   const idSafe=v=>text(v).replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,300);
   async function userByUid(uid){let s=await db.collection("usuarios").doc(uid).get();if(s.exists)return{id:s.id,...s.data()};const q=await db.collection("usuarios").where("authUid","==",uid).limit(1).get();return q.empty?null:{id:q.docs[0].id,...q.docs[0].data()};}
-  async function session(ctx){const uid=text(ctx?.auth?.uid);if(!uid)err("unauthenticated","Sessão não autenticada.");const u=await userByUid(uid);if(!active(u)||text(u.authUid||uid)!==uid)err("permission-denied","Usuário sem acesso.");const tenant=text(u.clientePlataformaId);if(!tenant)err("failed-precondition","Empresa não identificada.");return{uid,u,tenant};}
+  async function session(ctx){const uid=text(ctx?.auth?.uid);if(!uid)err("unauthenticated","Sessão não autenticada.");const u=await userByUid(uid);if(!active(u)||text(u.authUid||uid)!==uid)err("permission-denied","Usuário sem acesso.");const tenant=text(u.clientePlataformaId);if(!tenant)err("failed-precondition","Empresa não identificada.");await exigirEmpresaOperacional({db,functions,usuario:u,tenantId:tenant});return{uid,u,tenant};}
   async function targetUser(uid,tenant){const u=await userByUid(text(uid));if(!active(u)||text(u.clientePlataformaId)!==tenant)err("failed-precondition","Responsável de destino inválido.");return u;}
   function canManager(u){return["MASTER_LOCAL","GERENTE"].includes(role(u));}
   function canSupervisor(u){return role(u)==="SUPERVISOR";}

@@ -294,6 +294,14 @@
         { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
         { "fieldPath": "criadoEmTexto", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "logs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "origem", "order": "ASCENDING" },
+        { "fieldPath": "criadoEm", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

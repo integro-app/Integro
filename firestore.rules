@@ -23,7 +23,8 @@ service cloud.firestore {
     }
 
     function hasTenant() {
-      return userTenantId() is string && userTenantId().size() > 0;
+      let tenant = userTenantId();
+      return tenant is string && tenant.size() > 0;
     }
 
     function resourceTenantId() {
@@ -35,11 +36,13 @@ service cloud.firestore {
     }
 
     function isSameTenantRead() {
-      return hasTenant() && resourceTenantId() == userTenantId();
+      let tenant = userTenantId();
+      return tenant is string && tenant.size() > 0 && resourceTenantId() == tenant;
     }
 
     function isSameTenantWrite() {
-      return hasTenant() && requestTenantId() == userTenantId();
+      let tenant = userTenantId();
+      return tenant is string && tenant.size() > 0 && requestTenantId() == tenant;
     }
 
     function isTenantImmutable() {
@@ -104,12 +107,48 @@ service cloud.firestore {
       return role() == "captador" || cargo() == "captador";
     }
 
-    function isActiveUser() {
+function fimTesteIso(fim) {
+  let partes = fim.split("T");
+  let dia = partes[0].split("-");
+  let hora = partes[1].split(":");
+  return timestamp.date(int(dia[0]), int(dia[1]), int(dia[2])) + duration.time(int(hora[0]), int(hora[1]), int(hora[2].split("[.]")[0]), 0);
+}
+function fimTesteValido(empresa) {
+  let fim = empresa.get("dataFimTeste", "");
+  return empresa.get("testeAtivo", false) != true || fim == "" ||
+    (fim is timestamp ? request.time < fim :
+      (fim is string && fim.matches('[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}[.][0-9]{3}Z') && request.time < fimTesteIso(fim)));
+}
+function assinaturaPermitida(empresa) {
+  let limite = empresa.get("bloqueioAssinaturaEm", null);
+  return limite == null || (limite is timestamp ? request.time < limite : (limite is string && request.time < fimTesteIso(limite)));
+}
+function empresaDadosPermitidos(empresa) {
+  return empresa.get("acessoLiberado", true) != false && empresa.get("ativo", true) != false &&
+    !(empresa.get("status", empresa.get("situacao", "")).upper() in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) && fimTesteValido(empresa) && assinaturaPermitida(empresa);
+}
+function empresaPermitida(user) {
+  let tenant = user.get("clientePlataformaId", "");
+  let companyPath = /databases/$(database)/documents/clientes_integro/$(tenant);
+  return user.get("tipoUsuario", "") in ["master_global", "usuario_integro"] || tenant == "" ||
+    (user.get("empresaBloqueada", false) != true && user.get("acessoEmpresaLiberado", true) != false &&
+      !(user.get("clientePlataformaStatus", user.get("empresaStatus", "")) in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+      (!exists(companyPath) || empresaDadosPermitidos(get(companyPath).data)));
+}
+
+    function isActiveIdentity() {
       return isAuthenticated() &&
         exists(userPath()) &&
         userDoc().get("authUid", "") == currentUid() &&
         !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
         userDoc().get("acessoLiberado", false) == true;
+    }
+
+    function isActiveUser() {
+      let user = userDoc();
+      return isAuthenticated() && exists(userPath()) && user.get("authUid", "") == currentUid() &&
+        !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        user.get("acessoLiberado", false) == true && empresaPermitida(user);
     }
 
     function permMap() {
@@ -594,11 +633,11 @@ service cloud.firestore {
         (currentUid() == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"])) ||
         (isMasterLocal() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() &&
           unchanged(["authUid"]) &&
-          !(resource.data.get("tipoUsuario", "") in ["master_global", "usuario_integro"]) &&
-          !(request.resource.data.get("tipoUsuario", "") in ["master_global", "usuario_integro"]) &&
-          !(request.resource.data.get("tipoUsuarioOficial", "") in ["master_global", "usuario_integro"]) &&
-          !(request.resource.data.get("perfil", "") in ["master_global", "usuario_integro"]) &&
-          !(request.resource.data.get("cargoChave", "") in ["master_global", "usuario_integro"]))
+          !(resource.data.get("tipoUsuario", "").lower() in ["master_global", "usuario_integro"]) &&
+          !(request.resource.data.get("tipoUsuario", "").lower() in ["master_global", "usuario_integro"]) &&
+          !(request.resource.data.get("tipoUsuarioOficial", "").lower() in ["master_global", "usuario_integro"]) &&
+          !(request.resource.data.get("perfil", "").lower() in ["master_global", "usuario_integro"]) &&
+          !(request.resource.data.get("cargoChave", "").lower() in ["master_global", "usuario_integro"]))
       );
       allow delete: if false;
     }
@@ -620,7 +659,7 @@ service cloud.firestore {
     }
 
     match /clientes_integro/{id} {
-      allow read: if isActiveUser() &&
+      allow read: if isActiveIdentity() &&
         (isMasterGlobal() || isUsuarioIntegro() || id == userTenantId());
       allow create, update: if isActiveUser() && isMasterGlobal() &&
         request.resource.data.get("nome", request.resource.data.get("razaoSocial", "")) is string &&
@@ -829,7 +868,7 @@ service cloud.firestore {
           exists(userPath()) &&
           user.get("authUid", "") == currentUid() &&
           !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-          user.get("acessoLiberado", false) == true &&
+          user.get("acessoLiberado", false) == true && empresaPermitida(user) &&
           user.get("tipoUsuario", "") == "master_local" &&
           user.get("clientePlataformaId", "") is string &&
           user.get("clientePlataformaId", "").size() > 0 &&
@@ -937,7 +976,7 @@ service cloud.firestore {
         let historyPath = /databases/$(database)/documents/historico_fechamentos_caixa/$(data.get("refechamentoId", ""));
         let history = getAfter(historyPath).data;
         let ids = currentUserIds();
-        return user.get("authUid", "") == uid && user.get("acessoLiberado", false) == true &&
+        return user.get("authUid", "") == uid && user.get("acessoLiberado", false) == true && empresaPermitida(user) &&
           !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
           (user.get("tipoUsuario", "") == "vendedor" || user.get("cargoChave", "") == "vendedor") &&
           user.get("clientePlataformaId", "") != "" &&
@@ -1387,9 +1426,11 @@ service cloud.firestore {
           );
       }
 
-      allow read: if isActiveUser() && isSameTenantRead() &&
+      allow read: if (isActiveUser() && isMasterGlobal() && resource.data.get("origem", "") == "master_global") || isActiveUser() && isSameTenantRead() &&
         (isMasterLocal() || isGerente() || isAuditor() || isFinanceiro() || (isSupervisor() && isTeamAllowed(resource.data)));
-      allow create: if canCreateLog(request.resource.data);
+      allow create: if canCreateLog(request.resource.data) || (isActiveUser() && isMasterGlobal() &&
+        request.resource.data.get("origem", "") == "master_global" && request.resource.data.get("usuarioAuthUid", "") == currentUid() &&
+        request.resource.data.get("tipoAcao", "").size() > 2);
       allow update: if false;
       allow delete: if false;
     }

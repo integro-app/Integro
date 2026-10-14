@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 
 const core = require("./financial-core");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -37,6 +38,7 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     const uid = text(context?.auth?.uid); if (!uid) error("unauthenticated", "Sessão não autenticada.");
     const user = await userByUid(uid); if (!user || !active(user) || text(user.authUid || uid) !== uid) error("permission-denied", "Usuário sem acesso ao ÍNTEGRO.");
     const tenantId = text(user.clientePlataformaId); if (!tenantId) error("failed-precondition", "Usuário sem empresa vinculada.");
+    await exigirEmpresaOperacional({ db, functions, usuario: user, tenantId });
     return { uid, user, tenantId };
   }
   async function targetUser(uid, tenantId) {

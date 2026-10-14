@@ -235,3 +235,10 @@ test('teste expirado bloqueia login; teste vigente e assinatura fora do teste pe
     const result=await FirestoreService.resolverUsuarioAutenticado(authUser);assert.equal(result.ok,ok);if(!ok)assert.equal(result.codigo,'TENANT_BLOCKED');
   }
 });
+
+test('inadimplência da assinatura libera somente portal financeiro aos perfis autorizados', async () => {
+  for(const [cargo,ok]of [['master_local',true],['financeiro',true],['administrativo',true],['vendedor',false],['supervisor',false]]){
+    const {FirestoreService}=carregarContexto({'usuarios/uid_1':usuarioBase({cargoChave:cargo}),'clientes_integro/tenant_1':{status:'ATIVO',acessoLiberado:true,bloqueioAssinaturaEm:'2000-01-01T00:00:00.000Z'}});
+    const result=await FirestoreService.resolverUsuarioAutenticado(authUser);assert.equal(result.ok,ok);if(ok)assert.equal(result.usuario.acessoRestritoAssinatura,true);
+  }
+});

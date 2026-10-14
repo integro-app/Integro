@@ -255,6 +255,7 @@ async function carregarConfiguracoesEmpresaDoUsuario(usuario) {
 // ===============================
 
 function redirecionarUsuario(usuario) {
+  if (usuario.acessoRestritoAssinatura === true) { window.location.href = "assinatura.html"; return true; }
   const acesso = window.IntegroOperacional?.normalizarAcessoUsuario ? window.IntegroOperacional.normalizarAcessoUsuario(usuario) : null;
   const tipo = String(usuario.tipoUsuario || "").toLowerCase();
   const rota = acesso?.rotaPadrao || CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] || CONFIG.ROTAS_POR_TIPO[tipo];
@@ -288,6 +289,7 @@ function protegerPagina(tipoObrigatorio = null) {
         return;
       }
 
+      if (usuario.acessoRestritoAssinatura === true) { State.setUsuario(usuario); window.location.replace("assinatura.html"); return; }
       const validacao = Validators.validarUsuario(usuario);
       if (!validacao.ok) {
         UIHelpers.alerta(validacao.mensagem);

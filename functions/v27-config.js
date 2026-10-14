@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 const { FieldValue } = require("firebase-admin/firestore");
 
 function criarConfiguracoesV27({ admin, functions, db }) {
@@ -48,6 +49,7 @@ function criarConfiguracoesV27({ admin, functions, db }) {
     if (!actor || !active(actor) || !canEdit(actor)) fail("permission-denied", "Sem permissão para alterar as configurações da empresa.");
     const tenantId = tenant(actor);
     if (!tenantId) fail("failed-precondition", "Empresa não identificada.");
+    await exigirEmpresaOperacional({db,functions,usuario:actor,tenantId});
     const input = plain(data?.config || data || {});
     if (!input || typeof input !== "object") fail("invalid-argument", "Configuração inválida.");
 

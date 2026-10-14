@@ -311,6 +311,16 @@ const FirestoreService = {
       if (empresaDoc.exists) {
         const empresa = empresaDoc.data() || {};
         const statusEmpresa = String(empresa.status || empresa.situacao || "").toUpperCase();
+        usuario.acessoRestritoAssinatura = false;
+        const limiteAssinatura = empresa.bloqueioAssinaturaEm?.toMillis ? empresa.bloqueioAssinaturaEm.toMillis() : Date.parse(empresa.bloqueioAssinaturaEm);
+        if (empresa.bloqueioAssinaturaEm && limiteAssinatura <= Date.now()) {
+          const perfis = [usuario.tipoUsuario, usuario.cargoChave].map(v => String(v || '').toLowerCase());
+          if (perfis.some(p => ['master_local','financeiro','administrativo','adm'].includes(p)) || usuario.responsavelFinanceiro === true || usuario.permissoes?.assinatura?.ver === true) {
+            usuario.acessoRestritoAssinatura = true;
+            return { ok: true };
+          }
+          return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
+        }
         const fimTeste = empresa.dataFimTeste?.toMillis ? empresa.dataFimTeste.toMillis() : Date.parse(empresa.dataFimTeste);
         const testeExpirado = empresa.testeAtivo === true && empresa.dataFimTeste && (!Number.isFinite(fimTeste) || fimTeste <= Date.now());
         if (testeExpirado || empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) {

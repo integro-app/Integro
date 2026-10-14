@@ -51,7 +51,7 @@ test('sessão administrativa nega documento Auth divergente e acesso não libera
 });
 test('editar plano atualiza documento existente e preserva total de planos',async()=>{
   const html=fs.readFileSync('master-global.html','utf8'),line=html.split(/\r?\n/).find(l=>l.includes('function abrirFormPlano('));
-  const fields=new Map(); const records=new Map([['existing',{nome:'Antigo',valorMensal:10}]]);let adds=0;
+  const fields=new Map(); const records=new Map([['existing',{nome:'Antigo',valorMensal:10,status:'INATIVO'}]]);let adds=0;
   const context=vm.createContext({planos:[{id:'existing',nome:'Antigo',valorMensal:10,descricao:'Texto'}],fireOk:true,abrirDrawer(){},setVal:(id,value)=>fields.set(id,value),val:id=>fields.get(id),esc:value=>String(value),firebase:{firestore:{FieldValue:{serverTimestamp:()=>null}}},mgDb:{collection:()=>({doc:id=>({update:async v=>records.set(id,{...records.get(id),...v})}),add:async()=>{adds++;}})},fecharDrawer(){},carregarTudo:async()=>{},notificarIntegro:message=>{throw Error(message);}});
-  vm.runInContext(line,context);context.abrirFormPlano('existing');assert.equal(fields.get('plNome'),'Antigo');fields.set('plNome','Atualizado');fields.set('plValor',20);await context.salvarPlano('existing');assert.equal(records.get('existing').nome,'Atualizado');assert.equal(records.get('existing').valorMensal,20);assert.equal(adds,0);
+  vm.runInContext(line,context);context.abrirFormPlano('existing');assert.equal(fields.get('plNome'),'Antigo');fields.set('plNome','Atualizado');fields.set('plValor',20);await context.salvarPlano('existing');assert.equal(records.get('existing').nome,'Atualizado');assert.equal(records.get('existing').valorMensal,20);assert.equal(adds,0);assert.equal(records.get('existing').status,'INATIVO');
 });

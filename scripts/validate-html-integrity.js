@@ -4,6 +4,7 @@ const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
 const pages = [
+  "assinatura.html",
   "index.html",
   "master-global.html",
   "master-local.html",

@@ -52,9 +52,10 @@ window.db = db;
 
 // V27.2: bootstrap consolidado, estável e sem polling infinito.
 (function carregarBootstrapV27() {
+  if (window.__INTEGRO_ASSINATURA_PORTAL__) return;
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
-  script.src = "js/v27-bootstrap.js?v=20261013-mobile4&build=20261013-mobile4";
+  script.src = "js/v27-bootstrap.js?v=20261013-cobranca2&build=20261013-cobranca2";
   script.async = false;
   script.dataset.integroV27Bootstrap = "1";
   document.head.appendChild(script);

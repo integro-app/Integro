@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 
 const core = require("./financial-core");
 const {createHash} = require("node:crypto");
@@ -32,6 +33,7 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
     if (texto(usuario.authUid) !== uid || usuario.acessoLiberado !== true || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(status(usuario.status))) erro("permission-denied", "Usuário sem acesso ao ÍNTEGRO.");
     const tenantId = texto(usuario.clientePlataformaId);
     if (!tenantId) erro("failed-precondition", "Usuário sem empresa vinculada.");
+    await exigirEmpresaOperacional({ db, functions, usuario, tenantId });
     return { uid, usuario, tenantId };
   }
 

@@ -1,4 +1,5 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 
 const core = require("./financial-core");
 const { FieldValue } = require("firebase-admin/firestore");
@@ -28,6 +29,7 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     if (!ativo(usuario)) erro("permission-denied", "Usuário sem acesso.");
     const tenantId = texto(usuario.clientePlataformaId);
     if (!tenantId) erro("failed-precondition", "Empresa não identificada.");
+    await exigirEmpresaOperacional({db,functions,usuario,tenantId});
     return { uid, usuario, tenantId };
   }
 
