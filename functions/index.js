@@ -228,3 +228,7 @@ const assinaturasPlataforma = criarAssinaturasPlataforma({ db, functions });
 exports.configurarAssinaturaPlataforma = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.configurar);
 exports.consultarFinanceiroAssinatura = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.consultar);
 exports.confirmarPagamentoAssinatura = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.confirmar);
+
+exports.consultarAvisosAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(assinaturasPlataforma.avisos);
+exports.marcarAvisoAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(assinaturasPlataforma.marcarAviso);
+exports.suportePlataformaV27=functions.region('southamerica-east1').https.onCall(require('./platform-support').criarSuportePlataforma({db,functions}).callable);

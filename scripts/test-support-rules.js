@@ -1,0 +1,1 @@
+'use strict';const {spawnSync}=require('node:child_process');const r=spawnSync(process.execPath,['--test','--test-name-pattern=Master|suporte|notificacoes','tests/firestore-rules.test.js'],{stdio:'inherit',windowsHide:true});process.exitCode=r.status??1;

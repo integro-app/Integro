@@ -41,6 +41,7 @@
   function belongs(notification, uid = authUid(), tenant = tenantId()) {
     const item = normalize(notification);
     if (!uid || item.destinatarioAuthUid !== uid) return false;
+    if (user()?.tipoUsuario === "master_global") return item.tipo === "INADIMPLENCIA_ASSINATURA" && item.origemTipo === "ASSINATURA_PLATAFORMA";
     if (tenant && item.clientePlataformaId && item.clientePlataformaId !== tenant) return false;
     return upper(item.tipo) !== "MENSAGEM_CHAT" && upper(item.origemTipo) !== "CHAT_INTERNO";
   }
@@ -58,6 +59,7 @@
     const tenant = tenantId();
     if (!database || !uid) return storeSet([]);
     const limit = Math.max(1, Math.min(Number(options.limit || 100), 200));
+    if (user()?.tipoUsuario === "master_global") { const r = await global.firebase.app().functions("southamerica-east1").httpsCallable("consultarAvisosAssinaturaPlataforma")({}); return storeSet(r.data.notificacoes); }
     const snapshot = await database.collection("notificacoes").where("destinatarioAuthUid", "==", uid).limit(limit).get();
     if (uid !== authUid() || tenant !== tenantId()) return [];
     return storeSet(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
@@ -70,6 +72,7 @@
   }
 
   function subscribe() {
+    if (user()?.tipoUsuario === "master_global") { unsubscribe(); list().catch(e=>console.warn("[ÍNTEGRO] Avisos de assinatura indisponíveis.",e)); return function() {}; }
     const database = db();
     const uid = authUid();
     const tenant = tenantId();
@@ -110,6 +113,7 @@
   async function updateOwn(id, patch) {
     const database = db();
     if (!database || !id) throw new Error("Notificação inválida.");
+    if (user()?.tipoUsuario === "master_global") { if (Object.keys(patch).some(k=>!["lida","status","lidaEm","lidaPor"].includes(k))) throw new Error("Avisos de assinatura não podem ser excluídos."); await global.firebase.app().functions("southamerica-east1").httpsCallable("marcarAvisoAssinaturaPlataforma")({faturaId:id,lida:patch.lida}); return true; }
     await database.collection("notificacoes").doc(id).set({ ...patch, atualizadoEm: serverTimestamp(), atualizadoEmTexto: new Date().toISOString() }, { merge: true });
     return true;
   }

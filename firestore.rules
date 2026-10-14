@@ -1435,6 +1435,19 @@ function empresaPermitida(user) {
       allow delete: if false;
     }
 
+    match /suporte_conversas/{id} {
+      function suportePermitido(data) {
+        let u = userDoc();
+        return isActiveIdentity() && (
+          u.get("tipoUsuario", "") == "master_global" ||
+          (u.get("tipoUsuario", "") == "usuario_integro" && u.get("permissoes", {}).get("suporte", {}).get("atender", false) == true) ||
+          (data.get("clienteAuthUid", "") == currentUid() && data.get("clientePlataformaId", "") == u.get("clientePlataformaId", ""))
+        );
+      }
+      allow read: if suportePermitido(resource.data);
+      allow write: if false;
+    }
+
     match /notificacoes/{id} {
       function isOperationalCreator(data) {
         let perfil = role();
@@ -1475,9 +1488,9 @@ function empresaPermitida(user) {
         let perfil = role();
         let cargoAtual = cargo();
         return isActiveUser() && (
-          perfil == "master_global" ||
+          (perfil == "master_global" && data.get("tipo", "") == "INADIMPLENCIA_ASSINATURA" && data.get("origemTipo", "") == "ASSINATURA_PLATAFORMA") ||
           perfil == "usuario_integro" ||
-          (isSameTenantRead() && (
+          (perfil != "master_global" && isSameTenantRead() && (
             perfil == "master_local" ||
             perfil == "gerente" ||
             notificacaoDoUsuario(data) ||

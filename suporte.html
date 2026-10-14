@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Suporte — ÍNTEGRO</title>
+  <link rel="stylesheet" href="css/integro-interface.css">
+  <script>window.__INTEGRO_SUPORTE_PORTAL__=true;</script>
+</head>
+<body>
+  <main class="unified-profile-module">
+    <header class="unified-profile-head"><h1>Suporte ÍNTEGRO</h1><div><button class="primary-btn" id="supAtualizar" type="button">Atualizar</button><button class="ghost-btn" id="supSair" type="button">Sair</button></div></header>
+    <p>Atendimento humano. A IA de suporte ainda aguarda configuração.</p><p id="supErro" role="alert"></p><section id="supConversas"></section><section id="supMensagens" aria-live="polite"></section><label for="supTexto">Sua mensagem</label><textarea id="supTexto" maxlength="4000" class="form-textarea"></textarea><button id="supEnviar" class="primary-btn" type="button">Enviar</button><button id="supAssumir" class="ghost-btn" type="button" hidden>Assumir atendimento</button><button id="supEncerrar" class="ghost-btn" type="button" hidden>Encerrar atendimento</button><a class="ghost-btn" href="index.html">Voltar ao sistema</a>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+  <script src="js/firebase-config.js"></script>
+  <script src="js/services/v27-session-service.js"></script>
+  <script src="js/services/platform-support.js"></script>
+</body>
+</html>

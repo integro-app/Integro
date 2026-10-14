@@ -120,6 +120,15 @@ function criarAssinaturasPlataforma({db,functions}) {
       return {ok:true,saldoCentavos:updated.saldoCentavos,status:updated.status};
     });
   }
-  return {configurar,consultar,confirmar,gerar};
+  async function avisos(data,ctx){
+    const who=await actor(ctx);if(!who.global)fail('permission-denied','Somente Master Global consulta avisos da plataforma.');
+    const today=core.hojeSP(),rows=await db.collection('plataforma_faturas').where('vencimento','<',today).limit(500).get();
+    if(rows.docs.length===500)fail('resource-exhausted','Volume de avisos requer paginação; nenhum aviso foi ocultado silenciosamente.');
+    const states=await db.collection('plataforma_avisos_lidos').where('usuarioAuthUid','==',who.uid).limit(1000).get(),read=new Set(states.docs.filter(d=>d.data().lida===true).map(d=>d.data().faturaId));
+    const items=rows.docs.filter(d=>d.data().saldoCentavos>0&&d.data().status!=='CANCELADA').map(d=>{const f=d.data();return {id:d.id,tipo:'INADIMPLENCIA_ASSINATURA',origemTipo:'ASSINATURA_PLATAFORMA',destinatarioAuthUid:who.uid,clientePlataformaId:f.clientePlataformaId,titulo:'Empresa inadimplente com o ÍNTEGRO',mensagem:'Empresa '+f.clientePlataformaId+' · '+f.planoNome+' · vencimento '+f.vencimento+' · saldo R$ '+(f.saldoCentavos/100).toFixed(2),status:read.has(d.id)?'LIDA':'PENDENTE',lida:read.has(d.id),criadoEmTexto:f.vencimento+'T12:00:00Z'};});
+    const tenants=[...new Set(items.map(n=>n.clientePlataformaId))],names=new Map(await Promise.all(tenants.map(async tenant=>{const company=await db.collection('clientes_integro').doc(tenant).get();return [tenant,text(company.data()?.nome||company.data()?.razaoSocial||tenant)];})));for(const notice of items)notice.mensagem=notice.mensagem.replace('Empresa '+notice.clientePlataformaId+' ·',names.get(notice.clientePlataformaId)+' ·');return {ok:true,notificacoes:items};
+  }
+  async function marcarAviso(data,ctx){const who=await actor(ctx);if(!who.global)fail('permission-denied','Somente Master Global.');const fid=id(data?.faturaId,'Fatura'),bill=await db.collection('plataforma_faturas').doc(fid).get();if(!bill.exists)fail('not-found','Fatura não encontrada.');await db.collection('plataforma_avisos_lidos').doc(hash([who.uid,fid])).set({usuarioAuthUid:who.uid,faturaId:fid,lida:data?.lida!==false,atualizadoEm:ts()});return {ok:true};}
+  return {configurar,consultar,confirmar,gerar,avisos,marcarAviso};
 }
 module.exports={criarAssinaturasPlataforma,proximoVencimento,prazoBloqueio,bloqueioDaAssinatura};

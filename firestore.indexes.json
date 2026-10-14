@@ -302,6 +302,20 @@
         { "fieldPath": "origem", "order": "ASCENDING" },
         { "fieldPath": "criadoEm", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "suporte_mensagens",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "conversaId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "criadoEmTexto",
+          "order": "DESCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

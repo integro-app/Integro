@@ -1213,6 +1213,10 @@ test('Master Global abre todas as consultas do painel sem tenant local', async (
   });
   const db=appDb(profiles.masterGlobal);
   for(const name of ['clientes_integro','usuarios','departamentos_integro','planos']) await assertSucceeds(getDocs(query(collection(db,name),limit(1000))));
-  await assertSucceeds(getDocs(query(collection(db,'notificacoes'),limit(200))));
+  await assertFails(getDocs(query(collection(db,'notificacoes'),limit(200))));
   await assertSucceeds(getDocs(query(collection(db,'logs'),where('origem','==','master_global'),limit(200))));
 });
+
+test('Master Global não lê avisos operacionais mesmo no tenant do próprio perfil',async()=>{await testEnv.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'notificacoes','lead_cliente'),{clientePlataformaId:'tenant_a',tipo:'NOVO_LEAD',destinatarioAuthUid:profiles.masterGlobal.uid}));await assertFails(getDoc(doc(appDb(profiles.masterGlobal),'notificacoes','lead_cliente')));});
+
+test('suporte: leitura própria e global permitida, outra empresa e escrita SDK negadas',async()=>{await testEnv.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'suporte_conversas','support_a'),{clienteAuthUid:profiles.masterA.uid,clientePlataformaId:'tenant_a',ultimaMensagem:'Ajuda'}));await assertSucceeds(getDoc(doc(appDb(profiles.masterA),'suporte_conversas','support_a')));await assertSucceeds(getDoc(doc(appDb(profiles.masterGlobal),'suporte_conversas','support_a')));await assertFails(getDoc(doc(appDb(profiles.masterB),'suporte_conversas','support_a')));await assertFails(setDoc(doc(appDb(profiles.masterA),'suporte_conversas','forged'),{clienteAuthUid:profiles.masterA.uid,clientePlataformaId:'tenant_a'}));});
