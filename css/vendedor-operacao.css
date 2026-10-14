@@ -795,3 +795,12 @@
 .vendedor-cliente-form-completo input[role=switch]:checked{background:#16a34a}
 .vendedor-cliente-form-completo input[role=switch]:checked::before{transform:translateX(16px)}
 @media(max-width:760px){.vendedor-cliente-form-completo .cliente-form-anexos{grid-template-columns:1fr}}
+/* Formulário aberto: rolagem nativa evita recorte quando o teclado reduz a área visível. */
+@media(max-width:980px){
+ html:has(body[data-integro-page] #clientes.active .vendedor-cliente-pagina),
+ body[data-integro-page]:has(#clientes.active .vendedor-cliente-pagina){height:auto!important;min-height:100%!important;max-height:none!important;overflow-x:hidden!important;overflow-y:auto!important;position:static!important;overscroll-behavior:auto!important}
+ body[data-integro-page]:has(#clientes.active .vendedor-cliente-pagina) :is(.layout,.app){position:static!important;inset:auto!important;height:auto!important;max-height:none!important;overflow:visible!important}
+ body[data-integro-page]:has(#clientes.active .vendedor-cliente-pagina) :is(.main,main.main,.main-content,.page-content,#mainContent){position:static!important;inset:auto!important;height:auto!important;max-height:none!important;overflow:visible!important;scroll-behavior:auto!important;padding-bottom:max(32px,env(safe-area-inset-bottom))!important}
+ .vendedor-cliente-form-completo :is(input,select,textarea){font-size:16px!important;scroll-margin-block:24px}
+}
+.vendedor-cliente-form-completo .cliente-form-anexos{grid-column:1/-1}

@@ -1478,6 +1478,43 @@
     campo.value = ddi === "55" ? d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4,5})(\d{4})$/, "$1-$2") : d.replace(/(\d{3})(?=\d)/g, "$1 ");
   }
 
+  let viewportFormularioInstalado = false;
+  function manterCampoFormularioVisivel() {
+    const campo = document.activeElement;
+    if (!window.matchMedia("(max-width: 980px)").matches || !campo?.closest?.("#clientes.active .vendedor-cliente-form-completo")) return;
+    const rect = campo.getBoundingClientRect();
+    const viewport = window.visualViewport;
+    const topo = viewport?.offsetTop || 0;
+    const fundo = topo + (viewport?.height || window.innerHeight);
+    if (rect.top < topo + 16 || rect.bottom > fundo - 24) campo.scrollIntoView({ block:"center", behavior:"auto" });
+  }
+
+  function instalarNavegacaoFormularioCliente() {
+    const form = document.querySelector("#clientes .vendedor-cliente-form-completo");
+    if (!form || form.dataset.navegacaoCampos === "1") return;
+    form.dataset.navegacaoCampos = "1";
+    const campos = () => Array.from(form.querySelectorAll("input,select,textarea")).filter(c => !c.disabled && !c.readOnly && !["hidden","file","checkbox","radio","button","submit"].includes(c.type));
+    campos().forEach(c => c.setAttribute("enterkeyhint", "next"));
+    form.addEventListener("keydown", e => {
+      if (e.key !== "Enter" || e.isComposing || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.target.tagName === "TEXTAREA") return;
+      const lista = campos();
+      const indice = lista.indexOf(e.target);
+      if (indice < 0) return;
+      e.preventDefault();
+      const proximo = lista.slice(indice + 1).find(c => c.getClientRects().length || c.closest(".cliente-form-panel") && !c.closest(".cliente-form-panel").classList.contains("active"));
+      if (!proximo) { e.target.blur(); return; }
+      const painel = proximo.closest(".cliente-form-panel");
+      if (painel && !painel.classList.contains("active")) abrirAbaFormularioCliente(painel.dataset.clienteFormPanel);
+      proximo.focus();
+      window.requestAnimationFrame(manterCampoFormularioVisivel);
+    });
+    form.addEventListener("focusin", () => window.requestAnimationFrame(manterCampoFormularioVisivel));
+    if (!viewportFormularioInstalado) {
+      window.visualViewport?.addEventListener("resize", () => window.requestAnimationFrame(manterCampoFormularioVisivel), { passive:true });
+      viewportFormularioInstalado = true;
+    }
+  }
+
   function formularioClienteConteudo(cliente, clienteId, criado, historico, veioLeads, score, refs) {
     return `
       <div class="vendedor-cliente-form-completo">
@@ -1498,6 +1535,10 @@
           <label>País do telefone<select id="clienteVendedorTelefonePais" onchange="formatarTelefoneFormularioClienteVendedor()">${[["55","Brasil (+55)"],["351","Portugal (+351)"],["1","Estados Unidos / Canadá (+1)"],["54","Argentina (+54)"],["595","Paraguai (+595)"],["598","Uruguai (+598)"]].map(([ddi,nome])=>`<option value="${ddi}" ${String(cliente?.telefonePais || "55") === ddi ? "selected" : ""}>${nome}</option>`).join("")}</select></label>
           <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" maxlength="15" oninput="formatarTelefoneFormularioClienteVendedor()" required></label>
           <label class="cliente-form-check"><input role="switch" id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
+        <section class="cliente-form-anexos" aria-label="Anexos do cliente">
+          <label class="cliente-foto-field"><span>Foto de perfil</span><input id="clienteVendedorFoto" type="file" accept="image/*"><small>${esc(cliente?.fotoPerfilNome || cliente?.fotoUrl || "Nenhuma foto anexada")}</small></label>
+          <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Nenhum documento selecionado")}</small></label>
+        </section>
         </section>
         <section class="cliente-form-panel" data-cliente-form-panel="referencias">
           <div class="cliente-form-section-head"><strong>Telefones de referencia</strong><button class="ghost-btn" type="button" onclick="adicionarReferenciaTelefoneClienteVendedor()"><span class="material-symbols-rounded">add</span>Adicionar</button></div>
@@ -1523,10 +1564,6 @@
           <label>Conta<input id="clienteVendedorConta" value="${esc(valorCliente(cliente, ["conta", "contaBancaria"], ""))}"></label>
           <label>Tipo de conta<select id="clienteVendedorTipoConta"><option value="CORRENTE">Corrente</option><option value="POUPANCA">Poupanca</option><option value="PAGAMENTO">Pagamento</option></select></label>
           <label>Chave Pix<input id="clienteVendedorPix" value="${esc(valorCliente(cliente, ["pix", "chavePix"], ""))}"></label>
-        </section>
-        <section class="cliente-form-anexos" aria-label="Anexos do cliente">
-          <label class="cliente-foto-field"><span>Foto de perfil</span><input id="clienteVendedorFoto" type="file" accept="image/*"><small>${esc(cliente?.fotoPerfilNome || cliente?.fotoUrl || "Nenhuma foto anexada")}</small></label>
-          <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Nenhum documento selecionado")}</small></label>
         </section>
       </div>`;
   }
@@ -1558,6 +1595,7 @@
         ${formularioClienteConteudo(cliente, clienteId, criado, historico, veioLeads, score, refs)}
         <footer class="vendedor-cliente-pagina-actions">${acoesFormularioCliente(clienteId, criado, historico, veioLeads)}</footer>
       </div>`;
+    instalarNavegacaoFormularioCliente();
     formatarDocumentoFormularioCliente();
     formatarTelefoneFormularioCliente();
     limparBlocosClientesLegadosVendedor();
@@ -1660,7 +1698,7 @@
       const payload = {
         nome,
         nomeCompleto: nome,
-        apelido,
+        segmento,
         documento,
         tipoCliente: texto(document.getElementById("clienteVendedorTipoCliente")?.value || "PF"),
         tipoDocumento: texto(document.getElementById("clienteVendedorTipoDocumento")?.value || "CPF"),
