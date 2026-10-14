@@ -805,3 +805,10 @@
 }
 .vendedor-cliente-form-completo .cliente-form-anexos{grid-column:1/-1}
 .insight-summary-grid.seller-box-balance{grid-template-columns:minmax(0,1fr)!important}
+.dashboard-insight-panel:has(.seller-box-balance){width:min(480px,100%)!important}
+.seller-box-balance .insight-summary-item.is-entry{background:#f0fdf4!important;border-color:#bbf7d0!important;border-left:4px solid #16a34a!important}
+.seller-box-balance .insight-summary-item.is-entry :is(small,strong){color:#15803d!important}
+.seller-box-balance .insight-summary-item.is-exit{background:#fef2f2!important;border-color:#fecaca!important;border-left:4px solid #dc2626!important}
+.seller-box-balance .insight-summary-item.is-exit :is(small,strong){color:#b91c1c!important}
+.seller-box-balance .insight-summary-item.is-balance{background:#eff6ff!important;border-color:#bfdbfe!important;border-left:4px solid #2563eb!important}
+.seller-box-balance .insight-summary-item.is-balance :is(small,strong){color:#1d4ed8!important}

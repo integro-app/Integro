@@ -925,7 +925,7 @@
     if (!key) return null;
     if (key === "saldo") {
       const itens = [["Caixa inicial",resumo.inicial],["+ Ingressos",resumo.ingressos],["+ Recolhido",resumo.recebimentos],["− Vendas novas",resumo.novas],["− Vendas renovadas",resumo.renovadas],["− Gastos",resumo.gastos],["− Retiros",resumo.retiros],["= Caixa atual",resumo.saldo]];
-      const html = '<div class="insight-summary-grid seller-box-balance">' + itens.map(([rotulo,valor]) => '<div class="insight-summary-item"><small>' + rotulo + '</small><strong>' + moeda(valor) + '</strong></div>').join("") + '</div>';
+      const html = '<div class="insight-summary-grid seller-box-balance">' + itens.map(([rotulo,valor]) => '<div class="insight-summary-item ' + (rotulo.startsWith('+') ? 'is-entry' : rotulo.startsWith('−') ? 'is-exit' : 'is-balance') + '"><small>' + rotulo + '</small><strong>' + moeda(valor) + '</strong></div>').join("") + '</div>';
       return { titulo:"Caixa do vendedor", subtitulo:resumo.caixa ? "Movimentações confirmadas do caixa ativo · " + dataClienteFormatada(resumo.caixa.dataOperacional || resumo.caixa.dataCaixa || resumo.caixa.dataAbertura || resumo.caixa.abertoEm) : "Nenhum caixa aberto para este vendedor.", html };
     }
     const rows = resumo.detalhes[key] || [];
