@@ -891,7 +891,7 @@
       ["caixa-atual", "Caixa atual", "kpiCaixaAtual", resumo.saldo],
       ["vendas-hoje", "Vendas", "kpiVendasHoje", resumo.vendas],
       ["recebido-hoje", "Entradas", "kpiRecebidoHoje", resumo.entradas],
-      ["gastos-hoje", "Saídas (gastos)", "kpiGastosHoje", resumo.gastos]
+      ["gastos-hoje", "Saídas", "kpiGastosHoje", resumo.saidas]
     ];
     cards.forEach(([id, label, valueId, value]) => {
       const card = dashboard.querySelector('[data-dashboard-card="' + id + '"]');
@@ -913,20 +913,22 @@
         card.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); card.click(); } });
       }
     });
+    const detalheAberto = document.querySelector("#dashboardInsightBody .seller-box-balance");
+    if (detalheAberto?.closest(".dashboard-insight.show")) document.getElementById("dashboardInsightBody").innerHTML = detalheDashboardCaixaVendedor("caixa-atual").html;
     return resumo;
   }
 
   function detalheDashboardCaixaVendedor(card) {
     if (perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return null;
     const resumo = resumoDashboardCaixaVendedor();
-    const names = { "carteira-final": "Carteira final", "caixa-atual": "Caixa atual", "vendas-hoje": "Vendas", "recebido-hoje": "Entradas", "gastos-hoje": "Saídas (gastos)" };
-    const keys = { "carteira-final": "carteira", "caixa-atual": "saldo", "vendas-hoje": "vendas", "recebido-hoje": "entradas", "gastos-hoje": "gastos" };
+    const names = { "carteira-final": "Carteira final", "caixa-atual": "Caixa atual", "vendas-hoje": "Vendas", "recebido-hoje": "Entradas", "gastos-hoje": "Saídas" };
+    const keys = { "carteira-final": "carteira", "caixa-atual": "saldo", "vendas-hoje": "vendas", "recebido-hoje": "entradas", "gastos-hoje": "saidas" };
     const key = keys[card];
     if (!key) return null;
     if (key === "saldo") {
       const itens = [["Caixa inicial",resumo.inicial],["+ Ingressos",resumo.ingressos],["+ Recolhido",resumo.recebimentos],["− Vendas novas",resumo.novas],["− Vendas renovadas",resumo.renovadas],["− Gastos",resumo.gastos],["− Retiros",resumo.retiros],["= Caixa atual",resumo.saldo]];
       const html = '<div class="insight-summary-grid seller-box-balance">' + itens.map(([rotulo,valor]) => '<div class="insight-summary-item ' + (rotulo.startsWith('+') ? 'is-entry' : rotulo.startsWith('−') ? 'is-exit' : rotulo.startsWith('=') ? 'is-balance is-current-balance' : 'is-balance') + '"><small>' + rotulo + '</small><strong>' + moeda(valor) + '</strong></div>').join("") + '</div>';
-      return { titulo:"Caixa do vendedor", subtitulo:resumo.caixa ? "Movimentações confirmadas do caixa ativo · " + dataClienteFormatada(resumo.caixa.dataOperacional || resumo.caixa.dataCaixa || resumo.caixa.dataAbertura || resumo.caixa.abertoEm) : "Nenhum caixa aberto para este vendedor.", html };
+      return { titulo:"Caixa do vendedor", subtitulo:resumo.caixa ? "Movimentações confirmadas do caixa ativo · " + dataClienteFormatada(resumo.caixa.dataOperacional || resumo.caixa.dataCaixa || resumo.caixa.dataAbertura || resumo.caixa.abertoEm) : "Nenhum caixa aberto para este vendedor.", html: '<div class="seller-box-launch"><button class="primary-btn" type="button" onclick="abrirGavetaMovimentacaoVendedor()" ' + (resumo.caixa ? '' : 'disabled') + '>Fazer lançamento</button></div>' + html };
     }
     const rows = resumo.detalhes[key] || [];
     const table = rows.length ? '<table class="real-table"><thead><tr><th>Descrição</th><th>Tipo</th><th>Valor</th></tr></thead><tbody>' + rows.map(item => '<tr><td>' + esc(item.clienteNome || item.descricao || item.historico || item.observacao || "Movimentação") + '</td><td>' + esc(window.IntegroMovimentacoesView.type(item)) + '</td><td>' + moeda(window.IntegroMovimentacoesView.value(item)) + '</td></tr>').join("") + '</tbody></table>' : '';
@@ -2286,7 +2288,11 @@
         ${caixa ? "" : '<p class="vendedor-mov-alerta">Abra um caixa para criar ou consultar as movimentações do dia.</p>'}
         <section class="vendedor-mov-lista"><div class="vendedor-mov-lista-head"><h3>${({INGRESSO:"Ingressos",GASTO:"Gastos",RETIRADA:"Retiros"})[tipoSelecionado] || "Lançamentos do caixa aberto"}</h3><span>${movimentos.length} registro(s)</span></div>${movimentos.length ? movimentos.map(item => cardMovimentacaoVendedor(item, caixa)).join("") : '<div class="empty-state-operacao"><strong>Nenhuma movimentação encontrada</strong><p>Os lançamentos deste caixa aparecerão aqui.</p></div>'}</section>
       </div>
-      <div id="gavetaMovimentacaoVendedor" class="vendedor-mov-drawer" aria-hidden="true" onclick="if(event.target===this)fecharGavetaMovimentacaoVendedor()">
+`;
+  }
+
+  function garantirGavetaMovimentacaoVendedor() {
+    if (!document.getElementById("gavetaMovimentacaoVendedor")) document.body.insertAdjacentHTML("beforeend", `      <div id="gavetaMovimentacaoVendedor" class="vendedor-mov-drawer" aria-hidden="true" onclick="if(event.target===this)fecharGavetaMovimentacaoVendedor()">
         <aside class="vendedor-mov-drawer-card" role="dialog" aria-modal="true" aria-labelledby="tituloGavetaMovimentacaoVendedor">
           <header><div><small>Caixa aberto</small><h3 id="tituloGavetaMovimentacaoVendedor">Novo lançamento</h3></div><button type="button" onclick="fecharGavetaMovimentacaoVendedor()" aria-label="Fechar">×</button></header>
           <form class="vendedor-mov-form" onsubmit="event.preventDefault();registrarMovimentacaoVendedor()">
@@ -2298,12 +2304,13 @@
             <div class="vendedor-mov-drawer-actions"><button class="ghost-btn" type="button" onclick="fecharGavetaMovimentacaoVendedor()">Cancelar</button><button id="movimentacaoSalvarVendedorBtn" class="primary-btn" type="submit"><span class="material-symbols-rounded">save</span>Salvar</button></div>
           </form>
         </aside>
-      </div>`;
+      </div>`);
   }
 
   async function abrirGavetaMovimentacaoVendedor() {
     const caixa = await garantirCaixaAberto();
     if (!caixa || !caixaEstaAberto(caixa)) return UIHelpers?.alerta?.("Abra um caixa para criar um lançamento.");
+    garantirGavetaMovimentacaoVendedor();
     const drawer = document.getElementById("gavetaMovimentacaoVendedor");
     if (!drawer) return;
     drawer.classList.add("open");
@@ -2805,6 +2812,7 @@
     recalcularDashboardVendedor("operacoes-tempo-real");
   });
   document.addEventListener("integro-tela-alterada", evento => {
+    if (evento.detail?.tela === "movimentacoes" && perfil(usuarioAtual || State.getUsuario?.()) === "vendedor") { window.trocarTela?.("dashboard"); return; }
     if (evento.detail?.tela === "clientes") setTimeout(() => renderClientesVendedor(), 0);
     else pararObservacaoClientesVendedor();
     if (evento.detail?.tela === "dashboard") setTimeout(() => sincronizarMovimentosDashboardVendedor(false), 0);

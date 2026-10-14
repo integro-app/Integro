@@ -17,7 +17,7 @@
     const boxTenant = text(caixa?.clientePlataformaId || caixa?.tenantId || caixa?.empresaId);
     const owners = [caixa?.vendedorAuthUid, caixa?.vendedorUid, caixa?.vendedorId, caixa?.usuarioId].filter(Boolean).map(text);
     const open = caixa && ["ABERTO", "REABERTO"].includes(text(caixa.status || caixa.situacao || caixa.estado).toUpperCase()) && caixa.ativo !== false && caixa.excluido !== true && (!tenant || !boxTenant || tenant === boxTenant) && owners.some(id => identities.has(id));
-    const result = { caixa: open ? caixa : null, carteira: 0, saldo: 0, vendas: 0, entradas: 0, gastos: 0, inicial: 0, novas: 0, renovadas: 0, ingressos: 0, recebimentos: 0, retiros: 0, detalhes: { vendas: [], entradas: [], gastos: [] } };
+    const result = { caixa: open ? caixa : null, carteira: 0, saldo: 0, vendas: 0, entradas: 0, gastos: 0, saidas: 0, inicial: 0, novas: 0, renovadas: 0, ingressos: 0, recebimentos: 0, retiros: 0, detalhes: { vendas: [], entradas: [], gastos: [] } };
     if (!open || !boxId) return result;
     const inBox = item => {
       const itemTenant = text(item.clientePlataformaId || item.tenantId || item.empresaId);
@@ -55,7 +55,8 @@
     result.vendas = sum(allSales) / 100;
     result.entradas = sum([...allReceipts, ...ingresses]) / 100;
     result.gastos = sum(expenses) / 100;
-    result.detalhes = { vendas: allSales, entradas: [...allReceipts, ...ingresses], gastos: expenses };
+    result.saidas = result.gastos + result.retiros;
+    result.detalhes = { vendas: allSales, entradas: [...allReceipts, ...ingresses], gastos: expenses, saidas: [...expenses, ...ledger.filter(item => ["RETIRADA", "RECOLHIMENTO"].includes(view.type(item)))] };
     const saldo = amount(caixa, ["saldoAtual", "valorAtual", "caixaAtual", "saldo"]);
     const withdrawals = sum(ledger.filter(item => ["RETIRADA", "RECOLHIMENTO"].includes(view.type(item))));
     result.saldo = (saldo ?? ((amount(caixa, ["saldoInicial", "valorInicial"]) ?? 0) + cents(result.entradas) - cents(result.vendas) - cents(result.gastos) - withdrawals)) / 100;

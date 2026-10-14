@@ -66,10 +66,7 @@
     const perfilAtual = perfil(usuario);
     if (perfilAtual === "vendedor" && item.id === "caixas") return false;
     if (item.id === "movimentacoes") {
-      if (perfilAtual === "vendedor") {
-        return ["financeiro.movimentacoes", "solicitacoes.criar", "caixa.ver_proprio", "caixas.ver"]
-          .some(chave => pode(usuario, chave));
-      }
+      if (perfilAtual === "vendedor") return false;
       if (perfilAtual === "master_local") return true;
       if (!["gerente", "financeiro", "administrativo", "supervisor", "auditor"].includes(perfilAtual)) return false;
       return ["financeiro.ver", "caixas.ver", "relatorios.ver", "logs.ver"].some(chave => pode(usuario, chave));
@@ -176,6 +173,7 @@
 
   function abrir(item, elemento) {
     if (!item) return false;
+    if (item.id === "movimentacoes" && perfil(usuarioAtual) === "vendedor") return false;
     if (item.abrir === "sair") return global.logout?.();
     if (item.abrir === "chat") return global.abrirComunicacaoMasterLocal?.("chatInterno", elemento) ?? global.trocarTela?.("chatInterno", elemento);
     if (item.abrir === "notificacoes") {
