@@ -1522,7 +1522,6 @@
           <button class="active" type="button" data-cliente-form-tab="dados" onclick="abrirAbaFormularioClienteVendedor('dados')">Dados</button>
           <button type="button" data-cliente-form-tab="referencias" onclick="abrirAbaFormularioClienteVendedor('referencias')">Referencias</button>
           <button type="button" data-cliente-form-tab="endereco" onclick="abrirAbaFormularioClienteVendedor('endereco')">Endereco</button>
-          <button type="button" data-cliente-form-tab="score" onclick="abrirAbaFormularioClienteVendedor('score')">Score</button>
           <button type="button" data-cliente-form-tab="bancarios" onclick="abrirAbaFormularioClienteVendedor('bancarios')">Banco</button>
         </nav>
         <section class="cliente-form-panel active" data-cliente-form-panel="dados">
@@ -1535,6 +1534,7 @@
           <label>País do telefone<select id="clienteVendedorTelefonePais" onchange="formatarTelefoneFormularioClienteVendedor()">${[["55","Brasil (+55)"],["351","Portugal (+351)"],["1","Estados Unidos / Canadá (+1)"],["54","Argentina (+54)"],["595","Paraguai (+595)"],["598","Uruguai (+598)"]].map(([ddi,nome])=>`<option value="${ddi}" ${String(cliente?.telefonePais || "55") === ddi ? "selected" : ""}>${nome}</option>`).join("")}</select></label>
           <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" maxlength="15" oninput="formatarTelefoneFormularioClienteVendedor()" required></label>
           <label class="cliente-form-check"><input role="switch" id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
+          <label>Observacao<textarea id="clienteVendedorObservacao">${esc(cliente?.observacao || cliente?.observacoes || "")}</textarea></label>
         <section class="cliente-form-anexos" aria-label="Anexos do cliente">
           <label class="cliente-foto-field"><span>Foto de perfil</span><input id="clienteVendedorFoto" type="file" accept="image/*"><small>${esc(cliente?.fotoPerfilNome || cliente?.fotoUrl || "Nenhuma foto anexada")}</small></label>
           <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Nenhum documento selecionado")}</small></label>
@@ -1552,11 +1552,6 @@
           <label>Bairro<input id="clienteVendedorBairro" value="${esc(cliente?.bairro || "")}"></label>
           <label>Cidade<input id="clienteVendedorCidade" value="${esc(cliente?.cidade || "")}"></label>
           <label>UF<input id="clienteVendedorUf" maxlength="2" value="${esc(cliente?.uf || cliente?.estado || "")}"></label>
-        </section>
-        <section class="cliente-form-panel" data-cliente-form-panel="score">
-          <div class="cliente-score-box" style="--score:${score}"><strong>${score}</strong><span>Score operacional</span><div><i></i></div><small>Calculado pelo comportamento do cliente na empresa: historico, atrasos, saldo e recorrencia.</small></div>
-          ${veioLeads ? '<p class="cliente-form-note">Cliente recebido de leads. Ao virar venda, o departamento de leads sera notificado pelo fluxo de conversao.</p>' : `<div class="cliente-form-note"><strong>Status atual:</strong> ${esc(texto(cliente?.statusAtendimento || cliente?.statusCliente || cliente?.status || (criado ? 'AGUARDANDO_ATENDIMENTO' : 'INATIVO')).replaceAll('_',' '))}</div>`}
-          <label>Observacao<textarea id="clienteVendedorObservacao">${esc(cliente?.observacao || cliente?.observacoes || "")}</textarea></label>
         </section>
         <section class="cliente-form-panel" data-cliente-form-panel="bancarios">
           <label>Banco<input id="clienteVendedorBanco" value="${esc(valorCliente(cliente, ["banco", "bancoNome"], ""))}"></label>

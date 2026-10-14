@@ -17,3 +17,6 @@ test('salvar novo cliente envia Segmento sem referenciar Apelido',async()=>{
  const ctx={usuarioAtual:null,texto:v=>String(v??'').trim(),document:{getElementById:id=>values[id]},State:{getUsuario:()=>user,getTenantId:()=>user.clientePlataformaId},UIHelpers:{alerta:m=>alerts.push(m)},console,referenciasFormularioCliente:()=>[],nomesArquivosInput:()=>[],fecharModal(){},recarregarClientesVendedorDados:async()=>{},voltarGerenciarClientes(){},window:{ClientesService:{criarClienteComLegado:async input=>{saved=input.dados}}}};
  vm.createContext(ctx);vm.runInContext(source.slice(source.indexOf('  async function salvarCliente('),source.indexOf('  async function excluirCliente(')),ctx);await ctx.salvarCliente();assert.equal(saved?.segmento,'UBER');assert.equal(saved.nome,'Cliente teste');assert.equal(Object.hasOwn(saved,'apelido'),false);assert.deepEqual(alerts,['Cliente salvo com sucesso.']);
 });
+test('cadastro do vendedor não exibe Score e preserva observação em Dados',()=>{
+ const form=source.slice(source.indexOf('  function formularioClienteConteudo('),source.indexOf('  function acoesFormularioCliente('));assert.doesNotMatch(form,/data-cliente-form-(?:tab|panel)="score"|cliente-score-box/);assert.ok(form.indexOf('clienteVendedorObservacao')<form.indexOf('data-cliente-form-panel="referencias"'));
+});
