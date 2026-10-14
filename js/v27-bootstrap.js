@@ -2,10 +2,10 @@
   "use strict";
   if (global.__INTEGRO_V272_BOOTSTRAP__) return;
   global.__INTEGRO_V272_BOOTSTRAP__ = true;
-  global.__INTEGRO_VERSION__ = "27.2.1-fechamento-caixa";
+  global.__INTEGRO_VERSION__ = "27.2.2-cobranca-correcoes";
 
   const loaded = new Map();
-  const VERSION = "20261013-mobile4";
+  const VERSION = "20261013-cobranca1";
   const page = String(global.location?.pathname || "").toLowerCase();
 
   function loadScript(src, key = src) {
@@ -33,7 +33,7 @@
 
   async function loadIfMissing(test, src, key) {
     if (test()) return true;
-    return loadScript(`${src}?v=${VERSION}&build=20261013-mobile4`, key);
+    return loadScript(`${src}?v=${VERSION}&build=20261013-cobranca1`, key);
   }
 
   async function ensureFinance() {
@@ -98,6 +98,22 @@
     }
   }
 
+  async function ensureSellerCollectionCorrections() {
+    if (!page.endsWith("/vendedor.html")) return false;
+    try {
+      await loadIfMissing(
+        () => Boolean(global.IntegroVendedorCobrancaCorrecoes),
+        "js/services/vendedor-cobranca-correcoes.js",
+        "seller-collection-corrections"
+      );
+      global.IntegroVendedorCobrancaCorrecoes?.install?.();
+      return true;
+    } catch (error) {
+      console.error("[ÍNTEGRO V27.2] Falha ao carregar correções de baixa do vendedor.", error);
+      return false;
+    }
+  }
+
   async function ensureLeadOpenGuard() {
     if (!page.endsWith("/vendedor.html")) return false;
     try {
@@ -128,7 +144,7 @@
   async function boot() {
     try {
       await loadIfMissing(() => Boolean(global.IntegroV27Policy), "js/services/v27-policy-service.js", "policy");
-      await Promise.all([ensureFinance(), ensureUserLifecycle(), ensureSalesApprovals(), ensureSellerCloseout(), ensureLeadOpenGuard()]);
+      await Promise.all([ensureFinance(), ensureUserLifecycle(), ensureSalesApprovals(), ensureSellerCloseout(), ensureSellerCollectionCorrections(), ensureLeadOpenGuard()]);
       await installOptionalGuards();
       document.documentElement.dataset.integroVersion = "27.2";
       document.dispatchEvent(new CustomEvent("integro-v27-pronto", { detail: { version: global.__INTEGRO_VERSION__ } }));
@@ -144,6 +160,7 @@
     ensureFinance();
     ensureSalesApprovals();
     ensureSellerCloseout();
+    ensureSellerCollectionCorrections();
     ensureLeadOpenGuard();
     installOptionalGuards();
   });

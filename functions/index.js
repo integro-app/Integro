@@ -133,6 +133,12 @@ exports.registrarNaoPagamentoOperacional = functions
   .region("southamerica-east1")
   .https.onCall(operacoesFinanceiras.registrarNaoPagamento);
 
+const { criarCorrecoesBaixaVendedor } = require("./seller-collection-corrections");
+const correcoesBaixaVendedor = criarCorrecoesBaixaVendedor({ db, functions });
+exports.corrigirBaixaCobrancaOperacional = functions
+  .region("southamerica-east1")
+  .https.onCall(correcoesBaixaVendedor.corrigir);
+
 // V27: o Financeiro Empresarial permanece independente do caixa/ledger operacional.
 // A antiga ponte de retirada de recurso empresarial deixa de ser exportada nesta versão.
 
