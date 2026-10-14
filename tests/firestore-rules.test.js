@@ -1155,3 +1155,39 @@ test("fechamento: transação real do módulo publicado fecha caixa do vendedor 
   await assertFails(setDoc(doc(database,"lancamentos_financeiros",entryId),payload));
   const batch=writeBatch(database);batch.set(doc(database,"lancamentos_financeiros",entryId),payload);batch.update(doc(database,"lancamentos_financeiros","lf_gasto_aberto"),{statusLancamento:"CANCELADO",substituidoPorLancamentoId:entryId,canceladoPorId:profiles.masterA.uid,canceladoPorNome:"Master",motivoCancelamento:"Correção",canceladoEm:"ts2",atualizadoEm:"ts2"});await assertSucceeds(batch.commit());
  });
+
+test('Master Local não promove usuários a perfis globais nem altera identidade Auth', async () => {
+  const db = appDb(profiles.masterA);
+  for (const patch of [{tipoUsuario:'master_global'}, {tipoUsuario:'usuario_integro'}, {tipoUsuarioOficial:'master_global'}, {cargoChave:'master_global'}, {perfil:'master_global'}, {authUid:profiles.masterA.uid}]) {
+    await assertFails(updateDoc(doc(db, 'usuarios', profiles.vendedor1.uid), patch));
+  }
+  await assertSucceeds(updateDoc(doc(db, 'usuarios', profiles.vendedor1.uid), {nome:'Vendedor atualizado'}));
+  await assertFails(updateDoc(doc(db, 'usuarios', profiles.usuarioIntegro.uid), {acessoLiberado:false}));
+});
+test('Master Global cadastra, edita e bloqueia empresas; perfis locais e internos não gravam', async () => {
+  const globalDb = appDb(profiles.masterGlobal);
+  const company = {nome:'Empresa global',tipoPessoa:'PJ',status:'ATIVO',acessoLiberado:true};
+  await assertSucceeds(setDoc(doc(globalDb, 'clientes_integro', 'empresa_global'), company));
+  await assertSucceeds(updateDoc(doc(globalDb, 'clientes_integro', 'empresa_global'), {status:'BLOQUEADO',acessoLiberado:false}));
+  for (const p of [profiles.masterA, profiles.gerenteA, profiles.supervisor1, profiles.usuarioIntegro, profiles.vendedor1]) {
+    await assertFails(setDoc(doc(appDb(p), 'clientes_integro', 'empresa_negada'), company));
+    await assertFails(updateDoc(doc(appDb(p), 'clientes_integro', 'empresa_global'), {status:'ATIVO'}));
+  }
+  await assertFails(deleteDoc(doc(globalDb, 'clientes_integro', 'empresa_global')));
+});
+
+test('Master Global cria planos, departamentos e convites pendentes; perfis locais são negados', async () => {
+  const globalDb=appDb(profiles.masterGlobal);
+  await assertSucceeds(setDoc(doc(globalDb,'planos','plano_teste'),{nome:'Plano',valorMensal:99,status:'ATIVO'}));
+  await assertSucceeds(setDoc(doc(globalDb,'departamentos_integro','dep_teste'),{nome:'Suporte',status:'ATIVO'}));
+  await assertSucceeds(setDoc(doc(globalDb,'configuracoes_globais','plataforma'),{diasTestePadrao:7}));
+  const pending={authUid:'',nome:'Novo Master',email:'master@example.test',tipoUsuario:'master_local',clientePlataformaId:'empresa_global',status:'CONVITE_PENDENTE',acessoLiberado:false,convitePendente:true,provisionamentoAuth:'PENDENTE_BACKEND',criadoPorUid:profiles.masterGlobal.uid};
+  await testEnv.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),'clientes_integro','empresa_global'),{nome:'Empresa',tipoPessoa:'PJ'}));
+  await assertSucceeds(setDoc(doc(globalDb,'usuarios','convite_global'),pending));
+  await assertFails(setDoc(doc(globalDb,'usuarios','convite_global_inseguro'),{...pending,acessoLiberado:true,status:'ATIVO'}));
+  for (const p of [profiles.masterA,profiles.usuarioIntegro,profiles.supervisor1]) {
+    await assertFails(setDoc(doc(appDb(p),'planos','negado'),{nome:'Plano',valorMensal:1}));
+    await assertFails(setDoc(doc(appDb(p),'departamentos_integro','negado'),{nome:'Suporte'}));
+    await assertFails(setDoc(doc(appDb(p),'usuarios','convite_global_negado'),pending));
+  }
+});

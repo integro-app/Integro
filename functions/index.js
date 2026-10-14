@@ -36,16 +36,22 @@ exports.provisionarUsuario = functions
 
     const autor = autorSnap.data() || {};
     const convite = conviteSnap.data() || {};
-    const tenant = String(autor.clientePlataformaId || "");
+    const global = autor.tipoUsuario === "master_global";
+    const tenant = String(global ? convite.clientePlataformaId || "" : autor.clientePlataformaId || "");
     if (
       autor.authUid !== contexto.auth.uid ||
-      autor.tipoUsuario !== "master_local" ||
+      (!global && autor.tipoUsuario !== "master_local") ||
       autor.acessoLiberado !== true ||
       ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(String(autor.status || "").toUpperCase()) ||
-      !tenant || String(convite.clientePlataformaId || "") !== tenant
+      (!global && (!tenant || String(convite.clientePlataformaId || "") !== tenant))
     ) {
       erroHttps("permission-denied", "Sem permissao para provisionar este usuario.");
     }
+
+    if (global) {
+      if (!["master_local", "usuario_integro"].includes(convite.tipoUsuario)) erroHttps("permission-denied", "Convite global inválido.");
+      if (convite.tipoUsuario === "master_local" && (!tenant || !(await db.collection("clientes_integro").doc(tenant).get()).exists)) erroHttps("failed-precondition", "Empresa do convite não encontrada.");
+    } else if ([convite.tipoUsuario, convite.tipoUsuarioOficial, convite.cargoChave, convite.perfil].some(v => ["master_global", "usuario_integro"].includes(String(v || "").toLowerCase()))) erroHttps("permission-denied", "Perfis globais exigem Master Global.");
 
     const email = String(convite.emailNormalizado || convite.email || "").trim().toLowerCase();
     if (!email) erroHttps("failed-precondition", "Convite sem e-mail valido.");
@@ -53,6 +59,8 @@ exports.provisionarUsuario = functions
       erroHttps("failed-precondition", "Este cadastro nao esta pendente de provisionamento.");
     }
 
+    const senhaInicial = global ? String(dados?.senhaInicial || "") : "";
+    if (senhaInicial && (senhaInicial.length < 6 || senhaInicial.length > 128)) erroHttps("invalid-argument", "A senha inicial deve ter entre 6 e 128 caracteres.");
     let conta;
     try {
       conta = await admin.auth().getUserByEmail(email);
@@ -66,12 +74,13 @@ exports.provisionarUsuario = functions
       conta = await admin.auth().createUser({
         email,
         displayName: String(convite.nomeCompleto || convite.nome || "Usuario Integro"),
-        password: senhaTemporaria(),
+        password: senhaInicial || senhaTemporaria(),
         disabled: false,
         emailVerified: false
       });
     }
 
+    const ativacaoUrl = global && !senhaInicial ? await admin.auth().generatePasswordResetLink(email) : "";
     const canonicoRef = db.collection("usuarios").doc(conta.uid);
     const agora = FieldValue.serverTimestamp();
     const dadosCanonicos = {
@@ -115,7 +124,7 @@ exports.provisionarUsuario = functions
     }, { merge: false });
     await lote.commit();
 
-    return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: false };
+    return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: Boolean(ativacaoUrl), ...(ativacaoUrl ? { ativacaoUrl } : {}) };
   });
 
 const { criarOperacoesFinanceiras } = require("./financial-callables");

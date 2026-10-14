@@ -575,19 +575,58 @@ service cloud.firestore {
         request.resource.data.keys().hasAll(["authUid", "acessoLiberado"]) &&
         request.resource.data.get("authUid", "") == currentUid() &&
         request.resource.data.get("acessoLiberado", true) == false
-      ) || canCreatePendingTenantUser(request.resource.data);
+      ) || canCreatePendingTenantUser(request.resource.data) || (
+        isActiveUser() && isMasterGlobal() &&
+        request.resource.data.get("tipoUsuario", "") in ["master_local", "usuario_integro"] &&
+        request.resource.data.get("authUid", "") == "" &&
+        request.resource.data.get("status", "") == "CONVITE_PENDENTE" &&
+        request.resource.data.get("acessoLiberado", true) == false &&
+        request.resource.data.get("convitePendente", false) == true &&
+        request.resource.data.get("provisionamentoAuth", "") == "PENDENTE_BACKEND" &&
+        request.resource.data.get("criadoPorUid", "") == currentUid() &&
+        request.resource.data.get("nome", "").size() > 1 &&
+        request.resource.data.get("email", "").size() > 3 &&
+        (request.resource.data.tipoUsuario == "usuario_integro" ||
+          exists(/databases/$(database)/documents/clientes_integro/$(request.resource.data.get("clientePlataformaId", ""))))
+      );
       allow update: if isActiveUser() && (
         isMasterGlobal() ||
         (currentUid() == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"])) ||
-        (isMasterLocal() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() && resource.data.tipoUsuario != "master_global")
+        (isMasterLocal() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() &&
+          unchanged(["authUid"]) &&
+          !(resource.data.get("tipoUsuario", "") in ["master_global", "usuario_integro"]) &&
+          !(request.resource.data.get("tipoUsuario", "") in ["master_global", "usuario_integro"]) &&
+          !(request.resource.data.get("tipoUsuarioOficial", "") in ["master_global", "usuario_integro"]) &&
+          !(request.resource.data.get("perfil", "") in ["master_global", "usuario_integro"]) &&
+          !(request.resource.data.get("cargoChave", "") in ["master_global", "usuario_integro"]))
       );
+      allow delete: if false;
+    }
+
+    match /planos/{id} {
+      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro());
+      allow create, update: if isActiveUser() && isMasterGlobal() && request.resource.data.get("nome", "").size() > 0 && request.resource.data.get("valorMensal", -1) is number && request.resource.data.valorMensal >= 0;
+      allow delete: if false;
+    }
+    match /departamentos_integro/{id} {
+      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro());
+      allow create, update: if isActiveUser() && isMasterGlobal() && request.resource.data.get("nome", "").size() > 0;
+      allow delete: if false;
+    }
+    match /configuracoes_globais/{id} {
+      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro());
+      allow create, update: if isActiveUser() && isMasterGlobal();
       allow delete: if false;
     }
 
     match /clientes_integro/{id} {
       allow read: if isActiveUser() &&
         (isMasterGlobal() || isUsuarioIntegro() || id == userTenantId());
-      allow create, update, delete: if false;
+      allow create, update: if isActiveUser() && isMasterGlobal() &&
+        request.resource.data.get("nome", request.resource.data.get("razaoSocial", "")) is string &&
+        request.resource.data.get("nome", request.resource.data.get("razaoSocial", "")).size() > 0 &&
+        request.resource.data.get("tipoPessoa", "PJ") in ["PF", "PJ"];
+      allow delete: if false;
     }
 
     match /lancamentos_financeiros/{id} {

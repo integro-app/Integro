@@ -1,0 +1,39 @@
+'use strict';
+const test=require('node:test'), assert=require('node:assert/strict'), fs=require('node:fs'), vm=require('node:vm'), path=require('node:path');
+const {createRequire}=require('node:module');
+const {memoryDb,HttpsError,user}=require('./helpers/critical-fixture.cjs');
+function setup(extra={}) {
+  const db=memoryDb({'usuarios/global':user('global','master_global','', ''),'usuarios/master':user('master'),'clientes_integro/a':{nome:'Empresa',tipoPessoa:'PJ',status:'ATIVO'},'usuarios/invite':{nome:'Master',email:'new@example.test',tipoUsuario:'master_local',clientePlataformaId:'a',status:'CONVITE_PENDENTE',acessoLiberado:false},...extra});
+  let created=0; const authUsers=new Map(), auth={async getUserByEmail(email){if(authUsers.has(email))return authUsers.get(email);throw Object.assign(Error('missing'),{code:'auth/user-not-found'});},async createUser(data){created++;const account={uid:'new_uid_'+created,...data};authUsers.set(data.email,account);return account;},async generatePasswordResetLink(){return 'https://example.test/reset?oobCode=local-test';}};
+  const chain={region(){return this;},runWith(){return this;},timeZone(){return this;},onRun(fn){return fn;},pubsub:{schedule(){return chain;},timeZone(){return chain;},onRun(fn){return fn;}},https:{HttpsError,onCall:fn=>fn}};
+  const admin={initializeApp(){},firestore:()=>db,auth:()=>auth};
+  const filename=path.resolve('functions/index.js'),realRequire=createRequire(filename),module={exports:{}};
+  vm.runInNewContext(fs.readFileSync(filename,'utf8'),{module,exports:module.exports,require:name=>name==='firebase-functions/v1'?chain:name==='firebase-admin'?admin:realRequire(name)}, {filename});
+  return {api:module.exports,db,auth,created:()=>created};
+}
+test('Master Global provisiona Master Local de outra empresa e permite senha inicial',async()=>{
+  const f=setup(); const r=await f.api.provisionarUsuario({conviteId:'invite',senhaInicial:'Senha-local-test'},{auth:{uid:'global'}});
+  const saved=f.db.records.get('usuarios/'+r.authUid);
+  assert.equal(saved.tipoUsuario,'master_local');assert.equal(saved.clientePlataformaId,'a');assert.equal(saved.acessoLiberado,true);assert.equal(saved.authUid,r.authUid);assert.equal(r.redefinicaoNecessaria,false);
+  assert.equal((await f.auth.getUserByEmail('new@example.test')).password,'Senha-local-test');
+});
+test('convite global sem senha retorna link de primeiro acesso e é repetível',async()=>{
+  const f=setup(); const r=await f.api.provisionarUsuario({conviteId:'invite'},{auth:{uid:'global'}});
+  assert.equal(r.redefinicaoNecessaria,true);assert.ok(r.ativacaoUrl.startsWith('https://'));
+  await f.api.provisionarUsuario({conviteId:'invite'},{auth:{uid:'global'}});assert.equal(f.created(),1);
+});
+test('Master Global provisiona usuário interno sem depender de tenant local',async()=>{
+  const f=setup({'usuarios/invite':{nome:'Interno',email:'internal@example.test',tipoUsuario:'usuario_integro',status:'CONVITE_PENDENTE',acessoLiberado:false}});
+  const r=await f.api.provisionarUsuario({conviteId:'invite'},{auth:{uid:'global'}});assert.equal(f.db.records.get('usuarios/'+r.authUid).tipoUsuario,'usuario_integro');
+});
+test('Master Local não provisiona perfis globais nem usuários de outra empresa',async()=>{
+  for(const invite of [{tipoUsuario:'master_global',clientePlataformaId:'a'},{tipoUsuario:'usuario_integro',clientePlataformaId:'a'},{tipoUsuario:'vendedor',cargoChave:'master_global',clientePlataformaId:'a'},{tipoUsuario:'vendedor',clientePlataformaId:'b'}]){
+    const f=setup({'usuarios/invite':{nome:'Inválido',email:'new@example.test',status:'CONVITE_PENDENTE',...invite}});
+    await assert.rejects(f.api.provisionarUsuario({conviteId:'invite'},{auth:{uid:'master'}}),e=>e.code==='permission-denied');assert.equal(f.created(),0);
+  }
+});
+test('Master Global nega empresa inexistente, sessão inválida e senha curta antes de criar Auth',async()=>{
+  for(const [extra,ctx,input]of [[{'usuarios/invite':{nome:'Sem empresa',email:'new@example.test',tipoUsuario:'master_local',clientePlataformaId:'missing'}},{auth:{uid:'global'}},{}],[{}, {},{}],[{}, {auth:{uid:'global'}},{senhaInicial:'123'}]]){
+    const f=setup(extra);await assert.rejects(f.api.provisionarUsuario({conviteId:'invite',...input},ctx));assert.equal(f.created(),0);
+  }
+});
