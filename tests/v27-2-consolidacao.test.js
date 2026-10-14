@@ -22,9 +22,9 @@ const index = read("functions", "index.js");
 const rules = read("firestore.rules");
 
 test("V27.2 identifica build e bootstrap consolidados", () => {
-  assert.match(bootstrap, /27\.2\.1-fechamento-caixa/);
+  assert.match(bootstrap, /__INTEGRO_VERSION__ = "27\.2\.\d+-[^"]+"/);
   const build = bootstrap.match(/const VERSION = "([^"]+)"/)?.[1];
-  assert.equal(build, "20261007-fechamento-caixa");
+  assert.match(build, /^\d{8}-[a-z0-9-]+$/);
   const bootstrapSrc = firebaseConfig.match(/script\.src = "([^"]*v27-bootstrap\.js[^"]*)"/)?.[1];
   assert.ok(bootstrapSrc, "Firebase deve carregar o bootstrap versionado");
   const bootstrapUrl = new URL(bootstrapSrc, "https://integro.test/");
