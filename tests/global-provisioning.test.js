@@ -37,3 +37,21 @@ test('Master Global nega empresa inexistente, sessão inválida e senha curta an
     const f=setup(extra);await assert.rejects(f.api.provisionarUsuario({conviteId:'invite',...input},ctx));assert.equal(f.created(),0);
   }
 });
+
+test('Master Global mantém sessão sem tenant e continua protegido por sessão única',async()=>{
+  const f=setup(),ctx={auth:{uid:'global'}},first={sessionId:'global_session_1234'};
+  assert.equal((await f.api.iniciarSessaoV27(first,ctx)).ok,true);
+  await assert.rejects(f.api.iniciarSessaoV27({sessionId:'other_session_1234'},ctx),e=>e.code==='failed-precondition');
+  assert.equal((await f.api.validarSessaoV27(first,ctx)).ok,true);
+});
+test('sessão administrativa nega documento Auth divergente e acesso não liberado',async()=>{
+  for(const userDoc of [{...user('master'),authUid:'other'},{...user('master'),acessoLiberado:false}]){
+    const f=setup({'usuarios/master':userDoc});await assert.rejects(f.api.iniciarSessaoV27({sessionId:'master_session_1234'},{auth:{uid:'master'}}),e=>e.code==='permission-denied');
+  }
+});
+test('editar plano atualiza documento existente e preserva total de planos',async()=>{
+  const html=fs.readFileSync('master-global.html','utf8'),line=html.split(/\r?\n/).find(l=>l.includes('function abrirFormPlano('));
+  const fields=new Map(); const records=new Map([['existing',{nome:'Antigo',valorMensal:10}]]);let adds=0;
+  const context=vm.createContext({planos:[{id:'existing',nome:'Antigo',valorMensal:10,descricao:'Texto'}],fireOk:true,abrirDrawer(){},setVal:(id,value)=>fields.set(id,value),val:id=>fields.get(id),esc:value=>String(value),firebase:{firestore:{FieldValue:{serverTimestamp:()=>null}}},mgDb:{collection:()=>({doc:id=>({update:async v=>records.set(id,{...records.get(id),...v})}),add:async()=>{adds++;}})},fecharDrawer(){},carregarTudo:async()=>{},notificarIntegro:message=>{throw Error(message);}});
+  vm.runInContext(line,context);context.abrirFormPlano('existing');assert.equal(fields.get('plNome'),'Antigo');fields.set('plNome','Atualizado');fields.set('plValor',20);await context.salvarPlano('existing');assert.equal(records.get('existing').nome,'Atualizado');assert.equal(records.get('existing').valorMensal,20);assert.equal(adds,0);
+});

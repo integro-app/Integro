@@ -228,3 +228,10 @@ test("redirecionamento por perfil permanece compatível", () => {
     assert.equal(IntegroOperacional.rotaPadraoUsuario(usuario), rota);
   });
 });
+
+test('teste expirado bloqueia login; teste vigente e assinatura fora do teste permanecem liberados', async () => {
+  for (const [empresa,ok] of [[{testeAtivo:true,dataFimTeste:'2000-01-01T00:00:00.000Z'},false],[{testeAtivo:true,dataFimTeste:'2099-01-01T00:00:00.000Z'},true],[{testeAtivo:false,dataFimTeste:'2000-01-01T00:00:00.000Z'},true]]) {
+    const {FirestoreService}=carregarContexto({'usuarios/uid_1':usuarioBase(),'clientes_integro/tenant_1':{status:'ATIVO',acessoLiberado:true,...empresa}});
+    const result=await FirestoreService.resolverUsuarioAutenticado(authUser);assert.equal(result.ok,ok);if(!ok)assert.equal(result.codigo,'TENANT_BLOCKED');
+  }
+});

@@ -65,7 +65,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
   async function actorContext(context) {
     if (!context.auth?.uid) error("unauthenticated", "Sessão não autenticada.");
     const actor = await userProfile(context.auth.uid);
-    if (!actor || !active(actor)) error("permission-denied", "Usuário sem acesso administrativo válido.");
+    if (!actor || !active(actor) || actor.acessoLiberado !== true || text(actor.authUid) !== context.auth.uid) error("permission-denied", "Usuário sem acesso administrativo válido.");
     return actor;
   }
 
@@ -105,7 +105,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const actor = await actorContext(context);
     const uid = context.auth.uid;
     const tenantId = tenant(actor);
-    if (!tenantId) error("failed-precondition", "Empresa não identificada.");
+    if (!tenantId && !["master_global", "usuario_integro"].includes(lower(actor.tipoUsuario))) error("failed-precondition", "Empresa não identificada.");
     await exigirCaixaVendedor(actor, uid);
     const config = await configForTenant(tenantId);
     const inactivity = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 15), 720));
