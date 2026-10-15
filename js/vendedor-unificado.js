@@ -2640,7 +2640,9 @@
     if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor.");
     const { pagamento, parcela } = selecionarPagamentoEditavel(registro, caixa);
     if (!parcela) return UIHelpers?.alerta?.("Não existe parcela disponível para esta venda.");
-    const valorAtual = pagamento ? valorTotalPagamento(pagamento) : numero(registro.valorParcela);
+    const totalPagoNoCaixa = window.IntegroVendedorPagamentoFlexivel?.totalPagoNoCaixa?.(registro.vendaId, caixa);
+    const valorAnterior = Number.isInteger(totalPagoNoCaixa) ? totalPagoNoCaixa / 100 : (pagamento ? valorTotalPagamento(pagamento) : 0);
+    const valorAtual = pagamento || valorAnterior > 0 ? valorAnterior : numero(registro.valorParcela);
     const titulo = pagamento ? "Editar pagamento" : "Registrar pagamento";
     modalBase(titulo, `<p class="vendedor-modal-cliente">${esc(registro.clienteApelido || registro.clienteNome)}</p><small>${esc(registro.clienteNome)}</small><label>Total recebido neste caixa</label><input id="vendedorPagamentoValor" inputmode="decimal" value="${valorAtual.toFixed(2).replace(".", ",")}"><small>Informe o total acumulado. Se já lançou R$ 40,00 e recebeu mais R$ 40,00, altere para R$ 80,00. O caixa será ajustado somente pela diferença.</small><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarPagamentoVendedorUnificado('${registro.vendaId}')">${pagamento ? "Salvar alteração" : "Confirmar pagamento"}</button>`);
     const campo = document.getElementById("vendedorPagamentoValor");
@@ -2652,8 +2654,7 @@
       const recebido = window.IntegroOperacional?.moedaParaCentavos
         ? window.IntegroOperacional.moedaParaCentavos(campo?.value || "0") / 100
         : numero(String(campo?.value || "0").replace(/\./g, "").replace(",", "."));
-      const anterior = pagamento ? valorTotalPagamento(pagamento) : 0;
-      const saldoEstimado = Math.max(0, Math.round((numero(registro.saldoDevedor) + anterior - recebido) * 100) / 100);
+      const saldoEstimado = Math.max(0, Math.round((numero(registro.saldoDevedor) + valorAnterior - recebido) * 100) / 100);
       resumo.innerHTML = `<div><span>Valor esperado da parcela</span><strong>${moeda(registro.valorParcela)}</strong></div><div><span>Total recebido informado</span><strong>${moeda(recebido)}</strong></div><div><span>Saldo estimado após confirmação</span><strong>${moeda(saldoEstimado)}</strong></div>`;
     };
     campo?.addEventListener("input", atualizarResumo);

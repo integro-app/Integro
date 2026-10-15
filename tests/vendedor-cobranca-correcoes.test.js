@@ -387,6 +387,65 @@ test('botão do painel unificado recebe várias parcelas, edita o total e limita
   assert.equal(JSON.stringify([...f.db.records]), before);
 });
 
+test('reabrir pagamento exato, distribuído e quitado mantém campo e resumo no total atual', async () => {
+  const vm = require('node:vm');
+  const source = read('js/vendedor-unificado.js');
+  const start = source.indexOf('  async function abrirPagamento(vendaId)');
+  const end = source.indexOf('  function pagamentoIdDeterministico(', start);
+  assert.ok(start >= 0 && end > start);
+  for (const valores of [[100, 0, 0], [100, 50, 0], [100, 100, 50]]) {
+    const total = valores.reduce((sum, value) => sum + value, 0);
+    const caixa = { id: 'box', status: 'ABERTO', dataOperacional: '2026-10-14' };
+    const pagamentos = valores.flatMap((valor, i) => valor ? [{ vendaId: 'sale', parcelaId: 'p' + i, caixaId: 'box', valorCentavos: valor * 100, valorPago: valor, status: 'CONFIRMADO', dataOperacional: caixa.dataOperacional }] : []);
+    pagamentos.push({ vendaId: 'other-sale', caixaId: 'box', valorCentavos: 90000, status: 'CONFIRMADO' });
+    const registro = { vendaId: 'sale', clienteId: 'client', valorParcela: 100, saldoDevedor: 250 - total, parcelas: valores.map((valor, i) => ({ id: 'p' + i, numeroParcela: i + 1, valorPago: valor })) };
+    const snapshot = JSON.stringify({ pagamentos, registro });
+    const listeners = {}, messages = [];
+    const campo = { value: '', parentElement: { appendChild() {} }, addEventListener: (name, fn) => listeners[name] = fn, insertAdjacentElement() {} };
+    let resumo;
+    const document = {
+      readyState: 'complete', addEventListener() {},
+      getElementById: id => id === 'vendedorPagamentoValor' ? campo : null,
+      createElement: () => ({ setAttribute() {}, innerHTML: '' })
+    };
+    const window = {
+      document, State: { getPagamentos: () => pagamentos },
+      obterCaixaAbertoVendedor: () => caixa,
+      IntegroVendedorOperacao: { montarCarteira: () => [registro] },
+      IntegroOperacional: { moedaParaCentavos: value => Math.round(Number(value.replace(',', '.')) * 100) },
+      UIHelpers: { alerta: message => messages.push(message) }
+    };
+    campo.parentElement.appendChild = node => resumo = node;
+    const context = vm.createContext({
+      window, document, console, setTimeout: callback => callback(),
+      item: () => registro, garantirCaixaAberto: async () => caixa,
+      selecionarPagamentoEditavel: () => ({ pagamento: pagamentos.filter(p => p.vendaId === 'sale').at(-1), parcela: registro.parcelas[0] }),
+      valorTotalPagamento: payment => payment.valorCentavos / 100,
+      numero: value => Number(value || 0), moeda: value => Number(value).toFixed(2), esc: value => String(value || ''),
+      modalBase: (_title, html) => { campo.value = html.match(/id="vendedorPagamentoValor"[^>]*value="([^"]*)"/)[1]; }
+    });
+    vm.runInContext(source.slice(start, end), context);
+    window.abrirPagamentoCliente = context.abrirPagamento;
+    vm.runInContext(read('js/services/vendedor-pagamento-flexivel.js'), context);
+    const assertResumo = (recebido, saldo) => {
+      assert.equal(campo.value, recebido.toFixed(2).replace('.', ','));
+      assert.deepEqual([...resumo.innerHTML.matchAll(/<strong>(.*?)<\/strong>/g)].map(match => Number(match[1])), [100, recebido, saldo]);
+    };
+    for (let reopen = 0; reopen < 2; reopen++) {
+      await window.abrirPagamentoCliente('sale');
+      assertResumo(total, 250 - total);
+    }
+    campo.value = '200,00'; listeners.input();
+    assertResumo(200, 50);
+    campo.value = '300,00'; listeners.input();
+    await window.confirmarPagamentoVendedorUnificado('sale');
+    assert.match(messages.at(-1), /saldo devedor/);
+    assert.equal(JSON.stringify({ pagamentos, registro }), snapshot);
+    await window.abrirPagamentoCliente('sale');
+    assertResumo(total, 250 - total);
+  }
+});
+
 test('venda bloqueia cobrança no próprio caixa e aceita o dia seguinte',async()=>{const f=fixtureBaixa({'clientes_operacionais/client':{...owned,nome:'Cliente',saldoDevedorCentavos:0}}),today=core.hojeSP(),entrada={caixaId:'box',clienteId:'client',operacaoId:'next_day_sale',valorEmprestadoCentavos:1000,quantidadeParcelas:2,taxaJuros:0,frequencia:'DIARIA',primeiraCobranca:today};await assert.rejects(f.original.registrarVenda(entrada,ctx),rejectCode('invalid-argument'));const result=await f.original.registrarVenda({...entrada,primeiraCobranca:core.adicionarDiasISO(today,1)},ctx);assert.ok(result.vendaId);const parcels=[...f.db.records.entries()].filter(([p,v])=>p.startsWith('parcelas/')&&v.vendaId===result.vendaId).map(([,v])=>v.vencimento);assert.ok(parcels.every(d=>d>today));});
 
 test('correção não excede o saldo do cliente mesmo se o saldo da venda estiver maior',async()=>{const f=fixtureBaixa({'clientes_operacionais/client':{...owned,saldoDevedorCentavos:1000}});await assert.rejects(f.api.corrigir({caixaId:'box',vendaId:'sale',clienteId:'client',acao:'PAGAMENTO',valorCentavos:3500,operacaoId:'over_customer'},ctx),rejectCode('failed-precondition'));assert.equal(f.db.records.get('caixas/box').saldoAtualCentavos,100000);assert.equal(f.db.records.get('clientes_operacionais/client').saldoDevedorCentavos,1000);});
