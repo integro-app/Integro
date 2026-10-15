@@ -93,7 +93,7 @@
   }
 
   async function ensureSellerCollectionCorrections() {
-    if (!page.endsWith("/vendedor.html")) return false;
+    if (!page.endsWith("/vendedor.html") && !page.endsWith("/master-local.html")) return false;
     try {
       await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections");
       global.IntegroVendedorCobrancaCorrecoes?.install?.();

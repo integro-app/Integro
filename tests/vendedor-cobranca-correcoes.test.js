@@ -238,6 +238,155 @@ test('empresa bloqueada e teste vencido negam pagamento, venda e abertura antes 
   await f.api.corrigir(baixa,ctx);assert.equal(f.db.records.get('caixas/box').saldoAtualCentavos,108000);
 });
 
+test('rótulos de cobrança não realimentam o observer quando o estado não muda', () => {
+  const vm = require('node:vm');
+  let writes = 0;
+  const label = initial => {
+    let value = initial;
+    return { get textContent() { return value; }, set textContent(next) { writes++; value = next; } };
+  };
+  const pagoLabel = label('Pago'), naoPagoLabel = label('Não pagamento');
+  const pago = { querySelector: () => pagoLabel }, naoPago = { querySelector: () => naoPagoLabel };
+  const item = { vendaId: 'sale', pagoHoje: false, naoPagoHoje: false };
+  const card = { dataset: { vendaId: 'sale' }, querySelector: selector => selector === '.btn-pago-clean' ? pago : naoPago };
+  const document = { readyState: 'loading', addEventListener() {}, getElementById: () => null, querySelectorAll: () => [card] };
+  const window = { document, obterCaixaAbertoVendedor: () => ({ id: 'box', status: 'ABERTO' }), IntegroVendedorOperacao: { montarCarteira: () => [item] } };
+  vm.runInNewContext(read('js/services/vendedor-cobranca-correcoes.js'), { window, document, console, setTimeout() {} });
+  const update = window.IntegroVendedorCobrancaCorrecoes.corrigirBotoesCobranca;
+  update(); update();
+  assert.equal(writes, 0, 'textContent recria nós mesmo recebendo o mesmo texto e dispara childList');
+  item.pagoHoje = true;
+  update(); update();
+  assert.equal(pagoLabel.textContent, 'Editar pagamento');
+  assert.equal(writes, 1);
+  item.pagoHoje = false; item.naoPagoHoje = true;
+  update(); update();
+  assert.equal(pagoLabel.textContent, 'Pago');
+  assert.equal(naoPagoLabel.textContent, 'Editar não pagamento');
+  assert.equal(writes, 3);
+});
+
+async function carregarCorrecoesDaPagina(page, global, loadIfMissing) {
+  const vm = require('node:vm');
+  const source = read('js/v27-bootstrap.js');
+  const start = source.indexOf('  async function ensureSellerCollectionCorrections()');
+  const end = source.indexOf('  async function ensureLeadOpenGuard()', start);
+  assert.ok(start >= 0 && end > start);
+  const context = vm.createContext({ page, global, loadIfMissing, console });
+  vm.runInContext(source.slice(start, end), context);
+  return context.ensureSellerCollectionCorrections();
+}
+
+for (const page of ['/vendedor.html', '/master-local.html', '/master-global.html']) {
+  test('carregamento de correções e pagamento flexível na página ' + page, async () => {
+    const loaded = [], installed = [], global = {};
+    const enabled = page !== '/master-global.html';
+    const result = await carregarCorrecoesDaPagina(page, global, async (exists, src) => {
+      if (exists()) return true;
+      loaded.push(src);
+      const name = src.includes('pagamento-flexivel') ? 'IntegroVendedorPagamentoFlexivel' : 'IntegroVendedorCobrancaCorrecoes';
+      global[name] = { install: () => installed.push(name) };
+      return true;
+    });
+    assert.equal(result, enabled);
+    assert.deepEqual(loaded, enabled ? ['js/services/vendedor-cobranca-correcoes.js', 'js/services/vendedor-pagamento-flexivel.js'] : []);
+    assert.equal(installed.length, enabled ? 2 : 0);
+  });
+}
+
+test('pagamento fica limitado à venda selecionada mesmo com saldo maior do cliente em outra venda', async () => {
+  const outraVenda = { ...owned, clienteId: 'client', saldoDevedorCentavos: 50000 };
+  const outraParcela = { ...owned, vendaId: 'other-sale', clienteId: 'client', valorCentavos: 50000, valorPagoCentavos: 0 };
+  const f = fixtureBaixa({
+    'clientes_operacionais/client': { ...owned, saldoDevedorCentavos: 60500 },
+    'vendas/other-sale': outraVenda,
+    'parcelas/other-sale-p1': outraParcela
+  });
+  const before = JSON.stringify([...f.db.records]);
+  await assert.rejects(f.api.corrigir({ ...baixa, valorCentavos: 10501 }, ctx), rejectCode('failed-precondition'));
+  assert.equal(JSON.stringify([...f.db.records]), before);
+  await f.api.corrigir({ ...baixa, valorCentavos: 10500 }, ctx);
+  assert.equal(f.db.records.get('vendas/sale').saldoDevedorCentavos, 0);
+  assert.equal(f.db.records.get('clientes_operacionais/client').saldoDevedorCentavos, 50000);
+  assert.deepEqual(f.db.records.get('vendas/other-sale'), outraVenda);
+  assert.deepEqual(f.db.records.get('parcelas/other-sale-p1'), outraParcela);
+});
+
+test('botão do painel unificado recebe várias parcelas, edita o total e limita pela venda no servidor', async () => {
+  const vm = require('node:vm');
+  const f = fixtureBaixa();
+  let clientes = [{ id: 'client', ...f.db.records.get('clientes_operacionais/client') }];
+  let vendas = [{ id: 'sale', ...f.db.records.get('vendas/sale') }];
+  let parcelas = [1, 2, 3].map(n => ({ id: 'p' + n, ...f.db.records.get('parcelas/p' + n) }));
+  let caixas = [{ id: 'box', ...f.db.records.get('caixas/box') }];
+  let pagamentos = [], historico = [], legacyCalls = 0, backendCalls = 0;
+  const messages = [], campo = { value: '80,00' }, botao = { disabled: false };
+  const document = {
+    readyState: 'complete', addEventListener() {},
+    getElementById: id => id === 'vendedorPagamentoValor' ? campo : id === 'vendedorPagamentoConfirmar' ? botao : null
+  };
+  const window = {
+    document,
+    State: {
+      getUsuario: () => user('seller', 'vendedor'),
+      getClientes: () => clientes, setClientes: value => clientes = value,
+      getVendas: () => vendas, setVendas: value => vendas = value,
+      getParcelas: () => parcelas, setParcelas: value => parcelas = value,
+      getCaixas: () => caixas, setCaixas: value => caixas = value,
+      getPagamentos: () => pagamentos, setPagamentos: value => pagamentos = value,
+      getHistoricoCobrancas: () => historico, setHistoricoCobrancas: value => historico = value
+    },
+    obterCaixaAbertoVendedor: () => caixas[0],
+    confirmarPagamentoVendedorUnificado: () => { legacyCalls++; throw new Error('Fluxo limitado à parcela'); },
+    IntegroOperacional: { moedaParaCentavos: value => Math.round(Number(value.replace(',', '.')) * 100) },
+    IntegroVendedorOperacao: { montarCarteira: () => [{ vendaId: 'sale', clienteId: 'client', saldoDevedor: vendas[0].saldoDevedorCentavos / 100, parcelas }] },
+    IntegroVendedorCobrancaCorrecoes: { install() {} },
+    UIHelpers: { alerta: message => messages.push(message) },
+    firebase: { app: () => ({ functions: region => {
+      assert.equal(region, 'southamerica-east1');
+      return { httpsCallable: name => async input => {
+        assert.equal(name, 'corrigirBaixaCobrancaOperacional');
+        backendCalls++;
+        return { data: await f.api.corrigir(input, ctx) };
+      } };
+    } }) }
+  };
+  const context = vm.createContext({ window, document, setTimeout: callback => callback(), console });
+  await carregarCorrecoesDaPagina('/master-local.html', window, async (exists, src) => {
+    if (!exists()) vm.runInContext(read(src), context);
+    return true;
+  });
+  await window.confirmarPagamentoVendedorUnificado('sale');
+  assert.equal(legacyCalls, 0);
+  assert.equal(backendCalls, 1);
+  assert.deepEqual(parcelas.map(p => p.valorPagoCentavos), [3500, 3500, 1000]);
+  assert.equal(f.db.records.get('vendas/sale').saldoDevedorCentavos, 2500);
+  assert.equal(f.db.records.get('caixas/box').saldoAtualCentavos, 108000);
+  assert.equal(botao.disabled, false);
+
+  campo.value = '50,00';
+  await window.confirmarPagamentoVendedorUnificado('sale');
+  assert.deepEqual(parcelas.map(p => p.valorPagoCentavos), [3500, 1500, 0]);
+  assert.equal(f.db.records.get('vendas/sale').saldoDevedorCentavos, 5500);
+  assert.equal(f.db.records.get('caixas/box').saldoAtualCentavos, 105000);
+
+  campo.value = '105,00';
+  await window.confirmarPagamentoVendedorUnificado('sale');
+  assert.equal(f.db.records.get('vendas/sale').saldoDevedorCentavos, 0);
+  assert.equal(f.db.records.get('clientes_operacionais/client').saldoDevedorCentavos, 0);
+  assert.deepEqual(parcelas.map(p => p.valorPagoCentavos), [3500, 3500, 3500]);
+  assert.equal(pagamentos.filter(p => p.status === 'CONFIRMADO').reduce((sum, p) => sum + p.valorCentavos, 0), 10500);
+
+  const before = JSON.stringify([...f.db.records]);
+  const callsBefore = backendCalls;
+  campo.value = '105,01';
+  await window.confirmarPagamentoVendedorUnificado('sale');
+  assert.equal(backendCalls, callsBefore);
+  assert.match(messages.at(-1), /saldo devedor/);
+  await assert.rejects(f.api.corrigir({ ...baixa, valorCentavos: 10501 }, ctx), rejectCode('failed-precondition'));
+  assert.equal(JSON.stringify([...f.db.records]), before);
+});
+
 test('venda bloqueia cobrança no próprio caixa e aceita o dia seguinte',async()=>{const f=fixtureBaixa({'clientes_operacionais/client':{...owned,nome:'Cliente',saldoDevedorCentavos:0}}),today=core.hojeSP(),entrada={caixaId:'box',clienteId:'client',operacaoId:'next_day_sale',valorEmprestadoCentavos:1000,quantidadeParcelas:2,taxaJuros:0,frequencia:'DIARIA',primeiraCobranca:today};await assert.rejects(f.original.registrarVenda(entrada,ctx),rejectCode('invalid-argument'));const result=await f.original.registrarVenda({...entrada,primeiraCobranca:core.adicionarDiasISO(today,1)},ctx);assert.ok(result.vendaId);const parcels=[...f.db.records.entries()].filter(([p,v])=>p.startsWith('parcelas/')&&v.vendaId===result.vendaId).map(([,v])=>v.vencimento);assert.ok(parcels.every(d=>d>today));});
 
 test('correção não excede o saldo do cliente mesmo se o saldo da venda estiver maior',async()=>{const f=fixtureBaixa({'clientes_operacionais/client':{...owned,saldoDevedorCentavos:1000}});await assert.rejects(f.api.corrigir({caixaId:'box',vendaId:'sale',clienteId:'client',acao:'PAGAMENTO',valorCentavos:3500,operacaoId:'over_customer'},ctx),rejectCode('failed-precondition'));assert.equal(f.db.records.get('caixas/box').saldoAtualCentavos,100000);assert.equal(f.db.records.get('clientes_operacionais/client').saldoDevedorCentavos,1000);});
