@@ -128,7 +128,10 @@ test('venda, pagamento, correção e não pagamento usam a data do caixa retroat
   const original = db.runTransaction.bind(db);
   db.runTransaction = fn => original(tx => { tx.create = (ref,value) => { assert.equal(db.records.has(ref.path),false); tx.set(ref,value); }; return fn(tx); });
   const api = criarOperacoesFinanceiras({db,functions:{https:{HttpsError}}});
-  const sale = await api.registrarVenda({caixaId:'retro',clienteId:'client',operacaoId:'sale',valorEmprestadoCentavos:10000,taxaJuros:10,quantidadeParcelas:1,primeiraCobranca:monday},ctx('seller'));
+  const saleInput = {caixaId:'retro',clienteId:'client',operacaoId:'sale',valorEmprestadoCentavos:10000,taxaJuros:10,quantidadeParcelas:1,primeiraCobranca:tuesday};
+  await assert.rejects(api.registrarVenda({...saleInput,primeiraCobranca:monday},ctx('seller')), error => error.code === 'invalid-argument' && /primeira cobrança/.test(error.message));
+  assert.equal([...db.records.keys()].some(key => key.startsWith('vendas/')),false);
+  const sale = await api.registrarVenda(saleInput,ctx('seller'));
   const savedSale = db.records.get('vendas/'+sale.vendaId);
   assert.equal(savedSale.dataOperacional,monday);
   assert.equal(db.records.get('caixas/retro').carteiraFinalCentavos,11000);

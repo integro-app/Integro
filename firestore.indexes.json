@@ -1,6 +1,15 @@
 {
   "indexes": [
     {
+      "collectionGroup": "caixas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "vendedorAuthUid", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "financeiro_solicitacoes",
       "queryScope": "COLLECTION",
       "fields": [

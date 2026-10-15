@@ -67,7 +67,6 @@ test("supervisão migrada usa escopo unificado e fluxos reais de cliente", () =>
 test("navegação e matriz de permissões reconhecem módulos migrados", () => {
   const panel = read("js/painel-unificado.js");
   const navigation = read("js/unified-navigation.js");
-  const permissions = read("js/usuarios-permissoes-config.js");
 
   assert.match(panel, /supervisao:\s*["']equipe\.ver["']/);
   assert.match(panel, /captacao:\s*["']indicacoes\.ver_proprio["']/);
@@ -78,6 +77,15 @@ test("navegação e matriz de permissões reconhecem módulos migrados", () => {
 
   assert.match(navigation, /id:\s*["']supervisao["']/);
   assert.match(navigation, /id:\s*["']captacao["']/);
-  assert.match(permissions, /indicacoes/);
-  assert.match(permissions, /equipe/);
+  const window = {};
+  require('node:vm').runInNewContext(read('js/services/access-control.js'), { window });
+  const access = window.IntegroAcesso;
+  const captador = { tipoUsuario: 'captador', id: 'captador-doc', authUid: 'captador-uid', clientePlataformaId: 'tenant', permissoesCargo: { indicacoes: { ver: true } } };
+  const supervisor = { tipoUsuario: 'supervisor', equipeId: 'e1', clientePlataformaId: 'tenant', permissoesCargo: { equipe: { ver: true } } };
+  assert.equal(access.pode(captador, 'indicacoes.ver_proprio', { clientePlataformaId: 'tenant', captadorId: 'captador-doc' }), true);
+  assert.equal(access.pode(captador, 'indicacoes.ver_proprio', { clientePlataformaId: 'tenant', captadorId: 'outro' }), false);
+  assert.equal(access.pode(supervisor, 'equipe.ver', { clientePlataformaId: 'tenant', equipeId: 'e1' }), true);
+  assert.equal(access.pode(supervisor, 'equipe.ver', { clientePlataformaId: 'tenant', equipeId: 'e2' }), false);
+  assert.equal(access.pode(supervisor, 'equipe.ver', { clientePlataformaId: 'outro-tenant', equipeId: 'e1' }), false);
+  assert.equal(access.pode({ ...supervisor, permissoesCargo: { equipe: { ver: false } } }, 'equipe.ver', { equipeId: 'e1' }), false);
 });

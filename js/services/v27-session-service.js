@@ -84,7 +84,9 @@
   async function start(options = {}) {
     if (!currentUser()) throw new Error("Usuário não autenticado.");
     const id = options.sessionId || randomId();
-    const payload = { sessionId: id, dispositivo: device() };
+    // O login já substituía automaticamente a sessão anterior após uma rejeição.
+    // Enviar a mesma intenção de início evita a primeira callable rejeitada.
+    const payload = { sessionId: id, dispositivo: device(), forceReplace: true };
     try {
       const result = await callable("iniciarSessaoV27", payload);
       persistStartedSession(id);

@@ -29,13 +29,23 @@ function criarCliente360({db,functions}){
     return {client:serialize(client),tenant};
   }
   async function rows(name,tenant,aliases,fields=['clienteId']){
-    const result=new Map();for(const field of fields)for(const id of aliases){const snap=await db.collection(name).where('clientePlataformaId','==',tenant).where(field,'==',id).limit(1001).get();if(snap.docs.length>1000)error('resource-exhausted','Histórico extenso: consulte por período.');for(const doc of snap.docs)result.set(doc.id,serialize({id:doc.id,...doc.data()}));}return [...result.values()];
+    const result=new Map(),queries=fields.flatMap(field=>[...new Set(aliases)].map(id=>({field,id})));
+    // Lotes pequenos reduzem a espera sem disparar centenas de leituras simultâneas.
+    for(let i=0;i<queries.length;i+=6){
+      const snapshots=await Promise.all(queries.slice(i,i+6).map(async({field,id})=>{
+        const snap=await db.collection(name).where('clientePlataformaId','==',tenant).where(field,'==',id).limit(1001).get();
+        if(snap.docs.length>1000)error('resource-exhausted','Histórico extenso: consulte por período.');
+        return snap;
+      }));
+      for(const snap of snapshots)for(const doc of snap.docs)result.set(doc.id,serialize({id:doc.id,...doc.data()}));
+    }
+    return [...result.values()];
   }
   async function callable(data,context){
     const {client,tenant}=await scoped(context,text(data?.clienteId)),tab=text(data?.aba||'resumo'),aliases=[...new Set([client.id,client.clienteOperacionalId,client.clienteLegadoId,client.clienteId].filter(Boolean).map(text))];
     if(!['resumo','vendas','parcelas','pagamentos','visitas','historico'].includes(tab))error('invalid-argument','Aba inválida.');
     const sales=()=>rows('vendas',tenant,aliases,['clienteId','clienteOperacionalId']);
-    const installments=async()=>{const s=await sales(),byClient=await rows('parcelas',tenant,aliases),bySale=await rows('parcelas',tenant,s.map(v=>v.id),['vendaId']);return {sales:s,installments:[...new Map([...byClient,...bySale].map(p=>[p.id,p])).values()]};};
+    const installments=async()=>{const [s,byClient]=await Promise.all([sales(),rows('parcelas',tenant,aliases)]),bySale=await rows('parcelas',tenant,s.map(v=>v.id),['vendaId']);return {sales:s,installments:[...new Map([...byClient,...bySale].map(p=>[p.id,p])).values()]};};
     if(tab==='resumo'){const result=await installments();return {ok:true,client,summary:summarize(result.sales,result.installments)};}
     if(tab==='vendas')return {ok:true,client,rows:await sales()};
     if(tab==='parcelas')return {ok:true,client,rows:(await installments()).installments};

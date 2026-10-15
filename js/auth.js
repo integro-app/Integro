@@ -109,16 +109,28 @@ async function verificarCaixaVendedorParaAcesso(usuario, authUser) {
   const tenant = String(usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId || "");
   const erroCaixa = (message, code = "CAIXA_FECHADO") => Object.assign(new Error(message), { code, caixaAccessError: true });
   if (!uid || !tenant) throw erroCaixa("Não foi possível confirmar o vínculo do vendedor.", "CAIXA_ACESSO_INVALIDO");
-  let snap;
+  let caixa;
   try {
     const banco = window.db || firebase.firestore();
-    snap = await banco.collection("caixas").where("clientePlataformaId", "==", tenant).where("vendedorAuthUid", "==", uid).limit(5000).get({ source: "server" });
+    const consulta = banco.collection("caixas").where("clientePlataformaId", "==", tenant)
+      .where("vendedorAuthUid", "==", uid).where("status", "in", ["ABERTO", "REABERTO", "aberto", "reaberto"]).limit(1);
+    let pagina = consulta;
+    while (true) {
+      const snap = await pagina.get({ source: "server" });
+      const doc = snap.docs[0];
+      if (!doc) break;
+      const item = { ...doc.data(), id: doc.id };
+      if (String(item.clientePlataformaId) === tenant && String(item.vendedorAuthUid) === uid &&
+          ["ABERTO", "REABERTO"].includes(String(item.status || "").toUpperCase()) && item.ativo !== false && item.excluido !== true) {
+        caixa = item;
+        break;
+      }
+      // Legados sem ativo continuam válidos; registros inativos/excluídos não escondem outro caixa aberto.
+      pagina = consulta.startAfter(doc);
+    }
   } catch (_) {
     throw erroCaixa("Não foi possível conferir o caixa no servidor. Tente novamente.", "CAIXA_ACESSO_INDISPONIVEL");
   }
-  const caixa = snap.docs.map(doc => ({ ...doc.data(), id: doc.id })).find(item =>
-    String(item.clientePlataformaId) === tenant && String(item.vendedorAuthUid) === uid &&
-    ["ABERTO", "REABERTO"].includes(String(item.status || "").toUpperCase()) && item.ativo !== false && item.excluido !== true);
   if (!caixa) throw erroCaixa("Caixa fechado. Solicite a abertura ou reabertura ao supervisor para entrar no sistema.");
   window.caixaAtual = caixa;
   return caixa;

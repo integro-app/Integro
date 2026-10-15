@@ -111,8 +111,8 @@
         const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
         const snap = await ref.get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
         const dados = snap.docs.map(docData).filter(item => item.excluido !== true);
-        metricas.documentosRecebidos += dados.length;
-        registrarColecao(colecao, "documentos", dados.length);
+        metricas.documentosRecebidos += snap.docs.length;
+        registrarColecao(colecao, "documentos", snap.docs.length);
         if (cacheMs > 0 && geracao === geracaoCache) salvarCache(chave, { dados, expiraEm: agora() + cacheMs, colecao, tenantId });
         return dados.map(item => ({ ...item }));
       } catch (erro) {
@@ -190,8 +190,8 @@
       grupo = { assinatura, colecao, tenantId, inscritos: new Map(), unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora() };
       grupo.unsubscribe = ref.onSnapshot(snapshot => {
         const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
-        metricas.documentosRecebidos += dados.length;
-        registrarColecao(colecao, "documentos", dados.length);
+        metricas.documentosRecebidos += snapshot.docs.length;
+        registrarColecao(colecao, "documentos", snapshot.docs.length);
         grupo.ultimoDados = dados;
         grupo.ultimoSnapshot = snapshot;
         [...grupo.inscritos.values()].forEach(inscrito => {

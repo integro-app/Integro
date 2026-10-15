@@ -95,12 +95,19 @@ function criarAdministracaoV27({ admin, functions, db }) {
 
   async function exigirCaixaVendedor(actor, uid) {
     if (role(actor) !== "vendedor") return;
-    const snap = await db.collection("caixas").where("clientePlataformaId", "==", tenant(actor)).where("vendedorAuthUid", "==", uid).limit(5000).get();
-    if (!snap.docs.some(doc => {
+    const consulta = db.collection("caixas").where("clientePlataformaId", "==", tenant(actor))
+      .where("vendedorAuthUid", "==", uid).where("status", "in", ["ABERTO", "REABERTO", "aberto", "reaberto"]).limit(1);
+    let pagina = consulta;
+    while (true) {
+      const snap = await pagina.get();
+      const doc = snap.docs[0];
+      if (!doc) break;
       const caixa = doc.data();
-      return tenant(caixa) === tenant(actor) && text(caixa.vendedorAuthUid) === uid &&
-        ["ABERTO", "REABERTO"].includes(upper(caixa.status)) && caixa.ativo !== false && caixa.excluido !== true;
-    })) error("failed-precondition", "Caixa fechado. Solicite a abertura ou reabertura ao supervisor para entrar no sistema.", { code: "CAIXA_FECHADO" });
+      if (tenant(caixa) === tenant(actor) && text(caixa.vendedorAuthUid) === uid &&
+          ["ABERTO", "REABERTO"].includes(upper(caixa.status)) && caixa.ativo !== false && caixa.excluido !== true) return;
+      pagina = consulta.startAfter(doc);
+    }
+    error("failed-precondition", "Caixa fechado. Solicite a abertura ou reabertura ao supervisor para entrar no sistema.", { code: "CAIXA_FECHADO" });
   }
 
   async function iniciarSessao(data, context) {
@@ -108,8 +115,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const uid = context.auth.uid;
     const tenantId = tenant(actor);
     if (!tenantId && !["master_global", "usuario_integro"].includes(lower(actor.tipoUsuario))) error("failed-precondition", "Empresa não identificada.");
-    await exigirCaixaVendedor(actor, uid);
-    const config = await configForTenant(tenantId);
+    const [, config] = await Promise.all([exigirCaixaVendedor(actor, uid), configForTenant(tenantId)]);
     const inactivity = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 15), 720));
     if (Number(actor.tentativasLoginFalhas || 0) > 0) {
       await db.collection("usuarios").doc(actor.id || uid).set({ tentativasLoginFalhas:0, ultimaAutenticacaoValidaEm:serverTimestamp() }, { merge:true });
@@ -153,10 +159,9 @@ function criarAdministracaoV27({ admin, functions, db }) {
   async function validarSessao(data, context) {
     const actor = await actorContext(context, true);
     const uid = context.auth.uid;
-    await exigirCaixaVendedor(actor, uid);
     const sessionId = text(data?.sessionId);
     const ref = db.collection("sessoes_usuarios").doc(uid);
-    const snap = await ref.get();
+    const [, snap] = await Promise.all([exigirCaixaVendedor(actor, uid), ref.get()]);
     if (!snap.exists) error("failed-precondition", "Sessão não registrada.", { code: "SESSION_MISSING" });
     const current = snap.data() || {};
     const now = nowMs();

@@ -342,7 +342,32 @@ test("edição do pagamento usa total acumulado e mantém uma única baixa por c
   assert.match(unificado, /!mesmaBaixaPagamento\(item, \{ registro, parcela, caixa, operacaoId \}\)/);
   assert.match(blocoId, /IntegroPagamento\.pagamentoIdDeterministico\(dados\)/);
   assert.doesNotMatch(blocoId, /numero\(valor\)|dataCaixa\(\)/);
-  assert.match(operacao, /const bloquearNaoPagamento = bloquear \|\| item\.pagoHoje/);
+  const window = {
+    document: { querySelectorAll: () => [], addEventListener() {} },
+    caixaEstaFechado: () => false,
+    IntegroVendedorAsync: { statusDaCobranca: () => null }
+  };
+  require('node:vm').runInNewContext(operacao, { window, console });
+  const item = { clienteId: 'cliente', vendaId: 'venda', clienteNome: 'Cliente', podeOperar: true, pagoHoje: true, naoPagoHoje: false, saldoDevedor: 100, totalParcelas: 2, progresso: 1 };
+  const button = () => {
+    const html = window.cardCobrancaCliente(item);
+    const result = html.match(/<button\b[^>]*class="[^"]*btn-nao-pago-clean[^>]*>/)?.[0];
+    assert.ok(result, 'card precisa renderizar a ação de não pagamento');
+    return result;
+  };
+  // Correções já permitem reverter a baixa enquanto o caixa está aberto.
+  assert.doesNotMatch(button(), /\sdisabled(?:\s|>)/);
+  assert.match(button(), /abrirNaoPagamentoVenda/);
+  for (const status of ['PROCESSING', 'QUEUED']) {
+    window.IntegroVendedorAsync.statusDaCobranca = () => ({ status });
+    assert.match(button(), /\sdisabled(?:\s|>)/);
+  }
+  window.IntegroVendedorAsync.statusDaCobranca = () => null;
+  window.caixaEstaFechado = () => true;
+  assert.match(button(), /\sdisabled(?:\s|>)/);
+  window.caixaEstaFechado = () => false;
+  item.podeOperar = false;
+  assert.match(button(), /\sdisabled(?:\s|>)/);
   assert.match(operacao, /item\.saldoDevedor > 0\.01 \|\| item\.pagoHoje \|\| item\.naoPagoHoje/);
 });
 

@@ -327,8 +327,17 @@
   }
   async function carregar(clientePlataformaId) {
     if (!clientePlataformaId) throw new Error("Empresa obrigatória para carregar configurações.");
-    const snap = await firestore().collection(COLECAO).doc(String(clientePlataformaId)).get();
-    const config = normalizar(snap.exists ? snap.data() : {});
+    const database = firestore();
+    // Compartilha somente a leitura em andamento, sem cache de regras operacionais.
+    const runtime = global.IntegroDataRuntime;
+    let dados;
+    if (runtime?.lerDocumento) {
+      dados = await runtime.lerDocumento({ db: database, colecao: COLECAO, id: String(clientePlataformaId), cacheMs: 0 });
+    } else {
+      const snap = await database.collection(COLECAO).doc(String(clientePlataformaId)).get();
+      dados = snap.exists ? snap.data() : null;
+    }
+    const config = normalizar(dados || {});
     config.clientePlataformaId = String(clientePlataformaId);
     global.configuracoesEmpresa = config;
     global.configEmpresa = config;

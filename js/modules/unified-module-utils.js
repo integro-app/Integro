@@ -98,7 +98,8 @@
     if (a.perfil === "vendedor") {
       const variants = [["vendedorAuthUid", a.authUid], ["vendedorUid", a.authUid], ["uid", a.authUid], ["vendedorId", a.usuarioId], ["usuarioId", a.usuarioId]].filter(([, value]) => value);
       const map = new Map();
-      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [...(options.where || []), [field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
+      const results = await Promise.all(variants.map(([field, value]) => queryTenant(collection, { ...options, where: [...(options.where || []), [field, "==", value]] }).catch(() => [])));
+      results.forEach(rows => rows.forEach(item => map.set(item.id, item)));
       return [...map.values()];
     }
     if (a.perfil === "supervisor") {
@@ -113,7 +114,8 @@
     if (a.perfil === "captador") {
       const variants = [["captadorId", a.usuarioId], ["indicadoPorId", a.usuarioId], ["criadoPor", a.usuarioId], ["captadorId", a.authUid], ["indicadoPorId", a.authUid], ["criadoPor", a.authUid]].filter(([, value]) => value);
       const map = new Map();
-      for (const [field, value] of variants) { try { (await queryTenant(collection, { ...options, where: [...(options.where || []), [field, "==", value]] })).forEach(item => map.set(item.id, item)); } catch (_) {} }
+      const results = await Promise.all(variants.map(([field, value]) => queryTenant(collection, { ...options, where: [...(options.where || []), [field, "==", value]] }).catch(() => [])));
+      results.forEach(rows => rows.forEach(item => map.set(item.id, item)));
       return [...map.values()];
     }
     return queryTenant(collection, options);

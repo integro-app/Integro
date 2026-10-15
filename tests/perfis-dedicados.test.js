@@ -88,7 +88,31 @@ test("configuracoes concentram usuarios equipes cargos e permissoes", () => {
   assert.match(unificado, /data-up-tab="equipes"/);
   assert.match(unificado, /data-up-tab="cargos"/);
   assert.match(unificado, /abrirPermissoesUsuario/);
-  assert.match(unificado, /permissoesUsuario/);
+  const vm = require('node:vm');
+  const calls = [], alerts = [];
+  const content = { appendChild(card) { card.parentElement = this; } };
+  const elements = { configUsuariosPermissoesBox: { innerHTML: '', querySelector: () => ({}) }, usuariosPermissoesConteudo: content };
+  for (const id of ['usuarios', 'equipes', 'cargos']) {
+    const card = {};
+    const section = { querySelector: () => card, appendChild(node) { node.parentElement = this; } };
+    card.parentElement = section;
+    elements[id] = section;
+  }
+  const window = {
+    State: { encontrarUsuarioPorId: id => id === 'com-cargo' ? { cargoId: 'cargo-supervisor' } : {} },
+    UIHelpers: { alerta: message => alerts.push(message) },
+    renderCargos: () => calls.push('render-cargos'),
+    abrirPermissoesCargo: id => calls.push(id)
+  };
+  const document = { getElementById: id => elements[id] || null, querySelector: () => null, querySelectorAll: () => [], addEventListener() {} };
+  vm.runInNewContext(unificado, { window, document });
+  assert.equal(window.IntegroUsuariosPermissoes.abrirPermissoesUsuario('sem-cargo'), false);
+  assert.equal(calls.length, 0);
+  assert.match(alerts[0], /Selecione um cargo/);
+  assert.equal(window.IntegroUsuariosPermissoes.abrirPermissoesUsuario('com-cargo'), true);
+  assert.equal(window.IntegroUsuariosPermissoes.abaAtual, 'cargos');
+  assert.deepEqual(calls, ['render-cargos', 'cargo-supervisor']);
+  assert.equal(elements.cargos.querySelector().parentElement, content);
 });
 
 test("notificacoes e chat permanecem interativos no menu unificado", () => {
