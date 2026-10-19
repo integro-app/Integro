@@ -333,7 +333,7 @@ function getVendedoresBaseSupervisao() {
   const base = vendedoresCaixaTempoReal.length ? vendedoresCaixaTempoReal : stateUsuarios;
 
   return (base || []).filter(u => {
-    const tipo = String(u.tipoUsuario || "").toLowerCase();
+    const tipo = String(window.IntegroOperacional?.normalizarAcessoUsuario?.(u)?.perfilCompat || u.tipoUsuario || "").toLowerCase();
     const status = String(u.status || "ATIVO").toUpperCase();
 
     return (

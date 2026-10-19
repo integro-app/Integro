@@ -63,16 +63,27 @@ exports.provisionarUsuario = functions
     const senhaInicial = global ? String(dados?.senhaInicial || "") : "";
     if (senhaInicial && (senhaInicial.length < 6 || senhaInicial.length > 128)) erroHttps("invalid-argument", "A senha inicial deve ter entre 6 e 128 caracteres.");
     const provisionUid = "provision_" + crypto.createHash("sha256").update(JSON.stringify([tenant, conviteId, email])).digest("hex");
+    const vinculoUid = String(convite.authUid || convite.provisionadoComoUid || "");
+    if (convite.authUid && convite.provisionadoComoUid && convite.authUid !== convite.provisionadoComoUid) erroHttps("failed-precondition", "Convite com identidades conflitantes. Regularize o cadastro.");
     let conta;
+    let perfilProvisionado = null;
     try {
-      conta = await admin.auth().getUserByEmail(email);
+      conta = vinculoUid ? await admin.auth().getUser(vinculoUid) : await admin.auth().getUserByEmail(email);
+      if (vinculoUid && String(conta.email || "").trim().toLowerCase() !== email) erroHttps("failed-precondition", "E-mail do convite diverge da autenticação vinculada. Utilize o fluxo de alteração cadastral.");
       const canonicoExistente = await db.collection("usuarios").doc(conta.uid).get();
-      if ((!canonicoExistente.exists && conta.uid !== provisionUid) || (canonicoExistente.exists && String(canonicoExistente.data()?.clientePlataformaId || "") !== tenant)) {
-        erroHttps("already-exists", "O e-mail ja possui autenticacao sem vinculo com esta empresa.");
+      const perfil = canonicoExistente.exists ? canonicoExistente.data() : null;
+      if ((!perfil && conta.uid !== provisionUid) || (perfil && (
+        perfil.authUid !== conta.uid || String(perfil.clientePlataformaId || "") !== tenant ||
+        perfil.conviteOrigemId !== conviteId || (convite.authUid && convite.authUid !== conta.uid)
+      ))) {
+        erroHttps("already-exists", "A autenticação existente não possui vínculo comprovado com este convite. Regularize o cadastro.");
       }
+      if (conta.disabled || (perfil && (perfil.acessoLiberado !== true || ["BLOQUEADO","INATIVO","SUSPENSO"].includes(String(perfil.status || "").toUpperCase())))) erroHttps("failed-precondition", "Acesso existente bloqueado. Use o fluxo autorizado de desbloqueio.");
+      perfilProvisionado = perfil;
     } catch (erro) {
       if (erro instanceof functions.https.HttpsError) throw erro;
       if (erro?.code !== "auth/user-not-found") throw erro;
+      if (vinculoUid) erroHttps("failed-precondition", "A autenticação vinculada não existe. Regularize o cadastro sem criar outra identidade.");
       conta = await admin.auth().createUser({
         uid: provisionUid,
         email,
@@ -84,6 +95,7 @@ exports.provisionarUsuario = functions
     }
 
     const ativacaoUrl = global && !senhaInicial ? await admin.auth().generatePasswordResetLink(email) : "";
+    if (perfilProvisionado) return { ok: true, modo: "IDEMPOTENTE", authUid: conta.uid, email, redefinicaoNecessaria: Boolean(ativacaoUrl), ...(ativacaoUrl ? { ativacaoUrl } : {}) };
     const canonicoRef = db.collection("usuarios").doc(conta.uid);
     const agora = FieldValue.serverTimestamp();
     const dadosCanonicos = {
@@ -234,5 +246,7 @@ exports.confirmarPagamentoAssinatura = functions.region("southamerica-east1").ht
 exports.consultarAvisosAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(assinaturasPlataforma.avisos);
 exports.marcarAvisoAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(assinaturasPlataforma.marcarAviso);
 exports.suportePlataformaV27=functions.region('southamerica-east1').https.onCall(require('./platform-support').criarSuportePlataforma({db,functions}).callable);
+
+exports.gerenciarVinculosEmpresas=functions.region('southamerica-east1').https.onCall(require('./company-memberships').criarVinculosEmpresas({db,functions}).callable);
 
 exports.cadastrarClienteVendedorV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.cadastrarVendedor);

@@ -216,9 +216,9 @@ const FirestoreService = {
   montarUsuarioAuth(doc, authUser, origemCompatibilidade = "uid") {
     const dados = doc.data() || {};
     return {
-      id: doc.id,
       ...dados,
-      authUid: dados.authUid || (origemCompatibilidade === "uid" ? authUser.uid : ""),
+      id: doc.id,
+      authUid: dados.authUid || "",
       email: dados.email || authUser.email || "",
       origemResolucaoAuth: origemCompatibilidade
     };
@@ -301,9 +301,16 @@ const FirestoreService = {
       });
     }
 
+    let varios = false;
+    usuario.selecionarEmpresa = false;
+    if (usuario.tipoUsuario === "master_local" && usuario.multiplasEmpresas === true && usuario.authUid) {
+      try { const rows = await db.collection("empresa_vinculos").where("authUid", "==", usuario.authUid).where("ativo", "==", true).limit(2).get(); varios = rows.docs.length > 1; } catch (_) {}
+      if (varios && window.sessionStorage?.getItem("integro:empresaSelecionada") !== tenantId) { usuario.selecionarEmpresa = true; return {ok:true}; }
+    }
+    const negarEmpresa = () => { if (varios) { usuario.selecionarEmpresa = true; window.sessionStorage?.removeItem("integro:empresaSelecionada"); return {ok:true}; } return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", {usuario}); };
     const statusUsuarioEmpresa = String(usuario.clientePlataformaStatus || usuario.empresaStatus || "").toUpperCase();
     if (usuario.empresaBloqueada === true || usuario.acessoEmpresaLiberado === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusUsuarioEmpresa)) {
-      return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
+      return negarEmpresa();
     }
 
     try {
@@ -319,12 +326,12 @@ const FirestoreService = {
             usuario.acessoRestritoAssinatura = true;
             return { ok: true };
           }
-          return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
+          return negarEmpresa();
         }
         const fimTeste = empresa.dataFimTeste?.toMillis ? empresa.dataFimTeste.toMillis() : Date.parse(empresa.dataFimTeste);
         const testeExpirado = empresa.testeAtivo === true && empresa.dataFimTeste && (!Number.isFinite(fimTeste) || fimTeste <= Date.now());
         if (testeExpirado || empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) {
-          return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
+          return negarEmpresa();
         }
       }
     } catch (erro) {
@@ -425,6 +432,10 @@ const FirestoreService = {
     const usuarioPorUid = await this.buscarUsuarioPorDocumentoUid(authUser);
 
     if (usuarioPorUid) {
+      if (usuarioPorUid.authUid !== authUser.uid) {
+        const codigo = usuarioPorUid.authUid ? "LEGACY_USER_AUTH_UID_MISMATCH" : "LEGACY_USER_WITHOUT_AUTH_UID";
+        return this.resultadoDiagnosticoAuth(false, codigo, { usuario: usuarioPorUid });
+      }
       const validacao = await this.validarUsuarioResolvidoAuth(usuarioPorUid);
       if (!validacao.ok) {
         diagnosticos.push(this.registrarDiagnosticoAuth(validacao.codigo, {

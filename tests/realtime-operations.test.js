@@ -152,13 +152,12 @@ test("runtime abre somente os listeners necessários para cada vínculo", () => 
     perfil: "vendedor", clientePlataformaId: "tenant-a", id: "v1", authUid: "auth-v1",
     caixaAtual: { id: "box-v1", status: "ABERTO", vendedorAuthUid: "auth-v1", vendedorId: "v1" }
   });
-  assert.equal(sellerRuntime.listeners.length, 5);
+  assert.equal(sellerRuntime.listeners.length, 3);
   const sellerFields = sellerRuntime.listeners.map(listener => listener.filtros[0][0]);
   assert.equal(sellerFields.filter(field => field === "vendedorAuthUid").length, 2);
-  assert.equal(sellerFields.filter(field => field === "vendedorId").length, 2);
+  assert.equal(sellerFields.filter(field => field === "vendedorId").length, 0);
   assert.equal(sellerFields.filter(field => field === "caixaId").length, 1);
   assert.ok(sellerRuntime.listeners.some(listener => listener.filtros[0][2] === "auth-v1"));
-  assert.ok(sellerRuntime.listeners.some(listener => listener.filtros[0][2] === "v1"));
   assert.ok(sellerRuntime.listeners.some(listener => listener.filtros[0][2] === "box-v1"));
 });
 
@@ -167,6 +166,22 @@ test("vendedor sem caixa atual inicia o tempo real sem erro e sem filtro inváli
   assert.equal(runtime.sandbox.IntegroOperacoesTempoReal.diagnostic().caixaIds.length, 0);
   assert.ok(runtime.listeners.every(listener => listener.filtros[0][2]));
   assert.equal(runtime.listeners.filter(listener => listener.filtros[0][0] === "caixaId").length, 0);
+});
+
+test('ledger do vendedor restringe tipos na query; aliases não substituem o Auth UID canônico', () => {
+  const runtime=executeServiceFor({perfil:'vendedor',clientePlataformaId:'tenant-a',id:'v1',authUid:'auth-v1',caixaAtual:{id:'box-v1',status:'ABERTO',vendedorAuthUid:'auth-v1'}});
+  for(const listener of runtime.listeners){
+    assert.ok(!listener.filtros.some(f=>f[0]==='vendedorId'),'alias isolado não prova ownership nas Rules');
+    if(listener.colecao==='lancamentos_financeiros')assert.ok(listener.filtros.some(f=>f[0]==='tipoLancamento'&&f[1]==='in'&&Array.from(f[2]).join(',')==='VENDA,PAGAMENTO,INGRESSO,GASTO,RETIRADA'));
+  }
+});
+
+test('listener não usa caixa preferido de outro Auth UID ou tenant pelo alias',()=>{
+  for(const extra of [{vendedorAuthUid:'other-auth'},{clientePlataformaId:'other-tenant'}]){
+    const runtime=executeServiceFor({perfil:'vendedor',clientePlataformaId:'tenant-a',id:'v1',authUid:'auth-v1',caixaAtual:{id:'box-v1',status:'ABERTO',vendedorId:'v1',vendedorAuthUid:'auth-v1',clientePlataformaId:'tenant-a',...extra}});
+    assert.equal(runtime.sandbox.IntegroOperacoesTempoReal.diagnostic().caixaIds.length,0);
+    assert.ok(!runtime.listeners.some(l=>l.filtros.some(f=>f[0]==='caixaId')));
+  }
 });
 
 test("regras permitem leitura hierárquica sem ampliar permissões de escrita", () => {

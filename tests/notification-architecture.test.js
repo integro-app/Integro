@@ -116,3 +116,16 @@ test("notificações reiniciam listener ao trocar tenant e descartam callbacks d
   assert.equal(contexto.notificacoesCache.length, 0);
   assert.equal(encerrados, 2);
 });
+
+test('notificações restringem tenant e destinatário no servidor e não consultam sem tenant', async () => {
+  const vm=require('node:vm'), queries=[];
+  let tenant='tenant_a';
+  const context={console,setTimeout,document:{addEventListener(){}},addEventListener(){},State:{getUsuario:()=>({authUid:'u1'}),getTenantId:()=>tenant},db:{collection(){const filters=[];const ref={where(...filter){filters.push(filter);return ref;},limit(){return ref;},async get(){queries.push(filters);return {docs:[]};},onSnapshot(){queries.push(filters);return ()=>{};}};return ref;}}};
+  context.window=context;
+  vm.runInNewContext(read('js/services/notification-service.js'),context);
+  await context.IntegroNotifications.list();context.IntegroNotifications.subscribe();
+  assert.equal(queries.length,2);
+  for(const filters of queries){assert.ok(filters.some(f=>f[0]==='clientePlataformaId'&&f[2]==='tenant_a'));assert.ok(filters.some(f=>f[0]==='destinatarioAuthUid'&&f[2]==='u1'));}
+  tenant='';await context.IntegroNotifications.list();context.IntegroNotifications.subscribe();
+  assert.equal(queries.length,2);
+});

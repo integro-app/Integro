@@ -10,10 +10,10 @@ const realtime = read("js/services/realtime-operations-service.js");
 const profiles = read("js/perfis-unificados.js");
 const master = read("master-local.html");
 
-test("listener do vendedor consulta authUid e id documental sem exclusividade", () => {
+test("listener do vendedor consulta Auth UID e caixa autorizado sem alias conflitante", () => {
   assert.match(realtime, /addOwnPart\("vendedor-auth", "vendedorAuthUid", authUid\)/);
-  assert.match(realtime, /addOwnPart\("vendedor-id", "vendedorId", sellerId\)/);
-  assert.doesNotMatch(realtime, /if \(authUid\)[\s\S]{0,180}else if \(sellerId\)/);
+  assert.doesNotMatch(realtime, /addOwnPart\("vendedor-id"/);
+  assert.match(realtime, /addOwnPart\(`caixa-atual-\$\{index\}`, "caixaId", id\)/);
 });
 
 test("registros legados usam caixa atual e fallback pontual", () => {

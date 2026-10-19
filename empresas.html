@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Empresas — ÍNTEGRO</title>
+  <link rel="stylesheet" href="css/integro-interface.css">
+  <script>window.__INTEGRO_EMPRESAS_PORTAL__=true;</script>
+</head>
+<body>
+  <main class="unified-profile-module">
+    <header class="unified-profile-head"><h1>Escolha a empresa</h1><div><button id="empresaSair" type="button" class="ghost-btn">Sair</button></div></header>
+    <p id="empresaErro" role="alert"></p><section id="empresasConteudo" aria-live="polite">Carregando empresas vinculadas…</section><a href="index.html">Voltar ao sistema</a><a href="assinatura.html">Financeiro da assinatura da empresa atual</a><a href="suporte.html">Suporte ÍNTEGRO</a>
+  </main>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+  <script src="js/firebase-config.js?v=20261014-multiempresa1"></script>
+  <script src="js/services/v27-session-service.js"></script>
+  <script src="js/services/company-selector.js"></script>
+</body>
+</html>

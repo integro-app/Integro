@@ -14,29 +14,35 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
 
   function role(user = {}) { return [user.tipoUsuario,user.tipo,user.role,user.perfil,user.cargoChave,user.cargo].map(norm).find(p=>["MASTER_LOCAL","GERENTE","FINANCEIRO","SUPERVISOR_FINANCEIRO"].includes(p)) || norm(user.tipoUsuario); }
   function controlFinance(user = {}) {
-    return user.permissoes?.controleFinanceiro || user.permissoesUsuario?.controleFinanceiro || user.permissoesCargo?.controleFinanceiro || {};
+    const source = user.permissoesUsuario || user.permissoes || user.permissoesCargo || {};
+    return source.controleFinanceiro || {};
+  }
+  function denied(user, action) {
+    const source = user.permissoesUsuario || user.permissoes || user.permissoesCargo || {};
+    const permissions = source.controleFinanceiro;
+    return permissions === false || permissions?.ver === false || permissions?.[action] === false || source['controleFinanceiro.ver'] === false || source['controleFinanceiro.' + action] === false;
   }
   function active(user = {}) {
     return user.acessoLiberado === true && !["INATIVO","BLOQUEADO","SUSPENSO"].includes(norm(user.status));
   }
   function canEdit(user = {}) {
-    return ["MASTER_LOCAL","GERENTE","FINANCEIRO","SUPERVISOR_FINANCEIRO"].includes(role(user)) || controlFinance(user).editar === true;
+    return !denied(user,"editar") && (["MASTER_LOCAL","GERENTE","FINANCEIRO","SUPERVISOR_FINANCEIRO"].includes(role(user)) || controlFinance(user).editar === true);
   }
   function canApprove(user = {}) {
-    return ["MASTER_LOCAL","GERENTE","SUPERVISOR_FINANCEIRO"].includes(role(user)) || user.responsavelFinanceiro === true || controlFinance(user).aprovar === true;
+    return !denied(user,"aprovar") && (["MASTER_LOCAL","GERENTE","SUPERVISOR_FINANCEIRO"].includes(role(user)) || user.responsavelFinanceiro === true || controlFinance(user).aprovar === true);
   }
-  function canReverse(user = {}) { return ["MASTER_LOCAL","GERENTE"].includes(role(user)); }
+  function canReverse(user = {}) { return !denied(user,"estornar") && ["MASTER_LOCAL","GERENTE"].includes(role(user)); }
 
   async function userByUid(uid) {
     const direct = await db.collection("usuarios").doc(uid).get();
-    if (direct.exists) return { id: direct.id, ...direct.data() };
-    const query = await db.collection("usuarios").where("authUid", "==", uid).limit(1).get();
-    if (!query.empty) return { id: query.docs[0].id, ...query.docs[0].data() };
+    if (direct.exists) return direct.data().authUid === uid ? { ...direct.data(), id: direct.id } : null;
+    const query = await db.collection("usuarios").where("authUid", "==", uid).limit(2).get();
+    if (query.docs.length === 1) return { ...query.docs[0].data(), id: query.docs[0].id };
     return null;
   }
   async function session(context) {
     const uid = text(context?.auth?.uid); if (!uid) error("unauthenticated", "Sessão não autenticada.");
-    const user = await userByUid(uid); if (!user || !active(user) || text(user.authUid || uid) !== uid) error("permission-denied", "Usuário sem acesso ao ÍNTEGRO.");
+    const user = await userByUid(uid); if (!user || !active(user) || user.authUid !== uid) error("permission-denied", "Usuário sem acesso ao ÍNTEGRO.");
     const tenantId = text(user.clientePlataformaId); if (!tenantId) error("failed-precondition", "Usuário sem empresa vinculada.");
     await exigirEmpresaOperacional({ db, functions, usuario: user, tenantId });
     return { uid, user, tenantId };
@@ -110,7 +116,13 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     if (out.valorCentavos !== undefined && (!Number.isInteger(Number(out.valorCentavos)) || Number(out.valorCentavos) <= 0)) error("invalid-argument", "Valor inválido.");
     return out;
   }
-  function sameBusinessDay(iso) { return text(iso).slice(0,10) === core.hojeSP(); }
+  function sameBusinessDay(iso) {
+    const value = text(iso);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value === core.hojeSP();
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return false;
+    return new Intl.DateTimeFormat("en-CA", {timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(date) === core.hojeSP();
+  }
 
   async function requestChange(data, context) {
     const { uid, user, tenantId } = await session(context); if (!canEdit(user)) error("permission-denied", "Sem permissão para alterar lançamento.");
@@ -124,16 +136,30 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     if (isCancellation && Number(account.valorPagoCentavos || 0) > 0) error("failed-precondition", "Lançamento com pagamento não pode ser cancelado.");
     const isCreator = text(account.criadoPorAuthUid) === uid;
     if (isCreator && sameBusinessDay(account.criadoEmTexto) && scope === "SOMENTE_ESTA") {
-      if (isCancellation) {
-        const direct={status:"CANCELADA",statusV27:"CANCELADA",motivoCancelamento:text(data?.motivo || "Cancelamento pelo criador no mesmo dia"),canceladoPorAuthUid:uid,canceladoEm:ts(),canceladoEmTexto:nowText(),atualizadoEm:ts(),atualizadoEmTexto:nowText()};
-        await db.collection("financeiro_contas").doc(account.id).set(direct,{merge:true});
-        await db.collection("financeiro_auditoria").add({clientePlataformaId:tenantId,acao:"CANCELAR_CONTA_MESMO_DIA",entidadeTipo:"CONTA",entidadeId:account.id,antes:account,depois:{...account,...direct},usuarioAuthUid:uid,usuarioNome:text(user.nome||user.email),criadoEmTexto:nowText(),criadoEm:ts()});
+      return db.runTransaction(async transaction => {
+        const accountRef = db.collection("financeiro_contas").doc(account.id);
+        const [currentSnap, actorSnap] = await Promise.all([transaction.get(accountRef), transaction.get(db.collection("usuarios").doc(user.id))]);
+        const actor = actorSnap.exists ? actorSnap.data() : null;
+        if (!actor || actor.authUid !== uid || !active(actor) || !canEdit(actor) || text(actor.clientePlataformaId) !== tenantId) error("permission-denied", "Editor sem acesso atual.");
+        if (!currentSnap.exists) error("not-found", "Lançamento não encontrado.");
+        const current = { ...currentSnap.data(), id: currentSnap.id };
+        if (text(current.clientePlataformaId) !== tenantId) error("permission-denied", "Lançamento fora da empresa atual.");
+        if (["PAGA","PAGO","CANCELADA"].includes(norm(current.status))) error("failed-precondition", "Lançamento efetivado ou cancelado não pode ser editado.");
+        if (text(current.criadoPorAuthUid) !== uid || !sameBusinessDay(current.criadoEmTexto)) error("failed-precondition", "Lançamento mudou. Solicite novamente a alteração para análise.");
+        const paid = Number(current.valorPagoCentavos || 0);
+        if (isCancellation && paid > 0) error("failed-precondition", "Lançamento com pagamento não pode ser cancelado.");
+        const update = isCancellation
+          ? {status:"CANCELADA",statusV27:"CANCELADA",motivoCancelamento:text(data?.motivo || "Cancelamento pelo criador no mesmo dia"),canceladoPorAuthUid:uid,canceladoEm:ts(),canceladoEmTexto:nowText()}
+          : {...patch};
+        if (!isCancellation && update.valorCentavos !== undefined) {
+          if (Number(update.valorCentavos) < paid) error("failed-precondition", "Valor não pode ser menor que o já pago.");
+          update.saldoCentavos = Number(update.valorCentavos) - paid;
+        }
+        Object.assign(update,{atualizadoEm:ts(),atualizadoEmTexto:nowText()});
+        transaction.set(accountRef,update,{merge:true});
+        transaction.set(db.collection("financeiro_auditoria").doc(),{clientePlataformaId:tenantId,acao:isCancellation?"CANCELAR_CONTA_MESMO_DIA":"EDITAR_CONTA_MESMO_DIA",entidadeTipo:"CONTA",entidadeId:account.id,antes:current,depois:{...current,...update},usuarioAuthUid:uid,usuarioNome:text(actor.nome||actor.email),criadoEmTexto:nowText(),criadoEm:ts()});
         return {ok:true,aprovado:true};
-      }
-      if (patch.valorCentavos !== undefined) { const paid = Number(account.valorPagoCentavos || 0); if (Number(patch.valorCentavos) < paid) error("failed-precondition", "Valor não pode ser menor que o já pago."); patch.saldoCentavos = Number(patch.valorCentavos) - paid; }
-      await db.collection("financeiro_contas").doc(account.id).set({ ...patch, atualizadoEm:ts(), atualizadoEmTexto:nowText() }, { merge:true });
-      await db.collection("financeiro_auditoria").add({ clientePlataformaId:tenantId, acao:"EDITAR_CONTA_MESMO_DIA", entidadeTipo:"CONTA", entidadeId:account.id, antes:account, depois:{...account,...patch}, usuarioAuthUid:uid, usuarioNome:text(user.nome || user.email), criadoEmTexto:nowText(), criadoEm:ts() });
-      return { ok:true, aprovado:true };
+      });
     }
     const requestId = `fe_${idSafe(account.id)}_${Date.now()}`;
     const request = { clientePlataformaId:tenantId, tipo:requestType, status:"PENDENTE", contaId:account.id, patch, motivo:text(data?.motivo), escopo:scope, recorrenciaId:text(account.recorrenciaId), corteVencimento:text(account.vencimento), solicitanteAuthUid:uid, solicitanteNome:text(user.nome || user.nomeCompleto || user.email), criadoEmTexto:nowText(), criadoEm:ts(), atualizadoEmTexto:nowText(), atualizadoEm:ts() };
@@ -161,7 +187,7 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     if (pagamentoAprovado) return {ok:true,status:"APROVADA",pagamentoId:pagamentoAprovado.pagamentoId};
     return db.runTransaction(async batch=>{
     const currentRequest=await batch.get(ref),currentAccount=await batch.get(db.collection("financeiro_contas").doc(account.id));
-    const actorSnap=await batch.get(db.collection('usuarios').doc(user.id||uid));if(!actorSnap.exists||!active(actorSnap.data())||!canApprove(actorSnap.data())||text(actorSnap.data().clientePlataformaId)!==tenantId)error('permission-denied','Decisor sem acesso.');
+    const actorSnap=await batch.get(db.collection('usuarios').doc(user.id||uid));if(!actorSnap.exists||actorSnap.data().authUid!==uid||!active(actorSnap.data())||!canApprove(actorSnap.data())||text(actorSnap.data().clientePlataformaId)!==tenantId)error('permission-denied','Decisor sem acesso.');
     if(!currentRequest.exists||!currentAccount.exists)error("not-found","Solicitação ou conta indisponível.");
     if(norm(currentRequest.data().status)!=="PENDENTE"){const expected=decision==="APROVAR"?"APROVADA":"REJEITADA";if(norm(currentRequest.data().status)===expected)return {ok:true,status:expected,modo:"IDEMPOTENTE"};error("failed-precondition","Solicitação já foi decidida.");}
     Object.assign(account,currentAccount.data());if(text(account.clientePlataformaId)!==tenantId)error("permission-denied","Conta fora da empresa.");
@@ -211,9 +237,10 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     const paymentId = text(data?.pagamentoId), reason = text(data?.motivo); if (!paymentId || paymentId.includes("/")) error("invalid-argument", "Pagamento inválido."); if (reason.length < 3) error("invalid-argument", "Motivo do estorno é obrigatório.");
     const paymentRef = db.collection("financeiro_pagamentos").doc(paymentId); let result;
     await db.runTransaction(async tx => {
+      const actorSnap=await tx.get(db.collection("usuarios").doc(user.id));const actor=actorSnap.exists?actorSnap.data():null;if(!actor||actor.authUid!==uid||!active(actor)||!canReverse(actor)||text(actor.clientePlataformaId)!==tenantId)error("permission-denied","Autor do estorno sem acesso atual.");
       const paySnap = await tx.get(paymentRef); if (!paySnap.exists) error("not-found", "Pagamento não encontrado."); const pay = paySnap.data(); if (text(pay.clientePlataformaId) !== tenantId) error("permission-denied", "Pagamento fora da empresa atual."); if (pay.estornado === true) {result={contaId:text(pay.contaId),modo:"IDEMPOTENTE"};return;}
       const accountRef = db.collection("financeiro_contas").doc(text(pay.contaId)); const accSnap = await tx.get(accountRef); if (!accSnap.exists) error("not-found", "Conta vinculada não encontrada."); const account=accSnap.data(); if(text(account.clientePlataformaId)!==tenantId)error("permission-denied","Conta fora da empresa atual.");
-      const linkedId=text(pay.saldoReprogramadoContaId); let linked=null, linkedRef=null; if(linkedId){linkedRef=db.collection("financeiro_contas").doc(linkedId);const linkedSnap=await tx.get(linkedRef);if(linkedSnap.exists){linked=linkedSnap.data();if(Number(linked.valorPagoCentavos||0)>0)error("failed-precondition","O saldo reprogramado já recebeu pagamento e precisa ser tratado antes do estorno.");}}
+      const linkedId=text(pay.saldoReprogramadoContaId); let linked=null, linkedRef=null; if(linkedId){linkedRef=db.collection("financeiro_contas").doc(linkedId);const linkedSnap=await tx.get(linkedRef);if(!linkedSnap.exists)error("failed-precondition","Saldo reprogramado não encontrado.");if(linkedId===text(pay.contaId))error("failed-precondition","Referência circular de saldo reprogramado.");if(linkedSnap.exists){linked=linkedSnap.data();if(text(linked.clientePlataformaId)!==tenantId)error("permission-denied","Saldo reprogramado fora da empresa atual.");if(Number(linked.valorPagoCentavos||0)>0)error("failed-precondition","O saldo reprogramado já recebeu pagamento e precisa ser tratado antes do estorno.");}}
       const amount=Number(pay.valorPagoCentavos||0), paidAfter=Math.max(0,Number(account.valorPagoCentavos||0)-amount); const balanceBefore=Number(pay.valorPrevistoSaldoCentavos||0); const restoredBalance=Number(account.saldoCentavos||0)+amount+(linked?Number(linked.saldoCentavos||0):0)-(norm(pay.modoPagamento)==="QUITAR_VALOR_REAL"?Number(pay.diferencaQuitacaoCentavos||0):0); const status=paidAfter>0?"PARCIALMENTE_PAGA":"A_VENCER";
       tx.set(accountRef,{valorPagoCentavos:paidAfter,saldoCentavos:restoredBalance,status,statusV27:paidAfter>0?"PAGAMENTO_PARCIAL":"AGUARDANDO_VENCIMENTO",atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});
       if(linkedRef&&linked)tx.set(linkedRef,{status:"CANCELADA",statusV27:"CANCELADA",motivoCancelamento:`Estorno do pagamento ${paymentId}`,canceladoPorAuthUid:uid,canceladoEm:ts(),canceladoEmTexto:nowText(),atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});

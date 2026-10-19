@@ -26,6 +26,14 @@ function criarCicloCaixa({ db, functions }) {
   function roleOf(user) {
     return [user.cargoChave,user.tipoUsuario,user.perfil,user.cargoNome,user.cargo].map(value => core.normalizarStatus(value).replace(/\s+/g,"_")).find(role => ["MASTER_LOCAL","GERENTE","SUPERVISOR","VENDEDOR"].includes(role));
   }
+  async function sellerSnapshot(reader, sellerId) {
+    const source = await reader.get(db.collection("usuarios").doc(sellerId));
+    if (!source.exists || !source.data().authUid || source.data().authUid === source.id) return source;
+    const canonical = await reader.get(db.collection("usuarios").doc(id(source.data().authUid)));
+    if (!canonical.exists) return source; // vínculo legado exato preservado; não cria nem mescla usuários.
+    if (canonical.data().authUid !== source.data().authUid || canonical.data().clientePlataformaId !== source.data().clientePlataformaId) fail("permission-denied", "Vínculo de vendedor conflitante. Regularize o cadastro.");
+    return canonical;
+  }
   function scope(actor, seller) {
     if (seller.clientePlataformaId !== actor.tenant) fail("permission-denied", "Vendedor de outra empresa.");
     if (actor.role === "VENDEDOR" && seller.authUid !== actor.uid) fail("permission-denied", "Caixa de outro vendedor.");
@@ -34,9 +42,18 @@ function criarCicloCaixa({ db, functions }) {
       if (!teams.includes(String(seller.equipeId))) fail("permission-denied", "Vendedor fora das equipes autorizadas.");
     }
   }
-  async function boxes(transaction, actor, sellerId) {
-    const snap = await transaction.get(db.collection("caixas").where("clientePlataformaId","==",actor.tenant).where("vendedorId","==",sellerId));
-    return snap.docs.map(doc => ({ ...doc.data(), id:doc.id })).filter(box => box.excluido !== true).sort((a,b) => String(b.dataOperacional || b.dataCaixa || "").localeCompare(String(a.dataOperacional || a.dataCaixa || "")));
+  async function boxes(transaction, actor, sellerId, authUid) {
+    const ids = Array.isArray(sellerId) ? sellerId : [sellerId];
+    const queries = ids.map(value => db.collection("caixas").where("clientePlataformaId","==",actor.tenant).where("vendedorId","==",value));
+    if (authUid) queries.push(db.collection("caixas").where("clientePlataformaId","==",actor.tenant).where("vendedorAuthUid","==",authUid));
+    const snapshots = await Promise.all(queries.map(query => transaction.get(query)));
+    const union = new Map();
+    for (const snap of snapshots) for (const doc of snap.docs) {
+      const box = { ...doc.data(), id:doc.id };
+      if (box.vendedorAuthUid && authUid && box.vendedorAuthUid !== authUid) fail("failed-precondition", "Histórico de caixa com proprietário conflitante.");
+      union.set(doc.id, box);
+    }
+    return [...union.values()].filter(box => box.excluido !== true).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
   }
   const boxDay = box => String(box.dataOperacional || box.dataCaixa || "").slice(0,10);
   const isOpen = box => ["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status));
@@ -57,7 +74,15 @@ function criarCicloCaixa({ db, functions }) {
     if (who.role === "VENDEDOR") fail("permission-denied","Somente responsáveis podem consultar abertura por equipe.");
     scope(who,{clientePlataformaId:who.tenant,equipeId:teamId});
     const members = await db.collection("usuarios").where("clientePlataformaId","==",who.tenant).where("equipeId","==",teamId).get();
-    const sellers = members.docs.filter(doc => {
+    const resolved = await Promise.all(members.docs.map(doc => sellerSnapshot({get:ref=>ref.get()},doc.id)));
+    const identities = new Map();
+    for (const doc of resolved) {
+      const uid = doc.data()?.authUid;
+      if (!uid) continue;
+      if (identities.has(uid) && identities.get(uid).id !== doc.id) fail("failed-precondition", "Cadastros de vendedor ambíguos. Regularize a identidade.");
+      identities.set(uid,doc);
+    }
+    const sellers = [...identities.values()].filter(doc => {
       const seller = doc.data();
       return String(seller.equipeId) === teamId && roleOf(seller) === "VENDEDOR" && seller.authUid && seller.acessoLiberado === true && seller.ativo !== false && !["INATIVO","BLOQUEADO","SUSPENSO"].includes(core.normalizarStatus(seller.status));
     }).map(doc => ({id:doc.id,nome:doc.data().nome || doc.data().nomeCompleto || doc.data().email || doc.id}));
@@ -68,36 +93,42 @@ function criarCicloCaixa({ db, functions }) {
     ]);
     const latest = [control.exists ? control.data().dataOperacional : "",...history.map(boxDay)].filter(Boolean).sort().pop() || "";
     const open = history.filter(box => box.excluido !== true && isOpen(box));
-    const pending = sellers.filter(seller => !history.some(box => box.vendedorId === seller.id && boxDay(box) === latest));
+    const sellerUids = new Map([...identities.values()].map(doc => [doc.id,doc.data().authUid]));
+    const memberUids = new Map(members.docs.map(doc => [doc.id,doc.data().authUid]));
+    const pending = sellers.filter(seller => !history.some(box => (box.vendedorAuthUid || memberUids.get(box.vendedorId) || box.vendedorId) === sellerUids.get(seller.id) && boxDay(box) === latest));
     const continuation = latest && open.length && open.every(box => boxDay(box) === latest) && pending.length ? latest : "";
     return {hoje:core.hojeSP(),ultimaData:latest,temCaixaAberto:open.length > 0,dataParaConcluir:continuation,vendedores:sellers,pendentes:pending.map(seller=>seller.id)};
   }
   async function abrir(data, context) {
     const who = await actor(context), input = data?.entrada || data || {};
-    const sellerId = id(input.vendedorId || input.vendedor?.id), day = date(input.dataOperacional || core.hojeSP());
+    const requestedSellerId = id(input.vendedorId || input.vendedor?.id), day = date(input.dataOperacional || core.hojeSP());
     const retro = day < core.hojeSP();
     if (retro && who.role === "VENDEDOR") fail("permission-denied", "Somente Master, gerente ou supervisor podem abrir caixa retroativo.");
     const reason = core.texto(input.motivoRetroativo || input.observacao);
     if (retro && !reason) fail("invalid-argument", "Informe o motivo da abertura retroativa.");
-    const sellerRef = db.collection("usuarios").doc(sellerId);
-    const controlRef = db.collection("controle_caixas").doc(who.tenant + "_" + sellerId);
     return db.runTransaction(async transaction => {
-      const [sellerSnap] = await Promise.all([transaction.get(sellerRef),transaction.get(controlRef)]);
+      const sellerSnap = await sellerSnapshot(transaction,requestedSellerId);
       if (!sellerSnap.exists) fail("not-found","Vendedor não encontrado.");
+      const sellerId = sellerSnap.id;
+      const controlRef = db.collection("controle_caixas").doc(who.tenant + "_" + sellerSnap.data().authUid);
+      await transaction.get(controlRef);
       const seller = sellerSnap.data(); scope(who,seller);
       if (roleOf(seller) !== "VENDEDOR" || !seller.authUid || seller.acessoLiberado !== true || seller.ativo === false || ["INATIVO","BLOQUEADO","SUSPENSO"].includes(core.normalizarStatus(seller.status))) fail("failed-precondition","Vendedor sem acesso ativo.");
+      const linked = await transaction.get(db.collection("usuarios").where("clientePlataformaId","==",who.tenant).where("authUid","==",seller.authUid).limit(3));
+      if (linked.docs.length >= 3) fail("failed-precondition","Cadastros de vendedor exigem revisão de identidade.");
+      const sellerIds = new Set([sellerId,requestedSellerId,...linked.docs.map(doc => doc.id)]);
       const teamId = seller.equipeId ? id(seller.equipeId) : "";
       const teamControl = teamId ? db.collection("controle_caixas").doc(who.tenant + "_equipe_" + teamId) : null;
       let sellerHistory;
       if (teamControl) {
         const [control,teamBoxes] = await Promise.all([transaction.get(teamControl),teamHistory(transaction,who,teamId)]);
-        sellerHistory = teamBoxes.filter(box => box.vendedorId === sellerId && box.excluido !== true).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
+        sellerHistory = teamBoxes.filter(box => (box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId)) && box.excluido !== true).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
         const latest = [control.exists ? control.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
         if (latest > day) fail("failed-precondition","Já existe caixa posterior na equipe. Os dias anteriores estão bloqueados.");
-        if (teamBoxes.some(box => box.vendedorId === sellerId && boxDay(box) === day && box.excluido === true)) fail("failed-precondition","Essa data já foi usada pelo vendedor e não pode ser criada novamente.");
+        if (teamBoxes.some(box => (box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId)) && boxDay(box) === day && box.excluido === true)) fail("failed-precondition","Essa data já foi usada pelo vendedor e não pode ser criada novamente.");
         if (teamBoxes.some(box => box.excluido !== true && isOpen(box) && boxDay(box) !== day)) fail("failed-precondition","Feche os caixas abertos da equipe antes de abrir outro dia.");
       }
-      const history = sellerHistory || await boxes(transaction,who,sellerId);
+      const history = sellerHistory || await boxes(transaction,who,[...sellerIds],seller.authUid);
       const open = history.filter(box => ["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status)));
       if (open.length === 1 && String(open[0].dataOperacional || open[0].dataCaixa) === day) return { modo:"IDEMPOTENTE", caixaId:open[0].id, caixa:open[0] };
       if (open.length) fail("failed-precondition","Feche o caixa aberto antes de abrir outro dia.");
@@ -130,6 +161,8 @@ function criarCicloCaixa({ db, functions }) {
       if (box.clientePlataformaId !== who.tenant) fail("permission-denied","Caixa de outra empresa.");
       const sellerSnap = await transaction.get(db.collection("usuarios").doc(id(box.vendedorId)));
       if (!sellerSnap.exists) fail("not-found","Vendedor não encontrado."); scope(who,sellerSnap.data());
+      const sellerUid = box.vendedorAuthUid || sellerSnap.data().authUid;
+      if (!sellerUid || (box.vendedorAuthUid && sellerSnap.data().authUid && box.vendedorAuthUid !== sellerSnap.data().authUid)) fail("failed-precondition","Identidade do caixa exige regularização.");
       const teamId = box.equipeId || sellerSnap.data().equipeId;
       if (teamId) {
         const teamBoxes = await teamHistory(transaction,who,String(teamId));
@@ -137,9 +170,9 @@ function criarCicloCaixa({ db, functions }) {
         const latest = [teamControl.exists ? teamControl.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
         if (latest > boxDay(box)) fail("failed-precondition","Já existe caixa posterior na equipe. Os dias anteriores estão bloqueados.");
       }
-      const controlRef = db.collection("controle_caixas").doc(who.tenant + "_" + box.vendedorId);
+      const controlRef = db.collection("controle_caixas").doc(who.tenant + "_" + sellerUid);
       await transaction.get(controlRef);
-      const history = await boxes(transaction,who,box.vendedorId);
+      const history = await boxes(transaction,who,box.vendedorId,sellerUid);
       if (history[0]?.id !== boxId) fail("failed-precondition","Somente o caixa mais recente pode ser reaberto.");
       if (history.some(item => item.id !== boxId && ["ABERTO","REABERTO"].includes(core.normalizarStatus(item.status)))) fail("failed-precondition","Já existe outro caixa aberto.");
       if (["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status))) return {modo:"JA_ABERTO",caixaId:boxId,statusNovo:box.status};

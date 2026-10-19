@@ -948,7 +948,7 @@
       const references = await Promise.all(previous.map(async c => {
         const key = [tenant,uid,c.id].join(':');
         if (!historicoInsightsCaixa.has(key)) {
-          const snap = await (window.db || window.firebase.firestore()).collection("lancamentos_financeiros").where("clientePlataformaId","==",tenant).where("vendedorAuthUid","==",uid).where("caixaId","==",c.id).get();
+          const snap = await (window.db || window.firebase.firestore()).collection("lancamentos_financeiros").where("clientePlataformaId","==",tenant).where("vendedorAuthUid","==",uid).where("caixaId","==",c.id).where("tipoLancamento","in",["VENDA","PAGAMENTO","INGRESSO","GASTO","RETIRADA"]).get();
           historicoInsightsCaixa.set(key,snap.docs.map(d=>({id:d.id,...d.data()})));
         }
         const reference = window.IntegroSellerBoxDashboard.summarize({ caixa:c,usuario:user,historico:true,lancamentos:historicoInsightsCaixa.get(key),vendas:State.getVendas?.() || [],pagamentos:State.getPagamentos?.() || [] });

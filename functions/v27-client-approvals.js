@@ -17,16 +17,16 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
 
   async function usuarioPorUid(uid) {
     const direto = await db.collection("usuarios").doc(uid).get();
-    if (direto.exists) return { id: direto.id, ...(direto.data() || {}) };
-    const q = await db.collection("usuarios").where("authUid", "==", uid).limit(1).get();
-    return q.empty ? null : { id: q.docs[0].id, ...(q.docs[0].data() || {}) };
+    if (direto.exists) return direto.data().authUid === uid ? { ...direto.data(), id: direto.id } : null;
+    const q = await db.collection("usuarios").where("authUid", "==", uid).limit(2).get();
+    return q.docs.length !== 1 ? null : { ...q.docs[0].data(), id: q.docs[0].id };
   }
 
   async function sessao(ctx) {
     const uid = texto(ctx?.auth?.uid);
     if (!uid) erro("unauthenticated", "Sessão não autenticada.");
     const usuario = await usuarioPorUid(uid);
-    if (!ativo(usuario)) erro("permission-denied", "Usuário sem acesso.");
+    if (!ativo(usuario) || usuario.authUid !== uid) erro("permission-denied", "Usuário sem acesso.");
     const tenantId = texto(usuario.clientePlataformaId);
     if (!tenantId) erro("failed-precondition", "Empresa não identificada.");
     await exigirEmpresaOperacional({db,functions,usuario,tenantId});
@@ -198,13 +198,18 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     });
   }
 
-  async function cadastrarVendedor(entrada = {}, ctx) {
-    const { uid, usuario, tenantId } = await sessao(ctx);
+  function validarPermissaoCadastro(usuario, acaoPermitida) {
     const perfil = [usuario.cargoChave, usuario.tipoUsuario, usuario.perfil, usuario.cargo].map(normalizar);
     if (!perfil.includes("VENDEDOR")) erro("permission-denied", "Cadastro disponível apenas ao vendedor da empresa.");
-    const permissao = usuario.permissoesUsuario?.clientes || usuario.permissoes?.clientes || usuario.permissoesCargo?.clientes;
+    const matriz = usuario.permissoesUsuario || usuario.permissoes || usuario.permissoesCargo || {};
+    const permissao = matriz.clientes;
+    if (permissao === false || permissao?.ver === false || matriz['clientes.ver'] === false || matriz['clientes.' + acaoPermitida] === false || permissao?.[acaoPermitida] === false || permissao?.[acaoPermitida === "editar" ? "podeEditar" : "podeCriar"] === false) erro("permission-denied", "O cargo não permite esta ação em clientes.");
+  }
+
+  async function cadastrarVendedor(entrada = {}, ctx) {
+    const { uid, usuario, tenantId } = await sessao(ctx);
     const acaoPermitida = entrada.acao === "VALIDAR" && entrada.ignorarId ? "editar" : "criar";
-    if (permissao?.[acaoPermitida] === false || permissao?.[acaoPermitida === "editar" ? "podeEditar" : "podeCriar"] === false) erro("permission-denied", "O cargo não permite esta ação em clientes.");
+    validarPermissaoCadastro(usuario, acaoPermitida);
     const dados = entrada.dados || {};
     const digitos = v => texto(v).replace(/\D/g, "");
     const documento = digitos(dados.documento);
@@ -222,6 +227,10 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     const ref = db.collection("clientes_operacionais").doc("cad_" + chave);
     const legadoRef = db.collection("clientes").doc("cad_" + chave);
     return db.runTransaction(async tx => {
+      const atualUsuario = await tx.get(db.collection("usuarios").doc(usuario.id));
+      const autor = atualUsuario.exists ? atualUsuario.data() : null;
+      if (!ativo(autor) || autor.authUid !== uid || texto(autor.clientePlataformaId) !== tenantId) erro("permission-denied", "Vendedor sem acesso atual.");
+      validarPermissaoCadastro(autor, acaoPermitida);
       const atual = await tx.get(ref);
       if (ignorarId) {
         const proprio = await tx.get(db.collection("clientes_operacionais").doc(ignorarId));

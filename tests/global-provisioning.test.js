@@ -4,7 +4,7 @@ const {createRequire}=require('node:module');
 const {memoryDb,HttpsError,user}=require('./helpers/critical-fixture.cjs');
 function setup(extra={}) {
   const db=memoryDb({'usuarios/global':user('global','master_global','', ''),'usuarios/master':user('master'),'clientes_integro/a':{nome:'Empresa',tipoPessoa:'PJ',status:'ATIVO'},'usuarios/invite':{nome:'Master',email:'new@example.test',tipoUsuario:'master_local',clientePlataformaId:'a',status:'CONVITE_PENDENTE',acessoLiberado:false},...extra});
-  let created=0; const authUsers=new Map(), auth={async getUserByEmail(email){if(authUsers.has(email))return authUsers.get(email);throw Object.assign(Error('missing'),{code:'auth/user-not-found'});},async createUser(data){created++;const account={uid:'new_uid_'+created,...data};authUsers.set(data.email,account);return account;},async generatePasswordResetLink(){return 'https://example.test/reset?oobCode=local-test';}};
+  let created=0; const authUsers=new Map(), auth={async getUser(uid){const account=[...authUsers.values()].find(u=>u.uid===uid);if(account)return account;throw Object.assign(Error('missing'),{code:'auth/user-not-found'});},async getUserByEmail(email){if(authUsers.has(email))return authUsers.get(email);throw Object.assign(Error('missing'),{code:'auth/user-not-found'});},async createUser(data){created++;const account={uid:'new_uid_'+created,...data};authUsers.set(data.email,account);return account;},async generatePasswordResetLink(){return 'https://example.test/reset?oobCode=local-test';}};
   const chain={region(){return this;},runWith(){return this;},timeZone(){return this;},onRun(fn){return fn;},pubsub:{schedule(){return chain;},timeZone(){return chain;},onRun(fn){return fn;}},https:{HttpsError,onCall:fn=>fn}};
   const admin={initializeApp(){},firestore:()=>db,auth:()=>auth};
   const filename=path.resolve('functions/index.js'),realRequire=createRequire(filename),module={exports:{}};
@@ -57,3 +57,30 @@ test('editar plano atualiza documento existente e preserva total de planos',asyn
 });
 
 test('provisionamento retoma Auth criado pelo mesmo convite após falha no lote Firestore',async()=>{const f=setup(),batch=f.db.batch.bind(f.db);let fail=true;f.db.batch=()=>{const b=batch();return {...b,async commit(){if(fail){fail=false;throw Error('Falha no lote');}return b.commit();}};};await assert.rejects(f.api.provisionarUsuario({conviteId:'invite'},{auth:{uid:'global'}}),/Falha no lote/);const r=await f.api.provisionarUsuario({conviteId:'invite'},{auth:{uid:'global'}});assert.equal(f.created(),1);assert.equal(f.db.records.get('usuarios/'+r.authUid).clientePlataformaId,'a');});
+
+test('outro convite com mesmo e-mail não se associa a identidade existente, mesmo no mesmo tenant', async()=>{
+  const f=setup(),ctx={auth:{uid:'global'}},first=await f.api.provisionarUsuario({conviteId:'invite'},ctx);
+  f.db.records.set('usuarios/another',{nome:'Outra pessoa',email:'new@example.test',tipoUsuario:'master_local',clientePlataformaId:'a',status:'CONVITE_PENDENTE',acessoLiberado:false});
+  const before=JSON.stringify([...f.db.records]);
+  await assert.rejects(f.api.provisionarUsuario({conviteId:'another'},ctx),e=>e.code==='already-exists');
+  assert.equal(JSON.stringify([...f.db.records]),before);assert.equal(f.created(),1);
+});
+
+test('retry do mesmo convite não restaura dados antigos nem reativa perfil bloqueado', async()=>{
+  const f=setup(),ctx={auth:{uid:'global'}},first=await f.api.provisionarUsuario({conviteId:'invite'},ctx);
+  const profile=f.db.records.get('usuarios/'+first.authUid);profile.nome='Nome atualizado';
+  await f.api.provisionarUsuario({conviteId:'invite'},ctx);
+  assert.equal(f.db.records.get('usuarios/'+first.authUid).nome,'Nome atualizado');
+  Object.assign(f.db.records.get('usuarios/'+first.authUid),{status:'BLOQUEADO',acessoLiberado:false});
+  const before=JSON.stringify([...f.db.records]);
+  await assert.rejects(f.api.provisionarUsuario({conviteId:'invite'},ctx),e=>e.code==='failed-precondition');
+  assert.equal(JSON.stringify([...f.db.records]),before);
+});
+
+test('convite provisionado não cria segunda identidade após alteração de e-mail', async()=>{
+  const f=setup(),ctx={auth:{uid:'global'}};await f.api.provisionarUsuario({conviteId:'invite'},ctx);
+  f.db.records.get('usuarios/invite').email='different@example.test';
+  const before=JSON.stringify([...f.db.records]);
+  await assert.rejects(f.api.provisionarUsuario({conviteId:'invite'},ctx),e=>e.code==='failed-precondition');
+  assert.equal(f.created(),1);assert.equal(JSON.stringify([...f.db.records]),before);
+});

@@ -705,13 +705,17 @@ test("chat: participante le conversa e mensagem, outro tenant e nao participante
   await assertFails(getDoc(doc(appDb(profiles.vendedor2), "conversas", "conversa_a_1")));
 });
 
-test("caixa: vendedor consulta caixa legado pelo abertoPorUid dentro do tenant", async () => {
+test("caixa: alias de abertura não supera vendedorId conflitante; legado próprio permite GET", async () => {
   await testEnv.withSecurityRulesDisabled(async context => {
-    await setDoc(doc(context.firestore(), "caixas", "caixa_aberto_por_uid"), caixa({
+    const admin = context.firestore();
+    await setDoc(doc(admin, "caixas", "caixa_aberto_por_uid"), caixa({
       vendedorId: "documento_legado_vendedor",
       vendedorAuthUid: "",
       usuarioId: "documento_legado_vendedor",
       abertoPorUid: profiles.vendedor1.uid
+    }));
+    await setDoc(doc(admin, "caixas", "caixa_legado_proprio"), caixa({
+      vendedorId: "", vendedorAuthUid: "", usuarioId: "", abertoPorUid: profiles.vendedor1.uid
     }));
   });
 
@@ -722,8 +726,9 @@ test("caixa: vendedor consulta caixa legado pelo abertoPorUid dentro do tenant",
     where("status", "==", "ABERTO"),
     limit(25)
   );
-  const resultado = await assertSucceeds(getDocs(consulta));
-  assert.equal(resultado.size, 1);
+  await assertFails(getDocs(consulta));
+  await assertFails(getDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_aberto_por_uid")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_legado_proprio")));
 
   await assertFails(getDocs(query(
     collection(appDb(profiles.vendedor2), "caixas"),
@@ -1034,7 +1039,7 @@ test("configuracoes: leitura de documento ainda inexistente retorna vazio no pro
   await assertFails(getDoc(doc(appDb(profiles.vendedor1), "configuracoes_empresas", "tenant_b")));
 });
 
-test("clientes: consultas por aliases legados do proprio vendedor permanecem autorizadas", async () => {
+test("clientes: aliases legados permitem GET autorizado, mas não listagens sem Auth UID canônico", async () => {
   await testEnv.withSecurityRulesDisabled(async context => {
     const admin = context.firestore();
     await setDoc(doc(admin, "clientes_operacionais", "cliente_alias_user"), tenantFields({
@@ -1049,13 +1054,15 @@ test("clientes: consultas por aliases legados do proprio vendedor permanecem aut
     }));
   });
 
-  await assertSucceeds(getDocs(query(
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_alias_user")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.vendedor1), "clientes_operacionais", "cliente_alias_responsavel")));
+  await assertFails(getDocs(query(
     collection(appDb(profiles.vendedor1), "clientes_operacionais"),
     where("clientePlataformaId", "==", "tenant_a"),
     where("userId", "==", profiles.vendedor1.uid),
     limit(10)
   )));
-  await assertSucceeds(getDocs(query(
+  await assertFails(getDocs(query(
     collection(appDb(profiles.vendedor1), "clientes_operacionais"),
     where("clientePlataformaId", "==", "tenant_a"),
     where("responsavelId", "==", profiles.vendedor1.uid),
@@ -1222,3 +1229,5 @@ test('Master Global não lê avisos operacionais mesmo no tenant do próprio per
 test('suporte: leitura própria e global permitida, outra empresa e escrita SDK negadas',async()=>{await testEnv.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'suporte_conversas','support_a'),{clienteAuthUid:profiles.masterA.uid,clientePlataformaId:'tenant_a',ultimaMensagem:'Ajuda'}));await assertSucceeds(getDoc(doc(appDb(profiles.masterA),'suporte_conversas','support_a')));await assertSucceeds(getDocs(query(collection(appDb(profiles.masterA),'suporte_conversas'),where('clienteAuthUid','==',profiles.masterA.uid),where('clientePlataformaId','==','tenant_a'))));await assertSucceeds(getDoc(doc(appDb(profiles.masterGlobal),'suporte_conversas','support_a')));await assertFails(getDoc(doc(appDb(profiles.masterB),'suporte_conversas','support_a')));await assertFails(setDoc(doc(appDb(profiles.masterA),'suporte_conversas','forged'),{clienteAuthUid:profiles.masterA.uid,clientePlataformaId:'tenant_a'}));});
 
 test('Master Global cria empresa e convite do Master Local no mesmo lote atomicamente',async()=>{const db=appDb(profiles.masterGlobal),batch=writeBatch(db);batch.set(doc(db,'clientes_integro','company_atomic'),{nome:'Empresa atômica',tipoPessoa:'PJ',documento:'04252011000110',status:'CADASTRO_PENDENTE',acessoLiberado:false});batch.set(doc(db,'usuarios','company_atomic_master_inicial'),{nome:'Administrador',email:'master@example.test',tipoUsuario:'master_local',clientePlataformaId:'company_atomic',authUid:'',status:'CONVITE_PENDENTE',acessoLiberado:false,convitePendente:true,provisionamentoAuth:'PENDENTE_BACKEND',criadoPorUid:profiles.masterGlobal.uid});await assertSucceeds(batch.commit());});
+
+test('Master Global e usuário leem vínculos autorizados; outra identidade e escrita SDK são negadas',async()=>{await testEnv.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'empresa_vinculos','link_master'),{authUid:profiles.masterA.uid,clientePlataformaId:'tenant_b',ativo:true}));await assertSucceeds(getDocs(query(collection(appDb(profiles.masterA),'empresa_vinculos'),where('authUid','==',profiles.masterA.uid),where('ativo','==',true))));await assertSucceeds(getDoc(doc(appDb(profiles.masterGlobal),'empresa_vinculos','link_master')));await assertFails(getDoc(doc(appDb(profiles.masterB),'empresa_vinculos','link_master')));await assertFails(setDoc(doc(appDb(profiles.masterA),'empresa_vinculos','forged'),{authUid:profiles.masterA.uid,clientePlataformaId:'tenant_b',ativo:true}));});

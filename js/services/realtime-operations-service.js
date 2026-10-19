@@ -131,6 +131,8 @@
   function sellerOwnsBox(box = {}, current = state.access || {}) {
     box = box || {};
     const ids = new Set([current.usuarioId, current.authUid].filter(Boolean).map(String));
+    const canonical = text(box.vendedorAuthUid || box.vendedorId);
+    if (canonical) return ids.has(canonical);
     const links = [
       box.vendedorId, box.vendedorAuthUid, box.vendedorUid, box.usuarioId,
       box.abertoPorUid, box.uid, box.userId, box.responsavelId, box.criadoPorId
@@ -140,11 +142,13 @@
 
   function scopeBoxIds(current = state.access || {}) {
     const profile = text(current.perfil);
-    const boxes = dedupe([[global.caixaAtual, storedCurrentBox(), ...cachedBoxes()].filter(Boolean)]);
+    const boxes = dedupe([[global.caixaAtual, storedCurrentBox(), ...cachedBoxes()].filter(Boolean)])
+      .filter(box => !text(box.clientePlataformaId || box.tenantId || box.empresaId) || text(box.clientePlataformaId || box.tenantId || box.empresaId) === text(current.tenantId));
 
     if (profile === "vendedor") {
       const openOwn = boxes.filter(box => isOpenBox(box) && sellerOwnsBox(box, current));
-      const preferred = boxId(global.caixaAtual) || boxId(storedCurrentBox());
+      const preferredId = boxId(global.caixaAtual) || boxId(storedCurrentBox());
+      const preferred = openOwn.some(box => boxId(box) === preferredId) ? preferredId : "";
       const outros = [...new Set(openOwn.map(boxId).filter(id => id && id !== preferred))].sort();
       return [preferred, ...outros].filter(Boolean);
     }
@@ -191,35 +195,25 @@
         });
       });
 
-      // Compatibilidade de vínculo: lançamentos antigos podem não ter equipeId,
-      // mas continuam vinculados a um caixa aberto de uma equipe supervisionada.
-      if (logical === "ledger") {
-        chunk(scopeBoxIds(current), 10).forEach((group, index) => {
-          if (!group.length) return;
-          parts.push({
-            id: `${logical}:caixas-supervisionados:${index}`,
-            filters: [["caixaId", group.length === 1 ? "==" : "in", group.length === 1 ? group[0] : group]],
-            order: definition.order
-          });
-        });
-      }
+      // O vínculo por caixa não substitui o filtro de equipe exigido pelas Rules.
       return parts;
     }
 
     if (profile === "vendedor") {
       const authUid = text(current.authUid || global.firebase?.auth?.()?.currentUser?.uid);
-      const sellerId = text(current.usuarioId);
       const seen = new Set();
       const addOwnPart = (suffix, field, value) => {
         const normalized = text(value);
         const key = `${field}:${normalized}`;
         if (!field || !normalized || seen.has(key)) return;
         seen.add(key);
-        parts.push({ id: `${logical}:${suffix}`, filters: [[field, "==", normalized]], order: definition.order });
+        const filters = [[field, "==", normalized]];
+        if (logical === "ledger") filters.push(["tipoLancamento", "in", ["VENDA", "PAGAMENTO", "INGRESSO", "GASTO", "RETIRADA"]]);
+        parts.push({ id: `${logical}:${suffix}`, filters, order: definition.order });
       };
 
       addOwnPart("vendedor-auth", "vendedorAuthUid", authUid);
-      addOwnPart("vendedor-id", "vendedorId", sellerId);
+      // vendedorId isolado não comprova ownership quando o Auth UID diverge.
 
       // O caixa atual reconstrói todos os lançamentos do ciclo aberto, inclusive
       // os documentos históricos anteriores à padronização dos campos do vendedor.

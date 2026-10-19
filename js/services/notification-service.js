@@ -60,7 +60,8 @@
     if (!database || !uid) return storeSet([]);
     const limit = Math.max(1, Math.min(Number(options.limit || 100), 200));
     if (user()?.tipoUsuario === "master_global") { const r = await global.firebase.app().functions("southamerica-east1").httpsCallable("consultarAvisosAssinaturaPlataforma")({}); return storeSet(r.data.notificacoes); }
-    const snapshot = await database.collection("notificacoes").where("destinatarioAuthUid", "==", uid).limit(limit).get();
+    if (!tenant) return storeSet([]);
+    const snapshot = await database.collection("notificacoes").where("clientePlataformaId", "==", tenant).where("destinatarioAuthUid", "==", uid).limit(limit).get();
     if (uid !== authUid() || tenant !== tenantId()) return [];
     return storeSet(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   }
@@ -76,13 +77,14 @@
     const database = db();
     const uid = authUid();
     const tenant = tenantId();
-    if (!database || !uid || typeof database.collection !== "function") { unsubscribe(); return function () {}; }
+    if (!database || !uid || !tenant || typeof database.collection !== "function") { unsubscribe(); return function () {}; }
     if (unsubscribeRealtime && currentAuthUid === uid && currentTenantId === tenant) return unsubscribeRealtime;
     unsubscribe();
     currentAuthUid = uid;
     currentTenantId = tenant;
     initialSnapshotReceived = false;
     unsubscribeRealtime = database.collection("notificacoes")
+      .where("clientePlataformaId", "==", tenant)
       .where("destinatarioAuthUid", "==", uid).limit(100)
       .onSnapshot(snapshot => {
         if (uid !== authUid() || tenant !== tenantId()) return;

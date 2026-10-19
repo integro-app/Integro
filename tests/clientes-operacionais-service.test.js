@@ -249,6 +249,15 @@ test("bloqueia telefone duplicado sem permissao administrativa explicita", async
   }), erro => erro.code === "CLIENTE_TELEFONE_DUPLICADO");
 });
 
+test('Administrativo lê clientes do tenant sem ganhar escrita ou superar permissão negada',()=>{
+  const {ClientesService}=carregar();
+  const admin=usuario({id:'admin',authUid:'admin',tipoUsuario:'usuario_cliente',cargoChave:'administrativo'}),client={clientePlataformaId:'tenant_1'};
+  assert.equal(ClientesService.clienteNoEscopo(admin,client,'ler'),true);
+  assert.equal(ClientesService.clienteNoEscopo(admin,client,'editar'),false);
+  assert.equal(ClientesService.clienteNoEscopo(admin,{clientePlataformaId:'tenant_2'},'ler'),false);
+  assert.equal(ClientesService.clienteNoEscopo({...admin,permissoes:{clientes:{ver:false}}},client,'ler'),false);
+});
+
 test("vendedor ve somente cliente atribuido e supervisor somente sua equipe", () => {
   const { ClientesService } = carregar();
   const cliente = { clientePlataformaId: "tenant_1", vendedorId: "vend_1", equipeId: "equipe_1" };
@@ -398,12 +407,12 @@ test("relatorio calcula conversao e trata conjunto vazio", () => {
 });
 
 
-test("carteira une vínculos autorizados em vez de parar nos dois primeiros clientes", async () => {
+test("carteira lista vínculos canônicos e não busca aliases que não comprovam ownership", async () => {
   const dados = {};
   for (let i=0;i<5;i++) dados[`clientes_operacionais/c${i}`] = { nome:`Cliente ${i}`, clientePlataformaId:"tenant_1", ...(i<2 ? {vendedorAuthUid:"uid_seller"} : {vendedorId:"seller"}) };
   dados["clientes_operacionais/invasor"] = { nome:"Outro", clientePlataformaId:"tenant_1", vendedorAuthUid:"outro", vendedorId:"seller" };
   const contexto = carregar(dados);
   const rows = await contexto.ClientesService.listarClientes({ db: contexto.db }, usuario({id:"seller",authUid:"uid_seller",tipoUsuario:"vendedor"}));
-  assert.equal(rows.length,5);
+  assert.equal(rows.length,2);
   assert.ok(!rows.some(c=>c.id==="invasor"));
 });

@@ -52,10 +52,10 @@ window.db = db;
 
 // V27.2: bootstrap consolidado, estável e sem polling infinito.
 (function carregarBootstrapV27() {
-  if (window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__) return;
+  if (window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__ || window.__INTEGRO_EMPRESAS_PORTAL__) return;
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
-  script.src = "js/v27-bootstrap.js?v=20261014-suporte1&build=20261014-suporte1";
+  script.src = "js/v27-bootstrap.js?v=20261014-multiempresa1&build=20261014-multiempresa1";
   script.async = false;
   script.dataset.integroV27Bootstrap = "1";
   document.head.appendChild(script);
@@ -63,3 +63,6 @@ window.db = db;
 
 // Canal de suporte da plataforma; não utiliza o chat operacional entre tenants.
 if(!window.__INTEGRO_SUPORTE_PORTAL__) document.addEventListener('DOMContentLoaded',()=>{const host=document.querySelector('#sidebar .menu')||document.querySelector('main header');if(!host)return;const link=document.createElement('a');link.href='suporte.html';link.className='ghost-btn';link.textContent='Suporte ÍNTEGRO';host.appendChild(link);});
+
+document.addEventListener('usuario-validado',()=>{const user=window.State?.getUsuario?.()||window.usuarioLogado;if(!user?.multiplasEmpresas||document.getElementById('integroTrocarEmpresa'))return;const host=document.querySelector('#sidebar .menu')||document.querySelector('main header');if(!host)return;const a=document.createElement('a');a.id='integroTrocarEmpresa';a.href='empresas.html';a.className='ghost-btn';a.textContent='Trocar empresa';host.appendChild(a);});
+window.addEventListener('storage',event=>{if(event.key==='integro:empresaContexto'&&auth.currentUser)location.replace('index.html');});

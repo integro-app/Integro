@@ -93,3 +93,33 @@ test("abertura sem empresa continua bloqueada antes de chamar backend", async ()
   await assert.rejects(contexto.criarCaixaParaVendedor({id:'v',authUid:'v'},{id:'e'},{caixaInicial:0}),/Tenant da empresa não identificado/);
   assert.equal(chamadas,0);
 });
+
+function vendedoresDeTeste() {
+  const canonical = {id:'leonardo',tipoUsuario:'usuario_cliente',cargoChave:'vendedor',status:'ATIVO',ativo:true,acessoLiberado:true,equipeId:'sul'};
+  return [canonical, {id:'legado-ativo',tipoUsuario:'vendedor',status:'ATIVO'},
+    ...[{id:'legado-inativo',tipoUsuario:'vendedor',status:'INATIVO',ativo:false,acessoLiberado:false},
+      {id:'bloqueado',status:'BLOQUEADO'}, {id:'sem-acesso',acessoLiberado:false},
+      {id:'excluido',excluido:true}, {id:'inativo',ativo:false},
+      {id:'financeiro',cargoChave:'financeiro'}, {id:'master',tipoUsuario:'master_local'}
+    ].map(extra=>({...canonical,...extra}))];
+}
+
+test('abertura da Sul reconhece vendedor canônico nos caminhos principal e fallback', () => {
+  const usuarios=vendedoresDeTeste();
+  const contexto=aberturaContexto({CX:{usuarios},usuariosCache:usuarios});
+  vm.runInNewContext(fs.readFileSync(path.join(root,'js/utils/operational.js'),'utf8'),contexto);
+  vm.runInNewContext(trechoEntre('  function vendedoresAtivos(){','  function caixasBase(){'),contexto);
+  assert.deepEqual(Array.from(contexto.helpers.vendedores(),u=>u.id),['leonardo','legado-ativo']);
+  assert.deepEqual(Array.from(contexto.helpers.vendedoresDaEquipe({id:'sul'}),u=>u.id),['leonardo']);
+  delete contexto.vendedoresAtivos;
+  assert.deepEqual(Array.from(contexto.helpers.vendedores(),u=>u.id),['leonardo','legado-ativo']);
+});
+
+test('supervisão externa também reconhece vendedor canônico e mantém bloqueios existentes', () => {
+  const usuarios=vendedoresDeTeste();
+  const contexto={console,State:{getUsuarios:()=>usuarios},document:{addEventListener(){}},addEventListener(){}};
+  contexto.window=contexto;
+  vm.runInNewContext(fs.readFileSync(path.join(root,'js/utils/operational.js'),'utf8'),contexto);
+  vm.runInNewContext(fs.readFileSync(path.join(root,'js/caixas.js'),'utf8'),contexto);
+  assert.deepEqual(Array.from(contexto.getVendedoresBaseSupervisao(),u=>u.id),['leonardo','legado-ativo']);
+});

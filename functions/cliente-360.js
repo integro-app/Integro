@@ -23,9 +23,11 @@ function criarCliente360({db,functions}){
     await exigirEmpresaOperacional({db,functions,usuario:u,tenantId:tenant});
     if(!id||id.includes('/'))error('invalid-argument','Cliente inválido.');
     const c=await db.collection('clientes_operacionais').doc(id).get();if(!c.exists)error('not-found','Cliente não encontrado.');const client={id:c.id,...c.data()};
-    const role=[u.tipoUsuario,u.cargoChave].map(upper).find(r=>['MASTER_LOCAL','GERENTE','SUPERVISOR','FINANCEIRO','AUDITOR','VENDEDOR','CAPTADOR','MASTER_GLOBAL'].includes(r));
+    const role=[u.tipoUsuario,u.cargoChave].map(upper).find(r=>['MASTER_LOCAL','GERENTE','SUPERVISOR','FINANCEIRO','AUDITOR','VENDEDOR','CAPTADOR','MASTER_GLOBAL','ADMINISTRATIVO','ADM'].includes(r));
+    const clientAccess=u.permissoesUsuario||u.permissoes||u.permissoesCargo||{};
+    const adminReader=['ADMINISTRATIVO','ADM'].includes(role)&&clientAccess.clientes!==false&&clientAccess.clientes?.ver!==false&&clientAccess['clientes.ver']!==false;
     const teams=[u.equipeId,...(u.equipeIds||[]),...(u.equipesIds||[])].map(text),owner=text(client.vendedorAuthUid||client.vendedorUid||client.responsavelAuthUid||client.vendedorId);
-    if(text(client.clientePlataformaId)!==tenant||client.excluido||!(['MASTER_LOCAL','GERENTE','FINANCEIRO','AUDITOR'].includes(role)||role==='SUPERVISOR'&&teams.includes(text(client.equipeId))||role==='VENDEDOR'&&owner===uid))error('permission-denied','Cliente fora do escopo.');
+    if(text(client.clientePlataformaId)!==tenant||client.excluido||!(['MASTER_LOCAL','GERENTE','FINANCEIRO','AUDITOR'].includes(role)||adminReader||role==='SUPERVISOR'&&teams.includes(text(client.equipeId))||role==='VENDEDOR'&&owner===uid))error('permission-denied','Cliente fora do escopo.');
     return {client:serialize(client),tenant};
   }
   async function rows(name,tenant,aliases,fields=['clienteId']){

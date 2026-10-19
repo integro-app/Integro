@@ -39,9 +39,9 @@ test("caixas e chat encerram listeners fora da tela", () => {
   assert.match(chat, /if \(!chatEstaAtivo\(\)\) return/);
 });
 
-test("consultas do vendedor priorizam caixa deterministico e fallback legado tardio", () => {
-  assert.match(perfis, /caixaIdDeterministico/);
-  assert.match(perfis, /Compatibilidade legada executada somente/);
+test("consultas do vendedor usam caixa ativo com limite um sem GET de ID presumido", () => {
+  assert.match(perfis, /consultar\(CONFIG\.COLECOES\.CAIXAS, campos, 1,/);
+  assert.doesNotMatch(perfis, /\.doc\(caixaId\)\.get/);
   assert.match(perfis, /carregarLancamentosVendedor\(caixas/);
 });
 

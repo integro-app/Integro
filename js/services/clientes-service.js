@@ -136,6 +136,10 @@
       const vendedores = vendedoresUsuario(usuario);
       return Boolean(cliente.supervisorId === uid || (equipe && equipes.includes(equipe)) || (responsavel && vendedores.includes(responsavel)));
     }
+    if (cargo === "administrativo") {
+      const permissoes = usuario.permissoesUsuario || usuario.permissoes || usuario.permissoesCargo || {};
+      return acao === "ler" && permissoes.clientes !== false && permissoes.clientes?.ver !== false && permissoes["clientes.ver"] !== false;
+    }
     if (["financeiro", "auditor", "captador"].includes(cargo)) return acao === "ler";
     return false;
   }
@@ -503,18 +507,10 @@
 
     if (cargo === "vendedor") {
       const authUid = texto(usuario.authUid || usuario.uid);
-      const usuarioId = texto(usuario.id || usuario.usuarioId || usuario.vendedorId);
-      if (!authUid && !usuarioId) throw new Error("Vendedor sem vínculo de autenticação.");
+      if (!authUid) throw new Error("Vendedor sem vínculo de autenticação.");
 
-      const tentativas = [];
-      if (authUid) {
-        tentativas.push(["vendedorAuthUid", authUid], ["vendedorUid", authUid]);
-      }
-      if (usuarioId && usuarioId !== authUid) {
-        tentativas.push(["vendedorId", usuarioId], ["usuarioId", usuarioId], ["responsavelId", usuarioId]);
-      } else if (usuarioId) {
-        tentativas.push(["vendedorId", usuarioId]);
-      }
+      // A listagem exige ownership canônico; aliases ficam limitados ao GET autorizado.
+      const tentativas = [["vendedorAuthUid", authUid]];
 
       let ultimoErro = null;
       let consultasConcluidas = 0;

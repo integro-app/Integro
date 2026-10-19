@@ -322,8 +322,7 @@ function empresaPermitida(user) {
       let perfil = role();
       let cargoAtual = cargo();
       return isActiveUser() && (
-        perfil == "master_global" ||
-        perfil == "usuario_integro" ||
+        ((perfil == "master_global" || perfil == "usuario_integro") && isSameTenantRead()) ||
         (isSameTenantRead() && (
           perfil == "master_local" ||
           perfil == "gerente" || cargoAtual == "gerente" ||
@@ -340,16 +339,43 @@ function empresaPermitida(user) {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(keys);
     }
 
-    function sellerOwnsLedger(data) {
+    // Listagens precisam comprovar o proprietário no filtro da consulta.
+    // Um alias isolado não pode prevalecer sobre um Auth UID conflitante.
+    function isOperationalListReader(data) {
+      return (!isVendedor() || data.get("vendedorAuthUid", "") == currentUid()) &&
+        isOperationalReader(data);
+    }
+
+    function sellerOwnsLedgerBox(data) {
       let caixaId = data.get("caixaId", "");
-      return isOwnSellerData(data) ||
-        (
+      return (
           caixaId is string &&
           caixaId.size() > 0 &&
           exists(/databases/$(database)/documents/caixas/$(caixaId)) &&
           get(/databases/$(database)/documents/caixas/$(caixaId)).data.get("clientePlataformaId", "") == userTenantId() &&
           isOwnSellerData(get(/databases/$(database)/documents/caixas/$(caixaId)).data)
         );
+    }
+
+    function sellerOwnsLedger(data) {
+      return isOwnSellerData(data) || sellerOwnsLedgerBox(data);
+    }
+
+    function canListFinance(data) {
+      let perfil = role();
+      let cargoAtual = cargo();
+      return isActiveUser() && (
+        ((perfil == "master_global" || perfil == "usuario_integro") && isSameTenantRead()) ||
+        (isSameTenantRead() && (
+          perfil == "master_local" ||
+          perfil in ["gerente", "administrativo", "financeiro", "auditor"] ||
+          cargoAtual in ["gerente", "administrativo", "adm", "financeiro", "auditor"] ||
+          ((perfil == "supervisor" || cargoAtual == "supervisor") && isTeamAllowed(data)) ||
+          ((perfil == "vendedor" || cargoAtual == "vendedor") &&
+            data.get("tipoLancamento", "") in ["VENDA", "PAGAMENTO", "INGRESSO", "GASTO", "RETIRADA"] &&
+            (data.get("vendedorAuthUid", "") == currentUid() || sellerOwnsLedgerBox(data)))
+        ))
+      );
     }
 
     // Leitura do ledger segue o vínculo operacional. A permissão de leitura é
@@ -360,8 +386,7 @@ function empresaPermitida(user) {
       let perfil = role();
       let cargoAtual = cargo();
       return isActiveUser() && (
-        perfil == "master_global" ||
-        perfil == "usuario_integro" ||
+        ((perfil == "master_global" || perfil == "usuario_integro") && isSameTenantRead()) ||
         (isSameTenantRead() && (
           perfil == "master_local" ||
           perfil == "gerente" || cargoAtual == "gerente" ||
@@ -855,7 +880,7 @@ function empresaPermitida(user) {
         !exists(/databases/$(database)/documents/lancamentos_financeiros/$(id)) &&
         canProbeMissingLedgerId(id)
       ) || canReadFinance(resource.data);
-      allow list: if canReadFinance(resource.data);
+      allow list: if canListFinance(resource.data);
       allow create: if canCreateLedger(request.resource.data);
       allow update: if canUpdateLedger();
       allow delete: if false;
@@ -924,7 +949,9 @@ function empresaPermitida(user) {
           );
       }
 
-      allow read: if canReadCaixa(resource.data);
+      allow get: if canReadCaixa(resource.data);
+      allow list: if canReadCaixa(resource.data) &&
+        (!isVendedor() || resource.data.get("vendedorAuthUid", "") == currentUid());
       allow create: if false; // Abertura e trava por vendedor exclusivamente no backend.
       // Restringe ainda mais as atualizações: nenhuma abertura de caixa fechado
       // pode vir do cliente. O Admin SDK usa a validação do último caixa no servidor.
@@ -1014,7 +1041,7 @@ function empresaPermitida(user) {
             (isSupervisor() && isTeamAllowed(resource.data)) ||
             (isVendedor() && isOwnSellerData(resource.data))))
       );
-      allow list: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
       allow create: if canCreateFechamento(request.resource.data, id);
       allow update: if (isAuthenticated() && resource.data.get("reaberto", false) == true && canRecloseOwnBox()) || canUpdateFechamento();
       allow delete: if false;
@@ -1045,7 +1072,8 @@ function empresaPermitida(user) {
           );
       }
 
-      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
       allow create: if canRefecharFechamento();
       allow update: if false;
       allow delete: if false;
@@ -1069,7 +1097,8 @@ function empresaPermitida(user) {
           );
       }
 
-      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
       allow create: if canCreateReabertura(request.resource.data);
       allow update: if false;
       allow delete: if false;
@@ -1092,7 +1121,8 @@ function empresaPermitida(user) {
           );
       }
 
-      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
       allow create: if canCreateTratamento(request.resource.data);
       allow update: if false;
       allow delete: if false;
@@ -1110,28 +1140,32 @@ function empresaPermitida(user) {
           );
       }
 
-      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
       allow create: if canCreateHistorico(request.resource.data);
       allow update: if false;
       allow delete: if false;
     }
 
     match /pagamentos/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow get: if isOperationalReader(resource.data);
+      allow list: if isOperationalListReader(resource.data);
       // Escrita exclusivamente pelo backend transacional (Admin SDK).
       allow create, update: if false;
       allow delete: if false;
     }
 
     match /vendas/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow get: if isOperationalReader(resource.data);
+      allow list: if isOperationalListReader(resource.data);
       // Escrita exclusivamente pelo backend transacional (Admin SDK).
       allow create, update: if false;
       allow delete: if false;
     }
 
     match /parcelas/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow get: if isOperationalReader(resource.data);
+      allow list: if isOperationalListReader(resource.data);
       // Parcelas são geradas e liquidadas junto da venda/pagamento no backend.
       allow create, update: if false;
       allow delete: if false;
@@ -1197,14 +1231,16 @@ function empresaPermitida(user) {
           );
       }
 
-      allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
+      allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
       allow create: if canCreateSolicitacao(request.resource.data);
       allow update: if canUpdateSolicitacao();
       allow delete: if false;
     }
 
     match /historicoCobrancas/{id} {
-      allow read: if isOperationalReader(resource.data);
+      allow get: if isOperationalReader(resource.data);
+      allow list: if isOperationalListReader(resource.data);
       allow create, update, delete: if false;
     }
 
@@ -1345,7 +1381,9 @@ function empresaPermitida(user) {
     }
 
     match /clientes_operacionais/{id} {
-      allow read: if isOperationalReader(resource.data) ||
+      allow get: if isOperationalReader(resource.data) ||
+        (isActiveUser() && isCaptador() && isSameTenantRead());
+      allow list: if isOperationalListReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
       allow create: if canCreateClienteLead(request.resource.data) ||
         (isActiveUser() && isSameTenantWrite() &&
@@ -1355,7 +1393,9 @@ function empresaPermitida(user) {
     }
 
     match /clientes/{id} {
-      allow read: if isOperationalReader(resource.data) ||
+      allow get: if isOperationalReader(resource.data) ||
+        (isActiveUser() && isCaptador() && isSameTenantRead());
+      allow list: if isOperationalListReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
       allow create: if canCreateClienteLead(request.resource.data) ||
         (isActiveUser() && isSameTenantWrite() &&
@@ -1433,6 +1473,11 @@ function empresaPermitida(user) {
         request.resource.data.get("tipoAcao", "").size() > 2);
       allow update: if false;
       allow delete: if false;
+    }
+
+    match /empresa_vinculos/{id} {
+      allow read: if isActiveIdentity() && (isMasterGlobal() || resource.data.get("authUid", "") == currentUid());
+      allow write: if false;
     }
 
     match /suporte_conversas/{id} {
@@ -1677,19 +1722,22 @@ function empresaPermitida(user) {
 
     match /cargos/{id} {
       allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
-      allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isUsuarioIntegro());
+      allow create: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isUsuarioIntegro());
+      allow update: if isActiveUser() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() && (isMasterLocal() || isUsuarioIntegro());
       allow delete: if false;
     }
 
     match /equipes/{id} {
       allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
-      allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isGerente());
+      allow create: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isGerente());
+      allow update: if isActiveUser() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() && (isMasterLocal() || isGerente());
       allow delete: if false;
     }
 
     match /permissoes_cargo/{id} {
       allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
-      allow create, update: if isActiveUser() && isSameTenantWrite() && isMasterLocal();
+      allow create: if isActiveUser() && isSameTenantWrite() && isMasterLocal();
+      allow update: if isActiveUser() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() && isMasterLocal();
       allow delete: if false;
     }
 

@@ -19,11 +19,11 @@ function criarAdministracaoV27({ admin, functions, db }) {
   async function userProfile(uid) {
     if (!uid) return null;
     const direct = await db.collection("usuarios").doc(uid).get();
-    if (direct.exists) return { id: direct.id, ...direct.data() };
+    if (direct.exists) return direct.data().authUid === uid ? { ...direct.data(), id: direct.id } : null;
     const query = await db.collection("usuarios").where("authUid", "==", uid).limit(2).get();
-    if (query.empty) return null;
+    if (query.docs.length !== 1) return null;
     const doc = query.docs[0];
-    return { id: doc.id, ...doc.data() };
+    return { ...doc.data(), id: doc.id };
   }
 
   async function userProfileByEmail(email) {

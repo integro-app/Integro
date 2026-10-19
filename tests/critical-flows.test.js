@@ -4,6 +4,16 @@ const {criarAprovacoesVendaV27}=require('../functions/v27-sales-approvals'),{cri
 const {inventory}=require('../functions/scripts/inventariar-comprovantes'),C=require('../js/modules/cliente-360'),core=require('../functions/financial-core');
 const ctx={auth:{uid:'master'}},deps=f=>({db:f.db,functions:{https:{HttpsError}}}),today=()=>core.hojeSP();
 const input=extra=>({contaId:'c1',operacaoId:'critical',valorPagoCentavos:100000,dataPagamento:today(),formaPagamento:'PIX',...extra});
+
+test('Administrativo consulta Cliente 360 autorizado, sem atravessar tenant nem ignorar negação explícita',async()=>{
+ const f=fixture({'usuarios/admin':{...user('admin','administrativo'),tipoUsuario:'usuario_cliente',cargoChave:'administrativo'}}),api=criarCliente360(deps(f)),context={auth:{uid:'admin'}};
+ assert.equal((await api.callable({clienteId:'client',aba:'resumo'},context)).ok,true);
+ f.db.records.get('usuarios/admin').permissoes={clientes:{ver:false}};
+ await assert.rejects(api.callable({clienteId:'client',aba:'resumo'},context),e=>e.code==='permission-denied');
+ f.db.records.get('usuarios/admin').permissoes={};
+ f.db.records.get('clientes_operacionais/client').clientePlataformaId='b';
+ await assert.rejects(api.callable({clienteId:'client',aba:'resumo'},context),e=>e.code==='permission-denied');
+});
 test('Fluxo financeiro integral confirma conta, pagamento e auditoria',async()=>{const f=fixture(),r=await f.payments.registrarPagamento(input(),ctx);assert.equal(r.saldoCentavos,0);assert.equal(r.status,'PAGA');assert.equal(f.db.records.get('financeiro_contas/c1').valorPagoCentavos,100000);assert.equal(f.db.records.get('financeiro_pagamentos/'+r.pagamentoId).valorPagoCentavos,100000);assert.ok(f.db.records.has('financeiro_auditoria/audit_'+r.pagamentoId));});
 test('Fluxo financeiro 1000 -> 600 -> 400 mantém uma obrigação',async()=>{const f=fixture();await f.payments.registrarPagamento(input({valorPagoCentavos:60000}),ctx);assert.equal(f.db.records.get('financeiro_contas/c1').saldoCentavos,40000);assert.equal(f.db.records.get('financeiro_contas/c1').status,'PARCIALMENTE_PAGA');await f.payments.registrarPagamento(input({operacaoId:'remaining',valorPagoCentavos:40000}),ctx);assert.equal(f.db.records.get('financeiro_contas/c1').saldoCentavos,0);assert.equal([...f.db.records.keys()].filter(k=>k.startsWith('financeiro_contas/')).length,1);});
 test('Quitação com ajuste preserva previsto, realizado e classificação',async()=>{const f=fixture(),r=await f.payments.registrarPagamento(input({valorPagoCentavos:95000,modoPagamento:'QUITAR_VALOR_REAL',motivoDiferenca:'AJUSTE'}),ctx);assert.equal(r.diferencaQuitacaoCentavos,-5000);assert.equal(f.db.records.get('financeiro_contas/c1').valorCentavos,100000);assert.equal(r.pagamento.valorPagoCentavos,95000);});

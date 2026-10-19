@@ -223,3 +223,46 @@ Procedimento preparado para homologação manual, sem executar teste em produç�
 - Testes finais reexecutados após montar o staging: performance **84/84**, quatro arquivos anteriormente afetados **72/72**, ambos com **0 falhas**. Comandos completos são os mesmos da tabela de validações acima. `git diff --cached --check`: aprovado (saída 0). Diff staged revisado; nenhum arquivo temporário ou hunk anterior de seleção de empresa incluído.
 - Branch: `agent/produto-excelencia`. HEAD inicial: `7afcfb7659d54fe0d904d6bac30a8d0fdd24e54f`. Staging isolado em 16 arquivos, preservação conferida por hash dos 26 arquivos anteriores e de todos os fontes/testes envolvidos (40 arquivos). SHA/HEAD e status serão registrados após o commit local único, sem segundo commit apenas para esse registro.
 - Sem deploy, push, merge, tag ou release.
+
+### Registro pós-commit
+
+- Commit local único: `5753ff0052998698f80c6adffd58ed81cdc70750`. Mensagem: `perf: otimizar consultas e sessão Firebase`.
+- Branch: `agent/produto-excelencia`. **HEAD final: `5753ff0052998698f80c6adffd58ed81cdc70750`**. Pai: `7afcfb7659d54fe0d904d6bac30a8d0fdd24e54f`.
+- Arquivos/hunks incluídos: exatamente os 16 do escopo acima; `js/auth.js` contém somente o hunk da consulta de caixa. Os dois hunks anteriores de seleção de empresa ficaram fora do commit. Nenhum `.tmp`, Rules, página ou trabalho anterior incluído.
+- Preservação pós-commit: 40/40 arquivos conferidos por hash, incluindo os 26 arquivos anteriores; staging vazio após o commit. Os dois temporários `.cjs` continuaram ausentes. Manifesto temporário desta checagem removido após a conferência.
+- Índice READY e testes finais 84/84 + 72/72 confirmados; validações anteriores 799/799, Rules 111/111 e sintaxe 368/20 mantidas. Sem deploy, push, merge, tag ou release.
+- Este registro de SHA/status foi acrescentado depois do commit e permanece como alteração local somente neste relatório; não foi criado segundo commit para registrar o próprio SHA.
+
+`git status --short` após o commit e o registro local do relatório:
+
+```text
+ M assinatura.html
+ M auditor.html
+ M captador.html
+ M docs/OTIMIZACAO-PERFORMANCE-FIREBASE-2026-10-15.md
+ M financeiro.html
+ M firestore.rules
+ M functions/index.js
+ M index.html
+ M js/auth.js
+ M js/firebase-config.js
+ M js/services/firestore.js
+ M js/services/global-company-form.js
+ M js/v27-bootstrap.js
+ M master-global.html
+ M master-local.html
+ M package.json
+ M scripts/validate-hosting-surface.js
+ M scripts/validate-html-integrity.js
+ M supervisor.html
+ M suporte.html
+ M tests/firestore-rules.test.js
+ M vendedor.html
+?? docs/EMPRESAS-ADMINISTRADOR-COMPARTILHADO.md
+?? empresas.html
+?? functions/company-memberships.js
+?? js/services/company-selector.js
+?? tests/company-memberships.test.js
+```
+
+Total: 22 modificados (21 anteriores e o registro local deste relatório) e 5 não rastreados anteriores.

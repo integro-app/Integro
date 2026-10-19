@@ -86,3 +86,30 @@ test("reabre a sessão carregando todo o ledger do caixa atual", async () => {
   assert.deepEqual(Array.from(rows, item => item.id).sort(), ["old-expense", "old-withdrawal", "payment", "sale"]);
   assert.ok(calls.some(call => call.filtros?.[0]?.[0] === "caixaId" && call.filtros[0][2] === "box-current"));
 });
+
+test('carregamento pontual restringe tipos e solicitações ao vínculo canônico autorizado', async()=>{
+  const {sandbox,calls,currentBox}=createRuntime();
+  await sandbox.IntegroPerfisUnificados.carregarLancamentosVendedor([currentBox],currentBox.id);
+  await sandbox.IntegroPerfisUnificados.carregarColecaoPorPerfil('solicitacoes',20);
+  for(const call of calls){
+    assert.equal(call.tenantId,'tenant-a');
+    assert.ok(!call.filtros.some(f=>['solicitanteId','solicitanteAuthUid','vendedorId','criadoPorId','usuarioId'].includes(f[0])));
+    if(call.colecao==='lancamentos_financeiros')assert.ok(call.filtros.some(f=>f[0]==='tipoLancamento'&&f[1]==='in'&&f[2].length===5));
+  }
+});
+
+test('caixa ativo usa query específica e não GET de documento presumido',async()=>{
+  const {sandbox,calls}=createRuntime();
+  sandbox.db={collection(){throw new Error('Sondagem de documento não autorizada');}};
+  await sandbox.IntegroPerfisUnificados.carregarCaixasVendedor();
+  const active=calls.find(c=>c.colecao==='caixas'&&c.limite===1);
+  assert.ok(active);assert.ok(active.filtros.some(f=>f[0]==='status'&&f[1]==='in'));
+  assert.ok(active.filtros.some(f=>f[0]==='vendedorAuthUid'&&f[2]==='seller-auth'));
+});
+
+test('cache de caixa com Auth UID de outro vendedor não prevalece pelo alias local',async()=>{
+  const {sandbox}=createRuntime();
+  sandbox.caixaAtual={...sandbox.caixaAtual,vendedorAuthUid:'other-auth'};
+  const boxes=await sandbox.IntegroPerfisUnificados.carregarCaixasVendedor();
+  assert.equal(boxes.length,0);
+});

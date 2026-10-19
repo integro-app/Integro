@@ -267,6 +267,7 @@ async function carregarConfiguracoesEmpresaDoUsuario(usuario) {
 // ===============================
 
 function redirecionarUsuario(usuario) {
+  if (usuario.selecionarEmpresa === true) { window.location.href = "empresas.html"; return true; }
   if (usuario.acessoRestritoAssinatura === true) { window.location.href = "assinatura.html"; return true; }
   const acesso = window.IntegroOperacional?.normalizarAcessoUsuario ? window.IntegroOperacional.normalizarAcessoUsuario(usuario) : null;
   const tipo = String(usuario.tipoUsuario || "").toLowerCase();
@@ -301,6 +302,7 @@ function protegerPagina(tipoObrigatorio = null) {
         return;
       }
 
+      if (usuario.selecionarEmpresa === true) { State.setUsuario(usuario); window.location.replace("empresas.html"); return; }
       if (usuario.acessoRestritoAssinatura === true) { State.setUsuario(usuario); window.location.replace("assinatura.html"); return; }
       const validacao = Validators.validarUsuario(usuario);
       if (!validacao.ok) {

@@ -117,6 +117,18 @@ test("documento por UID encontrado usa fonte principal", async () => {
   assert.equal(resultado.usuario.origemResolucaoAuth, "uid");
 });
 
+test('documento canônico exige authUid persistido correto e não confia no campo id', async () => {
+  for (const uid of ['', 'other']) {
+    const { FirestoreService } = carregarContexto({ 'usuarios/uid_1': usuarioBase({ authUid: uid }) });
+    const result = await FirestoreService.resolverUsuarioAutenticado(authUser);
+    assert.equal(result.ok, false);
+    assert.equal(result.codigo, uid ? 'LEGACY_USER_AUTH_UID_MISMATCH' : 'LEGACY_USER_WITHOUT_AUTH_UID');
+  }
+  const { FirestoreService } = carregarContexto({ 'usuarios/uid_1': usuarioBase({ id: 'alias-other' }), 'clientes_integro/tenant_1': { status: 'ATIVO', acessoLiberado: true } });
+  const result = await FirestoreService.resolverUsuarioAutenticado(authUser);
+  assert.equal(result.ok, true); assert.equal(result.usuario.id, authUser.uid);
+});
+
 test("documento por UID ausente resolve primeiro pelo campo authUid", async () => {
   const { FirestoreService } = carregarContexto({
     "usuarios/legacy_1": usuarioBase(),
