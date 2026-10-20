@@ -44,11 +44,18 @@ function empresaPermitida(user) {
       (!firestore.exists(companyPath) || empresaDadosPermitidos(firestore.get(companyPath).data)));
 }
 
+    function hasBoundSession(user) {
+      let session = user.get("segurancaSessao", {});
+      return session.get("id", "") == request.auth.token.get("integroSessionId", null) &&
+        session.get("encerrada", true) == false && session.get("expiresAtMs", 0) > request.time.toMillis() &&
+        session.get("clientePlataformaId", "") == user.get("clientePlataformaId", "");
+    }
+
     function isActiveUser() {
-      return hasUserDoc() &&
-        userDoc().get("authUid", "") == request.auth.uid &&
-        userDoc().get("acessoLiberado", false) == true &&
-        !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) && empresaPermitida(userDoc());
+      let user = userDoc();
+      return isAuthenticated() && user.get("authUid", "") == request.auth.uid &&
+        user.get("acessoLiberado", false) == true && hasBoundSession(user) &&
+        !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) && empresaPermitida(user);
     }
 
     function userTenantId() {
@@ -158,9 +165,9 @@ function empresaPermitida(user) {
     }
 
     match /tenants/{tenantId}/{categoria}/{arquivo=**} {
-      allow read: if categoria != "financeiro" && (isMasterGlobal() || isSameTenant(tenantId));
+      allow read: if categoria != "financeiro" && isActiveUser() && (isMasterGlobal() || isSameTenant(tenantId));
       allow list: if false;
-      allow create: if categoria != "financeiro" && (isMasterGlobal() || isSameTenant(tenantId)) &&
+      allow create: if categoria != "financeiro" && isActiveUser() && (isMasterGlobal() || isSameTenant(tenantId)) &&
         (categoria != "chat" || !isAuditor()) &&
         (categoria != "chat" ? allowedUpload() : (
           request.resource != null &&

@@ -676,7 +676,16 @@ const FirestoreService = {
         }
       }
 
-      await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).update({
+      const referencia = db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId);
+      const anterior = await referencia.get();
+      if (!anterior.exists) throw new Error("Usuário não encontrado.");
+      const dadosAnteriores = anterior.data() || {};
+      if (status === "ATIVO" && (dadosAnteriores.convitePendente === true || !dadosAnteriores.authUid || dadosAnteriores.excluido === true)) {
+        throw new Error("Usuário excluído ou sem provisionamento Auth não pode ser ativado.");
+      }
+      const reativar = status === "ATIVO" && dadosAnteriores.authUid &&
+        (dadosAnteriores.acessoLiberado === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(dadosAnteriores.status));
+      await referencia.update({
         nome,
         nomeCompleto: nome,
         telefone,
@@ -700,14 +709,15 @@ const FirestoreService = {
         equipeIds: equipesVinculadas.map(item => item.id),
         equipesNomes: equipesVinculadas.map(item => item.nome || ""),
 
-        status,
-        acessoLiberado: status !== CONFIG.STATUS_USUARIO.BLOQUEADO && status !== CONFIG.STATUS_USUARIO.INATIVO,
+        status: reativar ? dadosAnteriores.status : status,
+        acessoLiberado: !reativar && status === "ATIVO",
 
         atualizadoPorUid: State.authUid || "",
         atualizadoPorNome: State.usuario?.nome || State.usuario?.email || "",
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
       });
 
+      if (reativar) await FirestoreService.alterarAcessoUsuario(usuarioId, true);
       return true;
     } catch (erro) {
       console.error("Erro ao atualizar usuário:", erro);
@@ -724,16 +734,18 @@ const FirestoreService = {
         throw new Error("ID do usuário é obrigatório.");
       }
 
-      if (liberar) {
-        const usuarioDoc = await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).get();
-        if (!usuarioDoc.exists) {
-          throw new Error("Usuário não encontrado.");
-        }
-
-        const usuario = usuarioDoc.data() || {};
-        if (!usuario.authUid || usuario.convitePendente === true || usuario.provisionamentoAuth === "PENDENTE_BACKEND") {
-          throw new Error("Usuário ainda aguarda provisionamento Auth pelo backend e não pode ser liberado.");
-        }
+      const usuarioDoc = await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).get();
+      if (!usuarioDoc.exists) throw new Error("Usuário não encontrado.");
+      const usuario = usuarioDoc.data() || {};
+      if (liberar && (!usuario.authUid || usuario.excluido === true || usuario.convitePendente === true || usuario.provisionamentoAuth === "PENDENTE_BACKEND")) {
+        throw new Error("Usuário excluído ou ainda aguarda provisionamento Auth pelo backend e não pode ser liberado.");
+      }
+      if (usuario.authUid) {
+        const session = window.IntegroV27Session || await window.garantirServicoSessaoV27?.();
+        if (!session) throw new Error("Serviço de segurança indisponível; acesso não alterado.");
+        if (liberar) await session.unblockUser(usuario.authUid);
+        else await session.blockUser(usuario.authUid);
+        return true;
       }
 
       await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).update({

@@ -8,6 +8,9 @@
   let heartbeatTimer = null;
   let inactivityTimer = null;
   let installed = false;
+  let stopProfileWatch = null;
+  let watchedUid = "";
+  let expiring = false;
   let functionLoader = null;
   let localActivity = Date.now();
   let ultimaValidacao = null;
@@ -71,6 +74,7 @@
   }
 
   function persistStartedSession(id) {
+    expiring = false;
     setSessionId(id);
     localActivity = Date.now();
     global.localStorage?.setItem(LAST_ACTIVITY_KEY, String(localActivity));
@@ -81,21 +85,33 @@
     return details?.code === "SESSION_ALREADY_ACTIVE" || /sessão ativa|sessao ativa/i.test(String(error?.message || ""));
   }
 
+  async function bindSession(result, id, uid) {
+    if (!result.customToken) throw new Error("Backend de sessão incompatível; acesso não liberado.");
+    id = text(result.sessionId);
+    if (id.length < 12) throw new Error("Identificador de sessão ausente no backend.");
+    const credential = await global.firebase.auth().signInWithCustomToken(result.customToken);
+    const token = await credential.user.getIdTokenResult();
+    if (credential.user.uid !== uid || token.claims.integroSessionId !== id) throw new Error("Vínculo de sessão inválido.");
+    persistStartedSession(id);
+    // O token de troca não deve circular pela interface nem pelas métricas.
+    const { customToken, ...safe } = result;
+    return safe;
+  }
+
   async function start(options = {}) {
     if (!currentUser()) throw new Error("Usuário não autenticado.");
+    const uid = currentUser().uid;
     const id = options.sessionId || randomId();
     // O login já substituía automaticamente a sessão anterior após uma rejeição.
     // Enviar a mesma intenção de início evita a primeira callable rejeitada.
     const payload = { sessionId: id, dispositivo: device(), forceReplace: true };
     try {
       const result = await callable("iniciarSessaoV27", payload);
-      persistStartedSession(id);
-      return result;
+      return await bindSession(result, id, uid);
     } catch (error) {
       if (!isActiveSessionError(error)) throw error;
       const result = await callable("iniciarSessaoV27", { ...payload, forceReplace: true });
-      persistStartedSession(id);
-      return { ...result, substituiuSessaoAnterior: true };
+      return { ...(await bindSession(result, id, uid)), substituiuSessaoAnterior: true };
     }
   }
 
@@ -117,8 +133,49 @@
       setSessionId("");
       global.localStorage?.removeItem(LAST_ACTIVITY_KEY);
       clearTimers();
+      stopAccessWatch();
     }
     return true;
+  }
+
+  function stopAccessWatch() {
+    stopProfileWatch?.();
+    stopProfileWatch = null;
+    watchedUid = "";
+  }
+
+  function accessVersion(user = {}) {
+    const fields = ["authUid", "clientePlataformaId", "tipoUsuario", "tipoUsuarioOficial", "cargoId", "cargoChave", "cargoNome", "cargo", "perfil", "perfilLegado", "responsavelFinanceiro", "departamento", "empresaBloqueada", "acessoEmpresaLiberado", "clientePlataformaStatus", "equipeId", "equipesIds", "equipeIds", "permissoes", "permissoesCargo", "permissoesUsuario", "usarPermissoesPersonalizadas"];
+    return JSON.stringify(fields.map(key => user[key] ?? null), (_, value) => value && typeof value === "object" && !Array.isArray(value)
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]])) : value);
+  }
+
+  function watchAccess() {
+    const uid = currentUser()?.uid;
+    if (!uid || watchedUid === uid) return;
+    stopAccessWatch();
+    const user = global.State?.getUsuario?.() || global.State?.usuario || {};
+    const database = global.db || global.firebase?.firestore?.();
+    if (user.authUid !== uid || !database?.collection) return;
+    const reference = database.collection("usuarios").doc(user.id || uid);
+    if (typeof reference.onSnapshot !== "function") return;
+    const version = accessVersion(user);
+    watchedUid = uid;
+    stopProfileWatch = reference.onSnapshot(snapshot => {
+      if (watchedUid !== uid || currentUser()?.uid !== uid || snapshot.metadata?.hasPendingWrites || snapshot.metadata?.fromCache) return;
+      const fresh = snapshot.exists ? snapshot.data() : null;
+      if (!fresh || fresh.authUid !== uid || fresh.acessoLiberado !== true || fresh.ativo === false || fresh.excluido === true || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(text(fresh.status).toUpperCase())) {
+        void expireNow();
+        return;
+      }
+      if (accessVersion(fresh) !== version) {
+        stopAccessWatch();
+        // Reexecuta a proteção da rota e descarta escopos/permissões antigos.
+        global.location.reload();
+      }
+    }, error => {
+      if (watchedUid === uid && /permission-denied|unauthenticated/.test(String(error?.code))) void expireNow();
+    });
   }
 
   function clearTimers() {
@@ -129,7 +186,8 @@
   }
 
   async function expireNow() {
-    if (!currentUser()) return;
+    if (!currentUser() || expiring) return;
+    expiring = true;
     await end({ silent: true });
     try { await global.firebase.auth().signOut(); } catch (_) {}
     global.State?.limparSessao?.();
@@ -177,6 +235,7 @@
         runTimers();
         ultimaValidacao = validacao;
       }
+      watchAccess();
       return true;
     })().finally(() => { retomadaEmAndamento = null; });
     return retomadaEmAndamento;

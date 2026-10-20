@@ -1,3 +1,4 @@
+const {sessionClaims,seedBoundSessions}=require('./helpers/session-fixture.cjs');
 'use strict';
 const test=require('node:test'),fs=require('node:fs');
 const {initializeTestEnvironment,assertFails,assertSucceeds}=require('@firebase/rules-unit-testing');
@@ -15,7 +16,8 @@ test('bloqueio integrado: operação e anexos negados, identidade e empresa pró
    await setDoc(doc(db,'plataforma_faturas','company_access_invoice'),{clientePlataformaId:tenant});
    await uploadBytes(ref(c.storage(),path),new Uint8Array([37,80,68,70]),{contentType:'application/pdf'});
   });
-  const context=env.authenticatedContext(uid),db=context.firestore();
+  await seedBoundSessions(env);
+  const context=env.authenticatedContext(uid,sessionClaims(uid)),db=context.firestore();
   for(const company of [{acessoLiberado:true},{testeAtivo:true,dataFimTeste:'2099-01-01T00:00:00.000Z'},{bloqueioAssinaturaEm:Timestamp.fromMillis(Date.now()+86400000)}]){
    await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'clientes_integro',tenant),company));
    await assertSucceeds(getDoc(doc(db,'financeiro_contas','company_access_account')));

@@ -15,7 +15,7 @@ service cloud.firestore {
     }
 
     function userDoc() {
-      return isAuthenticated() ? get(userPath()).data : {};
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data;
     }
 
     function userTenantId() {
@@ -144,11 +144,18 @@ function empresaPermitida(user) {
         userDoc().get("acessoLiberado", false) == true;
     }
 
+    function hasBoundSession() {
+      let session = get(/databases/$(database)/documents/sessoes_usuarios/$(currentUid())).data;
+      return session.sessionId == request.auth.token.get("integroSessionId", null) &&
+        session.encerrada == false && session.expiresAtMs > request.time.toMillis() &&
+        session.clientePlataformaId == userTenantId();
+    }
+
     function isActiveUser() {
       let user = userDoc();
       return isAuthenticated() && exists(userPath()) && user.get("authUid", "") == currentUid() &&
         !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        user.get("acessoLiberado", false) == true && empresaPermitida(user);
+        user.get("acessoLiberado", false) == true && hasBoundSession() && empresaPermitida(user);
     }
 
     function permMap() {
@@ -654,10 +661,10 @@ function empresaPermitida(user) {
           existsAfter(/databases/$(database)/documents/clientes_integro/$(request.resource.data.get("clientePlataformaId", ""))))
       );
       allow update: if isActiveUser() && (
-        isMasterGlobal() ||
+        (isMasterGlobal() && unchanged(["segurancaSessao"])) ||
         (currentUid() == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"])) ||
         (isMasterLocal() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() &&
-          unchanged(["authUid"]) &&
+          unchanged(["authUid", "segurancaSessao"]) &&
           !(resource.data.get("tipoUsuario", "").lower() in ["master_global", "usuario_integro"]) &&
           !(request.resource.data.get("tipoUsuario", "").lower() in ["master_global", "usuario_integro"]) &&
           !(request.resource.data.get("tipoUsuarioOficial", "").lower() in ["master_global", "usuario_integro"]) &&
@@ -685,7 +692,7 @@ function empresaPermitida(user) {
 
     match /clientes_integro/{id} {
       allow read: if isActiveIdentity() &&
-        (isMasterGlobal() || isUsuarioIntegro() || id == userTenantId());
+        (((isMasterGlobal() || isUsuarioIntegro()) && hasBoundSession()) || id == userTenantId());
       allow create, update: if isActiveUser() && isMasterGlobal() &&
         request.resource.data.get("nome", request.resource.data.get("razaoSocial", "")) is string &&
         request.resource.data.get("nome", request.resource.data.get("razaoSocial", "")).size() > 0 &&
@@ -881,8 +888,8 @@ function empresaPermitida(user) {
         canProbeMissingLedgerId(id)
       ) || canReadFinance(resource.data);
       allow list: if canListFinance(resource.data);
-      allow create: if canCreateLedger(request.resource.data);
-      allow update: if canUpdateLedger();
+      allow create: if request.resource.data.get("tipoLancamento", "") != "ESTORNO" && canCreateLedger(request.resource.data);
+      allow update: if !(request.resource.data.get("statusLancamento", "") == "ESTORNADO" && resource.data.get("statusLancamento", "") != "ESTORNADO") && unchanged(["estornoId", "estornadoPorId", "estornadoEm", "motivoEstorno"]) && canUpdateLedger();
       allow delete: if false;
     }
 
@@ -912,9 +919,7 @@ function empresaPermitida(user) {
       }
 
       function canReadCaixa(data) {
-        return isActiveMasterLocalFor(data) || isOperationalReader(data) ||
-          (isFinanceiro() && isSameTenantRead() && hasPermission("podeVerReconciliacao")) ||
-          (isAuditor() && isSameTenantRead());
+        return isOperationalReader(data);
       }
 
       function canUpdateCaixaMovimentacao() {
@@ -956,14 +961,25 @@ function empresaPermitida(user) {
       // Restringe ainda mais as atualizações: nenhuma abertura de caixa fechado
       // pode vir do cliente. O Admin SDK usa a validação do último caixa no servidor.
       allow update: if canUpdateCaixa()
+        && request.resource.data.status == resource.data.status
         && (resource.data.status in ["ABERTO", "REABERTO"]
           || !(request.resource.data.status in ["ABERTO", "REABERTO"]));
       allow delete: if false;
     }
 
+    function validClosureConferencia(data) {
+      let difference = data.get("diferencaCentavos", 0);
+      return data.get("caixaFinalEsperadoCentavos", 0) is int && data.get("caixaFinalInformadoCentavos", 0) is int &&
+        difference == data.get("caixaFinalInformadoCentavos", 0) - data.get("caixaFinalEsperadoCentavos", 0) &&
+        data.get("statusFechamento", "") == (difference == 0 ? "FECHADO" : "DIVERGENTE") &&
+        (difference == 0 || (data.get("justificativa", "") is string && data.get("justificativa", "").matches('.*\\S.*'))) &&
+        data.get("snapshotAuditoria", {}).get("pendenciasCobranca", 0) == 0 &&
+        data.get("snapshotAuditoria", {}).get("pagamentosPendentes", 0) == 0;
+    }
+
     match /fechamentos_caixa/{id} {
       function canCreateFechamento(data, fechamentoId) {
-        return isActiveUser() && isSameTenantWrite() &&
+        return isActiveUser() && isSameTenantWrite() && validClosureConferencia(data) &&
           data.keys().hasAll(["caixaId", "vendedorId", "statusFechamento", "caixaFinalEsperadoCentavos", "caixaFinalInformadoCentavos", "diferencaCentavos", "snapshotAuditoria"]) &&
           data.get("caixaId", "") is string &&
           fechamentoId == "fechamento_" + data.get("caixaId", "") &&
@@ -1003,7 +1019,7 @@ function empresaPermitida(user) {
         let historyPath = /databases/$(database)/documents/historico_fechamentos_caixa/$(data.get("refechamentoId", ""));
         let history = getAfter(historyPath).data;
         let ids = currentUserIds();
-        return user.get("authUid", "") == uid && user.get("acessoLiberado", false) == true && empresaPermitida(user) &&
+        return hasBoundSession() && validClosureConferencia(data) && user.get("authUid", "") == uid && user.get("acessoLiberado", false) == true && empresaPermitida(user) &&
           !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
           (user.get("tipoUsuario", "") == "vendedor" || user.get("cargoChave", "") == "vendedor") &&
           user.get("clientePlataformaId", "") != "" &&
@@ -1042,8 +1058,8 @@ function empresaPermitida(user) {
             (isVendedor() && isOwnSellerData(resource.data))))
       );
       allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
-      allow create: if canCreateFechamento(request.resource.data, id);
-      allow update: if (isAuthenticated() && resource.data.get("reaberto", false) == true && canRecloseOwnBox()) || canUpdateFechamento();
+      allow create: if false; // Conferência e fechamento exclusivamente pelo backend.
+      allow update: if false; // Tratamento e regularização também exigem o backend.
       allow delete: if false;
     }
 
@@ -1074,7 +1090,7 @@ function empresaPermitida(user) {
 
       allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
-      allow create: if canRefecharFechamento();
+      allow create: if false; // Ciclos imutáveis gravados pelo backend.
       allow update: if false;
       allow delete: if false;
     }
@@ -1099,7 +1115,7 @@ function empresaPermitida(user) {
 
       allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
-      allow create: if canCreateReabertura(request.resource.data);
+      allow create: if false; // Reabertura autorizada exclusivamente no backend.
       allow update: if false;
       allow delete: if false;
     }
@@ -1123,7 +1139,7 @@ function empresaPermitida(user) {
 
       allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
-      allow create: if canCreateTratamento(request.resource.data);
+      allow create: if false; // Aprovações de divergência exclusivamente pelo backend.
       allow update: if false;
       allow delete: if false;
     }
@@ -1142,7 +1158,7 @@ function empresaPermitida(user) {
 
       allow get: if isOperationalReader(resource.data) || canReadFinance(resource.data);
       allow list: if isOperationalListReader(resource.data) || canListFinance(resource.data);
-      allow create: if canCreateHistorico(request.resource.data);
+      allow create: if false; // Transições de caixa registradas pelo backend.
       allow update: if false;
       allow delete: if false;
     }
@@ -1476,14 +1492,14 @@ function empresaPermitida(user) {
     }
 
     match /empresa_vinculos/{id} {
-      allow read: if isActiveIdentity() && (isMasterGlobal() || resource.data.get("authUid", "") == currentUid());
+      allow read: if isActiveIdentity() && ((isMasterGlobal() && hasBoundSession()) || resource.data.get("authUid", "") == currentUid());
       allow write: if false;
     }
 
     match /suporte_conversas/{id} {
       function suportePermitido(data) {
         let u = userDoc();
-        return isActiveIdentity() && (
+        return isActiveIdentity() && hasBoundSession() && (
           u.get("tipoUsuario", "") == "master_global" ||
           (u.get("tipoUsuario", "") == "usuario_integro" && u.get("permissoes", {}).get("suporte", {}).get("atender", false) == true) ||
           (data.get("clienteAuthUid", "") == currentUid() && data.get("clientePlataformaId", "") == u.get("clientePlataformaId", ""))

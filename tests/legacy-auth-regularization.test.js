@@ -65,7 +65,7 @@ test('sessão não escolhe primeiro cadastro com mesmo Auth UID nem ignora confl
     { 'usuarios/actor': { ...user('actor'), authUid: '' } },
     { 'usuarios/actor': { ...user('actor'), authUid: ' actor ' } }
   ]) {
-    const db = memoryDb(records), api = criarAdministracaoV27({ db, functions: { https: { HttpsError } }, admin: {} });
+    const db = memoryDb(records), api = criarAdministracaoV27({ db, functions: { https: { HttpsError } }, admin: {auth:()=>({createCustomToken:async()=>"local-custom-token"})} });
     await assert.rejects(api.iniciarSessao({ sessionId: 'session-identity-12345' }, { auth: { uid: 'actor' } }), e => e.code === 'permission-denied');
     assert.equal(db.records.has('sessoes_usuarios/actor'), false);
   }
@@ -80,7 +80,7 @@ for (const role of ['master_global', 'master_local', 'supervisor', 'gerente', 'v
     };
     // Duplicata legada não substitui o documento canônico válido.
     records['usuarios/legacy'] = { ...user('actor', role), clientePlataformaId: 'b' };
-    const db = memoryDb(records), api = criarAdministracaoV27({ db, functions: { https: { HttpsError } }, admin: {} });
+    const db = memoryDb(records), api = criarAdministracaoV27({ db, functions: { https: { HttpsError } }, admin: {auth:()=>({createCustomToken:async()=>"local-custom-token"})} });
     const request = api.iniciarSessao({ sessionId: 'session-canonical-12345' }, { auth: { uid: 'actor' } });
     if (blocked) { await assert.rejects(request, e => e.code === 'permission-denied'); assert.equal(db.records.has('sessoes_usuarios/actor'), false); }
     else assert.equal((await request).ok, true);

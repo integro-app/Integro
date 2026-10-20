@@ -3149,7 +3149,7 @@ body.perfil-vendedor #dashboard .kpi-card:focus-visible {outline:3px solid #80ba
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
-  <script src="js/firebase-config.js?v=20261014-multiempresa1"></script>
+  <script src="js/firebase-config.js?v=20261020-integracao-perfis"></script>
   <script src="js/config.js"></script>
   <script src="js/utils/operational.js?v=20260803-console1"></script>
   <script src="js/services/access-control.js?v=20260803-console1"></script>
@@ -3179,7 +3179,7 @@ body.perfil-vendedor #dashboard .kpi-card:focus-visible {outline:3px solid #80ba
   <script src="js/master-local.js?v=20260805-producao-otimizada1&build=20261006"></script>
   <script src="js/painel-unificado.js?v=20260804-movimentacoes4"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
-  <script src="js/perfis-unificados.js?v=20260818-v272-perf1&build=20261008-carteira-fechamento3"></script>
+  <script src="js/perfis-unificados.js?v=20261020-integracao-perfis&build=20261008-carteira-fechamento3"></script>
   <script src="js/services/realtime-operations-service.js?v=20260805-dashboard-caixa-v8"></script>
 <script src="js/chat-ui.js?v=20261013-mobile4"></script>
 <script src="js/dashboard-navigation.js"></script>
@@ -6377,23 +6377,30 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     const nomeCol = col(nome);
     const runtime = window.IntegroDataRuntime;
     const limite = limiteColecaoCaixas(nome);
+    const acesso = window.IntegroAcesso?.acessoUsuario?.(window.State?.getUsuario?.() || {}) || {};
+    const porEquipe = acesso.perfil === "supervisor" && ["CAIXAS", "VENDAS", "PAGAMENTOS", "SOLICITACOES"].includes(nome);
+    const equipes = porEquipe ? [...new Set((acesso.equipeIds || []).filter(Boolean).map(String))] : [null];
     try{
+      const listas = await Promise.all(equipes.map(async equipeId => {
+      const filtros = equipeId ? [["equipeId", "==", equipeId]] : [];
       if(runtime?.consultarTenant){
         return await runtime.consultarTenant({
           db: database,
           colecao: nomeCol,
           tenantId: tenant,
+          filtros,
           limite,
           cacheMs: ["EQUIPES","USUARIOS"].includes(nome) ? 60000 : 12000,
           forcar,
-          chave: `caixas-tela:${nomeCol}:${tenant}:${limite}`
+          chave: `caixas-tela:${nomeCol}:${tenant}:${equipeId || "tenant"}:${limite}`
         });
       }
-      const snap = await database.collection(nomeCol)
-        .where("clientePlataformaId", "==", tenant)
-        .limit(limite)
-        .get();
+      let ref = database.collection(nomeCol).where("clientePlataformaId", "==", tenant);
+      if(equipeId) ref = ref.where("equipeId", "==", equipeId);
+      const snap = await ref.limit(limite).get();
       return snap.docs.map(doc => ({id:doc.id, ...doc.data()})).filter(pertenceTenant);
+      }));
+      return [...new Map(listas.flat().map(item => [item.id, item])).values()];
     }catch(e){
       console.warn(`[Caixas] Falha ao consultar ${nomeCol}.clientePlataformaId:`, e?.message || e);
       return [];
@@ -10044,7 +10051,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   async function carregarUsuariosGestao(force){
-    if (!window.IntegroRuntime?.permiteConsultaAmpla?.()) return [authUser()].filter(Boolean);
+    if (window.IntegroAcesso?.acessoUsuario?.(window.State?.getUsuario?.() || {})?.perfil === "administrativo" || !window.IntegroRuntime?.permiteConsultaAmpla?.()) return [authUser()].filter(Boolean);
     const database = db();
     const tid = tenantId();
 
@@ -10617,7 +10624,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
   async function carregarNotificacoesGestao(force){
     if(!force && Array.isArray(window.notificacoesCache) && window.notificacoesCache.length) return getNotifs();
-    if (!window.IntegroRuntime?.permiteConsultaAmpla?.()) {
+    if (!["master_local", "gerente"].includes(window.IntegroAcesso?.acessoUsuario?.(window.State?.getUsuario?.() || {})?.perfil)) {
       const listaEscopo = await window.carregarNotificacoesEscopoIntegro?.();
       return Array.isArray(listaEscopo) ? listaEscopo : getNotifs();
     }
@@ -14018,22 +14025,28 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         atualizadoPorNome: usuario.nome || usuario.email || "Usuário"
       };
 
-      await firestore.collection("permissoes_cargo").doc(cargoId).set(payload, { merge:true });
-
+      if(!tenantId || !cargoId) throw new Error("Empresa e cargo obrigatórios.");
       const usuariosCargo = await firestore.collection("usuarios")
         .where("clientePlataformaId","==",tenantId)
-        .where("cargoId","==",cargoId)
-        .get();
-      if(!usuariosCargo.empty){
-        const batchUsuarios = firestore.batch();
-        usuariosCargo.docs.forEach(doc=>batchUsuarios.update(doc.ref, {
+        .where("cargoId","==",cargoId).limit(500).get();
+      if(usuariosCargo.docs.length >= 500) throw new Error("Cargo excede o limite de atualização atômica; nenhuma permissão foi alterada.");
+      await firestore.runTransaction(async tx => {
+        const cargo = await tx.get(firestore.collection("cargos").doc(cargoId));
+        const usuariosAtuais = await Promise.all(usuariosCargo.docs.map(doc => tx.get(doc.ref)));
+        if(!cargo.exists || cargo.data().clientePlataformaId !== tenantId) throw new Error("Cargo fora da empresa.");
+        for(const doc of usuariosAtuais){
+          if(!doc.exists || doc.data().clientePlataformaId !== tenantId || doc.data().cargoId !== cargoId) throw new Error("Vínculo alterado; recarregue e tente novamente.");
+        }
+        tx.set(firestore.collection("permissoes_cargo").doc(cargoId), payload, { merge:true });
+        usuariosAtuais.forEach(doc=>tx.update(doc.ref, {
           permissoes,
           permissoesCargo: permissoes,
+          usarPermissoesPersonalizadas: false,
+          permissoesUsuario: firebase.firestore.FieldValue.delete(),
           permissoesAtualizadasEm: firebase.firestore.FieldValue.serverTimestamp(),
           permissoesAtualizadasPorUid: usuario.authUid || usuario.uid || usuario.id || ""
         }));
-        await batchUsuarios.commit();
-      }
+      });
 
       try{
         await firestore.collection("logs").add({
@@ -16634,6 +16647,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   async function queryCollection(name, chave=""){
+    if (chave === "usuarios" && window.IntegroAcesso?.acessoUsuario?.(window.State?.getUsuario?.() || {})?.perfil === "administrativo") return [window.State?.getUsuario?.()].filter(Boolean);
     const database = db();
     const principal = tenantPrincipal();
     if(!database || !principal) return [];

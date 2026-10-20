@@ -23,11 +23,11 @@ test('login substitui sessão em uma callable e só persiste após confirmação
   let reject = false;
   const env = browser({
     localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) },
-    firebase: { auth: () => ({ currentUser: { uid: 'u' } }), functions() {}, app: () => ({ functions: () => ({
+    firebase: { auth: () => ({ currentUser: { uid: 'u' }, async signInWithCustomToken() { return { user: {uid:'u',getIdTokenResult:async()=>({claims:{integroSessionId:'sessao-nova-12345'}})} }; } }), functions() {}, app: () => ({ functions: () => ({
       httpsCallable: name => async payload => {
         calls.push({ name, payload });
         if (reject) throw Error('offline');
-        return { data: { ok: true, substituiuSessaoAnterior: true } };
+        return { data: { ok: true, sessionId: payload.sessionId, customToken: "local-token", substituiuSessaoAnterior: true } };
       }
     }) }) }
   });

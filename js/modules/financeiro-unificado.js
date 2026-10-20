@@ -251,7 +251,9 @@
     document.querySelectorAll("[data-fin-view]").forEach(view => { if (!view.hidden) view.innerHTML = `<div class="unified-empty"><div><span class="material-symbols-rounded">error</span><strong>Financeiro indisponível</strong><p>${U().esc(message)}</p></div></div>`; });
   }
 
-  function realtimeEntryImpact(item = {}) {
+  function realtimeEntryImpact(item = {}, entries = []) {
+    if (U().upper(item.tipoLancamento) === "DIVERGENCIA_ACEITA") return 0;
+    if (U().upper(item.tipoLancamento) === "ESTORNO" && entries.some(original => String(original.id || original.lancamentoId) === String(item.reversaoDeId) && U().upper(original.statusLancamento) === "ESTORNADO")) return 0;
     const status = U().upper(item.statusLancamento || "CONFIRMADO");
     if (["PENDENTE", "CANCELADO", "ESTORNADO"].includes(status)) return 0;
     const value = Math.abs(Math.round(Number(item.valorCentavos || 0)));
@@ -261,7 +263,7 @@
   function realtimeSummary(entries = []) {
     const summary = { totalCreditosCentavos: 0, totalDebitosCentavos: 0, saldoCentavos: 0, porTipo: {} };
     entries.forEach(item => {
-      const impact = realtimeEntryImpact(item);
+      const impact = realtimeEntryImpact(item, entries);
       if (!impact) return;
       const value = Math.abs(impact);
       const type = U().upper(item.tipoLancamento || "OUTRO");

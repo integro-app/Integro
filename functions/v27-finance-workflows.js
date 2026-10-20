@@ -18,9 +18,7 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     return source.controleFinanceiro || {};
   }
   function denied(user, action) {
-    const source = user.permissoesUsuario || user.permissoes || user.permissoesCargo || {};
-    const permissions = source.controleFinanceiro;
-    return permissions === false || permissions?.ver === false || permissions?.[action] === false || source['controleFinanceiro.ver'] === false || source['controleFinanceiro.' + action] === false;
+    return require("./enterprise-finance-access").denied(user,[action]);
   }
   function active(user = {}) {
     return user.acessoLiberado === true && !["INATIVO","BLOQUEADO","SUSPENSO"].includes(norm(user.status));
@@ -89,7 +87,12 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     const target = await targetUser(data?.responsavelAuthUid, tenantId);
     const targetUid = text(target.authUid || target.id);
     if (targetUid === uid) {
-      await db.collection("financeiro_contas").doc(account.id).set({ responsavelAuthUid:uid, responsavelNome:text(target.nome || target.nomeCompleto || target.email), responsavelSolicitadoAuthUid:"", responsavelSolicitadoNome:"", atualizadoEm:ts(), atualizadoEmTexto:nowText() }, { merge:true });
+      await db.runTransaction(async tx=>{
+        const actorSnap=await tx.get(db.collection("usuarios").doc(user.id||uid)),current=await tx.get(db.collection("financeiro_contas").doc(account.id));
+        if(!actorSnap.exists||actorSnap.data().authUid!==uid||!active(actorSnap.data())||!canEdit(actorSnap.data())||text(actorSnap.data().clientePlataformaId)!==tenantId)error("permission-denied","Autor sem acesso atual.");
+        if(!current.exists||text(current.data().clientePlataformaId)!==tenantId)error("permission-denied","Conta fora da empresa atual.");
+        tx.set(db.collection("financeiro_contas").doc(account.id),{responsavelAuthUid:uid,responsavelNome:text(actorSnap.data().nome||actorSnap.data().email),responsavelSolicitadoAuthUid:"",responsavelSolicitadoNome:"",atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});
+      });
       return { ok:true, aprovado:true };
     }
     const requestId = `fa_${idSafe(account.id)}_${Date.now()}`;
@@ -190,6 +193,8 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
     const actorSnap=await batch.get(db.collection('usuarios').doc(user.id||uid));if(!actorSnap.exists||actorSnap.data().authUid!==uid||!active(actorSnap.data())||!canApprove(actorSnap.data())||text(actorSnap.data().clientePlataformaId)!==tenantId)error('permission-denied','Decisor sem acesso.');
     if(!currentRequest.exists||!currentAccount.exists)error("not-found","Solicitação ou conta indisponível.");
     if(norm(currentRequest.data().status)!=="PENDENTE"){const expected=decision==="APROVAR"?"APROVADA":"REJEITADA";if(norm(currentRequest.data().status)===expected)return {ok:true,status:expected,modo:"IDEMPOTENTE"};error("failed-precondition","Solicitação já foi decidida.");}
+    if(text(currentRequest.data().clientePlataformaId)!==tenantId)error("permission-denied","Solicitação fora da empresa atual.");
+    if(["contaId","tipo","patch","escopo","recorrenciaId","corteVencimento","responsavelNovoAuthUid"].some(key=>JSON.stringify(currentRequest.data()[key]??null)!==JSON.stringify(req[key]??null)))error("failed-precondition","Solicitação alterada durante a aprovação; confira novamente.");
     Object.assign(account,currentAccount.data());if(text(account.clientePlataformaId)!==tenantId)error("permission-denied","Conta fora da empresa.");
     if(decision==="APROVAR"&&["PAGA","PAGO","CANCELADA"].includes(norm(account.status)))error("failed-precondition","Lançamento efetivado ou cancelado não pode ser alterado.");
     if (decision === "APROVAR") {
@@ -241,7 +246,9 @@ function criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceiros
       const paySnap = await tx.get(paymentRef); if (!paySnap.exists) error("not-found", "Pagamento não encontrado."); const pay = paySnap.data(); if (text(pay.clientePlataformaId) !== tenantId) error("permission-denied", "Pagamento fora da empresa atual."); if (pay.estornado === true) {result={contaId:text(pay.contaId),modo:"IDEMPOTENTE"};return;}
       const accountRef = db.collection("financeiro_contas").doc(text(pay.contaId)); const accSnap = await tx.get(accountRef); if (!accSnap.exists) error("not-found", "Conta vinculada não encontrada."); const account=accSnap.data(); if(text(account.clientePlataformaId)!==tenantId)error("permission-denied","Conta fora da empresa atual.");
       const linkedId=text(pay.saldoReprogramadoContaId); let linked=null, linkedRef=null; if(linkedId){linkedRef=db.collection("financeiro_contas").doc(linkedId);const linkedSnap=await tx.get(linkedRef);if(!linkedSnap.exists)error("failed-precondition","Saldo reprogramado não encontrado.");if(linkedId===text(pay.contaId))error("failed-precondition","Referência circular de saldo reprogramado.");if(linkedSnap.exists){linked=linkedSnap.data();if(text(linked.clientePlataformaId)!==tenantId)error("permission-denied","Saldo reprogramado fora da empresa atual.");if(Number(linked.valorPagoCentavos||0)>0)error("failed-precondition","O saldo reprogramado já recebeu pagamento e precisa ser tratado antes do estorno.");}}
-      const amount=Number(pay.valorPagoCentavos||0), paidAfter=Math.max(0,Number(account.valorPagoCentavos||0)-amount); const balanceBefore=Number(pay.valorPrevistoSaldoCentavos||0); const restoredBalance=Number(account.saldoCentavos||0)+amount+(linked?Number(linked.saldoCentavos||0):0)-(norm(pay.modoPagamento)==="QUITAR_VALOR_REAL"?Number(pay.diferencaQuitacaoCentavos||0):0); const status=paidAfter>0?"PARCIALMENTE_PAGA":"A_VENCER";
+      const amount=Number(pay.valorPagoCentavos||0);
+      if(!Number.isSafeInteger(amount)||amount<=0||!Number.isSafeInteger(account.valorPagoCentavos)||account.valorPagoCentavos<amount||!Number.isSafeInteger(account.saldoCentavos)||account.saldoCentavos<0)error("failed-precondition","Saldos inconsistentes para estorno; confira a conta.");
+      const paidAfter=account.valorPagoCentavos-amount; const balanceBefore=Number(pay.valorPrevistoSaldoCentavos||0); const restoredBalance=Number(account.saldoCentavos||0)+amount+(linked?Number(linked.saldoCentavos||0):0)-(norm(pay.modoPagamento)==="QUITAR_VALOR_REAL"?Number(pay.diferencaQuitacaoCentavos||0):0); if(!Number.isSafeInteger(restoredBalance)||restoredBalance<0)error("failed-precondition","Saldo restaurado inválido."); const status=paidAfter>0?"PARCIALMENTE_PAGA":"A_VENCER";
       tx.set(accountRef,{valorPagoCentavos:paidAfter,saldoCentavos:restoredBalance,status,statusV27:paidAfter>0?"PAGAMENTO_PARCIAL":"AGUARDANDO_VENCIMENTO",atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});
       if(linkedRef&&linked)tx.set(linkedRef,{status:"CANCELADA",statusV27:"CANCELADA",motivoCancelamento:`Estorno do pagamento ${paymentId}`,canceladoPorAuthUid:uid,canceladoEm:ts(),canceladoEmTexto:nowText(),atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});
       tx.set(paymentRef,{estornado:true,status:"ESTORNADO",motivoEstorno:reason,estornadoPorAuthUid:uid,estornadoPorNome:text(user.nome||user.email),estornadoEm:ts(),estornadoEmTexto:nowText(),atualizadoEm:ts(),atualizadoEmTexto:nowText()},{merge:true});

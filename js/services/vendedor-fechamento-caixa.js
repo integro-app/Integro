@@ -538,43 +538,20 @@
     const sellerId = texto(usuario.id || usuario.usuarioId || usuario.vendedorId || uid);
     if (!db || !tenant || !sellerId) return { permitido: null, caixa: null, motivo: "dados-indisponiveis" };
 
-    const controles = [...new Set([`${tenant}_${sellerId}`, uid ? `${tenant}_${uid}` : ""].filter(Boolean))];
-    for (const controlId of controles) {
-      try {
-        const control = await db.collection("controle_caixas").doc(controlId).get();
-        if (!control.exists) continue;
-        const caixaId = texto(control.data()?.ultimoCaixaId);
-        if (!caixaId) return { permitido: false, caixa: null, motivo: "controle-sem-caixa" };
-        const caixaSnap = await db.collection("caixas").doc(caixaId).get();
-        if (!caixaSnap.exists) return { permitido: false, caixa: null, motivo: "caixa-ausente" };
-        const caixa = { id: caixaSnap.id, ...caixaSnap.data() };
-        const tenantCaixa = texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId);
-        const ids = idsDoUsuario(usuario);
-        const vinculos = [caixa.vendedorId, caixa.vendedorUid, caixa.vendedorAuthUid, caixa.usuarioId].filter(Boolean).map(String);
-        const proprio = !vinculos.length || vinculos.some(id => ids.has(id));
-        if (tenantCaixa === tenant && proprio && ["ABERTO", "REABERTO"].includes(normalizar(caixa.status))) return { permitido: true, caixa, motivo: "controle-aberto" };
-        return { permitido: false, caixa, motivo: "controle-fechado" };
-      } catch (erro) {
-        console.warn("[ÍNTEGRO] Falha ao consultar controle do caixa.", erro);
-      }
+    if (!uid) return { permitido: null, caixa: null, motivo: "identidade-indisponivel" };
+    try {
+      const snap = await db.collection("caixas").where("clientePlataformaId", "==", tenant)
+        .where("vendedorAuthUid", "==", uid).where("status", "in", ["ABERTO", "REABERTO"]).limit(1).get({ source: "server" });
+      if (snap.metadata?.fromCache) return { permitido: null, caixa: null, motivo: "servidor-indisponivel" };
+      const doc = snap.docs?.[0];
+      if (!doc) return { permitido: false, caixa: null, motivo: "sem-caixa-aberto" };
+      const caixa = { ...doc.data(), id: doc.id };
+      if (caixa.clientePlataformaId !== tenant || caixa.vendedorAuthUid !== uid || caixa.excluido === true || caixa.ativo === false) return { permitido: false, caixa: null, motivo: "caixa-invalido" };
+      return { permitido: true, caixa, motivo: "servidor-aberto" };
+    } catch (erro) {
+      console.warn("[ÍNTEGRO] Validação do caixa indisponível.", erro);
+      return { permitido: null, caixa: null, motivo: "servidor-indisponivel" };
     }
-
-    const local = caixaAbertoLocal(usuario);
-    if (local) return { permitido: true, caixa: local, motivo: "cache-aberto" };
-
-    if (uid) {
-      try {
-        const snap = await db.collection("caixas").where("vendedorAuthUid", "==", uid).limit(30).get();
-        const lista = (snap?.docs || []).map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(caixa => texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId) === tenant)
-          .sort((a, b) => dataRegistro(b).localeCompare(dataRegistro(a)));
-        const aberto = lista.find(caixa => ["ABERTO", "REABERTO"].includes(normalizar(caixa.status)));
-        if (aberto) return { permitido: true, caixa: aberto, motivo: "fallback-aberto" };
-      } catch (erro) {
-        console.warn("[ÍNTEGRO] Fallback de caixa não pôde ser consultado.", erro);
-      }
-    }
-    return { permitido: false, caixa: null, motivo: "sem-caixa-aberto" };
   }
 
   async function bloquearAcessoSemCaixa() {

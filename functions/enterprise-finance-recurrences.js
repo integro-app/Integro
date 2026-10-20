@@ -4,12 +4,12 @@ const core=require('./financial-core');
 const {FieldValue}=require('firebase-admin/firestore');
 const text=core.texto,upper=core.normalizarStatus;
 const iso=d=>d.toISOString().slice(0,10),at=s=>new Date(s+'T12:00:00Z');
-function nextDate(date,unit,interval=1){
+function nextDate(date,unit,interval=1,anchor=date){
   const d=at(date),n=Math.max(1,Number(interval)),u=upper(unit),original=d.getUTCDate();
   if(['DIA','SEMANA','QUINZENA'].includes(u)){d.setUTCDate(original+n*({DIA:1,SEMANA:7,QUINZENA:15})[u]);return iso(d);}
   if(u==='ANO'){d.setUTCDate(1);d.setUTCFullYear(d.getUTCFullYear()+n);}
   else{d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+n);}
-  const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0,12)).getUTCDate();d.setUTCDate(Math.min(original,last));return iso(d);
+  const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0,12)).getUTCDate();d.setUTCDate(Math.min(at(anchor).getUTCDate(),last));return iso(d);
 }
 function businessDay(date,holidays=[]){return ![0,6].includes(at(date).getUTCDay())&&!holidays.includes(date);}
 function dueDate(date,rule={}){
@@ -33,7 +33,7 @@ function criarRecorrenciasFinanceiras({db,functions}){
       if(rec.ativo===false)return [];
       if(!Number.isSafeInteger(Number(rec.valorCentavos))||Number(rec.valorCentavos)<=0||!text(rec.categoriaId)||!text(rec.clientePlataformaId))error('failed-precondition','Recorrência sem valor, categoria ou empresa válida.');
       let cursor=text(rec.proximaGeracao||rec.dataInicio),count=Number(rec.ocorrenciasGeradas||0);const entries=[],today=core.hojeSP();
-      let skipped=0;while(cursor&&cursor<today&&(!rec.dataFim||cursor<=rec.dataFim)&&(!rec.limiteOcorrencias||count<Number(rec.limiteOcorrencias))){if(++skipped>36600)error('failed-precondition','Recorrência muito desatualizada.');count++;cursor=nextDate(cursor,rec.unidade,rec.intervalo);}
+      let skipped=0;while(cursor&&cursor<today&&(!rec.dataFim||cursor<=rec.dataFim)&&(!rec.limiteOcorrencias||count<Number(rec.limiteOcorrencias))){if(++skipped>36600)error('failed-precondition','Recorrência muito desatualizada.');count++;cursor=nextDate(cursor,rec.unidade,rec.intervalo,rec.dataInicio);}
       while(cursor&&cursor<=horizon&&entries.length<Math.min(120,Math.max(1,max))){
         if(rec.dataFim&&cursor>rec.dataFim||rec.limiteOcorrencias&&count>=Number(rec.limiteOcorrencias))break;
         const due=dueDate(cursor,rec),accountId='rec_'+id+'_'+cursor.replace(/-/g,''),accountRef=db.collection('financeiro_contas').doc(accountId),existing=await tx.get(accountRef);
@@ -55,7 +55,7 @@ function criarRecorrenciasFinanceiras({db,functions}){
   }
   async function callable(data,ctx){
     const uid=text(ctx?.auth?.uid);if(!uid)error('unauthenticated','Sessão não autenticada.');const snap=await db.collection('usuarios').doc(uid).get(),u=snap.exists?snap.data():{};
-    if(u.authUid!==uid||u.acessoLiberado!==true||['INATIVO','BLOQUEADO','SUSPENSO'].includes(upper(u.status))||!role(u)&&u.permissoes?.controleFinanceiro?.editar!==true)error('permission-denied','Sem permissão para gerar recorrências.');
+    if(require('./enterprise-finance-access').denied(u,['editar'])||u.authUid!==uid||u.acessoLiberado!==true||u.ativo===false||u.excluido===true||['INATIVO','BLOQUEADO','SUSPENSO'].includes(upper(u.status))||!role(u)&&u.permissoes?.controleFinanceiro?.editar!==true)error('permission-denied','Sem permissão para gerar recorrências.');
     if(!text(u.clientePlataformaId))error('failed-precondition','Usuário sem empresa vinculada.');
     await exigirEmpresaOperacional({db,functions,usuario:u,tenantId:text(u.clientePlataformaId)});
     const id=text(data?.recorrenciaId),until=text(data?.ate)||core.adicionarDiasISO(core.hojeSP(),90);if(!id||id.includes('/')||!/^\d{4}-\d{2}-\d{2}$/.test(until))error('invalid-argument','Recorrência ou data inválida.');

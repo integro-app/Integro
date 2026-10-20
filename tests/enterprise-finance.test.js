@@ -139,7 +139,7 @@ test("Storage restringe pasta financeiro ao controle empresarial", () => {
   assert.match(storageRules, /canReadEnterpriseFinance/);
   assert.match(storageRules, /canWriteEnterpriseFinance/);
   assert.match(storageRules, /match \/tenants\/\{tenantId\}\/financeiro\/\{kind\}\/\{id\}\/\{filename\}/);
-  assert.match(storageRules, /categoria != "financeiro" && \(isMasterGlobal\(\) \|\| isSameTenant\(tenantId\)\)/);
+  assert.match(storageRules, /categoria != "financeiro" && isActiveUser\(\) && \(isMasterGlobal\(\) \|\| isSameTenant\(tenantId\)\)/);
   assert.match(storageRules, /get\("anexar", false\)/);
 });
 

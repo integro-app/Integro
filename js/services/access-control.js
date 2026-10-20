@@ -108,11 +108,13 @@
     const partes = chave.split(".");
     const modulo = partes[0] || "";
     const operacao = partes.slice(1).join(".") || "ver";
-    return [...new Set([chave, `${modulo}.${operacao}`, `${modulo}.ver`, modulo])];
+    const leituras = ["ver", "visualizar", "pode_visualizar", "podevisualizar"];
+    const operacoes = leituras.includes(operacao) ? leituras : [operacao, `pode_${operacao}`, `pode${operacao}`];
+    return [...new Set([chave, ...operacoes.map(acao => `${modulo}.${acao}`), modulo])];
   }
 
   function pode(usuario = {}, permissao = "", contexto = {}) {
-    if (!usuario || !permissao) return false;
+    if (!usuario || !permissao || usuario.acessoLiberado === false || usuario.ativo === false || usuario.excluido === true || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(texto(usuario.status).toUpperCase())) return false;
     const acesso = acessoUsuario(usuario);
     if (!acesso.tenantId && acesso.perfil !== "master_global") return false;
 
@@ -122,7 +124,8 @@
     const chave = texto(permissao).toLowerCase();
     const explicitas = permissoesExplicitas(usuario);
     const aliases = aliasesPermissao(chave);
-    if (aliases.some(item => explicitas.negadas.has(item))) return false;
+    const bloqueios = [...aliases, ...aliasesPermissao(`${chave.split(".")[0]}.ver`)];
+    if (bloqueios.some(item => explicitas.negadas.has(item))) return false;
     if (aliases.some(item => explicitas.permitidas.has(item))) return validarEscopo(acesso, contexto);
 
     // Quando o cargo/usuario possui uma matriz salva, ela passa a ser a fonte oficial.

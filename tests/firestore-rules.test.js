@@ -1,3 +1,4 @@
+const {sessionClaims,seedBoundSessions}=require('./helpers/session-fixture.cjs');
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -47,7 +48,7 @@ const profiles = {
 };
 
 function appDb(profile) {
-  return testEnv.authenticatedContext(profile.uid).firestore();
+  return testEnv.authenticatedContext(profile.uid,sessionClaims(profile.uid)).firestore();
 }
 
 async function seedDoc(tx, collection, id, data) {
@@ -272,6 +273,7 @@ test.before(async () => {
 test.beforeEach(async () => {
   await testEnv.clearFirestore();
   await seedBase();
+  await seedBoundSessions(testEnv);
 });
 
 test.after(async () => {
@@ -399,10 +401,10 @@ test("ledger: supervisor autorizado dentro da equipe, fora bloqueado", async () 
   await assertFails(setDoc(doc(appDb(profiles.supervisor2), "lancamentos_financeiros", "lf_ingresso_sup2"), ledger({ tipoLancamento: "INGRESSO", natureza: "CREDITO", origemId: "sol_1", criadoPorId: profiles.supervisor2.uid })));
 });
 
-test("ledger: update valor/origem bloqueado, estorno autorizado permitido e delete bloqueado", async () => {
+test("ledger: update valor/origem e estorno direto bloqueados; delete bloqueado", async () => {
   await assertFails(updateDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1"), { valorCentavos: 999 }));
   await assertFails(updateDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1"), { origemId: "outra" }));
-  await assertSucceeds(updateDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1"), { statusLancamento: "ESTORNADO" }));
+  await assertFails(updateDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1"), { statusLancamento: "ESTORNADO" }));
   await assertFails(deleteDoc(doc(appDb(profiles.financeiroA), "lancamentos_financeiros", "lf_pagamento_1")));
 });
 
@@ -428,8 +430,8 @@ test("ownership: Auth UID canônico prevalece sobre alias conflitante", async ()
   await assertSucceeds(getDoc(doc(appDb(profiles.vendedor2), "caixas", "caixa_alias_conflitante")));
 });
 
-test("caixa: fechamento proprio permitido e reabertura direta bloqueada para todos", async () => {
-  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1"), { status: "FECHADO" }));
+test("caixa: fechamento e reabertura diretos bloqueados para todos", async () => {
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1"), { status: "FECHADO" }));
   await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "caixas", "caixa_fechado"), { status: "REABERTO" }));
   await assertFails(updateDoc(doc(appDb(profiles.supervisor1), "caixas", "caixa_fechado"), { status: "REABERTO" }));
   await assertFails(updateDoc(doc(appDb(profiles.masterA), "caixas", "caixa_fechado"), { status: "ABERTO" }));
@@ -442,20 +444,20 @@ test("caixa: update de data operacional e delete bloqueados", async () => {
   await assertFails(deleteDoc(doc(appDb(profiles.masterA), "caixas", "caixa_a_1")));
 });
 
-test("fechamento: cria valido, outro tenant bloqueado e snapshot imutavel", async () => {
+test("fechamento: criação direta negada, outro tenant bloqueado e snapshot imutavel", async () => {
   await testEnv.withSecurityRulesDisabled(async context => setDoc(doc(context.firestore(), "caixas", "caixa_a_novo"), caixa({ id: "caixa_a_novo", vendedorAuthUid: profiles.vendedor1.uid })));
-  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "fechamentos_caixa", "fechamento_caixa_a_novo"), fechamento({ fechamentoId: "fechamento_caixa_a_novo", caixaId: "caixa_a_novo" })));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "fechamentos_caixa", "fechamento_caixa_a_novo"), fechamento({ fechamentoId: "fechamento_caixa_a_novo", caixaId: "caixa_a_novo" })));
   await assertFails(setDoc(doc(appDb(profiles.masterA), "fechamentos_caixa", "fechamento_caixa_b_1"), fechamento({ clientePlataformaId: "tenant_b", caixaId: "caixa_b_1" })));
   await assertFails(updateDoc(doc(appDb(profiles.masterA), "fechamentos_caixa", "fechamento_caixa_a_1"), { caixaFinalEsperadoCentavos: 1 }));
 });
 
-test("historico: create permitido, update/delete bloqueados", async () => {
-  await assertSucceeds(setDoc(doc(appDb(profiles.masterA), "historico_estados_caixa", "hist_1"), tenantFields({ caixaId: "caixa_a_1", statusAnterior: "ABERTO", statusNovo: "FECHADO" })));
+test("historico: create SDK negado, update/delete bloqueados", async () => {
+  await assertFails(setDoc(doc(appDb(profiles.masterA), "historico_estados_caixa", "hist_1"), tenantFields({ caixaId: "caixa_a_1", statusAnterior: "ABERTO", statusNovo: "FECHADO" })));
   await assertFails(updateDoc(doc(appDb(profiles.masterA), "historico_estados_caixa", "hist_1"), { statusNovo: "REABERTO" }));
   await assertFails(deleteDoc(doc(appDb(profiles.masterA), "historico_estados_caixa", "hist_1")));
 });
 
-test("historico refechamento: cria somente para caixa reaberto e permanece imutavel", async () => {
+test("historico refechamento: criação SDK negada e registro do backend permanece imutavel", async () => {
   const payload = fechamento({
     fechamentoId: "fechamento_caixa_reaberto",
     caixaId: "caixa_reaberto",
@@ -466,7 +468,8 @@ test("historico refechamento: cria somente para caixa reaberto e permanece imuta
     autorId: profiles.vendedor1.uid,
     snapshotAuditoria: { caixaId: "caixa_reaberto" }
   });
-  await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "historico_fechamentos_caixa", "hist_refechamento_ok"), payload));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1), "historico_fechamentos_caixa", "hist_refechamento_ok"), payload));
+  await testEnv.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),"historico_fechamentos_caixa","hist_refechamento_ok"),payload));
   await assertFails(setDoc(doc(appDb(profiles.vendedor1), "historico_fechamentos_caixa", "hist_refechamento_fechado"), { ...payload, caixaId: "caixa_fechado", fechamentoId: "fechamento_caixa_fechado" }));
   await assertFails(setDoc(doc(appDb(profiles.vendedor2), "historico_fechamentos_caixa", "hist_refechamento_outro_vendedor"), payload));
   await assertFails(setDoc(doc(appDb(profiles.masterB), "historico_fechamentos_caixa", "hist_refechamento_outro_tenant"), { ...payload, clientePlataformaId: "tenant_b" }));
@@ -1096,7 +1099,7 @@ test('rules: criação de indicação aceita operador autorizado e continua bloq
   assert.match(trecho, /canCreateLeadByPermission\(\)/);
 });
 
- test("vendedor refechar exige caixa reaberto e histórico anterior na mesma gravação", async () => {
+ test("vendedor não pode refechar por SDK mesmo incluindo histórico no lote", async () => {
  const db = appDb(profiles.vendedor1);
  const closureRef = doc(db,"fechamentos_caixa","fechamento_caixa_reaberto");
  const previous = (await getDoc(closureRef)).data();
@@ -1106,7 +1109,8 @@ test('rules: criação de indicação aceita operador autorizado e continua bloq
  batch.set(closureRef,updated);
  batch.update(doc(db,"caixas","caixa_reaberto"),{status:"FECHADO"});
  batch.set(doc(db,"historico_fechamentos_caixa","hist_atomic"),{...updated,fechamentoId:"fechamento_caixa_reaberto",caixaId:"caixa_reaberto",modo:"REFECHAMENTO",statusAnterior:"REABERTO",statusNovo:"FECHADO",fechamentoAnterior:previous});
- await assertSucceeds(batch.commit());
+ await assertFails(batch.commit());
+ assert.deepEqual((await getDoc(closureRef)).data(),previous);
  await assertFails(updateDoc(closureRef,{caixaFinalInformadoCentavos:1}));
  });
 
@@ -1122,28 +1126,13 @@ test("fechamento: consultas do vendedor exigem empresa e vínculo canônico", as
 });
 
 
-test("fechamento: transação real do módulo publicado fecha caixa do vendedor com valor negativo", async () => {
-  const vm=require('node:vm');
-  const firebase=require('firebase/compat/app');require('firebase/compat/firestore');
-  const p={...profiles.vendedor1,uid:'vendedor_sdk_uid',role:'vendedor'}, caixaId='caixa_fechamento_sdk';
-  const box=caixa({vendedorId:'documento_vendedor',vendedorAuthUid:p.uid,saldoInicialCentavos:-472100,saldoAtualCentavos:-389300,status:'ABERTO'});
-  await testEnv.withSecurityRulesDisabled(async c=>{const seed=c.firestore();await setDoc(doc(seed,'usuarios',p.uid),{...userDoc(p),cargoChave:'vendedor'});await setDoc(doc(seed,'caixas',caixaId),box);});
-  const app=firebase.initializeApp({projectId},'fechamento_sdk_'+Date.now());
-  const db=app.firestore();const [host,port]=(process.env.FIRESTORE_EMULATOR_HOST||'127.0.0.1:8080').split(':');
-  db.useEmulator(host,Number(port),{mockUserToken:{sub:p.uid,user_id:p.uid}});
-  const env={console,db,firebase:{firestore:Object.assign(()=>db,{FieldValue:firebase.firestore.FieldValue})},IntegroOperacional:{hojeSP:()=> '2026-10-07',dataHoraSP:()=> '2026-10-08T11:00:00-03:00',centavosParaNumero:n=>n/100}};env.window=env;vm.createContext(env);
-  Function('window','firebase',fs.readFileSync(path.join(__dirname,'../js/services/financial-operations.js'),'utf8'))(env,env.firebase);
-  const snapshot={caixa:{id:caixaId,...box},versaoCalculo:'fechamento_caixa_v1',dataOperacional:box.dataOperacional,caixaInicialCentavos:-472100,caixaFinalEsperadoCentavos:-389300,carteiraInicialCentavos:0,carteiraFinalCentavos:0,totalVendasCentavos:130000,totalPagamentosCentavos:212800,totalIngressosCentavos:0,totalGastosCentavos:0,totalRetiradasCentavos:0,totalRecolhimentosCentavos:0,totalAjustesCentavos:0,totalCobrancas:5,totalVisitadas:5,totalPagas:5,totalNaoPagas:0,pendenciasCobranca:0,pagamentosPendentes:0};
-  try {
-    await assertFails(db.collection('caixas').where('clientePlataformaId','==',p.tenant).where('vendedorId','==','documento_vendedor').where('status','in',['ABERTO','REABERTO']).limit(20).get());
-    // A sessão pode usar o Auth UID, enquanto o caixa mantém o ID documental legado.
-    await assertFails(env.IntegroCaixa.registrarFechamentoCaixaTransacional({usuario:{id:p.uid,authUid:p.uid,tipoUsuario:'vendedor',clientePlataformaId:p.tenant},caixaId,clientePlataformaId:p.tenant,valorInformadoCentavos:-389300,snapshot}));
-    await assertSucceeds(env.IntegroCaixa.registrarFechamentoCaixaTransacional({usuario:{id:p.uid,authUid:p.uid,tipoUsuario:'vendedor',clientePlataformaId:p.tenant},caixaId,clientePlataformaId:p.tenant,vendedorId:'documento_vendedor',vendedorAuthUid:p.uid,valorInformadoCentavos:-389300,snapshot}));
-    assert.equal((await getDoc(doc(appDb(p),'caixas',caixaId))).data().status,'FECHADO');
-  } finally { await app.delete(); }
+test("fechamento: snapshot negativo forjado não autoriza SDK direto", async () => {
+ const db=appDb(profiles.vendedor1);
+ await assertFails(setDoc(doc(db,'fechamentos_caixa','fechamento_caixa_a_1'),fechamento({caixaFinalEsperadoCentavos:-100,caixaFinalInformadoCentavos:-100})));
+ await assertFails(updateDoc(doc(db,'caixas','caixa_a_1'),{status:'FECHADO',valorRealFechamentoCentavos:-100}));
 });
 
- test("movimentos: administrador não cria diretamente; vendedor mantém gastos e retiros no caixa aberto",async()=>{
+test("movimentos: administrador não cria diretamente; vendedor mantém gastos e retiros no caixa aberto",async()=>{
   for(const profile of [profiles.masterA,profiles.financeiroA,profiles.gerenteFinanceiroA])for(const tipo of ["INGRESSO","GASTO","RETIRADA"])for(const caixaId of ["caixa_a_1","caixa_fechado"]){
    await assertFails(setDoc(doc(appDb(profile),"lancamentos_financeiros",`lf_guard_${profile.uid}_${tipo}_${caixaId}`),ledger({caixaId,tipoLancamento:tipo,natureza:tipo==="INGRESSO"?"CREDITO":"DEBITO",origem:"LANCAMENTO_ADMINISTRATIVO",criadoPorId:profile.uid})));
   }
@@ -1215,6 +1204,7 @@ test('Master Global abre todas as consultas do painel sem tenant local', async (
   await testEnv.withSecurityRulesDisabled(async c => {
     const db=c.firestore();
     await setDoc(doc(db,'usuarios',profiles.masterGlobal.uid),{...userDoc(profiles.masterGlobal),clientePlataformaId:''});
+    await updateDoc(doc(db,'sessoes_usuarios',profiles.masterGlobal.uid),{clientePlataformaId:''});
     for(const name of ['planos','departamentos_integro','notificacoes']) await setDoc(doc(db,name,'global_boot'),{nome:'Teste',titulo:'Teste',publico:'GLOBAL',criadoEm:new Date()});
     await setDoc(doc(db,'logs','global_boot'),{origem:'master_global',usuarioAuthUid:profiles.masterGlobal.uid,tipoAcao:'LOGIN',criadoEm:new Date()});
   });
@@ -1231,3 +1221,21 @@ test('suporte: leitura própria e global permitida, outra empresa e escrita SDK 
 test('Master Global cria empresa e convite do Master Local no mesmo lote atomicamente',async()=>{const db=appDb(profiles.masterGlobal),batch=writeBatch(db);batch.set(doc(db,'clientes_integro','company_atomic'),{nome:'Empresa atômica',tipoPessoa:'PJ',documento:'04252011000110',status:'CADASTRO_PENDENTE',acessoLiberado:false});batch.set(doc(db,'usuarios','company_atomic_master_inicial'),{nome:'Administrador',email:'master@example.test',tipoUsuario:'master_local',clientePlataformaId:'company_atomic',authUid:'',status:'CONVITE_PENDENTE',acessoLiberado:false,convitePendente:true,provisionamentoAuth:'PENDENTE_BACKEND',criadoPorUid:profiles.masterGlobal.uid});await assertSucceeds(batch.commit());});
 
 test('Master Global e usuário leem vínculos autorizados; outra identidade e escrita SDK são negadas',async()=>{await testEnv.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'empresa_vinculos','link_master'),{authUid:profiles.masterA.uid,clientePlataformaId:'tenant_b',ativo:true}));await assertSucceeds(getDocs(query(collection(appDb(profiles.masterA),'empresa_vinculos'),where('authUid','==',profiles.masterA.uid),where('ativo','==',true))));await assertSucceeds(getDoc(doc(appDb(profiles.masterGlobal),'empresa_vinculos','link_master')));await assertFails(getDoc(doc(appDb(profiles.masterB),'empresa_vinculos','link_master')));await assertFails(setDoc(doc(appDb(profiles.masterA),'empresa_vinculos','forged'),{authUid:profiles.masterA.uid,clientePlataformaId:'tenant_b',ativo:true}));});
+
+test('conferência: SDK não pode criar fechamento mesmo com dados aparentemente válidos',async()=>{
+ const id='box_conferencia_gate',closure='fechamento_'+id, db=appDb(profiles.vendedor1);
+ await testEnv.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'caixas',id),caixa({id})));
+ const base=fechamento({caixaId:id,fechamentoId:closure,snapshotAuditoria:{pendenciasCobranca:0,pagamentosPendentes:0}});
+ for(const patch of [{caixaFinalInformadoCentavos:9000,diferencaCentavos:0},{caixaFinalInformadoCentavos:9000,diferencaCentavos:-1000,statusFechamento:'DIVERGENTE',justificativa:''},{caixaFinalInformadoCentavos:9000,diferencaCentavos:-1000,statusFechamento:'DIVERGENTE',justificativa:'   '},{snapshotAuditoria:{pendenciasCobranca:1}},{snapshotAuditoria:{pagamentosPendentes:1}}])await assertFails(setDoc(doc(db,'fechamentos_caixa',closure),{...base,...patch}));
+ await assertFails(setDoc(doc(db,'fechamentos_caixa',closure),{...base,caixaFinalInformadoCentavos:9000,diferencaCentavos:-1000,statusFechamento:'DIVERGENTE',justificativa:'Diferença conferida'}));
+ await assertFails(updateDoc(doc(db,'fechamentos_caixa',closure),{caixaFinalEsperadoCentavos:0}));
+});
+test('SDK não pode reativar nem substituir o vínculo de sessão mantido pelo backend',async()=>{
+ for(const p of [profiles.masterGlobal,profiles.masterA,profiles.vendedor1])await assertFails(updateDoc(doc(appDb(p),'usuarios',p.uid),{segurancaSessao:{id:'forged-session-12345',encerrada:false,expiresAtMs:9876543210000}}));
+});
+
+test('divergência: SDK não forja aprovação nem altera a conferência original',async()=>{
+ const db=appDb(profiles.masterA),ref=doc(db,'fechamentos_caixa','fechamento_caixa_a_1');
+ await assertFails(updateDoc(ref,{tratamentoDivergencia:{decisao:'SOLICITAR_REGULARIZACAO',statusTratamento:'REGULARIZACAO_SOLICITADA'}}));
+ await assertFails(updateDoc(ref,{justificativa:'Substituição indevida'}));
+});

@@ -534,7 +534,7 @@
 
   async function carregarUsuariosPorPerfil() {
     const perfil = acesso().perfil;
-    if (perfil === "vendedor" || perfil === "captador") return [usuarioAtual].filter(Boolean);
+    if (["vendedor", "captador", "administrativo"].includes(perfil)) return [usuarioAtual].filter(Boolean);
     if (perfil === "supervisor") {
       const usuarios = await consultar(CONFIG.COLECOES.USUARIOS, [], CONFIG.LIMITS?.USUARIOS || 300);
       const equipes = new Set(acesso().equipeIds || []);

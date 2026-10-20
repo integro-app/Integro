@@ -7,13 +7,14 @@ function criarTransferenciasV27({admin,functions,db}){
   const text=core.texto,norm=core.normalizarStatus,ts=()=>FieldValue.serverTimestamp(),now=()=>new Date().toISOString();
   const err=(c,m)=>{throw new functions.https.HttpsError(c,m);};
   const role=u=>[u.tipoUsuario,u.perfil,u.cargoChave,u.cargo].map(norm).find(r=>["MASTER_LOCAL","GERENTE","SUPERVISOR","VENDEDOR"].includes(r))||norm(u.tipoUsuario);
-  const active=u=>u&&u.acessoLiberado===true&&!["INATIVO","BLOQUEADO","SUSPENSO"].includes(norm(u.status));
+  const active=u=>u&&u.ativo!==false&&u.excluido!==true&&u.acessoLiberado===true&&!["INATIVO","BLOQUEADO","SUSPENSO"].includes(norm(u.status));
   const ids=u=>[u?.id,u?.authUid,u?.uid,u?.usuarioId].filter(Boolean).map(String);
   const teamIds=u=>[...(Array.isArray(u?.equipeIds)?u.equipeIds:[]),...(Array.isArray(u?.equipesIds)?u.equipesIds:[]),u?.equipeId].filter(Boolean).map(String);
   const idSafe=v=>text(v).replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,300);
-  async function userByUid(uid){let s=await db.collection("usuarios").doc(uid).get();if(s.exists)return{id:s.id,...s.data()};const q=await db.collection("usuarios").where("authUid","==",uid).limit(1).get();return q.empty?null:{id:q.docs[0].id,...q.docs[0].data()};}
+  async function userByUid(uid){let s=await db.collection("usuarios").doc(uid).get();if(s.exists)return{...s.data(),id:s.id};const q=await db.collection("usuarios").where("authUid","==",uid).limit(2).get();return q.docs.length!==1?null:{...q.docs[0].data(),id:q.docs[0].id};}
   async function session(ctx){const uid=text(ctx?.auth?.uid);if(!uid)err("unauthenticated","Sessão não autenticada.");const u=await userByUid(uid);if(!active(u)||text(u.authUid||uid)!==uid)err("permission-denied","Usuário sem acesso.");const tenant=text(u.clientePlataformaId);if(!tenant)err("failed-precondition","Empresa não identificada.");await exigirEmpresaOperacional({db,functions,usuario:u,tenantId:tenant});return{uid,u,tenant};}
-  async function targetUser(uid,tenant){const u=await userByUid(text(uid));if(!active(u)||text(u.clientePlataformaId)!==tenant)err("failed-precondition","Responsável de destino inválido.");return u;}
+  async function targetUser(uid,tenant){const u=await userByUid(text(uid));if(!active(u)||!text(u.authUid)||text(u.authUid)!==text(uid)||text(u.clientePlataformaId)!==tenant)err("failed-precondition","Responsável de destino inválido.");return u;}
+  function denied(u,action){return [u.permissoesCargo,u.permissoes,u.permissoesUsuario].filter(Boolean).some(p=>p.clientes===false||p.clientes?.ver===false||p["clientes.ver"]===false||p.clientes?.[action]===false||p["clientes."+action]===false);}
   function canManager(u){return["MASTER_LOCAL","GERENTE"].includes(role(u));}
   function canSupervisor(u){return role(u)==="SUPERVISOR";}
   function notification(tenant,uid,data){return{clientePlataformaId:tenant,destinatarioAuthUid:uid,usuarioAuthUid:uid,usuarioUid:uid,tipo:data.tipo,titulo:data.titulo,mensagem:data.mensagem,prioridade:"NORMAL",origemModulo:"CLIENTES",entidadeTipo:data.entidadeTipo||"CARTEIRA",entidadeId:data.entidadeId||"",rota:data.rota||{tela:"clientes",aba:"clientes",acao:"CLIENTE_360",entidadeId:data.entidadeId||""},lida:false,naLixeira:false,criadoEmTexto:now(),criadoEm:ts()};}
@@ -50,7 +51,7 @@ function criarTransferenciasV27({admin,functions,db}){
     const {uid,u,tenant}=await session(ctx),type=norm(data?.tipo),itemId=text(data?.itemId),reason=text(data?.motivo),operationId=text(data?.operacaoId)||randomUUID();
     if(reason.length<3)err("invalid-argument","Motivo da transferência é obrigatório.");
     if(!["CLIENTE","LEAD"].includes(type)||!itemId||itemId.includes("/"))err("invalid-argument","Tipo ou entidade de transferência inválida.");
-    if(!canManager(u)&&!canSupervisor(u))err("permission-denied","Sem permissão para transferir.");
+    if(denied(u,"transferir")||!canManager(u)&&!canSupervisor(u))err("permission-denied","Sem permissão para transferir.");
     const dest=await targetUser(data?.destinoAuthUid,tenant),itemRef=db.collection(type==="CLIENTE"?"clientes_operacionais":"indicacoes").doc(itemId);
     const key="transfer_"+hash([tenant,uid,operationId]),opRef=db.collection("logs").doc(key),fingerprint=hash([type,itemId,text(dest.authUid||dest.id),reason]);
     return db.runTransaction(async tx=>{
@@ -61,7 +62,7 @@ function criarTransferenciasV27({admin,functions,db}){
       if(!itemSnap.exists)err("not-found","Entidade não encontrada.");const item={id:itemSnap.id,...itemSnap.data()};
       if(text(item.clientePlataformaId)!==tenant||item.excluido===true)err("permission-denied","Entidade fora do escopo.");
       if(text(dest.authUid||dest.id)===responsibleUid(item))err("failed-precondition","O destino já é responsável pelo item.");
-      if(!canManager(actorSnap.data())&&!canSupervisor(actorSnap.data()))err("permission-denied","Perfil não autorizado.");if(canSupervisor(actorSnap.data()))scopeSupervisor(actorSnap.data(),item,destSnap.data());
+      if(denied(actorSnap.data(),"transferir")||!canManager(actorSnap.data())&&!canSupervisor(actorSnap.data()))err("permission-denied","Perfil não autorizado.");if(canSupervisor(actorSnap.data()))scopeSupervisor(actorSnap.data(),item,destSnap.data());
       let result;
       if(type==="CLIENTE"&&canSupervisor(u)){
         const requestId="tc_"+hash([tenant,uid,operationId]),request={clientePlataformaId:tenant,tipo:"TRANSFERENCIA_CLIENTE",status:"PENDENTE",itemId,origemAuthUid:responsibleUid(item),origemNome:text(item.vendedorNome||item.responsavelNome),equipeOrigemId:text(item.equipeId),destinoAuthUid:text(dest.authUid||dest.id),destinoNome:text(dest.nome||dest.email),equipeDestinoId:teamIds(dest)[0]||"",solicitanteAuthUid:uid,solicitanteNome:text(u.nome||u.email),motivo:reason,operacaoId:operationId,criadoEmTexto:now(),criadoEm:ts(),atualizadoEmTexto:now(),atualizadoEm:ts()};
@@ -81,14 +82,14 @@ function criarTransferenciasV27({admin,functions,db}){
     });
   }
   async function decide(data,ctx){
-    const {uid,u,tenant}=await session(ctx);if(!canManager(u))err("permission-denied","Somente Gerente ou Master Local aprova transferência de cliente.");
+    const {uid,u,tenant}=await session(ctx);if(denied(u,"aprovar")||!canManager(u))err("permission-denied","Somente Gerente ou Master Local aprova transferência de cliente.");
     const id=text(data?.solicitacaoId),decision=norm(data?.decisao),reason=text(data?.motivo);
     if(!id||id.includes("/")||!["APROVAR","REJEITAR"].includes(decision))err("invalid-argument","Decisão inválida.");
     if(decision==="REJEITAR"&&reason.length<3)err("invalid-argument","Informe o motivo.");
     const ref=db.collection("transferencias_solicitacoes").doc(id),expected=decision==="APROVAR"?"APROVADA":"REJEITADA";
     return db.runTransaction(async tx=>{
       const [snap,actorSnap]=await Promise.all([tx.get(ref),tx.get(db.collection("usuarios").doc(u.id))]);
-      if(!actorSnap.exists||!active(actorSnap.data())||!canManager(actorSnap.data())||text(actorSnap.data().clientePlataformaId)!==tenant)err("permission-denied","Responsável sem acesso.");
+      if(!actorSnap.exists||!active(actorSnap.data())||(denied(actorSnap.data(),"aprovar")||!canManager(actorSnap.data()))||text(actorSnap.data().clientePlataformaId)!==tenant)err("permission-denied","Responsável sem acesso.");
       if(!snap.exists)err("not-found","Solicitação não encontrada.");const req={id,...snap.data()};
       if(text(req.clientePlataformaId)!==tenant)err("permission-denied","Solicitação fora da empresa.");
       if(norm(req.status)===expected)return {ok:true,status:expected,modo:"IDEMPOTENTE"};

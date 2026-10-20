@@ -10,7 +10,9 @@ admin.initializeApp();
 // estáticas do namespace compat. Mantém uma única fonte de timestamp válida
 // tanto no Node 22 de produção quanto no runtime local de homologação.
 if (!admin.firestore.FieldValue) admin.firestore.FieldValue = FieldValue;
-const db = admin.firestore();
+const sessionAuthorization = require("./session-authorization").criarProtecaoSessao({ db: admin.firestore(), functions });
+const db = sessionAuthorization.db;
+const protegerSessao = sessionAuthorization.protect;
 
 function erroHttps(codigo, mensagem) {
   throw new functions.https.HttpsError(codigo, mensagem);
@@ -22,7 +24,7 @@ function senhaTemporaria() {
 
 exports.provisionarUsuario = functions
   .region("southamerica-east1")
-  .https.onCall(async (dados, contexto) => {
+  .https.onCall(protegerSessao(async (dados, contexto) => {
     if (!contexto.auth?.uid) erroHttps("unauthenticated", "Sessao nao autenticada.");
 
     const conviteId = String(dados?.conviteId || "").trim();
@@ -140,28 +142,28 @@ exports.provisionarUsuario = functions
     await lote.commit();
 
     return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: Boolean(ativacaoUrl), ...(ativacaoUrl ? { ativacaoUrl } : {}) };
-  });
+  }));
 
 const { criarOperacoesFinanceiras } = require("./financial-callables");
 const operacoesFinanceiras = criarOperacoesFinanceiras({ admin, functions, db });
 
 exports.registrarVendaOperacional = functions
   .region("southamerica-east1")
-  .https.onCall(operacoesFinanceiras.registrarVenda);
+  .https.onCall(protegerSessao(operacoesFinanceiras.registrarVenda));
 
 exports.registrarPagamentoOperacional = functions
   .region("southamerica-east1")
-  .https.onCall(operacoesFinanceiras.registrarPagamento);
+  .https.onCall(protegerSessao(operacoesFinanceiras.registrarPagamento));
 
 exports.registrarNaoPagamentoOperacional = functions
   .region("southamerica-east1")
-  .https.onCall(operacoesFinanceiras.registrarNaoPagamento);
+  .https.onCall(protegerSessao(operacoesFinanceiras.registrarNaoPagamento));
 
 const { criarCorrecoesBaixaVendedor } = require("./seller-collection-corrections");
 const correcoesBaixaVendedor = criarCorrecoesBaixaVendedor({ db, functions });
 exports.corrigirBaixaCobrancaOperacional = functions
   .region("southamerica-east1")
-  .https.onCall(correcoesBaixaVendedor.corrigir);
+  .https.onCall(protegerSessao(correcoesBaixaVendedor.corrigir));
 
 // V27: o Financeiro Empresarial permanece independente do caixa/ledger operacional.
 // A antiga ponte de retirada de recurso empresarial deixa de ser exportada nesta versão.
@@ -169,24 +171,24 @@ exports.corrigirBaixaCobrancaOperacional = functions
 const { criarPagamentosFinanceirosEmpresariais } = require("./enterprise-finance-payments");
 const pagamentosFinanceirosEmpresariais = criarPagamentosFinanceirosEmpresariais({ admin, functions, db });
 const {criarCliente360}=require('./cliente-360');
-exports.obterCliente360V27=functions.region('southamerica-east1').https.onCall(criarCliente360({db,functions}).callable);
+exports.obterCliente360V27=functions.region('southamerica-east1').https.onCall(protegerSessao(criarCliente360({db,functions}).callable));
 
 exports.registrarPagamentoFinanceiroEmpresarial = functions
   .region("southamerica-east1")
-  .https.onCall(pagamentosFinanceirosEmpresariais.registrarPagamento);
+  .https.onCall(protegerSessao(pagamentosFinanceirosEmpresariais.registrarPagamento));
 
 const { criarFluxosFinanceirosV27 } = require("./v27-finance-workflows");
 const fluxosFinanceirosV27 = criarFluxosFinanceirosV27({ admin, functions, db, pagamentosFinanceirosEmpresariais });
-exports.solicitarAtribuicaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(fluxosFinanceirosV27.solicitarAtribuicao);
-exports.solicitarAlteracaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(fluxosFinanceirosV27.solicitarAlteracao);
-exports.decidirSolicitacaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(fluxosFinanceirosV27.decidirSolicitacao);
-exports.estornarPagamentoFinanceiroEmpresarialV27 = functions.region("southamerica-east1").https.onCall(fluxosFinanceirosV27.estornarPagamento);
+exports.solicitarAtribuicaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(fluxosFinanceirosV27.solicitarAtribuicao));
+exports.solicitarAlteracaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(fluxosFinanceirosV27.solicitarAlteracao));
+exports.decidirSolicitacaoFinanceiraV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(fluxosFinanceirosV27.decidirSolicitacao));
+exports.estornarPagamentoFinanceiroEmpresarialV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(fluxosFinanceirosV27.estornarPagamento));
 
 const { criarProcessadorLembretesFinanceiros } = require("./enterprise-finance-reminders");
 exports.processarLembretesFinanceirosEmpresariais = criarProcessadorLembretesFinanceiros({ functions, admin, db });
 const { criarRecorrenciasFinanceiras } = require("./enterprise-finance-recurrences");
 const recorrenciasFinanceiras = criarRecorrenciasFinanceiras({ db, functions });
-exports.gerarOcorrenciasFinanceirasV27 = functions.region("southamerica-east1").https.onCall(recorrenciasFinanceiras.callable);
+exports.gerarOcorrenciasFinanceirasV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(recorrenciasFinanceiras.callable));
 exports.processarRecorrenciasFinanceirasEmpresariais = functions.region("southamerica-east1").pubsub.schedule("every day 01:15").timeZone("America/Sao_Paulo").onRun(recorrenciasFinanceiras.scheduled);
 
 const { criarAdministracaoV27 } = require("./v27-admin");
@@ -196,33 +198,33 @@ exports.iniciarSessaoV27 = functions.region("southamerica-east1").https.onCall(a
 exports.validarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.validarSessao);
 exports.encerrarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.encerrarSessao);
 exports.registrarFalhaLoginV27 = functions.region("southamerica-east1").https.onCall(adminV27.registrarFalhaLogin);
-exports.redefinirSenhaUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.resetPassword);
-exports.desbloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.desbloquearUsuario);
-exports.bloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.bloquearUsuario);
-exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.invalidarSessoes);
+exports.redefinirSenhaUsuarioV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(adminV27.resetPassword));
+exports.desbloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(adminV27.desbloquearUsuario));
+exports.bloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(adminV27.bloquearUsuario));
+exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(adminV27.invalidarSessoes));
 
 const { criarTransferenciasV27 } = require("./v27-transferencias");
 const transferenciasV27 = criarTransferenciasV27({ admin, functions, db });
-exports.transferirResponsabilidadeV27 = functions.region("southamerica-east1").https.onCall(transferenciasV27.transferir);
-exports.decidirTransferenciaClienteV27 = functions.region("southamerica-east1").https.onCall(transferenciasV27.decidir);
+exports.transferirResponsabilidadeV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(transferenciasV27.transferir));
+exports.decidirTransferenciaClienteV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(transferenciasV27.decidir));
 
 const { criarAprovacoesVendaV27 } = require("./v27-sales-approvals");
 const aprovacoesVendaV27 = criarAprovacoesVendaV27({ admin, functions, db });
-exports.decidirVendaComSaldoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesVendaV27.decidir);
+exports.decidirVendaComSaldoV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(aprovacoesVendaV27.decidir));
 
 const { criarAprovacoesClientesV27 } = require("./v27-client-approvals");
 const aprovacoesClientesV27 = criarAprovacoesClientesV27({ admin, functions, db });
-exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.solicitar);
-exports.decidirCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.decidir);
+exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(aprovacoesClientesV27.solicitar));
+exports.decidirCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(aprovacoesClientesV27.decidir));
 
 const { criarConfiguracoesV27 } = require("./v27-config");
 const configuracoesV27 = criarConfiguracoesV27({ admin, functions, db });
-exports.salvarConfiguracoesEmpresaV27 = functions.region("southamerica-east1").https.onCall(configuracoesV27.salvar);
+exports.salvarConfiguracoesEmpresaV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(configuracoesV27.salvar));
 
 const { criarChatV27 } = require("./v27-chat");
 const chatV27 = criarChatV27({ admin, functions, db });
-exports.atualizarEstadoMensagensChatV27 = functions.region("southamerica-east1").https.onCall(chatV27.atualizarEstadoMensagens);
-exports.excluirMensagemChatV27 = functions.region("southamerica-east1").https.onCall(chatV27.excluirMensagem);
+exports.atualizarEstadoMensagensChatV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(chatV27.atualizarEstadoMensagens));
+exports.excluirMensagemChatV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(chatV27.excluirMensagem));
 
 const { criarManutencaoV27 } = require("./v27-maintenance");
 const manutencaoV27 = criarManutencaoV27({ admin, functions, db });
@@ -230,23 +232,28 @@ exports.limparNotificacoesLixeiraV27 = manutencaoV27.limparNotificacoesAgendada;
 
 const { criarCicloCaixa } = require("./box-lifecycle");
 const cicloCaixa = criarCicloCaixa({ db, functions });
-exports.abrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(cicloCaixa.abrir);
-exports.reabrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(cicloCaixa.reabrir);
-exports.consultarDatasCaixaEquipe = functions.region("southamerica-east1").https.onCall(cicloCaixa.datasEquipe);
+exports.abrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.abrir));
+exports.tratarDivergenciaCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.tratar));
+exports.conferirCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.conferir));
+exports.fecharCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.fechar));
+exports.reabrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.reabrir));
+exports.consultarDatasCaixaEquipe = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.datasEquipe));
 
 const {criarMovimentacoesAdministrativas}=require("./admin-movements");
-exports.registrarMovimentacaoAdministrativa=functions.region("southamerica-east1").https.onCall(criarMovimentacoesAdministrativas({db,functions}).registrar);
+exports.registrarMovimentacaoAdministrativa=functions.region("southamerica-east1").https.onCall(protegerSessao(criarMovimentacoesAdministrativas({db,functions}).registrar));
 
 const { criarAssinaturasPlataforma } = require("./platform-subscriptions");
 const assinaturasPlataforma = criarAssinaturasPlataforma({ db, functions });
-exports.configurarAssinaturaPlataforma = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.configurar);
-exports.consultarFinanceiroAssinatura = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.consultar);
-exports.confirmarPagamentoAssinatura = functions.region("southamerica-east1").https.onCall(assinaturasPlataforma.confirmar);
+exports.configurarAssinaturaPlataforma = functions.region("southamerica-east1").https.onCall(protegerSessao(assinaturasPlataforma.configurar));
+exports.consultarFinanceiroAssinatura = functions.region("southamerica-east1").https.onCall(protegerSessao(assinaturasPlataforma.consultar));
+exports.confirmarPagamentoAssinatura = functions.region("southamerica-east1").https.onCall(protegerSessao(assinaturasPlataforma.confirmar));
 
-exports.consultarAvisosAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(assinaturasPlataforma.avisos);
-exports.marcarAvisoAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(assinaturasPlataforma.marcarAviso);
-exports.suportePlataformaV27=functions.region('southamerica-east1').https.onCall(require('./platform-support').criarSuportePlataforma({db,functions}).callable);
+exports.consultarAvisosAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(protegerSessao(assinaturasPlataforma.avisos));
+exports.marcarAvisoAssinaturaPlataforma=functions.region('southamerica-east1').https.onCall(protegerSessao(assinaturasPlataforma.marcarAviso));
+exports.suportePlataformaV27=functions.region('southamerica-east1').https.onCall(protegerSessao(require('./platform-support').criarSuportePlataforma({db,functions}).callable));
 
-exports.gerenciarVinculosEmpresas=functions.region('southamerica-east1').https.onCall(require('./company-memberships').criarVinculosEmpresas({db,functions}).callable);
+exports.gerenciarVinculosEmpresas=functions.region('southamerica-east1').https.onCall(protegerSessao(require('./company-memberships').criarVinculosEmpresas({db,functions}).callable));
 
-exports.cadastrarClienteVendedorV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.cadastrarVendedor);
+exports.cadastrarClienteVendedorV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(aprovacoesClientesV27.cadastrarVendedor));
+
+exports.estornarLancamentoFinanceiroOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(require("./operational-ledger").criarLedgerOperacional({db,functions}).estornar));

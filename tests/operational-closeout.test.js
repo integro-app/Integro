@@ -62,7 +62,7 @@ test('reabertura não usa alias legado para ignorar caixa posterior da mesma ide
   db.records.set('caixas/old', { clientePlataformaId: 'a', vendedorId: 'legacy', status: 'FECHADO', dataOperacional: core.adicionarDiasISO(core.hojeSP(), -1) });
   db.records.set('caixas/newer', { clientePlataformaId: 'a', vendedorId: 'seller', vendedorAuthUid: 'seller', status: 'FECHADO', dataOperacional: core.hojeSP() });
   db.records.set('fechamentos_caixa/fechamento_old', { status: 'FECHADO' });
-  await assert.rejects(api.reabrir({ caixaId: 'old', motivo: 'Conferência' }, ctx('master')), e => e.code === 'failed-precondition');
+  await assert.rejects(api.reabrir({operacaoId:require("node:crypto").randomUUID(), caixaId: 'old', motivo: 'Conferência' }, ctx('master')), e => e.code === 'failed-precondition');
   assert.equal(db.records.get('caixas/old').status, 'FECHADO');
 });
 

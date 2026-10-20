@@ -2,6 +2,7 @@
 const { exigirEmpresaOperacional } = require("./company-access");
 
 const core = require("./financial-core");
+const access = require("./enterprise-finance-access");
 const {createHash} = require("node:crypto");
 const { FieldValue } = require("firebase-admin/firestore");
 
@@ -20,6 +21,7 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
     return mapasPermissao(usuario).some(map => map?.controleFinanceiro?.pagar === true || map?.controleFinanceiro?.baixar === true || map?.controleFinanceiro?.editar === true);
   }
   function podePagarConta(usuario, uid, conta) {
+    if (access.denied(usuario,["pagar","baixar"])) return false;
     if (permissaoGlobalPagamento(usuario)) return true;
     return [conta.criadoPorAuthUid, conta.responsavelAuthUid, conta.atribuidoAuthUid].map(texto).includes(uid);
   }
@@ -44,12 +46,13 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
   }
   function centavosEntrada(valor, nome, permitirZero = true) {
     const n = Number(valor);
-    if (!Number.isInteger(n) || n < 0 || (!permitirZero && n === 0)) erro("invalid-argument", `${nome} inválido.`);
+    if (!Number.isSafeInteger(n) || n < 0 || (!permitirZero && n === 0)) erro("invalid-argument", `${nome} inválido.`);
     return n;
   }
   function validarTenant(dados, tenantId) { if (texto(dados?.clientePlataformaId) !== tenantId) erro("permission-denied", "Conta não pertence à empresa atual."); }
 
   function podeAprovarFinanceiro(usuario = {}) {
+    if(access.denied(usuario,["aprovar"])) return false;
     const role = perfil(usuario);
     return ["MASTER_LOCAL", "GERENTE", "SUPERVISOR_FINANCEIRO"].includes(role) || usuario.responsavelFinanceiro === true ||
       mapasPermissao(usuario).some(map => map?.controleFinanceiro?.aprovar === true);
@@ -173,6 +176,10 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
       const liveActor=actorSnap.exists?actorSnap.data():{};
       if(liveActor.authUid!==uid||liveActor.acessoLiberado!==true||texto(liveActor.clientePlataformaId)!==tenantId||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(liveActor.status)))erro('permission-denied','Usuário sem acesso.');
       if(approvalRef&&(!approvalSnap.exists||texto(approvalSnap.data().clientePlataformaId)!==tenantId||!["PENDENTE","APROVADA"].includes(status(approvalSnap.data().status))))erro("failed-precondition","Solicitação retroativa indisponível.");
+      if(approvalSnap?.exists) {
+        const request=approvalSnap.data(), currentFingerprint=createHash("sha256").update(JSON.stringify(sanitizarEntradaPagamento(request.pagamentoEntrada || {}))).digest("hex");
+        if(texto(request.contaId)!==contaId || status(request.tipo)!=="PAGAMENTO_RETROATIVO" || currentFingerprint!==fingerprint || request.fingerprint && request.fingerprint!==fingerprint) erro("failed-precondition","Solicitação retroativa alterada; confira novamente.");
+      }
       if (!contaSnap.exists) erro("not-found", "Conta empresarial não encontrada.");
       const conta = { id: contaId, ...contaSnap.data() };
       validarTenant(conta, tenantId);
@@ -193,7 +200,8 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
       if (!quitarValorReal && valorPagoCentavos > saldoAntesCentavos) erro("failed-precondition", "O pagamento não pode ultrapassar o saldo sem selecionar quitação pelo valor real.");
       if (reprogramarSaldo && valorPagoCentavos >= saldoAntesCentavos) erro("failed-precondition", "Reprogramação de saldo exige pagamento menor que o saldo atual.");
 
-      const valorEfetivoCentavos = Math.max(0, valorPagoCentavos + jurosCentavos + multaCentavos - descontoCentavos);
+      const valorEfetivoCentavos = valorPagoCentavos + jurosCentavos + multaCentavos - descontoCentavos;
+      if(!Number.isSafeInteger(valorEfetivoCentavos)||valorEfetivoCentavos<=0||!Number.isSafeInteger(pagoAntesCentavos+valorPagoCentavos)) erro("invalid-argument","Valor efetivo ou total pago inválido.");
       const agoraTexto = new Date().toISOString();
       const dataPagamento = texto(entrada.dataPagamento) || core.hojeSP();
       const operadorNome = texto(usuario.nome || usuario.nomeCompleto || usuario.email);

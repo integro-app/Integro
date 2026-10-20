@@ -655,7 +655,9 @@
     });
   }
 
-  function impactoLancamentoCentavos(lancamento = {}) {
+  function impactoLancamentoCentavos(lancamento = {}, lista = []) {
+    if (normalizarStatus(lancamento.tipoLancamento) === "DIVERGENCIA_ACEITA") return 0;
+    if (normalizarStatus(lancamento.tipoLancamento) === "ESTORNO" && lista.some(original => texto(original.id || original.lancamentoId) === texto(lancamento.reversaoDeId) && normalizarStatus(original.statusLancamento) === "ESTORNADO")) return 0;
     const status = normalizarStatus(lancamento.statusLancamento || "CONFIRMADO");
     if (["PENDENTE", "CANCELADO", "ESTORNADO"].includes(status)) return 0;
     const valor = Math.abs(Math.round(Number(lancamento.valorCentavos || 0)));
@@ -669,7 +671,7 @@
     const caixa = { id: caixaId, ...caixaSnap.data() };
     const lancamentos = await listarLancamentosCaixa(caixaId, { ...opcoes, db, clientePlataformaId: opcoes.clientePlataformaId || caixa.clientePlataformaId });
     const caixaInicialCentavos = centavosDe(caixa, "saldoInicialCentavos", ["valorInicial", "caixaInicial", "saldoInicial", "valorAbertura"]);
-    const saldoMovimentosCentavos = lancamentos.reduce((total, l) => total + impactoLancamentoCentavos(l), 0);
+    const saldoMovimentosCentavos = lancamentos.reduce((total, l) => total + impactoLancamentoCentavos(l, lancamentos), 0);
     return {
       caixaId,
       caixa,
@@ -726,7 +728,7 @@
       porTipo: {}
     };
     lista.forEach(l => {
-      const impacto = impactoLancamentoCentavos(l);
+      const impacto = impactoLancamentoCentavos(l, lista);
       if (impacto === 0) return;
       const valor = Math.abs(impacto);
       const tipo = normalizarStatus(l.tipoLancamento || "OUTRO");
@@ -745,6 +747,8 @@
   }
 
   async function registrarEstornoFinanceiro(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("estornarLancamentoFinanceiroOperacional", entrada);
+    exigirBackendFinanceiro();
     const db = getDb();
     const usuario = entrada.usuario || {};
     const lancamentoOriginalId = texto(entrada.lancamentoOriginalId || entrada.origemId);
@@ -813,6 +817,8 @@
   }
 
   async function registrarRegularizacaoFinanceiraCaixa(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("tratarDivergenciaCaixaOperacional", { ...entrada, decisao: "REGISTRAR_REGULARIZACAO", valorCentavos: entrada.valorCentavos !== undefined ? entrada.valorCentavos : getOperacional().moedaParaCentavos(entrada.valor || 0), operacaoId: entrada.operacaoId || window.crypto?.randomUUID?.() || ("regularizacao_" + Date.now() + "_" + Math.random().toString(36).slice(2)) });
+    exigirBackendFinanceiro();
     const db = getDb();
     const usuario = entrada.usuario || {};
     const caixaId = texto(entrada.caixaId);
@@ -2168,6 +2174,8 @@
   }
 
   async function prepararSnapshotFechamentoCaixa(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("conferirCaixaOperacional", { caixaId: entrada.caixaId });
+    exigirBackendFinanceiro();
     const db = entrada.db || getDb();
     const operacional = getOperacional();
     const caixaId = texto(entrada.caixaId);
@@ -2277,6 +2285,13 @@
   }
 
   async function registrarFechamentoCaixaTransacional(entrada = {}) {
+    if (backendFinanceiroDisponivel()) {
+      if (entrada.filaOfflinePendente || entrada.operacaoLocalSincronizando) throw new Error("Sincronize as operações locais antes do fechamento.");
+      const snapshot = entrada.snapshot || await prepararSnapshotFechamentoCaixa(entrada);
+      const valor = entrada.valorInformadoCentavos !== undefined ? entrada.valorInformadoCentavos : getOperacional().moedaParaCentavos(entrada.valorInformado || entrada.valorReal || 0);
+      return chamarBackendFinanceiro("fecharCaixaOperacional", { caixaId: entrada.caixaId, conferenciaId: snapshot.conferenciaId, valorInformadoCentavos: valor, justificativa: entrada.justificativa || entrada.observacao || "" });
+    }
+    exigirBackendFinanceiro();
     const db = getDb();
     const operacional = getOperacional();
     const usuario = entrada.usuario || {};
@@ -2287,6 +2302,8 @@
     const valorInformadoCentavos = Number.isInteger(entrada.valorInformadoCentavos)
       ? entrada.valorInformadoCentavos
       : operacional.moedaParaCentavos(entrada.valorInformado || entrada.valorReal || 0);
+    if (entrada.valorInformadoCentavos !== undefined && !Number.isSafeInteger(entrada.valorInformadoCentavos)) throw new Error("Informe valor válido em centavos inteiros.");
+    if (!Number.isSafeInteger(valorInformadoCentavos)) throw new Error("Informe valor válido para a conferência.");
     const justificativa = texto(entrada.justificativa || entrada.observacao || "");
     const fechamentoId = fechamentoIdDeterministico(caixaId);
     const snapshot = entrada.snapshot || await prepararSnapshotFechamentoCaixa({ ...entrada, db });
@@ -2309,7 +2326,7 @@
       await registrarLogFechamentoBloqueado({ db, tipoAcao: "CAIXA_FECHAMENTO_BLOQUEADO_PENDENCIAS", entrada, usuario, detalhe: erro.message });
       throw erro;
     }
-    if (snapshot.pendenciasCobranca > 0 && entrada.ignorarPendencias !== true) {
+    if (snapshot.pendenciasCobranca > 0) {
       const erro = new Error(`Existem ${snapshot.pendenciasCobranca} cobranças previstas sem situação registrada.`);
       erro.code = "ERRO_FECHAMENTO_PENDENCIAS";
       await registrarLogFechamentoBloqueado({ db, tipoAcao: "CAIXA_FECHAMENTO_BLOQUEADO_PENDENCIAS", entrada, usuario, detalhe: erro.message });
@@ -2318,7 +2335,7 @@
 
     const diferencaCentavos = valorInformadoCentavos - snapshot.caixaFinalEsperadoCentavos;
     const statusFechamento = diferencaCentavos === 0 ? "FECHADO" : "DIVERGENTE";
-    if (statusFechamento === "DIVERGENTE" && !justificativa && entrada.exigirJustificativaDivergencia !== false) {
+    if (statusFechamento === "DIVERGENTE" && !justificativa) {
       throw new Error("Informe justificativa para fechamento divergente.");
     }
 
@@ -2734,7 +2751,7 @@
   }
 
   async function registrarReaberturaCaixaTransacional(entrada = {}) {
-    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("reabrirCaixaOperacional", entrada);
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("reabrirCaixaOperacional", { ...entrada, operacaoId: entrada.operacaoId || window.crypto?.randomUUID?.() || ("reabertura_" + Date.now() + "_" + Math.random().toString(36).slice(2)) });
     exigirBackendFinanceiro();
     const db = getDb();
     const operacional = getOperacional();
@@ -2887,6 +2904,8 @@
   }
 
   async function registrarTratamentoDivergenciaCaixa(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("tratarDivergenciaCaixaOperacional", { ...entrada, operacaoId: entrada.operacaoId || window.crypto?.randomUUID?.() || ("tratamento_" + Date.now() + "_" + Math.random().toString(36).slice(2)) });
+    exigirBackendFinanceiro();
     const db = getDb();
     const usuario = entrada.usuario || {};
     const caixaId = texto(entrada.caixaId);

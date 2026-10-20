@@ -33,7 +33,8 @@
 
   async function loadIfMissing(test, src, key) {
     if (test()) return true;
-    return loadScript(`${src}?v=${VERSION}&build=20261014-multiempresa1`, key);
+    const version = key === "seller-closeout" ? "20261020-consulta-canonica" : VERSION;
+    return loadScript(`${src}?v=${version}&build=20261014-multiempresa1`, key);
   }
 
   async function ensureFinance() {

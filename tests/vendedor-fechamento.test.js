@@ -40,3 +40,15 @@ function financialSetup(status='ABERTO') {
 }
  test('transação recusa conferência anterior a uma movimentação',async()=>{const {records,input,api}=financialSetup();records.get('caixas/c1').atualizadoEm=3;await assert.rejects(api.registrarFechamentoCaixaTransacional(input),/atualização durante a conferência/);assert.equal(records.get('caixas/c1').status,'ABERTO');assert.equal(records.has('fechamentos_caixa/fechamento_c1'),false)});
  test('refechamento preserva registro anterior e repetição é idempotente',async()=>{const {records,input,api}=financialSetup('REABERTO');const previous=records.get('fechamentos_caixa/fechamento_c1');const result=await api.registrarFechamentoCaixaTransacional(input);assert.equal(result.statusFechamento,'FECHADO');const closure=records.get('fechamentos_caixa/fechamento_c1');assert.equal(closure.reaberto,false);assert.deepEqual(records.get('historico_fechamentos_caixa/'+closure.refechamentoId).fechamentoAnterior,previous);input.snapshot.caixa={...records.get('caixas/c1'),id:'c1'};assert.equal((await api.registrarFechamentoCaixaTransacional(input)).modo,'IDEMPOTENTE')});
+
+test('flags locais não dispensam pendência impeditiva nem justificativa de divergência',async()=>{
+ const pending=financialSetup();pending.input.snapshot.pendenciasCobranca=1;
+ await assert.rejects(pending.api.registrarFechamentoCaixaTransacional({...pending.input,ignorarPendencias:true}),/cobranças previstas/);
+ assert.equal(pending.records.get('caixas/c1').status,'ABERTO');
+ const divergent=financialSetup();
+ await assert.rejects(divergent.api.registrarFechamentoCaixaTransacional({...divergent.input,valorInformadoCentavos:9999,exigirJustificativaDivergencia:false}),/justificativa/);
+ assert.equal(divergent.records.has('fechamentos_caixa/fechamento_c1'),false);
+});
+test('flags não aceitam valor fracionário em centavos ou conferência não finita',async()=>{
+ for(const value of [NaN,Infinity,0.5]){const f=financialSetup();await assert.rejects(f.api.registrarFechamentoCaixaTransacional({...f.input,valorInformadoCentavos:value}),/valor|centavos/i);assert.equal(f.records.has('fechamentos_caixa/fechamento_c1'),false);}
+});

@@ -10,10 +10,11 @@ const { criarCorrecoesBaixaVendedor } = require('../functions/seller-collection-
 const { criarAprovacoesClientesV27 } = require('../functions/v27-client-approvals');
 const { HttpsError, user } = require('./helpers/critical-fixture.cjs');
 const core = require('../functions/financial-core');
+const {seedBoundSessions,sessionClaims}=require('./helpers/session-fixture.cjs');
 const host = process.env.FIRESTORE_EMULATOR_HOST;
 if (host && !/^(127\.0\.0\.1|localhost):\d+$/.test(host)) throw Error('Integração aceita somente Firestore Emulator local.');
 
-test('Firestore local: cadastro → venda → parcelas → cobrança → fechamento → reabertura → refechamento', { skip: !host, timeout: 60000 }, async () => {
+test('Firestore local: cadastro → venda → parcelas → cobrança → fechamento → reabertura → refechamento', { skip: !host, timeout: 90000 }, async () => {
   const projectId = 'demo-integro-operational-closeout';
   const env = await initializeTestEnvironment({ projectId, firestore: { rules: fs.readFileSync('firestore.rules', 'utf8') } });
   const app = admin.initializeApp({ projectId }, 'operational-closeout');
@@ -25,6 +26,7 @@ test('Firestore local: cadastro → venda → parcelas → cobrança → fechame
     seed.set(db.collection('clientes_integro').doc('a'), { status: 'ATIVO', acessoLiberado: true });
     seed.set(db.collection('clientes_integro').doc('b'), { status: 'ATIVO', acessoLiberado: true });
     await seed.commit();
+    await seedBoundSessions(env);
     const deps = { db, admin, functions: { https: { HttpsError } } };
     const lifecycle = criarCicloCaixa(deps), finance = criarOperacoesFinanceiras(deps), clients = criarAprovacoesClientesV27(deps);
     const boxInput = { vendedorId: 'seller', dataOperacional: core.hojeSP(), valorInicialCentavos: 100000 };
@@ -54,12 +56,18 @@ test('Firestore local: cadastro → venda → parcelas → cobrança → fechame
     const customer360 = require('../functions/cliente-360').criarCliente360(deps);
     for (const uid of ['seller', 'master', 'manager', 'supervisor', 'financial', 'administrative']) assert.equal((await customer360.callable({ clienteId, aba: 'resumo' }, ctx(uid))).summary.debt, 0);
     await assert.rejects(customer360.callable({ clienteId, aba: 'resumo' }, ctx('outsider')), e => e.code === 'permission-denied');
-    const sellerDb = env.authenticatedContext('seller').firestore();
+    const sellerDb = env.authenticatedContext('seller',sessionClaims('seller')).firestore();
     const firebase = require('firebase/compat/app').default;
     require('firebase/compat/firestore');
     const compat = () => sellerDb;
     compat.FieldValue = firebase.firestore.FieldValue;
-    const context = { db: sellerDb, firebase: { firestore: compat }, console, Intl, Date, localStorage: { getItem: () => null, removeItem() {} }, sessionStorage: { removeItem() {} } };
+    const sid='local-box-cycle-session-12345';
+    await db.collection('sessoes_usuarios').doc('seller').set({uid:'seller',sessionId:sid,clientePlataformaId:'a',expiresAtMs:Date.now()+60000,encerrada:false});
+    const guard=require('../functions/session-authorization').criarProtecaoSessao(deps);
+    const bound=require('../functions/box-lifecycle').criarCicloCaixa({...deps,db:guard.db});
+    const endpoints={conferirCaixaOperacional:guard.protect(bound.conferir),fecharCaixaOperacional:guard.protect(bound.fechar)};
+    const functionsBridge={httpsCallable:name=>async data=>({data:await endpoints[name](data,{auth:{uid:'seller',token:{integroSessionId:sid}}})})};
+    const context = { db: sellerDb, firebase: { firestore: compat,functions:()=>functionsBridge,app:()=>({functions:()=>functionsBridge}) }, console, Intl, Date, localStorage: { getItem: () => null, removeItem() {} }, sessionStorage: { removeItem() {} } };
     context.window = context; global.window = context; global.firebase = context.firebase;
     vm.runInThisContext(fs.readFileSync('js/utils/operational.js', 'utf8'), { filename: 'js/utils/operational.js' });
     vm.runInThisContext(fs.readFileSync('js/services/financial-operations.js', 'utf8'), { filename: 'js/services/financial-operations.js' });
@@ -70,19 +78,39 @@ test('Firestore local: cadastro → venda → parcelas → cobrança → fechame
       assert.equal(snapshot.totalVendasCentavos, 10000);
       assert.equal(snapshot.totalPagamentosCentavos, 10000);
       assert.equal(snapshot.pendenciasCobranca, 0);
-      const closed = await context.IntegroCaixa.registrarFechamentoCaixaTransacional({ ...input, snapshot, valorInformadoCentavos: 100000 });
+      const duplicates = await Promise.all([0,1].map(()=>context.IntegroCaixa.registrarFechamentoCaixaTransacional({ ...input, snapshot, valorInformadoCentavos: 100000 })));
+      assert.ok(duplicates.some(r=>r.modo==='IDEMPOTENTE'));
+      const closed=duplicates[0];
       assert.equal(closed.statusFechamento, 'FECHADO');
       await assert.rejects(collections.corrigir({ ...payment, valorCentavos: 9000 }, ctx('seller')), e => e.code === 'failed-precondition');
       if (iteration === 0) {
-        await assert.rejects(lifecycle.reabrir({ caixaId, motivo: 'Conferência local' }, ctx('seller')), e => e.code === 'permission-denied');
-        await lifecycle.reabrir({ caixaId, motivo: 'Conferência local' }, ctx('master'));
+        await assert.rejects(lifecycle.reabrir({operacaoId:require("node:crypto").randomUUID(), caixaId, motivo: 'Conferência local' }, ctx('seller')), e => e.code === 'permission-denied');
+        await lifecycle.reabrir({operacaoId:require("node:crypto").randomUUID(), caixaId, motivo: 'Conferência local' }, ctx('master'));
       }
     }
-    assert.equal((await db.collection('historico_fechamentos_caixa').get()).size, 1);
+    assert.equal((await db.collection('historico_fechamentos_caixa').get()).size, 2);
     assert.equal((await db.collection('reaberturas_caixa').get()).size, 1);
     const ledger = await db.collection('lancamentos_financeiros').where('caixaId', '==', caixaId).get();
     assert.ok(ledger.size >= 2);
-    await assertFails(env.authenticatedContext('outsider').firestore().collection('caixas').doc(caixaId).get());
+    // Divergência e regularização também atravessam o mesmo guard de sessão e transação reais.
+    await lifecycle.reabrir({caixaId,operacaoId:'reopen-divergence',motivo:'Conferência divergente local'},ctx('master'));
+    let current=await context.IntegroCaixa.prepararSnapshotFechamentoCaixa(input);
+    await context.IntegroCaixa.registrarFechamentoCaixaTransacional({...input,snapshot:current,valorInformadoCentavos:90000,justificativa:'Diferença física local'});
+    const treat=guard.protect(bound.tratar);
+    const managerContext={auth:{uid:'master',token:sessionClaims('master')}};
+    await treat({caixaId,operacaoId:'request-reg',decisao:'SOLICITAR_REGULARIZACAO',justificativa:'Ajustar diferença conferida'},managerContext);
+    const reg={caixaId,operacaoId:'perform-reg',decisao:'REGISTRAR_REGULARIZACAO',valorCentavos:10000,natureza:'DEBITO',justificativa:'Regularização contábil local'};
+    await assert.rejects(treat(reg,{auth:{uid:'seller',token:{integroSessionId:sid}}}),e=>e.code==='permission-denied');
+    await treat(reg,managerContext);
+    assert.equal((await treat(reg,managerContext)).modo,'IDEMPOTENTE');
+    assert.equal((await db.collection('caixas').doc(caixaId).get()).data().saldoAtualCentavos,90000);
+    assert.equal((await db.collection('caixas').doc(caixaId).get()).data().valorRealFechamentoCentavos,90000);
+    await lifecycle.reabrir({caixaId,operacaoId:'reopen-after-reg',motivo:'Conferência após regularização'},ctx('master'));
+    current=await context.IntegroCaixa.prepararSnapshotFechamentoCaixa(input);
+    assert.equal(current.caixaFinalEsperadoCentavos,90000);
+    assert.equal((await context.IntegroCaixa.registrarFechamentoCaixaTransacional({...input,snapshot:current,valorInformadoCentavos:90000})).statusFechamento,'FECHADO');
+    assert.equal((await db.collection('historico_fechamentos_caixa').get()).size,4);
+    await assertFails(env.authenticatedContext('outsider',sessionClaims('outsider')).firestore().collection('caixas').doc(caixaId).get());
   } finally {
     delete global.window; delete global.firebase;
     await env.cleanup();
@@ -104,6 +132,7 @@ test('Firestore local: financeiro empresarial → baixa → edição → aprova�
     const accountRef = db.collection('financeiro_contas').doc('account');
     seed.set(accountRef, { clientePlataformaId: 'a', descricao: 'Conta fictícia', valorCentavos: 100000, valorPagoCentavos: 0, saldoCentavos: 100000, tipoMovimento: 'PAGAR', status: 'A_VENCER', vencimento: core.hojeSP(), criadoPorAuthUid: 'master', criadoEmTexto: new Date().toISOString() });
     await seed.commit();
+    await seedBoundSessions(env);
     const deps = { admin, db, functions: { https: { HttpsError } } };
     const payments = require('../functions/enterprise-finance-payments').criarPagamentosFinanceirosEmpresariais(deps);
     const workflow = require('../functions/v27-finance-workflows').criarFluxosFinanceirosV27({ ...deps, pagamentosFinanceirosEmpresariais: payments });
@@ -129,8 +158,8 @@ test('Firestore local: financeiro empresarial → baixa → edição → aprova�
     const recurrenceInput = { recorrenciaId: 'rec', ate: core.adicionarDiasISO(core.hojeSP(), 2) };
     assert.equal((await recurrence.callable(recurrenceInput, ctx('master'))).contas.length, 3);
     assert.equal((await recurrence.callable(recurrenceInput, ctx('master'))).contas.length, 0);
-    await assertFails(env.authenticatedContext('outsider').firestore().collection('financeiro_contas').doc('account').get());
-    const notes = await env.authenticatedContext('financial').firestore().collection('notificacoes').where('clientePlataformaId', '==', 'a').where('destinatarioAuthUid', '==', 'financial').get();
+    await assertFails(env.authenticatedContext('outsider',sessionClaims('outsider')).firestore().collection('financeiro_contas').doc('account').get());
+    const notes = await env.authenticatedContext('financial',sessionClaims('financial')).firestore().collection('notificacoes').where('clientePlataformaId', '==', 'a').where('destinatarioAuthUid', '==', 'financial').get();
     assert.ok(notes.size > 0);
     assert.ok((await db.collection('financeiro_auditoria').get()).size >= 5);
   } finally {
@@ -154,6 +183,7 @@ test('Firestore local: plano → inadimplência → bloqueio → confirmação g
     seed.set(db.collection('planos').doc('week'), { nome: 'Semanal fictício', frequencia: 'SEMANAL', valorPeriodoCentavos: 10000, status: 'ATIVO' });
     seed.set(db.collection('clientes_operacionais').doc('client'), { clientePlataformaId: 'a', vendedorAuthUid: 'seller', equipeId: 'e1', nome: 'Cliente fictício', saldoDevedorCentavos: 0 });
     await seed.commit();
+    await seedBoundSessions(env);
     const deps = { db, functions: { https: { HttpsError } } };
     const platform = require('../functions/platform-subscriptions').criarAssinaturasPlataforma(deps);
     const customer = require('../functions/cliente-360').criarCliente360(deps);
@@ -193,18 +223,19 @@ test('Firestore local: Master Local → cargos → equipes → configuração �
     seed.set(db.collection('clientes_integro').doc('b'), { status: 'ATIVO', acessoLiberado: true });
     for (const name of ['cargos', 'equipes', 'permissoes_cargo']) seed.set(db.collection(name).doc('foreign'), { clientePlataformaId: 'b', nome: 'Outro tenant' });
     await seed.commit();
-    const local = env.authenticatedContext('master').firestore();
+    await seedBoundSessions(env);
+    const local = env.authenticatedContext('master',sessionClaims('master')).firestore();
     for (const name of ['cargos', 'equipes', 'permissoes_cargo']) {
       await local.collection(name).doc('own').set({ clientePlataformaId: 'a', nome: 'Cadastro local' });
       await local.collection(name).doc('own').update({ nome: 'Cadastro revisado' });
       await assertFails(local.collection(name).doc('foreign').update({ clientePlataformaId: 'a', nome: 'Apropriação indevida' }));
       assert.equal((await db.collection(name).doc('foreign').get()).data().clientePlataformaId, 'b');
     }
-    await assertFails(env.authenticatedContext('manager').firestore().collection('equipes').doc('foreign').update({ clientePlataformaId: 'a' }));
+    await assertFails(env.authenticatedContext('manager',sessionClaims('manager')).firestore().collection('equipes').doc('foreign').update({ clientePlataformaId: 'a' }));
     const configuration = { clientePlataformaId: 'a', versao: 1, empresa: {}, operacao: {}, financeiro: {}, relatorios: {}, regrasOperacionais: {}, clientes: {}, leads: {} };
     await local.collection('configuracoes_empresas').doc('a').set(configuration);
     await local.collection('configuracoes_empresas').doc('a').update({ operacao: { controle: true } });
-    for (const role of ['seller', 'financial', 'administrative']) await assertFails(env.authenticatedContext(role).firestore().collection('configuracoes_empresas').doc('a').update({ operacao: {} }));
+    for (const role of ['seller', 'financial', 'administrative']) await assertFails(env.authenticatedContext(role,sessionClaims(role)).firestore().collection('configuracoes_empresas').doc('a').update({ operacao: {} }));
     await assertFails(local.collection('configuracoes_empresas').doc('b').set({ ...configuration, clientePlataformaId: 'b' }));
     await local.collection('usuarios').doc('invite').set({ authUid: '', nome: 'Convite fictício', email: 'ficticio@homologacao.test', tipoUsuario: 'usuario_cliente', cargoId: 'own', clientePlataformaId: 'a', status: 'CONVITE_PENDENTE', acessoLiberado: false, convitePendente: true, provisionamentoAuth: 'PENDENTE_BACKEND', criadoPorUid: 'master' });
     await assertFails(local.collection('usuarios').doc('invite').update({ authUid: 'forged' }));

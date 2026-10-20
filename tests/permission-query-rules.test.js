@@ -1,3 +1,4 @@
+const {sessionClaims,seedBoundSessions}=require('./helpers/session-fixture.cjs');
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {initializeTestEnvironment,assertSucceeds,assertFails}=require('@firebase/rules-unit-testing');
 const {collection,doc,getDoc,getDocs,query,where,limit,setDoc}=require('firebase/firestore');
@@ -5,7 +6,7 @@ let env;
 const roles=['master_global','master_local','supervisor','gerente','vendedor','financeiro','administrativo'];
 const owned={clientePlataformaId:'a',equipeId:'e1',vendedorAuthUid:'vendedor',vendedorId:'seller-doc',caixaId:'box'};
 const types=['VENDA','PAGAMENTO','INGRESSO','GASTO','RETIRADA'];
-const db=role=>env.authenticatedContext(role).firestore();
+const db=role=>env.authenticatedContext(role,sessionClaims(role)).firestore();
 const readQuery=(role,name,filters)=>getDocs(query(collection(db(role),name),...filters.map(f=>where(...f)),limit(20)));
 test.before(async()=>{
  env=await initializeTestEnvironment({projectId:'integro-permission-queries',firestore:{rules:fs.readFileSync(process.env.INTEGRO_RULES_FILE||path.join(__dirname,'../firestore.rules'),'utf8')}});
@@ -24,6 +25,7 @@ test.before(async()=>{
   for(const tipo of [...types,'ESTORNO']) await setDoc(doc(admin,'lancamentos_financeiros',tipo),{...owned,tipoLancamento:tipo});
   for(const role of roles) await setDoc(doc(admin,'notificacoes',role),{clientePlataformaId:'a',destinatarioAuthUid:role,tipo:'OPERACIONAL'});
  });
+ await seedBoundSessions(env);
 });
 test.after(async()=>env?.cleanup());
 test('notificações: query por destinatário sem tenant é negada; tenant + destinatário funciona',async()=>{

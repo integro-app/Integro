@@ -1,3 +1,4 @@
+const {sessionClaims,seedBoundSessions}=require('./helpers/session-fixture.cjs');
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
@@ -113,7 +114,7 @@ function paymentData(owner = profiles.finance, extra = {}) {
 }
 
 function ctx(profile) {
-  return env.authenticatedContext(profile.uid);
+  return env.authenticatedContext(profile.uid,sessionClaims(profile.uid));
 }
 
 async function seed() {
@@ -139,6 +140,7 @@ test.before(async () => {
 test.beforeEach(async () => {
   await env.clearFirestore();
   await seed();
+  await seedBoundSessions(env);
 });
 
 test.after(async () => env.cleanup());
@@ -264,11 +266,11 @@ test('Storage comprovante: conhecer path de conta de outro tenant não concede l
 test('Storage comprovante: documento Firestore associado respeita matriz de leitura',async()=>{for(const name of ['master','finance','manager','financialSupervisor','responsible','auditorAllowed'])await assertSucceeds(getDoc(doc(ctx(profiles[name]).firestore(),'financeiro_contas','conta_a')));for(const name of ['supervisor','vendor','auditor','financeB'])await assertFails(getDoc(doc(ctx(profiles[name]).firestore(),'financeiro_contas','conta_a')));});
 test('Storage comprovante: pagamento exige vínculo a conta do tenant',async()=>{await assertSucceeds(upload(profiles.finance,'tenants/tenant_a/financeiro/pagamentos/pag_backend/new.pdf',{customMetadata:{tenantId:'tenant_a',contaId:'conta_a',pagamentoId:'pag_backend',authUid:profiles.finance.uid}}));await assertFails(upload(profiles.finance,'tenants/tenant_a/financeiro/pagamentos/missing/new.pdf'));});
 test('Storage comprovante: listagem e caminho financeiro arbitrário negados',async()=>{await assertFails(listAll(ref(ctx(profiles.master).storage(),'tenants/tenant_a/financeiro/contas/conta_a')));await assertFails(upload(profiles.finance,'tenants/tenant_a/financeiro/avulso/doc.pdf'));});
-test('Storage comprovante: não autenticado e usuário sem tenant negados',async()=>{await assertFails(getMetadata(ref(env.unauthenticatedContext().storage(),fixturePath)));await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),'usuarios','cfe_no_tenant'),{authUid:'cfe_no_tenant',tipoUsuario:'financeiro',acessoLiberado:true,status:'ATIVO'}));await assertFails(getMetadata(ref(env.authenticatedContext('cfe_no_tenant').storage(),fixturePath)));});
+test('Storage comprovante: não autenticado e usuário sem tenant negados',async()=>{await assertFails(getMetadata(ref(env.unauthenticatedContext().storage(),fixturePath)));await env.withSecurityRulesDisabled(async c=>setDoc(doc(c.firestore(),'usuarios','cfe_no_tenant'),{authUid:'cfe_no_tenant',tipoUsuario:'financeiro',acessoLiberado:true,status:'ATIVO'}));await assertFails(getMetadata(ref(env.authenticatedContext('cfe_no_tenant',sessionClaims('cfe_no_tenant')).storage(),fixturePath)));});
 test('Storage comprovante: download de bytes exige sessão e nega após bloqueio',async()=>{
   const {createMockUserToken}=require('@firebase/util'),host=process.env.FIREBASE_STORAGE_EMULATOR_HOST||'127.0.0.1:9199';assert.match(host,/^127\.0\.0\.1:\d+$/);
   const bucket=ref(ctx(profiles.master).storage(),fixturePath).bucket,url=`http://${host}/v0/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(fixturePath)}?alt=media`;
-  const headers={Authorization:`Firebase ${createMockUserToken({sub:profiles.master.uid},projectId)}`};
+  const headers={Authorization:`Firebase ${createMockUserToken({sub:profiles.master.uid,...sessionClaims(profiles.master.uid)},projectId)}`};
   const response=await fetch(url,{headers});assert.equal(response.status,200);assert.equal((await response.arrayBuffer()).byteLength,4);
   assert.equal((await fetch(url)).status,403);
   await env.withSecurityRulesDisabled(async c=>updateDoc(doc(c.firestore(),'usuarios',profiles.master.uid),{status:'BLOQUEADO'}));

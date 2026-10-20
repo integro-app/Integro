@@ -186,7 +186,6 @@ async function login() {
       return;
     }
 
-    await verificarCaixaVendedorParaAcesso(usuario, authUser);
     State.setUsuario(usuario);
     atualizarCarregamentoLogin("Preparando seu ambiente", 68, "Sincronizando empresa e sessão de acesso");
 
@@ -197,11 +196,11 @@ async function login() {
       if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
       await sessao.start();
     } catch (erroSessao) {
-      await auth.signOut().catch(() => {});
-      State.limparSessao();
+      erroSessao.sessaoAccessError = true;
       throw erroSessao;
     }
 
+    await verificarCaixaVendedorParaAcesso(usuario, auth.currentUser);
     marcarEtapaLogin(metricas, "ambiente");
     atualizarCarregamentoLogin("Carregando seu painel", 72, "Validando sessão e carregando os dados principais");
     marcarEtapaLogin(metricas, "redirecionamento");
@@ -213,7 +212,7 @@ async function login() {
     console.error("ERRO LOGIN:", erro);
     let mensagem = "Erro ao realizar login.";
 
-    if (erro.caixaAccessError || erro?.details?.code === "CAIXA_FECHADO") {
+    if (erro.sessaoAccessError || erro.caixaAccessError || erro?.details?.code === "CAIXA_FECHADO") {
       await auth.signOut().catch(() => {});
       State.limparSessao();
       window.caixaAtual = null;

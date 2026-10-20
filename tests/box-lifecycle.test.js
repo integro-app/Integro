@@ -36,7 +36,7 @@ test('equipe conclui a mesma data e exige fechar todos antes de avançar',async(
 test('caixa excluído não é sobrescrito e reabertura também respeita a última data da equipe',async()=>{
   const {api} = setup({'usuarios/second':user('second','vendedor'),'caixas/deleted':{...box(tuesday),excluido:true},'caixas/old':box(monday),'caixas/new':{...box(tuesday),vendedorId:'second'},'fechamentos_caixa/fechamento_old':{status:'FECHADO'}});
   await assert.rejects(api.abrir(input(tuesday),ctx('master')),denied('failed-precondition'));
-  await assert.rejects(api.reabrir({caixaId:'old',motivo:'Correção'},ctx('master')),denied('failed-precondition'));
+  await assert.rejects(api.reabrir({operacaoId:require("node:crypto").randomUUID(),caixaId:'old',motivo:'Correção'},ctx('master')),denied('failed-precondition'));
 });
 test('consulta de datas respeita empresa, perfil, equipe e histórico legado sem equipeId',async()=>{
   const {api} = setup({'caixas/legacy':{...box(tuesday),equipeId:''},'usuarios/foreign':user('foreign','vendedor','e1','b'),'usuarios/outsider':user('outsider','supervisor','e2')});
@@ -107,18 +107,18 @@ test('tentativas simultâneas iguais retornam o mesmo caixa e outro dia é bloqu
 });
 test('reabre somente o caixa mais recente mesmo com flag administrativa',async()=>{
   const {api,db} = setup({'caixas/old':box(monday),'caixas/latest':{...box(tuesday),ativo:false,fechado:true},'fechamentos_caixa/fechamento_latest':{status:'FECHADO'}});
-  await assert.rejects(api.reabrir({caixaId:'old',motivo:'Correção',permissaoAdministrativa:true},ctx('master')),denied('failed-precondition'));
-  const result = await api.reabrir({caixaId:'latest',motivo:'Correção'},ctx('supervisor'));
+  await assert.rejects(api.reabrir({operacaoId:require("node:crypto").randomUUID(),caixaId:'old',motivo:'Correção',permissaoAdministrativa:true},ctx('master')),denied('failed-precondition'));
+  const result = await api.reabrir({operacaoId:require("node:crypto").randomUUID(),caixaId:'latest',motivo:'Correção'},ctx('supervisor'));
   assert.equal(result.statusNovo,'REABERTO'); assert.equal(db.records.get('caixas/latest').ativo,true); assert.equal(db.records.get('caixas/latest').fechado,false);
   assert.equal(db.records.get('fechamentos_caixa/fechamento_latest').totalReaberturas,1);
   assert.equal(db.records.get('fechamentos_caixa/fechamento_latest').reaberto,true);
-  assert.equal((await api.reabrir({caixaId:'latest',motivo:'Correção'},ctx('master'))).modo,'JA_ABERTO');
+  assert.equal((await api.reabrir({operacaoId:require("node:crypto").randomUUID(),caixaId:'latest',motivo:'Correção'},ctx('master'))).modo,'JA_ABERTO');
   await assert.rejects(api.abrir(input(today),ctx('master')),denied('failed-precondition'));
 });
 test('reabertura nega vendedor e caixa com outro aberto',async()=>{
   const {api} = setup({'caixas/latest':box(tuesday),'caixas/old':{...box(monday),status:'ABERTO'}});
-  await assert.rejects(api.reabrir({caixaId:'latest',motivo:'Correção'},ctx('seller')),denied('permission-denied'));
-  await assert.rejects(api.reabrir({caixaId:'latest',motivo:'Correção'},ctx('master')),denied('failed-precondition'));
+  await assert.rejects(api.reabrir({operacaoId:require("node:crypto").randomUUID(),caixaId:'latest',motivo:'Correção'},ctx('seller')),denied('permission-denied'));
+  await assert.rejects(api.reabrir({operacaoId:require("node:crypto").randomUUID(),caixaId:'latest',motivo:'Correção'},ctx('master')),denied('failed-precondition'));
 });
 test('venda, pagamento, correção e não pagamento usam a data do caixa retroativo',async()=>{
   const owned = {clientePlataformaId:'a',vendedorId:'seller',vendedorAuthUid:'seller',equipeId:'e1'};
