@@ -530,6 +530,35 @@ function empresaPermitida(user) {
       );
     }
 
+    function camposCadastroAdministrativo() {
+      return ['nome','nomeCompleto','nomeBusca','apelido','documento','documentoNormalizado','tipoCliente','dataNascimento',
+        'telefonePrincipal','telefoneAdicional','telefoneNormalizado','telefonesNormalizados','paisTelefone','whatsappAtivo','whatsappUrl','telefones','referencias',
+        'origem','origemDescricao','cep','logradouro','numero','complemento','bairro','cidade','estado','uf','endereco','observacoes',
+        'statusAtendimento','ultimaMovimentacaoTexto','atualizadoPor','atualizadoEm','fotoPerfil','fotoPerfilUrl','anexos'];
+    }
+    function administrativoPodeCliente(acao) {
+      let p = userDoc().get('permissoesUsuario', userDoc().get('permissoes', {}));
+      return isAdministrativo() && p.get('clientes', {}) != false &&
+        p.get('clientes', {}).get(acao, true) != false && p.get('clientes.' + acao, true) != false &&
+        (p.get('clientes', {}).get(acao, false) == true || p.get('clientes.' + acao, false) == true);
+    }
+    function canCreateClienteAdministrativo(data) {
+      return administrativoPodeCliente('criar') && isActiveUser() && isSameTenantWrite() &&
+        data.keys().hasOnly(camposCadastroAdministrativo().concat(['clientePlataformaId','empresaId','masterLocalId','gerenteId','supervisorId','captadorId','equipeId','vendedorId','vendedorAuthUid','vendedorNome','hierarquiaIds','clienteLegadoId','clienteOperacionalId','ativo','excluido','cicloAtendimentoAtual','tentativasContato','criadoPor','criadoEm','status','statusCliente','saldoDevedor','saldo'])) &&
+        data.get('criadoPor','') == currentUid() && data.get('atualizadoPor','') == currentUid() &&
+        data.get('empresaId',userTenantId()) == userTenantId() && data.get('masterLocalId',userTenantId()) == userTenantId() &&
+        data.get('vendedorId','') == '' && data.get('vendedorAuthUid','') == '' && data.get('equipeId','') == '' &&
+        data.get('gerenteId','') == '' && data.get('supervisorId','') == '' && data.get('captadorId','') == '' &&
+        data.get('hierarquiaIds',[]).hasOnly([userTenantId()]) &&
+        data.get('saldoDevedor',0) == 0 && data.get('saldo',0) == 0 &&
+        data.get('status','QUITADO') in ['QUITADO','LEAD'] && data.get('statusCliente','QUITADO') in ['QUITADO','LEAD'];
+    }
+    function canEditClienteAdministrativo() {
+      return administrativoPodeCliente('editar') && isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(camposCadastroAdministrativo()) &&
+        request.resource.data.get('atualizadoPor','') == currentUid();
+    }
+
     function canCreateClienteLead(data) {
       return isActiveUser() && isSameTenantWrite() && !isVendedor() &&
         (isMasterLocal() || isGerente() || isCaptador() || canCreateLeadByPermission()) &&
@@ -1401,10 +1430,13 @@ function empresaPermitida(user) {
         (isActiveUser() && isCaptador() && isSameTenantRead());
       allow list: if isOperationalListReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
-      allow create: if canCreateClienteLead(request.resource.data) ||
+      allow create: if (canCreateClienteAdministrativo(request.resource.data) &&
+        (!request.resource.data.keys().hasAny(["clienteLegadoId"]) || (
+          getAfter(/databases/$(database)/documents/clientes/$(request.resource.data.clienteLegadoId)).data.get("clienteOperacionalId", "") == id &&
+          getAfter(/databases/$(database)/documents/clientes/$(request.resource.data.clienteLegadoId)).data.get("clientePlataformaId", "") == userTenantId()))) || canCreateClienteLead(request.resource.data) ||
         (isActiveUser() && isSameTenantWrite() &&
           (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data))));
-      allow update: if canUpdateClienteOperacional(id);
+      allow update: if canEditClienteAdministrativo() || canUpdateClienteOperacional(id);
       allow delete: if false;
     }
 
@@ -1413,10 +1445,13 @@ function empresaPermitida(user) {
         (isActiveUser() && isCaptador() && isSameTenantRead());
       allow list: if isOperationalListReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
-      allow create: if canCreateClienteLead(request.resource.data) ||
+      allow create: if (canCreateClienteAdministrativo(request.resource.data) &&
+        (!request.resource.data.keys().hasAny(["clienteOperacionalId"]) || (
+          getAfter(/databases/$(database)/documents/clientes_operacionais/$(request.resource.data.clienteOperacionalId)).data.get("clienteLegadoId", "") == id &&
+          getAfter(/databases/$(database)/documents/clientes_operacionais/$(request.resource.data.clienteOperacionalId)).data.get("clientePlataformaId", "") == userTenantId()))) || canCreateClienteLead(request.resource.data) ||
         (isActiveUser() && isSameTenantWrite() &&
           (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data))));
-      allow update: if canUpdateClienteOperacional(id);
+      allow update: if canEditClienteAdministrativo() || canUpdateClienteOperacional(id);
       allow delete: if false;
     }
 

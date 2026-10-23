@@ -60,7 +60,8 @@ test('vendedor não recebe permissões de aprovação e supervisor mantém aprov
 
 test('administrativo acessa operacao do tenant sem atravessar empresas', () => {
   const acesso = carregar();
-  const usuario = { tipoUsuario: 'administrativo', clientePlataformaId: 't1' };
+  const usuario = { tipoUsuario: 'administrativo', clientePlataformaId: 't1', permissoes:{clientes:{editar:true},relatorios:{ver:true}} };
+  assert.equal(acesso.pode({...usuario,permissoes:{}}, 'clientes.editar', {clientePlataformaId:'t1'}),false);
   assert.equal(acesso.pode(usuario, 'clientes.editar', { clientePlataformaId: 't1' }), true);
   assert.equal(acesso.pode(usuario, 'relatorios.ver', { clientePlataformaId: 't1' }), true);
   assert.equal(acesso.pode(usuario, 'clientes.editar', { clientePlataformaId: 't2' }), false);
@@ -91,7 +92,7 @@ test("os oito perfis locais preservam tenant, equipe, ownership, escrita e finan
   ];
 
   for (const [perfil, permitida, contexto, negada, escritaEsperada] of cenarios) {
-    const usuario = { ...base, tipoUsuario: perfil, cargoChave: perfil };
+    const usuario = { ...base, tipoUsuario: perfil, cargoChave: perfil, ...(perfil === "administrativo" ? {permissoes:{clientes:{criar:true}}} : {}) };
     assert.equal(acesso.pode(usuario, permitida, { clientePlataformaId: "tenant_1", ...contexto }), true, `${perfil}: acesso permitido`);
     assert.equal(acesso.pode(usuario, permitida, { clientePlataformaId: "tenant_2", ...contexto }), false, `${perfil}: tenant isolado`);
     if (negada) assert.equal(acesso.pode(usuario, negada, { clientePlataformaId: "tenant_1" }), false, `${perfil}: acesso negado`);

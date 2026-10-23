@@ -33,6 +33,7 @@
       <div class="usuarios-permissoes-shell">
         <div class="usuarios-permissoes-head">
           <div><small>CONFIGURAÇÕES DA EMPRESA</small><h2>Usuários e permissões</h2><p>Cadastre cargos e seus acessos em Permissões. Nos usuários, selecione o cargo que será aplicado.</p></div>
+          <button class="primary-btn" type="button" data-up-create hidden></button>
         </div>
         <div class="usuarios-permissoes-tabs" role="tablist">
           <button type="button" data-up-tab="usuarios" onclick="IntegroUsuariosPermissoes.abrir('usuarios')"><span class="material-symbols-rounded">group</span>Usuários</button>
@@ -58,6 +59,10 @@
     conteudo.appendChild(card);
     document.querySelectorAll("[data-up-tab]").forEach(botao => botao.classList.toggle("active", botao.dataset.upTab === abaAtual));
 
+    const actions={usuarios:['Novo usuário','abrirNovoUsuario','usuarios.criar'],equipes:['Nova equipe','abrirNovaEquipe','equipes.criar'],cargos:['Novo cargo','abrirNovoCargo','configuracoes.editar']};
+    const [label,handler,permission]=actions[abaAtual],create=host()?.querySelector('[data-up-create]');
+    const allowed=()=>global.IntegroAcesso?.pode?.(global.State?.getUsuario?.() || {},permission,{})===true;
+    if(create){create.textContent=label;create.hidden=!allowed();create.onclick=()=>{if(!allowed())return false;return global[handler]?.();};}
     if (abaAtual === "usuarios") global.renderUsuarios?.();
     if (abaAtual === "equipes") global.renderEquipes?.();
     if (abaAtual === "cargos") {

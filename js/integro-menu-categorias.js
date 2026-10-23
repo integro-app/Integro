@@ -31,7 +31,9 @@
       if(seller()){
         return [['cobrancas','Cobranças','request_quote','cobrancas.ver'],['vendas','Vendas','shopping_cart','vendas.ver']].filter(([tab,name,icon,permission])=>global.IntegroAcesso?.pode?.(user(),permission,{})||global.IntegroAcesso?.pode?.(user(),'operacao.'+tab,{})).map(([tab,name,icon])=>({key:'operacao:'+tab,label:name,icon,active:document.getElementById(tab==='cobrancas'?'tabCobrancasBtn':'tabVendasDiaBtn')?.classList.contains('active'),run:()=>{navigation().abrirPorId('operacao');setTimeout(()=>global.abrirAbaVendasCobrancas?.(tab),0);}}));
       }
-      return ids.filter(([id])=>permitted(id)).map(([id,name,icon])=>({key:id,label:name,icon,active:id===(['vendas','cobrancas'].includes(active)?'operacao':active),run:()=>navigation().abrirPorId(id)}));
+      const items = ids.filter(([id])=>permitted(id)).map(([id,name,icon])=>({key:id,label:name,icon,active:id===(['vendas','cobrancas'].includes(active)?'operacao':active),run:()=>navigation().abrirPorId(id)}));
+      if(global.IntegroAcesso?.pode?.(user(),'financeiro.ver',{})) items.push({key:'extrato-operacional',label:'Extrato operacional',icon:'receipt_long',active:active==='financeiro'&&global.__integroFinanceiroModo==='operacional',run:()=>navigation().abrirFinanceiroOperacional('lancamentos',null,'operacao')});
+      return items;
     }
     if(parent==='clientes'){
       const current=mirrored(parent).filter(item=>!['Leads e captação','Captação'].includes(item.label));

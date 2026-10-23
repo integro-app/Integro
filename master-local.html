@@ -2531,7 +2531,7 @@ body.perfil-vendedor #dashboard .kpi-card:focus-visible {outline:3px solid #80ba
 <link rel="stylesheet" href="css/caixa-date-ui.css?v=20261008-abertura1">
 <link rel="stylesheet" href="css/caixas-supervisao.css?v=20261008-1">
   <link rel="stylesheet" href="css/integro-visual.css?v=20261008-premium3">
-  <script defer src="js/integro-menu-categorias.js?v=20261013-mobile4"></script>
+  <script defer src="js/integro-menu-categorias.js?v=20261021-extrato-operacional"></script>
   <link rel="stylesheet" href="css/integro-palette.css?v=20261008-movimentacoes1&build=20261008-mov-hoje1">
   <link rel="stylesheet" href="css/integro-logo.css?v=20261008-amarelo1">
   <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261008-busca2">
@@ -2796,7 +2796,7 @@ body.perfil-vendedor #dashboard .kpi-card:focus-visible {outline:3px solid #80ba
               <h2>Clientes</h2>
             </div>
             <div class="clientes-page-actions integro-shared-actions">
-              <button class="primary-btn clientes-header-create" type="button" onclick="navegarModuloClientesMasterLocal('adicionarCliente')"><span class="material-symbols-outlined">person_add</span> Criar cliente</button>
+              <button class="primary-btn clientes-header-create" type="button" data-permissao="clientes.criar" onclick="navegarModuloClientesMasterLocal('adicionarCliente')"><span class="material-symbols-outlined">person_add</span> Criar cliente</button>
             </div>
           </div>
           <nav class="clientes-module-nav integro-shared-nav" aria-label="Áreas de clientes">
@@ -3149,18 +3149,18 @@ body.perfil-vendedor #dashboard .kpi-card:focus-visible {outline:3px solid #80ba
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
-  <script src="js/firebase-config.js?v=20261020-integracao-perfis"></script>
+  <script src="js/firebase-config.js?v=20261021-relatorios"></script>
   <script src="js/config.js"></script>
   <script src="js/utils/operational.js?v=20260803-console1"></script>
-  <script src="js/services/access-control.js?v=20260803-console1"></script>
+  <script src="js/services/access-control.js?v=20261021-administrativo"></script>
   <script src="js/state.js?v=20260805-producao-otimizada1"></script>
   <script src="js/data-runtime.js?v=20260805-producao-otimizada1"></script>
   <script src="js/runtime-profile-guard.js?v=20260803-console1"></script>
   <script src="js/services/firestore.js?v=20260805-producao-otimizada1"></script>
   <script src="js/vendor/exceljs.min.js?v=20260729-1"></script>
-  <script src="js/services/clientes-service.js?v=20260812-clientes-v24-3&build=20261008-carteira-fechamento3"></script>
-  <script src="js/services/clientes-importacao-service.js?v=20260729-1"></script>
-  <script src="js/clientes-importacao-ui.js?v=20260729-1"></script>
+  <script src="js/services/clientes-service.js?v=20261021-administrativo"></script>
+  <script src="js/services/clientes-importacao-service.js?v=20261021-exportacao"></script>
+  <script src="js/clientes-importacao-ui.js?v=20261021-exportacao"></script>
   <script src="js/services/indicacoes-service.js?v=20260813-leads-v25-1"></script>
   <script src="js/services/chat-service.js?v=20260806-v13"></script>
   <script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
@@ -3170,14 +3170,14 @@ body.perfil-vendedor #dashboard .kpi-card:focus-visible {outline:3px solid #80ba
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js?v=20260812-v24-6"></script>
   <script src="js/auth.js?v=20261008-login-caixa1&build=20261008-continuo2"></script>
-  <script src="js/cargos.js?v=20260730-4"></script>
+  <script src="js/cargos.js?v=20261021-editor-canonico"></script>
   <script src="js/equipes.js?v=20260730-4"></script>
   <script src="js/caixas.js?v=20260805-producao-otimizada1"></script>
-  <script src="js/usuarios.js?v=20260730-4"></script>
+  <script src="js/usuarios.js?v=20261021-usuarios-atualizacao"></script>
   <script src="js/clientes.js"></script>
   <script src="js/vendas.js"></script>
   <script src="js/master-local.js?v=20260805-producao-otimizada1&build=20261006"></script>
-  <script src="js/painel-unificado.js?v=20260804-movimentacoes4"></script>
+  <script src="js/painel-unificado.js?v=20260804-movimentacoes4&build=20261021-administrativo"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
   <script src="js/perfis-unificados.js?v=20261020-integracao-perfis&build=20261008-carteira-fechamento3"></script>
   <script src="js/services/realtime-operations-service.js?v=20260805-dashboard-caixa-v8"></script>
@@ -6470,26 +6470,37 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     };
     const erro = e => console.warn("[Caixas] realtime CAIXAS:", e?.message || e);
     const runtime = window.IntegroDataRuntime;
+    const acesso = window.IntegroAcesso?.acessoUsuario?.(window.State?.getUsuario?.() || {}) || {};
+    const equipes = acesso.perfil === "supervisor" ? [...new Set((acesso.equipeIds || []).filter(Boolean).map(String))] : [null];
+    const porConsulta = new Map();
+    equipes.forEach(equipeId => {
+    const atualizarEscopo = dados => {
+      porConsulta.set(equipeId, dados);
+      atualizarCaixas([...new Map([...porConsulta.values()].flat().map(item => [item.id, item])).values()]);
+    };
 
     if(runtime?.ouvir){
       CX.unsubs.push(runtime.ouvir({
-        chave: `caixas-canonico:${tenant}`,
+        chave: `caixas-canonico:${tenant}:${equipeId || "tenant"}`,
         escopo: "tela:caixas",
         db: database,
         colecao: col("CAIXAS"),
         tenantId: tenant,
+        filtros: equipeId ? [["equipeId", "==", equipeId]] : [],
         limite: limiteColecaoCaixas("CAIXAS"),
-        aoAtualizar: atualizarCaixas,
+        aoAtualizar: atualizarEscopo,
         aoErro: erro
       }));
       return;
     }
 
-    const unsub = database.collection(col("CAIXAS"))
-      .where("clientePlataformaId","==",tenant)
+    let ref = database.collection(col("CAIXAS")).where("clientePlataformaId","==",tenant);
+    if(equipeId) ref = ref.where("equipeId","==",equipeId);
+    const unsub = ref
       .limit(limiteColecaoCaixas("CAIXAS"))
-      .onSnapshot(snap => atualizarCaixas(snap.docs.map(doc => ({id:doc.id, ...doc.data()}))), erro);
+      .onSnapshot(snap => atualizarEscopo(snap.docs.map(doc => ({id:doc.id, ...doc.data()}))), erro);
     CX.unsubs.push(unsub);
+    });
   }
 
   function equipesAtivas(){
@@ -10985,6 +10996,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   function clienteVisivelParaUsuario(c){
     const tid = tenantId();
     if(tid && String(c.clientePlataformaId || c.tenantId || c.empresaId || "") !== String(tid)) return false;
+    if(window.IntegroAcesso?.acessoUsuario?.(usuarioAtual())?.perfil === "administrativo") return window.ClientesService?.clienteNoEscopo?.(usuarioAtual(),c,"ler") === true;
     if(cargoPermiteTodosClientes()) return true;
     const uid = usuarioId();
     const cargo = normalizarTexto(usuarioAtual().tipoUsuario || usuarioAtual().perfil || usuarioAtual().cargoNome || usuarioAtual().cargo || "");
@@ -11048,11 +11060,11 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
           const cargoUsuarioCache = normalizarTexto(usuario.cargoChave || usuario.cargoNome || usuario.cargo || usuario.tipoUsuario);
           return tenantUsuarioCache === String(tid) && cargoUsuarioCache.includes("vendedor");
         });
-        if(tid && !possuiVendedorDoTenant){
+        if(tid && !possuiVendedorDoTenant && window.IntegroAcesso?.pode?.(usuarioAtual(),"usuarios.ver")){
           const usuariosSnap = await database.collection("usuarios").where("clientePlataformaId","==",tid).limit(200).get();
           window.usuariosCache = usuariosSnap.docs.map(doc=>({id:doc.id,...doc.data()}));
         }
-        if(tid && (!Array.isArray(window.equipesCache) || !window.equipesCache.length)){
+        if(tid && (!Array.isArray(window.equipesCache) || !window.equipesCache.length) && window.IntegroAcesso?.pode?.(usuarioAtual(),"equipes.ver")){
           const equipesSnap = await database.collection("equipes").where("clientePlataformaId","==",tid).limit(100).get();
           window.equipesCache = equipesSnap.docs.map(doc=>({id:doc.id,...doc.data()}));
         }
@@ -11186,7 +11198,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     if(header){
       header.hidden = false;
       header.classList.add("clientes-page-header", "integro-shared-header");
-      header.innerHTML = `<div><h2>Clientes</h2></div><div class="clientes-page-actions integro-shared-actions"><button class="primary-btn clientes-header-create" type="button" onclick="navegarModuloClientesMasterLocal('adicionarCliente')"><span class="material-symbols-outlined">person_add</span> Criar cliente</button></div>`;
+      header.innerHTML = `<div><h2>Clientes</h2></div><div class="clientes-page-actions integro-shared-actions"><button class="primary-btn clientes-header-create" type="button" data-permissao="clientes.criar" onclick="navegarModuloClientesMasterLocal('adicionarCliente')"><span class="material-symbols-outlined">person_add</span> Criar cliente</button></div>`;
     }
 
     let card = section.querySelector(".section-card");
@@ -11210,7 +11222,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         <div class="clientes-search-field"><span class="material-symbols-outlined">search</span><input id="buscaClienteMaster" type="search" placeholder="Buscar por nome, documento ou telefone"></div>
         <button class="ghost-btn" type="button" onclick="toggleFiltrosClientesMaster()"><span class="material-symbols-outlined">tune</span> Filtros</button>
         <button class="primary-btn" type="button" onclick="buscarClientesEmpresaMaster()"><span class="material-symbols-outlined">search</span> Buscar</button>
-        <button class="ghost-btn" type="button" onclick="exportarClientesIntegro(this)"><span class="material-symbols-outlined">download</span> Exportar</button>
+        <button class="ghost-btn" type="button" data-permissao="relatorios.exportar" onclick="exportarClientesIntegro(this)"><span class="material-symbols-outlined">download</span> Exportar</button>
       </div>
       <div id="filtrosClientesMaster" class="clientes-master-toolbar" hidden>
         <div class="clientes-periodo-filtro">
@@ -11387,7 +11399,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     const dataFim = String(document.getElementById("filtroClienteDataFimMaster")?.value || "");
 
     return lista.filter(c=>{
-      if(!clientePossuiVenda(c)) return false;
+      if(window.__integroSomenteClientesComVenda === true && !clientePossuiVenda(c)) return false;
       const texto = normalizarTexto([nomeCliente(c), documentoCliente(c), telefoneCliente(c), c.apelido, c.fantasia].join(" "));
       const st = statusCliente(c);
       const eid = String(c.equipeId || c.unidadeId || c.equipe || c.unidadeNome || "");
@@ -12035,6 +12047,8 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     if(botao?.disabled) return;
     const clienteAtual=(window.clientesEmpresaMasterCache || window.clientesCache || []).find(item=>String(item.id)===String(id));
     if(!clienteAtual) return notificarIntegro("Cliente não encontrado para edição.");
+    const referencias = window.ClientesService.referenciasCliente(clienteAtual);
+    const operacionalId = referencias.operacionalId, legadoId = referencias.legadoId;
     try{
       if(botao){botao.disabled=true;botao.textContent="Salvando...";}
       const tipoCliente=String(document.getElementById("opClienteTipo")?.value || "PF").toUpperCase();
@@ -12070,19 +12084,19 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         origemDescricao:document.getElementById("opClienteOrigemOutro")?.value || "",
         observacoes:document.getElementById("opClienteObservacoes")?.value || ""
       };
-      const fotoPerfil=await enviarFotoClienteCadastro(id);
-      const anexosNovos=await enviarAnexosClienteCadastro(id);
+      const fotoPerfil=await enviarFotoClienteCadastro(operacionalId);
+      const anexosNovos=await enviarAnexosClienteCadastro(operacionalId);
       if(fotoPerfil){alteracoes.fotoPerfil=fotoPerfil;alteracoes.fotoPerfilUrl=fotoPerfil.url;}
       if(anexosNovos.length) alteracoes.anexos=[...(Array.isArray(clienteAtual.anexos)?clienteAtual.anexos:[]),...anexosNovos];
-      if(clienteAtual.clienteLegadoId){
-        await window.ClientesService.atualizarClienteComLegado(id,clienteAtual.clienteLegadoId,alteracoes,usuarioAtual(),{db:db()});
+      if(legadoId){
+        await window.ClientesService.atualizarClienteComLegado(operacionalId,legadoId,alteracoes,usuarioAtual(),{db:db()});
       }else{
-        await window.ClientesService.atualizarCliente(id,alteracoes,usuarioAtual(),{db:db()});
+        await window.ClientesService.atualizarCliente(operacionalId,alteracoes,usuarioAtual(),{db:db()});
       }
       notificarIntegro("Cadastro do cliente atualizado com sucesso.");
       window.clientesEmpresaMasterCache=[];
       await window.buscarClientesEmpresaMaster(true);
-      window.abrirPerfilClienteMaster(id);
+      window.abrirPerfilClienteMaster(operacionalId);
     }catch(erro){
       console.error("Erro ao atualizar o cadastro completo do cliente:",erro);
       notificarIntegro(erro.message || "Não foi possível atualizar o cliente.");
@@ -13884,8 +13898,9 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     }
   };
 
-  window.abrirDrawerPermissoesCargo = function(cargoId){
-    const cargos = window.__integroCargosPermissoes || [];
+  window.abrirDrawerPermissoesCargo = async function(cargoId){
+    const cargos = await carregarCargosPermissoesTela();
+    window.__integroCargosPermissoes = cargos;
     const cargo = cargos.find(c=>String(c.id) === String(cargoId));
     if(!cargo) return notificarIntegro("Cargo não encontrado.");
 
@@ -25221,14 +25236,14 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <link rel="stylesheet" href="css/cliente-gestao-final.css?v=20261008-dashboard1">
   <script src="js/modules/cliente-360.js?v=20261006"></script>
   <script src="js/modules/central-gestao.js?v=20261008-dashboard1"></script>
-  <script src="js/modules/financeiro-unificado.js?v=20261008-categorias1&build=20261008-admin-fechado1"></script>
+  <script src="js/modules/financeiro-unificado.js?v=20261021-montagem-financeira&build=20261008-admin-fechado1"></script>
   <script src="js/modules/movimentacoes-unificadas.js?v=20260813-v26&build=20261008-mov-hoje1"></script>
   <script src="js/modules/auditoria-unificada.js?v=20260803-migracao2"></script>
   <script src="js/modules/captador-unificado.js?v=20260803-migracao2"></script>
   <script src="js/modules/supervisor-operacao-unificada.js?v=20260803-migracao2&build=20261006"></script>
   <script src="js/minha-conta.js?v=20260805-producao-otimizada1"></script>
   <script src="js/unified-navigation.js?v=20261008-movimentacoes1"></script>
-  <script src="js/usuarios-permissoes-config.js?v=20260803-unificado1"></script>
+  <script src="js/usuarios-permissoes-config.js?v=20261021-cadastros"></script>
   <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261008-categorias1"></script>
   <script src="js/vendedor-operacao.js?v=20260827-payment-edit1&build=20261008-carteira-fechamento3"></script>
   <script src="js/services/seller-box-dashboard.js?v=20261007-2"></script>
@@ -25351,6 +25366,6 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/modules/notification-center.js?v=20260813-v25"></script>
 <script src="js/caixa-opening-progress.js?v=20261008-abertura1"></script>
 <script src="js/caixa-team-date-ui.js?v=20261008-abertura1"></script>
-<script src="js/modules/caixas-supervisao.js?v=20261008-visual1"></script>
+<script src="js/modules/caixas-supervisao.js?v=20261021-resumo-fechado"></script>
 </body>
 </html>

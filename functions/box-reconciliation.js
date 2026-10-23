@@ -62,7 +62,8 @@ function calcularConferencia({box, sales, installments, payments, requests, visi
     const received=confirmedPayments.some(p=>p.vendaId===sale.id&&money(p)>0);
     const visited=visits.some(v=>!inactive(v)&&v.vendaId===sale.id&&norm(v.tipo || v.tipoHistorico || v.acao)==="NAO_PAGAMENTO");
     const scheduled=parts.some(p=>due(p)&&due(p)<=day&&(!paid(p)||confirmedPayments.some(pay=>pay.parcelaId===p.id))) || text(sale.dataPrimeiraCobranca).slice(0,10)===day;
-    return {id:sale.id,required:scheduled||received||visited,received,visited};
+    const expected=money(sale,'valorParcelaCentavos',['valorParcela','parcelaValor']) || (parts.length ? money(parts[0],'valorCentavos',['valorParcela','valor','valorPrevisto']) : 0);
+    return {id:sale.id,required:scheduled||received||visited,received,visited,expected};
   }).filter(r=>r.required);
   const initial=money(box,"saldoInicialCentavos",["valorInicial","caixaInicial","saldoInicial"]);
   // Aceitação de divergência registra auditoria, não entrada/saída física.
@@ -72,6 +73,9 @@ function calcularConferencia({box, sales, installments, payments, requests, visi
   if (expected!==money(box,"saldoAtualCentavos",["saldoAtual","valorAtual","caixaAtual"])) inconsistencies.push("CAIXA_DIFERENTE_DO_LEDGER");
   const totals={};
   for (const [key,type] of Object.entries({totalPagamentosCentavos:"PAGAMENTO",totalVendasCentavos:"VENDA",totalIngressosCentavos:"INGRESSO",totalGastosCentavos:"GASTO",totalRetiradasCentavos:"RETIRADA",totalRecolhimentosCentavos:"RECOLHIMENTO",totalAjustesCentavos:"AJUSTE"})) totals[key]=cashLedger.filter(l=>norm(l.tipoLancamento)===type).reduce((n,l)=>n+money(l),0);
-  return {versaoCalculo:"fechamento_backend_v1",caixa:box,dataOperacional:day,caixaInicialCentavos:initial,caixaFinalEsperadoCentavos:expected,carteiraInicialCentavos:money(box,"carteiraInicialCentavos",["carteiraInicial"]),carteiraFinalCentavos:portfolioSales.reduce((n,s)=>n+money(s,"saldoDevedorCentavos",["saldoDevedor","saldoAtual"]),0),...totals,totalCobrancas:route.length,totalVisitadas:route.filter(r=>r.received||r.visited).length,totalPagas:route.filter(r=>r.received).length,totalNaoPagas:route.filter(r=>!r.received&&r.visited).length,pendenciasCobranca:route.filter(r=>!r.received&&!r.visited).length,pagamentosPendentes:pendingPayments.length,aprovacoesPendentes:pendingApprovals.length,inconsistencias:inconsistencies,vendasIds:currentSales.map(s=>s.id),pagamentosIds:confirmedPayments.map(p=>p.id)};
+  const newSales=currentSales.filter(s=>!s.renovacao&&!s.renovada&&!norm(s.tipoVenda || s.tipo).includes('RENOV'));
+  const totalVendasNovasCentavos=newSales.reduce((n,s)=>n+money(s,'valorEmprestadoCentavos',['valorEmprestado','valor','valorVenda']),0);
+  const totalVendasRenovadasCentavos=currentSales.filter(s=>!newSales.includes(s)).reduce((n,s)=>n+money(s,'valorEmprestadoCentavos',['valorEmprestado','valor','valorVenda']),0);
+  return {quantidadeVendas:currentSales.length,totalVendasNovasCentavos,totalVendasRenovadasCentavos,versaoCalculo:"fechamento_backend_v1",caixa:box,dataOperacional:day,caixaInicialCentavos:initial,caixaFinalEsperadoCentavos:expected,carteiraInicialCentavos:money(box,"carteiraInicialCentavos",["carteiraInicial"]),carteiraFinalCentavos:portfolioSales.reduce((n,s)=>n+money(s,"saldoDevedorCentavos",["saldoDevedor","saldoAtual"]),0),...totals,totalPrevistoCentavos:route.reduce((n,r)=>n+r.expected,0),totalCobrancas:route.length,totalVisitadas:route.filter(r=>r.received||r.visited).length,totalPagas:route.filter(r=>r.received).length,totalNaoPagas:route.filter(r=>!r.received&&r.visited).length,pendenciasCobranca:route.filter(r=>!r.received&&!r.visited).length,pagamentosPendentes:pendingPayments.length,aprovacoesPendentes:pendingApprovals.length,inconsistencias:inconsistencies,vendasIds:currentSales.map(s=>s.id),pagamentosIds:confirmedPayments.map(p=>p.id)};
 }
 module.exports={calcularConferencia};

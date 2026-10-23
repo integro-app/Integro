@@ -33,3 +33,12 @@ test('rota do caixa atual inclui venda de caixa anterior e exclui cliente de out
  const m=env().model(box,{portfolioReady:true,portfolio:[sale,{...sale,id:'other',vendedorAuthUid:'other'}],installments:[{...sale,id:'i',vendaId:'s1',dataVencimento:'2026-10-08',valorParcela:50,status:'ABERTA'}],payments:[p]});
  assert.equal(m.wallet,5000);assert.equal(m.clients,1);assert.equal(m.visited,1);assert.equal(m.progress,100);
 });
+
+test('resumo fechado usa campos congelados sem depender da carteira ou vendas atuais',()=>{
+ const closure={...payment('closure'),quantidadeVendas:2,totalVendasNovasCentavos:1000,totalVendasRenovadasCentavos:2000,totalVendasCentavos:3000};
+ const closed={...box,status:'FECHADO',ativo:false};
+ for(const sales of [[],[{...payment('changed'),valorEmprestadoCentavos:99999,tipoVenda:'NOVA'}]]){
+  const m=env().model(closed,{closure,sales});assert.equal(m.salesCount,2);assert.equal(m.newSales,1000);assert.equal(m.renewedSales,2000);assert.equal(m.loans,3000);
+ }
+ const legacy=env().model(closed,{closure:{...payment('old'),totalVendasCentavos:3000}});assert.equal(legacy.salesCount,null);assert.equal(legacy.newSales,null);assert.equal(legacy.renewedSales,null);
+});

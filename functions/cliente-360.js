@@ -53,8 +53,8 @@ function criarCliente360({db,functions}){
     if(tab==='parcelas')return {ok:true,client,rows:(await installments()).installments};
     if(tab==='pagamentos')return {ok:true,client,rows:await rows('pagamentos',tenant,aliases,['clienteId','clienteOperacionalId'])};
     if(tab==='visitas')return {ok:true,client,rows:await rows('historicoCobrancas',tenant,aliases,['clienteId','clienteOperacionalId'])};
-    const [all,paid,visits,transfers,logs]=await Promise.all([installments(),rows('pagamentos',tenant,aliases,['clienteId','clienteOperacionalId']),rows('historicoCobrancas',tenant,aliases,['clienteId','clienteOperacionalId']),rows('direcionamentos_clientes',tenant,aliases,['clienteId']),rows('logs',tenant,aliases,['clienteId'])]);
-    return {ok:true,client,data:{sales:all.sales,installments:all.installments,payments:paid,visits},history:[...transfers.map(r=>({...r,colecao:'direcionamentos_clientes'})),...logs.map(r=>({...r,colecao:'logs'}))]};
+    const [all,paid,visits,transfers,logs,interactions,cycles]=await Promise.all([installments(),rows('pagamentos',tenant,aliases,['clienteId','clienteOperacionalId']),rows('historicoCobrancas',tenant,aliases,['clienteId','clienteOperacionalId']),rows('direcionamentos_clientes',tenant,aliases,['clienteId']),rows('logs',tenant,aliases,['clienteId']),rows('interacoes_clientes',tenant,aliases),rows('ciclos_atendimento_clientes',tenant,aliases)]);
+    return {ok:true,client,data:{sales:all.sales,installments:all.installments,payments:paid,visits},history:[...interactions.map(r=>({...r,colecao:'interacoes_clientes'})),...cycles.map(r=>({...r,colecao:'ciclos_atendimento_clientes'})),...transfers.map(r=>({...r,colecao:'direcionamentos_clientes'})),...logs.map(r=>({...r,colecao:'logs'}))]};
   }
   return {callable};
 }

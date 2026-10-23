@@ -138,7 +138,9 @@
     }
     if (cargo === "administrativo") {
       const permissoes = usuario.permissoesUsuario || usuario.permissoes || usuario.permissoesCargo || {};
-      return acao === "ler" && permissoes.clientes !== false && permissoes.clientes?.ver !== false && permissoes["clientes.ver"] !== false;
+      const chave = acao === "ler" ? "ver" : acao === "editar" ? "editar" : "";
+      return Boolean(chave) && permissoes.clientes !== false && permissoes.clientes?.[chave] !== false && permissoes["clientes." + chave] !== false &&
+        (chave === "ver" || permissoes.clientes?.[chave] === true || permissoes["clientes." + chave] === true);
     }
     if (["financeiro", "auditor", "captador"].includes(cargo)) return acao === "ler";
     return false;
@@ -330,6 +332,10 @@
     }));
   }
 
+  function referenciasCliente(cliente = {}) {
+    return {operacionalId:texto(cliente.clienteOperacionalId || cliente.id),legadoId:texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : ""))};
+  }
+
   async function obterCliente(db, clienteId) {
     const snap = await db.collection(COLECAO_CLIENTES).doc(clienteId).get();
     if (!snap.exists) throw new Error("Cliente operacional nao encontrado.");
@@ -480,6 +486,10 @@
     const camposProtegidos = ["clientePlataformaId", "criadoEm", "criadoPor", "saldoDevedor", "saldoDevedorCentavos", "vendaAtivaId", "possuiVendaAtiva"];
     const payload = { ...dados, atualizadoPor: idUsuario(usuario), atualizadoEm: serverTimestamp() };
     camposProtegidos.forEach(campo => delete payload[campo]);
+    if (cargoUsuario(usuario) === "administrativo") {
+      const campos = new Set([...Object.keys(alteracoes), "nome", "nomeCompleto", "nomeBusca", "documento", "documentoNormalizado", "telefoneNormalizado", "telefonesNormalizados", "origem", "statusAtendimento", "ultimaMovimentacaoTexto", "atualizadoPor", "atualizadoEm"]);
+      Object.keys(payload).forEach(campo => { if (!campos.has(campo)) delete payload[campo]; });
+    }
     const logRef = db.collection("logs").doc();
     const batch = db.batch();
     batch.set(db.collection(COLECAO_CLIENTES).doc(clienteOperacionalId), payload, { merge: true });
@@ -843,6 +853,13 @@
     const tenant = tenantUsuario(usuario);
     const cargo = cargoUsuario(usuario);
     if (cargo === "captador") return [];
+    if (cargo === "administrativo") {
+      const functions = window.firebase?.app?.()?.functions?.("southamerica-east1");
+      if (!functions) throw new Error("Histórico administrativo requer o serviço autenticado.");
+      const result = (await functions.httpsCallable("obterCliente360V27")({clienteId,aba:"historico"})).data;
+      if (!result?.ok) throw new Error("Histórico não confirmado pelo servidor.");
+      return result.history || [];
+    }
     const colecoes = [COLECAO_INTERACOES, COLECAO_DIRECIONAMENTOS, COLECAO_CICLOS];
     if (cargo !== "vendedor") colecoes.push("logs");
     const resultados = await Promise.all(colecoes.map(async colecao => {
@@ -908,6 +925,7 @@
     telefonesNormalizados,
     montarDadosNormalizados,
     clienteNoEscopo,
+    referenciasCliente,
     calcularRelatorio,
     buscarDuplicidades,
     criarCliente,

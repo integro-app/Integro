@@ -176,7 +176,7 @@ test('bloqueios e mudanças de equipe durante a transação impedem abertura/rea
     };
     const api = criarCicloCaixa({ db: f.db, functions: { https: { HttpsError } } });
     const before = JSON.stringify(f.db.records.get('caixas/open'));
-    await assert.rejects(api[operation]({ vendedorId: 'seller', caixaId: 'open', motivo: 'Teste local' }, ctx('sup')), e => e.code === 'permission-denied');
+    await assert.rejects(api[operation]({ vendedorId: 'seller', caixaId: 'open', motivo: 'Teste local', operacaoId: 'concorrencia-' + change + '-' + operation }, ctx('sup')), e => e.code === 'permission-denied');
     assert.equal(JSON.stringify(f.db.records.get('caixas/open')), before);
   }
 });

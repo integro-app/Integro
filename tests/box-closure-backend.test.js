@@ -84,3 +84,25 @@ test('regularização autorizada concilia ledger sem criar dinheiro físico; nov
  assert.equal((await f.close(9000)).statusFechamento,'FECHADO');
 });
 test('ledger pendente e tratamento de outro tenant não podem ser ignorados',async()=>{const f=setup({'lancamentos_financeiros/pending':{clientePlataformaId:'a',caixaId:'box',statusLancamento:'PENDENTE',valorCentavos:100,natureza:'CREDITO',tipoLancamento:'INGRESSO'}});await assert.rejects(f.close(),/LEDGER_PENDENTE/);const g=setup();await g.close(9000,{justificativa:'Conferida'});await assert.rejects(g.api.tratar({caixaId:'box',operacaoId:'foreign',decisao:'ACEITAR_DIVERGENCIA',justificativa:'Tentativa'},ctx('outsider')),e=>e.code==='permission-denied');});
+
+test('snapshot fechado persiste quantidade e separa principal de vendas novas e renovadas',async()=>{
+ const f=setup();f.db.records.get('caixas/box').saldoAtualCentavos=7000;
+ for(const [id,valor,tipoVenda] of [['new',1000,'NOVA'],['renew',2000,'RENOVACAO']]){
+  f.db.records.set('vendas/'+id,{...sale,caixaId:'box',valorEmprestadoCentavos:valor,saldoDevedorCentavos:valor,tipoVenda,dataPrimeiraCobranca:core.adicionarDiasISO(core.hojeSP(),1)});
+  f.db.records.set('lancamentos_financeiros/'+id,{clientePlataformaId:'a',caixaId:'box',origemId:id,tipoLancamento:'VENDA',natureza:'DEBITO',valorCentavos:valor,statusLancamento:'CONFIRMADO'});
+ }
+ const result=await f.close(7000),snapshot=result.snapshot;
+ assert.equal(snapshot.quantidadeVendas,2);assert.equal(snapshot.totalVendasNovasCentavos,1000);assert.equal(snapshot.totalVendasRenovadasCentavos,2000);assert.equal(snapshot.totalVendasCentavos,3000);
+ assert.equal(f.db.records.get('fechamentos_caixa/fechamento_box').quantidadeVendas,2);
+});
+
+test('previsto congelado segue a parcela nominal da carteira e não diminui com baixa parcial',async()=>{
+ const s={...sale,id:'sale',caixaId:'box',valorEmprestadoCentavos:10000,valorParcelaCentavos:10000,saldoDevedorCentavos:5000};
+ const i={...part,id:'part',caixaId:'box',clienteId:'client',vendedorAuthUid:'seller',valorPagoCentavos:5000,status:'PARCIAL'};
+ const p={id:'pay',clientePlataformaId:'a',caixaId:'box',vendaId:'sale',parcelaId:'part',clienteId:'client',vendedorAuthUid:'seller',valorCentavos:5000,dataOperacional:core.hojeSP(),status:'CONFIRMADO'};
+ const f=setup({'vendas/sale':s,'parcelas/part':i,'pagamentos/pay':p,'lancamentos_financeiros/sale':{clientePlataformaId:'a',caixaId:'box',origemId:'sale',tipoLancamento:'VENDA',natureza:'DEBITO',valorCentavos:10000,statusLancamento:'CONFIRMADO'},'lancamentos_financeiros/pay':{clientePlataformaId:'a',caixaId:'box',origemId:'pay',tipoLancamento:'PAGAMENTO',natureza:'CREDITO',valorCentavos:5000,statusLancamento:'CONFIRMADO'}});
+ f.db.records.get('caixas/box').saldoAtualCentavos=5000;
+ const snapshot=(await f.close(5000)).snapshot;
+ const route=require('../js/vendedor-operacao').montarCarteira({vendas:[s],parcelas:[i],pagamentosHoje:[p],usuario:{id:'seller',authUid:'seller',clientePlataformaId:'a'},hoje:core.hojeSP(),caixaId:'box'}).filter(r=>r.comCobrancaHoje||r.pagoHoje||r.naoPagoHoje);
+ assert.equal(snapshot.totalPrevistoCentavos,10000);assert.equal(snapshot.totalPrevistoCentavos,route.reduce((n,r)=>n+Math.round(r.valorParcela*100),0));assert.equal(snapshot.totalPagamentosCentavos,5000);
+});

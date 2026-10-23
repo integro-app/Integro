@@ -416,3 +416,13 @@ test("carteira lista vínculos canônicos e não busca aliases que não comprova
   assert.equal(rows.length,2);
   assert.ok(!rows.some(c=>c.id==="invasor"));
 });
+
+test('edição administrativa não replica metadados exclusivos do operacional no legado',async()=>{
+ const base={clientePlataformaId:'tenant_1',nome:'Fictício',documento:'11144477735',telefonePrincipal:'11999990000',criadoPor:'adm',saldoDevedor:0};const ctx=carregar({'clientes_operacionais/op':{...base,clienteLegadoId:'leg',cicloAtendimentoAtual:1,tentativasContato:0},'clientes/leg':{...base,clienteOperacionalId:'op'}});
+ await ctx.ClientesService.atualizarClienteComLegado('op','leg',{apelido:'Editado'},usuario({id:'adm',authUid:'adm',cargoChave:'administrativo',tipoUsuario:'usuario_cliente',permissoes:{clientes:{editar:true}}}),{db:ctx.db});
+ assert.equal(ctx.db.dados.get('clientes/leg').apelido,'Editado');assert.equal(ctx.db.dados.get('clientes/leg').clienteLegadoId,undefined);assert.equal(ctx.db.dados.get('clientes_operacionais/op').cicloAtendimentoAtual,1);
+});
+
+test('histórico administrativo usa callable autorizado sem consultar logs diretamente',async()=>{
+ const ctx=carregar({'clientes_operacionais/c':{clientePlataformaId:'tenant_1',nome:'Fictício'}}),calls=[];ctx.firebase.app=()=>({functions:()=>({httpsCallable:name=>async data=>{calls.push({name,data});return {data:{ok:true,history:[{id:'evento'}]}};}})});const rows=await ctx.ClientesService.obterHistorico('c',usuario({cargoChave:'administrativo'}),{db:ctx.db});assert.equal(rows[0].id,'evento');assert.equal(calls[0].name,'obterCliente360V27');assert.equal(calls[0].data.aba,'historico');
+});

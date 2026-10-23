@@ -55,7 +55,7 @@ window.db = db;
   if (window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__ || window.__INTEGRO_EMPRESAS_PORTAL__) return;
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
-  script.src = "js/v27-bootstrap.js?v=20261020-integracao-perfis&build=20261014-multiempresa1";
+  script.src = "js/v27-bootstrap.js?v=20261021-relatorios&build=20261014-multiempresa1";
   script.async = false;
   script.dataset.integroV27Bootstrap = "1";
   document.head.appendChild(script);

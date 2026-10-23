@@ -165,7 +165,9 @@
 
   function mount() {
     const host = root();
-    if (!host || state.mounted) return Boolean(host);
+    if (global.__integroFinanceiroModo === "empresarial") return false;
+    if (!host) return false;
+    if (state.mounted && host.querySelector('[data-fin-view]')) return true;
     host.innerHTML = `
       <div class="unified-profile-module integro-shared-module" data-somente-leitura>
         <header class="unified-profile-head integro-shared-header">

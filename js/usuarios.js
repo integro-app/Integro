@@ -132,6 +132,7 @@ function formularioUsuario(usuario = null) {
           <option value="gerente" ${tipoSelecionado === "gerente" ? "selected" : ""}>GERENTE / SÓCIO</option>
           <option value="supervisor" ${tipoSelecionado === "supervisor" ? "selected" : ""}>SUPERVISOR</option>
           <option value="financeiro" ${tipoSelecionado === "financeiro" ? "selected" : ""}>FINANCEIRO</option>
+          <option value="administrativo" ${tipoSelecionado === "administrativo" ? "selected" : ""}>ADMINISTRATIVO</option>
           <option value="auditor" ${tipoSelecionado === "auditor" ? "selected" : ""}>AUDITOR</option>
           <option value="vendedor" ${tipoSelecionado === "vendedor" ? "selected" : ""}>VENDEDOR</option>
           <option value="captador" ${tipoSelecionado === "captador" ? "selected" : ""}>CAPTADOR</option>
@@ -207,6 +208,13 @@ async function provisionarConviteUsuario(conviteId, email) {
   return resposta.data;
 }
 
+async function atualizarUsuariosAposMutacao() {
+  FirestoreService.invalidateCollection?.('USUARIOS');
+  await carregarUsuarios(true);
+  window.usuariosCache = State.getUsuarios?.() || [];
+  renderUsuarios();
+}
+
 async function provisionarUsuarioPendente(conviteId, email, recarregarLista = true) {
   try {
     if (!conviteId || !email) throw new Error("Convite sem identificação ou e-mail.");
@@ -215,7 +223,7 @@ async function provisionarUsuarioPendente(conviteId, email, recarregarLista = tr
     await FirestoreService.gravarLog("ENVIO_ATIVACAO_USUARIO", { conviteId, email });
     if (window.notificarIntegro) window.notificarIntegro("Usuário provisionado. E-mail para definir a senha enviado.");
     else UIHelpers.alerta("Usuário provisionado. E-mail para definir a senha enviado.");
-    if (recarregarLista) await carregarTudoMasterLocal();
+    if (recarregarLista) await atualizarUsuariosAposMutacao();
     return true;
   } catch (erro) {
     console.error("Erro ao provisionar usuário:", erro);
@@ -280,7 +288,7 @@ async function salvarNovoUsuario() {
       window.notificarIntegro("Convite salvo. O provisionamento permanece pendente.");
     }
     fecharDrawer();
-    await carregarTudoMasterLocal();
+    await atualizarUsuariosAposMutacao();
   } catch (erro) {
     console.error("Erro ao criar usuário:", erro);
     const mensagem = erro?.code === "usuario/email-duplicado"
@@ -333,7 +341,7 @@ async function salvarEdicaoUsuario(id) {
     UIHelpers.alerta("Usuário atualizado com sucesso.");
 
     fecharDrawer();
-    await carregarTudoMasterLocal();
+    await atualizarUsuariosAposMutacao();
 
   } catch (erro) {
     console.error("Erro ao editar usuário:", erro);
@@ -363,7 +371,7 @@ async function alterarAcessoUsuario(id, liberar) {
 
     UIHelpers.alerta(liberar ? "Usuário liberado." : "Usuário bloqueado.");
 
-    await carregarTudoMasterLocal();
+    await atualizarUsuariosAposMutacao();
 
   } catch (erro) {
     console.error("Erro ao alterar acesso:", erro);
@@ -397,7 +405,7 @@ async function excluirUsuarioLogico(id) {
 
     UIHelpers.alerta("Usuário excluído logicamente.");
 
-    await carregarTudoMasterLocal();
+    await atualizarUsuariosAposMutacao();
 
   } catch (erro) {
     console.error("Erro ao excluir usuário:", erro);

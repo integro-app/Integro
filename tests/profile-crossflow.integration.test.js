@@ -12,6 +12,12 @@ test('perfis locais: pagamento parcial → Supervisor → Gerente → transferê
  const saleInput={caixaId:sourceBox.caixaId,clienteId,operacaoId:'original-sale',valorEmprestadoCentavos:10000,taxaJuros:0,quantidadeParcelas:2,primeiraCobranca:core.adicionarDiasISO(core.hojeSP(),1)},sale=await wrap(finance.registrarVenda)(saleInput,ctx('seller'));
  const parts=await db.collection('parcelas').where('vendaId','==',sale.vendaId).get(),parcelaId=parts.docs.sort((a,b)=>a.data().numeroParcela-b.data().numeroParcela)[0].id;
  await wrap(collections.corrigir)({acao:'PAGAMENTO',caixaId:sourceBox.caixaId,clienteId,vendaId:sale.vendaId,parcelaId,valorCentavos:3000},ctx('seller'));
+ assert.equal((await db.collection('vendas').doc(sale.vendaId).get()).data().equipeId,'e1');
+ for(const part of parts.docs)assert.equal(part.data().equipeId,'e1');
+ const scopedPayments=await db.collection('pagamentos').where('caixaId','==',sourceBox.caixaId).get();
+ assert.ok(scopedPayments.size>0);for(const payment of scopedPayments.docs)assert.equal(payment.data().equipeId,'e1');
+ const scopedLedger=await db.collection('lancamentos_financeiros').where('caixaId','==',sourceBox.caixaId).get();
+ for(const entry of scopedLedger.docs)assert.equal(entry.data().equipeId,'e1');
  assert.equal((await db.collection('vendas').doc(sale.vendaId).get()).data().saldoDevedorCentavos,7000);
  await assert.rejects(wrap(finance.registrarVenda)({...saleInput,operacaoId:'blocked-resale'},ctx('seller')),/saldo devedor ativo/);
  await db.collection('configuracoes_empresas').doc('a').set({clientes:{vendaComSaldoAtivo:{permitirAnalise:true}}});

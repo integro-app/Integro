@@ -20,7 +20,7 @@
       "usuarios.ver", "equipes.ver", "chat_interno.ver", "notificacoes.ver", "indicacoes.ver"
     ],
     administrativo: [
-      "dashboard.ver", "minha_conta.ver", "clientes.ver", "clientes.criar", "clientes.editar", "clientes.atender",
+      "dashboard.ver", "minha_conta.ver", "clientes.ver", "clientes.atender",
       "vendas.ver", "cobrancas.ver", "caixas.ver", "solicitacoes.ver", "relatorios.ver",
       "chat_interno.ver", "notificacoes.ver", "indicacoes.ver"
     ],

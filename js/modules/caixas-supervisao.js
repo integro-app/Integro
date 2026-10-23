@@ -79,7 +79,7 @@
     }
     const newSales = sales.filter(v => !v.renovacao && !v.renovada && !upper(v.tipoVenda || v.tipo).includes('RENOV'));
     return {box,initial,current,calculated,walletInitial,wallet,received,loans,income,expenses,withdrawals,collected,adjustments,sales,payments,moves,visits,expected,clients,visited,paid,unpaid,
-      salesCount:!openBox(box)&&loans>0&&!sales.length?null:sales.length,newSales:!openBox(box)&&loans>0&&!sales.length?null:sum(newSales,['valorEmprestado','valorLiberado','valorPrincipal','valor']),renewedSales:!openBox(box)&&loans>0&&!sales.length?null:sum(sales.filter(v=>!newSales.includes(v)),['valorEmprestado','valorLiberado','valorPrincipal','valor']),
+      salesCount:pick('quantidadeVendas',!openBox(box)&&loans>0&&!sales.length?null:sales.length),newSales:pick('totalVendasNovasCentavos',!openBox(box)&&loans>0&&!sales.length?null:sum(newSales,['valorEmprestado','valorLiberado','valorPrincipal','valor'])),renewedSales:pick('totalVendasRenovadasCentavos',!openBox(box)&&loans>0&&!sales.length?null:sum(sales.filter(v=>!newSales.includes(v)),['valorEmprestado','valorLiberado','valorPrincipal','valor'])),
       progress:clients ? Math.round(visited/clients*100) : clients === 0 ? 0 : null};
   }
   const overview = new Map(), pending = new Set();

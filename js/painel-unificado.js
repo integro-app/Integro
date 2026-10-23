@@ -5,6 +5,7 @@
     dashboard: "dashboard.ver",
     operacao: "operacao.ver",
     clientes: "clientes.ver",
+    adicionarCliente: "clientes.criar",
     movimentacoes: "financeiro.movimentacoes",
     vendas: "vendas.ver",
     cobrancas: "cobrancas.ver",

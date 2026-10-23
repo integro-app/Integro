@@ -286,6 +286,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
             operacaoId: pagamentoInfo.pagamentoId,
             idempotencyKey: pagamentoInfo.pagamentoId,
             clientePlataformaId: tenantId,
+            equipeId: txt(caixa.equipeId),
             caixaId,
             vendaId,
             parcelaId: alocacao.parcelaId,
@@ -316,6 +317,7 @@ function criarCorrecoesBaixaVendedor({ db, functions }) {
           }, { merge: true });
           transaction.set(ledgerInfo.ref, {
             clientePlataformaId: tenantId,
+            equipeId: txt(caixa.equipeId),
             caixaId,
             vendedorId,
             vendedorAuthUid: uid,

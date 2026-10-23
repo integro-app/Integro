@@ -3,6 +3,10 @@
 // CRUD de clientes e renderização UI
 // ========================================
 
+function podeAcaoCliente(acao,cliente={}) {
+  return window.IntegroAcesso?.pode?.(State.getUsuario?.() || {},"clientes."+acao,cliente) === true;
+}
+
 function getClientesFiltrados() {
   const termo = (UIHelpers.getInputValue("buscaClientes") || "").toLowerCase();
   const clientes = State.getClientes ? State.getClientes() : [];
@@ -57,14 +61,16 @@ function renderClientes() {
 
       <div class="item-actions">
         <button class="ghost-btn" onclick="abrirVerCliente('${c.id}')">Ver</button>
-        <button class="ghost-btn" onclick="abrirEditarCliente('${c.id}')">Editar</button>
-        <button class="danger-btn" onclick="excluirClienteLogico('${c.id}')">Excluir</button>
+        ${podeAcaoCliente("editar",c) ? `<button class="ghost-btn" onclick="abrirEditarCliente('${c.id}')">Editar</button>` : ""}
+        ${podeAcaoCliente("excluir",c) ? `<button class="danger-btn" onclick="excluirClienteLogico('${c.id}')">Excluir</button>` : ""}
       </div>
     </div>
   `).join("");
 }
 
 function abrirNovoCliente() {
+  if (!podeAcaoCliente("criar")) return UIHelpers.alerta("Sem permissão para criar cliente.");
+  if (window.IntegroAcesso?.acessoUsuario?.(State.getUsuario?.() || {})?.perfil === "administrativo") return window.navegarModuloClientesMasterLocal?.("adicionarCliente");
   abrirDrawer("Novo cliente", formularioCliente());
 }
 
@@ -88,6 +94,8 @@ function abrirEditarCliente(id) {
     return;
   }
 
+  if (!podeAcaoCliente("editar",cliente)) return UIHelpers.alerta("Sem permissão para editar cliente.");
+  if (window.IntegroAcesso?.acessoUsuario?.(State.getUsuario?.() || {})?.perfil === "administrativo") return window.abrirPerfilClienteMaster?.(id);
   abrirDrawer("Editar cliente", formularioCliente(cliente));
 }
 
@@ -547,6 +555,7 @@ function montarDadosCliente() {
 }
 
 async function excluirClienteLogico(id) {
+  if (!podeAcaoCliente("excluir",encontrarClientePorId(id) || {})) return UIHelpers.alerta("Sem permissão para excluir cliente.");
   try {
     const cliente = encontrarClientePorId(id);
 
@@ -598,7 +607,7 @@ function prepararTelaClientes() {
         <h2>Clientes</h2>
         <p>Consulta e gestão premium da carteira de clientes.</p>
       </div>
-      <button class="primary-btn" onclick="abrirNovoCliente()">Novo cliente</button>
+      ${podeAcaoCliente("criar") ? `<button class="primary-btn" onclick="abrirNovoCliente()">Novo cliente</button>` : ""}
     </div>
 
     <div class="search-row">

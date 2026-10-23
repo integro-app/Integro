@@ -145,13 +145,19 @@
     return true;
   }
 
+  async function refreshUsers() {
+    if (typeof global.atualizarUsuariosAposMutacao === 'function') return global.atualizarUsuariosAposMutacao();
+    global.FirestoreService?.invalidateCollection?.('USUARIOS');
+    return global.carregarTudoMasterLocal?.(true);
+  }
+
   async function finalizeInactivation(targetUser) {
     const targetUid = userId(targetUser);
     await global.IntegroV27Session?.invalidateUserSessions?.(targetUid).catch(() => {});
     const ref = db().collection("usuarios").doc(targetUser.id || targetUid);
     await ref.set({ status: "INATIVO", acessoLiberado: false, inativadoPorUid: currentUid(), inativadoEm: serverTimestamp(), inativadoEmTexto: new Date().toISOString() }, { merge: true });
     global.UIHelpers?.alerta?.("Usuário inativado. O histórico foi preservado.");
-    await global.carregarTudoMasterLocal?.();
+    await refreshUsers();
     return true;
   }
 
@@ -159,9 +165,10 @@
     const target = await getUser(targetId);
     if (!target) throw new Error("Usuário não encontrado.");
     const uidTarget = userId(target);
-    if (release) await global.IntegroV27Session?.unblockUser?.(uidTarget);
-    else await global.IntegroV27Session?.blockUser?.(uidTarget);
-    await global.carregarTudoMasterLocal?.();
+    const session=global.IntegroV27Session, action=release?'unblockUser':'blockUser';
+    if(typeof session?.[action]!=='function') throw new Error('Serviço de segurança indisponível; acesso não alterado.');
+    await session[action](uidTarget);
+    await refreshUsers();
     global.UIHelpers?.alerta?.(release ? "Usuário desbloqueado." : "Usuário bloqueado.");
   }
 
