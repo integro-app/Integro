@@ -5,6 +5,7 @@
     if (dados && Number(dados.expiraEm || 0) >= Date.now()) {
       inicio = Math.max(0, Math.min(95, Number(dados.percentual) || 0));
       atual = inicio;
+      medicaoLogin = dados;
       window.__integroLoginLoadingConcluido = true;
       document.documentElement.classList.add("integro-login-loading-concluido");
     } else {
