@@ -23,7 +23,7 @@ test("seguranca do caixa permanece obrigatoria no backend e no painel do vendedo
   const auth = read("js/auth.js");
   const login = auth.slice(auth.indexOf("async function login()"), auth.indexOf("async function carregarConfiguracoesEmpresaDoUsuario("));
   assert.match(login, /await sessao\.start\(\)/);
-  assert.doesNotMatch(login, /await verificarCaixaVendedorParaAcesso\(/);
+  assert.match(login, /await verificarCaixaVendedorParaAcesso\(usuario, auth\.currentUser\)/);
   const pagina = auth.slice(auth.indexOf("function protegerPagina("));
   assert.match(pagina, /await verificarCaixaVendedorParaAcesso\(usuario, authUser\)/);
 });
