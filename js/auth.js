@@ -200,7 +200,8 @@ async function login() {
       throw erroSessao;
     }
 
-    await verificarCaixaVendedorParaAcesso(usuario, auth.currentUser);
+    // iniciarSessaoV27 já valida o caixa do vendedor no servidor antes de emitir o token.
+    // A página operacional confere novamente o caixa antes de liberar dados e ações.
     marcarEtapaLogin(metricas, "ambiente");
     atualizarCarregamentoLogin("Carregando seu painel", 72, "Validando sessão e carregando os dados principais");
     marcarEtapaLogin(metricas, "redirecionamento");
