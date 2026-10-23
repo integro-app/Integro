@@ -292,10 +292,8 @@
         setLoaderSupervisor(0, "Carregando painel do supervisor...");
 
         setLoaderSupervisor(12, "Validando estrutura inicial...");
-        if (typeof protegerPaginaAtual === "function") {
-          protegerPaginaAtual();
-        }
-
+        // auth.js registra uma única proteção de rota no DOMContentLoaded.
+        // Não registrar outro onAuthStateChanged nem repetir as consultas de perfil.
         setLoaderSupervisor(28, "Validando sessão e permissões...");
         await aguardarUsuarioSupervisorValidado();
 
