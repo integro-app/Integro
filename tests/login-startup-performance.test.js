@@ -37,3 +37,18 @@ test("supervisor reutiliza a protecao de auth.js sem registrar segundo observado
   const commonAuth = read("js/auth.js");
   assert.match(commonAuth, /if \(paginaAtual !== "index\.html"\) protegerPaginaAtual\(\)/);
 });
+
+
+test("handoff mede login completo ate painel sem registrar identidade", () => {
+  const auth = read("js/auth.js");
+  const handoff = read("js/integro-loading-handoff.js");
+  const supervisor = read("supervisor.html");
+  const vendedor = read("vendedor.html");
+  assert.match(auth, /inicioEmMs: Date\.now\(\) - \(Number\(window\.__integroUltimaMetricaLogin\?\.total\)/);
+  assert.match(handoff, /document\.addEventListener\("integro-app-ready"/);
+  assert.match(handoff, /totalEntradaMs:/);
+  assert.match(handoff, /__integroUltimaMetricaEntrada = metricas/);
+  assert.match(supervisor, /integro-app-ready", \{ detail: \{ pagina: "supervisor" \} \}/);
+  assert.match(vendedor, /integro-app-ready/);
+  assert.doesNotMatch(handoff, /\.email|\.senha|\.authUid|\.clientePlataformaId/);
+});
