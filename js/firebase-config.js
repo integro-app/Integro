@@ -52,7 +52,8 @@ window.db = db;
 
 // V27.2: bootstrap consolidado, estável e sem polling infinito.
 (function carregarBootstrapV27() {
-  if (window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__ || window.__INTEGRO_EMPRESAS_PORTAL__) return;
+  // O login já carrega os serviços necessários; módulos operacionais são exclusivos dos painéis.
+  if (integroPaginaLogin || window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__ || window.__INTEGRO_EMPRESAS_PORTAL__) return;
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
   script.src = "js/v27-bootstrap.js?v=20261021-relatorios&build=20261014-multiempresa1";
