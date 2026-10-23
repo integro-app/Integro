@@ -22,14 +22,15 @@ const integroParametroEmulator = integroParametros.get("emulator");
 const integroPaginaAtual = String(window.location.pathname || "").toLowerCase();
 const integroPaginaLogin = integroPaginaAtual === "/" || integroPaginaAtual.endsWith("/index.html");
 
-// Homologação local deve permanecer isolada da produção, inclusive ao voltar ao login.
-// Em localhost, usar emuladores por padrão; ?emulator=0 exige escolha explícita
-// e é mantido apenas nesta aba até o desenvolvedor selecionar ?emulator=1.
-if (integroEmAmbienteLocal && ["0", "1"].includes(integroParametroEmulator)) {
-  sessionStorage.setItem("integro:usar-emulator", integroParametroEmulator);
+// Restaurado: o login local usa as contas do Firebase configurado, como antes.
+// Emuladores apenas com ?emulator=1 explícito no login; a escolha segue no painel.
+if (integroEmAmbienteLocal && integroParametroEmulator === "1") {
+  sessionStorage.setItem("integro:usar-emulator", "1");
+} else if (integroParametroEmulator === "0" || (integroEmAmbienteLocal && integroPaginaLogin)) {
+  sessionStorage.removeItem("integro:usar-emulator");
 }
 
-const integroUsarEmulator = integroEmAmbienteLocal && sessionStorage.getItem("integro:usar-emulator") !== "0";
+const integroUsarEmulator = integroEmAmbienteLocal && sessionStorage.getItem("integro:usar-emulator") === "1";
 
 if (integroEmAmbienteLocal && integroParametros.get("instrument") === "1") sessionStorage.setItem("integro:instrumentar", "1");
 if (integroParametros.get("instrument") === "0") sessionStorage.removeItem("integro:instrumentar");
