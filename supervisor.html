@@ -245,6 +245,7 @@
         if (loader) loader.classList.add("hide");
         document.body.classList.remove("integro-booting");
         window.__supervisorBootFinalizado = true;
+        document.dispatchEvent(new CustomEvent("integro-app-ready", { detail: { pagina: "supervisor" } }));
       }, 350);
     }
 
