@@ -86,7 +86,15 @@
   }
 
   async function bindSession(result, id, uid) {
-    if (!result.customToken) throw new Error("Backend de sessão incompatível; acesso não liberado.");
+    if (!result?.customToken) {
+      // Diagnóstico sem expor credenciais, token, UID ou dados da empresa.
+      console.error("[ÍNTEGRO SESSÃO] Contrato incompatível de iniciarSessaoV27", {
+        origem: global.__INTEGRO_EMULATOR__ ? "emulador-local" : "firebase-remoto",
+        possuiSessionId: Boolean(result?.sessionId),
+        possuiCustomToken: false
+      });
+      throw new Error("Backend de sessão incompatível; acesso não liberado.");
+    }
     id = text(result.sessionId);
     if (id.length < 12) throw new Error("Identificador de sessão ausente no backend.");
     const credential = await global.firebase.auth().signInWithCustomToken(result.customToken);
