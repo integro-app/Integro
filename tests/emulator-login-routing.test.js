@@ -48,27 +48,30 @@ function carregarConfig({ hostname = "localhost", pathname = "/index.html", sear
   return { conexoes, dados, emuladorAtivo: Boolean(window.__INTEGRO_EMULATOR__) };
 }
 
-test("login no localhost usa emuladores por padrao e nao acessa backend remoto", () => {
+test("localhost no login usa Firebase configurado por padrao, sem emuladores", () => {
   const r = carregarConfig();
-  assert.equal(r.emuladorAtivo, true);
-  assert.deepEqual(r.conexoes.map(x => x[0]).sort(), ["auth", "firestore", "functions", "storage"]);
-  assert.deepEqual(r.conexoes.find(x => x[0] === "functions").slice(1), ["127.0.0.1", 5001]);
+  assert.equal(r.emuladorAtivo, false);
+  assert.equal(r.conexoes.length, 0);
 });
 
-test("voltar ao login nao cancela a escolha pelo emulador", () => {
+test("emulador so e habilitado explicitamente e acompanha navegacao interna", () => {
+  const state = new Map();
+  const local = carregarConfig({ search: "?emulator=1", state });
+  assert.equal(local.emuladorAtivo, true);
+  assert.deepEqual(local.conexoes.map(x => x[0]).sort(), ["auth", "firestore", "functions", "storage"]);
+  assert.deepEqual(local.conexoes.find(x => x[0] === "functions").slice(1), ["127.0.0.1", 5001]);
+  assert.equal(carregarConfig({ pathname: "/vendedor.html", state }).emuladorAtivo, true);
+  assert.equal(carregarConfig({ pathname: "/index.html", state }).emuladorAtivo, false);
+  assert.equal(state.has("integro:usar-emulator"), false);
+});
+
+test("emulator=0 desativa modo de teste e nao permite persistencia acidental", () => {
   const state = new Map();
   assert.equal(carregarConfig({ search: "?emulator=1", state }).emuladorAtivo, true);
-  assert.equal(carregarConfig({ pathname: "/vendedor.html", state }).emuladorAtivo, true);
-  assert.equal(carregarConfig({ pathname: "/index.html", state }).emuladorAtivo, true);
-});
-
-test("acesso remoto no localhost requer emulator=0 explicito e respeita redirecionamentos", () => {
-  const state = new Map();
   const remoto = carregarConfig({ search: "?emulator=0", state });
   assert.equal(remoto.emuladorAtivo, false);
   assert.equal(remoto.conexoes.length, 0);
   assert.equal(carregarConfig({ pathname: "/supervisor.html", state }).emuladorAtivo, false);
-  assert.equal(carregarConfig({ search: "?emulator=1", state }).emuladorAtivo, true);
 });
 
 test("hosting remoto nunca habilita emulador mesmo se aba carregava preferencia local", () => {
