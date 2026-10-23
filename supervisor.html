@@ -302,12 +302,8 @@
           preencherUsuarioLayout();
         }
 
-        setLoaderSupervisor(65, "Carregando notificações e alertas...");
-        if (typeof carregarNotificacoesLayout === "function") {
-          await carregarNotificacoesLayout(obterUsuarioSupervisorAtual());
-        }
-
-        setLoaderSupervisor(82, "Preparando indicadores da equipe...");
+        // carregarTudoSupervisor já busca as notificações uma vez, após a validação.
+        setLoaderSupervisor(65, "Preparando indicadores da equipe...");
         await carregarTudoSupervisor({ viaLoading: true });
 
         setLoaderSupervisor(94, "Organizando painel operacional...");
