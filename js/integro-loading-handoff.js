@@ -1,5 +1,5 @@
 (function prepararEntradaSemSegundoLoading() {
-  let inicio = 0, atual = 0;
+  let inicio = 0, atual = 0, medicaoLogin = null;
   try {
     const dados = JSON.parse(sessionStorage.getItem("integroLoadingContinuo") || "null");
     if (dados && Number(dados.expiraEm || 0) >= Date.now()) {
