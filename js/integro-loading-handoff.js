@@ -1,11 +1,10 @@
 (function prepararEntradaSemSegundoLoading() {
-  let inicio = 0, atual = 0, medicaoLogin = null;
+  let inicio = 0, atual = 0;
   try {
     const dados = JSON.parse(sessionStorage.getItem("integroLoadingContinuo") || "null");
     if (dados && Number(dados.expiraEm || 0) >= Date.now()) {
       inicio = Math.max(0, Math.min(95, Number(dados.percentual) || 0));
       atual = inicio;
-      medicaoLogin = dados;
       window.__integroLoginLoadingConcluido = true;
       document.documentElement.classList.add("integro-login-loading-concluido");
     } else {
@@ -40,26 +39,4 @@
     }
   }
   window.IntegroLoadingContinuo = {percentual,iniciar};
-
-  // O evento é disparado apenas depois de o painel operacional estar utilizável.
-  // Nenhum dado de usuário, tenant ou credencial é registrado nas métricas.
-  let medicaoConcluida = false;
-  document.addEventListener("integro-app-ready", event => {
-    if (medicaoConcluida) return;
-    medicaoConcluida = true;
-    const inicioEmMs = Number(medicaoLogin?.inicioEmMs);
-    const metricas = Object.freeze({
-      pagina: String(event.detail?.pagina || location.pathname.split("/").pop() || "painel"),
-      loginMs: Number(medicaoLogin?.metricasLogin?.total) || null,
-      autenticacaoMs: Number(medicaoLogin?.metricasLogin?.autenticacao) || null,
-      perfilMs: Number(medicaoLogin?.metricasLogin?.perfil) || null,
-      ambienteMs: Number(medicaoLogin?.metricasLogin?.ambiente) || null,
-      painelMs: Math.round(performance.now()),
-      totalEntradaMs: Number.isFinite(inicioEmMs) && inicioEmMs > 0 ? Date.now() - inicioEmMs : null
-    });
-    window.__integroUltimaMetricaEntrada = metricas;
-    console.info("[ÍNTEGRO PERFORMANCE] Entrada pronta", metricas);
-    document.dispatchEvent(new CustomEvent("integro-entrada-metrica", { detail: metricas }));
-    try { sessionStorage.removeItem("integroLoadingContinuo"); } catch (_) {}
-  }, { once: true });
 })();

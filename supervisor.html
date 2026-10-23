@@ -245,7 +245,6 @@
         if (loader) loader.classList.add("hide");
         document.body.classList.remove("integro-booting");
         window.__supervisorBootFinalizado = true;
-        document.dispatchEvent(new CustomEvent("integro-app-ready", { detail: { pagina: "supervisor" } }));
       }, 350);
     }
 
@@ -293,8 +292,10 @@
         setLoaderSupervisor(0, "Carregando painel do supervisor...");
 
         setLoaderSupervisor(12, "Validando estrutura inicial...");
-        // auth.js registra uma única proteção de rota no DOMContentLoaded.
-        // Não registrar outro onAuthStateChanged nem repetir as consultas de perfil.
+        if (typeof protegerPaginaAtual === "function") {
+          protegerPaginaAtual();
+        }
+
         setLoaderSupervisor(28, "Validando sessão e permissões...");
         await aguardarUsuarioSupervisorValidado();
 
@@ -303,8 +304,12 @@
           preencherUsuarioLayout();
         }
 
-        // carregarTudoSupervisor já busca as notificações uma vez, após a validação.
-        setLoaderSupervisor(65, "Preparando indicadores da equipe...");
+        setLoaderSupervisor(65, "Carregando notificações e alertas...");
+        if (typeof carregarNotificacoesLayout === "function") {
+          await carregarNotificacoesLayout(obterUsuarioSupervisorAtual());
+        }
+
+        setLoaderSupervisor(82, "Preparando indicadores da equipe...");
         await carregarTudoSupervisor({ viaLoading: true });
 
         setLoaderSupervisor(94, "Organizando painel operacional...");

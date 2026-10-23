@@ -57,9 +57,6 @@ function prepararContinuidadeCarregamentoLogin(percentual) {
   try {
     sessionStorage.setItem("integroLoadingContinuo", JSON.stringify({
       percentual: Math.max(0, Math.min(100, Number(percentual) || 0)),
-      // Métricas não sensíveis permitem medir login + painel mesmo após a navegação.
-      inicioEmMs: Date.now() - (Number(window.__integroUltimaMetricaLogin?.total) || 0),
-      metricasLogin: window.__integroUltimaMetricaLogin || null,
       expiraEm: Date.now() + 30000
     }));
   } catch (_) {}
@@ -203,8 +200,6 @@ async function login() {
       throw erroSessao;
     }
 
-    // O backend valida o caixa antes de emitir o token e o cliente confirma o
-    // caixa operacional antes do redirecionamento (contrato já homologado).
     await verificarCaixaVendedorParaAcesso(usuario, auth.currentUser);
     marcarEtapaLogin(metricas, "ambiente");
     atualizarCarregamentoLogin("Carregando seu painel", 72, "Validando sessão e carregando os dados principais");

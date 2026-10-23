@@ -22,8 +22,6 @@ const integroParametroEmulator = integroParametros.get("emulator");
 const integroPaginaAtual = String(window.location.pathname || "").toLowerCase();
 const integroPaginaLogin = integroPaginaAtual === "/" || integroPaginaAtual.endsWith("/index.html");
 
-// Restaurado: o login local usa as contas do Firebase configurado, como antes.
-// Emuladores apenas com ?emulator=1 explícito no login; a escolha segue no painel.
 if (integroEmAmbienteLocal && integroParametroEmulator === "1") {
   sessionStorage.setItem("integro:usar-emulator", "1");
 } else if (integroParametroEmulator === "0" || (integroEmAmbienteLocal && integroPaginaLogin)) {
@@ -54,8 +52,7 @@ window.db = db;
 
 // V27.2: bootstrap consolidado, estável e sem polling infinito.
 (function carregarBootstrapV27() {
-  // O login já carrega os serviços necessários; módulos operacionais são exclusivos dos painéis.
-  if (integroPaginaLogin || window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__ || window.__INTEGRO_EMPRESAS_PORTAL__) return;
+  if (window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__ || window.__INTEGRO_EMPRESAS_PORTAL__) return;
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
   script.src = "js/v27-bootstrap.js?v=20261021-relatorios&build=20261014-multiempresa1";
