@@ -109,7 +109,7 @@
     const modulo = partes[0] || "";
     const operacao = partes.slice(1).join(".") || "ver";
     const leituras = ["ver", "visualizar", "pode_visualizar", "podevisualizar"];
-    const operacoes = leituras.includes(operacao) ? leituras : [operacao, `pode_${operacao}`, `pode${operacao}`];
+    const operacoes = operacao === "ver_proprio" ? [operacao, `pode_${operacao}`, `pode${operacao}`, ...leituras] : leituras.includes(operacao) ? leituras : [operacao, `pode_${operacao}`, `pode${operacao}`];
     return [...new Set([chave, ...operacoes.map(acao => `${modulo}.${acao}`), modulo])];
   }
 

@@ -125,7 +125,7 @@ test("operação unificada preserva pagamento e não pagamento transacionais", (
 
 
 test("caixa aberto do vendedor reconhece aliases legados e é recarregado antes da venda", () => {
-  assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
+  assert.match(master, /js\/perfis-unificados\.js\?v=\d{8}-[a-z0-9-]+/);
   assert.match(perfis, /function camposCaixaProprio\(\)/);
   assert.match(perfis, /\["vendedorId", id\]/);
   assert.match(perfis, /\["abertoPorUid", uid\]/);
@@ -260,7 +260,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /carregarLancamentosVendedor\(caixas, alvo, \{ forcar: true \}\)/);
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
-  assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
+  assert.match(master, /js\/perfis-unificados\.js\?v=\d{8}-[a-z0-9-]+/);
   assert.match(master, /js\/vendedor-unificado\.js\?v=\d{8}-[a-z0-9-]+/);
 });
 

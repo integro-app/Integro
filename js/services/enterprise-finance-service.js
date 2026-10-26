@@ -417,18 +417,24 @@
     const record=paymentId?await recordRef.get({source:'server'}):context.account;
     if(!record.exists||record.data().clientePlataformaId!==context.tenant||paymentId&&record.data().contaId!==contaId)throw new Error('Pagamento não encontrado ou sem acesso.');
     const field=paymentId?'comprovantes':'anexos',files=Array.isArray(record.data()[field])?record.data()[field]:[];
-    const folder=paymentId?`pagamentos/${paymentId}`:`contas/${contaId}`,prefix=`tenants/${context.tenant}/financeiro/${folder}/`;
+    const folder=paymentId?`pagamentos/${paymentId}`:`contas/${contaId}`,accountPrefix=`tenants/${context.tenant}/financeiro/contas/${contaId}/`,prefix=paymentId&&anexo?.path?.startsWith(accountPrefix)?accountPrefix:`tenants/${context.tenant}/financeiro/${folder}/`;
     if(!anexo?.path?.startsWith(prefix)||anexo.path.slice(prefix.length).includes('/')||anexo.path.includes('..')||!files.some(f=>f.path===anexo.path))throw new Error('Comprovante não pertence ao registro financeiro.');
     return {...context,recordRef,record,field,files};
   }
 
+  const attachmentUploads = new WeakMap();
+  function comprovanteEndpoint(nome) {
+    const projectId=text(global.firebase.app?.().options?.projectId);
+    if(!/^[a-z0-9-]+$/.test(projectId))throw new Error('Projeto Firebase inválido.');
+    if(global.__INTEGRO_EMULATOR__?.functions){const host=global.__INTEGRO_EMULATOR__.functions;if(!/^127\.0\.0\.1:\d+$/.test(host))throw new Error('Emulador inválido.');return `http://${host}/${projectId}/southamerica-east1/${nome}`;}
+    return `https://southamerica-east1-${projectId}.cloudfunctions.net/${nome}`;
+  }
+
   async function abrirComprovante(contaId,anexo,options={}) {
     const context=await validarVinculoComprovante(contaId,anexo,options,'ler');
-    const bucket=storage()?.ref().bucket;if(!bucket)throw new Error('Storage indisponível.');
-    let origin='https://firebasestorage.googleapis.com';
-    if(global.__INTEGRO_EMULATOR__?.storage){const host=global.__INTEGRO_EMULATOR__.storage;if(!/^127\.0\.0\.1:\d+$/.test(host))throw new Error('Emulador inválido.');origin=`http://${host}`;}
+    const endpoint=comprovanteEndpoint('baixarComprovanteFinanceiro');
     const token=await global.firebase.auth().currentUser.getIdToken();
-    const response=await global.fetch(`${origin}/v0/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(anexo.path)}?alt=media`,{headers:{Authorization:`Firebase ${token}`},cache:'no-store'});
+    const response=await global.fetch(endpoint,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({contaId,pagamentoId:text(options.pagamentoId),path:anexo.path}),cache:'no-store'});
     if(!response.ok)throw new Error(response.status===401||response.status===403?'Você não tem acesso a este comprovante. Solicite revisão das permissões.':'Não foi possível abrir o comprovante. Tente novamente.');
     const blob=await response.blob();if(blob.size>=MAX_FILE_BYTES)throw new Error('Comprovante excede o tamanho permitido.');
     if(context.session!==authUid()||context.tenant!==tenantId())throw new Error('A sessão mudou. Abra o comprovante novamente.');
@@ -436,17 +442,34 @@
   }
 
   async function anexarArquivo(contaId, file, options = {}) {
-    assertBase(); if(!file)throw new Error("Selecione um arquivo."); if(!storage())throw new Error("Firebase Storage indisponível."); if(Number(file.size||0)<=0||Number(file.size)>=MAX_FILE_BYTES)throw new Error("O arquivo deve ter até 10 MB."); const mime=text(file.type); if(!(mime.startsWith("image/")||ALLOWED_FILE_TYPES.includes(mime)))throw new Error("Tipo de arquivo não permitido.");
-    const {accountRef}=await autorizarComprovante(contaId,'anexar');const paymentId=text(options.pagamentoId);if(paymentId.includes('/'))throw new Error('Pagamento inválido.');
-    if(paymentId){const payment=await db().collection(COLLECTIONS.pagamentos).doc(paymentId).get({source:'server'});if(!payment.exists||payment.data().clientePlataformaId!==tenantId()||payment.data().contaId!==contaId)throw new Error('Pagamento não encontrado ou sem acesso.');}
-    const folder=paymentId?`pagamentos/${paymentId}`:`contas/${contaId}`; const id=`arq_${Date.now()}_${Math.random().toString(36).slice(2,8)}`; const path=`tenants/${tenantId()}/financeiro/${folder}/${id}_${slug(file.name)}`;
-    const ref=storage().ref(path); await ref.put(file,{contentType:mime,customMetadata:{tenantId:tenantId(),contaId,pagamentoId:paymentId,authUid:authUid()}}); const meta={id,path,nome:text(file.name),mime,tamanho:Number(file.size||0),tipo:text(options.tipo||"DOCUMENTO"),enviadoPorAuthUid:authUid(),enviadoPorNome:actor().nome,enviadoEmTexto:nowIso()};
-    if(paymentId){const pRef=db().collection(COLLECTIONS.pagamentos).doc(paymentId);const pSnap=await pRef.get();if(!pSnap.exists||pSnap.data().clientePlataformaId!==tenantId()||pSnap.data().contaId!==contaId)throw new Error("Pagamento não encontrado.");await pRef.update({comprovantes:fieldValue().arrayUnion(meta)});} else {await accountRef.update({anexos:fieldValue().arrayUnion(meta),atualizadoEmTexto:nowIso(),atualizadoEm:serverTimestamp()});}
-    await audit(paymentId?"ANEXAR_COMPROVANTE":"ANEXAR_DOCUMENTO","CONTA",contaId,null,meta,{pagamentoId:paymentId}); return meta;
+    assertBase(); if(!file)throw new Error("Selecione um arquivo."); if(Number(file.size||0)<=0||Number(file.size)>=MAX_FILE_BYTES)throw new Error("O arquivo deve ter até 10 MB."); const mime=text(file.type); if(!(mime.startsWith("image/")||ALLOWED_FILE_TYPES.includes(mime)))throw new Error("Tipo de arquivo não permitido.");
+    const context=await autorizarComprovante(contaId,'anexar'),paymentId=text(options.pagamentoId);if(paymentId.includes('/'))throw new Error('Pagamento inválido.');
+    if(paymentId){const p=await db().collection(COLLECTIONS.pagamentos).doc(paymentId).get({source:'server'});if(!p.exists||p.data().clientePlataformaId!==context.tenant||p.data().contaId!==contaId)throw new Error('Pagamento não encontrado ou sem acesso.');}
+    let uploads=attachmentUploads.get(file);if(!uploads){uploads=new Map();attachmentUploads.set(file,uploads);}
+    const key=JSON.stringify([context.session,context.tenant,contaId,paymentId,text(options.tipo||'DOCUMENTO'),text(options.operacaoId)]);
+    let entry=uploads.get(key);if(!entry){entry={operacaoId:text(options.operacaoId)||(global.crypto?.randomUUID?.()||Date.now().toString(36)+'_'+Math.random().toString(36).slice(2)+'_'+Math.random().toString(36).slice(2)),promise:null};uploads.set(key,entry);}
+    if(entry.promise)return entry.promise;
+    entry.promise=(async()=>{
+      const metadata={contaId,pagamentoId:paymentId,nome:text(file.name),mime,tamanho:Number(file.size),tipo:text(options.tipo||'DOCUMENTO'),operacaoId:entry.operacaoId};
+      const token=await global.firebase.auth().currentUser.getIdToken();
+      const response=await global.fetch(comprovanteEndpoint('enviarComprovanteFinanceiro'),{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':mime,'X-Integro-Anexo':encodeURIComponent(JSON.stringify(metadata))},body:file,cache:'no-store'});
+      if(!response.ok){let detail;try{detail=await response.json();}catch{}throw new Error(detail?.error?.message||(response.status===401||response.status===403?'Você não tem permissão para enviar este comprovante.':'Envio não confirmado. Tente novamente com o mesmo arquivo.'));}
+      const result=await response.json();if(!result.anexo?.path)throw new Error('Envio não confirmado. Tente novamente com o mesmo arquivo.');
+      if(context.session!==authUid()||context.tenant!==tenantId())throw new Error('A sessão mudou. Atualize a lista de comprovantes.');
+      return result.anexo;
+    })();
+    try{return await entry.promise;}finally{entry.promise=null;}
   }
 
   async function removerArquivo(contaId, anexo, options = {}) {
-    const {recordRef,field,files}=await validarVinculoComprovante(contaId,anexo,options,'excluir');const paymentId=text(options.pagamentoId);if(!storage())throw new Error('Storage indisponível.');await storage().ref(anexo.path).delete();await recordRef.update({[field]:files.filter(f=>f.path!==anexo.path),atualizadoEmTexto:nowIso(),atualizadoEm:serverTimestamp()});await audit('REMOVER_ANEXO','CONTA',contaId,anexo,null,{pagamentoId:paymentId});return true;
+    const context=await autorizarComprovante(contaId,'excluir');
+    if(!anexo?.path)throw new Error('Comprovante inválido.');
+    const token=await global.firebase.auth().currentUser.getIdToken();
+    const response=await global.fetch(comprovanteEndpoint('excluirComprovanteFinanceiro'),{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({contaId,pagamentoId:text(options.pagamentoId),path:anexo.path}),cache:'no-store'});
+    if(!response.ok){let detail;try{detail=await response.json();}catch{}throw new Error(detail?.error?.message||'Exclusão não confirmada. Tente novamente.');}
+    const result=await response.json();if(result.excluido!==true)throw new Error('Exclusão não confirmada. Tente novamente.');
+    if(context.session!==authUid()||context.tenant!==tenantId())throw new Error('A sessão mudou. Atualize a lista de comprovantes.');
+    return true;
   }
 
   function resumoRelatorios(accounts = [], payments = []) {

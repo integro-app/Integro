@@ -69,7 +69,8 @@ test("leads: operador com permissao indicacoes.criar pode criar cliente-base lea
   assert.match(bloco, /possuiVendaAtiva", false\) == false/);
   assert.match(bloco, /saldoDevedorCentavos", 0\) == 0/);
   assert.match(bloco, /data\.keys\(\)\.hasOnly/);
-  assert.match(rules, /allow create: if canCreateClienteLead\(request\.resource\.data\)/);
+  const clientes=rules.slice(rules.indexOf('match /clientes/{id}'),rules.indexOf('match /interacoes_clientes/{id}'));
+  assert.match(clientes,/allow create:[^;]*canCreateClienteLead\(request\.resource\.data\)/);
 });
 
 test("leads: indicacao nova aceita operador autorizado sem permitir criacao pelo vendedor", () => {

@@ -1,3 +1,4 @@
+const {chaveExclusaoComprovante}=require('./finance-attachment-links');
 "use strict";
 const { exigirEmpresaOperacional } = require("./company-access");
 
@@ -191,6 +192,12 @@ function criarPagamentosFinanceirosEmpresariais({ admin, functions, db }) {
         return { ok: true, modo: "IDEMPOTENTE", pagamentoId, pagamento: existente, contaId, valorPagoCentavos, saldoCentavos: Number(conta.saldoCentavos || 0), status: texto(conta.status), saldoReprogramadoContaId: texto(existente.saldoReprogramadoContaId) };
       }
 
+      // A exclusão grava uma marca permanente na mesma transação dos vínculos.
+      // Consultar aqui impede uma baixa em andamento de revincular um arquivo removido.
+      for(const arquivo of comprovantes){
+        const exclusion=await transaction.get(db.collection('financeiro_anexos_exclusoes').doc(chaveExclusaoComprovante(tenantId,contaId,texto(arquivo.path))));
+        if(exclusion.exists)erro('failed-precondition','Comprovante removido. Envie outro arquivo antes de registrar o pagamento.');
+      }
       if (status(conta.status) === "CANCELADA") erro("failed-precondition", "Conta cancelada não pode receber pagamento.");
       if (["PAGA", "PAGO"].includes(status(conta.status))) erro("failed-precondition", "Conta já está quitada.");
       const totalCentavos = Number(conta.valorCentavos || 0);

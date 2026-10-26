@@ -179,12 +179,13 @@ function empresaPermitida(user) {
     }
 
     match /tenants/{tenantId}/financeiro/{kind}/{id}/{filename} {
-      allow get: if canReadEnterpriseFinance(tenantId) && financialRecordExists(tenantId, kind, id);
+      // Comprovantes são lidos exclusivamente pelo backend autenticado.
+      allow get: if false;
       allow list: if false;
-      allow create: if resource == null && canWriteEnterpriseFinance(tenantId) && financialRecordExists(tenantId, kind, id) &&
-        financialUploadMetadata(tenantId, kind, id) && allowedUpload();
+      // Novos comprovantes também são enviados exclusivamente pelo backend.
+      allow create: if false;
       allow update: if false;
-      allow delete: if canDeleteEnterpriseFinance(tenantId) && financialRecordExists(tenantId, kind, id);
+      allow delete: if false; // Exclusão e recuperação somente pelo backend.
     }
 
     match /{allPaths=**} {

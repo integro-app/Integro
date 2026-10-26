@@ -106,3 +106,5 @@ test("os oito perfis locais preservam tenant, equipe, ownership, escrita e finan
   const captador = { ...base, tipoUsuario: "captador", cargoChave: "captador" };
   assert.equal(acesso.pode(captador, "indicacoes.criar", { clientePlataformaId: "tenant_1", captadorId: "usuario_2" }), false);
 });
+
+test('permissão geral de leitura cobre leitura própria respeitando dono e negação explícita',()=>{const access=carregar(),u={tipoUsuario:'captador',id:'c',authUid:'u',clientePlataformaId:'a',permissoesCargo:{indicacoes:{ver:true}}};assert.equal(access.pode(u,'indicacoes.ver_proprio',{clientePlataformaId:'a',captadorId:'c'}),true);assert.equal(access.pode(u,'indicacoes.ver_proprio',{clientePlataformaId:'a',captadorId:'outro'}),false);assert.equal(access.pode({...u,permissoesCargo:{indicacoes:{ver:true,ver_proprio:false}}},'indicacoes.ver_proprio',{captadorId:'c'}),false);assert.equal(access.pode({...u,permissoesCargo:{indicacoes:{ver_proprio:true}}},'indicacoes.ver',{captadorId:'c'}),false);});

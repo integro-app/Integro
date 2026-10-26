@@ -123,9 +123,9 @@ test("notificacao financeira abre o controle empresarial e a conta correta", () 
   assert.match(notificationRouter, /CONTROLE_FINANCEIRO/);
 });
 
-test("anexos e comprovantes usam Storage exclusivo do financeiro empresarial", () => {
+test("anexos e comprovantes usam endpoints autenticados do financeiro empresarial", () => {
   assert.match(service, /async function anexarArquivo/);
-  assert.match(service, /tenants\/\$\{tenantId\(\)\}\/financeiro\//);
+  for (const endpoint of ['enviarComprovanteFinanceiro','baixarComprovanteFinanceiro','excluirComprovanteFinanceiro']) assert.ok(service.includes(endpoint));
   assert.match(service, /MAX_FILE_BYTES/);
   assert.match(service, /comprovantes/);
   assert.match(service, /anexos/);

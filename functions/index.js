@@ -257,3 +257,22 @@ exports.gerenciarVinculosEmpresas=functions.region('southamerica-east1').https.o
 exports.cadastrarClienteVendedorV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(aprovacoesClientesV27.cadastrarVendedor));
 
 exports.estornarLancamentoFinanceiroOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(require("./operational-ledger").criarLedgerOperacional({db,functions}).estornar));
+
+// Anexos financeiros autorizados no backend.
+const { criarGatewayComprovantes } = require('./finance-attachment-gateway');
+const { criarDownloadComprovanteHttp, criarEnvioComprovanteHttp } = require('./finance-attachment-http');
+const { criarEnvioComprovante } = require('./finance-attachment-upload');
+const comprovantesGateway = criarGatewayComprovantes({ db: admin.firestore(), functions, bucket: admin.storage().bucket() });
+const comprovantesOrigins = ['https://integro-novo.firebaseapp.com', 'https://integro-novo.web.app', 'http://127.0.0.1:5500', 'http://localhost:5500', 'http://127.0.0.1:5000', 'http://localhost:5000'];
+const downloadComprovante = criarDownloadComprovanteHttp({
+  auth: admin.auth(),
+  gateway: comprovantesGateway,
+  allowedOrigins: comprovantesOrigins
+});
+exports.baixarComprovanteFinanceiro = functions.region('southamerica-east1').https.onRequest(downloadComprovante);
+
+exports.enviarComprovanteFinanceiro = functions.region('southamerica-east1').https.onRequest(criarEnvioComprovanteHttp({auth:admin.auth(),allowedOrigins:comprovantesOrigins,uploader:criarEnvioComprovante({db:admin.firestore(),functions,bucket:admin.storage().bucket(),gateway:comprovantesGateway})}));
+
+const {criarExclusaoComprovante}=require("./finance-attachment-delete");
+const {criarExclusaoComprovanteHttp}=require("./finance-attachment-http");
+exports.excluirComprovanteFinanceiro=functions.region("southamerica-east1").https.onRequest(criarExclusaoComprovanteHttp({auth:admin.auth(),allowedOrigins:comprovantesOrigins,deleter:criarExclusaoComprovante({db:admin.firestore(),functions,bucket:admin.storage().bucket(),gateway:comprovantesGateway})}));

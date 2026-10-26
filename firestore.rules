@@ -130,10 +130,12 @@ function empresaDadosPermitidos(empresa) {
 function empresaPermitida(user) {
   let tenant = user.get("clientePlataformaId", "");
   let companyPath = /databases/$(database)/documents/clientes_integro/$(tenant);
-  return user.get("tipoUsuario", "") in ["master_global", "usuario_integro"] || tenant == "" ||
-    (user.get("empresaBloqueada", false) != true && user.get("acessoEmpresaLiberado", true) != false &&
+  let legacyCompanyPath = /databases/$(database)/documents/clientes_plataforma/$(tenant);
+  return user.get("tipoUsuario", "") in ["master_global", "usuario_integro"] ||
+    (tenant is string && tenant.size() > 0 && user.get("empresaBloqueada", false) != true && user.get("acessoEmpresaLiberado", true) != false &&
       !(user.get("clientePlataformaStatus", user.get("empresaStatus", "")) in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-      (!exists(companyPath) || empresaDadosPermitidos(get(companyPath).data)));
+      (!exists(companyPath) || empresaDadosPermitidos(get(companyPath).data)) &&
+      (!exists(legacyCompanyPath) || empresaDadosPermitidos(get(legacyCompanyPath).data)));
 }
 
     function isActiveIdentity() {
@@ -727,6 +729,13 @@ function empresaPermitida(user) {
         request.resource.data.get("nome", request.resource.data.get("razaoSocial", "")).size() > 0 &&
         request.resource.data.get("tipoPessoa", "PJ") in ["PF", "PJ"];
       allow delete: if false;
+    }
+
+    // Leitura do cadastro legado apenas para validar a própria empresa no login.
+    match /clientes_plataforma/{id} {
+      allow get: if isActiveIdentity() &&
+        (((isMasterGlobal() || isUsuarioIntegro()) && hasBoundSession()) || id == userTenantId());
+      allow list, create, update, delete: if false;
     }
 
     match /lancamentos_financeiros/{id} {
@@ -1813,6 +1822,7 @@ function empresaPermitida(user) {
     match /financeiro_contas/{id} {
       function validEnterpriseAccountCreate(data) {
         return canEditEnterpriseFinance(data) &&
+          data.get("anexos", []) == [] &&
           data.get("descricao", "") is string && data.get("descricao", "").size() > 0 &&
           data.get("vencimento", "") is string && data.get("vencimento", "").size() == 10 &&
           data.get("valorCentavos", 0) is int && data.get("valorCentavos", 0) > 0 &&
@@ -1822,46 +1832,18 @@ function empresaPermitida(user) {
           data.get("status", "") == "A_VENCER";
       }
 
-      function validEnterpriseAccountUpdate() {
-        let changed = request.resource.data.diff(resource.data).affectedKeys();
-        let tenantOk = isTenantImmutable() && isSameTenantRead() && isSameTenantWrite();
-        let immutableOk = unchanged([
-          "clientePlataformaId", "criadoPorAuthUid", "criadoPorId", "criadoPorNome", "criadoEm", "criadoEmTexto",
-          "parcelamentoId", "parcelaNumero", "parcelasTotal", "recorrenciaId", "recorrente"
-        ]);
-        let attachmentFields = ["anexos", "atualizadoEmTexto", "atualizadoEm"];
-        // V27.3: alterações administrativas, baixas e cancelamentos são backend-only.
-        // O cliente só pode anexar metadados; o backend aplica aprovação, histórico,
-        // idempotência e transação sem expor um caminho alternativo pelas Rules.
-        return tenantOk && immutableOk &&
-          canAttachEnterpriseFinance(request.resource.data) &&
-          changed.hasOnly(attachmentFields);
-      }
-
       allow read: if canReadEnterpriseFinance(resource.data);
       allow create: if validEnterpriseAccountCreate(request.resource.data);
-      allow update: if validEnterpriseAccountUpdate();
+      allow update: if false; // Anexos e operações somente pelo backend.
       allow delete: if false;
     }
 
     match /financeiro_pagamentos/{id} {
-      function validEnterprisePaymentUpdate() {
-        let changed = request.resource.data.diff(resource.data).affectedKeys();
-        return isTenantImmutable() && isSameTenantRead() && isSameTenantWrite() &&
-          canAttachEnterpriseFinance(request.resource.data) &&
-          unchanged([
-            "clientePlataformaId", "contaId", "valorPagoCentavos", "jurosCentavos", "multaCentavos",
-            "descontoCentavos", "valorEfetivoCentavos", "dataPagamento", "formaPagamento", "bancoContaId",
-            "observacao", "pagoPorAuthUid", "pagoPorId", "pagoPorNome", "criadoEm", "criadoEmTexto"
-          ]) &&
-          changed.hasOnly(["comprovantes", "atualizadoEmTexto", "atualizadoEm"]);
-      }
-
       allow read: if canReadEnterpriseFinance(resource.data);
       // Baixa é exclusivamente transacional pela callable
       // registrarPagamentoFinanceiroEmpresarial.
       allow create: if false;
-      allow update: if validEnterprisePaymentUpdate();
+      allow update: if false; // Comprovantes somente pelo backend.
       allow delete: if false;
     }
 

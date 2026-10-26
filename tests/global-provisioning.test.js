@@ -5,8 +5,8 @@ const {memoryDb,HttpsError,user}=require('./helpers/critical-fixture.cjs');
 function setup(extra={}) {
   const db=memoryDb({'usuarios/global':user('global','master_global','', ''),'usuarios/master':user('master'),'clientes_integro/a':{nome:'Empresa',tipoPessoa:'PJ',status:'ATIVO'},'usuarios/invite':{nome:'Master',email:'new@example.test',tipoUsuario:'master_local',clientePlataformaId:'a',status:'CONVITE_PENDENTE',acessoLiberado:false},...extra});
   let created=0; const authUsers=new Map(), auth={async createCustomToken(){return "local-custom-token";},async getUser(uid){const account=[...authUsers.values()].find(u=>u.uid===uid);if(account)return account;throw Object.assign(Error('missing'),{code:'auth/user-not-found'});},async getUserByEmail(email){if(authUsers.has(email))return authUsers.get(email);throw Object.assign(Error('missing'),{code:'auth/user-not-found'});},async createUser(data){created++;const account={uid:'new_uid_'+created,...data};authUsers.set(data.email,account);return account;},async generatePasswordResetLink(){return 'https://example.test/reset?oobCode=local-test';}};
-  const chain={region(){return this;},runWith(){return this;},timeZone(){return this;},onRun(fn){return fn;},pubsub:{schedule(){return chain;},timeZone(){return chain;},onRun(fn){return fn;}},https:{HttpsError,onCall:fn=>fn}};
-  const admin={initializeApp(){},firestore:()=>db,auth:()=>auth};
+  const chain={region(){return this;},runWith(){return this;},timeZone(){return this;},onRun(fn){return fn;},pubsub:{schedule(){return chain;},timeZone(){return chain;},onRun(fn){return fn;}},https:{HttpsError,onCall:fn=>fn,onRequest:fn=>fn}};
+  const admin={initializeApp(){},firestore:()=>db,auth:()=>auth,storage:()=>({bucket:()=>({})})};
   const filename=path.resolve('functions/index.js'),realRequire=createRequire(filename),module={exports:{}};
   vm.runInNewContext(fs.readFileSync(filename,'utf8'),{module,exports:module.exports,require:name=>name==='firebase-functions/v1'?chain:name==='firebase-admin'?admin:realRequire(name)}, {filename});
   const {sessionData}=require('./helpers/session-fixture.cjs');

@@ -34,7 +34,9 @@
       "**/*.log",
       "LEIA-ME.txt",
       "**/*.patch",
-      "firestore.release.indexes.json"
+      "firestore.release.indexes.json",
+      "AGENTS.md",
+      "tatus --short"
     ]
   },
   "emulators": {

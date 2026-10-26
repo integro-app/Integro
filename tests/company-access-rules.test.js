@@ -21,7 +21,7 @@ test('bloqueio integrado: operação e anexos negados, identidade e empresa pró
   for(const company of [{acessoLiberado:true},{testeAtivo:true,dataFimTeste:'2099-01-01T00:00:00.000Z'},{bloqueioAssinaturaEm:Timestamp.fromMillis(Date.now()+86400000)}]){
    await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'clientes_integro',tenant),company));
    await assertSucceeds(getDoc(doc(db,'financeiro_contas','company_access_account')));
-   await assertSucceeds(getMetadata(ref(context.storage(),path)));
+   await assertFails(getMetadata(ref(context.storage(),path))); // leitura somente pelo backend
   }
   for(const company of [{acessoLiberado:false},{testeAtivo:true,dataFimTeste:'2000-01-01T00:00:00.000Z'},{bloqueioAssinaturaEm:Timestamp.fromMillis(0)}]){
    await env.withSecurityRulesDisabled(c=>setDoc(doc(c.firestore(),'clientes_integro',tenant),company));

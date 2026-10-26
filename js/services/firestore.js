@@ -183,6 +183,7 @@ const FirestoreService = {
     USER_INACTIVE: "USER_INACTIVE",
     ACCESS_NOT_RELEASED: "ACCESS_NOT_RELEASED",
     TENANT_BLOCKED: "TENANT_BLOCKED",
+    TENANT_CHECK_FAILED: "TENANT_CHECK_FAILED",
     USER_OPERATIONAL_NOT_FOUND: "USER_OPERATIONAL_NOT_FOUND"
   },
 
@@ -198,6 +199,7 @@ const FirestoreService = {
     USER_INACTIVE: CONFIG.ERROS.USUARIO_INATIVO,
     ACCESS_NOT_RELEASED: CONFIG.ERROS.ACESSO_BLOQUEADO,
     TENANT_BLOCKED: "Empresa bloqueada ou sem acesso operacional. Procure o administrador.",
+    TENANT_CHECK_FAILED: "Não foi possível verificar o acesso da empresa. Tente novamente.",
     USER_OPERATIONAL_NOT_FOUND: "Usuário autenticado, mas sem cadastro operacional no ÍNTEGRO."
   },
 
@@ -313,29 +315,30 @@ const FirestoreService = {
       return negarEmpresa();
     }
 
+    usuario.acessoRestritoAssinatura = false;
     try {
-      const empresaDoc = await db.collection("clientes_integro").doc(tenantId).get();
-      if (empresaDoc.exists) {
-        const empresa = empresaDoc.data() || {};
+      const documentos = await Promise.all(["clientes_integro", "clientes_plataforma"]
+        .map(colecao => db.collection(colecao).doc(tenantId).get({ source: "server" })));
+      const empresas = documentos.filter(doc => doc.exists).map(doc => doc.data() || {});
+      // Verifica todos os bloqueios antes de permitir o portal de assinatura.
+      for (const empresa of empresas) {
         const statusEmpresa = String(empresa.status || empresa.situacao || "").toUpperCase();
-        usuario.acessoRestritoAssinatura = false;
-        const limiteAssinatura = empresa.bloqueioAssinaturaEm?.toMillis ? empresa.bloqueioAssinaturaEm.toMillis() : Date.parse(empresa.bloqueioAssinaturaEm);
-        if (empresa.bloqueioAssinaturaEm && limiteAssinatura <= Date.now()) {
-          const perfis = [usuario.tipoUsuario, usuario.cargoChave].map(v => String(v || '').toLowerCase());
-          if (perfis.some(p => ['master_local','financeiro','administrativo','adm'].includes(p)) || usuario.responsavelFinanceiro === true || usuario.permissoes?.assinatura?.ver === true) {
-            usuario.acessoRestritoAssinatura = true;
-            return { ok: true };
-          }
-          return negarEmpresa();
-        }
         const fimTeste = empresa.dataFimTeste?.toMillis ? empresa.dataFimTeste.toMillis() : Date.parse(empresa.dataFimTeste);
         const testeExpirado = empresa.testeAtivo === true && empresa.dataFimTeste && (!Number.isFinite(fimTeste) || fimTeste <= Date.now());
-        if (testeExpirado || empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) {
-          return negarEmpresa();
-        }
+        if (testeExpirado || empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) return negarEmpresa();
+      }
+      const assinaturaBloqueada = empresas.some(empresa => {
+        const limite = empresa.bloqueioAssinaturaEm?.toMillis ? empresa.bloqueioAssinaturaEm.toMillis() : Date.parse(empresa.bloqueioAssinaturaEm);
+        return empresa.bloqueioAssinaturaEm && limite <= Date.now();
+      });
+      if (assinaturaBloqueada) {
+        const perfis = [usuario.tipoUsuario, usuario.cargoChave].map(v => String(v || '').toLowerCase());
+        if (perfis.some(p => ['master_local','financeiro','administrativo','adm'].includes(p)) || usuario.responsavelFinanceiro === true || usuario.permissoes?.assinatura?.ver === true) usuario.acessoRestritoAssinatura = true;
+        else return negarEmpresa();
       }
     } catch (erro) {
-      console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_SKIPPED", tenantInformado: true });
+      console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_FAILED", tenantInformado: true });
+      return this.resultadoDiagnosticoAuth(false, "TENANT_CHECK_FAILED", { usuario });
     }
 
     return { ok: true };

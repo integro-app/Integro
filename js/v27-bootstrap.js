@@ -5,7 +5,7 @@
   global.__INTEGRO_VERSION__ = "27.2.3-pagamento-flexivel";
 
   const loaded = new Map();
-  const VERSION = "20261021-integracao-financeira";
+  const VERSION = "20261023-fechamento-anexos";
   const page = String(global.location?.pathname || "").toLowerCase();
 
   function loadScript(src, key = src) {
@@ -34,7 +34,7 @@
   async function loadIfMissing(test, src, key) {
     if (test()) return true;
     const version = key === "enterprise-finance-ui" ? "20261021-relatorios" : key === "user-lifecycle" ? "20261021-gestao-usuarios" : key === "seller-closeout" ? "20261020-consulta-canonica" : VERSION;
-    return loadScript(`${src}?v=${version}&build=20261014-multiempresa1`, key);
+    return loadScript(`${src}?v=${version}&build=${VERSION}`, key);
   }
 
   async function ensureFinance() {

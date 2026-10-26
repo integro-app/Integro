@@ -254,3 +254,53 @@ test('inadimplência da assinatura libera somente portal financeiro aos perfis a
     const result=await FirestoreService.resolverUsuarioAutenticado(authUser);assert.equal(result.ok,ok);if(ok)assert.equal(result.usuario.acessoRestritoAssinatura,true);
   }
 });
+
+for (const collection of ['clientes_integro', 'clientes_plataforma']) {
+  test(collection + ': login respeita bloqueio, teste expirado e liberação da empresa própria', async () => {
+    for (const [company, ok] of [[{status:'ATIVO',acessoLiberado:true},true],[{status:'BLOQUEADO'},false],[{ativo:false},false],[{testeAtivo:true,dataFimTeste:'2000-01-01T00:00:00.000Z'},false]]) {
+      const env = carregarContexto({'usuarios/uid_1':usuarioBase(),[collection+'/tenant_1']:company});
+      const result = await env.FirestoreService.resolverUsuarioAutenticado(authUser);
+      assert.equal(result.ok,ok);
+      if (!ok) assert.equal(result.codigo,'TENANT_BLOCKED');
+    }
+  });
+}
+for (const blocked of ['clientes_integro','clientes_plataforma']) {
+  test('login não ignora bloqueio na cópia '+blocked, async () => {
+    const docs={'usuarios/uid_1':usuarioBase(),'clientes_integro/tenant_1':{status:'ATIVO'},'clientes_plataforma/tenant_1':{status:'ATIVO'}};
+    docs[blocked+'/tenant_1'].acessoLiberado=false;
+    assert.equal((await carregarContexto(docs).FirestoreService.resolverUsuarioAutenticado(authUser)).codigo,'TENANT_BLOCKED');
+  });
+}
+test('login consulta servidor apenas para a própria empresa nas duas coleções', async () => {
+  const env=carregarContexto(),reads=[],collection=env.db.collection.bind(env.db);
+  env.db.collection=name=>({doc(id){const doc=collection(name).doc(id);return {async get(options){reads.push({name,id,source:options.source});return doc.get();}};}});
+  assert.equal((await env.FirestoreService.validarEmpresaUsuarioAuth(usuarioBase())).ok,true);
+  assert.deepEqual(reads.map(r=>r.name).sort(),['clientes_integro','clientes_plataforma']);
+  assert.ok(reads.every(r=>r.id==='tenant_1'&&r.source==='server'));
+});
+test('falha de leitura de qualquer cadastro de empresa impede login com mensagem recuperável', async () => {
+  for(const failed of ['clientes_integro','clientes_plataforma']) {
+    const env=carregarContexto(),collection=env.db.collection.bind(env.db);
+    env.db.collection=name=>name===failed?{doc:()=>({get:async()=>{throw Error('sem rede');}})}:collection(name);
+    const result=await env.FirestoreService.validarEmpresaUsuarioAuth(usuarioBase());
+    assert.equal(result.ok,false);assert.equal(result.codigo,'TENANT_CHECK_FAILED');
+    assert.match(result.mensagem,/Tente novamente/);
+  }
+});
+test('portal de assinatura não encobre bloqueio explícito na outra cópia de empresa', async () => {
+  for(const blocked of ['clientes_integro','clientes_plataforma']) {
+    const docs={'clientes_integro/tenant_1':{bloqueioAssinaturaEm:'2000-01-01T00:00:00.000Z'},'clientes_plataforma/tenant_1':{bloqueioAssinaturaEm:'2000-01-01T00:00:00.000Z'}};
+    docs[blocked+'/tenant_1']={acessoLiberado:false};
+    const env=carregarContexto(docs),profile=usuarioBase({cargoChave:'financeiro'});
+    assert.equal((await env.FirestoreService.validarEmpresaUsuarioAuth(profile)).ok,false);
+    assert.equal(profile.acessoRestritoAssinatura,false);
+  }
+});
+test('assinatura vencida legada preserva portal restrito do Financeiro e recusa Vendedor', async () => {
+  for(const cargoChave of ['financeiro','vendedor']) {
+    const env=carregarContexto({'clientes_plataforma/tenant_1':{bloqueioAssinaturaEm:'2000-01-01T00:00:00.000Z'}}),profile=usuarioBase({cargoChave});
+    assert.equal((await env.FirestoreService.validarEmpresaUsuarioAuth(profile)).ok,cargoChave==='financeiro');
+    assert.equal(profile.acessoRestritoAssinatura,cargoChave==='financeiro');
+  }
+});

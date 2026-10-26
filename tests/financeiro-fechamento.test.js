@@ -13,8 +13,10 @@ const indexes = JSON.parse(read("firestore.indexes.json"));
 
 test("Rules obrigam baixa e alteração administrativa a passar pelo backend", () => {
   assert.match(rules, /match \/financeiro_pagamentos\/\{id\}[^]*allow create: if false;/);
-  assert.match(rules, /alterações administrativas, baixas e cancelamentos são backend-only/);
-  assert.match(rules, /changed\.hasOnly\(attachmentFields\)/);
+  for(const collection of ['financeiro_contas','financeiro_pagamentos']){
+    const block=rules.slice(rules.indexOf('match /'+collection+'/{id}'),rules.indexOf('\n    match /',rules.indexOf('match /'+collection+'/{id}')+1));
+    assert.match(block,/allow update: if false;/);
+  }
 });
 
 test("edição recorrente futura preserva ocorrências efetivadas", () => {
