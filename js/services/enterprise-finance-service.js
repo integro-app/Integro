@@ -33,12 +33,24 @@
   function text(v) { return String(v ?? "").trim(); }
   function nowIso() { return new Date().toISOString(); }
   function todayIso() { return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date()); }
-  function cents(value) {
-    if (Number.isInteger(value)) return value;
-    const raw = String(value ?? 0).trim();
+  function valorEmCentavos(value) {
+    const raw = String(value ?? "").trim().replace(/^R\$\s*/, "");
+    const plain = /^\d+(?:[.,]\d{1,2})?$/.test(raw);
+    const grouped = /^\d{1,3}(?:\.\d{3})+,\d{1,2}$/.test(raw);
+    if (!plain && !grouped) throw new Error("Valor inválido. Use 100,50 ou 100.50, com até duas casas decimais.");
     const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
-    const n = Number(normalized);
-    return Number.isFinite(n) ? Math.round(n * 100) : 0;
+    const [whole, fraction = ""] = normalized.split(".");
+    const amount = BigInt(whole) * 100n + BigInt(fraction.padEnd(2, "0"));
+    if (amount > BigInt(Number.MAX_SAFE_INTEGER)) throw new Error("Valor excede o limite permitido.");
+    return Number(amount);
+  }
+  function cents(value) {
+    if (value == null || value === "") return 0;
+    if (Number.isInteger(value)) {
+      if (!Number.isSafeInteger(value) || value < 0) throw new Error("Valor em centavos inválido.");
+      return value;
+    }
+    return valorEmCentavos(value);
   }
   function fieldValue() { return global.firebase?.firestore?.FieldValue; }
   function serverTimestamp() { return fieldValue()?.serverTimestamp?.() || null; }
@@ -469,7 +481,7 @@
     if(!response.ok){let detail;try{detail=await response.json();}catch{}throw new Error(detail?.error?.message||'Exclusão não confirmada. Tente novamente.');}
     const result=await response.json();if(result.excluido!==true)throw new Error('Exclusão não confirmada. Tente novamente.');
     if(context.session!==authUid()||context.tenant!==tenantId())throw new Error('A sessão mudou. Atualize a lista de comprovantes.');
-    return true;
+    return {excluido:true,limpezaPendente:result.limpezaPendente===true};
   }
 
   function resumoRelatorios(accounts = [], payments = []) {
@@ -490,7 +502,7 @@
   }
 
   global.IntegroControleFinanceiro = Object.freeze({
-    COLLECTIONS, MAX_FILE_BYTES, normalizeStatus, normalizeStatusV27, obterConta, listarPagamentosConta, obterSolicitacao, listarContas, listarPagamentos, listarFornecedores, listarCategorias, listarCentrosCusto, listarEmpresas, listarContasBancarias, listarRecorrencias, listarLembretes, listarAuditoria, listarSolicitacoes, listarOrcamentos, listarResponsaveis,
+    COLLECTIONS, MAX_FILE_BYTES, valorEmCentavos, normalizeStatus, normalizeStatusV27, obterConta, listarPagamentosConta, obterSolicitacao, listarContas, listarPagamentos, listarFornecedores, listarCategorias, listarCentrosCusto, listarEmpresas, listarContasBancarias, listarRecorrencias, listarLembretes, listarAuditoria, listarSolicitacoes, listarOrcamentos, listarResponsaveis,
     criarConta, atualizarConta, registrarPagamento, cancelarConta, duplicarConta, salvarFornecedor, salvarCategoria, salvarCentroCusto, salvarEmpresa, salvarContaBancaria,
     criarParcelamento, criarRecorrencia, gerarOcorrenciasRecorrencia, salvarLembretes, acessoComprovantes, abrirComprovante, anexarArquivo, removerArquivo, resumoRelatorios, recurrenceNext, recurrenceDate, isBusinessDay, adjustBusinessDay, registrarExportacao, salvarOrcamento
   });

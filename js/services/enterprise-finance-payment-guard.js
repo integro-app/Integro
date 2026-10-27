@@ -6,11 +6,12 @@
 
   function text(value) { return String(value == null ? "" : value).trim(); }
   function cents(value) {
-    if (Number.isInteger(value)) return Math.abs(value);
-    const raw = text(value);
-    const normalized = raw.includes(",") ? raw.replace(/\./g, "").replace(",", ".") : raw;
-    const number = Number(normalized || 0);
-    return Number.isFinite(number) ? Math.abs(Math.round(number * 100)) : 0;
+    if (value == null || value === "") return 0;
+    if (Number.isInteger(value)) {
+      if (!Number.isSafeInteger(value) || value < 0) throw new Error("Valor em centavos inválido.");
+      return value;
+    }
+    return global.IntegroControleFinanceiro.valorEmCentavos(value);
   }
   function operationId() {
     if (global.crypto?.randomUUID) return `pagemp_${global.crypto.randomUUID()}`;
