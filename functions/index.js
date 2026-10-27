@@ -276,3 +276,9 @@ exports.enviarComprovanteFinanceiro = functions.region('southamerica-east1').htt
 const {criarExclusaoComprovante}=require("./finance-attachment-delete");
 const {criarExclusaoComprovanteHttp}=require("./finance-attachment-http");
 exports.excluirComprovanteFinanceiro=functions.region("southamerica-east1").https.onRequest(criarExclusaoComprovanteHttp({auth:admin.auth(),allowedOrigins:comprovantesOrigins,deleter:criarExclusaoComprovante({db:admin.firestore(),functions,bucket:admin.storage().bucket(),gateway:comprovantesGateway})}));
+
+// Manutenção privada com progresso persistido. Ativação somente em deploy autorizado.
+const manutencaoDb=admin.firestore(),manutencaoBucket=admin.storage().bucket();
+const recuperacaoComprovantes=require('./finance-attachment-recovery').criarRecuperacaoComprovantes({db:manutencaoDb,bucket:manutencaoBucket,deleter:criarExclusaoComprovante({db:manutencaoDb,functions,bucket:manutencaoBucket,gateway:comprovantesGateway})});
+const manutencaoComprovantes=require('./finance-attachment-maintenance').criarManutencaoComprovantes({db:manutencaoDb,recovery:recuperacaoComprovantes});
+exports.manterComprovantesFinanceiros=functions.region('southamerica-east1').pubsub.schedule('every 15 minutes').timeZone('America/Sao_Paulo').onRun(async()=>{const result=await manutencaoComprovantes.executar({aplicar:true,limite:20});console.info('MANUTENCAO_COMPROVANTES',result);return null;});

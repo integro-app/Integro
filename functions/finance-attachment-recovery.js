@@ -22,16 +22,24 @@ function criarRecuperacaoComprovantes({db,bucket,deleter,now=()=>Date.now()}){
   await db.runTransaction(async tx=>{const current=await tx.get(ref),state=current.data();if(state?.tentativaId===job.tentativaId&&state.status===job.status)tx.update(ref,{status:orphan?'CONCLUIDA':'FALHA',leaseUntil:0,atualizadoEm:FieldValue.serverTimestamp()});});
   return true;
  }
- async function executar({limite=20,aplicar=false}={}){
-  if(!Number.isInteger(limite)||limite<1||limite>100)throw Error('Limite entre 1 e 100.');
-  const results=[];
-  for(const [collection,status]of [['financeiro_anexos_exclusoes','LIMPEZA_PENDENTE'],['financeiro_anexos_operacoes','LIMPEZA_PENDENTE'],['financeiro_anexos_limpezas','PENDENTE']]){
-   const remaining=limite-results.length;if(!remaining)break;
-   const rows=await db.collection(collection).where('status','==',status).limit(remaining).get();
-   for(const doc of rows.docs){let recuperado=false;if(aplicar){try{recuperado=collection==='financeiro_anexos_exclusoes'?!(await deleter.limpar(doc.ref)).limpezaPendente:await limparEnvio(doc.ref,collection==='financeiro_anexos_limpezas');}catch{recuperado=false;}}results.push({colecao:collection,id:doc.id,aplicado:aplicar,recuperado});}
+ async function executarPagina({limite=20,aplicar=false,cursores={},proximaFila=0}={}){
+  const filas=[['financeiro_anexos_exclusoes','LIMPEZA_PENDENTE'],['financeiro_anexos_operacoes','LIMPEZA_PENDENTE'],['financeiro_anexos_limpezas','PENDENTE']];
+  if(!Number.isInteger(limite)||limite<1||limite>100||!Number.isInteger(proximaFila)||proximaFila<0||proximaFila>2||!cursores||typeof cursores!=='object')throw Error('Lote ou cursores inválidos.');
+  const next={};for(const [name]of filas){const cursor=cursores[name]||'';if(typeof cursor!=='string'||cursor.includes('/')||cursor.length>128)throw Error('Cursor inválido.');next[name]=cursor;}
+  const itens=[],esgotadas=new Set();let fila=proximaFila;
+  while(itens.length<limite&&esgotadas.size<filas.length){
+   const index=fila;fila=(fila+1)%filas.length;if(esgotadas.has(index))continue;
+   const [collection,status]=filas[index];let query=db.collection(collection).where('status','==',status).orderBy('__name__').limit(1);
+   if(next[collection])query=query.startAfter(next[collection]);
+   const rows=await query.get();if(!rows.docs.length){next[collection]='';esgotadas.add(index);continue;}
+   const doc=rows.docs[0];let recuperado=false,resultado='SIMULADO',erro='';
+   if(aplicar){try{recuperado=collection==='financeiro_anexos_exclusoes'?!(await deleter.limpar(doc.ref)).limpezaPendente:await limparEnvio(doc.ref,collection==='financeiro_anexos_limpezas');resultado=recuperado?'RECUPERADO':'REVISAO_PENDENTE';}catch(error){resultado='REVISAO_PENDENTE';erro=String(error.code||'RECUPERACAO_FALHOU').slice(0,80);}}
+   if(aplicar)await doc.ref.set({recuperacaoUltimaTentativaEm:FieldValue.serverTimestamp(),recuperacaoResultado:resultado,recuperacaoErro:erro||null},{merge:true});
+   itens.push({colecao:collection,id:doc.id,aplicado:aplicar,recuperado,resultado,...(erro?{erro}:{})});next[collection]=doc.id;
   }
-  return results;
+  return{itens,cursores:next,proximaFila:fila};
  }
+ async function executar(options={}){return(await executarPagina(options)).itens;}
 
  // Um registro por tentativa permanece observável mesmo se a resposta do Storage se perder.
  async function reconciliar({limite=20,aplicar=false,cursor=''}={}){
@@ -91,6 +99,6 @@ function criarRecuperacaoComprovantes({db,bucket,deleter,now=()=>Date.now()}){
   }
   return{itens,proximoCursor:rows.docs.length===limite?rows.docs.at(-1).id:null};
  }
- return{executar,reconciliar,registrarLegadas};
+ return{executar,executarPagina,reconciliar,registrarLegadas};
 }
 module.exports={criarRecuperacaoComprovantes};
