@@ -3,6 +3,7 @@
   "private": true,
   "type": "commonjs",
   "scripts": {
+    "test:mobile-adjustments": "node --test tests/mobile-adjustments.test.js",
     "test:filtros:browser": "node scripts/test-filter-drawer.js",
     "test:construcao:mobile": "node scripts/test-construcao-mobile.js",
     "test:construcao:functions:local": "node scripts/test-construcao-functions-local.js",

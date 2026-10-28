@@ -36,3 +36,14 @@
 }
 
 @media(max-width:760px){html body[data-integro-page] .integro-chat-head-actions button{color:#11233d!important;}}
+
+@media(max-width:760px){
+ html body[data-integro-page] .integro-chat-unified .integro-chat-list{flex-direction:column!important}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-mensagens{background:#f0f4f8!important;scrollbar-width:thin}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-msg{border:1px solid #e2e8f0;border-radius:14px 14px 14px 3px!important;background:#fff!important;overflow-wrap:anywhere;line-height:1.45}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-msg.mine{background:#e0edff!important;border-color:#c2d7f5;border-radius:14px 14px 3px 14px!important;color:#102a48!important}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-msg p{white-space:pre-wrap}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-emoji-menu{position:absolute;bottom:calc(74px + env(safe-area-inset-bottom));left:8px;right:8px;max-width:calc(100% - 16px);z-index:3}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-thread-head{padding-top:calc(8px + env(safe-area-inset-top))!important}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-send{background:#123f73!important;color:#fff!important;border-radius:50%}
+}

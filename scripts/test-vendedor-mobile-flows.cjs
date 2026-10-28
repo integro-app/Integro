@@ -13,15 +13,17 @@ async function main() {
   if (!fs.existsSync(chromePath)) throw new Error("Chrome não encontrado; defina CHROME_PATH.");
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), "integro-mobile-test-"));
   const chrome = spawn(chromePath, ["--headless=new", "--remote-debugging-port=0", `--user-data-dir=${profile}`,
-    "--no-first-run", "--disable-background-networking", "--disable-sync", "about:blank"], { stdio: "ignore", windowsHide: true });
+    "--no-first-run", "--disable-background-networking", "--disable-sync", "about:blank"], { stdio: ["ignore", "ignore", "pipe"], windowsHide: true });
+  let chromeError = "";
+  chrome.stderr.on("data", chunk => { chromeError = (chromeError + chunk).slice(-4000); });
   let socket;
   try {
     let port;
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 300; i++) {
       try { port = fs.readFileSync(path.join(profile, "DevToolsActivePort"), "utf8").split("\n")[0]; break; } catch (_) {}
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    if (!port) throw new Error("Chrome não iniciou o protocolo de teste.");
+    if (!port) throw new Error("Chrome não iniciou o protocolo de teste: " + chromeError);
     const pages = await (await fetch(`http://127.0.0.1:${port}/json/list`)).json();
     socket = new WebSocket(pages.find(p => p.type === "page").webSocketDebuggerUrl);
     await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
@@ -84,6 +86,7 @@ async function main() {
     assert.match(await evaluate('document.getElementById("clientes").textContent'),/Minha carteira/);
     assert.equal(await evaluate('document.querySelectorAll(".vendedor-clientes-mobile .vendedor-cliente-mobile-card").length'),1);
     assert.doesNotMatch(await evaluate('document.querySelector(".vendedor-clientes-resultados").textContent'),/Bruno|outro vendedor/);
+    await evaluate('document.getElementById("buscaClientesVendedorInput").focus();document.getElementById("buscaClientesVendedorInput").value="Ana";agendarBuscaClienteVendedor()');await new Promise(r=>setTimeout(r,250));assert.equal(await evaluate('document.activeElement.id'),'buscaClientesVendedorInput');await evaluate('document.getElementById("buscaClientesVendedorInput").value="";executarPesquisaClientesVendedor()');
     for(const width of [320,390,430]){
       await send('Emulation.setDeviceMetricsOverride',{width,height:800,deviceScaleFactor:1,mobile:true});await new Promise(r=>setTimeout(r,150));
       assert.equal(await evaluate('document.querySelectorAll(".vendedor-clientes-gestao .ig-querybar").length'),0);assert.equal(await evaluate('getComputedStyle(document.querySelector(".vendedor-clientes-table-wrap")).display'),'none');
@@ -95,6 +98,7 @@ async function main() {
     await evaluate('voltarGerenciarClientesVendedor();trocarAbaClientesVendedor("leads");IntegroFilterDrawer.scan()');
     assert.equal(await evaluate('document.querySelectorAll(".vendedor-clientes-mobile .vendedor-cliente-mobile-card").length'),1);
     assert.match(await evaluate('document.querySelector(".vendedor-clientes-mobile").textContent'),/Atender lead[\s\S]*Converter em venda[\s\S]*Devolver lead/);
+    await evaluate(`testClients.find(c=>c.id==='lead').documento='52998224725';window.ClientesService={registrarAtendimento:async(id,data)=>{window.mobileRetorno=data;Object.assign(testClients.find(c=>c.id===id),data)},atualizarCliente:async(id,data)=>Object.assign(testClients.find(c=>c.id===id),data)};abrirFormularioClienteVendedor('lead');document.getElementById('clienteVendedorStatusAtendimento').value='RETORNO_AGENDADO';atualizarCamposStatusLeadVendedor('clienteVendedorStatusAtendimento');document.getElementById('clienteFormularioDataRetorno').value='2026-12-01';`);assert.equal(await evaluate('document.getElementById("clienteFormularioRetornoWrap").hidden'),false);await evaluate('salvarClienteVendedor("lead")');assert.equal(await evaluate('window.mobileRetorno.dataRetorno'),'2026-12-01');
     await evaluate('prepararDevolucaoLeadVendedor("lead")');assert.equal(await evaluate('document.getElementById("clienteDrawerStatusLead").value'),'RETORNADO_LEADS');
     await evaluate('document.getElementById("clienteDrawerObservacaoLead").value="";salvarStatusLeadDrawerVendedor("lead")');assert.match(await evaluate('window.lastAlert'),/Informe o motivo/);
     await evaluate('fecharDrawer();document.activeElement?.blur();window.scrollTo(0,0)');
@@ -112,6 +116,7 @@ async function main() {
     socket?.close();
     chrome.kill();
     await new Promise(resolve => { if (chrome.exitCode !== null) return resolve(); chrome.once("exit", resolve); setTimeout(resolve, 2000); });
+    if(process.env.INTEGRO_QA_EVIDENCE_DIR){const target=path.resolve(process.env.INTEGRO_QA_EVIDENCE_DIR);fs.mkdirSync(target,{recursive:true});for(const file of fs.readdirSync(profile).filter(name=>name.endsWith('.png')))fs.copyFileSync(path.join(profile,file),path.join(target,file));}
     const resolved = path.resolve(profile);
     if (path.dirname(resolved) === path.resolve(os.tmpdir()) && path.basename(resolved).startsWith("integro-mobile-test-")) {
       fs.rmSync(resolved, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });

@@ -20,14 +20,11 @@
 
   async function openLead(notification, route) {
     activateScreen("clientes");
-    try { global.abrirAbaClientesVendedor?.("leads"); } catch (_) {}
-    try { global.trocarAbaClientesVendedor?.("leads"); } catch (_) {}
+    const aba = route.aba === "carteira" || route.aba === "clientes" ? "carteira" : "leads";
+    await global.IntegroPerfisUnificados?.carregarClientesPorPerfil?.().then(lista => { if (Array.isArray(lista)) global.State?.setClientes?.(lista); });
+    global.trocarAbaClientesVendedor?.(aba);
     const entityId = text(route.entidadeId || notification.clienteOperacionalId || notification.clienteId);
-    if (entityId) {
-      setTimeout(() => {
-        try { global.abrirDrawerClienteVendedor?.(entityId); } catch (_) {}
-      }, 120);
-    }
+    if (entityId) await global.abrirDrawerClienteVendedor?.(entityId);
   }
 
   async function openMovement(notification, route) {

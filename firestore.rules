@@ -1623,7 +1623,7 @@ function empresaPermitida(user) {
             "eventoId", "idempotencyKey", "rota", "criadoPorId", "criadoPorAuthUid", "criadoPorNome", "criadoEm"
           ]) &&
           alterados.hasOnly([
-            "lida", "status", "excluido", "excluida", "visualizadaEmTexto",
+            "lida", "status", "excluido", "excluida", "naLixeira", "visualizadaEmTexto",
             "lidaEm", "lidaPor", "excluidaEm", "excluidaEmTexto", "excluidaPor",
             "atualizadoEm", "atualizadoEmTexto"
           ]);
@@ -1632,7 +1632,7 @@ function empresaPermitida(user) {
       allow read: if canReadNotificacao(resource.data);
       allow create: if isOperationalCreator(request.resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantWrite());
-      allow update: if isOperationalCreator(request.resource.data) || canUpdateOwnNotificacao();
+      allow update: if canUpdateOwnNotificacao() || isOperationalCreator(request.resource.data);
       allow delete: if false;
     }
 

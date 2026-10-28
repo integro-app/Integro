@@ -32,7 +32,7 @@ test("módulo contém fechamento sincronizado, logout forçado e bloqueio de ace
   assert.match(source, /pendenciasCobranca/);
   assert.match(source, /IntegroV27Session\?\.end/);
   assert.match(source, /firebase\?\.auth/);
-  assert.match(source, /controle_caixas/);
+  assert.match(fs.readFileSync(path.join(root, "functions", "box-lifecycle.js"), "utf8"), /controle_caixas/);
   assert.match(source, /motivo=caixa-fechado/);
   assert.match(source, /Divergência de/);
   assert.match(source, /Rota concluída\. Fechamento liberado com dupla conferência/);

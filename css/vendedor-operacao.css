@@ -827,3 +827,37 @@ body.perfil-vendedor #dashboard :is([data-dashboard-card="vendas-hoje"],[data-da
 .seller-dashboard-insights label{display:grid;gap:6px;font-size:12px;font-weight:700;min-width:220px}.seller-dashboard-insights select{padding:10px;border:1px solid #dbe4ef;border-radius:10px;background:#fff;color:#0f172a}
 .seller-insight-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.seller-insight-grid article{padding:16px;border:1px solid #dbe4ef;border-radius:14px;background:#f8fafc}.seller-insight-grid small,.seller-insight-grid strong{display:block}.seller-insight-grid strong{font-size:22px;margin-top:8px}.seller-insight-grid span{font-size:12px;color:#64748b}
 @media(max-width:760px){.seller-dashboard-insights>header{display:grid}.seller-dashboard-insights label{min-width:0}.seller-insight-grid{grid-template-columns:1fr}}
+
+/* Mobile: clientes, cadastro e vendas no padrão ÍNTEGRO. */
+.vendedor-cliente-agenda{display:grid;gap:6px;padding:12px 0;color:#52657d;font-size:13px;overflow-wrap:anywhere}
+.vendedor-cliente-agenda .retorno-hoje{color:#9a3412;background:#fff7ed;border-radius:8px;padding:7px 10px}
+.vendedor-venda-acoes{grid-column:1/-1;display:flex;gap:10px;border-top:1px solid #e2e8f0;padding-top:12px}
+.vendedor-cliente-form-completo [hidden]{display:none!important}
+@media(max-width:760px){
+ html body .vendedor-clientes-gestao{padding:14px!important;min-width:0}
+ html body .vendedor-clientes-heading{gap:12px;align-items:flex-start;flex-wrap:wrap}
+ html body .vendedor-clientes-tabs{display:flex!important;gap:6px}
+ html body .vendedor-clientes-tabs>button{flex:1;min-width:0;min-height:48px;padding:10px 6px!important;font-size:13px!important;white-space:normal}
+ html body .vendedor-clientes-chips{display:flex;flex-wrap:nowrap;overflow-x:auto;padding:4px 0 10px;overscroll-behavior-x:contain}
+ html body .vendedor-cliente-chip{flex-shrink:0;min-height:44px}
+ html body .vendedor-cliente-mobile-card{padding:16px!important;border:1px solid #dce5ef!important;border-radius:18px!important;margin-bottom:12px;min-width:0}
+ html body .vendedor-cliente-mobile-top h3{font-size:17px!important;line-height:1.35;white-space:normal;overflow-wrap:anywhere}
+ html body .vendedor-cliente-mobile-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px}
+ html body .vendedor-cliente-mobile-actions>button{min-height:46px!important;width:100%;font-size:13px!important;white-space:normal;justify-content:center;line-height:1.3;padding:10px 8px!important}
+ html body .vendedor-venda-card{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px;padding:16px!important;border:1px solid #dce5ef;border-radius:18px;background:#fff}
+ html body .vendedor-venda-identidade{grid-column:1/-1;min-width:0;border-bottom:1px solid #e2e8f0;padding-bottom:12px;overflow-wrap:anywhere}
+ html body .vendedor-venda-card>div{min-width:0}
+ html body .vendedor-venda-card>div>span{display:block;font-size:12px;color:#64748b;margin-bottom:4px}
+ html body .vendedor-venda-card>div>strong{font-size:15px;overflow-wrap:anywhere}
+ html body .vendedor-venda-acoes>button{flex:1;min-height:46px;justify-content:center;padding:10px 8px;white-space:normal}
+ html body .vendedor-operacao-modal-card{width:100%!important;max-height:calc(100dvh - 16px)!important;margin:8px!important;border-radius:18px!important;overflow:auto;min-width:0}
+ html body :is(.vendedor-cliente-pagina,.vendedor-nova-venda-form,.cliente-op-form){min-width:0}
+ html body :is(.vendedor-cliente-pagina,.vendedor-nova-venda-form,.cliente-op-form) :is(input,select,textarea){font-size:16px!important;max-width:100%;min-width:0;min-height:46px;box-sizing:border-box}
+ html body :is(.cliente-identificacao-grid,.cliente-endereco-grid,.cliente-telefone-principal,.cliente-form-panel.active){grid-template-columns:1fr!important}
+ html body .cliente-form-tabs{position:sticky;top:0;z-index:2;background:#fff;display:flex;overflow-x:auto;flex-wrap:nowrap;gap:6px;padding:8px 0}
+ html body .cliente-form-tabs>button{min-height:44px;flex:0 0 auto}
+ html body .vendedor-cliente-pagina-actions{display:flex!important;flex-wrap:wrap;position:sticky;bottom:0;background:#fff;border-top:1px solid #e2e8f0;padding:12px 0 calc(12px + env(safe-area-inset-bottom));gap:8px;z-index:2}
+ html body .vendedor-cliente-pagina-actions>button{min-height:46px;flex:1 1 calc(50% - 8px);justify-content:center}
+ html body .vendedor-cliente-pagina-actions>#salvarClienteVendedorBtn{flex-basis:100%}
+ html body :is(.cliente-ref-row,.cliente-form-anexos){grid-template-columns:1fr!important}
+}

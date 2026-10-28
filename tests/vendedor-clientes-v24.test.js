@@ -115,7 +115,7 @@ test('v24.4 rules aceitam vinculo legado do proprio vendedor e permitem gerir no
   assert.match(rules, /isCurrentUserValue\(data\.get\("vendedorDocumentoId", ""\)\)/);
   assert.match(rules, /function canUpdateOwnNotificacao\(\)/);
   assert.match(rules, /"lida"[\s\S]*"excluida"[\s\S]*"atualizadoEm"/);
-  assert.match(rules, /allow update: if isOperationalCreator\(request\.resource\.data\) \|\| canUpdateOwnNotificacao\(\)/);
+  assert.match(rules, /allow update: if canUpdateOwnNotificacao\(\) \|\| isOperationalCreator\(request\.resource\.data\)/);
 });
 
 test('v24.4 gera notificacao ao aprovar ou recusar movimentacao', () => {

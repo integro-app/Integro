@@ -795,8 +795,19 @@ const FirestoreService = {
   // BUSCAR USUÁRIO POR UID (Auth)
   // ===============================
   async buscarUsuarioPorAuthUid(authUser) {
+    if (!authUser) return null;
+    this._usuariosAuthPendentes ||= new Map();
+    const chave = String(authUser.uid || "") + ":" + String(window.sessionStorage?.getItem("integro:empresaSelecionada") || "");
+    if (this._usuariosAuthPendentes.has(chave)) return this._usuariosAuthPendentes.get(chave);
+    const consulta = this._buscarUsuarioPorAuthUid(authUser);
+    this._usuariosAuthPendentes.set(chave, consulta);
+    try { return await consulta; }
+    finally { if (this._usuariosAuthPendentes.get(chave) === consulta) this._usuariosAuthPendentes.delete(chave); }
+  },
+
+  // Reutiliza apenas consultas simultâneas. Sincronizações posteriores leem novamente.
+  async _buscarUsuarioPorAuthUid(authUser) {
     try {
-      if (!authUser) return null;
 
       const resultado = await FirestoreService.resolverUsuarioAutenticado(authUser);
       if (!resultado.ok) {

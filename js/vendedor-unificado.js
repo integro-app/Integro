@@ -545,6 +545,7 @@
     if (filtro === "aguardando") return status === "AGUARDANDO_ATENDIMENTO" || status === "NOVO_LEAD";
     if (filtro === "atendimento") return ["EM_ATENDIMENTO", "TENTATIVA_CONTATO"].includes(status);
     if (filtro === "retorno") return status === "RETORNO_AGENDADO";
+    if (filtro === "atrasados") return status === "RETORNO_AGENDADO" && texto(cliente.dataRetorno).slice(0,10) <= hoje();
     if (filtro === "encerrados") return ["NAO_CONVERTIDO", "RECUSADO", "SEM_RETORNO", "RETORNADO_LEADS"].includes(status);
     if (filtro === "ativos") return clientePossuiVendaAtiva(cliente);
     if (filtro === "inativos") return !clientePossuiVendaAtiva(cliente);
@@ -569,8 +570,16 @@
       if (filtros.algum && !((filtros.leads && veioLeads) || (filtros.criados && criado) || (filtros.ativos && ativo) || (filtros.inativos && inativo))) return false;
       if (!aplicaFiltroRapidoCliente(cliente)) return false;
       const busca = [cliente.nome, cliente.nomeCompleto, cliente.apelido, cliente.documento, cliente.cpfCnpj, cliente.telefone, cliente.telefonePrincipal, cliente.celular].join(" ").toLowerCase();
-      return !termo || busca.includes(termo);
-    }).sort((a, b) => texto(a.apelido || a.nome || a.nomeCompleto).localeCompare(texto(b.apelido || b.nome || b.nomeCompleto), "pt-BR"));
+      const digitos = termo.replace(/\D/g, "");
+      return !termo || busca.includes(termo) || (digitos.length >= 3 && [cliente.documento, cliente.cpfCnpj, cliente.telefonePrincipal, cliente.telefone].some(valor => texto(valor).replace(/\D/g, "").includes(digitos)));
+    }).sort((a, b) => {
+      if (clientesAbaAtual === "leads") {
+        const retorno = c => statusClienteVendedor(c) === "RETORNO_AGENDADO" && texto(c.dataRetorno) && texto(c.dataRetorno).slice(0,10) <= hoje();
+        if (Boolean(retorno(a)) !== Boolean(retorno(b))) return retorno(a) ? -1 : 1;
+        if (retorno(a) && retorno(b)) return texto(a.dataRetorno).localeCompare(texto(b.dataRetorno));
+      }
+      return texto(a.apelido || a.nome || a.nomeCompleto).localeCompare(texto(b.apelido || b.nome || b.nomeCompleto), "pt-BR");
+    });
   }
 
   function clientesResumoPesquisa(lista = []) {
@@ -648,7 +657,7 @@
 
   function chipsRapidosClientesVendedor() {
     const itens = clientesAbaAtual === "leads"
-      ? [["todos", "Todos"], ["aguardando", "Aguardando"], ["atendimento", "Em atendimento"], ["retorno", "Retorno"], ["encerrados", "Encerrados"]]
+      ? [["todos", "Todos"], ["aguardando", "Aguardando"], ["atendimento", "Em atendimento"], ["retorno", "Retorno"], ["atrasados", "Retornos para hoje"], ["encerrados", "Encerrados"]]
       : [["todos", "Todos"], ["ativos", "Ativos"], ["inativos", "Inativos"], ["criados", "Criados por mim"]];
     return `<div class="vendedor-clientes-chips" aria-label="Filtros rápidos">${itens.map(([valor, rotulo]) => `<button type="button" class="vendedor-cliente-chip ${filtroRapidoClientesVendedor === valor ? "active" : ""}" onclick="aplicarFiltroRapidoClientesVendedor('${valor}')">${rotulo}</button>`).join("")}</div>`;
   }
@@ -694,7 +703,8 @@
     const nome = cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente";
     return `<article class="vendedor-cliente-mobile-card status-${meta.classe} situacao-${situacao.classe}" tabindex="0" title="Abrir opções do cliente" onclick="abrirDrawerClienteVendedor('${esc(clienteId)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawerClienteVendedor('${esc(clienteId)}')}">
       <div class="vendedor-cliente-mobile-top"><div><span class="vendedor-tipo-badge ${clienteEmFluxoLead(cliente) ? "lead" : "cliente"}">${tipoRegistroClienteVendedor(cliente)}</span><h3>${esc(nome)}</h3><p>${esc(cliente.documento || cliente.cpfCnpj || "Sem documento")}</p></div><span class="vendedor-score-badge">${scoreCliente(cliente)}</span></div>
-      <div class="vendedor-cliente-mobile-meta">${badgeStatusCliente(status)}<span>${esc(origemClienteVendedor(cliente))}</span><span>Cadastro: ${dataCadastroCliente(cliente)}</span><span>Atualização: ${dataAtualizacaoCliente(cliente)}</span></div>
+      <div class="vendedor-cliente-mobile-meta">${badgeStatusCliente(status)}<span>${esc(origemClienteVendedor(cliente))}</span><span>Cadastro: ${dataCadastroCliente(cliente)}</span><span>Último contato: ${dataClienteFormatada(cliente.ultimaMovimentacaoTexto || cliente.atualizadoEmTexto || cliente.atualizadoEm)}</span></div>
+      <div class="vendedor-cliente-agenda"><span>${esc(cliente.telefonePrincipal || cliente.telefone || "Telefone não informado")}</span>${cliente.dataRetorno ? `<strong class="${texto(cliente.dataRetorno).slice(0,10) <= hoje() ? "retorno-hoje" : ""}">Retorno: ${dataClienteFormatada(cliente.dataRetorno)}</strong>` : `<span>${clienteEmFluxoLead(cliente) ? "Próxima ação: registrar atendimento" : "Abra o cadastro para consultar o histórico"}</span>`}</div>
       <div class="vendedor-cliente-mobile-actions">
         <button type="button" class="ghost-btn" onclick="event.stopPropagation();${clienteEmFluxoLead(cliente) ? "abrirDrawerClienteVendedor" : "editarCadastroCompletoClienteVendedor"}('${esc(clienteId)}')">${clienteEmFluxoLead(cliente) ? "Atender lead" : "Editar cliente"}</button>
         <button type="button" class="primary-btn" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')">${clienteEmFluxoLead(cliente) ? "Converter em venda" : "Nova venda"}</button>
@@ -711,6 +721,8 @@
     const tela = document.getElementById("clientes");
     if (!tela || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
     const buscaAnterior = preservarValor("buscaClientesVendedorInput");
+    const buscaFocada = document.activeElement?.id === "buscaClientesVendedorInput";
+    const cursorBusca = document.getElementById("buscaClientesVendedorInput")?.selectionStart;
     const lista = clientesPesquisaExecutada ? clientesFiltradosVendedor() : [];
     const estadoInicial = `<div class="empty-state-operacao vendedor-keep vendedor-clientes-estado-inicial"><span class="material-symbols-rounded">manage_search</span><strong>Pesquise para visualizar</strong><p>A carteira não é desenhada automaticamente. Use a busca ou os filtros e clique em Buscar.</p></div>`;
     const estadoVazio = `<div class="empty-state-operacao vendedor-keep"><span class="material-symbols-rounded">person_search</span><strong>${clientesAbaAtual === "leads" ? "Nenhum lead nesta lista" : "Nenhum cliente nesta lista"}</strong><p>${clientesAbaAtual === "leads" ? "Os leads atribuídos a você aparecem aqui. Confira também os filtros." : "Cadastre um cliente ou ajuste a busca e os filtros."}</p></div>`;
@@ -736,6 +748,7 @@
       </div>`;
     limparBlocosClientesLegadosVendedor();
     agendarLimpezaClientesVendedor();
+    if (buscaFocada) { const input = document.getElementById("buscaClientesVendedorInput"); input?.focus({ preventScroll: true }); if (Number.isInteger(cursorBusca)) input?.setSelectionRange(cursorBusca, cursorBusca); }
   }
 
   function switchCliente(id, titulo, subtitulo) {
@@ -1141,12 +1154,13 @@
     el.innerHTML = vendas.length ? vendas.map(v => {
       const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
       return `<article class="vendedor-venda-card">
-        <div class="vendedor-venda-identidade"><strong>${texto(cliente.apelido || v.clienteApelido || cliente.nome || cliente.nomeCompleto || v.clienteNome || "Cliente")}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || v.clienteNome || "")}</small><small>${texto(v.codigo || v.numero || v.id || "")}</small></div>
+        <div class="vendedor-venda-identidade"><strong>${esc(cliente.apelido || v.clienteApelido || cliente.nome || cliente.nomeCompleto || v.clienteNome || "Cliente")}</strong><small>${esc(cliente.nomeCompleto || cliente.nome || v.clienteNome || "")}</small><small>${esc(v.codigo || v.numero || v.id || "")}</small></div>
         <div><span>Data da venda</span><strong>${dataRegistro(v) ? dataRegistro(v).split("-").reverse().join("/") : "Não informada"}</strong></div>
         <div><span>Valor vendido</span><strong>${moeda(v.valorEmprestado || v.valorVenda || v.valor || 0)}</strong></div>
         <div><span>Carteira gerada</span><strong>${moeda(v.valorTotalVenda || v.saldoDevedor || 0)}</strong></div>
         <div><span>Parcela</span><strong>${moeda(v.valorParcela || 0)}</strong></div>
-        <div><span>Status</span><strong>${texto(v.statusVenda || v.status || "ATIVA")}</strong></div>
+        <div><span>Status</span><strong>${esc(v.statusVenda || v.status || "ATIVA")}</strong></div>
+        <footer class="vendedor-venda-acoes"><button class="ghost-btn" type="button" ${idCliente(cliente) ? "" : "disabled"} onclick="abrirDrawerClienteVendedor('${esc(idCliente(cliente))}')"><span class="material-symbols-rounded">person</span>Ver cliente</button><button class="primary-btn" type="button" ${idCliente(cliente) && clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="selecionarClienteNovaVendaVendedor('${esc(idCliente(cliente))}')"><span class="material-symbols-rounded">add_shopping_cart</span>Nova venda</button></footer>
       </article>`;
     }).join("") : '<div class="empty-state-operacao"><strong>Nenhuma venda encontrada</strong><p>Não há vendas vinculadas a este vendedor para os filtros informados.</p></div>';
   }
@@ -1436,7 +1450,7 @@
   function atualizarCamposStatusLeadVendedor(selectId = "clienteDrawerStatusLead") {
     const select = document.getElementById(selectId);
     const status = texto(select?.value).toUpperCase();
-    const wrap = document.getElementById("clienteDrawerRetornoWrap");
+    const wrap = document.getElementById(selectId === "clienteVendedorStatusAtendimento" ? "clienteFormularioRetornoWrap" : "clienteDrawerRetornoWrap");
     if (wrap) wrap.hidden = status !== "RETORNO_AGENDADO";
     const destaque = document.getElementById("clienteDrawerStatusDestaque");
     if (destaque) {
@@ -1586,7 +1600,7 @@
           <button type="button" data-cliente-form-tab="bancarios" onclick="abrirAbaFormularioClienteVendedor('bancarios')">Banco</button>
         </nav>
         <section class="cliente-form-panel active" data-cliente-form-panel="dados">
-          ${veioLeads ? `<div class="cliente-form-lead-box"><strong>Gestão do lead</strong><p>Atualize o status do lead sem sair do cadastro.</p>${selectStatusLead(cliente || {})}</div>` : ""}
+          ${veioLeads ? `<div class="cliente-form-lead-box"><strong>Gestão do lead</strong><p>Atualize o status do lead sem sair do cadastro.</p>${selectStatusLead(cliente || {})}<label id="clienteFormularioRetornoWrap" ${cliente?.statusAtendimento === "RETORNO_AGENDADO" ? "" : "hidden"}>Data de retorno<input id="clienteFormularioDataRetorno" type="date" value="${esc(texto(cliente?.dataRetorno).slice(0,10))}"></label></div>` : ""}
           <label>Segmento<input id="clienteVendedorSegmento" required value="${esc(cliente?.segmento || "")}" maxlength="100"></label>
           <label>Nome completo<input id="clienteVendedorNome" value="${esc(cliente?.nomeCompleto || cliente?.nome || "")}" autocomplete="name" required></label>
           <label>Tipo de cliente<select id="clienteVendedorTipoCliente" required onchange="document.getElementById('clienteVendedorTipoDocumento').value=this.value==='PJ'?'CNPJ':'CPF';formatarDocumentoFormularioClienteVendedor()"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
@@ -1746,7 +1760,10 @@
     const ddi = document.getElementById("clienteVendedorTelefonePais")?.value || "55";
     const numero = telefone.replace(/\D/g, "");
     if (ddi === "55" ? ![10,11].includes(numero.length) : numero.length < 6 || numero.length + ddi.length > 15) return UIHelpers?.alerta?.("Informe um telefone válido para o país selecionado.");
+    const dataRetorno = texto(document.getElementById("clienteFormularioDataRetorno")?.value || clienteAtual?.dataRetorno);
+    if (ehLeadAtual && statusAtendimento === "RETORNO_AGENDADO" && !dataRetorno) { abrirAbaFormularioCliente("dados"); document.getElementById("clienteFormularioDataRetorno")?.focus(); return UIHelpers?.alerta?.("Informe a data de retorno."); }
     const botao = document.getElementById("salvarClienteVendedorBtn");
+    if (botao?.disabled) return;
     if (botao) botao.disabled = true;
     try {
       const observacaoLead = texto(document.getElementById("clienteVendedorObservacao")?.value);
@@ -1758,9 +1775,9 @@
         renderClientesVendedor({ forcar: true });
         UIHelpers?.alerta?.("Lead retornado para o setor responsável.");
         return;
-      } else if (clienteId && ehLeadAtual && statusAtendimento && statusAtendimento !== statusOriginal && typeof window.ClientesService?.registrarAtendimento === "function") {
+      } else if (clienteId && ehLeadAtual && statusAtendimento && (statusAtendimento !== statusOriginal || (statusAtendimento === "RETORNO_AGENDADO" && dataRetorno !== texto(clienteAtual?.dataRetorno))) && typeof window.ClientesService?.registrarAtendimento === "function") {
         const motivo = ["NAO_CONVERTIDO", "RECUSADO"].includes(statusAtendimento) ? (observacaoLead || "Status atualizado pelo vendedor") : "";
-        await window.ClientesService.registrarAtendimento(clienteId, { statusAtendimento, status: statusAtendimento, observacao: observacaoLead, motivo, canal: "OUTRO" }, usuario, { db: window.db || window.firebase?.firestore?.() });
+        await window.ClientesService.registrarAtendimento(clienteId, { statusAtendimento, status: statusAtendimento, observacao: observacaoLead, motivo, dataRetorno, canal: "OUTRO" }, usuario, { db: window.db || window.firebase?.firestore?.() });
       }
       const authUid = texto(usuario.authUid || usuario.uid || usuario.id || usuario.usuarioId);
       const vendedorId = texto(usuario.vendedorId || usuario.authUid || usuario.uid || usuario.id || usuario.usuarioId);
@@ -1784,6 +1801,7 @@
         cidade: texto(document.getElementById("clienteVendedorCidade")?.value),
         uf: texto(document.getElementById("clienteVendedorUf")?.value).toUpperCase(),
         statusAtendimento,
+        ...(ehLeadAtual ? { dataRetorno: statusAtendimento === "RETORNO_AGENDADO" ? dataRetorno : "" } : {}),
         observacao: texto(document.getElementById("clienteVendedorObservacao")?.value),
         dadosBancarios: {
           banco: texto(document.getElementById("clienteVendedorBanco")?.value),
@@ -1794,7 +1812,7 @@
         },
         fotoPerfilNome: nomesArquivosInput("clienteVendedorFoto")[0] || "",
         documentosAnexosNomes: nomesArquivosInput("clienteVendedorDocumentos"),
-        origem: clienteId ? "ATUALIZACAO_VENDEDOR" : "CADASTRO_DIRETO",
+        origem: clienteId ? (clienteAtual?.origem || "CADASTRO_DIRETO") : "CADASTRO_DIRETO",
         clientePlataformaId: tenantId,
         tenantId,
         empresaId: tenantId,

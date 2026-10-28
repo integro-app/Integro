@@ -14,7 +14,8 @@
     resumoIniciado: false,
     resumoInicialRecebido: false,
     conversasNotificadas: new Set(),
-    modalGrupoAberto: false
+    modalGrupoAberto: false,
+    mensagensConversaId: ""
   };
 
   function el(id) { return document.getElementById(id); }
@@ -73,7 +74,7 @@
         return;
       }
       const antes = Number(anterior.get(conversa.id) || 0);
-      const estaAberta = chatEstaAtivo() && estado.conversaAtual === conversa.id;
+      const estaAberta = chatEstaAtivo() && estado.conversaAtual === conversa.id && (!global.matchMedia?.("(max-width:760px)")?.matches || containerChat()?.querySelector(".integro-chat")?.classList.contains("conversa-aberta"));
       if (!estaAberta && antes === 0 && !estado.conversasNotificadas.has(conversa.id)) {
         estado.conversasNotificadas.add(conversa.id);
         const remetente = conversaTitulo(conversa);
@@ -168,6 +169,9 @@
   function voltarConversas() {
     containerChat()?.querySelector('.integro-chat')?.classList.remove('conversa-aberta');
     el('chatTexto')?.blur();
+    if (estado.unsubMensagens) estado.unsubMensagens();
+    estado.unsubMensagens = null;
+    estado.conversaAtual = "";
     if(el('chatEmojiMenu'))el('chatEmojiMenu').hidden=true;
     containerChat()?.querySelector('.integro-chat-conversa.active')?.focus({preventScroll:true});
   }
@@ -177,7 +181,7 @@
 
   function renderBase(root) {
     if(!document.getElementById('integroChatMobileStyles')){
-      const link=document.createElement('link');link.id='integroChatMobileStyles';link.rel='stylesheet';link.href='css/integro-chat-mobile.css?v=20261013-mobile4';document.head.appendChild(link);
+      const link=document.createElement('link');link.id='integroChatMobileStyles';link.rel='stylesheet';link.href='css/integro-chat-mobile.css?v=20261028-mobile';document.head.appendChild(link);
     }
     root.dataset.chatReady = "1";
     root.innerHTML = `
@@ -277,6 +281,9 @@
     const box = el("chatMensagens");
     if (!box) return;
     const atual = global.IntegroChatService.usuarioId();
+    const posicaoAnterior = box.scrollTop;
+    const seguirFim = estado.mensagensConversaId !== estado.conversaAtual || box.scrollHeight - box.clientHeight - posicaoAnterior < 80;
+    estado.mensagensConversaId = estado.conversaAtual;
     box.innerHTML = lista.length ? lista.map(m => {
       const imagem = m.tipo === "IMAGEM" && m.imagemUrl
         ? `<a class="integro-chat-foto-link" href="${esc(m.imagemUrl)}" target="_blank" rel="noopener"><img class="integro-chat-foto" src="${esc(m.imagemUrl)}" alt="Foto enviada por ${esc(m.remetenteNome || "usuário")}" loading="lazy"></a>` : "";
@@ -284,7 +291,7 @@
       const temporaria = String(m.historicoModo || "").toUpperCase() === "TEMPORARIO" ? '<span class="integro-chat-temporary" title="Mensagem temporária">timer</span>' : "";
       return `<div class="integro-chat-msg ${m.remetenteId === atual ? "mine" : ""}"><div class="integro-chat-msg-meta"><strong>${esc(m.remetenteNome || "Usuário")}</strong><small>${esc(m.remetenteCargo || "")}</small></div>${imagem}${texto}<time>${temporaria}${esc(formatarHorario(m.criadoEm) || m.dataOperacional || "")}</time></div>`;
     }).join("") : '<div class="empty">Nenhuma mensagem nesta conversa.</div>';
-    box.scrollTop = box.scrollHeight;
+    box.scrollTop = seguirFim ? box.scrollHeight : posicaoAnterior;
   }
 
   function atualizarCabecalho(conversa) {
@@ -349,7 +356,8 @@
     estado.unsubMensagens = global.IntegroChatService.assinarMensagens(id, renderMensagens, erro => {
       if (el("chatMensagens")) el("chatMensagens").innerHTML = `<div class="empty">${esc(erro.message || "Falha ao carregar mensagens.")}</div>`;
     });
-    await global.IntegroChatService.marcarComoLida(id);
+    try { await global.IntegroChatService.marcarComoLida(id); }
+    catch (erro) { notificar(erro.message || "Não foi possível atualizar a leitura da conversa.", "warning"); return; }
     estado.conversasNotificadas.delete(id);
     if (conversa.naoLidasPorUsuario) conversa.naoLidasPorUsuario[global.IntegroChatService.usuarioId()] = 0;
     renderConversas();
@@ -424,7 +432,7 @@
     textarea.style.height = `${Math.min(120, Math.max(24, textarea.scrollHeight))}px`;
   }
   function teclaCompositor(event) {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing && !global.matchMedia?.("(max-width:760px)")?.matches) {
       event.preventDefault();
       event.currentTarget.closest("form")?.requestSubmit();
     }

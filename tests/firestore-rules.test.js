@@ -1239,3 +1239,16 @@ test('divergência: SDK não forja aprovação nem altera a conferência origina
  await assertFails(updateDoc(ref,{tratamentoDivergencia:{decisao:'SOLICITAR_REGULARIZACAO',statusTratamento:'REGULARIZACAO_SOLICITADA'}}));
  await assertFails(updateDoc(ref,{justificativa:'Substituição indevida'}));
 });
+
+test("notificacoes: restaura lixeira legada somente do destinatário e mantém rota imutável", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "notificacoes", "mobile_lixeira"), tenantFields({
+      destinatarioAuthUid: profiles.vendedor1.uid, naLixeira: true, lida: false, status: "PENDENTE",
+      rota: { tela: "clientes", aba: "leads" }
+    }));
+  });
+  const own = doc(appDb(profiles.vendedor1), "notificacoes", "mobile_lixeira");
+  await assertSucceeds(updateDoc(own, { naLixeira: false, lida: true, status: "LIDA" }));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor2), "notificacoes", "mobile_lixeira"), { naLixeira: true }));
+  await assertFails(updateDoc(own, { rota: { tela: "usuarios" } }));
+});

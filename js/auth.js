@@ -324,10 +324,12 @@ function protegerPagina(tipoObrigatorio = null) {
         return;
       }
 
+      // A configuração pode carregar em paralelo; a sessão só retoma após validar o caixa.
+      const configuracoesPendentes = carregarConfiguracoesEmpresaDoUsuario(usuario);
       await verificarCaixaVendedorParaAcesso(usuario, authUser);
       State.setUsuario(usuario);
       const [, retomada] = await Promise.all([
-        carregarConfiguracoesEmpresaDoUsuario(usuario),
+        configuracoesPendentes,
         garantirServicoSessaoV27().then(sessao => sessao?.resume?.())
       ]);
       if (!retomada) {

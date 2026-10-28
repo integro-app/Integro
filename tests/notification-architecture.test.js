@@ -72,18 +72,21 @@ test("abrir notificação navega antes de concluir a gravação de leitura", asy
   const vm = require("node:vm");
   const source = require("node:fs").readFileSync(require("node:path").join(__dirname, "..", "js", "services", "notification-service.js"), "utf8");
   let concluirLeitura;
+  const own = { destinatarioAuthUid: "u1", clientePlataformaId: "tenant_a" };
   let navegacoes = 0;
   const contexto = {
     console, setTimeout,
     document: { addEventListener() {} }, addEventListener() {},
-    db: { collection: () => ({ doc: () => ({ set: () => new Promise(resolve => { concluirLeitura = resolve; }) }) }) },
+    State: { getUsuario: () => ({ authUid: "u1" }), getTenantId: () => "tenant_a" },
+    db: { collection: () => ({ doc: () => ({ get: async () => ({ exists: true, data: () => own }), update: () => new Promise(resolve => { concluirLeitura = resolve; }) }) }) },
     IntegroNotificationRouter: { open() { navegacoes++; return true; } }
   };
   contexto.window = contexto;
   vm.createContext(contexto);
   vm.runInContext(source, contexto);
-  assert.equal(await contexto.IntegroNotifications.open({ id: "n1", lida: false }), true);
+  assert.equal(await contexto.IntegroNotifications.open({ id: "n1", lida: false, ...own }), true);
   assert.equal(navegacoes, 1);
+  await new Promise(resolve => setImmediate(resolve));
   assert.equal(typeof concluirLeitura, "function");
   concluirLeitura();
 });
@@ -93,7 +96,7 @@ test("notificações reiniciam listener ao trocar tenant e descartam callbacks d
   const source = fs.readFileSync(path.join(__dirname, "..", "js", "services", "notification-service.js"), "utf8");
   const callbacks = [];
   let tenant = "tenant_a", encerrados = 0;
-  const ref = { where() { return this; }, limit() { return this; }, onSnapshot(callback) { callbacks.push(callback); return () => { encerrados++; }; } };
+  const ref = { where() { return this; }, orderBy() { return this; }, limit() { return this; }, onSnapshot(callback) { callbacks.push(callback); return () => { encerrados++; }; } };
   const contexto = {
     console, setTimeout, document: { addEventListener() {} }, addEventListener() {},
     State: { getUsuario: () => ({ authUid: "u1" }), getTenantId: () => tenant },
@@ -120,7 +123,7 @@ test("notificações reiniciam listener ao trocar tenant e descartam callbacks d
 test('notificações restringem tenant e destinatário no servidor e não consultam sem tenant', async () => {
   const vm=require('node:vm'), queries=[];
   let tenant='tenant_a';
-  const context={console,setTimeout,document:{addEventListener(){}},addEventListener(){},State:{getUsuario:()=>({authUid:'u1'}),getTenantId:()=>tenant},db:{collection(){const filters=[];const ref={where(...filter){filters.push(filter);return ref;},limit(){return ref;},async get(){queries.push(filters);return {docs:[]};},onSnapshot(){queries.push(filters);return ()=>{};}};return ref;}}};
+  const context={console,setTimeout,document:{addEventListener(){}},addEventListener(){},State:{getUsuario:()=>({authUid:'u1'}),getTenantId:()=>tenant},db:{collection(){const filters=[];const ref={where(...filter){filters.push(filter);return ref;},orderBy(field,direction){assert.equal(field,"criadoEm");assert.equal(direction,"desc");return ref;},limit(){return ref;},async get(){queries.push(filters);return {docs:[]};},onSnapshot(){queries.push(filters);return ()=>{};}};return ref;}}};
   context.window=context;
   vm.runInNewContext(read('js/services/notification-service.js'),context);
   await context.IntegroNotifications.list();context.IntegroNotifications.subscribe();
