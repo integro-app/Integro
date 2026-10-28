@@ -11,8 +11,7 @@ for(const [key,port]of [['FIRESTORE_EMULATOR_HOST',8080],['FIREBASE_AUTH_EMULATO
 admin.initializeApp({projectId:'integro-novo'});
 const db=admin.firestore(),prefix='construction_'+Date.now(),tenant='tenant-a';
 async function main(){
-  const auth=await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=integro-local`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'master.local.a@homologacao.integro.test',password:'IntegroLocal#2026',returnSecureToken:true})}).then(r=>r.json());
-  assert.ok(auth.idToken,'Execute o seed de homologação local antes do teste.');
+  const auth=await require('./auth-emulator-helper.cjs').autenticar('master.local.a@homologacao.integro.test');
   const call=async(name,data)=>{const r=await fetch(`http://127.0.0.1:5001/integro-novo/southamerica-east1/${name}`,{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${auth.idToken}`},body:JSON.stringify({data})}),json=await r.json();if(json.error)throw new Error(JSON.stringify(json.error));assert.equal(r.status,200);return json.result;};
   const today=core.hojeSP(),contaId=prefix+'_conta',ref=db.collection('financeiro_contas').doc(contaId);
   await ref.set({clientePlataformaId:tenant,descricao:'Teste local de transação',valorCentavos:100000,saldoCentavos:100000,valorPagoCentavos:0,vencimento:today,status:'A_VENCER',tipoMovimento:'PAGAR',criadoPorAuthUid:auth.localId});

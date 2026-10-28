@@ -653,7 +653,7 @@
     if (!usuarioAtual || !window.IntegroAcesso) return;
     const somenteLeitura = acesso().perfil === "auditor";
     document.querySelectorAll("[data-permissao]").forEach(el => {
-      const permitido = window.IntegroAcesso.pode(usuarioAtual, el.dataset.permissao, {});
+      const permitido = window.IntegroAcesso.podeElemento(usuarioAtual, el);
       el.hidden = !permitido;
       if (!permitido) el.setAttribute("aria-hidden", "true");
     });

@@ -34,6 +34,7 @@
 
 
   const PERMISSOES_ALTERNATIVAS_POR_MODULO = Object.freeze({
+    financeiro: Object.freeze(["controleFinanceiro.ver", "financeiro.ver"]),
     movimentacoes: Object.freeze([
       "financeiro.movimentacoes",
       "solicitacoes.criar",

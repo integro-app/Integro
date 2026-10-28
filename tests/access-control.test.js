@@ -108,3 +108,15 @@ test("os oito perfis locais preservam tenant, equipe, ownership, escrita e finan
 });
 
 test('permissão geral de leitura cobre leitura própria respeitando dono e negação explícita',()=>{const access=carregar(),u={tipoUsuario:'captador',id:'c',authUid:'u',clientePlataformaId:'a',permissoesCargo:{indicacoes:{ver:true}}};assert.equal(access.pode(u,'indicacoes.ver_proprio',{clientePlataformaId:'a',captadorId:'c'}),true);assert.equal(access.pode(u,'indicacoes.ver_proprio',{clientePlataformaId:'a',captadorId:'outro'}),false);assert.equal(access.pode({...u,permissoesCargo:{indicacoes:{ver:true,ver_proprio:false}}},'indicacoes.ver_proprio',{captadorId:'c'}),false);assert.equal(access.pode({...u,permissoesCargo:{indicacoes:{ver_proprio:true}}},'indicacoes.ver',{captadorId:'c'}),false);});
+
+for (const [nome,usuario,esperado] of [
+ ["permissão empresarial", {tipoUsuario:"supervisor",clientePlataformaId:"t1",permissoes:{controleFinanceiro:{ver:true}}},true],
+ ["perfil financeiro padrão",{tipoUsuario:"financeiro",clientePlataformaId:"t1"},true],
+ ["ambas negadas",{tipoUsuario:"supervisor",clientePlataformaId:"t1",permissoes:{controleFinanceiro:{ver:false},financeiro:{ver:false}}},false],
+ ["vendedor sem permissão",{tipoUsuario:"vendedor",clientePlataformaId:"t1"},false],
+ ["usuário bloqueado",{tipoUsuario:"financeiro",clientePlataformaId:"t1",ativo:false},false]
+]) test("visibilidade do financeiro: "+nome,()=>{
+ const acesso=carregar(),elemento={dataset:{permissao:"financeiro.ver",permissaoAlternativa:"controleFinanceiro.ver"},setAttribute(nome,valor){this[nome]=valor;},matches(){return false;}};
+ acesso.aplicarNaInterface(usuario,{querySelectorAll(selector){return selector==="[data-permissao]"?[elemento]:[];}});
+ assert.equal(elemento.hidden,!esperado);assert.equal(elemento["aria-hidden"],String(!esperado));
+});

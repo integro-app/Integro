@@ -55,7 +55,7 @@ window.db = db;
   if (window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__ || window.__INTEGRO_EMPRESAS_PORTAL__) return;
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
-  script.src = "js/v27-bootstrap.js?v=20261023-fechamento-anexos&build=20261023-fechamento-anexos";
+  script.src = "js/v27-bootstrap.js?v=20261027-homologacao-money-recovery&build=20261027-homologacao-money-recovery";
   script.async = false;
   script.dataset.integroV27Bootstrap = "1";
   document.head.appendChild(script);

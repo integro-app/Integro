@@ -8,7 +8,7 @@ for(const [key,port] of [['FIRESTORE_EMULATOR_HOST',8080],['FIREBASE_AUTH_EMULAT
 const admin=require('../functions/node_modules/firebase-admin'),core=require('../functions/financial-core');
 admin.initializeApp({projectId:'integro-novo'});
 const db=admin.firestore(),prefix='critical_'+Date.now(),tenant='tenant-a';
-async function sign(name){const json=await fetch(`http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=local`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:name+'@homologacao.integro.test',password:'IntegroLocal#2026',returnSecureToken:true})}).then(r=>r.json());assert.ok(json.idToken);return json;}
+async function sign(name){return require('./auth-emulator-helper.cjs').autenticar(name+'@homologacao.integro.test');}
 async function call(auth,name,data){const response=await fetch(`http://127.0.0.1:5001/integro-novo/southamerica-east1/${name}`,{method:'POST',headers:{'content-type':'application/json',authorization:`Bearer ${auth.idToken}`},body:JSON.stringify({data})});const json=await response.json();if(json.error)throw Object.assign(new Error(json.error.message),{code:json.error.status});assert.equal(response.status,200);return json.result;}
 async function main(){
  const [master,source,dest]=await Promise.all(['master.local.a','vendedor.1.a','vendedor.2.a'].map(sign)),today=core.hojeSP(),clienteId=prefix+'_cliente',caixaId=prefix+'_caixa';

@@ -182,9 +182,14 @@
     });
   }
 
+  function podeElemento(usuario, elemento) {
+    const permissoes = [elemento.dataset.permissao, ...(elemento.dataset.permissaoAlternativa || "").split(",")].map(texto).filter(Boolean);
+    return permissoes.some(permissao => pode(usuario, permissao, {}));
+  }
+
   function aplicarNaInterface(usuario = {}, raiz = document) {
     raiz.querySelectorAll("[data-permissao]").forEach(elemento => {
-      const permitido = pode(usuario, elemento.dataset.permissao, {});
+      const permitido = podeElemento(usuario, elemento);
       elemento.hidden = !permitido;
       elemento.setAttribute("aria-hidden", String(!permitido));
       if (!permitido && elemento.matches("button,input,select,textarea,a")) elemento.setAttribute("tabindex", "-1");
@@ -218,6 +223,7 @@
     exigir,
     escopoConsulta,
     aplicarNaInterface,
+    podeElemento,
     validarEscopo
   });
 })();

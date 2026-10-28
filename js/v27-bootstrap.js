@@ -5,7 +5,7 @@
   global.__INTEGRO_VERSION__ = "27.2.3-pagamento-flexivel";
 
   const loaded = new Map();
-  const VERSION = "20261023-fechamento-anexos";
+  const VERSION = "20261027-homologacao-money-recovery";
   const page = String(global.location?.pathname || "").toLowerCase();
 
   function loadScript(src, key = src) {
