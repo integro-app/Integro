@@ -31,7 +31,7 @@ jobs:
           cache: npm
       - name: Fixar revisao aprovada e validar sintaxe
         run: |
-          test "$(git rev-parse HEAD^)" = "e7189f7596cc24490cf713fa1858aa80ff85d285"
+          test "$(git rev-parse HEAD^)" = "8a33b1edf053741558093c850760358ac917ae79"
           node --check scripts/test-fechamento-ui-publicado-20261029.cjs
           node --check scripts/test-fechamento-firestore-real-20261029.cjs
       - name: Instalar navegador e dependencias
