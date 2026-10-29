@@ -1,0 +1,72 @@
+name: Validar e publicar recuperacao do painel vendedor 2026-10-29
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths: [".github/workflows/publicar-recuperacao-vendedor-20261029.yml"]
+permissions:
+  contents: read
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: recuperar painel e fechamento vendedor 2026-10-29'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 2}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Bloquear versao inesperada
+        run: test "$(git rev-parse HEAD^)" = "7635e2699aec5462d8ec257208646ca6e0cf41c0"
+      - run: npm ci
+      - run: npm ci --prefix functions
+      - name: Testar inicializacao tardia e autorizacao do vendedor
+        run: node --test tests/vendedor-boot-recovery.test.js
+      - name: Testar fechamento unificado, controle de acesso e preflight
+        run: node --test tests/vendedor-fechamento-unificado.test.js tests/vendedor-fechamento.test.js tests/vendedor-access-preflight.test.js tests/access-control.test.js tests/painel-unificado.test.js
+      - name: Verificacao completa do frontend e backend
+        run: npm run verify
+  publicar:
+    if: "github.event.head_commit.message == 'release: recuperar painel e fechamento vendedor 2026-10-29'"
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-deploy-recuperacao-vendedor.json
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 2}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validar revisao
+        run: test "$(git rev-parse HEAD^)" = "7635e2699aec5462d8ec257208646ca6e0cf41c0"
+      - run: npm ci
+      - name: Credencial temporaria
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          raw=os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON","")
+          if not raw: raise SystemExit("Credencial indisponivel")
+          json.loads(raw)
+          dest=pathlib.Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+          dest.write_text(raw)
+          dest.chmod(0o600)
+          PY
+      - name: Publicar somente Hosting - sem Functions ou Rules
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Confirmar HTML e JavaScript servidos
+        run: |
+          curl --fail --silent --show-error --location https://integro-novo.web.app/master-local.html | grep -F 'vendedor-unificado.js?v=20261029-recovery-fechamento'
+          curl --fail --silent --show-error --location https://integro-novo.web.app/js/vendedor-unificado.js | grep -F 'recuperarPainelVendedorAutenticado'
+      - name: Limpar credencial
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
