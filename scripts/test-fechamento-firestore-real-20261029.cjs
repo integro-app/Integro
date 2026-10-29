@@ -134,7 +134,7 @@ async function prepareUi() {
     throw Error("Arquivo temporario de sessao UI invalido.");
   await prepare();
   const token=await auth.createCustomToken(uid,{integroSessionId:sessionId});
-  fs.writeFileSync(tokenFile,JSON.stringify({token,boxId,expectedCents,tenant,uid}),{mode:0o600,flag:"wx"});
+  fs.writeFileSync(tokenFile,JSON.stringify({token,sessionId,boxId,expectedCents,tenant,uid}),{mode:0o600,flag:"wx"});
   log("fixture_ui_pronta",{caixa:boxId});
 }
 async function verifyUi() {
