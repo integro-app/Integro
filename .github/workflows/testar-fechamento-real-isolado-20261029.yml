@@ -1,0 +1,63 @@
+name: Teste REAL do fechamento isolado - autorizado 2026-10-29
+
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths:
+      - ".github/workflows/testar-fechamento-real-isolado-20261029.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  caixa-e2e:
+    if: "github.event.head_commit.message == 'test: executar fechamento real isolado autorizado 2026-10-29'"
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-caixa-e2e-credencial.json
+      TESTE_CAIXA_REAL_AUTORIZADO: SIM_20261029
+      GOOGLE_CLOUD_PROJECT: integro-novo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validar origem e sintaxe do teste
+        run: |
+          test "$(git rev-parse HEAD^)" = "0802ae67c2e3b7d4c4005be0dd8f264be2c5b559"
+          node --check scripts/test-fechamento-firestore-real-20261029.cjs
+      - name: Dependencias de backend
+        run: npm ci --prefix functions
+      - name: Credencial temporaria restrita a esta execucao
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          raw=os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON","")
+          if not raw:
+              raise SystemExit("Credencial ausente: teste real nao iniciado")
+          json.loads(raw)
+          p=pathlib.Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+          p.write_text(raw)
+          p.chmod(0o600)
+          PY
+      - name: Conferir e fechar via Functions reais, com fixtures isoladas
+        run: node scripts/test-fechamento-firestore-real-20261029.cjs --run
+      - name: Limpeza independente e verificacao de ausencia de fixtures
+        if: always()
+        run: |
+          if test -f "$GOOGLE_APPLICATION_CREDENTIALS" && test -d functions/node_modules; then
+            node scripts/test-fechamento-firestore-real-20261029.cjs --cleanup
+          fi
+      - name: Remover credencial temporaria
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
