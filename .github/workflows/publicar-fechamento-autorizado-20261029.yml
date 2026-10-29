@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   validar:
-    if: github.event.head_commit.message == 'release: publicar fechamento autorizado 2026-10-29'
+    if: "github.event.head_commit.message == 'release: publicar fechamento autorizado 2026-10-29'"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -28,7 +28,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Conferir commit base aprovado
-        run: test "$(git rev-parse HEAD^)" = "d427eeb7c87945705c9342f50b10ff315dcecda3"
+        run: test "$(git rev-parse HEAD^)" = "ab14601420f37e693517a4960f9498df6ae624b6"
       - name: Instalar dependencias
         run: |
           npm ci
@@ -41,7 +41,7 @@ jobs:
         run: npm run test:rules
 
   publicar:
-    if: github.event.head_commit.message == 'release: publicar fechamento autorizado 2026-10-29'
+    if: "github.event.head_commit.message == 'release: publicar fechamento autorizado 2026-10-29'"
     needs: validar
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -58,7 +58,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Conferir commit base aprovado
-        run: test "$(git rev-parse HEAD^)" = "d427eeb7c87945705c9342f50b10ff315dcecda3"
+        run: test "$(git rev-parse HEAD^)" = "ab14601420f37e693517a4960f9498df6ae624b6"
       - name: Instalar dependencias
         run: |
           npm ci
