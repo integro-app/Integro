@@ -1,0 +1,69 @@
+name: E2E do botao Fechar caixa no Hosting real - 2026-10-29
+
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths: [".github/workflows/testar-fechamento-ui-real-20261029.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  validar-interface:
+    if: "github.event.head_commit.message == 'test: validar botao de fechamento real com homologacao isolada 2026-10-29'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-ui-fechamento-e2e-credencial.json
+      E2E_UI_TOKEN_FILE: /tmp/integro-ui-fechamento-e2e-auth.json
+      TESTE_CAIXA_REAL_AUTORIZADO: SIM_20261029
+      GOOGLE_CLOUD_PROJECT: integro-novo
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 2}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Fixar revisao aprovada e validar sintaxe
+        run: |
+          test "$(git rev-parse HEAD^)" = "6b492b2dd7c8af62d29cc21d78abbff8e75e0298"
+          node --check scripts/test-fechamento-ui-publicado-20261029.cjs
+          node --check scripts/test-fechamento-firestore-real-20261029.cjs
+      - name: Instalar navegador e dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+          npx playwright install --with-deps chromium
+      - name: Preparar credencial temporaria
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          raw=os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON","")
+          if not raw: raise SystemExit("Credencial nao configurada.")
+          json.loads(raw)
+          dest=pathlib.Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+          dest.write_text(raw)
+          dest.chmod(0o600)
+          PY
+      - name: Criar vendedor e caixa temporarios E2E
+        run: node scripts/test-fechamento-firestore-real-20261029.cjs --prepare-ui
+      - name: Testar botao Fechar caixa em navegador real
+        run: node scripts/test-fechamento-ui-publicado-20261029.cjs
+      - name: Validar gravacao final e auditoria no Firestore real
+        run: node scripts/test-fechamento-firestore-real-20261029.cjs --verify-ui
+      - name: Apagar e verificar todos os dados ficticios
+        if: always()
+        run: |
+          if test -f "$GOOGLE_APPLICATION_CREDENTIALS" && test -d functions/node_modules; then
+            node scripts/test-fechamento-firestore-real-20261029.cjs --cleanup
+          fi
+      - name: Remover segredos temporarios
+        if: always()
+        run: rm -f "$E2E_UI_TOKEN_FILE" "$GOOGLE_APPLICATION_CREDENTIALS"
