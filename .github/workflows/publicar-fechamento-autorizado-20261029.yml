@@ -28,7 +28,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Conferir commit base aprovado
-        run: test "$(git rev-parse HEAD^)" = "ab14601420f37e693517a4960f9498df6ae624b6"
+        run: test "$(git rev-parse HEAD^)" = "e6dfa1f3f655ff04ba806f90a0f33d8a30285c22"
       - name: Instalar dependencias
         run: |
           npm ci
@@ -50,7 +50,7 @@ jobs:
       group: integro-production
       cancel-in-progress: false
     env:
-      GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/integro-firebase-deploy.json
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-firebase-deploy.json
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -58,7 +58,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Conferir commit base aprovado
-        run: test "$(git rev-parse HEAD^)" = "ab14601420f37e693517a4960f9498df6ae624b6"
+        run: test "$(git rev-parse HEAD^)" = "e6dfa1f3f655ff04ba806f90a0f33d8a30285c22"
       - name: Instalar dependencias
         run: |
           npm ci
