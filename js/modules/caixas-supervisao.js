@@ -248,10 +248,10 @@
         actionFeedback('Conferência concluída. Informe o valor físico e confirme.');
         const confirmation=await confirmClosure(snapshot,box);
         if (!confirmation) {actionFeedback('Fechamento cancelado; o caixa permanece aberto.');return;}
-        const {actual,reason}=confirmation;
-        actionFeedback('Registrando fechamento no servidor...');
-        const result=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,valorInformadoCentavos:actual,justificativa:reason||'',snapshot});
-        actionFeedback('Fechamento confirmado: '+text(result?.statusFechamento||'FECHADO')+'.');
+        const {actual,reason,supervised}=confirmation;
+        actionFeedback(supervised?'Registrando não pagamentos sem baixa e encerrando caixa...':'Registrando fechamento no servidor...');
+        const result=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,valorInformadoCentavos:actual,justificativa:reason||'',fechamentoSupervisionado:supervised===true,snapshot});
+        actionFeedback('Fechamento confirmado: '+text(result?.statusFechamento||'FECHADO')+'.'+(result?.baixasAutomaticasQuantidade?' Baixas automáticas como não pago: '+result.baixasAutomaticasQuantidade+'.':''));
         await selectBox(id(box));
       }catch(error){
         console.error('Falha ao fechar caixa pelo supervisor:',error);
@@ -264,10 +264,10 @@
     if(global.document.getElementById('cxCloseDialog'))return Promise.resolve(null);
     return new Promise(resolve=>{
       const dialog=global.document.createElement('dialog');dialog.id='cxCloseDialog';dialog.className='cx-close-dialog';
-      dialog.innerHTML=`<form><h2>Fechamento de caixa</h2><p>${esc(box.vendedorNome||'Vendedor')} · ${dateBR(boxDay(box))}</p><div class="cx-close-values">${metric('Caixa calculado',cash(snapshot.caixaFinalEsperadoCentavos))}${metric('Recebimentos',cash(snapshot.totalPagamentosCentavos))}${metric('Vendas / empréstimos',cash(snapshot.totalVendasCentavos))}</div><label>Valor físico / real<input name="actual" type="number" step="0.01" required value="${snapshot.caixaFinalEsperadoCentavos/100}"></label><label>Observação<textarea name="reason" rows="3" placeholder="Obrigatória se houver divergência"></textarea></label><p role="alert" data-cx-close-error></p><div class="cx-close-actions"><button type="button" class="ghost-btn" data-cx-cancel>Cancelar</button><button type="submit" class="primary-btn">Confirmar fechamento</button></div></form>`;
+      dialog.innerHTML=`<form><h2>Fechamento de caixa</h2><p>${esc(box.vendedorNome||'Vendedor')} · ${dateBR(boxDay(box))}</p><div class="cx-close-values">${metric('Caixa calculado',cash(snapshot.caixaFinalEsperadoCentavos))}${metric('Recebimentos',cash(snapshot.totalPagamentosCentavos))}${metric('Vendas / empréstimos',cash(snapshot.totalVendasCentavos))}</div><label>Valor físico / real<input name="actual" type="number" step="0.01" required value="${snapshot.caixaFinalEsperadoCentavos/100}"></label><label>${snapshot.pendenciasCobranca>0?'Justificativa obrigatória da gestão':'Observação'}<textarea name="reason" rows="3" placeholder="Obrigatória se houver divergência ou baixa supervisionada" ${snapshot.pendenciasCobranca>0?'required':''}></textarea></label>${snapshot.pendenciasCobranca>0?`<p role="status" class="cx-note"><strong>${snapshot.pendenciasCobranca} cobrança(s) sem baixa.</strong> O encerramento marcará essas cobranças como NÃO PAGAS por decisão da gestão, sem registrar visita fictícia ou alterar pagamentos e saldos.</p>`:''}<p role="alert" data-cx-close-error></p><div class="cx-close-actions"><button type="button" class="ghost-btn" data-cx-cancel>Cancelar</button><button type="submit" class="primary-btn">Confirmar fechamento</button></div></form>`;
       const finish=value=>{dialog.close();dialog.remove();resolve(value);};
       dialog.querySelector('[data-cx-cancel]').onclick=()=>finish(null);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});
-      dialog.querySelector('form').onsubmit=event=>{event.preventDefault();const value=Number(dialog.querySelector('[name="actual"]').value),actual=Math.round(value*100),reason=dialog.querySelector('[name="reason"]').value.trim();if(!Number.isFinite(value))return;if(actual!==snapshot.caixaFinalEsperadoCentavos&&!reason){dialog.querySelector('[data-cx-close-error]').textContent='Informe a observação para justificar a divergência.';return;}finish({actual,reason});};
+      dialog.querySelector('form').onsubmit=event=>{event.preventDefault();const value=Number(dialog.querySelector('[name="actual"]').value),actual=Math.round(value*100),reason=dialog.querySelector('[name="reason"]').value.trim();if(!Number.isFinite(value))return;if((actual!==snapshot.caixaFinalEsperadoCentavos || snapshot.pendenciasCobranca>0)&&reason.length<8){dialog.querySelector('[data-cx-close-error]').textContent='Informe justificativa de pelo menos 8 caracteres para divergência ou fechamento supervisionado.';return;}finish({actual,reason,supervised:snapshot.pendenciasCobranca>0});};
       global.document.body.appendChild(dialog);dialog.showModal();
     });
   }
