@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Conferir commit aprovado
-        run: test "$(git rev-parse HEAD^)" = "611829be397daf42994cdebb394f8c1748e9b414"
+        run: test "$(git rev-parse HEAD^)" = "a4b03e286afce95521916eaf1a67b9641c9dec39"
       - name: Dependencias
         run: |
           npm ci
@@ -61,7 +61,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Conferir commit aprovado
-        run: test "$(git rev-parse HEAD^)" = "611829be397daf42994cdebb394f8c1748e9b414"
+        run: test "$(git rev-parse HEAD^)" = "a4b03e286afce95521916eaf1a67b9641c9dec39"
       - run: npm ci
       - run: npm ci --prefix functions
       - name: Preparar credencial temporaria
