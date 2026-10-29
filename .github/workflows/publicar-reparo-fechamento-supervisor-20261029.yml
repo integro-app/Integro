@@ -1,0 +1,91 @@
+name: Publicar reparo fechamento supervisor - autorizado 2026-10-29
+# Publicacao pontual autorizada na conversa. Restrita ao backend de reabertura e ao Hosting.
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths: [".github/workflows/publicar-reparo-fechamento-supervisor-20261029.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: publicar reparo de fechamento supervisor autorizado 2026-10-29'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Conferir commit integrado aprovado
+        run: |
+          test "$(git rev-parse HEAD^)" = "9ed431735b027b91e5fefe63c983c59fbe5935a2"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-reparo-fechamento-supervisor-20261029.yml"
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Validar projeto completo
+        run: npm run verify
+
+  publicar:
+    if: "github.event.head_commit.message == 'release: publicar reparo de fechamento supervisor autorizado 2026-10-29'"
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-deploy-fechamento-supervisor.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Conferir commit integrado aprovado
+        run: |
+          test "$(git rev-parse HEAD^)" = "9ed431735b027b91e5fefe63c983c59fbe5935a2"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-reparo-fechamento-supervisor-20261029.yml"
+      - name: Instalar dependencias do Firebase
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Criar credencial temporaria restrita
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          raw=os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON","")
+          if not raw: raise SystemExit("Credencial indisponivel: deploy nao iniciado")
+          credential=json.loads(raw)
+          if credential.get("project_id") != "integro-novo":
+              raise SystemExit("Credencial nao pertence ao projeto integro-novo")
+          dest=pathlib.Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+          dest.write_text(raw)
+          dest.chmod(0o600)
+          PY
+      - name: Publicar SOMENTE Function de reabertura
+        run: npx firebase deploy --only functions:reabrirCaixaOperacional --project integro-novo --non-interactive
+      - name: Publicar SOMENTE interface Hosting
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Conferir interface publicada via HTTP
+        run: |
+          curl -fsSL https://integro-novo.web.app/master-local.html -o /tmp/integro-master-publicado.html
+          curl -fsSL https://integro-novo.web.app/js/modules/caixas-supervisao.js -o /tmp/integro-caixas-publicado.js
+          grep -Fq 'js/modules/caixas-supervisao.js?v=20261029-fechamento-supervisor-corrigido' /tmp/integro-master-publicado.html
+          grep -Fq 'Conferindo movimentos e pendências do caixa' /tmp/integro-caixas-publicado.js
+          grep -Fq 'ERRO_ATUALIZACAO' /tmp/integro-master-publicado.html
+          echo 'HOSTING_REPARO_SUPERVISOR_VERIFICADO'
+      - name: Limpar credencial e arquivos de verificacao
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS" /tmp/integro-master-publicado.html /tmp/integro-caixas-publicado.js
