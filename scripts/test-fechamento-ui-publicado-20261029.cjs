@@ -57,7 +57,27 @@ async function checkPage(){
     }));
     console.log("DIAGNOSTICO_PAINEL_VENDEDOR",JSON.stringify(diagnostic));
     assert.equal(diagnostic.usuario,"vendedor","Nao entrou no perfil vendedor");
-    await page.evaluate(()=>{if(typeof window.trocarTela==="function")window.trocarTela("cobrancas");});
+    await page.evaluate(()=>{
+      const menu=document.querySelector('#sidebar [data-modulo="cobrancas"], #sidebar [data-modulo="operacao"]');
+      if(menu)menu.click();
+      else window.abrirOperacaoVendedor?.(null);
+    });
+    await page.waitForTimeout(1200);
+    console.log("DIAGNOSTICO_NAVEGACAO",JSON.stringify(await page.evaluate(()=>{
+      const button=document.getElementById("btnFecharCaixaCobrancas");
+      const ancestors=[];let element=button;
+      for(let n=0;element&&n<7;n++,element=element.parentElement)ancestors.push({
+        id:element.id,tag:element.tagName,hidden:element.hidden,css:getComputedStyle(element).display,
+        cls:element.className?.toString()?.slice(0,90)
+      });
+      return {
+        activeScreens:[...document.querySelectorAll(".screen.active")].map(x=>x.id),
+        screenCobrancas:document.getElementById("cobrancas")?.getAttribute("style")||"",
+        vendedorAtivo:window.IntegroVendedorUnificado?.ativo||false,
+        operationFn:typeof window.abrirOperacaoVendedor,
+        ancestors
+      };
+    })));
     const close=page.locator("#btnFecharCaixaCobrancas").first();
     await close.waitFor({state:"visible",timeout:28000});
     assert.equal(await close.isDisabled(),false,"Botao de fechar desabilitado sem pendencias");
