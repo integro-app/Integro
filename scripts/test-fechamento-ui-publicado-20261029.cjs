@@ -57,12 +57,17 @@ async function checkPage(){
     }));
     console.log("DIAGNOSTICO_PAINEL_VENDEDOR",JSON.stringify(diagnostic));
     assert.equal(diagnostic.usuario,"vendedor","Nao entrou no perfil vendedor");
+    // A navegação principal tem um accordion: clicar em Operação
+    // pode apenas expandir o menu. Aguarde o shell e abra Cobranças.
+    await page.waitForFunction(()=>window.IntegroVendedorUnificado?.ativo===true,null,{timeout:30000});
+    await page.waitForTimeout(700);
     await page.evaluate(()=>{
       const menu=document.querySelector('#sidebar [data-modulo="cobrancas"], #sidebar [data-modulo="operacao"]');
-      if(menu)menu.click();
-      else window.abrirOperacaoVendedor?.(null);
+      if(typeof window.abrirOperacaoVendedor!=="function")throw Error("Navegacao de operacao do vendedor ausente");
+      window.abrirOperacaoVendedor(menu||null);
     });
-    await page.waitForTimeout(1200);
+    await page.waitForFunction(()=>document.querySelector(".screen.active")?.id==="cobrancas" &&
+      document.getElementById("cobrancas")?.getClientRects().length>0,null,{timeout:12000});
     console.log("DIAGNOSTICO_NAVEGACAO",JSON.stringify(await page.evaluate(()=>{
       const button=document.getElementById("btnFecharCaixaCobrancas");
       const ancestors=[];let element=button;
