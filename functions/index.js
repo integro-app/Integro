@@ -195,7 +195,6 @@ const { criarAdministracaoV27 } = require("./v27-admin");
 const adminV27 = criarAdministracaoV27({ admin, functions, db });
 
 exports.iniciarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.iniciarSessao);
-exports.consultarAcessoEmpresaLoginV27 = functions.region("southamerica-east1").https.onCall(adminV27.consultarAcessoEmpresaLogin);
 exports.validarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.validarSessao);
 exports.encerrarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.encerrarSessao);
 exports.registrarFalhaLoginV27 = functions.region("southamerica-east1").https.onCall(adminV27.registrarFalhaLogin);
