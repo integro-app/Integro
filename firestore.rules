@@ -1439,12 +1439,16 @@ function empresaPermitida(user) {
         (isActiveUser() && isCaptador() && isSameTenantRead());
       allow list: if isOperationalListReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
-      allow create: if (canCreateClienteAdministrativo(request.resource.data) &&
+      // Caminho operacional ja autorizado primeiro: evita avaliar validacoes
+      // administrativas pesadas para o vendedor e ultrapassar o limite de
+      // expressoes do Firestore. Os mesmos tres caminhos permanecem.
+      allow create: if (isActiveUser() && isSameTenantWrite() &&
+          (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data)))) ||
+        (canCreateClienteAdministrativo(request.resource.data) &&
         (!request.resource.data.keys().hasAny(["clienteLegadoId"]) || (
           getAfter(/databases/$(database)/documents/clientes/$(request.resource.data.clienteLegadoId)).data.get("clienteOperacionalId", "") == id &&
-          getAfter(/databases/$(database)/documents/clientes/$(request.resource.data.clienteLegadoId)).data.get("clientePlataformaId", "") == userTenantId()))) || canCreateClienteLead(request.resource.data) ||
-        (isActiveUser() && isSameTenantWrite() &&
-          (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data))));
+          getAfter(/databases/$(database)/documents/clientes/$(request.resource.data.clienteLegadoId)).data.get("clientePlataformaId", "") == userTenantId()))) ||
+        canCreateClienteLead(request.resource.data);
       allow update: if canEditClienteAdministrativo() || canUpdateClienteOperacional(id);
       allow delete: if false;
     }
@@ -1454,12 +1458,15 @@ function empresaPermitida(user) {
         (isActiveUser() && isCaptador() && isSameTenantRead());
       allow list: if isOperationalListReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
-      allow create: if (canCreateClienteAdministrativo(request.resource.data) &&
+      // Mesmas permissoes da colecao normalizada; a ordem reduz avaliacao
+      // desnecessaria e evita limite de expressoes nas criacoes legitimas.
+      allow create: if (isActiveUser() && isSameTenantWrite() &&
+          (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data)))) ||
+        (canCreateClienteAdministrativo(request.resource.data) &&
         (!request.resource.data.keys().hasAny(["clienteOperacionalId"]) || (
           getAfter(/databases/$(database)/documents/clientes_operacionais/$(request.resource.data.clienteOperacionalId)).data.get("clienteLegadoId", "") == id &&
-          getAfter(/databases/$(database)/documents/clientes_operacionais/$(request.resource.data.clienteOperacionalId)).data.get("clientePlataformaId", "") == userTenantId()))) || canCreateClienteLead(request.resource.data) ||
-        (isActiveUser() && isSameTenantWrite() &&
-          (isMasterLocal() || isGerente() || isCaptador() || (isVendedor() && isOwnSellerData(request.resource.data))));
+          getAfter(/databases/$(database)/documents/clientes_operacionais/$(request.resource.data.clienteOperacionalId)).data.get("clientePlataformaId", "") == userTenantId()))) ||
+        canCreateClienteLead(request.resource.data);
       allow update: if canEditClienteAdministrativo() || canUpdateClienteOperacional(id);
       allow delete: if false;
     }
