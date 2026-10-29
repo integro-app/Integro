@@ -2874,8 +2874,8 @@
     return true;
   }
 
-  document.addEventListener("usuario-validado", evento => setTimeout(() => aplicar(evento.detail), 0));
-  document.addEventListener("integro-painel-permissoes-aplicadas", evento => setTimeout(() => aplicar(evento.detail?.usuario), 0));
+  document.addEventListener("usuario-validado", () => setTimeout(recuperarPainelVendedorAutenticado, 0));
+  document.addEventListener("integro-painel-permissoes-aplicadas", () => setTimeout(recuperarPainelVendedorAutenticado, 0));
 
   // O painel unificado pode ser carregado depois do evento de autenticação.
   // Nesse caso, a tela do vendedor ficava sem montagem e o fechamento oculto.
@@ -2940,7 +2940,7 @@
       recalcularDashboardVendedor("movimentacoes-abertas");
     }, 0);
   });
-  document.addEventListener("DOMContentLoaded", () => setTimeout(() => aplicar(State.getUsuario?.()), 0));
+  document.addEventListener("DOMContentLoaded", () => setTimeout(recuperarPainelVendedorAutenticado, 0));
 
   window.validarEAbrirFechamentoCaixa = abrirFechamentoVendedor;
   window.confirmarFechamentoCaixaVendedorUnificado = confirmarFechamentoVendedor;
