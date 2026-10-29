@@ -1093,9 +1093,9 @@ test('rules: criação de lead respeita matriz indicacoes.criar e mantém invari
   // A condicao pode ter outros caminhos OR antes do LEAD, sem ampliar acessos.
   for (const collection of ['clientes_operacionais', 'clientes']) {
     const block = rules.split(`match /${collection}/{id} {`)[1]?.split('allow update:')[0] || '';
-    const createRule = block.match(/allow create: if ([\\s\\S]*?);/)?.[1] || '';
-    assert.match(createRule, /canCreateClienteLead\\(request\\.resource\\.data\\)/);
-    assert.match(createRule, /isActiveUser\\(\\) && isSameTenantWrite\\(\\)/);
+    const createRule = block.match(/allow create: if ([\s\S]*?);/)?.[1] || '';
+    assert.match(createRule, /canCreateClienteLead\(request\.resource\.data\)/);
+    assert.match(createRule, /isActiveUser\(\) && isSameTenantWrite\(\)/);
   }
 });
 
