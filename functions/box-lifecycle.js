@@ -254,18 +254,20 @@ function criarCicloCaixa({ db, functions }) {
     // Cada venda exigia uma consulta Firestore própria para parcelas. Em
     // carteiras grandes isso multiplicava RPCs e podia esgotar o tempo da
     // callable. Agrupa até 8 vendas (máximo operacional: 90 parcelas/venda)
-    // sem remover filtros por tenant nem truncar registros silenciosamente.
+    // sem abrir acesso entre tenants nem truncar registros silenciosamente.
     const saleIds=sales.map(s=>s.id);
     const installmentQueries=[];
     for(let i=0;i<saleIds.length;i+=8) {
       const chunk=saleIds.slice(i,i+8);
       installmentQueries.push(
         transaction.get(db.collection("parcelas")
-          .where("clientePlataformaId","==",who.tenant)
           .where("vendaId",chunk.length===1?"==":"in",chunk.length===1?chunk[0]:chunk)
           .limit(1001)).then(result=>{
             if(result.docs.length>1000) fail("resource-exhausted","Volume de parcelas exige conferência assistida; nenhum fechamento foi gravado.");
-            return result.docs.map(doc=>({...doc.data(),id:doc.id}));
+            // Usa índice automático de vendaId, sem depender de índice composto
+            // novo em produção. Filtra o tenant antes de qualquer cálculo.
+            return result.docs.filter(doc=>doc.data().clientePlataformaId===who.tenant)
+              .map(doc=>({...doc.data(),id:doc.id}));
           })
       );
     }
