@@ -115,6 +115,20 @@ test('reabre somente o caixa mais recente mesmo com flag administrativa',async()
   assert.equal((await api.reabrir({operacaoId:require("node:crypto").randomUUID(),caixaId:'latest',motivo:'Correção'},ctx('master'))).modo,'JA_ABERTO');
   await assert.rejects(api.abrir(input(today),ctx('master')),denied('failed-precondition'));
 });
+test('reabre caixa legado FECHADA sem alterar lançamentos e registra o motivo',async()=>{
+  const {api,db}=setup({
+    'caixas/legacy':{...box(tuesday),status:'FECHADA',ativo:false,fechado:true},
+    'fechamentos_caixa/fechamento_legacy':{status:'FECHADA',totalReaberturas:0},
+    'lancamentos_financeiros/registro':{clientePlataformaId:'a',caixaId:'legacy',valorCentavos:1234}
+  });
+  const original=JSON.stringify(db.records.get('lancamentos_financeiros/registro'));
+  const result=await api.reabrir({operacaoId:'legado-'+require('node:crypto').randomUUID(),caixaId:'legacy',motivo:'Revisão auditada do fechamento'},ctx('supervisor'));
+  assert.equal(result.modo,'REABERTURA');
+  assert.equal(result.statusNovo,'REABERTO');
+  assert.equal(db.records.get('caixas/legacy').status,'REABERTO');
+  assert.equal(db.records.get('fechamentos_caixa/fechamento_legacy').totalReaberturas,1);
+  assert.equal(JSON.stringify(db.records.get('lancamentos_financeiros/registro')),original);
+});
 test('reabertura nega vendedor e caixa com outro aberto',async()=>{
   const {api} = setup({'caixas/latest':box(tuesday),'caixas/old':{...box(monday),status:'ABERTO'}});
   await assert.rejects(api.reabrir({operacaoId:require("node:crypto").randomUUID(),caixaId:'latest',motivo:'Correção'},ctx('seller')),denied('permission-denied'));
