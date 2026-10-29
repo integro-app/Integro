@@ -248,10 +248,11 @@
         actionFeedback('Conferência concluída. Informe o valor físico e confirme.');
         const confirmation=await confirmClosure(snapshot,box);
         if (!confirmation) {actionFeedback('Fechamento cancelado; o caixa permanece aberto.');return;}
-        const {actual,reason}=confirmation;
+        const {actual,reason,managerial}=confirmation;
         actionFeedback('Registrando fechamento no servidor...');
-        const result=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,valorInformadoCentavos:actual,justificativa:reason||'',snapshot});
-        actionFeedback('Fechamento confirmado: '+text(result?.statusFechamento||'FECHADO')+'.');
+        const result=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,valorInformadoCentavos:actual,justificativa:reason||'',encerramentoGerencial:managerial===true,snapshot});
+        actionFeedback('Fechamento confirmado: '+text(result?.statusFechamento||'FECHADO')+'.'+
+          (result?.quantidadeBaixasGerenciais ? ' Cobranças sem baixa classificadas como não pagas: '+result.quantidadeBaixasGerenciais+'.' : ''));
         await selectBox(id(box));
       }catch(error){
         console.error('Falha ao fechar caixa pelo supervisor:',error);
@@ -264,10 +265,25 @@
     if(global.document.getElementById('cxCloseDialog'))return Promise.resolve(null);
     return new Promise(resolve=>{
       const dialog=global.document.createElement('dialog');dialog.id='cxCloseDialog';dialog.className='cx-close-dialog';
-      dialog.innerHTML=`<form><h2>Fechamento de caixa</h2><p>${esc(box.vendedorNome||'Vendedor')} · ${dateBR(boxDay(box))}</p><div class="cx-close-values">${metric('Caixa calculado',cash(snapshot.caixaFinalEsperadoCentavos))}${metric('Recebimentos',cash(snapshot.totalPagamentosCentavos))}${metric('Vendas / empréstimos',cash(snapshot.totalVendasCentavos))}</div><label>Valor físico / real<input name="actual" type="number" step="0.01" required value="${snapshot.caixaFinalEsperadoCentavos/100}"></label><label>Observação<textarea name="reason" rows="3" placeholder="Obrigatória se houver divergência"></textarea></label><p role="alert" data-cx-close-error></p><div class="cx-close-actions"><button type="button" class="ghost-btn" data-cx-cancel>Cancelar</button><button type="submit" class="primary-btn">Confirmar fechamento</button></div></form>`;
+      const pending=Math.max(0,Number(snapshot.pendenciasCobranca)||0);
+      const managerOption=pending
+        ? `<label style="display:flex;gap:10px;align-items:flex-start;margin:14px 0"><input type="checkbox" name="managerial" style="width:20px;flex-shrink:0"><span><strong>Encerrar ${pending} cobrança(s) sem baixa</strong><small style="display:block">Registrar automaticamente como NÃO PAGAS por decisão gerencial, sem presumir visita, sem gerar recebimento e mantendo o débito dos clientes.</small></span></label>`
+        : '';
+      dialog.innerHTML=`<form><h2>Fechamento de caixa</h2><p>${esc(box.vendedorNome||'Vendedor')} · ${dateBR(boxDay(box))}</p><div class="cx-close-values">${metric('Caixa calculado',cash(snapshot.caixaFinalEsperadoCentavos))}${metric('Recebimentos',cash(snapshot.totalPagamentosCentavos))}${metric('Vendas / empréstimos',cash(snapshot.totalVendasCentavos))}</div>${managerOption}<label>Valor físico / real<input name="actual" type="number" step="0.01" required value="${snapshot.caixaFinalEsperadoCentavos/100}"></label><label>Observação<textarea name="reason" rows="3" placeholder="Obrigatória em fechamento gerencial ou com divergência"></textarea></label><p role="alert" data-cx-close-error></p><div class="cx-close-actions"><button type="button" class="ghost-btn" data-cx-cancel>Cancelar</button><button type="submit" class="primary-btn">Confirmar fechamento</button></div></form>`;
       const finish=value=>{dialog.close();dialog.remove();resolve(value);};
       dialog.querySelector('[data-cx-cancel]').onclick=()=>finish(null);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});
-      dialog.querySelector('form').onsubmit=event=>{event.preventDefault();const value=Number(dialog.querySelector('[name="actual"]').value),actual=Math.round(value*100),reason=dialog.querySelector('[name="reason"]').value.trim();if(!Number.isFinite(value))return;if(actual!==snapshot.caixaFinalEsperadoCentavos&&!reason){dialog.querySelector('[data-cx-close-error]').textContent='Informe a observação para justificar a divergência.';return;}finish({actual,reason});};
+      dialog.querySelector('form').onsubmit=event=>{
+        event.preventDefault();
+        const value=Number(dialog.querySelector('[name="actual"]').value),actual=Math.round(value*100);
+        const reason=dialog.querySelector('[name="reason"]').value.trim();
+        const managerial=dialog.querySelector('[name="managerial"]')?.checked===true;
+        if(!Number.isFinite(value)||!Number.isSafeInteger(actual))return;
+        const error=dialog.querySelector('[data-cx-close-error]');
+        if(pending && !managerial) {error.textContent='Existem '+pending+' cobranças sem baixa. Confirme o encerramento gerencial para prosseguir.';return;}
+        if(managerial&&!reason) {error.textContent='Informe uma justificativa obrigatória para as baixas gerenciais.';return;}
+        if(actual!==snapshot.caixaFinalEsperadoCentavos&&!reason) {error.textContent='Informe a observação para justificar a divergência.';return;}
+        finish({actual,reason,managerial});
+      };
       global.document.body.appendChild(dialog);dialog.showModal();
     });
   }
