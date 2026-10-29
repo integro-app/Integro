@@ -14,6 +14,38 @@ function setup(extra={}) {
  return {db,api,close};
 }
 const sale={clientePlataformaId:'a',vendedorId:'seller',vendedorAuthUid:'seller',clienteId:'client',saldoDevedorCentavos:10000,status:'ATIVA',dataPrimeiraCobranca:core.hojeSP()};
+
+test('cadastro legado único de vendedor confere e fecha pela sessão V27, sem trocar tenant ou titularidade',async()=>{
+ const f=setup();
+ const legacy=f.db.records.get('usuarios/seller');
+ f.db.records.delete('usuarios/seller');
+ f.db.records.set('usuarios/seller-legacy',{...legacy,id:'seller-legacy'});
+ f.db.records.get('caixas/box').vendedorId='seller-legacy';
+ const snapshot=await f.api.conferir({entrada:{caixaId:'box'}},ctx('seller'));
+ assert.equal(snapshot.caixa.id,'box');
+ const fechado=await f.api.fechar({entrada:{caixaId:'box',conferenciaId:snapshot.conferenciaId,valorInformadoCentavos:10000}},ctx('seller'));
+ assert.equal(fechado.statusFechamento,'FECHADO');
+});
+test('consulta de parcelas é agrupada sem perder carteira de 64 vendas',async()=>{
+ const f=setup(),day=core.adicionarDiasISO(core.hojeSP(),1);
+ for(let n=0;n<64;n++){
+  const id='legacy-sale-'+String(n).padStart(3,'0');
+  f.db.records.set('vendas/'+id,{clientePlataformaId:'a',vendedorId:'seller',vendedorAuthUid:'seller',clienteId:'client-'+n,caixaId:'previous',saldoDevedorCentavos:10000,valorParcelaCentavos:10000,dataPrimeiraCobranca:day,status:'ATIVA'});
+  f.db.records.set('parcelas/part-'+id,{clientePlataformaId:'a',vendaId:id,dataVencimento:day,valorCentavos:10000,valorPagoCentavos:0,status:'PENDENTE'});
+ }
+ let queries=0;
+ const original=f.db.runTransaction.bind(f.db);
+ f.db.runTransaction=fn=>original(tx=>{
+  const get=tx.get.bind(tx);
+  tx.get=ref=>{if(ref.name==='parcelas')queries++;return get(ref);};
+  return fn(tx);
+ });
+ const result=await f.api.conferir({caixaId:'box'},ctx('seller'));
+ assert.equal(result.carteiraFinalCentavos,640000);
+ assert.equal(result.pendenciasCobranca,0);
+ assert.ok(queries<=8,'consultas de parcelas devem ser agrupadas: '+queries);
+});
+
 const part={clientePlataformaId:'a',vendaId:'sale',valorCentavos:10000,valorPagoCentavos:0,dataVencimento:core.hojeSP(),status:'PENDENTE'};
 function unchanged(db){return JSON.stringify([...db.records]);}
 test('fechamento válido calcula valores no servidor e ignora snapshot forjado',async()=>{
