@@ -316,7 +316,8 @@ test('login usa backend autenticado quando Rules negam leitura da empresa antes 
     auth:()=>({currentUser:{uid:'uid_1'}}),
     app:()=>({functions:region=>({httpsCallable:name=>async payload=>{
       assert.equal(region,'southamerica-east1');
-      assert.equal(name,'consultarAcessoEmpresaLoginV27');
+      assert.equal(name,'iniciarSessaoV27');
+      assert.equal(payload.verificarEmpresa,true);
       assert.equal(payload.tenantId,'tenant_1');
       consultas++;
       return {data:{ok:true,acessoRestritoAssinatura:false}};
@@ -359,14 +360,19 @@ test('backend de login valida empresa e usuario legado sem permitir outro tenant
   });
   const api=criarAdministracaoV27({admin:{},db,functions:{https:{HttpsError}}});
   const ctx={auth:{uid:'seller'}};
-  assert.equal((await api.consultarAcessoEmpresaLogin({tenantId:'a'},ctx)).ok,true);
-  await assert.rejects(api.consultarAcessoEmpresaLogin({tenantId:'b'},ctx),e=>e.code==='permission-denied');
-  await assert.rejects(api.consultarAcessoEmpresaLogin({tenantId:'a'},{auth:{uid:'outsider'}}),e=>e.code==='permission-denied');
+  const check = tenantId => ({tenantId,verificarEmpresa:true});
+  const before = db.records.size;
+  assert.equal((await api.iniciarSessao(check('a'),ctx)).ok,true);
+  assert.equal(db.records.size,before,'prechecagem nunca cria uma sessao');
+  assert.equal(db.records.has('sessoes_usuarios/seller'),false);
+  await assert.rejects(api.iniciarSessao(check('b'),ctx),e=>e.code==='permission-denied');
+  await assert.rejects(api.iniciarSessao(check('a'),{auth:{uid:'outsider'}}),e=>e.code==='permission-denied');
   db.records.get('clientes_plataforma/a').acessoLiberado=false;
-  await assert.rejects(api.consultarAcessoEmpresaLogin({tenantId:'a'},ctx),e=>e.code==='permission-denied');
+  await assert.rejects(api.iniciarSessao(check('a'),ctx),e=>e.code==='permission-denied');
   db.records.get('clientes_plataforma/a').acessoLiberado=true;
   db.records.get('clientes_integro/a').bloqueioAssinaturaEm='2000-01-01T00:00:00.000Z';
-  await assert.rejects(api.consultarAcessoEmpresaLogin({tenantId:'a'},ctx),e=>e.code==='permission-denied');
+  await assert.rejects(api.iniciarSessao(check('a'),ctx),e=>e.code==='permission-denied');
   db.records.get('usuarios/legacy-seller').tipoUsuario='financeiro';
-  assert.equal((await api.consultarAcessoEmpresaLogin({tenantId:'a'},ctx)).acessoRestritoAssinatura,true);
+  assert.equal((await api.iniciarSessao(check('a'),ctx)).acessoRestritoAssinatura,true);
+  assert.equal(db.records.size,before,'prechecagem nao grava mesmo com assinatura vencida');
 });
