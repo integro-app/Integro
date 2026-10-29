@@ -322,10 +322,11 @@ function criarCicloCaixa({ db, functions }) {
       if(snapshot.inconsistencias.length) fail("failed-precondition","Conferência impeditiva: "+snapshot.inconsistencias.join(", "));
       // Uma situação de cobrança não é um recebimento. Não altera saldos nem parcelas.
       const pending=managerial ? snapshot.pendenciasVendasIds || [] : [];
-      if(managerial && (pending.length!==snapshot.pendenciasCobranca || pending.length>350 ||
+      if(managerial && (pending.length!==snapshot.pendenciasCobranca || pending.length!==snapshot.pendenciasCobrancas?.length || pending.length>350 ||
         pending.some(saleId=>!saleId || String(saleId).includes("/")) || new Set(pending).size!==pending.length))
         fail("failed-precondition","Número de cobranças pendentes exige conferência assistida.");
       const cycle=box.ultimaReaberturaId || "inicial";
+      const pendingInfo=new Map((snapshot.pendenciasCobrancas || []).map(row=>[row.vendaId,row]));
       const unpaidRefs=pending.map(saleId=>({
         saleId,ref:db.collection("historicoCobrancas").doc("nao_pagamento_gerencial_"+require("node:crypto")
           .createHash("sha256").update(who.tenant+":"+boxId+":"+cycle+":"+saleId).digest("hex"))
@@ -354,9 +355,12 @@ function criarCicloCaixa({ db, functions }) {
       if (unpaidRefs.length) {
         const stampText=new Date().toISOString();
         for (const {saleId,ref} of unpaidRefs) {
+          const pendingSale=pendingInfo.get(saleId);
+          if (!pendingSale) fail("failed-precondition","Cobrança sem identificação na conferência.");
           tx.set(ref,{
             id:ref.id,operacaoId:ref.id,idempotencyKey:ref.id,
             tipo:"NAO_PAGAMENTO",status:"REGISTRADO",vendaId:saleId,
+            clienteId:pendingSale.clienteId || "",clienteNome:pendingSale.clienteNome || "",
             clientePlataformaId:who.tenant,tenantId:who.tenant,caixaId:boxId,
             vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid || seller.data().authUid,
             vendedorUid:box.vendedorAuthUid || seller.data().authUid,
