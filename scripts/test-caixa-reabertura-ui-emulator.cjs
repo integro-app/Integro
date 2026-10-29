@@ -109,6 +109,16 @@ let browser;
  await assert.rejects(call("reabrirCaixaOperacional","seller",{caixaId:boxId,motivo:"Nao permitido",operacaoId:"negative-seller"}),e=>e.status==="PERMISSION_DENIED");
  await assert.rejects(call("reabrirCaixaOperacional","foreign",{caixaId:boxId,motivo:"Outro tenant",operacaoId:"negative-foreign"}),e=>e.status==="PERMISSION_DENIED");
  const second=await call("conferirCaixaOperacional","seller",{caixaId:boxId});assert.equal(second.caixaFinalEsperadoCentavos,amount);
+ // Se a conferência falhar, o clique precisa explicar o motivo sem fechar o caixa.
+ await page.evaluate(()=>{
+   window.__originalConferencia=window.IntegroCaixa.prepararSnapshotFechamentoCaixa;
+   window.IntegroCaixa.prepararSnapshotFechamentoCaixa=async()=>{throw Error("Conferência bloqueada para teste");};
+ });
+ await page.locator("[data-cx-close]").click();
+ await page.locator("[data-cx-action-feedback][role=alert]").waitFor({state:"visible",timeout:10000});
+ assert.match(await page.locator("[data-cx-action-feedback]").innerText(),/Conferência bloqueada/);
+ assert.equal((await db.collection("caixas").doc(boxId).get()).data().status,"REABERTO");
+ await page.evaluate(()=>{window.IntegroCaixa.prepararSnapshotFechamentoCaixa=window.__originalConferencia;});
  await page.locator("[data-cx-close]").click();
  await page.locator("#cxCloseDialog [name=actual]").fill((amount/100).toFixed(2));
  await page.locator("#cxCloseDialog button[type=submit]").click();
