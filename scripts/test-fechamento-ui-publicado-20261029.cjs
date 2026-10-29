@@ -44,26 +44,41 @@ async function checkPage(){
       await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
       await firebase.auth().signInWithCustomToken(secret);
     },{secret:token,sid:sessionId});
-    await page.goto(ROOT+"/vendedor.html",{waitUntil:"domcontentloaded",timeout:45000});
-    await page.waitForFunction(expected=>window.firebase?.auth?.()?.currentUser?.uid===expected&&
-      window.caixaAtual?.id&&window.usuarioLogado?.authUid,uid,{timeout:75000});
-    await checkPage();
-    await page.evaluate(()=>{if(typeof window.trocarTela!=="function")throw Error("trocarTela ausente");window.trocarTela("cobrancas");});
+    // Todos os usuarios_cliente sao roteados para master-local.html.
+    // Testar o painel realmente servido, nao a pagina legada vendedor.html.
+    await page.goto(ROOT+"/master-local.html",{waitUntil:"domcontentloaded",timeout:45000});
+    await page.waitForFunction(expected=>window.firebase?.auth?.()?.currentUser?.uid===expected &&
+      Boolean(window.State?.getUsuario?.()?.authUid===expected),uid,{timeout:55000});
+    const diagnostic=await page.evaluate(()=>({
+      href:location.href,usuario:window.State?.getUsuario?.()?.cargoChave,
+      available:!!window.IntegroVendedorFechamentoCaixa,
+      closeButton:!!document.querySelector("#btnFecharCaixaCobrancas"),
+      caixa:window.State?.getCaixas?.()?.find?.(c=>c.status==="ABERTO")?.id||""
+    }));
+    console.log("DIAGNOSTICO_PAINEL_VENDEDOR",JSON.stringify(diagnostic));
+    assert.equal(diagnostic.usuario,"vendedor","Nao entrou no perfil vendedor");
+    await page.evaluate(()=>{if(typeof window.trocarTela==="function")window.trocarTela("vendas");});
     const close=page.locator("#btnFecharCaixaCobrancas").first();
-    await close.waitFor({state:"visible",timeout:30000});
-    assert.equal(await close.isDisabled(),false,"Botao de fechar esta desabilitado sem pendencias");
+    await close.waitFor({state:"visible",timeout:28000});
+    assert.equal(await close.isDisabled(),false,"Botao de fechar desabilitado sem pendencias");
     await close.click();
-    const amount=page.locator("#fechamentoValorReal");
-    await amount.waitFor({state:"visible",timeout:35000});
+    await page.waitForFunction(()=>[
+      "fechamentoValorReal","vendedorFechamentoValor","integroFechamentoValorInformado"
+    ].some(id=>{const el=document.getElementById(id);return el&&el.getClientRects().length>0;}),null,{timeout:28000});
+    const amount=page.locator("#vendedorFechamentoValor:visible, #integroFechamentoValorInformado:visible, #fechamentoValorReal:visible").first();
+    const inputId=await amount.getAttribute("id");
     const text=await page.locator("body").innerText();
-    assert.ok(text.includes("Fechar caixa"),"Resumo do fechamento nao aparece");
+    assert.ok(/Fechar caixa|Fechamento de caixa/.test(text),"Resumo nao apareceu");
     await amount.fill((expectedCents/100).toFixed(2).replace(".",","));
-    const confirm=page.locator('button[onclick*="confirmarFechamentoCaixa("]').filter({visible:true}).last();
+    const btnId=inputId==="vendedorFechamentoValor"?"#vendedorFechamentoConfirmar":
+      inputId==="integroFechamentoValorInformado"?"#integroFechamentoConfirmar":
+      'button[onclick*="confirmarFechamentoCaixa("]';
+    const confirm=page.locator(btnId).filter({visible:true}).last();
     await confirm.waitFor({state:"visible",timeout:10000});
     await confirm.click();
     // Redirecionamento ocorre apenas depois de o backend confirmar a gravacao.
     await page.waitForURL(url=>url.href.includes("motivo=caixa-fechado"),{timeout:65000});
-    console.log("INTERFACE_REAL_APROVADA",JSON.stringify({tenant,boxId,centavos:expectedCents,route:"vendedor.html > Fechar caixa > Confirmar fechamento > logout"}));
+    console.log("INTERFACE_REAL_APROVADA",JSON.stringify({tenant,boxId,centavos:expectedCents,route:"master-local.html (perfil vendedor) > Fechar caixa > Confirmar fechamento > logout"}));
   }catch(e){
     if(page){
       const state=await page.evaluate(()=>({
