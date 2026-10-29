@@ -346,8 +346,8 @@ const FirestoreService = {
       if (negadoPorRules && window.firebase?.auth?.()?.currentUser?.uid === usuario.authUid) {
         try {
           const callable = window.firebase.app().functions("southamerica-east1")
-            .httpsCallable("consultarAcessoEmpresaLoginV27");
-          const response = await callable({ tenantId: String(tenantId) });
+            .httpsCallable("iniciarSessaoV27");
+          const response = await callable({ tenantId: String(tenantId), verificarEmpresa: true });
           if (response?.data?.ok !== true) return negarEmpresa();
           usuario.acessoRestritoAssinatura = response.data.acessoRestritoAssinatura === true;
           return { ok: true };
