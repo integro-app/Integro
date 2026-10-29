@@ -68,7 +68,7 @@ test('fechamento massivo do supervisor informa a falha do backend sem rejeição
  scope.fecharCaixaMasterLocalSeguro=async()=>({statusFechamento:'FECHADO'});
  const success=await w.fecharSelecionadas();
  assert.equal(success.fechados,1);
- assert.deepEqual(success.falhas,[]);
+ assert.equal(success.falhas.length,0);
  assert.equal(selected.length,0,'limpa seleção somente após sucesso');
  assert.match(notices.at(-1),/Fechados: 1/);
 });
