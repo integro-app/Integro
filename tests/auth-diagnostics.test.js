@@ -304,3 +304,69 @@ test('assinatura vencida legada preserva portal restrito do Financeiro e recusa 
     assert.equal(profile.acessoRestritoAssinatura,cargoChave==='financeiro');
   }
 });
+
+test('login usa backend autenticado quando Rules negam leitura da empresa antes da sessao', async () => {
+  const env=carregarContexto({'usuarios/uid_1':usuarioBase()});
+  const db=env.db.collection.bind(env.db);
+  let consultas=0;
+  env.db.collection=name=>name==='clientes_plataforma'
+    ? {doc:()=>({get:async()=>{const e=Error('Missing or insufficient permissions');e.code='permission-denied';throw e;}})}
+    : db(name);
+  env.firebase={
+    auth:()=>({currentUser:{uid:'uid_1'}}),
+    app:()=>({functions:region=>({httpsCallable:name=>async payload=>{
+      assert.equal(region,'southamerica-east1');
+      assert.equal(name,'consultarAcessoEmpresaLoginV27');
+      assert.equal(payload.tenantId,'tenant_1');
+      consultas++;
+      return {data:{ok:true,acessoRestritoAssinatura:false}};
+    }})})
+  };
+  const result=await env.FirestoreService.resolverUsuarioAutenticado(authUser);
+  assert.equal(result.ok,true);
+  assert.equal(result.usuario.acessoRestritoAssinatura,false);
+  assert.equal(consultas,1);
+});
+test('login nunca libera empresa quando backend nega, authUid diverge ou cai a rede', async()=>{
+  for (const scenario of ['backend-denied','uid-mismatch','network']) {
+    const env=carregarContexto({'usuarios/uid_1':usuarioBase()});
+    const db=env.db.collection.bind(env.db);
+    env.db.collection=name=>name==='clientes_plataforma'
+      ? {doc:()=>({get:async()=>{const e=Error('access failed');e.code=scenario==='network'?'unavailable':'permission-denied';throw e;}})}
+      :db(name);
+    let calls=0;
+    env.firebase={
+      auth:()=>({currentUser:{uid:scenario==='uid-mismatch'?'foreign':'uid_1'}}),
+      app:()=>({functions:()=>({httpsCallable:()=>async()=>{
+        calls++;
+        const e=Error('bloqueada');e.code='functions/permission-denied';throw e;
+      }})})
+    };
+    const result=await env.FirestoreService.resolverUsuarioAutenticado(authUser);
+    assert.equal(result.ok,false);
+    assert.equal(result.codigo,scenario==='backend-denied'?'TENANT_BLOCKED':'TENANT_CHECK_FAILED');
+    assert.equal(calls,scenario==='backend-denied'?1:0);
+  }
+});
+test('backend de login valida empresa e usuario legado sem permitir outro tenant',async()=>{
+  const {memoryDb,user,HttpsError}=require('./helpers/critical-fixture.cjs');
+  const {criarAdministracaoV27}=require('../functions/v27-admin');
+  const seller=user('seller','vendedor','e1','a');
+  const db=memoryDb({
+    'usuarios/legacy-seller':{...seller,id:'legacy-seller'},
+    'clientes_integro/a':{status:'ATIVO',acessoLiberado:true},
+    'clientes_plataforma/a':{status:'ATIVO',acessoLiberado:true}
+  });
+  const api=criarAdministracaoV27({admin:{},db,functions:{https:{HttpsError}}});
+  const ctx={auth:{uid:'seller'}};
+  assert.equal((await api.consultarAcessoEmpresaLogin({tenantId:'a'},ctx)).ok,true);
+  await assert.rejects(api.consultarAcessoEmpresaLogin({tenantId:'b'},ctx),e=>e.code==='permission-denied');
+  await assert.rejects(api.consultarAcessoEmpresaLogin({tenantId:'a'},{auth:{uid:'outsider'}}),e=>e.code==='permission-denied');
+  db.records.get('clientes_plataforma/a').acessoLiberado=false;
+  await assert.rejects(api.consultarAcessoEmpresaLogin({tenantId:'a'},ctx),e=>e.code==='permission-denied');
+  db.records.get('clientes_plataforma/a').acessoLiberado=true;
+  db.records.get('clientes_integro/a').bloqueioAssinaturaEm='2000-01-01T00:00:00.000Z';
+  await assert.rejects(api.consultarAcessoEmpresaLogin({tenantId:'a'},ctx),e=>e.code==='permission-denied');
+  db.records.get('usuarios/legacy-seller').tipoUsuario='financeiro';
+  assert.equal((await api.consultarAcessoEmpresaLogin({tenantId:'a'},ctx)).acessoRestritoAssinatura,true);
+});
