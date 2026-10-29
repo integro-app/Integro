@@ -140,6 +140,44 @@ function criarAdministracaoV27({ admin, functions, db }) {
     error("failed-precondition", "Caixa fechado. Solicite a abertura ou reabertura ao supervisor para entrar no sistema.", { code: "CAIXA_FECHADO" });
   }
 
+  // Consulta segura antes da sessao V27: alguns tenants legados nao podem
+  // ler clientes_plataforma pelo SDK enquanto o token ainda nao esta vinculado.
+  // Nunca confia no tenant informado pelo navegador nem concede nova permissao.
+  async function consultarAcessoEmpresaLogin(data, context) {
+    const actor = await actorContext(context, true);
+    const tenantId = tenant(actor);
+    const requested = text(data?.tenantId);
+    if (requested !== tenantId || requested.includes("/")) error("permission-denied", "Empresa diferente da identidade autenticada.");
+    if (["master_global", "usuario_integro"].includes(role(actor))) return { ok: true, acessoRestritoAssinatura: false };
+    if (!tenantId || actor.empresaBloqueada === true || actor.acessoEmpresaLiberado === false ||
+        ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(actor.clientePlataformaStatus || actor.empresaStatus))) {
+      error("permission-denied", "Empresa sem acesso operacional.");
+    }
+    const snaps = await Promise.all(["clientes_integro", "clientes_plataforma"].map(
+      nome => db.collection(nome).doc(tenantId).get()
+    ));
+    const empresas = snaps.filter(doc => doc.exists).map(doc => doc.data() || {});
+    const toMs = value => value?.toMillis ? value.toMillis() : Date.parse(value);
+    const now = nowMs();
+    for (const company of empresas) {
+      if (company.acessoLiberado === false || company.ativo === false ||
+          ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(company.status || company.situacao))) {
+        error("permission-denied", "Empresa sem acesso operacional.");
+      }
+      if (company.testeAtivo === true && company.dataFimTeste &&
+          (!Number.isFinite(toMs(company.dataFimTeste)) || toMs(company.dataFimTeste) <= now)) {
+        error("permission-denied", "Período de teste expirado.");
+      }
+    }
+    const assinaturaBloqueada = empresas.some(company => company.bloqueioAssinaturaEm &&
+      toMs(company.bloqueioAssinaturaEm) <= now);
+    const perfis = [actor.tipoUsuario, actor.cargoChave].map(lower);
+    const podeVerAssinatura = perfis.some(p => ["master_local", "financeiro", "administrativo", "adm"].includes(p)) ||
+      actor.responsavelFinanceiro === true || actor.permissoes?.assinatura?.ver === true;
+    if (assinaturaBloqueada && !podeVerAssinatura) error("permission-denied", "Empresa sem acesso operacional.");
+    return { ok: true, acessoRestritoAssinatura: Boolean(assinaturaBloqueada) };
+  }
+
   async function iniciarSessao(data, context) {
     const actor = await actorContext(context, true);
     const uid = context.auth.uid;
@@ -365,7 +403,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     return crypto.randomBytes(18).toString("base64url");
   }
 
-  return { iniciarSessao, validarSessao, encerrarSessao, registrarFalhaLogin, resetPassword, desbloquearUsuario, bloquearUsuario, invalidarSessoes, gerarTokenOperacao };
+  return { iniciarSessao, validarSessao, encerrarSessao, consultarAcessoEmpresaLogin, registrarFalhaLogin, resetPassword, desbloquearUsuario, bloquearUsuario, invalidarSessoes, gerarTokenOperacao };
 }
 
 module.exports = { criarAdministracaoV27 };
