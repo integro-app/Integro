@@ -179,6 +179,9 @@ function criarAdministracaoV27({ admin, functions, db }) {
   }
 
   async function iniciarSessao(data, context) {
+    // Prechecagem somente leitura, anterior ao token de sessao V27. Mantem
+    // a callable existente (invoker ja autorizado), sem abrir nova IAM policy.
+    if (data?.verificarEmpresa === true) return consultarAcessoEmpresaLogin(data, context);
     const actor = await actorContext(context, true);
     const uid = context.auth.uid;
     const tenantId = tenant(actor);
