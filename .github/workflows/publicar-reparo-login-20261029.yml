@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Conferir commit aprovado
-        run: test "$(git rev-parse HEAD^)" = "__COMMIT_BASE__"
+        run: test "$(git rev-parse HEAD^)" = "611829be397daf42994cdebb394f8c1748e9b414"
       - name: Dependencias
         run: |
           npm ci
@@ -61,7 +61,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Conferir commit aprovado
-        run: test "$(git rev-parse HEAD^)" = "__COMMIT_BASE__"
+        run: test "$(git rev-parse HEAD^)" = "611829be397daf42994cdebb394f8c1748e9b414"
       - run: npm ci
       - run: npm ci --prefix functions
       - name: Preparar credencial temporaria
@@ -84,6 +84,10 @@ jobs:
         run: npx firebase functions:list --project integro-novo | grep -q consultarAcessoEmpresaLoginV27
       - name: Publicar somente Hosting
         run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Confirmar versão publicada do login sem autenticação
+        run: |
+          curl --fail --silent --show-error --location https://integro-novo.web.app/index.html | grep -F 'js/services/firestore.js?v=20261029-login-empresa'
+          curl --fail --silent --show-error --location https://integro-novo.web.app/js/services/firestore.js | grep -F 'consultarAcessoEmpresaLoginV27'
       - name: Remover credencial
         if: always()
         run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
