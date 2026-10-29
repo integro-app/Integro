@@ -132,7 +132,7 @@ let browser;
  assert.deepEqual(errors,[]);
  // Reabre o caixa de teste, adiciona uma cobrança em aberto e confirma o
  // fechamento supervisionado pela interface real sem gerar visita falsa.
- await call("reabrirCaixaOperacional","supervisor",{caixaId,motivo:"Auditoria da segunda conferência",operacaoId:"reopen-supervised-"+run});
+ await call("reabrirCaixaOperacional","supervisor",{caixaId:boxId,motivo:"Auditoria da segunda conferência",operacaoId:"reopen-supervised-"+run});
  await db.collection("vendas").doc("sale-supervised-"+run).set({
    clientePlataformaId:tenant,vendedorId:ids.seller,vendedorAuthUid:ids.seller,
    caixaId:"caixa_anterior_ficticio",clienteId:"cliente_supervised_"+run,clienteNome:"Cliente fictício",
@@ -142,10 +142,10 @@ let browser;
    clientePlataformaId:tenant,vendaId:"sale-supervised-"+run,
    dataVencimento:date,valorCentavos:1000,valorPagoCentavos:0,status:"PENDENTE"
  });
- const due=await call("conferirCaixaOperacional","supervisor",{caixaId});
+ const due=await call("conferirCaixaOperacional","supervisor",{caixaId:boxId});
  assert.equal(due.pendenciasCobranca,1);
  await assert.rejects(call("fecharCaixaOperacional","seller",{
-   caixaId,conferenciaId:due.conferenciaId,valorInformadoCentavos:amount,fechamentoSupervisionado:true,
+   caixaId:boxId,conferenciaId:due.conferenciaId,valorInformadoCentavos:amount,fechamentoSupervisionado:true,
    justificativa:"Motivo indevido do vendedor"
  }),e=>e.status==="PERMISSION_DENIED");
  await page.evaluate(boxId=>window.IntegroCaixasSupervisao.selectBox(boxId),boxId);
@@ -153,7 +153,7 @@ let browser;
  await page.locator("[data-cx-close]").click();
  const dialog=page.locator("#cxCloseDialog");
  await dialog.waitFor({state:"visible",timeout:25000});
- assert.match(await dialog.innerText(),/1 cobrança\\(s\\) sem baixa/);
+ assert.match(await dialog.innerText(),/1 cobrança\(s\) sem baixa/);
  await dialog.locator('[name="actual"]').fill((amount/100).toFixed(2));
  await dialog.locator('[name="reason"]').fill("Encerramento supervisionado após conferir pendências");
  await dialog.locator('button[type="submit"]').click();
