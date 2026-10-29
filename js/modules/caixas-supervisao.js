@@ -164,6 +164,7 @@
     const canClose=entries.some(v=>selected.has(text(v.row.id))&&v.status==="ABERTO");
     const canManage=['master_local','gerente','supervisor'].includes(access().perfil);
     host.querySelector("#btnAbrirCaixasSelecionadas").disabled=!canOpen||!canManage;host.querySelector("#btnFecharCaixasSelecionadas").disabled=!canClose||!canManage;
+    if (ui.actionMessage) actionFeedback(ui.actionMessage, ui.actionError);
     entries.flatMap(v=>v.models.map(m=>m.box)).forEach(loadOverview);return true;
   }
   async function query(collection, field, value, teamId = ui.detail) {
