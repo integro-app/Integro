@@ -1,0 +1,39 @@
+name: Validar reparo login da empresa
+
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths:
+      - ".github/workflows/validar-login-empresa-20261029.yml"
+      - "js/services/firestore.js"
+      - "functions/v27-admin.js"
+      - "functions/index.js"
+      - "tests/auth-diagnostics.test.js"
+
+permissions:
+  contents: read
+
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Login e protecao entre empresas
+        run: node --test tests/auth-diagnostics.test.js
+      - name: Verificacao geral
+        run: npm run verify
+      - name: Regras em emulador
+        run: npm run test:rules
