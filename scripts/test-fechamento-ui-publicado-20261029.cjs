@@ -41,7 +41,7 @@ async function checkPage(){
     await page.evaluate(async secret=>{await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);await firebase.auth().signInWithCustomToken(secret);},token);
     await page.goto(ROOT+"/vendedor.html",{waitUntil:"domcontentloaded",timeout:45000});
     await page.waitForFunction(expected=>window.firebase?.auth?.()?.currentUser?.uid===expected&&
-      window.caixaAtual?.id&&window.usuarioLogado?.authUid,{timeout:75000},uid);
+      window.caixaAtual?.id&&window.usuarioLogado?.authUid,uid,{timeout:75000});
     await checkPage();
     await page.evaluate(()=>{if(typeof window.trocarTela!=="function")throw Error("trocarTela ausente");window.trocarTela("cobrancas");});
     const close=page.locator("#btnFecharCaixaCobrancas").first();
