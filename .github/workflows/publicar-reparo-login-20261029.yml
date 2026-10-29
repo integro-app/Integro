@@ -78,16 +78,16 @@ jobs:
           p.write_text(raw)
           p.chmod(0o600)
           PY
-      - name: Publicar somente verificacao de empresa no login
-        run: npx firebase deploy --only functions:consultarAcessoEmpresaLoginV27 --project integro-novo --non-interactive
+      - name: Atualizar callable de sessao com verificacao de empresa em modo somente leitura
+        run: npx firebase deploy --only functions:iniciarSessaoV27 --project integro-novo --non-interactive
       - name: Confirmar Function publicada antes da interface
-        run: npx firebase functions:list --project integro-novo | grep -q consultarAcessoEmpresaLoginV27
+        run: npx firebase functions:list --project integro-novo | grep -q iniciarSessaoV27
       - name: Publicar somente Hosting
         run: npx firebase deploy --only hosting --project integro-novo --non-interactive
       - name: Confirmar versão publicada do login sem autenticação
         run: |
           curl --fail --silent --show-error --location https://integro-novo.web.app/index.html | grep -F 'js/services/firestore.js?v=20261029-login-empresa'
-          curl --fail --silent --show-error --location https://integro-novo.web.app/js/services/firestore.js | grep -F 'consultarAcessoEmpresaLoginV27'
+          curl --fail --silent --show-error --location https://integro-novo.web.app/js/services/firestore.js | grep -F 'verificarEmpresa: true'
       - name: Remover credencial
         if: always()
         run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
