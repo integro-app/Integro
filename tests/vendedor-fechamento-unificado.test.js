@@ -6,3 +6,23 @@ test('confirmar salva e encerra sessão pelo loading compartilhado',async()=>{co
 test('valor vazio ou divergência sem motivo mantém sessão',async()=>{const t=setup();await t.env.validarEAbrirFechamentoCaixa();t.state.value='';await t.env.confirmarFechamentoCaixaVendedorUnificado();t.state.value='90,00';await t.env.confirmarFechamentoCaixaVendedorUnificado();assert.equal(t.state.writes,0);assert.equal(t.state.logout,0);t.state.note='Diferença conferida';await t.env.confirmarFechamentoCaixaVendedorUnificado();assert.equal(t.state.writes,1)});
 test('pendência da rota impede fechar e apresenta mensagem',async()=>{const t=setup();t.state.route=[{comCobrancaHoje:true,pagoHoje:false,naoPagoHoje:false}];t.snapshot.pendenciasCobranca=1;await t.env.validarEAbrirFechamentoCaixa();assert.match(t.elements.get('vendedorOperacaoModal').innerHTML,/Resumo do caixa atual/);await t.env.confirmarFechamentoCaixaVendedorUnificado();assert.equal(t.state.writes,0);assert.match(t.state.alerts[0],/pendências/)});
 test('falha ao gravar preserva sessão e permite nova tentativa',async()=>{const t=setup();await t.env.validarEAbrirFechamentoCaixa();t.state.fail=true;await t.env.confirmarFechamentoCaixaVendedorUnificado();assert.equal(t.state.logout,0);assert.match(t.state.alerts[0],/gravação falhou/);t.state.fail=false;await t.env.confirmarFechamentoCaixaVendedorUnificado();assert.equal(t.state.logout,1)});
+
+test('aprovação pendente bloqueia o botão e explica ao vendedor',async()=>{
+ const t=setup();t.snapshot.aprovacoesPendentes=2;
+ await t.env.validarEAbrirFechamentoCaixa();
+ const modal=t.elements.get('vendedorOperacaoModal');
+ assert.match(modal.innerHTML,/Solicitações aguardando aprovação: 2/);
+ assert.equal(t.env.document.getElementById('vendedorFechamentoConfirmar').disabled,true);
+ await t.env.confirmarFechamentoCaixaVendedorUnificado();
+ assert.equal(t.state.writes,0);
+ assert.match(t.state.alerts[0],/aprovação/);
+});
+test('inconsistência financeira impede fechamento e exibe motivo sem gravar',async()=>{
+ const t=setup();t.snapshot.inconsistencias=['CAIXA_DIFERENTE_DO_LEDGER'];
+ await t.env.validarEAbrirFechamentoCaixa();
+ assert.match(t.elements.get('vendedorOperacaoModal').innerHTML,/CAIXA_DIFERENTE_DO_LEDGER/);
+ assert.equal(t.env.document.getElementById('vendedorFechamentoConfirmar').disabled,true);
+ await t.env.confirmarFechamentoCaixaVendedorUnificado();
+ assert.equal(t.state.writes,0);
+ assert.match(t.state.alerts[0],/Inconsistências financeiras/);
+});
