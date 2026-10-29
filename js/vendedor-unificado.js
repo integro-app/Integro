@@ -2876,6 +2876,37 @@
 
   document.addEventListener("usuario-validado", evento => setTimeout(() => aplicar(evento.detail), 0));
   document.addEventListener("integro-painel-permissoes-aplicadas", evento => setTimeout(() => aplicar(evento.detail?.usuario), 0));
+
+  // O painel unificado pode ser carregado depois do evento de autenticação.
+  // Nesse caso, a tela do vendedor ficava sem montagem e o fechamento oculto.
+  // Recuperar somente uma sessão Firebase V27 já validada, com permissão
+  // de cobranças, evita depender da ordem de chegada dos eventos.
+  function recuperarPainelVendedorAutenticado() {
+    if (instalado) return true;
+    const usuario = window.State?.getUsuario?.() || null;
+    const uid = window.firebase?.auth?.()?.currentUser?.uid || "";
+    if (!usuario || !uid || texto(usuario.authUid || usuario.uid) !== texto(uid)) return false;
+    if (perfil(usuario) !== "vendedor") return false;
+    if (!window.IntegroAcesso?.pode?.(usuario, "cobrancas.ver") &&
+        !window.IntegroAcesso?.pode?.(usuario, "operacao.cobrancas")) return false;
+    const tela = document.getElementById("cobrancas");
+    if (!tela || tela.dataset?.acessoPermitido === "false") return false;
+    return aplicar(usuario);
+  }
+  function agendarRecuperacaoPainelVendedor() {
+    if (instalado) return;
+    [0, 200, 800, 2000].forEach(atraso => setTimeout(() => {
+      if (!instalado) recuperarPainelVendedorAutenticado();
+    }, atraso));
+  }
+  document.addEventListener("integro-menu-unificado-renderizado", agendarRecuperacaoPainelVendedor);
+  document.addEventListener("integro-v27-pronto", agendarRecuperacaoPainelVendedor);
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", agendarRecuperacaoPainelVendedor, { once: true });
+  } else {
+    agendarRecuperacaoPainelVendedor();
+  }
+  window.addEventListener?.("load", agendarRecuperacaoPainelVendedor, { once: true });
   document.addEventListener("integro-perfil-dados-carregados", () => {
     if (!instalado) return;
     caches();
