@@ -2289,7 +2289,7 @@
       if (entrada.filaOfflinePendente || entrada.operacaoLocalSincronizando) throw new Error("Sincronize as operações locais antes do fechamento.");
       const snapshot = entrada.snapshot || await prepararSnapshotFechamentoCaixa(entrada);
       const valor = entrada.valorInformadoCentavos !== undefined ? entrada.valorInformadoCentavos : getOperacional().moedaParaCentavos(entrada.valorInformado || entrada.valorReal || 0);
-      return chamarBackendFinanceiro("fecharCaixaOperacional", { caixaId: entrada.caixaId, conferenciaId: snapshot.conferenciaId, valorInformadoCentavos: valor, justificativa: entrada.justificativa || entrada.observacao || "" });
+      return chamarBackendFinanceiro("fecharCaixaOperacional", { caixaId: entrada.caixaId, conferenciaId: snapshot.conferenciaId, valorInformadoCentavos: valor, justificativa: entrada.justificativa || entrada.observacao || "", fechamentoSupervisionado: entrada.fechamentoSupervisionado === true });
     }
     exigirBackendFinanceiro();
     const db = getDb();
