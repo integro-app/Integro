@@ -1230,6 +1230,18 @@
     if (conferirRota && rota.some(item => item.comCobrancaHoje && !item.pagoHoje && !item.naoPagoHoje)) throw new Error("Conclua as pendências da rota antes de fechar o caixa.");
   }
 
+  function bloqueiosFechamentoVendedor(snapshot = {}) {
+    const avisos = [];
+    if (numero(snapshot.pendenciasCobranca) > 0) avisos.push(`Cobranças/visitas sem registro: ${numero(snapshot.pendenciasCobranca)}.`);
+    if (numero(snapshot.pagamentosPendentes) > 0) avisos.push(`Pagamentos pendentes de sincronização ou regularização: ${numero(snapshot.pagamentosPendentes)}.`);
+    if (numero(snapshot.aprovacoesPendentes) > 0) avisos.push(`Solicitações aguardando aprovação: ${numero(snapshot.aprovacoesPendentes)}.`);
+    if (Array.isArray(snapshot.inconsistencias) && snapshot.inconsistencias.length) {
+      const itens = snapshot.inconsistencias.slice(0, 5).map(texto).filter(Boolean);
+      avisos.push(`Inconsistências financeiras (solicite revisão do supervisor): ${itens.join(", ")}${snapshot.inconsistencias.length > 5 ? " e outras" : ""}.`);
+    }
+    return avisos;
+  }
+
   async function abrirFechamentoVendedor() {
     if (fechamentoVendedorEmAndamento) return;
     snapshotFechamentoVendedor = null;
@@ -1241,14 +1253,14 @@
       pendenciasFechamentoVendedor(caixa, usuario, false);
       modalBase("Fechar caixa", '<p role="status">Conferindo o resumo do caixa atual…</p>');
       const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId: caixa.id, clientePlataformaId: State.getTenantId?.() || usuario.clientePlataformaId, usuario });
-      const pendencias = numero(snapshot.pendenciasCobranca) + numero(snapshot.pagamentosPendentes);
+      const bloqueios = bloqueiosFechamentoVendedor(snapshot);
       snapshotFechamentoVendedor = snapshot;
       const linhas = [["Recebimentos", snapshot.totalPagamentosCentavos], ["Ingressos", snapshot.totalIngressosCentavos], ["Vendas / empréstimos", snapshot.totalVendasCentavos], ["Despesas", snapshot.totalGastosCentavos], ["Retiradas", snapshot.totalRetiradasCentavos], ["Recolhimentos", snapshot.totalRecolhimentosCentavos], ["Ajustes", snapshot.totalAjustesCentavos]];
       const visitadas = numero(snapshot.totalVisitadas), total = numero(snapshot.totalCobrancas);
-      modalBase("Fechamento de caixa", `<section class="vendedor-fechamento-resumo" aria-label="Resumo do caixa atual"><small>Caixa ${esc(caixa.id)} · ${esc(snapshot.dataOperacional || dataCaixa())}</small><div class="vendedor-fechamento-saldos"><div><span>Caixa atual calculado</span><strong>${moeda(snapshot.caixaFinalEsperadoCentavos / 100)}</strong></div><div><span>Caixa inicial</span><strong>${moeda(numero(snapshot.caixaInicialCentavos) / 100)}</strong></div></div><dl class="vendedor-fechamento-metricas">${linhas.map(([label, valor]) => `<div><dt>${esc(label)}</dt><dd>${moeda(numero(valor) / 100)}</dd></div>`).join("")}</dl><div class="vendedor-fechamento-visitas"><span>Clientes visitados</span><strong>${visitadas} de ${total}</strong><progress max="${Math.max(1,total)}" value="${visitadas}"></progress></div></section>${pendencias ? `<p class="vendedor-fechamento-pendente" role="status">Existem ${pendencias} pendência(s). Conclua as cobranças e sincronizações para confirmar o fechamento.</p>` : ""}<label for="vendedorFechamentoValor">Valor físico/real do caixa</label><input id="vendedorFechamentoValor" inputmode="decimal" placeholder="0,00" autocomplete="off"><label for="vendedorFechamentoJustificativa">Observação</label><textarea id="vendedorFechamentoJustificativa" placeholder="Obrigatória se houver divergência"></textarea>`, '<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorFechamentoConfirmar" class="primary-btn" type="button" onclick="confirmarFechamentoCaixaVendedorUnificado()">Confirmar fechamento</button>');
+      modalBase("Fechamento de caixa", `<section class="vendedor-fechamento-resumo" aria-label="Resumo do caixa atual"><small>Caixa ${esc(caixa.id)} · ${esc(snapshot.dataOperacional || dataCaixa())}</small><div class="vendedor-fechamento-saldos"><div><span>Caixa atual calculado</span><strong>${moeda(snapshot.caixaFinalEsperadoCentavos / 100)}</strong></div><div><span>Caixa inicial</span><strong>${moeda(numero(snapshot.caixaInicialCentavos) / 100)}</strong></div></div><dl class="vendedor-fechamento-metricas">${linhas.map(([label, valor]) => `<div><dt>${esc(label)}</dt><dd>${moeda(numero(valor) / 100)}</dd></div>`).join("")}</dl><div class="vendedor-fechamento-visitas"><span>Clientes visitados</span><strong>${visitadas} de ${total}</strong><progress max="${Math.max(1,total)}" value="${visitadas}"></progress></div></section>${bloqueios.length ? `<div class="vendedor-fechamento-pendente" role="status"><strong>Fechamento bloqueado:</strong><ul>${bloqueios.map(aviso => `<li>${esc(aviso)}</li>`).join("")}</ul></div>` : ""}<label for="vendedorFechamentoValor">Valor físico/real do caixa</label><input id="vendedorFechamentoValor" inputmode="decimal" placeholder="0,00" autocomplete="off"><label for="vendedorFechamentoJustificativa">Observação</label><textarea id="vendedorFechamentoJustificativa" placeholder="Obrigatória se houver divergência"></textarea>`, '<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorFechamentoConfirmar" class="primary-btn" type="button" onclick="confirmarFechamentoCaixaVendedorUnificado()">Confirmar fechamento</button>');
       document.getElementById("vendedorOperacaoModal")?.classList.add("is-fechamento");
       const confirmar = document.getElementById("vendedorFechamentoConfirmar");
-      if (confirmar) confirmar.disabled = pendencias > 0;
+      if (confirmar) confirmar.disabled = bloqueios.length > 0;
     } catch (erro) {
       snapshotFechamentoVendedor = null;
       fecharModal();
@@ -1260,7 +1272,8 @@
     if (fechamentoVendedorEmAndamento || !snapshotFechamentoVendedor) return;
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const snapshot = snapshotFechamentoVendedor;
-    if (numero(snapshot.pendenciasCobranca) + numero(snapshot.pagamentosPendentes) > 0) return UIHelpers.alerta("Conclua as pendências e abra novamente o resumo do caixa.");
+    const bloqueios = bloqueiosFechamentoVendedor(snapshot);
+    if (bloqueios.length) return UIHelpers.alerta("Conclua as pendências e abra novamente o resumo do caixa. " + bloqueios.join(" "));
     const valorTexto = texto(document.getElementById("vendedorFechamentoValor")?.value);
     const valor = Number(valorTexto.replace(/\./g, "").replace(",", "."));
     const justificativa = texto(document.getElementById("vendedorFechamentoJustificativa")?.value);
