@@ -84,10 +84,10 @@
   }
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
-  const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',history:[],data:null,loading:false,error:'',revision:0};
+  const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',history:[],data:null,error:'',loading:false});ui.revision++;overview.clear(); }
+    if (key !== ui.context) { Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear(); }
   }
   function rows() {
     if (!allowed()) return [];
@@ -104,6 +104,25 @@
   const badge = b => `<span class="cx-state ${openBox(b)?'open':upper(b.status)==='DIVERGENTE'?'divergent':'closed'}">${esc(upper(b.status)||'SEM CAIXA')}</span>`;
   const option = (value,label,current) => `<option value="${esc(value)}"${text(value)===text(current)?' selected':''}>${esc(label)}</option>`;
   const stat = (label,value,color='blue') => `<div class="cx-stat ${color}"><small>${label}</small><strong>${value}</strong></div>`;
+  // Mantém o feedback visível mesmo que uma leitura em tempo real redesenhe a tela.
+  function actionFeedback(message, error = false) {
+    ui.actionMessage = text(message);
+    ui.actionError = !!error;
+    const host = card();
+    if (!host) return;
+    let feedback = host.querySelector('[data-cx-action-feedback]');
+    if (!feedback) {
+      feedback = global.document.createElement('p');
+      feedback.setAttribute('data-cx-action-feedback', '');
+      feedback.style.cssText = 'padding:12px 14px;margin:12px 0;border:1px solid currentColor;border-radius:10px;font-weight:700;';
+      const footer = host.querySelector('.cx-footer');
+      if (footer) footer.before(feedback);
+      else host.querySelector('[data-caixas-supervisao]')?.appendChild(feedback);
+    }
+    feedback.setAttribute('role', error ? 'alert' : 'status');
+    feedback.style.color = error ? '#b91c1c' : '#166534';
+    feedback.textContent = ui.actionMessage;
+  }
   function render() {
     if (!allowed()) return false;
     syncContext();const host = card();if (!host) return false;
@@ -121,7 +140,26 @@
     host.querySelectorAll('[data-cx-row]').forEach(row=>{row.onclick=e=>{if(!e.target.closest('button,input,select,a'))open(row.dataset.cxRow);};row.onkeydown=e=>{if(e.target===row&&['Enter',' '].includes(e.key)){e.preventDefault();open(row.dataset.cxRow);}};});
     host.querySelectorAll('[data-caixas-equipe]').forEach(c=>c.onchange=e=>{global.toggleEquipeCaixaIntegro?.(c.dataset.caixasEquipe,e.target.checked);render();});
     host.querySelector('[data-cx-all]').onchange=e=>{entries.forEach(v=>e.target.checked?selected.add(text(v.row.id)):selected.delete(text(v.row.id)));render();};
-    host.querySelector('#btnAbrirCaixasSelecionadas').onclick=()=>global.abrirCaixasSelecionadasIntegro?.();host.querySelector('#btnFecharCaixasSelecionadas').onclick=()=>global.fecharCaixasSelecionadasIntegro?.();
+    host.querySelector('#btnAbrirCaixasSelecionadas').onclick=()=>global.abrirCaixasSelecionadasIntegro?.();
+    host.querySelector('#btnFecharCaixasSelecionadas').onclick=async event=>{
+      if (ui.actionBusy) return;
+      const button=event.currentTarget;
+      ui.actionBusy=true;button.disabled=true;
+      actionFeedback('Iniciando a conferência dos caixas selecionados...');
+      try {
+        if (typeof global.fecharCaixasSelecionadasIntegro!=='function') throw Error('Serviço de fechamento indisponível.');
+        const result=await global.fecharCaixasSelecionadasIntegro();
+        if (!result) {actionFeedback('Fechamento cancelado ou sem caixa elegível.');return;}
+        const failed=(result.falhas||[]).length;
+        actionFeedback(failed
+          ? 'Fechamento parcial ou bloqueado: '+String(result.falhas[0]?.message || 'Verifique as pendências.')
+          : 'Fechamento concluído. Caixas fechados: '+String(result.fechados||0)+'.',failed>0);
+      } catch (error) {
+        console.error('Erro ao fechar caixas pelo supervisor:',error);
+        actionFeedback(error?.message || 'Não foi possível executar o fechamento.',true);
+        global.notificarIntegro?.(error?.message || 'Não foi possível executar o fechamento.');
+      } finally {ui.actionBusy=false;if(button.isConnected)button.disabled=false;}
+    };
     const canOpen=entries.some(v=>selected.has(text(v.row.id))&&["FECHADO","SEM_CAIXA"].includes(v.status));
     const canClose=entries.some(v=>selected.has(text(v.row.id))&&v.status==="ABERTO");
     const canManage=['master_local','gerente','supervisor'].includes(access().perfil);
@@ -186,6 +224,7 @@
     const box=ui.history.find(b=>id(b)===ui.box),m=box&&ui.data?model(box,ui.data):null;
     const canManage=['master_local','gerente','supervisor'].includes(access().perfil);
     host.innerHTML=`<div data-caixas-supervisao><header class="cx-head"><div><button class="ghost-btn" data-cx-back>← Todas as equipes</button><h2>Caixas · ${esc(row.nome)}</h2></div><button class="ghost-btn" data-cx-refresh ${ui.loading?'disabled':''}>Atualizar</button></header><div class="cx-filters cx-detail-filters"><label>Equipe<select data-cx-team>${rows().map(r=>option(r.id,r.nome,ui.detail)).join('')}</select></label><label>Caixa<select data-cx-box ${ui.loading?'disabled':''}>${ui.history.map(b=>option(id(b),`${dateBR(boxDay(b))} · ${upper(b.status)} · ${b.vendedorNome || b.vendedorId || 'Vendedor'}`,ui.box)).join('')||option('','Nenhum caixa registrado','')}</select></label></div><nav class="cx-tabs" aria-label="Consulta do caixa"><button data-cx-tab="resumo" class="${ui.tab==='resumo'?'active':''}" aria-pressed="${ui.tab==='resumo'}">Resumo</button><button data-cx-tab="detalhes" class="${ui.tab==='detalhes'?'active':''}" aria-pressed="${ui.tab==='detalhes'}">Detalhes</button></nav>${ui.loading?'<p class="cx-loading" role="status">Consultando o caixa selecionado…</p>':ui.error?`<p class="cx-error" role="alert">${esc(ui.error)} <button class="ghost-btn" data-cx-retry>Tentar novamente</button></p>`:!box?'<p>Nenhum caixa registrado para esta equipe.</p>':m?`${ui.tab==='resumo'?summary(m,row):details(m)}<footer class="cx-footer"><span>${badge(box)} · ${dateBR(boxDay(box))}</span><div>${canManage?`<button class="success-btn" data-cx-open-date ${openBox(box)?'disabled':''}>Abrir por data</button>${openBox(box)?'<button class="danger-btn" data-cx-close>Fechar caixa</button>':id(box)===id(ui.history.filter(b=>text(b.vendedorId)===text(box.vendedorId))[0])?'<button class="ghost-btn" data-cx-reopen>Reabrir caixa</button>':''}`:''}</div></footer>`:''}</div>`;
+    if (ui.actionMessage) actionFeedback(ui.actionMessage, ui.actionError);
     host.querySelector('[data-cx-back]').onclick=()=>{ui.revision++;ui.detail='';ui.data=null;render();};host.querySelector('[data-cx-team]').onchange=e=>open(e.target.value);
     host.querySelector('[data-cx-box]').onchange=e=>selectBox(e.target.value);
     host.querySelector('[data-cx-refresh]').onclick=()=>ui.box?selectBox(ui.box):open(ui.detail);
@@ -195,12 +234,29 @@
     host.querySelector('[data-cx-open-date]')?.addEventListener('click',()=>global.IntegroCaixaDatas?.abrir?.());
     host.querySelector('[data-cx-reopen]')?.addEventListener('click',async()=>{await global.solicitarReaberturaCaixa?.(id(box));await selectBox(id(box));});
     host.querySelector('[data-cx-close]')?.addEventListener('click',async e=>{
-      const button=e.currentTarget;button.disabled=true;
-      try {const snapshot=await global.IntegroCaixa.prepararSnapshotFechamentoCaixa({caixaId:id(box),clientePlataformaId:tenant()});
-        const confirmation=await confirmClosure(snapshot,box);if(!confirmation)return;
+      if (ui.actionBusy) return;
+      const button=e.currentTarget;
+      ui.actionBusy=true;button.disabled=true;
+      actionFeedback('Conferindo movimentos e pendências do caixa...');
+      try {
+        if (!global.IntegroCaixa?.prepararSnapshotFechamentoCaixa || !global.IntegroCaixa?.registrarFechamentoCaixaTransacional)
+          throw Error('Serviço de fechamento indisponível. Atualize a tela e tente novamente.');
+        const snapshot=await global.IntegroCaixa.prepararSnapshotFechamentoCaixa({caixaId:id(box),clientePlataformaId:tenant()});
+        if (!Number.isSafeInteger(snapshot?.caixaFinalEsperadoCentavos))
+          throw Error('A conferência não retornou o valor esperado do caixa. Nenhum fechamento foi registrado.');
+        actionFeedback('Conferência concluída. Informe o valor físico e confirme.');
+        const confirmation=await confirmClosure(snapshot,box);
+        if (!confirmation) {actionFeedback('Fechamento cancelado; o caixa permanece aberto.');return;}
         const {actual,reason}=confirmation;
-        await global.IntegroCaixa.registrarFechamentoCaixaTransacional({caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,valorInformadoCentavos:actual,justificativa:reason||'',snapshot});await selectBox(id(box));
-      }catch(error){global.notificarIntegro?.(error.message);}finally{button.disabled=false;}
+        actionFeedback('Registrando fechamento no servidor...');
+        const result=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,valorInformadoCentavos:actual,justificativa:reason||'',snapshot});
+        actionFeedback('Fechamento confirmado: '+text(result?.statusFechamento||'FECHADO')+'.');
+        await selectBox(id(box));
+      }catch(error){
+        console.error('Falha ao fechar caixa pelo supervisor:',error);
+        actionFeedback(error?.message || 'Não foi possível fechar o caixa.',true);
+        global.notificarIntegro?.(error?.message || 'Não foi possível fechar o caixa.');
+      }finally{ui.actionBusy=false;if(button.isConnected)button.disabled=false;}
     });
   }
   function confirmClosure(snapshot, box) {
