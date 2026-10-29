@@ -33,6 +33,7 @@ test('consulta de parcelas é agrupada sem perder carteira de 64 vendas',async()
   f.db.records.set('vendas/'+id,{clientePlataformaId:'a',vendedorId:'seller',vendedorAuthUid:'seller',clienteId:'client-'+n,caixaId:'previous',saldoDevedorCentavos:10000,valorParcelaCentavos:10000,dataPrimeiraCobranca:day,status:'ATIVA'});
   f.db.records.set('parcelas/part-'+id,{clientePlataformaId:'a',vendaId:id,dataVencimento:day,valorCentavos:10000,valorPagoCentavos:0,status:'PENDENTE'});
  }
+ f.db.records.set('parcelas/foreign-tenant-part',{clientePlataformaId:'b',vendaId:'legacy-sale-000',dataVencimento:core.hojeSP(),valorCentavos:99999,valorPagoCentavos:0,status:'PENDENTE'});
  let queries=0;
  const original=f.db.runTransaction.bind(f.db);
  f.db.runTransaction=fn=>original(tx=>{
