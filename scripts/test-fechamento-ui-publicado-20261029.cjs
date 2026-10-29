@@ -57,7 +57,7 @@ async function checkPage(){
     }));
     console.log("DIAGNOSTICO_PAINEL_VENDEDOR",JSON.stringify(diagnostic));
     assert.equal(diagnostic.usuario,"vendedor","Nao entrou no perfil vendedor");
-    await page.evaluate(()=>{if(typeof window.trocarTela==="function")window.trocarTela("vendas");});
+    await page.evaluate(()=>{if(typeof window.trocarTela==="function")window.trocarTela("cobrancas");});
     const close=page.locator("#btnFecharCaixaCobrancas").first();
     await close.waitFor({state:"visible",timeout:28000});
     assert.equal(await close.isDisabled(),false,"Botao de fechar desabilitado sem pendencias");
