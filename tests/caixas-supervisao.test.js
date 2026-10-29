@@ -72,3 +72,18 @@ test('fechamento massivo do supervisor informa a falha do backend sem rejeição
  assert.equal(selected.length,0,'limpa seleção somente após sucesso');
  assert.match(notices.at(-1),/Fechados: 1/);
 });
+
+test('supervisor considera caixa REABERTO como aberto ao montar fechamento da equipe',()=>{
+ const html=fs.readFileSync(require('node:path').join(__dirname,'..','master-local.html'),'utf8');
+ const start=html.indexOf('caixasAtuaisEquipe(equipe){');
+ const end=html.indexOf('nomeEquipe(equipe){',start);
+ assert.ok(start>0&&end>start,'resolução de caixas por equipe deve existir');
+ const method=html.slice(start,end);
+ const reopened={id:'caixa-reaberto',status:'REABERTO',ativo:true,excluido:false};
+ const ICX={vendedoresDaEquipe:()=>[],registrosDaEquipe:()=>[reopened],caixas:()=>[reopened],
+   statusCaixa:x=>x.status,ultimoFechado:()=>null};
+ const resolved=vm.runInNewContext('({'+method+'}).caixasAtuaisEquipe({id:"e1"})',{ICX});
+ assert.equal(resolved.estado,'ABERTO');
+ assert.equal(resolved.abertos.length,1);
+ assert.equal(resolved.abertos[0].id,'caixa-reaberto');
+});
