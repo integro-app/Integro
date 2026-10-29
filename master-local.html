@@ -6573,7 +6573,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     const caixasHoje = caixas.filter(c => dataISO(c.dataCaixa || c.dataAbertura || c.abertoEm || c.criadoEm) === hoje);
     const baseCaixas = caixasHoje.length ? caixasHoje : caixas;
 
-    const caixasAbertos = baseCaixas.filter(c => ["ABERTO","ABERTA"].includes(statusUpper(c)) && c.ativo !== false);
+    const caixasAbertos = baseCaixas.filter(c => ["ABERTO","ABERTA","REABERTO"].includes(statusUpper(c)) && c.ativo !== false);
     const caixasFechados = baseCaixas.filter(c => ["FECHADO","FECHADA"].includes(statusUpper(c)));
     const ultima = baseCaixas.slice().sort((a,b)=>ts(b.atualizadoEm || b.fechadoEm || b.abertoEm || b.criadoEm || b.dataCaixa)-ts(a.atualizadoEm || a.fechadoEm || a.abertoEm || a.criadoEm || a.dataCaixa))[0];
 
@@ -18208,7 +18208,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     caixasAtuaisEquipe(equipe){
       const vendedores = ICX.vendedoresDaEquipe(equipe);
       const caixas = ICX.registrosDaEquipe(ICX.caixas(), equipe, vendedores).filter(c => c.excluido !== true);
-      const abertos = caixas.filter(c => ["ABERTO", "ABERTA"].includes(ICX.statusCaixa(c)) && c.ativo !== false);
+      const abertos = caixas.filter(c => ["ABERTO", "ABERTA", "REABERTO"].includes(ICX.statusCaixa(c)) && c.ativo !== false);
       if (abertos.length) return {estado:"ABERTO", caixas:abertos, abertos};
 
       const porVendedor = [];
@@ -25378,6 +25378,6 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/modules/notification-center.js?v=20261028-mobile"></script>
 <script src="js/caixa-opening-progress.js?v=20261008-abertura1"></script>
 <script src="js/caixa-team-date-ui.js?v=20261008-abertura1"></script>
-<script src="js/modules/caixas-supervisao.js?v=20261021-resumo-fechado"></script>
+<script src="js/modules/caixas-supervisao.js?v=20261029-fechamento-supervisor-corrigido"></script>
 </body>
 </html>
