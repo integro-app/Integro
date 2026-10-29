@@ -292,9 +292,14 @@ function criarCicloCaixa({ db, functions }) {
     const input=data?.entrada || data || {}, boxId=id(input.caixaId), value=input.valorInformadoCentavos;
     if(!Number.isSafeInteger(value)) fail("invalid-argument","Informe valor válido em centavos inteiros.");
     const reason=core.texto(input.justificativa || input.observacao), confirmation=core.texto(input.conferenciaId);
+    const managerial=input.encerramentoGerencial===true;
+    if(input.encerramentoGerencial!==undefined && typeof input.encerramentoGerencial!=="boolean") fail("invalid-argument","Tipo de fechamento gerencial inválido.");
+    if(managerial && !reason) fail("invalid-argument","Justificativa obrigatória para encerramento gerencial.");
     if(!confirmation) fail("failed-precondition","Abra uma nova conferência antes de fechar.");
     return db.runTransaction(async tx=>{
       const who=await actor(context,tx); exigirPermissao(who,"fechar");
+      if(managerial && !["MASTER_LOCAL","GERENTE","SUPERVISOR"].includes(who.role))
+        fail("permission-denied","Somente master local, gerente ou supervisor podem encerrar cobranças sem baixa.");
       const boxRef=db.collection("caixas").doc(boxId), closeRef=db.collection("fechamentos_caixa").doc("fechamento_"+boxId);
       const boxSnap=await tx.get(boxRef), previous=await tx.get(closeRef);
       if(!boxSnap.exists) fail("not-found","Caixa não encontrado.");
@@ -311,30 +316,76 @@ function criarCicloCaixa({ db, functions }) {
       if(history.filter(isOpen).length!==1) fail("failed-precondition","Regularize os múltiplos caixas abertos.");
       const snapshot=await conferencia(tx,who,boxId);
       if(snapshot.conferenciaId!==confirmation) fail("failed-precondition","Movimentações alteradas durante a conferência. Confira novamente.");
-      if(snapshot.pendenciasCobranca) fail("failed-precondition","Conclua as visitas/cobranças obrigatórias: "+snapshot.pendenciasCobranca);
+      if(snapshot.pendenciasCobranca && !managerial) fail("failed-precondition","Conclua as visitas/cobranças obrigatórias: "+snapshot.pendenciasCobranca);
       if(snapshot.pagamentosPendentes) fail("failed-precondition","Regularize os pagamentos pendentes.");
       if(snapshot.aprovacoesPendentes) fail("failed-precondition","Existem aprovações obrigatórias pendentes: "+snapshot.aprovacoesPendentes);
       if(snapshot.inconsistencias.length) fail("failed-precondition","Conferência impeditiva: "+snapshot.inconsistencias.join(", "));
-      const difference=value-snapshot.caixaFinalEsperadoCentavos;
+      // Uma situação de cobrança não é um recebimento. Não altera saldos nem parcelas.
+      const pending=managerial ? snapshot.pendenciasVendasIds || [] : [];
+      if(managerial && (pending.length!==snapshot.pendenciasCobranca || pending.length>350 ||
+        pending.some(saleId=>!saleId || String(saleId).includes("/")) || new Set(pending).size!==pending.length))
+        fail("failed-precondition","Número de cobranças pendentes exige conferência assistida.");
+      const cycle=box.ultimaReaberturaId || "inicial";
+      const unpaidRefs=pending.map(saleId=>({
+        saleId,ref:db.collection("historicoCobrancas").doc("nao_pagamento_gerencial_"+require("node:crypto")
+          .createHash("sha256").update(who.tenant+":"+boxId+":"+cycle+":"+saleId).digest("hex"))
+      }));
+      const existingUnpaid=await Promise.all(unpaidRefs.map(item=>tx.get(item.ref)));
+      if(existingUnpaid.some(doc=>doc.exists)) fail("failed-precondition","Cobrança sem baixa alterada durante o encerramento. Confira novamente.");
+      const confirmedSnapshot=pending.length ? {
+        ...snapshot,pendenciasCobrancaAntes:snapshot.pendenciasCobranca,pendenciasCobranca:0,
+        totalNaoPagas:snapshot.totalNaoPagas+pending.length,
+        totalSemBaixaGerencial:(snapshot.totalSemBaixaGerencial||0)+pending.length,
+        encerramentoGerencial:true,quantidadeBaixasGerenciais:pending.length,
+        vendasSemBaixaGerencialIds:pending.slice()
+      } : snapshot;
+      const difference=value-confirmedSnapshot.caixaFinalEsperadoCentavos;
       if(!Number.isSafeInteger(difference)) fail("invalid-argument","Diferença fora do limite seguro.");
       if(difference && !reason) fail("invalid-argument","Informe justificativa para fechamento divergente.");
       const status=difference===0?"FECHADO":"DIVERGENTE", stamp=FieldValue.serverTimestamp();
-      const cycle=box.ultimaReaberturaId || "inicial", historyId="fechamento_"+require("node:crypto").createHash("sha256").update(boxId+":"+cycle).digest("hex");
+      const historyId="fechamento_"+require("node:crypto").createHash("sha256").update(boxId+":"+cycle).digest("hex");
       const immutableRef=db.collection("historico_fechamentos_caixa").doc(historyId);
       const immutable=await tx.get(immutableRef);
       if(immutable.exists) fail("already-exists","Este ciclo já possui fechamento registrado.");
       const control=db.collection("controle_caixas").doc(who.tenant+"_"+(box.vendedorAuthUid || seller.data().authUid));
       await tx.get(control);
-      const payload={...snapshot,caixaId:boxId,fechamentoId:closeRef.id,clientePlataformaId:who.tenant,vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid || seller.data().authUid,vendedorNome:box.vendedorNome || "",equipeId:box.equipeId || "",equipeNome:box.equipeNome || "",caixaFinalInformadoCentavos:value,valorEsperadoCentavos:snapshot.caixaFinalEsperadoCentavos,valorInformadoCentavos:value,diferencaCentavos:difference,statusFechamento:status,status,justificativa:reason,observacao:reason,snapshotAuditoria:snapshot,conferidoPor:who.uid,conferidoPorNome:who.user.nome || who.user.email || "",conferidoEm:stamp,fechadoPor:who.uid,fechadoPorNome:who.user.nome || who.user.email || "",fechadoEm:stamp,fechadoEmTexto:new Date().toISOString(),criadoEm:stamp,atualizadoEm:stamp,reaberto:false,refechamentoId:cycle==="inicial"?"":historyId,totalReaberturas:previous.exists?core.inteiro(previous.data().totalReaberturas):0,modo:cycle==="inicial"?"CRIACAO":"REFECHAMENTO"};
+      const payload={...confirmedSnapshot,caixaId:boxId,fechamentoId:closeRef.id,clientePlataformaId:who.tenant,vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid || seller.data().authUid,vendedorNome:box.vendedorNome || "",equipeId:box.equipeId || "",equipeNome:box.equipeNome || "",caixaFinalInformadoCentavos:value,valorEsperadoCentavos:confirmedSnapshot.caixaFinalEsperadoCentavos,valorInformadoCentavos:value,diferencaCentavos:difference,statusFechamento:status,status,justificativa:reason,observacao:reason,snapshotAuditoria:confirmedSnapshot,conferidoPor:who.uid,conferidoPorNome:who.user.nome || who.user.email || "",conferidoEm:stamp,fechadoPor:who.uid,fechadoPorNome:who.user.nome || who.user.email || "",fechadoEm:stamp,fechadoEmTexto:new Date().toISOString(),criadoEm:stamp,atualizadoEm:stamp,reaberto:false,refechamentoId:cycle==="inicial"?"":historyId,totalReaberturas:previous.exists?core.inteiro(previous.data().totalReaberturas):0,modo:cycle==="inicial"?"CRIACAO":"REFECHAMENTO"};
       delete payload.caixa;
+      if (unpaidRefs.length) {
+        const stampText=new Date().toISOString();
+        for (const {saleId,ref} of unpaidRefs) {
+          tx.set(ref,{
+            id:ref.id,operacaoId:ref.id,idempotencyKey:ref.id,
+            tipo:"NAO_PAGAMENTO",status:"REGISTRADO",vendaId:saleId,
+            clientePlataformaId:who.tenant,tenantId:who.tenant,caixaId:boxId,
+            vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid || seller.data().authUid,
+            vendedorUid:box.vendedorAuthUid || seller.data().authUid,
+            vendedorNome:box.vendedorNome || seller.data().nome || "",
+            uid:box.vendedorAuthUid || seller.data().authUid,
+            motivo:"Sem baixa registrada até o encerramento gerencial.",
+            observacao:reason,data:box.dataOperacional || box.dataCaixa,dataOperacional:box.dataOperacional || box.dataCaixa,
+            origem:"FECHAMENTO_GERENCIAL",semBaixaGerencial:true,visitaRealizada:false,
+            geradoAutomaticamente:true,registradoPorAuthUid:who.uid,registradoPorNome:who.user.nome || who.user.email || "",
+            fechamentoId:closeRef.id,criadoEmTexto:stampText,criadoEm:stamp,atualizadoEm:stamp
+          });
+        }
+        tx.set(db.collection("logs").doc(historyId+"_gerencial"),{
+          tipoAcao:"CAIXA_BAIXAS_GERENCIAIS_SEM_PAGAMENTO",
+          clientePlataformaId:who.tenant,caixaId:boxId,fechamentoId:closeRef.id,
+          usuarioAuthUid:who.uid,usuarioNome:who.user.nome || who.user.email || "",
+          vendedorAuthUid:box.vendedorAuthUid || seller.data().authUid,
+          quantidade:unpaidRefs.length,vendasIds:pending.slice(),justificativa:reason,
+          dataOperacional:box.dataOperacional || box.dataCaixa,criadoEm:stamp
+        });
+      }
       // Substitui a projeção atual; todos os ciclos são preservados em documentos imutáveis.
       tx.set(closeRef,payload);
       tx.set(immutableRef,{...payload,fechamentoAnterior:previous.exists?previous.data():null,statusAnterior:box.status,statusNovo:status,autorId:who.uid,criadoEm:stamp});
-      tx.update(boxRef,{status,ativo:false,fechado:true,reaberto:false,fechamentoId:closeRef.id,valorCalculadoFechamentoCentavos:snapshot.caixaFinalEsperadoCentavos,valorCalculadoFechamento:snapshot.caixaFinalEsperadoCentavos/100,valorFisicoFechamentoCentavos:value,valorFisicoFechamento:value/100,valorRealFechamentoCentavos:value,valorRealFechamento:value/100,divergenciaFechamentoCentavos:difference,divergenciaFechamento:difference/100,fechamentoDivergente:!!difference,observacaoFechamento:reason,fechadoPorId:who.uid,fechadoPorNome:payload.fechadoPorNome,fechadoEm:stamp,atualizadoEm:stamp});
+      tx.update(boxRef,{status,ativo:false,fechado:true,reaberto:false,fechamentoId:closeRef.id,valorCalculadoFechamentoCentavos:confirmedSnapshot.caixaFinalEsperadoCentavos,valorCalculadoFechamento:confirmedSnapshot.caixaFinalEsperadoCentavos/100,valorFisicoFechamentoCentavos:value,valorFisicoFechamento:value/100,valorRealFechamentoCentavos:value,valorRealFechamento:value/100,divergenciaFechamentoCentavos:difference,divergenciaFechamento:difference/100,fechamentoDivergente:!!difference,observacaoFechamento:reason,fechadoPorId:who.uid,fechadoPorNome:payload.fechadoPorNome,fechadoEm:stamp,atualizadoEm:stamp});
       tx.set(control,{atualizadoEm:stamp},{merge:true});
       tx.set(db.collection("historico_estados_caixa").doc(historyId),{caixaId:boxId,clientePlataformaId:who.tenant,statusAnterior:box.status,statusNovo:status,fechamentoId:closeRef.id,autorId:who.uid,criadoEm:stamp});
       tx.set(db.collection("logs").doc(historyId),{tipoAcao:status==="FECHADO"?"CAIXA_FECHADO":"CAIXA_FECHAMENTO_DIVERGENTE",caixaId:boxId,clientePlataformaId:who.tenant,usuarioAuthUid:who.uid,valorEsperadoCentavos:snapshot.caixaFinalEsperadoCentavos,valorInformadoCentavos:value,diferencaCentavos:difference,criadoEm:stamp});
-      return {modo:payload.modo,caixaId:boxId,fechamentoId:closeRef.id,statusFechamento:status,diferencaCentavos:difference,snapshot:payload};
+      return {modo:payload.modo,caixaId:boxId,fechamentoId:closeRef.id,statusFechamento:status,diferencaCentavos:difference,quantidadeBaixasGerenciais:pending.length,snapshot:payload};
     });
   }
   async function tratar(data,context) {
