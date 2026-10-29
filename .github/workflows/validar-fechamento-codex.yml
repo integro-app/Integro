@@ -1,0 +1,36 @@
+name: Validar fechamento do caixa - Codex
+
+on:
+  push:
+    branches:
+      - codex/migracao-codespaces-20261026
+    paths:
+      - "functions/**"
+      - "js/vendedor-unificado.js"
+      - "js/services/financial-operations.js"
+      - "tests/box*.test.js"
+      - "tests/vendedor-fechamento*.test.js"
+      - ".github/workflows/validar-fechamento-codex.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validar-fechamento:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Testar fechamento sem acesso a producao
+        run: node --test tests/box-lifecycle.test.js tests/box-closure-backend.test.js tests/vendedor-fechamento-caixa.test.js tests/vendedor-fechamento-unificado.test.js
+      - name: Validacao estatica do projeto
+        run: npm run verify
