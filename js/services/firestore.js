@@ -337,7 +337,27 @@ const FirestoreService = {
         else return negarEmpresa();
       }
     } catch (erro) {
-      console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_FAILED", tenantInformado: true });
+      // A validacao inicial ocorre antes da sessao V27 existir. Em Rules
+      // legadas a leitura da empresa pode ser negada mesmo para um vendedor
+      // autenticado. Nessa situacao, a callable confere a empresa diretamente
+      // no backend, vinculando o tenant ao Auth UID real.
+      const code = String(erro?.code || "").toLowerCase();
+      const negadoPorRules = ["permission-denied", "firestore/permission-denied"].includes(code);
+      if (negadoPorRules && window.firebase?.auth?.()?.currentUser?.uid === usuario.authUid) {
+        try {
+          const callable = window.firebase.app().functions("southamerica-east1")
+            .httpsCallable("consultarAcessoEmpresaLoginV27");
+          const response = await callable({ tenantId: String(tenantId) });
+          if (response?.data?.ok !== true) return negarEmpresa();
+          usuario.acessoRestritoAssinatura = response.data.acessoRestritoAssinatura === true;
+          return { ok: true };
+        } catch (backendError) {
+          const backendCode = String(backendError?.code || "").toLowerCase();
+          if (["permission-denied", "functions/permission-denied"].includes(backendCode)) return negarEmpresa();
+          console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_FAILED", origem: "backend" });
+        }
+      }
+      console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_FAILED", origem: "firestore" });
       return this.resultadoDiagnosticoAuth(false, "TENANT_CHECK_FAILED", { usuario });
     }
 
