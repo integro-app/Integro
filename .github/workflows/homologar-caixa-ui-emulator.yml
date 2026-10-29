@@ -1,0 +1,44 @@
+name: Homologar reabertura e refechamento do caixa no Chromium e Emulator
+on:
+  push:
+    branches:
+      - fix/integro-reabertura-fechada-20261029
+    paths:
+      - "scripts/test-caixa-reabertura-ui-emulator.cjs"
+      - ".github/workflows/homologar-caixa-ui-emulator.yml"
+      - "js/modules/caixas-supervisao.js"
+      - "functions/box-lifecycle.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  homologacao-segura:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+      FIREBASE_FUNCTIONS_EMULATOR_HOST: 127.0.0.1:5001
+      GOOGLE_CLOUD_PROJECT: integro-novo
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Instalar dependencias isoladas
+        run: |
+          npm ci
+          npm ci --prefix functions
+          npx playwright install --with-deps chromium
+      - name: Validar sintaxe do teste
+        run: node --check scripts/test-caixa-reabertura-ui-emulator.cjs
+      - name: Executar navegador e callables no Firebase Emulator
+        run: npx firebase emulators:exec --only auth,firestore,functions --project integro-novo "node scripts/test-caixa-reabertura-ui-emulator.cjs"

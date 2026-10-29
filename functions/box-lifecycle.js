@@ -216,7 +216,7 @@ function criarCicloCaixa({ db, functions }) {
       if (history[0]?.id !== boxId) fail("failed-precondition","Somente o caixa mais recente pode ser reaberto.");
       if (history.some(item => item.id !== boxId && ["ABERTO","REABERTO"].includes(core.normalizarStatus(item.status)))) fail("failed-precondition","Já existe outro caixa aberto.");
       if (["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status))) return {modo:"JA_ABERTO",caixaId:boxId,statusNovo:box.status};
-      if (!["FECHADO","DIVERGENTE"].includes(core.normalizarStatus(box.status))) fail("failed-precondition","Caixa não pode ser reaberto.");
+      if (!["FECHADO","FECHADA","DIVERGENTE"].includes(core.normalizarStatus(box.status))) fail("failed-precondition","Caixa não pode ser reaberto.");
       const closureRef = db.collection("fechamentos_caixa").doc("fechamento_" + boxId);
       const closure = await transaction.get(closureRef);
       if (!closure.exists) fail("failed-precondition","Fechamento não encontrado.");

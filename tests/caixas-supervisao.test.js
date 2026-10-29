@@ -42,3 +42,48 @@ test('resumo fechado usa campos congelados sem depender da carteira ou vendas at
  }
  const legacy=env().model(closed,{closure:{...payment('old'),totalVendasCentavos:3000}});assert.equal(legacy.salesCount,null);assert.equal(legacy.newSales,null);assert.equal(legacy.renewedSales,null);
 });
+
+test('fechamento massivo do supervisor informa a falha do backend sem rejeição silenciosa',async()=>{
+ const html=fs.readFileSync(require('node:path').join(__dirname,'..','master-local.html'),'utf8');
+ const start=html.indexOf('window.fecharSelecionadas = async function(){');
+ const end=html.indexOf('window.criarCaixaParaVendedorFinal',start);
+ assert.ok(start>0&&end>start,'ação do supervisor deve estar definida no painel unificado');
+ const notices=[],selected=['team-a'],opened={id:'box-a'};
+ const w={
+   obterEquipesSelecionadasCaixasIntegro:()=>selected,
+   linhas:()=>[{id:'team-a',estado:'ABERTO',caixasAbertos:[opened]}],
+   limparSelecaoEquipesCaixaIntegro:()=>selected.splice(0),
+   atualizarCaixasIntegro:async()=>{},
+ };
+ const scope={window:w,ICX:{id:c=>c.id},notificarIntegro:msg=>notices.push(msg),
+   confirm:()=>true,console:{warn:()=>{}},fecharCaixaMasterLocalSeguro:async()=>{throw Error('Permissão negada pelo servidor');}};
+ vm.runInNewContext(html.slice(start,end),scope);
+ const output=await w.fecharSelecionadas();
+ assert.equal(output.fechados,0);
+ assert.equal(output.erros,1);
+ assert.equal(output.falhas.length,1);
+ assert.match(output.falhas[0].message,/Permissão negada/);
+ assert.match(notices.at(-1),/Permissão negada/);
+ assert.deepEqual(selected,['team-a'],'preserva a seleção para corrigir o caixa com falha');
+ scope.fecharCaixaMasterLocalSeguro=async()=>({statusFechamento:'FECHADO'});
+ const success=await w.fecharSelecionadas();
+ assert.equal(success.fechados,1);
+ assert.equal(success.falhas.length,0);
+ assert.equal(selected.length,0,'limpa seleção somente após sucesso');
+ assert.match(notices.at(-1),/Fechados: 1/);
+});
+
+test('supervisor considera caixa REABERTO como aberto ao montar fechamento da equipe',()=>{
+ const html=fs.readFileSync(require('node:path').join(__dirname,'..','master-local.html'),'utf8');
+ const start=html.indexOf('caixasAtuaisEquipe(equipe){');
+ const end=html.indexOf('nomeEquipe(equipe){',start);
+ assert.ok(start>0&&end>start,'resolução de caixas por equipe deve existir');
+ const method=html.slice(start,end);
+ const reopened={id:'caixa-reaberto',status:'REABERTO',ativo:true,excluido:false};
+ const ICX={vendedoresDaEquipe:()=>[],registrosDaEquipe:()=>[reopened],caixas:()=>[reopened],
+   statusCaixa:x=>x.status,ultimoFechado:()=>null};
+ const resolved=vm.runInNewContext('({'+method+'}).caixasAtuaisEquipe({id:"e1"})',{ICX});
+ assert.equal(resolved.estado,'ABERTO');
+ assert.equal(resolved.abertos.length,1);
+ assert.equal(resolved.abertos[0].id,'caixa-reaberto');
+});
