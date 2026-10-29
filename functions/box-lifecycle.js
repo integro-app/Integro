@@ -15,7 +15,14 @@ function criarCicloCaixa({ db, functions }) {
     if (!context?.auth?.uid) fail("unauthenticated", "Sessão não autenticada.");
     const uid = id(context.auth.uid);
     const snap = await reader.get(db.collection("usuarios").doc(uid));
-    const user = snap.exists ? snap.data() : null;
+    let user = snap.exists ? snap.data() : null;
+    // Compatível com o login V27: aceita um único cadastro legado vinculado
+    // ao authUid. Duplicidade nunca concede acesso nem altera vínculos.
+    if (!snap.exists) {
+      const legacy = await reader.get(db.collection("usuarios").where("authUid","==",uid).limit(2));
+      if (legacy.docs.length > 1) fail("failed-precondition", "Identidade de usuário ambígua; regularize o cadastro.");
+      if (legacy.docs.length === 1) user = legacy.docs[0].data();
+    }
     if (!user || user.authUid !== uid || user.excluido === true || user.ativo === false || user.acessoLiberado !== true || ["INATIVO","BLOQUEADO","SUSPENSO"].includes(core.normalizarStatus(user.status))) fail("permission-denied", "Sessão sem acesso operacional.");
     const role = roleOf(user);
     if (!role) fail("permission-denied", "Perfil sem permissão para gerir caixa.");
@@ -244,9 +251,27 @@ function criarCicloCaixa({ db, functions }) {
     const saleResults=await Promise.all([query("vendas","vendedorAuthUid",uid),...Array.from(sellerIds,sellerId=>query("vendas","vendedorId",sellerId)),query("vendas","caixaId",boxId)]);
     const sales=[...new Map(saleResults.flat().map(s=>[s.id,s])).values()].sort((a,b)=>a.id.localeCompare(b.id));
     if(sales.some(s=>(s.vendedorAuthUid ? s.vendedorAuthUid!==uid : !sellerIds.has(s.vendedorId)) && !(core.texto(s.caixaId || s.idCaixa)===boxId && s.vendedorOriginalAuthUid===uid && s.transferidoParaAuthUid===s.vendedorAuthUid))) fail("failed-precondition","Venda com vínculo de vendedor inconsistente.");
+    // Cada venda exigia uma consulta Firestore própria para parcelas. Em
+    // carteiras grandes isso multiplicava RPCs e podia esgotar o tempo da
+    // callable. Agrupa até 8 vendas (máximo operacional: 90 parcelas/venda)
+    // sem remover filtros por tenant nem truncar registros silenciosamente.
+    const saleIds=sales.map(s=>s.id);
+    const installmentQueries=[];
+    for(let i=0;i<saleIds.length;i+=8) {
+      const chunk=saleIds.slice(i,i+8);
+      installmentQueries.push(
+        transaction.get(db.collection("parcelas")
+          .where("clientePlataformaId","==",who.tenant)
+          .where("vendaId",chunk.length===1?"==":"in",chunk.length===1?chunk[0]:chunk)
+          .limit(1001)).then(result=>{
+            if(result.docs.length>1000) fail("resource-exhausted","Volume de parcelas exige conferência assistida; nenhum fechamento foi gravado.");
+            return result.docs.map(doc=>({...doc.data(),id:doc.id}));
+          })
+      );
+    }
     const [payments,requests,visits,ledger,...parts]=await Promise.all([
       query("pagamentos","caixaId",boxId),query("solicitacoes","caixaId",boxId),query("historicoCobrancas","caixaId",boxId),query("lancamentos_financeiros","caixaId",boxId),
-      ...sales.map(s=>query("parcelas","vendaId",s.id))
+      ...installmentQueries
     ]);
     const raw={box,sales,installments:parts.flat(),payments,requests,visits,ledger,ownerUid:uid,sellerIds:[...sellerIds]};
     const result=require("./box-reconciliation").calcularConferencia({...raw,fail});
