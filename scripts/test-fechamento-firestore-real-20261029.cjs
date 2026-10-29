@@ -13,13 +13,14 @@ const admin = require("../functions/node_modules/firebase-admin");
 const core = require("../functions/financial-core");
 
 const project = "integro-novo";
-const run = String(process.env.GITHUB_RUN_ID || "");
+const mode = process.argv[2] || "--run";
+const run = String(mode==="--cleanup" && process.env.E2E_CLEANUP_RUN_ID ||
+  process.env.GITHUB_RUN_ID || "");
 if (process.env.GITHUB_ACTIONS !== "true" || !/^\d{8,}$/.test(run) ||
     process.env.TESTE_CAIXA_REAL_AUTORIZADO !== "SIM_20261029" ||
     process.env.GOOGLE_CLOUD_PROJECT && process.env.GOOGLE_CLOUD_PROJECT !== project) {
   throw Error("Execucao nao autorizada fora do workflow de homologacao controlado.");
 }
-const mode = process.argv[2] || "--run";
 if (!["--run","--cleanup"].includes(mode)) throw Error("Modo nao reconhecido.");
 const tag = "INTEGRO_CAIXA_E2E_20261029";
 const suffix = run + "_" + (process.env.GITHUB_RUN_ATTEMPT || "1");
@@ -140,10 +141,15 @@ async function cleanup() {
     const d=doc.data();
     const generated=["fechamentos_caixa","historico_fechamentos_caixa","historico_estados_caixa","logs"].includes(tuple[0]);
     const control=tuple[0]==="controle_caixas";
+    // O fechamento cria controle_caixas com apenas atualizadoEm. A prova
+    // de propriedade e o documento sentinela do tenant + a checagem previa
+    // de ausencia do ID. Nao aceitar campos extras nem ID divergente.
+    const controlOwned = control && tuple[1]===tenant+"_"+uid &&
+      Object.keys(d||{}).every(key=>key==="atualizadoEm");
     const belongs=generated ? d?.caixaId===boxId
-      : control ? d?.vendedorId===uid
+      : control ? controlOwned
       : d?.homologacaoTag===tag && d?.homologacaoRun===run;
-    if(d?.clientePlataformaId!==tenant || !belongs) {
+    if((!control && d?.clientePlataformaId!==tenant) || !belongs) {
       log("cleanup_recusado",{collection:tuple[0],reason:"documento_nao_pertence_a_execucao"});
       throw Error("Interrompida limpeza: documento sem marcador de homologacao.");
     }
