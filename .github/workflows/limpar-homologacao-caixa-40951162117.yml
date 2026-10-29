@@ -1,0 +1,56 @@
+name: Limpeza isolada do teste real de caixa 40951162117
+
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths:
+      - ".github/workflows/limpar-homologacao-caixa-40951162117.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  limpar-fixture:
+    if: "github.event.head_commit.message == 'cleanup: excluir somente fixtures caixa e2e 40951162117'"
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 10
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-caixa-e2e-credencial.json
+      TESTE_CAIXA_REAL_AUTORIZADO: SIM_20261029
+      E2E_CLEANUP_RUN_ID: "40951162117"
+      GOOGLE_CLOUD_PROJECT: integro-novo
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Validar hash revisado e sintaxe
+        run: |
+          test "$(git rev-parse HEAD^)" = "41c2c7357ab7679e2b486d0bbf584fe8a47ccf87"
+          node --check scripts/test-fechamento-firestore-real-20261029.cjs
+      - name: Dependencias
+        run: npm ci --prefix functions
+      - name: Configurar acesso temporario
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          key=os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON","")
+          if not key: raise SystemExit("Credencial ausente")
+          json.loads(key)
+          p=pathlib.Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+          p.write_text(key);p.chmod(0o600)
+          PY
+      - name: Excluir e confirmar ausencia de TODOS os registros E2E
+        run: node scripts/test-fechamento-firestore-real-20261029.cjs --cleanup
+      - name: Descartar credencial
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
