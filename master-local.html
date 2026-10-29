@@ -18461,7 +18461,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!caixas.length) return notificarIntegro("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
 
-    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0, falhas: [] };
     for (const c of caixas){
       try {
         const resultado = await fecharCaixaMasterLocalSeguro(c);
@@ -18480,14 +18480,26 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       }
     }
 
-    window.limparSelecaoEquipesCaixaIntegro?.();
-    if (typeof window.atualizarCaixasIntegro === "function") await window.atualizarCaixasIntegro();
+    // Falhas não podem sumir após a atualização da lista: mantém a seleção para correção.
+    if (!resumoFechamento.falhas.length) window.limparSelecaoEquipesCaixaIntegro?.();
+    try {
+      if (typeof window.atualizarCaixasIntegro === "function") await window.atualizarCaixasIntegro();
+    } catch (erroAtualizacao) {
+      console.warn("Caixas fechados; falha ao atualizar a lista:", erroAtualizacao);
+      resumoFechamento.falhas.push({
+        caixaId: "",
+        code: "ERRO_ATUALIZACAO",
+        message: String(erroAtualizacao?.message || "Atualização da lista indisponível.")
+      });
+      resumoFechamento.erros++;
+    }
 
     const primeiraFalha = resumoFechamento.falhas[0];
     const detalheFalha = primeiraFalha
       ? ` Motivo: ${primeiraFalha.message}`
       : "";
     notificarIntegro(`Fechamento de caixa concluído. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}.${detalheFalha}`);
+    return resumoFechamento;
   };
 
   window.criarCaixaParaVendedorFinal = async function(vendedor, equipe, snapshot){
