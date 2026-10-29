@@ -21,7 +21,7 @@ if (process.env.GITHUB_ACTIONS !== "true" || !/^\d{8,}$/.test(run) ||
     process.env.GOOGLE_CLOUD_PROJECT && process.env.GOOGLE_CLOUD_PROJECT !== project) {
   throw Error("Execucao nao autorizada fora do workflow de homologacao controlado.");
 }
-if (!["--run","--cleanup"].includes(mode)) throw Error("Modo nao reconhecido.");
+if (!["--run","--cleanup","--prepare-ui","--verify-ui"].includes(mode)) throw Error("Modo nao reconhecido.");
 const tag = "INTEGRO_CAIXA_E2E_20261029";
 const suffix = run + "_" + (process.env.GITHUB_RUN_ATTEMPT || "1");
 const tenant = "homol_caixa_e2e_" + suffix;
@@ -128,6 +128,30 @@ async function runTest() {
     "dados de outra empresa detectados");
   log("fechamento_real_e_auditoria_ok",{status:"FECHADO",duplicidade:"IDEMPOTENTE",centavos:expectedCents});
 }
+async function prepareUi() {
+  const tokenFile=process.env.E2E_UI_TOKEN_FILE;
+  if(!tokenFile || !tokenFile.startsWith("/tmp/") || !tokenFile.endsWith(".json"))
+    throw Error("Arquivo temporario de sessao UI invalido.");
+  await prepare();
+  const token=await auth.createCustomToken(uid,{integroSessionId:sessionId});
+  fs.writeFileSync(tokenFile,JSON.stringify({token,boxId,expectedCents,tenant,uid}),{mode:0o600,flag:"wx"});
+  log("fixture_ui_pronta",{caixa:boxId});
+}
+async function verifyUi() {
+  const ids=[["caixas",boxId],["fechamentos_caixa","fechamento_"+boxId],
+    ["historico_fechamentos_caixa",historyId],["historico_estados_caixa",historyId],["logs",historyId]];
+  const entries=await db.getAll(...ids.map(getRef));
+  requireCheck(entries.every(s=>s.exists),"fechamento UI nao criou todos os documentos");
+  const [box,closure,history,states,logDoc]=entries.map(s=>s.data());
+  requireCheck(box.clientePlataformaId===tenant&&box.status==="FECHADO"&&box.ativo===false,
+    "caixa da interface nao foi efetivamente fechado");
+  requireCheck(closure.clientePlataformaId===tenant&&closure.statusFechamento==="FECHADO"&&
+    closure.diferencaCentavos===0&&closure.valorInformadoCentavos===expectedCents,
+    "fechamento da interface tem valores inesperados");
+  requireCheck([history,states,logDoc].every(d=>d.clientePlataformaId===tenant&&d.caixaId===boxId),
+    "historico, log ou auditoria incorretos");
+  log("interface_fechamento_real_ok",{caixa:boxId,centavos:expectedCents});
+}
 async function cleanup() {
   const removed=[];
   const ownership=await db.collection("clientes_integro").doc(tenant).get();
@@ -168,6 +192,8 @@ async function cleanup() {
 }
 (async()=>{
   if(mode==="--cleanup") return cleanup();
+  if(mode==="--prepare-ui") return prepareUi();
+  if(mode==="--verify-ui") return verifyUi();
   try {await runTest();}
   finally {await cleanup();}
 })().catch(error=>{console.error("FALHA TESTE CAIXA REAL:",error?.message||String(error));process.exitCode=1;});
