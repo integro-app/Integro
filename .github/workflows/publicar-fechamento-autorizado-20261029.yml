@@ -1,0 +1,92 @@
+name: Publicar fechamento autorizado - 2026-10-29
+
+# Execucao unica autorizada na conversa: o commit abaixo dispara a rotina.
+# Qualquer push comum, PR ou outro commit NAO publica.
+on:
+  push:
+    branches:
+      - codex/migracao-codespaces-20261026
+    paths:
+      - ".github/workflows/publicar-fechamento-autorizado-20261029.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    if: github.event.head_commit.message == 'release: publicar fechamento autorizado 2026-10-29'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Conferir commit base aprovado
+        run: test "$(git rev-parse HEAD^)" = "d427eeb7c87945705c9342f50b10ff315dcecda3"
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Testar os 60 cenarios de fechamento
+        run: node --test tests/box-lifecycle.test.js tests/box-closure-backend.test.js tests/vendedor-fechamento-caixa.test.js tests/vendedor-fechamento-unificado.test.js
+      - name: Verificacao do projeto e interface
+        run: npm run verify
+      - name: Testar regras somente nos emuladores
+        run: npm run test:rules
+
+  publicar:
+    if: github.event.head_commit.message == 'release: publicar fechamento autorizado 2026-10-29'
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/integro-firebase-deploy.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Conferir commit base aprovado
+        run: test "$(git rev-parse HEAD^)" = "d427eeb7c87945705c9342f50b10ff315dcecda3"
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Configurar credencial temporaria
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          value=os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON","")
+          if not value:
+              raise SystemExit("Credencial Firebase nao configurada. Nenhum deploy iniciado.")
+          json.loads(value)
+          target=pathlib.Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+          target.write_text(value)
+          target.chmod(0o600)
+          PY
+      - name: Publicar SOMENTE conferencia e fechamento
+        run: npx firebase deploy --only functions:conferirCaixaOperacional,functions:fecharCaixaOperacional --project integro-novo --non-interactive
+      - name: Conferir as duas Functions publicadas
+        run: |
+          npx firebase functions:list --project integro-novo > functions-publicadas.txt
+          grep -q 'conferirCaixaOperacional' functions-publicadas.txt
+          grep -q 'fecharCaixaOperacional' functions-publicadas.txt
+      - name: Publicar SOMENTE o Hosting
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Remover credencial e inventario temporario
+        if: always()
+        run: |
+          rm -f "$GOOGLE_APPLICATION_CREDENTIALS" functions-publicadas.txt
