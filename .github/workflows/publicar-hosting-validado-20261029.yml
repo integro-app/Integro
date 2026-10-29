@@ -29,7 +29,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - name: Travar versao revisada
-        run: test "$(git rev-parse HEAD^)" = "06a60704dfe04736c17c8944f6831458746a7cd0"
+        run: test "$(git rev-parse HEAD^)" = "e41015ecf69a055bf5c2271e4d238f5640561126"
       - name: Instalar dependencias
         run: |
           npm ci
@@ -61,7 +61,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Travar versao revisada
-        run: test "$(git rev-parse HEAD^)" = "06a60704dfe04736c17c8944f6831458746a7cd0"
+        run: test "$(git rev-parse HEAD^)" = "e41015ecf69a055bf5c2271e4d238f5640561126"
       - name: Instalar dependencias
         run: npm ci
       - name: Credencial temporaria de deploy
