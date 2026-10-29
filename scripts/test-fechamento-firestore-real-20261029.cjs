@@ -129,15 +129,23 @@ async function runTest() {
 }
 async function cleanup() {
   const removed=[];
-  // Nunca delete registros de terceiros. Apenas IDs predefinidos marcados
-  // com tenant E2E (fechamento gerado herda clientePlataformaId).
-  for(const tuple of docs.slice().reverse()){
+  const ownership=await db.collection("clientes_integro").doc(tenant).get();
+  // Se a criacao inicial nao ocorreu, NAO se apagam documentos existentes
+  // apenas porque contêm IDs parecidos. O usuario Auth e validado por email.
+  if(ownership.exists && (ownership.data()?.homologacaoTag!==tag || ownership.data()?.homologacaoRun!==run))
+    throw Error("Marcador de propriedade ausente: limpeza suspensa.");
+  if(ownership.exists) for(const tuple of docs.slice().reverse()){
     const doc=await getRef(tuple).get();
     if(!doc.exists)continue;
     const d=doc.data();
-    if(d?.clientePlataformaId!==tenant) {
-      log("cleanup_recusado",{collection:tuple[0],reason:"tenant_diferente"});
-      throw Error("Interrompida limpeza: documento fora do tenant isolado.");
+    const generated=["fechamentos_caixa","historico_fechamentos_caixa","historico_estados_caixa","logs"].includes(tuple[0]);
+    const control=tuple[0]==="controle_caixas";
+    const belongs=generated ? d?.caixaId===boxId
+      : control ? d?.vendedorId===uid
+      : d?.homologacaoTag===tag && d?.homologacaoRun===run;
+    if(d?.clientePlataformaId!==tenant || !belongs) {
+      log("cleanup_recusado",{collection:tuple[0],reason:"documento_nao_pertence_a_execucao"});
+      throw Error("Interrompida limpeza: documento sem marcador de homologacao.");
     }
     await doc.ref.delete();
     removed.push(tuple[0]);
