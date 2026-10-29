@@ -1,0 +1,85 @@
+name: Publicar Hosting validado - 2026-10-29
+
+# Execucao pontual autorizada; sem deploy de Firestore Rules ou Functions.
+on:
+  push:
+    branches:
+      - codex/migracao-codespaces-20261026
+    paths:
+      - ".github/workflows/publicar-hosting-validado-20261029.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: hosting integro validado 2026-10-29'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Travar versao revisada
+        run: test "$(git rev-parse HEAD^)" = "06a60704dfe04736c17c8944f6831458746a7cd0"
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Testar fechamento do caixa
+        run: node --test tests/box-lifecycle.test.js tests/box-closure-backend.test.js tests/vendedor-fechamento-caixa.test.js tests/vendedor-fechamento-unificado.test.js
+      - name: Verificar projeto e Hosting
+        run: npm run verify
+      - name: Validar Rules isoladas em emuladores
+        run: npm run test:rules
+
+  publicar:
+    if: "github.event.head_commit.message == 'release: hosting integro validado 2026-10-29'"
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-hosting-deploy.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Travar versao revisada
+        run: test "$(git rev-parse HEAD^)" = "06a60704dfe04736c17c8944f6831458746a7cd0"
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Credencial temporaria de deploy
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          raw=os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON','')
+          if not raw:
+              raise SystemExit('Credencial ausente; nenhum deploy iniciado.')
+          json.loads(raw)
+          dest=pathlib.Path(os.environ['GOOGLE_APPLICATION_CREDENTIALS'])
+          dest.write_text(raw)
+          dest.chmod(0o600)
+          PY
+      - name: Publicar somente Hosting
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Limpar credencial
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
