@@ -1,0 +1,89 @@
+name: Reparar login da empresa - publicacao autorizada
+
+# Preparado sem disparar deploy. A publicacao so ocorre com commit de liberacao
+# explicito e validacao automatizada em ambiente isolado.
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths:
+      - ".github/workflows/publicar-reparo-login-20261029.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: reparar login empresa 2026-10-29'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Conferir commit aprovado
+        run: test "$(git rev-parse HEAD^)" = "__COMMIT_BASE__"
+      - name: Dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Testes de login
+        run: node --test tests/auth-diagnostics.test.js
+      - name: Verificacao geral
+        run: npm run verify
+      - name: Regras em emuladores
+        run: npm run test:rules
+
+  publicar:
+    if: "github.event.head_commit.message == 'release: reparar login empresa 2026-10-29'"
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-firebase-login-deploy.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Conferir commit aprovado
+        run: test "$(git rev-parse HEAD^)" = "__COMMIT_BASE__"
+      - run: npm ci
+      - run: npm ci --prefix functions
+      - name: Preparar credencial temporaria
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          raw=os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON','')
+          if not raw:
+              raise SystemExit('Credencial ausente, deploy bloqueado.')
+          json.loads(raw)
+          p=pathlib.Path(os.environ['GOOGLE_APPLICATION_CREDENTIALS'])
+          p.write_text(raw)
+          p.chmod(0o600)
+          PY
+      - name: Publicar somente verificacao de empresa no login
+        run: npx firebase deploy --only functions:consultarAcessoEmpresaLoginV27 --project integro-novo --non-interactive
+      - name: Confirmar Function publicada antes da interface
+        run: npx firebase functions:list --project integro-novo | grep -q consultarAcessoEmpresaLoginV27
+      - name: Publicar somente Hosting
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Remover credencial
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
