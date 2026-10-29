@@ -18,7 +18,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Bloquear versao inesperada
-        run: test "$(git rev-parse HEAD^)" = "7635e2699aec5462d8ec257208646ca6e0cf41c0"
+        run: test "$(git rev-parse HEAD^)" = "dabc7f296df54a178989f7a8927008be85272999"
       - run: npm ci
       - run: npm ci --prefix functions
       - name: Testar inicializacao tardia e autorizacao do vendedor
@@ -46,7 +46,7 @@ jobs:
           node-version: '22'
           cache: npm
       - name: Validar revisao
-        run: test "$(git rev-parse HEAD^)" = "7635e2699aec5462d8ec257208646ca6e0cf41c0"
+        run: test "$(git rev-parse HEAD^)" = "dabc7f296df54a178989f7a8927008be85272999"
       - run: npm ci
       - name: Credencial temporaria
         env:
