@@ -8,7 +8,7 @@ const assert=require("node:assert/strict");
 const secretFile=process.env.E2E_UI_TOKEN_FILE;
 if(process.env.GITHUB_ACTIONS!=="true"||process.env.TESTE_CAIXA_REAL_AUTORIZADO!=="SIM_20261029"||
    !secretFile?.startsWith("/tmp/"))throw Error("Execucao UI nao autorizada.");
-const {token,boxId,tenant,expectedCents,uid}=JSON.parse(fs.readFileSync(secretFile,"utf8"));
+const {token,sessionId,boxId,tenant,expectedCents,uid}=JSON.parse(fs.readFileSync(secretFile,"utf8"));
 fs.unlinkSync(secretFile);
 const ROOT="https://integro-novo.web.app";
 let browser, page;
@@ -37,8 +37,13 @@ async function checkPage(){
     page=await browser.newPage({viewport:{width:1280,height:800},locale:"pt-BR",timezoneId:"America/Sao_Paulo"});
     page.on("pageerror",e=>errors.push(String(e?.message||e).slice(0,180)));
     await page.goto(ROOT+"/index.html",{waitUntil:"domcontentloaded",timeout:45000});
-    await page.waitForFunction(()=>Boolean(window.firebase?.auth),{timeout:25000});
-    await page.evaluate(async secret=>{await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);await firebase.auth().signInWithCustomToken(secret);},token);
+    await page.waitForFunction(()=>Boolean(window.firebase?.auth),null,{timeout:25000});
+    await page.evaluate(async ({secret,sid})=>{
+      localStorage.setItem("integro:v27:session-id",sid);
+      localStorage.setItem("integro:v27:last-activity",String(Date.now()));
+      await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      await firebase.auth().signInWithCustomToken(secret);
+    },{secret:token,sid:sessionId});
     await page.goto(ROOT+"/vendedor.html",{waitUntil:"domcontentloaded",timeout:45000});
     await page.waitForFunction(expected=>window.firebase?.auth?.()?.currentUser?.uid===expected&&
       window.caixaAtual?.id&&window.usuarioLogado?.authUid,uid,{timeout:75000});
