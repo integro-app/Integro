@@ -87,3 +87,37 @@ test('supervisor considera caixa REABERTO como aberto ao montar fechamento da eq
  assert.equal(resolved.abertos.length,1);
  assert.equal(resolved.abertos[0].id,'caixa-reaberto');
 });
+
+test('fechamento em lote exige confirmação e justificativa antes de registrar não pagamentos',async()=>{
+ const html=fs.readFileSync(require('node:path').join(__dirname,'..','master-local.html'),'utf8');
+ const start=html.indexOf('async function fecharCaixaMasterLocalSeguro(caixa){');
+ const end=html.indexOf('window.fecharSelecionadas = async function()',start);
+ assert.ok(start>0&&end>start,'fechamento gerencial em lote deve estar disponível');
+ let confirmed=false,motive='',registered=[];
+ const w={IntegroCaixa:{prepararSnapshotFechamentoCaixa:async()=>({conferenciaId:'snapshot',caixaFinalEsperadoCentavos:10000,pendenciasCobranca:2}),
+  registrarFechamentoCaixaTransacional:async input=>{registered.push(input);return {modo:'CRIACAO',statusFechamento:'FECHADO'};}}};
+ const sandbox={window:w,ICX:{id:x=>x.id,user:()=>({id:'supervisor'}),tenant:()=> 'a'},
+  confirm:()=>confirmed,prompt:()=>motive};
+ vm.runInNewContext(html.slice(start,end),sandbox);
+ assert.equal((await sandbox.fecharCaixaMasterLocalSeguro({id:'box'})).modo,'CANCELADO');
+ assert.equal(registered.length,0);
+ confirmed=true;
+ assert.equal((await sandbox.fecharCaixaMasterLocalSeguro({id:'box'})).modo,'CANCELADO');
+ assert.equal(registered.length,0);
+ motive='Auditoria: não houve baixa até o fechamento';
+ const outcome=await sandbox.fecharCaixaMasterLocalSeguro({id:'box',vendedorAuthUid:'seller'});
+ assert.equal(outcome.statusFechamento,'FECHADO');
+ assert.equal(registered.length,1);
+ assert.equal(registered[0].encerramentoGerencial,true);
+ assert.equal(registered[0].justificativa,motive);
+ assert.equal(registered[0].vendedorAuthUid,'seller');
+});
+test('resumo separa não pagamentos gerenciais das visitas comprovadas',()=>{
+ const closed={...box,status:'FECHADO',ativo:false};
+ const closure={...payment('closure'),totalCobrancas:2,totalVisitadas:0,totalNaoPagas:2,totalSemBaixaGerencial:2,carteiraFinalCentavos:9000};
+ const m=env().model(closed,{closure});
+ assert.equal(m.unpaid,2);
+ assert.equal(m.semBaixaGerencial,2);
+ assert.equal(m.visited,0);
+ assert.equal(m.wallet,9000);
+});
