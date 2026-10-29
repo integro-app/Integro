@@ -1089,7 +1089,14 @@ test('rules: criação de lead respeita matriz indicacoes.criar e mantém invari
   assert.match(rules, /data\.get\("statusCliente", ""\) == "LEAD"/);
   assert.match(rules, /data\.get\("possuiVendaAtiva", false\) == false/);
   assert.match(rules, /data\.get\("saldoDevedorCentavos", 0\) == 0/);
-  assert.match(rules, /allow create: if canCreateClienteLead\(request\.resource\.data\)/);
+  // Valida a autorizacao de LEAD dentro de cada regra de criacao.
+  // A condicao pode ter outros caminhos OR antes do LEAD, sem ampliar acessos.
+  for (const collection of ['clientes_operacionais', 'clientes']) {
+    const block = rules.split(`match /${collection}/{id} {`)[1]?.split('allow update:')[0] || '';
+    const createRule = block.match(/allow create: if ([\\s\\S]*?);/)?.[1] || '';
+    assert.match(createRule, /canCreateClienteLead\\(request\\.resource\\.data\\)/);
+    assert.match(createRule, /isActiveUser\\(\\) && isSameTenantWrite\\(\\)/);
+  }
 });
 
 test('rules: criação de indicação aceita operador autorizado e continua bloqueando vendedor', () => {
