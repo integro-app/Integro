@@ -2903,7 +2903,7 @@
   document.addEventListener("integro-v27-pronto", agendarRecuperacaoPainelVendedor);
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", agendarRecuperacaoPainelVendedor, { once: true });
-  } else {
+  } else if (document.readyState === "interactive" || document.readyState === "complete") {
     agendarRecuperacaoPainelVendedor();
   }
   window.addEventListener?.("load", agendarRecuperacaoPainelVendedor, { once: true });
