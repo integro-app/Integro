@@ -311,7 +311,14 @@ function criarCicloCaixa({ db, functions }) {
       if(history.filter(isOpen).length!==1) fail("failed-precondition","Regularize os múltiplos caixas abertos.");
       const snapshot=await conferencia(tx,who,boxId);
       if(snapshot.conferenciaId!==confirmation) fail("failed-precondition","Movimentações alteradas durante a conferência. Confira novamente.");
-      if(snapshot.pendenciasCobranca) fail("failed-precondition","Conclua as visitas/cobranças obrigatórias: "+snapshot.pendenciasCobranca);
+      const pendingCount=snapshot.pendenciasCobranca;
+      const managerial=["MASTER_LOCAL","GERENTE","SUPERVISOR"].includes(who.role);
+      const supervised=pendingCount>0 && managerial && input.fechamentoSupervisionado===true;
+      if(input.fechamentoSupervisionado===true && !managerial) fail("permission-denied","Fechamento supervisionado exclusivo da gestão.");
+      if(pendingCount && !supervised) fail("failed-precondition","Conclua as visitas/cobranças obrigatórias: "+pendingCount+". Supervisor ou gerente pode encerrar com justificativa e baixa automática como não pago.");
+      if(supervised && reason.length<8) fail("invalid-argument","Informe justificativa da gestão (mínimo 8 caracteres) para encerrar as cobranças sem baixa.");
+      if(supervised && (pendingCount>100 || snapshot.cobrancasSemBaixa?.length!==pendingCount))
+        fail("resource-exhausted","Mais de 100 cobranças sem baixa ou rota inconsistente. Faça uma conferência assistida; nenhuma baixa foi registrada.");
       if(snapshot.pagamentosPendentes) fail("failed-precondition","Regularize os pagamentos pendentes.");
       if(snapshot.aprovacoesPendentes) fail("failed-precondition","Existem aprovações obrigatórias pendentes: "+snapshot.aprovacoesPendentes);
       if(snapshot.inconsistencias.length) fail("failed-precondition","Conferência impeditiva: "+snapshot.inconsistencias.join(", "));
@@ -325,16 +332,60 @@ function criarCicloCaixa({ db, functions }) {
       if(immutable.exists) fail("already-exists","Este ciclo já possui fechamento registrado.");
       const control=db.collection("controle_caixas").doc(who.tenant+"_"+(box.vendedorAuthUid || seller.data().authUid));
       await tx.get(control);
-      const payload={...snapshot,caixaId:boxId,fechamentoId:closeRef.id,clientePlataformaId:who.tenant,vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid || seller.data().authUid,vendedorNome:box.vendedorNome || "",equipeId:box.equipeId || "",equipeNome:box.equipeNome || "",caixaFinalInformadoCentavos:value,valorEsperadoCentavos:snapshot.caixaFinalEsperadoCentavos,valorInformadoCentavos:value,diferencaCentavos:difference,statusFechamento:status,status,justificativa:reason,observacao:reason,snapshotAuditoria:snapshot,conferidoPor:who.uid,conferidoPorNome:who.user.nome || who.user.email || "",conferidoEm:stamp,fechadoPor:who.uid,fechadoPorNome:who.user.nome || who.user.email || "",fechadoEm:stamp,fechadoEmTexto:new Date().toISOString(),criadoEm:stamp,atualizadoEm:stamp,reaberto:false,refechamentoId:cycle==="inicial"?"":historyId,totalReaberturas:previous.exists?core.inteiro(previous.data().totalReaberturas):0,modo:cycle==="inicial"?"CRIACAO":"REFECHAMENTO"};
+      // Todas as leituras precedem as escritas na transação; registros prévios
+      // (mesmo cancelados) exigem revisão, nunca são sobrescritos automaticamente.
+      const automaticRefs=supervised ? snapshot.cobrancasSemBaixa.map(item=>{
+        const historicId="nao_pagamento_"+[who.tenant,boxId,item.vendaId,snapshot.dataOperacional]
+          .map(core.texto).join("_").replace(/[^a-zA-Z0-9_-]+/g,"_");
+        return {item,ref:db.collection("historicoCobrancas").doc(historicId)};
+      }):[];
+      const existingAutomatic=await Promise.all(automaticRefs.map(entry=>tx.get(entry.ref)));
+      if(existingAutomatic.some(s=>s.exists))
+        fail("failed-precondition","Existe baixa anterior conflitante para uma cobrança. Revise o histórico antes de fechar.");
+      const auditSnapshot=supervised ? {
+        ...snapshot,pendenciasCobranca:0,totalNaoPagas:snapshot.totalNaoPagas+pendingCount,
+        totalNaoPagasAutomaticas:(snapshot.totalNaoPagasAutomaticas||0)+pendingCount,
+        // Não incrementa totalVisitadas: baixa administrativa não comprova visita.
+        cobrancasSemBaixa:[],pendenciasRegularizadasNoFechamento:pendingCount
+      }:snapshot;
+      const payload={...auditSnapshot,caixaId:boxId,fechamentoId:closeRef.id,clientePlataformaId:who.tenant,vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid || seller.data().authUid,vendedorNome:box.vendedorNome || "",equipeId:box.equipeId || "",equipeNome:box.equipeNome || "",caixaFinalInformadoCentavos:value,valorEsperadoCentavos:snapshot.caixaFinalEsperadoCentavos,valorInformadoCentavos:value,diferencaCentavos:difference,statusFechamento:status,status,justificativa:reason,observacao:reason,snapshotAuditoria:auditSnapshot,fechamentoSupervisionado:supervised,baixasAutomaticasQuantidade:supervised?pendingCount:0,baixasAutomaticasVendaIds:supervised?snapshot.cobrancasSemBaixa.map(item=>item.vendaId):[],conferidoPor:who.uid,conferidoPorNome:who.user.nome || who.user.email || "",conferidoEm:stamp,fechadoPor:who.uid,fechadoPorNome:who.user.nome || who.user.email || "",fechadoEm:stamp,fechadoEmTexto:new Date().toISOString(),criadoEm:stamp,atualizadoEm:stamp,reaberto:false,refechamentoId:cycle==="inicial"?"":historyId,totalReaberturas:previous.exists?core.inteiro(previous.data().totalReaberturas):0,modo:cycle==="inicial"?"CRIACAO":"REFECHAMENTO"};
       delete payload.caixa;
+      if(supervised) {
+        const reasonForRecord="Sem baixa registrada até o fechamento supervisionado; situação administrativa não comprova visita ou recusa de pagamento.";
+        for(const {item,ref} of automaticRefs) {
+          tx.set(ref,{
+            id:ref.id,operacaoId:ref.id,idempotencyKey:ref.id,
+            clientePlataformaId:who.tenant,tenantId:who.tenant,caixaId:boxId,
+            vendaId:item.vendaId,clienteId:item.clienteId,clienteNome:item.clienteNome,
+            vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid||seller.data().authUid,
+            vendedorUid:box.vendedorAuthUid||seller.data().authUid,
+            vendedorNome:box.vendedorNome||seller.data().nome||"",
+            tipo:"NAO_PAGAMENTO",acao:"NAO_PAGAMENTO",status:"REGISTRADO",cancelado:false,
+            origem:"FECHAMENTO_SUPERVISIONADO",baixaAutomatica:true,visitaRealizada:false,
+            motivo:reasonForRecord,justificativaGestor:reason,registradoPorAuthUid:who.uid,
+            registradoPorPerfil:who.role,registradoPorNome:who.user.nome||who.user.email||"",
+            data:snapshot.dataOperacional,dataOperacional:snapshot.dataOperacional,
+            criadoEm:stamp,atualizadoEm:stamp
+          });
+        }
+        tx.set(db.collection("logs").doc(historyId+"_baixas"),{
+          tipoAcao:"CAIXA_FECHAMENTO_SUPERVISIONADO_BAIXAS_AUTOMATICAS",
+          clientePlataformaId:who.tenant,caixaId:boxId,
+          vendedorId:box.vendedorId,usuarioAuthUid:who.uid,perfilResponsavel:who.role,
+          motivo:reason,quantidade:pendingCount,
+          vendaIds:snapshot.cobrancasSemBaixa.map(item=>item.vendaId),
+          observacao:"Ausência de baixa tratada administrativamente; visitas e recebimentos não foram presumidos.",
+          criadoEm:stamp
+        });
+      }
       // Substitui a projeção atual; todos os ciclos são preservados em documentos imutáveis.
       tx.set(closeRef,payload);
       tx.set(immutableRef,{...payload,fechamentoAnterior:previous.exists?previous.data():null,statusAnterior:box.status,statusNovo:status,autorId:who.uid,criadoEm:stamp});
       tx.update(boxRef,{status,ativo:false,fechado:true,reaberto:false,fechamentoId:closeRef.id,valorCalculadoFechamentoCentavos:snapshot.caixaFinalEsperadoCentavos,valorCalculadoFechamento:snapshot.caixaFinalEsperadoCentavos/100,valorFisicoFechamentoCentavos:value,valorFisicoFechamento:value/100,valorRealFechamentoCentavos:value,valorRealFechamento:value/100,divergenciaFechamentoCentavos:difference,divergenciaFechamento:difference/100,fechamentoDivergente:!!difference,observacaoFechamento:reason,fechadoPorId:who.uid,fechadoPorNome:payload.fechadoPorNome,fechadoEm:stamp,atualizadoEm:stamp});
       tx.set(control,{atualizadoEm:stamp},{merge:true});
       tx.set(db.collection("historico_estados_caixa").doc(historyId),{caixaId:boxId,clientePlataformaId:who.tenant,statusAnterior:box.status,statusNovo:status,fechamentoId:closeRef.id,autorId:who.uid,criadoEm:stamp});
-      tx.set(db.collection("logs").doc(historyId),{tipoAcao:status==="FECHADO"?"CAIXA_FECHADO":"CAIXA_FECHAMENTO_DIVERGENTE",caixaId:boxId,clientePlataformaId:who.tenant,usuarioAuthUid:who.uid,valorEsperadoCentavos:snapshot.caixaFinalEsperadoCentavos,valorInformadoCentavos:value,diferencaCentavos:difference,criadoEm:stamp});
-      return {modo:payload.modo,caixaId:boxId,fechamentoId:closeRef.id,statusFechamento:status,diferencaCentavos:difference,snapshot:payload};
+      tx.set(db.collection("logs").doc(historyId),{tipoAcao:status==="FECHADO"?"CAIXA_FECHADO":"CAIXA_FECHAMENTO_DIVERGENTE",caixaId:boxId,clientePlataformaId:who.tenant,usuarioAuthUid:who.uid,valorEsperadoCentavos:snapshot.caixaFinalEsperadoCentavos,valorInformadoCentavos:value,diferencaCentavos:difference,fechamentoSupervisionado:supervised,baixasAutomaticasQuantidade:supervised?pendingCount:0,criadoEm:stamp});
+      return {modo:payload.modo,caixaId:boxId,fechamentoId:closeRef.id,statusFechamento:status,diferencaCentavos:difference,fechamentoSupervisionado:supervised,baixasAutomaticasQuantidade:supervised?pendingCount:0,snapshot:payload};
     });
   }
   async function tratar(data,context) {

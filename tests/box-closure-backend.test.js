@@ -139,3 +139,91 @@ test('previsto congelado segue a parcela nominal da carteira e não diminui com 
  const route=require('../js/vendedor-operacao').montarCarteira({vendas:[s],parcelas:[i],pagamentosHoje:[p],usuario:{id:'seller',authUid:'seller',clientePlataformaId:'a'},hoje:core.hojeSP(),caixaId:'box'}).filter(r=>r.comCobrancaHoje||r.pagoHoje||r.naoPagoHoje);
  assert.equal(snapshot.totalPrevistoCentavos,10000);assert.equal(snapshot.totalPrevistoCentavos,route.reduce((n,r)=>n+Math.round(r.valorParcela*100),0));assert.equal(snapshot.totalPagamentosCentavos,5000);
 });
+
+
+test('gestão encerra cobrança sem baixa com não pagamento administrativo, sem inventar visita ou dinheiro',async()=>{
+  for(const manager of ['supervisor','master','manager']){
+    const extra={
+      'vendas/sale':{...sale},
+      'parcelas/part':{...part},
+      ...(manager==='manager'?{
+        'usuarios/manager':user('manager','gerente'),
+        'sessoes_usuarios/manager':{uid:'manager',sessionId:sid,clientePlataformaId:'a',expiresAtMs:Date.now()+60000,encerrada:false}
+      }:{})
+    };
+    const f=setup(extra);
+    const snapshot=await f.api.conferir({caixaId:'box'},ctx(manager));
+    assert.equal(snapshot.pendenciasCobranca,1);
+    assert.equal(snapshot.cobrancasSemBaixa[0].vendaId,'sale');
+    const input={caixaId:'box',conferenciaId:snapshot.conferenciaId,valorInformadoCentavos:10000,justificativa:'Revisão administrativa após o expediente',fechamentoSupervisionado:true};
+    const ledgerBefore=JSON.stringify([...f.db.records].filter(([key])=>key.startsWith('lancamentos_financeiros/')));
+    const salesBefore=JSON.stringify(f.db.records.get('vendas/sale'));
+    const parcelsBefore=JSON.stringify(f.db.records.get('parcelas/part'));
+    await assert.rejects(f.api.fechar(input,ctx('seller')),e=>e.code==='permission-denied');
+    assert.equal(f.db.records.get('caixas/box').status,'ABERTO');
+    const result=await f.api.fechar(input,ctx(manager));
+    assert.equal(result.statusFechamento,'FECHADO');
+    assert.equal(result.fechamentoSupervisionado,true);
+    assert.equal(result.baixasAutomaticasQuantidade,1);
+    assert.equal(result.snapshot.totalNaoPagas,1);
+    assert.equal(result.snapshot.totalNaoPagasAutomaticas,1);
+    assert.equal(result.snapshot.totalVisitadas,0,'gestão não pode afirmar que o vendedor visitou o cliente');
+    assert.equal(result.snapshot.pendenciasCobranca,0);
+    const auto=f.db.records.get('historicoCobrancas/nao_pagamento_a_box_sale_'+core.hojeSP());
+    assert.equal(auto.tipo,'NAO_PAGAMENTO');
+    assert.equal(auto.origem,'FECHAMENTO_SUPERVISIONADO');
+    assert.equal(auto.visitaRealizada,false);
+    assert.equal(auto.registradoPorAuthUid,manager);
+    assert.equal(auto.vendedorAuthUid,'seller');
+    assert.equal(auto.clientePlataformaId,'a');
+    assert.ok(auto.justificativaGestor.length>8);
+    assert.equal(JSON.stringify([...f.db.records].filter(([key])=>key.startsWith('lancamentos_financeiros/'))),ledgerBefore);
+    assert.equal(JSON.stringify(f.db.records.get('vendas/sale')),salesBefore);
+    assert.equal(JSON.stringify(f.db.records.get('parcelas/part')),parcelsBefore);
+    const again=await f.api.fechar(input,ctx(manager));
+    assert.equal(again.modo,'IDEMPOTENTE');
+    assert.equal([...f.db.records.keys()].filter(k=>k.startsWith('historicoCobrancas/')).length,1);
+    const after=await f.api.conferir({caixaId:'box'},ctx(manager));
+    assert.equal(after.totalNaoPagasAutomaticas,1);
+    assert.equal(after.totalVisitadas,0);
+    assert.equal(after.pendenciasCobranca,0);
+  }
+});
+
+test('fechamento supervisionado exige justificativa e autorização explícita, mas não libera pagamento e aprovação pendentes',async()=>{
+  for(const extra of [
+    {},
+    {'pagamentos/pending':{clientePlataformaId:'a',caixaId:'box',status:'PENDENTE'}},
+    {'solicitacoes/request':{clientePlataformaId:'a',caixaId:'box',status:'PENDENTE',tipo:'GASTO'}}
+  ]){
+    const f=setup({'vendas/sale':{...sale},'parcelas/part':{...part},...extra});
+    const snap=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+    const input={caixaId:'box',conferenciaId:snap.conferenciaId,valorInformadoCentavos:10000};
+    const before=unchanged(f.db);
+    await assert.rejects(f.api.fechar(input,ctx('supervisor')),/Conclua/);
+    await assert.rejects(f.api.fechar({...input,fechamentoSupervisionado:true},ctx('supervisor')),/justificativa/);
+    const withReason={...input,fechamentoSupervisionado:true,justificativa:'Conferência administrativa excepcional'};
+    if(snap.pagamentosPendentes) await assert.rejects(f.api.fechar(withReason,ctx('supervisor')),/pagamentos pendentes/);
+    else if(snap.aprovacoesPendentes) await assert.rejects(f.api.fechar(withReason,ctx('supervisor')),/aprovações obrigatórias/);
+    assert.equal(unchanged(f.db),before,'tentativa bloqueada não grava não pagamentos');
+  }
+});
+
+test('não pagamento prévio cancelado não é sobrescrito por fechamento supervisionado',async()=>{
+  const historicId='nao_pagamento_a_box_sale_'+core.hojeSP();
+  const f=setup({'vendas/sale':{...sale},'parcelas/part':{...part},['historicoCobrancas/'+historicId]:{clientePlataformaId:'a',caixaId:'box',vendaId:'sale',tipo:'NAO_PAGAMENTO',status:'CANCELADO',cancelado:true}});
+  const snap=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+  const before=unchanged(f.db);
+  await assert.rejects(f.api.fechar({caixaId:'box',conferenciaId:snap.conferenciaId,valorInformadoCentavos:10000,fechamentoSupervisionado:true,justificativa:'Revisão excepcional por gestor'},ctx('supervisor')),/baixa anterior conflitante/);
+  assert.equal(unchanged(f.db),before);
+});
+
+test('fechamento supervisionado é atômico quando há falha antes do commit',async()=>{
+  const f=setup({'vendas/sale':{...sale},'parcelas/part':{...part}});
+  const snap=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+  const input={caixaId:'box',conferenciaId:snap.conferenciaId,valorInformadoCentavos:10000,fechamentoSupervisionado:true,justificativa:'Revisão excepcional por gestor'};
+  const before=unchanged(f.db),run=f.db.runTransaction.bind(f.db);
+  f.db.runTransaction=fn=>run(async tx=>{await fn(tx);throw Error('falha antes do commit');});
+  await assert.rejects(f.api.fechar(input,ctx('supervisor')),/falha antes do commit/);
+  assert.equal(unchanged(f.db),before);
+});

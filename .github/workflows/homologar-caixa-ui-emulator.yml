@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/integro-reabertura-fechada-20261029
+      - feat/fechamento-supervisionado-baixas-20261029
     paths:
       - "scripts/test-caixa-reabertura-ui-emulator.cjs"
       - ".github/workflows/homologar-caixa-ui-emulator.yml"
