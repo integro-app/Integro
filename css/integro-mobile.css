@@ -1600,8 +1600,8 @@ body[data-integro-page] [class*="table-container"] {
 @media (max-width: 390px) {
   body[data-integro-page].integro-mobile-app-mode .main,
   body[data-integro-page].integro-mobile-app-mode main.main {
-    padding-left: max(7px, env(safe-area-inset-left)) !important;
-    padding-right: max(7px, env(safe-area-inset-right)) !important;
+    padding-left: max(10px, env(safe-area-inset-left)) !important;
+    padding-right: max(10px, env(safe-area-inset-right)) !important;
   }
 
   body[data-integro-page].integro-mobile-app-mode .kpi-grid,
@@ -1809,8 +1809,8 @@ body[data-integro-page] [class*="table-container"] {
 @media (max-width: 700px) {
   body[data-integro-page].integro-mobile-app-mode {
     background: #fff !important;
-    --integro-mobile-gutter: 7px;
-    --it-mobile-gutter: 7px;
+    --integro-mobile-gutter: 10px;
+    --it-mobile-gutter: 10px;
   }
 
   body[data-integro-page].integro-mobile-app-mode .main,
@@ -1830,6 +1830,19 @@ body[data-integro-page] [class*="table-container"] {
     padding: 8px !important;
     border-radius: 12px !important;
     box-shadow: none !important;
+  }
+
+  /* Wrappers de tela não recuperam padding após a compactação v27.3.
+     O espaço útil vem da margem da página; cards internos mantêm 8px. */
+  body[data-integro-page].integro-mobile-app-mode .screen > .section-card,
+  body[data-integro-page].integro-mobile-app-mode .screen > .panel,
+  body[data-integro-page].integro-mobile-app-mode .screen > .card {
+    padding: 0 !important;
+    margin: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
 
   body[data-integro-page].integro-mobile-app-mode .vendedor-operacao-header,
