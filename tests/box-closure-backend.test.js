@@ -139,3 +139,96 @@ test('previsto congelado segue a parcela nominal da carteira e não diminui com 
  const route=require('../js/vendedor-operacao').montarCarteira({vendas:[s],parcelas:[i],pagamentosHoje:[p],usuario:{id:'seller',authUid:'seller',clientePlataformaId:'a'},hoje:core.hojeSP(),caixaId:'box'}).filter(r=>r.comCobrancaHoje||r.pagoHoje||r.naoPagoHoje);
  assert.equal(snapshot.totalPrevistoCentavos,10000);assert.equal(snapshot.totalPrevistoCentavos,route.reduce((n,r)=>n+Math.round(r.valorParcela*100),0));assert.equal(snapshot.totalPagamentosCentavos,5000);
 });
+
+test('encerramento gerencial fecha cobranças sem baixa, preserva dinheiro e identifica cliente sem visita',async()=>{
+ const f=setup({'vendas/sale':{...sale,clienteNome:'Cliente teste de auditoria'},'parcelas/part':part});
+ const snapshot=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+ assert.equal(snapshot.pendenciasCobranca,1);
+ assert.deepEqual(snapshot.pendenciasVendasIds,['sale']);
+ assert.equal(snapshot.pendenciasCobrancas[0].clienteId,'client');
+ const reason='Conferência gerencial de caixa; vendedor não registrou visita';
+ const input={caixaId:'box',conferenciaId:snapshot.conferenciaId,valorInformadoCentavos:10000,encerramentoGerencial:true,justificativa:reason};
+ const beforeSale=structuredClone(f.db.records.get('vendas/sale'));
+ const beforePart=structuredClone(f.db.records.get('parcelas/part'));
+ const results=await Promise.all([f.api.fechar(input,ctx('supervisor')),f.api.fechar(input,ctx('supervisor'))]);
+ assert.deepEqual(results.map(r=>r.modo).sort(),['CRIACAO','IDEMPOTENTE']);
+ assert.equal(f.db.records.get('caixas/box').status,'FECHADO');
+ assert.deepEqual(f.db.records.get('vendas/sale'),beforeSale);
+ assert.deepEqual(f.db.records.get('parcelas/part'),beforePart);
+ assert.equal([...f.db.records.keys()].filter(k=>k.startsWith('pagamentos/')).length,0);
+ assert.equal([...f.db.records.keys()].filter(k=>k.startsWith('lancamentos_financeiros/')).length,0);
+ const history=[...f.db.records].filter(([k])=>k.startsWith('historicoCobrancas/')).map(([,v])=>v);
+ assert.equal(history.length,1);
+ assert.equal(history[0].tipo,'NAO_PAGAMENTO');
+ assert.equal(history[0].semBaixaGerencial,true);
+ assert.equal(history[0].visitaRealizada,false);
+ assert.equal(history[0].registradoPorAuthUid,'supervisor');
+ assert.equal(history[0].vendedorAuthUid,'seller');
+ assert.equal(history[0].clienteId,'client');
+ assert.equal(history[0].clienteNome,'Cliente teste de auditoria');
+ const closure=f.db.records.get('fechamentos_caixa/fechamento_box');
+ assert.equal(closure.encerramentoGerencial,true);
+ assert.equal(closure.totalNaoPagas,1);
+ assert.equal(closure.totalVisitadas,0);
+ assert.equal(closure.totalSemBaixaGerencial,1);
+ assert.equal(closure.pendenciasCobranca,0);
+ assert.equal(closure.pendenciasCobrancaAntes,1);
+ assert.equal(closure.caixaFinalEsperadoCentavos,10000);
+ assert.equal(closure.justificativa,reason);
+ assert.equal(((await f.api.conferir({caixaId:'box'},ctx('supervisor'))).pendenciasCobranca),0);
+ const audit=[...f.db.records].filter(([k])=>k.startsWith('logs/')&&k.endsWith('_gerencial')).map(([,v])=>v);
+ assert.equal(audit.length,1);
+ assert.deepEqual(audit[0].vendasIds,['sale']);
+});
+
+test('vendedor não pode usar encerramento gerencial e supervisor precisa de justificativa',async()=>{
+ const f=setup({'vendas/sale':sale,'parcelas/part':part});
+ const snap=await f.api.conferir({caixaId:'box'},ctx('seller'));
+ const base={caixaId:'box',conferenciaId:snap.conferenciaId,valorInformadoCentavos:10000};
+ const before=unchanged(f.db);
+ await assert.rejects(f.api.fechar({...base,encerramentoGerencial:true,justificativa:'Autorização forjada'},ctx('seller')),e=>e.code==='permission-denied');
+ await assert.rejects(f.api.fechar({...base,encerramentoGerencial:true},ctx('supervisor')),e=>e.code==='invalid-argument');
+ await assert.rejects(f.api.fechar(base,ctx('supervisor')),/visitas/);
+ assert.equal(unchanged(f.db),before);
+});
+
+test('somente supervisor da equipe, gerente e master local podem encerrar cobranças sem baixa',async()=>{
+ for(const [role,expected] of [['master',true],['manager',true],['supervisor',true],['outsider',false]]){
+  const f=setup({'vendas/sale':sale,'parcelas/part':part});
+  if(role==='manager'){
+    f.db.records.set('usuarios/manager',user('manager','gerente'));
+    f.db.records.set('sessoes_usuarios/manager',{uid:'manager',sessionId:sid,clientePlataformaId:'a',expiresAtMs:Date.now()+60000,encerrada:false});
+  }
+  const snap=await f.api.conferir({caixaId:'box'},ctx('seller'));
+  const request={caixaId:'box',conferenciaId:snap.conferenciaId,valorInformadoCentavos:10000,encerramentoGerencial:true,justificativa:'Sem baixa por decisão administrativa'};
+  if(expected)assert.equal((await f.api.fechar(request,ctx(role))).statusFechamento,'FECHADO');
+  else {
+    const old=unchanged(f.db);
+    await assert.rejects(f.api.fechar(request,ctx(role)),e=>e.code==='permission-denied');
+    assert.equal(unchanged(f.db),old);
+  }
+ }
+});
+
+test('encerramento gerencial não ignora pagamentos pendentes, aprovações nem divergência do ledger',async()=>{
+ for(const extra of [
+  {'pagamentos/pendente':{clientePlataformaId:'a',caixaId:'box',status:'PENDENTE'}},
+  {'solicitacoes/pendente':{clientePlataformaId:'a',caixaId:'box',status:'PENDENTE',tipo:'RETIRADA'}},
+  {'caixas/box':{clientePlataformaId:'a',vendedorId:'seller',vendedorAuthUid:'seller',equipeId:'e1',dataOperacional:core.hojeSP(),status:'ABERTO',ativo:true,saldoInicialCentavos:10000,saldoAtualCentavos:20000}}
+ ]){
+  const f=setup({'vendas/sale':sale,'parcelas/part':part,...extra});
+  const snapshot=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+  const before=unchanged(f.db);
+  await assert.rejects(f.api.fechar({caixaId:'box',conferenciaId:snapshot.conferenciaId,valorInformadoCentavos:10000,encerramentoGerencial:true,justificativa:'Teste de bloqueio'},ctx('supervisor')),e=>e.code==='failed-precondition');
+  assert.equal(unchanged(f.db),before);
+ }
+});
+
+test('fechamento gerencial falho não grava não pagamentos parciais',async()=>{
+ const f=setup({'vendas/sale':sale,'parcelas/part':part});
+ const snap=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+ const before=unchanged(f.db),original=f.db.runTransaction.bind(f.db);
+ f.db.runTransaction=fn=>original(async tx=>{await fn(tx);throw Error('Falha simulada no commit');});
+ await assert.rejects(f.api.fechar({caixaId:'box',conferenciaId:snap.conferenciaId,valorInformadoCentavos:10000,encerramentoGerencial:true,justificativa:'Teste de atomicidade'},ctx('supervisor')),/Falha simulada/);
+ assert.equal(unchanged(f.db),before);
+});

@@ -1,0 +1,36 @@
+name: Homologar fechamento gerencial sem baixa - isolado
+on:
+  push:
+    branches: [fix/caixa-fechamento-gerencial-sem-baixa-20261029]
+    paths:
+      - ".github/workflows/testar-fechamento-gerencial-isolado.yml"
+      - "functions/box-lifecycle.js"
+      - "functions/box-reconciliation.js"
+      - "tests/box-closure-backend.test.js"
+      - "tests/caixas-supervisao.test.js"
+      - "js/modules/caixas-supervisao.js"
+      - "master-local.html"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  validar-transacao-gerencial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Testar backend, permissões, ledger, rollback e interface de gestor
+        run: node --test tests/box-closure-backend.test.js tests/caixas-supervisao.test.js
+      - name: Testar sintaxe de fontes alteradas
+        run: |
+          node --check functions/box-lifecycle.js
+          node --check functions/box-reconciliation.js
+          node --check js/modules/caixas-supervisao.js
