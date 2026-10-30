@@ -18,7 +18,7 @@ const rules = fs.readFileSync(path.join(root, "firestore.rules"), "utf8");
 const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
-  assert.match(master, /js\/vendedor-operacao\.js\?v=20260827-payment-edit1/);
+  assert.match(master, /js\/vendedor-operacao\.js\?v=20261030-baixa-gerencial-sem-visita/);
   assert.match(master, /js\/vendedor-unificado\.js\?v=\d{8}-[a-z0-9-]+/);
   assert.match(master, /css\/vendedor-operacao\.css\?v=\d{8}-[a-z0-9-]+/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
