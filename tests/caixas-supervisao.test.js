@@ -139,7 +139,7 @@ test('cache de caixa verificado é segregado por empresa e usuário',()=>{
  let user={authUid:'m',clientePlataformaId:'a'};
  const stale={...box,status:'ABERTO',ativo:true};
  const fresh={...box,status:'FECHADO',ativo:false};
- const w={CX:{caixas:[stale]},IntegroVendedorOperacao:operation,State:{getUsuario:()=>user,getCaixas:()=>[stale]},IntegroAcesso:{acessoUsuario:()=>({perfil:'supervisor',authUid:user.authUid,equipeIds:['e1']}),validarEscopo:()=>true}};
+ const w={document:{getElementById:()=>null},CX:{caixas:[stale]},IntegroVendedorOperacao:operation,State:{getUsuario:()=>user,getCaixas:()=>[stale]},IntegroAcesso:{acessoUsuario:()=>({perfil:'supervisor',authUid:user.authUid,equipeIds:['e1']}),validarEscopo:()=>true}};
  vm.runInNewContext(fs.readFileSync(require.resolve('../js/modules/caixas-supervisao.js'),'utf8'),{window:w,Intl,Date,Set,Map});
  const module=w.IntegroCaixasSupervisao;
  const row={id:'e1',vendedores:[],caixas:[stale]};
