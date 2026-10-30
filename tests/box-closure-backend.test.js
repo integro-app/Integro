@@ -232,3 +232,73 @@ test('fechamento gerencial falho não grava não pagamentos parciais',async()=>{
  await assert.rejects(f.api.fechar({caixaId:'box',conferenciaId:snap.conferenciaId,valorInformadoCentavos:10000,encerramentoGerencial:true,justificativa:'Teste de atomicidade'},ctx('supervisor')),/Falha simulada/);
  assert.equal(unchanged(f.db),before);
 });
+
+
+test('reabertura invalida nao pagamentos gerenciais, exige nova baixa e preserva auditoria',async()=>{
+ const f=setup({'vendas/sale':sale,'parcelas/part':part});
+ const primeira=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+ const fechamento=await f.api.fechar({
+  caixaId:'box',conferenciaId:primeira.conferenciaId,valorInformadoCentavos:10000,
+  encerramentoGerencial:true,justificativa:'Encerramento sem visita comprovada'
+ },ctx('supervisor'));
+ assert.equal(fechamento.modo,'CRIACAO');
+ const chave=[...f.db.records.keys()].find(k=>k.startsWith('historicoCobrancas/nao_pagamento_gerencial_'));
+ assert.ok(chave,'o fechamento gerencial precisa gerar registro auditavel');
+ const historicoPrimeiro=[...f.db.records.entries()].find(([k])=>k.startsWith('historico_fechamentos_caixa/'));
+ assert.ok(historicoPrimeiro);
+ const primeiroImutavel=structuredClone(historicoPrimeiro[1]);
+ const saldoAntes=f.db.records.get('vendas/sale').saldoDevedorCentavos;
+ const reabrir={caixaId:'box',operacaoId:'reabrir-gerencial-1',motivo:'Revisar baixa gerencial anterior'};
+ const reabertura=await f.api.reabrir(reabrir,ctx('supervisor'));
+ assert.equal(reabertura.statusNovo,'REABERTO');
+ assert.equal(reabertura.modo,'REABERTURA');
+ const antigo=f.db.records.get(chave);
+ assert.equal(antigo.tipo,'NAO_PAGAMENTO');
+ assert.equal(antigo.status,'CANCELADO');
+ assert.equal(antigo.cancelado,true);
+ assert.equal(antigo.canceladoPorReabertura,true);
+ assert.equal(antigo.reaberturaIdCancelamento,reabertura.reaberturaId);
+ assert.equal(f.db.records.get('vendas/sale').saldoDevedorCentavos,saldoAntes);
+ assert.deepEqual(f.db.records.get(historicoPrimeiro[0]),primeiroImutavel);
+ const evento=[...f.db.records.values()].find(v=>v?.statusNovo==='REABERTO'&&v?.quantidadeBaixasGerenciaisInvalidadas===1);
+ assert.ok(evento,'a reabertura guarda quantidade invalidada para auditoria');
+ const nova=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+ assert.equal(nova.pendenciasCobranca,1);
+ assert.equal(nova.totalNaoPagas,0);
+ assert.equal(nova.totalSemBaixaGerencial,0);
+ assert.equal(nova.totalVisitadas,0);
+ await assert.rejects(f.api.fechar({
+  caixaId:'box',conferenciaId:nova.conferenciaId,valorInformadoCentavos:10000
+ },ctx('seller')),/visitas/);
+ const refechamento=await f.api.fechar({
+  caixaId:'box',conferenciaId:nova.conferenciaId,valorInformadoCentavos:10000,
+  encerramentoGerencial:true,justificativa:'Nova decisao administrativa auditada'
+ },ctx('supervisor'));
+ assert.equal(refechamento.modo,'REFECHAMENTO');
+ const gerenciais=[...f.db.records.entries()].filter(([key])=>key.startsWith('historicoCobrancas/nao_pagamento_gerencial_'));
+ assert.equal(gerenciais.length,2);
+ assert.equal(gerenciais.filter(([,v])=>v.cancelado===true).length,1);
+ assert.equal(gerenciais.filter(([,v])=>v.cancelado!==true).length,1);
+ assert.equal((await f.api.conferir({caixaId:'box'},ctx('supervisor'))).pendenciasCobranca,0);
+ assert.equal(f.db.records.get('vendas/sale').saldoDevedorCentavos,saldoAntes);
+ assert.deepEqual(f.db.records.get(historicoPrimeiro[0]),primeiroImutavel);
+ assert.equal((await f.api.reabrir(reabrir,ctx('supervisor'))).modo,'IDEMPOTENTE');
+ assert.equal(f.db.records.get('caixas/box').status,'FECHADO');
+});
+
+test('reabertura preserva marcações manuais e registros de outra empresa',async()=>{
+ const f=setup({'vendas/sale':sale,'parcelas/part':part});
+ const primeira=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
+ await f.api.fechar({
+  caixaId:'box',conferenciaId:primeira.conferenciaId,valorInformadoCentavos:10000,
+  encerramentoGerencial:true,justificativa:'Regularizacao gerencial'
+ },ctx('supervisor'));
+ const manual={clientePlataformaId:'a',caixaId:'box',tipo:'NAO_PAGAMENTO',vendaId:'sale',origem:'VENDEDOR',semBaixaGerencial:false,visitaRealizada:true,status:'REGISTRADO'};
+ const outraEmpresa={...manual,clientePlataformaId:'b',semBaixaGerencial:true,geradoAutomaticamente:true,origem:'FECHAMENTO_GERENCIAL'};
+ f.db.records.set('historicoCobrancas/manual',structuredClone(manual));
+ f.db.records.set('historicoCobrancas/outro-tenant',structuredClone(outraEmpresa));
+ await f.api.reabrir({caixaId:'box',operacaoId:'reopen-tenant-safety-1',motivo:'Revisao com isolamento'},ctx('master'));
+ assert.deepEqual(f.db.records.get('historicoCobrancas/manual'),manual);
+ assert.deepEqual(f.db.records.get('historicoCobrancas/outro-tenant'),outraEmpresa);
+ assert.equal((await f.api.conferir({caixaId:'box'},ctx('supervisor'))).totalVisitadas,1);
+});
