@@ -70,9 +70,13 @@ test("offline bloqueia confirmação financeira mas preserva navegação e leitu
   assert.equal(venda.defaultPrevented,true);
   const novaAcao=x.emit("click",x.button("future-action","",true));
   assert.equal(novaAcao.defaultPrevented,true);
+  for(const handler of ["abrirCaixaEquipe('e1')","solicitarReaberturaCaixa('c1')","acaoMassaCaixas('FECHAR')"]){
+    assert.equal(x.emit("click",x.button("gerencial",handler)).defaultPrevented,true,handler);
+  }
+  assert.equal(x.emit("click",x.button("btnFecharCaixasSelecionadas","")).defaultPrevented,true);
   const menu=x.emit("click",x.button("btnMenu","trocarTela('dashboard')"));
   assert.equal(menu.defaultPrevented,undefined,"menu permanece disponível");
-  assert.equal(x.calls.blocked,3);
+  assert.equal(x.calls.blocked,7);
 });
 
 test("submit offline de caixa é bloqueado; formulário somente de pesquisa não é", () => {
