@@ -1,0 +1,97 @@
+name: Publicar cobrancas gerenciais no Hosting - autorizado 2026-10-30
+
+# Autorizacao expressa do usuario para integrar PR 5 e publicar somente Hosting.
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths: [".github/workflows/publicar-cobrancas-gerenciais-autorizado-20261030.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: hosting cobrancas gerenciais autorizado 2026-10-30'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Travar commit integrado e alteracao exclusiva de workflow
+        run: |
+          test "$(git rev-parse HEAD^)" = "93440b6f9bece5d3ca8caf34954612b8266c9cdc"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-cobrancas-gerenciais-autorizado-20261030.yml"
+      - name: Dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Testes completos sem alteracao na producao
+        run: npm run verify
+      - name: Confirmar o reparo no frontend
+        run: |
+          grep -Fq 'v=20261030-baixa-gerencial-sem-visita' master-local.html
+          grep -Fq 'v=20261030-baixa-gerencial-sem-visita' vendedor.html
+          grep -Fq 'naoPagoSemVisitaGerencial' js/vendedor-operacao.js
+          grep -Fq 'Não pago por encerramento gerencial (sem visita confirmada)' js/vendedor-operacao.js
+
+  publicar:
+    if: "github.event.head_commit.message == 'release: hosting cobrancas gerenciais autorizado 2026-10-30'"
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-cobrancas-gerenciais-deploy.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Garantir versao autorizada
+        run: |
+          test "$(git rev-parse HEAD^)" = "93440b6f9bece5d3ca8caf34954612b8266c9cdc"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-cobrancas-gerenciais-autorizado-20261030.yml"
+      - name: Instalar Firebase CLI
+        run: npm ci
+      - name: Credencial temporaria restrita ao projeto integro-novo
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          raw=os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON','')
+          if not raw:
+              raise SystemExit('Credencial indisponivel. Nenhum deploy iniciado.')
+          creds=json.loads(raw)
+          if creds.get('project_id')!='integro-novo':
+              raise SystemExit('Credencial de projeto inesperado. Nenhum deploy iniciado.')
+          target=pathlib.Path(os.environ['GOOGLE_APPLICATION_CREDENTIALS'])
+          target.write_text(raw)
+          target.chmod(0o600)
+          PY
+      - name: Publicar SOMENTE Hosting
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Verificar arquivos efetivamente publicados
+        run: |
+          curl -fsSL -H 'Cache-Control: no-cache' 'https://integro-novo.web.app/master-local.html?ver=20261030-cobrancas' -o /tmp/integro-cobrancas-master.html
+          curl -fsSL -H 'Cache-Control: no-cache' 'https://integro-novo.web.app/vendedor.html?ver=20261030-cobrancas' -o /tmp/integro-cobrancas-vendedor.html
+          curl -fsSL -H 'Cache-Control: no-cache' 'https://integro-novo.web.app/js/vendedor-operacao.js?ver=20261030-cobrancas' -o /tmp/integro-cobrancas-operacao.js
+          grep -Fq 'v=20261030-baixa-gerencial-sem-visita' /tmp/integro-cobrancas-master.html
+          grep -Fq 'v=20261030-baixa-gerencial-sem-visita' /tmp/integro-cobrancas-vendedor.html
+          grep -Fq 'naoPagoSemVisitaGerencial' /tmp/integro-cobrancas-operacao.js
+          grep -Fq 'Não pago por encerramento gerencial (sem visita confirmada)' /tmp/integro-cobrancas-operacao.js
+          echo 'HOSTING_COBRANCAS_GERENCIAIS_VERIFICADO'
+      - name: Remover credencial e arquivos temporarios
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS" /tmp/integro-cobrancas-master.html /tmp/integro-cobrancas-vendedor.html /tmp/integro-cobrancas-operacao.js
