@@ -121,3 +121,32 @@ test('resumo separa não pagamentos gerenciais das visitas comprovadas',()=>{
  assert.equal(m.visited,0);
  assert.equal(m.wallet,9000);
 });
+
+test('consulta ao Firestore prevalece sobre cache ABERTO e permanece consistente na lista',()=>{
+ const stale={...box,status:'ABERTO',ativo:true};
+ const fresh={...box,status:'FECHADO',ativo:false,fechado:true,atualizadoEm:{seconds:1793300000},fechadoEm:{seconds:1793300000}};
+ const w={CX:{caixas:[stale]},IntegroVendedorOperacao:operation,State:{getUsuario:()=>({authUid:'m',clientePlataformaId:'a'}),getCaixas:()=>[stale]}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../js/modules/caixas-supervisao.js'),'utf8'),{window:w,Intl,Date,Set,Map});
+ const row={id:'e1',vendedores:[{id:'seller-doc',authUid:'seller-uid'}],caixas:[stale]};
+ assert.equal(w.IntegroCaixasSupervisao.teamBoxes(row)[0].status,'ABERTO');
+ assert.equal(w.IntegroCaixasSupervisao.teamBoxes(row,[fresh])[0].status,'FECHADO');
+ assert.equal(w.IntegroCaixasSupervisao.teamBoxes(row)[0].status,'FECHADO','render posterior não pode reabrir status com dados antigos');
+ const outdated={...stale,atualizadoEm:{seconds:1793299999}};
+ assert.equal(w.IntegroCaixasSupervisao.teamBoxes(row,[outdated])[0].status,'FECHADO','consulta atrasada não substitui fechamento mais recente');
+});
+
+test('cache de caixa verificado é segregado por empresa e usuário',()=>{
+ let user={authUid:'m',clientePlataformaId:'a'};
+ const stale={...box,status:'ABERTO',ativo:true};
+ const fresh={...box,status:'FECHADO',ativo:false};
+ const w={document:{getElementById:()=>null},CX:{caixas:[stale]},IntegroVendedorOperacao:operation,State:{getUsuario:()=>user,getCaixas:()=>[stale]},IntegroAcesso:{acessoUsuario:()=>({perfil:'supervisor',authUid:user.authUid,equipeIds:['e1']}),validarEscopo:()=>true}};
+ vm.runInNewContext(fs.readFileSync(require.resolve('../js/modules/caixas-supervisao.js'),'utf8'),{window:w,Intl,Date,Set,Map});
+ const module=w.IntegroCaixasSupervisao;
+ const row={id:'e1',vendedores:[],caixas:[stale]};
+ // O estado sincroniza apenas quando a renderização começa; card ausente é seguro.
+ assert.equal(module.render(),false);
+ assert.equal(module.teamBoxes(row,[fresh])[0].status,'FECHADO');
+ user={authUid:'other',clientePlataformaId:'a'};
+ assert.equal(module.render(),false);
+ assert.equal(module.teamBoxes(row)[0].status,'ABERTO','não compartilhar cache de outra sessão');
+});

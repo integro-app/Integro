@@ -88,15 +88,43 @@
   const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear(); }
+    if (key !== ui.context) { Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear(); }
   }
   function rows() {
     if (!allowed()) return [];
     return (global.linhas?.() || []).filter(r => tenantOf(r.equipe) === tenant() && global.IntegroAcesso.validarEscopo(access(),{equipeId:text(r.id)}) !== false);
   }
+  // A lista pode manter um snapshot de antes do fechamento. Leituras autenticadas
+  // diretamente do Firestore prevalecem sobre State, CX e resumos de equipe.
+  // O cache fica isolado por contexto (empresa + usuário) e nunca grava no banco.
+  const verifiedBoxes = new Map();
+  function stampMillis(value) {
+    if (!value) return 0;
+    if (typeof value.toMillis === 'function') return value.toMillis();
+    if (Number.isFinite(value.seconds)) return value.seconds * 1000 + Math.floor((value.nanoseconds || 0) / 1e6);
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string') return Date.parse(value) || 0;
+    return 0;
+  }
+  function rememberServerBox(box) {
+    const key=id(box);
+    if (!key || tenantOf(box)!==tenant()) return box;
+    const old=verifiedBoxes.get(key);
+    const oldTime=stampMillis(old?.atualizadoEm || old?.fechadoEm || old?.reabertoEm);
+    const newTime=stampMillis(box.atualizadoEm || box.fechadoEm || box.reabertoEm);
+    // Uma consulta atrasada nunca pode reabrir visualmente um caixa já fechado.
+    if (old && oldTime && (!newTime || newTime < oldTime)) return old;
+    verifiedBoxes.set(key,box);
+    return box;
+  }
   function teamBoxes(row, extra = []) {
+    // Extra vem de consulta ao servidor; caso já exista um estado comprovadamente
+    // mais recente, mantê-lo. A ordem da deduplicação é intencional.
+    extra.forEach(rememberServerBox);
     const sellerIds = new Set((row.vendedores || []).flatMap(v => [v.id,v.authUid,v.uid]).filter(Boolean).map(text));
-    const all = unique([...(global.CX?.caixas || []),...(S()?.getCaixas?.() || []),...(row.caixas || []),...extra]);
+    // unique() usa Map e preserva o ÚLTIMO registro: por isso a leitura
+    // comprovada pelo servidor precisa ficar por último, nunca primeiro.
+    const all = unique([...(global.CX?.caixas || []),...(S()?.getCaixas?.() || []),...(row.caixas || []),...verifiedBoxes.values()]);
     return all.filter(b => tenantOf(b) === tenant() && b.excluido !== true && (b.equipeId ? text(b.equipeId) === text(row.id) : [...identities(b)].some(v=>sellerIds.has(v))))
       .sort((a,b) => boxDay(b).localeCompare(boxDay(a)) || id(b).localeCompare(id(a)));
   }
@@ -129,9 +157,9 @@
     syncContext();const host = card();if (!host) return false;
     if (ui.detail) { renderDetail(host);return true; }
     const all = rows(), visible = all.filter(r => (!ui.team || text(r.id)===ui.team) && (!ui.search || text(r.nome).toLowerCase().includes(ui.search.toLowerCase())));
-    const entries = visible.map(row => {const history=teamBoxes(row),latest=history[0],boxes=latest?history.filter(b=>boxDay(b)===boxDay(latest)):[];const models=boxes.map(b=>model(overview.get(id(b))?.fresh || b,overview.get(id(b))?.data || cachedData()));return {row,latest,models,status:boxes.some(openBox)?'ABERTO':latest?(upper(latest.status)==='FECHADA'?'FECHADO':upper(latest.status)):'SEM_CAIXA'};}).filter(v=>!ui.status||v.status===ui.status);
+    const entries = visible.map(row => {const history=teamBoxes(row),latest=history[0],boxes=latest?history.filter(b=>boxDay(b)===boxDay(latest)):[];const models=boxes.map(b=>{const cache=overview.get(id(b)),current=JSON.stringify([b.status,b.atualizadoEm,b.saldoAtualCentavos]);return model(b,cache?.fingerprint===current?cache.data:cachedData());});return {row,latest,models,status:boxes.some(openBox)?'ABERTO':latest?(upper(latest.status)==='FECHADA'?'FECHADO':upper(latest.status)):'SEM_CAIXA'};}).filter(v=>!ui.status||v.status===ui.status);
     const total = key => entries.reduce((n,v)=>n+v.models.reduce((n,m)=>n+num(m[key]),0),0), selected=global.CX?.selecionadas || new Set();
-    host.innerHTML = `<div data-caixas-supervisao><header class="cx-head"><div><h2>Caixas</h2><p>Acompanhe as equipes e consulte cada caixa por data.</p></div><button class="ghost-btn" data-cx-refresh>Atualizar</button></header><div class="cx-searchbar"><label><input data-cx-search value="${esc(ui.search)}" placeholder="Buscar equipe" aria-label="Buscar equipe"></label></div><details class="cx-filter-options" data-cx-filters ${ui.filtersOpen?'open':''}><summary>Filtros${ui.team||ui.status?' · ativos':''}<span>${esc(all.find(r=>text(r.id)===ui.team)?.nome||'Todas as equipes')} · ${esc(({ABERTO:'Aberto / reaberto',FECHADO:'Fechado',DIVERGENTE:'Divergente',SEM_CAIXA:'Sem caixa'})[ui.status]||'Todos os estados')}</span></summary><div class="cx-filters"><label>Equipe<select data-cx-team>${option('','Todas as equipes permitidas',ui.team)}${all.map(r=>option(r.id,r.nome,ui.team)).join('')}</select></label><label>Estado<select data-cx-status>${[['','Todos'],['ABERTO','Aberto / reaberto'],['FECHADO','Fechado'],['DIVERGENTE','Divergente'],['SEM_CAIXA','Sem caixa']].map(([v,l])=>option(v,l,ui.status)).join('')}</select></label><button class="ghost-btn" data-cx-clear>Limpar filtros</button></div></details><div class="cx-stats">${stat('Caixas abertos',entries.reduce((n,v)=>n+v.models.filter(m=>openBox(m.box)).length,0))}${stat('Caixa atual',cash(total('current')))}${stat('Carteira final',cash(entries.some(v=>v.models.some(m=>m.wallet==null))?null:total('wallet')),'orange')}${stat('Vendas / empréstimos',cash(total('loans')),'purple')}${stat('Recebido',cash(total('received')),'green')}</div><div class="cx-table-scroll"><table class="integro-caixas-overview"><thead><tr><th><input type="checkbox" data-cx-all aria-label="Selecionar equipes exibidas" ${entries.length&&entries.every(v=>selected.has(text(v.row.id)))?'checked':''}></th><th>Equipe / vendedor</th><th>Estado</th><th>Caixa / data</th><th>Caixa inicial</th><th>Caixa atual</th><th>Carteira final</th><th>Progresso</th><th>Última atualização</th></tr></thead><tbody>${entries.map(({row,latest,models})=>`<tr data-cx-row="${esc(row.id)}" tabindex="0" aria-label="Consultar caixas da equipe ${esc(row.nome)}"><td><input type="checkbox" data-caixas-equipe="${esc(row.id)}" aria-label="Selecionar ${esc(row.nome)}" ${selected.has(text(row.id))?'checked':''}></td><td><button class="cx-team-link" data-cx-open="${esc(row.id)}">${esc(row.nome)}</button><small>${esc((row.vendedores||[]).map(v=>v.nome||v.nomeCompleto||v.email).join(', ')||'Sem vendedor vinculado')}</small></td><td>${latest?badge({...latest,status:models.some(m=>openBox(m.box))?'ABERTO':latest.status}):badge({})}</td><td data-label="Caixa / data">${latest?`<strong>${dateBR(boxDay(latest))}</strong><small>${esc(latest.numeroCaixa || latest.codigo || 'Caixa do dia')}${models.length>1?` · ${models.length} vendedores`:''}</small>`:'—'}</td>${['initial','current','wallet'].map(k=>`<td data-label="${({initial:'Caixa inicial',current:'Caixa atual',wallet:'Carteira final'})[k]}">${cash(models.reduce((n,m)=>n+num(m[k]),0))}</td>`).join('')}<td data-label="Progresso">${models.every(m=>m.progress!=null)?`<div class="cx-progress"><progress max="100" value="${Math.round(models.reduce((n,m)=>n+num(m.progress),0)/(models.length||1))}" aria-label="Progresso das cobranças"></progress><span>${Math.round(models.reduce((n,m)=>n+num(m.progress),0)/(models.length||1))}%</span></div>`:models.length?`<span class="cx-progress-empty">${models.some(m=>overview.get(id(m.box))?.error)?'Consulta indisponível':models.some(m=>!overview.has(id(m.box)))?'Consultando…':'Não registrado'}</span>`:'—'}</td><td data-label="Última atualização">${latest?dateTime(latest.atualizadoEm||latest.fechadoEm||latest.abertoEm):'—'}</td></tr>`).join('')||'<tr><td colspan="9">Nenhuma equipe encontrada para os filtros selecionados.</td></tr>'}</tbody></table></div><footer class="cx-footer"><span id="caixasSelectionCount">${selected.size} equipe(s) selecionada(s)</span><div><button id="btnAbrirCaixasSelecionadas" class="success-btn" ${selected.size?'':'disabled'}>Abrir caixas</button><button id="btnFecharCaixasSelecionadas" class="danger-btn" ${selected.size?'':'disabled'}>Fechar caixas</button></div></footer></div>`;
+    host.innerHTML = `<div data-caixas-supervisao><header class="cx-head"><div><h2>Caixas</h2><p>Acompanhe as equipes e consulte cada caixa por data.</p></div><button class="ghost-btn" data-cx-refresh>Atualizar</button></header><div class="cx-searchbar"><label><input data-cx-search value="${esc(ui.search)}" placeholder="Buscar equipe" aria-label="Buscar equipe"></label></div><details class="cx-filter-options" data-cx-filters ${ui.filtersOpen?'open':''}><summary>Filtros${ui.team||ui.status?' · ativos':''}<span>${esc(all.find(r=>text(r.id)===ui.team)?.nome||'Todas as equipes')} · ${esc(({ABERTO:'Aberto / reaberto',FECHADO:'Fechado',DIVERGENTE:'Divergente',SEM_CAIXA:'Sem caixa'})[ui.status]||'Todos os estados')}</span></summary><div class="cx-filters"><label>Equipe<select data-cx-team>${option('','Todas as equipes permitidas',ui.team)}${all.map(r=>option(r.id,r.nome,ui.team)).join('')}</select></label><label>Estado<select data-cx-status>${[['','Todos'],['ABERTO','Aberto / reaberto'],['FECHADO','Fechado'],['DIVERGENTE','Divergente'],['SEM_CAIXA','Sem caixa']].map(([v,l])=>option(v,l,ui.status)).join('')}</select></label><button class="ghost-btn" data-cx-clear>Limpar filtros</button></div></details><div class="cx-stats">${stat('Caixas abertos',entries.reduce((n,v)=>n+v.models.filter(m=>openBox(m.box)).length,0))}${stat('Caixa atual',cash(total('current')))}${stat('Carteira final',cash(entries.some(v=>v.models.some(m=>m.wallet==null))?null:total('wallet')),'orange')}${stat('Vendas / empréstimos',cash(total('loans')),'purple')}${stat('Recebido',cash(total('received')),'green')}</div><div class="cx-table-scroll"><table class="integro-caixas-overview"><thead><tr><th><input type="checkbox" data-cx-all aria-label="Selecionar equipes exibidas" ${entries.length&&entries.every(v=>selected.has(text(v.row.id)))?'checked':''}></th><th>Equipe / vendedor</th><th>Estado</th><th>Caixa / data</th><th>Caixa inicial</th><th>Caixa atual</th><th>Carteira final</th><th>Progresso</th><th>Última atualização</th></tr></thead><tbody>${entries.map(({row,latest,models})=>`<tr data-cx-row="${esc(row.id)}" tabindex="0" aria-label="Consultar caixas da equipe ${esc(row.nome)}"><td><input type="checkbox" data-caixas-equipe="${esc(row.id)}" aria-label="Selecionar ${esc(row.nome)}" ${selected.has(text(row.id))?'checked':''}></td><td><button class="cx-team-link" data-cx-open="${esc(row.id)}">${esc(row.nome)}</button><small>${esc((row.vendedores||[]).map(v=>v.nome||v.nomeCompleto||v.email).join(', ')||'Sem vendedor vinculado')}</small></td><td>${latest?badge({...latest,status:models.some(m=>openBox(m.box))?'ABERTO':latest.status}):badge({})}${models.length>1?`<small>${models.filter(m=>openBox(m.box)).length} aberto(s) · ${models.filter(m=>!openBox(m.box)).length} fechado(s) nesta equipe</small>`:''}</td><td data-label="Caixa / data">${latest?`<strong>${dateBR(boxDay(latest))}</strong><small>${esc(latest.numeroCaixa || latest.codigo || 'Caixa do dia')}${models.length>1?` · ${models.length} vendedores`:''}</small>`:'—'}</td>${['initial','current','wallet'].map(k=>`<td data-label="${({initial:'Caixa inicial',current:'Caixa atual',wallet:'Carteira final'})[k]}">${cash(models.reduce((n,m)=>n+num(m[k]),0))}</td>`).join('')}<td data-label="Progresso">${models.every(m=>m.progress!=null)?`<div class="cx-progress"><progress max="100" value="${Math.round(models.reduce((n,m)=>n+num(m.progress),0)/(models.length||1))}" aria-label="Progresso das cobranças"></progress><span>${Math.round(models.reduce((n,m)=>n+num(m.progress),0)/(models.length||1))}%</span></div>`:models.length?`<span class="cx-progress-empty">${models.some(m=>overview.get(id(m.box))?.error)?'Consulta indisponível':models.some(m=>!overview.has(id(m.box)))?'Consultando…':'Não registrado'}</span>`:'—'}</td><td data-label="Última atualização">${latest?dateTime(latest.atualizadoEm||latest.fechadoEm||latest.abertoEm):'—'}</td></tr>`).join('')||'<tr><td colspan="9">Nenhuma equipe encontrada para os filtros selecionados.</td></tr>'}</tbody></table></div><footer class="cx-footer"><span id="caixasSelectionCount">${selected.size} equipe(s) selecionada(s)</span><div><button id="btnAbrirCaixasSelecionadas" class="success-btn" ${selected.size?'':'disabled'}>Abrir caixas</button><button id="btnFecharCaixasSelecionadas" class="danger-btn" ${selected.size?'':'disabled'}>Fechar caixas</button></div></footer></div>`;
     host.querySelector('[data-cx-filters]').ontoggle=e=>{if(e.currentTarget.isConnected)ui.filtersOpen=e.currentTarget.open;};
     host.querySelector('[data-cx-clear]').onclick=()=>{ui.team='';ui.status='';ui.search='';render();};
     host.querySelector('[data-cx-team]').onchange=e=>{ui.team=e.target.value;render();};host.querySelector('[data-cx-status]').onchange=e=>{ui.status=e.target.value;render();};
@@ -190,15 +218,24 @@
   }
   async function fetchBox(box, overviewOnly = false) {
     const db=global.db && typeof global.db!=='function'?global.db:global.firebase.firestore();
-    const ownQuery=async collection=>unique((await Promise.all([box.vendedorAuthUid?query(collection,'vendedorAuthUid',text(box.vendedorAuthUid),text(box.equipeId)):[],box.vendedorId?query(collection,'vendedorId',text(box.vendedorId),text(box.equipeId)):[]])).flat());
-    const [boxSnap, sales,payments,moves,visits,closureSnap,portfolio,installments]=await Promise.all([
-      db.collection('caixas').doc(id(box)).get({source:'server'}),overviewOnly&&!openBox(box)?[]:query('vendas','caixaId',id(box),text(box.equipeId)),overviewOnly&&!openBox(box)?[]:query('pagamentos','caixaId',id(box),text(box.equipeId)),overviewOnly&&!openBox(box)?[]:query('solicitacoes','caixaId',id(box),text(box.equipeId)),overviewOnly&&!openBox(box)?[]:query('historicoCobrancas','caixaId',id(box),text(box.equipeId)),openBox(box)?Promise.resolve({exists:false}):query('fechamentos_caixa','caixaId',id(box),text(box.equipeId)).then(list=>({exists:!!list.length,data:()=>list[0]})),openBox(box)?ownQuery('vendas'):[],openBox(box)?ownQuery('parcelas'):[]
-    ]);
+    // Ler o documento ANTES de decidir quais coleções buscar: o status do
+    // objeto recebido da tabela pode ser anterior ao fechamento.
+    const boxSnap=await db.collection('caixas').doc(id(box)).get({source:'server'});
     if (!boxSnap.exists) throw new Error('Caixa não encontrado.');
-    const fresh={...boxSnap.data(),id:boxSnap.id};
+    const fresh=rememberServerBox({...boxSnap.data(),id:boxSnap.id});
     if(tenantOf(fresh)!==tenant())throw new Error('Caixa fora da empresa atual.');
     if (box.equipeId && text(fresh.equipeId)!==text(box.equipeId)) throw new Error('A equipe deste caixa mudou. Atualize a consulta.');
-    return {fresh,data:{sales,payments,moves,visits,closure:closureSnap.exists?closureSnap.data():null,portfolio,installments,portfolioReady:openBox(box)}};
+    const ownQuery=async collection=>unique((await Promise.all([fresh.vendedorAuthUid?query(collection,'vendedorAuthUid',text(fresh.vendedorAuthUid),text(fresh.equipeId)):[],fresh.vendedorId?query(collection,'vendedorId',text(fresh.vendedorId),text(fresh.equipeId)):[]])).flat());
+    const [sales,payments,moves,visits,closureSnap,portfolio,installments]=await Promise.all([
+      overviewOnly&&!openBox(fresh)?[]:query('vendas','caixaId',id(fresh),text(fresh.equipeId)),
+      overviewOnly&&!openBox(fresh)?[]:query('pagamentos','caixaId',id(fresh),text(fresh.equipeId)),
+      overviewOnly&&!openBox(fresh)?[]:query('solicitacoes','caixaId',id(fresh),text(fresh.equipeId)),
+      overviewOnly&&!openBox(fresh)?[]:query('historicoCobrancas','caixaId',id(fresh),text(fresh.equipeId)),
+      openBox(fresh)?Promise.resolve({exists:false}):query('fechamentos_caixa','caixaId',id(fresh),text(fresh.equipeId)).then(list=>({exists:!!list.length,data:()=>list[0]})),
+      openBox(fresh)?ownQuery('vendas'):[],
+      openBox(fresh)?ownQuery('parcelas'):[]
+    ]);
+    return {fresh,data:{sales,payments,moves,visits,closure:closureSnap.exists?closureSnap.data():null,portfolio,installments,portfolioReady:openBox(fresh)}};
   }
   async function loadOverview(box) {
     const ctx=ui.context,key=id(box),fingerprint=JSON.stringify([box.status,box.atualizadoEm,box.saldoAtualCentavos]);
@@ -208,8 +245,9 @@
     catch(error){if(ctx===ui.context)overview.set(key,{fingerprint,error:error.message});}
     finally {pending.delete(key);overviewLoads--;if(ctx===ui.context&&!ui.detail)render();}
   }
-  async function selectBox(boxId) {
-    const box=ui.history.find(b=>id(b)===text(boxId));if(!box)return;
+  async function selectBox(boxId, strict = false) {
+    const box=ui.history.find(b=>id(b)===text(boxId));
+    if(!box){if(strict)throw Error('Caixa não encontrado para atualização.');return null;}
     const revision=++ui.revision,ctx=ui.context;ui.box=id(box);ui.data=null;ui.loading=true;ui.error='';render();
     try {
       const {fresh,data}=await fetchBox(box);
@@ -218,7 +256,12 @@
       ui.history=ui.history.map(b=>id(b)===id(fresh)?fresh:b);ui.data=data;
       global.IntegroAberturaCaixa?.incorporar({caixaId:id(fresh),caixa:fresh});
       ui.loading=false;render();
-    }catch(error){if(revision===ui.revision){ui.loading=false;ui.error=error.message||'Não foi possível consultar o caixa.';render();}}
+      return fresh;
+    }catch(error){
+      if(revision===ui.revision){ui.loading=false;ui.error=error.message||'Não foi possível consultar o caixa.';render();}
+      if(strict) throw error;
+      return null;
+    }
   }
   const metric = (label,value) => `<div class="cx-metric"><span>${label}</span><strong>${value==null?'Não registrado':value}</strong></div>`;
   function renderDetail(host) {
@@ -252,9 +295,11 @@
         const {actual,reason,managerial}=confirmation;
         actionFeedback('Registrando fechamento no servidor...');
         const result=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,valorInformadoCentavos:actual,justificativa:reason||'',encerramentoGerencial:managerial===true,snapshot});
-        actionFeedback('Fechamento confirmado: '+text(result?.statusFechamento||'FECHADO')+'.'+
+        actionFeedback('Fechamento registrado. Verificando o novo status no servidor...');
+        const fresh=await selectBox(id(box),true);
+        if(openBox(fresh)) throw Error('O servidor informou fechamento, mas o documento ainda consta aberto. Atualize a consulta antes de outra operação.');
+        actionFeedback('Fechamento confirmado: '+text(fresh.status||result?.statusFechamento||'FECHADO')+'.'+
           (result?.quantidadeBaixasGerenciais ? ' Cobranças sem baixa classificadas como não pagas: '+result.quantidadeBaixasGerenciais+'.' : ''));
-        await selectBox(id(box));
       }catch(error){
         console.error('Falha ao fechar caixa pelo supervisor:',error);
         actionFeedback(error?.message || 'Não foi possível fechar o caixa.',true);
