@@ -217,7 +217,7 @@ test('vendedor centraliza notificações e só mantém um listener de leads por 
   assert.ok(first > 0 && end > first, 'função de tempo real encontrada');
   const trecho = html.slice(first,end);
   assert.doesNotMatch(trecho, /__integroNotifLeadUnsub/);
-  assert.doesNotMatch(trecho, /collection\\("notificacoes"\\)/);
+  assert.doesNotMatch(trecho, /collection\("notificacoes"\)/);
   assert.match(trecho, /__integroVendedorLeadRealtimeChave/);
   let currentUid = 'auth-a', tenant = 'tenant-a';
   let removed = 0, consultas = 0, carregamentos = 0, renders = 0, nextTimer = 0;
@@ -281,6 +281,6 @@ test('bootstrap de leads é limitado a uma carga por usuário e empresa', () => 
   const end=html.indexOf('if(document.readyState===',start);
   const trecho=html.slice(start,end);
   assert.match(trecho,/__integroLeadBootstrapChave!==chave/);
-  assert.match(trecho,/window\\.__integroLeadBootstrapChave=chave/);
-  assert.match(trecho,/if\\(window\\.__integroLeadBootstrapChave!==chave\\)return/);
+  assert.match(trecho,/window\.__integroLeadBootstrapChave=chave/);
+  assert.match(trecho,/if\(window\.__integroLeadBootstrapChave!==chave\)return/);
 });
