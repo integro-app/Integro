@@ -207,3 +207,80 @@ test('v24.6 rules tornam destinatarioAuthUid soberano para notificacao direciona
   assert.match(bloco, /isCurrentUserValue\(destinatarioAuthUid\)/);
   assert.match(bloco, /destinatarioAuthUid == ""/);
 });
+
+
+test('vendedor centraliza notificações e só mantém um listener de leads por sessão', async () => {
+  const vm = require('node:vm');
+  const html = fs.readFileSync(path.join(root, 'vendedor.html'), 'utf8');
+  const first = html.indexOf('function iniciarTempoReal(){', html.indexOf('integro-vendedor-leads-recebidos-fix-v20'));
+  const end = html.indexOf('  function iniciar(){', first);
+  assert.ok(first > 0 && end > first, 'função de tempo real encontrada');
+  const trecho = html.slice(first,end);
+  assert.doesNotMatch(trecho, /__integroNotifLeadUnsub/);
+  assert.doesNotMatch(trecho, /collection\\("notificacoes"\\)/);
+  assert.match(trecho, /__integroVendedorLeadRealtimeChave/);
+  let currentUid = 'auth-a', tenant = 'tenant-a';
+  let removed = 0, consultas = 0, carregamentos = 0, renders = 0, nextTimer = 0;
+  const callbacks = [], timers = new Map(), avisos = [];
+  const ctx = {
+    console: { warn: (...args) => avisos.push(args.join(' ')) },
+    usuarioAtualLead: () => ({ authUid:'auth-a', clientePlataformaId:tenant }),
+    tenantLead: () => tenant,
+    firebase: { auth: () => ({ currentUser: currentUid ? {uid:currentUid} : null }) },
+    atualizarAcessoLeads: () => {},
+    carregarIndicacoes: async () => {carregamentos++;},
+    renderIndicacoes: () => {renders++;},
+    setTimeout: (fn) => { const id = ++nextTimer;timers.set(id,fn);return id; },
+    clearTimeout: id => timers.delete(id),
+    db: {collection(name) {
+      consultas++;
+      assert.equal(name, 'indicacoes', 'não consultar notificações em duplicidade');
+      return {where(field,op,value) {
+        assert.equal(field, 'vendedorAuthUid');assert.equal(op, '==');assert.equal(value,currentUid);
+        return {onSnapshot(cb) {callbacks.push(cb);return () => {removed++;};}};
+      }};
+    }}
+  };
+  ctx.window = ctx;
+  vm.runInNewContext(trecho,ctx);
+  const flush = async () => {
+    const pending = [...timers.values()];timers.clear();
+    for(const fn of pending) await fn();
+  };
+  assert.equal(ctx.iniciarTempoReal(),true);
+  assert.equal(ctx.iniciarTempoReal(),true);
+  assert.equal(consultas,1,'repetir a inicialização não cria listener');
+  callbacks[0]();callbacks[0]();callbacks[0]();
+  await flush();
+  assert.equal(carregamentos,1,'três eventos juntos resultam em uma consulta');
+  assert.equal(renders,1);
+
+  tenant = 'tenant-b';
+  assert.equal(ctx.iniciarTempoReal(),true);
+  assert.equal(removed,1,'trocar de tenant desinscreve o listener antigo');
+  assert.equal(consultas,2);
+  callbacks[0]();
+  await flush();
+  assert.equal(carregamentos,1,'callback de tenant anterior não recarrega');
+  callbacks[1]();
+  await flush();
+  assert.equal(carregamentos,2);
+
+  currentUid = null;
+  assert.equal(ctx.iniciarTempoReal(),false);
+  assert.equal(removed,2,'logout remove listener ativo');
+  callbacks[1]();
+  await flush();
+  assert.equal(carregamentos,2,'logout descarta evento atrasado');
+  assert.deepEqual(avisos,[]);
+});
+
+test('bootstrap de leads é limitado a uma carga por usuário e empresa', () => {
+  const html = fs.readFileSync(path.join(root,'vendedor.html'),'utf8');
+  const start=html.indexOf('function iniciar(){',html.indexOf('integro-vendedor-leads-recebidos-fix-v20'));
+  const end=html.indexOf('if(document.readyState===',start);
+  const trecho=html.slice(start,end);
+  assert.match(trecho,/__integroLeadBootstrapChave!==chave/);
+  assert.match(trecho,/window\\.__integroLeadBootstrapChave=chave/);
+  assert.match(trecho,/if\\(window\\.__integroLeadBootstrapChave!==chave\\)return/);
+});
