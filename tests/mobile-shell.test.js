@@ -28,8 +28,8 @@ test("todas as telas internas usam o shell responsivo autoritativo", () => {
     assert.match(html, /data-integro-sidebar(?:\s|>)/i, file);
     assert.match(html, /data-integro-sidebar-overlay(?:\s|>)/i, file);
     assert.match(html, /data-integro-menu-trigger(?:\s|>)/i, file);
-    assert.match(html, /js\/integro-mobile-navigation\.js\?v=20260818-v272-perf1/i, file);
-    assert.match(html, /css\/integro-mobile\.css\?v=20260818-v272-perf1/i, file);
+    assert.match(html, /js\/integro-mobile-navigation\.js\?v=20261030-mobile-gestures/i, file);
+    assert.match(html, /css\/integro-mobile\.css\?v=20261030-mobile-gestures/i, file);
     assert.doesNotMatch(html, /integro-mobile-final\.css/i, `${file}: não pode carregar uma segunda camada mobile`);
   }
 });
@@ -53,7 +53,7 @@ test("camada final mantém sidebar nítida, cabeçalho do master alinhado e view
   assert.match(css, /grid-template-columns:\s*minmax\(72px, \.9fr\) minmax\(105px, 1\.35fr\) 44px/);
 
   assert.match(js, /loadAuthoritativeStylesheet/);
-  assert.match(js, /integro-mobile\.css\?v=20260818-v272-perf1/);
+  assert.match(js, /integro-mobile\.css\?v=20261030-mobile-gestures/);
   assert.match(js, /integro-mobile-app-mode/);
   assert.match(js, /syncVisualViewport/);
   assert.match(js, /visualViewport/);
@@ -82,4 +82,138 @@ test("mobile v27.3 reduz wrappers e preserva modo app", () => {
   assert.ok(css.includes("box-shadow: none !important"));
   assert.ok(css.includes("min-height: 64px !important"));
   assert.ok(css.includes("grid-template-columns: minmax(0, 1fr) 42px 42px !important"));
+});
+
+test("swipe mobile funciona repetidamente, não captura scroll nem campos e restaura desktop", () => {
+  const vm = require("node:vm");
+  const events = new Map();
+  const add = (type, callback) => {
+    if (!events.has(type)) events.set(type, new Set());
+    events.get(type).add(callback);
+  };
+  const remove = (type, callback) => events.get(type)?.delete(callback);
+  const emit = (type, payload = {}) => {
+    const event = { type, ...payload };
+    for (const callback of [...(events.get(type) || [])]) callback(event);
+  };
+  const classList = () => {
+    const set = new Set();
+    return {
+      add: (...names) => names.forEach(name => set.add(name)),
+      remove: (...names) => names.forEach(name => set.delete(name)),
+      contains: name => set.has(name),
+      toggle(name, active) {
+        const next = active === undefined ? !set.has(name) : Boolean(active);
+        if (next) set.add(name); else set.delete(name);
+        return next;
+      }
+    };
+  };
+  const node = () => {
+    const attrs = new Map(), styles = new Map();
+    return {
+      classList: classList(), dataset: {}, style: {
+        setProperty(name, value) { styles.set(name, value); },
+        removeProperty(name) { styles.delete(name); },
+        getPropertyValue(name) { return styles.get(name) || ""; }
+      },
+      isConnected: true, parentElement: null,
+      setAttribute(name, value) { attrs.set(name, String(value)); },
+      getAttribute(name) { return attrs.get(name) ?? null; },
+      removeAttribute(name) { attrs.delete(name); },
+      querySelector() { return null; },
+      focus() {}
+    };
+  };
+  const body = node(), sidebar = node(), overlay = node(), trigger = node(), link = node();
+  body.dataset.integroPage = "vendedor";
+  trigger.parentElement = body;
+  link.sheet = {};
+  body.appendChild = () => {};
+  const htmlStyle = node().style;
+  const viewport = { width: 390, height: 844 };
+  const document = {
+    body,
+    documentElement: { clientWidth: 390, clientHeight: 844, style: htmlStyle },
+    querySelector(selector) {
+      if (selector.includes("link[href*=")) return link;
+      if (selector.includes("data-integro-sidebar-overlay")) return overlay;
+      if (selector === "[data-integro-sidebar]") return sidebar;
+      if (selector.includes("data-integro-menu-trigger")) return trigger;
+      return null;
+    },
+    querySelectorAll(selector) {
+      if (selector.includes("data-integro-menu-trigger")) return [trigger];
+      if (selector.includes("data-integro-sidebar-overlay")) return [overlay];
+      return [];
+    },
+    getElementById(id) { return id === "sidebar" ? sidebar : null; },
+    addEventListener: add,
+    removeEventListener: remove,
+    dispatchEvent(event) { emit(event.type, event); },
+    createElement() { return node(); }
+  };
+  const window = {
+    innerWidth: 390, innerHeight: 844,
+    matchMedia() { return { get matches() { return viewport.width <= 980; } }; },
+    requestAnimationFrame(callback) { callback(); },
+    getComputedStyle() { return { display:"block", visibility:"visible", opacity:"1" }; },
+    addEventListener: (type, callback) => add("window:" + type, callback),
+    clearTimeout() {}, setTimeout() { return 1; },
+    visualViewport: { height:844, addEventListener() {} },
+    State: { getUsuario: () => ({ authUid:"u", clientePlataformaId:"t" }) }
+  };
+  const history = { state:{}, replaceState() {}, pushState() {} };
+  const context = { window, document, history, location:{href:"https://exemplo.invalid/vendedor.html"},
+    console, Promise, MutationObserver: class { observe(){} disconnect(){} },
+    CustomEvent: class { constructor(type) { this.type=type; } } };
+  vm.runInNewContext(read("js/integro-mobile-navigation.js"),context);
+  emit("integro-app-ready");
+  assert.equal(body.classList.contains("integro-shell-ready"), true);
+
+  const surface = { closest() { return null; } };
+  const swipe = (fromX, toX, fromY=120, toY=120) => {
+    const start = { clientX:fromX, clientY:fromY };
+    emit("touchstart", { touches:[start], target:surface });
+    assert.equal(events.get("touchmove")?.size, 1, "gesto iniciou listener de movimento");
+    emit("touchmove", { touches:[{ clientX:toX,clientY:toY }], cancelable:true, preventDefault(){} });
+    emit("touchend");
+    assert.equal(events.get("touchmove")?.size, 0, "gesto remove listener ao terminar");
+  };
+
+  swipe(8, 112);
+  assert.equal(body.classList.contains("menu-mobile-open"),true,"primeiro swipe abre menu");
+  assert.equal(sidebar.getAttribute("aria-hidden"),"false");
+  swipe(205, 110);
+  assert.equal(body.classList.contains("menu-mobile-open"),false,"segundo swipe fecha menu");
+  swipe(8, 120);
+  assert.equal(body.classList.contains("menu-mobile-open"),true,"terceiro swipe abre novamente");
+  swipe(205, 100);
+  assert.equal(body.classList.contains("menu-mobile-open"),false);
+
+  swipe(8, 20, 120, 210);
+  assert.equal(body.classList.contains("menu-mobile-open"),false,"rolagem vertical não abre menu");
+  const button = { closest() { return {}; } };
+  emit("touchstart",{ touches:[{clientX:8,clientY:120}],target:button });
+  assert.equal(events.get("touchmove")?.size,0,"campos e botões não iniciam swipe lateral");
+
+  viewport.width = 1280;
+  window.innerWidth = 1280;
+  document.documentElement.clientWidth = 1280;
+  emit("window:resize");
+  assert.equal(sidebar.getAttribute("aria-hidden"),null,"desktop não esconde sidebar dos leitores de tela");
+  assert.equal(body.classList.contains("integro-mobile-app-mode"),false);
+  assert.equal(sidebar.style.getPropertyValue("transform"),"","desktop limpa transformação forçada");
+});
+
+test("compactação mantém margens de 10px e não recria wrappers externos", () => {
+  const css = read("css/integro-mobile.css");
+  const section = css.slice(css.indexOf("/* v27.3 compactacao global mobile"));
+  assert.match(section, /--integro-mobile-gutter: 10px/);
+  assert.match(section, /--it-mobile-gutter: 10px/);
+  assert.match(section, /padding-left: max\(10px, env\(safe-area-inset-left\)\)/);
+  assert.match(section, /padding-right: max\(10px, env\(safe-area-inset-right\)\)/);
+  assert.match(section, /\.screen > \.section-card,[\s\S]*?padding: 0 !important/);
+  assert.match(section, /\.screen > \.panel/);
+  assert.match(section, /min-height: 64px !important/);
 });
