@@ -406,3 +406,97 @@ test("duas consultas com mesmo alias continuam isoladas ao mudar apenas o auth U
   assert.equal(segunda[0].ordinal,2);
   assert.equal(chamadas,2);
 });
+
+test("reconexão reabre stream sem perder assinantes, escopos e handles originais", () => {
+  const {runtime,contexto}=carregarRuntime();
+  const assinaturas=[], unsubscribes=[];
+  const db={collection:()=>({
+    where(){return this;},orderBy(){return this;},limit(){return this;},
+    onSnapshot(atualizar,erro){
+      const id=assinaturas.length;
+      assinaturas.push({atualizar,erro});
+      return ()=>unsubscribes.push(id);
+    }
+  })};
+  const atualizacoes={a:[],b:[]};
+  const base={db,colecao:"caixas",tenantId:"tenant_a",escopo:"tela:caixas"};
+  const cancelarA=runtime.ouvir({...base,chave:"a",aoAtualizar:items=>atualizacoes.a.push(items.map(x=>x.id))});
+  const cancelarB=runtime.ouvir({...base,chave:"b",aoAtualizar:items=>atualizacoes.b.push(items.map(x=>x.id))});
+  assert.equal(assinaturas.length,1);
+  const snapshot=(id,metadata={fromCache:false,hasPendingWrites:false})=>({
+    docs:[{id,data:()=>({clientePlataformaId:"tenant_a"})}],metadata
+  });
+  assinaturas[0].atualizar(snapshot("antigo"));
+  assert.equal(atualizacoes.a.length,1);
+  assert.equal(atualizacoes.b.length,1);
+  contexto.IntegroConectividade={confirmarServidor(v){contexto.lastConfirm=v;}};
+  const reval=runtime.revalidarConexao();
+  assert.equal(reval.assinaturas,1);
+  assert.equal(runtime.diagnostico().revalidacoes,1);
+  assert.equal(runtime.diagnostico().listenersAtivos,2);
+  assert.equal(runtime.diagnostico().assinaturasAtivas,1);
+  assert.equal(assinaturas.length,2);
+  assert.deepEqual(unsubscribes,[0]);
+  assinaturas[0].atualizar(snapshot("atrasado"));
+  assert.equal(atualizacoes.a.length,1,"callback encerrado nunca atualiza consumidor");
+  assinaturas[1].atualizar(snapshot("cache",{fromCache:true,hasPendingWrites:false}));
+  assinaturas[1].atualizar(snapshot("pendente",{fromCache:false,hasPendingWrites:true}));
+  assert.equal(contexto.lastConfirm,undefined);
+  assinaturas[1].atualizar(snapshot("confirmado"));
+  assert.equal(contexto.lastConfirm.uid,"");
+  assert.equal(contexto.lastConfirm.tenantId,"tenant_a");
+  assert.equal(contexto.lastConfirm.colecao,"caixas");
+  assert.equal(runtime.diagnostico().confirmacoesServidor,2);
+  cancelarA();
+  assert.equal(unsubscribes.length,1);
+  cancelarB();
+  assert.deepEqual(unsubscribes,[0,1]);
+  assert.equal(runtime.diagnostico().assinaturasAtivas,0);
+  assert.equal(runtime.diagnostico().listenersAtivos,0);
+});
+
+test("revalidar não faz leituras quando navegador está offline nem reativa sessão antiga", () => {
+  const {runtime,contexto}=carregarRuntime();
+  let abertos=0,fechados=0,avisos=0;
+  const db={collection:()=>({
+    where(){return this;},limit(){return this;},
+    onSnapshot(){abertos++;return()=>fechados++;}
+  })};
+  runtime.ouvir({db,colecao:"caixas",aoAtualizar(){}});
+  assert.equal(abertos,1);
+  contexto.navigator={onLine:false};
+  assert.equal(runtime.revalidarConexao().motivo,"offline");
+  assert.equal(abertos,1);
+  contexto.navigator.onLine=true;
+  contexto.State={getTenantId:()=> "tenant_b",getUsuario:()=>({authUid:"outro",clientePlataformaId:"tenant_b"})};
+  contexto.IntegroConectividade={confirmarServidor(){avisos++;}};
+  assert.equal(runtime.revalidarConexao().assinaturas,0);
+  assert.equal(abertos,1);
+  assert.equal(avisos,0);
+  runtime.pararTodos();
+  assert.equal(fechados,1);
+});
+
+test("reconexões sucessivas não multiplicam listeners e descartam callbacks fora de ordem", () => {
+  const {runtime}=carregarRuntime();
+  const callbacks=[];
+  let unsubscribe=0,atualizacoes=0;
+  const db={collection:()=>({
+    where(){return this;},limit(){return this;},
+    onSnapshot(cb){callbacks.push(cb);return()=>{unsubscribe++;};}
+  })};
+  const stop=runtime.ouvir({db,colecao:"solicitacoes",aoAtualizar(){atualizacoes++;}});
+  for(let i=0;i<5;i++) {
+    assert.equal(runtime.revalidarConexao().assinaturas,1);
+    assert.equal(runtime.diagnostico().listenersAtivos,1);
+    assert.equal(runtime.diagnostico().assinaturasAtivas,1);
+  }
+  assert.equal(callbacks.length,6);
+  assert.equal(unsubscribe,5);
+  for(let i=0;i<5;i++) callbacks[i]({docs:[{id:"atrasado",data:()=>({})}]});
+  assert.equal(atualizacoes,0);
+  callbacks[5]({docs:[{id:"atual",data:()=>({})}]});
+  assert.equal(atualizacoes,1);
+  stop();
+  assert.equal(unsubscribe,6);
+});

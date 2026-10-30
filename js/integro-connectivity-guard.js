@@ -33,6 +33,7 @@
     }
   `;
   let offline = false;
+  let aguardandoServidor = false;
   let avisoTimer = null;
   let disposables = [];
   let ultimoContexto = "";
@@ -66,13 +67,35 @@
     const status = criarAviso();
     if (avisoTimer) global.clearTimeout(avisoTimer);
     avisoTimer = null;
-    status.textContent = "Sem conexão. Operações de caixa, vendas e cobranças estão bloqueadas até reconectar.";
+    status.textContent = conectado()
+      ? "Conexão recuperada. Aguardando confirmação dos dados pelo servidor antes das operações financeiras."
+      : "Sem conexão. Operações de caixa, vendas e cobranças estão bloqueadas até reconectar.";
     status.hidden = false;
   }
 
   function marcar(semConexao) {
-    document.body?.classList?.toggle(MARKER, semConexao);
-    document.body?.setAttribute?.("data-integro-conectividade", semConexao ? "offline" : "online");
+    document.body?.classList?.toggle(MARKER, semConexao || aguardandoServidor);
+    document.body?.setAttribute?.("data-integro-conectividade",
+      semConexao ? "offline" : aguardandoServidor ? "sincronizando" : "online");
+  }
+
+  function confirmarServidor({ uid = "", tenantId = "" } = {}) {
+    const usuario = global.State?.getUsuario?.() || {};
+    const atualUid = String(global.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid || "");
+    const atualTenant = String(global.State?.getTenantId?.() || usuario.clientePlataformaId || "");
+    if (!aguardandoServidor || offline || !conectado() || !uid || !tenantId ||
+        uid !== atualUid || tenantId !== atualTenant || ultimoContexto !== sessao()) return false;
+    aguardandoServidor = false;
+    marcar(false);
+    const aviso = criarAviso();
+    aviso.textContent = "Dados atualizados pelo servidor. Operações liberadas.";
+    aviso.hidden = false;
+    if (avisoTimer) global.clearTimeout(avisoTimer);
+    avisoTimer = global.setTimeout(() => { aviso.hidden = true; avisoTimer = null; }, 3500);
+    document.dispatchEvent(new global.CustomEvent("integro-conectividade-validada", {
+      detail: { tenantEUsuario: ultimoContexto, origem: "snapshot-servidor" }
+    }));
+    return true;
   }
 
   function atualizar() {
@@ -81,23 +104,47 @@
     const mudouSessao = contexto !== ultimoContexto;
     ultimoContexto = contexto;
     offline = !conectado();
-    marcar(offline);
     if (offline) {
+      aguardandoServidor = false;
+      marcar(true);
       avisar();
       return;
     }
+    if (mudouSessao) aguardandoServidor = false;
+    marcar(false);
     const aviso = criarAviso();
     if (anterior) {
-      // Firestore retoma os listeners autonomamente. Não reenviar
-      // pagamentos/vendas/baixas nem publicar saldos locais como confirmados.
-      global.IntegroDataRuntime?.invalidar?.();
-      document.dispatchEvent(new global.CustomEvent("integro-conectividade-restabelecida", {
-        detail: { tenantEUsuario: contexto, modo: "aguardando-confirmacao-servidor" }
-      }));
+      // Somente assinaturas existentes exigem confirmação de snapshot remoto.
+      // Páginas sem tempo real continuam usando a validação do próprio backend.
+      const runtime = global.IntegroDataRuntime;
+      aguardandoServidor = Number(runtime?.diagnostico?.()?.assinaturasAtivas || 0) > 0 &&
+        typeof runtime?.revalidarConexao === "function";
+      marcar(false);
       aviso.textContent = "Conexão detectada. Aguardando atualização dos dados pelo servidor.";
       aviso.hidden = false;
       if (avisoTimer) global.clearTimeout(avisoTimer);
-      avisoTimer = global.setTimeout(() => { aviso.hidden = true; avisoTimer = null; }, 3800);
+      avisoTimer = null;
+      if (aguardandoServidor) {
+        // Reabre streams em leitura: não repete venda, baixa ou pagamento.
+        // O bloqueio só termina após snapshot sem escritas pendentes/fromCache.
+        try {
+          const resultado = runtime.revalidarConexao();
+          if (!resultado?.assinaturas && aguardandoServidor) {
+            aguardandoServidor = false;
+            marcar(false);
+          }
+        } catch (erro) {
+          console.warn("[ÍNTEGRO] Erro ao revalidar dados após reconexão.", erro);
+        }
+      } else {
+        runtime?.invalidar?.();
+      }
+      document.dispatchEvent(new global.CustomEvent("integro-conectividade-restabelecida", {
+        detail: { tenantEUsuario: contexto, modo: "aguardando-confirmacao-servidor" }
+      }));
+      if (!aguardandoServidor && aviso.textContent.includes("Aguardando atualização")) {
+        avisoTimer = global.setTimeout(() => { aviso.hidden = true; avisoTimer = null; }, 3800);
+      }
     } else if (mudouSessao) {
       aviso.hidden = true;
     }
@@ -118,7 +165,7 @@
   }
 
   function bloquear(evento) {
-    if (!offline && conectado()) return;
+    if (!offline && !aguardandoServidor && conectado()) return;
     if (!protegidaNaArvore(evento.target)) return;
     evento.preventDefault?.();
     evento.stopImmediatePropagation?.();
@@ -127,7 +174,7 @@
   }
 
   function bloquearSubmit(evento) {
-    if (!offline && conectado()) return;
+    if (!offline && !aguardandoServidor && conectado()) return;
     const form = evento.target;
     const trigger = evento.submitter;
     if (!protegerAcao(trigger) && !protegerAcao(form)) return;
@@ -140,7 +187,13 @@
   function podeOperar() {
     if (!conectado()) {
       offline = true;
+      aguardandoServidor = false;
       marcar(true);
+      avisar();
+      return false;
+    }
+    if (aguardandoServidor) {
+      marcar(false);
       avisar();
       return false;
     }
@@ -175,7 +228,9 @@
     podeOperar,
     avisar,
     atualizar,
-    diagnostico: () => ({ offline: !conectado(), bloqueioVisual: offline, contexto: ultimoContexto, filaFinanceiraAutomatica: false })
+    confirmarServidor,
+    diagnostico: () => ({ offline: !conectado(), aguardandoServidor,
+      bloqueioVisual: offline || aguardandoServidor, contexto: ultimoContexto, filaFinanceiraAutomatica: false })
   });
   if (document?.readyState === "loading") document.addEventListener("DOMContentLoaded", ativar, { once: true });
   else ativar();
