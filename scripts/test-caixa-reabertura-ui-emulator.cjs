@@ -137,7 +137,7 @@ let browser;
  },null,{timeout:20000});
  assert.equal((await page.locator("[data-cx-row] .cx-state").innerText()).trim(),"FECHADO");
  assert.equal((await page.locator("[data-cx-row] .cx-state").getAttribute("class")).includes("open"),false);
- assert.equal((await page.locator(".cx-stats").innerText()).includes("Caixas abertos\\n0"),true);
+ assert.equal((await page.locator(".cx-stat").first().locator("strong").innerText()).trim(),"0");
  await page.locator("[data-cx-open]").click();
  await page.waitForFunction(()=>document.querySelector("[data-cx-box]")?.selectedOptions[0]?.textContent.includes("FECHADO"),null,{timeout:20000});
  assert.equal((await page.locator("[data-cx-box]").inputValue()),boxId);
