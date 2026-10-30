@@ -132,3 +132,107 @@ test('notificações restringem tenant e destinatário no servidor e não consul
   tenant='';await context.IntegroNotifications.list();context.IntegroNotifications.subscribe();
   assert.equal(queries.length,2);
 });
+
+
+test('notificação de lead abre a indicação original antes do cadastro do cliente', async () => {
+  const vm = require('node:vm');
+  const opened = [], clients = [];
+  const context = {
+    document: { querySelector: () => null },
+    IntegroNotificationCenter: { close() {} },
+    abrirLeadsRecebidosVendedor: async id => { opened.push(id); return true; },
+    abrirDrawerClienteVendedor: id => { clients.push(id); },
+    trocarTela() {}
+  };
+  context.window = context;
+  vm.runInNewContext(read('js/routers/notification-router.js'), context);
+  const ok = await context.IntegroNotificationRouter.open({
+    tipo: 'NOVO_LEAD', entidadeTipo: 'LEAD', indicacaoId: 'lead-456',
+    clienteOperacionalId: 'cliente-123',
+    rota: { tela: 'clientes', aba: 'leads', entidadeId: 'cliente-123', indicacaoId: 'lead-456' }
+  });
+  assert.equal(ok, true);
+  assert.deepEqual(opened, ['lead-456']);
+  assert.deepEqual(clients, []);
+});
+
+test('notificação antiga não é considerada aberta se o lead mudou de responsável', async () => {
+  const vm = require('node:vm');
+  const context = {
+    document: { querySelector: () => null },
+    IntegroNotificationCenter: { close() {} },
+    abrirLeadsRecebidosVendedor: async () => false,
+    abrirDrawerClienteVendedor: () => { throw Error('Não pode abrir cliente antigo'); }
+  };
+  context.window = context;
+  vm.runInNewContext(read('js/routers/notification-router.js'), context);
+  const opened = await context.IntegroNotificationRouter.open({
+    tipo: 'LEAD_ATRIBUIDO', entidadeTipo: 'LEAD', indicacaoId: 'lead-antigo',
+    rota: { tela: 'clientes', aba: 'leads', entidadeId: 'cliente-antigo' }
+  });
+  assert.equal(opened, false);
+});
+
+test('rota legada sem indicação abre cliente válido, mas recusa destino ausente', async () => {
+  const vm = require('node:vm');
+  const clients = [], tabs = [];
+  const context = {
+    document: { querySelector: () => null },
+    trocarTela() {},
+    trocarAbaClientesVendedor: tab => tabs.push(tab),
+    abrirDrawerClienteVendedor: async id => { clients.push(id); },
+    IntegroPerfisUnificados: { carregarClientesPorPerfil: async () => [{ id:'cliente-legado' }] },
+    State: { setClientes: () => {} }
+  };
+  context.window = context;
+  vm.runInNewContext(read('js/routers/notification-router.js'), context);
+  assert.equal(await context.IntegroNotificationRouter.open({
+    entidadeTipo:'LEAD', clienteOperacionalId:'cliente-legado', rota:{tela:'clientes',aba:'leads'}
+  }), true);
+  assert.deepEqual(clients, ['cliente-legado']);
+  assert.deepEqual(tabs, ['leads']);
+  assert.equal(await context.IntegroNotificationRouter.open({
+    entidadeTipo:'LEAD', rota:{tela:'clientes',aba:'leads'}
+  }), false);
+});
+
+test('vendedor só abre detalhes da indicação se a atribuição atual for dele e do tenant', async () => {
+  const vm = require('node:vm');
+  const html = read('vendedor.html');
+  const first = html.indexOf('window.abrirLeadsRecebidosVendedor=async function');
+  assert.ok(first >= 0, 'função do vendedor presente');
+  const last = html.indexOf(String.fromCharCode(10) + '  };', first);
+  assert.ok(last > first, 'delimitação da função presente');
+  const opened = [], messages = [];
+  let leads = [{ id:'lead-1', clientePlataformaId:'tenant-a', vendedorAuthUid:'auth-a' }];
+  const ctx = {
+    firebase: { auth: () => ({ currentUser: { uid:'auth-a' } }) },
+    usuarioAtualLead: () => ({ authUid:'auth-a', clientePlataformaId:'tenant-a' }),
+    tenantLead: () => 'tenant-a',
+    atualizarAcessoLeads: () => {},
+    indicacoesCache: leads,
+    trocarTela: () => {},
+    carregarIndicacoes: async () => { ctx.indicacoesCache = leads; },
+    renderIndicacoes: () => {},
+    abrirDetalheIndicacao: async id => { opened.push(id); },
+    notificarIntegro: mensagem => { messages.push(mensagem); }
+  };
+  ctx.window = ctx;
+  vm.runInNewContext(html.slice(first,last+5), ctx);
+  assert.equal(await ctx.abrirLeadsRecebidosVendedor('lead-1'), true);
+  assert.deepEqual(opened, ['lead-1']);
+  leads = [{ id:'lead-1', clientePlataformaId:'tenant-a', vendedorAuthUid:'auth-b' }];
+  assert.equal(await ctx.abrirLeadsRecebidosVendedor('lead-1'), false);
+  leads = [{ id:'lead-1', clientePlataformaId:'tenant-b', vendedorAuthUid:'auth-a' }];
+  assert.equal(await ctx.abrirLeadsRecebidosVendedor('lead-1'), false);
+  assert.deepEqual(opened, ['lead-1']);
+  assert.equal(messages.length, 2);
+});
+
+test('notificações de indicação incluem rota e versão nova das telas', () => {
+  const service = read('js/services/indicacoes-service.js');
+  assert.match(service, /rota: \{ tela:"clientes", aba:"leads", indicacaoId:dados\.indicacaoId/);
+  for(const page of ['vendedor.html','supervisor.html','financeiro.html','auditor.html','captador.html','master-global.html']){
+    assert.match(read(page), /notification-router\.js\?v=20261030-lead-origem/);
+  }
+});

@@ -6320,7 +6320,7 @@
 <script src="js/logout-flow.js?v=20261008-login-caixa1"></script>
 <script src="js/services/financial-operations.js?v=20261008-login-caixa1&build=20261008-admin-fechado1"></script>
 <script src="js/services/clientes-service.js?v=20260812-clientes-v24-4"></script>
-<script src="js/services/indicacoes-service.js?v=20260813-leads-v25-1"></script>
+<script src="js/services/indicacoes-service.js?v=20261030-rota-indicacao"></script>
 <script src="js/services/chat-service.js?v=20260730-chat4"></script>
 <script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
 <script src="js/chat-ui.js?v=20261028-mobile"></script>
@@ -21076,7 +21076,27 @@ async function verificarCaixaAbertoDiaAnterior() {
     await window.carregarIndicacoes?.();
     window.renderIndicacoes?.();
     atualizarAcessoLeads();
-    if(indicacaoId) setTimeout(()=>window.abrirDetalheIndicacao?.(indicacaoId),80);
+    if(!indicacaoId) return true;
+    const leadId=String(indicacaoId).trim();
+    const lead=(window.indicacoesCache || []).find(item=>String(item.id)===leadId);
+    // Uma notificação antiga não pode abrir um lead que foi redistribuído.
+    const usuario=usuarioAtualLead();
+    const uid=String(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid || "");
+    const tenant=tenantLead();
+    const dono=String(lead?.vendedorAuthUid || lead?.vendedorDestinoAuthUid || lead?.vendedorUid || "");
+    const doMesmoTenant=Boolean(tenant && lead?.clientePlataformaId === tenant);
+    const pertence=Boolean(lead && uid && doMesmoTenant &&
+      (dono ? dono===uid : window.IntegroIndicacoes?.usuarioNoEscopoIndicacao?.({...usuario,authUid:uid},lead)===true));
+    if(!pertence){
+      window.notificarIntegro?.("Este lead não está mais atribuído a você ou não está disponível.");
+      return false;
+    }
+    if(typeof window.abrirDetalheIndicacao!=="function"){
+      window.notificarIntegro?.("Não foi possível abrir o atendimento deste lead.");
+      return false;
+    }
+    await window.abrirDetalheIndicacao(leadId);
+    return true;
   };
 
   const cardAnterior=window.cardIndicacao;
@@ -21133,7 +21153,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
-  <script src="js/routers/notification-router.js?v=20261028-mobile"></script>
+  <script src="js/routers/notification-router.js?v=20261030-lead-origem"></script>
   <script src="js/services/notification-service.js?v=20261028-mobile"></script>
   <script src="js/modules/notification-center.js?v=20261028-mobile"></script>
 </body>
