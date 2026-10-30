@@ -1269,6 +1269,10 @@
   }
 
   async function confirmarFechamentoVendedor() {
+    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
+      window.IntegroConectividade?.avisar?.();
+      return;
+    }
     if (fechamentoVendedorEmAndamento || !snapshotFechamentoVendedor) return;
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const snapshot = snapshotFechamentoVendedor;
@@ -1743,6 +1747,10 @@
   }
 
   async function salvarCliente(clienteId = "") {
+    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
+      window.IntegroConectividade?.avisar?.();
+      return;
+    }
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const nome = texto(document.getElementById("clienteVendedorNome")?.value);
     const segmento = texto(document.getElementById("clienteVendedorSegmento")?.value);
@@ -2438,6 +2446,10 @@
   }
 
   async function registrarMovimentacaoVendedor() {
+    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
+      window.IntegroConectividade?.avisar?.();
+      return;
+    }
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const caixa = await garantirCaixaAberto();
     if (!caixa || !caixaEstaAberto(caixa)) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor.");
@@ -2621,6 +2633,10 @@
     }
   }
   async function confirmarPagamento(vendaId) {
+    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
+      window.IntegroConectividade?.avisar?.();
+      return;
+    }
     const registro = item(vendaId);
     if (!registro) return UIHelpers?.alerta?.("Cobrança não encontrada.");
     const caixa = await garantirCaixaAberto();
@@ -2720,6 +2736,10 @@
   }
 
   async function registrarNaoPagamento(vendaId) {
+    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
+      window.IntegroConectividade?.avisar?.();
+      return;
+    }
     const registro = item(vendaId);
     const caixa = await garantirCaixaAberto();
     if (!registro || !caixa) return UIHelpers?.alerta?.("Cobrança ou caixa aberto não encontrado.");
@@ -2798,6 +2818,10 @@
   }
 
   async function confirmarNovaVenda() {
+    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
+      window.IntegroConectividade?.avisar?.();
+      return;
+    }
     const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(clienteNovaVendaId));
     const caixa = await garantirCaixaAberto();
     if (!cliente || !caixa) return UIHelpers?.alerta?.("Cliente ou caixa aberto não encontrado.");
