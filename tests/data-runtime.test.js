@@ -335,3 +335,74 @@ test("10 ciclos de navegação encerram listeners da tela anterior sem crescimen
   assert.equal(fake.metricas().snapshots, 40);
   assert.equal(fake.metricas().unsubs, 40);
 });
+
+
+test("consulta em andamento de uma empresa não retorna nem armazena dados após troca de sessão", async () => {
+  const { runtime, contexto } = carregarRuntime();
+  const pendentes = [];
+  const ref = { where(){ return this; }, limit(){ return this; }, get(){ return new Promise(resolve => pendentes.push(resolve)); } };
+  const db = { collection: () => ref };
+  const opcoes = { db, colecao: "lancamentos_financeiros", cacheMs: 60000 };
+  const primeira = runtime.consultarTenant(opcoes);
+  await Promise.resolve();
+  contexto.State = { getTenantId: () => "tenant_b", getUsuario: () => ({ authUid: "usuario_b", clientePlataformaId: "tenant_b" }) };
+  const segunda = runtime.consultarTenant(opcoes);
+  await Promise.resolve();
+  pendentes[1]({ docs: [{ id:"novo", data:()=>({clientePlataformaId:"tenant_b",valorCentavos:200}) }] });
+  assert.equal((await segunda)[0].id, "novo");
+  pendentes[0]({ docs: [{ id:"antigo", data:()=>({clientePlataformaId:"tenant_a",valorCentavos:100}) }] });
+  assert.equal((await primeira).length, 0, "resposta antiga não é entregue após a troca");
+  const atual = await runtime.consultarTenant(opcoes);
+  assert.equal(atual[0].id, "novo");
+  assert.equal(runtime.diagnostico().cacheEntradas, 1);
+});
+
+test("leitura de documento pendente não expõe objeto da sessão encerrada", async () => {
+  const { runtime, contexto } = carregarRuntime();
+  let resolver;
+  const db = { collection: () => ({doc: () => ({get:()=>new Promise(resolve=>{resolver=resolve;})})}) };
+  const p = runtime.lerDocumento({db,colecao:"caixas",id:"caixa_antigo",cacheMs:60000});
+  await Promise.resolve();
+  contexto.State = {getTenantId:()=> "tenant_b",getUsuario:()=>({authUid:"usuario_b"})};
+  resolver({exists:true,id:"caixa_antigo",data:()=>({clientePlataformaId:"tenant_a",status:"ABERTO"})});
+  assert.equal(await p,null);
+  assert.equal(runtime.diagnostico().cacheEntradas,0);
+});
+
+test("callback de listener antigo é descartado mesmo após unsubscribe ou troca de empresa", () => {
+  const { runtime, contexto } = carregarRuntime();
+  const callbacks = [];
+  let fechados=0, atualizacoes=0, erros=0;
+  const db = { collection:()=>({
+    where(){return this;},limit(){return this;},
+    onSnapshot(onData,onError){callbacks.push({onData,onError});return ()=>{fechados++;};}
+  }) };
+  const options={db,colecao:"caixas",chave:"listener_offline",aoAtualizar(){atualizacoes++;},aoErro(){erros++;}};
+  const parar=runtime.ouvir(options);
+  const snapshot={docs:[{id:"c1",data:()=>({clientePlataformaId:"tenant_a"})}]};
+  callbacks[0].onData(snapshot);
+  assert.equal(atualizacoes,1);
+  contexto.State = {getTenantId:()=> "tenant_b",getUsuario:()=>({authUid:"usuario_b"})};
+  callbacks[0].onData(snapshot);
+  callbacks[0].onError(new Error("listener antigo"));
+  assert.equal(atualizacoes,1);
+  assert.equal(erros,0);
+  parar();
+  assert.equal(fechados,1);
+  callbacks[0].onData(snapshot);
+  assert.equal(atualizacoes,1);
+  assert.equal(runtime.diagnostico().assinaturasAtivas,0);
+});
+
+test("duas consultas com mesmo alias continuam isoladas ao mudar apenas o auth UID", async () => {
+  const {runtime,contexto}=carregarRuntime();
+  let chamadas=0;
+  const db={collection:()=>({where(){return this;},limit(){return this;},async get(){chamadas++;return{docs:[{id:"x",data:()=>({ordinal:chamadas})}]};}})};
+  const opcoes={db,colecao:"caixas",chave:"caixa-da-sessao",cacheMs:45000};
+  const primeira=await runtime.consultarTenant(opcoes);
+  contexto.State={getTenantId:()=> "tenant_a",getUsuario:()=>({authUid:"outro_usuario",clientePlataformaId:"tenant_a"})};
+  const segunda=await runtime.consultarTenant(opcoes);
+  assert.equal(primeira[0].ordinal,1);
+  assert.equal(segunda[0].ordinal,2);
+  assert.equal(chamadas,2);
+});
