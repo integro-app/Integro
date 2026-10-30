@@ -10,6 +10,7 @@
 
   const state = {
     started: false,
+    generation: 0,
     user: null,
     access: null,
     contextKey: "",
@@ -280,13 +281,22 @@
     return ref.limit(definition.limit || 500);
   }
 
+  function activeGeneration(generation, contextKey = state.contextKey) {
+    return state.started && state.generation === generation && state.contextKey === contextKey;
+  }
+
   function listenPart(logical, definition, part, ordered = true) {
+    const generation = state.generation;
+    const contextKey = state.contextKey;
     const runtime = global.IntegroDataRuntime;
     const key = `operacoes:${state.contextKey}:${part.id}:${ordered ? "ordenado" : "fallback"}`;
     let stop = () => {};
     let retried = false;
 
     const onUpdate = (rows, snapshot) => {
+      if (!activeGeneration(generation, contextKey)) return;
+      // Dados locais ainda pendentes de confirmação não são saldo oficial.
+      if (snapshot?.metadata?.hasPendingWrites === true) return;
       partStore(logical).set(part.id, (rows || []).filter(visibleForCurrentScope));
       publishLogical(logical);
 
@@ -297,18 +307,23 @@
       snapshot.docChanges().forEach(change => {
         if (change.type === "removed") return;
         const item = docData(change.doc);
-        if (logical === "ledger" && MOVEMENT_TYPES.has(upper(item.tipoLancamento))) hydrateMovement(item);
-        if (logical === "requests") hydrateRequest(item);
+        if (logical === "ledger" && MOVEMENT_TYPES.has(upper(item.tipoLancamento)))
+          Promise.resolve(hydrateMovement(item)).catch(error => console.warn("[ÍNTEGRO Tempo Real] Falha na hidratação.", error));
+        if (logical === "requests")
+          Promise.resolve(hydrateRequest(item)).catch(error => console.warn("[ÍNTEGRO Tempo Real] Falha na solicitação.", error));
       });
     };
 
     const onError = error => {
+      if (!activeGeneration(generation, contextKey)) return;
       state.lastError = { logical, part: part.id, code: error?.code || "", message: error?.message || String(error) };
       if (ordered && !retried && isIndexError(error)) {
         retried = true;
         setTimeout(() => {
+          if (!activeGeneration(generation, contextKey)) return;
           try { stop(); } catch (_) {}
-          listenPart(logical, definition, { ...part, id: `${part.id}:sem-ordem`, order: [] }, false);
+          if (activeGeneration(generation, contextKey))
+            listenPart(logical, definition, { ...part, id: `${part.id}:sem-ordem`, order: [] }, false);
         }, 0);
         return;
       }
@@ -341,7 +356,7 @@
     return stop;
   }
 
-  async function readDocument(collection, id) {
+  async function readDocument(collection, id, generation = state.generation) {
     const documentId = text(id);
     if (!documentId || !db()) return null;
     try {
@@ -349,7 +364,7 @@
       const item = runtime?.lerDocumento
         ? await runtime.lerDocumento({ db: db(), colecao: collection, id: documentId, forcar: true, cacheMs: 0 })
         : await db().collection(collection).doc(documentId).get().then(snapshot => snapshot.exists ? docData(snapshot) : null);
-      return item && visibleForCurrentScope(item) ? item : null;
+      return activeGeneration(generation) && item && visibleForCurrentScope(item) ? item : null;
     } catch (error) {
       console.warn(`[ÍNTEGRO Tempo Real] Documento ${collection}/${documentId} não sincronizado.`, error?.message || error);
       return null;
@@ -374,6 +389,9 @@
   }
 
   async function hydrateMovement(entry = {}) {
+    const generation = state.generation;
+    const contextKey = state.contextKey;
+    if (!activeGeneration(generation, contextKey)) return;
     const movementId = text(entry.id || entry.lancamentoId);
     const status = upper(entry.statusLancamento || "CONFIRMADO");
     const hydrationKey = `${movementId}:${status}:${text(entry.valorCentavos)}`;
@@ -397,13 +415,16 @@
       let origin = null;
 
       if (type === "VENDA" && originId) {
-        origin = await readDocument(collections.sales, originId);
+        origin = await readDocument(collections.sales, originId, generation);
+        if (!activeGeneration(generation, contextKey)) return;
         publishHydrated("vendas", origin);
       } else if (type === "PAGAMENTO" && originId) {
-        origin = await readDocument(collections.payments, originId);
+        origin = await readDocument(collections.payments, originId, generation);
+        if (!activeGeneration(generation, contextKey)) return;
         publishHydrated("pagamentos", origin);
       } else if (["INGRESSO", "GASTO", "RETIRADA"].includes(type) && originId) {
-        origin = await readDocument(collections.requests, originId);
+        origin = await readDocument(collections.requests, originId, generation);
+        if (!activeGeneration(generation, contextKey)) return;
         publishHydrated("solicitacoes", origin);
       }
 
@@ -412,28 +433,36 @@
       const clientId = text(meta.clienteId || origin?.clienteId || origin?.clienteOperacionalId);
 
       const dependencies = await Promise.all([
-        boxId ? readDocument(collections.boxes, boxId) : null,
-        saleId && type !== "VENDA" ? readDocument(collections.sales, saleId) : null,
-        installmentId ? readDocument(collections.installments, installmentId) : null,
-        clientId ? readDocument(collections.clients, clientId) : null
+        boxId ? readDocument(collections.boxes, boxId, generation) : null,
+        saleId && type !== "VENDA" ? readDocument(collections.sales, saleId, generation) : null,
+        installmentId ? readDocument(collections.installments, installmentId, generation) : null,
+        clientId ? readDocument(collections.clients, clientId, generation) : null
       ]);
 
+      if (!activeGeneration(generation, contextKey)) return;
       publishHydrated("caixas", dependencies[0]);
       publishHydrated("vendas", dependencies[1]);
       publishHydrated("parcelas", dependencies[2]);
       publishHydrated("clientes", dependencies[3]);
       scheduleUi();
     } finally {
-      state.pendingHydration.delete(hydrationKey);
+      if (activeGeneration(generation, contextKey)) state.pendingHydration.delete(hydrationKey);
     }
   }
 
   async function hydrateRequest(request = {}) {
+    const generation = state.generation;
+    const contextKey = state.contextKey;
+    if (!activeGeneration(generation, contextKey)) return;
     const requestId = text(request.id || request.docId);
     if (!requestId) return;
     publishHydrated("solicitacoes", request);
     const boxId = text(request.caixaId || request.idCaixa || request.caixaAtualId);
-    if (boxId) publishHydrated("caixas", await readDocument(collectionName("CAIXAS", "caixas"), boxId));
+    if (boxId) {
+      const box = await readDocument(collectionName("CAIXAS", "caixas"), boxId, generation);
+      if (!activeGeneration(generation, contextKey)) return;
+      publishHydrated("caixas", box);
+    }
     scheduleUi();
   }
 
@@ -484,6 +513,7 @@
   }
 
   function stop() {
+    state.generation++;
     global.IntegroDataRuntime?.pararEscopo?.(SCOPE);
     state.stops.splice(0).forEach(fn => { try { fn?.(); } catch (_) {} });
     if (state.uiTimer) global.clearTimeout(state.uiTimer);

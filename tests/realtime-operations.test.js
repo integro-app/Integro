@@ -213,3 +213,66 @@ test("índices cobrem as consultas por tenant, equipe e vendedor", () => {
   assert.ok(hasFields(ledger, ["clientePlataformaId", "vendedorId", "dataOperacional"]));
   assert.ok(hasFields(requests, ["clientePlataformaId", "equipeId", "criadoEm"]));
 });
+
+
+test("callbacks de coleção do tenant anterior não atualizam cache após reiniciar sessão", () => {
+  const first = {perfil:"vendedor",clientePlataformaId:"tenant-a",id:"v1",authUid:"auth-v1",caixaAtual:{id:"box-a",status:"ABERTO",vendedorAuthUid:"auth-v1",clientePlataformaId:"tenant-a"}};
+  const {sandbox,listeners}=executeServiceFor(first);
+  assert.equal(listeners.length,3);
+  const oldListener = listeners.find(item=>item.colecao==="lancamentos_financeiros");
+  oldListener.aoAtualizar([{id:"old",clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-v1",caixaId:"box-a",tipoLancamento:"PAGAMENTO",statusLancamento:"CONFIRMADO",valorCentavos:500}],{
+    docs:[],docChanges:()=>[]
+  });
+  assert.equal((sandbox.lancamentosFinanceirosCache||[]).some(item=>item.id==="old"),true);
+  sandbox.IntegroOperacoesTempoReal.start({...first,clientePlataformaId:"tenant-b",caixaAtual:null});
+  const oldSignature = sandbox.IntegroOperacoesTempoReal.diagnostic().parts;
+  oldListener.aoAtualizar([{id:"late",clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-v1",caixaId:"box-a",tipoLancamento:"PAGAMENTO",statusLancamento:"CONFIRMADO",valorCentavos:900}],{
+    docs:[],docChanges:()=>[]
+  });
+  assert.equal((sandbox.lancamentosFinanceirosCache||[]).some(item=>item.id==="late"),false);
+  assert.deepEqual(sandbox.IntegroOperacoesTempoReal.diagnostic().parts,oldSignature);
+});
+
+test("resposta atrasada de hidratação financeira não atravessa a troca de empresa", async () => {
+  const first = {perfil:"vendedor",clientePlataformaId:"tenant-a",id:"v1",authUid:"auth-v1"};
+  const {sandbox}=executeServiceFor(first);
+  let resolveOld,reads=0;
+  sandbox.IntegroDataRuntime.lerDocumento=()=>{
+    reads++;
+    return new Promise(resolve=>{resolveOld=resolve;});
+  };
+  const old=sandbox.IntegroOperacoesTempoReal.hydrateMovement({
+    id:"mov-antigo",tipoLancamento:"PAGAMENTO",origemId:"pag-antigo",statusLancamento:"CONFIRMADO",valorCentavos:1000
+  });
+  assert.equal(reads,1);
+  sandbox.IntegroOperacoesTempoReal.start({...first,clientePlataformaId:"tenant-b"});
+  resolveOld({id:"pag-antigo",clientePlataformaId:"tenant-a",valorCentavos:1000});
+  await old;
+  assert.equal((sandbox.pagamentosCache||[]).some(item=>item.id==="pag-antigo"),false);
+  assert.equal(sandbox.IntegroOperacoesTempoReal.diagnostic().pendingHydration,0);
+});
+
+test("reprocessamento atrasado de índice não reinscreve listener depois de trocar sessão", async () => {
+  const first={perfil:"vendedor",clientePlataformaId:"tenant-a",id:"v1",authUid:"auth-v1"};
+  const {sandbox,listeners}=executeServiceFor(first);
+  const old=listeners[0];
+  old.aoErro({code:"failed-precondition",message:"index required"});
+  sandbox.IntegroOperacoesTempoReal.start({...first,clientePlataformaId:"tenant-b"});
+  const before=listeners.length;
+  await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(listeners.length,before,"fallback atrasado não cria escuta na empresa nova");
+});
+
+test("snapshot de escrita local pendente não altera o saldo oficial", () => {
+  const first={perfil:"master_local",clientePlataformaId:"tenant-a",id:"m1",authUid:"auth-m1"};
+  const {sandbox,listeners}=executeServiceFor(first);
+  const ledger=listeners.find(l=>l.colecao==="lancamentos_financeiros");
+  ledger.aoAtualizar([{id:"nao-confirmado",clientePlataformaId:"tenant-a",tipoLancamento:"PAGAMENTO",valorCentavos:999}],{
+    metadata:{hasPendingWrites:true},docs:[],docChanges:()=>[]
+  });
+  assert.equal((sandbox.lancamentosFinanceirosCache||[]).some(item=>item.id==="nao-confirmado"),false);
+  ledger.aoAtualizar([{id:"confirmado",clientePlataformaId:"tenant-a",tipoLancamento:"PAGAMENTO",valorCentavos:999}],{
+    metadata:{hasPendingWrites:false},docs:[],docChanges:()=>[]
+  });
+  assert.equal((sandbox.lancamentosFinanceirosCache||[]).some(item=>item.id==="confirmado"),true);
+});
