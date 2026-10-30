@@ -19,12 +19,27 @@
   }
 
   async function openLead(notification, route) {
-    activateScreen("clientes");
     const aba = route.aba === "carteira" || route.aba === "clientes" ? "carteira" : "leads";
-    await global.IntegroPerfisUnificados?.carregarClientesPorPerfil?.().then(lista => { if (Array.isArray(lista)) global.State?.setClientes?.(lista); });
+    const indicacaoId = text(route.indicacaoId || notification.indicacaoId ||
+      (text(notification.origemTipo).toUpperCase() === "INDICACAO" ? notification.origemId : ""));
+    // A indicação, e não o cadastro do cliente, é a origem da notificação.
+    // Esse caminho carrega a fila atual, verifica titularidade e abre o
+    // atendimento correto (inclusive sua transição NOVO -> EM_ATENDIMENTO).
+    if (aba === "leads" && indicacaoId && typeof global.abrirLeadsRecebidosVendedor === "function") {
+      return (await global.abrirLeadsRecebidosVendedor(indicacaoId)) === true;
+    }
+    activateScreen("clientes");
+    const loader = global.IntegroPerfisUnificados?.carregarClientesPorPerfil;
+    if (typeof loader === "function") {
+      const lista = await loader();
+      if (Array.isArray(lista)) global.State?.setClientes?.(lista);
+    }
     global.trocarAbaClientesVendedor?.(aba);
-    const entityId = text(route.entidadeId || notification.clienteOperacionalId || notification.clienteId);
-    if (entityId) await global.abrirDrawerClienteVendedor?.(entityId);
+    // Nunca usar indicacaoId como se fosse um clienteOperacionalId.
+    const entityId = text(notification.clienteOperacionalId || notification.clienteId || route.entidadeId);
+    if (!entityId || typeof global.abrirDrawerClienteVendedor !== "function") return false;
+    const resultado = await global.abrirDrawerClienteVendedor(entityId);
+    return resultado !== false;
   }
 
   async function openMovement(notification, route) {
@@ -66,8 +81,7 @@
     if(text(route.acao).toUpperCase()==='CLIENTE_360'||type==='CLIENTE'||type==='CARTEIRA'){return openClient(notification,route);}
 
     if (screen === "clientes" || screen === "indicacoes" || type.includes("LEAD") || type === "INDICACAO") {
-      await openLead(notification, route);
-      return true;
+      return openLead(notification, route);
     }
     if (screen === "movimentacoes" || type.includes("MOVIMENT") || type.includes("INGRESSO")) {
       await openMovement(notification, route);
