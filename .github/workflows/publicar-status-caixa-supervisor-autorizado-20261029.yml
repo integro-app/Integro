@@ -1,0 +1,94 @@
+name: Publicar status correto de caixa no Supervisor - autorizado 2026-10-29
+
+# Autorizacao pontual do usuario em 2026-10-29. Sem Functions ou Rules.
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths: [".github/workflows/publicar-status-caixa-supervisor-autorizado-20261029.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: status de caixa supervisor autorizado 2026-10-29'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Confirmar merge autorizado e commit exclusivo
+        run: |
+          test "$(git rev-parse HEAD^)" = "ccb5d7a0c80ffada2de5f2ce67429c3e1686ed36"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-status-caixa-supervisor-autorizado-20261029.yml"
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Verificar frontend e backend sem alterar producao
+        run: npm run verify
+      - name: Conferir textos e a correcao de estado no codigo
+        run: |
+          grep -Fq "js/modules/caixas-supervisao.js?v=20261029-estado-caixa-verificado" master-local.html
+          grep -Fq "verifiedBoxes.values()" js/modules/caixas-supervisao.js
+          grep -Fq "Fechamento registrado. Verificando o novo status no servidor" js/modules/caixas-supervisao.js
+
+  publicar:
+    if: "github.event.head_commit.message == 'release: status de caixa supervisor autorizado 2026-10-29'"
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-status-supervisor-deploy.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Confirmar merge e escopo exato
+        run: |
+          test "$(git rev-parse HEAD^)" = "ccb5d7a0c80ffada2de5f2ce67429c3e1686ed36"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-status-caixa-supervisor-autorizado-20261029.yml"
+      - name: Instalar Firebase CLI
+        run: npm ci
+      - name: Credencial temporaria somente do projeto correto
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          raw=os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON","")
+          if not raw:
+              raise SystemExit("Credencial ausente; deploy interrompido.")
+          credential=json.loads(raw)
+          if credential.get("project_id")!="integro-novo":
+              raise SystemExit("Projeto Firebase incorreto; deploy interrompido.")
+          file=pathlib.Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+          file.write_text(raw)
+          file.chmod(0o600)
+          PY
+      - name: Publicar SOMENTE Hosting - nenhuma Function ou Rule
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Verificar arquivos REAIS no Hosting publicado
+        run: |
+          curl -fsSL 'https://integro-novo.web.app/master-local.html' -o /tmp/master-status-supervisor.html
+          curl -fsSL 'https://integro-novo.web.app/js/modules/caixas-supervisao.js' -o /tmp/caixas-status-supervisor.js
+          grep -Fq 'js/modules/caixas-supervisao.js?v=20261029-estado-caixa-verificado' /tmp/master-status-supervisor.html
+          grep -Fq 'verifiedBoxes.values()' /tmp/caixas-status-supervisor.js
+          grep -Fq 'Fechamento registrado. Verificando o novo status no servidor' /tmp/caixas-status-supervisor.js
+          echo 'STATUS_SUPERVISOR_HOSTING_VERIFICADO'
+      - name: Eliminar credencial temporaria e arquivos de checagem
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS" /tmp/master-status-supervisor.html /tmp/caixas-status-supervisor.js
