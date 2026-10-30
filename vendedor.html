@@ -21076,7 +21076,27 @@ async function verificarCaixaAbertoDiaAnterior() {
     await window.carregarIndicacoes?.();
     window.renderIndicacoes?.();
     atualizarAcessoLeads();
-    if(indicacaoId) setTimeout(()=>window.abrirDetalheIndicacao?.(indicacaoId),80);
+    if(!indicacaoId) return true;
+    const leadId=String(indicacaoId).trim();
+    const lead=(window.indicacoesCache || []).find(item=>String(item.id)===leadId);
+    // Uma notificação antiga não pode abrir um lead que foi redistribuído.
+    const usuario=usuarioAtualLead();
+    const uid=String(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid || "");
+    const tenant=tenantLead();
+    const dono=String(lead?.vendedorAuthUid || lead?.vendedorDestinoAuthUid || lead?.vendedorUid || "");
+    const doMesmoTenant=Boolean(tenant && lead?.clientePlataformaId === tenant);
+    const pertence=Boolean(lead && uid && doMesmoTenant &&
+      (dono ? dono===uid : window.IntegroIndicacoes?.usuarioNoEscopoIndicacao?.({...usuario,authUid:uid},lead)===true));
+    if(!pertence){
+      window.notificarIntegro?.("Este lead não está mais atribuído a você ou não está disponível.");
+      return false;
+    }
+    if(typeof window.abrirDetalheIndicacao!=="function"){
+      window.notificarIntegro?.("Não foi possível abrir o atendimento deste lead.");
+      return false;
+    }
+    await window.abrirDetalheIndicacao(leadId);
+    return true;
   };
 
   const cardAnterior=window.cardIndicacao;
