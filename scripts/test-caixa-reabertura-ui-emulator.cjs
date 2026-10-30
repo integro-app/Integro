@@ -157,7 +157,7 @@ let browser;
  const saleId="venda_pendente_gerencial_"+run,clientId="cliente_pendente_gerencial_"+run;
  await db.collection("vendas").doc(saleId).set({
    clientePlataformaId:tenant,vendedorId:ids.seller,vendedorAuthUid:ids.seller,
-   clienteId,caixaId:"caixa_anterior_"+run,status:"ATIVA",
+   clienteId:clientId,caixaId:"caixa_anterior_"+run,status:"ATIVA",
    saldoDevedorCentavos:9000,valorParcelaCentavos:4500,dataPrimeiraCobranca:date
  });
  await db.collection("parcelas").doc("parcela_gerencial_"+run).set({
