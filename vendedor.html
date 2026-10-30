@@ -21121,15 +21121,65 @@ async function verificarCaixaAbertoDiaAnterior() {
   if(typeof carregarNotificacoesAnterior==="function") window.carregarNotificacoes=async function(){const r=await carregarNotificacoesAnterior.apply(this,arguments);garantirNotificacoesSidebar();return r};
 
   function iniciarTempoReal(){
-    if(window.__integroVendedorLeadRealtime) return;
     const db=window.db || (window.firebase?.firestore ? firebase.firestore() : null);
     const u=usuarioAtualLead();
     const uid=String(window.firebase?.auth?.()?.currentUser?.uid || u.authUid || u.uid || "");
-    if(!db || !uid) return;
-    window.__integroVendedorLeadRealtime=true;
-    const recarregar=()=>Promise.allSettled([window.carregarIndicacoes?.(),window.carregarNotificacoes?.()]).then(()=>{window.renderIndicacoes?.();atualizarAcessoLeads()});
-    try{window.__integroLeadUnsub=db.collection("indicacoes").where("vendedorAuthUid","==",uid).onSnapshot(recarregar,erro=>console.warn("[ÍNTEGRO] Tempo real de leads indisponível.",erro));}catch(e){console.warn("[ÍNTEGRO] Não foi possível iniciar tempo real de leads.",e)}
-    try{window.__integroNotifLeadUnsub=db.collection("notificacoes").where("clientePlataformaId","==",tenantLead()).where("usuarioId","==",uid).onSnapshot(recarregar,erro=>console.warn("[ÍNTEGRO] Tempo real de notificações indisponível.",erro));}catch(e){console.warn("[ÍNTEGRO] Não foi possível iniciar tempo real de notificações.",e)}
+    const tenant=tenantLead();
+    const chave=uid && tenant ? tenant+"::"+uid : "";
+    if(!db || !chave){
+      try{window.__integroLeadUnsub?.()}catch(_){}
+      window.__integroLeadUnsub=null;
+      window.__integroVendedorLeadRealtime=false;
+      window.__integroVendedorLeadRealtimeChave="";
+      window.__integroLeadRealtimeVersao=(window.__integroLeadRealtimeVersao || 0)+1;
+      return false;
+    }
+    if(window.__integroVendedorLeadRealtimeChave===chave && window.__integroLeadUnsub) return true;
+    try{window.__integroLeadUnsub?.()}catch(_){}
+    window.__integroLeadUnsub=null;
+    const versao=(window.__integroLeadRealtimeVersao || 0)+1;
+    window.__integroLeadRealtimeVersao=versao;
+    window.__integroVendedorLeadRealtimeChave=chave;
+    let agendado=null,carregando=false,repetir=false;
+    const recarregar=()=>{
+      if(window.__integroLeadRealtimeVersao!==versao)return;
+      if(agendado!==null)clearTimeout(agendado);
+      agendado=setTimeout(async()=>{
+        agendado=null;
+        if(window.__integroLeadRealtimeVersao!==versao)return;
+        if(carregando){repetir=true;return;}
+        carregando=true;
+        try{
+          await window.carregarIndicacoes?.();
+          if(window.__integroLeadRealtimeVersao===versao){
+            window.renderIndicacoes?.();
+            atualizarAcessoLeads();
+          }
+        }catch(erro){console.warn("[ÍNTEGRO] Não foi possível atualizar os leads.",erro)}
+        finally{
+          carregando=false;
+          if(repetir){repetir=false;recarregar()}
+        }
+      },140);
+    };
+    // Notificações já possuem listener isolado por tenant e Auth UID no
+    // IntegroNotifications. Não criar outro listener nem reler a coleção aqui.
+    try{
+      window.__integroLeadUnsub=db.collection("indicacoes").where("vendedorAuthUid","==",uid).onSnapshot(recarregar,erro=>{
+        console.warn("[ÍNTEGRO] Tempo real de leads indisponível.",erro);
+        if(window.__integroLeadRealtimeVersao===versao){
+          window.__integroVendedorLeadRealtime=false;
+          window.__integroVendedorLeadRealtimeChave="";
+        }
+      });
+      window.__integroVendedorLeadRealtime=true;
+      return true;
+    }catch(erro){
+      console.warn("[ÍNTEGRO] Não foi possível iniciar tempo real de leads.",erro);
+      window.__integroVendedorLeadRealtime=false;
+      window.__integroVendedorLeadRealtimeChave="";
+      return false;
+    }
   }
 
   function iniciar(){
@@ -21142,7 +21192,17 @@ async function verificarCaixaAbertoDiaAnterior() {
       sidebar.dataset.leadObserver="1";
       new MutationObserver(()=>{garantirNotificacoesSidebar();atualizarAcessoLeads()}).observe(sidebar,{childList:true,subtree:true});
     }
-    setTimeout(()=>Promise.allSettled([window.carregarIndicacoes?.(),window.carregarNotificacoes?.()]).then(()=>{window.renderIndicacoes?.();garantirCabecalhoClientes();atualizarAcessoLeads()}),500);
+    const usuario=usuarioAtualLead();
+    const uid=String(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid || "");
+    const tenant=tenantLead();
+    const chave=uid && tenant ? tenant+"::"+uid : "";
+    if(chave && window.__integroLeadBootstrapChave!==chave){
+      window.__integroLeadBootstrapChave=chave;
+      setTimeout(()=>Promise.allSettled([window.carregarIndicacoes?.(),window.carregarNotificacoes?.()]).then(()=>{
+        if(window.__integroLeadBootstrapChave!==chave)return;
+        window.renderIndicacoes?.();garantirCabecalhoClientes();atualizarAcessoLeads();
+      }),500);
+    }
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",iniciar); else iniciar();
   firebase.auth?.().onAuthStateChanged?.(()=>setTimeout(iniciar,250));
