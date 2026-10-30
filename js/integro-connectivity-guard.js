@@ -5,11 +5,12 @@
   const document = global.document;
   const MARKER = "integro-connectivity-offline";
   const STATUS_ID = "integroConectividadeStatus";
-  const ACTIONS = /\b(?:confirmarPagamento\w*|registrarPagamento\w*|confirmarNaoPagamento\w*|registrarNaoPagamento\w*|confirmarNovaVenda\w*|registrarVenda\w*|confirmarFechamento\w*|fecharCaixa\w*|confirmarAbertura\w*|registrarAbertura\w*|registrarMovimentacaoVendedor|salvarMovimentacao\w*|confirmarMovimentacao\w*|confirmarExclusao\w*|excluirMovimentacao\w*|salvarClienteVendedor\w*)\s*\(/i;
+  const ACTIONS = /\b(?:confirmarPagamento\w*|registrarPagamento\w*|confirmarNaoPagamento\w*|registrarNaoPagamento\w*|confirmarNovaVenda\w*|registrarVenda\w*|confirmarFechamento\w*|fecharCaixa\w*|confirmarAbertura\w*|registrarAbertura\w*|abrirCaixa\w*|reabrirCaixa\w*|solicitarReaberturaCaixa\w*|acaoMassaCaixas|fecharCaixaMassivo\w*|abrirCaixaMassivo\w*|registrarMovimentacaoVendedor|salvarMovimentacao\w*|confirmarMovimentacao\w*|confirmarExclusao\w*|excluirMovimentacao\w*|salvarClienteVendedor\w*)\s*\(/i;
   const IDS = new Set([
     "vendedorPagamentoConfirmar", "vendedorNaoPagamentoConfirmar",
     "vendedorFechamentoConfirmar", "confirmarNovaVendaVendedorBtn",
-    "movimentacaoSalvarVendedorBtn", "integroCorrecaoConfirmar"
+    "movimentacaoSalvarVendedorBtn", "integroCorrecaoConfirmar",
+    "btnFecharCaixasSelecionadas"
   ]);
   const css = `
     #${STATUS_ID} {
