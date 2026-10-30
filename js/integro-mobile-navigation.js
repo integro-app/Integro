@@ -4,7 +4,7 @@
   window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__ = true;
 
   const STYLE_ID = "integroResponsiveAuthoritative";
-  const STYLE_HREF = "css/integro-mobile.css?v=20260818-v272-perf1";
+  const STYLE_HREF = "css/integro-mobile.css?v=20261030-mobile-gestures";
   const MOBILE_QUERY = window.matchMedia("(max-width: 980px)");
   const body = document.body;
 
@@ -374,12 +374,15 @@
 
   function armTouchMove() {
     if (touchMoveArmed) return;
-      touchMoveArmed = true;
+    // Registra apenas durante um gesto iniciado na borda. O listener não
+    // fica pendurado na página inteira nem desaparece após o primeiro swipe.
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    touchMoveArmed = true;
   }
 
   function canStartSidebarGesture(event) {
     if (!isMobile() || !shellReady || !event.touches || event.touches.length !== 1) return false;
-    if (event.target.closest("input, textarea, select, button, a, [contenteditable='true'], .modal, .dialog, .drawer, [role='dialog']")) return false;
+    if (event.target?.closest?.("input, textarea, select, button, a, [contenteditable='true'], .modal, .dialog, .drawer, [role='dialog']")) return false;
     const point = event.touches[0];
     if (menuIsOpen()) return point.clientX <= Math.min(window.innerWidth || 0, 360);
     return point.clientX <= 24;
@@ -435,7 +438,6 @@
   });
 
   document.addEventListener("touchstart", onTouchStart, { passive: true });
-  document.addEventListener("touchmove", onTouchMove, { passive: false });
   document.addEventListener("touchend", onTouchEnd, { passive: true });
   document.addEventListener("touchcancel", resetTouchGesture, { passive: true });
   document.addEventListener("click", (event) => {
@@ -492,6 +494,9 @@
       historyArmed = false;
       closeSidebar({ restoreFocus: false });
       clearForcedMenuVisualState();
+      // Em telas largas a sidebar volta a ser navegação permanente. O
+      // aria-hidden usado no drawer não pode continuar ocultando o menu.
+      primarySidebar()?.removeAttribute("aria-hidden");
     }
   }
 
