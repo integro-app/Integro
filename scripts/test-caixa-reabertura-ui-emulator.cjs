@@ -118,11 +118,29 @@ let browser;
  await page.locator("[data-cx-action-feedback][role=alert]").waitFor({state:"visible",timeout:10000});
  assert.match(await page.locator("[data-cx-action-feedback]").innerText(),/Conferência bloqueada/);
  assert.equal((await db.collection("caixas").doc(boxId).get()).data().status,"REABERTO");
- await page.evaluate(()=>{window.IntegroCaixa.prepararSnapshotFechamentoCaixa=window.__originalConferencia;});
+ await page.evaluate(()=>{
+   window.IntegroCaixa.prepararSnapshotFechamentoCaixa=window.__originalConferencia;
+   // Reproduz o erro relatado: a visão em lista não recebeu o snapshot de
+   // fechamento, mantendo REABERTO mesmo após a callable concluir.
+   for(const box of window.CX.caixas){box.status="REABERTO";box.ativo=true;}
+ });
  await page.locator("[data-cx-close]").click();
  await page.locator("#cxCloseDialog [name=actual]").fill((amount/100).toFixed(2));
  await page.locator("#cxCloseDialog button[type=submit]").click();
  await page.waitForFunction(()=>document.querySelector(".cx-state")?.textContent.includes("FECHADO"),null,{timeout:20000});
+ // A lista precisa exibir o estado do documento confirmado pelo servidor,
+ // não o REABERTO que ainda existe no cache do cliente.
+ await page.locator("[data-cx-back]").click();
+ await page.waitForFunction(()=>{
+   const badge=document.querySelector("[data-cx-row] .cx-state");
+   return badge?.textContent.trim()==="FECHADO";
+ },null,{timeout:20000});
+ assert.equal((await page.locator("[data-cx-row] .cx-state").innerText()).trim(),"FECHADO");
+ assert.equal((await page.locator("[data-cx-row] .cx-state").getAttribute("class")).includes("open"),false);
+ assert.equal((await page.locator(".cx-stats").innerText()).includes("Caixas abertos\\n0"),true);
+ await page.locator("[data-cx-open]").click();
+ await page.waitForFunction(()=>document.querySelector("[data-cx-box]")?.selectedOptions[0]?.textContent.includes("FECHADO"),null,{timeout:20000});
+ assert.equal((await page.locator("[data-cx-box]").inputValue()),boxId);
  const closed=(await db.collection("fechamentos_caixa").doc("fechamento_"+boxId).get()).data();
  assert.equal(closed.modo,"REFECHAMENTO");assert.equal(closed.caixaFinalInformadoCentavos,amount);
  const after=await rows("historico_fechamentos_caixa",[["caixaId",boxId]]);
