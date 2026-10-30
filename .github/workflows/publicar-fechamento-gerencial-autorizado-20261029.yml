@@ -1,0 +1,97 @@
+name: Publicar fechamento gerencial autorizado - 2026-10-29
+
+# Publicacao pontual autorizada pelo usuario. Nenhum deploy em pushes comuns.
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths: [".github/workflows/publicar-fechamento-gerencial-autorizado-20261029.yml"]
+
+permissions:
+  contents: read
+
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: fechamento gerencial autorizado 2026-10-29'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Exigir revisao integrada aprovada e commit exclusivo
+        run: |
+          test "$(git rev-parse HEAD^)" = "20ad5fba0fec7393ef8e9495d45e1981c8ced329"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-fechamento-gerencial-autorizado-20261029.yml"
+      - name: Instalar dependencias isoladas
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Testar integralmente frontend, backend e fechamento gerencial
+        run: npm run verify
+      - name: Testar especificamente caixa, permissoes e auditoria
+        run: node --test tests/box-lifecycle.test.js tests/box-closure-backend.test.js tests/caixas-supervisao.test.js
+
+  publicar:
+    if: "github.event.head_commit.message == 'release: fechamento gerencial autorizado 2026-10-29'"
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production
+    concurrency:
+      group: integro-production
+      cancel-in-progress: false
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-fechamento-gerencial-deploy.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Travar a mesma revisao aprovada
+        run: |
+          test "$(git rev-parse HEAD^)" = "20ad5fba0fec7393ef8e9495d45e1981c8ced329"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-fechamento-gerencial-autorizado-20261029.yml"
+      - name: Instalar dependencias do Firebase
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Credencial temporaria do projeto exato
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          raw=os.environ.get("FIREBASE_SERVICE_ACCOUNT_JSON","")
+          if not raw:
+              raise SystemExit("Credencial Firebase ausente; deploy cancelado.")
+          cred=json.loads(raw)
+          if cred.get("project_id")!="integro-novo":
+              raise SystemExit("Projeto da credencial nao corresponde ao integro-novo; deploy cancelado.")
+          path=pathlib.Path(os.environ["GOOGLE_APPLICATION_CREDENTIALS"])
+          path.write_text(raw)
+          path.chmod(0o600)
+          PY
+      - name: Publicar SOMENTE conferencia e fechamento do caixa
+        run: npx firebase deploy --only functions:conferirCaixaOperacional,functions:fecharCaixaOperacional --project integro-novo --non-interactive
+      - name: Publicar SOMENTE Hosting apos backend aprovado
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Validar arquivos efetivamente servidos em producao
+        run: |
+          curl --fail --silent --show-error --location 'https://integro-novo.web.app/master-local.html' -o /tmp/integro-master-fechamento.html
+          curl --fail --silent --show-error --location 'https://integro-novo.web.app/js/modules/caixas-supervisao.js' -o /tmp/integro-caixas-gerencial.js
+          curl --fail --silent --show-error --location 'https://integro-novo.web.app/js/services/financial-operations.js' -o /tmp/integro-financeiro-gerencial.js
+          grep -Fq 'js/modules/caixas-supervisao.js?v=20261029-fechamento-gerencial' /tmp/integro-master-fechamento.html
+          grep -Fq 'Encerrar ' /tmp/integro-caixas-gerencial.js
+          grep -Fq 'encerramentoGerencial:managerial===true' /tmp/integro-caixas-gerencial.js
+          grep -Fq 'encerramentoGerencial: entrada.encerramentoGerencial === true' /tmp/integro-financeiro-gerencial.js
+          echo 'FECHAMENTO_GERENCIAL_HOSTING_VERIFICADO'
+      - name: Excluir credencial e arquivos temporarios
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS" /tmp/integro-master-fechamento.html /tmp/integro-caixas-gerencial.js /tmp/integro-financeiro-gerencial.js
