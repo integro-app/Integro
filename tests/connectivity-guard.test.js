@@ -124,7 +124,7 @@ test("telas autenticadas carregam o guarda de conectividade; operações finance
   const pages=["master-local.html","vendedor.html","supervisor.html","financeiro.html","auditor.html","captador.html","master-global.html"];
   for(const page of pages){
     const html=read(page);
-    const guard=html.indexOf("js/integro-connectivity-guard.js?v=20261030-offline-lock1");
+    const guard=html.indexOf("js/integro-connectivity-guard.js?v=20261030-reconnect-verify1");
     const menu=html.indexOf("js/integro-mobile-navigation.js?v=20261030-mobile-gestures");
     assert.ok(guard>0 && menu>guard,page);
   }
@@ -138,4 +138,67 @@ test("telas autenticadas carregam o guarda de conectividade; operações finance
     assert.ok(match,method);
     assert.match(match[1],guard,method);
   }
+});
+
+
+test("retorno da internet não libera operações financeiras antes do snapshot do servidor", () => {
+  const x = setup();
+  let revalidacoes = 0;
+  x.win.IntegroDataRuntime = {
+    diagnostico: () => ({ assinaturasAtivas: 2 }),
+    revalidarConexao() { revalidacoes++; return { assinaturas: 2 }; },
+    invalidar() { throw Error("revalidarConexao deve gerenciar invalidação"); }
+  };
+  x.switchNetwork(false);
+  x.switchNetwork(true);
+  assert.equal(revalidacoes, 1);
+  assert.equal(x.win.IntegroConectividade.diagnostico().aguardandoServidor, true);
+  assert.equal(x.win.IntegroConectividade.podeOperar(), false);
+  assert.equal(x.body["data-integro-conectividade"], "sincronizando");
+  assert.equal(x.emit("click", x.button("vendedorPagamentoConfirmar")).defaultPrevented, true);
+  assert.match(x.elements.get("integroConectividadeStatus").textContent, /Aguardando confirmação/);
+  assert.equal(x.win.IntegroConectividade.confirmarServidor({ uid:"auth-b", tenantId:"tenant-a" }), false);
+  assert.equal(x.win.IntegroConectividade.confirmarServidor({ uid:"auth-a", tenantId:"tenant-b" }), false);
+  assert.equal(x.win.IntegroConectividade.podeOperar(), false);
+  assert.equal(x.win.IntegroConectividade.confirmarServidor({ uid:"auth-a", tenantId:"tenant-a" }), true);
+  assert.equal(x.win.IntegroConectividade.podeOperar(), true);
+  assert.equal(x.body["data-integro-conectividade"], "online");
+  assert.equal(x.win.IntegroConectividade.diagnostico().aguardandoServidor, false);
+  assert.equal(x.calls.changes.filter(e=>e.type==="integro-conectividade-validada").length, 1);
+  assert.match(x.elements.get("integroConectividadeStatus").textContent, /atualizados pelo servidor/i);
+});
+
+test("confirmação tardia após trocar empresa não libera operações do novo contexto", () => {
+  const x = setup();
+  x.win.IntegroDataRuntime = { diagnostico:()=>({assinaturasAtivas:1}), revalidarConexao:()=>({assinaturas:1}) };
+  x.switchNetwork(false);
+  x.switchNetwork(true);
+  assert.equal(x.win.IntegroConectividade.podeOperar(), false);
+  x.switchTenant("tenant-b");
+  assert.equal(x.win.IntegroConectividade.confirmarServidor({uid:"auth-a",tenantId:"tenant-a"}),false);
+  assert.equal(x.win.IntegroConectividade.diagnostico().contexto,"auth-a::tenant-b");
+  assert.equal(x.win.IntegroConectividade.diagnostico().aguardandoServidor,false);
+  x.switchNetwork(false);
+  x.switchNetwork(true);
+  assert.equal(x.win.IntegroConectividade.diagnostico().aguardandoServidor,true);
+  assert.equal(x.win.IntegroConectividade.confirmarServidor({uid:"auth-a",tenantId:"tenant-a"}),false);
+  assert.equal(x.win.IntegroConectividade.podeOperar(),false);
+  assert.equal(x.win.IntegroConectividade.confirmarServidor({uid:"auth-a",tenantId:"tenant-b"}),true);
+});
+
+test("reconexão sem assinaturas não cria bloqueio permanente nem simula confirmação financeira", () => {
+  const x = setup();
+  let revalidacoes = 0;
+  x.win.IntegroDataRuntime = {
+    diagnostico: () => ({assinaturasAtivas:0}),
+    revalidarConexao(){ revalidacoes++; return {assinaturas:0}; },
+    invalidar(){ x.calls.cacheInvalidations++; }
+  };
+  x.switchNetwork(false);
+  x.switchNetwork(true);
+  assert.equal(revalidacoes,0);
+  assert.equal(x.calls.cacheInvalidations,1);
+  assert.equal(x.win.IntegroConectividade.diagnostico().aguardandoServidor,false);
+  assert.equal(x.win.IntegroConectividade.podeOperar(),true);
+  assert.equal(x.calls.changes.filter(e=>e.type==="integro-conectividade-validada").length,0);
 });
