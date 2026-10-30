@@ -201,7 +201,7 @@ test('vendedor só abre detalhes da indicação se a atribuição atual for dele
   const html = read('vendedor.html');
   const first = html.indexOf('window.abrirLeadsRecebidosVendedor=async function');
   assert.ok(first >= 0, 'função do vendedor presente');
-  const last = html.indexOf('\\n  };', first);
+  const last = html.indexOf(String.fromCharCode(10) + '  };', first);
   assert.ok(last > first, 'delimitação da função presente');
   const opened = [], messages = [];
   let leads = [{ id:'lead-1', clientePlataformaId:'tenant-a', vendedorAuthUid:'auth-a' }];
@@ -231,8 +231,8 @@ test('vendedor só abre detalhes da indicação se a atribuição atual for dele
 
 test('notificações de indicação incluem rota e versão nova das telas', () => {
   const service = read('js/services/indicacoes-service.js');
-  assert.match(service, /rota: \\{ tela:"clientes", aba:"leads", indicacaoId:dados\\.indicacaoId/);
+  assert.match(service, /rota: \{ tela:"clientes", aba:"leads", indicacaoId:dados\.indicacaoId/);
   for(const page of ['vendedor.html','supervisor.html','financeiro.html','auditor.html','captador.html','master-global.html']){
-    assert.match(read(page), /notification-router\\.js\\?v=20261030-lead-origem/);
+    assert.match(read(page), /notification-router\.js\?v=20261030-lead-origem/);
   }
 });
