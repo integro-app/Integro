@@ -148,5 +148,59 @@ let browser;
  assert.deepEqual(await rows("lancamentos_financeiros",[["caixaId",boxId]]),ledgerBefore);
  assert.deepEqual(await rows("pagamentos",[["caixaId",boxId]]),paymentsBefore);
  assert.deepEqual(errors,[]);
+
+ // Regressão no Firestore real do Emulator: o NAO_PAGAMENTO gerencial
+ // do fechamento anterior não pode liberar um novo fechamento do vendedor.
+ await call("reabrirCaixaOperacional","supervisor",{
+   caixaId:boxId,operacaoId:"reabertura-gerencial-prep-"+run,motivo:"Preparar cobranca antiga"
+ });
+ const saleId="venda_pendente_gerencial_"+run,clientId="cliente_pendente_gerencial_"+run;
+ await db.collection("vendas").doc(saleId).set({
+   clientePlataformaId:tenant,vendedorId:ids.seller,vendedorAuthUid:ids.seller,
+   clienteId,caixaId:"caixa_anterior_"+run,status:"ATIVA",
+   saldoDevedorCentavos:9000,valorParcelaCentavos:4500,dataPrimeiraCobranca:date
+ });
+ await db.collection("parcelas").doc("parcela_gerencial_"+run).set({
+   clientePlataformaId:tenant,vendaId:saleId,numeroParcela:1,
+   valorCentavos:4500,valorPagoCentavos:0,dataVencimento:date,status:"PENDENTE"
+ });
+ const antesGerencial=await call("conferirCaixaOperacional","supervisor",{caixaId:boxId});
+ assert.equal(antesGerencial.pendenciasCobranca,1);
+ const fecharGerencial=await call("fecharCaixaOperacional","supervisor",{
+   caixaId:boxId,conferenciaId:antesGerencial.conferenciaId,valorInformadoCentavos:amount,
+   encerramentoGerencial:true,justificativa:"Encerramento administrativo sem visita"
+ });
+ assert.equal(fecharGerencial.statusFechamento,"FECHADO");
+ const historicoGerencial=await rows("historicoCobrancas",[["caixaId",boxId]]);
+ assert.equal(historicoGerencial.filter(h=>h.semBaixaGerencial===true&&h.cancelado!==true).length,1);
+ const reopenedGerencial=await call("reabrirCaixaOperacional","supervisor",{
+   caixaId:boxId,operacaoId:"reabertura-gerencial-verificacao-"+run,
+   motivo:"Revisao auditada da pendencia sem visita"
+ });
+ assert.equal(reopenedGerencial.statusNovo,"REABERTO");
+ const antigo=await db.collection("historicoCobrancas").doc(historicoGerencial[0].id).get();
+ assert.equal(antigo.data().status,"CANCELADO");
+ assert.equal(antigo.data().cancelado,true);
+ assert.equal(antigo.data().canceladoPorReabertura,true);
+ const novaConferencia=await call("conferirCaixaOperacional","seller",{caixaId:boxId});
+ assert.equal(novaConferencia.pendenciasCobranca,1);
+ assert.equal(novaConferencia.totalVisitadas,0);
+ await assert.rejects(call("fecharCaixaOperacional","seller",{
+   caixaId:boxId,conferenciaId:novaConferencia.conferenciaId,valorInformadoCentavos:amount
+ }),e=>e.status==="FAILED_PRECONDITION");
+ const refechadoGerencial=await call("fecharCaixaOperacional","supervisor",{
+   caixaId:boxId,conferenciaId:novaConferencia.conferenciaId,
+   valorInformadoCentavos:amount,encerramentoGerencial:true,
+   justificativa:"Nova decisao administrativa apos reabertura"
+ });
+ assert.equal(refechadoGerencial.modo,"REFECHAMENTO");
+ const gerenciaisFinais=await rows("historicoCobrancas",[["caixaId",boxId]]);
+ assert.equal(gerenciaisFinais.length,2);
+ assert.equal(gerenciaisFinais.filter(h=>h.cancelado===true).length,1);
+ assert.equal(gerenciaisFinais.filter(h=>h.cancelado!==true).length,1);
+ assert.equal((await db.collection("vendas").doc(saleId).get()).data().saldoDevedorCentavos,9000);
+ assert.deepEqual(await rows("lancamentos_financeiros",[["caixaId",boxId]]),ledgerBefore);
+ assert.deepEqual(await rows("pagamentos",[["caixaId",boxId]]),paymentsBefore);
+ console.log("REABERTURA_GERENCIAL_EMULADOR_APROVADA",JSON.stringify({boxId,gerenciais:2,pendenciasAposReabrir:1}));
  console.log("CAIXA_UI_EMULADOR_APROVADO",JSON.stringify({boxId,reabertura:"REABERTURA",refechamento:"REFECHAMENTO",historicos:after.length,amount}));
 })().catch(error=>{console.error("CAIXA_UI_EMULADOR_FALHA",error.stack||error);process.exitCode=1;}).finally(async()=>{await browser?.close();await app.delete();});
