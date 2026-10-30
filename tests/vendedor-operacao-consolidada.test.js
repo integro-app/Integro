@@ -236,3 +236,64 @@ test('todos os clientes exige saldo superior a um centavo; baixa futura não ent
 
 test('condição financeira usa azul, verde, amarelo aos cinco dias e vermelho aos dez',()=>{assert.equal(operacao.corSituacao({situacao:'ADIANTADO',diasIndicador:2}),'#2563eb');assert.equal(operacao.corSituacao({situacao:'EM_DIA'}),'#16a34a');assert.equal(operacao.corSituacao({situacao:'ATRASADO',diasIndicador:4}),'#16a34a');assert.equal(operacao.corSituacao({situacao:'ATRASADO',diasIndicador:5}),'#eab308');assert.equal(operacao.corSituacao({situacao:'ATRASADO',diasIndicador:9}),'#eab308');assert.equal(operacao.corSituacao({situacao:'ATRASADO',diasIndicador:10}),'#dc2626');});
 test('cores e faixas respeitam a configuração da empresa e ignoram cor inválida',()=>{const c={clientes:{atraso:{amareloDias:3,laranjaDias:8,vermelhoDias:8},status:[{chave:'ATENCAO',cor:'#abc123'},{chave:'ATRASO_GRAVE',cor:'red;display:none'}]}};assert.equal(operacao.corSituacao({situacao:'ATRASADO',diasIndicador:3},c),'#abc123');assert.equal(operacao.corSituacao({situacao:'ATRASADO',diasIndicador:8},c),'#dc2626');});
+
+test("cobrança sem baixa gerencial é NÃO PAGO, mas não é visita realizada", () => {
+  const evento = {
+    vendaId: "venda-1", clienteId: "cli-1", caixaId: "caixa-1",
+    tipo: "NAO_PAGAMENTO", status: "REGISTRADO",
+    origem: "FECHAMENTO_GERENCIAL", semBaixaGerencial: true,
+    visitaRealizada: false, dataOperacional: "2026-08-03",
+    vendedorId: "vend-1", vendedorAuthUid: "auth-1",
+    clientePlataformaId: "tenant-1"
+  };
+  const itens = operacao.montarCarteira(base({historico: [evento], caixaId: "caixa-1"}));
+  assert.equal(itens.length, 1);
+  assert.equal(itens[0].naoPagoHoje, true);
+  assert.equal(itens[0].naoPagoSemVisitaGerencial, true);
+  assert.equal(itens[0].pendenteHoje, false);
+  assert.equal(itens[0].saldoDevedor, 180, "registrar situação não pode liquidar a dívida");
+  assert.equal(operacao.resumoHoje({carteira:itens}).visitados,0);
+  assert.equal(operacao.resumoHoje({carteira:itens}).pendentes,0);
+  assert.equal(operacao.statusVisual(itens[0]).chave,"NAO_PAGO");
+  assert.match(operacao.statusVisual(itens[0]).titulo,/sem visita confirmada/i);
+  // Um caixa distinto não pode herdar a baixa do ciclo anterior.
+  const next = operacao.montarCarteira(base({historico:[evento],caixaId:"caixa-2"}));
+  assert.equal(next[0].naoPagoHoje,false);
+  assert.equal(next[0].pendenteHoje,true);
+});
+
+test("não pagamento registrado pelo vendedor continua contando como visita", () => {
+  const manual = {
+    vendaId:"venda-1",caixaId:"caixa-1",tipo:"NAO_PAGAMENTO",
+    vendedorId:"vend-1",clientePlataformaId:"tenant-1",dataOperacional:"2026-08-03"
+  };
+  const itens = operacao.montarCarteira(base({historico:[manual],caixaId:"caixa-1"}));
+  assert.equal(itens[0].naoPagoHoje,true);
+  assert.equal(itens[0].naoPagoSemVisitaGerencial,false);
+  assert.equal(operacao.resumoHoje({carteira:itens}).visitados,1);
+  assert.equal(operacao.statusVisual(itens[0]).titulo,"Não pago hoje");
+});
+
+test("uma visita real não é apagada por marcação gerencial duplicada", () => {
+  const gerencial = {
+    vendaId:"venda-1",caixaId:"caixa-1",tipo:"NAO_PAGAMENTO",
+    vendedorId:"vend-1",clientePlataformaId:"tenant-1",
+    semBaixaGerencial:true,origem:"FECHAMENTO_GERENCIAL",visitaRealizada:false
+  };
+  const manual = {...gerencial,semBaixaGerencial:false,origem:"VENDEDOR",visitaRealizada:true};
+  const itens = operacao.montarCarteira(base({historico:[gerencial,manual],caixaId:"caixa-1"}));
+  assert.equal(itens[0].naoPagoHoje,true);
+  assert.equal(itens[0].naoPagoSemVisitaGerencial,false);
+  assert.equal(operacao.resumoHoje({carteira:itens}).visitados,1);
+});
+
+test("não pagamento gerencial em outra empresa não entra na carteira", () => {
+  const other = {
+    vendaId:"venda-1",caixaId:"caixa-1",tipo:"NAO_PAGAMENTO",
+    vendedorId:"vend-1",clientePlataformaId:"tenant-2",
+    semBaixaGerencial:true,origem:"FECHAMENTO_GERENCIAL"
+  };
+  const itens = operacao.montarCarteira(base({historico:[other],caixaId:"caixa-1"}));
+  assert.equal(itens[0].naoPagoHoje,false);
+  assert.equal(itens[0].pendenteHoje,true);
+});

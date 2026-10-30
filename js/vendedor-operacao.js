@@ -224,6 +224,10 @@
       const comCobrancaHoje = recebimentoAgendado || pendentes.some(item => dataParcela(item) && dataParcela(item) <= hoje) || proximaData === hoje;
       const pagoHoje = valorPagoHoje > 0.009;
       const naoPagoHoje = !pagoHoje && naoPagamentos.length > 0;
+      // O gestor pode registrar NÃO PAGO por encerramento sem visita. Isso
+      // baixa a situação do dia, mas não comprova visita física do vendedor.
+      const naoPagoSemVisitaGerencial = naoPagoHoje && naoPagamentos.every(item =>
+        item.semBaixaGerencial === true || maiusculo(item.origem) === "FECHAMENTO_GERENCIAL");
       const pendenteHoje = comCobrancaHoje && !pagoHoje && !naoPagoHoje;
       const saldo = vendaId ? saldoVenda(venda) : saldoCliente(cliente);
 
@@ -249,6 +253,7 @@
         comCobrancaHoje,
         pagoHoje,
         naoPagoHoje,
+        naoPagoSemVisitaGerencial,
         pendenteHoje,
         proximaCobranca: proximaData,
         proximaCobrancaTexto: formatarProximaCobranca(proximaData, hoje),
@@ -272,7 +277,7 @@
 
   function statusVisual(item) {
     if (item.pagoHoje) return { chave: "PAGO", titulo: "Pago hoje", cor: "#16a34a", classe: "is-paid" };
-    if (item.naoPagoHoje) return { chave: "NAO_PAGO", titulo: "Não pago hoje", cor: "#dc2626", classe: "is-unpaid" };
+    if (item.naoPagoHoje) return { chave: "NAO_PAGO", titulo: item.naoPagoSemVisitaGerencial ? "Não pago por encerramento gerencial (sem visita confirmada)" : "Não pago hoje", cor: "#dc2626", classe: "is-unpaid" };
     if (item.pendenteHoje) return { chave: "PENDENTE", titulo: "Sem baixa no dia", cor: "#cbd5e1", classe: "is-pending" };
     return { chave: "SEM_ROTA", titulo: "Sem cobrança hoje", cor: "#94a3b8", classe: "is-neutral" };
   }
@@ -453,7 +458,8 @@
       previstoHoje: carteira.filter(item => item.comCobrancaHoje).reduce((total,item) => total + Math.round(Number(item.valorParcela || 0)*100),0)/100,
       pendentes: pendentes.length,
       atrasados: pendentes.filter(item => item.situacao === "ATRASADO").length,
-      visitados: carteira.filter(item => item.pagoHoje || item.naoPagoHoje).length,
+      // Não inflar visitas: encerramento gerencial é uma decisão administrativa.
+      visitados: carteira.filter(item => item.pagoHoje || (item.naoPagoHoje && !item.naoPagoSemVisitaGerencial)).length,
       proxima: priorizados[0] || null
     };
   }
