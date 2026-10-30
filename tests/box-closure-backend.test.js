@@ -246,7 +246,7 @@ test('reabertura invalida nao pagamentos gerenciais, exige nova baixa e preserva
  assert.ok(chave,'o fechamento gerencial precisa gerar registro auditavel');
  const historicoPrimeiro=[...f.db.records.entries()].find(([k])=>k.startsWith('historico_fechamentos_caixa/'));
  assert.ok(historicoPrimeiro);
- const primeiroImutavel=structuredClone(historicoPrimeiro[1]);
+ const primeiroImutavel=JSON.stringify(historicoPrimeiro[1]);
  const saldoAntes=f.db.records.get('vendas/sale').saldoDevedorCentavos;
  const reabrir={caixaId:'box',operacaoId:'reabrir-gerencial-1',motivo:'Revisar baixa gerencial anterior'};
  const reabertura=await f.api.reabrir(reabrir,ctx('supervisor'));
@@ -259,7 +259,7 @@ test('reabertura invalida nao pagamentos gerenciais, exige nova baixa e preserva
  assert.equal(antigo.canceladoPorReabertura,true);
  assert.equal(antigo.reaberturaIdCancelamento,reabertura.reaberturaId);
  assert.equal(f.db.records.get('vendas/sale').saldoDevedorCentavos,saldoAntes);
- assert.deepEqual(f.db.records.get(historicoPrimeiro[0]),primeiroImutavel);
+ assert.equal(JSON.stringify(f.db.records.get(historicoPrimeiro[0])),primeiroImutavel);
  const evento=[...f.db.records.values()].find(v=>v?.statusNovo==='REABERTO'&&v?.quantidadeBaixasGerenciaisInvalidadas===1);
  assert.ok(evento,'a reabertura guarda quantidade invalidada para auditoria');
  const nova=await f.api.conferir({caixaId:'box'},ctx('supervisor'));
@@ -281,7 +281,7 @@ test('reabertura invalida nao pagamentos gerenciais, exige nova baixa e preserva
  assert.equal(gerenciais.filter(([,v])=>v.cancelado!==true).length,1);
  assert.equal((await f.api.conferir({caixaId:'box'},ctx('supervisor'))).pendenciasCobranca,0);
  assert.equal(f.db.records.get('vendas/sale').saldoDevedorCentavos,saldoAntes);
- assert.deepEqual(f.db.records.get(historicoPrimeiro[0]),primeiroImutavel);
+ assert.equal(JSON.stringify(f.db.records.get(historicoPrimeiro[0])),primeiroImutavel);
  assert.equal((await f.api.reabrir(reabrir,ctx('supervisor'))).modo,'IDEMPOTENTE');
  assert.equal(f.db.records.get('caixas/box').status,'FECHADO');
 });
