@@ -220,13 +220,13 @@ test("callbacks de coleção do tenant anterior não atualizam cache após reini
   const {sandbox,listeners}=executeServiceFor(first);
   assert.equal(listeners.length,3);
   const oldListener = listeners.find(item=>item.colecao==="lancamentos_financeiros");
-  oldListener.aoAtualizar([{id:"old",clientePlataformaId:"tenant-a",tipoLancamento:"PAGAMENTO",statusLancamento:"CONFIRMADO",valorCentavos:500}],{
+  oldListener.aoAtualizar([{id:"old",clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-v1",caixaId:"box-a",tipoLancamento:"PAGAMENTO",statusLancamento:"CONFIRMADO",valorCentavos:500}],{
     docs:[],docChanges:()=>[]
   });
   assert.equal((sandbox.lancamentosFinanceirosCache||[]).some(item=>item.id==="old"),true);
   sandbox.IntegroOperacoesTempoReal.start({...first,clientePlataformaId:"tenant-b",caixaAtual:null});
   const oldSignature = sandbox.IntegroOperacoesTempoReal.diagnostic().parts;
-  oldListener.aoAtualizar([{id:"late",clientePlataformaId:"tenant-a",tipoLancamento:"PAGAMENTO",statusLancamento:"CONFIRMADO",valorCentavos:900}],{
+  oldListener.aoAtualizar([{id:"late",clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-v1",caixaId:"box-a",tipoLancamento:"PAGAMENTO",statusLancamento:"CONFIRMADO",valorCentavos:900}],{
     docs:[],docChanges:()=>[]
   });
   assert.equal((sandbox.lancamentosFinanceirosCache||[]).some(item=>item.id==="late"),false);
