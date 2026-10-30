@@ -211,9 +211,9 @@ test("compactação mantém margens de 10px e não recria wrappers externos", ()
   const section = css.slice(css.indexOf("/* v27.3 compactacao global mobile"));
   assert.match(section, /--integro-mobile-gutter: 10px/);
   assert.match(section, /--it-mobile-gutter: 10px/);
-  assert.match(section, /padding-left: max\\(10px, env\\(safe-area-inset-left\\)\\)/);
-  assert.match(section, /padding-right: max\\(10px, env\\(safe-area-inset-right\\)\\)/);
-  assert.match(section, /\\.screen > \\.section-card,[\\s\\S]*?padding: 0 !important/);
-  assert.match(section, /\\.screen > \\.panel/);
+  assert.match(section, /padding-left: max\(10px, env\(safe-area-inset-left\)\)/);
+  assert.match(section, /padding-right: max\(10px, env\(safe-area-inset-right\)\)/);
+  assert.match(section, /\.screen > \.section-card,[\s\S]*?padding: 0 !important/);
+  assert.match(section, /\.screen > \.panel/);
   assert.match(section, /min-height: 64px !important/);
 });
