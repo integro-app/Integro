@@ -1,0 +1,41 @@
+name: Homologar status do caixa do supervisor no Chromium e Emulator
+on:
+  push:
+    branches: [fix/status-caixa-supervisor-apos-fechamento-20261029]
+    paths:
+      - ".github/workflows/homologar-status-caixa-supervisor-20261029.yml"
+      - "js/modules/caixas-supervisao.js"
+      - "scripts/test-caixa-reabertura-ui-emulator.cjs"
+      - "tests/caixas-supervisao.test.js"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+      FIREBASE_FUNCTIONS_EMULATOR_HOST: 127.0.0.1:5001
+      GOOGLE_CLOUD_PROJECT: integro-novo
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Instalar dependencias
+        run: |
+          npm ci
+          npm ci --prefix functions
+          npx playwright install --with-deps chromium
+      - name: Validar projeto e integridade
+        run: npm run verify
+      - name: Testar fechamento, retorno à lista e status sem cache obsoleto no Chromium
+        run: npx firebase emulators:exec --only auth,firestore,functions --project integro-novo "node scripts/test-caixa-reabertura-ui-emulator.cjs"
