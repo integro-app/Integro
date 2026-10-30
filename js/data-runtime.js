@@ -36,10 +36,14 @@
     while (cache.size > MAX_CACHE_ENTRADAS) cache.delete(cache.keys().next().value);
   }
 
+  function chaveSessao() {
+    const usuario = global.State?.getUsuario?.() || global.usuarioLogado || global.currentUserData || {};
+    const uid = global.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid || usuario.id || "";
+    return JSON.stringify([texto(uid), tenantAtual()]);
+  }
   function chaveSegura(db, chave) {
     if (!bancos.has(db)) bancos.set(db, ++proximoBanco);
-    const uid = global.firebase?.auth?.()?.currentUser?.uid || global.State?.getUsuario?.()?.authUid || global.State?.getUsuario?.()?.id || "";
-    return JSON.stringify([bancos.get(db), texto(uid), tenantAtual(), chave]);
+    return JSON.stringify([bancos.get(db), chaveSessao(), chave]);
   }
 
   function agora() { return Date.now(); }
@@ -104,12 +108,14 @@
     }
 
     const geracao = geracaoCache;
+    const sessao = chaveSessao();
     const promessa = Promise.resolve().then(async () => {
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
         const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
         const snap = await ref.get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
+        if (sessao !== chaveSessao()) return [];
         const dados = snap.docs.map(docData).filter(item => item.excluido !== true);
         metricas.documentosRecebidos += snap.docs.length;
         registrarColecao(colecao, "documentos", snap.docs.length);
@@ -144,11 +150,13 @@
       return pendentes.get(chave);
     }
     const geracao = geracaoCache;
+    const sessao = chaveSessao();
     const promessa = Promise.resolve().then(async () => {
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
         const snap = await db.collection(colecao).doc(id).get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
+        if (sessao !== chaveSessao()) return null;
         const dados = snap.exists ? docData(snap) : null;
         if (dados) {
           metricas.documentosRecebidos++;
@@ -186,9 +194,11 @@
 
     let grupo = assinaturas.get(assinatura);
     if (!grupo) {
+      const sessao = chaveSessao();
       const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
-      grupo = { assinatura, colecao, tenantId, inscritos: new Map(), unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora() };
+      grupo = { assinatura, colecao, tenantId, inscritos: new Map(), unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora(), ativo: true };
       grupo.unsubscribe = ref.onSnapshot(snapshot => {
+        if (!grupo.ativo || sessao !== chaveSessao()) return;
         const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
         metricas.documentosRecebidos += snapshot.docs.length;
         registrarColecao(colecao, "documentos", snapshot.docs.length);
@@ -199,6 +209,7 @@
           catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
         });
       }, erro => {
+        if (!grupo.ativo || sessao !== chaveSessao()) return;
         metricas.erros++;
         registrarColecao(colecao, "erros", 1);
         [...grupo.inscritos.values()].forEach(inscrito => {
@@ -219,6 +230,7 @@
       const atualGrupo = assinaturas.get(assinatura);
       atualGrupo?.inscritos.delete(chave);
       if (atualGrupo && atualGrupo.inscritos.size === 0) {
+        atualGrupo.ativo = false;
         try { atualGrupo.unsubscribe?.(); } catch (_) {}
         assinaturas.delete(assinatura);
         metricas.listenersEncerrados++;
