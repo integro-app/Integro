@@ -220,12 +220,37 @@ function criarCicloCaixa({ db, functions }) {
       const closureRef = db.collection("fechamentos_caixa").doc("fechamento_" + boxId);
       const closure = await transaction.get(closureRef);
       if (!closure.exists) fail("failed-precondition","Fechamento não encontrado.");
+      // As classificações NÃO PAGO criadas automaticamente no fechamento
+      // gerencial só valem para aquele ciclo. Reabrir exige nova baixa real ou
+      // nova decisão gerencial, sem apagar a trilha de auditoria anterior.
+      const visitasDoCaixa = await transaction.get(db.collection("historicoCobrancas")
+        .where("caixaId","==",boxId).limit(1001));
+      if (visitasDoCaixa.docs.length > 1000)
+        fail("resource-exhausted","Histórico de cobranças exige reabertura assistida.");
+      const baixasGerenciaisAtivas = visitasDoCaixa.docs.filter(doc => {
+        const visita = doc.data();
+        return visita.clientePlataformaId === who.tenant &&
+          visita.semBaixaGerencial === true &&
+          (visita.geradoAutomaticamente === true || core.normalizarStatus(visita.origem) === "FECHAMENTO_GERENCIAL") &&
+          visita.excluido !== true && visita.cancelado !== true && visita.estornado !== true &&
+          !["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA"].includes(core.normalizarStatus(visita.status));
+      });
+      if (baixasGerenciaisAtivas.length > 350)
+        fail("resource-exhausted","Quantidade de baixas gerenciais exige reabertura assistida.");
       const authorName = who.user.nome || who.user.email || "";
       transaction.update(ref,{saldoAposMovimentacoesCentavos:FieldValue.delete(),status:"REABERTO",ativo:true,fechado:false,reaberto:true,ultimoStatusAnterior:box.status,ultimaReaberturaId:reopeningRef.id,reabertoPorUid:who.uid,reabertoPorNome:authorName,motivoReabertura:reason,reabertoEm:FieldValue.serverTimestamp(),atualizadoEm:FieldValue.serverTimestamp()});
       transaction.update(closureRef,{status:"REABERTO",reaberto:true,reaberturaId:reopeningRef.id,motivoReabertura:reason,reabertoPorId:who.uid,reabertoPorNome:authorName,totalReaberturas:core.inteiro(closure.data().totalReaberturas)+1,atualizadoEm:FieldValue.serverTimestamp()});
-      transaction.set(reopeningRef,{caixaId:boxId,fechamentoId:closureRef.id,clientePlataformaId:who.tenant,vendedorId:box.vendedorId,motivo:reason,statusAnterior:box.status,statusNovo:"REABERTO",usuarioAuthUid:who.uid,reabertoPorId:who.uid,reabertoPorNome:authorName,snapshotAnterior:closure.data(),criadoEm:FieldValue.serverTimestamp()});
+      for (const visita of baixasGerenciaisAtivas) {
+        transaction.update(visita.ref,{
+          status:"CANCELADO",cancelado:true,canceladoPorReabertura:true,
+          reaberturaIdCancelamento:reopeningRef.id,canceladoPorAuthUid:who.uid,
+          motivoCancelamento:"Reabertura: baixa administrativa não comprova visita neste ciclo.",
+          canceladoEm:FieldValue.serverTimestamp(),atualizadoEm:FieldValue.serverTimestamp()
+        });
+      }
+      transaction.set(reopeningRef,{caixaId:boxId,fechamentoId:closureRef.id,clientePlataformaId:who.tenant,vendedorId:box.vendedorId,motivo:reason,statusAnterior:box.status,statusNovo:"REABERTO",usuarioAuthUid:who.uid,reabertoPorId:who.uid,reabertoPorNome:authorName,snapshotAnterior:closure.data(),quantidadeBaixasGerenciaisInvalidadas:baixasGerenciaisAtivas.length,criadoEm:FieldValue.serverTimestamp()});
       transaction.set(db.collection("historico_estados_caixa").doc(),{caixaId:boxId,clientePlataformaId:who.tenant,statusAnterior:box.status,statusNovo:"REABERTO",motivo:reason,autorId:who.uid,autorNome:authorName,fechamentoId:closureRef.id,reaberturaId:reopeningRef.id,criadoEm:FieldValue.serverTimestamp()});
-      transaction.set(db.collection("logs").doc(),{tipoAcao:"CAIXA_REABERTO",caixaId:boxId,clientePlataformaId:who.tenant,usuarioAuthUid:who.uid,motivo:reason,dataOperacional:box.dataOperacional,criadoEm:FieldValue.serverTimestamp()});
+      transaction.set(db.collection("logs").doc(),{tipoAcao:"CAIXA_REABERTO",caixaId:boxId,clientePlataformaId:who.tenant,usuarioAuthUid:who.uid,motivo:reason,quantidadeBaixasGerenciaisInvalidadas:baixasGerenciaisAtivas.length,dataOperacional:box.dataOperacional,criadoEm:FieldValue.serverTimestamp()});
       transaction.set(controlRef,{clientePlataformaId:who.tenant,vendedorId:box.vendedorId,ultimoCaixaId:boxId,dataOperacional:box.dataOperacional,atualizadoEm:FieldValue.serverTimestamp()});
       return {modo:"REABERTURA",caixaId:boxId,statusNovo:"REABERTO",reaberturaId:reopeningRef.id};
     });
