@@ -17,6 +17,8 @@
     listenersAbertos: 0,
     listenersEncerrados: 0,
     erros: 0,
+    revalidacoes: 0,
+    confirmacoesServidor: 0,
     porColecao: Object.create(null)
   };
 
@@ -176,6 +178,42 @@
     return promessa;
   }
 
+  // Reabre apenas o stream Firestore; mantém os consumidores e os handles de
+  // cancelamento originais para não acumular listeners após uma reconexão.
+  function assinarGrupo(grupo) {
+    const versao = ++grupo.versao;
+    const antigo = grupo.unsubscribe;
+    grupo.unsubscribe = null;
+    grupo.ultimoDados = null;
+    grupo.ultimoSnapshot = null;
+    try { antigo?.(); } catch (_) {}
+    const valido = () => grupo.ativo && grupo.versao === versao && grupo.sessao === chaveSessao();
+    grupo.unsubscribe = grupo.ref.onSnapshot(snapshot => {
+      if (!valido()) return;
+      const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
+      metricas.documentosRecebidos += snapshot.docs.length;
+      registrarColecao(grupo.colecao, "documentos", snapshot.docs.length);
+      grupo.ultimoDados = dados;
+      grupo.ultimoSnapshot = snapshot;
+      [...grupo.inscritos.values()].forEach(inscrito => {
+        try { inscrito.aoAtualizar(dados.map(item => ({ ...item })), snapshot); }
+        catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
+      });
+      if (snapshot.metadata?.fromCache === false && snapshot.metadata?.hasPendingWrites === false) {
+        metricas.confirmacoesServidor++;
+        const [uid, tenantId] = JSON.parse(grupo.sessao);
+        global.IntegroConectividade?.confirmarServidor?.({ uid, tenantId, colecao: grupo.colecao });
+      }
+    }, erro => {
+      if (!valido()) return;
+      metricas.erros++;
+      registrarColecao(grupo.colecao, "erros", 1);
+      [...grupo.inscritos.values()].forEach(inscrito => {
+        try { inscrito.aoErro?.(erro); } catch (_) {}
+      });
+    });
+  }
+
   function ouvir(opcoes = {}) {
     const db = opcoes.db || global.db || global.firebase?.firestore?.();
     const colecao = texto(opcoes.colecao);
@@ -196,27 +234,9 @@
     if (!grupo) {
       const sessao = chaveSessao();
       const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
-      grupo = { assinatura, colecao, tenantId, inscritos: new Map(), unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora(), ativo: true };
-      grupo.unsubscribe = ref.onSnapshot(snapshot => {
-        if (!grupo.ativo || sessao !== chaveSessao()) return;
-        const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
-        metricas.documentosRecebidos += snapshot.docs.length;
-        registrarColecao(colecao, "documentos", snapshot.docs.length);
-        grupo.ultimoDados = dados;
-        grupo.ultimoSnapshot = snapshot;
-        [...grupo.inscritos.values()].forEach(inscrito => {
-          try { inscrito.aoAtualizar(dados.map(item => ({ ...item })), snapshot); }
-          catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
-        });
-      }, erro => {
-        if (!grupo.ativo || sessao !== chaveSessao()) return;
-        metricas.erros++;
-        registrarColecao(colecao, "erros", 1);
-        [...grupo.inscritos.values()].forEach(inscrito => {
-          try { inscrito.aoErro?.(erro); }
-          catch (_) {}
-        });
-      });
+      grupo = { assinatura, colecao, tenantId, sessao, ref, inscritos: new Map(),
+        unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora(), ativo: true, versao: 0 };
+      assinarGrupo(grupo);
       assinaturas.set(assinatura, grupo);
       metricas.listenersAbertos++;
       registrarColecao(colecao, "listeners", 1);
@@ -231,6 +251,7 @@
       atualGrupo?.inscritos.delete(chave);
       if (atualGrupo && atualGrupo.inscritos.size === 0) {
         atualGrupo.ativo = false;
+        atualGrupo.versao++;
         try { atualGrupo.unsubscribe?.(); } catch (_) {}
         assinaturas.delete(assinatura);
         metricas.listenersEncerrados++;
@@ -261,6 +282,28 @@
     const alvo = texto(prefixo);
     [...cache.keys()].forEach(chave => { if (!alvo || chave.includes(alvo)) cache.delete(chave); });
     [...pendentes.keys()].forEach(chave => { if (!alvo || chave.includes(alvo)) pendentes.delete(chave); });
+  }
+
+  function revalidarConexao() {
+    invalidar();
+    if (global.navigator?.onLine === false) return { assinaturas: 0, motivo: "offline" };
+    const sessao = chaveSessao();
+    let reabertas = 0;
+    for (const grupo of [...assinaturas.values()]) {
+      if (!grupo.ativo || grupo.sessao !== sessao || grupo.inscritos.size === 0) continue;
+      try {
+        assinarGrupo(grupo);
+        reabertas++;
+      } catch (erro) {
+        metricas.erros++;
+        console.warn("[ÍNTEGRO DataRuntime] Não foi possível revalidar assinatura.", erro);
+        [...grupo.inscritos.values()].forEach(inscrito => {
+          try { inscrito.aoErro?.(erro); } catch (_) {}
+        });
+      }
+    }
+    metricas.revalidacoes++;
+    return { assinaturas: reabertas, motivo: "reconexao" };
   }
 
   function medirInteracao(nome, inicio = agora()) {
@@ -312,6 +355,7 @@
     pararEscopo,
     pararTodos,
     invalidar,
+    revalidarConexao,
     diagnostico,
     medirInteracao,
     definirTelaAtiva,
