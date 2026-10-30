@@ -175,7 +175,7 @@ test('encerramento gerencial fecha cobranças sem baixa, preserva dinheiro e ide
  assert.equal(closure.pendenciasCobrancaAntes,1);
  assert.equal(closure.caixaFinalEsperadoCentavos,10000);
  assert.equal(closure.justificativa,reason);
- assert.equal((await f.api.conferir({caixaId:'box'},ctx('supervisor')).pendenciasCobranca),0);
+ assert.equal(((await f.api.conferir({caixaId:'box'},ctx('supervisor'))).pendenciasCobranca),0);
  const audit=[...f.db.records].filter(([k])=>k.startsWith('logs/')&&k.endsWith('_gerencial')).map(([,v])=>v);
  assert.equal(audit.length,1);
  assert.deepEqual(audit[0].vendasIds,['sale']);
