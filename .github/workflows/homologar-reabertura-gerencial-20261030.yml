@@ -1,0 +1,43 @@
+name: Homologar reabertura gerencial sem visita - Emulator
+on:
+  push:
+    branches:
+      - fix/reabertura-invalida-baixas-gerenciais-20261030
+    paths:
+      - ".github/workflows/homologar-reabertura-gerencial-20261030.yml"
+      - "scripts/test-caixa-reabertura-ui-emulator.cjs"
+      - "functions/box-lifecycle.js"
+      - "tests/box-closure-backend.test.js"
+permissions:
+  contents: read
+jobs:
+  homologar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+      FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+      FIREBASE_FUNCTIONS_EMULATOR_HOST: 127.0.0.1:5001
+      GOOGLE_CLOUD_PROJECT: integro-novo
+      CI: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Instalar dependencias isoladas
+        run: |
+          npm ci
+          npm ci --prefix functions
+          npx playwright install --with-deps chromium
+      - name: Validar codigo e sintaxe do teste
+        run: |
+          npm run verify
+          node --check scripts/test-caixa-reabertura-ui-emulator.cjs
+      - name: Testar caixas, reabertura gerencial e status no Chromium e Emulator
+        run: npx firebase emulators:exec --only auth,firestore,functions --project integro-novo "node scripts/test-caixa-reabertura-ui-emulator.cjs"
