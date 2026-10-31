@@ -17735,12 +17735,16 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
 
       /* Segunda passada curta: absorve promises/timestamps que chegam logo após o cache inicial,
          mas ainda antes de liberar a interface para o usuário. */
-      await sleep(220);
-      await executarDashboardEstavel("loading-passada-final");
-
-      await window.sincronizarMovimentosDashboardVendedor?.(true);
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      // Uma única conferência real antes de exibir o painel. A segunda
+      // varredura de cards e movimentos pode consumir dezenas de segundos
+      // em 4G; executa depois do loading sem bloquear o primeiro uso.
       ESTADO.prontoParaExibir = true;
+      const contextoAoIniciar = String(window.State?.getTenantId?.() || "");
+      setTimeout(() => {
+        if (String(window.State?.getTenantId?.() || "") !== contextoAoIniciar) return;
+        executarDashboardEstavel("pos-login").catch(erro => console.warn("[ÍNTEGRO] Revalidação do dashboard:", erro));
+        window.sincronizarMovimentosDashboardVendedor?.(true)?.catch?.(erro => console.warn("[ÍNTEGRO] Atualização de movimentos:", erro));
+      }, 1200);
       return true;
     }finally{
       ESTADO.preloading = false;
@@ -18414,7 +18418,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       .map(v => () => window.criarCaixaParaVendedor(v,r.equipe,ICX.snapshotAbertura(r.equipe,v))));
     if (!tarefas.length) return notificarIntegro("Nenhum vendedor disponível para abertura.");
     try {
-      const result = await window.IntegroAberturaCaixa.executar(tarefas);
+      const result = await window.IntegroAberturaCaixa.executar(tarefas, { equipes: elegiveis.length });
       if (!result) return;
       window.CX?.selecionadas?.clear();
       window.__integroRenderCaixasCanonical?.();
@@ -18476,11 +18480,29 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!caixas.length) return notificarIntegro("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
 
-    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0, falhas: [] };
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0, cancelados: 0, semBaixaGerencial: 0, falhas: [] };
     for (const c of caixas){
       try {
         const resultado = await fecharCaixaMasterLocalSeguro(c);
-        if (resultado.statusFechamento === "DIVERGENTE") resumoFechamento.divergentes++;
+        if (!resultado || resultado.modo === "CANCELADO") {
+          resumoFechamento.cancelados++;
+          continue;
+        }
+        if (!["FECHADO","DIVERGENTE"].includes(String(resultado.statusFechamento || "").toUpperCase())) {
+          throw new Error("O servidor não confirmou um estado final válido para o caixa.");
+        }
+        // Conferência independente evita anunciar sucesso enquanto o documento
+        // segue ABERTO/REABERTO no Firestore.
+        const database = ICX.db();
+        if (!database) throw new Error("Conexão com Firebase indisponível para confirmar fechamento.");
+        const caixaSnap = await database.collection("caixas").doc(ICX.id(c)).get({ source: "server" });
+        const registro = caixaSnap.exists ? caixaSnap.data() || {} : null;
+        if (!registro || !["FECHADO","DIVERGENTE"].includes(String(registro.status || "").toUpperCase()) || registro.ativo === true) {
+          throw new Error("Fechamento não confirmado no servidor: caixa ainda aberto ou inconsistente.");
+        }
+        window.IntegroAberturaCaixa?.incorporar?.({ caixaId: ICX.id(c), caixa: { ...registro, id: ICX.id(c) } });
+        resumoFechamento.semBaixaGerencial += Number(resultado.quantidadeBaixasGerenciais || 0);
+        if (String(registro.status).toUpperCase() === "DIVERGENTE") resumoFechamento.divergentes++;
         else resumoFechamento.fechados++;
       } catch (erroCaixa) {
         const code = String(erroCaixa?.code || "");
@@ -18496,7 +18518,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     }
 
     // Falhas não podem sumir após a atualização da lista: mantém a seleção para correção.
-    if (!resumoFechamento.falhas.length && !resumoFechamento.cancelados) window.limparSelecaoEquipesCaixaIntegro?.();
+    if (!resumoFechamento.falhas.length && !resumoFechamento.cancelados && (resumoFechamento.fechados + resumoFechamento.divergentes) > 0) window.limparSelecaoEquipesCaixaIntegro?.();
     try {
       if (typeof window.atualizarCaixasIntegro === "function") await window.atualizarCaixasIntegro();
     } catch (erroAtualizacao) {
@@ -18513,7 +18535,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     const detalheFalha = primeiraFalha
       ? ` Motivo: ${primeiraFalha.message}`
       : "";
-    notificarIntegro(`Fechamento de caixa concluído. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}. Sem baixa gerencial: ${resumoFechamento.semBaixaGerencial}. Cancelados: ${resumoFechamento.cancelados}.${detalheFalha}`);
+    notificarIntegro(`Resultado do fechamento dos caixas. A confirmação depende do servidor.  Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}. Sem baixa gerencial: ${resumoFechamento.semBaixaGerencial}. Cancelados: ${resumoFechamento.cancelados}.${detalheFalha}`);
     return resumoFechamento;
   };
 
