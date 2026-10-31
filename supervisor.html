@@ -308,7 +308,8 @@
         // Notificações são carregadas após liberar o painel, sem bloquear a entrada.
 
         setLoaderSupervisor(82, "Preparando indicadores da equipe...");
-        await carregarTudoSupervisor({ viaLoading: true });
+        // A atualização de dados secundários não deve bloquear a primeira exibição.
+        void carregarTudoSupervisor({ viaLoading: true }).catch(erro => console.warn("Atualização do supervisor:", erro));
 
         setLoaderSupervisor(94, "Organizando painel operacional...");
         setTimeout(() => {
