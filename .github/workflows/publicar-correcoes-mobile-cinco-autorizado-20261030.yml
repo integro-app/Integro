@@ -1,0 +1,111 @@
+name: Publicar correcoes mobile 5 ocorrencias - autorizado 2026-10-30
+
+# Deploy único do preview aprovado, somente Hosting, com backup live.
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths: [".github/workflows/publicar-correcoes-mobile-cinco-autorizado-20261030.yml"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integro-production
+  cancel-in-progress: false
+
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: publicar correcoes mobile cinco ocorrencias 2026-10-30'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Conferir revisão e alterações permitidas
+        run: |
+          test "$(git rev-parse HEAD^)" = "614e0377807f0ab59dfbb32968d06d8763d3887d"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-correcoes-mobile-cinco-autorizado-20261030.yml"
+          grep -Fq '20261030-chat-composer-corrigido' master-local.html
+          grep -Fq '20261030-cards-mobile1' master-local.html
+          grep -Fq '20261030-equipes-vendedores1' master-local.html
+      - name: Instalar dependências e validar todo o pacote
+        run: |
+          npm ci
+          npm ci --prefix functions
+          npm run verify
+
+  publicar:
+    if: "github.event.head_commit.message == 'release: publicar correcoes mobile cinco ocorrencias 2026-10-30'"
+    needs: validar
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 25
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-deploy-cinco-correcao.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Conferir revisão autorizada
+        run: |
+          test "$(git rev-parse HEAD^)" = "614e0377807f0ab59dfbb32968d06d8763d3887d"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-correcoes-mobile-cinco-autorizado-20261030.yml"
+      - run: npm ci
+      - name: Conferir integridade da prévia do Firebase
+        run: |
+          set -euo pipefail
+          URL='https://integro-novo--pr13-fix-homologacao-mobi-1ir6vmnv.web.app'
+          for path in master-local.html css/integro-chat-mobile.css css/caixas-supervisao.css js/modules/caixas-supervisao.js js/caixa-opening-progress.js; do
+            outfile="/tmp/integro-pre-$(basename "$path")"
+            curl -fsSL --retry 3 "$URL/$path?release=cinco-correcoes-20261030" -o "$outfile"
+            test -s "$outfile"
+          done
+          grep -Fq '20261030-chat-composer-corrigido' /tmp/integro-pre-master-local.html
+          grep -Fq '20261030-cards-mobile1' /tmp/integro-pre-master-local.html
+          grep -Fq 'conversa-aberta' /tmp/integro-pre-integro-chat-mobile.css
+          grep -Fq 'Fechamento não confirmado' /tmp/integro-pre-caixas-supervisao.js
+      - name: Preparar credencial isolada do projeto
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json,os,pathlib
+          value = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON','')
+          if not value: raise SystemExit('Credencial ausente; produção inalterada.')
+          credentials = json.loads(value)
+          if credentials.get('project_id') != 'integro-novo':
+              raise SystemExit('Credencial de projeto diferente; produção inalterada.')
+          path = pathlib.Path(os.environ['GOOGLE_APPLICATION_CREDENTIALS'])
+          path.write_text(value)
+          path.chmod(0o600)
+          PY
+      - name: BACKUP - preservar Hosting atual para rollback
+        run: |
+          npx firebase hosting:clone integro-novo:live integro-novo:backup-antes-cinco-correcoes-20261030 --project integro-novo --non-interactive
+          echo 'BACKUP_CHANNEL=backup-antes-cinco-correcoes-20261030'
+      - name: PUBLICAR SOMENTE Hosting - preview revisado para live
+        run: |
+          npx firebase hosting:clone 'integro-novo:pr13-fix_homologacao-mobi' 'integro-novo:live' --project integro-novo --non-interactive
+      - name: Verificar site oficial arquivo a arquivo
+        run: |
+          set -euo pipefail
+          for path in master-local.html css/integro-chat-mobile.css css/caixas-supervisao.css js/modules/caixas-supervisao.js js/caixa-opening-progress.js; do
+            live="/tmp/integro-live-$(basename "$path")"
+            previous="/tmp/integro-pre-$(basename "$path")"
+            curl -fsSL --retry 5 --retry-delay 2 "https://integro-novo.web.app/$path?release=cinco-correcoes-20261030" -o "$live"
+            cmp -s "$previous" "$live"
+          done
+          echo 'HOSTING_CINCO_CORRECOES_VERIFICADO'
+      - name: Apagar credenciais temporárias
+        if: always()
+        run: |
+          rm -f "$GOOGLE_APPLICATION_CREDENTIALS" /tmp/integro-pre-* /tmp/integro-live-*
