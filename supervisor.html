@@ -305,9 +305,7 @@
         }
 
         setLoaderSupervisor(65, "Carregando notificações e alertas...");
-        if (typeof carregarNotificacoesLayout === "function") {
-          await carregarNotificacoesLayout(obterUsuarioSupervisorAtual());
-        }
+        // Notificações são carregadas após liberar o painel, sem bloquear a entrada.
 
         setLoaderSupervisor(82, "Preparando indicadores da equipe...");
         await carregarTudoSupervisor({ viaLoading: true });
