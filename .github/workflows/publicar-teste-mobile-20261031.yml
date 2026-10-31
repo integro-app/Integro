@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   validar:
-    if: "github.event.head_commit.message == 'release: homologar interface mobile 2026-10-31'"
+    if: "github.event.head_commit.message == 'fix: instalar firebase cli para deploy mobile 2026-10-31'"
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -50,6 +50,8 @@ jobs:
           file.write_text(value)
           file.chmod(0o600)
           PY
+      - name: Instalar Firebase CLI
+        run: npm install --no-save firebase-tools@14
       - name: Backup do Hosting live
         run: npx firebase hosting:clone integro-novo:live integro-novo:backup-pre-mobile-20261031 --project integro-novo --non-interactive
       - name: Publicar somente Hosting
