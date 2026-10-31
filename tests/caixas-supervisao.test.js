@@ -55,7 +55,11 @@ test('fechamento massivo do supervisor informa a falha do backend sem rejeição
    limparSelecaoEquipesCaixaIntegro:()=>selected.splice(0),
    atualizarCaixasIntegro:async()=>{},
  };
- const scope={window:w,ICX:{id:c=>c.id},notificarIntegro:msg=>notices.push(msg),
+ let persistedStatus='FECHADO',serverReads=0;
+ const scope={window:w,ICX:{id:c=>c.id,db:()=>({collection:()=>({doc:()=>({get:async options=>{
+   assert.equal(options.source,'server');serverReads++;
+   return {exists:true,data:()=>({status:persistedStatus,ativo:persistedStatus==='ABERTO'})};
+ }})})})},notificarIntegro:msg=>notices.push(msg),
    confirm:()=>true,console:{warn:()=>{}},fecharCaixaMasterLocalSeguro:async()=>{throw Error('Permissão negada pelo servidor');}};
  vm.runInNewContext(html.slice(start,end),scope);
  const output=await w.fecharSelecionadas();
@@ -71,6 +75,19 @@ test('fechamento massivo do supervisor informa a falha do backend sem rejeição
  assert.equal(success.falhas.length,0);
  assert.equal(selected.length,0,'limpa seleção somente após sucesso');
  assert.match(notices.at(-1),/Fechados: 1/);
+ assert.equal(serverReads,1,'fechamento confirmado via consulta de servidor');
+ selected.push('team-a'); persistedStatus='ABERTO';
+ const stale=await w.fecharSelecionadas();
+ assert.equal(stale.fechados,0,'nunca anuncia fechamento sem confirmação');
+ assert.equal(stale.falhas.length,1);
+ assert.match(stale.falhas[0].message,/não confirmado/i);
+ assert.deepEqual(selected,['team-a'],'mantém seleção após status aberto');
+ persistedStatus='FECHADO';
+ scope.fecharCaixaMasterLocalSeguro=async()=>({modo:'CANCELADO'});
+ const cancelled=await w.fecharSelecionadas();
+ assert.equal(cancelled.cancelados,1);
+ assert.equal(cancelled.fechados,0);
+ assert.equal(selected.length,1,'cancelamento não limpa a seleção');
 });
 
 test('supervisor considera caixa REABERTO como aberto ao montar fechamento da equipe',()=>{
