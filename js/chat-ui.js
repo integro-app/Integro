@@ -181,7 +181,7 @@
 
   function renderBase(root) {
     if(!document.getElementById('integroChatMobileStyles')){
-      const link=document.createElement('link');link.id='integroChatMobileStyles';link.rel='stylesheet';link.href='css/integro-chat-mobile.css?v=20261028-mobile';document.head.appendChild(link);
+      const link=document.createElement('link');link.id='integroChatMobileStyles';link.rel='stylesheet';link.href='css/integro-chat-mobile.css?v=20261030-chat-composer-corrigido';document.head.appendChild(link);
     }
     root.dataset.chatReady = "1";
     root.innerHTML = `
@@ -195,7 +195,7 @@
             </div>
           </div>
           <label class="integro-chat-search"><span class="material-symbols-rounded">search</span><input id="chatBusca" placeholder="Buscar contato ou grupo" oninput="IntegroChatUI.renderConversas()"></label>
-          <div id="chatStatus" class="integro-chat-status">Carregando contatos...</div>
+          <div id="chatStatus" class="integro-chat-status">Carregando contatos...</div><p class="integro-chat-start-hint">Selecione um contato ou grupo para abrir a conversa e acessar mensagem, envio e anexos.</p>
           <div id="chatConversas" class="integro-chat-conversas"></div>
         </aside>
         <section class="integro-chat-thread">
