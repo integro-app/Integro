@@ -10,7 +10,7 @@ function ui() {
   const dialogs = [], state = {boxes:[],getCaixas(){return this.boxes;},setCaixas(items){this.boxes=items;}};
   const global = {State:state,CX:{caixas:[]}};
   const document = {body:{appendChild(){}},createElement(){
-    const bar={},status={},dialog={bar,status,setAttribute(){},addEventListener(name,fn){this[name]=fn;},showModal(){this.open=true;},close(){this.open=false;},remove(){this.removed=true;},querySelector(selector){return selector==='progress'?bar:status;}};
+    const bar={},status={},explanation={},dialog={bar,status,explanation,setAttribute(){},addEventListener(name,fn){this[name]=fn;},showModal(){this.open=true;},close(){this.open=false;},remove(){this.removed=true;},querySelector(selector){return selector==='progress'?bar:selector==='[data-caixas-explicacao]'?explanation:status;}};
     dialogs.push(dialog); return dialog;
   }};
   vm.runInNewContext(fs.readFileSync(require.resolve('../js/caixa-opening-progress.js'),'utf8'),{window:global,document});
@@ -79,4 +79,12 @@ test('ações reais de seleção utilizam progresso e resultado confirmado sem c
   vm.runInNewContext(source,{window:global,confirm:()=>true,notificarIntegro:text=>notices.push(text),ICX:{resumoAberturaEquipe:()=>({}),money:()=>'',id:item=>item.id,vendedorId:item=>item.id,snapshotAbertura:()=>({})}});
   await global.abrirSelecionadas();
   assert.equal(calls,2);assert.equal(renders,1);assert.equal(global.CX.selecionadas.size,0);assert.equal(global.CX.caixas.length,2);assert.match(notices[0],/2/);
+});
+
+test('progresso diferencia quantidade de equipes selecionadas e caixas por vendedor',async()=>{
+ const {api,dialogs}=ui();let resolve;
+ const pending=api.executar([()=>new Promise(r=>resolve=r),async()=>{}],{equipes:1});
+ assert.match(dialogs[0].explanation.textContent,/1 equipe\(s\) selecionada\(s\), 2 caixa\(s\) individuais/);
+ assert.match(dialogs[0].status.textContent,/vendedor 1 de 2/);
+ resolve();await pending;
 });
