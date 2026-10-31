@@ -1,0 +1,108 @@
+name: Publicar ÍNTEGRO homologação mobile - autorizado 2026-10-30
+
+# Publicação única explicitamente autorizada: somente Hosting.
+# Não usar o fluxo main, pois ele divergiu do branch já homologado.
+on:
+  push:
+    branches:
+      - codex/migracao-codespaces-20261026
+    paths:
+      - ".github/workflows/publicar-mobile-validado-autorizado-20261030.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integro-production
+  cancel-in-progress: false
+
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: publicar mobile validado autorizado 2026-10-30'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Fixar revisão homologada e permitir somente workflow no commit de disparo
+        run: |
+          test "$(git rev-parse HEAD^)" = "1d2868998c91aef61a72a1928c4a91ab75e04406"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-mobile-validado-autorizado-20261030.yml"
+          test "$(git show HEAD^:js/integro-connectivity-guard.js | grep -c 'confirmarServidor')" -gt 0
+          test "$(git show HEAD^:master-local.html | grep -c '20261030-reconnect-verify1')" -gt 0
+      - name: Instalar dependências
+        run: |
+          npm ci
+          npm ci --prefix functions
+      - name: Validar aplicação e superfície Hosting
+        run: npm run verify
+
+  publicar:
+    if: "github.event.head_commit.message == 'release: publicar mobile validado autorizado 2026-10-30'"
+    needs: validar
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: production
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-hosting-mobile-20261030.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Fixar versão novamente
+        run: |
+          test "$(git rev-parse HEAD^)" = "1d2868998c91aef61a72a1928c4a91ab75e04406"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/publicar-mobile-validado-autorizado-20261030.yml"
+      - run: npm ci
+      - name: Validar site de origem ANTES de alterar a produção
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 3 'https://integro-novo--pr12-fix-revalidacao-reco-10bt2bnx.web.app/master-local.html?mobile-release=20261030' -o /tmp/integro-master-preview.html
+          curl -fsSL --retry 3 'https://integro-novo--pr12-fix-revalidacao-reco-10bt2bnx.web.app/js/integro-connectivity-guard.js?mobile-release=20261030' -o /tmp/integro-guard-preview.js
+          grep -Fq 'js/integro-connectivity-guard.js?v=20261030-reconnect-verify1' /tmp/integro-master-preview.html
+          grep -Fq 'confirmarServidor' /tmp/integro-guard-preview.js
+      - name: Configurar credencial temporária vinculada ao projeto
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import os, json, pathlib
+          secret = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON', '')
+          if not secret: raise SystemExit('Credencial ausente; nenhum deploy.')
+          value = json.loads(secret)
+          if value.get('project_id') != 'integro-novo':
+              raise SystemExit('Projeto inesperado; nenhum deploy.')
+          path = pathlib.Path(os.environ['GOOGLE_APPLICATION_CREDENTIALS'])
+          path.write_text(secret)
+          path.chmod(0o600)
+          PY
+      - name: BACKUP - clonar Hosting atual antes do deploy
+        run: |
+          npx firebase hosting:clone integro-novo:live integro-novo:backup-preteste-20261030 --project integro-novo --non-interactive
+          echo "ROLLBACK_BACKUP_CHANNEL=backup-preteste-20261030"
+      - name: PUBLICAR - clonar exatamente o preview aprovado ao live
+        run: |
+          npx firebase hosting:clone 'integro-novo:pr12-fix_revalidacao-reco' 'integro-novo:live' --project integro-novo --non-interactive
+      - name: Comprovar arquivos publicados no link oficial
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-delay 2 'https://integro-novo.web.app/master-local.html?mobile-live-check=20261030' -o /tmp/integro-master-live.html
+          curl -fsSL --retry 5 --retry-delay 2 'https://integro-novo.web.app/js/integro-connectivity-guard.js?mobile-live-check=20261030' -o /tmp/integro-guard-live.js
+          grep -Fq 'js/integro-connectivity-guard.js?v=20261030-reconnect-verify1' /tmp/integro-master-live.html
+          grep -Fq 'confirmarServidor' /tmp/integro-guard-live.js
+          cmp -s /tmp/integro-master-preview.html /tmp/integro-master-live.html
+          cmp -s /tmp/integro-guard-preview.js /tmp/integro-guard-live.js
+          echo 'HOSTING_PRODUCAO_MOBILE_VERIFICADO'
+      - name: Remover credenciais e temporários
+        if: always()
+        run: |
+          rm -f "$GOOGLE_APPLICATION_CREDENTIALS" /tmp/integro-master-preview.html /tmp/integro-master-live.html /tmp/integro-guard-preview.js /tmp/integro-guard-live.js
