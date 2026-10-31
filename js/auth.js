@@ -173,6 +173,10 @@ async function login() {
     const credencial = await auth.signInWithEmailAndPassword(email, senha);
     marcarEtapaLogin(metricas, "autenticacao");
     const authUser = credencial.user;
+    // Antecipar apenas o download do serviço; a sessão só começa após validar o usuário.
+    // O catch imediato evita rejeição não tratada enquanto o perfil é consultado.
+    const servicoSessaoPendente = garantirServicoSessaoV27()
+      .then(servico => ({ servico }), erro => ({ erro }));
 
     atualizarCarregamentoLogin("Identificando seu perfil", 38, "Aplicando permissões e regras de acesso");
     const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
@@ -199,7 +203,9 @@ async function login() {
     // V27: o login novo assume a sessão e derruba o dispositivo anterior.
     // A sessão é obrigatória; as configurações são carregadas no painel de destino.
     try {
-      const sessao = await garantirServicoSessaoV27();
+      const carregamentoSessao = await servicoSessaoPendente;
+      if (carregamentoSessao.erro) throw carregamentoSessao.erro;
+      const sessao = carregamentoSessao.servico;
       if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
       await sessao.start();
     } catch (erroSessao) {
