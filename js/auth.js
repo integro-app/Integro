@@ -85,6 +85,13 @@ function garantirServicoSessaoV27() {
     script.onerror = reject;
     document.head.appendChild(script);
   });
+  // Uma falha de rede não pode deixar o carregador preso em uma Promise rejeitada.
+  __integroV27SessionLoader = __integroV27SessionLoader.catch(erro => {
+    const script = document.querySelector('script[data-integro-v27-session="1"]');
+    if (script && !window.IntegroV27Session) script.remove();
+    __integroV27SessionLoader = null;
+    throw erro;
+  });
   return __integroV27SessionLoader;
 }
 
