@@ -1,0 +1,64 @@
+name: Publicar interface ÍNTEGRO para teste mobile - 2026-10-31
+on:
+  push:
+    branches: [codex/migracao-codespaces-20261026]
+    paths:
+      - '.github/workflows/publicar-teste-mobile-20261031.yml'
+permissions:
+  contents: read
+concurrency:
+  group: integro-production
+  cancel-in-progress: false
+jobs:
+  validar:
+    if: "github.event.head_commit.message == 'release: homologar interface mobile 2026-10-31'"
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix functions
+      - run: npm run verify
+  publicar:
+    needs: validar
+    environment: production
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GOOGLE_APPLICATION_CREDENTIALS: /tmp/integro-mobile-20261031.json
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Preparar credencial validada
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib
+          value = os.environ.get('FIREBASE_SERVICE_ACCOUNT_JSON', '')
+          if not value: raise SystemExit('Credencial Firebase ausente')
+          credential = json.loads(value)
+          if credential.get('project_id') != 'integro-novo': raise SystemExit('Projeto Firebase incorreto')
+          file = pathlib.Path(os.environ['GOOGLE_APPLICATION_CREDENTIALS'])
+          file.write_text(value)
+          file.chmod(0o600)
+          PY
+      - name: Backup do Hosting live
+        run: npx firebase hosting:clone integro-novo:live integro-novo:backup-pre-mobile-20261031 --project integro-novo --non-interactive
+      - name: Publicar somente Hosting
+        run: npx firebase deploy --only hosting --project integro-novo --non-interactive
+      - name: Verificar interface publicada
+        run: |
+          set -euo pipefail
+          curl -fsSL --retry 5 --retry-delay 3 'https://integro-novo.web.app/supervisor.html?build=20261031-mobile' -o /tmp/supervisor-live.html
+          grep -Fq 'void carregarTudoSupervisor({ viaLoading: true }).catch' /tmp/supervisor-live.html
+      - name: Remover credencial
+        if: always()
+        run: rm -f "$GOOGLE_APPLICATION_CREDENTIALS"
