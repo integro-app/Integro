@@ -478,7 +478,7 @@ function getUltimoCaixaDoVendedor(vendedorId) {
       obterTimeCaixa(a.atualizadoEm || a.fechadoEm || a.abertoEm || a.criadoEm || a.dataAbertura || a.dataCaixa)
     );
 
-  const aberto = caixas.find(c => String(c.status || "").toUpperCase() === "ABERTO" && c.ativo !== false);
+  const aberto = caixas.find(c => ["ABERTO", "REABERTO"].includes(String(c.status || "").toUpperCase()) && c.ativo !== false);
   return aberto || caixas[0] || null;
 }
 
@@ -487,7 +487,7 @@ function getResumoEquipeSupervisao(equipe) {
   const caixas = getCaixasDaEquipeSupervisao(equipe);
 
   const caixasAbertos = caixas.filter(c =>
-    String(c.status || "").toUpperCase() === "ABERTO" && c.ativo !== false
+    ["ABERTO", "REABERTO"].includes(String(c.status || "").toUpperCase()) && c.ativo !== false
   );
 
   const caixasFechados = caixas.filter(c =>
@@ -951,7 +951,7 @@ function abrirCaixaMassivo() {
 
     getVendedoresDaEquipeSupervisao(equipe).forEach(vendedor => {
       const caixa = getUltimoCaixaDoVendedor(vendedor.id);
-      const aberto = caixa && String(caixa.status || "").toUpperCase() === "ABERTO" && caixa.ativo !== false;
+      const aberto = caixa && ["ABERTO", "REABERTO"].includes(String(caixa.status || "").toUpperCase()) && caixa.ativo !== false;
 
       if (!aberto && !vendedoresSemCaixa.find(v => v.id === vendedor.id)) {
         vendedoresSemCaixa.push(vendedor);
