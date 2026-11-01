@@ -160,7 +160,17 @@
   async function resume() {
     if (!currentUser()) return false;
     if (!sessionId()) return false;
-    await heartbeat();
+    try {
+      if (!(await heartbeat())) return false;
+    } catch (error) {
+      // Uma sessão antiga pode estar vinculada a outro token após o login.
+      // Nunca ignorar a validação: registrar nova sessão no servidor e validá-la.
+      const unbound = error?.code === "functions/permission-denied" &&
+        /sessão não vinculada ao token|sessao nao vinculada ao token/i.test(String(error?.message || ""));
+      if (!unbound) throw error;
+      await start();
+      if (!(await heartbeat())) return false;
+    }
     registerActivity();
     runTimers();
     return true;
