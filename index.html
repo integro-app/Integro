@@ -517,7 +517,7 @@
 
   <!-- Core da aplicação -->
   <script src="js/app.js?v=20260812-v24-6"></script>
-  <script src="js/auth.js?v=20261101-auth-guard1"></script>
+  <script src="js/auth.js?v=20261101-auth-diagnostico2"></script>
 
   <!-- Helpers de login -->
   <script>
@@ -559,7 +559,9 @@
         mostrarStatusLogin("Sua sessão expirou. Entre novamente.");
         history.replaceState({}, document.title, window.location.pathname);
       } else if (motivo === "erro_sessao") {
-        mostrarStatusLogin("Não foi possível validar a sessão. Entre novamente.");
+        const codigo = params.get("codigo");
+        const detalhe = mensagem ? String(mensagem).slice(0, 180) : "";
+        mostrarStatusLogin(detalhe ? "Falha ao validar sessão" + (codigo ? " (" + codigo + ")" : "") + ": " + detalhe : "Não foi possível validar a sessão. Entre novamente.");
         history.replaceState({}, document.title, window.location.pathname);
       }
     });
