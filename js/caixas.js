@@ -1003,26 +1003,42 @@ async function salvarAberturaMassivaCaixas() {
       return UIHelpers.alerta("Selecione pelo menos um vendedor.");
     }
 
+    const resumo = { abertos: 0, existentes: 0, erros: 0 };
+    const vendedores = getVendedoresBaseSupervisao();
     for (const vendedorId of ids) {
-      const aberto = await verificarCaixaAbertoVendedor(vendedorId);
-      if (aberto) continue;
+      try {
+        const aberto = await verificarCaixaAbertoVendedor(vendedorId);
+        if (aberto) {
+          resumo.existentes++;
+          continue;
+        }
 
-      const vendedor = getVendedoresBaseSupervisao().find(v => v.id === vendedorId);
-      if (!vendedor) continue;
+        const vendedor = vendedores.find(v => v.id === vendedorId);
+        if (!vendedor) {
+          resumo.erros++;
+          continue;
+        }
 
-      await criarCaixaParaVendedor(vendedor, valorInicial, "Abertura massiva por supervisão");
+        await criarCaixaParaVendedor(vendedor, valorInicial, "Abertura massiva por supervisão");
+        resumo.abertos++;
+      } catch (erroVendedor) {
+        resumo.erros++;
+        console.warn("[SUPERVISÃO CAIXAS] Falha ao abrir caixa:", vendedorId, erroVendedor);
+      }
     }
 
     await FirestoreService.gravarLog("ABERTURA_MASSIVA_CAIXAS", {
       equipesIds: [...equipesSelecionadasCaixa],
       vendedoresIds: ids,
-      valorInicial
+      valorInicial,
+      resumo
     });
 
+    await carregarDadosIniciaisSupervisaoCaixas(true, true);
     equipesSelecionadasCaixa.clear();
-    UIHelpers.alerta("Abertura massiva concluída.");
     fecharDrawerCompat();
     renderCaixas();
+    UIHelpers.alerta(`Abertura massiva: ${resumo.abertos} aberto(s), ${resumo.existentes} já existente(s), ${resumo.erros} erro(s).`);
 
   } catch (erro) {
     console.error("Erro na abertura massiva:", erro);
