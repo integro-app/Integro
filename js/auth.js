@@ -171,6 +171,9 @@ function redirecionarUsuario(usuario) {
 // ===============================
 
 function protegerPagina(tipoObrigatorio = null) {
+  if (window.__INTEGRO_AUTH_GUARD_INSTALADO__) return;
+  window.__INTEGRO_AUTH_GUARD_INSTALADO__ = true;
+
   auth.onAuthStateChanged(async (authUser) => {
     try {
       if (!authUser) {
@@ -229,7 +232,7 @@ function protegerPagina(tipoObrigatorio = null) {
         State.limparSessao();
       }
       UIHelpers.alerta("Erro ao validar sessão: " + erro.message);
-      window.location.href = "index.html";
+      window.location.href = "index.html?motivo=erro_sessao";
     }
   });
 }

@@ -228,3 +228,10 @@ test("redirecionamento por perfil permanece compatível", () => {
     assert.equal(IntegroOperacional.rotaPadraoUsuario(usuario), rota);
   });
 });
+
+
+test("proteção de rota instala apenas um guard de autenticação por página", () => {
+  const auth = read("js", "auth.js");
+  assert.match(auth, /__INTEGRO_AUTH_GUARD_INSTALADO__/);
+  assert.match(auth, /motivo=erro_sessao/);
+});

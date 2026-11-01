@@ -517,7 +517,7 @@
 
   <!-- Core da aplicação -->
   <script src="js/app.js?v=20260812-v24-6"></script>
-  <script src="js/auth.js?v=3"></script>
+  <script src="js/auth.js?v=20261101-auth-guard1"></script>
 
   <!-- Helpers de login -->
   <script>
@@ -551,6 +551,15 @@
         mostrarStatusLogin(
           mensagem || "O sistema do vendedor está fechado no momento. Solicite a abertura do caixa ao supervisor."
         );
+        history.replaceState({}, document.title, window.location.pathname);
+      } else if (motivo === "sessao_invalida") {
+        mostrarStatusLogin("Sua sessão não pôde ser validada. Entre novamente.");
+        history.replaceState({}, document.title, window.location.pathname);
+      } else if (motivo === "sessao_expirada") {
+        mostrarStatusLogin("Sua sessão expirou. Entre novamente.");
+        history.replaceState({}, document.title, window.location.pathname);
+      } else if (motivo === "erro_sessao") {
+        mostrarStatusLogin("Não foi possível validar a sessão. Entre novamente.");
         history.replaceState({}, document.title, window.location.pathname);
       }
     });
