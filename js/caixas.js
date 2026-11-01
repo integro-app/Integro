@@ -1027,18 +1027,31 @@ async function salvarAberturaMassivaCaixas() {
       }
     }
 
-    await FirestoreService.gravarLog("ABERTURA_MASSIVA_CAIXAS", {
-      equipesIds: [...equipesSelecionadasCaixa],
-      vendedoresIds: ids,
-      valorInicial,
-      resumo
-    });
+    // Uma falha de log ou atualização visual não desfaz aberturas já confirmadas.
+    try {
+      await FirestoreService.gravarLog("ABERTURA_MASSIVA_CAIXAS", {
+        equipesIds: [...equipesSelecionadasCaixa],
+        vendedoresIds: ids,
+        valorInicial,
+        resumo
+      });
+    } catch (erroLog) {
+      console.error("[SUPERVISÃO CAIXAS] Falha no log da abertura massiva:", erroLog);
+    }
 
-    await carregarDadosIniciaisSupervisaoCaixas(true, true);
+    let atualizado = false;
+    try {
+      await carregarDadosIniciaisSupervisaoCaixas(true, true);
+      atualizado = true;
+    } catch (erroAtualizacao) {
+      console.error("[SUPERVISÃO CAIXAS] Falha ao atualizar abertura massiva:", erroAtualizacao);
+    }
+
     equipesSelecionadasCaixa.clear();
     fecharDrawerCompat();
     renderCaixas();
-    UIHelpers.alerta(`Abertura massiva: ${resumo.abertos} aberto(s), ${resumo.existentes} já existente(s), ${resumo.erros} erro(s).`);
+    const mensagem = `Abertura massiva: ${resumo.abertos} aberto(s), ${resumo.existentes} já existente(s), ${resumo.erros} erro(s).`;
+    UIHelpers.alerta(atualizado ? mensagem : `${mensagem} Não foi possível atualizar a tela. Atualize para conferir os caixas.`);
 
   } catch (erro) {
     console.error("Erro na abertura massiva:", erro);
