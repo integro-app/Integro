@@ -10,19 +10,24 @@ function garantirServicoSessaoV27() {
   if (__integroV27SessionLoader) return __integroV27SessionLoader;
   __integroV27SessionLoader = new Promise((resolve, reject) => {
     const existente = document.querySelector('script[data-integro-v27-session="1"]');
-    if (existente) {
-      if (window.IntegroV27Session) return resolve(window.IntegroV27Session);
-      existente.addEventListener("load", () => resolve(window.IntegroV27Session), { once: true });
-      existente.addEventListener("error", reject, { once: true });
-      return;
+    const script = existente || document.createElement("script");
+    const concluir = () => {
+      if (window.IntegroV27Session) resolve(window.IntegroV27Session);
+      else reject(new Error("O serviço de sessão não foi inicializado corretamente."));
+    };
+    const falhar = () => reject(new Error("Não foi possível carregar o serviço de sessão. Verifique a conexão."));
+    script.addEventListener("load", concluir, { once: true });
+    script.addEventListener("error", falhar, { once: true });
+    if (!existente) {
+      script.src = "js/services/v27-session-service.js?v=20261101-session1";
+      script.async = false;
+      script.dataset.integroV27Session = "1";
+      document.head.appendChild(script);
     }
-    const script = document.createElement("script");
-    script.src = "js/services/v27-session-service.js?v=20260818-session-replace1";
-    script.async = false;
-    script.dataset.integroV27Session = "1";
-    script.onload = () => resolve(window.IntegroV27Session);
-    script.onerror = reject;
-    document.head.appendChild(script);
+  }).catch(erro => {
+    __integroV27SessionLoader = null;
+    document.querySelector('script[data-integro-v27-session="1"]')?.remove();
+    throw erro;
   });
   return __integroV27SessionLoader;
 }
