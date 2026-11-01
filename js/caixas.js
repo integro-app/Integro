@@ -251,6 +251,7 @@ async function carregarDadosIniciaisSupervisaoCaixas(forcar = false, incluirEstr
     if (telaCaixasAtiva()) renderCaixas();
   } catch (erro) {
     console.error("[SUPERVISÃO CAIXAS] erro no carregamento inicial:", erro);
+    throw erro;
   }
 }
 
@@ -1186,9 +1187,20 @@ async function fecharCaixaMassivo() {
       resumo
     });
 
+    // Reconsulta o Firestore sem cache antes de apresentar o estado final.
+    // A tela não deve continuar exibindo ABERTO após uma confirmação de fechamento.
+    let sincronizado = false;
+    try {
+      await carregarDadosIniciaisSupervisaoCaixas(true, true);
+      sincronizado = true;
+    } catch (erroAtualizacao) {
+      console.warn("[SUPERVISÃO CAIXAS] Falha ao atualizar após fechamento massivo:", erroAtualizacao);
+    }
+
     equipesSelecionadasCaixa.clear();
-    UIHelpers.alerta(`Fechamento massivo concluido. Fechados: ${resumo.fechados}. Divergentes: ${resumo.divergentes}. Bloqueados: ${resumo.bloqueados}. Erros: ${resumo.erros}.`);
     renderCaixas();
+    const mensagem = `Fechamento massivo concluido. Fechados: ${resumo.fechados}. Divergentes: ${resumo.divergentes}. Bloqueados: ${resumo.bloqueados}. Erros: ${resumo.erros}.`;
+    UIHelpers.alerta(sincronizado ? mensagem : `${mensagem} Não foi possível confirmar a atualização da tela. Atualize para conferir os estados.`);
 
   } catch (erro) {
     console.error("Erro no fechamento massivo:", erro);
