@@ -1210,11 +1210,16 @@ async function fecharCaixaMassivo() {
       }
     }
 
-    await FirestoreService.gravarLog("FECHAMENTO_MASSIVO_CAIXAS", {
-      equipesIds: equipesSelecionadas,
-      caixasIds: caixasAbertos.map(c => c.id),
-      resumo
-    });
+    // Falha no log agregado não invalida fechamentos individuais já confirmados.
+    try {
+      await FirestoreService.gravarLog("FECHAMENTO_MASSIVO_CAIXAS", {
+        equipesIds: equipesSelecionadas,
+        caixasIds: caixasAbertos.map(c => c.id),
+        resumo
+      });
+    } catch (erroLog) {
+      console.error("[SUPERVISÃO CAIXAS] Falha no log agregado do fechamento:", erroLog);
+    }
 
     // Reconsulta o Firestore sem cache antes de apresentar o estado final.
     // A tela não deve continuar exibindo ABERTO após uma confirmação de fechamento.
