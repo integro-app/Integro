@@ -1136,7 +1136,7 @@ async function fecharCaixaMassivo() {
       if (!equipe) return;
 
       getCaixasDaEquipeSupervisao(equipe).forEach(caixa => {
-        const aberto = String(caixa.status || "").toUpperCase() === "ABERTO" && caixa.ativo !== false;
+        const aberto = ["ABERTO", "REABERTO"].includes(String(caixa.status || "").toUpperCase()) && caixa.ativo !== false;
 
         if (aberto && !caixasAbertos.find(c => c.id === caixa.id)) {
           caixasAbertos.push(caixa);
