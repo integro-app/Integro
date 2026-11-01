@@ -29,3 +29,5 @@ jobs:
           echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
       - name: List deployed Firebase Functions
         run: npx firebase functions:list --project integro-novo
+      - name: Read recent session Function logs
+        run: npx firebase functions:log --project integro-novo --only iniciarSessaoV27,validarSessaoV27 --lines 80
