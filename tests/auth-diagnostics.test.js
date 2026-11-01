@@ -231,7 +231,7 @@ test("redirecionamento por perfil permanece compatível", () => {
 
 
 test("proteção de rota instala apenas um guard de autenticação por página", () => {
-  const auth = read("js", "auth.js");
+  const auth = fs.readFileSync(path.join(__dirname, "..", "js", "auth.js"), "utf8");
   assert.match(auth, /__INTEGRO_AUTH_GUARD_INSTALADO__/);
   assert.match(auth, /motivo=erro_sessao/);
 });
