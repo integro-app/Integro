@@ -193,7 +193,7 @@ async function carregarUsuarios(forcar = false) {
     State.setUsuarios(data);
   } catch (erro) {
     console.error("Erro ao carregar usuários:", erro);
-    State.setUsuarios([]);
+    throw erro;
   }
 }
 
@@ -225,7 +225,7 @@ async function carregarVendas(forcar = false) {
     State.setVendas(data);
   } catch (erro) {
     console.error("Erro ao carregar vendas:", erro);
-    State.setVendas([]);
+    throw erro;
   }
 }
 
@@ -266,7 +266,7 @@ async function carregarPagamentosHoje(forcar = false) {
     State.setPagamentos(data);
   } catch (erro) {
     console.error("Erro ao carregar pagamentos:", erro);
-    State.setPagamentos([]);
+    throw erro;
   }
 }
 
@@ -282,7 +282,7 @@ async function carregarSolicitacoes(forcar = false) {
     State.setSolicitacoes(data);
   } catch (erro) {
     console.error("Erro ao carregar solicitações:", erro);
-    State.setSolicitacoes([]);
+    throw erro;
   }
 }
 
