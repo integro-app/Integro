@@ -124,7 +124,9 @@ async function login() {
       mensagem = erro.message;
     }
 
-    UIHelpers.alerta(mensagem);
+    // A mensagem de falha precisa permanecer visível também no login mobile.
+    if (typeof mostrarStatusLogin === "function") mostrarStatusLogin(mensagem);
+    else if (window.UIHelpers?.alerta) UIHelpers.alerta(mensagem);
   } finally {
     if (botaoLogin) {
       botaoLogin.disabled = false;
