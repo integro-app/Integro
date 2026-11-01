@@ -209,7 +209,7 @@ async function carregarClientes(forcar = false) {
     State.setClientes(data);
   } catch (erro) {
     console.error("Erro ao carregar clientes:", erro);
-    State.setClientes([]);
+    throw erro;
   }
 }
 
