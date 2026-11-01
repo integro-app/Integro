@@ -232,7 +232,9 @@ function protegerPagina(tipoObrigatorio = null) {
         State.limparSessao();
       }
       UIHelpers.alerta("Erro ao validar sessão: " + erro.message);
-      window.location.href = "index.html?motivo=erro_sessao";
+      const codigoSessao = encodeURIComponent(String(erro?.code || erro?.name || "erro_sessao").slice(0, 80));
+      const mensagemSessao = encodeURIComponent(String(erro?.message || "Falha desconhecida ao validar a sessão.").slice(0, 180));
+      window.location.href = "index.html?motivo=erro_sessao&codigo=" + codigoSessao + "&mensagem=" + mensagemSessao;
     }
   });
 }
