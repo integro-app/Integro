@@ -1,0 +1,32 @@
+name: Deploy Firebase session functions
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/firebase-session-functions-deploy.yml"
+
+jobs:
+  verify_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - name: Prepare Firebase credentials
+        shell: bash
+        env:
+          FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          test -n "$FIREBASE_SERVICE_ACCOUNT_JSON"
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/firebase-service-account.json"
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$RUNNER_TEMP/firebase-service-account.json" >> "$GITHUB_ENV"
+      - name: Deploy session Functions only
+        run: npx firebase deploy --only functions:iniciarSessaoV27,functions:validarSessaoV27,functions:encerrarSessaoV27,functions:registrarFalhaLoginV27 --project integro-novo
