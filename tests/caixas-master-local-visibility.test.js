@@ -83,3 +83,16 @@ test("módulo premium confirma fechamento individual e baixa gerencial", () => {
   assert.match(source, /get\(\{source:'server'\}\)/);
   assert.match(source, /NÃO PAGAS por decisão gerencial/);
 });
+
+
+test("painel local usa backend na abertura e módulo premium como renderer oficial", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "master-local.html"), "utf8");
+  const inicio = source.indexOf("window.criarCaixaParaVendedor = async function");
+  const fim = source.indexOf("window.abrirSelecionadas = async function", inicio);
+  const abertura = source.slice(inicio, fim);
+  assert.match(abertura, /registrarAberturaCaixaTransacional/);
+  assert.match(abertura, /ERRO_BACKEND_CAIXA_INDISPONIVEL/);
+  assert.doesNotMatch(abertura, /collection\(ICX\.collectionName\("CAIXAS"\)\)\.add/);
+  assert.match(source, /id="integro-caixas-premium-bridge"/);
+  assert.match(source, /IntegroCaixasSupervisao\?\.render/);
+});
