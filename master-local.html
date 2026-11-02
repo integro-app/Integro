@@ -2459,7 +2459,7 @@ body.integro-data-refreshing .section-card{
 
 <style id="integro-vendedor-topbar-ajuste-final">
   body.perfil-vendedor #dashboardPeriodoToolbar{display:none!important;}
-  body.perfil-vendedor #integroNotificationButton{display:none!important;}
+  body.perfil-vendedor #integroNotificationButton{display:grid!important;}
   body.perfil-vendedor .integro-global-actions{min-width:0;}
   #sidebar .integro-sidebar-menu-compacto .integro-notificacoes-menu-lateral{position:relative;}
   #sidebar .integro-sidebar-menu-compacto .integro-notificacoes-menu-lateral #badgeNotificacoesMenu{position:absolute;right:14px;top:50%;transform:translateY(-50%);min-width:20px;height:20px;border-radius:999px;background:#ff8a00;color:#fff;font-size:11px;font-weight:950;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 8px 18px rgba(255,138,0,.28);}
@@ -2579,6 +2579,16 @@ body.integro-data-refreshing .section-card{
     </aside>
 
     <main class="main">
+      <div class="integro-global-header" aria-label="Ações rápidas">
+        <div class="integro-global-header-spacer"></div>
+        <div class="integro-global-actions">
+          <button id="integroNotificationButton" class="integro-notification-button" type="button" aria-label="Abrir notificações" aria-haspopup="dialog" aria-expanded="false" onclick="return window.IntegroNotificationCenter?.toggle?.() ?? window.abrirNotificacoes?.() ?? false">
+            <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
+            <span id="notificationCount" class="integro-notification-count" data-notification-count data-count="0" hidden>0</span>
+          </button>
+        </div>
+      </div>
+
       <section id="dashboard" class="screen active dashboard-standardized">
         <div class="section-card dashboard-section-card" data-integro-ui-component="surface">
           <div class="section-header dashboard-page-header">
