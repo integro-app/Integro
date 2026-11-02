@@ -56,3 +56,12 @@ test("Master Local usa uma implementação final autorizada e carregamento real"
   assert.match(html, /\["master_local", "master local", "master", "gerente", "supervisor", "financeiro", "auditor", "administrador", "adm"\]/);
   assert.match(html, /CX\.caixas\s*=\s*caixas/);
 });
+
+
+test("abertura massiva usa resposta do backend e trata REABERTO como caixa existente", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "js", "caixas.js"), "utf8");
+  assert.match(source, /\["IDEMPOTENTE", "JA_ABERTO", "EXISTENTE"\]\.includes\(modo\)/);
+  assert.match(source, /where\("status", "in", \["ABERTO", "REABERTO"\]\)/);
+  assert.match(source, /ERRO_BACKEND_CAIXA_INDISPONIVEL/);
+  assert.doesNotMatch(source, /const docRef = await db\.collection\(CONFIG\.COLECOES\.CAIXAS\)\.add/);
+});

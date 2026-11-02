@@ -1007,20 +1007,16 @@ async function salvarAberturaMassivaCaixas() {
     const vendedores = getVendedoresBaseSupervisao();
     for (const vendedorId of ids) {
       try {
-        const aberto = await verificarCaixaAbertoVendedor(vendedorId);
-        if (aberto) {
-          resumo.existentes++;
-          continue;
-        }
-
         const vendedor = vendedores.find(v => v.id === vendedorId);
         if (!vendedor) {
           resumo.erros++;
           continue;
         }
 
-        await criarCaixaParaVendedor(vendedor, valorInicial, "Abertura massiva por supervisão");
-        resumo.abertos++;
+        const resultado = await criarCaixaParaVendedor(vendedor, valorInicial, "Abertura massiva por supervisão");
+        const modo = String(resultado?.modo || "").toUpperCase();
+        if (["IDEMPOTENTE", "JA_ABERTO", "EXISTENTE"].includes(modo)) resumo.existentes++;
+        else resumo.abertos++;
       } catch (erroVendedor) {
         resumo.erros++;
         console.warn("[SUPERVISÃO CAIXAS] Falha ao abrir caixa:", vendedorId, erroVendedor);
@@ -1064,7 +1060,13 @@ async function criarCaixaParaVendedor(vendedor, valorInicial = 0, observacao = "
     timeZone: "America/Sao_Paulo"
   });
 
-  if (window.IntegroCaixa?.registrarAberturaCaixaTransacional) {
+  if (!window.IntegroCaixa?.registrarAberturaCaixaTransacional) {
+    const erro = new Error("Backend seguro de caixa indisponível. Nenhum caixa foi aberto.");
+    erro.code = "ERRO_BACKEND_CAIXA_INDISPONIVEL";
+    throw erro;
+  }
+
+  {
     const resultado = await window.IntegroCaixa.registrarAberturaCaixaTransacional({
       usuario: State.usuario || {},
       clientePlataformaId: getTenantIdSeguroCaixas(),
@@ -1090,55 +1092,15 @@ async function criarCaixaParaVendedor(vendedor, valorInicial = 0, observacao = "
       modo: resultado.modo
     });
 
-    return resultado.caixaId;
+    return resultado;
   }
-
-  const docRef = await db.collection(CONFIG.COLECOES.CAIXAS).add({
-    vendedorId: vendedor.id,
-    vendedorNome: vendedor.nome || vendedor.nomeCompleto || vendedor.email || "",
-
-    equipeId: getEquipeIdDoRegistro(vendedor),
-    equipeNome: getEquipeNomeDoRegistro(vendedor),
-
-    valorInicial: Number(valorInicial || 0),
-    valorAtual: Number(valorInicial || 0),
-    saldoInicial: Number(valorInicial || 0),
-    saldoAtual: Number(valorInicial || 0),
-
-    status: CONFIG.STATUS_CAIXA.ABERTO,
-    ativo: true,
-    excluido: false,
-
-    dataCaixa: hoje,
-    dataAbertura: hoje,
-    abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
-
-    observacao,
-
-    clientePlataformaId: getTenantIdSeguroCaixas(),
-    clientePlataformaNome: getEmpresaNomeSeguroCaixas(),
-
-    abertoPorUid: State.authUid || "",
-    abertoPorNome: getNomeUsuarioLogadoCaixas(),
-
-    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-  });
-
-  await FirestoreService.gravarLog("ABERTURA_CAIXA", {
-    caixaId: docRef.id,
-    vendedorId: vendedor.id,
-    vendedorNome: vendedor.nome || vendedor.email || "",
-    valorInicial: Number(valorInicial || 0)
-  });
-
-  return docRef.id;
 }
 
 async function verificarCaixaAbertoVendedor(vendedorId) {
   const snap = await db.collection(CONFIG.COLECOES.CAIXAS)
     .where("clientePlataformaId", "==", getTenantIdSeguroCaixas())
     .where("vendedorId", "==", vendedorId)
-    .where("status", "==", CONFIG.STATUS_CAIXA.ABERTO)
+    .where("status", "in", ["ABERTO", "REABERTO"])
     .where("ativo", "==", true)
     .limit(1)
     .get();
