@@ -128,7 +128,7 @@ async function login() {
     const configuracoesPromise = carregarConfiguracoesEmpresaDoUsuario(usuario);
     const sessaoPromise = garantirServicoSessaoV27();
 
-    // V27: mantém todas as validações, mas executa etapas independentes em paralelo.
+    // V27: o login novo assume a sessão e derruba o dispositivo anterior; etapas independentes rodam em paralelo.
     try {
       const sessao = await sessaoPromise;
       if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
