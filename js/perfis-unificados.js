@@ -44,6 +44,7 @@
     const db = dbAtual();
     const escopo = acesso();
     if (!db || !escopo.tenantId) return [];
+    if (escopo.perfil === "vendedor" && !campos.length) return [];
 
     const consultas = (campos.length ? campos : [[null, null]])
       .filter(([campo, valor]) => !campo || !(valor === undefined || valor === null || valor === ""));
@@ -51,21 +52,26 @@
     const cacheMs = opcoes.cacheMs ?? cacheMsColecao(colecao);
 
     const executar = async ([campo, valor]) => {
+      const filtros = campo ? [[campo, "==", String(valor)]] : [];
+      filtros.push(...(opcoes.filtros || []));
+      if (escopo.perfil === "vendedor" && colecao === (CONFIG.COLECOES?.LANCAMENTOS_FINANCEIROS || "lancamentos_financeiros")) {
+        filtros.push(["tipoLancamento", "in", ["VENDA", "PAGAMENTO", "INGRESSO", "GASTO", "RETIRADA"]]);
+      }
       if (runtime?.consultarTenant) {
         return runtime.consultarTenant({
           db,
           colecao,
           tenantId: escopo.tenantId,
-          filtros: campo ? [[campo, "==", String(valor)]] : [],
+          filtros,
           limite,
           cacheMs,
-          forcar: opcoes.forcar === true,
-          chave: `perfil:${escopo.perfil}:${colecao}:${campo || "tenant"}:${valor || ""}:${limite}`
+          forcar: opcoes.forcar === true || document.body?.classList?.contains("integro-booting"),
+          chave: `perfil:${escopo.perfil}:${colecao}:${JSON.stringify(filtros)}:${limite}`
         });
       }
       let ref = db.collection(colecao).where("clientePlataformaId", "==", escopo.tenantId);
-      if (campo) ref = ref.where(campo, "==", String(valor));
-      const snap = await ref.limit(limite).get();
+      filtros.forEach(([field, operator, value]) => { ref = ref.where(field, operator, value); });
+      const snap = await ref.limit(limite).get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
       return snap.docs.map(docData);
     };
 
@@ -73,6 +79,7 @@
     resultados.filter(item => item.status === "rejected").forEach(item => {
       console.warn(`[ÍNTEGRO] Consulta de ${colecao} não concluída.`, item.reason);
     });
+    if (document.body?.classList?.contains("integro-booting") && resultados.length && resultados.every(item => item.status === "rejected")) throw resultados[0].reason;
     return deduplicar(resultados.filter(item => item.status === "fulfilled").map(item => item.value))
       .filter(item => item.excluido !== true);
   }
@@ -89,7 +96,7 @@
         .where("clientePlataformaId", "==", escopo.tenantId)
         .where("equipeId", bloco.length === 1 ? "==" : "in", bloco.length === 1 ? bloco[0] : bloco)
         .limit(limite);
-      const snap = await ref.get();
+      const snap = await ref.get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
       resultados.push(snap.docs.map(docData));
     }
     return deduplicar(resultados).filter(item => item.excluido !== true);
@@ -107,6 +114,10 @@
     );
     const usuarioId = String(escopo.usuarioId || usuario.id || usuario.usuarioId || usuario.vendedorId || "");
     const nome = String(colecao || "").toLowerCase();
+    if (escopo.perfil === "vendedor" && /caixas|vendas|parcelas|pagamentos|historico|solicit|lancamentos/.test(nome)) {
+      // As Rules dão precedência ao Auth UID; aliases isolados não provam ownership.
+      return !incluirLegado && authUid ? [["vendedorAuthUid", authUid]] : [];
+    }
     const pares = [];
 
     const adicionar = (campo, valor) => {
@@ -193,6 +204,8 @@
     if (tenant && escopo.tenantId && tenant !== String(escopo.tenantId)) return false;
 
     const identidades = new Set(identidadesProprias());
+    const canonico = String(caixa.vendedorAuthUid || caixa.vendedorId || "");
+    if (canonico) return identidades.has(canonico);
     const vinculos = [
       caixa.vendedorId,
       caixa.vendedorAuthUid,
@@ -234,38 +247,13 @@
     if (!db || !escopo.tenantId) return [];
 
     const limite = Math.min(CONFIG.LIMITS?.CAIXAS || 300, 80);
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    const dataOperacional = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-    const ids = [...new Set([escopo.usuarioId, usuario.id, usuario.usuarioId, usuario.vendedorId, escopo.authUid, usuario.authUid].filter(Boolean).map(String))];
-    const runtime = window.IntegroDataRuntime;
-    const diretos = [];
-
-    for (const vendedorId of ids.slice(0, 3)) {
-      try {
-        const caixaId = window.IntegroCaixa?.caixaIdDeterministico
-          ? window.IntegroCaixa.caixaIdDeterministico({ clientePlataformaId: escopo.tenantId, vendedorId, dataOperacional })
-          : `caixa_${escopo.tenantId}_${vendedorId}_${dataOperacional}`;
-        const caixa = runtime?.lerDocumento
-          ? await runtime.lerDocumento({ db, colecao: CONFIG.COLECOES.CAIXAS, id: caixaId, cacheMs: 3000, forcar })
-          : await db.collection(CONFIG.COLECOES.CAIXAS).doc(caixaId).get().then(snap => snap.exists ? docData(snap) : null);
-        if (caixa) diretos.push(caixa);
-      } catch (erro) {
-        console.warn("[ÍNTEGRO VENDEDOR] Caixa determinístico não confirmado.", erro);
-      }
-    }
-
-    let remotos = diretos.filter(caixa => caixaPertenceAoVendedor(caixa));
-    if (!remotos.some(caixa => ["ABERTO", "REABERTO"].includes(statusCaixa(caixa)))) {
-      remotos = deduplicar([
-        remotos,
-        await consultar(CONFIG.COLECOES.CAIXAS, camposProprios(CONFIG.COLECOES.CAIXAS), limite, { cacheMs: 3000, forcar })
-      ]);
-    }
-
-    // Compatibilidade legada executada somente quando o vínculo canônico não retorna caixa.
-    if (!remotos.length) {
-      remotos = await consultar(CONFIG.COLECOES.CAIXAS, camposProprios(CONFIG.COLECOES.CAIXAS, true), limite, { cacheMs: 3000, forcar });
-    }
+    const campos = camposProprios(CONFIG.COLECOES.CAIXAS);
+    if (!campos.length) return [];
+    // Uma consulta vazia é permitida; GET de IDs presumidos inexistentes não é.
+    const remotos = await Promise.all([
+      consultar(CONFIG.COLECOES.CAIXAS, campos, 1, { cacheMs: 3000, forcar, filtros: [["status", "in", ["ABERTO", "REABERTO", "aberto", "reaberto"]]] }),
+      consultar(CONFIG.COLECOES.CAIXAS, campos, limite, { cacheMs: 3000, forcar })
+    ]).then(deduplicar);
 
     const caixas = deduplicar([caixaPersistido(), remotos])
       .filter(caixa => caixa?.id && caixa.excluido !== true && caixaPertenceAoVendedor(caixa));
@@ -537,12 +525,16 @@
   async function carregarPagamentosHojePorPerfil() {
     const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
     const lista = await carregarColecaoPorPerfil(CONFIG.COLECOES.PAGAMENTOS, CONFIG.LIMITS?.PAGAMENTOS || 500);
+    if (acesso().perfil === "vendedor") {
+      const caixa = window.obterCaixaAbertoVendedor?.() || window.caixaAtual;
+      return caixa?.id ? lista.filter(p => String(p.caixaId || p.idCaixa || "") === String(caixa.id)) : lista;
+    }
     return lista.filter(p => String(p.dataOperacional || p.data || "").slice(0, 10) === hoje);
   }
 
   async function carregarUsuariosPorPerfil() {
     const perfil = acesso().perfil;
-    if (perfil === "vendedor" || perfil === "captador") return [usuarioAtual].filter(Boolean);
+    if (["vendedor", "captador", "administrativo"].includes(perfil)) return [usuarioAtual].filter(Boolean);
     if (perfil === "supervisor") {
       const usuarios = await consultar(CONFIG.COLECOES.USUARIOS, [], CONFIG.LIMITS?.USUARIOS || 300);
       const equipes = new Set(acesso().equipeIds || []);
@@ -574,6 +566,7 @@
           return await executor();
         } catch (erro) {
           console.error(`[ÍNTEGRO ${perfil.toUpperCase()}] Falha ao carregar ${nome}.`, erro);
+          if (document.body?.classList?.contains("integro-booting")) throw erro;
           return padrao;
         }
       };
@@ -660,7 +653,7 @@
     if (!usuarioAtual || !window.IntegroAcesso) return;
     const somenteLeitura = acesso().perfil === "auditor";
     document.querySelectorAll("[data-permissao]").forEach(el => {
-      const permitido = window.IntegroAcesso.pode(usuarioAtual, el.dataset.permissao, {});
+      const permitido = window.IntegroAcesso.podeElemento(usuarioAtual, el);
       el.hidden = !permitido;
       if (!permitido) el.setAttribute("aria-hidden", "true");
     });

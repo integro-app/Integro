@@ -183,6 +183,7 @@ const FirestoreService = {
     USER_INACTIVE: "USER_INACTIVE",
     ACCESS_NOT_RELEASED: "ACCESS_NOT_RELEASED",
     TENANT_BLOCKED: "TENANT_BLOCKED",
+    TENANT_CHECK_FAILED: "TENANT_CHECK_FAILED",
     USER_OPERATIONAL_NOT_FOUND: "USER_OPERATIONAL_NOT_FOUND"
   },
 
@@ -198,6 +199,7 @@ const FirestoreService = {
     USER_INACTIVE: CONFIG.ERROS.USUARIO_INATIVO,
     ACCESS_NOT_RELEASED: CONFIG.ERROS.ACESSO_BLOQUEADO,
     TENANT_BLOCKED: "Empresa bloqueada ou sem acesso operacional. Procure o administrador.",
+    TENANT_CHECK_FAILED: "Não foi possível verificar o acesso da empresa. Tente novamente.",
     USER_OPERATIONAL_NOT_FOUND: "Usuário autenticado, mas sem cadastro operacional no ÍNTEGRO."
   },
 
@@ -216,9 +218,9 @@ const FirestoreService = {
   montarUsuarioAuth(doc, authUser, origemCompatibilidade = "uid") {
     const dados = doc.data() || {};
     return {
-      id: doc.id,
       ...dados,
-      authUid: dados.authUid || (origemCompatibilidade === "uid" ? authUser.uid : ""),
+      id: doc.id,
+      authUid: dados.authUid || "",
       email: dados.email || authUser.email || "",
       origemResolucaoAuth: origemCompatibilidade
     };
@@ -301,22 +303,62 @@ const FirestoreService = {
       });
     }
 
+    let varios = false;
+    usuario.selecionarEmpresa = false;
+    if (usuario.tipoUsuario === "master_local" && usuario.multiplasEmpresas === true && usuario.authUid) {
+      try { const rows = await db.collection("empresa_vinculos").where("authUid", "==", usuario.authUid).where("ativo", "==", true).limit(2).get(); varios = rows.docs.length > 1; } catch (_) {}
+      if (varios && window.sessionStorage?.getItem("integro:empresaSelecionada") !== tenantId) { usuario.selecionarEmpresa = true; return {ok:true}; }
+    }
+    const negarEmpresa = () => { if (varios) { usuario.selecionarEmpresa = true; window.sessionStorage?.removeItem("integro:empresaSelecionada"); return {ok:true}; } return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", {usuario}); };
     const statusUsuarioEmpresa = String(usuario.clientePlataformaStatus || usuario.empresaStatus || "").toUpperCase();
     if (usuario.empresaBloqueada === true || usuario.acessoEmpresaLiberado === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusUsuarioEmpresa)) {
-      return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
+      return negarEmpresa();
     }
 
+    usuario.acessoRestritoAssinatura = false;
     try {
-      const empresaDoc = await db.collection("clientes_integro").doc(tenantId).get();
-      if (empresaDoc.exists) {
-        const empresa = empresaDoc.data() || {};
+      const documentos = await Promise.all(["clientes_integro", "clientes_plataforma"]
+        .map(colecao => db.collection(colecao).doc(tenantId).get({ source: "server" })));
+      const empresas = documentos.filter(doc => doc.exists).map(doc => doc.data() || {});
+      // Verifica todos os bloqueios antes de permitir o portal de assinatura.
+      for (const empresa of empresas) {
         const statusEmpresa = String(empresa.status || empresa.situacao || "").toUpperCase();
-        if (empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) {
-          return this.resultadoDiagnosticoAuth(false, "TENANT_BLOCKED", { usuario });
-        }
+        const fimTeste = empresa.dataFimTeste?.toMillis ? empresa.dataFimTeste.toMillis() : Date.parse(empresa.dataFimTeste);
+        const testeExpirado = empresa.testeAtivo === true && empresa.dataFimTeste && (!Number.isFinite(fimTeste) || fimTeste <= Date.now());
+        if (testeExpirado || empresa.acessoLiberado === false || empresa.ativo === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(statusEmpresa)) return negarEmpresa();
+      }
+      const assinaturaBloqueada = empresas.some(empresa => {
+        const limite = empresa.bloqueioAssinaturaEm?.toMillis ? empresa.bloqueioAssinaturaEm.toMillis() : Date.parse(empresa.bloqueioAssinaturaEm);
+        return empresa.bloqueioAssinaturaEm && limite <= Date.now();
+      });
+      if (assinaturaBloqueada) {
+        const perfis = [usuario.tipoUsuario, usuario.cargoChave].map(v => String(v || '').toLowerCase());
+        if (perfis.some(p => ['master_local','financeiro','administrativo','adm'].includes(p)) || usuario.responsavelFinanceiro === true || usuario.permissoes?.assinatura?.ver === true) usuario.acessoRestritoAssinatura = true;
+        else return negarEmpresa();
       }
     } catch (erro) {
-      console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_SKIPPED", tenantInformado: true });
+      // A validacao inicial ocorre antes da sessao V27 existir. Em Rules
+      // legadas a leitura da empresa pode ser negada mesmo para um vendedor
+      // autenticado. Nessa situacao, a callable confere a empresa diretamente
+      // no backend, vinculando o tenant ao Auth UID real.
+      const code = String(erro?.code || "").toLowerCase();
+      const negadoPorRules = ["permission-denied", "firestore/permission-denied"].includes(code);
+      if (negadoPorRules && window.firebase?.auth?.()?.currentUser?.uid === usuario.authUid) {
+        try {
+          const callable = window.firebase.app().functions("southamerica-east1")
+            .httpsCallable("iniciarSessaoV27");
+          const response = await callable({ tenantId: String(tenantId), verificarEmpresa: true });
+          if (response?.data?.ok !== true) return negarEmpresa();
+          usuario.acessoRestritoAssinatura = response.data.acessoRestritoAssinatura === true;
+          return { ok: true };
+        } catch (backendError) {
+          const backendCode = String(backendError?.code || "").toLowerCase();
+          if (["permission-denied", "functions/permission-denied"].includes(backendCode)) return negarEmpresa();
+          console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_FAILED", origem: "backend" });
+        }
+      }
+      console.warn("[INTEGRO_AUTH_DIAG]", { codigo: "TENANT_CHECK_FAILED", origem: "firestore" });
+      return this.resultadoDiagnosticoAuth(false, "TENANT_CHECK_FAILED", { usuario });
     }
 
     return { ok: true };
@@ -413,6 +455,10 @@ const FirestoreService = {
     const usuarioPorUid = await this.buscarUsuarioPorDocumentoUid(authUser);
 
     if (usuarioPorUid) {
+      if (usuarioPorUid.authUid !== authUser.uid) {
+        const codigo = usuarioPorUid.authUid ? "LEGACY_USER_AUTH_UID_MISMATCH" : "LEGACY_USER_WITHOUT_AUTH_UID";
+        return this.resultadoDiagnosticoAuth(false, codigo, { usuario: usuarioPorUid });
+      }
       const validacao = await this.validarUsuarioResolvidoAuth(usuarioPorUid);
       if (!validacao.ok) {
         diagnosticos.push(this.registrarDiagnosticoAuth(validacao.codigo, {
@@ -653,7 +699,16 @@ const FirestoreService = {
         }
       }
 
-      await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).update({
+      const referencia = db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId);
+      const anterior = await referencia.get();
+      if (!anterior.exists) throw new Error("Usuário não encontrado.");
+      const dadosAnteriores = anterior.data() || {};
+      if (status === "ATIVO" && (dadosAnteriores.convitePendente === true || !dadosAnteriores.authUid || dadosAnteriores.excluido === true)) {
+        throw new Error("Usuário excluído ou sem provisionamento Auth não pode ser ativado.");
+      }
+      const reativar = status === "ATIVO" && dadosAnteriores.authUid &&
+        (dadosAnteriores.acessoLiberado === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(dadosAnteriores.status));
+      await referencia.update({
         nome,
         nomeCompleto: nome,
         telefone,
@@ -667,6 +722,8 @@ const FirestoreService = {
         cargoChave: acessoUsuario.cargoChave,
         permissoes: permissoesCargo,
         permissoesCargo,
+        usarPermissoesPersonalizadas: false,
+        permissoesUsuario: firebase.firestore.FieldValue.delete(),
         usuarioInternoIntegro: acessoUsuario.usuarioInternoIntegro,
 
         equipeId: equipeId || equipesVinculadas[0]?.id || "",
@@ -675,14 +732,15 @@ const FirestoreService = {
         equipeIds: equipesVinculadas.map(item => item.id),
         equipesNomes: equipesVinculadas.map(item => item.nome || ""),
 
-        status,
-        acessoLiberado: status !== CONFIG.STATUS_USUARIO.BLOQUEADO && status !== CONFIG.STATUS_USUARIO.INATIVO,
+        status: reativar ? dadosAnteriores.status : status,
+        acessoLiberado: !reativar && status === "ATIVO",
 
         atualizadoPorUid: State.authUid || "",
         atualizadoPorNome: State.usuario?.nome || State.usuario?.email || "",
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
       });
 
+      if (reativar) await FirestoreService.alterarAcessoUsuario(usuarioId, true);
       return true;
     } catch (erro) {
       console.error("Erro ao atualizar usuário:", erro);
@@ -699,16 +757,18 @@ const FirestoreService = {
         throw new Error("ID do usuário é obrigatório.");
       }
 
-      if (liberar) {
-        const usuarioDoc = await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).get();
-        if (!usuarioDoc.exists) {
-          throw new Error("Usuário não encontrado.");
-        }
-
-        const usuario = usuarioDoc.data() || {};
-        if (!usuario.authUid || usuario.convitePendente === true || usuario.provisionamentoAuth === "PENDENTE_BACKEND") {
-          throw new Error("Usuário ainda aguarda provisionamento Auth pelo backend e não pode ser liberado.");
-        }
+      const usuarioDoc = await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).get();
+      if (!usuarioDoc.exists) throw new Error("Usuário não encontrado.");
+      const usuario = usuarioDoc.data() || {};
+      if (liberar && (!usuario.authUid || usuario.excluido === true || usuario.convitePendente === true || usuario.provisionamentoAuth === "PENDENTE_BACKEND")) {
+        throw new Error("Usuário excluído ou ainda aguarda provisionamento Auth pelo backend e não pode ser liberado.");
+      }
+      if (usuario.authUid) {
+        const session = window.IntegroV27Session || await window.garantirServicoSessaoV27?.();
+        if (!session) throw new Error("Serviço de segurança indisponível; acesso não alterado.");
+        if (liberar) await session.unblockUser(usuario.authUid);
+        else await session.blockUser(usuario.authUid);
+        return true;
       }
 
       await db.collection(CONFIG.COLECOES.USUARIOS).doc(usuarioId).update({
@@ -755,8 +815,19 @@ const FirestoreService = {
   // BUSCAR USUÁRIO POR UID (Auth)
   // ===============================
   async buscarUsuarioPorAuthUid(authUser) {
+    if (!authUser) return null;
+    this._usuariosAuthPendentes ||= new Map();
+    const chave = String(authUser.uid || "") + ":" + String(window.sessionStorage?.getItem("integro:empresaSelecionada") || "");
+    if (this._usuariosAuthPendentes.has(chave)) return this._usuariosAuthPendentes.get(chave);
+    const consulta = this._buscarUsuarioPorAuthUid(authUser);
+    this._usuariosAuthPendentes.set(chave, consulta);
+    try { return await consulta; }
+    finally { if (this._usuariosAuthPendentes.get(chave) === consulta) this._usuariosAuthPendentes.delete(chave); }
+  },
+
+  // Reutiliza apenas consultas simultâneas. Sincronizações posteriores leem novamente.
+  async _buscarUsuarioPorAuthUid(authUser) {
     try {
-      if (!authUser) return null;
 
       const resultado = await FirestoreService.resolverUsuarioAutenticado(authUser);
       if (!resultado.ok) {

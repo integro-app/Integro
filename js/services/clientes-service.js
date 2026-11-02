@@ -114,7 +114,12 @@
     const responsavel = texto(cliente.vendedorAuthUid || cliente.vendedorUid || cliente.vendedorId || cliente.responsavelId || cliente.usuarioId);
     const equipe = texto(cliente.equipeId || cliente.equipeDestinoId || cliente.unidadeId);
 
-    if (cargo === "vendedor") return Boolean(uid && (responsavel === uid || (Array.isArray(cliente.hierarquiaIds) && cliente.hierarquiaIds.includes(uid))));
+    if (cargo === "vendedor") {
+      const ids = new Set([usuario.authUid, usuario.uid, usuario.id, usuario.usuarioId, usuario.vendedorId].filter(Boolean).map(String));
+      const canonico = texto(cliente.vendedorAuthUid || cliente.vendedorId);
+      if (canonico) return ids.has(canonico);
+      return Boolean(responsavel && ids.has(responsavel));
+    }
     if (["gerente", "socio", "proprietario"].includes(cargo)) {
       const equipes = equipesUsuario(usuario);
       const vendedores = vendedoresUsuario(usuario);
@@ -130,6 +135,12 @@
       const equipes = equipesUsuario(usuario);
       const vendedores = vendedoresUsuario(usuario);
       return Boolean(cliente.supervisorId === uid || (equipe && equipes.includes(equipe)) || (responsavel && vendedores.includes(responsavel)));
+    }
+    if (cargo === "administrativo") {
+      const permissoes = usuario.permissoesUsuario || usuario.permissoes || usuario.permissoesCargo || {};
+      const chave = acao === "ler" ? "ver" : acao === "editar" ? "editar" : "";
+      return Boolean(chave) && permissoes.clientes !== false && permissoes.clientes?.[chave] !== false && permissoes["clientes." + chave] !== false &&
+        (chave === "ver" || permissoes.clientes?.[chave] === true || permissoes["clientes." + chave] === true);
     }
     if (["financeiro", "auditor", "captador"].includes(cargo)) return acao === "ler";
     return false;
@@ -201,6 +212,12 @@
   }
 
   async function buscarDuplicidades(db, tenant, dados, ignorarId = "") {
+    const usuario = window.State?.getUsuario?.() || {};
+    if (cargoUsuario(usuario) === "vendedor" && window.firebase?.app) {
+      const callable = window.firebase.app().functions("southamerica-east1").httpsCallable("cadastrarClienteVendedorV27");
+      const resposta = await callable({ acao:"VALIDAR", dados, ignorarId });
+      return resposta.data?.duplicidades || [];
+    }
     const normalizados = montarDadosNormalizados(dados);
     const base = () => db.collection(COLECAO_CLIENTES).where("clientePlataformaId", "==", tenant);
     const consultas = [];
@@ -315,6 +332,10 @@
     }));
   }
 
+  function referenciasCliente(cliente = {}) {
+    return {operacionalId:texto(cliente.clienteOperacionalId || cliente.id),legadoId:texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : ""))};
+  }
+
   async function obterCliente(db, clienteId) {
     const snap = await db.collection(COLECAO_CLIENTES).doc(clienteId).get();
     if (!snap.exists) throw new Error("Cliente operacional nao encontrado.");
@@ -359,6 +380,14 @@
     if (!usuarioAtivo(usuario)) throw new Error("Usuario inativo nao pode criar cliente.");
     const dados = montarDadosNormalizados(entrada.dados || entrada);
     const clienteOperacionalIdExistente = texto(entrada.clienteOperacionalIdExistente);
+    if (!clienteOperacionalIdExistente && cargoUsuario(usuario) === "vendedor" && window.firebase?.app) {
+      const callable = window.firebase.app().functions("southamerica-east1").httpsCallable("cadastrarClienteVendedorV27");
+      const verificacao = await callable({ acao:"VALIDAR", dados });
+      await validarDuplicidades(verificacao.data?.duplicidades || [], dados, false, usuario);
+      const resposta = await callable({ acao:"CADASTRAR", dados });
+      if (!resposta?.data?.ok) throw new Error("Cadastro não confirmado pelo servidor.");
+      return resposta.data;
+    }
     let operacionalAtual = null;
     if (clienteOperacionalIdExistente) {
       operacionalAtual = await obterCliente(db, clienteOperacionalIdExistente);
@@ -457,6 +486,10 @@
     const camposProtegidos = ["clientePlataformaId", "criadoEm", "criadoPor", "saldoDevedor", "saldoDevedorCentavos", "vendaAtivaId", "possuiVendaAtiva"];
     const payload = { ...dados, atualizadoPor: idUsuario(usuario), atualizadoEm: serverTimestamp() };
     camposProtegidos.forEach(campo => delete payload[campo]);
+    if (cargoUsuario(usuario) === "administrativo") {
+      const campos = new Set([...Object.keys(alteracoes), "nome", "nomeCompleto", "nomeBusca", "documento", "documentoNormalizado", "telefoneNormalizado", "telefonesNormalizados", "origem", "statusAtendimento", "ultimaMovimentacaoTexto", "atualizadoPor", "atualizadoEm"]);
+      Object.keys(payload).forEach(campo => { if (!campos.has(campo)) delete payload[campo]; });
+    }
     const logRef = db.collection("logs").doc();
     const batch = db.batch();
     batch.set(db.collection(COLECAO_CLIENTES).doc(clienteOperacionalId), payload, { merge: true });
@@ -484,35 +517,29 @@
 
     if (cargo === "vendedor") {
       const authUid = texto(usuario.authUid || usuario.uid);
-      const usuarioId = texto(usuario.id || usuario.usuarioId || usuario.vendedorId);
-      if (!authUid && !usuarioId) throw new Error("Vendedor sem vínculo de autenticação.");
+      if (!authUid) throw new Error("Vendedor sem vínculo de autenticação.");
 
-      const tentativas = [];
-      if (authUid) {
-        tentativas.push(["vendedorAuthUid", authUid], ["vendedorUid", authUid]);
-      }
-      if (usuarioId && usuarioId !== authUid) {
-        tentativas.push(["vendedorId", usuarioId], ["usuarioId", usuarioId], ["responsavelId", usuarioId]);
-      } else if (usuarioId) {
-        tentativas.push(["vendedorId", usuarioId]);
-      }
+      // A listagem exige ownership canônico; aliases ficam limitados ao GET autorizado.
+      const tentativas = [["vendedorAuthUid", authUid]];
 
       let ultimoErro = null;
+      let consultasConcluidas = 0;
       for (const [campo, valor] of tentativas) {
         try {
           const snap = await db.collection(COLECAO_CLIENTES)
             .where("clientePlataformaId", "==", tenant)
             .where(campo, "==", valor)
             .limit(limite)
-            .get();
+            .get(window.document?.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
+          consultasConcluidas++;
           snap.docs.forEach(doc => documentos.push(documentoDeSnapshot(doc)));
-          if (documentos.length) break;
+          // Unir todos os vínculos autorizados: o primeiro resultado pode ser parcial.
         } catch (erro) {
           ultimoErro = erro;
         }
       }
 
-      if (!documentos.length && ultimoErro) {
+      if (!documentos.length && !consultasConcluidas && ultimoErro) {
         throw ultimoErro;
       }
     } else {
@@ -531,7 +558,7 @@
       if (filtros.statusAtendimento) ref = ref.where("statusAtendimento", "==", texto(filtros.statusAtendimento).toUpperCase());
       if (filtros.vendedorId && !["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) ref = ref.where("vendedorId", "==", texto(filtros.vendedorId));
       if (filtros.equipeId && !["supervisor", "gerente", "socio", "proprietario"].includes(cargo)) ref = ref.where("equipeId", "==", texto(filtros.equipeId));
-      const snap = await ref.limit(limite).get();
+      const snap = await ref.limit(limite).get(window.document?.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
       documentos = snap.docs.map(documentoDeSnapshot);
     }
 
@@ -824,9 +851,27 @@
     const cliente = await obterCliente(db, clienteId);
     if (!clienteNoEscopo(usuario, cliente, "ler")) throw new Error("Cliente fora do escopo de consulta.");
     const tenant = tenantUsuario(usuario);
-    const colecoes = [COLECAO_INTERACOES, COLECAO_DIRECIONAMENTOS, COLECAO_CICLOS, "logs"];
+    const cargo = cargoUsuario(usuario);
+    if (cargo === "captador") return [];
+    if (cargo === "administrativo") {
+      const functions = window.firebase?.app?.()?.functions?.("southamerica-east1");
+      if (!functions) throw new Error("Histórico administrativo requer o serviço autenticado.");
+      const result = (await functions.httpsCallable("obterCliente360V27")({clienteId,aba:"historico"})).data;
+      if (!result?.ok) throw new Error("Histórico não confirmado pelo servidor.");
+      return result.history || [];
+    }
+    const colecoes = [COLECAO_INTERACOES, COLECAO_DIRECIONAMENTOS, COLECAO_CICLOS];
+    if (cargo !== "vendedor") colecoes.push("logs");
     const resultados = await Promise.all(colecoes.map(async colecao => {
-      const snap = await db.collection(colecao).where("clientePlataformaId", "==", tenant).where("clienteId", "==", clienteId).limit(200).get();
+      const filtros = [["clienteId", "==", clienteId]];
+      if (colecao === "logs" && cargo === "supervisor") filtros.push(["equipeId", "==", texto(cliente.equipeId)]);
+      if (window.IntegroDataRuntime?.consultarTenant) {
+        const rows = await window.IntegroDataRuntime.consultarTenant({db,colecao,tenantId:tenant,filtros,limite:200,cacheMs:30000});
+        return rows.map(row=>({...row,colecao}));
+      }
+      let query = db.collection(colecao).where("clientePlataformaId", "==", tenant);
+      filtros.forEach(([field,operator,value])=>query=query.where(field,operator,value));
+      const snap = await query.limit(200).get();
       return snap.docs.map(doc => ({ id: doc.id, colecao, ...doc.data() }));
     }));
     const itens = resultados.flat();
@@ -880,6 +925,7 @@
     telefonesNormalizados,
     montarDadosNormalizados,
     clienteNoEscopo,
+    referenciasCliente,
     calcularRelatorio,
     buscarDuplicidades,
     criarCliente,

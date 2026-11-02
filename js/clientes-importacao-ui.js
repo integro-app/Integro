@@ -237,8 +237,8 @@
     if (botao) { botao.disabled = true; botao.innerHTML = '<span class="material-symbols-outlined spin">progress_activity</span> Exportando'; }
     try {
       const hoje = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
-      await global.ClientesImportacaoService.exportar(clientes, `clientes-integro-${hoje}.xlsx`);
-      notificar(`${clientes.length} cliente(s) exportado(s).`, "sucesso");
+      const resultado = await global.ClientesImportacaoService.exportar(clientes, `clientes-integro-${hoje}.xlsx`);
+      notificar(`${resultado.quantidade} cliente(s) exportado(s).`, "sucesso");
     } catch (erro) {
       notificar(erro.message || "Nao foi possivel exportar os clientes.", "erro");
     } finally {

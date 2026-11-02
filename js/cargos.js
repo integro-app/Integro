@@ -234,6 +234,7 @@ async function alterarStatusCargo(id, ativo) {
 // ===============================
 
 function abrirPermissoesCargo(id) {
+  if (typeof window.abrirDrawerPermissoesCargo === "function") return window.abrirDrawerPermissoesCargo(id);
   const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
 
   if (!cargo) {

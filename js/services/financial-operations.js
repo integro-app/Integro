@@ -29,8 +29,9 @@
   }
 
   function operacaoFinanceiraLocalPermitida() {
-    // O fallback local existe apenas para testes unitários sem DOM.
-    // Em navegador, operações financeiras e de caixa devem passar pelo backend.
+    // O fallback transacional local existe somente para testes unitários do
+    // domínio. Em qualquer navegador, operações de venda/cobrança devem passar
+    // pelas Cloud Functions, que validam sessão, tenant e idempotência.
     return typeof window.document === "undefined";
   }
 
@@ -303,7 +304,7 @@
 
   function validarCaixaPagamento(caixa, tenantId, usuario) {
     const statusCaixa = normalizarStatus(caixa?.status);
-    if (statusCaixa !== "ABERTO") {
+    if (!["ABERTO", "REABERTO"].includes(statusCaixa)) {
       const erro = new Error(`Caixa ${statusCaixa || "FECHADO"}: pagamento bloqueado.`);
       erro.code = "ERRO_BLOQUEADO_CAIXA_FECHADO";
       throw erro;
@@ -315,7 +316,7 @@
 
   function validarCaixaVenda(caixa, tenantId, usuario) {
     const statusCaixa = normalizarStatus(caixa?.status);
-    if (statusCaixa !== "ABERTO") {
+    if (!["ABERTO", "REABERTO"].includes(statusCaixa)) {
       const erro = new Error(`Caixa ${statusCaixa || "FECHADO"}: venda bloqueada.`);
       erro.code = "ERRO_BLOQUEADO_CAIXA_FECHADO";
       throw erro;
@@ -542,6 +543,10 @@
     const db = getDb();
     const usuario = entrada.usuario || {};
     const validado = validarLancamentoFinanceiro(entrada);
+    if (["INGRESSO", "GASTO", "RETIRADA"].includes(validado.tipoLancamento) && !perfilAcessoCaixa(usuario).isVendedor) {
+      if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("registrarMovimentacaoAdministrativa", {...entrada, operacaoId: entrada.operacaoId || validado.origemId, valorCentavos:validado.valorCentavos, tipoLancamento:validado.tipoLancamento});
+      exigirBackendFinanceiro();
+    }
     const lancamentoId = texto(entrada.lancamentoId) || lancamentoFinanceiroIdDeterministico({ ...entrada, tipoLancamento: validado.tipoLancamento, origemId: validado.origemId });
     const caixaRef = validado.caixaId ? db.collection("caixas").doc(validado.caixaId) : null;
     const lancamentoRef = db.collection("lancamentos_financeiros").doc(lancamentoId);
@@ -569,8 +574,8 @@
       const perfilOperador = perfilAcessoCaixa(usuario);
       if (caixaSnap?.exists && ["INGRESSO", "GASTO", "RETIRADA"].includes(tipo)) {
         const statusCaixa = normalizarStatus(caixa.status || caixa.statusCaixa);
-        if (!["ABERTO", "REABERTO"].includes(statusCaixa)) {
-          throw new Error("O caixa precisa estar aberto ou reaberto para receber a movimentação.");
+        if (perfilOperador.isVendedor ? !["ABERTO", "REABERTO"].includes(statusCaixa) : !["FECHADO", "FECHADA"].includes(statusCaixa)) {
+          throw new Error(perfilOperador.isVendedor ? "O caixa precisa estar aberto ou reaberto para receber a movimentação." : "Administradores só podem lançar em caixa fechado.");
         }
         if (perfilOperador.isVendedor) {
           validarVendedorCaixa(caixa, usuario);
@@ -650,7 +655,9 @@
     });
   }
 
-  function impactoLancamentoCentavos(lancamento = {}) {
+  function impactoLancamentoCentavos(lancamento = {}, lista = []) {
+    if (normalizarStatus(lancamento.tipoLancamento) === "DIVERGENCIA_ACEITA") return 0;
+    if (normalizarStatus(lancamento.tipoLancamento) === "ESTORNO" && lista.some(original => texto(original.id || original.lancamentoId) === texto(lancamento.reversaoDeId) && normalizarStatus(original.statusLancamento) === "ESTORNADO")) return 0;
     const status = normalizarStatus(lancamento.statusLancamento || "CONFIRMADO");
     if (["PENDENTE", "CANCELADO", "ESTORNADO"].includes(status)) return 0;
     const valor = Math.abs(Math.round(Number(lancamento.valorCentavos || 0)));
@@ -664,7 +671,7 @@
     const caixa = { id: caixaId, ...caixaSnap.data() };
     const lancamentos = await listarLancamentosCaixa(caixaId, { ...opcoes, db, clientePlataformaId: opcoes.clientePlataformaId || caixa.clientePlataformaId });
     const caixaInicialCentavos = centavosDe(caixa, "saldoInicialCentavos", ["valorInicial", "caixaInicial", "saldoInicial", "valorAbertura"]);
-    const saldoMovimentosCentavos = lancamentos.reduce((total, l) => total + impactoLancamentoCentavos(l), 0);
+    const saldoMovimentosCentavos = lancamentos.reduce((total, l) => total + impactoLancamentoCentavos(l, lancamentos), 0);
     return {
       caixaId,
       caixa,
@@ -676,13 +683,20 @@
   }
 
   async function listarLancamentosPorPeriodo({ dataInicio, dataFim, clientePlataformaId, db: dbEntrada } = {}) {
+    const tenantId = texto(clientePlataformaId);
+    if (!tenantId) {
+      const erro = new Error("Empresa obrigatória para consultar lançamentos financeiros.");
+      erro.code = "TENANT_OBRIGATORIO";
+      throw erro;
+    }
     const db = dbEntrada || getDb();
     const inicio = texto(dataInicio || "0000-00-00").slice(0, 10);
     const fim = texto(dataFim || "9999-99-99").slice(0, 10);
     const todos = [];
-    const snap = clientePlataformaId
-      ? await db.collection("lancamentos_financeiros").where("clientePlataformaId", "==", clientePlataformaId).limit(10000).get()
-      : await db.collection("lancamentos_financeiros").limit(10000).get();
+    const snap = await db.collection("lancamentos_financeiros")
+      .where("clientePlataformaId", "==", tenantId)
+      .limit(10000)
+      .get();
     snap.forEach(doc => todos.push({ id: doc.id, ...doc.data() }));
     return todos.filter(l => {
       const data = texto(l.dataOperacional || l.data || l.criadoEmTexto).slice(0, 10);
@@ -714,7 +728,7 @@
       porTipo: {}
     };
     lista.forEach(l => {
-      const impacto = impactoLancamentoCentavos(l);
+      const impacto = impactoLancamentoCentavos(l, lista);
       if (impacto === 0) return;
       const valor = Math.abs(impacto);
       const tipo = normalizarStatus(l.tipoLancamento || "OUTRO");
@@ -733,6 +747,8 @@
   }
 
   async function registrarEstornoFinanceiro(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("estornarLancamentoFinanceiroOperacional", entrada);
+    exigirBackendFinanceiro();
     const db = getDb();
     const usuario = entrada.usuario || {};
     const lancamentoOriginalId = texto(entrada.lancamentoOriginalId || entrada.origemId);
@@ -801,6 +817,8 @@
   }
 
   async function registrarRegularizacaoFinanceiraCaixa(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("tratarDivergenciaCaixaOperacional", { ...entrada, decisao: "REGISTRAR_REGULARIZACAO", valorCentavos: entrada.valorCentavos !== undefined ? entrada.valorCentavos : getOperacional().moedaParaCentavos(entrada.valor || 0), operacaoId: entrada.operacaoId || window.crypto?.randomUUID?.() || ("regularizacao_" + Date.now() + "_" + Math.random().toString(36).slice(2)) });
+    exigirBackendFinanceiro();
     const db = getDb();
     const usuario = entrada.usuario || {};
     const caixaId = texto(entrada.caixaId);
@@ -1197,7 +1215,7 @@
         validarVendedorCaixa(caixa, usuario);
         validarVendedorRegistro(lancamento, usuario, "Lançamento financeiro");
         if (!["GASTO", "RETIRADA"].includes(normalizarStatus(lancamento.tipoLancamento))) throw new Error("O vendedor só pode excluir gastos ou retiradas próprios.");
-        if (texto(lancamento.dataOperacional).slice(0, 10) !== getOperacional().hojeSP()) throw new Error("O vendedor só pode excluir lançamentos do caixa atual.");
+        if (texto(lancamento.dataOperacional).slice(0, 10) !== texto(caixa.dataOperacional || caixa.dataCaixa || getOperacional().hojeSP()).slice(0, 10)) throw new Error("O vendedor só pode excluir lançamentos do caixa atual.");
       } else if (!usuarioAdministradorFinanceiro(usuario, caixa, entrada)) {
         throw new Error("Usuário sem permissão para cancelar este lançamento.");
       }
@@ -1364,6 +1382,8 @@
         origem: entrada?.origem || "vendedor"
       });
     }
+
+    exigirBackendFinanceiro();
 
     const pagamentoId = pagamentoIdDeterministico({
       clientePlataformaId: tenantId,
@@ -1590,8 +1610,8 @@
         saldo: reais(calculo.novoSaldoClienteCentavos),
         saldoAtual: reais(calculo.novoSaldoClienteCentavos),
         valorEmAberto: reais(calculo.novoSaldoClienteCentavos),
-        status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
-        statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "INATIVO",
+        status: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "QUITADO",
+        statusCliente: calculo.novoSaldoClienteCentavos > 0 ? "ATIVO" : "QUITADO",
         possuiVendaAtiva: calculo.novoSaldoClienteCentavos > 0,
         vendaAtivaId: calculo.novoSaldoClienteCentavos > 0 ? texto(cliente.vendaAtivaId || vendaId) : "",
         atualizadoEm: serverTimestamp()
@@ -1717,6 +1737,8 @@
         origem: entrada?.origem || "vendedor"
       });
     }
+
+    exigirBackendFinanceiro();
 
     const vendaId = vendaIdDeterministica({
       clientePlataformaId: tenantId,
@@ -2086,41 +2108,43 @@
     return ["APROVADO", "APROVADA"].includes(normalizarStatus(valor));
   }
 
-  async function listarPorCaixa(db, colecao, caixaId, clientePlataformaId, limite = 5000) {
+  async function listarPorCaixa(db, colecao, caixaId, clientePlataformaId, limite = 5000, usuarioEntrada) {
     const tenantId = texto(clientePlataformaId);
-    if (!tenantId) {
-      const erro = new Error(`Tenant obrigatório para consultar ${colecao} no fechamento.`);
-      erro.code = "ERRO_TENANT_FECHAMENTO";
+    if (!tenantId) throw new Error(`Tenant obrigatório para consultar ${colecao} no fechamento.`);
+    const usuario = usuarioEntrada || (typeof State !== "undefined" ? State.getUsuario?.() : null) || window.usuarioLogado || {};
+    const perfil = texto(window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil || usuario.tipoUsuario || usuario.perfil || usuario.cargo).toLowerCase();
+    const proprio = perfil === "vendedor";
+    const authUid = texto(usuario.authUid || usuario.uid || window.firebase?.auth?.()?.currentUser?.uid);
+    const usuarioId = texto(usuario.id || usuario.usuarioId || usuario.vendedorId);
+    const vinculos = proprio ? [["vendedorAuthUid", authUid], ["vendedorId", usuarioId]].filter(([,valor]) => valor) : [[null, null]];
+    if (!vinculos.length) throw new Error("Vendedor sem vínculo válido para conferir o caixa.");
+    const resultados = await Promise.allSettled(vinculos.map(async ([campo, valor]) => {
+      const base = () => {
+        let ref = db.collection(colecao).where("clientePlataformaId", "==", tenantId);
+        if (campo) ref = ref.where(campo, "==", valor);
+        return ref;
+      };
+      let snap;
+      try { snap = await (caixaId ? base().where("caixaId", "==", caixaId) : base()).limit(limite).get({ source: "server" }); }
+      catch (_) { snap = await base().limit(limite).get({ source: "server" }); }
+      const rows = [];
+      snap.forEach(doc => rows.push({ id: doc.id, ...doc.data() }));
+      return rows;
+    }));
+    if (resultados.every(r => r.status === "rejected")) {
+      const erro = new Error(`Não foi possível consultar ${colecao} para calcular o fechamento.`);
+      erro.cause = resultados[0].reason;
+      erro.code = erro.cause?.code || "ERRO_LEITURA_FECHAMENTO";
       throw erro;
     }
-    const encontrados = [];
-    try {
-      const snap = await db.collection(colecao)
-        .where("clientePlataformaId", "==", tenantId)
-        .where("caixaId", "==", caixaId)
-        .limit(limite)
-        .get();
-      snap.forEach(doc => encontrados.push({ id: doc.id, ...doc.data() }));
-    } catch (_) {
-      try {
-        const snap = await db.collection(colecao)
-          .where("clientePlataformaId", "==", tenantId)
-          .limit(limite)
-          .get();
-        snap.forEach(doc => {
-          const item = { id: doc.id, ...doc.data() };
-          if (texto(item.caixaId || item.idCaixa || item.caixaID || item.caixaAtualId) === caixaId) {
-            encontrados.push(item);
-          }
-        });
-      } catch (erroFallback) {
-        const erro = new Error(`Não foi possível consultar ${colecao} para calcular o fechamento.`);
-        erro.code = erroFallback?.code || "ERRO_LEITURA_FECHAMENTO";
-        erro.cause = erroFallback;
-        throw erro;
-      }
-    }
-    return encontrados.filter(item => item.excluido !== true);
+    const mapa = new Map();
+    resultados.filter(r => r.status === "fulfilled").flatMap(r => r.value).forEach(item => {
+      const tenant = texto(item.clientePlataformaId || item.tenantId || item.empresaId);
+      const dono = texto(item.vendedorAuthUid || item.vendedorId);
+      const permitido = !proprio || (dono && [authUid, usuarioId].includes(dono));
+      if (tenant === tenantId && permitido && item.excluido !== true && (!caixaId || texto(item.caixaId || item.idCaixa || item.caixaID || item.caixaAtualId) === caixaId)) mapa.set(item.id, item);
+    });
+    return [...mapa.values()];
   }
 
   function tipoMovimentoCaixa(item = {}) {
@@ -2164,16 +2188,24 @@
     if (!tenantId) throw new Error("Caixa sem tenant válido para fechamento.");
     const dataOperacional = texto(entrada.dataOperacional || caixa.dataOperacional || caixa.dataCaixa || caixa.dataAbertura || operacional.hojeSP()).slice(0, 10);
 
+    const usuario = entrada.usuario || (typeof State !== "undefined" ? State.getUsuario?.() : null) || {};
+    const perfil = texto(window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil || usuario.tipoUsuario || usuario.perfil || usuario.cargo).toLowerCase();
+    if (perfil === "vendedor") {
+      const ids = [usuario.id, usuario.usuarioId, usuario.authUid, usuario.uid].filter(Boolean).map(String);
+      if (!ids.includes(texto(caixa.vendedorAuthUid || caixa.vendedorId))) throw new Error("Caixa fora do vínculo do vendedor.");
+    }
+    const conferirRota = perfil === "vendedor" && Boolean(window.IntegroVendedorOperacao?.montarCarteira);
+    if (texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId) !== tenantId) throw new Error("Caixa fora do tenant atual da sessão.");
     const [vendas, pagamentos, solicitacoes, parcelas, historicos] = await Promise.all([
-      listarPorCaixa(db, "vendas", caixaId, tenantId),
-      listarPorCaixa(db, "pagamentos", caixaId, tenantId),
-      listarPorCaixa(db, "solicitacoes", caixaId, tenantId),
-      listarPorCaixa(db, "parcelas", caixaId, tenantId),
-      listarPorCaixa(db, "historicoCobrancas", caixaId, tenantId)
+      listarPorCaixa(db, "vendas", conferirRota ? "" : caixaId, tenantId, 5000, usuario),
+      listarPorCaixa(db, "pagamentos", caixaId, tenantId, 5000, usuario),
+      listarPorCaixa(db, "solicitacoes", caixaId, tenantId, 5000, usuario),
+      listarPorCaixa(db, "parcelas", conferirRota ? "" : caixaId, tenantId, 5000, usuario),
+      listarPorCaixa(db, "historicoCobrancas", caixaId, tenantId, 5000, usuario)
     ]);
 
-    const vendasValidas = vendas.filter(statusVendaAberta);
-    const pagamentosConfirmados = pagamentos.filter(p => statusConfirmadoCaixa(p.status || p.statusPagamento || "CONFIRMADO"));
+    const vendasValidas = vendas.filter(statusVendaAberta).filter(v => !conferirRota || texto(v.caixaId || v.idCaixa) === caixaId);
+    const pagamentosConfirmados = pagamentos.filter(p => p.cancelado !== true && p.estornado !== true && statusConfirmadoCaixa(p.status || p.statusPagamento || "CONFIRMADO"));
     const movimentosAprovados = solicitacoes.filter(s => statusAprovadoCaixa(s.status || s.statusSolicitacao));
     const gastosConfirmados = solicitacoes.filter(s => {
       const tipo = tipoMovimentoCaixa(s);
@@ -2206,7 +2238,7 @@
       totalAjustesCentavos;
 
     const parcelasPrevistas = parcelas.filter(p => {
-      const data = dataOperacionalRegistro(p);
+      const data = texto(p.dataVencimento || p.dataPrevista || p.vencimento || p.dataCobranca || dataOperacionalRegistro(p)).slice(0, 10);
       return !data || data <= dataOperacional;
     });
     const totalPagas = parcelasPrevistas.filter(p =>
@@ -2218,6 +2250,7 @@
       return tipo === "NAO_PAGAMENTO" && h.cancelado !== true && h.excluido !== true;
     });
     const totalNaoPagas = naoPagamentos.length;
+    const rota = conferirRota ? window.IntegroVendedorOperacao.montarCarteira({ vendas, parcelas, pagamentosHoje: pagamentos, historico: historicos, usuario, caixaId, hoje: dataOperacional }).filter(item => item.comCobrancaHoje || item.pagoHoje || item.naoPagoHoje) : null;
 
     return {
       versaoCalculo: "fechamento_caixa_v1",
@@ -2234,11 +2267,11 @@
       totalRetiradasCentavos,
       totalRecolhimentosCentavos,
       totalAjustesCentavos,
-      totalCobrancas: parcelasPrevistas.length,
-      totalVisitadas: Math.min(parcelasPrevistas.length, totalPagas + totalNaoPagas),
-      totalPagas,
-      totalNaoPagas,
-      pendenciasCobranca: Math.max(0, parcelasPrevistas.length - totalPagas - totalNaoPagas),
+      totalCobrancas: rota ? rota.length : parcelasPrevistas.length,
+      totalVisitadas: rota ? rota.filter(r => r.pagoHoje || r.naoPagoHoje).length : Math.min(parcelasPrevistas.length, totalPagas + totalNaoPagas),
+      totalPagas: rota ? rota.filter(r => r.pagoHoje).length : totalPagas,
+      totalNaoPagas: rota ? rota.filter(r => r.naoPagoHoje).length : totalNaoPagas,
+      pendenciasCobranca: rota ? rota.filter(r => r.pendenteHoje).length : Math.max(0, parcelasPrevistas.length - totalPagas - totalNaoPagas),
       pagamentosPendentes: pagamentos.filter(p => ["PENDENTE", "SINCRONIZANDO", "ERRO_BLOQUEADO_CAIXA_FECHADO"].includes(normalizarStatus(p.statusSync || p.status))).length,
       vendasIds: vendasValidas.map(v => v.id).filter(Boolean).slice(0, 500),
       pagamentosIds: pagamentosConfirmados.map(p => p.id).filter(Boolean).slice(0, 500)
@@ -2253,20 +2286,10 @@
 
   async function registrarFechamentoCaixaTransacional(entrada = {}) {
     if (backendFinanceiroDisponivel()) {
-      if (entrada.filaOfflinePendente || entrada.operacaoLocalSincronizando) {
-        throw new Error("Sincronize as operações locais antes do fechamento.");
-      }
+      if (entrada.filaOfflinePendente || entrada.operacaoLocalSincronizando) throw new Error("Sincronize as operações locais antes do fechamento.");
       const snapshot = entrada.snapshot || await prepararSnapshotFechamentoCaixa(entrada);
-      const valor = entrada.valorInformadoCentavos !== undefined
-        ? entrada.valorInformadoCentavos
-        : getOperacional().moedaParaCentavos(entrada.valorInformado || entrada.valorReal || 0);
-      return chamarBackendFinanceiro("fecharCaixaOperacional", {
-        caixaId: entrada.caixaId,
-        conferenciaId: snapshot.conferenciaId,
-        valorInformadoCentavos: valor,
-        justificativa: entrada.justificativa || entrada.observacao || "",
-        encerramentoGerencial: entrada.encerramentoGerencial === true
-      });
+      const valor = entrada.valorInformadoCentavos !== undefined ? entrada.valorInformadoCentavos : getOperacional().moedaParaCentavos(entrada.valorInformado || entrada.valorReal || 0);
+      return chamarBackendFinanceiro("fecharCaixaOperacional", { caixaId: entrada.caixaId, conferenciaId: snapshot.conferenciaId, valorInformadoCentavos: valor, justificativa: entrada.justificativa || entrada.observacao || "", encerramentoGerencial: entrada.encerramentoGerencial === true });
     }
     exigirBackendFinanceiro();
     const db = getDb();
@@ -2279,6 +2302,8 @@
     const valorInformadoCentavos = Number.isInteger(entrada.valorInformadoCentavos)
       ? entrada.valorInformadoCentavos
       : operacional.moedaParaCentavos(entrada.valorInformado || entrada.valorReal || 0);
+    if (entrada.valorInformadoCentavos !== undefined && !Number.isSafeInteger(entrada.valorInformadoCentavos)) throw new Error("Informe valor válido em centavos inteiros.");
+    if (!Number.isSafeInteger(valorInformadoCentavos)) throw new Error("Informe valor válido para a conferência.");
     const justificativa = texto(entrada.justificativa || entrada.observacao || "");
     const fechamentoId = fechamentoIdDeterministico(caixaId);
     const snapshot = entrada.snapshot || await prepararSnapshotFechamentoCaixa({ ...entrada, db });
@@ -2301,7 +2326,7 @@
       await registrarLogFechamentoBloqueado({ db, tipoAcao: "CAIXA_FECHAMENTO_BLOQUEADO_PENDENCIAS", entrada, usuario, detalhe: erro.message });
       throw erro;
     }
-    if (snapshot.pendenciasCobranca > 0 && entrada.ignorarPendencias !== true) {
+    if (snapshot.pendenciasCobranca > 0) {
       const erro = new Error(`Existem ${snapshot.pendenciasCobranca} cobranças previstas sem situação registrada.`);
       erro.code = "ERRO_FECHAMENTO_PENDENCIAS";
       await registrarLogFechamentoBloqueado({ db, tipoAcao: "CAIXA_FECHAMENTO_BLOQUEADO_PENDENCIAS", entrada, usuario, detalhe: erro.message });
@@ -2310,18 +2335,29 @@
 
     const diferencaCentavos = valorInformadoCentavos - snapshot.caixaFinalEsperadoCentavos;
     const statusFechamento = diferencaCentavos === 0 ? "FECHADO" : "DIVERGENTE";
-    if (statusFechamento === "DIVERGENTE" && !justificativa && entrada.exigirJustificativaDivergencia !== false) {
+    if (statusFechamento === "DIVERGENTE" && !justificativa) {
       throw new Error("Informe justificativa para fechamento divergente.");
     }
 
     const caixaRef = db.collection("caixas").doc(caixaId);
     const fechamentoRef = db.collection("fechamentos_caixa").doc(fechamentoId);
-    const abertosQuery = db.collection("caixas")
-      .where("clientePlataformaId", "==", tenantId || snapshot.caixa.clientePlataformaId || "")
-      .where("vendedorId", "==", vendedorId || snapshot.caixa.vendedorId || "")
-      .where("status", "in", ["ABERTO", "REABERTO"])
-      .limit(20);
-    const abertosReferencias = await referenciasDaConsulta(abertosQuery);
+    const vinculosCaixa = [["vendedorAuthUid", uid], ["vendedorId", vendedorId || snapshot.caixa.vendedorId]].filter(([,valor]) => valor);
+    const consultasAbertos = await Promise.allSettled(vinculosCaixa.map(async ([campo, valor]) => {
+      const base = () => db.collection("caixas")
+        .where("clientePlataformaId", "==", tenantId || snapshot.caixa.clientePlataformaId || "")
+        .where(campo, "==", valor);
+      let snap;
+      try { snap = await base().where("status", "in", ["ABERTO", "REABERTO"]).limit(20).get(); }
+      catch (erro) {
+        if (erro?.code !== "failed-precondition") throw erro;
+        snap = await base().limit(5000).get();
+      }
+      return (snap.docs || []).filter(doc => ["ABERTO", "REABERTO"].includes(normalizarStatus(doc.data().status))).map(doc => doc.ref);
+    }));
+    if (consultasAbertos.every(r => r.status === "rejected")) throw consultasAbertos[0].reason;
+    const mapaAbertos = new Map();
+    consultasAbertos.filter(r => r.status === "fulfilled").flatMap(r => r.value).forEach(ref => mapaAbertos.set(ref.id || ref.path, ref));
+    const abertosReferencias = [...mapaAbertos.values()];
 
     return db.runTransaction(async transaction => {
       const [caixaSnap, fechamentoSnap, abertos] = await Promise.all([
@@ -2338,6 +2374,10 @@
       if (texto(caixaId) !== texto(snapshot.caixa.id)) throw new Error("Snapshot de fechamento não pertence ao caixa atual.");
       if (fechamentoExistente && !resourceFallbackFechamentoReaberto(fechamentoExistente)) {
         return { fechamentoId, caixaId, modo: "IDEMPOTENTE", statusFechamento: fechamentoExistente.statusFechamento || fechamentoExistente.status || "", fechamento: fechamentoExistente };
+      }
+      const camposConferencia = ["atualizadoEm", "saldoAtualCentavos", "saldoAtual", "valorAtual", "ultimaReaberturaId"];
+      if (camposConferencia.some(campo => JSON.stringify(caixa[campo] ?? null) !== JSON.stringify(snapshot.caixa[campo] ?? null))) {
+        throw new Error("O caixa recebeu uma atualização durante a conferência. Reabra o resumo e confira os valores novamente.");
       }
       const statusCaixa = normalizarStatus(caixa.status);
       if (!["ABERTO", "REABERTO"].includes(statusCaixa)) throw new Error("Caixa já está fechado ou não está aberto.");
@@ -2398,13 +2438,16 @@
       };
 
       const refechamento = fechamentoExistente && resourceFallbackFechamentoReaberto(fechamentoExistente);
+      const refechamentoId = refechamento ? idSeguroOperacao("fechamento", caixaId, entrada.operacaoId || agoraLocal) : "";
       transaction.set(fechamentoRef, {
         ...payload,
+        reaberto: false,
+        refechamentoId,
         modo: refechamento ? "REFECHAMENTO" : "CRIACAO",
         totalReaberturas: Math.max(Number(fechamentoExistente?.totalReaberturas || 0), Number(payload.totalReaberturas || 0))
       }, { merge: refechamento });
       if (refechamento) {
-        transaction.set(db.collection("historico_fechamentos_caixa").doc(idSeguroOperacao("fechamento", caixaId, entrada.operacaoId || agoraLocal)), {
+        transaction.set(db.collection("historico_fechamentos_caixa").doc(refechamentoId), {
           ...payload,
           modo: "REFECHAMENTO",
           fechamentoId,
@@ -2461,7 +2504,7 @@
   }
 
   function resourceFallbackFechamentoReaberto(fechamento = {}) {
-    return fechamento.reaberto === true || texto(fechamento.reaberturaId || fechamento.motivoReabertura || fechamento.reabertoEm || fechamento.reabertoEmTexto) !== "";
+    return fechamento.reaberto === true || (fechamento.reaberto !== false && texto(fechamento.reaberturaId || fechamento.motivoReabertura || fechamento.reabertoEm || fechamento.reabertoEmTexto) !== "");
   }
 
   async function reconciliarCaixaSomenteLeitura(caixaId) {
@@ -2591,6 +2634,7 @@
       saldoLedger,
       snapshot,
       divergencias,
+      comparativo:{caixaCentavos:saldoCaixaCentavos,ledgerCentavos:saldoLedger.saldoLedgerCentavos,pagamentosCentavos:snapshot.totalPagamentosCentavos||0,ingressosCentavos:snapshot.totalIngressosCentavos||0,gastosCentavos:snapshot.totalGastosCentavos||0,retiradasCentavos:snapshot.totalRetiradasCentavos||0,recolhimentosCentavos:snapshot.totalRecolhimentosCentavos||0,ajustesCentavos:snapshot.totalAjustesCentavos||0,vendasCentavos:snapshot.totalVendasCentavos||0,saldoInicialCentavos:snapshot.caixaInicialCentavos||0,saldoPorOrigensCentavos:snapshot.caixaFinalEsperadoCentavos,pagamentos:pagamentos.length,movimentacoes:solicitacoes.length},
       lancamentos
     };
   }
@@ -2707,12 +2751,7 @@
   }
 
   async function registrarReaberturaCaixaTransacional(entrada = {}) {
-    if (backendFinanceiroDisponivel()) {
-      return chamarBackendFinanceiro("reabrirCaixaOperacional", {
-        ...entrada,
-        operacaoId: entrada.operacaoId || window.crypto?.randomUUID?.() || ("reabertura_" + Date.now() + "_" + Math.random().toString(36).slice(2))
-      });
-    }
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("reabrirCaixaOperacional", { ...entrada, operacaoId: entrada.operacaoId || window.crypto?.randomUUID?.() || ("reabertura_" + Date.now() + "_" + Math.random().toString(36).slice(2)) });
     exigirBackendFinanceiro();
     const db = getDb();
     const operacional = getOperacional();
@@ -2771,7 +2810,7 @@
         if (!dataCaixa || !data || data <= dataCaixa) return false;
         return ["ABERTO", "REABERTO", "FECHADO", "DIVERGENTE"].includes(status);
       });
-      if (caixaPosterior && entrada.permissaoAdministrativa !== true) {
+      if (caixaPosterior) {
         throw new Error("Não é permitido reabrir caixa antigo com caixa posterior existente.");
       }
 
@@ -2865,6 +2904,8 @@
   }
 
   async function registrarTratamentoDivergenciaCaixa(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("tratarDivergenciaCaixaOperacional", { ...entrada, operacaoId: entrada.operacaoId || window.crypto?.randomUUID?.() || ("tratamento_" + Date.now() + "_" + Math.random().toString(36).slice(2)) });
+    exigirBackendFinanceiro();
     const db = getDb();
     const usuario = entrada.usuario || {};
     const caixaId = texto(entrada.caixaId);
@@ -3034,6 +3075,8 @@
         origem: entrada?.origem || "vendedor"
       });
     }
+
+    exigirBackendFinanceiro();
 
     const historicoId = texto(entrada?.operacaoId) || naoPagamentoIdDeterministico({ clientePlataformaId: tenantId, caixaId, vendaId, dataOperacional });
     const caixaRef = db.collection("caixas").doc(caixaId);

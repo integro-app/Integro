@@ -68,13 +68,13 @@
       </div>
 
       <section class="unified-panel">
-        <div class="unified-panel-head"><div><h3>Acesso e permissões</h3><p>Resumo do acesso efetivo. Perfil, cargo, e-mail e vínculos são alterados somente por superior autorizado.</p></div></div>
+        <div class="unified-panel-head"><div><h3>Configurações da conta</h3><p>Resumo do acesso efetivo. Perfil, cargo, e-mail e vínculos são alterados somente por superior autorizado.</p></div></div>
         <div class="account-action-list">
           <div><strong>Cargo</strong><span>${esc(dados.cargoNome || rotuloPerfil(perfil))}</span></div>
           <div><strong>Perfil oficial</strong><span>${esc(rotuloPerfil(perfil))}</span></div>
           <div><strong>Autenticação</strong><span>${global.firebase?.auth?.()?.currentUser ? "Validada" : "Aguardando validação"}</span></div>
         </div>
-        <div class="config-inline-actions"><button class="ghost-btn" type="button" onclick="IntegroMinhaConta.atualizar()"><span class="material-symbols-rounded">refresh</span>Atualizar dados</button></div>
+        <p id="minhaContaSyncStatus" role="status" aria-live="polite">Recarregue os dados e as permissões alterados pelo administrador.</p><div class="config-inline-actions"><button id="minhaContaSincronizar" class="primary-btn" type="button" onclick="IntegroMinhaConta.atualizar()"><span class="material-symbols-rounded">sync</span>Atualizar e sincronizar conta</button></div>
       </section>`;
     estado.montado = true;
     return true;
@@ -85,13 +85,30 @@
     estado.carregando = true;
     try {
       const authUser = global.firebase?.auth?.()?.currentUser;
-      if (authUser && global.FirestoreService?.buscarUsuarioPorAuthUid) {
-        const atualizado = await global.FirestoreService.buscarUsuarioPorAuthUid(authUser);
-        if (atualizado) { global.State?.setUsuario?.(atualizado); global.usuarioLogado = atualizado; global.currentUserData = atualizado; }
-      }
-      render(); notify("Dados da conta atualizados.", "ok");
+      if (!authUser || !global.FirestoreService?.buscarUsuarioPorAuthUid) throw new Error("Sessão indisponível. Entre novamente.");
+      const button = document.getElementById("minhaContaSincronizar");
+      if (button) { button.disabled = true; button.textContent = "Sincronizando..."; }
+      const status = document.getElementById("minhaContaSyncStatus");
+      if (status) status.textContent = "Atualizando perfil e permissões...";
+      await authUser.getIdToken(true);
+      if (global.IntegroV27Session?.heartbeat && !(await global.IntegroV27Session.heartbeat())) throw new Error("Sessão expirada. Entre novamente.");
+      const atualizado = await global.FirestoreService.buscarUsuarioPorAuthUid(authUser);
+      if (!atualizado || atualizado.authUid !== authUser.uid) throw new Error("Não foi possível validar o usuário atualizado.");
+      const validacao = global.Validators?.validarUsuario?.(atualizado);
+      if (validacao && !validacao.ok) throw new Error(validacao.mensagem);
+      if (atualizado.selecionarEmpresa || atualizado.acessoRestritoAssinatura) { global.redirecionarUsuario?.(atualizado); return; }
+      global.IntegroDataRuntime?.invalidar?.();
+      global.State?.setUsuario?.(atualizado); global.usuarioLogado = atualizado; global.currentUserData = atualizado;
+      global.IntegroPerfisUnificados?.ativar?.(atualizado);
+      global.IntegroPainel?.aplicar?.(atualizado);
+      document.dispatchEvent(new CustomEvent("integro-permissoes-atualizadas", { detail: { usuario: atualizado } }));
+      global.IntegroNavegacaoUnificada?.abrirPorId?.("minhaConta");
+      render();
+      const feedback = document.getElementById("minhaContaSyncStatus");
+      if (feedback) feedback.textContent = "Conta e permissões sincronizadas agora.";
+      notify("Conta e permissões sincronizadas.", "ok");
     } catch (erro) { console.error("[ÍNTEGRO Minha Conta]", erro); notify(erro.message || "Não foi possível atualizar a conta.", "erro"); }
-    finally { estado.carregando = false; }
+    finally { estado.carregando = false; const button = document.getElementById("minhaContaSincronizar"); if (button) { button.disabled = false; button.textContent = "Atualizar e sincronizar conta"; } }
   }
 
   function ensureStorage() {

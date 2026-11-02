@@ -355,6 +355,13 @@
   }
 
   async function exportar(clientes = [], nomeArquivo = "clientes-integro.xlsx") {
+    const usuario = global.State?.getUsuario?.() || global.usuarioLogado || {};
+    const tenant = texto(usuario.clientePlataformaId);
+    if (!tenant || global.IntegroAcesso?.pode?.(usuario,"relatorios.exportar",{clientePlataformaId:tenant}) !== true || global.IntegroAcesso?.pode?.(usuario,"clientes.ver",{clientePlataformaId:tenant}) !== true) throw new Error("Sem permissão para exportar clientes.");
+    if (clientes.some(c => texto(c.clientePlataformaId) !== tenant || global.ClientesService?.clienteNoEscopo?.(usuario,c,"ler") !== true)) throw new Error("Exportação contém cliente fora do escopo autorizado.");
+    const unicos = new Map();
+    clientes.forEach(c => {const key=texto(c.clienteOperacionalId || c.id);if(!key)throw new Error("Cliente sem referência para exportação.");if(!unicos.has(key) || texto(c.id)===key)unicos.set(key,c);});
+    clientes = [...unicos.values()];
     if (!global.ExcelJS?.Workbook) throw new Error("Gerador de Excel indisponível. Atualize a página e tente novamente.");
     const workbook = new global.ExcelJS.Workbook();
     workbook.creator = "INTEGRO";
@@ -416,7 +423,7 @@
     link.click();
     link.remove();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return nomeArquivo;
+    return {nomeArquivo,quantidade:clientes.length};
   }
 
   global.ClientesImportacaoService = {

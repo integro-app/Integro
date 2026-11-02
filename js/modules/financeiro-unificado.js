@@ -112,6 +112,13 @@
     return state.boxes.find(box => String(box.id) === id) || null;
   }
 
+  function closedBoxes() {
+    return state.boxes.filter(box => ["FECHADO","FECHADA"].includes(U().upper(box.status||box.statusCaixa)) && box.excluido!==true && !state.boxes.some(other => other.excluido!==true && (
+      (["ABERTO","REABERTO"].includes(U().upper(other.status||other.statusCaixa)) && ((box.vendedorId && other.vendedorId===box.vendedorId) || (box.equipeId && other.equipeId===box.equipeId))) ||
+      (box.vendedorId && other.vendedorId===box.vendedorId && String(other.dataOperacional||other.dataCaixa||"")>String(box.dataOperacional||box.dataCaixa||""))
+    )));
+  }
+
   function openBoxes() {
     return state.boxes.filter(box => ["ABERTO", "REABERTO"].includes(U().upper(box.status || box.statusCaixa)));
   }
@@ -145,7 +152,7 @@
     const boxId = String(item?.caixaId || preset.boxId || "");
     const type = U().upper(item?.tipoLancamento || preset.type || "");
     const categoryId = String(item?.categoriaId || item?.metadados?.categoriaId || "");
-    const boxes = openBoxes();
+    const boxes = editing ? openBoxes() : closedBoxes();
     return `<div class="unified-filterbar" style="display:grid;grid-template-columns:1fr;gap:12px">
       <label>Caixa<select id="finMovCaixa" ${editing ? "disabled" : ""}><option value="">Selecione o caixa</option>${boxes.map(box => `<option value="${U().esc(box.id)}"${String(box.id) === boxId ? " selected" : ""}>${U().esc(box.vendedorNome || box.nomeVendedor || box.vendedorId || "Caixa")} • ${U().esc(box.dataOperacional || box.data || "-")} • ${U().esc(box.status || "")}</option>`).join("")}</select></label>
       <label>Tipo<select id="finMovTipo" onchange="IntegroFinanceiroUnificado.updateMovementCategories()"><option value="">Selecione</option><option value="INGRESSO"${type === "INGRESSO" ? " selected" : ""}>Ingresso</option><option value="GASTO"${type === "GASTO" ? " selected" : ""}>Gasto</option><option value="RETIRADA"${type === "RETIRADA" ? " selected" : ""}>Retirada</option></select></label>
@@ -158,7 +165,9 @@
 
   function mount() {
     const host = root();
-    if (!host || state.mounted) return Boolean(host);
+    if (global.__integroFinanceiroModo === "empresarial") return false;
+    if (!host) return false;
+    if (state.mounted && host.querySelector('[data-fin-view]')) return true;
     host.innerHTML = `
       <div class="unified-profile-module integro-shared-module" data-somente-leitura>
         <header class="unified-profile-head integro-shared-header">
@@ -244,7 +253,9 @@
     document.querySelectorAll("[data-fin-view]").forEach(view => { if (!view.hidden) view.innerHTML = `<div class="unified-empty"><div><span class="material-symbols-rounded">error</span><strong>Financeiro indisponível</strong><p>${U().esc(message)}</p></div></div>`; });
   }
 
-  function realtimeEntryImpact(item = {}) {
+  function realtimeEntryImpact(item = {}, entries = []) {
+    if (U().upper(item.tipoLancamento) === "DIVERGENCIA_ACEITA") return 0;
+    if (U().upper(item.tipoLancamento) === "ESTORNO" && entries.some(original => String(original.id || original.lancamentoId) === String(item.reversaoDeId) && U().upper(original.statusLancamento) === "ESTORNADO")) return 0;
     const status = U().upper(item.statusLancamento || "CONFIRMADO");
     if (["PENDENTE", "CANCELADO", "ESTORNADO"].includes(status)) return 0;
     const value = Math.abs(Math.round(Number(item.valorCentavos || 0)));
@@ -254,7 +265,7 @@
   function realtimeSummary(entries = []) {
     const summary = { totalCreditosCentavos: 0, totalDebitosCentavos: 0, saldoCentavos: 0, porTipo: {} };
     entries.forEach(item => {
-      const impact = realtimeEntryImpact(item);
+      const impact = realtimeEntryImpact(item, entries);
       if (!impact) return;
       const value = Math.abs(impact);
       const type = U().upper(item.tipoLancamento || "OUTRO");
@@ -578,6 +589,11 @@
 
   function empty(message) { return `<div class="unified-empty"><div><span class="material-symbols-rounded">manage_search</span><strong>${U().esc(message)}</strong></div></div>`; }
 
+  function openType(value) {
+    if (!['','INGRESSO','GASTO','RETIRADA','RECOLHIMENTO','AJUSTE'].includes(value)) return false;
+    state.filters.type=value;state.page=1;applyFilters();openTab('lancamentos');return true;
+  }
+
   function openTab(tab) {
     state.activeTab = tab;
     document.querySelectorAll("[data-fin-tab]").forEach(button => button.classList.toggle("active", button.dataset.finTab === tab));
@@ -643,7 +659,7 @@
 
   function openNewMovement(preset = {}) {
     if (!canManageMovements()) return U().notify("Usuário sem permissão para criar lançamentos.", "err");
-    if (!openBoxes().length) return U().notify("Não existe caixa aberto ou reaberto para receber o lançamento.", "err");
+    if (!closedBoxes().length) return U().notify("Lançamentos administrativos exigem o último caixa fechado e nenhum caixa aberto na equipe ou vendedor.", "err");
     U().openDrawer("Novo lançamento", "O lançamento válido impactará automaticamente o caixa selecionado.", movementFormHtml(null, preset || {}));
     setTimeout(updateMovementCategories, 0);
   }
@@ -676,7 +692,7 @@
     if (!boxId || !["INGRESSO", "GASTO", "RETIRADA"].includes(type) || !category || valueCents <= 0) return U().notify("Preencha caixa, tipo, categoria e valor.", "err");
     if (editingId && !editReason) return U().notify("Informe o motivo da edição.", "err");
     const box = state.boxes.find(item => String(item.id) === String(boxId));
-    if (!box || !["ABERTO", "REABERTO"].includes(U().upper(box.status || box.statusCaixa))) return U().notify("O caixa precisa estar aberto ou reaberto.", "err");
+    if (!box || !(editingId ? openBoxes() : closedBoxes()).includes(box)) return U().notify(editingId ? "Reabra o caixa para editar." : "Selecione o último caixa fechado, sem caixas abertos na equipe ou vendedor.", "err");
     const lock = `${editingId ? "edit" : "new"}:${editingId || boxId}`;
     if (state.locks.has(lock)) return;
     state.locks.add(lock);
@@ -746,8 +762,15 @@
     finally { state.locks.delete(`reverse:${id}`); }
   }
 
+  function comparisonHtml(c={}) { return `<div class="unified-panel"><h3>Caixa × ledger × pagamentos × movimentações</h3><div class="unified-kpi-grid">${[["Saldo do caixa",c.caixaCentavos],["Saldo do ledger",c.ledgerCentavos],["Saldo pelas origens",c.saldoPorOrigensCentavos],["Pagamentos confirmados",c.pagamentosCentavos]].map(([label,value])=>`<div class="unified-kpi"><small>${label}</small><strong>${U().moneyCents(value)}</strong></div>`).join("")}</div><div class="unified-details">${[["Saldo inicial",c.saldoInicialCentavos],["Vendas",c.vendasCentavos],["Ingressos",c.ingressosCentavos],["Gastos",c.gastosCentavos],["Retiradas",c.retiradasCentavos],["Recolhimentos",c.recolhimentosCentavos],["Ajustes",c.ajustesCentavos]].map(([label,value])=>`<div><strong>${label}</strong><span>${U().moneyCents(value)}</span></div>`).join("")}</div><p>Consulta somente leitura. Divergências precisam de tratamento explícito.</p></div>`; }
   async function openBox(id) {
-    const box = state.boxes.find(item => String(item.id) === String(id)); if (!box) return;
+    let box = state.boxes.find(item => String(item.id) === String(id));
+    if (!box) {
+      try { const snap=await U().db().collection('caixas').doc(String(id)).get({source:'server'});
+        if(!snap.exists||String(snap.data().clientePlataformaId)!==String(U().tenant()))throw new Error('Caixa não encontrado ou fora do seu acesso.');
+        box={id:snap.id,...snap.data()};
+      } catch(error) { U().notify(global.UIHelpers?.mensagemErro?.(error)||'Não foi possível abrir este caixa.','err');return false; }
+    }
     U().openDrawer("Diagnóstico do caixa", box.vendedorNome || box.id, `<div class="unified-empty"><div><span class="material-symbols-rounded">sync</span><strong>Reconciliando caixa e ledger...</strong></div></div>`);
     try {
       const result = await service().reconciliarLedgerCaixaSomenteLeitura(id, { db: U().db(), clientePlataformaId: U().tenant() });
@@ -758,7 +781,7 @@
         result.snapshot?.caixaFinalEsperadoCentavos ??
         0
       );
-      const body = `${U().detailsHtml({ caixaId: id, status: box.status, saldoLedgerCentavos, saldoCaixaCentavos, totalLancamentos: result.lancamentos?.length || 0 })}<div class="unified-panel" style="margin-top:14px"><div class="unified-panel-head"><div><h3>Resultado da reconciliação</h3><p>${divergences.length ? `${divergences.length} divergência(s) detectada(s).` : "Sem divergências detectadas."}</p></div></div>${divergences.length ? `<div class="unified-card-list">${divergences.map(item => `<div class="unified-record-card"><div><h4>${U().esc(item.tipo)}</h4><p>${U().esc(JSON.stringify(item))}</p></div></div>`).join("")}</div>` : '<span class="unified-badge ok">Conferido</span>'}</div>${can("regularizar") && divergentBoxes().some(item => String(item.id) === String(id)) ? `<div class="drawer-actions"><button class="primary-btn" type="button" onclick="IntegroFinanceiroUnificado.regularize('${U().esc(id)}')">Registrar regularização</button></div>` : ""}`;
+      const body = `${comparisonHtml(result.comparativo)}${U().detailsHtml({ caixaId: id, status: box.status, saldoLedgerCentavos, saldoCaixaCentavos, totalLancamentos: result.lancamentos?.length || 0 })}<div class="unified-panel" style="margin-top:14px"><div class="unified-panel-head"><div><h3>Resultado da reconciliação</h3><p>${divergences.length ? `${divergences.length} divergência(s) detectada(s).` : "Sem divergências detectadas."}</p></div></div>${divergences.length ? `<div class="unified-card-list">${divergences.map(item => `<div class="unified-record-card"><div><h4>${U().esc(item.tipo)}</h4><p>${U().esc(JSON.stringify(item))}</p></div></div>`).join("")}</div>` : '<span class="unified-badge ok">Conferido</span>'}</div>${can("regularizar") && divergentBoxes().some(item => String(item.id) === String(id)) ? `<div class="drawer-actions"><button class="primary-btn" type="button" onclick="IntegroFinanceiroUnificado.regularize('${U().esc(id)}')">Registrar regularização</button></div>` : ""}`;
       U().openDrawer("Diagnóstico do caixa", box.vendedorNome || box.id, body);
     } catch (error) { U().openDrawer("Diagnóstico do caixa", box.vendedorNome || box.id, `<div class="unified-status show err">${U().esc(error.message || "Erro de reconciliação")}</div>`); }
   }
@@ -802,5 +825,5 @@
   });
   document.addEventListener("DOMContentLoaded", () => setTimeout(() => activate(U()?.user?.()), 0));
 
-  global.IntegroFinanceiroUnificado = Object.freeze({ mount, load, applyRealtimeData, openTab, setPeriod, applyCustomPeriod, readFilters, clearFilters, setSort, loadMore, openEntry, openNewMovement, openEditMovement, updateMovementCategories, saveMovement, deleteMovement, reverse, openBox, regularize, exportCsv, renderApprovals, readApprovalFilters, clearApprovalFilters, openApproval, openApproveRequest, approveRequest, openRejectRequest, rejectRequest, get state() { return state; } });
+  global.IntegroFinanceiroUnificado = Object.freeze({ mount, load, applyRealtimeData, openTab, openType, setPeriod, applyCustomPeriod, readFilters, clearFilters, setSort, loadMore, openEntry, openNewMovement, openEditMovement, updateMovementCategories, saveMovement, deleteMovement, reverse, openBox, regularize, exportCsv, renderApprovals, readApprovalFilters, clearApprovalFilters, openApproval, openApproveRequest, approveRequest, openRejectRequest, rejectRequest, get state() { return state; } });
 })(window);

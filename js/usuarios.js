@@ -56,7 +56,7 @@ function renderUsuarios() {
       : usuario.acessoLiberado===false
         ? `<button class="success-btn" type="button" data-user-id="${id}" onclick="alterarAcessoUsuario(this.dataset.userId,true)">Liberar</button>`
         : `<button class="danger-btn usuario-action-muted" type="button" data-user-id="${id}" onclick="alterarAcessoUsuario(this.dataset.userId,false)">Bloquear</button>`;
-    return `<tr><td data-label="Nome"><div class="usuario-identidade"><span class="usuario-avatar">${nome.slice(0,2).toUpperCase()}</span><div><strong>${nome}</strong><small>${email}</small></div></div></td><td data-label="Perfil"><strong class="usuario-celula-principal">${perfil}</strong><small>${cargo}</small></td><td data-label="Equipes"><span class="usuario-equipes-texto" title="${equipes}">${equipes}</span></td><td data-label="Status"><span class="usuario-status ${classe}">${status.replace(/_/g," ")}</span></td><td data-label="Acesso"><span class="usuario-status ${classe}">${acesso}</span></td><td data-label="Ações"><div class="usuario-table-actions"><button class="ghost-btn" type="button" data-user-id="${id}" onclick="abrirEditarUsuario(this.dataset.userId)"><span class="material-symbols-rounded">edit</span>Editar</button><button class="ghost-btn" type="button" data-user-id="${id}" onclick="IntegroUsuariosPermissoes.abrirPermissoesUsuario(this.dataset.userId)"><span class="material-symbols-rounded">shield_person</span>Permissões</button>${acaoAcesso}<button class="danger-btn usuario-action-muted" type="button" data-user-id="${id}" onclick="excluirUsuarioLogico(this.dataset.userId)"><span class="material-symbols-rounded">delete</span>Excluir</button></div></td></tr>`;
+    return `<tr><td data-label="Nome"><div class="usuario-identidade"><span class="usuario-avatar">${nome.slice(0,2).toUpperCase()}</span><div><strong>${nome}</strong><small>${email}</small></div></div></td><td data-label="Perfil"><strong class="usuario-celula-principal">${perfil}</strong><small>${cargo}</small></td><td data-label="Equipes"><span class="usuario-equipes-texto" title="${equipes}">${equipes}</span></td><td data-label="Status"><span class="usuario-status ${classe}">${status.replace(/_/g," ")}</span></td><td data-label="Acesso"><span class="usuario-status ${classe}">${acesso}</span></td><td data-label="Ações"><div class="usuario-table-actions"><button class="ghost-btn" type="button" data-user-id="${id}" onclick="abrirEditarUsuario(this.dataset.userId)"><span class="material-symbols-rounded">edit</span>Editar</button>${acaoAcesso}<button class="danger-btn usuario-action-muted" type="button" data-user-id="${id}" onclick="excluirUsuarioLogico(this.dataset.userId)"><span class="material-symbols-rounded">delete</span>Excluir</button></div></td></tr>`;
   }).join("");
   el.innerHTML='<div class="estrutura-table-scroll"><table class="usuarios-table"><thead><tr><th>Nome</th><th>Perfil e cargo</th><th>Equipes</th><th>Status</th><th>Acesso</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
   if(contador)contador.textContent=usuarios.length+' usuário'+(usuarios.length===1?'':'s')+' exibido'+(usuarios.length===1?'':'s');
@@ -132,12 +132,13 @@ function formularioUsuario(usuario = null) {
           <option value="gerente" ${tipoSelecionado === "gerente" ? "selected" : ""}>GERENTE / SÓCIO</option>
           <option value="supervisor" ${tipoSelecionado === "supervisor" ? "selected" : ""}>SUPERVISOR</option>
           <option value="financeiro" ${tipoSelecionado === "financeiro" ? "selected" : ""}>FINANCEIRO</option>
+          <option value="administrativo" ${tipoSelecionado === "administrativo" ? "selected" : ""}>ADMINISTRATIVO</option>
           <option value="auditor" ${tipoSelecionado === "auditor" ? "selected" : ""}>AUDITOR</option>
           <option value="vendedor" ${tipoSelecionado === "vendedor" ? "selected" : ""}>VENDEDOR</option>
           <option value="captador" ${tipoSelecionado === "captador" ? "selected" : ""}>CAPTADOR</option>
           <option value="master_local" ${tipoSelecionado === "master_local" ? "selected" : ""}>MASTER LOCAL</option>
         </select></div>
-        <div class="form-group"><label for="usuarioCargo">Cargo e permissões *</label><select id="usuarioCargo" ${cargos.length ? "" : "disabled"}>${cargosOptions}</select><small>As permissões configuradas para o cargo serão aplicadas automaticamente.</small></div>
+        <div class="form-group"><label for="usuarioCargo">Cargo *</label><select id="usuarioCargo" ${cargos.length ? "" : "disabled"}>${cargosOptions}</select><small>As permissões configuradas para o cargo serão aplicadas automaticamente.</small></div>
         <div class="form-group full" id="usuarioEquipesGrupo">
           <label id="usuarioEquipesLabel">Equipes permitidas <span id="usuarioEquipeObrigatoria">*</span></label>
           <div id="usuarioEquipesChecklist" class="usuario-equipes-checklist" role="group" aria-labelledby="usuarioEquipesLabel">${equipesCheckboxes}</div>
@@ -207,6 +208,13 @@ async function provisionarConviteUsuario(conviteId, email) {
   return resposta.data;
 }
 
+async function atualizarUsuariosAposMutacao() {
+  FirestoreService.invalidateCollection?.('USUARIOS');
+  await carregarUsuarios(true);
+  window.usuariosCache = State.getUsuarios?.() || [];
+  renderUsuarios();
+}
+
 async function provisionarUsuarioPendente(conviteId, email, recarregarLista = true) {
   try {
     if (!conviteId || !email) throw new Error("Convite sem identificação ou e-mail.");
@@ -215,7 +223,7 @@ async function provisionarUsuarioPendente(conviteId, email, recarregarLista = tr
     await FirestoreService.gravarLog("ENVIO_ATIVACAO_USUARIO", { conviteId, email });
     if (window.notificarIntegro) window.notificarIntegro("Usuário provisionado. E-mail para definir a senha enviado.");
     else UIHelpers.alerta("Usuário provisionado. E-mail para definir a senha enviado.");
-    if (recarregarLista) await carregarTudoMasterLocal();
+    if (recarregarLista) await atualizarUsuariosAposMutacao();
     return true;
   } catch (erro) {
     console.error("Erro ao provisionar usuário:", erro);
@@ -280,7 +288,7 @@ async function salvarNovoUsuario() {
       window.notificarIntegro("Convite salvo. O provisionamento permanece pendente.");
     }
     fecharDrawer();
-    await carregarTudoMasterLocal();
+    await atualizarUsuariosAposMutacao();
   } catch (erro) {
     console.error("Erro ao criar usuário:", erro);
     const mensagem = erro?.code === "usuario/email-duplicado"
@@ -333,7 +341,7 @@ async function salvarEdicaoUsuario(id) {
     UIHelpers.alerta("Usuário atualizado com sucesso.");
 
     fecharDrawer();
-    await carregarTudoMasterLocal();
+    await atualizarUsuariosAposMutacao();
 
   } catch (erro) {
     console.error("Erro ao editar usuário:", erro);
@@ -363,7 +371,7 @@ async function alterarAcessoUsuario(id, liberar) {
 
     UIHelpers.alerta(liberar ? "Usuário liberado." : "Usuário bloqueado.");
 
-    await carregarTudoMasterLocal();
+    await atualizarUsuariosAposMutacao();
 
   } catch (erro) {
     console.error("Erro ao alterar acesso:", erro);
@@ -397,7 +405,7 @@ async function excluirUsuarioLogico(id) {
 
     UIHelpers.alerta("Usuário excluído logicamente.");
 
-    await carregarTudoMasterLocal();
+    await atualizarUsuariosAposMutacao();
 
   } catch (erro) {
     console.error("Erro ao excluir usuário:", erro);

@@ -30,11 +30,15 @@ if (integroEmAmbienteLocal && integroParametroEmulator === "1") {
 
 const integroUsarEmulator = integroEmAmbienteLocal && sessionStorage.getItem("integro:usar-emulator") === "1";
 
+if (integroEmAmbienteLocal && integroParametros.get("instrument") === "1") sessionStorage.setItem("integro:instrumentar", "1");
+if (integroParametros.get("instrument") === "0") sessionStorage.removeItem("integro:instrumentar");
+
 if (integroUsarEmulator) {
   auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true });
   db.useEmulator("127.0.0.1", 8080);
+  if (typeof firebase.functions === "function") firebase.app().functions("southamerica-east1").useEmulator("127.0.0.1", 5001);
   if (typeof firebase.storage === "function") firebase.storage().useEmulator("127.0.0.1", 9199);
-  window.__INTEGRO_EMULATOR__ = Object.freeze({ auth: "http://127.0.0.1:9099", firestore: "127.0.0.1:8080", storage: "127.0.0.1:9199" });
+  window.__INTEGRO_EMULATOR__ = Object.freeze({ auth: "http://127.0.0.1:9099", firestore: "127.0.0.1:8080", functions: "127.0.0.1:5001", storage: "127.0.0.1:9199" });
 }
 
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch((erro) => {
@@ -48,10 +52,17 @@ window.db = db;
 
 // V27.2: bootstrap consolidado, estável e sem polling infinito.
 (function carregarBootstrapV27() {
+  if (window.__INTEGRO_ASSINATURA_PORTAL__ || window.__INTEGRO_SUPORTE_PORTAL__ || window.__INTEGRO_EMPRESAS_PORTAL__) return;
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
-  script.src = "js/v27-bootstrap.js?v=20260817-v27-2";
+  script.src = "js/v27-bootstrap.js?v=20261101-masterrestore1";
   script.async = false;
   script.dataset.integroV27Bootstrap = "1";
   document.head.appendChild(script);
 })();
+
+// Canal de suporte da plataforma; não utiliza o chat operacional entre tenants.
+if(!window.__INTEGRO_SUPORTE_PORTAL__) document.addEventListener('DOMContentLoaded',()=>{const host=document.querySelector('#sidebar .menu')||document.querySelector('main header');if(!host)return;const link=document.createElement('a');link.href='suporte.html';link.className='ghost-btn';link.textContent='Suporte ÍNTEGRO';host.appendChild(link);});
+
+document.addEventListener('usuario-validado',()=>{const user=window.State?.getUsuario?.()||window.usuarioLogado;if(!user?.multiplasEmpresas||document.getElementById('integroTrocarEmpresa'))return;const host=document.querySelector('#sidebar .menu')||document.querySelector('main header');if(!host)return;const a=document.createElement('a');a.id='integroTrocarEmpresa';a.href='empresas.html';a.className='ghost-btn';a.textContent='Trocar empresa';host.appendChild(a);});
+window.addEventListener('storage',event=>{if(event.key==='integro:empresaContexto'&&auth.currentUser)location.replace('index.html');});
