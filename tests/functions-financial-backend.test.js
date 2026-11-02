@@ -114,3 +114,30 @@ test("backend marca cliente sem saldo como inativo", () => {
   assert.match(callables, /status: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
   assert.match(callables, /statusCliente: calculo\.novoSaldoClienteCentavos > 0 \? "ATIVO" : "INATIVO"/);
 });
+
+
+test("caixa usa callables para abrir conferir fechar e reabrir", () => {
+  const cliente = ler("js/services/financial-operations.js");
+  for (const nome of ["abrirCaixaOperacional","conferirCaixaOperacional","fecharCaixaOperacional","reabrirCaixaOperacional"]) {
+    assert.match(cliente, new RegExp(nome));
+  }
+  assert.match(cliente, /encerramentoGerencial:\s*entrada\.encerramentoGerencial === true/);
+  assert.match(cliente, /ERRO_BACKEND_FINANCEIRO_INDISPONIVEL/);
+});
+
+test("fechamento massivo solicita encerramento gerencial ao backend", () => {
+  const caixas = ler("js/caixas.js");
+  assert.match(caixas, /encerramentoGerencial:\s*true/);
+  assert.match(caixas, /Fechamento gerencial massivo/);
+});
+
+test("telas operacionais carregam Firebase Functions antes do serviço financeiro", () => {
+  for (const arquivo of ["vendedor.html","supervisor.html","financeiro.html"]) {
+    const html = ler(arquivo);
+    const sdk = html.indexOf("firebase-functions-compat.js");
+    const financeiro = html.indexOf("js/services/financial-operations.js");
+    assert.ok(sdk >= 0, arquivo + " precisa carregar Firebase Functions");
+    assert.ok(financeiro >= 0, arquivo + " precisa carregar serviço financeiro");
+    assert.ok(sdk < financeiro, arquivo + " deve carregar Functions antes do serviço financeiro");
+  }
+});

@@ -28,6 +28,19 @@
       typeof window.firebase?.functions === "function";
   }
 
+  function operacaoFinanceiraLocalPermitida() {
+    // O fallback local existe apenas para testes unitários sem DOM.
+    // Em navegador, operações financeiras e de caixa devem passar pelo backend.
+    return typeof window.document === "undefined";
+  }
+
+  function exigirBackendFinanceiro() {
+    if (operacaoFinanceiraLocalPermitida()) return;
+    const erro = new Error("Backend financeiro indisponível. Nenhuma alteração foi realizada.");
+    erro.code = "ERRO_BACKEND_FINANCEIRO_INDISPONIVEL";
+    throw erro;
+  }
+
   async function chamarBackendFinanceiro(nome, entrada = {}) {
     if (!backendFinanceiroDisponivel()) throw new Error("Backend financeiro indisponível.");
     const instancia = typeof firebase.app === "function" && typeof firebase.app().functions === "function"
@@ -1942,6 +1955,8 @@
   }
 
   async function registrarAberturaCaixaTransacional(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("abrirCaixaOperacional", entrada);
+    exigirBackendFinanceiro();
     const db = getDb();
     const operacional = getOperacional();
     const usuario = entrada.usuario || {};
@@ -2135,6 +2150,8 @@
   }
 
   async function prepararSnapshotFechamentoCaixa(entrada = {}) {
+    if (backendFinanceiroDisponivel()) return chamarBackendFinanceiro("conferirCaixaOperacional", { caixaId: entrada.caixaId });
+    exigirBackendFinanceiro();
     const db = entrada.db || getDb();
     const operacional = getOperacional();
     const caixaId = texto(entrada.caixaId);
@@ -2235,6 +2252,23 @@
   }
 
   async function registrarFechamentoCaixaTransacional(entrada = {}) {
+    if (backendFinanceiroDisponivel()) {
+      if (entrada.filaOfflinePendente || entrada.operacaoLocalSincronizando) {
+        throw new Error("Sincronize as operações locais antes do fechamento.");
+      }
+      const snapshot = entrada.snapshot || await prepararSnapshotFechamentoCaixa(entrada);
+      const valor = entrada.valorInformadoCentavos !== undefined
+        ? entrada.valorInformadoCentavos
+        : getOperacional().moedaParaCentavos(entrada.valorInformado || entrada.valorReal || 0);
+      return chamarBackendFinanceiro("fecharCaixaOperacional", {
+        caixaId: entrada.caixaId,
+        conferenciaId: snapshot.conferenciaId,
+        valorInformadoCentavos: valor,
+        justificativa: entrada.justificativa || entrada.observacao || "",
+        encerramentoGerencial: entrada.encerramentoGerencial === true
+      });
+    }
+    exigirBackendFinanceiro();
     const db = getDb();
     const operacional = getOperacional();
     const usuario = entrada.usuario || {};
@@ -2673,6 +2707,13 @@
   }
 
   async function registrarReaberturaCaixaTransacional(entrada = {}) {
+    if (backendFinanceiroDisponivel()) {
+      return chamarBackendFinanceiro("reabrirCaixaOperacional", {
+        ...entrada,
+        operacaoId: entrada.operacaoId || window.crypto?.randomUUID?.() || ("reabertura_" + Date.now() + "_" + Math.random().toString(36).slice(2))
+      });
+    }
+    exigirBackendFinanceiro();
     const db = getDb();
     const operacional = getOperacional();
     const usuario = entrada.usuario || {};

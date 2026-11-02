@@ -1196,7 +1196,8 @@ async function fecharCaixaMassivo() {
           vendedorId: caixa.vendedorId,
           vendedorAuthUid: caixa.vendedorAuthUid || caixa.vendedorUid || "",
           valorInformadoCentavos: snapshot.caixaFinalEsperadoCentavos,
-          justificativa: "Fechamento massivo com valor esperado pelo sistema.",
+          justificativa: "Fechamento gerencial massivo com valor esperado pelo sistema.",
+          encerramentoGerencial: true,
           snapshot,
           origem: "master_local_fechamento_massivo"
         });
