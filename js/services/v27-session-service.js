@@ -161,9 +161,19 @@
   function runTimers() {
     clearTimers();
     heartbeatTimer = setInterval(() => {
-      heartbeat().catch(async error => {
-        console.warn("[ÍNTEGRO V27] Sessão rejeitada pelo servidor.", error);
-        await expireNow();
+      heartbeat().then(async valid => {
+        if (valid === false) await expireNow();
+      }).catch(error => {
+        // Falha de rede/indisponibilidade temporária não comprova revogação.
+        // A próxima validação verificará a sessão; chamadas protegidas continuam no servidor.
+        const code = String(error?.code || "");
+        const details = String(error?.details?.code || error?.customData?.details?.code || "");
+        if (["functions/permission-denied", "functions/unauthenticated", "functions/failed-precondition"].includes(code) ||
+            ["SESSION_INVALID", "SESSION_MISSING"].includes(details)) {
+          expireNow().catch(console.warn);
+        } else {
+          console.warn("[ÍNTEGRO V27] Validação temporariamente indisponível; será repetida.", error);
+        }
       });
     }, 4 * 60 * 1000);
     inactivityTimer = setInterval(() => {
