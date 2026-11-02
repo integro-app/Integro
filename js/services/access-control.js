@@ -20,7 +20,7 @@
       "usuarios.ver", "equipes.ver", "chat_interno.ver", "notificacoes.ver", "indicacoes.ver"
     ],
     administrativo: [
-      "dashboard.ver", "minha_conta.ver", "clientes.ver", "clientes.atender",
+      "dashboard.ver", "minha_conta.ver", "clientes.ver", "clientes.criar", "clientes.editar", "clientes.atender",
       "vendas.ver", "cobrancas.ver", "caixas.ver", "solicitacoes.ver", "relatorios.ver",
       "chat_interno.ver", "notificacoes.ver", "indicacoes.ver"
     ],
@@ -108,13 +108,11 @@
     const partes = chave.split(".");
     const modulo = partes[0] || "";
     const operacao = partes.slice(1).join(".") || "ver";
-    const leituras = ["ver", "visualizar", "pode_visualizar", "podevisualizar"];
-    const operacoes = operacao === "ver_proprio" ? [operacao, `pode_${operacao}`, `pode${operacao}`, ...leituras] : leituras.includes(operacao) ? leituras : [operacao, `pode_${operacao}`, `pode${operacao}`];
-    return [...new Set([chave, ...operacoes.map(acao => `${modulo}.${acao}`), modulo])];
+    return [...new Set([chave, `${modulo}.${operacao}`, `${modulo}.ver`, modulo])];
   }
 
   function pode(usuario = {}, permissao = "", contexto = {}) {
-    if (!usuario || !permissao || usuario.acessoLiberado === false || usuario.ativo === false || usuario.excluido === true || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(texto(usuario.status).toUpperCase())) return false;
+    if (!usuario || !permissao) return false;
     const acesso = acessoUsuario(usuario);
     if (!acesso.tenantId && acesso.perfil !== "master_global") return false;
 
@@ -124,8 +122,7 @@
     const chave = texto(permissao).toLowerCase();
     const explicitas = permissoesExplicitas(usuario);
     const aliases = aliasesPermissao(chave);
-    const bloqueios = [...aliases, ...aliasesPermissao(`${chave.split(".")[0]}.ver`)];
-    if (bloqueios.some(item => explicitas.negadas.has(item))) return false;
+    if (aliases.some(item => explicitas.negadas.has(item))) return false;
     if (aliases.some(item => explicitas.permitidas.has(item))) return validarEscopo(acesso, contexto);
 
     // Quando o cargo/usuario possui uma matriz salva, ela passa a ser a fonte oficial.
@@ -143,20 +140,16 @@
     if (!contexto || !Object.keys(contexto).length) return true;
     if ([PERFIS.MASTER_LOCAL, PERFIS.GERENTE, PERFIS.ADMINISTRATIVO, PERFIS.FINANCEIRO, PERFIS.AUDITOR].includes(acesso.perfil)) return true;
 
-    const vendedorId = texto(contexto.vendedorId);
-    const vendedorAuthUid = texto(contexto.vendedorAuthUid);
-    const vendedorIdLegado = texto(contexto.usuarioId);
-    const vendedorAuthUidLegado = texto(contexto.vendedorUid || contexto.uid);
+    const vendedorId = texto(contexto.vendedorId || contexto.usuarioId);
+    const vendedorAuthUid = texto(contexto.vendedorAuthUid || contexto.vendedorUid || contexto.uid);
     const equipeId = texto(contexto.equipeId || contexto.equipeDestinoId);
 
     if (acesso.perfil === PERFIS.VENDEDOR) {
-      // Identificadores canônicos têm precedência. Um alias legado conflitante
-      // nunca pode ampliar o escopo de leitura ou de ação do vendedor.
-      if (vendedorAuthUid) return vendedorAuthUid === acesso.authUid;
-      if (vendedorId) return vendedorId === acesso.usuarioId;
-      if (vendedorAuthUidLegado) return vendedorAuthUidLegado === acesso.authUid;
-      if (vendedorIdLegado) return vendedorIdLegado === acesso.usuarioId;
-      return true;
+      return Boolean(
+        (!vendedorId && !vendedorAuthUid) ||
+        (vendedorId && vendedorId === acesso.usuarioId) ||
+        (vendedorAuthUid && vendedorAuthUid === acesso.authUid)
+      );
     }
     if (acesso.perfil === PERFIS.SUPERVISOR) {
       return !equipeId || acesso.equipeIds.includes(equipeId);
@@ -182,14 +175,9 @@
     });
   }
 
-  function podeElemento(usuario, elemento) {
-    const permissoes = [elemento.dataset.permissao, ...(elemento.dataset.permissaoAlternativa || "").split(",")].map(texto).filter(Boolean);
-    return permissoes.some(permissao => pode(usuario, permissao, {}));
-  }
-
   function aplicarNaInterface(usuario = {}, raiz = document) {
     raiz.querySelectorAll("[data-permissao]").forEach(elemento => {
-      const permitido = podeElemento(usuario, elemento);
+      const permitido = pode(usuario, elemento.dataset.permissao, {});
       elemento.hidden = !permitido;
       elemento.setAttribute("aria-hidden", String(!permitido));
       if (!permitido && elemento.matches("button,input,select,textarea,a")) elemento.setAttribute("tabindex", "-1");
@@ -223,7 +211,6 @@
     exigir,
     escopoConsulta,
     aplicarNaInterface,
-    podeElemento,
     validarEscopo
   });
 })();

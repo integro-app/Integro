@@ -3,19 +3,17 @@
 
   let usuarioAtual = null;
   let instalado = false;
-  let focoAnteriorModal = null;
   let abaAtual = "cobrancas";
   let clienteNovaVendaId = "";
   let filtrosClientesAbertos = false;
-  let clientesPesquisaExecutada = true;
-  const clientesPesquisaExecutadaPorAba = { leads: true, carteira: true };
-  let clientesAbaAtual = "carteira";
+  let clientesPesquisaExecutada = false;
+  const clientesPesquisaExecutadaPorAba = { leads: false, carteira: false };
+  let clientesAbaAtual = "leads";
   let filtroRapidoClientesVendedor = "todos";
   let clienteDrawerAbertoId = "";
   let clienteFormularioAbertoId = "";
   let observadorClientesVendedor = null;
   let limpandoClientesVendedor = false;
-  const timersLimpezaClientesVendedor = new Set();
   let categoriasMovimentacaoVendedor = [];
   let categoriasMovimentacaoTenant = "";
   let carregandoCategoriasMovimentacao = null;
@@ -89,16 +87,10 @@
   }
 
   async function executarOperacaoAssincrona({ id, tipo, aliases = [], botao = null, textoProcessando = "Sincronizando", executar, rollback, renderizar }) {
-    const chaves = [id, ...aliases].map(operacaoChave);
-    if (chaves.some(chave => ["QUEUED", "PROCESSING"].includes(operacoesAssincronas.get(chave)?.status))) {
-      throw new Error("Esta operação já está sendo sincronizada. Aguarde a confirmação.");
-    }
     const inicio = Date.now();
     const restaurarBotao = setBotaoProcessando(botao, textoProcessando);
     registrarOperacaoAssincrona(id, { tipo, status: "QUEUED", aliases });
     try { renderizar?.("QUEUED"); } catch (_) {}
-    registrarFeedbackOperacao(inicio);
-    window.IntegroDataRuntime?.medirInteracao?.("vendedor.feedback." + texto(tipo).toLowerCase(), inicio);
     await Promise.resolve();
     registrarOperacaoAssincrona(id, { tipo, status: "PROCESSING", aliases });
     try { renderizar?.("PROCESSING"); } catch (_) {}
@@ -114,11 +106,9 @@
       throw erro;
     } finally {
       restaurarBotao();
+      registrarFeedbackOperacao(inicio);
       window.IntegroDataRuntime?.medirInteracao?.("vendedor." + texto(tipo).toLowerCase(), inicio);
-      const finalizada = operacoesAssincronas.get(operacaoChave(id));
-      window.setTimeout(() => {
-        if (operacoesAssincronas.get(operacaoChave(id)) === finalizada) removerOperacaoAssincrona(id);
-      }, 7000);
+      window.setTimeout(() => removerOperacaoAssincrona(id), 7000);
     }
   }
   const idsUsuario = usuario => new Set([
@@ -153,8 +143,7 @@
 
   function pertenceAoVendedor(registro, usuario = usuarioAtual || State.getUsuario?.()) {
     const ids = idsUsuario(usuario || {});
-    const canonico = texto(registro?.vendedorAuthUid || registro?.vendedorId);
-    return canonico ? ids.has(canonico) : vinculosVendedorRegistro(registro).some(vinculo => ids.has(vinculo));
+    return vinculosVendedorRegistro(registro).some(vinculo => ids.has(vinculo));
   }
 
   function caches() {
@@ -172,143 +161,8 @@
     };
   }
 
-  function snapshotBaixaCobranca() {
-    return {
-      pagamentos: [...(State.getPagamentos?.() || [])],
-      historico: [...(State.getHistoricoCobrancas?.() || [])]
-    };
-  }
-
-  function restaurarSnapshotBaixaCobranca(snapshot = {}) {
-    State.setPagamentos?.([...(snapshot.pagamentos || [])]);
-    State.setHistoricoCobrancas?.([...(snapshot.historico || [])]);
-    caches();
-  }
-
-  function vinculosBaixaOtimista(usuario = {}) {
-    const authUid = texto(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
-    const vendedorId = texto(usuario.vendedorId || usuario.usuarioId || usuario.id || authUid);
-    const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
-    return {
-      clientePlataformaId: tenantId,
-      tenantId,
-      empresaId: tenantId,
-      vendedorId,
-      vendedorAuthUid: authUid,
-      authUid
-    };
-  }
-
-  function valorTotalPagamento(registro = {}) {
-    const valorDireto = registro.valorPago ?? registro.valorRecebido ?? registro.valor;
-    if (valorDireto !== undefined && valorDireto !== null && valorDireto !== "") return numero(valorDireto);
-    return numero(registro.valorCentavos) / 100;
-  }
-
-  function pagamentosEditaveisDaCobranca(registro = {}, caixa = {}) {
-    const vendaId = texto(registro.vendaId);
-    const caixaId = texto(caixa.id || caixa.caixaId);
-    const hoje = dataCaixa();
-    return (State.getPagamentos?.() || [])
-      .filter(item => item?.excluido !== true && texto(item?.status).toUpperCase() !== "CANCELADO")
-      .filter(item => texto(item.vendaId) === vendaId)
-      .filter(item => !texto(item.caixaId) || texto(item.caixaId) === caixaId)
-      .filter(item => !dataRegistro(item) || dataRegistro(item) === hoje);
-  }
-
-  function selecionarPagamentoEditavel(registro = {}, caixa = {}) {
-    const pagamentos = pagamentosEditaveisDaCobranca(registro, caixa);
-    const parcelas = Array.isArray(registro.parcelas) ? registro.parcelas : [];
-    const pagamento = pagamentos[pagamentos.length - 1] || null;
-    const parcelaDoPagamento = pagamento
-      ? parcelas.find(item => texto(item.id || item.parcelaId) === texto(pagamento.parcelaId))
-      : null;
-    const parcelaPendente = parcelas.find(item => !["PAGA", "PAGO", "QUITADA", "QUITADO"].includes(texto(item.status || item.statusParcela).toUpperCase()));
-    return { pagamento, parcela: parcelaDoPagamento || parcelaPendente || null };
-  }
-
-  function mesmaBaixaPagamento(item = {}, { registro = {}, parcela = {}, caixa = {}, operacaoId = "" } = {}) {
-    if (texto(item.id || item.pagamentoId || item.operacaoId) === texto(operacaoId)) return true;
-    const mesmoCaixa = !texto(item.caixaId) || texto(item.caixaId) === texto(caixa.id || caixa.caixaId);
-    return mesmoCaixa &&
-      texto(item.vendaId) === texto(registro.vendaId) &&
-      texto(item.parcelaId) === texto(parcela.id || parcela.parcelaId);
-  }
-
-  let revisaoCobrancas = 0;
-
-  function aplicarBaixaCobrancaOtimista({ tipo, registro, parcela, caixa, valor = 0, operacaoId, motivo = "", observacao = "" } = {}) {
-    revisaoCobrancas++;
-    const snapshot = snapshotBaixaCobranca();
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    const agora = new Date().toISOString();
-    const base = {
-      id: operacaoId,
-      operacaoId,
-      vendaId: texto(registro?.vendaId),
-      clienteId: texto(registro?.clienteId),
-      clienteNome: texto(registro?.clienteNome),
-      caixaId: texto(caixa?.id || caixa?.caixaId),
-      data: dataCaixa(),
-      dataOperacional: dataCaixa(),
-      criadoEmTexto: agora,
-      atualizadoEmTexto: agora,
-      origem: "painel_unificado_vendedor",
-      __integroOtimista: true,
-      ...vinculosBaixaOtimista(usuario)
-    };
-
-    if (tipo === "PAGAMENTO") {
-      const pagamento = {
-        ...base,
-        pagamentoId: operacaoId,
-        parcelaId: texto(parcela?.id || parcela?.parcelaId),
-        valorPago: numero(valor),
-        valorRecebido: numero(valor),
-        valor: numero(valor),
-        status: "CONFIRMADO",
-        dataPagamento: dataCaixa()
-      };
-      const atuais = State.getPagamentos?.() || [];
-      State.setPagamentos?.([...atuais.filter(item => !mesmaBaixaPagamento(item, { registro, parcela, caixa, operacaoId })), pagamento]);
-    } else {
-      const historico = {
-        ...base,
-        historicoId: operacaoId,
-        tipo: "NAO_PAGAMENTO",
-        acao: "NAO_PAGAMENTO",
-        status: "ATIVO",
-        motivo,
-        observacao
-      };
-      const atuais = State.getHistoricoCobrancas?.() || [];
-      State.setHistoricoCobrancas?.([...atuais.filter(item => texto(item.id || item.historicoId || item.operacaoId) !== texto(operacaoId)), historico]);
-    }
-
-    caches();
-    return () => {
-      const pagamentos = tipo === "PAGAMENTO";
-      const atuais = pagamentos ? (State.getPagamentos?.() || []) : (State.getHistoricoCobrancas?.() || []);
-      const ehDaOperacao = item => item.__integroOtimista === true && texto(item.operacaoId) === texto(operacaoId);
-      // Uma resposta realtime já confirmada nunca deve ser desfeita pelo rollback.
-      if (!atuais.some(ehDaOperacao)) return;
-      revisaoCobrancas++;
-      const anteriores = (pagamentos ? snapshot.pagamentos : snapshot.historico).filter(item => pagamentos
-        ? mesmaBaixaPagamento(item, { registro, parcela, caixa, operacaoId })
-        : texto(item.id || item.historicoId || item.operacaoId) === texto(operacaoId));
-      const preservados = atuais.filter(item => !ehDaOperacao(item));
-      const chaveRegistro = item => texto(item.id || item.pagamentoId || item.historicoId || item.operacaoId);
-      const idsPreservados = new Set(preservados.map(chaveRegistro));
-      const reconciliados = [...preservados, ...anteriores.filter(item => !idsPreservados.has(chaveRegistro(item)))];
-      if (pagamentos) State.setPagamentos?.(reconciliados);
-      else State.setHistoricoCobrancas?.(reconciliados);
-      caches();
-    };
-  }
-
   let refreshOperacaoTimer = 0;
   let refreshOperacaoPromessa = null;
-  let refreshOperacaoRepetir = null;
 
   function agendarRefreshOperacaoVendedor(opcoes = {}) {
     window.clearTimeout(refreshOperacaoTimer);
@@ -320,17 +174,14 @@
   }
 
   async function refreshOperacaoVendedorParcial({ render = "cobrancas", clientes = true } = {}) {
-    if (refreshOperacaoPromessa) { refreshOperacaoRepetir = { render, clientes }; return refreshOperacaoPromessa; }
-    if ([...operacoesAssincronas.values()].some(item => ["QUEUED", "PROCESSING"].includes(item.status))) return;
+    if (refreshOperacaoPromessa) return refreshOperacaoPromessa;
     const svc = window.IntegroPerfisUnificados;
     if (!svc?.carregarColecaoPorPerfil) {
       await svc?.carregarTudo?.();
       caches();
       return;
     }
-    const revisaoInicial = revisaoCobrancas;
     refreshOperacaoPromessa = (async () => {
-      ["clientes", "vendas", "pagamentos", "parcelas", "historicoCobrancas", "caixas"].forEach(nome => window.IntegroDataRuntime?.invalidar?.(nome));
       const colecoes = window.CONFIG?.COLECOES || {};
       const limites = window.CONFIG?.LIMITS || {};
       const listaClientes = clientes && svc.carregarClientesPorPerfil
@@ -343,7 +194,6 @@
         svc.carregarColecaoPorPerfil(colecoes.PARCELAS || "parcelas", limites.PARCELAS || 1200),
         svc.carregarColecaoPorPerfil(colecoes.HISTORICO_COBRANCAS || "historicoCobrancas", limites.HISTORICO_COBRANCAS || 600)
       ]);
-      if (revisaoInicial !== revisaoCobrancas) { refreshOperacaoRepetir = { render, clientes }; return; }
       State.setClientes?.(listaClientes);
       State.setCaixas?.(caixas);
       State.setVendas?.(vendas);
@@ -362,7 +212,6 @@
       return await refreshOperacaoPromessa;
     } finally {
       refreshOperacaoPromessa = null;
-      if (refreshOperacaoRepetir) { const repetir = refreshOperacaoRepetir; refreshOperacaoRepetir = null; agendarRefreshOperacaoVendedor(repetir); }
     }
   }
 
@@ -493,25 +342,6 @@
     observadorClientesVendedor.observe(tela, { childList: true, subtree: true });
   }
 
-  function pararObservacaoClientesVendedor() {
-    observadorClientesVendedor?.disconnect();
-    observadorClientesVendedor = null;
-    timersLimpezaClientesVendedor.forEach(timer => window.clearTimeout(timer));
-    timersLimpezaClientesVendedor.clear();
-  }
-
-  function agendarLimpezaClientesVendedor() {
-    timersLimpezaClientesVendedor.forEach(timer => window.clearTimeout(timer));
-    timersLimpezaClientesVendedor.clear();
-    [0, 80, 300].forEach(ms => {
-      const timer = window.setTimeout(() => {
-        timersLimpezaClientesVendedor.delete(timer);
-        limparBlocosClientesLegadosVendedor();
-      }, ms);
-      timersLimpezaClientesVendedor.add(timer);
-    });
-  }
-
   function statusClienteVendedor(cliente = {}) {
     return texto(cliente.statusAtendimento || cliente.statusCliente || cliente.status || (clientePossuiVendaAtiva(cliente) ? "ATIVO" : "INATIVO")).toUpperCase();
   }
@@ -545,7 +375,6 @@
     if (filtro === "aguardando") return status === "AGUARDANDO_ATENDIMENTO" || status === "NOVO_LEAD";
     if (filtro === "atendimento") return ["EM_ATENDIMENTO", "TENTATIVA_CONTATO"].includes(status);
     if (filtro === "retorno") return status === "RETORNO_AGENDADO";
-    if (filtro === "atrasados") return status === "RETORNO_AGENDADO" && texto(cliente.dataRetorno).slice(0,10) <= hoje();
     if (filtro === "encerrados") return ["NAO_CONVERTIDO", "RECUSADO", "SEM_RETORNO", "RETORNADO_LEADS"].includes(status);
     if (filtro === "ativos") return clientePossuiVendaAtiva(cliente);
     if (filtro === "inativos") return !clientePossuiVendaAtiva(cliente);
@@ -570,16 +399,8 @@
       if (filtros.algum && !((filtros.leads && veioLeads) || (filtros.criados && criado) || (filtros.ativos && ativo) || (filtros.inativos && inativo))) return false;
       if (!aplicaFiltroRapidoCliente(cliente)) return false;
       const busca = [cliente.nome, cliente.nomeCompleto, cliente.apelido, cliente.documento, cliente.cpfCnpj, cliente.telefone, cliente.telefonePrincipal, cliente.celular].join(" ").toLowerCase();
-      const digitos = termo.replace(/\D/g, "");
-      return !termo || busca.includes(termo) || (digitos.length >= 3 && [cliente.documento, cliente.cpfCnpj, cliente.telefonePrincipal, cliente.telefone].some(valor => texto(valor).replace(/\D/g, "").includes(digitos)));
-    }).sort((a, b) => {
-      if (clientesAbaAtual === "leads") {
-        const retorno = c => statusClienteVendedor(c) === "RETORNO_AGENDADO" && texto(c.dataRetorno) && texto(c.dataRetorno).slice(0,10) <= hoje();
-        if (Boolean(retorno(a)) !== Boolean(retorno(b))) return retorno(a) ? -1 : 1;
-        if (retorno(a) && retorno(b)) return texto(a.dataRetorno).localeCompare(texto(b.dataRetorno));
-      }
-      return texto(a.apelido || a.nome || a.nomeCompleto).localeCompare(texto(b.apelido || b.nome || b.nomeCompleto), "pt-BR");
-    });
+      return !termo || busca.includes(termo);
+    }).sort((a, b) => texto(a.apelido || a.nome || a.nomeCompleto).localeCompare(texto(b.apelido || b.nome || b.nomeCompleto), "pt-BR"));
   }
 
   function clientesResumoPesquisa(lista = []) {
@@ -600,16 +421,13 @@
     ] };
   }
 
-  let clienteBuscaTimer;
-  function agendarBuscaClienteVendedor(){clearTimeout(clienteBuscaTimer);clienteBuscaTimer=setTimeout(executarPesquisaClientesVendedor,180);}
-  window.agendarBuscaClienteVendedor=agendarBuscaClienteVendedor;
   function executarPesquisaClientesVendedor() {
     clientesPesquisaExecutadaPorAba[clientesAbaAtual] = true;
     clientesPesquisaExecutada = true;
     renderClientesVendedor({ pesquisado: true });
   }
 
-  function trocarAbaClientesVendedor(aba = "carteira") {
+  function trocarAbaClientesVendedor(aba = "leads") {
     clientesAbaAtual = ["leads", "carteira"].includes(aba) ? aba : "leads";
     clientesPesquisaExecutada = clientesPesquisaExecutadaPorAba[clientesAbaAtual] === true;
     filtroRapidoClientesVendedor = "todos";
@@ -657,7 +475,7 @@
 
   function chipsRapidosClientesVendedor() {
     const itens = clientesAbaAtual === "leads"
-      ? [["todos", "Todos"], ["aguardando", "Aguardando"], ["atendimento", "Em atendimento"], ["retorno", "Retorno"], ["atrasados", "Retornos para hoje"], ["encerrados", "Encerrados"]]
+      ? [["todos", "Todos"], ["aguardando", "Aguardando"], ["atendimento", "Em atendimento"], ["retorno", "Retorno"], ["encerrados", "Encerrados"]]
       : [["todos", "Todos"], ["ativos", "Ativos"], ["inativos", "Inativos"], ["criados", "Criados por mim"]];
     return `<div class="vendedor-clientes-chips" aria-label="Filtros rápidos">${itens.map(([valor, rotulo]) => `<button type="button" class="vendedor-cliente-chip ${filtroRapidoClientesVendedor === valor ? "active" : ""}" onclick="aplicarFiltroRapidoClientesVendedor('${valor}')">${rotulo}</button>`).join("")}</div>`;
   }
@@ -703,14 +521,8 @@
     const nome = cliente.nomeCompleto || cliente.nome || cliente.apelido || "Cliente";
     return `<article class="vendedor-cliente-mobile-card status-${meta.classe} situacao-${situacao.classe}" tabindex="0" title="Abrir opções do cliente" onclick="abrirDrawerClienteVendedor('${esc(clienteId)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();abrirDrawerClienteVendedor('${esc(clienteId)}')}">
       <div class="vendedor-cliente-mobile-top"><div><span class="vendedor-tipo-badge ${clienteEmFluxoLead(cliente) ? "lead" : "cliente"}">${tipoRegistroClienteVendedor(cliente)}</span><h3>${esc(nome)}</h3><p>${esc(cliente.documento || cliente.cpfCnpj || "Sem documento")}</p></div><span class="vendedor-score-badge">${scoreCliente(cliente)}</span></div>
-      <div class="vendedor-cliente-mobile-meta">${badgeStatusCliente(status)}<span>${esc(origemClienteVendedor(cliente))}</span><span>Cadastro: ${dataCadastroCliente(cliente)}</span><span>Último contato: ${dataClienteFormatada(cliente.ultimaMovimentacaoTexto || cliente.atualizadoEmTexto || cliente.atualizadoEm)}</span></div>
-      <div class="vendedor-cliente-agenda"><span>${esc(cliente.telefonePrincipal || cliente.telefone || "Telefone não informado")}</span>${cliente.dataRetorno ? `<strong class="${texto(cliente.dataRetorno).slice(0,10) <= hoje() ? "retorno-hoje" : ""}">Retorno: ${dataClienteFormatada(cliente.dataRetorno)}</strong>` : `<span>${clienteEmFluxoLead(cliente) ? "Próxima ação: registrar atendimento" : "Abra o cadastro para consultar o histórico"}</span>`}</div>
-      <div class="vendedor-cliente-mobile-actions">
-        <button type="button" class="ghost-btn" onclick="event.stopPropagation();${clienteEmFluxoLead(cliente) ? "abrirDrawerClienteVendedor" : "editarCadastroCompletoClienteVendedor"}('${esc(clienteId)}')">${clienteEmFluxoLead(cliente) ? "Atender lead" : "Editar cliente"}</button>
-        <button type="button" class="primary-btn" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')">${clienteEmFluxoLead(cliente) ? "Converter em venda" : "Nova venda"}</button>
-        ${clienteEmFluxoLead(cliente) ? `<button type="button" class="ghost-btn" onclick="event.stopPropagation();prepararDevolucaoLeadVendedor('${esc(clienteId)}')">Devolver lead</button>` : ""}
-        <button type="button" class="ghost-btn vendedor-cliente-btn-whatsapp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')">WhatsApp</button>
-      </div>
+      <div class="vendedor-cliente-mobile-meta">${badgeStatusCliente(status)}<span>${esc(origemClienteVendedor(cliente))}</span><span>Cadastro: ${dataCadastroCliente(cliente)}</span><span>Atualização: ${dataAtualizacaoCliente(cliente)}</span></div>
+      <div class="vendedor-cliente-mobile-actions"><button type="button" class="ghost-btn vendedor-cliente-btn-whatsapp" ${whatsapp ? "" : "disabled"} onclick="event.stopPropagation();abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button><button type="button" class="primary-btn vendedor-cliente-btn-vender" ${clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="event.stopPropagation();selecionarClienteNovaVendaVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>Vender</button></div>
     </article>`;
   }
 
@@ -721,23 +533,20 @@
     const tela = document.getElementById("clientes");
     if (!tela || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
     const buscaAnterior = preservarValor("buscaClientesVendedorInput");
-    const buscaFocada = document.activeElement?.id === "buscaClientesVendedorInput";
-    const cursorBusca = document.getElementById("buscaClientesVendedorInput")?.selectionStart;
     const lista = clientesPesquisaExecutada ? clientesFiltradosVendedor() : [];
     const estadoInicial = `<div class="empty-state-operacao vendedor-keep vendedor-clientes-estado-inicial"><span class="material-symbols-rounded">manage_search</span><strong>Pesquise para visualizar</strong><p>A carteira não é desenhada automaticamente. Use a busca ou os filtros e clique em Buscar.</p></div>`;
-    const estadoVazio = `<div class="empty-state-operacao vendedor-keep"><span class="material-symbols-rounded">person_search</span><strong>${clientesAbaAtual === "leads" ? "Nenhum lead nesta lista" : "Nenhum cliente nesta lista"}</strong><p>${clientesAbaAtual === "leads" ? "Os leads atribuídos a você aparecem aqui. Confira também os filtros." : "Cadastre um cliente ou ajuste a busca e os filtros."}</p></div>`;
+    const estadoVazio = `<div class="empty-state-operacao vendedor-keep"><span class="material-symbols-rounded">person_search</span><strong>Nenhum resultado encontrado</strong><p>Ajuste a pesquisa, a aba ou os filtros.</p></div>`;
     tela.dataset.vendedorClientesMontado = "true";
     observarClientesVendedor();
     tela.innerHTML = `
       <div class="section-card vendedor-clientes-gestao vendedor-clientes-v24">
-        <header class="vendedor-clientes-heading vendedor-keep"><div><h2>${clientesAbaAtual === "carteira" ? "Minha carteira" : "Leads recebidos"}</h2><p>${clientesAbaAtual === "carteira" ? "Cadastre e gerencie seus clientes." : "Atenda, converta ou devolva os leads recebidos."}</p></div>${clientesAbaAtual === "carteira" ? '<button type="button" class="primary-btn" onclick="abrirFormularioClienteVendedor()"><span class="material-symbols-rounded">person_add</span>Novo cliente</button>' : ""}</header>
         ${kpisClientesVendedor(lista)}
         <div class="vendedor-clientes-tabs" role="tablist" aria-label="Clientes do vendedor">
           <button type="button" class="${clientesAbaAtual === "leads" ? "active" : ""}" onclick="trocarAbaClientesVendedor('leads')"><span class="material-symbols-rounded">campaign</span>Leads recebidos</button>
           <button type="button" class="${clientesAbaAtual === "carteira" ? "active" : ""}" onclick="trocarAbaClientesVendedor('carteira')"><span class="material-symbols-rounded">group</span>Minha carteira</button>
         </div>
         <div class="vendedor-operacao-barra vendedor-clientes-barra">
-          <label class="vendedor-operacao-busca" for="buscaClientesVendedorInput"><span class="material-symbols-rounded">search</span><input id="buscaClientesVendedorInput" type="search" oninput="agendarBuscaClienteVendedor()" placeholder="Buscar por nome, documento ou telefone" value="${esc(buscaAnterior)}" onkeydown="if(event.key==='Enter'){event.preventDefault();executarPesquisaClientesVendedor()}"></label>
+          <label class="vendedor-operacao-busca" for="buscaClientesVendedorInput"><span class="material-symbols-rounded">search</span><input id="buscaClientesVendedorInput" type="search" placeholder="Buscar por nome, documento ou telefone" value="${esc(buscaAnterior)}" onkeydown="if(event.key==='Enter'){event.preventDefault();executarPesquisaClientesVendedor()}"></label>
           <button class="ghost-btn vendedor-filtro-btn" type="button" onclick="abrirFiltrosClientesVendedor()"><span class="material-symbols-rounded">tune</span>Filtros</button>
           <button class="primary-btn vendedor-buscar-btn" type="button" onclick="executarPesquisaClientesVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
         </div>
@@ -747,8 +556,7 @@
         ${drawerFiltrosClientes()}
       </div>`;
     limparBlocosClientesLegadosVendedor();
-    agendarLimpezaClientesVendedor();
-    if (buscaFocada) { const input = document.getElementById("buscaClientesVendedorInput"); input?.focus({ preventScroll: true }); if (Number.isInteger(cursorBusca)) input?.setSelectionRange(cursorBusca, cursorBusca); }
+    [0, 50, 150, 300, 700, 1200].forEach(ms => setTimeout(limparBlocosClientesLegadosVendedor, ms));
   }
 
   function switchCliente(id, titulo, subtitulo) {
@@ -800,8 +608,7 @@
   function telefoneWhatsappCliente(cliente = {}) {
     let digitos = texto(cliente.telefonePrincipal || cliente.telefone || cliente.celular || cliente.whatsapp).replace(/\D/g, "");
     if (!digitos) return "";
-    const ddi = texto(cliente.telefonePais || "55");
-    return ddi === "55" && digitos.length > 11 && digitos.startsWith(ddi) ? digitos : `${ddi}${digitos}`;
+    return digitos.startsWith("55") ? digitos : `55${digitos}`;
   }
 
   function montarTela() {
@@ -835,14 +642,13 @@
           </div>
           <div id="filtrosCobrancasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
-              <label class="vendedor-check"><input id="filtroCobrancaCarteiraCompleta" type="checkbox"><span>Todos os clientes da carteira (inclui cobranças futuras)</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaPendente" type="checkbox"><span>Sem baixa</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaPago" type="checkbox"><span>Pagos</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaNaoPago" type="checkbox"><span>Não pagos</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaAtrasado" type="checkbox"><span>Atrasados</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaEmDia" type="checkbox"><span>Em dia</span></label>
               <label class="vendedor-check"><input id="filtroCobrancaAdiantado" type="checkbox"><span>Adiantados</span></label>
-              <label><span>Ordenar</span><select id="ordenarCobrancas"><option value="prioridade_rota">Prioridade do dia</option><option value="nome_az">Nome A → Z</option><option value="nome_za">Nome Z → A</option><option value="saldo_maior">Maior saldo</option><option value="saldo_menor">Menor saldo</option><option value="atrasado">Mais atrasados</option></select></label>
+              <label><span>Ordenar</span><select id="ordenarCobrancas"><option value="nome_az">Nome A → Z</option><option value="nome_za">Nome Z → A</option><option value="saldo_maior">Maior saldo</option><option value="saldo_menor">Menor saldo</option><option value="atrasado">Mais atrasados</option></select></label>
             </div>
             <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosCobrancasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="buscarCobrancasVendedor()">Aplicar filtros</button></div>
           </div>
@@ -881,127 +687,6 @@
     return tela;
   }
 
-
-  function resumoDashboardCaixaVendedor() {
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    const caixa = caixaAberto();
-    const ledger = deduplicarMovimentos([
-      movimentosDoCaixaVendedor(caixa),
-      State.getLancamentosFinanceiros?.() || [],
-      window.lancamentosFinanceirosCache || []
-    ]);
-    return window.IntegroSellerBoxDashboard.summarize({ caixa, usuario, lancamentos: ledger, vendas: State.getVendas?.() || [], pagamentos: State.getPagamentos?.() || [] });
-  }
-
-  function renderDashboardCaixaVendedor() {
-    if (perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return null;
-    const dashboard = document.getElementById("dashboard");
-    if (!dashboard || !window.IntegroSellerBoxDashboard) return null;
-    const resumo = resumoDashboardCaixaVendedor();
-    document.getElementById("vendedorHoje")?.remove();
-    const cards = [
-      ["carteira-final", "Carteira final", "kpiCarteira", resumo.carteira],
-      ["caixa-atual", "Caixa atual", "kpiCaixaAtual", resumo.saldo],
-      ["recebido-hoje", "Recebido", "kpiRecebidoHoje", resumo.entradas],
-      ["vendas-hoje", "Vendas", "kpiVendasHoje", resumo.vendas],
-      ["gastos-hoje", "Saídas", "kpiGastosHoje", resumo.saidas]
-    ];
-    cards.forEach(([id, label, valueId, value], index) => {
-      const card = dashboard.querySelector('[data-dashboard-card="' + id + '"]');
-      if (!card) return;
-      card.hidden = false;
-      card.style.order = String(index);
-      card.setAttribute("role", "button");
-      card.setAttribute("tabindex", "0");
-      card.setAttribute("aria-label", label + ": " + moeda(value));
-      card.title = "Consultar " + label.toLowerCase() + " do caixa aberto";
-      const labelEl = card.querySelector(".kpi-label");
-      if (labelEl) labelEl.textContent = label;
-      const valueEl = document.getElementById(valueId);
-      if (valueEl) valueEl.textContent = moeda(value);
-      let sub = card.querySelector("[data-seller-box-caption]");
-      if (!sub) { sub = document.createElement("div"); sub.className = "kpi-sub"; sub.dataset.sellerBoxCaption = "true"; card.querySelector(".kpi-content")?.appendChild(sub); }
-      sub.textContent = resumo.caixa ? "Caixa aberto · " + dataClienteFormatada(resumo.caixa.dataOperacional || resumo.caixa.dataCaixa || resumo.caixa.dataAbertura || resumo.caixa.abertoEm) : "Nenhum caixa aberto";
-      if (!card.dataset.sellerKeyboardReady) {
-        card.dataset.sellerKeyboardReady = "true";
-        card.addEventListener("keydown", event => { if (["Enter", " "].includes(event.key)) { event.preventDefault(); card.click(); } });
-      }
-    });
-    const detalheAberto = document.querySelector("#dashboardInsightBody .seller-box-launch");
-    if (detalheAberto?.closest(".dashboard-insight.show")) document.getElementById("dashboardInsightBody").innerHTML = detalheDashboardCaixaVendedor("caixa-atual").html;
-    renderInsightsCaixaVendedor();
-    return resumo;
-  }
-
-  const historicoInsightsCaixa = new Map();
-  let insightsCarregando = '';
-  async function renderInsightsCaixaVendedor() {
-    const dashboard = document.getElementById("dashboard");
-    if (!dashboard || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
-    let box = document.getElementById("sellerDashboardInsights");
-    if (!box) {
-      box = document.createElement("section"); box.id = "sellerDashboardInsights"; box.className = "section-card seller-dashboard-insights";
-      box.innerHTML = '<header><div><h3>Análise do seu caixa</h3><p>Caixa em andamento comparado com caixas concluídos. Os valores atuais são parciais.</p></div><label>Comparar com<select id="sellerInsightReference"><option value="1">Último caixa concluído</option><option value="7">Média dos últimos 7 caixas</option></select></label></header><div id="sellerInsightContent"></div>';
-      dashboard.appendChild(box);
-      document.getElementById("sellerInsightReference").addEventListener("change", renderInsightsCaixaVendedor);
-    }
-    const content = document.getElementById("sellerInsightContent");
-    const current = resumoDashboardCaixaVendedor();
-    if (!current.caixa) { content.textContent = "Abra um caixa para acompanhar sua evolução."; return; }
-    const user = usuarioAtual || State.getUsuario?.() || {}, tenant = texto(State.getTenantId?.()), uid = texto(user.authUid || user.uid || user.id);
-    const count = Number(document.getElementById("sellerInsightReference").value) === 7 ? 7 : 1;
-    const identities = new Set([uid,user.id,user.usuarioId,user.vendedorId].filter(Boolean).map(texto));
-    const day = c => window.IntegroMovimentacoesView.dateISO(c);
-    const previous = (State.getCaixas?.() || []).filter(c => texto(c.id) !== texto(current.caixa.id) && texto(c.clientePlataformaId || c.empresaId || c.tenantId) === tenant && identities.has(texto(c.vendedorAuthUid || c.vendedorId || c.usuarioId)) && /^(FECH|CONFER)/.test(texto(c.status || c.situacao).toUpperCase()) && c.excluido !== true && day(c) && day(c) < day(current.caixa)).sort((a,b)=>day(b).localeCompare(day(a))).slice(0,count);
-    if (!previous.length) { content.textContent = "Ainda não há caixa concluído anterior para comparação."; return; }
-    const token = [tenant,uid,current.caixa.id,count].join(':');
-    if (insightsCarregando === token) return;
-    insightsCarregando = token; content.textContent = "Carregando comparação...";
-    try {
-      const references = await Promise.all(previous.map(async c => {
-        const key = [tenant,uid,c.id].join(':');
-        if (!historicoInsightsCaixa.has(key)) {
-          const snap = await (window.db || window.firebase.firestore()).collection("lancamentos_financeiros").where("clientePlataformaId","==",tenant).where("vendedorAuthUid","==",uid).where("caixaId","==",c.id).where("tipoLancamento","in",["VENDA","PAGAMENTO","INGRESSO","GASTO","RETIRADA"]).get();
-          historicoInsightsCaixa.set(key,snap.docs.map(d=>({id:d.id,...d.data()})));
-        }
-        const reference = window.IntegroSellerBoxDashboard.summarize({ caixa:c,usuario:user,historico:true,lancamentos:historicoInsightsCaixa.get(key),vendas:State.getVendas?.() || [],pagamentos:State.getPagamentos?.() || [] });
-        reference.carteira = c.carteiraFinalCentavos != null ? Number(c.carteiraFinalCentavos)/100 : c.carteiraFinal != null ? Number(c.carteiraFinal) : null;
-        return reference;
-      }));
-      if (texto(State.getTenantId?.()) !== tenant || texto(caixaAberto()?.id) !== texto(current.caixa.id) || Number(document.getElementById("sellerInsightReference")?.value) !== count) return;
-      const latest = resumoDashboardCaixaVendedor();
-      const labels = [["carteira","Carteira final"],["saldo","Caixa atual"],["recebimentos","Recolhido"],["vendas","Vendas"],["saidas","Saídas"]];
-      content.innerHTML = '<p class="seller-insight-reference">Referência: ' + previous.length + ' caixa(s) concluído(s), de ' + esc(dataClienteFormatada(day(previous[previous.length-1]))) + ' a ' + esc(dataClienteFormatada(day(previous[0]))) + '.</p><div class="seller-insight-grid">' + labels.map(([key,label]) => {
-        const valid = references.every(r=>Number.isFinite(r[key]));
-        const base = valid ? references.reduce((n,r)=>n+r[key],0)/references.length : null;
-        const comparison = window.IntegroSellerBoxDashboard.compare(latest[key],base);
-        const message = comparison.direction === 'unknown' ? 'Sem histórico suficiente para este indicador.' : comparison.direction === 'same' ? 'Mesmo valor da referência.' : (comparison.direction === 'up' ? 'Cresceu ' : 'Diminuiu ') + (comparison.percent == null ? moeda(Math.abs(comparison.difference)) + ' (referência zerada)' : Math.abs(comparison.percent).toLocaleString('pt-BR',{maximumFractionDigits:1}) + '%') + ' em relação à referência.';
-        return '<article><small>' + label + '</small><strong>' + moeda(latest[key]) + '</strong><p>' + esc(message) + '</p>' + (base == null ? '' : '<span>Referência: ' + moeda(base) + '</span>') + '</article>';
-      }).join('') + '</div><p class="seller-insight-reference">Comparação histórica. Acima ou abaixo do esperado depende de uma meta definida pela gestão.</p>';
-    } catch(error) { content.textContent = "Não foi possível consultar a comparação agora. Os valores do caixa continuam disponíveis nos cards."; console.warn('[ÍNTEGRO insights]',error?.code || error?.message); }
-    finally { if (insightsCarregando === token) insightsCarregando = ''; }
-  }
-
-  function detalheDashboardCaixaVendedor(card) {
-    if (perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return null;
-    const resumo = resumoDashboardCaixaVendedor();
-    const names = { "carteira-final": "Carteira final", "caixa-atual": "Caixa atual", "vendas-hoje": "Vendas", "recebido-hoje": "Entradas", "gastos-hoje": "Saídas" };
-    const keys = { "carteira-final": "carteira", "caixa-atual": "saldo", "vendas-hoje": "vendas", "recebido-hoje": "entradas", "gastos-hoje": "saidas" };
-    const key = keys[card];
-    if (!key) return null;
-    if (key === "saldo") {
-      const itens = [["Caixa inicial",resumo.inicial],["+ Ingressos",resumo.ingressos],["+ Recolhido",resumo.recebimentos],["− Vendas novas",resumo.novas],["− Vendas renovadas",resumo.renovadas],["− Gastos",resumo.gastos],["− Retiros",resumo.retiros],["= Caixa atual",resumo.saldo]];
-      const html = '<div class="insight-summary-grid seller-box-balance">' + itens.map(([rotulo,valor]) => '<div class="insight-summary-item ' + (rotulo.startsWith('+') ? 'is-entry' : rotulo.startsWith('−') ? 'is-exit' : rotulo.startsWith('=') ? 'is-balance is-current-balance' : 'is-balance') + '"><small>' + rotulo + '</small><strong>' + moeda(valor) + '</strong></div>').join("") + '</div>';
-      return { titulo:"Caixa do vendedor", subtitulo:resumo.caixa ? "Movimentações confirmadas do caixa ativo · " + dataClienteFormatada(resumo.caixa.dataOperacional || resumo.caixa.dataCaixa || resumo.caixa.dataAbertura || resumo.caixa.abertoEm) : "Nenhum caixa aberto para este vendedor.", html: '<div class="seller-box-launch"><button class="primary-btn" type="button" onclick="abrirGavetaMovimentacaoVendedor()" ' + (resumo.caixa ? '' : 'disabled') + '>Fazer lançamento</button></div>' + html };
-    }
-    const rows = resumo.detalhes[key] || [];
-    const cor = key === "entradas" ? "is-entry" : ["saidas","vendas"].includes(key) ? "is-exit" : "is-balance";
-    const table = rows.length ? '<div class="insight-summary-grid seller-box-balance">' + rows.map(item => '<div class="insight-summary-item ' + cor + '"><small>' + esc(item.clienteNome || item.descricao || item.historico || item.observacao || "Movimentação") + ' · ' + esc(window.IntegroMovimentacoesView.type(item)) + '</small><strong>' + moeda(window.IntegroMovimentacoesView.value(item)) + '</strong></div>').join("") + '</div>' : '';
-
-    const info = !resumo.caixa ? "Nenhum caixa aberto para este vendedor." : key === "carteira" ? "Saldo restante a receber das vendas do vendedor, incluindo vendas de dias anteriores. Os pagamentos já registrados foram descontados." : key === "saldo" ? "Saldo atual confirmado do caixa aberto." : rows.length ? "" : "Nenhum lançamento confirmado neste caixa.";
-    return { titulo: names[card], subtitulo: "Dados do caixa aberto do vendedor", html: '<div class="insight-summary-grid seller-box-balance"><div class="insight-summary-item ' + cor + '"><small>' + names[card] + '</small><strong>' + moeda(resumo[key]) + '</strong></div></div>' + (info ? '<div class="real-empty">' + info + '</div>' : '') + table };
-  }
-
   function configurarDashboardVendedor() {
     const dashboard = document.getElementById("dashboard");
     if (!dashboard) return;
@@ -1023,42 +708,11 @@
     if (label) label.textContent = "Visão geral";
     try { window.IntegroDashboardNavigation?.selecionar?.("visao-geral"); } catch (_) {}
     dashboard.querySelector('[data-dashboard-view="visao-geral"]')?.click();
-    renderDashboardCaixaVendedor();
     sincronizarMovimentosDashboardVendedor(false);
-  }
-
-  function renderHoje(carteira = null) {
-    if (perfil(usuarioAtual || State.getUsuario?.()) === "vendedor") { document.getElementById("vendedorHoje")?.remove(); return; }
-    if (perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
-    const dashboard = document.getElementById("dashboard");
-    const operacao = window.IntegroVendedorOperacao;
-    if (!dashboard || !operacao?.resumoHoje) return;
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    const dados = caches();
-    const lista = carteira || operacao.montarCarteira({ clientes: dados.clientes, vendas: dados.vendas, parcelas: dados.parcelas, pagamentosHoje: dados.pagamentos, historico: dados.historico, usuario, caixaId: caixaAberto()?.id || "", hoje: dataCaixa() });
-    const resumo = operacao.resumoHoje({ carteira: lista, pagamentos: dados.pagamentos, usuario, caixaId: caixaAberto()?.id || "", hoje: dataCaixa() });
-    const caixa = caixaAberto();
-    let central = document.getElementById("vendedorHoje");
-    if (!central) {
-      central = document.createElement("section");
-      central.id = "vendedorHoje";
-      central.className = "vendedor-hoje";
-      central.dataset.dashboardViews = "visao-geral";
-      dashboard.prepend(central);
-    }
-    const proxima = resumo.proxima;
-    const sync = proxima ? statusOperacaoCobranca(proxima) : null;
-    const bloqueado = !caixa || !proxima?.podeOperar || ["QUEUED", "PROCESSING"].includes(sync?.status);
-    const html = `<header class="vendedor-hoje-head"><h2>Hoje</h2><span class="vendedor-hoje-caixa">Caixa ${esc(caixa ? texto(caixa.status).toLowerCase() : "fechado")}</span></header>
-      <div class="vendedor-hoje-resumo"><div><small>Recebido confirmado</small><strong>${moeda(resumo.recebidoHoje)}</strong></div><div><small>Previsto hoje</small><strong>${moeda(resumo.previstoHoje)}</strong></div><div><small>Para visitar</small><strong>${resumo.pendentes}</strong></div><div><small>Atrasados na fila</small><strong>${resumo.atrasados}</strong></div></div>
-      ${proxima ? `<div class="vendedor-hoje-proxima"><div><small>Próxima cobrança</small><strong>${esc(proxima.clienteApelido || proxima.clienteNome)}</strong><span>${moeda(proxima.valorParcela)} · ${esc(operacao.situacaoVisual(proxima))}</span></div><div class="vendedor-hoje-acoes"><button class="primary-btn" type="button" ${bloqueado ? "disabled" : ""} onclick="abrirPagamentoCliente(${esc(JSON.stringify(proxima.vendaId))})">Receber</button><button class="ghost-btn" type="button" ${bloqueado ? "disabled" : ""} onclick="abrirNaoPagamentoVenda(${esc(JSON.stringify(proxima.vendaId))})">Não pagou</button><button class="ghost-btn" type="button" ${proxima.telefone ? "" : "disabled"} onclick="abrirWhatsAppClienteCobranca(${esc(JSON.stringify(proxima.clienteId))},${esc(JSON.stringify(proxima.vendaId))})">WhatsApp</button></div></div>` : `<p class="vendedor-hoje-vazio">${lista.length ? "Nenhuma visita pendente nesta data." : "Nenhuma cobrança carregada para esta data."}</p>`}`;
-    if (central.__integroHojeHtml !== html) { central.innerHTML = html; central.__integroHojeHtml = html; }
   }
 
   function recalcularDashboardVendedor(origem = "vendedor") {
     try {
-      renderHoje();
-      renderDashboardCaixaVendedor();
       if (typeof window.renderizarDashboardGerencialComCache === "function") {
         return window.renderizarDashboardGerencialComCache({ tempoReal: true, origem });
       }
@@ -1093,7 +747,6 @@
         sincronizacaoDashboardEm = Date.now();
       } catch (erro) {
         console.warn("[ÍNTEGRO VENDEDOR] Não foi possível reconstruir imediatamente o resumo do caixa atual.", erro);
-        if (document.body?.classList?.contains("integro-booting")) throw erro;
       } finally {
         sincronizacaoDashboardMovimentos = null;
       }
@@ -1154,13 +807,12 @@
     el.innerHTML = vendas.length ? vendas.map(v => {
       const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
       return `<article class="vendedor-venda-card">
-        <div class="vendedor-venda-identidade"><strong>${esc(cliente.apelido || v.clienteApelido || cliente.nome || cliente.nomeCompleto || v.clienteNome || "Cliente")}</strong><small>${esc(cliente.nomeCompleto || cliente.nome || v.clienteNome || "")}</small><small>${esc(v.codigo || v.numero || v.id || "")}</small></div>
+        <div class="vendedor-venda-identidade"><strong>${texto(cliente.apelido || v.clienteApelido || cliente.nome || cliente.nomeCompleto || v.clienteNome || "Cliente")}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || v.clienteNome || "")}</small><small>${texto(v.codigo || v.numero || v.id || "")}</small></div>
         <div><span>Data da venda</span><strong>${dataRegistro(v) ? dataRegistro(v).split("-").reverse().join("/") : "Não informada"}</strong></div>
         <div><span>Valor vendido</span><strong>${moeda(v.valorEmprestado || v.valorVenda || v.valor || 0)}</strong></div>
         <div><span>Carteira gerada</span><strong>${moeda(v.valorTotalVenda || v.saldoDevedor || 0)}</strong></div>
         <div><span>Parcela</span><strong>${moeda(v.valorParcela || 0)}</strong></div>
-        <div><span>Status</span><strong>${esc(v.statusVenda || v.status || "ATIVA")}</strong></div>
-        <footer class="vendedor-venda-acoes"><button class="ghost-btn" type="button" ${idCliente(cliente) ? "" : "disabled"} onclick="abrirDrawerClienteVendedor('${esc(idCliente(cliente))}')"><span class="material-symbols-rounded">person</span>Ver cliente</button><button class="primary-btn" type="button" ${idCliente(cliente) && clientePodeIniciarNovaVenda(cliente) ? "" : "disabled"} onclick="selecionarClienteNovaVendaVendedor('${esc(idCliente(cliente))}')"><span class="material-symbols-rounded">add_shopping_cart</span>Nova venda</button></footer>
+        <div><span>Status</span><strong>${texto(v.statusVenda || v.status || "ATIVA")}</strong></div>
       </article>`;
     }).join("") : '<div class="empty-state-operacao"><strong>Nenhuma venda encontrada</strong><p>Não há vendas vinculadas a este vendedor para os filtros informados.</p></div>';
   }
@@ -1192,121 +844,13 @@
       modal.id = "vendedorOperacaoModal";
       modal.className = "vendedor-operacao-modal";
       modal.addEventListener("click", evento => { if (evento.target === modal) fecharModal(); });
-      modal.addEventListener("keydown", evento => {
-        if (evento.key === "Escape") { evento.preventDefault(); fecharModal(); return; }
-        if (evento.key !== "Tab") return;
-        const focaveis = [...modal.querySelectorAll('button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]')].filter(el => el.getClientRects().length);
-        const primeiro = focaveis[0], ultimo = focaveis[focaveis.length - 1];
-        if (evento.shiftKey && document.activeElement === primeiro) { evento.preventDefault(); ultimo?.focus(); }
-        else if (!evento.shiftKey && document.activeElement === ultimo) { evento.preventDefault(); primeiro?.focus(); }
-      });
       document.body.appendChild(modal);
     }
-    if (!modal.classList.contains("open")) focoAnteriorModal = document.activeElement;
-    modal.classList.remove("is-fechamento");
-    modal.innerHTML = `<div class="vendedor-operacao-modal-card" role="dialog" aria-modal="true" aria-labelledby="vendedorModalTitulo"><div class="vendedor-operacao-modal-head"><h3 id="vendedorModalTitulo">${esc(titulo)}</h3><button type="button" aria-label="Fechar" onclick="fecharModalVendedorOperacao()">×</button></div><div class="vendedor-operacao-modal-body">${conteudo}</div>${acoes ? `<div class="vendedor-operacao-modal-actions">${acoes}</div>` : ""}</div>`;
+    modal.innerHTML = `<div class="vendedor-operacao-modal-card"><div class="vendedor-operacao-modal-head"><h3>${titulo}</h3><button type="button" onclick="fecharModalVendedorOperacao()">×</button></div><div class="vendedor-operacao-modal-body">${conteudo}</div>${acoes ? `<div class="vendedor-operacao-modal-actions">${acoes}</div>` : ""}</div>`;
     modal.classList.add("open");
-    (modal.querySelector("input, select, textarea") || modal.querySelector("button"))?.focus({ preventScroll: true });
   }
 
-  function fecharModal() {
-    document.getElementById("vendedorOperacaoModal")?.classList.remove("open");
-    if (focoAnteriorModal?.isConnected) focoAnteriorModal.focus({ preventScroll: true });
-    focoAnteriorModal = null;
-  }
-
-  let snapshotFechamentoVendedor = null;
-  let fechamentoVendedorEmAndamento = false;
-
-  function pendenciasFechamentoVendedor(caixa, usuario, conferirRota = true) {
-    const pendentes = [...operacoesAssincronas.values()].some(item => ["QUEUED", "PROCESSING"].includes(item.status));
-    if (pendentes) throw new Error("Aguarde a sincronização das operações antes de fechar o caixa.");
-    const chave = window.IntegroOperacional.chaveFilaOffline(usuario);
-    const fila = JSON.parse(localStorage.getItem(chave) || "[]");
-    if (!Array.isArray(fila)) throw new Error("Não foi possível conferir as operações offline.");
-    const offline = fila.filter(item => texto(item.caixaId) === texto(caixa.id) && ["PENDENTE", "SINCRONIZANDO", "ERRO", "ERRO_BLOQUEADO_CAIXA_FECHADO"].includes(texto(item.statusSync || item.status || "PENDENTE").toUpperCase()));
-    if (offline.length) throw new Error("Existem operações offline pendentes para este caixa.");
-    const rota = window.montarCobrancasPorVenda?.() || [];
-    if (conferirRota && rota.some(item => item.comCobrancaHoje && !item.pagoHoje && !item.naoPagoHoje)) throw new Error("Conclua as pendências da rota antes de fechar o caixa.");
-  }
-
-  function bloqueiosFechamentoVendedor(snapshot = {}) {
-    const avisos = [];
-    if (numero(snapshot.pendenciasCobranca) > 0) avisos.push(`Cobranças/visitas sem registro: ${numero(snapshot.pendenciasCobranca)}.`);
-    if (numero(snapshot.pagamentosPendentes) > 0) avisos.push(`Pagamentos pendentes de sincronização ou regularização: ${numero(snapshot.pagamentosPendentes)}.`);
-    if (numero(snapshot.aprovacoesPendentes) > 0) avisos.push(`Solicitações aguardando aprovação: ${numero(snapshot.aprovacoesPendentes)}.`);
-    if (Array.isArray(snapshot.inconsistencias) && snapshot.inconsistencias.length) {
-      const itens = snapshot.inconsistencias.slice(0, 5).map(texto).filter(Boolean);
-      avisos.push(`Inconsistências financeiras (solicite revisão do supervisor): ${itens.join(", ")}${snapshot.inconsistencias.length > 5 ? " e outras" : ""}.`);
-    }
-    return avisos;
-  }
-
-  async function abrirFechamentoVendedor() {
-    if (fechamentoVendedorEmAndamento) return;
-    snapshotFechamentoVendedor = null;
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    if (perfil(usuario) !== "vendedor") return;
-    try {
-      const caixa = await garantirCaixaAberto();
-      if (!caixa) throw new Error("Nenhum caixa aberto ou reaberto foi localizado.");
-      pendenciasFechamentoVendedor(caixa, usuario, false);
-      modalBase("Fechar caixa", '<p role="status">Conferindo o resumo do caixa atual…</p>');
-      const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId: caixa.id, clientePlataformaId: State.getTenantId?.() || usuario.clientePlataformaId, usuario });
-      const bloqueios = bloqueiosFechamentoVendedor(snapshot);
-      snapshotFechamentoVendedor = snapshot;
-      const linhas = [["Recebimentos", snapshot.totalPagamentosCentavos], ["Ingressos", snapshot.totalIngressosCentavos], ["Vendas / empréstimos", snapshot.totalVendasCentavos], ["Despesas", snapshot.totalGastosCentavos], ["Retiradas", snapshot.totalRetiradasCentavos], ["Recolhimentos", snapshot.totalRecolhimentosCentavos], ["Ajustes", snapshot.totalAjustesCentavos]];
-      const visitadas = numero(snapshot.totalVisitadas), total = numero(snapshot.totalCobrancas);
-      modalBase("Fechamento de caixa", `<section class="vendedor-fechamento-resumo" aria-label="Resumo do caixa atual"><small>Caixa ${esc(caixa.id)} · ${esc(snapshot.dataOperacional || dataCaixa())}</small><div class="vendedor-fechamento-saldos"><div><span>Caixa atual calculado</span><strong>${moeda(snapshot.caixaFinalEsperadoCentavos / 100)}</strong></div><div><span>Caixa inicial</span><strong>${moeda(numero(snapshot.caixaInicialCentavos) / 100)}</strong></div></div><dl class="vendedor-fechamento-metricas">${linhas.map(([label, valor]) => `<div><dt>${esc(label)}</dt><dd>${moeda(numero(valor) / 100)}</dd></div>`).join("")}</dl><div class="vendedor-fechamento-visitas"><span>Clientes visitados</span><strong>${visitadas} de ${total}</strong><progress max="${Math.max(1,total)}" value="${visitadas}"></progress></div></section>${bloqueios.length ? `<div class="vendedor-fechamento-pendente" role="status"><strong>Fechamento bloqueado:</strong><ul>${bloqueios.map(aviso => `<li>${esc(aviso)}</li>`).join("")}</ul></div>` : ""}<label for="vendedorFechamentoValor">Valor físico/real do caixa</label><input id="vendedorFechamentoValor" inputmode="decimal" placeholder="0,00" autocomplete="off"><label for="vendedorFechamentoJustificativa">Observação</label><textarea id="vendedorFechamentoJustificativa" placeholder="Obrigatória se houver divergência"></textarea>`, '<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorFechamentoConfirmar" class="primary-btn" type="button" onclick="confirmarFechamentoCaixaVendedorUnificado()">Confirmar fechamento</button>');
-      document.getElementById("vendedorOperacaoModal")?.classList.add("is-fechamento");
-      const confirmar = document.getElementById("vendedorFechamentoConfirmar");
-      if (confirmar) confirmar.disabled = bloqueios.length > 0;
-    } catch (erro) {
-      snapshotFechamentoVendedor = null;
-      fecharModal();
-      UIHelpers.alerta(erro.message || "Não foi possível conferir o caixa.");
-    }
-  }
-
-  async function confirmarFechamentoVendedor() {
-    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
-      window.IntegroConectividade?.avisar?.();
-      return;
-    }
-    if (fechamentoVendedorEmAndamento || !snapshotFechamentoVendedor) return;
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    const snapshot = snapshotFechamentoVendedor;
-    const bloqueios = bloqueiosFechamentoVendedor(snapshot);
-    if (bloqueios.length) return UIHelpers.alerta("Conclua as pendências e abra novamente o resumo do caixa. " + bloqueios.join(" "));
-    const valorTexto = texto(document.getElementById("vendedorFechamentoValor")?.value);
-    const valor = Number(valorTexto.replace(/\./g, "").replace(",", "."));
-    const justificativa = texto(document.getElementById("vendedorFechamentoJustificativa")?.value);
-    if (!valorTexto || !/^-?\d+(?:\.\d{3})*(?:,\d{1,2})?$/.test(valorTexto) || !Number.isFinite(valor)) return UIHelpers.alerta("Informe um valor físico/real válido.");
-    const centavos = Math.round(valor * 100);
-    if (centavos !== snapshot.caixaFinalEsperadoCentavos && !justificativa) return UIHelpers.alerta("Informe uma justificativa para a divergência.");
-    let restaurar = () => {};
-    try {
-      pendenciasFechamentoVendedor(snapshot.caixa, usuario, false);
-      fechamentoVendedorEmAndamento = true;
-      restaurar = setBotaoProcessando(document.getElementById("vendedorFechamentoConfirmar"), "Fechando caixa…");
-      const resultado = await window.IntegroCaixa.registrarFechamentoCaixaTransacional({ usuario, clientePlataformaId: State.getTenantId?.() || usuario.clientePlataformaId, caixaId: snapshot.caixa.id, vendedorId: snapshot.caixa.vendedorId, vendedorAuthUid: snapshot.caixa.vendedorAuthUid || usuario.authUid, valorInformadoCentavos: centavos, justificativa, snapshot, origem: "vendedor_unificado" });
-      const fechado = { ...snapshot.caixa, status: resultado.statusFechamento, ativo: false, fechado: true };
-      window.caixaAtual = fechado;
-      State.setCaixas?.((State.getCaixas?.() || []).map(item => texto(item.id) === texto(fechado.id) ? fechado : item));
-      snapshotFechamentoVendedor = null;
-      fecharModal();
-      await window.IntegroLogout.encerrar(async () => {
-        await window.IntegroV27Session?.end?.({ silent: true });
-        await window.firebase.auth().signOut();
-        window.IntegroOperacional.limparSessaoLocal({ usuario, limparFila: false });
-      }, { destino: "index.html?motivo=caixa-fechado&mensagem=" + encodeURIComponent("Caixa fechado. Solicite a abertura ou reabertura para entrar novamente.") });
-    } catch (erro) {
-      UIHelpers.alerta(erro.message || "Não foi possível fechar o caixa.");
-    } finally {
-      restaurar();
-      fechamentoVendedorEmAndamento = false;
-    }
-  }
+  function fecharModal() { document.getElementById("vendedorOperacaoModal")?.classList.remove("open"); }
 
   function clientePorId(clienteId) {
     return (State.getClientes?.() || []).find(cliente => texto(idCliente(cliente)) === texto(clienteId)) || null;
@@ -1435,13 +979,13 @@
         </div>
         <div class="vendedor-cliente-drawer-observacao"><span>Observação cadastrada</span><p>${esc(cliente.observacao || cliente.observacoes || "Nenhuma observação registrada.")}</p></div>
       </section>
-      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="vendas"><div class="vendedor-cliente-historico"></div></section>
-      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="pagamentos"><div class="vendedor-cliente-historico"></div></section>
+      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="vendas"><div class="vendedor-cliente-historico">${historicoVendasClienteHtml(clienteId)}</div></section>
+      <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="pagamentos"><div class="vendedor-cliente-historico">${historicoPagamentosClienteHtml(clienteId)}</div></section>
       <section class="vendedor-cliente-drawer-panel" data-cliente-drawer-panel="historico"><div id="clienteDrawerHistorico" class="vendedor-cliente-historico"><div class="vendedor-historico-loading"><span class="material-symbols-rounded">history</span>Carregando histórico...</div></div></section>
       <div class="vendedor-cliente-drawer-actions">
         <button class="ghost-btn" type="button" ${whatsapp ? "" : "disabled"} onclick="abrirWhatsAppClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">chat</span>WhatsApp</button>
         <button class="ghost-btn" type="button" onclick="editarCadastroCompletoClienteVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">edit</span>Editar cadastro</button>
-        <button class="primary-btn" type="button" ${ativo ? 'disabled title="Cliente com venda ativa"' : ""} onclick="venderClienteDrawerVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>${emLead ? "Converter em venda" : ehRenovacaoCliente(cliente) ? "Renovação" : "Vender"}</button>
+        <button class="primary-btn" type="button" ${ativo ? 'disabled title="Cliente com venda ativa"' : ""} onclick="venderClienteDrawerVendedor('${esc(clienteId)}')"><span class="material-symbols-rounded">shopping_cart</span>${emLead ? "Converter em venda" : "Vender"}</button>
       </div>
     </div>`;
   }
@@ -1449,17 +993,14 @@
   async function abrirDrawerCliente(clienteId) {
     const cliente = clientePorId(clienteId);
     if (!cliente) return UIHelpers?.alerta?.("Cliente não encontrado.");
-    if (!clienteEmFluxoLead(cliente) && window.IntegroCliente360) return window.IntegroCliente360.open(clienteId);
     clienteDrawerAbertoId = clienteId;
     if (typeof window.abrirDrawer !== "function") return abrirFormularioCliente(clienteId);
     window.abrirDrawer(clienteEmFluxoLead(cliente) ? "Atendimento do lead" : "Cliente", cliente.nomeCompleto || cliente.nome || cliente.apelido || "", conteudoDrawerCliente(cliente));
     atualizarCamposStatusLeadVendedor("clienteDrawerStatusLead");
-    // Histórico é consultado somente quando a aba é aberta.
+    carregarHistoricoDrawerCliente(clienteId);
   }
 
   function abrirAbaDrawerCliente(aba = "resumo") {
-    if (aba === "historico") carregarHistoricoDrawerCliente(clienteDrawerAbertoId);
-    if (aba === "vendas" || aba === "pagamentos") { const panel = document.querySelector(`[data-cliente-drawer-panel="${aba}"] .vendedor-cliente-historico`); if (panel) panel.innerHTML = aba === "vendas" ? historicoVendasClienteHtml(clienteDrawerAbertoId) : historicoPagamentosClienteHtml(clienteDrawerAbertoId); }
     document.querySelectorAll("[data-cliente-drawer-tab]").forEach(btn => btn.classList.toggle("active", btn.dataset.clienteDrawerTab === aba));
     document.querySelectorAll("[data-cliente-drawer-panel]").forEach(panel => panel.classList.toggle("active", panel.dataset.clienteDrawerPanel === aba));
   }
@@ -1467,7 +1008,7 @@
   function atualizarCamposStatusLeadVendedor(selectId = "clienteDrawerStatusLead") {
     const select = document.getElementById(selectId);
     const status = texto(select?.value).toUpperCase();
-    const wrap = document.getElementById(selectId === "clienteVendedorStatusAtendimento" ? "clienteFormularioRetornoWrap" : "clienteDrawerRetornoWrap");
+    const wrap = document.getElementById("clienteDrawerRetornoWrap");
     if (wrap) wrap.hidden = status !== "RETORNO_AGENDADO";
     const destaque = document.getElementById("clienteDrawerStatusDestaque");
     if (destaque) {
@@ -1548,65 +1089,6 @@
     setTimeout(() => selecionarClienteNovaVenda(clienteId), 40);
   }
 
-  function formatarDocumentoFormularioCliente() {
-    const tipo = document.getElementById("clienteVendedorTipoDocumento")?.value || "CPF";
-    const campo = document.getElementById("clienteVendedorDocumento");
-    if (!campo) return;
-    const d = campo.value.replace(/\D/g, "").slice(0, tipo === "CNPJ" ? 14 : 11);
-    campo.maxLength = tipo === "CNPJ" ? 18 : 14;
-    campo.value = tipo === "CNPJ" ? d.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/(\d{3})(\d)/, "$1/$2").replace(/(\d{4})(\d)/, "$1-$2") : d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2");
-    const pessoa = document.getElementById("clienteVendedorTipoCliente");
-    if (pessoa) pessoa.value = tipo === "CNPJ" ? "PJ" : "PF";
-  }
-
-  function formatarTelefoneFormularioCliente() {
-    const campo = document.getElementById("clienteVendedorTelefone");
-    if (!campo) return;
-    const ddi = document.getElementById("clienteVendedorTelefonePais")?.value || "55";
-    let d = campo.value.replace(/\D/g, "");
-    if (ddi === "55" && d.length > 11 && d.startsWith("55")) d = d.slice(2);
-    d = d.slice(0, ddi === "55" ? 11 : 15 - ddi.length);
-    campo.maxLength = ddi === "55" ? 15 : 15 - ddi.length + Math.floor((14 - ddi.length) / 3);
-    campo.value = ddi === "55" ? d.replace(/^(\d{2})(\d)/, "($1) $2").replace(/(\d{4,5})(\d{4})$/, "$1-$2") : d.replace(/(\d{3})(?=\d)/g, "$1 ");
-  }
-
-  let viewportFormularioInstalado = false;
-  function manterCampoFormularioVisivel() {
-    const campo = document.activeElement;
-    if (!window.matchMedia("(max-width: 980px)").matches || !campo?.closest?.("#clientes.active .vendedor-cliente-form-completo")) return;
-    const rect = campo.getBoundingClientRect();
-    const viewport = window.visualViewport;
-    const topo = viewport?.offsetTop || 0;
-    const fundo = topo + (viewport?.height || window.innerHeight);
-    if (rect.top < topo + 16 || rect.bottom > fundo - 24) campo.scrollIntoView({ block:"center", behavior:"auto" });
-  }
-
-  function instalarNavegacaoFormularioCliente() {
-    const form = document.querySelector("#clientes .vendedor-cliente-form-completo");
-    if (!form || form.dataset.navegacaoCampos === "1") return;
-    form.dataset.navegacaoCampos = "1";
-    const campos = () => Array.from(form.querySelectorAll("input,select,textarea")).filter(c => !c.disabled && !c.readOnly && !["hidden","file","checkbox","radio","button","submit"].includes(c.type));
-    campos().forEach(c => c.setAttribute("enterkeyhint", "next"));
-    form.addEventListener("keydown", e => {
-      if (e.key !== "Enter" || e.isComposing || e.shiftKey || e.ctrlKey || e.altKey || e.metaKey || e.target.tagName === "TEXTAREA") return;
-      const lista = campos();
-      const indice = lista.indexOf(e.target);
-      if (indice < 0) return;
-      e.preventDefault();
-      const proximo = lista.slice(indice + 1).find(c => c.getClientRects().length || c.closest(".cliente-form-panel") && !c.closest(".cliente-form-panel").classList.contains("active"));
-      if (!proximo) { e.target.blur(); return; }
-      const painel = proximo.closest(".cliente-form-panel");
-      if (painel && !painel.classList.contains("active")) abrirAbaFormularioCliente(painel.dataset.clienteFormPanel);
-      proximo.focus();
-      window.requestAnimationFrame(manterCampoFormularioVisivel);
-    });
-    form.addEventListener("focusin", () => window.requestAnimationFrame(manterCampoFormularioVisivel));
-    if (!viewportFormularioInstalado) {
-      window.visualViewport?.addEventListener("resize", () => window.requestAnimationFrame(manterCampoFormularioVisivel), { passive:true });
-      viewportFormularioInstalado = true;
-    }
-  }
-
   function formularioClienteConteudo(cliente, clienteId, criado, historico, veioLeads, score, refs) {
     return `
       <div class="vendedor-cliente-form-completo">
@@ -1614,36 +1096,38 @@
           <button class="active" type="button" data-cliente-form-tab="dados" onclick="abrirAbaFormularioClienteVendedor('dados')">Dados</button>
           <button type="button" data-cliente-form-tab="referencias" onclick="abrirAbaFormularioClienteVendedor('referencias')">Referencias</button>
           <button type="button" data-cliente-form-tab="endereco" onclick="abrirAbaFormularioClienteVendedor('endereco')">Endereco</button>
+          <button type="button" data-cliente-form-tab="score" onclick="abrirAbaFormularioClienteVendedor('score')">Score</button>
           <button type="button" data-cliente-form-tab="bancarios" onclick="abrirAbaFormularioClienteVendedor('bancarios')">Banco</button>
         </nav>
         <section class="cliente-form-panel active" data-cliente-form-panel="dados">
-          ${veioLeads ? `<div class="cliente-form-lead-box"><strong>Gestão do lead</strong><p>Atualize o status do lead sem sair do cadastro.</p>${selectStatusLead(cliente || {})}<label id="clienteFormularioRetornoWrap" ${cliente?.statusAtendimento === "RETORNO_AGENDADO" ? "" : "hidden"}>Data de retorno<input id="clienteFormularioDataRetorno" type="date" value="${esc(texto(cliente?.dataRetorno).slice(0,10))}"></label></div>` : ""}
-          <label>Segmento<input id="clienteVendedorSegmento" required value="${esc(cliente?.segmento || "")}" maxlength="100"></label>
-          <label>Nome completo<input id="clienteVendedorNome" value="${esc(cliente?.nomeCompleto || cliente?.nome || "")}" autocomplete="name" required></label>
-          <label>Tipo de cliente<select id="clienteVendedorTipoCliente" required onchange="document.getElementById('clienteVendedorTipoDocumento').value=this.value==='PJ'?'CNPJ':'CPF';formatarDocumentoFormularioClienteVendedor()"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
-          <label>Tipo de documento<select id="clienteVendedorTipoDocumento" required onchange="formatarDocumentoFormularioClienteVendedor()"><option value="CPF" ${texto(cliente?.tipoDocumento || (String(cliente?.documento || cliente?.cpfCnpj || "").replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF")) === "CPF" ? "selected" : ""}>CPF</option><option value="CNPJ" ${texto(cliente?.tipoDocumento || (String(cliente?.documento || cliente?.cpfCnpj || "").replace(/\D/g, "").length === 14 ? "CNPJ" : "CPF")) === "CNPJ" ? "selected" : ""}>CNPJ</option></select></label>
-          <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" maxlength="18" oninput="formatarDocumentoFormularioClienteVendedor()" required></label>
-          <label>País do telefone<select id="clienteVendedorTelefonePais" required onchange="formatarTelefoneFormularioClienteVendedor()">${[["55","Brasil (+55)"],["351","Portugal (+351)"],["1","Estados Unidos / Canadá (+1)"],["54","Argentina (+54)"],["595","Paraguai (+595)"],["598","Uruguai (+598)"]].map(([ddi,nome])=>`<option value="${ddi}" ${String(cliente?.telefonePais || "55") === ddi ? "selected" : ""}>${nome}</option>`).join("")}</select></label>
-          <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" maxlength="15" oninput="formatarTelefoneFormularioClienteVendedor()" required></label>
-          <label class="cliente-form-check"><input role="switch" id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
-          <label>Observacao<textarea id="clienteVendedorObservacao">${esc(cliente?.observacao || cliente?.observacoes || "")}</textarea></label>
-        <section class="cliente-form-anexos" aria-label="Anexos do cliente">
+          ${veioLeads ? `<div class="cliente-form-lead-box"><strong>Gestão do lead</strong><p>Atualize o status do lead sem sair do cadastro.</p>${selectStatusLead(cliente || {})}</div>` : ""}
           <label class="cliente-foto-field"><span>Foto de perfil</span><input id="clienteVendedorFoto" type="file" accept="image/*"><small>${esc(cliente?.fotoPerfilNome || cliente?.fotoUrl || "Nenhuma foto anexada")}</small></label>
-          <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Nenhum documento selecionado")}</small></label>
-        </section>
+          <label>Apelido<input id="clienteVendedorApelido" value="${esc(cliente?.apelido || "")}"></label>
+          <label>Nome completo<input id="clienteVendedorNome" value="${esc(cliente?.nomeCompleto || cliente?.nome || "")}" autocomplete="name" required></label>
+          <label>Tipo de cliente<select id="clienteVendedorTipoCliente"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
+          <label>Tipo de documento<select id="clienteVendedorTipoDocumento"><option value="CPF" ${texto(cliente?.tipoDocumento || "CPF") === "CPF" ? "selected" : ""}>CPF</option><option value="CNPJ" ${texto(cliente?.tipoDocumento) === "CNPJ" ? "selected" : ""}>CNPJ</option><option value="RG" ${texto(cliente?.tipoDocumento) === "RG" ? "selected" : ""}>RG</option></select></label>
+          <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" required></label>
+          <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" required></label>
+          <label class="cliente-form-check"><input id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
+          <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Ate a integracao de Storage, os nomes ficam preparados no cadastro.")}</small></label>
         </section>
         <section class="cliente-form-panel" data-cliente-form-panel="referencias">
           <div class="cliente-form-section-head"><strong>Telefones de referencia</strong><button class="ghost-btn" type="button" onclick="adicionarReferenciaTelefoneClienteVendedor()"><span class="material-symbols-rounded">add</span>Adicionar</button></div>
           <div id="clienteReferenciasTelefoneLista">${refs.map(htmlReferenciaTelefone).join("")}</div>
         </section>
         <section class="cliente-form-panel" data-cliente-form-panel="endereco">
-          <label>CEP<input id="clienteVendedorCep" required value="${esc(cliente?.cep || "")}" inputmode="numeric" onblur="buscarCepClienteVendedor()"></label>
-          <label>Rua<input id="clienteVendedorEndereco" required value="${esc(cliente?.endereco || cliente?.logradouro || "")}"></label>
-          <label>Numero<input id="clienteVendedorNumero" required value="${esc(cliente?.numero || cliente?.numeroEndereco || "")}"></label>
+          <label>CEP<input id="clienteVendedorCep" value="${esc(cliente?.cep || "")}" inputmode="numeric" onblur="buscarCepClienteVendedor()"></label>
+          <label>Rua<input id="clienteVendedorEndereco" value="${esc(cliente?.endereco || cliente?.logradouro || "")}"></label>
+          <label>Numero<input id="clienteVendedorNumero" value="${esc(cliente?.numero || cliente?.numeroEndereco || "")}"></label>
           <label>Complemento<input id="clienteVendedorComplemento" value="${esc(cliente?.complemento || "")}"></label>
-          <label>Bairro<input id="clienteVendedorBairro" required value="${esc(cliente?.bairro || "")}"></label>
-          <label>Cidade<input id="clienteVendedorCidade" required value="${esc(cliente?.cidade || "")}"></label>
-          <label>UF<input id="clienteVendedorUf" required maxlength="2" value="${esc(cliente?.uf || cliente?.estado || "")}"></label>
+          <label>Bairro<input id="clienteVendedorBairro" value="${esc(cliente?.bairro || "")}"></label>
+          <label>Cidade<input id="clienteVendedorCidade" value="${esc(cliente?.cidade || "")}"></label>
+          <label>UF<input id="clienteVendedorUf" maxlength="2" value="${esc(cliente?.uf || cliente?.estado || "")}"></label>
+        </section>
+        <section class="cliente-form-panel" data-cliente-form-panel="score">
+          <div class="cliente-score-box" style="--score:${score}"><strong>${score}</strong><span>Score operacional</span><div><i></i></div><small>Calculado pelo comportamento do cliente na empresa: historico, atrasos, saldo e recorrencia.</small></div>
+          ${veioLeads ? '<p class="cliente-form-note">Cliente recebido de leads. Ao virar venda, o departamento de leads sera notificado pelo fluxo de conversao.</p>' : `<div class="cliente-form-note"><strong>Status atual:</strong> ${esc(texto(cliente?.statusAtendimento || cliente?.statusCliente || cliente?.status || (criado ? 'AGUARDANDO_ATENDIMENTO' : 'INATIVO')).replaceAll('_',' '))}</div>`}
+          <label>Observacao<textarea id="clienteVendedorObservacao">${esc(cliente?.observacao || cliente?.observacoes || "")}</textarea></label>
         </section>
         <section class="cliente-form-panel" data-cliente-form-panel="bancarios">
           <label>Banco<input id="clienteVendedorBanco" value="${esc(valorCliente(cliente, ["banco", "bancoNome"], ""))}"></label>
@@ -1677,14 +1161,11 @@
       <div class="section-card vendedor-cliente-pagina">
         <header class="vendedor-cliente-pagina-head">
           <button class="ghost-btn" type="button" onclick="voltarGerenciarClientesVendedor()"><span class="material-symbols-rounded">arrow_back</span>Voltar</button>
-          <div><h2>${cliente ? "Cadastro do cliente" : "Criar cliente"}</h2></div>
+          <div><small>Clientes</small><h2>${cliente ? "Cadastro do cliente" : "Criar cliente"}</h2><p>${cliente ? "Atualize os dados do cadastro e salve as alteracoes." : "Cadastre o cliente com dados completos e vinculo do vendedor atual."}</p></div>
         </header>
         ${formularioClienteConteudo(cliente, clienteId, criado, historico, veioLeads, score, refs)}
         <footer class="vendedor-cliente-pagina-actions">${acoesFormularioCliente(clienteId, criado, historico, veioLeads)}</footer>
       </div>`;
-    instalarNavegacaoFormularioCliente();
-    formatarDocumentoFormularioCliente();
-    formatarTelefoneFormularioCliente();
     limparBlocosClientesLegadosVendedor();
     setTimeout(() => document.getElementById("clienteVendedorNome")?.focus(), 0);
   }
@@ -1747,13 +1228,9 @@
   }
 
   async function salvarCliente(clienteId = "") {
-    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
-      window.IntegroConectividade?.avisar?.();
-      return;
-    }
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const nome = texto(document.getElementById("clienteVendedorNome")?.value);
-    const segmento = texto(document.getElementById("clienteVendedorSegmento")?.value);
+    const apelido = texto(document.getElementById("clienteVendedorApelido")?.value);
     const documento = texto(document.getElementById("clienteVendedorDocumento")?.value);
     const telefone = texto(document.getElementById("clienteVendedorTelefone")?.value);
     const clienteAtual = clienteId ? clientePorId(clienteId) : null;
@@ -1761,30 +1238,9 @@
     const statusOriginal = texto(clienteAtual?.statusAtendimento || clienteAtual?.statusCliente || clienteAtual?.status || "AGUARDANDO_ATENDIMENTO").toUpperCase();
     const statusAtendimento = texto(document.getElementById("clienteVendedorStatusAtendimento")?.value || statusOriginal || "AGUARDANDO_ATENDIMENTO").toUpperCase();
     const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
-    if (!clienteId) {
-      const obrigatorios = [["clienteVendedorSegmento","Segmento","dados"],["clienteVendedorNome","Nome completo","dados"],["clienteVendedorTipoCliente","Tipo de cliente","dados"],["clienteVendedorTipoDocumento","Tipo de documento","dados"],["clienteVendedorDocumento","Documento","dados"],["clienteVendedorTelefonePais","País do telefone","dados"],["clienteVendedorTelefone","Telefone principal","dados"],["clienteVendedorCep","CEP","endereco"],["clienteVendedorEndereco","Rua","endereco"],["clienteVendedorNumero","Número","endereco"],["clienteVendedorBairro","Bairro","endereco"],["clienteVendedorCidade","Cidade","endereco"],["clienteVendedorUf","UF","endereco"]];
-      const faltante = obrigatorios.find(([id]) => !texto(document.getElementById(id)?.value));
-      if (faltante) {
-        abrirAbaFormularioCliente(faltante[2]);
-        document.getElementById(faltante[0])?.focus?.();
-        return UIHelpers?.alerta?.("Preencha o campo obrigatório: " + faltante[1] + ".");
-      }
-      if (texto(document.getElementById("clienteVendedorCep")?.value).replace(/\D/g, "").length !== 8 || !/^[a-z]{2}$/i.test(texto(document.getElementById("clienteVendedorUf")?.value))) {
-        abrirAbaFormularioCliente("endereco");
-        return UIHelpers?.alerta?.("Informe CEP com 8 dígitos e UF com 2 letras.");
-      }
-    }
     if (!nome || !documento || !telefone) return UIHelpers?.alerta?.("Informe nome, documento e telefone principal.");
     if (!tenantId) return UIHelpers?.alerta?.("Empresa/tenant nao identificado para criar cliente. Atualize a sessao e tente novamente.");
-    const tipoDocumento = document.getElementById("clienteVendedorTipoDocumento")?.value || "CPF";
-    if (documento.replace(/\D/g, "").length !== (tipoDocumento === "CNPJ" ? 14 : 11)) return UIHelpers?.alerta?.("Informe o documento completo para o tipo selecionado.");
-    const ddi = document.getElementById("clienteVendedorTelefonePais")?.value || "55";
-    const numero = telefone.replace(/\D/g, "");
-    if (ddi === "55" ? ![10,11].includes(numero.length) : numero.length < 6 || numero.length + ddi.length > 15) return UIHelpers?.alerta?.("Informe um telefone válido para o país selecionado.");
-    const dataRetorno = texto(document.getElementById("clienteFormularioDataRetorno")?.value || clienteAtual?.dataRetorno);
-    if (ehLeadAtual && statusAtendimento === "RETORNO_AGENDADO" && !dataRetorno) { abrirAbaFormularioCliente("dados"); document.getElementById("clienteFormularioDataRetorno")?.focus(); return UIHelpers?.alerta?.("Informe a data de retorno."); }
     const botao = document.getElementById("salvarClienteVendedorBtn");
-    if (botao?.disabled) return;
     if (botao) botao.disabled = true;
     try {
       const observacaoLead = texto(document.getElementById("clienteVendedorObservacao")?.value);
@@ -1796,20 +1252,19 @@
         renderClientesVendedor({ forcar: true });
         UIHelpers?.alerta?.("Lead retornado para o setor responsável.");
         return;
-      } else if (clienteId && ehLeadAtual && statusAtendimento && (statusAtendimento !== statusOriginal || (statusAtendimento === "RETORNO_AGENDADO" && dataRetorno !== texto(clienteAtual?.dataRetorno))) && typeof window.ClientesService?.registrarAtendimento === "function") {
+      } else if (clienteId && ehLeadAtual && statusAtendimento && statusAtendimento !== statusOriginal && typeof window.ClientesService?.registrarAtendimento === "function") {
         const motivo = ["NAO_CONVERTIDO", "RECUSADO"].includes(statusAtendimento) ? (observacaoLead || "Status atualizado pelo vendedor") : "";
-        await window.ClientesService.registrarAtendimento(clienteId, { statusAtendimento, status: statusAtendimento, observacao: observacaoLead, motivo, dataRetorno, canal: "OUTRO" }, usuario, { db: window.db || window.firebase?.firestore?.() });
+        await window.ClientesService.registrarAtendimento(clienteId, { statusAtendimento, status: statusAtendimento, observacao: observacaoLead, motivo, canal: "OUTRO" }, usuario, { db: window.db || window.firebase?.firestore?.() });
       }
       const authUid = texto(usuario.authUid || usuario.uid || usuario.id || usuario.usuarioId);
       const vendedorId = texto(usuario.vendedorId || usuario.authUid || usuario.uid || usuario.id || usuario.usuarioId);
       const payload = {
         nome,
         nomeCompleto: nome,
-        segmento,
+        apelido,
         documento,
         tipoCliente: texto(document.getElementById("clienteVendedorTipoCliente")?.value || "PF"),
         tipoDocumento: texto(document.getElementById("clienteVendedorTipoDocumento")?.value || "CPF"),
-        telefonePais: document.getElementById("clienteVendedorTelefonePais")?.value || "55",
         telefonePrincipal: telefone,
         telefone,
         telefonePrincipalWhatsapp: document.getElementById("clienteVendedorTelefoneWhatsapp")?.checked === true,
@@ -1822,7 +1277,6 @@
         cidade: texto(document.getElementById("clienteVendedorCidade")?.value),
         uf: texto(document.getElementById("clienteVendedorUf")?.value).toUpperCase(),
         statusAtendimento,
-        ...(ehLeadAtual ? { dataRetorno: statusAtendimento === "RETORNO_AGENDADO" ? dataRetorno : "" } : {}),
         observacao: texto(document.getElementById("clienteVendedorObservacao")?.value),
         dadosBancarios: {
           banco: texto(document.getElementById("clienteVendedorBanco")?.value),
@@ -1833,7 +1287,7 @@
         },
         fotoPerfilNome: nomesArquivosInput("clienteVendedorFoto")[0] || "",
         documentosAnexosNomes: nomesArquivosInput("clienteVendedorDocumentos"),
-        origem: clienteId ? (clienteAtual?.origem || "CADASTRO_DIRETO") : "CADASTRO_DIRETO",
+        origem: clienteId ? "ATUALIZACAO_VENDEDOR" : "CADASTRO_DIRETO",
         clientePlataformaId: tenantId,
         tenantId,
         empresaId: tenantId,
@@ -1844,10 +1298,6 @@
         criadoPorId: authUid,
         equipeId: usuario.equipeId || usuario.equipesIds?.[0] || usuario.equipeIds?.[0] || ""
       };
-      if (clienteId) {
-        // Edição cadastral não redistribui carteira nem muda autoria/origem.
-        ["clientePlataformaId","tenantId","empresaId","vendedorId","vendedorAuthUid","vendedorUid","criadoPor","criadoPorId","equipeId","origem"].forEach(campo => delete payload[campo]);
-      }
       if (clienteId) { if (!window.ClientesService?.atualizarCliente) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.atualizarCliente(clienteId, payload, usuario, { db: window.db || window.firebase?.firestore?.() }); }
       else { if (!window.ClientesService?.criarClienteComLegado) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.criarClienteComLegado({ dados: payload, usuario, clientePlataformaId: tenantId, permitirTelefoneDuplicado: false, db: window.db || window.firebase?.firestore?.() }); }
       fecharModal();
@@ -1896,7 +1346,7 @@
 
   function item(vendaId) {
     caches();
-    return window.IntegroVendedorOperacao?.montarCarteira?.({ clientes: window.clientesCache, vendas: window.vendasCache, parcelas: window.parcelasCache, pagamentosHoje: window.pagamentosHojeCache, historico: window.historicoCobrancasCache, usuario: usuarioAtual || State.getUsuario?.(), caixaId: caixaAberto()?.id || "", hoje: dataCaixa() }).find(registro => texto(registro.vendaId) === texto(vendaId));
+    return window.IntegroVendedorOperacao?.montarCarteira?.({ clientes: window.clientesCache, vendas: window.vendasCache, parcelas: window.parcelasCache, pagamentosHoje: window.pagamentosHojeCache, historico: window.historicoCobrancasCache, usuario: usuarioAtual || State.getUsuario?.(), hoje: dataCaixa() }).find(registro => texto(registro.vendaId) === texto(vendaId));
   }
 
   function caixaAberto() {
@@ -1922,7 +1372,7 @@
       return ["ABERTO", "REABERTO"].includes(status) &&
         caixa.ativo !== false &&
         caixa.excluido !== true &&
-        (tenantCaixa === tenantId && Boolean(tenantId)) &&
+        (!tenantCaixa || !tenantId || tenantCaixa === tenantId) &&
         pertenceAoVendedor(caixa, usuario);
     }).sort((a, b) => dataRegistro(b).localeCompare(dataRegistro(a)) || texto(b.id).localeCompare(texto(a.id)));
 
@@ -2348,23 +1798,12 @@
     </article>`;
   }
 
-  let filtroMovimentacoesVendedor = { usuario: "", tipo: "" };
-  function selecionarTipoMovimentacoesVendedor(tipo) {
-    if (!["", "INGRESSO", "GASTO", "RETIRADA"].includes(tipo)) return false;
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    if (perfil(usuario) !== "vendedor") return false;
-    filtroMovimentacoesVendedor = { usuario: texto(usuario.authUid || usuario.uid || usuario.id), tipo };
-    renderMovimentacoesVendedor();return true;
-  }
   function renderMovimentacoesVendedor() {
     const tela = document.getElementById("movimentacoes");
     if (!tela || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
     const caixa = caixaAberto();
-    const todos = caixa ? movimentosDoCaixaVendedor(caixa) : [];
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    const tipoSelecionado = filtroMovimentacoesVendedor.usuario === texto(usuario.authUid || usuario.uid || usuario.id) ? filtroMovimentacoesVendedor.tipo : "";
-    const movimentos = tipoSelecionado ? todos.filter(item => tipoMovimento(item).includes(tipoSelecionado === "RETIRADA" ? "RETIR" : tipoSelecionado)) : todos;
-    const totais = totaisMovimentacoes(todos);
+    const movimentos = caixa ? movimentosDoCaixaVendedor(caixa) : [];
+    const totais = totaisMovimentacoes(movimentos);
     tela.innerHTML = `
       <div class="section-card vendedor-movimentacoes-shell integro-shared-surface">
         <div class="section-header vendedor-mov-head integro-shared-header">
@@ -2378,13 +1817,9 @@
           <div class="kpi-retirada"><span class="vendedor-mov-kpi-icon" aria-hidden="true">↗</span><div><small>Retiradas confirmadas</small><strong>${moeda(totais.retiradas)}</strong></div></div>
         </div>
         ${caixa ? "" : '<p class="vendedor-mov-alerta">Abra um caixa para criar ou consultar as movimentações do dia.</p>'}
-        <section class="vendedor-mov-lista"><div class="vendedor-mov-lista-head"><h3>${({INGRESSO:"Ingressos",GASTO:"Gastos",RETIRADA:"Retiros"})[tipoSelecionado] || "Lançamentos do caixa aberto"}</h3><span>${movimentos.length} registro(s)</span></div>${movimentos.length ? movimentos.map(item => cardMovimentacaoVendedor(item, caixa)).join("") : '<div class="empty-state-operacao"><strong>Nenhuma movimentação encontrada</strong><p>Os lançamentos deste caixa aparecerão aqui.</p></div>'}</section>
+        <section class="vendedor-mov-lista"><div class="vendedor-mov-lista-head"><h3>Lançamentos do caixa aberto</h3><span>${movimentos.length} registro(s)</span></div>${movimentos.length ? movimentos.map(item => cardMovimentacaoVendedor(item, caixa)).join("") : '<div class="empty-state-operacao"><strong>Nenhuma movimentação encontrada</strong><p>Os lançamentos deste caixa aparecerão aqui.</p></div>'}</section>
       </div>
-`;
-  }
-
-  function garantirGavetaMovimentacaoVendedor() {
-    if (!document.getElementById("gavetaMovimentacaoVendedor")) document.body.insertAdjacentHTML("beforeend", `      <div id="gavetaMovimentacaoVendedor" class="vendedor-mov-drawer" aria-hidden="true" onclick="if(event.target===this)fecharGavetaMovimentacaoVendedor()">
+      <div id="gavetaMovimentacaoVendedor" class="vendedor-mov-drawer" aria-hidden="true" onclick="if(event.target===this)fecharGavetaMovimentacaoVendedor()">
         <aside class="vendedor-mov-drawer-card" role="dialog" aria-modal="true" aria-labelledby="tituloGavetaMovimentacaoVendedor">
           <header><div><small>Caixa aberto</small><h3 id="tituloGavetaMovimentacaoVendedor">Novo lançamento</h3></div><button type="button" onclick="fecharGavetaMovimentacaoVendedor()" aria-label="Fechar">×</button></header>
           <form class="vendedor-mov-form" onsubmit="event.preventDefault();registrarMovimentacaoVendedor()">
@@ -2396,13 +1831,12 @@
             <div class="vendedor-mov-drawer-actions"><button class="ghost-btn" type="button" onclick="fecharGavetaMovimentacaoVendedor()">Cancelar</button><button id="movimentacaoSalvarVendedorBtn" class="primary-btn" type="submit"><span class="material-symbols-rounded">save</span>Salvar</button></div>
           </form>
         </aside>
-      </div>`);
+      </div>`;
   }
 
   async function abrirGavetaMovimentacaoVendedor() {
     const caixa = await garantirCaixaAberto();
     if (!caixa || !caixaEstaAberto(caixa)) return UIHelpers?.alerta?.("Abra um caixa para criar um lançamento.");
-    garantirGavetaMovimentacaoVendedor();
     const drawer = document.getElementById("gavetaMovimentacaoVendedor");
     if (!drawer) return;
     drawer.classList.add("open");
@@ -2446,10 +1880,6 @@
   }
 
   async function registrarMovimentacaoVendedor() {
-    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
-      window.IntegroConectividade?.avisar?.();
-      return;
-    }
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const caixa = await garantirCaixaAberto();
     if (!caixa || !caixaEstaAberto(caixa)) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor.");
@@ -2633,25 +2063,18 @@
     }
   }
   async function confirmarPagamento(vendaId) {
-    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
-      window.IntegroConectividade?.avisar?.();
-      return;
-    }
     const registro = item(vendaId);
     if (!registro) return UIHelpers?.alerta?.("Cobrança não encontrada.");
+    const parcela = registro.parcelas.find(p => !["PAGA", "PAGO", "QUITADA", "QUITADO"].includes(texto(p.status || p.statusParcela).toUpperCase()));
     const caixa = await garantirCaixaAberto();
     if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
-    const { parcela } = selecionarPagamentoEditavel(registro, caixa);
     if (!parcela) return UIHelpers?.alerta?.("Não existe parcela pendente para esta venda.");
     const campo = document.getElementById("vendedorPagamentoValor");
-    const valor = window.IntegroOperacional?.moedaParaCentavos
-      ? window.IntegroOperacional.moedaParaCentavos(campo?.value || "0") / 100
-      : numero(String(campo?.value || "0").replace(/\./g, "").replace(",", "."));
+    const valor = numero(String(campo?.value || "0").replace(".", "").replace(",", "."));
     if (valor <= 0) return UIHelpers?.alerta?.("Informe um valor válido.");
     const botao = document.getElementById("vendedorPagamentoConfirmar");
-    const operacaoId = pagamentoIdDeterministico(registro, parcela, caixa);
+    const operacaoId = pagamentoIdDeterministico(registro, parcela, caixa, valor);
     const aliases = ["cobranca:" + texto(registro.vendaId), "venda:" + texto(registro.vendaId)];
-    let rollbackOtimista = null;
     try {
       await executarOperacaoAssincrona({
         id: operacaoId,
@@ -2660,18 +2083,10 @@
         botao,
         textoProcessando: "Sincronizando pagamento",
         executar: () => window.IntegroPagamento.registrarPagamentoTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, vendaId: registro.vendaId, parcelaId: parcela.id, clienteId: registro.clienteId, clienteNome: registro.clienteNome, valor, operacaoId }),
-        renderizar: status => {
-          if (status === "QUEUED" && !rollbackOtimista) {
-            rollbackOtimista = aplicarBaixaCobrancaOtimista({ tipo: "PAGAMENTO", registro, parcela, caixa, valor, operacaoId });
-            fecharModal();
-          }
-          window.renderCobrancas?.();
-        },
-        rollback: () => {
-          rollbackOtimista?.();
-          window.renderCobrancas?.();
-        }
+        renderizar: () => window.renderCobrancas?.(),
+        rollback: () => window.renderCobrancas?.()
       });
+      fecharModal();
       agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Pagamento registrado com sucesso.");
     } catch (erro) {
@@ -2680,46 +2095,15 @@
     }
   }
 
-  async function abrirPagamento(vendaId) {
+  function abrirPagamento(vendaId) {
     const registro = item(vendaId);
     if (!registro) return UIHelpers?.alerta?.("Cobrança não encontrada.");
-    const caixa = await garantirCaixaAberto();
-    if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor.");
-    const { pagamento, parcela } = selecionarPagamentoEditavel(registro, caixa);
-    if (!parcela) return UIHelpers?.alerta?.("Não existe parcela disponível para esta venda.");
-    const totalPagoNoCaixa = window.IntegroVendedorPagamentoFlexivel?.totalPagoNoCaixa?.(registro.vendaId, caixa);
-    const valorAnterior = Number.isInteger(totalPagoNoCaixa) ? totalPagoNoCaixa / 100 : (pagamento ? valorTotalPagamento(pagamento) : 0);
-    const valorAtual = pagamento || valorAnterior > 0 ? valorAnterior : numero(registro.valorParcela);
-    const titulo = pagamento ? "Editar pagamento" : "Registrar pagamento";
-    modalBase(titulo, `<p class="vendedor-modal-cliente">${esc(registro.clienteApelido || registro.clienteNome)}</p><small>${esc(registro.clienteNome)}</small><label>Total recebido neste caixa</label><input id="vendedorPagamentoValor" inputmode="decimal" value="${valorAtual.toFixed(2).replace(".", ",")}"><small>Informe o total acumulado. Se já lançou R$ 40,00 e recebeu mais R$ 40,00, altere para R$ 80,00. O caixa será ajustado somente pela diferença.</small><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarPagamentoVendedorUnificado('${registro.vendaId}')">${pagamento ? "Salvar alteração" : "Confirmar pagamento"}</button>`);
-    const campo = document.getElementById("vendedorPagamentoValor");
-    const resumo = document.createElement("div");
-    resumo.className = "vendedor-detalhes-grid";
-    resumo.setAttribute("aria-live", "polite");
-    campo?.parentElement?.appendChild(resumo);
-    const atualizarResumo = () => {
-      const recebido = window.IntegroOperacional?.moedaParaCentavos
-        ? window.IntegroOperacional.moedaParaCentavos(campo?.value || "0") / 100
-        : numero(String(campo?.value || "0").replace(/\./g, "").replace(",", "."));
-      const saldoEstimado = Math.max(0, Math.round((numero(registro.saldoDevedor) + valorAnterior - recebido) * 100) / 100);
-      resumo.innerHTML = `<div><span>Valor esperado da parcela</span><strong>${moeda(registro.valorParcela)}</strong></div><div><span>Total recebido informado</span><strong>${moeda(recebido)}</strong></div><div><span>Saldo estimado após confirmação</span><strong>${moeda(saldoEstimado)}</strong></div>`;
-    };
-    campo?.addEventListener("input", atualizarResumo);
-    atualizarResumo();
+    modalBase("Registrar pagamento", `<p class="vendedor-modal-cliente">${registro.clienteApelido || registro.clienteNome}</p><small>${registro.clienteNome}</small><label>Valor recebido</label><input id="vendedorPagamentoValor" inputmode="decimal" value="${numero(registro.valorParcela).toFixed(2).replace(".", ",")}"><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarPagamentoVendedorUnificado('${registro.vendaId}')">Confirmar pagamento</button>`);
   }
 
-  function pagamentoIdDeterministico(registro = {}, parcela = {}, caixa = {}) {
-    const dados = {
-      clientePlataformaId: State.getTenantId?.(),
-      caixaId: caixa.id || caixa.caixaId,
-      vendaId: registro.vendaId,
-      parcelaId: parcela.id || parcela.parcelaId
-    };
-    if (typeof window.IntegroPagamento?.pagamentoIdDeterministico === "function") {
-      return window.IntegroPagamento.pagamentoIdDeterministico(dados);
-    }
-    const bruto = [dados.clientePlataformaId, dados.caixaId, dados.vendaId, dados.parcelaId].map(texto).join("_");
-    return "pg_" + bruto.replace(/[^a-zA-Z0-9_-]+/g, "_").replace(/^_+|_+$/g, "");
+  function pagamentoIdDeterministico(registro = {}, parcela = {}, caixa = {}, valor = 0) {
+    const bruto = [State.getTenantId?.(), caixa.id || caixa.caixaId, registro.vendaId, parcela.id || parcela.parcelaId, numero(valor).toFixed(2), dataCaixa()].map(texto).join("_");
+    return `pagamento_${bruto.replace(/[^a-zA-Z0-9_-]+/g, '_').replace(/^_+|_+$/g, '')}`;
   }
 
   function naoPagamentoIdDeterministico(registro = {}, caixa = {}) {
@@ -2731,19 +2115,13 @@
     const registro = item(vendaId);
     const caixa = await garantirCaixaAberto();
     if (!registro || !caixa) return UIHelpers?.alerta?.("Cobrança ou caixa aberto não encontrado.");
-    if (registro.pagoHoje) return UIHelpers?.alerta?.("Este cliente já possui pagamento neste caixa. Use o botão Pago para alterar o total.");
     modalBase("Não pagamento", `<div class="vendedor-nova-venda-form vendedor-nao-pagamento-form"><div class="vendedor-nova-venda-cliente"><strong>${esc(registro.clienteApelido || registro.clienteNome)}</strong><small>Saldo devedor: ${moeda(registro.saldoDevedor)}</small></div><label>Motivo<select id="vendedorNaoPagamentoMotivo"><option value="Cliente não realizou o pagamento">Cliente não realizou o pagamento</option><option value="Cliente ausente">Cliente ausente</option><option value="Reagendado com o cliente">Reagendado com o cliente</option><option value="Cliente recusou pagamento">Cliente recusou pagamento</option><option value="Outro motivo">Outro motivo</option></select></label><label>Observação<textarea id="vendedorNaoPagamentoObservacao" rows="3" placeholder="Informe detalhes da visita ou próxima ação"></textarea></label></div>`, `<button class="ghost-btn" type="button" onclick="fecharModalVendedorOperacao()">Cancelar</button><button id="vendedorNaoPagamentoConfirmar" class="primary-btn" type="button" onclick="confirmarNaoPagamentoVendedorUnificado('${texto(registro.vendaId)}')">Registrar não pagamento</button>`);
   }
 
   async function registrarNaoPagamento(vendaId) {
-    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
-      window.IntegroConectividade?.avisar?.();
-      return;
-    }
     const registro = item(vendaId);
     const caixa = await garantirCaixaAberto();
     if (!registro || !caixa) return UIHelpers?.alerta?.("Cobrança ou caixa aberto não encontrado.");
-    if (registro.pagoHoje) return UIHelpers?.alerta?.("Este cliente já possui pagamento neste caixa. Use o botão Pago para alterar o total.");
     const motivo = texto(document.getElementById("vendedorNaoPagamentoMotivo")?.value || "Cliente não realizou o pagamento");
     const observacao = texto(document.getElementById("vendedorNaoPagamentoObservacao")?.value || "");
     if (!motivo) return UIHelpers?.alerta?.("Informe o motivo do não pagamento.");
@@ -2751,7 +2129,6 @@
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const historicoId = naoPagamentoIdDeterministico(registro, caixa);
     const aliases = ["cobranca:" + texto(registro.vendaId), "venda:" + texto(registro.vendaId)];
-    let rollbackOtimista = null;
     try {
       await executarOperacaoAssincrona({
         id: historicoId,
@@ -2760,18 +2137,10 @@
         botao,
         textoProcessando: "Sincronizando baixa",
         executar: () => window.IntegroCobranca.registrarNaoPagamentoTransacional({ usuario, clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id || caixa.caixaId || "", vendaId: registro.vendaId, clienteId: registro.clienteId, clienteNome: registro.clienteNome, operacaoId: historicoId, motivo, observacao, dataOperacional: dataCaixa(), origem: "painel_unificado_vendedor" }),
-        renderizar: status => {
-          if (status === "QUEUED" && !rollbackOtimista) {
-            rollbackOtimista = aplicarBaixaCobrancaOtimista({ tipo: "NAO_PAGAMENTO", registro, caixa, operacaoId: historicoId, motivo, observacao });
-            fecharModal();
-          }
-          window.renderCobrancas?.();
-        },
-        rollback: () => {
-          rollbackOtimista?.();
-          window.renderCobrancas?.();
-        }
+        renderizar: () => window.renderCobrancas?.(),
+        rollback: () => window.renderCobrancas?.()
       });
+      fecharModal();
       agendarRefreshOperacaoVendedor({ render: "cobrancas" });
       UIHelpers?.alerta?.("Não pagamento registrado.");
     } catch (erro) {
@@ -2784,9 +2153,9 @@
   function limparCobrancas() {
     const busca = document.getElementById("buscaCobrancaInput");
     if (busca) busca.value = "";
-    ["filtroCobrancaCarteiraCompleta", "filtroCobrancaPendente", "filtroCobrancaPago", "filtroCobrancaNaoPago", "filtroCobrancaAtrasado", "filtroCobrancaEmDia", "filtroCobrancaAdiantado"].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
+    ["filtroCobrancaPendente", "filtroCobrancaPago", "filtroCobrancaNaoPago", "filtroCobrancaAtrasado", "filtroCobrancaEmDia", "filtroCobrancaAdiantado"].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
     const ordem = document.getElementById("ordenarCobrancas");
-    if (ordem) ordem.value = "prioridade_rota";
+    if (ordem) ordem.value = "nome_az";
     window.renderCobrancas?.();
   }
 
@@ -2796,9 +2165,6 @@
     ["filtroVendaAtiva", "filtroVendaQuitada", "filtroVendaCancelada", "filtroVendaNova", "filtroVendaRenovacao"].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
     renderVendasDia();
   }
-
-  function primeiraDataCobrancaPermitida(){const date=new Date(dataCaixa()+"T12:00:00Z");date.setUTCDate(date.getUTCDate()+1);return date.toISOString().slice(0,10);}
-  function ehRenovacaoCliente(cliente){return Math.round(saldoCliente(cliente)*100)===0 && clienteTemHistoricoVenda(cliente);}
 
   async function abrirListaNovaVenda() {
     const caixa = await garantirCaixaAberto();
@@ -2814,14 +2180,10 @@
     const saldoAtivo = clientePossuiVendaAtiva(cliente);
     if (saldoAtivo && !clientePodeIniciarNovaVenda(cliente)) return UIHelpers?.alerta?.("Cliente com saldo devedor ativo. A política da empresa exige quitação antes de uma nova venda.");
     const avisoSaldo = saldoAtivo ? `<div class="vendedor-venda-alerta-saldo"><span class="material-symbols-rounded">policy</span><div><strong>Cliente possui saldo ativo</strong><small>${autorizacaoVendaComSaldoCliente(cliente) ? "Existe uma autorização temporária. Ela vale somente para o mesmo valor aprovado." : "Ao registrar, a venda será enviada para análise do Supervisor/Gerente antes de ser liberada."}</small></div></div>` : "";
-    modalBase("Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" min="${primeiraDataCobrancaPermitida()}" value="${primeiraDataCobrancaPermitida()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
+    modalBase("Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
   }
 
   async function confirmarNovaVenda() {
-    if (window.navigator?.onLine === false || (window.IntegroConectividade && !window.IntegroConectividade.podeOperar())) {
-      window.IntegroConectividade?.avisar?.();
-      return;
-    }
     const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(clienteNovaVendaId));
     const caixa = await garantirCaixaAberto();
     if (!cliente || !caixa) return UIHelpers?.alerta?.("Cliente ou caixa aberto não encontrado.");
@@ -2829,8 +2191,7 @@
     const juros = numero(texto(document.getElementById("novaVendaJuros")?.value).replace(",", "."));
     const parcelas = Math.round(numero(document.getElementById("novaVendaParcelas")?.value));
     const frequencia = texto(document.getElementById("novaVendaFrequencia")?.value || "DIARIA");
-    const primeiraCobranca = texto(document.getElementById("novaVendaPrimeiraCobranca")?.value || primeiraDataCobrancaPermitida());
-    if (primeiraCobranca < primeiraDataCobrancaPermitida()) return UIHelpers?.alerta?.("A primeira cobrança deve ser pelo menos um dia depois da data do caixa ativo.");
+    const primeiraCobranca = texto(document.getElementById("novaVendaPrimeiraCobranca")?.value || dataCaixa());
     if (valor <= 0 || parcelas < 1) return UIHelpers?.alerta?.("Informe valor e quantidade de parcelas válidos.");
     const total = valor + (valor * Math.max(0, juros) / 100);
     const botao = document.getElementById("confirmarNovaVendaVendedorBtn");
@@ -2842,7 +2203,7 @@
         aliases: ["cliente:" + texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId)],
         botao,
         textoProcessando: "Registrando venda",
-        executar: () => window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: ehRenovacaoCliente(cliente) ? "RENOVACAO" : "NOVA", origem: "painel_unificado_vendedor" }),
+        executar: () => window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: "NOVA", origem: "painel_unificado_vendedor" }),
         renderizar: () => renderVendasDia?.(),
         rollback: () => { renderClientesVendedor?.({ forcar: true }); renderVendasDia?.(); }
       });
@@ -2864,12 +2225,7 @@
 
   function abrirOperacao(itemMenu) {
     window.trocarTela?.("cobrancas", itemMenu);
-    setTimeout(async () => {
-      abrirAba("cobrancas");
-      const lista = document.getElementById("listaCobrancas");
-      if (lista) { lista.__integroCarteiraHtml = null; lista.innerHTML = '<p role="status">Atualizando cobranças do caixa aberto…</p>'; }
-      try { await refreshOperacaoVendedorParcial(); } catch (erro) { window.renderCobrancas?.(); UIHelpers.alerta(erro.message || "Não foi possível atualizar as cobranças."); } finally { window.renderCobrancas?.(); }
-    }, 0);
+    setTimeout(() => abrirAba("cobrancas"), 0);
   }
 
   function abrirDashboardInicial() {
@@ -2898,39 +2254,8 @@
     return true;
   }
 
-  document.addEventListener("usuario-validado", () => setTimeout(recuperarPainelVendedorAutenticado, 0));
-  document.addEventListener("integro-painel-permissoes-aplicadas", () => setTimeout(recuperarPainelVendedorAutenticado, 0));
-
-  // O painel unificado pode ser carregado depois do evento de autenticação.
-  // Nesse caso, a tela do vendedor ficava sem montagem e o fechamento oculto.
-  // Recuperar somente uma sessão Firebase V27 já validada, com permissão
-  // de cobranças, evita depender da ordem de chegada dos eventos.
-  function recuperarPainelVendedorAutenticado() {
-    if (instalado) return true;
-    const usuario = window.State?.getUsuario?.() || null;
-    const uid = window.firebase?.auth?.()?.currentUser?.uid || "";
-    if (!usuario || !uid || texto(usuario.authUid || usuario.uid) !== texto(uid)) return false;
-    if (perfil(usuario) !== "vendedor") return false;
-    if (!window.IntegroAcesso?.pode?.(usuario, "cobrancas.ver") &&
-        !window.IntegroAcesso?.pode?.(usuario, "operacao.cobrancas")) return false;
-    const tela = document.getElementById("cobrancas");
-    if (!tela || tela.dataset?.acessoPermitido === "false") return false;
-    return aplicar(usuario);
-  }
-  function agendarRecuperacaoPainelVendedor() {
-    if (instalado) return;
-    [0, 200, 800, 2000].forEach(atraso => setTimeout(() => {
-      if (!instalado) recuperarPainelVendedorAutenticado();
-    }, atraso));
-  }
-  document.addEventListener("integro-menu-unificado-renderizado", agendarRecuperacaoPainelVendedor);
-  document.addEventListener("integro-v27-pronto", agendarRecuperacaoPainelVendedor);
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", agendarRecuperacaoPainelVendedor, { once: true });
-  } else if (document.readyState === "interactive" || document.readyState === "complete") {
-    agendarRecuperacaoPainelVendedor();
-  }
-  window.addEventListener?.("load", agendarRecuperacaoPainelVendedor, { once: true });
+  document.addEventListener("usuario-validado", evento => setTimeout(() => aplicar(evento.detail), 0));
+  document.addEventListener("integro-painel-permissoes-aplicadas", evento => setTimeout(() => aplicar(evento.detail?.usuario), 0));
   document.addEventListener("integro-perfil-dados-carregados", () => {
     if (!instalado) return;
     caches();
@@ -2947,14 +2272,10 @@
   });
   document.addEventListener("integro-operacoes-tempo-real-atualizadas", () => {
     if (!instalado) return;
-    caches();
-    if (abaAtual === "cobrancas") window.renderCobrancas?.(); else renderVendasDia();
     recalcularDashboardVendedor("operacoes-tempo-real");
   });
   document.addEventListener("integro-tela-alterada", evento => {
-    if (evento.detail?.tela === "movimentacoes" && perfil(usuarioAtual || State.getUsuario?.()) === "vendedor") { window.trocarTela?.("dashboard"); return; }
     if (evento.detail?.tela === "clientes") setTimeout(() => renderClientesVendedor(), 0);
-    else pararObservacaoClientesVendedor();
     if (evento.detail?.tela === "dashboard") setTimeout(() => sincronizarMovimentosDashboardVendedor(false), 0);
     if (evento.detail?.tela === "movimentacoes") setTimeout(async () => {
       renderMovimentacoesVendedor();
@@ -2964,16 +2285,11 @@
       recalcularDashboardVendedor("movimentacoes-abertas");
     }, 0);
   });
-  document.addEventListener("DOMContentLoaded", () => setTimeout(recuperarPainelVendedorAutenticado, 0));
+  document.addEventListener("DOMContentLoaded", () => setTimeout(() => aplicar(State.getUsuario?.()), 0));
 
-  window.validarEAbrirFechamentoCaixa = abrirFechamentoVendedor;
-  window.confirmarFechamentoCaixaVendedorUnificado = confirmarFechamentoVendedor;
-  window.renderDashboardCaixaVendedor = renderDashboardCaixaVendedor;
-  window.detalheDashboardCaixaVendedor = detalheDashboardCaixaVendedor;
   window.obterDataCaixaVendedor = dataCaixa;
   window.obterCaixaAbertoVendedor = caixaAberto;
   window.atualizarCaixaAbertoVendedor = garantirCaixaAberto;
-  window.obterCaixaAbertoVendedor = caixaAberto;
   window.abrirOperacaoVendedor = abrirOperacao;
   window.abrirAbaVendasCobrancas = abrirAba;
   window.renderVendasDia = renderVendasDia;
@@ -3013,20 +2329,12 @@
   window.limparFiltrosClientesVendedor = limparFiltrosClientes;
   window.abrirFormularioClienteVendedor = abrirFormularioCliente;
   window.voltarGerenciarClientesVendedor = voltarGerenciarClientes;
-  window.formatarDocumentoFormularioClienteVendedor = formatarDocumentoFormularioCliente;
-  window.formatarTelefoneFormularioClienteVendedor = formatarTelefoneFormularioCliente;
   window.salvarClienteVendedor = salvarCliente;
   window.abrirAbaFormularioClienteVendedor = abrirAbaFormularioCliente;
   window.adicionarReferenciaTelefoneClienteVendedor = adicionarReferenciaTelefone;
   window.removerReferenciaTelefoneClienteVendedor = removerReferenciaTelefone;
   window.buscarCepClienteVendedor = buscarCepCliente;
   window.excluirClienteVendedor = excluirCliente;
-  window.prepararDevolucaoLeadVendedor = async clienteId => {
-    await abrirDrawerCliente(clienteId);
-    const select=document.getElementById('clienteDrawerStatusLead');
-    if(select){select.value='RETORNADO_LEADS';select.dispatchEvent(new Event('change',{bubbles:true}));}
-    document.getElementById('clienteDrawerObservacaoLead')?.focus();
-  };
   window.retornarClienteLeadsVendedor = retornarClienteLeads;
   window.abrirWhatsAppClienteVendedor = abrirWhatsAppCliente;
   window.toggleFiltrosVendasVendedor = () => toggleFiltros("filtrosVendasVendedor");
@@ -3040,5 +2348,5 @@
   window.abrirListaNovaVendaVendedor = abrirListaNovaVenda;
   window.selecionarClienteNovaVendaVendedor = selecionarClienteNovaVenda;
   window.confirmarNovaVendaVendedor = confirmarNovaVenda;
-  window.IntegroVendedorUnificado = Object.freeze({ aplicar, montarTela, renderHoje, renderVendasDia, renderClientesVendedor, renderMovimentacoesVendedor, selecionarTipoMovimentacoesVendedor, abrirAba, get ativo() { return instalado; } });
+  window.IntegroVendedorUnificado = Object.freeze({ aplicar, montarTela, renderVendasDia, renderClientesVendedor, renderMovimentacoesVendedor, abrirAba, get ativo() { return instalado; } });
 })();

@@ -17,36 +17,10 @@
     listenersAbertos: 0,
     listenersEncerrados: 0,
     erros: 0,
-    revalidacoes: 0,
-    confirmacoesServidor: 0,
     porColecao: Object.create(null)
   };
 
   let telaAtiva = "";
-  let geracaoCache = 0;
-  const bancos = new WeakMap();
-  let proximoBanco = 0;
-  const MAX_CACHE_ENTRADAS = 160;
-
-  function salvarCache(chave, entrada) {
-    const instante = agora();
-    for (const [id, item] of cache) {
-      if (item.expiraEm <= instante) cache.delete(id);
-    }
-    cache.delete(chave);
-    cache.set(chave, entrada);
-    while (cache.size > MAX_CACHE_ENTRADAS) cache.delete(cache.keys().next().value);
-  }
-
-  function chaveSessao() {
-    const usuario = global.State?.getUsuario?.() || global.usuarioLogado || global.currentUserData || {};
-    const uid = global.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid || usuario.id || "";
-    return JSON.stringify([texto(uid), tenantAtual()]);
-  }
-  function chaveSegura(db, chave) {
-    if (!bancos.has(db)) bancos.set(db, ++proximoBanco);
-    return JSON.stringify([bancos.get(db), chaveSessao(), chave]);
-  }
 
   function agora() { return Date.now(); }
   function texto(valor) { return String(valor ?? "").trim(); }
@@ -95,42 +69,39 @@
     const limite = Math.max(1, Number(opcoes.limite || 200));
     const ordem = Array.isArray(opcoes.ordem) ? opcoes.ordem : [];
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
-    const forcar = opcoes.forcar === true || document.body?.classList?.contains("integro-booting") === true;
+    const forcar = opcoes.forcar === true;
     if (!db || !colecao || !tenantId) return [];
 
-    const chave = chaveSegura(db, [opcoes.chave || "", chaveConsulta({ colecao, tenantId, filtros, limite, ordem })]);
+    const chave = opcoes.chave || chaveConsulta({ colecao, tenantId, filtros, limite, ordem });
     const salvo = cache.get(chave);
     if (!forcar && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
       metricas.consultasCache++;
       return salvo.dados.map(item => ({ ...item }));
     }
-    if (pendentes.has(chave)) {
+    if (!forcar && pendentes.has(chave)) {
       metricas.consultasDeduplicadas++;
       return pendentes.get(chave);
     }
 
-    const geracao = geracaoCache;
-    const sessao = chaveSessao();
-    const promessa = Promise.resolve().then(async () => {
+    const promessa = (async () => {
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
         const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
-        const snap = await ref.get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
-        if (sessao !== chaveSessao()) return [];
+        const snap = await ref.get();
         const dados = snap.docs.map(docData).filter(item => item.excluido !== true);
-        metricas.documentosRecebidos += snap.docs.length;
-        registrarColecao(colecao, "documentos", snap.docs.length);
-        if (cacheMs > 0 && geracao === geracaoCache) salvarCache(chave, { dados, expiraEm: agora() + cacheMs, colecao, tenantId });
+        metricas.documentosRecebidos += dados.length;
+        registrarColecao(colecao, "documentos", dados.length);
+        if (cacheMs > 0) cache.set(chave, { dados, expiraEm: agora() + cacheMs, colecao, tenantId });
         return dados.map(item => ({ ...item }));
       } catch (erro) {
         metricas.erros++;
         registrarColecao(colecao, "erros", 1);
         throw erro;
       } finally {
-        if (pendentes.get(chave) === promessa) pendentes.delete(chave);
+        pendentes.delete(chave);
       }
-    });
+    })();
     pendentes.set(chave, promessa);
     return promessa;
   }
@@ -140,78 +111,39 @@
     const colecao = texto(opcoes.colecao);
     const id = texto(opcoes.id);
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
+    const chave = opcoes.chave || `doc:${colecao}:${id}`;
     if (!db || !colecao || !id) return null;
-    const chave = chaveSegura(db, [opcoes.chave || "", `doc:${colecao}:${id}`]);
     const salvo = cache.get(chave);
     if (opcoes.forcar !== true && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
       metricas.consultasCache++;
       return salvo.dados ? { ...salvo.dados } : null;
     }
-    if (pendentes.has(chave)) {
+    if (opcoes.forcar !== true && pendentes.has(chave)) {
       metricas.consultasDeduplicadas++;
       return pendentes.get(chave);
     }
-    const geracao = geracaoCache;
-    const sessao = chaveSessao();
-    const promessa = Promise.resolve().then(async () => {
+    const promessa = (async () => {
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
-        const snap = await db.collection(colecao).doc(id).get(document.body?.classList?.contains("integro-booting") ? { source: "server" } : undefined);
-        if (sessao !== chaveSessao()) return null;
+        const snap = await db.collection(colecao).doc(id).get();
         const dados = snap.exists ? docData(snap) : null;
         if (dados) {
           metricas.documentosRecebidos++;
           registrarColecao(colecao, "documentos", 1);
         }
-        if (cacheMs > 0 && geracao === geracaoCache) salvarCache(chave, { dados, expiraEm: agora() + cacheMs, colecao });
+        if (cacheMs > 0) cache.set(chave, { dados, expiraEm: agora() + cacheMs, colecao });
         return dados ? { ...dados } : null;
       } catch (erro) {
         metricas.erros++;
         registrarColecao(colecao, "erros", 1);
         throw erro;
       } finally {
-        if (pendentes.get(chave) === promessa) pendentes.delete(chave);
+        pendentes.delete(chave);
       }
-    });
+    })();
     pendentes.set(chave, promessa);
     return promessa;
-  }
-
-  // Reabre apenas o stream Firestore; mantém os consumidores e os handles de
-  // cancelamento originais para não acumular listeners após uma reconexão.
-  function assinarGrupo(grupo) {
-    const versao = ++grupo.versao;
-    const antigo = grupo.unsubscribe;
-    grupo.unsubscribe = null;
-    grupo.ultimoDados = null;
-    grupo.ultimoSnapshot = null;
-    try { antigo?.(); } catch (_) {}
-    const valido = () => grupo.ativo && grupo.versao === versao && grupo.sessao === chaveSessao();
-    grupo.unsubscribe = grupo.ref.onSnapshot(snapshot => {
-      if (!valido()) return;
-      const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
-      metricas.documentosRecebidos += snapshot.docs.length;
-      registrarColecao(grupo.colecao, "documentos", snapshot.docs.length);
-      grupo.ultimoDados = dados;
-      grupo.ultimoSnapshot = snapshot;
-      [...grupo.inscritos.values()].forEach(inscrito => {
-        try { inscrito.aoAtualizar(dados.map(item => ({ ...item })), snapshot); }
-        catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
-      });
-      if (snapshot.metadata?.fromCache === false && snapshot.metadata?.hasPendingWrites === false) {
-        metricas.confirmacoesServidor++;
-        const [uid, tenantId] = JSON.parse(grupo.sessao);
-        global.IntegroConectividade?.confirmarServidor?.({ uid, tenantId, colecao: grupo.colecao });
-      }
-    }, erro => {
-      if (!valido()) return;
-      metricas.erros++;
-      registrarColecao(grupo.colecao, "erros", 1);
-      [...grupo.inscritos.values()].forEach(inscrito => {
-        try { inscrito.aoErro?.(erro); } catch (_) {}
-      });
-    });
   }
 
   function ouvir(opcoes = {}) {
@@ -221,9 +153,8 @@
     const filtros = Array.isArray(opcoes.filtros) ? opcoes.filtros : [];
     const limite = Math.max(1, Number(opcoes.limite || 200));
     const ordem = Array.isArray(opcoes.ordem) ? opcoes.ordem : [];
-    if (!db || !colecao || !tenantId) return () => {};
-    const assinatura = chaveSegura(db, chaveConsulta({ colecao, tenantId, filtros, limite, ordem }));
-    const chave = chaveSegura(db, [opcoes.chave || opcoes.escopo || "global", assinatura]);
+    const assinatura = chaveConsulta({ colecao, tenantId, filtros, limite, ordem });
+    const chave = texto(opcoes.chave || `${opcoes.escopo || "global"}:${assinatura}`);
     const escopo = texto(opcoes.escopo || "global");
     if (!db || !colecao || !tenantId || !chave || typeof opcoes.aoAtualizar !== "function") return () => {};
 
@@ -232,11 +163,26 @@
 
     let grupo = assinaturas.get(assinatura);
     if (!grupo) {
-      const sessao = chaveSessao();
       const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
-      grupo = { assinatura, colecao, tenantId, sessao, ref, inscritos: new Map(),
-        unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora(), ativo: true, versao: 0 };
-      assinarGrupo(grupo);
+      grupo = { assinatura, colecao, tenantId, inscritos: new Map(), unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora() };
+      grupo.unsubscribe = ref.onSnapshot(snapshot => {
+        const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
+        metricas.documentosRecebidos += dados.length;
+        registrarColecao(colecao, "documentos", dados.length);
+        grupo.ultimoDados = dados;
+        grupo.ultimoSnapshot = snapshot;
+        [...grupo.inscritos.values()].forEach(inscrito => {
+          try { inscrito.aoAtualizar(dados.map(item => ({ ...item })), snapshot); }
+          catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
+        });
+      }, erro => {
+        metricas.erros++;
+        registrarColecao(colecao, "erros", 1);
+        [...grupo.inscritos.values()].forEach(inscrito => {
+          try { inscrito.aoErro?.(erro); }
+          catch (_) {}
+        });
+      });
       assinaturas.set(assinatura, grupo);
       metricas.listenersAbertos++;
       registrarColecao(colecao, "listeners", 1);
@@ -250,8 +196,6 @@
       const atualGrupo = assinaturas.get(assinatura);
       atualGrupo?.inscritos.delete(chave);
       if (atualGrupo && atualGrupo.inscritos.size === 0) {
-        atualGrupo.ativo = false;
-        atualGrupo.versao++;
         try { atualGrupo.unsubscribe?.(); } catch (_) {}
         assinaturas.delete(assinatura);
         metricas.listenersEncerrados++;
@@ -260,7 +204,7 @@
     };
 
     grupo.inscritos.set(chave, { chave, escopo, colecao, tenantId, aoAtualizar: opcoes.aoAtualizar, aoErro: opcoes.aoErro, criadoEm: agora() });
-    listeners.set(chave, { chave, chaveOriginal: texto(opcoes.chave), assinatura, escopo, colecao, tenantId, parar, criadoEm: agora() });
+    listeners.set(chave, { chave, assinatura, escopo, colecao, tenantId, parar, criadoEm: agora() });
     if (grupo.ultimoDados) {
       try { opcoes.aoAtualizar(grupo.ultimoDados.map(item => ({ ...item })), grupo.ultimoSnapshot); }
       catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
@@ -268,9 +212,7 @@
     return parar;
   }
 
-  function parar(chave) {
-    [...listeners.values()].filter(item => item.chave === chave || item.chaveOriginal === texto(chave)).forEach(item => item.parar());
-  }
+  function parar(chave) { listeners.get(texto(chave))?.parar?.(); }
   function pararEscopo(escopo) {
     const alvo = texto(escopo);
     [...listeners.values()].filter(item => item.escopo === alvo).forEach(item => item.parar());
@@ -278,32 +220,8 @@
   function pararTodos() { [...listeners.values()].forEach(item => item.parar()); }
 
   function invalidar(prefixo = "") {
-    geracaoCache++;
     const alvo = texto(prefixo);
     [...cache.keys()].forEach(chave => { if (!alvo || chave.includes(alvo)) cache.delete(chave); });
-    [...pendentes.keys()].forEach(chave => { if (!alvo || chave.includes(alvo)) pendentes.delete(chave); });
-  }
-
-  function revalidarConexao() {
-    invalidar();
-    if (global.navigator?.onLine === false) return { assinaturas: 0, motivo: "offline" };
-    const sessao = chaveSessao();
-    let reabertas = 0;
-    for (const grupo of [...assinaturas.values()]) {
-      if (!grupo.ativo || grupo.sessao !== sessao || grupo.inscritos.size === 0) continue;
-      try {
-        assinarGrupo(grupo);
-        reabertas++;
-      } catch (erro) {
-        metricas.erros++;
-        console.warn("[ÍNTEGRO DataRuntime] Não foi possível revalidar assinatura.", erro);
-        [...grupo.inscritos.values()].forEach(inscrito => {
-          try { inscrito.aoErro?.(erro); } catch (_) {}
-        });
-      }
-    }
-    metricas.revalidacoes++;
-    return { assinaturas: reabertas, motivo: "reconexao" };
   }
 
   function medirInteracao(nome, inicio = agora()) {
@@ -344,7 +262,7 @@
   document.addEventListener("integro-tela-alterada", evento => definirTelaAtiva(evento.detail?.tela || ""));
   document.addEventListener("usuario-validado", () => invalidar("doc:usuarios:"));
   global.addEventListener?.("beforeunload", pararTodos);
-  global.firebase?.auth?.()?.onAuthStateChanged?.(() => { pararTodos(); invalidar(); });
+  global.firebase?.auth?.()?.onAuthStateChanged?.(usuario => { if (!usuario) { pararTodos(); cache.clear(); } });
 
   const api = Object.freeze({
     consultarTenant,
@@ -355,7 +273,6 @@
     pararEscopo,
     pararTodos,
     invalidar,
-    revalidarConexao,
     diagnostico,
     medirInteracao,
     definirTelaAtiva,
@@ -363,7 +280,7 @@
   });
 
   global.IntegroDataRuntime = api;
-  global.IntegroPerformance = Object.freeze({ diagnostico, limparCache: () => invalidar(), pararListeners: pararTodos });
+  global.IntegroPerformance = Object.freeze({ diagnostico, limparCache: () => cache.clear(), pararListeners: pararTodos });
 })(window);
 
 

@@ -5,7 +5,6 @@
     dashboard: "dashboard.ver",
     operacao: "operacao.ver",
     clientes: "clientes.ver",
-    adicionarCliente: "clientes.criar",
     movimentacoes: "financeiro.movimentacoes",
     vendas: "vendas.ver",
     cobrancas: "cobrancas.ver",
@@ -34,7 +33,6 @@
 
 
   const PERMISSOES_ALTERNATIVAS_POR_MODULO = Object.freeze({
-    financeiro: Object.freeze(["controleFinanceiro.ver", "financeiro.ver"]),
     movimentacoes: Object.freeze([
       "financeiro.movimentacoes",
       "solicitacoes.criar",
@@ -63,9 +61,9 @@
     gerente: "dashboard",
     supervisor: "dashboard",
     vendedor: "dashboard",
-    financeiro: "dashboard",
-    auditor: "dashboard",
-    captador: "dashboard"
+    financeiro: "financeiro",
+    auditor: "auditoria",
+    captador: "captacao"
   });
 
   let usuarioAtual = null;

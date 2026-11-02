@@ -2,10 +2,10 @@
   "use strict";
   if (global.__INTEGRO_V272_BOOTSTRAP__) return;
   global.__INTEGRO_V272_BOOTSTRAP__ = true;
-  global.__INTEGRO_VERSION__ = "27.2.3-pagamento-flexivel";
+  global.__INTEGRO_VERSION__ = "27.2.0-consolidacao";
 
   const loaded = new Map();
-  const VERSION = "20261027-homologacao-money-recovery";
+  const VERSION = "20260817-v27-2";
   const page = String(global.location?.pathname || "").toLowerCase();
 
   function loadScript(src, key = src) {
@@ -33,11 +33,11 @@
 
   async function loadIfMissing(test, src, key) {
     if (test()) return true;
-    const version = key === "enterprise-finance-ui" ? "20261021-relatorios" : key === "user-lifecycle" ? "20261021-gestao-usuarios" : key === "seller-closeout" ? "20261020-consulta-canonica" : VERSION;
-    return loadScript(`${src}?v=${version}&build=${VERSION}`, key);
+    return loadScript(`${src}?v=${VERSION}`, key);
   }
 
   async function ensureFinance() {
+    // O financeiro empresarial só é carregado onde existe uma superfície Financeiro.
     const hasFinanceSurface = Boolean(document.getElementById("financeiro") || document.getElementById("financeiroUnificadoRoot") || page.endsWith("/financeiro.html"));
     if (!hasFinanceSurface) return false;
     try {
@@ -58,6 +58,7 @@
   }
 
   async function ensureUserLifecycle() {
+    // Evita carregar/pollear código administrativo em vendedor, supervisor, captador e auditor.
     if (!page.endsWith("/master-local.html")) return false;
     try {
       await loadIfMissing(() => Boolean(global.IntegroV27UserLifecycle), "js/services/v27-user-lifecycle.js", "user-lifecycle");
@@ -81,6 +82,7 @@
     }
   }
 
+
   async function ensureSellerCloseout() {
     if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
     try {
@@ -94,7 +96,7 @@
   }
 
   async function ensureSellerCollectionCorrections() {
-    if (!page.endsWith("/vendedor.html") && !page.endsWith("/master-local.html")) return false;
+    if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
     try {
       await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections");
       global.IntegroVendedorCobrancaCorrecoes?.install?.();
@@ -102,10 +104,11 @@
       global.IntegroVendedorPagamentoFlexivel?.install?.();
       return true;
     } catch (error) {
-      console.error("[ÍNTEGRO V27.2] Falha ao carregar correções de baixa do vendedor.", error);
+      console.error("[ÍNTEGRO V27.2] Falha ao carregar correções de cobrança.", error);
       return false;
     }
   }
+
 
   async function ensureLeadOpenGuard() {
     if (!page.endsWith("/vendedor.html")) return false;
@@ -147,6 +150,7 @@
     }
   }
 
+  // Serviços opcionais podem ficar disponíveis depois do boot; eventos reais substituem polling.
   document.addEventListener("usuario-validado", () => {
     ensureUserLifecycle();
     ensureFinance();
