@@ -424,11 +424,23 @@
     }
   </style>
   <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2" rel="stylesheet">
-  <link rel="stylesheet" href="css/integro-loading.css?v=20261101-visualrestore1">
+  <link rel="stylesheet" href="css/integro-loading.css?v=20261101-loading-continuo1">
   <link rel="stylesheet" href="css/integro-logo.css?v=20261101-visualrestore1">
 </head>
 
 <body>
+  <div id="loginFlowLoader" class="login-flow-loader" hidden role="status" aria-live="polite">
+    <div class="login-flow-card">
+      <div class="login-flow-brand">ÍNTE<span>GRO</span></div>
+      <div class="login-flow-spinner" aria-hidden="true"></div>
+      <h2>Preparando seu acesso</h2>
+      <div id="loginFlowStep" class="login-flow-step">Validando suas credenciais...</div>
+      <div class="login-flow-track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+        <span id="loginFlowProgress" class="login-flow-progress"></span>
+      </div>
+      <div id="loginFlowHint" class="login-flow-hint">0% concluído</div>
+    </div>
+  </div>
 
   <main class="login-page">
 
@@ -519,7 +531,7 @@
 
   <!-- Core da aplicação -->
   <script src="js/app.js?v=20260812-v24-6"></script>
-  <script src="js/auth.js?v=20261101-session-rebind2"></script>
+  <script src="js/auth.js?v=20261101-loading-continuo1"></script>
 
   <!-- Helpers de login -->
   <script>

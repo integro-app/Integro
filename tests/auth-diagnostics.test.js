@@ -235,3 +235,15 @@ test("proteção de rota instala apenas um guard de autenticação por página",
   assert.match(auth, /__INTEGRO_AUTH_GUARD_INSTALADO__/);
   assert.match(auth, /motivo=erro_sessao/);
 });
+
+
+test("login preserva progresso visual entre autenticação e painel", () => {
+  const auth = fs.readFileSync(path.join(__dirname, "..", "js", "auth.js"), "utf8");
+  const login = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
+  const master = fs.readFileSync(path.join(__dirname, "..", "master-local.html"), "utf8");
+  assert.match(auth, /integroLoadingContinuo/);
+  assert.match(auth, /atualizarLoadingLogin\(92,/);
+  assert.match(login, /id="loginFlowLoader"/);
+  assert.match(master, /IntegroLoadingContinuo\?\.percentual/);
+  assert.match(master, /IntegroLoadingContinuo\?\.iniciar/);
+});

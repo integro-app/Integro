@@ -2533,7 +2533,7 @@ body.integro-data-refreshing .section-card{
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
       <div class="integro-loader-logo" aria-label="ÍNTEGRO">ÍNTE<span>GRO</span></div>
-      <div class="integro-loader-title">Preparando seu painel</div>
+      <div class="integro-loader-title">Preparando seu acesso</div>
       <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
       <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
       <div class="integro-loader-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -12448,7 +12448,10 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   function setLoaderProgress(percentual){
-    const valor = limitarPercentualLoader(percentual);
+    const etapa = limitarPercentualLoader(percentual);
+    const valor = window.IntegroLoadingContinuo?.percentual
+      ? window.IntegroLoadingContinuo.percentual(etapa)
+      : etapa;
     integroLoaderPercentualAtual = valor;
 
     const texto = document.getElementById("integroLoaderPercent");
@@ -12512,6 +12515,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     loadingPremiumIniciado = true;
     const loader = document.getElementById("integroBootLoader");
     document.body.classList.add("integro-booting");
+    window.IntegroLoadingContinuo?.iniciar?.();
     setLoaderProgress(0);
 
     const authUser = window.firebase?.auth?.()?.currentUser || null;
