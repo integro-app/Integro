@@ -103,10 +103,56 @@ function renderClientes() {
       <div class="item-actions">
         <button class="ghost-btn" onclick="abrirVerCliente('${c.id}')">Ver</button>
         <button class="ghost-btn" onclick="abrirEditarCliente('${c.id}')">Editar</button>
+        <button class="ghost-btn" onclick="abrirTransferirCliente('${c.id}')">Transferir</button>
         <button class="danger-btn" onclick="excluirClienteLogico('${c.id}')">Excluir</button>
       </div>
     </div>
   `).join("");
+}
+
+// Transferência utiliza exclusivamente o serviço oficial, com validação de destino e auditoria.
+function abrirTransferirCliente(id) {
+  const cliente = encontrarClientePorId(id);
+  const usuario = window.State?.getUsuario?.();
+  if (!cliente || !window.ClientesService?.direcionarCliente || !usuario) return UIHelpers.alerta("Transferência indisponível.");
+  const cargo = String(usuario.cargoChave || usuario.tipoUsuario || "").toLowerCase();
+  if (!["master_local", "supervisor", "master_global", "usuario_integro"].includes(cargo)) return UIHelpers.alerta("Sem permissão para transferência.");
+  abrirDrawer("Transferir cliente", `
+    <div class="form-grid">
+      <div class="form-group full"><label>Cliente</label><strong>${escaparTextoCliente(cliente.nome || cliente.nomeCompleto || "")}</strong></div>
+      <div class="form-group full"><label>ID do vendedor de destino</label><input id="transferirClienteVendedor" autocomplete="off" placeholder="ID do vendedor cadastrado"></div>
+      <div class="form-group full"><label>Motivo da transferência</label><textarea id="transferirClienteMotivo" rows="3" placeholder="Informe o motivo obrigatório"></textarea></div>
+      <div class="drawer-actions"><button class="primary-btn" type="button" onclick="confirmarTransferenciaCliente('${id}')">Confirmar transferência</button></div>
+    </div>`);
+}
+
+async function confirmarTransferenciaCliente(id) {
+  const vendedorId = document.getElementById("transferirClienteVendedor")?.value.trim();
+  const motivo = document.getElementById("transferirClienteMotivo")?.value.trim();
+  if (!vendedorId || !motivo) return UIHelpers.alerta("Informe o vendedor e o motivo.");
+  const botao = document.querySelector('[onclick^="confirmarTransferenciaCliente"]');
+  if (botao) botao.disabled = true;
+  try {
+    await window.ClientesService.direcionarCliente(id, { vendedorId, motivo }, State.getUsuario());
+    fecharDrawer();
+    if (window.IntegroCliente360?.refresh) await window.IntegroCliente360.refresh(id).catch(() => {});
+    await carregarTudoMasterLocal();
+    renderClientes();
+    UIHelpers.alerta("Transferência registrada com sucesso.");
+  } catch (erro) {
+    UIHelpers.alerta("Não foi possível transferir: " + (erro?.message || "erro desconhecido"));
+  } finally { if (botao) botao.disabled = false; }
+}
+
+function listarDocumentosCliente(cliente = {}) {
+  const itens = Array.isArray(cliente.documentos) ? cliente.documentos : [];
+  if (!itens.length) return '<small>Nenhum documento anexado.</small>';
+  return itens.map((doc, i) => {
+    const titulo = escaparTextoCliente(doc?.nome || doc?.tipo || `Documento ${i + 1}`);
+    const url = String(doc?.url || "").trim();
+    // Exibe apenas metadados. Nunca torna público um documento por URL arbitrária.
+    return `<div class="list-item"><strong>${titulo}</strong><small>${escaparTextoCliente(doc?.status || "Registrado")}</small></div>`;
+  }).join("");
 }
 
 function abrirNovoCliente() {
@@ -477,6 +523,7 @@ function perfilCliente(cliente) {
         </div>
       </div>
 
+      <div class="list-item"><div><strong>Documentos</strong>${listarDocumentosCliente(cliente)}</div></div>
       ${renderReferenciasCliente(cliente)}
 
       <div class="list-item">
