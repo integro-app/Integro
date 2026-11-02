@@ -67,6 +67,8 @@
   const pertenceAoVendedor = (registro, usuario, { permitirSemVinculo = false } = {}) => {
     const esperados = idsUsuario(usuario);
     if (!esperados.size) return false;
+    const canonico = id(registro?.vendedorAuthUid || registro?.vendedorId);
+    if (canonico) return esperados.has(canonico);
     const vinculados = idsRegistroVendedor(registro);
     if (!vinculados.length) return permitirSemVinculo;
     return vinculados.some(valor => esperados.has(valor));
@@ -83,19 +85,27 @@
 
   const vendaAtiva = venda => venda?.excluido !== true && !STATUS_ENCERRADOS.has(maiusculo(venda?.statusVenda || venda?.status));
 
-  const saldoVenda = venda => numero(primeiroValor(venda, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
+  const saldoVenda = venda => venda?.saldoDevedorCentavos != null ? numero(venda.saldoDevedorCentavos) / 100 : numero(primeiroValor(venda, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
   const saldoCliente = cliente => numero(primeiroValor(cliente, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
 
-  const valorPagamento = pagamento => numero(primeiroValor(pagamento, ["valorPago", "valorRecebido", "valor", "valorCentavos"])) / (pagamento?.valorCentavos && !pagamento?.valorPago && !pagamento?.valorRecebido && !pagamento?.valor ? 100 : 1);
-  const valorParcela = (venda, parcelas) => numero(primeiroValor(venda, ["valorParcela", "parcelaValor"])) || numero(primeiroValor(parcelas?.[0], ["valorParcela", "valor", "valorPrevisto"]));
+  const valorPagamento = pagamento => pagamento?.valorCentavos != null ? numero(pagamento.valorCentavos) / 100 : numero(primeiroValor(pagamento, ["valorPago", "valorRecebido", "valor"]));
+  const valorParcela = (venda, parcelas) => venda?.valorParcelaCentavos != null ? numero(venda.valorParcelaCentavos) / 100 : numero(primeiroValor(venda, ["valorParcela", "parcelaValor"])) || (parcelas?.[0]?.valorCentavos != null ? numero(parcelas[0].valorCentavos) / 100 : numero(primeiroValor(parcelas?.[0], ["valorParcela", "valor", "valorPrevisto"])));
 
   const dataParcela = parcela => dataIso(primeiroValor(parcela, ["dataVencimento", "dataPrevista", "vencimento", "dataCobranca"]));
-  const parcelaPaga = parcela => STATUS_PAGOS.has(maiusculo(parcela?.statusParcela || parcela?.status)) || numero(parcela?.valorPago) >= numero(primeiroValor(parcela, ["valorParcela", "valor", "valorPrevisto"])) - 0.009;
+  const parcelaPaga = parcela => {
+    const previsto = parcela?.valorCentavos != null ? numero(parcela.valorCentavos) / 100 : numero(primeiroValor(parcela, ["valorParcela", "valor", "valorPrevisto"]));
+    const pago = parcela?.valorPagoCentavos != null ? numero(parcela.valorPagoCentavos) / 100 : numero(parcela?.valorPago);
+    return STATUS_PAGOS.has(maiusculo(parcela?.statusParcela || parcela?.status)) || (previsto > 0 && pago >= previsto - 0.009);
+  };
 
   const obterUsuario = () => global.usuarioLogado || global.usuarioAtual || global.firebase?.auth?.()?.currentUser || {};
   const obterCache = nome => Array.isArray(global[nome]) ? global[nome] : [];
 
-  function montarCarteira({ clientes = [], vendas = [], parcelas = [], pagamentosHoje = [], historico = [], usuario = {}, hoje = hojeIso() } = {}) {
+  function montarCarteira({ clientes = [], vendas = [], parcelas = [], pagamentosHoje = [], historico = [], usuario = {}, hoje = hojeIso(), caixaId = "" } = {}) {
+    const movimentoAtual = item => caixaId
+      ? id(item.caixaId || item.idCaixa || item.caixaAtualId) === id(caixaId)
+      : (!dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto) === hoje);
+    const movimentoValido = item => item?.excluido !== true && item?.cancelado !== true && item?.estornado !== true && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(maiusculo(item?.status));
     const clientesValidos = clientes
       .filter(item => item?.excluido !== true)
       .filter(item => pertenceAoTenant(item, usuario))
@@ -107,17 +117,27 @@
       if (clienteId) clientesPorId.set(clienteId, cliente);
     });
 
+    const vendasComPagamentoHoje = new Set(
+      pagamentosHoje
+        .filter(movimentoValido)
+        .filter(item => pertenceAoTenant(item, usuario))
+        .filter(movimentoAtual)
+        .map(item => id(item.vendaId))
+        .filter(Boolean)
+    );
+
     const vendasValidas = vendas
-      .filter(vendaAtiva)
+      .filter(item => vendaAtiva(item) || vendasComPagamentoHoje.has(id(item.id || item.vendaId)))
       .filter(item => pertenceAoTenant(item, usuario))
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
         const clienteVinculado = clientesPorId.get(clienteId);
-        return pertenceAoVendedor(item, usuario) || pertenceAoVendedor(clienteVinculado, usuario);
+        return (!clientesPorId.has(clienteId) && clientes.some(c => id(c.id || c.clienteId) === clienteId)) ? false :
+          pertenceAoVendedor(item, usuario) || (!idsRegistroVendedor(item).length && pertenceAoVendedor(clienteVinculado, usuario));
       })
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
-        return saldoVenda(item) > 0.01 || saldoCliente(clientesPorId.get(clienteId)) > 0.01;
+        return saldoVenda(item) > 0.01 || saldoCliente(clientesPorId.get(clienteId)) > 0.01 || vendasComPagamentoHoje.has(id(item.id || item.vendaId));
       });
 
     const vendasPorCliente = new Map();
@@ -133,12 +153,13 @@
     const candidatos = new Map();
     vendasValidas.forEach(venda => {
       const clienteId = id(venda.clienteId || venda.clienteOperacionalId);
-      if (clienteId) candidatos.set(clienteId, { cliente: clientesPorId.get(clienteId) || {}, venda });
+      if (clienteId && !candidatos.has(clienteId)) candidatos.set(clienteId, { cliente: clientesPorId.get(clienteId) || {}, venda: (vendasPorCliente.get(clienteId) || [venda])[0] });
     });
 
     clientesValidos.filter(cliente => saldoCliente(cliente) > 0.01).forEach(cliente => {
       const clienteId = id(cliente.id || cliente.clienteId || cliente.clienteOperacionalId);
       if (!clienteId || candidatos.has(clienteId)) return;
+      if (vendas.some(item => id(item.clienteId || item.clienteOperacionalId) === clienteId)) return;
       const venda = (vendasPorCliente.get(clienteId) || [])[0] || null;
       candidatos.set(clienteId, { cliente, venda });
     });
@@ -148,34 +169,38 @@
       return !vinculos.length || pertenceAoVendedor(item, usuario);
     };
 
+    // Indexar uma vez evita percorrer toda a carteira para cada cliente.
+    const agruparPorVenda = (registros, aceitar) => {
+      const grupos = new Map();
+      registros.forEach(item => {
+        if (!pertenceAoTenant(item, usuario) || !registroFilhoPermitido(item) || !aceitar(item)) return;
+        const chave = id(item.vendaId);
+        const grupo = grupos.get(chave) || [];
+        grupo.push(item);
+        grupos.set(chave, grupo);
+      });
+      return grupos;
+    };
+    const parcelasPorVenda = agruparPorVenda(parcelas, item => item?.excluido !== true);
+    const pagamentosPorVenda = agruparPorVenda(pagamentosHoje, item =>
+      movimentoValido(item) && movimentoAtual(item));
+    const visitasPorVenda = agruparPorVenda(historico, item =>
+      movimentoValido(item) && maiusculo(item.tipo || item.acao || item.status) === "NAO_PAGAMENTO" && movimentoAtual(item));
+
     return Array.from(candidatos.entries()).map(([clienteId, origem]) => {
       const cliente = origem.cliente || {};
       const venda = origem.venda || {};
       const vendaId = id(venda.id || venda.vendaId);
-      const parcelasVenda = parcelas
-        .filter(item => item?.excluido !== true)
-        .filter(item => pertenceAoTenant(item, usuario))
-        .filter(registroFilhoPermitido)
-        .filter(item => id(item.vendaId) === vendaId)
+      const parcelasVenda = (parcelasPorVenda.get(vendaId) || [])
         .sort((a, b) => numero(a.numeroParcela) - numero(b.numeroParcela) || dataParcela(a).localeCompare(dataParcela(b)));
 
-      const pagamentos = pagamentosHoje
-        .filter(item => item?.excluido !== true && maiusculo(item?.status) !== "CANCELADO")
-        .filter(item => pertenceAoTenant(item, usuario))
-        .filter(registroFilhoPermitido)
-        .filter(item => id(item.vendaId) === vendaId)
-        .filter(item => !dataIso(item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.data || item.dataPagamento || item.criadoEmTexto) === hoje);
+      const pagamentos = pagamentosPorVenda.get(vendaId) || [];
 
-      const naoPagamentos = historico
-        .filter(item => pertenceAoTenant(item, usuario))
-        .filter(registroFilhoPermitido)
-        .filter(item => id(item.vendaId) === vendaId)
-        .filter(item => maiusculo(item.tipo || item.acao || item.status) === "NAO_PAGAMENTO")
-        .filter(item => dataIso(item.data || item.criadoEmTexto) === hoje);
+      const naoPagamentos = visitasPorVenda.get(vendaId) || [];
 
       const parcelaNominal = valorParcela(venda, parcelasVenda);
       const totalParcelas = Math.max(1, numero(venda.quantidadeParcelas || venda.numeroParcelas || parcelasVenda.length || 1));
-      const valorPagoTotalParcelas = parcelasVenda.reduce((soma, item) => soma + numero(item.valorPago), 0);
+      const valorPagoTotalParcelas = parcelasVenda.reduce((soma, item) => soma + (item.valorPagoCentavos != null ? numero(item.valorPagoCentavos) / 100 : numero(item.valorPago)), 0);
       const parcelasPagasInteiras = parcelasVenda.filter(parcelaPaga).length;
       const progresso = parcelaNominal > 0 ? Math.max(parcelasPagasInteiras, valorPagoTotalParcelas / parcelaNominal) : parcelasPagasInteiras;
       const pendentes = parcelasVenda.filter(item => !parcelaPaga(item));
@@ -194,11 +219,17 @@
       }
 
       const valorPagoHoje = pagamentos.reduce((soma, item) => soma + valorPagamento(item), 0);
-      const comCobrancaHoje = pendentes.some(item => dataParcela(item) && dataParcela(item) <= hoje) || proximaData === hoje;
+      const parcelasRecebidasNesteCaixa = new Set(pagamentos.map(p=>id(p.parcelaId)).filter(Boolean));
+      const recebimentoAgendado = parcelasVenda.some(p=>parcelasRecebidasNesteCaixa.has(id(p.id||p.parcelaId)) && dataParcela(p) && dataParcela(p)<=hoje);
+      const comCobrancaHoje = recebimentoAgendado || pendentes.some(item => dataParcela(item) && dataParcela(item) <= hoje) || proximaData === hoje;
       const pagoHoje = valorPagoHoje > 0.009;
       const naoPagoHoje = !pagoHoje && naoPagamentos.length > 0;
+      // O gestor pode registrar NÃO PAGO por encerramento sem visita. Isso
+      // baixa a situação do dia, mas não comprova visita física do vendedor.
+      const naoPagoSemVisitaGerencial = naoPagoHoje && naoPagamentos.every(item =>
+        item.semBaixaGerencial === true || maiusculo(item.origem) === "FECHAMENTO_GERENCIAL");
       const pendenteHoje = comCobrancaHoje && !pagoHoje && !naoPagoHoje;
-      const saldo = Math.max(saldoVenda(venda), saldoCliente(cliente));
+      const saldo = vendaId ? saldoVenda(venda) : saldoCliente(cliente);
 
       return {
         vendaId,
@@ -211,6 +242,7 @@
         telefone: texto(primeiroValor(cliente, ["telefonePrincipal", "telefone", "celular", "whatsapp"]) || primeiroValor(venda, ["telefonePrincipal", "telefone", "clienteTelefone"])),
         documento: texto(primeiroValor(cliente, ["documento", "cpfCnpj", "cpf", "cnpj"]) || primeiroValor(venda, ["documento", "clienteDocumento"])),
         saldoDevedor: saldo,
+        saldoClienteTotal: ["saldoDevedorCentavos","saldoDevedor","saldoAtual","saldo","valorEmAberto"].some(k=>cliente[k]!=null) ? saldoCliente(cliente) : saldo,
         valorParcela: parcelaNominal,
         valorPagoHoje,
         totalParcelas,
@@ -221,12 +253,13 @@
         comCobrancaHoje,
         pagoHoje,
         naoPagoHoje,
+        naoPagoSemVisitaGerencial,
         pendenteHoje,
         proximaCobranca: proximaData,
         proximaCobrancaTexto: formatarProximaCobranca(proximaData, hoje),
         podeOperar: Boolean(vendaId)
       };
-    }).filter(item => item.saldoDevedor > 0.01);
+    }).filter(item => item.saldoDevedor > 0.01 || item.pagoHoje || item.naoPagoHoje);
   }
 
   function formatarNumero(valor) {
@@ -244,7 +277,7 @@
 
   function statusVisual(item) {
     if (item.pagoHoje) return { chave: "PAGO", titulo: "Pago hoje", cor: "#16a34a", classe: "is-paid" };
-    if (item.naoPagoHoje) return { chave: "NAO_PAGO", titulo: "Não pago hoje", cor: "#dc2626", classe: "is-unpaid" };
+    if (item.naoPagoHoje) return { chave: "NAO_PAGO", titulo: item.naoPagoSemVisitaGerencial ? "Não pago por encerramento gerencial (sem visita confirmada)" : "Não pago hoje", cor: "#dc2626", classe: "is-unpaid" };
     if (item.pendenteHoje) return { chave: "PENDENTE", titulo: "Sem baixa no dia", cor: "#cbd5e1", classe: "is-pending" };
     return { chave: "SEM_ROTA", titulo: "Sem cobrança hoje", cor: "#94a3b8", classe: "is-neutral" };
   }
@@ -253,6 +286,15 @@
     if (item.situacao === "ATRASADO") return `Atrasado ${numero(item.diasIndicador)} dia(s)`;
     if (item.situacao === "ADIANTADO") return `Adiantado ${numero(item.diasIndicador)} dia(s)`;
     return "Em dia";
+  }
+
+  function corSituacao(item, config = global.configuracoesEmpresa || global.configEmpresa || {}) {
+    const c=config.clientes||{},faixas=c.atraso||{},cores={ADIANTADO:'#2563eb',EM_DIA:'#16a34a',ATENCAO:'#eab308',ATRASO:'#f97316',ATRASO_GRAVE:'#dc2626'};
+    for(const status of Array.isArray(c.status)?c.status:[]) if(status.ativo!==false&&/^#[0-9a-f]{6}$/i.test(status.cor||'')) cores[maiusculo(status.chave)]=status.cor;
+    const amarelo=Number(faixas.amareloDias||5),vermelho=Number(faixas.vermelhoDias||10),laranja=Number(faixas.laranjaDias||vermelho),dias=numero(item.diasIndicador);
+    if(item.situacao==='ADIANTADO')return cores.ADIANTADO;
+    if(item.situacao==='ATRASADO'){if(dias>=vermelho)return cores.ATRASO_GRAVE;if(laranja<vermelho&&dias>=laranja)return cores.ATRASO;if(dias>=amarelo)return cores.ATENCAO;}
+    return cores.EM_DIA;
   }
 
   function moeda(valor) {
@@ -275,14 +317,17 @@
 
   function card(item) {
     const status = statusVisual(item);
+    const corFinanceira = corSituacao(item);
     const nome = item.clienteNome || "Cliente";
     const apelido = item.clienteApelido || nome;
     const total = Math.max(1, numero(item.totalParcelas));
     const progresso = Math.max(0, numero(item.progresso));
     const percentual = Math.max(0, Math.min(100, Math.round((progresso / total) * 100)));
-    const bloquear = !item.podeOperar || (typeof global.caixaEstaFechado === "function" && global.caixaEstaFechado());
-    const whatsapp = telefoneWhatsapp(item.telefone);
     const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
+    const sincronizando = sync?.status === "PROCESSING" || sync?.status === "QUEUED";
+    const bloquear = !item.podeOperar || sincronizando || (typeof global.caixaEstaFechado === "function" && global.caixaEstaFechado());
+    const bloquearNaoPagamento = bloquear;
+    const whatsapp = telefoneWhatsapp(item.telefone);
     const syncMeta = sync?.status === "PROCESSING" || sync?.status === "QUEUED"
       ? { classe: "sync-processing", texto: "Sincronizando" }
       : sync?.status === "CONFIRMED"
@@ -293,7 +338,7 @@
     const syncBadge = syncMeta ? '<span class="cobranca-chip-status vendedor-sync-badge ' + syncMeta.classe + '">' + escapar(syncMeta.texto) + '</span>' : "";
 
     return `
-      <article class="cobranca-card-operacional ${status.classe}" data-cliente-id="${escapar(item.clienteId)}" data-venda-id="${escapar(item.vendaId)}">
+      <article class="cobranca-card-operacional ${status.classe}" data-cliente-id="${escapar(item.clienteId)}" data-venda-id="${escapar(item.vendaId)}" tabindex="0" title="Abrir opções do cliente" onclick="abrirOpcoesCardCobranca(event,this)" onkeydown="if(event.target===this &amp;&amp; (event.key==='Enter'||event.key===' ')){event.preventDefault();abrirOpcoesCardCobranca(event,this)}">
         <span class="cobranca-lateral-clean" style="background:${status.cor}" aria-hidden="true"></span>
 
         <div class="cobranca-cliente-clean">
@@ -308,7 +353,7 @@
           </div>
           <div class="cobranca-status-row">
             <span class="cobranca-chip-status" style="color:${status.chave === 'PENDENTE' ? '#64748b' : status.cor};background:${status.cor}18;border-color:${status.cor}55">${escapar(status.titulo)}</span>
-            <span class="cobranca-chip-status">${escapar(situacaoVisual(item))}</span>
+            <span class="cobranca-chip-status" style="color:${corFinanceira};background:${corFinanceira}18;border-color:${corFinanceira}55">${escapar(situacaoVisual(item))}</span>
             ${syncBadge}
           </div>
           <div class="cobranca-progress-clean">
@@ -321,12 +366,12 @@
           <div class="cobranca-mini-clean"><span>Parcela esperada</span><strong>${moeda(item.valorParcela)}</strong></div>
           <div class="cobranca-mini-clean"><span>Parcela paga no dia</span><strong>${item.valorPagoHoje > 0 ? moeda(item.valorPagoHoje) : "R$ 0,00"}</strong></div>
           <div class="cobranca-mini-clean"><span>Saldo devedor</span><strong>${moeda(item.saldoDevedor)}</strong></div>
-          <div class="cobranca-mini-clean"><span>Situação</span><strong>${escapar(situacaoVisual(item))}</strong></div>
+          <div class="cobranca-mini-clean" style="background:${corFinanceira}18!important;border-color:${corFinanceira}55!important"><span>Situação</span><strong style="color:${corFinanceira}">${escapar(situacaoVisual(item))}</strong></div>
         </div>
 
         <div class="cobranca-actions-clean">
-          <button class="btn btn-pago-clean" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
-          <button class="btn btn-nao-pago-clean" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
+          <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
+          <button class="btn btn-nao-pago-clean ${item.naoPagoHoje ? "is-active" : ""}" type="button" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
         </div>
       </article>`;
   }
@@ -339,13 +384,15 @@
       pagamentosHoje: obterCache("pagamentosHojeCache"),
       historico: obterCache("historicoCobrancasCache"),
       usuario: obterUsuario(),
+      caixaId: global.obterCaixaAbertoVendedor?.()?.id || global.caixaAtual?.id || "",
       hoje: (typeof global.obterDataCaixaVendedor === "function" ? global.obterDataCaixaVendedor() : hojeIso())
-    }).filter(item => item.saldoDevedor > 0.01);
+    }).filter(item => item.saldoDevedor > 0.01 || item.pagoHoje || item.naoPagoHoje);
   }
 
   function filtrosAtivos() {
     const marcado = id => global.document?.getElementById(id)?.checked === true;
     return {
+      carteiraCompleta: marcado("filtroCobrancaCarteiraCompleta"),
       pendentes: marcado("filtroCobrancaPendente"),
       pagos: marcado("filtroCobrancaPago"),
       naoPagos: marcado("filtroCobrancaNaoPago"),
@@ -359,6 +406,8 @@
     const termo = texto(global.document?.getElementById("buscaCobrancaInput")?.value).toLowerCase();
     const filtros = filtrosAtivos();
     return lista.filter(item => {
+      if (filtros.carteiraCompleta && !(Number(item.saldoClienteTotal ?? item.saldoDevedor) > 0.01)) return false;
+      if (!filtros.carteiraCompleta && !item.comCobrancaHoje) return false;
       const busca = [item.clienteNome, item.clienteApelido, item.telefone, item.documento].join(" ").toLowerCase();
       if (termo && !busca.includes(termo)) return false;
       const filtraStatus = filtros.pendentes || filtros.pagos || filtros.naoPagos;
@@ -370,8 +419,14 @@
   }
 
   function ordenar(lista) {
-    const tipo = global.document?.getElementById("ordenarCobrancas")?.value || "nome_az";
+    const tipo = global.document?.getElementById("ordenarCobrancas")?.value || "prioridade_rota";
     const ordenadores = {
+      prioridade_rota: (a, b) => Number(a.pagoHoje || a.naoPagoHoje) - Number(b.pagoHoje || b.naoPagoHoje)
+        || Number(b.situacao === "ATRASADO") - Number(a.situacao === "ATRASADO")
+        || b.diasIndicador * Number(b.situacao === "ATRASADO") - a.diasIndicador * Number(a.situacao === "ATRASADO")
+        || Number(b.comCobrancaHoje) - Number(a.comCobrancaHoje)
+        || (a.proximaCobranca || "9999").localeCompare(b.proximaCobranca || "9999")
+        || (a.clienteApelido || a.clienteNome).localeCompare(b.clienteApelido || b.clienteNome, "pt-BR"),
       nome_az: (a, b) => (a.clienteApelido || a.clienteNome).localeCompare(b.clienteApelido || b.clienteNome, "pt-BR"),
       nome_za: (a, b) => (b.clienteApelido || b.clienteNome).localeCompare(a.clienteApelido || a.clienteNome, "pt-BR"),
       saldo_maior: (a, b) => b.saldoDevedor - a.saldoDevedor,
@@ -382,20 +437,50 @@
       atrasado: (a, b) => Number(b.situacao === "ATRASADO") - Number(a.situacao === "ATRASADO") || b.diasIndicador - a.diasIndicador,
       adiantado: (a, b) => Number(b.situacao === "ADIANTADO") - Number(a.situacao === "ADIANTADO") || b.diasIndicador - a.diasIndicador
     };
-    return [...lista].sort(ordenadores[tipo] || ordenadores.nome_az);
+    return [...lista].sort(ordenadores[tipo] || ordenadores.prioridade_rota);
+  }
+
+  function resumoHoje({ carteira = [], pagamentos = [], usuario = {}, hoje = hojeIso() } = {}) {
+    const vendasDaCarteira = new Set(carteira.map(item => id(item.vendaId)).filter(Boolean));
+    const pendentes = carteira.filter(item => item.pendenteHoje);
+    const priorizados = [...pendentes].sort((a, b) =>
+      Number(b.situacao === "ATRASADO") - Number(a.situacao === "ATRASADO") ||
+      b.diasIndicador * Number(b.situacao === "ATRASADO") - a.diasIndicador * Number(a.situacao === "ATRASADO") ||
+      (a.proximaCobranca || "9999").localeCompare(b.proximaCobranca || "9999") ||
+      (a.clienteApelido || a.clienteNome).localeCompare(b.clienteApelido || b.clienteNome, "pt-BR"));
+    const recebidoCentavos = pagamentos.filter(item => item.excluido !== true && item.__integroOtimista !== true && item.estornado !== true && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(maiusculo(item.status)))
+      .filter(item => pertenceAoTenant(item, usuario))
+      .filter(item => pertenceAoVendedor(item, usuario) || (idsRegistroVendedor(item).length === 0 && vendasDaCarteira.has(id(item.vendaId))))
+      .filter(item => dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto) === hoje)
+      .reduce((soma, item) => soma + Math.round(valorPagamento(item) * 100), 0);
+    return {
+      recebidoHoje: recebidoCentavos / 100,
+      previstoHoje: carteira.filter(item => item.comCobrancaHoje).reduce((total,item) => total + Math.round(Number(item.valorParcela || 0)*100),0)/100,
+      pendentes: pendentes.length,
+      atrasados: pendentes.filter(item => item.situacao === "ATRASADO").length,
+      // Não inflar visitas: encerramento gerencial é uma decisão administrativa.
+      visitados: carteira.filter(item => item.pagoHoje || (item.naoPagoHoje && !item.naoPagoSemVisitaGerencial)).length,
+      proxima: priorizados[0] || null
+    };
   }
 
   function renderizar() {
     const listaEl = global.document?.getElementById("listaCobrancas");
     if (!listaEl) return [];
-    const lista = ordenar(aplicarFiltros(dadosAtuais()));
+    const carteira = dadosAtuais();
+    global.IntegroVendedorUnificado?.renderHoje?.(carteira);
+    const lista = ordenar(aplicarFiltros(carteira));
     const contador = global.document.getElementById("contadorCobrancas");
-    if (contador) contador.textContent = `${lista.length} cliente(s) com saldo devedor em aberto.`;
-    listaEl.innerHTML = lista.length ? lista.map(card).join("") : `
+    if (contador) contador.textContent = `${lista.length} cliente(s) ${filtrosAtivos().carteiraCompleta ? "na carteira completa" : "na rota do caixa atual"} · ${lista.filter(item => item.pagoHoje).length} pago(s) · ${lista.filter(item => item.naoPagoHoje).length} não pagamento(s).`;
+    const html = lista.length ? lista.map(card).join("") : `
       <div class="empty-state-operacao">
         <strong>Nenhum cliente encontrado</strong>
         <p>Não há clientes com saldo devedor em aberto nos filtros selecionados.</p>
       </div>`;
+    if (listaEl.__integroCarteiraHtml !== html) {
+      listaEl.innerHTML = html;
+      listaEl.__integroCarteiraHtml = html;
+    }
     try { global.atualizarEstadoBotaoFechamento?.(); } catch (_) {}
     try { global.aplicarBloqueioCaixaFechado?.(); } catch (_) {}
     return lista;
@@ -437,6 +522,10 @@
   function instalar() {
     if (global.__integroVendedorOperacaoConsolidada) return;
     global.__integroVendedorOperacaoConsolidada = true;
+    global.abrirOpcoesCardCobranca = (evento, card) => {
+      if (evento.target?.closest?.("button,a,input,select,textarea,label,[role=button]")) return;
+      return global.abrirDrawerClienteVendedor?.(card.dataset.clienteId);
+    };
     global.montarCobrancasPorVenda = dadosAtuais;
     global.cardCobrancaCliente = card;
     global.renderCobrancas = renderizar;
@@ -460,11 +549,13 @@
   return {
     instalar,
     montarCarteira,
+    resumoHoje,
     pertenceAoVendedor,
     pertenceAoTenant,
     statusVisual,
     situacaoVisual,
+    corSituacao,
     formatarProximaCobranca,
-    _internals: { numero, saldoVenda, saldoCliente, vendaAtiva, dataParcela, parcelaPaga, diasEntre }
+    _internals: { aplicarFiltros, numero, saldoVenda, saldoCliente, vendaAtiva, dataParcela, parcelaPaga, diasEntre }
   };
 });

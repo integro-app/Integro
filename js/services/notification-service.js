@@ -5,6 +5,7 @@
 
   let unsubscribeRealtime = null;
   let currentAuthUid = "";
+  let currentTenantId = "";
   let initialSnapshotReceived = false;
   const text = value => String(value ?? "").trim();
   const upper = value => text(value).toUpperCase();
@@ -34,12 +35,13 @@
       categoria: upper(notification.categoria || notification.origemTipo || "SISTEMA"),
       prioridade: upper(notification.prioridade || "NORMAL"),
       lida: notification.lida === true || upper(notification.status) === "LIDA",
-      excluida: notification.excluida === true || notification.excluido === true
+      excluida: notification.excluida === true || notification.excluido === true || notification.naLixeira === true
     };
   }
   function belongs(notification, uid = authUid(), tenant = tenantId()) {
     const item = normalize(notification);
     if (!uid || item.destinatarioAuthUid !== uid) return false;
+    if (user()?.tipoUsuario === "master_global") return item.tipo === "INADIMPLENCIA_ASSINATURA" && item.origemTipo === "ASSINATURA_PLATAFORMA";
     if (tenant && item.clientePlataformaId && item.clientePlataformaId !== tenant) return false;
     return upper(item.tipo) !== "MENSAGEM_CHAT" && upper(item.origemTipo) !== "CHAT_INTERNO";
   }
@@ -54,9 +56,13 @@
   async function list(options = {}) {
     const database = db();
     const uid = authUid();
+    const tenant = tenantId();
     if (!database || !uid) return storeSet([]);
     const limit = Math.max(1, Math.min(Number(options.limit || 100), 200));
-    const snapshot = await database.collection("notificacoes").where("destinatarioAuthUid", "==", uid).limit(limit).get();
+    if (user()?.tipoUsuario === "master_global") { const r = await global.firebase.app().functions("southamerica-east1").httpsCallable("consultarAvisosAssinaturaPlataforma")({}); return storeSet(r.data.notificacoes); }
+    if (!tenant) return storeSet([]);
+    const snapshot = await database.collection("notificacoes").where("clientePlataformaId", "==", tenant).where("destinatarioAuthUid", "==", uid).orderBy("criadoEm", "desc").limit(limit).get();
+    if (uid !== authUid() || tenant !== tenantId()) return [];
     return storeSet(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
   }
 
@@ -67,17 +73,21 @@
   }
 
   function subscribe() {
+    if (user()?.tipoUsuario === "master_global") { unsubscribe(); list().catch(e=>console.warn("[ÍNTEGRO] Avisos de assinatura indisponíveis.",e)); return function() {}; }
     const database = db();
     const uid = authUid();
-    if (!database || !uid || typeof database.collection !== "function") return function () {};
-    if (unsubscribeRealtime && currentAuthUid === uid) return unsubscribeRealtime;
-    try { unsubscribeRealtime?.(); } catch (_) {}
-    unsubscribeRealtime = null;
+    const tenant = tenantId();
+    if (!database || !uid || !tenant || typeof database.collection !== "function") { unsubscribe(); return function () {}; }
+    if (unsubscribeRealtime && currentAuthUid === uid && currentTenantId === tenant) return unsubscribeRealtime;
+    unsubscribe();
     currentAuthUid = uid;
+    currentTenantId = tenant;
     initialSnapshotReceived = false;
     unsubscribeRealtime = database.collection("notificacoes")
-      .where("destinatarioAuthUid", "==", uid).limit(100)
+      .where("clientePlataformaId", "==", tenant)
+      .where("destinatarioAuthUid", "==", uid).orderBy("criadoEm", "desc").limit(100)
       .onSnapshot(snapshot => {
+        if (uid !== authUid() || tenant !== tenantId()) return;
         const added = snapshot.docChanges().filter(change => change.type === "added").map(change => ({ id: change.doc.id, ...change.doc.data() }));
         storeSet(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         if (initialSnapshotReceived) {
@@ -95,14 +105,27 @@
     try { unsubscribeRealtime?.(); } catch (_) {}
     unsubscribeRealtime = null;
     currentAuthUid = "";
+    currentTenantId = "";
     initialSnapshotReceived = false;
     global.IntegroNotificationStore?.clear?.();
+    global.notificacoesLayout = [];
+    global.notificacoesCache = [];
   }
 
   async function updateOwn(id, patch) {
     const database = db();
     if (!database || !id) throw new Error("Notificação inválida.");
-    await database.collection("notificacoes").doc(id).set({ ...patch, atualizadoEm: serverTimestamp(), atualizadoEmTexto: new Date().toISOString() }, { merge: true });
+    if (user()?.tipoUsuario === "master_global") { if (Object.keys(patch).some(k=>!["lida","status","lidaEm","lidaPor"].includes(k))) throw new Error("Avisos de assinatura não podem ser excluídos."); await global.firebase.app().functions("southamerica-east1").httpsCallable("marcarAvisoAssinaturaPlataforma")({faturaId:id,lida:patch.lida}); return true; }
+    const uid = authUid(), tenant = tenantId();
+    const ref = database.collection("notificacoes").doc(id);
+    const snap = await ref.get({ source: "server" });
+    if (!snap.exists || !belongs(snap.data(), uid, tenant) || uid !== authUid() || tenant !== tenantId()) throw new Error("Notificação indisponível ou fora do seu acesso.");
+    await ref.update({ ...patch, atualizadoEm: serverTimestamp(), atualizadoEmTexto: new Date().toISOString() });
+    if (uid === authUid() && tenant === tenantId()) {
+      const state = global.IntegroNotificationStore?.snapshot?.();
+      const list = [...(state?.items || []), ...(state?.trashItems || [])];
+      storeSet(list.map(item => item.id === id ? { ...item, ...patch } : item));
+    }
     return true;
   }
   async function markRead(id) { return updateOwn(id, { lida: true, status: "LIDA", lidaEm: serverTimestamp(), lidaPor: authUid() }); }
@@ -111,14 +134,16 @@
     return updateOwn(id, { excluida: true, excluido: true, excluidaEm: serverTimestamp(), excluidaEmTexto: new Date().toISOString(), excluidaPor: authUid() });
   }
   async function restore(id) {
-    return updateOwn(id, { excluida: false, excluido: false });
+    return updateOwn(id, { excluida: false, excluido: false, naLixeira: false });
   }
 
   function safeId(value) { return text(value).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 220); }
   function routeFor(input = {}) {
     if (input.rota) return input.rota;
     const type = upper(input.tipo || input.origemTipo);
-    if (type.includes("LEAD") || input.indicacaoId || input.clienteOperacionalId) return { tela: "clientes", aba: "leads", entidadeId: text(input.clienteOperacionalId), acao: "ABRIR_DRAWER" };
+    if (type.includes("TRANSFERENCIA_CLIENTE")) return { tela: "clientes", aba: "carteira", entidadeId: text(input.entidadeId || input.clienteOperacionalId), acao: "CLIENTE_360" };
+    if (type.includes("LEAD") || input.indicacaoId) return { tela: "clientes", aba: "leads", entidadeId: text(input.clienteOperacionalId || input.entidadeId), acao: "ABRIR_DRAWER" };
+    if (input.clienteOperacionalId) return { tela: "clientes", aba: "carteira", entidadeId: text(input.clienteOperacionalId), acao: "CLIENTE_360" };
     if (type.includes("MOVIMENT") || input.movimentacaoId || input.solicitacaoId) return { tela: "movimentacoes", entidadeId: text(input.movimentacaoId || input.solicitacaoId), acao: "ABRIR_DETALHE" };
     if (type.includes("TRANSFERENCIA_CLIENTE")) return { tela: "clientes", aba: "clientes", entidadeId: text(input.entidadeId), acao: "ABRIR_DRAWER" };
     if (type.includes("TRANSFERENCIA_LEAD")) return { tela: "clientes", aba: "leads", entidadeId: text(input.entidadeId), acao: "ABRIR_DRAWER" };
@@ -156,9 +181,10 @@
   }
 
   async function open(notification) {
-    if (!notification?.id || notification.excluida === true) return false;
-    if (notification.lida !== true) await markRead(notification.id).catch(() => {});
-    return global.IntegroNotificationRouter?.open?.(notification) || false;
+    if (!notification?.id || normalize(notification).excluida || !belongs(notification)) return false;
+    const opened = await global.IntegroNotificationRouter?.open?.(notification) || false;
+    if (opened && notification.lida !== true) markRead(notification.id).catch(error => { console.warn("[ÍNTEGRO] Não foi possível marcar a notificação como lida.", error); global.notificarIntegro?.("Não foi possível atualizar a leitura da notificação. Tente novamente.", "warning"); });
+    return opened;
   }
   function install() { const uid = authUid(); if (!uid) return false; subscribe(); return true; }
 
@@ -168,5 +194,6 @@
   document.addEventListener("usuario-validado", () => setTimeout(install, 0));
   document.addEventListener("integro-painel-permissoes-aplicadas", () => setTimeout(install, 0));
   global.addEventListener?.("beforeunload", unsubscribe);
+  global.firebase?.auth?.()?.onAuthStateChanged?.(usuario => { if (!usuario) unsubscribe(); });
 })(window);
 

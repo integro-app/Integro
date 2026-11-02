@@ -68,3 +68,16 @@ test('authenticated pages keep loading the centralized notification stack', () =
     assert.match(source,/notification-center\.js\?/);
   }
 });
+
+
+test("notificações modernas roteiam leads e mantêm centro com lixeira", () => {
+  const router = read("js/routers/notification-router.js");
+  const service = read("js/services/notification-service.js");
+  const center = read("js/modules/notification-center.js");
+  assert.match(router, /openLead/);
+  assert.match(router, /type\.includes\("LEAD"\)/);
+  assert.match(service, /destinatarioAuthUid/);
+  assert.match(service, /routeFor/);
+  assert.match(center, /LIXEIRA/);
+  assert.match(center, /data-notification-count/);
+});

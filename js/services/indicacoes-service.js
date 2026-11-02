@@ -393,7 +393,7 @@
         entidadeTipo: "LEAD",
         entidadeId: dados.clienteOperacionalId || "",
         eventoId: dados.eventoId || dados.atribuicaoId || `${dados.tipo || "INDICACAO"}:${dados.indicacaoId}:${dados.criadoEmTexto || dados.dataAtribuicao || "evento"}`,
-        rota: { tela:"clientes", aba:"leads", entidadeId:dados.clienteOperacionalId || "", acao:"ABRIR_DRAWER" }
+        rota: { tela:"clientes", aba:"leads", indicacaoId:dados.indicacaoId, entidadeId:dados.clienteOperacionalId || "", acao:"ABRIR_DRAWER" }
       }, { db });
       return true;
     }
