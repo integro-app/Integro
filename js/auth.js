@@ -124,15 +124,15 @@ async function login() {
     }
 
     State.setUsuario(usuario);
-    atualizarLoadingLogin(64, "Carregando sua empresa...");
-    await carregarConfiguracoesEmpresaDoUsuario(usuario);
-    atualizarLoadingLogin(74, "Preparando sessão segura...");
+    atualizarLoadingLogin(64, "Preparando empresa e sessão segura...");
+    const configuracoesPromise = carregarConfiguracoesEmpresaDoUsuario(usuario);
+    const sessaoPromise = garantirServicoSessaoV27();
 
-    // V27: o login novo assume a sessão e derruba o dispositivo anterior.
-    const sessao = await garantirServicoSessaoV27();
-    if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
+    // V27: mantém todas as validações, mas executa etapas independentes em paralelo.
     try {
-      await sessao.start();
+      const sessao = await sessaoPromise;
+      if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
+      await Promise.all([configuracoesPromise, sessao.start()]);
       atualizarLoadingLogin(92, "Abrindo seu painel...");
     } catch (erroSessao) {
       await auth.signOut().catch(() => {});
@@ -223,6 +223,7 @@ function protegerPagina(tipoObrigatorio = null) {
         return;
       }
 
+      const servicoSessaoPromise = garantirServicoSessaoV27();
       const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
       if (!usuario) {
         await auth.signOut();
@@ -253,10 +254,12 @@ function protegerPagina(tipoObrigatorio = null) {
       }
 
       State.setUsuario(usuario);
-      await carregarConfiguracoesEmpresaDoUsuario(usuario);
-
-      const sessao = await garantirServicoSessaoV27();
-      const retomada = await sessao?.resume?.();
+      const sessao = await servicoSessaoPromise;
+      const resultadosProtecao = await Promise.all([
+        carregarConfiguracoesEmpresaDoUsuario(usuario),
+        sessao?.resume?.()
+      ]);
+      const retomada = resultadosProtecao[1];
       if (!retomada) {
         await auth.signOut().catch(() => {});
         State.limparSessao();

@@ -247,3 +247,12 @@ test("login preserva progresso visual entre autenticação e painel", () => {
   assert.match(master, /IntegroLoadingContinuo\?\.percentual/);
   assert.match(master, /IntegroLoadingContinuo\?\.iniciar/);
 });
+
+
+test("autenticação paraleliza configuração e sessão", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "js", "auth.js"), "utf8");
+  assert.match(source, /Promise\.all\(\[configuracoesPromise, sessao\.start\(\)\]\)/);
+  assert.match(source, /const servicoSessaoPromise = garantirServicoSessaoV27\(\)/);
+  assert.match(source, /const resultadosProtecao = await Promise\.all/);
+  assert.match(source, /Validators\.validarUsuario\(usuario\)/);
+});
