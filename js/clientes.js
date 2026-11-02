@@ -25,6 +25,31 @@ function getClientesFiltrados() {
   });
 }
 
+// Visibilidade de captação na carteira, sem duplicar o cadastro operacional.
+function escaparTextoCliente(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, c => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  })[c]);
+}
+
+function resumoOrigemCliente(cliente = {}) {
+  const origem = String(cliente.origem || cliente.origemCliente || (cliente.indicacaoId ? "INDICACAO" : "CADASTRO_DIRETO")).trim().toUpperCase();
+  const nomes = { INDICACAO: "Lead / Indicação", LEAD: "Lead recebido", CADASTRO_DIRETO: "Cadastro direto",
+    CAPTACAO: "Captação", RETRABALHO: "Retrabalho" };
+  const atendimento = String(cliente.statusAtendimento || "").trim().toUpperCase();
+  const estados = { AGUARDANDO_ATENDIMENTO: "Aguardando atendimento", RECEBIDO: "Recebido",
+    EM_ATENDIMENTO: "Em atendimento", TENTATIVA_CONTATO: "Tentativa de contato",
+    SEM_RETORNO: "Sem retorno", RETORNO_AGENDADO: "Retorno agendado",
+    PROPOSTA_APRESENTADA: "Proposta apresentada", CONVERTIDO: "Convertido",
+    NAO_CONVERTIDO: "Não convertido", RECUSADO: "Recusado", EM_RETRABALHO: "Em retrabalho" };
+  return {
+    origem: nomes[origem] || String(cliente.origemDescricao || origem).replace(/_/g, " "),
+    atendimento: estados[atendimento] || atendimento.replace(/_/g, " ") || "Sem atendimento registrado",
+    referencia: String(cliente.indicacaoId || cliente.leadId || "").trim(),
+    captador: String(cliente.captadorNome || cliente.indicadoPorNome || "").trim()
+  };
+}
+
 function renderClientes() {
   const el = document.getElementById("listaClientes");
   if (!el) return;
@@ -52,6 +77,7 @@ function renderClientes() {
         <small>Apelido: ${c.apelido || "-"}</small>
         <small>Telefone principal: ${c.telefonePrincipal || c.telefone || "-"}</small>
         <small>Status: ${c.status || "SEM_VENDA"} • Score: ${c.score ?? 50}/100</small>
+        <small>Origem: ${escaparTextoCliente(resumoOrigemCliente(c).origem)} • Atendimento: ${escaparTextoCliente(resumoOrigemCliente(c).atendimento)}</small>
         <small>Saldo devedor: ${moeda(Number(c.saldoDevedor || 0))}</small>
       </div>
 
@@ -417,6 +443,16 @@ function perfilCliente(cliente) {
           <small>Principal: ${cliente.telefonePrincipal || cliente.telefone || "-"}</small>
           <small>Secundário: ${cliente.telefoneSecundario || cliente.telefone2 || "-"}</small>
           <small>WhatsApp principal: ${cliente.whatsappAtivo === false ? "Inativo" : "Ativo"}</small>
+        </div>
+      </div>
+
+      <div class="list-item">
+        <div>
+          <strong>Origem e atendimento</strong>
+          <small>Origem: ${escaparTextoCliente(resumoOrigemCliente(cliente).origem)}</small>
+          <small>Etapa: ${escaparTextoCliente(resumoOrigemCliente(cliente).atendimento)}</small>
+          ${resumoOrigemCliente(cliente).captador ? `<small>Captador: ${escaparTextoCliente(resumoOrigemCliente(cliente).captador)}</small>` : ""}
+          ${resumoOrigemCliente(cliente).referencia ? `<small>Lead vinculado: ${escaparTextoCliente(resumoOrigemCliente(cliente).referencia)}</small>` : ""}
         </div>
       </div>
 
