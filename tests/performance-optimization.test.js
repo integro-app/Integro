@@ -95,8 +95,8 @@ test("runtime v27.3 expõe prefetch cache-first e métrica de interação", () =
 
 
 test("conectividade bloqueia operações financeiras até confirmação segura", () => {
-  const guard = read("js/integro-connectivity-guard.js");
-  const vendedor = read("js/vendedor-operacao.js");
+  const guard = ler("js/integro-connectivity-guard.js");
+  const vendedor = ler("js/vendedor-operacao.js");
   assert.match(guard, /integro-connectivity-offline/);
   assert.match(guard, /aguardandoServidor/);
   assert.match(guard, /integro-conectividade-validada/);
