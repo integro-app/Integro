@@ -156,3 +156,17 @@ test("financeiro e auditoria respeitam cabeçalho, submenu e conteúdo", () => {
   assert.ok(auditoria.indexOf("integro-shared-header") < auditoria.indexOf("integro-shared-nav"));
   assert.ok(auditoria.indexOf("integro-shared-nav") < auditoria.indexOf("unified-readonly-banner"));
 });
+
+
+test("sino real e chat possuem pontos de montagem no painel local", () => {
+  assert.match(master, /id="integroNotificationButton"/);
+  assert.match(master, /data-notification-count/);
+  assert.match(master, /IntegroNotificationCenter\?\.toggle/);
+  assert.match(master, /id="chatInterno"/);
+  assert.match(master, /id="integroChatRoot"/);
+  assert.match(master, /css\/integro-chat-mobile\.css\?v=/);
+  assert.match(chat, /id="chatTexto"/);
+  assert.match(chat, /id="chatAnexar"/);
+  assert.match(chat, /id="chatEnviar"/);
+  assert.match(chat, /containerChat\(\).*integroChatRoot|integroChatRoot.*chatInterno/s);
+});
