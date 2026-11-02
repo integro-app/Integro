@@ -61,6 +61,19 @@ function renderClientes() {
   if (!el) return;
 
   const clientes = getClientesFiltrados();
+  const resumo = document.getElementById("resumoClientes");
+  if (resumo) {
+    const todos = (State.getClientes?.() || []).filter(c => c.excluido !== true);
+    const status = c => String(c.statusFinanceiro || c.status || "").toUpperCase();
+    const total = todos.length;
+    const ativos = todos.filter(c => status(c) === "ATIVO").length;
+    const quitados = todos.filter(c => status(c) === "QUITADO").length;
+    const inadimplentes = todos.filter(c => status(c) === "INADIMPLENTE").length;
+    const leads = todos.filter(c => Boolean(c.indicacaoId || c.leadId || ["LEAD","INDICACAO","CAPTACAO"].includes(String(c.origem || c.origemCliente || "").toUpperCase()))).length;
+    resumo.innerHTML = [["Clientes", total], ["Ativos", ativos], ["Quitados", quitados],
+      ["Inadimplentes", inadimplentes], ["Recebidos como lead", leads]]
+      .map(([label,valor]) => `<div class="cliente-resumo-card"><small>${label}</small><strong>${valor}</strong></div>`).join("");
+  }
 
   if (!clientes.length) {
     el.className = "list";
@@ -79,10 +92,10 @@ function renderClientes() {
   el.innerHTML = clientes.map(c => `
     <div class="list-item">
       <div>
-        <strong>${c.nome || c.nomeCompleto || "Cliente sem nome"}</strong>
-        <small>Apelido: ${c.apelido || "-"}</small>
-        <small>Telefone principal: ${c.telefonePrincipal || c.telefone || "-"}</small>
-        <small>Status: ${c.status || "SEM_VENDA"} • Score: ${c.score ?? 50}/100</small>
+        <strong>${escaparTextoCliente(c.nome || c.nomeCompleto || "Cliente sem nome")}</strong>
+        <small>Apelido: ${escaparTextoCliente(c.apelido || "-")}</small>
+        <small>Telefone principal: ${escaparTextoCliente(c.telefonePrincipal || c.telefone || "-")}</small>
+        <small>Status: ${escaparTextoCliente(c.status || "SEM_VENDA")} • Score: ${Number.isFinite(Number(c.score)) ? Math.max(0, Math.min(100, Number(c.score))) : 50}/100</small>
         <small>Origem: ${escaparTextoCliente(resumoOrigemCliente(c).origem)} • Atendimento: ${escaparTextoCliente(resumoOrigemCliente(c).atendimento)}</small>
         <small>Saldo devedor: ${moeda(Number(c.saldoDevedor || 0))}</small>
       </div>
@@ -644,6 +657,17 @@ function prepararTelaClientes() {
       <button class="primary-btn" onclick="abrirNovoCliente()">Novo cliente</button>
     </div>
 
+    <style>
+      #resumoClientes{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:14px 0 18px}
+      #resumoClientes .cliente-resumo-card{display:flex;flex-direction:column;gap:5px;background:var(--card-bg,#fff);border:1px solid var(--line,#e3e8ef);border-radius:14px;padding:14px;min-width:0}
+      #resumoClientes small{color:var(--muted,#64748b);font-size:12px}
+      #resumoClientes strong{font-size:24px;line-height:1.2}
+      #clientes .search-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+      #clientes .search-row input{flex:2 1 220px;min-width:0}
+      #clientes .search-row select{flex:1 1 175px;min-width:0;min-height:40px;border-radius:10px;border:1px solid var(--line,#d9e1ea);padding:8px;background:#fff}
+      @media(max-width:600px){#resumoClientes{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#clientes .search-row input,#clientes .search-row select{flex:1 1 100%}#clientes .item-actions{display:flex;flex-wrap:wrap}}
+    </style>
+    <div id="resumoClientes" aria-label="Indicadores da carteira de clientes"></div>
     <div class="search-row">
       <input id="buscaClientes" type="search" placeholder="Buscar por nome, apelido, documento, telefone ou status">
       <select id="filtroOrigemClientes" aria-label="Filtrar clientes por origem ou atendimento">
