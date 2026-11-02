@@ -5460,24 +5460,15 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   window.fecharDrawerMaster = window.fecharDrawerMaster || function(){ const drawer=$("drawer"); if(drawer){drawer.classList.remove("show");drawer.innerHTML="";} };
 
   window.abrirCaixaEquipe = async function(unidade){
-    const row = getEquipesBase().map(rowBase).find(r=>r.unidade===unidade);
-    if(!row) return notificarIntegro("Equipe não encontrada.");
-    const valor = prompt("Valor inicial do caixa:", "0");
-    if(valor === null) return;
-    const db = getDb();
-    if(!db) return notificarIntegro("Firebase não conectado.");
-    try{
-      const hoje = new Date().toISOString().slice(0,10);
-      if(!row.vendedores.length){
-        await db.collection("caixas").add({clientePlataformaId:tenantId(), equipeId:row.equipeId, equipeNome:row.unidade, status:"ABERTO", valorInicial:num(valor), saldoInicial:num(valor), saldoAtual:num(valor), valorAtual:num(valor), dataCaixa:hoje, dataAbertura:hoje, ativo:true, criadoEm:new Date(), abertoEm:new Date(), abertoPorId:window.usuarioLogado?.id||window.currentUserData?.id||"", abertoPorNome:window.usuarioLogado?.nome||window.currentUserData?.nome||""});
-      }else{
-        for(const v of row.vendedores){
-          await db.collection("caixas").add({clientePlataformaId:tenantId(), equipeId:row.equipeId, equipeNome:row.unidade, vendedorId:vendedorId(v), vendedorNome:v.nome||v.nomeCompleto||v.email||"Vendedor", status:"ABERTO", valorInicial:num(valor), saldoInicial:num(valor), saldoAtual:num(valor), valorAtual:num(valor), dataCaixa:hoje, dataAbertura:hoje, ativo:true, criadoEm:new Date(), abertoEm:new Date(), abertoPorId:window.usuarioLogado?.id||window.currentUserData?.id||"", abertoPorNome:window.usuarioLogado?.nome||window.currentUserData?.nome||""});
-        }
-      }
-      await carregarDadosCaixasFirebase(true);
-      renderCaixas();
-    }catch(e){ console.error(e); notificarIntegro("Erro ao abrir caixa. Veja o console."); }
+    const linhasAtuais = typeof window.linhas === "function" ? window.linhas() : [];
+    const alvo = linhasAtuais.find(r => String(r.nome || (r.equipe && r.equipe.nome) || "") === String(unidade || ""));
+    if (!alvo) return notificarIntegro("Equipe não encontrada.");
+    if (!window.CX || !window.CX.selecionadas || typeof window.abrirCaixasSelecionadasIntegro !== "function") {
+      return notificarIntegro("Serviço seguro de abertura de caixas indisponível.");
+    }
+    window.CX.selecionadas.clear();
+    window.CX.selecionadas.add(String(alvo.id));
+    return window.abrirCaixasSelecionadasIntegro();
   };
 
   window.fecharCaixaEquipe = async function(caixaIdAtual){
