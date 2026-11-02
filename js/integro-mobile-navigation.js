@@ -4,7 +4,7 @@
   window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__ = true;
 
   const STYLE_ID = "integroResponsiveAuthoritative";
-  const STYLE_HREF = "css/integro-mobile.css?v=20260818-v272-perf1";
+  const STYLE_HREF = "css/integro-mobile.css?v=20261030-mobile-gestures";
   const MOBILE_QUERY = window.matchMedia("(max-width: 980px)");
   const body = document.body;
 
@@ -14,12 +14,14 @@
   let stylesheetReady = false;
   let shellReady = false;
   let historyArmed = false;
+  let bodyObserver = null;
+  let loaderObserver = null;
 
   const SELECTORS = {
     trigger: "[data-integro-menu-trigger], .mobile-menu-btn, .hamburger, #btnMenu",
     sidebar: "[data-integro-sidebar], #sidebar, .sidebar",
     overlay: "[data-integro-sidebar-overlay], #overlay, #sidebarOverlay, .sidebar-overlay, .overlay",
-    menuItem: "[data-integro-sidebar] .menu-item, [data-integro-sidebar] .menu-subitem, [data-integro-sidebar] .menu button, [data-integro-sidebar] a, .sidebar .menu-item, .sidebar .menu-subitem, .sidebar .menu button, .sidebar a",
+    menuItem: ".sidebar [data-iv-nav-child], [data-integro-sidebar] .menu-item, [data-integro-sidebar] .menu-subitem, [data-integro-sidebar] .menu button, [data-integro-sidebar] a, .sidebar .menu-item, .sidebar .menu-subitem, .sidebar .menu button, .sidebar a",
     close: "[data-close], [data-dismiss], .close-btn, .drawer-close, .modal-close, .notificacoes-vendedor-fechar, [aria-label='Fechar'], [aria-label='Close']",
     transient: [
       ".drawer.show",
@@ -116,6 +118,10 @@
     if (shellReady || !stylesheetReady || !bootFinished() || !hasValidatedUser()) return;
 
     shellReady = true;
+    bodyObserver?.disconnect();
+    loaderObserver?.disconnect();
+    bodyObserver = null;
+    loaderObserver = null;
     body.classList.remove("integro-shell-pending");
     body.classList.add("integro-shell-ready");
 
@@ -368,12 +374,15 @@
 
   function armTouchMove() {
     if (touchMoveArmed) return;
-      touchMoveArmed = true;
+    // Registra apenas durante um gesto iniciado na borda. O listener não
+    // fica pendurado na página inteira nem desaparece após o primeiro swipe.
+    document.addEventListener("touchmove", onTouchMove, { passive: false });
+    touchMoveArmed = true;
   }
 
   function canStartSidebarGesture(event) {
     if (!isMobile() || !shellReady || !event.touches || event.touches.length !== 1) return false;
-    if (event.target.closest("input, textarea, select, button, a, [contenteditable='true'], .modal, .dialog, .drawer, [role='dialog']")) return false;
+    if (event.target?.closest?.("input, textarea, select, button, a, [contenteditable='true'], .modal, .dialog, .drawer, [role='dialog']")) return false;
     const point = event.touches[0];
     if (menuIsOpen()) return point.clientX <= Math.min(window.innerWidth || 0, 360);
     return point.clientX <= 24;
@@ -429,7 +438,6 @@
   });
 
   document.addEventListener("touchstart", onTouchStart, { passive: true });
-  document.addEventListener("touchmove", onTouchMove, { passive: false });
   document.addEventListener("touchend", onTouchEnd, { passive: true });
   document.addEventListener("touchcancel", resetTouchGesture, { passive: true });
   document.addEventListener("click", (event) => {
@@ -486,6 +494,9 @@
       historyArmed = false;
       closeSidebar({ restoreFocus: false });
       clearForcedMenuVisualState();
+      // Em telas largas a sidebar volta a ser navegação permanente. O
+      // aria-hidden usado no drawer não pode continuar ocultando o menu.
+      primarySidebar()?.removeAttribute("aria-hidden");
     }
   }
 
@@ -499,12 +510,12 @@
     if (isMobile() && shellReady) armHistoryGuard();
   });
 
-  const bodyObserver = new MutationObserver(attemptShellReady);
+  bodyObserver = new MutationObserver(attemptShellReady);
   bodyObserver.observe(body, { attributes: true, attributeFilter: ["class"] });
 
   const loader = document.getElementById("integroBootLoader");
   if (loader) {
-    const loaderObserver = new MutationObserver(attemptShellReady);
+    loaderObserver = new MutationObserver(attemptShellReady);
     loaderObserver.observe(loader, { attributes: true, attributeFilter: ["class", "style"] });
   }
 

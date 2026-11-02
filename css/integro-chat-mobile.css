@@ -1,0 +1,58 @@
+.integro-chat-back{display:none}
+@media(max-width:760px){
+ html body[data-integro-page]:has(:is(#chatInterno.active,#chat.active,#chatInterno[style*="display: block"],#chat[style*="display: block"])){overflow:hidden!important;}
+ html body[data-integro-page] :is(#chatInterno.active,#chat.active,#chatInterno[style*="display: block"],#chat[style*="display: block"]) .integro-chat-unified{position:fixed!important;inset:auto 0 auto 0!important;top:var(--chat-viewport-top,0px)!important;width:100%!important;height:var(--chat-viewport-height,100dvh)!important;min-height:0!important;max-height:none!important;display:flex!important;margin:0!important;border:0!important;border-radius:0!important;box-shadow:none!important;z-index:100;background:#fff;overflow:hidden;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-list{display:flex!important;flex:1;width:100%!important;min-width:0!important;height:100%!important;max-height:none!important;min-height:0!important;padding:0!important;gap:0!important;border:0!important;background:#fff!important;color:#11233d!important;box-sizing:border-box;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-head{padding:8px 12px 10px 62px!important;min-height:60px!important;align-items:center!important;flex-shrink:0;box-sizing:border-box;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-head h2{color:#11233d!important;font-size:20px!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-head p{display:none!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-head-actions button{min-width:42px;min-height:42px;padding:8px;border-radius:12px;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-new-group{color:#11233d;background:#f1f5f9;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-new-group>span:last-child{display:none;}
+ html body[data-integro-page] .integro-chat-unified [hidden]{display:none!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-search{display:flex!important;flex-shrink:0;min-height:44px;margin:4px 12px 10px!important;padding:0 12px;background:#f1f5f9!important;border:1px solid #e2e8f0!important;color:#64748b!important;border-radius:12px;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-search input{font-size:16px!important;width:100%;min-width:0;color:#11233d!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-search input::placeholder{color:#64748b!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-status{color:#64748b!important;padding:4px 16px 8px!important;flex-shrink:0;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-conversas{flex:1;min-height:0;padding:0 8px calc(12px + env(safe-area-inset-bottom))!important;overscroll-behavior:contain;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-conversa{color:#11233d!important;border-radius:0!important;border-bottom:1px solid #edf2f7!important;padding:14px 8px!important;box-shadow:none!important;min-height:76px;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-conversa:not(.active) :is(strong,small,.integro-chat-preview){color:#334155!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-thread{display:none!important;min-height:0!important;}
+ html body[data-integro-page] .integro-chat-unified.conversa-aberta .integro-chat-list{display:none!important;}
+ html body[data-integro-page] .integro-chat-unified.conversa-aberta .integro-chat-thread{display:flex!important;flex-direction:column;flex:1;width:100%;height:100%!important;min-height:0!important;overflow:hidden;}
+ html body[data-integro-page]:has(.integro-chat.conversa-aberta):has(:is(#chatInterno.active,#chat.active,#chatInterno[style*="display: block"],#chat[style*="display: block"])) .mobile-menu-btn{display:none!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-thread-head{align-items:center;justify-content:flex-start;gap:8px;padding:8px 12px 8px 4px!important;min-height:64px!important;flex-shrink:0;}
+ html body[data-integro-page] .integro-chat-back{display:flex;align-items:center;justify-content:center;flex:0 0 44px;width:44px;height:44px;border:0;background:transparent;color:#11233d;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-thread-identidade{min-width:0;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-thread-head h3{font-size:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-thread-head p{font-size:12px;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-avatar.large{width:40px;height:40px;flex:0 0 40px;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-mensagens{flex:1;min-height:0!important;overflow-y:auto;overscroll-behavior:contain;padding:14px 12px!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-msg{max-width:86%;font-size:14px;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-form{display:flex!important;flex-shrink:0;margin:0!important;padding:8px 6px calc(8px + env(safe-area-inset-bottom))!important;gap:2px!important;border:0!important;border-top:1px solid #dbe4ef!important;border-radius:0!important;box-shadow:none!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-form textarea{font-size:16px!important;min-width:0;width:0;min-height:42px;max-height:112px;box-sizing:border-box;padding:10px 8px!important;background:#f1f5f9;border-radius:18px;}
+ html body[data-integro-page] .integro-chat-unified :is(.integro-chat-composer-action,.integro-chat-send){flex:0 0 42px!important;width:42px!important;height:42px!important;}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-imagem-preview{flex-shrink:0;max-height:100px;overflow:auto;}
+}
+
+@media(max-width:760px){html body[data-integro-page] .integro-chat-head-actions button{color:#11233d!important;}}
+
+@media(max-width:760px){
+ html body[data-integro-page] .integro-chat-unified .integro-chat-list{flex-direction:column!important}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-mensagens{background:#f0f4f8!important;scrollbar-width:thin}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-msg{border:1px solid #e2e8f0;border-radius:14px 14px 14px 3px!important;background:#fff!important;overflow-wrap:anywhere;line-height:1.45}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-msg.mine{background:#e0edff!important;border-color:#c2d7f5;border-radius:14px 14px 3px 14px!important;color:#102a48!important}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-msg p{white-space:pre-wrap}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-emoji-menu{position:absolute;bottom:calc(74px + env(safe-area-inset-bottom));left:8px;right:8px;max-width:calc(100% - 16px);z-index:3}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-thread-head{padding-top:calc(8px + env(safe-area-inset-top))!important}
+ html body[data-integro-page] .integro-chat-unified .integro-chat-send{background:#123f73!important;color:#fff!important;border-radius:50%}
+}
+
+/* A entrada móvel deve permanecer visível acima da área segura do iPhone. */
+@media(max-width:760px){
+ html body[data-integro-page] .integro-chat-unified.conversa-aberta .integro-chat-thread{min-width:0!important;max-height:100%!important}
+ html body[data-integro-page] .integro-chat-unified.conversa-aberta .integro-chat-form{position:relative!important;z-index:5!important;display:flex!important;visibility:visible!important;min-width:0;box-sizing:border-box;background:#fff!important}
+ html body[data-integro-page] .integro-chat-unified.conversa-aberta .integro-chat-form textarea{display:block!important;visibility:visible!important;flex:1 1 auto!important;width:auto!important;min-width:0!important;max-width:none!important;opacity:1!important;color:#102a48!important}
+ html body[data-integro-page] .integro-chat-unified.conversa-aberta :is(#chatAnexar,#chatEnviar){display:inline-flex!important;visibility:visible!important;opacity:1!important;align-items:center!important;justify-content:center!important;flex-shrink:0!important}
+ html body[data-integro-page] .integro-chat-unified.conversa-aberta .integro-chat-mensagens{flex:1 1 auto!important;min-height:0!important}
+}

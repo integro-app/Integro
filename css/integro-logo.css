@@ -1,0 +1,7 @@
+/* Logo oficial ÍNTEGRO: ÍNTE branco e GRO amarelo-âmbar, em todos os perfis. */
+:root { --integro-logo-accent: #ffb100; }
+html body :is(.logo > span,.brand > span,.brand h1 > span,.logo-integro-text > span,.login-flow-brand > span,.integro-loader-logo > span,.integro-login-logo-orange) {
+  color: var(--integro-logo-accent) !important;
+  -webkit-text-fill-color: var(--integro-logo-accent) !important;
+  background: none !important;
+}

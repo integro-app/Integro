@@ -14,7 +14,8 @@
     resumoIniciado: false,
     resumoInicialRecebido: false,
     conversasNotificadas: new Set(),
-    modalGrupoAberto: false
+    modalGrupoAberto: false,
+    mensagensConversaId: ""
   };
 
   function el(id) { return document.getElementById(id); }
@@ -73,7 +74,7 @@
         return;
       }
       const antes = Number(anterior.get(conversa.id) || 0);
-      const estaAberta = chatEstaAtivo() && estado.conversaAtual === conversa.id;
+      const estaAberta = chatEstaAtivo() && estado.conversaAtual === conversa.id && (!global.matchMedia?.("(max-width:760px)")?.matches || containerChat()?.querySelector(".integro-chat")?.classList.contains("conversa-aberta"));
       if (!estaAberta && antes === 0 && !estado.conversasNotificadas.has(conversa.id)) {
         estado.conversasNotificadas.add(conversa.id);
         const remetente = conversaTitulo(conversa);
@@ -158,7 +159,30 @@
     });
   }
 
+  function atualizarViewportChat() {
+    const shell=containerChat()?.querySelector('.integro-chat');
+    if(!shell)return;
+    const viewport=global.visualViewport;
+    shell.style.setProperty('--chat-viewport-height', (viewport?.height || global.innerHeight)+'px');
+    shell.style.setProperty('--chat-viewport-top', (viewport?.offsetTop || 0)+'px');
+  }
+  function voltarConversas() {
+    containerChat()?.querySelector('.integro-chat')?.classList.remove('conversa-aberta');
+    el('chatTexto')?.blur();
+    if (estado.unsubMensagens) estado.unsubMensagens();
+    estado.unsubMensagens = null;
+    estado.conversaAtual = "";
+    if(el('chatEmojiMenu'))el('chatEmojiMenu').hidden=true;
+    containerChat()?.querySelector('.integro-chat-conversa.active')?.focus({preventScroll:true});
+  }
+  global.visualViewport?.addEventListener('resize',atualizarViewportChat);
+  global.visualViewport?.addEventListener('scroll',atualizarViewportChat);
+  global.addEventListener?.('resize',atualizarViewportChat);
+
   function renderBase(root) {
+    if(!document.getElementById('integroChatMobileStyles')){
+      const link=document.createElement('link');link.id='integroChatMobileStyles';link.rel='stylesheet';link.href='css/integro-chat-mobile.css?v=20261030-chat-composer-corrigido';document.head.appendChild(link);
+    }
     root.dataset.chatReady = "1";
     root.innerHTML = `
       <div class="integro-chat integro-chat-unified">
@@ -171,11 +195,12 @@
             </div>
           </div>
           <label class="integro-chat-search"><span class="material-symbols-rounded">search</span><input id="chatBusca" placeholder="Buscar contato ou grupo" oninput="IntegroChatUI.renderConversas()"></label>
-          <div id="chatStatus" class="integro-chat-status">Carregando contatos...</div>
+          <div id="chatStatus" class="integro-chat-status">Carregando contatos...</div><p class="integro-chat-start-hint">Selecione um contato ou grupo para abrir a conversa e acessar mensagem, envio e anexos.</p>
           <div id="chatConversas" class="integro-chat-conversas"></div>
         </aside>
         <section class="integro-chat-thread">
           <div class="integro-chat-thread-head">
+            <button class="integro-chat-back" type="button" aria-label="Voltar às conversas" onclick="IntegroChatUI.voltarConversas()"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 5-7 7 7 7"/></svg></button>
             <span id="chatAvatar" class="integro-chat-avatar large">IN</span>
             <div class="integro-chat-thread-identidade"><h3 id="chatTitulo">Selecione uma conversa</h3><p id="chatSubtitulo"><span class="integro-presenca-dot offline"></span>As mensagens aparecem em tempo real</p></div>
           </div>
@@ -194,6 +219,7 @@
         </section>
         <div id="chatGrupoModal" class="integro-chat-group-modal" hidden></div>
       </div>`;
+    atualizarViewportChat();
     const podeGrupo = global.IntegroChatService?.podeCriarGrupo?.() === true;
     if (el("chatCriarGrupo")) el("chatCriarGrupo").hidden = !podeGrupo;
     if (global.IntegroChatService?.podeEnviar?.() === false) {
@@ -255,6 +281,9 @@
     const box = el("chatMensagens");
     if (!box) return;
     const atual = global.IntegroChatService.usuarioId();
+    const posicaoAnterior = box.scrollTop;
+    const seguirFim = estado.mensagensConversaId !== estado.conversaAtual || box.scrollHeight - box.clientHeight - posicaoAnterior < 80;
+    estado.mensagensConversaId = estado.conversaAtual;
     box.innerHTML = lista.length ? lista.map(m => {
       const imagem = m.tipo === "IMAGEM" && m.imagemUrl
         ? `<a class="integro-chat-foto-link" href="${esc(m.imagemUrl)}" target="_blank" rel="noopener"><img class="integro-chat-foto" src="${esc(m.imagemUrl)}" alt="Foto enviada por ${esc(m.remetenteNome || "usuário")}" loading="lazy"></a>` : "";
@@ -262,7 +291,7 @@
       const temporaria = String(m.historicoModo || "").toUpperCase() === "TEMPORARIO" ? '<span class="integro-chat-temporary" title="Mensagem temporária">timer</span>' : "";
       return `<div class="integro-chat-msg ${m.remetenteId === atual ? "mine" : ""}"><div class="integro-chat-msg-meta"><strong>${esc(m.remetenteNome || "Usuário")}</strong><small>${esc(m.remetenteCargo || "")}</small></div>${imagem}${texto}<time>${temporaria}${esc(formatarHorario(m.criadoEm) || m.dataOperacional || "")}</time></div>`;
     }).join("") : '<div class="empty">Nenhuma mensagem nesta conversa.</div>';
-    box.scrollTop = box.scrollHeight;
+    box.scrollTop = seguirFim ? box.scrollHeight : posicaoAnterior;
   }
 
   function atualizarCabecalho(conversa) {
@@ -291,6 +320,7 @@
         }, erro => console.warn("Presença do chat indisponível:", erro.message));
       }
       renderUsuarios();
+      if(estado.conversaAtual && !estado.unsubMensagens) await selecionar(estado.conversaAtual);
     } catch (erro) {
       if (el("chatStatus")) el("chatStatus").textContent = erro.message || "Falha ao iniciar chat.";
     }
@@ -317,6 +347,8 @@
 
   async function selecionar(id) {
     estado.conversaAtual = id;
+    containerChat()?.querySelector(".integro-chat")?.classList.add("conversa-aberta");
+    atualizarViewportChat();
     renderConversas();
     const conversa = estado.conversas.find(c => c.id === id) || { id };
     atualizarCabecalho(conversa);
@@ -324,12 +356,13 @@
     estado.unsubMensagens = global.IntegroChatService.assinarMensagens(id, renderMensagens, erro => {
       if (el("chatMensagens")) el("chatMensagens").innerHTML = `<div class="empty">${esc(erro.message || "Falha ao carregar mensagens.")}</div>`;
     });
-    await global.IntegroChatService.marcarComoLida(id);
+    try { await global.IntegroChatService.marcarComoLida(id); }
+    catch (erro) { notificar(erro.message || "Não foi possível atualizar a leitura da conversa.", "warning"); return; }
     estado.conversasNotificadas.delete(id);
     if (conversa.naoLidasPorUsuario) conversa.naoLidasPorUsuario[global.IntegroChatService.usuarioId()] = 0;
     renderConversas();
     atualizarBadgesChat();
-    el("chatTexto")?.focus();
+    if(!global.matchMedia?.("(max-width:760px)").matches)el("chatTexto")?.focus();
   }
 
   function abrirModalGrupo() {
@@ -399,7 +432,7 @@
     textarea.style.height = `${Math.min(120, Math.max(24, textarea.scrollHeight))}px`;
   }
   function teclaCompositor(event) {
-    if (event.key === "Enter" && !event.shiftKey) {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing && !global.matchMedia?.("(max-width:760px)")?.matches) {
       event.preventDefault();
       event.currentTarget.closest("form")?.requestSubmit();
     }
@@ -436,7 +469,7 @@
   }
 
   global.IntegroChatUI = {
-    atualizar, renderConversas, renderUsuarios, abrirDireta, abrirDiretaPorId, abrirEquipe, selecionar, enviar,
+    voltarConversas, atualizar, renderConversas, renderUsuarios, abrirDireta, abrirDiretaPorId, abrirEquipe, selecionar, enviar,
     selecionarImagem, cancelarImagem, atualizarBadgesChat, abrirModalGrupo, fecharModalGrupo, criarGrupo,
     toggleEmojis, inserirEmoji, ajustarCompositor, teclaCompositor, encerrarDetalhes: encerrarDetalhesChat
   };

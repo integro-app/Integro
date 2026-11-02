@@ -127,9 +127,18 @@
       line-height:1.45;
     }
   </style>
-  <link href="css/integro-mobile.css?v=20260818-v272-perf1" rel="stylesheet">
-  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2">
-  <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20">
+  <link href="css/integro-mobile.css?v=20261101-visualrestore1" rel="stylesheet">
+  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20261101-visualrestore1">
+  <link rel="stylesheet" href="css/integro-interface.css?v=20261101-visualrestore1">
+  <link rel="stylesheet" href="css/integro-loading.css?v=20261101-visualrestore1">
+  <script src="js/integro-loading-handoff.js?v=20261101-visualrestore1"></script>
+  <link rel="stylesheet" href="css/integro-visual.css?v=20261101-visualrestore1">
+  <script defer src="js/integro-menu-categorias.js?v=20261101-visualrestore1"></script>
+  <link rel="stylesheet" href="css/integro-palette.css?v=20261101-visualrestore1">
+  <link rel="stylesheet" href="css/integro-logo.css?v=20261101-visualrestore1">
+  <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-visualrestore1">
+  <script defer src="js/integro-filter-drawer.js?v=20261101-visualrestore1"></script>
+  <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-visualrestore1">
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-global">
 
@@ -166,7 +175,7 @@
     <section id="config" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Configurações globais</h2><p>Padrões da plataforma.</p></div><button class="btn btn-primary" onclick="salvarConfiguracoesGlobais()">Salvar</button></div><div class="grid grid-2"><div><label class="form-label">Nome da plataforma</label><input id="cfgNomePlataforma" class="form-input" value="ÍNTEGRO"></div><div><label class="form-label">Dias de teste padrão</label><input id="cfgDiasTeste" type="number" class="form-input" value="7"></div></div></div></section>
   </main>
   <div id="drawerOverlay" class="drawer-overlay"></div><aside id="drawer" class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Detalhes</h2><p id="drawerSubtitle">Informações</p></div><button class="close-btn" onclick="fecharDrawer()">?</button></div><div id="drawerBody" class="drawer-body"></div></aside>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script><script src="js/services/chat-service.js?v=20260729-1"></script><script src="js/chat-ui.js?v=20260729-1"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script><script src="js/services/chat-service.js?v=20260729-1"></script><script src="js/chat-ui.js?v=20261101-visualrestore1"></script>
   <script>
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false; let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[];
     const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
@@ -254,9 +263,9 @@
     });
     Object.assign(window,{abrirFormCliente,salvarClienteIntegro,abrirFormMasterLocal,salvarMasterLocal,abrirFormUsuarioInterno,salvarUsuarioInterno,abrirFormDepartamento,salvarDepartamento,abrirFormPlano,salvarPlano,abrirFormNotificacao,salvarNotificacao,renderClientes,limparBusca,fecharDrawer,alternarAcessoCliente,ativarTesteCliente,alternarAcessoUsuario,marcarNotificacaoLida,salvarConfiguracoesGlobais,carregarLogs,renderLogs,abrirDetalheCliente,abrirDetalheUsuario});
   </script>
-  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1"></script>
+  <script src="js/integro-mobile-navigation.js?v=20261101-visualrestore1"></script>
   <script src="js/integro-ui.js?v=20260805-v2"></script>
-  <script src="js/integro-interface.js?v=20260806-v20"></script>
+  <script src="js/integro-interface.js?v=20261101-visualrestore1"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25"></script>

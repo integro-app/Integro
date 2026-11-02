@@ -5,11 +5,10 @@
 
   const BUILD = "20260806-v20";
   const MODULOS_OPERACAO = [
-    { id: "operacao", rotulo: "Cobranças e vendas", icone: "point_of_sale" },
+    { id: "caixas", rotulo: "Caixas", icone: "account_balance_wallet" },
+    { id: "operacao", rotulo: "Vendas", icone: "shopping_cart" },
     { id: "aprovacoesFinanceiro", rotulo: "Aprovações", icone: "task_alt" },
-    { id: "captacao", rotulo: "Leads e captação", icone: "campaign" },
-    { id: "supervisao", rotulo: "Gestão de equipes", icone: "groups" },
-    { id: "caixas", rotulo: "Caixas", icone: "account_balance_wallet" }
+    { id: "supervisao", rotulo: "Gestão de equipes", icone: "groups" }
   ];
   const MODULOS_CONTA = [
     { id: "minhaConta", rotulo: "Minha conta", icone: "account_circle" },
@@ -84,7 +83,7 @@
   function montarBarrasInternas() {
     const ativo = TELA_PARA_SUBMODULO[telaAtiva()] || telaAtiva();
     document.querySelectorAll('#indicacoes .integro-horizontal-module-nav[data-nav-unified="operacao"]').forEach(barra => barra.remove());
-    ["vendas", "cobrancas", "operacao", "aprovacoesFinanceiro", "captacao", "supervisao", "equipes", "caixas"].forEach(id => {
+    ["vendas", "cobrancas", "operacao", "aprovacoesFinanceiro", "supervisao", "equipes", "caixas"].forEach(id => {
       inserirBarra(document.getElementById(id), "operacao", MODULOS_OPERACAO, ativo);
     });
     ["minhaConta", "notificacoes"].forEach(id => inserirBarra(document.getElementById(id), "conta", MODULOS_CONTA, ativo));
@@ -105,11 +104,15 @@
     if (periodo) {
       const integradoAoDashboard = Boolean(periodo.closest("#dashboard .dashboard-page-actions"));
       const ocultarParaVendedor = document.body.classList.contains("perfil-vendedor");
-      const deveOcultar = !integradoAoDashboard || ocultarParaVendedor;
+      const deveOcultar = !integradoAoDashboard || ocultarParaVendedor || telaAtiva() !== "dashboard";
       periodo.hidden = deveOcultar;
       periodo.setAttribute("aria-hidden", String(deveOcultar));
       periodo.dataset.periodoGlobalDesativado = String(!integradoAoDashboard);
       periodo.dataset.periodoDashboardIntegrado = String(integradoAoDashboard);
+      if (deveOcultar) {
+        document.getElementById("dashboardPeriodoPopover")?.classList.remove("show");
+        document.getElementById("dashboardPeriodoTrigger")?.setAttribute("aria-expanded", "false");
+      }
     }
     document.querySelectorAll("[data-dashboard-menu]").forEach(menu => {
       menu.hidden = false;
