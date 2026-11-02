@@ -7433,7 +7433,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     if (!selecionadas.length) return notificarIntegro("Selecione pelo menos uma equipe.");
 
     const elegiveis = selecionadas.filter(r => ["FECHADO","SEM_CAIXA"].includes(r.estado));
-    const bloqueadas = selecionadas.filter(r => r.estado === "ABERTO");
+    const bloqueadas = selecionadas.filter(r => ["ABERTO","REABERTO"].includes(String(r.estado || "").toUpperCase()));
 
     if (!elegiveis.length){
       return notificarIntegro("Abertura permitida apenas para equipes com caixa FECHADO ou SEM CAIXA.");
@@ -18321,153 +18321,29 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   };
 
   window.criarCaixaParaVendedor = async function (vendedor, equipe, snapshot) {
-    const database = ICX.db();
-
-    if (!database) {
-      throw new Error("Firebase não conectado.");
+    if (!window.IntegroCaixa?.registrarAberturaCaixaTransacional) {
+      const erro = new Error("Backend seguro de caixa indisponível. Nenhum caixa foi aberto.");
+      erro.code = "ERRO_BACKEND_CAIXA_INDISPONIVEL";
+      throw erro;
     }
-
-    const snap =
-      snapshot && typeof snapshot === "object"
-        ? snapshot
-        : {
-            caixaInicial: ICX.num(snapshot),
-            carteiraInicial: 0,
-            origem: "MANUAL",
-            ultimoCaixaId: ""
-          };
-
-    const hoje =
-      window.IntegroOperacional?.hojeSP?.() ||
-      new Date().toLocaleDateString("en-CA", {
-        timeZone: "America/Sao_Paulo"
-      });
-
+    const snap = snapshot && typeof snapshot === "object" ? snapshot : { caixaInicial: ICX.num(snapshot), carteiraInicial: 0, origem: "MANUAL", ultimoCaixaId: "" };
+    const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
     const user = ICX.user() || {};
     const tenant = String(ICX.tenant() || "");
-
-    const equipeIdFinal = String(
-      ICX.id(equipe) ||
-      ICX.equipeId(equipe) ||
-      ""
-    );
-
-    const vendedorIdFinal = String(
-      ICX.id(vendedor) ||
-      ICX.vendedorId(vendedor) ||
-      ""
-    );
-
-    const vendedorAuthUid = String(
-      vendedor?.authUid ||
-      vendedor?.uid ||
-      vendedor?.firebaseUid ||
-      ""
-    );
-
-    const caixaInicial = Number(ICX.num(snap.caixaInicial) || 0);
-    const carteiraInicial = Number(ICX.num(snap.carteiraInicial) || 0);
-
-    const saldoInicialCentavos = Math.round(caixaInicial * 100);
-    const carteiraInicialCentavos = Math.round(carteiraInicial * 100);
-
-    if (!tenant) {
-      throw new Error("Tenant da empresa não identificado.");
-    }
-
-    if (!vendedorIdFinal) {
-      throw new Error("Vendedor não identificado para abertura do caixa.");
-    }
-
-    if (!vendedorAuthUid) {
-      throw new Error(
-        `O vendedor ${vendedor?.nome || vendedor?.email || vendedorIdFinal} não possui authUid vinculado.`
-      );
-    }
-
-    return database.collection(ICX.collectionName("CAIXAS")).add({
-      clientePlataformaId: tenant,
-      tenantId: tenant,
-      empresaId: user.empresaId || tenant,
-      clientePlataformaNome:
-        user.clientePlataformaNome ||
-        user.empresaNome ||
-        "",
-
-      equipeId: equipeIdFinal,
-      equipeNome: ICX.nomeEquipe(equipe),
-
-      vendedorId: vendedorIdFinal,
-      usuarioId: vendedorIdFinal,
-      vendedorAuthUid,
-      vendedorUid: vendedorAuthUid,
-      vendedorNome:
-        vendedor?.nome ||
-        vendedor?.nomeCompleto ||
-        vendedor?.email ||
-        "Vendedor",
-
-      status: "ABERTO",
-      ativo: true,
-      excluido: false,
-
-      dataOperacional: hoje,
-      saldoInicialCentavos,
-      saldoAtualCentavos: saldoInicialCentavos,
-
-      valorInicial: caixaInicial,
-      saldoInicial: caixaInicial,
-      caixaInicial,
-      valorAtual: caixaInicial,
-      saldoAtual: caixaInicial,
-      caixaAtual: caixaInicial,
-
-      carteiraInicial,
-      carteiraFinal: carteiraInicial,
-      carteiraInicialCentavos,
-      carteiraFinalCentavos: carteiraInicialCentavos,
-
-      vendas: 0,
-      totalVendas: 0,
-      valorVendas: 0,
-      valorLiberado: 0,
-      totalVendasCentavos: 0,
-
-      recolhido: 0,
-      recebido: 0,
-      totalRecebido: 0,
-      totalPagamentosCentavos: 0,
-
-      ingressos: 0,
-      despesas: 0,
-      retiradas: 0,
-      totalIngressosCentavos: 0,
-      totalGastosCentavos: 0,
-      totalRetiradasCentavos: 0,
-      totalRecolhimentosCentavos: 0,
-      totalAjustesCentavos: 0,
-
+    const equipeId = String(ICX.id(equipe) || ICX.equipeId(equipe) || "");
+    const vendedorId = String(ICX.id(vendedor) || ICX.vendedorId(vendedor) || "");
+    const vendedorAuthUid = String(vendedor?.authUid || vendedor?.uid || vendedor?.firebaseUid || "");
+    if (!tenant) throw new Error("Tenant da empresa não identificado.");
+    if (!vendedorId) throw new Error("Vendedor não identificado para abertura do caixa.");
+    if (!vendedorAuthUid) throw new Error("Vendedor sem authUid vinculado.");
+    return window.IntegroCaixa.registrarAberturaCaixaTransacional({
+      usuario: user, clientePlataformaId: tenant, vendedor, vendedorId, vendedorAuthUid,
+      vendedorNome: vendedor?.nome || vendedor?.nomeCompleto || vendedor?.email || "Vendedor",
+      equipeId, equipeNome: ICX.nomeEquipe(equipe), dataOperacional: hoje,
+      valorInicialCentavos: Math.round(Number(ICX.num(snap.caixaInicial) || 0) * 100),
+      carteiraInicialCentavos: Math.round(Number(ICX.num(snap.carteiraInicial) || 0) * 100),
       origemAbertura: snap.origem || "ULTIMO_CAIXA_FECHADO",
-      ultimoCaixaFechadoId: snap.ultimoCaixaId || "",
-
-      dataCaixa: hoje,
-      dataAbertura: hoje,
-
-      abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-
-      abertoPorUid:
-        user.authUid ||
-        user.uid ||
-        firebase.auth()?.currentUser?.uid ||
-        "",
-
-      abertoPorNome:
-        user.nome ||
-        user.nomeCompleto ||
-        user.email ||
-        "Usuário"
+      ultimoCaixaFechadoId: snap.ultimoCaixaId || ""
     });
   };
 
