@@ -3324,11 +3324,7 @@ function getNotificacoesUsuario(){
   const uid = window.usuarioLogado?.id || window.currentUserData?.id || window.userId || '';
   const arr = Array.isArray(window.notificacoesCache) ? window.notificacoesCache : [];
   const filtradas = arr.filter(n=>!uid || n.usuarioId===uid || n.destinatarioId===uid || (Array.isArray(n.destinatariosIds)&&n.destinatariosIds.includes(uid)));
-  if(filtradas.length) return filtradas;
-  return [
-    {id:'n1',titulo:'Solicitação pendente',mensagem:'Há uma solicitação aguardando análise.',lida:false,criadoEmTexto:'recente'},
-    {id:'n2',titulo:'Caixa atualizado',mensagem:'Movimentação registrada na operação.',lida:true,criadoEmTexto:'recente'}
-  ];
+  return filtradas;
 }
 function atualizarBadgeNotificacoes(){
   const ns=getNotificacoesUsuario();
