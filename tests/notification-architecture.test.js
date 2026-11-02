@@ -81,3 +81,14 @@ test("notificações modernas roteiam leads e mantêm centro com lixeira", () =>
   assert.match(center, /LIXEIRA/);
   assert.match(center, /data-notification-count/);
 });
+
+
+test("menu unificado prioriza a central moderna e não exibe notificações fictícias", () => {
+  const nav = read("js/unified-navigation.js");
+  const master = read("master-local.html");
+  assert.match(nav, /IntegroNotificationCenter\?\.toggle/);
+  assert.match(nav, /typeof global\.abrirNotificacoes === "function"/);
+  assert.doesNotMatch(master, /id:\x27n1\x27,titulo:\x27Solicitação pendente\x27/);
+  assert.doesNotMatch(master, /id:\x27n2\x27,titulo:\x27Caixa atualizado\x27/);
+  assert.match(master, /function getNotificacoesUsuario\(\)[\s\S]*return filtradas;/);
+});
