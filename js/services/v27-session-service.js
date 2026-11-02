@@ -79,19 +79,34 @@
     return details?.code === "SESSION_ALREADY_ACTIVE" || /sessão ativa|sessao ativa/i.test(String(error?.message || ""));
   }
 
+  async function bindServerSession(result, expectedUid, fallbackId) {
+    const serverId = text(result?.sessionId || fallbackId);
+    if (!serverId) throw new Error("Servidor não retornou uma sessão válida.");
+    if (result?.customToken) {
+      const credential = await global.firebase.auth().signInWithCustomToken(result.customToken);
+      if (!credential?.user || credential.user.uid !== expectedUid) {
+        try { await global.firebase.auth().signOut(); } catch (_) {}
+        throw new Error("Token de sessão retornado para outro usuário.");
+      }
+    }
+    persistStartedSession(serverId);
+    return { ...result, sessionId: serverId };
+  }
+
   async function start(options = {}) {
-    if (!currentUser()) throw new Error("Usuário não autenticado.");
+    const user = currentUser();
+    if (!user) throw new Error("Usuário não autenticado.");
+    const expectedUid = user.uid;
     const id = options.sessionId || randomId();
     const payload = { sessionId: id, dispositivo: device() };
     try {
       const result = await callable("iniciarSessaoV27", payload);
-      persistStartedSession(id);
-      return result;
+      return await bindServerSession(result, expectedUid, id);
     } catch (error) {
       if (!isActiveSessionError(error)) throw error;
       const result = await callable("iniciarSessaoV27", { ...payload, forceReplace: true });
-      persistStartedSession(id);
-      return { ...result, substituiuSessaoAnterior: true };
+      const bound = await bindServerSession(result, expectedUid, id);
+      return { ...bound, substituiuSessaoAnterior: true };
     }
   }
 

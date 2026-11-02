@@ -127,6 +127,8 @@ test("V27 sessão nova substitui sessão ativa anterior", () => {
   const backend = read("functions", "v27-admin.js");
   assert.match(session, /isActiveSessionError/);
   assert.match(session, /forceReplace:\s*true/);
+  assert.match(session, /signInWithCustomToken/);
+  assert.match(session, /result\?\.sessionId \|\| fallbackId/);
   assert.doesNotMatch(session, /Usuário já possui uma sessão ativa\.\$\{extra/);
   assert.match(backend, /replacingActiveSession/);
   assert.match(backend, /!replacingActiveSession/);
