@@ -5,6 +5,7 @@
 
 function getClientesFiltrados() {
   const termo = (UIHelpers.getInputValue("buscaClientes") || "").toLowerCase();
+  const filtro = document.getElementById("filtroOrigemClientes")?.value || "todos";
   const clientes = State.getClientes ? State.getClientes() : [];
 
   return clientes.filter(c => {
@@ -21,7 +22,12 @@ function getClientesFiltrados() {
       c.status
     ].join(" ").toLowerCase();
 
-    return !termo || base.includes(termo);
+    const origem = resumoOrigemCliente(c);
+    const lead = Boolean(c.indicacaoId || c.leadId || ["LEAD", "INDICACAO", "CAPTACAO"].includes(String(c.origem || c.origemCliente || "").toUpperCase()));
+    if (filtro === "leads" && !lead) return false;
+    if (filtro === "diretos" && lead) return false;
+    if (filtro === "em_atendimento" && !["RECEBIDO", "AGUARDANDO_ATENDIMENTO", "EM_ATENDIMENTO", "TENTATIVA_CONTATO", "SEM_RETORNO", "RETORNO_AGENDADO", "PROPOSTA_APRESENTADA", "EM_RETRABALHO"].includes(String(c.statusAtendimento || "").toUpperCase())) return false;
+    return !termo || (base + " " + origem.origem + " " + origem.atendimento).toLowerCase().includes(termo);
   });
 }
 
@@ -102,6 +108,8 @@ function abrirVerCliente(id) {
     return;
   }
 
+  // A ficha 360 utiliza o serviço oficial, respeitando as permissões do usuário.
+  if (typeof window.abrirCliente360 === "function" && window.abrirCliente360(cliente)) return;
   abrirDrawer("Ver cliente", perfilCliente(cliente));
 }
 
@@ -638,6 +646,12 @@ function prepararTelaClientes() {
 
     <div class="search-row">
       <input id="buscaClientes" type="search" placeholder="Buscar por nome, apelido, documento, telefone ou status">
+      <select id="filtroOrigemClientes" aria-label="Filtrar clientes por origem ou atendimento">
+        <option value="todos">Todos os clientes</option>
+        <option value="leads">Recebidos como lead</option>
+        <option value="em_atendimento">Em atendimento</option>
+        <option value="diretos">Cadastro direto / outros</option>
+      </select>
       <button class="primary-btn" onclick="renderClientes()">Buscar</button>
       <button class="ghost-btn" onclick="limparBuscaClientes()">Limpar</button>
     </div>
@@ -662,6 +676,8 @@ function prepararTelaClientes() {
 function limparBuscaClientes() {
   const input = document.getElementById("buscaClientes");
   if (input) input.value = "";
+  const filtro = document.getElementById("filtroOrigemClientes");
+  if (filtro) filtro.value = "todos";
   renderClientes();
 }
 
