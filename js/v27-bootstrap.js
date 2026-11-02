@@ -83,33 +83,6 @@
   }
 
 
-  async function ensureSellerCloseout() {
-    if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
-    try {
-      await loadIfMissing(() => Boolean(global.IntegroVendedorFechamentoCaixa), "js/services/vendedor-fechamento-caixa.js", "seller-closeout");
-      global.IntegroVendedorFechamentoCaixa?.install?.();
-      return true;
-    } catch (error) {
-      console.error("[ÍNTEGRO V27.2] Falha ao carregar fechamento do caixa do vendedor.", error);
-      return false;
-    }
-  }
-
-  async function ensureSellerCollectionCorrections() {
-    if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
-    try {
-      await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections");
-      global.IntegroVendedorCobrancaCorrecoes?.install?.();
-      await loadIfMissing(() => Boolean(global.IntegroVendedorPagamentoFlexivel), "js/services/vendedor-pagamento-flexivel.js", "seller-flexible-payment");
-      global.IntegroVendedorPagamentoFlexivel?.install?.();
-      return true;
-    } catch (error) {
-      console.error("[ÍNTEGRO V27.2] Falha ao carregar correções de cobrança.", error);
-      return false;
-    }
-  }
-
-
   async function ensureLeadOpenGuard() {
     if (!page.endsWith("/vendedor.html")) return false;
     try {
@@ -140,7 +113,7 @@
   async function boot() {
     try {
       await loadIfMissing(() => Boolean(global.IntegroV27Policy), "js/services/v27-policy-service.js", "policy");
-      await Promise.all([ensureFinance(), ensureUserLifecycle(), ensureSalesApprovals(), ensureSellerCloseout(), ensureSellerCollectionCorrections(), ensureLeadOpenGuard()]);
+      await Promise.all([ensureFinance(), ensureUserLifecycle(), ensureSalesApprovals(), ensureLeadOpenGuard()]);
       await installOptionalGuards();
       document.documentElement.dataset.integroVersion = "27.2";
       document.dispatchEvent(new CustomEvent("integro-v27-pronto", { detail: { version: global.__INTEGRO_VERSION__ } }));
@@ -155,8 +128,6 @@
     ensureUserLifecycle();
     ensureFinance();
     ensureSalesApprovals();
-    ensureSellerCloseout();
-    ensureSellerCollectionCorrections();
     ensureLeadOpenGuard();
     installOptionalGuards();
   });

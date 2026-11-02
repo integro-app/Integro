@@ -951,28 +951,14 @@
       .then(() => registrarLog(destino.db || getDb(), "INDICACAO_REDISTRIBUIDA", usuario, { indicacaoId, destino }));
   }
 
-  async function iniciarAtendimentoIndicacao(indicacaoId, usuario = {}) {
+  function iniciarAtendimentoIndicacao(indicacaoId, usuario = {}) {
     const agora = window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString();
-    const db = usuario.db || getDb();
-    await atualizarStatusIndicacao(indicacaoId, {
+    return atualizarStatusIndicacao(indicacaoId, {
       statusIndicacao: "EM_ATENDIMENTO",
       status: "EM_ATENDIMENTO",
       dataInicioAtendimento: agora,
-      db,
       __permissaoIndicacao: "podeReceberIndicacoes"
     }, usuario, "INDICACAO_EM_ATENDIMENTO");
-    const snap = await db.collection("indicacoes").doc(indicacaoId).get();
-    const atual = snap.exists ? (snap.data() || {}) : {};
-    if (atual.clienteOperacionalId) {
-      await db.collection("clientes_operacionais").doc(atual.clienteOperacionalId).set({
-        statusAtendimento: "EM_ATENDIMENTO",
-        atualizadoPor: idUsuario(usuario),
-        atualizadoPorNome: nomeUsuario(usuario),
-        atualizadoEmTexto: agora,
-        atualizadoEm: serverTimestamp()
-      }, { merge: true });
-    }
-    return true;
   }
 
   function marcarIndicacaoNaoConvertida(indicacaoId, motivo, usuario = {}) {

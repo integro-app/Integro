@@ -2223,40 +2223,6 @@
     }
   }
 
-  async function abrirLeadsRecebidosVendedor(indicacaoId) {
-    const usuario = usuarioAtual || State.getUsuario?.() || {};
-    if (perfil(usuario) !== "vendedor") return false;
-    const idIndicacao = texto(indicacaoId);
-    if (!idIndicacao) return false;
-    const dbAtual = window.db || window.firebase?.firestore?.();
-    if (!dbAtual) throw new Error("Firestore indisponível para abrir o lead.");
-
-    const snap = await dbAtual.collection("indicacoes").doc(idIndicacao).get({ source: "server" });
-    if (!snap.exists) throw new Error("Lead não encontrado.");
-    let indicacao = { id: snap.id || idIndicacao, ...snap.data() };
-    if (!window.IntegroIndicacoes?.usuarioNoEscopoIndicacao?.(usuario, indicacao)) {
-      throw new Error("Este lead não pertence ao vendedor atual.");
-    }
-
-    const status = window.IntegroIndicacoes?.normalizarStatusIndicacao?.(indicacao.statusIndicacao || indicacao.status) || texto(indicacao.statusIndicacao || indicacao.status).toUpperCase();
-    if (status === "ATRIBUIDA" && typeof window.IntegroIndicacoes?.iniciarAtendimentoIndicacao === "function") {
-      await window.IntegroIndicacoes.iniciarAtendimentoIndicacao(idIndicacao, { ...usuario, db: dbAtual });
-      const atualizado = await dbAtual.collection("indicacoes").doc(idIndicacao).get({ source: "server" });
-      if (atualizado.exists) indicacao = { id: atualizado.id || idIndicacao, ...atualizado.data() };
-    }
-
-    await recarregarClientesVendedorDados();
-    const itemMenu = document.querySelector('#sidebar [data-modulo="clientes"]');
-    window.trocarTela?.("clientes", itemMenu || null);
-    trocarAbaClientesVendedor("leads");
-    executarPesquisaClientesVendedor();
-
-    const clienteId = texto(indicacao.clienteOperacionalId || indicacao.clienteId);
-    if (clienteId && clientePorId(clienteId)) {
-      setTimeout(() => abrirDrawerCliente(clienteId), 40);
-    }
-    return true;
-  }
   function abrirOperacao(itemMenu) {
     window.trocarTela?.("cobrancas", itemMenu);
     setTimeout(() => abrirAba("cobrancas"), 0);
@@ -2336,7 +2302,6 @@
   window.trocarAbaClientesVendedor = trocarAbaClientesVendedor;
   window.aplicarFiltroRapidoClientesVendedor = aplicarFiltroRapidoClientesVendedor;
   window.abrirDrawerClienteVendedor = abrirDrawerCliente;
-  window.abrirLeadsRecebidosVendedor = abrirLeadsRecebidosVendedor;
   window.abrirAbaDrawerClienteVendedor = abrirAbaDrawerCliente;
   window.atualizarCamposStatusLeadVendedor = atualizarCamposStatusLeadVendedor;
   window.salvarStatusLeadDrawerVendedor = salvarStatusLeadDrawer;

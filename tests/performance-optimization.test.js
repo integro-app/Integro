@@ -103,15 +103,3 @@ test("conectividade bloqueia operações financeiras até confirmação segura",
   assert.match(vendedor, /Sincronizando/);
   assert.match(vendedor, /IntegroVendedorAsync/);
 });
-
-
-test("perfil unificado inicia consultas independentes em paralelo", () => {
-  const source = ler("js/perfis-unificados.js");
-  assert.match(source, /const clientesPromise = seguro/);
-  assert.match(source, /const caixasPromise = seguro/);
-  assert.match(source, /const pagamentosPromise = seguro/);
-  assert.match(source, /clientesPromise\.then\(clientesCarregados/);
-  assert.match(source, /caixasPromise\.then\(caixasCarregados/);
-  assert.match(source, /await Promise\.all\(\[/);
-  assert.doesNotMatch(source, /const clientes = await carregarClientesPorPerfil\(\)/);
-});

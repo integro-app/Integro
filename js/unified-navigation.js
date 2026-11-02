@@ -145,10 +145,10 @@
     if (item.abrir === "sair") return global.logout?.();
     if (item.abrir === "chat") return global.abrirComunicacaoMasterLocal?.("chatInterno", elemento) ?? global.trocarTela?.("chatInterno", elemento);
     if (item.abrir === "notificacoes") {
-      if (typeof global.IntegroNotificationCenter?.toggle === "function") return global.IntegroNotificationCenter.toggle();
-      if (typeof global.abrirNotificacoes === "function") return global.abrirNotificacoes();
-      if (typeof global.abrirGavetaNotificacoesVendedor === "function") return global.abrirGavetaNotificacoesVendedor(elemento);
-      if (typeof global.abrirGavetaNotificacoesMaster === "function") return global.abrirGavetaNotificacoesMaster();
+      if (perfil(usuarioAtual) === "vendedor") {
+        if (typeof global.abrirGavetaNotificacoesVendedor === "function") return global.abrirGavetaNotificacoesVendedor(elemento);
+        if (typeof global.abrirGavetaNotificacoesMaster === "function") return global.abrirGavetaNotificacoesMaster();
+      }
       return global.abrirComunicacaoMasterLocal?.("notificacoes", elemento) ?? global.trocarTela?.("notificacoes", elemento);
     }
     if (item.abrir === "clientes") return global.navegarModuloClientesMasterLocal?.("clientes") ?? global.trocarTela?.("clientes", elemento);

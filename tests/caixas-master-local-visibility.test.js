@@ -65,34 +65,3 @@ test("abertura massiva usa resposta do backend e trata REABERTO como caixa exist
   assert.match(source, /ERRO_BACKEND_CAIXA_INDISPONIVEL/);
   assert.doesNotMatch(source, /const docRef = await db\.collection\(CONFIG\.COLECOES\.CAIXAS\)\.add/);
 });
-
-test("fechamento em massa gerencial confirma estado no servidor", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "master-local.html"), "utf8");
-  assert.match(source, /encerramentoGerencial:\s*true/);
-  assert.match(source, /master_local_fechamento_gerencial/);
-  assert.match(source, /get\(\{ source: "server" \}\)/);
-  assert.match(source, /falhas:\s*\[\]/);
-  assert.match(source, /return resumoFechamento/);
-  assert.match(source, /\["ABERTO","REABERTO"\]/);
-});
-
-test("módulo premium confirma fechamento individual e baixa gerencial", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "js", "modules", "caixas-supervisao.js"), "utf8");
-  assert.match(source, /encerramentoGerencial:managerial===true/);
-  assert.match(source, /Cobranças sem baixa classificadas como não pagas/);
-  assert.match(source, /get\(\{source:'server'\}\)/);
-  assert.match(source, /NÃO PAGAS por decisão gerencial/);
-});
-
-
-test("painel local usa backend na abertura e módulo premium como renderer oficial", () => {
-  const source = fs.readFileSync(path.join(__dirname, "..", "master-local.html"), "utf8");
-  const inicio = source.indexOf("window.criarCaixaParaVendedor = async function");
-  const fim = source.indexOf("window.abrirSelecionadas = async function", inicio);
-  const abertura = source.slice(inicio, fim);
-  assert.match(abertura, /registrarAberturaCaixaTransacional/);
-  assert.match(abertura, /ERRO_BACKEND_CAIXA_INDISPONIVEL/);
-  assert.doesNotMatch(abertura, /collection\(ICX\.collectionName\("CAIXAS"\)\)\.add/);
-  assert.match(source, /id="integro-caixas-premium-bridge"/);
-  assert.match(source, /IntegroCaixasSupervisao\?\.render/);
-});

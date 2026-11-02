@@ -568,6 +568,7 @@
       const perfil = acesso().perfil;
       if (!perfil || perfil === "master_local") return originais.carregarTudoMasterLocal?.();
 
+      const clientes = await carregarClientesPorPerfil();
       const seguro = async (nome, executor, padrao = []) => {
         try {
           return await executor();
@@ -577,6 +578,10 @@
         }
       };
 
+      const caixas = await seguro("caixas", () => perfil === "vendedor"
+        ? carregarCaixasVendedor()
+        : carregarColecaoPorPerfil(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 300));
+
       const solicitacoesAnteriores = Array.isArray(window.solicitacoesCache)
         ? window.solicitacoesCache
         : (State.getSolicitacoes?.() || []);
@@ -584,31 +589,20 @@
         ? window.lancamentosFinanceirosCache
         : [];
 
-      // Inicia consultas independentes imediatamente. Vendas do vendedor dependem
-      // de clientes e lançamentos dependem do caixa, mas não bloqueiam as demais.
-      const clientesPromise = seguro("clientes", carregarClientesPorPerfil);
-      const caixasPromise = seguro("caixas", () => perfil === "vendedor"
-        ? carregarCaixasVendedor()
-        : carregarColecaoPorPerfil(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 300));
-      const pagamentosPromise = seguro("pagamentos", carregarPagamentosHojePorPerfil);
-      const parcelasPromise = seguro("parcelas", () => carregarColecaoPorPerfil(CONFIG.COLECOES.PARCELAS || "parcelas", CONFIG.LIMITS?.PARCELAS || 1200));
-      const historicoPromise = seguro("histórico de cobranças", () => carregarColecaoPorPerfil(CONFIG.COLECOES.HISTORICO_COBRANCAS || "historicoCobrancas", CONFIG.LIMITS?.HISTORICO_COBRANCAS || 600));
-      const solicitacoesPromise = seguro("solicitações", () => carregarColecaoPorPerfil(CONFIG.COLECOES.SOLICITACOES, CONFIG.LIMITS?.SOLICITACOES || 300), solicitacoesAnteriores);
-      const usuariosPromise = seguro("usuários", carregarUsuariosPorPerfil);
-      const equipesPromise = seguro("equipes", carregarEquipesPorPerfil);
-      const logsPromise = perfil === "auditor"
-        ? seguro("logs", () => consultar(CONFIG.COLECOES.LOGS, [], CONFIG.LIMITS?.LOGS || 300))
-        : Promise.resolve([]);
-      const vendasPromise = perfil === "vendedor"
-        ? clientesPromise.then(clientesCarregados => seguro("vendas", () => carregarVendasVendedor(clientesCarregados)))
-        : seguro("vendas", () => carregarColecaoPorPerfil(CONFIG.COLECOES.VENDAS, CONFIG.LIMITS?.VENDAS || 500));
-      const lancamentosPromise = perfil === "vendedor"
-        ? caixasPromise.then(caixasCarregados => seguro("lançamentos financeiros", () => carregarLancamentosVendedor(caixasCarregados), lancamentosAnteriores))
-        : Promise.resolve(lancamentosAnteriores);
-
-      const [clientes, caixas, vendas, pagamentos, parcelas, historicoCobrancas, solicitacoes, lancamentos, usuarios, equipes, logs] = await Promise.all([
-        clientesPromise, caixasPromise, vendasPromise, pagamentosPromise, parcelasPromise,
-        historicoPromise, solicitacoesPromise, lancamentosPromise, usuariosPromise, equipesPromise, logsPromise
+      const [vendas, pagamentos, parcelas, historicoCobrancas, solicitacoes, lancamentos, usuarios, equipes, logs] = await Promise.all([
+        seguro("vendas", () => perfil === "vendedor"
+          ? carregarVendasVendedor(clientes)
+          : carregarColecaoPorPerfil(CONFIG.COLECOES.VENDAS, CONFIG.LIMITS?.VENDAS || 500)),
+        seguro("pagamentos", carregarPagamentosHojePorPerfil),
+        seguro("parcelas", () => carregarColecaoPorPerfil(CONFIG.COLECOES.PARCELAS || "parcelas", CONFIG.LIMITS?.PARCELAS || 1200)),
+        seguro("histórico de cobranças", () => carregarColecaoPorPerfil(CONFIG.COLECOES.HISTORICO_COBRANCAS || "historicoCobrancas", CONFIG.LIMITS?.HISTORICO_COBRANCAS || 600)),
+        seguro("solicitações", () => carregarColecaoPorPerfil(CONFIG.COLECOES.SOLICITACOES, CONFIG.LIMITS?.SOLICITACOES || 300), solicitacoesAnteriores),
+        seguro("lançamentos financeiros", () => perfil === "vendedor"
+          ? carregarLancamentosVendedor(caixas)
+          : [], lancamentosAnteriores),
+        seguro("usuários", carregarUsuariosPorPerfil),
+        seguro("equipes", carregarEquipesPorPerfil),
+        perfil === "auditor" ? seguro("logs", () => consultar(CONFIG.COLECOES.LOGS, [], CONFIG.LIMITS?.LOGS || 300)) : []
       ]);
 
     State.setClientes?.(clientes);

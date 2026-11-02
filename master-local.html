@@ -2453,13 +2453,13 @@ body.integro-data-refreshing .section-card{
   }
 </style>
 
-  <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-ui-october-safe2" rel="stylesheet">
+  <link href="css/integro-mobile.css?v=20260818-v272-perf1" rel="stylesheet">
   <link rel="stylesheet" href="css/vendedor-operacao.css?v=20260818-v273-card1">
   <link rel="stylesheet" href="css/perfis-unificados.css?v=20260805-producao-otimizada1">
 
 <style id="integro-vendedor-topbar-ajuste-final">
   body.perfil-vendedor #dashboardPeriodoToolbar{display:none!important;}
-  body.perfil-vendedor #integroNotificationButton{display:grid!important;}
+  body.perfil-vendedor #integroNotificationButton{display:none!important;}
   body.perfil-vendedor .integro-global-actions{min-width:0;}
   #sidebar .integro-sidebar-menu-compacto .integro-notificacoes-menu-lateral{position:relative;}
   #sidebar .integro-sidebar-menu-compacto .integro-notificacoes-menu-lateral #badgeNotificacoesMenu{position:absolute;right:14px;top:50%;transform:translateY(-50%);min-width:20px;height:20px;border-radius:999px;background:#ff8a00;color:#fff;font-size:11px;font-weight:950;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 8px 18px rgba(255,138,0,.28);}
@@ -2511,21 +2511,6 @@ body.integro-data-refreshing .section-card{
   @media(max-width:1100px){#clientes .clientes-master-resumo{grid-template-columns:repeat(2,minmax(0,1fr));}}
   @media(max-width:760px){#clientes.clientes-standardized > .clientes-section-card{padding:14px;border-radius:16px;}#clientes .clientes-page-header{align-items:stretch;flex-direction:column;}#clientes .clientes-page-actions,#clientes .clientes-header-create{width:100%;}#clientes .clientes-header-create{justify-content:center;}#clientes .clientes-master-resumo{grid-template-columns:1fr;}#clientes .clientes-master-searchbar{grid-template-columns:1fr 1fr;}#clientes .clientes-search-field{grid-column:1/-1;}#clientes .clientes-empty-table-head{display:none;}}
 </style>
-
-<link href="css/integro-loading.css?v=20260827-single1&build=20261101-ui-october-safe2" rel="stylesheet">
-<script src="js/integro-loading-handoff.js?v=20260827-single1&build=20261101-ui-october-safe2"></script>
-<link rel="stylesheet" href="css/logout-flow.css?v=20261101-ui-october-safe2">
-<script src="js/logout-flow.js?v=20261101-ui-october-safe2"></script>
-<link rel="stylesheet" href="css/caixa-date-ui.css?v=20261101-ui-october-safe2">
-<link rel="stylesheet" href="css/caixas-supervisao.css?v=20261101-ui-october-safe2">
-<link rel="stylesheet" href="css/integro-visual.css?v=20261101-ui-october-safe2">
-<script defer src="js/integro-menu-categorias.js?v=20261101-ui-october-safe2"></script>
-<link rel="stylesheet" href="css/integro-palette.css?v=20261101-ui-october-safe2">
-<link rel="stylesheet" href="css/integro-logo.css?v=20261101-ui-october-safe2">
-<link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-ui-october-safe2">
-<script defer src="js/integro-filter-drawer.js?v=20261101-ui-october-safe2"></script>
-<link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-ui-october-safe2">
-
 </head>
 
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-local">
@@ -2533,7 +2518,7 @@ body.integro-data-refreshing .section-card{
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
       <div class="integro-loader-logo" aria-label="ÍNTEGRO">ÍNTE<span>GRO</span></div>
-      <div class="integro-loader-title">Preparando seu acesso</div>
+      <div class="integro-loader-title">Preparando seu painel</div>
       <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
       <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
       <div class="integro-loader-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
@@ -2579,16 +2564,6 @@ body.integro-data-refreshing .section-card{
     </aside>
 
     <main class="main">
-      <div class="integro-global-header" aria-label="Ações rápidas">
-        <div class="integro-global-header-spacer"></div>
-        <div class="integro-global-actions">
-          <button id="integroNotificationButton" class="integro-notification-button" type="button" aria-label="Abrir notificações" aria-haspopup="dialog" aria-expanded="false" onclick="return window.IntegroNotificationCenter?.toggle?.() ?? window.abrirNotificacoes?.() ?? false">
-            <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
-            <span id="notificationCount" class="integro-notification-count" data-notification-count data-count="0" hidden>0</span>
-          </button>
-        </div>
-      </div>
-
       <section id="dashboard" class="screen active dashboard-standardized">
         <div class="section-card dashboard-section-card" data-integro-ui-component="surface">
           <div class="section-header dashboard-page-header">
@@ -3143,7 +3118,6 @@ body.integro-data-refreshing .section-card{
   </div>
 
   <div class="drawer" id="drawer"></div>
-  <script src="js/lifecycle-instrumentation.js?v=20261101-ui-october-safe2"></script>
 
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
@@ -3163,15 +3137,15 @@ body.integro-data-refreshing .section-card{
   <script src="js/services/clientes-service.js?v=20260812-clientes-v24-3"></script>
   <script src="js/services/clientes-importacao-service.js?v=20260729-1"></script>
   <script src="js/clientes-importacao-ui.js?v=20260729-1"></script>
-  <script src="js/services/indicacoes-service.js?v=20260813-leads-v25-1&build=20261101-ui-october-safe2"></script>
+  <script src="js/services/indicacoes-service.js?v=20260813-leads-v25-1"></script>
   <script src="js/services/chat-service.js?v=20260806-v13"></script>
   <script src="js/services/configuracoes-empresa-service.js?v=20260730-1"></script>
-  <script src="js/services/financial-operations.js?v=20260812-v24-4&build=20261101-ui-october-safe2"></script>
+  <script src="js/services/financial-operations.js?v=20260812-v24-4"></script>
   <script src="js/services/movement-view-service.js?v=20260805-dashboard-caixa-v8"></script>
   <script src="js/utils/validators.js"></script>
   <script src="js/utils/ui-helpers.js"></script>
   <script src="js/app.js?v=20260812-v24-6"></script>
-  <script src="js/auth.js?v=20261101-ui-october-safe2"></script>
+  <script src="js/auth.js"></script>
   <script src="js/cargos.js?v=20260730-4"></script>
   <script src="js/equipes.js?v=20260730-4"></script>
   <script src="js/caixas.js?v=20260805-producao-otimizada1"></script>
@@ -3181,9 +3155,9 @@ body.integro-data-refreshing .section-card{
   <script src="js/master-local.js?v=20260805-producao-otimizada1"></script>
   <script src="js/painel-unificado.js?v=20260804-movimentacoes4"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
-  <script src="js/perfis-unificados.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2"></script>
+  <script src="js/perfis-unificados.js?v=20260818-v272-perf1"></script>
   <script src="js/services/realtime-operations-service.js?v=20260805-dashboard-caixa-v8"></script>
-<script src="js/chat-ui.js?v=20260806-v13&build=20261101-ui-october-safe2"></script>
+<script src="js/chat-ui.js?v=20260806-v13"></script>
 <script src="js/dashboard-navigation.js"></script>
 
 
@@ -3324,7 +3298,11 @@ function getNotificacoesUsuario(){
   const uid = window.usuarioLogado?.id || window.currentUserData?.id || window.userId || '';
   const arr = Array.isArray(window.notificacoesCache) ? window.notificacoesCache : [];
   const filtradas = arr.filter(n=>!uid || n.usuarioId===uid || n.destinatarioId===uid || (Array.isArray(n.destinatariosIds)&&n.destinatariosIds.includes(uid)));
-  return filtradas;
+  if(filtradas.length) return filtradas;
+  return [
+    {id:'n1',titulo:'Solicitação pendente',mensagem:'Há uma solicitação aguardando análise.',lida:false,criadoEmTexto:'recente'},
+    {id:'n2',titulo:'Caixa atualizado',mensagem:'Movimentação registrada na operação.',lida:true,criadoEmTexto:'recente'}
+  ];
 }
 function atualizarBadgeNotificacoes(){
   const ns=getNotificacoesUsuario();
@@ -5456,15 +5434,24 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   window.fecharDrawerMaster = window.fecharDrawerMaster || function(){ const drawer=$("drawer"); if(drawer){drawer.classList.remove("show");drawer.innerHTML="";} };
 
   window.abrirCaixaEquipe = async function(unidade){
-    const linhasAtuais = typeof window.linhas === "function" ? window.linhas() : [];
-    const alvo = linhasAtuais.find(r => String(r.nome || (r.equipe && r.equipe.nome) || "") === String(unidade || ""));
-    if (!alvo) return notificarIntegro("Equipe não encontrada.");
-    if (!window.CX || !window.CX.selecionadas || typeof window.abrirCaixasSelecionadasIntegro !== "function") {
-      return notificarIntegro("Serviço seguro de abertura de caixas indisponível.");
-    }
-    window.CX.selecionadas.clear();
-    window.CX.selecionadas.add(String(alvo.id));
-    return window.abrirCaixasSelecionadasIntegro();
+    const row = getEquipesBase().map(rowBase).find(r=>r.unidade===unidade);
+    if(!row) return notificarIntegro("Equipe não encontrada.");
+    const valor = prompt("Valor inicial do caixa:", "0");
+    if(valor === null) return;
+    const db = getDb();
+    if(!db) return notificarIntegro("Firebase não conectado.");
+    try{
+      const hoje = new Date().toISOString().slice(0,10);
+      if(!row.vendedores.length){
+        await db.collection("caixas").add({clientePlataformaId:tenantId(), equipeId:row.equipeId, equipeNome:row.unidade, status:"ABERTO", valorInicial:num(valor), saldoInicial:num(valor), saldoAtual:num(valor), valorAtual:num(valor), dataCaixa:hoje, dataAbertura:hoje, ativo:true, criadoEm:new Date(), abertoEm:new Date(), abertoPorId:window.usuarioLogado?.id||window.currentUserData?.id||"", abertoPorNome:window.usuarioLogado?.nome||window.currentUserData?.nome||""});
+      }else{
+        for(const v of row.vendedores){
+          await db.collection("caixas").add({clientePlataformaId:tenantId(), equipeId:row.equipeId, equipeNome:row.unidade, vendedorId:vendedorId(v), vendedorNome:v.nome||v.nomeCompleto||v.email||"Vendedor", status:"ABERTO", valorInicial:num(valor), saldoInicial:num(valor), saldoAtual:num(valor), valorAtual:num(valor), dataCaixa:hoje, dataAbertura:hoje, ativo:true, criadoEm:new Date(), abertoEm:new Date(), abertoPorId:window.usuarioLogado?.id||window.currentUserData?.id||"", abertoPorNome:window.usuarioLogado?.nome||window.currentUserData?.nome||""});
+        }
+      }
+      await carregarDadosCaixasFirebase(true);
+      renderCaixas();
+    }catch(e){ console.error(e); notificarIntegro("Erro ao abrir caixa. Veja o console."); }
   };
 
   window.fecharCaixaEquipe = async function(caixaIdAtual){
@@ -5483,19 +5470,12 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
         vendedorId: caixa.vendedorId || caixa.usuarioId || "",
         vendedorAuthUid: caixa.vendedorAuthUid || caixa.vendedorUid || caixa.uid || "",
         valorInformadoCentavos: Math.round(valorReal * 100),
-        justificativa: "Fechamento gerencial individual pelo painel local.",
-        encerramentoGerencial: true,
+        justificativa: "Fechamento individual pelo Master Local.",
         snapshot,
         origem: "master_local"
       });
-      const banco = window.db && typeof window.db !== "function" ? window.db : (window.firebase && window.firebase.firestore ? window.firebase.firestore() : null);
-      if (!banco) throw new Error("Firestore indisponível para confirmar o fechamento.");
-      const confirmado = await banco.collection("caixas").doc(caixaIdAtual).get({ source: "server" });
-      const dados = confirmado.exists ? (confirmado.data() || {}) : {};
-      const status = String(dados.status || "").toUpperCase();
-      if (!confirmado.exists || !["FECHADO","DIVERGENTE"].includes(status) || dados.ativo === true) throw new Error("O servidor ainda não confirmou o fechamento.");
       await carregarDadosCaixasFirebase(true);
-      if (typeof window.renderCaixasPremium === "function") window.renderCaixasPremium(true);
+      renderCaixas();
     }catch(e){ console.error(e); notificarIntegro("Erro ao fechar caixa: " + (e.message || e)); }
   };
 
@@ -7427,7 +7407,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     if (!selecionadas.length) return notificarIntegro("Selecione pelo menos uma equipe.");
 
     const elegiveis = selecionadas.filter(r => ["FECHADO","SEM_CAIXA"].includes(r.estado));
-    const bloqueadas = selecionadas.filter(r => ["ABERTO","REABERTO"].includes(String(r.estado || "").toUpperCase()));
+    const bloqueadas = selecionadas.filter(r => r.estado === "ABERTO");
 
     if (!elegiveis.length){
       return notificarIntegro("Abertura permitida apenas para equipes com caixa FECHADO ou SEM CAIXA.");
@@ -12452,10 +12432,7 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
   }
 
   function setLoaderProgress(percentual){
-    const etapa = limitarPercentualLoader(percentual);
-    const valor = window.IntegroLoadingContinuo?.percentual
-      ? window.IntegroLoadingContinuo.percentual(etapa)
-      : etapa;
+    const valor = limitarPercentualLoader(percentual);
     integroLoaderPercentualAtual = valor;
 
     const texto = document.getElementById("integroLoaderPercent");
@@ -12519,7 +12496,6 @@ setTimeout(()=>{atualizarBadgeNotificacoes(); renderCaixasPremium(); renderUnida
     loadingPremiumIniciado = true;
     const loader = document.getElementById("integroBootLoader");
     document.body.classList.add("integro-booting");
-    window.IntegroLoadingContinuo?.iniciar?.();
     setLoaderProgress(0);
 
     const authUser = window.firebase?.auth?.()?.currentUser || null;
@@ -18315,29 +18291,153 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   };
 
   window.criarCaixaParaVendedor = async function (vendedor, equipe, snapshot) {
-    if (!window.IntegroCaixa?.registrarAberturaCaixaTransacional) {
-      const erro = new Error("Backend seguro de caixa indisponível. Nenhum caixa foi aberto.");
-      erro.code = "ERRO_BACKEND_CAIXA_INDISPONIVEL";
-      throw erro;
+    const database = ICX.db();
+
+    if (!database) {
+      throw new Error("Firebase não conectado.");
     }
-    const snap = snapshot && typeof snapshot === "object" ? snapshot : { caixaInicial: ICX.num(snapshot), carteiraInicial: 0, origem: "MANUAL", ultimoCaixaId: "" };
-    const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
+
+    const snap =
+      snapshot && typeof snapshot === "object"
+        ? snapshot
+        : {
+            caixaInicial: ICX.num(snapshot),
+            carteiraInicial: 0,
+            origem: "MANUAL",
+            ultimoCaixaId: ""
+          };
+
+    const hoje =
+      window.IntegroOperacional?.hojeSP?.() ||
+      new Date().toLocaleDateString("en-CA", {
+        timeZone: "America/Sao_Paulo"
+      });
+
     const user = ICX.user() || {};
     const tenant = String(ICX.tenant() || "");
-    const equipeId = String(ICX.id(equipe) || ICX.equipeId(equipe) || "");
-    const vendedorId = String(ICX.id(vendedor) || ICX.vendedorId(vendedor) || "");
-    const vendedorAuthUid = String(vendedor?.authUid || vendedor?.uid || vendedor?.firebaseUid || "");
-    if (!tenant) throw new Error("Tenant da empresa não identificado.");
-    if (!vendedorId) throw new Error("Vendedor não identificado para abertura do caixa.");
-    if (!vendedorAuthUid) throw new Error("Vendedor sem authUid vinculado.");
-    return window.IntegroCaixa.registrarAberturaCaixaTransacional({
-      usuario: user, clientePlataformaId: tenant, vendedor, vendedorId, vendedorAuthUid,
-      vendedorNome: vendedor?.nome || vendedor?.nomeCompleto || vendedor?.email || "Vendedor",
-      equipeId, equipeNome: ICX.nomeEquipe(equipe), dataOperacional: hoje,
-      valorInicialCentavos: Math.round(Number(ICX.num(snap.caixaInicial) || 0) * 100),
-      carteiraInicialCentavos: Math.round(Number(ICX.num(snap.carteiraInicial) || 0) * 100),
+
+    const equipeIdFinal = String(
+      ICX.id(equipe) ||
+      ICX.equipeId(equipe) ||
+      ""
+    );
+
+    const vendedorIdFinal = String(
+      ICX.id(vendedor) ||
+      ICX.vendedorId(vendedor) ||
+      ""
+    );
+
+    const vendedorAuthUid = String(
+      vendedor?.authUid ||
+      vendedor?.uid ||
+      vendedor?.firebaseUid ||
+      ""
+    );
+
+    const caixaInicial = Number(ICX.num(snap.caixaInicial) || 0);
+    const carteiraInicial = Number(ICX.num(snap.carteiraInicial) || 0);
+
+    const saldoInicialCentavos = Math.round(caixaInicial * 100);
+    const carteiraInicialCentavos = Math.round(carteiraInicial * 100);
+
+    if (!tenant) {
+      throw new Error("Tenant da empresa não identificado.");
+    }
+
+    if (!vendedorIdFinal) {
+      throw new Error("Vendedor não identificado para abertura do caixa.");
+    }
+
+    if (!vendedorAuthUid) {
+      throw new Error(
+        `O vendedor ${vendedor?.nome || vendedor?.email || vendedorIdFinal} não possui authUid vinculado.`
+      );
+    }
+
+    return database.collection(ICX.collectionName("CAIXAS")).add({
+      clientePlataformaId: tenant,
+      tenantId: tenant,
+      empresaId: user.empresaId || tenant,
+      clientePlataformaNome:
+        user.clientePlataformaNome ||
+        user.empresaNome ||
+        "",
+
+      equipeId: equipeIdFinal,
+      equipeNome: ICX.nomeEquipe(equipe),
+
+      vendedorId: vendedorIdFinal,
+      usuarioId: vendedorIdFinal,
+      vendedorAuthUid,
+      vendedorUid: vendedorAuthUid,
+      vendedorNome:
+        vendedor?.nome ||
+        vendedor?.nomeCompleto ||
+        vendedor?.email ||
+        "Vendedor",
+
+      status: "ABERTO",
+      ativo: true,
+      excluido: false,
+
+      dataOperacional: hoje,
+      saldoInicialCentavos,
+      saldoAtualCentavos: saldoInicialCentavos,
+
+      valorInicial: caixaInicial,
+      saldoInicial: caixaInicial,
+      caixaInicial,
+      valorAtual: caixaInicial,
+      saldoAtual: caixaInicial,
+      caixaAtual: caixaInicial,
+
+      carteiraInicial,
+      carteiraFinal: carteiraInicial,
+      carteiraInicialCentavos,
+      carteiraFinalCentavos: carteiraInicialCentavos,
+
+      vendas: 0,
+      totalVendas: 0,
+      valorVendas: 0,
+      valorLiberado: 0,
+      totalVendasCentavos: 0,
+
+      recolhido: 0,
+      recebido: 0,
+      totalRecebido: 0,
+      totalPagamentosCentavos: 0,
+
+      ingressos: 0,
+      despesas: 0,
+      retiradas: 0,
+      totalIngressosCentavos: 0,
+      totalGastosCentavos: 0,
+      totalRetiradasCentavos: 0,
+      totalRecolhimentosCentavos: 0,
+      totalAjustesCentavos: 0,
+
       origemAbertura: snap.origem || "ULTIMO_CAIXA_FECHADO",
-      ultimoCaixaFechadoId: snap.ultimoCaixaId || ""
+      ultimoCaixaFechadoId: snap.ultimoCaixaId || "",
+
+      dataCaixa: hoje,
+      dataAbertura: hoje,
+
+      abertoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+
+      abertoPorUid:
+        user.authUid ||
+        user.uid ||
+        firebase.auth()?.currentUser?.uid ||
+        "",
+
+      abertoPorNome:
+        user.nome ||
+        user.nomeCompleto ||
+        user.email ||
+        "Usuário"
     });
   };
 
@@ -18415,31 +18515,17 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     }
     const caixaId = ICX.id(caixa);
     const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId });
-    const resultado = await window.IntegroCaixa.registrarFechamentoCaixaTransacional({
+    return window.IntegroCaixa.registrarFechamentoCaixaTransacional({
       usuario: ICX.user(),
       clientePlataformaId: ICX.tenant(),
       caixaId,
       vendedorId: caixa.vendedorId || caixa.usuarioId || "",
       vendedorAuthUid: caixa.vendedorAuthUid || caixa.vendedorUid || caixa.uid || "",
       valorInformadoCentavos: snapshot.caixaFinalEsperadoCentavos,
-      justificativa: "Fechamento gerencial em massa com valor esperado pelo sistema.",
-      encerramentoGerencial: true,
+      justificativa: "Fechamento em massa com valor esperado pelo sistema.",
       snapshot,
-      origem: "master_local_fechamento_gerencial"
+      origem: "master_local"
     });
-    if (!["FECHADO","DIVERGENTE"].includes(String(resultado?.statusFechamento || "").toUpperCase())) {
-      throw new Error("O backend não confirmou o fechamento do caixa.");
-    }
-    const banco = window.db && typeof window.db !== "function" ? window.db : window.firebase?.firestore?.();
-    if (!banco) throw new Error("Firestore indisponível para confirmar o fechamento.");
-    const confirmado = await banco.collection("caixas").doc(caixaId).get({ source: "server" });
-    if (!confirmado.exists) throw new Error("Caixa não encontrado após o fechamento.");
-    const dados = confirmado.data() || {};
-    const status = String(dados.status || "").toUpperCase();
-    if (!["FECHADO","DIVERGENTE"].includes(status) || dados.ativo === true) {
-      throw new Error("Fechamento não confirmado no servidor; o caixa ainda consta aberto.");
-    }
-    return { ...resultado, statusServidor: status };
   }
 
   window.fecharSelecionadas = async function(){
@@ -18448,7 +18534,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!selecionadas.length) return notificarIntegro("Selecione pelo menos uma equipe.");
 
     const caixas = [];
-    selecionadas.filter(r => ["ABERTO","REABERTO"].includes(String(r.estado || "").toUpperCase())).forEach(r => {
+    selecionadas.filter(r => r.estado === "ABERTO").forEach(r => {
       r.caixasAbertos.forEach(c => {
         if (!caixas.find(x => ICX.id(x) === ICX.id(c))) caixas.push(c);
       });
@@ -18457,7 +18543,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!caixas.length) return notificarIntegro("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
 
-    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0, cancelados: 0, falhas: [] };
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
     for (const c of caixas){
       try {
         const resultado = await fecharCaixaMasterLocalSeguro(c);
@@ -18484,7 +18570,6 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       ? ` Motivo: ${primeiraFalha.message}`
       : "";
     notificarIntegro(`Fechamento de caixa concluído. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}.${detalheFalha}`);
-    return resumoFechamento;
   };
 
   window.criarCaixaParaVendedorFinal = async function(vendedor, equipe, snapshot){
@@ -18548,7 +18633,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!caixas.length) return notificarIntegro("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
 
-    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0, cancelados: 0, falhas: [] };
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
     for (const c of caixas){
       try {
         const resultado = await fecharCaixaMasterLocalSeguro(c);
@@ -18570,7 +18655,6 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     else if (typeof renderTelaCaixas === "function") renderTelaCaixas();
 
     notificarIntegro(`Fechamento massivo concluido. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}.`);
-    return resumoFechamento;
   };
 
   console.info("[ÍNTEGRO] Correção de caixas reais aplicada: abertura usa último fechamento e carteira acompanha vendas com juros menos recebimentos.");
@@ -25231,21 +25315,15 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
 })();
 </script>
   <script src="js/modules/unified-module-utils.js?v=20260803-migracao2"></script>
-  <link rel="stylesheet" href="css/cliente-gestao-final.css?v=20261101-ui-october-safe2">
-  <script src="js/modules/cliente-360.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/modules/central-gestao.js?v=20261101-ui-october-safe2"></script>
   <script src="js/modules/financeiro-unificado.js?v=20260805-producao-otimizada1"></script>
-  <script src="js/modules/movimentacoes-unificadas.js?v=20261101-ui-october-safe2"></script>
   <script src="js/modules/auditoria-unificada.js?v=20260803-migracao2"></script>
   <script src="js/modules/captador-unificado.js?v=20260803-migracao2"></script>
   <script src="js/modules/supervisor-operacao-unificada.js?v=20260803-migracao2"></script>
   <script src="js/minha-conta.js?v=20260805-producao-otimizada1"></script>
   <script src="js/unified-navigation.js?v=20260812-v24-4"></script>
   <script src="js/usuarios-permissoes-config.js?v=20260803-unificado1"></script>
-  <script src="js/integro-connectivity-guard.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2"></script>
-  <script src="js/vendedor-operacao.js?v=20260818-cobrancas-saldo1&build=20261101-ui-october-safe2"></script>
-  <script src="js/services/seller-box-dashboard.js?v=20261101-ui-october-safe2"></script>
+  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1"></script>
+  <script src="js/vendedor-operacao.js?v=20260818-cobrancas-saldo1"></script>
   <script src="js/vendedor-unificado.js?v=20260818-v273-card1"></script>
 
 <script id="integro-financeiro-admin-unificado-router">
@@ -25355,41 +25433,8 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/integro-interface.js?v=20260806-v20"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
-  <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-ui-october-safe2"></script>
-  <script src="js/services/notification-service.js?v=20260813-v25&build=20261101-ui-october-safe2"></script>
-  <script src="js/modules/notification-center.js?v=20260813-v25&build=20261101-ui-october-safe2"></script>
-  <script src="js/caixa-opening-progress.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/caixa-team-date-ui.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/modules/caixas-supervisao.js?v=20261101-ui-october-safe2"></script>
-  <script id="integro-caixas-premium-bridge">
-  (function(){
-    "use strict";
-    const renderLegado = window.renderCaixasPremium;
-    function renderCaixasOficial(force){
-      try {
-        if (window.IntegroCaixasSupervisao?.render?.()) return true;
-      } catch (erro) {
-        console.error("[ÍNTEGRO CAIXAS] Falha no módulo premium; usando fallback.", erro);
-      }
-      return typeof renderLegado === "function" ? renderLegado(force) : false;
-    }
-    window.renderCaixasPremium = renderCaixasOficial;
-    window.renderCaixas = renderCaixasOficial;
-    window.renderizarCaixas = renderCaixasOficial;
-    window.renderListaCaixas = renderCaixasOficial;
-    const trocarBase = window.trocarTela;
-    window.trocarTela = function(tela, el){
-      const retorno = typeof trocarBase === "function" ? trocarBase.apply(this, arguments) : undefined;
-      if (tela === "caixas") setTimeout(function(){ renderCaixasOficial(true); }, 30);
-      return retorno;
-    };
-    document.addEventListener("integro-tela-alterada", function(evento){
-      if (evento.detail?.tela === "caixas") setTimeout(function(){ renderCaixasOficial(true); }, 20);
-    });
-    document.addEventListener("usuario-validado", function(){
-      if (document.getElementById("caixas")?.classList.contains("active")) setTimeout(function(){ renderCaixasOficial(true); }, 60);
-    });
-  })();
-  </script>
+  <script src="js/routers/notification-router.js?v=20260813-v25"></script>
+  <script src="js/services/notification-service.js?v=20260813-v25"></script>
+  <script src="js/modules/notification-center.js?v=20260813-v25"></script>
 </body>
 </html>

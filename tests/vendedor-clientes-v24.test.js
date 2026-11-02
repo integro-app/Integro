@@ -207,16 +207,3 @@ test('v24.6 rules tornam destinatarioAuthUid soberano para notificacao direciona
   assert.match(bloco, /isCurrentUserValue\(destinatarioAuthUid\)/);
   assert.match(bloco, /destinatarioAuthUid == ""/);
 });
-
-
-test("notificação abre lead exato do vendedor e inicia atendimento com validação de escopo", () => {
-  const vendedor = fs.readFileSync(path.join(__dirname, "..", "js", "vendedor-unificado.js"), "utf8");
-  const indicacoes = fs.readFileSync(path.join(__dirname, "..", "js", "services", "indicacoes-service.js"), "utf8");
-  assert.match(vendedor, /async function abrirLeadsRecebidosVendedor/);
-  assert.match(vendedor, /usuarioNoEscopoIndicacao/);
-  assert.match(vendedor, /get\(\{ source: "server" \}\)/);
-  assert.match(vendedor, /iniciarAtendimentoIndicacao/);
-  assert.match(vendedor, /trocarAbaClientesVendedor\("leads"\)/);
-  assert.match(vendedor, /abrirDrawerCliente\(clienteId\)/);
-  assert.match(indicacoes, /statusAtendimento:\s*"EM_ATENDIMENTO"/);
-});

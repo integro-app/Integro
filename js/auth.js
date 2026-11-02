@@ -44,38 +44,6 @@ async function registrarFalhaLoginV27(email) {
   }
 }
 
-let __integroLoginRedirecionando = false;
-
-function atualizarLoadingLogin(percentual, mensagem) {
-  const valor = Math.max(0, Math.min(100, Math.round(Number(percentual) || 0)));
-  const loader = document.getElementById("loginFlowLoader");
-  const etapa = document.getElementById("loginFlowStep");
-  const progresso = document.getElementById("loginFlowProgress");
-  const hint = document.getElementById("loginFlowHint");
-  if (loader) {
-    loader.hidden = false;
-    loader.classList.add("is-visible");
-  }
-  if (etapa && mensagem) etapa.textContent = mensagem;
-  if (progresso) progresso.style.width = valor + "%";
-  if (hint) hint.textContent = valor + "% concluído";
-  try {
-    sessionStorage.setItem("integroLoadingContinuo", JSON.stringify({
-      percentual: valor,
-      expiraEm: Date.now() + 30000
-    }));
-  } catch (_) {}
-}
-
-function encerrarLoadingLogin() {
-  const loader = document.getElementById("loginFlowLoader");
-  if (loader) {
-    loader.classList.remove("is-visible");
-    loader.hidden = true;
-  }
-  try { sessionStorage.removeItem("integroLoadingContinuo"); } catch (_) {}
-}
-
 // ===============================
 // LOGIN
 // ===============================
@@ -94,8 +62,6 @@ async function login() {
   }
 
   try {
-    __integroLoginRedirecionando = false;
-    atualizarLoadingLogin(8, "Validando suas credenciais...");
     if (botaoLogin) {
       botaoLogin.disabled = true;
       botaoLogin.dataset.textoOriginal = botaoLogin.innerText;
@@ -103,10 +69,8 @@ async function login() {
     }
 
     const credencial = await auth.signInWithEmailAndPassword(email, senha);
-    atualizarLoadingLogin(34, "Credenciais confirmadas...");
     const authUser = credencial.user;
     const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
-    atualizarLoadingLogin(54, "Validando seu acesso...");
 
     if (!usuario) {
       await auth.signOut();
@@ -124,23 +88,19 @@ async function login() {
     }
 
     State.setUsuario(usuario);
-    atualizarLoadingLogin(64, "Preparando empresa e sessão segura...");
-    const configuracoesPromise = carregarConfiguracoesEmpresaDoUsuario(usuario);
-    const sessaoPromise = garantirServicoSessaoV27();
+    await carregarConfiguracoesEmpresaDoUsuario(usuario);
 
-    // V27: o login novo assume a sessão e derruba o dispositivo anterior; etapas independentes rodam em paralelo.
+    // V27: o login novo assume a sessão e derruba o dispositivo anterior.
+    const sessao = await garantirServicoSessaoV27();
+    if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
     try {
-      const sessao = await sessaoPromise;
-      if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
-      await Promise.all([configuracoesPromise, sessao.start()]);
-      atualizarLoadingLogin(92, "Abrindo seu painel...");
+      await sessao.start();
     } catch (erroSessao) {
       await auth.signOut().catch(() => {});
       State.limparSessao();
       throw erroSessao;
     }
 
-    __integroLoginRedirecionando = true;
     redirecionarUsuario(usuario);
   } catch (erro) {
     console.error("ERRO LOGIN:", erro);
@@ -173,7 +133,6 @@ async function login() {
     if (typeof mostrarStatusLogin === "function") mostrarStatusLogin(mensagem);
     else if (window.UIHelpers?.alerta) UIHelpers.alerta(mensagem);
   } finally {
-    if (!__integroLoginRedirecionando) encerrarLoadingLogin();
     if (botaoLogin) {
       botaoLogin.disabled = false;
       botaoLogin.innerText = botaoLogin.dataset.textoOriginal || "Entrar na plataforma";
@@ -223,7 +182,6 @@ function protegerPagina(tipoObrigatorio = null) {
         return;
       }
 
-      const servicoSessaoPromise = garantirServicoSessaoV27();
       const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
       if (!usuario) {
         await auth.signOut();
@@ -254,12 +212,10 @@ function protegerPagina(tipoObrigatorio = null) {
       }
 
       State.setUsuario(usuario);
-      const sessao = await servicoSessaoPromise;
-      const resultadosProtecao = await Promise.all([
-        carregarConfiguracoesEmpresaDoUsuario(usuario),
-        sessao?.resume?.()
-      ]);
-      const retomada = resultadosProtecao[1];
+      await carregarConfiguracoesEmpresaDoUsuario(usuario);
+
+      const sessao = await garantirServicoSessaoV27();
+      const retomada = await sessao?.resume?.();
       if (!retomada) {
         await auth.signOut().catch(() => {});
         State.limparSessao();
