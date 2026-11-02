@@ -103,7 +103,7 @@ function renderClientes() {
       <div class="item-actions">
         <button class="ghost-btn" onclick="abrirVerCliente('${c.id}')">Ver</button>
         <button class="ghost-btn" onclick="abrirEditarCliente('${c.id}')">Editar</button>
-        <button class="ghost-btn" onclick="abrirTransferirCliente('${c.id}')">Transferir</button>
+        ${["master_local","supervisor","master_global","usuario_integro"].includes(String(State.getUsuario?.()?.cargoChave || State.getUsuario?.()?.tipoUsuario || "").toLowerCase()) ? `<button class="ghost-btn" onclick="abrirTransferirCliente('${c.id}')">Transferir</button>` : ""}
         <button class="danger-btn" onclick="excluirClienteLogico('${c.id}')">Excluir</button>
       </div>
     </div>
