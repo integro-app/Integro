@@ -25367,5 +25367,35 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/caixa-opening-progress.js?v=20261101-ui-october-safe2"></script>
   <script src="js/caixa-team-date-ui.js?v=20261101-ui-october-safe2"></script>
   <script src="js/modules/caixas-supervisao.js?v=20261101-ui-october-safe2"></script>
+  <script id="integro-caixas-premium-bridge">
+  (function(){
+    "use strict";
+    const renderLegado = window.renderCaixasPremium;
+    function renderCaixasOficial(force){
+      try {
+        if (window.IntegroCaixasSupervisao?.render?.()) return true;
+      } catch (erro) {
+        console.error("[ÍNTEGRO CAIXAS] Falha no módulo premium; usando fallback.", erro);
+      }
+      return typeof renderLegado === "function" ? renderLegado(force) : false;
+    }
+    window.renderCaixasPremium = renderCaixasOficial;
+    window.renderCaixas = renderCaixasOficial;
+    window.renderizarCaixas = renderCaixasOficial;
+    window.renderListaCaixas = renderCaixasOficial;
+    const trocarBase = window.trocarTela;
+    window.trocarTela = function(tela, el){
+      const retorno = typeof trocarBase === "function" ? trocarBase.apply(this, arguments) : undefined;
+      if (tela === "caixas") setTimeout(function(){ renderCaixasOficial(true); }, 30);
+      return retorno;
+    };
+    document.addEventListener("integro-tela-alterada", function(evento){
+      if (evento.detail?.tela === "caixas") setTimeout(function(){ renderCaixasOficial(true); }, 20);
+    });
+    document.addEventListener("usuario-validado", function(){
+      if (document.getElementById("caixas")?.classList.contains("active")) setTimeout(function(){ renderCaixasOficial(true); }, 60);
+    });
+  })();
+  </script>
 </body>
 </html>
