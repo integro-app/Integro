@@ -1,10 +1,12 @@
 "use strict";
+const { exigirEmpresaOperacional } = require("./company-access");
 
 const crypto = require("node:crypto");
+const { FieldValue } = require("firebase-admin/firestore");
 const { persistNotification } = require("./notification-core");
 
 function criarAdministracaoV27({ admin, functions, db }) {
-  const serverTimestamp = () => admin.firestore.FieldValue.serverTimestamp();
+  const serverTimestamp = () => FieldValue.serverTimestamp();
   const nowMs = () => Date.now();
   const text = value => String(value ?? "").trim();
   const upper = value => text(value).toUpperCase();
@@ -17,11 +19,11 @@ function criarAdministracaoV27({ admin, functions, db }) {
   async function userProfile(uid) {
     if (!uid) return null;
     const direct = await db.collection("usuarios").doc(uid).get();
-    if (direct.exists) return { id: direct.id, ...direct.data() };
+    if (direct.exists) return direct.data().authUid === uid ? { ...direct.data(), id: direct.id } : null;
     const query = await db.collection("usuarios").where("authUid", "==", uid).limit(2).get();
-    if (query.empty) return null;
+    if (query.docs.length !== 1) return null;
     const doc = query.docs[0];
-    return { id: doc.id, ...doc.data() };
+    return { ...doc.data(), id: doc.id };
   }
 
   async function userProfileByEmail(email) {
@@ -31,7 +33,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     if (query.empty) query = await db.collection("usuarios").where("email", "==", normalized).limit(2).get();
     if (query.empty) return null;
     const doc = query.docs[0];
-    return { id: doc.id, ...doc.data() };
+    return { ...doc.data(), id: doc.id };
   }
 
   function tenant(user = {}) {
@@ -40,10 +42,13 @@ function criarAdministracaoV27({ admin, functions, db }) {
 
   function role(user = {}) {
     const values = [user.perfil, user.tipoUsuario, user.cargoChave, user.cargoNome, user.cargo].map(lower);
+    if (values.includes("master_global")) return "master_global";
+    if (values.includes("usuario_integro")) return "usuario_integro";
     if (values.some(v => v === "master_local" || v.includes("master local"))) return "master_local";
     if (values.some(v => v === "gerente" || v.includes("gerente"))) return "gerente";
     if (values.some(v => v === "supervisor" || v.includes("supervisor"))) return "supervisor";
     if (values.some(v => v === "financeiro" || v.includes("finance"))) return "financeiro";
+    if (values.includes("vendedor")) return "vendedor";
     return values.find(Boolean) || "";
   }
 
@@ -57,22 +62,51 @@ function criarAdministracaoV27({ admin, functions, db }) {
   }
 
   function active(user = {}) {
-    return user.acessoLiberado !== false && !["INATIVO", "BLOQUEADO", "SUSPENSO"].includes(upper(user.status || "ATIVO"));
+    return user.excluido !== true && user.ativo !== false && user.acessoLiberado !== false && !["INATIVO", "BLOQUEADO", "SUSPENSO"].includes(upper(user.status || "ATIVO"));
   }
 
-  async function actorContext(context) {
+  async function actorContext(context, somenteSessao = false) {
     if (!context.auth?.uid) error("unauthenticated", "Sessão não autenticada.");
     const actor = await userProfile(context.auth.uid);
-    if (!actor || !active(actor)) error("permission-denied", "Usuário sem acesso administrativo válido.");
+    if (!actor || !active(actor) || actor.acessoLiberado !== true || text(actor.authUid) !== context.auth.uid) error("permission-denied", "Usuário sem acesso administrativo válido.");
+    if (!somenteSessao && tenant(actor)) await exigirEmpresaOperacional({db,functions,usuario:actor,tenantId:tenant(actor)});
     return actor;
   }
 
-  function canManage(actor, target) {
-    if (!actor || !target || tenant(actor) !== tenant(target)) return false;
-    const r = role(actor);
-    if (["master_local", "gerente"].includes(r)) return true;
-    if (r === "supervisor") return sameTeam(actor, target);
+  function canManage(actor, target, action = "") {
+    if (!actor || !target) return false;
+    const permissions = actor.permissoesUsuario || actor.permissoes || actor.permissoesCargo || {};
+    if (permissions.usuarios === false || permissions[`usuarios.${action}`] === false ||
+        permissions.usuarios?.[action] === false) return false;
+    const r = role(actor), targetRole = role(target);
+    if (r === "master_global") return ["master_local", "usuario_integro"].includes(targetRole);
+    if (!tenant(actor) || tenant(actor) !== tenant(target) || ["master_global", "usuario_integro"].includes(targetRole)) return false;
+    if (r === "master_local") return true;
+    if (targetRole === "master_local") return false;
+    if (r === "gerente") return targetRole !== "gerente";
+    if (r === "supervisor") return !["gerente", "supervisor"].includes(targetRole) && sameTeam(actor, target);
     return false;
+  }
+
+  async function currentActor(tx, actor, uid) {
+    const snap = await tx.get(db.collection("usuarios").doc(actor.id));
+    const current = snap.exists ? { ...snap.data(), id: snap.id } : null;
+    if (!current || current.authUid !== uid || !active(current) || current.acessoLiberado !== true || tenant(current) !== tenant(actor) || role(current) !== role(actor)) {
+      error("permission-denied", "Acesso alterado. Entre novamente.");
+    }
+    return current;
+  }
+
+  async function managedTarget(tx, actor, target, uid, targetUid, action) {
+    const current = await currentActor(tx, actor, uid);
+    if (tenant(current)) await exigirEmpresaOperacional({
+      db: { collection: name => ({ doc: key => ({ get: () => tx.get(db.collection(name).doc(key)) }) }) },
+      functions, usuario: current, tenantId: tenant(current)
+    });
+    const snap = await tx.get(db.collection("usuarios").doc(target.id));
+    const fresh = snap.exists ? { ...snap.data(), id: snap.id } : null;
+    if (!fresh || fresh.authUid !== targetUid || !canManage(current, fresh, action)) error("permission-denied", "Acesso administrativo alterado.");
+    return fresh;
   }
 
   async function configForTenant(tenantId) {
@@ -89,23 +123,92 @@ function criarAdministracaoV27({ admin, functions, db }) {
     };
   }
 
+  async function exigirCaixaVendedor(actor, uid) {
+    if (role(actor) !== "vendedor") return;
+    const consulta = db.collection("caixas").where("clientePlataformaId", "==", tenant(actor))
+      .where("vendedorAuthUid", "==", uid).where("status", "in", ["ABERTO", "REABERTO", "aberto", "reaberto"]).limit(1);
+    let pagina = consulta;
+    while (true) {
+      const snap = await pagina.get();
+      const doc = snap.docs[0];
+      if (!doc) break;
+      const caixa = doc.data();
+      if (tenant(caixa) === tenant(actor) && text(caixa.vendedorAuthUid) === uid &&
+          ["ABERTO", "REABERTO"].includes(upper(caixa.status)) && caixa.ativo !== false && caixa.excluido !== true) return;
+      pagina = consulta.startAfter(doc);
+    }
+    error("failed-precondition", "Caixa fechado. Solicite a abertura ou reabertura ao supervisor para entrar no sistema.", { code: "CAIXA_FECHADO" });
+  }
+
+  // Consulta segura antes da sessao V27: alguns tenants legados nao podem
+  // ler clientes_plataforma pelo SDK enquanto o token ainda nao esta vinculado.
+  // Nunca confia no tenant informado pelo navegador nem concede nova permissao.
+  async function consultarAcessoEmpresaLogin(data, context) {
+    const actor = await actorContext(context, true);
+    const tenantId = tenant(actor);
+    const requested = text(data?.tenantId);
+    if (requested !== tenantId || requested.includes("/")) error("permission-denied", "Empresa diferente da identidade autenticada.");
+    if (["master_global", "usuario_integro"].includes(role(actor))) return { ok: true, acessoRestritoAssinatura: false };
+    if (!tenantId || actor.empresaBloqueada === true || actor.acessoEmpresaLiberado === false ||
+        ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(actor.clientePlataformaStatus || actor.empresaStatus))) {
+      error("permission-denied", "Empresa sem acesso operacional.");
+    }
+    const snaps = await Promise.all(["clientes_integro", "clientes_plataforma"].map(
+      nome => db.collection(nome).doc(tenantId).get()
+    ));
+    const empresas = snaps.filter(doc => doc.exists).map(doc => doc.data() || {});
+    const toMs = value => value?.toMillis ? value.toMillis() : Date.parse(value);
+    const now = nowMs();
+    for (const company of empresas) {
+      if (company.acessoLiberado === false || company.ativo === false ||
+          ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(company.status || company.situacao))) {
+        error("permission-denied", "Empresa sem acesso operacional.");
+      }
+      if (company.testeAtivo === true && company.dataFimTeste &&
+          (!Number.isFinite(toMs(company.dataFimTeste)) || toMs(company.dataFimTeste) <= now)) {
+        error("permission-denied", "Período de teste expirado.");
+      }
+    }
+    const assinaturaBloqueada = empresas.some(company => company.bloqueioAssinaturaEm &&
+      toMs(company.bloqueioAssinaturaEm) <= now);
+    const perfis = [actor.tipoUsuario, actor.cargoChave].map(lower);
+    const podeVerAssinatura = perfis.some(p => ["master_local", "financeiro", "administrativo", "adm"].includes(p)) ||
+      actor.responsavelFinanceiro === true || actor.permissoes?.assinatura?.ver === true;
+    if (assinaturaBloqueada && !podeVerAssinatura) error("permission-denied", "Empresa sem acesso operacional.");
+    return { ok: true, acessoRestritoAssinatura: Boolean(assinaturaBloqueada) };
+  }
+
   async function iniciarSessao(data, context) {
-    const actor = await actorContext(context);
+    // Prechecagem somente leitura, anterior ao token de sessao V27. Mantem
+    // a callable existente (invoker ja autorizado), sem abrir nova IAM policy.
+    if (data?.verificarEmpresa === true) return consultarAcessoEmpresaLogin(data, context);
+    const actor = await actorContext(context, true);
     const uid = context.auth.uid;
     const tenantId = tenant(actor);
-    if (!tenantId) error("failed-precondition", "Empresa não identificada.");
-    const config = await configForTenant(tenantId);
+    if (!tenantId && !["master_global", "usuario_integro"].includes(lower(actor.tipoUsuario))) error("failed-precondition", "Empresa não identificada.");
+    const [, config] = await Promise.all([exigirCaixaVendedor(actor, uid), configForTenant(tenantId)]);
     const inactivity = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 15), 720));
     if (Number(actor.tentativasLoginFalhas || 0) > 0) {
       await db.collection("usuarios").doc(actor.id || uid).set({ tentativasLoginFalhas:0, ultimaAutenticacaoValidaEm:serverTimestamp() }, { merge:true });
     }
-    const sessionId = text(data?.sessionId);
-    if (!sessionId || sessionId.length < 12) error("invalid-argument", "Identificador de sessão inválido.");
+    const requestedId = text(data?.sessionId);
+    if (!requestedId || requestedId.length < 12) error("invalid-argument", "Identificador de sessão inválido.");
+    const sessionId = crypto.randomBytes(24).toString("base64url");
     const ref = db.collection("sessoes_usuarios").doc(uid);
+    const boundSession = text(context.auth.token?.integroSessionId);
+    if (boundSession) {
+      const previous = await ref.get(), current = previous.exists ? previous.data() : {};
+      if (current.sessionId !== boundSession || current.encerrada === true || Number(current.expiresAtMs || 0) <= nowMs()) error("permission-denied", "Sessão inválida. Autentique-se novamente.");
+    }
+    const bearer = text(context.rawRequest?.headers?.authorization).replace(/^Bearer /i, "");
+    if (bearer) await admin.auth().verifyIdToken(bearer, true);
+    // Assinar antes da gravação: falha de assinatura não substitui sessão válida.
+    const customToken = await admin.auth().createCustomToken(uid, { integroSessionId: sessionId });
     const now = nowMs();
     const expiresAtMs = now + inactivity * 60 * 1000;
     let existing = null;
     await db.runTransaction(async tx => {
+      await currentActor(tx, actor, uid);
       const snap = await tx.get(ref);
       existing = snap.exists ? snap.data() || {} : null;
       const existingAlive = existing && Number(existing.expiresAtMs || 0) > now && existing.encerrada !== true;
@@ -117,8 +220,10 @@ function criarAdministracaoV27({ admin, functions, db }) {
           dispositivo: existing.dispositivo || {}
         });
       }
+      tx.set(db.collection("usuarios").doc(actor.id), { segurancaSessao: { id: sessionId, clientePlataformaId: tenant(actor), expiresAtMs, encerrada: false } }, { merge: true });
       tx.set(ref, {
         uid,
+        usuarioDocumentoId: actor.id,
         clientePlataformaId: tenantId,
         sessionId,
         dispositivo: deviceLabel(data?.dispositivo || {}),
@@ -132,43 +237,45 @@ function criarAdministracaoV27({ admin, functions, db }) {
         atualizadoEm: serverTimestamp()
       }, { merge: true });
     });
-    return { ok: true, sessionId, inactivityMinutes: inactivity, expiresAtMs, substituiuSessaoAnterior: Boolean(data?.forceReplace) };
+    return { ok: true, customToken, sessionId, inactivityMinutes: inactivity, expiresAtMs, substituiuSessaoAnterior: Boolean(data?.forceReplace) };
   }
 
   async function validarSessao(data, context) {
-    const actor = await actorContext(context);
+    const actor = await actorContext(context, true);
     const uid = context.auth.uid;
     const sessionId = text(data?.sessionId);
+    if (context.auth.token?.integroSessionId !== sessionId) error("permission-denied", "Sessão não vinculada ao token.");
     const ref = db.collection("sessoes_usuarios").doc(uid);
-    const snap = await ref.get();
-    if (!snap.exists) error("failed-precondition", "Sessão não registrada.", { code: "SESSION_MISSING" });
-    const current = snap.data() || {};
-    const now = nowMs();
-    if (current.encerrada === true || text(current.sessionId) !== sessionId || Number(current.expiresAtMs || 0) <= now) {
-      error("failed-precondition", "Sessão expirada ou substituída.", { code: "SESSION_INVALID" });
-    }
-    const inactivity = Math.max(5, Math.min(Number(current.inactivityMinutes || 15), 720));
-    const expiresAtMs = now + inactivity * 60 * 1000;
-    await ref.set({
-      ultimaAtividadeEmTexto: new Date(now).toISOString(),
-      expiresAtMs,
-      atualizadoEm: serverTimestamp(),
-      clientePlataformaId: tenant(actor)
-    }, { merge: true });
-    return { ok: true, expiresAtMs, inactivityMinutes: inactivity };
+    await exigirCaixaVendedor(actor, uid);
+    return db.runTransaction(async tx => {
+      await currentActor(tx, actor, uid);
+      const snap = await tx.get(ref);
+      if (!snap.exists) error("failed-precondition", "Sessão não registrada.", { code: "SESSION_MISSING" });
+      const current = snap.data() || {}, now = nowMs();
+      if (current.encerrada === true || text(current.sessionId) !== sessionId || Number(current.expiresAtMs || 0) <= now ||
+          text(current.clientePlataformaId) !== tenant(actor)) {
+        error("failed-precondition", "Sessão expirada ou substituída.", { code: "SESSION_INVALID" });
+      }
+      const inactivity = Math.max(5, Math.min(Number(current.inactivityMinutes || 15), 720));
+      const expiresAtMs = now + inactivity * 60 * 1000;
+      tx.set(db.collection("usuarios").doc(actor.id), { segurancaSessao: { id: sessionId, clientePlataformaId: tenant(actor), expiresAtMs, encerrada: false } }, { merge: true });
+      tx.set(ref, { ultimaAtividadeEmTexto: new Date(now).toISOString(), expiresAtMs, atualizadoEm: serverTimestamp() }, { merge: true });
+      return { ok: true, expiresAtMs, inactivityMinutes: inactivity };
+    });
   }
 
   async function encerrarSessao(data, context) {
     if (!context.auth?.uid) return { ok: true };
-    const uid = context.auth.uid;
-    const ref = db.collection("sessoes_usuarios").doc(uid);
-    const snap = await ref.get();
-    if (!snap.exists) return { ok: true };
-    const current = snap.data() || {};
-    const sessionId = text(data?.sessionId);
-    if (sessionId && current.sessionId && text(current.sessionId) !== sessionId) return { ok: true };
-    await ref.set({ encerrada: true, expiresAtMs: 0, encerradaEmTexto: new Date().toISOString(), atualizadoEm: serverTimestamp() }, { merge: true });
-    return { ok: true };
+    const ref = db.collection("sessoes_usuarios").doc(context.auth.uid);
+    return db.runTransaction(async tx => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return { ok: true };
+      const current = snap.data() || {}, sessionId = text(data?.sessionId);
+      if (!sessionId || context.auth.token?.integroSessionId !== sessionId || text(current.sessionId) !== sessionId) return { ok: true };
+      tx.set(db.collection("usuarios").doc(current.usuarioDocumentoId || context.auth.uid), { segurancaSessao: { id: sessionId, expiresAtMs: 0, encerrada: true } }, { merge: true });
+      tx.set(ref, { encerrada: true, expiresAtMs: 0, encerradaEmTexto: new Date().toISOString(), atualizadoEm: serverTimestamp() }, { merge: true });
+      return { ok: true };
+    });
   }
 
   async function registrarFalhaLogin(data) {
@@ -189,7 +296,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
       blocked = attempts >= max;
       tx.set(ref, {
         tentativasLoginFalhas:attempts, ultimaFalhaLoginEm:serverTimestamp(),
-        ...(blocked ? { status:"BLOQUEADO", acessoLiberado:false, bloqueioMotivo:"TENTATIVAS_LOGIN", bloqueadoEm:serverTimestamp() } : {})
+        ...(blocked ? { status:"BLOQUEADO", acessoLiberado:false, segurancaSessao:{encerrada:true,expiresAtMs:0}, bloqueioMotivo:"TENTATIVAS_LOGIN", bloqueadoEm:serverTimestamp() } : {})
       }, { merge:true });
     });
     if (blocked) {
@@ -228,11 +335,15 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const password = text(data?.novaSenha);
     if (!targetUid || password.length < 6) error("invalid-argument", "Usuário e nova senha de pelo menos 6 caracteres são obrigatórios.");
     const target = await userProfile(targetUid);
-    if (!target || !canManage(actor, target)) error("permission-denied", "Sem permissão para redefinir a senha deste usuário.");
-    await admin.auth().updateUser(targetUid, { password, disabled: false });
+    if (!target || !canManage(actor, target, "redefinir_senha")) error("permission-denied", "Sem permissão para redefinir a senha deste usuário.");
+    await db.runTransaction(async tx => {
+      await managedTarget(tx, actor, target, context.auth.uid, targetUid, "redefinir_senha");
+      tx.set(db.collection("usuarios").doc(target.id), { segurancaSessao: { encerrada: true, expiresAtMs: 0 } }, { merge: true });
+      tx.set(db.collection("sessoes_usuarios").doc(targetUid), { encerrada: true, expiresAtMs: 0, motivoEncerramento: "RESET_SENHA", atualizadoEm: serverTimestamp() }, { merge: true });
+    });
+    await admin.auth().updateUser(targetUid, { password });
     await admin.auth().revokeRefreshTokens(targetUid);
-    await db.collection("sessoes_usuarios").doc(targetUid).set({ encerrada: true, expiresAtMs: 0, motivoEncerramento: "RESET_SENHA", atualizadoEm: serverTimestamp() }, { merge: true });
-    await db.collection("usuarios").doc(targetUid).set({ senhaRedefinidaEm: serverTimestamp(), senhaRedefinidaPorUid: context.auth.uid }, { merge: true });
+    await db.collection("usuarios").doc(target.id).set({ senhaRedefinidaEm: serverTimestamp(), senhaRedefinidaPorUid: context.auth.uid }, { merge: true });
     await notifySecurity({ ...target, authUid: targetUid }, actor, "SENHA_ALTERADA", "Sua senha de acesso foi alterada por um superior autorizado. Todas as sessões anteriores foram encerradas.");
     return { ok: true };
   }
@@ -241,12 +352,19 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const actor = await actorContext(context);
     const targetUid = text(data?.targetUid);
     const target = await userProfile(targetUid);
-    if (!target || !canManage(actor, target)) error("permission-denied", "Sem permissão para desbloquear este usuário.");
+    if (!target || !canManage(actor, target, "desbloquear")) error("permission-denied", "Sem permissão para desbloquear este usuário.");
+    if (target.excluido === true || target.convitePendente === true) error("failed-precondition", "Usuário excluído ou ainda não provisionado.");
+    await db.runTransaction(tx => managedTarget(tx, actor, target, context.auth.uid, targetUid, "desbloquear"));
     await admin.auth().updateUser(targetUid, { disabled: false });
-    await db.collection("usuarios").doc(targetUid).set({
-      status: "ATIVO", acessoLiberado: true, tentativasLoginFalhas: 0,
-      desbloqueadoPorUid: context.auth.uid, desbloqueadoEm: serverTimestamp()
-    }, { merge: true });
+    await db.runTransaction(async tx => {
+      const fresh = await managedTarget(tx, actor, target, context.auth.uid, targetUid, "desbloquear");
+      if (fresh.excluido === true || fresh.convitePendente === true) error("failed-precondition", "Usuário excluído ou ainda não provisionado.");
+      tx.set(db.collection("usuarios").doc(fresh.id), {
+        status: "ATIVO", ativo: true, acessoLiberado: true, tentativasLoginFalhas: 0, segurancaSessao: { encerrada: true, expiresAtMs: 0 },
+        desbloqueadoPorUid: context.auth.uid, desbloqueadoEm: serverTimestamp()
+      }, { merge: true });
+      tx.set(db.collection("sessoes_usuarios").doc(targetUid), { encerrada: true, expiresAtMs: 0, motivoEncerramento: "DESBLOQUEIO_ADMIN", atualizadoEm: serverTimestamp() }, { merge: true });
+    });
     await notifySecurity({ ...target, authUid: targetUid }, actor, "USUARIO_DESBLOQUEADO", "Seu acesso ao ÍNTEGRO foi desbloqueado por um superior autorizado.");
     return { ok: true };
   }
@@ -255,12 +373,16 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const actor = await actorContext(context);
     const targetUid = text(data?.targetUid);
     const target = await userProfile(targetUid);
-    if (!target || !canManage(actor, target)) error("permission-denied", "Sem permissão para bloquear este usuário.");
+    if (!target || !canManage(actor, target, "bloquear")) error("permission-denied", "Sem permissão para bloquear este usuário.");
     if (targetUid === context.auth.uid) error("failed-precondition", "Você não pode bloquear o próprio usuário por este fluxo.");
+    // Firestore nega operações imediatamente, mesmo se Auth estiver indisponível.
+    await db.runTransaction(async tx => {
+      const fresh = await managedTarget(tx, actor, target, context.auth.uid, targetUid, "bloquear");
+      tx.set(db.collection("usuarios").doc(fresh.id), { status: "BLOQUEADO", acessoLiberado: false, segurancaSessao: { encerrada: true, expiresAtMs: 0 }, bloqueadoPorUid: context.auth.uid, bloqueadoEm: serverTimestamp() }, { merge: true });
+      tx.set(db.collection("sessoes_usuarios").doc(targetUid), { encerrada: true, expiresAtMs: 0, motivoEncerramento: "BLOQUEIO_ADMIN", atualizadoEm: serverTimestamp() }, { merge: true });
+    });
     await admin.auth().updateUser(targetUid, { disabled: true });
     await admin.auth().revokeRefreshTokens(targetUid);
-    await db.collection("sessoes_usuarios").doc(targetUid).set({ encerrada: true, expiresAtMs: 0, motivoEncerramento: "BLOQUEIO_ADMIN", atualizadoEm: serverTimestamp() }, { merge: true });
-    await db.collection("usuarios").doc(targetUid).set({ status: "BLOQUEADO", acessoLiberado: false, bloqueadoPorUid: context.auth.uid, bloqueadoEm: serverTimestamp() }, { merge: true });
     await notifySecurity({ ...target, authUid: targetUid }, actor, "USUARIO_BLOQUEADO", "Seu acesso ao ÍNTEGRO foi bloqueado por um superior autorizado.");
     return { ok: true };
   }
@@ -269,9 +391,14 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const actor = await actorContext(context);
     const targetUid = text(data?.targetUid || context.auth.uid);
     const target = await userProfile(targetUid);
-    if (!target || (targetUid !== context.auth.uid && !canManage(actor, target))) error("permission-denied", "Sem permissão para encerrar estas sessões.");
+    if (!target || (targetUid !== context.auth.uid && !canManage(actor, target, "encerrar_sessoes"))) error("permission-denied", "Sem permissão para encerrar estas sessões.");
+    await db.runTransaction(async tx => {
+      if (targetUid === context.auth.uid) await currentActor(tx, actor, context.auth.uid);
+      else await managedTarget(tx, actor, target, context.auth.uid, targetUid, "encerrar_sessoes");
+      tx.set(db.collection("usuarios").doc(target.id), { segurancaSessao: { encerrada: true, expiresAtMs: 0 } }, { merge: true });
+      tx.set(db.collection("sessoes_usuarios").doc(targetUid), { encerrada: true, expiresAtMs: 0, motivoEncerramento: "ENCERRAR_SESSOES", atualizadoEm: serverTimestamp() }, { merge: true });
+    });
     await admin.auth().revokeRefreshTokens(targetUid);
-    await db.collection("sessoes_usuarios").doc(targetUid).set({ encerrada: true, expiresAtMs: 0, motivoEncerramento: "ENCERRAR_SESSOES", atualizadoEm: serverTimestamp() }, { merge: true });
     return { ok: true };
   }
 
@@ -279,7 +406,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     return crypto.randomBytes(18).toString("base64url");
   }
 
-  return { iniciarSessao, validarSessao, encerrarSessao, registrarFalhaLogin, resetPassword, desbloquearUsuario, bloquearUsuario, invalidarSessoes, gerarTokenOperacao };
+  return { iniciarSessao, validarSessao, encerrarSessao, consultarAcessoEmpresaLogin, registrarFalhaLogin, resetPassword, desbloquearUsuario, bloquearUsuario, invalidarSessoes, gerarTokenOperacao };
 }
 
 module.exports = { criarAdministracaoV27 };

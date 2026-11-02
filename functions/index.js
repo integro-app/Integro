@@ -6,6 +6,9 @@ const admin = require("firebase-admin");
 
 admin.initializeApp();
 const db = admin.firestore();
+const sessionAuthorization = require("./session-authorization").criarProtecaoSessao({ db, functions });
+const protegerSessao = sessionAuthorization.protect;
+const dbSessaoProtegida = sessionAuthorization.db;
 
 function erroHttps(codigo, mensagem) {
   throw new functions.https.HttpsError(codigo, mensagem);
@@ -155,10 +158,10 @@ exports.iniciarSessaoV27 = functions.region("southamerica-east1").https.onCall(a
 exports.validarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.validarSessao);
 exports.encerrarSessaoV27 = functions.region("southamerica-east1").https.onCall(adminV27.encerrarSessao);
 exports.registrarFalhaLoginV27 = functions.region("southamerica-east1").https.onCall(adminV27.registrarFalhaLogin);
-exports.redefinirSenhaUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.resetPassword);
-exports.desbloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.desbloquearUsuario);
-exports.bloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.bloquearUsuario);
-exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").https.onCall(adminV27.invalidarSessoes);
+exports.redefinirSenhaUsuarioV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(adminV27.resetPassword));
+exports.desbloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(adminV27.desbloquearUsuario));
+exports.bloquearUsuarioV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(adminV27.bloquearUsuario));
+exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(adminV27.invalidarSessoes));
 
 const { criarTransferenciasV27 } = require("./v27-transferencias");
 const transferenciasV27 = criarTransferenciasV27({ admin, functions, db });
@@ -186,3 +189,12 @@ exports.excluirMensagemChatV27 = functions.region("southamerica-east1").https.on
 const { criarManutencaoV27 } = require("./v27-maintenance");
 const manutencaoV27 = criarManutencaoV27({ admin, functions, db });
 exports.limparNotificacoesLixeiraV27 = manutencaoV27.limparNotificacoesAgendada;
+
+const { criarCicloCaixa } = require("./box-lifecycle");
+const cicloCaixa = criarCicloCaixa({ db: dbSessaoProtegida, functions });
+exports.abrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.abrir));
+exports.tratarDivergenciaCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.tratar));
+exports.conferirCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.conferir));
+exports.fecharCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.fechar));
+exports.reabrirCaixaOperacional = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.reabrir));
+exports.consultarDatasCaixaEquipe = functions.region("southamerica-east1").https.onCall(protegerSessao(cicloCaixa.datasEquipe));

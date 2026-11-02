@@ -141,3 +141,21 @@ test("telas operacionais carregam Firebase Functions antes do serviço financeir
     assert.ok(sdk < financeiro, arquivo + " deve carregar Functions antes do serviço financeiro");
   }
 });
+
+
+test("fonte principal preserva backend transacional de caixa e proteção de sessão", () => {
+  const index = ler("functions/index.js");
+  const ciclo = ler("functions/box-lifecycle.js");
+  const sessao = ler("functions/session-authorization.js");
+  const adminV27 = ler("functions/v27-admin.js");
+  assert.match(index, /exports\.abrirCaixaOperacional/);
+  assert.match(index, /exports\.conferirCaixaOperacional/);
+  assert.match(index, /exports\.fecharCaixaOperacional/);
+  assert.match(index, /exports\.reabrirCaixaOperacional/);
+  assert.match(index, /protegerSessao\(cicloCaixa\.fechar\)/);
+  assert.match(ciclo, /encerramentoGerencial/);
+  assert.match(ciclo, /NAO_PAGAMENTO/);
+  assert.match(sessao, /integroSessionId/);
+  assert.match(adminV27, /createCustomToken/);
+  assert.match(adminV27, /Sessão não vinculada ao token/);
+});
