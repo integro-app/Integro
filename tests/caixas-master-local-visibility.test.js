@@ -65,3 +65,21 @@ test("abertura massiva usa resposta do backend e trata REABERTO como caixa exist
   assert.match(source, /ERRO_BACKEND_CAIXA_INDISPONIVEL/);
   assert.doesNotMatch(source, /const docRef = await db\.collection\(CONFIG\.COLECOES\.CAIXAS\)\.add/);
 });
+
+test("fechamento em massa gerencial confirma estado no servidor", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "master-local.html"), "utf8");
+  assert.match(source, /encerramentoGerencial:\s*true/);
+  assert.match(source, /master_local_fechamento_gerencial/);
+  assert.match(source, /get\(\{ source: "server" \}\)/);
+  assert.match(source, /falhas:\s*\[\]/);
+  assert.match(source, /return resumoFechamento/);
+  assert.match(source, /\["ABERTO","REABERTO"\]/);
+});
+
+test("módulo premium confirma fechamento individual e baixa gerencial", () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "js", "modules", "caixas-supervisao.js"), "utf8");
+  assert.match(source, /encerramentoGerencial:managerial===true/);
+  assert.match(source, /Cobranças sem baixa classificadas como não pagas/);
+  assert.match(source, /get\(\{source:'server'\}\)/);
+  assert.match(source, /NÃO PAGAS por decisão gerencial/);
+});

@@ -18535,17 +18535,31 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     }
     const caixaId = ICX.id(caixa);
     const snapshot = await window.IntegroCaixa.prepararSnapshotFechamentoCaixa({ caixaId });
-    return window.IntegroCaixa.registrarFechamentoCaixaTransacional({
+    const resultado = await window.IntegroCaixa.registrarFechamentoCaixaTransacional({
       usuario: ICX.user(),
       clientePlataformaId: ICX.tenant(),
       caixaId,
       vendedorId: caixa.vendedorId || caixa.usuarioId || "",
       vendedorAuthUid: caixa.vendedorAuthUid || caixa.vendedorUid || caixa.uid || "",
       valorInformadoCentavos: snapshot.caixaFinalEsperadoCentavos,
-      justificativa: "Fechamento em massa com valor esperado pelo sistema.",
+      justificativa: "Fechamento gerencial em massa com valor esperado pelo sistema.",
+      encerramentoGerencial: true,
       snapshot,
-      origem: "master_local"
+      origem: "master_local_fechamento_gerencial"
     });
+    if (!["FECHADO","DIVERGENTE"].includes(String(resultado?.statusFechamento || "").toUpperCase())) {
+      throw new Error("O backend não confirmou o fechamento do caixa.");
+    }
+    const banco = window.db && typeof window.db !== "function" ? window.db : window.firebase?.firestore?.();
+    if (!banco) throw new Error("Firestore indisponível para confirmar o fechamento.");
+    const confirmado = await banco.collection("caixas").doc(caixaId).get({ source: "server" });
+    if (!confirmado.exists) throw new Error("Caixa não encontrado após o fechamento.");
+    const dados = confirmado.data() || {};
+    const status = String(dados.status || "").toUpperCase();
+    if (!["FECHADO","DIVERGENTE"].includes(status) || dados.ativo === true) {
+      throw new Error("Fechamento não confirmado no servidor; o caixa ainda consta aberto.");
+    }
+    return { ...resultado, statusServidor: status };
   }
 
   window.fecharSelecionadas = async function(){
@@ -18554,7 +18568,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!selecionadas.length) return notificarIntegro("Selecione pelo menos uma equipe.");
 
     const caixas = [];
-    selecionadas.filter(r => r.estado === "ABERTO").forEach(r => {
+    selecionadas.filter(r => ["ABERTO","REABERTO"].includes(String(r.estado || "").toUpperCase())).forEach(r => {
       r.caixasAbertos.forEach(c => {
         if (!caixas.find(x => ICX.id(x) === ICX.id(c))) caixas.push(c);
       });
@@ -18563,7 +18577,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!caixas.length) return notificarIntegro("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
 
-    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0, cancelados: 0, falhas: [] };
     for (const c of caixas){
       try {
         const resultado = await fecharCaixaMasterLocalSeguro(c);
@@ -18590,6 +18604,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
       ? ` Motivo: ${primeiraFalha.message}`
       : "";
     notificarIntegro(`Fechamento de caixa concluído. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}.${detalheFalha}`);
+    return resumoFechamento;
   };
 
   window.criarCaixaParaVendedorFinal = async function(vendedor, equipe, snapshot){
@@ -18653,7 +18668,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     if (!caixas.length) return notificarIntegro("Nenhum caixa aberto encontrado nas equipes selecionadas.");
     if (!confirm(`Fechar ${caixas.length} caixa(s) aberto(s) das equipes selecionadas?`)) return;
 
-    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0 };
+    const resumoFechamento = { fechados: 0, divergentes: 0, bloqueados: 0, erros: 0, cancelados: 0, falhas: [] };
     for (const c of caixas){
       try {
         const resultado = await fecharCaixaMasterLocalSeguro(c);
@@ -18675,6 +18690,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
     else if (typeof renderTelaCaixas === "function") renderTelaCaixas();
 
     notificarIntegro(`Fechamento massivo concluido. Fechados: ${resumoFechamento.fechados}. Divergentes: ${resumoFechamento.divergentes}. Bloqueados: ${resumoFechamento.bloqueados}. Erros: ${resumoFechamento.erros}.`);
+    return resumoFechamento;
   };
 
   console.info("[ÍNTEGRO] Correção de caixas reais aplicada: abertura usa último fechamento e carteira acompanha vendas com juros menos recebimentos.");
