@@ -205,6 +205,64 @@ function podeSolicitarCancelamentoVenda(venda) {
     ["ATIVA","ATIVO","VENCIDA"].includes(statusVendaGestao(venda));
 }
 
+function podeSolicitarRevisaoVenda(venda) {
+  const usuario=State.getUsuario?.()||{};
+  const cargos=[usuario.cargoChave,usuario.perfil,usuario.tipoUsuario]
+    .map(valor=>String(valor||"").trim().toLowerCase());
+  return cargos.some(cargo=>["master_local","gerente"].includes(cargo)) &&
+    !["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA"].includes(statusVendaGestao(venda)) &&
+    centavosVenda(venda,"totalPagoCentavos","totalPago")>0;
+}
+
+function abrirRevisaoVendaGestao(id) {
+  const venda=encontrarVendaPorId(id);
+  if(!venda||!podeSolicitarRevisaoVenda(venda))
+    return UIHelpers.alerta("Revisão indisponível para esta venda ou perfil.");
+  abrirDrawer("Revisão de venda com pagamentos",`<section class="form-grid">
+    <p class="form-group full"><strong>Revisão assistida:</strong> esta solicitação
+    não cancela a venda, não estorna pagamentos e não altera o caixa.
+    A conciliação financeira deverá ser analisada antes de qualquer decisão.</p>
+    <div class="form-group full"><label>Venda</label><strong>${escaparVenda(venda.id)}</strong></div>
+    <div class="form-group"><label>Recebido registrado</label><strong>${moeda(centavosVenda(venda,"totalPagoCentavos","totalPago")/100)}</strong></div>
+    <div class="form-group"><label>Saldo registrado</label><strong>${moeda(centavosVenda(venda,"saldoDevedorCentavos","saldoDevedor")/100)}</strong></div>
+    <div class="form-group full"><label for="revisaoVendaCategoria">Motivo da revisão</label>
+      <select id="revisaoVendaCategoria"><option value="ESTORNO_ASSISTIDO">Possível estorno ou cancelamento</option>
+      <option value="REVISAO_PAGAMENTO">Conferência de pagamentos</option>
+      <option value="DIVERGENCIA">Divergência de saldo ou histórico</option></select></div>
+    <div class="form-group full"><label for="revisaoVendaMotivo">Justificativa detalhada</label>
+      <textarea id="revisaoVendaMotivo" rows="4" maxlength="1200"
+        placeholder="Explique o que precisa ser conferido e quais comprovantes existem"></textarea></div>
+    <div class="drawer-actions"><button type="button" class="primary-btn"
+      id="solicitarRevisaoVendaBtn">Registrar solicitação de análise</button></div>
+  </section>`);
+  document.getElementById("solicitarRevisaoVendaBtn")?.addEventListener("click",
+    ()=>solicitarRevisaoVendaGestao(id));
+}
+
+async function solicitarRevisaoVendaGestao(id) {
+  const venda=encontrarVendaPorId(id);
+  if(!venda||!podeSolicitarRevisaoVenda(venda))
+    return UIHelpers.alerta("Acesso indisponível.");
+  const motivo=String(document.getElementById("revisaoVendaMotivo")?.value||"").trim();
+  const categoria=String(document.getElementById("revisaoVendaCategoria")?.value||"");
+  if(motivo.length<15||!["ESTORNO_ASSISTIDO","REVISAO_PAGAMENTO","DIVERGENCIA"].includes(categoria))
+    return UIHelpers.alerta("Escolha o tipo de revisão e descreva o motivo com pelo menos 15 caracteres.");
+  const botao=document.getElementById("solicitarRevisaoVendaBtn");
+  if(botao)botao.disabled=true;
+  try {
+    const fn=window.firebase?.app?.()?.functions?.("southamerica-east1")
+      ?.httpsCallable?.("decidirVendaComSaldoV27");
+    if(!fn)throw new Error("Serviço de revisão indisponível.");
+    const resposta=await fn({__integroRota:"REVISAO_VENDA_PAGA_V27",vendaId:id,categoria,motivo});
+    if(resposta?.data?.ok!==true)throw new Error("A solicitação não foi confirmada pelo servidor.");
+    if(typeof fecharDrawer==="function")fecharDrawer();
+    UIHelpers.alerta("Revisão financeira registrada: "+resposta.data.solicitacaoId+
+      ". A venda e os saldos permanecem inalterados.");
+  }catch(error) {
+    UIHelpers.alerta(error?.message||"Não foi possível registrar a revisão.");
+  }finally {if(botao)botao.disabled=false;}
+}
+
 function abrirCancelarVendaGestao(id) {
   const venda=encontrarVendaPorId(id);
   if(!venda||!podeSolicitarCancelamentoVenda(venda))
@@ -367,9 +425,14 @@ async function abrirVerVenda(id) {
     `<div id="vendaMovimentosDetalhe" data-venda-id="${escaparVenda(venda.id)}" aria-live="polite"><p>Consultando parcelas, pagamentos e histórico…</p></div>` +
     (podeSolicitarCancelamentoVenda(venda) ?
       `<div class="drawer-actions"><button type="button" class="ghost-btn" id="abrirCancelamentoVenda">
-        Cancelamento com devolução integral</button></div>` : ""));
+        Cancelamento com devolução integral</button></div>` : "") +
+    (podeSolicitarRevisaoVenda(venda) ?
+      `<div class="drawer-actions"><button type="button" class="ghost-btn" id="abrirRevisaoVenda">
+        Solicitar revisão de venda com pagamentos</button></div>` : ""));
   document.getElementById("abrirCancelamentoVenda")?.addEventListener("click",
     ()=>abrirCancelarVendaGestao(id));
+  document.getElementById("abrirRevisaoVenda")?.addEventListener("click",
+    ()=>abrirRevisaoVendaGestao(id));
   const tenant = String(State.getTenantId?.() || "");
   const consulta = window.IntegroModuloUtils?.queryScope;
   const fontes = [
