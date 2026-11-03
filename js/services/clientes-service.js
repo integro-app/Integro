@@ -668,7 +668,28 @@
     return { vendedor, vendedorId: idUsuario(vendedor) || vendedor.id, equipeId };
   }
 
+  // No navegador, a gravação operacional passa pelo servidor com a sessão
+  // validada. O caminho local permanece apenas para o DB simulado dos testes.
+  function operacaoRemota(nome, dados, opcoes = {}) {
+    const app = window.firebase?.app?.();
+    const callable = app?.functions?.("southamerica-east1")?.httpsCallable?.(nome);
+    if (!callable) {
+      if (opcoes.db && typeof window.firebase?.app !== "function") return null;
+      throw new Error("Operação segura indisponível. Atualize o aplicativo e tente novamente.");
+    }
+    return callable(dados).then(response => {
+      if (response?.data?.ok !== true) throw new Error("Operação não confirmada pelo servidor.");
+      return response.data;
+    });
+  }
+
   async function direcionarCliente(clienteId, destino = {}, usuario = {}, opcoes = {}) {
+    const chamada = operacaoRemota("transferirResponsabilidadeV27", {
+      tipo: "CLIENTE", itemId: clienteId,
+      destinoAuthUid: texto(destino.vendedorId || destino.vendedorAuthUid),
+      motivo: texto(destino.motivo)
+    }, opcoes);
+    if (chamada) return chamada;
     const db = opcoes.db || getDb();
     const cliente = await obterCliente(db, clienteId);
     if (!usuarioPodeAdministrarClientes(usuario) && cargoUsuario(usuario) !== "supervisor") throw new Error("Usuario sem permissao para direcionar clientes.");
@@ -725,6 +746,14 @@
   }
 
   async function registrarAtendimento(clienteId, entrada = {}, usuario = {}, opcoes = {}) {
+    const chamada = operacaoRemota("operarClienteV27", {
+      acao: "ATENDIMENTO", clienteId,
+      status: entrada.status || entrada.statusAtendimento,
+      motivo: entrada.motivo, canal: entrada.canal,
+      observacao: entrada.observacao, dataRetorno: entrada.dataRetorno,
+      resultado: entrada.resultado, proximaAcao: entrada.proximaAcao
+    }, opcoes);
+    if (chamada) return chamada;
     const db = opcoes.db || getDb();
     const cliente = await obterCliente(db, clienteId);
     if (!clienteNoEscopo(usuario, cliente, "editar")) throw new Error("Cliente fora do escopo de atendimento.");
@@ -769,6 +798,10 @@
   }
 
   async function reabrirParaRetrabalho(clienteId, entrada = {}, usuario = {}, opcoes = {}) {
+    const chamada = operacaoRemota("operarClienteV27", {
+      acao: "RETRABALHO", clienteId, motivo: entrada.motivo
+    }, opcoes);
+    if (chamada) return chamada;
     const db = opcoes.db || getDb();
     const cliente = await obterCliente(db, clienteId);
     if (!usuarioPodeAdministrarClientes(usuario) && cargoUsuario(usuario) !== "supervisor") throw new Error("Usuario sem permissao para reabrir cliente.");
@@ -805,6 +838,10 @@
   }
 
   async function converterCliente(clienteId, vendaId, usuario = {}, opcoes = {}) {
+    const chamada = operacaoRemota("operarClienteV27", {
+      acao: "CONVERSAO", clienteId, vendaId
+    }, opcoes);
+    if (chamada) return chamada;
     const db = opcoes.db || getDb();
     const cliente = await obterCliente(db, clienteId);
     if (!clienteNoEscopo(usuario, cliente, "editar")) throw new Error("Cliente fora do escopo de conversao.");
