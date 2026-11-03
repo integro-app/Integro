@@ -181,6 +181,10 @@ const aprovacoesVendaV27 = criarAprovacoesVendaV27({ admin, functions, db });
 const {criarCancelamentosVendaV27} = require("./v27-sales-cancellation");
 const cancelamentosVendaV27=criarCancelamentosVendaV27({admin,functions,db});
 exports.decidirVendaComSaldoV27 = functions.region("southamerica-east1").https.onCall((dados,contexto)=>{
+  if(dados?.__integroRota==="REVISAO_VENDA_PAGA_V27") {
+    const {__integroRota,...entrada}=dados;
+    return protegerSessao(cancelamentosVendaV27.solicitarRevisao)(entrada,contexto);
+  }
   if(dados?.__integroRota==="CANCELAMENTO_INTEGRAL_VENDA_V27") {
     const {__integroRota,...entrada}=dados;
     return protegerSessao(cancelamentosVendaV27.cancelar)(entrada,contexto);
