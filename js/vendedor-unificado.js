@@ -5,6 +5,7 @@
   let instalado = false;
   let abaAtual = "cobrancas";
   let clienteNovaVendaId = "";
+  let vendaOperacaoPendente = null;
   let filtrosClientesAbertos = false;
   let clientesPesquisaExecutada = false;
   const clientesPesquisaExecutadaPorAba = { leads: false, carteira: false };
@@ -2324,7 +2325,19 @@
     if (principalCentavos < 1) return UIHelpers?.alerta?.("Valor inferior a um centavo.");
     const total = Math.round(principalCentavos * (1 + juros / 100)) / 100;
     const botao = document.getElementById("confirmarNovaVendaVendedorBtn");
-    const operacaoId = "venda_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+    // O mesmo formulário mantém a mesma chave em retry de rede. Alterar qualquer
+    // condição da venda cria nova operação, evitando duplicidade e colisão de payload.
+    const assinatura = JSON.stringify({
+      uid: texto(usuarioAtual?.authUid || State.getUsuario?.()?.authUid),
+      tenant: texto(State.getTenantId?.()), caixaId: texto(caixa.id),
+      clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId),
+      principalCentavos, juros, parcelas, frequencia, primeiraCobranca
+    });
+    if (!vendaOperacaoPendente || vendaOperacaoPendente.assinatura !== assinatura) {
+      const idSeguro = window.crypto?.randomUUID?.() || (Date.now() + "_" + Math.random().toString(36).slice(2,12));
+      vendaOperacaoPendente = {assinatura, id:"venda_" + idSeguro};
+    }
+    const operacaoId = vendaOperacaoPendente.id;
     try {
       const resultadoVenda = await executarOperacaoAssincrona({
         id: operacaoId,
@@ -2336,6 +2349,8 @@
         renderizar: () => renderVendasDia?.(),
         rollback: () => { renderClientesVendedor?.({ forcar: true }); renderVendasDia?.(); }
       });
+      // A resposta foi confirmada pelo servidor; o próximo formulário cria nova chave.
+      vendaOperacaoPendente = null;
       fecharModal();
       if (resultadoVenda?.pendente === true || resultadoVenda?.modo === "ANALISE_SALDO_ATIVO") {
         UIHelpers?.alerta?.("Venda enviada para análise do Supervisor/Gerente. Você será avisado quando houver uma decisão.");
