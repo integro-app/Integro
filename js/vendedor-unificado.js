@@ -267,7 +267,7 @@
   }
 
   function clientePodeIniciarNovaVenda(cliente = {}) {
-    if (!clientePossuiVendaAtiva(cliente)) return true;
+    if (saldoCliente(cliente) <= 1) return true;
     return empresaPermiteAnaliseVendaComSaldo() || autorizacaoVendaComSaldoCliente(cliente);
   }
 
