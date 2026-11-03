@@ -4,8 +4,25 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 const project = 'integro-novo';
 const base = 'https://firebaserules.googleapis.com/v1';
-const token = process.env.GOOGLE_OAUTH_ACCESS_TOKEN;
-if (!token) throw new Error('OAuth token ausente');
+// Usa a chave de serviço já disponível no runner, sem exigir IAM impersonation.
+const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+if (!credentialsPath) throw new Error('Credenciais do runner ausentes');
+const credential = JSON.parse(fs.readFileSync(credentialsPath, 'utf8'));
+if (!credential.client_email || !credential.private_key) throw new Error('Chave de serviço inválida');
+const base64url = input => Buffer.from(typeof input === 'string' ? input : JSON.stringify(input)).toString('base64url');
+const issued = Math.floor(Date.now() / 1000);
+const assertion = base64url({alg:'RS256',typ:'JWT'}) + '.' + base64url({
+  iss:credential.client_email,scope:'https://www.googleapis.com/auth/cloud-platform',
+  aud:'https://oauth2.googleapis.com/token',iat:issued,exp:issued+3600
+});
+const signature = crypto.sign('RSA-SHA256', Buffer.from(assertion),credential.private_key).toString('base64url');
+const oauth = await fetch('https://oauth2.googleapis.com/token', {
+  method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+  body:new URLSearchParams({grant_type:'urn:ietf:params:oauth:grant-type:jwt-bearer',assertion:assertion+'.'+signature})
+});
+const responseToken = await oauth.json();
+if (!oauth.ok || !responseToken.access_token) throw new Error('Falha ao autenticar chave de serviço: HTTP '+oauth.status);
+const token = responseToken.access_token;
 const headers = {Authorization: `Bearer ${token}`, 'Content-Type':'application/json'};
 async function request(method, path, body) {
   const response = await fetch(base+path, {method, headers, ...(body ? {body:JSON.stringify(body)}:{})});
