@@ -47,6 +47,6 @@ test("vendedor usa carregamento único e consulta canônica de clientes", () => 
   const master = read("js/master-local.js");
   assert.match(perfis, /if \(carregamentoAtual\) return carregamentoAtual/);
   assert.match(clientes, /\["vendedorAuthUid", authUid\]/);
-  assert.match(clientes, /for \(const \[campo, valor\] of tentativas\)/);
+  assert.match(clientes, /Promise\.allSettled\(\[\.\.\.unicas\.values\(\)\]/);
   assert.match(master, /executarUmaVez/);
 });
