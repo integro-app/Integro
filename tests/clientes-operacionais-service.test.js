@@ -385,3 +385,26 @@ test("vendedor consulta a carteira canonica e o vinculo legado sem ampliar tenan
     clientePlataformaId: "tenant_1", vendedorId: "legado_1"
   }), false);
 });
+
+test("transferencia nao gera historico orfao quando gravacao atomica falha", async () => {
+  const contexto = carregar({
+    "clientes_operacionais/cli_1": {
+      clientePlataformaId: "tenant_1", vendedorId: "vend_antigo", equipeId: "equipe_1"
+    },
+    "usuarios/vend_1": {
+      authUid: "vend_1", clientePlataformaId: "tenant_1",
+      tipoUsuario: "vendedor", status: "ATIVO", equipeId: "equipe_1"
+    }
+  });
+  contexto.db.batch = () => ({
+    set() {},
+    async commit() { throw new Error("Falha simulada antes do commit"); }
+  });
+  await assert.rejects(
+    contexto.ClientesService.direcionarCliente("cli_1",
+      { vendedorId: "vend_1", motivo: "Transferencia autorizada" }, usuario(), { db: contexto.db }),
+    /Falha simulada/
+  );
+  assert.equal(contexto.db.dados.get("clientes_operacionais/cli_1").vendedorId, "vend_antigo");
+  assert.equal(Array.from(contexto.db.dados.keys()).filter(x => x.startsWith("direcionamentos_clientes/")).length, 0);
+});
