@@ -2318,7 +2318,7 @@
     if (!Number.isFinite(juros) || juros < 0 || juros > 1000)
       return UIHelpers?.alerta?.("Informe uma taxa de juros válida entre 0% e 1000%.");
     if (!["DIARIA", "SEMANAL", "QUINZENAL", "MENSAL"].includes(frequencia) ||
-        !/^\\d{4}-\\d{2}-\\d{2}$/.test(primeiraCobranca) || primeiraCobranca < hoje())
+        !/^\d{4}-\d{2}-\d{2}$/.test(primeiraCobranca) || primeiraCobranca < hoje())
       return UIHelpers?.alerta?.("Confira a frequência e a data da primeira cobrança.");
     const principalCentavos = Math.round(valor * 100);
     if (principalCentavos < 1) return UIHelpers?.alerta?.("Valor inferior a um centavo.");
