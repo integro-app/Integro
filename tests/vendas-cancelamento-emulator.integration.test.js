@@ -162,3 +162,66 @@ test("cancelamento de renovação preserva venda anterior, dívida residual e v�
   assert.equal((await db.collection("vendas").doc(antigo.vendaId).get()).data().statusVenda,"ATIVA");
   assert.equal((await db.collection("vendas").doc(renovacao.vendaId).get()).data().statusVenda,"CANCELADA");
 });
+
+
+test("revisão assistida de venda com pagamento só registra solicitação, sem tocar caixa ou saldo",async()=>{
+  const seller=await context("vendedor.1.a");
+  const manager=await context("master.local.a");
+  const sale=await sales.registrarVenda(request("venda_estorno_revisao_paga"),seller);
+  assert.equal(sale.modo,"CRIACAO");
+  const pagamentoId="pagamento_homologacao_revisao_venda";
+  await db.collection("pagamentos").doc(pagamentoId).set({
+    clientePlataformaId:"tenant-a",vendaId:sale.vendaId,
+    valorCentavos:500,status:"CONFIRMADO",parcelaId:"parcela_teste"
+  });
+  const caixaAntes=(await db.collection("caixas").doc(caixaId).get()).data().saldoAtualCentavos;
+  const clienteAntes=(await db.collection("clientes_operacionais").doc(clienteId).get()).data().saldoDevedorCentavos;
+  const vendaAntes=(await db.collection("vendas").doc(sale.vendaId).get()).data();
+  const ledgerAntes=(await db.collection("lancamentos_financeiros").doc(core.lancamentoVendaId(sale.vendaId)).get()).data();
+
+  await assert.rejects(()=>cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"ESTORNO_ASSISTIDO",motivo:"É necessária conferência financeira do contrato."
+  },seller),rejection("permission-denied"));
+  await assert.rejects(()=>context("master.local.b").then(c=>cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"ESTORNO_ASSISTIDO",motivo:"É necessária conferência financeira do contrato."
+  },c)),rejection("permission-denied"));
+  await assert.rejects(()=>cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"ESTORNO_ASSISTIDO",motivo:"Curto"
+  },manager),rejection("invalid-argument"));
+
+  const request=await cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"ESTORNO_ASSISTIDO",
+    motivo:"Solicito conferência dos recebimentos antes de eventual estorno."
+  },manager);
+  assert.equal(request.ok,true);
+  assert.equal(request.modo,"SOLICITACAO_CRIADA");
+  const snap=(await db.collection("solicitacoes").doc(request.solicitacaoId).get()).data();
+  assert.equal(snap.tipo,"REVISAO_VENDA_COM_PAGAMENTO");
+  assert.equal(snap.status,"PENDENTE");
+  assert.equal(snap.revisaoSomenteAnalise,true);
+  assert.equal(snap.alteraFinanceiroAutomaticamente,false);
+  assert.equal(snap.snapshot.registroPagamentoEncontrado,true);
+  const repeat=await cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"ESTORNO_ASSISTIDO",
+    motivo:"Solicito conferência dos recebimentos antes de eventual estorno."
+  },manager);
+  assert.equal(repeat.modo,"IDEMPOTENTE");
+  assert.equal((await db.collection("logs").where("solicitacaoId","==",request.solicitacaoId).get()).size,1);
+
+  assert.equal((await db.collection("caixas").doc(caixaId).get()).data().saldoAtualCentavos,caixaAntes);
+  assert.equal((await db.collection("clientes_operacionais").doc(clienteId).get()).data().saldoDevedorCentavos,clienteAntes);
+  assert.deepEqual((await db.collection("vendas").doc(sale.vendaId).get()).data(),vendaAntes);
+  assert.deepEqual((await db.collection("lancamentos_financeiros").doc(core.lancamentoVendaId(sale.vendaId)).get()).data(),ledgerAntes);
+  assert.equal((await db.collection("lancamentos_financeiros").where("tipoLancamento","==","ESTORNO").where("origemId","==",sale.vendaId).get()).size,0);
+});
+
+test("revisão só é aceita para venda com recebimentos; não substitui cancelamento simples",async()=>{
+  const manager=await context("master.local.a");
+  const seller=await context("vendedor.1.a");
+  const sale=await sales.registrarVenda(request("venda_sem_pagamento_para_revisao"),seller);
+  assert.equal(sale.modo,"CRIACAO");
+  await assert.rejects(()=>cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"DIVERGENCIA",
+    motivo:"Solicito analisar este contrato sem pagamento registrado."
+  },manager),rejection("failed-precondition"));
+});
