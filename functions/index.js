@@ -172,6 +172,13 @@ const { criarAprovacoesVendaV27 } = require("./v27-sales-approvals");
 const aprovacoesVendaV27 = criarAprovacoesVendaV27({ admin, functions, db });
 exports.decidirVendaComSaldoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesVendaV27.decidir);
 
+// Operações críticas de carteira: somente backend, sessão validada a cada commit.
+const { criarOperacoesClientesV27 } = require("./v27-client-operations");
+const operacoesClientesV27 = criarOperacoesClientesV27({ admin, functions, db: dbSessaoProtegida });
+exports.operarClienteV27 = functions.region("southamerica-east1").https.onCall(
+  protegerSessao(operacoesClientesV27.executar)
+);
+
 const { criarAprovacoesClientesV27 } = require("./v27-client-approvals");
 const aprovacoesClientesV27 = criarAprovacoesClientesV27({ admin, functions, db });
 exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.solicitar);
