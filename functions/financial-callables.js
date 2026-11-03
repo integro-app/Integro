@@ -232,8 +232,12 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       ? entrada.valorEmprestadoCentavos
       : Math.round(Number(entrada.valorEmprestado || entrada.valor || 0) * 100);
     const taxaJuros = Number(entrada.taxaJuros || 0);
-    const quantidadeParcelas = core.inteiro(entrada.quantidadeParcelas || entrada.parcelas);
+    const quantidadeParcelas = Number(entrada.quantidadeParcelas ?? entrada.parcelas);
+    if (!Number.isSafeInteger(quantidadeParcelas) || quantidadeParcelas < 1 || quantidadeParcelas > 90)
+      erro("invalid-argument", "Quantidade de parcelas deve ser um número inteiro de 1 a 90.");
     const frequencia = core.normalizarStatus(entrada.frequencia || "DIARIA");
+    const tipoVenda = core.normalizarStatus(entrada.tipoVenda || "NOVA");
+    if (!["NOVA", "RENOVACAO"].includes(tipoVenda)) erro("invalid-argument", "Tipo de venda inválido.");
     const primeiraCobranca = core.texto(entrada.primeiraCobranca || entrada.dataPrimeiraCobranca).slice(0, 10);
     if (valorEmprestadoCentavos <= 0) erro("invalid-argument", "Valor emprestado inválido.");
     if (!Number.isFinite(taxaJuros) || taxaJuros < 0 || taxaJuros > 1000) erro("invalid-argument", "Taxa de juros inválida.");
@@ -291,6 +295,12 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       }
 
       const saldoClienteCentavos = saldoClienteParaBloqueioVenda(cliente);
+      // Nova venda ou renovação nunca elimina saldo anterior, inclusive centavos
+      // residuais e saldo aprovado pela análise administrativa.
+      const novoSaldoClienteCentavos = saldoClienteCentavos + valorTotalCentavos;
+      if (!Number.isSafeInteger(novoSaldoClienteCentavos) || novoSaldoClienteCentavos <= 0) {
+        erro("failed-precondition", "Saldo consolidado fora do limite seguro.");
+      }
       const autorizacaoSaldoAtivo = autorizacaoVendaComSaldoValida(cliente, uid, valorEmprestadoCentavos);
       if (saldoClienteCentavos > 100 && !autorizacaoSaldoAtivo) {
         if (!permitirAnaliseSaldoAtivo) {
@@ -369,7 +379,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         vendedorUid: uid,
         vendedorNome,
         caixaId,
-        tipoVenda: core.texto(entrada.tipoVenda || "NOVA"),
+        tipoVenda,
         valorEmprestadoCentavos,
         valorEmprestado: core.reais(valorEmprestadoCentavos),
         taxaJuros,
@@ -471,9 +481,9 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       }, { merge: true });
 
       transaction.update(clienteRef, {
-        saldoDevedorCentavos: valorTotalCentavos,
-        saldoDevedor: core.reais(valorTotalCentavos),
-        saldo: core.reais(valorTotalCentavos),
+        saldoDevedorCentavos: novoSaldoClienteCentavos,
+        saldoDevedor: core.reais(novoSaldoClienteCentavos),
+        saldo: core.reais(novoSaldoClienteCentavos),
         possuiVendaAtiva: true,
         vendaAtivaId: vendaId,
         status: "ATIVO",
@@ -514,7 +524,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         vendaId,
         operacaoId,
         saldoCaixaCentavos: novoSaldoCaixaCentavos,
-        saldoClienteCentavos: valorTotalCentavos,
+        saldoClienteCentavos: novoSaldoClienteCentavos,
         quantidadeParcelas
       };
     });
