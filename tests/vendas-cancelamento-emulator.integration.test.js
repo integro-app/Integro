@@ -211,13 +211,13 @@ test("revisão assistida de venda com pagamento só registra solicitação, sem 
     vendaId:sale.vendaId,categoria:"ESTORNO_ASSISTIDO",motivo:"Curto"
   },manager),rejection("invalid-argument"));
 
-  const request=await cancellation.solicitarRevisao({
+  const protocolo=await cancellation.solicitarRevisao({
     vendaId:sale.vendaId,categoria:"ESTORNO_ASSISTIDO",
     motivo:"Solicito conferência dos recebimentos antes de eventual estorno."
   },manager);
-  assert.equal(request.ok,true);
-  assert.equal(request.modo,"SOLICITACAO_CRIADA");
-  const snap=(await db.collection("solicitacoes").doc(request.solicitacaoId).get()).data();
+  assert.equal(protocolo.ok,true);
+  assert.equal(protocolo.modo,"SOLICITACAO_CRIADA");
+  const snap=(await db.collection("solicitacoes").doc(protocolo.solicitacaoId).get()).data();
   assert.equal(snap.tipo,"REVISAO_VENDA_COM_PAGAMENTO");
   assert.equal(snap.status,"PENDENTE");
   assert.equal(snap.revisaoSomenteAnalise,true);
@@ -228,7 +228,7 @@ test("revisão assistida de venda com pagamento só registra solicitação, sem 
     motivo:"Solicito conferência dos recebimentos antes de eventual estorno."
   },manager);
   assert.equal(repeat.modo,"IDEMPOTENTE");
-  assert.equal((await db.collection("logs").where("solicitacaoId","==",request.solicitacaoId).get()).size,1);
+  assert.equal((await db.collection("logs").where("solicitacaoId","==",protocolo.solicitacaoId).get()).size,1);
 
   assert.equal((await db.collection("caixas").doc(caixaId).get()).data().saldoAtualCentavos,caixaAntes);
   assert.equal((await db.collection("clientes_operacionais").doc(clienteId).get()).data().saldoDevedorCentavos,clienteAntes);
