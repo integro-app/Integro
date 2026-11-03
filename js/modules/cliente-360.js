@@ -70,13 +70,27 @@
   async function loadTab(session,tab){
     if(session.loaded.has(tab))return;if(session.pending.has(tab))return session.pending.get(tab);
     const run=(async()=>{
-      const functions=global.firebase?.app?.()?.functions?.('southamerica-east1');
-      if(functions){const result=(await functions.httpsCallable('obterCliente360V27')({clienteId:session.client.clienteOperacionalId||session.client.id,aba:tab})).data;
-        if(!result?.ok)throw new Error('Consulta oficial indisponível.');Object.assign(session.client,result.client);
-        if(tab==='resumo')session.summary=result.summary;
-        else if(tab==='historico'){session.data=result.data;session.history=result.history||[];}
-        else session.data[{vendas:'sales',parcelas:'installments',pagamentos:'payments',visitas:'visits'}[tab]]=result.rows||[];
-        session.loaded.add(tab);return;
+      // Alguns ambientes têm o SDK Functions, mas não a callable 360.
+      // Somente "not-found" libera fallback para leituras Firestore já restritas
+      // pela sessão e pelas Rules; erros de autorização nunca são ignorados.
+      const functions=global.__integroCliente360CallableAusente ? null :
+        global.firebase?.app?.()?.functions?.('southamerica-east1');
+      if(functions){
+        try{
+          const result=(await functions.httpsCallable('obterCliente360V27')({
+            clienteId:session.client.clienteOperacionalId||session.client.id,aba:tab
+          })).data;
+          if(!result?.ok)throw new Error('Consulta oficial indisponível.');
+          if(result.client)Object.assign(session.client,result.client);
+          if(tab==='resumo')session.summary=result.summary;
+          else if(tab==='historico'){session.data=result.data;session.history=result.history||[];}
+          else session.data[{vendas:'sales',parcelas:'installments',pagamentos:'payments',visitas:'visits'}[tab]]=result.rows||[];
+          session.loaded.add(tab);return;
+        }catch(error){
+          const codigo=text(error?.code).toLowerCase();
+          if(!['functions/not-found','not-found','functions/unimplemented','unimplemented'].includes(codigo))throw error;
+          global.__integroCliente360CallableAusente=true;
+        }
       }
       if(tab==='historico'){await Promise.all([global.ClientesService.obterHistorico(session.client.clienteOperacionalId||session.client.id,U().user(),{db:U().db()}).then(rows=>session.history=rows),...['vendas','parcelas','pagamentos','visitas'].map(key=>loadTab(session,key))]);}
       else if(tab!=='resumo'){
