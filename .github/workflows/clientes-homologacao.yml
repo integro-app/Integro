@@ -1,0 +1,42 @@
+name: Homologacao integrada - Clientes
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/clientes-homologacao.yml"
+      - "js/services/clientes-service.js"
+      - "js/services/indicacoes-service.js"
+      - "js/modules/cliente-360.js"
+      - "js/vendedor-unificado.js"
+      - "firestore.rules"
+      - "storage.rules"
+      - "tests/clientes-emulator.integration.test.js"
+      - "scripts/seed-homologacao-clientes.js"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: clientes-homologacao-emulador
+  cancel-in-progress: true
+
+jobs:
+  clientes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Homologar Clientes com Auth e Firestore isolados no emulador
+        env:
+          CI: 'true'
+        run: npx firebase emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test tests/clientes-emulator.integration.test.js"
