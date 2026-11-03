@@ -19,7 +19,7 @@ const {
   deleteDoc,
   where
 } = require("firebase/firestore");
-const { ref, uploadBytes } = require("firebase/storage");
+const { ref, uploadBytes, listAll } = require("firebase/storage");
 
 const projectId = "integro-rules-test";
 let testEnv;
@@ -1069,4 +1069,22 @@ test('rules: criação de indicação aceita operador autorizado e continua bloq
   const trecho = rules.match(/function canCreateIndicacao\(data\) \{[\s\S]*?\n    \}/)?.[0] || '';
   assert.match(trecho, /!isVendedor\(\)/);
   assert.match(trecho, /canCreateLeadByPermission\(\)/);
+});
+
+test("documentos privados: somente carteira autorizada pode enviar e listar", async () => {
+  const root = "tenants/tenant_a/clientes-documentos/cliente_a_1";
+  const sellerStorage = testEnv.authenticatedContext(profiles.vendedor1.uid).storage();
+  const otherSellerStorage = testEnv.authenticatedContext(profiles.vendedor2.uid).storage();
+  const otherTenantStorage = testEnv.authenticatedContext(profiles.masterB.uid).storage();
+  const ownerStorage = testEnv.authenticatedContext(profiles.masterA.uid).storage();
+  await assertSucceeds(uploadBytes(ref(sellerStorage, root + "/comprovante.pdf"),
+    new Uint8Array([37,80,68,70]), { contentType: "application/pdf" }));
+  await assertSucceeds(listAll(ref(sellerStorage, root)));
+  await assertSucceeds(listAll(ref(ownerStorage, root)));
+  await assertFails(listAll(ref(otherSellerStorage, root)));
+  await assertFails(listAll(ref(otherTenantStorage, root)));
+  await assertFails(uploadBytes(ref(otherSellerStorage, root + "/indevido.pdf"),
+    new Uint8Array([37,80,68,70]), { contentType: "application/pdf" }));
+  await assertFails(uploadBytes(ref(sellerStorage, root + "/malicioso.exe"),
+    new Uint8Array([1,2,3]), { contentType: "application/octet-stream" }));
 });
