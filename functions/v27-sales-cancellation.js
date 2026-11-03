@@ -108,6 +108,7 @@ function criarCancelamentosVendaV27({admin,functions,db}) {
         doc.id!==vendaId&&text(doc.data().clientePlataformaId)===tenant&&
         !["CANCELADA","CANCELADO","ESTORNADA","ESTORNADO"].includes(up(doc.data().statusVenda||doc.data().status)));
       const saldoOutras=outras.reduce((sum,doc)=>sum+cent(doc.data(),"saldoDevedorCentavos",["saldoDevedor"]),0);
+      const outrasAbertas=outras.filter(doc=>cent(doc.data(),"saldoDevedorCentavos",["saldoDevedor"])>0);
       const saldoCliente=cent(cliente,"saldoDevedorCentavos",["saldoDevedor"]);
       const novoSaldoCliente=saldoCliente-total;
       if(novoSaldoCliente<0||novoSaldoCliente!==saldoOutras)
@@ -117,7 +118,7 @@ function criarCancelamentosVendaV27({admin,functions,db}) {
       if(!Number.isSafeInteger(novoCaixa))
         fail("failed-precondition","Saldo do caixa fora do limite permitido.");
       const agora=ts(),data=core.hojeSP();
-      const other=outras.sort((a,b)=>text(b.data().criadoEmTexto).localeCompare(text(a.data().criadoEmTexto)))[0];
+      const other=outrasAbertas.sort((a,b)=>text(b.data().criadoEmTexto).localeCompare(text(a.data().criadoEmTexto)))[0];
       tx.set(reversalRef,{
         lancamentoId:reversalId,clientePlataformaId:tenant,caixaId,
         vendedorId:text(sale.vendedorId),vendedorAuthUid:text(sale.vendedorAuthUid),
@@ -146,7 +147,7 @@ function criarCancelamentosVendaV27({admin,functions,db}) {
       tx.update(clienteRef,{
         saldoDevedorCentavos:novoSaldoCliente,saldoDevedor:core.reais(novoSaldoCliente),
         saldo:core.reais(novoSaldoCliente),saldoAtual:core.reais(novoSaldoCliente),
-        possuiVendaAtiva:outras.length>0,vendaAtivaId:other?.id||"",
+        possuiVendaAtiva:outrasAbertas.length>0,vendaAtivaId:other?.id||"",
         status:novoSaldoCliente>0?"ATIVO":"QUITADO",
         statusCliente:novoSaldoCliente>0?"ATIVO":"QUITADO",atualizadoEm:agora
       });
