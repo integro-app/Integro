@@ -164,15 +164,66 @@ function renderVendas() {
     botao.addEventListener("click", () => abrirVerVenda(botao.dataset.verVenda)));
 }
 
-function abrirVerVenda(id) {
+function movimentosVendaNaSessao(vendaId, colecao) {
+  const tenant = String(State.getTenantId?.() || "");
+  const colecoes = {
+    parcelas: State.getParcelas?.() || [],
+    pagamentos: State.getPagamentos?.() || [],
+    logs: State.getLogs?.() || []
+  };
+  return (colecoes[colecao] || []).filter(item =>
+    String(item.clientePlataformaId || "") === tenant &&
+    String(item.vendaId || "") === String(vendaId) && item.excluido !== true);
+}
+
+function registrosVendaHtml(titulo, registros, tipo, completo) {
+  const money = item => moeda(centavosVenda(item,
+    tipo === "parcelas" ? "valorParcelaCentavos" : "valorRecebidoCentavos",
+    tipo === "parcelas" ? "valor" : "valorRecebido") / 100);
+  const itens = registros.slice(0, 90);
+  return `<section class="vendas-detalhe-secao"><h3>${escaparVenda(titulo)} (${registros.length})</h3>
+    ${!itens.length ? `<p>Nenhum registro disponível nesta consulta.</p>` : `<div class="mini-list">
+    ${itens.map(item => `<div class="list-item"><div>
+      <strong>${tipo === "logs" ? escaparVenda(item.tipoAcao || item.tipo || "Evento") :
+        tipo === "parcelas" ? "Parcela " + escaparVenda(item.numeroParcela || "-") : money(item)}</strong>
+      <small>${tipo === "logs" ? escaparVenda(item.descricao || item.detalhe || "") :
+        "Status: " + escaparVenda(item.statusParcela || item.statusPagamento || item.status || "-")}</small>
+      <small>${tipo === "parcelas" ? "Vencimento: " + escaparVenda(item.vencimento || item.dataCobranca || "-") +
+        " · Valor: " + money(item) : "Data: " +
+        escaparVenda(item.dataOperacional || item.dataPagamento || item.criadoEmTexto || "-")}</small>
+    </div></div>`).join("")}</div>`}
+    ${registros.length > itens.length ? '<small>Exibindo os primeiros 90 registros.</small>' : ""}
+    ${!completo ? '<small>Dados parciais da sessão; consulta completa indisponível.</small>' : ""}
+    </section>`;
+}
+
+async function abrirVerVenda(id) {
   const venda = encontrarVendaPorId(id);
-
-  if (!venda) {
-    UIHelpers.alerta("Venda não encontrada.");
-    return;
-  }
-
-  abrirDrawer("Detalhes da venda", perfilVenda(venda));
+  if (!venda) return UIHelpers.alerta("Venda não encontrada.");
+  abrirDrawer("Detalhes da venda", perfilVenda(venda) +
+    `<div id="vendaMovimentosDetalhe" data-venda-id="${escaparVenda(venda.id)}" aria-live="polite"><p>Consultando parcelas, pagamentos e histórico…</p></div>`);
+  const tenant = String(State.getTenantId?.() || "");
+  const consulta = window.IntegroModuloUtils?.queryScope;
+  const fontes = [
+    ["parcelas", "vendaId", "Parcelas"],
+    ["pagamentos", "vendaId", "Pagamentos"],
+    ["logs", "vendaId", "Auditoria"]
+  ];
+  const resultados = await Promise.all(fontes.map(async ([colecao, campo]) => {
+    if (!consulta) return {rows:movimentosVendaNaSessao(id,colecao),completo:false};
+    try {
+      const rows = await consulta(colecao,{where:[[campo,"==",id]],limit:100,cacheMs:30000});
+      return {rows:rows.filter(item=>String(item.clientePlataformaId||"")===tenant &&
+        String(item.vendaId||"")===String(id) && item.excluido!==true),completo:true};
+    } catch(error) {
+      console.warn("[ÍNTEGRO] Consulta complementar de venda indisponível",colecao,error);
+      return {rows:movimentosVendaNaSessao(id,colecao),completo:false};
+    }
+  }));
+  const host=document.getElementById("vendaMovimentosDetalhe");
+  if (!host || host.dataset.vendaId !== String(id) || String(State.getTenantId?.()||"")!==tenant) return;
+  host.innerHTML=fontes.map(([colecao,,titulo],idx) =>
+    registrosVendaHtml(titulo,resultados[idx].rows,colecao,resultados[idx].completo)).join("");
 }
 
 function encontrarVendaPorId(id) {
@@ -223,6 +274,69 @@ function perfilVenda(venda) {
   `;
 }
 
+function linhasRelatorioComercial() {
+  return getVendasFiltradas().map(v => ({
+    id:String(v.id || ""), data:dataVendaGestao(v),cliente:String(v.clienteNome||""),
+    vendedor:String(v.vendedorNome || v.vendedorAuthUid || v.vendedorId || "-"),
+    equipe:String(v.equipeId || "-"),tipo:String(v.tipoVenda||"NOVA"),
+    status:String(v.statusVenda || v.status || "-"),
+    principal:centavosVenda(v,"valorEmprestadoCentavos","valorEmprestado"),
+    total:centavosVenda(v,"valorTotalVendaCentavos","valorTotalVenda"),
+    saldo:centavosVenda(v,"saldoDevedorCentavos","saldoDevedor")
+  }));
+}
+
+function abrirRelatorioVendas() {
+  const linhas = linhasRelatorioComercial();
+  const grupos=new Map();
+  linhas.forEach(v=>{
+    const chave=v.equipe+"|"+v.vendedor;
+    const atual=grupos.get(chave)||{equipe:v.equipe,vendedor:v.vendedor,quantidade:0,principal:0,total:0,saldo:0};
+    atual.quantidade++; atual.principal+=v.principal; atual.total+=v.total; atual.saldo+=v.saldo;
+    grupos.set(chave,atual);
+  });
+  const soma=chave=>linhas.reduce((t,item)=>t+item[chave],0);
+  const corpo=[...grupos.values()].sort((a,b)=>b.principal-a.principal)
+    .map(v=>`<tr><td>${escaparVenda(v.equipe)}</td><td>${escaparVenda(v.vendedor)}</td>
+    <td>${v.quantidade}</td><td>${moeda(v.principal/100)}</td><td>${moeda(v.total/100)}</td>
+    <td>${moeda(v.saldo/100)}</td></tr>`).join("");
+  abrirDrawer("Relatório comercial", `<div class="vendas-relatorio">
+    <p>Resultados calculados a partir de ${linhas.length} vendas carregadas na sessão,
+    respeitando os filtros ativos e a empresa selecionada. Não representa necessariamente todo o histórico.</p>
+    <div class="mini-list"><div class="list-item"><div><strong>${linhas.length} vendas · ${moeda(soma("principal")/100)} emprestados</strong>
+    <small>Total dos contratos: ${moeda(soma("total")/100)} · Saldo das vendas: ${moeda(soma("saldo")/100)}</small></div></div></div>
+    <div style="overflow-x:auto"><table class="table"><thead><tr><th>Equipe</th><th>Vendedor</th><th>Vendas</th>
+    <th>Emprestado</th><th>Total</th><th>Saldo</th></tr></thead>
+    <tbody>${corpo || '<tr><td colspan="6">Sem vendas no filtro atual.</td></tr>'}</tbody></table></div>
+    <div class="drawer-actions"><button class="primary-btn" type="button" id="exportarRelatorioComercialBtn">Exportar CSV</button></div>
+    </div>`);
+  document.getElementById("exportarRelatorioComercialBtn")?.addEventListener("click", exportarRelatorioVendas);
+}
+
+function exportarRelatorioVendas() {
+  const tenant=String(State.getTenantId?.()||"");
+  if(!tenant)return UIHelpers.alerta("Empresa não selecionada.");
+  const header=["Data","Cliente","Vendedor","Equipe","Tipo","Status","Valor emprestado","Valor total","Saldo","Venda ID"];
+  const escapeCsv=valor=>{
+    let texto=String(valor??"");
+    if (/^[=+@\-\t\r]/.test(texto)) texto="'"+texto;
+    return '"'+texto.replace(/"/g,'""')+'"';
+  };
+  const linhas=linhasRelatorioComercial();
+  const tabela=[header,...linhas.map(v=>[v.data,v.cliente,v.vendedor,v.equipe,v.tipo,v.status,
+    (v.principal/100).toFixed(2).replace(".",","),(v.total/100).toFixed(2).replace(".",","),
+    (v.saldo/100).toFixed(2).replace(".",","),v.id])];
+  const conteudo="\uFEFF"+tabela.map(row=>row.map(escapeCsv).join(";")).join("\r\n");
+  const url=URL.createObjectURL(new Blob([conteudo],{type:"text/csv;charset=utf-8"}));
+  const link=document.createElement("a");
+  link.href=url;
+  link.download="integro-vendas-"+tenant.replace(/[^a-zA-Z0-9_-]/g,"_")+".csv";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
 function prepararTelaVendas() {
   const tela = document.getElementById("vendas");
   if (!tela) return;
@@ -252,6 +366,7 @@ function prepararTelaVendas() {
     <div class="search-row">
       <input id="buscaVendas" type="search" placeholder="Buscar por cliente, vendedor, status ou frequência">
       <button class="ghost-btn" onclick="abrirFiltrosVendas()">Filtros</button>
+      <button class="ghost-btn" onclick="abrirRelatorioVendas()">Relatório</button>
       <button class="primary-btn" onclick="renderVendas()">Buscar</button>
       <button class="ghost-btn" onclick="limparBuscaVendas()">Limpar</button>
     </div>
