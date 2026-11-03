@@ -163,6 +163,104 @@ function criarCancelamentosVendaV27({admin,functions,db}) {
         saldoClienteCentavos:novoSaldoCliente,parcelasCanceladas:parcelas.length};
     });
   }
-  return {cancelar};
+
+  // A revisão não altera dinheiro, contratos ou pagamentos. Uma venda com
+  // recebimentos exige conciliação e aprovação humana antes de qualquer estorno.
+  async function solicitarRevisao(payload,context) {
+    const uid=text(context?.auth?.uid);
+    if(!uid)fail("unauthenticated","Sessão não autenticada.");
+    const userSnap=await db.collection("usuarios").doc(uid).get();
+    const user=userSnap.exists?userSnap.data()||{}:{};
+    const tenant=text(user.clientePlataformaId);
+    const roles=[user.cargoChave,user.perfil,user.tipoUsuario].map(up);
+    if(!userSnap.exists||text(user.authUid)!==uid||!tenant||
+       user.acessoLiberado!==true||user.ativo===false||user.excluido===true||
+       ["BLOQUEADO","INATIVO","SUSPENSO"].includes(up(user.status))||
+       !roles.some(role=>["MASTER_LOCAL","GERENTE"].includes(role)))
+      fail("permission-denied","Somente gestor ativo da empresa pode solicitar revisão financeira.");
+    const entrada=payload?.entrada||payload||{};
+    const vendaId=text(entrada.vendaId),motivo=text(entrada.motivo);
+    const categoria=up(entrada.categoria);
+    if(!safeId(vendaId)||!["ESTORNO_ASSISTIDO","DIVERGENCIA","REVISAO_PAGAMENTO"].includes(categoria))
+      fail("invalid-argument","Venda ou categoria de revisão inválida.");
+    if(motivo.length<15||motivo.length>1200)
+      fail("invalid-argument","Informe uma justificativa entre 15 e 1200 caracteres.");
+    const digest=crypto.createHash("sha256").update(tenant+"/"+vendaId).digest("hex").slice(0,40);
+    const solicitacaoId="rvp_v27_"+digest;
+    const requestRef=db.collection("solicitacoes").doc(solicitacaoId);
+    const vendaRef=db.collection("vendas").doc(vendaId);
+    const logRef=db.collection("logs").doc("log_revisao_venda_"+digest);
+    return db.runTransaction(async tx=>{
+      const [saleSnap,requestSnap,pagamentosSnap]=await Promise.all([
+        tx.get(vendaRef),tx.get(requestRef),
+        tx.get(db.collection("pagamentos").where("vendaId","==",vendaId).limit(2))
+      ]);
+      if(!saleSnap.exists)fail("not-found","Venda não encontrada.");
+      const venda=saleSnap.data()||{};
+      if(text(venda.clientePlataformaId)!==tenant)
+        fail("permission-denied","Venda fora da empresa atual.");
+      if(["CANCELADA","CANCELADO","ESTORNADA","ESTORNADO"].includes(up(venda.statusVenda||venda.status)))
+        fail("failed-precondition","Venda já cancelada ou estornada exige análise do histórico existente.");
+      if(cent(venda,"totalPagoCentavos",["totalPago"])<=0&&pagamentosSnap.empty)
+        fail("failed-precondition","Sem pagamentos: utilize o fluxo normal de cancelamento integral.");
+      if(requestSnap.exists) {
+        const anterior=requestSnap.data()||{};
+        if(text(anterior.clientePlataformaId)!==tenant||
+          up(anterior.tipo)!=="REVISAO_VENDA_COM_PAGAMENTO"||text(anterior.vendaId)!==vendaId)
+          fail("already-exists","Registro de revisão com referência conflitante.");
+        if(up(anterior.status)!=="PENDENTE")
+          fail("failed-precondition","Já existe revisão encerrada; encaminhe o caso à auditoria.");
+        return {ok:true,modo:"IDEMPOTENTE",solicitacaoId,
+          mensagem:"A revisão já está pendente. Nenhum saldo foi alterado."};
+      }
+      const caixaId=text(venda.caixaId),clienteId=text(venda.clienteOperacionalId||venda.clienteId);
+      if(!safeId(caixaId)||!safeId(clienteId))
+        fail("failed-precondition","Venda com vínculos incompletos exige análise administrativa.");
+      const [caixaSnap,ledgerSnap]=await Promise.all([
+        tx.get(db.collection("caixas").doc(caixaId)),
+        tx.get(db.collection("lancamentos_financeiros").doc(core.lancamentoVendaId(vendaId)))
+      ]);
+      if(!caixaSnap.exists||text(caixaSnap.data()?.clientePlataformaId)!==tenant)
+        fail("failed-precondition","Caixa não localizado na mesma empresa.");
+      const principal=cent(venda,"valorEmprestadoCentavos",["valorEmprestado"]);
+      const total=cent(venda,"valorTotalVendaCentavos",["valorTotalVenda"]);
+      if(!Number.isSafeInteger(total)||total<=0||principal<=0)
+        fail("failed-precondition","Valores da venda incompletos para análise.");
+      const criadoEm=ts(),momento=new Date().toISOString();
+      const snapshot={
+        valorEmprestadoCentavos:principal,valorTotalVendaCentavos:total,
+        totalPagoCentavos:cent(venda,"totalPagoCentavos",["totalPago"]),
+        saldoDevedorCentavos:cent(venda,"saldoDevedorCentavos",["saldoDevedor"]),
+        statusVenda:up(venda.statusVenda||venda.status),
+        caixaStatus:up(caixaSnap.data()?.status),caixaSaldoCentavos:
+          cent(caixaSnap.data(),"saldoAtualCentavos",["saldoAtual"]),
+        lancamentoOriginalPresente:ledgerSnap.exists,
+        registroPagamentoEncontrado:!pagamentosSnap.empty
+      };
+      tx.create(requestRef,{
+        tipo:"REVISAO_VENDA_COM_PAGAMENTO",tipoSolicitacao:"REVISAO_VENDA_COM_PAGAMENTO",
+        origem:"VENDAS",status:"PENDENTE",statusSolicitacao:"PENDENTE",
+        clientePlataformaId:tenant,vendaId,clienteId,clienteOperacionalId:clienteId,
+        caixaId,equipeId:text(venda.equipeId||caixaSnap.data()?.equipeId),
+        vendedorId:text(venda.vendedorId),vendedorAuthUid:text(venda.vendedorAuthUid),
+        clienteNome:text(venda.clienteNome),vendedorNome:text(venda.vendedorNome),
+        valorCentavos:total,valor:core.reais(total),
+        categoria,motivo,criadoPorId:uid,solicitanteAuthUid:uid,
+        solicitadoEmTexto:momento,criadoEm,atualizadoEm:criadoEm,
+        revisaoSomenteAnalise:true,alteraFinanceiroAutomaticamente:false,
+        snapshot
+      });
+      tx.create(logRef,{
+        tipoAcao:"REVISAO_FINANCEIRA_VENDA_SOLICITADA",
+        origem:"VENDAS",clientePlataformaId:tenant,vendaId,clienteId,caixaId,
+        solicitacaoId,categoria,motivo,usuarioAuthUid:uid,criadoEm,
+        snapshot
+      });
+      return {ok:true,modo:"SOLICITACAO_CRIADA",solicitacaoId,
+        mensagem:"Revisão financeira registrada. Nenhum saldo ou contrato foi alterado."};
+    });
+  }
+
+  return {cancelar,solicitarRevisao};
 }
 module.exports={criarCancelamentosVendaV27};
