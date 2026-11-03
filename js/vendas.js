@@ -271,6 +271,95 @@ async function confirmarCancelamentoVendaGestao(id) {
   }finally{if(botao)botao.disabled=false;}
 }
 
+function conciliarDetalheVenda(venda, parcelas, pagamentos, ledger, completos = {}) {
+  const alertas=[];
+  let parcial=!completos.parcelas||!completos.pagamentos||!completos.ledger;
+  const tipo=statusVendaGestao(venda);
+  const cancelada=["CANCELADA","CANCELADO"].includes(tipo);
+  const principal=centavosVenda(venda,"valorEmprestadoCentavos","valorEmprestado");
+  const total=centavosVenda(venda,"valorTotalVendaCentavos","valorTotalVenda");
+  const saldo=centavosVenda(venda,"saldoDevedorCentavos","saldoDevedor");
+  const pago=centavosVenda(venda,"totalPagoCentavos","totalPago");
+  if(completos.parcelas) {
+    if(parcelas.length!==Number(venda.quantidadeParcelas))
+      alertas.push("Quantidade de parcelas diferente do contrato.");
+    const soma=parcelas.reduce((v,p)=>v+centavosVenda(p,"valorParcelaCentavos",
+      p.valorParcela!=null?"valorParcela":"valor"),0);
+    if(soma!==total)alertas.push("Soma das parcelas diferente do valor total.");
+    if(parcelas.some(p=>centavosVenda(p,"valorPagoCentavos","valorPago")>
+      centavosVenda(p,"valorParcelaCentavos",p.valorParcela!=null?"valorParcela":"valor")))
+      alertas.push("Há parcela com pagamento superior ao valor previsto.");
+    if(cancelada&&parcelas.some(p=>!["CANCELADA","CANCELADO"].includes(
+      String(p.statusParcela||p.status||"").toUpperCase())))
+      alertas.push("Parcela não cancelada em contrato cancelado.");
+  }
+  if(completos.pagamentos) {
+    const confirmado=pagamentos.filter(p=>!["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA"].includes(
+      String(p.statusPagamento||p.status||"CONFIRMADO").toUpperCase()));
+    const recebido=confirmado.reduce((v,p)=>v+centavosVenda(p,"valorCentavos",
+      p.valorRecebido!=null?"valorRecebido":"valor"),0);
+    if(recebido!==pago)alertas.push("Pagamentos confirmados não conferem com o total pago da venda.");
+    if(cancelada&&confirmado.length)alertas.push("Venda cancelada possui pagamentos confirmados.");
+  }
+  if(completos.ledger) {
+    const original=ledger?.original;
+    if(!original||String(original.clientePlataformaId||"")!==String(State.getTenantId?.()||"")||
+       String(original.origemId)!==String(venda.id)||
+       String(original.tipoLancamento||"").toUpperCase()!=="VENDA"||
+       String(original.natureza||"").toUpperCase()!=="DEBITO"||
+       String(original.statusLancamento||"").toUpperCase()!=="CONFIRMADO"||
+       centavosVenda(original,"valorCentavos","valor")!==principal)
+      alertas.push("Débito original da venda ausente ou divergente no ledger.");
+    if(cancelada) {
+      const estorno=ledger?.estorno;
+      if(!estorno||String(estorno.tipoLancamento||"").toUpperCase()!=="ESTORNO"||
+         String(estorno.natureza||"").toUpperCase()!=="CREDITO"||
+         String(estorno.statusLancamento||"").toUpperCase()!=="CONFIRMADO"||
+         String(estorno.reversaoDeId)!==String(ledger.originalId)||
+         centavosVenda(estorno,"valorCentavos","valor")!==principal)
+        alertas.push("Estorno integral da venda ausente ou divergente no ledger.");
+    }
+  }
+  if(!cancelada&&total>0&&completos.pagamentos&&saldo!==Math.max(0,total-pago))
+    alertas.push("Saldo da venda não corresponde ao total menos pagamentos.");
+  if(cancelada&&saldo!==0)alertas.push("Venda cancelada ainda possui saldo devedor.");
+  return {situacao:alertas.length?"DIVERGÊNCIA":parcial?"VERIFICAÇÃO PARCIAL":"CONFERIDO",
+    alertas,parcial};
+}
+
+async function lerLedgerDetalheVenda(venda,tenant) {
+  const database=window.db||window.firebase?.firestore?.();
+  if(!database)return {completo:false};
+  const originalId="lf_venda_"+String(venda.id).replace(/[^a-zA-Z0-9_-]/g,"_").slice(0,500);
+  try {
+    const snap=await database.collection("lancamentos_financeiros").doc(originalId).get();
+    let estorno=null;
+    if(["CANCELADA","CANCELADO"].includes(statusVendaGestao(venda))) {
+      if(!venda.cancelamentoLancamentoId) return {completo:true,originalId,
+        original:snap.exists?snap.data():null,estorno:null};
+      const revert=await database.collection("lancamentos_financeiros")
+        .doc(String(venda.cancelamentoLancamentoId)).get();
+      if(revert.exists&&revert.data().clientePlataformaId===tenant)estorno=revert.data();
+    }
+    return {completo:true,originalId,
+      original:snap.exists&&snap.data().clientePlataformaId===tenant?snap.data():null,estorno};
+  } catch(error) {
+    console.warn("[ÍNTEGRO] Ledger da venda não disponível para consulta",error);
+    return {completo:false};
+  }
+}
+
+function resumoConferenciaVenda(conferencia) {
+  return `<section class="vendas-detalhe-secao" aria-label="Conferência financeira da venda">
+    <h3>Conferência venda · parcelas · pagamentos · ledger</h3>
+    <p><strong>${escaparVenda(conferencia.situacao)}</strong></p>
+    ${conferencia.alertas.length?`<div class="mini-list">${conferencia.alertas.map(aviso=>
+      `<div class="list-item"><small>${escaparVenda(aviso)}</small></div>`).join("")}</div>`:
+      "<small>Não foram identificadas diferenças nos dados conferidos.</small>"}
+    ${conferencia.parcial?"<small>Algumas consultas não puderam ser verificadas. Não considere esta conferência uma auditoria completa.</small>":""}
+  </section>`;
+}
+
 async function abrirVerVenda(id) {
   const venda = encontrarVendaPorId(id);
   if (!venda) return UIHelpers.alerta("Venda não encontrada.");
@@ -293,7 +382,7 @@ async function abrirVerVenda(id) {
     try {
       const rows = await consulta(colecao,{where:[[campo,"==",id]],limit:100,cacheMs:30000});
       return {rows:rows.filter(item=>String(item.clientePlataformaId||"")===tenant &&
-        String(item.vendaId||"")===String(id) && item.excluido!==true),completo:true};
+        String(item.vendaId||"")===String(id) && item.excluido!==true),completo:rows.length<100};
     } catch(error) {
       console.warn("[ÍNTEGRO] Consulta complementar de venda indisponível",colecao,error);
       return {rows:movimentosVendaNaSessao(id,colecao),completo:false};
@@ -301,7 +390,13 @@ async function abrirVerVenda(id) {
   }));
   const host=document.getElementById("vendaMovimentosDetalhe");
   if (!host || host.dataset.vendaId !== String(id) || String(State.getTenantId?.()||"")!==tenant) return;
-  host.innerHTML=fontes.map(([colecao,,titulo],idx) =>
+  const ledger=await lerLedgerDetalheVenda(venda,tenant);
+  if(!host.isConnected||host.dataset.vendaId!==String(id)||
+     String(State.getTenantId?.()||"")!==tenant)return;
+  const auditoria=conciliarDetalheVenda(venda,resultados[0].rows,resultados[1].rows,ledger,{
+    parcelas:resultados[0].completo,pagamentos:resultados[1].completo,ledger:ledger.completo
+  });
+  host.innerHTML=resumoConferenciaVenda(auditoria)+fontes.map(([colecao,,titulo],idx) =>
     registrosVendaHtml(titulo,resultados[idx].rows,colecao,resultados[idx].completo)).join("");
 }
 
