@@ -102,6 +102,7 @@ function renderClientes() {
 
       <div class="item-actions">
         <button class="ghost-btn" onclick="abrirVerCliente('${c.id}')">Ver</button>
+        <button class="ghost-btn" onclick="abrirDocumentosCliente('${c.id}')">Documentos</button>
         <button class="ghost-btn" onclick="abrirEditarCliente('${c.id}')">Editar</button>
         ${["master_local","supervisor","master_global","usuario_integro"].includes(String(State.getUsuario?.()?.cargoChave || State.getUsuario?.()?.tipoUsuario || "").toLowerCase()) ? `<button class="ghost-btn" onclick="abrirTransferirCliente('${c.id}')">Transferir</button>` : ""}
         <button class="danger-btn" onclick="excluirClienteLogico('${c.id}')">Excluir</button>
@@ -117,10 +118,18 @@ function abrirTransferirCliente(id) {
   if (!cliente || !window.ClientesService?.direcionarCliente || !usuario) return UIHelpers.alerta("Transferência indisponível.");
   const cargo = String(usuario.cargoChave || usuario.tipoUsuario || "").toLowerCase();
   if (!["master_local", "supervisor", "master_global", "usuario_integro"].includes(cargo)) return UIHelpers.alerta("Sem permissão para transferência.");
+  const vendedores = (State.getUsuarios?.() || []).filter(v => {
+    const papel = String(v.cargoChave || v.tipoUsuario || "").toLowerCase();
+    const tenant = String(usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "");
+    return papel === "vendedor" && String(v.clientePlataformaId || v.empresaId || v.tenantId || "") === tenant &&
+      v.ativo !== false && !["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(String(v.status || "").toUpperCase()) &&
+      (cargo !== "supervisor" || String(v.equipeId || "") === String(usuario.equipeId || ""));
+  });
+  if (!vendedores.length) return UIHelpers.alerta("Nenhum vendedor elegível encontrado.");
   abrirDrawer("Transferir cliente", `
     <div class="form-grid">
       <div class="form-group full"><label>Cliente</label><strong>${escaparTextoCliente(cliente.nome || cliente.nomeCompleto || "")}</strong></div>
-      <div class="form-group full"><label>ID do vendedor de destino</label><input id="transferirClienteVendedor" autocomplete="off" placeholder="ID do vendedor cadastrado"></div>
+      <div class="form-group full"><label>ID do vendedor de destino</label><select id="transferirClienteVendedor"><option value="">Selecione o vendedor</option>${vendedores.map(v => `<option value="${escaparTextoCliente(v.authUid || v.uid || v.id)}">${escaparTextoCliente(v.nome || v.nomeCompleto || v.email || "Vendedor")}</option>`).join("")}</select></div>
       <div class="form-group full"><label>Motivo da transferência</label><textarea id="transferirClienteMotivo" rows="3" placeholder="Informe o motivo obrigatório"></textarea></div>
       <div class="drawer-actions"><button class="primary-btn" type="button" onclick="confirmarTransferenciaCliente('${id}')">Confirmar transferência</button></div>
     </div>`);
@@ -153,6 +162,89 @@ function listarDocumentosCliente(cliente = {}) {
     // Exibe apenas metadados. Nunca torna público um documento por URL arbitrária.
     return `<div class="list-item"><strong>${titulo}</strong><small>${escaparTextoCliente(doc?.status || "Registrado")}</small></div>`;
   }).join("");
+}
+
+// Anexos individuais: Storage protegido + metadados privados na subcoleção do cliente.
+let __clienteStorageCarregando = null;
+function garantirStorageClientes() {
+  if (window.firebase?.storage) return Promise.resolve();
+  if (__clienteStorageCarregando) return __clienteStorageCarregando;
+  __clienteStorageCarregando = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js";
+    script.onload = resolve;
+    script.onerror = () => reject(new Error("Falha ao carregar armazenamento seguro."));
+    document.head.appendChild(script);
+  }).catch(error => { __clienteStorageCarregando = null; throw error; });
+  return __clienteStorageCarregando;
+}
+
+function dadosDocumentosCliente(id) {
+  const cliente = encontrarClientePorId(id);
+  const tenant = State.getUsuario?.()?.clientePlataformaId || State.getUsuario?.()?.empresaId || State.getUsuario?.()?.tenantId;
+  if (!cliente || !tenant || String(cliente.clientePlataformaId || cliente.tenantId || cliente.empresaId) !== String(tenant))
+    throw new Error("Cliente fora da empresa atual.");
+  return { cliente, tenant: String(tenant), clienteId: String(cliente.clienteOperacionalId || cliente.id) };
+}
+
+async function abrirDocumentosCliente(id) {
+  try {
+    const { cliente, clienteId } = dadosDocumentosCliente(id);
+    abrirDrawer("Documentos do cliente", `<div class="mini-list"><strong>${escaparTextoCliente(cliente.nome || cliente.nomeCompleto)}</strong>
+      <p>Arquivos privados: PDF, JPG, PNG ou WebP, até 8 MB.</p>
+      <input id="arquivoDocumentoCliente" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
+      <button class="primary-btn" type="button" onclick="enviarDocumentoCliente('${escaparTextoCliente(id)}')">Anexar documento</button>
+      <div id="statusDocumentosCliente" role="status"></div>
+      <div id="listaDocumentosCliente">Carregando documentos...</div></div>`);
+    const snapshot = await db.collection("clientes_operacionais").doc(clienteId).collection("documentos").limit(40).get();
+    const host = document.getElementById("listaDocumentosCliente");
+    if (!host) return;
+    if (snapshot.empty) { host.textContent = "Nenhum documento anexado."; return; }
+    host.innerHTML = snapshot.docs.map(doc => `<div class="list-item"><strong>${escaparTextoCliente(doc.data().nome)}</strong>
+      <small>${escaparTextoCliente(doc.data().tipo)}</small>
+      <button class="ghost-btn" type="button" data-documento-cliente="${escaparTextoCliente(doc.id)}">Abrir documento</button></div>`).join("");
+    host.querySelectorAll("[data-documento-cliente]").forEach(button => button.addEventListener("click", async () => {
+      try {
+        await garantirStorageClientes();
+        const ref = db.collection("clientes_operacionais").doc(clienteId).collection("documentos").doc(button.dataset.documentoCliente);
+        const snap = await ref.get();
+        if (!snap.exists) throw new Error("Documento não encontrado.");
+        const caminho = `tenants/${dadosDocumentosCliente(id).tenant}/clientes-documentos/${clienteId}/${snap.id}`;
+        if (snap.data().caminho !== caminho) throw new Error("Caminho do documento inválido.");
+        const url = await firebase.storage().ref(caminho).getDownloadURL();
+        window.open(url, "_blank", "noopener,noreferrer");
+      } catch (erro) { UIHelpers.alerta("Não foi possível abrir documento: " + erro.message); }
+    }));
+  } catch (erro) { UIHelpers.alerta("Não foi possível consultar documentos: " + erro.message); }
+}
+
+async function enviarDocumentoCliente(id) {
+  const status = document.getElementById("statusDocumentosCliente");
+  const input = document.getElementById("arquivoDocumentoCliente");
+  const arquivo = input?.files?.[0];
+  const tipos = ["application/pdf", "image/jpeg", "image/png", "image/webp"];
+  if (!arquivo || !tipos.includes(arquivo.type) || arquivo.size <= 0 || arquivo.size > 8 * 1024 * 1024)
+    return UIHelpers.alerta("Selecione PDF ou imagem válida com até 8 MB.");
+  const botao = input?.parentElement?.querySelector("button.primary-btn");
+  if (botao) botao.disabled = true;
+  try {
+    const { tenant, clienteId } = dadosDocumentosCliente(id);
+    await garantirStorageClientes();
+    const ref = db.collection("clientes_operacionais").doc(clienteId).collection("documentos").doc();
+    const caminho = `tenants/${tenant}/clientes-documentos/${clienteId}/${ref.id}`;
+    if (status) status.textContent = "Enviando arquivo...";
+    await firebase.storage().ref(caminho).put(arquivo, { contentType: arquivo.type });
+    await ref.set({
+      clientePlataformaId: tenant, nome: arquivo.name.slice(0, 180), tipo: arquivo.type,
+      tamanho: arquivo.size, caminho, criadoPor: firebase.auth().currentUser.uid,
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await abrirDocumentosCliente(id);
+    UIHelpers.alerta("Documento anexado com sucesso.");
+  } catch (erro) {
+    if (status) status.textContent = "Falha ao anexar: " + erro.message;
+    UIHelpers.alerta("Não foi possível anexar: " + erro.message);
+  } finally { if (botao) botao.disabled = false; }
 }
 
 function abrirNovoCliente() {
@@ -545,6 +637,7 @@ function perfilCliente(cliente) {
       </div>
 
       <div class="drawer-actions">
+        <button class="ghost-btn drawer-secondary" onclick="abrirDocumentosCliente('${cliente.id}')">Documentos</button>
         <button class="ghost-btn drawer-secondary" onclick="abrirEditarCliente('${cliente.id}')">Editar cliente</button>
         <button class="danger-btn drawer-secondary" onclick="excluirClienteLogico('${cliente.id}')">Excluir cliente</button>
       </div>
