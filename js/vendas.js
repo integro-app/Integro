@@ -44,10 +44,34 @@ function renderResumoVendas() {
   ).join("");
 }
 
+const filtrosVendas = { status: "todos", tipo: "todos" };
+
+function abrirFiltrosVendas() {
+  if (typeof abrirDrawer !== "function") return UIHelpers.alerta("Filtros indisponíveis.");
+  const opcoes = [
+    ["todos","Todos"],["ativas","Ativas"],["quitadas","Quitadas"],["canceladas","Canceladas"]
+  ];
+  const tipo = [["todos","Todos"],["novas","Novas"],["renovacoes","Renovações"]];
+  const select = (id, rotulo, valores, atual) => `<label for="${id}">${rotulo}</label><select id="${id}">${valores.map(([valor,nome]) =>
+    `<option value="${valor}" ${valor===atual?"selected":""}>${nome}</option>`).join("")}</select>`;
+  abrirDrawer("Filtros de vendas", `<div class="form-grid">
+    <div class="form-group">${select("filtroStatusVendas","Status",opcoes,filtrosVendas.status)}</div>
+    <div class="form-group">${select("filtroTipoVendas","Tipo",tipo,filtrosVendas.tipo)}</div>
+    <div class="drawer-actions"><button class="primary-btn" type="button" onclick="aplicarFiltrosVendas()">Buscar</button></div>
+  </div>`);
+}
+
+function aplicarFiltrosVendas() {
+  filtrosVendas.status = document.getElementById("filtroStatusVendas")?.value || "todos";
+  filtrosVendas.tipo = document.getElementById("filtroTipoVendas")?.value || "todos";
+  if (typeof fecharDrawer === "function") fecharDrawer();
+  renderVendas();
+}
+
 function getVendasFiltradas() {
   const termo = (UIHelpers.getInputValue("buscaVendas") || "").toLowerCase();
-  const filtroStatus = document.getElementById("filtroStatusVendas")?.value || "todos";
-  const filtroTipo = document.getElementById("filtroTipoVendas")?.value || "todos";
+  const filtroStatus = filtrosVendas.status;
+  const filtroTipo = filtrosVendas.tipo;
   return vendasDoTenant().filter(v => {
     const status = statusVendaGestao(v);
     const tipo = tipoVendaGestao(v);
@@ -178,13 +202,26 @@ function prepararTelaVendas() {
       </div>
     </div>
 
+    <style>
+      #resumoVendas{display:grid;grid-template-columns:repeat(auto-fit,minmax(138px,1fr));gap:10px;margin:12px 0 18px}
+      #resumoVendas .vendas-resumo-card{display:flex;flex-direction:column;gap:5px;border:1px solid var(--line,#e2e8f0);border-radius:12px;background:var(--card-bg,#fff);padding:12px;min-width:0}
+      #resumoVendas small{font-size:12px;color:var(--muted,#64748b)}
+      #resumoVendas strong{font-size:22px;line-height:1.2;word-break:break-word}
+      #vendas .search-row{display:flex;flex-wrap:wrap;gap:8px}
+      #vendas .search-row input{flex:1 1 220px;min-width:0}
+      #vendas .vendas-limite-aviso{padding:10px;color:var(--muted,#64748b)}
+      @media(max-width:600px){#resumoVendas{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}#vendas .search-row input{flex-basis:100%}}
+    </style>
+    <div id="resumoVendas" aria-label="Indicadores das vendas carregadas"></div>
     <div class="search-row">
       <input id="buscaVendas" type="search" placeholder="Buscar por cliente, vendedor, status ou frequência">
+      <button class="ghost-btn" onclick="abrirFiltrosVendas()">Filtros</button>
       <button class="primary-btn" onclick="renderVendas()">Buscar</button>
       <button class="ghost-btn" onclick="limparBuscaVendas()">Limpar</button>
     </div>
-
-    <div id="listaVendas" class="list"></div>
+    <div id="listaVendas" class="list">
+      <div class="list-item"><div><strong>Consulta de vendas</strong><small>Use os filtros e clique em Buscar para visualizar a lista.</small></div></div>
+    </div>
   `;
 
   const input = document.getElementById("buscaVendas");
@@ -198,12 +235,14 @@ function prepararTelaVendas() {
     });
   }
 
-  renderVendas();
+  renderResumoVendas();
 }
 
 function limparBuscaVendas() {
   const input = document.getElementById("buscaVendas");
   if (input) input.value = "";
+  filtrosVendas.status = "todos";
+  filtrosVendas.tipo = "todos";
   renderVendas();
 }
 
@@ -212,6 +251,5 @@ document.addEventListener("DOMContentLoaded", prepararTelaVendas);
 document.addEventListener("usuario-validado", () => {
   setTimeout(() => {
     prepararTelaVendas();
-    renderVendas();
   }, 500);
 });
