@@ -1485,32 +1485,6 @@ service cloud.firestore {
     }
 
     match /clientes_operacionais/{id} {
-      match /documentos/{documentoId} {
-        function parentData() {
-          return get(/databases/$(database)/documents/clientes_operacionais/$(id)).data;
-        }
-        function canReadClientDocument() {
-          return exists(/databases/$(database)/documents/clientes_operacionais/$(id)) &&
-            parentData().get("clientePlataformaId", "") == userTenantId() &&
-            isOperationalReader(parentData()) &&
-            !isAuditor() && !isFinanceiro() && !isCaptador();
-        }
-        allow get, list: if canReadClientDocument();
-        allow create: if canReadClientDocument() &&
-          request.resource.data.keys().hasOnly(["nome", "tipo", "tamanho", "caminho", "criadoPor", "criadoEm", "clientePlataformaId"]) &&
-          request.resource.data.get("clientePlataformaId", "") == userTenantId() &&
-          request.resource.data.get("criadoPor", "") == currentUid() &&
-          request.resource.data.get("nome", "") is string &&
-          request.resource.data.get("nome", "").size() <= 180 &&
-          request.resource.data.get("tipo", "") in ["application/pdf", "image/jpeg", "image/png", "image/webp"] &&
-          request.resource.data.get("tamanho", 0) is number &&
-          request.resource.data.get("tamanho", 0) > 0 &&
-          request.resource.data.get("tamanho", 0) <= 8 * 1024 * 1024 &&
-          request.resource.data.get("caminho", "") ==
-            "tenants/" + userTenantId() + "/clientes-documentos/" + id + "/" + documentoId;
-        allow update, delete: if false;
-      }
-
       allow read: if isOperationalReader(resource.data) ||
         (isActiveUser() && isCaptador() && isSameTenantRead());
       allow create: if canCreateClienteLead(request.resource.data) ||
