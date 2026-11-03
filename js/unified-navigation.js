@@ -250,9 +250,21 @@
     sanitizarSidebar();
     aplicarSubmodulos(usuarioAtual);
     garantirSinoNotificacoes(usuarioAtual);
-    host.querySelectorAll("[data-menu-unificado]").forEach(botao => {
-      botao.addEventListener("click", () => abrirPorId(botao.dataset.modulo, botao));
-    });
+    // Um listener delegado continua funcionando após reconstruções do menu.
+    // Itens com filhos expandem o grupo; apenas os filhos navegam.
+    if (host.dataset.integroDelegatedClick !== "true") {
+      host.dataset.integroDelegatedClick = "true";
+      host.addEventListener("click", evento => {
+        const botao = evento.target.closest("[data-menu-unificado]");
+        if (!botao || !host.contains(botao)) return;
+        if (botao.classList.contains("integro-sidebar-group-trigger") &&
+            global.IntegroMenuCategorias?.alternar?.(botao)) {
+          evento.preventDefault();
+          return;
+        }
+        abrirPorId(botao.dataset.modulo, botao);
+      });
+    }
     document.dispatchEvent(new CustomEvent("integro-menu-unificado-renderizado", {
       detail: { usuario: usuarioAtual, permissoesExplicitas: temPermissoesExplicitas(usuarioAtual) }
     }));
