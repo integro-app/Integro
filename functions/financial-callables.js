@@ -180,9 +180,19 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     return regra.permitirAnalise === true || regra.exigirAnalise === true || clientes.permitirNovaVendaComSaldoAtivo === true;
   }
 
-  function autorizacaoVendaComSaldoValida(cliente = {}, uid, valorEmprestadoCentavos) {
+  function autorizacaoVendaComSaldoValida(cliente = {}, uid, valorEmprestadoCentavos, condicoes = {}) {
     const expira = Number(cliente.vendaComSaldoAutorizadaAteMs || 0);
-    return cliente.vendaComSaldoAutorizada === true &&
+    const aprovadas = cliente.vendaComSaldoAutorizacaoCondicoes;
+    // Autorizações legadas sem as condições expiram normalmente em até 24h.
+    // Novas aprovações devem corresponder integralmente à proposta analisada.
+    const termosValidos = !aprovadas || (
+      Number(aprovadas.taxaJuros) === Number(condicoes.taxaJuros) &&
+      Number(aprovadas.quantidadeParcelas) === Number(condicoes.quantidadeParcelas) &&
+      core.normalizarStatus(aprovadas.frequencia) === core.normalizarStatus(condicoes.frequencia) &&
+      core.texto(aprovadas.primeiraCobranca) === core.texto(condicoes.primeiraCobranca) &&
+      core.normalizarStatus(aprovadas.tipoVenda) === core.normalizarStatus(condicoes.tipoVenda)
+    );
+    return cliente.vendaComSaldoAutorizada === true && termosValidos &&
       core.texto(cliente.vendaComSaldoAutorizadaParaUid) === core.texto(uid) &&
       Number(cliente.vendaComSaldoAutorizadaValorCentavos || 0) === Number(valorEmprestadoCentavos || 0) &&
       expira > Date.now();
@@ -310,7 +320,10 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       if (!Number.isSafeInteger(novoSaldoClienteCentavos) || novoSaldoClienteCentavos <= 0) {
         erro("failed-precondition", "Saldo consolidado fora do limite seguro.");
       }
-      const autorizacaoSaldoAtivo = autorizacaoVendaComSaldoValida(cliente, uid, valorEmprestadoCentavos);
+      const autorizacaoSaldoAtivo = autorizacaoVendaComSaldoValida(
+        cliente, uid, valorEmprestadoCentavos,
+        { taxaJuros, quantidadeParcelas, frequencia, primeiraCobranca, tipoVenda }
+      );
       if (saldoClienteCentavos > 100 && !autorizacaoSaldoAtivo) {
         if (!permitirAnaliseSaldoAtivo) {
           erro("failed-precondition", "Cliente possui saldo devedor ativo. Nova venda bloqueada pela política da empresa.");
@@ -357,6 +370,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
           quantidadeParcelas,
           frequencia,
           primeiraCobranca,
+          tipoVenda,
           caixaId,
           vendedorAuthUid: uid,
           vendedorUid: uid,
@@ -524,6 +538,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         vendaComSaldoAutorizadaValorCentavos: 0,
         vendaComSaldoAutorizadaAteMs: 0,
         vendaComSaldoAutorizacaoSolicitacaoId: "",
+        vendaComSaldoAutorizacaoCondicoes: {},
         atualizadoEm: agora
       });
 
