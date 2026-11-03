@@ -164,10 +164,32 @@ test("cancelamento de renovação preserva venda anterior, dívida residual e v�
 });
 
 
-test("revisão assistida de venda com pagamento só registra solicitação, sem tocar caixa ou saldo",async()=>{
+async function prepararCenarioRevisao(nome) {
   const seller=await context("vendedor.1.a");
+  const caixaIdRevisao="caixa-revisao-"+nome;
+  const clienteIdRevisao="cliente-revisao-"+nome;
+  const baseCaixa=(await db.collection("caixas").doc("caixa-clientes-a1").get()).data()||{};
+  const baseCliente=(await db.collection("clientes_operacionais").doc("cliente-vendedor-1").get()).data()||{};
+  await db.collection("caixas").doc(caixaIdRevisao).set({
+    ...baseCaixa,clientePlataformaId:"tenant-a",vendedorId:seller.auth.uid,
+    vendedorAuthUid:seller.auth.uid,status:"ABERTO",saldoInicialCentavos:0,
+    saldoAtualCentavos:0,saldoAtual:0,valorAtual:0,caixaAtual:0
+  });
+  await db.collection("clientes_operacionais").doc(clienteIdRevisao).set({
+    ...baseCliente,clientePlataformaId:"tenant-a",vendedorId:seller.auth.uid,
+    vendedorAuthUid:seller.auth.uid,saldoDevedorCentavos:0,saldoDevedor:0,saldo:0,
+    possuiVendaAtiva:false,vendaAtivaId:"",vendaComSaldoAutorizada:false,
+    vendaComSaldoAutorizacaoCondicoes:{}
+  });
+  return {seller,caixaId:caixaIdRevisao,clienteId:clienteIdRevisao};
+}
+
+test("revisão assistida de venda com pagamento só registra solicitação, sem tocar caixa ou saldo",async()=>{
+  const {seller,caixaId,clienteId}=await prepararCenarioRevisao("com-pagamento");
   const manager=await context("master.local.a");
-  const sale=await sales.registrarVenda(request("venda_estorno_revisao_paga"),seller);
+  const sale=await sales.registrarVenda(request("venda_estorno_revisao_paga",{
+    caixaId,clienteId,clienteOperacionalId:clienteId
+  }),seller);
   assert.equal(sale.modo,"CRIACAO");
   const pagamentoId="pagamento_homologacao_revisao_venda";
   await db.collection("pagamentos").doc(pagamentoId).set({
@@ -217,8 +239,10 @@ test("revisão assistida de venda com pagamento só registra solicitação, sem 
 
 test("revisão só é aceita para venda com recebimentos; não substitui cancelamento simples",async()=>{
   const manager=await context("master.local.a");
-  const seller=await context("vendedor.1.a");
-  const sale=await sales.registrarVenda(request("venda_sem_pagamento_para_revisao"),seller);
+  const {seller,caixaId,clienteId}=await prepararCenarioRevisao("sem-pagamento");
+  const sale=await sales.registrarVenda(request("venda_sem_pagamento_para_revisao",{
+    caixaId,clienteId,clienteOperacionalId:clienteId
+  }),seller);
   assert.equal(sale.modo,"CRIACAO");
   await assert.rejects(()=>cancellation.solicitarRevisao({
     vendaId:sale.vendaId,categoria:"DIVERGENCIA",
