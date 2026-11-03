@@ -142,12 +142,14 @@ async function confirmarTransferenciaCliente(id) {
   const botao = document.querySelector('[onclick^="confirmarTransferenciaCliente"]');
   if (botao) botao.disabled = true;
   try {
-    await window.ClientesService.direcionarCliente(id, { vendedorId, motivo }, State.getUsuario());
+    const resultado = await window.ClientesService.direcionarCliente(id, { vendedorId, motivo }, State.getUsuario());
     fecharDrawer();
     if (window.IntegroCliente360?.refresh) await window.IntegroCliente360.refresh(id).catch(() => {});
     await carregarTudoMasterLocal();
     renderClientes();
-    UIHelpers.alerta("Transferência registrada com sucesso.");
+    UIHelpers.alerta(resultado?.pendente
+      ? "Solicitação registrada. A transferência depende da aprovação do gestor."
+      : "Transferência registrada com sucesso.");
   } catch (erro) {
     UIHelpers.alerta("Não foi possível transferir: " + (erro?.message || "erro desconhecido"));
   } finally { if (botao) botao.disabled = false; }
