@@ -1,0 +1,29 @@
+name: Reconciliar carteira legada de Clientes
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/clientes-reconciliar-alias.yml"
+permissions:
+  contents: read
+jobs:
+  reconciliar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - name: Verify before touching user identity
+        run: npm run verify
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - name: Reconcile only verified canonical legacy alias; audit transaction
+        env:
+          INTEGRO_REPAIR_EMAIL: gu@ar.com
+        run: node scripts/repair-clientes-legacy-alias.cjs
