@@ -1,5 +1,6 @@
 "use strict";
 
+const crypto = require("node:crypto");
 const core = require("./financial-core");
 
 function criarOperacoesFinanceiras({ admin, functions, db }) {
@@ -272,7 +273,11 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       ? (configuracaoAtualSnap.data() || {})
       : (configuracaoLegadaSnap?.exists ? (configuracaoLegadaSnap.data() || {}) : {});
     const permitirAnaliseSaldoAtivo = configuracaoAnaliseSaldo(configuracaoEmpresa);
-    const solicitacaoSaldoId = `vsa_${idSeguro(tenantId)}_${idSeguro(uid)}_${idSeguro(clienteId)}_${valorEmprestadoCentavos}_${dataOperacional.replace(/-/g, "")}`;
+    // A solicitação pertence à operação, não apenas ao valor e ao dia.
+    // Evita sobrescrever análise pendente de outro contrato com condições diferentes.
+    const hashSolicitacao = crypto.createHash("sha256")
+      .update(JSON.stringify([tenantId,uid,clienteId,operacaoId])).digest("hex").slice(0,32);
+    const solicitacaoSaldoId = `vsa_${idSeguro(tenantId).slice(0,40)}_${hashSolicitacao}`;
 
     const resultado = await db.runTransaction(async transaction => {
       const [caixaSnap, clienteLocalizado, vendaSnap] = await Promise.all([
@@ -314,14 +319,31 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         const solicitacaoSnap = await transaction.get(solicitacaoRef);
         const solicitacaoExistente = solicitacaoSnap.exists ? (solicitacaoSnap.data() || {}) : {};
         const statusSolicitacao = core.normalizarStatus(solicitacaoExistente.status);
-        if (statusSolicitacao === "APROVADA") {
-          erro("failed-precondition", "A autorização desta venda expirou ou já foi consumida. Solicite nova análise.");
+        if (solicitacaoSnap.exists) {
+          if (statusSolicitacao !== "PENDENTE")
+            erro("failed-precondition", "Solicitação já decidida. Registre uma nova operação para solicitar análise.");
+          if (core.texto(solicitacaoExistente.operacaoSolicitadaId) !== operacaoId ||
+              Number(solicitacaoExistente.valorEmprestadoCentavos) !== valorEmprestadoCentavos ||
+              Number(solicitacaoExistente.valorTotalVendaCentavos) !== valorTotalCentavos ||
+              Number(solicitacaoExistente.taxaJuros) !== taxaJuros ||
+              Number(solicitacaoExistente.quantidadeParcelas) !== quantidadeParcelas ||
+              core.normalizarStatus(solicitacaoExistente.frequencia) !== frequencia ||
+              core.texto(solicitacaoExistente.primeiraCobranca) !== primeiraCobranca ||
+              core.texto(solicitacaoExistente.caixaId) !== caixaId)
+            erro("already-exists", "A operação já possui uma análise com outras condições.");
+          return {
+            ok: true, pendente: true, modo: "ANALISE_SALDO_ATIVO",
+            solicitacaoId: solicitacaoSaldoId, clienteId: clienteIdCanonico,
+            clienteNome: core.texto(solicitacaoExistente.clienteNome),
+            equipeId: core.texto(solicitacaoExistente.equipeId),
+            saldoClienteCentavos, valorEmprestadoCentavos
+          };
         }
         const agora = ts();
         transaction.set(solicitacaoRef, {
           clientePlataformaId: tenantId,
           tipo: "VENDA_COM_SALDO_ATIVO",
-          status: statusSolicitacao === "PENDENTE" ? "PENDENTE" : "PENDENTE",
+          status: "PENDENTE",
           clienteId: clienteIdCanonico,
           clienteOperacionalId: clienteIdCanonico,
           clienteColecao: clienteLocalizado.colecao,
