@@ -4,22 +4,60 @@
 // Master Local NÃO cria venda
 // ========================================
 
+function escaparVenda(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, caractere =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[caractere]));
+}
+
+function vendasDoTenant() {
+  const tenant = String(State.getTenantId?.() || State.getUsuario?.()?.clientePlataformaId || "");
+  if (!tenant) return [];
+  return (State.getVendas?.() || []).filter(v =>
+    v.excluido !== true && String(v.clientePlataformaId || "") === tenant);
+}
+
+function statusVendaGestao(venda) {
+  return String(venda.statusVenda || venda.status || "").toUpperCase();
+}
+
+function tipoVendaGestao(venda) {
+  return String(venda.tipoVenda || "NOVA").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+}
+
+function renderResumoVendas() {
+  const host = document.getElementById("resumoVendas");
+  if (!host) return;
+  const vendas = vendasDoTenant();
+  const ativas = vendas.filter(v => ["ATIVA","ATIVO"].includes(statusVendaGestao(v))).length;
+  const quitadas = vendas.filter(v => ["QUITADO","QUITADA"].includes(statusVendaGestao(v))).length;
+  const renovacoes = vendas.filter(v => tipoVendaGestao(v).includes("RENOV")).length;
+  const principal = vendas.reduce((s, v) => s + (Number(v.valorEmprestadoCentavos) || Math.round(Number(v.valorEmprestado || 0) * 100)), 0);
+  const cards = [
+    ["Vendas carregadas", vendas.length],
+    ["Ativas", ativas],
+    ["Quitadas", quitadas],
+    ["Renovações", renovacoes],
+    ["Valor emprestado", moeda(principal / 100)]
+  ];
+  host.innerHTML = cards.map(([rotulo, valor]) =>
+    `<div class="vendas-resumo-card"><small>${escaparVenda(rotulo)}</small><strong>${escaparVenda(valor)}</strong></div>`
+  ).join("");
+}
+
 function getVendasFiltradas() {
   const termo = (UIHelpers.getInputValue("buscaVendas") || "").toLowerCase();
-  const vendas = State.getVendas ? State.getVendas() : [];
-
-  return vendas.filter(v => {
-    if (v.excluido === true) return false;
-
-    const base = [
-      v.clienteNome,
-      v.vendedorNome,
-      v.statusVenda,
-      v.status,
-      v.tipoVenda,
-      v.frequencia
-    ].join(" ").toLowerCase();
-
+  const filtroStatus = document.getElementById("filtroStatusVendas")?.value || "todos";
+  const filtroTipo = document.getElementById("filtroTipoVendas")?.value || "todos";
+  return vendasDoTenant().filter(v => {
+    const status = statusVendaGestao(v);
+    const tipo = tipoVendaGestao(v);
+    if (filtroStatus === "ativas" && !["ATIVA","ATIVO"].includes(status)) return false;
+    if (filtroStatus === "quitadas" && !["QUITADO","QUITADA"].includes(status)) return false;
+    if (filtroStatus === "canceladas" && !["CANCELADO","CANCELADA"].includes(status)) return false;
+    if (filtroTipo === "novas" && tipo !== "NOVA") return false;
+    if (filtroTipo === "renovacoes" && !tipo.includes("RENOV")) return false;
+    const base = [v.clienteNome,v.vendedorNome,v.statusVenda,v.status,v.tipoVenda,
+      v.frequencia,v.clienteId,v.id].join(" ").toLowerCase();
     return !termo || base.includes(termo);
   });
 }
@@ -28,7 +66,9 @@ function renderVendas() {
   const el = document.getElementById("listaVendas");
   if (!el) return;
 
-  const vendas = getVendasFiltradas();
+  const todas = getVendasFiltradas();
+  const vendas = todas.slice(0, 150);
+  renderResumoVendas();
 
   if (!vendas.length) {
     el.className = "list";
@@ -47,18 +87,21 @@ function renderVendas() {
   el.innerHTML = vendas.map(v => `
     <div class="list-item">
       <div>
-        <strong>${v.clienteNome || "Cliente não informado"}</strong>
-        <small>Vendedor: ${v.vendedorNome || "-"}</small>
-        <small>Tipo: ${v.tipoVenda || "NOVA"} • Status: ${v.statusVenda || v.status || "ATIVA"}</small>
+        <strong>${escaparVenda(v.clienteNome || "Cliente não informado")}</strong>
+        <small>Vendedor: ${escaparVenda(v.vendedorNome || "-")}</small>
+        <small>Tipo: ${escaparVenda(v.tipoVenda || "NOVA")} • Status: ${escaparVenda(v.statusVenda || v.status || "ATIVA")}</small>
         <small>Valor emprestado: ${moeda(Number(v.valorEmprestado || 0))}</small>
         <small>Valor total: ${moeda(Number(v.valorTotalVenda || 0))} • Saldo: ${moeda(Number(v.saldoDevedor || 0))}</small>
       </div>
 
       <div class="item-actions">
-        <button class="ghost-btn" onclick="abrirVerVenda('${v.id}')">Ver</button>
+        <button class="ghost-btn" data-ver-venda="${escaparVenda(v.id)}">Ver</button>
       </div>
     </div>
-  `).join("");
+  `).join("") + (todas.length > vendas.length ?
+    `<p class="vendas-limite-aviso">Exibindo as primeiras ${vendas.length} de ${todas.length} vendas. Refine a pesquisa para consultar as demais.</p>` : "");
+  el.querySelectorAll("[data-ver-venda]").forEach(botao =>
+    botao.addEventListener("click", () => abrirVerVenda(botao.dataset.verVenda)));
 }
 
 function abrirVerVenda(id) {
@@ -73,8 +116,7 @@ function abrirVerVenda(id) {
 }
 
 function encontrarVendaPorId(id) {
-  const vendas = State.getVendas ? State.getVendas() : [];
-  return vendas.find(v => v.id === id);
+  return vendasDoTenant().find(v => String(v.id) === String(id));
 }
 
 function perfilVenda(venda) {
@@ -82,10 +124,10 @@ function perfilVenda(venda) {
     <div class="mini-list">
       <div class="list-item">
         <div>
-          <strong>${venda.clienteNome || "Cliente não informado"}</strong>
-          <small>Vendedor: ${venda.vendedorNome || "-"}</small>
-          <small>Tipo: ${venda.tipoVenda || "NOVA"}</small>
-          <small>Status: ${venda.statusVenda || venda.status || "ATIVA"}</small>
+          <strong>${escaparVenda(venda.clienteNome || "Cliente não informado")}</strong>
+          <small>Vendedor: ${escaparVenda(venda.vendedorNome || "-")}</small>
+          <small>Tipo: ${escaparVenda(venda.tipoVenda || "NOVA")}</small>
+          <small>Status: ${escaparVenda(venda.statusVenda || venda.status || "ATIVA")}</small>
         </div>
       </div>
 
@@ -102,18 +144,18 @@ function perfilVenda(venda) {
       <div class="list-item">
         <div>
           <strong>Parcelamento</strong>
-          <small>Parcelas: ${venda.quantidadeParcelas || "-"}</small>
+          <small>Parcelas: ${escaparVenda(venda.quantidadeParcelas || "-")}</small>
           <small>Valor da parcela: ${moeda(Number(venda.valorParcela || 0))}</small>
-          <small>Frequência: ${venda.frequencia || "-"}</small>
-          <small>Primeira cobrança: ${venda.dataPrimeiraCobranca || "-"}</small>
+          <small>Frequência: ${escaparVenda(venda.frequencia || "-")}</small>
+          <small>Primeira cobrança: ${escaparVenda(venda.dataPrimeiraCobranca || "-")}</small>
         </div>
       </div>
 
       <div class="list-item">
         <div>
           <strong>Controle</strong>
-          <small>ID da venda: ${venda.id}</small>
-          <small>Cliente ID: ${venda.clienteId || "-"}</small>
+          <small>ID da venda: ${escaparVenda(venda.id)}</small>
+          <small>Cliente ID: ${escaparVenda(venda.clienteId || "-")}</small>
           <small>Ativo: ${venda.ativo === false ? "Não" : "Sim"}</small>
         </div>
       </div>
