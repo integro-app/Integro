@@ -191,15 +191,15 @@ async function abrirDocumentosCliente(id) {
   try {
     const {cliente, clienteId, tenant} = dadosDocumentosCliente(id);
     await garantirStorageClientes();
-    abrirDrawer("Documentos do cliente", \`<div class="mini-list">
-      <strong>\${escaparTextoCliente(cliente.nome || cliente.nomeCompleto)}</strong>
+    abrirDrawer("Documentos do cliente", `<div class="mini-list">
+      <strong>${escaparTextoCliente(cliente.nome || cliente.nomeCompleto)}</strong>
       <p>Documentos privados em PDF ou imagem, com até 8 MB.</p>
       <input id="arquivoDocumentoCliente" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
-      <button class="primary-btn" type="button" onclick="enviarDocumentoCliente('\${escaparTextoCliente(id)}')">Anexar documento</button>
+      <button class="primary-btn" type="button" onclick="enviarDocumentoCliente('${escaparTextoCliente(id)}')">Anexar documento</button>
       <div id="statusDocumentosCliente" role="status"></div>
       <div id="listaDocumentosCliente">Carregando documentos...</div>
-    </div>\`);
-    const pasta = firebase.storage().ref(\`tenants/\${tenant}/clientes-documentos/\${clienteId}\`);
+    </div>`);
+    const pasta = firebase.storage().ref(`tenants/${tenant}/clientes-documentos/${clienteId}`);
     const lista = await pasta.listAll();
     const host = document.getElementById("listaDocumentosCliente");
     if (!host) return;
@@ -210,12 +210,12 @@ async function abrirDocumentosCliente(id) {
         return {item, nome:metadata.customMetadata?.nomeOriginal || "Documento", tipo:metadata.contentType || ""};
       } catch (_) { return {item, nome:"Documento", tipo:""}; }
     }));
-    host.innerHTML = documentos.map((doc, index) => \`
+    host.innerHTML = documentos.map((doc, index) => `
       <div class="list-item">
-        <strong>\${escaparTextoCliente(doc.nome)}</strong>
-        <small>\${escaparTextoCliente(doc.tipo)}</small>
-        <button class="ghost-btn" type="button" data-documento-indice="\${index}">Abrir documento</button>
-      </div>\`).join("");
+        <strong>${escaparTextoCliente(doc.nome)}</strong>
+        <small>${escaparTextoCliente(doc.tipo)}</small>
+        <button class="ghost-btn" type="button" data-documento-indice="${index}">Abrir documento</button>
+      </div>`).join("");
     host.querySelectorAll("[data-documento-indice]").forEach(button => button.addEventListener("click", async () => {
       const documento = documentos[Number(button.dataset.documentoIndice)];
       if (!documento) return;
@@ -242,7 +242,7 @@ async function enviarDocumentoCliente(id) {
     const usuario = firebase.auth().currentUser;
     if (!usuario) throw new Error("Sessão não autenticada.");
     const identificador = (window.crypto?.randomUUID?.() || Array.from(window.crypto.getRandomValues(new Uint8Array(16))).map(x=>x.toString(16).padStart(2,"0")).join("")).replace(/-/g,"");
-    const caminho = \`tenants/\${tenant}/clientes-documentos/\${clienteId}/\${identificador}\`;
+    const caminho = `tenants/${tenant}/clientes-documentos/${clienteId}/${identificador}`;
     if (status) status.textContent = "Enviando arquivo...";
     await firebase.storage().ref(caminho).put(arquivo, {
       contentType: arquivo.type,
