@@ -165,7 +165,15 @@ exports.invalidarSessoesUsuarioV27 = functions.region("southamerica-east1").http
 
 const { criarTransferenciasV27 } = require("./v27-transferencias");
 const transferenciasV27 = criarTransferenciasV27({ admin, functions, db });
-exports.transferirResponsabilidadeV27 = functions.region("southamerica-east1").https.onCall(transferenciasV27.transferir);
+exports.transferirResponsabilidadeV27 = functions.region("southamerica-east1").https.onCall((dados, contexto) => {
+  // Reutiliza o invoker público já aprovado desta callable. A nova operação
+  // exige autenticação + sessão vigente; transferências anteriores não mudam.
+  if (dados?.__integroRota === "CLIENTES_OPERACAO_V27") {
+    const { __integroRota, ...operacao } = dados;
+    return protegerSessao(operacoesClientesV27.executar)(operacao, contexto);
+  }
+  return transferenciasV27.transferir(dados, contexto);
+});
 exports.decidirTransferenciaClienteV27 = functions.region("southamerica-east1").https.onCall(transferenciasV27.decidir);
 
 const { criarAprovacoesVendaV27 } = require("./v27-sales-approvals");
