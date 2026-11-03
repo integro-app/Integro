@@ -114,7 +114,16 @@
     const responsavel = texto(cliente.vendedorAuthUid || cliente.vendedorUid || cliente.vendedorId || cliente.responsavelId || cliente.usuarioId);
     const equipe = texto(cliente.equipeId || cliente.equipeDestinoId || cliente.unidadeId);
 
-    if (cargo === "vendedor") return Boolean(uid && (responsavel === uid || (Array.isArray(cliente.hierarquiaIds) && cliente.hierarquiaIds.includes(uid))));
+    if (cargo === "vendedor") {
+      // Identificadores antigos só contam quando pertencem ao usuário autenticado.
+      // O perfil canônico recebe usuarioId legado após validação administrativa do vínculo.
+      const identidades = [uid, usuario.id, usuario.usuarioId, usuario.vendedorId, usuario.uid, usuario.authUid]
+        .filter(Boolean).map(String);
+      const vinculos = [cliente.vendedorAuthUid, cliente.vendedorUid, cliente.vendedorId,
+        cliente.responsavelId, cliente.usuarioId].filter(Boolean).map(String);
+      return identidades.some(id => vinculos.includes(id) ||
+        (Array.isArray(cliente.hierarquiaIds) && cliente.hierarquiaIds.includes(id)));
+    }
     if (["gerente", "socio", "proprietario"].includes(cargo)) {
       const equipes = equipesUsuario(usuario);
       const vendedores = vendedoresUsuario(usuario);
@@ -484,36 +493,31 @@
 
     if (cargo === "vendedor") {
       const authUid = texto(usuario.authUid || usuario.uid);
-      const usuarioId = texto(usuario.id || usuario.usuarioId || usuario.vendedorId);
-      if (!authUid && !usuarioId) throw new Error("Vendedor sem vínculo de autenticação.");
+      const idsProprios = [...new Set([
+        authUid, usuario.id, usuario.usuarioId, usuario.vendedorId
+      ].filter(Boolean).map(String))];
+      if (!idsProprios.length) throw new Error("Vendedor sem vínculo de autenticação.");
 
       const tentativas = [];
       if (authUid) {
         tentativas.push(["vendedorAuthUid", authUid], ["vendedorUid", authUid]);
       }
-      if (usuarioId && usuarioId !== authUid) {
-        tentativas.push(["vendedorId", usuarioId], ["usuarioId", usuarioId], ["responsavelId", usuarioId]);
-      } else if (usuarioId) {
-        tentativas.push(["vendedorId", usuarioId]);
-      }
-
-      let ultimoErro = null;
-      for (const [campo, valor] of tentativas) {
-        try {
-          const snap = await db.collection(COLECAO_CLIENTES)
-            .where("clientePlataformaId", "==", tenant)
-            .where(campo, "==", valor)
-            .limit(limite)
-            .get();
-          snap.docs.forEach(doc => documentos.push(documentoDeSnapshot(doc)));
-          if (documentos.length) break;
-        } catch (erro) {
-          ultimoErro = erro;
-        }
-      }
-
-      if (!documentos.length && ultimoErro) {
-        throw ultimoErro;
+      idsProprios.forEach(id => {
+        tentativas.push(["vendedorId", id], ["usuarioId", id], ["responsavelId", id]);
+      });
+      const unicas = new Map(tentativas.map(([campo,valor]) => [campo + ":" + valor, [campo, valor]]));
+      const resultados = await Promise.allSettled([...unicas.values()].map(async ([campo, valor]) => {
+        const snap = await db.collection(COLECAO_CLIENTES)
+          .where("clientePlataformaId", "==", tenant)
+          .where(campo, "==", valor)
+          .limit(limite).get();
+        return snap.docs.map(documentoDeSnapshot);
+      }));
+      documentos = resultados.filter(resultado => resultado.status === "fulfilled")
+        .flatMap(resultado => resultado.value);
+      if (!resultados.some(resultado => resultado.status === "fulfilled")) {
+        const erro = resultados.find(resultado => resultado.status === "rejected")?.reason;
+        throw erro || new Error("Não foi possível consultar a carteira do vendedor.");
       }
     } else {
       let ref = db.collection(COLECAO_CLIENTES).where("clientePlataformaId", "==", tenant);
