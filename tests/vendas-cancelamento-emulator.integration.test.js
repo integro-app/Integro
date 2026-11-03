@@ -138,7 +138,11 @@ test("cancelamento de renovação preserva venda anterior, dívida residual e v�
   await clienteRef.update({
     vendaComSaldoAutorizada:true,vendaComSaldoAutorizadaParaUid:seller.auth.uid,
     vendaComSaldoAutorizadaValorCentavos:principal,
-    vendaComSaldoAutorizadaAteMs:Date.now()+3600000
+    vendaComSaldoAutorizadaAteMs:Date.now()+3600000,
+    vendaComSaldoAutorizacaoCondicoes:{
+      taxaJuros:20,quantidadeParcelas:3,frequencia:"MENSAL",
+      primeiraCobranca:"2026-12-01",tipoVenda:"RENOVACAO"
+    }
   });
   const renovacao=await sales.registrarVenda(request("renovacao_fase3",{
     caixaId:novoCaixaId,clienteId:novoClienteId,clienteOperacionalId:novoClienteId,
