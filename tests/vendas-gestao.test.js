@@ -157,6 +157,27 @@ test("cancelamento de venda exige gestor, devolução declarada e confirmação 
   assert.match(source,/resposta\?\.data\?\.ok!==true/);
 });
 
+test("revisão assistida de venda paga respeita o cargo e mantém estorno separado",()=>{
+  const {context}=criarTela();
+  const venda={id:"venda-1",clientePlataformaId:"tenant-a",
+    statusVenda:"ATIVA",totalPagoCentavos:4500};
+  assert.equal(context.podeSolicitarRevisaoVenda(venda),true);
+  assert.equal(context.podeSolicitarRevisaoVenda({...venda,totalPagoCentavos:0}),false);
+  assert.equal(context.podeSolicitarRevisaoVenda({...venda,statusVenda:"CANCELADA"}),false);
+  context.State.getUsuario=()=>({cargoChave:"vendedor"});
+  assert.equal(context.podeSolicitarRevisaoVenda(venda),false);
+  context.State.getUsuario=()=>({cargoChave:"gerente"});
+  assert.equal(context.podeSolicitarRevisaoVenda(venda),true);
+  const source=fs.readFileSync(path.join(__dirname,"..","js/vendas.js"),"utf8");
+  assert.match(source,/REVISAO_VENDA_PAGA_V27/);
+  assert.match(source,/listaRevisoesFinanceirasVendas/);
+  assert.match(source,/altera(?:r)? o caixa|não altera o caixa/);
+  assert.match(source,/queryScope/);
+  assert.match(source,/REVISAO_VENDA_COM_PAGAMENTO/);
+  assert.match(source,/revisaoVendaMotivo/);
+  assert.match(source,/resposta\?\.data\?\.ok!==true/);
+});
+
 test("Formulário do vendedor conserva operacaoId no retry e valida parcelas",()=>{
   const source=fs.readFileSync(path.join(__dirname,"..","js/vendedor-unificado.js"),"utf8");
   assert.match(source,/let vendaOperacaoPendente = null/);
