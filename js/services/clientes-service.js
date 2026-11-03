@@ -672,12 +672,15 @@
   // validada. O caminho local permanece apenas para o DB simulado dos testes.
   function operacaoRemota(nome, dados, opcoes = {}) {
     const app = window.firebase?.app?.();
-    const callable = app?.functions?.("southamerica-east1")?.httpsCallable?.(nome);
+    const operacaoCliente = nome === "operarClienteV27";
+    const endpoint = operacaoCliente ? "transferirResponsabilidadeV27" : nome;
+    const callable = app?.functions?.("southamerica-east1")?.httpsCallable?.(endpoint);
     if (!callable) {
       if (opcoes.db && typeof window.firebase?.app !== "function") return null;
       throw new Error("Operação segura indisponível. Atualize o aplicativo e tente novamente.");
     }
-    return callable(dados).then(response => {
+    const body = operacaoCliente ? {...dados, __integroRota:"CLIENTES_OPERACAO_V27"} : dados;
+    return callable(body).then(response => {
       if (response?.data?.ok !== true) throw new Error("Operação não confirmada pelo servidor.");
       return response.data;
     });
