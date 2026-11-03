@@ -257,6 +257,15 @@
     return wasOpen;
   }
 
+  // A camada antiga usa toggleSidebar/fecharSidebar. Ambas devem convergir
+  // para este mesmo controlador, sem deixar classes e overlays fora de sincronia.
+  window.IntegroMobileNavigation = Object.freeze({
+    openSidebar,
+    closeSidebar,
+    isOpen: menuIsOpen,
+    isReady: () => shellReady
+  });
+
   function isOnlySubmenuToggle(item) {
     if (!item) return false;
     if (item.classList.contains("integro-sidebar-group-trigger")) return true;
