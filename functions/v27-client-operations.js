@@ -7,7 +7,12 @@ function criarOperacoesClientesV27({ admin, functions, db }) {
   const up = x => str(x).toUpperCase();
   const stamp = () => admin.firestore.FieldValue.serverTimestamp();
   const error = (code, message) => { throw new functions.https.HttpsError(code, message); };
-  const roles = u => up(u.cargoChave || u.tipoUsuario || u.perfil);
+  const roles = u => {
+    const declared = [u.tipoUsuario, u.cargoChave, u.perfil].map(up);
+    return declared.find(value =>
+      ["MASTER_LOCAL","GERENTE","SUPERVISOR","VENDEDOR"].includes(value)
+    ) || declared[0];
+  };
   const teams = u => new Set([u.equipeId, ...(u.equipeIds || []), ...(u.equipesIds || [])].filter(Boolean).map(str));
   const validId = x => /^[a-zA-Z0-9_-]{1,180}$/.test(str(x));
   const statusOptions = new Set([
@@ -106,8 +111,11 @@ function criarOperacoesClientesV27({ admin, functions, db }) {
           ![clientId,str(client.clienteLegadoId)].filter(Boolean).includes(saleClient) ||
           forbidden.has(up(sale.statusVenda||sale.status)))
           error("failed-precondition","Venda não confirmada para este cliente e empresa.");
-        if(oldStatus==="CONVERTIDO"&&str(client.vendaId)===saleId)
+        if(oldStatus==="CONVERTIDO") {
+          if(str(client.vendaId)!==saleId)
+            error("failed-precondition","Cliente já convertido por outra venda.");
           return {ok:true,alreadyApplied:true,clienteId:clientId,status:"CONVERTIDO"};
+        }
         eventType="CLIENTE_CONVERTIDO";
         patch={statusAtendimento:"CONVERTIDO",convertido:true,vendaId:saleId,
           convertidoAposRetrabalho:ciclo>1,dataConversaoTexto:moment,
