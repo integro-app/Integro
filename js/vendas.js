@@ -205,6 +205,50 @@ function podeSolicitarCancelamentoVenda(venda) {
     ["ATIVA","ATIVO","VENCIDA"].includes(statusVendaGestao(venda));
 }
 
+async function abrirRevisoesFinanceirasVendas() {
+  const usuario=State.getUsuario?.()||{};
+  const roles=[usuario.cargoChave,usuario.perfil,usuario.tipoUsuario]
+    .map(v=>String(v||"").trim().toLowerCase());
+  if(!roles.some(role=>["master_local","gerente"].includes(role)))
+    return UIHelpers.alerta("Somente gestores podem consultar revisões financeiras.");
+  const tenant=String(State.getTenantId?.()||"");
+  if(!tenant)return UIHelpers.alerta("Selecione uma empresa para consultar as revisões.");
+  abrirDrawer("Revisões financeiras de Vendas",`<section class="form-grid">
+    <div class="form-group full"><p>Solicitações para conciliação assistida.
+    Esta lista não autoriza nem executa estornos, cancelamentos ou alterações de caixa.</p></div>
+    <div class="form-group full" id="listaRevisoesFinanceirasVendas" aria-live="polite">
+      Consultando revisões desta empresa…</div>
+  </section>`);
+  const host=document.getElementById("listaRevisoesFinanceirasVendas");
+  const consulta=window.IntegroModuloUtils?.queryScope;
+  if(!host)return;
+  if(!consulta){host.textContent="Serviço de consulta de revisões indisponível.";return;}
+  try {
+    const registros=await consulta("solicitacoes",{limit:150,forcar:true});
+    if(!host.isConnected||String(State.getTenantId?.()||"")!==tenant)return;
+    const revisoes=registros.filter(item=>
+      String(item.clientePlataformaId||"")===tenant &&
+      String(item.tipo||item.tipoSolicitacao||"").toUpperCase()==="REVISAO_VENDA_COM_PAGAMENTO")
+      .sort((a,b)=>String(b.solicitadoEmTexto||"").localeCompare(String(a.solicitadoEmTexto||"")));
+    host.innerHTML=revisoes.length? `<div class="mini-list">${revisoes.map(item=>`
+      <div class="list-item"><div>
+        <strong>${escaparVenda(item.clienteNome||item.vendaId||"Venda")}</strong>
+        <small>Protocolo: ${escaparVenda(item.id)}</small>
+        <small>Venda: ${escaparVenda(item.vendaId)} · Status: ${escaparVenda(item.status||"PENDENTE")}</small>
+        <small>Categoria: ${escaparVenda(item.categoria||"-")} ·
+          Valor do contrato: ${moeda(centavosVenda(item,"valorCentavos","valor")/100)}</small>
+        <small>Solicitado em: ${escaparVenda(item.solicitadoEmTexto||"-")}</small>
+        <small>${escaparVenda(item.motivo||"Sem justificativa registrada")}</small>
+      </div></div>`).join("")}</div>` :
+      "<p>Nenhuma revisão encontrada nos registros consultados.</p>";
+    if(registros.length>=150)
+      host.innerHTML+="<small>Listagem parcial (limite de 150 registros). Refine a consulta no histórico completo quando necessário.</small>";
+  }catch(error){
+    if(host.isConnected)host.textContent="Não foi possível consultar revisões financeiras desta empresa.";
+    console.warn("[ÍNTEGRO] Falha ao consultar revisões de vendas",error);
+  }
+}
+
 function podeSolicitarRevisaoVenda(venda) {
   const usuario=State.getUsuario?.()||{};
   const cargos=[usuario.cargoChave,usuario.perfil,usuario.tipoUsuario]
@@ -604,6 +648,7 @@ function prepararTelaVendas() {
       <input id="buscaVendas" type="search" placeholder="Buscar por cliente, vendedor, status ou frequência">
       <button class="ghost-btn" onclick="abrirFiltrosVendas()">Filtros</button>
       <button class="ghost-btn" onclick="abrirRelatorioVendas()">Relatório</button>
+      <button class="ghost-btn" id="abrirRevisoesFinanceirasVendasBtn" type="button">Revisões</button>
       <button class="primary-btn" onclick="renderVendas()">Buscar</button>
       <button class="ghost-btn" onclick="limparBuscaVendas()">Limpar</button>
     </div>
@@ -624,6 +669,15 @@ function prepararTelaVendas() {
   }
 
   renderResumoVendas();
+  const revisoes=document.getElementById("abrirRevisoesFinanceirasVendasBtn");
+  if(revisoes){
+    const usuario=State.getUsuario?.()||{};
+    const gestor=[usuario.cargoChave,usuario.perfil,usuario.tipoUsuario]
+      .map(v=>String(v||"").trim().toLowerCase())
+      .some(role=>["master_local","gerente"].includes(role));
+    revisoes.hidden=!gestor;
+    if(gestor)revisoes.addEventListener("click",abrirRevisoesFinanceirasVendas);
+  }
 }
 
 function limparBuscaVendas() {
