@@ -197,11 +197,88 @@ function registrosVendaHtml(titulo, registros, tipo, completo) {
     </section>`;
 }
 
+function podeSolicitarCancelamentoVenda(venda) {
+  const usuario = State.getUsuario?.() || {};
+  const cargos = [usuario.cargoChave,usuario.perfil,usuario.tipoUsuario]
+    .map(valor=>String(valor||"").trim().toLowerCase());
+  return cargos.some(cargo=>["master_local","gerente"].includes(cargo)) &&
+    ["ATIVA","ATIVO","VENCIDA"].includes(statusVendaGestao(venda));
+}
+
+function abrirCancelarVendaGestao(id) {
+  const venda=encontrarVendaPorId(id);
+  if(!venda||!podeSolicitarCancelamentoVenda(venda))
+    return UIHelpers.alerta("Cancelamento indisponível para esta venda ou perfil.");
+  const principal=centavosVenda(venda,"valorEmprestadoCentavos","valorEmprestado");
+  if(principal<=0)return UIHelpers.alerta("Valor do contrato inválido.");
+  abrirDrawer("Cancelamento de venda",`<section class="form-grid">
+    <p class="form-group full"><strong>Atenção:</strong> somente uma venda sem pagamentos, com caixa aberto e
+    devolução integral já recebida pode ser cancelada. Não marque valores ainda não devolvidos.
+    O sistema registrará o estorno no ledger e atualizará o caixa e a carteira.</p>
+    <div class="form-group full"><label>Venda</label><strong>${escaparVenda(venda.id)}</strong></div>
+    <div class="form-group full"><label>Principal que deve ter sido devolvido</label>
+      <strong>${moeda(principal/100)}</strong></div>
+    <div class="form-group full"><label for="cancelarVendaValorDevolvido">Valor efetivamente recebido (R$)</label>
+      <input id="cancelarVendaValorDevolvido" type="number" min="0.01" step="0.01" required placeholder="Digite o valor recebido"></div>
+    <div class="form-group full"><label for="cancelarVendaMotivo">Justificativa detalhada</label>
+      <textarea id="cancelarVendaMotivo" rows="3" maxlength="1200" placeholder="Explique a devolução e o cancelamento"></textarea></div>
+    <label class="form-group full"><input id="cancelarVendaConfirmar" type="checkbox">
+      Confirmo pessoalmente que o principal integral foi devolvido e conferido.</label>
+    <div class="drawer-actions"><button type="button" class="primary-btn" id="confirmarCancelamentoVenda">
+      Registrar cancelamento e estorno</button></div>
+  </section>`);
+  document.getElementById("confirmarCancelamentoVenda")?.addEventListener("click",()=>confirmarCancelamentoVendaGestao(id));
+}
+
+async function confirmarCancelamentoVendaGestao(id) {
+  const venda=encontrarVendaPorId(id);
+  if(!venda||!podeSolicitarCancelamentoVenda(venda))
+    return UIHelpers.alerta("Acesso indisponível.");
+  const valor=Number(document.getElementById("cancelarVendaValorDevolvido")?.value);
+  const principal=centavosVenda(venda,"valorEmprestadoCentavos","valorEmprestado");
+  const motivo=String(document.getElementById("cancelarVendaMotivo")?.value||"").trim();
+  const confirmado=document.getElementById("cancelarVendaConfirmar")?.checked===true;
+  if(!confirmado||!Number.isFinite(valor)||Math.round(valor*100)!==principal||motivo.length<10)
+    return UIHelpers.alerta("Confirme a devolução integral, o valor exato e uma justificativa de pelo menos 10 caracteres.");
+  const botao=document.getElementById("confirmarCancelamentoVenda");
+  if(botao)botao.disabled=true;
+  try {
+    const callable=window.firebase?.app?.()?.functions?.("southamerica-east1")
+      ?.httpsCallable?.("decidirVendaComSaldoV27");
+    if(!callable)throw new Error("Serviço seguro de cancelamento indisponível.");
+    const resposta=await callable({
+      __integroRota:"CANCELAMENTO_INTEGRAL_VENDA_V27",vendaId:id,
+      devolucaoIntegralConfirmada:true,principalDevolvidoCentavos:principal,motivo
+    });
+    if(resposta?.data?.ok!==true)throw new Error("Cancelamento não confirmado pelo servidor.");
+    const ref=window.db?.collection?.("vendas")?.doc?.(id);
+    const atualizado=ref?await ref.get({source:"server"}).catch(()=>null):null;
+    if(atualizado?.exists&&atualizado.data()?.clientePlataformaId===State.getTenantId?.()) {
+      State.setVendas?.((State.getVendas?.()||[]).map(v=>
+        String(v.id)===String(id)?{id,...atualizado.data()}:v));
+    }
+    window.IntegroDataRuntime?.invalidar?.("vendas");
+    window.IntegroDataRuntime?.invalidar?.("parcelas");
+    window.IntegroDataRuntime?.invalidar?.("caixas");
+    window.IntegroPerfisUnificados?.carregarTudo?.().catch?.(()=>{});
+    if(typeof fecharDrawer==="function")fecharDrawer();
+    renderVendas();
+    UIHelpers.alerta("Cancelamento confirmado pelo servidor. Estorno registrado com auditoria.");
+  }catch(error){
+    UIHelpers.alerta(error?.message||"Não foi possível cancelar a venda.");
+  }finally{if(botao)botao.disabled=false;}
+}
+
 async function abrirVerVenda(id) {
   const venda = encontrarVendaPorId(id);
   if (!venda) return UIHelpers.alerta("Venda não encontrada.");
   abrirDrawer("Detalhes da venda", perfilVenda(venda) +
-    `<div id="vendaMovimentosDetalhe" data-venda-id="${escaparVenda(venda.id)}" aria-live="polite"><p>Consultando parcelas, pagamentos e histórico…</p></div>`);
+    `<div id="vendaMovimentosDetalhe" data-venda-id="${escaparVenda(venda.id)}" aria-live="polite"><p>Consultando parcelas, pagamentos e histórico…</p></div>` +
+    (podeSolicitarCancelamentoVenda(venda) ?
+      `<div class="drawer-actions"><button type="button" class="ghost-btn" id="abrirCancelamentoVenda">
+        Cancelamento com devolução integral</button></div>` : ""));
+  document.getElementById("abrirCancelamentoVenda")?.addEventListener("click",
+    ()=>abrirCancelarVendaGestao(id));
   const tenant = String(State.getTenantId?.() || "");
   const consulta = window.IntegroModuloUtils?.queryScope;
   const fontes = [
