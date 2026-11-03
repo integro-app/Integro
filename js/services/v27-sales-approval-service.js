@@ -47,8 +47,10 @@
     if (!solicitacao) return;
     const tipo = normalizar(solicitacao.tipo || solicitacao.tipoSolicitacao);
     const rejeitar = normalizar(decisao) === "REJEITAR";
-    const motivo = rejeitar ? texto(global.prompt("Informe o motivo da rejeição:")) : "";
-    if (rejeitar && motivo.length < 3) return;
+    const motivo = rejeitar
+      ? texto(document.getElementById("motivoRejeicaoVendaV27")?.value) : "";
+    if (rejeitar && motivo.length < 3)
+      return global.UIHelpers?.alerta?.("Informe um motivo para a rejeição (mínimo de 3 caracteres).");
     const mensagemConfirmacao = tipo === "CADASTRO_DUPLICADO"
       ? "Autorizar este cadastro com documento/telefone já existente por 24 horas?"
       : "Aprovar esta nova venda com saldo ativo? A autorização ficará vinculada ao vendedor e ao valor solicitado por 24 horas.";
@@ -59,7 +61,9 @@
       const nomeCallable = tipo === "CADASTRO_DUPLICADO" ? "decidirCadastroDuplicadoV27" : "decidirVendaComSaldoV27";
       const fn = funcoes()?.httpsCallable?.(nomeCallable);
       if (!fn) throw new Error("Firebase Functions indisponível.");
-      await fn({ solicitacaoId, decisao, motivo });
+      const resposta = await fn({ solicitacaoId, decisao, motivo });
+      if (resposta?.data?.ok !== true)
+        throw new Error("Decisão não confirmada pelo servidor.");
       fechar();
       await global.IntegroPerfisUnificados?.carregarTudo?.();
       await global.IntegroSupervisorUnificado?.carregarTudo?.();
@@ -102,9 +106,17 @@
     overlay.innerHTML = `<aside class="integro-v272-approval-drawer" role="dialog" aria-modal="true" aria-label="${duplicado ? "Autorização de cadastro duplicado" : "Análise de nova venda"}">
       <div class="integro-v272-approval-head"><div><h3>${duplicado ? "Cadastro duplicado" : "Análise de nova venda"}</h3><p>${duplicado ? "Documento ou telefone já existente" : "Cliente com saldo devedor ativo"}</p></div><button class="integro-v272-approval-close" type="button" aria-label="Fechar" onclick="IntegroV27SalesApproval.close()">✕</button></div>
       <div class="integro-v272-approval-body">${conteudo}</div>
-      <div class="integro-v272-approval-actions">${pendente ? `<button class="reject" type="button" onclick="IntegroV27SalesApproval.decide('${esc(id)}','REJEITAR')">Rejeitar</button><button class="approve" type="button" onclick="IntegroV27SalesApproval.decide('${esc(id)}','APROVAR')">${duplicado ? "Autorizar cadastro" : "Aprovar venda"}</button>` : `<button type="button" onclick="IntegroV27SalesApproval.close()">Fechar</button>`}</div>
+      <div class="integro-v272-approval-actions">${pendente ? `
+        <label style="width:100%;font-size:13px;color:#071a33" for="motivoRejeicaoVendaV27">Motivo obrigatório para rejeição
+          <textarea id="motivoRejeicaoVendaV27" rows="2" maxlength="1200" placeholder="Explique por que a solicitação não foi aprovada" style="display:block;width:100%;min-height:62px;padding:10px;border:1px solid #d8e0e8;border-radius:10px"></textarea>
+        </label>
+        <button class="reject" type="button" data-v27-decisao="REJEITAR">Rejeitar</button>
+        <button class="approve" type="button" data-v27-decisao="APROVAR">${duplicado ? "Autorizar cadastro" : "Aprovar venda"}</button>`
+        : `<button type="button" onclick="IntegroV27SalesApproval.close()">Fechar</button>`}</div>
     </aside>`;
     document.body.appendChild(overlay);
+    overlay.querySelectorAll("[data-v27-decisao]").forEach(botao =>
+      botao.addEventListener("click", () => decidir(id, botao.dataset.v27Decisao)));
   }
 
   function instalar() {
