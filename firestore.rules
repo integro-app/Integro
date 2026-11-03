@@ -346,15 +346,17 @@ service cloud.firestore {
     }
 
     function isOwnSellerData(data) {
+      // Campos de proprietário canônicos primeiro: mesma autorização, menos
+      // avaliações no emulador e nos casos comuns de leitura/escrita.
       return isCurrentUserValue(data.get("vendedorAuthUid", "")) ||
+        isCurrentUserValue(data.get("vendedorId", "")) ||
         isCurrentUserValue(data.get("vendedorUid", "")) ||
         isCurrentUserValue(data.get("vendedorDocumentoId", "")) ||
+        isCurrentUserValue(data.get("usuarioId", "")) ||
+        isCurrentUserValue(data.get("responsavelId", "")) ||
         isCurrentUserValue(data.get("abertoPorUid", "")) ||
         isCurrentUserValue(data.get("uid", "")) ||
-        isCurrentUserValue(data.get("usuarioId", "")) ||
         isCurrentUserValue(data.get("userId", "")) ||
-        isCurrentUserValue(data.get("responsavelId", "")) ||
-        isCurrentUserValue(data.get("vendedorId", "")) ||
         isCurrentUserValue(data.get("criadoPorId", "")) ||
         isCurrentUserValue(data.get("criadoPor", ""));
     }
@@ -1065,7 +1067,7 @@ service cloud.firestore {
     function vendedorPodeDevolverClienteLead() {
       let statusClienteAtual = resource.data.get("statusCliente", resource.data.get("status", ""));
       let alterados = request.resource.data.diff(resource.data).affectedKeys();
-      return isVendedor() && isOwnSellerData(resource.data) && statusClienteAtual == "LEAD" &&
+      return isVendedor() && statusClienteAtual == "LEAD" && isOwnSellerData(resource.data) &&
         request.resource.data.get("statusAtendimento", "") == "AGUARDANDO_REDISTRIBUICAO" &&
         request.resource.data.get("vendedorId", "") == "" &&
         request.resource.data.get("vendedorAuthUid", "") == "" &&
@@ -1128,20 +1130,23 @@ service cloud.firestore {
     }
 
     function canUpdateClienteOperacional(clienteId) {
+      // Mesmo conjunto de permissões: autorizações simples primeiro.
+      // Regras de conversão e o isolamento entre empresas continuam obrigatórios.
       return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&
         unchanged(["clientePlataformaId", "criadoEm"]) &&
         (
-          vendedorPodeDevolverClienteLead() ||
-          (conversaoClienteValida(clienteId) && (
-            isMasterLocal() ||
-            isGerente() ||
-            isFinanceiro() ||
-            operadorLeadsPodeSincronizarCliente() ||
-            (isSupervisor() && isTeamAllowed(resource.data) && isTeamAllowed(request.resource.data)) ||
-            (isVendedor() && isOwnSellerData(resource.data) &&
+          ((isMasterLocal() || isGerente() || isFinanceiro()) &&
+            conversaoClienteValida(clienteId)) ||
+          (isSupervisor() && isTeamAllowed(resource.data) &&
+            isTeamAllowed(request.resource.data) && conversaoClienteValida(clienteId)) ||
+          (isVendedor() && (
+            vendedorPodeDevolverClienteLead() ||
+            (isOwnSellerData(resource.data) &&
               unchanged(["vendedorId", "vendedorAuthUid", "vendedorUid", "equipeId", "supervisorId", "gerenteId", "masterLocalId", "empresaId", "hierarquiaIds"]) &&
-              unchanged(["saldoDevedor", "saldoDevedorCentavos", "possuiVendaAtiva", "vendaAtivaId"]))
-          ))
+              unchanged(["saldoDevedor", "saldoDevedorCentavos", "possuiVendaAtiva", "vendaAtivaId"]) &&
+              conversaoClienteValida(clienteId))
+          )) ||
+          (operadorLeadsPodeSincronizarCliente() && conversaoClienteValida(clienteId))
         );
     }
 
