@@ -67,6 +67,45 @@ test("Filtro de ativa exclui INATIVA e status quitada funciona independentemente
   assert.doesNotMatch(lista.innerHTML,/Cliente A/);
 });
 
+test("Relatório comercial agrupa somente a carteira carregada da empresa selecionada",()=>{
+  const {context}=criarTela();
+  let html="";
+  context.abrirDrawer=(titulo,conteudo)=>{html=conteudo;};
+  context.abrirRelatorioVendas();
+  assert.match(html,/Relatório comercial|vendas carregadas na sessão/);
+  assert.match(html,/Cliente|Vendedor|Vendas/);
+  assert.doesNotMatch(html,/CLIENTE SECRETO/);
+  assert.match(html,/350\.00/);
+});
+
+test("Filtros de data, vendedor e equipe funcionam sem alterar carteira",()=>{
+  const {context}=criarTela();
+  const dados=context.State.getVendas();
+  dados[0].dataVenda="2026-10-01";
+  dados[0].vendedorAuthUid="seller-1";
+  dados[0].equipeId="team-1";
+  dados[2].dataVenda="2026-11-03";
+  dados[2].vendedorAuthUid="seller-2";
+  dados[2].equipeId="team-2";
+  vm.runInContext('filtrosVendas.inicio="2026-11-01"; filtrosVendas.fim="2026-11-30"; filtrosVendas.vendedor="seller-2"; filtrosVendas.equipe="team-2"',context);
+  assert.deepEqual(Array.from(context.getVendasFiltradas(),v=>v.id),["c"]);
+  vm.runInContext('filtrosVendas.inicio=""; filtrosVendas.fim=""; filtrosVendas.vendedor=""; filtrosVendas.equipe=""',context);
+  assert.equal(context.getVendasFiltradas().length,4);
+});
+
+test("Detalhes de venda restringem a consulta por tenant e venda",()=>{
+  const source=fs.readFileSync(path.join(__dirname,"..","js/vendas.js"),"utf8");
+  assert.match(source,/window\.IntegroModuloUtils\?\.queryScope/);
+  assert.match(source,/String\(item\.clientePlataformaId\|\|""\)===tenant/);
+  assert.match(source,/String\(item\.vendaId\|\|""\)===String\(id\)/);
+  assert.match(source,/const fontes = \[/);
+  assert.match(source,/\["parcelas", "vendaId", "Parcelas"\]/);
+  assert.match(source,/\["pagamentos", "vendaId", "Pagamentos"\]/);
+  assert.match(source,/\["logs", "vendaId", "Auditoria"\]/);
+  assert.match(source,/const escapeCsv=valor=>/);
+  assert.match(source,/\^\[=\+@/);
+});
+
 test("Formulário do vendedor conserva operacaoId no retry e valida parcelas",()=>{
   const source=fs.readFileSync(path.join(__dirname,"..","js/vendedor-unificado.js"),"utf8");
   assert.match(source,/let vendaOperacaoPendente = null/);
