@@ -1794,6 +1794,8 @@
         }
 
         const saldoClienteCentavos = saldoClienteParaBloqueioVenda(cliente);
+        const novoSaldoClienteCentavos = saldoClienteCentavos + valorTotalCentavos;
+        if (!Number.isSafeInteger(novoSaldoClienteCentavos)) throw new Error("Saldo consolidado da carteira inválido.");
         if (saldoClienteCentavos > 100) {
           const erro = new Error("Cliente possui saldo devedor acima de R$ 1. Nova venda bloqueada.");
           erro.code = "ERRO_BLOQUEADO_CLIENTE_ATIVO";
@@ -1916,9 +1918,9 @@
         }, { caixa });
 
         transaction.update(clienteRef, {
-          saldoDevedorCentavos: valorTotalCentavos,
-          saldoDevedor: reais(valorTotalCentavos),
-          saldo: reais(valorTotalCentavos),
+          saldoDevedorCentavos: novoSaldoClienteCentavos,
+          saldoDevedor: reais(novoSaldoClienteCentavos),
+          saldo: reais(novoSaldoClienteCentavos),
           possuiVendaAtiva: true,
           vendaAtivaId: vendaId,
           status: "ATIVO",
