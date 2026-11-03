@@ -178,7 +178,15 @@ exports.decidirTransferenciaClienteV27 = functions.region("southamerica-east1").
 
 const { criarAprovacoesVendaV27 } = require("./v27-sales-approvals");
 const aprovacoesVendaV27 = criarAprovacoesVendaV27({ admin, functions, db });
-exports.decidirVendaComSaldoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesVendaV27.decidir);
+const {criarCancelamentosVendaV27} = require("./v27-sales-cancellation");
+const cancelamentosVendaV27=criarCancelamentosVendaV27({admin,functions,db});
+exports.decidirVendaComSaldoV27 = functions.region("southamerica-east1").https.onCall((dados,contexto)=>{
+  if(dados?.__integroRota==="CANCELAMENTO_INTEGRAL_VENDA_V27") {
+    const {__integroRota,...entrada}=dados;
+    return protegerSessao(cancelamentosVendaV27.cancelar)(entrada,contexto);
+  }
+  return aprovacoesVendaV27.decidir(dados,contexto);
+});
 
 // Operações críticas de carteira: somente backend, sessão validada a cada commit.
 const { criarOperacoesClientesV27 } = require("./v27-client-operations");
