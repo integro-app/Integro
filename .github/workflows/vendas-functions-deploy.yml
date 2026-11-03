@@ -6,7 +6,9 @@ on:
       - ".github/workflows/vendas-functions-deploy.yml"
       - "functions/financial-callables.js"
       - "functions/v27-sales-approvals.js"
-      - "tests/vendas-aprovacoes-emulator.integration.test.js"
+      - "functions/v27-sales-cancellation.js"
+      - "tests/vendas-cancelamento-emulator.integration.test.js"
+      - "tests/vendas-aprovacoes-emulator.integration.test.js tests/vendas-cancelamento-emulator.integration.test.js"
       - "functions/financial-core.js"
       - "tests/vendas-emulator.integration.test.js"
   workflow_dispatch:
