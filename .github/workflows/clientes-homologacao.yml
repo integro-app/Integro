@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/clientes-homologacao.yml"
       - "js/services/clientes-service.js"
+      - "functions/v27-client-operations.js"
       - "js/services/indicacoes-service.js"
       - "js/modules/cliente-360.js"
       - "js/vendedor-unificado.js"
@@ -36,6 +37,7 @@ jobs:
           distribution: temurin
           java-version: '21'
       - run: npm ci
+      - run: npm --prefix functions ci
       - name: Homologar Clientes com Auth e Firestore isolados no emulador
         env:
           CI: 'true'
