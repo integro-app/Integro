@@ -534,7 +534,10 @@
     if (!tela || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
     const buscaAnterior = preservarValor("buscaClientesVendedorInput");
     const lista = clientesPesquisaExecutada ? clientesFiltradosVendedor() : [];
-    const estadoInicial = `<div class="empty-state-operacao vendedor-keep vendedor-clientes-estado-inicial"><span class="material-symbols-rounded">manage_search</span><strong>Pesquise para visualizar</strong><p>A carteira não é desenhada automaticamente. Use a busca ou os filtros e clique em Buscar.</p></div>`;
+    const disponiveisNaAba = clientesDoVendedor().filter(cliente =>
+      clientesAbaAtual === "leads" ? clienteEmFluxoLead(cliente) : !clienteEmFluxoLead(cliente)
+    ).length;
+    const estadoInicial = `<div class="empty-state-operacao vendedor-keep vendedor-clientes-estado-inicial"><span class="material-symbols-rounded">manage_search</span><strong>${disponiveisNaAba} registro(s) disponíveis nesta aba</strong><p>Os dados estão carregados, mas a lista só aparece depois de clicar em Buscar, conforme o padrão do ÍNTEGRO.</p></div>`;
     const estadoVazio = `<div class="empty-state-operacao vendedor-keep"><span class="material-symbols-rounded">person_search</span><strong>Nenhum resultado encontrado</strong><p>Ajuste a pesquisa, a aba ou os filtros.</p></div>`;
     tela.dataset.vendedorClientesMontado = "true";
     observarClientesVendedor();
