@@ -51,6 +51,15 @@ test("vendedor usuario_cliente cria venda mensal atomica e retry nao duplica led
   assert.equal(caixa.saldoAtualCentavos,-10000);
   const retry=await registrar(entrada("cliente-vendedor-1","venda_homol_1"));
   assert.equal(retry.modo,"IDEMPOTENTE");
+  await assert.rejects(()=>registrar(entrada("cliente-vendedor-1","venda_homol_1",{
+    taxaJuros:30,valorTotalCentavos:13000
+  })),falhaCodigo("already-exists"));
+  await assert.rejects(()=>registrar(entrada("cliente-vendedor-1","venda_homol_1",{
+    primeiraCobranca:"2026-12-30"
+  })),falhaCodigo("already-exists"));
+  await assert.rejects(()=>registrar(entrada("cliente-vendedor-1","venda_homol_1",{
+    quantidadeParcelas:5
+  })),falhaCodigo("already-exists"));
   assert.equal((await db.collection("caixas").doc(caixaIsoladoId).get()).data().saldoAtualCentavos,-10000);
   assert.equal((await db.collection("parcelas").where("vendaId","==",result.vendaId).get()).size,4);
 });
