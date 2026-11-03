@@ -219,10 +219,31 @@ async function abrirDocumentosCliente(id) {
     host.querySelectorAll("[data-documento-indice]").forEach(button => button.addEventListener("click", async () => {
       const documento = documentos[Number(button.dataset.documentoIndice)];
       if (!documento) return;
+      // Safari/iOS bloqueia window.open depois do await: reservar a aba no clique.
+      const janela = window.open("", "_blank");
+      if (janela) {
+        janela.opener = null;
+        janela.document.title = "Abrindo documento do cliente";
+        janela.document.body.textContent = "Abrindo documento protegido...";
+      }
+      button.disabled = true;
       try {
         const url = await documento.item.getDownloadURL();
-        window.open(url, "_blank", "noopener,noreferrer");
-      } catch (erro) { UIHelpers.alerta("Não foi possível abrir documento: " + erro.message); }
+        if (janela && !janela.closed) janela.location.replace(url);
+        else {
+          // Se o navegador bloqueou a aba, oferecer toque direto sem
+          // navegar automaticamente para fora do aplicativo.
+          const link = document.createElement("a");
+          link.href = url;
+          link.target = "_blank";
+          link.rel = "noopener noreferrer";
+          link.textContent = "Toque aqui para abrir o documento";
+          button.after(link);
+        }
+      } catch (erro) {
+        try { janela?.close(); } catch (_) {}
+        UIHelpers.alerta("Não foi possível abrir documento: " + erro.message);
+      } finally { button.disabled = false; }
     }));
   } catch (erro) { UIHelpers.alerta("Não foi possível consultar documentos: " + erro.message); }
 }
