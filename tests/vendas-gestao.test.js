@@ -39,12 +39,12 @@ function criarTela() {
 }
 
 test("Vendas do Master Local nunca mostra outro tenant e protege HTML",()=>{
-  const {context,lista,resumo}=criarTela();
+  const {context,lista,resumo,section}=criarTela();
   context.prepararTelaVendas();
   assert.match(resumo.innerHTML,/Vendas carregadas/);
   assert.match(resumo.innerHTML,/R\$ 350\.00/);
   assert.doesNotMatch(lista.innerHTML,/CLIENTE SECRETO/);
-  assert.match(lista.innerHTML,/Use os filtros e clique em Buscar/);
+  assert.match(section.innerHTML,/Use os filtros e clique em Buscar/);
   context.renderVendas();
   assert.doesNotMatch(lista.innerHTML,/CLIENTE SECRETO/);
   assert.doesNotMatch(lista.innerHTML,/<script>/);
