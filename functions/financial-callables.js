@@ -309,7 +309,22 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       if (vendaSnap.exists) {
         const existente = vendaSnap.data() || {};
         validarRegistroDoVendedor(existente, tenantId, uid, usuario, "Venda");
-        if (core.texto(existente.operacaoId) !== operacaoId) erro("already-exists", "Conflito no identificador da venda.");
+        if (["CANCELADA","CANCELADO","ESTORNADA","ESTORNADO"].includes(
+          core.normalizarStatus(existente.statusVenda || existente.status)) ||
+          existente.excluido === true || existente.ativo === false)
+          erro("failed-precondition", "Esta operação foi cancelada. Crie outra venda com nova identificação.");
+        const compativel = core.texto(existente.operacaoId) === operacaoId &&
+          core.texto(existente.caixaId) === caixaId &&
+          [clienteId, clienteIdCanonico].includes(core.texto(existente.clienteOperacionalId || existente.clienteId)) &&
+          core.normalizarStatus(existente.tipoVenda || "NOVA") === tipoVenda &&
+          core.centavosDe(existente,"valorEmprestadoCentavos",["valorEmprestado"]) === valorEmprestadoCentavos &&
+          core.centavosDe(existente,"valorTotalVendaCentavos",["valorTotalVenda"]) === valorTotalCentavos &&
+          Number(existente.taxaJuros) === taxaJuros &&
+          Number(existente.quantidadeParcelas) === quantidadeParcelas &&
+          core.normalizarStatus(existente.frequencia) === frequencia &&
+          core.texto(existente.dataPrimeiraCobranca) === primeiraCobranca;
+        if (!compativel)
+          erro("already-exists", "Operação já existente com condições diferentes. Revise a venda registrada.");
         return { ok: true, modo: "IDEMPOTENTE", vendaId, operacaoId };
       }
 
