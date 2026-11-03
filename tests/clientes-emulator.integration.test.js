@@ -12,6 +12,21 @@ const {
 } = require("firebase/firestore");
 
 const PROJECT_ID = "integro-novo";
+const {criarOperacoesClientesV27} = require("../functions/v27-client-operations");
+
+function operacoesBackendDeTeste() {
+  const admin = require("../functions/node_modules/firebase-admin");
+  if (!admin.apps.length) admin.initializeApp({projectId: PROJECT_ID});
+  const db = admin.firestore();
+  class HttpsError extends Error {
+    constructor(code, message) { super(message); this.code = code; }
+  }
+  return { db, executar: criarOperacoesClientesV27({
+    admin, functions:{https:{HttpsError}}, db
+  }).executar };
+}
+
+
 const PASSWORD = "IntegroLocal#2026";
 const AUTH_HOST = process.env.FIREBASE_AUTH_EMULATOR_HOST || "127.0.0.1:9099";
 const FIRESTORE_HOST = process.env.FIRESTORE_EMULATOR_HOST || "127.0.0.1:8080";
@@ -81,7 +96,7 @@ test("supervisor lista apenas a equipe permitida e nao troca o escopo por chamad
   }
 });
 
-test("vendedor lista apenas os proprios clientes e registra atendimento imutavel", async () => {
+test("vendedor lê apenas sua carteira e atendimento passa por backend com auditoria", async () => {
   const vendedor = await session("vendedor.1.a@homologacao.integro.test");
   try {
     const lista = await getDocs(query(
@@ -93,18 +108,22 @@ test("vendedor lista apenas os proprios clientes e registra atendimento imutavel
     assert.ok(lista.docs.every(item => item.data().vendedorId === vendedor.uid));
     await assert.rejects(getDoc(doc(vendedor.db, "clientes_operacionais", "cliente-vendedor-2")), /permission|insufficient/i);
 
-    const evento = doc(vendedor.db, "interacoes_clientes", "integracao-atendimento-vendedor-1");
-    await setDoc(evento, {
-      clientePlataformaId: "tenant-a", clienteId: "cliente-em-atendimento", ciclo: 1,
-      tipo: "MOVIMENTACAO_ATENDIMENTO", statusAnterior: "EM_ATENDIMENTO", statusNovo: "NAO_CONVERTIDO",
-      motivo: "Sem interesse nesta etapa", equipeId: "equipe-a1", vendedorId: vendedor.uid,
-      vendedorAuthUid: vendedor.uid, usuarioId: vendedor.uid, usuarioAuthUid: vendedor.uid,
-      criadoEm: serverTimestamp()
-    });
-    await updateDoc(doc(vendedor.db, "clientes_operacionais", "cliente-em-atendimento"), {
-      statusAtendimento: "NAO_CONVERTIDO", motivoNaoConversao: "Sem interesse nesta etapa", atualizadoEm: serverTimestamp()
-    });
-    await assert.rejects(updateDoc(evento, { motivo: "alterado" }), /permission|insufficient/i);
+    // Escrita direta não é o fluxo oficial de atendimento.
+    const target = doc(vendedor.db,"clientes_operacionais","cliente-em-atendimento");
+    await assert.rejects(updateDoc(target, {statusAtendimento:"NAO_CONVERTIDO"}), /permission|insufficient/i);
+    const backend = operacoesBackendDeTeste();
+    const resultado = await backend.executar({
+      acao:"ATENDIMENTO",clienteId:"cliente-em-atendimento",status:"NAO_CONVERTIDO",
+      motivo:"Sem interesse nesta etapa",observacao:"Contato realizado"
+    },{auth:{uid:vendedor.uid}});
+    assert.equal(resultado.ok,true);
+    assert.equal((await getDoc(target)).data().statusAtendimento,"NAO_CONVERTIDO");
+    const evento = await backend.db.collection("interacoes_clientes").doc(resultado.eventId).get();
+    assert.equal(evento.data().usuarioAuthUid,vendedor.uid);
+    assert.equal(evento.data().clientePlataformaId,"tenant-a");
+    // O histórico do backend é imutável pelo cliente.
+    await assert.rejects(updateDoc(doc(vendedor.db,"interacoes_clientes",resultado.eventId),
+      {motivo:"alterado"}), /permission|insufficient/i);
   } finally {
     await close(vendedor);
   }
@@ -134,26 +153,32 @@ test("redirecionamento troca o vendedor e preserva evento historico", async () =
   }
 });
 
-test("retrabalho e conversao exigem ciclo e venda real vinculada", async () => {
+test("retrabalho e conversão usam backend e exigem venda real vinculada", async () => {
   const master = await session("master.local.a@homologacao.integro.test");
   const vendedor = await session("vendedor.2.a@homologacao.integro.test");
   try {
-    const clienteRef = doc(master.db, "clientes_operacionais", "cliente-recusado");
-    const cicloRef = doc(master.db, "ciclos_atendimento_clientes", "integracao-cliente-recusado-2");
-    const batch = writeBatch(master.db);
-    batch.set(cicloRef, {
-      clientePlataformaId: "tenant-a", clienteId: "cliente-recusado", ciclo: 2, cicloAnterior: 1,
-      equipeId: "equipe-a1", vendedorId: vendedor.uid, vendedorAuthUid: vendedor.uid,
-      usuarioId: master.uid, usuarioAuthUid: master.uid, motivo: "Nova oportunidade", criadoEm: serverTimestamp()
-    });
-    batch.update(clienteRef, { statusAtendimento: "EM_RETRABALHO", retrabalhado: true, cicloAtendimentoAtual: 2, atualizadoEm: serverTimestamp() });
-    await batch.commit();
-    await assert.rejects(updateDoc(doc(vendedor.db, "clientes_operacionais", "cliente-recusado"), { statusAtendimento: "CONVERTIDO", vendaId: "venda-inexistente" }), /permission|insufficient/i);
-    await updateDoc(doc(vendedor.db, "clientes_operacionais", "cliente-recusado"), {
-      statusAtendimento: "CONVERTIDO", convertido: true, convertidoAposRetrabalho: true,
-      vendaId: "venda-integracao-retrabalho", atualizadoEm: serverTimestamp()
-    });
-    assert.equal((await getDoc(clienteRef)).data().convertidoAposRetrabalho, true);
+    const backend = operacoesBackendDeTeste();
+    const clienteRef = doc(master.db,"clientes_operacionais","cliente-recusado");
+    const contextMaster = {auth:{uid:master.uid}};
+    const contextSeller = {auth:{uid:vendedor.uid}};
+    // A regra antiga não é usada para gravar status sensíveis diretamente.
+    await assert.rejects(updateDoc(doc(vendedor.db,"clientes_operacionais","cliente-recusado"),
+      {statusAtendimento:"CONVERTIDO",vendaId:"venda-inexistente"}), /permission|insufficient/i);
+    const retrabalho = await backend.executar({
+      acao:"RETRABALHO",clienteId:"cliente-recusado",motivo:"Nova oportunidade"
+    },contextMaster);
+    assert.equal(retrabalho.status,"EM_RETRABALHO");
+    await assert.rejects(()=>backend.executar({
+      acao:"CONVERSAO",clienteId:"cliente-recusado",vendaId:"venda-inexistente"
+    },contextSeller), e=>e.code==="failed-precondition");
+    const conversao = await backend.executar({
+      acao:"CONVERSAO",clienteId:"cliente-recusado",vendaId:"venda-integracao-retrabalho"
+    },contextSeller);
+    assert.equal(conversao.status,"CONVERTIDO");
+    const atualizado=(await getDoc(clienteRef)).data();
+    assert.equal(atualizado.convertidoAposRetrabalho,true);
+    assert.equal(atualizado.vendaId,"venda-integracao-retrabalho");
+    assert.equal(atualizado.cicloAtendimentoAtual,2);
   } finally {
     await close(master); await close(vendedor);
   }
