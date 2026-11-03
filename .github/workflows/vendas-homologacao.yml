@@ -1,0 +1,38 @@
+name: Homologação integrada - Vendas
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/vendas-homologacao.yml"
+      - "functions/financial-callables.js"
+      - "functions/financial-core.js"
+      - "tests/vendas-emulator.integration.test.js"
+      - "scripts/seed-homologacao-clientes.js"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: integro-vendas-homologacao
+  cancel-in-progress: true
+jobs:
+  homologar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - name: Validar testes gerais e sintaxe
+        run: npm run verify
+      - name: Executar vendas reais somente nos emuladores
+        env:
+          CI: 'true'
+        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test tests/vendas-emulator.integration.test.js"
