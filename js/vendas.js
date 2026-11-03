@@ -260,7 +260,9 @@ async function confirmarCancelamentoVendaGestao(id) {
     window.IntegroDataRuntime?.invalidar?.("vendas");
     window.IntegroDataRuntime?.invalidar?.("parcelas");
     window.IntegroDataRuntime?.invalidar?.("caixas");
-    window.IntegroPerfisUnificados?.carregarTudo?.().catch?.(()=>{});
+    Promise.resolve(window.IntegroPerfisUnificados?.carregarTudo?.()).catch(
+      erro=>console.warn("[ÍNTEGRO] Atualização da gestão após cancelamento indisponível.",erro)
+    );
     if(typeof fecharDrawer==="function")fecharDrawer();
     renderVendas();
     UIHelpers.alerta("Cancelamento confirmado pelo servidor. Estorno registrado com auditoria.");
