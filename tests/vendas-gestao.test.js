@@ -106,6 +106,16 @@ test("Detalhes de venda restringem a consulta por tenant e venda",()=>{
   assert.match(source,/\^\[=\+@/);
 });
 
+test("aprovação mobile exige motivo, remove handlers inline e confere o backend",()=>{
+  const source=fs.readFileSync(path.join(__dirname,"..","js/services/v27-sales-approval-service.js"),"utf8");
+  assert.match(source,/motivoRejeicaoVendaV27/);
+  assert.match(source,/data-v27-decisao="REJEITAR"/);
+  assert.match(source,/botao\.addEventListener\("click"/);
+  assert.match(source,/resposta\?\.data\?\.ok !== true/);
+  assert.doesNotMatch(source,/global\.prompt\(/);
+  assert.doesNotMatch(source,/onclick="IntegroV27SalesApproval\.decide/);
+});
+
 test("Formulário do vendedor conserva operacaoId no retry e valida parcelas",()=>{
   const source=fs.readFileSync(path.join(__dirname,"..","js/vendedor-unificado.js"),"utf8");
   assert.match(source,/let vendaOperacaoPendente = null/);
