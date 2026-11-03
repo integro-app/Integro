@@ -1,0 +1,41 @@
+name: Deploy seguro - Módulo Vendas
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/vendas-functions-deploy.yml"
+      - "functions/financial-callables.js"
+      - "functions/financial-core.js"
+      - "tests/vendas-emulator.integration.test.js"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: integro-vendas-functions-deploy
+  cancel-in-progress: false
+jobs:
+  validar_publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - name: Verificar aplicação e regras existentes
+        run: npm run verify
+      - name: Confirmar a criação e renovação de vendas no emulador isolado
+        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test tests/vendas-emulator.integration.test.js"
+      - name: Autenticar com conta de serviço já configurada
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - name: Atualizar somente o endpoint já existente de Vendas
+        run: npx firebase deploy --only functions:registrarVendaOperacional --project integro-novo --non-interactive
