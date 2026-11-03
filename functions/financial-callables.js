@@ -292,7 +292,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
 
       const saldoClienteCentavos = saldoClienteParaBloqueioVenda(cliente);
       const autorizacaoSaldoAtivo = autorizacaoVendaComSaldoValida(cliente, uid, valorEmprestadoCentavos);
-      if (saldoClienteCentavos > 0 && !autorizacaoSaldoAtivo) {
+      if (saldoClienteCentavos > 100 && !autorizacaoSaldoAtivo) {
         if (!permitirAnaliseSaldoAtivo) {
           erro("failed-precondition", "Cliente possui saldo devedor ativo. Nova venda bloqueada pela política da empresa.");
         }
