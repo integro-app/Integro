@@ -2372,8 +2372,57 @@
     const clienteId = texto(indicacao.clienteOperacionalId || indicacao.clienteId);
     if (clienteId && clientePorId(clienteId)) {
       setTimeout(() => abrirDrawerCliente(clienteId), 40);
+    } else {
+      // Não inventar um cadastro operacional: o lead mantém identidade própria
+      // e as decisões usam o serviço oficial com permissão revalidada.
+      const nome = texto(indicacao.nomeClienteSnapshot || indicacao.nomeCliente || indicacao.nome || "Lead recebido");
+      const telefone = texto(indicacao.telefoneCliente || indicacao.telefonePrincipal || indicacao.telefone);
+      const statusAtual = texto(indicacao.statusIndicacao || indicacao.status);
+      const markup = '<section class="vendedor-cliente-drawer-identidade">' +
+        '<h3>' + esc(nome) + '</h3><p>Atendimento: ' + esc(statusAtual) + '</p>' +
+        '<p>Telefone: ' + esc(telefone || "Não informado") + '</p>' +
+        '<p>O lead ainda não possui uma ficha operacional acessível. Nenhum cadastro será duplicado.</p>' +
+        '<label for="motivoDecisaoLeadSemFicha">Motivo / observação obrigatória</label>' +
+        '<textarea id="motivoDecisaoLeadSemFicha" rows="3" placeholder="Registre o motivo da decisão"></textarea>' +
+        '<div class="drawer-actions">' +
+        '<button type="button" class="ghost-btn" data-decisao-lead="NAO_CONVERTIDA">Não convertido</button>' +
+        '<button type="button" class="ghost-btn" data-decisao-lead="RECUSADA">Recusar lead</button>' +
+        '</div></section>';
+      window.abrirDrawer?.("Lead recebido", nome, markup);
+      document.querySelectorAll("[data-decisao-lead]").forEach(botao =>
+        botao.addEventListener("click", () => {
+          registrarDecisaoLeadSemFicha(idIndicacao, botao.dataset.decisaoLead, botao)
+            .catch(erro => UIHelpers?.alerta?.(erro.message || "Não foi possível atualizar o lead."));
+        }));
     }
     return true;
+  }
+
+  async function registrarDecisaoLeadSemFicha(indicacaoId, decisao, botao) {
+    if (!["NAO_CONVERTIDA", "RECUSADA"].includes(decisao)) throw new Error("Decisão inválida.");
+    const motivo = texto(document.getElementById("motivoDecisaoLeadSemFicha")?.value);
+    if (!motivo) throw new Error("Informe o motivo antes de encerrar o atendimento.");
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const dbAtual = window.db || window.firebase?.firestore?.();
+    if (perfil(usuario) !== "vendedor" || !dbAtual) throw new Error("Sessão inválida.");
+    const snap = await dbAtual.collection("indicacoes").doc(indicacaoId).get({source:"server"});
+    if (!snap.exists || !window.IntegroIndicacoes?.usuarioNoEscopoIndicacao?.(
+      usuario, {id:snap.id,...snap.data()}
+    )) throw new Error("Lead não pertence à carteira atual.");
+    botao.disabled = true;
+    try {
+      const args = {...usuario,db:dbAtual};
+      if (decisao === "NAO_CONVERTIDA") {
+        await window.IntegroIndicacoes.marcarIndicacaoNaoConvertida(indicacaoId,motivo,args);
+      } else {
+        await window.IntegroIndicacoes.marcarIndicacaoRecusada(indicacaoId,motivo,args);
+      }
+      indicacoesCarregadasPara = "";
+      await consultarIndicacoesRecebidas();
+      window.fecharDrawer?.();
+      renderClientesVendedor({forcar:true});
+      UIHelpers?.alerta?.("Decisão do lead registrada.");
+    } finally { botao.disabled = false; }
   }
   function abrirOperacao(itemMenu) {
     window.trocarTela?.("cobrancas", itemMenu);
