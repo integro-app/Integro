@@ -113,9 +113,10 @@ service firebase.storage {
            clientData(clienteId).get("vendedorId", "") == request.auth.uid)));
     }
 
-    match /tenants/{tenantId}/clientes-documentos/{clienteId}/{arquivo} {
+    match /tenants/{tenantId}/clientes-documentos/{clienteId}/{arquivo=**} {
       allow get: if clientDocumentReader(tenantId, clienteId);
-      allow list: if false;
+      // Lista apenas a pasta do cliente autorizado. Nunca permite listar outros clientes.
+      allow list: if clientDocumentReader(tenantId, clienteId);
       allow create: if clientDocumentReader(tenantId, clienteId) &&
         allowedUpload() &&
         request.resource.contentType in ["application/pdf", "image/jpeg", "image/png", "image/webp"] &&
