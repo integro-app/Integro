@@ -38,6 +38,22 @@ async function main(){
         }));
       }catch(e){console.log("QUERY_FAILED",JSON.stringify({collection:name,code:e.code||"",message:String(e.message).slice(0,120)}));}
     }
+    const ownerAliases=new Set([auth.uid,...[...entries.values()].flatMap(u=>[u.id,u.authUid,u.uid,u.usuarioId,u.vendedorId]).filter(Boolean)].map(String));
+    for(const name of ["clientes","clientes_operacionais","vendas","parcelas","caixas","indicacoes"]){
+      const snap=await db.collection(name).where("clientePlataformaId","==",tenant).limit(501).get();
+      const byField={};
+      for(const field of ["vendedorAuthUid","vendedorUid","vendedorId","responsavelAuthUid","responsavelId","usuarioId","vendedorDestinoId","atribuidoParaAuthUid"]){
+        byField[field]={matched:snap.docs.filter(d=>ownerAliases.has(String(d.data()[field]||""))).length,
+          filled:snap.docs.filter(d=>!!d.data()[field]).length};
+      }
+      const any=snap.docs.filter(d=>Object.keys(byField).some(field=>ownerAliases.has(String(d.data()[field]||"")))).length;
+      console.log("OWNERSHIP",JSON.stringify({collection:name,matchingAnyOwner:any,scanned:snap.size,byField}));
+    }
+    for(const user of entries.values())console.log("USUARIO_LINK",JSON.stringify({
+      canonical:user.id===auth.uid,idHash:hashed(user.id),role:user.tipoUsuario,cargo:user.cargoChave||"",
+      equipeHash:hashed(user.equipeId||""),teams:(user.equipesIds||[]).length,
+      vendedorHash:hashed(user.vendedorId||""),userAuthUidMatches:user.authUid===auth.uid
+    }));
     for(const name of ["clientes","clientes_operacionais"]){
       const legacy=await db.collection(name).limit(500).get();
       console.log("COLLECTION_SAMPLE",JSON.stringify({collection:name,totalSample:legacy.size,
