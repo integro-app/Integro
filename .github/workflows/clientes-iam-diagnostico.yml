@@ -1,0 +1,26 @@
+name: Diagnosticar invocadores das Functions de Clientes
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/clientes-iam-diagnostico.yml"
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Inspect cloud function deployment and public invoker (no policy changes)
+        shell: bash
+        run: |
+          for name in operarClienteV27 transferirResponsabilidadeV27 decidirCadastroDuplicadoV27 iniciarSessaoV27; do
+            echo "=== ${name} ==="
+            gcloud functions describe "$name" --region southamerica-east1 --project integro-novo --format='value(status)' || true
+            gcloud functions get-iam-policy "$name" --region southamerica-east1 --project integro-novo --format=json 2>/dev/null | python3 -c 'import json,sys; d=json.load(sys.stdin); print("allUsers Invoker:",any(b.get("role")=="roles/cloudfunctions.invoker" and "allUsers" in b.get("members",[]) for b in d.get("bindings",[])))' || echo "IAM read unavailable"
+          done
