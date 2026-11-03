@@ -1052,16 +1052,21 @@ service cloud.firestore {
         );
     }
 
+    function vendaDaConversaoValida(clienteId, vendaId) {
+      // Carrega a venda somente uma vez. Os critérios de tenant e identidade
+      // são idênticos aos anteriores e continuam obrigatórios.
+      let venda = get(/databases/$(database)/documents/vendas/$(vendaId)).data;
+      return venda.get("clientePlataformaId", "") == userTenantId() &&
+        venda.get("clienteId", "") in [clienteId, resource.data.get("clienteLegadoId", ""), resource.data.get("clienteOperacionalId", "")];
+    }
+
     function conversaoClienteValida(clienteId) {
+      let vendaId = request.resource.data.get("vendaId", "");
       return request.resource.data.get("statusAtendimento", "") != "CONVERTIDO" ||
         resource.data.get("statusAtendimento", "") == "CONVERTIDO" ||
-        (
-          request.resource.data.get("vendaId", "") is string &&
-          request.resource.data.get("vendaId", "").size() > 0 &&
-          exists(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))) &&
-          get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clientePlataformaId", "") == userTenantId() &&
-          get(/databases/$(database)/documents/vendas/$(request.resource.data.get("vendaId", ""))).data.get("clienteId", "") in [clienteId, resource.data.get("clienteLegadoId", ""), resource.data.get("clienteOperacionalId", "")]
-        );
+        (vendaId is string && vendaId.size() > 0 &&
+          exists(/databases/$(database)/documents/vendas/$(vendaId)) &&
+          vendaDaConversaoValida(clienteId, vendaId));
     }
 
     function vendedorPodeDevolverClienteLead() {
