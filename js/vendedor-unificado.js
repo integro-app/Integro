@@ -9,6 +9,11 @@
   let clientesPesquisaExecutada = false;
   const clientesPesquisaExecutadaPorAba = { leads: false, carteira: false };
   let clientesAbaAtual = "leads";
+  let indicacoesRecebidasDaCarteira = [];
+  let indicacoesCarregadasPara = "";
+  let indicacoesConsultaEmAndamento = null;
+  let indicacoesErroDeConsulta = "";
+
   let filtroRapidoClientesVendedor = "todos";
   let clienteDrawerAbertoId = "";
   let clienteFormularioAbertoId = "";
@@ -285,6 +290,93 @@
     return ["RETORNADO_LEADS", "AGUARDANDO_REDISTRIBUICAO", "DEVOLVIDA"].includes(status);
   }
 
+  // A indicação recebida é uma entidade própria. Ela só vira cliente mediante
+  // o fluxo oficial, portanto NÃO criamos cadastro fictício nem mesclamos tenants.
+  async function consultarIndicacoesRecebidas() {
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const uid = texto(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
+    const tenant = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
+    if (!uid || !tenant || !window.IntegroIndicacoes?.usuarioNoEscopoIndicacao) {
+      throw new Error("Não foi possível validar a identidade e a empresa dos leads.");
+    }
+    const key = tenant + ":" + uid;
+    if (indicacoesCarregadasPara === key) return indicacoesRecebidasDaCarteira;
+    if (indicacoesConsultaEmAndamento) return indicacoesConsultaEmAndamento;
+    const dbAtual = window.db || window.firebase?.firestore?.();
+    if (!dbAtual) throw new Error("Banco de dados indisponível.");
+    const consultas = [["vendedorAuthUid",uid],["vendedorDestinoAuthUid",uid]];
+    indicacoesConsultaEmAndamento = (async () => {
+      const resultados = await Promise.allSettled(consultas.map(async ([campo, valor]) => {
+        const snapshot = await dbAtual.collection("indicacoes")
+          .where("clientePlataformaId","==",tenant)
+          .where(campo,"==",valor).limit(200).get();
+        return snapshot.docs.map(doc => ({...doc.data(), id:doc.id}));
+      }));
+      const sucessos = resultados.filter(item => item.status === "fulfilled");
+      if (!sucessos.length) throw resultados.find(item => item.status === "rejected")?.reason ||
+        new Error("Falha ao consultar leads recebidos.");
+      const unique = new Map();
+      sucessos.flatMap(item => item.value).forEach(lead => {
+        if (lead.excluido === true || texto(lead.clientePlataformaId) !== tenant) return;
+        if (!window.IntegroIndicacoes.usuarioNoEscopoIndicacao(usuario,lead)) return;
+        const status = texto(lead.statusIndicacao || lead.status).toUpperCase();
+        if (["DEVOLVIDA","CANCELADA","CANCELADO","DUPLICADA"].includes(status)) return;
+        unique.set(texto(lead.id), lead);
+      });
+      indicacoesRecebidasDaCarteira = [...unique.values()];
+      indicacoesCarregadasPara = key;
+      indicacoesErroDeConsulta = "";
+      return indicacoesRecebidasDaCarteira;
+    })().catch(error => {
+      indicacoesErroDeConsulta = error?.message || "Não foi possível consultar os leads.";
+      throw error;
+    }).finally(() => { indicacoesConsultaEmAndamento = null; });
+    return indicacoesConsultaEmAndamento;
+  }
+
+  function indicacoesSemClienteVisivel() {
+    const clientes = State.getClientes?.() || [];
+    const idsCliente = new Set(clientes.flatMap(c => [c.id,c.clienteOperacionalId,c.clienteLegadoId]).filter(Boolean).map(String));
+    const idsIndicacao = new Set(clientes.flatMap(c => [c.indicacaoId,c.leadId]).filter(Boolean).map(String));
+    const documentos = new Set(clientes.map(c=>texto(c.documentoNormalizado||c.documento||c.cpfCnpj).replace(/\D/g,"")).filter(Boolean));
+    const telefone = new Set(clientes.map(c=>texto(c.telefoneNormalizado||c.telefonePrincipal||c.telefone).replace(/\D/g,"")).filter(Boolean));
+    const busca = texto(document.getElementById("buscaClientesVendedorInput")?.value).toLowerCase();
+    const rapidos = filtroRapidoClientesVendedor;
+    return indicacoesRecebidasDaCarteira.filter(lead => {
+      if (idsIndicacao.has(texto(lead.id)) || idsCliente.has(texto(lead.clienteOperacionalId||lead.clienteId))) return false;
+      const documento = texto(lead.documentoNormalizado||lead.documentoCliente||lead.documento).replace(/\D/g,"");
+      const numero = texto(lead.telefoneNormalizado||lead.telefoneCliente||lead.telefone).replace(/\D/g,"");
+      if (documento && documentos.has(documento)) return false;
+      if (numero && telefone.has(numero)) return false;
+      const status = texto(lead.statusLead||lead.statusIndicacao||lead.status).toUpperCase();
+      if (rapidos === "aguardando" && !["RECEBIDA","ATRIBUIDA","AGUARDANDO_ATENDIMENTO","NOVO_LEAD"].includes(status)) return false;
+      if (rapidos === "atendimento" && !["EM_ATENDIMENTO","TENTATIVA_CONTATO"].includes(status)) return false;
+      if (rapidos === "retorno" && status !== "RETORNO_AGENDADO") return false;
+      if (rapidos === "encerrados" && !["NAO_CONVERTIDA","NAO_CONVERTIDO","RECUSADA","RECUSADO","SEM_RETORNO"].includes(status)) return false;
+      const base = [lead.nomeClienteSnapshot,lead.nomeCliente,lead.nome,documento,numero].join(" ").toLowerCase();
+      return !busca || base.includes(busca);
+    });
+  }
+
+  function renderLeadsRecebidosSemFicha() {
+    if (clientesAbaAtual !== "leads" || !clientesPesquisaExecutada) return "";
+    const extras = indicacoesSemClienteVisivel();
+    const info = indicacoesErroDeConsulta
+      ? '<p class="vendedor-clientes-aviso">Não foi possível consultar todas as indicações: ' + esc(indicacoesErroDeConsulta) + '</p>'
+      : "";
+    if (!extras.length) return info;
+    return '<section class="vendedor-leads-sem-ficha"><h3>Leads recebidos ainda sem ficha na carteira</h3>' +
+      info + extras.map(lead => {
+        const id = esc(lead.id);
+        const nome = esc(lead.nomeClienteSnapshot||lead.nomeCliente||lead.nome||"Lead recebido");
+        const status = esc(lead.statusLead||lead.statusIndicacao||lead.status||"RECEBIDA");
+        return '<article class="vendedor-cliente-mobile-card">' +
+          '<div class="vendedor-cliente-mobile-top"><div><span class="vendedor-tipo-badge lead">Lead</span>' +
+          '<h3>' + nome + '</h3><p>' + status + '</p></div></div>' +
+          '<button class="ghost-btn" type="button" data-lead-id="' + id + '">Abrir atendimento</button></article>';
+      }).join("") + '</section>';
+  }
+
   function clientesDoVendedor() {
     return (State.getClientes?.() || []).filter(cliente => cliente?.excluido !== true && pertenceAoVendedor(cliente) && !clienteRetornadoAoSetorLeads(cliente));
   }
@@ -425,6 +517,15 @@
     clientesPesquisaExecutadaPorAba[clientesAbaAtual] = true;
     clientesPesquisaExecutada = true;
     renderClientesVendedor({ pesquisado: true });
+    if (clientesAbaAtual === "leads") {
+      consultarIndicacoesRecebidas()
+        .catch(error => console.warn("[ÍNTEGRO] Consulta de indicações recebidas falhou.",error))
+        .finally(() => {
+          if (clientesAbaAtual === "leads" && perfil(usuarioAtual || State.getUsuario?.()) === "vendedor") {
+            renderClientesVendedor({forcar:true});
+          }
+        });
+    }
   }
 
   function trocarAbaClientesVendedor(aba = "leads") {
@@ -554,11 +655,18 @@
           <button class="primary-btn vendedor-buscar-btn" type="button" onclick="executarPesquisaClientesVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
         </div>
         ${chipsRapidosClientesVendedor()}
-        <div class="vendedor-clientes-resultados">${clientesPesquisaExecutada ? (lista.length ? `${tabelaClientesVendedor(lista)}<div class="vendedor-clientes-mobile">${lista.map(cardClienteMobileVendedor).join("")}</div>` : estadoVazio) : estadoInicial}</div>
+        <div class="vendedor-clientes-resultados">${clientesPesquisaExecutada ? (lista.length ? `${tabelaClientesVendedor(lista)}<div class="vendedor-clientes-mobile">${lista.map(cardClienteMobileVendedor).join("")}</div>` : (clientesAbaAtual === "leads" && indicacoesSemClienteVisivel().length ? "" : estadoVazio)) : estadoInicial}${renderLeadsRecebidosSemFicha()}</div>
         <div class="vendedor-operacao-contador vendedor-clientes-contador-final">${clientesPesquisaExecutada ? `${lista.length} resultado(s) nesta visão.` : "Nenhuma pesquisa realizada."}</div>
         ${drawerFiltrosClientes()}
       </div>`;
     limparBlocosClientesLegadosVendedor();
+    tela.querySelectorAll("[data-lead-id]").forEach(botao => {
+      botao.addEventListener("click", () => {
+        abrirLeadsRecebidosVendedor(botao.dataset.leadId).catch(error => {
+          UIHelpers?.alerta?.(error?.message || "Não foi possível abrir o lead.");
+        });
+      });
+    });
     [0, 50, 150, 300, 700, 1200].forEach(ms => setTimeout(limparBlocosClientesLegadosVendedor, ms));
   }
 
