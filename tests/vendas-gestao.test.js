@@ -53,14 +53,14 @@ test("Vendas do Master Local nunca mostra outro tenant e protege HTML",()=>{
 
 test("Filtro de ativa exclui INATIVA e status quitada funciona independentemente",()=>{
   const {context,lista}=criarTela();
-  context.filtrosVendas.status="ativas";
+  vm.runInContext('filtrosVendas.status="ativas"',context);
   let vendas=context.getVendasFiltradas();
   assert.deepEqual(Array.from(vendas,v=>v.id),["a"]);
-  context.filtrosVendas.status="quitadas";
+  vm.runInContext('filtrosVendas.status="quitadas"',context);
   vendas=context.getVendasFiltradas();
   assert.deepEqual(Array.from(vendas,v=>v.id),["c"]);
-  context.filtrosVendas.status="todos";
-  context.filtrosVendas.tipo="renovacoes";
+  vm.runInContext('filtrosVendas.status="todos"',context);
+  vm.runInContext('filtrosVendas.tipo="renovacoes"',context);
   vendas=context.getVendasFiltradas();
   assert.deepEqual(Array.from(vendas,v=>v.id),["c"]);
   context.renderVendas();
