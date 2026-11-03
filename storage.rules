@@ -91,11 +91,43 @@ service firebase.storage {
         allowedContentType();
     }
 
-    match /tenants/{tenantId}/{categoria}/{arquivo=**} {
-      allow read: if isMasterGlobal() ||
-        (categoria == "financeiro" ? canReadEnterpriseFinance(tenantId) : isSameTenant(tenantId));
+    // Documentos de clientes: acesso exclusivamente vinculado ao cliente, nunca ao tenant inteiro.
+    function clientData(clienteId) {
+      return firestore.get(/databases/(default)/documents/clientes_operacionais/$(clienteId)).data;
+    }
+
+    function clientExists(clienteId) {
+      return firestore.exists(/databases/(default)/documents/clientes_operacionais/$(clienteId));
+    }
+
+    function clientDocumentReader(tenantId, clienteId) {
+      return isSameTenant(tenantId) && clientExists(clienteId) &&
+        clientData(clienteId).get("clientePlataformaId", "") == tenantId &&
+        (isMasterLocal() ||
+         userDoc().get("cargoChave", "") == "gerente" ||
+         (userDoc().get("cargoChave", "") == "supervisor" &&
+          clientData(clienteId).get("equipeId", "") == userDoc().get("equipeId", "")) ||
+         ((userDoc().get("cargoChave", "") == "vendedor" ||
+           userDoc().get("tipoUsuario", "") == "vendedor") &&
+          (clientData(clienteId).get("vendedorAuthUid", "") == request.auth.uid ||
+           clientData(clienteId).get("vendedorId", "") == request.auth.uid)));
+    }
+
+    match /tenants/{tenantId}/clientes-documentos/{clienteId}/{arquivo} {
+      allow get: if clientDocumentReader(tenantId, clienteId);
       allow list: if false;
-      allow create: if (
+      allow create: if clientDocumentReader(tenantId, clienteId) &&
+        allowedUpload() &&
+        request.resource.contentType in ["application/pdf", "image/jpeg", "image/png", "image/webp"] &&
+        request.resource.size <= 8 * 1024 * 1024;
+      allow update, delete: if false;
+    }
+
+    match /tenants/{tenantId}/{categoria}/{arquivo=**} {
+      allow read: if categoria != "clientes-documentos" && (isMasterGlobal() ||
+        (categoria == "financeiro" ? canReadEnterpriseFinance(tenantId) : isSameTenant(tenantId)));
+      allow list: if false;
+      allow create: if categoria != "clientes-documentos" && (
           isMasterGlobal() ||
           (categoria == "financeiro" ? canWriteEnterpriseFinance(tenantId) : isSameTenant(tenantId))
         ) &&
