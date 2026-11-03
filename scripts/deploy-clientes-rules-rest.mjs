@@ -32,11 +32,8 @@ async function request(method, path, body) {
   }
   return payload;
 }
-const source = fs.readFileSync('firestore.rules','utf8');
 const storage = fs.readFileSync('storage.rules','utf8');
-if (!source.includes('match /clientes_operacionais/{id}') ||
-    !source.includes('match /documentos/{documentoId}') ||
-    !storage.includes('match /tenants/{tenantId}/clientes-documentos/{clienteId}/{arquivo}')) {
+if (!storage.includes('match /tenants/{tenantId}/clientes-documentos/{clienteId}/{arquivo=**}')) {
   throw new Error('As regras específicas de documentos não foram encontradas.');
 }
 async function install(file,release) {
@@ -64,25 +61,5 @@ async function install(file,release) {
   const active=await request('GET',`/${releaseName}`);
   if(active.rulesetName!==created.name) throw new Error('Release ativo não corresponde ao ruleset publicado');
   console.log(`CONFIRMADO: ${release} => ${created.name} SHA256=${crypto.createHash('sha256').update(fullSource).digest('hex')}`);
-}
-try {
-  await install('firestore.rules','cloud.firestore');
-} catch (error) {
-  console.error('Ruleset oficial não publicado:', error.message);
-  // Diagnóstico controlado: um ruleset sintético nunca é associado a releases.
-  // Diferencia indisponibilidade geral de falha com regras complexas.
-  try {
-    const small = await request('POST',`/projects/${project}/rulesets`,{
-      source:{files:[{name:'diagnostico.rules',content:
-        "rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { match /__diagnostico__/{id} { allow read, write: if false; } } }"
-      }]}
-    });
-    console.log('DIAGNÓSTICO: ruleset mínimo criado, sem ativação:',small.name);
-    console.error('Provável bloqueio por tamanho/complexidade do arquivo principal.');
-  } catch(diag) {
-    console.error('DIAGNÓSTICO: ruleset mínimo também falhou:',diag.message);
-    console.error('Indício de problema no serviço/API/projeto, não apenas na regra grande.');
-  }
-  throw error;
 }
 await install('storage.rules','firebase.storage');
