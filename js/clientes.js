@@ -189,29 +189,38 @@ function dadosDocumentosCliente(id) {
 
 async function abrirDocumentosCliente(id) {
   try {
-    const { cliente, clienteId } = dadosDocumentosCliente(id);
-    abrirDrawer("Documentos do cliente", `<div class="mini-list"><strong>${escaparTextoCliente(cliente.nome || cliente.nomeCompleto)}</strong>
-      <p>Arquivos privados: PDF, JPG, PNG ou WebP, até 8 MB.</p>
+    const {cliente, clienteId, tenant} = dadosDocumentosCliente(id);
+    await garantirStorageClientes();
+    abrirDrawer("Documentos do cliente", \`<div class="mini-list">
+      <strong>\${escaparTextoCliente(cliente.nome || cliente.nomeCompleto)}</strong>
+      <p>Documentos privados em PDF ou imagem, com até 8 MB.</p>
       <input id="arquivoDocumentoCliente" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp">
-      <button class="primary-btn" type="button" onclick="enviarDocumentoCliente('${escaparTextoCliente(id)}')">Anexar documento</button>
+      <button class="primary-btn" type="button" onclick="enviarDocumentoCliente('\${escaparTextoCliente(id)}')">Anexar documento</button>
       <div id="statusDocumentosCliente" role="status"></div>
-      <div id="listaDocumentosCliente">Carregando documentos...</div></div>`);
-    const snapshot = await db.collection("clientes_operacionais").doc(clienteId).collection("documentos").limit(40).get();
+      <div id="listaDocumentosCliente">Carregando documentos...</div>
+    </div>\`);
+    const pasta = firebase.storage().ref(\`tenants/\${tenant}/clientes-documentos/\${clienteId}\`);
+    const lista = await pasta.listAll();
     const host = document.getElementById("listaDocumentosCliente");
     if (!host) return;
-    if (snapshot.empty) { host.textContent = "Nenhum documento anexado."; return; }
-    host.innerHTML = snapshot.docs.map(doc => `<div class="list-item"><strong>${escaparTextoCliente(doc.data().nome)}</strong>
-      <small>${escaparTextoCliente(doc.data().tipo)}</small>
-      <button class="ghost-btn" type="button" data-documento-cliente="${escaparTextoCliente(doc.id)}">Abrir documento</button></div>`).join("");
-    host.querySelectorAll("[data-documento-cliente]").forEach(button => button.addEventListener("click", async () => {
+    if (!lista.items.length) { host.textContent = "Nenhum documento anexado."; return; }
+    const documentos = await Promise.all(lista.items.map(async item => {
       try {
-        await garantirStorageClientes();
-        const ref = db.collection("clientes_operacionais").doc(clienteId).collection("documentos").doc(button.dataset.documentoCliente);
-        const snap = await ref.get();
-        if (!snap.exists) throw new Error("Documento não encontrado.");
-        const caminho = `tenants/${dadosDocumentosCliente(id).tenant}/clientes-documentos/${clienteId}/${snap.id}`;
-        if (snap.data().caminho !== caminho) throw new Error("Caminho do documento inválido.");
-        const url = await firebase.storage().ref(caminho).getDownloadURL();
+        const metadata = await item.getMetadata();
+        return {item, nome:metadata.customMetadata?.nomeOriginal || "Documento", tipo:metadata.contentType || ""};
+      } catch (_) { return {item, nome:"Documento", tipo:""}; }
+    }));
+    host.innerHTML = documentos.map((doc, index) => \`
+      <div class="list-item">
+        <strong>\${escaparTextoCliente(doc.nome)}</strong>
+        <small>\${escaparTextoCliente(doc.tipo)}</small>
+        <button class="ghost-btn" type="button" data-documento-indice="\${index}">Abrir documento</button>
+      </div>\`).join("");
+    host.querySelectorAll("[data-documento-indice]").forEach(button => button.addEventListener("click", async () => {
+      const documento = documentos[Number(button.dataset.documentoIndice)];
+      if (!documento) return;
+      try {
+        const url = await documento.item.getDownloadURL();
         window.open(url, "_blank", "noopener,noreferrer");
       } catch (erro) { UIHelpers.alerta("Não foi possível abrir documento: " + erro.message); }
     }));
@@ -228,16 +237,16 @@ async function enviarDocumentoCliente(id) {
   const botao = input?.parentElement?.querySelector("button.primary-btn");
   if (botao) botao.disabled = true;
   try {
-    const { tenant, clienteId } = dadosDocumentosCliente(id);
+    const {tenant, clienteId} = dadosDocumentosCliente(id);
     await garantirStorageClientes();
-    const ref = db.collection("clientes_operacionais").doc(clienteId).collection("documentos").doc();
-    const caminho = `tenants/${tenant}/clientes-documentos/${clienteId}/${ref.id}`;
+    const usuario = firebase.auth().currentUser;
+    if (!usuario) throw new Error("Sessão não autenticada.");
+    const identificador = (window.crypto?.randomUUID?.() || Array.from(window.crypto.getRandomValues(new Uint8Array(16))).map(x=>x.toString(16).padStart(2,"0")).join("")).replace(/-/g,"");
+    const caminho = \`tenants/\${tenant}/clientes-documentos/\${clienteId}/\${identificador}\`;
     if (status) status.textContent = "Enviando arquivo...";
-    await firebase.storage().ref(caminho).put(arquivo, { contentType: arquivo.type });
-    await ref.set({
-      clientePlataformaId: tenant, nome: arquivo.name.slice(0, 180), tipo: arquivo.type,
-      tamanho: arquivo.size, caminho, criadoPor: firebase.auth().currentUser.uid,
-      criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    await firebase.storage().ref(caminho).put(arquivo, {
+      contentType: arquivo.type,
+      customMetadata: {nomeOriginal:arquivo.name.slice(0,180),criadoPor:usuario.uid}
     });
     await abrirDocumentosCliente(id);
     UIHelpers.alerta("Documento anexado com sucesso.");
