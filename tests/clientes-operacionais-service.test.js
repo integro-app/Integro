@@ -356,3 +356,32 @@ test("relatorio calcula conversao e trata conjunto vazio", () => {
   assert.equal(relatorio.retrabalhados, 1);
   assert.equal(relatorio.taxaConversaoAposRetrabalho, 100);
 });
+
+test("vendedor consulta a carteira canonica e o vinculo legado sem ampliar tenant", async () => {
+  const contexto = carregar({
+    "clientes_operacionais/atual": {
+      clientePlataformaId: "tenant_1", nome: "Atual", vendedorAuthUid: "auth_1", vendedorId: "auth_1"
+    },
+    "clientes_operacionais/antigo": {
+      clientePlataformaId: "tenant_1", nome: "Antigo", vendedorId: "legado_1"
+    },
+    "clientes_operacionais/outro_vendedor": {
+      clientePlataformaId: "tenant_1", nome: "Outra carteira", vendedorAuthUid: "outro"
+    },
+    "clientes_operacionais/outra_empresa": {
+      clientePlataformaId: "tenant_2", nome: "Outra empresa", vendedorId: "legado_1"
+    }
+  });
+  const vendedor = usuario({ id: "auth_1", authUid: "auth_1", usuarioId: "legado_1", tipoUsuario: "vendedor" });
+  const encontrados = await contexto.ClientesService.listarClientes({ db: contexto.db }, vendedor);
+  assert.deepEqual(encontrados.map(c => c.id).sort(), ["antigo", "atual"]);
+  assert.equal(contexto.ClientesService.clienteNoEscopo(vendedor, {
+    clientePlataformaId: "tenant_1", vendedorId: "legado_1"
+  }), true);
+  assert.equal(contexto.ClientesService.clienteNoEscopo(vendedor, {
+    clientePlataformaId: "tenant_2", vendedorId: "legado_1"
+  }), false);
+  assert.equal(contexto.ClientesService.clienteNoEscopo(usuario({ id:"outro", authUid:"outro", tipoUsuario:"vendedor" }), {
+    clientePlataformaId: "tenant_1", vendedorId: "legado_1"
+  }), false);
+});
