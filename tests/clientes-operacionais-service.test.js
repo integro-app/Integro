@@ -374,7 +374,7 @@ test("vendedor consulta a carteira canonica e o vinculo legado sem ampliar tenan
   });
   const vendedor = usuario({ id: "auth_1", authUid: "auth_1", usuarioId: "legado_1", tipoUsuario: "vendedor" });
   const encontrados = await contexto.ClientesService.listarClientes({ db: contexto.db }, vendedor);
-  assert.deepEqual(encontrados.map(c => c.id).sort(), ["antigo", "atual"]);
+  assert.deepEqual(Array.from(encontrados, c => c.id).sort(), ["antigo", "atual"]);
   assert.equal(contexto.ClientesService.clienteNoEscopo(vendedor, {
     clientePlataformaId: "tenant_1", vendedorId: "legado_1"
   }), true);
