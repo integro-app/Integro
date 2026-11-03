@@ -53,8 +53,12 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     ) {
       erro("permission-denied", "Usuário sem acesso operacional.");
     }
-    const perfil = core.normalizarStatus(usuario.tipoUsuario || usuario.cargoChave || usuario.cargo);
-    if (!perfil.includes("VENDEDOR") && perfil !== "MASTER_LOCAL") {
+    // Contas operacionais podem ter tipoUsuario="usuario_cliente" e cargoChave="vendedor".
+    // Só cargos explícitos VENDEDOR ou MASTER_LOCAL estão autorizados.
+    const papeis = [usuario.cargoChave, usuario.perfil, usuario.tipoUsuario, usuario.cargo]
+      .map(core.normalizarStatus);
+    const perfil = papeis.find(papel => ["VENDEDOR", "MASTER_LOCAL"].includes(papel)) || "";
+    if (!perfil) {
       erro("permission-denied", "Perfil sem permissão para esta operação.");
     }
     const tenantId = core.texto(usuario.clientePlataformaId);
