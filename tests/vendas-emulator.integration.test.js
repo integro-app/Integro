@@ -12,10 +12,11 @@ class HttpsError extends Error {constructor(code,message){super(message);this.co
 const operacoes=criarOperacoesFinanceiras({
   admin,db,functions:{https:{HttpsError}}
 });
+const caixaIsoladoId="caixa-vendas-basico-emulator";
 let uidVendedor="";
 const uid=async()=>uidVendedor ||= (await admin.auth().getUserByEmail("vendedor.1.a@homologacao.integro.test")).uid;
 const entrada=(clienteId,operacaoId,extra={})=>({
-  caixaId:"caixa-clientes-a1",clienteId,clienteOperacionalId:clienteId,operacaoId,
+  caixaId:caixaIsoladoId,clienteId,clienteOperacionalId:clienteId,operacaoId,
   valorEmprestadoCentavos:10000,valorTotalCentavos:12000,taxaJuros:20,
   quantidadeParcelas:4,primeiraCobranca:"2026-12-31",frequencia:"MENSAL",
   tipoVenda:"NOVA",...extra
@@ -25,6 +26,12 @@ const falhaCodigo=expected=>error=>error?.code===expected;
 
 test("vendedor usuario_cliente cria venda mensal atomica e retry nao duplica ledger",async()=>{
   const pessoa=await uid();
+  const base=(await db.collection("caixas").doc("caixa-clientes-a1").get()).data();
+  await db.collection("caixas").doc(caixaIsoladoId).set({
+    ...base,clientePlataformaId:"tenant-a",vendedorAuthUid:pessoa,vendedorId:pessoa,
+    status:"ABERTO",saldoInicialCentavos:0,saldoAtualCentavos:0,saldoAtual:0,
+    valorAtual:0,caixaAtual:0
+  });
   const result=await registrar(entrada("cliente-vendedor-1","venda_homol_1"));
   assert.equal(result.ok,true);
   assert.equal(result.modo,"CRIACAO");
@@ -40,11 +47,11 @@ test("vendedor usuario_cliente cria venda mensal atomica e retry nao duplica led
   const cliente=(await db.collection("clientes_operacionais").doc("cliente-vendedor-1").get()).data();
   assert.equal(cliente.saldoDevedorCentavos,12000);
   assert.equal((await db.collection("lancamentos_financeiros").doc(core.lancamentoVendaId(result.vendaId)).get()).data().valorCentavos,10000);
-  const caixa=(await db.collection("caixas").doc("caixa-clientes-a1").get()).data();
+  const caixa=(await db.collection("caixas").doc(caixaIsoladoId).get()).data();
   assert.equal(caixa.saldoAtualCentavos,-10000);
   const retry=await registrar(entrada("cliente-vendedor-1","venda_homol_1"));
   assert.equal(retry.modo,"IDEMPOTENTE");
-  assert.equal((await db.collection("caixas").doc("caixa-clientes-a1").get()).data().saldoAtualCentavos,-10000);
+  assert.equal((await db.collection("caixas").doc(caixaIsoladoId).get()).data().saldoAtualCentavos,-10000);
   assert.equal((await db.collection("parcelas").where("vendaId","==",result.vendaId).get()).size,4);
 });
 
