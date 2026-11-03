@@ -46,6 +46,19 @@ function adicionarDiasISO(dataISO, dias) {
   return `${data.getUTCFullYear()}-${String(data.getUTCMonth() + 1).padStart(2, "0")}-${String(data.getUTCDate()).padStart(2, "0")}`;
 }
 
+function adicionarMesesISO(dataISO, meses) {
+  const valor = texto(dataISO);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) throw new Error("Data inválida.");
+  const [ano, mes, dia] = valor.split("-").map(Number);
+  const original = new Date(Date.UTC(ano, mes - 1, dia, 12, 0, 0));
+  if (original.getUTCFullYear() !== ano || original.getUTCMonth() + 1 !== mes ||
+      original.getUTCDate() !== dia) throw new Error("Data inválida.");
+  const destino = new Date(Date.UTC(ano, mes - 1 + inteiro(meses), 1, 12, 0, 0));
+  const ultimoDia = new Date(Date.UTC(destino.getUTCFullYear(), destino.getUTCMonth() + 1, 0, 12, 0, 0)).getUTCDate();
+  destino.setUTCDate(Math.min(dia, ultimoDia));
+  return `${destino.getUTCFullYear()}-${String(destino.getUTCMonth() + 1).padStart(2, "0")}-${String(destino.getUTCDate()).padStart(2, "0")}`;
+}
+
 function intervaloFrequencia(frequencia) {
   const valor = normalizarStatus(frequencia || "DIARIA");
   if (valor === "SEMANAL") return 7;
@@ -73,7 +86,9 @@ function calcularParcelas({ valorTotalCentavos, quantidadeParcelas, primeiraCobr
   return dividirCentavos(valorTotalCentavos, quantidadeParcelas).map((valorParcelaCentavos, indice) => ({
     numeroParcela: indice + 1,
     valorParcelaCentavos,
-    vencimento: adicionarDiasISO(primeira, indice * intervalo)
+    vencimento: normalizarStatus(frequencia) === "MENSAL"
+      ? adicionarMesesISO(primeira, indice)
+      : adicionarDiasISO(primeira, indice * intervalo)
   }));
 }
 
@@ -149,6 +164,7 @@ module.exports = {
   reais,
   hojeSP,
   adicionarDiasISO,
+  adicionarMesesISO,
   intervaloFrequencia,
   dividirCentavos,
   calcularParcelas,
