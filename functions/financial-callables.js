@@ -621,6 +621,14 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       validarCaixa(caixa, tenantId, uid, usuario);
       validarRegistroDoVendedor(venda, tenantId, uid, usuario, "Venda");
       validarRegistroDoVendedor(parcela, tenantId, uid, usuario, "Parcela");
+      if (["CANCELADA", "CANCELADO", "ESTORNADA", "ESTORNADO"].includes(
+        core.normalizarStatus(venda.statusVenda || venda.status)) ||
+          venda.excluido === true || venda.ativo === false)
+        erro("failed-precondition", "Venda cancelada ou inativa não pode receber pagamento.");
+      if (["CANCELADA", "CANCELADO", "ESTORNADA", "ESTORNADO"].includes(
+        core.normalizarStatus(parcela.statusParcela || parcela.status)) ||
+          parcela.excluido === true || parcela.ativo === false)
+        erro("failed-precondition", "Parcela cancelada ou inativa não pode receber pagamento.");
       if (core.texto(parcela.vendaId) !== vendaId) erro("failed-precondition", "Parcela não pertence à venda.");
 
       const clienteId = validarId(
@@ -649,6 +657,9 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         ) erro("already-exists", "Conflito no identificador do pagamento.");
       }
 
+      if (pagamentoAnterior && ["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(
+        core.normalizarStatus(pagamentoAnterior.status)))
+        erro("failed-precondition", "Pagamento cancelado ou estornado exige regularização autorizada.");
       const valorAnteriorCentavos = pagamentoAnterior
         ? core.centavosDe(pagamentoAnterior, "valorCentavos", ["valorPago", "valorRecebido", "valor"])
         : 0;
@@ -857,6 +868,10 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       const venda = vendaSnap.data() || {};
       validarCaixa(caixa, tenantId, uid, usuario);
       validarRegistroDoVendedor(venda, tenantId, uid, usuario, "Venda");
+      if (["CANCELADA", "CANCELADO", "ESTORNADA", "ESTORNADO"].includes(
+        core.normalizarStatus(venda.statusVenda || venda.status)) ||
+          venda.excluido === true || venda.ativo === false)
+        erro("failed-precondition", "Não é permitido cobrar venda cancelada ou inativa.");
       if (historicoSnap.exists) return { ok: true, modo: "IDEMPOTENTE", historicoId };
 
       const vendedorId = idUsuario(uid, usuario);
