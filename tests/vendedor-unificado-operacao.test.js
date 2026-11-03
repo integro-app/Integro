@@ -200,7 +200,7 @@ test("botao vender respeita saldo ativo e navega para vendas", () => {
   assert.match(unificado, /data-cliente-drawer-tab="pagamentos"/);
   assert.match(unificado, /scoreCliente\(cliente\)/);
   assert.doesNotMatch(unificado, /<span>Saldo devedor<\/span>/);
-  assert.match(unificado, /saldo devedor ativo/);
+  assert.match(unificado, /saldo devedor acima de R\$ 1/);
   assert.match(unificado, /window\.trocarTela\?\.\("cobrancas"/);
   assert.match(unificado, /abrirAba\("vendas"\)/);
   assert.match(unificado, /renderVendasDia\(\)/);
