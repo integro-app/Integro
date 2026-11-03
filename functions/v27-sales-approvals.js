@@ -167,6 +167,13 @@ function criarAprovacoesVendaV27({ admin, functions, db }) {
           vendaComSaldoAutorizadaValorCentavos: Number(solicitacao.valorEmprestadoCentavos),
           vendaComSaldoAutorizadaAteMs: Date.now() + 24 * 60 * 60 * 1000,
           vendaComSaldoAutorizacaoSolicitacaoId: solicitacaoId,
+          vendaComSaldoAutorizacaoCondicoes: {
+            taxaJuros: Number(solicitacao.taxaJuros || 0),
+            quantidadeParcelas: Number(solicitacao.quantidadeParcelas || 0),
+            frequencia: normalizar(solicitacao.frequencia),
+            primeiraCobranca: texto(solicitacao.primeiraCobranca),
+            tipoVenda: normalizar(solicitacao.tipoVenda || "NOVA")
+          },
           vendaComSaldoAutorizadaPorAuthUid: uid,
           vendaComSaldoAutorizadaEmTexto: dataDecisao,
           atualizadoEm: ts()
