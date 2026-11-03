@@ -8,6 +8,13 @@
 // ===============================
 
 function toggleSidebar(force = null) {
+  const mobile = window.IntegroMobileNavigation;
+  if (window.matchMedia?.("(max-width: 980px)")?.matches && mobile?.isReady?.()) {
+    const abrir = typeof force === "boolean" ? force : !mobile.isOpen();
+    if (abrir) mobile.openSidebar();
+    else mobile.closeSidebar({ restoreFocus: false });
+    return;
+  }
   const sidebar = document.getElementById("sidebar");
   const overlay =
     document.getElementById("overlay") ||
@@ -48,6 +55,9 @@ document.addEventListener("keydown", (event) => {
 });
 
 document.addEventListener("click", (event) => {
+  // O controlador mobile fecha ao navegar, e preserva o menu quando um grupo
+  // é apenas expandido. O listener legado não pode fechá-lo antes disso.
+  if (window.matchMedia?.("(max-width: 980px)")?.matches && window.IntegroMobileNavigation?.isReady?.()) return;
   if (event.target?.matches?.(".sidebar .menu button, .sidebar .menu-item")) {
     if (window.innerWidth <= 900) fecharSidebar();
   }
