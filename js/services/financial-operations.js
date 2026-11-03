@@ -1794,8 +1794,8 @@
         }
 
         const saldoClienteCentavos = saldoClienteParaBloqueioVenda(cliente);
-        if (saldoClienteCentavos > 0) {
-          const erro = new Error("Cliente possui saldo devedor ativo. Nova venda bloqueada.");
+        if (saldoClienteCentavos > 100) {
+          const erro = new Error("Cliente possui saldo devedor acima de R$ 1. Nova venda bloqueada.");
           erro.code = "ERRO_BLOQUEADO_CLIENTE_ATIVO";
           throw erro;
         }
