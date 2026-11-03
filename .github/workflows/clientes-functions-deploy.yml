@@ -1,4 +1,4 @@
-name: Deploy backend seguro de Clientes
+name: Deploy backend seguro de Clientes (endpoint existente)
 on:
   push:
     branches: [main]
@@ -7,6 +7,7 @@ on:
       - "functions/v27-client-operations.js"
       - "functions/index.js"
       - "tests/clientes-backend.test.js"
+      - "js/services/clientes-service.js"
 permissions:
   contents: read
 concurrency:
@@ -31,5 +32,5 @@ jobs:
       - uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
-      - name: Deploy ONLY operational client callable
-        run: npx firebase deploy --only functions:operarClienteV27 --project integro-novo --non-interactive
+      - name: Update existing transfer callable with authenticated client operations
+        run: npx firebase deploy --only functions:transferirResponsabilidadeV27 --project integro-novo --non-interactive
