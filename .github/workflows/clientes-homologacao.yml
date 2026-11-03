@@ -39,4 +39,4 @@ jobs:
       - name: Homologar Clientes com Auth e Firestore isolados no emulador
         env:
           CI: 'true'
-        run: npx firebase emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test tests/clientes-emulator.integration.test.js"
+        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test tests/clientes-emulator.integration.test.js"
