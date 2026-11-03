@@ -65,5 +65,24 @@ async function install(file,release) {
   if(active.rulesetName!==created.name) throw new Error('Release ativo não corresponde ao ruleset publicado');
   console.log(`CONFIRMADO: ${release} => ${created.name} SHA256=${crypto.createHash('sha256').update(fullSource).digest('hex')}`);
 }
-await install('firestore.rules','cloud.firestore');
+try {
+  await install('firestore.rules','cloud.firestore');
+} catch (error) {
+  console.error('Ruleset oficial não publicado:', error.message);
+  // Diagnóstico controlado: um ruleset sintético nunca é associado a releases.
+  // Diferencia indisponibilidade geral de falha com regras complexas.
+  try {
+    const small = await request('POST',`/projects/${project}/rulesets`,{
+      source:{files:[{name:'diagnostico.rules',content:
+        "rules_version = '2'; service cloud.firestore { match /databases/{database}/documents { match /__diagnostico__/{id} { allow read, write: if false; } } }"
+      }]}
+    });
+    console.log('DIAGNÓSTICO: ruleset mínimo criado, sem ativação:',small.name);
+    console.error('Provável bloqueio por tamanho/complexidade do arquivo principal.');
+  } catch(diag) {
+    console.error('DIAGNÓSTICO: ruleset mínimo também falhou:',diag.message);
+    console.error('Indício de problema no serviço/API/projeto, não apenas na regra grande.');
+  }
+  throw error;
+}
 await install('storage.rules','firebase.storage');
