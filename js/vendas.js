@@ -44,7 +44,20 @@ function renderResumoVendas() {
   ).join("");
 }
 
-const filtrosVendas = { status: "todos", tipo: "todos" };
+const filtrosVendas = { status: "todos", tipo: "todos", inicio: "", fim: "", vendedor: "", equipe: "" };
+
+function dataVendaGestao(v) {
+  const bruto = v.dataVenda || v.dataOperacional || v.data || v.criadoEmTexto || v.criadoEm;
+  if (bruto?.toDate) return bruto.toDate().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  return String(bruto || "").slice(0, 10);
+}
+
+function centavosVenda(venda, chaveCentavos, chaveReais) {
+  if (Number.isInteger(venda?.[chaveCentavos])) return venda[chaveCentavos];
+  const valor = Number(venda?.[chaveReais]);
+  return Number.isFinite(valor) ? Math.round(valor * 100) : 0;
+}
+
 
 function abrirFiltrosVendas() {
   if (typeof abrirDrawer !== "function") return UIHelpers.alerta("Filtros indisponíveis.");
@@ -54,9 +67,21 @@ function abrirFiltrosVendas() {
   const tipo = [["todos","Todos"],["novas","Novas"],["renovacoes","Renovações"]];
   const select = (id, rotulo, valores, atual) => `<label for="${id}">${rotulo}</label><select id="${id}">${valores.map(([valor,nome]) =>
     `<option value="${valor}" ${valor===atual?"selected":""}>${nome}</option>`).join("")}</select>`;
+  const vendedores = [...new Map(vendasDoTenant()
+    .filter(v => v.vendedorAuthUid || v.vendedorId)
+    .map(v => [String(v.vendedorAuthUid || v.vendedorId),
+      String(v.vendedorNome || v.vendedorAuthUid || v.vendedorId)]))
+    .entries()].sort((a,b) => a[1].localeCompare(b[1], "pt-BR"));
+  const equipes = [...new Set(vendasDoTenant().map(v=>String(v.equipeId || "")).filter(Boolean))].sort();
+  const renderOptions = (value, lista) => lista.map(([id,nome]) =>
+    `<option value="${escaparVenda(id)}" ${value===id?"selected":""}>${escaparVenda(nome)}</option>`).join("");
   abrirDrawer("Filtros de vendas", `<div class="form-grid">
     <div class="form-group">${select("filtroStatusVendas","Status",opcoes,filtrosVendas.status)}</div>
     <div class="form-group">${select("filtroTipoVendas","Tipo",tipo,filtrosVendas.tipo)}</div>
+    <div class="form-group"><label for="filtroVendedorVendas">Vendedor</label><select id="filtroVendedorVendas"><option value="">Todos</option>${renderOptions(filtrosVendas.vendedor,vendedores)}</select></div>
+    <div class="form-group"><label for="filtroEquipeVendas">Equipe</label><select id="filtroEquipeVendas"><option value="">Todas</option>${renderOptions(filtrosVendas.equipe,equipes.map(id=>[id,id]))}</select></div>
+    <div class="form-group"><label for="filtroInicioVendas">Data inicial</label><input id="filtroInicioVendas" type="date" value="${escaparVenda(filtrosVendas.inicio)}"></div>
+    <div class="form-group"><label for="filtroFimVendas">Data final</label><input id="filtroFimVendas" type="date" value="${escaparVenda(filtrosVendas.fim)}"></div>
     <div class="drawer-actions"><button class="primary-btn" type="button" onclick="aplicarFiltrosVendas()">Buscar</button></div>
   </div>`);
 }
@@ -64,6 +89,12 @@ function abrirFiltrosVendas() {
 function aplicarFiltrosVendas() {
   filtrosVendas.status = document.getElementById("filtroStatusVendas")?.value || "todos";
   filtrosVendas.tipo = document.getElementById("filtroTipoVendas")?.value || "todos";
+  filtrosVendas.vendedor = document.getElementById("filtroVendedorVendas")?.value || "";
+  filtrosVendas.equipe = document.getElementById("filtroEquipeVendas")?.value || "";
+  filtrosVendas.inicio = document.getElementById("filtroInicioVendas")?.value || "";
+  filtrosVendas.fim = document.getElementById("filtroFimVendas")?.value || "";
+  if (filtrosVendas.inicio && filtrosVendas.fim && filtrosVendas.inicio > filtrosVendas.fim)
+    return UIHelpers.alerta("A data inicial não pode ser posterior à data final.");
   if (typeof fecharDrawer === "function") fecharDrawer();
   renderVendas();
 }
@@ -80,6 +111,11 @@ function getVendasFiltradas() {
     if (filtroStatus === "canceladas" && !["CANCELADO","CANCELADA"].includes(status)) return false;
     if (filtroTipo === "novas" && tipo !== "NOVA") return false;
     if (filtroTipo === "renovacoes" && !tipo.includes("RENOV")) return false;
+    if (filtrosVendas.vendedor && String(v.vendedorAuthUid || v.vendedorId || "") !== filtrosVendas.vendedor) return false;
+    if (filtrosVendas.equipe && String(v.equipeId || "") !== filtrosVendas.equipe) return false;
+    const data = dataVendaGestao(v);
+    if (filtrosVendas.inicio && (!data || data < filtrosVendas.inicio)) return false;
+    if (filtrosVendas.fim && (!data || data > filtrosVendas.fim)) return false;
     const base = [v.clienteNome,v.vendedorNome,v.statusVenda,v.status,v.tipoVenda,
       v.frequencia,v.clienteId,v.id].join(" ").toLowerCase();
     return !termo || base.includes(termo);
@@ -243,6 +279,10 @@ function limparBuscaVendas() {
   if (input) input.value = "";
   filtrosVendas.status = "todos";
   filtrosVendas.tipo = "todos";
+  filtrosVendas.inicio = "";
+  filtrosVendas.fim = "";
+  filtrosVendas.equipe = "";
+  filtrosVendas.vendedor = "";
   renderVendas();
 }
 
