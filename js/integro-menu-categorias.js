@@ -80,7 +80,7 @@
         g.signature=signature;g.panel.replaceChildren();
         list.forEach(item=>{
           const child=document.createElement('button');child.type='button';child.className='iv-nav-child';child.dataset.ivNavChild=item.key;
-          const icon=document.createElement('span');icon.className='iv-nav-icon';icon.innerHTML=navigation().iconeSvg(item.icon);icon.setAttribute('aria-hidden','true');
+          const icon=document.createElement('span');icon.className='iv-nav-icon material-symbols-rounded';icon.textContent=item.icon||'chevron_right';icon.setAttribute('aria-hidden','true');
           const caption=document.createElement('span');caption.textContent=item.label;child.append(icon,caption);
           child.onclick=()=>{if(!permitted(parent))return;const current=children(parent).find(v=>v.key===item.key);if(!current)return;current.run();activate(parent,item.key);};g.panel.append(child);
         });
