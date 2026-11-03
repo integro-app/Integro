@@ -185,6 +185,10 @@ exports.decidirVendaComSaldoV27 = functions.region("southamerica-east1").https.o
     const {__integroRota,...entrada}=dados;
     return protegerSessao(cancelamentosVendaV27.solicitarRevisao)(entrada,contexto);
   }
+  if(dados?.__integroRota==="TRATAR_REVISAO_VENDA_PAGA_V27") {
+    const {__integroRota,...entrada}=dados;
+    return protegerSessao(cancelamentosVendaV27.tratarRevisao)(entrada,contexto);
+  }
   if(dados?.__integroRota==="CANCELAMENTO_INTEGRAL_VENDA_V27") {
     const {__integroRota,...entrada}=dados;
     return protegerSessao(cancelamentosVendaV27.cancelar)(entrada,contexto);

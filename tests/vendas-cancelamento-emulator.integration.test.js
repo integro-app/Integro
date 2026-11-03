@@ -249,3 +249,41 @@ test("revisão só é aceita para venda com recebimentos; não substitui cancela
     motivo:"Solicito analisar este contrato sem pagamento registrado."
   },manager),rejection("failed-precondition"));
 });
+
+test("revisão paga só muda protocolo e log; pagamentos, caixa e venda ficam intocados",async()=>{
+  const {seller,caixaId,clienteId}=await prepararCenarioRevisao("desfecho");
+  const manager=await context("master.local.a");
+  const sale=await sales.registrarVenda(request("venda_revisao_desfecho",{
+    caixaId,clienteId,clienteOperacionalId:clienteId
+  }),seller);
+  await db.collection("pagamentos").doc("pag_revisao_desfecho").set({
+    clientePlataformaId:"tenant-a",vendaId:sale.vendaId,
+    status:"CONFIRMADO",valorCentavos:500,parcelaId:"p-teste"
+  });
+  const abertura=await cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"ESTORNO_ASSISTIDO",
+    motivo:"Solicito a conferência dos pagamentos antes de tomar providência."
+  },manager);
+  const refs=[["vendas",sale.vendaId],["caixas",caixaId],
+    ["clientes_operacionais",clienteId],["lancamentos_financeiros",core.lancamentoVendaId(sale.vendaId)]];
+  const antes=await Promise.all(refs.map(([c,id])=>db.collection(c).doc(id).get().then(s=>s.data())));
+  const payload={solicitacaoId:abertura.solicitacaoId,decisao:"CONCLUIR_SEM_AJUSTE",
+    justificativa:"Todos os documentos conferidos; não há ajuste financeiro."};
+  await assert.rejects(()=>cancellation.tratarRevisao(payload,seller),rejection("permission-denied"));
+  await assert.rejects(()=>context("master.local.b").then(c=>
+    cancellation.tratarRevisao(payload,c)),rejection("permission-denied"));
+  await assert.rejects(()=>cancellation.tratarRevisao({...payload,justificativa:"curto"},manager),
+    rejection("invalid-argument"));
+  const tratado=await cancellation.tratarRevisao(payload,manager);
+  assert.equal(tratado.status,"CONCLUIDA_SEM_AJUSTE");
+  assert.equal((await cancellation.tratarRevisao(payload,manager)).modo,"IDEMPOTENTE");
+  await assert.rejects(()=>cancellation.tratarRevisao({
+    ...payload,decisao:"ENCAMINHAR_AUDITORIA"
+  },manager),rejection("failed-precondition"));
+  assert.equal((await db.collection("solicitacoes").doc(abertura.solicitacaoId).get()).data().alteraFinanceiroAutomaticamente,false);
+  const depois=await Promise.all(refs.map(([c,id])=>db.collection(c).doc(id).get().then(s=>s.data())));
+  assert.deepEqual(depois,antes);
+  const logs=await db.collection("logs").where("solicitacaoId","==",abertura.solicitacaoId).get();
+  assert.equal(logs.docs.filter(x=>x.data().tipoAcao==="REVISAO_FINANCEIRA_VENDA_TRATADA").length,1);
+});
+

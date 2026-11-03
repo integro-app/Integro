@@ -239,14 +239,72 @@ async function abrirRevisoesFinanceirasVendas() {
           Valor do contrato: ${moeda(centavosVenda(item,"valorCentavos","valor")/100)}</small>
         <small>Solicitado em: ${escaparVenda(item.solicitadoEmTexto||"-")}</small>
         <small>${escaparVenda(item.motivo||"Sem justificativa registrada")}</small>
+        ${String(item.status||"PENDENTE").toUpperCase()==="PENDENTE"?
+          `<div class="drawer-actions">
+            <button type="button" class="ghost-btn" data-revisao-acao="CONCLUIR_SEM_AJUSTE" data-revisao-id="${escaparVenda(item.id)}">Concluir sem ajuste</button>
+            <button type="button" class="ghost-btn" data-revisao-acao="ENCAMINHAR_AUDITORIA" data-revisao-id="${escaparVenda(item.id)}">Encaminhar à auditoria</button>
+          </div>`:""}
+        ${item.justificativaDecisao? `<small>Desfecho: ${escaparVenda(item.justificativaDecisao)}</small>`:""}
       </div></div>`).join("")}</div>` :
       "<p>Nenhuma revisão encontrada nos registros consultados.</p>";
     if(registros.length>=150)
       host.innerHTML+="<small>Listagem parcial (limite de 150 registros). Refine a consulta no histórico completo quando necessário.</small>";
+    host.addEventListener("click",event=>{
+      const botao=event.target?.closest?.("button[data-revisao-acao]");
+      if(!botao)return;
+      const item=revisoes.find(v=>String(v.id)===botao.dataset.revisaoId);
+      if(!item||String(item.status||"").toUpperCase()!=="PENDENTE")return;
+      abrirTratamentoRevisaoVendaGestao(item,botao.dataset.revisaoAcao);
+    });
   }catch(error){
     if(host.isConnected)host.textContent="Não foi possível consultar revisões financeiras desta empresa.";
     console.warn("[ÍNTEGRO] Falha ao consultar revisões de vendas",error);
   }
+}
+
+function abrirTratamentoRevisaoVendaGestao(item,decisao) {
+  const tenant=String(State.getTenantId?.()||"");
+  const usuario=State.getUsuario?.()||{};
+  const gestor=[usuario.cargoChave,usuario.perfil,usuario.tipoUsuario]
+    .map(c=>String(c||"").trim().toLowerCase())
+    .some(c=>["master_local","gerente"].includes(c));
+  if(!gestor||!tenant||String(item?.clientePlataformaId||"")!==tenant||
+     String(item?.status||"").toUpperCase()!=="PENDENTE"||
+     !["CONCLUIR_SEM_AJUSTE","ENCAMINHAR_AUDITORIA"].includes(decisao))
+    return UIHelpers.alerta("Esta revisão não está disponível para decisão.");
+  const acao=decisao==="CONCLUIR_SEM_AJUSTE"?"Concluir sem ajuste":"Encaminhar à auditoria";
+  abrirDrawer(acao,
+    '<section class="form-grid"><p class="form-group full">Protocolo: <strong>'+
+    escaparVenda(item.id)+'</strong>. Esta decisão apenas registra o desfecho administrativo; '+
+    'não cancela contratos nem altera dinheiro.</p>'+
+    '<div class="form-group full"><label for="revisaoVendaDecisaoMotivo">Justificativa</label>'+
+    '<textarea id="revisaoVendaDecisaoMotivo" rows="4" maxlength="1200"></textarea></div>'+
+    '<div class="drawer-actions"><button type="button" class="primary-btn" '+
+    'id="confirmarTratamentoRevisaoVendaBtn">'+escaparVenda(acao)+'</button></div></section>');
+  document.getElementById("confirmarTratamentoRevisaoVendaBtn")?.addEventListener(
+    "click",()=>tratarRevisaoVendaGestao(item.id,decisao,tenant));
+}
+
+async function tratarRevisaoVendaGestao(solicitacaoId,decisao,tenant) {
+  if(String(State.getTenantId?.()||"")!==tenant)
+    return UIHelpers.alerta("A empresa mudou. Reabra a revisão.");
+  const justificativa=String(document.getElementById("revisaoVendaDecisaoMotivo")?.value||"").trim();
+  if(justificativa.length<15||justificativa.length>1200)
+    return UIHelpers.alerta("Descreva a decisão em 15 a 1200 caracteres.");
+  const botao=document.getElementById("confirmarTratamentoRevisaoVendaBtn");
+  if(botao)botao.disabled=true;
+  try {
+    const fn=window.firebase?.app?.()?.functions?.("southamerica-east1")
+      ?.httpsCallable?.("decidirVendaComSaldoV27");
+    if(!fn)throw new Error("Serviço seguro de revisão indisponível.");
+    const resposta=await fn({__integroRota:"TRATAR_REVISAO_VENDA_PAGA_V27",
+      solicitacaoId,decisao,justificativa});
+    if(resposta?.data?.ok!==true)throw new Error("Decisão não confirmada pelo servidor.");
+    if(String(State.getTenantId?.()||"")!==tenant)return;
+    UIHelpers.alerta("Revisão atualizada: "+resposta.data.status+". Nenhum saldo foi alterado.");
+    await abrirRevisoesFinanceirasVendas();
+  }catch(error){UIHelpers.alerta(error?.message||"Não foi possível tratar a revisão.");}
+  finally{if(botao)botao.disabled=false;}
 }
 
 function podeSolicitarRevisaoVenda(venda) {

@@ -178,6 +178,22 @@ test("revisão assistida de venda paga respeita o cargo e mantém estorno separa
   assert.match(source,/resposta\?\.data\?\.ok!==true/);
 });
 
+test("revisão paga registra desfecho sem estorno e apenas para gestor da empresa",()=>{
+  const {context}=criarTela();
+  let alerta="";
+  context.UIHelpers.alerta=msg=>{alerta=msg;};
+  context.abrirTratamentoRevisaoVendaGestao({
+    id:"rev",clientePlataformaId:"tenant-b",status:"PENDENTE"
+  },"CONCLUIR_SEM_AJUSTE");
+  assert.match(alerta,/não está disponível/);
+  const source=fs.readFileSync(path.join(__dirname,"..","js/vendas.js"),"utf8");
+  assert.match(source,/TRATAR_REVISAO_VENDA_PAGA_V27/);
+  assert.match(source,/revisaoVendaDecisaoMotivo/);
+  assert.match(source,/CONCLUIR_SEM_AJUSTE/);
+  assert.match(source,/ENCAMINHAR_AUDITORIA/);
+  assert.match(source,/resposta\?\.data\?\.ok!==true/);
+});
+
 test("Formulário do vendedor conserva operacaoId no retry e valida parcelas",()=>{
   const source=fs.readFileSync(path.join(__dirname,"..","js/vendedor-unificado.js"),"utf8");
   assert.match(source,/let vendaOperacaoPendente = null/);

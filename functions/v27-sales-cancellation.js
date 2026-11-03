@@ -261,6 +261,62 @@ function criarCancelamentosVendaV27({admin,functions,db}) {
     });
   }
 
-  return {cancelar,solicitarRevisao};
+
+  // Decisão sobre revisão paga: exclusivamente documental, sem efeitos no caixa.
+  async function tratarRevisao(payload,context) {
+    const uid=text(context?.auth?.uid);
+    if(!uid)fail("unauthenticated","Sessão não autenticada.");
+    const snap=await db.collection("usuarios").doc(uid).get();
+    const user=snap.exists?snap.data()||{}:{};
+    const tenant=text(user.clientePlataformaId);
+    const cargos=[user.cargoChave,user.perfil,user.tipoUsuario].map(up);
+    if(!snap.exists||text(user.authUid)!==uid||!tenant||user.acessoLiberado!==true||
+       user.ativo===false||user.excluido===true||
+       ["BLOQUEADO","INATIVO","SUSPENSO"].includes(up(user.status))||
+       !cargos.some(c=>["MASTER_LOCAL","GERENTE"].includes(c)))
+      fail("permission-denied","Somente gestor ativo da empresa pode tratar a revisão.");
+    const entrada=payload?.entrada||payload||{};
+    const solicitacaoId=text(entrada.solicitacaoId);
+    const decisao=up(entrada.decisao);
+    const justificativa=text(entrada.justificativa);
+    const estados={CONCLUIR_SEM_AJUSTE:"CONCLUIDA_SEM_AJUSTE",
+      ENCAMINHAR_AUDITORIA:"EM_AUDITORIA"};
+    if(!safeId(solicitacaoId)||solicitacaoId.length>180||!Object.hasOwn(estados,decisao))
+      fail("invalid-argument","Protocolo ou decisão inválida.");
+    if(justificativa.length<15||justificativa.length>1200)
+      fail("invalid-argument","Informe justificativa de 15 a 1200 caracteres.");
+    const status=estados[decisao];
+    const ref=db.collection("solicitacoes").doc(solicitacaoId);
+    const logRef=db.collection("logs").doc("log_decisao_"+solicitacaoId);
+    return db.runTransaction(async tx=>{
+      const pedidoSnap=await tx.get(ref);
+      if(!pedidoSnap.exists)fail("not-found","Revisão não encontrada.");
+      const pedido=pedidoSnap.data()||{};
+      if(text(pedido.clientePlataformaId)!==tenant)
+        fail("permission-denied","Revisão fora da empresa atual.");
+      if(up(pedido.tipo||pedido.tipoSolicitacao)!=="REVISAO_VENDA_COM_PAGAMENTO"||
+         pedido.revisaoSomenteAnalise!==true||!safeId(pedido.vendaId))
+        fail("failed-precondition","Protocolo não corresponde a revisão assistida.");
+      if(up(pedido.status)!=="PENDENTE") {
+        if(up(pedido.status)===status&&text(pedido.decisaoPorAuthUid)===uid)
+          return {ok:true,modo:"IDEMPOTENTE",solicitacaoId,status};
+        fail("failed-precondition","Revisão já tratada. Consulte o histórico.");
+      }
+      const agora=ts();
+      tx.update(ref,{status,statusSolicitacao:status,decisao,
+        justificativaDecisao:justificativa,decisaoPorAuthUid:uid,
+        decisaoEm:agora,atualizadoEm:agora,
+        revisaoSomenteAnalise:true,alteraFinanceiroAutomaticamente:false});
+      tx.create(logRef,{tipoAcao:"REVISAO_FINANCEIRA_VENDA_TRATADA",
+        origem:"VENDAS",clientePlataformaId:tenant,solicitacaoId,
+        vendaId:text(pedido.vendaId),clienteId:text(pedido.clienteId),
+        caixaId:text(pedido.caixaId),usuarioAuthUid:uid,decisao,status,
+        justificativa,criadoEm:agora,alteraFinanceiroAutomaticamente:false});
+      return {ok:true,modo:"REVISAO_TRATADA",solicitacaoId,status,
+        mensagem:"Desfecho administrativo registrado; nenhum valor alterado."};
+    });
+  }
+
+  return {cancelar,solicitarRevisao,tratarRevisao};
 }
 module.exports={criarCancelamentosVendaV27};
