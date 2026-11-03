@@ -907,7 +907,9 @@
 
       const status = texto(v.statusVenda || v.status || "ATIVA").toUpperCase();
       const tipo = texto(v.tipoVenda || v.tipo || "NOVA").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (algumStatus && !((vendaAtivaFiltro && status.includes("ATIVA")) || (vendaQuitadaFiltro && status.includes("QUIT")) || (vendaCanceladaFiltro && status.includes("CANCEL")))) return false;
+      if (algumStatus && !((vendaAtivaFiltro && ["ATIVA", "ATIVO"].includes(status)) ||
+        (vendaQuitadaFiltro && ["QUITADO", "QUITADA"].includes(status)) ||
+        (vendaCanceladaFiltro && ["CANCELADO", "CANCELADA"].includes(status)))) return false;
       if (algumTipo && !((vendaNovaFiltro && tipo.includes("NOVA")) || (vendaRenovacaoFiltro && tipo.includes("RENOV")))) return false;
       const busca = [v.clienteNome, v.nomeCliente, cliente.nome, cliente.nomeCompleto, cliente.apelido, cliente.documento, v.codigo, v.numero, v.id].join(" ").toLowerCase();
       return !termo || busca.includes(termo);
@@ -2288,17 +2290,18 @@
     const caixa = await garantirCaixaAberto();
     if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
     const clientes = (State.getClientes?.() || []).filter(c => pertenceAoVendedor(c) && c.excluido !== true && clientePodeIniciarNovaVenda(c));
-    modalBase("Nova venda", clientes.length ? `<div class="vendedor-clientes-venda">${clientes.map(c => { const ativo = clientePossuiVendaAtiva(c); const autorizado = autorizacaoVendaComSaldoCliente(c); return `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${texto(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${texto(c.nomeCompleto || c.nome || "")}${ativo ? autorizado ? " · Autorização disponível" : " · Saldo ativo — sujeito à análise" : ""}</small><span>Selecionar</span></button>`; }).join("")}</div>` : '<div class="empty-state-operacao"><strong>Nenhum cliente disponível</strong><p>Não há clientes elegíveis para nova venda conforme a política atual da empresa.</p></div>');
+    modalBase("Nova venda", clientes.length ? `<div class="vendedor-clientes-venda">${clientes.map(c => { const ativo = saldoCliente(c) > 1; const autorizado = autorizacaoVendaComSaldoCliente(c); return `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${texto(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${texto(c.nomeCompleto || c.nome || "")}${ativo ? autorizado ? " · Autorização disponível" : " · Saldo ativo — sujeito à análise" : ""}</small><span>Selecionar</span></button>`; }).join("")}</div>` : '<div class="empty-state-operacao"><strong>Nenhum cliente disponível</strong><p>Não há clientes elegíveis para nova venda conforme a política atual da empresa.</p></div>');
   }
 
   function selecionarClienteNovaVenda(clienteId) {
     clienteNovaVendaId = clienteId;
     const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(clienteId));
     if (!cliente) return;
-    const saldoAtivo = clientePossuiVendaAtiva(cliente);
-    if (saldoAtivo && !clientePodeIniciarNovaVenda(cliente)) return UIHelpers?.alerta?.("Cliente com saldo devedor ativo. A política da empresa exige quitação antes de uma nova venda.");
+    const saldoAtivo = saldoCliente(cliente) > 1;
+    if (saldoAtivo && !clientePodeIniciarNovaVenda(cliente)) return UIHelpers?.alerta?.("Cliente com saldo devedor acima de R$ 1. A política da empresa exige quitação ou autorização antes de uma nova venda.");
     const avisoSaldo = saldoAtivo ? `<div class="vendedor-venda-alerta-saldo"><span class="material-symbols-rounded">policy</span><div><strong>Cliente possui saldo ativo</strong><small>${autorizacaoVendaComSaldoCliente(cliente) ? "Existe uma autorização temporária. Ela vale somente para o mesmo valor aprovado." : "Ao registrar, a venda será enviada para análise do Supervisor/Gerente antes de ser liberada."}</small></div></div>` : "";
-    modalBase("Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
+    const tipo = clienteTemHistoricoVenda(cliente) ? "RENOVACAO" : "NOVA";
+    modalBase(tipo === "RENOVACAO" ? "Renovação" : "Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
   }
 
   async function confirmarNovaVenda() {
@@ -2307,11 +2310,19 @@
     if (!cliente || !caixa) return UIHelpers?.alerta?.("Cliente ou caixa aberto não encontrado.");
     const valor = numero(texto(document.getElementById("novaVendaValor")?.value).replace(".", "").replace(",", "."));
     const juros = numero(texto(document.getElementById("novaVendaJuros")?.value).replace(",", "."));
-    const parcelas = Math.round(numero(document.getElementById("novaVendaParcelas")?.value));
+    const parcelas = Number(document.getElementById("novaVendaParcelas")?.value);
     const frequencia = texto(document.getElementById("novaVendaFrequencia")?.value || "DIARIA");
     const primeiraCobranca = texto(document.getElementById("novaVendaPrimeiraCobranca")?.value || dataCaixa());
-    if (valor <= 0 || parcelas < 1) return UIHelpers?.alerta?.("Informe valor e quantidade de parcelas válidos.");
-    const total = valor + (valor * Math.max(0, juros) / 100);
+    if (!Number.isFinite(valor) || valor <= 0 || !Number.isSafeInteger(parcelas) || parcelas < 1 || parcelas > 90)
+      return UIHelpers?.alerta?.("Informe um valor positivo e de 1 a 90 parcelas inteiras.");
+    if (!Number.isFinite(juros) || juros < 0 || juros > 1000)
+      return UIHelpers?.alerta?.("Informe uma taxa de juros válida entre 0% e 1000%.");
+    if (!["DIARIA", "SEMANAL", "QUINZENAL", "MENSAL"].includes(frequencia) ||
+        !/^\\d{4}-\\d{2}-\\d{2}$/.test(primeiraCobranca) || primeiraCobranca < hoje())
+      return UIHelpers?.alerta?.("Confira a frequência e a data da primeira cobrança.");
+    const principalCentavos = Math.round(valor * 100);
+    if (principalCentavos < 1) return UIHelpers?.alerta?.("Valor inferior a um centavo.");
+    const total = Math.round(principalCentavos * (1 + juros / 100)) / 100;
     const botao = document.getElementById("confirmarNovaVendaVendedorBtn");
     const operacaoId = "venda_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
     try {
@@ -2321,7 +2332,7 @@
         aliases: ["cliente:" + texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId)],
         botao,
         textoProcessando: "Registrando venda",
-        executar: () => window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: "NOVA", origem: "painel_unificado_vendedor" }),
+        executar: () => window.IntegroVenda.registrarVendaTransacional({ usuario: usuarioAtual || State.getUsuario?.(), clientePlataformaId: State.getTenantId?.(), caixaId: caixa.id, clienteId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteOperacionalId: texto(cliente.clienteOperacionalId || cliente.id || cliente.clienteId), clienteLegadoId: texto(cliente.clienteLegadoId || (cliente.clienteOperacionalId ? cliente.id : '')), clienteNome: texto(cliente.nomeCompleto || cliente.nome || cliente.apelido), operacaoId, valorEmprestado: valor, valorTotalVenda: total, taxaJuros: juros, quantidadeParcelas: parcelas, frequencia, primeiraCobranca, tipoVenda: clienteTemHistoricoVenda(cliente) ? "RENOVACAO" : "NOVA", origem: "painel_unificado_vendedor" }),
         renderizar: () => renderVendasDia?.(),
         rollback: () => { renderClientesVendedor?.({ forcar: true }); renderVendasDia?.(); }
       });
