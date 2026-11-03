@@ -4,6 +4,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/diagnose-clientes-tenant.yml"
+      - "scripts/diagnose-clientes-tenant-readonly.cjs"
   workflow_dispatch:
 permissions:
   contents: read
