@@ -1,0 +1,35 @@
+name: Deploy secure Clientes document rules
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/firebase-clientes-rules.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integro-clientes-security-rules
+  cancel-in-progress: false
+
+jobs:
+  validate_and_deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Validate entire application before security rules deploy
+        run: npm run verify
+      - name: Authenticate Firebase service account
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - name: Publish Firestore and Storage Rules
+        run: npx firebase deploy --only firestore:rules,storage --project integro-novo --non-interactive
