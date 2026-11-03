@@ -5,6 +5,7 @@ on:
       - main
     paths:
       - ".github/workflows/firebase-clientes-rules.yml"
+      - "scripts/deploy-clientes-rules-rest.mjs"
   workflow_dispatch:
 
 permissions:
