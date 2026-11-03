@@ -126,7 +126,14 @@
       adicionar("vendedorId", usuarioId);
     } else {
       adicionar("vendedorAuthUid", authUid);
+      adicionar("vendedorUid", authUid);
       adicionar("vendedorId", usuarioId);
+      // A conta antiga permanece identificada pelo alias legitimado em usuarios/{uid}.
+      // A autorização para leitura continua sendo decidida pelas Rules do Firestore.
+      const usuarioIdLegado = String(usuario.usuarioId || "");
+      if (usuarioIdLegado && usuarioIdLegado !== usuarioId) {
+        adicionar("vendedorId", usuarioIdLegado);
+      }
     }
 
     if (incluirLegado) {
