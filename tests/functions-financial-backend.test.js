@@ -26,6 +26,35 @@ test("backend financeiro divide 20 parcelas preservando todos os centavos", () =
   assert.equal(parcelas[19].vencimento, "2026-08-23");
 });
 
+test("backend gera parcelas mensais em meses calendário, incluindo fevereiro e ano bissexto", () => {
+  const regular = core.calcularParcelas({
+    valorTotalCentavos: 10005, quantidadeParcelas: 4, primeiraCobranca: "2026-12-31",
+    frequencia: "MENSAL", hoje: "2026-11-03"
+  });
+  assert.deepEqual(regular.map(p => p.vencimento),
+    ["2026-12-31", "2027-01-31", "2027-02-28", "2027-03-31"]);
+  assert.equal(regular.reduce((s,p) => s + p.valorParcelaCentavos,0), 10005);
+  const leap = core.calcularParcelas({
+    valorTotalCentavos: 300, quantidadeParcelas: 3, primeiraCobranca: "2027-12-31",
+    frequencia: "MENSAL", hoje: "2026-11-03"
+  });
+  assert.deepEqual(leap.map(p => p.vencimento),
+    ["2027-12-31", "2028-01-31", "2028-02-29"]);
+  assert.throws(() => core.calcularParcelas({
+    valorTotalCentavos: 300, quantidadeParcelas: 3, primeiraCobranca: "2027-02-31",
+    frequencia: "MENSAL", hoje: "2026-11-03"
+  }), /Data inválida/);
+});
+
+test("regras de backend respeitam limite de R$ 1 e mantêm saldo anterior de renovações", () => {
+  const codigo = ler("functions/financial-callables.js");
+  assert.match(codigo, /saldoClienteCentavos > 100 && !autorizacaoSaldoAtivo/);
+  assert.match(codigo, /novoSaldoClienteCentavos = saldoClienteCentavos \+ valorTotalCentavos/);
+  assert.match(codigo, /saldoDevedorCentavos: novoSaldoClienteCentavos/);
+  assert.match(codigo, /Number\.isSafeInteger\(quantidadeParcelas\)/);
+  assert.match(codigo, /\["NOVA", "RENOVACAO"\]\.includes\(tipoVenda\)/);
+});
+
 test("backend financeiro calcula pagamento e correção somente pelo delta", () => {
   const criacao = core.calcularPagamento({
     valorNovoCentavos: 100,
