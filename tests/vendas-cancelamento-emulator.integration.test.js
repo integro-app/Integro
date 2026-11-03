@@ -112,3 +112,49 @@ test("pagamento existente impede cancelamento mesmo com devolução confirmada",
     cancelPayload({vendaId:outra.vendaId}),c)),rejection("failed-precondition"));
   assert.equal((await db.collection("vendas").doc(outra.vendaId).get()).data().statusVenda,"ATIVA");
 });
+
+test("cancelamento de renovação preserva venda anterior, dívida residual e vínculo ativo",async()=>{
+  const seller=await context("vendedor.1.a");
+  const gestor=await context("master.local.a");
+  const novoCaixaId="caixa-estorno-renovacao-fase3";
+  const novoClienteId="cliente-estorno-renovacao-fase3";
+  const caixaBase=(await db.collection("caixas").doc("caixa-clientes-a1").get()).data();
+  const clienteBase=(await db.collection("clientes_operacionais").doc("cliente-vendedor-1").get()).data();
+  await db.collection("caixas").doc(novoCaixaId).set({
+    ...caixaBase,clientePlataformaId:"tenant-a",vendedorAuthUid:seller.auth.uid,
+    vendedorId:seller.auth.uid,status:"ABERTO",saldoInicialCentavos:0,saldoAtualCentavos:0
+  });
+  const clienteRef=db.collection("clientes_operacionais").doc(novoClienteId);
+  await clienteRef.set({
+    ...clienteBase,clientePlataformaId:"tenant-a",vendedorAuthUid:seller.auth.uid,
+    vendedorId:seller.auth.uid,saldoDevedorCentavos:0,saldoDevedor:0,
+    vendaComSaldoAutorizada:false,vendaComSaldoAutorizacaoCondicoes:{}
+  });
+  const antigo=await sales.registrarVenda(request("venda_antiga_fase3",{
+    caixaId:novoCaixaId,clienteId:novoClienteId,clienteOperacionalId:novoClienteId
+  }),seller);
+  assert.equal(antigo.modo,"CRIACAO");
+  assert.equal((await clienteRef.get()).data().saldoDevedorCentavos,10800);
+  await clienteRef.update({
+    vendaComSaldoAutorizada:true,vendaComSaldoAutorizadaParaUid:seller.auth.uid,
+    vendaComSaldoAutorizadaValorCentavos:principal,
+    vendaComSaldoAutorizadaAteMs:Date.now()+3600000
+  });
+  const renovacao=await sales.registrarVenda(request("renovacao_fase3",{
+    caixaId:novoCaixaId,clienteId:novoClienteId,clienteOperacionalId:novoClienteId,
+    tipoVenda:"RENOVACAO"
+  }),seller);
+  assert.equal(renovacao.modo,"CRIACAO");
+  assert.equal((await clienteRef.get()).data().saldoDevedorCentavos,21600);
+  const resultado=await cancellation.cancelar(cancelPayload({
+    vendaId:renovacao.vendaId
+  }),gestor);
+  assert.equal(resultado.saldoClienteCentavos,10800);
+  assert.equal(resultado.saldoCaixaCentavos,-principal);
+  const cliente=(await clienteRef.get()).data();
+  assert.equal(cliente.saldoDevedorCentavos,10800);
+  assert.equal(cliente.possuiVendaAtiva,true);
+  assert.equal(cliente.vendaAtivaId,antigo.vendaId);
+  assert.equal((await db.collection("vendas").doc(antigo.vendaId).get()).data().statusVenda,"ATIVA");
+  assert.equal((await db.collection("vendas").doc(renovacao.vendaId).get()).data().statusVenda,"CANCELADA");
+});
