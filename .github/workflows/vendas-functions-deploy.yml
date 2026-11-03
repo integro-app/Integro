@@ -8,7 +8,7 @@ on:
       - "functions/v27-sales-approvals.js"
       - "functions/v27-sales-cancellation.js"
       - "tests/vendas-cancelamento-emulator.integration.test.js"
-      - "tests/vendas-aprovacoes-emulator.integration.test.js tests/vendas-cancelamento-emulator.integration.test.js"
+      - "tests/vendas-aprovacoes-emulator.integration.test.js"
       - "functions/financial-core.js"
       - "tests/vendas-emulator.integration.test.js"
   workflow_dispatch:
@@ -36,7 +36,7 @@ jobs:
       - name: Verificar aplicação e regras existentes
         run: npm run verify
       - name: Confirmar a criação e renovação de vendas no emulador isolado
-        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test --test-concurrency=1 tests/vendas-emulator.integration.test.js tests/vendas-aprovacoes-emulator.integration.test.js"
+        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test --test-concurrency=1 tests/vendas-emulator.integration.test.js tests/vendas-aprovacoes-emulator.integration.test.js tests/vendas-cancelamento-emulator.integration.test.js"
       - name: Autenticar com conta de serviço já configurada
         uses: google-github-actions/auth@v2
         with:
