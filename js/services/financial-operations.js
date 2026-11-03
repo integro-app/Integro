@@ -231,13 +231,28 @@
     return 1;
   }
 
+  function adicionarMesesVendaISO(dataISO, meses) {
+    const valor = texto(dataISO).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(valor)) throw new Error("Primeira cobrança inválida.");
+    const [ano, mes, dia] = valor.split("-").map(Number);
+    const origem = new Date(Date.UTC(ano, mes - 1, dia, 12));
+    if (origem.getUTCFullYear() !== ano || origem.getUTCMonth() + 1 !== mes ||
+        origem.getUTCDate() !== dia) throw new Error("Primeira cobrança inválida.");
+    const destino = new Date(Date.UTC(ano, mes - 1 + meses, 1, 12));
+    const ultimoDia = new Date(Date.UTC(destino.getUTCFullYear(), destino.getUTCMonth() + 1, 0, 12)).getUTCDate();
+    destino.setUTCDate(Math.min(dia, ultimoDia));
+    return `${destino.getUTCFullYear()}-${String(destino.getUTCMonth() + 1).padStart(2, "0")}-${String(destino.getUTCDate()).padStart(2, "0")}`;
+  }
+
   function calcularDatasVenda(parcelas, primeiraData, frequencia) {
     const operacional = getOperacional();
     const data = texto(primeiraData).slice(0, 10);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data)) throw new Error("Primeira cobrança inválida.");
     if (data < operacional.hojeSP()) throw new Error("A primeira cobrança não pode ser retroativa.");
+    const mensal = normalizarStatus(frequencia || "DIARIA") === "MENSAL";
     const intervalo = intervaloVenda(frequencia);
     return Array.from({ length: parcelas }, (_, indice) =>
+      mensal ? adicionarMesesVendaISO(data, indice) :
       operacional.adicionarDiasSP
         ? operacional.adicionarDiasSP(data, indice * intervalo)
         : data
