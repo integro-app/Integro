@@ -116,6 +116,47 @@ test("aprovação mobile exige motivo, remove handlers inline e confere o backen
   assert.doesNotMatch(source,/onclick="IntegroV27SalesApproval\.decide/);
 });
 
+test("conciliação de venda separa conferido, divergência e consulta parcial",()=>{
+  const {context}=criarTela();
+  const venda={
+    id:"venda-1",clientePlataformaId:"tenant-a",statusVenda:"ATIVA",
+    valorEmprestadoCentavos:8000,valorTotalVendaCentavos:10000,
+    saldoDevedorCentavos:6000,totalPagoCentavos:4000,quantidadeParcelas:2
+  };
+  const parcelas=[
+    {valorParcelaCentavos:5000,valorPagoCentavos:4000,statusParcela:"PARCIAL"},
+    {valorParcelaCentavos:5000,valorPagoCentavos:0,statusParcela:"PENDENTE"}
+  ];
+  const pagamentos=[{valorCentavos:4000,status:"CONFIRMADO"}];
+  const ledger={originalId:"lf_venda_venda-1",original:{
+    clientePlataformaId:"tenant-a",origemId:"venda-1",tipoLancamento:"VENDA",
+    natureza:"DEBITO",statusLancamento:"CONFIRMADO",valorCentavos:8000
+  }};
+  const all={parcelas:true,pagamentos:true,ledger:true};
+  assert.equal(context.conciliarDetalheVenda(venda,parcelas,pagamentos,ledger,all).situacao,"CONFERIDO");
+  assert.equal(context.conciliarDetalheVenda({...venda,saldoDevedorCentavos:5000},
+    parcelas,pagamentos,ledger,all).situacao,"DIVERGÊNCIA");
+  assert.equal(context.conciliarDetalheVenda(venda,parcelas,pagamentos,ledger,
+    {...all,ledger:false}).situacao,"VERIFICAÇÃO PARCIAL");
+  assert.equal(context.conciliarDetalheVenda({...venda,statusVenda:"CANCELADA",
+    saldoDevedorCentavos:0},parcelas,[],ledger,all).situacao,"DIVERGÊNCIA");
+});
+
+test("cancelamento de venda exige gestor, devolução declarada e confirmação do servidor",()=>{
+  const {context}=criarTela();
+  const venda={id:"venda-1",statusVenda:"ATIVA",clientePlataformaId:"tenant-a"};
+  assert.equal(context.podeSolicitarCancelamentoVenda(venda),true);
+  context.State.getUsuario=()=>({cargoChave:"vendedor"});
+  assert.equal(context.podeSolicitarCancelamentoVenda(venda),false);
+  context.State.getUsuario=()=>({cargoChave:"master_local"});
+  assert.equal(context.podeSolicitarCancelamentoVenda({...venda,statusVenda:"CANCELADA"}),false);
+  const source=fs.readFileSync(path.join(__dirname,"..","js/vendas.js"),"utf8");
+  assert.match(source,/devolucaoIntegralConfirmada:true/);
+  assert.match(source,/principalDevolvidoCentavos:principal/);
+  assert.match(source,/CANCELAMENTO_INTEGRAL_VENDA_V27/);
+  assert.match(source,/resposta\?\.data\?\.ok!==true/);
+});
+
 test("Formulário do vendedor conserva operacaoId no retry e valida parcelas",()=>{
   const source=fs.readFileSync(path.join(__dirname,"..","js/vendedor-unificado.js"),"utf8");
   assert.match(source,/let vendaOperacaoPendente = null/);
