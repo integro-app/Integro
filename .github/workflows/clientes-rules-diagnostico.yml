@@ -1,0 +1,46 @@
+name: Diagnostico isolado - custo das Rules de Clientes
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/clientes-rules-diagnostico.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnostico:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - name: Criar regra de diagnostico somente no runner (nunca publicada)
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('fs');
+          let rules=fs.readFileSync('firestore.rules','utf8');
+          const a=rules.indexOf('    function canUpdateClienteOperacional(clienteId) {');
+          const b=rules.indexOf('    function clienteEventoExiste(data) {',a);
+          if(a<0||b<0)throw Error('Cannot isolate rule');
+          const diagnosis=[
+            '    function canUpdateClienteOperacional(clienteId) {',
+            '      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&',
+            '        unchanged(["clientePlataformaId","criadoEm"]) &&',
+            '        (isMasterLocal() || isVendedor());',
+            '    }',
+            ''
+          ].join('\n');
+          fs.writeFileSync('firestore.rules',rules.slice(0,a)+diagnosis+rules.slice(b));
+          console.log('ONLY LOCAL EMULATOR: temporarily replaced client update with restricted diagnostic rule; no deploy');
+          NODE
+      - name: Diagnosticar atualização simples com dados fictícios
+        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test --test-name-pattern='vendedor lista apenas' tests/clientes-emulator.integration.test.js"
