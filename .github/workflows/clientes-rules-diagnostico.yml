@@ -34,8 +34,14 @@ jobs:
           const diagnosis=[
             '    function canUpdateClienteOperacional(clienteId) {',
             '      return isActiveUser() && isSameTenantRead() && isSameTenantWrite() &&',
-            '        unchanged(["clientePlataformaId","criadoEm"]) &&',
-            '        (isMasterLocal() || isVendedor());',
+            '        unchanged(["clientePlataformaId","criadoEm"]) && (',
+            '          ((isMasterLocal() || isGerente() || isFinanceiro()) && conversaoClienteValida(clienteId)) ||',
+            '          (isSupervisor() && isTeamAllowed(resource.data) && isTeamAllowed(request.resource.data) && conversaoClienteValida(clienteId)) ||',
+            '          (isVendedor() && isOwnSellerData(resource.data) &&',
+            '            unchanged(["vendedorId","vendedorAuthUid","vendedorUid","equipeId","supervisorId","gerenteId","masterLocalId","empresaId","hierarquiaIds"]) &&',
+            '            unchanged(["saldoDevedor","saldoDevedorCentavos","possuiVendaAtiva","vendaAtivaId"]) &&',
+            '            conversaoClienteValida(clienteId))',
+            '        );',
             '    }',
             ''
           ].join('\n');
@@ -43,4 +49,4 @@ jobs:
           console.log('ONLY LOCAL EMULATOR: temporarily replaced client update with restricted diagnostic rule; no deploy');
           NODE
       - name: Diagnosticar atualização simples com dados fictícios
-        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test --test-name-pattern='vendedor lista apenas' tests/clientes-emulator.integration.test.js"
+        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test tests/clientes-emulator.integration.test.js"
