@@ -695,14 +695,15 @@
       motivo,
       observacao: texto(destino.observacao)
     });
-    await ref.set(evento);
     let equipeDados = { id: validado.equipeId };
     try {
       const equipeSnap = await db.collection("equipes").doc(validado.equipeId).get();
       if (equipeSnap.exists) equipeDados = { id: equipeSnap.id, ...equipeSnap.data() };
     } catch (_) {}
     const vinculos = montarVinculosHierarquia({ tenant: tenantUsuario(usuario), usuario, vendedor: validado.vendedor, equipe: equipeDados, atual: cliente });
-    await db.collection(COLECAO_CLIENTES).doc(clienteId).set({
+    const batch = db.batch();
+    batch.set(ref, evento);
+    batch.set(db.collection(COLECAO_CLIENTES).doc(clienteId), {
       ...vinculos,
       vendedorNome: texto(validado.vendedor.nome || validado.vendedor.email),
       statusAtendimento: "AGUARDANDO_ATENDIMENTO",
@@ -711,7 +712,15 @@
       atualizadoPor: idUsuario(usuario),
       atualizadoEm: serverTimestamp()
     }, { merge: true });
-    await registrarLog(db, tipo, usuario, { clienteId, direcionamentoId: ref.id, vendedorDestinoId: validado.vendedorId, equipeDestinoId: validado.equipeId });
+    // Evento e vínculo são uma única operação; não existe evento órfão se a gravação falhar.
+    await batch.commit();
+    try {
+      await registrarLog(db, tipo, usuario, { clienteId, direcionamentoId: ref.id,
+        vendedorDestinoId: validado.vendedorId, equipeDestinoId: validado.equipeId });
+    } catch (erro) {
+      // O direcionamento auditável em direcionamentos_clientes já foi confirmado.
+      console.warn("[ÍNTEGRO] Log complementar da transferência indisponível.", erro);
+    }
     return { id: ref.id, ...evento };
   }
 
