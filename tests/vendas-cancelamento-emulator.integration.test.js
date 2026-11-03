@@ -91,12 +91,13 @@ test("devolução integral atomiza contrato, parcelas, saldo do cliente, caixa e
   const retry=await cancellation.cancelar(cancelPayload(),manager);
   assert.equal(retry.modo,"IDEMPOTENTE");
   assert.equal((await db.collection("caixas").doc(caixaId).get()).data().saldoAtualCentavos,0);
+  const seller=await context("vendedor.1.a");
   await assert.rejects(()=>sales.registrarPagamento({
     caixaId,vendaId:saleId,parcelaId:parcelas.docs[0].id,valorCentavos:100
-  },await context("vendedor.1.a")),rejection("failed-precondition"));
+  },seller),rejection("failed-precondition"));
   await assert.rejects(()=>sales.registrarNaoPagamento({
     caixaId,vendaId:saleId,motivo:"Não pago"
-  },await context("vendedor.1.a")),rejection("failed-precondition"));
+  },seller),rejection("failed-precondition"));
 });
 
 test("pagamento existente impede cancelamento mesmo com devolução confirmada",async()=>{
