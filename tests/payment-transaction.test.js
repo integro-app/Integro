@@ -645,6 +645,29 @@ test("clique duplo ou retry com mesmo operacaoId retorna idempotente sem duplica
   assert.equal(db.listar("logs").filter(l => l.tipoAcao === "VENDA_IDEMPOTENTE").length, 1);
 });
 
+test("saldo residual de até R$ 1 não bloqueia, mas permanece contabilizado na carteira", async () => {
+  for (const residual of [1, 50, 100]) {
+    const { db, entrada } = contextoVendaTransacional();
+    db.atualizar("clientes/cliente_1", { saldoDevedorCentavos: residual });
+    const result = await registrarVendaTransacional(entrada);
+    assert.equal(result.modo, "CRIACAO");
+    assert.equal(db.ler("clientes/cliente_1").saldoDevedorCentavos, 12005 + residual);
+    assert.equal(db.ler("vendas/" + result.vendaId).saldoDevedorCentavos, 12005);
+    assert.equal(db.listar("parcelas").length, 4);
+  }
+});
+
+test("parcelamento mensal usa mês do calendário e respeita dia 31 e fevereiro", () => {
+  const parcelas = calcularParcelasVenda({
+    valorTotalCentavos: 10003, quantidadeParcelas: 4,
+    primeiraCobranca: "2026-12-31", frequencia: "MENSAL"
+  });
+  assert.deepEqual(parcelas.map(p => p.vencimento), [
+    "2026-12-31", "2027-01-31", "2027-02-28", "2027-03-31"
+  ]);
+  assert.equal(parcelas.reduce((sum,p) => sum + p.valorParcelaCentavos,0),10003);
+});
+
 test("segunda venda para cliente com saldo ativo e bloqueada sem criar parcelas", async () => {
   const { db, entrada } = contextoVendaTransacional();
   await registrarVendaTransacional(entrada);
@@ -668,7 +691,7 @@ test("cliente ativo, caixa fechado, tenant incorreto e vendedor incorreto bloque
   ), erro => erro.code === "ERRO_BLOQUEADO_CAIXA_FECHADO");
 
   const ativo = contextoVendaTransacional();
-  ativo.db.atualizar("clientes/cliente_1", { saldoDevedorCentavos: 1 });
+  ativo.db.atualizar("clientes/cliente_1", { saldoDevedorCentavos: 101 });
   await assert.rejects(
     registrarVendaTransacional(ativo.entrada),
     erro => erro.code === "ERRO_BLOQUEADO_CLIENTE_ATIVO"
