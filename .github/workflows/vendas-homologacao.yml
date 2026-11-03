@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/vendas-homologacao.yml"
       - "functions/financial-callables.js"
+      - "functions/v27-sales-approvals.js"
+      - "tests/vendas-aprovacoes-emulator.integration.test.js"
       - "functions/financial-core.js"
       - "tests/vendas-emulator.integration.test.js"
       - "scripts/seed-homologacao-clientes.js"
@@ -35,4 +37,4 @@ jobs:
       - name: Executar vendas reais somente nos emuladores
         env:
           CI: 'true'
-        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test tests/vendas-emulator.integration.test.js"
+        run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test --test-concurrency=1 tests/vendas-emulator.integration.test.js tests/vendas-aprovacoes-emulator.integration.test.js"
