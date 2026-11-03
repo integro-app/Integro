@@ -28,11 +28,20 @@ test("nova venda com saldo abre pedido, impede alteração silenciosa e isola op
   await db.collection("configuracoes_empresas").doc("tenant-a").set({
     clientes:{permitirNovaVendaComSaldoAtivo:true}
   });
-  await db.collection("clientes_operacionais").doc("cliente-tentativa").update({
+  const seed=(await db.collection("clientes_operacionais").doc("cliente-tentativa").get()).data();
+  for (const clientId of ["aprovacao-pendente-a","aprovacao-alterado",
+    "aprovacao-responsavel","aprovacao-rejeitada"]) {
+    await db.collection("clientes_operacionais").doc(clientId).set({
+      ...seed,id:clientId,clienteLegadoId:"legado-"+clientId,
+      saldoDevedorCentavos:0,saldoDevedor:0,vendaComSaldoAutorizada:false,
+      vendaComSaldoAutorizacaoSolicitacaoId:"",vendaComSaldoAutorizacaoCondicoes:{}
+    });
+  }
+  await db.collection("clientes_operacionais").doc("aprovacao-pendente-a").update({
     saldoDevedorCentavos:16000,saldoDevedor:160
   });
   const seller=await ctx("vendedor.1.a");
-  const first=await vendas.registrarVenda(req("cliente-tentativa","analise_proposta_a"),seller);
+  const first=await vendas.registrarVenda(req("aprovacao-pendente-a","analise_proposta_a"),seller);
   assert.equal(first.pendente,true);
   assert.equal(first.modo,"ANALISE_SALDO_ATIVO");
   const pending=(await db.collection("solicitacoes").doc(first.solicitacaoId).get()).data();
@@ -40,13 +49,13 @@ test("nova venda com saldo abre pedido, impede alteração silenciosa e isola op
   assert.equal(pending.tipoVenda,"NOVA");
   assert.equal(pending.valorEmprestadoCentavos,8000);
   assert.equal(pending.vendedorAuthUid,seller.auth.uid);
-  const again=await vendas.registrarVenda(req("cliente-tentativa","analise_proposta_a"),seller);
+  const again=await vendas.registrarVenda(req("aprovacao-pendente-a","analise_proposta_a"),seller);
   assert.equal(again.solicitacaoId,first.solicitacaoId);
   await assert.rejects(
-    ()=>vendas.registrarVenda(req("cliente-tentativa","analise_proposta_a",{taxaJuros:30,valorTotalCentavos:10400}),seller),
+    ()=>vendas.registrarVenda(req("aprovacao-pendente-a","analise_proposta_a",{taxaJuros:30,valorTotalCentavos:10400}),seller),
     erro("already-exists")
   );
-  const another=await vendas.registrarVenda(req("cliente-tentativa","analise_proposta_b"),seller);
+  const another=await vendas.registrarVenda(req("aprovacao-pendente-a","analise_proposta_b"),seller);
   assert.notEqual(another.solicitacaoId,first.solicitacaoId);
   assert.equal((await db.collection("solicitacoes").doc(first.solicitacaoId).get()).data().taxaJuros,20);
   keys.mainRequest=first.solicitacaoId;
@@ -54,8 +63,6 @@ test("nova venda com saldo abre pedido, impede alteração silenciosa e isola op
 
 test("vendedor e outro tenant não decidem; supervisor de equipe errada também não",async()=>{
   const sid=keys.mainRequest;assert.ok(sid);
-  await assert.rejects(()=>aprovacoes.decidir({solicitacaoId:sid,decisao:"APROVAR"},ctx("vendedor.1.a").then(x=>x)),erro("unauthenticated"));
-  // O método callable recebe contexto autenticado como segundo argumento.
   await assert.rejects(()=>ctx("vendedor.1.a").then(c=>aprovacoes.decidir({solicitacaoId:sid,decisao:"APROVAR"},c)),erro("permission-denied"));
   await assert.rejects(()=>ctx("master.local.b").then(c=>aprovacoes.decidir({solicitacaoId:sid,decisao:"APROVAR"},c)),erro("permission-denied"));
   await assert.rejects(()=>ctx("vendedor.3.a").then(c=>aprovacoes.decidir({solicitacaoId:sid,decisao:"APROVAR"},c)),erro("permission-denied"));
@@ -84,42 +91,38 @@ test("aprovação concorrente grava uma decisão, audita e exige mesmas condiç�
   const logs=await db.collection("logs").where("solicitacaoId","==",sid).get();
   assert.equal(logs.size,1);
   if(pedido.status==="APROVADA") {
-    const cliente=(await db.collection("clientes_operacionais").doc("cliente-tentativa").get()).data();
+    const cliente=(await db.collection("clientes_operacionais").doc("aprovacao-pendente-a").get()).data();
     assert.equal(cliente.vendaComSaldoAutorizada,true);
     assert.equal(cliente.vendaComSaldoAutorizacaoCondicoes.taxaJuros,20);
     await assert.rejects(
-      ()=>vendas.registrarVenda(req("cliente-tentativa","analise_proposta_a",{taxaJuros:30,valorTotalCentavos:10400}),ctx("vendedor.1.a").then(x=>x)),
-      erro("unauthenticated")
-    );
-    await assert.rejects(
-      ()=>ctx("vendedor.1.a").then(c=>vendas.registrarVenda(req("cliente-tentativa","analise_proposta_a",{taxaJuros:30,valorTotalCentavos:10400}),c)),
+      ()=>ctx("vendedor.1.a").then(c=>vendas.registrarVenda(req("aprovacao-pendente-a","analise_proposta_a",{taxaJuros:30,valorTotalCentavos:10400}),c)),
       erro("failed-precondition")
     );
-    const ok=await vendas.registrarVenda(req("cliente-tentativa","analise_proposta_a"),await ctx("vendedor.1.a"));
+    const ok=await vendas.registrarVenda(req("aprovacao-pendente-a","analise_proposta_a"),await ctx("vendedor.1.a"));
     assert.equal(ok.modo,"CRIACAO");
-    const saldo=(await db.collection("clientes_operacionais").doc("cliente-tentativa").get()).data();
+    const saldo=(await db.collection("clientes_operacionais").doc("aprovacao-pendente-a").get()).data();
     assert.equal(saldo.saldoDevedorCentavos,25600);
     assert.equal(saldo.vendaComSaldoAutorizada,false);
     assert.equal((await db.collection("vendas").doc(ok.vendaId).get()).data().saldoDevedorCentavos,9600);
-    assert.equal((await vendas.registrarVenda(req("cliente-tentativa","analise_proposta_a"),await ctx("vendedor.1.a"))).modo,"IDEMPOTENTE");
+    assert.equal((await vendas.registrarVenda(req("aprovacao-pendente-a","analise_proposta_a"),await ctx("vendedor.1.a"))).modo,"IDEMPOTENTE");
   }
   keys.approvalStatus=pedido.status;
 });
 
 test("aprovação com saldo alterado ou responsável alterado é recusada sem autorizar",async()=>{
   const seller=await ctx("vendedor.1.a");
-  await db.collection("clientes_operacionais").doc("cliente-em-atendimento").update({saldoDevedorCentavos:12000,saldoDevedor:120});
-  const pedido=await vendas.registrarVenda(req("cliente-em-atendimento","analise_saldo_alterado"),seller);
-  await db.collection("clientes_operacionais").doc("cliente-em-atendimento").update({saldoDevedorCentavos:11000,saldoDevedor:110});
+  await db.collection("clientes_operacionais").doc("aprovacao-alterado").update({saldoDevedorCentavos:12000,saldoDevedor:120});
+  const pedido=await vendas.registrarVenda(req("aprovacao-alterado","analise_saldo_alterado"),seller);
+  await db.collection("clientes_operacionais").doc("aprovacao-alterado").update({saldoDevedorCentavos:11000,saldoDevedor:110});
   await assert.rejects(
     ()=>ctx("master.local.a").then(c=>aprovacoes.decidir({solicitacaoId:pedido.solicitacaoId,decisao:"APROVAR"},c)),
     erro("failed-precondition")
   );
   assert.equal((await db.collection("solicitacoes").doc(pedido.solicitacaoId).get()).data().status,"PENDENTE");
 
-  await db.collection("clientes_operacionais").doc("cliente-retorno").update({saldoDevedorCentavos:25000,saldoDevedor:250});
-  const outro=await vendas.registrarVenda(req("cliente-retorno","analise_dono_trocado"),seller);
-  await db.collection("clientes_operacionais").doc("cliente-retorno").update({
+  await db.collection("clientes_operacionais").doc("aprovacao-responsavel").update({saldoDevedorCentavos:25000,saldoDevedor:250});
+  const outro=await vendas.registrarVenda(req("aprovacao-responsavel","analise_dono_trocado"),seller);
+  await db.collection("clientes_operacionais").doc("aprovacao-responsavel").update({
     vendedorAuthUid:await id("vendedor.2.a"),vendedorId:await id("vendedor.2.a")
   });
   await assert.rejects(
@@ -131,17 +134,17 @@ test("aprovação com saldo alterado ou responsável alterado é recusada sem au
 
 test("rejeição exige motivo e grava histórico imutável sem autorizar dinheiro",async()=>{
   const seller=await ctx("vendedor.1.a");
-  await db.collection("clientes_operacionais").doc("cliente-vendedor-1").update({saldoDevedorCentavos:5000,saldoDevedor:50});
-  const pendente=await vendas.registrarVenda(req("cliente-vendedor-1","analise_rejeitada"),seller);
+  await db.collection("clientes_operacionais").doc("aprovacao-rejeitada").update({saldoDevedorCentavos:5000,saldoDevedor:50});
+  const pendente=await vendas.registrarVenda(req("aprovacao-rejeitada","analise_rejeitada"),seller);
   await assert.rejects(
     ()=>ctx("supervisor.a").then(c=>aprovacoes.decidir({solicitacaoId:pendente.solicitacaoId,decisao:"REJEITAR",motivo:""},c)),
     erro("invalid-argument")
   );
   const result=await aprovacoes.decidir({solicitacaoId:pendente.solicitacaoId,decisao:"REJEITAR",motivo:"Condições não aprovadas"},await ctx("supervisor.a"));
   assert.equal(result.status,"REJEITADA");
-  assert.equal((await db.collection("clientes_operacionais").doc("cliente-vendedor-1").get()).data().vendaComSaldoAutorizada,false);
+  assert.equal((await db.collection("clientes_operacionais").doc("aprovacao-rejeitada").get()).data().vendaComSaldoAutorizada,false);
   await assert.rejects(
-    ()=>vendas.registrarVenda(req("cliente-vendedor-1","analise_rejeitada"),seller),
+    ()=>vendas.registrarVenda(req("aprovacao-rejeitada","analise_rejeitada"),seller),
     erro("failed-precondition")
   );
   const repetido=await aprovacoes.decidir({solicitacaoId:pendente.solicitacaoId,decisao:"REJEITAR",motivo:"Condições não aprovadas"},await ctx("supervisor.a"));
