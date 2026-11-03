@@ -335,7 +335,13 @@
   }
 
   function indicacoesSemClienteVisivel() {
-    const clientes = State.getClientes?.() || [];
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const uid = texto(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
+    const tenant = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
+    // Jamais apresentar itens em cache se a sessão ou empresa mudou.
+    if (!uid || !tenant || indicacoesCarregadasPara !== tenant + ":" + uid) return [];
+    const clientes = (State.getClientes?.() || []).filter(c =>
+      texto(c.clientePlataformaId || c.tenantId || c.empresaId) === tenant);
     const idsCliente = new Set(clientes.flatMap(c => [c.id,c.clienteOperacionalId,c.clienteLegadoId]).filter(Boolean).map(String));
     const idsIndicacao = new Set(clientes.flatMap(c => [c.indicacaoId,c.leadId]).filter(Boolean).map(String));
     const documentos = new Set(clientes.map(c=>texto(c.documentoNormalizado||c.documento||c.cpfCnpj).replace(/\D/g,"")).filter(Boolean));
@@ -361,7 +367,7 @@
   function renderLeadsRecebidosSemFicha() {
     if (clientesAbaAtual !== "leads" || !clientesPesquisaExecutada) return "";
     const extras = indicacoesSemClienteVisivel();
-    const info = indicacoesErroDeConsulta
+    const info = indicacoesErroDeConsulta && !indicacoesCarregadasPara
       ? '<p class="vendedor-clientes-aviso">Não foi possível consultar todas as indicações: ' + esc(indicacoesErroDeConsulta) + '</p>'
       : "";
     if (!extras.length) return info;
@@ -498,8 +504,9 @@
   function clientesResumoPesquisa(lista = []) {
     const status = item => statusClienteVendedor(item);
     if (clientesAbaAtual === "leads") {
+      const recebidosSemFicha = clientesPesquisaExecutada ? indicacoesSemClienteVisivel() : [];
       return { itens: [
-        { classe: "kpi-total", icone: "search", titulo: "Resultados", valor: lista.length },
+        { classe: "kpi-total", icone: "search", titulo: "Resultados", valor: lista.length + recebidosSemFicha.length },
         { classe: "kpi-leads", icone: "schedule", titulo: "Aguardando", valor: lista.filter(item => ["AGUARDANDO_ATENDIMENTO", "NOVO_LEAD"].includes(status(item))).length },
         { classe: "kpi-blue", icone: "support_agent", titulo: "Em atendimento", valor: lista.filter(item => ["EM_ATENDIMENTO", "TENTATIVA_CONTATO", "RETORNO_AGENDADO"].includes(status(item))).length },
         { classe: "kpi-inativos", icone: "task_alt", titulo: "Encerrados", valor: lista.filter(item => ["NAO_CONVERTIDO", "RECUSADO", "SEM_RETORNO", "RETORNADO_LEADS"].includes(status(item))).length }
@@ -656,7 +663,7 @@
         </div>
         ${chipsRapidosClientesVendedor()}
         <div class="vendedor-clientes-resultados">${clientesPesquisaExecutada ? (lista.length ? `${tabelaClientesVendedor(lista)}<div class="vendedor-clientes-mobile">${lista.map(cardClienteMobileVendedor).join("")}</div>` : (clientesAbaAtual === "leads" && indicacoesSemClienteVisivel().length ? "" : estadoVazio)) : estadoInicial}${renderLeadsRecebidosSemFicha()}</div>
-        <div class="vendedor-operacao-contador vendedor-clientes-contador-final">${clientesPesquisaExecutada ? `${lista.length} resultado(s) nesta visão.` : "Nenhuma pesquisa realizada."}</div>
+        <div class="vendedor-operacao-contador vendedor-clientes-contador-final">${clientesPesquisaExecutada ? `${lista.length + (clientesAbaAtual === "leads" ? indicacoesSemClienteVisivel().length : 0)} resultado(s) nesta visão.` : "Nenhuma pesquisa realizada."}</div>
         ${drawerFiltrosClientes()}
       </div>`;
     limparBlocosClientesLegadosVendedor();
