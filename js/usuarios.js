@@ -274,6 +274,10 @@ async function salvarNovoUsuario() {
     if (!nome || !email) throw new Error("Informe nome completo e e-mail.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Informe um e-mail válido.");
     if (!cargoId) throw new Error("Selecione o cargo do usuário.");
+    if (!cargosUsuarioTenant().some(c => String(c.id) === String(cargoId)))
+      throw new Error("Cargo fora da empresa selecionada.");
+    if (equipesIds.some(id => !equipesUsuarioTenant().some(e => String(e.id) === String(id))))
+      throw new Error("Equipe fora da empresa selecionada.");
     if (exigeEquipe && !equipesIds.length) throw new Error("Selecione ao menos uma equipe para este perfil.");
 
     if (botao) {
@@ -320,6 +324,7 @@ async function salvarNovoUsuario() {
 
 async function salvarEdicaoUsuario(id) {
   try {
+    if (!usuarioDoTenant(id)) throw new Error("Usuário fora da empresa selecionada.");
     const nome = UIHelpers.getInputValue("usuarioNome");
     const telefone = UIHelpers.getInputValue("usuarioTelefone");
     const tipoUsuario = UIHelpers.getInputValue("usuarioTipo");
@@ -327,11 +332,14 @@ async function salvarEdicaoUsuario(id) {
     const equipesIds = sincronizarEquipesPermitidasUsuario();
     const equipeId = equipesIds[0] || "";
     const status = UIHelpers.getInputValue("usuarioStatus");
-
-    if (!nome) {
-      UIHelpers.alerta("Informe o nome.");
-      return;
-    }
+    const exigeEquipe = ["gerente", "supervisor", "vendedor", "captador"].includes(tipoUsuario);
+    if (!nome.trim()) throw new Error("Informe o nome.");
+    if (!cargoId || !cargosUsuarioTenant().some(c => String(c.id) === String(cargoId)))
+      throw new Error("Selecione um cargo válido desta empresa.");
+    if (equipesIds.some(idEquipe => !equipesUsuarioTenant().some(e => String(e.id) === String(idEquipe))))
+      throw new Error("Equipe fora da empresa selecionada.");
+    if (exigeEquipe && !equipesIds.length)
+      throw new Error("Selecione ao menos uma equipe para este perfil.");
 
     await FirestoreService.atualizarUsuario(id, {
       nome,
@@ -366,7 +374,7 @@ async function salvarEdicaoUsuario(id) {
 
 async function alterarAcessoUsuario(id, liberar) {
   try {
-    const usuario = State.encontrarUsuarioPorId(id);
+    const usuario = usuarioDoTenant(id);
 
     if (!usuario) {
       UIHelpers.alerta("Usuário não encontrado.");
@@ -396,7 +404,7 @@ async function alterarAcessoUsuario(id, liberar) {
 
 async function excluirUsuarioLogico(id) {
   try {
-    const usuario = State.encontrarUsuarioPorId(id);
+    const usuario = usuarioDoTenant(id);
 
     if (!usuario) {
       UIHelpers.alerta("Usuário não encontrado.");
