@@ -99,11 +99,19 @@
     return `<div class="up-user-permission-grid">${MATRIZ_USUARIO.map(modulo => `<section><div class="up-user-permission-head"><strong>${escape(modulo.nome)}</strong><button type="button" onclick="IntegroUsuariosPermissoes.marcarModuloUsuario('${modulo.id}',true)">Marcar tudo</button></div><div class="up-user-permission-actions">${modulo.acoes.map(acao => `<label><input type="checkbox" data-up-user-module="${modulo.id}" data-up-user-action="${acao}" ${permissoes?.[modulo.id]?.[acao] === true ? "checked" : ""}><span>${escape(acao.replace(/_/g," "))}</span></label>`).join("")}</div></section>`).join("")}</div>`;
   }
 
-  async function abrirPermissoesUsuario(id) {
+  function usuarioNoTenant(id) {
+    const tenantId = String(global.State?.getTenantId?.() || "");
+    if (!tenantId) return null;
     const usuario = global.State?.encontrarUsuarioPorId?.(id);
-    if (!usuario) return global.UIHelpers?.alerta?.("Usuário não encontrado.");
+    return usuario && String(usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "") === tenantId
+      ? usuario : null;
+  }
+
+  async function abrirPermissoesUsuario(id) {
+    const usuario = usuarioNoTenant(id);
+    if (!usuario) return global.UIHelpers?.alerta?.("Usuário não encontrado nesta empresa.");
     const herdando = usuario.usarPermissoesPersonalizadas !== true;
-    global.abrirDrawer?.("Permissões do usuário", `<div class="usuario-form-intro"><span class="material-symbols-rounded">shield_person</span><div><strong>${escape(usuario.nome || usuario.email || "Usuário")}</strong><p>Por padrão, o usuário herda as permissões do cargo. Ative a personalização somente para exceções.</p></div></div><label class="config-switch"><input id="upPersonalizarUsuario" type="checkbox" ${herdando ? "" : "checked"} onchange="document.getElementById('upMatrizUsuario').hidden=!this.checked"><span><strong>Usar permissões personalizadas</strong><small>Quando desligado, prevalece a matriz do cargo.</small></span></label><div id="upMatrizUsuario" ${herdando ? "hidden" : ""}>${renderMatrizUsuario(permissaoUsuarioAtual(usuario))}</div><div class="drawer-actions"><button class="ghost-btn" type="button" onclick="fecharDrawer()">Cancelar</button><button class="primary-btn" type="button" onclick="IntegroUsuariosPermissoes.salvarPermissoesUsuario('${escape(id)}')">Salvar permissões</button></div>`);
+    global.abrirDrawer?.("Permissões do usuário", `<div class="usuario-form-intro"><span class="material-symbols-rounded">shield_person</span><div><strong>${escape(usuario.nome || usuario.email || "Usuário")}</strong><p>Por padrão, o usuário herda as permissões do cargo. Ative a personalização somente para exceções.</p></div></div><label class="config-switch"><input id="upPersonalizarUsuario" type="checkbox" ${herdando ? "" : "checked"} onchange="document.getElementById('upMatrizUsuario').hidden=!this.checked"><span><strong>Usar permissões personalizadas</strong><small>Quando desligado, prevalece a matriz do cargo.</small></span></label><div id="upMatrizUsuario" ${herdando ? "hidden" : ""}>${renderMatrizUsuario(permissaoUsuarioAtual(usuario))}</div><div class="drawer-actions"><button class="ghost-btn" type="button" onclick="fecharDrawer()">Cancelar</button><button class="primary-btn" type="button" data-up-save-id="${escape(id)}" onclick="IntegroUsuariosPermissoes.salvarPermissoesUsuario(this.dataset.upSaveId)">Salvar permissões</button></div>`);
   }
 
   function coletarMatrizUsuario() {
@@ -118,6 +126,8 @@
 
   async function salvarPermissoesUsuario(id) {
     try {
+      if (!usuarioNoTenant(id))
+        throw new Error("Usuário fora do escopo da empresa selecionada.");
       const personalizar = document.getElementById("upPersonalizarUsuario")?.checked === true;
       const ref = (global.db || global.firebase?.firestore?.()).collection(global.CONFIG?.COLECOES?.USUARIOS || "usuarios").doc(id);
       const dados = personalizar ? { usarPermissoesPersonalizadas:true, permissoesUsuario:coletarMatrizUsuario(), permissoesUsuarioAtualizadasEm:global.firebase.firestore.FieldValue.serverTimestamp() } : { usarPermissoesPersonalizadas:false, permissoesUsuario:global.firebase.firestore.FieldValue.delete(), permissoesUsuarioAtualizadasEm:global.firebase.firestore.FieldValue.serverTimestamp() };
