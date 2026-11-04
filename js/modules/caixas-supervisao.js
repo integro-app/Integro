@@ -85,10 +85,10 @@
   }
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
-  const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
+  const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',selected:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear(); }
+    if (key !== ui.context) { Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',selected:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear(); }
   }
   function rows() {
     if (!allowed()) return [];
@@ -152,13 +152,127 @@
     feedback.style.color = error ? '#b91c1c' : '#166534';
     feedback.textContent = ui.actionMessage;
   }
+
+  function abrirSelecionados() {
+    if(!['master_local','gerente','supervisor'].includes(access().perfil))
+      throw Error('Perfil sem permissão para abrir caixas.');
+    const equipes=rows();
+    if(!equipes.some(row=>ui.selected.has(text(row.id))))
+      throw Error('Selecione pelo menos uma equipe.');
+    if(typeof global.toggleEquipeCaixaSelecionada!=='function' || typeof global.abrirCaixaMassivo!=='function')
+      throw Error('Serviço de abertura indisponível. Atualize a página e tente novamente.');
+    // Os checkboxes do painel premium não são a seleção do painel legado.
+    // Repasse explicitamente os mesmos IDs, sem misturar equipes de outra sessão.
+    equipes.forEach(row=>global.toggleEquipeCaixaSelecionada(text(row.id),ui.selected.has(text(row.id))));
+    return global.abrirCaixaMassivo();
+  }
+
+  function incorporarCaixaFechado(box) {
+    rememberServerBox(box);
+    overview.delete(id(box));
+    if(Array.isArray(S()?.getCaixas?.()) && typeof S()?.setCaixas==='function') {
+      const atuais=S().getCaixas();
+      S().setCaixas([...atuais.filter(item=>id(item)!==id(box)),box]);
+    }
+    if(ui.history.length) ui.history=ui.history.map(item=>id(item)===id(box)?box:item);
+    global.IntegroAberturaCaixa?.incorporar?.({caixaId:id(box),caixa:box});
+  }
+
+  async function fecharSelecionados() {
+    if(!['master_local','gerente','supervisor'].includes(access().perfil))
+      throw Error('Perfil sem permissão para fechar caixas.');
+    const teams=rows().filter(row=>ui.selected.has(text(row.id)));
+    if(!teams.length) throw Error('Selecione pelo menos uma equipe.');
+    if(!global.IntegroCaixa?.prepararSnapshotFechamentoCaixa ||
+       !global.IntegroCaixa?.registrarFechamentoCaixaTransacional)
+      throw Error('Serviço transacional de fechamento indisponível.');
+    const db=global.db && typeof global.db!=='function'?global.db:global.firebase.firestore();
+    const selectedTeams=new Map(teams.map(row=>[text(row.id),row]));
+    // Inclui os caixas do servidor e os legados conhecidos. Cada documento
+    // será relido e validado antes de qualquer movimento financeiro.
+    const lists=await Promise.all(teams.map(row=>query('caixas','equipeId',text(row.id),text(row.id))));
+    const all=unique([...lists.flat(),...teams.flatMap(row=>teamBoxes(row))])
+      .filter(box=>openBox(box)&&tenantOf(box)===tenant());
+    const preparados=[],falhas=[];
+    for(const antigo of all) {
+      try {
+        const doc=await db.collection('caixas').doc(id(antigo)).get({source:'server'});
+        if(!doc.exists) throw Error('Caixa não encontrado no servidor.');
+        const box={...doc.data(),id:doc.id};
+        if(tenantOf(box)!==tenant()) throw Error('Caixa de outra empresa.');
+        const team=text(box.equipeId);
+        const row=selectedTeams.get(team) || [...selectedTeams.values()].find(r=>
+          (r.vendedores||[]).some(v=>identities(box).has(id(v)) || identities(box).has(text(v.authUid))));
+        if(!row || (team && team!==text(row.id))) throw Error('Caixa fora das equipes selecionadas.');
+        if(!openBox(box)) {incorporarCaixaFechado(box);continue;}
+        const snapshot=await global.IntegroCaixa.prepararSnapshotFechamentoCaixa({
+          caixaId:id(box),clientePlataformaId:tenant()
+        });
+        if(!Number.isSafeInteger(snapshot?.caixaFinalEsperadoCentavos))
+          throw Error('Saldo de fechamento inválido no servidor.');
+        preparados.push({box,snapshot});
+      } catch(error) {
+        falhas.push({caixaId:id(antigo),message:text(error.message||'Erro na conferência')});
+      }
+    }
+    if(!preparados.length)
+      return {fechados:0,divergentes:0,bloqueados:0,erros:falhas.length,falhas};
+    const pendencias=preparados.reduce((n,item)=>n+Math.max(0,Number(item.snapshot.pendenciasCobranca)||0),0);
+    const confirmado=global.confirm?.(
+      'Confirmar fechamento de '+preparados.length+' caixa(s)?'+
+      (pendencias?'\n'+pendencias+' cobrança(s) sem baixa serão registradas como NÃO PAGAS, sem presumir visita e sem reduzir a dívida.':'')+
+      '\nO saldo de cada caixa será conferido novamente pelo servidor.'
+    );
+    if(!confirmado)return {fechados:0,divergentes:0,cancelados:preparados.length,bloqueados:0,erros:falhas.length,falhas};
+    const motivo=pendencias?text(global.prompt?.(
+      'Justificativa obrigatória para encerrar '+pendencias+' cobrança(s) sem baixa:')||''):'';
+    if(pendencias&&!motivo)
+      return {fechados:0,divergentes:0,cancelados:preparados.length,bloqueados:0,erros:falhas.length,falhas};
+    const result={fechados:0,divergentes:0,bloqueados:0,erros:falhas.length,falhas};
+    for(const {box,snapshot} of preparados) {
+      try {
+        const resposta=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({
+          caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),
+          vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,
+          valorInformadoCentavos:snapshot.caixaFinalEsperadoCentavos,
+          justificativa:motivo,encerramentoGerencial:Number(snapshot.pendenciasCobranca)>0,
+          snapshot,origem:'supervisor_fechamento_equipe'
+        });
+        if(!['FECHADO','DIVERGENTE'].includes(upper(resposta?.statusFechamento)))
+          throw Error('Servidor não confirmou o encerramento.');
+        const doc=await db.collection('caixas').doc(id(box)).get({source:'server'});
+        if(!doc.exists)throw Error('Caixa não encontrado após fechamento.');
+        const fresh={...doc.data(),id:doc.id};
+        if(tenantOf(fresh)!==tenant()||openBox(fresh)||fresh.ativo===true||
+          !['FECHADO','DIVERGENTE'].includes(upper(fresh.status)))
+          throw Error('Caixa ainda não está fechado no servidor.');
+        incorporarCaixaFechado(fresh);
+        if(upper(fresh.status)==='DIVERGENTE')result.divergentes++;
+        else result.fechados++;
+      } catch(error) {
+        const message=text(error.message||'Fechamento não confirmado');
+        if(/pendente|pendência|permissão|permission|precondition|inconsistên|regularize/i.test(message))
+          result.bloqueados++;
+        else result.erros++;
+        result.falhas.push({caixaId:id(box),message});
+      }
+    }
+    if(result.fechados+result.divergentes>0) {
+      // A confirmação já foi lida do Firestore; a interface não pode continuar
+      // exibindo ABERTO por uma lista anterior à operação.
+      render();
+    }
+    if(!result.falhas.length) ui.selected.clear();
+    return result;
+  }
+
   function render() {
     if (!allowed()) return false;
     syncContext();const host = card();if (!host) return false;
     if (ui.detail) { renderDetail(host);return true; }
     const all = rows(), visible = all.filter(r => (!ui.team || text(r.id)===ui.team) && (!ui.search || text(r.nome).toLowerCase().includes(ui.search.toLowerCase())));
     const entries = visible.map(row => {const history=teamBoxes(row),latest=history[0],boxes=latest?history.filter(b=>boxDay(b)===boxDay(latest)):[];const models=boxes.map(b=>{const cache=overview.get(id(b)),current=JSON.stringify([b.status,b.atualizadoEm,b.saldoAtualCentavos]);return model(b,cache?.fingerprint===current?cache.data:cachedData());});return {row,latest,models,status:boxes.some(openBox)?'ABERTO':latest?(upper(latest.status)==='FECHADA'?'FECHADO':upper(latest.status)):'SEM_CAIXA'};}).filter(v=>!ui.status||v.status===ui.status);
-    const total = key => entries.reduce((n,v)=>n+v.models.reduce((n,m)=>n+num(m[key]),0),0), selected=global.CX?.selecionadas || new Set();
+    const total = key => entries.reduce((n,v)=>n+v.models.reduce((n,m)=>n+num(m[key]),0),0), selected=ui.selected;
     const selecionadasNaTela = entries.filter(v=>selected.has(text(v.row.id)));
     const caixasSelecionados = selecionadasNaTela.reduce((n,v)=>n+v.models.length,0);
     host.innerHTML = `<div data-caixas-supervisao><header class="cx-head"><div><h2>Caixas</h2><p>Situação real por equipe. Uma equipe pode ter vários caixas, um por vendedor.</p></div><button class="ghost-btn" data-cx-refresh>Atualizar</button></header><div class="cx-searchbar"><label><input data-cx-search value="${esc(ui.search)}" placeholder="Buscar equipe" aria-label="Buscar equipe"></label></div><details class="cx-filter-options" data-cx-filters ${ui.filtersOpen?'open':''}><summary>Filtros${ui.team||ui.status?' · ativos':''}<span>${esc(all.find(r=>text(r.id)===ui.team)?.nome||'Todas as equipes')} · ${esc(({ABERTO:'Aberto / reaberto',FECHADO:'Fechado',DIVERGENTE:'Divergente',SEM_CAIXA:'Sem caixa'})[ui.status]||'Todos os estados')}</span></summary><div class="cx-filters"><label>Equipe<select data-cx-team>${option('','Todas as equipes permitidas',ui.team)}${all.map(r=>option(r.id,r.nome,ui.team)).join('')}</select></label><label>Estado<select data-cx-status>${[['','Todos'],['ABERTO','Aberto / reaberto'],['FECHADO','Fechado'],['DIVERGENTE','Divergente'],['SEM_CAIXA','Sem caixa']].map(([v,l])=>option(v,l,ui.status)).join('')}</select></label><button class="ghost-btn" data-cx-clear>Limpar filtros</button></div></details><div class="cx-stats">${stat('Caixas abertos',entries.reduce((n,v)=>n+v.models.filter(m=>openBox(m.box)).length,0))}${stat('Caixa atual',cash(total('current')))}${stat('Carteira final',cash(entries.some(v=>v.models.some(m=>m.wallet==null))?null:total('wallet')),'orange')}${stat('Vendas / empréstimos',cash(total('loans')),'purple')}${stat('Recebido',cash(total('received')),'green')}</div><div class="cx-table-scroll"><table class="integro-caixas-overview"><thead><tr><th><input type="checkbox" data-cx-all aria-label="Selecionar equipes exibidas" ${entries.length&&entries.every(v=>selected.has(text(v.row.id)))?'checked':''}></th><th>Equipe / vendedor</th><th>Estado</th><th>Caixa / data</th><th>Caixa inicial</th><th>Caixa atual</th><th>Carteira final</th><th>Progresso</th><th>Última atualização</th></tr></thead><tbody>${entries.map(({row,latest,models})=>`<tr data-cx-row="${esc(row.id)}" tabindex="0" aria-label="Consultar caixas da equipe ${esc(row.nome)}"><td><input type="checkbox" data-caixas-equipe="${esc(row.id)}" aria-label="Selecionar ${esc(row.nome)}" ${selected.has(text(row.id))?'checked':''}></td><td><button class="cx-team-link" data-cx-open="${esc(row.id)}">${esc(row.nome)}</button><small>${esc((row.vendedores||[]).map(v=>v.nome||v.nomeCompleto||v.email).join(', ')||'Sem vendedor vinculado')}</small></td><td>${latest?badge({...latest,status:models.some(m=>openBox(m.box))?'ABERTO':latest.status}):badge({})}${models.length>1?`<small>${models.filter(m=>openBox(m.box)).length} aberto(s) · ${models.filter(m=>!openBox(m.box)).length} fechado(s) nesta equipe</small>`:''}</td><td data-label="Caixa / data">${latest?`<strong>${dateBR(boxDay(latest))}</strong><small>${esc(latest.numeroCaixa || latest.codigo || 'Caixa do dia')}${models.length>1?` · ${models.length} vendedores`:''}</small>`:'—'}</td>${['initial','current','wallet'].map(k=>`<td data-label="${({initial:'Caixa inicial',current:'Caixa atual',wallet:'Carteira final'})[k]}">${cash(models.reduce((n,m)=>n+num(m[k]),0))}</td>`).join('')}<td data-label="Progresso">${models.every(m=>m.progress!=null)?`<div class="cx-progress"><progress max="100" value="${Math.round(models.reduce((n,m)=>n+num(m.progress),0)/(models.length||1))}" aria-label="Progresso das cobranças"></progress><span>${Math.round(models.reduce((n,m)=>n+num(m.progress),0)/(models.length||1))}%</span></div>`:models.length?`<span class="cx-progress-empty">${models.some(m=>overview.get(id(m.box))?.error)?'Consulta indisponível':models.some(m=>!overview.has(id(m.box)))?'Consultando…':'Não registrado'}</span>`:'—'}</td><td data-label="Última atualização">${latest?dateTime(latest.atualizadoEm||latest.fechadoEm||latest.abertoEm):'—'}</td></tr>`).join('')||'<tr><td colspan="9">Nenhuma equipe encontrada para os filtros selecionados.</td></tr>'}</tbody></table></div><footer class="cx-footer"><span id="caixasSelectionCount"><strong>${selected.size} equipe(s) selecionada(s)</strong><small>${caixasSelecionados} caixa(s) listado(s) · cada caixa pertence a um vendedor. A abertura cria apenas os caixas elegíveis.</small></span><div><button id="btnAbrirCaixasSelecionadas" class="success-btn" ${selected.size?'':'disabled'}>Abrir caixas</button><button id="btnFecharCaixasSelecionadas" class="danger-btn" ${selected.size?'':'disabled'}>Fechar caixas</button></div></footer></div>`;
@@ -169,17 +283,16 @@
     host.querySelector('[data-cx-refresh]').onclick=()=>{overview.clear();global.atualizarCaixasIntegro?.();};
     host.querySelectorAll('[data-cx-open]').forEach(b=>b.onclick=()=>open(b.dataset.cxOpen));
     host.querySelectorAll('[data-cx-row]').forEach(row=>{row.onclick=e=>{if(!e.target.closest('button,input,select,a'))open(row.dataset.cxRow);};row.onkeydown=e=>{if(e.target===row&&['Enter',' '].includes(e.key)){e.preventDefault();open(row.dataset.cxRow);}};});
-    host.querySelectorAll('[data-caixas-equipe]').forEach(c=>c.onchange=e=>{global.toggleEquipeCaixaIntegro?.(c.dataset.caixasEquipe,e.target.checked);render();});
+    host.querySelectorAll('[data-caixas-equipe]').forEach(c=>c.onchange=e=>{const team=text(c.dataset.caixasEquipe);e.target.checked?ui.selected.add(team):ui.selected.delete(team);render();});
     host.querySelector('[data-cx-all]').onchange=e=>{entries.forEach(v=>e.target.checked?selected.add(text(v.row.id)):selected.delete(text(v.row.id)));render();};
-    host.querySelector('#btnAbrirCaixasSelecionadas').onclick=()=>global.abrirCaixasSelecionadasIntegro?.();
+    host.querySelector('#btnAbrirCaixasSelecionadas').onclick=()=>{try{abrirSelecionados();}catch(error){actionFeedback(error.message||'Não foi possível abrir os caixas.',true);}};
     host.querySelector('#btnFecharCaixasSelecionadas').onclick=async event=>{
       if (ui.actionBusy) return;
       const button=event.currentTarget;
       ui.actionBusy=true;button.disabled=true;
       actionFeedback('Iniciando a conferência dos caixas selecionados...');
       try {
-        if (typeof global.fecharCaixasSelecionadasIntegro!=='function') throw Error('Serviço de fechamento indisponível.');
-        const result=await global.fecharCaixasSelecionadasIntegro();
+        const result=await fecharSelecionados();
         if (!result) {actionFeedback('Fechamento cancelado ou sem caixa elegível.');return;}
         const failed=(result.falhas||[]).length + Number(result.bloqueados||0) + Number(result.erros||0);
         const success=Number(result.fechados||0) + Number(result.divergentes||0);

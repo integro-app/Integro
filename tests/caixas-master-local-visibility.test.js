@@ -96,3 +96,19 @@ test("painel local usa backend na abertura e módulo premium como renderer ofici
   assert.match(source, /id="integro-caixas-premium-bridge"/);
   assert.match(source, /IntegroCaixasSupervisao\?\.render/);
 });
+
+
+test("ações em lote da supervisão possuem handlers reais e seleção preservada",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/selected:new Set\(\)/);
+  assert.match(source,/selected=ui\.selected/);
+  assert.match(source,/function abrirSelecionados\(\)/);
+  assert.match(source,/function fecharSelecionados\(\)/);
+  assert.match(source,/const result=await fecharSelecionados\(\)/);
+  assert.match(source,/prepararSnapshotFechamentoCaixa/);
+  assert.match(source,/registrarFechamentoCaixaTransacional/);
+  assert.match(source,/get\(\{source:'server'\}\)/);
+  assert.match(source,/incorporarCaixaFechado\(fresh\)/);
+  assert.doesNotMatch(source,/global\.fecharCaixasSelecionadasIntegro/);
+  assert.doesNotMatch(source,/global\.abrirCaixasSelecionadasIntegro/);
+});
