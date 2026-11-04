@@ -6,7 +6,6 @@ on:
     paths:
       - ".github/workflows/firebase-clientes-rules.yml"
       - "scripts/deploy-clientes-rules-rest.mjs"
-      - "tests/firestore-rules.test.js"
       - "firestore.rules"
   workflow_dispatch:
 
@@ -31,7 +30,7 @@ jobs:
       - name: Validate entire application before security rules deploy
         run: npm run verify
       - name: Verify private customer document permissions with Firebase emulator
-        run: npx firebase emulators:exec --only firestore,storage --project integro-rules-test "node --test --test-name-pattern='documentos privados|revisões pagas' tests/firestore-rules.test.js"
+        run: npx firebase emulators:exec --only firestore,storage --project integro-novo "node --test --test-name-pattern='documentos privados|revisões pagas' tests/firestore-rules.test.js"
       - name: Authenticate Firebase service account
         uses: google-github-actions/auth@v2
         with:
