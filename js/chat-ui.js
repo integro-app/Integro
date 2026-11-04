@@ -12,6 +12,7 @@
     unsubMensagens: null,
     unsubPresenca: null,
     resumoIniciado: false,
+    resumoEscopo: "",
     resumoInicialRecebido: false,
     conversasNotificadas: new Set(),
     modalGrupoAberto: false,
@@ -50,19 +51,41 @@
   }
 
   function iniciarResumoConversas() {
-    if (!global.IntegroChatService || estado.unsubConversas) return;
+    const service = global.IntegroChatService;
+    if (!service) return;
+    const uid = String(service.usuarioId?.() || "");
+    const tenant = String(service.tenantAtual?.() || "");
+    // Antes da validação de login, a assinatura devolve um noop. Não
+    // registrá-lo como uma assinatura real: bloquearia o chat após login.
+    if (!uid || !tenant) return;
+    const escopo = tenant + ":" + uid;
+    if (estado.unsubConversas && estado.resumoEscopo === escopo) return;
+    if (estado.unsubConversas) {
+      try { estado.unsubConversas(); } catch (_) {}
+      estado.unsubConversas = null;
+    }
+    estado.resumoEscopo = escopo;
+    estado.resumoInicialRecebido = false;
+    estado.conversasNotificadas.clear();
+    estado.conversas = [];
+    renderConversas();
+    atualizarBadgesChat();
     try {
-      estado.unsubConversas = global.IntegroChatService.assinarConversas(lista => {
+      estado.unsubConversas = service.assinarConversas(lista => {
+        if (estado.resumoEscopo !== escopo) return;
         const anterior = new Map(estado.conversas.map(conversa => [conversa.id, naoLidasDaConversa(conversa)]));
         estado.conversas = lista;
         tratarNotificacoesUnicas(anterior);
         renderConversas();
         atualizarBadgesChat();
       }, erro => {
-        if (chatEstaAtivo() && el("chatStatus")) el("chatStatus").textContent = erro.message || "Falha ao carregar conversas.";
+        if (estado.resumoEscopo === escopo && chatEstaAtivo() && el("chatStatus"))
+          el("chatStatus").textContent = erro.message || "Falha ao carregar conversas.";
       });
       estado.resumoIniciado = true;
     } catch (erro) {
+      estado.resumoEscopo = "";
+      estado.unsubConversas = null;
       console.warn("Resumo do chat indisponível:", erro);
     }
   }
@@ -472,6 +495,13 @@
     if (estado.unsubConversas) { try { estado.unsubConversas(); } catch (_) {} }
     estado.unsubConversas = null;
     estado.resumoIniciado = false;
+    estado.resumoEscopo = "";
+    estado.resumoInicialRecebido = false;
+    estado.conversasNotificadas.clear();
+    estado.conversas = [];
+    estado.usuarios = [];
+    estado.conversaAtual = "";
+    atualizarBadgesChat();
   }
 
   global.IntegroChatUI = {
