@@ -325,9 +325,16 @@
     if (!global.firebase?.firestore) throw new Error("Firebase Firestore indisponível.");
     return global.firebase.firestore();
   }
+  function validarEmpresaDaSessao(clientePlataformaId) {
+    const atual = String(global.State?.getTenantId?.() || "");
+    if (atual && atual !== String(clientePlataformaId))
+      throw new Error("Empresa selecionada não corresponde à configuração solicitada.");
+  }
   async function carregar(clientePlataformaId) {
     if (!clientePlataformaId) throw new Error("Empresa obrigatória para carregar configurações.");
+    validarEmpresaDaSessao(clientePlataformaId);
     const snap = await firestore().collection(COLECAO).doc(String(clientePlataformaId)).get();
+    validarEmpresaDaSessao(clientePlataformaId);
     const config = normalizar(snap.exists ? snap.data() : {});
     config.clientePlataformaId = String(clientePlataformaId);
     global.configuracoesEmpresa = config;
@@ -336,6 +343,7 @@
   }
   async function salvar(clientePlataformaId, entrada, usuario = {}) {
     if (!clientePlataformaId) throw new Error("Empresa obrigatória para salvar configurações.");
+    validarEmpresaDaSessao(clientePlataformaId);
     const config = validar(entrada);
     const payload = {
       ...config,
@@ -346,6 +354,9 @@
       atualizadoEmTexto: new Date().toISOString()
     };
     await firestore().collection(COLECAO).doc(String(clientePlataformaId)).set(payload, { merge: true });
+    // O Firestore já salvou. Se a empresa mudou durante a escrita, não
+    // substituir o estado global da nova empresa pelo payload antigo.
+    validarEmpresaDaSessao(clientePlataformaId);
     global.configuracoesEmpresa = payload;
     global.configEmpresa = payload;
     return payload;
