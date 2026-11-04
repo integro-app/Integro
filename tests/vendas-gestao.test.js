@@ -62,9 +62,9 @@ test("Listagem de Vendas prioriza centavos canonicos sem perder valores legados"
   });
   context.renderVendas();
   const item=lista.innerHTML.split("Cliente Centavos")[1].split('class="item-actions"')[0];
-  assert.match(item,/Valor emprestado: R\\$ 123\\.45/);
-  assert.match(item,/Valor total: R\\$ 167\\.89/);
-  assert.match(item,/Saldo: R\\$ 98\\.76/);
+  assert.match(item,/Valor emprestado: R\$ 123\.45/);
+  assert.match(item,/Valor total: R\$ 167\.89/);
+  assert.match(item,/Saldo: R\$ 98\.76/);
   assert.match(lista.innerHTML,/Cliente A/);
   assert.doesNotMatch(lista.innerHTML,/CLIENTE SECRETO/);
 });
