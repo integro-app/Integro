@@ -87,11 +87,53 @@
     return parcelas.find(parcela => !["PAGA", "PAGO", "QUITADA", "QUITADO"].includes(normalizar(parcela.status || parcela.statusParcela))) || parcelas[0] || null;
   }
 
-  function callable() {
+  function callable(nome = "corrigirBaixaCobrancaOperacional") {
     const app = typeof global.firebase?.app === "function" ? global.firebase.app() : null;
     if (!app || typeof app.functions !== "function") throw new Error("Firebase Functions indisponível.");
-    return app.functions("southamerica-east1").httpsCallable("corrigirBaixaCobrancaOperacional");
+    return app.functions("southamerica-east1").httpsCallable(nome);
   }
+  function restanteParcelaCentavos(parcela = {}, item = {}) {
+    const previsto = Number.isSafeInteger(parcela.valorCentavos) ? parcela.valorCentavos :
+      Math.round(Number(parcela.valor || parcela.valorParcela || item.valorParcela || 0) * 100);
+    const recebido = Number.isSafeInteger(parcela.valorPagoCentavos) ? parcela.valorPagoCentavos :
+      Math.round(Number(parcela.valorPago || 0) * 100);
+    return Math.max(0, previsto - recebido);
+  }
+
+  function normalizarBaixaSimples(resposta, item, parcela, valorCentavos) {
+    const pagoParcela = Number(resposta.valorPagoParcelaCentavos);
+    const pagoAnterior = Number.isSafeInteger(parcela.valorPagoCentavos) ?
+      parcela.valorPagoCentavos : Math.round(Number(parcela.valorPago || 0) * 100);
+    const previsto = restanteParcelaCentavos(parcela, item) + pagoAnterior;
+    const totalAnterior = Number.isSafeInteger(item.venda?.totalPagoCentavos) ?
+      item.venda.totalPagoCentavos : Math.round(Number(item.venda?.totalPago || 0) * 100);
+    const alocacao = {
+      parcelaId: texto(parcela.id || parcela.parcelaId),
+      pagamentoId: texto(resposta.pagamentoId),
+      valorCentavos,
+      novoValorPagoParcelaCentavos: pagoParcela,
+      saldoParcelaCentavos: Math.max(0, previsto - pagoParcela),
+      statusParcela: resposta.statusParcela
+    };
+    const parcelas = (item.parcelas || []).map(p =>
+      texto(p.id || p.parcelaId) === alocacao.parcelaId ?
+        { ...p, valorPagoCentavos: pagoParcela, statusParcela: resposta.statusParcela } : p
+    );
+    const pagas = parcelas.filter(p => {
+      const esperado = Number.isSafeInteger(p.valorCentavos) ? p.valorCentavos :
+        Math.round(Number(p.valor || p.valorParcela || 0) * 100);
+      const recebido = Number.isSafeInteger(p.valorPagoCentavos) ? p.valorPagoCentavos :
+        Math.round(Number(p.valorPago || 0) * 100);
+      return esperado > 0 && recebido >= esperado;
+    }).length;
+    return { ...resposta, acao: "PAGAMENTO", clienteId: texto(item.clienteId),
+      valorNovoCentavos: valorCentavos,
+      totalPagoVendaCentavos: totalAnterior + Number(resposta.deltaCentavos || 0),
+      parcelasPagas: pagas, parcelasPendentes: Math.max(0, parcelas.length - pagas),
+      alocacoes: [alocacao] };
+  }
+
+
 
   function notificar(mensagem) {
     if (global.UIHelpers?.alerta) return global.UIHelpers.alerta(mensagem);
@@ -135,7 +177,7 @@
         data: dataCaixa(caixa),
         dataOperacional: dataCaixa(caixa),
         atualizadoEmTexto: agora,
-        __integroOtimista: true
+        __integroOtimista: false
       };
       if (indice >= 0) pagamentos[indice] = { ...pagamentos[indice], ...payload };
       else pagamentos.push(payload);
@@ -236,11 +278,8 @@
     atualizarVendaClienteCaixa(item, caixa, resultado);
     if (normalizar(resultado.acao) !== "NAO_PAGAMENTO") atualizarHistoricoPagamento(item, caixa);
     global.renderCobrancas?.();
-    setTimeout(() => {
-      global.renderCobrancas?.();
-      global.atualizarEstadoBotaoFechamento?.();
-      global.IntegroVendedorCobrancaCorrecoes?.corrigirBotoesCobranca?.();
-    }, 60);
+    global.atualizarEstadoBotaoFechamento?.();
+    global.IntegroVendedorCobrancaCorrecoes?.corrigirBotoesCobranca?.();
   }
 
   async function confirmarPagamento(vendaId) {
@@ -259,19 +298,39 @@
       return notificar(`O pagamento não pode ultrapassar o saldo devedor de ${reais(saldoAntesDoPagamentoCentavos).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}.`);
     }
     const botao = global.document?.getElementById("vendedorPagamentoConfirmar");
-    if (botao) botao.disabled = true;
+    if (botao?.disabled) return;
+    const rotuloAnterior = botao?.textContent;
+    if (botao) {
+      botao.disabled = true;
+      botao.textContent = "Confirmando pagamento…";
+    }
     try {
-      const resposta = await callable()({
-        acao: "PAGAMENTO",
-        caixaId: texto(caixa.id || caixa.caixaId),
-        vendaId: texto(item.vendaId),
-        parcelaId: texto(parcela.id || parcela.parcelaId),
-        clienteId: texto(item.clienteId),
-        valorCentavos,
-        motivo: item.naoPagoHoje ? "Correção de não pagamento para pagamento antes do fechamento" : "Ajuste de pagamento antes do fechamento",
-        origem: "painel_unificado_vendedor"
-      });
-      const resultado = resposta?.data || {};
+      // Baixas comuns passam pela transação oficial existente. Correção e
+      // distribuição em múltiplas parcelas continuam no fluxo específico.
+      const primeiroRecebimento = !item.pagoHoje && !item.naoPagoHoje &&
+        pagamentosDaVendaNoCaixa(vendaId, caixa).length === 0 &&
+        valorCentavos <= restanteParcelaCentavos(parcela, item);
+      const caixaId = texto(caixa.id || caixa.caixaId);
+      const resposta = primeiroRecebimento
+        ? await callable("registrarPagamentoOperacional")({ entrada: {
+          caixaId, vendaId: texto(item.vendaId),
+          parcelaId: texto(parcela.id || parcela.parcelaId),
+          clienteId: texto(item.clienteId), valorCentavos,
+          origem: "painel_unificado_vendedor"
+        } })
+        : await callable()({
+          acao: "PAGAMENTO", caixaId, vendaId: texto(item.vendaId),
+          parcelaId: texto(parcela.id || parcela.parcelaId),
+          clienteId: texto(item.clienteId), valorCentavos,
+          motivo: item.naoPagoHoje
+            ? "Correção de não pagamento para pagamento antes do fechamento"
+            : "Ajuste de pagamento antes do fechamento",
+          origem: "painel_unificado_vendedor"
+        });
+      if (resposta?.data?.ok !== true) throw new Error("Servidor não confirmou o pagamento.");
+      const resultado = primeiroRecebimento
+        ? normalizarBaixaSimples(resposta.data, item, parcela, valorCentavos)
+        : resposta.data;
       global.fecharModalVendedorOperacao?.();
       aplicarResultado(item, caixa, resultado);
       const qtd = (resultado.alocacoes || []).filter(alocacao => Number(alocacao.valorCentavos || 0) > 0).length;
@@ -280,7 +339,10 @@
       console.error("[ÍNTEGRO] Falha ao registrar pagamento flexível.", erro);
       notificar(erro?.message || "Não foi possível salvar o pagamento.");
     } finally {
-      if (botao) botao.disabled = false;
+      if (botao) {
+        botao.disabled = false;
+        if (rotuloAnterior !== undefined) botao.textContent = rotuloAnterior;
+      }
     }
   }
 

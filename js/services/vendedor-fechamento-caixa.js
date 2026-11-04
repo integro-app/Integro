@@ -602,7 +602,7 @@
       setTimeout(atualizarBotaoFechamento, 0);
       setTimeout(atualizarBotaoFechamento, 350);
     });
-    ["integro-perfil-dados-carregados", "integro-operacoes-tempo-real-atualizadas", "integro-tela-alterada", "integro-vendedor-operacao-sync"].forEach(nome => {
+    ["integro-perfil-dados-carregados", "integro-operacoes-tempo-real-atualizadas", "integro-tela-alterada", "integro-vendedor-operacao-sync", "integro-vendedor-baixa-confirmada"].forEach(nome => {
       document.addEventListener(nome, () => setTimeout(atualizarBotaoFechamento, 0));
     });
     setTimeout(atualizarBotaoFechamento, 0);

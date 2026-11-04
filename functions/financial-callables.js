@@ -75,7 +75,8 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
 
   function validarCaixa(caixa, tenantId, uid, usuario) {
     validarTenant(caixa, tenantId, "Caixa");
-    if (core.normalizarStatus(caixa.status) !== "ABERTO") erro("failed-precondition", "O caixa está fechado.");
+    if (!["ABERTO", "REABERTO"].includes(core.normalizarStatus(caixa.status)))
+      erro("failed-precondition", "O caixa está fechado.");
     if (!pertenceAoUsuario(caixa, uid, usuario)) erro("permission-denied", "Caixa não pertence ao vendedor autenticado.");
   }
 

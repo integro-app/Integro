@@ -77,6 +77,9 @@
     if (!botao) return;
     const caixa = caixaAtual();
     const rota = estadoRota(carteiraAtual(caixa));
+    // O fechamento tem um único responsável por habilitar/desabilitar a ação.
+    const oficial = global.IntegroVendedorFechamentoCaixa?.atualizarBotaoFechamento;
+    if (typeof oficial === "function") return oficial();
     const sincronizando = operacoesSincronizando();
     const bloqueado = !caixa || rota.pendentes > 0 || sincronizando > 0;
     botao.disabled = bloqueado;
@@ -120,10 +123,10 @@
     return carteiraAtual().find(item => texto(item.vendaId) === texto(vendaId)) || null;
   }
 
-  function callable() {
+  function callable(nome = "corrigirBaixaCobrancaOperacional") {
     const app = typeof global.firebase?.app === "function" ? global.firebase.app() : null;
     if (!app || typeof app.functions !== "function") throw new Error("Firebase Functions indisponível.");
-    return app.functions("southamerica-east1").httpsCallable("corrigirBaixaCobrancaOperacional");
+    return app.functions("southamerica-east1").httpsCallable(nome);
   }
 
   function notificar(mensagem) {
@@ -169,7 +172,7 @@
         status: "CONFIRMADO",
         dataOperacional: dataCaixa(caixa),
         atualizadoEmTexto: agora,
-        __integroOtimista: true
+        __integroOtimista: false
       };
       if (indice >= 0) pagamentos[indice] = { ...pagamentos[indice], ...payload };
       else pagamentos.push(payload);
@@ -192,7 +195,7 @@
         observacao,
         dataOperacional: dataCaixa(caixa),
         atualizadoEmTexto: agora,
-        __integroOtimista: true
+        __integroOtimista: false
       };
       if (indice >= 0) historicos[indice] = { ...historicos[indice], ...payload, cancelado: false };
       else historicos.push(payload);
@@ -204,11 +207,8 @@
     global.historicoCobrancasCache = historicos;
     if (acao === "NAO_PAGAMENTO" && resultado.alocacoes) global.IntegroVendedorPagamentoFlexivel?.aplicarResultado?.(item, caixa, resultado);
     global.renderCobrancas?.();
-    setTimeout(() => {
-      global.renderCobrancas?.();
-      atualizarFechamento();
-      corrigirBotoesCobranca();
-    }, 80);
+    atualizarFechamento();
+    corrigirBotoesCobranca();
   }
 
   async function confirmarPagamento(vendaId) {
@@ -299,26 +299,38 @@
     const observacao = texto(document.getElementById("integroCorrecaoObservacao")?.value || "");
     if (!motivo) return notificar("Informe o motivo do não pagamento.");
     const botao = document.getElementById("integroCorrecaoConfirmar");
-    if (botao) botao.disabled = true;
+    if (botao?.disabled) return;
+    const rotuloAnterior = botao?.textContent;
+    if (botao) {
+      botao.disabled = true;
+      botao.textContent = "Confirmando baixa…";
+    }
     try {
-      const resposta = await callable()({
-        acao: "NAO_PAGAMENTO",
+      const novaBaixa = !item.pagoHoje && !item.naoPagoHoje;
+      const payload = {
         caixaId: texto(caixa.id || caixa.caixaId),
         vendaId: texto(item.vendaId),
         parcelaId: texto(parcela?.id || parcela?.parcelaId),
         clienteId: texto(item.clienteId),
-        motivo,
-        observacao,
-        origem: "painel_unificado_vendedor"
-      });
+        motivo, observacao, origem: "painel_unificado_vendedor"
+      };
+      const resposta = novaBaixa
+        ? await callable("registrarNaoPagamentoOperacional")({ entrada: {
+          ...payload, dataOperacional: dataCaixa(caixa)
+        } })
+        : await callable()({ ...payload, acao: "NAO_PAGAMENTO" });
+      if (resposta?.data?.ok !== true) throw new Error("Servidor não confirmou o não pagamento.");
       removerDialogo();
-      atualizarCachesAposResultado(item, caixa, resposta?.data || {}, "NAO_PAGAMENTO", 0, motivo, observacao);
+      atualizarCachesAposResultado(item, caixa, resposta.data, "NAO_PAGAMENTO", 0, motivo, observacao);
       notificar(item.pagoHoje ? "Pagamento cancelado e baixa alterada para não pagamento." : (item.naoPagoHoje ? "Não pagamento atualizado." : "Não pagamento registrado."));
     } catch (erro) {
       console.error("[ÍNTEGRO] Falha ao corrigir não pagamento.", erro);
       notificar(erro?.message || "Não foi possível salvar o não pagamento.");
     } finally {
-      if (botao) botao.disabled = false;
+      if (botao) {
+        botao.disabled = false;
+        if (rotuloAnterior !== undefined) botao.textContent = rotuloAnterior;
+      }
     }
   }
 
@@ -366,7 +378,8 @@
     global.abrirNaoPagamentoVenda = abrirNaoPagamento;
     global.registrarNaoPagamentoVenda = abrirNaoPagamento;
     global.confirmarNaoPagamentoVendedorUnificado = salvarNaoPagamento;
-    global.atualizarEstadoBotaoFechamento = atualizarFechamento;
+    global.atualizarEstadoBotaoFechamento = () =>
+      (global.IntegroVendedorFechamentoCaixa?.atualizarBotaoFechamento || atualizarFechamento)();
   }
 
   function install() {

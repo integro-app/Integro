@@ -5,6 +5,9 @@ on:
     paths:
       - ".github/workflows/vendas-functions-deploy.yml"
       - "functions/financial-callables.js"
+      - "js/services/vendedor-pagamento-flexivel.js"
+      - "js/services/vendedor-cobranca-correcoes.js"
+      - "js/services/vendedor-fechamento-caixa.js"
       - "functions/v27-sales-approvals.js"
       - "functions/v27-sales-cancellation.js"
       - "tests/vendas-cancelamento-emulator.integration.test.js"
@@ -42,4 +45,4 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
       - name: Atualizar somente o endpoint já existente de Vendas
-        run: npx firebase deploy --only functions:registrarVendaOperacional,functions:decidirVendaComSaldoV27 --project integro-novo --non-interactive
+        run: npx firebase deploy --only functions:registrarVendaOperacional,functions:registrarPagamentoOperacional,functions:registrarNaoPagamentoOperacional,functions:decidirVendaComSaldoV27 --project integro-novo --non-interactive

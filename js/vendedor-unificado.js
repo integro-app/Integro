@@ -63,6 +63,8 @@
     const contador = status.toLowerCase();
     if (metricasVendedorV273.operacoes[contador] !== undefined) metricasVendedorV273.operacoes[contador]++;
     window.dispatchEvent?.(new CustomEvent("integro-vendedor-operacao-sync", { detail: registro }));
+    // O fechamento observa o document, não apenas o window.
+    document.dispatchEvent?.(new CustomEvent("integro-vendedor-operacao-sync", { detail: registro }));
     return registro;
   }
 

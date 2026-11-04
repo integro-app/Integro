@@ -321,3 +321,25 @@ test("card de cobrança exibe estado de sincronização da baixa", () => {
   assert.match(operacao, /sync-failed/);
   assert.match(operacao, /vendedor-sync-badge/);
 });
+
+test("baixa nova usa funções financeiras existentes e liberação de caixa compartilha controle",()=>{
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const flex = fs.readFileSync(path.join(root,"js/services/vendedor-pagamento-flexivel.js"),"utf8");
+  const cor = fs.readFileSync(path.join(root,"js/services/vendedor-cobranca-correcoes.js"),"utf8");
+  const close = fs.readFileSync(path.join(root,"js/services/vendedor-fechamento-caixa.js"),"utf8");
+  const backend = fs.readFileSync(path.join(root,"functions/financial-callables.js"),"utf8");
+  assert.match(flex,/registrarPagamentoOperacional/);
+  assert.match(flex,/primeiroRecebimento/);
+  assert.match(flex,/normalizarBaixaSimples/);
+  assert.match(cor,/registrarNaoPagamentoOperacional/);
+  assert.match(cor,/novaBaixa = !item.pagoHoje && !item.naoPagoHoje/);
+  assert.match(flex,/resposta\?\.data\?\.ok !== true/);
+  assert.match(cor,/resposta\?\.data\?\.ok !== true/);
+  assert.match(cor,/IntegroVendedorFechamentoCaixa\?\.atualizarBotaoFechamento/);
+  assert.match(close,/integro-vendedor-baixa-confirmada/);
+  assert.match(unificado,/document\.dispatchEvent\?\.\(new CustomEvent\("integro-vendedor-operacao-sync"/);
+  assert.match(backend,/\["ABERTO", "REABERTO"\]\.includes\(core\.normalizarStatus\(caixa\.status\)\)/);
+  assert.doesNotMatch(flex,/setTimeout\(\(\) => \{\s*global\.renderCobrancas/);
+  assert.doesNotMatch(cor,/setTimeout\(\(\) => \{\s*global\.renderCobrancas/);
+});
