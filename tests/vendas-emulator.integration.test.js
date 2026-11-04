@@ -183,3 +183,38 @@ test("botões de correção de pagamento e não pagamento preservam dados ao rel
   const depois=(await db.collection("historicoCobrancas").where("caixaId","==",boxId).get()).docs;
   assert.ok(depois.every(d=>d.data().status==="CANCELADO"));
 });
+
+
+test("fechamento do vendedor usa baixas persistidas, confere saldo e grava status FECHADO",async()=>{
+  const {criarCicloCaixa}=require("../functions/box-lifecycle");
+  const lifecycle=criarCicloCaixa({db,functions:{https:{HttpsError}}});
+  const seller=await uid(),contexto={auth:{uid:seller}};
+  const boxId="caixa-correcao-e2e";
+  const boxRef=db.collection("caixas").doc(boxId);
+  const box=(await boxRef.get()).data();
+  assert.ok(box&&box.status==="ABERTO","caixa de integração permanece aberto até fechamento");
+  const ultimoSaldo=box.saldoAtualCentavos;
+  const conferencia=await lifecycle.conferir({caixaId:boxId},contexto);
+  assert.equal(conferencia.caixa.id,boxId);
+  assert.equal(conferencia.pendenciasCobranca,0,
+    "baixas pagas e nao pagas do caixa precisam ser reconhecidas pelo servidor");
+  assert.equal(conferencia.pagamentosPendentes,0);
+  assert.equal(conferencia.aprovacoesPendentes,0);
+  assert.deepEqual(conferencia.inconsistencias,[],
+    "não deve haver divergência financeira após baixas transacionais");
+  assert.equal(conferencia.caixaFinalEsperadoCentavos,ultimoSaldo);
+  assert.ok(conferencia.conferenciaId);
+  const finalizado=await lifecycle.fechar({
+    caixaId:boxId,conferenciaId:conferencia.conferenciaId,
+    valorInformadoCentavos:ultimoSaldo,encerramentoGerencial:false
+  },contexto);
+  assert.equal(finalizado.statusFechamento,"FECHADO");
+  assert.equal((await boxRef.get()).data().status,"FECHADO");
+  const registro=await db.collection("fechamentos_caixa").doc("fechamento_"+boxId).get();
+  assert.equal(registro.exists,true);
+  assert.equal(registro.data().statusFechamento,"FECHADO");
+  await assert.rejects(()=>lifecycle.fechar({
+    caixaId:boxId,conferenciaId:conferencia.conferenciaId,
+    valorInformadoCentavos:ultimoSaldo+1,encerramentoGerencial:false
+  },contexto),err=>err.code==="failed-precondition");
+});
