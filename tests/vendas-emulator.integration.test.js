@@ -229,3 +229,54 @@ test("fechamento do vendedor usa baixas persistidas, confere saldo e grava statu
     valorInformadoCentavos:ultimoSaldo+1,encerramentoGerencial:false
   },contexto),err=>err.code==="failed-precondition");
 });
+
+
+test("supervisor fecha caixa com baixa gerencial não paga, preserva saldo e reabre sem fingir visita",async()=>{
+  const {criarCicloCaixa}=require("../functions/box-lifecycle");
+  const ciclo=criarCicloCaixa({db,functions:{https:{HttpsError}}});
+  const supervisor=(await admin.auth().getUserByEmail("supervisor.a@homologacao.integro.test")).uid;
+  const vendedor=(await admin.auth().getUserByEmail("vendedor.2.a@homologacao.integro.test")).uid;
+  const contexto={auth:{uid:supervisor}},caixaId="caixa-clientes-a2",vendaId="venda-supervisor-sem-baixa";
+  const refCaixa=db.collection("caixas").doc(caixaId);
+  const dia=core.hojeSP();
+  await refCaixa.update({
+    dataOperacional:dia,dataCaixa:dia,status:"ABERTO",ativo:true,
+    saldoInicialCentavos:0,saldoAtualCentavos:0,saldoInicial:0,saldoAtual:0,
+    valorAtual:0,caixaAtual:0
+  });
+  await db.collection("vendas").doc(vendaId).set({
+    clientePlataformaId:"tenant-a",clienteId:"cliente-vendedor-2",
+    clienteNome:"Cliente Vendedor Dois",vendedorId:vendedor,vendedorAuthUid:vendedor,
+    equipeId:"equipe-a1",caixaId:"caixa-venda-anterior",
+    dataPrimeiraCobranca:dia,valorParcelaCentavos:1500,
+    saldoDevedorCentavos:4500,status:"ATIVA",tipoVenda:"NOVA"
+  });
+  const conferencia=await ciclo.conferir({caixaId},contexto);
+  assert.equal(conferencia.pendenciasCobranca,1);
+  assert.deepEqual(conferencia.pendenciasVendasIds,[vendaId]);
+  assert.deepEqual(conferencia.inconsistencias,[]);
+  const entrada={
+    caixaId,conferenciaId:conferencia.conferenciaId,
+    valorInformadoCentavos:0,encerramentoGerencial:true,
+    justificativa:"Encerramento de rota autorizado pelo supervisor"
+  };
+  await assert.rejects(
+    ()=>ciclo.fechar({...entrada,encerramentoGerencial:false},contexto),
+    falhaCodigo("failed-precondition")
+  );
+  const fechado=await ciclo.fechar(entrada,contexto);
+  assert.equal(fechado.statusFechamento,"FECHADO");
+  assert.equal(fechado.quantidadeBaixasGerenciais,1);
+  assert.equal((await refCaixa.get()).data().status,"FECHADO");
+  assert.equal((await refCaixa.get()).data().ativo,false);
+  const historico=await db.collection("historicoCobrancas").where("caixaId","==",caixaId).get();
+  const gerencial=historico.docs.find(d=>d.data().vendaId===vendaId&&d.data().semBaixaGerencial===true);
+  assert.ok(gerencial,"a baixa não paga automática deve estar gravada");
+  assert.equal(gerencial.data().status,"REGISTRADO");
+  assert.equal(gerencial.data().visitaRealizada,false);
+  assert.equal((await db.collection("vendas").doc(vendaId).get()).data().saldoDevedorCentavos,4500);
+  assert.equal((await db.collection("pagamentos").where("caixaId","==",caixaId).get()).size,0);
+  const fechamento=(await db.collection("fechamentos_caixa").doc("fechamento_"+caixaId).get()).data();
+  assert.equal(fechamento.quantidadeBaixasGerenciais,1);
+  assert.equal(fechamento.statusFechamento,"FECHADO");
+});
