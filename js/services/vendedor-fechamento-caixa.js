@@ -11,6 +11,7 @@
 
   let instalado = false;
   let fechamentoEmAndamento = false;
+  let preparandoFechamento = false;
   let acessoEmVerificacao = false;
   let observer = null;
   let limparViewportDialogo = null;
@@ -468,23 +469,45 @@
 
   async function abrirResumoFechamento() {
     if (!ehVendedor()) return notificar("Este fechamento é exclusivo do perfil vendedor.");
-    if (fechamentoEmAndamento) return;
-    const caixa = caixaAbertoLocal();
-    if (!caixa) return notificar("Nenhum caixa aberto foi localizado. Um responsável precisa abrir ou reabrir seu caixa.");
-    const operacoes = operacoesAindaSincronizando();
-    if (operacoes > 0) return notificar("Aguarde a sincronização das operações pendentes antes de fechar o caixa.");
-    const pendentes = cobrancasPendentesHoje();
-    if (pendentes > 0) return notificar(`Fechamento bloqueado. Ainda existem ${pendentes} cobrança(s) sem baixa na rota.`);
-
-    let dialog = criarDialogo(`<div class="integro-encerramento"><div class="spinner"></div><h2>Preparando fechamento</h2><p>Sincronizando o caixa antes da conferência.</p></div>`);
+    if (fechamentoEmAndamento || preparandoFechamento) return;
+    preparandoFechamento = true;
     try {
-      await sincronizarAntesDoFechamento(caixa);
-      const snapshot = await prepararSnapshot(caixa);
-      if (inteiro(snapshot.pendenciasCobranca) > 0) {
-        removerDialogo();
-        atualizarBotaoFechamento();
-        return notificar(`Fechamento bloqueado. Ainda existem ${inteiro(snapshot.pendenciasCobranca)} cobrança(s) sem situação registrada.`);
+      let caixa = caixaAbertoLocal();
+      // O cache do perfil pode não ter o caixa que segue aberto no Firebase.
+      // Neste caso, conferir o dado oficial em vez de deixar o botão inerte.
+      if (!caixa) {
+        const persistido = await localizarCaixaAbertoPersistido();
+        if (persistido.permitido !== true || !persistido.caixa)
+          return notificar("Não foi possível confirmar um caixa aberto no servidor. Consulte o responsável pelo caixa.");
+        caixa = persistido.caixa;
+        global.caixaAtual = caixa;
+        const existentes = global.State?.getCaixas?.() || [];
+        global.State?.setCaixas?.([caixa, ...existentes.filter(item =>
+          texto(item.id || item.caixaId) !== texto(caixa.id))]);
       }
+      if (operacoesAindaSincronizando() > 0)
+        return notificar("Existem baixas em processamento. Confirme a sincronização antes de encerrar o caixa.");
+
+      // A contagem local pode estar desatualizada. Ela nunca substitui
+      // a conferência do backend, que é obrigatória antes do fechamento.
+      const dialog = criarDialogo(`<div class="integro-encerramento"><div class="spinner"></div><h2>Preparando fechamento</h2><p>Conferindo as baixas diretamente no servidor.</p></div>`);
+      try {
+        await sincronizarAntesDoFechamento(caixa);
+        const snapshot = await prepararSnapshot(caixa);
+        if (inteiro(snapshot.pendenciasCobranca) > 0) {
+          const faltantes = (snapshot.pendenciasCobrancas || [])
+            .slice(0, 5).map(item => texto(item.clienteNome || item.vendaId)).filter(Boolean);
+          removerDialogo();
+          return notificar(`Fechamento bloqueado pelo servidor: ${inteiro(snapshot.pendenciasCobranca)} cobrança(s) sem baixa.` +
+            (faltantes.length ? ` Pendências: ${faltantes.join(", ")}.` : ""));
+        }
+        if (inteiro(snapshot.pagamentosPendentes) > 0)
+          throw new Error("Existem pagamentos pendentes de confirmação no servidor.");
+        if (inteiro(snapshot.aprovacoesPendentes) > 0)
+          throw new Error("Existem aprovações pendentes que impedem o fechamento.");
+        if (Array.isArray(snapshot.inconsistencias) && snapshot.inconsistencias.length > 0)
+          throw new Error("Conferência financeira pendente: " + snapshot.inconsistencias.slice(0, 4).join(", ") + ".");
+
       dialog.innerHTML = htmlResumo(snapshot, caixa);
       const input = dialog.querySelector("#integroFechamentoValorInformado");
       const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
@@ -505,6 +528,10 @@
       removerDialogo();
       console.error("[ÍNTEGRO] Não foi possível preparar o fechamento.", erro);
       notificar(erro?.message || "Não foi possível preparar o fechamento do caixa.");
+      }
+    } finally {
+      preparandoFechamento = false;
+      atualizarBotaoFechamento();
     }
   }
 
@@ -516,15 +543,20 @@
     const caixa = caixaAbertoLocal();
     const pendentes = cobrancasPendentesHoje();
     const sincronizando = operacoesAindaSincronizando();
-    const bloqueado = fechamentoEmAndamento || !caixa || pendentes > 0 || sincronizando > 0;
+    // O botão abre a CONFERÊNCIA, não fecha o caixa diretamente. Não pode
+    // ficar desabilitado devido a dados locais desatualizados. As travas
+    // de pagamentos, pendências e divergências estão no backend transacional.
+    const bloqueado = fechamentoEmAndamento || preparandoFechamento;
     if (botao.disabled !== bloqueado) botao.disabled = bloqueado;
-    if (botao.dataset.integroFechamentoVendedor !== "dupla-confirmacao") botao.dataset.integroFechamentoVendedor = "dupla-confirmacao";
+    if (botao.dataset.integroFechamentoVendedor !== "conferencia-servidor")
+      botao.dataset.integroFechamentoVendedor = "conferencia-servidor";
     if (botao.getAttribute("aria-disabled") !== String(bloqueado)) botao.setAttribute("aria-disabled", String(bloqueado));
+    botao.title = bloqueado ? "Conferência em andamento" : "Conferir baixas e fechar caixa com validação no servidor";
     if (status) {
-      const mensagem = !caixa ? "Caixa fechado. Um responsável precisa abrir ou reabrir o caixa."
-        : sincronizando > 0 ? "Aguarde a sincronização das operações antes de fechar."
-        : pendentes > 0 ? `Fechamento bloqueado: ${pendentes} cobrança(s) ainda sem baixa.`
-        : "Rota concluída. Fechamento liberado com dupla conferência.";
+      const mensagem = !caixa ? "Caixa não localizado nesta tela. Toque em Fechar caixa para verificar no servidor."
+        : sincronizando > 0 ? "Existem operações em processamento. Aguarde a confirmação para fechar."
+        : pendentes > 0 ? `A tela indica ${pendentes} possível(is) pendência(s). Toque em Fechar caixa para conferir no servidor.`
+        : "Rota concluída. Toque em Fechar caixa para a conferência final.";
       // textContent substitui o nó mesmo quando o texto é igual e dispara o observer.
       if (status.textContent !== mensagem) status.textContent = mensagem;
     }

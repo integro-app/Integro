@@ -81,19 +81,21 @@
     const oficial = global.IntegroVendedorFechamentoCaixa?.atualizarBotaoFechamento;
     if (typeof oficial === "function") return oficial();
     const sincronizando = operacoesSincronizando();
-    const bloqueado = !caixa || rota.pendentes > 0 || sincronizando > 0;
+    // Fallback somente até o controlador oficial carregar: o clique fará
+    // conferência no servidor, sem depender da contagem local.
+    const bloqueado = false;
     botao.disabled = bloqueado;
     botao.setAttribute("aria-disabled", String(bloqueado));
     botao.dataset.integroFechamentoVendedor = "rota-autoritativa";
     const status = document.getElementById("statusFechamentoCobrancasFinal");
     if (status) {
       status.textContent = !caixa
-        ? "Caixa fechado. Um responsável precisa abrir ou reabrir o caixa."
+        ? "Toque em Fechar caixa para consultar a situação no servidor."
         : sincronizando > 0
-          ? "Aguarde a sincronização das operações antes de fechar."
+          ? "Existem operações em processamento. Aguarde a confirmação para fechar."
           : rota.pendentes > 0
-            ? `Fechamento bloqueado: ${rota.pendentes} cobrança(s) ainda sem baixa.`
-            : `Rota concluída: ${rota.pagos} pago(s) e ${rota.naoPagos} não pagamento(s). Fechamento liberado.`;
+            ? `A tela indica ${rota.pendentes} possível(is) pendência(s). Confira no servidor.`
+            : `Rota concluída: ${rota.pagos} pago(s) e ${rota.naoPagos} não pagamento(s). Confira o caixa.`;
     }
   }
 

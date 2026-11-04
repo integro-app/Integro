@@ -402,3 +402,44 @@ test("filtro de pagamentos rejeita falha total e não transforma ausência de le
   await assert.rejects(()=>window.IntegroPerfisUnificados.carregarPagamentosHojePorPerfil([]),
     /Não foi possível confirmar os pagamentos/);
 });
+
+test("botão de fechamento permanece acessível para conferir pendências no servidor",()=>{
+  const fs=require("node:fs"),path=require("node:path"),vm=require("node:vm");
+  const codigo=fs.readFileSync(path.join(root,"js/services/vendedor-fechamento-caixa.js"),"utf8");
+  const botao={disabled:true,dataset:{},title:"",
+    attrs:{},getAttribute(chave){return this.attrs[chave]||"";},
+    setAttribute(chave,valor){this.attrs[chave]=valor;}};
+  const status={textContent:""};
+  const caixa={id:"caixa-ativo",status:"ABERTO",ativo:true,
+    clientePlataformaId:"tenant-a",vendedorAuthUid:"vendedor-a"};
+  let pendentes=2;
+  const documento={addEventListener:()=>{},documentElement:{},
+    getElementById(id){return ({
+      btnFecharCaixaCobrancas:botao,
+      statusFechamentoCobrancasFinal:status,
+      integroVendedorFechamentoStyles:{id:"integroVendedorFechamentoStyles"}
+    })[id]||null;}};
+  const vendedor={id:"vendedor-a",authUid:"vendedor-a",
+    clientePlataformaId:"tenant-a",cargoChave:"vendedor"};
+  const win={document:documento,caixaAtual:caixa,
+    State:{getUsuario:()=>vendedor,getTenantId:()=>"tenant-a",getCaixas:()=>[caixa],
+      getClientes:()=>[],getVendas:()=>[],getParcelas:()=>[],
+      getPagamentos:()=>[],getHistoricoCobrancas:()=>[]},
+    IntegroAcesso:{acessoUsuario:()=>({perfil:"vendedor"})},
+    obterCaixaAbertoVendedor:()=>caixa,
+    IntegroVendedorOperacao:{montarCarteira:()=>[
+      {pendenteHoje:pendentes>0},{pendenteHoje:pendentes>1}]},
+    IntegroVendedorAsync:{diagnostico:()=>({pendentes:[]})}
+  };
+  const ctx={window:win,document:documento,console,Date,setTimeout:()=>0,
+    module:{exports:{}},CustomEvent:class{}};
+  vm.runInNewContext(codigo,ctx);
+  const api=win.IntegroVendedorFechamentoCaixa;
+  api.atualizarBotaoFechamento();
+  assert.equal(botao.disabled,false,"A lista local não deve desabilitar a conferência.");
+  assert.match(status.textContent,/conferir no servidor/);
+  assert.equal(botao.attrs["aria-disabled"],"false");
+  pendentes=0;api.atualizarBotaoFechamento();
+  assert.equal(botao.disabled,false);
+  assert.match(status.textContent,/Rota concluída/);
+});
