@@ -168,10 +168,11 @@ function abrirNovoCargo() {
     "Crie uma função operacional para esta empresa.",
     formularioCargo()
   );
+  document.getElementById("salvarCargoBtn")?.addEventListener("click", () => salvarCargo());
 }
 
 function abrirEditarCargo(id) {
-  const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
+  const cargo = cargosDoTenant().find(c => String(c.id) === String(id));
 
   if (!cargo) {
     notificarIntegro("Cargo não encontrado.");
@@ -183,6 +184,7 @@ function abrirEditarCargo(id) {
     "Atualize os dados do cargo selecionado.",
     formularioCargo(cargo)
   );
+  document.getElementById("salvarCargoBtn")?.addEventListener("click", () => salvarCargo(id));
 }
 
 function formularioCargo(cargo = null) {
@@ -190,12 +192,12 @@ function formularioCargo(cargo = null) {
     <div class="form-grid">
       <div class="form-group full">
         <label>Nome do cargo</label>
-        <input id="cargoNome" placeholder="Ex: Vendedor, Supervisor, Financeiro" value="${cargo?.nome || ""}">
+        <input id="cargoNome" placeholder="Ex: Vendedor, Supervisor, Financeiro" value="${escaparCargo(cargo?.nome || "")}">
       </div>
 
       <div class="form-group full">
         <label>Descrição</label>
-        <input id="cargoDescricao" placeholder="Descrição interna do cargo" value="${cargo?.descricao || ""}">
+        <input id="cargoDescricao" placeholder="Descrição interna do cargo" value="${escaparCargo(cargo?.descricao || "")}">
       </div>
 
       <div class="form-group">
@@ -219,7 +221,7 @@ function formularioCargo(cargo = null) {
     </div>
 
     <div class="drawer-actions">
-      <button class="primary-btn drawer-primary" onclick="${cargo ? `salvarCargo('${cargo.id}')` : "salvarCargo()"}">
+      <button type="button" class="primary-btn drawer-primary" id="salvarCargoBtn">
         ${cargo ? "Salvar alterações" : "Criar cargo"}
       </button>
     </div>
@@ -229,7 +231,9 @@ function formularioCargo(cargo = null) {
 async function salvarCargo(id = null) {
   try {
     const usuario = State.getUsuario ? State.getUsuario() : {};
-    const tenantId = State.getTenantId();
+    const tenantId = String(State.getTenantId?.() || "");
+    if (!tenantId || (id && !cargosDoTenant().some(c => String(c.id) === String(id))))
+      throw new Error("Cargo fora do escopo da empresa selecionada.");
 
     const nome = document.getElementById("cargoNome").value.trim();
     const descricao = document.getElementById("cargoDescricao").value.trim();
@@ -279,6 +283,8 @@ async function salvarCargo(id = null) {
 
 async function alterarStatusCargo(id, ativo) {
   try {
+    if (!cargosDoTenant().some(c => String(c.id) === String(id)))
+      throw new Error("Cargo fora do escopo da empresa selecionada.");
     await db.collection("cargos").doc(id).update({
       ativo,
       atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
@@ -297,7 +303,7 @@ async function alterarStatusCargo(id, ativo) {
 // ===============================
 
 function abrirPermissoesCargo(id) {
-  const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
+  const cargo = cargosDoTenant().find(c => String(c.id) === String(id));
 
   if (!cargo) {
     notificarIntegro("Cargo não encontrado.");
@@ -309,11 +315,13 @@ function abrirPermissoesCargo(id) {
     cargo.nome || "Cargo",
     formularioPermissoesCargo(cargo)
   );
+  document.getElementById("salvarPermissoesCargoBtn")?.addEventListener("click",
+    () => salvarPermissoesCargo(id));
 }
 
 function formularioPermissoesCargo(cargo) {
   const blocos = MODULOS_PERMISSAO.map(modulo => {
-    const perm = permissoesCargoCache.find(p =>
+    const perm = permissoesDoTenant().find(p =>
       p.cargoId === cargo.id &&
       String(p.modulo || "").toLowerCase() === modulo
     ) || {};
@@ -338,7 +346,7 @@ function formularioPermissoesCargo(cargo) {
     </div>
 
     <div class="drawer-actions">
-      <button class="primary-btn drawer-primary" onclick="salvarPermissoesCargo('${cargo.id}')">
+      <button type="button" class="primary-btn drawer-primary" id="salvarPermissoesCargoBtn">
         Salvar permissões
       </button>
     </div>
@@ -348,7 +356,9 @@ function formularioPermissoesCargo(cargo) {
 async function salvarPermissoesCargo(cargoId) {
   try {
     const usuario = State.getUsuario ? State.getUsuario() : {};
-    const tenantId = State.getTenantId();
+    const tenantId = String(State.getTenantId?.() || "");
+    if (!tenantId || !cargosDoTenant().some(c => String(c.id) === String(cargoId)))
+      throw new Error("Cargo fora do escopo da empresa selecionada.");
 
     const snap = await db.collection("permissoes_cargo")
       .where("clientePlataformaId", "==", tenantId)
@@ -429,8 +439,8 @@ function formatarModulo(modulo) {
 
 async function excluirCargo(id) {
   try {
-    const usuarios = State.getUsuarios ? State.getUsuarios() : [];
-    const cargo = (State.getCargos ? State.getCargos() : []).find(c => c.id === id);
+    const usuarios = usuariosDoTenantCargo();
+    const cargo = cargosDoTenant().find(c => String(c.id) === String(id));
 
     if (!cargo) {
       notificarIntegro("Cargo não encontrado.");
