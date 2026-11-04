@@ -2,7 +2,7 @@
 const { exigirEmpresaOperacional } = require("./company-access");
 
 const core = require("./financial-core");
-const { FieldValue } = require("firebase-admin/firestore");
+// Inicializado somente no backend; testes de cálculo não exigem SDK Admin.
 
 function idParcela(parcela = {}) {
   return core.texto(parcela.id || parcela.parcelaId || parcela.docId);
@@ -68,6 +68,7 @@ function distribuirPagamentoParcelas({ parcelas = [], pagamentosAtuais = {}, val
 }
 
 function criarCorrecoesBaixaVendedor({ db, functions }) {
+  const { FieldValue } = require("firebase-admin/firestore");
   const ts = () => FieldValue.serverTimestamp();
   const fail = (code, message) => { throw new functions.https.HttpsError(code, message); };
   const txt = core.texto;
