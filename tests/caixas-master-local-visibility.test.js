@@ -114,3 +114,20 @@ test("ações em lote da supervisão possuem handlers reais e seleção preserva
   assert.doesNotMatch(source,/global\.fecharCaixasSelecionadasIntegro/);
   assert.doesNotMatch(source,/global\.abrirCaixasSelecionadasIntegro/);
 });
+
+
+test("reabertura premium é transacional e confirma REABERTO no documento remoto",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/registrarReaberturaCaixaTransacional/);
+  assert.match(source,/statusNovo/);
+  assert.match(source,/get\(\{source:'server'\}\)/);
+  assert.match(source,/upper\(fresh\.status\)!=='REABERTO'/);
+  assert.doesNotMatch(source,/global\.solicitarReaberturaCaixa\?\.\(/);
+});
+
+test("calendário de abertura mantém a data escolhida até o backend",()=>{
+  const source=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
+  assert.match(source,/registrarAberturaCaixaTransacional/);
+  assert.match(source,/dataOperacional:day,motivoRetroativo:reason\.value\.trim\(\)/);
+  assert.doesNotMatch(source,/await global\.criarCaixaParaVendedor\(seller,team/);
+});

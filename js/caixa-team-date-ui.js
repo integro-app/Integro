@@ -80,7 +80,27 @@
           const seller = sellers.find(item=>String(item.id || item.authUid) === member.id);
           if (!seller) throw new Error("Os vendedores da equipe mudaram. Atualize a tela Caixas.");
           const snapshot = global.snapshotAberturaCaixaVendedor?.(seller,team) || {caixaInicial:0,carteiraInicial:0};
-          await global.criarCaixaParaVendedor(seller,team,{...snapshot,dataOperacional:day,motivoRetroativo:reason.value.trim()});
+          // O wrapper legado de abertura substitui a data solicitada pela data de hoje.
+          // A função transacional do backend recebe a data selecionada explicitamente.
+          const usuario=user();
+          const tenantId=String(usuario.clientePlataformaId||state()?.getTenantId?.()||'').trim();
+          const vendedorId=String(member.id||'').trim();
+          if(!tenantId||!vendedorId||!global.IntegroCaixa?.registrarAberturaCaixaTransacional)
+            throw new Error('Identidade ou serviço de abertura indisponível.');
+          const caixaInicialCentavos=Math.round(Number(snapshot.caixaInicial||0)*100);
+          const carteiraInicialCentavos=Math.round(Number(snapshot.carteiraInicial||0)*100);
+          if(!Number.isSafeInteger(caixaInicialCentavos)||!Number.isSafeInteger(carteiraInicialCentavos))
+            throw new Error('Valor inicial inválido para abertura.');
+          const criado=await global.IntegroCaixa.registrarAberturaCaixaTransacional({
+            usuario,clientePlataformaId:tenantId,vendedorId,vendedorAuthUid:seller.authUid||seller.uid||'',
+            vendedorNome:seller.nome||seller.nomeCompleto||seller.email||'Vendedor',
+            equipeId:String(team.id||''),equipeNome:team.nome||team.nomeEquipe||'',
+            dataOperacional:day,motivoRetroativo:reason.value.trim(),
+            valorInicialCentavos:caixaInicialCentavos,carteiraInicialCentavos,
+            origem:'supervisor_abertura_por_data'
+          });
+          if(!criado?.caixaId)throw new Error('O backend não confirmou a abertura.');
+          global.IntegroAberturaCaixa?.incorporar?.(criado);
           completed++;
         }));
         if (!result) { delete dialog.dataset.saving; select.disabled = reason.disabled = false; dialog.querySelector("[data-cancel]").disabled = false; render(); return; }

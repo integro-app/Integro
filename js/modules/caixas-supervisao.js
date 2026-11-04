@@ -410,7 +410,38 @@
     host.querySelectorAll('[data-cx-tab]').forEach(b=>b.onclick=()=>{ui.tab=b.dataset.cxTab;render();});
     host.querySelector('[data-cx-records]')?.addEventListener('change',e=>{ui.records=e.target.value;render();});
     host.querySelector('[data-cx-open-date]')?.addEventListener('click',()=>global.IntegroCaixaDatas?.abrir?.());
-    host.querySelector('[data-cx-reopen]')?.addEventListener('click',async()=>{await global.solicitarReaberturaCaixa?.(id(box));await selectBox(id(box));});
+    host.querySelector('[data-cx-reopen]')?.addEventListener('click',async event=>{
+      if(ui.actionBusy)return;
+      const button=event.currentTarget;
+      const motivo=global.prompt?.('Informe a justificativa obrigatória para reabrir o caixa:');
+      if(motivo===null||motivo===undefined)return;
+      if(!text(motivo)){actionFeedback('A reabertura exige uma justificativa.',true);return;}
+      ui.actionBusy=true;
+      button.disabled=true;
+      actionFeedback('Solicitando reabertura segura ao servidor...');
+      try {
+        if(typeof global.IntegroCaixa?.registrarReaberturaCaixaTransacional!=='function')
+          throw Error('Serviço de reabertura indisponível.');
+        const result=await global.IntegroCaixa.registrarReaberturaCaixaTransacional({
+          caixaId:id(box),clientePlataformaId:tenant(),usuario:user(),
+          motivo:text(motivo),origem:'supervisor_reabertura_caixa'
+        });
+        if(!['REABERTO','ABERTO'].includes(upper(result?.statusNovo)))
+          throw Error('O servidor não confirmou a reabertura.');
+        const db=global.db&&typeof global.db!=='function'?global.db:global.firebase.firestore();
+        const doc=await db.collection('caixas').doc(id(box)).get({source:'server'});
+        if(!doc.exists)throw Error('Caixa não encontrado após a reabertura.');
+        const fresh={...doc.data(),id:doc.id};
+        if(tenantOf(fresh)!==tenant()||upper(fresh.status)!=='REABERTO'||fresh.ativo===false)
+          throw Error('Reabertura não confirmada: estado ainda não é REABERTO no servidor.');
+        incorporarCaixaFechado(fresh);
+        actionFeedback('Caixa REABERTO confirmado no servidor.');
+        try{await selectBox(id(box),true);}catch(e){console.warn('Reabertura confirmada; detalhes indisponíveis:',e);}
+      }catch(error){
+        actionFeedback(error?.message||'Não foi possível reabrir este caixa.',true);
+        global.notificarIntegro?.(error?.message||'Não foi possível reabrir este caixa.');
+      }finally{ui.actionBusy=false;if(button.isConnected)button.disabled=false;}
+    });
     host.querySelector('[data-cx-close]')?.addEventListener('click',async e=>{
       if (ui.actionBusy) return;
       const button=e.currentTarget;
