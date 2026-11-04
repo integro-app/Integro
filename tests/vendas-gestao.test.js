@@ -51,6 +51,24 @@ test("Vendas do Master Local nunca mostra outro tenant e protege HTML",()=>{
   assert.match(lista.innerHTML,/&lt;script&gt;/);
 });
 
+test("Listagem de Vendas prioriza centavos canonicos sem perder valores legados",()=>{
+  const {context,lista}=criarTela();
+  context.State.getVendas().push({
+    id:"centavos",clientePlataformaId:"tenant-a",clienteNome:"Cliente Centavos",
+    statusVenda:"ATIVA",tipoVenda:"NOVA",
+    valorEmprestadoCentavos:12345,valorTotalVendaCentavos:16789,
+    saldoDevedorCentavos:9876,
+    valorEmprestado:0,valorTotalVenda:0,saldoDevedor:0
+  });
+  context.renderVendas();
+  const item=lista.innerHTML.split("Cliente Centavos")[1].split('class="item-actions"')[0];
+  assert.match(item,/Valor emprestado: R\\$ 123\\.45/);
+  assert.match(item,/Valor total: R\\$ 167\\.89/);
+  assert.match(item,/Saldo: R\\$ 98\\.76/);
+  assert.match(lista.innerHTML,/Cliente A/);
+  assert.doesNotMatch(lista.innerHTML,/CLIENTE SECRETO/);
+});
+
 test("Filtro de ativa exclui INATIVA e status quitada funciona independentemente",()=>{
   const {context,lista}=criarTela();
   vm.runInContext('filtrosVendas.status="ativas"',context);
