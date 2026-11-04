@@ -3,10 +3,23 @@
 // CRUD de clientes e renderização UI
 // ========================================
 
+function clientesDoTenant() {
+  const tenant = String(State.getTenantId?.() || State.getUsuario?.()?.clientePlataformaId || "");
+  if (!tenant) return [];
+  return (State.getClientes?.() || []).filter(c =>
+    String(c.clientePlataformaId || "") === tenant && c.excluido !== true);
+}
+
+function saldoClienteGestao(c) {
+  const centavos = Number.isInteger(c.saldoDevedorCentavos)
+    ? c.saldoDevedorCentavos : Math.round((Number(c.saldoDevedor) || 0) * 100);
+  return moeda(centavos / 100);
+}
+
 function getClientesFiltrados() {
   const termo = (UIHelpers.getInputValue("buscaClientes") || "").toLowerCase();
   const filtro = document.getElementById("filtroOrigemClientes")?.value || "todos";
-  const clientes = State.getClientes ? State.getClientes() : [];
+  const clientes = clientesDoTenant();
 
   return clientes.filter(c => {
     if (c.excluido === true) return false;
@@ -63,7 +76,7 @@ function renderClientes() {
   const clientes = getClientesFiltrados();
   const resumo = document.getElementById("resumoClientes");
   if (resumo) {
-    const todos = (State.getClientes?.() || []).filter(c => c.excluido !== true);
+    const todos = clientesDoTenant();
     const status = c => String(c.statusFinanceiro || c.status || "").toUpperCase();
     const total = todos.length;
     const ativos = todos.filter(c => status(c) === "ATIVO").length;
@@ -97,18 +110,31 @@ function renderClientes() {
         <small>Telefone principal: ${escaparTextoCliente(c.telefonePrincipal || c.telefone || "-")}</small>
         <small>Status: ${escaparTextoCliente(c.status || "SEM_VENDA")} • Score: ${Number.isFinite(Number(c.score)) ? Math.max(0, Math.min(100, Number(c.score))) : 50}/100</small>
         <small>Origem: ${escaparTextoCliente(resumoOrigemCliente(c).origem)} • Atendimento: ${escaparTextoCliente(resumoOrigemCliente(c).atendimento)}</small>
-        <small>Saldo devedor: ${moeda(Number(c.saldoDevedor || 0))}</small>
+        <small>Saldo devedor: ${saldoClienteGestao(c)}</small>
       </div>
 
       <div class="item-actions">
-        <button class="ghost-btn" onclick="abrirVerCliente('${c.id}')">Ver</button>
-        <button class="ghost-btn" onclick="abrirDocumentosCliente('${c.id}')">Documentos</button>
-        <button class="ghost-btn" onclick="abrirEditarCliente('${c.id}')">Editar</button>
-        ${["master_local","supervisor","master_global","usuario_integro"].includes(String(State.getUsuario?.()?.cargoChave || State.getUsuario?.()?.tipoUsuario || "").toLowerCase()) ? `<button class="ghost-btn" onclick="abrirTransferirCliente('${c.id}')">Transferir</button>` : ""}
-        <button class="danger-btn" onclick="excluirClienteLogico('${c.id}')">Excluir</button>
+        <button type="button" class="ghost-btn" data-cliente-acao="ver" data-cliente-id="${escaparTextoCliente(c.id)}">Ver</button>
+        <button type="button" class="ghost-btn" data-cliente-acao="documentos" data-cliente-id="${escaparTextoCliente(c.id)}">Documentos</button>
+        <button type="button" class="ghost-btn" data-cliente-acao="editar" data-cliente-id="${escaparTextoCliente(c.id)}">Editar</button>
+        ${["master_local","supervisor","master_global","usuario_integro"].includes(String(State.getUsuario?.()?.cargoChave || State.getUsuario?.()?.tipoUsuario || "").toLowerCase()) ? `<button type="button" class="ghost-btn" data-cliente-acao="transferir" data-cliente-id="${escaparTextoCliente(c.id)}">Transferir</button>` : ""}
+        <button type="button" class="danger-btn" data-cliente-acao="excluir" data-cliente-id="${escaparTextoCliente(c.id)}">Excluir</button>
       </div>
     </div>
   `).join("");
+  el.onclick = event => {
+    const botao = event.target?.closest?.("button[data-cliente-acao][data-cliente-id]");
+    if (!botao || !el.contains(botao)) return;
+    const id = botao.dataset.clienteId;
+    switch (botao.dataset.clienteAcao) {
+      case "ver": return abrirVerCliente(id);
+      case "documentos": return abrirDocumentosCliente(id);
+      case "editar": return abrirEditarCliente(id);
+      case "transferir": return abrirTransferirCliente(id);
+      case "excluir": return excluirClienteLogico(id);
+      default: return;
+    }
+  };
 }
 
 // Transferência utiliza exclusivamente o serviço oficial, com validação de destino e auditoria.
@@ -308,8 +334,7 @@ function abrirEditarCliente(id) {
 }
 
 function encontrarClientePorId(id) {
-  const clientes = State.getClientes ? State.getClientes() : [];
-  return clientes.find(c => c.id === id);
+  return clientesDoTenant().find(c => String(c.id) === String(id));
 }
 
 function somenteNumeros(valor) {
