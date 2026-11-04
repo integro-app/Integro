@@ -24,9 +24,9 @@ const bridge = read("js", "modules", "controle-financeiro-operacao-bridge.js");
 
 test("V27.2 identifica build e bootstrap consolidados", () => {
   assert.match(bootstrap, /27\.2\.0-consolidacao/);
-  assert.match(bootstrap, /20260817-v27-2/);
+  assert.match(bootstrap, /20261104-vendedor-fechamento/);
   assert.match(firebaseConfig, /versao:\s*"27\.2"/);
-  assert.match(firebaseConfig, /v27-bootstrap\.js\?v=20260817-v27-2/);
+  assert.match(firebaseConfig, /v27-bootstrap\.js\?v=20261104-vendedor-fechamento/);
 });
 
 test("V27.2 elimina o loop de renderização do financeiro premium", () => {
