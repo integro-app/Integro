@@ -38,7 +38,10 @@
     root.hidden = true;
     root.innerHTML = `<button class="integro-nc-overlay" type="button" aria-label="Fechar notificações"></button><aside class="integro-nc-panel" role="dialog" aria-modal="true" aria-label="Notificações"><header class="integro-nc-head"><div><h2>Notificações</h2><p>Avisos direcionados para você.</p></div><button class="integro-nc-close" type="button" aria-label="Fechar"><span class="material-symbols-rounded">close</span></button></header><div class="integro-nc-tabs"><button data-filter="TODAS" class="active">Todas</button><button data-filter="NAO_LIDAS">Não lidas</button><button data-filter="LIDAS">Lidas</button><button data-filter="LIXEIRA">Lixeira</button></div><div class="integro-nc-bulk"><label><input type="checkbox" data-select-all> Selecionar</label><button data-bulk="read">Lidas</button><button data-bulk="unread">Não lidas</button><button data-bulk="delete">Lixeira</button><button data-bulk="restore" hidden>Restaurar</button></div><div class="integro-nc-feedback" role="status" aria-live="polite"></div><div class="integro-nc-list" tabindex="0"></div></aside>`;
     document.body.appendChild(root);
-    root.querySelector(".integro-nc-overlay").onclick = close;
+    root.querySelector(".integro-nc-overlay").onclick = () => {
+      const preferencias = (global.configuracoesEmpresa || global.configEmpresa || {}).notificacoes || {};
+      if (preferencias.fecharAoClicarFora !== false) close();
+    };
     root.querySelector(".integro-nc-close").onclick = close;
     root.querySelectorAll("[data-filter]").forEach(button => button.onclick = () => { filter = button.dataset.filter; selected.clear(); render(); });
     root.querySelector("[data-select-all]").onchange = event => {
