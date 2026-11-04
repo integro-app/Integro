@@ -113,20 +113,20 @@ function formularioUsuario(usuario = null) {
 
   const cargosOptions = cargos.length
     ? `<option value="">SELECIONE O CARGO</option>` + cargos.map(c => `
-      <option value="${c.id}" ${String(usuario?.cargoId || "") === String(c.id) ? "selected" : ""}>
-        ${c.nome || c.cargoNome || "Cargo"}
+      <option value="${escaparUsuarioTabela(c.id)}" ${String(usuario?.cargoId || "") === String(c.id) ? "selected" : ""}>
+        ${escaparUsuarioTabela(c.nome || c.cargoNome || "Cargo")}
       </option>`).join("")
     : `<option value="">CADASTRE UM CARGO PRIMEIRO</option>`;
 
   const equipesOptions = equipes.length
     ? equipes.map(e => `
-      <option value="${e.id}" ${equipesSelecionadas.has(String(e.id)) ? "selected" : ""}>
-        ${e.nome || "Equipe"}
+      <option value="${escaparUsuarioTabela(e.id)}" ${equipesSelecionadas.has(String(e.id)) ? "selected" : ""}>
+        ${escaparUsuarioTabela(e.nome || "Equipe")}
       </option>`).join("")
     : `<option value="">NENHUMA EQUIPE CADASTRADA</option>`;
 
   const equipesCheckboxes = equipes.length
-    ? equipes.map(e => '<label class="usuario-equipe-opcao"><input class="usuario-equipe-checkbox" type="checkbox" value="' + e.id + '" ' + (equipesSelecionadas.has(String(e.id)) ? "checked" : "") + ' onchange="sincronizarEquipesPermitidasUsuario()"><span class="usuario-equipe-check" aria-hidden="true"><span class="material-symbols-rounded">check</span></span><span class="usuario-equipe-conteudo"><strong>' + (e.nome || "Equipe") + '</strong><small class="usuario-equipe-principal">Principal</small></span></label>').join("")
+    ? equipes.map(e => '<label class="usuario-equipe-opcao"><input class="usuario-equipe-checkbox" type="checkbox" value="' + escaparUsuarioTabela(e.id) + '" ' + (equipesSelecionadas.has(String(e.id)) ? "checked" : "") + ' onchange="sincronizarEquipesPermitidasUsuario()"><span class="usuario-equipe-check" aria-hidden="true"><span class="material-symbols-rounded">check</span></span><span class="usuario-equipe-conteudo"><strong>' + escaparUsuarioTabela(e.nome || "Equipe") + '</strong><small class="usuario-equipe-principal">Principal</small></span></label>').join("")
     : '<div class="usuario-equipes-vazio">Nenhuma equipe cadastrada.</div>';
 
   return `
@@ -138,9 +138,9 @@ function formularioUsuario(usuario = null) {
     <div class="usuario-form-section">
       <h3>Identificação</h3>
       <div class="form-grid usuario-form-grid">
-        <div class="form-group full"><label for="usuarioNome">Nome completo *</label><input id="usuarioNome" autocomplete="name" maxlength="120" placeholder="NOME COMPLETO" value="${usuario?.nome || usuario?.nomeCompleto || ""}"></div>
-        <div class="form-group"><label for="usuarioEmail">E-mail *</label><input id="usuarioEmail" type="email" autocomplete="email" maxlength="160" placeholder="EMAIL@EMPRESA.COM" value="${usuario?.email || ""}" ${usuario ? "disabled" : ""}></div>
-        <div class="form-group"><label for="usuarioTelefone">Telefone</label><input id="usuarioTelefone" inputmode="tel" maxlength="15" placeholder="(11) 99999-9999" value="${usuario?.telefone || ""}" oninput="formatarTelefoneUsuario(this)"></div>
+        <div class="form-group full"><label for="usuarioNome">Nome completo *</label><input id="usuarioNome" autocomplete="name" maxlength="120" placeholder="NOME COMPLETO" value="${escaparUsuarioTabela(usuario?.nome || usuario?.nomeCompleto || "")}"></div>
+        <div class="form-group"><label for="usuarioEmail">E-mail *</label><input id="usuarioEmail" type="email" autocomplete="email" maxlength="160" placeholder="EMAIL@EMPRESA.COM" value="${escaparUsuarioTabela(usuario?.email || "")}" ${usuario ? "disabled" : ""}></div>
+        <div class="form-group"><label for="usuarioTelefone">Telefone</label><input id="usuarioTelefone" inputmode="tel" maxlength="15" placeholder="(11) 99999-9999" value="${escaparUsuarioTabela(usuario?.telefone || "")}" oninput="formatarTelefoneUsuario(this)"></div>
       </div>
     </div>
 
@@ -170,10 +170,10 @@ function formularioUsuario(usuario = null) {
 
     <div class="drawer-actions usuario-drawer-actions">
       <button class="ghost-btn drawer-secondary" type="button" onclick="fecharDrawer()">Cancelar</button>
-      <button id="usuarioDrawerSalvar" class="primary-btn drawer-primary" type="button" onclick="${usuario ? `salvarEdicaoUsuario('${usuario.id}')` : "salvarNovoUsuario()"}" ${!usuario && !cargos.length ? "disabled" : ""}>
+      <button id="usuarioDrawerSalvar" class="primary-btn drawer-primary" type="button" data-user-id="${escaparUsuarioTabela(usuario?.id || "")}" onclick="${usuario ? "salvarEdicaoUsuario(this.dataset.userId)" : "salvarNovoUsuario()"}" ${!usuario && !cargos.length ? "disabled" : ""}>
         <span class="material-symbols-rounded">${usuario ? "save" : "person_add"}</span>${usuario ? "Salvar alterações" : "Criar convite"}
       </button>
-      ${usuario ? `<button class="ghost-btn drawer-secondary" type="button" onclick="enviarRecuperacaoSenha('${usuario.email || ""}')">Enviar redefinição de senha</button>` : ""}
+      ${usuario ? `<button class="ghost-btn drawer-secondary" type="button" data-email="${escaparUsuarioTabela(usuario.email || "")}" onclick="enviarRecuperacaoSenha(this.dataset.email)">Enviar redefinição de senha</button>` : ""}
     </div>`;
 }
 
