@@ -118,6 +118,12 @@ exports.provisionarUsuario = functions
 
 const { criarOperacoesFinanceiras } = require("./financial-callables");
 const operacoesFinanceiras = criarOperacoesFinanceiras({ admin, functions, db });
+const { criarCorrecoesBaixaVendedor } = require("./seller-collection-corrections");
+const correcoesBaixaVendedor = criarCorrecoesBaixaVendedor({ db, functions });
+exports.corrigirBaixaCobrancaOperacional = functions
+  .region("southamerica-east1")
+  .https.onCall(protegerSessao(correcoesBaixaVendedor.corrigir));
+
 
 exports.registrarVendaOperacional = functions
   .region("southamerica-east1")

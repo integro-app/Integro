@@ -128,3 +128,58 @@ test("renovacao com saldo aprovado soma o saldo anterior sem apagar divida",asyn
   assert.equal(venda.saldoDevedorCentavos,9000);
   assert.equal(venda.tipoVenda,"RENOVACAO");
 });
+
+test("botões de correção de pagamento e não pagamento preservam dados ao reler Firestore",async()=>{
+  const {criarCorrecoesBaixaVendedor}=require("../functions/seller-collection-corrections");
+  const corrigir=criarCorrecoesBaixaVendedor({db,functions:{https:{HttpsError}}}).corrigir;
+  const seller=await uid();
+  const baseCliente=(await db.collection("clientes_operacionais").doc("cliente-vendedor-1").get()).data();
+  const clienteId="cliente-correcao-e2e";
+  const boxId="caixa-correcao-e2e";
+  const clienteRef=db.collection("clientes_operacionais").doc(clienteId);
+  const boxRef=db.collection("caixas").doc(boxId);
+  const caixaBase=(await db.collection("caixas").doc("caixa-clientes-a1").get()).data();
+  await clienteRef.set({...baseCliente,id:clienteId,clientePlataformaId:"tenant-a",
+    vendedorId:seller,vendedorAuthUid:seller,saldoDevedor:0,saldoDevedorCentavos:0,
+    saldoAtual:0,saldo:0,valorEmAberto:0,possuiVendaAtiva:false,vendaAtivaId:"",
+    status:"ATIVO",statusCliente:"ATIVO"});
+  await boxRef.set({...caixaBase,status:"ABERTO",ativo:true,clientePlataformaId:"tenant-a",
+    vendedorId:seller,vendedorAuthUid:seller,
+    dataOperacional:core.hojeSP(),dataCaixa:core.hojeSP(),
+    saldoInicialCentavos:50000,saldoAtualCentavos:50000,saldoInicial:500,
+    saldoAtual:500,valorAtual:500,caixaAtual:500,carteiraFinalCentavos:0});
+  const nova=await operacoes.registrarVenda(entrada(clienteId,"venda_correcao_e2e",{
+    caixaId:boxId,primeiraCobranca:core.hojeSP()}),{auth:{uid:seller}});
+  assert.equal(nova.ok,true);
+  const parts=await db.collection("parcelas").where("vendaId","==",nova.vendaId).get();
+  assert.equal(parts.size,4);
+  const parcela=parts.docs.find(d=>d.data().numeroParcela===1);
+  assert.ok(parcela);
+  const contexto={auth:{uid:seller}};
+  const payload={acao:"PAGAMENTO",caixaId:boxId,vendaId:nova.vendaId,
+    parcelaId:parcela.id,clienteId,valorCentavos:8000};
+  const primeira=await corrigir(payload,contexto);
+  assert.equal(primeira.ok,true);
+  assert.equal(primeira.valorNovoCentavos,8000);
+  assert.equal(primeira.deltaCentavos,8000);
+  const releitura=await db.collection("pagamentos").where("caixaId","==",boxId).get();
+  assert.equal(releitura.docs.filter(d=>d.data().status==="CONFIRMADO")
+    .reduce((total,d)=>total+d.data().valorCentavos,0),8000);
+  const duplicada=await corrigir(payload,contexto);
+  assert.equal(duplicada.deltaCentavos,0);
+  assert.equal((await boxRef.get()).data().saldoAtualCentavos,48000);
+  const naoPago=await corrigir({...payload,acao:"NAO_PAGAMENTO"},contexto);
+  assert.equal(naoPago.deltaCentavos,-8000);
+  const cancelados=await db.collection("pagamentos").where("caixaId","==",boxId).get();
+  assert.equal(cancelados.docs.filter(d=>d.data().status==="CONFIRMADO").length,0);
+  assert.equal((await db.collection("vendas").doc(nova.vendaId).get()).data().saldoDevedorCentavos,12000);
+  assert.equal((await boxRef.get()).data().saldoAtualCentavos,40000);
+  const historico=await db.collection("historicoCobrancas").where("caixaId","==",boxId).get();
+  assert.ok(historico.docs.some(d=>d.data().tipo==="NAO_PAGAMENTO"&&d.data().status==="REGISTRADO"));
+  const invertido=await corrigir(payload,contexto);
+  assert.equal(invertido.deltaCentavos,8000);
+  const conferido=(await db.collection("pagamentos").where("caixaId","==",boxId).get()).docs;
+  assert.equal(conferido.filter(d=>d.data().status==="CONFIRMADO").reduce((sum,d)=>sum+d.data().valorCentavos,0),8000);
+  const depois=(await db.collection("historicoCobrancas").where("caixaId","==",boxId).get()).docs;
+  assert.ok(depois.every(d=>d.data().status==="CANCELADO"));
+});
