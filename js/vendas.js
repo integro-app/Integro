@@ -178,7 +178,7 @@ function movimentosVendaNaSessao(vendaId, colecao) {
 
 function registrosVendaHtml(titulo, registros, tipo, completo) {
   const money = item => moeda(centavosVenda(item,
-    tipo === "parcelas" ? "valorParcelaCentavos" : "valorRecebidoCentavos",
+    tipo === "parcelas" ? "valorParcelaCentavos" : (Number.isInteger(item.valorCentavos) ? "valorCentavos" : "valorRecebidoCentavos"),
     tipo === "parcelas" ? "valor" : "valorRecebido") / 100);
   const itens = registros.slice(0, 90);
   return `<section class="vendas-detalhe-secao"><h3>${escaparVenda(titulo)} (${registros.length})</h3>
@@ -654,10 +654,10 @@ function perfilVenda(venda) {
       <div class="list-item">
         <div>
           <strong>Valores</strong>
-          <small>Valor emprestado: ${moeda(Number(venda.valorEmprestado || 0))}</small>
+          <small>Valor emprestado: ${moeda(centavosVenda(venda,"valorEmprestadoCentavos","valorEmprestado")/100)}</small>
           <small>Juros: ${Number(venda.taxaJuros || 0)}%</small>
-          <small>Valor total da venda: ${moeda(Number(venda.valorTotalVenda || 0))}</small>
-          <small>Saldo devedor: ${moeda(Number(venda.saldoDevedor || 0))}</small>
+          <small>Valor total da venda: ${moeda(centavosVenda(venda,"valorTotalVendaCentavos","valorTotalVenda")/100)}</small>
+          <small>Saldo devedor: ${moeda(centavosVenda(venda,"saldoDevedorCentavos","saldoDevedor")/100)}</small>
         </div>
       </div>
 
@@ -665,7 +665,7 @@ function perfilVenda(venda) {
         <div>
           <strong>Parcelamento</strong>
           <small>Parcelas: ${escaparVenda(venda.quantidadeParcelas || "-")}</small>
-          <small>Valor da parcela: ${moeda(Number(venda.valorParcela || 0))}</small>
+          <small>Valor da parcela: ${moeda(centavosVenda(venda,"valorParcelaCentavos","valorParcela")/100)}</small>
           <small>Frequência: ${escaparVenda(venda.frequencia || "-")}</small>
           <small>Primeira cobrança: ${escaparVenda(venda.dataPrimeiraCobranca || "-")}</small>
         </div>
