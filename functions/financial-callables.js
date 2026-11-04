@@ -697,7 +697,27 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       }
 
       if (pagamentoAnterior && calculo.deltaCentavos === 0) {
-        return { ok: true, modo: "IDEMPOTENTE", pagamentoId, deltaCentavos: 0 };
+        // Um retry idempotente precisa devolver a fotografia financeira completa:
+        // sem ela, o front-end recebe ok:true mas perde os valores da baixa.
+        return {
+          ok: true,
+          modo: "IDEMPOTENTE",
+          pagamentoId,
+          clienteId,
+          valorAnteriorCentavos,
+          valorNovoCentavos,
+          deltaCentavos: 0,
+          saldoCaixaCentavos: calculo.novoSaldoCaixaCentavos,
+          saldoVendaCentavos: calculo.novoSaldoVendaCentavos,
+          saldoClienteCentavos: calculo.novoSaldoClienteCentavos,
+          totalPagoVendaCentavos: calculo.novoTotalPagoVendaCentavos,
+          valorPagoParcelaCentavos: calculo.novoValorPagoParcelaCentavos,
+          statusParcela: core.statusParcela(
+            calculo.novoValorPagoParcelaCentavos,
+            core.centavosDe(parcela, "valorCentavos", ["valor", "valorPrevisto", "valorParcela"]),
+            parcela.dataVencimento || parcela.dataPrevista || parcela.vencimento
+          )
+        };
       }
 
       const valorParcelaCentavos = core.centavosDe(parcela, "valorCentavos", ["valor", "valorPrevisto", "valorParcela"]);
@@ -852,6 +872,7 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
         saldoCaixaCentavos: calculo.novoSaldoCaixaCentavos,
         saldoVendaCentavos: calculo.novoSaldoVendaCentavos,
         saldoClienteCentavos: calculo.novoSaldoClienteCentavos,
+        totalPagoVendaCentavos: calculo.novoTotalPagoVendaCentavos,
         valorPagoParcelaCentavos: calculo.novoValorPagoParcelaCentavos,
         statusParcela
       };
