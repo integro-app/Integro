@@ -29,8 +29,14 @@
   }
   function containerChat() { return el("integroChatRoot") || el("chatInterno") || el("chat"); }
   function chatEstaAtivo() {
-    const tela = el("chatInterno") || el("chat");
-    return Boolean(tela && (tela.classList.contains("active") || tela.style.display === "block"));
+    // Auditor e Captador têm painéis próprios, sem #chatInterno/#chat.
+    const tela = el("chatInterno") || el("chat") || el("chatAuditorPanel") || el("telaChatCaptador");
+    if (!tela || tela.hidden) return false;
+    if (tela.classList?.contains("active")) return true;
+    if (["block", "flex", "grid"].includes(tela.style?.display)) return true;
+    // Para telas .screen sem estilo inline, prevalece o CSS de navegação.
+    const estilo = global.getComputedStyle?.(tela);
+    return Boolean(estilo && estilo.display !== "none" && estilo.visibility !== "hidden");
   }
   function uidUsuario(usuario) { return String(usuario?.authUid || usuario?.uid || usuario?.id || usuario?.usuarioId || ""); }
   function nomeUsuario(usuario) { return usuario?.nome || usuario?.nomeCompleto || usuario?.displayName || usuario?.email || "Usuário"; }
@@ -478,6 +484,14 @@
   document.addEventListener("integro-tela-alterada", evento => {
     if (["chatInterno", "chat"].includes(evento.detail?.tela)) setTimeout(atualizar, 0);
     else encerrarDetalhesChat();
+  });
+  // Alguns perfis legados trocam a tela via onclick sem emitir
+  // "integro-tela-alterada". Após o clique, montar o compositor imediatamente.
+  document.addEventListener("click", evento => {
+    const botao = evento.target?.closest?.(
+      '[data-modulo="chatInterno"],[data-modulo="chat"],button[onclick*="chatInterno"],button[onclick*="(\'chat\')"]'
+    );
+    if (botao) setTimeout(() => { if (chatEstaAtivo()) atualizar(); }, 0);
   });
   document.addEventListener("DOMContentLoaded", () => setTimeout(() => { iniciarResumoConversas(); if (chatEstaAtivo()) atualizar(); }, 600));
   global.addEventListener?.("beforeunload", encerrarTudoChat);
