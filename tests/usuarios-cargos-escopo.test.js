@@ -138,3 +138,63 @@ test("permissões individuais bloqueiam abertura e gravação fora da empresa",a
   assert.equal(gravacoes,0);
   assert.ok(alertas.some(m=>/empresa|escopo/.test(m)));
 });
+
+
+test("excluir cargo arquiva documento sem DELETE físico e preserva permissões",async()=>{
+  const t=telaBase();let atualizacoes=[],deletes=0,cargos=[
+    {id:"cargo-a",nome:"Cargo temporário",clientePlataformaId:"tenant-a",ativo:true}
+  ];
+  const ctx={window:{},document:t,console,setTimeout:()=>{},
+    State:{getTenantId:()=>"tenant-a",getCargos:()=>cargos,getUsuarios:()=>[],
+      getUsuario:()=>({authUid:"admin-a"}),setCargos:v=>{cargos=v;}},
+    firebase:{firestore:{FieldValue:{serverTimestamp:()=>({__serverTime:true})}}},
+    notificarIntegro:()=>{},confirm:()=>true,
+    db:{collection(nome){return {
+      doc(id){return {
+        async update(payload){atualizacoes.push({nome,id,payload});},
+        async delete(){deletes++;}
+      };},
+      where(){return {async get(){return {docs:[]};}};}
+    };}}
+  };
+  vm.runInNewContext(source("js/cargos.js"),ctx);
+  await ctx.excluirCargo("cargo-a");
+  assert.equal(deletes,0);
+  assert.equal(atualizacoes.length,1);
+  assert.equal(atualizacoes[0].payload.excluido,true);
+  assert.equal(atualizacoes[0].payload.ativo,false);
+  assert.equal(atualizacoes[0].payload.excluidoPorUid,"admin-a");
+  assert.equal(cargos.length,0,"listagem deve ser reconstruída depois do arquivamento");
+});
+
+test("excluir equipe mantém o histórico e bloqueia exclusão com vínculo multi-equipe",async()=>{
+  const t=telaBase();let atualizacoes=[],deletes=0,usuarios=[
+    {id:"v1",clientePlataformaId:"tenant-a",equipesIds:["eq-a"]}
+  ];
+  let equipes=[{id:"eq-a",clientePlataformaId:"tenant-a",
+    nome:"Equipe A",vendedoresIds:[]}];
+  const ctx={window:{},document:t,console,setTimeout:()=>{},
+    State:{getTenantId:()=>"tenant-a",getEquipes:()=>equipes,getUsuarios:()=>usuarios,
+      getUsuario:()=>({authUid:"admin-a"}),setEquipes:v=>{equipes=v;}},
+    firebase:{firestore:{FieldValue:{serverTimestamp:()=>({__serverTime:true})}}},
+    notificarIntegro:()=>{},confirm:()=>true,
+    db:{collection(nome){return {
+      doc(id){return {
+        async update(payload){atualizacoes.push({nome,id,payload});},
+        async delete(){deletes++;}
+      };},
+      where(){return {async get(){return {docs:[]};}};}
+    };}}
+  };
+  vm.runInNewContext(source("js/equipes.js"),ctx);
+  await ctx.excluirEquipe("eq-a");
+  assert.equal(atualizacoes.length,0,"vínculo em equipesIds deve impedir exclusão");
+  usuarios=[];
+  await ctx.excluirEquipe("eq-a");
+  assert.equal(deletes,0);
+  assert.equal(atualizacoes.length,1);
+  assert.equal(atualizacoes[0].payload.excluido,true);
+  assert.equal(atualizacoes[0].payload.ativo,false);
+  assert.equal(atualizacoes[0].payload.status,"INATIVA");
+  assert.equal(equipes.length,0);
+});
