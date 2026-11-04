@@ -221,7 +221,7 @@
 
   function renderBase(root) {
     if(!document.getElementById('integroChatMobileStyles')){
-      const link=document.createElement('link');link.id='integroChatMobileStyles';link.rel='stylesheet';link.href='css/integro-chat-mobile.css?v=20261030-chat-composer-corrigido';document.head.appendChild(link);
+      const link=document.createElement('link');link.id='integroChatMobileStyles';link.rel='stylesheet';link.href='css/integro-chat-mobile.css?v=20261104-chat-multiperfil-v1';document.head.appendChild(link);
     }
     root.dataset.chatReady = "1";
     root.innerHTML = `
