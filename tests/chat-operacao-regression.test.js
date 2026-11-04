@@ -214,3 +214,71 @@ test("foto enviada usa o mesmo ID no caminho Storage e no documento da mensagem"
   assert.equal(app.message.payload.imagemPath, app.path);
   assert.equal(app.message.payload.texto, "Legenda");
 });
+
+
+function chatGuard() {
+  let role = "supervisor";
+  const calls = [];
+  let gruposCriados = 0;
+  const service = {
+    podeCriarGrupo: () => true,
+    criarGrupo: async () => { gruposCriados++; return { id: "grupo-1" }; },
+    assinarMensagens: () => () => {},
+    marcarComoLida: async () => {}
+  };
+  const firebase = {
+    auth: () => ({ currentUser: { uid: "user-a" } }),
+    functions: () => ({}),
+    app: () => ({
+      functions: () => ({
+        httpsCallable: name => async data => {
+          calls.push({ name, data });
+          return { data: { ok: true } };
+        }
+      })
+    })
+  };
+  const win = {
+    IntegroChatService: service, firebase,
+    State: { getUsuario: () => ({ tipoUsuario: role }) }
+  };
+  vm.runInNewContext(source("js/services/chat-v27-guard.js"), {
+    window: win, document: { addEventListener() {} },
+    console, setTimeout: () => {}, firebase
+  });
+  win.IntegroChatV27Guard.install();
+  return {
+    win, service, calls,
+    setRole: value => { role = value; },
+    get gruposCriados() { return gruposCriados; }
+  };
+}
+
+test("Novo grupo não aparece para Supervisor se a criação é vetada pela proteção V27", async () => {
+  const app = chatGuard();
+  assert.equal(app.service.podeCriarGrupo(), false);
+  await assert.rejects(app.service.criarGrupo({ nome: "Sem acesso" }), /Master Local/);
+  assert.equal(app.gruposCriados, 0);
+  app.setRole("gerente");
+  assert.equal(app.service.podeCriarGrupo(), true);
+  await app.service.criarGrupo({ nome: "Grupo permitido" });
+  assert.equal(app.gruposCriados, 1);
+});
+
+test("confirmações de mensagens ignoram recebimentos já registrados para este usuário", async () => {
+  const app = chatGuard();
+  const guard = app.win.IntegroChatV27Guard;
+  const message = {
+    id: "mensagem-1", remetenteId: "user-b",
+    status: "ENTREGUE", entregueParaAuthUids: ["user-a"],
+    lidaPorAuthUids: ["user-a"]
+  };
+  const entregue = await guard.updateMessagesState("conv-1", [message], "ENTREGUE");
+  const lida = await guard.updateMessagesState("conv-1", [message], "LIDA");
+  assert.equal(entregue.atualizadas, 0);
+  assert.equal(lida.atualizadas, 0);
+  assert.equal(app.calls.length, 0, "não disparar Cloud Function em cada atualização já confirmada");
+  await guard.updateMessagesState("conv-1", [{ ...message, lidaPorAuthUids: [] }], "LIDA");
+  assert.equal(app.calls.length, 1);
+  assert.equal(app.calls[0].name, "atualizarEstadoMensagensChatV27");
+});
