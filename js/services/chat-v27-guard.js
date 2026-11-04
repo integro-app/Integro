@@ -40,8 +40,17 @@
 
   async function updateMessagesState(conversaId, messages = [], estado = "ENTREGUE") {
     const current = uid();
+    const acao = String(estado || "ENTREGUE").toUpperCase();
     const ids = messages
-      .filter(message => message && message.id && text(message.remetenteId) !== current && String(message.status || "").toUpperCase() !== "EXCLUIDA")
+      .filter(message => {
+        if (!message?.id || text(message.remetenteId) === current ||
+            String(message.status || "").toUpperCase() === "EXCLUIDA") return false;
+        // A confirmação é por destinatário, não apenas pelo status global,
+        // que pode permanecer ENTREGUE enquanto outro participante não leu.
+        const confirmados = acao === "LIDA"
+          ? message.lidaPorAuthUids : message.entregueParaAuthUids;
+        return !Array.isArray(confirmados) || !confirmados.includes(current);
+      })
       .map(message => message.id)
       .slice(0, 100);
     if (!ids.length) return { ok: true, atualizadas: 0 };
@@ -58,11 +67,16 @@
     installed = true;
     const service = global.IntegroChatService;
     const originalCreateGroup = service.criarGrupo?.bind(service);
+    const originalCanCreateGroup = service.podeCriarGrupo?.bind(service);
     const originalSubscribeMessages = service.assinarMensagens?.bind(service);
     const originalMarkRead = service.marcarComoLida?.bind(service);
 
+    service.podeCriarGrupo = function() {
+      return ["master_local", "gerente"].includes(role()) &&
+        (typeof originalCanCreateGroup !== "function" || originalCanCreateGroup());
+    };
     service.criarGrupo = async function(input) {
-      if (!["master_local", "gerente"].includes(role())) throw new Error("Somente Gerente ou Master Local pode criar grupos.");
+      if (!service.podeCriarGrupo()) throw new Error("Somente Gerente ou Master Local pode criar grupos.");
       return originalCreateGroup(input);
     };
     service.assinarMensagens = function(conversaId, callback, onError) {
