@@ -131,3 +131,14 @@ test("calendário de abertura mantém a data escolhida até o backend",()=>{
   assert.match(source,/dataOperacional:day,motivoRetroativo:reason\.value\.trim\(\)/);
   assert.doesNotMatch(source,/await global\.criarCaixaParaVendedor\(seller,team/);
 });
+
+
+test("abertura em lote usa data consultada no backend e confirma os caixas no servidor",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/async function abrirSelecionados\(\)/);
+  assert.match(source,/httpsCallable\('consultarDatasCaixaEquipe'\)/);
+  assert.match(source,/registrarAberturaCaixaTransacional/);
+  assert.match(source,/dataOperacional:proposta\.dia/);
+  assert.match(source,/source:'server'/);
+  assert.doesNotMatch(source,/return global\.abrirCaixaMassivo\(\)/);
+});

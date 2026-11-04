@@ -153,18 +153,96 @@
     feedback.textContent = ui.actionMessage;
   }
 
-  function abrirSelecionados() {
+  async function abrirSelecionados() {
     if(!['master_local','gerente','supervisor'].includes(access().perfil))
       throw Error('Perfil sem permissão para abrir caixas.');
-    const equipes=rows();
-    if(!equipes.some(row=>ui.selected.has(text(row.id))))
-      throw Error('Selecione pelo menos uma equipe.');
-    if(typeof global.toggleEquipeCaixaSelecionada!=='function' || typeof global.abrirCaixaMassivo!=='function')
-      throw Error('Serviço de abertura indisponível. Atualize a página e tente novamente.');
-    // Os checkboxes do painel premium não são a seleção do painel legado.
-    // Repasse explicitamente os mesmos IDs, sem misturar equipes de outra sessão.
-    equipes.forEach(row=>global.toggleEquipeCaixaSelecionada(text(row.id),ui.selected.has(text(row.id))));
-    return global.abrirCaixaMassivo();
+    const equipes=rows().filter(row=>ui.selected.has(text(row.id)));
+    if(!equipes.length)throw Error('Selecione pelo menos uma equipe.');
+    if(!global.firebase?.app || !global.IntegroCaixa?.registrarAberturaCaixaTransacional ||
+       !global.IntegroAberturaCaixa?.executar)
+      throw Error('Serviços de abertura indisponíveis. Atualize a página.');
+    const callable=global.firebase.app().functions('southamerica-east1')
+      .httpsCallable('consultarDatasCaixaEquipe');
+    const propostas=[],bloqueadas=[];
+    for(const row of equipes){
+      try{
+        const response=await callable({equipeId:text(row.id)});
+        const info=response?.data||{};
+        const dia=text(info.dataParaConcluir || info.hoje);
+        if(!/^\d{4}-\d{2}-\d{2}$/.test(dia))
+          throw Error('Data operacional não confirmada pelo servidor.');
+        if(info.temCaixaAberto&&!info.dataParaConcluir){
+          bloqueadas.push(text(row.nome)+': todos os caixas do dia já estão abertos.');
+          continue;
+        }
+        if(!info.dataParaConcluir && text(info.ultimaData)>=dia){
+          bloqueadas.push(text(row.nome)+': a última data já foi utilizada; reabra o caixa anterior.');
+          continue;
+        }
+        const sellers=Array.isArray(info.vendedores)?info.vendedores:[];
+        const pendentes=new Set((info.pendentes||[]).map(text));
+        for(const seller of sellers){
+          if(info.dataParaConcluir && !pendentes.has(text(seller.id)))continue;
+          if(!seller.id)throw Error('Vendedor sem identificador válido.');
+          propostas.push({equipeId:text(row.id),equipeNome:text(row.nome),
+            vendedorId:text(seller.id),vendedorNome:text(seller.nome||seller.id),
+            dia,retro:dia<text(info.hoje)});
+        }
+      }catch(error){
+        bloqueadas.push(text(row.nome)+': '+text(error.message||'Consulta indisponível'));
+      }
+    }
+    if(!propostas.length)
+      throw Error('Nenhum caixa elegível. '+bloqueadas.slice(0,2).join(' '));
+    const retro=propostas.filter(p=>p.retro);
+    const resumoPorEquipe=[...new Set(propostas.map(p=>p.equipeNome))].join(', ');
+    if(!global.confirm?.(
+      'Abrir '+propostas.length+' caixa(s) individuais em '+equipes.length+
+      ' equipe(s)?\n'+resumoPorEquipe+
+      '\nO saldo inicial será herdado do último caixa fechado de cada vendedor.'+
+      (bloqueadas.length?'\nEquipes bloqueadas: '+bloqueadas.length+'.':'')
+    )){
+      actionFeedback('Abertura cancelada; nenhum caixa foi criado.');
+      return null;
+    }
+    const motivo=retro.length?global.prompt?.(
+      'Justificativa obrigatória para '+retro.length+' abertura(s) retroativa(s):'):'';
+    if(retro.length&&!text(motivo)){
+      actionFeedback('Abertura retroativa cancelada: justificativa obrigatória.',true);
+      return null;
+    }
+    let confirmados=0;
+    const db=global.db&&typeof global.db!=='function'?global.db:global.firebase.firestore();
+    try{
+      const tarefas=propostas.map(proposta=>async()=>{
+        const result=await global.IntegroCaixa.registrarAberturaCaixaTransacional({
+          usuario:user(),clientePlataformaId:tenant(),vendedorId:proposta.vendedorId,
+          equipeId:proposta.equipeId,equipeNome:proposta.equipeNome,
+          dataOperacional:proposta.dia,motivoRetroativo:proposta.retro?text(motivo):'',
+          origem:'supervisao_abertura_selecionadas'
+        });
+        if(!result?.caixaId)throw Error('Abertura não confirmada pelo backend.');
+        const snap=await db.collection('caixas').doc(result.caixaId).get({source:'server'});
+        if(!snap.exists)throw Error('Caixa não encontrado após abertura.');
+        const fresh={...snap.data(),id:snap.id};
+        if(tenantOf(fresh)!==tenant()||!openBox(fresh)||
+          boxDay(fresh)!==proposta.dia ||
+          !identities(fresh).has(proposta.vendedorId))
+          throw Error('Abertura não confirmada no banco para o vendedor e data solicitados.');
+        incorporarCaixaFechado(fresh);
+        confirmados++;
+      });
+      await global.IntegroAberturaCaixa.executar(tarefas,{equipes:equipes.length});
+      if(!bloqueadas.length)ui.selected.clear();
+      actionFeedback(confirmados+' caixa(s) aberto(s) e confirmados no servidor.'+
+        (bloqueadas.length?' '+bloqueadas.length+' equipe(s) sem abertura: '+bloqueadas[0]:''),
+        bloqueadas.length>0);
+      return {abertos:confirmados,bloqueados:bloqueadas.length};
+    }catch(error){
+      actionFeedback(confirmados+' caixa(s) confirmado(s), mas a abertura não terminou: '+
+        text(error.message||'Falha de execução'),true);
+      throw error;
+    }finally{render();}
   }
 
   function incorporarCaixaFechado(box) {
@@ -301,7 +379,7 @@
     host.querySelectorAll('[data-cx-row]').forEach(row=>{row.onclick=e=>{if(!e.target.closest('button,input,select,a'))open(row.dataset.cxRow);};row.onkeydown=e=>{if(e.target===row&&['Enter',' '].includes(e.key)){e.preventDefault();open(row.dataset.cxRow);}};});
     host.querySelectorAll('[data-caixas-equipe]').forEach(c=>c.onchange=e=>{const team=text(c.dataset.caixasEquipe);e.target.checked?ui.selected.add(team):ui.selected.delete(team);render();});
     host.querySelector('[data-cx-all]').onchange=e=>{entries.forEach(v=>e.target.checked?selected.add(text(v.row.id)):selected.delete(text(v.row.id)));render();};
-    host.querySelector('#btnAbrirCaixasSelecionadas').onclick=()=>{try{abrirSelecionados();}catch(error){actionFeedback(error.message||'Não foi possível abrir os caixas.',true);}};
+    host.querySelector('#btnAbrirCaixasSelecionadas').onclick=async()=>{if(ui.actionBusy)return;ui.actionBusy=true;try{await abrirSelecionados();}catch(error){actionFeedback(error.message||'Não foi possível abrir os caixas.',true);}finally{ui.actionBusy=false;}};
     host.querySelector('#btnFecharCaixasSelecionadas').onclick=async event=>{
       if (ui.actionBusy) return;
       const button=event.currentTarget;
