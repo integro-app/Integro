@@ -605,6 +605,26 @@ test("indicacoes: outro tenant bloqueado", async () => {
   await assertFails(getDoc(doc(appDb(profiles.masterB), "indicacoes", "indicacao_a_1")));
 });
 
+
+test("revisões pagas: cliente não pode criar, falsificar nem decidir protocolo reservado", async () => {
+  await assertFails(setDoc(doc(appDb(profiles.masterA),"solicitacoes","rvp_v27_reservado"),
+    solicitacao({criadoPorId:profiles.masterA.uid,tipo:"REVISAO_VENDA_COM_PAGAMENTO"})));
+  await assertFails(setDoc(doc(appDb(profiles.vendedor1),"solicitacoes","rvp_v27_falso"),
+    solicitacao()));
+  await assertFails(setDoc(doc(appDb(profiles.masterA),"solicitacoes","sol_revisao_falsa"),
+    solicitacao({criadoPorId:profiles.masterA.uid,tipo:"REVISAO_VENDA_COM_PAGAMENTO"})));
+  await testEnv.withSecurityRulesDisabled(async context => setDoc(
+    doc(context.firestore(),"solicitacoes","rvp_v27_criado_backend"),
+    solicitacao({tipo:"REVISAO_VENDA_COM_PAGAMENTO",tipoSolicitacao:"REVISAO_VENDA_COM_PAGAMENTO",
+      criadoPorId:profiles.masterA.uid, revisaoSomenteAnalise:true})
+  ));
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterA),"solicitacoes","rvp_v27_criado_backend")));
+  await assertFails(updateDoc(doc(appDb(profiles.masterA),"solicitacoes","rvp_v27_criado_backend"),
+    {status:"APROVADA",statusSolicitacao:"APROVADA"}));
+  await assertFails(updateDoc(doc(appDb(profiles.supervisor1),"solicitacoes","rvp_v27_criado_backend"),
+    {status:"CANCELADA",statusSolicitacao:"CANCELADA"}));
+});
+
 test("solicitacoes: vendedor cria pendente, aprovar propria bloqueia, supervisor aprova equipe, fora bloqueia, valor/delete bloqueados", async () => {
   await assertSucceeds(setDoc(doc(appDb(profiles.vendedor1), "solicitacoes", "sol_nova"), solicitacao()));
   await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "solicitacoes", "sol_a_1"), { status: "APROVADA" }));

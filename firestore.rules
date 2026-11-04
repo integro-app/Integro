@@ -1477,8 +1477,16 @@ service cloud.firestore {
 
     match /solicitacoes/{id} {
       allow read: if isOperationalReader(resource.data) || canReadFinance(resource.data);
-      allow create: if canCreateSolicitacao(request.resource.data);
-      allow update: if canUpdateSolicitacao();
+      // Revisões de vendas com pagamentos pertencem somente ao backend transacional.
+      // Reserva do ID também impede registros falsos que ocupem o protocolo oficial.
+      allow create: if !id.matches("^rvp_v27_.*") &&
+        request.resource.data.get("tipo", "") != "REVISAO_VENDA_COM_PAGAMENTO" &&
+        request.resource.data.get("tipoSolicitacao", "") != "REVISAO_VENDA_COM_PAGAMENTO" &&
+        canCreateSolicitacao(request.resource.data);
+      allow update: if !id.matches("^rvp_v27_.*") &&
+        resource.data.get("tipo", "") != "REVISAO_VENDA_COM_PAGAMENTO" &&
+        resource.data.get("tipoSolicitacao", "") != "REVISAO_VENDA_COM_PAGAMENTO" &&
+        canUpdateSolicitacao();
       allow delete: if false;
     }
 

@@ -317,6 +317,110 @@ function criarCancelamentosVendaV27({admin,functions,db}) {
     });
   }
 
-  return {cancelar,solicitarRevisao,tratarRevisao};
+
+  // Esta conclusão é uma decisão documental, não uma operação de estorno.
+  // Mesmo uma auditoria concluída com pendências não altera o livro financeiro.
+  async function finalizarAuditoria(payload,context) {
+    const uid=text(context?.auth?.uid);
+    if(!uid)fail("unauthenticated","Sessão não autenticada.");
+    const usuarioSnap=await db.collection("usuarios").doc(uid).get();
+    const usuario=usuarioSnap.exists?usuarioSnap.data()||{}:{};
+    const tenant=text(usuario.clientePlataformaId);
+    const cargos=[usuario.cargoChave,usuario.perfil,usuario.tipoUsuario].map(up);
+    if(!usuarioSnap.exists||text(usuario.authUid)!==uid||!tenant||
+       usuario.acessoLiberado!==true||usuario.ativo===false||usuario.excluido===true||
+       ["BLOQUEADO","INATIVO","SUSPENSO"].includes(up(usuario.status))||
+       !cargos.some(c=>["MASTER_LOCAL","GERENTE"].includes(c)))
+      fail("permission-denied","Somente gestor ativo da empresa pode finalizar auditoria.");
+    const entrada=payload?.entrada||payload||{};
+    const solicitacaoId=text(entrada.solicitacaoId);
+    const resultado=up(entrada.resultado);
+    const relatorio=text(entrada.relatorio);
+    const referencia=text(entrada.referencia);
+    const confirmada=entrada.conferenciaConfirmada===true;
+    const estados={
+      SEM_AJUSTE:"AUDITORIA_CONCLUIDA_SEM_AJUSTE",
+      REGULARIZACAO_PENDENTE:"AUDITORIA_CONCLUIDA_COM_PENDENCIA"
+    };
+    if(!safeId(solicitacaoId)||solicitacaoId.length>180||
+       !Object.hasOwn(estados,resultado))
+      fail("invalid-argument","Protocolo ou resultado de auditoria inválido.");
+    if(relatorio.length<30||relatorio.length>2000||referencia.length>300||!confirmada)
+      fail("invalid-argument","Confirme a conferência e informe relatório entre 30 e 2000 caracteres.");
+    const status=estados[resultado];
+    const ref=db.collection("solicitacoes").doc(solicitacaoId);
+    const logRef=db.collection("logs").doc("log_auditoria_final_"+solicitacaoId);
+    return db.runTransaction(async tx=>{
+      const snap=await tx.get(ref);
+      if(!snap.exists)fail("not-found","Revisão não encontrada.");
+      const pedido=snap.data()||{};
+      if(text(pedido.clientePlataformaId)!==tenant)
+        fail("permission-denied","Revisão fora da empresa selecionada.");
+      if(up(pedido.tipo||pedido.tipoSolicitacao)!=="REVISAO_VENDA_COM_PAGAMENTO"||
+         pedido.revisaoSomenteAnalise!==true||
+         pedido.alteraFinanceiroAutomaticamente!==false||
+         !safeId(pedido.vendaId))
+        fail("failed-precondition","Revisão sem vínculo documental válido.");
+      if(up(pedido.status)!=="EM_AUDITORIA"){
+        if(up(pedido.status)===status&&text(pedido.auditoriaPorAuthUid)===uid&&
+           text(pedido.auditoriaRelatorio)===relatorio&&
+           text(pedido.auditoriaReferencia)===referencia)
+          return {ok:true,modo:"IDEMPOTENTE",solicitacaoId,status};
+        fail("failed-precondition","Auditoria não está aberta ou já possui resultado.");
+      }
+      const vendaRef=db.collection("vendas").doc(text(pedido.vendaId));
+      const ledgerRef=db.collection("lancamentos_financeiros")
+        .doc(core.lancamentoVendaId(text(pedido.vendaId)));
+      const [vendaSnap,ledgerSnap]=await Promise.all([tx.get(vendaRef),tx.get(ledgerRef)]);
+      if(!vendaSnap.exists||text(vendaSnap.data()?.clientePlataformaId)!==tenant)
+        fail("failed-precondition","Venda original não localizada na empresa.");
+      const venda=vendaSnap.data()||{};
+      const total=cent(venda,"valorTotalVendaCentavos",["valorTotalVenda"]);
+      const pago=cent(venda,"totalPagoCentavos",["totalPago"]);
+      const saldo=cent(venda,"saldoDevedorCentavos",["saldoDevedor"]);
+      const principal=cent(venda,"valorEmprestadoCentavos",["valorEmprestado"]);
+      const lancamento=ledgerSnap.exists?ledgerSnap.data()||{}:{};
+      const ledgerOk=ledgerSnap.exists&&
+        text(lancamento.clientePlataformaId)===tenant&&
+        text(lancamento.origemId)===text(pedido.vendaId)&&
+        up(lancamento.tipoLancamento)==="VENDA"&&
+        up(lancamento.natureza)==="DEBITO"&&
+        up(lancamento.statusLancamento)==="CONFIRMADO"&&
+        cent(lancamento,"valorCentavos",["valor"])===principal;
+      const somaOk=total>0&&principal>0&&pago>=0&&saldo>=0&&
+        Number.isSafeInteger(total)&&Number.isSafeInteger(pago)&&
+        Number.isSafeInteger(saldo)&&pago+saldo===total;
+      const statusVenda=up(venda.statusVenda||venda.status);
+      const situacaoContratualOk=!["CANCELADA","CANCELADO","ESTORNADA","ESTORNADO"].includes(statusVenda);
+      const conciliacaoBasicaOk=ledgerOk&&somaOk&&situacaoContratualOk;
+      if(resultado==="SEM_AJUSTE"&&!conciliacaoBasicaOk)
+        fail("failed-precondition","Divergência básica na venda ou ledger. Registre regularização pendente.");
+      const resumo={
+        valorTotalVendaCentavos:total,totalPagoCentavos:pago,
+        saldoDevedorCentavos:saldo,valorEmprestadoCentavos:principal,
+        statusVenda,lancamentoOriginalConferido:ledgerOk,
+        somaSaldoConferida:somaOk,conciliacaoBasicaOk,
+        solicitadoCom:pedido?.snapshot||{}
+      };
+      const agora=ts();
+      tx.update(ref,{status,statusSolicitacao:status,
+        auditoriaResultado:resultado,auditoriaRelatorio:relatorio,
+        auditoriaReferencia:referencia,auditoriaPorAuthUid:uid,
+        auditoriaConcluidaEm:agora,atualizadoEm:agora,
+        auditoriaSnapshot:resumo,
+        revisaoSomenteAnalise:true,alteraFinanceiroAutomaticamente:false});
+      tx.create(logRef,{tipoAcao:"AUDITORIA_FINANCEIRA_VENDA_FINALIZADA",
+        origem:"VENDAS",clientePlataformaId:tenant,solicitacaoId,
+        vendaId:text(pedido.vendaId),clienteId:text(pedido.clienteId),
+        caixaId:text(pedido.caixaId),usuarioAuthUid:uid,
+        resultado,status,relatorio,referencia,criadoEm:agora,
+        resumoFinanceiro:resumo,alteraFinanceiroAutomaticamente:false});
+      return {ok:true,modo:"AUDITORIA_FINALIZADA",solicitacaoId,status,
+        conciliacaoBasicaOk,
+        mensagem:"Resultado documental registrado sem movimentação financeira."};
+    });
+  }
+
+  return {cancelar,solicitarRevisao,tratarRevisao,finalizarAuditoria};
 }
 module.exports={criarCancelamentosVendaV27};

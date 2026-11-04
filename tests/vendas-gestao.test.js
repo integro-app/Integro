@@ -194,6 +194,24 @@ test("revisão paga registra desfecho sem estorno e apenas para gestor da empres
   assert.match(source,/resposta\?\.data\?\.ok!==true/);
 });
 
+
+test("auditoria de venda paga exige gestor, resultado explícito e relatório confirmado",()=>{
+  const {context}=criarTela();
+  let alerta="";
+  context.UIHelpers.alerta=mensagem=>{alerta=mensagem;};
+  context.abrirConclusaoAuditoriaVendaGestao({
+    id:"rvp",status:"EM_AUDITORIA",clientePlataformaId:"outra-empresa"
+  });
+  assert.match(alerta,/não pode ser concluída/);
+  const source=fs.readFileSync(path.join(__dirname,"..","js/vendas.js"),"utf8");
+  assert.match(source,/FINALIZAR_AUDITORIA_VENDA_PAGA_V27/);
+  assert.match(source,/auditoriaVendaRelatorio/);
+  assert.match(source,/auditoriaVendaConfirmada/);
+  assert.match(source,/REGULARIZACAO_PENDENTE/);
+  assert.match(source,/SEM_AJUSTE/);
+  assert.match(source,/resposta\?\.data\?\.ok!==true/);
+});
+
 test("Formulário do vendedor conserva operacaoId no retry e valida parcelas",()=>{
   const source=fs.readFileSync(path.join(__dirname,"..","js/vendedor-unificado.js"),"utf8");
   assert.match(source,/let vendaOperacaoPendente = null/);

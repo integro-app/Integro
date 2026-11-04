@@ -287,3 +287,86 @@ test("revisão paga só muda protocolo e log; pagamentos, caixa e venda ficam in
   assert.equal(logs.docs.filter(x=>x.data().tipoAcao==="REVISAO_FINANCEIRA_VENDA_TRATADA").length,1);
 });
 
+
+
+test("auditoria paga é finalizada sem mutação de caixa, parcelas, recibos e ledger",async()=>{
+  const {seller,caixaId,clienteId}=await prepararCenarioRevisao("auditoria-final");
+  const manager=await context("master.local.a");
+  const sale=await sales.registrarVenda(request("venda_auditoria_final",{
+    caixaId,clienteId,clienteOperacionalId:clienteId
+  }),seller);
+  await db.collection("pagamentos").doc("pag_auditoria_final").set({
+    clientePlataformaId:"tenant-a",vendaId:sale.vendaId,
+    status:"CONFIRMADO",valorCentavos:300,parcelaId:"p-teste"
+  });
+  const pedido=await cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"DIVERGENCIA",
+    motivo:"Revisão documental do contrato com recebimento registrado."
+  },manager);
+  await cancellation.tratarRevisao({
+    solicitacaoId:pedido.solicitacaoId,decisao:"ENCAMINHAR_AUDITORIA",
+    justificativa:"Encaminhar à auditoria para conferir documentos e saldos."
+  },manager);
+  const refs=[["vendas",sale.vendaId],["caixas",caixaId],
+    ["clientes_operacionais",clienteId],
+    ["lancamentos_financeiros",core.lancamentoVendaId(sale.vendaId)],
+    ["pagamentos","pag_auditoria_final"]];
+  const antes=await Promise.all(refs.map(([col,id])=>db.collection(col).doc(id).get().then(s=>s.data())));
+  const dados={solicitacaoId:pedido.solicitacaoId,resultado:"SEM_AJUSTE",
+    relatorio:"Conferência dos registros e do lançamento original sem necessidade de ajuste.",
+    referencia:"Comprovante de conferência interna",conferenciaConfirmada:true};
+  await assert.rejects(()=>cancellation.finalizarAuditoria(dados,seller),rejection("permission-denied"));
+  await assert.rejects(()=>context("master.local.b").then(c=>
+    cancellation.finalizarAuditoria(dados,c)),rejection("permission-denied"));
+  await assert.rejects(()=>cancellation.finalizarAuditoria({...dados,conferenciaConfirmada:false},manager),
+    rejection("invalid-argument"));
+  await assert.rejects(()=>cancellation.finalizarAuditoria({...dados,relatorio:"curto"},manager),
+    rejection("invalid-argument"));
+  const resposta=await cancellation.finalizarAuditoria(dados,manager);
+  assert.equal(resposta.modo,"AUDITORIA_FINALIZADA");
+  assert.equal(resposta.status,"AUDITORIA_CONCLUIDA_SEM_AJUSTE");
+  assert.equal(resposta.conciliacaoBasicaOk,true);
+  assert.equal((await cancellation.finalizarAuditoria(dados,manager)).modo,"IDEMPOTENTE");
+  await assert.rejects(()=>cancellation.finalizarAuditoria({...dados,resultado:"REGULARIZACAO_PENDENTE"},
+    manager),rejection("failed-precondition"));
+  const depois=await Promise.all(refs.map(([col,id])=>db.collection(col).doc(id).get().then(s=>s.data())));
+  assert.deepEqual(depois,antes);
+  const registro=(await db.collection("solicitacoes").doc(pedido.solicitacaoId).get()).data();
+  assert.equal(registro.alteraFinanceiroAutomaticamente,false);
+  const logs=await db.collection("logs").where("solicitacaoId","==",pedido.solicitacaoId).get();
+  assert.equal(logs.docs.filter(d=>d.data().tipoAcao==="AUDITORIA_FINANCEIRA_VENDA_FINALIZADA").length,1);
+});
+
+test("divergência de saldo bloqueia auditoria sem ajuste e permite registrar pendência",async()=>{
+  const {seller,caixaId,clienteId}=await prepararCenarioRevisao("auditoria-divergencia");
+  const manager=await context("master.local.a");
+  const sale=await sales.registrarVenda(request("venda_auditoria_divergencia",{
+    caixaId,clienteId,clienteOperacionalId:clienteId
+  }),seller);
+  await db.collection("pagamentos").doc("pag_auditoria_divergencia").set({
+    clientePlataformaId:"tenant-a",vendaId:sale.vendaId,
+    status:"CONFIRMADO",valorCentavos:200,parcelaId:"p-teste"
+  });
+  const pedido=await cancellation.solicitarRevisao({
+    vendaId:sale.vendaId,categoria:"REVISAO_PAGAMENTO",
+    motivo:"Apuração de diferença entre recebimentos declarados e saldo de contrato."
+  },manager);
+  await cancellation.tratarRevisao({
+    solicitacaoId:pedido.solicitacaoId,decisao:"ENCAMINHAR_AUDITORIA",
+    justificativa:"Auditoria necessária para analisar uma possível divergência."
+  },manager);
+  const vendaRef=db.collection("vendas").doc(sale.vendaId);
+  await vendaRef.update({saldoDevedorCentavos:999});
+  const payload={solicitacaoId:pedido.solicitacaoId,resultado:"SEM_AJUSTE",
+    relatorio:"A documentação foi conferida, mas a soma de valores é divergente.",
+    conferenciaConfirmada:true,referencia:""};
+  await assert.rejects(()=>cancellation.finalizarAuditoria(payload,manager),
+    rejection("failed-precondition"));
+  const result=await cancellation.finalizarAuditoria({
+    ...payload,resultado:"REGULARIZACAO_PENDENTE",
+    relatorio:"Divergência documentada. A regularização dependerá de fluxo financeiro independente."
+  },manager);
+  assert.equal(result.status,"AUDITORIA_CONCLUIDA_COM_PENDENCIA");
+  assert.equal(result.conciliacaoBasicaOk,false);
+  assert.equal((await vendaRef.get()).data().saldoDevedorCentavos,999);
+});

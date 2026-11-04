@@ -244,6 +244,9 @@ async function abrirRevisoesFinanceirasVendas() {
             <button type="button" class="ghost-btn" data-revisao-acao="CONCLUIR_SEM_AJUSTE" data-revisao-id="${escaparVenda(item.id)}">Concluir sem ajuste</button>
             <button type="button" class="ghost-btn" data-revisao-acao="ENCAMINHAR_AUDITORIA" data-revisao-id="${escaparVenda(item.id)}">Encaminhar à auditoria</button>
           </div>`:""}
+        ${String(item.status||"").toUpperCase()==="EM_AUDITORIA"?
+          `<div class="drawer-actions"><button type="button" class="ghost-btn" data-revisao-acao="FINALIZAR_AUDITORIA" data-revisao-id="${escaparVenda(item.id)}">Concluir auditoria</button></div>`:""}
+        ${item.auditoriaRelatorio? `<small>Relatório final: ${escaparVenda(item.auditoriaRelatorio)}</small>`:""}
         ${item.justificativaDecisao? `<small>Desfecho: ${escaparVenda(item.justificativaDecisao)}</small>`:""}
       </div></div>`).join("")}</div>` :
       "<p>Nenhuma revisão encontrada nos registros consultados.</p>";
@@ -253,13 +256,80 @@ async function abrirRevisoesFinanceirasVendas() {
       const botao=event.target?.closest?.("button[data-revisao-acao]");
       if(!botao)return;
       const item=revisoes.find(v=>String(v.id)===botao.dataset.revisaoId);
-      if(!item||String(item.status||"").toUpperCase()!=="PENDENTE")return;
+      if(!item)return;
+      if(botao.dataset.revisaoAcao==="FINALIZAR_AUDITORIA") {
+        if(String(item.status||"").toUpperCase()==="EM_AUDITORIA")
+          abrirConclusaoAuditoriaVendaGestao(item);
+        return;
+      }
+      if(String(item.status||"").toUpperCase()!=="PENDENTE")return;
       abrirTratamentoRevisaoVendaGestao(item,botao.dataset.revisaoAcao);
     });
   }catch(error){
     if(host.isConnected)host.textContent="Não foi possível consultar revisões financeiras desta empresa.";
     console.warn("[ÍNTEGRO] Falha ao consultar revisões de vendas",error);
   }
+}
+
+
+function abrirConclusaoAuditoriaVendaGestao(item) {
+  const tenant=String(State.getTenantId?.()||"");
+  const usuario=State.getUsuario?.()||{};
+  const gestor=[usuario.cargoChave,usuario.perfil,usuario.tipoUsuario]
+    .map(c=>String(c||"").trim().toLowerCase())
+    .some(c=>["master_local","gerente"].includes(c));
+  if(!gestor||!tenant||String(item?.clientePlataformaId||"")!==tenant||
+     String(item?.status||"").toUpperCase()!=="EM_AUDITORIA")
+    return UIHelpers.alerta("Esta auditoria não pode ser concluída por este usuário.");
+  abrirDrawer("Conclusão da auditoria financeira",
+    '<section class="form-grid"><p class="form-group full">Protocolo: <strong>'+
+    escaparVenda(item.id)+'</strong>. Este registro não altera venda, parcelas, pagamentos nem caixa.'+
+    ' A conferência básica de saldos e ledger será revalidada pelo servidor.</p>'+
+    '<div class="form-group full"><label for="auditoriaVendaResultado">Resultado</label>'+
+    '<select id="auditoriaVendaResultado">'+
+      '<option value="SEM_AJUSTE">Auditoria concluída sem ajuste</option>'+
+      '<option value="REGULARIZACAO_PENDENTE">Auditoria concluída com regularização pendente</option>'+
+    '</select></div>'+
+    '<div class="form-group full"><label for="auditoriaVendaRelatorio">Relatório da análise</label>'+
+    '<textarea id="auditoriaVendaRelatorio" rows="5" maxlength="2000" '+
+    'placeholder="Descreva conferência, comprovantes e conclusão (mínimo 30 caracteres)"></textarea></div>'+
+    '<div class="form-group full"><label for="auditoriaVendaReferencia">Referência de documentos (opcional)</label>'+
+    '<input id="auditoriaVendaReferencia" maxlength="300" '+
+    'placeholder="Números de comprovantes, protocolos ou observações"></div>'+
+    '<label class="form-group full"><input type="checkbox" id="auditoriaVendaConfirmada"> '+
+    'Confirmo que analisei os registros e compreendo que nenhum ajuste será lançado automaticamente.</label>'+
+    '<div class="drawer-actions"><button type="button" class="primary-btn" '+
+    'id="confirmarAuditoriaVendaBtn">Registrar resultado da auditoria</button></div></section>');
+  document.getElementById("confirmarAuditoriaVendaBtn")?.addEventListener(
+    "click",()=>finalizarAuditoriaVendaGestao(item.id,tenant));
+}
+
+async function finalizarAuditoriaVendaGestao(solicitacaoId,tenant) {
+  if(String(State.getTenantId?.()||"")!==tenant)
+    return UIHelpers.alerta("A empresa mudou. Reabra a auditoria.");
+  const resultado=String(document.getElementById("auditoriaVendaResultado")?.value||"");
+  const relatorio=String(document.getElementById("auditoriaVendaRelatorio")?.value||"").trim();
+  const referencia=String(document.getElementById("auditoriaVendaReferencia")?.value||"").trim();
+  const conferenciaConfirmada=document.getElementById("auditoriaVendaConfirmada")?.checked===true;
+  if(!["SEM_AJUSTE","REGULARIZACAO_PENDENTE"].includes(resultado)||
+     relatorio.length<30||relatorio.length>2000||referencia.length>300||
+     !conferenciaConfirmada)
+    return UIHelpers.alerta("Confirme a análise e preencha um relatório de pelo menos 30 caracteres.");
+  const botao=document.getElementById("confirmarAuditoriaVendaBtn");
+  if(botao)botao.disabled=true;
+  try {
+    const fn=window.firebase?.app?.()?.functions?.("southamerica-east1")
+      ?.httpsCallable?.("decidirVendaComSaldoV27");
+    if(!fn)throw new Error("Serviço seguro de auditoria indisponível.");
+    const resposta=await fn({__integroRota:"FINALIZAR_AUDITORIA_VENDA_PAGA_V27",
+      solicitacaoId,resultado,relatorio,referencia,conferenciaConfirmada});
+    if(resposta?.data?.ok!==true)throw new Error("O servidor não confirmou a auditoria.");
+    if(String(State.getTenantId?.()||"")!==tenant)return;
+    UIHelpers.alerta("Auditoria registrada: "+resposta.data.status+
+      ". O histórico foi preservado; nenhuma movimentação financeira foi executada.");
+    await abrirRevisoesFinanceirasVendas();
+  }catch(error){UIHelpers.alerta(error?.message||"Não foi possível concluir a auditoria.");}
+  finally{if(botao)botao.disabled=false;}
 }
 
 function abrirTratamentoRevisaoVendaGestao(item,decisao) {
