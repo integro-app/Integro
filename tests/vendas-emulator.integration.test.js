@@ -279,4 +279,16 @@ test("supervisor fecha caixa com baixa gerencial não paga, preserva saldo e rea
   const fechamento=(await db.collection("fechamentos_caixa").doc("fechamento_"+caixaId).get()).data();
   assert.equal(fechamento.quantidadeBaixasGerenciais,1);
   assert.equal(fechamento.statusFechamento,"FECHADO");
+  const reaberto=await ciclo.reabrir({
+    caixaId,operacaoId:"reabertura_gerencial_e2e",motivo:"Auditar encerramento gerencial"
+  },contexto);
+  assert.equal(reaberto.statusNovo,"REABERTO");
+  assert.equal((await refCaixa.get()).data().status,"REABERTO");
+  const baixaReaberta=(await gerencial.ref.get()).data();
+  assert.equal(baixaReaberta.status,"CANCELADO");
+  assert.equal(baixaReaberta.canceladoPorReabertura,true);
+  assert.equal((await db.collection("vendas").doc(vendaId).get()).data().saldoDevedorCentavos,4500);
+  const novaConferencia=await ciclo.conferir({caixaId},contexto);
+  assert.equal(novaConferencia.pendenciasCobranca,1,
+    "reabertura não pode reutilizar baixa gerencial anterior como visita");
 });
