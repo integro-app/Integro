@@ -60,11 +60,31 @@
     try{const ui=global.IntegroControleFinanceiroUI;if(route.aba==='aprovacoes'){await ui?.openTab?.('aprovacoes');return;}await ui?.refreshAccount?.(entityId);global.IntegroControleFinanceiroUI?.openDetail?.(entityId);}catch(error){global.IntegroModuloUtils?.notify?.(error.message||'Conta não encontrada ou sem acesso.','err');}
   }
   async function openClient(notification,route){
-    const id=text(route.entidadeId||notification.clienteOperacionalId||notification.clienteId);if(!id)return false;
-    activateScreen('clientes');try{let client=(global.State?.getClientes?.()||[]).find(c=>[c.id,c.clienteId,c.clienteOperacionalId,c.clienteLegadoId].map(text).includes(id));
-      if(!client){const db=global.db||global.firebase?.firestore?.(),snap=await db.collection('clientes_operacionais').doc(id).get({source:'server'});if(snap.exists)client={id:snap.id,...snap.data()};}
-      if(!client||!global.IntegroCliente360?.open?.(client))throw new Error('Cliente não encontrado ou fora do seu escopo.');return true;
-    }catch(error){global.IntegroModuloUtils?.notify?.(error.message||'Não foi possível abrir o cliente.','err');return false;}
+    const id=text(route.entidadeId||notification.clienteOperacionalId||notification.clienteId);
+    if(!id)return false;
+    const tenant=text(global.State?.getTenantId?.()||global.State?.getUsuario?.()?.clientePlataformaId);
+    if(!tenant)return false;
+    activateScreen('clientes');
+    try{
+      let client=(global.State?.getClientes?.()||[])
+        .find(c=>[c.id,c.clienteId,c.clienteOperacionalId,c.clienteLegadoId].map(text).includes(id));
+      if(!client){
+        const database=global.db||global.firebase?.firestore?.();
+        if(!database)throw new Error('Consulta de clientes indisponível.');
+        const snap=await database.collection('clientes_operacionais').doc(id).get({source:'server'});
+        if(snap.exists)client={...snap.data(),id:snap.id};
+      }
+      if(!client||text(client.clientePlataformaId||client.tenantId||client.empresaId)!==tenant)
+        throw new Error('Cliente não encontrado ou fora do seu escopo.');
+      if(typeof global.IntegroCliente360?.open!=="function")
+        throw new Error('Tela de detalhes do cliente indisponível.');
+      // Não considerar a notificação aberta antes de o drawer concluir sua ação.
+      const abriu=await global.IntegroCliente360.open(client);
+      return abriu!==false;
+    }catch(error){
+      global.IntegroModuloUtils?.notify?.(error.message||'Não foi possível abrir o cliente.','err');
+      return false;
+    }
   }
 
   async function open(notification = {}) {
