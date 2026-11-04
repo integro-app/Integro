@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/vendas-functions-deploy.yml"
       - "functions/financial-callables.js"
+      - "js/perfis-unificados.js"
+      - "tests/vendedor-unificado-operacao.test.js"
       - "js/services/vendedor-pagamento-flexivel.js"
       - "js/services/vendedor-cobranca-correcoes.js"
       - "js/services/vendedor-fechamento-caixa.js"

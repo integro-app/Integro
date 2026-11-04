@@ -618,7 +618,6 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
     const pagamentoRef = db.collection("pagamentos").doc(pagamentoId);
     const vendedorId = idUsuario(uid, usuario);
     const vendedorNome = nomeUsuario(usuario);
-    const dataOperacional = core.hojeSP();
 
     return db.runTransaction(async transaction => {
       const [caixaSnap, vendaSnap, parcelaSnap, pagamentoSnap] = await Promise.all([
@@ -634,6 +633,8 @@ function criarOperacoesFinanceiras({ admin, functions, db }) {
       const venda = vendaSnap.data() || {};
       const parcela = parcelaSnap.data() || {};
       const pagamentoAnterior = pagamentoSnap.exists ? pagamentoSnap.data() || {} : null;
+      const dataOperacional = core.texto(caixa.dataOperacional ||
+        caixa.dataCaixa || core.hojeSP()).slice(0, 10);
       validarCaixa(caixa, tenantId, uid, usuario);
       validarRegistroDoVendedor(venda, tenantId, uid, usuario, "Venda");
       validarRegistroDoVendedor(parcela, tenantId, uid, usuario, "Parcela");

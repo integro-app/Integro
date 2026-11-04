@@ -198,7 +198,10 @@
       const [caixas, vendas, pagamentos, parcelas, historico] = await Promise.all([
         svc.carregarCaixasVendedor?.() || [],
         svc.carregarVendasVendedor?.(listaClientes) || [],
-        svc.carregarColecaoPorPerfil(colecoes.PAGAMENTOS || "pagamentos", limites.PAGAMENTOS || 500),
+        svc.carregarPagamentosHojePorPerfil
+          ? svc.carregarPagamentosHojePorPerfil(State.getCaixas?.() || [], { cacheMs: 0, forcar: true })
+          : svc.carregarColecaoPorPerfil(colecoes.PAGAMENTOS || "pagamentos",
+            limites.PAGAMENTOS || 500, { cacheMs: 0, forcar: true }),
         svc.carregarColecaoPorPerfil(colecoes.PARCELAS || "parcelas", limites.PARCELAS || 1200),
         svc.carregarColecaoPorPerfil(colecoes.HISTORICO_COBRANCAS || "historicoCobrancas", limites.HISTORICO_COBRANCAS || 600)
       ]);

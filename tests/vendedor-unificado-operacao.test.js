@@ -343,3 +343,62 @@ test("baixa nova usa funções financeiras existentes e liberação de caixa com
   assert.doesNotMatch(flex,/setTimeout\(\(\) => \{\s*global\.renderCobrancas/);
   assert.doesNotMatch(cor,/setTimeout\(\(\) => \{\s*global\.renderCobrancas/);
 });
+
+test("pagamentos confirmados mantêm data operacional do caixa e sobrevivem à navegação",()=>{
+  const fs=require("node:fs"),vm=require("node:vm"),path=require("node:path");
+  const codigo=fs.readFileSync(path.join(root,"js/perfis-unificados.js"),"utf8");
+  const chamadas=[];
+  const authUid="vendedor-a", tenantId="tenant-a", caixaId="caixa-dia-anterior";
+  const baixas=[
+    {id:"p1",clientePlataformaId:tenantId,vendedorAuthUid:authUid,vendaId:"v1",
+      caixaId,dataOperacional:"2026-11-02",status:"CONFIRMADO",valorCentavos:900},
+    {id:"p2",clientePlataformaId:tenantId,vendedorAuthUid:authUid,vendaId:"v2",
+      caixaId:"caixa-historico-encerrado",dataOperacional:"2026-10-01",status:"CONFIRMADO",valorCentavos:900}
+  ];
+  const usuario={id:"user-a",authUid,clientePlataformaId:tenantId,cargoChave:"vendedor"};
+  const State={getUsuario:()=>usuario,getCaixas:()=>[],getPagamentos:()=>[]};
+  const window={
+    State,CONFIG:{COLECOES:{PAGAMENTOS:"pagamentos"},LIMITS:{PAGAMENTOS:500}},
+    IntegroOperacional:{hojeSP:()=>"2026-11-03"},
+    IntegroAcesso:{acessoUsuario:()=>({perfil:"vendedor",tenantId,usuarioId:usuario.id,authUid,equipeIds:[]})},
+    IntegroDataRuntime:{consultarTenant:async entrada=>{
+      chamadas.push(entrada);
+      if(entrada.colecao!=="pagamentos")return [];
+      const filtro=entrada.filtros?.[0]||[];
+      return baixas.filter(p=>p[filtro[0]]===filtro[2]);
+    }},
+    db:{},firebase:{auth:()=>({currentUser:{uid:authUid}})},
+    caixaAtual:null
+  };
+  const document={addEventListener:()=>{}};
+  vm.runInNewContext(codigo,{window,document,State,CONFIG:window.CONFIG,console,
+    setTimeout:()=>0,localStorage:{getItem:()=>null}});
+  const svc=window.IntegroPerfisUnificados;
+  assert.equal(typeof svc.carregarPagamentosHojePorPerfil,"function");
+  return svc.carregarPagamentosHojePorPerfil([
+    {id:caixaId,clientePlataformaId:tenantId,vendedorAuthUid:authUid,
+      status:"REABERTO",ativo:true}
+  ]).then(lista=>{
+    assert.deepEqual(Array.from(lista.map(item=>item.id)),["p1"]);
+    assert.ok(chamadas.length>0);
+    assert.ok(chamadas.every(chamada=>chamada.forcar===true&&chamada.cacheMs===0));
+    assert.ok(chamadas.every(chamada=>chamada.tenantId===tenantId));
+  });
+});
+
+test("filtro de pagamentos rejeita falha total e não transforma ausência de leitura em baixa inexistente",async()=>{
+  const fs=require("node:fs"),vm=require("node:vm"),path=require("node:path");
+  const codigo=fs.readFileSync(path.join(root,"js/perfis-unificados.js"),"utf8");
+  const usuario={id:"a",authUid:"v-a",clientePlataformaId:"t-a"};
+  const State={getUsuario:()=>usuario};
+  const window={State,CONFIG:{COLECOES:{PAGAMENTOS:"pagamentos"},LIMITS:{PAGAMENTOS:500}},
+    IntegroOperacional:{hojeSP:()=>"2026-11-03"},
+    IntegroAcesso:{acessoUsuario:()=>({perfil:"vendedor",tenantId:"t-a",usuarioId:"a",authUid:"v-a"})},
+    IntegroDataRuntime:{consultarTenant:async()=>{throw Error("permissão indisponível");}},
+    db:{},firebase:{auth:()=>({currentUser:{uid:"v-a"}})},caixaAtual:null};
+  vm.runInNewContext(codigo,{window,document:{addEventListener:()=>{}},State,
+    CONFIG:window.CONFIG,console:{warn:()=>{},error:()=>{}},
+    setTimeout:()=>0,localStorage:{getItem:()=>null}});
+  await assert.rejects(()=>window.IntegroPerfisUnificados.carregarPagamentosHojePorPerfil([]),
+    /Não foi possível confirmar os pagamentos/);
+});

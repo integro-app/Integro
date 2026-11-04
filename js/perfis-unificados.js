@@ -73,6 +73,11 @@
     resultados.filter(item => item.status === "rejected").forEach(item => {
       console.warn(`[ÍNTEGRO] Consulta de ${colecao} não concluída.`, item.reason);
     });
+    // Nunca tratar falha de todas as consultas como lista vazia de pagamentos:
+    // isso apagava da tela uma baixa já confirmada ao navegar entre abas.
+    if (opcoes.exigirConsultaValida && resultados.length &&
+        resultados.every(item => item.status === "rejected"))
+      throw new Error("Não foi possível confirmar os pagamentos no servidor.");
     return deduplicar(resultados.filter(item => item.status === "fulfilled").map(item => item.value))
       .filter(item => item.excluido !== true);
   }
@@ -527,9 +532,9 @@
     return consultar(CONFIG.COLECOES.CLIENTES, [], CONFIG.LIMITS?.CLIENTES || 500);
   }
 
-  async function carregarColecaoPorPerfil(colecao, limite) {
+  async function carregarColecaoPorPerfil(colecao, limite, opcoes = {}) {
     const perfil = acesso().perfil;
-    if (perfil === "vendedor") return consultar(colecao, camposProprios(colecao), limite);
+    if (perfil === "vendedor") return consultar(colecao, camposProprios(colecao), limite, opcoes);
     if (perfil === "supervisor") return consultarPorEquipes(colecao, limite);
     if (perfil === "captador") {
       const escopo = acesso();
@@ -541,10 +546,27 @@
     return consultar(colecao, [], limite);
   }
 
-  async function carregarPagamentosHojePorPerfil() {
-    const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
-    const lista = await carregarColecaoPorPerfil(CONFIG.COLECOES.PAGAMENTOS, CONFIG.LIMITS?.PAGAMENTOS || 500);
-    return lista.filter(p => String(p.dataOperacional || p.data || "").slice(0, 10) === hoje);
+  async function carregarPagamentosHojePorPerfil(caixas = [], opcoes = {}) {
+    const hoje = window.IntegroOperacional?.hojeSP?.() ||
+      new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+    // A baixa pertence ao caixa operacional, não necessariamente ao dia do
+    // relógio (ex.: reabertura de caixa de data anterior).
+    const perfil = acesso().perfil;
+    const caixasValidos = [...(Array.isArray(caixas) ? caixas : []), window.caixaAtual]
+      .filter(caixa => caixa?.id && caixaPertenceAoVendedor(caixa) &&
+        ["ABERTO", "REABERTO"].includes(statusCaixa(caixa)) && caixa.ativo !== false);
+    const idsCaixa = new Set(caixasValidos.map(caixa => String(caixa.id)));
+    const lista = await carregarColecaoPorPerfil(
+      CONFIG.COLECOES.PAGAMENTOS || "pagamentos",
+      CONFIG.LIMITS?.PAGAMENTOS || 500,
+      perfil === "vendedor"
+        ? { cacheMs: 0, forcar: true, exigirConsultaValida: true, ...opcoes }
+        : opcoes
+    );
+    if (perfil !== "vendedor") return lista.filter(p =>
+      String(p.dataOperacional || p.data || "").slice(0, 10) === hoje);
+    return lista.filter(p => idsCaixa.has(String(p.caixaId || "")) ||
+      String(p.dataOperacional || p.data || "").slice(0, 10) === hoje);
   }
 
   async function carregarUsuariosPorPerfil() {
@@ -597,7 +619,10 @@
       const caixasPromise = seguro("caixas", () => perfil === "vendedor"
         ? carregarCaixasVendedor()
         : carregarColecaoPorPerfil(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 300));
-      const pagamentosPromise = seguro("pagamentos", carregarPagamentosHojePorPerfil);
+      const pagamentosAnteriores = State.getPagamentos?.() || window.pagamentosHojeCache || [];
+      const pagamentosPromise = caixasPromise.then(caixasCarregados =>
+        seguro("pagamentos", () => carregarPagamentosHojePorPerfil(caixasCarregados),
+          pagamentosAnteriores));
       const parcelasPromise = seguro("parcelas", () => carregarColecaoPorPerfil(CONFIG.COLECOES.PARCELAS || "parcelas", CONFIG.LIMITS?.PARCELAS || 1200));
       const historicoPromise = seguro("histórico de cobranças", () => carregarColecaoPorPerfil(CONFIG.COLECOES.HISTORICO_COBRANCAS || "historicoCobrancas", CONFIG.LIMITS?.HISTORICO_COBRANCAS || 600));
       const solicitacoesPromise = seguro("solicitações", () => carregarColecaoPorPerfil(CONFIG.COLECOES.SOLICITACOES, CONFIG.LIMITS?.SOLICITACOES || 300), solicitacoesAnteriores);
@@ -725,6 +750,7 @@
     carregarColecaoPorPerfil,
     carregarClientesPorPerfil,
     carregarVendasVendedor,
+    carregarPagamentosHojePorPerfil,
     carregarCaixasVendedor,
     carregarLancamentosVendedor,
     carregarMovimentacoesVendedor,
