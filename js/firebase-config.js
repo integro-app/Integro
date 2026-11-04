@@ -50,7 +50,7 @@ window.db = db;
 (function carregarBootstrapV27() {
   if (document.querySelector('script[data-integro-v27-bootstrap="1"]')) return;
   const script = document.createElement("script");
-  script.src = "js/v27-bootstrap.js?v=20260817-v27-2";
+  script.src = "js/v27-bootstrap.js?v=20261104-vendedor-fechamento";
   script.async = false;
   script.dataset.integroV27Bootstrap = "1";
   document.head.appendChild(script);

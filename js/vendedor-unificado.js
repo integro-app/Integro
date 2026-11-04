@@ -808,6 +808,9 @@
           <div id="listaVendasDia" class="vendedor-vendas-dia"></div>
         </div>
       </div>`;
+    // Este botão é recriado ao mudar de módulo: revalidar o estado do DOM
+    // imediatamente, independentemente da janela inicial do observer.
+    window.IntegroVendedorFechamentoCaixa?.atualizarBotaoFechamento?.();
     return tela;
   }
 
@@ -2574,6 +2577,11 @@
   window.limparFiltrosVendasVendedor = limparVendas;
   window.abrirPagamentoCliente = abrirPagamento;
   window.confirmarPagamentoVendedorUnificado = confirmarPagamento;
+  window.validarEAbrirFechamentoCaixa = window.validarEAbrirFechamentoCaixa || (() => {
+    const controller = window.IntegroVendedorFechamentoCaixa;
+    if (controller?.abrirResumoFechamento) return controller.abrirResumoFechamento();
+    return window.UIHelpers?.alerta?.("A conferência de caixa ainda não carregou. Reabra a tela de Cobranças e tente novamente.");
+  });
   window.abrirNaoPagamentoVenda = abrirNaoPagamento;
   window.registrarNaoPagamentoVenda = abrirNaoPagamento;
   window.confirmarNaoPagamentoVendedorUnificado = registrarNaoPagamento;

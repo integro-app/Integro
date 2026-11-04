@@ -478,7 +478,11 @@
       if (!caixa) {
         const persistido = await localizarCaixaAbertoPersistido();
         if (persistido.permitido !== true || !persistido.caixa)
-          return notificar("Não foi possível confirmar um caixa aberto no servidor. Consulte o responsável pelo caixa.");
+          return notificar(persistido.motivo === "multiplos-caixas-abertos"
+            ? "O servidor identificou mais de um caixa aberto para este vendedor. Solicite ao supervisor que regularize os caixas."
+            : persistido.permitido === null
+              ? "Não foi possível consultar o caixa no servidor. Verifique a conexão e tente novamente."
+              : "Não foi encontrado caixa aberto para este vendedor. Solicite abertura ao responsável.");
         caixa = persistido.caixa;
         global.caixaAtual = caixa;
         const existentes = global.State?.getCaixas?.() || [];
@@ -521,7 +525,7 @@
         if (!conferencia.confere) return;
         executarFechamento(dialog, caixa, conferencia.informadoCentavos);
       });
-      if (!global.matchMedia?.("(max-width: 760px)").matches) {
+      if (!global.matchMedia?.("(max-width: 760px)")?.matches) {
         setTimeout(() => input?.focus({ preventScroll: true }), 20);
       }
     } catch (erro) {
@@ -536,7 +540,9 @@
   }
 
   function atualizarBotaoFechamento() {
-    if (!global.document || !ehVendedor()) return;
+    // A tela pode ser montada antes da resolução assíncrona do perfil.
+    // O backend é a autoridade; um botão visível não pode ficar cinza por cache de identidade.
+    if (!global.document) return;
     const botao = document.getElementById("btnFecharCaixaCobrancas");
     const status = document.getElementById("statusFechamentoCobrancasFinal");
     if (!botao) return;
@@ -572,14 +578,40 @@
 
     if (!uid) return { permitido: null, caixa: null, motivo: "identidade-indisponivel" };
     try {
-      const snap = await db.collection("caixas").where("clientePlataformaId", "==", tenant)
-        .where("vendedorAuthUid", "==", uid).where("status", "in", ["ABERTO", "REABERTO"]).limit(1).get({ source: "server" });
-      if (snap.metadata?.fromCache) return { permitido: null, caixa: null, motivo: "servidor-indisponivel" };
-      const doc = snap.docs?.[0];
-      if (!doc) return { permitido: false, caixa: null, motivo: "sem-caixa-aberto" };
-      const caixa = { ...doc.data(), id: doc.id };
-      if (caixa.clientePlataformaId !== tenant || caixa.vendedorAuthUid !== uid || caixa.excluido === true || caixa.ativo === false) return { permitido: false, caixa: null, motivo: "caixa-invalido" };
-      return { permitido: true, caixa, motivo: "servidor-aberto" };
+      // Há caixas anteriores à padronização de vendedorAuthUid. Consulta
+      // sempre o servidor e admite somente o vendedor vinculado à sessão.
+      const tentativas = [
+        ["vendedorAuthUid", uid, true],
+        ["vendedorAuthUid", uid, false],
+        ["vendedorId", sellerId, true],
+        ["vendedorId", sellerId, false]
+      ];
+      let consultaValida = false;
+      for (const [campo, valor, filtrarStatus] of tentativas) {
+        if (!valor) continue;
+        try {
+          let consulta = db.collection("caixas").where("clientePlataformaId", "==", tenant)
+            .where(campo, "==", valor);
+          if (filtrarStatus) consulta = consulta.where("status", "in", ["ABERTO", "REABERTO"]);
+          const snap = await consulta.limit(filtrarStatus ? 5 : 150).get({ source: "server" });
+          if (snap.metadata?.fromCache) continue;
+          consultaValida = true;
+          const abertas = (snap.docs || []).map(doc => ({ ...doc.data(), id: doc.id }))
+            .filter(caixa => ["ABERTO", "REABERTO"].includes(normalizar(caixa.status)) &&
+              caixa.clientePlataformaId === tenant && caixa.excluido !== true &&
+              caixa.ativo !== false && (!caixa.vendedorAuthUid || caixa.vendedorAuthUid === uid) &&
+              (texto(caixa.vendedorAuthUid) === uid || texto(caixa.vendedorId) === sellerId));
+          if (abertas.length > 1) return { permitido: false, caixa: null, motivo: "multiplos-caixas-abertos" };
+          if (abertas.length === 1) return { permitido: true, caixa: abertas[0], motivo: "servidor-aberto" };
+          // A consulta limitada pode encontrar apenas históricos fechados;
+          // tenta por status ou alias sem apagar nem alterar nenhum caixa.
+        } catch (falhaConsulta) {
+          console.warn("[ÍNTEGRO] Consulta alternativa de caixa indisponível.", campo, falhaConsulta);
+        }
+      }
+      return consultaValida
+        ? { permitido: false, caixa: null, motivo: "sem-caixa-aberto" }
+        : { permitido: null, caixa: null, motivo: "servidor-indisponivel" };
     } catch (erro) {
       console.warn("[ÍNTEGRO] Validação do caixa indisponível.", erro);
       return { permitido: null, caixa: null, motivo: "servidor-indisponivel" };

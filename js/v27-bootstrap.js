@@ -5,7 +5,7 @@
   global.__INTEGRO_VERSION__ = "27.2.0-consolidacao";
 
   const loaded = new Map();
-  const VERSION = "20260817-v27-2";
+  const VERSION = "20261104-vendedor-fechamento";
   const page = String(global.location?.pathname || "").toLowerCase();
 
   function loadScript(src, key = src) {

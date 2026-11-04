@@ -443,3 +443,17 @@ test("botão de fechamento permanece acessível para conferir pendências no ser
   assert.equal(botao.disabled,false);
   assert.match(status.textContent,/Rota concluída/);
 });
+
+
+test("fechamento reage à remontagem do botão e à versão atualizada dos serviços",()=>{
+  const unified=fs.readFileSync(path.join(root,"js/vendedor-unificado.js"),"utf8");
+  const close=fs.readFileSync(path.join(root,"js/services/vendedor-fechamento-caixa.js"),"utf8");
+  const boot=fs.readFileSync(path.join(root,"js/v27-bootstrap.js"),"utf8");
+  const config=fs.readFileSync(path.join(root,"js/firebase-config.js"),"utf8");
+  assert.match(unified,/window\.IntegroVendedorFechamentoCaixa\?\.atualizarBotaoFechamento\?\.\(\)/);
+  assert.match(unified,/window\.validarEAbrirFechamentoCaixa = window\.validarEAbrirFechamentoCaixa \|\|/);
+  assert.match(close,/if \(!global\.document\) return;\s+const botao = document\.getElementById\("btnFecharCaixaCobrancas"\)/);
+  assert.match(close,/multiplos-caixas-abertos/);
+  assert.match(boot,/VERSION = "20261104-vendedor-fechamento"/);
+  assert.match(config,/v27-bootstrap\.js\?v=20261104-vendedor-fechamento/);
+});
