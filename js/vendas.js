@@ -150,8 +150,8 @@ function renderVendas() {
         <strong>${escaparVenda(v.clienteNome || "Cliente não informado")}</strong>
         <small>Vendedor: ${escaparVenda(v.vendedorNome || "-")}</small>
         <small>Tipo: ${escaparVenda(v.tipoVenda || "NOVA")} • Status: ${escaparVenda(v.statusVenda || v.status || "ATIVA")}</small>
-        <small>Valor emprestado: ${moeda(Number(v.valorEmprestado || 0))}</small>
-        <small>Valor total: ${moeda(Number(v.valorTotalVenda || 0))} • Saldo: ${moeda(Number(v.saldoDevedor || 0))}</small>
+        <small>Valor emprestado: ${moeda(centavosVenda(v,"valorEmprestadoCentavos","valorEmprestado") / 100)}</small>
+        <small>Valor total: ${moeda(centavosVenda(v,"valorTotalVendaCentavos","valorTotalVenda") / 100)} • Saldo: ${moeda(centavosVenda(v,"saldoDevedorCentavos","saldoDevedor") / 100)}</small>
       </div>
 
       <div class="item-actions">
