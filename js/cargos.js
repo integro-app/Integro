@@ -34,7 +34,7 @@ async function carregarCargos() {
     const snap = await db.collection("cargos").where("clientePlataformaId", "==", tenantId).get();
     if (String(State.getTenantId?.() || "") !== tenantId) return;
     const cargos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(c => String(c.clientePlataformaId || "") === tenantId);
+      .filter(c => String(c.clientePlataformaId || "") === tenantId && c.excluido !== true);
     State.setCargos?.(cargos);
     await carregarPermissoesCargo();
     if (String(State.getTenantId?.() || "") === tenantId) renderCargos();
@@ -71,7 +71,7 @@ function escaparCargo(valor) {
 function cargosDoTenant() {
   const tenant = String(State.getTenantId?.() || "");
   return tenant ? (State.getCargos?.() || []).filter(c =>
-    String(c.clientePlataformaId || "") === tenant) : [];
+    String(c.clientePlataformaId || "") === tenant && c.excluido !== true) : [];
 }
 function permissoesDoTenant() {
   const tenant = String(State.getTenantId?.() || "");
@@ -441,46 +441,29 @@ async function excluirCargo(id) {
   try {
     const usuarios = usuariosDoTenantCargo();
     const cargo = cargosDoTenant().find(c => String(c.id) === String(id));
-
     if (!cargo) {
-      notificarIntegro("Cargo não encontrado.");
+      notificarIntegro("Cargo não encontrado nesta empresa.");
       return;
     }
-
-    const usuariosVinculados = usuarios.filter(u => u.cargoId === id).length;
-
+    const usuariosVinculados = usuarios.filter(u => String(u.cargoId) === String(id)).length;
     if (usuariosVinculados > 0) {
-      notificarIntegro(
-        "Não é possível excluir este cargo.\n\n" +
-        "Existem " + usuariosVinculados + " usuário(s) vinculado(s) a ele.\n\n" +
-        "Remova ou altere o cargo desses usuários antes de excluir."
-      );
+      notificarIntegro("Não é possível excluir este cargo. Existem " +
+        usuariosVinculados + " usuário(s) vinculados. Altere os cargos antes de excluir.");
       return;
     }
-
-    if (!confirm("Deseja excluir definitivamente o cargo '" + (cargo.nome || "sem nome") + "'?\n\nAs permissões vinculadas também serão removidas.")) {
-      return;
-    }
-
-    const batch = db.batch();
-
-    batch.delete(db.collection("cargos").doc(id));
-
-    const permissoesSnap = await db.collection("permissoes_cargo")
-      .where("clientePlataformaId", "==", State.getTenantId())
-      .where("cargoId", "==", id)
-      .get();
-
-    permissoesSnap.docs.forEach(doc => {
-      batch.delete(db.collection("permissoes_cargo").doc(doc.id));
+    if (!confirm("Deseja excluir o cargo '" + (cargo.nome || "sem nome") +
+      "'?\n\nA exclusão é lógica: o cargo sai das listas, mas seu histórico e permissões são preservados para auditoria.")) return;
+    // Firestore Rules proíbe DELETE em cargos e permissões; o registro
+    // deve ser arquivado, nunca apagado fisicamente.
+    await db.collection("cargos").doc(id).update({
+      excluido: true,
+      ativo: false,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      excluidoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      excluidoPorUid: State.getUsuario?.()?.authUid || ""
     });
-
-    await batch.commit();
-
-    notificarIntegro("Cargo excluído com sucesso.");
-
+    notificarIntegro("Cargo excluído logicamente. Histórico preservado.");
     await carregarCargos();
-
   } catch (erro) {
     console.error("Erro ao excluir cargo:", erro);
     notificarIntegro("Erro ao excluir cargo: " + erro.message);
