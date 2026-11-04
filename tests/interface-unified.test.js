@@ -170,3 +170,67 @@ test("sino real e chat possuem pontos de montagem no painel local", () => {
   assert.match(chat, /id="chatEnviar"/);
   assert.match(chat, /containerChat\(\).*integroChatRoot|integroChatRoot.*chatInterno/s);
 });
+
+
+test("Equipes mantém filtros, escopo, botões e campos editáveis seguros", async () => {
+  const vm = require("node:vm");
+  const lista={innerHTML:"",contains:()=>true,onclick:null};
+  const indicadores={innerHTML:""};
+  const contador={textContent:""};
+  const resumo={textContent:""};
+  let tenant="tenant-a", consultas=0;
+  let equipes=[
+    {id:"e'1",clientePlataformaId:"tenant-a",nome:"Equipe <script>intruso</script>",
+      descricao:'Descrição "interna"',status:"ATIVA",ativo:true,supervisorNome:"Gestor A"},
+    {id:"e2",clientePlataformaId:"tenant-b",nome:"EQUIPE OUTRA EMPRESA",
+      status:"ATIVA",ativo:true}
+  ];
+  const usuarios=[
+    {id:"v1",clientePlataformaId:"tenant-a",nome:"Vendedor A",
+      tipoUsuario:"vendedor",equipeId:"e'1"},
+    {id:"v2",clientePlataformaId:"tenant-b",nome:"VENDEDOR OUTRO TENANT",
+      tipoUsuario:"vendedor",equipeId:"e2"}
+  ];
+  const contexto={
+    State:{
+      getTenantId:()=>tenant,getEquipes:()=>equipes,getUsuarios:()=>usuarios,
+      setEquipes:novas=>{equipes=novas;},getUsuario:()=>({})
+    },
+    document:{
+      getElementById:id=>({listaEquipes:lista,equipesIndicadores:indicadores,
+        equipesContador:contador,equipesFiltroResumo:resumo}[id]||null)
+    },
+    window:{},console,setTimeout(){},
+    db:{collection(){consultas++;throw new Error("Não deve consultar sem tenant");}}
+  };
+  vm.createContext(contexto);
+  vm.runInContext(read("js/equipes.js"),contexto);
+  contexto.renderEquipes();
+  assert.ok(lista.innerHTML.includes("Equipe &lt;script&gt;intruso&lt;/script&gt;"));
+  assert.ok(!lista.innerHTML.includes("<script>intruso</script>"));
+  assert.ok(!lista.innerHTML.includes("EQUIPE OUTRA EMPRESA"));
+  assert.ok(lista.innerHTML.includes('data-equipe-id="e&#39;1"'));
+  for(const acao of ["editar","gerenciar","status","excluir"])
+    assert.ok(lista.innerHTML.includes('data-equipe-acao="'+acao+'"'),acao);
+  assert.ok(!lista.innerHTML.includes("onclick="));
+  assert.ok(indicadores.innerHTML.includes("Total"));
+  const formulario=contexto.formularioEquipe(equipes[0]);
+  assert.ok(formulario.includes("Equipe &lt;script&gt;intruso&lt;/script&gt;"));
+  assert.ok(!formulario.includes('onclick="salvarEquipe'));
+  const chamadas=[];
+  const handlers={editar:"abrirEditarEquipe",gerenciar:"abrirGerenciarEquipe",
+    status:"alterarStatusEquipe",excluir:"excluirEquipe"};
+  for(const [acao,fn] of Object.entries(handlers)){
+    contexto[fn]=(...args)=>chamadas.push([acao,...args]);
+    lista.onclick({target:{closest:()=>({dataset:{
+      equipeAcao:acao,equipeId:"e'1",equipeAtivo:"false"
+    }})}});
+  }
+  assert.deepEqual(chamadas,[
+    ["editar","e'1"],["gerenciar","e'1"],["status","e'1",false],["excluir","e'1"]
+  ]);
+  tenant="";
+  await contexto.carregarEquipes();
+  assert.equal(consultas,0,"sem tenant não pode abrir consulta global");
+  assert.equal(equipes.length,0);
+});
