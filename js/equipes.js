@@ -353,11 +353,20 @@ async function salvarGerenciamentoEquipe(id) {
       return;
     }
 
-    const supervisorId = document.getElementById("equipeSupervisorId").value;
-    const supervisor = usuarios.find(u => u.id === supervisorId);
+    const supervisorId = document.getElementById("equipeSupervisorId")?.value || "";
+    const supervisor = usuarios.find(u => String(u.id) === String(supervisorId));
+    if (supervisorId && (!supervisor || !(String(supervisor.tipoUsuario || "").toLowerCase() === "supervisor" ||
+      String(supervisor.cargoNome || "").toLowerCase().includes("supervisor"))))
+      throw new Error("Supervisor de destino não pertence a esta empresa ou não é elegível.");
 
-    const vendedoresIds = Array.from(document.querySelectorAll(".equipeVendedorCheck:checked"))
-      .map(input => input.value);
+    const vendedoresIds = [...new Set(Array.from(
+      document.querySelectorAll(".equipeVendedorCheck:checked")).map(input => input.value))];
+    const elegiveis = new Set(usuarios.filter(u =>
+      String(u.tipoUsuario || "").toLowerCase() === "vendedor" ||
+      String(u.cargoNome || "").toLowerCase().includes("vendedor") ||
+      String(u.cargoNome || "").toLowerCase().includes("vendas")).map(u => String(u.id)));
+    if (vendedoresIds.some(idVendedor => !elegiveis.has(String(idVendedor))))
+      throw new Error("A seleção contém vendedor não autorizado para esta empresa.");
 
     const batch = db.batch();
 
