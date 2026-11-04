@@ -13,6 +13,25 @@ function escaparUsuarioTabela(valor) {
   })[caractere]);
 }
 
+function usuariosDoTenant() {
+  const tenant = String(State.getTenantId?.() || "");
+  return tenant ? (State.getUsuarios?.() || []).filter(u =>
+    String(u.clientePlataformaId || u.empresaId || u.tenantId || "") === tenant) : [];
+}
+function usuarioDoTenant(id) {
+  return usuariosDoTenant().find(u => String(u.id) === String(id)) || null;
+}
+function cargosUsuarioTenant() {
+  const tenant = String(State.getTenantId?.() || "");
+  return tenant ? (State.getCargos?.() || []).filter(c =>
+    String(c.clientePlataformaId || "") === tenant) : [];
+}
+function equipesUsuarioTenant() {
+  const tenant = String(State.getTenantId?.() || "");
+  return tenant ? (State.getEquipes?.() || []).filter(e =>
+    String(e.clientePlataformaId || "") === tenant) : [];
+}
+
 function equipesUsuarioTexto(usuario) {
   const nomes = Array.isArray(usuario?.equipesNomes) ? usuario.equipesNomes.filter(Boolean) : [];
   return nomes.length ? nomes.join(", ") : (usuario?.equipeNome || "-");
@@ -37,7 +56,7 @@ function abrirFiltrosUsuariosEstrutura() {
 
 function renderUsuarios() {
   const el=document.getElementById("listaUsuarios"); if(!el)return;
-  const todos=State.getUsuarios?State.getUsuarios():[]; atualizarIndicadoresUsuariosEstrutura(todos);
+  const todos=usuariosDoTenant(); atualizarIndicadoresUsuariosEstrutura(todos);
   const termo=String(document.getElementById("buscaUsuarios")?.value||"").trim().toLowerCase();
   const usuarios=todos.filter(usuario=>{
     const status=String(usuario.status||"ATIVO").toUpperCase();
@@ -56,7 +75,7 @@ function renderUsuarios() {
       : usuario.acessoLiberado===false
         ? `<button class="success-btn" type="button" data-user-id="${id}" onclick="alterarAcessoUsuario(this.dataset.userId,true)">Liberar</button>`
         : `<button class="danger-btn usuario-action-muted" type="button" data-user-id="${id}" onclick="alterarAcessoUsuario(this.dataset.userId,false)">Bloquear</button>`;
-    return `<tr><td data-label="Nome"><div class="usuario-identidade"><span class="usuario-avatar">${nome.slice(0,2).toUpperCase()}</span><div><strong>${nome}</strong><small>${email}</small></div></div></td><td data-label="Perfil"><strong class="usuario-celula-principal">${perfil}</strong><small>${cargo}</small></td><td data-label="Equipes"><span class="usuario-equipes-texto" title="${equipes}">${equipes}</span></td><td data-label="Status"><span class="usuario-status ${classe}">${status.replace(/_/g," ")}</span></td><td data-label="Acesso"><span class="usuario-status ${classe}">${acesso}</span></td><td data-label="Ações"><div class="usuario-table-actions"><button class="ghost-btn" type="button" data-user-id="${id}" onclick="abrirEditarUsuario(this.dataset.userId)"><span class="material-symbols-rounded">edit</span>Editar</button><button class="ghost-btn" type="button" data-user-id="${id}" onclick="IntegroUsuariosPermissoes.abrirPermissoesUsuario(this.dataset.userId)"><span class="material-symbols-rounded">shield_person</span>Permissões</button>${acaoAcesso}<button class="danger-btn usuario-action-muted" type="button" data-user-id="${id}" onclick="excluirUsuarioLogico(this.dataset.userId)"><span class="material-symbols-rounded">delete</span>Excluir</button></div></td></tr>`;
+    return `<tr><td data-label="Nome"><div class="usuario-identidade"><span class="usuario-avatar">${nome.slice(0,2).toUpperCase()}</span><div><strong>${nome}</strong><small>${email}</small></div></div></td><td data-label="Perfil"><strong class="usuario-celula-principal">${perfil}</strong><small>${cargo}</small></td><td data-label="Equipes"><span class="usuario-equipes-texto" title="${equipes}">${equipes}</span></td><td data-label="Status"><span class="usuario-status ${classe}">${escaparUsuarioTabela(status.replace(/_/g," "))}</span></td><td data-label="Acesso"><span class="usuario-status ${classe}">${acesso}</span></td><td data-label="Ações"><div class="usuario-table-actions"><button class="ghost-btn" type="button" data-user-id="${id}" onclick="abrirEditarUsuario(this.dataset.userId)"><span class="material-symbols-rounded">edit</span>Editar</button><button class="ghost-btn" type="button" data-user-id="${id}" onclick="IntegroUsuariosPermissoes.abrirPermissoesUsuario(this.dataset.userId)"><span class="material-symbols-rounded">shield_person</span>Permissões</button>${acaoAcesso}<button class="danger-btn usuario-action-muted" type="button" data-user-id="${id}" onclick="excluirUsuarioLogico(this.dataset.userId)"><span class="material-symbols-rounded">delete</span>Excluir</button></div></td></tr>`;
   }).join("");
   el.innerHTML='<div class="estrutura-table-scroll"><table class="usuarios-table"><thead><tr><th>Nome</th><th>Perfil e cargo</th><th>Equipes</th><th>Status</th><th>Acesso</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
   if(contador)contador.textContent=usuarios.length+' usuário'+(usuarios.length===1?'':'s')+' exibido'+(usuarios.length===1?'':'s');
@@ -70,9 +89,9 @@ function abrirNovoUsuario() {
 }
 
 function abrirEditarUsuario(id) {
-  const usuario = State.encontrarUsuarioPorId(id);
+  const usuario = usuarioDoTenant(id);
   if (!usuario) {
-    UIHelpers.alerta("Usuário não encontrado.");
+    UIHelpers.alerta("Usuário não encontrado nesta empresa.");
     return;
   }
 
@@ -84,8 +103,8 @@ function abrirEditarUsuario(id) {
 }
 
 function formularioUsuario(usuario = null) {
-  const cargos = State.getCargos();
-  const equipes = State.getEquipes();
+  const cargos = cargosUsuarioTenant();
+  const equipes = equipesUsuarioTenant();
   const acessoUsuario = window.IntegroOperacional?.normalizarAcessoUsuario
     ? window.IntegroOperacional.normalizarAcessoUsuario(usuario || {})
     : null;
