@@ -76,10 +76,10 @@ test("Detalhes financeiros da venda priorizam centavos canonicos",()=>{
     valorTotalVendaCentavos:18050,saldoDevedorCentavos:11025,
     valorParcelaCentavos:4513,valorEmprestado:0,valorTotalVenda:0,
     saldoDevedor:0,valorParcela:0});
-  assert.match(perfil,/Valor emprestado: R\\$ 125\\.50/);
-  assert.match(perfil,/Valor total da venda: R\\$ 180\\.50/);
-  assert.match(perfil,/Saldo devedor: R\\$ 110\\.25/);
-  assert.match(perfil,/Valor da parcela: R\\$ 45\\.13/);
+  assert.match(perfil,/Valor emprestado: R\$ 125\.50/);
+  assert.match(perfil,/Valor total da venda: R\$ 180\.50/);
+  assert.match(perfil,/Saldo devedor: R\$ 110\.25/);
+  assert.match(perfil,/Valor da parcela: R\$ 45\.13/);
 });
 
 test("Historico de pagamentos usa valorCentavos oficial",()=>{
@@ -88,8 +88,8 @@ test("Historico de pagamentos usa valorCentavos oficial",()=>{
     {id:"pag-1",status:"CONFIRMADO",valorCentavos:7255,
       valorRecebido:0,valorRecebidoCentavos:0}
   ],"pagamentos",true);
-  assert.match(html,/R\\$ 72\\.55/);
-  assert.doesNotMatch(html,/R\\$ 0\\.00/);
+  assert.match(html,/R\$ 72\.55/);
+  assert.doesNotMatch(html,/R\$ 0\.00/);
 });
 
 test("Filtro de ativa exclui INATIVA e status quitada funciona independentemente",()=>{
