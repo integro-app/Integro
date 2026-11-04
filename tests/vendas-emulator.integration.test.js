@@ -96,7 +96,18 @@ test("baixa paga é persistida e reconstruível na data operacional do caixa",as
     caixaId:caixaIsoladoId,vendaId,parcelaId:parcela.id,valorCentavos:3000
   },{auth:{uid:vendedor}});
   assert.equal(repetido.modo,"IDEMPOTENTE");
+  assert.equal(repetido.ok,true);
+  assert.equal(repetido.pagamentoId,resultado.pagamentoId);
+  assert.equal(repetido.deltaCentavos,0);
+  assert.equal(repetido.valorPagoParcelaCentavos,3000,
+    "retry não pode apagar a parcela paga da interface");
+  assert.equal(repetido.saldoVendaCentavos,9000);
+  assert.equal(repetido.totalPagoVendaCentavos,3000);
+  assert.equal(repetido.statusParcela,"PAGA");
+  assert.equal(repetido.saldoCaixaCentavos,resultado.saldoCaixaCentavos);
   assert.equal((await db.collection("vendas").doc(vendaId).get()).data().totalPagoCentavos,3000);
+  assert.equal((await db.collection("pagamentos").doc(resultado.pagamentoId).get()).data().valorCentavos,3000,
+    "retry idempotente não deve duplicar ou zerar pagamento");
 });
 
 test("backend bloqueia venda de outra empresa, carteira e quantidade fracionaria",async()=>{
