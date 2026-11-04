@@ -61,12 +61,23 @@ test("serviço de configurações não contamina estado global após mudança de
   const calls=[];
   const win={
     State:{getTenantId:()=>tenant},
-    firebase:{firestore:function(){return {collection(){return {
-      doc(id){calls.push(id);return {
-        get:()=>new Promise(resolve=>{responder=resolve;}),
-        set:async()=>{}
-      };}}
-    };}}}
+    firebase:{
+      firestore:function(){
+        return {
+          collection(){
+            return {
+              doc(id){
+                calls.push(id);
+                return {
+                  get(){return new Promise(resolve=>{responder=resolve;});},
+                  async set(){}
+                };
+              }
+            };
+          }
+        };
+      }
+    }
   };
   win.firebase.firestore.FieldValue={serverTimestamp:()=>"TS"};
   vm.runInNewContext(source("js/services/configuracoes-empresa-service.js"),{window:win,console});
