@@ -133,10 +133,11 @@ function abrirNovaEquipe() {
     "Crie uma equipe, unidade ou grupo operacional.",
     formularioEquipe()
   );
+  document.getElementById("salvarEquipeBtn")?.addEventListener("click", () => salvarEquipe());
 }
 
 function abrirEditarEquipe(id) {
-  const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
+  const equipe = equipesDoTenant().find(e => String(e.id) === String(id));
 
   if (!equipe) {
     notificarIntegro("Equipe não encontrada.");
@@ -148,6 +149,7 @@ function abrirEditarEquipe(id) {
     "Atualize os dados principais da equipe.",
     formularioEquipe(equipe)
   );
+  document.getElementById("salvarEquipeBtn")?.addEventListener("click", () => salvarEquipe(id));
 }
 
 function formularioEquipe(equipe = null) {
@@ -155,12 +157,12 @@ function formularioEquipe(equipe = null) {
     <div class="form-grid">
       <div class="form-group full">
         <label>Nome da equipe</label>
-        <input id="equipeNome" placeholder="Ex: Norte, Centro, Cobrança 01" value="${equipe?.nome || ""}">
+        <input id="equipeNome" placeholder="Ex: Norte, Centro, Cobrança 01" value="${escaparEquipe(equipe?.nome || "")}">
       </div>
 
       <div class="form-group full">
         <label>Descrição</label>
-        <input id="equipeDescricao" placeholder="Descrição interna da equipe" value="${equipe?.descricao || ""}">
+        <input id="equipeDescricao" placeholder="Descrição interna da equipe" value="${escaparEquipe(equipe?.descricao || "")}">
       </div>
 
       <div class="form-group">
@@ -184,7 +186,7 @@ function formularioEquipe(equipe = null) {
     </div>
 
     <div class="drawer-actions">
-      <button class="primary-btn drawer-primary" onclick="${equipe ? `salvarEquipe('${equipe.id}')` : "salvarEquipe()"}">
+      <button type="button" class="primary-btn drawer-primary" id="salvarEquipeBtn">
         ${equipe ? "Salvar alterações" : "Criar equipe"}
       </button>
     </div>
@@ -194,7 +196,9 @@ function formularioEquipe(equipe = null) {
 async function salvarEquipe(id = null) {
   try {
     const usuario = State.getUsuario ? State.getUsuario() : {};
-    const tenantId = State.getTenantId();
+    const tenantId = String(State.getTenantId?.() || "");
+    if (!tenantId || (id && !equipesDoTenant().some(e => String(e.id) === String(id))))
+      throw new Error("Equipe fora do escopo da empresa selecionada.");
 
     const nome = document.getElementById("equipeNome").value.trim();
     const descricao = document.getElementById("equipeDescricao").value.trim();
@@ -255,7 +259,7 @@ async function salvarEquipe(id = null) {
 // ===============================
 
 function abrirGerenciarEquipe(id) {
-  const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
+  const equipe = equipesDoTenant().find(e => String(e.id) === String(id));
 
   if (!equipe) {
     notificarIntegro("Equipe não encontrada.");
@@ -267,10 +271,12 @@ function abrirGerenciarEquipe(id) {
     equipe.nome || "Equipe",
     formularioGerenciarEquipe(equipe)
   );
+  document.getElementById("salvarGerenciamentoEquipeBtn")?.addEventListener("click",
+    () => salvarGerenciamentoEquipe(id));
 }
 
 function formularioGerenciarEquipe(equipe) {
-  const usuarios = State.getUsuarios ? State.getUsuarios() : [];
+  const usuarios = usuariosEquipesDoTenant();
 
   const supervisores = usuarios.filter(u =>
     String(u.tipoUsuario || "").toLowerCase() === "supervisor" ||
@@ -285,8 +291,8 @@ function formularioGerenciarEquipe(equipe) {
 
   const supervisorOptions = supervisores.length
     ? supervisores.map(s => `
-        <option value="${s.id}" ${equipe.supervisorId === s.id ? "selected" : ""}>
-          ${s.nomeCompleto || s.nome || s.email}
+        <option value="${escaparEquipe(s.id)}" ${equipe.supervisorId === s.id ? "selected" : ""}>
+          ${escaparEquipe(s.nomeCompleto || s.nome || s.email)}
         </option>
       `).join("")
     : `<option value="">Nenhum supervisor disponível</option>`;
@@ -303,10 +309,10 @@ function formularioGerenciarEquipe(equipe) {
 
         return `
           <label class="team-user-check">
-            <input type="checkbox" class="equipeVendedorCheck" value="${v.id}" ${checked ? "checked" : ""}>
+            <input type="checkbox" class="equipeVendedorCheck" value="${escaparEquipe(v.id)}" ${checked ? "checked" : ""}>
             <span>
-              <strong>${v.nomeCompleto || v.nome || v.email}</strong>
-              <small>${v.email || ""}</small>
+              <strong>${escaparEquipe(v.nomeCompleto || v.nome || v.email)}</strong>
+              <small>${escaparEquipe(v.email || "")}</small>
             </span>
           </label>
         `;
@@ -330,7 +336,7 @@ function formularioGerenciarEquipe(equipe) {
     </div>
 
     <div class="drawer-actions">
-      <button class="primary-btn drawer-primary" onclick="salvarGerenciamentoEquipe('${equipe.id}')">
+      <button type="button" class="primary-btn drawer-primary" id="salvarGerenciamentoEquipeBtn">
         Salvar equipe
       </button>
     </div>
@@ -339,8 +345,8 @@ function formularioGerenciarEquipe(equipe) {
 
 async function salvarGerenciamentoEquipe(id) {
   try {
-    const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
-    const usuarios = State.getUsuarios ? State.getUsuarios() : [];
+    const equipe = equipesDoTenant().find(e => String(e.id) === String(id));
+    const usuarios = usuariosEquipesDoTenant();
 
     if (!equipe) {
       notificarIntegro("Equipe não encontrada.");
@@ -411,6 +417,8 @@ async function salvarGerenciamentoEquipe(id) {
 
 async function alterarStatusEquipe(id, ativo) {
   try {
+    if (!equipesDoTenant().some(e => String(e.id) === String(id)))
+      throw new Error("Equipe fora do escopo da empresa selecionada.");
     await db.collection("equipes").doc(id).update({
       ativo,
       status: ativo ? "ATIVA" : "INATIVA",
@@ -427,8 +435,8 @@ async function alterarStatusEquipe(id, ativo) {
 
 async function excluirEquipe(id) {
   try {
-    const usuarios = State.getUsuarios ? State.getUsuarios() : [];
-    const equipe = (State.getEquipes ? State.getEquipes() : []).find(e => e.id === id);
+    const usuarios = usuariosEquipesDoTenant();
+    const equipe = equipesDoTenant().find(e => String(e.id) === String(id));
 
     if (!equipe) {
       notificarIntegro("Equipe não encontrada.");
