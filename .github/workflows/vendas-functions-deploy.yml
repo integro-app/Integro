@@ -65,12 +65,10 @@ jobs:
             echo "correcoes=true" >> "$GITHUB_OUTPUT"
           else
             alterados="$(git diff --name-only HEAD^ HEAD)"
-            if echo "$alterados" | grep -Eq '^functions/(index|financial-callables|financial-core|v27-sales-approvals|v27-sales-cancellation)\\.js
-; then
+            if echo "$alterados" | grep -Eq '^functions/(index|financial-callables|financial-core|v27-sales-approvals|v27-sales-cancellation)[.]js'; then
               echo "vendas=true" >> "$GITHUB_OUTPUT"
             fi
-            if echo "$alterados" | grep -Eq '^functions/(index|seller-collection-corrections|financial-core)\\.js
-; then
+            if echo "$alterados" | grep -Eq '^functions/(index|seller-collection-corrections|financial-core)[.]js'; then
               echo "correcoes=true" >> "$GITHUB_OUTPUT"
             fi
           fi
