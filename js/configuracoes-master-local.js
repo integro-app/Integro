@@ -4,6 +4,7 @@
   global.__INTEGRO_CONFIG_V272__ = true;
 
   let configuracaoAtual = null;
+  let configuracaoTenantAtual = "";
   let abaAtual = "empresa";
 
   const ABAS = [
@@ -31,7 +32,7 @@
   function tenantId(){return global.State?.getTenantId?.()||global.usuarioLogado?.clientePlataformaId||global.currentUserData?.clientePlataformaId||"";}
   function usuario(){return global.State?.getUsuario?.()||global.usuarioLogado||global.currentUserData||{};}
   function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[c]);}
-  function avisar(msg){global.notificarIntegro?.(msg)||global.UIHelpers?.alerta?.(msg);}
+  function avisar(msg){if(typeof global.notificarIntegro==="function")return global.notificarIntegro(msg);return global.UIHelpers?.alerta?.(msg);}
   function checked(v){return v===true?"checked":"";}
   function num(v,d=0){const n=Number(v);return Number.isFinite(n)?n:d;}
   function statusRow(item,grupo){return `<div class="config-status-row" data-status-grupo="${grupo}"><input data-status-chave value="${esc(item.chave||"")}" aria-label="Chave"><input data-status-nome value="${esc(item.nome||"")}" aria-label="Nome"><input data-status-cor type="color" value="${esc(item.cor||"#64748b")}" aria-label="Cor"><label class="config-check"><input data-status-ativo type="checkbox" ${item.ativo!==false?"checked":""}> Ativo</label><button class="icon-btn" type="button" onclick="removerStatusConfiguracao(this)" title="Remover"><span class="material-symbols-rounded">delete</span></button></div>`;}
@@ -50,8 +51,45 @@
   function installNav(){ensureBoxes();const host=document.querySelector("#configuracoes [data-config-navigation-host]");if(host)host.innerHTML=navHtml();}
   function showOnly(aba){ensureBoxes();Object.entries(BOXES).forEach(([key,id])=>{const box=document.getElementById(id);if(box)box.style.display=key===aba?"block":"none";});document.querySelectorAll("#configuracoes .config-module-tab").forEach(btn=>btn.classList.toggle("active",btn.id===`tabConfig${aba[0].toUpperCase()+aba.slice(1)}`));}
 
-  async function load(force=false){if(configuracaoAtual&&!force)return configuracaoAtual;const id=tenantId();if(!id)throw new Error("Empresa não identificada na sessão.");configuracaoAtual=await global.IntegroConfiguracoesEmpresa.carregar(id);return configuracaoAtual;}
-  async function savePatch(sections,buttonId,message){const button=document.getElementById(buttonId);try{if(button)button.disabled=true;configuracaoAtual=await global.IntegroConfiguracoesEmpresa.salvar(tenantId(),{...configuracaoAtual,...sections},usuario());global.IntegroDataRuntime?.invalidar?.("configuracoes_empresas");await global.FirestoreService?.gravarLog?.("CONFIGURACOES_EMPRESA_ATUALIZADAS",{secoes:Object.keys(sections),versao:configuracaoAtual.versao,build:"27.2"});avisar(message);document.dispatchEvent(new CustomEvent("integro-configuracoes-atualizadas",{detail:{config:configuracaoAtual,secoes:Object.keys(sections)}}));return configuracaoAtual;}finally{if(button?.isConnected)button.disabled=false;}}
+  async function load(force=false){
+    const id=String(tenantId()||"");
+    if(!id){configuracaoAtual=null;configuracaoTenantAtual="";throw new Error("Empresa não identificada na sessão.");}
+    if(configuracaoAtual&&configuracaoTenantAtual===id&&!force)return configuracaoAtual;
+    // Ao trocar a empresa, nunca reutilizar dados da empresa anterior.
+    configuracaoAtual=null;
+    configuracaoTenantAtual="";
+    const carregada=await global.IntegroConfiguracoesEmpresa.carregar(id);
+    if(String(tenantId()||"")!==id)throw new Error("Empresa alterada durante o carregamento. Abra a configuração novamente.");
+    configuracaoAtual=carregada;
+    configuracaoTenantAtual=id;
+    return carregada;
+  }
+  async function savePatch(sections,buttonId,message){
+    const button=document.getElementById(buttonId),id=String(tenantId()||"");
+    if(!id||configuracaoTenantAtual!==id||!configuracaoAtual)
+      throw new Error("Configurações desatualizadas após troca de empresa. Reabra esta página antes de salvar.");
+    if(button?.disabled)return null;
+    try{
+      if(button)button.disabled=true;
+      const salvo=await global.IntegroConfiguracoesEmpresa.salvar(id,{...configuracaoAtual,...sections},usuario());
+      if(String(tenantId()||"")!==id){
+        configuracaoAtual=null;configuracaoTenantAtual="";
+        throw new Error("Empresa alterada durante a gravação. Reabra as configurações para conferir o resultado.");
+      }
+      configuracaoAtual=salvo;
+      global.IntegroDataRuntime?.invalidar?.("configuracoes_empresas");
+      // A auditoria complementar não deve apresentar "falha ao salvar" após
+      // o Firestore já ter confirmado a gravação da configuração.
+      try{
+        await global.FirestoreService?.gravarLog?.("CONFIGURACOES_EMPRESA_ATUALIZADAS",
+          {secoes:Object.keys(sections),versao:salvo.versao,build:"27.2"});
+      }catch(erro){console.warn("[ÍNTEGRO Config] Configuração salva; log complementar indisponível.",erro);}
+      avisar(message);
+      document.dispatchEvent(new CustomEvent("integro-configuracoes-atualizadas",
+        {detail:{config:salvo,secoes:Object.keys(sections)}}));
+      return salvo;
+    }finally{if(button?.isConnected)button.disabled=false;}
+  }
 
   function renderEmpresa(c){const box=document.getElementById(BOXES.empresa);if(!box)return;const e=c.empresa||{};box.innerHTML=`<form onsubmit="salvarConfiguracoesEmpresaGeral(event)"><section class="config-block"><div class="config-block-head"><div><h3>Empresa</h3><p>Identidade visual e preferências gerais. Dados cadastrais sensíveis são alterados somente pelo suporte ÍNTEGRO após validação.</p></div></div><div class="config-form-grid"><label>Nome de exibição<input id="cfgEmpresaNome" maxlength="120" value="${esc(e.nomeExibicao||usuario().clientePlataformaNome||usuario().empresaNome||"")}"></label><label>Fuso horário<select id="cfgEmpresaFuso">${["America/Sao_Paulo","America/Manaus","America/Cuiaba","America/Recife"].map(x=>`<option value="${x}" ${e.fusoHorario===x?"selected":""}>${x.replace("America/","").replace("Sao_Paulo","Brasília / São Paulo")}</option>`).join("")}</select></label><label>Moeda<input disabled value="Real brasileiro (BRL)"></label><label>Idioma<input disabled value="Português (Brasil)"></label></div></section><div class="config-note"><span class="material-symbols-rounded">verified_user</span><div><strong>Dados cadastrais protegidos</strong><p>Razão social, documento e demais dados sensíveis não são editados pelo Master Local nesta tela.</p></div></div>${saveBar("cfgEmpresaSalvar","Salvar empresa")}</form>`;}
 
