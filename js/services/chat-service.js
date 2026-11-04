@@ -405,10 +405,12 @@
     return { id, grupoNome, tipo: "EQUIPE", subtipo: "GRUPO", historicoModo: modo, participantesIds: ids, participantesNomes: nomes };
   }
 
-  async function registrarMensagem(conversaId, dadosMensagem, previa) {
+  async function registrarMensagem(conversaId, dadosMensagem, previa, mensagemId = "") {
     const { tenant, remetenteId } = validarContextoEnvio();
     const conversaRef = db().collection(COLECAO).doc(conversaId);
-    const mensagemRef = conversaRef.collection(SUBCOLECAO).doc();
+    const mensagemRef = mensagemId
+      ? conversaRef.collection(SUBCOLECAO).doc(mensagemId)
+      : conversaRef.collection(SUBCOLECAO).doc();
     const criadoEm = timestamp();
     await db().runTransaction(async tx => {
       const conversaSnap = await tx.get(conversaRef);
@@ -458,6 +460,12 @@
     const { usuario, tenant, remetenteId } = validarContextoEnvio();
     validarImagem(arquivo);
     if (!conversaId) throw new Error("Conversa obrigatoria.");
+    const conversaSnap = await db().collection(COLECAO).doc(conversaId).get();
+    const conversa = conversaSnap.exists ? conversaSnap.data() : null;
+    if (!conversa || conversa.clientePlataformaId !== tenant ||
+        !Array.isArray(conversa.participantesIds) ||
+        !conversa.participantesIds.includes(remetenteId))
+      throw new Error("Sem permissão para enviar foto nesta conversa.");
     const mensagemId = db().collection(COLECAO).doc(conversaId).collection(SUBCOLECAO).doc().id;
     const nomeSeguro = String(arquivo.name || "foto").replace(/[^A-Za-z0-9._-]/g, "_").slice(-100);
     const caminho = `tenants/${normalizarId(tenant)}/chat/${normalizarId(conversaId)}/${mensagemId}/${nomeSeguro}`;
@@ -471,7 +479,7 @@
         clientePlataformaId: tenant, conversaId, remetenteId, remetenteNome: nomeUsuario(usuario),
         remetenteCargo: cargoUsuario(usuario), tipo: "IMAGEM", texto: String(legenda || "").trim().slice(0, 1200),
         imagemUrl, imagemPath: caminho, imagemNome: arquivo.name || "foto", imagemMime: arquivo.type, imagemTamanho: arquivo.size
-      }, "Foto");
+      }, "Foto", mensagemId);
     } catch (erro) {
       if (enviado) arquivoRef.delete().catch(() => {});
       throw erro;
