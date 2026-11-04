@@ -292,3 +292,38 @@ test("supervisor fecha caixa com baixa gerencial não paga, preserva saldo e rea
   assert.equal(novaConferencia.pendenciasCobranca,1,
     "reabertura não pode reutilizar baixa gerencial anterior como visita");
 });
+
+
+test("abertura retroativa respeita a data escolhida, herança inicial e não duplica caixa",async()=>{
+  const {criarCicloCaixa}=require("../functions/box-lifecycle");
+  const ciclo=criarCicloCaixa({db,functions:{https:{HttpsError}}});
+  const master=(await admin.auth().getUserByEmail("master.local.a@homologacao.integro.test")).uid;
+  const seller=(await admin.auth().getUserByEmail("vendedor.3.a@homologacao.integro.test")).uid;
+  const contexto={auth:{uid:master}};
+  const hoje=core.hojeSP();
+  const diaAnterior=new Date(Date.parse(hoje+"T12:00:00Z")-86400000).toISOString().slice(0,10);
+  const doisDias=new Date(Date.parse(hoje+"T12:00:00Z")-172800000).toISOString().slice(0,10);
+  const entrada={vendedorId:seller,dataOperacional:diaAnterior,
+    motivoRetroativo:"Regularização de abertura por data",valorInicialCentavos:2500};
+  const primeiro=await ciclo.abrir(entrada,contexto);
+  assert.equal(primeiro.modo,"CRIACAO");
+  const ref=db.collection("caixas").doc(primeiro.caixaId);
+  const persistido=(await ref.get()).data();
+  assert.equal(persistido.dataOperacional,diaAnterior);
+  assert.equal(persistido.equipeId,"equipe-a2");
+  assert.equal(persistido.vendedorAuthUid,seller);
+  assert.equal(persistido.saldoInicialCentavos,2500);
+  assert.equal(persistido.status,"ABERTO");
+  const duplicado=await ciclo.abrir(entrada,contexto);
+  assert.equal(duplicado.modo,"IDEMPOTENTE");
+  assert.equal(duplicado.caixaId,primeiro.caixaId);
+  await assert.rejects(
+    ()=>ciclo.abrir({...entrada,dataOperacional:doisDias},contexto),
+    error=>error.code==="failed-precondition"
+  );
+  const daDataErrada=await db.collection("caixas")
+    .where("clientePlataformaId","==","tenant-a")
+    .where("vendedorAuthUid","==",seller)
+    .where("dataOperacional","==",doisDias).get();
+  assert.equal(daDataErrada.size,0);
+});
