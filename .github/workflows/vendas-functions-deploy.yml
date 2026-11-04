@@ -52,5 +52,5 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
-      - name: Atualizar somente o endpoint já existente de Vendas
-        run: npx firebase deploy --only functions:registrarVendaOperacional,functions:registrarPagamentoOperacional,functions:registrarNaoPagamentoOperacional,functions:corrigirBaixaCobrancaOperacional,functions:decidirVendaComSaldoV27 --project integro-novo --non-interactive
+      - name: Publicar somente a correção de baixa transacional
+        run: npx firebase deploy --only functions:corrigirBaixaCobrancaOperacional --project integro-novo --non-interactive
