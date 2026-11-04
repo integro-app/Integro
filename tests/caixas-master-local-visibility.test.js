@@ -146,7 +146,7 @@ test("abertura em lote usa data consultada no backend e confirma os caixas no se
 
 test("master local invalida cache dos controladores do módulo Caixas",()=>{
   assert.match(html,/js\/caixa-team-date-ui\.js\?v=20261104-caixas-abertura-v2/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261104-caixas-abertura-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261104-caixas-botoes-v3/);
 });
 
 
