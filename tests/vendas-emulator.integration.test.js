@@ -193,6 +193,17 @@ test("fechamento do vendedor usa baixas persistidas, confere saldo e grava statu
   const boxRef=db.collection("caixas").doc(boxId);
   const box=(await boxRef.get()).data();
   assert.ok(box&&box.status==="ABERTO","caixa de integração permanece aberto até fechamento");
+  // A seed de Vendas usa outros caixas abertos do mesmo vendedor para testar
+  // cenários independentes. Isolar o caixa de fechamento sem relaxar a trava
+  // real contra múltiplos caixas abertos.
+  const outros=await db.collection("caixas").where("clientePlataformaId","==","tenant-a")
+    .where("vendedorAuthUid","==",seller).get();
+  const batch=db.batch();
+  for(const doc of outros.docs) {
+    if(doc.id!==boxId && ["ABERTO","REABERTO"].includes(doc.data().status))
+      batch.update(doc.ref,{status:"FECHADO",ativo:false});
+  }
+  await batch.commit();
   const ultimoSaldo=box.saldoAtualCentavos;
   const conferencia=await lifecycle.conferir({caixaId:boxId},contexto);
   assert.equal(conferencia.caixa.id,boxId);
