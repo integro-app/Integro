@@ -280,7 +280,23 @@
     host.querySelector('[data-cx-clear]').onclick=()=>{ui.team='';ui.status='';ui.search='';render();};
     host.querySelector('[data-cx-team]').onchange=e=>{ui.team=e.target.value;render();};host.querySelector('[data-cx-status]').onchange=e=>{ui.status=e.target.value;render();};
     host.querySelector('[data-cx-search]').onchange=e=>{ui.search=e.target.value;render();};
-    host.querySelector('[data-cx-refresh]').onclick=()=>{overview.clear();global.atualizarCaixasIntegro?.();};
+    host.querySelector('[data-cx-refresh]').onclick=async event=>{
+      const button=event.currentTarget;
+      if(button.disabled)return;
+      button.disabled=true;
+      try {
+        const currentContext=ui.context;
+        const allowedRows=rows();
+        const snaps=await Promise.all(allowedRows.map(row=>query('caixas','equipeId',text(row.id),text(row.id))));
+        if(currentContext!==ui.context)return;
+        snaps.flat().forEach(rememberServerBox);
+        overview.clear();
+        render();
+        actionFeedback('Caixas atualizados com dados confirmados pelo servidor.');
+      } catch(error) {
+        actionFeedback('Não foi possível atualizar os caixas no servidor: '+text(error.message),true);
+      } finally {if(button.isConnected)button.disabled=false;}
+    };
     host.querySelectorAll('[data-cx-open]').forEach(b=>b.onclick=()=>open(b.dataset.cxOpen));
     host.querySelectorAll('[data-cx-row]').forEach(row=>{row.onclick=e=>{if(!e.target.closest('button,input,select,a'))open(row.dataset.cxRow);};row.onkeydown=e=>{if(e.target===row&&['Enter',' '].includes(e.key)){e.preventDefault();open(row.dataset.cxRow);}};});
     host.querySelectorAll('[data-caixas-equipe]').forEach(c=>c.onchange=e=>{const team=text(c.dataset.caixasEquipe);e.target.checked?ui.selected.add(team):ui.selected.delete(team);render();});

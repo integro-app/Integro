@@ -109,6 +109,8 @@ test("ações em lote da supervisão possuem handlers reais e seleção preserva
   assert.match(source,/registrarFechamentoCaixaTransacional/);
   assert.match(source,/get\(\{source:'server'\}\)/);
   assert.match(source,/incorporarCaixaFechado\(fresh\)/);
+  assert.doesNotMatch(source,/global\.atualizarCaixasIntegro/);
+  assert.match(source,/Caixas atualizados com dados confirmados pelo servidor/);
   assert.doesNotMatch(source,/global\.fecharCaixasSelecionadasIntegro/);
   assert.doesNotMatch(source,/global\.abrirCaixasSelecionadasIntegro/);
 });
