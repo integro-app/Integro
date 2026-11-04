@@ -9,30 +9,22 @@
 
 async function carregarEquipes() {
   try {
-    const tenantId = State.getTenantId();
-
-    let ref = db.collection("equipes");
-
-    if (tenantId) {
-      ref = ref.where("clientePlataformaId", "==", tenantId);
+    const tenantId = String(State.getTenantId?.() || "");
+    if (!tenantId) {
+      State.setEquipes?.([]);
+      renderEquipes();
+      return;
     }
-
-    const snap = await ref.get();
-
-    const equipes = snap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    if (State.setEquipes) {
-      State.setEquipes(equipes);
-    }
-
+    const snap = await db.collection("equipes").where("clientePlataformaId", "==", tenantId).get();
+    if (String(State.getTenantId?.() || "") !== tenantId) return;
+    const equipes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(e => String(e.clientePlataformaId || "") === tenantId);
+    State.setEquipes?.(equipes);
     renderEquipes();
-
   } catch (erro) {
     console.error("Erro ao carregar equipes:", erro);
-    if (State.setEquipes) State.setEquipes([]);
+    State.setEquipes?.([]);
+    renderEquipes();
   }
 }
 
@@ -45,16 +37,92 @@ function abrirFiltrosEquipesEstrutura(){
   abrirDrawer("Filtros de equipes","Selecione a situação exibida.",'<div class="usuario-form-section"><div class="form-group"><label for="filtroStatusEquipesDrawer">Situação</label><select id="filtroStatusEquipesDrawer"><option value="">TODAS AS EQUIPES</option><option value="ATIVA">ATIVAS</option><option value="INATIVA">INATIVAS</option></select></div></div><div class="drawer-actions usuario-drawer-actions"><button class="ghost-btn" onclick="filtroStatusEquipesEstrutura=\'\';fecharDrawer();renderEquipes()">Limpar</button><button class="primary-btn" onclick="filtroStatusEquipesEstrutura=document.getElementById(\'filtroStatusEquipesDrawer\').value;fecharDrawer();renderEquipes()">Aplicar filtros</button></div>');
   setTimeout(()=>{const c=document.getElementById("filtroStatusEquipesDrawer");if(c)c.value=filtroStatusEquipesEstrutura},0);
 }
-function renderEquipes(){
-  const el=document.getElementById("listaEquipes");if(!el)return;
-  const todas=State.getEquipes?State.getEquipes():[],usuarios=State.getUsuarios?State.getUsuarios():[],termo=String(document.getElementById("buscaEquipes")?.value||"").trim().toLowerCase();
-  const equipes=todas.filter(e=>{const ativo=e.ativo!==false&&String(e.status||"ATIVA").toUpperCase()!=="INATIVA";return(!filtroStatusEquipesEstrutura||(filtroStatusEquipesEstrutura==="ATIVA"?ativo:!ativo))&&(!termo||[e.nome,e.supervisorNome,e.descricao].some(v=>String(v||"").toLowerCase().includes(termo)))});
-  const ativas=todas.filter(e=>e.ativo!==false&&String(e.status||"ATIVA").toUpperCase()!=="INATIVA").length,semSupervisor=todas.filter(e=>!e.supervisorId&&!e.supervisorAuthUid&&!e.supervisorNome).length,vinculados=usuarios.filter(u=>u.equipeId||(u.equipesIds||u.equipeIds||[]).length).length;
-  const host=document.getElementById("equipesIndicadores");if(host)host.innerHTML=[["hub","Total",todas.length],["verified","Ativas",ativas],["block","Inativas",todas.length-ativas],["person_alert","Sem supervisor",semSupervisor],["groups","Usuários vinculados",vinculados]].map(([i,r,v])=>'<div class="estrutura-kpi"><span class="material-symbols-rounded">'+i+'</span><div><small>'+r+'</small><strong>'+v+'</strong><em>Atualização em tempo real</em></div></div>').join("");
-  const resumo=document.getElementById("equipesFiltroResumo");if(resumo)resumo.textContent=filtroStatusEquipesEstrutura||"Todas as equipes";const contador=document.getElementById("equipesContador");
-  if(!equipes.length){el.innerHTML='<div class="estrutura-empty"><span class="material-symbols-rounded">hub</span><strong>Nenhuma equipe encontrada</strong><p>Ajuste a pesquisa ou crie uma nova equipe.</p></div>';if(contador)contador.textContent="0 equipes exibidas";return}
-  const linhas=equipes.map(e=>{const ativo=e.ativo!==false&&String(e.status||"ATIVA").toUpperCase()!=="INATIVA",uv=usuarios.filter(u=>u.equipeId===e.id||(Array.isArray(u.equipesIds)&&u.equipesIds.includes(e.id))||(Array.isArray(e.vendedoresIds)&&e.vendedoresIds.includes(u.id))).length,vendedores=Number(e.quantidadeVendedores||0)||(Array.isArray(e.vendedoresIds)?e.vendedoresIds.length:0);return '<tr><td data-label="Equipe"><div class="estrutura-identidade"><span class="usuario-avatar">'+String(e.nome||"E").slice(0,2).toUpperCase()+'</span><div><strong>'+String(e.nome||"Equipe sem nome")+'</strong><small>'+String(e.descricao||"Sem descrição")+'</small></div></div></td><td data-label="Supervisor">'+String(e.supervisorNome||"Não definido")+'</td><td data-label="Vendedores">'+vendedores+'</td><td data-label="Usuários">'+uv+'</td><td data-label="Status"><span class="usuario-status '+(ativo?"is-success":"is-danger")+'">'+(ativo?"ATIVA":"INATIVA")+'</span></td><td data-label="Ações"><div class="usuario-table-actions"><button class="ghost-btn" onclick="abrirEditarEquipe(\''+e.id+'\')">Editar</button><button class="ghost-btn" onclick="abrirGerenciarEquipe(\''+e.id+'\')">Gerenciar</button><button class="'+(ativo?"danger-btn":"success-btn")+' usuario-action-muted" onclick="alterarStatusEquipe(\''+e.id+'\','+(!ativo)+')">'+(ativo?"Desativar":"Ativar")+'</button><button class="danger-btn usuario-action-muted" onclick="excluirEquipe(\''+e.id+'\')">Excluir</button></div></td></tr>'}).join("");
-  el.innerHTML='<div class="estrutura-table-scroll"><table class="estrutura-table"><thead><tr><th>Equipe</th><th>Supervisor</th><th>Vendedores</th><th>Usuários</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';if(contador)contador.textContent=equipes.length+' equipe'+(equipes.length===1?'':'s')+' exibida'+(equipes.length===1?'':'s');
+function escaparEquipe(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, ch =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+
+function equipesDoTenant() {
+  const tenant = String(State.getTenantId?.() || "");
+  return tenant ? (State.getEquipes?.() || []).filter(e =>
+    String(e.clientePlataformaId || "") === tenant) : [];
+}
+
+function usuariosEquipesDoTenant() {
+  const tenant = String(State.getTenantId?.() || "");
+  return tenant ? (State.getUsuarios?.() || []).filter(u =>
+    String(u.clientePlataformaId || u.empresaId || u.tenantId || "") === tenant) : [];
+}
+
+function renderEquipes() {
+  const el = document.getElementById("listaEquipes");
+  if (!el) return;
+  const todas = equipesDoTenant();
+  const usuarios = usuariosEquipesDoTenant();
+  const termo = String(document.getElementById("buscaEquipes")?.value || "").trim().toLowerCase();
+  const equipes = todas.filter(e => {
+    const ativo = e.ativo !== false && String(e.status || "ATIVA").toUpperCase() !== "INATIVA";
+    return (!filtroStatusEquipesEstrutura || (filtroStatusEquipesEstrutura === "ATIVA" ? ativo : !ativo)) &&
+      (!termo || [e.nome,e.supervisorNome,e.descricao].some(v => String(v || "").toLowerCase().includes(termo)));
+  });
+  const ativas = todas.filter(e => e.ativo !== false &&
+    String(e.status || "ATIVA").toUpperCase() !== "INATIVA").length;
+  const semSupervisor = todas.filter(e => !e.supervisorId && !e.supervisorAuthUid && !e.supervisorNome).length;
+  const vinculados = usuarios.filter(u => u.equipeId ||
+    (u.equipesIds || u.equipeIds || []).length).length;
+  const host = document.getElementById("equipesIndicadores");
+  if (host) host.innerHTML = [["hub","Total",todas.length],["verified","Ativas",ativas],
+    ["block","Inativas",todas.length - ativas],["person_alert","Sem supervisor",semSupervisor],
+    ["groups","Usuários vinculados",vinculados]].map(([i,r,v]) =>
+      '<div class="estrutura-kpi"><span class="material-symbols-rounded">'+i+
+      '</span><div><small>'+r+'</small><strong>'+v+
+      '</strong><em>Atualização em tempo real</em></div></div>').join("");
+  const resumo = document.getElementById("equipesFiltroResumo");
+  if (resumo) resumo.textContent = filtroStatusEquipesEstrutura || "Todas as equipes";
+  const contador = document.getElementById("equipesContador");
+  if (!equipes.length) {
+    el.innerHTML = '<div class="estrutura-empty"><span class="material-symbols-rounded">hub</span><strong>Nenhuma equipe encontrada</strong><p>Ajuste a pesquisa ou crie uma nova equipe.</p></div>';
+    el.onclick = null;
+    if (contador) contador.textContent = "0 equipes exibidas";
+    return;
+  }
+  const linhas = equipes.map(e => {
+    const ativo = e.ativo !== false && String(e.status || "ATIVA").toUpperCase() !== "INATIVA";
+    const uv = usuarios.filter(u => u.equipeId === e.id ||
+      (Array.isArray(u.equipesIds) && u.equipesIds.includes(e.id)) ||
+      (Array.isArray(e.vendedoresIds) && e.vendedoresIds.includes(u.id))).length;
+    const vendedores = Number(e.quantidadeVendedores || 0) ||
+      (Array.isArray(e.vendedoresIds) ? e.vendedoresIds.length : 0);
+    const id = escaparEquipe(e.id);
+    return `<tr><td data-label="Equipe"><div class="estrutura-identidade">
+      <span class="usuario-avatar">${escaparEquipe(String(e.nome || "E").slice(0,2).toUpperCase())}</span>
+      <div><strong>${escaparEquipe(e.nome || "Equipe sem nome")}</strong>
+      <small>${escaparEquipe(e.descricao || "Sem descrição")}</small></div></div></td>
+      <td data-label="Supervisor">${escaparEquipe(e.supervisorNome || "Não definido")}</td>
+      <td data-label="Vendedores">${vendedores}</td><td data-label="Usuários">${uv}</td>
+      <td data-label="Status"><span class="usuario-status ${ativo ? "is-success" : "is-danger"}">${ativo ? "ATIVA" : "INATIVA"}</span></td>
+      <td data-label="Ações"><div class="usuario-table-actions">
+        <button type="button" class="ghost-btn" data-equipe-acao="editar" data-equipe-id="${id}">Editar</button>
+        <button type="button" class="ghost-btn" data-equipe-acao="gerenciar" data-equipe-id="${id}">Gerenciar</button>
+        <button type="button" class="${ativo ? "danger-btn" : "success-btn"} usuario-action-muted" data-equipe-acao="status" data-equipe-ativo="${!ativo}" data-equipe-id="${id}">${ativo ? "Desativar" : "Ativar"}</button>
+        <button type="button" class="danger-btn usuario-action-muted" data-equipe-acao="excluir" data-equipe-id="${id}">Excluir</button>
+      </div></td></tr>`;
+  }).join("");
+  el.innerHTML = '<div class="estrutura-table-scroll"><table class="estrutura-table"><thead><tr><th>Equipe</th><th>Supervisor</th><th>Vendedores</th><th>Usuários</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
+  if (contador) contador.textContent = equipes.length+' equipe'+(equipes.length===1?'':'s')+
+    ' exibida'+(equipes.length===1?'':'s');
+  el.onclick = event => {
+    const botao = event.target?.closest?.("button[data-equipe-acao][data-equipe-id]");
+    if (!botao || !el.contains(botao)) return;
+    const id = botao.dataset.equipeId;
+    switch (botao.dataset.equipeAcao) {
+      case "editar": return abrirEditarEquipe(id);
+      case "gerenciar": return abrirGerenciarEquipe(id);
+      case "status": return alterarStatusEquipe(id,botao.dataset.equipeAtivo === "true");
+      case "excluir": return excluirEquipe(id);
+      default: return;
+    }
+  };
 }
 // FORMUL// FORMULÁRIO EQUIPE
 // ===============================
