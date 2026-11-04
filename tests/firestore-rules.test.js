@@ -21,7 +21,8 @@ const {
 } = require("firebase/firestore");
 const { ref, uploadBytes, listAll } = require("firebase/storage");
 
-const projectId = "integro-rules-test";
+// Usar o mesmo projeto dos emuladores para permitir leitura cruzada Storage -> Firestore.
+const projectId = "integro-novo";
 let testEnv;
 
 const profiles = {

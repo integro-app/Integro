@@ -8,7 +8,7 @@
     "test:v27.1": "npm run test:v27",
     "test:enterprise": "node --test tests/enterprise-finance.test.js tests/enterprise-finance-premium.test.js tests/v27-fluxos.test.js",
     "test:html": "node scripts/validate-html-integrity.js",
-    "test:rules": "firebase emulators:exec --only firestore,storage \"node --test tests/firestore-rules.test.js tests/enterprise-finance-rules.test.js\"",
+    "test:rules": "firebase emulators:exec --only firestore,storage \"node --test --test-concurrency=1 tests/firestore-rules.test.js tests/enterprise-finance-rules.test.js\"",
     "test:enterprise:rules": "firebase emulators:exec --only firestore,storage \"node --test tests/enterprise-finance-rules.test.js\"",
     "emulators:clientes": "firebase emulators:start --only auth,firestore,hosting,storage",
     "seed:clientes": "node scripts/seed-homologacao-clientes.js",
