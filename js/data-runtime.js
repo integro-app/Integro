@@ -25,6 +25,15 @@
   function agora() { return Date.now(); }
   function texto(valor) { return String(valor ?? "").trim(); }
   function docData(doc) { return { id: doc.id, ...doc.data() }; }
+  function identidadeConsulta() {
+    const usuario = global.State?.getUsuario?.() || global.usuarioLogado || {};
+    const uid = texto(global.firebase?.auth?.()?.currentUser?.uid ||
+      usuario.authUid || usuario.uid || usuario.id);
+    return uid + ":" + tenantAtual();
+  }
+  function chavePrivada(identidade, consulta, alias = "") {
+    return JSON.stringify({ identidade, consulta, alias: texto(alias) });
+  }
 
   function tenantAtual() {
     const usuario = global.State?.getUsuario?.() || global.usuarioLogado || global.currentUserData || {};
@@ -72,7 +81,7 @@
     const forcar = opcoes.forcar === true;
     if (!db || !colecao || !tenantId) return [];
 
-    const chave = opcoes.chave || chaveConsulta({ colecao, tenantId, filtros, limite, ordem });
+    const chave = chavePrivada(identidadeConsulta(), chaveConsulta({ colecao, tenantId, filtros, limite, ordem }), opcoes.chave);
     const salvo = cache.get(chave);
     if (!forcar && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
       metricas.consultasCache++;
@@ -111,7 +120,7 @@
     const colecao = texto(opcoes.colecao);
     const id = texto(opcoes.id);
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
-    const chave = opcoes.chave || `doc:${colecao}:${id}`;
+    const chave = chavePrivada(identidadeConsulta(), "doc:" + colecao + ":" + id, opcoes.chave);
     if (!db || !colecao || !id) return null;
     const salvo = cache.get(chave);
     if (opcoes.forcar !== true && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
@@ -153,8 +162,10 @@
     const filtros = Array.isArray(opcoes.filtros) ? opcoes.filtros : [];
     const limite = Math.max(1, Number(opcoes.limite || 200));
     const ordem = Array.isArray(opcoes.ordem) ? opcoes.ordem : [];
-    const assinatura = chaveConsulta({ colecao, tenantId, filtros, limite, ordem });
-    const chave = texto(opcoes.chave || `${opcoes.escopo || "global"}:${assinatura}`);
+    const identidade = identidadeConsulta();
+    const assinatura = chavePrivada(identidade, chaveConsulta({ colecao, tenantId, filtros, limite, ordem }));
+    const chaveExterna = texto(opcoes.chave || (opcoes.escopo || "global") + ":" + assinatura);
+    const chave = chavePrivada(identidade, assinatura, chaveExterna);
     const escopo = texto(opcoes.escopo || "global");
     if (!db || !colecao || !tenantId || !chave || typeof opcoes.aoAtualizar !== "function") return () => {};
 
@@ -204,7 +215,7 @@
     };
 
     grupo.inscritos.set(chave, { chave, escopo, colecao, tenantId, aoAtualizar: opcoes.aoAtualizar, aoErro: opcoes.aoErro, criadoEm: agora() });
-    listeners.set(chave, { chave, assinatura, escopo, colecao, tenantId, parar, criadoEm: agora() });
+    listeners.set(chave, { chave, chaveExterna, identidade, assinatura, escopo, colecao, tenantId, parar, criadoEm: agora() });
     if (grupo.ultimoDados) {
       try { opcoes.aoAtualizar(grupo.ultimoDados.map(item => ({ ...item })), grupo.ultimoSnapshot); }
       catch (erro) { console.warn("[ÍNTEGRO DataRuntime] Listener consumidor falhou.", erro); }
@@ -212,7 +223,13 @@
     return parar;
   }
 
-  function parar(chave) { listeners.get(texto(chave))?.parar?.(); }
+  function parar(chave) {
+    const id = texto(chave);
+    if (listeners.has(id)) return listeners.get(id).parar();
+    const identidade = identidadeConsulta();
+    for (const item of listeners.values())
+      if (item.identidade === identidade && item.chaveExterna === id) return item.parar();
+  }
   function pararEscopo(escopo) {
     const alvo = texto(escopo);
     [...listeners.values()].filter(item => item.escopo === alvo).forEach(item => item.parar());
@@ -262,7 +279,15 @@
   document.addEventListener("integro-tela-alterada", evento => definirTelaAtiva(evento.detail?.tela || ""));
   document.addEventListener("usuario-validado", () => invalidar("doc:usuarios:"));
   global.addEventListener?.("beforeunload", pararTodos);
-  global.firebase?.auth?.()?.onAuthStateChanged?.(usuario => { if (!usuario) { pararTodos(); cache.clear(); } });
+  let ultimoUid = texto(global.firebase?.auth?.()?.currentUser?.uid);
+  global.firebase?.auth?.()?.onAuthStateChanged?.(usuario => {
+    const uid = texto(usuario?.uid);
+    if (uid !== ultimoUid || !usuario) {
+      pararTodos();
+      cache.clear();
+    }
+    ultimoUid = uid;
+  });
 
   const api = Object.freeze({
     consultarTenant,

@@ -123,3 +123,67 @@ test("runtime e idempotente quando o script e executado duas vezes", () => {
   assert.equal(listenersDocumento.filter(item => item.nome === "integro-tela-alterada").length, 1);
   assert.equal(listenersDocumento.filter(item => item.nome === "usuario-validado").length, 1);
 });
+
+
+test("cache com alias igual separa empresas e filtros", async () => {
+  const {runtime} = carregarRuntime();
+  let contagem = 0;
+  const ref = {
+    filtros: [],
+    where(campo, operador, valor) {
+      return { ...this, filtros: [...this.filtros, [campo, operador, valor]] };
+    },
+    limit() {return this;},
+    async get() {
+      contagem++;
+      const empresa=this.filtros.find(item=>item[0]==="clientePlataformaId")?.[2];
+      const status=this.filtros.find(item=>item[0]==="status")?.[2];
+      return {docs:[{id:empresa+"-"+status,
+        data:()=>({clientePlataformaId:empresa,status})}]};
+    }
+  };
+  const db={collection:()=>ref};
+  const base={db,colecao:"pagamentos",limite:20,cacheMs:30000,chave:"caixa-tela"};
+  const a=await runtime.consultarTenant({...base,tenantId:"tenant_a",filtros:[["status","==","CONFIRMADO"]]});
+  const b=await runtime.consultarTenant({...base,tenantId:"tenant_b",filtros:[["status","==","CONFIRMADO"]]});
+  const c=await runtime.consultarTenant({...base,tenantId:"tenant_b",filtros:[["status","==","PENDENTE"]]});
+  assert.equal(contagem,3);
+  assert.equal(a[0].clientePlataformaId,"tenant_a");
+  assert.equal(b[0].clientePlataformaId,"tenant_b");
+  assert.equal(c[0].status,"PENDENTE");
+});
+
+test("documentos com alias igual não compartilham dados entre documentos",async()=>{
+  const {runtime}=carregarRuntime();
+  let contagem=0;
+  const db={collection:()=>({doc:id=>({get:async()=>{
+    contagem++;return {exists:true,id,data:()=>({clientePlataformaId:id})};
+  }})})};
+  const base={db,colecao:"clientes_integro",cacheMs:30000,chave:"empresa-atual"};
+  const a=await runtime.lerDocumento({...base,id:"tenant_a"});
+  const b=await runtime.lerDocumento({...base,id:"tenant_b"});
+  assert.equal(contagem,2);
+  assert.equal(a.clientePlataformaId,"tenant_a");
+  assert.equal(b.clientePlataformaId,"tenant_b");
+});
+
+test("assinaturas com mesmo alias não compartilham dados entre tenants",()=>{
+  const {runtime}=carregarRuntime();
+  let assinas=0,recebidosA=[],recebidosB=[];
+  const banco={collection:()=>({
+    tenant:"",
+    where(campo,op,valor){return {...this,tenant:valor};},
+    limit(){return this;},
+    onSnapshot(callback){
+      assinas++;callback({docs:[{id:this.tenant,data:()=>({tenant:this.tenant})}]});
+      return ()=>{};
+    }
+  })};
+  const opcoes={db:banco,colecao:"caixas",chave:"mesma-chave",escopo:"tela:caixas"};
+  const cancelarA=runtime.ouvir({...opcoes,tenantId:"tenant_a",aoAtualizar:l=>recebidosA=l});
+  const cancelarB=runtime.ouvir({...opcoes,tenantId:"tenant_b",aoAtualizar:l=>recebidosB=l});
+  assert.equal(assinas,2);
+  assert.equal(recebidosA[0].tenant,"tenant_a");
+  assert.equal(recebidosB[0].tenant,"tenant_b");
+  cancelarA();cancelarB();
+});

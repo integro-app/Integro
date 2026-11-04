@@ -60,7 +60,7 @@
           limite,
           cacheMs,
           forcar: opcoes.forcar === true,
-          chave: `perfil:${escopo.perfil}:${colecao}:${campo || "tenant"}:${valor || ""}:${limite}`
+          chave: `perfil:${escopo.tenantId}:${escopo.authUid || escopo.usuarioId}:${escopo.perfil}:${colecao}:${campo || "tenant"}:${valor || ""}:${limite}`
         });
       }
       let ref = db.collection(colecao).where("clientePlataformaId", "==", escopo.tenantId);

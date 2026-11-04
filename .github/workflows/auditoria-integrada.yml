@@ -1,0 +1,78 @@
+name: Auditoria integrada - Integro
+on:
+  push:
+    branches: [main]
+    paths:
+      - "js/**"
+      - "functions/**"
+      - "tests/**"
+      - "firestore.rules"
+      - "storage.rules"
+      - "scripts/**"
+      - ".github/workflows/auditoria-integrada.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  codigo:
+    name: Codigo, telas e sintaxe
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+  regras:
+    name: Seguranca Firestore e Storage
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm run test:rules
+  clientes:
+    name: Integracao Clientes com Auth e Firestore
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - run: npm run homologar:clientes
+  vendas:
+    name: Integracao Vendas e Financeiro
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - run: npx --yes firebase-tools@latest emulators:exec --only auth,firestore,storage --project integro-novo "node scripts/seed-homologacao-clientes.js && node --test --test-concurrency=1 tests/vendas-emulator.integration.test.js tests/vendas-aprovacoes-emulator.integration.test.js tests/vendas-cancelamento-emulator.integration.test.js"
