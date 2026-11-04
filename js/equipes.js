@@ -18,7 +18,7 @@ async function carregarEquipes() {
     const snap = await db.collection("equipes").where("clientePlataformaId", "==", tenantId).get();
     if (String(State.getTenantId?.() || "") !== tenantId) return;
     const equipes = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
-      .filter(e => String(e.clientePlataformaId || "") === tenantId);
+      .filter(e => String(e.clientePlataformaId || "") === tenantId && e.excluido !== true);
     State.setEquipes?.(equipes);
     renderEquipes();
   } catch (erro) {
@@ -45,7 +45,7 @@ function escaparEquipe(valor) {
 function equipesDoTenant() {
   const tenant = String(State.getTenantId?.() || "");
   return tenant ? (State.getEquipes?.() || []).filter(e =>
-    String(e.clientePlataformaId || "") === tenant) : [];
+    String(e.clientePlataformaId || "") === tenant && e.excluido !== true) : [];
 }
 
 function usuariosEquipesDoTenant() {
@@ -446,35 +446,30 @@ async function excluirEquipe(id) {
   try {
     const usuarios = usuariosEquipesDoTenant();
     const equipe = equipesDoTenant().find(e => String(e.id) === String(id));
-
-    if (!equipe) {
-      notificarIntegro("Equipe não encontrada.");
-      return;
-    }
-
-    const usuariosVinculados = usuarios.filter(u => u.equipeId === id).length;
+    if (!equipe) return notificarIntegro("Equipe não encontrada nesta empresa.");
+    const usuariosVinculados = usuarios.filter(u =>
+      String(u.equipeId) === String(id) ||
+      (u.equipesIds || u.equipeIds || []).some(equipeId => String(equipeId) === String(id))
+    ).length;
     const vendedoresVinculados = Array.isArray(equipe.vendedoresIds) ? equipe.vendedoresIds.length : 0;
     const totalVinculados = Math.max(usuariosVinculados, vendedoresVinculados);
-
-    if (totalVinculados > 0) {
-      notificarIntegro(
-        "Não é possível excluir esta equipe.\n\n" +
-        "Existem " + totalVinculados + " usuário(s) vinculado(s) a ela.\n\n" +
-        "Remova os usuários da equipe antes de excluir."
-      );
-      return;
-    }
-
-    if (!confirm("Deseja excluir definitivamente a equipe '" + (equipe.nome || "sem nome") + "'?")) {
-      return;
-    }
-
-    await db.collection("equipes").doc(id).delete();
-
-    notificarIntegro("Equipe excluída com sucesso.");
-
+    if (totalVinculados > 0)
+      return notificarIntegro("Não é possível excluir esta equipe. Existem " +
+        totalVinculados + " usuário(s) vinculados. Remova os vínculos antes de excluir.");
+    if (!confirm("Deseja excluir a equipe '" + (equipe.nome || "sem nome") +
+      "'?\n\nA exclusão é lógica e preserva o histórico operacional para auditoria.")) return;
+    // A regra de segurança bloqueia DELETE físico de equipes.
+    // Arquivar preserva caixa, vendas e trilha operacional.
+    await db.collection("equipes").doc(id).update({
+      excluido: true,
+      ativo: false,
+      status: "INATIVA",
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      excluidoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      excluidoPorUid: State.getUsuario?.()?.authUid || ""
+    });
+    notificarIntegro("Equipe excluída logicamente. Histórico preservado.");
     await carregarEquipes();
-
   } catch (erro) {
     console.error("Erro ao excluir equipe:", erro);
     notificarIntegro("Erro ao excluir equipe: " + erro.message);
