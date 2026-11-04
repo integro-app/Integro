@@ -24,56 +24,64 @@ let permissoesCargoCache = [];
 
 async function carregarCargos() {
   try {
-    const tenantId = State.getTenantId();
-
-    let ref = db.collection("cargos");
-
-    if (tenantId) {
-      ref = ref.where("clientePlataformaId", "==", tenantId);
+    const tenantId = String(State.getTenantId?.() || "");
+    if (!tenantId) {
+      State.setCargos?.([]);
+      permissoesCargoCache = [];
+      renderCargos();
+      return;
     }
-
-    const snap = await ref.get();
-
-    const cargos = snap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    if (State.setCargos) {
-      State.setCargos(cargos);
-    }
-
+    const snap = await db.collection("cargos").where("clientePlataformaId", "==", tenantId).get();
+    if (String(State.getTenantId?.() || "") !== tenantId) return;
+    const cargos = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(c => String(c.clientePlataformaId || "") === tenantId);
+    State.setCargos?.(cargos);
     await carregarPermissoesCargo();
-
-    renderCargos();
-
+    if (String(State.getTenantId?.() || "") === tenantId) renderCargos();
   } catch (erro) {
     console.error("Erro ao carregar cargos:", erro);
-    if (State.setCargos) State.setCargos([]);
+    State.setCargos?.([]);
+    permissoesCargoCache = [];
+    renderCargos();
   }
 }
 
 async function carregarPermissoesCargo() {
   try {
-    const tenantId = State.getTenantId();
-
-    let ref = db.collection("permissoes_cargo");
-
-    if (tenantId) {
-      ref = ref.where("clientePlataformaId", "==", tenantId);
+    const tenantId = String(State.getTenantId?.() || "");
+    if (!tenantId) {
+      permissoesCargoCache = [];
+      return;
     }
-
-    const snap = await ref.get();
-
-    permissoesCargoCache = snap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
+    const snap = await db.collection("permissoes_cargo")
+      .where("clientePlataformaId", "==", tenantId).get();
+    if (String(State.getTenantId?.() || "") !== tenantId) return;
+    permissoesCargoCache = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(p => String(p.clientePlataformaId || "") === tenantId);
   } catch (erro) {
     console.error("Erro ao carregar permissões dos cargos:", erro);
     permissoesCargoCache = [];
   }
+}
+
+function escaparCargo(valor) {
+  return String(valor ?? "").replace(/[&<>"']/g, ch =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+}
+function cargosDoTenant() {
+  const tenant = String(State.getTenantId?.() || "");
+  return tenant ? (State.getCargos?.() || []).filter(c =>
+    String(c.clientePlataformaId || "") === tenant) : [];
+}
+function permissoesDoTenant() {
+  const tenant = String(State.getTenantId?.() || "");
+  return tenant ? permissoesCargoCache.filter(p =>
+    String(p.clientePlataformaId || "") === tenant) : [];
+}
+function usuariosDoTenantCargo() {
+  const tenant = String(State.getTenantId?.() || "");
+  return tenant ? (State.getUsuarios?.() || []).filter(u =>
+    String(u.clientePlataformaId || u.empresaId || u.tenantId || "") === tenant) : [];
 }
 
 // ===============================
@@ -85,16 +93,71 @@ function abrirFiltrosCargosEstrutura(){
   abrirDrawer("Filtros de cargos","Selecione a situação exibida.",'<div class="usuario-form-section"><div class="form-group"><label for="filtroStatusCargosDrawer">Situação</label><select id="filtroStatusCargosDrawer"><option value="">TODOS OS CARGOS</option><option value="ATIVO">ATIVOS</option><option value="INATIVO">INATIVOS</option></select></div></div><div class="drawer-actions usuario-drawer-actions"><button class="ghost-btn" onclick="filtroStatusCargosEstrutura=\'\';fecharDrawer();renderCargos()">Limpar</button><button class="primary-btn" onclick="filtroStatusCargosEstrutura=document.getElementById(\'filtroStatusCargosDrawer\').value;fecharDrawer();renderCargos()">Aplicar filtros</button></div>');
   setTimeout(()=>{const c=document.getElementById("filtroStatusCargosDrawer");if(c)c.value=filtroStatusCargosEstrutura},0);
 }
-function renderCargos(){
- const el=document.getElementById("listaCargos");if(!el)return;
- const todos=State.getCargos?State.getCargos():[],usuarios=State.getUsuarios?State.getUsuarios():[],termo=String(document.getElementById("buscaCargos")?.value||"").trim().toLowerCase();
- const cargos=todos.filter(c=>{const ativo=c.ativo!==false;return(!filtroStatusCargosEstrutura||(filtroStatusCargosEstrutura==="ATIVO"?ativo:!ativo))&&(!termo||[c.nome,c.descricao,c.tipoUsuario].some(v=>String(v||"").toLowerCase().includes(termo)))});
- const ativos=todos.filter(c=>c.ativo!==false).length,vinculados=usuarios.filter(u=>u.cargoId).length,configurados=new Set(permissoesCargoCache.map(p=>p.cargoId).filter(Boolean)).size;
- const host=document.getElementById("cargosIndicadores");if(host)host.innerHTML=[["admin_panel_settings","Total",todos.length],["verified","Ativos",ativos],["block","Inativos",todos.length-ativos],["group","Usuários vinculados",vinculados],["shield","Com permissões",configurados]].map(([i,r,v])=>'<div class="estrutura-kpi"><span class="material-symbols-rounded">'+i+'</span><div><small>'+r+'</small><strong>'+v+'</strong><em>Atualização em tempo real</em></div></div>').join("");
- const resumo=document.getElementById("cargosFiltroResumo");if(resumo)resumo.textContent=filtroStatusCargosEstrutura||"Todos os cargos";const contador=document.getElementById("cargosContador");
- if(!cargos.length){el.innerHTML='<div class="estrutura-empty"><span class="material-symbols-rounded">admin_panel_settings</span><strong>Nenhum cargo encontrado</strong><p>Ajuste a pesquisa ou crie um novo cargo.</p></div>';if(contador)contador.textContent="0 cargos exibidos";return}
- const linhas=cargos.map(c=>{const ativo=c.ativo!==false,uv=usuarios.filter(u=>u.cargoId===c.id).length,qp=permissoesCargoCache.filter(p=>p.cargoId===c.id).length;return '<tr><td data-label="Cargo"><div class="estrutura-identidade"><span class="usuario-avatar">'+String(c.nome||"C").slice(0,2).toUpperCase()+'</span><div><strong>'+String(c.nome||"Cargo sem nome")+'</strong><small>'+String(c.descricao||"Função operacional")+'</small></div></div></td><td data-label="Perfil">'+String(c.tipoUsuario||c.perfil||"Personalizado").replace(/_/g," ")+'</td><td data-label="Usuários">'+uv+'</td><td data-label="Permissões">'+qp+' módulo'+(qp===1?"":"s")+'</td><td data-label="Status"><span class="usuario-status '+(ativo?"is-success":"is-danger")+'">'+(ativo?"ATIVO":"INATIVO")+'</span></td><td data-label="Ações"><div class="usuario-table-actions"><button class="ghost-btn" onclick="abrirEditarCargo(\''+c.id+'\')">Editar</button><button class="ghost-btn" onclick="abrirPermissoesCargo(\''+c.id+'\')">Permissões</button><button class="'+(ativo?"danger-btn":"success-btn")+' usuario-action-muted" onclick="alterarStatusCargo(\''+c.id+'\','+(!ativo)+')">'+(ativo?"Desativar":"Ativar")+'</button><button class="danger-btn usuario-action-muted" onclick="excluirCargo(\''+c.id+'\')">Excluir</button></div></td></tr>'}).join("");
- el.innerHTML='<div class="estrutura-table-scroll"><table class="estrutura-table"><thead><tr><th>Cargo</th><th>Perfil</th><th>Usuários</th><th>Permissões</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';if(contador)contador.textContent=cargos.length+' cargo'+(cargos.length===1?'':'s')+' exibido'+(cargos.length===1?'':'s');
+function renderCargos() {
+  const el = document.getElementById("listaCargos");
+  if (!el) return;
+  const todos = cargosDoTenant();
+  const usuarios = usuariosDoTenantCargo();
+  const permissoes = permissoesDoTenant();
+  const termo = String(document.getElementById("buscaCargos")?.value || "").trim().toLowerCase();
+  const cargos = todos.filter(c => {
+    const ativo = c.ativo !== false;
+    return (!filtroStatusCargosEstrutura || (filtroStatusCargosEstrutura === "ATIVO" ? ativo : !ativo)) &&
+      (!termo || [c.nome,c.descricao,c.tipoUsuario].some(v => String(v || "").toLowerCase().includes(termo)));
+  });
+  const ativos = todos.filter(c => c.ativo !== false).length;
+  const vinculados = usuarios.filter(u => u.cargoId).length;
+  const configurados = new Set(permissoes.map(p => p.cargoId).filter(Boolean)).size;
+  const host = document.getElementById("cargosIndicadores");
+  if (host) host.innerHTML = [["admin_panel_settings","Total",todos.length],
+    ["verified","Ativos",ativos],["block","Inativos",todos.length-ativos],
+    ["group","Usuários vinculados",vinculados],["shield","Com permissões",configurados]]
+    .map(([i,r,v]) => '<div class="estrutura-kpi"><span class="material-symbols-rounded">'+i+
+      '</span><div><small>'+r+'</small><strong>'+v+
+      '</strong><em>Atualização em tempo real</em></div></div>').join("");
+  const resumo = document.getElementById("cargosFiltroResumo");
+  if (resumo) resumo.textContent = filtroStatusCargosEstrutura || "Todos os cargos";
+  const contador = document.getElementById("cargosContador");
+  if (!cargos.length) {
+    el.innerHTML = '<div class="estrutura-empty"><span class="material-symbols-rounded">admin_panel_settings</span><strong>Nenhum cargo encontrado</strong><p>Ajuste a pesquisa ou crie um novo cargo.</p></div>';
+    el.onclick = null;
+    if (contador) contador.textContent = "0 cargos exibidos";
+    return;
+  }
+  const linhas = cargos.map(c => {
+    const ativo = c.ativo !== false;
+    const uv = usuarios.filter(u => u.cargoId === c.id).length;
+    const qp = permissoes.filter(p => p.cargoId === c.id).length;
+    const id = escaparCargo(c.id);
+    return `<tr><td data-label="Cargo"><div class="estrutura-identidade">
+      <span class="usuario-avatar">${escaparCargo(String(c.nome || "C").slice(0,2).toUpperCase())}</span>
+      <div><strong>${escaparCargo(c.nome || "Cargo sem nome")}</strong>
+      <small>${escaparCargo(c.descricao || "Função operacional")}</small></div></div></td>
+      <td data-label="Perfil">${escaparCargo(String(c.tipoUsuario || c.perfil || "Personalizado").replace(/_/g," "))}</td>
+      <td data-label="Usuários">${uv}</td><td data-label="Permissões">${qp} módulo${qp === 1 ? "" : "s"}</td>
+      <td data-label="Status"><span class="usuario-status ${ativo ? "is-success" : "is-danger"}">${ativo ? "ATIVO" : "INATIVO"}</span></td>
+      <td data-label="Ações"><div class="usuario-table-actions">
+        <button type="button" class="ghost-btn" data-cargo-acao="editar" data-cargo-id="${id}">Editar</button>
+        <button type="button" class="ghost-btn" data-cargo-acao="permissoes" data-cargo-id="${id}">Permissões</button>
+        <button type="button" class="${ativo ? "danger-btn" : "success-btn"} usuario-action-muted" data-cargo-acao="status" data-cargo-ativo="${!ativo}" data-cargo-id="${id}">${ativo ? "Desativar" : "Ativar"}</button>
+        <button type="button" class="danger-btn usuario-action-muted" data-cargo-acao="excluir" data-cargo-id="${id}">Excluir</button>
+      </div></td></tr>`;
+  }).join("");
+  el.innerHTML = '<div class="estrutura-table-scroll"><table class="estrutura-table"><thead><tr><th>Cargo</th><th>Perfil</th><th>Usuários</th><th>Permissões</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
+  if (contador) contador.textContent = cargos.length+' cargo'+(cargos.length===1?'':'s')+
+    ' exibido'+(cargos.length===1?'':'s');
+  el.onclick = event => {
+    const botao = event.target?.closest?.("button[data-cargo-acao][data-cargo-id]");
+    if (!botao || !el.contains(botao)) return;
+    const id = botao.dataset.cargoId;
+    switch (botao.dataset.cargoAcao) {
+      case "editar": return abrirEditarCargo(id);
+      case "permissoes": return abrirPermissoesCargo(id);
+      case "status": return alterarStatusCargo(id, botao.dataset.cargoAtivo === "true");
+      case "excluir": return excluirCargo(id);
+      default: return;
+    }
+  };
 }
 // FORMUL// FORMULÁRIO CARGO
 // ===============================
