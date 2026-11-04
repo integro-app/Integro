@@ -34,6 +34,8 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -52,5 +54,29 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
-      - name: Publicar somente a correção de baixa transacional
+      - name: Selecionar endpoints que realmente mudaram
+        id: endpoints
+        shell: bash
+        env:
+          EVENTO: ${{ github.event_name }}
+        run: |
+          if [ "$EVENTO" = "workflow_dispatch" ]; then
+            echo "vendas=true" >> "$GITHUB_OUTPUT"
+            echo "correcoes=true" >> "$GITHUB_OUTPUT"
+          else
+            alterados="$(git diff --name-only HEAD^ HEAD)"
+            if echo "$alterados" | grep -Eq '^functions/(index|financial-callables|financial-core|v27-sales-approvals|v27-sales-cancellation)\\.js
+; then
+              echo "vendas=true" >> "$GITHUB_OUTPUT"
+            fi
+            if echo "$alterados" | grep -Eq '^functions/(index|seller-collection-corrections|financial-core)\\.js
+; then
+              echo "correcoes=true" >> "$GITHUB_OUTPUT"
+            fi
+          fi
+      - name: Publicar endpoints financeiros de Vendas
+        if: steps.endpoints.outputs.vendas == 'true'
+        run: npx firebase deploy --only functions:registrarVendaOperacional,functions:registrarPagamentoOperacional,functions:registrarNaoPagamentoOperacional,functions:decidirVendaComSaldoV27 --project integro-novo --non-interactive
+      - name: Publicar apenas a correção de baixa
+        if: steps.endpoints.outputs.correcoes == 'true'
         run: npx firebase deploy --only functions:corrigirBaixaCobrancaOperacional --project integro-novo --non-interactive
