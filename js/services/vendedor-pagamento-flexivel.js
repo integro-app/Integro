@@ -128,7 +128,8 @@
     }).length;
     return { ...resposta, acao: "PAGAMENTO", clienteId: texto(item.clienteId),
       valorNovoCentavos: valorCentavos,
-      totalPagoVendaCentavos: totalAnterior + Number(resposta.deltaCentavos || 0),
+      totalPagoVendaCentavos: Number.isSafeInteger(resposta.totalPagoVendaCentavos)
+        ? resposta.totalPagoVendaCentavos : totalAnterior + Number(resposta.deltaCentavos || 0),
       parcelasPagas: pagas, parcelasPendentes: Math.max(0, parcelas.length - pagas),
       alocacoes: [alocacao] };
   }
