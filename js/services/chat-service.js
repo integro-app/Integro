@@ -11,6 +11,7 @@
   let ultimaPublicacaoPresenca = 0;
   let unsubPresencas = null;
   let timerPresenca = null;
+  let removerEventosPresenca = null;
   let diagnosticoUsuarios = { totalTenant: 0, canonicos: 0, omitidosSemVinculo: 0 };
 
   function db() {
@@ -270,24 +271,40 @@
   }
 
   function iniciarPresenca(callback, onErro) {
+    // Cada abertura do Chat deve possuir uma única assinatura e conjunto
+    // de listeners; a navegação repetida não pode multiplicar gravações.
+    removerEventosPresenca?.();
     const registrarAtividade = () => {
       ultimaAtividadeLocal = Date.now();
       publicarPresenca(false).catch(() => {});
     };
-    ["pointerdown", "keydown", "touchstart"].forEach(evento => document.addEventListener(evento, registrarAtividade, { passive: true }));
-    document.addEventListener("visibilitychange", () => publicarPresenca(true).catch(() => {}));
-    global.addEventListener("focus", registrarAtividade);
-    global.addEventListener("online", registrarAtividade);
-    global.addEventListener("offline", () => publicarPresenca(true).catch(() => {}));
-    clearInterval(timerPresenca);
+    const publicarMudanca = () => publicarPresenca(true).catch(() => {});
+    const eventosAtividade = ["pointerdown", "keydown", "touchstart"];
+    eventosAtividade.forEach(evento => document.addEventListener(evento, registrarAtividade, { passive: true }));
+    document.addEventListener("visibilitychange", publicarMudanca);
+    global.addEventListener?.("focus", registrarAtividade);
+    global.addEventListener?.("online", registrarAtividade);
+    global.addEventListener?.("offline", publicarMudanca);
     timerPresenca = setInterval(() => publicarPresenca(false).catch(() => {}), 60000);
     publicarPresenca(true).catch(onErro || (() => {}));
-    if (unsubPresencas) unsubPresencas();
-    unsubPresencas = assinarPresencas(callback, onErro);
-    return () => {
-      clearInterval(timerPresenca);
-      if (unsubPresencas) unsubPresencas();
+    const cancelar = assinarPresencas(callback, onErro);
+    unsubPresencas = cancelar;
+    let encerrada = false;
+    const encerrar = () => {
+      if (encerrada) return;
+      encerrada = true;
+      eventosAtividade.forEach(evento => document.removeEventListener(evento, registrarAtividade));
+      document.removeEventListener("visibilitychange", publicarMudanca);
+      global.removeEventListener?.("focus", registrarAtividade);
+      global.removeEventListener?.("online", registrarAtividade);
+      global.removeEventListener?.("offline", publicarMudanca);
+      if (timerPresenca) { clearInterval(timerPresenca); timerPresenca = null; }
+      cancelar?.();
+      if (unsubPresencas === cancelar) unsubPresencas = null;
+      if (removerEventosPresenca === encerrar) removerEventosPresenca = null;
     };
+    removerEventosPresenca = encerrar;
+    return encerrar;
   }
 
   async function criarOuObterConversaDireta(destinatario) {
