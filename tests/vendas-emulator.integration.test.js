@@ -64,6 +64,41 @@ test("vendedor usuario_cliente cria venda mensal atomica e retry nao duplica led
   assert.equal((await db.collection("parcelas").where("vendaId","==",result.vendaId).get()).size,4);
 });
 
+
+test("baixa paga é persistida e reconstruível na data operacional do caixa",async()=>{
+  const vendedor=await uid();
+  const vendaSnap=await db.collection("vendas").where("operacaoId","==","venda_homol_1").limit(1).get();
+  assert.equal(vendaSnap.size,1);
+  const vendaId=vendaSnap.docs[0].id;
+  const parcelas=await db.collection("parcelas").where("vendaId","==",vendaId).get();
+  const parcela=parcelas.docs.find(doc=>doc.data().numeroParcela===1);
+  assert.ok(parcela);
+  await db.collection("caixas").doc(caixaIsoladoId).update({
+    status:"REABERTO",dataOperacional:"2026-11-02"
+  });
+  const resultado=await operacoes.registrarPagamento({
+    caixaId:caixaIsoladoId,vendaId,parcelaId:parcela.id,valorCentavos:3000
+  },{auth:{uid:vendedor}});
+  assert.equal(resultado.ok,true);
+  const persistido=await db.collection("pagamentos").doc(resultado.pagamentoId).get();
+  assert.equal(persistido.exists,true);
+  assert.equal(persistido.data().status,"CONFIRMADO");
+  assert.equal(persistido.data().clientePlataformaId,"tenant-a");
+  assert.equal(persistido.data().vendedorAuthUid,vendedor);
+  assert.equal(persistido.data().dataOperacional,"2026-11-02");
+  const consultado=await db.collection("pagamentos")
+    .where("vendedorAuthUid","==",vendedor).get();
+  assert.ok(consultado.docs.some(doc=>doc.id===resultado.pagamentoId));
+  const vendaAtualizada=(await db.collection("vendas").doc(vendaId).get()).data();
+  assert.equal(vendaAtualizada.totalPagoCentavos,3000);
+  assert.equal((await db.collection("parcelas").doc(parcela.id).get()).data().statusParcela,"PAGA");
+  const repetido=await operacoes.registrarPagamento({
+    caixaId:caixaIsoladoId,vendaId,parcelaId:parcela.id,valorCentavos:3000
+  },{auth:{uid:vendedor}});
+  assert.equal(repetido.modo,"IDEMPOTENTE");
+  assert.equal((await db.collection("vendas").doc(vendaId).get()).data().totalPagoCentavos,3000);
+});
+
 test("backend bloqueia venda de outra empresa, carteira e quantidade fracionaria",async()=>{
   await assert.rejects(()=>registrar(entrada("cliente-tenant-b","venda_homol_tenant")),falhaCodigo("permission-denied"));
   await assert.rejects(()=>registrar(entrada("cliente-vendedor-2","venda_homol_owner")),falhaCodigo("permission-denied"));

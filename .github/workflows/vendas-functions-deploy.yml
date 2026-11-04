@@ -16,6 +16,8 @@ on:
       - "tests/vendas-aprovacoes-emulator.integration.test.js"
       - "functions/financial-core.js"
       - "tests/vendas-emulator.integration.test.js"
+      - "tests/performance-optimization.test.js"
+      - "tests/vendedor-unificado-operacao.test.js"
   workflow_dispatch:
 permissions:
   contents: read

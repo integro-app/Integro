@@ -105,11 +105,12 @@ test("conectividade bloqueia operações financeiras até confirmação segura",
 });
 
 
-test("perfil unificado inicia consultas independentes em paralelo", () => {
+test("perfil unificado executa consultas paralelas e vincula pagamentos ao caixa ativo", () => {
   const source = ler("js/perfis-unificados.js");
   assert.match(source, /const clientesPromise = seguro/);
   assert.match(source, /const caixasPromise = seguro/);
-  assert.match(source, /const pagamentosPromise = seguro/);
+  assert.match(source, /const pagamentosPromise = caixasPromise\.then\(caixasCarregados/);
+  assert.match(source, /carregarPagamentosHojePorPerfil\(caixasCarregados\)/);
   assert.match(source, /clientesPromise\.then\(clientesCarregados/);
   assert.match(source, /caixasPromise\.then\(caixasCarregados/);
   assert.match(source, /await Promise\.all\(\[/);
