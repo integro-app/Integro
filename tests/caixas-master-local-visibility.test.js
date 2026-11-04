@@ -148,3 +148,24 @@ test("master local invalida cache dos controladores do módulo Caixas",()=>{
   assert.match(html,/js\/caixa-team-date-ui\.js\?v=20261104-caixas-abertura-v2/);
   assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261104-caixas-abertura-v2/);
 });
+
+
+test("botões de abertura e fechamento estão antes da lista, próximos aos indicadores",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const overview=source.slice(source.indexOf("function render() {"),source.indexOf("async function query("));
+  assert.ok(overview.indexOf('<div class="cx-stats">')>=0,"indicadores da supervisão presentes");
+  assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-stats">'));
+  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('<div class="cx-table-scroll">'));
+  assert.match(overview,/id="btnAbrirCaixasSelecionadas"/);
+  assert.match(overview,/id="btnFecharCaixasSelecionadas"/);
+});
+
+test("ações individuais antecedem o resumo longo do caixa no celular",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const detail=source.slice(source.indexOf("function renderDetail(host)"));
+  assert.ok(detail.indexOf('<footer class="cx-footer">')>=0);
+  assert.ok(detail.indexOf('<footer class="cx-footer">') < detail.indexOf("${ui.tab==='resumo'?summary(m,row):details(m)}"));
+  assert.match(detail,/data-cx-open-date/);
+  assert.match(detail,/data-cx-close/);
+  assert.match(detail,/data-cx-reopen/);
+});
