@@ -60,3 +60,57 @@ test("documentos abrem aba antes da consulta assíncrona no celular", () => {
   assert.match(bloco,/link\.rel = "noopener noreferrer"/);
   assert.match(source("storage.rules"),/match \/tenants\/\{tenantId\}\/clientes-documentos\/\{clienteId\}/);
 });
+
+
+test("carteira master local isola tenant, le centavos e preserva botoes seguros", () => {
+  const vm = require("node:vm");
+  const lista = { innerHTML:"", className:"", contains:()=>true, onclick:null };
+  const resumo = { innerHTML:"" };
+  const clientes = [
+    {id:"cliente-'1",clientePlataformaId:"tenant-a",nome:"Cliente A",
+      saldoDevedorCentavos:12345,saldoDevedor:0,status:"ATIVO"},
+    {id:"cliente-2",clientePlataformaId:"tenant-b",nome:"CLIENTE OUTRA EMPRESA",
+      saldoDevedorCentavos:99999999,status:"ATIVO"}
+  ];
+  const contexto = {
+    State:{
+      getTenantId:()=> "tenant-a",
+      getUsuario:()=>({clientePlataformaId:"tenant-a",cargoChave:"master_local"}),
+      getClientes:()=>clientes
+    },
+    UIHelpers:{getInputValue:()=>""},
+    moeda:valor=>"R$ "+Number(valor).toFixed(2),
+    document:{
+      getElementById:id=>({listaClientes:lista,resumoClientes:resumo}[id]||null),
+      addEventListener(){}
+    },
+    window:{},console,setTimeout(){}
+  };
+  vm.createContext(contexto);
+  vm.runInContext(source("js/clientes.js"),contexto);
+  contexto.renderClientes();
+  assert.ok(lista.innerHTML.includes("Saldo devedor: R$ 123.45"));
+  assert.ok(lista.innerHTML.includes('data-cliente-id="cliente-&#39;1"'));
+  assert.ok(lista.innerHTML.includes('data-cliente-acao="ver"'));
+  assert.ok(lista.innerHTML.includes('data-cliente-acao="documentos"'));
+  assert.ok(lista.innerHTML.includes('data-cliente-acao="editar"'));
+  assert.ok(lista.innerHTML.includes('data-cliente-acao="transferir"'));
+  assert.ok(lista.innerHTML.includes('data-cliente-acao="excluir"'));
+  assert.ok(!lista.innerHTML.includes("CLIENTE OUTRA EMPRESA"));
+  assert.ok(!lista.innerHTML.includes('onclick="abrirVerCliente'));
+  assert.ok(resumo.innerHTML.includes("<strong>1</strong>"));
+  const chamadas = [];
+  for (const [acao,fn] of [["ver","abrirVerCliente"],["documentos","abrirDocumentosCliente"],
+      ["editar","abrirEditarCliente"],["transferir","abrirTransferirCliente"],
+      ["excluir","excluirClienteLogico"]]) {
+    contexto[fn] = id => chamadas.push([acao,id]);
+    lista.onclick({target:{closest:()=>({
+      dataset:{clienteAcao:acao,clienteId:"cliente-'1"}
+    })}});
+  }
+  assert.deepEqual(chamadas,[
+    ["ver","cliente-'1"],["documentos","cliente-'1"],["editar","cliente-'1"],
+    ["transferir","cliente-'1"],["excluir","cliente-'1"]
+  ]);
+  assert.equal(contexto.encontrarClientePorId("cliente-2"),undefined);
+});
