@@ -64,6 +64,17 @@
       try { estado.unsubConversas(); } catch (_) {}
       estado.unsubConversas = null;
     }
+    const escopoAnterior = estado.resumoEscopo;
+    if (escopoAnterior && escopoAnterior !== escopo) {
+      encerrarDetalhesChat();
+      estado.conversaAtual = "";
+      estado.usuarios = [];
+      estado.presencas.clear();
+      cancelarImagem();
+      containerChat()?.querySelector(".integro-chat")?.classList.remove("conversa-aberta");
+      const mensagens = el("chatMensagens");
+      if (mensagens) mensagens.innerHTML = '<div class="empty">Selecione uma conversa.</div>';
+    }
     estado.resumoEscopo = escopo;
     estado.resumoInicialRecebido = false;
     estado.conversasNotificadas.clear();
@@ -294,16 +305,24 @@
       const naoLidas = naoLidasDaConversa(conversa);
       const titulo = item.titulo;
       const status = conversa ? statusConversa(conversa).status : presencaDoUsuario(idUsuario);
-      const onclick = conversa
-        ? `IntegroChatUI.selecionar('${esc(conversa.id)}')`
-        : `IntegroChatUI.abrirDiretaPorId('${esc(idUsuario)}')`;
+      const acao = conversa
+        ? `data-chat-conversa-id="${esc(conversa.id)}"`
+        : `data-chat-contato-id="${esc(idUsuario)}"`;
       const previa = conversa?.ultimaMensagem || (usuario ? "Iniciar conversa" : "Grupo sem mensagens");
-      return `<button class="integro-chat-conversa ${conversa?.id === estado.conversaAtual ? "active" : ""} ${naoLidas ? "unread" : ""}" type="button" onclick="${onclick}">
+      return `<button class="integro-chat-conversa ${conversa?.id === estado.conversaAtual ? "active" : ""} ${naoLidas ? "unread" : ""}" type="button" ${acao}>
         <span class="integro-chat-avatar-wrap"><span class="integro-chat-avatar">${esc(iniciais(titulo))}</span><i class="integro-presenca-dot ${String(status || "OFFLINE").toLowerCase()}"></i></span>
         <span class="integro-chat-conversa-corpo"><span class="integro-chat-conversa-topo"><strong>${esc(titulo)}</strong><small>${esc(formatarHorario(conversa?.ultimaMensagemEm))}</small></span><span class="integro-chat-preview">${esc(previa)}</span></span>
         ${naoLidas ? `<b class="integro-chat-unread-badge">${naoLidas > 99 ? "99+" : naoLidas}</b>` : ""}
       </button>`;
     }).join("") : '<div class="empty">Nenhum contato autorizado disponível.</div>';
+    // Delegação preserva ações após cada atualização em tempo real e
+    // evita montar código JavaScript a partir de IDs de documentos.
+    box.onclick = evento => {
+      const botao = evento.target?.closest?.("button.integro-chat-conversa");
+      if (!botao || !box.contains(botao)) return;
+      if (botao.dataset.chatConversaId) selecionar(botao.dataset.chatConversaId);
+      else if (botao.dataset.chatContatoId) abrirDiretaPorId(botao.dataset.chatContatoId);
+    };
   }
 
   function renderMensagens(lista) {
@@ -338,8 +357,15 @@
     const root = containerChat();
     if (!root) return;
     if (root.dataset.chatReady !== "1") renderBase(root);
+    const escopo = estado.resumoEscopo;
     try {
-      estado.usuarios = await global.IntegroChatService.listarUsuariosDisponiveis();
+      const usuarios = await global.IntegroChatService.listarUsuariosDisponiveis();
+      // Não renderizar contatos de outra empresa se a seleção mudou
+      // durante a leitura assíncrona.
+      if (!escopo || escopo !== estado.resumoEscopo ||
+          escopo !== String(global.IntegroChatService.tenantAtual?.() || "") + ":" +
+            String(global.IntegroChatService.usuarioId?.() || "")) return;
+      estado.usuarios = usuarios;
       if (!estado.presencaIniciada) {
         estado.presencaIniciada = true;
         estado.unsubPresenca = global.IntegroChatService.iniciarPresenca(lista => {
