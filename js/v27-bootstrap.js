@@ -129,7 +129,7 @@
         global.IntegroV27ConfigSaveGuard?.install?.();
       }
       if (global.IntegroChatService) {
-        await loadIfMissing(() => Boolean(global.IntegroChatV27Guard), "js/services/chat-v27-guard.js", "chat-guard");
+        await loadScript("js/services/chat-v27-guard.js?v=20261104-chat-guard-permissoes-v1", "chat-guard");
         global.IntegroChatV27Guard?.install?.();
       }
     } catch (error) {
