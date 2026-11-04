@@ -454,6 +454,6 @@ test("fechamento reage à remontagem do botão e à versão atualizada dos servi
   assert.match(unified,/window\.validarEAbrirFechamentoCaixa = window\.validarEAbrirFechamentoCaixa \|\|/);
   assert.match(close,/if \(!global\.document\) return;\s+const botao = document\.getElementById\("btnFecharCaixaCobrancas"\)/);
   assert.match(close,/multiplos-caixas-abertos/);
-  assert.match(boot,/VERSION = "20261104-vendedor-fechamento"/);
-  assert.match(config,/v27-bootstrap\.js\?v=20261104-vendedor-fechamento/);
+  assert.match(boot,/VERSION = "20261104-caixa-retry-pagamento-v2"/);
+  assert.match(config,/v27-bootstrap\.js\?v=20261104-caixa-retry-pagamento-v2/);
 });
