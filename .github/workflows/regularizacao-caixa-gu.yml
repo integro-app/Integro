@@ -35,5 +35,5 @@ jobs:
       - name: Verificar saldos, vinculos e ledger antes da regularizacao
         env:
           DIAGNOSTIC_EMAIL: gu@ar.com
-          APLICAR_REGULARIZACAO: "NAO"
+          APLICAR_REGULARIZACAO: "SIM"
         run: node scripts/regularizar-caixa-duplicado-gu.cjs
