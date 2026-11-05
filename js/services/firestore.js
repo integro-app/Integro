@@ -54,6 +54,17 @@ const FirestoreService = {
   // ===============================
   async loadCollection(collectionName, tenantId = null, limit = null, options = {}) {
     try {
+      const sessao = window.State?.getUsuario?.() || {};
+      const perfil = String(sessao.tipoUsuarioOficial || sessao.tipoUsuario || "").toLowerCase();
+      const adminGlobal = ["master_global", "usuario_integro"].includes(perfil);
+      const empresaSessao = String(window.State?.getTenantId?.() || "").trim();
+      const empresaPedida = String(tenantId || "").trim();
+      if (!adminGlobal) {
+        if (!empresaSessao || (empresaPedida && empresaPedida !== empresaSessao)) {
+          throw new Error("Empresa da consulta não autorizada.");
+        }
+        tenantId = empresaSessao;
+      }
       const colecao = CONFIG.COLECOES[collectionName.toUpperCase()] || collectionName;
       const limiteQuery = limit || CONFIG.LIMITS[collectionName.toUpperCase()] || 200;
       const cacheMs = Math.max(0, Number(options?.cacheMs || 0));
