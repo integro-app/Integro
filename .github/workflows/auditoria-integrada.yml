@@ -6,9 +6,31 @@ on:
       - "js/**"
       - "functions/**"
       - "tests/**"
+      - "scripts/**"
+      - "css/**"
+      - "**/*.html"
       - "firestore.rules"
       - "storage.rules"
+      - "firestore.indexes.json"
+      - "firebase.json"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/auditoria-integrada.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "js/**"
+      - "functions/**"
+      - "tests/**"
       - "scripts/**"
+      - "css/**"
+      - "**/*.html"
+      - "firestore.rules"
+      - "storage.rules"
+      - "firestore.indexes.json"
+      - "firebase.json"
+      - "package.json"
+      - "package-lock.json"
       - ".github/workflows/auditoria-integrada.yml"
   workflow_dispatch:
 permissions:
