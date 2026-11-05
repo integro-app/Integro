@@ -220,3 +220,79 @@ test("vendedor: retries de inicialização não acumulam listeners nos botões d
   contexto.inicializarAjustes11Validados();
   assert.equal(registrados, 4, "controle substituído recebe seu próprio listener");
 });
+
+
+test("vendedor mantém ordenação escolhida após reinicializações dos patches", () => {
+  const vm = require("node:vm");
+  const vendedor = ler("vendedor.html");
+  function funcao(inicio, fim) {
+    const pos = vendedor.indexOf(inicio);
+    const final = vendedor.indexOf(fim, pos + inicio.length);
+    assert.ok(pos >= 0 && final > pos, "função não encontrada: " + inicio);
+    return vendedor.slice(pos, final);
+  }
+
+  let escritasHtml = 0;
+  let escritasEstilo = 0;
+  let display = "";
+  let valor = "nome_az";
+  let opcoes = [{ value: "nome_az", textContent: "Ordem alfabética" }];
+  const select = {
+    dataset: {},
+    style: {
+      get display() { return display; },
+      set display(novo) { escritasEstilo++; display = novo; }
+    },
+    get options() { return opcoes; },
+    get value() { return valor; },
+    set value(novo) { valor = novo; },
+    set innerHTML(html) {
+      escritasHtml++;
+      opcoes = Array.from(html.matchAll(/<option value="([^"]+)">([^<]+)<\/option>/g),
+        match => ({ value: match[1], textContent: match[2] }));
+      valor = opcoes[0]?.value || "";
+    }
+  };
+
+  const contexto = {
+    byId: id => id === "ordenarCobrancas" ? select : null,
+    document: {
+      createElement() { return { value: "", textContent: "" }; }
+    }
+  };
+  const codigo = [
+    funcao("  function garantirOrdenacaoPrioridade() {", "\n  function garantirBotaoDesktopMenu()"),
+    funcao("  function garantirOrdenacaoNoFiltro() {", "\n  function ordenarListaCobrancasFinal(")
+  ].join("\n");
+  vm.runInNewContext(codigo, contexto);
+
+  // Primeira execução preserva o padrão histórico da rota.
+  contexto.garantirOrdenacaoPrioridade();
+  contexto.garantirOrdenacaoNoFiltro();
+  assert.equal(select.value, "prioridade_rota");
+  assert.equal(display, "none");
+  assert.equal(opcoes.length, 8);
+  assert.equal(escritasHtml, 1);
+  assert.equal(escritasEstilo, 1);
+
+  // Ao escolher outra ordenação, retries não recriam opções nem apagam a escolha.
+  select.value = "saldo_maior";
+  for (let i = 0; i < 4; i++) {
+    contexto.garantirOrdenacaoNoFiltro();
+    contexto.garantirOrdenacaoPrioridade();
+  }
+  assert.equal(select.value, "saldo_maior");
+  assert.equal(escritasHtml, 1);
+  assert.equal(escritasEstilo, 1);
+
+  // A antiga correção convertia indevidamente a escolha alfabética em prioridade.
+  select.value = "nome_az";
+  contexto.garantirOrdenacaoPrioridade();
+  assert.equal(select.value, "nome_az");
+
+  // Se outro módulo alterar as opções, a lista é recuperada sem perder a escolha.
+  opcoes = [{ value: "nome_az", textContent: "Ordem alfabética" }];
+  contexto.garantirOrdenacaoNoFiltro();
+  assert.equal(escritasHtml, 2);
+  assert.equal(select.value, "nome_az");
+});
