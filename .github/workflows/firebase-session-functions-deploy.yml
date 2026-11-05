@@ -5,6 +5,10 @@ on:
     branches:
       - main
     paths:
+      - "functions/v27-admin.js"
+      - "functions/index.js"
+      - "functions/package.json"
+      - "functions/package-lock.json"
       - ".github/workflows/firebase-session-functions-deploy.yml"
 
 jobs:
