@@ -337,4 +337,26 @@ test("abertura retroativa respeita a data escolhida, herança inicial e não dup
     .where("vendedorAuthUid","==",seller)
     .where("dataOperacional","==",doisDias).get();
   assert.equal(daDataErrada.size,0);
+
+  // Um caixa existente com status ABERTO, porém ativo=false, jamais deve
+  // produzir sucesso IDEMPOTENTE: o vendedor não conseguiria efetuar login.
+  await ref.update({ativo:false});
+  await assert.rejects(()=>ciclo.abrir(entrada,contexto),
+    error=>error.code==="failed-precondition" && /inativo/i.test(error.message));
+  await ref.update({ativo:true});
+
+  // Histórico duplicado de outra equipe precisa ser detectado pela identidade
+  // canônica, sem jamais criar um terceiro caixa ou alterar os saldos existentes.
+  const refAntigo=db.collection("caixas").doc("caixa_duplicidade_legada_teste");
+  await refAntigo.set({...persistido,ativo:true,status:"ABERTO",
+    equipeId:"equipe-legada",vendedorId:seller,vendedorAuthUid:seller,
+    dataOperacional:diaAnterior,dataCaixa:diaAnterior});
+  try {
+    await assert.rejects(()=>ciclo.abrir(entrada,contexto),
+      error=>error.code==="failed-precondition" && /múltiplos caixas abertos/i.test(error.message));
+    assert.equal((await ref.get()).data().status,"ABERTO");
+    assert.equal((await refAntigo.get()).data().status,"ABERTO");
+  } finally {
+    await refAntigo.delete();
+  }
 });
