@@ -35,4 +35,4 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
       - name: Publicar ciclo transacional de caixas
-        run: npx firebase deploy --only functions:abrirCaixaOperacional,functions:conferirCaixaOperacional,functions:fecharCaixaOperacional,functions:reabrirCaixaOperacional,functions:consultarDatasCaixaEquipe,functions:tratarDivergenciaCaixaOperacional --project integro-novo --non-interactive
+        run: npx firebase deploy --only functions:abrirCaixaOperacional,functions:conferirCaixaOperacional,functions:fecharCaixaOperacional,functions:reabrirCaixaOperacional,functions:consultarDatasCaixaEquipe --project integro-novo --non-interactive
