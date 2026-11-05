@@ -296,6 +296,8 @@ test("botões de Caixas são liberados ao final da ação, mesmo após atualiza�
     "abertura deve redesenhar somente após liberar o estado em andamento");
   assert.match(overview,/fecharSelecionados\(\);[\s\S]*finally\s*\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/,
     "fechamento deve redesenhar os botões após concluir");
+  assert.doesNotThrow(()=>new (require("node:vm").Script)(src),
+    "HTML de botões condicionais precisa manter JavaScript sintaticamente válido");
   const detail=src.slice(src.indexOf("  function renderDetail(host)"),src.indexOf("  function confirmClosure("));
   assert.equal((detail.match(/finally\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/g)||[]).length,2,
     "ações individuais de reabrir e fechar também liberam os botões após consulta ao servidor");
