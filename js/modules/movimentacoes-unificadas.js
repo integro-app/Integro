@@ -159,30 +159,36 @@
   }
 
   async function load(force = false) {
-    if (state.loading) return;
+    if (state.loading) return state.loading;
     const scopeKey=[tenant(),access().perfil,access().authUid,(access().equipeIds||[]).join(',')].join('|');
     if(state.scopeKey!==scopeKey){state.loaded=false;state.scopeKey=scopeKey;state.requests=[];state.entries=[];state.boxes=[];state.filters=defaultFilters(state.filters.type);}
     if (state.loaded && !force) return render();
-    state.loading = true;
     renderLoading();
-    try {
-      const [requests, entries, boxes, users, teams, categories] = await Promise.all([
-        queryTenant("solicitacoes", 800), queryTenant("lancamentos_financeiros", 1200), queryTenant("caixas", 800),
-        queryTenant("usuarios", 500), queryTenant("equipes", 300), queryTenant("categoriasMovimentacao", 300)
-      ]);
-      state.requests = requests.filter(r => ["INGRESSO", "GASTO", "RETIRADA"].includes(type(r)));
-      state.entries = entries.filter(e => ["INGRESSO", "GASTO", "RETIRADA"].includes(type(e)));
-      state.boxes = boxes;
-      state.users = users;
-      state.teams = teams;
-      state.categories = categories.filter(c => c.ativo !== false && up(c.status || "ATIVO") !== "INATIVO");
-      state.loaded = true;
-      render();
-    } catch(error) {
-      const host=document.getElementById("movimentacoes");
-      if(host)host.innerHTML='<div class="section-card"><h2>Movimentações</h2><p role="alert">Não foi possível carregar as movimentações. Tente atualizar.</p><button class="ghost-btn" onclick="IntegroMovimentacoesUnificadas.load(true)">Tentar novamente</button></div>';
-      notify(error.message||"Falha ao consultar movimentações.","err");
-    } finally { state.loading = false; }
+    const tenantAtLoad=tenant();
+    state.loading=(async()=>{
+      try {
+        const [requests, entries, boxes, users, teams, categories] = await Promise.all([
+          queryTenant("solicitacoes", 800), queryTenant("lancamentos_financeiros", 1200), queryTenant("caixas", 800),
+          queryTenant("usuarios", 500), queryTenant("equipes", 300), queryTenant("categoriasMovimentacao", 300)
+        ]);
+        if(tenantAtLoad!==tenant()) return false;
+        state.requests = requests.filter(r => ["INGRESSO", "GASTO", "RETIRADA"].includes(type(r)));
+        state.entries = entries.filter(e => ["INGRESSO", "GASTO", "RETIRADA"].includes(type(e)));
+        state.boxes = boxes;
+        state.users = users;
+        state.teams = teams;
+        state.categories = categories.filter(c => c.ativo !== false && up(c.status || "ATIVO") !== "INATIVO");
+        state.loaded = true;
+        render();
+        return true;
+      } catch(error) {
+        const host=document.getElementById("movimentacoes");
+        if(host)host.innerHTML='<div class="section-card"><h2>Movimentações</h2><p role="alert">Não foi possível carregar as movimentações. Tente atualizar.</p><button class="ghost-btn" onclick="IntegroMovimentacoesUnificadas.load(true)">Tentar novamente</button></div>';
+        notify(error.message||"Falha ao consultar movimentações.","err");
+        return false;
+      } finally { state.loading = null; }
+    })();
+    return state.loading;
   }
 
   function allItems() {
