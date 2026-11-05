@@ -12317,7 +12317,9 @@ async function verificarCaixaAbertoDiaAnterior() {
       select.insertBefore(option, select.firstChild);
     }
 
-    if (!select.value || select.value === "nome_az") {
+    // A preferência inicial continua sendo rota; após inicializar, não
+    // sobrescrever a ordenação escolhida pelo vendedor em cada retry.
+    if (!select.value || (select.value === "nome_az" && !select.dataset.valorAjustado)) {
       select.value = "prioridade_rota";
     }
   }
@@ -13682,7 +13684,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     const select = byId("ordenarCobrancas");
     if (!select) return;
 
-    select.style.display = "none";
+    if (select.style.display !== "none") select.style.display = "none";
 
     const opcoes = [
       ["prioridade_rota", "Prioridade da rota"],
@@ -13695,9 +13697,20 @@ async function verificarCaixaAbertoDiaAnterior() {
       ["nome_az", "Ordem alfabética"]
     ];
 
-    select.innerHTML = opcoes
-      .map(([valor, label]) => `<option value="${valor}">${label}</option>`)
-      .join("");
+    // O patch era executado várias vezes e recriava todas as opções, o que
+    // descartava a seleção do usuário. Reutilizar o select quando já está correto.
+    const opcoesAtuais = Array.from(select.options);
+    const precisaAtualizar = opcoesAtuais.length !== opcoes.length ||
+      opcoes.some(([valor, label], indice) =>
+        opcoesAtuais[indice]?.value !== valor || opcoesAtuais[indice]?.textContent !== label
+      );
+    if (precisaAtualizar) {
+      const valorAnterior = select.value;
+      select.innerHTML = opcoes
+        .map(([valor, label]) => `<option value="${valor}">${label}</option>`)
+        .join("");
+      if (opcoes.some(([valor]) => valor === valorAnterior)) select.value = valorAnterior;
+    }
 
     if (!select.dataset.valorAjustado) {
       select.value = "prioridade_rota";
