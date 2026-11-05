@@ -287,3 +287,18 @@ test("no celular, apenas a tabela de equipes vira cartões; tabela de detalhes p
   const firebase=JSON.parse(fs.readFileSync(path.join(root,"firebase.json"),"utf8"));
   assert.ok(firebase.hosting.headers.some(x=>x.source==="/css/caixas-supervisao.css"));
 });
+
+
+test("botões de Caixas são liberados ao final da ação, mesmo após atualização da tela",()=>{
+  const src=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const overview=src.slice(src.indexOf("  function render() {"),src.indexOf("  async function query("));
+  assert.match(overview,/abrirSelecionados\(\);[\s\S]*finally\{ui\.actionBusy=false;render\(\);\}/,
+    "abertura deve redesenhar somente após liberar o estado em andamento");
+  assert.match(overview,/fecharSelecionados\(\);[\s\S]*finally\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/,
+    "fechamento deve redesenhar os botões após concluir");
+  const detail=src.slice(src.indexOf("  function renderDetail(host)"),src.indexOf("  function confirmClosure("));
+  assert.equal((detail.match(/finally\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/g)||[]).length,2,
+    "ações individuais de reabrir e fechar também liberam os botões após consulta ao servidor");
+  assert.match(detail,/data-cx-close \$\{ui\.actionBusy\?'disabled':''\}/);
+  assert.match(detail,/data-cx-reopen \$\{ui\.actionBusy\?'disabled':''\}/);
+});
