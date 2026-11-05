@@ -1,11 +1,8 @@
 name: Regularizacao auditada de caixas - vendedor gu
 
+# Regularizacao executada e verificada no run 42113136952.
+# Desativado para impedir reexecucao automatica do procedimento excepcional.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "scripts/regularizar-caixa-duplicado-gu.cjs"
-      - ".github/workflows/regularizacao-caixa-gu.yml"
   workflow_dispatch:
 
 permissions:
@@ -35,5 +32,5 @@ jobs:
       - name: Verificar saldos, vinculos e ledger antes da regularizacao
         env:
           DIAGNOSTIC_EMAIL: gu@ar.com
-          APLICAR_REGULARIZACAO: "SIM"
+          APLICAR_REGULARIZACAO: "NAO"
         run: node scripts/regularizar-caixa-duplicado-gu.cjs
