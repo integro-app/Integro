@@ -10,6 +10,7 @@
   let installed = false;
   let functionLoader = null;
   let localActivity = Date.now();
+  let caixaIdValidado = "";
 
   function text(value) { return String(value ?? "").trim(); }
   function randomId() {
@@ -90,6 +91,7 @@
       }
     }
     persistStartedSession(serverId);
+    caixaIdValidado = text(result?.caixaId);
     return { ...result, sessionId: serverId };
   }
 
@@ -114,6 +116,7 @@
     const id = sessionId();
     if (!id || !currentUser()) return false;
     const result = await callable("validarSessaoV27", { sessionId: id });
+    if (result?.ok === true) caixaIdValidado = text(result.caixaId);
     return result?.ok === true;
   }
 
@@ -125,6 +128,7 @@
       if (!options.silent) console.warn("[ÍNTEGRO V27] Não foi possível encerrar a sessão no servidor.", error);
     } finally {
       setSessionId("");
+      caixaIdValidado = "";
       global.localStorage?.removeItem(LAST_ACTIVITY_KEY);
       clearTimers();
     }
@@ -219,7 +223,10 @@
     });
   }
 
-  const api = Object.freeze({ start, heartbeat, end, resume, expireNow, resetPassword, blockUser, unblockUser, invalidateUserSessions, sessionId, device, inactivityMinutes, install });
+  // Resultado do backend, nunca salvo em localStorage e nunca utilizado como
+  // autorização de transações: o servidor valida novamente cada ação.
+  const caixaId = () => caixaIdValidado;
+  const api = Object.freeze({ start, heartbeat, end, resume, expireNow, resetPassword, blockUser, unblockUser, invalidateUserSessions, sessionId, caixaId, device, inactivityMinutes, install });
   global.IntegroV27Session = api;
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", install, { once: true }); else install();
 })(window);
