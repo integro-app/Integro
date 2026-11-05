@@ -570,50 +570,41 @@
 
   async function localizarCaixaAbertoPersistido(usuario = usuarioAtual()) {
     if (!ehVendedor(usuario)) return { permitido: true, caixa: null, motivo: "perfil-nao-vendedor" };
+
+    // O ID é confirmado pela Function de sessão (início e renovação).
+    // A tela não decide autorização fazendo buscas por aliases legados:
+    // consulta sem resultado podia deslogar um vendedor com caixa aberto.
+    const caixaId = texto(global.IntegroV27Session?.caixaId?.());
+    if (!caixaId)
+      return { permitido: null, caixa: null, motivo: "validacao-servidor-indisponivel" };
+
     const db = global.db || global.firebase?.firestore?.();
     const tenant = tenantUsuario(usuario);
     const uid = texto(global.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
-    const sellerId = texto(usuario.id || usuario.usuarioId || usuario.vendedorId || uid);
-    if (!db || !tenant || !sellerId) return { permitido: null, caixa: null, motivo: "dados-indisponiveis" };
+    if (!db || !tenant || !uid)
+      return { permitido: null, caixa: null, motivo: "contexto-indisponivel" };
 
-    if (!uid) return { permitido: null, caixa: null, motivo: "identidade-indisponivel" };
     try {
-      // Há caixas anteriores à padronização de vendedorAuthUid. Consulta
-      // sempre o servidor e admite somente o vendedor vinculado à sessão.
-      const tentativas = [
-        ["vendedorAuthUid", uid, true],
-        ["vendedorAuthUid", uid, false],
-        ["vendedorId", sellerId, true],
-        ["vendedorId", sellerId, false]
-      ];
-      let consultaValida = false;
-      for (const [campo, valor, filtrarStatus] of tentativas) {
-        if (!valor) continue;
-        try {
-          let consulta = db.collection("caixas").where("clientePlataformaId", "==", tenant)
-            .where(campo, "==", valor);
-          if (filtrarStatus) consulta = consulta.where("status", "in", ["ABERTO", "REABERTO"]);
-          const snap = await consulta.limit(filtrarStatus ? 5 : 150).get({ source: "server" });
-          if (snap.metadata?.fromCache) continue;
-          consultaValida = true;
-          const abertas = (snap.docs || []).map(doc => ({ ...doc.data(), id: doc.id }))
-            .filter(caixa => ["ABERTO", "REABERTO"].includes(normalizar(caixa.status)) &&
-              caixa.clientePlataformaId === tenant && caixa.excluido !== true &&
-              caixa.ativo !== false && (!caixa.vendedorAuthUid || caixa.vendedorAuthUid === uid) &&
-              (texto(caixa.vendedorAuthUid) === uid || texto(caixa.vendedorId) === sellerId));
-          if (abertas.length > 1) return { permitido: false, caixa: null, motivo: "multiplos-caixas-abertos" };
-          if (abertas.length === 1) return { permitido: true, caixa: abertas[0], motivo: "servidor-aberto" };
-          // A consulta limitada pode encontrar apenas históricos fechados;
-          // tenta por status ou alias sem apagar nem alterar nenhum caixa.
-        } catch (falhaConsulta) {
-          console.warn("[ÍNTEGRO] Consulta alternativa de caixa indisponível.", campo, falhaConsulta);
-        }
-      }
-      return consultaValida
-        ? { permitido: false, caixa: null, motivo: "sem-caixa-aberto" }
-        : { permitido: null, caixa: null, motivo: "servidor-indisponivel" };
+      const snap = await db.collection("caixas").doc(caixaId).get({ source: "server" });
+      if (snap.metadata?.fromCache)
+        return { permitido: null, caixa: null, motivo: "servidor-indisponivel" };
+      if (!snap.exists)
+        return { permitido: false, caixa: null, motivo: "caixa-inexistente" };
+
+      const caixa = { ...snap.data(), id: snap.id };
+      const tenantCaixa = texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId);
+      const uidPrincipal = texto(caixa.vendedorAuthUid);
+      const uidLegado = texto(caixa.vendedorUid);
+      const idsUsuario = new Set([usuario.id, usuario.usuarioId, usuario.vendedorId, uid].filter(Boolean).map(String));
+      const vinculado = !(uidPrincipal && uidPrincipal !== uid) && !(uidLegado && uidLegado !== uid) &&
+        (uidPrincipal === uid || uidLegado === uid || idsUsuario.has(texto(caixa.vendedorId)));
+      const aberto = ["ABERTO", "REABERTO"].includes(normalizar(caixa.status)) &&
+        caixa.ativo !== false && caixa.excluido !== true;
+      if (tenantCaixa !== tenant || !vinculado || !aberto)
+        return { permitido: false, caixa: null, motivo: "caixa-invalido" };
+      return { permitido: true, caixa, motivo: "sessao-servidor" };
     } catch (erro) {
-      console.warn("[ÍNTEGRO] Validação do caixa indisponível.", erro);
+      console.warn("[ÍNTEGRO] Não foi possível conferir o caixa validado na sessão.", erro);
       return { permitido: null, caixa: null, motivo: "servidor-indisponivel" };
     }
   }
