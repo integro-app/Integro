@@ -216,9 +216,9 @@
       const segundos = valor.seconds ?? valor._seconds;
       if (segundos != null && Number.isFinite(Number(segundos))) return new Date(Number(segundos) * 1000);
       const texto = String(valor);
-      const brasileiro = texto.match(/^(\\d{2})\\/(\\d{2})\\/(\\d{4})/);
+      const brasileiro = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
       if (brasileiro) return new Date(Number(brasileiro[3]), Number(brasileiro[2]) - 1, Number(brasileiro[1]));
-      const timestamp = texto.match(/Timestamp\\(seconds=(\\d+)/i);
+      const timestamp = texto.match(/Timestamp\(seconds=(\d+)/i);
       const data = timestamp ? new Date(Number(timestamp[1]) * 1000) : new Date(texto);
       return Number.isNaN(data.getTime()) ? null : data;
     }
@@ -368,12 +368,12 @@
         ["responsável", item => item.usuarioNome || item.responsavelNome || item.vendedorNome || item.nome || ""]
       ];
       const escaparCsv = valor => {
-        const texto = String(valor ?? "").replace(/^[\\s]*([=+@-])/u, "'$1");
+        const texto = String(valor ?? "").replace(/^[\s]*([=+@-])/u, "'$1");
         return '"' + texto.replace(/"/g, '""') + '"';
       };
       const linhas = [campos.map(([nome]) => escaparCsv(nome)).join(";")];
       lista.forEach(item => linhas.push(campos.map(([, obter]) => escaparCsv(obter(item))).join(";")));
-      const blob = new Blob(["\\uFEFF", linhas.join("\\r\\n")], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob(["\uFEFF", linhas.join("\r\n")], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
