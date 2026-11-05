@@ -36,7 +36,7 @@
       diasTrabalho: [1, 2, 3, 4, 5, 6],
       horarioInicio: "08:00",
       horarioFim: "20:00",
-      sessaoMinutos: 15
+      sessaoMinutos: 30
     },
     dashboard: {
       periodoPadrao: "MES_ATUAL",
@@ -45,7 +45,7 @@
     },
     seguranca: {
       sessaoUnica: true,
-      sessaoInatividadeMinutos: 15,
+      sessaoInatividadeMinutos: 30,
       maxTentativasLogin: 5,
       recuperacaoSenhaViaSuperior: true,
       trocaSenhaEncerraSessoes: true,
@@ -212,7 +212,7 @@
         diasTrabalho: [...new Set((Array.isArray(operacao.diasTrabalho) ? operacao.diasTrabalho : base.operacao.diasTrabalho).map(Number).filter(dia => dia >= 0 && dia <= 6))].sort(),
         horarioInicio: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(operacao.horarioInicio || "")) ? operacao.horarioInicio : base.operacao.horarioInicio,
         horarioFim: /^([01]\d|2[0-3]):[0-5]\d$/.test(String(operacao.horarioFim || "")) ? operacao.horarioFim : base.operacao.horarioFim,
-        sessaoMinutos: inteiro(operacao.sessaoMinutos ?? seguranca.sessaoInatividadeMinutos, 15, 5, 720)
+        sessaoMinutos: inteiro(operacao.sessaoMinutos ?? seguranca.sessaoInatividadeMinutos, 30, 5, 720)
       },
       dashboard: {
         ...base.dashboard, ...dashboard,
@@ -223,7 +223,7 @@
       seguranca: {
         ...base.seguranca, ...seguranca,
         sessaoUnica: seguranca.sessaoUnica !== false,
-        sessaoInatividadeMinutos: inteiro(seguranca.sessaoInatividadeMinutos ?? operacao.sessaoMinutos, 15, 5, 720),
+        sessaoInatividadeMinutos: inteiro(seguranca.sessaoInatividadeMinutos ?? operacao.sessaoMinutos, 30, 5, 720),
         maxTentativasLogin: inteiro(seguranca.maxTentativasLogin, 5, 1, 20),
         recuperacaoSenhaViaSuperior: true,
         trocaSenhaEncerraSessoes: true
