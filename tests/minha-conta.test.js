@@ -22,5 +22,5 @@ test("Minha Conta limita a edição do próprio perfil a campos seguros", () => 
 });
 
 test("painel carrega versão atual de Minha Conta", () => {
-  assert.match(master, /js\/minha-conta\.js\?v=20260805-producao-otimizada1/);
+  assert.match(master, /js\/minha-conta\.js\?v=20261105-perfil-seguro-v1/);
 });
