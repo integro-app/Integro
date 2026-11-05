@@ -210,7 +210,7 @@ test("bootstrap v27.2 carrega o financeiro empresarial e seus guardas sem bridge
   assert.match(bootstrap, /enterprise-finance-v27-guard\.js/);
   assert.match(bootstrap, /enterprise-finance-payment-guard\.js/);
   assert.match(bootstrap, /controle-financeiro-empresarial\.js/);
-  assert.match(bootstrap, /20261105-relatorios-auditoria-v1/);
+  assert.match(bootstrap, /20261105-sessao-30min-v2/);
   assert.doesNotMatch(bootstrap, /enterprise-finance-operation-bridge\.js/);
   assert.doesNotMatch(bootstrap, /controle-financeiro-operacao-bridge\.js/);
   assert.doesNotMatch(bootstrap, /enterprise-finance-operation-approval-guard\.js/);
