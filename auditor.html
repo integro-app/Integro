@@ -106,7 +106,7 @@
             <option value="">Todos os tipos</option>
           </select>
           <input id="inicioAuditor" type="date" onchange="renderAuditoria()">
-          <input id="fimAuditor" type="date" onchange="carregarAuditoria()">
+          <input id="fimAuditor" type="date" onchange="renderAuditoria()">
         </div>
         <div id="conteudoAuditor"></div>
       </section>
@@ -249,8 +249,12 @@
       if (!select) return;
       const atual = select.value;
       const tipos = [...new Set(lista.map(i => i.tipoLancamento || i.tipo || i.acao || i.status || i.statusIndicacao).filter(Boolean).map(String))].sort();
-      select.innerHTML = '<option value="">Todos os tipos</option>' + tipos.map(t => `<option value="${t}">${t}</option>`).join("");
+      select.innerHTML = '<option value="">Todos os tipos</option>' + tipos.map(t => `<option value="${escaparHtmlAuditor(t)}">${escaparHtmlAuditor(t)}</option>`).join("");
       select.value = tipos.includes(atual) ? atual : "";
+    }
+
+    function escaparHtmlAuditor(valor) {
+      return String(valor ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\x27/g, "&#39;");
     }
 
     function renderAuditoria() {
@@ -271,11 +275,11 @@
             <tbody>
               ${lista.map((item, idx) => `
                 <tr onclick="abrirDetalheAuditor(${idx})">
-                  <td data-label="Data">${valorDataAuditor(item) || "-"}</td>
-                  <td data-label="Tipo">${item.tipoLancamento || item.tipo || item.acao || item.cargoChave || "-"}</td>
-                  <td data-label="Origem">${item.origemTipo || item.origemId || item.caixaId || item.vendaId || item.id}</td>
-                  <td data-label="Responsável">${item.usuarioNome || item.responsavelNome || item.vendedorNome || item.nome || item.email || "-"}</td>
-                  <td data-label="Status">${item.status || item.statusIndicacao || item.natureza || "-"}</td>
+                  <td data-label="Data">${escaparHtmlAuditor(valorDataAuditor(item) || "-")}</td>
+                  <td data-label="Tipo">${escaparHtmlAuditor(item.tipoLancamento || item.tipo || item.acao || item.cargoChave || "-")}</td>
+                  <td data-label="Origem">${escaparHtmlAuditor(item.origemTipo || item.origemId || item.caixaId || item.vendaId || item.id)}</td>
+                  <td data-label="Responsável">${escaparHtmlAuditor(item.usuarioNome || item.responsavelNome || item.vendedorNome || item.nome || item.email || "-")}</td>
+                  <td data-label="Status">${escaparHtmlAuditor(item.status || item.statusIndicacao || item.natureza || "-")}</td>
                 </tr>
               `).join("")}
             </tbody>
@@ -290,7 +294,7 @@
       document.getElementById("drawerAuditorSub").textContent = item.id || "";
       document.getElementById("drawerAuditorBody").innerHTML = Object.entries(item)
         .filter(([_, v]) => typeof v !== "function")
-        .map(([k, v]) => `<div class="kv"><b>${k}</b><span>${typeof v === "object" ? JSON.stringify(v) : String(v ?? "")}</span></div>`)
+        .map(([k, v]) => `<div class="kv"><b>${escaparHtmlAuditor(k)}</b><span>${escaparHtmlAuditor(typeof v === "object" ? JSON.stringify(v) : String(v ?? ""))}</span></div>`)
         .join("");
       document.getElementById("drawerAuditor").classList.add("show");
     }
@@ -384,7 +388,7 @@
     function abrirDetalheAuditorTexto(titulo, texto) {
       document.getElementById("drawerAuditorTitulo").textContent = titulo;
       document.getElementById("drawerAuditorSub").textContent = "Somente leitura";
-      document.getElementById("drawerAuditorBody").innerHTML = `<pre style="white-space:pre-wrap;font-weight:700">${texto}</pre>`;
+      document.getElementById("drawerAuditorBody").innerHTML = `<pre style="white-space:pre-wrap;font-weight:700">${escaparHtmlAuditor(texto)}</pre>`;
       document.getElementById("drawerAuditor").classList.add("show");
     }
 
