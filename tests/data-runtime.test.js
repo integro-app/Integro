@@ -187,3 +187,94 @@ test("assinaturas com mesmo alias não compartilham dados entre tenants",()=>{
   assert.equal(recebidosB[0].tenant,"tenant_b");
   cancelarA();cancelarB();
 });
+
+
+test("refresh forcado preserva a consulta mais nova e o cache de dados", async () => {
+  const { runtime } = carregarRuntime();
+  const pendentes = [];
+  const db = { collection: () => ({
+    where() { return this; },
+    limit() { return this; },
+    get() { return new Promise(resolve => pendentes.push(resolve)); }
+  }) };
+  const opcoes = { db, colecao: "pagamentos", tenantId: "tenant_a", cacheMs: 30000 };
+  const documento = valor => ({
+    docs: [{ id: valor, data: () => ({ clientePlataformaId: "tenant_a", situacao: valor }) }]
+  });
+
+  const antiga = runtime.consultarTenant(opcoes);
+  const atualizada = runtime.consultarTenant({ ...opcoes, forcar: true });
+  await Promise.resolve();
+  assert.equal(pendentes.length, 2);
+
+  pendentes[0](documento("ANTIGO"));
+  assert.equal((await antiga)[0].situacao, "ANTIGO");
+  assert.equal(runtime.diagnostico().consultasPendentes, 1);
+
+  const compartilhada = runtime.consultarTenant(opcoes);
+  await Promise.resolve();
+  assert.equal(pendentes.length, 2);
+  pendentes[1](documento("ATUAL"));
+  assert.equal((await atualizada)[0].situacao, "ATUAL");
+  assert.equal((await compartilhada)[0].situacao, "ATUAL");
+
+  const respostaCache = await runtime.consultarTenant(opcoes);
+  assert.equal(respostaCache[0].situacao, "ATUAL");
+  assert.equal(pendentes.length, 2);
+});
+
+test("refresh forcado de documento nao permite que a resposta antiga substitua o cache", async () => {
+  const { runtime } = carregarRuntime();
+  const pendentes = [];
+  const db = { collection: () => ({
+    doc: id => ({ get: () => new Promise(resolve => pendentes.push({ id, resolve })) })
+  }) };
+  const opcoes = { db, colecao: "clientes_integro", id: "tenant_a", cacheMs: 30000 };
+  const documento = valor => ({
+    exists: true, id: "tenant_a", data: () => ({ nome: valor })
+  });
+
+  const antiga = runtime.lerDocumento(opcoes);
+  const atualizada = runtime.lerDocumento({ ...opcoes, forcar: true });
+  await Promise.resolve();
+  assert.equal(pendentes.length, 2);
+  pendentes[0].resolve(documento("Antigo"));
+  assert.equal((await antiga).nome, "Antigo");
+  assert.equal(runtime.diagnostico().consultasPendentes, 1);
+  pendentes[1].resolve(documento("Atual"));
+  assert.equal((await atualizada).nome, "Atual");
+  assert.equal((await runtime.lerDocumento(opcoes)).nome, "Atual");
+  assert.equal(pendentes.length, 2);
+});
+
+test("logout invalida consultas pendentes e impede repopular o cache", async () => {
+  let onAuthChanged;
+  const contexto = {
+    console, Date, Map, Set, JSON, Promise,
+    document: { addEventListener() {} },
+    addEventListener() {},
+    State: { getTenantId: () => "tenant_a", getUsuario: () => ({ clientePlataformaId: "tenant_a" }) },
+    firebase: { auth: () => ({
+      currentUser: { uid: "usuario_a" },
+      onAuthStateChanged(callback) { onAuthChanged = callback; }
+    }) }
+  };
+  contexto.window = contexto;
+  vm.createContext(contexto);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "data-runtime.js"), "utf8"), contexto);
+  const runtime = contexto.IntegroDataRuntime;
+  let concluir;
+  const db = { collection: () => ({
+    where() { return this; },
+    limit() { return this; },
+    get() { return new Promise(resolve => { concluir = resolve; }); }
+  }) };
+  const leitura = runtime.consultarTenant({ db, colecao: "caixas", cacheMs: 30000 });
+  await Promise.resolve();
+  assert.equal(typeof concluir, "function");
+  onAuthChanged(null);
+  assert.equal(runtime.diagnostico().consultasPendentes, 0);
+  concluir({ docs: [{ id: "caixa_antigo", data: () => ({ clientePlataformaId: "tenant_a" }) }] });
+  await leitura;
+  assert.equal(runtime.diagnostico().cacheEntradas, 0);
+});
