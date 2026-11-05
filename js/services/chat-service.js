@@ -232,10 +232,10 @@
   function assinarMensagens(conversaId, callback, onErro) {
     if (!conversaId) return () => {};
     return db().collection(COLECAO).doc(conversaId).collection(SUBCOLECAO)
-      .orderBy("criadoEm", "asc").limit(180)
+      .orderBy("criadoEm", "desc").limit(180)
       .onSnapshot(snap => {
         const agora = Date.now();
-        const mensagens = snap.docs.map(normalizarDoc).filter(item => !item.expiraEm || millis(item.expiraEm) > agora);
+        const mensagens = snap.docs.map(normalizarDoc).filter(item => !item.expiraEm || millis(item.expiraEm) > agora).reverse();
         callback(mensagens);
       }, erro => onErro?.(erro));
   }
@@ -489,9 +489,10 @@
   async function marcarComoLida(conversaId) {
     const atual = usuarioId();
     if (!conversaId || !atual) return;
-    await db().collection(COLECAO).doc(conversaId).set({
-      naoLidasPorUsuario: { [atual]: 0 }, atualizadoEm: timestamp()
-    }, { merge: true });
+    await db().collection(COLECAO).doc(conversaId).update({
+      [`naoLidasPorUsuario.${atual}`]: 0,
+      atualizadoEm: timestamp()
+    });
   }
 
   global.IntegroChatService = {
