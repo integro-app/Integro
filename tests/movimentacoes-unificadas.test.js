@@ -10,7 +10,7 @@ const css = fs.readFileSync(path.join(root, 'css/integro-interface.css'), 'utf8'
 const financial = fs.readFileSync(path.join(root, 'js/services/financial-operations.js'), 'utf8');
 
 test('master local usa módulo administrativo de movimentações e não renderer do vendedor', () => {
-  assert.match(master, /js\/modules\/movimentacoes-unificadas\.js\?v=20261105-caixa-status-v1/);
+  assert.match(master, /js\/modules\/movimentacoes-unificadas\.js\?v=20261105-idempotencia-v2/);
   assert.match(master, /IntegroMovimentacoesUnificadas\?\.load/);
   assert.doesNotMatch(master, /movimentacoes\.onclick[^;]+renderMovimentacoesVendedor/);
 });
