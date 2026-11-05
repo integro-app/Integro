@@ -9,6 +9,9 @@ on:
       - "functions/index.js"
       - "functions/package.json"
       - "functions/package-lock.json"
+      - "js/services/v27-session-service.js"
+      - "js/services/v27-policy-service.js"
+      - "js/services/configuracoes-empresa-service.js"
       - ".github/workflows/firebase-session-functions-deploy.yml"
   workflow_dispatch:
 
