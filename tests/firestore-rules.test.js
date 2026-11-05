@@ -1109,3 +1109,28 @@ test("documentos privados: somente carteira autorizada pode enviar e listar", as
   await assertFails(uploadBytes(ref(sellerStorage, root + "/malicioso.exe"),
     new Uint8Array([1,2,3]), { contentType: "application/octet-stream" }));
 });
+
+
+test("usuarios: perfil legado autenticado por authUid pode editar apenas campos seguros proprios", async () => {
+  const legacyId = "vendedor_1_legado_perfil";
+  await testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "usuarios", legacyId), {
+      ...userDoc(profiles.vendedor1),
+      telefone: "",
+      fotoUrl: ""
+    });
+  });
+
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "usuarios", legacyId), {
+    telefone: "11999998888"
+  }));
+  await assertSucceeds(updateDoc(doc(appDb(profiles.vendedor1), "usuarios", legacyId), {
+    fotoUrl: "https://exemplo.invalid/avatar.webp"
+  }));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor1), "usuarios", legacyId), {
+    status: "BLOQUEADO"
+  }));
+  await assertFails(updateDoc(doc(appDb(profiles.vendedor2), "usuarios", legacyId), {
+    telefone: "11000000000"
+  }));
+});
