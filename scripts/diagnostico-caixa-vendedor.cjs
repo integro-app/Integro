@@ -95,6 +95,22 @@ async function main() {
   const dias={};
   for(const b of abertos) {const d=String(b.dataOperacional||b.dataCaixa||"").slice(0,10)||"sem-data";dias[d]=(dias[d]||0)+1;}
   console.log("Caixas abertos por data operacional:",JSON.stringify(dias));
+  const diaDuplicado=abertos.length===2 && new Set(abertos.map(b=>String(b.dataOperacional||b.dataCaixa||"").slice(0,10))).size===1
+    ? String(abertos[0].dataOperacional||abertos[0].dataCaixa||"").slice(0,10) : "";
+  if (diaDuplicado) {
+    const anteriores=todos.filter(b=>String(b.dataOperacional||b.dataCaixa||"").slice(0,10)<diaDuplicado)
+      .sort((a,b)=>String(b.dataOperacional||b.dataCaixa||"").localeCompare(String(a.dataOperacional||a.dataCaixa||""))).slice(0,7);
+    console.log("Histórico anterior ao dia duplicado, até 7 caixas:",anteriores.length);
+    for(const box of anteriores) {
+      const fechamentos=await consultar(db,"fechamentos_caixa","caixaId",box.id,tenant).catch(()=>[]);
+      const cashFields=["saldoInicialCentavos","saldoAtualCentavos","saldoAposMovimentacoesCentavos",
+        "valorRealFechamentoCentavos","valorCalculadoFechamentoCentavos","carteiraFinalCentavos"];
+      const valores=Object.fromEntries(cashFields.map(f=>[f,Number.isFinite(Number(box[f]))?Number(box[f]):null]));
+      console.log("CAIXA_HISTORICO",JSON.stringify({documento:digest(box.id),
+        data:String(box.dataOperacional||box.dataCaixa||"").slice(0,10),status:String(box.status||"").toUpperCase(),
+        ativo:box.ativo!==false,fechamentos:fechamentos.length,valores}));
+    }
+  }
   console.log("Diagnóstico concluído; nenhum registro alterado.");
 }
 main().catch(err=>{console.error("Auditoria interrompida:",err.code||err.message);process.exitCode=1;});
