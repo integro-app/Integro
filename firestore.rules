@@ -123,6 +123,13 @@ service cloud.firestore {
         data.get("email", "") == request.auth.token.get("email", "");
     }
 
+    function isOwnActiveAuthProfile(data) {
+      return isAuthenticated() &&
+        data.get("authUid", "") == currentUid() &&
+        !(data.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        data.get("acessoLiberado", false) == true;
+    }
+
     function isActiveMasterLocalFor(data) {
       let user = userDoc();
       return isAuthenticated() &&
@@ -1377,10 +1384,16 @@ service cloud.firestore {
         request.resource.data.get("authUid", "") == currentUid() &&
         request.resource.data.get("acessoLiberado", true) == false
       ) || canCreatePendingTenantUser(request.resource.data);
-      allow update: if isActiveUser() && (
-        isMasterGlobal() ||
-        (currentUid() == uid && request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"])) ||
-        (isMasterLocal() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() && resource.data.tipoUsuario != "master_global")
+      allow update: if (
+        isOwnActiveAuthProfile(resource.data) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(["nome", "nomeCompleto", "telefone", "fotoUrl", "atualizadoEm"]) &&
+        request.resource.data.get("authUid", "") == resource.data.get("authUid", "") &&
+        request.resource.data.get("clientePlataformaId", "") == resource.data.get("clientePlataformaId", "")
+      ) || (
+        isActiveUser() && (
+          isMasterGlobal() ||
+          (isMasterLocal() && isSameTenantRead() && isSameTenantWrite() && isTenantImmutable() && resource.data.tipoUsuario != "master_global")
+        )
       );
       allow delete: if false;
     }
