@@ -175,7 +175,10 @@
     }
     for (const alocacao of resultado.alocacoes || []) {
       if (Number(alocacao.valorCentavos || 0) <= 0 || !texto(alocacao.pagamentoId)) continue;
-      const indice = pagamentos.findIndex(registro => texto(registro.id || registro.pagamentoId || registro.operacaoId) === texto(alocacao.pagamentoId));
+      const indice = pagamentos.findIndex(registro =>
+        texto(registro.id || registro.pagamentoId || registro.operacaoId) === texto(alocacao.pagamentoId) &&
+        mesmaEmpresaDoCaixa(registro, caixa)
+      );
       const payload = {
         id: alocacao.pagamentoId,
         pagamentoId: alocacao.pagamentoId,
