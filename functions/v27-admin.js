@@ -187,7 +187,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const tenantId = tenant(actor);
     if (!tenantId && !["master_global", "usuario_integro"].includes(lower(actor.tipoUsuario))) error("failed-precondition", "Empresa não identificada.");
     const [, config] = await Promise.all([exigirCaixaVendedor(actor, uid), configForTenant(tenantId)]);
-    const inactivity = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 15), 720));
+    const inactivity = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 30), 720));
     if (Number(actor.tentativasLoginFalhas || 0) > 0) {
       await db.collection("usuarios").doc(actor.id || uid).set({ tentativasLoginFalhas:0, ultimaAutenticacaoValidaEm:serverTimestamp() }, { merge:true });
     }
