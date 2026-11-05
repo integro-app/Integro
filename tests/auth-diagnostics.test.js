@@ -256,3 +256,142 @@ test("autenticação paraleliza configuração e sessão", () => {
   assert.match(source, /const resultadosProtecao = await Promise\.all/);
   assert.match(source, /Validators\.validarUsuario\(usuario\)/);
 });
+
+
+function validarCaixaSessaoEmMemoria(documentos = [], opcoes = {}) {
+  const source = fs.readFileSync(path.join(__dirname, "..", "functions", "v27-admin.js"), "utf8");
+  const start = source.indexOf("  async function exigirCaixaVendedor(actor, uid) {");
+  const end = source.indexOf("\n  // Consulta segura antes da sessao V27:", start);
+  assert.ok(start >= 0 && end > start, "validação autoritativa de caixa deve existir no backend");
+  const db = {
+    collection(colecao) {
+      assert.equal(colecao, "caixas");
+      function query(filtros = [], limite = 1000) {
+        return {
+          where(campo, operador, valor) {
+            return query([...filtros, { campo, operador, valor }], limite);
+          },
+          limit(max) { return query(filtros, max); },
+          async get() {
+            if (opcoes.falharConsultas) throw new Error("failed-precondition: missing index");
+            if (opcoes.falharFiltroStatus && filtros.some(f => f.campo === "status"))
+              throw new Error("failed-precondition: missing composite index");
+            const docs = documentos.filter(doc => filtros.every(f => {
+              const v = doc.data[f.campo];
+              return f.operador === "==" ? v === f.valor :
+                f.operador === "in" ? f.valor.includes(v) : false;
+            })).slice(0, limite).map(doc => ({
+              id: doc.id, data: () => doc.data
+            }));
+            return { docs };
+          }
+        };
+      }
+      return query();
+    }
+  };
+  const contexto = {
+    db,
+    text: valor => String(valor ?? "").trim(),
+    upper: valor => String(valor ?? "").trim().toUpperCase(),
+    tenant: usuario => String(usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId || ""),
+    role: usuario => String(usuario.cargoChave || usuario.perfil || "").toLowerCase(),
+    error(codigo, mensagem, detalhes = {}) {
+      const erro = new Error(mensagem);
+      erro.code = codigo;
+      erro.details = detalhes;
+      throw erro;
+    }
+  };
+  const validar = vm.runInNewContext(source.slice(start, end) + "\nexigirCaixaVendedor", contexto);
+  const usuario = {
+    id: "documento-vendedor", authUid: "auth-vendedor",
+    cargoChave: "vendedor", clientePlataformaId: "tenant-a"
+  };
+  return { validar, usuario };
+}
+
+test("login só autoriza caixa do tenant e UID autenticados, incluindo vínculo legado verificado", async () => {
+  const caixa = (id, dados = {}) => ({
+    id, data: {
+      clientePlataformaId: "tenant-a",
+      status: "ABERTO", ativo: true, excluido: false,
+      vendedorId: "documento-vendedor", ...dados
+    }
+  });
+  const canonical = validarCaixaSessaoEmMemoria([
+    caixa("caixa-canonico", { vendedorAuthUid: "auth-vendedor" })
+  ]);
+  const autorizado = await canonical.validar(canonical.usuario, "auth-vendedor");
+  assert.equal(autorizado.caixaId, "caixa-canonico");
+
+  const legacy = validarCaixaSessaoEmMemoria([caixa("caixa-legado")], { falharFiltroStatus: true });
+  const legadoOk = await legacy.validar(legacy.usuario, "auth-vendedor");
+  assert.equal(legadoOk.caixaId, "caixa-legado", "legado válido não exige novo caixa");
+
+  for (const [dados, codigo] of [
+    [{ vendedorAuthUid: "outro-auth" }, "CAIXA_VINCULO_INCONSISTENTE"],
+    [{ vendedorUid: "outro-auth" }, "CAIXA_VINCULO_INCONSISTENTE"],
+    [{ ativo: false }, "CAIXA_INATIVO"],
+    [{ status: "FECHADO" }, "CAIXA_FECHADO"],
+    [{ clientePlataformaId: "tenant-b" }, "CAIXA_FECHADO"]
+  ]) {
+    const ctx = validarCaixaSessaoEmMemoria([caixa("caixa-restrito", dados)]);
+    await assert.rejects(ctx.validar(ctx.usuario, "auth-vendedor"),
+      erro => erro.details?.code === codigo, "bloqueio esperado: " + codigo);
+  }
+  const duplo = validarCaixaSessaoEmMemoria([caixa("caixa-1"), caixa("caixa-2")]);
+  await assert.rejects(duplo.validar(duplo.usuario, "auth-vendedor"),
+    erro => erro.details?.code === "CAIXAS_MULTIPLOS");
+});
+
+test("erro na consulta não é interpretado como caixa fechado", async () => {
+  const ctx = validarCaixaSessaoEmMemoria([], { falharConsultas: true });
+  await assert.rejects(ctx.validar(ctx.usuario, "auth-vendedor"),
+    erro => erro.code === "unavailable" && !/Caixa fechado/i.test(erro.message));
+});
+
+test("login e retomada do vendedor exigem caixa validado antes de mostrar o Dashboard", () => {
+  const auth = fs.readFileSync(path.join(__dirname, "..", "js", "auth.js"), "utf8");
+  const session = fs.readFileSync(path.join(__dirname, "..", "js/services/v27-session-service.js"), "utf8");
+  const backend = fs.readFileSync(path.join(__dirname, "..", "functions/v27-admin.js"), "utf8");
+  assert.match(auth, /perfilExigeCaixaNoLogin\(usuario\) && !sessaoConfirmada\?\.caixaId/);
+  assert.match(auth, /perfilExigeCaixaNoLogin\(usuario\) && !sessao\?\.caixaId\?\.\(\)/);
+  assert.match(session, /caixaIdValidado = text\(result\?\.caixaId\)/);
+  assert.match(session, /caixaIdValidado = text\(result\.caixaId\)/);
+  assert.match(backend, /caixaId: caixaAcesso\?\.caixaId \|\| null/);
+});
+
+test("guard do vendedor consulta o caixa confirmado pela sessão, sem buscar por aliases", async () => {
+  const source = fs.readFileSync(path.join(__dirname, "..", "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  const inicio=source.indexOf("  async function localizarCaixaAbertoPersistido(");
+  const fim=source.indexOf("\n  async function bloquearAcessoSemCaixa(",inicio);
+  assert.ok(inicio>=0 && fim>inicio);
+  const usuario = { id:"documento-vendedor",authUid:"auth-vendedor",cargoChave:"vendedor",clientePlataformaId:"tenant-a" };
+  const caixa = { id:"caixa-verificado",status:"ABERTO",ativo:true,clientePlataformaId:"tenant-a",
+    vendedorId:"documento-vendedor",vendedorAuthUid:"auth-vendedor" };
+  const consultas=[];
+  const context={
+    texto:v=>String(v??"").trim(),
+    normalizar:v=>String(v??"").toUpperCase(),
+    ehVendedor:()=>true,
+    usuarioAtual:()=>usuario,
+    tenantUsuario:()=>usuario.clientePlataformaId,
+    console:{warn(){}},
+    global:{
+      IntegroV27Session:{caixaId:()=>"caixa-verificado"},
+      firebase:{auth:()=>({currentUser:{uid:"auth-vendedor"}})},
+      db:{collection(nome){return {doc(id){consultas.push([nome,id]);return {
+        get:async()=>({exists:true,id,data:()=>caixa,metadata:{fromCache:false}})
+      };}};}}
+    }
+  };
+  const validar=vm.runInNewContext(source.slice(inicio,fim)+"\nlocalizarCaixaAbertoPersistido",context);
+  const ret=await validar(usuario);
+  assert.equal(ret.permitido,true);
+  assert.deepEqual(consultas,[["caixas","caixa-verificado"]]);
+  context.global.IntegroV27Session.caixaId=()=>"";
+  const naoConfirmado=await validar(usuario);
+  assert.equal(naoConfirmado.permitido,null,"ausência de ID na sessão não prova caixa fechado");
+  assert.equal(consultas.length,1);
+});
