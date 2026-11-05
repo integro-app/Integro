@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
   const U = () => global.IntegroModuloUtils;
-  const state = { mounted:false, tab:"logs", data:{ logs:[], usuarios:[], financeiro:[], caixas:[], vendas:[], indicacoes:[] }, search:"", type:"", start:"", end:"", page:1, pageSize:100 };
+  const state = { mounted:false, tab:"logs", data:{ logs:[], usuarios:[], financeiro:[], caixas:[], vendas:[], indicacoes:[] }, search:"", type:"", start:"", end:"", page:1, pageSize:100, loading:null, lastLoadedAt:0 };
   const collections = { logs:"logs", usuarios:"usuarios", financeiro:"lancamentos_financeiros", caixas:"caixas", vendas:"vendas", indicacoes:"indicacoes" };
   const titles = { logs:"Logs e eventos", usuarios:"Usuários", financeiro:"Ledger financeiro", caixas:"Caixas", vendas:"Vendas", indicacoes:"Leads e indicações" };
 
@@ -10,7 +10,7 @@
   function mount(){
     const host=root(); if(!host || state.mounted) return Boolean(host);
     host.innerHTML=`<div class="unified-profile-module integro-shared-module" data-somente-leitura>
-      <header class="unified-profile-head integro-shared-header"><div><h2>Auditoria</h2></div><div class="unified-profile-actions integro-shared-actions"><button class="ghost-btn" type="button" onclick="IntegroAuditoriaUnificada.load()"><span class="material-symbols-rounded">refresh</span>Atualizar</button><button class="primary-btn" type="button" onclick="IntegroAuditoriaUnificada.exportCsv()"><span class="material-symbols-rounded">download</span>Exportar CSV</button></div></header>
+      <header class="unified-profile-head integro-shared-header"><div><h2>Auditoria</h2></div><div class="unified-profile-actions integro-shared-actions"><button class="ghost-btn" type="button" onclick="IntegroAuditoriaUnificada.load(true)"><span class="material-symbols-rounded">refresh</span>Atualizar</button><button class="primary-btn" type="button" onclick="IntegroAuditoriaUnificada.exportCsv()"><span class="material-symbols-rounded">download</span>Exportar CSV</button></div></header>
       <nav class="unified-profile-tabs integro-shared-nav" aria-label="Áreas de auditoria">${Object.keys(collections).map((id,index)=>`<button class="unified-profile-tab${index===0?" active":""}" data-aud-tab="${id}" type="button" onclick="IntegroAuditoriaUnificada.openTab('${id}')"><span class="material-symbols-rounded">${({logs:"policy",usuarios:"groups",financeiro:"receipt_long",caixas:"point_of_sale",vendas:"shopping_cart",indicacoes:"campaign"})[id]}</span>${titles[id]}</button>`).join("")}</nav>
       <div class="unified-readonly-banner"><span class="material-symbols-rounded">visibility</span>Este módulo é somente leitura. Nenhuma ação operacional é executada aqui.</div>
       <div id="audStatus" class="unified-status"></div>
@@ -20,19 +20,32 @@
     state.mounted=true; return true;
   }
   function status(message="",type="info"){ const el=document.getElementById("audStatus"); if(!el)return; el.textContent=message; el.className=`unified-status${message?` show ${type}`:""}`; }
-  async function load(){
+  async function load(force=false){
     if(!mount()||!canView())return false;
-    state.start=document.getElementById("audStart")?.value||state.start; state.end=document.getElementById("audEnd")?.value||state.end;
+    state.start=document.getElementById("audStart")?.value||state.start;
+    state.end=document.getElementById("audEnd")?.value||state.end;
+    if(state.loading)return state.loading;
+    if(!force&&state.lastLoadedAt&&Date.now()-state.lastLoadedAt<30000){render();return true;}
     status("Carregando registros de auditoria...");
-    try{
-      const results=await Promise.all(Object.entries(collections).map(async([key,name])=>[key,await U().queryTenant(name,{paginate:true,pageSize:key==="logs"?500:300})]));
-      results.forEach(([key,list])=>{state.data[key]=list;});
-      document.getElementById("audKpiLogs").textContent=state.data.logs.length;
-      document.getElementById("audKpiUsuarios").textContent=state.data.usuarios.length;
-      document.getElementById("audKpiFinanceiro").textContent=state.data.financeiro.length;
-      document.getElementById("audKpiCaixas").textContent=state.data.caixas.length;
-      status(""); render(); return true;
-    }catch(error){console.error("ERRO_AUDITORIA_UNIFICADA",error);status(error.message||"Não foi possível carregar a auditoria.","err");return false;}
+    const tenant=U().tenant();
+    state.loading=(async()=>{
+      try{
+        const results=await Promise.all(Object.entries(collections).map(async([key,name])=>[key,await U().queryTenant(name,{paginate:true,pageSize:key==="logs"?500:300})]));
+        if(tenant!==U().tenant())return false;
+        results.forEach(([key,list])=>{state.data[key]=list;});
+        document.getElementById("audKpiLogs").textContent=state.data.logs.length;
+        document.getElementById("audKpiUsuarios").textContent=state.data.usuarios.length;
+        document.getElementById("audKpiFinanceiro").textContent=state.data.financeiro.length;
+        document.getElementById("audKpiCaixas").textContent=state.data.caixas.length;
+        state.lastLoadedAt=Date.now();
+        status("");render();return true;
+      }catch(error){
+        console.error("ERRO_AUDITORIA_UNIFICADA",error);
+        status(error.message||"Não foi possível carregar a auditoria.","err");
+        return false;
+      }finally{state.loading=null;}
+    })();
+    return state.loading;
   }
   function itemType(item){return item.tipoLancamento||item.tipoAcao||item.tipo||item.acao||item.cargoChave||item.statusIndicacao||item.status||"-";}
   function itemStatus(item){return item.statusLancamento||item.statusIndicacao||item.status||item.natureza||"-";}
