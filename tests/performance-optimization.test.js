@@ -236,7 +236,7 @@ test("vendedor mantém ordenação escolhida após reinicializações dos patche
   let escritasEstilo = 0;
   let display = "";
   let valor = "nome_az";
-  let opcoes = [{ value: "nome_az", textContent: "Ordem alfabética" }];
+  let opcoes = [{ value: "prioridade_rota", textContent: "Prioridade da rota" }, { value: "nome_az", textContent: "Ordem alfabética" }];
   const select = {
     dataset: {},
     style: {
