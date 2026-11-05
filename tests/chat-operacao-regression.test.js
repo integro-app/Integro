@@ -282,3 +282,24 @@ test("confirmações de mensagens ignoram recebimentos já registrados para este
   assert.equal(app.calls.length, 1);
   assert.equal(app.calls[0].name, "atualizarEstadoMensagensChatV27");
 });
+
+
+test("chat acompanha as mensagens mais recentes e preserva ordem cronológica na tela", () => {
+  const service = source("js/services/chat-service.js");
+  assert.match(service, /orderBy\("criadoEm", "desc"\)\.limit\(180\)/);
+  assert.match(service, /filter\(item => !item\.expiraEm \|\| millis\(item\.expiraEm\) > agora\)\.reverse\(\)/);
+});
+
+test("marcar conversa como lida atualiza apenas o contador do usuário atual", () => {
+  const service = source("js/services/chat-service.js");
+  assert.match(service, /\[\`naoLidasPorUsuario\.\$\{atual\}\`\]: 0/);
+  assert.doesNotMatch(service, /naoLidasPorUsuario:\s*\{\s*\[atual\]: 0\s*\}/);
+});
+
+test("compositor bloqueia reenvio enquanto uma mensagem está sendo processada", () => {
+  const ui = source("js/chat-ui.js");
+  assert.match(ui, /enviando:\s*false/);
+  assert.match(ui, /if \(estado\.enviando\) return/);
+  assert.match(ui, /estado\.enviando = true/);
+  assert.match(ui, /estado\.enviando = false/);
+});
