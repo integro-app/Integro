@@ -169,3 +169,53 @@ test("ações individuais antecedem o resumo longo do caixa no celular",()=>{
   assert.match(detail,/data-cx-close/);
   assert.match(detail,/data-cx-reopen/);
 });
+
+
+test("supervisão diferencia dois vendedores com um caixa cada de dois caixas do mesmo vendedor", () => {
+  const vm = require("node:vm");
+  const source = fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function avisosDuplicidadePorVendedor(");
+  const end=source.indexOf("  const option =",start);
+  assert.ok(start>0 && end>start);
+  const ctx={
+    text:v=>String(v??"").trim(),
+    openBox:b=>["ABERTO","REABERTO"].includes(String(b.status||"").toUpperCase()) && b.ativo!==false,
+    id:b=>String(b?.id||""),
+    boxDay:b=>String(b.dataOperacional||b.dataCaixa||"").slice(0,10),
+    dateBR:day=>day.split("-").reverse().join("/")
+  };
+  const verificar=vm.runInNewContext(source.slice(start,end)+";avisosDuplicidadePorVendedor",ctx);
+  const row={vendedores:[
+    {id:"doc-gu",authUid:"uid-gu",nome:"Vendedor A"},
+    {id:"doc-outro",authUid:"uid-outro",nome:"Vendedor B"}
+  ]};
+  const caixa=(id,vendedorId,uid,dia="2026-11-05")=>({
+    id, vendedorId, vendedorAuthUid:uid, status:"ABERTO",ativo:true,dataOperacional:dia
+  });
+  assert.equal(verificar(row,[
+    caixa("cx-1","doc-gu","uid-gu"),caixa("cx-2","doc-outro","uid-outro")
+  ]).length,0,"dois caixas de vendedores diferentes numa equipe são válidos");
+  const mesmoDia=verificar(row,[
+    caixa("cx-1","doc-gu","uid-gu"),caixa("cx-2","doc-gu","uid-gu")
+  ]);
+  assert.equal(mesmoDia.length,1);
+  assert.match(mesmoDia[0],/2 caixas abertos no mesmo dia/);
+  assert.match(mesmoDia[0],/Vendedor A/);
+  const diasDiferentes=verificar(row,[
+    caixa("cx-1","doc-gu","uid-gu"),caixa("cx-2","doc-gu","uid-gu","2026-11-04")
+  ]);
+  assert.equal(diasDiferentes.length,1);
+  assert.match(diasDiferentes[0],/dias diferentes/);
+  assert.equal(verificar(row,[
+    caixa("cx-1","doc-gu","uid-gu"),caixa("cx-1","doc-gu","uid-gu")
+  ]).length,0,"mesmo documento duplicado em cache não é dois caixas");
+});
+
+test("supervisão não usa caixa inexistente no servidor para inflar indicador", () => {
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/caixasInexistentesServidor\.add\(key\)/);
+  assert.match(source,/!caixasInexistentesServidor\.has\(id\(b\)\)/);
+  assert.match(source,/Caixas abertos \(confirmados\)/);
+  assert.match(source,/verifiedBoxes\.has\(id\(m\.box\)\)/);
+  assert.match(source,/avisosDuplicidadePorVendedor\(row,history\)/);
+});
