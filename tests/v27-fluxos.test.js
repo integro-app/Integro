@@ -97,7 +97,7 @@ test("V27 bloqueia auto recuperação de senha e integra sessão única", () => 
   const auth = read("js", "auth.js");
   assert.doesNotMatch(auth, /sendPasswordResetEmail/);
   assert.match(auth, /iniciarSessaoV27|sessao\.start/);
-  assert.match(auth, /20261105-sessao-30min-v1/);
+  assert.match(auth, /20261105-login-caixa-v2/);
   assert.match(auth, /login novo assume a sessão e derruba o dispositivo anterior/i);
   assert.match(auth, /sessao\?\.resume\?\./);
   assert.match(auth, /recuperação de senha do ÍNTEGRO é feita por um superior autorizado/i);
