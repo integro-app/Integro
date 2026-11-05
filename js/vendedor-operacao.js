@@ -102,9 +102,14 @@
   const obterCache = nome => Array.isArray(global[nome]) ? global[nome] : [];
 
   function montarCarteira({ clientes = [], vendas = [], parcelas = [], pagamentosHoje = [], historico = [], usuario = {}, hoje = hojeIso(), caixaId = "" } = {}) {
-    const movimentoAtual = item => caixaId
-      ? id(item.caixaId || item.idCaixa || item.caixaAtualId) === id(caixaId)
-      : (!dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto) || dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto) === hoje);
+    const movimentoAtual = item => {
+      const caixaRegistro = id(item.caixaId || item.idCaixa || item.caixaID || item.caixaAtualId);
+      const diaRegistro = dataIso(item.dataOperacional || item.data || item.dataPagamento || item.criadoEmTexto);
+      // O caixa informado tem prioridade absoluta, inclusive em reaberturas.
+      // Só o legado sem caixaId pode ser associado pela data operacional.
+      if (caixaId && caixaRegistro) return caixaRegistro === id(caixaId);
+      return Boolean(diaRegistro && diaRegistro === hoje);
+    };
     const movimentoValido = item => item?.excluido !== true && item?.cancelado !== true && item?.estornado !== true && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(maiusculo(item?.status));
     const clientesValidos = clientes
       .filter(item => item?.excluido !== true)
