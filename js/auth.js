@@ -19,7 +19,7 @@ function garantirServicoSessaoV27() {
     script.addEventListener("load", concluir, { once: true });
     script.addEventListener("error", falhar, { once: true });
     if (!existente) {
-      script.src = "js/services/v27-session-service.js?v=20261101-session-replace1-rebind2";
+      script.src = "js/services/v27-session-service.js?v=20261105-sessao-30min-v1";
       script.async = false;
       script.dataset.integroV27Session = "1";
       document.head.appendChild(script);
