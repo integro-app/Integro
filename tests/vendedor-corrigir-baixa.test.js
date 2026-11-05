@@ -75,7 +75,8 @@ test("pagamento flexível não mistura caixas, datas e empresas ao atualizar cac
    pagamento("p-outro-dia-legado",{dataOperacional:"2026-11-04"}),
    pagamento("p-mesmo-dia-legado",{dataOperacional:"2026-11-05"}),
    pagamento("p-ambos-ausentes"),
-   pagamento("p-outra-empresa",{caixaId:"caixa-a",clientePlataformaId:"empresa-b",dataOperacional:"2026-11-05"})
+   pagamento("p-outra-empresa",{caixaId:"caixa-a",clientePlataformaId:"empresa-b",dataOperacional:"2026-11-05"}),
+   pagamento("p-novo",{caixaId:"caixa-a",clientePlataformaId:"empresa-b",dataOperacional:"2026-11-05"})
  ];
  window.historicoCobrancasCache=[
    {id:"hist-atual",vendaId:"venda-1",tipo:"NAO_PAGAMENTO",caixaId:"caixa-a",dataOperacional:"2026-11-05",clientePlataformaId:"empresa-a"},
@@ -116,10 +117,13 @@ test("pagamento flexível não mistura caixas, datas e empresas ao atualizar cac
  const pagamentoPorId=id=>window.pagamentosHojeCache.find(p=>p.id===id);
  assert.equal(pagamentoPorId("p-caixa-atual").status,"CANCELADO");
  assert.equal(pagamentoPorId("p-mesmo-dia-legado").status,"CANCELADO");
- for(const id of ["p-outro-caixa","p-outro-dia-legado","p-ambos-ausentes","p-outra-empresa"]){
+ for(const id of ["p-outro-caixa","p-outro-dia-legado","p-ambos-ausentes","p-outra-empresa","p-novo"]){
    assert.equal(pagamentoPorId(id).status,"CONFIRMADO",id+" deve ficar intacto");
  }
- assert.equal(pagamentoPorId("p-novo").clientePlataformaId,"empresa-a");
+ const pagamentosMesmoId=window.pagamentosHojeCache.filter(p=>p.id==="p-novo");
+ assert.equal(pagamentosMesmoId.length,2,"IDs iguais de outras empresas não são sobrescritos");
+ assert.equal(pagamentosMesmoId.find(p=>p.clientePlataformaId==="empresa-a").valorCentavos,3000);
+ assert.equal(pagamentosMesmoId.find(p=>p.clientePlataformaId==="empresa-b").valorCentavos,1000);
  const historico=id=>window.historicoCobrancasCache.find(p=>p.id===id);
  assert.equal(historico("hist-atual").status,"CANCELADO");
  assert.notEqual(historico("hist-antigo").status,"CANCELADO");
