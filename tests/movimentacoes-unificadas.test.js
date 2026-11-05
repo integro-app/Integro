@@ -11,7 +11,8 @@ const financial = fs.readFileSync(path.join(root, 'js/services/financial-operati
 
 test('master local usa módulo administrativo de movimentações e não renderer do vendedor', () => {
   assert.match(master, /js\/modules\/movimentacoes-unificadas\.js\?v=20261105-sync-v3/);
-  assert.match(master, /IntegroMovimentacoesUnificadas\?\.load/);
+  assert.match(moduleJs, /integro-tela-alterada/);
+  assert.match(moduleJs, /if\(e\.detail\?\.tela==="movimentacoes"/);
   assert.doesNotMatch(master, /movimentacoes\.onclick[^;]+renderMovimentacoesVendedor/);
 });
 
