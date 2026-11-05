@@ -39,6 +39,15 @@ const State = {
       return;
     }
 
+    // Nunca reutilizar dados em memória de outra identidade ou empresa.
+    const proximoTenant = String(usuario.clientePlataformaId || usuario.empresaId || usuario.tenantId || "");
+    const proximoUid = String(usuario.authUid || usuario.id || "");
+    const uidAnterior = String(this.authUid || this.usuario?.id || "");
+    if (this.usuario && (String(this.tenantId || "") !== proximoTenant || uidAnterior !== proximoUid)) {
+      this.limparDados();
+      window.IntegroDataRuntime?.invalidar?.();
+    }
+
     this.usuario = usuario;
     this.usuarioId = usuario.id || "";
     this.tipoUsuario = usuario.tipoUsuario || "";
