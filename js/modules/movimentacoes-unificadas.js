@@ -22,7 +22,8 @@
     categories: [],
     filtered: [],
     filters: defaultFilters(),
-    locks: new Set()
+    locks: new Set(),
+    newOperationId: ""
   };
 
   const txt = v => String(v ?? "").trim();
@@ -322,6 +323,7 @@
 
   function openNew(){
     if(!canCreateDirect())return;
+    state.newOperationId = global.crypto?.randomUUID?.() || `movu_${Date.now()}_${Math.random().toString(36).slice(2,10)}`;
     const activeBoxes=openBoxes();
     if(!activeBoxes.length)return notify("Abra ou reabra um caixa antes de registrar uma movimentação administrativa.","err");
     const cats=kind=>state.categories.filter(c=>{const k=up(c.tipo||c.tipoCategoria||c.categoriaTipo);return kind==="GASTO"?(k.includes("DESP")||k.includes("GAST")):kind==="RETIRADA"?k.includes("RETIR"):k.includes("INGRESS");});
@@ -337,8 +339,12 @@
     if(!canCreateDirect())return;
     const box=boxById(document.getElementById("movuNewBox")?.value);const kind=up(document.getElementById("movuNewType")?.value);const catId=txt(document.getElementById("movuNewCategory")?.value);const cat=state.categories.find(c=>txt(c.id)===catId);const value=parseMoney(document.getElementById("movuNewValue")?.value);const obs=txt(document.getElementById("movuNewObs")?.value);
     if(!box||!openBoxes().includes(box))return notify("Selecione um caixa aberto ou reaberto.","err");if(!["INGRESSO","GASTO","RETIRADA"].includes(kind))return notify("Selecione o tipo.","err");if(!catId)return notify("Selecione uma categoria.","err");if(value<=0)return notify("Informe um valor maior que zero.","err");
-    const op=`admin_${kind.toLowerCase()}_${box.id}_${Date.now()}`;
-    try{await service().criarLancamentoFinanceiroTransacional({clientePlataformaId:tenant(),caixaId:box.id,vendedorId:box.vendedorId||"",vendedorAuthUid:box.vendedorAuthUid||box.vendedorUid||"",equipeId:box.equipeId||"",categoriaId:catId,categoriaNome:txt(cat?.nome||cat?.nomeCategoria||cat?.descricao),categoriaTipo:kind,valorCentavos:value,dataOperacional:box.dataOperacional||new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"}),usuario:user(),tipoLancamento:kind,origemId:op,operacaoId:op,descricao:`${kind} administrativo`,observacao:obs,permissaoAdministrativa:true,metadados:{origemTela:"movimentacoes_unificadas",categoriaId:catId}});closeDrawer();await load(true);state.tab="historico";render();notify("Lançamento registrado e caixa atualizado.","ok");}catch(e){console.error(e);notify(e.message||"Não foi possível registrar o lançamento.","err");}
+    const opBase=state.newOperationId||(global.crypto?.randomUUID?.()||`movu_${Date.now()}_${Math.random().toString(36).slice(2,10)}`);
+    state.newOperationId=opBase;
+    const op=`admin_${kind.toLowerCase()}_${box.id}_${opBase}`,lock=`create:${op}`;
+    if(state.locks.has(lock))return;
+    state.locks.add(lock);
+    try{await service().criarLancamentoFinanceiroTransacional({clientePlataformaId:tenant(),caixaId:box.id,vendedorId:box.vendedorId||"",vendedorAuthUid:box.vendedorAuthUid||box.vendedorUid||"",equipeId:box.equipeId||"",categoriaId:catId,categoriaNome:txt(cat?.nome||cat?.nomeCategoria||cat?.descricao),categoriaTipo:kind,valorCentavos:value,dataOperacional:box.dataOperacional||today(),usuario:user(),tipoLancamento:kind,origemId:op,operacaoId:op,descricao:`${kind} administrativo`,observacao:obs,permissaoAdministrativa:true,metadados:{origemTela:"movimentacoes_unificadas",categoriaId:catId}});state.newOperationId="";closeDrawer();await load(true);state.tab="historico";render();notify("Lançamento registrado e caixa atualizado.","ok");}catch(e){console.error(e);notify(e.message||"Não foi possível registrar o lançamento.","err");}finally{state.locks.delete(lock);}
   }
 
   function readFilters(){state.filters={search:txt(document.getElementById("movuSearch")?.value),type:txt(document.getElementById("movuType")?.value),status:txt(document.getElementById("movuStatus")?.value),seller:txt(document.getElementById("movuSeller")?.value),team:txt(document.getElementById("movuTeam")?.value),start:txt(document.getElementById("movuStart")?.value),end:txt(document.getElementById("movuEnd")?.value)};render();}
