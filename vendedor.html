@@ -12275,8 +12275,11 @@ async function verificarCaixaAbertoDiaAnterior() {
     const badgeMenu = byId("badgeNotificacoes");
     const valor = Number(String(badgeMenu?.innerText || "0").replace(/\D/g, "")) || 0;
 
-    badgeMobile.innerText = valor;
-    badgeMobile.style.display = valor > 0 ? "inline-flex" : "none";
+    const texto = String(valor);
+    const exibicao = valor > 0 ? "inline-flex" : "none";
+    // O badge é consultado periodicamente; não reescrever o DOM sem mudança.
+    if (badgeMobile.innerText !== texto) badgeMobile.innerText = texto;
+    if (badgeMobile.style.display !== exibicao) badgeMobile.style.display = exibicao;
   }
 
   function garantirHeaderDesktopOperacao() {
@@ -13659,7 +13662,9 @@ async function verificarCaixaAbertoDiaAnterior() {
     if (!desktopBtn) return;
 
     const menuFechado = document.body.classList.contains("sidebar-desktop-fechada");
-    desktopBtn.style.display = menuFechado ? "inline-flex" : "none";
+    const exibicao = menuFechado ? "inline-flex" : "none";
+    // Verificação legada periódica deve ser idempotente.
+    if (desktopBtn.style.display !== exibicao) desktopBtn.style.display = exibicao;
   }
 
   function aplicarHeaderLimpo() {
