@@ -296,3 +296,42 @@ test("vendedor mantém ordenação escolhida após reinicializações dos patche
   assert.equal(escritasHtml, 2);
   assert.equal(select.value, "nome_az");
 });
+
+
+test("vendedor só atualiza o ícone do menu quando o estado muda", () => {
+  const vm = require("node:vm");
+  const vendedor = ler("vendedor.html");
+  const inicio = vendedor.indexOf("  function atualizarBotaoDesktopMenu() {");
+  const fim = vendedor.indexOf("\n  function patchToggleSidebarFinal()", inicio);
+  assert.ok(inicio >= 0 && fim > inicio, "controlador de menu esperado");
+
+  let fechado = false, renderizacoes = 0, atributosAtualizados = 0, html = "";
+  const atributos = new Map();
+  const botao = {
+    get innerHTML() { return html; },
+    set innerHTML(valor) { renderizacoes++; html = valor; },
+    getAttribute(nome) { return atributos.get(nome) || null; },
+    setAttribute(nome, valor) { atributosAtualizados++; atributos.set(nome, valor); }
+  };
+  const ctx = {
+    byId: id => id === "desktopMenuToggleIntegro" ? botao : null,
+    document: { body: { classList: { contains: classe => classe === "sidebar-desktop-fechada" && fechado } } }
+  };
+  vm.runInNewContext(vendedor.slice(inicio, fim), ctx);
+
+  for (let i = 0; i < 4; i++) ctx.atualizarBotaoDesktopMenu();
+  assert.equal(renderizacoes, 1);
+  assert.equal(atributosAtualizados, 2);
+  assert.match(html, /close/);
+
+  fechado = true;
+  ctx.atualizarBotaoDesktopMenu();
+  assert.equal(renderizacoes, 2);
+  assert.equal(atributosAtualizados, 4);
+  assert.match(html, /menu/);
+  assert.equal(atributos.get("aria-label"), "Abrir menu lateral");
+
+  ctx.atualizarBotaoDesktopMenu();
+  assert.equal(renderizacoes, 2);
+  assert.equal(atributosAtualizados, 4);
+});
