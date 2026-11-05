@@ -146,15 +146,30 @@ function criarCicloCaixa({ db, functions }) {
       let sellerHistory;
       if (teamControl) {
         const [control,teamBoxes] = await Promise.all([transaction.get(teamControl),teamHistory(transaction,who,teamId)]);
-        sellerHistory = teamBoxes.filter(box => (box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId)) && box.excluido !== true).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
+        sellerHistory = teamBoxes.filter(box => {
+          if (box.excluido === true) return false;
+          if (sellerIds.has(box.vendedorId) && box.vendedorAuthUid && box.vendedorAuthUid !== seller.authUid)
+            fail("failed-precondition", "Caixa com identidade divergente para este vendedor. Regularize antes de abrir novo caixa.");
+          return box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId);
+        }).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
         const latest = [control.exists ? control.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
         if (latest > day) fail("failed-precondition","Já existe caixa posterior na equipe. Os dias anteriores estão bloqueados.");
         if (teamBoxes.some(box => (box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId)) && boxDay(box) === day && box.excluido === true)) fail("failed-precondition","Essa data já foi usada pelo vendedor e não pode ser criada novamente.");
         if (teamBoxes.some(box => box.excluido !== true && isOpen(box) && boxDay(box) !== day)) fail("failed-precondition","Feche os caixas abertos da equipe antes de abrir outro dia.");
       }
-      const history = sellerHistory || await boxes(transaction,who,[...sellerIds],seller.authUid);
+      // A consulta por identidade cruza todas as equipes do tenant. O histórico
+      // da equipe sozinho pode deixar de fora um caixa legado sem equipeId ou
+      // um caixa do mesmo UID vinculado incorretamente a outra equipe.
+      const porIdentidade = await boxes(transaction,who,[...sellerIds],seller.authUid);
+      const history = [...new Map([...(sellerHistory || []),...porIdentidade].map(box=>[box.id,box])).values()]
+        .sort((a,b)=>boxDay(b).localeCompare(boxDay(a)));
       const open = history.filter(box => ["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status)));
-      if (open.length === 1 && String(open[0].dataOperacional || open[0].dataCaixa) === day) return { modo:"IDEMPOTENTE", caixaId:open[0].id, caixa:open[0] };
+      if (open.length > 1) fail("failed-precondition","Existem múltiplos caixas abertos para o mesmo vendedor. Regularize os registros antes de nova abertura.");
+      if (open.length === 1 && boxDay(open[0]) === day) {
+        if (open[0].ativo === false)
+          fail("failed-precondition","O caixa existente está ABERTO, mas inativo. Solicite regularização antes de entrar ou abrir caixa.");
+        return { modo:"IDEMPOTENTE", caixaId:open[0].id, caixa:open[0] };
+      }
       if (open.length) fail("failed-precondition","Feche o caixa aberto antes de abrir outro dia.");
       if (history.some(box => String(box.dataOperacional || box.dataCaixa) === day)) fail("failed-precondition","Já existe caixa nessa data. Apenas o mais recente pode ser reaberto.");
       const last = history[0];
