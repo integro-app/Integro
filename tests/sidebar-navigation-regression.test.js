@@ -152,3 +152,51 @@ test("desktop e mobile preservam nós do menu quando acesso não muda, isolando 
   assert.equal(renderizacoes, 4, "se o menu foi alterado por fora, reconstrói");
   assert.equal(listeners, 1, "um único listener delegado");
 });
+
+
+test("desktop: reaplicar permissões não altera abas cuja visibilidade já está correta", () => {
+  let permitido = false;
+  const writes = { dashboard: 0, cobrancas: 0, vendas: 0 };
+  function botao(id, chave = "") {
+    let hidden = false;
+    return {
+      dataset: { dashboardView: chave },
+      get hidden() { return hidden; },
+      set hidden(novo) { writes[id]++; hidden = novo; }
+    };
+  }
+  const dashboard = botao("dashboard", "visao-geral");
+  const cobrancas = botao("cobrancas");
+  const vendas = botao("vendas");
+  const document = {
+    addEventListener() {},
+    querySelectorAll: selector => selector === "[data-dashboard-view]" ? [dashboard] : [],
+    getElementById: id => ({ tabCobrancasBtn: cobrancas, tabVendasDiaBtn: vendas })[id] || null
+  };
+  const window = {
+    document,
+    IntegroAcesso: {
+      acessoUsuario: () => ({ perfil: "supervisor" }),
+      pode: () => permitido
+    },
+    setTimeout() {}
+  };
+  vm.runInNewContext(read("js/unified-navigation.js"), { window, document });
+  const aplicar = window.IntegroNavegacaoUnificada.aplicarSubmodulos;
+  const usuario = { tipoUsuario: "supervisor" };
+  aplicar(usuario);
+  assert.equal(dashboard.hidden, true);
+  assert.equal(cobrancas.hidden, true);
+  assert.equal(vendas.hidden, true);
+  aplicar(usuario);
+  assert.deepEqual(writes, { dashboard: 1, cobrancas: 1, vendas: 1 },
+    "reaplicação não cria mutações sem mudança de permissões");
+
+  permitido = true;
+  aplicar(usuario);
+  assert.equal(dashboard.hidden, false);
+  assert.equal(cobrancas.hidden, false);
+  assert.equal(vendas.hidden, false);
+  assert.deepEqual(writes, { dashboard: 2, cobrancas: 2, vendas: 2 },
+    "mudança real de permissões atualiza todas as abas");
+});
