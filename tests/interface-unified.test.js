@@ -234,3 +234,55 @@ test("Equipes mantém filtros, escopo, botões e campos editáveis seguros", asy
   assert.equal(consultas,0,"sem tenant não pode abrir consulta global");
   assert.equal(equipes.length,0);
 });
+
+
+test("consulta tenant paginada percorre o histórico completo sem misturar empresas", async () => {
+  const vm = require("node:vm");
+  const source = read("js/modules/unified-module-utils.js");
+  const snapshots = [
+    { size: 2, docs: [
+      { id: "a", data: () => ({ clientePlataformaId: "tenant-a", valor: 1 }) },
+      { id: "b", data: () => ({ clientePlataformaId: "tenant-a", valor: 2, excluido: true }) }
+    ] },
+    { size: 1, docs: [
+      { id: "c", data: () => ({ clientePlataformaId: "tenant-a", valor: 3 }) }
+    ] }
+  ];
+  let orderByCalls = 0;
+  let startAfterCalls = 0;
+  const query = {
+    where(field, op, value) {
+      assert.equal(field, "clientePlataformaId");
+      assert.equal(op, "==");
+      assert.equal(value, "tenant-a");
+      return this;
+    },
+    orderBy(field) { assert.equal(field, "__name__"); orderByCalls++; return this; },
+    limit(size) { assert.equal(size, 2); return this; },
+    startAfter(doc) { assert.equal(doc.id, "b"); startAfterCalls++; return this; },
+    async get() { return snapshots.shift(); }
+  };
+  const sandbox = {
+    window: {
+      db: { collection: name => { assert.equal(name, "logs"); return query; } },
+      State: { getTenantId: () => "tenant-a", getUsuario: () => ({}) },
+      firebase: { firestore: { FieldPath: { documentId: () => "__name__" } } }
+    },
+    console, Date, Intl, String, Number, Math, Object, Array, Set, Map, JSON
+  };
+  vm.runInNewContext(source, sandbox);
+  const lista = await sandbox.window.IntegroModuloUtils.queryTenant("logs", { paginate: true, pageSize: 2 });
+  assert.deepEqual(lista.map(item => item.id), ["a", "c"]);
+  assert.equal(orderByCalls, 2);
+  assert.equal(startAfterCalls, 1);
+});
+
+test("auditoria ativa pagina tela, consulta histórico completo e exporta CSV protegido", () => {
+  const auditoria = read("js/modules/auditoria-unificada.js");
+  assert.match(auditoria, /queryTenant\(name,\{paginate:true,pageSize:/);
+  assert.match(auditoria, /pageSize:100/);
+  assert.match(auditoria, /changePage/);
+  assert.match(auditoria, /replace\(\/\^\[\\s\]\*\(\[=\+@-\]\)\/u/);
+  assert.match(auditoria, /\\uFEFF/);
+  assert.match(auditoria, /rows\.join\("\\r\\n"\)/);
+});
