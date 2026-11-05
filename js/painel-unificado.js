@@ -190,6 +190,12 @@
         window.UIHelpers?.alerta?.("Você não possui permissão para acessar este módulo.");
         return false;
       }
+      if (id === "relatorios") {
+        const abriu = window.IntegroNavegacaoUnificada?.abrirPorId?.("relatorios", elemento);
+        if (abriu !== false && abriu != null) return abriu;
+        window.UIHelpers?.alerta?.("Relatórios estão disponíveis em Financeiro → Relatórios.");
+        return false;
+      }
       return original.apply(this, arguments);
     };
     window.__integroGuardaNavegacaoInstalada = true;
