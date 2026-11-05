@@ -556,6 +556,9 @@
       .filter(caixa => caixa?.id && caixaPertenceAoVendedor(caixa) &&
         ["ABERTO", "REABERTO"].includes(statusCaixa(caixa)) && caixa.ativo !== false);
     const idsCaixa = new Set(caixasValidos.map(caixa => String(caixa.id)));
+    const diasCaixa = new Set(caixasValidos.map(caixa =>
+      String(caixa.dataOperacional || caixa.dataCaixa || caixa.dataAbertura || caixa.data || "").slice(0, 10)
+    ).filter(Boolean));
     const lista = await carregarColecaoPorPerfil(
       CONFIG.COLECOES.PAGAMENTOS || "pagamentos",
       CONFIG.LIMITS?.PAGAMENTOS || 500,
@@ -565,8 +568,14 @@
     );
     if (perfil !== "vendedor") return lista.filter(p =>
       String(p.dataOperacional || p.data || "").slice(0, 10) === hoje);
-    return lista.filter(p => idsCaixa.has(String(p.caixaId || "")) ||
-      String(p.dataOperacional || p.data || "").slice(0, 10) === hoje);
+    return lista.filter(p => {
+      const caixaPagamento = String(p.caixaId || p.idCaixa || p.caixaID || p.caixaAtualId || "");
+      if (caixaPagamento) return idsCaixa.has(caixaPagamento);
+      // Pagamentos legados sem caixaId pertencem ao dia do caixa aberto,
+      // que pode ser anterior a hoje após uma reabertura.
+      const dataPagamento = String(p.dataOperacional || p.data || p.dataPagamento || "").slice(0, 10);
+      return Boolean(dataPagamento && diasCaixa.has(dataPagamento));
+    });
   }
 
   async function carregarUsuariosPorPerfil() {

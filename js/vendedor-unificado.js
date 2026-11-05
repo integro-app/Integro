@@ -195,13 +195,17 @@
       const listaClientes = clientes && svc.carregarClientesPorPerfil
         ? await svc.carregarClientesPorPerfil()
         : (State.getClientes?.() || []);
+      // A consulta de pagamentos precisa dos caixas recém-carregados.
+      // Ler State.getCaixas aqui usava o snapshot anterior ao refresh e podia
+      // descartar baixas legítimas após reabrir o caixa ou trocar de tela.
+      const caixasPromise = Promise.resolve(svc.carregarCaixasVendedor?.() || []);
       const [caixas, vendas, pagamentos, parcelas, historico] = await Promise.all([
-        svc.carregarCaixasVendedor?.() || [],
+        caixasPromise,
         svc.carregarVendasVendedor?.(listaClientes) || [],
-        svc.carregarPagamentosHojePorPerfil
-          ? svc.carregarPagamentosHojePorPerfil(State.getCaixas?.() || [], { cacheMs: 0, forcar: true })
+        caixasPromise.then(caixasAtuais => svc.carregarPagamentosHojePorPerfil
+          ? svc.carregarPagamentosHojePorPerfil(caixasAtuais, { cacheMs: 0, forcar: true })
           : svc.carregarColecaoPorPerfil(colecoes.PAGAMENTOS || "pagamentos",
-            limites.PAGAMENTOS || 500, { cacheMs: 0, forcar: true }),
+            limites.PAGAMENTOS || 500, { cacheMs: 0, forcar: true })),
         svc.carregarColecaoPorPerfil(colecoes.PARCELAS || "parcelas", limites.PARCELAS || 1200),
         svc.carregarColecaoPorPerfil(colecoes.HISTORICO_COBRANCAS || "historicoCobrancas", limites.HISTORICO_COBRANCAS || 600)
       ]);
