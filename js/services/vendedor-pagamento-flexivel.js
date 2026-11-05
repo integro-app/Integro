@@ -53,12 +53,17 @@
     return registro?.excluido !== true && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(normalizar(registro.status));
   }
 
-  function pertenceAoCaixaOperacional(registro = {}, caixa = caixaAtual()) {
-    const caixaId = texto(caixa?.id || caixa?.caixaId);
-    if (!caixaId) return false;
+  function mesmaEmpresaDoCaixa(registro = {}, caixa = caixaAtual()) {
     const tenantCaixa = texto(caixa?.clientePlataformaId || caixa?.tenantId || caixa?.empresaId || global.State?.getTenantId?.());
     const tenantRegistro = texto(registro.clientePlataformaId || registro.tenantId || registro.empresaId);
-    if (tenantCaixa && tenantRegistro && tenantCaixa !== tenantRegistro) return false;
+    // Registros legados podem omitir tenant. Se ambos estão explícitos,
+    // um registro de outra empresa jamais deve atualizar o cache atual.
+    return !(tenantCaixa && tenantRegistro && tenantCaixa !== tenantRegistro);
+  }
+
+  function pertenceAoCaixaOperacional(registro = {}, caixa = caixaAtual()) {
+    const caixaId = texto(caixa?.id || caixa?.caixaId);
+    if (!caixaId || !mesmaEmpresaDoCaixa(registro, caixa)) return false;
 
     const idRegistroCaixa = texto(registro.caixaId || registro.idCaixa || registro.caixaID || registro.caixaAtualId);
     const diaRegistro = texto(registro.dataOperacional || registro.data || registro.dataPagamento).slice(0, 10);
@@ -199,12 +204,12 @@
     global.pagamentosHojeCache = pagamentos;
   }
 
-  function atualizarParcelas(resultado) {
+  function atualizarParcelas(resultado, caixa) {
     const alocacoes = new Map((resultado.alocacoes || []).map(item => [texto(item.parcelaId), item]));
     if (!alocacoes.size) return;
     const parcelas = (global.State?.getParcelas?.() || global.parcelasCache || []).map(parcela => {
       const alocacao = alocacoes.get(idRegistro(parcela));
-      if (!alocacao) return parcela;
+      if (!alocacao || !mesmaEmpresaDoCaixa(parcela, caixa)) return parcela;
       return {
         ...parcela,
         valorPagoCentavos: alocacao.novoValorPagoParcelaCentavos,
@@ -223,7 +228,7 @@
   function atualizarVendaClienteCaixa(item, caixa, resultado) {
     const vendaId = texto(item.vendaId);
     const vendas = (global.State?.getVendas?.() || global.vendasCache || []).map(venda => {
-      if (idRegistro(venda) !== vendaId) return venda;
+      if (idRegistro(venda) !== vendaId || !mesmaEmpresaDoCaixa(venda, caixa)) return venda;
       return {
         ...venda,
         saldoDevedorCentavos: resultado.saldoVendaCentavos,
@@ -243,7 +248,7 @@
     const clienteId = texto(resultado.clienteId || item.clienteId);
     const clientes = (global.State?.getClientes?.() || global.clientesCache || []).map(cliente => {
       const ids = [cliente.id, cliente.clienteId, cliente.clienteOperacionalId].map(texto);
-      if (!ids.includes(clienteId)) return cliente;
+      if (!ids.includes(clienteId) || !mesmaEmpresaDoCaixa(cliente, caixa)) return cliente;
       return {
         ...cliente,
         saldoDevedorCentavos: resultado.saldoClienteCentavos,
@@ -260,7 +265,7 @@
     global.clientesCache = clientes;
 
     const caixaId = texto(caixa.id || caixa.caixaId);
-    const atualizarCaixa = registro => idRegistro(registro) === caixaId ? {
+    const atualizarCaixa = registro => idRegistro(registro) === caixaId && mesmaEmpresaDoCaixa(registro, caixa) ? {
       ...registro,
       ...(Number.isInteger(resultado.carteiraCaixaCentavos) ? { carteiraFinalCentavos: resultado.carteiraCaixaCentavos, carteiraFinal: reais(resultado.carteiraCaixaCentavos) } : {}),
       saldoAtualCentavos: resultado.saldoCaixaCentavos,
@@ -287,7 +292,7 @@
 
   function aplicarResultado(item, caixa, resultado) {
     atualizarPagamentos(item, caixa, resultado);
-    atualizarParcelas(resultado);
+    atualizarParcelas(resultado, caixa);
     atualizarVendaClienteCaixa(item, caixa, resultado);
     if (normalizar(resultado.acao) !== "NAO_PAGAMENTO") atualizarHistoricoPagamento(item, caixa);
     global.renderCobrancas?.();
