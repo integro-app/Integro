@@ -224,3 +224,13 @@ test("indices compostos cobrem todas as consultas ordenadas do controle empresar
     "financeiro_recorrencias", "financeiro_lembretes", "financeiro_auditoria"
   ]) assert.ok(names.has(name), `índice ausente: ${name}`);
 });
+
+
+test("relatorios usam os campos de periodo da aba ativa e pagamentos do conjunto filtrado", () => {
+  assert.match(ui, /state\.tab==="relatorios"\?document\.getElementById\("cfeReportInicio"\)/);
+  assert.match(ui, /state\.tab==="relatorios"\?document\.getElementById\("cfeReportFim"\)/);
+  assert.match(ui, /const ids=new Set\(rows\.map\(a=>a\.id\)\)/);
+  assert.match(ui, /!ids\.has\(p\.contaId\)/);
+  assert.match(ui, /\(state\.filters\.start\|\|state\.filters\.end\)&&!data/);
+  assert.match(ui, /r=reportData\(rows\)\.r;summary\.addRows/);
+});
