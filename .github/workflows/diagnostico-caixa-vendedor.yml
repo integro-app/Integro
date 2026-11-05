@@ -1,0 +1,31 @@
+name: Diagnostico de caixa por vendedor - somente leitura
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnostico-caixa-vendedor.yml"
+      - "scripts/diagnostico-caixa-vendedor.cjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm --prefix functions ci
+      - name: Autenticar para leitura no Firestore
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - name: Diagnosticar vinculo e contagem sem gravar dados
+        env:
+          DIAGNOSTIC_EMAIL: gu@ar.com
+        run: node scripts/diagnostico-caixa-vendedor.cjs
