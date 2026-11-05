@@ -23,10 +23,15 @@ async function main() {
   admin.initializeApp({credential:admin.credential.applicationDefault(),projectId:"integro-novo"});
   const db=admin.firestore();
   const userDocs = new Map();
-  for(const campo of ["emailNormalizado","email"]) {
-    const r=await db.collection("usuarios").where(campo,"==",email).limit(10).get();
-    r.docs.forEach(doc=>userDocs.set(doc.id,doc));
-  }
+  // Auth é a identidade canônica: o e-mail no cadastro operacional pode ter
+  // grafia legada, e nunca deve gerar falso resultado "usuário inexistente".
+  const contaAuth = await admin.auth().getUserByEmail(email);
+  const usuarioId = contaAuth.uid;
+  const canonico = await db.collection("usuarios").doc(usuarioId).get();
+  if (canonico.exists && String(canonico.data()?.authUid||"") === usuarioId)
+    userDocs.set(canonico.id,canonico);
+  const vinculados = await db.collection("usuarios").where("authUid","==",usuarioId).limit(10).get();
+  vinculados.docs.forEach(doc=>userDocs.set(doc.id,doc));
   console.log("Cadastros encontrados para o vendedor solicitado:",userDocs.size);
   if(userDocs.size!==1){console.log("Cadastro não localizado de forma inequívoca; nenhum registro alterado.");return;}
   const doc=[...userDocs.values()][0],u=doc.data();
