@@ -74,3 +74,11 @@ test('criação direta mantém operacaoId estável e bloqueia duplo envio', () =
   assert.match(moduleJs, /origemId:op/);
   assert.match(moduleJs, /finally\{state\.locks\.delete\(lock\);\}/);
 });
+
+
+test('carga concorrente é reaproveitada e troca de tenant não aplica dados antigos', () => {
+  assert.match(moduleJs, /if \(state\.loading\) return state\.loading/);
+  assert.match(moduleJs, /const tenantAtLoad=tenant\(\)/);
+  assert.match(moduleJs, /if\(tenantAtLoad!==tenant\(\)\) return false/);
+  assert.match(moduleJs, /finally \{ state\.loading = null; \}/);
+});
