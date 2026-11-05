@@ -246,7 +246,19 @@
     if (!host || !usuarioAtual) return false;
     const perfilAtual = perfil(usuarioAtual);
     const itens = CATALOGO.filter(item => permitido(usuarioAtual, item) && !(perfilAtual === "vendedor" && item.id === "notificacoes"));
-    host.innerHTML = itens.map(itemHtml).join("");
+    // A validação de acesso pode disparar várias renderizações com o mesmo menu.
+    // Reaproveitar os nós mantém foco, grupos expandidos e badges atuais no desktop/mobile.
+    // Identidade e tenant fazem parte da assinatura para não preservar estado entre contas/empresas.
+    const identidade = String(usuarioAtual.authUid || usuarioAtual.uid || usuarioAtual.usuarioId || usuarioAtual.id || usuarioAtual.email || "");
+    const tenant = String(global.State?.getTenantId?.() || usuarioAtual.clientePlataformaId || usuarioAtual.tenantId || usuarioAtual.empresaId || "");
+    const assinatura = JSON.stringify([identidade, tenant, perfilAtual, ...itens.map(item => item.id)]);
+    const botoesAtuais = [...host.querySelectorAll(":scope > [data-menu-unificado]")];
+    const menuIntacto = botoesAtuais.length === itens.length &&
+      itens.every((item, indice) => botoesAtuais[indice]?.dataset.modulo === item.id);
+    if (host.dataset.integroRenderSignature !== assinatura || !menuIntacto) {
+      host.innerHTML = itens.map(itemHtml).join("");
+      host.dataset.integroRenderSignature = assinatura;
+    }
     sanitizarSidebar();
     aplicarSubmodulos(usuarioAtual);
     garantirSinoNotificacoes(usuarioAtual);
