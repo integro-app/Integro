@@ -21,7 +21,7 @@
   function currentUser() { return global.firebase?.auth?.().currentUser || null; }
   function config() { return global.configuracoesEmpresa || global.configEmpresa || {}; }
   function inactivityMinutes() {
-    return Math.max(5, Math.min(Number(config()?.seguranca?.sessaoInatividadeMinutos || config()?.operacao?.sessaoMinutos || 15), 720));
+    return Math.max(5, Math.min(Number(config()?.seguranca?.sessaoInatividadeMinutos || config()?.operacao?.sessaoMinutos || 30), 720));
   }
   function sessionId() { return text(global.localStorage?.getItem(STORAGE_KEY)); }
   function setSessionId(value) {
