@@ -105,7 +105,7 @@
           <select id="tipoAuditor" onchange="renderAuditoria()">
             <option value="">Todos os tipos</option>
           </select>
-          <input id="inicioAuditor" type="date" onchange="carregarAuditoria()">
+          <input id="inicioAuditor" type="date" onchange="renderAuditoria()">
           <input id="fimAuditor" type="date" onchange="carregarAuditoria()">
         </div>
         <div id="conteudoAuditor"></div>
@@ -209,10 +209,32 @@
       }
     }
 
+    function dataOperacionalAuditor(item) {
+      const valor = item.criadoEmTexto || item.dataHora || item.data || item.createdAt || item.criadoEm || item.atualizadoEm || item.atualizadoEmTexto;
+      if (!valor) return null;
+      if (typeof valor.toDate === "function") return valor.toDate();
+      const segundos = valor.seconds ?? valor._seconds;
+      if (segundos != null && Number.isFinite(Number(segundos))) return new Date(Number(segundos) * 1000);
+      const texto = String(valor);
+      const brasileiro = texto.match(/^(\\d{2})\\/(\\d{2})\\/(\\d{4})/);
+      if (brasileiro) return new Date(Number(brasileiro[3]), Number(brasileiro[2]) - 1, Number(brasileiro[1]));
+      const timestamp = texto.match(/Timestamp\\(seconds=(\\d+)/i);
+      const data = timestamp ? new Date(Number(timestamp[1]) * 1000) : new Date(texto);
+      return Number.isNaN(data.getTime()) ? null : data;
+    }
+
     function filtrarAuditoria(lista) {
       const termo = String(document.getElementById("buscaAuditor")?.value || "").toLowerCase();
       const tipo = String(document.getElementById("tipoAuditor")?.value || "");
+      const inicio = document.getElementById("inicioAuditor")?.value || "";
+      const fim = document.getElementById("fimAuditor")?.value || "";
       return lista.filter(item => {
+        if (inicio || fim) {
+          const data = dataOperacionalAuditor(item);
+          if (!data || Number.isNaN(data.getTime())) return false;
+          const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(data);
+          if ((inicio && dia < inicio) || (fim && dia > fim)) return false;
+        }
         const texto = JSON.stringify(item).toLowerCase();
         const tipoItem = String(item.tipoLancamento || item.tipo || item.acao || item.status || item.statusIndicacao || "");
         if (termo && !texto.includes(termo)) return false;
