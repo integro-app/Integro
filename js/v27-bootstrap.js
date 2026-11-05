@@ -5,7 +5,7 @@
   global.__INTEGRO_VERSION__ = "27.2.0-consolidacao";
 
   const loaded = new Map();
-  const VERSION = "20261104-caixa-retry-pagamento-v2";
+  const VERSION = "20261105-relatorios-auditoria-v1";
   const page = String(global.location?.pathname || "").toLowerCase();
 
   function loadScript(src, key = src) {
