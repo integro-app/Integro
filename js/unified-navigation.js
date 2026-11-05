@@ -193,13 +193,17 @@
       const permitir = chave === "visao-geral"
         ? (pode(usuario, "dashboard.visao_geral") || pode(usuario, "dashboard.ver"))
         : pode(usuario, permissao);
-      botao.hidden = !permitir;
+      // Atualizações repetidas de permissões não devem disparar mutações
+      // de atributos nem recalcular estilos quando a visibilidade não mudou.
+      if (botao.hidden !== !permitir) botao.hidden = !permitir;
       if (!permitir && vendedor) botao.remove();
     });
     const tabCobrancas = document.getElementById("tabCobrancasBtn");
     const tabVendas = document.getElementById("tabVendasDiaBtn");
-    if (tabCobrancas) tabCobrancas.hidden = !(pode(usuario, "operacao.cobrancas") || pode(usuario, "cobrancas.ver"));
-    if (tabVendas) tabVendas.hidden = !(pode(usuario, "operacao.vendas") || pode(usuario, "vendas.ver"));
+    const ocultarCobrancas = !(pode(usuario, "operacao.cobrancas") || pode(usuario, "cobrancas.ver"));
+    const ocultarVendas = !(pode(usuario, "operacao.vendas") || pode(usuario, "vendas.ver"));
+    if (tabCobrancas && tabCobrancas.hidden !== ocultarCobrancas) tabCobrancas.hidden = ocultarCobrancas;
+    if (tabVendas && tabVendas.hidden !== ocultarVendas) tabVendas.hidden = ocultarVendas;
   }
 
   function sanitizarSidebar() {
@@ -246,7 +250,19 @@
     if (!host || !usuarioAtual) return false;
     const perfilAtual = perfil(usuarioAtual);
     const itens = CATALOGO.filter(item => permitido(usuarioAtual, item) && !(perfilAtual === "vendedor" && item.id === "notificacoes"));
-    host.innerHTML = itens.map(itemHtml).join("");
+    // A validação de acesso pode disparar várias renderizações com o mesmo menu.
+    // Reaproveitar os nós mantém foco, grupos expandidos e badges atuais no desktop/mobile.
+    // Identidade e tenant fazem parte da assinatura para não preservar estado entre contas/empresas.
+    const identidade = String(usuarioAtual.authUid || usuarioAtual.uid || usuarioAtual.usuarioId || usuarioAtual.id || usuarioAtual.email || "");
+    const tenant = String(global.State?.getTenantId?.() || usuarioAtual.clientePlataformaId || usuarioAtual.tenantId || usuarioAtual.empresaId || "");
+    const assinatura = JSON.stringify([identidade, tenant, perfilAtual, ...itens.map(item => item.id)]);
+    const botoesAtuais = [...host.querySelectorAll(":scope > [data-menu-unificado]")];
+    const menuIntacto = botoesAtuais.length === itens.length &&
+      itens.every((item, indice) => botoesAtuais[indice]?.dataset.modulo === item.id);
+    if (host.dataset.integroRenderSignature !== assinatura || !menuIntacto) {
+      host.innerHTML = itens.map(itemHtml).join("");
+      host.dataset.integroRenderSignature = assinatura;
+    }
     sanitizarSidebar();
     aplicarSubmodulos(usuarioAtual);
     garantirSinoNotificacoes(usuarioAtual);

@@ -53,17 +53,33 @@
     return registro?.excluido !== true && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(normalizar(registro.status));
   }
 
-  function pagamentosDaVendaNoCaixa(vendaId, caixa = caixaAtual()) {
+  function mesmaEmpresaDoCaixa(registro = {}, caixa = caixaAtual()) {
+    const tenantCaixa = texto(caixa?.clientePlataformaId || caixa?.tenantId || caixa?.empresaId || global.State?.getTenantId?.());
+    const tenantRegistro = texto(registro.clientePlataformaId || registro.tenantId || registro.empresaId);
+    // Registros legados podem omitir tenant. Se ambos estão explícitos,
+    // um registro de outra empresa jamais deve atualizar o cache atual.
+    return !(tenantCaixa && tenantRegistro && tenantCaixa !== tenantRegistro);
+  }
+
+  function pertenceAoCaixaOperacional(registro = {}, caixa = caixaAtual()) {
     const caixaId = texto(caixa?.id || caixa?.caixaId);
-    const dia = dataCaixa(caixa);
+    if (!caixaId || !mesmaEmpresaDoCaixa(registro, caixa)) return false;
+
+    const idRegistroCaixa = texto(registro.caixaId || registro.idCaixa || registro.caixaID || registro.caixaAtualId);
+    const diaRegistro = texto(registro.dataOperacional || registro.data || registro.dataPagamento).slice(0, 10);
+    const diaAtual = dataCaixa(caixa);
+    if (idRegistroCaixa && idRegistroCaixa !== caixaId) return false;
+    if (diaRegistro && diaAtual && diaRegistro !== diaAtual) return false;
+    // Legado sem caixaId só é conciliável pelo dia operacional. Registro
+    // sem ambos não deve impactar saldo ou correção de um caixa específico.
+    return Boolean(idRegistroCaixa || (diaRegistro && diaAtual && diaRegistro === diaAtual));
+  }
+
+  function pagamentosDaVendaNoCaixa(vendaId, caixa = caixaAtual()) {
     return (global.State?.getPagamentos?.() || global.pagamentosHojeCache || [])
       .filter(pagamentoAtivo)
       .filter(registro => texto(registro.vendaId) === texto(vendaId))
-      .filter(registro => !texto(registro.caixaId) || texto(registro.caixaId) === caixaId)
-      .filter(registro => {
-        const data = texto(registro.dataOperacional || registro.data || registro.dataPagamento).slice(0, 10);
-        return !data || data === dia;
-      });
+      .filter(registro => pertenceAoCaixaOperacional(registro, caixa));
   }
 
   function valorPagamentoCentavos(registro = {}) {
@@ -151,7 +167,7 @@
     const caixaId = texto(caixa.id || caixa.caixaId);
     const agora = new Date().toISOString();
     const pagamentos = [...(global.State?.getPagamentos?.() || global.pagamentosHojeCache || [])];
-    const pertence = registro => texto(registro.vendaId) === vendaId && (!texto(registro.caixaId) || texto(registro.caixaId) === caixaId);
+    const pertence = registro => texto(registro.vendaId) === vendaId && pertenceAoCaixaOperacional(registro, caixa);
     for (let i = 0; i < pagamentos.length; i++) {
       if (pertence(pagamentos[i]) && pagamentoAtivo(pagamentos[i])) {
         pagamentos[i] = { ...pagamentos[i], status: "CANCELADO", cancelado: true, atualizadoEmTexto: agora };
@@ -159,7 +175,10 @@
     }
     for (const alocacao of resultado.alocacoes || []) {
       if (Number(alocacao.valorCentavos || 0) <= 0 || !texto(alocacao.pagamentoId)) continue;
-      const indice = pagamentos.findIndex(registro => texto(registro.id || registro.pagamentoId || registro.operacaoId) === texto(alocacao.pagamentoId));
+      const indice = pagamentos.findIndex(registro =>
+        texto(registro.id || registro.pagamentoId || registro.operacaoId) === texto(alocacao.pagamentoId) &&
+        mesmaEmpresaDoCaixa(registro, caixa)
+      );
       const payload = {
         id: alocacao.pagamentoId,
         pagamentoId: alocacao.pagamentoId,
@@ -167,6 +186,7 @@
         vendaId,
         parcelaId: alocacao.parcelaId,
         caixaId,
+        clientePlataformaId: texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId || global.State?.getTenantId?.()),
         clienteId: texto(resultado.clienteId || item.clienteId),
         valorCentavos: alocacao.valorCentavos,
         valor: reais(alocacao.valorCentavos),
@@ -187,12 +207,12 @@
     global.pagamentosHojeCache = pagamentos;
   }
 
-  function atualizarParcelas(resultado) {
+  function atualizarParcelas(resultado, caixa) {
     const alocacoes = new Map((resultado.alocacoes || []).map(item => [texto(item.parcelaId), item]));
     if (!alocacoes.size) return;
     const parcelas = (global.State?.getParcelas?.() || global.parcelasCache || []).map(parcela => {
       const alocacao = alocacoes.get(idRegistro(parcela));
-      if (!alocacao) return parcela;
+      if (!alocacao || !mesmaEmpresaDoCaixa(parcela, caixa)) return parcela;
       return {
         ...parcela,
         valorPagoCentavos: alocacao.novoValorPagoParcelaCentavos,
@@ -211,7 +231,7 @@
   function atualizarVendaClienteCaixa(item, caixa, resultado) {
     const vendaId = texto(item.vendaId);
     const vendas = (global.State?.getVendas?.() || global.vendasCache || []).map(venda => {
-      if (idRegistro(venda) !== vendaId) return venda;
+      if (idRegistro(venda) !== vendaId || !mesmaEmpresaDoCaixa(venda, caixa)) return venda;
       return {
         ...venda,
         saldoDevedorCentavos: resultado.saldoVendaCentavos,
@@ -231,7 +251,7 @@
     const clienteId = texto(resultado.clienteId || item.clienteId);
     const clientes = (global.State?.getClientes?.() || global.clientesCache || []).map(cliente => {
       const ids = [cliente.id, cliente.clienteId, cliente.clienteOperacionalId].map(texto);
-      if (!ids.includes(clienteId)) return cliente;
+      if (!ids.includes(clienteId) || !mesmaEmpresaDoCaixa(cliente, caixa)) return cliente;
       return {
         ...cliente,
         saldoDevedorCentavos: resultado.saldoClienteCentavos,
@@ -248,7 +268,7 @@
     global.clientesCache = clientes;
 
     const caixaId = texto(caixa.id || caixa.caixaId);
-    const atualizarCaixa = registro => idRegistro(registro) === caixaId ? {
+    const atualizarCaixa = registro => idRegistro(registro) === caixaId && mesmaEmpresaDoCaixa(registro, caixa) ? {
       ...registro,
       ...(Number.isInteger(resultado.carteiraCaixaCentavos) ? { carteiraFinalCentavos: resultado.carteiraCaixaCentavos, carteiraFinal: reais(resultado.carteiraCaixaCentavos) } : {}),
       saldoAtualCentavos: resultado.saldoCaixaCentavos,
@@ -265,7 +285,7 @@
     const vendaId = texto(item.vendaId);
     const caixaId = texto(caixa.id || caixa.caixaId);
     const historico = (global.State?.getHistoricoCobrancas?.() || global.historicoCobrancasCache || []).map(registro => {
-      const mesmo = texto(registro.vendaId) === vendaId && (!texto(registro.caixaId) || texto(registro.caixaId) === caixaId);
+      const mesmo = texto(registro.vendaId) === vendaId && pertenceAoCaixaOperacional(registro, caixa);
       if (!mesmo || normalizar(registro.tipo || registro.acao) !== "NAO_PAGAMENTO") return registro;
       return { ...registro, status: "CANCELADO", cancelado: true, atualizadoEmTexto: new Date().toISOString() };
     });
@@ -275,7 +295,7 @@
 
   function aplicarResultado(item, caixa, resultado) {
     atualizarPagamentos(item, caixa, resultado);
-    atualizarParcelas(resultado);
+    atualizarParcelas(resultado, caixa);
     atualizarVendaClienteCaixa(item, caixa, resultado);
     if (normalizar(resultado.acao) !== "NAO_PAGAMENTO") atualizarHistoricoPagamento(item, caixa);
     global.renderCobrancas?.();

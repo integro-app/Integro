@@ -81,3 +81,122 @@ test("grupo abre submenu e item comum navega; renderizações não duplicam list
   listeners.click[0]({ target: {closest: () => leaf}, preventDefault() {} });
   assert.equal(navegacoes, 1);
 });
+
+
+test("desktop e mobile preservam nós do menu quando acesso não muda, isolando contas e empresas", () => {
+  let tenant = "empresa-a";
+  const user = { authUid: "usuario-a", clientePlataformaId: tenant, tipoUsuario: "master_local" };
+  let renderizacoes = 0, eventos = 0, listeners = 0;
+  let elementosMenu = [];
+  let htmlAtual = "";
+  const host = {
+    dataset: {},
+    className: "integro-sidebar-menu-unificado",
+    get innerHTML() { return htmlAtual; },
+    set innerHTML(valor) {
+      renderizacoes++;
+      htmlAtual = valor;
+      elementosMenu = [...valor.matchAll(/data-modulo="([^"]+)"/g)].map(match => ({
+        dataset: { modulo: match[1] },
+        classList: { toggle() {} }
+      }));
+    },
+    setAttribute() {},
+    querySelectorAll(selector) {
+      if (selector === ":scope > [data-menu-unificado]") return elementosMenu;
+      return [];
+    },
+    addEventListener(evento) { if (evento === "click") listeners++; },
+    contains() { return true; }
+  };
+  const sidebar = { children: [host], querySelector: () => null };
+  const document = {
+    getElementById: id => id === "sidebar" ? sidebar : id === "integroSidebarMenu" ? host : null,
+    querySelectorAll: () => [],
+    addEventListener() {},
+    dispatchEvent() { eventos++; }
+  };
+  const window = {
+    document,
+    State: { getUsuario: () => user, getTenantId: () => tenant },
+    IntegroAcesso: { acessoUsuario: () => ({ perfil: "master_local" }), pode: () => true },
+    setTimeout() {}
+  };
+  vm.runInNewContext(read("js/unified-navigation.js"), {
+    window, document,
+    CustomEvent: class { constructor(type) { this.type = type; } }
+  });
+  const nav = window.IntegroNavegacaoUnificada;
+  assert.equal(nav.renderizar(user), true);
+  assert.equal(renderizacoes, 1);
+  assert.equal(listeners, 1);
+  const primeiroBotao = elementosMenu[0];
+  primeiroBotao.estadoLocal = "expandidos e foco";
+  assert.equal(nav.renderizar(user), true);
+  assert.equal(renderizacoes, 1, "mesmas permissões e mesmo tenant não remontam menu");
+  assert.equal(elementosMenu[0], primeiroBotao, "preserva elementos, foco e estado dinâmico");
+  assert.equal(elementosMenu[0].estadoLocal, "expandidos e foco");
+  assert.equal(eventos, 2, "avisos de atualização para outros módulos permanecem");
+
+  tenant = "empresa-b";
+  user.clientePlataformaId = tenant;
+  nav.renderizar(user);
+  assert.equal(renderizacoes, 2, "troca de empresa invalida nós e badges");
+
+  user.authUid = "usuario-b";
+  nav.renderizar(user);
+  assert.equal(renderizacoes, 3, "troca de usuário invalida nós e badges");
+
+  elementosMenu.shift();
+  nav.renderizar(user);
+  assert.equal(renderizacoes, 4, "se o menu foi alterado por fora, reconstrói");
+  assert.equal(listeners, 1, "um único listener delegado");
+});
+
+
+test("desktop: reaplicar permissões não altera abas cuja visibilidade já está correta", () => {
+  let permitido = false;
+  const writes = { dashboard: 0, cobrancas: 0, vendas: 0 };
+  function botao(id, chave = "") {
+    let hidden = false;
+    return {
+      dataset: { dashboardView: chave },
+      get hidden() { return hidden; },
+      set hidden(novo) { writes[id]++; hidden = novo; }
+    };
+  }
+  const dashboard = botao("dashboard", "visao-geral");
+  const cobrancas = botao("cobrancas");
+  const vendas = botao("vendas");
+  const document = {
+    addEventListener() {},
+    querySelectorAll: selector => selector === "[data-dashboard-view]" ? [dashboard] : [],
+    getElementById: id => ({ tabCobrancasBtn: cobrancas, tabVendasDiaBtn: vendas })[id] || null
+  };
+  const window = {
+    document,
+    IntegroAcesso: {
+      acessoUsuario: () => ({ perfil: "supervisor" }),
+      pode: () => permitido
+    },
+    setTimeout() {}
+  };
+  vm.runInNewContext(read("js/unified-navigation.js"), { window, document });
+  const aplicar = window.IntegroNavegacaoUnificada.aplicarSubmodulos;
+  const usuario = { tipoUsuario: "supervisor" };
+  aplicar(usuario);
+  assert.equal(dashboard.hidden, true);
+  assert.equal(cobrancas.hidden, true);
+  assert.equal(vendas.hidden, true);
+  aplicar(usuario);
+  assert.deepEqual(writes, { dashboard: 1, cobrancas: 1, vendas: 1 },
+    "reaplicação não cria mutações sem mudança de permissões");
+
+  permitido = true;
+  aplicar(usuario);
+  assert.equal(dashboard.hidden, false);
+  assert.equal(cobrancas.hidden, false);
+  assert.equal(vendas.hidden, false);
+  assert.deepEqual(writes, { dashboard: 2, cobrancas: 2, vendas: 2 },
+    "mudança real de permissões atualiza todas as abas");
+});

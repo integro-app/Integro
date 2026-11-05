@@ -39,3 +39,98 @@ test("editar valor total só altera diferença e não duplica valor recebido",()
  assert.deepEqual(a.alocacoes.map(x=>x.valorCentavos),[3500,1500,0]);
  assert.throws(()=>distribuirPagamentoParcelas({parcelas,pagamentosAtuais:{p1:3500,p2:2000},valorAlvoCentavos:10501}),/saldo devedor/);
 });
+
+
+test("pagamento flexível não mistura caixas, datas e empresas ao atualizar caches",()=>{
+ const vm=require("node:vm");
+ const window={
+   caixaAtual:{id:"caixa-a",clientePlataformaId:"empresa-a",dataOperacional:"2026-11-05",status:"ABERTO"},
+   pagamentosHojeCache:[],historicoCobrancasCache:[],parcelasCache:[],vendasCache:[],clientesCache:[],
+   renderCobrancas(){},atualizarEstadoBotaoFechamento(){}
+ };
+ const state={
+   tenantId:"empresa-a",
+   getTenantId:()=>state.tenantId,
+   getPagamentos:()=>window.pagamentosHojeCache,
+   setPagamentos:a=>{window.pagamentosHojeCache=a;},
+   getHistoricoCobrancas:()=>window.historicoCobrancasCache,
+   setHistoricoCobrancas:a=>{window.historicoCobrancasCache=a;},
+   getParcelas:()=>window.parcelasCache,
+   setParcelas:a=>{window.parcelasCache=a;},
+   getVendas:()=>window.vendasCache,
+   setVendas:a=>{window.vendasCache=a;},
+   getClientes:()=>window.clientesCache,
+   setClientes:a=>{window.clientesCache=a;},
+   getCaixas:()=>window.caixasCache||[],
+   setCaixas:a=>{window.caixasCache=a;}
+ };
+ window.State=state;
+ const pagamento=(id,overrides={})=>({
+   id,vendaId:"venda-1",valorCentavos:1000,status:"CONFIRMADO",
+   clientePlataformaId:"empresa-a",...overrides
+ });
+ window.pagamentosHojeCache=[
+   pagamento("p-caixa-atual",{caixaId:"caixa-a",dataOperacional:"2026-11-05"}),
+   pagamento("p-outro-caixa",{caixaId:"caixa-b",dataOperacional:"2026-11-05"}),
+   pagamento("p-outro-dia-legado",{dataOperacional:"2026-11-04"}),
+   pagamento("p-mesmo-dia-legado",{dataOperacional:"2026-11-05"}),
+   pagamento("p-ambos-ausentes"),
+   pagamento("p-outra-empresa",{caixaId:"caixa-a",clientePlataformaId:"empresa-b",dataOperacional:"2026-11-05"}),
+   pagamento("p-novo",{caixaId:"caixa-a",clientePlataformaId:"empresa-b",dataOperacional:"2026-11-05"})
+ ];
+ window.historicoCobrancasCache=[
+   {id:"hist-atual",vendaId:"venda-1",tipo:"NAO_PAGAMENTO",caixaId:"caixa-a",dataOperacional:"2026-11-05",clientePlataformaId:"empresa-a"},
+   {id:"hist-antigo",vendaId:"venda-1",tipo:"NAO_PAGAMENTO",dataOperacional:"2026-11-04",clientePlataformaId:"empresa-a"},
+   {id:"hist-externo",vendaId:"venda-1",tipo:"NAO_PAGAMENTO",caixaId:"caixa-a",dataOperacional:"2026-11-05",clientePlataformaId:"empresa-b"}
+ ];
+ window.parcelasCache=[
+   {id:"parcela-1",clientePlataformaId:"empresa-a",status:"PENDENTE"},
+   {id:"parcela-1",clientePlataformaId:"empresa-b",status:"PENDENTE"}
+ ];
+ window.vendasCache=[
+   {id:"venda-1",clientePlataformaId:"empresa-a",saldoDevedor:50},
+   {id:"venda-1",clientePlataformaId:"empresa-b",saldoDevedor:999}
+ ];
+ window.clientesCache=[
+   {id:"cliente-1",clientePlataformaId:"empresa-a",saldoDevedor:50},
+   {id:"cliente-1",clientePlataformaId:"empresa-b",saldoDevedor:999}
+ ];
+ window.caixasCache=[
+   {id:"caixa-a",clientePlataformaId:"empresa-a",saldoAtual:50},
+   {id:"caixa-a",clientePlataformaId:"empresa-b",saldoAtual:999}
+ ];
+ const module={exports:{}};
+ vm.runInNewContext(fs.readFileSync(path.join(__dirname,"../js/services/vendedor-pagamento-flexivel.js"),"utf8"),{window,module,console,Date});
+ const api=module.exports;
+ assert.equal(api.totalPagoNoCaixa("venda-1",window.caixaAtual),2000,
+   "somente pagamentos associados ao caixa ou ao dia operacional são contabilizados");
+ api.aplicarResultado(
+   {vendaId:"venda-1",clienteId:"cliente-1"},
+   window.caixaAtual,
+   {
+     acao:"PAGAMENTO",clienteId:"cliente-1",saldoVendaCentavos:1000,totalPagoVendaCentavos:9000,
+     saldoClienteCentavos:1000,saldoCaixaCentavos:12000,
+     alocacoes:[{parcelaId:"parcela-1",pagamentoId:"p-novo",valorCentavos:3000,
+       novoValorPagoParcelaCentavos:3000,saldoParcelaCentavos:0,statusParcela:"PAGA"}]
+   }
+ );
+ const pagamentoPorId=id=>window.pagamentosHojeCache.find(p=>p.id===id);
+ assert.equal(pagamentoPorId("p-caixa-atual").status,"CANCELADO");
+ assert.equal(pagamentoPorId("p-mesmo-dia-legado").status,"CANCELADO");
+ for(const id of ["p-outro-caixa","p-outro-dia-legado","p-ambos-ausentes","p-outra-empresa","p-novo"]){
+   assert.equal(pagamentoPorId(id).status,"CONFIRMADO",id+" deve ficar intacto");
+ }
+ const pagamentosMesmoId=window.pagamentosHojeCache.filter(p=>p.id==="p-novo");
+ assert.equal(pagamentosMesmoId.length,2,"IDs iguais de outras empresas não são sobrescritos");
+ assert.equal(pagamentosMesmoId.find(p=>p.clientePlataformaId==="empresa-a").valorCentavos,3000);
+ assert.equal(pagamentosMesmoId.find(p=>p.clientePlataformaId==="empresa-b").valorCentavos,1000);
+ const historico=id=>window.historicoCobrancasCache.find(p=>p.id===id);
+ assert.equal(historico("hist-atual").status,"CANCELADO");
+ assert.notEqual(historico("hist-antigo").status,"CANCELADO");
+ assert.notEqual(historico("hist-externo").status,"CANCELADO");
+ assert.equal(window.parcelasCache.find(x=>x.clientePlataformaId==="empresa-a").status,"PAGA");
+ assert.equal(window.parcelasCache.find(x=>x.clientePlataformaId==="empresa-b").status,"PENDENTE");
+ assert.equal(window.vendasCache.find(x=>x.clientePlataformaId==="empresa-b").saldoDevedor,999);
+ assert.equal(window.clientesCache.find(x=>x.clientePlataformaId==="empresa-b").saldoDevedor,999);
+ assert.equal(window.caixasCache.find(x=>x.clientePlataformaId==="empresa-b").saldoAtual,999);
+});

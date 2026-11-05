@@ -12275,8 +12275,11 @@ async function verificarCaixaAbertoDiaAnterior() {
     const badgeMenu = byId("badgeNotificacoes");
     const valor = Number(String(badgeMenu?.innerText || "0").replace(/\D/g, "")) || 0;
 
-    badgeMobile.innerText = valor;
-    badgeMobile.style.display = valor > 0 ? "inline-flex" : "none";
+    const texto = String(valor);
+    const exibicao = valor > 0 ? "inline-flex" : "none";
+    // O badge é consultado periodicamente; não reescrever o DOM sem mudança.
+    if (badgeMobile.innerText !== texto) badgeMobile.innerText = texto;
+    if (badgeMobile.style.display !== exibicao) badgeMobile.style.display = exibicao;
   }
 
   function garantirHeaderDesktopOperacao() {
@@ -12314,7 +12317,9 @@ async function verificarCaixaAbertoDiaAnterior() {
       select.insertBefore(option, select.firstChild);
     }
 
-    if (!select.value || select.value === "nome_az") {
+    // A preferência inicial continua sendo rota; após inicializar, não
+    // sobrescrever a ordenação escolhida pelo vendedor em cada retry.
+    if (!select.value || (select.value === "nome_az" && !select.dataset.valorAjustado)) {
       select.value = "prioridade_rota";
     }
   }
@@ -12342,9 +12347,13 @@ async function verificarCaixaAbertoDiaAnterior() {
     if (!btn) return;
 
     const fechado = document.body.classList.contains("sidebar-desktop-fechada");
-    btn.innerHTML = fechado ? '<span class="material-symbols-rounded">menu</span>' : '<span class="material-symbols-rounded">close</span>';
-    btn.setAttribute("aria-label", fechado ? "Abrir menu lateral" : "Fechar menu lateral");
-    btn.setAttribute("title", fechado ? "Abrir menu" : "Fechar menu");
+    const icone = fechado ? '<span class="material-symbols-rounded">menu</span>' : '<span class="material-symbols-rounded">close</span>';
+    const ariaLabel = fechado ? "Abrir menu lateral" : "Fechar menu lateral";
+    const titulo = fechado ? "Abrir menu" : "Fechar menu";
+    // Resize e retries não devem recriar o ícone ou atributos sem mudança.
+    if (btn.innerHTML !== icone) btn.innerHTML = icone;
+    if (btn.getAttribute("aria-label") !== ariaLabel) btn.setAttribute("aria-label", ariaLabel);
+    if (btn.getAttribute("title") !== titulo) btn.setAttribute("title", titulo);
   }
 
   function patchToggleSidebarFinal() {
@@ -13659,7 +13668,9 @@ async function verificarCaixaAbertoDiaAnterior() {
     if (!desktopBtn) return;
 
     const menuFechado = document.body.classList.contains("sidebar-desktop-fechada");
-    desktopBtn.style.display = menuFechado ? "inline-flex" : "none";
+    const exibicao = menuFechado ? "inline-flex" : "none";
+    // Verificação legada periódica deve ser idempotente.
+    if (desktopBtn.style.display !== exibicao) desktopBtn.style.display = exibicao;
   }
 
   function aplicarHeaderLimpo() {
@@ -13677,7 +13688,7 @@ async function verificarCaixaAbertoDiaAnterior() {
     const select = byId("ordenarCobrancas");
     if (!select) return;
 
-    select.style.display = "none";
+    if (select.style.display !== "none") select.style.display = "none";
 
     const opcoes = [
       ["prioridade_rota", "Prioridade da rota"],
@@ -13690,9 +13701,20 @@ async function verificarCaixaAbertoDiaAnterior() {
       ["nome_az", "Ordem alfabética"]
     ];
 
-    select.innerHTML = opcoes
-      .map(([valor, label]) => `<option value="${valor}">${label}</option>`)
-      .join("");
+    // O patch era executado várias vezes e recriava todas as opções, o que
+    // descartava a seleção do usuário. Reutilizar o select quando já está correto.
+    const opcoesAtuais = Array.from(select.options);
+    const precisaAtualizar = opcoesAtuais.length !== opcoes.length ||
+      opcoes.some(([valor, label], indice) =>
+        opcoesAtuais[indice]?.value !== valor || opcoesAtuais[indice]?.textContent !== label
+      );
+    if (precisaAtualizar) {
+      const valorAnterior = select.value;
+      select.innerHTML = opcoes
+        .map(([valor, label]) => `<option value="${valor}">${label}</option>`)
+        .join("");
+      if (opcoes.some(([valor]) => valor === valorAnterior)) select.value = valorAnterior;
+    }
 
     if (!select.dataset.valorAjustado) {
       select.value = "prioridade_rota";
@@ -14139,23 +14161,22 @@ async function verificarCaixaAbertoDiaAnterior() {
       `;
   };
 
+  function associarCliqueAjustes11(elemento) {
+    if (!elemento || elemento.dataset.integroAjustes11ClickBound === "true") return;
+    elemento.addEventListener("click", function () {
+      setTimeout(garantirMenuToggleOcultoQuandoAberto, 0);
+    });
+    elemento.dataset.integroAjustes11ClickBound = "true";
+  }
+
   function inicializarAjustes11Validados() {
     garantirOrdenacaoNoFiltro();
     garantirMenuToggleOcultoQuandoAberto();
     aplicarHeaderLimpo();
 
-    const overlay = byId("overlay");
-    if (overlay) {
-      overlay.addEventListener("click", function () {
-        setTimeout(garantirMenuToggleOcultoQuandoAberto, 0);
-      });
-    }
-
-    document.querySelectorAll(".hamburger, #desktopMenuToggleIntegro").forEach(btn => {
-      btn.addEventListener("click", function () {
-        setTimeout(garantirMenuToggleOcultoQuandoAberto, 0);
-      });
-    });
+    // Inicializações legadas agendadas não devem acumular listeners em cada retry.
+    associarCliqueAjustes11(byId("overlay"));
+    document.querySelectorAll(".hamburger, #desktopMenuToggleIntegro").forEach(associarCliqueAjustes11);
 
     try { if (typeof window.renderCobrancas === "function") window.renderCobrancas(); } catch (e) {}
     try { if (typeof window.renderVendasDia === "function") window.renderVendasDia(); } catch (e) {}

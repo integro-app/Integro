@@ -81,7 +81,8 @@
     const forcar = opcoes.forcar === true;
     if (!db || !colecao || !tenantId) return [];
 
-    const chave = chavePrivada(identidadeConsulta(), chaveConsulta({ colecao, tenantId, filtros, limite, ordem }), opcoes.chave);
+    const identidade = identidadeConsulta();
+    const chave = chavePrivada(identidade, chaveConsulta({ colecao, tenantId, filtros, limite, ordem }), opcoes.chave);
     const salvo = cache.get(chave);
     if (!forcar && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
       metricas.consultasCache++;
@@ -92,7 +93,8 @@
       return pendentes.get(chave);
     }
 
-    const promessa = (async () => {
+    // Registra a consulta antes do primeiro acesso assíncrono ao Firestore.
+    const promessa = Promise.resolve().then(async () => {
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
@@ -101,16 +103,19 @@
         const dados = snap.docs.map(docData).filter(item => item.excluido !== true);
         metricas.documentosRecebidos += dados.length;
         registrarColecao(colecao, "documentos", dados.length);
-        if (cacheMs > 0) cache.set(chave, { dados, expiraEm: agora() + cacheMs, colecao, tenantId });
+        if (cacheMs > 0 && pendentes.get(chave) === promessa && identidadeConsulta() === identidade) {
+          cache.set(chave, { dados, expiraEm: agora() + cacheMs, colecao, tenantId });
+        }
         return dados.map(item => ({ ...item }));
       } catch (erro) {
         metricas.erros++;
         registrarColecao(colecao, "erros", 1);
         throw erro;
       } finally {
-        pendentes.delete(chave);
+        // Uma consulta antiga nunca deve remover a atualização forçada mais recente.
+        if (pendentes.get(chave) === promessa) pendentes.delete(chave);
       }
-    })();
+    });
     pendentes.set(chave, promessa);
     return promessa;
   }
@@ -120,7 +125,8 @@
     const colecao = texto(opcoes.colecao);
     const id = texto(opcoes.id);
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
-    const chave = chavePrivada(identidadeConsulta(), "doc:" + colecao + ":" + id, opcoes.chave);
+    const identidade = identidadeConsulta();
+    const chave = chavePrivada(identidade, "doc:" + colecao + ":" + id, opcoes.chave);
     if (!db || !colecao || !id) return null;
     const salvo = cache.get(chave);
     if (opcoes.forcar !== true && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
@@ -131,7 +137,8 @@
       metricas.consultasDeduplicadas++;
       return pendentes.get(chave);
     }
-    const promessa = (async () => {
+    // Registra a consulta antes do primeiro acesso assíncrono ao Firestore.
+    const promessa = Promise.resolve().then(async () => {
       metricas.consultas++;
       registrarColecao(colecao, "consultas", 1);
       try {
@@ -141,16 +148,19 @@
           metricas.documentosRecebidos++;
           registrarColecao(colecao, "documentos", 1);
         }
-        if (cacheMs > 0) cache.set(chave, { dados, expiraEm: agora() + cacheMs, colecao });
+        if (cacheMs > 0 && pendentes.get(chave) === promessa && identidadeConsulta() === identidade) {
+          cache.set(chave, { dados, expiraEm: agora() + cacheMs, colecao });
+        }
         return dados ? { ...dados } : null;
       } catch (erro) {
         metricas.erros++;
         registrarColecao(colecao, "erros", 1);
         throw erro;
       } finally {
-        pendentes.delete(chave);
+        // Uma consulta antiga nunca deve remover a atualização forçada mais recente.
+        if (pendentes.get(chave) === promessa) pendentes.delete(chave);
       }
-    })();
+    });
     pendentes.set(chave, promessa);
     return promessa;
   }
@@ -285,6 +295,8 @@
     if (uid !== ultimoUid || !usuario) {
       pararTodos();
       cache.clear();
+      // Respostas iniciadas na sessão anterior não podem repopular o cache.
+      pendentes.clear();
     }
     ultimoUid = uid;
   });
