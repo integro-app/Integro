@@ -193,13 +193,17 @@
       const permitir = chave === "visao-geral"
         ? (pode(usuario, "dashboard.visao_geral") || pode(usuario, "dashboard.ver"))
         : pode(usuario, permissao);
-      botao.hidden = !permitir;
+      // Atualizações repetidas de permissões não devem disparar mutações
+      // de atributos nem recalcular estilos quando a visibilidade não mudou.
+      if (botao.hidden !== !permitir) botao.hidden = !permitir;
       if (!permitir && vendedor) botao.remove();
     });
     const tabCobrancas = document.getElementById("tabCobrancasBtn");
     const tabVendas = document.getElementById("tabVendasDiaBtn");
-    if (tabCobrancas) tabCobrancas.hidden = !(pode(usuario, "operacao.cobrancas") || pode(usuario, "cobrancas.ver"));
-    if (tabVendas) tabVendas.hidden = !(pode(usuario, "operacao.vendas") || pode(usuario, "vendas.ver"));
+    const ocultarCobrancas = !(pode(usuario, "operacao.cobrancas") || pode(usuario, "cobrancas.ver"));
+    const ocultarVendas = !(pode(usuario, "operacao.vendas") || pode(usuario, "vendas.ver"));
+    if (tabCobrancas && tabCobrancas.hidden !== ocultarCobrancas) tabCobrancas.hidden = ocultarCobrancas;
+    if (tabVendas && tabVendas.hidden !== ocultarVendas) tabVendas.hidden = ocultarVendas;
   }
 
   function sanitizarSidebar() {
