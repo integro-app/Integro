@@ -16,7 +16,8 @@
     resumoInicialRecebido: false,
     conversasNotificadas: new Set(),
     modalGrupoAberto: false,
-    mensagensConversaId: ""
+    mensagensConversaId: "",
+    enviando: false
   };
 
   function el(id) { return document.getElementById(id); }
@@ -495,10 +496,12 @@
 
   async function enviar(event) {
     event.preventDefault();
+    if (estado.enviando) return;
     const input = el("chatTexto");
     const btn = el("chatEnviar");
     if (!estado.conversaAtual) return notificar("Selecione uma conversa.", "warning");
     if (!estado.arquivoImagem && !String(input?.value || "").trim()) return;
+    estado.enviando = true;
     btn.disabled = true;
     if (el("chatAnexar")) el("chatAnexar").disabled = true;
     try {
@@ -510,6 +513,7 @@
       if (el("chatEmojiMenu")) el("chatEmojiMenu").hidden = true;
     } catch (erro) { notificar(erro.message || "Falha ao enviar mensagem.", "error"); }
     finally {
+      estado.enviando = false;
       btn.disabled = false;
       if (el("chatAnexar")) el("chatAnexar").disabled = false;
       input?.focus();
