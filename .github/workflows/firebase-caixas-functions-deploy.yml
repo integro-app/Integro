@@ -34,5 +34,5 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
-      - name: Publicar somente abertura transacional do caixa
-        run: npx firebase deploy --only functions:abrirCaixaOperacional --project integro-novo --non-interactive
+      - name: Publicar ciclo transacional de caixas
+        run: npx firebase deploy --only functions:abrirCaixaOperacional,functions:conferirCaixaOperacional,functions:fecharCaixaOperacional,functions:reabrirCaixaOperacional,functions:consultarDatasCaixaEquipe,functions:tratarDivergenciaCaixaOperacional --project integro-novo --non-interactive

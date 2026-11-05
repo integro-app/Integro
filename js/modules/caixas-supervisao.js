@@ -129,7 +129,8 @@
     // unique() usa Map e preserva o ÚLTIMO registro: por isso a leitura
     // comprovada pelo servidor precisa ficar por último, nunca primeiro.
     const all = unique([...(global.CX?.caixas || []),...(S()?.getCaixas?.() || []),...(row.caixas || []),...verifiedBoxes.values()]);
-    return all.filter(b => !caixasInexistentesServidor.has(id(b)) && tenantOf(b) === tenant() && b.excluido !== true && (b.equipeId ? text(b.equipeId) === text(row.id) : [...identities(b)].some(v=>sellerIds.has(v))))
+    return all.filter(b => !caixasInexistentesServidor.has(id(b)) && tenantOf(b) === tenant() &&
+      b.excluido !== true && upper(b.status) !== 'ANULADO_DUPLICIDADE' && (b.equipeId ? text(b.equipeId) === text(row.id) : [...identities(b)].some(v=>sellerIds.has(v))))
       .sort((a,b) => boxDay(b).localeCompare(boxDay(a)) || id(b).localeCompare(id(a)));
   }
   function cachedData() { return {sales:global.CX?.vendas || S()?.getVendas?.() || [],payments:global.CX?.pagamentos || S()?.getPagamentos?.() || [],moves:global.CX?.solicitacoes || S()?.getSolicitacoes?.() || []}; }

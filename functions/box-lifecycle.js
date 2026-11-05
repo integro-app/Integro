@@ -61,7 +61,7 @@ function criarCicloCaixa({ db, functions }) {
       if (box.vendedorAuthUid && authUid && box.vendedorAuthUid !== authUid) fail("failed-precondition", "Histórico de caixa com proprietário conflitante.");
       union.set(doc.id, box);
     }
-    return [...union.values()].filter(box => box.excluido !== true).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
+    return [...union.values()].filter(box => box.excluido !== true && core.normalizarStatus(box.status) !== "ANULADO_DUPLICIDADE").sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
   }
   const boxDay = box => String(box.dataOperacional || box.dataCaixa || "").slice(0,10);
   const isOpen = box => ["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status));
@@ -75,7 +75,9 @@ function criarCicloCaixa({ db, functions }) {
     const legacy = await Promise.all(memberSnap.docs.map(member => reader.get(db.collection("caixas").where("clientePlataformaId","==",who.tenant).where("vendedorId","==",member.id))));
     const union = new Map();
     for (const snap of [teamSnap,...legacy]) for (const doc of snap.docs) union.set(doc.id,{...doc.data(),id:doc.id});
-    return [...union.values()];
+    // O documento duplicado é preservado para auditoria, mas não participa
+    // de saldos herdados, idempotência, reabertura ou fechamento operacional.
+    return [...union.values()].filter(box=>core.normalizarStatus(box.status)!=="ANULADO_DUPLICIDADE");
   }
   async function datasEquipe(data, context) {
     const who = await actor(context), teamId = id(data?.equipeId);

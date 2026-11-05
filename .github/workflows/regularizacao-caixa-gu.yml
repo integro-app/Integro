@@ -1,0 +1,39 @@
+name: Regularizacao auditada de caixas - vendedor gu
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/regularizar-caixa-duplicado-gu.cjs"
+      - ".github/workflows/regularizacao-caixa-gu.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: integro-regularizacao-caixas-gu
+  cancel-in-progress: false
+
+jobs:
+  conferir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - run: npm run verify
+      - name: Autenticar no Firebase
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - name: Verificar saldos, vinculos e ledger antes da regularizacao
+        env:
+          DIAGNOSTIC_EMAIL: gu@ar.com
+          APLICAR_REGULARIZACAO: "NAO"
+        run: node scripts/regularizar-caixa-duplicado-gu.cjs
