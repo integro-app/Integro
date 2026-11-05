@@ -62,3 +62,15 @@ test('histórico de solicitações e ledger usa paginação completa por tenant'
   assert.match(moduleJs, /["solicitacoes","lancamentos_financeiros"][sS]*paginate:true/);
   assert.match(moduleJs, /pageSize:Math.min(limit,500)/);
 });
+
+
+test('criação direta mantém operacaoId estável e bloqueia duplo envio', () => {
+  assert.match(moduleJs, /newOperationId/);
+  assert.match(moduleJs, /crypto\?\.randomUUID\?\.\(\)/);
+  assert.match(moduleJs, /const opBase=state\.newOperationId/);
+  assert.match(moduleJs, /lock=\`create:\$\{op\}\`/);
+  assert.match(moduleJs, /state\.locks\.has\(lock\)/);
+  assert.match(moduleJs, /operacaoId:op/);
+  assert.match(moduleJs, /origemId:op/);
+  assert.match(moduleJs, /finally\{state\.locks\.delete\(lock\);\}/);
+});
