@@ -59,6 +59,18 @@ async function main() {
   console.log("Caixas vinculados encontrados (IDs únicos):",todos.length);
   const abertos=todos.filter(b=>["ABERTO","REABERTO"].includes(String(b.status||"").toUpperCase())&&b.excluido!==true);
   console.log("Documentos com status ABERTO/REABERTO:",abertos.length);
+  const anulados=todos.filter(b=>String(b.status||"").toUpperCase()==="ANULADO_DUPLICIDADE");
+  console.log("Documentos ANULADO_DUPLICIDADE:",anulados.length);
+  const auditoriaId="regularizacao_caixa_duplicado_"+crypto.createHash("sha256").update(tenant+":"+uid+":2026-10-30").digest("hex").slice(0,32);
+  const auditoria=await db.collection("regularizacoes_caixa").doc(auditoriaId).get();
+  const auditada=auditoria.exists && String(auditoria.data().clientePlataformaId)===tenant &&
+    anulados.some(box=>box.id===auditoria.data().caixaDuplicadoId) &&
+    abertos.some(box=>box.id===auditoria.data().caixaPrincipalId);
+  console.log("Auditoria transacional presente e vinculada:",Boolean(auditada));
+  if(abertos.length!==1||anulados.length!==1||!auditada)throw Error("Situação pós-regularização divergente; revisão necessária");
+  const principal=abertos[0];
+  if(Number(principal.saldoInicialCentavos)!==836100 || Number(principal.saldoAtualCentavos)!==1236600)
+    throw Error("Saldo inicial ou atual pós-regularização diverge; revisão necessária");
   const pointer=await db.collection("controle_caixas").doc(tenant+"_"+uid).get();
   const ultimoControle=pointer.exists ? String(pointer.data()?.ultimoCaixaId||"") : "";
   const colecoes=["vendas","pagamentos","solicitacoes","historicoCobrancas",
