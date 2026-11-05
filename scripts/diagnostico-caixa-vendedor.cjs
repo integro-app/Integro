@@ -33,11 +33,19 @@ async function main() {
   const vinculados = await db.collection("usuarios").where("authUid","==",usuarioId).limit(10).get();
   vinculados.docs.forEach(doc=>userDocs.set(doc.id,doc));
   console.log("Cadastros encontrados para o vendedor solicitado:",userDocs.size);
-  if(userDocs.size!==1){console.log("Cadastro não localizado de forma inequívoca; nenhum registro alterado.");return;}
-  const doc=[...userDocs.values()][0],u=doc.data();
-  const tenant=String(u.clientePlataformaId || u.tenantId || u.empresaId || "");
-  const uid=String(u.authUid || ""), userIds=new Set([doc.id,u.id,u.usuarioId,u.vendedorId,uid].filter(Boolean).map(String));
-  if(!tenant||!uid){console.log("Tenant ou UID indisponível; acesso não pode ser conciliado.");return;}
+  if(!userDocs.size){console.log("Nenhum cadastro operacional vinculado ao Auth; nenhum registro alterado.");return;}
+  const docs=[...userDocs.values()];
+  const tenants=[...new Set(docs.map(d=>String(d.data().clientePlataformaId || d.data().tenantId || d.data().empresaId || "")))];
+  const uids=[...new Set(docs.map(d=>String(d.data().authUid || "")))];
+  if(tenants.length!==1||!tenants[0]||uids.length!==1||uids[0]!==usuarioId){
+    console.log("Vínculos de tenant ou Auth divergentes entre cadastros; auditoria interrompida com segurança.");
+    return;
+  }
+  const doc=docs.find(d=>d.id===usuarioId)||docs[0], u=doc.data();
+  const tenant=tenants[0], uid=usuarioId;
+  const userIds=new Set(docs.flatMap(d=>[d.id,d.data().id,d.data().usuarioId,d.data().vendedorId]).concat([uid]).filter(Boolean).map(String));
+  console.log("Cadastros ligados ao mesmo UID e tenant:",docs.length,"documento canônico presente:",docs.some(d=>d.id===uid));
+  console.log("Identificadores de cadastro vinculados (quantidade):",userIds.size);
   const queries=[...userIds].map(x=>["vendedorId",x]);
   queries.push(["vendedorAuthUid",uid],["vendedorUid",uid],...([...userIds].map(x=>["usuarioId",x])));
   const caixas=new Map();
