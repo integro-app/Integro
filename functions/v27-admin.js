@@ -123,20 +123,73 @@ function criarAdministracaoV27({ admin, functions, db }) {
     };
   }
 
+  // Fonte única de autorização do caixa: a mesma verificação é usada na
+  // criação e na retomada da sessão. Exibir ABERTO em uma tela administrativa
+  // não autoriza operação se o documento estiver inativo ou vinculado a outro UID.
   async function exigirCaixaVendedor(actor, uid) {
-    if (role(actor) !== "vendedor") return;
-    const consulta = db.collection("caixas").where("clientePlataformaId", "==", tenant(actor))
-      .where("vendedorAuthUid", "==", uid).where("status", "in", ["ABERTO", "REABERTO", "aberto", "reaberto"]).limit(1);
-    let pagina = consulta;
-    while (true) {
-      const snap = await pagina.get();
-      const doc = snap.docs[0];
-      if (!doc) break;
-      const caixa = doc.data();
-      if (tenant(caixa) === tenant(actor) && text(caixa.vendedorAuthUid) === uid &&
-          ["ABERTO", "REABERTO"].includes(upper(caixa.status)) && caixa.ativo !== false && caixa.excluido !== true) return;
-      pagina = consulta.startAfter(doc);
+    if (role(actor) !== "vendedor") return null;
+    const tenantId = tenant(actor);
+    if (!uid || !tenantId || text(actor.authUid) !== uid)
+      error("permission-denied", "Identidade do vendedor ou empresa não confirmada.");
+
+    const statusAbertos = ["ABERTO", "REABERTO", "aberto", "reaberto"];
+    const consultas = [["vendedorAuthUid", uid]];
+    const aliases = [...new Set([actor.id, actor.usuarioId, actor.vendedorId].map(text).filter(Boolean))];
+    aliases.forEach(id => consultas.push(["vendedorId", id]));
+    const encontrados = new Map();
+
+    for (const [campo, valor] of consultas) {
+      const base = db.collection("caixas").where("clientePlataformaId", "==", tenantId)
+        .where(campo, "==", valor);
+      let docs = [];
+      try {
+        const snap = await base.where("status", "in", statusAbertos).limit(30).get();
+        docs = snap.docs || [];
+        if (docs.length === 30)
+          error("failed-precondition", "Há caixas abertos demais para conferir o acesso.", { code: "CAIXAS_MULTIPLOS" });
+      } catch (erro) {
+        if (erro?.details?.code === "CAIXAS_MULTIPLOS") throw erro;
+        // Índices legados podem não admitir o filtro por status. Nunca
+        // interpretar uma falha de consulta como caixa fechado.
+        try {
+          let pagina = base.limit(200), paginaNumero = 0;
+          while (true) {
+            const snap = await pagina.get();
+            const lote = snap.docs || [];
+            docs.push(...lote.filter(doc => statusAbertos.includes(text(doc.data()?.status))));
+            if (lote.length < 200) break;
+            if (++paginaNumero >= 20)
+              error("unavailable", "Consulta de caixas excedeu o limite de segurança.");
+            pagina = base.startAfter(lote[lote.length - 1]).limit(200);
+          }
+        } catch (falha) {
+          if (falha?.code === "unavailable") throw falha;
+          error("unavailable", "Não foi possível confirmar o caixa no servidor. Tente novamente.");
+        }
+      }
+      docs.forEach(doc => encontrados.set(doc.id, { ...doc.data(), id: doc.id }));
     }
+
+    const abertos = [...encontrados.values()].filter(caixa =>
+      tenant(caixa) === tenantId && ["ABERTO", "REABERTO"].includes(upper(caixa.status)) &&
+      caixa.excluido !== true);
+    const acessiveis = abertos.filter(caixa => {
+      if (caixa.ativo === false) return false;
+      const uidPrincipal = text(caixa.vendedorAuthUid);
+      const uidLegado = text(caixa.vendedorUid);
+      if ((uidPrincipal && uidPrincipal !== uid) || (uidLegado && uidLegado !== uid)) return false;
+      if (uidPrincipal || uidLegado) return true;
+      return aliases.includes(text(caixa.vendedorId));
+    });
+
+    if (acessiveis.length > 1)
+      error("failed-precondition", "Há mais de um caixa aberto para este vendedor. Solicite regularização ao supervisor.", { code: "CAIXAS_MULTIPLOS" });
+    if (acessiveis.length === 1) return { caixaId: acessiveis[0].id };
+
+    if (abertos.some(caixa => caixa.ativo === false))
+      error("failed-precondition", "Existe caixa com status aberto, mas inativo. Solicite conferência ao supervisor.", { code: "CAIXA_INATIVO" });
+    if (abertos.length)
+      error("failed-precondition", "Existe caixa aberto com vínculo de usuário inconsistente. Solicite conferência ao supervisor.", { code: "CAIXA_VINCULO_INCONSISTENTE" });
     error("failed-precondition", "Caixa fechado. Solicite a abertura ou reabertura ao supervisor para entrar no sistema.", { code: "CAIXA_FECHADO" });
   }
 
@@ -186,7 +239,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const uid = context.auth.uid;
     const tenantId = tenant(actor);
     if (!tenantId && !["master_global", "usuario_integro"].includes(lower(actor.tipoUsuario))) error("failed-precondition", "Empresa não identificada.");
-    const [, config] = await Promise.all([exigirCaixaVendedor(actor, uid), configForTenant(tenantId)]);
+    const [caixaAcesso, config] = await Promise.all([exigirCaixaVendedor(actor, uid), configForTenant(tenantId)]);
     const inactivity = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 30), 720));
     if (Number(actor.tentativasLoginFalhas || 0) > 0) {
       await db.collection("usuarios").doc(actor.id || uid).set({ tentativasLoginFalhas:0, ultimaAutenticacaoValidaEm:serverTimestamp() }, { merge:true });
@@ -237,7 +290,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
         atualizadoEm: serverTimestamp()
       }, { merge: true });
     });
-    return { ok: true, customToken, sessionId, inactivityMinutes: inactivity, expiresAtMs, substituiuSessaoAnterior: Boolean(data?.forceReplace) };
+    return { ok: true, customToken, sessionId, caixaId: caixaAcesso?.caixaId || null, inactivityMinutes: inactivity, expiresAtMs, substituiuSessaoAnterior: Boolean(data?.forceReplace) };
   }
 
   async function validarSessao(data, context) {
@@ -246,8 +299,8 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const sessionId = text(data?.sessionId);
     if (context.auth.token?.integroSessionId !== sessionId) error("permission-denied", "Sessão não vinculada ao token.");
     const ref = db.collection("sessoes_usuarios").doc(uid);
-    await exigirCaixaVendedor(actor, uid);
-    return db.runTransaction(async tx => {
+    const caixaAcesso = await exigirCaixaVendedor(actor, uid);
+    const sessao = await db.runTransaction(async tx => {
       await currentActor(tx, actor, uid);
       const snap = await tx.get(ref);
       if (!snap.exists) error("failed-precondition", "Sessão não registrada.", { code: "SESSION_MISSING" });
@@ -262,6 +315,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
       tx.set(ref, { ultimaAtividadeEmTexto: new Date(now).toISOString(), expiresAtMs, atualizadoEm: serverTimestamp() }, { merge: true });
       return { ok: true, expiresAtMs, inactivityMinutes: inactivity };
     });
+    return { ...sessao, caixaId: caixaAcesso?.caixaId || null };
   }
 
   async function encerrarSessao(data, context) {
