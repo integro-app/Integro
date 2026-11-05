@@ -148,7 +148,7 @@
   }
 
   function sessionConfig(config = {}) {
-    const minutes = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 15), 720));
+    const minutes = Math.max(5, Math.min(Number(config?.seguranca?.sessaoInatividadeMinutos || config?.operacao?.sessaoMinutos || 30), 720));
     return {
       singleSession: config?.seguranca?.sessaoUnica !== false,
       inactivityMinutes: minutes,
