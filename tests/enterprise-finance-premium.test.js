@@ -9,7 +9,7 @@ const read = p => fs.readFileSync(path.join(root, p), 'utf8');
 test('v27 carrega a camada premium pelo bootstrap financeiro', () => {
   const loader = read('js/v27-bootstrap.js');
   assert.match(loader, /controle-financeiro-premium\.js/);
-  assert.match(loader, /20261104-caixa-retry-pagamento-v2/);
+  assert.match(loader, /20261105-relatorios-auditoria-v1/);
   assert.match(loader, /IntegroControleFinanceiroPremium/);
 });
 
