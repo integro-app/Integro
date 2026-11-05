@@ -59,6 +59,10 @@ async function main() {
   console.log("Caixas vinculados encontrados (IDs únicos):",todos.length);
   const abertos=todos.filter(b=>["ABERTO","REABERTO"].includes(String(b.status||"").toUpperCase())&&b.excluido!==true);
   console.log("Documentos com status ABERTO/REABERTO:",abertos.length);
+  const pointer=await db.collection("controle_caixas").doc(tenant+"_"+uid).get();
+  const ultimoControle=pointer.exists ? String(pointer.data()?.ultimoCaixaId||"") : "";
+  const colecoes=["vendas","pagamentos","solicitacoes","historicoCobrancas",
+    "lancamentos_financeiros","fechamentos_caixa","reaberturas_caixa","logs"];
   for(const box of abertos) {
     const data=String(box.dataOperacional || box.dataCaixa || "").slice(0,10) || "(sem data)";
     const status=String(box.status||"").toUpperCase();
@@ -68,7 +72,25 @@ async function main() {
     const uidConfere=(!principal||principal===uid)&&(!legado||legado===uid);
     const identidade=Boolean(principal===uid || legado===uid || userIds.has(idDono));
     const elegivel=uidConfere && identidade && box.ativo!==false;
-    console.log(JSON.stringify({documento:digest(box.id),data,status,ativo:box.ativo!==false,uidPrincipalConfere:!principal||principal===uid,uidLegadoConfere:!legado||legado===uid,vendedorIdVinculado:userIds.has(idDono),equipeIgual:String(box.equipeId||"")===String(u.equipeId||""),elegivelLogin:elegivel}));
+    const vinculos={};
+    for(const colecao of colecoes) {
+      try {
+        const lista=await consultar(db,colecao,"caixaId",box.id,tenant);
+        vinculos[colecao]=lista.length;
+      } catch(err) {
+        vinculos[colecao]="consulta-indisponivel";
+      }
+    }
+    const canonical=box.id==="caixa_"+tenant+"_"+uid+"_"+data ||
+      [...userIds].some(userId=>box.id==="caixa_"+tenant+"_"+userId+"_"+data);
+    const atualizada=box.atualizadoEm?.toDate?.()?.toISOString?.() ||
+      String(box.atualizadoEmTexto||"");
+    console.log(JSON.stringify({documento:digest(box.id),data,status,ativo:box.ativo!==false,
+      uidPrincipalConfere:!principal||principal===uid,uidLegadoConfere:!legado||legado===uid,
+      vendedorIdVinculado:userIds.has(idDono),equipeIgual:String(box.equipeId||"")===String(u.equipeId||""),
+      elegivelLogin:elegivel,caixaIdDeterministico:canonical,referenciadoControleCaixas:ultimoControle===box.id,
+      saldoInicialCentavos:Number(box.saldoInicialCentavos||0),saldoAtualCentavos:Number(box.saldoAtualCentavos||0),
+      ultimaAtualizacao:atualizada,vinculos}));
   }
   const dias={};
   for(const b of abertos) {const d=String(b.dataOperacional||b.dataCaixa||"").slice(0,10)||"sem-data";dias[d]=(dias[d]||0)+1;}
