@@ -116,3 +116,65 @@ test("perfil unificado executa consultas paralelas e vincula pagamentos ao caixa
   assert.match(source, /await Promise\.all\(\[/);
   assert.doesNotMatch(source, /const clientes = await carregarClientesPorPerfil\(\)/);
 });
+
+
+test("vendedor: badge e menu não fazem escrita redundante durante verificações periódicas", () => {
+  const vm = require("node:vm");
+  const vendedor = ler("vendedor.html");
+  function trecho(inicio, fim) {
+    const pos = vendedor.indexOf(inicio);
+    assert.ok(pos >= 0, "Função de início ausente: " + inicio);
+    const end = vendedor.indexOf(fim, pos + inicio.length);
+    assert.ok(end > pos, "Limite de função ausente: " + fim);
+    return vendedor.slice(pos, end);
+  }
+
+  let escritasTexto = 0, escritasExibicao = 0;
+  let textoBadge = "", exibicaoBadge = "";
+  const badgeMobile = {
+    get innerText() { return textoBadge; },
+    set innerText(valor) { escritasTexto++; textoBadge = String(valor); },
+    style: {
+      get display() { return exibicaoBadge; },
+      set display(valor) { escritasExibicao++; exibicaoBadge = valor; }
+    }
+  };
+  const badgeMenu = { innerText: "3" };
+  const badge = {
+    byId: id => ({ badgeNotificacoesMobile: badgeMobile, badgeNotificacoes: badgeMenu })[id] || null
+  };
+  vm.runInNewContext(trecho("  function atualizarBadgeMobile() {", "\n  function garantirHeaderDesktopOperacao()"), badge);
+  badge.atualizarBadgeMobile();
+  assert.equal(textoBadge, "3");
+  assert.equal(exibicaoBadge, "inline-flex");
+  badge.atualizarBadgeMobile();
+  assert.equal(escritasTexto, 1, "sem alteração de dados, badge não deve reescrever o texto");
+  assert.equal(escritasExibicao, 1, "sem alteração de dados, badge não deve reescrever estilo");
+  badgeMenu.innerText = "0";
+  badge.atualizarBadgeMobile();
+  assert.equal(textoBadge, "0");
+  assert.equal(exibicaoBadge, "none");
+  assert.equal(escritasTexto, 2);
+  assert.equal(escritasExibicao, 2);
+
+  let menuFechado = false, alteracoesMenu = 0, exibicaoMenu = "";
+  const menu = {
+    style: {
+      get display() { return exibicaoMenu; },
+      set display(valor) { alteracoesMenu++; exibicaoMenu = valor; }
+    }
+  };
+  const contextoMenu = {
+    byId: id => id === "desktopMenuToggleIntegro" ? menu : null,
+    document: { body: { classList: { contains: classe => classe === "sidebar-desktop-fechada" && menuFechado } } }
+  };
+  vm.runInNewContext(trecho("  function garantirMenuToggleOcultoQuandoAberto() {", "\n  function aplicarHeaderLimpo()"), contextoMenu);
+  contextoMenu.garantirMenuToggleOcultoQuandoAberto();
+  assert.equal(exibicaoMenu, "none");
+  contextoMenu.garantirMenuToggleOcultoQuandoAberto();
+  assert.equal(alteracoesMenu, 1, "verificação repetida não deve alterar DOM");
+  menuFechado = true;
+  contextoMenu.garantirMenuToggleOcultoQuandoAberto();
+  assert.equal(exibicaoMenu, "inline-flex");
+  assert.equal(alteracoesMenu, 2, "mudança real deve atualizar o menu");
+});
