@@ -14144,23 +14144,22 @@ async function verificarCaixaAbertoDiaAnterior() {
       `;
   };
 
+  function associarCliqueAjustes11(elemento) {
+    if (!elemento || elemento.dataset.integroAjustes11ClickBound === "true") return;
+    elemento.addEventListener("click", function () {
+      setTimeout(garantirMenuToggleOcultoQuandoAberto, 0);
+    });
+    elemento.dataset.integroAjustes11ClickBound = "true";
+  }
+
   function inicializarAjustes11Validados() {
     garantirOrdenacaoNoFiltro();
     garantirMenuToggleOcultoQuandoAberto();
     aplicarHeaderLimpo();
 
-    const overlay = byId("overlay");
-    if (overlay) {
-      overlay.addEventListener("click", function () {
-        setTimeout(garantirMenuToggleOcultoQuandoAberto, 0);
-      });
-    }
-
-    document.querySelectorAll(".hamburger, #desktopMenuToggleIntegro").forEach(btn => {
-      btn.addEventListener("click", function () {
-        setTimeout(garantirMenuToggleOcultoQuandoAberto, 0);
-      });
-    });
+    // Inicializações legadas agendadas não devem acumular listeners em cada retry.
+    associarCliqueAjustes11(byId("overlay"));
+    document.querySelectorAll(".hamburger, #desktopMenuToggleIntegro").forEach(associarCliqueAjustes11);
 
     try { if (typeof window.renderCobrancas === "function") window.renderCobrancas(); } catch (e) {}
     try { if (typeof window.renderVendasDia === "function") window.renderVendasDia(); } catch (e) {}
