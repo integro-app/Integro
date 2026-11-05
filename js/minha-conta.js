@@ -7,6 +7,7 @@
   function acesso() { return global.IntegroAcesso?.acessoUsuario?.(usuario()) || {}; }
   function uid() { return String(global.firebase?.auth?.()?.currentUser?.uid || usuario().authUid || usuario().uid || ""); }
   function tenant() { return String(usuario().clientePlataformaId || acesso().tenantId || ""); }
+  function usuarioDocId() { return String(usuario().id || usuario().usuarioId || uid() || ""); }
   function esc(valor) { return String(valor ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
   function rotuloPerfil(valor) { return String(valor || "Usuário").replace(/_/g, " ").replace(/\b\w/g, letra => letra.toUpperCase()); }
   function equipeTexto(dados = {}) {
@@ -125,9 +126,13 @@
       const telefone = String(document.getElementById("minhaContaTelefone")?.value || "").trim();
       const file = document.getElementById("minhaContaFoto")?.files?.[0] || null;
       const fotoUrl = file ? await uploadPhoto(file) : "";
-      const patch = { telefone, atualizadoEm: global.firebase.firestore.FieldValue.serverTimestamp(), atualizadoEmTexto: new Date().toISOString() };
+      const authId = uid();
+      const docId = usuarioDocId();
+      const tenantId = tenant();
+      if (!authId || !docId || !tenantId) throw new Error("Não foi possível identificar seu cadastro operacional.");
+      const patch = { telefone, atualizadoEm: global.firebase.firestore.FieldValue.serverTimestamp() };
       if (fotoUrl) patch.fotoUrl = fotoUrl;
-      await global.db.collection("usuarios").doc(uid()).set(patch, { merge: true });
+      await global.db.collection("usuarios").doc(docId).update(patch);
       await atualizar();
       notify("Perfil atualizado.", "ok");
     } catch (erro) { console.error("[ÍNTEGRO Minha Conta]", erro); notify(erro.message || "Não foi possível salvar o perfil.", "erro"); }
