@@ -178,3 +178,45 @@ test("vendedor: badge e menu não fazem escrita redundante durante verificaçõe
   assert.equal(exibicaoMenu, "inline-flex");
   assert.equal(alteracoesMenu, 2, "mudança real deve atualizar o menu");
 });
+
+
+test("vendedor: retries de inicialização não acumulam listeners nos botões do menu", () => {
+  const vm = require("node:vm");
+  const vendedor = ler("vendedor.html");
+  const inicio = vendedor.indexOf("  function associarCliqueAjustes11(elemento) {");
+  const fim = vendedor.indexOf("\n  if (document.readyState === \"loading\")", inicio);
+  assert.ok(inicio > 0 && fim > inicio, "bloco dos ajustes de menu precisa estar disponível");
+
+  let registrados = 0, renderizacoes = 0;
+  const elemento = () => ({
+    dataset: {},
+    addEventListener(nome) {
+      assert.equal(nome, "click");
+      registrados++;
+    }
+  });
+  const overlay = elemento(), hamburger = elemento(), desktop = elemento();
+  const contexto = {
+    byId: id => id === "overlay" ? overlay : null,
+    document: { querySelectorAll: () => [hamburger, desktop] },
+    garantirOrdenacaoNoFiltro() {},
+    garantirMenuToggleOcultoQuandoAberto() {},
+    aplicarHeaderLimpo() {},
+    window: {
+      renderCobrancas() { renderizacoes++; },
+      renderVendasDia() { renderizacoes++; }
+    },
+    setTimeout() {}
+  };
+  vm.runInNewContext(vendedor.slice(inicio, fim), contexto);
+  contexto.inicializarAjustes11Validados();
+  contexto.inicializarAjustes11Validados();
+  contexto.inicializarAjustes11Validados();
+  assert.equal(registrados, 3, "cada controle recebe exatamente um listener");
+  assert.equal(renderizacoes, 6, "ações de renderização permanecem disponíveis a cada inicialização");
+
+  const botaoNovo = elemento();
+  contexto.document.querySelectorAll = () => [botaoNovo, desktop];
+  contexto.inicializarAjustes11Validados();
+  assert.equal(registrados, 4, "controle substituído recebe seu próprio listener");
+});
