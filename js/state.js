@@ -309,6 +309,8 @@ const State = {
     this.tenantId = null;
     this.authUid = null;
     this.empresaNome = null;
+    this.limparDados();
+    window.IntegroDataRuntime?.invalidar?.();
     if (window.IntegroOperacional?.limparSessaoLocal) {
       window.IntegroOperacional.limparSessaoLocal({
         usuario: usuarioAnterior,
@@ -339,6 +341,8 @@ const State = {
     this.clientes = [];
     this.vendas = [];
     this.pagamentos = [];
+    this.parcelas = [];
+    this.historicoCobrancas = [];
     this.solicitacoes = [];
     this.lancamentosFinanceiros = [];
     this.logs = [];
