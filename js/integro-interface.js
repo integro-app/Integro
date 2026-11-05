@@ -64,7 +64,8 @@
       else superficie.prepend(barra);
     }
     barra.classList.add("integro-shared-nav");
-    const assinatura = `${permitidos.map(item=>item.id).join("|")}::${ativo}`;
+    // A tela ativa muda sempre; recriar botões só é necessário se as permissões mudarem.
+    const assinatura = permitidos.map(item => item.id).join("|");
     if (barra.dataset.renderSignature !== assinatura) {
       barra.dataset.renderSignature = assinatura;
       barra.innerHTML = permitidos.map(item => htmlBotao(item, ativo)).join("");
@@ -186,11 +187,17 @@
     if (/carteira|pend[eê]n|aprova|aguard|aten[cç][aã]o|saldo em aberto/.test(texto)) return "warning";
     return "neutral";
   }
+  const CLASSES_TOM = ["integro-tone-positive", "integro-tone-negative", "integro-tone-neutral", "integro-tone-warning", "integro-tone-commercial"];
   function padronizarCards() {
     document.querySelectorAll(SELECTOR_CARDS).forEach(card => {
-      card.classList.remove("integro-tone-positive", "integro-tone-negative", "integro-tone-neutral", "integro-tone-warning", "integro-tone-commercial");
-      card.classList.add(`integro-tone-${card.dataset.integroTone || tomCard(card)}`);
-      card.dataset.integroKpiPadronizado = BUILD;
+      // Evita regravar classes dos indicadores a cada mutação da tela.
+      // O tom continua sendo recalculado para acompanhar mudanças de conteúdo.
+      const classe = `integro-tone-${card.dataset.integroTone || tomCard(card)}`;
+      if (!card.classList.contains(classe) || CLASSES_TOM.some(item => item !== classe && card.classList.contains(item))) {
+        card.classList.remove(...CLASSES_TOM);
+        card.classList.add(classe);
+      }
+      if (card.dataset.integroKpiPadronizado !== BUILD) card.dataset.integroKpiPadronizado = BUILD;
     });
   }
 
