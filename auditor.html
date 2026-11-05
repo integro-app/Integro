@@ -232,7 +232,8 @@
         if (inicio || fim) {
           const data = dataOperacionalAuditor(item);
           if (!data || Number.isNaN(data.getTime())) return false;
-          const dia = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).format(data);
+          const partes = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/Sao_Paulo", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(data).filter(p => p.type !== "literal").map(p => [p.type, p.value]));
+          const dia = `${partes.year}-${partes.month}-${partes.day}`;
           if ((inicio && dia < inicio) || (fim && dia > fim)) return false;
         }
         const texto = JSON.stringify(item).toLowerCase();
