@@ -294,7 +294,7 @@ test("botões de Caixas são liberados ao final da ação, mesmo após atualiza�
   const overview=src.slice(src.indexOf("  function render() {"),src.indexOf("  async function query("));
   assert.match(overview,/abrirSelecionados\(\);[\s\S]*finally\{ui\.actionBusy=false;render\(\);\}/,
     "abertura deve redesenhar somente após liberar o estado em andamento");
-  assert.match(overview,/fecharSelecionados\(\);[\s\S]*finally\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/,
+  assert.match(overview,/fecharSelecionados\(\);[\s\S]*finally\s*\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/,
     "fechamento deve redesenhar os botões após concluir");
   const detail=src.slice(src.indexOf("  function renderDetail(host)"),src.indexOf("  function confirmClosure("));
   assert.equal((detail.match(/finally\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/g)||[]).length,2,
