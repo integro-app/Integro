@@ -343,14 +343,23 @@
         return;
       }
       msgAuditor("Carregando auditoria real...");
-      const [logs, usuarios, financeiro, caixas, vendas, indicacoes] = await Promise.all([
+      let colecoes;
+      try {
+        colecoes = await Promise.all([
         consultarColecaoAuditor("logs", "clientePlataformaId", 100),
         consultarColecaoAuditor("usuarios", "clientePlataformaId", 120),
         consultarColecaoAuditor("lancamentos_financeiros", "clientePlataformaId", 120),
         consultarColecaoAuditor("caixas", "clientePlataformaId", 120),
         consultarColecaoAuditor("vendas", "clientePlataformaId", 120),
         consultarColecaoAuditor("indicacoes", "clientePlataformaId", 120)
-      ]);
+        ]);
+      } catch (erro) {
+        console.error("Falha na consulta da auditoria", erro);
+        msgAuditor("Não foi possível carregar a auditoria completa. Confira conexão e permissões.", "err");
+        return;
+      }
+      if (tenant !== tenantAtualAuditor()) return;
+      const [logs, usuarios, financeiro, caixas, vendas, indicacoes] = colecoes;
       AUDITOR.dados = { logs, usuarios, financeiro, caixas, vendas, indicacoes };
       document.getElementById("kpiLogs").textContent = logs.length;
       document.getElementById("kpiUsuarios").textContent = usuarios.length;
