@@ -72,7 +72,7 @@ test("V27 traz configurações padrão aprovadas", () => {
   const config = configService.normalizar({});
   assert.equal(config.versao, 27);
   assert.equal(config.seguranca.sessaoUnica, true);
-  assert.equal(config.seguranca.sessaoInatividadeMinutos, 15);
+  assert.equal(config.seguranca.sessaoInatividadeMinutos, 30);
   assert.equal(config.seguranca.maxTentativasLogin, 5);
   assert.equal(config.notificacoes.retencaoLixeiraDias, 30);
   assert.equal(config.notificacoes.usuarioEscolheTipos, false);
