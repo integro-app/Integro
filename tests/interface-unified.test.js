@@ -286,3 +286,108 @@ test("auditoria ativa pagina tela, consulta histórico completo e exporta CSV pr
   assert.match(auditoria, /\\uFEFF/);
   assert.match(auditoria, /rows\.join\("\\r\\n"\)/);
 });
+
+
+test("evita reconstruir as barras ao alternar entre telas com as mesmas permissões", () => {
+  const vm = require("node:vm");
+  let telaAtiva = "vendas";
+  let barra = null;
+  let renders = 0;
+  let botoes = [];
+
+  function classes(iniciais = []) {
+    const dados = new Set(iniciais);
+    return {
+      add: (...valores) => valores.forEach(valor => dados.add(valor)),
+      remove: (...valores) => valores.forEach(valor => dados.delete(valor)),
+      contains: valor => dados.has(valor),
+      toggle(valor, ativo) {
+        if (ativo) dados.add(valor);
+        else dados.delete(valor);
+      }
+    };
+  }
+
+  const section = {
+    querySelector: () => null,
+    querySelectorAll: () => barra ? [barra] : [],
+    prepend(elemento) { barra = elemento; elemento.parentElement = section; }
+  };
+
+  const doc = {
+    addEventListener() {},
+    querySelector: () => ({ id: telaAtiva }),
+    querySelectorAll: () => [],
+    getElementById: id => id === "vendas" ? section : null,
+    createElement() {
+      const nav = {
+        dataset: {},
+        classList: classes(),
+        setAttribute() {},
+        closest: () => section,
+        querySelectorAll: () => botoes
+      };
+      Object.defineProperty(nav, "innerHTML", {
+        set(html) {
+          renders++;
+          botoes = Array.from(html.matchAll(/data-integro-submodulo="([^"]+)" class="([^"]*)" aria-selected="([^"]+)"/g),
+            match => ({
+              dataset: { integroSubmodulo: match[1] },
+              classList: classes(match[2] ? match[2].split(/\s+/) : []),
+              selected: match[3],
+              setAttribute(nome, valor) { if (nome === "aria-selected") this.selected = valor; },
+              addEventListener() {}
+            }));
+        }
+      });
+      return nav;
+    }
+  };
+  const sandbox = { window: {}, document: doc, console, setTimeout() {}, requestAnimationFrame() {} };
+  vm.runInNewContext(ui, sandbox);
+  const interfaceUi = sandbox.window.IntegroInterface;
+
+  interfaceUi.montarBarrasInternas();
+  assert.equal(renders, 1);
+  assert.equal(botoes.length, 4);
+  assert.equal(botoes.find(botao => botao.dataset.integroSubmodulo === "operacao").selected, "true");
+
+  telaAtiva = "caixas";
+  interfaceUi.montarBarrasInternas();
+  assert.equal(renders, 1, "a mudança de tela não deve recriar botões nem listeners");
+  assert.equal(botoes.find(botao => botao.dataset.integroSubmodulo === "caixas").selected, "true");
+  assert.equal(botoes.find(botao => botao.dataset.integroSubmodulo === "operacao").selected, "false");
+});
+
+test("indicadores não regravam as mesmas classes e acompanham alterações de valor", () => {
+  const vm = require("node:vm");
+  const classes = new Set();
+  let mutacoesClasse = 0;
+  const card = {
+    dataset: {},
+    textContent: "Recebido",
+    classList: {
+      contains: classe => classes.has(classe),
+      remove(...valores) { mutacoesClasse++; valores.forEach(valor => classes.delete(valor)); },
+      add(classe) { mutacoesClasse++; classes.add(classe); }
+    }
+  };
+  const doc = {
+    addEventListener() {},
+    querySelectorAll: () => [card]
+  };
+  const sandbox = { window: {}, document: doc, console };
+  vm.runInNewContext(ui, sandbox);
+  const interfaceUi = sandbox.window.IntegroInterface;
+
+  interfaceUi.padronizarCards();
+  assert.ok(classes.has("integro-tone-positive"));
+  const inicial = mutacoesClasse;
+  interfaceUi.padronizarCards();
+  assert.equal(mutacoesClasse, inicial, "indicador estável não deve regravar classes");
+
+  card.textContent = "Saídas";
+  interfaceUi.padronizarCards();
+  assert.ok(classes.has("integro-tone-negative"), "mudança de conteúdo atualiza o tom");
+  assert.ok(!classes.has("integro-tone-positive"));
+});
