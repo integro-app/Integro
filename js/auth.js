@@ -44,6 +44,11 @@ async function registrarFalhaLoginV27(email) {
   }
 }
 
+function perfilExigeCaixaNoLogin(usuario = {}) {
+  return [usuario.cargoChave, usuario.perfil, usuario.tipoUsuario, usuario.cargoNome, usuario.cargo]
+    .some(valor => String(valor || "").trim().toLowerCase() === "vendedor");
+}
+
 let __integroLoginRedirecionando = false;
 
 function atualizarLoadingLogin(percentual, mensagem) {
@@ -132,7 +137,13 @@ async function login() {
     try {
       const sessao = await sessaoPromise;
       if (!sessao) throw new Error("Serviço de sessão V27 indisponível.");
-      await Promise.all([configuracoesPromise, sessao.start()]);
+      const [, sessaoConfirmada] = await Promise.all([configuracoesPromise, sessao.start()]);
+      // O vendedor não pode abrir o Dashboard até o próprio backend ter
+      // confirmado o caixa do UID e empresa autenticados.
+      if (perfilExigeCaixaNoLogin(usuario) && !sessaoConfirmada?.caixaId) {
+        await sessao.end({ silent: true }).catch(() => {});
+        throw new Error("Não foi possível confirmar o vínculo do caixa do vendedor. Solicite conferência ao supervisor.");
+      }
       atualizarLoadingLogin(92, "Abrindo seu painel...");
     } catch (erroSessao) {
       await auth.signOut().catch(() => {});
@@ -260,10 +271,13 @@ function protegerPagina(tipoObrigatorio = null) {
         sessao?.resume?.()
       ]);
       const retomada = resultadosProtecao[1];
-      if (!retomada) {
+      if (!retomada || (perfilExigeCaixaNoLogin(usuario) && !sessao?.caixaId?.())) {
+        await sessao?.end?.({ silent: true }).catch(() => {});
         await auth.signOut().catch(() => {});
         State.limparSessao();
-        window.location.href = "index.html?motivo=sessao_invalida";
+        window.location.href = "index.html?motivo=" +
+          (!retomada ? "sessao_invalida" : "caixa-fechado") +
+          (!retomada ? "" : "&mensagem=" + encodeURIComponent("O vínculo do caixa do vendedor não foi confirmado no servidor. Solicite conferência ao supervisor."));
         return;
       }
 
