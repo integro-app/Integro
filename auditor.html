@@ -199,14 +199,20 @@
 
     async function consultarColecaoAuditor(nome, campoTenant = "clientePlataformaId", limite = 80) {
       const tenant = tenantAtualAuditor();
-      if (!tenant) return [];
-      try {
-        const snap = await db.collection(nome).where(campoTenant, "==", tenant).limit(limite).get();
-        return snap.docs.map(normalizarItemAuditor);
-      } catch (erro) {
-        console.warn("Falha na consulta de auditoria", nome, erro);
-        return [];
+      if (!tenant) throw new Error("Empresa obrigatória para auditoria.");
+      const registros = [];
+      let ultimo = null;
+      const tamanhoPagina = Math.min(Math.max(limite, 1), 250);
+      while (true) {
+        let consulta = db.collection(nome).where(campoTenant, "==", tenant)
+          .orderBy(firebase.firestore.FieldPath.documentId()).limit(tamanhoPagina);
+        if (ultimo) consulta = consulta.startAfter(ultimo);
+        const pagina = await consulta.get();
+        registros.push(...pagina.docs.map(normalizarItemAuditor));
+        if (pagina.size < tamanhoPagina) break;
+        ultimo = pagina.docs[pagina.docs.length - 1];
       }
+      return registros;
     }
 
     function dataOperacionalAuditor(item) {
