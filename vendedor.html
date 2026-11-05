@@ -12347,9 +12347,13 @@ async function verificarCaixaAbertoDiaAnterior() {
     if (!btn) return;
 
     const fechado = document.body.classList.contains("sidebar-desktop-fechada");
-    btn.innerHTML = fechado ? '<span class="material-symbols-rounded">menu</span>' : '<span class="material-symbols-rounded">close</span>';
-    btn.setAttribute("aria-label", fechado ? "Abrir menu lateral" : "Fechar menu lateral");
-    btn.setAttribute("title", fechado ? "Abrir menu" : "Fechar menu");
+    const icone = fechado ? '<span class="material-symbols-rounded">menu</span>' : '<span class="material-symbols-rounded">close</span>';
+    const ariaLabel = fechado ? "Abrir menu lateral" : "Fechar menu lateral";
+    const titulo = fechado ? "Abrir menu" : "Fechar menu";
+    // Resize e retries não devem recriar o ícone ou atributos sem mudança.
+    if (btn.innerHTML !== icone) btn.innerHTML = icone;
+    if (btn.getAttribute("aria-label") !== ariaLabel) btn.setAttribute("aria-label", ariaLabel);
+    if (btn.getAttribute("title") !== titulo) btn.setAttribute("title", titulo);
   }
 
   function patchToggleSidebarFinal() {
