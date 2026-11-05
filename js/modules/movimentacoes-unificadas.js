@@ -139,7 +139,10 @@
       const docs = await Promise.all((access().equipeIds || []).map(id => database.collection(collection).doc(id).get()));
       return docs.filter(d => d.exists).map(d => ({id:d.id,...d.data()})).filter(item=>txt(item.clientePlataformaId)===t);
     }
-    if (["solicitacoes","lancamentos_financeiros","caixas","usuarios"].includes(collection) && U().queryScope) {
+    if (["solicitacoes","lancamentos_financeiros"].includes(collection) && U().queryScope) {
+      return U().queryScope(collection,{limit,forcar:true,paginate:true,pageSize:Math.min(limit,500)});
+    }
+    if (["caixas","usuarios"].includes(collection) && U().queryScope) {
       return U().queryScope(collection,{limit,forcar:true});
     }
     if (access().perfil === "supervisor" && ["solicitacoes","lancamentos_financeiros","caixas","usuarios"].includes(collection)) {
@@ -310,20 +313,20 @@
     state.locks.add(lock);try{await service().recusarSolicitacaoFinanceiraTransacional({solicitacaoId:id,clientePlataformaId:tenant(),usuario:user(),motivo:reason,permissaoAdministrativa:true,origem:"movimentacoes_unificadas"});closeDrawer();await load(true);render();notify("Solicitação recusada.","ok");}catch(e){console.error(e);notify(e.message||"Não foi possível recusar.","err");}finally{state.locks.delete(lock);}
   }
 
-  function closedBoxes() {
-    return state.boxes.filter(box => ["FECHADO","FECHADA"].includes(up(box.status||box.statusCaixa)) && box.excluido!==true && !state.boxes.some(other => other.excluido!==true && (
-      (["ABERTO","REABERTO"].includes(up(other.status||other.statusCaixa)) && ((box.vendedorId && other.vendedorId===box.vendedorId) || (box.equipeId && other.equipeId===box.equipeId))) ||
-      (box.vendedorId && other.vendedorId===box.vendedorId && String(other.dataOperacional||other.dataCaixa||"")>String(box.dataOperacional||box.dataCaixa||""))
-    )));
+  function openBoxes() {
+    return state.boxes.filter(box =>
+      box.excluido !== true &&
+      ["ABERTO","REABERTO"].includes(up(box.status||box.statusCaixa))
+    );
   }
 
   function openNew(){
     if(!canCreateDirect())return;
-    const activeBoxes=closedBoxes();
-    if(!activeBoxes.length)return notify("Lançamentos administrativos exigem o último caixa fechado e nenhum caixa aberto na equipe ou vendedor.","err");
+    const activeBoxes=openBoxes();
+    if(!activeBoxes.length)return notify("Abra ou reabra um caixa antes de registrar uma movimentação administrativa.","err");
     const cats=kind=>state.categories.filter(c=>{const k=up(c.tipo||c.tipoCategoria||c.categoriaTipo);return kind==="GASTO"?(k.includes("DESP")||k.includes("GAST")):kind==="RETIRADA"?k.includes("RETIR"):k.includes("INGRESS");});
     global.__movuCats=cats;
-    openDrawer("Novo lançamento","Movimentação administrativa em caixa fechado",`<div class="unified-form movu-new-form"><label>Caixa<select id="movuNewBox"><option value="">Selecione</option>${activeBoxes.map(b=>`<option value="${esc(b.id)}">${esc(b.vendedorNome||b.nomeVendedor||b.id)} • ${esc(b.dataOperacional||"")}</option>`).join("")}</select></label><label>Tipo<select id="movuNewType" onchange="IntegroMovimentacoesUnificadas.updateNewCategories()"><option value="">Selecione</option><option>INGRESSO</option><option>GASTO</option><option>RETIRADA</option></select></label><label>Categoria<select id="movuNewCategory"><option value="">Selecione o tipo</option></select></label><label>Valor<input id="movuNewValue" inputmode="decimal" placeholder="0,00"></label><label class="full">Observação<textarea id="movuNewObs" placeholder="Motivo ou observação do lançamento"></textarea></label></div><div class="drawer-actions"><button class="ghost-btn" onclick="IntegroMovimentacoesUnificadas.closeDrawer()">Cancelar</button><button class="primary-btn" onclick="IntegroMovimentacoesUnificadas.createDirect()">Salvar lançamento</button></div>`);
+    openDrawer("Novo lançamento","Movimentação administrativa em caixa aberto ou reaberto",`<div class="unified-form movu-new-form"><label>Caixa<select id="movuNewBox"><option value="">Selecione</option>${activeBoxes.map(b=>`<option value="${esc(b.id)}">${esc(b.vendedorNome||b.nomeVendedor||b.id)} • ${esc(b.dataOperacional||"")}</option>`).join("")}</select></label><label>Tipo<select id="movuNewType" onchange="IntegroMovimentacoesUnificadas.updateNewCategories()"><option value="">Selecione</option><option>INGRESSO</option><option>GASTO</option><option>RETIRADA</option></select></label><label>Categoria<select id="movuNewCategory"><option value="">Selecione o tipo</option></select></label><label>Valor<input id="movuNewValue" inputmode="decimal" placeholder="0,00"></label><label class="full">Observação<textarea id="movuNewObs" placeholder="Motivo ou observação do lançamento"></textarea></label></div><div class="drawer-actions"><button class="ghost-btn" onclick="IntegroMovimentacoesUnificadas.closeDrawer()">Cancelar</button><button class="primary-btn" onclick="IntegroMovimentacoesUnificadas.createDirect()">Salvar lançamento</button></div>`);
   }
 
   function updateNewCategories(){
@@ -333,7 +336,7 @@
   async function createDirect(){
     if(!canCreateDirect())return;
     const box=boxById(document.getElementById("movuNewBox")?.value);const kind=up(document.getElementById("movuNewType")?.value);const catId=txt(document.getElementById("movuNewCategory")?.value);const cat=state.categories.find(c=>txt(c.id)===catId);const value=parseMoney(document.getElementById("movuNewValue")?.value);const obs=txt(document.getElementById("movuNewObs")?.value);
-    if(!box||!closedBoxes().includes(box))return notify("Selecione o último caixa fechado, sem caixas abertos na equipe ou vendedor.","err");if(!["INGRESSO","GASTO","RETIRADA"].includes(kind))return notify("Selecione o tipo.","err");if(!catId)return notify("Selecione uma categoria.","err");if(value<=0)return notify("Informe um valor maior que zero.","err");
+    if(!box||!openBoxes().includes(box))return notify("Selecione um caixa aberto ou reaberto.","err");if(!["INGRESSO","GASTO","RETIRADA"].includes(kind))return notify("Selecione o tipo.","err");if(!catId)return notify("Selecione uma categoria.","err");if(value<=0)return notify("Informe um valor maior que zero.","err");
     const op=`admin_${kind.toLowerCase()}_${box.id}_${Date.now()}`;
     try{await service().criarLancamentoFinanceiroTransacional({clientePlataformaId:tenant(),caixaId:box.id,vendedorId:box.vendedorId||"",vendedorAuthUid:box.vendedorAuthUid||box.vendedorUid||"",equipeId:box.equipeId||"",categoriaId:catId,categoriaNome:txt(cat?.nome||cat?.nomeCategoria||cat?.descricao),categoriaTipo:kind,valorCentavos:value,dataOperacional:box.dataOperacional||new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"}),usuario:user(),tipoLancamento:kind,origemId:op,operacaoId:op,descricao:`${kind} administrativo`,observacao:obs,permissaoAdministrativa:true,metadados:{origemTela:"movimentacoes_unificadas",categoriaId:catId}});closeDrawer();await load(true);state.tab="historico";render();notify("Lançamento registrado e caixa atualizado.","ok");}catch(e){console.error(e);notify(e.message||"Não foi possível registrar o lançamento.","err");}
   }
