@@ -155,7 +155,7 @@ test("botões de abertura e fechamento estão antes da lista, próximos aos indi
   const overview=source.slice(source.indexOf("function render() {"),source.indexOf("async function query("));
   assert.ok(overview.indexOf('<div class="cx-stats">')>=0,"indicadores da supervisão presentes");
   assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-stats">'));
-  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('<div class="cx-table-scroll">'));
+  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('<div class="cx-table-scroll cx-overview-scroll">'));
   assert.match(overview,/id="btnAbrirCaixasSelecionadas"/);
   assert.match(overview,/id="btnFecharCaixasSelecionadas"/);
 });
