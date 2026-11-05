@@ -81,8 +81,24 @@
         ref = ref.where(field, operator || "==", value);
       }
     }
-    const snap = await ref.limit(options.limit || 1000).get();
-    return snap.docs.map(docData).filter(item => item.excluido !== true);
+    if (options.paginate !== true) {
+      const snap = await ref.limit(options.limit || 1000).get();
+      return snap.docs.map(docData).filter(item => item.excluido !== true);
+    }
+    const documentId = global.firebase?.firestore?.FieldPath?.documentId?.();
+    if (!documentId) throw new Error("Paginação Firestore indisponível.");
+    const pageSize = Math.min(Math.max(Number(options.pageSize) || 500, 1), 500);
+    const docs = [];
+    let last = null;
+    while (true) {
+      let pageRef = ref.orderBy(documentId).limit(pageSize);
+      if (last) pageRef = pageRef.startAfter(last);
+      const snap = await pageRef.get();
+      docs.push(...snap.docs);
+      if (snap.size < pageSize) break;
+      last = snap.docs[snap.docs.length - 1];
+    }
+    return docs.map(docData).filter(item => item.excluido !== true);
   }
 
   async function queryScope(collection, options = {}) {
