@@ -272,7 +272,7 @@ test("consulta tenant paginada percorre o histórico completo sem misturar empre
   };
   vm.runInNewContext(source, sandbox);
   const lista = await sandbox.window.IntegroModuloUtils.queryTenant("logs", { paginate: true, pageSize: 2 });
-  assert.deepEqual(lista.map(item => item.id), ["a", "c"]);
+  assert.equal(Array.from(lista, item => item.id).join(","), "a,c");
   assert.equal(orderByCalls, 2);
   assert.equal(startAfterCalls, 1);
 });
