@@ -155,7 +155,7 @@ test("botões de abertura e fechamento estão antes da lista, próximos aos indi
   const overview=source.slice(source.indexOf("function render() {"),source.indexOf("async function query("));
   assert.ok(overview.indexOf('<div class="cx-stats">')>=0,"indicadores da supervisão presentes");
   assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-stats">'));
-  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('<div class="cx-table-scroll">'));
+  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('<div class="cx-table-scroll cx-overview-scroll">'));
   assert.match(overview,/id="btnAbrirCaixasSelecionadas"/);
   assert.match(overview,/id="btnFecharCaixasSelecionadas"/);
 });
@@ -218,4 +218,89 @@ test("supervisão não usa caixa inexistente no servidor para inflar indicador",
   assert.match(source,/Caixas abertos \(confirmados\)/);
   assert.match(source,/verifiedBoxes\.has\(id\(b\)\)/);
   assert.match(source,/avisosDuplicidadePorVendedor\(row,history\)/);
+});
+
+
+test("botão Abrir caixas não é travado pelo status agregado de equipe parcialmente aberta",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function disponibilidadeAcoesEquipes(");
+  const end=source.indexOf("  function render() {",start);
+  assert.ok(start>=0&&end>start);
+  const ctx={
+    text:v=>String(v??"").trim(),
+    openBox:box=>["ABERTO","REABERTO"].includes(String(box.status||"").toUpperCase())&&box.ativo!==false
+  };
+  const helpers=vm.runInNewContext(source.slice(start,end)+
+    ";({disponibilidadeAcoesEquipes,totalFalhasFechamento})",ctx);
+  const entries=[
+    {row:{id:"equipe-mista"},status:"ABERTO",history:[
+      {id:"cx-1",status:"ABERTO",ativo:true,vendedorId:"v-1"},
+      {id:"cx-antigo",status:"FECHADO",ativo:false,vendedorId:"v-2"}
+    ]},
+    {row:{id:"equipe-fechada"},status:"FECHADO",history:[
+      {id:"cx-2",status:"FECHADO",ativo:false,vendedorId:"v-3"}
+    ]}
+  ];
+  const mista=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"master_local");
+  assert.equal(mista.podeAbrir,true,"servidor decide quais vendedores podem abrir; a equipe parcialmente aberta não pode bloquear o botão");
+  assert.equal(mista.podeFechar,true,"caixa aberto na equipe deve permitir conferência de fechamento");
+  const fechada=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-fechada"]),"master_local");
+  assert.equal(fechada.podeAbrir,true);
+  assert.equal(fechada.podeFechar,false);
+  const vazio=helpers.disponibilidadeAcoesEquipes(entries,new Set(),"master_local");
+  assert.equal(vazio.podeAbrir,false);
+  assert.equal(vazio.podeFechar,false);
+  const semPermissao=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"financeiro");
+  assert.equal(semPermissao.podeAbrir,false);
+  assert.equal(semPermissao.podeFechar,false);
+  const ocupado=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"gerente",true);
+  assert.equal(ocupado.podeAbrir,false);
+  assert.equal(ocupado.podeFechar,false);
+  assert.equal(helpers.totalFalhasFechamento({erros:1,bloqueados:2,falhas:[1,2,3]}),3,
+    "erros e bloqueados já estão contabilizados no array falhas");
+  assert.equal(helpers.totalFalhasFechamento({erros:2,bloqueados:1}),3);
+});
+
+test("ações de Caixas dependem da conferência no servidor e calendário não é bloqueado pelo caixa selecionado",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const overview=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
+  const detail=source.slice(source.indexOf("  function renderDetail(host)"),source.indexOf("  function confirmClosure("));
+  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\)/);
+  assert.match(overview,/botaoAbrir\.disabled=!acoes\.podeAbrir/);
+  assert.match(overview,/botaoFechar\.disabled=!acoes\.podeFechar/);
+  assert.match(source,/httpsCallable\('consultarDatasCaixaEquipe'\)/);
+  assert.doesNotMatch(detail,/data-cx-open-date \$\{openBox\(box\)\?'disabled':''\}/);
+  assert.match(detail,/data-cx-open-date title="Abrir calendário/);
+  assert.match(detail,/Calendário de abertura indisponível/);
+});
+
+test("no celular, apenas a tabela de equipes vira cartões; tabela de detalhes preserva colunas",()=>{
+  const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
+  const mobile=css.slice(css.indexOf("@media(max-width:760px){"));
+  assert.match(mobile,/\.cx-overview-scroll tbody\{display:grid/);
+  assert.match(mobile,/\.cx-overview-scroll tr\{display:grid/);
+  assert.doesNotMatch(mobile,/\.cx-table-scroll tr\{display:grid/);
+  assert.match(mobile,/\.cx-details \.cx-table-scroll table\{display:table/);
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/class="cx-table-scroll cx-overview-scroll"/);
+  const firebase=JSON.parse(fs.readFileSync(path.join(root,"firebase.json"),"utf8"));
+  assert.ok(firebase.hosting.headers.some(x=>x.source==="/css/caixas-supervisao.css"));
+});
+
+
+test("botões de Caixas são liberados ao final da ação, mesmo após atualização da tela",()=>{
+  const src=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const overview=src.slice(src.indexOf("  function render() {"),src.indexOf("  async function query("));
+  assert.match(overview,/abrirSelecionados\(\);[\s\S]*finally\{ui\.actionBusy=false;render\(\);\}/,
+    "abertura deve redesenhar somente após liberar o estado em andamento");
+  assert.match(overview,/fecharSelecionados\(\);[\s\S]*finally\s*\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/,
+    "fechamento deve redesenhar os botões após concluir");
+  assert.doesNotThrow(()=>new (require("node:vm").Script)(src),
+    "HTML de botões condicionais precisa manter JavaScript sintaticamente válido");
+  const detail=src.slice(src.indexOf("  function renderDetail(host)"),src.indexOf("  function confirmClosure("));
+  assert.equal((detail.match(/finally\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/g)||[]).length,2,
+    "ações individuais de reabrir e fechar também liberam os botões após consulta ao servidor");
+  assert.match(detail,/data-cx-close \$\{ui\.actionBusy\?'disabled':''\}/);
+  assert.match(detail,/data-cx-reopen \$\{ui\.actionBusy\?'disabled':''\}/);
 });
