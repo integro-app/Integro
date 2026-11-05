@@ -55,5 +55,12 @@ test("loader do master local sempre é encerrado em finally", () => {
 test("movimentações do vendedor usam permissões operacionais válidas no painel unificado", () => {
   assert.match(painel, /movimentacoes:\s*"financeiro\.movimentacoes"/);
   assert.match(painel, /movimentacoes:\s*Object\.freeze\(\[[\s\S]*?"solicitacoes\.criar"[\s\S]*?"caixa\.ver_proprio"/);
-  assert.match(html, /js\/painel-unificado\.js\?v=20260804-movimentacoes4/);
+  assert.match(html, /js\/painel-unificado\.js\?v=20261105-relatorios-route-v1/);
+});
+
+
+test("painel redireciona chamadas legadas de relatorios para o financeiro empresarial", () => {
+  assert.match(painel, /id === "relatorios"/);
+  assert.match(painel, /IntegroNavegacaoUnificada\?\.abrirPorId\?\.\("relatorios"/);
+  assert.match(painel, /Financeiro → Relatórios/);
 });
