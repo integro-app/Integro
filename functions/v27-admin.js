@@ -167,7 +167,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
           error("unavailable", "Não foi possível confirmar o caixa no servidor. Tente novamente.");
         }
       }
-      docs.forEach(doc => encontrados.set(doc.id, { id: doc.id, ...doc.data() }));
+      docs.forEach(doc => encontrados.set(doc.id, { ...doc.data(), id: doc.id }));
     }
 
     const abertos = [...encontrados.values()].filter(caixa =>
