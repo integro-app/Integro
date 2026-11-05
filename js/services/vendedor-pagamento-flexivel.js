@@ -53,17 +53,28 @@
     return registro?.excluido !== true && !["CANCELADO", "CANCELADA", "ESTORNADO", "ESTORNADA"].includes(normalizar(registro.status));
   }
 
-  function pagamentosDaVendaNoCaixa(vendaId, caixa = caixaAtual()) {
+  function pertenceAoCaixaOperacional(registro = {}, caixa = caixaAtual()) {
     const caixaId = texto(caixa?.id || caixa?.caixaId);
-    const dia = dataCaixa(caixa);
+    if (!caixaId) return false;
+    const tenantCaixa = texto(caixa?.clientePlataformaId || caixa?.tenantId || caixa?.empresaId || global.State?.getTenantId?.());
+    const tenantRegistro = texto(registro.clientePlataformaId || registro.tenantId || registro.empresaId);
+    if (tenantCaixa && tenantRegistro && tenantCaixa !== tenantRegistro) return false;
+
+    const idRegistroCaixa = texto(registro.caixaId || registro.idCaixa || registro.caixaID || registro.caixaAtualId);
+    const diaRegistro = texto(registro.dataOperacional || registro.data || registro.dataPagamento).slice(0, 10);
+    const diaAtual = dataCaixa(caixa);
+    if (idRegistroCaixa && idRegistroCaixa !== caixaId) return false;
+    if (diaRegistro && diaAtual && diaRegistro !== diaAtual) return false;
+    // Legado sem caixaId só é conciliável pelo dia operacional. Registro
+    // sem ambos não deve impactar saldo ou correção de um caixa específico.
+    return Boolean(idRegistroCaixa || (diaRegistro && diaAtual && diaRegistro === diaAtual));
+  }
+
+  function pagamentosDaVendaNoCaixa(vendaId, caixa = caixaAtual()) {
     return (global.State?.getPagamentos?.() || global.pagamentosHojeCache || [])
       .filter(pagamentoAtivo)
       .filter(registro => texto(registro.vendaId) === texto(vendaId))
-      .filter(registro => !texto(registro.caixaId) || texto(registro.caixaId) === caixaId)
-      .filter(registro => {
-        const data = texto(registro.dataOperacional || registro.data || registro.dataPagamento).slice(0, 10);
-        return !data || data === dia;
-      });
+      .filter(registro => pertenceAoCaixaOperacional(registro, caixa));
   }
 
   function valorPagamentoCentavos(registro = {}) {
@@ -151,7 +162,7 @@
     const caixaId = texto(caixa.id || caixa.caixaId);
     const agora = new Date().toISOString();
     const pagamentos = [...(global.State?.getPagamentos?.() || global.pagamentosHojeCache || [])];
-    const pertence = registro => texto(registro.vendaId) === vendaId && (!texto(registro.caixaId) || texto(registro.caixaId) === caixaId);
+    const pertence = registro => texto(registro.vendaId) === vendaId && pertenceAoCaixaOperacional(registro, caixa);
     for (let i = 0; i < pagamentos.length; i++) {
       if (pertence(pagamentos[i]) && pagamentoAtivo(pagamentos[i])) {
         pagamentos[i] = { ...pagamentos[i], status: "CANCELADO", cancelado: true, atualizadoEmTexto: agora };
@@ -167,6 +178,7 @@
         vendaId,
         parcelaId: alocacao.parcelaId,
         caixaId,
+        clientePlataformaId: texto(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId || global.State?.getTenantId?.()),
         clienteId: texto(resultado.clienteId || item.clienteId),
         valorCentavos: alocacao.valorCentavos,
         valor: reais(alocacao.valorCentavos),
@@ -265,7 +277,7 @@
     const vendaId = texto(item.vendaId);
     const caixaId = texto(caixa.id || caixa.caixaId);
     const historico = (global.State?.getHistoricoCobrancas?.() || global.historicoCobrancasCache || []).map(registro => {
-      const mesmo = texto(registro.vendaId) === vendaId && (!texto(registro.caixaId) || texto(registro.caixaId) === caixaId);
+      const mesmo = texto(registro.vendaId) === vendaId && pertenceAoCaixaOperacional(registro, caixa);
       if (!mesmo || normalizar(registro.tipo || registro.acao) !== "NAO_PAGAMENTO") return registro;
       return { ...registro, status: "CANCELADO", cancelado: true, atualizadoEmTexto: new Date().toISOString() };
     });
