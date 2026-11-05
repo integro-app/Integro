@@ -51,16 +51,16 @@ test('interface administrativa de movimentações possui tabela e responsividade
 
 
 test('lançamento administrativo oferece somente caixas realmente operáveis', () => {
-  assert.match(moduleJs, /function openBoxes()/);
-  assert.match(moduleJs, /["ABERTO","REABERTO"].includes/);
-  assert.match(moduleJs, /const activeBoxes=openBoxes()/);
-  assert.match(moduleJs, /openBoxes().includes(box)/);
+  assert.match(moduleJs, /function openBoxes\(\)/);
+  assert.match(moduleJs, /\["ABERTO","REABERTO"\]\.includes/);
+  assert.match(moduleJs, /const activeBoxes=openBoxes\(\)/);
+  assert.match(moduleJs, /openBoxes\(\)\.includes\(box\)/);
   assert.doesNotMatch(moduleJs, /Movimentação administrativa em caixa fechado/);
 });
 
 test('histórico de solicitações e ledger usa paginação completa por tenant', () => {
-  assert.match(moduleJs, /["solicitacoes","lancamentos_financeiros"][sS]*paginate:true/);
-  assert.match(moduleJs, /pageSize:Math.min(limit,500)/);
+  assert.match(moduleJs, /\["solicitacoes","lancamentos_financeiros"\][\s\S]*paginate:true/);
+  assert.match(moduleJs, /pageSize:Math\.min\(limit,500\)/);
 });
 
 
