@@ -88,7 +88,7 @@
   const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',selected:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',selected:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear(); }
+    if (key !== ui.context) { Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',selected:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   function rows() {
     if (!allowed()) return [];
@@ -98,6 +98,8 @@
   // diretamente do Firestore prevalecem sobre State, CX e resumos de equipe.
   // O cache fica isolado por contexto (empresa + usuário) e nunca grava no banco.
   const verifiedBoxes = new Map();
+  const caixasInexistentesServidor = new Set();
+  const caixasFalhaConferencia = new Set();
   function stampMillis(value) {
     if (!value) return 0;
     if (typeof value.toMillis === 'function') return value.toMillis();
@@ -115,6 +117,8 @@
     // Uma consulta atrasada nunca pode reabrir visualmente um caixa já fechado.
     if (old && oldTime && (!newTime || newTime < oldTime)) return old;
     verifiedBoxes.set(key,box);
+    caixasInexistentesServidor.delete(key);
+    caixasFalhaConferencia.delete(key);
     return box;
   }
   function teamBoxes(row, extra = []) {
@@ -125,7 +129,7 @@
     // unique() usa Map e preserva o ÚLTIMO registro: por isso a leitura
     // comprovada pelo servidor precisa ficar por último, nunca primeiro.
     const all = unique([...(global.CX?.caixas || []),...(S()?.getCaixas?.() || []),...(row.caixas || []),...verifiedBoxes.values()]);
-    return all.filter(b => tenantOf(b) === tenant() && b.excluido !== true && (b.equipeId ? text(b.equipeId) === text(row.id) : [...identities(b)].some(v=>sellerIds.has(v))))
+    return all.filter(b => !caixasInexistentesServidor.has(id(b)) && tenantOf(b) === tenant() && b.excluido !== true && (b.equipeId ? text(b.equipeId) === text(row.id) : [...identities(b)].some(v=>sellerIds.has(v))))
       .sort((a,b) => boxDay(b).localeCompare(boxDay(a)) || id(b).localeCompare(id(a)));
   }
   function cachedData() { return {sales:global.CX?.vendas || S()?.getVendas?.() || [],payments:global.CX?.pagamentos || S()?.getPagamentos?.() || [],moves:global.CX?.solicitacoes || S()?.getSolicitacoes?.() || []}; }
@@ -466,7 +470,13 @@
     if(overviewLoads>=2||pending.has(key)||overview.get(key)?.fingerprint===fingerprint)return;
     pending.add(key);overviewLoads++;
     try {const result=await fetchBox(box,true);if(ctx!==ui.context)return;overview.set(key,{...result,fingerprint});}
-    catch(error){if(ctx===ui.context)overview.set(key,{fingerprint,error:error.message});}
+    catch(error){
+      if(ctx===ui.context) {
+        if(/Caixa não encontrado\./i.test(text(error.message))) caixasInexistentesServidor.add(key);
+        else caixasFalhaConferencia.add(key);
+        overview.set(key,{fingerprint,error:error.message});
+      }
+    }
     finally {pending.delete(key);overviewLoads--;if(ctx===ui.context&&!ui.detail)render();}
   }
   async function selectBox(boxId, strict = false) {
