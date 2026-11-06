@@ -155,7 +155,8 @@
       const temporario = String(conversa.historicoModo || "COMUM").toUpperCase() === "TEMPORARIO";
       return { status: "GRUPO", rotulo: temporario ? "Grupo · histórico temporário (24 h)" : "Grupo · histórico comum" };
     }
-    if (String(conversa?.tipo || "").toUpperCase() === "EQUIPE") return { status: "GRUPO", rotulo: "Conversa da equipe" };
+    if (["EQUIPE","GRUPO"].includes(String(conversa?.tipo || "").toUpperCase()))
+      return { status: "GRUPO", rotulo: String(conversa?.tipo || "").toUpperCase() === "GRUPO" ? "Grupo de conversa" : "Conversa da equipe" };
     const status = presencaDoUsuario(outroParticipanteId(conversa));
     return { status, rotulo: status === "ONLINE" ? "Online" : status === "AUSENTE" ? "Ausente" : "Offline" };
   }
