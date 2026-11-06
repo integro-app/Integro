@@ -5,6 +5,7 @@
 
   let filter = "TODAS";
   let selected = new Set();
+  let selectionScope = "";
   let mounted = false;
   let savedScrollTop = 0;
   let previousFocus = null;
@@ -69,9 +70,24 @@
     ["badgeNotificacoes","notificationCount","contadorNotificacoes","badgeNotificacoesMenu"].forEach(id => { const el = document.getElementById(id); if (!el) return; el.textContent = count > 99 ? "99+" : String(count); el.hidden = count === 0; });
   }
 
+  function syncSelectionScope(state) {
+    const service = global.IntegroNotifications;
+    const scope = `${service?.authUid || ""}:${service?.tenantId || ""}`;
+    if (scope !== selectionScope) {
+      selectionScope = scope;
+      selected.clear();
+      filter = "TODAS";
+      savedScrollTop = 0;
+    }
+    // Não permitir ações em lote sobre IDs de outra empresa ou já removidos.
+    const allowed = new Set([...(state.items || []), ...(state.trashItems || [])].map(item => item.id));
+    for (const id of selected) if (!allowed.has(id)) selected.delete(id);
+  }
+
   function render() {
     ensureDom();
     const state = snapshot();
+    syncSelectionScope(state);
     renderBadges(state.unreadCount);
     const root = document.getElementById("integroNotificationCenter");
     root.querySelectorAll("[data-filter]").forEach(button => button.classList.toggle("active", button.dataset.filter === filter));
