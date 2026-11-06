@@ -365,10 +365,6 @@
     return null;
   }
 
-  function idNotificacaoIndicacao(partes = []) {
-    return partes.map(parte=>texto(parte).replace(/[^a-zA-Z0-9_-]/g,"_")).filter(Boolean).join("_").slice(0,240);
-  }
-
   async function registrarNotificacaoIndicacao(db, dados = {}) {
     const tipo = texto(dados.tipo || "INDICACAO_ATUALIZADA").toUpperCase();
     const ehNovoLead = tipo === "NOVO_LEAD";
@@ -380,56 +376,31 @@
     if (ehNovoLead && vendedorAuthUid !== destinatarioAuthUid) {
       throw new Error("Destinatário da notificação do lead diverge do vendedor atribuído.");
     }
-    if (window.IntegroNotifications?.emit) {
-      await window.IntegroNotifications.emit({
-        ...dados,
-        destinatarioAuthUid,
-        destinatarioUsuarioId: vendedorDocumentoId,
-        categoria: "CLIENTES",
-        origemModulo: "CLIENTES",
-        origemEvento: dados.origemEvento || dados.tipo || "INDICACAO_ATUALIZADA",
-        origemTipo: "INDICACAO",
-        origemId: dados.indicacaoId,
-        entidadeTipo: "LEAD",
-        entidadeId: dados.clienteOperacionalId || "",
-        eventoId: dados.eventoId || dados.atribuicaoId || `${dados.tipo || "INDICACAO"}:${dados.indicacaoId}:${dados.criadoEmTexto || dados.dataAtribuicao || "evento"}`,
-        rota: { tela:"clientes", aba:"leads", indicacaoId:dados.indicacaoId, entidadeId:dados.clienteOperacionalId || "", acao:"ABRIR_DRAWER" }
-      }, { db });
-      return true;
-    }
-    const notificacaoId = idNotificacaoIndicacao(["indicacao",dados.tipo || "atualizada",dados.indicacaoId,destinatarioAuthUid]);
-    await db.collection("notificacoes").doc(notificacaoId).set({
-      clientePlataformaId: dados.clientePlataformaId || "",
-      tipo: dados.tipo || "INDICACAO_ATUALIZADA",
-      titulo: dados.titulo || "Atualização de lead",
-      mensagem: dados.mensagem || "Uma indicação foi atualizada.",
-      indicacaoId: dados.indicacaoId,
-      clienteOperacionalId: dados.clienteOperacionalId || "",
-      origemTela: "indicacoes",
-      statusIndicacao: dados.statusIndicacao || "",
-      // O Auth UID é a única chave operacional de destinatário.
-      usuarioId: destinatarioAuthUid,
-      destinatarioId: destinatarioAuthUid,
+    const evento = {
+      ...dados,
       destinatarioAuthUid,
-      destinatarioTipo: dados.destinatarioTipo || "DIRECIONADA",
-      publico: dados.publico || "",
-      // IDs de vendedor abaixo são apenas metadados/auditoria; não definem destinatário.
-      vendedorId: vendedorDocumentoId || vendedorAuthUid,
-      vendedorDestinoId: vendedorDocumentoId || vendedorAuthUid,
-      vendedorAuthUid,
-      vendedorDocumentoId,
+      destinatarioUsuarioId: vendedorDocumentoId,
+      categoria: "CLIENTES",
+      origemModulo: "CLIENTES",
+      origemEvento: dados.origemEvento || dados.tipo || "INDICACAO_ATUALIZADA",
       origemTipo: "INDICACAO",
       origemId: dados.indicacaoId,
-      acaoTipo: "ABRIR_INDICACAO",
-      criadoPorId: dados.criadoPorAuthUid || dados.criadoPorId || "",
-      criadoPorNome: dados.criadoPorNome || "",
-      lida: false,
-      status: "PENDENTE",
-      ativo: true,
-      criadoEmTexto: window.IntegroOperacional?.dataHoraSP?.() || new Date().toISOString(),
-      criadoEm: serverTimestamp(),
-      atualizadoEm: serverTimestamp()
-    }, { merge: true });
+      entidadeTipo: "LEAD",
+      entidadeId: dados.clienteOperacionalId || "",
+      rota: { tela:"clientes", aba:"leads", indicacaoId:dados.indicacaoId, entidadeId:dados.clienteOperacionalId || "", acao:"ABRIR_DRAWER" }
+    };
+    if (window.IntegroNotifications?.emit) {
+      await window.IntegroNotifications.emit(evento, { db });
+    } else {
+      // O serviço central pode ainda não ter carregado. Nunca voltar à
+      // escrita direta em uma notificação de outro usuário.
+      const funcs = typeof window.firebase?.app === "function"
+        ? window.firebase.app().functions?.("southamerica-east1") : null;
+      if (!funcs?.httpsCallable) throw new Error("Backend seguro de notificações indisponível.");
+      await funcs.httpsCallable("emitirNotificacaoLeadV27")({
+        indicacaoId: texto(dados.indicacaoId), tipo, destinatarioAuthUid
+      });
+    }
     return true;
   }
 
@@ -442,9 +413,8 @@
     const destino = await resolverVendedorCanonico(db, indicacao);
     if (!destino?.authUid || destino.authUid !== authUidAtual) return false;
 
-    const notificacaoId = idNotificacaoIndicacao(["indicacao", "NOVO_LEAD", indicacao.id, destino.authUid]);
-    const existente = await db.collection("notificacoes").doc(notificacaoId).get();
-    if (existente.exists) return false;
+    // O servidor verifica idempotência; a consulta antiga por ID legado
+    // poderia falhar sob as Rules mesmo para uma atribuição válida.
     await registrarNotificacaoIndicacao(db, {
       tipo:"NOVO_LEAD",
       titulo:"Você recebeu um novo lead",
