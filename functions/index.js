@@ -227,6 +227,12 @@ const chatV27 = criarChatV27({ admin, functions, db });
 exports.atualizarEstadoMensagensChatV27 = functions.region("southamerica-east1").https.onCall(chatV27.atualizarEstadoMensagens);
 exports.excluirMensagemChatV27 = functions.region("southamerica-east1").https.onCall(chatV27.excluirMensagem);
 
+const { criarNotificacoesLeadV27 } = require("./v27-lead-notifications");
+const notificacoesLeadV27 = criarNotificacoesLeadV27({ db, functions, admin });
+exports.emitirNotificacaoLeadV27 = functions.region("southamerica-east1").https.onCall(
+  protegerSessao(notificacoesLeadV27.emitir)
+);
+
 const { criarManutencaoV27 } = require("./v27-maintenance");
 const manutencaoV27 = criarManutencaoV27({ admin, functions, db });
 exports.limparNotificacoesLixeiraV27 = manutencaoV27.limparNotificacoesAgendada;
