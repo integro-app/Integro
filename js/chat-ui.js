@@ -144,7 +144,8 @@
   }
   function conversaTitulo(conversa) {
     if (!conversa) return "Chat interno";
-    if (String(conversa.subtipo || "").toUpperCase() === "GRUPO") return conversa.grupoNome || "Grupo";
+    if (String(conversa.subtipo || "").toUpperCase() === "GRUPO" ||
+        String(conversa.tipo || "").toUpperCase() === "GRUPO") return conversa.grupoNome || "Grupo";
     if (String(conversa.tipo || "").toUpperCase() === "EQUIPE") return conversa.grupoNome || `Equipe ${conversa.equipeId || ""}`.trim();
     const outroId = outroParticipanteId(conversa);
     return conversa.participantesNomes?.[outroId] || nomeUsuario(usuarioPorId(outroId)) || "Conversa direta";
