@@ -144,7 +144,8 @@
   }
   function conversaTitulo(conversa) {
     if (!conversa) return "Chat interno";
-    if (String(conversa.subtipo || "").toUpperCase() === "GRUPO") return conversa.grupoNome || "Grupo";
+    if (String(conversa.subtipo || "").toUpperCase() === "GRUPO" ||
+        String(conversa.tipo || "").toUpperCase() === "GRUPO") return conversa.grupoNome || "Grupo";
     if (String(conversa.tipo || "").toUpperCase() === "EQUIPE") return conversa.grupoNome || `Equipe ${conversa.equipeId || ""}`.trim();
     const outroId = outroParticipanteId(conversa);
     return conversa.participantesNomes?.[outroId] || nomeUsuario(usuarioPorId(outroId)) || "Conversa direta";
@@ -155,7 +156,8 @@
       const temporario = String(conversa.historicoModo || "COMUM").toUpperCase() === "TEMPORARIO";
       return { status: "GRUPO", rotulo: temporario ? "Grupo · histórico temporário (24 h)" : "Grupo · histórico comum" };
     }
-    if (String(conversa?.tipo || "").toUpperCase() === "EQUIPE") return { status: "GRUPO", rotulo: "Conversa da equipe" };
+    if (["EQUIPE","GRUPO"].includes(String(conversa?.tipo || "").toUpperCase()))
+      return { status: "GRUPO", rotulo: String(conversa?.tipo || "").toUpperCase() === "GRUPO" ? "Grupo de conversa" : "Conversa da equipe" };
     const status = presencaDoUsuario(outroParticipanteId(conversa));
     return { status, rotulo: status === "ONLINE" ? "Online" : status === "AUSENTE" ? "Ausente" : "Offline" };
   }
@@ -269,6 +271,41 @@
     }
   }
 
+  function montarCompositorSeNecessario(root) {
+    if (!root) return false;
+    // Um redesenho externo pode esvaziar #integroChatRoot mantendo
+    // data-chat-ready=1. Conferir nós reais antes de declarar a UI pronta.
+    const pronto = root.dataset?.chatReady === "1" &&
+      ["#chatTexto","#chatEnviar","#chatAnexar","#chatImagemInput"].every(
+        seletor => Boolean(root.querySelector?.(seletor))
+      );
+    if (pronto) return false;
+    const conversaAnterior = estado.conversaAtual;
+    // Descartar apenas a assinatura da conversa cujo DOM foi removido.
+    // A presença e a assinatura da lista continuam válidas para o tenant.
+    if (estado.unsubMensagens) {
+      try { estado.unsubMensagens(); } catch (_) {}
+      estado.unsubMensagens = null;
+    }
+    renderBase(root);
+    if (conversaAnterior) {
+      root.querySelector?.(".integro-chat")?.classList.add("conversa-aberta");
+      estado.conversaAtual = conversaAnterior;
+    }
+    return true;
+  }
+
+  function atualizarPermissaoCompositor() {
+    const permitido = global.IntegroChatService?.podeEnviar?.() !== false;
+    const bloqueado = !permitido || estado.enviando;
+    ["chatTexto","chatEnviar","chatAnexar","chatEmoji"].forEach(chave => {
+      const botao = el(chave);
+      if (botao) botao.disabled = bloqueado;
+    });
+    const input = el("chatTexto");
+    if (input) input.placeholder = permitido ? "Digite uma mensagem" : "Acesso somente leitura";
+  }
+
   function contatosOrdenados() {
     return [...estado.usuarios].sort((a, b) => {
       const pa = presencaDoUsuario(uidUsuario(a));
@@ -286,7 +323,10 @@
     const box = el("chatConversas");
     if (!box) return;
     const busca = String(el("chatBusca")?.value || "").trim().toLowerCase();
-    const grupos = estado.conversas.filter(c => String(c.tipo || "").toUpperCase() === "EQUIPE");
+    const grupos = estado.conversas.filter(c =>
+      ["EQUIPE","GRUPO"].includes(String(c.tipo || "").toUpperCase()) ||
+      String(c.subtipo || "").toUpperCase() === "GRUPO"
+    );
     const contatos = contatosOrdenados();
     const entradas = [
       ...grupos.map(conversa => ({ tipo: "conversa", conversa, titulo: conversaTitulo(conversa) })),
@@ -357,7 +397,8 @@
     if (!chatEstaAtivo()) return;
     const root = containerChat();
     if (!root) return;
-    if (root.dataset.chatReady !== "1") renderBase(root);
+    montarCompositorSeNecessario(root);
+    atualizarPermissaoCompositor();
     const escopo = estado.resumoEscopo;
     try {
       const usuarios = await global.IntegroChatService.listarUsuariosDisponiveis();
@@ -402,6 +443,9 @@
   }
 
   async function selecionar(id) {
+    if (!id) return;
+    montarCompositorSeNecessario(containerChat());
+    atualizarPermissaoCompositor();
     estado.conversaAtual = id;
     containerChat()?.querySelector(".integro-chat")?.classList.add("conversa-aberta");
     atualizarViewportChat();
@@ -409,11 +453,24 @@
     const conversa = estado.conversas.find(c => c.id === id) || { id };
     atualizarCabecalho(conversa);
     if (estado.unsubMensagens) estado.unsubMensagens();
-    estado.unsubMensagens = global.IntegroChatService.assinarMensagens(id, renderMensagens, erro => {
-      if (el("chatMensagens")) el("chatMensagens").innerHTML = `<div class="empty">${esc(erro.message || "Falha ao carregar mensagens.")}</div>`;
-    });
+    try {
+      estado.unsubMensagens = global.IntegroChatService.assinarMensagens(id, renderMensagens, erro => {
+        if (estado.conversaAtual !== id) return;
+        if (el("chatMensagens")) el("chatMensagens").innerHTML =
+          `<div class="empty">${esc(erro.message || "Falha ao carregar mensagens.")}</div>`;
+      });
+    } catch (erro) {
+      estado.unsubMensagens = null;
+      if (el("chatMensagens")) el("chatMensagens").innerHTML =
+        `<div class="empty">${esc(erro.message || "Falha ao abrir mensagens.")}</div>`;
+      notificar(erro.message || "Falha ao carregar a conversa.", "warning");
+    }
     try { await global.IntegroChatService.marcarComoLida(id); }
-    catch (erro) { notificar(erro.message || "Não foi possível atualizar a leitura da conversa.", "warning"); return; }
+    catch (erro) {
+      // A falha de confirmação de leitura não deve esconder nem bloquear
+      // o campo de mensagem da conversa que já foi selecionada.
+      notificar(erro.message || "Não foi possível atualizar a leitura da conversa.", "warning");
+    }
     estado.conversasNotificadas.delete(id);
     if (conversa.naoLidasPorUsuario) conversa.naoLidasPorUsuario[global.IntegroChatService.usuarioId()] = 0;
     renderConversas();
@@ -500,6 +557,8 @@
     const input = el("chatTexto");
     const btn = el("chatEnviar");
     if (!estado.conversaAtual) return notificar("Selecione uma conversa.", "warning");
+    if (global.IntegroChatService?.podeEnviar?.() === false)
+      return notificar("Seu perfil não pode enviar mensagens nesta conversa.", "warning");
     if (!estado.arquivoImagem && !String(input?.value || "").trim()) return;
     estado.enviando = true;
     btn.disabled = true;
@@ -514,9 +573,8 @@
     } catch (erro) { notificar(erro.message || "Falha ao enviar mensagem.", "error"); }
     finally {
       estado.enviando = false;
-      btn.disabled = false;
-      if (el("chatAnexar")) el("chatAnexar").disabled = false;
-      input?.focus();
+      atualizarPermissaoCompositor();
+      if (global.IntegroChatService?.podeEnviar?.() !== false) input?.focus();
     }
   }
 

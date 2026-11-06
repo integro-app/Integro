@@ -37,8 +37,9 @@ function chatUi(options = {}) {
   const service = {
     usuarioId: () => session.uid,
     tenantAtual: () => session.tenant,
-    assinarConversas() {
+    assinarConversas(callback) {
       counts.subscribe++;
+      if (Array.isArray(options.conversations)) callback(options.conversations);
       return () => { counts.unsub++; };
     },
     listarUsuariosDisponiveis: async () => {
@@ -48,11 +49,12 @@ function chatUi(options = {}) {
     iniciarPresenca: () => { counts.presence++; return () => {}; },
     statusPresencaEfetivo: () => "OFFLINE",
     podeCriarGrupo: () => false,
-    podeEnviar: () => true,
+    podeEnviar: () => options.canSend !== false,
     obterDiagnosticoUsuarios: () => ({}),
     criarOuObterConversaDireta: async () => { counts.direct++; return { id: "conv-user2" }; },
     assinarMensagens: () => () => {},
-    marcarComoLida: async () => {}
+    marcarComoLida: async () => { if (options.readFailure) throw new Error("Falha ao marcar leitura"); },
+    enviarMensagem: async () => { counts.sent = (counts.sent || 0) + 1; }
   };
   const win = {
     IntegroChatService: service,
@@ -68,7 +70,7 @@ function chatUi(options = {}) {
     const batch = timers.splice(0);
     batch.forEach(fn => fn());
   };
-  return { win, root, panel, list, counts, session, emit, flush };
+  return { win, root, panel, list, counts, session, ids, emit, flush };
 }
 
 test("chat abre campo, envio e anexos no perfil Auditor sem #chatInterno", async () => {
@@ -302,4 +304,55 @@ test("compositor bloqueia reenvio enquanto uma mensagem está sendo processada",
   assert.match(ui, /if \(estado\.enviando\) return/);
   assert.match(ui, /estado\.enviando = true/);
   assert.match(ui, /estado\.enviando = false/);
+});
+
+
+test("chat remonta textarea, envio e anexo quando a navegação remove o DOM mantendo chatReady", async () => {
+  const app = chatUi({ panelId: "chatInterno", uid: "user-a", tenant: "tenant-a" });
+  await app.win.IntegroChatUI.atualizar();
+  assert.match(app.root.innerHTML, /id="chatTexto"/);
+  app.root.dataset.chatReady = "1";
+  app.root.innerHTML = "";
+  await app.win.IntegroChatUI.atualizar();
+  for (const id of ["chatTexto", "chatEnviar", "chatAnexar", "chatImagemInput"])
+    assert.match(app.root.innerHTML, new RegExp('id="' + id + '"'));
+  assert.equal(app.counts.presence, 1, "restauração visual não reinicia escuta de presença");
+});
+
+test("falha ao marcar conversa como lida não impede a conversa e o compositor de abrir", async () => {
+  const app = chatUi({ panelId: "chatInterno", uid: "user-a", tenant: "tenant-a", readFailure: true });
+  await app.win.IntegroChatUI.atualizar();
+  await assert.doesNotReject(app.win.IntegroChatUI.selecionar("conv-autorizada"));
+  assert.match(app.root.innerHTML, /id="chatTexto"/);
+  assert.match(app.root.innerHTML, /id="chatEnviar"/);
+});
+
+test("chat respeita perfil somente leitura inclusive se o submit for invocado diretamente", async () => {
+  const app = chatUi({ panelId: "chatAuditorPanel", uid: "user-a", tenant: "tenant-a", canSend: false });
+  app.ids.chatTexto = { value: "Mensagem não autorizada", disabled: false, placeholder: "", style: {}, focus() {} };
+  app.ids.chatEnviar = { disabled: false };
+  app.ids.chatAnexar = { disabled: false };
+  app.ids.chatEmoji = { disabled: false };
+  await app.win.IntegroChatUI.atualizar();
+  assert.equal(app.ids.chatTexto.disabled, true);
+  assert.equal(app.ids.chatEnviar.disabled, true);
+  assert.equal(app.ids.chatAnexar.disabled, true);
+  assert.match(app.ids.chatTexto.placeholder, /somente leitura/);
+  await app.win.IntegroChatUI.selecionar("conversa-a");
+  await app.win.IntegroChatUI.enviar({ preventDefault() {} });
+  assert.equal(app.counts.sent || 0, 0, "não enviar pela UI mesmo se submit for chamado programaticamente");
+});
+
+test("conversas de grupo legadas continuam aparecendo na lista, sem status offline falso", async () => {
+  const app = chatUi({
+    panelId: "chatInterno", uid: "user-a", tenant: "tenant-a",
+    conversations: [{
+      id: "grupo-legado", tipo: "GRUPO", grupoNome: "Equipe piloto",
+      participantesIds: ["user-a","user-b"], ultimaMensagem: "Olá"
+    }]
+  });
+  await app.win.IntegroChatUI.atualizar();
+  assert.match(app.list.innerHTML, /data-chat-conversa-id="grupo-legado"/);
+  assert.match(app.list.innerHTML, /Equipe piloto/);
+  assert.match(app.list.innerHTML, /integro-presenca-dot grupo/);
 });
