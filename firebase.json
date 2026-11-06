@@ -89,6 +89,24 @@
             "value": "no-cache, max-age=0, must-revalidate"
           }
         ]
+      },
+      {
+        "source": "/js/chat-ui.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/css/integro-chat-mobile.css",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
       }
     ]
   },
