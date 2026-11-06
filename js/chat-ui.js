@@ -279,7 +279,12 @@
       );
     if (pronto) return false;
     const conversaAnterior = estado.conversaAtual;
-    encerrarDetalhesChat();
+    // Descartar apenas a assinatura da conversa cujo DOM foi removido.
+    // A presença e a assinatura da lista continuam válidas para o tenant.
+    if (estado.unsubMensagens) {
+      try { estado.unsubMensagens(); } catch (_) {}
+      estado.unsubMensagens = null;
+    }
     renderBase(root);
     if (conversaAnterior) {
       root.querySelector?.(".integro-chat")?.classList.add("conversa-aberta");
