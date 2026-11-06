@@ -329,7 +329,7 @@ test("falha ao marcar conversa como lida não impede a conversa e o compositor d
 
 test("chat respeita perfil somente leitura inclusive se o submit for invocado diretamente", async () => {
   const app = chatUi({ panelId: "chatAuditorPanel", uid: "user-a", tenant: "tenant-a", canSend: false });
-  app.ids.chatTexto = { value: "Mensagem não autorizada", disabled: false, placeholder: "", style: {} };
+  app.ids.chatTexto = { value: "Mensagem não autorizada", disabled: false, placeholder: "", style: {}, focus() {} };
   app.ids.chatEnviar = { disabled: false };
   app.ids.chatAnexar = { disabled: false };
   app.ids.chatEmoji = { disabled: false };
