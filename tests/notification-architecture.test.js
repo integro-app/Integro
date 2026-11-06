@@ -92,3 +92,82 @@ test("menu unificado prioriza a central moderna e não exibe notificações fict
   assert.doesNotMatch(master, /id:\x27n2\x27,titulo:\x27Caixa atualizado\x27/);
   assert.match(master, /function getNotificacoesUsuario\(\)[\s\S]*return filtradas;/);
 });
+
+
+test("notificações de empresas diferentes não colidem mesmo com o mesmo destinatário e evento", async () => {
+  const { persistNotification } = require("../functions/notification-core");
+  const records = new Map();
+  const firestore = {
+    collection(name) {
+      assert.equal(name, "notificacoes");
+      return {
+        doc(id) {
+          return {
+            async get() { return { exists: records.has(id), data: () => records.get(id) }; },
+            async set(data) { records.set(id, { ...data }); }
+          };
+        }
+      };
+    }
+  };
+  const event = { destinatarioAuthUid: "auth-compartilhado", tipo: "LEAD_ATRIBUIDO", eventoId: "evento-1" };
+  const first = await persistNotification(firestore, { ...event, tenantId: "empresa-a" });
+  const retry = await persistNotification(firestore, { ...event, tenantId: "empresa-a" });
+  const second = await persistNotification(firestore, { ...event, tenantId: "empresa-b" });
+  assert.equal(first.created, true);
+  assert.equal(retry.created, false);
+  assert.equal(retry.id, first.id);
+  assert.equal(second.created, true);
+  assert.notEqual(second.id, first.id);
+  assert.equal(records.size, 2);
+  assert.equal(records.get(first.id).clientePlataformaId, "empresa-a");
+  assert.equal(records.get(second.id).clientePlataformaId, "empresa-b");
+});
+
+test("eventos legados do mesmo tenant mantêm idempotência sem duplicação", async () => {
+  const { buildNotification, persistNotification, safeId } = require("../functions/notification-core");
+  const input = { tenantId: "empresa-a", destinatarioAuthUid: "uid-a", tipo: "LEAD_ATRIBUIDO", eventoId: "atr-1" };
+  const data = buildNotification(input, () => "TS").data;
+  const legacyId = safeId(`notif_${data.idempotencyKey}`);
+  const records = new Map([[legacyId, data]]);
+  const firestore = { collection: () => ({ doc: id => ({
+    get: async () => ({ exists: records.has(id), data: () => records.get(id) }),
+    set: async value => records.set(id, value)
+  }) }) };
+  const existing = await persistNotification(firestore, input);
+  assert.equal(existing.created, false);
+  assert.equal(existing.id, legacyId);
+  assert.equal(records.size, 1);
+  const other = await persistNotification(firestore, { ...input, tenantId: "empresa-b" });
+  assert.equal(other.created, true);
+  assert.notEqual(other.id, legacyId);
+  assert.equal(records.get(legacyId).clientePlataformaId, "empresa-a");
+});
+
+test("serviço web gera o mesmo ID multiempresa que o backend", async () => {
+  const vm = require("node:vm");
+  const { buildNotification } = require("../functions/notification-core");
+  let tenant = "empresa-a";
+  const records = new Map();
+  const database = { collection: () => ({ doc: id => ({
+    get: async () => ({ exists: records.has(id), data: () => records.get(id) }),
+    set: async data => records.set(id, data)
+  }) }) };
+  const win = {
+    db: database,
+    State: { getTenantId: () => tenant, getUsuario: () => ({ authUid: "uid-a", clientePlataformaId: tenant }) },
+    firebase: { auth: () => ({ currentUser: { uid: "uid-a" }, onAuthStateChanged() {} }) }
+  };
+  vm.runInNewContext(read("js/services/notification-service.js"), {
+    window: win, document: { addEventListener() {} }, console, setTimeout: () => 0
+  });
+  const event = { destinatarioAuthUid: "uid-a", tipo: "LEAD_ATRIBUIDO", eventoId: "e1" };
+  const first = await win.IntegroNotifications.emit(event);
+  assert.equal(first.id, buildNotification({ ...event, tenantId: tenant }).id);
+  assert.equal((await win.IntegroNotifications.emit(event)).created, false);
+  tenant = "empresa-b";
+  const second = await win.IntegroNotifications.emit(event);
+  assert.equal(second.id, buildNotification({ ...event, tenantId: tenant }).id);
+  assert.notEqual(first.id, second.id);
+  assert.equal(records.size, 2);
+});
