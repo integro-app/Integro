@@ -138,6 +138,13 @@
   }
 
   function safeId(value) { return text(value).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 220); }
+  function scopedNotificationId(tenant, key) {
+    const scope = `${text(tenant)}:${text(key)}`;
+    let hash = 2166136261;
+    for (let i = 0; i < scope.length; i++) hash = Math.imul(hash ^ scope.charCodeAt(i), 16777619) >>> 0;
+    return `${safeId(`notif_${tenant}_${key}`).slice(0, 200)}_${hash.toString(16).padStart(8, "0")}`;
+  }
+
   function routeFor(input = {}) {
     if (input.rota) return input.rota;
     const type = upper(input.tipo || input.origemTipo);
@@ -159,10 +166,39 @@
     if (!tenant) throw new Error("tenantId é obrigatório.");
     const eventId = text(input.eventoId || input.atribuicaoId || input.origemEventoId || input.origemId || input.indicacaoId || input.solicitacaoId || Date.now());
     const idempotencyKey = text(input.idempotencyKey || `${upper(input.tipo || "SISTEMA")}:${eventId}:${destinatarioAuthUid}`);
-    const id = safeId(`notif_${idempotencyKey}`);
+    const currentUid = authUid();
+    const currentTenant = tenantId();
+    if (!currentUid || tenant !== currentTenant)
+      throw new Error("Empresa selecionada ou sessão inválida para emitir notificação.");
+
+    // Leitura de notificações de terceiros no navegador é bloqueada pelas
+    // Rules. Leads são notificados exclusivamente pela callable autorizada,
+    // que confere destinatário, lead, empresa e status no banco de dados.
+    const tipo = upper(input.tipo || "SISTEMA");
+    if (input.indicacaoId && (tipo === "NOVO_LEAD" || tipo.startsWith("LEAD_"))) {
+      const funcs = typeof global.firebase?.app === "function"
+        ? global.firebase.app().functions?.("southamerica-east1")
+        : null;
+      if (!funcs?.httpsCallable) throw new Error("Backend seguro de notificações indisponível.");
+      const response = await funcs.httpsCallable("emitirNotificacaoLeadV27")({
+        indicacaoId: text(input.indicacaoId),
+        tipo,
+        destinatarioAuthUid
+      });
+      if (currentUid !== authUid() || currentTenant !== tenantId())
+        throw new Error("A sessão ou empresa mudou durante a operação.");
+      return response?.data || {};
+    }
+
+    // A emissão genérica no cliente não pode ler nem sobrescrever avisos
+    // destinados a terceiros. Essas operações exigem emissor autorizado.
+    if (destinatarioAuthUid !== currentUid)
+      throw new Error("Notificação a outro usuário exige operação autorizada no servidor.");
+    if (typeof database.runTransaction !== "function")
+      throw new Error("Transação segura de notificações indisponível.");
+
+    const id = scopedNotificationId(tenant, idempotencyKey);
     const ref = database.collection("notificacoes").doc(id);
-    const existing = await ref.get();
-    if (existing.exists && existing.data()?.idempotencyKey === idempotencyKey) return { id, created: false };
     const payload = {
       clientePlataformaId: tenant, tenantId: tenant, destinatarioAuthUid,
       destinatarioUsuarioId: text(input.destinatarioUsuarioId || input.vendedorDocumentoId),
@@ -176,8 +212,19 @@
       criadoPorAuthUid: text(input.criadoPorAuthUid || authUid()), criadoPorNome: text(input.criadoPorNome),
       criadoEm: serverTimestamp(), criadoEmTexto: new Date().toISOString(), atualizadoEm: serverTimestamp(), atualizadoEmTexto: new Date().toISOString()
     };
-    await ref.set(payload, { merge: false });
-    return { id, created: true, payload };
+    const created = await database.runTransaction(async tx => {
+      const existing = await tx.get(ref);
+      if (existing.exists) {
+        const data = existing.data() || {};
+        if (data.idempotencyKey === idempotencyKey &&
+            text(data.clientePlataformaId || data.tenantId) === tenant &&
+            text(data.destinatarioAuthUid) === destinatarioAuthUid) return false;
+        throw new Error("Conflito de identificador de notificação. Escrita interrompida.");
+      }
+      tx.set(ref, payload);
+      return true;
+    });
+    return { id, created, payload: created ? payload : undefined };
   }
 
   async function open(notification) {
