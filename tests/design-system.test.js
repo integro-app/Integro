@@ -86,3 +86,17 @@ test("tokens de interface paralelos não permanecem na camada unificada", () => 
   assert.doesNotMatch(interfaceCss, /--integro-blue-|--integro-border|--integro-orange|--integro-text/);
   assert.match(interfaceCss, /var\(--it-/);
 });
+
+
+test("dashboard do Master Local aproxima conteúdo do topo sem afetar celular ou outros módulos", () => {
+  const visual = read("css/integro-visual.css");
+  const master = read("master-local.html");
+  const rule = visual.slice(visual.indexOf("Dashboard Master Local desktop — referência visual"));
+  assert.match(rule, /@media \(min-width: 981px\)/);
+  assert.match(rule, /body\[data-integro-page="master-local"\]:has\(#dashboard\.screen\.active\)/);
+  assert.match(rule, /padding-top:\s*10px\s*!important/);
+  assert.match(rule, /padding-left:\s*66px\s*!important/);
+  assert.match(rule, /\.integro-global-header\s*\{[\s\S]*?position:\s*absolute\s*!important/);
+  assert.match(rule, /#dashboard\.dashboard-standardized\s*>\s*\.dashboard-section-card\s*\{\s*padding:\s*16px\s*!important/);
+  assert.match(master, /css\/integro-visual\.css\?v=20261101-ui-october-safe2&dashboard=20261106-desktop-reference/);
+});
