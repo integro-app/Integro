@@ -138,6 +138,18 @@
   }
 
   function safeId(value) { return text(value).replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 220); }
+
+  function scopedNotificationId(tenantId, idempotencyKey) {
+    // O mesmo Auth UID pode participar de empresas diferentes. O ID do documento
+    // precisa incluir a empresa, sem mudar a chave de idempotência legada.
+    const scope = `${text(tenantId)}:${text(idempotencyKey)}`;
+    let hash = 2166136261;
+    for (let i = 0; i < scope.length; i++) {
+      hash = Math.imul(hash ^ scope.charCodeAt(i), 16777619) >>> 0;
+    }
+    return `${safeId(`notif_${tenantId}_${idempotencyKey}`).slice(0, 200)}_${hash.toString(16).padStart(8, "0")}`;
+  }
+
   function routeFor(input = {}) {
     if (input.rota) return input.rota;
     const type = upper(input.tipo || input.origemTipo);
@@ -159,10 +171,21 @@
     if (!tenant) throw new Error("tenantId é obrigatório.");
     const eventId = text(input.eventoId || input.atribuicaoId || input.origemEventoId || input.origemId || input.indicacaoId || input.solicitacaoId || Date.now());
     const idempotencyKey = text(input.idempotencyKey || `${upper(input.tipo || "SISTEMA")}:${eventId}:${destinatarioAuthUid}`);
-    const id = safeId(`notif_${idempotencyKey}`);
+    const id = scopedNotificationId(tenant, idempotencyKey);
     const ref = database.collection("notificacoes").doc(id);
     const existing = await ref.get();
-    if (existing.exists && existing.data()?.idempotencyKey === idempotencyKey) return { id, created: false };
+    const same = data => data?.idempotencyKey === idempotencyKey &&
+      text(data?.clientePlataformaId || data?.tenantId) === tenant &&
+      text(data?.destinatarioAuthUid) === destinatarioAuthUid;
+    if (existing.exists) {
+      if (same(existing.data())) return { id, created: false };
+      throw new Error("Conflito de identificador de notificação. Escrita interrompida.");
+    }
+    const legacyId = safeId(`notif_${idempotencyKey}`);
+    if (legacyId !== id) {
+      const legacy = await database.collection("notificacoes").doc(legacyId).get();
+      if (legacy.exists && same(legacy.data())) return { id: legacyId, created: false };
+    }
     const payload = {
       clientePlataformaId: tenant, tenantId: tenant, destinatarioAuthUid,
       destinatarioUsuarioId: text(input.destinatarioUsuarioId || input.vendedorDocumentoId),
