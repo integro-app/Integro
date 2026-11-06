@@ -92,3 +92,39 @@ test("menu unificado prioriza a central moderna e não exibe notificações fict
   assert.doesNotMatch(master, /id:\x27n2\x27,titulo:\x27Caixa atualizado\x27/);
   assert.match(master, /function getNotificacoesUsuario\(\)[\s\S]*return filtradas;/);
 });
+
+
+test("sino do Master Local abre a gaveta uma única vez mesmo com fallback legado", () => {
+  const vm = require("node:vm");
+  const master = read("master-local.html");
+  const source = read("js/modules/notification-center.js");
+  assert.match(master, /IntegroNotificationCenter\?\.toggle\?\.\(\)\s*\?\?\s*window\.abrirNotificacoes\?\.\(\)/);
+  const start = source.indexOf("  function toggle() {");
+  const end = source.indexOf("\n  function install() {", start);
+  assert.ok(start >= 0 && end > start, "toggle deve continuar exportado pela central");
+  const actualToggle = source.slice(start, end);
+  let visible = false;
+  let openCalls = 0;
+  let closeCalls = 0;
+  let legacyCalls = 0;
+  const context = {
+    document: { getElementById: () => ({ get hidden() { return !visible; } }) },
+    ensureDom() {},
+    open() { visible = true; openCalls++; },
+    close() { visible = false; closeCalls++; }
+  };
+  vm.runInNewContext(actualToggle + "\nthis.toggleFromSource = toggle;", context);
+  const service = { toggle: context.toggleFromSource };
+  const legacy = () => { legacyCalls++; return context.toggleFromSource(); };
+  const handleClick = () => service.toggle?.() ?? legacy();
+  assert.equal(handleClick(), true);
+  assert.equal(visible, true, "um clique abre a gaveta");
+  assert.equal(openCalls, 1);
+  assert.equal(closeCalls, 0, "fallback não fecha a gaveta imediatamente");
+  assert.equal(legacyCalls, 0);
+  assert.equal(handleClick(), true);
+  assert.equal(visible, false, "o clique seguinte fecha a gaveta");
+  assert.equal(openCalls, 1);
+  assert.equal(closeCalls, 1);
+  assert.equal(legacyCalls, 0);
+});
