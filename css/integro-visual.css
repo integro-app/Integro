@@ -228,3 +228,69 @@ html body[data-integro-page] #integroSidebarMenu .menu-icon { display:inline-fle
 html body[data-integro-page] #integroSidebarMenu :is(.menu-icon,.iv-nav-icon) svg { width:20px; height:20px; display:block; }
 
 html body[data-integro-page].integro-menu-categorias main :is(#dashboard,#clientes,#configuracoes,#auditoria,#vendas,#cobrancas,#operacao,#financeiro,#movimentacoes,#captacao,#indicacoes,#supervisao,#equipes,#caixas,#minhaConta,#notificacoes).screen :is(.integro-shared-nav,.integro-horizontal-module-nav,.integro-module-nav,.unified-profile-tabs,.clientes-module-nav,.config-module-nav,.vendedor-operacao-tabs,.vendedor-clientes-tabs,.indicacoes-module-nav,.subnav-tabs,[data-dashboard-navigation],.movu-tabs) { display:none !important; }
+
+/*
+ * Dashboard Master Local desktop — referência visual 06/11/2026.
+ * O cabeçalho global contém apenas o sino; ele não deve reservar uma faixa
+ * de 76px antes dos indicadores. Aplicar só com o Dashboard ativo no desktop.
+ * Não afeta navegação, dados, operações nem estilos para celular.
+ */
+@media (min-width: 981px) {
+  html body[data-integro-page="master-local"]:has(#dashboard.screen.active) .layout > main.main {
+    position: relative;
+    padding-top: 10px !important;
+    padding-right: 24px !important;
+    padding-bottom: 20px !important;
+  }
+
+  html body[data-integro-page="master-local"]:not(.sidebar-hidden):has(#dashboard.screen.active)
+    .layout > aside#sidebar.sidebar:not(.collapsed) + main.main {
+    padding-left: 24px !important;
+  }
+
+  html body[data-integro-page="master-local"].sidebar-hidden:has(#dashboard.screen.active) .layout > main.main,
+  html body[data-integro-page="master-local"]:has(#dashboard.screen.active)
+    .layout > aside#sidebar.sidebar.collapsed + main.main {
+    padding-left: 66px !important;
+  }
+
+  html body[data-integro-page="master-local"]:has(#dashboard.screen.active) main.main > .integro-global-header {
+    position: absolute !important;
+    top: 18px !important;
+    right: 45px !important;
+    left: auto !important;
+    width: auto !important;
+    min-height: 42px !important;
+    margin: 0 !important;
+    z-index: 180 !important;
+  }
+
+  html body[data-integro-page="master-local"]:has(#dashboard.screen.active)
+    main.main > .integro-global-header #integroNotificationButton {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+  }
+
+  html body[data-integro-page="master-local"]:has(#dashboard.screen.active)
+    #dashboard.dashboard-standardized > .dashboard-section-card {
+    padding: 16px !important;
+  }
+
+  html body[data-integro-page="master-local"]:has(#dashboard.screen.active)
+    #dashboard .dashboard-page-header {
+    padding-right: 56px !important;
+  }
+
+  html body[data-integro-page="master-local"].sidebar-hidden:has(#dashboard.screen.active)
+    > .mobile-menu-btn,
+  html body[data-integro-page="master-local"]:has(#dashboard.screen.active):has(#sidebar.sidebar.collapsed)
+    > .mobile-menu-btn {
+    top: 10px !important;
+    left: 14px !important;
+    width: 43px !important;
+    height: 43px !important;
+    border-radius: 14px !important;
+  }
+}
