@@ -374,3 +374,60 @@ test("status de lead notifica apenas o criador canônico após mudança persisti
   await assert.rejects(a.service.emitir({ indicacaoId: "lead-1", tipo: "LEAD_EM_ATENDIMENTO" },
     a.context), { code: "failed-precondition" });
 });
+
+
+test("serviço web entrega lead à callable sem ler notificação de outro usuário", async () => {
+  const vm = require("node:vm");
+  const calls = [];
+  let docsRead = 0;
+  const win = {
+    db: { collection() { docsRead++; throw new Error("Leitura de terceiro proibida no cliente"); } },
+    State: { getTenantId: () => "empresa-a", getUsuario: () => ({ authUid: "captador-a", clientePlataformaId: "empresa-a" }) },
+    firebase: {
+      auth: () => ({ currentUser: { uid: "captador-a" }, onAuthStateChanged() {} }),
+      app: () => ({
+        functions: region => {
+          assert.equal(region, "southamerica-east1");
+          return { httpsCallable: name => async payload => {
+            calls.push({ name, payload }); return { data: { id: "notificacao-ok", created: true } };
+          } };
+        }
+      })
+    }
+  };
+  vm.runInNewContext(read("js/services/notification-service.js"), {
+    window: win, document: { addEventListener() {} }, setTimeout: () => 0, console
+  });
+  const response = await win.IntegroNotifications.emit({
+    tipo: "NOVO_LEAD", indicacaoId: "ind-1", destinatarioAuthUid: "vendedor-a",
+    clientePlataformaId: "empresa-a", titulo: "Mensagem forjada", mensagem: "Ignorar"
+  });
+  assert.equal(response.id, "notificacao-ok");
+  assert.equal(docsRead, 0, "não leu documentos de destinatários no Firestore web");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].name, "emitirNotificacaoLeadV27");
+  assert.equal(calls[0].payload.indicacaoId, "ind-1");
+  assert.equal(calls[0].payload.tipo, "NOVO_LEAD");
+  assert.equal(calls[0].payload.destinatarioAuthUid, "vendedor-a");
+  assert.equal(Object.hasOwn(calls[0].payload, "mensagem"), false);
+  await assert.rejects(win.IntegroNotifications.emit({
+    tipo: "NOVO_LEAD", indicacaoId: "ind-1", destinatarioAuthUid: "vendedor-a",
+    clientePlataformaId: "empresa-b"
+  }), /Empresa selecionada/);
+  await assert.rejects(win.IntegroNotifications.emit({
+    tipo: "TRANSFERENCIA_CARTEIRA", destinatarioAuthUid: "vendedor-a",
+    clientePlataformaId: "empresa-a"
+  }), /operação autorizada no servidor/);
+  assert.equal(docsRead, 0);
+});
+
+test("indicações não fazem fallback para escrita direta de notificações", () => {
+  const src = read("js/services/indicacoes-service.js");
+  const a = src.indexOf("  async function registrarNotificacaoIndicacao(");
+  const b = src.indexOf("  async function garantirNotificacaoLeadAtribuido(", a);
+  assert.ok(a >= 0 && b > a);
+  const method = src.slice(a, b);
+  assert.match(method, /IntegroNotifications\.emit/);
+  assert.match(method, /emitirNotificacaoLeadV27/);
+  assert.doesNotMatch(method, /collection\(["']notificacoes["']\)/);
+});
