@@ -246,3 +246,131 @@ test("gaveta descarta seleção antiga ao trocar tenant ou perder notificações
   sandbox.sync({ items: [{ id: "notificacao-igual" }], trashItems: [] });
   assert.equal(sandbox.selected.size, 0);
 });
+
+
+function setupLeadNotificationsV27({
+  actorTenant = "empresa-a", leadTenant = "empresa-a", actorUid = "captador-a",
+  role = "captador", currentStatus = "ATRIBUIDA"
+} = {}) {
+  const { criarNotificacoesLeadV27 } = require("../functions/v27-lead-notifications");
+  const users = new Map([
+    ["captador-a", { authUid: "captador-a", tipoUsuario: role, clientePlataformaId: actorTenant, acessoLiberado: true }],
+    ["vendedor-a", { authUid: "vendedor-a", tipoUsuario: "vendedor", clientePlataformaId: "empresa-a", acessoLiberado: true }],
+    ["estranho-a", { authUid: "estranho-a", tipoUsuario: "vendedor", clientePlataformaId: "empresa-a", acessoLiberado: true }]
+  ]);
+  const leads = new Map([["lead-1", {
+    clientePlataformaId: leadTenant,
+    indicadoPorAuthUid: "captador-a",
+    vendedorAuthUid: "vendedor-a",
+    nomeClienteSnapshot: "Cliente Teste",
+    clienteOperacionalId: "cliente-1",
+    statusIndicacao: currentStatus,
+    dataAtribuicao: "2026-11-06T18:00:00",
+    atualizadoEmTexto: "2026-11-06T18:05:00"
+  }]]);
+  const notices = new Map();
+  const tables = { usuarios: users, indicacoes: leads, notificacoes: notices };
+  const db = {
+    collection(name) {
+      const table = tables[name];
+      assert.ok(table, "coleção permitida: " + name);
+      return {
+        doc(id) {
+          return {
+            id,
+            async get() { return { id, exists: table.has(id), data: () => table.get(id) }; },
+            async create(data) {
+              if (table.has(id)) { const error = new Error("ALREADY_EXISTS"); error.code = 6; throw error; }
+              table.set(id, { ...data });
+            }
+          };
+        },
+        where(field, op, uid) {
+          assert.equal(name, "usuarios");
+          assert.equal(field, "authUid");
+          assert.equal(op, "==");
+          return { limit: () => ({
+            get: async () => ({
+              docs: [...users.entries()].filter(([, row]) => row.authUid === uid)
+                .map(([id, row]) => ({ id, data: () => row }))
+            })
+          }) };
+        }
+      };
+    }
+  };
+  class HttpsError extends Error {
+    constructor(code, message) { super(message); this.code = code; }
+  }
+  const service = criarNotificacoesLeadV27({
+    db, functions: { https: { HttpsError } },
+    admin: { firestore: { FieldValue: { serverTimestamp: () => "STAMP" } } }
+  });
+  return {
+    service, users, leads, notices,
+    context: { auth: { uid: actorUid } }
+  };
+}
+
+test("callable exige sessão autenticada e não aceita empresas ou destinatários falsificados", async () => {
+  const source = read("functions/index.js");
+  assert.match(source, /exports\.emitirNotificacaoLeadV27\s*=/);
+  assert.match(source, /protegerSessao\(notificacoesLeadV27\.emitir\)/);
+  const a = setupLeadNotificationsV27();
+  await assert.rejects(a.service.emitir({ indicacaoId: "lead-1", tipo: "NOVO_LEAD" }, {}), { code: "unauthenticated" });
+  await assert.rejects(a.service.emitir({
+    indicacaoId: "lead-1", tipo: "NOVO_LEAD", destinatarioAuthUid: "estranho-a"
+  }, a.context), { code: "permission-denied" });
+  assert.equal(a.notices.size, 0);
+  const b = setupLeadNotificationsV27({ actorTenant: "empresa-b" });
+  await assert.rejects(b.service.emitir({ indicacaoId: "lead-1", tipo: "NOVO_LEAD" }, b.context),
+    { code: "permission-denied" });
+  assert.equal(b.notices.size, 0);
+});
+
+test("callable cria somente aviso de vendedor realmente atribuído e mantém idempotência", async () => {
+  const a = setupLeadNotificationsV27();
+  const input = { indicacaoId: "lead-1", tipo: "NOVO_LEAD", destinatarioAuthUid: "vendedor-a" };
+  const created = await a.service.emitir(input, a.context);
+  assert.equal(created.created, true);
+  assert.equal(a.notices.size, 1);
+  const first = a.notices.get(created.id);
+  assert.equal(first.clientePlataformaId, "empresa-a");
+  assert.equal(first.destinatarioAuthUid, "vendedor-a");
+  assert.equal(first.rota.indicacaoId, "lead-1");
+  assert.equal(first.rota.acao, "ABRIR_DRAWER");
+  first.lida = true;
+  const repeat = await a.service.emitir(input, a.context);
+  assert.equal(repeat.created, false);
+  assert.equal(repeat.id, created.id);
+  assert.equal(a.notices.size, 1);
+  assert.equal(a.notices.get(created.id).lida, true);
+});
+
+test("callable bloqueia outros vendedores, destinatários de outra empresa e status falso", async () => {
+  const a = setupLeadNotificationsV27();
+  await assert.rejects(a.service.emitir({ indicacaoId: "lead-1", tipo: "NOVO_LEAD" },
+    { auth: { uid: "estranho-a" } }), { code: "permission-denied" });
+  await assert.rejects(a.service.emitir({ indicacaoId: "lead-1", tipo: "LEAD_RECUSADA" },
+    a.context), { code: "failed-precondition" });
+  await assert.rejects(a.service.emitir({ indicacaoId: "lead-1", tipo: "INVENTAR_NOTIFICACAO" },
+    a.context), { code: "invalid-argument" });
+  a.users.get("vendedor-a").clientePlataformaId = "empresa-b";
+  await assert.rejects(a.service.emitir({ indicacaoId: "lead-1", tipo: "NOVO_LEAD" },
+    a.context), { code: "permission-denied" });
+  assert.equal(a.notices.size, 0);
+});
+
+test("status de lead notifica apenas o criador canônico após mudança persistida", async () => {
+  const a = setupLeadNotificationsV27({ actorUid: "vendedor-a", currentStatus: "EM_ATENDIMENTO" });
+  const created = await a.service.emitir({ indicacaoId: "lead-1", tipo: "LEAD_EM_ATENDIMENTO" }, a.context);
+  assert.equal(created.created, true);
+  const data = a.notices.get(created.id);
+  assert.equal(data.destinatarioAuthUid, "captador-a");
+  assert.equal(data.tipo, "LEAD_EM_ATENDIMENTO");
+  assert.equal(data.tenantId, "empresa-a");
+  assert.ok(data.mensagem.includes("Cliente Teste"));
+  a.leads.get("lead-1").statusIndicacao = "RECUSADA";
+  await assert.rejects(a.service.emitir({ indicacaoId: "lead-1", tipo: "LEAD_EM_ATENDIMENTO" },
+    a.context), { code: "failed-precondition" });
+});
