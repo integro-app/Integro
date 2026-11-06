@@ -20,6 +20,16 @@ global.firebase = {
   }
 };
 
+// Nos testes de serviço, o emissor é simulado. A indicação não pode
+// escrever diretamente na coleção do destinatário.
+global.IntegroNotifications = {
+  async emit(payload, options = {}) {
+    if (!options.db?.logs) throw new Error("Emissor de teste exige contexto do banco.");
+    options.db.logs.push({ nome: "notificacoes_emitidas", payload });
+    return { id: `enviada:${payload.indicacaoId}:${payload.tipo}`, created: true };
+  }
+};
+
 require("../js/services/indicacoes-service.js");
 
 const svc = global.IntegroIndicacoes;
@@ -269,14 +279,13 @@ test("master pode atribuir indicacao e payload interno nao e gravado", async () 
   assert.equal(atualizada.statusIndicacao, "ATRIBUIDA");
   assert.equal(atualizada.vendedorId, "vend_1");
   assert.equal(Object.hasOwn(atualizada, "__permissaoIndicacao"), false);
-  const notificacao = [...db.dados.entries()].find(([chave]) => chave.startsWith("notificacoes/indicacao_NOVO_LEAD_ind_1_vend_1"))?.[1];
+  const notificacao = db.logs.find(e => e.nome === "notificacoes_emitidas" && e.payload.tipo === "NOVO_LEAD")?.payload;
   assert.ok(notificacao);
   assert.equal(notificacao.titulo, "Você recebeu um novo lead");
   assert.equal(notificacao.indicacaoId, "ind_1");
-  assert.equal(notificacao.destinatarioId, "vend_1");
+  assert.equal(notificacao.destinatarioAuthUid, "vend_1");
   assert.equal(notificacao.statusIndicacao, "ATRIBUIDA");
-  assert.equal(notificacao.publico, "");
-  assert.equal(notificacao.destinatarioTipo, "DIRECIONADA");
+  assert.equal(db.dados.has("notificacoes/indicacao_NOVO_LEAD_ind_1_vend_1"), false);
   const cliente = db.dados.get("clientes_operacionais/cli_1");
   assert.equal(cliente.vendedorId, "vend_1");
   assert.equal(cliente.equipeId, "eq_1");
@@ -396,7 +405,8 @@ test("edicao da indicacao salva dados, atualiza lead vinculado e notifica novo v
   assert.equal(logEdicao.payload.dados.acao, "INDICACAO_REDISTRIBUIDA");
   assert.equal(logEdicao.payload.dados.alteracoes.nomeClienteSnapshot.anterior, "Nome antigo");
   assert.equal(logEdicao.payload.dados.alteracoes.nomeClienteSnapshot.atual, "Nome atualizado");
-  assert.ok([...db.dados.keys()].some(chave => chave.startsWith("notificacoes/indicacao_NOVO_LEAD_ind_edicao_auth_vend_2")));
+  assert.ok(db.logs.some(e => e.nome === "notificacoes_emitidas" &&
+    e.payload.tipo === "NOVO_LEAD" && e.payload.destinatarioAuthUid === "auth_vend_2"));
 });
 
 test("devolucao do vendedor limpa destino da indicacao e do cliente vinculado", async () => {
@@ -466,16 +476,14 @@ test("mudanca de status notifica somente o criador pelo authUid", async () => {
     vendedor("vend_1", { authUid: "auth_vend_1", nome: "Ana", db })
   );
 
-  const notificacao = [...db.dados.entries()].find(([chave]) =>
-    chave.startsWith("notificacoes/indicacao_LEAD_EM_ATENDIMENTO_ind_status_auth_criador")
-  )?.[1];
+  const notificacao = db.logs.find(e => e.nome === "notificacoes_emitidas" &&
+    e.payload.tipo === "LEAD_EM_ATENDIMENTO")?.payload;
   assert.ok(notificacao);
-  assert.equal(notificacao.usuarioId, "auth_criador");
   assert.equal(notificacao.destinatarioAuthUid, "auth_criador");
   assert.equal(notificacao.destinatarioTipo, "CRIADOR_LEAD");
-  assert.equal(notificacao.publico, "");
-  assert.equal(notificacao.vendedorId, "");
-  assert.equal(notificacao.vendedorAuthUid, "");
+  assert.equal(notificacao.vendedorAuthUid || "", "");
+  assert.equal(notificacao.destinatarioUsuarioId, "");
+  assert.equal(db.dados.has("notificacoes/indicacao_LEAD_EM_ATENDIMENTO_ind_status_auth_criador"), false);
 });
 
 
@@ -493,13 +501,12 @@ test("v24.6 notificacao de atribuicao pertence somente ao vendedor selecionado",
   });
 
   await svc.atribuirIndicacao("ind_gustavo", { vendedorDestinoId: "doc_gustavo", db }, master());
-  const notificacoes = [...db.dados.entries()].filter(([chave]) => chave.startsWith("notificacoes/indicacao_NOVO_LEAD_ind_gustavo_"));
+  const notificacoes = db.logs.filter(e => e.nome === "notificacoes_emitidas" &&
+    e.payload.tipo === "NOVO_LEAD");
   assert.equal(notificacoes.length, 1);
-  const [chave, notificacao] = notificacoes[0];
-  assert.match(chave, /auth_gustavo$/);
+  const notificacao = notificacoes[0].payload;
+  assert.equal(notificacao.indicacaoId, "ind_gustavo");
   assert.equal(notificacao.destinatarioAuthUid, "auth_gustavo");
-  assert.equal(notificacao.usuarioId, "auth_gustavo");
-  assert.equal(notificacao.destinatarioId, "auth_gustavo");
   assert.equal(notificacao.vendedorAuthUid, "auth_gustavo");
   assert.equal(notificacao.vendedorDocumentoId, "doc_gustavo");
   assert.equal(notificacao.vendedorId, "doc_gustavo");
@@ -524,11 +531,12 @@ test("v24.6 reparo de notificacao resolve vendedor canonico e nao notifica usuar
 
   const errado = await svc.garantirNotificacaoLeadAtribuido(indicacao, vendedor("doc_outro", { authUid:"auth_outro", db }));
   assert.equal(errado, false);
-  assert.equal([...db.dados.keys()].some(chave => chave.includes("ind_conflitante_auth_outro")), false);
+  assert.equal(db.logs.some(e => e.nome === "notificacoes_emitidas"), false);
 
   const correto = await svc.garantirNotificacaoLeadAtribuido(indicacao, vendedor("doc_gustavo", { authUid:"auth_gustavo", db }));
   assert.equal(correto, true);
-  const notificacao = [...db.dados.entries()].find(([chave]) => chave.includes("ind_conflitante_auth_gustavo"))?.[1];
+  const notificacao = db.logs.find(e => e.nome === "notificacoes_emitidas" &&
+    e.payload.indicacaoId === "ind_conflitante")?.payload;
   assert.ok(notificacao);
   assert.equal(notificacao.destinatarioAuthUid, "auth_gustavo");
 });
