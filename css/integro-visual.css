@@ -284,9 +284,9 @@ html body[data-integro-page].integro-menu-categorias main :is(#dashboard,#client
   }
 
   html body[data-integro-page="master-local"].sidebar-hidden:has(#dashboard.screen.active)
-    .mobile-menu-btn,
-  html body[data-integro-page="master-local"]:has(#dashboard.screen.active)
-    :has(> #sidebar.sidebar.collapsed) > .mobile-menu-btn {
+    > .mobile-menu-btn,
+  html body[data-integro-page="master-local"]:has(#dashboard.screen.active):has(#sidebar.sidebar.collapsed)
+    > .mobile-menu-btn {
     top: 10px !important;
     left: 14px !important;
     width: 43px !important;
