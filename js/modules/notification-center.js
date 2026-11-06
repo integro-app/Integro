@@ -142,6 +142,9 @@
     ensureDom();
     const root = document.getElementById("integroNotificationCenter");
     if (root.hidden) open(); else close();
+    // Handlers HTML legados fazem fallback usando ?? abrirNotificacoes().
+    // Sem retorno, a mesma gaveta era aberta e fechada no mesmo clique.
+    return true;
   }
 
   function install() {
