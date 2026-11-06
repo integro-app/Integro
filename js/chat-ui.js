@@ -288,6 +288,9 @@
       estado.unsubMensagens = null;
     }
     renderBase(root);
+    // Se a prévia do arquivo também foi destruída pela navegação, não
+    // deixar um anexo invisível pendente no próximo envio.
+    if (estado.arquivoImagem) cancelarImagem();
     if (conversaAnterior) {
       root.querySelector?.(".integro-chat")?.classList.add("conversa-aberta");
       estado.conversaAtual = conversaAnterior;
@@ -465,14 +468,19 @@
         `<div class="empty">${esc(erro.message || "Falha ao abrir mensagens.")}</div>`;
       notificar(erro.message || "Falha ao carregar a conversa.", "warning");
     }
-    try { await global.IntegroChatService.marcarComoLida(id); }
-    catch (erro) {
-      // A falha de confirmação de leitura não deve esconder nem bloquear
-      // o campo de mensagem da conversa que já foi selecionada.
+    let leituraConfirmada = false;
+    try {
+      await global.IntegroChatService.marcarComoLida(id);
+      leituraConfirmada = true;
+    } catch (erro) {
+      // Manter o compositor disponível, mas não falsificar a baixa do
+      // contador enquanto o Firestore não confirmar a leitura.
       notificar(erro.message || "Não foi possível atualizar a leitura da conversa.", "warning");
     }
-    estado.conversasNotificadas.delete(id);
-    if (conversa.naoLidasPorUsuario) conversa.naoLidasPorUsuario[global.IntegroChatService.usuarioId()] = 0;
+    if (leituraConfirmada) {
+      estado.conversasNotificadas.delete(id);
+      if (conversa.naoLidasPorUsuario) conversa.naoLidasPorUsuario[global.IntegroChatService.usuarioId()] = 0;
+    }
     renderConversas();
     atualizarBadgesChat();
     if(!global.matchMedia?.("(max-width:760px)").matches)el("chatTexto")?.focus();

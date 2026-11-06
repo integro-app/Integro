@@ -320,11 +320,20 @@ test("chat remonta textarea, envio e anexo quando a navegação remove o DOM man
 });
 
 test("falha ao marcar conversa como lida não impede a conversa e o compositor de abrir", async () => {
-  const app = chatUi({ panelId: "chatInterno", uid: "user-a", tenant: "tenant-a", readFailure: true });
+  const app = chatUi({
+    panelId: "chatInterno", uid: "user-a", tenant: "tenant-a", readFailure: true,
+    conversations: [{
+      id: "conv-autorizada", tipo: "EQUIPE", equipeId: "equipe-a",
+      participantesIds: ["user-a","user-b"], naoLidasPorUsuario: { "user-a": 2 }
+    }]
+  });
   await app.win.IntegroChatUI.atualizar();
   await assert.doesNotReject(app.win.IntegroChatUI.selecionar("conv-autorizada"));
   assert.match(app.root.innerHTML, /id="chatTexto"/);
   assert.match(app.root.innerHTML, /id="chatEnviar"/);
+  assert.match(app.list.innerHTML, /integro-chat-conversa active unread/,
+    "falha ao confirmar leitura não pode zerar o contador exibido no chat");
+  assert.match(app.list.innerHTML, /integro-chat-unread-badge/);
 });
 
 test("chat respeita perfil somente leitura inclusive se o submit for invocado diretamente", async () => {
@@ -355,4 +364,13 @@ test("conversas de grupo legadas continuam aparecendo na lista, sem status offli
   assert.match(app.list.innerHTML, /data-chat-conversa-id="grupo-legado"/);
   assert.match(app.list.innerHTML, /Equipe piloto/);
   assert.match(app.list.innerHTML, /integro-presenca-dot grupo/);
+});
+
+
+test("recuperação de DOM do Chat descarta foto que ficou sem prévia", () => {
+  const src=source("js/chat-ui.js");
+  const from=src.indexOf("  function montarCompositorSeNecessario(");
+  const until=src.indexOf("  function atualizarPermissaoCompositor(",from);
+  assert.ok(from>=0&&until>from);
+  assert.match(src.slice(from,until),/renderBase\(root\);[\s\S]*if \(estado\.arquivoImagem\) cancelarImagem\(\)/);
 });
