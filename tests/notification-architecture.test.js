@@ -210,3 +210,39 @@ test("backend nao sobrescreve colisao de ID com identidade divergente", async ()
   await assert.rejects(persistNotification(database, input), /Conflito de identificador/);
   assert.equal(docs.get(id).clientePlataformaId, "empresa-b");
 });
+
+
+test("gaveta descarta seleção antiga ao trocar tenant ou perder notificações", () => {
+  const vm = require("node:vm");
+  const source = read("js/modules/notification-center.js");
+  const start = source.indexOf("  function syncSelectionScope(state) {");
+  const end = source.indexOf("\n  function render() {", start);
+  assert.ok(start >= 0 && end > start);
+  assert.match(source, /syncSelectionScope\(state\);/);
+
+  const client = { authUid: "auth-a", tenantId: "empresa-a" };
+  const sandbox = { global: { IntegroNotifications: client }, selectionScope: "", selected: new Set(), filter: "LIDAS", savedScrollTop: 87, Set };
+  vm.runInNewContext(source.slice(start, end) + "\nthis.sync = syncSelectionScope;", sandbox);
+  sandbox.sync({ items: [{ id: "notificacao-igual" }], trashItems: [] });
+  sandbox.selected.add("notificacao-igual");
+  sandbox.selected.add("id-obsoleto");
+  sandbox.sync({ items: [{ id: "notificacao-igual" }], trashItems: [] });
+  assert.equal(sandbox.selected.has("notificacao-igual"), true);
+  assert.equal(sandbox.selected.has("id-obsoleto"), false);
+
+  // O mesmo ID pode existir em empresas diferentes: mesmo assim não pode
+  // reutilizar a seleção anterior para executar ações em lote.
+  client.tenantId = "empresa-b";
+  sandbox.selected.add("notificacao-igual");
+  sandbox.filter = "NAO_LIDAS";
+  sandbox.savedScrollTop = 132;
+  sandbox.sync({ items: [{ id: "notificacao-igual" }], trashItems: [] });
+  assert.equal(sandbox.selected.size, 0);
+  assert.equal(sandbox.filter, "TODAS");
+  assert.equal(sandbox.savedScrollTop, 0);
+
+  sandbox.selected.add("notificacao-igual");
+  client.authUid = "auth-b";
+  sandbox.sync({ items: [{ id: "notificacao-igual" }], trashItems: [] });
+  assert.equal(sandbox.selected.size, 0);
+});
