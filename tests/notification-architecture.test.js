@@ -128,3 +128,85 @@ test("sino do Master Local abre a gaveta uma única vez mesmo com fallback legad
   assert.equal(closeCalls, 1);
   assert.equal(legacyCalls, 0);
 });
+
+
+test("backend separa notificações de tenants diferentes e mantém chave idempotente", async () => {
+  const { persistNotification } = require("../functions/notification-core");
+  const docs = new Map();
+  const database = { collection(name) {
+    assert.equal(name, "notificacoes");
+    return { doc(id) { return {
+      async get() { return { exists: docs.has(id), data: () => docs.get(id) }; },
+      async create(data) {
+        if (docs.has(id)) { const error = new Error("ALREADY_EXISTS"); error.code = 6; throw error; }
+        docs.set(id, { ...data });
+      }
+    }; } };
+  } };
+  const event = { destinatarioAuthUid: "auth-comum", tipo: "LEAD_ATRIBUIDO", eventoId: "mesmo-evento" };
+  const a = await persistNotification(database, { ...event, tenantId: "empresa-a" });
+  const b = await persistNotification(database, { ...event, tenantId: "empresa-b" });
+  const repeat = await persistNotification(database, { ...event, tenantId: "empresa-a" });
+  assert.notEqual(a.id, b.id);
+  assert.equal(a.created, true);
+  assert.equal(b.created, true);
+  assert.equal(repeat.created, false);
+  assert.equal(repeat.id, a.id);
+  assert.equal(docs.size, 2);
+  assert.equal(docs.get(a.id).clientePlataformaId, "empresa-a");
+  assert.equal(docs.get(b.id).clientePlataformaId, "empresa-b");
+});
+
+test("backend respeita documento legado sem duplicar o evento da mesma empresa", async () => {
+  const { buildNotification, persistNotification, safeId } = require("../functions/notification-core");
+  const event = { tenantId: "empresa-a", destinatarioAuthUid: "auth-a", tipo: "LEAD_ATRIBUIDO", eventoId: "atr-1" };
+  const data = buildNotification(event).data;
+  const legacyId = safeId(`notif_${data.idempotencyKey}`);
+  const docs = new Map([[legacyId, { ...data, lida: true }]]);
+  const database = { collection: () => ({ doc: id => ({
+    get: async () => ({ exists: docs.has(id), data: () => docs.get(id) }),
+    create: async value => { if (docs.has(id)) throw Error("sobrescrita"); docs.set(id, value); }
+  }) }) };
+  const result = await persistNotification(database, event);
+  assert.equal(result.id, legacyId);
+  assert.equal(result.created, false);
+  assert.equal(docs.size, 1);
+  assert.equal(docs.get(legacyId).lida, true);
+  const other = await persistNotification(database, { ...event, tenantId: "empresa-b" });
+  assert.equal(other.created, true);
+  assert.notEqual(other.id, legacyId);
+  assert.equal(docs.get(legacyId).clientePlataformaId, "empresa-a");
+});
+
+test("backend preserva leitura na corrida de gravacoes concorrentes", async () => {
+  const { persistNotification } = require("../functions/notification-core");
+  const docs = new Map();
+  const database = { collection: () => ({ doc: id => ({
+    get: async () => ({ exists: docs.has(id), data: () => docs.get(id) }),
+    create: async value => {
+      if (docs.has(id)) {
+        const error = new Error("ALREADY_EXISTS"); error.code = 6; throw error;
+      }
+      docs.set(id, { ...value, lida: true });
+    }
+  }) }) };
+  const event = { tenantId: "empresa-a", destinatarioAuthUid: "u1", tipo: "LEAD_ATRIBUIDO", eventoId: "evento" };
+  const [first, second] = await Promise.all([persistNotification(database, event), persistNotification(database, event)]);
+  assert.equal([first.created, second.created].filter(Boolean).length, 1);
+  assert.equal(first.id, second.id);
+  assert.equal(docs.size, 1);
+  assert.equal(docs.get(first.id).lida, true);
+});
+
+test("backend nao sobrescreve colisao de ID com identidade divergente", async () => {
+  const { buildNotification, persistNotification } = require("../functions/notification-core");
+  const input = { tenantId: "empresa-a", destinatarioAuthUid: "u1", tipo: "LEAD_ATRIBUIDO", eventoId: "a1" };
+  const id = buildNotification(input).id;
+  const docs = new Map([[id, { clientePlataformaId: "empresa-b", destinatarioAuthUid: "u2", idempotencyKey: "OUTRA" }]]);
+  const database = { collection: () => ({ doc: key => ({
+    get: async () => ({ exists: docs.has(key), data: () => docs.get(key) }),
+    create: async () => { throw Error("escrita nao pode ocorrer"); }
+  }) }) };
+  await assert.rejects(persistNotification(database, input), /Conflito de identificador/);
+  assert.equal(docs.get(id).clientePlataformaId, "empresa-b");
+});
