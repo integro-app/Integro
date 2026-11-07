@@ -737,7 +737,6 @@
 }
 
 @media (max-width:760px) {
-  #listaCobrancas .cobranca-status-row > .cobranca-chip-status:nth-child(2) { display:none!important; }
 }
 
 /* A barra compartilhada substitui os controles originais de cobranças. */
@@ -908,4 +907,53 @@ html body[data-integro-page].perfil-vendedor #filtrosCobrancasVendedor .vendedor
   font-variant-numeric: tabular-nums;
   line-height: 1;
   white-space: nowrap;
+}
+
+/* Vendedor: card vertical compacto — situação financeira em destaque no nome,
+   três valores lado a lado. O andamento e os botões continuam funcionais. */
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-metricas-clean {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+@media (max-width: 760px) {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-card-operacional {
+    gap: 8px !important;
+    padding-top: 11px !important;
+    padding-bottom: 10px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-status-row {
+    margin-top: 6px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-card-operacional .cobranca-progress-clean {
+    margin-top: 7px !important;
+    gap: 4px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-metricas-clean {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+    width: 100% !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-mini-clean {
+    min-width: 0 !important;
+    padding: 8px 6px !important;
+    border-radius: 9px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-mini-clean span {
+    min-height: 2.2em;
+    font-size: clamp(8px, 2.2vw, 10px) !important;
+    line-height: 1.1 !important;
+    letter-spacing: 0 !important;
+    overflow-wrap: break-word;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-mini-clean strong {
+    margin-top: 4px !important;
+    font-size: clamp(10px, 3vw, 13px) !important;
+    line-height: 1.25 !important;
+    letter-spacing: -.025em;
+    white-space: normal !important;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+    text-overflow: clip !important;
+    font-variant-numeric: tabular-nums;
+  }
 }
