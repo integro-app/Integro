@@ -875,21 +875,6 @@ html body[data-integro-page].perfil-vendedor #cobrancas.screen #listaCobrancas .
 html body[data-integro-page].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-actions-clean .btn-nao-pago-clean.is-active {
   background: #b91c1c !important;
 }
-html body[data-integro-page].perfil-vendedor #cobrancas.screen #listaCobrancas .cobranca-actions-clean .btn.is-active::after {
-  content: "✓";
-  position: absolute;
-  top: 5px;
-  right: 6px;
-  display: grid;
-  place-items: center;
-  width: 19px;
-  height: 19px;
-  border-radius: 50%;
-  background: #fff;
-  color: #0f2743;
-  font: 800 12px/1 Arial, sans-serif;
-  pointer-events: none;
-}
 html body[data-integro-page].perfil-vendedor #filtrosCobrancasVendedor .vendedor-filtro-contagem {
   display: inline-flex;
   align-items: center;
