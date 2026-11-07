@@ -1144,6 +1144,8 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .v
   width: 50% !important;
   padding: 7px 4px !important;
 }
+/* Mesmo estado visual das abas Cobranças e Vendas:
+   a classe .active controla o destaque, sem marcação permanente. */
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar .vendedor-fechar-caixa-topo {
   display: inline-flex !important;
   align-items: center !important;
@@ -1152,24 +1154,7 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .v
   min-width: 0 !important;
   max-width: none !important;
   padding: 7px 4px !important;
-  background: #fff1d8 !important;
-  color: #874600 !important;
-  border: 1px solid #f2c17a !important;
-  border-radius: 10px !important;
-  box-shadow: inset 0 -3px 0 #ff9800 !important;
-  font-weight: 800 !important;
   cursor: pointer !important;
-}
-html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar .vendedor-fechar-caixa-topo.active {
-  background: #ffdfaa !important;
-  color: #713600 !important;
-  border-color: #f1ad4a !important;
-  box-shadow: inset 0 -3px 0 #e67c00 !important;
-}
-html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar .vendedor-fechar-caixa-topo:is(:hover,:focus-visible):not(:disabled) {
-  background: #ffe5bd !important;
-  color: #713600 !important;
-  box-shadow: inset 0 -3px 0 #ee8500 !important;
 }
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo:focus-visible {
   outline: 2px solid #0f2f52 !important;
