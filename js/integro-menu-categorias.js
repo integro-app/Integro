@@ -28,9 +28,8 @@
       const ids=[['caixas','Caixas','account_balance_wallet'],['operacao','Vendas','shopping_cart'],['aprovacoesFinanceiro','Aprovações','task_alt'],['supervisao','Gestão de equipes','groups']];
       const active=document.querySelector('main .screen.active')?.id||'';
       document.querySelectorAll('.integro-horizontal-module-nav[data-nav-unified="operacao"]').forEach(b=>{if(!b.classList.contains('iv-in-sidebar'))b.classList.add('iv-in-sidebar');});
-      if(seller()){
-        return [['cobrancas','Cobranças','request_quote','cobrancas.ver'],['vendas','Vendas','shopping_cart','vendas.ver']].filter(([tab,name,icon,permission])=>global.IntegroAcesso?.pode?.(user(),permission,{})||global.IntegroAcesso?.pode?.(user(),'operacao.'+tab,{})).map(([tab,name,icon])=>({key:'operacao:'+tab,label:name,icon,active:document.getElementById(tab==='cobrancas'?'tabCobrancasBtn':'tabVendasDiaBtn')?.classList.contains('active'),run:()=>{navigation().abrirPorId('operacao');setTimeout(()=>global.abrirAbaVendasCobrancas?.(tab),0);}}));
-      }
+      // Vendedor: Operação é item único; Cobranças/Vendas ficam nas abas da tela.
+      if(seller())return [];
       const items = ids.filter(([id])=>permitted(id)).map(([id,name,icon])=>({key:id,label:name,icon,active:id===(['vendas','cobrancas'].includes(active)?'operacao':active),run:()=>navigation().abrirPorId(id)}));
       if(global.IntegroAcesso?.pode?.(user(),'financeiro.ver',{})) items.push({key:'extrato-operacional',label:'Extrato operacional',icon:'receipt_long',active:active==='financeiro'&&global.__integroFinanceiroModo==='operacional',run:()=>navigation().abrirFinanceiroOperacional('lancamentos',null,'operacao')});
       return items;

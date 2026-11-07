@@ -200,3 +200,49 @@ test("desktop: reaplicar permissões não altera abas cuja visibilidade já est�
   assert.deepEqual(writes, { dashboard: 2, cobrancas: 2, vendas: 2 },
     "mudança real de permissões atualiza todas as abas");
 });
+
+
+test("vendedor usa Operação como item único e alterna Cobranças/Vendas por abas no topo", () => {
+  const categorias = read("js/integro-menu-categorias.js");
+  const visual = read("css/integro-visual.css");
+  const vendedor = read("js/vendedor-unificado.js");
+  const navegacao = read("js/unified-navigation.js");
+
+  assert.match(categorias, /if\(seller\(\)\)return \[\];/);
+  assert.doesNotMatch(categorias, /key:'operacao:'\+tab/);
+  assert.match(navegacao, /perfil\(usuarioAtual\) === "vendedor" && typeof global\.abrirOperacaoVendedor === "function"/);
+  assert.match(vendedor, /function abrirOperacao\(itemMenu\) \{\s*window\.trocarTela\?\.\("cobrancas", itemMenu\);\s*setTimeout\(\(\) => abrirAba\("cobrancas"\), 0\);/);
+  assert.match(vendedor, /id="tabCobrancasBtn"[^>]*onclick="abrirAbaVendasCobrancas\('cobrancas'\)"/);
+  assert.match(vendedor, /id="tabVendasDiaBtn"[^>]*onclick="abrirAbaVendasCobrancas\('vendas'\)"/);
+  assert.match(visual, /\.perfil-vendedor\.integro-menu-categorias main #cobrancas\.screen \.vendedor-operacao-tabs\s*\{\s*display:\s*flex !important/);
+  assert.match(visual, /\.vendedor-operacao-tabs > button\[hidden\]\s*\{\s*display:\s*none !important/);
+
+  // Exercita o construtor do menu: vendedor com acesso não ganha um grupo expansível.
+  let submenuCriado = 0;
+  const usuario = { tipoUsuario: "vendedor" };
+  const botao = { dataset: { modulo: "operacao" }, classList: { contains: () => false } };
+  const host = {
+    querySelector: () => ({}),
+    querySelectorAll: seletor => seletor === ":scope > [data-menu-unificado]" ? [botao] : []
+  };
+  const document = {
+    readyState: "loading",
+    body: { dataset: { integroPage: "master-local" }, classList: { contains: () => true, add() {} } },
+    getElementById: id => id === "integroSidebarMenu" ? host : null,
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    createElement: () => { submenuCriado++; return {}; },
+    addEventListener() {}
+  };
+  const window = {
+    document,
+    State: { getUsuario: () => usuario },
+    IntegroAcesso: { acessoUsuario: () => ({ perfil: "vendedor" }), pode: () => true },
+    IntegroNavegacaoUnificada: {
+      usuario, itemPorId: id => ({ id }), permitido: () => true, ativarItem() {}
+    }
+  };
+  vm.runInNewContext(categorias, { window, document });
+  window.IntegroMenuCategorias.sync();
+  assert.equal(submenuCriado, 0, "Operação não cria submenu para vendedor");
+});

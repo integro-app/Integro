@@ -228,3 +228,12 @@ html body[data-integro-page] #integroSidebarMenu .menu-icon { display:inline-fle
 html body[data-integro-page] #integroSidebarMenu :is(.menu-icon,.iv-nav-icon) svg { width:20px; height:20px; display:block; }
 
 html body[data-integro-page].integro-menu-categorias main :is(#dashboard,#clientes,#configuracoes,#auditoria,#vendas,#cobrancas,#operacao,#financeiro,#movimentacoes,#captacao,#indicacoes,#supervisao,#equipes,#caixas,#minhaConta,#notificacoes).screen :is(.integro-shared-nav,.integro-horizontal-module-nav,.integro-module-nav,.unified-profile-tabs,.clientes-module-nav,.config-module-nav,.vendedor-operacao-tabs,.vendedor-clientes-tabs,.indicacoes-module-nav,.subnav-tabs,[data-dashboard-navigation],.movu-tabs) { display:none !important; }
+
+/* Vendedor: Cobranças e Vendas são abas visíveis no topo de Operação, não itens da sidebar.
+   O seletor específico prevalece somente sobre a regra geral de categorias acima. */
+html body[data-integro-page].perfil-vendedor.integro-menu-categorias main #cobrancas.screen .vendedor-operacao-tabs {
+  display: flex !important;
+}
+html body[data-integro-page].perfil-vendedor.integro-menu-categorias main #cobrancas.screen .vendedor-operacao-tabs > button[hidden] {
+  display: none !important;
+}
