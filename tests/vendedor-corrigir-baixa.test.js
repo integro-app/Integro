@@ -160,7 +160,7 @@ test("resumo sai dos cards e cada filtro recebe seu contador", () => {
   const pagina = fs.readFileSync(path.join(__dirname, "../master-local.html"), "utf8");
   const visual = fs.readFileSync(path.join(__dirname, "../css/integro-visual.css"), "utf8");
   assert.match(visual, /#cobrancas\.screen #contadorCobrancas,[\s\S]*?display: none !important/);
-  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-cards-compactos1/);
+  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
   assert.match(pagina, /js\/vendedor-unificado\.js\?v=20261107-vendedor-mobile-resumo2/);
   assert.match(pagina, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-resumo2/);
 
@@ -193,6 +193,19 @@ test("card mobile compacto usa situação financeira e três métricas horizonta
   assert.match(css, /card vertical compacto/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\) !important/);
   assert.doesNotMatch(css, /\.cobranca-status-row > \.cobranca-chip-status:nth-child\(2\)/);
-  assert.match(pagina, /css\/vendedor-operacao\.css\?v=20261107-vendedor-cards-compactos1/);
-  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-cards-compactos1/);
+  assert.match(pagina, /css\/vendedor-operacao\.css\?v=20261107-vendedor-icone-send2/);
+  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
+});
+
+
+test("botão selecionado não mostra check extra e mensagem usa avião de envio", () => {
+  const css = fs.readFileSync(path.join(__dirname, "../css/vendedor-operacao.css"), "utf8");
+  const operacao = fs.readFileSync(path.join(__dirname, "../js/vendedor-operacao.js"), "utf8");
+  const card = operacao.split("  function card(item) {")[1]?.split("  function dadosAtuais() {")[0] || "";
+  assert.match(css, /\.btn\.is-active\s*\{/);
+  assert.doesNotMatch(css, /\.btn\.is-active::after\s*\{/);
+  assert.match(card, /class="cobranca-whatsapp-btn"/);
+  assert.match(card, /class="material-symbols-rounded" aria-hidden="true">send<\/span>/);
+  assert.match(card, /title="Enviar mensagem pelo WhatsApp"/);
+  assert.match(card, /abrirWhatsAppClienteCobranca/);
 });
