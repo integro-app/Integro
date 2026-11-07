@@ -17,9 +17,9 @@ const rules = fs.readFileSync(path.join(root, "firestore.rules"), "utf8");
 const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
-  assert.match(master, /js\/vendedor-operacao\.js\?v=20260818-cobrancas-saldo1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v273-card1/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20260818-v273-card1/);
+  assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-vendas-fab-vazio-v2/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-vendas-fab-vazio-v2/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -52,7 +52,7 @@ test("seletor contextual do vendedor mostra Cobranças e Vendas em Operação", 
 test("card de cobrança contém whatsapp, situação, parcelas e somente ações diárias", () => {
   assert.match(operacao, /cobranca-whatsapp-btn/);
   assert.match(operacao, /Parcela esperada/);
-  assert.match(operacao, /Parcela paga no dia/);
+  assert.match(operacao, /Pago no dia/);
   assert.match(operacao, /Saldo devedor/);
   assert.match(operacao, /Progresso de parcelas/);
   assert.match(operacao, />Pago</);
@@ -260,7 +260,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20260818-v273-card1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-vendas-fab-vazio-v2/);
 });
 
 
@@ -456,4 +456,174 @@ test("fechamento reage à remontagem do botão e à versão atualizada dos servi
   assert.match(close,/multiplos-caixas-abertos/);
   assert.match(boot,/VERSION = "20261105-sessao-30min-v2"/);
   assert.match(config,/v27-bootstrap\.js\?v=20261105-sessao-30min-v2/);
+});
+
+
+test("Fechar caixa divide a linha com Cobranças e Vendas e continua funcional em ambas as abas", () => {
+  const estilo = fs.readFileSync(path.join(root, "css", "vendedor-operacao.css"), "utf8");
+  const markup = unificado.split("  function montarTela() {")[1]?.split("  function configurarDashboardVendedor() {")[0] || "";
+  const posNavegacao = markup.indexOf('class="vendedor-operacao-topbar"');
+  const posTabs = markup.indexOf('class="operacao-tabs-clean vendedor-operacao-tabs"');
+  const posFechamento = markup.indexOf('id="btnFecharCaixaCobrancas"');
+  const posCobrancas = markup.indexOf('id="abaCobrancas"');
+  const posVendas = markup.indexOf('id="abaVendasDia"');
+  assert.ok(posNavegacao >= 0 && posNavegacao < posTabs);
+  assert.ok(posTabs < posFechamento && posFechamento < posCobrancas && posCobrancas < posVendas,
+    "Fechar caixa precisa ficar ao lado das abas, fora dos painéis alternados");
+  assert.equal(markup.split('id="btnFecharCaixaCobrancas"').length - 1, 1);
+  assert.equal(markup.split('id="statusFechamentoCobrancasFinal"').length - 1, 1);
+  assert.match(markup, /id="btnFecharCaixaCobrancas" onclick="abrirAbaVendasCobrancas\('fechamento'\)"/);
+  assert.match(markup, /window\.IntegroVendedorFechamentoCaixa\?\.atualizarBotaoFechamento\?\.\(\)/);
+  assert.match(estilo, /Operação \/ Vendedor: as três abas pertencem ao mesmo tablist/);
+  assert.match(markup, /class="btn tab-operacao-clean vendedor-fechar-caixa-topo"/);
+  assert.doesNotMatch(markup, /class="btn btn-primary vendedor-fechar-caixa-topo"/);
+  assert.match(estilo, /grid-template-columns: minmax\(0, 1fr\) !important/);
+  const tablist = markup.split('role="tablist" aria-label="Operação do vendedor"')[1]?.split("</div>")[0] || "";
+  assert.equal((tablist.match(/tab-operacao-clean/g) || []).length, 3, "as três abas precisam estar no mesmo grupo de navegação");
+  assert.match(tablist, /id="btnFecharCaixaCobrancas"/);
+  assert.match(estilo, /transition: background-color \.18s ease, color \.18s ease, border-color \.18s ease, box-shadow \.18s ease, transform \.18s ease !important/);
+  assert.match(estilo, /width: 33\.333% !important/);
+  const fecharInativo = estilo.split(".vendedor-fechar-caixa-topo {")[1]?.split("}")[0] || "";
+  assert.ok(fecharInativo, "o terceiro botão mantém o mesmo estilo de base das abas");
+  assert.doesNotMatch(fecharInativo, /background:|color:|box-shadow:|border:/, "nenhum destaque visual permanente");
+  assert.doesNotMatch(estilo, /background: linear-gradient\(110deg, #ffaf47, #ff9100\)/);
+  assert.match(estilo, /\.vendedor-fechar-caixa-topo:disabled\s*\{/);
+  assert.match(estilo, /@media \(max-width: 760px\)\s*\{[\s\S]*?\.vendedor-operacao-topbar/);
+});
+
+
+test("resumo parcial do caixa permanece visível com visitas pendentes, mas fechar fica bloqueado", () => {
+  const vm = require("node:vm");
+  const close = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  const start = close.indexOf("  function impedimentosFechamento(");
+  const end = close.indexOf("  function htmlEncerramento()", start);
+  assert.ok(start >= 0 && end > start, "funções de pré-conferência presentes");
+  let sincronizando = 0;
+  const contexto = {
+    inteiro: valor => Math.round(Number(valor) || 0),
+    operacoesAindaSincronizando: () => sincronizando,
+    moedaCentavos: valor => "R$ " + (valor / 100).toFixed(2),
+    resumoOficial: () => ({
+      caixaAtualCentavos: 10000, caixaInicialCentavos: 8000,
+      vendasNovasCentavos: 2000, renovacoesCentavos: 0,
+      ingressosCentavos: 0, gastosCentavos: 0, retiradasCentavos: 0
+    }),
+    conferenciaValor: (digitado, esperado) => {
+      const valor = Number(String(digitado).replace(",", "."));
+      const centavos = Math.round(valor * 100);
+      return { valido: Number.isFinite(valor), confere: centavos === esperado, informadoCentavos: centavos, diferencaCentavos: centavos - esperado };
+    }
+  };
+  const { impedimentosFechamento, htmlResumo, atualizarConferencia } = vm.runInNewContext(
+    close.slice(start, end) + "\n({ impedimentosFechamento, htmlResumo, atualizarConferencia })",
+    contexto
+  );
+  const snapshot = {
+    caixaFinalEsperadoCentavos: 10000, pendenciasCobranca: 2,
+    totalCobrancas: 7, totalVisitadas: 5, totalPagas: 3, totalNaoPagas: 2,
+    pagamentosPendentes: 0, aprovacoesPendentes: 0, inconsistencias: []
+  };
+  const html = htmlResumo(snapshot, {});
+  assert.match(html, /Conferência do caixa/);
+  assert.match(html, /Visitas e baixas/);
+  assert.match(html, /Consulta liberada — fechamento ainda bloqueado/);
+  assert.match(html, /2 visita\(s\) ainda sem baixa/);
+  assert.match(html, /Caixa atual/);
+  const input = { value: "100,00" };
+  const validar = { textContent: "", className: "" };
+  const confirmar = { disabled: false };
+  const dialog = { querySelector: id => ({
+    "#integroFechamentoValorInformado": input,
+    "#integroFechamentoValidacao": validar,
+    "#integroFechamentoConfirmar": confirmar
+  })[id] };
+  atualizarConferencia(dialog, snapshot);
+  assert.equal(confirmar.disabled, true, "valor conferido não libera caixa com visitas pendentes");
+  assert.match(validar.textContent, /fechamento ainda está bloqueado/);
+  snapshot.pendenciasCobranca = 0;
+  snapshot.totalVisitadas = 7;
+  atualizarConferencia(dialog, snapshot);
+  assert.equal(confirmar.disabled, false, "última baixa libera confirmação com valor igual");
+  assert.match(validar.textContent, /Todas as visitas possuem baixa/);
+  sincronizando = 1;
+  atualizarConferencia(dialog, snapshot);
+  assert.equal(confirmar.disabled, true, "sincronização pendente também bloqueia fechar");
+  sincronizando = 0;
+  snapshot.pagamentosPendentes = 1;
+  assert.equal(impedimentosFechamento(snapshot).podeFechar, false);
+  snapshot.pagamentosPendentes = 0;
+  snapshot.aprovacoesPendentes = 1;
+  assert.equal(impedimentosFechamento(snapshot).podeFechar, false);
+  snapshot.aprovacoesPendentes = 0;
+  snapshot.inconsistencias = ["Saldo inconsistente"];
+  assert.equal(impedimentosFechamento(snapshot).podeFechar, false);
+});
+
+test("abrir conferência consulta o servidor sem exigir visitas concluídas; fechamento revalida", () => {
+  const close = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  const preview = close.split("  async function abrirResumoFechamento({ inline = false } = {}) {")[1]?.split("  function atualizarBotaoFechamento() {")[0] || "";
+  const fechamento = close.split("  async function executarFechamento(")[1]?.split("  async function abrirResumoFechamento({ inline = false } = {}) {")[0] || "";
+  assert.ok(preview && fechamento);
+  assert.match(preview, /const snapshot = await prepararSnapshot\(caixa\);\s*if \(!dialog\.isConnected\) return;\s*dialog\.innerHTML = htmlResumo\(snapshot, caixa\)/);
+  assert.doesNotMatch(preview, /await sincronizarAntesDoFechamento\(caixa\)/);
+  assert.doesNotMatch(preview, /return notificar\(.*cobrança\(s\) sem baixa/);
+  assert.match(preview, /!impedimentosFechamento\(snapshot, operacoesAindaSincronizando\(\)\)\.podeFechar/);
+  assert.match(fechamento, /await sincronizarAntesDoFechamento\(caixa\)/);
+  assert.match(fechamento, /const snapshotAtualizado = await prepararSnapshot\(caixa\)/);
+  assert.match(fechamento, /if \(!impedimentos\.podeFechar\)/);
+  assert.match(fechamento, /ignorarPendencias: false/);
+  const backend = fs.readFileSync(path.join(root, "functions/box-lifecycle.js"), "utf8");
+  assert.match(backend, /if\(snapshot\.pendenciasCobranca && !managerial\) fail/);
+});
+
+
+test("Fechar caixa abre imediatamente como terceira aba antes da resposta do servidor", async () => {
+  const vm = require("node:vm");
+  const code = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  const start = code.indexOf("  async function abrirResumoFechamento(");
+  const end = code.indexOf("  function atualizarBotaoFechamento()", start);
+  assert.ok(start >= 0 && end > start);
+  const painel = {innerHTML:"", isConnected:true, querySelector:()=>null, querySelectorAll:()=>[]};
+  let resolver;
+  let consultas = 0;
+  const consulta = new Promise(resolve => { resolver = resolve; });
+  const ctx = {
+    global: {
+      document: { getElementById: id => id === "abaFechamentoCaixa" ? painel : null },
+      matchMedia: () => ({matches:true}),
+      abrirAbaVendasCobrancas: () => {}
+    },
+    ehVendedor: () => true, fechamentoEmAndamento: false,
+    preparandoFechamento: false, garantirEstilos: () => {},
+    htmlCarregamentoPainel: () => "PAINEL ABERTO",
+    caixaAbertoLocal: () => ({ id:"caixa-aberto" }),
+    prepararSnapshot: () => { consultas++; return consulta; },
+    htmlResumo: () => "RESUMO OFICIAL",
+    atualizarBotaoFechamento: () => {},
+    atualizarConferencia: () => {},
+    impedimentosFechamento: () => ({ podeFechar:false }),
+    operacoesAindaSincronizando: () => 0,
+    executarFechamento: () => { throw new Error("fechamento não autorizado"); },
+    console, setTimeout
+  };
+  const abrir = vm.runInNewContext(code.slice(start, end) + "\nabrirResumoFechamento", ctx);
+  const resultado = abrir({ inline:true });
+  assert.equal(painel.innerHTML, "PAINEL ABERTO", "aba deve aparecer antes do Firebase");
+  assert.equal(consultas, 1);
+  resolver({ pendenciasCobranca:3 });
+  await resultado;
+  assert.equal(painel.innerHTML, "RESUMO OFICIAL");
+  const unificado = fs.readFileSync(path.join(root, "js/vendedor-unificado.js"), "utf8");
+  assert.match(unificado, /aba === "vendas" \|\| aba === "fechamento"/);
+  assert.match(unificado, /const fechamento = document.getElementById\("abaFechamentoCaixa"\)/);
+  assert.match(unificado, /controller\.abrirResumoFechamento\(\{ inline: true \}\)/);
+  assert.match(unificado, /botao\?\.classList\.toggle\("active", abaAtual === alvo\)/);
+  const css = fs.readFileSync(path.join(root, "css/vendedor-operacao.css"), "utf8");
+  assert.match(css, /Todas herdam o mesmo estado ativo via \.tab-operacao-clean\.active/);
+  assert.doesNotMatch(css, /\.vendedor-fechar-caixa-topo\.active\s*\{/, "não deve existir estado de seleção forçado");
+  const closeout = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  assert.match(closeout, /const bloqueado = fechamentoEmAndamento;/);
+  assert.doesNotMatch(closeout, /const bloqueado = fechamentoEmAndamento \|\| preparandoFechamento;/);
+
+  assert.match(css, /#abaFechamentoCaixa \.integro-fechamento-body/);
 });

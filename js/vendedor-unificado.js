@@ -754,9 +754,12 @@
           </div>
         </div>
 
-        <div class="operacao-tabs-clean vendedor-operacao-tabs" role="tablist" aria-label="Operação do vendedor">
-          <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
-          <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
+        <div class="vendedor-operacao-topbar">
+          <div class="operacao-tabs-clean vendedor-operacao-tabs" role="tablist" aria-label="Operação do vendedor">
+            <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" role="tab" aria-selected="true" aria-controls="abaCobrancas" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
+            <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" role="tab" aria-selected="false" aria-controls="abaVendasDia" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
+            <button class="btn tab-operacao-clean vendedor-fechar-caixa-topo" id="btnFecharCaixaCobrancas" onclick="abrirAbaVendasCobrancas('fechamento')" type="button" role="tab" aria-selected="false" aria-controls="abaFechamentoCaixa" aria-label="Consultar e conferir caixa"><span>Fechar caixa</span></button>
+          </div>
         </div>
 
         <div id="abaCobrancas">
@@ -770,22 +773,21 @@
           </div>
           <div id="filtrosCobrancasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
-              <label class="vendedor-check"><input id="filtroCobrancaPendente" type="checkbox"><span>Sem baixa</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaPago" type="checkbox"><span>Pagos</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaNaoPago" type="checkbox"><span>Não pagos</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaAtrasado" type="checkbox"><span>Atrasados</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaEmDia" type="checkbox"><span>Em dia</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaAdiantado" type="checkbox"><span>Adiantados</span></label>
+              <div class="vendedor-filtro-grupo-titulo">Baixas do dia</div>
+              <label class="vendedor-check"><input id="filtroCobrancaPendente" type="checkbox"><span>Sem baixa <span class="vendedor-filtro-contagem" data-cobranca-contagem="pendentes">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaPago" type="checkbox"><span>Pagos <span class="vendedor-filtro-contagem" data-cobranca-contagem="pagos">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaNaoPago" type="checkbox"><span>Não pagos <span class="vendedor-filtro-contagem" data-cobranca-contagem="naoPagos">0</span></span></label>
+              <div class="vendedor-filtro-grupo-titulo">Situação financeira</div>
+              <label class="vendedor-check"><input id="filtroCobrancaAtrasado" type="checkbox"><span>Atrasados <span class="vendedor-filtro-contagem" data-cobranca-contagem="atrasados">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaEmDia" type="checkbox"><span>Em dia <span class="vendedor-filtro-contagem" data-cobranca-contagem="emDia">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaAdiantado" type="checkbox"><span>Adiantados <span class="vendedor-filtro-contagem" data-cobranca-contagem="adiantados">0</span></span></label>
+              <div class="vendedor-filtro-grupo-titulo">Ordenação</div>
               <label><span>Ordenar</span><select id="ordenarCobrancas"><option value="nome_az">Nome A → Z</option><option value="nome_za">Nome Z → A</option><option value="saldo_maior">Maior saldo</option><option value="saldo_menor">Menor saldo</option><option value="atrasado">Mais atrasados</option></select></label>
             </div>
             <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosCobrancasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="buscarCobrancasVendedor()">Aplicar filtros</button></div>
           </div>
-          <div id="contadorCobrancas" class="vendedor-operacao-contador"></div>
           <div id="listaCobrancas"></div>
-          <div class="fechar-caixa-final-clean vendedor-fechamento-operacao">
-            <div class="fechamento-status-clean" id="statusFechamentoCobrancasFinal"></div>
-            <button class="btn btn-primary" id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa()" type="button"><span class="material-symbols-rounded">lock</span>Fechar caixa</button>
-          </div>
+          <div class="fechamento-status-clean vendedor-fechamento-status" id="statusFechamentoCobrancasFinal" role="status" aria-live="polite"></div>
         </div>
 
         <div id="abaVendasDia" style="display:none">
@@ -795,14 +797,15 @@
               <input id="buscaVendaVendedorInput" type="search" placeholder="Buscar por cliente, documento ou código da venda" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarVendasVendedor()}">
             </label>
             <button class="ghost-btn vendedor-filtro-btn" type="button" onclick="toggleFiltrosVendasVendedor()"><span class="material-symbols-rounded">tune</span>Filtros</button>
-            <button class="ghost-btn vendedor-buscar-btn" type="button" onclick="buscarVendasVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
-            <button id="btnNovaVendaOperacao" class="primary-btn vendedor-nova-venda-btn" type="button" onclick="abrirListaNovaVendaVendedor()"><span class="material-symbols-rounded">add</span>Nova venda</button>
+            <button class="primary-btn vendedor-buscar-btn" type="button" onclick="buscarVendasVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
           </div>
           <div id="filtrosVendasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
+              <div class="vendedor-filtro-grupo-titulo">Situação das vendas</div>
               <label class="vendedor-check"><input id="filtroVendaAtiva" type="checkbox"><span>Ativas</span></label>
               <label class="vendedor-check"><input id="filtroVendaQuitada" type="checkbox"><span>Quitadas</span></label>
               <label class="vendedor-check"><input id="filtroVendaCancelada" type="checkbox"><span>Canceladas</span></label>
+              <div class="vendedor-filtro-grupo-titulo">Tipo de operação</div>
               <label class="vendedor-check"><input id="filtroVendaNova" type="checkbox"><span>Novas</span></label>
               <label class="vendedor-check"><input id="filtroVendaRenovacao" type="checkbox"><span>Renovações</span></label>
             </div>
@@ -810,6 +813,16 @@
           </div>
           <div id="contadorVendasDia" class="vendedor-operacao-contador"></div>
           <div id="listaVendasDia" class="vendedor-vendas-dia"></div>
+          <div class="vendedor-nova-venda-acoes">
+            <button id="btnNovaVendaOperacao" class="primary-btn vendedor-nova-venda-btn" type="button" onclick="abrirListaNovaVendaVendedor()" aria-label="Criar nova venda"><span class="material-symbols-rounded" aria-hidden="true">add</span><span>Nova venda</span></button>
+          </div>
+        </div>
+
+        <div id="abaFechamentoCaixa" class="vendedor-fechamento-painel" role="tabpanel" aria-label="Conferência do caixa" style="display:none">
+          <div class="vendedor-fechamento-abertura">
+            <h3>Conferência do caixa</h3>
+            <p>Consulte o saldo, os movimentos e as visitas do seu caixa atual.</p>
+          </div>
         </div>
       </div>`;
     // Este botão é recriado ao mudar de módulo: revalidar o estado do DOM
@@ -920,10 +933,14 @@
 
       const status = texto(v.statusVenda || v.status || "ATIVA").toUpperCase();
       const tipo = texto(v.tipoVenda || v.tipo || "NOVA").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (algumStatus && !((vendaAtivaFiltro && ["ATIVA", "ATIVO"].includes(status)) ||
-        (vendaQuitadaFiltro && ["QUITADO", "QUITADA"].includes(status)) ||
-        (vendaCanceladaFiltro && ["CANCELADO", "CANCELADA"].includes(status)))) return false;
-      if (algumTipo && !((vendaNovaFiltro && tipo.includes("NOVA")) || (vendaRenovacaoFiltro && tipo.includes("RENOV")))) return false;
+      const quitada = ["QUITADO", "QUITADA"].includes(status);
+      const cancelada = ["CANCELADO", "CANCELADA"].includes(status);
+      // Uma venda em dia, adiantada ou em atraso permanece ativa até quitação/cancelamento.
+      const ativa = !quitada && !cancelada;
+      if (algumStatus && !((vendaAtivaFiltro && ativa) ||
+        (vendaQuitadaFiltro && quitada) ||
+        (vendaCanceladaFiltro && cancelada))) return false;
+      if (algumTipo && !((vendaNovaFiltro && tipo === "NOVA") || (vendaRenovacaoFiltro && tipo.startsWith("RENOV")))) return false;
       const busca = [v.clienteNome, v.nomeCliente, cliente.nome, cliente.nomeCompleto, cliente.apelido, cliente.documento, v.codigo, v.numero, v.id].join(" ").toLowerCase();
       return !termo || busca.includes(termo);
     }).sort((a, b) => dataRegistro(b).localeCompare(dataRegistro(a)) || texto(b.id).localeCompare(texto(a.id)));
@@ -936,7 +953,7 @@
     const data = dataCaixa();
     const total = vendas.reduce((s, v) => s + numero(v.valorEmprestado || v.valorVenda || v.valor), 0);
     const contador = document.getElementById("contadorVendasDia");
-    if (contador) contador.textContent = `${vendas.length} venda(s) no dia do caixa (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}`;
+    if (contador) contador.textContent = vendas.length ? `${vendas.length} venda(s) no dia do caixa (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}` : "";
     el.innerHTML = vendas.length ? vendas.map(v => {
       const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
       return `<article class="vendedor-venda-card">
@@ -947,27 +964,41 @@
         <div><span>Parcela</span><strong>${moeda(v.valorParcela || 0)}</strong></div>
         <div><span>Status</span><strong>${texto(v.statusVenda || v.status || "ATIVA")}</strong></div>
       </article>`;
-    }).join("") : '<div class="empty-state-operacao"><strong>Nenhuma venda encontrada</strong><p>Não há vendas vinculadas a este vendedor para os filtros informados.</p></div>';
+    }).join("") : "";
   }
 
   function abrirAba(aba = "cobrancas") {
-    abaAtual = aba === "vendas" ? "vendas" : "cobrancas";
+    abaAtual = aba === "vendas" || aba === "fechamento" ? aba : "cobrancas";
     const cobrancas = document.getElementById("abaCobrancas");
     const vendas = document.getElementById("abaVendasDia");
+    const fechamento = document.getElementById("abaFechamentoCaixa");
     const btnC = document.getElementById("tabCobrancasBtn");
     const btnV = document.getElementById("tabVendasDiaBtn");
+    const btnF = document.getElementById("btnFecharCaixaCobrancas");
     if (cobrancas) cobrancas.style.display = abaAtual === "cobrancas" ? "block" : "none";
     if (vendas) vendas.style.display = abaAtual === "vendas" ? "block" : "none";
-    btnC?.classList.toggle("active", abaAtual === "cobrancas");
-    btnV?.classList.toggle("active", abaAtual === "vendas");
+    if (fechamento) fechamento.style.display = abaAtual === "fechamento" ? "block" : "none";
+    for (const [botao, alvo] of [[btnC, "cobrancas"], [btnV, "vendas"], [btnF, "fechamento"]]) {
+      botao?.classList.toggle("active", abaAtual === alvo);
+      botao?.setAttribute("aria-selected", String(abaAtual === alvo));
+    }
     const titulo = document.getElementById("vendedorOperacaoTitulo");
     const subtitulo = document.getElementById("vendedorOperacaoSubtitulo");
-    if (titulo) titulo.textContent = abaAtual === "cobrancas" ? "Cobrancas" : "Vendas";
-    if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com saldo devedor em aberto." : "Vendas vinculadas ao vendedor, incluindo o histórico que compoe a carteira.";
+    if (titulo) titulo.textContent = abaAtual === "cobrancas" ? "Cobranças" : abaAtual === "vendas" ? "Vendas" : "Conferência do caixa";
+    if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com saldo devedor em aberto."
+      : abaAtual === "vendas" ? "Vendas vinculadas ao vendedor, incluindo o histórico que compõe a carteira."
+      : "Consulte os valores do caixa antes de finalizar o expediente.";
     if (abaAtual === "cobrancas") {
       window.IntegroVendedorOperacao?.instalar?.();
       window.renderCobrancas?.();
-    } else renderVendasDia();
+    } else if (abaAtual === "vendas") {
+      renderVendasDia();
+    } else {
+      // Troca de aba imediata; conferência do servidor chega depois no painel.
+      const controller = window.IntegroVendedorFechamentoCaixa;
+      if (controller?.abrirResumoFechamento) controller.abrirResumoFechamento({ inline: true });
+      else if (fechamento) fechamento.innerHTML = '<div class="vendedor-fechamento-abertura"><h3>Conferência indisponível</h3><p>Não foi possível carregar o serviço de fechamento. Atualize a página e tente novamente.</p></div>';
+    }
   }
 
   function modalBase(titulo, conteudo, acoes = "") {
@@ -2502,7 +2533,7 @@
     const telaAtiva = document.querySelector(".screen.active")?.id;
     if (telaAtiva === "movimentacoes") renderMovimentacoesVendedor();
     if (telaAtiva === "dashboard") recalcularDashboardVendedor("perfil-dados-carregados");
-    if (abaAtual === "cobrancas") window.renderCobrancas?.(); else renderVendasDia();
+    if (abaAtual === "cobrancas") window.renderCobrancas?.(); else if (abaAtual === "vendas") renderVendasDia();
   });
   document.addEventListener("integro-movimentacoes-vendedor-carregadas", () => {
     if (!instalado) return;

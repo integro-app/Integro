@@ -16,6 +16,10 @@
   let historyArmed = false;
   let bodyObserver = null;
   let loaderObserver = null;
+  let menuTriggerHiddenOnScroll = false;
+  let lastMenuScrollY = 0;
+  let menuScrollAnchor = 0;
+  let menuScrollDirection = 0;
 
   const SELECTORS = {
     trigger: "[data-integro-menu-trigger], .mobile-menu-btn, .hamburger, #btnMenu",
@@ -131,6 +135,8 @@
     });
 
     if (isMobile()) {
+      menuTriggerHiddenOnScroll = false;
+      resetMenuScrollTracking();
       closeSidebar({ restoreFocus: false });
       forceMenuVisualState(false);
       armHistoryGuard();
@@ -192,18 +198,81 @@
       setImportant(overlay, "z-index", "9800");
     });
 
+    updateMenuTriggerVisualState(open);
+  }
+
+  function updateMenuTriggerVisualState(open = menuIsOpen()) {
+    if (!isMobile()) return;
+    const hidden = open || menuTriggerHiddenOnScroll;
     document.querySelectorAll(SELECTORS.trigger).forEach((trigger) => {
       setImportant(trigger, "display", "inline-flex");
+      // Na rolagem, mantenha visibility:visible para animar a saída pela opacidade.
       setImportant(trigger, "visibility", open ? "hidden" : "visible");
-      setImportant(trigger, "opacity", open ? "0" : "1");
-      setImportant(trigger, "pointer-events", open ? "none" : "auto");
+      setImportant(trigger, "opacity", hidden ? "0" : "1");
+      setImportant(trigger, "pointer-events", hidden ? "none" : "auto");
+      setImportant(trigger, "transform", menuTriggerHiddenOnScroll && !open ? "translate3d(0,-12px,0)" : "translate3d(0,0,0)");
+      setImportant(trigger, "transition", "opacity .2s ease, transform .2s ease");
+      if (hidden) trigger.setAttribute("aria-hidden", "true");
+      else if (shellReady) trigger.removeAttribute("aria-hidden");
     });
+  }
+
+  // A direção é medida no conteúdo principal, não em listas, cards ou gavetas.
+  // Um pequeno limiar evita que o menu pisque com o bounce do celular.
+  function menuScrollPosition(target) {
+    if (!target || target === window || target === document ||
+        target === document.documentElement || target === body) {
+      return Math.max(0, Number(window.scrollY || document.documentElement.scrollTop || body.scrollTop) || 0);
+    }
+    if (target.matches?.(".main, main.main, .main-content, .page-content, #mainContent")) {
+      return Math.max(0, Number(target.scrollTop) || 0);
+    }
+    return null;
+  }
+
+  function resetMenuScrollTracking() {
+    lastMenuScrollY = menuScrollPosition(document);
+    menuScrollAnchor = lastMenuScrollY;
+    menuScrollDirection = 0;
+  }
+
+  function onMenuScroll(event) {
+    if (!isMobile() || !shellReady || menuIsOpen()) return;
+    const current = menuScrollPosition(event.target);
+    if (current === null) return;
+    if (current <= 18) {
+      lastMenuScrollY = current;
+      menuScrollAnchor = current;
+      menuScrollDirection = 0;
+      if (menuTriggerHiddenOnScroll) {
+        menuTriggerHiddenOnScroll = false;
+        updateMenuTriggerVisualState(false);
+      }
+      return;
+    }
+
+    const delta = current - lastMenuScrollY;
+    if (Math.abs(delta) < 1) return;
+    const direction = delta > 0 ? 1 : -1;
+    if (direction !== menuScrollDirection) {
+      menuScrollAnchor = lastMenuScrollY;
+      menuScrollDirection = direction;
+    }
+    lastMenuScrollY = current;
+
+    if (direction > 0 && current - menuScrollAnchor >= 26 && !menuTriggerHiddenOnScroll) {
+      menuTriggerHiddenOnScroll = true;
+      updateMenuTriggerVisualState(false);
+    } else if (direction < 0 && menuScrollAnchor - current >= 18 && menuTriggerHiddenOnScroll) {
+      menuTriggerHiddenOnScroll = false;
+      updateMenuTriggerVisualState(false);
+    }
   }
 
   function clearForcedMenuVisualState() {
     const properties = [
       "display", "transform", "visibility", "pointer-events", "opacity",
-      "filter", "backdrop-filter", "-webkit-backdrop-filter", "z-index"
+      "filter", "backdrop-filter", "-webkit-backdrop-filter", "z-index", "transition"
     ];
     [primarySidebar(), ...overlays(), ...document.querySelectorAll(SELECTORS.trigger)]
       .filter(Boolean)
@@ -248,6 +317,12 @@
     overlays().forEach((overlay) => overlay.classList.remove("show", "open", "active"));
     body.classList.remove("menu-mobile-open", "menu-aberto", "sidebar-open");
     body.classList.remove("integro-mobile-locked");
+    // Depois de fechar o menu, o acesso volta a ficar disponível para quem
+    // precisa reabri-lo, mesmo que a página esteja no meio da rolagem.
+    if (wasOpen) {
+      menuTriggerHiddenOnScroll = false;
+      resetMenuScrollTracking();
+    }
     forceMenuVisualState(false);
     setMenuAria(false);
 
@@ -449,6 +524,8 @@
   document.addEventListener("touchstart", onTouchStart, { passive: true });
   document.addEventListener("touchend", onTouchEnd, { passive: true });
   document.addEventListener("touchcancel", resetTouchGesture, { passive: true });
+  document.addEventListener("scroll", onMenuScroll, { capture: true, passive: true });
+  window.addEventListener("scroll", onMenuScroll, { passive: true });
   document.addEventListener("click", (event) => {
     if (!isMobile() || !shellReady) return;
 
@@ -498,13 +575,20 @@
     syncVisualViewport();
     setViewportClasses();
     if (isMobile()) {
-      if (shellReady) armHistoryGuard();
+      menuTriggerHiddenOnScroll = false;
+      resetMenuScrollTracking();
+      if (shellReady) {
+        updateMenuTriggerVisualState(menuIsOpen());
+        armHistoryGuard();
+      }
     } else {
+      menuTriggerHiddenOnScroll = false;
       historyArmed = false;
       closeSidebar({ restoreFocus: false });
       clearForcedMenuVisualState();
-      // Em telas largas a sidebar volta a ser navegação permanente. O
-      // aria-hidden usado no drawer não pode continuar ocultando o menu.
+      // Ao voltar para desktop, nenhuma marcação mobile pode deixar
+      // os gatilhos (ou a sidebar permanente) ocultos para acessibilidade.
+      document.querySelectorAll(SELECTORS.trigger).forEach(trigger => trigger.removeAttribute("aria-hidden"));
       primarySidebar()?.removeAttribute("aria-hidden");
     }
   }
@@ -516,7 +600,12 @@
   window.addEventListener("pageshow", () => {
     syncVisualViewport();
     setViewportClasses();
-    if (isMobile() && shellReady) armHistoryGuard();
+    if (isMobile() && shellReady) {
+      menuTriggerHiddenOnScroll = false;
+      resetMenuScrollTracking();
+      updateMenuTriggerVisualState(menuIsOpen());
+      armHistoryGuard();
+    }
   });
 
   bodyObserver = new MutationObserver(attemptShellReady);

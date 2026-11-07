@@ -246,3 +246,57 @@ test("vendedor usa Operação como item único e alterna Cobranças/Vendas por a
   window.IntegroMenuCategorias.sync();
   assert.equal(submenuCriado, 0, "Operação não cria submenu para vendedor");
 });
+
+
+test("mobile do vendedor não reserva faixa global e coloca título com menu acima das abas", () => {
+  const visual = read("css/integro-visual.css");
+  const master = read("master-local.html");
+  const nav = read("js/unified-navigation.js");
+  const css = visual.split("/* Vendedor mobile: sem faixa global vazia;")[1] || "";
+
+  assert.match(css, /@media \(max-width: 760px\)/);
+  assert.match(css, /\.perfil-vendedor \.layout > main\.main > \.integro-global-header\s*\{\s*display: none !important;/);
+  assert.match(css, /\.perfil-vendedor \.layout > main\.main\s*\{\s*padding-top: max\(8px, env\(safe-area-inset-top\)\) !important;/);
+  assert.match(css, /\.perfil-vendedor #cobrancas\.screen \.vendedor-operacao-header\s*\{[\s\S]*?justify-content: center !important;/);
+  assert.match(css, /#vendedorOperacaoTitulo\s*\{[\s\S]*?text-align: center !important;/);
+  assert.match(css, /\.vendedor-operacao-tabs\s*\{\s*display: grid !important;\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important;/);
+  assert.match(master, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-resumo2/);
+  // A notificação do perfil continua acessível pelo menu lateral, sem tocar no drawer.
+  assert.match(nav, /sidebar\.querySelector\("\.user-card,\.sidebar-profile-card,\.user-card-premium"\)/);
+  assert.match(nav, /sino\.dataset\.notificationBell = "true"/);
+});
+
+
+test("vendedor mostra Dashboard antes de Operação sem reordenar os outros perfis", () => {
+  function itensParaPerfil(nome) {
+    const host = {
+      dataset: {}, className: "integro-sidebar-menu-unificado", innerHTML: "",
+      setAttribute() {}, querySelectorAll() { return []; },
+      addEventListener() {}, contains() { return true; }
+    };
+    const sidebar = { children: [host], appendChild() {}, querySelector() { return null; } };
+    const document = {
+      getElementById: id => id === "sidebar" ? sidebar : id === "integroSidebarMenu" ? host : null,
+      querySelectorAll: () => [], addEventListener() {}, dispatchEvent() {}
+    };
+    const user = { tipoUsuario: nome };
+    const window = {
+      document, State: { getUsuario: () => user },
+      IntegroAcesso: { acessoUsuario: () => ({perfil: nome}), pode: () => true },
+      setTimeout() {}
+    };
+    vm.runInNewContext(read("js/unified-navigation.js"), {
+      window, document, CustomEvent: class { constructor(type) { this.type = type; } }
+    });
+    assert.equal(window.IntegroNavegacaoUnificada.renderizar(user), true);
+    return [...host.innerHTML.matchAll(/data-modulo="([^"]+)"/g)].map(match => match[1]);
+  }
+  const vendedor = itensParaPerfil("vendedor");
+  const local = itensParaPerfil("master_local");
+  assert.ok(vendedor.indexOf("dashboard") < vendedor.indexOf("operacao"), "Dashboard aparece primeiro no vendedor");
+  assert.equal(vendedor[0], "dashboard");
+  assert.equal(vendedor[1], "operacao");
+  assert.ok(local.indexOf("operacao") < local.indexOf("dashboard"), "Menu Master Local preservado");
+  assert.equal(local[0], "operacao");
+  assert.equal(local[1], "dashboard");
+});

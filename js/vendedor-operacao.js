@@ -352,13 +352,12 @@
               <strong class="apelido-cliente-cobranca">${escapar(apelido)}</strong>
               <small class="nome-cliente-cobranca">${escapar(nome)}</small>
             </div>
-            <button class="cobranca-whatsapp-btn" type="button" ${whatsapp ? "" : "disabled"} title="Abrir WhatsApp" aria-label="Abrir WhatsApp de ${escapar(apelido)}" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${escapar(item.clienteId)}','${escapar(item.vendaId)}')">
-              <span class="material-symbols-rounded">chat</span>
+            <button class="cobranca-whatsapp-btn" type="button" ${whatsapp ? "" : "disabled"} title="Enviar mensagem pelo WhatsApp" aria-label="Enviar mensagem pelo WhatsApp para ${escapar(apelido)}" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${escapar(item.clienteId)}','${escapar(item.vendaId)}')">
+              <span class="material-symbols-rounded" aria-hidden="true">send</span>
             </button>
           </div>
           <div class="cobranca-status-row">
-            <span class="cobranca-chip-status" style="color:${status.chave === 'PENDENTE' ? '#64748b' : status.cor};background:${status.cor}18;border-color:${status.cor}55">${escapar(status.titulo)}</span>
-            <span class="cobranca-chip-status" style="color:${corFinanceira};background:${corFinanceira}18;border-color:${corFinanceira}55">${escapar(situacaoVisual(item))}</span>
+            <span class="cobranca-chip-status cobranca-situacao-financeira" style="color:${corFinanceira};background:${corFinanceira}18;border-color:${corFinanceira}55">${escapar(situacaoVisual(item))}</span>
             ${syncBadge}
           </div>
           <div class="cobranca-progress-clean">
@@ -368,15 +367,14 @@
         </div>
 
         <div class="cobranca-metricas-clean">
-          <div class="cobranca-mini-clean"><span>Parcela esperada</span><strong>${moeda(item.valorParcela)}</strong></div>
-          <div class="cobranca-mini-clean"><span>Parcela paga no dia</span><strong>${item.valorPagoHoje > 0 ? moeda(item.valorPagoHoje) : "R$ 0,00"}</strong></div>
           <div class="cobranca-mini-clean"><span>Saldo devedor</span><strong>${moeda(item.saldoDevedor)}</strong></div>
-          <div class="cobranca-mini-clean" style="background:${corFinanceira}18!important;border-color:${corFinanceira}55!important"><span>Situação</span><strong style="color:${corFinanceira}">${escapar(situacaoVisual(item))}</strong></div>
+          <div class="cobranca-mini-clean"><span>Parcela esperada</span><strong>${moeda(item.valorParcela)}</strong></div>
+          <div class="cobranca-mini-clean"><span>Pago no dia</span><strong>${item.valorPagoHoje > 0 ? moeda(item.valorPagoHoje) : "R$ 0,00"}</strong></div>
         </div>
 
         <div class="cobranca-actions-clean">
-          <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
-          <button class="btn btn-nao-pago-clean ${item.naoPagoHoje ? "is-active" : ""}" type="button" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
+          <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" type="button" aria-pressed="${item.pagoHoje ? "true" : "false"}" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
+          <button class="btn btn-nao-pago-clean ${item.naoPagoHoje ? "is-active" : ""}" type="button" aria-pressed="${item.naoPagoHoje ? "true" : "false"}" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
         </div>
       </article>`;
   }
@@ -420,6 +418,29 @@
       if (filtraStatus && !((filtros.pendentes && item.pendenteHoje) || (filtros.pagos && item.pagoHoje) || (filtros.naoPagos && item.naoPagoHoje))) return false;
       if (filtraSituacao && !((filtros.atrasados && item.situacao === "ATRASADO") || (filtros.emDia && item.situacao === "EM_DIA") || (filtros.adiantados && item.situacao === "ADIANTADO"))) return false;
       return true;
+    });
+  }
+
+  // Quantidades independentes por filtro: cada contador usa a mesma rota/carteira,
+  // sem ser reduzido pelos outros checkboxes selecionados.
+  function atualizarContagensFiltrosCobranca(carteira) {
+    const carteiraCompleta = filtrosAtivos().carteiraCompleta;
+    const base = carteira.filter(item => carteiraCompleta
+      ? Number(item.saldoClienteTotal ?? item.saldoDevedor) > 0.01
+      : item.comCobrancaHoje);
+    const contagens = {
+      pendentes: base.filter(item => item.pendenteHoje).length,
+      pagos: base.filter(item => item.pagoHoje).length,
+      naoPagos: base.filter(item => item.naoPagoHoje).length,
+      atrasados: base.filter(item => item.situacao === "ATRASADO").length,
+      emDia: base.filter(item => item.situacao === "EM_DIA").length,
+      adiantados: base.filter(item => item.situacao === "ADIANTADO").length
+    };
+    global.document?.querySelectorAll("[data-cobranca-contagem]")?.forEach(elemento => {
+      const chave = elemento.dataset.cobrancaContagem;
+      if (!Object.prototype.hasOwnProperty.call(contagens, chave)) return;
+      const total = String(contagens[chave]);
+      if (elemento.textContent !== total) elemento.textContent = total;
     });
   }
 
@@ -475,8 +496,7 @@
     const carteira = dadosAtuais();
     global.IntegroVendedorUnificado?.renderHoje?.(carteira);
     const lista = ordenar(aplicarFiltros(carteira));
-    const contador = global.document.getElementById("contadorCobrancas");
-    if (contador) contador.textContent = `${lista.length} cliente(s) ${filtrosAtivos().carteiraCompleta ? "na carteira completa" : "na rota do caixa atual"} · ${lista.filter(item => item.pagoHoje).length} pago(s) · ${lista.filter(item => item.naoPagoHoje).length} não pagamento(s).`;
+    atualizarContagensFiltrosCobranca(carteira);
     const html = lista.length ? lista.map(card).join("") : `
       <div class="empty-state-operacao">
         <strong>Nenhum cliente encontrado</strong>

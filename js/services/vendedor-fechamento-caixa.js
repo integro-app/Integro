@@ -203,6 +203,8 @@
       .integro-fechamento-dialog::backdrop{background:rgba(15,23,42,.64);backdrop-filter:blur(3px)}
       .integro-fechamento-head{padding:22px 22px 10px;display:flex;gap:14px;align-items:flex-start;justify-content:space-between}.integro-fechamento-head h2{margin:0;font-size:24px}.integro-fechamento-head p{margin:6px 0 0;color:#64748b;line-height:1.45}.integro-fechamento-close{border:0;background:#f1f5f9;border-radius:12px;width:42px;height:42px;font-size:24px;cursor:pointer}
       .integro-fechamento-body{padding:12px 22px 22px}.integro-fechamento-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.integro-fechamento-card{border:1px solid #e2e8f0;border-radius:16px;padding:14px;background:#fff}.integro-fechamento-card.destaque{grid-column:1/-1;background:#fff7ed;border-color:#fed7aa}.integro-fechamento-card small{display:block;color:#64748b;font-weight:700;margin-bottom:5px}.integro-fechamento-card strong{font-size:21px}
+      .integro-fechamento-visitas{margin-top:16px}.integro-fechamento-visitas h3{font-size:15px;color:#0f2743;margin:0 0 9px;font-weight:800}.integro-fechamento-visitas .integro-fechamento-card{background:#f8fafc}
+      .integro-fechamento-aviso{margin-top:14px;padding:12px 14px;border:1px solid #fed7aa;border-radius:13px;background:#fff7ed;color:#9a3412;line-height:1.5;font-size:13px}.integro-fechamento-aviso strong{display:block;font-weight:800;margin-bottom:3px}.integro-fechamento-aviso.liberado{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
       .integro-fechamento-conferencia{margin-top:18px;padding:16px;border-radius:18px;background:#f8fafc;border:1px solid #e2e8f0}.integro-fechamento-conferencia label{display:block;font-weight:800;margin-bottom:8px}.integro-fechamento-conferencia input{width:100%;height:52px;border:1px solid #cbd5e1;border-radius:14px;padding:0 14px;font-size:20px;font-weight:800;outline:none}.integro-fechamento-conferencia input:focus{border-color:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.12)}.integro-fechamento-validacao{min-height:22px;margin-top:9px;font-weight:700;font-size:13px}.integro-fechamento-validacao.ok{color:#15803d}.integro-fechamento-validacao.erro{color:#b91c1c}
       .integro-fechamento-actions{display:flex;justify-content:flex-end;gap:10px;padding:0 22px 22px}.integro-fechamento-actions button{min-height:46px;padding:0 18px;border-radius:14px;border:0;font-weight:800;cursor:pointer}.integro-fechamento-actions .secundario{background:#f1f5f9;color:#0f172a}.integro-fechamento-actions .primario{background:#f97316;color:#fff}.integro-fechamento-actions button:disabled{opacity:.45;cursor:not-allowed}
       .integro-encerramento{padding:30px 24px 26px;text-align:center}.integro-encerramento .spinner{width:48px;height:48px;margin:0 auto 18px;border:4px solid #e2e8f0;border-top-color:#f97316;border-radius:50%;animation:integroFechamentoSpin .8s linear infinite}.integro-encerramento h2{margin:0 0 7px}.integro-encerramento>p{margin:0 0 20px;color:#64748b}.integro-encerramento-etapas{display:grid;gap:9px;text-align:left}.integro-encerramento-etapa{padding:12px 14px;border:1px solid #e2e8f0;border-radius:14px;color:#64748b;font-weight:700}.integro-encerramento-etapa.processando{border-color:#fdba74;background:#fff7ed;color:#9a3412}.integro-encerramento-etapa.ok{border-color:#bbf7d0;background:#f0fdf4;color:#166534}.integro-encerramento-etapa.erro{border-color:#fecaca;background:#fef2f2;color:#991b1b}.integro-encerramento-erro{margin-top:16px;padding:14px;border-radius:14px;background:#fef2f2;color:#991b1b;text-align:left}
@@ -257,6 +259,27 @@
     atual.remove();
   }
 
+  function htmlCarregamentoPainel() {
+    return `<div class="integro-fechamento-painel-carregando" role="status" aria-live="polite">
+      <div class="integro-fechamento-head"><div><h2>Conferência do caixa</h2><p>Resumo do caixa aberto. Atualizando valores oficiais…</p></div></div>
+      <div class="integro-fechamento-body">
+        <div class="integro-fechamento-grid">
+          <div class="integro-fechamento-card destaque"><small>Caixa atual</small><strong class="integro-fechamento-aguardando">Atualizando…</strong></div>
+          <div class="integro-fechamento-card"><small>Caixa inicial</small><strong class="integro-fechamento-aguardando">—</strong></div>
+          <div class="integro-fechamento-card"><small>Recebimentos</small><strong class="integro-fechamento-aguardando">—</strong></div>
+          <div class="integro-fechamento-card"><small>Visitas com baixa</small><strong class="integro-fechamento-aguardando">—</strong></div>
+        </div>
+        <p class="integro-fechamento-painel-info">A consulta não fecha o caixa. Você pode voltar para Cobranças ou Vendas a qualquer momento.</p>
+      </div>
+    </div>`;
+  }
+
+  function exibirErroNoPainel(painel, mensagem) {
+    painel.innerHTML = '<div class="integro-fechamento-head"><div><h2>Conferência indisponível</h2><p>Não foi possível consultar o caixa no servidor.</p></div></div><div class="integro-fechamento-body"><p class="integro-fechamento-erro-painel" role="alert"></p><button class="integro-fechamento-tentar-novamente" type="button">Tentar novamente</button></div>';
+    painel.querySelector(".integro-fechamento-erro-painel").textContent = mensagem;
+    painel.querySelector(".integro-fechamento-tentar-novamente")?.addEventListener("click", () => abrirResumoFechamento({ inline: true }));
+  }
+
   function criarDialogo(conteudo = "") {
     removerDialogo();
     garantirEstilos();
@@ -300,19 +323,43 @@
     return {
       caixaInicialCentavos: inteiro(snapshot.caixaInicialCentavos),
       caixaAtualCentavos: inteiro(snapshot.caixaFinalEsperadoCentavos),
-      vendasNovasCentavos: divisao.novasCentavos,
-      renovacoesCentavos: divisao.renovacoesCentavos,
+      vendasNovasCentavos: Number.isSafeInteger(snapshot.totalVendasNovasCentavos) ? snapshot.totalVendasNovasCentavos : divisao.novasCentavos,
+      renovacoesCentavos: Number.isSafeInteger(snapshot.totalVendasRenovadasCentavos) ? snapshot.totalVendasRenovadasCentavos : divisao.renovacoesCentavos,
+      pagamentosCentavos: inteiro(snapshot.totalPagamentosCentavos),
+      carteiraFinalCentavos: inteiro(snapshot.carteiraFinalCentavos),
       ingressosCentavos: inteiro(snapshot.totalIngressosCentavos),
       gastosCentavos: inteiro(snapshot.totalGastosCentavos),
-      retiradasCentavos: inteiro(snapshot.totalRetiradasCentavos)
+      retiradasCentavos: inteiro(snapshot.totalRetiradasCentavos),
+      recolhimentosCentavos: inteiro(snapshot.totalRecolhimentosCentavos)
     };
+  }
+
+  // A consulta do caixa é sempre permitida; somente a confirmação exige
+  // todas as visitas com baixa e ausência de impedimentos oficiais.
+  function impedimentosFechamento(snapshot = {}, operacoesPendentes = 0) {
+    const pendencias = Math.max(0, inteiro(snapshot.pendenciasCobranca));
+    const pagamentosPendentes = Math.max(0, inteiro(snapshot.pagamentosPendentes));
+    const aprovacoesPendentes = Math.max(0, inteiro(snapshot.aprovacoesPendentes));
+    const inconsistencias = Array.isArray(snapshot.inconsistencias) ? snapshot.inconsistencias.length : 0;
+    const motivos = [];
+    if (pendencias) motivos.push(`${pendencias} visita(s) ainda sem baixa de Pago ou Não pagamento.`);
+    if (pagamentosPendentes) motivos.push(`${pagamentosPendentes} pagamento(s) aguardando confirmação no servidor.`);
+    if (aprovacoesPendentes) motivos.push(`${aprovacoesPendentes} aprovação(ões) obrigatória(s) pendente(s).`);
+    if (inconsistencias) motivos.push(`${inconsistencias} inconsistência(s) financeira(s) para regularizar.`);
+    if (operacoesPendentes > 0) motivos.push("Existem baixas locais ainda sincronizando.");
+    return { podeFechar: motivos.length === 0, pendencias, motivos };
   }
 
   function htmlResumo(snapshot, caixa) {
     const resumo = resumoOficial(snapshot, caixa);
+    const situacao = impedimentosFechamento(snapshot, operacoesAindaSincronizando());
+    const totalVisitas = Math.max(0, inteiro(snapshot.totalCobrancas));
+    const totalPagas = Math.max(0, inteiro(snapshot.totalPagas));
+    const totalNaoPagas = Math.max(0, inteiro(snapshot.totalNaoPagas));
+    const visitadas = Math.max(0, inteiro(snapshot.totalVisitadas));
     return `
       <div class="integro-fechamento-head">
-        <div><h2>Fechar caixa</h2><p>Confira o resumo e digite o valor físico do caixa atual. O fechamento só será liberado quando os valores forem idênticos.</p></div>
+        <div><h2>Conferência do caixa</h2><p>Valores registrados no servidor até este momento. Consulte a posição do caixa quando quiser; o fechamento exige todas as visitas com baixa e conferência do valor físico.</p></div>
         <button class="integro-fechamento-close" type="button" data-fechamento-cancelar aria-label="Fechar">×</button>
       </div>
       <div class="integro-fechamento-body">
@@ -324,6 +371,22 @@
           <div class="integro-fechamento-card"><small>Ingressos</small><strong>${moedaCentavos(resumo.ingressosCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Gastos</small><strong>${moedaCentavos(resumo.gastosCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Retiros</small><strong>${moedaCentavos(resumo.retiradasCentavos)}</strong></div>
+          <div class="integro-fechamento-card"><small>Recebimentos</small><strong>${moedaCentavos(resumo.pagamentosCentavos)}</strong></div>
+          <div class="integro-fechamento-card"><small>Carteira final</small><strong>${moedaCentavos(resumo.carteiraFinalCentavos)}</strong></div>
+          <div class="integro-fechamento-card"><small>Recolhido</small><strong>${moedaCentavos(resumo.recolhimentosCentavos)}</strong></div>
+        </div>
+        <div class="integro-fechamento-visitas" aria-label="Resumo das visitas">
+          <h3>Visitas e baixas</h3>
+          <div class="integro-fechamento-grid">
+            <div class="integro-fechamento-card"><small>Previstas</small><strong>${totalVisitas}</strong></div>
+            <div class="integro-fechamento-card"><small>Com baixa</small><strong>${visitadas}</strong></div>
+            <div class="integro-fechamento-card"><small>Pagas</small><strong>${totalPagas}</strong></div>
+            <div class="integro-fechamento-card"><small>Não pagas</small><strong>${totalNaoPagas}</strong></div>
+          </div>
+        </div>
+        <div class="integro-fechamento-aviso ${situacao.podeFechar ? "liberado" : "pendente"}" role="status">
+          <strong>${situacao.podeFechar ? "Visitas concluídas. Confira o dinheiro do caixa." : "Consulta liberada — fechamento ainda bloqueado"}</strong>
+          ${situacao.motivos.map(motivo => `<div>${motivo}</div>`).join("")}
         </div>
         <div class="integro-fechamento-conferencia">
           <label for="integroFechamentoValorInformado">Digite o valor do caixa atual para confirmar</label>
@@ -342,20 +405,25 @@
     const validar = dialog.querySelector("#integroFechamentoValidacao");
     const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
     const conferencia = conferenciaValor(input?.value, snapshot.caixaFinalEsperadoCentavos);
+    const impedimentos = impedimentosFechamento(snapshot, operacoesAindaSincronizando());
+    // Mesmo com valor físico correto, visita sem baixa impede a confirmação.
+    confirmar.disabled = !conferencia.confere || !impedimentos.podeFechar;
     if (!conferencia.valido) {
-      validar.textContent = "Digite o valor contado no caixa.";
+      validar.textContent = impedimentos.podeFechar
+        ? "Digite o valor contado no caixa."
+        : "Resumo disponível. Fechamento bloqueado: " + impedimentos.motivos.join(" ");
       validar.className = "integro-fechamento-validacao";
-      confirmar.disabled = true;
       return conferencia;
     }
-    if (conferencia.confere) {
-      validar.textContent = "Valor confirmado. Fechamento liberado.";
-      validar.className = "integro-fechamento-validacao ok";
-      confirmar.disabled = false;
-    } else {
+    if (!conferencia.confere) {
       validar.textContent = `Divergência de ${moedaCentavos(Math.abs(conferencia.diferencaCentavos))}. O caixa não pode ser fechado.`;
       validar.className = "integro-fechamento-validacao erro";
-      confirmar.disabled = true;
+    } else if (!impedimentos.podeFechar) {
+      validar.textContent = "Valor físico confere, mas o fechamento ainda está bloqueado: " + impedimentos.motivos.join(" ");
+      validar.className = "integro-fechamento-validacao erro";
+    } else {
+      validar.textContent = "Valor confirmado. Todas as visitas possuem baixa. Fechamento liberado.";
+      validar.className = "integro-fechamento-validacao ok";
     }
     return conferencia;
   }
@@ -403,7 +471,7 @@
     global.location?.replace?.(`index.html?motivo=caixa-fechado&mensagem=${encodeURIComponent(mensagem)}`);
   }
 
-  async function executarFechamento(dialog, caixa, valorInformadoCentavos) {
+  async function executarFechamento(dialog, caixa, valorInformadoCentavos, cancelar = removerDialogo, inline = false) {
     if (fechamentoEmAndamento) return;
     fechamentoEmAndamento = true;
     dialog.innerHTML = htmlEncerramento();
@@ -415,8 +483,9 @@
 
       etapa(dialog, "validar", "processando");
       const snapshotAtualizado = await prepararSnapshot(caixa);
-      if (inteiro(snapshotAtualizado.pendenciasCobranca) > 0) {
-        const erro = new Error(`Existem ${inteiro(snapshotAtualizado.pendenciasCobranca)} cobranças sem baixa. Conclua a rota antes de fechar.`);
+      const impedimentos = impedimentosFechamento(snapshotAtualizado, operacoesAindaSincronizando());
+      if (!impedimentos.podeFechar) {
+        const erro = new Error("Fechamento não autorizado: " + impedimentos.motivos.join(" "));
         erro.code = "FECHAMENTO_PENDENCIAS";
         throw erro;
       }
@@ -461,78 +530,73 @@
       etapaAtual?.classList.add("erro");
       const host = dialog.querySelector("#integroFechamentoErro");
       if (host) host.innerHTML = `<div class="integro-encerramento-erro"><strong>Caixa não fechado.</strong><div>${texto(erro?.message || "Não foi possível concluir o fechamento.")}</div><div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="secundario" id="integroFechamentoCancelarErro">Cancelar</button><button type="button" class="primario" id="integroFechamentoReabrirResumo">Conferir novamente</button></div></div>`;
-      dialog.querySelector("#integroFechamentoCancelarErro")?.addEventListener("click", removerDialogo);
-      dialog.querySelector("#integroFechamentoReabrirResumo")?.addEventListener("click", () => abrirResumoFechamento());
+      dialog.querySelector("#integroFechamentoCancelarErro")?.addEventListener("click", cancelar);
+      dialog.querySelector("#integroFechamentoReabrirResumo")?.addEventListener("click", () => abrirResumoFechamento({ inline }));
       atualizarBotaoFechamento();
     }
   }
 
-  async function abrirResumoFechamento() {
+  async function abrirResumoFechamento({ inline = false } = {}) {
     if (!ehVendedor()) return notificar("Este fechamento é exclusivo do perfil vendedor.");
     if (fechamentoEmAndamento || preparandoFechamento) return;
     preparandoFechamento = true;
+    garantirEstilos();
+    const painel = inline ? global.document?.getElementById("abaFechamentoCaixa") : null;
+    // A navegação e o esqueleto dos valores aparecem antes de qualquer acesso à rede.
+    const dialog = painel || criarDialogo(htmlCarregamentoPainel());
+    if (painel) dialog.innerHTML = htmlCarregamentoPainel();
+    const cancelar = painel
+      ? () => global.abrirAbaVendasCobrancas?.("cobrancas")
+      : removerDialogo;
     try {
       let caixa = caixaAbertoLocal();
       // O cache do perfil pode não ter o caixa que segue aberto no Firebase.
       // Neste caso, conferir o dado oficial em vez de deixar o botão inerte.
       if (!caixa) {
         const persistido = await localizarCaixaAbertoPersistido();
-        if (persistido.permitido !== true || !persistido.caixa)
-          return notificar(persistido.motivo === "multiplos-caixas-abertos"
+        if (persistido.permitido !== true || !persistido.caixa) {
+          const mensagem = persistido.motivo === "multiplos-caixas-abertos"
             ? "O servidor identificou mais de um caixa aberto para este vendedor. Solicite ao supervisor que regularize os caixas."
             : persistido.permitido === null
               ? "Não foi possível consultar o caixa no servidor. Verifique a conexão e tente novamente."
-              : "Não foi encontrado caixa aberto para este vendedor. Solicite abertura ao responsável.");
+              : "Não foi encontrado caixa aberto para este vendedor. Solicite abertura ao responsável.";
+          if (painel) exibirErroNoPainel(painel, mensagem);
+          else { removerDialogo(); notificar(mensagem); }
+          return;
+        }
         caixa = persistido.caixa;
         global.caixaAtual = caixa;
         const existentes = global.State?.getCaixas?.() || [];
         global.State?.setCaixas?.([caixa, ...existentes.filter(item =>
           texto(item.id || item.caixaId) !== texto(caixa.id))]);
       }
-      if (operacoesAindaSincronizando() > 0)
-        return notificar("Existem baixas em processamento. Confirme a sincronização antes de encerrar o caixa.");
-
-      // A contagem local pode estar desatualizada. Ela nunca substitui
-      // a conferência do backend, que é obrigatória antes do fechamento.
-      const dialog = criarDialogo(`<div class="integro-encerramento"><div class="spinner"></div><h2>Preparando fechamento</h2><p>Conferindo as baixas diretamente no servidor.</p></div>`);
-      try {
-        await sincronizarAntesDoFechamento(caixa);
-        const snapshot = await prepararSnapshot(caixa);
-        if (inteiro(snapshot.pendenciasCobranca) > 0) {
-          const faltantes = (snapshot.pendenciasCobrancas || [])
-            .slice(0, 5).map(item => texto(item.clienteNome || item.vendaId)).filter(Boolean);
-          removerDialogo();
-          return notificar(`Fechamento bloqueado pelo servidor: ${inteiro(snapshot.pendenciasCobranca)} cobrança(s) sem baixa.` +
-            (faltantes.length ? ` Pendências: ${faltantes.join(", ")}.` : ""));
-        }
-        if (inteiro(snapshot.pagamentosPendentes) > 0)
-          throw new Error("Existem pagamentos pendentes de confirmação no servidor.");
-        if (inteiro(snapshot.aprovacoesPendentes) > 0)
-          throw new Error("Existem aprovações pendentes que impedem o fechamento.");
-        if (Array.isArray(snapshot.inconsistencias) && snapshot.inconsistencias.length > 0)
-          throw new Error("Conferência financeira pendente: " + snapshot.inconsistencias.slice(0, 4).join(", ") + ".");
-
+      // A consulta é somente leitura. Pendências e sincronizações aparecem
+      // no resumo; elas bloqueiam apenas a confirmação transacional.
+      // Consulta somente leitura: evita sincronização geral e não exige
+      // visitas concluídas para mostrar os valores atuais do caixa.
+      const snapshot = await prepararSnapshot(caixa);
+      if (!dialog.isConnected) return;
       dialog.innerHTML = htmlResumo(snapshot, caixa);
       const input = dialog.querySelector("#integroFechamentoValorInformado");
       const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
-      dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao => botao.addEventListener("click", removerDialogo));
+      dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao => botao.addEventListener("click", cancelar));
       input?.addEventListener("input", () => atualizarConferencia(dialog, snapshot));
       input?.addEventListener("keydown", evento => {
         if (evento.key === "Enter" && !confirmar?.disabled) confirmar.click();
       });
       confirmar?.addEventListener("click", () => {
         const conferencia = atualizarConferencia(dialog, snapshot);
-        if (!conferencia.confere) return;
-        executarFechamento(dialog, caixa, conferencia.informadoCentavos);
+        if (!conferencia.confere || !impedimentosFechamento(snapshot, operacoesAindaSincronizando()).podeFechar) return;
+        executarFechamento(dialog, caixa, conferencia.informadoCentavos, cancelar, !!painel);
       });
       if (!global.matchMedia?.("(max-width: 760px)")?.matches) {
         setTimeout(() => input?.focus({ preventScroll: true }), 20);
       }
     } catch (erro) {
-      removerDialogo();
       console.error("[ÍNTEGRO] Não foi possível preparar o fechamento.", erro);
-      notificar(erro?.message || "Não foi possível preparar o fechamento do caixa.");
-      }
+      const mensagem = erro?.message || "Não foi possível preparar o fechamento do caixa.";
+      if (painel) exibirErroNoPainel(painel, mensagem);
+      else { removerDialogo(); notificar(mensagem); }
     } finally {
       preparandoFechamento = false;
       atualizarBotaoFechamento();
@@ -549,10 +613,10 @@
     const caixa = caixaAbertoLocal();
     const pendentes = cobrancasPendentesHoje();
     const sincronizando = operacoesAindaSincronizando();
-    // O botão abre a CONFERÊNCIA, não fecha o caixa diretamente. Não pode
-    // ficar desabilitado devido a dados locais desatualizados. As travas
-    // de pagamentos, pendências e divergências estão no backend transacional.
-    const bloqueado = fechamentoEmAndamento || preparandoFechamento;
+    // Esta opção também é uma aba de navegação: carregar o resumo não pode
+    // deixar a aba cinza/inativa. Só o fechamento transacional bloqueia a ação.
+    // As travas financeiras continuam no botão de confirmação e no backend.
+    const bloqueado = fechamentoEmAndamento;
     if (botao.disabled !== bloqueado) botao.disabled = bloqueado;
     if (botao.dataset.integroFechamentoVendedor !== "conferencia-servidor")
       botao.dataset.integroFechamentoVendedor = "conferencia-servidor";

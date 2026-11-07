@@ -250,6 +250,16 @@
     if (!host || !usuarioAtual) return false;
     const perfilAtual = perfil(usuarioAtual);
     const itens = CATALOGO.filter(item => permitido(usuarioAtual, item) && !(perfilAtual === "vendedor" && item.id === "notificacoes"));
+    // Apenas no vendedor, Dashboard vem antes de Operação. Mantém os demais
+    // perfis, permissões e ações do menu na ordem já homologada.
+    if (perfilAtual === "vendedor") {
+      const indiceDashboard = itens.findIndex(item => item.id === "dashboard");
+      const indiceOperacao = itens.findIndex(item => item.id === "operacao");
+      if (indiceDashboard >= 0 && indiceOperacao >= 0 && indiceDashboard > indiceOperacao) {
+        const [dashboard] = itens.splice(indiceDashboard, 1);
+        itens.splice(indiceOperacao, 0, dashboard);
+      }
+    }
     // A validação de acesso pode disparar várias renderizações com o mesmo menu.
     // Reaproveitar os nós mantém foco, grupos expandidos e badges atuais no desktop/mobile.
     // Identidade e tenant fazem parte da assinatura para não preservar estado entre contas/empresas.

@@ -351,14 +351,18 @@
         pago.disabled = bloqueado;
         pago.title = item.pagoHoje ? "Editar pagamento lançado" : (item.naoPagoHoje ? "Alterar esta baixa para pagamento" : "Registrar pagamento");
         const rotulo = pago.querySelector("span:last-child");
-        const textoRotulo = item.pagoHoje ? "Editar pagamento" : "Pago";
+        const textoRotulo = "Pago";
+        pago.classList.toggle("is-active", !!item.pagoHoje);
+        pago.setAttribute("aria-pressed", item.pagoHoje ? "true" : "false");
         if (rotulo && rotulo.textContent !== textoRotulo) rotulo.textContent = textoRotulo;
       }
       if (naoPago) {
         naoPago.disabled = bloqueado;
         naoPago.title = item.pagoHoje ? "Alterar esta baixa para não pagamento" : (item.naoPagoHoje ? "Editar não pagamento" : "Registrar não pagamento");
         const rotulo = naoPago.querySelector("span:last-child");
-        const textoRotulo = item.naoPagoHoje ? "Editar não pagamento" : "Não pagamento";
+        const textoRotulo = "Não pagamento";
+        naoPago.classList.toggle("is-active", !!item.naoPagoHoje);
+        naoPago.setAttribute("aria-pressed", item.naoPagoHoje ? "true" : "false");
         if (rotulo && rotulo.textContent !== textoRotulo) rotulo.textContent = textoRotulo;
       }
     });

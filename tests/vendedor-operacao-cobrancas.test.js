@@ -35,7 +35,7 @@ test('card operacional de cobrança preserva os dados e as duas ações diárias
   assert.match(js, /apelido-cliente-cobranca/);
   assert.match(js, /nome-cliente-cobranca/);
   assert.match(js, /Parcela esperada/);
-  assert.match(js, /Parcela paga no dia/);
+  assert.match(js, /Pago no dia/);
   assert.match(js, /Saldo devedor/);
   assert.match(js, /Progresso de parcelas/);
   assert.match(js, /abrirNaoPagamentoVenda/);

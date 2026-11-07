@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
 const pages = [
@@ -82,4 +83,97 @@ test("mobile v27.3 reduz wrappers e preserva modo app", () => {
   assert.ok(css.includes("box-shadow: none !important"));
   assert.ok(css.includes("min-height: 64px !important"));
   assert.ok(css.includes("grid-template-columns: minmax(0, 1fr) 42px 42px !important"));
+});
+
+
+test("hambúrguer mobile some ao descer, reaparece ao subir e não pisca em pequenas rolagens", () => {
+  const source = read("js/integro-mobile-navigation.js");
+  const start = source.indexOf("  function updateMenuTriggerVisualState(");
+  const end = source.indexOf("  function clearForcedMenuVisualState()", start);
+  assert.ok(start >= 0 && end > start, "controlador de direção de scroll existente");
+  const styles = new Map();
+  const attrs = new Map();
+  const trigger = {
+    setAttribute: (name, value) => attrs.set(name, value),
+    removeAttribute: name => attrs.delete(name)
+  };
+  let mobile = true;
+  let menuOpen = false;
+  const win = { scrollY: 0 };
+  const doc = { documentElement: { scrollTop: 0 }, querySelectorAll: () => [trigger] };
+  const body = { scrollTop: 0 };
+  const ctx = {
+    window: win, document: doc, body,
+    SELECTORS: { trigger: ".mobile-menu-btn" }, shellReady: true,
+    isMobile: () => mobile, menuIsOpen: () => menuOpen,
+    setImportant: (_el, property, value) => styles.set(property, value)
+  };
+  const isolated = [
+    "let menuTriggerHiddenOnScroll = false;",
+    "let lastMenuScrollY = 0;",
+    "let menuScrollAnchor = 0;",
+    "let menuScrollDirection = 0;",
+    source.slice(start, end),
+    "({ onMenuScroll, resetMenuScrollTracking, updateMenuTriggerVisualState, hidden: () => menuTriggerHiddenOnScroll })"
+  ].join("\n");
+  const api = vm.runInNewContext(isolated, ctx);
+  const scroll = value => {
+    win.scrollY = value;
+    api.onMenuScroll({ target: doc });
+  };
+
+  api.resetMenuScrollTracking();
+  api.updateMenuTriggerVisualState(false);
+  assert.equal(styles.get("opacity"), "1");
+  assert.equal(styles.get("pointer-events"), "auto");
+  scroll(8);
+  assert.equal(api.hidden(), false, "mínima rolagem não oculta");
+  scroll(40);
+  assert.equal(api.hidden(), true, "rolagem descendente oculta");
+  assert.equal(styles.get("opacity"), "0");
+  assert.equal(styles.get("pointer-events"), "none");
+  assert.equal(attrs.get("aria-hidden"), "true");
+  assert.match(styles.get("transition"), /opacity \.2s ease/);
+  scroll(31);
+  assert.equal(api.hidden(), true, "oscilação pequena não reaparece");
+  scroll(20);
+  assert.equal(api.hidden(), false, "subida consistente revela");
+  assert.equal(styles.get("opacity"), "1");
+  assert.equal(attrs.has("aria-hidden"), false);
+
+  scroll(80);
+  assert.equal(api.hidden(), true);
+  scroll(0);
+  assert.equal(api.hidden(), false, "no topo o menu fica disponível");
+
+  // Rolagens de tabelas, gavetas e diálogos não afetam o menu fixo.
+  api.onMenuScroll({ target: { scrollTop: 200, matches: () => false } });
+  assert.equal(api.hidden(), false);
+  // Suporta também o conteúdo principal com rolagem própria.
+  api.onMenuScroll({ target: { scrollTop: 42, matches: selector => selector.includes(".main") } });
+  assert.equal(api.hidden(), true);
+
+  menuOpen = true;
+  api.onMenuScroll({ target: doc });
+  assert.equal(api.hidden(), true, "menu aberto não dispara mudança de direção");
+  menuOpen = false;
+  mobile = false;
+  api.onMenuScroll({ target: doc });
+  assert.equal(api.hidden(), true, "lógica de scroll não executa no desktop");
+});
+
+test("menu lateral mantém acessibilidade e seus gatilhos sem duplicar instalação", () => {
+  const source = read("js/integro-mobile-navigation.js");
+  assert.match(source, /window\.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__/);
+  assert.match(source, /document\.addEventListener\("scroll", onMenuScroll, \{ capture: true, passive: true \}\)/);
+  assert.match(source, /window\.addEventListener\("scroll", onMenuScroll, \{ passive: true \}\)/);
+  assert.match(source, /if \(!isMobile\(\) \|\| !shellReady \|\| menuIsOpen\(\)\) return/);
+  assert.match(source, /if \(wasOpen\) \{\s*menuTriggerHiddenOnScroll = false/);
+  assert.match(source, /setImportant\(trigger, "pointer-events", hidden \? "none" : "auto"\)/);
+  assert.match(source, /trigger\.setAttribute\("aria-hidden", "true"\)/);
+  assert.match(source, /menuScrollAnchor - current >= 18/);
+  assert.match(source, /clearForcedMenuVisualState\(\);\s*\/\/ Ao voltar para desktop,[\s\S]*?trigger\.removeAttribute\("aria-hidden"\)/);
+  for (const [file] of pages) {
+    assert.match(read(file), /js\/integro-mobile-navigation\.js\?v=20260818-v272-perf1&build=[^"]+&scroll=20261107-directional1/, file);
+  }
 });
