@@ -756,12 +756,10 @@
 
         <div class="vendedor-operacao-topbar">
           <div class="operacao-tabs-clean vendedor-operacao-tabs" role="tablist" aria-label="Operação do vendedor">
-            <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" aria-selected="true" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
-            <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" aria-selected="false" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
+            <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" role="tab" aria-selected="true" aria-controls="abaCobrancas" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
+            <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" role="tab" aria-selected="false" aria-controls="abaVendasDia" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
+            <button class="btn tab-operacao-clean vendedor-fechar-caixa-topo" id="btnFecharCaixaCobrancas" onclick="abrirAbaVendasCobrancas('fechamento')" type="button" role="tab" aria-selected="false" aria-controls="abaFechamentoCaixa" aria-label="Consultar e conferir caixa"><span>Fechar caixa</span></button>
           </div>
-          <button class="btn tab-operacao-clean vendedor-fechar-caixa-topo" id="btnFecharCaixaCobrancas" onclick="abrirAbaVendasCobrancas('fechamento')" type="button" role="tab" aria-selected="false" aria-controls="abaFechamentoCaixa" aria-label="Consultar e conferir caixa">
-            <span>Fechar caixa</span>
-          </button>
         </div>
 
         <div id="abaCobrancas">
