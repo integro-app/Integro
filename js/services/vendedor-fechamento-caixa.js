@@ -376,20 +376,25 @@
     const validar = dialog.querySelector("#integroFechamentoValidacao");
     const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
     const conferencia = conferenciaValor(input?.value, snapshot.caixaFinalEsperadoCentavos);
+    const impedimentos = impedimentosFechamento(snapshot, operacoesAindaSincronizando());
+    // Mesmo com valor físico correto, visita sem baixa impede a confirmação.
+    confirmar.disabled = !conferencia.confere || !impedimentos.podeFechar;
     if (!conferencia.valido) {
-      validar.textContent = "Digite o valor contado no caixa.";
+      validar.textContent = impedimentos.podeFechar
+        ? "Digite o valor contado no caixa."
+        : "Resumo disponível. Fechamento bloqueado: " + impedimentos.motivos.join(" ");
       validar.className = "integro-fechamento-validacao";
-      confirmar.disabled = true;
       return conferencia;
     }
-    if (conferencia.confere) {
-      validar.textContent = "Valor confirmado. Fechamento liberado.";
-      validar.className = "integro-fechamento-validacao ok";
-      confirmar.disabled = false;
-    } else {
+    if (!conferencia.confere) {
       validar.textContent = `Divergência de ${moedaCentavos(Math.abs(conferencia.diferencaCentavos))}. O caixa não pode ser fechado.`;
       validar.className = "integro-fechamento-validacao erro";
-      confirmar.disabled = true;
+    } else if (!impedimentos.podeFechar) {
+      validar.textContent = "Valor físico confere, mas o fechamento ainda está bloqueado: " + impedimentos.motivos.join(" ");
+      validar.className = "integro-fechamento-validacao erro";
+    } else {
+      validar.textContent = "Valor confirmado. Todas as visitas possuem baixa. Fechamento liberado.";
+      validar.className = "integro-fechamento-validacao ok";
     }
     return conferencia;
   }
@@ -449,8 +454,9 @@
 
       etapa(dialog, "validar", "processando");
       const snapshotAtualizado = await prepararSnapshot(caixa);
-      if (inteiro(snapshotAtualizado.pendenciasCobranca) > 0) {
-        const erro = new Error(`Existem ${inteiro(snapshotAtualizado.pendenciasCobranca)} cobranças sem baixa. Conclua a rota antes de fechar.`);
+      const impedimentos = impedimentosFechamento(snapshotAtualizado, operacoesAindaSincronizando());
+      if (!impedimentos.podeFechar) {
+        const erro = new Error("Fechamento não autorizado: " + impedimentos.motivos.join(" "));
         erro.code = "FECHAMENTO_PENDENCIAS";
         throw erro;
       }
@@ -523,30 +529,14 @@
         global.State?.setCaixas?.([caixa, ...existentes.filter(item =>
           texto(item.id || item.caixaId) !== texto(caixa.id))]);
       }
-      if (operacoesAindaSincronizando() > 0)
-        return notificar("Existem baixas em processamento. Confirme a sincronização antes de encerrar o caixa.");
-
-      // A contagem local pode estar desatualizada. Ela nunca substitui
-      // a conferência do backend, que é obrigatória antes do fechamento.
-      const dialog = criarDialogo(`<div class="integro-encerramento"><div class="spinner"></div><h2>Preparando fechamento</h2><p>Conferindo as baixas diretamente no servidor.</p></div>`);
+      // A consulta é somente leitura. Pendências e sincronizações aparecem
+      // no resumo; elas bloqueiam apenas a confirmação transacional.
+      const dialog = criarDialogo(`<div class="integro-encerramento"><div class="spinner"></div><h2>Carregando dados do caixa</h2><p>Consultando o resumo atual no servidor, sem fechar o caixa.</p></div>`);
       try {
-        await sincronizarAntesDoFechamento(caixa);
+        // Consulta somente leitura: evita sincronização geral e não exige
+        // visitas concluídas para mostrar os valores atuais do caixa.
         const snapshot = await prepararSnapshot(caixa);
-        if (inteiro(snapshot.pendenciasCobranca) > 0) {
-          const faltantes = (snapshot.pendenciasCobrancas || [])
-            .slice(0, 5).map(item => texto(item.clienteNome || item.vendaId)).filter(Boolean);
-          removerDialogo();
-          return notificar(`Fechamento bloqueado pelo servidor: ${inteiro(snapshot.pendenciasCobranca)} cobrança(s) sem baixa.` +
-            (faltantes.length ? ` Pendências: ${faltantes.join(", ")}.` : ""));
-        }
-        if (inteiro(snapshot.pagamentosPendentes) > 0)
-          throw new Error("Existem pagamentos pendentes de confirmação no servidor.");
-        if (inteiro(snapshot.aprovacoesPendentes) > 0)
-          throw new Error("Existem aprovações pendentes que impedem o fechamento.");
-        if (Array.isArray(snapshot.inconsistencias) && snapshot.inconsistencias.length > 0)
-          throw new Error("Conferência financeira pendente: " + snapshot.inconsistencias.slice(0, 4).join(", ") + ".");
-
-      dialog.innerHTML = htmlResumo(snapshot, caixa);
+        dialog.innerHTML = htmlResumo(snapshot, caixa);
       const input = dialog.querySelector("#integroFechamentoValorInformado");
       const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
       dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao => botao.addEventListener("click", removerDialogo));
@@ -556,7 +546,7 @@
       });
       confirmar?.addEventListener("click", () => {
         const conferencia = atualizarConferencia(dialog, snapshot);
-        if (!conferencia.confere) return;
+        if (!conferencia.confere || !impedimentosFechamento(snapshot, operacoesAindaSincronizando()).podeFechar) return;
         executarFechamento(dialog, caixa, conferencia.informadoCentavos);
       });
       if (!global.matchMedia?.("(max-width: 760px)")?.matches) {
