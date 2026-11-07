@@ -302,11 +302,14 @@
     return {
       caixaInicialCentavos: inteiro(snapshot.caixaInicialCentavos),
       caixaAtualCentavos: inteiro(snapshot.caixaFinalEsperadoCentavos),
-      vendasNovasCentavos: divisao.novasCentavos,
-      renovacoesCentavos: divisao.renovacoesCentavos,
+      vendasNovasCentavos: Number.isSafeInteger(snapshot.totalVendasNovasCentavos) ? snapshot.totalVendasNovasCentavos : divisao.novasCentavos,
+      renovacoesCentavos: Number.isSafeInteger(snapshot.totalVendasRenovadasCentavos) ? snapshot.totalVendasRenovadasCentavos : divisao.renovacoesCentavos,
+      pagamentosCentavos: inteiro(snapshot.totalPagamentosCentavos),
+      carteiraFinalCentavos: inteiro(snapshot.carteiraFinalCentavos),
       ingressosCentavos: inteiro(snapshot.totalIngressosCentavos),
       gastosCentavos: inteiro(snapshot.totalGastosCentavos),
-      retiradasCentavos: inteiro(snapshot.totalRetiradasCentavos)
+      retiradasCentavos: inteiro(snapshot.totalRetiradasCentavos),
+      recolhimentosCentavos: inteiro(snapshot.totalRecolhimentosCentavos)
     };
   }
 
@@ -347,6 +350,9 @@
           <div class="integro-fechamento-card"><small>Ingressos</small><strong>${moedaCentavos(resumo.ingressosCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Gastos</small><strong>${moedaCentavos(resumo.gastosCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Retiros</small><strong>${moedaCentavos(resumo.retiradasCentavos)}</strong></div>
+          <div class="integro-fechamento-card"><small>Recebimentos</small><strong>${moedaCentavos(resumo.pagamentosCentavos)}</strong></div>
+          <div class="integro-fechamento-card"><small>Carteira final</small><strong>${moedaCentavos(resumo.carteiraFinalCentavos)}</strong></div>
+          <div class="integro-fechamento-card"><small>Recolhido</small><strong>${moedaCentavos(resumo.recolhimentosCentavos)}</strong></div>
         </div>
         <div class="integro-fechamento-visitas" aria-label="Resumo das visitas">
           <h3>Visitas e baixas</h3>
