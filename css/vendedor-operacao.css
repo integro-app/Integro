@@ -961,3 +961,138 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #l
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* Gaveta de filtros do vendedor: checkboxes compactos e seleção legível (Cobranças/Vendas). */
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body .vendedor-filtros-panel {
+  padding: 0 !important;
+  background: transparent !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body .vendedor-filtros-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 8px !important;
+  align-content: start !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body .vendedor-filtro-grupo-titulo {
+  margin: 12px 0 4px !important;
+  padding: 0 2px !important;
+  color: #50627a !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: .07em !important;
+  text-transform: uppercase !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body .vendedor-filtro-grupo-titulo:first-child {
+  margin-top: 0 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body label.vendedor-check {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 12px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 54px !important;
+  margin: 0 !important;
+  padding: 10px 14px !important;
+  box-sizing: border-box !important;
+  border: 1px solid #d9e2ec !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  color: #192f4c !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body label.vendedor-check:has(input:checked) {
+  border-color: #ffad42 !important;
+  background: #fff7ea !important;
+  box-shadow: inset 3px 0 0 #ff9700 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body label.vendedor-check:focus-within {
+  outline: 2px solid #ffb100 !important;
+  outline-offset: 2px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body label.vendedor-check > input[type="checkbox"] {
+  appearance: auto !important;
+  -webkit-appearance: checkbox !important;
+  position: static !important;
+  display: block !important;
+  flex: 0 0 20px !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  max-width: 20px !important;
+  height: 20px !important;
+  min-height: 20px !important;
+  max-height: 20px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  transform: none !important;
+  accent-color: #ee8700 !important;
+  box-shadow: none !important;
+  vertical-align: middle !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body label.vendedor-check > span {
+  display: flex !important;
+  flex: 1 1 auto !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  min-width: 0 !important;
+  gap: 8px !important;
+  color: #21344d !important;
+  font-size: 14px !important;
+  line-height: 1.3 !important;
+  font-weight: 650 !important;
+  text-align: left !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body .vendedor-filtro-contagem {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  min-width: 26px !important;
+  height: 24px !important;
+  margin-left: auto !important;
+  padding: 0 7px !important;
+  border-radius: 999px !important;
+  background: #edf2f8 !important;
+  color: #36516c !important;
+  font-size: 12px !important;
+  font-weight: 750 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body label.vendedor-check:has(input:checked) .vendedor-filtro-contagem {
+  color: #a35100 !important;
+  background: #ffe7c3 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body .vendedor-filtros-grid > label:not(.vendedor-check) {
+  margin-top: 2px !important;
+  font-size: 12px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body .vendedor-filtros-actions {
+  display: flex !important;
+  justify-content: flex-start !important;
+  gap: 6px !important;
+  padding: 12px 0 0 !important;
+  margin-top: 12px !important;
+  border-top: 1px solid #e7edf4 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body .vendedor-filtros-actions .ghost-btn {
+  flex: 0 0 auto !important;
+  width: auto !important;
+  min-height: 36px !important;
+  padding: 4px 8px !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: #526782 !important;
+  font-size: 13px !important;
+}
+@media (max-width: 600px) {
+  html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-body {
+    padding: 18px 18px 24px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig-filter-head {
+    padding: 20px 18px !important;
+  }
+}
