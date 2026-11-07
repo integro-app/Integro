@@ -763,7 +763,6 @@
             <span class="material-symbols-rounded" aria-hidden="true">lock</span><span>Fechar caixa</span>
           </button>
         </div>
-        <div class="fechamento-status-clean vendedor-fechamento-status" id="statusFechamentoCobrancasFinal" role="status" aria-live="polite"></div>
 
         <div id="abaCobrancas">
           <div class="vendedor-operacao-barra">
@@ -790,6 +789,7 @@
             <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosCobrancasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="buscarCobrancasVendedor()">Aplicar filtros</button></div>
           </div>
           <div id="listaCobrancas"></div>
+          <div class="fechamento-status-clean vendedor-fechamento-status" id="statusFechamentoCobrancasFinal" role="status" aria-live="polite"></div>
         </div>
 
         <div id="abaVendasDia" style="display:none">
