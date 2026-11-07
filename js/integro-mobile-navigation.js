@@ -586,8 +586,9 @@
       historyArmed = false;
       closeSidebar({ restoreFocus: false });
       clearForcedMenuVisualState();
-      // Em telas largas a sidebar volta a ser navegação permanente. O
-      // aria-hidden usado no drawer não pode continuar ocultando o menu.
+      // Ao voltar para desktop, nenhuma marcação mobile pode deixar
+      // os gatilhos (ou a sidebar permanente) ocultos para acessibilidade.
+      document.querySelectorAll(SELECTORS.trigger).forEach(trigger => trigger.removeAttribute("aria-hidden"));
       primarySidebar()?.removeAttribute("aria-hidden");
     }
   }
