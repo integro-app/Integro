@@ -953,7 +953,7 @@
     const data = dataCaixa();
     const total = vendas.reduce((s, v) => s + numero(v.valorEmprestado || v.valorVenda || v.valor), 0);
     const contador = document.getElementById("contadorVendasDia");
-    if (contador) contador.textContent = `${vendas.length} venda(s) no dia do caixa (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}`;
+    if (contador) contador.textContent = vendas.length ? `${vendas.length} venda(s) no dia do caixa (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}` : "";
     el.innerHTML = vendas.length ? vendas.map(v => {
       const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
       return `<article class="vendedor-venda-card">
@@ -964,7 +964,7 @@
         <div><span>Parcela</span><strong>${moeda(v.valorParcela || 0)}</strong></div>
         <div><span>Status</span><strong>${texto(v.statusVenda || v.status || "ATIVA")}</strong></div>
       </article>`;
-    }).join("") : '<div class="empty-state-operacao"><strong>Nenhuma venda encontrada</strong><p>Não há vendas vinculadas a este vendedor para os filtros informados.</p></div>';
+    }).join("") : "";
   }
 
   function abrirAba(aba = "cobrancas") {
