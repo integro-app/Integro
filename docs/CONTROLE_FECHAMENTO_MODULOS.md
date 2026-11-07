@@ -8,7 +8,7 @@
 
 ## 1. Estado de execução
 
-- **Tópico ativo:** **NÃO INICIADO**. A primeira escolha será registrada no início da próxima rodada de trabalho, sem presumir que um módulo pré-existente está 100% pronto.
+- **Tópico ativo:** **M22 — Navegação do vendedor / Operação: Cobranças e Vendas**. Aguardando testes automatizados, revisão e homologação visual no ambiente publicado; **NÃO FECHADO**.
 - **Próxima prioridade sugerida pela auditoria:** **M12 — Caixas operacionais**, começando pelo fechamento, persistência do status e disponibilidade dos botões. Risco crítico para uso real.
 - **Dependências críticas:** M03 Login, M02 Multiempresa, M05 Permissões, M11 Pagamentos e M13 Ledger. Podem ser inspecionadas para validar M12, mas não serão declaradas concluídas automaticamente.
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
@@ -108,7 +108,17 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 | 06/11/2026 | Notificações de leads | Commit `374b552` na main; PR #35 inclui etapa backend | Confirmar workflow/Function, integração do navegador e notificação real |
 | 06/11/2026 | Chat | Commits de reparo do editor, anexos e não lidas | Ainda exige envio e recebimento real nos dispositivos |
 
-## 7. Definição de continuidade
+## 7. Tópico ativo — M22 / Navegação do vendedor (06/11/2026)
+
+- **Escopo pedido:** vendedor padrão sem filhos Cobranças/Vendas na sidebar. Clique em **Operação** abre diretamente cobranças e expõe duas abas **Cobranças** e **Vendas** na parte superior da tela.
+- **Implementação em branch:** `fix/vendedor-operacao-abas-topo-20261106`; ajuste localizado em `js/integro-menu-categorias.js` e `css/integro-visual.css`; tela `js/vendedor-unificado.js` preservada.
+- **Regressão adicionada:** `tests/sidebar-navigation-regression.test.js` (valida ausência de submenu para vendedor, rota de Operação e visibilidade das abas).
+- **Testes executados até aqui:** comparação estática de trechos gravados no GitHub; **suite Node e teste em navegador ainda não executados nesta rodada**.
+- **Deploy:** não executado; aplicação publicada não foi alterada.
+- **Aceite pendente:** testes de regressão/CI e, após publicação autorizada, clique em Operação, alternância das duas abas, esconder menu, desktop/mobile, e preservação das permissões.
+- **Veredito:** EM DESENVOLVIMENTO / HOMOLOGAÇÃO PENDENTE — **NÃO FECHADO**.
+
+## 8. Definição de continuidade
 
 - A instrução **"avance"** significa prosseguir **no tópico ativo**, primeiro corrigindo o que ainda o impede de passar.
 - Não mudar de módulo por conveniência nem declarar 'concluído' em razão de commit.
