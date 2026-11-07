@@ -246,3 +246,22 @@ test("vendedor usa Operação como item único e alterna Cobranças/Vendas por a
   window.IntegroMenuCategorias.sync();
   assert.equal(submenuCriado, 0, "Operação não cria submenu para vendedor");
 });
+
+
+test("mobile do vendedor não reserva faixa global e coloca título com menu acima das abas", () => {
+  const visual = read("css/integro-visual.css");
+  const master = read("master-local.html");
+  const nav = read("js/unified-navigation.js");
+  const css = visual.split("/* Vendedor mobile: sem faixa global vazia;")[1] || "";
+
+  assert.match(css, /@media \(max-width: 760px\)/);
+  assert.match(css, /\.perfil-vendedor \.layout > main\.main > \.integro-global-header\s*\{\s*display: none !important;/);
+  assert.match(css, /\.perfil-vendedor \.layout > main\.main\s*\{\s*padding-top: max\(8px, env\(safe-area-inset-top\)\) !important;/);
+  assert.match(css, /\.perfil-vendedor #cobrancas\.screen \.vendedor-operacao-header\s*\{[\s\S]*?justify-content: center !important;/);
+  assert.match(css, /#vendedorOperacaoTitulo\s*\{[\s\S]*?text-align: center !important;/);
+  assert.match(css, /\.vendedor-operacao-tabs\s*\{\s*display: grid !important;\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important;/);
+  assert.match(master, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-cabecalho1/);
+  // A notificação do perfil continua acessível pelo menu lateral, sem tocar no drawer.
+  assert.match(nav, /sidebar\.querySelector\("\.user-card,\.sidebar-profile-card,\.user-card-premium"\)/);
+  assert.match(nav, /sino\.dataset\.notificationBell = "true"/);
+});
