@@ -193,7 +193,7 @@ test("card mobile compacto usa situação financeira e três métricas horizonta
   assert.match(css, /card vertical compacto/);
   assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\) !important/);
   assert.doesNotMatch(css, /\.cobranca-status-row > \.cobranca-chip-status:nth-child\(2\)/);
-  assert.match(pagina, /css\/vendedor-operacao\.css\?v=20261107-vendedor-icone-send2/);
+  assert.match(pagina, /css\/vendedor-operacao\.css\?v=20261107-vendedor-cores-estados3/);
   assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
 });
 
@@ -208,4 +208,17 @@ test("botão selecionado não mostra check extra e mensagem usa avião de envio"
   assert.match(card, /class="material-symbols-rounded" aria-hidden="true">send<\/span>/);
   assert.match(card, /title="Enviar mensagem pelo WhatsApp"/);
   assert.match(card, /abrirWhatsAppClienteCobranca/);
+});
+
+
+test("cores distinguem Pago e Não pagamento ativos e inativos sem alterar baixa", () => {
+  const css = fs.readFileSync(path.join(__dirname, "../css/vendedor-operacao.css"), "utf8");
+  const operacao = fs.readFileSync(path.join(__dirname, "../js/vendedor-operacao.js"), "utf8");
+  for (const nome of ["btn-pago-clean", "btn-nao-pago-clean"]) {
+    assert.match(css, new RegExp(nome + ":not\\(\\.is-active\\)\\s*\\{[\\s\\S]*?background:[^;]+ !important;[\\s\\S]*?color:[^;]+ !important;"));
+    assert.match(css, new RegExp(nome + "\\.is-active\\s*\\{[\\s\\S]*?background:[^;]+ !important;[\\s\\S]*?color: #fff !important;"));
+  }
+  assert.match(operacao, /aria-pressed="\\$\\{item\\.pagoHoje \\? "true" : "false"\\}"/);
+  assert.match(operacao, /aria-pressed="\\$\\{item\\.naoPagoHoje \\? "true" : "false"\\}"/);
+  assert.doesNotMatch(css, /\\.btn\\.is-active::after\\s*\\{/);
 });
