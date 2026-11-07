@@ -1098,12 +1098,12 @@ html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig
 }
 
 
-/* Operação / Vendedor: três opções com aparência de abas na mesma linha.
-   Fechar caixa mantém ação de conferência, sem se tornar uma aba de navegação. */
+/* Operação / Vendedor: as três abas pertencem ao mesmo tablist.
+   Fechar caixa conserva a conferência; todas compartilham o estado visual. */
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar {
   display: grid !important;
-  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important;
-  gap: 6px !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
   align-items: stretch !important;
   justify-content: start !important;
   width: min(100%, 540px) !important;
@@ -1138,14 +1138,15 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .v
   font-size: 13px !important;
   font-weight: 650 !important;
   line-height: 1.15 !important;
+  transition: background-color .18s ease, color .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease !important;
 }
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar .vendedor-operacao-tabs > .tab-operacao-clean {
   flex: 1 1 0 !important;
-  width: 50% !important;
+  width: 33.333% !important;
   padding: 7px 4px !important;
 }
-/* Mesmo estado visual das abas Cobranças e Vendas:
-   a classe .active controla o destaque, sem marcação permanente. */
+/* Todas herdam o mesmo estado ativo via .tab-operacao-clean.active.
+   Nenhuma aba recebe destaque permanente quando inativa. */
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar .vendedor-fechar-caixa-topo {
   display: inline-flex !important;
   align-items: center !important;
