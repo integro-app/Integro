@@ -18,8 +18,8 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-v2/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-fechar-aba-v2/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-instant-v3/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-fechar-aba-instant-v3/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -260,7 +260,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-v2/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-instant-v3/);
 });
 
 
@@ -472,13 +472,13 @@ test("Fechar caixa divide a linha com Cobranças e Vendas e continua funcional e
     "Fechar caixa precisa ficar ao lado das abas, fora dos painéis alternados");
   assert.equal(markup.split('id="btnFecharCaixaCobrancas"').length - 1, 1);
   assert.equal(markup.split('id="statusFechamentoCobrancasFinal"').length - 1, 1);
-  assert.match(markup, /id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa\(\)"/);
+  assert.match(markup, /id="btnFecharCaixaCobrancas" onclick="abrirAbaVendasCobrancas\('fechamento'\)"/);
   assert.match(markup, /window\.IntegroVendedorFechamentoCaixa\?\.atualizarBotaoFechamento\?\.\(\)/);
   assert.match(estilo, /Operação \/ Vendedor: três opções com aparência de abas na mesma linha/);
   assert.match(markup, /class="btn tab-operacao-clean vendedor-fechar-caixa-topo"/);
   assert.doesNotMatch(markup, /class="btn btn-primary vendedor-fechar-caixa-topo"/);
   assert.match(estilo, /grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\)/);
-  assert.match(estilo, /\.vendedor-fechar-caixa-topo\s*\{[\s\S]*?background: transparent !important/);
+  assert.match(estilo, /\.vendedor-fechar-caixa-topo\s*\{[\s\S]*?background: #fff1d8 !important/);
   assert.doesNotMatch(estilo, /background: linear-gradient\(110deg, #ffaf47, #ff9100\)/);
   assert.match(estilo, /\.vendedor-fechar-caixa-topo:disabled\s*\{/);
   assert.match(estilo, /@media \(max-width: 760px\)\s*\{[\s\S]*?\.vendedor-operacao-topbar/);
@@ -557,7 +557,7 @@ test("abrir conferência consulta o servidor sem exigir visitas concluídas; fec
   const preview = close.split("  async function abrirResumoFechamento() {")[1]?.split("  function atualizarBotaoFechamento() {")[0] || "";
   const fechamento = close.split("  async function executarFechamento(")[1]?.split("  async function abrirResumoFechamento() {")[0] || "";
   assert.ok(preview && fechamento);
-  assert.match(preview, /const snapshot = await prepararSnapshot\(caixa\);\s*dialog\.innerHTML = htmlResumo\(snapshot, caixa\)/);
+  assert.match(preview, /const snapshot = await prepararSnapshot\(caixa\);\s*if \(!dialog\.isConnected\) return;\s*dialog\.innerHTML = htmlResumo\(snapshot, caixa\)/);
   assert.doesNotMatch(preview, /await sincronizarAntesDoFechamento\(caixa\)/);
   assert.doesNotMatch(preview, /return notificar\(.*cobrança\(s\) sem baixa/);
   assert.match(preview, /!impedimentosFechamento\(snapshot, operacoesAindaSincronizando\(\)\)\.podeFechar/);
