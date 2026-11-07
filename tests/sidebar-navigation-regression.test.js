@@ -265,3 +265,38 @@ test("mobile do vendedor não reserva faixa global e coloca título com menu aci
   assert.match(nav, /sidebar\.querySelector\("\.user-card,\.sidebar-profile-card,\.user-card-premium"\)/);
   assert.match(nav, /sino\.dataset\.notificationBell = "true"/);
 });
+
+
+test("vendedor mostra Dashboard antes de Operação sem reordenar os outros perfis", () => {
+  function itensParaPerfil(nome) {
+    const host = {
+      dataset: {}, className: "integro-sidebar-menu-unificado", innerHTML: "",
+      setAttribute() {}, querySelectorAll() { return []; },
+      addEventListener() {}, contains() { return true; }
+    };
+    const sidebar = { appendChild() {}, querySelector() { return null; } };
+    const document = {
+      getElementById: id => id === "sidebar" ? sidebar : id === "integroSidebarMenu" ? host : null,
+      querySelectorAll: () => [], addEventListener() {}, dispatchEvent() {}
+    };
+    const user = { tipoUsuario: nome };
+    const window = {
+      document, State: { getUsuario: () => user },
+      IntegroAcesso: { acessoUsuario: () => ({perfil: nome}), pode: () => true },
+      setTimeout() {}
+    };
+    vm.runInNewContext(read("js/unified-navigation.js"), {
+      window, document, CustomEvent: class { constructor(type) { this.type = type; } }
+    });
+    assert.equal(window.IntegroNavegacaoUnificada.renderizar(user), true);
+    return [...host.innerHTML.matchAll(/data-modulo="([^"]+)"/g)].map(match => match[1]);
+  }
+  const vendedor = itensParaPerfil("vendedor");
+  const local = itensParaPerfil("master_local");
+  assert.ok(vendedor.indexOf("dashboard") < vendedor.indexOf("operacao"), "Dashboard aparece primeiro no vendedor");
+  assert.equal(vendedor[0], "dashboard");
+  assert.equal(vendedor[1], "operacao");
+  assert.ok(local.indexOf("operacao") < local.indexOf("dashboard"), "Menu Master Local preservado");
+  assert.equal(local[0], "operacao");
+  assert.equal(local[1], "dashboard");
+});
