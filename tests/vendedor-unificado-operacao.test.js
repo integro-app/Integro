@@ -18,8 +18,8 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-caixa-topo-v1/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-caixa-topo-v1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-v2/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-fechar-aba-v2/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -260,7 +260,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-caixa-topo-v1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-v2/);
 });
 
 
@@ -474,7 +474,12 @@ test("Fechar caixa divide a linha com Cobranças e Vendas e continua funcional e
   assert.equal(markup.split('id="statusFechamentoCobrancasFinal"').length - 1, 1);
   assert.match(markup, /id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa\(\)"/);
   assert.match(markup, /window\.IntegroVendedorFechamentoCaixa\?\.atualizarBotaoFechamento\?\.\(\)/);
-  assert.match(estilo, /Operação do vendedor: abas Cobranças\/Vendas \+ fechar caixa na mesma linha/);
+  assert.match(estilo, /Operação \/ Vendedor: três opções com aparência de abas na mesma linha/);
+  assert.match(markup, /class="btn tab-operacao-clean vendedor-fechar-caixa-topo"/);
+  assert.doesNotMatch(markup, /class="btn btn-primary vendedor-fechar-caixa-topo"/);
+  assert.match(estilo, /grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\)/);
+  assert.match(estilo, /\.vendedor-fechar-caixa-topo\s*\{[\s\S]*?background: transparent !important/);
+  assert.doesNotMatch(estilo, /background: linear-gradient\(110deg, #ffaf47, #ff9100\)/);
   assert.match(estilo, /\.vendedor-fechar-caixa-topo:disabled\s*\{/);
   assert.match(estilo, /@media \(max-width: 760px\)\s*\{[\s\S]*?\.vendedor-operacao-topbar/);
 });
