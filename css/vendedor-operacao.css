@@ -1096,3 +1096,113 @@ html body[data-integro-page="master-local"].perfil-vendedor .ig-filter-layer .ig
     padding: 20px 18px !important;
   }
 }
+
+
+/* Operação do vendedor: abas Cobranças/Vendas + fechar caixa na mesma linha. */
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar {
+  display: flex !important;
+  align-items: stretch !important;
+  justify-content: space-between !important;
+  gap: 9px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 14px 0 12px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar > .vendedor-operacao-tabs {
+  flex: 0 1 360px !important;
+  width: auto !important;
+  min-width: 0 !important;
+  max-width: 360px !important;
+  margin: 0 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar .tab-operacao-clean {
+  min-width: 0 !important;
+  min-height: 44px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  flex: 0 0 auto !important;
+  gap: 5px !important;
+  min-height: 44px !important;
+  max-width: 180px !important;
+  margin: 0 0 0 auto !important;
+  padding: 0 13px !important;
+  border: 1px solid #ef8b00 !important;
+  border-radius: 12px !important;
+  background: linear-gradient(110deg, #ffaf47, #ff9100) !important;
+  color: #fff !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.1 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 3px 10px rgba(245, 139, 0, .15) !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo .material-symbols-rounded {
+  font-size: 17px !important;
+  line-height: 1 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo:focus-visible {
+  outline: 2px solid #0f2f52 !important;
+  outline-offset: 2px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo:disabled {
+  opacity: .55 !important;
+  cursor: not-allowed !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #statusFechamentoCobrancasFinal:empty {
+  display: none !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechamento-status {
+  margin: 0 0 10px !important;
+  color: #607287 !important;
+  font-size: 11px !important;
+  line-height: 1.35 !important;
+}
+@media (max-width: 760px) {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar {
+    gap: 6px !important;
+    margin: 8px 0 10px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar > .vendedor-operacao-tabs {
+    flex: 1 1 0 !important;
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 4px !important;
+    max-width: none !important;
+    width: auto !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-topbar .tab-operacao-clean {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px !important;
+    padding: 7px 3px !important;
+    font-size: clamp(11px, 3.1vw, 14px) !important;
+    white-space: nowrap !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo {
+    flex: 0 0 116px !important;
+    max-width: 116px !important;
+    min-width: 0 !important;
+    padding: 0 7px !important;
+    gap: 4px !important;
+    font-size: 11px !important;
+    border-radius: 11px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo .material-symbols-rounded {
+    font-size: 16px !important;
+  }
+}
+@media (max-width: 360px) {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo {
+    flex-basis: 100px !important;
+    max-width: 100px !important;
+    font-size: 10px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-fechar-caixa-topo .material-symbols-rounded {
+    display: none !important;
+  }
+}
