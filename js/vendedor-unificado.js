@@ -756,10 +756,10 @@
 
         <div class="vendedor-operacao-topbar">
           <div class="operacao-tabs-clean vendedor-operacao-tabs" role="tablist" aria-label="Operação do vendedor">
-            <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
-            <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
+            <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" aria-selected="true" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
+            <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" aria-selected="false" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
           </div>
-          <button class="btn tab-operacao-clean vendedor-fechar-caixa-topo" id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa()" type="button" aria-label="Conferir e fechar caixa">
+          <button class="btn tab-operacao-clean vendedor-fechar-caixa-topo" id="btnFecharCaixaCobrancas" onclick="abrirAbaVendasCobrancas('fechamento')" type="button" role="tab" aria-selected="false" aria-controls="abaFechamentoCaixa" aria-label="Consultar e conferir caixa">
             <span>Fechar caixa</span>
           </button>
         </div>
@@ -816,6 +816,13 @@
           </div>
           <div id="contadorVendasDia" class="vendedor-operacao-contador"></div>
           <div id="listaVendasDia" class="vendedor-vendas-dia"></div>
+        </div>
+
+        <div id="abaFechamentoCaixa" class="vendedor-fechamento-painel" role="tabpanel" aria-label="Conferência do caixa" style="display:none">
+          <div class="vendedor-fechamento-abertura">
+            <h3>Conferência do caixa</h3>
+            <p>Consulte o saldo, os movimentos e as visitas do seu caixa atual.</p>
+          </div>
         </div>
       </div>`;
     // Este botão é recriado ao mudar de módulo: revalidar o estado do DOM
@@ -961,23 +968,37 @@
   }
 
   function abrirAba(aba = "cobrancas") {
-    abaAtual = aba === "vendas" ? "vendas" : "cobrancas";
+    abaAtual = aba === "vendas" || aba === "fechamento" ? aba : "cobrancas";
     const cobrancas = document.getElementById("abaCobrancas");
     const vendas = document.getElementById("abaVendasDia");
+    const fechamento = document.getElementById("abaFechamentoCaixa");
     const btnC = document.getElementById("tabCobrancasBtn");
     const btnV = document.getElementById("tabVendasDiaBtn");
+    const btnF = document.getElementById("btnFecharCaixaCobrancas");
     if (cobrancas) cobrancas.style.display = abaAtual === "cobrancas" ? "block" : "none";
     if (vendas) vendas.style.display = abaAtual === "vendas" ? "block" : "none";
-    btnC?.classList.toggle("active", abaAtual === "cobrancas");
-    btnV?.classList.toggle("active", abaAtual === "vendas");
+    if (fechamento) fechamento.style.display = abaAtual === "fechamento" ? "block" : "none";
+    for (const [botao, alvo] of [[btnC, "cobrancas"], [btnV, "vendas"], [btnF, "fechamento"]]) {
+      botao?.classList.toggle("active", abaAtual === alvo);
+      botao?.setAttribute("aria-selected", String(abaAtual === alvo));
+    }
     const titulo = document.getElementById("vendedorOperacaoTitulo");
     const subtitulo = document.getElementById("vendedorOperacaoSubtitulo");
-    if (titulo) titulo.textContent = abaAtual === "cobrancas" ? "Cobrancas" : "Vendas";
-    if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com saldo devedor em aberto." : "Vendas vinculadas ao vendedor, incluindo o histórico que compoe a carteira.";
+    if (titulo) titulo.textContent = abaAtual === "cobrancas" ? "Cobranças" : abaAtual === "vendas" ? "Vendas" : "Conferência do caixa";
+    if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com saldo devedor em aberto."
+      : abaAtual === "vendas" ? "Vendas vinculadas ao vendedor, incluindo o histórico que compõe a carteira."
+      : "Consulte os valores do caixa antes de finalizar o expediente.";
     if (abaAtual === "cobrancas") {
       window.IntegroVendedorOperacao?.instalar?.();
       window.renderCobrancas?.();
-    } else renderVendasDia();
+    } else if (abaAtual === "vendas") {
+      renderVendasDia();
+    } else {
+      // Troca de aba imediata; conferência do servidor chega depois no painel.
+      const controller = window.IntegroVendedorFechamentoCaixa;
+      if (controller?.abrirResumoFechamento) controller.abrirResumoFechamento({ inline: true });
+      else if (fechamento) fechamento.innerHTML = '<div class="vendedor-fechamento-abertura"><h3>Conferência indisponível</h3><p>Não foi possível carregar o serviço de fechamento. Atualize a página e tente novamente.</p></div>';
+    }
   }
 
   function modalBase(titulo, conteudo, acoes = "") {
@@ -2512,7 +2533,7 @@
     const telaAtiva = document.querySelector(".screen.active")?.id;
     if (telaAtiva === "movimentacoes") renderMovimentacoesVendedor();
     if (telaAtiva === "dashboard") recalcularDashboardVendedor("perfil-dados-carregados");
-    if (abaAtual === "cobrancas") window.renderCobrancas?.(); else renderVendasDia();
+    if (abaAtual === "cobrancas") window.renderCobrancas?.(); else if (abaAtual === "vendas") renderVendasDia();
   });
   document.addEventListener("integro-movimentacoes-vendedor-carregadas", () => {
     if (!instalado) return;
