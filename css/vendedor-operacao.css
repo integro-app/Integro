@@ -1397,8 +1397,10 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
   html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-nova-venda-acoes {
     position: fixed !important;
     bottom: max(22px, calc(14px + env(safe-area-inset-bottom))) !important;
-    right: max(18px, env(safe-area-inset-right)) !important;
-    z-index: 100 !important;
+    right: max(18px, calc(12px + env(safe-area-inset-right))) !important;
+    top: auto !important;
+    left: auto !important;
+    z-index: 120 !important;
     margin: 0 !important;
   }
   html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-nova-venda-btn {
