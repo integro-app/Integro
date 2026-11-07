@@ -274,7 +274,7 @@ test("vendedor mostra Dashboard antes de Operação sem reordenar os outros perf
       setAttribute() {}, querySelectorAll() { return []; },
       addEventListener() {}, contains() { return true; }
     };
-    const sidebar = { appendChild() {}, querySelector() { return null; } };
+    const sidebar = { children: [host], appendChild() {}, querySelector() { return null; } };
     const document = {
       getElementById: id => id === "sidebar" ? sidebar : id === "integroSidebarMenu" ? host : null,
       querySelectorAll: () => [], addEventListener() {}, dispatchEvent() {}
