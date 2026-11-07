@@ -555,7 +555,7 @@ test("resumo parcial do caixa permanece visível com visitas pendentes, mas fech
 test("abrir conferência consulta o servidor sem exigir visitas concluídas; fechamento revalida", () => {
   const close = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
   const preview = close.split("  async function abrirResumoFechamento() {")[1]?.split("  function atualizarBotaoFechamento() {")[0] || "";
-  const fechamento = close.split("  async function executarFechamento(")[1]?.split("  async function abrirResumoFechamento() {")[0] || "";
+  const fechamento = close.split("  async function executarFechamento(")[1]?.split("  async function abrirResumoFechamento({ inline = false } = {}) {")[0] || "";
   assert.ok(preview && fechamento);
   assert.match(preview, /const snapshot = await prepararSnapshot\(caixa\);\s*if \(!dialog\.isConnected\) return;\s*dialog\.innerHTML = htmlResumo\(snapshot, caixa\)/);
   assert.doesNotMatch(preview, /await sincronizarAntesDoFechamento\(caixa\)/);
