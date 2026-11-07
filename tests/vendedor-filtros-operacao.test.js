@@ -130,3 +130,32 @@ test("gaveta aplica rascunho apenas após confirmação, e caixas têm layout mo
   assert.match(css, /flex: 0 0 20px !important/);
   assert.match(css, /\.vendedor-filtro-contagem\s*\{/);
 });
+
+
+test("Vendas mantém busca visível e Nova venda no canto inferior direito", () => {
+  const sales = trecho(vendedor, '        <div id="abaVendasDia" style="display:none">', '\n        <div id="abaFechamentoCaixa"');
+  assert.match(sales, /id="buscaVendaVendedorInput"/);
+  assert.match(sales, /onclick="buscarVendasVendedor\(\)"/);
+  assert.match(sales, /onclick="toggleFiltrosVendasVendedor\(\)"/);
+  const toolbar = sales.split('class="vendedor-operacao-barra vendedor-vendas-barra">')[1]?.split('</div>')[0] || "";
+  assert.ok(toolbar, "barra de consulta Vendas montada");
+  assert.doesNotMatch(toolbar, /btnNovaVendaOperacao/, "criação fora da barra compacta");
+  assert.match(toolbar, /class="primary-btn vendedor-buscar-btn"/);
+  assert.equal((sales.match(/id="btnNovaVendaOperacao"/g) || []).length, 1);
+  assert.match(sales, /id="listaVendasDia"[\s\S]*class="vendedor-nova-venda-acoes"/);
+  assert.match(sales, /id="btnNovaVendaOperacao"[\s\S]*onclick="abrirListaNovaVendaVendedor\(\)"/);
+  assert.match(drawer, /if\(first\.id==='filtrosVendasVendedor'\)/);
+  assert.match(drawer, /toolbar\?\.querySelector\('label\[for="buscaVendaVendedorInput"\]'\)/);
+  assert.match(drawer, /config\.apply=toolbar\?\.querySelector\('\.vendedor-buscar-btn'\)/);
+  assert.match(drawer, /\['filtrosCobrancasVendedor','filtrosVendasVendedor'\]\.includes/);
+  assert.match(drawer, /isSales\?'vendas-query-action':'cobrancas-query-action'/);
+  assert.match(css, /Vendedor \/ Vendas: mesma barra de Cobranças/);
+  assert.match(css, /#abaVendasDia \.vendedor-vendas-barra > \.ig-querybar/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) 42px 42px !important/);
+  assert.match(css, /#abaVendasDia \.vendedor-nova-venda-acoes \{\s*position: fixed !important;/);
+  assert.match(css, /right: max\(18px, env\(safe-area-inset-right\)\) !important/);
+  const original = read("master-local.html");
+  assert.match(original, /js\/integro-filter-drawer\.js\?v=20261107-vendedor-vendas-query-fab1/);
+  assert.match(original, /css\/vendedor-operacao\.css\?v=20261107-vendedor-vendas-query-fab1/);
+  assert.match(original, /js\/vendedor-unificado\.js\?v=20261107-vendedor-vendas-query-fab1/);
+});
