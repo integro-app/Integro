@@ -153,9 +153,36 @@ test("Vendas mantém busca visível e Nova venda no canto inferior direito", () 
   assert.match(css, /#abaVendasDia \.vendedor-vendas-barra > \.ig-querybar/);
   assert.match(css, /grid-template-columns: minmax\(0, 1fr\) 42px 42px !important/);
   assert.match(css, /#abaVendasDia \.vendedor-nova-venda-acoes \{\s*position: fixed !important;/);
-  assert.match(css, /right: max\(18px, env\(safe-area-inset-right\)\) !important/);
+  assert.match(css, /right: max\(18px, calc\(12px \+ env\(safe-area-inset-right\)\)\) !important/);
+  assert.match(css, /top: auto !important/);
+  assert.match(css, /left: auto !important/);
   const original = read("master-local.html");
   assert.match(original, /js\/integro-filter-drawer\.js\?v=20261107-vendedor-vendas-query-fab1/);
   assert.match(original, /css\/vendedor-operacao\.css\?v=20261107-vendedor-vendas-fab-vazio-v2/);
   assert.match(original, /js\/vendedor-unificado\.js\?v=20261107-vendedor-vendas-fab-vazio-v2/);
+});
+
+
+test("Vendas sem resultados exibe área vazia e preserva ação Nova venda no mobile", () => {
+  const render = trecho(vendedor, "  function renderVendasDia() {", "\n  function abrirAba(");
+  const lista = { innerHTML: "conteúdo anterior" };
+  const contador = { textContent: "contador anterior" };
+  const ctx = {
+    document: { getElementById: id =>
+      id === "listaVendasDia" ? lista :
+      id === "contadorVendasDia" ? contador : null },
+    vendasFiltradas: () => [],
+    dataCaixa: () => "2026-11-07",
+    numero: value => Number(value) || 0,
+    moeda: () => "R$ 0,00"
+  };
+  const executar = vm.runInNewContext(render + "\nrenderVendasDia", ctx);
+  executar();
+  assert.equal(lista.innerHTML, "", "sem card nem mensagem vazia");
+  assert.equal(contador.textContent, "", "sem contador quando lista vazia");
+  assert.doesNotMatch(render, /Nenhuma venda encontrada|Não há vendas vinculadas/);
+  const painel = trecho(vendedor, '        <div id="abaVendasDia" style="display:none">', '\n        <div id="abaFechamentoCaixa"');
+  assert.match(painel, /id="btnNovaVendaOperacao"/);
+  assert.match(painel, /onclick="abrirListaNovaVendaVendedor\(\)"/);
+  assert.match(css, /#abaVendasDia \.vendedor-nova-venda-acoes \{\s*position: fixed !important;/);
 });
