@@ -259,6 +259,27 @@
     atual.remove();
   }
 
+  function htmlCarregamentoPainel() {
+    return `<div class="integro-fechamento-painel-carregando" role="status" aria-live="polite">
+      <div class="integro-fechamento-head"><div><h2>Conferência do caixa</h2><p>Resumo do caixa aberto. Atualizando valores oficiais…</p></div></div>
+      <div class="integro-fechamento-body">
+        <div class="integro-fechamento-grid">
+          <div class="integro-fechamento-card destaque"><small>Caixa atual</small><strong class="integro-fechamento-aguardando">Atualizando…</strong></div>
+          <div class="integro-fechamento-card"><small>Caixa inicial</small><strong class="integro-fechamento-aguardando">—</strong></div>
+          <div class="integro-fechamento-card"><small>Recebimentos</small><strong class="integro-fechamento-aguardando">—</strong></div>
+          <div class="integro-fechamento-card"><small>Visitas com baixa</small><strong class="integro-fechamento-aguardando">—</strong></div>
+        </div>
+        <p class="integro-fechamento-painel-info">A consulta não fecha o caixa. Você pode voltar para Cobranças ou Vendas a qualquer momento.</p>
+      </div>
+    </div>`;
+  }
+
+  function exibirErroNoPainel(painel, mensagem) {
+    painel.innerHTML = '<div class="integro-fechamento-head"><div><h2>Conferência indisponível</h2><p>Não foi possível consultar o caixa no servidor.</p></div></div><div class="integro-fechamento-body"><p class="integro-fechamento-erro-painel" role="alert"></p><button class="integro-fechamento-tentar-novamente" type="button">Tentar novamente</button></div>';
+    painel.querySelector(".integro-fechamento-erro-painel").textContent = mensagem;
+    painel.querySelector(".integro-fechamento-tentar-novamente")?.addEventListener("click", () => abrirResumoFechamento({ inline: true }));
+  }
+
   function criarDialogo(conteudo = "") {
     removerDialogo();
     garantirEstilos();
@@ -450,7 +471,7 @@
     global.location?.replace?.(`index.html?motivo=caixa-fechado&mensagem=${encodeURIComponent(mensagem)}`);
   }
 
-  async function executarFechamento(dialog, caixa, valorInformadoCentavos) {
+  async function executarFechamento(dialog, caixa, valorInformadoCentavos, cancelar = removerDialogo, inline = false) {
     if (fechamentoEmAndamento) return;
     fechamentoEmAndamento = true;
     dialog.innerHTML = htmlEncerramento();
@@ -509,28 +530,39 @@
       etapaAtual?.classList.add("erro");
       const host = dialog.querySelector("#integroFechamentoErro");
       if (host) host.innerHTML = `<div class="integro-encerramento-erro"><strong>Caixa não fechado.</strong><div>${texto(erro?.message || "Não foi possível concluir o fechamento.")}</div><div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="secundario" id="integroFechamentoCancelarErro">Cancelar</button><button type="button" class="primario" id="integroFechamentoReabrirResumo">Conferir novamente</button></div></div>`;
-      dialog.querySelector("#integroFechamentoCancelarErro")?.addEventListener("click", removerDialogo);
-      dialog.querySelector("#integroFechamentoReabrirResumo")?.addEventListener("click", () => abrirResumoFechamento());
+      dialog.querySelector("#integroFechamentoCancelarErro")?.addEventListener("click", cancelar);
+      dialog.querySelector("#integroFechamentoReabrirResumo")?.addEventListener("click", () => abrirResumoFechamento({ inline }));
       atualizarBotaoFechamento();
     }
   }
 
-  async function abrirResumoFechamento() {
+  async function abrirResumoFechamento({ inline = false } = {}) {
     if (!ehVendedor()) return notificar("Este fechamento é exclusivo do perfil vendedor.");
     if (fechamentoEmAndamento || preparandoFechamento) return;
     preparandoFechamento = true;
+    const painel = inline ? global.document?.getElementById("abaFechamentoCaixa") : null;
+    // A navegação e o esqueleto dos valores aparecem antes de qualquer acesso à rede.
+    const dialog = painel || criarDialogo(htmlCarregamentoPainel());
+    if (painel) dialog.innerHTML = htmlCarregamentoPainel();
+    const cancelar = painel
+      ? () => global.abrirAbaVendasCobrancas?.("cobrancas")
+      : removerDialogo;
     try {
       let caixa = caixaAbertoLocal();
       // O cache do perfil pode não ter o caixa que segue aberto no Firebase.
       // Neste caso, conferir o dado oficial em vez de deixar o botão inerte.
       if (!caixa) {
         const persistido = await localizarCaixaAbertoPersistido();
-        if (persistido.permitido !== true || !persistido.caixa)
-          return notificar(persistido.motivo === "multiplos-caixas-abertos"
+        if (persistido.permitido !== true || !persistido.caixa) {
+          const mensagem = persistido.motivo === "multiplos-caixas-abertos"
             ? "O servidor identificou mais de um caixa aberto para este vendedor. Solicite ao supervisor que regularize os caixas."
             : persistido.permitido === null
               ? "Não foi possível consultar o caixa no servidor. Verifique a conexão e tente novamente."
-              : "Não foi encontrado caixa aberto para este vendedor. Solicite abertura ao responsável.");
+              : "Não foi encontrado caixa aberto para este vendedor. Solicite abertura ao responsável.";
+          if (painel) exibirErroNoPainel(painel, mensagem);
+          else { removerDialogo(); notificar(mensagem); }
+          return;
+        }
         caixa = persistido.caixa;
         global.caixaAtual = caixa;
         const existentes = global.State?.getCaixas?.() || [];
@@ -539,15 +571,14 @@
       }
       // A consulta é somente leitura. Pendências e sincronizações aparecem
       // no resumo; elas bloqueiam apenas a confirmação transacional.
-      const dialog = criarDialogo(`<div class="integro-encerramento"><div class="spinner"></div><h2>Carregando dados do caixa</h2><p>Consultando o resumo atual no servidor, sem fechar o caixa.</p></div>`);
-      try {
-        // Consulta somente leitura: evita sincronização geral e não exige
-        // visitas concluídas para mostrar os valores atuais do caixa.
-        const snapshot = await prepararSnapshot(caixa);
-        dialog.innerHTML = htmlResumo(snapshot, caixa);
+      // Consulta somente leitura: evita sincronização geral e não exige
+      // visitas concluídas para mostrar os valores atuais do caixa.
+      const snapshot = await prepararSnapshot(caixa);
+      if (!dialog.isConnected) return;
+      dialog.innerHTML = htmlResumo(snapshot, caixa);
       const input = dialog.querySelector("#integroFechamentoValorInformado");
       const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
-      dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao => botao.addEventListener("click", removerDialogo));
+      dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao => botao.addEventListener("click", cancelar));
       input?.addEventListener("input", () => atualizarConferencia(dialog, snapshot));
       input?.addEventListener("keydown", evento => {
         if (evento.key === "Enter" && !confirmar?.disabled) confirmar.click();
@@ -555,16 +586,16 @@
       confirmar?.addEventListener("click", () => {
         const conferencia = atualizarConferencia(dialog, snapshot);
         if (!conferencia.confere || !impedimentosFechamento(snapshot, operacoesAindaSincronizando()).podeFechar) return;
-        executarFechamento(dialog, caixa, conferencia.informadoCentavos);
+        executarFechamento(dialog, caixa, conferencia.informadoCentavos, cancelar, !!painel);
       });
       if (!global.matchMedia?.("(max-width: 760px)")?.matches) {
         setTimeout(() => input?.focus({ preventScroll: true }), 20);
       }
     } catch (erro) {
-      removerDialogo();
       console.error("[ÍNTEGRO] Não foi possível preparar o fechamento.", erro);
-      notificar(erro?.message || "Não foi possível preparar o fechamento do caixa.");
-      }
+      const mensagem = erro?.message || "Não foi possível preparar o fechamento do caixa.";
+      if (painel) exibirErroNoPainel(painel, mensagem);
+      else { removerDialogo(); notificar(mensagem); }
     } finally {
       preparandoFechamento = false;
       atualizarBotaoFechamento();
