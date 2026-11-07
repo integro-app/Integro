@@ -18,8 +18,8 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-filtros-v1/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-filtros-v1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-caixa-topo-v1/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-caixa-topo-v1/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -260,7 +260,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-filtros-v1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-caixa-topo-v1/);
 });
 
 
@@ -456,4 +456,25 @@ test("fechamento reage à remontagem do botão e à versão atualizada dos servi
   assert.match(close,/multiplos-caixas-abertos/);
   assert.match(boot,/VERSION = "20261105-sessao-30min-v2"/);
   assert.match(config,/v27-bootstrap\.js\?v=20261105-sessao-30min-v2/);
+});
+
+
+test("Fechar caixa divide a linha com Cobranças e Vendas e continua funcional em ambas as abas", () => {
+  const estilo = fs.readFileSync(path.join(root, "css", "vendedor-operacao.css"), "utf8");
+  const markup = unificado.split("  function montarTela() {")[1]?.split("  function configurarDashboardVendedor() {")[0] || "";
+  const posNavegacao = markup.indexOf('class="vendedor-operacao-topbar"');
+  const posTabs = markup.indexOf('class="operacao-tabs-clean vendedor-operacao-tabs"');
+  const posFechamento = markup.indexOf('id="btnFecharCaixaCobrancas"');
+  const posCobrancas = markup.indexOf('id="abaCobrancas"');
+  const posVendas = markup.indexOf('id="abaVendasDia"');
+  assert.ok(posNavegacao >= 0 && posNavegacao < posTabs);
+  assert.ok(posTabs < posFechamento && posFechamento < posCobrancas && posCobrancas < posVendas,
+    "Fechar caixa precisa ficar ao lado das abas, fora dos painéis alternados");
+  assert.equal(markup.split('id="btnFecharCaixaCobrancas"').length - 1, 1);
+  assert.equal(markup.split('id="statusFechamentoCobrancasFinal"').length - 1, 1);
+  assert.match(markup, /id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa\(\)"/);
+  assert.match(markup, /window\.IntegroVendedorFechamentoCaixa\?\.atualizarBotaoFechamento\?\.\(\)/);
+  assert.match(estilo, /Operação do vendedor: abas Cobranças\/Vendas \+ fechar caixa na mesma linha/);
+  assert.match(estilo, /\.vendedor-fechar-caixa-topo:disabled\s*\{/);
+  assert.match(estilo, /@media \(max-width: 760px\)\s*\{[\s\S]*?\.vendedor-operacao-topbar/);
 });
