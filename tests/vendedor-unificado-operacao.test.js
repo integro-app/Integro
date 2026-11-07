@@ -568,3 +568,50 @@ test("abrir conferência consulta o servidor sem exigir visitas concluídas; fec
   const backend = fs.readFileSync(path.join(root, "functions/box-lifecycle.js"), "utf8");
   assert.match(backend, /if\(snapshot\.pendenciasCobranca && !managerial\) fail/);
 });
+
+
+test("Fechar caixa abre imediatamente como terceira aba antes da resposta do servidor", async () => {
+  const vm = require("node:vm");
+  const code = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  const start = code.indexOf("  async function abrirResumoFechamento(");
+  const end = code.indexOf("  function atualizarBotaoFechamento()", start);
+  assert.ok(start >= 0 && end > start);
+  const painel = {innerHTML:"", isConnected:true, querySelector:()=>null, querySelectorAll:()=>[]};
+  let resolver;
+  let consultas = 0;
+  const consulta = new Promise(resolve => { resolver = resolve; });
+  const ctx = {
+    global: {
+      document: { getElementById: id => id === "abaFechamentoCaixa" ? painel : null },
+      matchMedia: () => ({matches:true}),
+      abrirAbaVendasCobrancas: () => {}
+    },
+    ehVendedor: () => true, fechamentoEmAndamento: false,
+    preparandoFechamento: false, garantirEstilos: () => {},
+    htmlCarregamentoPainel: () => "PAINEL ABERTO",
+    caixaAbertoLocal: () => ({ id:"caixa-aberto" }),
+    prepararSnapshot: () => { consultas++; return consulta; },
+    htmlResumo: () => "RESUMO OFICIAL",
+    atualizarBotaoFechamento: () => {},
+    atualizarConferencia: () => {},
+    impedimentosFechamento: () => ({ podeFechar:false }),
+    operacoesAindaSincronizando: () => 0,
+    executarFechamento: () => { throw new Error("fechamento não autorizado"); },
+    console, setTimeout
+  };
+  const abrir = vm.runInNewContext(code.slice(start, end) + "\nabrirResumoFechamento", ctx);
+  const resultado = abrir({ inline:true });
+  assert.equal(painel.innerHTML, "PAINEL ABERTO", "aba deve aparecer antes do Firebase");
+  assert.equal(consultas, 1);
+  resolver({ pendenciasCobranca:3 });
+  await resultado;
+  assert.equal(painel.innerHTML, "RESUMO OFICIAL");
+  const unificado = fs.readFileSync(path.join(root, "js/vendedor-unificado.js"), "utf8");
+  assert.match(unificado, /aba === "vendas" \|\| aba === "fechamento"/);
+  assert.match(unificado, /const fechamento = document.getElementById\("abaFechamentoCaixa"\)/);
+  assert.match(unificado, /controller\.abrirResumoFechamento\(\{ inline: true \}\)/);
+  assert.match(unificado, /botao\?\.classList\.toggle\("active", abaAtual === alvo\)/);
+  const css = fs.readFileSync(path.join(root, "css/vendedor-operacao.css"), "utf8");
+  assert.match(css, /\.vendedor-fechar-caixa-topo\.active/);
+  assert.match(css, /#abaFechamentoCaixa \.integro-fechamento-body/);
+});
