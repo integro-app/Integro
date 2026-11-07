@@ -218,7 +218,7 @@ test("cores distinguem Pago e Não pagamento ativos e inativos sem alterar baixa
     assert.match(css, new RegExp(nome + ":not\\(\\.is-active\\)\\s*\\{[\\s\\S]*?background:[^;]+ !important;[\\s\\S]*?color:[^;]+ !important;"));
     assert.match(css, new RegExp(nome + "\\.is-active\\s*\\{[\\s\\S]*?background:[^;]+ !important;[\\s\\S]*?color: #fff !important;"));
   }
-  assert.match(operacao, /aria-pressed="\\$\\{item\\.pagoHoje \\? "true" : "false"\\}"/);
-  assert.match(operacao, /aria-pressed="\\$\\{item\\.naoPagoHoje \\? "true" : "false"\\}"/);
-  assert.doesNotMatch(css, /\\.btn\\.is-active::after\\s*\\{/);
+  assert.ok(operacao.includes('aria-pressed="${item.pagoHoje ? "true" : "false"}"'));
+  assert.ok(operacao.includes('aria-pressed="${item.naoPagoHoje ? "true" : "false"}"'));
+  assert.doesNotMatch(css, /\.btn\.is-active::after\s*\{/);
 });
