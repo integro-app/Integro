@@ -770,17 +770,16 @@
           </div>
           <div id="filtrosCobrancasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
-              <label class="vendedor-check"><input id="filtroCobrancaPendente" type="checkbox"><span>Sem baixa</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaPago" type="checkbox"><span>Pagos</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaNaoPago" type="checkbox"><span>Não pagos</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaAtrasado" type="checkbox"><span>Atrasados</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaEmDia" type="checkbox"><span>Em dia</span></label>
-              <label class="vendedor-check"><input id="filtroCobrancaAdiantado" type="checkbox"><span>Adiantados</span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaPendente" type="checkbox"><span>Sem baixa <span class="vendedor-filtro-contagem" data-cobranca-contagem="pendentes">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaPago" type="checkbox"><span>Pagos <span class="vendedor-filtro-contagem" data-cobranca-contagem="pagos">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaNaoPago" type="checkbox"><span>Não pagos <span class="vendedor-filtro-contagem" data-cobranca-contagem="naoPagos">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaAtrasado" type="checkbox"><span>Atrasados <span class="vendedor-filtro-contagem" data-cobranca-contagem="atrasados">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaEmDia" type="checkbox"><span>Em dia <span class="vendedor-filtro-contagem" data-cobranca-contagem="emDia">0</span></span></label>
+              <label class="vendedor-check"><input id="filtroCobrancaAdiantado" type="checkbox"><span>Adiantados <span class="vendedor-filtro-contagem" data-cobranca-contagem="adiantados">0</span></span></label>
               <label><span>Ordenar</span><select id="ordenarCobrancas"><option value="nome_az">Nome A → Z</option><option value="nome_za">Nome Z → A</option><option value="saldo_maior">Maior saldo</option><option value="saldo_menor">Menor saldo</option><option value="atrasado">Mais atrasados</option></select></label>
             </div>
             <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosCobrancasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="buscarCobrancasVendedor()">Aplicar filtros</button></div>
           </div>
-          <div id="contadorCobrancas" class="vendedor-operacao-contador"></div>
           <div id="listaCobrancas"></div>
           <div class="fechar-caixa-final-clean vendedor-fechamento-operacao">
             <div class="fechamento-status-clean" id="statusFechamentoCobrancasFinal"></div>

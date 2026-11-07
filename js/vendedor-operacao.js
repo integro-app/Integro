@@ -375,8 +375,8 @@
         </div>
 
         <div class="cobranca-actions-clean">
-          <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" type="button" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
-          <button class="btn btn-nao-pago-clean ${item.naoPagoHoje ? "is-active" : ""}" type="button" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
+          <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" type="button" aria-pressed="${item.pagoHoje ? "true" : "false"}" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
+          <button class="btn btn-nao-pago-clean ${item.naoPagoHoje ? "is-active" : ""}" type="button" aria-pressed="${item.naoPagoHoje ? "true" : "false"}" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
         </div>
       </article>`;
   }
@@ -420,6 +420,29 @@
       if (filtraStatus && !((filtros.pendentes && item.pendenteHoje) || (filtros.pagos && item.pagoHoje) || (filtros.naoPagos && item.naoPagoHoje))) return false;
       if (filtraSituacao && !((filtros.atrasados && item.situacao === "ATRASADO") || (filtros.emDia && item.situacao === "EM_DIA") || (filtros.adiantados && item.situacao === "ADIANTADO"))) return false;
       return true;
+    });
+  }
+
+  // Quantidades independentes por filtro: cada contador usa a mesma rota/carteira,
+  // sem ser reduzido pelos outros checkboxes selecionados.
+  function atualizarContagensFiltrosCobranca(carteira) {
+    const carteiraCompleta = filtrosAtivos().carteiraCompleta;
+    const base = carteira.filter(item => carteiraCompleta
+      ? Number(item.saldoClienteTotal ?? item.saldoDevedor) > 0.01
+      : item.comCobrancaHoje);
+    const contagens = {
+      pendentes: base.filter(item => item.pendenteHoje).length,
+      pagos: base.filter(item => item.pagoHoje).length,
+      naoPagos: base.filter(item => item.naoPagoHoje).length,
+      atrasados: base.filter(item => item.situacao === "ATRASADO").length,
+      emDia: base.filter(item => item.situacao === "EM_DIA").length,
+      adiantados: base.filter(item => item.situacao === "ADIANTADO").length
+    };
+    global.document?.querySelectorAll("[data-cobranca-contagem]")?.forEach(elemento => {
+      const chave = elemento.dataset.cobrancaContagem;
+      if (!Object.prototype.hasOwnProperty.call(contagens, chave)) return;
+      const total = String(contagens[chave]);
+      if (elemento.textContent !== total) elemento.textContent = total;
     });
   }
 
@@ -475,8 +498,7 @@
     const carteira = dadosAtuais();
     global.IntegroVendedorUnificado?.renderHoje?.(carteira);
     const lista = ordenar(aplicarFiltros(carteira));
-    const contador = global.document.getElementById("contadorCobrancas");
-    if (contador) contador.textContent = `${lista.length} cliente(s) ${filtrosAtivos().carteiraCompleta ? "na carteira completa" : "na rota do caixa atual"} · ${lista.filter(item => item.pagoHoje).length} pago(s) · ${lista.filter(item => item.naoPagoHoje).length} não pagamento(s).`;
+    atualizarContagensFiltrosCobranca(carteira);
     const html = lista.length ? lista.map(card).join("") : `
       <div class="empty-state-operacao">
         <strong>Nenhum cliente encontrado</strong>

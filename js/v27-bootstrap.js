@@ -31,9 +31,9 @@
     return promise;
   }
 
-  async function loadIfMissing(test, src, key) {
+  async function loadIfMissing(test, src, key, version = VERSION) {
     if (test()) return true;
-    return loadScript(`${src}?v=${VERSION}`, key);
+    return loadScript(`${src}?v=${version}`, key);
   }
 
   async function ensureFinance() {
@@ -98,7 +98,7 @@
   async function ensureSellerCollectionCorrections() {
     if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
     try {
-      await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections");
+      await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections", "20261107-vendedor-baixas-filtros1");
       global.IntegroVendedorCobrancaCorrecoes?.install?.();
       await loadIfMissing(() => Boolean(global.IntegroVendedorPagamentoFlexivel), "js/services/vendedor-pagamento-flexivel.js", "seller-flexible-payment");
       global.IntegroVendedorPagamentoFlexivel?.install?.();

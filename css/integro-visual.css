@@ -237,3 +237,76 @@ html body[data-integro-page].perfil-vendedor.integro-menu-categorias main #cobra
 html body[data-integro-page].perfil-vendedor.integro-menu-categorias main #cobrancas.screen .vendedor-operacao-tabs > button[hidden] {
   display: none !important;
 }
+
+/* Vendedor mobile: sem faixa global vazia; sino permanece no perfil do menu lateral.
+   O título de Operação ocupa a mesma linha do hambúrguer, com abas logo abaixo. */
+@media (max-width: 760px) {
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main > .integro-global-header {
+    display: none !important;
+  }
+
+  /* Retira a altura reservada ao cabeçalho global que foi ocultado. */
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main {
+    padding-top: max(8px, env(safe-area-inset-top)) !important;
+  }
+
+  html body[data-integro-page="master-local"].perfil-vendedor > .mobile-menu-btn {
+    top: max(8px, env(safe-area-inset-top)) !important;
+    left: max(12px, env(safe-area-inset-left)) !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-unificada {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-header {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    margin: 0 0 8px !important;
+    padding: 0 52px !important;
+    text-align: center !important;
+  }
+
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-header > div {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #vendedorOperacaoTitulo {
+    margin: 0 !important;
+    font-size: 21px !important;
+    line-height: 1.15 !important;
+    text-align: center !important;
+  }
+
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #vendedorOperacaoSubtitulo {
+    display: none !important;
+  }
+
+  html body[data-integro-page="master-local"].perfil-vendedor.integro-menu-categorias #cobrancas.screen .vendedor-operacao-tabs {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+    margin: 0 0 12px !important;
+  }
+
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-tabs > button {
+    min-width: 0 !important;
+  }
+}
+
+/* Vendedor: remove o resumo textual da rota logo abaixo da busca, inclusive se um script antigo ficar em cache. */
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #contadorCobrancas,
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-contador {
+  display: none !important;
+}

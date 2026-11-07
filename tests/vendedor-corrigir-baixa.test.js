@@ -134,3 +134,41 @@ test("pagamento flexível não mistura caixas, datas e empresas ao atualizar cac
  assert.equal(window.clientesCache.find(x=>x.clientePlataformaId==="empresa-b").saldoDevedor,999);
  assert.equal(window.caixasCache.find(x=>x.clientePlataformaId==="empresa-b").saldoAtual,999);
 });
+
+
+test("vendedor mantém rótulos fixos das baixas e destaca ação confirmada", () => {
+  const operacao = fs.readFileSync(path.join(__dirname, "../js/vendedor-operacao.js"), "utf8");
+  const correcoes = fs.readFileSync(path.join(__dirname, "../js/services/vendedor-cobranca-correcoes.js"), "utf8");
+  const estilo = fs.readFileSync(path.join(__dirname, "../css/vendedor-operacao.css"), "utf8");
+  assert.match(operacao, /btn-pago-clean[^\n]+is-active/);
+  assert.match(operacao, /btn-nao-pago-clean[^\n]+is-active/);
+  assert.match(correcoes, /const textoRotulo = "Pago";/);
+  assert.match(correcoes, /const textoRotulo = "Não pagamento";/);
+  assert.doesNotMatch(correcoes, /const textoRotulo = item\.naoPagoHoje \?/);
+  assert.match(correcoes, /pago\.classList\.toggle\("is-active", !!item\.pagoHoje\)/);
+  assert.match(correcoes, /naoPago\.classList\.toggle\("is-active", !!item\.naoPagoHoje\)/);
+  assert.match(correcoes, /setAttribute\("aria-pressed", item\.pagoHoje \? "true" : "false"\)/);
+  assert.match(estilo, /btn-pago-clean\.is-active/);
+  assert.match(estilo, /btn-nao-pago-clean\.is-active/);
+});
+
+test("resumo sai dos cards e cada filtro recebe seu contador", () => {
+  const operacao = fs.readFileSync(path.join(__dirname, "../js/vendedor-operacao.js"), "utf8");
+  const unificado = fs.readFileSync(path.join(__dirname, "../js/vendedor-unificado.js"), "utf8");
+  assert.doesNotMatch(unificado, /id="contadorCobrancas"/);
+  assert.doesNotMatch(operacao, /cliente\(s\) na rota do caixa atual/);
+  const pagina = fs.readFileSync(path.join(__dirname, "../master-local.html"), "utf8");
+  const visual = fs.readFileSync(path.join(__dirname, "../css/integro-visual.css"), "utf8");
+  assert.match(visual, /#cobrancas\.screen #contadorCobrancas,[\s\S]*?display: none !important/);
+  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(pagina, /js\/vendedor-unificado\.js\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(pagina, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-resumo2/);
+
+  assert.match(operacao, /function atualizarContagensFiltrosCobranca\(carteira\)/);
+  assert.match(operacao, /atualizarContagensFiltrosCobranca\(carteira\)/);
+  for (const chave of ["pendentes", "pagos", "naoPagos", "atrasados", "emDia", "adiantados"]) {
+    assert.ok(unificado.includes('data-cobranca-contagem="' + chave + '"'), "contador de " + chave);
+  }
+  const bootstrap = fs.readFileSync(path.join(__dirname, "../js/v27-bootstrap.js"), "utf8");
+  assert.match(bootstrap, /seller-collection-corrections", "20261107-vendedor-baixas-filtros1"/);
+});
