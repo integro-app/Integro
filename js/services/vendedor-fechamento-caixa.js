@@ -613,10 +613,10 @@
     const caixa = caixaAbertoLocal();
     const pendentes = cobrancasPendentesHoje();
     const sincronizando = operacoesAindaSincronizando();
-    // O botão abre a CONFERÊNCIA, não fecha o caixa diretamente. Não pode
-    // ficar desabilitado devido a dados locais desatualizados. As travas
-    // de pagamentos, pendências e divergências estão no backend transacional.
-    const bloqueado = fechamentoEmAndamento || preparandoFechamento;
+    // Esta opção também é uma aba de navegação: carregar o resumo não pode
+    // deixar a aba cinza/inativa. Só o fechamento transacional bloqueia a ação.
+    // As travas financeiras continuam no botão de confirmação e no backend.
+    const bloqueado = fechamentoEmAndamento;
     if (botao.disabled !== bloqueado) botao.disabled = bloqueado;
     if (botao.dataset.integroFechamentoVendedor !== "conferencia-servidor")
       botao.dataset.integroFechamentoVendedor = "conferencia-servidor";
