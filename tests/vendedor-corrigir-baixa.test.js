@@ -160,7 +160,7 @@ test("resumo sai dos cards e cada filtro recebe seu contador", () => {
   const pagina = fs.readFileSync(path.join(__dirname, "../master-local.html"), "utf8");
   const visual = fs.readFileSync(path.join(__dirname, "../css/integro-visual.css"), "utf8");
   assert.match(visual, /#cobrancas\.screen #contadorCobrancas,[\s\S]*?display: none !important/);
-  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-cards-compactos1/);
   assert.match(pagina, /js\/vendedor-unificado\.js\?v=20261107-vendedor-mobile-resumo2/);
   assert.match(pagina, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-resumo2/);
 
@@ -171,4 +171,28 @@ test("resumo sai dos cards e cada filtro recebe seu contador", () => {
   }
   const bootstrap = fs.readFileSync(path.join(__dirname, "../js/v27-bootstrap.js"), "utf8");
   assert.match(bootstrap, /seller-collection-corrections", "20261107-vendedor-baixas-filtros1"/);
+});
+
+
+test("card mobile compacto usa situação financeira e três métricas horizontais", () => {
+  const operacao = fs.readFileSync(path.join(__dirname, "../js/vendedor-operacao.js"), "utf8");
+  const css = fs.readFileSync(path.join(__dirname, "../css/vendedor-operacao.css"), "utf8");
+  const pagina = fs.readFileSync(path.join(__dirname, "../master-local.html"), "utf8");
+  const card = operacao.split("  function card(item) {")[1]?.split("  function dadosAtuais() {")[0] || "";
+  assert.ok(card, "template do card de cobrança precisa existir");
+  assert.match(card, /cobranca-chip-status cobranca-situacao-financeira/);
+  assert.match(card, /\$\{escapar\(situacaoVisual\(item\)\)\}/);
+  assert.doesNotMatch(card, /\$\{escapar\(status\.titulo\)\}/, "o selo pago/não pago não ocupa mais a linha do nome");
+  assert.match(card, /\$\{syncBadge\}/, "sincronização da baixa permanece visível");
+  const mini = card.match(/class="cobranca-mini-clean"/g) || [];
+  assert.equal(mini.length, 3, "saldo, parcela esperada e pago no dia são os únicos mini cards");
+  const saldo = card.indexOf("<span>Saldo devedor</span>");
+  const parcela = card.indexOf("<span>Parcela esperada</span>");
+  const pago = card.indexOf("<span>Pago no dia</span>");
+  assert.ok(saldo >= 0 && saldo < parcela && parcela < pago, "ordem das três métricas");
+  assert.match(css, /card vertical compacto/);
+  assert.match(css, /grid-template-columns: repeat\(3, minmax\(0, 1fr\)\) !important/);
+  assert.doesNotMatch(css, /\.cobranca-status-row > \.cobranca-chip-status:nth-child\(2\)/);
+  assert.match(pagina, /css\/vendedor-operacao\.css\?v=20261107-vendedor-cards-compactos1/);
+  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-cards-compactos1/);
 });
