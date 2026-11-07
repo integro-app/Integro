@@ -157,6 +157,13 @@ test("resumo sai dos cards e cada filtro recebe seu contador", () => {
   const unificado = fs.readFileSync(path.join(__dirname, "../js/vendedor-unificado.js"), "utf8");
   assert.doesNotMatch(unificado, /id="contadorCobrancas"/);
   assert.doesNotMatch(operacao, /cliente\(s\) na rota do caixa atual/);
+  const pagina = fs.readFileSync(path.join(__dirname, "../master-local.html"), "utf8");
+  const visual = fs.readFileSync(path.join(__dirname, "../css/integro-visual.css"), "utf8");
+  assert.match(visual, /#cobrancas\.screen #contadorCobrancas,[\s\S]*?display: none !important/);
+  assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(pagina, /js\/vendedor-unificado\.js\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(pagina, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-resumo2/);
+
   assert.match(operacao, /function atualizarContagensFiltrosCobranca\(carteira\)/);
   assert.match(operacao, /atualizarContagensFiltrosCobranca\(carteira\)/);
   for (const chave of ["pendentes", "pagos", "naoPagos", "atrasados", "emDia", "adiantados"]) {
