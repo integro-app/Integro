@@ -540,6 +540,7 @@
     if (!ehVendedor()) return notificar("Este fechamento é exclusivo do perfil vendedor.");
     if (fechamentoEmAndamento || preparandoFechamento) return;
     preparandoFechamento = true;
+    garantirEstilos();
     const painel = inline ? global.document?.getElementById("abaFechamentoCaixa") : null;
     // A navegação e o esqueleto dos valores aparecem antes de qualquer acesso à rede.
     const dialog = painel || criarDialogo(htmlCarregamentoPainel());
