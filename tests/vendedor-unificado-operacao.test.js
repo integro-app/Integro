@@ -18,8 +18,8 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-instant-v3/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-fechar-aba-neutra-v4/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-anim-v5/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-fechar-aba-anim-v5/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -260,7 +260,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-instant-v3/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-anim-v5/);
 });
 
 
@@ -477,7 +477,12 @@ test("Fechar caixa divide a linha com Cobranças e Vendas e continua funcional e
   assert.match(estilo, /Operação \/ Vendedor: três opções com aparência de abas na mesma linha/);
   assert.match(markup, /class="btn tab-operacao-clean vendedor-fechar-caixa-topo"/);
   assert.doesNotMatch(markup, /class="btn btn-primary vendedor-fechar-caixa-topo"/);
-  assert.match(estilo, /grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\)/);
+  assert.match(estilo, /grid-template-columns: minmax\(0, 1fr\) !important/);
+  const tablist = markup.split('role="tablist" aria-label="Operação do vendedor"')[1]?.split("</div>")[0] || "";
+  assert.equal((tablist.match(/tab-operacao-clean/g) || []).length, 3, "as três abas precisam estar no mesmo grupo de navegação");
+  assert.match(tablist, /id="btnFecharCaixaCobrancas"/);
+  assert.match(estilo, /transition: background-color \.18s ease, color \.18s ease, border-color \.18s ease, box-shadow \.18s ease, transform \.18s ease !important/);
+  assert.match(estilo, /width: 33\.333% !important/);
   const fecharInativo = estilo.split(".vendedor-fechar-caixa-topo {")[1]?.split("}")[0] || "";
   assert.ok(fecharInativo, "o terceiro botão mantém o mesmo estilo de base das abas");
   assert.doesNotMatch(fecharInativo, /background:|color:|box-shadow:|border:/, "nenhum destaque visual permanente");
@@ -614,7 +619,11 @@ test("Fechar caixa abre imediatamente como terceira aba antes da resposta do ser
   assert.match(unificado, /controller\.abrirResumoFechamento\(\{ inline: true \}\)/);
   assert.match(unificado, /botao\?\.classList\.toggle\("active", abaAtual === alvo\)/);
   const css = fs.readFileSync(path.join(root, "css/vendedor-operacao.css"), "utf8");
-  assert.match(css, /Mesmo estado visual das abas Cobranças e Vendas/);
+  assert.match(css, /Todas herdam o mesmo estado ativo via \.tab-operacao-clean\.active/);
   assert.doesNotMatch(css, /\.vendedor-fechar-caixa-topo\.active\s*\{/, "não deve existir estado de seleção forçado");
+  const closeout = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  assert.match(closeout, /const bloqueado = fechamentoEmAndamento;/);
+  assert.doesNotMatch(closeout, /const bloqueado = fechamentoEmAndamento \\|\\| preparandoFechamento;/);
+
   assert.match(css, /#abaFechamentoCaixa \.integro-fechamento-body/);
 });
