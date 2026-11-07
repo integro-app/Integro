@@ -759,8 +759,8 @@
             <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
             <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
           </div>
-          <button class="btn btn-primary vendedor-fechar-caixa-topo" id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa()" type="button">
-            <span class="material-symbols-rounded" aria-hidden="true">lock</span><span>Fechar caixa</span>
+          <button class="btn tab-operacao-clean vendedor-fechar-caixa-topo" id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa()" type="button" aria-label="Conferir e fechar caixa">
+            <span>Fechar caixa</span>
           </button>
         </div>
 
