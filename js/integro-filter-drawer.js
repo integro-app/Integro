@@ -123,9 +123,10 @@
     const input=document.createElement('input');input.type='search';input.placeholder=original.placeholder||'Buscar registros';input.setAttribute('aria-label',original.getAttribute('aria-label')||input.placeholder);input.value=original.value;input.dataset.igQueryInput='true';input.autocomplete='off';
     const submit=document.createElement('button');submit.type='button';submit.className='primary-btn ig-query-submit';submit.textContent='Buscar';submit.dataset.igQuerySubmit='true';
     label.append(icon,input);bar.append(label,submit);config.trigger.before(bar);if(config.clear){bar.append(config.clear);config.clear.addEventListener('click',()=>{input.value='';schedule();});}bar.append(config.trigger);config.trigger.textContent='Filtros';
-    if(config.sources[0].id==='filtrosCobrancasVendedor'){
-      for(const [button,label,shape] of [[submit,'Buscar cobranças','<circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path>'],[config.trigger,'Filtros de exibição','<path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"></path>']]){
-        button.classList.add('cobrancas-query-action');button.setAttribute('aria-label',label);button.title=label;
+    if(['filtrosCobrancasVendedor','filtrosVendasVendedor'].includes(config.sources[0].id)){
+      const isSales=config.sources[0].id==='filtrosVendasVendedor';
+      for(const [button,label,shape] of [[submit,isSales?'Buscar vendas':'Buscar cobranças','<circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path>'],[config.trigger,'Filtros de exibição','<path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"></path>']]){
+        button.classList.add(isSales?'vendas-query-action':'cobrancas-query-action');button.setAttribute('aria-label',label);button.title=label;
         const caption=document.createElement('span');caption.textContent=button.textContent;
         const svg=icon.cloneNode(false);svg.innerHTML=shape;svg.setAttribute('aria-hidden','true');
         button.replaceChildren(svg,caption);
@@ -151,6 +152,15 @@
     if(first.id==='filtrosCobrancasVendedor'){
       const toolbar=root.querySelector('#abaCobrancas > .vendedor-operacao-barra');
       const search=toolbar?.querySelector('label[for="buscaCobrancaInput"]');
+      if(search)sources.push(search);
+      config.apply=toolbar?.querySelector('.vendedor-buscar-btn');
+      if(config.apply)config.apply.dataset.igFilterSource='true';
+    }
+    // Vendas adota a mesma barra de pesquisa de Cobranças. A busca fica
+    // visível e os checkboxes continuam exclusivos da gaveta lateral.
+    if(first.id==='filtrosVendasVendedor'){
+      const toolbar=root.querySelector('#abaVendasDia > .vendedor-vendas-barra');
+      const search=toolbar?.querySelector('label[for="buscaVendaVendedorInput"]');
       if(search)sources.push(search);
       config.apply=toolbar?.querySelector('.vendedor-buscar-btn');
       if(config.apply)config.apply.dataset.igFilterSource='true';
