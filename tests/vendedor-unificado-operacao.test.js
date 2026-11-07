@@ -17,9 +17,9 @@ const rules = fs.readFileSync(path.join(root, "firestore.rules"), "utf8");
 const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
-  assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-cards-compactos1/);
   assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-mobile-resumo2/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20260818-v273-card1/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-cards-compactos1/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
