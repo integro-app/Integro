@@ -797,8 +797,7 @@
               <input id="buscaVendaVendedorInput" type="search" placeholder="Buscar por cliente, documento ou código da venda" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarVendasVendedor()}">
             </label>
             <button class="ghost-btn vendedor-filtro-btn" type="button" onclick="toggleFiltrosVendasVendedor()"><span class="material-symbols-rounded">tune</span>Filtros</button>
-            <button class="ghost-btn vendedor-buscar-btn" type="button" onclick="buscarVendasVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
-            <button id="btnNovaVendaOperacao" class="primary-btn vendedor-nova-venda-btn" type="button" onclick="abrirListaNovaVendaVendedor()"><span class="material-symbols-rounded">add</span>Nova venda</button>
+            <button class="primary-btn vendedor-buscar-btn" type="button" onclick="buscarVendasVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
           </div>
           <div id="filtrosVendasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
@@ -814,6 +813,9 @@
           </div>
           <div id="contadorVendasDia" class="vendedor-operacao-contador"></div>
           <div id="listaVendasDia" class="vendedor-vendas-dia"></div>
+          <div class="vendedor-nova-venda-acoes">
+            <button id="btnNovaVendaOperacao" class="primary-btn vendedor-nova-venda-btn" type="button" onclick="abrirListaNovaVendaVendedor()" aria-label="Criar nova venda"><span class="material-symbols-rounded" aria-hidden="true">add</span><span>Nova venda</span></button>
+          </div>
         </div>
 
         <div id="abaFechamentoCaixa" class="vendedor-fechamento-painel" role="tabpanel" aria-label="Conferência do caixa" style="display:none">
