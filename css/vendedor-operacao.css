@@ -1256,3 +1256,160 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
     width: 100%;
   }
 }
+
+/* Vendedor / Vendas: mesma barra de Cobranças, com Nova venda no canto inferior direito. */
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-barra {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  min-width: 0 !important;
+  margin: 0 0 14px !important;
+  padding: 0 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-barra > .ig-querybar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 112px 112px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .ig-query-field {
+  width: 100% !important;
+  min-width: 0 !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  margin: 0 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .ig-query-field > input {
+  min-width: 0 !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  font-size: 15px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendas-query-action {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 46px !important;
+  height: 46px !important;
+  margin: 0 !important;
+  padding: 0 8px !important;
+  border-radius: 12px !important;
+  box-sizing: border-box !important;
+  white-space: nowrap !important;
+  font-size: 13px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendas-query-action > svg {
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 20px !important;
+  height: 20px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendas-query-action > span {
+  display: inline !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .ig-query-submit.vendas-query-action {
+  background: linear-gradient(135deg, #ffb154, #ff9200) !important;
+  color: #fff !important;
+  border: 1px solid #ff9800 !important;
+  box-shadow: 0 5px 15px rgba(255,145,0,.16) !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-nova-venda-acoes {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+  min-width: 0;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-nova-venda-btn {
+  display: inline-flex !important;
+  flex: 0 0 auto !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  width: auto !important;
+  min-width: 148px !important;
+  max-width: 100% !important;
+  min-height: 48px !important;
+  height: 48px !important;
+  padding: 0 17px !important;
+  margin: 0 !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #ffb154, #ff9200) !important;
+  border: 1px solid #ff9800 !important;
+  color: #fff !important;
+  box-shadow: 0 9px 24px rgba(255,145,0,.24) !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  line-height: 1.2 !important;
+  white-space: nowrap !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-nova-venda-btn .material-symbols-rounded {
+  font-size: 22px !important;
+  flex-shrink: 0 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-nova-venda-btn:focus-visible {
+  outline: 3px solid #0f2743 !important;
+  outline-offset: 3px !important;
+}
+@media (max-width: 760px) {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia {
+    padding-bottom: max(90px, calc(78px + env(safe-area-inset-bottom))) !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-barra > .ig-querybar {
+    grid-template-columns: minmax(0, 1fr) 42px 42px !important;
+    grid-template-rows: 42px !important;
+    gap: 6px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .ig-query-field {
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 9px !important;
+    gap: 6px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .ig-query-field > input {
+    height: 40px !important;
+    min-height: 40px !important;
+    padding: 0 !important;
+    font-size: 16px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendas-query-action {
+    min-width: 42px !important;
+    width: 42px !important;
+    min-height: 42px !important;
+    height: 42px !important;
+    padding: 0 !important;
+    font-size: 0 !important;
+    border-radius: 10px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendas-query-action > svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendas-query-action > span {
+    display: none !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-nova-venda-acoes {
+    position: fixed !important;
+    bottom: max(22px, calc(14px + env(safe-area-inset-bottom))) !important;
+    right: max(18px, env(safe-area-inset-right)) !important;
+    z-index: 100 !important;
+    margin: 0 !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-nova-venda-btn {
+    min-width: 148px !important;
+    height: 48px !important;
+    box-shadow: 0 10px 26px rgba(255,145,0,.28) !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor.menu-mobile-open #abaVendasDia .vendedor-nova-venda-acoes,
+  html body[data-integro-page="master-local"].perfil-vendedor:has(.ig-filter-layer) #abaVendasDia .vendedor-nova-venda-acoes,
+  html body[data-integro-page="master-local"].perfil-vendedor:has(.vendedor-operacao-modal.show) #abaVendasDia .vendedor-nova-venda-acoes {
+    pointer-events: none !important;
+    visibility: hidden !important;
+  }
+}
