@@ -770,12 +770,15 @@
           </div>
           <div id="filtrosCobrancasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
+              <div class="vendedor-filtro-grupo-titulo">Baixas do dia</div>
               <label class="vendedor-check"><input id="filtroCobrancaPendente" type="checkbox"><span>Sem baixa <span class="vendedor-filtro-contagem" data-cobranca-contagem="pendentes">0</span></span></label>
               <label class="vendedor-check"><input id="filtroCobrancaPago" type="checkbox"><span>Pagos <span class="vendedor-filtro-contagem" data-cobranca-contagem="pagos">0</span></span></label>
               <label class="vendedor-check"><input id="filtroCobrancaNaoPago" type="checkbox"><span>Não pagos <span class="vendedor-filtro-contagem" data-cobranca-contagem="naoPagos">0</span></span></label>
+              <div class="vendedor-filtro-grupo-titulo">Situação financeira</div>
               <label class="vendedor-check"><input id="filtroCobrancaAtrasado" type="checkbox"><span>Atrasados <span class="vendedor-filtro-contagem" data-cobranca-contagem="atrasados">0</span></span></label>
               <label class="vendedor-check"><input id="filtroCobrancaEmDia" type="checkbox"><span>Em dia <span class="vendedor-filtro-contagem" data-cobranca-contagem="emDia">0</span></span></label>
               <label class="vendedor-check"><input id="filtroCobrancaAdiantado" type="checkbox"><span>Adiantados <span class="vendedor-filtro-contagem" data-cobranca-contagem="adiantados">0</span></span></label>
+              <div class="vendedor-filtro-grupo-titulo">Ordenação</div>
               <label><span>Ordenar</span><select id="ordenarCobrancas"><option value="nome_az">Nome A → Z</option><option value="nome_za">Nome Z → A</option><option value="saldo_maior">Maior saldo</option><option value="saldo_menor">Menor saldo</option><option value="atrasado">Mais atrasados</option></select></label>
             </div>
             <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosCobrancasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="buscarCobrancasVendedor()">Aplicar filtros</button></div>
@@ -799,9 +802,11 @@
           </div>
           <div id="filtrosVendasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
+              <div class="vendedor-filtro-grupo-titulo">Situação das vendas</div>
               <label class="vendedor-check"><input id="filtroVendaAtiva" type="checkbox"><span>Ativas</span></label>
               <label class="vendedor-check"><input id="filtroVendaQuitada" type="checkbox"><span>Quitadas</span></label>
               <label class="vendedor-check"><input id="filtroVendaCancelada" type="checkbox"><span>Canceladas</span></label>
+              <div class="vendedor-filtro-grupo-titulo">Tipo de operação</div>
               <label class="vendedor-check"><input id="filtroVendaNova" type="checkbox"><span>Novas</span></label>
               <label class="vendedor-check"><input id="filtroVendaRenovacao" type="checkbox"><span>Renovações</span></label>
             </div>
@@ -919,9 +924,13 @@
 
       const status = texto(v.statusVenda || v.status || "ATIVA").toUpperCase();
       const tipo = texto(v.tipoVenda || v.tipo || "NOVA").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      if (algumStatus && !((vendaAtivaFiltro && ["ATIVA", "ATIVO"].includes(status)) ||
-        (vendaQuitadaFiltro && ["QUITADO", "QUITADA"].includes(status)) ||
-        (vendaCanceladaFiltro && ["CANCELADO", "CANCELADA"].includes(status)))) return false;
+      const quitada = ["QUITADO", "QUITADA"].includes(status);
+      const cancelada = ["CANCELADO", "CANCELADA"].includes(status);
+      // Uma venda em dia, adiantada ou em atraso permanece ativa até quitação/cancelamento.
+      const ativa = !quitada && !cancelada;
+      if (algumStatus && !((vendaAtivaFiltro && ativa) ||
+        (vendaQuitadaFiltro && quitada) ||
+        (vendaCanceladaFiltro && cancelada))) return false;
       if (algumTipo && !((vendaNovaFiltro && tipo.includes("NOVA")) || (vendaRenovacaoFiltro && tipo.includes("RENOV")))) return false;
       const busca = [v.clienteNome, v.nomeCliente, cliente.nome, cliente.nomeCompleto, cliente.apelido, cliente.documento, v.codigo, v.numero, v.id].join(" ").toLowerCase();
       return !termo || busca.includes(termo);
