@@ -754,10 +754,16 @@
           </div>
         </div>
 
-        <div class="operacao-tabs-clean vendedor-operacao-tabs" role="tablist" aria-label="Operação do vendedor">
-          <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
-          <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
+        <div class="vendedor-operacao-topbar">
+          <div class="operacao-tabs-clean vendedor-operacao-tabs" role="tablist" aria-label="Operação do vendedor">
+            <button id="tabCobrancasBtn" class="btn tab-operacao-clean active" type="button" onclick="abrirAbaVendasCobrancas('cobrancas')">Cobranças</button>
+            <button id="tabVendasDiaBtn" class="btn tab-operacao-clean" type="button" onclick="abrirAbaVendasCobrancas('vendas')">Vendas</button>
+          </div>
+          <button class="btn btn-primary vendedor-fechar-caixa-topo" id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa()" type="button">
+            <span class="material-symbols-rounded" aria-hidden="true">lock</span><span>Fechar caixa</span>
+          </button>
         </div>
+        <div class="fechamento-status-clean vendedor-fechamento-status" id="statusFechamentoCobrancasFinal" role="status" aria-live="polite"></div>
 
         <div id="abaCobrancas">
           <div class="vendedor-operacao-barra">
@@ -784,10 +790,6 @@
             <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosCobrancasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="buscarCobrancasVendedor()">Aplicar filtros</button></div>
           </div>
           <div id="listaCobrancas"></div>
-          <div class="fechar-caixa-final-clean vendedor-fechamento-operacao">
-            <div class="fechamento-status-clean" id="statusFechamentoCobrancasFinal"></div>
-            <button class="btn btn-primary" id="btnFecharCaixaCobrancas" onclick="validarEAbrirFechamentoCaixa()" type="button"><span class="material-symbols-rounded">lock</span>Fechar caixa</button>
-          </div>
         </div>
 
         <div id="abaVendasDia" style="display:none">
