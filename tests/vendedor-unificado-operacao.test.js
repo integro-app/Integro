@@ -474,7 +474,7 @@ test("Fechar caixa divide a linha com Cobranças e Vendas e continua funcional e
   assert.equal(markup.split('id="statusFechamentoCobrancasFinal"').length - 1, 1);
   assert.match(markup, /id="btnFecharCaixaCobrancas" onclick="abrirAbaVendasCobrancas\('fechamento'\)"/);
   assert.match(markup, /window\.IntegroVendedorFechamentoCaixa\?\.atualizarBotaoFechamento\?\.\(\)/);
-  assert.match(estilo, /Operação \/ Vendedor: três opções com aparência de abas na mesma linha/);
+  assert.match(estilo, /Operação \/ Vendedor: as três abas pertencem ao mesmo tablist/);
   assert.match(markup, /class="btn tab-operacao-clean vendedor-fechar-caixa-topo"/);
   assert.doesNotMatch(markup, /class="btn btn-primary vendedor-fechar-caixa-topo"/);
   assert.match(estilo, /grid-template-columns: minmax\(0, 1fr\) !important/);
