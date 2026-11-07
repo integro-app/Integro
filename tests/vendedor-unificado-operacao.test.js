@@ -19,7 +19,7 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
   assert.match(master, /js\/vendedor-unificado\.js\?v=20261107-vendedor-fechar-aba-instant-v3/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-fechar-aba-instant-v3/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20261107-vendedor-fechar-aba-neutra-v4/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -478,7 +478,9 @@ test("Fechar caixa divide a linha com Cobranças e Vendas e continua funcional e
   assert.match(markup, /class="btn tab-operacao-clean vendedor-fechar-caixa-topo"/);
   assert.doesNotMatch(markup, /class="btn btn-primary vendedor-fechar-caixa-topo"/);
   assert.match(estilo, /grid-template-columns: minmax\(0, 2fr\) minmax\(0, 1fr\)/);
-  assert.match(estilo, /\.vendedor-fechar-caixa-topo\s*\{[\s\S]*?background: #fff1d8 !important/);
+  const fecharInativo = estilo.split(".vendedor-fechar-caixa-topo {")[1]?.split("}")[0] || "";
+  assert.ok(fecharInativo, "o terceiro botão mantém o mesmo estilo de base das abas");
+  assert.doesNotMatch(fecharInativo, /background:|color:|box-shadow:|border:/, "nenhum destaque visual permanente");
   assert.doesNotMatch(estilo, /background: linear-gradient\(110deg, #ffaf47, #ff9100\)/);
   assert.match(estilo, /\.vendedor-fechar-caixa-topo:disabled\s*\{/);
   assert.match(estilo, /@media \(max-width: 760px\)\s*\{[\s\S]*?\.vendedor-operacao-topbar/);
@@ -612,6 +614,7 @@ test("Fechar caixa abre imediatamente como terceira aba antes da resposta do ser
   assert.match(unificado, /controller\.abrirResumoFechamento\(\{ inline: true \}\)/);
   assert.match(unificado, /botao\?\.classList\.toggle\("active", abaAtual === alvo\)/);
   const css = fs.readFileSync(path.join(root, "css/vendedor-operacao.css"), "utf8");
-  assert.match(css, /\.vendedor-fechar-caixa-topo\.active/);
+  assert.match(css, /Mesmo estado visual das abas Cobranças e Vendas/);
+  assert.doesNotMatch(css, /\.vendedor-fechar-caixa-topo\.active\s*\{/, "não deve existir estado de seleção forçado");
   assert.match(css, /#abaFechamentoCaixa \.integro-fechamento-body/);
 });
