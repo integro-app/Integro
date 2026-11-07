@@ -483,3 +483,88 @@ test("Fechar caixa divide a linha com Cobranças e Vendas e continua funcional e
   assert.match(estilo, /\.vendedor-fechar-caixa-topo:disabled\s*\{/);
   assert.match(estilo, /@media \(max-width: 760px\)\s*\{[\s\S]*?\.vendedor-operacao-topbar/);
 });
+
+
+test("resumo parcial do caixa permanece visível com visitas pendentes, mas fechar fica bloqueado", () => {
+  const vm = require("node:vm");
+  const close = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  const start = close.indexOf("  function impedimentosFechamento(");
+  const end = close.indexOf("  function htmlEncerramento()", start);
+  assert.ok(start >= 0 && end > start, "funções de pré-conferência presentes");
+  let sincronizando = 0;
+  const contexto = {
+    inteiro: valor => Math.round(Number(valor) || 0),
+    operacoesAindaSincronizando: () => sincronizando,
+    moedaCentavos: valor => "R$ " + (valor / 100).toFixed(2),
+    resumoOficial: () => ({
+      caixaAtualCentavos: 10000, caixaInicialCentavos: 8000,
+      vendasNovasCentavos: 2000, renovacoesCentavos: 0,
+      ingressosCentavos: 0, gastosCentavos: 0, retiradasCentavos: 0
+    }),
+    conferenciaValor: (digitado, esperado) => {
+      const valor = Number(String(digitado).replace(",", "."));
+      const centavos = Math.round(valor * 100);
+      return { valido: Number.isFinite(valor), confere: centavos === esperado, informadoCentavos: centavos, diferencaCentavos: centavos - esperado };
+    }
+  };
+  const { impedimentosFechamento, htmlResumo, atualizarConferencia } = vm.runInNewContext(
+    close.slice(start, end) + "\n({ impedimentosFechamento, htmlResumo, atualizarConferencia })",
+    contexto
+  );
+  const snapshot = {
+    caixaFinalEsperadoCentavos: 10000, pendenciasCobranca: 2,
+    totalCobrancas: 7, totalVisitadas: 5, totalPagas: 3, totalNaoPagas: 2,
+    pagamentosPendentes: 0, aprovacoesPendentes: 0, inconsistencias: []
+  };
+  const html = htmlResumo(snapshot, {});
+  assert.match(html, /Conferência do caixa/);
+  assert.match(html, /Visitas e baixas/);
+  assert.match(html, /Consulta liberada — fechamento ainda bloqueado/);
+  assert.match(html, /2 visita\(s\) ainda sem baixa/);
+  assert.match(html, /Caixa atual/);
+  const input = { value: "100,00" };
+  const validar = { textContent: "", className: "" };
+  const confirmar = { disabled: false };
+  const dialog = { querySelector: id => ({
+    "#integroFechamentoValorInformado": input,
+    "#integroFechamentoValidacao": validar,
+    "#integroFechamentoConfirmar": confirmar
+  })[id] };
+  atualizarConferencia(dialog, snapshot);
+  assert.equal(confirmar.disabled, true, "valor conferido não libera caixa com visitas pendentes");
+  assert.match(validar.textContent, /fechamento ainda está bloqueado/);
+  snapshot.pendenciasCobranca = 0;
+  snapshot.totalVisitadas = 7;
+  atualizarConferencia(dialog, snapshot);
+  assert.equal(confirmar.disabled, false, "última baixa libera confirmação com valor igual");
+  assert.match(validar.textContent, /Todas as visitas possuem baixa/);
+  sincronizando = 1;
+  atualizarConferencia(dialog, snapshot);
+  assert.equal(confirmar.disabled, true, "sincronização pendente também bloqueia fechar");
+  sincronizando = 0;
+  snapshot.pagamentosPendentes = 1;
+  assert.equal(impedimentosFechamento(snapshot).podeFechar, false);
+  snapshot.pagamentosPendentes = 0;
+  snapshot.aprovacoesPendentes = 1;
+  assert.equal(impedimentosFechamento(snapshot).podeFechar, false);
+  snapshot.aprovacoesPendentes = 0;
+  snapshot.inconsistencias = ["Saldo inconsistente"];
+  assert.equal(impedimentosFechamento(snapshot).podeFechar, false);
+});
+
+test("abrir conferência consulta o servidor sem exigir visitas concluídas; fechamento revalida", () => {
+  const close = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
+  const preview = close.split("  async function abrirResumoFechamento() {")[1]?.split("  function atualizarBotaoFechamento() {")[0] || "";
+  const fechamento = close.split("  async function executarFechamento(")[1]?.split("  async function abrirResumoFechamento() {")[0] || "";
+  assert.ok(preview && fechamento);
+  assert.match(preview, /const snapshot = await prepararSnapshot\(caixa\);\s*dialog\.innerHTML = htmlResumo\(snapshot, caixa\)/);
+  assert.doesNotMatch(preview, /await sincronizarAntesDoFechamento\(caixa\)/);
+  assert.doesNotMatch(preview, /return notificar\(.*cobrança\(s\) sem baixa/);
+  assert.match(preview, /!impedimentosFechamento\(snapshot, operacoesAindaSincronizando\(\)\)\.podeFechar/);
+  assert.match(fechamento, /await sincronizarAntesDoFechamento\(caixa\)/);
+  assert.match(fechamento, /const snapshotAtualizado = await prepararSnapshot\(caixa\)/);
+  assert.match(fechamento, /if \(!impedimentos\.podeFechar\)/);
+  assert.match(fechamento, /ignorarPendencias: false/);
+  const backend = fs.readFileSync(path.join(root, "functions/box-lifecycle.js"), "utf8");
+  assert.match(backend, /if\(snapshot\.pendenciasCobranca && !managerial\) fail/);
+});
