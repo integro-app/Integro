@@ -352,8 +352,8 @@
               <strong class="apelido-cliente-cobranca">${escapar(apelido)}</strong>
               <small class="nome-cliente-cobranca">${escapar(nome)}</small>
             </div>
-            <button class="cobranca-whatsapp-btn" type="button" ${whatsapp ? "" : "disabled"} title="Abrir WhatsApp" aria-label="Abrir WhatsApp de ${escapar(apelido)}" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${escapar(item.clienteId)}','${escapar(item.vendaId)}')">
-              <span class="material-symbols-rounded">chat</span>
+            <button class="cobranca-whatsapp-btn" type="button" ${whatsapp ? "" : "disabled"} title="Enviar mensagem pelo WhatsApp" aria-label="Enviar mensagem pelo WhatsApp para ${escapar(apelido)}" onclick="event.stopPropagation(); abrirWhatsAppClienteCobranca('${escapar(item.clienteId)}','${escapar(item.vendaId)}')">
+              <span class="material-symbols-rounded" aria-hidden="true">send</span>
             </button>
           </div>
           <div class="cobranca-status-row">
