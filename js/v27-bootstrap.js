@@ -86,7 +86,7 @@
   async function ensureSellerCloseout() {
     if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
     try {
-      await loadIfMissing(() => Boolean(global.IntegroVendedorFechamentoCaixa), "js/services/vendedor-fechamento-caixa.js", "seller-closeout");
+      await loadIfMissing(() => Boolean(global.IntegroVendedorFechamentoCaixa), "js/services/vendedor-fechamento-caixa.js", "seller-closeout", "20261107-vendedor-caixa-resumo-parcial1");
       global.IntegroVendedorFechamentoCaixa?.install?.();
       return true;
     } catch (error) {
