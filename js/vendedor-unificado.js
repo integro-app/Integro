@@ -931,7 +931,7 @@
       if (algumStatus && !((vendaAtivaFiltro && ativa) ||
         (vendaQuitadaFiltro && quitada) ||
         (vendaCanceladaFiltro && cancelada))) return false;
-      if (algumTipo && !((vendaNovaFiltro && tipo.includes("NOVA")) || (vendaRenovacaoFiltro && tipo.includes("RENOV")))) return false;
+      if (algumTipo && !((vendaNovaFiltro && tipo === "NOVA") || (vendaRenovacaoFiltro && tipo.startsWith("RENOV")))) return false;
       const busca = [v.clienteNome, v.nomeCliente, cliente.nome, cliente.nomeCompleto, cliente.apelido, cliente.documento, v.codigo, v.numero, v.id].join(" ").toLowerCase();
       return !termo || busca.includes(termo);
     }).sort((a, b) => dataRegistro(b).localeCompare(dataRegistro(a)) || texto(b.id).localeCompare(texto(a.id)));
