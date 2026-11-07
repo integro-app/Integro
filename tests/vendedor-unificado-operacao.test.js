@@ -623,7 +623,7 @@ test("Fechar caixa abre imediatamente como terceira aba antes da resposta do ser
   assert.doesNotMatch(css, /\.vendedor-fechar-caixa-topo\.active\s*\{/, "não deve existir estado de seleção forçado");
   const closeout = fs.readFileSync(path.join(root, "js/services/vendedor-fechamento-caixa.js"), "utf8");
   assert.match(closeout, /const bloqueado = fechamentoEmAndamento;/);
-  assert.doesNotMatch(closeout, /const bloqueado = fechamentoEmAndamento \\|\\| preparandoFechamento;/);
+  assert.doesNotMatch(closeout, /const bloqueado = fechamentoEmAndamento \|\| preparandoFechamento;/);
 
   assert.match(css, /#abaFechamentoCaixa \.integro-fechamento-body/);
 });
