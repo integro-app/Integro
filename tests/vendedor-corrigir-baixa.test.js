@@ -162,7 +162,7 @@ test("resumo sai dos cards e cada filtro recebe seu contador", () => {
   assert.match(visual, /#cobrancas\.screen #contadorCobrancas,[\s\S]*?display: none !important/);
   assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
   assert.match(pagina, /js\/vendedor-unificado\.js\?v=20261107-vendedor-vendas-fab-vazio-v2/);
-  assert.match(pagina, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(pagina, /css\/integro-visual\.css\?v=20261107-dashboard-vendedor-clean1/);
 
   assert.match(operacao, /function atualizarContagensFiltrosCobranca\(carteira\)/);
   assert.match(operacao, /atualizarContagensFiltrosCobranca\(carteira\)/);
