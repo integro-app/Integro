@@ -308,11 +308,32 @@
     };
   }
 
+  // A consulta do caixa é sempre permitida; somente a confirmação exige
+  // todas as visitas com baixa e ausência de impedimentos oficiais.
+  function impedimentosFechamento(snapshot = {}, operacoesPendentes = 0) {
+    const pendencias = Math.max(0, inteiro(snapshot.pendenciasCobranca));
+    const pagamentosPendentes = Math.max(0, inteiro(snapshot.pagamentosPendentes));
+    const aprovacoesPendentes = Math.max(0, inteiro(snapshot.aprovacoesPendentes));
+    const inconsistencias = Array.isArray(snapshot.inconsistencias) ? snapshot.inconsistencias.length : 0;
+    const motivos = [];
+    if (pendencias) motivos.push(`${pendencias} visita(s) ainda sem baixa de Pago ou Não pagamento.`);
+    if (pagamentosPendentes) motivos.push(`${pagamentosPendentes} pagamento(s) aguardando confirmação no servidor.`);
+    if (aprovacoesPendentes) motivos.push(`${aprovacoesPendentes} aprovação(ões) obrigatória(s) pendente(s).`);
+    if (inconsistencias) motivos.push(`${inconsistencias} inconsistência(s) financeira(s) para regularizar.`);
+    if (operacoesPendentes > 0) motivos.push("Existem baixas locais ainda sincronizando.");
+    return { podeFechar: motivos.length === 0, pendencias, motivos };
+  }
+
   function htmlResumo(snapshot, caixa) {
     const resumo = resumoOficial(snapshot, caixa);
+    const situacao = impedimentosFechamento(snapshot, operacoesAindaSincronizando());
+    const totalVisitas = Math.max(0, inteiro(snapshot.totalCobrancas));
+    const totalPagas = Math.max(0, inteiro(snapshot.totalPagas));
+    const totalNaoPagas = Math.max(0, inteiro(snapshot.totalNaoPagas));
+    const visitadas = Math.max(0, inteiro(snapshot.totalVisitadas));
     return `
       <div class="integro-fechamento-head">
-        <div><h2>Fechar caixa</h2><p>Confira o resumo e digite o valor físico do caixa atual. O fechamento só será liberado quando os valores forem idênticos.</p></div>
+        <div><h2>Conferência do caixa</h2><p>Valores registrados no servidor até este momento. Consulte a posição do caixa quando quiser; o fechamento exige todas as visitas com baixa e conferência do valor físico.</p></div>
         <button class="integro-fechamento-close" type="button" data-fechamento-cancelar aria-label="Fechar">×</button>
       </div>
       <div class="integro-fechamento-body">
@@ -324,6 +345,19 @@
           <div class="integro-fechamento-card"><small>Ingressos</small><strong>${moedaCentavos(resumo.ingressosCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Gastos</small><strong>${moedaCentavos(resumo.gastosCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Retiros</small><strong>${moedaCentavos(resumo.retiradasCentavos)}</strong></div>
+        </div>
+        <div class="integro-fechamento-visitas" aria-label="Resumo das visitas">
+          <h3>Visitas e baixas</h3>
+          <div class="integro-fechamento-grid">
+            <div class="integro-fechamento-card"><small>Previstas</small><strong>${totalVisitas}</strong></div>
+            <div class="integro-fechamento-card"><small>Com baixa</small><strong>${visitadas}</strong></div>
+            <div class="integro-fechamento-card"><small>Pagas</small><strong>${totalPagas}</strong></div>
+            <div class="integro-fechamento-card"><small>Não pagas</small><strong>${totalNaoPagas}</strong></div>
+          </div>
+        </div>
+        <div class="integro-fechamento-aviso ${situacao.podeFechar ? "liberado" : "pendente"}" role="status">
+          <strong>${situacao.podeFechar ? "Visitas concluídas. Confira o dinheiro do caixa." : "Consulta liberada — fechamento ainda bloqueado"}</strong>
+          ${situacao.motivos.map(motivo => `<div>${motivo}</div>`).join("")}
         </div>
         <div class="integro-fechamento-conferencia">
           <label for="integroFechamentoValorInformado">Digite o valor do caixa atual para confirmar</label>
