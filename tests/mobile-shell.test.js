@@ -172,6 +172,7 @@ test("menu lateral mantém acessibilidade e seus gatilhos sem duplicar instalaç
   assert.match(source, /setImportant\(trigger, "pointer-events", hidden \? "none" : "auto"\)/);
   assert.match(source, /trigger\.setAttribute\("aria-hidden", "true"\)/);
   assert.match(source, /menuScrollAnchor - current >= 18/);
+  assert.match(source, /clearForcedMenuVisualState\(\);\s*\/\/ Ao voltar para desktop,[\s\S]*?trigger\.removeAttribute\("aria-hidden"\)/);
   for (const [file] of pages) {
     assert.match(read(file), /js\/integro-mobile-navigation\.js\?v=20260818-v272-perf1&build=[^"]+&scroll=20261107-directional1/, file);
   }
