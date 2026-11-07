@@ -52,7 +52,7 @@ test("seletor contextual do vendedor mostra Cobranças e Vendas em Operação", 
 test("card de cobrança contém whatsapp, situação, parcelas e somente ações diárias", () => {
   assert.match(operacao, /cobranca-whatsapp-btn/);
   assert.match(operacao, /Parcela esperada/);
-  assert.match(operacao, /Parcela paga no dia/);
+  assert.match(operacao, /Pago no dia/);
   assert.match(operacao, /Saldo devedor/);
   assert.match(operacao, /Progresso de parcelas/);
   assert.match(operacao, />Pago</);
