@@ -304,3 +304,9 @@ html body[data-integro-page].perfil-vendedor.integro-menu-categorias main #cobra
     min-width: 0 !important;
   }
 }
+
+/* Vendedor: remove o resumo textual da rota logo abaixo da busca, inclusive se um script antigo ficar em cache. */
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #contadorCobrancas,
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen .vendedor-operacao-contador {
+  display: none !important;
+}
