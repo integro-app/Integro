@@ -16949,7 +16949,12 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
       return proprietarios.length>0 && proprietarios.some(id=>identidades.has(id));
     };
     const candidatos=[window.obterCaixaAbertoVendedor?.(),window.caixaAtual,...cache("caixas")].filter(valido);
-    const unicos=new Map(candidatos.map(c=>[String(c.id || c.caixaId || c.docId || ""),c]).filter(([id])=>!!id));
+    const unicos=new Map();
+    // Priorizar a consulta do caixa atual sobre cópias eventualmente antigas.
+    for(const c of candidatos){
+      const id=String(c.id || c.caixaId || c.docId || "");
+      if(id && !unicos.has(id)) unicos.set(id,c);
+    }
     // Um vendedor com caixas distintos abertos não deve receber um saldo
     // arbitrário baseado na ordem do cache. Exigir regularização do caixa.
     if(unicos.size !== 1) return null;
