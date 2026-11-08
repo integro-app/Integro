@@ -16949,7 +16949,11 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
       return proprietarios.length>0 && proprietarios.some(id=>identidades.has(id));
     };
     const candidatos=[window.obterCaixaAbertoVendedor?.(),window.caixaAtual,...cache("caixas")].filter(valido);
-    return candidatos.sort((a,b)=>dateTime(b).getTime()-dateTime(a).getTime())[0] || null;
+    const unicos=new Map(candidatos.map(c=>[String(c.id || c.caixaId || c.docId || ""),c]).filter(([id])=>!!id));
+    // Um vendedor com caixas distintos abertos não deve receber um saldo
+    // arbitrário baseado na ordem do cache. Exigir regularização do caixa.
+    if(unicos.size !== 1) return null;
+    return [...unicos.values()][0];
   }
 
   function resumoCaixaVendedorAtual(){
@@ -17355,6 +17359,17 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
 
     const anterior = periodoAnterior(periodo);
     const resumoVendedor = isVendedor() ? resumoCaixaVendedorAtual() : null;
+    if(isVendedor() && !resumoVendedor){
+      // Falha fechada: números zero ou valores de outro caixa não são
+      // apresentados como se fossem dados financeiros confirmados.
+      ["kpiCarteira","kpiCaixaAtual","kpiVendasHoje","kpiRecebidoHoje","kpiGastosHoje"].forEach(id=>text(byId(id),"—"));
+      ["kpiCaixaAtualSub","kpiVendasHojeSub","kpiGastosHojeSub","recebidoProgressSub"].forEach(id=>text(byId(id),"Caixa aberto não validado"));
+      const trend=byId("kpiCarteiraTrend"); if(trend) trend.textContent="Confira a empresa e o caixa aberto.";
+      ["dashboardEvolutionChart","dashboardTeamRanking","sparkCarteira","sparkCaixas","sparkVendas","sparkRecebido","sparkGastos"].forEach(id=>{
+        const elemento=byId(id);if(elemento) elemento.innerHTML="";
+      });
+      return;
+    }
     const carteira = resumoVendedor ? resumoVendedor.carteira : snapshotCarteiraAte(periodo.fim);
     const carteiraAnterior = isVendedor() ? 0 : snapshotCarteiraAte(anterior.fim);
     const recebido = resumoVendedor ? resumoVendedor.recebimentos : somaPeriodo(recebidoNoDia, periodo);
