@@ -2669,7 +2669,7 @@ body.integro-data-refreshing .section-card{
           <div class="kpi-card dashboard-tone-green" data-dashboard-views="visao-geral,comercial,operacao" data-dashboard-card="recebido-hoje" title="Clique para comparar o recolhimento pretendido com o recolhido real">
             <div class="kpi-icon"><span class="material-symbols-rounded">south</span></div>
             <div class="kpi-content">
-              <div class="kpi-label">Recolhido Hoje</div>
+              <div class="kpi-label">Recebido Hoje</div>
               <div class="kpi-value" id="kpiRecebidoHoje">R$ 0,00</div>
               <div class="kpi-progress" id="recebidoProgressBox">
                 <div class="progress-head"><span id="recebidoProgressLabel">Recolhimento pretendido</span><strong id="recebidoProgressPct">0%</strong></div>
@@ -17068,8 +17068,9 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     const labels = {
       'vendas-hoje': unicoDia ? 'VENDAS DO DIA' : 'VENDAS NO PERÍODO',
       'recebido-hoje': unicoDia ? 'RECEBIDO NO DIA' : 'RECEBIDO NO PERÍODO',
-      'gastos-hoje': unicoDia ? 'SAÍDAS DO DIA' : 'SAÍDAS NO PERÍODO',
-      'caixa-atual': unicoDia ? 'CAIXAS DO DIA' : 'CAIXAS DO PERÍODO'
+      'gastos-hoje': unicoDia ? 'GASTOS E RETIRADAS' : 'GASTOS/RETIRADAS NO PERÍODO',
+      'caixa-atual': unicoDia ? 'CAIXA ATUAL' : 'CAIXA NO PERÍODO',
+      'carteira-final': isVendedor() ? 'CARTEIRA ATUAL' : 'CARTEIRA FINAL'
     };
     Object.entries(labels).forEach(([card,label])=>{
       const el=document.querySelector(`[data-dashboard-card="${card}"] .kpi-label`);
@@ -17497,8 +17498,17 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     const periodo = periodoAtual();
     const resumo = isVendedor() ? resumoCaixaVendedorAtual() : null;
     const recebido = resumo ? resumo.recebimentos : somaPeriodo(recebidoNoDia, periodo);
+    const recolhido = movimentosLedgerPorTipo("RECOLHIMENTO",periodo)
+      .reduce((total, item)=>total+valorLancamentoDashboard(item),0);
     const previsto = somaPeriodo(previstoNoDia, periodo);
-    openDrawer("Recolhimento no período", `Comparativo de ${rotuloPeriodo(periodo)} entre o recolhimento pretendido e o recolhido real.`, `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Recolhido real</small><strong>${money(recebido)}</strong></div><div class="insight-summary-item"><small>Recolhimento pretendido</small><strong>${money(previsto)}</strong></div><div class="insight-summary-item"><small>Progresso</small><strong>${previsto ? pct(recebido/previsto*100) : "0%"}</strong></div></div><div class="real-empty">O recolhimento pretendido corresponde à soma das parcelas e cobranças programadas para o período selecionado. O valor não diminui quando uma parcela é paga; o pagamento entra no recolhido real.</div>`);
+    openDrawer("Recebimentos e recolhimentos", `Movimentações confirmadas de ${rotuloPeriodo(periodo)}, sem misturar pagamentos com retiradas do caixa.`,
+      `<div class="insight-summary-grid">
+        <div class="insight-summary-item"><small>Recebido dos clientes</small><strong>${money(recebido)}</strong></div>
+        <div class="insight-summary-item"><small>Recolhido do caixa</small><strong>${money(recolhido)}</strong></div>
+        <div class="insight-summary-item"><small>Cobranças previstas</small><strong>${money(previsto)}</strong></div>
+        <div class="insight-summary-item"><small>Progresso de recebimentos</small><strong>${previsto ? pct(recebido/previsto*100) : "0%"}</strong></div>
+      </div>
+      <div class="real-empty">Pagamento confirmado aumenta o caixa. Recolhimento confirmado representa saída de numerário e é mostrado separadamente.</div>`);
   }
 
   function renderInadimplencia(){
