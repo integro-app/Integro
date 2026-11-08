@@ -17161,7 +17161,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function vendasNoDia(iso){
-    const vendas = cache("vendas").filter(v=>!isCancelado(v) && dateISO(v)===iso);
+    const vendas = cache("vendas").filter(v=>!isCancelado(v) && dateISO(v)===iso && itemNoEscopoDashboard(v,{inicio:iso,fim:iso}));
     const total = vendas.reduce((s,v)=>s+valorVenda(v),0);
     const clientes = new Set(vendas.map(v => clienteIdOf(v) || norm(nomeCliente(v))).filter(Boolean));
     return {vendas,total,qtdClientes:clientes.size};
@@ -17260,7 +17260,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     return datas.map(iso=>{
       const periodoDia={inicio:iso,fim:iso};
       const vendasLedger=movimentosLedgerPorTipo("VENDA",periodoDia);
-      const vendasDia=vendasLedger.length ? vendasLedger : cache("vendas").filter(v=>!isCancelado(v)&&dateISO(v)===iso);
+      const vendasDia=vendasLedger.length ? vendasLedger : cache("vendas").filter(v=>!isCancelado(v)&&dateISO(v)===iso&&itemNoEscopoDashboard(v,periodoDia));
       let novas=0, renovadas=0;
       vendasDia.forEach(v=>{ const val=vendasLedger.length ? valorLancamentoDashboard(v) : valorVenda(v); if(tipoVendaDashboard(v)==="renovada") renovadas+=val; else novas+=val; });
       const gastos=movimentosLedgerPorTipo("GASTO",periodoDia).reduce((s,l)=>s+valorLancamentoDashboard(l),0);
@@ -17470,6 +17470,12 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function renderCarteira(tipo="7d", ini="", fim=""){
+    if(isVendedor()){
+      const resumo=resumoCaixaVendedorAtual();
+      const linhas=(resumo?.detalhes?.carteira || []).map(v=>`<tr><td>${esc(nomeCliente(v))}</td><td>${money(valorLancamentoDashboard(v))}</td></tr>`).join("");
+      return openDrawer("Carteira atual", "Saldo da carteira vinculado ao caixa aberto e ao vendedor autenticado.",
+        `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Carteira atual</small><strong>${money(resumo?.carteira || 0)}</strong></div></div>${linhas ? `<table class="real-table"><thead><tr><th>Cliente</th><th>Saldo</th></tr></thead><tbody>${linhas}</tbody></table>` : '<div class="real-empty">Sem vendas com saldo individual carregado neste caixa.</div>'}`);
+    }
     const datas = datasPeriodo(tipo, ini, fim);
     const atual = snapshotCarteiraAte(todayISO());
     const anterior = snapshotCarteiraAte(addDays(todayISO(),-1));
@@ -17489,7 +17495,8 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
 
   function renderRecebido(){
     const periodo = periodoAtual();
-    const recebido = somaPeriodo(recebidoNoDia, periodo);
+    const resumo = isVendedor() ? resumoCaixaVendedorAtual() : null;
+    const recebido = resumo ? resumo.recebimentos : somaPeriodo(recebidoNoDia, periodo);
     const previsto = somaPeriodo(previstoNoDia, periodo);
     openDrawer("Recolhimento no período", `Comparativo de ${rotuloPeriodo(periodo)} entre o recolhimento pretendido e o recolhido real.`, `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Recolhido real</small><strong>${money(recebido)}</strong></div><div class="insight-summary-item"><small>Recolhimento pretendido</small><strong>${money(previsto)}</strong></div><div class="insight-summary-item"><small>Progresso</small><strong>${previsto ? pct(recebido/previsto*100) : "0%"}</strong></div></div><div class="real-empty">O recolhimento pretendido corresponde à soma das parcelas e cobranças programadas para o período selecionado. O valor não diminui quando uma parcela é paga; o pagamento entra no recolhido real.</div>`);
   }
