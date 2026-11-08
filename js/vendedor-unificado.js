@@ -1958,6 +1958,7 @@
       <div><span>Responsável</span><strong>${esc(item.criadoPorNome || item.solicitanteNome || item.vendedorNome || "Vendedor")}</strong></div>
       ${texto(item.observacao || item.motivo || item.descricao) ? `<p><b>Observação:</b> ${esc(item.observacao || item.motivo || item.descricao)}</p>` : ""}
       ${resposta ? `<p class="vendedor-mov-resposta"><b>Resposta do financeiro:</b> ${esc(resposta)}</p>` : ""}
+      ${item.metadados?.anexo?.storagePath ? `<p><button class="ghost-btn" type="button" onclick="abrirAnexoMovimentacaoVendedor('${esc(id)}')">Ver comprovante</button></p>` : ""}
       ${podeCancelar ? `<div class="vendedor-mov-card-actions"><button class="danger-btn" type="button" onclick="excluirMovimentacaoVendedor('${esc(item.fonte)}','${esc(id)}')"><span class="material-symbols-rounded">delete</span>Excluir</button></div>` : ""}
     </article>`;
   }
@@ -1965,6 +1966,9 @@
   function renderMovimentacoesVendedor() {
     const tela = document.getElementById("movimentacoes");
     if (!tela || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return;
+    // O formulário é compartilhado com o card Gastos do Dashboard.
+    // Não mantém gavetas duplicadas ao atualizar a listagem.
+    document.body.querySelector("#gavetaMovimentacaoVendedor")?.remove();
     const caixa = caixaAberto();
     const movimentos = caixa ? movimentosDoCaixaVendedor(caixa) : [];
     const totais = totaisMovimentacoes(movimentos);
@@ -1991,18 +1995,34 @@
             <label>Categoria<select id="movimentacaoCategoriaVendedor" required disabled><option value="">Selecione primeiro o tipo</option></select></label>
             <label>Valor<input id="movimentacaoValorVendedor" inputmode="decimal" autocomplete="off" placeholder="0,00" required></label>
             <label><span>Observação <small class="vendedor-mov-opcional">(opcional)</small></span><textarea id="movimentacaoMotivoVendedor" placeholder="Adicione uma observação, se necessário"></textarea></label>
+            <label class="vendedor-mov-anexo"><span>Foto ou comprovante <small class="vendedor-mov-opcional">(opcional, até 8 MB)</small></span>
+              <input id="movimentacaoAnexoVendedor" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" aria-label="Adicionar foto ou documento do lançamento">
+            </label>
+            <label class="vendedor-mov-camera"><span>Tirar foto <small class="vendedor-mov-opcional">(opcional)</small></span>
+              <input id="movimentacaoFotoVendedor" type="file" accept="image/*" capture="environment" aria-label="Fotografar comprovante com câmera">
+            </label>
             <p id="movimentacaoAjudaVendedor" class="vendedor-mov-ajuda">Escolha o tipo para carregar as categorias configuradas pela empresa.</p>
             <div class="vendedor-mov-drawer-actions"><button class="ghost-btn" type="button" onclick="fecharGavetaMovimentacaoVendedor()">Cancelar</button><button id="movimentacaoSalvarVendedorBtn" class="primary-btn" type="submit"><span class="material-symbols-rounded">save</span>Salvar</button></div>
           </form>
         </aside>
       </div>`;
+    const gaveta = tela.querySelector("#gavetaMovimentacaoVendedor");
+    if (gaveta) document.body.appendChild(gaveta);
   }
 
-  async function abrirGavetaMovimentacaoVendedor() {
+  async function abrirGavetaMovimentacaoVendedor(tipoInicial = "") {
     const caixa = await garantirCaixaAberto();
     if (!caixa || !caixaEstaAberto(caixa)) return UIHelpers?.alerta?.("Abra um caixa para criar um lançamento.");
-    const drawer = document.getElementById("gavetaMovimentacaoVendedor");
-    if (!drawer) return;
+    let drawer = document.getElementById("gavetaMovimentacaoVendedor");
+    if (!drawer) {
+      renderMovimentacoesVendedor();
+      drawer = document.getElementById("gavetaMovimentacaoVendedor");
+    }
+    if (!drawer) return UIHelpers?.alerta?.("Formulário de movimentação indisponível.");
+    const form = drawer.querySelector(".vendedor-mov-form");
+    form?.reset();
+    const tipo = drawer.querySelector("#movimentacaoTipoVendedor");
+    if (tipo && ["GASTO", "RETIRADA", "INGRESSO"].includes(tipoInicial)) tipo.value = tipoInicial;
     drawer.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
     document.body.classList.add("vendedor-mov-drawer-open");
@@ -2043,6 +2063,53 @@
         : "O lançamento será confirmado e impactará o saldo do caixa imediatamente.";
   }
 
+  function validarAnexoMovimentacaoVendedor() {
+    const foto = document.getElementById("movimentacaoFotoVendedor")?.files?.[0];
+    const anexo = document.getElementById("movimentacaoAnexoVendedor")?.files?.[0];
+    if (foto && anexo) throw Error("Escolha uma foto ou um arquivo, não os dois.");
+    const arquivo = foto || anexo || null;
+    if (!arquivo) return null;
+    if (!["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(arquivo.type)) {
+      throw Error("Anexo inválido. Use JPG, PNG, WebP ou PDF.");
+    }
+    if (!arquivo.size || arquivo.size > 8 * 1024 * 1024) throw Error("O anexo deve ter até 8 MB.");
+    return arquivo;
+  }
+
+  async function enviarAnexoMovimentacaoVendedor(arquivo, tenantId, caixaId, origemId) {
+    if (!arquivo) return null;
+    const storage = window.firebase?.storage?.();
+    if (!storage) throw Error("Armazenamento de anexos indisponível.");
+    const nome = arquivo.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-110);
+    const storagePath = `tenants/${tenantId}/movimentacoes/${caixaId}/${origemId}/${nome}`;
+    await storage.ref().child(storagePath).put(arquivo, {
+      contentType: arquivo.type,
+      customMetadata: { clientePlataformaId: tenantId, caixaId, origemId }
+    });
+    return { storagePath, nome:arquivo.name.slice(0,140), tipo:arquivo.type, tamanho:arquivo.size };
+  }
+
+  async function abrirAnexoMovimentacaoVendedor(id) {
+    const item = movimentosDoCaixaVendedor().find(m => idMovimento(m) === texto(id));
+    const anexo = item?.metadados?.anexo;
+    const tenantId = texto(State.getTenantId?.() || usuarioAtual?.clientePlataformaId);
+    if (!anexo?.storagePath || !anexo.storagePath.startsWith(`tenants/${tenantId}/movimentacoes/`)) {
+      return UIHelpers?.alerta?.("Comprovante indisponível para este caixa.");
+    }
+    try {
+      const url = await window.firebase.storage().ref().child(anexo.storagePath).getDownloadURL();
+      const link = document.createElement("a");
+      link.href = url;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (erro) {
+      UIHelpers?.alerta?.("Não foi possível abrir o comprovante: " + erro.message);
+    }
+  }
+
   async function registrarMovimentacaoVendedor() {
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const caixa = await garantirCaixaAberto();
@@ -2059,6 +2126,9 @@
     if (!["INGRESSO", "GASTO", "RETIRADA"].includes(tipo)) return UIHelpers?.alerta?.("Selecione o tipo de movimentação.");
     if (!categoriaId || !categoriaNome) return UIHelpers?.alerta?.("Selecione uma categoria configurada pela empresa.");
     if (valorCentavos <= 0) return UIHelpers?.alerta?.("Informe um valor maior que zero.");
+    let arquivo = null;
+    try { arquivo = validarAnexoMovimentacaoVendedor(); }
+    catch (erro) { return UIHelpers?.alerta?.(erro.message); }
     const botao = document.getElementById("movimentacaoSalvarVendedorBtn");
     if (botao?.disabled) return;
     if (botao) botao.disabled = true;
@@ -2122,7 +2192,8 @@
         UIHelpers?.alerta?.("Solicitação de ingresso enviada ao financeiro. O saldo será atualizado após a aprovação.");
       } else {
         if (!window.IntegroFinanceiroOperacional?.criarLancamentoFinanceiroTransacional) throw new Error("Serviço financeiro indisponível.");
-        const origemId = `mov_${tipo.toLowerCase()}_${texto(caixa.id)}_${Date.now()}`;
+        const origemId = `mov_${tipo.toLowerCase()}_${texto(caixa.id)}_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
+        const anexo = await enviarAnexoMovimentacaoVendedor(arquivo, tenantId, caixa.id, origemId);
         const resultado = await window.IntegroFinanceiroOperacional.criarLancamentoFinanceiroTransacional({
           ...base,
           usuario,
@@ -2130,7 +2201,7 @@
           origemId,
           operacaoId: origemId,
           descricao: tipo === "GASTO" ? "Gasto lançado pelo vendedor" : "Retirada lançada pelo vendedor",
-          metadados: { categoriaId, categoriaNome, categoriaTipo: base.categoriaTipo, origemTela: "movimentacoes_vendedor" }
+          metadados: { categoriaId, categoriaNome, categoriaTipo: base.categoriaTipo, origemTela: "movimentacoes_vendedor", ...(anexo ? { anexo } : {}) }
         });
         const lancamentoLocal = inserirMovimentoCacheLocal({
           id: resultado?.lancamentoId,
@@ -2590,6 +2661,7 @@
   window.sincronizarMovimentosDashboardVendedor = sincronizarMovimentosDashboardVendedor;
   window.registrarMovimentacaoVendedor = registrarMovimentacaoVendedor;
   window.abrirGavetaMovimentacaoVendedor = abrirGavetaMovimentacaoVendedor;
+  window.abrirAnexoMovimentacaoVendedor = abrirAnexoMovimentacaoVendedor;
   window.fecharGavetaMovimentacaoVendedor = fecharGavetaMovimentacaoVendedor;
   window.atualizarCategoriasMovimentacaoVendedor = atualizarCategoriasMovimentacaoVendedor;
   window.excluirMovimentacaoVendedor = excluirMovimentacaoVendedor;
