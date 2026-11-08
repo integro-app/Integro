@@ -16932,15 +16932,35 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function caixaAtualDashboard(){
-    const direto = window.obterCaixaAbertoVendedor?.() || window.caixaAtual;
-    if(direto) return direto;
     if(!isVendedor()) return null;
-    return cache("caixas")
-      .filter(c => {
-        const st=status(c);
-        return !isCancelado(c) && !isCaixaFechado(c) && (st.includes("ABERTO") || st.includes("REABERTO") || c?.aberto===true);
-      })
-      .sort((a,b)=>dateTime(b).getTime()-dateTime(a).getTime())[0] || null;
+    const usuario=currentUser();
+    const tenant=String(window.State?.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId || "");
+    const identidades=new Set([
+      authUid(), usuario.authUid, usuario.uid, usuario.id, usuario.usuarioId, usuario.vendedorId
+    ].filter(Boolean).map(String));
+    if(!tenant || !identidades.size) return null;
+    const valido=caixa=>{
+      if(!caixa || isCancelado(caixa) || isCaixaFechado(caixa)) return false;
+      const st=status(caixa);
+      if(!(st.includes("ABERTO") || st.includes("REABERTO") || caixa.aberto===true)) return false;
+      if(tenantOf(caixa)!==tenant) return false;
+      const proprietarios=[caixa.vendedorAuthUid, caixa.vendedorUid, caixa.vendedorId, caixa.usuarioId]
+        .filter(Boolean).map(String);
+      return proprietarios.length>0 && proprietarios.some(id=>identidades.has(id));
+    };
+    const candidatos=[window.obterCaixaAbertoVendedor?.(),window.caixaAtual,...cache("caixas")].filter(valido);
+    return candidatos.sort((a,b)=>dateTime(b).getTime()-dateTime(a).getTime())[0] || null;
+  }
+
+  function resumoCaixaVendedorAtual(){
+    const caixa=caixaAtualDashboard();
+    if(!caixa || !window.IntegroSellerBoxDashboard?.summarize) return null;
+    const usuario={...currentUser(),clientePlataformaId:tenantPrincipal()};
+    const resumo=window.IntegroSellerBoxDashboard.summarize({
+      caixa, usuario, lancamentos:lancamentosCaixaVendedorParaDashboard(),
+      vendas:cache("vendas"), pagamentos:cache("pagamentos")
+    });
+    return resumo?.caixa ? resumo : null;
   }
 
   function caixaAtualIdDashboard(){
@@ -16953,9 +16973,12 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function itemNoEscopoDashboard(item, periodo=periodoAtual()){
-    if(usarEscopoCaixaAtual()){
+    if(isVendedor()){
+      const caixaId=caixaAtualIdDashboard();
+      const tenant=tenantPrincipal();
       const id=String(item?.caixaId || item?.idCaixa || item?.caixaAtualId || "");
-      return id === caixaAtualIdDashboard();
+      const itemTenant=String(item?.clientePlataformaId || item?.tenantId || item?.empresaId || "");
+      return !!caixaId && !!tenant && id===caixaId && itemTenant===tenant;
     }
     return estaNoPeriodo(dateISO(item), periodo);
   }
@@ -16966,13 +16989,14 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function ledgerNoEscopoDashboard(periodo=periodoAtual()){
-    const fonte = mesclarRegistrosDashboard(
-      lancamentosCaixaVendedorParaDashboard(),
-      cache("lancamentos"),
-      window.State?.getLancamentosFinanceiros?.(),
-      window.lancamentosFinanceirosCache,
-      window.lancamentosCache
-    );
+    // Vendedor consulta a fonte reconciliada do próprio caixa; caches globais
+    // não podem sobrescrever lançamentos oficiais com cópias antigas.
+    const fonte=isVendedor()
+      ? lancamentosCaixaVendedorParaDashboard()
+      : mesclarRegistrosDashboard(
+          cache("lancamentos"), window.State?.getLancamentosFinanceiros?.(),
+          window.lancamentosFinanceirosCache, window.lancamentosCache
+        );
     return fonte
       .filter(item => window.IntegroMovimentacoesView?.isEffective?.(item)!==false)
       .filter(item => itemNoEscopoDashboard(item, periodo));
@@ -17027,6 +17051,10 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function caixasAbertosNoPeriodo(periodo=periodoAtual()){
+    if(isVendedor()){
+      const caixa=caixaAtualDashboard();
+      return caixa ? [caixa] : [];
+    }
     return cache("caixas").filter(c => {
       const st = status(c);
       const aberto = !isCancelado(c) && !isCaixaFechado(c) && (st.includes("ABERTO") || st.includes("REABERTO") || c?.aberto === true);
@@ -17057,6 +17085,10 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function snapshotCarteiraAte(iso){
+    if(isVendedor()){
+      const resumo=resumoCaixaVendedorAtual();
+      return resumo ? resumo.carteira : 0;
+    }
     const caixas = cache("caixas")
       .filter(c => !isCancelado(c) && isCaixaFechado(c) && valorCarteiraCaixa(c) > 0)
       .filter(c => dateISO(c) && dateISO(c) <= iso);
@@ -17321,17 +17353,21 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     atualizarRotulosPeriodo(periodo);
 
     const anterior = periodoAnterior(periodo);
-    const carteira = snapshotCarteiraAte(periodo.fim);
-    const carteiraAnterior = snapshotCarteiraAte(anterior.fim);
-    const recebido = somaPeriodo(recebidoNoDia, periodo);
+    const resumoVendedor = isVendedor() ? resumoCaixaVendedorAtual() : null;
+    const carteira = resumoVendedor ? resumoVendedor.carteira : snapshotCarteiraAte(periodo.fim);
+    const carteiraAnterior = isVendedor() ? 0 : snapshotCarteiraAte(anterior.fim);
+    const recebido = resumoVendedor ? resumoVendedor.recebimentos : somaPeriodo(recebidoNoDia, periodo);
     const previsto = somaPeriodo(previstoNoDia, periodo);
     const inad = clientesInadimplentes();
     const inadValor = inad.reduce((s,c)=>s+Math.max(0,c.saldo || c.vencido),0);
     const inadPct = carteira ? inadValor/carteira*100 : 0;
-    const vendas = vendasNoPeriodo(periodo);
-    const vendasAnt = vendasNoPeriodo(anterior);
+    const vendas = resumoVendedor
+      ? { vendas:resumoVendedor.detalhes.vendas, total:resumoVendedor.vendas,
+          qtdClientes:new Set(resumoVendedor.detalhes.vendas.map(v=>clienteIdOf(v)||idOf(v))).size }
+      : vendasNoPeriodo(periodo);
+    const vendasAnt = isVendedor() ? { total:0 } : vendasNoPeriodo(anterior);
     const caixas = caixasAbertosNoPeriodo(periodo);
-    const caixaAtual = caixas.reduce((s,c) => s + valorCaixaAtual(c), 0);
+    const caixaAtual = resumoVendedor ? resumoVendedor.saldo : caixas.reduce((s,c) => s + valorCaixaAtual(c), 0);
     const gastos = gastosNoPeriodo(periodo);
     const sufixo = periodo.inicio === periodo.fim ? "no dia" : "no período";
 
