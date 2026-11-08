@@ -2022,7 +2022,11 @@
     const form = drawer.querySelector(".vendedor-mov-form");
     form?.reset();
     const tipo = drawer.querySelector("#movimentacaoTipoVendedor");
-    if (tipo && ["GASTO", "RETIRADA", "INGRESSO"].includes(tipoInicial)) tipo.value = tipoInicial;
+    if (tipo) {
+      const ingresso = tipo.querySelector('option[value="INGRESSO"]');
+      if (ingresso) ingresso.hidden = ["GASTO", "RETIRADA"].includes(tipoInicial);
+      if (["GASTO", "RETIRADA", "INGRESSO"].includes(tipoInicial)) tipo.value = tipoInicial;
+    }
     drawer.classList.add("open");
     drawer.setAttribute("aria-hidden", "false");
     document.body.classList.add("vendedor-mov-drawer-open");
@@ -2042,6 +2046,10 @@
 
   function atualizarCategoriasMovimentacaoVendedor() {
     const tipo = texto(document.getElementById("movimentacaoTipoVendedor")?.value).toUpperCase();
+    const arquivo = document.getElementById("movimentacaoAnexoVendedor");
+    const foto = document.getElementById("movimentacaoFotoVendedor");
+    if (arquivo?.closest("label")) arquivo.closest("label").hidden = tipo === "INGRESSO";
+    if (foto?.closest("label")) foto.closest("label").hidden = tipo === "INGRESSO";
     const campo = document.getElementById("movimentacaoCategoriaVendedor");
     const ajuda = document.getElementById("movimentacaoAjudaVendedor");
     if (!campo) return;
@@ -2124,7 +2132,10 @@
     if (!tenantId) return UIHelpers?.alerta?.("Empresa/tenant não identificado para registrar movimentação.");
     if (!caixa.id) return UIHelpers?.alerta?.("Caixa aberto sem identificação válida.");
     if (!["INGRESSO", "GASTO", "RETIRADA"].includes(tipo)) return UIHelpers?.alerta?.("Selecione o tipo de movimentação.");
-    if (!categoriaId || !categoriaNome) return UIHelpers?.alerta?.("Selecione uma categoria configurada pela empresa.");
+    if (!categoriaId || !categoriaNome || !categoriaAtiva(categoria)
+        || !categoriasMovimentacaoPorTipo(tipo).some(item => item.id === categoriaId)) {
+      return UIHelpers?.alerta?.("Selecione uma categoria ativa da empresa para este tipo.");
+    }
     if (valorCentavos <= 0) return UIHelpers?.alerta?.("Informe um valor maior que zero.");
     let arquivo = null;
     try { arquivo = validarAnexoMovimentacaoVendedor(); }
