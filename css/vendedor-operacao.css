@@ -1441,6 +1441,9 @@ html body[data-integro-page="master-local"].perfil-vendedor .vendedor-mov-form :
   font-size:13px;
   color:#34445a;
 }
+html body[data-integro-page="master-local"].perfil-vendedor .vendedor-mov-form :is(.vendedor-mov-anexo,.vendedor-mov-camera)[hidden] {
+  display:none !important;
+}
 html body[data-integro-page="master-local"].perfil-vendedor .vendedor-mov-form :is(.vendedor-mov-anexo,.vendedor-mov-camera) input[type="file"] {
   display:block;
   width:100%;
