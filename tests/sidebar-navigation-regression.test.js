@@ -260,7 +260,7 @@ test("mobile do vendedor não reserva faixa global e coloca título com menu aci
   assert.match(css, /\.perfil-vendedor #cobrancas\.screen \.vendedor-operacao-header\s*\{[\s\S]*?justify-content: center !important;/);
   assert.match(css, /#vendedorOperacaoTitulo\s*\{[\s\S]*?text-align: center !important;/);
   assert.match(css, /\.vendedor-operacao-tabs\s*\{\s*display: grid !important;\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important;/);
-  assert.match(master, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(master, /css\/integro-visual\.css\?v=20261107-dashboard-vendedor-clean1/);
   // A notificação do perfil continua acessível pelo menu lateral, sem tocar no drawer.
   assert.match(nav, /sidebar\.querySelector\("\.user-card,\.sidebar-profile-card,\.user-card-premium"\)/);
   assert.match(nav, /sino\.dataset\.notificationBell = "true"/);

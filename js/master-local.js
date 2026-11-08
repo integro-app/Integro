@@ -643,8 +643,45 @@ function setText(id, valor) {
   if (el) el.innerText = valor;
 }
 
+let categoriasPadraoTenantVerificado = "";
+
+async function garantirCategoriasPadraoMovimentacaoMasterLocal() {
+  const tenantId = String(State.getTenantId?.() || "").trim();
+  const usuario = State.getUsuario?.() || State.usuario || {};
+  const perfil = String(usuario.tipoUsuario || usuario.cargoChave || usuario.perfil || "").toLowerCase();
+  if (!tenantId || perfil !== "master_local" || categoriasPadraoTenantVerificado === tenantId) return;
+  const padroes = window.IntegroCategoriasMovimentacaoPadrao?.listar?.() || [];
+  if (!padroes.length) return;
+  // Firestore possui uma coleção global: IDs com tenant impedem colisões.
+  // Não sobrescreve as edições nem restaura categorias já excluídas pelo cliente.
+  const resultados = await Promise.all(padroes.map(async categoria => {
+    const id = window.IntegroCategoriasMovimentacaoPadrao.id(tenantId, categoria);
+    const ref = db.collection("categoriasMovimentacao").doc(id);
+    const existente = await ref.get();
+    if (existente.exists) return false;
+    await ref.set({
+      clientePlataformaId: tenantId,
+      clientePlataformaNome: State.getEmpresaNome?.() || "",
+      tipo: categoria.tipo,
+      tipoCategoria: categoria.tipo,
+      nome: categoria.nome,
+      nomeNormalizado: categoria.nome.toUpperCase(),
+      ativo: true,
+      excluido: false,
+      origemCategoria: "PADRAO",
+      criadoPorUid: State.authUid || "",
+      criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    return true;
+  }));
+  categoriasPadraoTenantVerificado = tenantId;
+  if (resultados.some(Boolean)) window.IntegroDataRuntime?.invalidar?.();
+}
+
 async function carregarCategoriasMovimentacaoMasterLocal(forcar = false) {
   try {
+    await garantirCategoriasPadraoMovimentacaoMasterLocal();
     let ref = db.collection("categoriasMovimentacao").limit(300);
 
     if (State.getTenantId()) {
@@ -713,6 +750,7 @@ function renderListaCategoriasMovimentacao(tipo, idDestino) {
       <div class="item-actions">
         <button class="ghost-btn" type="button" onclick="abrirEditarCategoriaMovimentacao('${c.id}')">Editar</button>
         <button class="ghost-btn" type="button" onclick="desativarCategoriaMovimentacao('${c.id}')">Desativar</button>
+        <button class="ghost-btn" type="button" onclick="excluirCategoriaMovimentacao('${c.id}')">Excluir</button>
       </div>
     </div>
   `).join("");
@@ -881,6 +919,29 @@ async function desativarCategoriaMovimentacao(id) {
   } catch (erro) {
     console.error("Erro ao desativar categoria de movimentação:", erro);
     UIHelpers.alerta("Erro ao desativar categoria: " + erro.message);
+  }
+}
+
+async function excluirCategoriaMovimentacao(id) {
+  const tenantId = String(State.getTenantId?.() || "");
+  const categoria = categoriasMovimentacaoMasterLocal.find(c =>
+    c.id === id && String(c.clientePlataformaId || "") === tenantId);
+  if (!categoria) return UIHelpers.alerta("Categoria de outra empresa ou não encontrada.");
+  if (!confirm("Excluir esta categoria? Os lançamentos anteriores manterão o histórico da categoria.")) return;
+  try {
+    await db.collection("categoriasMovimentacao").doc(id).update({
+      excluido: true,
+      ativo: false,
+      atualizadoPorUid: State.authUid || "",
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await FirestoreService.gravarLog("EXCLUIR_CATEGORIA_MOVIMENTACAO", {categoriaId:id, clientePlataformaId:tenantId});
+    window.IntegroDataRuntime?.invalidar?.();
+    await carregarCategoriasMovimentacaoMasterLocal(true);
+    renderCategoriasMovimentacaoMasterLocal();
+  } catch (erro) {
+    console.error("Erro ao excluir categoria de movimentação:", erro);
+    UIHelpers.alerta("Não foi possível excluir a categoria: " + erro.message);
   }
 }
 

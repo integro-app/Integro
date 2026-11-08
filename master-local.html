@@ -2454,7 +2454,7 @@ body.integro-data-refreshing .section-card{
 </style>
 
   <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-ui-october-safe2" rel="stylesheet">
-  <link rel="stylesheet" href="css/vendedor-operacao.css?v=20261107-vendedor-vendas-fab-vazio-v2">
+  <link rel="stylesheet" href="css/vendedor-operacao.css?v=20261107-caixa-gastos-anexos2">
   <link rel="stylesheet" href="css/perfis-unificados.css?v=20260805-producao-otimizada1">
 
 <style id="integro-vendedor-topbar-ajuste-final">
@@ -2518,7 +2518,7 @@ body.integro-data-refreshing .section-card{
 <script src="js/logout-flow.js?v=20261101-ui-october-safe2"></script>
 <link rel="stylesheet" href="css/caixa-date-ui.css?v=20261101-ui-october-safe2">
 <link rel="stylesheet" href="css/caixas-supervisao.css?v=20261101-ui-october-safe2">
-<link rel="stylesheet" href="css/integro-visual.css?v=20261107-vendedor-mobile-resumo2">
+<link rel="stylesheet" href="css/integro-visual.css?v=20261107-dashboard-vendedor-clean1">
 <script defer src="js/integro-menu-categorias.js?v=20261101-ui-october-safe2"></script>
 <link rel="stylesheet" href="css/integro-palette.css?v=20261101-ui-october-safe2">
 <link rel="stylesheet" href="css/integro-logo.css?v=20261101-ui-october-safe2">
@@ -2669,7 +2669,7 @@ body.integro-data-refreshing .section-card{
           <div class="kpi-card dashboard-tone-green" data-dashboard-views="visao-geral,comercial,operacao" data-dashboard-card="recebido-hoje" title="Clique para comparar o recolhimento pretendido com o recolhido real">
             <div class="kpi-icon"><span class="material-symbols-rounded">south</span></div>
             <div class="kpi-content">
-              <div class="kpi-label">Recolhido Hoje</div>
+              <div class="kpi-label">Recebido Hoje</div>
               <div class="kpi-value" id="kpiRecebidoHoje">R$ 0,00</div>
               <div class="kpi-progress" id="recebidoProgressBox">
                 <div class="progress-head"><span id="recebidoProgressLabel">Recolhimento pretendido</span><strong id="recebidoProgressPct">0%</strong></div>
@@ -3180,7 +3180,8 @@ body.integro-data-refreshing .section-card{
   <script src="js/usuarios.js?v=20261104-usuarios-escopo-v1"></script>
   <script src="js/clientes.js?v=20261104-clientes-botoes-tenant-v1"></script>
   <script src="js/vendas.js?v=20261104-vendas-centavos-v2"></script>
-  <script src="js/master-local.js?v=20260805-producao-otimizada1"></script>
+  <script src="js/services/categorias-movimentacao-padrao.js?v=20261107-categorias-tenant1"></script>
+  <script src="js/master-local.js?v=20261107-categorias-empresa1"></script>
   <script src="js/painel-unificado.js?v=20261105-relatorios-route-v1"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
   <script src="js/perfis-unificados.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2"></script>
@@ -16736,16 +16737,35 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function lancamentosCaixaVendedorParaDashboard(){
-    if(!isVendedor() || !caixaAtualIdDashboard()) return [];
+    if(!isVendedor()) return [];
+    const caixaId=caixaAtualIdDashboard();
+    const tenant=tenantPrincipal();
+    if(!caixaId || !tenant) return [];
     try{
-      return arr(window.obterMovimentacoesCaixaVendedor?.())
-        .filter(item => String(item?.fonte || "ledger") !== "solicitacao")
-        .filter(item => {
-          const tipo = window.IntegroMovimentacoesView?.type?.(item) || norm(item?.tipoLancamento || item?.tipoMovimentacao || item?.tipo || "");
-          return ["VENDA","PAGAMENTO","INGRESSO","GASTO","RETIRADA","RECOLHIMENTO"].includes(tipo);
-        });
+      // obterMovimentacoesCaixaVendedor() filtra GASTO/RETIRADA/INGRESSO
+      // para a tela Movimentações. Usá-la como única fonte ocultaria
+      // PAGAMENTO, VENDA e RECOLHIMENTO do resumo financeiro.
+      const fontes=[
+        arr(window.obterMovimentacoesCaixaVendedor?.()),
+        arr(window.lancamentosCache),
+        arr(window.lancamentosFinanceirosCache),
+        arr(window.State?.getLancamentosFinanceiros?.())
+      ];
+      const porId=new Map();
+      fontes.forEach(lista=>lista.forEach(item=>{
+        if(!item || String(item.fonte || "ledger")==="solicitacao") return;
+        const id=String(item.id || item.lancamentoId || item.docId || "");
+        const caixa=String(item.caixaId || item.idCaixa || item.caixaAtualId || "");
+        const origemTenant=String(item.clientePlataformaId || item.tenantId || item.empresaId || "");
+        if(!id || caixa!==caixaId || origemTenant!==tenant) return;
+        const tipo=window.IntegroMovimentacoesView?.type?.(item) || norm(item.tipoLancamento || item.tipoMovimentacao || item.tipo || "");
+        if(!["VENDA","PAGAMENTO","INGRESSO","GASTO","RETIRADA","RECOLHIMENTO"].includes(tipo)) return;
+        if(window.IntegroMovimentacoesView?.isEffective?.(item)===false) return;
+        porId.set(id,item);
+      }));
+      return [...porId.values()];
     }catch(erro){
-      console.warn(LOG_PREFIX, "fonte reconciliada do caixa atual indisponível", erro?.message || erro);
+      console.warn(LOG_PREFIX, "fonte financeira do caixa atual indisponível", erro?.message || erro);
       return [];
     }
   }
@@ -16931,15 +16951,44 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function caixaAtualDashboard(){
-    const direto = window.obterCaixaAbertoVendedor?.() || window.caixaAtual;
-    if(direto) return direto;
     if(!isVendedor()) return null;
-    return cache("caixas")
-      .filter(c => {
-        const st=status(c);
-        return !isCancelado(c) && !isCaixaFechado(c) && (st.includes("ABERTO") || st.includes("REABERTO") || c?.aberto===true);
-      })
-      .sort((a,b)=>dateTime(b).getTime()-dateTime(a).getTime())[0] || null;
+    const usuario=currentUser();
+    const tenant=String(window.State?.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId || "");
+    const identidades=new Set([
+      authUid(), usuario.authUid, usuario.uid, usuario.id, usuario.usuarioId, usuario.vendedorId
+    ].filter(Boolean).map(String));
+    if(!tenant || !identidades.size) return null;
+    const valido=caixa=>{
+      if(!caixa || isCancelado(caixa) || isCaixaFechado(caixa)) return false;
+      const st=status(caixa);
+      if(!(st.includes("ABERTO") || st.includes("REABERTO") || caixa.aberto===true)) return false;
+      if(tenantOf(caixa)!==tenant) return false;
+      const proprietarios=[caixa.vendedorAuthUid, caixa.vendedorUid, caixa.vendedorId, caixa.usuarioId]
+        .filter(Boolean).map(String);
+      return proprietarios.length>0 && proprietarios.some(id=>identidades.has(id));
+    };
+    const candidatos=[window.obterCaixaAbertoVendedor?.(),window.caixaAtual,...cache("caixas")].filter(valido);
+    const unicos=new Map();
+    // Priorizar a consulta do caixa atual sobre cópias eventualmente antigas.
+    for(const c of candidatos){
+      const id=String(c.id || c.caixaId || c.docId || "");
+      if(id && !unicos.has(id)) unicos.set(id,c);
+    }
+    // Um vendedor com caixas distintos abertos não deve receber um saldo
+    // arbitrário baseado na ordem do cache. Exigir regularização do caixa.
+    if(unicos.size !== 1) return null;
+    return [...unicos.values()][0];
+  }
+
+  function resumoCaixaVendedorAtual(){
+    const caixa=caixaAtualDashboard();
+    if(!caixa || !window.IntegroSellerBoxDashboard?.summarize) return null;
+    const usuario={...currentUser(),clientePlataformaId:tenantPrincipal()};
+    const resumo=window.IntegroSellerBoxDashboard.summarize({
+      caixa, usuario, lancamentos:lancamentosCaixaVendedorParaDashboard(),
+      vendas:cache("vendas"), pagamentos:cache("pagamentos")
+    });
+    return resumo?.caixa ? resumo : null;
   }
 
   function caixaAtualIdDashboard(){
@@ -16952,9 +17001,12 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function itemNoEscopoDashboard(item, periodo=periodoAtual()){
-    if(usarEscopoCaixaAtual()){
+    if(isVendedor()){
+      const caixaId=caixaAtualIdDashboard();
+      const tenant=tenantPrincipal();
       const id=String(item?.caixaId || item?.idCaixa || item?.caixaAtualId || "");
-      return id === caixaAtualIdDashboard();
+      const itemTenant=String(item?.clientePlataformaId || item?.tenantId || item?.empresaId || "");
+      return !!caixaId && !!tenant && id===caixaId && itemTenant===tenant;
     }
     return estaNoPeriodo(dateISO(item), periodo);
   }
@@ -16965,13 +17017,14 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function ledgerNoEscopoDashboard(periodo=periodoAtual()){
-    const fonte = mesclarRegistrosDashboard(
-      lancamentosCaixaVendedorParaDashboard(),
-      cache("lancamentos"),
-      window.State?.getLancamentosFinanceiros?.(),
-      window.lancamentosFinanceirosCache,
-      window.lancamentosCache
-    );
+    // Vendedor consulta a fonte reconciliada do próprio caixa; caches globais
+    // não podem sobrescrever lançamentos oficiais com cópias antigas.
+    const fonte=isVendedor()
+      ? lancamentosCaixaVendedorParaDashboard()
+      : mesclarRegistrosDashboard(
+          cache("lancamentos"), window.State?.getLancamentosFinanceiros?.(),
+          window.lancamentosFinanceirosCache, window.lancamentosCache
+        );
     return fonte
       .filter(item => window.IntegroMovimentacoesView?.isEffective?.(item)!==false)
       .filter(item => itemNoEscopoDashboard(item, periodo));
@@ -17026,6 +17079,10 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function caixasAbertosNoPeriodo(periodo=periodoAtual()){
+    if(isVendedor()){
+      const caixa=caixaAtualDashboard();
+      return caixa ? [caixa] : [];
+    }
     return cache("caixas").filter(c => {
       const st = status(c);
       const aberto = !isCancelado(c) && !isCaixaFechado(c) && (st.includes("ABERTO") || st.includes("REABERTO") || c?.aberto === true);
@@ -17039,8 +17096,9 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     const labels = {
       'vendas-hoje': unicoDia ? 'VENDAS DO DIA' : 'VENDAS NO PERÍODO',
       'recebido-hoje': unicoDia ? 'RECEBIDO NO DIA' : 'RECEBIDO NO PERÍODO',
-      'gastos-hoje': unicoDia ? 'SAÍDAS DO DIA' : 'SAÍDAS NO PERÍODO',
-      'caixa-atual': unicoDia ? 'CAIXAS DO DIA' : 'CAIXAS DO PERÍODO'
+      'gastos-hoje': unicoDia ? 'GASTOS E RETIRADAS' : 'GASTOS/RETIRADAS NO PERÍODO',
+      'caixa-atual': unicoDia ? 'CAIXA ATUAL' : 'CAIXA NO PERÍODO',
+      'carteira-final': isVendedor() ? 'CARTEIRA ATUAL' : 'CARTEIRA FINAL'
     };
     Object.entries(labels).forEach(([card,label])=>{
       const el=document.querySelector(`[data-dashboard-card="${card}"] .kpi-label`);
@@ -17056,6 +17114,10 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function snapshotCarteiraAte(iso){
+    if(isVendedor()){
+      const resumo=resumoCaixaVendedorAtual();
+      return resumo ? resumo.carteira : 0;
+    }
     const caixas = cache("caixas")
       .filter(c => !isCancelado(c) && isCaixaFechado(c) && valorCarteiraCaixa(c) > 0)
       .filter(c => dateISO(c) && dateISO(c) <= iso);
@@ -17128,7 +17190,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function vendasNoDia(iso){
-    const vendas = cache("vendas").filter(v=>!isCancelado(v) && dateISO(v)===iso);
+    const vendas = cache("vendas").filter(v=>!isCancelado(v) && dateISO(v)===iso && itemNoEscopoDashboard(v,{inicio:iso,fim:iso}));
     const total = vendas.reduce((s,v)=>s+valorVenda(v),0);
     const clientes = new Set(vendas.map(v => clienteIdOf(v) || norm(nomeCliente(v))).filter(Boolean));
     return {vendas,total,qtdClientes:clientes.size};
@@ -17227,7 +17289,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     return datas.map(iso=>{
       const periodoDia={inicio:iso,fim:iso};
       const vendasLedger=movimentosLedgerPorTipo("VENDA",periodoDia);
-      const vendasDia=vendasLedger.length ? vendasLedger : cache("vendas").filter(v=>!isCancelado(v)&&dateISO(v)===iso);
+      const vendasDia=vendasLedger.length ? vendasLedger : cache("vendas").filter(v=>!isCancelado(v)&&dateISO(v)===iso&&itemNoEscopoDashboard(v,periodoDia));
       let novas=0, renovadas=0;
       vendasDia.forEach(v=>{ const val=vendasLedger.length ? valorLancamentoDashboard(v) : valorVenda(v); if(tipoVendaDashboard(v)==="renovada") renovadas+=val; else novas+=val; });
       const gastos=movimentosLedgerPorTipo("GASTO",periodoDia).reduce((s,l)=>s+valorLancamentoDashboard(l),0);
@@ -17320,17 +17382,32 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     atualizarRotulosPeriodo(periodo);
 
     const anterior = periodoAnterior(periodo);
-    const carteira = snapshotCarteiraAte(periodo.fim);
-    const carteiraAnterior = snapshotCarteiraAte(anterior.fim);
-    const recebido = somaPeriodo(recebidoNoDia, periodo);
+    const resumoVendedor = isVendedor() ? resumoCaixaVendedorAtual() : null;
+    if(isVendedor() && !resumoVendedor){
+      // Falha fechada: números zero ou valores de outro caixa não são
+      // apresentados como se fossem dados financeiros confirmados.
+      ["kpiCarteira","kpiCaixaAtual","kpiVendasHoje","kpiRecebidoHoje","kpiGastosHoje"].forEach(id=>text(byId(id),"—"));
+      ["kpiCaixaAtualSub","kpiVendasHojeSub","kpiGastosHojeSub","recebidoProgressSub"].forEach(id=>text(byId(id),"Caixa aberto não validado"));
+      const trend=byId("kpiCarteiraTrend"); if(trend) trend.textContent="Confira a empresa e o caixa aberto.";
+      ["dashboardEvolutionChart","dashboardTeamRanking","sparkCarteira","sparkCaixas","sparkVendas","sparkRecebido","sparkGastos"].forEach(id=>{
+        const elemento=byId(id);if(elemento) elemento.innerHTML="";
+      });
+      return;
+    }
+    const carteira = resumoVendedor ? resumoVendedor.carteira : snapshotCarteiraAte(periodo.fim);
+    const carteiraAnterior = isVendedor() ? 0 : snapshotCarteiraAte(anterior.fim);
+    const recebido = resumoVendedor ? resumoVendedor.recebimentos : somaPeriodo(recebidoNoDia, periodo);
     const previsto = somaPeriodo(previstoNoDia, periodo);
     const inad = clientesInadimplentes();
     const inadValor = inad.reduce((s,c)=>s+Math.max(0,c.saldo || c.vencido),0);
     const inadPct = carteira ? inadValor/carteira*100 : 0;
-    const vendas = vendasNoPeriodo(periodo);
-    const vendasAnt = vendasNoPeriodo(anterior);
+    const vendas = resumoVendedor
+      ? { vendas:resumoVendedor.detalhes.vendas, total:resumoVendedor.vendas,
+          qtdClientes:new Set(resumoVendedor.detalhes.vendas.map(v=>clienteIdOf(v)||idOf(v))).size }
+      : vendasNoPeriodo(periodo);
+    const vendasAnt = isVendedor() ? { total:0 } : vendasNoPeriodo(anterior);
     const caixas = caixasAbertosNoPeriodo(periodo);
-    const caixaAtual = caixas.reduce((s,c) => s + valorCaixaAtual(c), 0);
+    const caixaAtual = resumoVendedor ? resumoVendedor.saldo : caixas.reduce((s,c) => s + valorCaixaAtual(c), 0);
     const gastos = gastosNoPeriodo(periodo);
     const sufixo = periodo.inicio === periodo.fim ? "no dia" : "no período";
 
@@ -17433,6 +17510,12 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function renderCarteira(tipo="7d", ini="", fim=""){
+    if(isVendedor()){
+      const resumo=resumoCaixaVendedorAtual();
+      const linhas=(resumo?.detalhes?.carteira || []).map(v=>`<tr><td>${esc(nomeCliente(v))}</td><td>${money(valorLancamentoDashboard(v))}</td></tr>`).join("");
+      return openDrawer("Carteira atual", "Saldo da carteira vinculado ao caixa aberto e ao vendedor autenticado.",
+        `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Carteira atual</small><strong>${money(resumo?.carteira || 0)}</strong></div></div>${linhas ? `<table class="real-table"><thead><tr><th>Cliente</th><th>Saldo</th></tr></thead><tbody>${linhas}</tbody></table>` : '<div class="real-empty">Sem vendas com saldo individual carregado neste caixa.</div>'}`);
+    }
     const datas = datasPeriodo(tipo, ini, fim);
     const atual = snapshotCarteiraAte(todayISO());
     const anterior = snapshotCarteiraAte(addDays(todayISO(),-1));
@@ -17452,9 +17535,19 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
 
   function renderRecebido(){
     const periodo = periodoAtual();
-    const recebido = somaPeriodo(recebidoNoDia, periodo);
+    const resumo = isVendedor() ? resumoCaixaVendedorAtual() : null;
+    const recebido = resumo ? resumo.recebimentos : somaPeriodo(recebidoNoDia, periodo);
+    const recolhido = movimentosLedgerPorTipo("RECOLHIMENTO",periodo)
+      .reduce((total, item)=>total+valorLancamentoDashboard(item),0);
     const previsto = somaPeriodo(previstoNoDia, periodo);
-    openDrawer("Recolhimento no período", `Comparativo de ${rotuloPeriodo(periodo)} entre o recolhimento pretendido e o recolhido real.`, `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Recolhido real</small><strong>${money(recebido)}</strong></div><div class="insight-summary-item"><small>Recolhimento pretendido</small><strong>${money(previsto)}</strong></div><div class="insight-summary-item"><small>Progresso</small><strong>${previsto ? pct(recebido/previsto*100) : "0%"}</strong></div></div><div class="real-empty">O recolhimento pretendido corresponde à soma das parcelas e cobranças programadas para o período selecionado. O valor não diminui quando uma parcela é paga; o pagamento entra no recolhido real.</div>`);
+    openDrawer("Recebimentos e recolhimentos", `Movimentações confirmadas de ${rotuloPeriodo(periodo)}, sem misturar pagamentos com retiradas do caixa.`,
+      `<div class="insight-summary-grid">
+        <div class="insight-summary-item"><small>Recebido dos clientes</small><strong>${money(recebido)}</strong></div>
+        <div class="insight-summary-item"><small>Recolhido do caixa</small><strong>${money(recolhido)}</strong></div>
+        <div class="insight-summary-item"><small>Cobranças previstas</small><strong>${money(previsto)}</strong></div>
+        <div class="insight-summary-item"><small>Progresso de recebimentos</small><strong>${previsto ? pct(recebido/previsto*100) : "0%"}</strong></div>
+      </div>
+      <div class="real-empty">Pagamento confirmado aumenta o caixa. Recolhimento confirmado representa saída de numerário e é mostrado separadamente.</div>`);
   }
 
   function renderInadimplencia(){
@@ -17483,10 +17576,26 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   function renderGastosHoje(){
     const periodo = periodoAtual();
     const gastos = gastosNoPeriodo(periodo);
-    const rows = gastos.lista.map(l => `<tr><td>${esc(l.descricao || l.historico || l.observacao || l.categoria || "Gasto")}</td><td>${esc(nomeEquipe(l))}</td><td>${money(Math.abs(num(l?.valorCentavos != null ? Number(l.valorCentavos)/100 : (l?.valor ?? l?.valorTotal ?? l?.total))))}</td></tr>`).join("");
-    openDrawer("Gastos no período", `Despesas e gastos registrados em ${rotuloPeriodo(periodo)}.`, `<div class="insight-summary-grid"><div class="insight-summary-item"><small>Total gasto</small><strong>${money(gastos.total)}</strong></div><div class="insight-summary-item"><small>Lançamentos</small><strong>${gastos.lista.length}</strong></div></div>${gastos.lista.length ? `<table class="real-table"><thead><tr><th>Descrição</th><th>Equipe</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>` : `<div class="real-empty">Nenhum gasto registrado no período selecionado.</div>`}`);
+    const rows = gastos.lista.map(l => {
+      const tipo = tipoLancamentoDashboard(l) === "retiro" ? "Retirada" : "Gasto";
+      const categoria = l.categoriaNome || l.categoria || l.descricao || l.historico || "Sem categoria";
+      return `<tr><td>${esc(tipo)}</td><td>${esc(categoria)}</td><td>${esc(nomeEquipe(l))}</td><td>${money(valorLancamentoDashboard(l))}</td></tr>`;
+    }).join("");
+    const totalGasto = gastos.lista.filter(l=>tipoLancamentoDashboard(l)==="gasto").reduce((s,l)=>s+valorLancamentoDashboard(l),0);
+    const totalRetiradas = gastos.total - totalGasto;
+    const novoLancamento = isVendedor() && caixaAtualDashboard()
+      ? '<div class="dashboard-novo-lancamento"><button id="dashboardNovoLancamentoVendedor" type="button" class="primary-btn"><span class="material-symbols-rounded" aria-hidden="true">add</span>Novo lançamento</button></div>'
+      : "";
+    openDrawer("Gastos e retiradas", `Lançamentos confirmados em ${rotuloPeriodo(periodo)} do caixa permitido ao usuário.`,
+      `${novoLancamento}<div class="insight-summary-grid"><div class="insight-summary-item"><small>Gastos</small><strong>${money(totalGasto)}</strong></div><div class="insight-summary-item"><small>Retiradas</small><strong>${money(totalRetiradas)}</strong></div><div class="insight-summary-item"><small>Lançamentos</small><strong>${gastos.lista.length}</strong></div></div>${gastos.lista.length ? `<table class="real-table"><thead><tr><th>Tipo</th><th>Categoria</th><th>Equipe</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>` : '<div class="real-empty">Nenhum gasto ou retirada confirmado no período.</div>'}`);
+    byId("dashboardNovoLancamentoVendedor")?.addEventListener("click", () => {
+      closeDrawer();
+      if (typeof window.abrirGavetaMovimentacaoVendedor !== "function") {
+        return window.UIHelpers?.alerta?.("Formulário financeiro indisponível.");
+      }
+      window.abrirGavetaMovimentacaoVendedor("GASTO");
+    });
   }
-
 
   function configurarFiltroPeriodo(){
     const ini = byId("dashboardDataInicio");
@@ -25248,7 +25357,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2&scroll=20261107-directional1"></script>
   <script src="js/vendedor-operacao.js?v=20261107-vendedor-icone-send2"></script>
   <script src="js/services/seller-box-dashboard.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/vendedor-unificado.js?v=20261107-vendedor-vendas-fab-vazio-v2"></script>
+  <script src="js/vendedor-unificado.js?v=20261107-caixa-gastos-anexos2"></script>
 
 <script id="integro-financeiro-admin-unificado-router">
 (function(){

@@ -1415,3 +1415,48 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
     visibility: hidden !important;
   }
 }
+
+/* Detalhes de Gastos: ação de lançamento no Dashboard, sem duplicar o serviço financeiro. */
+html body[data-integro-page="master-local"].perfil-vendedor .dashboard-novo-lancamento {
+  display:flex;
+  justify-content:flex-end;
+  margin:0 0 16px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .dashboard-novo-lancamento button {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  min-height:44px;
+  padding:10px 16px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#ffb154,#ff9200);
+  color:#fff;
+  border:0;
+  box-shadow:0 8px 18px rgba(255,145,0,.18);
+}
+html body[data-integro-page="master-local"].perfil-vendedor .vendedor-mov-form :is(.vendedor-mov-anexo,.vendedor-mov-camera) {
+  display:grid;
+  gap:7px;
+  font-size:13px;
+  color:#34445a;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .vendedor-mov-form :is(.vendedor-mov-anexo,.vendedor-mov-camera)[hidden] {
+  display:none !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor .vendedor-mov-form :is(.vendedor-mov-anexo,.vendedor-mov-camera) input[type="file"] {
+  display:block;
+  width:100%;
+  min-height:46px;
+  padding:10px;
+  border:1px dashed #c4d0e0;
+  border-radius:12px;
+  background:#f8fafc;
+  font:inherit;
+  color:#0f2743;
+}
+@media(max-width:760px){
+  html body[data-integro-page="master-local"].perfil-vendedor .dashboard-novo-lancamento button{
+    width:100%;
+  }
+}
