@@ -16737,16 +16737,35 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function lancamentosCaixaVendedorParaDashboard(){
-    if(!isVendedor() || !caixaAtualIdDashboard()) return [];
+    if(!isVendedor()) return [];
+    const caixaId=caixaAtualIdDashboard();
+    const tenant=tenantPrincipal();
+    if(!caixaId || !tenant) return [];
     try{
-      return arr(window.obterMovimentacoesCaixaVendedor?.())
-        .filter(item => String(item?.fonte || "ledger") !== "solicitacao")
-        .filter(item => {
-          const tipo = window.IntegroMovimentacoesView?.type?.(item) || norm(item?.tipoLancamento || item?.tipoMovimentacao || item?.tipo || "");
-          return ["VENDA","PAGAMENTO","INGRESSO","GASTO","RETIRADA","RECOLHIMENTO"].includes(tipo);
-        });
+      // obterMovimentacoesCaixaVendedor() filtra GASTO/RETIRADA/INGRESSO
+      // para a tela Movimentações. Usá-la como única fonte ocultaria
+      // PAGAMENTO, VENDA e RECOLHIMENTO do resumo financeiro.
+      const fontes=[
+        arr(window.obterMovimentacoesCaixaVendedor?.()),
+        arr(window.lancamentosCache),
+        arr(window.lancamentosFinanceirosCache),
+        arr(window.State?.getLancamentosFinanceiros?.())
+      ];
+      const porId=new Map();
+      fontes.forEach(lista=>lista.forEach(item=>{
+        if(!item || String(item.fonte || "ledger")==="solicitacao") return;
+        const id=String(item.id || item.lancamentoId || item.docId || "");
+        const caixa=String(item.caixaId || item.idCaixa || item.caixaAtualId || "");
+        const origemTenant=String(item.clientePlataformaId || item.tenantId || item.empresaId || "");
+        if(!id || caixa!==caixaId || origemTenant!==tenant) return;
+        const tipo=window.IntegroMovimentacoesView?.type?.(item) || norm(item.tipoLancamento || item.tipoMovimentacao || item.tipo || "");
+        if(!["VENDA","PAGAMENTO","INGRESSO","GASTO","RETIRADA","RECOLHIMENTO"].includes(tipo)) return;
+        if(window.IntegroMovimentacoesView?.isEffective?.(item)===false) return;
+        porId.set(id,item);
+      }));
+      return [...porId.values()];
     }catch(erro){
-      console.warn(LOG_PREFIX, "fonte reconciliada do caixa atual indisponível", erro?.message || erro);
+      console.warn(LOG_PREFIX, "fonte financeira do caixa atual indisponível", erro?.message || erro);
       return [];
     }
   }
