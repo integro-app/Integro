@@ -98,3 +98,52 @@ test("categorias padrão são específicas de cada empresa e não reaparecem ap�
   assert.match(rules, /match \/categoriasMovimentacao\/\{id\}/);
   assert.match(rules, /allow create, update: if isActiveUser\(\) && isSameTenantWrite\(\) && \(isMasterLocal\(\) \|\| isFinanceiro\(\)\)/);
 });
+
+
+test("Dashboard usa ledger completo e não perde VENDA/PAGAMENTO quando a lista de Movimentações é parcial", () => {
+  const html = read("master-local.html");
+  const start = html.indexOf("  function lancamentosCaixaVendedorParaDashboard(){");
+  const end = html.indexOf("  function dadosDoEstadoPorEscopo(){", start);
+  assert.ok(start > 0 && end > start);
+  const code = html.slice(start,end);
+  const movimentos = [
+    {id:"expense-1",caixaId:"box-1",clientePlataformaId:"tenant-1",tipoLancamento:"GASTO",valorCentavos:500}
+  ];
+  const full = [
+    {id:"sale-1",caixaId:"box-1",clientePlataformaId:"tenant-1",tipoLancamento:"VENDA",valorCentavos:3000},
+    {id:"receipt-1",caixaId:"box-1",clientePlataformaId:"tenant-1",tipoLancamento:"PAGAMENTO",valorCentavos:900},
+    {id:"withdrawal-1",caixaId:"box-1",clientePlataformaId:"tenant-1",tipoLancamento:"RETIRADA",valorCentavos:250},
+    {id:"collect-1",caixaId:"box-1",clientePlataformaId:"tenant-1",tipoLancamento:"RECOLHIMENTO",valorCentavos:120},
+    {id:"income-1",caixaId:"box-1",clientePlataformaId:"tenant-1",tipoLancamento:"INGRESSO",valorCentavos:200},
+    {id:"old-tenant",caixaId:"box-1",clientePlataformaId:"tenant-2",tipoLancamento:"PAGAMENTO",valorCentavos:90000},
+    {id:"other-box",caixaId:"box-2",clientePlataformaId:"tenant-1",tipoLancamento:"GASTO",valorCentavos:80000},
+    {id:"void",caixaId:"box-1",clientePlataformaId:"tenant-1",tipoLancamento:"GASTO",statusLancamento:"CANCELADO",valorCentavos:700}
+  ];
+  const view = {
+    type: item => item.tipoLancamento,
+    isEffective: item => item.statusLancamento!=="CANCELADO"
+  };
+  const ctx = {
+    window:{
+      obterMovimentacoesCaixaVendedor:() => movimentos,
+      lancamentosCache: full,
+      lancamentosFinanceirosCache: full,
+      State:{getLancamentosFinanceiros:()=>full},
+      IntegroMovimentacoesView:view
+    },
+    isVendedor:()=>true,
+    caixaAtualIdDashboard:()=>"box-1",
+    tenantPrincipal:()=>"tenant-1",
+    arr: item => Array.isArray(item) ? item : [],
+    norm: s => String(s||"").toUpperCase(),
+    LOG_PREFIX:"[TESTE]",
+    console
+  };
+  const result=vm.runInNewContext(code+"\nlancamentosCaixaVendedorParaDashboard",ctx)();
+  const byType=new Set(result.map(item=>item.tipoLancamento));
+  for(const kind of ["VENDA","PAGAMENTO","GASTO","RETIRADA","RECOLHIMENTO","INGRESSO"])
+    assert.ok(byType.has(kind),"registro financeiro "+kind+" deve aparecer no caixa");
+  assert.equal(result.length,6);
+  assert.ok(result.every(item=>item.caixaId==="box-1" && item.clientePlataformaId==="tenant-1"));
+  assert.doesNotMatch(code,/return arr\(window\.obterMovimentacoesCaixaVendedor\?\.\(\)\)\s*\.filter/);
+});
