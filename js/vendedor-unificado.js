@@ -23,6 +23,7 @@
   let categoriasMovimentacaoVendedor = [];
   let categoriasMovimentacaoTenant = "";
   let carregandoCategoriasMovimentacao = null;
+  let carregandoCategoriasMovimentacaoTenant = "";
   let sincronizacaoDashboardMovimentos = null;
   let sincronizacaoDashboardCaixaId = "";
   let sincronizacaoDashboardEm = 0;
@@ -1815,7 +1816,8 @@
     const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
     if (!tenantId) return [];
     if (!forcar && categoriasMovimentacaoTenant === tenantId && categoriasMovimentacaoVendedor.length) return categoriasMovimentacaoVendedor;
-    if (carregandoCategoriasMovimentacao) return carregandoCategoriasMovimentacao;
+    if (carregandoCategoriasMovimentacao && carregandoCategoriasMovimentacaoTenant === tenantId) return carregandoCategoriasMovimentacao;
+    carregandoCategoriasMovimentacaoTenant = tenantId;
     carregandoCategoriasMovimentacao = (async () => {
       const db = window.db || window.firebase?.firestore?.();
       if (!db) return [];
@@ -1831,15 +1833,23 @@
             clientePlataformaId:tenantId,
             ativo:true
           }));
-      categoriasMovimentacaoVendedor = lista.filter(categoriaAtiva)
+      const categorias = lista.filter(categoriaAtiva)
         .sort((a, b) => nomeCategoriaMovimentacao(a).localeCompare(nomeCategoriaMovimentacao(b), "pt-BR"));
-      categoriasMovimentacaoTenant = tenantId;
-      return categoriasMovimentacaoVendedor;
+      if (texto(State.getTenantId?.() || usuario.clientePlataformaId) === tenantId) {
+        categoriasMovimentacaoVendedor = categorias;
+        categoriasMovimentacaoTenant = tenantId;
+      }
+      return categorias;
     })().catch(erro => {
       console.warn("[ÍNTEGRO VENDEDOR] Não foi possível carregar categorias de movimentação.", erro);
-      categoriasMovimentacaoVendedor = [];
+      if (texto(State.getTenantId?.() || usuario.clientePlataformaId) === tenantId) categoriasMovimentacaoVendedor = [];
       return [];
-    }).finally(() => { carregandoCategoriasMovimentacao = null; });
+    }).finally(() => {
+      if (carregandoCategoriasMovimentacaoTenant === tenantId) {
+        carregandoCategoriasMovimentacao = null;
+        carregandoCategoriasMovimentacaoTenant = "";
+      }
+    });
     return carregandoCategoriasMovimentacao;
   }
 
