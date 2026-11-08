@@ -1820,7 +1820,19 @@
       const db = window.db || window.firebase?.firestore?.();
       if (!db) return [];
       const snapshot = await db.collection("categoriasMovimentacao").where("clientePlataformaId", "==", tenantId).limit(500).get();
-      categoriasMovimentacaoVendedor = (snapshot?.docs || []).map(doc => ({ id: doc.id, ...doc.data() })).filter(categoriaAtiva).sort((a, b) => nomeCategoriaMovimentacao(a).localeCompare(nomeCategoriaMovimentacao(b), "pt-BR"));
+      const documentos = snapshot?.docs || [];
+      // Empresa recém-criada utiliza categorias de fábrica até o Master Local
+      // persistir a configuração. Se já houver qualquer documento (até excluído),
+      // nunca reativar categorias removidas pelo cliente.
+      const lista = documentos.length ? documentos.map(doc => ({ id:doc.id, ...doc.data() }))
+        : (window.IntegroCategoriasMovimentacaoPadrao?.listar?.() || []).map(item => ({
+            ...item,
+            id:window.IntegroCategoriasMovimentacaoPadrao.id(tenantId,item),
+            clientePlataformaId:tenantId,
+            ativo:true
+          }));
+      categoriasMovimentacaoVendedor = lista.filter(categoriaAtiva)
+        .sort((a, b) => nomeCategoriaMovimentacao(a).localeCompare(nomeCategoriaMovimentacao(b), "pt-BR"));
       categoriasMovimentacaoTenant = tenantId;
       return categoriasMovimentacaoVendedor;
     })().catch(erro => {
