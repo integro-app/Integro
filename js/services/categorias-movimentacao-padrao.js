@@ -16,7 +16,7 @@
   function id(tenantId, item) {
     const tenant = String(tenantId || "").trim();
     if (!tenant || !/^[a-zA-Z0-9_-]+$/.test(tenant)) throw Error("Empresa inválida para categorias.");
-    return "padrao_" + item.tipo.toLowerCase() + "_" + item.slug;
+    return "padrao_" + tenant + "_" + item.tipo.toLowerCase() + "_" + item.slug;
   }
   function listar() { return padroes.map(item => ({ ...item })); }
   global.IntegroCategoriasMovimentacaoPadrao = Object.freeze({ listar, id });
