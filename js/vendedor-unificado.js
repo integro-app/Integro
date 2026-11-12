@@ -967,8 +967,24 @@
     }).join("") : "";
   }
 
+  // O contêiner da Operação é "cobrancas", mas cada aba exige a sua permissão.
+  // Não ativar Cobranças por padrão para vendedores com acesso apenas a Vendas.
+  function abaDisponivelVendedor(aba) {
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const pode = window.IntegroAcesso?.pode;
+    const permitido = chave => typeof pode === "function" && pode(usuario, chave, {}) === true;
+    const podeCobrancas = permitido("operacao.cobrancas") || permitido("cobrancas.ver");
+    const podeVendas = permitido("operacao.vendas") || permitido("vendas.ver");
+    if (aba === "fechamento") return (podeCobrancas || podeVendas) ? "fechamento" : "";
+    if (aba === "vendas" && podeVendas) return "vendas";
+    if (aba !== "vendas" && podeCobrancas) return "cobrancas";
+    if (podeCobrancas) return "cobrancas";
+    if (podeVendas) return "vendas";
+    return "";
+  }
+
   function abrirAba(aba = "cobrancas") {
-    abaAtual = aba === "vendas" || aba === "fechamento" ? aba : "cobrancas";
+    abaAtual = abaDisponivelVendedor(aba);
     const cobrancas = document.getElementById("abaCobrancas");
     const vendas = document.getElementById("abaVendasDia");
     const fechamento = document.getElementById("abaFechamentoCaixa");
@@ -988,6 +1004,11 @@
     if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com saldo devedor em aberto."
       : abaAtual === "vendas" ? "Vendas vinculadas ao vendedor, incluindo o histórico que compõe a carteira."
       : "Consulte os valores do caixa antes de finalizar o expediente.";
+    if (!abaAtual) {
+      if (titulo) titulo.textContent = "Operação indisponível";
+      if (subtitulo) subtitulo.textContent = "Seu perfil não possui acesso a Cobranças ou Vendas.";
+      return;
+    }
     if (abaAtual === "cobrancas") {
       window.IntegroVendedorOperacao?.instalar?.();
       window.renderCobrancas?.();
