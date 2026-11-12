@@ -262,9 +262,14 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     const telefones = Array.isArray(entrada.telefonesNormalizados) ? entrada.telefonesNormalizados.map(texto).filter(Boolean).slice(0, 5) : [];
     let clientesIds = Array.isArray(entrada.clientesIds) ? [...new Set(entrada.clientesIds.map(texto).filter(Boolean))].slice(0, 10) : [];
     if (!clientesIds.length && documento) {
-      const encontrados = await db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
-        .where("documentoNormalizado", "==", documento).limit(10).get();
-      clientesIds = encontrados.docs.filter(doc => doc.data()?.excluido !== true).map(doc => doc.id);
+      const consultas = [db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
+        .where("documentoNormalizado", "==", documento).limit(10).get()];
+      for (const numero of telefones) consultas.push(
+        db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
+          .where("telefonesNormalizados", "array-contains", numero).limit(10).get());
+      const resultados = await Promise.all(consultas);
+      clientesIds = [...new Set(resultados.flatMap(snap => snap.docs)
+        .filter(doc => doc.data()?.excluido !== true).map(doc => doc.id))].slice(0, 10);
     }
     if (!chave || (!documento && !telefones.length) || !clientesIds.length) erro("invalid-argument", "Dados da duplicidade incompletos.");
 
