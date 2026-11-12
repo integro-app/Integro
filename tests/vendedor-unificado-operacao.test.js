@@ -614,7 +614,8 @@ test("Fechar caixa abre imediatamente como terceira aba antes da resposta do ser
   await resultado;
   assert.equal(painel.innerHTML, "RESUMO OFICIAL");
   const unificado = fs.readFileSync(path.join(root, "js/vendedor-unificado.js"), "utf8");
-  assert.match(unificado, /aba === "vendas" \|\| aba === "fechamento"/);
+  assert.match(unificado, /if \(aba === "fechamento"\) return \(podeCobrancas \|\| podeVendas\) \? "fechamento" : "";/);
+  assert.match(unificado, /abaAtual = abaDisponivelVendedor\(aba\)/);
   assert.match(unificado, /const fechamento = document.getElementById\("abaFechamentoCaixa"\)/);
   assert.match(unificado, /controller\.abrirResumoFechamento\(\{ inline: true \}\)/);
   assert.match(unificado, /botao\?\.classList\.toggle\("active", abaAtual === alvo\)/);
