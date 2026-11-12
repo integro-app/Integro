@@ -2481,7 +2481,93 @@
     const caixa = await garantirCaixaAberto();
     if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
     const clientes = (State.getClientes?.() || []).filter(c => pertenceAoVendedor(c) && c.excluido !== true && clientePodeIniciarNovaVenda(c));
-    modalBase("Nova venda", clientes.length ? `<div class="vendedor-clientes-venda">${clientes.map(c => { const ativo = saldoCliente(c) > 1; const autorizado = autorizacaoVendaComSaldoCliente(c); return `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${texto(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${texto(c.nomeCompleto || c.nome || "")}${ativo ? autorizado ? " · Autorização disponível" : " · Saldo ativo — sujeito à análise" : ""}</small><span>Selecionar</span></button>`; }).join("")}</div>` : '<div class="empty-state-operacao"><strong>Nenhum cliente disponível</strong><p>Não há clientes elegíveis para nova venda conforme a política atual da empresa.</p></div>');
+    const inicio = `<section class="integro-venda-inicio"><div class="integro-venda-etapa"><span>01</span><div><strong>Identificar cliente</strong><small>Consulta segura de CPF ou CNPJ no Firebase</small></div></div><div class="integro-venda-consulta"><label for="consultaDocumentoNovaVenda">CPF / CNPJ</label><div><input id="consultaDocumentoNovaVenda" inputmode="numeric" autocomplete="off" placeholder="Digite o CPF ou CNPJ" value="${esc(documentoNovaVendaConsulta)}" onkeydown="if(event.key==='Enter')consultarDocumentoNovaVendaVendedor()"><button id="btnConsultarDocumentoNovaVenda" class="primary-btn" type="button" onclick="consultarDocumentoNovaVendaVendedor()">Consultar</button></div></div><p id="statusDocumentoNovaVenda" class="integro-doc-status" role="status" aria-live="polite">Consulte um documento para iniciar uma ficha nova ou localizar um cliente existente.</p></section>`;
+    const lista = clientes.length ? `<div class="integro-venda-clientes-titulo">Clientes da minha carteira</div><div class="vendedor-clientes-venda">${clientes.map(c => { const ativo = saldoCliente(c) > 1; const autorizado = autorizacaoVendaComSaldoCliente(c); return `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${esc(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${esc(c.nomeCompleto || c.nome || "")}${ativo ? autorizado ? " · Autorização disponível" : " · Saldo ativo — sujeito à análise" : ""}</small><span>Selecionar</span></button>`; }).join("")}</div>` : '<div class="empty-state-operacao"><strong>Sem clientes elegíveis</strong><p>Consulte um CPF/CNPJ acima para cadastrar um cliente e continuar com a venda.</p></div>';
+    modalBase("Nova venda", inicio + lista);
+  }
+
+
+  function abrirCadastroNovoClienteDaVenda() {
+    const documento = documentoFiscalVendedor(documentoNovaVendaConsulta);
+    if (!documento) return UIHelpers?.alerta?.("Consulte primeiro um CPF/CNPJ válido.");
+    origemCadastroNovaVenda = true;
+    fecharModal();
+    window.trocarTela?.("clientes", document.querySelector('#sidebar [data-modulo="clientes"]'));
+    abrirFormularioCliente("");
+    const campo = document.getElementById("clienteVendedorDocumento");
+    if (campo) {
+      campo.value = documento;
+      consultarDocumentoCliente();
+    }
+  }
+
+  async function consultarDocumentoNovaVenda() {
+    const input = document.getElementById("consultaDocumentoNovaVenda");
+    const status = document.getElementById("statusDocumentoNovaVenda");
+    const btn = document.getElementById("btnConsultarDocumentoNovaVenda");
+    const documento = documentoFiscalVendedor(input?.value);
+    documentoNovaVendaConsulta = texto(input?.value).replace(/\D/g, "");
+    if (!documento) {
+      if (status) status.textContent = "Informe CPF com 11 dígitos ou CNPJ com 14 dígitos.";
+      return;
+    }
+    if (btn) btn.disabled = true;
+    if (status) status.textContent = "Verificando documento no Firebase...";
+    try {
+      const resposta = (await callableClientes("consultarDocumentoClienteV27")({documento})).data || {};
+      if (texto(input?.value).replace(/\D/g, "") !== documento) return;
+      if (!status) return;
+      status.textContent = "";
+      if (resposta.existe && resposta.proprio && resposta.clienteId) {
+        status.textContent = "Cliente localizado na sua carteira. Abrindo simulação...";
+        await recarregarClientesVendedorDados();
+        if (!(State.getClientes?.() || []).some(c => texto(c.id) === texto(resposta.clienteId))) {
+          status.textContent = "Cliente localizado. Atualize a carteira para selecionar a ficha.";
+          return;
+        }
+        selecionarClienteNovaVenda(resposta.clienteId);
+      } else {
+        status.textContent = !resposta.existe ? "Documento livre nesta empresa. Prossiga com o cadastro."
+          : resposta.autorizado ? "Duplicidade autorizada. Você pode continuar com um novo cadastro."
+          : "Documento já cadastrado nesta empresa. Nova ficha bloqueada até autorização.";
+        const acoes = document.createElement("div"); acoes.className = "integro-doc-acoes";
+        if (!resposta.existe || resposta.autorizado) {
+          const continuar = document.createElement("button");
+          continuar.type = "button"; continuar.className = "primary-btn";
+          continuar.textContent = "Cadastrar cliente e continuar";
+          continuar.addEventListener("click", abrirCadastroNovoClienteDaVenda);
+          acoes.appendChild(continuar);
+        } else {
+          const solicitar = document.createElement("button");
+          solicitar.type = "button"; solicitar.className = "ghost-btn";
+          solicitar.textContent = "Solicitar autorização";
+          solicitar.addEventListener("click", () => solicitarDuplicidadeClienteVendedor(documento, status));
+          acoes.appendChild(solicitar);
+        }
+        status.appendChild(acoes);
+      }
+    } catch (erro) {
+      if (status) status.textContent = erro?.message || "Consulta indisponível. Não é permitido avançar sem validação.";
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  function atualizarSimulacaoVenda() {
+    const valor = numero(texto(document.getElementById("novaVendaValor")?.value).replace(/\./g, "").replace(",", "."));
+    const juros = numero(texto(document.getElementById("novaVendaJuros")?.value).replace(",", "."));
+    const parcelas = Number(document.getElementById("novaVendaParcelas")?.value);
+    const valida = valor > 0 && Number.isFinite(juros) && juros >= 0 && juros <= 1000 &&
+      Number.isInteger(parcelas) && parcelas > 0 && parcelas <= 90;
+    const centavos = Math.round(valor * 100);
+    const totalCentavos = valida ? Math.round(centavos * (1 + juros / 100)) : 0;
+    const valores = {
+      novaVendaSimulacaoPrincipal: valida ? moeda(centavos / 100) : "—",
+      novaVendaSimulacaoJuros: valida ? moeda((totalCentavos - centavos) / 100) : "—",
+      novaVendaSimulacaoTotal: valida ? moeda(totalCentavos / 100) : "—",
+      novaVendaSimulacaoParcela: valida ? moeda(Math.round(totalCentavos / parcelas) / 100) : "—"
+    };
+    for (const [id, valorTexto] of Object.entries(valores)) {
+      const el = document.getElementById(id); if (el && el.textContent !== valorTexto) el.textContent = valorTexto;
+    }
   }
 
   function selecionarClienteNovaVenda(clienteId) {
@@ -2492,7 +2578,8 @@
     if (saldoAtivo && !clientePodeIniciarNovaVenda(cliente)) return UIHelpers?.alerta?.("Cliente com saldo devedor acima de R$ 1. A política da empresa exige quitação ou autorização antes de uma nova venda.");
     const avisoSaldo = saldoAtivo ? `<div class="vendedor-venda-alerta-saldo"><span class="material-symbols-rounded">policy</span><div><strong>Cliente possui saldo ativo</strong><small>${autorizacaoVendaComSaldoCliente(cliente) ? "Existe uma autorização temporária. Ela vale somente para o mesmo valor aprovado." : "Ao registrar, a venda será enviada para análise do Supervisor/Gerente antes de ser liberada."}</small></div></div>` : "";
     const tipo = clienteTemHistoricoVenda(cliente) ? "RENOVACAO" : "NOVA";
-    modalBase(tipo === "RENOVACAO" ? "Renovação" : "Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
+    modalBase(tipo === "RENOVACAO" ? "Renovação" : "Nova venda", `<div class="vendedor-nova-venda-form"><div class="integro-venda-etapa"><span>02</span><div><strong>Simulação da operação</strong><small>Confira as condições antes de confirmar no servidor</small></div></div><div class="vendedor-nova-venda-cliente"><strong>${esc(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${esc(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado (R$)<input id="novaVendaValor" inputmode="decimal" placeholder="0,00" oninput="atualizarSimulacaoVendaVendedor()"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0" oninput="atualizarSimulacaoVendaVendedor()"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1" oninput="atualizarSimulacaoVendaVendedor()"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label><div class="integro-venda-simulacao" aria-live="polite"><div><small>Principal</small><strong id="novaVendaSimulacaoPrincipal">—</strong></div><div><small>Juros previstos</small><strong id="novaVendaSimulacaoJuros">—</strong></div><div><small>Total da venda</small><strong id="novaVendaSimulacaoTotal">—</strong></div><div class="integro-venda-simulacao-destaque"><small>Parcela estimada</small><strong id="novaVendaSimulacaoParcela">—</strong></div></div><p class="integro-venda-nota">Simulação informativa. O Firebase valida caixa, cliente, limite e permissões antes de registrar a venda.</p></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Confirmar e registrar venda</button>`);
+    atualizarSimulacaoVenda();
   }
 
   async function confirmarNovaVenda() {
@@ -2771,6 +2858,8 @@
   window.confirmarNaoPagamentoVendedorUnificado = registrarNaoPagamento;
   window.fecharModalVendedorOperacao = fecharModal;
   window.abrirListaNovaVendaVendedor = abrirListaNovaVenda;
+  window.consultarDocumentoNovaVendaVendedor = consultarDocumentoNovaVenda;
+  window.atualizarSimulacaoVendaVendedor = atualizarSimulacaoVenda;
   window.selecionarClienteNovaVendaVendedor = selecionarClienteNovaVenda;
   window.confirmarNovaVendaVendedor = confirmarNovaVenda;
   window.IntegroVendedorUnificado = Object.freeze({ aplicar, montarTela, renderVendasDia, renderClientesVendedor, renderMovimentacoesVendedor, abrirAba, get ativo() { return instalado; } });
