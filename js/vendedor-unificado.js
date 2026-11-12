@@ -1520,6 +1520,11 @@
     const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
     if (!nome || !documento || !telefone) return UIHelpers?.alerta?.("Informe nome, documento e telefone principal.");
     if (!tenantId) return UIHelpers?.alerta?.("Empresa/tenant nao identificado para criar cliente. Atualize a sessao e tente novamente.");
+    if (!clienteId && (!documentoClienteConsultado?.liberado ||
+        documentoClienteConsultado.documento !== documentoFiscalVendedor(documento) ||
+        documentoClienteConsultado.tenant !== tenantId)) {
+      return UIHelpers?.alerta?.("Consulte o CPF/CNPJ e obtenha autorização antes de continuar o cadastro.");
+    }
     const botao = document.getElementById("salvarClienteVendedorBtn");
     if (botao) botao.disabled = true;
     try {
@@ -1578,12 +1583,38 @@
         criadoPorId: authUid,
         equipeId: usuario.equipeId || usuario.equipesIds?.[0] || usuario.equipeIds?.[0] || ""
       };
-      if (clienteId) { if (!window.ClientesService?.atualizarCliente) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.atualizarCliente(clienteId, payload, usuario, { db: window.db || window.firebase?.firestore?.() }); }
-      else { if (!window.ClientesService?.criarClienteComLegado) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.criarClienteComLegado({ dados: payload, usuario, clientePlataformaId: tenantId, permitirTelefoneDuplicado: false, db: window.db || window.firebase?.firestore?.() }); }
+      let novoClienteId = "";
+      if (clienteId) {
+        if (!window.ClientesService?.atualizarCliente) throw new Error("Servico de clientes indisponivel.");
+        await window.ClientesService.atualizarCliente(clienteId, payload, usuario, { db: window.db || window.firebase?.firestore?.() });
+      } else {
+        // Segurança de duplicidade e criação da ficha/legado são validadas no servidor.
+        const retorno = (await callableClientes("cadastrarClienteOperacionalV27")({dados: payload})).data || {};
+        novoClienteId = texto(retorno.clienteOperacionalId);
+        if (!retorno.ok || !novoClienteId) throw new Error("O servidor não confirmou o cadastro.");
+      }
       fecharModal();
-      await recarregarClientesVendedorDados();
+      const atualizados = await recarregarClientesVendedorDados();
+      if (novoClienteId && !(atualizados || []).some(c => texto(c.id) === novoClienteId)) {
+        const dbAtual = window.db || window.firebase?.firestore?.();
+        const salvo = await dbAtual.collection("clientes_operacionais").doc(novoClienteId).get({source:"server"});
+        if (salvo.exists && texto(salvo.data()?.clientePlataformaId) === tenantId) {
+          const novos = [...(State.getClientes?.() || []).filter(c => texto(c.id) !== novoClienteId),
+            {id: novoClienteId, ...salvo.data(), clienteOperacionalId: novoClienteId}];
+          State.setClientes?.(novos);
+          window.clientesCache = novos;
+        }
+      }
+      const seguirVenda = origemCadastroNovaVenda && Boolean(novoClienteId);
       voltarGerenciarClientes();
-      UIHelpers?.alerta?.("Cliente salvo com sucesso.");
+      if (seguirVenda) {
+        caches();
+        window.trocarTela?.("cobrancas", document.querySelector('#sidebar [data-modulo="operacao"]'));
+        abrirAba("vendas");
+        if ((State.getClientes?.() || []).some(c => texto(c.id) === novoClienteId)) {
+          selecionarClienteNovaVenda(novoClienteId);
+        } else UIHelpers?.alerta?.("Cadastro confirmado. Localize o cliente na carteira para prosseguir com a venda.");
+      } else UIHelpers?.alerta?.("Cliente salvo no Firebase com sucesso.");
     } catch (erro) {
       console.error(erro);
       UIHelpers?.alerta?.(erro?.message || "Nao foi possivel salvar o cliente.");
