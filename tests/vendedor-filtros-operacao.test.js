@@ -158,8 +158,8 @@ test("Vendas mantém busca visível e Nova venda no canto inferior direito", () 
   assert.match(css, /left: auto !important/);
   const original = read("master-local.html");
   assert.match(original, /js\/integro-filter-drawer\.js\?v=20261107-vendedor-vendas-query-fab1/);
-  assert.match(original, /css\/vendedor-operacao\.css\?v=20261107-demo-comercial-v1/);
-  assert.match(original, /js\/vendedor-unificado\.js\?v=20261107-demo-comercial-v1/);
+  assert.match(original, /css\/vendedor-operacao\.css\?v=20261112-demo-comercial-v1/);
+  assert.match(original, /js\/vendedor-unificado\.js\?v=20261112-demo-comercial-v1/);
 });
 
 
