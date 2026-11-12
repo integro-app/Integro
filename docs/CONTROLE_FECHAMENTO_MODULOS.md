@@ -143,3 +143,18 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Publicação:** não executada; nenhuma PR foi aberta, pois o workflow existente de PR aciona deploy de prévia Firebase automaticamente.
 - **Próximo passo para homologação:** revisar alterações, publicar apenas sob autorização, testar Operação → Cobranças/Vendas/Fechar caixa com perfil vendedor e credenciais de homologação, confirmar permissões restritas, layout no celular, alternância e ausência de regressão de baixas.
 - **Veredito:** **EM HOMOLOGAÇÃO PENDENTE / NÃO FECHADO**. A aprovação automatizada não equivale a aceite operacional nem encerra o M22 transversal.
+
+## 10. Frente comercial integrada M08/M09/M12 — 12/11/2026
+
+- **Branch de apresentação:** `feat/demo-cliente-venda-caixa-20261112`, derivada da correção M22. **Sem merge na main.**
+- **Novo cadastro (M08):** seller consulta CPF/CNPJ antes de cadastrar; callable `consultarDocumentoClienteV27` acessa somente dados do tenant no servidor, permite reencontrar cliente próprio sem expor documentos de outra carteira.
+- **Duplicidade:** bloqueia CPF/CNPJ existente em `clientes_operacionais` e na coleção legada `clientes`. Solicitação passa por `solicitarCadastroDuplicadoV27` e supervisor/gerente pode decidir por `decidirCadastroDuplicadoV27`; autorização expira e é consumida no primeiro cadastro autorizado.
+- **Escrita:** `cadastrarClienteOperacionalV27` exige sessão/tenant/ator vendedor/equipe, confere documento e telefone no Firestore dentro de transação, vincula `clientes_operacionais` e `clientes`, reserva documento e audita. Novo fluxo não grava baixa de caixa fictícia.
+- **Venda (M09):** `Nova venda` consulta documento e apresenta ficha de cliente próprio ou novo cadastro. Após cadastro seguro, continua na simulação de principal, juros, total e parcela. Confirmação mantém `IntegroVenda.registrarVendaTransacional` com autorização/caixa/ledger existentes, sem simular quitação nem aprovação.
+- **Caixa (M12):** tela de conferência evidencia snapshot oficial e permite atualizar valores. Continua bloqueada a confirmação sem baixas e conferência e continua exigindo backend `registrarFechamentoCaixaTransacional`; nenhuma movimentação financeira alterada neste ajuste.
+- **UI:** alterações localizadas no vendedor e CSS responsivo, incluindo controle de permissões das abas já tratado no M22.
+- **Índices:** foram acrescentados três índices compostos de CPF/CNPJ e telefone por tenant no `firestore.indexes.json`. **Ainda dependem de deploy de índices.**
+- **Teste:** suíte focada, suíte geral e verificadores HTML/JS/Hosting/Functions via workflow temporário da branch; registrar link e contagem da execução final aprovada nesta ficha.
+- **Pendente obrigatoriamente:** confirmar índice ativo, implantação autorizada das duas Functions e do Hosting, teste Firebase Auth/Firestore real com dois tenants e vendedores diferentes, disparo/decisão de solicitação, cadastro/duplo clique/rede, atualização de carteira/venda/parcelas/ledger e fechamento de caixa real em dispositivo móvel.
+- **Importante:** anexos do formulário nesta fase são apenas nomes de arquivo; upload efetivo para Storage não está incluído neste escopo.
+- **Veredito:** **EM DESENVOLVIMENTO/HOMOLOGAÇÃO**. Não há autorização para considerar concluído ou apresentado como produção.
