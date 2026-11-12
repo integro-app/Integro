@@ -260,23 +260,28 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
       erro("invalid-argument", "Chave de duplicidade não corresponde ao documento.");
     }
     const telefones = Array.isArray(entrada.telefonesNormalizados) ? entrada.telefonesNormalizados.map(texto).filter(Boolean).slice(0, 5) : [];
-    let clientesIds = Array.isArray(entrada.clientesIds) ? [...new Set(entrada.clientesIds.map(texto).filter(Boolean))].slice(0, 10) : [];
-    if (!clientesIds.length && documento) {
-      const consultas = [db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
-        .where("documentoNormalizado", "==", documento).limit(10).get()];
-      for (const numero of telefones) consultas.push(
-        db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
-          .where("telefonesNormalizados", "array-contains", numero).limit(10).get());
-      const resultados = await Promise.all(consultas);
-      clientesIds = [...new Set(resultados.flatMap(snap => snap.docs)
-        .filter(doc => doc.data()?.excluido !== true).map(doc => doc.id))].slice(0, 10);
-    }
-    if (!chave || (!documento && !telefones.length) || !clientesIds.length) erro("invalid-argument", "Dados da duplicidade incompletos.");
-
-    for (const clienteId of clientesIds) {
-      const snap = await db.collection("clientes_operacionais").doc(clienteId).get();
-      if (!snap.exists || texto(snap.data()?.clientePlataformaId) !== tenantId) erro("permission-denied", "Cliente duplicado fora do escopo da empresa.");
-    }
+    // Sempre deriva conflitos no servidor. IDs recebidos do navegador não concedem autorização.
+    const consultas = [
+      db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
+        .where("documentoNormalizado", "==", documento).limit(10).get(),
+      db.collection("clientes").where("clientePlataformaId", "==", tenantId)
+        .where("documentoNormalizado", "==", documento).limit(10).get()
+    ];
+    for (const numero of telefones) consultas.push(
+      db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
+        .where("telefonesNormalizados", "array-contains", numero).limit(10).get());
+    const resultados = await Promise.all(consultas);
+    const duplicados = resultados.flatMap(snap => snap.docs)
+      .filter(doc => doc.data()?.excluido !== true);
+    const clientesIds = [...new Set(duplicados.map(doc => doc.id))].slice(0, 10);
+    if (!chave || (!documento && !telefones.length) || !clientesIds.length)
+      erro("invalid-argument", "Nenhum cadastro conflitante validado na empresa.");
+    if (!duplicados.every(doc => texto(doc.data()?.clientePlataformaId) === tenantId &&
+      (texto(doc.data()?.documentoNormalizado) === documento ||
+      (Array.isArray(doc.data()?.telefonesNormalizados) &&
+      doc.data().telefonesNormalizados.some(numero => telefones.includes(texto(numero)))))))
+      erro("permission-denied", "Cadastro conflitante sem vínculo válido.");
+    // Documentos internos não são enviados ao navegador: só o ID da solicitação volta.
 
     // Supervisor/Gerente/Master Local já são autoridades locais para esta política.
     if (["MASTER_LOCAL", "GERENTE", "SUPERVISOR"].includes(papel(usuario))) {
