@@ -143,6 +143,8 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     const travaRef = db.collection("clientes_documentos_reserva").doc(idSeguro(tenantId).slice(0, 200) + "_" + documento);
     const autorizacaoRef = db.collection("clientes_duplicidade_autorizacoes")
       .doc("dup_" + idSeguro(uid) + "_" + chaveSomenteDocumento(documento));
+    const autorizacaoTelefoneRef = db.collection("clientes_duplicidade_autorizacoes")
+      .doc("dup_" + idSeguro(uid) + "_doc_" + documento + "_tel_" + telefoneNormalizado);
     const consulta = db.collection("clientes_operacionais")
       .where("clientePlataformaId", "==", tenantId)
       .where("documentoNormalizado", "==", documento)
@@ -150,6 +152,9 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     const consultaLegado = db.collection("clientes")
       .where("clientePlataformaId", "==", tenantId)
       .where("documentoNormalizado", "==", documento).limit(20);
+    const consultaTelefone = db.collection("clientes_operacionais")
+      .where("clientePlataformaId", "==", tenantId)
+      .where("telefonesNormalizados", "array-contains", telefoneNormalizado).limit(20);
     const agora = ts();
     const tipo = documento.length === 11 ? "CPF" : "CNPJ";
     const dados = {
@@ -195,19 +200,26 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
       atualizadoPor: uid, atualizadoEm: agora
     };
     const resultado = await db.runTransaction(async tx => {
-      const [trava, autorizacao, existentes, legados] = await Promise.all([
-        tx.get(travaRef), tx.get(autorizacaoRef), tx.get(consulta), tx.get(consultaLegado)
+      const [trava, autorizacao, autorizacaoTelefone, existentes, legados, telefones] = await Promise.all([
+        tx.get(travaRef), tx.get(autorizacaoRef), tx.get(autorizacaoTelefoneRef),
+        tx.get(consulta), tx.get(consultaLegado), tx.get(consultaTelefone)
       ]);
       const conflitantes = existentes.docs.filter(doc => doc.data()?.excluido !== true);
       const legadoExistente = legados.docs.some(doc => doc.data()?.excluido !== true);
-      const encontrado = conflitantes.length > 0 || legadoExistente ||
+      const documentoEmUso = conflitantes.length > 0 || legadoExistente ||
         (trava.exists && (trava.data()?.clienteIds || []).length > 0);
-      const aprovada = autorizacao.exists &&
-        texto(autorizacao.data()?.clientePlataformaId) === tenantId &&
-        texto(autorizacao.data()?.usuarioAuthUid) === uid &&
-        normalizar(autorizacao.data()?.status) === "ATIVA" &&
-        Number(autorizacao.data()?.expiraEmMs || 0) > Date.now();
-      if (encontrado && !aprovada) erro("failed-precondition", "CPF/CNPJ já cadastrado. Solicite autorização antes de criar outra ficha.");
+      const telefoneEmUso = telefones.docs.some(doc => doc.data()?.excluido !== true);
+      const encontrado = documentoEmUso || telefoneEmUso;
+      const autorizacaoUsada = documentoEmUso ? autorizacao : autorizacaoTelefone;
+      const autorizacaoUsadaRef = documentoEmUso ? autorizacaoRef : autorizacaoTelefoneRef;
+      const aprovada = autorizacaoUsada.exists &&
+        texto(autorizacaoUsada.data()?.clientePlataformaId) === tenantId &&
+        texto(autorizacaoUsada.data()?.usuarioAuthUid) === uid &&
+        normalizar(autorizacaoUsada.data()?.status) === "ATIVA" &&
+        Number(autorizacaoUsada.data()?.expiraEmMs || 0) > Date.now();
+      if (encontrado && !aprovada) erro("failed-precondition", documentoEmUso
+        ? "CPF/CNPJ já cadastrado. Solicite autorização antes de criar outra ficha."
+        : "Telefone já vinculado a outro cliente. Solicite autorização antes de continuar.");
       const idsAnteriores = trava.exists ? (trava.data()?.clienteIds || []) :
         conflitantes.map(item => item.id);
       tx.set(opId, {
@@ -223,7 +235,7 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
         clienteIds: [...new Set([...idsAnteriores, ...conflitantes.map(item => item.id), opId.id])],
         atualizadoEm: agora
       }, { merge: true });
-      if (encontrado) tx.set(autorizacaoRef, {
+      if (encontrado) tx.set(autorizacaoUsadaRef, {
         status: "CONSUMIDA", consumidaEm: agora, clienteOperacionalId: opId.id
       }, { merge: true });
       tx.set(auditoriaRef, {
@@ -231,7 +243,7 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
         tipoAcao: "CLIENTE_CRIADO", origem: "cadastro-seguro-v27",
         clienteId: opId.id, clienteOperacionalId: opId.id, clienteLegadoId: legadoId.id,
         usuarioId: uid, usuarioAuthUid: uid, equipeId,
-        autorizacaoDuplicidade: encontrado ? autorizacaoRef.id : null, criadoEm: agora
+        autorizacaoDuplicidade: encontrado ? autorizacaoUsadaRef.id : null, criadoEm: agora
       });
       return { ok: true, clienteOperacionalId: opId.id, clienteLegadoId: legadoId.id,
         cadastroDuplicadoAutorizado: encontrado && aprovada };
