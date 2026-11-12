@@ -217,6 +217,8 @@ const { criarAprovacoesClientesV27 } = require("./v27-client-approvals");
 const aprovacoesClientesV27 = criarAprovacoesClientesV27({ admin, functions, db });
 exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.solicitar);
 exports.decidirCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.decidir);
+exports.consultarDocumentoClienteV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(aprovacoesClientesV27.consultarDocumento));
+exports.cadastrarClienteOperacionalV27 = functions.region("southamerica-east1").https.onCall(protegerSessao(aprovacoesClientesV27.cadastrarCliente));
 
 const { criarConfiguracoesV27 } = require("./v27-config");
 const configuracoesV27 = criarConfiguracoesV27({ admin, functions, db });
