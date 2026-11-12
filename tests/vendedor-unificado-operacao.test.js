@@ -219,7 +219,9 @@ test("cliente ativo com saldo zerado pode renovar", () => {
 test("criacao de cliente vendedor envia tenant e usuario no contrato do service", () => {
   assert.match(unificado, /const tenantId = texto\(State\.getTenantId\?\.\(\)/);
   assert.match(unificado, /clientePlataformaId: tenantId/);
-  assert.match(unificado, /criarClienteComLegado\(\{ dados: payload, usuario, clientePlataformaId: tenantId/);
+  assert.match(unificado, /callableClientes\("cadastrarClienteOperacionalV27"\)\(\{dados: payload\}\)/);
+  assert.match(unificado, /consultarDocumentoClienteV27/);
+  assert.match(unificado, /documentoClienteConsultado\.tenant !== tenantId/);
   assert.match(unificado, /vendedorAuthUid: authUid/);
   assert.match(unificado, /criadoPor: authUid/);
   assert.doesNotMatch(unificado, /criarClienteComLegado\?\.\(payload, usuario/);
