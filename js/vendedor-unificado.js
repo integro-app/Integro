@@ -1401,14 +1401,15 @@
     } finally { if (btn) btn.disabled = false; }
   }
 
-  async function solicitarDuplicidadeClienteVendedor(documento, status) {
+  async function solicitarDuplicidadeClienteVendedor(documento, status, telefoneConflitante = "") {
     const doc = documentoFiscalVendedor(documento);
+    const telefone = texto(telefoneConflitante).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
     if (!doc) return UIHelpers?.alerta?.("Documento inválido.");
     try {
       if (status) status.textContent = "Enviando solicitação ao responsável...";
       const resposta = (await callableClientes("solicitarCadastroDuplicadoV27")({
-        chaveDuplicidade: "doc_" + doc + "_tel_sem",
-        documentoNormalizado: doc, telefonesNormalizados: []
+        chaveDuplicidade: "doc_" + doc + "_tel_" + (telefone || "sem"),
+        documentoNormalizado: doc, telefonesNormalizados: telefone ? [telefone] : []
       })).data || {};
       if (status) status.textContent = resposta.autorizado
         ? "Autorização concedida. Consulte novamente para continuar."
@@ -1618,6 +1619,21 @@
       } else UIHelpers?.alerta?.("Cliente salvo no Firebase com sucesso.");
     } catch (erro) {
       console.error(erro);
+      const status = document.getElementById("statusConsultaDocumentoCliente");
+      if (!clienteId && /Telefone já vinculado/i.test(texto(erro?.message)) && status) {
+        status.textContent = "Telefone cadastrado em outra ficha. É necessária autorização para continuar.";
+        const solicitar = document.createElement("button");
+        solicitar.type = "button";
+        solicitar.className = "ghost-btn";
+        solicitar.textContent = "Solicitar autorização do telefone";
+        solicitar.addEventListener("click", () => solicitarDuplicidadeClienteVendedor(
+          documento, status, telefone
+        ));
+        const acoes = document.createElement("div");
+        acoes.className = "integro-doc-acoes";
+        acoes.appendChild(solicitar);
+        status.appendChild(acoes);
+      }
       UIHelpers?.alerta?.(erro?.message || "Nao foi possivel salvar o cliente.");
     } finally { if (botao) botao.disabled = false; }
   }
