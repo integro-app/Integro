@@ -40,7 +40,9 @@ function mockDB(documentos = {}) {
               const docs = [];
               for (const [key,dados] of store) {
                 if (!key.startsWith(collection + "/")) continue;
-                if (!filtros.every(([chave,op,esperado]) => op === "==" && dados[chave] === esperado)) continue;
+                if (!filtros.every(([chave,op,esperado]) =>
+                  op === "==" ? dados[chave] === esperado :
+                  op === "array-contains" ? Array.isArray(dados[chave]) && dados[chave].includes(esperado) : false)) continue;
                 docs.push({id:key.slice(collection.length+1),data:()=>dados});
               }
               return {docs,empty:docs.length===0};
@@ -196,6 +198,26 @@ test("registro legado sem ficha também bloqueia CPF/CNPJ", async () => {
   await assert.rejects(api.cadastrarCliente({dados:{
     documento:cpf,nome:"Nova Tentativa",telefonePrincipal:"11912345678"
   }},{auth:{uid:"u"}}), /Solicite autorização/);
+});
+
+test("telefone existente bloqueia cadastro, e autorização específica é consumida", async () => {
+  const telefone = "11999998888";
+  const db = mockDB({...base,
+    "clientes_operacionais/outro": {
+      clientePlataformaId:"tenant-a",documentoNormalizado:"39053344705",
+      telefonesNormalizados:[telefone],vendedorAuthUid:"outro",nome:"Cliente Outro"
+    }
+  });
+  const api=contexto(db);
+  const dados={dados:{documento:cpf,nome:"Telefone Repetido",telefonePrincipal:telefone}};
+  await assert.rejects(api.cadastrarCliente(dados,{auth:{uid:"u"}}), /Telefone já vinculado/);
+  const autorizacao="dup_u_doc_"+cpf+"_tel_"+telefone;
+  db.store.set("clientes_duplicidade_autorizacoes/"+autorizacao,{
+    clientePlataformaId:"tenant-a",usuarioAuthUid:"u",status:"ATIVA",expiraEmMs:Date.now()+100000
+  });
+  const resultado=await api.cadastrarCliente(dados,{auth:{uid:"u"}});
+  assert.equal(resultado.cadastroDuplicadoAutorizado,true);
+  assert.equal(db.store.get("clientes_duplicidade_autorizacoes/"+autorizacao).status,"CONSUMIDA");
 });
 
 test("telas comerciais exigem consulta e mostram simulação; caixa permanece transacional", () => {
