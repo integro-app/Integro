@@ -5,6 +5,9 @@
   let instalado = false;
   let abaAtual = "cobrancas";
   let clienteNovaVendaId = "";
+  let documentoClienteConsultado = null;
+  let documentoNovaVendaConsulta = "";
+  let origemCadastroNovaVenda = false;
   let vendaOperacaoPendente = null;
   let filtrosClientesAbertos = false;
   let clientesPesquisaExecutada = false;
@@ -1291,7 +1294,8 @@
           <label>Nome completo<input id="clienteVendedorNome" value="${esc(cliente?.nomeCompleto || cliente?.nome || "")}" autocomplete="name" required></label>
           <label>Tipo de cliente<select id="clienteVendedorTipoCliente"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
           <label>Tipo de documento<select id="clienteVendedorTipoDocumento"><option value="CPF" ${texto(cliente?.tipoDocumento || "CPF") === "CPF" ? "selected" : ""}>CPF</option><option value="CNPJ" ${texto(cliente?.tipoDocumento) === "CNPJ" ? "selected" : ""}>CNPJ</option><option value="RG" ${texto(cliente?.tipoDocumento) === "RG" ? "selected" : ""}>RG</option></select></label>
-          <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" required></label>
+          <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" oninput="invalidarConsultaDocumentoClienteVendedor()" required></label>
+          ${clienteId ? "" : '<div class="integro-doc-consulta"><button class="ghost-btn" type="button" id="btnConsultarDocumentoCliente" onclick="consultarDocumentoClienteVendedor()">Consultar CPF/CNPJ na base</button><div id="statusConsultaDocumentoCliente" class="integro-doc-status" role="status" aria-live="polite">Consulte o documento antes de salvar. A verificação abrange toda a empresa.</div></div>'}
           <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" required></label>
           <label class="cliente-form-check"><input id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
           <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Ate a integracao de Storage, os nomes ficam preparados no cadastro.")}</small></label>
@@ -1326,7 +1330,95 @@
 
   function acoesFormularioCliente(clienteId, criado, historico, ehLead = false) {
     const textoBotao = clienteId ? "Salvar alteracoes" : "Criar cliente";
-    return `<button class="ghost-btn" type="button" onclick="voltarGerenciarClientesVendedor()">Cancelar</button>${clienteId && ehLead ? `<button class="ghost-btn" type="button" onclick="retornarClienteLeadsVendedor('${esc(clienteId)}')">Retornar para leads</button>` : ""}${clienteId ? `<button class="danger-btn" type="button" ${(!criado || historico) ? "disabled" : ""} onclick="excluirClienteVendedor('${esc(clienteId)}')">Excluir cliente</button>` : ""}<button id="salvarClienteVendedorBtn" class="primary-btn" type="button" onclick="salvarClienteVendedor('${esc(clienteId)}')">${textoBotao}</button>`;
+    return `<button class="ghost-btn" type="button" onclick="voltarGerenciarClientesVendedor()">Cancelar</button>${clienteId && ehLead ? `<button class="ghost-btn" type="button" onclick="retornarClienteLeadsVendedor('${esc(clienteId)}')">Retornar para leads</button>` : ""}${clienteId ? `<button class="danger-btn" type="button" ${(!criado || historico) ? "disabled" : ""} onclick="excluirClienteVendedor('${esc(clienteId)}')">Excluir cliente</button>` : ""}<button id="salvarClienteVendedorBtn" class="primary-btn" type="button" ${clienteId ? "" : "disabled"} onclick="salvarClienteVendedor('${esc(clienteId)}')">${textoBotao}</button>`;
+  }
+
+
+  function callableClientes(nome) {
+    const chamada = window.firebase?.app?.()?.functions?.("southamerica-east1")?.httpsCallable?.(nome);
+    if (typeof chamada !== "function") throw new Error("Serviço seguro indisponível. Atualize a página e tente novamente.");
+    return chamada;
+  }
+
+  function documentoFiscalVendedor(valor) {
+    const documento = texto(valor).replace(/\D/g, "");
+    return [11, 14].includes(documento.length) && !/^(\d)\1+$/.test(documento) ? documento : "";
+  }
+
+  function invalidarConsultaDocumentoCliente() {
+    documentoClienteConsultado = null;
+    const salvar = document.getElementById("salvarClienteVendedorBtn");
+    if (salvar && clienteFormularioAbertoId === "__novo__") salvar.disabled = true;
+    const status = document.getElementById("statusConsultaDocumentoCliente");
+    if (status) status.textContent = "Documento alterado. Consulte novamente antes de salvar.";
+  }
+
+  async function consultarDocumentoCliente() {
+    const documento = documentoFiscalVendedor(document.getElementById("clienteVendedorDocumento")?.value);
+    const status = document.getElementById("statusConsultaDocumentoCliente");
+    const btn = document.getElementById("btnConsultarDocumentoCliente");
+    invalidarConsultaDocumentoCliente();
+    if (!documento) {
+      if (status) status.textContent = "Informe CPF com 11 dígitos ou CNPJ com 14 dígitos.";
+      return null;
+    }
+    if (btn) btn.disabled = true;
+    if (status) status.textContent = "Consultando documento na base da empresa...";
+    try {
+      const resposta = (await callableClientes("consultarDocumentoClienteV27")({documento})).data || {};
+      const tenant = texto(State.getTenantId?.());
+      if (texto(document.getElementById("clienteVendedorDocumento")?.value).replace(/\D/g, "") !== documento) return null;
+      documentoClienteConsultado = {documento, tenant, liberado: !resposta.existe || resposta.autorizado === true};
+      const salvar = document.getElementById("salvarClienteVendedorBtn");
+      if (salvar) salvar.disabled = !documentoClienteConsultado.liberado;
+      if (status) {
+        if (!resposta.existe) status.textContent = "Documento não localizado. Cadastro liberado para esta empresa.";
+        else if (resposta.autorizado) status.textContent = "Duplicidade autorizada pelo responsável. Cadastro liberado para esta solicitação.";
+        else {
+          status.textContent = "CPF/CNPJ já cadastrado. Não é permitido criar outra ficha sem autorização.";
+          const acoes = document.createElement("div");
+          acoes.className = "integro-doc-acoes";
+          if (resposta.proprio && resposta.clienteId) {
+            const usar = document.createElement("button");
+            usar.type = "button"; usar.className = "ghost-btn";
+            usar.textContent = "Abrir cliente existente";
+            usar.addEventListener("click", () => abrirFormularioCliente(resposta.clienteId));
+            acoes.appendChild(usar);
+          }
+          const solicitar = document.createElement("button");
+          solicitar.type = "button"; solicitar.className = "ghost-btn";
+          solicitar.textContent = "Solicitar autorização";
+          solicitar.addEventListener("click", () => solicitarDuplicidadeClienteVendedor(documento, status));
+          acoes.appendChild(solicitar);
+          status.appendChild(acoes);
+        }
+      }
+      return resposta;
+    } catch (erro) {
+      if (status) status.textContent = erro?.message || "Falha ao consultar. Cadastro bloqueado até nova consulta.";
+      return null;
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  async function solicitarDuplicidadeClienteVendedor(documento, status) {
+    const doc = documentoFiscalVendedor(documento);
+    if (!doc) return UIHelpers?.alerta?.("Documento inválido.");
+    try {
+      if (status) status.textContent = "Enviando solicitação ao responsável...";
+      const resposta = (await callableClientes("solicitarCadastroDuplicadoV27")({
+        chaveDuplicidade: "doc_" + doc + "_tel_sem",
+        documentoNormalizado: doc, telefonesNormalizados: []
+      })).data || {};
+      if (status) status.textContent = resposta.autorizado
+        ? "Autorização concedida. Consulte novamente para continuar."
+        : "Solicitação enviada ao Supervisor/Gerente. Após aprovação, consulte novamente.";
+      UIHelpers?.alerta?.(resposta.autorizado ? "Autorização concedida." : "Solicitação enviada para análise.");
+      return resposta;
+    } catch (erro) {
+      if (status) status.textContent = erro?.message || "Não foi possível solicitar autorização.";
+      UIHelpers?.alerta?.(erro?.message || "Falha na solicitação.");
+      return null;
+    }
   }
 
   function abrirFormularioCliente(clienteId = "") {
@@ -1341,6 +1433,7 @@
     const refs = referenciasTelefoneCliente(cliente || {});
     while (refs.length < 1) refs.push({});
     clienteFormularioAbertoId = clienteId || "__novo__";
+    documentoClienteConsultado = null;
     tela.dataset.vendedorClientesMontado = "true";
     tela.innerHTML = `
       <div class="section-card vendedor-cliente-pagina">
@@ -1352,11 +1445,13 @@
         <footer class="vendedor-cliente-pagina-actions">${acoesFormularioCliente(clienteId, criado, historico, veioLeads)}</footer>
       </div>`;
     limparBlocosClientesLegadosVendedor();
-    setTimeout(() => document.getElementById("clienteVendedorNome")?.focus(), 0);
+    setTimeout(() => (clienteId ? document.getElementById("clienteVendedorNome") : document.getElementById("clienteVendedorDocumento"))?.focus(), 0);
   }
 
   function voltarGerenciarClientes() {
     clienteFormularioAbertoId = "";
+    origemCadastroNovaVenda = false;
+    documentoClienteConsultado = null;
     renderClientesVendedor({ forcar: true });
   }
 
@@ -2620,6 +2715,8 @@
   window.aplicarFiltrosClientesVendedor = aplicarFiltrosClientes;
   window.limparFiltrosClientesVendedor = limparFiltrosClientes;
   window.abrirFormularioClienteVendedor = abrirFormularioCliente;
+  window.consultarDocumentoClienteVendedor = consultarDocumentoCliente;
+  window.invalidarConsultaDocumentoClienteVendedor = invalidarConsultaDocumentoCliente;
   window.voltarGerenciarClientesVendedor = voltarGerenciarClientes;
   window.salvarClienteVendedor = salvarCliente;
   window.abrirAbaFormularioClienteVendedor = abrirAbaFormularioCliente;
