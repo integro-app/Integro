@@ -1415,3 +1415,94 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
     visibility: hidden !important;
   }
 }
+
+
+/* Apresentação comercial: identificação → cadastro → simulação.
+   Escopo restrito às superfícies já existentes do vendedor. */
+html body.perfil-vendedor .vendedor-operacao-modal-card {
+  max-width: min(94vw, 760px);
+}
+html body.perfil-vendedor .integro-venda-inicio,
+html body.perfil-vendedor .integro-doc-consulta {
+  display: grid; gap: 12px;
+  padding: 18px; margin: 0 0 14px;
+  border: 1px solid #dfe8f4; border-radius: 16px;
+  background: linear-gradient(135deg, #f6f9ff, #fff 75%);
+}
+html body.perfil-vendedor .integro-venda-etapa {
+  display: flex; align-items: center; gap: 12px;
+}
+html body.perfil-vendedor .integro-venda-etapa > span {
+  display: inline-flex; align-items: center; justify-content: center;
+  flex: 0 0 34px; width: 34px; height: 34px;
+  border-radius: 11px; color: #fff; background: #071a33;
+  font-size: 13px; font-weight: 600;
+}
+html body.perfil-vendedor .integro-venda-etapa strong {
+  display: block; font-size: 15px; color: #11253e; font-weight: 650;
+}
+html body.perfil-vendedor .integro-venda-etapa small {
+  display: block; margin-top: 3px; color: #61748e; font-size: 12px;
+}
+html body.perfil-vendedor .integro-venda-consulta label {
+  display: block; margin-bottom: 7px; font-size: 12px;
+  color: #586c85; font-weight: 600;
+}
+html body.perfil-vendedor .integro-venda-consulta > div {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px;
+}
+html body.perfil-vendedor .integro-venda-consulta input {
+  width: 100%; min-width: 0; min-height: 44px; box-sizing: border-box;
+  padding: 10px 13px; border: 1px solid #cbd7e6; border-radius: 11px;
+  font: inherit; color: #142943; background: #fff;
+}
+html body.perfil-vendedor .integro-venda-consulta button {
+  min-height: 44px; padding: 9px 16px; border-radius: 11px;
+}
+html body.perfil-vendedor .integro-doc-status {
+  display: block; margin: 0; color: #466078;
+  font-size: 13px; line-height: 1.45;
+}
+html body.perfil-vendedor .integro-doc-acoes {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
+}
+html body.perfil-vendedor .integro-doc-acoes button {
+  min-height: 40px; border-radius: 10px; font-size: 12px;
+}
+html body.perfil-vendedor .integro-venda-clientes-titulo {
+  color: #233e5f; font-size: 13px; font-weight: 650;
+  margin: 20px 0 10px;
+}
+html body.perfil-vendedor .integro-venda-simulacao {
+  display: grid; grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 9px; margin: 16px 0 7px;
+}
+html body.perfil-vendedor .integro-venda-simulacao > div {
+  display: grid; gap: 4px; min-width: 0;
+  border: 1px solid #e3eaf2; background: #f7faff;
+  border-radius: 12px; padding: 12px;
+}
+html body.perfil-vendedor .integro-venda-simulacao small {
+  color: #667b93; font-size: 11px;
+}
+html body.perfil-vendedor .integro-venda-simulacao strong {
+  font-size: clamp(15px, 3.5vw, 21px);
+  font-weight: 650; color: #102b4a;
+}
+html body.perfil-vendedor .integro-venda-simulacao > .integro-venda-simulacao-destaque {
+  color: #fff; border-color: #102b4a;
+  background: linear-gradient(115deg, #0a2342, #153d67);
+}
+html body.perfil-vendedor .integro-venda-simulacao-destaque small,
+html body.perfil-vendedor .integro-venda-simulacao-destaque strong { color: #fff; }
+html body.perfil-vendedor .integro-venda-nota {
+  margin: 7px 0 0; font-size: 12px; color: #687b90;
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  html body.perfil-vendedor .integro-venda-inicio,
+  html body.perfil-vendedor .integro-doc-consulta { padding: 14px; }
+  html body.perfil-vendedor .integro-venda-consulta > div { gap: 6px; }
+  html body.perfil-vendedor .integro-venda-consulta button { padding: 8px 10px; font-size: 12px; }
+  html body.perfil-vendedor .integro-venda-simulacao > div { padding: 10px; }
+}
