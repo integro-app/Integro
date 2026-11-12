@@ -1,0 +1,22 @@
+name: Validacao comercial - cliente venda caixa (temporaria)
+on:
+  push:
+    branches:
+      - feat/demo-cliente-venda-caixa-20261112
+permissions:
+  contents: read
+jobs:
+  validar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Fluxo comercial e regressao vendedor
+        run: node --test tests/cadastro-venda-demo.test.js tests/vendedor-unificado-operacao.test.js tests/sidebar-navigation-regression.test.js tests/vendedor-operacao-cobrancas.test.js tests/vendedor-filtros-operacao.test.js
+      - name: Suite geral, HTML e sintaxe
+        run: npm run verify
