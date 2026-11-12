@@ -24,7 +24,11 @@ function mockDB(documentos = {}) {
             id: chave.slice(collection.length + 1),path:chave,
             get: async () => store.has(chave)
               ? {id:chave.split("/")[1],exists:true,data:()=>store.get(chave)}
-              : {id:chave.split("/")[1],exists:false,data:()=>null}
+              : {id:chave.split("/")[1],exists:false,data:()=>null},
+            set: async (val,options) => {
+              const prev=store.get(chave)||{};
+              store.set(chave,options?.merge?{...prev,...val}:val);
+            }
           };
         },
         where(campo,op,valor) {
@@ -43,6 +47,18 @@ function mockDB(documentos = {}) {
             }
           };
           return query;
+        }
+      };
+    },
+    batch() {
+      const writes=[];
+      return {
+        set(ref,val,options){writes.push({ref,val,options});},
+        async commit(){
+          for(const {ref,val,options} of writes) {
+            const anterior=store.get(ref.path)||{};
+            store.set(ref.path,options?.merge?{...anterior,...val}:val);
+          }
         }
       };
     },
@@ -142,6 +158,44 @@ test("autorização válida é consumida na transação e não vale para uso rep
   assert.equal(resposta.cadastroDuplicadoAutorizado,true);
   assert.equal(db.store.get("clientes_duplicidade_autorizacoes/"+key).status,"CONSUMIDA");
   await assert.rejects(api.cadastrarCliente(dados,{auth:{uid:"u"}}),/Solicite autorização/);
+});
+
+
+test("solicitação sem IDs da outra carteira notifica supervisor e a aprovação libera cadastro", async () => {
+  const doc = "52998224725";
+  const db=mockDB({...base,
+    "usuarios/sup": {id:"sup",authUid:"sup",tipoUsuario:"supervisor",status:"ATIVO",
+      acessoLiberado:true,clientePlataformaId:"tenant-a",equipeId:"equipe-a",nome:"Supervisor"},
+    "clientes_operacionais/existente": {clientePlataformaId:"tenant-a",documentoNormalizado:doc,
+      vendedorAuthUid:"outro",nome:"Não compartilhar"}
+  });
+  const api=contexto(db);
+  const pedido=await api.solicitar({
+    chaveDuplicidade:"doc_"+doc+"_tel_sem",documentoNormalizado:doc,telefonesNormalizados:[]
+  },{auth:{uid:"u"}});
+  assert.equal(pedido.pendente,true);
+  assert.ok(db.store.has("solicitacoes/"+pedido.solicitacaoId));
+  assert.ok([...db.store.keys()].some(key=>key.startsWith("notificacoes/dup_ap_")));
+  const decisao=await api.decidir({solicitacaoId:pedido.solicitacaoId,decisao:"APROVAR",motivo:"Validado"},
+    {auth:{uid:"sup"}});
+  assert.equal(decisao.status,"APROVADA");
+  const consulta=await api.consultarDocumento({documento:doc},{auth:{uid:"u"}});
+  assert.equal(consulta.autorizado,true);
+  const cadastro=await api.cadastrarCliente({dados:{documento:doc,nome:"Cliente Autorizado",
+    telefonePrincipal:"11999991111"}},{auth:{uid:"u"}});
+  assert.equal(cadastro.cadastroDuplicadoAutorizado,true);
+});
+
+test("registro legado sem ficha também bloqueia CPF/CNPJ", async () => {
+  const db=mockDB({...base,
+    "clientes/sem-ficha":{clientePlataformaId:"tenant-a",documentoNormalizado:cpf,
+      vendedorAuthUid:"outro",nome:"Legado"}});
+  const api=contexto(db);
+  const resposta=await api.consultarDocumento({documento:cpf},{auth:{uid:"u"}});
+  assert.equal(resposta.existe,true);
+  await assert.rejects(api.cadastrarCliente({dados:{
+    documento:cpf,nome:"Nova Tentativa",telefonePrincipal:"11912345678"
+  }},{auth:{uid:"u"}}), /Solicite autorização/);
 });
 
 test("telas comerciais exigem consulta e mostram simulação; caixa permanece transacional", () => {
