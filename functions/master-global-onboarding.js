@@ -82,19 +82,20 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
         (telefone && (telefone.length < 10 || telefone.length > 13))) {
       erro("invalid-argument", "Informe nome, e-mail e telefone válidos.");
     }
-    if (planoId) {
-      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(planoId)) erro("invalid-argument", "Plano inválido.");
-      const plano = await db.collection("planos").doc(planoId).get();
-      if (!plano.exists || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(plano.data()?.status))) {
-        erro("failed-precondition", "Plano comercial não encontrado ou inativo.");
-      }
-    }
     const principal = db.collection("clientes_integro");
     const legado = db.collection("clientes_plataforma");
     const ref = id ? principal.doc(id) : principal.doc();
     const reserva = db.collection("documentos_clientes_integro").doc(documentoNormalizado);
     const existente = id ? await ref.get() : null;
     if (id && !existente.exists) erro("not-found", "Cliente ÍNTEGRO não encontrado.");
+    if (planoId) {
+      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(planoId)) erro("invalid-argument", "Plano inválido.");
+      const plano = await db.collection("planos").doc(planoId).get();
+      if (!plano.exists || (["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(plano.data()?.status)) &&
+          !(id && existente.data()?.planoId === planoId))) {
+        erro("failed-precondition", "Plano comercial não encontrado ou inativo.");
+      }
+    }
     if (id && digits(existente.data()?.documento) !== documentoNormalizado) {
       erro("failed-precondition", "O documento de um cliente já cadastrado não pode ser alterado.");
     }
@@ -105,7 +106,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
       nome, razaoSocial: nome, email, emailNormalizado: email, telefone,
       atualizadoEm: agora(), atualizadoPorUid: autor.uid
     };
-    if (planoId) atualizacao.planoId = planoId;
+    atualizacao.planoId = planoId; // Permite desvincular plano explicitamente.
     if (id) {
       await db.runTransaction(async tx => {
         const [original, reservada] = await Promise.all([tx.get(ref), tx.get(reserva)]);
