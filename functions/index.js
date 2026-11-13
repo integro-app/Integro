@@ -240,7 +240,9 @@ exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").h
       editarMasterLocal: gestaoGlobal.editarMasterLocal,
       alterarAcessoUsuario: gestaoGlobal.alterarAcessoUsuario,
       criarNotificacao: gestaoGlobal.criarNotificacao,
-      marcarNotificacaoLida: gestaoGlobal.marcarNotificacaoLida
+      marcarNotificacaoLida: gestaoGlobal.marcarNotificacaoLida,
+      listarChat: gestaoGlobal.listarChat,
+      enviarChat: gestaoGlobal.enviarChat
     };
     const acao = String(dados?.acao || "");
     const handler = Object.prototype.hasOwnProperty.call(handlers, acao) ? handlers[acao] : null;
