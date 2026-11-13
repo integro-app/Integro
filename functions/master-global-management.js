@@ -281,8 +281,26 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     return { ok: true, id };
   }
 
+  async function listarChat(dados, contexto) {
+    await autor(contexto, true);
+    const q = await db.collection("mensagens_integro").orderBy("criadoEm", "desc").limit(100).get();
+    return { ok: true, mensagens: q.docs.map(d => ({ id: d.id, ...normalizar(d.data()) })).reverse() };
+  }
+
+  async function enviarChat(dados, contexto) {
+    const a = await autor(contexto, true);
+    const mensagem = txt(dados?.mensagem);
+    if (!mensagem || mensagem.length > 1200) fail("invalid-argument", "Mensagem deve ter entre 1 e 1200 caracteres.");
+    const ref = db.collection("mensagens_integro").doc();
+    await db.runTransaction(async tx => {
+      tx.create(ref, { mensagem, autorUid: a.uid, autorNome: a.nome, origem: "PLATAFORMA",
+        criadoEm: agora() });
+    });
+    return { ok: true, id: ref.id };
+  }
+
   return { listarPainel, salvarDepartamento, salvarPlano, salvarConfiguracoes,
     salvarUsuarioInterno, editarMasterLocal, alterarAcessoUsuario,
-    criarNotificacao, marcarNotificacaoLida };
+    criarNotificacao, marcarNotificacaoLida, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };
