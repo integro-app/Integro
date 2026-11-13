@@ -313,3 +313,36 @@ test("consulta e listener descartam documentos de outro tenant mesmo em snapshot
   runtime.ouvir({db,colecao:"vendas",aoAtualizar:lista=>{observados=lista;}});
   assert.deepEqual(Array.from(observados,x=>x.id),["a"]);
 });
+
+test("State nunca mistura vendas, caixas, clientes ou operadores entre tenants",()=>{
+  const ctx={
+    window:{},
+    console,
+    sessionStorage:{setItem(){}},
+    localStorage:{removeItem(){}}
+  };
+  ctx.window=ctx;
+  vm.createContext(ctx);
+  const fonte=fs.readFileSync(path.join(__dirname,"..","js","state.js"),"utf8");
+  const state=vm.runInContext(fonte+"\n;State",ctx);
+  state.setUsuario({id:"doc-a",authUid:"auth-a",tipoUsuario:"usuario_cliente",clientePlataformaId:"tenant_a"});
+  const lista=[
+    {id:"correto",clientePlataformaId:"tenant_a"},
+    {id:"de-outra-empresa",clientePlataformaId:"tenant_b"},
+    {id:"sem-empresa"}
+  ];
+  for(const [setter,getter] of [
+    ["setClientes","getClientes"],["setVendas","getVendas"],
+    ["setCaixas","getCaixas"],["setPagamentos","getPagamentos"],
+    ["setParcelas","getParcelas"],["setUsuarios","getUsuarios"],
+    ["setEquipes","getEquipes"],["setSolicitacoes","getSolicitacoes"],
+    ["setLancamentosFinanceiros","getLancamentosFinanceiros"]
+  ]){
+    state[setter](lista);
+    assert.deepEqual(Array.from(state[getter](),item=>item.id),["correto"],setter);
+  }
+  state.setUsuario({id:"doc-b",authUid:"auth-b",tipoUsuario:"usuario_cliente",clientePlataformaId:"tenant_b"});
+  assert.equal(state.getVendas().length,0);
+  assert.equal(state.getCaixas().length,0);
+  assert.equal(state.getClientes().length,0);
+});
