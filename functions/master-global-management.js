@@ -292,9 +292,11 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
   }
 
   async function listarAvisosInternos(dados, contexto) {
-    await autor(contexto, true);
+    const a = await autor(contexto, true);
     const avisos = await obterNotificacoesGlobais();
-    return { ok: true, notificacoes: avisos.sort((a, b) =>
+    const naoLidos = avisos.filter(n => !(n.lidaPorUids || []).includes(a.uid) &&
+      !["LIDA", "RESOLVIDA"].includes(upper(n.status))).length;
+    return { ok: true, totalNaoLidos: naoLidos, notificacoes: avisos.sort((a, b) =>
       Date.parse(b.criadoEm || 0) - Date.parse(a.criadoEm || 0)).slice(0, 200) };
   }
 
