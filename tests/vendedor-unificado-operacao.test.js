@@ -18,8 +18,8 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261112-demo-comercial-v1/);
-  assert.match(master, /css\/vendedor-operacao\.css\?v=20261112-demo-comercial-v1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261112-vendas-dia-sync-v1/);
+  assert.match(master, /css\/vendedor-operacao\.css\?v=20261112-vendas-busca-instantanea-v1/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
 });
@@ -61,10 +61,10 @@ test("card de cobrança contém whatsapp, situação, parcelas e somente ações
   assert.doesNotMatch(operacao, /<span>Histórico<\/span>/);
 });
 
-test("vendas mostram somente vendas do dia do caixa e usam filtros por checkbox", () => {
+test("vendas mostram somente vendas de hoje e usam filtros por checkbox", () => {
   assert.doesNotMatch(unificado, /id="filtroPeriodoVendaVendedor"/);
-  assert.match(unificado, /dataVenda !== dataCaixaAtual/);
-  assert.match(unificado, /no dia do caixa/);
+  assert.match(unificado, /dataVenda !== dataHoje/);
+  assert.match(unificado, /venda\(s\) de hoje/);
   assert.match(unificado, /filtroVendaAtiva/);
   assert.match(unificado, /filtroVendaRenovacao/);
   assert.match(unificado, /Data da venda/);
@@ -97,10 +97,11 @@ test("clientes do vendedor ficam em tela propria com gestao e retorno para leads
   assert.match(unificado, /ClientesService\?\.retornarClienteParaLeads/);
 });
 test("vendas legadas podem ser reconhecidas pelo cliente vinculado ao vendedor", () => {
-  assert.match(unificado, /!pertenceAoVendedor\(v\) && !pertenceAoVendedor\(cliente\)/);
+  assert.match(unificado, /vinculosVendedorRegistro\(v\)\.length > 0 \|\| !pertenceAoVendedor\(cliente\)/);
   assert.match(perfis, /function idsVendasReferenciadas\(clientes = \[\]\)/);
   assert.match(perfis, /vendaAtivaId/);
-  assert.match(perfis, /function carregarVendasVendedor\(clientes = \[\]\)/);
+  assert.match(perfis, /function carregarVendasVendedor\(clientes = \[\], opcoes = \{\}\)/);
+  assert.match(perfis, /forcar: opcoes\.forcar === true/);
   assert.match(perfis, /db\.collection\(CONFIG\.COLECOES\.VENDAS\)\.doc\(id\)\.get\(\)/);
 });
 
@@ -124,7 +125,7 @@ test("operação unificada preserva pagamento e não pagamento transacionais", (
 
 
 test("caixa aberto do vendedor reconhece aliases legados e é recarregado antes da venda", () => {
-  assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
+  assert.match(master, /js\/perfis-unificados\.js\?v=20261112-vendas-dia-sync-v1/);
   assert.match(perfis, /function camposCaixaProprio\(\)/);
   assert.match(perfis, /\["vendedorId", id\]/);
   assert.match(perfis, /\["abertoPorUid", uid\]/);
@@ -261,8 +262,8 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /carregarLancamentosVendedor\(caixas, alvo, \{ forcar: true \}\)/);
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
-  assert.match(master, /js\/perfis-unificados\.js\?v=20260818-v272-perf1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261112-demo-comercial-v1/);
+  assert.match(master, /js\/perfis-unificados\.js\?v=20261112-vendas-dia-sync-v1/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261112-vendas-dia-sync-v1/);
 });
 
 

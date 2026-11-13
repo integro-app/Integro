@@ -118,14 +118,20 @@
     if(!original)return;
     if(config.search?.bar.isConnected){if(config.search.syncedValue!==original.value){config.search.input.value=original.value;config.search.syncedValue=original.value;}config.search.original=original;return;}
     const bar=document.createElement('div');bar.className='ig-querybar';
+    const isSalesQuery=config.sources[0]?.id==='filtrosVendasVendedor';
     const label=document.createElement('label');label.className='ig-query-field';
     const icon=document.createElementNS('http://www.w3.org/2000/svg','svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('width','20');icon.setAttribute('height','20');icon.setAttribute('fill','none');icon.setAttribute('stroke','currentColor');icon.setAttribute('stroke-width','1.8');icon.setAttribute('aria-hidden','true');icon.innerHTML='<circle cx="10.5" cy="10.5" r="6.5"></circle><path d="m16 16 5 5" stroke-linecap="round"></path>';
     const input=document.createElement('input');input.type='search';input.placeholder=original.placeholder||'Buscar registros';input.setAttribute('aria-label',original.getAttribute('aria-label')||input.placeholder);input.value=original.value;input.dataset.igQueryInput='true';input.autocomplete='off';
     const submit=document.createElement('button');submit.type='button';submit.className='primary-btn ig-query-submit';submit.textContent='Buscar';submit.dataset.igQuerySubmit='true';
-    label.append(icon,input);bar.append(label,submit);config.trigger.before(bar);if(config.clear){bar.append(config.clear);config.clear.addEventListener('click',()=>{input.value='';schedule();});}bar.append(config.trigger);config.trigger.textContent='Filtros';
+    label.append(icon,input);bar.append(label);
+    if(!isSalesQuery)bar.append(submit);
+    config.trigger.before(bar);if(config.clear){bar.append(config.clear);config.clear.addEventListener('click',()=>{input.value='';schedule();});}bar.append(config.trigger);config.trigger.textContent='Filtros';
     if(['filtrosCobrancasVendedor','filtrosVendasVendedor'].includes(config.sources[0].id)){
       const isSales=config.sources[0].id==='filtrosVendasVendedor';
-      for(const [button,label,shape] of [[submit,isSales?'Buscar vendas':'Buscar cobranças','<circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path>'],[config.trigger,'Filtros de exibição','<path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"></path>']]){
+      const botoes=isSales
+        ? [[config.trigger,'Filtros de vendas','<path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"></path>']]
+        : [[submit,'Buscar cobranças','<circle cx="11" cy="11" r="7"></circle><path d="m16 16 4 4"></path>'],[config.trigger,'Filtros de exibição','<path d="M4 5h16l-6 7v6l-4 2v-8L4 5Z"></path>']];
+      for(const [button,label,shape] of botoes){
         button.classList.add(isSales?'vendas-query-action':'cobrancas-query-action');button.setAttribute('aria-label',label);button.title=label;
         const caption=document.createElement('span');caption.textContent=button.textContent;
         const svg=icon.cloneNode(false);svg.innerHTML=shape;svg.setAttribute('aria-hidden','true');
@@ -136,6 +142,18 @@
     config.trigger.hidden=!!config.generated&&!advanced;
     if(config.trigger.hidden){const toolbar=config.sources[0].parentElement;const native=[...toolbar.querySelectorAll('button')].find(button=>button!==config.trigger&&!button.hasAttribute('data-ig-filter-trigger')&&!config.sources.some(source=>source.contains(button))&&/filtros/.test(normal(text(button))));if(native)bar.append(native);}
     config.search={bar,input,original,syncedValue:original.value};
+    if(isSalesQuery){
+      // Vendas não executa "Buscar": filtra o State já hidratado pelo Firebase
+      // enquanto o vendedor digita, inclusive no ícone de limpar do iOS.
+      const pesquisaInstantanea=()=>{
+        original.value=input.value;
+        config.search.syncedValue=input.value;
+        original.dispatchEvent(new Event('input',{bubbles:true}));
+      };
+      input.addEventListener('input',pesquisaInstantanea);
+      input.addEventListener('search',pesquisaInstantanea);
+      return;
+    }
     const search=async()=>{if(applying)return;const values=fields(config).map(field=>({original:field,key:fieldKey(field),initial:read(field),value:read(field)}));const selected=values.find(p=>p.original===config.search.original);if(!selected)return;selected.value.value=input.value;submit.disabled=true;try{await execute(config,values);}finally{submit.disabled=false;}};
     submit.addEventListener('click',search);input.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();search();}});
   }
@@ -156,14 +174,14 @@
       config.apply=toolbar?.querySelector('.vendedor-buscar-btn');
       if(config.apply)config.apply.dataset.igFilterSource='true';
     }
-    // Vendas adota a mesma barra de pesquisa de Cobranças. A busca fica
-    // visível e os checkboxes continuam exclusivos da gaveta lateral.
+    // Em Vendas a busca é dinâmica: só a gaveta de filtros acompanha a
+    // barra compacta, sem botão Buscar ou ação de consulta manual.
     if(first.id==='filtrosVendasVendedor'){
       const toolbar=root.querySelector('#abaVendasDia > .vendedor-vendas-barra');
       const search=toolbar?.querySelector('label[for="buscaVendaVendedorInput"]');
       if(search)sources.push(search);
-      config.apply=toolbar?.querySelector('.vendedor-buscar-btn');
-      if(config.apply)config.apply.dataset.igFilterSource='true';
+      // O botão Aplicar filtros permanece na gaveta, mas a barra não tem Buscar.
+      config.apply=null;
     }
     if(first.id==="movuFilters"){
       const toolbar=first.previousElementSibling;const search=toolbar?.querySelector('.movu-search');if(search)sources.push(search);config.apply=toolbar?.querySelector('.primary-btn');if(config.apply)config.apply.dataset.igFilterSource="true";

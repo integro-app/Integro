@@ -174,6 +174,80 @@
 
   let refreshOperacaoTimer = 0;
   let refreshOperacaoPromessa = null;
+  let consultaVendasDiaPromessa = null;
+  let ultimaConsultaVendasDiaEm = 0;
+  let escopoConsultaVendasDia = "";
+  const vendasConfirmadasNoServidor = new Map();
+  const ESCOPO_VENDAS_DIA_TTL_MS = 2 * 60 * 1000;
+
+  function escopoVendasDiaAtual() {
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const tenant = texto(State.getTenantId?.());
+    const uid = texto(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
+    return tenant && uid ? tenant + ":" + uid : "";
+  }
+
+  function mesclarVendasConfirmadas(lista = []) {
+    const escopo = escopoVendasDiaAtual();
+    const agora = Date.now();
+    const mapa = new Map();
+    (Array.isArray(lista) ? lista : []).forEach(venda => {
+      const id = texto(venda?.id || venda?.vendaId);
+      if (id) mapa.set(id, venda);
+    });
+    for (const [id, registro] of vendasConfirmadasNoServidor) {
+      if (!escopo || registro.escopo !== escopo || agora - registro.confirmadaEm > ESCOPO_VENDAS_DIA_TTL_MS) {
+        vendasConfirmadasNoServidor.delete(id);
+        continue;
+      }
+      // Se a consulta trouxe o registro, mantém a versão do servidor; se
+      // uma leitura em cache o omitiu, conserva por curto prazo o GET confirmado.
+      if (!mapa.has(id)) mapa.set(id, registro.venda);
+    }
+    return [...mapa.values()];
+  }
+
+  async function carregarVendaConfirmadaServidor(vendaId) {
+    const id = texto(vendaId);
+    const db = window.db || window.firebase?.firestore?.();
+    const escopo = escopoVendasDiaAtual();
+    const tenant = texto(State.getTenantId?.());
+    if (!id || !db || !escopo || !tenant) return false;
+    const snap = await db.collection("vendas").doc(id).get({ source: "server" });
+    if (!snap.exists || escopo !== escopoVendasDiaAtual()) return false;
+    const venda = { id: snap.id || id, ...snap.data() };
+    if (texto(venda.clientePlataformaId) !== tenant ||
+        !pertenceAoVendedor(venda, usuarioAtual || State.getUsuario?.())) return false;
+    vendasConfirmadasNoServidor.set(id, { venda, escopo, confirmadaEm: Date.now() });
+    const atuais = (State.getVendas?.() || []).filter(item => texto(item.id || item.vendaId) !== id);
+    State.setVendas?.(mesclarVendasConfirmadas([...atuais, venda]));
+    caches();
+    renderVendasDia();
+    return true;
+  }
+
+  async function atualizarVendasDiaServidor({ forcar = false } = {}) {
+    const svc = window.IntegroPerfisUnificados;
+    const escopo = escopoVendasDiaAtual();
+    if (!svc?.carregarVendasVendedor || !escopo) return;
+    if (escopo !== escopoConsultaVendasDia) {
+      escopoConsultaVendasDia = escopo;
+      ultimaConsultaVendasDiaEm = 0;
+    }
+    if (!forcar && Date.now() - ultimaConsultaVendasDiaEm < 5000) return;
+    if (consultaVendasDiaPromessa) return consultaVendasDiaPromessa;
+    consultaVendasDiaPromessa = (async () => {
+      const vendas = await svc.carregarVendasVendedor(State.getClientes?.() || [],
+        { forcar: true, exigirConsultaValida: true });
+      if (escopo !== escopoVendasDiaAtual()) return;
+      State.setVendas?.(mesclarVendasConfirmadas(vendas));
+      caches();
+      ultimaConsultaVendasDiaEm = Date.now();
+      if (abaAtual === "vendas") renderVendasDia();
+    })();
+    try { return await consultaVendasDiaPromessa; }
+    finally { consultaVendasDiaPromessa = null; }
+  }
 
   function agendarRefreshOperacaoVendedor(opcoes = {}) {
     window.clearTimeout(refreshOperacaoTimer);
@@ -204,7 +278,9 @@
       const caixasPromise = Promise.resolve(svc.carregarCaixasVendedor?.() || []);
       const [caixas, vendas, pagamentos, parcelas, historico] = await Promise.all([
         caixasPromise,
-        svc.carregarVendasVendedor?.(listaClientes) || [],
+        svc.carregarVendasVendedor?.(listaClientes, {
+          forcar: render === "vendas", exigirConsultaValida: render === "vendas"
+        }) || [],
         caixasPromise.then(caixasAtuais => svc.carregarPagamentosHojePorPerfil
           ? svc.carregarPagamentosHojePorPerfil(caixasAtuais, { cacheMs: 0, forcar: true })
           : svc.carregarColecaoPorPerfil(colecoes.PAGAMENTOS || "pagamentos",
@@ -214,7 +290,7 @@
       ]);
       State.setClientes?.(listaClientes);
       State.setCaixas?.(caixas);
-      State.setVendas?.(vendas);
+      State.setVendas?.(mesclarVendasConfirmadas(vendas));
       State.setPagamentos?.(pagamentos);
       State.setParcelas?.(parcelas);
       State.setHistoricoCobrancas?.(historico);
@@ -797,10 +873,9 @@
           <div class="vendedor-operacao-barra vendedor-vendas-barra">
             <label class="vendedor-operacao-busca" for="buscaVendaVendedorInput">
               <span class="material-symbols-rounded">search</span>
-              <input id="buscaVendaVendedorInput" type="search" placeholder="Buscar por cliente, documento ou código da venda" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarVendasVendedor()}">
+              <input id="buscaVendaVendedorInput" type="search" placeholder="Buscar por cliente, documento ou código da venda" oninput="renderVendasDia()" autocomplete="off">
             </label>
             <button class="ghost-btn vendedor-filtro-btn" type="button" onclick="toggleFiltrosVendasVendedor()"><span class="material-symbols-rounded">tune</span>Filtros</button>
-            <button class="primary-btn vendedor-buscar-btn" type="button" onclick="buscarVendasVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
           </div>
           <div id="filtrosVendasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
@@ -812,7 +887,7 @@
               <label class="vendedor-check"><input id="filtroVendaNova" type="checkbox"><span>Novas</span></label>
               <label class="vendedor-check"><input id="filtroVendaRenovacao" type="checkbox"><span>Renovações</span></label>
             </div>
-            <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosVendasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="buscarVendasVendedor()">Aplicar filtros</button></div>
+            <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosVendasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="renderVendasDia()">Aplicar filtros</button></div>
           </div>
           <div id="contadorVendasDia" class="vendedor-operacao-contador"></div>
           <div id="listaVendasDia" class="vendedor-vendas-dia"></div>
@@ -917,7 +992,9 @@
   }
 
   function vendasFiltradas() {
-    const dataCaixaAtual = dataCaixa();
+    // Dia da venda gravada no Firebase (fuso São Paulo), não o dia histórico
+    // de um caixa reaberto: a aba mostra apenas as vendas realizadas hoje.
+    const dataHoje = hoje();
     const termo = texto(document.getElementById("buscaVendaVendedorInput")?.value).toLowerCase();
     const vendaAtivaFiltro = document.getElementById("filtroVendaAtiva")?.checked === true;
     const vendaQuitadaFiltro = document.getElementById("filtroVendaQuitada")?.checked === true;
@@ -930,9 +1007,12 @@
 
     return (State.getVendas?.() || []).filter(v => {
       const cliente = clientes.find(c => texto(c.id || c.clienteId || c.clienteOperacionalId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
-      if (!pertenceAoVendedor(v) && !pertenceAoVendedor(cliente)) return false;
+      // Não atribuir ao vendedor atual vendas antigas de outro vendedor
+      // apenas porque o cliente foi transferido para sua carteira.
+      if (!pertenceAoVendedor(v) &&
+          (vinculosVendedorRegistro(v).length > 0 || !pertenceAoVendedor(cliente))) return false;
       const dataVenda = dataRegistro(v);
-      if (dataVenda !== dataCaixaAtual) return false;
+      if (dataVenda !== dataHoje) return false;
 
       const status = texto(v.statusVenda || v.status || "ATIVA").toUpperCase();
       const tipo = texto(v.tipoVenda || v.tipo || "NOVA").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -953,10 +1033,10 @@
     const el = document.getElementById("listaVendasDia");
     if (!el) return;
     const vendas = vendasFiltradas();
-    const data = dataCaixa();
+    const data = hoje();
     const total = vendas.reduce((s, v) => s + numero(v.valorEmprestado || v.valorVenda || v.valor), 0);
     const contador = document.getElementById("contadorVendasDia");
-    if (contador) contador.textContent = vendas.length ? `${vendas.length} venda(s) no dia do caixa (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}` : "";
+    if (contador) contador.textContent = vendas.length ? `${vendas.length} venda(s) de hoje (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}` : "";
     el.innerHTML = vendas.length ? vendas.map(v => {
       const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
       return `<article class="vendedor-venda-card">
@@ -1017,6 +1097,7 @@
       window.renderCobrancas?.();
     } else if (abaAtual === "vendas") {
       renderVendasDia();
+      atualizarVendasDiaServidor().catch(erro => console.warn("[ÍNTEGRO VENDEDOR] Falha ao atualizar as vendas de hoje.", erro));
     } else {
       // Troca de aba imediata; conferência do servidor chega depois no painel.
       const controller = window.IntegroVendedorFechamentoCaixa;
@@ -2496,6 +2577,8 @@
   function limparVendas() {
     const busca = document.getElementById("buscaVendaVendedorInput");
     if (busca) busca.value = "";
+    const consultaVisivel = document.querySelector("#abaVendasDia .ig-querybar input[data-ig-query-input]");
+    if (consultaVisivel) consultaVisivel.value = "";
     ["filtroVendaAtiva", "filtroVendaQuitada", "filtroVendaCancelada", "filtroVendaNova", "filtroVendaRenovacao"].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
     renderVendasDia();
   }
@@ -2663,11 +2746,23 @@
         UIHelpers?.alerta?.("Venda enviada para análise do Supervisor/Gerente. Você será avisado quando houver uma decisão.");
         return;
       }
+      // Não cria card otimista: lê o documento REAL devolvido pela transação
+      // e injeta a venda oficial no estado antes de exibir a aba do vendedor.
+      let vendaVisivel = false;
+      const vendaConfirmadaId = texto(resultadoVenda?.vendaId || resultadoVenda?.id);
+      if (vendaConfirmadaId) {
+        try { vendaVisivel = await carregarVendaConfirmadaServidor(vendaConfirmadaId); }
+        catch (erroSync) {
+          console.warn("[ÍNTEGRO VENDEDOR] Venda confirmada, leitura imediata pendente.", erroSync);
+        }
+      }
+      // Força o refresh da carteira sem depender de cache de vendas anterior.
       agendarRefreshOperacaoVendedor({ render: "vendas" });
       const itemOperacao = document.querySelector('#sidebar [data-modulo="operacao"], #sidebar [data-modulo="cobrancas"]');
       window.trocarTela?.("cobrancas", itemOperacao || null);
       setTimeout(() => { abrirAba("vendas"); renderVendasDia(); }, 80);
-      UIHelpers?.alerta?.("Venda registrada com sucesso.");
+      UIHelpers?.alerta?.(vendaVisivel ? "Venda registrada e incluída nas vendas de hoje."
+        : "Venda registrada. Atualizando a lista de hoje diretamente do Firebase.");
     } catch (erro) {
       console.error(erro);
       UIHelpers?.alerta?.(erro?.message || "Não foi possível registrar a venda.");
