@@ -91,10 +91,10 @@
   }
   async function carregarAvisos(){
     const r=await chamar('listarAvisosInternos');avisosInternos=r.notificacoes||[];
-    const naoLidos=avisosInternos.filter(n=>!(n.lidaPorUids||[]).includes(usuarioInterno.authUid)).length;
+    const naoLidos=Number(r.totalNaoLidos??avisosInternos.filter(n=>!(n.lidaPorUids||[]).includes(usuarioInterno.authUid)).length);
     el('kpiAvisos').textContent=naoLidos;
     el('listaAvisos').innerHTML=avisosInternos.length?avisosInternos.map(n=>{
-      const lida=(n.lidaPorUids||[]).includes(usuarioInterno.authUid);
+      const lida=(n.lidaPorUids||[]).includes(usuarioInterno.authUid)||['LIDA','RESOLVIDA'].includes(n.status);
       return '<div class="registro"><div class="linha"><strong>'+esc(n.titulo||'Aviso')+'</strong>'+
         (lida?'<span class="muted">Lida</span>':'<button class="btn" data-aviso="'+esc(n.id)+'" type="button">Marcar lida</button>')+
         '</div><span class="muted">'+esc(data(n.criadoEm))+'</span><p>'+esc(n.mensagem||'')+'</p></div>';
