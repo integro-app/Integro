@@ -76,7 +76,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       "id", "authUid", "nome", "nomeCompleto", "email", "tipoUsuario",
       "tipoUsuarioOficial", "cargoChave", "cargoNome", "clientePlataformaId",
       "clientePlataformaNome", "empresaNome", "departamentoId", "status",
-      "acessoLiberado", "ativo", "convitePendente", "provisionamentoAuth",
+      "acessoLiberado", "empresaBloqueada", "ativo", "convitePendente", "provisionamentoAuth",
       "usuarioInternoIntegro", "criadoEm", "atualizadoEm"
     ];
     const usuariosSeguros = usuarios.map(u =>
@@ -183,7 +183,8 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
         tx.set(ref, campos, { merge: true });
         log(tx, "EDITAR_USUARIO_INTERNO", a, email, { usuarioAlvoUid: id });
       });
-      await admin.auth().updateUser(id, { displayName: nome });
+      try { await admin.auth().updateUser(id, { displayName: nome }); }
+      catch (erro) { console.warn("[MASTER GLOBAL] Auth displayName pendente de sincronização", erro); }
       return { ok: true, authUid: id, existente: true };
     }
     const [q1, q2] = await Promise.all([
@@ -235,7 +236,8 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       tx.set(ref, { nome, nomeCompleto: nome, atualizadoEm: agora(), atualizadoPorUid: a.uid }, { merge: true });
       log(tx, "EDITAR_MASTER_LOCAL", a, id, { usuarioAlvoUid: id, clientePlataformaId: atual.data().clientePlataformaId });
     });
-    await admin.auth().updateUser(id, { displayName: nome });
+    try { await admin.auth().updateUser(id, { displayName: nome }); }
+    catch (erro) { console.warn("[MASTER GLOBAL] Auth displayName pendente de sincronização", erro); }
     return { ok: true, id };
   }
 
