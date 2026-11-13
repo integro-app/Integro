@@ -357,6 +357,17 @@
     const totalPagas = Math.max(0, inteiro(snapshot.totalPagas));
     const totalNaoPagas = Math.max(0, inteiro(snapshot.totalNaoPagas));
     const visitadas = Math.max(0, inteiro(snapshot.totalVisitadas));
+    const pendentesOficiais = Array.isArray(snapshot.pendenciasCobrancas) ? snapshot.pendenciasCobrancas : [];
+    const escapar = valor => texto(valor).replace(/[&<>"']/g, caractere =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[caractere]);
+    const detalhesPendencias = pendentesOficiais.length ? `
+      <details class="integro-fechamento-pendencias-detalhes" open>
+        <summary>Ver ${pendentesOficiais.length} cobrança(s) que o servidor considera pendente(s)</summary>
+        <ul>${pendentesOficiais.map(item =>
+          `<li>${escapar(item.clienteNome || "Cliente sem nome")} <small>(venda ${escapar(item.vendaId || "sem ID")})</small></li>`
+        ).join("")}</ul>
+        <p>Se estes clientes não aparecem em Cobranças, a carteira e a conferência precisam ser conciliadas. Não registre baixas fictícias.</p>
+      </details>` : "";
     return `
       <div class="integro-fechamento-head">
         <div><span class="integro-fechamento-origem">Dados oficiais do Firebase · conferência sem fechar</span><h2>Conferência do caixa</h2><p>Consulte os valores atualizados, confira todas as visitas e confirme o dinheiro físico. Esta tela não encerra o caixa sem sua confirmação.</p></div>
@@ -387,6 +398,7 @@
         <div class="integro-fechamento-aviso ${situacao.podeFechar ? "liberado" : "pendente"}" role="status">
           <strong>${situacao.podeFechar ? "Visitas concluídas. Confira o dinheiro do caixa." : "Consulta liberada — fechamento ainda bloqueado"}</strong>
           ${situacao.motivos.map(motivo => `<div>${motivo}</div>`).join("")}
+          ${detalhesPendencias}
         </div>
         <div class="integro-fechamento-conferencia">
           <label for="integroFechamentoValorInformado">Digite o valor do caixa atual para confirmar</label>
