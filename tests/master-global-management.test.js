@@ -216,6 +216,8 @@ test("todas as ações do Master Global usam callable protegida e nenhum formul�
   ];
   for (const action of route) assert.match(index, new RegExp(action + ": gestaoGlobal\\." + action));
   assert.match(index, /return protegerSessao\(handler\)\(entrada, contexto\)/);
+  assert.match(index, /await sessionAuthorization\.validate\(contexto\)/);
+  assert.match(index, /await exigirEmpresaOperacional\(\{ db, functions, usuario: autor, tenantId: tenant \}\)/);
   assert.match(html, /function renderRelatorios\(/);
   assert.match(html, /function exportarRelatorioGlobal\(/);
   assert.match(html, /function abrirFormPlano\(id=null\)/);
