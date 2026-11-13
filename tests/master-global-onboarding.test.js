@@ -60,7 +60,8 @@ function ambiente() {
     }
   };
   const admin = {
-    firestore: { FieldValue: { serverTimestamp: () => "server-timestamp" } },
+    firestore: { FieldValue: { serverTimestamp: () => "server-timestamp" },
+      Timestamp: { fromDate: data => data } },
     auth: () => ({
       async getUserByEmail(email) {
         if (!authUsers.has(email)) throw Object.assign(new Error("not found"), { code: "auth/user-not-found" });
