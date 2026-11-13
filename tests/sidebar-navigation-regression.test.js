@@ -346,6 +346,7 @@ test("Operação do vendedor seleciona apenas abas permitidas e preserva a confe
       window, document: { getElementById: id => elementos[id] || null },
       State: { getUsuario: () => usuario },
       renderVendasDia: () => eventos.push(["renderVendasDia"]),
+      atualizarVendasDiaServidor: async () => {},
       setTimeout: callback => callback()
     });
     api.abrirOperacao();
