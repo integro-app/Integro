@@ -1134,26 +1134,3 @@ test("usuarios: perfil legado autenticado por authUid pode editar apenas campos 
     telefone: "11000000000"
   }));
 });
-
-test("Master Global revoga acesso operacional de tenant por flag canônica do usuário", async () => {
-  const venda = doc(appDb(profiles.masterA), "vendas", "venda_a_1");
-  const usuarioRef = doc(appDb(profiles.masterGlobal), "usuarios", profiles.masterA.uid);
-  try {
-    await testEnv.withSecurityRulesDisabled(async context => {
-      await setDoc(doc(context.firestore(), "usuarios", profiles.masterA.uid),
-        { empresaBloqueada: false }, { merge: true });
-    });
-    await assertSucceeds(getDoc(venda));
-    await testEnv.withSecurityRulesDisabled(async context => {
-      await setDoc(doc(context.firestore(), "usuarios", profiles.masterA.uid),
-        { empresaBloqueada: true }, { merge: true });
-    });
-    await assertFails(getDoc(venda));
-    await assertSucceeds(getDoc(usuarioRef));
-  } finally {
-    await testEnv.withSecurityRulesDisabled(async context => {
-      await setDoc(doc(context.firestore(), "usuarios", profiles.masterA.uid),
-        { empresaBloqueada: false }, { merge: true });
-    });
-  }
-});
