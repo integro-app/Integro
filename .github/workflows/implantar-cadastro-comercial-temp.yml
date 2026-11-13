@@ -5,6 +5,7 @@ on:
       - feat/demo-cliente-venda-caixa-20261112
     paths:
       - ".github/workflows/implantar-cadastro-comercial-temp.yml"
+      - "scripts/deploy-demo-indexes-rest.mjs"
 permissions:
   contents: read
 concurrency:
