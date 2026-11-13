@@ -70,10 +70,18 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     const notificacoes = notificacoesBrutas
       .filter(n => n.escopo === "PLATAFORMA")
       .sort((a, b) => Date.parse(b.criadoEm || 0) - Date.parse(a.criadoEm || 0));
-    const usuariosSeguros = usuarios.map(u => {
-      const { senha, password, token, refreshToken, sessionId, ...permitido } = u;
-      return permitido;
-    });
+    // Nunca devolver tokens, permissões internas, hashes ou segredos presentes
+    // em documentos legados de usuários para o navegador administrativo.
+    const camposUsuario = [
+      "id", "authUid", "nome", "nomeCompleto", "email", "tipoUsuario",
+      "tipoUsuarioOficial", "cargoChave", "cargoNome", "clientePlataformaId",
+      "clientePlataformaNome", "empresaNome", "departamentoId", "status",
+      "acessoLiberado", "ativo", "convitePendente", "provisionamentoAuth",
+      "usuarioInternoIntegro", "criadoEm", "atualizadoEm"
+    ];
+    const usuariosSeguros = usuarios.map(u =>
+      Object.fromEntries(camposUsuario.filter(c => Object.prototype.hasOwnProperty.call(u, c)).map(c => [c, u[c]]))
+    );
     return {
       ok: true, clientes, usuarios: usuariosSeguros, departamentos, planos, notificacoes, logs,
       configuracoes: configSnap.exists ? normalizar(configSnap.data()) : { nome: "ÍNTEGRO", diasTestePadrao: 7 },
