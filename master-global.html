@@ -284,7 +284,15 @@
     function funcaoMasterGlobal(nome){
       if(!fireOk||!mgAuth?.currentUser||typeof firebase.functions!=='function')
         throw new Error('Firebase Auth/Functions indisponível. Faça login novamente.');
-      return firebase.app().functions('southamerica-east1').httpsCallable(nome);
+      const acoes={
+        salvarClienteIntegroGlobal:'salvarCliente',
+        alterarAcessoClienteIntegroGlobal:'alterarAcesso',
+        ativarTesteClienteIntegroGlobal:'ativarTeste',
+        criarMasterLocalGlobal:'criarMasterLocal'
+      };
+      if(!Object.prototype.hasOwnProperty.call(acoes,nome))throw new Error('Operação global desconhecida.');
+      const invocar=firebase.app().functions('southamerica-east1').httpsCallable('solicitarCadastroDuplicadoV27');
+      return dados=>invocar({...dados,__integroRota:'MASTER_GLOBAL_ONBOARDING_V1',acao:acoes[nome]});
     }
     function mensagemErroGlobal(erro){
       const mensagem=String(erro?.message||'Não foi possível concluir a operação.');

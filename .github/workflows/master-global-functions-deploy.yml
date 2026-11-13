@@ -32,5 +32,5 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
-      - name: Publicar somente as quatro Functions do Master Global
-        run: npx firebase deploy --only functions:salvarClienteIntegroGlobal,functions:alterarAcessoClienteIntegroGlobal,functions:ativarTesteClienteIntegroGlobal,functions:criarMasterLocalGlobal --project integro-novo --non-interactive
+      - name: Publicar onboarding na Callable existente com IAM aprovado
+        run: npx firebase deploy --only functions:solicitarCadastroDuplicadoV27 --project integro-novo --non-interactive

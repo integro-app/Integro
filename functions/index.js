@@ -12,10 +12,9 @@ const dbSessaoProtegida = sessionAuthorization.db;
 
 const { criarOnboardingMasterGlobal } = require("./master-global-onboarding");
 const onboardingGlobal = criarOnboardingMasterGlobal({ admin, functions, db: dbSessaoProtegida });
-exports.salvarClienteIntegroGlobal = functions.region("southamerica-east1").https.onCall(protegerSessao(onboardingGlobal.salvarCliente));
-exports.alterarAcessoClienteIntegroGlobal = functions.region("southamerica-east1").https.onCall(protegerSessao(onboardingGlobal.alterarAcesso));
-exports.ativarTesteClienteIntegroGlobal = functions.region("southamerica-east1").https.onCall(protegerSessao(onboardingGlobal.ativarTeste));
-exports.criarMasterLocalGlobal = functions.region("southamerica-east1").https.onCall(protegerSessao(onboardingGlobal.criarMasterLocal));
+// O Firebase do projeto não permite criar novos endpoints por IAM.
+// Rotas globais seguem a callable existente com invoker autorizado,
+// mantendo a validação de sessão e o papel master_global no servidor.
 
 function erroHttps(codigo, mensagem) {
   throw new functions.https.HttpsError(codigo, mensagem);
@@ -225,6 +224,19 @@ const aprovacoesClientesV27 = criarAprovacoesClientesV27({ admin, functions, db 
 // Reutiliza a callable existente, cujo IAM já está provisionado no Firebase.
 // As duas novas rotas mantêm validação de sessão e isolamento por tenant no servidor.
 exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall((dados, contexto) => {
+  if (dados?.__integroRota === "MASTER_GLOBAL_ONBOARDING_V1") {
+    const handlers = {
+      salvarCliente: onboardingGlobal.salvarCliente,
+      alterarAcesso: onboardingGlobal.alterarAcesso,
+      ativarTeste: onboardingGlobal.ativarTeste,
+      criarMasterLocal: onboardingGlobal.criarMasterLocal
+    };
+    const acao = String(dados?.acao || "");
+    const handler = Object.prototype.hasOwnProperty.call(handlers, acao) ? handlers[acao] : null;
+    if (!handler) throw new functions.https.HttpsError("invalid-argument", "Operação Master Global inválida.");
+    const { __integroRota, acao: acaoRecebida, ...entrada } = dados;
+    return protegerSessao(handler)(entrada, contexto);
+  }
   if (dados?.__integroRota === "CONSULTAR_DOCUMENTO_CLIENTE_V27") {
     const { __integroRota, ...consulta } = dados;
     return protegerSessao(aprovacoesClientesV27.consultarDocumento)(consulta, contexto);

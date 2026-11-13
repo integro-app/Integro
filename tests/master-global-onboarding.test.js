@@ -195,8 +195,13 @@ test("tela usa Functions protegidas, sem gravar diretamente empresa ou master", 
   assert.match(html, /sendPasswordResetEmail\(email\)/);
   assert.doesNotMatch(html, /mgDb\.collection\('clientes_integro'\)\.add\(/);
   assert.doesNotMatch(html, /mgDb\.collection\('clientes_integro'\)\.doc\(id\)\.update\(/);
-  assert.match(index, /protegerSessao\(onboardingGlobal\.salvarCliente\)/);
-  assert.match(index, /protegerSessao\(onboardingGlobal\.criarMasterLocal\)/);
+  assert.match(index, /MASTER_GLOBAL_ONBOARDING_V1/);
+  assert.match(index, /protegerSessao\(handler\)\(entrada, contexto\)/);
+  assert.match(index, /salvarCliente: onboardingGlobal\.salvarCliente/);
+  assert.match(index, /criarMasterLocal: onboardingGlobal\.criarMasterLocal/);
+  assert.match(html, /httpsCallable\('solicitarCadastroDuplicadoV27'\)/);
+  assert.match(html, /__integroRota:'MASTER_GLOBAL_ONBOARDING_V1'/);
+  assert.doesNotMatch(index, /exports\.salvarClienteIntegroGlobal\s*=/);
 });
 
 test("indicadores globais não tratam teste expirado ou empresa bloqueada como ativa", () => {

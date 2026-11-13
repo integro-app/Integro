@@ -167,3 +167,10 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Segurança:** login global não aceita associação por e-mail sem UID; operações administrativas críticas não usam gravação direta do navegador. **Bloqueio integral no Firestore/Storage NÃO homologado:** duas tentativas de Rules causaram regressão por limite de 1000 expressões no emulador; alterações de Rules revertidas integralmente. O backend financeiro já verifica bloqueio/expiração, mas leituras diretas ainda exigem correção posterior sem regressão.
 - **Testes adicionados:** `tests/master-global-onboarding.test.js` e inclusão no `npm test`; sintaxe do novo backend incluída em `test:functions:syntax`.
 - **Pendente:** CI do último commit, deploy autorizado de Functions/Hosting e testes reais com Master Global, documento duplicado, Master Local provisionado, entrega de e-mail, primeiro login, bloqueio de tenant e isolamento entre empresas. **Não marcar 100% sem evidências.**
+
+## 13. M01 — Contingência de implantação por IAM (13/11/2026)
+
+- **Hosting:** publicado no Firebase após merge da PR #43 (`313c9a12`).
+- **Functions novas:** falha confirmada no [run 43487654006](https://github.com/integro-app/Integro/actions/runs/43487654006): erro interno de criação Gen1 em três endpoints e falta de permissão IAM para definir invoker no quarto. Não declarar onboarding funcional neste estado.
+- **Correção:** PR de contingência `fix/m01-master-global-deploy-existing-callable-20261113` passa as quatro ações por `solicitarCadastroDuplicadoV27` (endpoint existente e invoker já aprovado), sob rota `MASTER_GLOBAL_ONBOARDING_V1`, sessão V27 obrigatória e autorização de Master Global validada no servidor. Remove exports das quatro novas Functions para não exigir IAM adicional.
+- **Deploy:** workflow `master-global-functions-deploy.yml` atualizado para publicar exclusivamente a callable existente. Homologar CI, deploy e cadastro real antes de fechar M01.
