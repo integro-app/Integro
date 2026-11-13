@@ -585,13 +585,42 @@
       if(processandoCadastroGlobal)return;
       processandoCadastroGlobal=true;
       try{
-        await funcaoMasterGlobal('ativarTesteClienteIntegroGlobal')({id,dias:7});
+        await funcaoMasterGlobal('ativarTesteClienteIntegroGlobal')({id,dias:Number(configuracoesGlobal.diasTestePadrao)||7});
         await carregarTudo();
-        notificarIntegro('Período de teste ativado por 7 dias.');
+        notificarIntegro('Período de teste ativado por '+(Number(configuracoesGlobal.diasTestePadrao)||7)+' dias.');
       }catch(erro){notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
-    } async function alternarAcessoUsuario(id){const u=usuariosSistema.find(x=>x.id===id);if(!u)return;if(!u.authUid||u.convitePendente===true||u.status==='CONVITE_PENDENTE')return notificarIntegro('Este usuário ainda aguarda provisionamento Auth pelo backend e não pode ser liberado.');const novo=u.acessoLiberado===false;await mgDb.collection('usuarios').doc(id).update({acessoLiberado:novo,status:novo?'ATIVO':'BLOQUEADO'});await carregarTudo()} async function marcarNotificacaoLida(id){await mgDb.collection('notificacoes').doc(id).update({status:'LIDA'});await carregarTudo()} async function salvarConfiguracoesGlobais(){await mgDb.collection('configuracoes_globais').doc('plataforma').set({nome:val('cfgNomePlataforma'),diasTestePadrao:Number(val('cfgDiasTeste')||7),atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});notificarIntegro('Configurações salvas.')}
-    async function log(tipo,detalhe){try{if(fireOk)await mgDb.collection('logs').add({tipoAcao:tipo,detalhe,usuarioId:usuarioLogado?.id||'',usuarioNome:usuarioLogado?.nome||usuarioLogado?.email||'',origem:'master_global',criadoEm:firebase.firestore.FieldValue.serverTimestamp(),criadoEmTexto:window.IntegroOperacional?.dataHoraSP?.()||new Date().toISOString()})}catch(e){console.warn(e)}} async function logout(){const usuarioSaindo=usuarioLogado;try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioSaindo,limparFila:true});location.href='index.html'}
+    }
+    async function alternarAcessoUsuario(id){
+      const u=usuariosSistema.find(x=>x.id===id);
+      if(!u)return notificarIntegro('Usuário não encontrado.');
+      if(u.id!==u.authUid||!['master_local','usuario_integro'].includes(u.tipoUsuario))
+        return notificarIntegro('Perfil legado não provisionado: acesso não pode ser alterado nesta tela.');
+      await executarAcaoGlobal('alterarAcessoUsuario',{id,liberado:u.acessoLiberado===false},
+        u.acessoLiberado===false?'Usuário liberado.':'Usuário bloqueado e sessão revogável pelo backend.');
+    }
+    async function marcarNotificacaoLida(id){
+      await executarAcaoGlobal('marcarNotificacaoLida',{id},'Notificação marcada como lida.');
+    }
+    async function salvarConfiguracoesGlobais(){
+      await executarAcaoGlobal('salvarConfiguracoes',{nome:val('cfgNomePlataforma'),
+        diasTestePadrao:Number(val('cfgDiasTeste'))},'Configurações globais salvas.',{manterDrawer:true});
+    }
+    function abrirEdicaoMasterLocal(id){
+      const u=usuariosSistema.find(x=>x.id===id&&x.tipoUsuario==='master_local'&&x.authUid===x.id);
+      if(!u)return notificarIntegro('Master Local não provisionado ou não encontrado.');
+      const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+      abrirDrawer('Editar Master Local','Empresa vinculada não pode ser trocada',
+        '<div class="grid"><label class="form-label">Empresa</label><input class="form-input" readonly value="'+esc(empresa?.nome||u.clientePlataformaNome||u.clientePlataformaId)+'">'+
+        '<label class="form-label">E-mail de login</label><input class="form-input" readonly value="'+esc(u.email||'')+'">'+
+        '<label class="form-label">Nome</label><input id="mlEdicaoNome" maxlength="180" class="form-input" value="'+esc(u.nome||'')+'">'+
+        '<button class="btn btn-primary" id="btnSalvarEdicaoMaster">Salvar alterações</button>'+
+        '<button class="btn btn-light" id="btnReenviarEdicaoMaster">Reenviar link de acesso</button></div>');
+      byId('btnSalvarEdicaoMaster').onclick=()=>executarAcaoGlobal('editarMasterLocal',
+        {id,nome:val('mlEdicaoNome')},'Master Local atualizado.');
+      byId('btnReenviarEdicaoMaster').onclick=()=>enviarAcessoMasterLocal(u.email);
+    }
+ async function logout(){const usuarioSaindo=usuarioLogado;try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioSaindo,limparFila:true});location.href='index.html'}
     function abrirResumoKpi(tipo){const map={clientes:['Clientes da plataforma',clientesIntegro.map(c=>c.nome||c.razaoSocial||c.email||c.id)],ativos:['Acessos liberados',clientesIntegro.filter(clienteLiberadoGlobal).map(c=>c.nome||c.razaoSocial||c.id)],teste:['Clientes em teste',clientesIntegro.filter(c=>c.testeAtivo&&clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],masters:['Masters locais',getMastersLocais().map(u=>u.nome||u.email)],bloqueados:['Bloqueados',clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],internos:['Equipe interna',getUsuariosInternos().map(u=>u.nome||u.email)],planos:['Planos',planos.map(p=>p.nome)],notificacoes:['Notificações',notificacoes.map(n=>n.titulo||n.tipo)]};const m=map[tipo]||['Resumo',[]];abrirDrawer(m[0],`${m[1].length} registro(s)`,`<div class="list">${m[1].length?m[1].map(x=>box(x,'')).join(''):empty('Sem registros.')}</div>`)} function abrirDetalheCliente(id){const c=clientesIntegro.find(x=>x.id===id);if(c)abrirDrawer('Cliente ÍNTEGRO',c.nome||c.razaoSocial||'Cliente',`${info('Documento',c.documento)}${info('Email',c.email)}${info('Telefone',c.telefone)}<button class="btn btn-primary" onclick="abrirFormMasterLocal('${id}')">Criar Master Local</button>`)} function abrirDetalheUsuario(id){const u=usuariosSistema.find(x=>x.id===id);if(u)abrirDrawer('Usuário',u.nome||u.email||'Usuário',`${info('Email',u.email)}${info('Tipo',u.tipoUsuario)}${info('Status',u.status||'ATIVO')}`)}
     function getMastersLocais(){
       const unicos=new Map();
