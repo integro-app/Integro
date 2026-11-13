@@ -214,7 +214,7 @@ test("redirecionamento por perfil permanece compatível", () => {
   const { IntegroOperacional } = carregarContexto({});
   const casos = [
     [{ tipoUsuario: "master_global" }, "master-global.html"],
-    [{ tipoUsuario: "usuario_integro" }, ""],
+    [{ tipoUsuario: "usuario_integro" }, "usuario-integro.html"],
     [{ tipoUsuario: "master_local" }, "master-local.html"],
     [{ tipoUsuario: "usuario_cliente", cargoChave: "gerente" }, "master-local.html"],
     [{ tipoUsuario: "usuario_cliente", cargoChave: "supervisor" }, "master-local.html"],
