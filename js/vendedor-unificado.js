@@ -174,6 +174,81 @@
 
   let refreshOperacaoTimer = 0;
   let refreshOperacaoPromessa = null;
+  let consultaVendasDiaPromessa = null;
+  let ultimaConsultaVendasDiaEm = 0;
+  let escopoConsultaVendasDia = "";
+  const vendasConfirmadasNoServidor = new Map();
+  const ESCOPO_VENDAS_DIA_TTL_MS = 2 * 60 * 1000;
+
+  function escopoVendasDiaAtual() {
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const tenant = texto(State.getTenantId?.());
+    const uid = texto(window.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
+    return tenant && uid ? tenant + ":" + uid : "";
+  }
+
+  function mesclarVendasConfirmadas(lista = []) {
+    const escopo = escopoVendasDiaAtual();
+    const agora = Date.now();
+    const mapa = new Map();
+    (Array.isArray(lista) ? lista : []).forEach(venda => {
+      const id = texto(venda?.id || venda?.vendaId);
+      if (id) mapa.set(id, venda);
+    });
+    for (const [id, registro] of vendasConfirmadasNoServidor) {
+      if (!escopo || registro.escopo !== escopo || agora - registro.confirmadaEm > ESCOPO_VENDAS_DIA_TTL_MS) {
+        vendasConfirmadasNoServidor.delete(id);
+        continue;
+      }
+      if (mapa.has(id) && mapa.get(id)?.id !== undefined) {
+        // Uma consulta remota bem-sucedida é a versão oficial do registro.
+        vendasConfirmadasNoServidor.delete(id);
+      } else mapa.set(id, registro.venda);
+    }
+    return [...mapa.values()];
+  }
+
+  async function carregarVendaConfirmadaServidor(vendaId) {
+    const id = texto(vendaId);
+    const db = window.db || window.firebase?.firestore?.();
+    const escopo = escopoVendasDiaAtual();
+    const tenant = texto(State.getTenantId?.());
+    if (!id || !db || !escopo || !tenant) return false;
+    const snap = await db.collection("vendas").doc(id).get({ source: "server" });
+    if (!snap.exists || escopo !== escopoVendasDiaAtual()) return false;
+    const venda = { id: snap.id || id, ...snap.data() };
+    if (texto(venda.clientePlataformaId) !== tenant ||
+        !pertenceAoVendedor(venda, usuarioAtual || State.getUsuario?.())) return false;
+    vendasConfirmadasNoServidor.set(id, { venda, escopo, confirmadaEm: Date.now() });
+    const atuais = (State.getVendas?.() || []).filter(item => texto(item.id || item.vendaId) !== id);
+    State.setVendas?.(mesclarVendasConfirmadas([...atuais, venda]));
+    caches();
+    renderVendasDia();
+    return true;
+  }
+
+  async function atualizarVendasDiaServidor({ forcar = false } = {}) {
+    const svc = window.IntegroPerfisUnificados;
+    const escopo = escopoVendasDiaAtual();
+    if (!svc?.carregarVendasVendedor || !escopo) return;
+    if (escopo !== escopoConsultaVendasDia) {
+      escopoConsultaVendasDia = escopo;
+      ultimaConsultaVendasDiaEm = 0;
+    }
+    if (!forcar && Date.now() - ultimaConsultaVendasDiaEm < 5000) return;
+    if (consultaVendasDiaPromessa) return consultaVendasDiaPromessa;
+    consultaVendasDiaPromessa = (async () => {
+      const vendas = await svc.carregarVendasVendedor(State.getClientes?.() || [],
+        { forcar: true, exigirConsultaValida: true });
+      if (escopo !== escopoVendasDiaAtual()) return;
+      State.setVendas?.(mesclarVendasConfirmadas(vendas));
+      caches();
+      ultimaConsultaVendasDiaEm = Date.now();
+      if (abaAtual === "vendas") renderVendasDia();
+    })();
+    try { return await consultaVendasDiaPromessa; }
+    finally { consultaVendasDiaPromessa = null; }
+  }
 
   function agendarRefreshOperacaoVendedor(opcoes = {}) {
     window.clearTimeout(refreshOperacaoTimer);
@@ -204,7 +279,9 @@
       const caixasPromise = Promise.resolve(svc.carregarCaixasVendedor?.() || []);
       const [caixas, vendas, pagamentos, parcelas, historico] = await Promise.all([
         caixasPromise,
-        svc.carregarVendasVendedor?.(listaClientes) || [],
+        svc.carregarVendasVendedor?.(listaClientes, {
+          forcar: render === "vendas", exigirConsultaValida: render === "vendas"
+        }) || [],
         caixasPromise.then(caixasAtuais => svc.carregarPagamentosHojePorPerfil
           ? svc.carregarPagamentosHojePorPerfil(caixasAtuais, { cacheMs: 0, forcar: true })
           : svc.carregarColecaoPorPerfil(colecoes.PAGAMENTOS || "pagamentos",
@@ -214,7 +291,7 @@
       ]);
       State.setClientes?.(listaClientes);
       State.setCaixas?.(caixas);
-      State.setVendas?.(vendas);
+      State.setVendas?.(mesclarVendasConfirmadas(vendas));
       State.setPagamentos?.(pagamentos);
       State.setParcelas?.(parcelas);
       State.setHistoricoCobrancas?.(historico);
