@@ -167,7 +167,13 @@ test("Master Local recebe conta Auth canônica, empresa correta e auditoria", as
 test("bloqueio e teste sincronizam empresas e impedem Master Local bloqueado", async () => {
   const c = ambiente();
   const { id } = await c.api.salvarCliente(cliente, c.contexto);
+  c.dados.set("usuarios/vendedor-do-tenant", {
+    authUid: "vendedor-do-tenant", tipoUsuario: "vendedor",
+    clientePlataformaId: id, acessoLiberado: true
+  });
   await c.api.alterarAcesso({ id, liberado: false }, c.contexto);
+  assert.equal(c.dados.get("usuarios/vendedor-do-tenant").empresaBloqueada, true);
+  assert.equal(c.dados.get("usuarios/vendedor-do-tenant").acessoLiberado, true);
   assert.equal(c.dados.get("clientes_integro/" + id).status, "BLOQUEADO");
   assert.equal(c.dados.get("clientes_plataforma/" + id).acessoLiberado, false);
   await assert.rejects(c.api.criarMasterLocal({ clienteId: id, nome: "Bloqueado", email: "bloqueado@empresa.com.br" }, c.contexto),
@@ -175,6 +181,7 @@ test("bloqueio e teste sincronizam empresas e impedem Master Local bloqueado", a
   await c.api.ativarTeste({ id, dias: 7 }, c.contexto);
   assert.equal(c.dados.get("clientes_integro/" + id).testeAtivo, true);
   assert.equal(c.dados.get("clientes_plataforma/" + id).acessoLiberado, true);
+  assert.equal(c.dados.get("usuarios/vendedor-do-tenant").empresaBloqueada, false);
 });
 
 test("falha de transação após criação Auth reverte conta nova", async () => {
