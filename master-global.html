@@ -334,8 +334,8 @@
       try{
         const resposta=await funcaoMasterGlobal('criarMasterLocalGlobal')(dados);
         if(!resposta.data?.authUid)throw new Error('O servidor não confirmou a conta Auth.');
-        await carregarTudo();
         const enviado=await enviarAcessoMasterLocal(dados.email);
+        try{await carregarTudo();}catch(atualizacao){console.warn('[MASTER GLOBAL] Atualização de listagens pendente.',atualizacao);}
         abrirDrawer('Master Local criado',cliente.nome||cliente.razaoSocial||'Cliente',
           '<div class="notice">Conta autenticada e vinculada à empresa. '+(enviado?'O link para definir a senha foi enviado.':'O envio do link de acesso precisa ser repetido.')+'</div>'+
           '<div class="empty"><strong>'+esc(dados.nome)+'</strong><p class="muted">'+esc(dados.email)+'</p></div>'+
