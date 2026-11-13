@@ -9,7 +9,7 @@ const stable = value => JSON.stringify(value, (_, item) => item && typeof item =
 const accessVersion = user => stable(Object.fromEntries([
   "authUid", "clientePlataformaId", "tipoUsuario", "tipoUsuarioOficial", "perfil", "cargoId", "cargoChave", "cargoNome",
   "equipeId", "equipesIds", "equipeIds", "permissoes", "permissoesCargo", "permissoesUsuario",
-  "responsavelFinanceiro", "departamento", "status", "acessoLiberado", "ativo", "excluido"
+  "responsavelFinanceiro", "departamento", "status", "acessoLiberado", "empresaBloqueada", "ativo", "excluido"
 ].map(key => [key, user[key] ?? null])));
 
 function criarProtecaoSessao({ db, functions }) {
@@ -28,7 +28,7 @@ function criarProtecaoSessao({ db, functions }) {
       if (legacy.docs.length === 1) user = legacy.docs[0].data();
     }
     const current = session.exists ? session.data() : null;
-    if (!user || user.authUid !== uid || user.acessoLiberado !== true || user.ativo === false || user.excluido === true ||
+    if (!user || user.authUid !== uid || user.acessoLiberado !== true || user.empresaBloqueada === true || user.ativo === false || user.excluido === true ||
         ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(text(user.status).toUpperCase())) deny("Usuário sem acesso.");
     if (!current || current.uid !== uid || current.sessionId !== sid || current.encerrada === true ||
         !Number.isFinite(current.expiresAtMs) || current.expiresAtMs <= Date.now() ||
