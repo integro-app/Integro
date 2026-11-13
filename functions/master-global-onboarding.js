@@ -178,6 +178,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
       const atual = await tx.get(ref);
       if (!atual.exists) erro("not-found", "Cliente não encontrado.");
       const patch = { testeAtivo: true, dataInicioTeste: inicio.toISOString(), dataFimTeste: fim.toISOString(),
+        dataFimTesteEm: admin.firestore.Timestamp.fromDate(fim),
         acessoLiberado: true, status: "ATIVO", atualizadoEm: agora(), atualizadoPorUid: autor.uid };
       tx.set(ref, patch, { merge: true });
       tx.set(db.collection("clientes_plataforma").doc(id), patch, { merge: true });
