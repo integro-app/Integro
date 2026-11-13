@@ -797,10 +797,9 @@
           <div class="vendedor-operacao-barra vendedor-vendas-barra">
             <label class="vendedor-operacao-busca" for="buscaVendaVendedorInput">
               <span class="material-symbols-rounded">search</span>
-              <input id="buscaVendaVendedorInput" type="search" placeholder="Buscar por cliente, documento ou código da venda" onkeydown="if(event.key==='Enter'){event.preventDefault();buscarVendasVendedor()}">
+              <input id="buscaVendaVendedorInput" type="search" placeholder="Buscar por cliente, documento ou código da venda" oninput="renderVendasDia()" autocomplete="off">
             </label>
             <button class="ghost-btn vendedor-filtro-btn" type="button" onclick="toggleFiltrosVendasVendedor()"><span class="material-symbols-rounded">tune</span>Filtros</button>
-            <button class="primary-btn vendedor-buscar-btn" type="button" onclick="buscarVendasVendedor()"><span class="material-symbols-rounded">search</span>Buscar</button>
           </div>
           <div id="filtrosVendasVendedor" class="vendedor-filtros-panel" hidden>
             <div class="vendedor-filtros-grid">
@@ -812,7 +811,7 @@
               <label class="vendedor-check"><input id="filtroVendaNova" type="checkbox"><span>Novas</span></label>
               <label class="vendedor-check"><input id="filtroVendaRenovacao" type="checkbox"><span>Renovações</span></label>
             </div>
-            <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosVendasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="buscarVendasVendedor()">Aplicar filtros</button></div>
+            <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosVendasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="renderVendasDia()">Aplicar filtros</button></div>
           </div>
           <div id="contadorVendasDia" class="vendedor-operacao-contador"></div>
           <div id="listaVendasDia" class="vendedor-vendas-dia"></div>
@@ -917,7 +916,9 @@
   }
 
   function vendasFiltradas() {
-    const dataCaixaAtual = dataCaixa();
+    // Dia da venda gravada no Firebase (fuso São Paulo), não o dia histórico
+    // de um caixa reaberto: a aba mostra apenas as vendas realizadas hoje.
+    const dataHoje = hoje();
     const termo = texto(document.getElementById("buscaVendaVendedorInput")?.value).toLowerCase();
     const vendaAtivaFiltro = document.getElementById("filtroVendaAtiva")?.checked === true;
     const vendaQuitadaFiltro = document.getElementById("filtroVendaQuitada")?.checked === true;
@@ -930,9 +931,12 @@
 
     return (State.getVendas?.() || []).filter(v => {
       const cliente = clientes.find(c => texto(c.id || c.clienteId || c.clienteOperacionalId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
-      if (!pertenceAoVendedor(v) && !pertenceAoVendedor(cliente)) return false;
+      // Não atribuir ao vendedor atual vendas antigas de outro vendedor
+      // apenas porque o cliente foi transferido para sua carteira.
+      if (!pertenceAoVendedor(v) &&
+          (vinculosVendedorRegistro(v).length > 0 || !pertenceAoVendedor(cliente))) return false;
       const dataVenda = dataRegistro(v);
-      if (dataVenda !== dataCaixaAtual) return false;
+      if (dataVenda !== dataHoje) return false;
 
       const status = texto(v.statusVenda || v.status || "ATIVA").toUpperCase();
       const tipo = texto(v.tipoVenda || v.tipo || "NOVA").toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -953,10 +957,10 @@
     const el = document.getElementById("listaVendasDia");
     if (!el) return;
     const vendas = vendasFiltradas();
-    const data = dataCaixa();
+    const data = hoje();
     const total = vendas.reduce((s, v) => s + numero(v.valorEmprestado || v.valorVenda || v.valor), 0);
     const contador = document.getElementById("contadorVendasDia");
-    if (contador) contador.textContent = vendas.length ? `${vendas.length} venda(s) no dia do caixa (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}` : "";
+    if (contador) contador.textContent = vendas.length ? `${vendas.length} venda(s) de hoje (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}` : "";
     el.innerHTML = vendas.length ? vendas.map(v => {
       const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
       return `<article class="vendedor-venda-card">
@@ -1017,6 +1021,7 @@
       window.renderCobrancas?.();
     } else if (abaAtual === "vendas") {
       renderVendasDia();
+      atualizarVendasDiaServidor().catch(erro => console.warn("[ÍNTEGRO VENDEDOR] Falha ao atualizar as vendas de hoje.", erro));
     } else {
       // Troca de aba imediata; conferência do servidor chega depois no painel.
       const controller = window.IntegroVendedorFechamentoCaixa;
@@ -2496,6 +2501,8 @@
   function limparVendas() {
     const busca = document.getElementById("buscaVendaVendedorInput");
     if (busca) busca.value = "";
+    const consultaVisivel = document.querySelector("#abaVendasDia .ig-querybar input[data-ig-query-input]");
+    if (consultaVisivel) consultaVisivel.value = "";
     ["filtroVendaAtiva", "filtroVendaQuitada", "filtroVendaCancelada", "filtroVendaNova", "filtroVendaRenovacao"].forEach(id => { const el = document.getElementById(id); if (el) el.checked = false; });
     renderVendasDia();
   }
