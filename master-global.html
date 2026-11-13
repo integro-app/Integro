@@ -450,7 +450,8 @@
         '<button class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver</button>'+
         (provisionado?
           '<button class="btn btn-light" data-mg-action="'+(tipo==='master'?'editar-master':'editar-interno')+'" data-id="'+esc(u.id)+'">Editar</button>'+
-          '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>':'')+
+          (bloqueioEmpresa?'<span class="chip">Acesso gerenciado pela empresa</span>':
+            '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>'):'')+
         '</div></div>';
     }
     function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
