@@ -144,6 +144,21 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     return { ok: true, id: ref.id, criado: true };
   }
 
+  async function usuariosDoTenant(id) {
+    const q = await db.collection("usuarios").where("clientePlataformaId", "==", id).limit(351).get();
+    if (q.docs.length > 350) erro("resource-exhausted", "Empresa com mais de 350 usuários: bloqueio exige operação em lotes. Nenhuma alteração realizada.");
+    return q.docs;
+  }
+  async function sincronizarBloqueioUsuarios(tx, docs, id, bloqueada) {
+    // Leitura antes das escritas para preservar atomicidade da transação.
+    const atuais = await Promise.all(docs.map(doc => tx.get(doc.ref)));
+    atuais.forEach((snap, indice) => {
+      if (snap.exists && snap.data()?.clientePlataformaId === id) {
+        tx.set(docs[indice].ref, { empresaBloqueada: bloqueada }, { merge: true });
+      }
+    });
+  }
+
   async function alterarAcesso(dados, contexto) {
     const autor = await autorGlobal(contexto);
     const id = txt(dados?.id);
@@ -151,9 +166,11 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     const liberado = dados?.liberado;
     if (typeof liberado !== "boolean") erro("invalid-argument", "Informe o estado de acesso.");
     const ref = db.collection("clientes_integro").doc(id);
+    const usuarios = await usuariosDoTenant(id);
     await db.runTransaction(async tx => {
       const atual = await tx.get(ref);
       if (!atual.exists) erro("not-found", "Cliente não encontrado.");
+      await sincronizarBloqueioUsuarios(tx, usuarios, id, !liberado);
       const patch = { acessoLiberado: liberado, status: liberado ? "ATIVO" : "BLOQUEADO",
         atualizadoEm: agora(), atualizadoPorUid: autor.uid };
       tx.set(ref, patch, { merge: true });
@@ -175,9 +192,11 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     }
     const inicio = new Date(), fim = new Date(inicio.getTime() + dias * 86400000);
     const ref = db.collection("clientes_integro").doc(id);
+    const usuarios = await usuariosDoTenant(id);
     await db.runTransaction(async tx => {
       const atual = await tx.get(ref);
       if (!atual.exists) erro("not-found", "Cliente não encontrado.");
+      await sincronizarBloqueioUsuarios(tx, usuarios, id, false);
       const patch = { testeAtivo: true, dataInicioTeste: inicio.toISOString(), dataFimTeste: fim.toISOString(),
         dataFimTesteEm: admin.firestore.Timestamp.fromDate(fim),
         acessoLiberado: true, status: "ATIVO", atualizadoEm: agora(), atualizadoPorUid: autor.uid };
@@ -251,7 +270,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
           tipoUsuario: "master_local", tipoUsuarioOficial: "master_local",
           perfilLegado: "master_local", cargoChave: "master_local", cargoNome: "Master Local",
           clientePlataformaId: clienteId, clientePlataformaNome: empresaNome, empresaNome,
-          status: "ATIVO", acessoLiberado: true, ativo: true, convitePendente: false,
+          status: "ATIVO", acessoLiberado: true, ativo: true, empresaBloqueada: false, convitePendente: false,
           provisionamentoAuth: "PROVISIONADO", criadoPorUid: autor.uid, criadoEm: agora()
         });
         if (!empresaAtual.data().masterLocalAuthUid) {
