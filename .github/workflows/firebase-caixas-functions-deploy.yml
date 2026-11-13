@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "functions/box-lifecycle.js"
+      - "functions/box-reconciliation.js"
+      - "tests/caixa-pendencias-rota-regression.test.js"
       - "functions/index.js"
       - "tests/vendas-emulator.integration.test.js"
       - ".github/workflows/firebase-caixas-functions-deploy.yml"
