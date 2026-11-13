@@ -19,7 +19,6 @@ service firebase.storage {
       return hasUserDoc() &&
         userDoc().get("authUid", "") == request.auth.uid &&
         userDoc().get("acessoLiberado", false) == true &&
-        userDoc().get("empresaBloqueada", false) != true &&
         !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]);
     }
 
