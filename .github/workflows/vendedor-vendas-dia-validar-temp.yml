@@ -4,6 +4,7 @@ on:
     branches: [fix/vendedor-vendas-hoje-busca-dinamica-20261112]
     paths:
       - ".github/workflows/vendedor-vendas-dia-validar-temp.yml"
+      - "tests/vendedor-vendas-dia-live.test.js"
 permissions:
   contents: read
 jobs:
