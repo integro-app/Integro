@@ -51,7 +51,7 @@ async function request(method,url,data) {
         continue;
       }
       const message=JSON.stringify(body.error?.message||body).slice(0,420);
-      throw new Error(method+' '+url.replace(/\\?.*$/,'')+' HTTP '+res.status+': '+message);
+      throw new Error(method+' '+url.split('?')[0]+' HTTP '+res.status+': '+message);
     } catch(error) {
       if ((error.name==='TimeoutError'||error.name==='AbortError'||error.name==='TypeError')&&attempt<4) {
         await new Promise(done=>setTimeout(done,attempt*5000));continue;
@@ -76,7 +76,7 @@ async function list(group){
   const indexes=[];
   let token='';
   do {
-    const url=pathOf(group)+'?pageSize=200'+(token?'&pageToken='+encodeURIComponent(token):'');
+    const url=pathOf(group)+(token?'?pageToken='+encodeURIComponent(token):'');
     const result=await request('GET',url);
     indexes.push(...(result.indexes||[]));
     token=result.nextPageToken||'';
