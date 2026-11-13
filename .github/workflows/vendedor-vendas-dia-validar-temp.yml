@@ -5,6 +5,8 @@ on:
     paths:
       - ".github/workflows/vendedor-vendas-dia-validar-temp.yml"
       - "tests/vendedor-vendas-dia-live.test.js"
+      - "tests/sidebar-navigation-regression.test.js"
+      - "tests/vendedor-operacao-consolidada.test.js"
 permissions:
   contents: read
 jobs:
