@@ -109,7 +109,8 @@ service cloud.firestore {
         exists(userPath()) &&
         userDoc().get("authUid", "") == currentUid() &&
         !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        userDoc().get("acessoLiberado", false) == true;
+        userDoc().get("acessoLiberado", false) == true &&
+        userDoc().get("empresaBloqueada", false) != true;
     }
 
     function isOwnAuthProfile(data) {
