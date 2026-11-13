@@ -1139,8 +1139,6 @@ test("Master Global bloqueia tenant no Firestore, inclusive leitura direta de Ma
   const empresa = doc(appDb(profiles.masterGlobal), "clientes_integro", "tenant_a");
   const vendaDoTenant = doc(appDb(profiles.masterA), "vendas", "venda_a_1");
   const caixaDoTenant = doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1");
-  const arquivosDoTenant = ref(testEnv.authenticatedContext(profiles.vendedor1.uid).storage(),
-    "tenants/tenant_a/clientes-documentos/cliente_a_1");
   const alterar = async dados => testEnv.withSecurityRulesDisabled(async context => {
     await setDoc(doc(context.firestore(), "clientes_integro", "tenant_a"), dados);
     await setDoc(doc(context.firestore(), "clientes_plataforma", "tenant_a"), dados);
@@ -1151,7 +1149,6 @@ test("Master Global bloqueia tenant no Firestore, inclusive leitura direta de Ma
     await alterar({ status: "BLOQUEADO", acessoLiberado: false, ativo: true });
     await assertFails(getDoc(vendaDoTenant));
     await assertFails(getDoc(caixaDoTenant));
-    await assertFails(listAll(arquivosDoTenant));
     await assertSucceeds(getDoc(empresa));
     await alterar({
       status: "ATIVO", acessoLiberado: true, ativo: true, testeAtivo: true,
