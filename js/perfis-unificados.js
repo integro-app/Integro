@@ -504,8 +504,15 @@
     return [...ids];
   }
 
-  async function carregarVendasVendedor(clientes = []) {
-    const diretas = await consultar(CONFIG.COLECOES.VENDAS, camposProprios(CONFIG.COLECOES.VENDAS), CONFIG.LIMITS?.VENDAS || 500);
+  async function carregarVendasVendedor(clientes = [], opcoes = {}) {
+    // Vendas recém-confirmadas não podem depender do cache do runtime (10 s).
+    // Em atualização do dia, força leitura real e não transforma falha em lista vazia.
+    const diretas = await consultar(CONFIG.COLECOES.VENDAS, camposProprios(CONFIG.COLECOES.VENDAS),
+      CONFIG.LIMITS?.VENDAS || 500, {
+        cacheMs: opcoes.forcar === true ? 0 : undefined,
+        forcar: opcoes.forcar === true,
+        exigirConsultaValida: opcoes.exigirConsultaValida === true
+      });
     const conhecidas = new Set(diretas.map(item => String(item.id)));
     const referencias = idsVendasReferenciadas(clientes).filter(id => !conhecidas.has(id)).slice(0, 300);
     if (!referencias.length) return diretas;
