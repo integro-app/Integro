@@ -217,7 +217,7 @@
     if (!snap.exists || escopo !== escopoVendasDiaAtual()) return false;
     const venda = { id: snap.id || id, ...snap.data() };
     if (texto(venda.clientePlataformaId) !== tenant ||
-        !pertenceAoVendedor(venda, usuarioAtual || State.getUsuario?.())) return false;
+        !window.IntegroPerfisUnificados?.vendaPertenceAoVendedor?.(venda)) return false;
     vendasConfirmadasNoServidor.set(id, { venda, escopo, confirmadaEm: Date.now() });
     const atuais = (State.getVendas?.() || []).filter(item => texto(item.id || item.vendaId) !== id);
     State.setVendas?.(mesclarVendasConfirmadas([...atuais, venda]));
@@ -1007,10 +1007,9 @@
 
     return (State.getVendas?.() || []).filter(v => {
       const cliente = clientes.find(c => texto(c.id || c.clienteId || c.clienteOperacionalId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
-      // Não atribuir ao vendedor atual vendas antigas de outro vendedor
-      // apenas porque o cliente foi transferido para sua carteira.
-      if (!pertenceAoVendedor(v) &&
-          (vinculosVendedorRegistro(v).length > 0 || !pertenceAoVendedor(cliente))) return false;
+      // Uma venda só pertence ao vendedor se o documento da própria venda
+      // comprovar empresa e autoria. A carteira atual não comprova venda passada.
+      if (!window.IntegroPerfisUnificados?.vendaPertenceAoVendedor?.(v)) return false;
       const dataVenda = dataRegistro(v);
       if (dataVenda !== dataHoje) return false;
 
@@ -1767,13 +1766,9 @@
   function caixaAberto() {
     const usuario = usuarioAtual || State.getUsuario?.() || {};
     const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
+    // Caixa em localStorage/window.caixaAtual é somente uma dica de interface.
+    // O conjunto válido é o último carregamento confirmado pelo servidor.
     const caixas = [...(State.getCaixas?.() || [])];
-
-    if (window.caixaAtual) caixas.push(window.caixaAtual);
-    try {
-      const salvo = localStorage.getItem("caixaAtual");
-      if (salvo) caixas.push(JSON.parse(salvo));
-    } catch (_) {}
 
     const mapa = new Map();
     caixas.forEach(caixa => {
@@ -1787,8 +1782,8 @@
       return ["ABERTO", "REABERTO"].includes(status) &&
         caixa.ativo !== false &&
         caixa.excluido !== true &&
-        (!tenantCaixa || !tenantId || tenantCaixa === tenantId) &&
-        pertenceAoVendedor(caixa, usuario);
+        Boolean(tenantId && tenantCaixa === tenantId) &&
+        window.IntegroPerfisUnificados?.caixaPertenceAoVendedor?.(caixa);
     }).sort((a, b) => dataRegistro(b).localeCompare(dataRegistro(a)) || texto(b.id).localeCompare(texto(a.id)));
 
     const caixa = candidatos[0] || null;
@@ -1802,17 +1797,19 @@
   }
 
   async function garantirCaixaAberto() {
-    let caixa = caixaAberto();
-    if (caixa) return caixa;
-
+    // Antes de qualquer operação financeira, confirmar o caixa novamente.
+    // Um fechamento pelo supervisor não pode ser ignorado por cache local.
     try {
-      await window.IntegroPerfisUnificados?.carregarCaixasVendedor?.();
+      const carregar = window.IntegroPerfisUnificados?.carregarCaixasVendedor;
+      if (!carregar) return null;
+      const caixas = await carregar(true);
+      if (!Array.isArray(caixas)) return null;
+      State.setCaixas?.(caixas);
+      return caixaAberto();
     } catch (erro) {
-      console.warn("[ÍNTEGRO VENDEDOR] Não foi possível atualizar o caixa antes da operação.", erro);
+      console.warn("[ÍNTEGRO VENDEDOR] Caixa não confirmado no servidor.", erro);
+      return null;
     }
-
-    caixa = caixaAberto();
-    return caixa;
   }
 
   function valorCentavosMovimentacao(valor) {
