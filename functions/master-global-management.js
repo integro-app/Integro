@@ -53,16 +53,23 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     return snap.docs.map(doc => ({ id: doc.id, ...normalizar(doc.data()) }));
   }
 
+  async function obterNotificacoesGlobais() {
+    const snap = await db.collection("notificacoes").where("escopo", "==", "PLATAFORMA").limit(5001).get();
+    if (snap.docs.length > 5000) fail("resource-exhausted", "Notificações globais excedem o limite seguro.");
+    return snap.docs.map(doc => ({ id: doc.id, ...normalizar(doc.data()) }));
+  }
+
   async function listarPainel(dados, contexto) {
     await autor(contexto);
     const [clientes, usuarios, departamentos, planos, notificacoesBrutas, logs, configSnap] = await Promise.all([
       obterLista("clientes_integro", 5000), obterLista("usuarios", 5000),
       obterLista("departamentos_integro", 1000), obterLista("planos", 1000),
-      obterLista("notificacoes", 200, "criadoEm"), obterLista("logs", 200, "criadoEm"),
+      obterNotificacoesGlobais(), obterLista("logs", 200, "criadoEm"),
       db.collection("configuracoes_globais").doc("plataforma").get()
     ]);
-    const notificacoes = notificacoesBrutas.filter(n => n.escopo === "PLATAFORMA" ||
-      (n.publico === "GLOBAL" && !n.clientePlataformaId));
+    const notificacoes = notificacoesBrutas
+      .filter(n => n.escopo === "PLATAFORMA")
+      .sort((a, b) => Date.parse(b.criadoEm || 0) - Date.parse(a.criadoEm || 0));
     const usuariosSeguros = usuarios.map(u => {
       const { senha, password, token, refreshToken, sessionId, ...permitido } = u;
       return permitido;
@@ -70,7 +77,8 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     return {
       ok: true, clientes, usuarios: usuariosSeguros, departamentos, planos, notificacoes, logs,
       configuracoes: configSnap.exists ? normalizar(configSnap.data()) : { nome: "ÍNTEGRO", diasTestePadrao: 7 },
-      limites: { logs: 200, notificacoes: 200 },
+      totais: { notificacoesGlobais: notificacoes.length },
+      limites: { logs: 200, notificacoes: 5000 },
       atualizadoEm: new Date().toISOString()
     };
   }
