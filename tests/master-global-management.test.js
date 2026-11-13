@@ -211,7 +211,7 @@ test("todas as ações do Master Global usam callable protegida e nenhum formul�
   const index = fs.readFileSync(path.join(__dirname, "..", "functions/index.js"), "utf8");
   const route = [
     "listarPainel", "salvarPlano", "salvarDepartamento", "salvarUsuarioInterno", "editarMasterLocal",
-    "alterarAcessoUsuario", "salvarConfiguracoes", "criarNotificacao", "marcarNotificacaoLida",
+    "alterarAcessoUsuario", "provisionarInternoLegado", "salvarConfiguracoes", "criarNotificacao", "marcarNotificacaoLida",
     "listarChat", "enviarChat", "listarAvisosInternos"
   ];
   for (const action of route) assert.match(index, new RegExp(action + ": gestaoGlobal\\." + action));
@@ -242,4 +242,22 @@ test("usuário interno possui rota própria, sem acesso a cadastros globais", ()
   assert.match(portal, /enviarChat/);
   assert.doesNotMatch(portal, /salvarClienteIntegroGlobal/);
   assert.doesNotMatch(portal, /\.collection\('clientes_integro'\)/);
+});
+
+test("cadastro interno legado sem Auth é migrado sem manter duas contas ativas", async () => {
+  const c = ambiente();
+  c.dados.set("usuarios/legado-interno", {
+    tipoUsuario: "usuario_integro", usuarioInternoIntegro: true,
+    nome: "Legado Integro", email: "legado@integro.com", status: "ATIVO", acessoLiberado: true
+  });
+  const r = await c.api.provisionarInternoLegado({ id: "legado-interno" }, c.global);
+  assert.equal(c.dados.get("usuarios/" + r.authUid).authUid, r.authUid);
+  assert.equal(c.dados.get("usuarios/" + r.authUid).tipoUsuario, "usuario_integro");
+  assert.equal(c.dados.get("usuarios/legado-interno").status, "PROVISIONADO");
+  assert.equal(c.dados.get("usuarios/legado-interno").acessoLiberado, false);
+  assert.equal(c.dados.get("usuarios/legado-interno").provisionadoComoUid, r.authUid);
+  await assert.rejects(c.api.provisionarInternoLegado({ id: "legado-interno" }, c.global),
+    e => e.code === "failed-precondition");
+  await assert.rejects(c.api.provisionarInternoLegado({ id: r.authUid }, c.local),
+    e => e.code === "permission-denied");
 });
