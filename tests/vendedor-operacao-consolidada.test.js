@@ -186,6 +186,7 @@ test("refresh parcial usa caixas recém-carregados antes de selecionar pagamento
     renderCobrancas:()=>{renders++;}};
   const contexto={window,State:state,
     caches(){},recalcularDashboardVendedor(){},
+    mesclarVendasConfirmadas: vendas => vendas,
     document:{dispatchEvent(){}},CustomEvent:class{constructor(name){this.type=name;}},
     console};
   const atualizar=vm.runInNewContext(
