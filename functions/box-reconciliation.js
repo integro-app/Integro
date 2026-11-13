@@ -15,10 +15,19 @@ function calcularConferencia({box, sales, installments, payments, requests, visi
   const activeSales=sales.filter(s=>!inactive(s)), salesById=new Map(sales.map(s=>[s.id,s]));
   const confirmedPayments=payments.filter(p=>!inactive(p)&&confirmed(p.status || p.statusPagamento || "CONFIRMADO"));
   const pendingPayments=payments.filter(p=>!inactive(p)&&[p.statusSync,p.syncStatus,p.status].some(s=>["PENDENTE","SINCRONIZANDO","ERRO_BLOQUEADO_CAIXA_FECHADO"].includes(norm(s))));
-  const pendingApprovals=requests.filter(r=>!inactive(r)&&["PENDENTE","PENDENTE_APROVACAO","AGUARDANDO_APROVACAO","EM_ANALISE"].includes(norm(r.status || r.statusSolicitacao)));
+  // Solicitações financeiras comuns podem permanecer pendentes no fechamento:
+  // não movimentam o saldo enquanto não aprovadas. Apenas uma aprovação
+  // explicitamente obrigatória para fechar o caixa é impeditiva.
+  const pendingApprovals=requests.filter(r=>!inactive(r)&&
+    (r.aprovacaoObrigatoriaFechamento===true || r.bloqueiaFechamento===true)&&
+    ["PENDENTE","PENDENTE_APROVACAO","AGUARDANDO_APROVACAO","EM_ANALISE"].includes(norm(r.status || r.statusSolicitacao)));
   const activeLedger=ledger.filter(l=>!inactive(l)&&confirmed(l.statusLancamento || "CONFIRMADO"));
   const due = p => text(p.dataVencimento || p.dataPrevista || p.vencimento || p.dataCobranca).slice(0,10);
-  const paid = p => ["PAGA","QUITADA"].includes(norm(p.statusParcela || p.status)) || money(p,"valorPagoCentavos",["valorPago"])>=money(p,"valorCentavos",["valor","valorPrevisto","valorParcela"]);
+  const paid = p => {
+    if (["PAGA","QUITADA"].includes(norm(p.statusParcela || p.status))) return true;
+    const previsto=money(p,"valorCentavos",["valor","valorPrevisto","valorParcela"]);
+    return previsto>0 && money(p,"valorPagoCentavos",["valorPago"])>=previsto;
+  };
   const inconsistencies=[];
   for(const l of ledger) if(!inactive(l)&&["PENDENTE","SINCRONIZANDO","ERRO"].includes(norm(l.statusLancamento))) inconsistencies.push("LEDGER_PENDENTE:"+l.id);
   const checkLedger=(origin,type,amount) => {
@@ -65,7 +74,11 @@ function calcularConferencia({box, sales, installments, payments, requests, visi
     // Baixa automática gerencial significa "sem baixa", não visita física realizada.
     const physicallyVisited=unpaidVisits.some(v=>v.visitaRealizada!==false && v.semBaixaGerencial!==true);
     const managerialMissing=unpaidVisits.some(v=>v.semBaixaGerencial===true);
-    const scheduled=parts.some(p=>due(p)&&due(p)<=day&&(!paid(p)||confirmedPayments.some(pay=>pay.parcelaId===p.id))) || text(sale.dataPrimeiraCobranca).slice(0,10)===day;
+    // A data da primeira cobrança é apenas fallback de vendas sem parcelas.
+    // Com parcelas reais, usar os vencimentos e o estado de cada parcela.
+    // Uma parcela integralmente quitada em outro caixa não cria visita fantasma.
+    const scheduled=parts.some(p=>due(p)&&due(p)<=day&&(!paid(p)||confirmedPayments.some(pay=>pay.parcelaId===p.id))) ||
+      (parts.length===0 && text(sale.dataPrimeiraCobranca).slice(0,10)===day);
     const expected=money(sale,'valorParcelaCentavos',['valorParcela','parcelaValor']) || (parts.length ? money(parts[0],'valorCentavos',['valorParcela','valor','valorPrevisto']) : 0);
     return {id:sale.id,clienteId:text(sale.clienteId || sale.clienteOperacionalId),clienteNome:text(sale.clienteNome || sale.nomeCliente || ""),required:scheduled||received||visited,received,visited,physicallyVisited,managerialMissing,expected};
   }).filter(r=>r.required);
