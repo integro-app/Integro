@@ -386,9 +386,34 @@
       document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
     }
     function cardCliente(c){const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente'; const bloq=!clienteLiberadoGlobal(c); const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status)); const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now(); return `<div class="list-card"><div class="list-bar" style="background:${bloq?'#ef4444':c.testeAtivo?'#ff6b00':'#22c55e'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(c.tipoPessoa||'PJ')} • ${esc(c.documento||'-')} • ${esc(c.email||'-')}</p><p>${badge(testeExpirado?'TESTE EXPIRADO':bloq?'BLOQUEADO':c.status||'ATIVO')} ${c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':''}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheCliente('${c.id}')">Ver</button><button class="btn btn-light" onclick="abrirFormCliente('${c.id}')">Editar</button><button class="btn btn-primary" onclick="abrirFormMasterLocal('${c.id}')">Master Local</button><button class="btn btn-success" onclick="ativarTesteCliente('${c.id}')">Teste 7d</button><button class="btn ${bloqueioManual?'btn-success':'btn-danger'}" onclick="alternarAcessoCliente('${c.id}')">${bloqueioManual?'Liberar':'Bloquear'}</button></div></div>`}
-    function cardUsuario(u,tipo){const nome=u.nome||u.nomeCompleto||u.email||'Usuário'; const bloq=u.acessoLiberado===false||status(u.status)==='BLOQUEADO'; return `<div class="list-card"><div class="list-bar" style="background:${tipo==='master'?'#ff6b00':'#0ea5e9'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(u.email||'-')} • ${esc(u.clientePlataformaNome||u.empresaNome||u.departamentoNome||'ÍNTEGRO')}</p><p>${badge(bloq?'BLOQUEADO':u.status||'ATIVO')} <span class="chip">${esc(u.tipoUsuario||'')}</span></p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheUsuario('${u.id}')">Ver</button><button class="btn ${bloq?'btn-success':'btn-danger'}" onclick="alternarAcessoUsuario('${u.id}')">${bloq?'Liberar':'Bloquear'}</button></div></div>`}
+    function cardUsuario(u,tipo){
+      const nome=u.nome||u.nomeCompleto||u.email||'Usuário';
+      const bloq=u.acessoLiberado===false||status(u.status)==='BLOQUEADO';
+      const provisionado=u.id===u.authUid&&Boolean(u.authUid);
+      const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+      const contexto=tipo==='master'?(empresa?.nome||u.clientePlataformaNome||'Empresa não identificada'):
+        (departamentos.find(d=>d.id===u.departamentoId)?.nome||'Equipe ÍNTEGRO');
+      return '<div class="list-card"><div class="list-bar" style="background:'+
+        (tipo==='master'?'#ff6b00':'#0ea5e9')+'"></div><div><h3>'+esc(nome)+'</h3>'+
+        '<p class="muted">'+esc(u.email||'-')+' · '+esc(contexto)+'</p>'+
+        badge(provisionado?(bloq?'BLOQUEADO':u.status||'ATIVO'):'LEGADO / PENDENTE')+
+        ' <span class="chip">'+esc(u.cargoNome||u.tipoUsuario||'')+'</span></div><div class="list-actions">'+
+        '<button class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver</button>'+
+        (provisionado?
+          '<button class="btn btn-light" data-mg-action="'+(tipo==='master'?'editar-master':'editar-interno')+'" data-id="'+esc(u.id)+'">Editar</button>'+
+          '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>':'')+
+        '</div></div>';
+    }
     function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id)}
-    function atualizarBotaoAcao(id){const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],departamentos:['Novo departamento',abrirFormDepartamento],planos:['Novo plano',abrirFormPlano],notificacoes:['Nova notificação',abrirFormNotificacao]};const cfg=map[id]||['Novo cliente',abrirFormCliente];setText('btnAcaoPrincipal',cfg[0]);safe('btnAcaoPrincipal',b=>b.onclick=cfg[1])}
+    function atualizarBotaoAcao(id){
+      const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],
+        masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],
+        departamentos:['Novo departamento',abrirFormDepartamento],planos:['Novo plano',abrirFormPlano],
+        notificacoes:['Nova notificação',abrirFormNotificacao]};
+      const botao=byId('btnAcaoPrincipal');if(!botao)return;
+      const cfg=map[id];botao.style.display=cfg?'':'none';
+      if(cfg){botao.textContent=cfg[0];botao.onclick=cfg[1];}
+    }
     function abrirSidebar(){byId('sidebar').classList.add('show');byId('sidebarOverlay').classList.add('show');document.body.classList.add('menu-mobile-open')} function fecharSidebar(){byId('sidebar').classList.remove('show');byId('sidebarOverlay').classList.remove('show');document.body.classList.remove('menu-mobile-open')} function abrirDrawer(t,s,h){setText('drawerTitle',t);setText('drawerSubtitle',s);byId('drawerBody').innerHTML=h;byId('drawer').classList.add('show');byId('drawerOverlay').classList.add('show')} function fecharDrawer(){byId('drawer').classList.remove('show');byId('drawerOverlay').classList.remove('show')}
     function abrirFormCliente(id=null){const c=id?clientesIntegro.find(x=>x.id===id):{};abrirDrawer(id?'Editar cliente ÍNTEGRO':'Novo cliente ÍNTEGRO','Cadastro PF/PJ da plataforma',`<div class="grid"><div class="field-grid"><div><label class="form-label">Tipo</label><select id="cliTipoPessoa" class="form-select"><option value="PJ">PJ</option><option value="PF">PF</option></select></div><div><label class="form-label">Documento</label><input id="cliDocumento" class="form-input" value="${esc(c?.documento||'')}"></div></div><div><label class="form-label">Nome/Razão social</label><input id="cliNome" class="form-input" value="${esc(c?.nome||c?.razaoSocial||'')}"></div><div class="field-grid"><div><label class="form-label">Email</label><input id="cliEmail" class="form-input" value="${esc(c?.email||'')}"></div><div><label class="form-label">Telefone</label><input id="cliTelefone" class="form-input" value="${esc(c?.telefone||'')}"></div></div><button class="btn btn-primary" onclick="salvarClienteIntegro('${id||''}')">Salvar cliente</button></div>`);setVal('cliTipoPessoa',c?.tipoPessoa||'PJ');
       const botao=byId('drawerBody')?.querySelector('button.btn-primary');
@@ -621,7 +646,42 @@
       byId('btnReenviarEdicaoMaster').onclick=()=>enviarAcessoMasterLocal(u.email);
     }
  async function logout(){const usuarioSaindo=usuarioLogado;try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioSaindo,limparFila:true});location.href='index.html'}
-    function abrirResumoKpi(tipo){const map={clientes:['Clientes da plataforma',clientesIntegro.map(c=>c.nome||c.razaoSocial||c.email||c.id)],ativos:['Acessos liberados',clientesIntegro.filter(clienteLiberadoGlobal).map(c=>c.nome||c.razaoSocial||c.id)],teste:['Clientes em teste',clientesIntegro.filter(c=>c.testeAtivo&&clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],masters:['Masters locais',getMastersLocais().map(u=>u.nome||u.email)],bloqueados:['Bloqueados',clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],internos:['Equipe interna',getUsuariosInternos().map(u=>u.nome||u.email)],planos:['Planos',planos.map(p=>p.nome)],notificacoes:['Notificações',notificacoes.map(n=>n.titulo||n.tipo)]};const m=map[tipo]||['Resumo',[]];abrirDrawer(m[0],`${m[1].length} registro(s)`,`<div class="list">${m[1].length?m[1].map(x=>box(x,'')).join(''):empty('Sem registros.')}</div>`)} function abrirDetalheCliente(id){const c=clientesIntegro.find(x=>x.id===id);if(c)abrirDrawer('Cliente ÍNTEGRO',c.nome||c.razaoSocial||'Cliente',`${info('Documento',c.documento)}${info('Email',c.email)}${info('Telefone',c.telefone)}<button class="btn btn-primary" onclick="abrirFormMasterLocal('${id}')">Criar Master Local</button>`)} function abrirDetalheUsuario(id){const u=usuariosSistema.find(x=>x.id===id);if(u)abrirDrawer('Usuário',u.nome||u.email||'Usuário',`${info('Email',u.email)}${info('Tipo',u.tipoUsuario)}${info('Status',u.status||'ATIVO')}`)}
+    function abrirResumoKpi(tipo){
+      const map={
+        clientes:['Clientes da plataforma',clientesIntegro.map(c=>c.nome||c.razaoSocial||c.email||c.id)],
+        ativos:['Acessos contratuais ativos',clientesIntegro.filter(clienteLiberadoGlobal).map(c=>c.nome||c.razaoSocial||c.id)],
+        teste:['Clientes em teste',clientesIntegro.filter(c=>c.testeAtivo&&clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],
+        masters:['Masters Locais',getMastersLocais().filter(u=>u.id===u.authUid).map(u=>u.nome||u.email)],
+        bloqueados:['Clientes sem acesso contratual',clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],
+        internos:['Equipe ÍNTEGRO',getUsuariosInternos().filter(u=>u.id===u.authUid).map(u=>u.nome||u.email)],
+        planos:['Planos ativos',planos.filter(p=>status(p.status)!=='INATIVO').map(p=>p.nome)],
+        notificacoes:['Notificações não lidas',notificacoes.filter(n=>!notificacaoLidaGlobal(n)).map(n=>n.titulo||n.tipo)]
+      };
+      const m=map[tipo]||['Resumo',[]];
+      abrirDrawer(m[0],m[1].length+' registro(s)','<div class="list">'+
+        (m[1].length?m[1].map(x=>box(x,'')).join(''):empty('Sem registros.'))+'</div>');
+    }
+    function abrirDetalheCliente(id){
+      const c=clientesIntegro.find(x=>x.id===id);if(!c)return;
+      const plano=planos.find(p=>p.id===c.planoId);
+      const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id&&u.id===u.authUid);
+      abrirDrawer('Cliente ÍNTEGRO',c.nome||c.razaoSocial||'Cliente',
+        info('Documento',c.documento)+info('E-mail',c.email)+info('Telefone',c.telefone)+
+        info('Plano comercial',plano?.nome||'Sem plano')+
+        info('Acesso contratual',clienteLiberadoGlobal(c)?'LIBERADO':'SEM ACESSO')+
+        info('Fim do teste',c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem teste')+
+        info('Masters Locais',masters.length?masters.map(u=>u.nome+' ('+u.email+')').join(', '):'Nenhum provisionado')+
+        '<button class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
+        '<button class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>');
+    }
+    function abrirDetalheUsuario(id){
+      const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
+      const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+      abrirDrawer('Usuário',u.nome||u.email||'Usuário',
+        info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
+        info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
+        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado'));
+    }
     function getMastersLocais(){
       const unicos=new Map();
       usuariosSistema.filter(u=>String(u.tipoUsuario||'').toLowerCase()==='master_local'&&
@@ -634,7 +694,7 @@
     } function getUsuariosInternos(){return usuariosSistema.filter(u=>String(u.tipoUsuario||'').toLowerCase().includes('_integro')||u.usuarioInternoIntegro===true)} function byId(id){return document.getElementById(id)} function safe(id,fn){const e=byId(id);if(e)fn(e)} function val(id){return byId(id)?.value?.trim?.()||''} function setVal(id,v){if(byId(id))byId(id).value=v} function setText(id,v){if(byId(id))byId(id).innerText=v} function status(v){return String(v||'').toUpperCase()} function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} function limparBusca(id){if(byId(id))byId(id).value=''} function match(obj,termo,campos){if(!termo)return true;return campos.map(c=>String(obj[c]||'')).join(' ').toLowerCase().includes(termo)} function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))} function badge(s){const st=status(s||'ATIVO');const cls=st==='ATIVO'?'green':st==='BLOQUEADO'?'red':st==='INATIVO'?'orange':'';return `<span class="chip ${cls}">${esc(st)}</span>`} function empty(t){return `<div class="empty">${esc(t)}</div>`} function box(t,p){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong>${p?`<p class="muted" style="margin-top:5px">${esc(p)}</p>`:''}</div>`} function info(t,v){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong><p class="muted" style="margin-top:5px">${esc(v||'-')}</p></div>`} function dataCurta(v){try{if(v?.toDate)return v.toDate().toLocaleString('pt-BR'); if(v)return new Date(v).toLocaleString('pt-BR')}catch(e){}return '-'}
 
     async function carregarLogs(){
-      logs = await getCol('logs',200,'criadoEm');
+      await carregarTudo();
       return logs;
     }
 
