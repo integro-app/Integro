@@ -170,13 +170,13 @@
     <section id="departamentos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Departamentos internos</h2><p>Comercial, financeiro, suporte e administrativo.</p></div><button class="btn btn-primary" onclick="abrirFormDepartamento()">Novo departamento</button></div><div id="listaDepartamentos" class="list"></div></div></section>
     <section id="planos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Planos da plataforma</h2><p>Planos comerciais do SaaS.</p></div><button class="btn btn-primary" onclick="abrirFormPlano()">Novo plano</button></div><div id="listaPlanos" class="list"></div></div></section>
     <section id="notificacoes" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Notificações</h2><p>Central global de avisos.</p></div><button class="btn btn-primary" onclick="abrirFormNotificacao()">Nova notificação</button></div><div id="listaNotificacoes" class="list"></div></div></section>
-    <section id="chat" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Chat interno</h2><p>Comunicação entre funcionários.</p></div></div><div id="integroChatRoot"></div></div></section>
+    <section id="chat" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Chat interno</h2><p>Comunicação entre funcionários.</p></div></div><div id="integroChatRoot"><div class="grid"><div class="panel" style="min-height:280px"><div class="panel-title"><div><h2>Mensagens da equipe ÍNTEGRO</h2><p>Canal exclusivo da administração, separado das conversas dos clientes.</p></div><button class="btn btn-light" onclick="carregarChatGlobal()">Atualizar</button></div><div id="listaChatGlobal" class="list"><div class="empty">Abra a aba para carregar mensagens.</div></div></div><form id="formChatGlobal" class="panel" onsubmit="enviarMensagemGlobal(event)"><label class="form-label" for="chatGlobalTexto">Nova mensagem</label><textarea id="chatGlobalTexto" class="form-textarea" maxlength="1200" required placeholder="Digite sua mensagem para a equipe..."></textarea><button id="btnChatGlobalEnviar" class="btn btn-primary" type="submit">Enviar mensagem</button></form></div></div></div></section>
     <section id="relatorios" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title"><div><h2>Relatórios da plataforma</h2><p>Indicadores de cadastros e planos vinculados, sem confundir mensalidade contratada com receita recebida.</p></div><button class="btn btn-light" onclick="carregarTudo()">Atualizar dados</button></div><div class="grid grid-2" id="resumoRelatorios"></div><div class="toolbar" style="margin-top:18px"><button class="btn btn-primary" onclick="exportarRelatorioGlobal('clientes')">Exportar clientes CSV</button><button class="btn btn-light" onclick="exportarRelatorioGlobal('usuarios')">Exportar usuários CSV</button><button class="btn btn-light" onclick="exportarRelatorioGlobal('planos')">Exportar planos CSV</button></div><div id="distribuicaoPlanos" class="list"></div></div></section>
     <section id="logs" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Logs e auditoria</h2><p>Registro das últimas 200 ações do sistema, em ordem de criação.</p></div><button class="btn btn-light" onclick="carregarLogs().then(renderLogs).catch(e=>notificarIntegro(mensagemErroGlobal(e)))">Atualizar logs</button></div><div id="listaLogs" class="list"></div></div></section>
     <section id="config" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Configurações globais</h2><p>Padrões da plataforma.</p></div><button class="btn btn-primary" onclick="salvarConfiguracoesGlobais()">Salvar</button></div><div class="grid grid-2"><div><label class="form-label">Nome da plataforma</label><input id="cfgNomePlataforma" class="form-input" value="ÍNTEGRO"></div><div><label class="form-label">Dias de teste padrão</label><input id="cfgDiasTeste" type="number" class="form-input" value="7"></div></div></div></section>
   </main>
   <div id="drawerOverlay" class="drawer-overlay"></div><aside id="drawer" class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Detalhes</h2><p id="drawerSubtitle">Informações</p></div><button class="close-btn" onclick="fecharDrawer()" aria-label="Fechar detalhes">×</button></div><div id="drawerBody" class="drawer-body"></div></aside>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script><script src="js/services/chat-service.js?v=20261105-chat-history-v2"></script><script src="js/chat-ui.js?v=20261105-chat-history-v2"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script>
   <script>
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false;
     let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
@@ -380,6 +380,31 @@
         (vinculados.get(p.id)||0)+' cliente(s) · '+moeda(p.valorMensal??p.valor??0)+'/mês')).join('')+
         ((vinculados.get('SEM_PLANO')||0)?box('Sem plano',(vinculados.get('SEM_PLANO')||0)+' cliente(s)'):'');
     }
+    async function carregarChatGlobal(){
+      const raiz=byId('listaChatGlobal');if(!raiz)return;
+      raiz.innerHTML=empty('Carregando mensagens da equipe...');
+      try{
+        const r=await chamarGestaoGlobal('listarChat');
+        if(!Array.isArray(r.mensagens))throw new Error('Resposta de mensagens incompleta.');
+        raiz.innerHTML=r.mensagens.length?r.mensagens.map(m=>
+          '<div class="empty" style="border-style:solid"><strong>'+esc(m.autorNome||'Equipe ÍNTEGRO')+
+          '</strong><span class="muted"> · '+esc(dataCurta(m.criadoEm))+'</span>'+
+          '<p style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px">'+esc(m.mensagem||'')+'</p></div>'
+        ).join(''):empty('Nenhuma mensagem publicada.');
+      }catch(e){raiz.innerHTML=empty('Falha ao carregar mensagens. Tente novamente.');throw e;}
+    }
+    async function enviarMensagemGlobal(evento){
+      evento?.preventDefault?.();
+      const mensagem=val('chatGlobalTexto');if(!mensagem)return;
+      const botao=byId('btnChatGlobalEnviar');if(botao?.disabled)return;
+      if(botao)botao.disabled=true;
+      try{
+        await chamarGestaoGlobal('enviarChat',{mensagem});
+        setVal('chatGlobalTexto','');
+        await carregarChatGlobal();
+      }catch(e){notificarIntegro(mensagemErroGlobal(e));}
+      finally{if(botao)botao.disabled=false;}
+    }
     function exportarRelatorioGlobal(tipo){
       if(!dadosGlobaisCarregados)return notificarIntegro('Carregue os dados reais antes de exportar.');
       const definicoes={
@@ -423,7 +448,7 @@
           '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>':'')+
         '</div></div>';
     }
-    function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id)}
+    function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
     function atualizarBotaoAcao(id){
       const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],
         masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],
@@ -728,7 +753,7 @@
         }
       }catch(e){console.warn('Fallback eventos master global:', e);}
     });
-    Object.assign(window,{abrirFormCliente,salvarClienteIntegro,abrirFormMasterLocal,salvarMasterLocal,abrirFormUsuarioInterno,salvarUsuarioInterno,abrirFormDepartamento,salvarDepartamento,abrirFormPlano,salvarPlano,abrirFormNotificacao,salvarNotificacao,renderClientes,limparBusca,fecharDrawer,alternarAcessoCliente,ativarTesteCliente,alternarAcessoUsuario,marcarNotificacaoLida,salvarConfiguracoesGlobais,carregarLogs,renderLogs,abrirDetalheCliente,abrirDetalheUsuario,abrirEdicaoMasterLocal,exportarRelatorioGlobal});
+    Object.assign(window,{abrirFormCliente,salvarClienteIntegro,abrirFormMasterLocal,salvarMasterLocal,abrirFormUsuarioInterno,salvarUsuarioInterno,abrirFormDepartamento,salvarDepartamento,abrirFormPlano,salvarPlano,abrirFormNotificacao,salvarNotificacao,renderClientes,limparBusca,fecharDrawer,alternarAcessoCliente,ativarTesteCliente,alternarAcessoUsuario,marcarNotificacaoLida,salvarConfiguracoesGlobais,carregarLogs,renderLogs,abrirDetalheCliente,abrirDetalheUsuario,abrirEdicaoMasterLocal,exportarRelatorioGlobal,carregarChatGlobal,enviarMensagemGlobal});
   </script>
   <script src="js/integro-connectivity-guard.js?v=20261101-operacao3"></script>
 <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1"></script>
