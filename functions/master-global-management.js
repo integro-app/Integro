@@ -252,6 +252,9 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
           !["master_local", "usuario_integro"].includes(atual.data().tipoUsuario)) {
         fail("permission-denied", "Não é permitido alterar este usuário.");
       }
+      if (atual.data().empresaBloqueada === true) {
+        fail("failed-precondition", "Empresa bloqueada. Libere a empresa antes de editar o acesso individual.");
+      }
       tx.set(ref, { acessoLiberado: liberado, status: liberado ? "ATIVO" : "BLOQUEADO",
         atualizadoEm: agora(), atualizadoPorUid: a.uid }, { merge: true });
       log(tx, liberado ? "LIBERAR_USUARIO_GLOBAL" : "BLOQUEAR_USUARIO_GLOBAL", a, id,
