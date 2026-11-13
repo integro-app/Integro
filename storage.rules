@@ -15,11 +15,30 @@ service firebase.storage {
       return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data;
     }
 
+    function empresaLiberadaNoStorage(caminho) {
+      let empresa = firestore.exists(caminho) ? firestore.get(caminho).data : {};
+      return empresa.get("acessoLiberado", true) != false &&
+        empresa.get("ativo", true) != false &&
+        !(empresa.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        (empresa.get("testeAtivo", false) != true ||
+          !("dataFimTesteEm" in empresa) || empresa.dataFimTesteEm > request.time) &&
+        (!("bloqueioAssinaturaEm" in empresa) ||
+          !(empresa.bloqueioAssinaturaEm is timestamp) || empresa.bloqueioAssinaturaEm > request.time);
+    }
+
+    function tenantLiberadoNoStorage() {
+      return isMasterGlobal() || userDoc().get("tipoUsuario", "") == "usuario_integro" ||
+        (userTenantId() is string && userTenantId().size() > 0 &&
+          empresaLiberadaNoStorage(/databases/(default)/documents/clientes_integro/$(userTenantId())) &&
+          empresaLiberadaNoStorage(/databases/(default)/documents/clientes_plataforma/$(userTenantId())));
+    }
+
     function isActiveUser() {
       return hasUserDoc() &&
         userDoc().get("authUid", "") == request.auth.uid &&
         userDoc().get("acessoLiberado", false) == true &&
-        !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]);
+        !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        tenantLiberadoNoStorage();
     }
 
     function userTenantId() {
