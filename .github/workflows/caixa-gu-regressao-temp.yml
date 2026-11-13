@@ -1,0 +1,22 @@
+name: Validar pendencias de caixa Gu (temporario)
+on:
+  push:
+    branches: [fix/caixa-gu-pendencias-rota-conferencia-20261112]
+    paths:
+      - ".github/workflows/caixa-gu-regressao-temp.yml"
+      - "tests/caixa-pendencias-rota-regression.test.js"
+permissions:
+  contents: read
+jobs:
+  validar_caixa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node --test tests/caixa-pendencias-rota-regression.test.js tests/vendedor-unificado-operacao.test.js tests/current-box-ledger.test.js
+      - run: npm run verify
