@@ -126,6 +126,15 @@ test("cadastro cria tenant espelhado, reserva CPF/CNPJ e auditoria; não duplica
   assert.equal(c.dados.get("clientes_plataforma/" + id).nome, "Empresa Atualizada");
 });
 
+test("plano comercial deve existir e estar ativo antes de vincular o cliente", async () => {
+  const c = ambiente();
+  await assert.rejects(c.api.salvarCliente({ ...cliente, planoId: "plano-inexistente" }, c.contexto),
+    e => e.code === "failed-precondition");
+  c.dados.set("planos/plano-teste", { nome: "Plano Teste", status: "ATIVO" });
+  const resultado = await c.api.salvarCliente({ ...cliente, planoId: "plano-teste" }, c.contexto);
+  assert.equal(c.dados.get("clientes_integro/" + resultado.id).planoId, "plano-teste");
+});
+
 test("duplicidade legada sem documentoNormalizado é bloqueada", async () => {
   const c = ambiente();
   c.dados.set("clientes_plataforma/legado", { documento: "11.222.333/0001-81" });
