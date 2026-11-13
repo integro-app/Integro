@@ -15,7 +15,12 @@ function calcularConferencia({box, sales, installments, payments, requests, visi
   const activeSales=sales.filter(s=>!inactive(s)), salesById=new Map(sales.map(s=>[s.id,s]));
   const confirmedPayments=payments.filter(p=>!inactive(p)&&confirmed(p.status || p.statusPagamento || "CONFIRMADO"));
   const pendingPayments=payments.filter(p=>!inactive(p)&&[p.statusSync,p.syncStatus,p.status].some(s=>["PENDENTE","SINCRONIZANDO","ERRO_BLOQUEADO_CAIXA_FECHADO"].includes(norm(s))));
-  const pendingApprovals=requests.filter(r=>!inactive(r)&&["PENDENTE","PENDENTE_APROVACAO","AGUARDANDO_APROVACAO","EM_ANALISE"].includes(norm(r.status || r.statusSolicitacao)));
+  // Solicitações financeiras comuns podem permanecer pendentes no fechamento:
+  // não movimentam o saldo enquanto não aprovadas. Apenas uma aprovação
+  // explicitamente obrigatória para fechar o caixa é impeditiva.
+  const pendingApprovals=requests.filter(r=>!inactive(r)&&
+    (r.aprovacaoObrigatoriaFechamento===true || r.bloqueiaFechamento===true)&&
+    ["PENDENTE","PENDENTE_APROVACAO","AGUARDANDO_APROVACAO","EM_ANALISE"].includes(norm(r.status || r.statusSolicitacao)));
   const activeLedger=ledger.filter(l=>!inactive(l)&&confirmed(l.statusLancamento || "CONFIRMADO"));
   const due = p => text(p.dataVencimento || p.dataPrevista || p.vencimento || p.dataCobranca).slice(0,10);
   const paid = p => {
