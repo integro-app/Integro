@@ -200,10 +200,9 @@
         vendasConfirmadasNoServidor.delete(id);
         continue;
       }
-      if (mapa.has(id) && mapa.get(id)?.id !== undefined) {
-        // Uma consulta remota bem-sucedida é a versão oficial do registro.
-        vendasConfirmadasNoServidor.delete(id);
-      } else mapa.set(id, registro.venda);
+      // Se a consulta trouxe o registro, mantém a versão do servidor; se
+      // uma leitura em cache o omitiu, conserva por curto prazo o GET confirmado.
+      if (!mapa.has(id)) mapa.set(id, registro.venda);
     }
     return [...mapa.values()];
   }
