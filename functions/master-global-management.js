@@ -223,6 +223,67 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     }
   }
 
+  async function provisionarInternoLegado(dados, contexto) {
+    const a = await autor(contexto);
+    const id = txt(dados?.id);
+    if (!idValido(id)) fail("invalid-argument", "Cadastro legado inválido.");
+    const usuarios = db.collection("usuarios"), legadoRef = usuarios.doc(id);
+    const legadoSnap = await legadoRef.get();
+    if (!legadoSnap.exists) fail("not-found", "Cadastro interno não encontrado.");
+    const legado = legadoSnap.data() || {};
+    if (legado.authUid || legado.tipoUsuario !== "usuario_integro" ||
+        txt(legado.clientePlataformaId) || legado.provisionamentoAuth === "PROVISIONADO") {
+      fail("failed-precondition", "Somente cadastro interno legado sem Auth pode ser provisionado.");
+    }
+    const email = txt(legado.email).toLowerCase(), nome = txt(legado.nome || legado.nomeCompleto);
+    if (!emailValido(email) || nome.length < 3) fail("failed-precondition", "Cadastro legado sem nome ou e-mail válido.");
+    let existeAuth;
+    try { existeAuth = await admin.auth().getUserByEmail(email); }
+    catch (e) { if (e.code !== "auth/user-not-found") throw e; }
+    if (existeAuth) fail("already-exists", "E-mail já possui conta Auth; reconciliação manual necessária.");
+    let novo;
+    try {
+      novo = await admin.auth().createUser({
+        email, displayName: nome, emailVerified: false,
+        password: crypto.randomBytes(36).toString("base64url") + "A9!"
+      });
+      await db.runTransaction(async tx => {
+        const [atual, canonico] = await Promise.all([tx.get(legadoRef), tx.get(usuarios.doc(novo.uid))]);
+        if (!atual.exists || atual.data().authUid || atual.data().tipoUsuario !== "usuario_integro" ||
+            txt(atual.data().clientePlataformaId) || canonico.exists) {
+          fail("failed-precondition", "Cadastro alterado durante provisionamento.");
+        }
+        tx.create(usuarios.doc(novo.uid), {
+          authUid: novo.uid, nome, nomeCompleto: nome, email, emailNormalizado: email,
+          tipoUsuario: "usuario_integro", tipoUsuarioOficial: "usuario_integro",
+          tipoUsuarioLegado: txt(legado.tipoUsuarioLegado || "interno_integro"),
+          cargoChave: txt(legado.cargoChave || "interno_integro"),
+          cargoNome: txt(legado.cargoNome || "Equipe ÍNTEGRO"),
+          usuarioInternoIntegro: true, departamentoId: txt(legado.departamentoId),
+          clientePlataformaId: "", status: "ATIVO", acessoLiberado: true, ativo: true,
+          convitePendente: false, provisionamentoAuth: "PROVISIONADO",
+          criadoPorUid: a.uid, criadoEm: agora(), origemLegadaId: id
+        });
+        tx.set(legadoRef, { status: "PROVISIONADO", acessoLiberado: false,
+          provisionamentoAuth: "PROVISIONADO", provisionadoComoUid: novo.uid,
+          atualizadoEm: agora(), atualizadoPorUid: a.uid }, { merge: true });
+        log(tx, "PROVISIONAR_USUARIO_INTERNO_LEGADO", a, email, { usuarioAlvoUid: novo.uid });
+      });
+      return { ok: true, authUid: novo.uid, email };
+    } catch (e) {
+      if (novo?.uid) {
+        try {
+          const confirmado = await usuarios.doc(novo.uid).get();
+          if (confirmado.exists && confirmado.data()?.authUid === novo.uid) {
+            return { ok: true, authUid: novo.uid, email };
+          }
+          await admin.auth().deleteUser(novo.uid);
+        } catch (rollback) { console.error("[MASTER GLOBAL] Falha rollback Auth legado", rollback); }
+      }
+      throw e;
+    }
+  }
+
   async function editarMasterLocal(dados, contexto) {
     const a = await autor(contexto);
     const id = txt(dados?.id), nome = txt(dados?.nome);
@@ -322,7 +383,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
   }
 
   return { listarPainel, salvarDepartamento, salvarPlano, salvarConfiguracoes,
-    salvarUsuarioInterno, editarMasterLocal, alterarAcessoUsuario,
+    salvarUsuarioInterno, provisionarInternoLegado, editarMasterLocal, alterarAcessoUsuario,
     criarNotificacao, marcarNotificacaoLida, listarAvisosInternos, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };
