@@ -104,25 +104,16 @@ service cloud.firestore {
       return role() == "captador" || cargo() == "captador";
     }
 
-    // Bloqueio da plataforma vale também para acessos diretos ao Firestore,
-    // não apenas para Cloud Functions. Tenants legados sem documento seguem
-    // compatíveis até migração; novos cadastros criam os dois documentos.
-    function empresaLiberadaNoCaminho(caminho) {
-      let empresa = exists(caminho) ? get(caminho).data : {};
-      return empresa.get("acessoLiberado", true) != false &&
-        empresa.get("ativo", true) != false &&
-        !(empresa.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        (empresa.get("testeAtivo", false) != true ||
-          !("dataFimTesteEm" in empresa) || empresa.dataFimTesteEm > request.time) &&
-        (!("bloqueioAssinaturaEm" in empresa) ||
-          !(empresa.bloqueioAssinaturaEm is timestamp) || empresa.bloqueioAssinaturaEm > request.time);
-    }
-
+    // Consulta única ao cadastro canônico do tenant. Evita exceder o limite
+    // de expressões das Rules em batches operacionais com múltiplas escritas.
     function tenantLiberadoPelaPlataforma() {
+      let caminho = /databases/$(database)/documents/clientes_integro/$(userTenantId());
+      let empresa = hasTenant() && exists(caminho) ? get(caminho).data : {};
       return isMasterGlobal() || isUsuarioIntegro() || (
         hasTenant() &&
-        empresaLiberadaNoCaminho(/databases/$(database)/documents/clientes_integro/$(userTenantId())) &&
-        empresaLiberadaNoCaminho(/databases/$(database)/documents/clientes_plataforma/$(userTenantId()))
+        empresa.get("acessoLiberado", true) != false &&
+        (empresa.get("testeAtivo", false) != true ||
+          !("dataFimTesteEm" in empresa) || empresa.dataFimTesteEm > request.time)
       );
     }
 
