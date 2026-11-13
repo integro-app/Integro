@@ -158,3 +158,12 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Pendente obrigatoriamente:** confirmar índice ativo, implantação autorizada das duas Functions e do Hosting, teste Firebase Auth/Firestore real com dois tenants e vendedores diferentes, disparo/decisão de solicitação, cadastro/duplo clique/rede, atualização de carteira/venda/parcelas/ledger e fechamento de caixa real em dispositivo móvel.
 - **Importante:** anexos do formulário nesta fase são apenas nomes de arquivo; upload efetivo para Storage não está incluído neste escopo.
 - **Veredito:** **EM DESENVOLVIMENTO/HOMOLOGAÇÃO**. Não há autorização para considerar concluído ou apresentado como produção.
+
+## 12. M01 / Master Global — cadastro do cliente ÍNTEGRO e Master Local (13/11/2026)
+
+- **Estado:** EM DESENVOLVIMENTO / HOMOLOGAÇÃO PENDENTE. Branch `feat/m01-master-global-onboarding-20261113`, [PR #43](https://github.com/integro-app/Integro/pull/43). **Sem merge/deploy em produção.**
+- **Achado:** `master-global.html` tentava gravar `clientes_integro` diretamente apesar de `firestore.rules` proibir create/update; Master Local era salvo como convite sem Auth funcional.
+- **Implementação:** quatro callables `salvarClienteIntegroGlobal`, `alterarAcessoClienteIntegroGlobal`, `ativarTesteClienteIntegroGlobal` e `criarMasterLocalGlobal`, todas protegidas por sessão e perfil. Backend valida CPF/CNPJ, verifica duplicidade, reserva documento, sincroniza `clientes_integro`/`clientes_plataforma`, registra logs e cria usuário canônico no Firebase Auth/Firestore com rollback. UI orienta cadastro do Master Local e envio de link para definir senha, sem compartilhar senha.
+- **Segurança:** login global não aceita associação por e-mail sem UID; operações administrativas críticas não usam gravação direta do navegador. **Bloqueio integral no Firestore/Storage NÃO homologado:** duas tentativas de Rules causaram regressão por limite de 1000 expressões no emulador; alterações de Rules revertidas integralmente. O backend financeiro já verifica bloqueio/expiração, mas leituras diretas ainda exigem correção posterior sem regressão.
+- **Testes adicionados:** `tests/master-global-onboarding.test.js` e inclusão no `npm test`; sintaxe do novo backend incluída em `test:functions:syntax`.
+- **Pendente:** CI do último commit, deploy autorizado de Functions/Hosting e testes reais com Master Global, documento duplicado, Master Local provisionado, entrega de e-mail, primeiro login, bloqueio de tenant e isolamento entre empresas. **Não marcar 100% sem evidências.**
