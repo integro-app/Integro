@@ -8,7 +8,7 @@
 
 ## 1. Estado de execução
 
-- **Tópico ativo:** **M22 — Navegação do vendedor / Operação: Cobranças e Vendas**. Em 12/11/2026, correções adicionais estão na branch `fix/m22-operacao-vendedor-permissoes-abas-20261112` com CI aprovado (59/59 testes focados e 596/596 gerais). Faltam revisão, publicação autorizada e homologação real desktop/mobile; **NÃO FECHADO**.
+- **Tópico ativo:** **M01 — Master Global / fechamento operacional solicitado em 13/11/2026**. M22 continua com pendências próprias, sem aceite formal. Histórico anterior: **M22 — Navegação do vendedor / Operação: Cobranças e Vendas**. Em 12/11/2026, correções adicionais estão na branch `fix/m22-operacao-vendedor-permissoes-abas-20261112` com CI aprovado (59/59 testes focados e 596/596 gerais). Faltam revisão, publicação autorizada e homologação real desktop/mobile; **NÃO FECHADO**.
 - **Próxima prioridade sugerida pela auditoria:** **M12 — Caixas operacionais**, começando pelo fechamento, persistência do status e disponibilidade dos botões. Risco crítico para uso real.
 - **Dependências críticas:** M03 Login, M02 Multiempresa, M05 Permissões, M11 Pagamentos e M13 Ledger. Podem ser inspecionadas para validar M12, mas não serão declaradas concluídas automaticamente.
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
@@ -20,7 +20,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
-| M01 | Master Global | Base de administração presente; validar CRUD, bloqueios e escopo global | A HOMOLOGAR |
+| M01 | Master Global | PR #45: correções em cadastro Auth, CRUD, painel, relatórios, chat e bloqueio de tenant; aguarda deploy e homologação real | EM HOMOLOGAÇÃO |
 | M02 | Empresas/multiempresa | Isolamento e seleção existem em desenho; testar troca e leitura cruzada | A HOMOLOGAR |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
@@ -174,3 +174,14 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Functions novas:** falha confirmada no [run 43487654006](https://github.com/integro-app/Integro/actions/runs/43487654006): erro interno de criação Gen1 em três endpoints e falta de permissão IAM para definir invoker no quarto. Não declarar onboarding funcional neste estado.
 - **Correção:** PR de contingência `fix/m01-master-global-deploy-existing-callable-20261113` passa as quatro ações por `solicitarCadastroDuplicadoV27` (endpoint existente e invoker já aprovado), sob rota `MASTER_GLOBAL_ONBOARDING_V1`, sessão V27 obrigatória e autorização de Master Global validada no servidor. Remove exports das quatro novas Functions para não exigir IAM adicional.
 - **Deploy:** workflow `master-global-functions-deploy.yml` atualizado para publicar exclusivamente a callable existente. Homologar CI, deploy e cadastro real antes de fechar M01.
+
+## 14. Auditoria de fechamento M01 — Master Global (13/11/2026)
+
+- **Escopo prioritário solicitado:** conferir e concluir telas, botões, formulários, dados, vínculos, usuários, planos, departamentos, notificações, chat, configurações, auditoria e relatórios.
+- **PR:** [#45 — Fechamento M01](https://github.com/integro-app/Integro/pull/45); branch `feat/m01-master-global-complete-20261113`. **Estado nesta atualização:** implementação submetida à CI; **não considerar publicada antes de workflow concluído**.
+- **Achados confirmados no código:** usuários internos eram criados sem Auth; planos/departamentos/configuração tentavam gravação direta em coleções sem Rules; logs globais eram ilegíveis diretamente; notificações globais não podiam ser marcadas lidas; botões editar ignoravam IDs; configurações não eram recuperadas; relatórios ausentes; chat exigia tenant que Master Global não possui.
+- **Implementação:** backend `master-global-management.js` sob callable existente `solicitarCadastroDuplicadoV27`, sessão V27 e perfil global; criação/edição de usuário interno com Auth e UID canônico; edição de Master Local; planos/departamentos com estado e validação; configuração persistente; avisos globais com leitura por usuário; listagem de logs; relatórios CSV com distinção explícita entre mensalidade potencial e receita recebida; chat administrativo isolado; erros de consulta não viram zeros.
+- **Segurança:** bloqueio do cliente ÍNTEGRO propaga `empresaBloqueada` a seus usuários de forma transacional (limite explícito de 350 usuários), sem apagar bloqueios individuais. Guardas em sessão, Firestore e Storage passam a considerar a flag; regras precisam passar no emulador e ser implantadas antes de afirmar revogação efetiva.
+- **Testes:** `tests/master-global-management.test.js`, ampliação de `tests/master-global-onboarding.test.js` e `tests/firestore-rules.test.js`. CI inclui regressões financeiras, clientes, Auth/Firestore e Rules.
+- **Dependências que impedem 100% nesta fase:** testes manuais com Master Global e usuário interno reais, e-mail de ativação, primeiro login, inspeção visual desktop/mobile, bloqueio/reativação real do tenant, verificação de expiração automática de testes no acesso direto Firestore/Storage, integração de faturamento efetivamente recebido (M21), escala/paginação além de limites seguros, validação do chat por usuários internos fora da tela Master Global e aceite do proprietário.
+- **Veredito:** **NÃO FECHADO** até conclusão das evidências de homologação; não confundir deploy/CI com 100% operacional.
