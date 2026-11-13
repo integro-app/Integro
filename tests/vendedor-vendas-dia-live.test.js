@@ -107,7 +107,7 @@ test("filtro do dia mostra só hoje e não atribui venda de outro vendedor por t
   ];
   const ctx={
     document:{getElementById:id=>input[id]||null},
-    State:{getVendas:()=>vendas,getClientes:()=>[{id:"cliente-atual",vendedorAuthUid:"auth-a"}]},
+    State:{getVendas:()=>vendas,getClientes:()=>[{id:"cliente-atual",nome:"Maria",vendedorAuthUid:"auth-a"}]},
     hoje:()=>"2026-11-12",
     texto:valor=>String(valor??"").trim(),
     vinculosVendedorRegistro:registro=>[registro.vendedorAuthUid].filter(Boolean),
