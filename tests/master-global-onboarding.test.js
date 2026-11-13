@@ -213,3 +213,19 @@ test("indicadores globais não tratam teste expirado ou empresa bloqueada como a
   assert.equal(verificar({ status: "ATIVO", testeAtivo: true, dataFimTeste: "2099-01-01T00:00:00Z" }), true);
   assert.equal(verificar({ status: "ATIVO", bloqueioAssinaturaEm: "2020-01-01T00:00:00Z" }), false);
 });
+
+test("lista global de Masters não conta convite provisionado em duplicidade", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "master-global.html"), "utf8");
+  const a = html.indexOf("function getMastersLocais(){");
+  const b = html.indexOf(" function getUsuariosInternos()", a);
+  assert.ok(a >= 0 && b > a);
+  const usuariosSistema = [
+    { id: "convite", tipoUsuario: "master_local", authUid: "uid-1", status: "PROVISIONADO" },
+    { id: "uid-1", tipoUsuario: "master_local", authUid: "uid-1", status: "ATIVO" },
+    { id: "uid-2", tipoUsuario: "master_local", authUid: "uid-2", status: "ATIVO" },
+    { id: "pendente", tipoUsuario: "master_local", convitePendente: true, status: "CONVITE_PENDENTE" }
+  ];
+  const ctx = { usuariosSistema, Map, String, status: valor => String(valor || "").toUpperCase() };
+  const listar = vm.runInNewContext(html.slice(a, b) + "\n;getMastersLocais", ctx);
+  assert.deepEqual(Array.from(listar(), u => u.id), ["uid-1", "uid-2"]);
+});
