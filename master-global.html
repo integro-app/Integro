@@ -358,7 +358,9 @@
       try{
         await funcaoMasterGlobal('alterarAcessoClienteIntegroGlobal')({id,liberado:cliente.acessoLiberado===false});
         await carregarTudo();
-        notificarIntegro('Acesso do cliente atualizado.');
+        notificarIntegro(cliente.acessoLiberado===false
+          ? 'Acesso contratual liberado. Confirme o login e as permissões do tenant.'
+          : 'Novas operações via backend bloqueadas. Revogação completa de leituras Firestore/Storage ainda depende de homologação.');
       }catch(erro){notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
     }
