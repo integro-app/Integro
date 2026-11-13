@@ -276,7 +276,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
   }
 
   async function marcarNotificacaoLida(dados, contexto) {
-    const a = await autor(contexto), id = txt(dados?.id);
+    const a = await autor(contexto, true), id = txt(dados?.id);
     if (!idValido(id)) fail("invalid-argument", "Notificação inválida.");
     const ref = db.collection("notificacoes").doc(id);
     await db.runTransaction(async tx => {
@@ -289,6 +289,13 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
         atualizadoEm: agora() }, { merge: true });
     });
     return { ok: true, id };
+  }
+
+  async function listarAvisosInternos(dados, contexto) {
+    await autor(contexto, true);
+    const avisos = await obterNotificacoesGlobais();
+    return { ok: true, notificacoes: avisos.sort((a, b) =>
+      Date.parse(b.criadoEm || 0) - Date.parse(a.criadoEm || 0)).slice(0, 200) };
   }
 
   async function listarChat(dados, contexto) {
@@ -311,6 +318,6 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
 
   return { listarPainel, salvarDepartamento, salvarPlano, salvarConfiguracoes,
     salvarUsuarioInterno, editarMasterLocal, alterarAcessoUsuario,
-    criarNotificacao, marcarNotificacaoLida, listarChat, enviarChat };
+    criarNotificacao, marcarNotificacaoLida, listarAvisosInternos, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };
