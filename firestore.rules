@@ -138,6 +138,7 @@ service cloud.firestore {
         user.get("authUid", "") == currentUid() &&
         !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
         user.get("acessoLiberado", false) == true &&
+        user.get("empresaBloqueada", false) != true &&
         user.get("tipoUsuario", "") == "master_local" &&
         user.get("clientePlataformaId", "") is string &&
         user.get("clientePlataformaId", "").size() > 0 &&
