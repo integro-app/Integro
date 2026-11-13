@@ -61,10 +61,10 @@ test("card de cobrança contém whatsapp, situação, parcelas e somente ações
   assert.doesNotMatch(operacao, /<span>Histórico<\/span>/);
 });
 
-test("vendas mostram somente vendas do dia do caixa e usam filtros por checkbox", () => {
+test("vendas mostram somente vendas de hoje e usam filtros por checkbox", () => {
   assert.doesNotMatch(unificado, /id="filtroPeriodoVendaVendedor"/);
-  assert.match(unificado, /dataVenda !== dataCaixaAtual/);
-  assert.match(unificado, /no dia do caixa/);
+  assert.match(unificado, /dataVenda !== dataHoje/);
+  assert.match(unificado, /venda\(s\) de hoje/);
   assert.match(unificado, /filtroVendaAtiva/);
   assert.match(unificado, /filtroVendaRenovacao/);
   assert.match(unificado, /Data da venda/);
@@ -97,10 +97,11 @@ test("clientes do vendedor ficam em tela propria com gestao e retorno para leads
   assert.match(unificado, /ClientesService\?\.retornarClienteParaLeads/);
 });
 test("vendas legadas podem ser reconhecidas pelo cliente vinculado ao vendedor", () => {
-  assert.match(unificado, /!pertenceAoVendedor\(v\) && !pertenceAoVendedor\(cliente\)/);
+  assert.match(unificado, /vinculosVendedorRegistro\(v\)\.length > 0 \|\| !pertenceAoVendedor\(cliente\)/);
   assert.match(perfis, /function idsVendasReferenciadas\(clientes = \[\]\)/);
   assert.match(perfis, /vendaAtivaId/);
-  assert.match(perfis, /function carregarVendasVendedor\(clientes = \[\]\)/);
+  assert.match(perfis, /function carregarVendasVendedor\(clientes = \[\], opcoes = \{\}\)/);
+  assert.match(perfis, /forcar: opcoes\.forcar === true/);
   assert.match(perfis, /db\.collection\(CONFIG\.COLECOES\.VENDAS\)\.doc\(id\)\.get\(\)/);
 });
 
