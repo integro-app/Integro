@@ -1134,3 +1134,30 @@ test("usuarios: perfil legado autenticado por authUid pode editar apenas campos 
     telefone: "11000000000"
   }));
 });
+
+test("Master Global bloqueia tenant no Firestore, inclusive leitura direta de Master Local", async () => {
+  const empresa = doc(appDb(profiles.masterGlobal), "clientes_integro", "tenant_a");
+  const vendaDoTenant = doc(appDb(profiles.masterA), "vendas", "venda_a_1");
+  const caixaDoTenant = doc(appDb(profiles.vendedor1), "caixas", "caixa_a_1");
+  const alterar = async dados => testEnv.withSecurityRulesDisabled(async context => {
+    await setDoc(doc(context.firestore(), "clientes_integro", "tenant_a"), dados);
+    await setDoc(doc(context.firestore(), "clientes_plataforma", "tenant_a"), dados);
+  });
+  try {
+    await alterar({ status: "ATIVO", acessoLiberado: true, ativo: true });
+    await assertSucceeds(getDoc(vendaDoTenant));
+    await alterar({ status: "BLOQUEADO", acessoLiberado: false, ativo: true });
+    await assertFails(getDoc(vendaDoTenant));
+    await assertFails(getDoc(caixaDoTenant));
+    await assertSucceeds(getDoc(empresa));
+    await alterar({
+      status: "ATIVO", acessoLiberado: true, ativo: true, testeAtivo: true,
+      dataFimTesteEm: new Date("2020-01-01T00:00:00Z")
+    });
+    await assertFails(getDoc(vendaDoTenant));
+    await alterar({ status: "ATIVO", acessoLiberado: true, ativo: true });
+    await assertSucceeds(getDoc(vendaDoTenant));
+  } finally {
+    await alterar({ status: "ATIVO", acessoLiberado: true, ativo: true });
+  }
+});
