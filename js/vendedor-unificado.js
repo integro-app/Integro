@@ -2746,11 +2746,23 @@
         UIHelpers?.alerta?.("Venda enviada para análise do Supervisor/Gerente. Você será avisado quando houver uma decisão.");
         return;
       }
+      // Não cria card otimista: lê o documento REAL devolvido pela transação
+      // e injeta a venda oficial no estado antes de exibir a aba do vendedor.
+      let vendaVisivel = false;
+      const vendaConfirmadaId = texto(resultadoVenda?.vendaId || resultadoVenda?.id);
+      if (vendaConfirmadaId) {
+        try { vendaVisivel = await carregarVendaConfirmadaServidor(vendaConfirmadaId); }
+        catch (erroSync) {
+          console.warn("[ÍNTEGRO VENDEDOR] Venda confirmada, leitura imediata pendente.", erroSync);
+        }
+      }
+      // Força o refresh da carteira sem depender de cache de vendas anterior.
       agendarRefreshOperacaoVendedor({ render: "vendas" });
       const itemOperacao = document.querySelector('#sidebar [data-modulo="operacao"], #sidebar [data-modulo="cobrancas"]');
       window.trocarTela?.("cobrancas", itemOperacao || null);
       setTimeout(() => { abrirAba("vendas"); renderVendasDia(); }, 80);
-      UIHelpers?.alerta?.("Venda registrada com sucesso.");
+      UIHelpers?.alerta?.(vendaVisivel ? "Venda registrada e incluída nas vendas de hoje."
+        : "Venda registrada. Atualizando a lista de hoje diretamente do Firebase.");
     } catch (erro) {
       console.error(erro);
       UIHelpers?.alerta?.(erro?.message || "Não foi possível registrar a venda.");
