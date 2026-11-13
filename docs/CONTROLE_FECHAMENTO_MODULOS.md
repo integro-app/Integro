@@ -158,3 +158,12 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Pendente obrigatoriamente:** confirmar índice ativo, implantação autorizada das duas Functions e do Hosting, teste Firebase Auth/Firestore real com dois tenants e vendedores diferentes, disparo/decisão de solicitação, cadastro/duplo clique/rede, atualização de carteira/venda/parcelas/ledger e fechamento de caixa real em dispositivo móvel.
 - **Importante:** anexos do formulário nesta fase são apenas nomes de arquivo; upload efetivo para Storage não está incluído neste escopo.
 - **Veredito:** **EM DESENVOLVIMENTO/HOMOLOGAÇÃO**. Não há autorização para considerar concluído ou apresentado como produção.
+
+## 11. M22 / Vendedor — integridade de vínculos e cache (13/11/2026)
+
+- **Estado:** EM HOMOLOGAÇÃO / NÃO FECHADO. Branch `fix/escopo-real-vendedor-caixa-20261113`; [PR #42](https://github.com/integro-app/Integro/pull/42). **Sem merge/deploy em produção.**
+- **Achado:** a venda sem autoria explícita podia aparecer por referência ao cliente transferido; o caixa em `localStorage` podia ser tratado como aberto mesmo sem confirmação atual do Firestore.
+- **Correção:** vendas do dia e vendas referenciadas exigem tenant e vendedor comprovados no próprio documento; caixas exigem identidade canônica do vendedor, e operações exigem reconsulta do caixa no servidor; cache do navegador não autoriza abertura. `State` e `IntegroDataRuntime` bloqueiam registros sem tenant válido e respostas antigas após troca de sessão.
+- **Arquivos:** `js/perfis-unificados.js`, `js/vendedor-unificado.js`, `js/data-runtime.js`, `js/state.js`; testes focados em `tests/vendedor-vendas-dia-live.test.js`, `tests/vendedor-filtros-operacao.test.js`, `tests/vendedor-unificado-operacao.test.js` e `tests/data-runtime.test.js`.
+- **Prova pendente:** concluir CI do último commit; validar manualmente login real de vendedor/supervisor/master local, troca de empresa, caixa fechado por supervisor, venda própria/terceiros, cadastro e pagamentos com conciliação Firestore/ledger. Conferir se documentos legados sem vínculo canônico precisam de migração auditada; **não exibi-los por inferência**.
+- **Critério de aceite:** nenhum dado de outro tenant/operador exibido ou gravado; vendas e pagamentos persistem ao navegar; caixa é confirmado no servidor antes da operação; divergências financeiras bloqueiam fechamento e geram auditoria. Sem aceite do proprietário, não marcar 100%.
