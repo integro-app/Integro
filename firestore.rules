@@ -104,12 +104,35 @@ service cloud.firestore {
       return role() == "captador" || cargo() == "captador";
     }
 
+    // Bloqueio da plataforma vale também para acessos diretos ao Firestore,
+    // não apenas para Cloud Functions. Tenants legados sem documento seguem
+    // compatíveis até migração; novos cadastros criam os dois documentos.
+    function empresaLiberadaNoCaminho(caminho) {
+      let empresa = exists(caminho) ? get(caminho).data : {};
+      return empresa.get("acessoLiberado", true) != false &&
+        empresa.get("ativo", true) != false &&
+        !(empresa.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        (empresa.get("testeAtivo", false) != true ||
+          !("dataFimTesteEm" in empresa) || empresa.dataFimTesteEm > request.time) &&
+        (!("bloqueioAssinaturaEm" in empresa) ||
+          !(empresa.bloqueioAssinaturaEm is timestamp) || empresa.bloqueioAssinaturaEm > request.time);
+    }
+
+    function tenantLiberadoPelaPlataforma() {
+      return isMasterGlobal() || isUsuarioIntegro() || (
+        hasTenant() &&
+        empresaLiberadaNoCaminho(/databases/$(database)/documents/clientes_integro/$(userTenantId())) &&
+        empresaLiberadaNoCaminho(/databases/$(database)/documents/clientes_plataforma/$(userTenantId()))
+      );
+    }
+
     function isActiveUser() {
       return isAuthenticated() &&
         exists(userPath()) &&
         userDoc().get("authUid", "") == currentUid() &&
         !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        userDoc().get("acessoLiberado", false) == true;
+        userDoc().get("acessoLiberado", false) == true &&
+        tenantLiberadoPelaPlataforma();
     }
 
     function isOwnAuthProfile(data) {
@@ -138,6 +161,7 @@ service cloud.firestore {
         !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
         user.get("acessoLiberado", false) == true &&
         user.get("tipoUsuario", "") == "master_local" &&
+        tenantLiberadoPelaPlataforma() &&
         user.get("clientePlataformaId", "") is string &&
         user.get("clientePlataformaId", "").size() > 0 &&
         data.get("clientePlataformaId", "") == user.get("clientePlataformaId", "");
