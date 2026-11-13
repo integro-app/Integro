@@ -6,6 +6,7 @@
 const CONFIG = {
   ROTAS_POR_TIPO: {
     master_global: "master-global.html",
+    usuario_integro: "usuario-integro.html",
     master_local: "master-local.html",
     usuario_cliente: "master-local.html",
     vendedor: "master-local.html",
@@ -27,6 +28,7 @@ const CONFIG = {
 
   TIPO_POR_PAGINA: {
     "master-global.html": "master_global",
+    "usuario-integro.html": "usuario_integro",
     "master-local.html": "painel_local",
     "vendedor.html": "vendedor",
     "supervisor.html": "supervisor",
