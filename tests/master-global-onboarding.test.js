@@ -3,6 +3,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const { criarOnboardingMasterGlobal } = require("../functions/master-global-onboarding");
 
 function ambiente() {
@@ -195,4 +196,19 @@ test("tela usa Functions protegidas, sem gravar diretamente empresa ou master", 
   assert.doesNotMatch(html, /mgDb\.collection\('clientes_integro'\)\.doc\(id\)\.update\(/);
   assert.match(index, /protegerSessao\(onboardingGlobal\.salvarCliente\)/);
   assert.match(index, /protegerSessao\(onboardingGlobal\.criarMasterLocal\)/);
+});
+
+test("indicadores globais não tratam teste expirado ou empresa bloqueada como ativa", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "master-global.html"), "utf8");
+  const a = html.indexOf("    function dataGlobalMs(valor){");
+  const b = html.indexOf("    function renderDashboard(){", a);
+  assert.ok(a >= 0 && b > a);
+  const ctx = { Date, Number, status: value => String(value || "").toUpperCase() };
+  const verificar = vm.runInNewContext(html.slice(a, b) + "\n;clienteLiberadoGlobal", ctx);
+  assert.equal(verificar({ status: "ATIVO", acessoLiberado: true }), true);
+  assert.equal(verificar({ status: "BLOQUEADO", acessoLiberado: true }), false);
+  assert.equal(verificar({ status: "ATIVO", acessoLiberado: false }), false);
+  assert.equal(verificar({ status: "ATIVO", testeAtivo: true, dataFimTeste: "2020-01-01T00:00:00Z" }), false);
+  assert.equal(verificar({ status: "ATIVO", testeAtivo: true, dataFimTeste: "2099-01-01T00:00:00Z" }), true);
+  assert.equal(verificar({ status: "ATIVO", bloqueioAssinaturaEm: "2020-01-01T00:00:00Z" }), false);
 });
