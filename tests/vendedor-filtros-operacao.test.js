@@ -38,10 +38,11 @@ test("filtros de Vendas: cada checkbox filtra status e tipo, respeitando dia e v
   const ctx = {
     document: { getElementById: id => input[id] || null },
     State: { getVendas: () => vendas, getClientes: () => [] },
-    dataCaixa: () => "2026-11-07",
+    hoje: () => "2026-11-07",
     dataRegistro: venda => venda.data,
     texto: value => String(value ?? "").trim(),
-    pertenceAoVendedor: item => item.vendedorId === "vendedor"
+    pertenceAoVendedor: item => item.vendedorId === "vendedor",
+    vinculosVendedorRegistro: item => item.vendedorId ? [item.vendedorId] : []
   };
   const filtrar = vm.runInNewContext(source + "\n;vendasFiltradas", ctx);
   const ids = () => Array.from(filtrar(), venda => venda.id).sort();
@@ -135,23 +136,26 @@ test("gaveta aplica rascunho apenas após confirmação, e caixas têm layout mo
 test("Vendas mantém busca visível e Nova venda no canto inferior direito", () => {
   const sales = trecho(vendedor, '        <div id="abaVendasDia" style="display:none">', '\n        <div id="abaFechamentoCaixa"');
   assert.match(sales, /id="buscaVendaVendedorInput"/);
-  assert.match(sales, /onclick="buscarVendasVendedor\(\)"/);
+  assert.match(sales, /oninput="renderVendasDia\(\)"/);
+  assert.doesNotMatch(sales, /onclick="buscarVendasVendedor\(\)"/);
   assert.match(sales, /onclick="toggleFiltrosVendasVendedor\(\)"/);
   const toolbar = sales.split('class="vendedor-operacao-barra vendedor-vendas-barra">')[1]?.split('</div>')[0] || "";
   assert.ok(toolbar, "barra de consulta Vendas montada");
   assert.doesNotMatch(toolbar, /btnNovaVendaOperacao/, "criação fora da barra compacta");
-  assert.match(toolbar, /class="primary-btn vendedor-buscar-btn"/);
+  assert.doesNotMatch(toolbar, /vendedor-buscar-btn/, "não há botão Buscar em Vendas");
   assert.equal((sales.match(/id="btnNovaVendaOperacao"/g) || []).length, 1);
   assert.match(sales, /id="listaVendasDia"[\s\S]*class="vendedor-nova-venda-acoes"/);
   assert.match(sales, /id="btnNovaVendaOperacao"[\s\S]*onclick="abrirListaNovaVendaVendedor\(\)"/);
   assert.match(drawer, /if\(first\.id==='filtrosVendasVendedor'\)/);
   assert.match(drawer, /toolbar\?\.querySelector\('label\[for="buscaVendaVendedorInput"\]'\)/);
-  assert.match(drawer, /config\.apply=toolbar\?\.querySelector\('\.vendedor-buscar-btn'\)/);
+  assert.match(drawer, /if\(!isSalesQuery\)bar\.append\(submit\)/);
+  assert.match(drawer, /input\.addEventListener\('input',pesquisaInstantanea\)/);
+  assert.match(drawer, /original\.dispatchEvent\(new Event\('input'/);
   assert.match(drawer, /\['filtrosCobrancasVendedor','filtrosVendasVendedor'\]\.includes/);
   assert.match(drawer, /isSales\?'vendas-query-action':'cobrancas-query-action'/);
   assert.match(css, /Vendedor \/ Vendas: mesma barra de Cobranças/);
   assert.match(css, /#abaVendasDia \.vendedor-vendas-barra > \.ig-querybar/);
-  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) 42px 42px !important/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) 42px !important/);
   assert.match(css, /#abaVendasDia \.vendedor-nova-venda-acoes \{\s*position: fixed !important;/);
   assert.match(css, /right: max\(18px, calc\(12px \+ env\(safe-area-inset-right\)\)\) !important/);
   assert.match(css, /top: auto !important/);
@@ -172,7 +176,7 @@ test("Vendas sem resultados exibe área vazia e preserva ação Nova venda no mo
       id === "listaVendasDia" ? lista :
       id === "contadorVendasDia" ? contador : null },
     vendasFiltradas: () => [],
-    dataCaixa: () => "2026-11-07",
+    hoje: () => "2026-11-07",
     numero: value => Number(value) || 0,
     moeda: () => "R$ 0,00"
   };
