@@ -35,3 +35,5 @@ jobs:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
       - name: Publicar onboarding na Callable existente com IAM aprovado
         run: npx firebase deploy --only functions:solicitarCadastroDuplicadoV27 --project integro-novo --non-interactive
+      - name: Atualizar proteção da callable existente de provisionamento
+        run: npx firebase deploy --only functions:provisionarUsuario --project integro-novo --non-interactive
