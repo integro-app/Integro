@@ -295,7 +295,8 @@ html body[data-integro-page].perfil-vendedor.integro-menu-categorias main #cobra
 
   html body[data-integro-page="master-local"].perfil-vendedor.integro-menu-categorias #cobrancas.screen .vendedor-operacao-tabs {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    /* Cobranças, Vendas e Fechar caixa: três ações na mesma linha no mobile. */
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
     width: 100% !important;
     margin: 0 0 12px !important;
   }

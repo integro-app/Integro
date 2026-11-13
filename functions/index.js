@@ -215,7 +215,19 @@ exports.operarClienteV27 = functions.region("southamerica-east1").https.onCall(
 
 const { criarAprovacoesClientesV27 } = require("./v27-client-approvals");
 const aprovacoesClientesV27 = criarAprovacoesClientesV27({ admin, functions, db });
-exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.solicitar);
+// Reutiliza a callable existente, cujo IAM já está provisionado no Firebase.
+// As duas novas rotas mantêm validação de sessão e isolamento por tenant no servidor.
+exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall((dados, contexto) => {
+  if (dados?.__integroRota === "CONSULTAR_DOCUMENTO_CLIENTE_V27") {
+    const { __integroRota, ...consulta } = dados;
+    return protegerSessao(aprovacoesClientesV27.consultarDocumento)(consulta, contexto);
+  }
+  if (dados?.__integroRota === "CADASTRAR_CLIENTE_OPERACIONAL_V27") {
+    const { __integroRota, ...cadastro } = dados;
+    return protegerSessao(aprovacoesClientesV27.cadastrarCliente)(cadastro, contexto);
+  }
+  return aprovacoesClientesV27.solicitar(dados, contexto);
+});
 exports.decidirCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall(aprovacoesClientesV27.decidir);
 
 const { criarConfiguracoesV27 } = require("./v27-config");

@@ -259,6 +259,30 @@
         { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
         { "fieldPath": "criadoEmTexto", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "clientes_operacionais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "documentoNormalizado", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "clientes_operacionais",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "telefonesNormalizados", "arrayConfig": "CONTAINS" }
+      ]
+    },
+    {
+      "collectionGroup": "clientes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "clientePlataformaId", "order": "ASCENDING" },
+        { "fieldPath": "documentoNormalizado", "order": "ASCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

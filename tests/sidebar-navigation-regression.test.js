@@ -212,6 +212,8 @@ test("vendedor usa Operação como item único e alterna Cobranças/Vendas por a
   assert.doesNotMatch(categorias, /key:'operacao:'\+tab/);
   assert.match(navegacao, /perfil\(usuarioAtual\) === "vendedor" && typeof global\.abrirOperacaoVendedor === "function"/);
   assert.match(vendedor, /function abrirOperacao\(itemMenu\) \{\s*window\.trocarTela\?\.\("cobrancas", itemMenu\);\s*setTimeout\(\(\) => abrirAba\("cobrancas"\), 0\);/);
+  assert.match(vendedor, /function abaDisponivelVendedor\(aba\)/);
+  assert.match(vendedor, /abaAtual = abaDisponivelVendedor\(aba\)/);
   assert.match(vendedor, /id="tabCobrancasBtn"[^>]*onclick="abrirAbaVendasCobrancas\('cobrancas'\)"/);
   assert.match(vendedor, /id="tabVendasDiaBtn"[^>]*onclick="abrirAbaVendasCobrancas\('vendas'\)"/);
   assert.match(visual, /\.perfil-vendedor\.integro-menu-categorias main #cobrancas\.screen \.vendedor-operacao-tabs\s*\{\s*display:\s*flex !important/);
@@ -259,8 +261,8 @@ test("mobile do vendedor não reserva faixa global e coloca título com menu aci
   assert.match(css, /\.perfil-vendedor \.layout > main\.main\s*\{\s*padding-top: max\(8px, env\(safe-area-inset-top\)\) !important;/);
   assert.match(css, /\.perfil-vendedor #cobrancas\.screen \.vendedor-operacao-header\s*\{[\s\S]*?justify-content: center !important;/);
   assert.match(css, /#vendedorOperacaoTitulo\s*\{[\s\S]*?text-align: center !important;/);
-  assert.match(css, /\.vendedor-operacao-tabs\s*\{\s*display: grid !important;\s*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\) !important;/);
-  assert.match(master, /css\/integro-visual\.css\?v=20261107-vendedor-mobile-resumo2/);
+  assert.match(css, /\.vendedor-operacao-tabs\s*\{\s*display: grid !important;[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\) !important;/);
+  assert.match(master, /css\/integro-visual\.css\?v=20261112-m22-correcoes-v1/);
   // A notificação do perfil continua acessível pelo menu lateral, sem tocar no drawer.
   assert.match(nav, /sidebar\.querySelector\("\.user-card,\.sidebar-profile-card,\.user-card-premium"\)/);
   assert.match(nav, /sino\.dataset\.notificationBell = "true"/);
@@ -299,4 +301,81 @@ test("vendedor mostra Dashboard antes de Operação sem reordenar os outros perf
   assert.ok(local.indexOf("operacao") < local.indexOf("dashboard"), "Menu Master Local preservado");
   assert.equal(local[0], "operacao");
   assert.equal(local[1], "dashboard");
+});
+
+test("Operação do vendedor seleciona apenas abas permitidas e preserva a conferência", () => {
+  const fonte = read("js/vendedor-unificado.js");
+  const inicioAbas = fonte.indexOf("  function abaDisponivelVendedor(");
+  const fimAbas = fonte.indexOf("  function modalBase(", inicioAbas);
+  const inicioAbrir = fonte.indexOf("  function abrirOperacao(");
+  const fimAbrir = fonte.indexOf("  function abrirDashboardInicial(", inicioAbrir);
+  assert.ok(inicioAbas >= 0 && fimAbas > inicioAbas && inicioAbrir >= 0 && fimAbrir > inicioAbrir);
+
+  function testarPermissoes(permissoes) {
+    const eventos = [];
+    const usuario = { authUid: "vendedor-teste" };
+    const elementos = {};
+    for (const id of [
+      "abaCobrancas", "abaVendasDia", "abaFechamentoCaixa",
+      "tabCobrancasBtn", "tabVendasDiaBtn", "btnFecharCaixaCobrancas",
+      "vendedorOperacaoTitulo", "vendedorOperacaoSubtitulo"
+    ]) {
+      elementos[id] = {
+        style: {}, textContent: "",
+        classList: { toggle(classe, ativo) { eventos.push([id, classe, ativo]); } },
+        setAttribute(chave, valor) { this[chave] = valor; }
+      };
+    }
+    const window = {
+      IntegroAcesso: { pode: (_usuario, chave) => permissoes.includes(chave) },
+      trocarTela: tela => eventos.push(["trocarTela", tela]),
+      IntegroVendedorOperacao: { instalar: () => eventos.push(["instalar"]) },
+      renderCobrancas: () => eventos.push(["renderCobrancas"]),
+      IntegroVendedorFechamentoCaixa: {
+        abrirResumoFechamento: opcoes => eventos.push(["conferencia", opcoes.inline])
+      }
+    };
+    const codigo = [
+      'let abaAtual = "cobrancas";',
+      'const usuarioAtual = { authUid: "vendedor-teste" };',
+      fonte.slice(inicioAbas, fimAbas),
+      fonte.slice(inicioAbrir, fimAbrir),
+      '({ abrirAba, abrirOperacao, selecionada: () => abaAtual });'
+    ].join("\n");
+    const api = vm.runInNewContext(codigo, {
+      window, document: { getElementById: id => elementos[id] || null },
+      State: { getUsuario: () => usuario },
+      renderVendasDia: () => eventos.push(["renderVendasDia"]),
+      setTimeout: callback => callback()
+    });
+    api.abrirOperacao();
+    return { api, elementos, eventos };
+  }
+
+  const soVendas = testarPermissoes(["vendas.ver"]);
+  assert.equal(soVendas.api.selecionada(), "vendas");
+  assert.equal(soVendas.elementos.abaCobrancas.style.display, "none");
+  assert.equal(soVendas.elementos.abaVendasDia.style.display, "block");
+  assert.ok(soVendas.eventos.some(item => item[0] === "renderVendasDia"));
+  soVendas.api.abrirAba("cobrancas");
+  assert.equal(soVendas.api.selecionada(), "vendas", "não expõe cobranças sem permissão");
+
+  const soCobrancas = testarPermissoes(["cobrancas.ver"]);
+  assert.equal(soCobrancas.api.selecionada(), "cobrancas");
+  soCobrancas.api.abrirAba("vendas");
+  assert.equal(soCobrancas.api.selecionada(), "cobrancas", "não expõe vendas sem permissão");
+
+  const ambas = testarPermissoes(["cobrancas.ver", "vendas.ver"]);
+  assert.equal(ambas.api.selecionada(), "cobrancas", "padrão homologado preservado");
+  ambas.api.abrirAba("fechamento");
+  assert.equal(ambas.api.selecionada(), "fechamento");
+  assert.ok(ambas.eventos.some(item => item[0] === "conferencia" && item[1] === true));
+
+  const nenhuma = testarPermissoes([]);
+  assert.equal(nenhuma.api.selecionada(), "");
+  assert.equal(nenhuma.elementos.abaCobrancas.style.display, "none");
+  assert.equal(nenhuma.elementos.abaVendasDia.style.display, "none");
+  assert.equal(nenhuma.elementos.abaFechamentoCaixa.style.display, "none");
+  assert.equal(nenhuma.elementos.vendedorOperacaoTitulo.textContent, "Operação indisponível");
+  assert.ok(!nenhuma.eventos.some(item => item[0] === "renderCobrancas" || item[0] === "renderVendasDia"));
 });

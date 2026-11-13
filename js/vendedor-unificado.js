@@ -5,6 +5,9 @@
   let instalado = false;
   let abaAtual = "cobrancas";
   let clienteNovaVendaId = "";
+  let documentoClienteConsultado = null;
+  let documentoNovaVendaConsulta = "";
+  let origemCadastroNovaVenda = false;
   let vendaOperacaoPendente = null;
   let filtrosClientesAbertos = false;
   let clientesPesquisaExecutada = false;
@@ -967,8 +970,24 @@
     }).join("") : "";
   }
 
+  // O contêiner da Operação é "cobrancas", mas cada aba exige a sua permissão.
+  // Não ativar Cobranças por padrão para vendedores com acesso apenas a Vendas.
+  function abaDisponivelVendedor(aba) {
+    const usuario = usuarioAtual || State.getUsuario?.() || {};
+    const pode = window.IntegroAcesso?.pode;
+    const permitido = chave => typeof pode === "function" && pode(usuario, chave, {}) === true;
+    const podeCobrancas = permitido("operacao.cobrancas") || permitido("cobrancas.ver");
+    const podeVendas = permitido("operacao.vendas") || permitido("vendas.ver");
+    if (aba === "fechamento") return (podeCobrancas || podeVendas) ? "fechamento" : "";
+    if (aba === "vendas" && podeVendas) return "vendas";
+    if (aba !== "vendas" && podeCobrancas) return "cobrancas";
+    if (podeCobrancas) return "cobrancas";
+    if (podeVendas) return "vendas";
+    return "";
+  }
+
   function abrirAba(aba = "cobrancas") {
-    abaAtual = aba === "vendas" || aba === "fechamento" ? aba : "cobrancas";
+    abaAtual = abaDisponivelVendedor(aba);
     const cobrancas = document.getElementById("abaCobrancas");
     const vendas = document.getElementById("abaVendasDia");
     const fechamento = document.getElementById("abaFechamentoCaixa");
@@ -988,6 +1007,11 @@
     if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com saldo devedor em aberto."
       : abaAtual === "vendas" ? "Vendas vinculadas ao vendedor, incluindo o histórico que compõe a carteira."
       : "Consulte os valores do caixa antes de finalizar o expediente.";
+    if (!abaAtual) {
+      if (titulo) titulo.textContent = "Operação indisponível";
+      if (subtitulo) subtitulo.textContent = "Seu perfil não possui acesso a Cobranças ou Vendas.";
+      return;
+    }
     if (abaAtual === "cobrancas") {
       window.IntegroVendedorOperacao?.instalar?.();
       window.renderCobrancas?.();
@@ -1270,7 +1294,8 @@
           <label>Nome completo<input id="clienteVendedorNome" value="${esc(cliente?.nomeCompleto || cliente?.nome || "")}" autocomplete="name" required></label>
           <label>Tipo de cliente<select id="clienteVendedorTipoCliente"><option value="PF" ${texto(cliente?.tipoCliente || "PF") === "PF" ? "selected" : ""}>Pessoa fisica</option><option value="PJ" ${texto(cliente?.tipoCliente) === "PJ" ? "selected" : ""}>Pessoa juridica</option></select></label>
           <label>Tipo de documento<select id="clienteVendedorTipoDocumento"><option value="CPF" ${texto(cliente?.tipoDocumento || "CPF") === "CPF" ? "selected" : ""}>CPF</option><option value="CNPJ" ${texto(cliente?.tipoDocumento) === "CNPJ" ? "selected" : ""}>CNPJ</option><option value="RG" ${texto(cliente?.tipoDocumento) === "RG" ? "selected" : ""}>RG</option></select></label>
-          <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" required></label>
+          <label>Documento<input id="clienteVendedorDocumento" value="${esc(cliente?.documento || cliente?.cpfCnpj || "")}" inputmode="numeric" oninput="invalidarConsultaDocumentoClienteVendedor()" required></label>
+          ${clienteId ? "" : '<div class="integro-doc-consulta"><button class="ghost-btn" type="button" id="btnConsultarDocumentoCliente" onclick="consultarDocumentoClienteVendedor()">Consultar CPF/CNPJ na base</button><div id="statusConsultaDocumentoCliente" class="integro-doc-status" role="status" aria-live="polite">Consulte o documento antes de salvar. A verificação abrange toda a empresa.</div></div>'}
           <label>Telefone principal<input id="clienteVendedorTelefone" value="${esc(cliente?.telefonePrincipal || cliente?.telefone || cliente?.celular || "")}" inputmode="tel" required></label>
           <label class="cliente-form-check"><input id="clienteVendedorTelefoneWhatsapp" type="checkbox" ${cliente?.telefonePrincipalWhatsapp !== false && cliente?.temWhatsapp !== false ? "checked" : ""}><span>Telefone principal tem WhatsApp</span></label>
           <label class="cliente-docs-field"><span>Documentos anexos</span><input id="clienteVendedorDocumentos" type="file" multiple><small>${esc(cliente?.documentosAnexosTexto || "Ate a integracao de Storage, os nomes ficam preparados no cadastro.")}</small></label>
@@ -1305,7 +1330,103 @@
 
   function acoesFormularioCliente(clienteId, criado, historico, ehLead = false) {
     const textoBotao = clienteId ? "Salvar alteracoes" : "Criar cliente";
-    return `<button class="ghost-btn" type="button" onclick="voltarGerenciarClientesVendedor()">Cancelar</button>${clienteId && ehLead ? `<button class="ghost-btn" type="button" onclick="retornarClienteLeadsVendedor('${esc(clienteId)}')">Retornar para leads</button>` : ""}${clienteId ? `<button class="danger-btn" type="button" ${(!criado || historico) ? "disabled" : ""} onclick="excluirClienteVendedor('${esc(clienteId)}')">Excluir cliente</button>` : ""}<button id="salvarClienteVendedorBtn" class="primary-btn" type="button" onclick="salvarClienteVendedor('${esc(clienteId)}')">${textoBotao}</button>`;
+    return `<button class="ghost-btn" type="button" onclick="voltarGerenciarClientesVendedor()">Cancelar</button>${clienteId && ehLead ? `<button class="ghost-btn" type="button" onclick="retornarClienteLeadsVendedor('${esc(clienteId)}')">Retornar para leads</button>` : ""}${clienteId ? `<button class="danger-btn" type="button" ${(!criado || historico) ? "disabled" : ""} onclick="excluirClienteVendedor('${esc(clienteId)}')">Excluir cliente</button>` : ""}<button id="salvarClienteVendedorBtn" class="primary-btn" type="button" ${clienteId ? "" : "disabled"} onclick="salvarClienteVendedor('${esc(clienteId)}')">${textoBotao}</button>`;
+  }
+
+
+  function callableClientes(nome) {
+    const rotas = {
+      consultarDocumentoClienteV27: "CONSULTAR_DOCUMENTO_CLIENTE_V27",
+      cadastrarClienteOperacionalV27: "CADASTRAR_CLIENTE_OPERACIONAL_V27"
+    };
+    const rota = rotas[nome] || "";
+    const destino = rota ? "solicitarCadastroDuplicadoV27" : nome;
+    const chamada = window.firebase?.app?.()?.functions?.("southamerica-east1")?.httpsCallable?.(destino);
+    if (typeof chamada !== "function") throw new Error("Serviço seguro indisponível. Atualize a página e tente novamente.");
+    return dados => chamada(rota ? { ...(dados || {}), __integroRota: rota } : dados);
+  }
+
+  function documentoFiscalVendedor(valor) {
+    const documento = texto(valor).replace(/\D/g, "");
+    return [11, 14].includes(documento.length) && !/^(\d)\1+$/.test(documento) ? documento : "";
+  }
+
+  function invalidarConsultaDocumentoCliente() {
+    documentoClienteConsultado = null;
+    const salvar = document.getElementById("salvarClienteVendedorBtn");
+    if (salvar && clienteFormularioAbertoId === "__novo__") salvar.disabled = true;
+    const status = document.getElementById("statusConsultaDocumentoCliente");
+    if (status) status.textContent = "Documento alterado. Consulte novamente antes de salvar.";
+  }
+
+  async function consultarDocumentoCliente() {
+    const documento = documentoFiscalVendedor(document.getElementById("clienteVendedorDocumento")?.value);
+    const status = document.getElementById("statusConsultaDocumentoCliente");
+    const btn = document.getElementById("btnConsultarDocumentoCliente");
+    invalidarConsultaDocumentoCliente();
+    if (!documento) {
+      if (status) status.textContent = "Informe CPF com 11 dígitos ou CNPJ com 14 dígitos.";
+      return null;
+    }
+    if (btn) btn.disabled = true;
+    const tenant = texto(State.getTenantId?.());
+    if (status) status.textContent = "Consultando documento na base da empresa...";
+    try {
+      const resposta = (await callableClientes("consultarDocumentoClienteV27")({documento})).data || {};
+      if (tenant !== texto(State.getTenantId?.())) return null;
+      if (texto(document.getElementById("clienteVendedorDocumento")?.value).replace(/\D/g, "") !== documento) return null;
+      documentoClienteConsultado = {documento, tenant, liberado: !resposta.existe || resposta.autorizado === true};
+      const salvar = document.getElementById("salvarClienteVendedorBtn");
+      if (salvar) salvar.disabled = !documentoClienteConsultado.liberado;
+      if (status) {
+        if (!resposta.existe) status.textContent = "Documento não localizado. Cadastro liberado para esta empresa.";
+        else if (resposta.autorizado) status.textContent = "Duplicidade autorizada pelo responsável. Cadastro liberado para esta solicitação.";
+        else {
+          status.textContent = "CPF/CNPJ já cadastrado. Não é permitido criar outra ficha sem autorização.";
+          const acoes = document.createElement("div");
+          acoes.className = "integro-doc-acoes";
+          if (resposta.proprio && resposta.clienteId) {
+            const usar = document.createElement("button");
+            usar.type = "button"; usar.className = "ghost-btn";
+            usar.textContent = "Abrir cliente existente";
+            usar.addEventListener("click", () => abrirFormularioCliente(resposta.clienteId));
+            acoes.appendChild(usar);
+          }
+          const solicitar = document.createElement("button");
+          solicitar.type = "button"; solicitar.className = "ghost-btn";
+          solicitar.textContent = "Solicitar autorização";
+          solicitar.addEventListener("click", () => solicitarDuplicidadeClienteVendedor(documento, status));
+          acoes.appendChild(solicitar);
+          status.appendChild(acoes);
+        }
+      }
+      return resposta;
+    } catch (erro) {
+      if (status) status.textContent = erro?.message || "Falha ao consultar. Cadastro bloqueado até nova consulta.";
+      return null;
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  async function solicitarDuplicidadeClienteVendedor(documento, status, telefoneConflitante = "") {
+    const doc = documentoFiscalVendedor(documento);
+    const telefone = texto(telefoneConflitante).replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+    if (!doc) return UIHelpers?.alerta?.("Documento inválido.");
+    try {
+      if (status) status.textContent = "Enviando solicitação ao responsável...";
+      const resposta = (await callableClientes("solicitarCadastroDuplicadoV27")({
+        chaveDuplicidade: "doc_" + doc + "_tel_" + (telefone || "sem"),
+        documentoNormalizado: doc, telefonesNormalizados: telefone ? [telefone] : []
+      })).data || {};
+      if (status) status.textContent = resposta.autorizado
+        ? "Autorização concedida. Consulte novamente para continuar."
+        : "Solicitação enviada ao Supervisor/Gerente. Após aprovação, consulte novamente.";
+      UIHelpers?.alerta?.(resposta.autorizado ? "Autorização concedida." : "Solicitação enviada para análise.");
+      return resposta;
+    } catch (erro) {
+      if (status) status.textContent = erro?.message || "Não foi possível solicitar autorização.";
+      UIHelpers?.alerta?.(erro?.message || "Falha na solicitação.");
+      return null;
+    }
   }
 
   function abrirFormularioCliente(clienteId = "") {
@@ -1320,6 +1441,7 @@
     const refs = referenciasTelefoneCliente(cliente || {});
     while (refs.length < 1) refs.push({});
     clienteFormularioAbertoId = clienteId || "__novo__";
+    documentoClienteConsultado = null;
     tela.dataset.vendedorClientesMontado = "true";
     tela.innerHTML = `
       <div class="section-card vendedor-cliente-pagina">
@@ -1331,11 +1453,13 @@
         <footer class="vendedor-cliente-pagina-actions">${acoesFormularioCliente(clienteId, criado, historico, veioLeads)}</footer>
       </div>`;
     limparBlocosClientesLegadosVendedor();
-    setTimeout(() => document.getElementById("clienteVendedorNome")?.focus(), 0);
+    setTimeout(() => (clienteId ? document.getElementById("clienteVendedorNome") : document.getElementById("clienteVendedorDocumento"))?.focus(), 0);
   }
 
   function voltarGerenciarClientes() {
     clienteFormularioAbertoId = "";
+    origemCadastroNovaVenda = false;
+    documentoClienteConsultado = null;
     renderClientesVendedor({ forcar: true });
   }
 
@@ -1404,6 +1528,11 @@
     const tenantId = texto(State.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
     if (!nome || !documento || !telefone) return UIHelpers?.alerta?.("Informe nome, documento e telefone principal.");
     if (!tenantId) return UIHelpers?.alerta?.("Empresa/tenant nao identificado para criar cliente. Atualize a sessao e tente novamente.");
+    if (!clienteId && (!documentoClienteConsultado?.liberado ||
+        documentoClienteConsultado.documento !== documentoFiscalVendedor(documento) ||
+        documentoClienteConsultado.tenant !== tenantId)) {
+      return UIHelpers?.alerta?.("Consulte o CPF/CNPJ e obtenha autorização antes de continuar o cadastro.");
+    }
     const botao = document.getElementById("salvarClienteVendedorBtn");
     if (botao) botao.disabled = true;
     try {
@@ -1462,14 +1591,55 @@
         criadoPorId: authUid,
         equipeId: usuario.equipeId || usuario.equipesIds?.[0] || usuario.equipeIds?.[0] || ""
       };
-      if (clienteId) { if (!window.ClientesService?.atualizarCliente) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.atualizarCliente(clienteId, payload, usuario, { db: window.db || window.firebase?.firestore?.() }); }
-      else { if (!window.ClientesService?.criarClienteComLegado) throw new Error("Servico de clientes indisponivel."); await window.ClientesService.criarClienteComLegado({ dados: payload, usuario, clientePlataformaId: tenantId, permitirTelefoneDuplicado: false, db: window.db || window.firebase?.firestore?.() }); }
+      let novoClienteId = "";
+      if (clienteId) {
+        if (!window.ClientesService?.atualizarCliente) throw new Error("Servico de clientes indisponivel.");
+        await window.ClientesService.atualizarCliente(clienteId, payload, usuario, { db: window.db || window.firebase?.firestore?.() });
+      } else {
+        // Segurança de duplicidade e criação da ficha/legado são validadas no servidor.
+        const retorno = (await callableClientes("cadastrarClienteOperacionalV27")({dados: payload})).data || {};
+        novoClienteId = texto(retorno.clienteOperacionalId);
+        if (!retorno.ok || !novoClienteId) throw new Error("O servidor não confirmou o cadastro.");
+      }
       fecharModal();
-      await recarregarClientesVendedorDados();
+      const atualizados = await recarregarClientesVendedorDados();
+      if (novoClienteId && !(atualizados || []).some(c => texto(c.id) === novoClienteId)) {
+        const dbAtual = window.db || window.firebase?.firestore?.();
+        const salvo = await dbAtual.collection("clientes_operacionais").doc(novoClienteId).get({source:"server"});
+        if (salvo.exists && texto(salvo.data()?.clientePlataformaId) === tenantId) {
+          const novos = [...(State.getClientes?.() || []).filter(c => texto(c.id) !== novoClienteId),
+            {id: novoClienteId, ...salvo.data(), clienteOperacionalId: novoClienteId}];
+          State.setClientes?.(novos);
+          window.clientesCache = novos;
+        }
+      }
+      const seguirVenda = origemCadastroNovaVenda && Boolean(novoClienteId);
       voltarGerenciarClientes();
-      UIHelpers?.alerta?.("Cliente salvo com sucesso.");
+      if (seguirVenda) {
+        caches();
+        window.trocarTela?.("cobrancas", document.querySelector('#sidebar [data-modulo="operacao"]'));
+        abrirAba("vendas");
+        if ((State.getClientes?.() || []).some(c => texto(c.id) === novoClienteId)) {
+          selecionarClienteNovaVenda(novoClienteId);
+        } else UIHelpers?.alerta?.("Cadastro confirmado. Localize o cliente na carteira para prosseguir com a venda.");
+      } else UIHelpers?.alerta?.("Cliente salvo no Firebase com sucesso.");
     } catch (erro) {
       console.error(erro);
+      const status = document.getElementById("statusConsultaDocumentoCliente");
+      if (!clienteId && /Telefone já vinculado/i.test(texto(erro?.message)) && status) {
+        status.textContent = "Telefone cadastrado em outra ficha. É necessária autorização para continuar.";
+        const solicitar = document.createElement("button");
+        solicitar.type = "button";
+        solicitar.className = "ghost-btn";
+        solicitar.textContent = "Solicitar autorização do telefone";
+        solicitar.addEventListener("click", () => solicitarDuplicidadeClienteVendedor(
+          documento, status, telefone
+        ));
+        const acoes = document.createElement("div");
+        acoes.className = "integro-doc-acoes";
+        acoes.appendChild(solicitar);
+        status.appendChild(acoes);
+      }
       UIHelpers?.alerta?.(erro?.message || "Nao foi possivel salvar o cliente.");
     } finally { if (botao) botao.disabled = false; }
   }
@@ -2334,7 +2504,100 @@
     const caixa = await garantirCaixaAberto();
     if (!caixa) return UIHelpers?.alerta?.("Nenhum caixa aberto foi localizado para este vendedor. Atualize a página ou confirme o vínculo do caixa.");
     const clientes = (State.getClientes?.() || []).filter(c => pertenceAoVendedor(c) && c.excluido !== true && clientePodeIniciarNovaVenda(c));
-    modalBase("Nova venda", clientes.length ? `<div class="vendedor-clientes-venda">${clientes.map(c => { const ativo = saldoCliente(c) > 1; const autorizado = autorizacaoVendaComSaldoCliente(c); return `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${texto(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${texto(c.nomeCompleto || c.nome || "")}${ativo ? autorizado ? " · Autorização disponível" : " · Saldo ativo — sujeito à análise" : ""}</small><span>Selecionar</span></button>`; }).join("")}</div>` : '<div class="empty-state-operacao"><strong>Nenhum cliente disponível</strong><p>Não há clientes elegíveis para nova venda conforme a política atual da empresa.</p></div>');
+    const inicio = `<section class="integro-venda-inicio"><div class="integro-venda-etapa"><span>01</span><div><strong>Identificar cliente</strong><small>Consulta segura de CPF ou CNPJ no Firebase</small></div></div><div class="integro-venda-consulta"><label for="consultaDocumentoNovaVenda">CPF / CNPJ</label><div><input id="consultaDocumentoNovaVenda" inputmode="numeric" autocomplete="off" placeholder="Digite o CPF ou CNPJ" value="${esc(documentoNovaVendaConsulta)}" oninput="invalidarConsultaNovaVendaVendedor()" onkeydown="if(event.key==='Enter')consultarDocumentoNovaVendaVendedor()"><button id="btnConsultarDocumentoNovaVenda" class="primary-btn" type="button" onclick="consultarDocumentoNovaVendaVendedor()">Consultar</button></div></div><p id="statusDocumentoNovaVenda" class="integro-doc-status" role="status" aria-live="polite">Consulte um documento para iniciar uma ficha nova ou localizar um cliente existente.</p></section>`;
+    const lista = clientes.length ? `<div class="integro-venda-clientes-titulo">Clientes da minha carteira</div><div class="vendedor-clientes-venda">${clientes.map(c => { const ativo = saldoCliente(c) > 1; const autorizado = autorizacaoVendaComSaldoCliente(c); return `<button type="button" onclick="selecionarClienteNovaVendaVendedor('${texto(c.id || c.clienteId)}')"><strong>${esc(c.apelido || c.nome || c.nomeCompleto || "Cliente")}</strong><small>${esc(c.nomeCompleto || c.nome || "")}${ativo ? autorizado ? " · Autorização disponível" : " · Saldo ativo — sujeito à análise" : ""}</small><span>Selecionar</span></button>`; }).join("")}</div>` : '<div class="empty-state-operacao"><strong>Sem clientes elegíveis</strong><p>Consulte um CPF/CNPJ acima para cadastrar um cliente e continuar com a venda.</p></div>';
+    modalBase("Nova venda", inicio + lista);
+  }
+
+
+  function abrirCadastroNovoClienteDaVenda() {
+    const documento = documentoFiscalVendedor(documentoNovaVendaConsulta);
+    if (!documento) return UIHelpers?.alerta?.("Consulte primeiro um CPF/CNPJ válido.");
+    origemCadastroNovaVenda = true;
+    fecharModal();
+    window.trocarTela?.("clientes", document.querySelector('#sidebar [data-modulo="clientes"]'));
+    abrirFormularioCliente("");
+    const campo = document.getElementById("clienteVendedorDocumento");
+    if (campo) {
+      campo.value = documento;
+      consultarDocumentoCliente();
+    }
+  }
+
+  function invalidarConsultaNovaVenda() {
+    const status = document.getElementById("statusDocumentoNovaVenda");
+    if (status) status.textContent = "Documento alterado. Consulte novamente para continuar.";
+    documentoNovaVendaConsulta = texto(document.getElementById("consultaDocumentoNovaVenda")?.value).replace(/\D/g, "");
+  }
+
+  async function consultarDocumentoNovaVenda() {
+    const input = document.getElementById("consultaDocumentoNovaVenda");
+    const status = document.getElementById("statusDocumentoNovaVenda");
+    const btn = document.getElementById("btnConsultarDocumentoNovaVenda");
+    const documento = documentoFiscalVendedor(input?.value);
+    documentoNovaVendaConsulta = texto(input?.value).replace(/\D/g, "");
+    if (!documento) {
+      if (status) status.textContent = "Informe CPF com 11 dígitos ou CNPJ com 14 dígitos.";
+      return;
+    }
+    if (btn) btn.disabled = true;
+    const tenantConsulta = texto(State.getTenantId?.());
+    if (status) status.textContent = "Verificando documento no Firebase...";
+    try {
+      const resposta = (await callableClientes("consultarDocumentoClienteV27")({documento})).data || {};
+      if (tenantConsulta !== texto(State.getTenantId?.()) || texto(input?.value).replace(/\D/g, "") !== documento) return;
+      if (!status) return;
+      status.textContent = "";
+      if (resposta.existe && resposta.proprio && resposta.clienteId) {
+        status.textContent = "Cliente localizado na sua carteira. Abrindo simulação...";
+        await recarregarClientesVendedorDados();
+        if (!(State.getClientes?.() || []).some(c => texto(c.id) === texto(resposta.clienteId))) {
+          status.textContent = "Cliente localizado. Atualize a carteira para selecionar a ficha.";
+          return;
+        }
+        selecionarClienteNovaVenda(resposta.clienteId);
+      } else {
+        status.textContent = !resposta.existe ? "Documento livre nesta empresa. Prossiga com o cadastro."
+          : resposta.autorizado ? "Duplicidade autorizada. Você pode continuar com um novo cadastro."
+          : "Documento já cadastrado nesta empresa. Nova ficha bloqueada até autorização.";
+        const acoes = document.createElement("div"); acoes.className = "integro-doc-acoes";
+        if (!resposta.existe || resposta.autorizado) {
+          const continuar = document.createElement("button");
+          continuar.type = "button"; continuar.className = "primary-btn";
+          continuar.textContent = "Cadastrar cliente e continuar";
+          continuar.addEventListener("click", abrirCadastroNovoClienteDaVenda);
+          acoes.appendChild(continuar);
+        } else {
+          const solicitar = document.createElement("button");
+          solicitar.type = "button"; solicitar.className = "ghost-btn";
+          solicitar.textContent = "Solicitar autorização";
+          solicitar.addEventListener("click", () => solicitarDuplicidadeClienteVendedor(documento, status));
+          acoes.appendChild(solicitar);
+        }
+        status.appendChild(acoes);
+      }
+    } catch (erro) {
+      if (status) status.textContent = erro?.message || "Consulta indisponível. Não é permitido avançar sem validação.";
+    } finally { if (btn) btn.disabled = false; }
+  }
+
+  function atualizarSimulacaoVenda() {
+    const valor = numero(texto(document.getElementById("novaVendaValor")?.value).replace(/\./g, "").replace(",", "."));
+    const juros = numero(texto(document.getElementById("novaVendaJuros")?.value).replace(",", "."));
+    const parcelas = Number(document.getElementById("novaVendaParcelas")?.value);
+    const valida = valor > 0 && Number.isFinite(juros) && juros >= 0 && juros <= 1000 &&
+      Number.isInteger(parcelas) && parcelas > 0 && parcelas <= 90;
+    const centavos = Math.round(valor * 100);
+    const totalCentavos = valida ? Math.round(centavos * (1 + juros / 100)) : 0;
+    const valores = {
+      novaVendaSimulacaoPrincipal: valida ? moeda(centavos / 100) : "—",
+      novaVendaSimulacaoJuros: valida ? moeda((totalCentavos - centavos) / 100) : "—",
+      novaVendaSimulacaoTotal: valida ? moeda(totalCentavos / 100) : "—",
+      novaVendaSimulacaoParcela: valida ? moeda(Math.round(totalCentavos / parcelas) / 100) : "—"
+    };
+    for (const [id, valorTexto] of Object.entries(valores)) {
+      const el = document.getElementById(id); if (el && el.textContent !== valorTexto) el.textContent = valorTexto;
+    }
   }
 
   function selecionarClienteNovaVenda(clienteId) {
@@ -2345,14 +2608,15 @@
     if (saldoAtivo && !clientePodeIniciarNovaVenda(cliente)) return UIHelpers?.alerta?.("Cliente com saldo devedor acima de R$ 1. A política da empresa exige quitação ou autorização antes de uma nova venda.");
     const avisoSaldo = saldoAtivo ? `<div class="vendedor-venda-alerta-saldo"><span class="material-symbols-rounded">policy</span><div><strong>Cliente possui saldo ativo</strong><small>${autorizacaoVendaComSaldoCliente(cliente) ? "Existe uma autorização temporária. Ela vale somente para o mesmo valor aprovado." : "Ao registrar, a venda será enviada para análise do Supervisor/Gerente antes de ser liberada."}</small></div></div>` : "";
     const tipo = clienteTemHistoricoVenda(cliente) ? "RENOVACAO" : "NOVA";
-    modalBase(tipo === "RENOVACAO" ? "Renovação" : "Nova venda", `<div class="vendedor-nova-venda-form"><div class="vendedor-nova-venda-cliente"><strong>${texto(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado<input id="novaVendaValor" inputmode="decimal" placeholder="0,00"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Registrar venda</button>`);
+    modalBase(tipo === "RENOVACAO" ? "Renovação" : "Nova venda", `<div class="vendedor-nova-venda-form"><div class="integro-venda-etapa"><span>02</span><div><strong>Simulação da operação</strong><small>Confira as condições antes de confirmar no servidor</small></div></div><div class="vendedor-nova-venda-cliente"><strong>${esc(cliente.apelido || cliente.nome || cliente.nomeCompleto)}</strong><small>${esc(cliente.nomeCompleto || cliente.nome || "")}</small></div>${avisoSaldo}<label>Valor emprestado (R$)<input id="novaVendaValor" inputmode="decimal" placeholder="0,00" oninput="atualizarSimulacaoVendaVendedor()"></label><label>Juros (%)<input id="novaVendaJuros" inputmode="decimal" value="0" oninput="atualizarSimulacaoVendaVendedor()"></label><label>Quantidade de parcelas<input id="novaVendaParcelas" inputmode="numeric" value="1" oninput="atualizarSimulacaoVendaVendedor()"></label><label>Frequência<select id="novaVendaFrequencia"><option value="DIARIA">Diária</option><option value="SEMANAL">Semanal</option><option value="QUINZENAL">Quinzenal</option><option value="MENSAL">Mensal</option></select></label><label>Primeira cobrança<input id="novaVendaPrimeiraCobranca" type="date" value="${dataCaixa()}"></label><div class="integro-venda-simulacao" aria-live="polite"><div><small>Principal</small><strong id="novaVendaSimulacaoPrincipal">—</strong></div><div><small>Juros previstos</small><strong id="novaVendaSimulacaoJuros">—</strong></div><div><small>Total da venda</small><strong id="novaVendaSimulacaoTotal">—</strong></div><div class="integro-venda-simulacao-destaque"><small>Parcela estimada</small><strong id="novaVendaSimulacaoParcela">—</strong></div></div><p class="integro-venda-nota">Simulação informativa. O Firebase valida caixa, cliente, limite e permissões antes de registrar a venda.</p></div>`, `<button class="ghost-btn" type="button" onclick="abrirListaNovaVendaVendedor()">Voltar</button><button id="confirmarNovaVendaVendedorBtn" class="primary-btn" type="button" onclick="confirmarNovaVendaVendedor()">Confirmar e registrar venda</button>`);
+    atualizarSimulacaoVenda();
   }
 
   async function confirmarNovaVenda() {
     const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(clienteNovaVendaId));
     const caixa = await garantirCaixaAberto();
     if (!cliente || !caixa) return UIHelpers?.alerta?.("Cliente ou caixa aberto não encontrado.");
-    const valor = numero(texto(document.getElementById("novaVendaValor")?.value).replace(".", "").replace(",", "."));
+    const valor = numero(texto(document.getElementById("novaVendaValor")?.value).replace(/\./g, "").replace(",", "."));
     const juros = numero(texto(document.getElementById("novaVendaJuros")?.value).replace(",", "."));
     const parcelas = Number(document.getElementById("novaVendaParcelas")?.value);
     const frequencia = texto(document.getElementById("novaVendaFrequencia")?.value || "DIARIA");
@@ -2599,6 +2863,8 @@
   window.aplicarFiltrosClientesVendedor = aplicarFiltrosClientes;
   window.limparFiltrosClientesVendedor = limparFiltrosClientes;
   window.abrirFormularioClienteVendedor = abrirFormularioCliente;
+  window.consultarDocumentoClienteVendedor = consultarDocumentoCliente;
+  window.invalidarConsultaDocumentoClienteVendedor = invalidarConsultaDocumentoCliente;
   window.voltarGerenciarClientesVendedor = voltarGerenciarClientes;
   window.salvarClienteVendedor = salvarCliente;
   window.abrirAbaFormularioClienteVendedor = abrirAbaFormularioCliente;
@@ -2622,6 +2888,9 @@
   window.confirmarNaoPagamentoVendedorUnificado = registrarNaoPagamento;
   window.fecharModalVendedorOperacao = fecharModal;
   window.abrirListaNovaVendaVendedor = abrirListaNovaVenda;
+  window.consultarDocumentoNovaVendaVendedor = consultarDocumentoNovaVenda;
+  window.invalidarConsultaNovaVendaVendedor = invalidarConsultaNovaVenda;
+  window.atualizarSimulacaoVendaVendedor = atualizarSimulacaoVenda;
   window.selecionarClienteNovaVendaVendedor = selecionarClienteNovaVenda;
   window.confirmarNovaVendaVendedor = confirmarNovaVenda;
   window.IntegroVendedorUnificado = Object.freeze({ aplicar, montarTela, renderVendasDia, renderClientesVendedor, renderMovimentacoesVendedor, abrirAba, get ativo() { return instalado; } });

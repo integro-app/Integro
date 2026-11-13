@@ -65,19 +65,223 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     }));
   }
 
+
+  // Consulta restrita ao tenant, executada no servidor: vendedor não precisa
+  // de permissão de leitura sobre a carteira de outro vendedor para detectar conflito.
+  function documentoFiscal(valor) {
+    const doc = texto(valor).replace(/\D/g, "");
+    if (![11, 14].includes(doc.length) || /^(\d)\1+$/.test(doc)) {
+      erro("invalid-argument", "Informe um CPF ou CNPJ com 11 ou 14 dígitos.");
+    }
+    return doc;
+  }
+
+  function chaveSomenteDocumento(documento) {
+    return idSeguro("doc_" + documento + "_tel_sem");
+  }
+
+  function proprioCliente(cliente, uid, usuario) {
+    const ids = [uid, usuario.id, usuario.usuarioId, usuario.vendedorId].map(texto).filter(Boolean);
+    return ids.includes(texto(cliente.vendedorAuthUid || cliente.vendedorUid || cliente.vendedorId));
+  }
+
+  async function consultarDocumento(dadosRecebidos, ctx) {
+    const { uid, usuario, tenantId } = await sessao(ctx);
+    const documento = documentoFiscal(dadosRecebidos?.documento || dadosRecebidos?.documentoNormalizado);
+    const encontrados = await db.collection("clientes_operacionais")
+      .where("clientePlataformaId", "==", tenantId)
+      .where("documentoNormalizado", "==", documento)
+      .limit(20).get();
+    const validos = encontrados.docs.map(s => ({ id: s.id, ...s.data() }))
+      .filter(item => item.excluido !== true);
+    // Legado sem ficha operacional também conta como documento ocupado.
+    const legadosSnap = await db.collection("clientes")
+      .where("clientePlataformaId", "==", tenantId)
+      .where("documentoNormalizado", "==", documento).limit(20).get();
+    const legados = legadosSnap.docs.map(s => ({id:s.id, ...s.data()}))
+      .filter(item => item.excluido !== true);
+    const proprio = validos.find(cliente => proprioCliente(cliente, uid, usuario))
+      || legados.find(cliente => proprioCliente(cliente, uid, usuario) && cliente.clienteOperacionalId);
+    const chave = chaveSomenteDocumento(documento);
+    const autorizadoSnap = await db.collection("clientes_duplicidade_autorizacoes")
+      .doc("dup_" + idSeguro(uid) + "_" + chave).get();
+    const autorizado = autorizadoSnap.exists &&
+      texto(autorizadoSnap.data()?.clientePlataformaId) === tenantId &&
+      texto(autorizadoSnap.data()?.usuarioAuthUid) === uid &&
+      normalizar(autorizadoSnap.data()?.status) === "ATIVA" &&
+      Number(autorizadoSnap.data()?.expiraEmMs || 0) > Date.now();
+    return {
+      ok: true, documentoNormalizado: documento, existe: validos.length > 0 || legados.length > 0,
+      proprio: Boolean(proprio), clienteId: proprio ? texto(proprio.clienteOperacionalId || proprio.id) : "",
+      clienteNome: proprio ? texto(proprio.nome || proprio.nomeCompleto) : "",
+      autorizado: Boolean(autorizado), necessitaAutorizacao: (validos.length > 0 || legados.length > 0) && !autorizado
+    };
+  }
+
+  function limparCampo(valor, max = 200) {
+    return texto(valor).slice(0, max);
+  }
+
+  // Escrita canônica no backend com trava de documento. A consulta de prévia
+  // não concede acesso; o servidor refaz a checagem dentro da transação.
+  async function cadastrarCliente(dadosRecebidos, ctx) {
+    const { uid, usuario, tenantId } = await sessao(ctx);
+    if (papel(usuario) !== "VENDEDOR") erro("permission-denied", "Cadastro desta operação exige perfil vendedor.");
+    const entrada = dadosRecebidos?.dados || {};
+    const documento = documentoFiscal(entrada.documento);
+    const nome = limparCampo(entrada.nome || entrada.nomeCompleto, 180);
+    const telefone = limparCampo(entrada.telefonePrincipal || entrada.telefone, 30);
+    const telefoneNormalizado = telefone.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+    if (nome.length < 3 || telefoneNormalizado.length < 10 || telefoneNormalizado.length > 11) {
+      erro("invalid-argument", "Informe nome completo e telefone com DDD.");
+    }
+    const equipeId = texto(usuario.equipeId || equipes(usuario)[0]);
+    if (!equipeId) erro("failed-precondition", "Vendedor sem equipe ativa vinculada.");
+    const opId = db.collection("clientes_operacionais").doc();
+    const legadoId = db.collection("clientes").doc();
+    const auditoriaRef = db.collection("logs").doc();
+    const travaRef = db.collection("clientes_documentos_reserva").doc(idSeguro(tenantId).slice(0, 200) + "_" + documento);
+    const autorizacaoRef = db.collection("clientes_duplicidade_autorizacoes")
+      .doc("dup_" + idSeguro(uid) + "_" + chaveSomenteDocumento(documento));
+    const autorizacaoTelefoneRef = db.collection("clientes_duplicidade_autorizacoes")
+      .doc("dup_" + idSeguro(uid) + "_doc_" + documento + "_tel_" + telefoneNormalizado);
+    const consulta = db.collection("clientes_operacionais")
+      .where("clientePlataformaId", "==", tenantId)
+      .where("documentoNormalizado", "==", documento)
+      .limit(20);
+    const consultaLegado = db.collection("clientes")
+      .where("clientePlataformaId", "==", tenantId)
+      .where("documentoNormalizado", "==", documento).limit(20);
+    const consultaTelefone = db.collection("clientes_operacionais")
+      .where("clientePlataformaId", "==", tenantId)
+      .where("telefonesNormalizados", "array-contains", telefoneNormalizado).limit(20);
+    const agora = ts();
+    const tipo = documento.length === 11 ? "CPF" : "CNPJ";
+    const dados = {
+      clientePlataformaId: tenantId, tenantId, empresaId: tenantId,
+      nome, nomeCompleto: nome, nomeBusca: nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase(),
+      apelido: limparCampo(entrada.apelido, 100),
+      tipoCliente: tipo === "CPF" ? "PF" : "PJ", tipoDocumento: tipo,
+      documento, documentoNormalizado: documento,
+      telefone, telefonePrincipal: telefone, telefoneNormalizado,
+      telefonesNormalizados: [telefoneNormalizado],
+      telefonePrincipalWhatsapp: entrada.telefonePrincipalWhatsapp === true,
+      cep: limparCampo(entrada.cep, 9), endereco: limparCampo(entrada.endereco, 180),
+      numero: limparCampo(entrada.numero, 20), complemento: limparCampo(entrada.complemento, 80),
+      bairro: limparCampo(entrada.bairro, 100), cidade: limparCampo(entrada.cidade, 100),
+      uf: limparCampo(entrada.uf, 2).toUpperCase(),
+      telefonesReferencia: (Array.isArray(entrada.telefonesReferencia) ? entrada.telefonesReferencia : []).slice(0,5)
+        .map(item=>({
+          nome:limparCampo(item?.nome,100),
+          telefone:limparCampo(item?.telefone,30),
+          whatsapp:item?.whatsapp===true
+        })),
+      fotoPerfilNome: limparCampo(entrada.fotoPerfilNome,180),
+      documentosAnexosNomes: (Array.isArray(entrada.documentosAnexosNomes)?entrada.documentosAnexosNomes:[])
+        .slice(0,10).map(nome=>limparCampo(nome,180)),
+      dadosBancarios: {
+        banco: limparCampo(entrada.dadosBancarios?.banco, 80),
+        agencia: limparCampo(entrada.dadosBancarios?.agencia, 20),
+        conta: limparCampo(entrada.dadosBancarios?.conta, 40),
+        tipoConta: limparCampo(entrada.dadosBancarios?.tipoConta, 20),
+        pix: limparCampo(entrada.dadosBancarios?.pix, 120)
+      },
+      observacao: limparCampo(entrada.observacao, 2000),
+      origem: "CADASTRO_DIRETO",
+      statusAtendimento: "AGUARDANDO_ATENDIMENTO",
+      vendedorAuthUid: uid, vendedorUid: uid, vendedorId: texto(usuario.id || usuario.usuarioId || uid),
+      vendedorNome: limparCampo(usuario.nome || usuario.nomeCompleto || usuario.email, 180),
+      equipeId, masterLocalId: texto(usuario.masterLocalId || tenantId),
+      supervisorId: texto(usuario.supervisorId), gerenteId: texto(usuario.gerenteId),
+      hierarquiaIds: [...new Set([tenantId,uid,equipeId,texto(usuario.masterLocalId || tenantId),
+        texto(usuario.supervisorId),texto(usuario.gerenteId)].filter(Boolean))],
+      ativo: true, excluido: false,
+      criadoPor: uid, criadoPorId: uid, criadoEm: agora,
+      atualizadoPor: uid, atualizadoEm: agora
+    };
+    const resultado = await db.runTransaction(async tx => {
+      const [trava, autorizacao, autorizacaoTelefone, existentes, legados, telefones] = await Promise.all([
+        tx.get(travaRef), tx.get(autorizacaoRef), tx.get(autorizacaoTelefoneRef),
+        tx.get(consulta), tx.get(consultaLegado), tx.get(consultaTelefone)
+      ]);
+      const conflitantes = existentes.docs.filter(doc => doc.data()?.excluido !== true);
+      const legadoExistente = legados.docs.some(doc => doc.data()?.excluido !== true);
+      const documentoEmUso = conflitantes.length > 0 || legadoExistente ||
+        (trava.exists && (trava.data()?.clienteIds || []).length > 0);
+      const telefoneEmUso = telefones.docs.some(doc => doc.data()?.excluido !== true);
+      const encontrado = documentoEmUso || telefoneEmUso;
+      const autorizacaoUsada = documentoEmUso ? autorizacao : autorizacaoTelefone;
+      const autorizacaoUsadaRef = documentoEmUso ? autorizacaoRef : autorizacaoTelefoneRef;
+      const aprovada = autorizacaoUsada.exists &&
+        texto(autorizacaoUsada.data()?.clientePlataformaId) === tenantId &&
+        texto(autorizacaoUsada.data()?.usuarioAuthUid) === uid &&
+        normalizar(autorizacaoUsada.data()?.status) === "ATIVA" &&
+        Number(autorizacaoUsada.data()?.expiraEmMs || 0) > Date.now();
+      if (encontrado && !aprovada) erro("failed-precondition", documentoEmUso
+        ? "CPF/CNPJ já cadastrado. Solicite autorização antes de criar outra ficha."
+        : "Telefone já vinculado a outro cliente. Solicite autorização antes de continuar.");
+      const idsAnteriores = trava.exists ? (trava.data()?.clienteIds || []) :
+        conflitantes.map(item => item.id);
+      tx.set(opId, {
+        ...dados, clienteLegadoId: legadoId.id, cicloAtendimentoAtual: 1, tentativasContato: 0
+      });
+      tx.set(legadoId, {
+        ...dados, clienteOperacionalId: opId.id,
+        status: "QUITADO", statusCliente: "QUITADO",
+        saldoDevedor: 0, saldo: 0, possuiVendaAtiva: false
+      });
+      tx.set(travaRef, {
+        clientePlataformaId: tenantId, documentoNormalizado: documento,
+        clienteIds: [...new Set([...idsAnteriores, ...conflitantes.map(item => item.id), opId.id])],
+        atualizadoEm: agora
+      }, { merge: true });
+      if (encontrado) tx.set(autorizacaoUsadaRef, {
+        status: "CONSUMIDA", consumidaEm: agora, clienteOperacionalId: opId.id
+      }, { merge: true });
+      tx.set(auditoriaRef, {
+        clientePlataformaId: tenantId, tipo: "CLIENTE_CRIADO",
+        tipoAcao: "CLIENTE_CRIADO", origem: "cadastro-seguro-v27",
+        clienteId: opId.id, clienteOperacionalId: opId.id, clienteLegadoId: legadoId.id,
+        usuarioId: uid, usuarioAuthUid: uid, equipeId,
+        autorizacaoDuplicidade: encontrado ? autorizacaoUsadaRef.id : null, criadoEm: agora
+      });
+      return { ok: true, clienteOperacionalId: opId.id, clienteLegadoId: legadoId.id,
+        cadastroDuplicadoAutorizado: encontrado && aprovada };
+    });
+    return resultado;
+  }
+
   async function solicitar(dadosRecebidos, ctx) {
     const entrada = dadosRecebidos?.entrada || dadosRecebidos || {};
     const { uid, usuario, tenantId } = await sessao(ctx);
     const chave = idSeguro(entrada.chaveDuplicidade);
     const documento = texto(entrada.documentoNormalizado);
-    const telefones = Array.isArray(entrada.telefonesNormalizados) ? entrada.telefonesNormalizados.map(texto).filter(Boolean).slice(0, 5) : [];
-    const clientesIds = Array.isArray(entrada.clientesIds) ? [...new Set(entrada.clientesIds.map(texto).filter(Boolean))].slice(0, 10) : [];
-    if (!chave || (!documento && !telefones.length) || !clientesIds.length) erro("invalid-argument", "Dados da duplicidade incompletos.");
-
-    for (const clienteId of clientesIds) {
-      const snap = await db.collection("clientes_operacionais").doc(clienteId).get();
-      if (!snap.exists || texto(snap.data()?.clientePlataformaId) !== tenantId) erro("permission-denied", "Cliente duplicado fora do escopo da empresa.");
+    if (documento && !chave.startsWith("doc_" + documento + "_tel_")) {
+      erro("invalid-argument", "Chave de duplicidade não corresponde ao documento.");
     }
+    const telefones = Array.isArray(entrada.telefonesNormalizados) ? entrada.telefonesNormalizados.map(texto).filter(Boolean).slice(0, 5) : [];
+    // Sempre deriva conflitos no servidor. IDs recebidos do navegador não concedem autorização.
+    const consultas = [
+      db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
+        .where("documentoNormalizado", "==", documento).limit(10).get(),
+      db.collection("clientes").where("clientePlataformaId", "==", tenantId)
+        .where("documentoNormalizado", "==", documento).limit(10).get()
+    ];
+    for (const numero of telefones) consultas.push(
+      db.collection("clientes_operacionais").where("clientePlataformaId", "==", tenantId)
+        .where("telefonesNormalizados", "array-contains", numero).limit(10).get());
+    const resultados = await Promise.all(consultas);
+    const duplicados = resultados.flatMap(snap => snap.docs)
+      .filter(doc => doc.data()?.excluido !== true);
+    const clientesIds = [...new Set(duplicados.map(doc => doc.id))].slice(0, 10);
+    if (!chave || (!documento && !telefones.length) || !clientesIds.length)
+      erro("invalid-argument", "Nenhum cadastro conflitante validado na empresa.");
+    if (!duplicados.every(doc => texto(doc.data()?.clientePlataformaId) === tenantId &&
+      (texto(doc.data()?.documentoNormalizado) === documento ||
+      (Array.isArray(doc.data()?.telefonesNormalizados) &&
+      doc.data().telefonesNormalizados.some(numero => telefones.includes(texto(numero)))))))
+      erro("permission-denied", "Cadastro conflitante sem vínculo válido.");
+    // Documentos internos não são enviados ao navegador: só o ID da solicitação volta.
 
     // Supervisor/Gerente/Master Local já são autoridades locais para esta política.
     if (["MASTER_LOCAL", "GERENTE", "SUPERVISOR"].includes(papel(usuario))) {
@@ -193,7 +397,7 @@ function criarAprovacoesClientesV27({ admin, functions, db }) {
     return { ok: true, status: decisao === "APROVAR" ? "APROVADA" : "REJEITADA" };
   }
 
-  return { solicitar, decidir };
+  return { solicitar, decidir, consultarDocumento, cadastrarCliente };
 }
 
 module.exports = { criarAprovacoesClientesV27 };

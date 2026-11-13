@@ -8,7 +8,7 @@
 
 ## 1. Estado de execução
 
-- **Tópico ativo:** **M22 — Navegação do vendedor / Operação: Cobranças e Vendas**. Aguardando testes automatizados, revisão e homologação visual no ambiente publicado; **NÃO FECHADO**.
+- **Tópico ativo:** **M22 — Navegação do vendedor / Operação: Cobranças e Vendas**. Em 12/11/2026, correções adicionais estão na branch `fix/m22-operacao-vendedor-permissoes-abas-20261112` com CI aprovado (59/59 testes focados e 596/596 gerais). Faltam revisão, publicação autorizada e homologação real desktop/mobile; **NÃO FECHADO**.
 - **Próxima prioridade sugerida pela auditoria:** **M12 — Caixas operacionais**, começando pelo fechamento, persistência do status e disponibilidade dos botões. Risco crítico para uso real.
 - **Dependências críticas:** M03 Login, M02 Multiempresa, M05 Permissões, M11 Pagamentos e M13 Ledger. Podem ser inspecionadas para validar M12, mas não serão declaradas concluídas automaticamente.
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
@@ -107,6 +107,7 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 | 06/11/2026 | SaaS comercial | [Issue #14](https://github.com/integro-app/Integro/issues/14) aberta | Faturamento Pix/assinatura não homologado |
 | 06/11/2026 | Notificações de leads | Commit `374b552` na main; PR #35 inclui etapa backend | Confirmar workflow/Function, integração do navegador e notificação real |
 | 06/11/2026 | Chat | Commits de reparo do editor, anexos e não lidas | Ainda exige envio e recebimento real nos dispositivos |
+| 12/11/2026 | M22 / Operação vendedor | [CI 43239829227](https://github.com/integro-app/Integro/actions/runs/43239829227) na branch de correção: 59/59 focados, 596/596 gerais, integridade HTML/JS/Hosting/Functions aprovada | Correções só na branch; sem merge, deploy ou homologação visual autenticada |
 
 ## 7. Tópico ativo — M22 / Navegação do vendedor (06/11/2026)
 
@@ -127,3 +128,33 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - Conservar histórico de versões e decisões, sem apagar o que foi estabelecido antes.
 
 **Este é o controle oficial de acompanhamento.** O código-fonte continua sendo prova da implementação; o dossiê de aceite é prova da conclusão operacional.
+
+## 9. Atualização — M22 / Operação do Vendedor (12/11/2026)
+
+- **Base:** `main` em `45019b73d732d3eef10c128452c088e2904b1e0b`.
+- **Branch isolada:** `fix/m22-operacao-vendedor-permissoes-abas-20261112`. **Sem merge na main**.
+- **Achado 1:** a abertura sempre ativava Cobranças mesmo quando o vendedor tinha somente permissão de Vendas. `js/vendedor-unificado.js` agora seleciona somente abas autorizadas, incluindo negação sem permissão, sem alterar ações de pagamento ou caixa.
+- **Achado 2:** `css/integro-visual.css` ainda especificava duas colunas para três ações do topo (Cobranças, Vendas e Fechar caixa). Ajustada a declaração mobile para três colunas, respeitando o restante da estilização.
+- **Regressões:** `tests/sidebar-navigation-regression.test.js` exercita quatro perfis de permissão usando o código real extraído em VM e verifica três colunas. `tests/vendedor-unificado-operacao.test.js` foi adaptado à nova guarda de autorização.
+- **Primeira rodada CI:** [43239304725](https://github.com/integro-app/Integro/actions/runs/43239304725), 58/59 testes focados; 1 asserção estática antiga incompatível com a nova guarda. Corrigida a expectativa do teste, sem restaurar comportamento inseguro.
+- **Rodada CI válida:** [43239829227](https://github.com/integro-app/Integro/actions/runs/43239829227), 59/59 testes focados e 596/596 gerais aprovados; `npm run verify` concluiu também HTML, scripts inline, sintaxe JS, superfície Hosting e sintaxe Functions.
+- **Execução de CI:** workflow temporário limitado à branch, sem execução de deploy, removido ao final dos testes.
+- **Não executado nesta rodada:** teste manual com login no Hosting, comparação visual em celular/desktop, persistência real Firestore, teste offline/rede, auditoria de permissões nas Rules/Functions. Esses itens não podem ser inferidos do CI.
+- **Publicação:** não executada; nenhuma PR foi aberta, pois o workflow existente de PR aciona deploy de prévia Firebase automaticamente.
+- **Próximo passo para homologação:** revisar alterações, publicar apenas sob autorização, testar Operação → Cobranças/Vendas/Fechar caixa com perfil vendedor e credenciais de homologação, confirmar permissões restritas, layout no celular, alternância e ausência de regressão de baixas.
+- **Veredito:** **EM HOMOLOGAÇÃO PENDENTE / NÃO FECHADO**. A aprovação automatizada não equivale a aceite operacional nem encerra o M22 transversal.
+
+## 10. Frente comercial integrada M08/M09/M12 — 12/11/2026
+
+- **Branch de apresentação:** `feat/demo-cliente-venda-caixa-20261112`, derivada da correção M22. **Sem merge na main.**
+- **Novo cadastro (M08):** seller consulta CPF/CNPJ antes de cadastrar; callable `consultarDocumentoClienteV27` acessa somente dados do tenant no servidor, permite reencontrar cliente próprio sem expor documentos de outra carteira.
+- **Duplicidade:** bloqueia CPF/CNPJ existente em `clientes_operacionais` e na coleção legada `clientes`. Solicitação passa por `solicitarCadastroDuplicadoV27` e supervisor/gerente pode decidir por `decidirCadastroDuplicadoV27`; autorização expira e é consumida no primeiro cadastro autorizado.
+- **Escrita:** `cadastrarClienteOperacionalV27` exige sessão/tenant/ator vendedor/equipe, confere documento e telefone no Firestore dentro de transação, vincula `clientes_operacionais` e `clientes`, reserva documento e audita. Novo fluxo não grava baixa de caixa fictícia.
+- **Venda (M09):** `Nova venda` consulta documento e apresenta ficha de cliente próprio ou novo cadastro. Após cadastro seguro, continua na simulação de principal, juros, total e parcela. Confirmação mantém `IntegroVenda.registrarVendaTransacional` com autorização/caixa/ledger existentes, sem simular quitação nem aprovação.
+- **Caixa (M12):** tela de conferência evidencia snapshot oficial e permite atualizar valores. Continua bloqueada a confirmação sem baixas e conferência e continua exigindo backend `registrarFechamentoCaixaTransacional`; nenhuma movimentação financeira alterada neste ajuste.
+- **UI:** alterações localizadas no vendedor e CSS responsivo, incluindo controle de permissões das abas já tratado no M22.
+- **Índices:** foram acrescentados três índices compostos de CPF/CNPJ e telefone por tenant no `firestore.indexes.json`. **Ainda dependem de deploy de índices.**
+- **Teste:** suíte focada, suíte geral e verificadores HTML/JS/Hosting/Functions via workflow temporário da branch; registrar link e contagem da execução final aprovada nesta ficha.
+- **Pendente obrigatoriamente:** confirmar índice ativo, implantação autorizada das duas Functions e do Hosting, teste Firebase Auth/Firestore real com dois tenants e vendedores diferentes, disparo/decisão de solicitação, cadastro/duplo clique/rede, atualização de carteira/venda/parcelas/ledger e fechamento de caixa real em dispositivo móvel.
+- **Importante:** anexos do formulário nesta fase são apenas nomes de arquivo; upload efetivo para Storage não está incluído neste escopo.
+- **Veredito:** **EM DESENVOLVIMENTO/HOMOLOGAÇÃO**. Não há autorização para considerar concluído ou apresentado como produção.

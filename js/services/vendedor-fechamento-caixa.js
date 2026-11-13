@@ -359,7 +359,7 @@
     const visitadas = Math.max(0, inteiro(snapshot.totalVisitadas));
     return `
       <div class="integro-fechamento-head">
-        <div><h2>Conferência do caixa</h2><p>Valores registrados no servidor até este momento. Consulte a posição do caixa quando quiser; o fechamento exige todas as visitas com baixa e conferência do valor físico.</p></div>
+        <div><span class="integro-fechamento-origem">Dados oficiais do Firebase · conferência sem fechar</span><h2>Conferência do caixa</h2><p>Consulte os valores atualizados, confira todas as visitas e confirme o dinheiro físico. Esta tela não encerra o caixa sem sua confirmação.</p></div>
         <button class="integro-fechamento-close" type="button" data-fechamento-cancelar aria-label="Fechar">×</button>
       </div>
       <div class="integro-fechamento-body">
@@ -396,7 +396,8 @@
       </div>
       <div class="integro-fechamento-actions">
         <button class="secundario" type="button" data-fechamento-cancelar>Cancelar</button>
-        <button class="primario" id="integroFechamentoConfirmar" type="button" disabled>Iniciar fechamento</button>
+        <button class="secundario" id="integroFechamentoAtualizar" type="button" data-fechamento-atualizar>Atualizar valores</button>
+        <button class="primario" id="integroFechamentoConfirmar" type="button" disabled>Confirmar fechamento</button>
       </div>`;
   }
 
@@ -580,6 +581,7 @@
       const input = dialog.querySelector("#integroFechamentoValorInformado");
       const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
       dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao => botao.addEventListener("click", cancelar));
+      dialog.querySelectorAll("[data-fechamento-atualizar]").forEach(botao => botao.addEventListener("click", () => abrirResumoFechamento({ inline: !!painel })));
       input?.addEventListener("input", () => atualizarConferencia(dialog, snapshot));
       input?.addEventListener("keydown", evento => {
         if (evento.key === "Enter" && !confirmar?.disabled) confirmar.click();
