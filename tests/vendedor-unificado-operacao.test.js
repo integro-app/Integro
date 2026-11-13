@@ -96,12 +96,13 @@ test("clientes do vendedor ficam em tela propria com gestao e retorno para leads
   assert.match(unificado, /retornarClienteLeadsVendedor/);
   assert.match(unificado, /ClientesService\?\.retornarClienteParaLeads/);
 });
-test("vendas legadas podem ser reconhecidas pelo cliente vinculado ao vendedor", () => {
-  assert.match(unificado, /vinculosVendedorRegistro\(v\)\.length > 0 \|\| !pertenceAoVendedor\(cliente\)/);
+test("venda referenciada pelo cliente exige autoria da própria venda", () => {
+  assert.doesNotMatch(unificado, /vinculosVendedorRegistro\(v\)\.length > 0 \|\| !pertenceAoVendedor\(cliente\)/);
+  assert.match(unificado, /vendaPertenceAoVendedor\?\.\(v\)/);
+  assert.match(perfis, /function vendaPertenceAoVendedor\(venda = \{\}\)/);
   assert.match(perfis, /function idsVendasReferenciadas\(clientes = \[\]\)/);
-  assert.match(perfis, /vendaAtivaId/);
   assert.match(perfis, /function carregarVendasVendedor\(clientes = \[\], opcoes = \{\}\)/);
-  assert.match(perfis, /forcar: opcoes\.forcar === true/);
+  assert.match(perfis, /\.filter\(vendaPertenceAoVendedor\)/);
   assert.match(perfis, /db\.collection\(CONFIG\.COLECOES\.VENDAS\)\.doc\(id\)\.get\(\)/);
 });
 
