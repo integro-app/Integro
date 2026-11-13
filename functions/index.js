@@ -12,6 +12,8 @@ const dbSessaoProtegida = sessionAuthorization.db;
 
 const { criarOnboardingMasterGlobal } = require("./master-global-onboarding");
 const onboardingGlobal = criarOnboardingMasterGlobal({ admin, functions, db: dbSessaoProtegida });
+const { criarGestaoMasterGlobal } = require("./master-global-management");
+const gestaoGlobal = criarGestaoMasterGlobal({ admin, functions, db: dbSessaoProtegida });
 // O Firebase do projeto não permite criar novos endpoints por IAM.
 // Rotas globais seguem a callable existente com invoker autorizado,
 // mantendo a validação de sessão e o papel master_global no servidor.
@@ -229,7 +231,16 @@ exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").h
       salvarCliente: onboardingGlobal.salvarCliente,
       alterarAcesso: onboardingGlobal.alterarAcesso,
       ativarTeste: onboardingGlobal.ativarTeste,
-      criarMasterLocal: onboardingGlobal.criarMasterLocal
+      criarMasterLocal: onboardingGlobal.criarMasterLocal,
+      listarPainel: gestaoGlobal.listarPainel,
+      salvarDepartamento: gestaoGlobal.salvarDepartamento,
+      salvarPlano: gestaoGlobal.salvarPlano,
+      salvarConfiguracoes: gestaoGlobal.salvarConfiguracoes,
+      salvarUsuarioInterno: gestaoGlobal.salvarUsuarioInterno,
+      editarMasterLocal: gestaoGlobal.editarMasterLocal,
+      alterarAcessoUsuario: gestaoGlobal.alterarAcessoUsuario,
+      criarNotificacao: gestaoGlobal.criarNotificacao,
+      marcarNotificacaoLida: gestaoGlobal.marcarNotificacaoLida
     };
     const acao = String(dados?.acao || "");
     const handler = Object.prototype.hasOwnProperty.call(handlers, acao) ? handlers[acao] : null;
