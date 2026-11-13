@@ -82,6 +82,13 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
         (telefone && (telefone.length < 10 || telefone.length > 13))) {
       erro("invalid-argument", "Informe nome, e-mail e telefone válidos.");
     }
+    if (planoId) {
+      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(planoId)) erro("invalid-argument", "Plano inválido.");
+      const plano = await db.collection("planos").doc(planoId).get();
+      if (!plano.exists || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(plano.data()?.status))) {
+        erro("failed-precondition", "Plano comercial não encontrado ou inativo.");
+      }
+    }
     const principal = db.collection("clientes_integro");
     const legado = db.collection("clientes_plataforma");
     const ref = id ? principal.doc(id) : principal.doc();
