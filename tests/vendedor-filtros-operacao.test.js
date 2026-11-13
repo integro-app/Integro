@@ -34,9 +34,12 @@ test("filtros de Vendas: cada checkbox filtra status e tipo, respeitando dia e v
     { id: "outroVendedor", vendedorId: "outra-equipe", data: "2026-11-07", statusVenda: "ATIVA", tipoVenda: "NOVA" },
     { id: "outroDia", vendedorId: "vendedor", data: "2026-11-06", statusVenda: "ATIVA", tipoVenda: "NOVA" }
   ];
+  vendas.forEach(venda => { venda.clientePlataformaId = "tenant-a"; });
   const source = trecho(vendedor, "  function vendasFiltradas() {", "\n  function renderVendasDia() {");
   const ctx = {
     document: { getElementById: id => input[id] || null },
+    window: { IntegroPerfisUnificados: { vendaPertenceAoVendedor: venda =>
+      venda.clientePlataformaId === "tenant-a" && venda.vendedorId === "vendedor" } },
     State: { getVendas: () => vendas, getClientes: () => [] },
     hoje: () => "2026-11-07",
     dataRegistro: venda => venda.data,
