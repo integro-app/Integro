@@ -199,34 +199,32 @@
     return String(caixa.status || caixa.situacao || caixa.estado || "").trim().toUpperCase();
   }
 
+  // Um cadastro criado/aberto por um supervisor não transfere a propriedade
+  // operacional do caixa. Somente os campos do vendedor podem provar o vínculo.
   function caixaPertenceAoVendedor(caixa = {}) {
     const escopo = acesso();
     const tenant = String(caixa.clientePlataformaId || caixa.tenantId || caixa.empresaId || "");
-    if (tenant && escopo.tenantId && tenant !== String(escopo.tenantId)) return false;
-
+    if (!tenant || tenant !== String(escopo.tenantId || "")) return false;
     const identidades = new Set(identidadesProprias());
-    const vinculos = [
-      caixa.vendedorId,
-      caixa.vendedorAuthUid,
-      caixa.vendedorUid,
-      caixa.usuarioId,
-      caixa.abertoPorUid,
-      caixa.userId,
-      caixa.uid,
-      caixa.responsavelId,
-      caixa.criadoPorId,
-      caixa.criadoPorUid
-    ].filter(Boolean).map(String);
-    return vinculos.some(valor => identidades.has(valor));
+    const authUid = String(window.firebase?.auth?.()?.currentUser?.uid || escopo.authUid || "");
+    const authVinculos = [caixa.vendedorAuthUid, caixa.vendedorUid].filter(Boolean).map(String);
+    if (authVinculos.some(valor => !authUid || valor !== authUid)) return false;
+    const vendedorId = String(caixa.vendedorId || "");
+    if (vendedorId && !identidades.has(vendedorId)) return false;
+    return Boolean(authVinculos.length || vendedorId);
   }
 
-  function caixaPersistido() {
-    const candidatos = [window.caixaAtual];
-    try {
-      const salvo = localStorage.getItem("caixaAtual");
-      if (salvo) candidatos.push(JSON.parse(salvo));
-    } catch (_) {}
-    return candidatos.filter(Boolean);
+  // Não usar a carteira atual como prova de autoria de uma venda antiga.
+  function vendaPertenceAoVendedor(venda = {}) {
+    const escopo = acesso();
+    const tenant = String(venda.clientePlataformaId || venda.tenantId || venda.empresaId || "");
+    if (!tenant || tenant !== String(escopo.tenantId || "")) return false;
+    const authUid = String(window.firebase?.auth?.()?.currentUser?.uid || escopo.authUid || "");
+    const authVinculos = [venda.vendedorAuthUid, venda.vendedorUid].filter(Boolean).map(String);
+    if (authVinculos.some(valor => !authUid || valor !== authUid)) return false;
+    const vendedorId = String(venda.vendedorId || "");
+    if (vendedorId && !new Set(identidadesProprias()).has(vendedorId)) return false;
+    return Boolean(authVinculos.length || vendedorId);
   }
 
   function tempoCaixa(caixa = {}) {
@@ -279,7 +277,8 @@
       remotos = await consultar(CONFIG.COLECOES.CAIXAS, camposProprios(CONFIG.COLECOES.CAIXAS, true), limite, { cacheMs: 3000, forcar });
     }
 
-    const caixas = deduplicar([caixaPersistido(), remotos])
+    // O cache do navegador não confirma que um caixa ainda está aberto.
+    const caixas = deduplicar([remotos])
       .filter(caixa => caixa?.id && caixa.excluido !== true && caixaPertenceAoVendedor(caixa));
     const aberto = caixas
       .filter(caixa => ["ABERTO", "REABERTO"].includes(statusCaixa(caixa)) && caixa.ativo !== false)
@@ -288,6 +287,9 @@
     if (aberto) {
       window.caixaAtual = aberto;
       try { localStorage.setItem("caixaAtual", JSON.stringify(aberto)); } catch (_) {}
+    } else {
+      window.caixaAtual = null;
+      try { localStorage.removeItem("caixaAtual"); } catch (_) {}
     }
     return caixas;
   }
@@ -300,7 +302,7 @@
   function pertenceAoTenantAtual(registro = {}) {
     const tenantRegistro = String(registro.clientePlataformaId || registro.tenantId || registro.empresaId || "");
     const tenantAtual = String(acesso().tenantId || "");
-    return !tenantRegistro || !tenantAtual || tenantRegistro === tenantAtual;
+    return Boolean(tenantAtual && tenantRegistro === tenantAtual);
   }
 
   async function carregarLancamentosVendedor(caixas = [], caixaIdPreferencial = "", opcoes = {}) {
@@ -507,12 +509,12 @@
   async function carregarVendasVendedor(clientes = [], opcoes = {}) {
     // Vendas recém-confirmadas não podem depender do cache do runtime (10 s).
     // Em atualização do dia, força leitura real e não transforma falha em lista vazia.
-    const diretas = await consultar(CONFIG.COLECOES.VENDAS, camposProprios(CONFIG.COLECOES.VENDAS),
+    const diretas = (await consultar(CONFIG.COLECOES.VENDAS, camposProprios(CONFIG.COLECOES.VENDAS),
       CONFIG.LIMITS?.VENDAS || 500, {
         cacheMs: opcoes.forcar === true ? 0 : undefined,
         forcar: opcoes.forcar === true,
         exigirConsultaValida: opcoes.exigirConsultaValida === true
-      });
+      })).filter(vendaPertenceAoVendedor);
     const conhecidas = new Set(diretas.map(item => String(item.id)));
     const referencias = idsVendasReferenciadas(clientes).filter(id => !conhecidas.has(id)).slice(0, 300);
     if (!referencias.length) return diretas;
@@ -528,7 +530,8 @@
         if (doc?.exists) extras.push(docData(doc));
       });
     }
-    return deduplicar([diretas, extras]).filter(item => item.excluido !== true);
+    return deduplicar([diretas, extras])
+      .filter(item => item.excluido !== true && vendaPertenceAoVendedor(item));
   }
 
   async function carregarClientesPorPerfil() {
@@ -559,7 +562,7 @@
     // A baixa pertence ao caixa operacional, não necessariamente ao dia do
     // relógio (ex.: reabertura de caixa de data anterior).
     const perfil = acesso().perfil;
-    const caixasValidos = [...(Array.isArray(caixas) ? caixas : []), window.caixaAtual]
+    const caixasValidos = (Array.isArray(caixas) ? caixas : [])
       .filter(caixa => caixa?.id && caixaPertenceAoVendedor(caixa) &&
         ["ABERTO", "REABERTO"].includes(statusCaixa(caixa)) && caixa.ativo !== false);
     const idsCaixa = new Set(caixasValidos.map(caixa => String(caixa.id)));
@@ -766,6 +769,7 @@
     carregarColecaoPorPerfil,
     carregarClientesPorPerfil,
     carregarVendasVendedor,
+    vendaPertenceAoVendedor,
     carregarPagamentosHojePorPerfil,
     carregarCaixasVendedor,
     carregarLancamentosVendedor,
