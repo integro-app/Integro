@@ -150,11 +150,31 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     return q.docs;
   }
   async function sincronizarBloqueioUsuarios(tx, docs, id, bloqueada) {
-    // Leitura antes das escritas para preservar atomicidade da transação.
+    // As Rules já bloqueiam acessoLiberado=false. Preservamos o estado individual
+    // anterior para não liberar usuário manualmente bloqueado após reativar empresa.
     const atuais = await Promise.all(docs.map(doc => tx.get(doc.ref)));
     atuais.forEach((snap, indice) => {
-      if (snap.exists && snap.data()?.clientePlataformaId === id) {
-        tx.set(docs[indice].ref, { empresaBloqueada: bloqueada }, { merge: true });
+      if (!snap.exists || snap.data()?.clientePlataformaId !== id) return;
+      const usuario = snap.data();
+      if (["master_global", "usuario_integro"].includes(usuario.tipoUsuario)) {
+        erro("failed-precondition", "Vínculo inválido: usuário da plataforma associado ao tenant.");
+      }
+      if (bloqueada) {
+        tx.set(docs[indice].ref, {
+          empresaBloqueada: true, acessoLiberado: false, status: "BLOQUEADO",
+          ...(usuario.empresaBloqueada !== true ? {
+            acessoAntesBloqueioPlataforma: usuario.acessoLiberado === true,
+            statusAntesBloqueioPlataforma: usuario.status || "ATIVO"
+          } : {})
+        }, { merge: true });
+      } else if (usuario.empresaBloqueada === true) {
+        tx.set(docs[indice].ref, {
+          empresaBloqueada: false,
+          acessoLiberado: usuario.acessoAntesBloqueioPlataforma === true,
+          status: usuario.statusAntesBloqueioPlataforma || "BLOQUEADO",
+          acessoAntesBloqueioPlataforma: null,
+          statusAntesBloqueioPlataforma: null
+        }, { merge: true });
       }
     });
   }
@@ -170,6 +190,10 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     await db.runTransaction(async tx => {
       const atual = await tx.get(ref);
       if (!atual.exists) erro("not-found", "Cliente não encontrado.");
+      if (liberado && atual.data()?.testeAtivo === true && atual.data()?.dataFimTeste &&
+          Date.parse(atual.data().dataFimTeste) <= Date.now()) {
+        erro("failed-precondition", "Teste expirado. Ative novo teste antes de liberar a empresa.");
+      }
       await sincronizarBloqueioUsuarios(tx, usuarios, id, !liberado);
       const patch = { acessoLiberado: liberado, status: liberado ? "ATIVO" : "BLOQUEADO",
         atualizadoEm: agora(), atualizadoPorUid: autor.uid };
