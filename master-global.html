@@ -437,6 +437,7 @@
     function cardUsuario(u,tipo){
       const nome=u.nome||u.nomeCompleto||u.email||'Usuário';
       const bloq=u.acessoLiberado===false||status(u.status)==='BLOQUEADO';
+      const bloqueioEmpresa=u.empresaBloqueada===true;
       const provisionado=u.id===u.authUid&&Boolean(u.authUid);
       const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
       const contexto=tipo==='master'?(empresa?.nome||u.clientePlataformaNome||'Empresa não identificada'):
@@ -444,7 +445,7 @@
       return '<div class="list-card"><div class="list-bar" style="background:'+
         (tipo==='master'?'#ff6b00':'#0ea5e9')+'"></div><div><h3>'+esc(nome)+'</h3>'+
         '<p class="muted">'+esc(u.email||'-')+' · '+esc(contexto)+'</p>'+
-        badge(provisionado?(bloq?'BLOQUEADO':u.status||'ATIVO'):'LEGADO / PENDENTE')+
+        badge(provisionado?(bloqueioEmpresa?'EMPRESA BLOQUEADA':bloq?'BLOQUEADO':u.status||'ATIVO'):'LEGADO / PENDENTE')+
         ' <span class="chip">'+esc(u.cargoNome||u.tipoUsuario||'')+'</span></div><div class="list-actions">'+
         '<button class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver</button>'+
         (provisionado?
@@ -644,6 +645,7 @@
       const cliente=clientesIntegro.find(c=>c.id===id);
       if(!cliente)return;
       if(processandoCadastroGlobal)return;
+      if(!confirm((cliente.acessoLiberado===false?'Liberar':'Bloquear')+' a empresa '+(cliente.nome||cliente.razaoSocial||id)+' e seus usuários?'))return;
       processandoCadastroGlobal=true;
       try{
         await funcaoMasterGlobal('alterarAcessoClienteIntegroGlobal')({id,liberado:cliente.acessoLiberado===false});
@@ -669,6 +671,7 @@
       if(!u)return notificarIntegro('Usuário não encontrado.');
       if(u.id!==u.authUid||!['master_local','usuario_integro'].includes(u.tipoUsuario))
         return notificarIntegro('Perfil legado não provisionado: acesso não pode ser alterado nesta tela.');
+      if(!confirm((u.acessoLiberado===false?'Liberar':'Bloquear')+' o acesso individual de '+(u.nome||u.email)+'?'))return;
       await executarAcaoGlobal('alterarAcessoUsuario',{id,liberado:u.acessoLiberado===false},
         u.acessoLiberado===false?'Usuário liberado.':'Usuário bloqueado e sessão revogável pelo backend.');
     }
