@@ -225,10 +225,20 @@
     async function getCol(col,lim=1000,ord=null){
       if(!fireOk||!mgDb)throw new Error('Firestore indisponível.');
       try{
+        const completo=['clientes_integro','usuarios'].includes(col);
         let consulta=mgDb.collection(col);
         if(ord)consulta=consulta.orderBy(ord,'desc');
-        const snapshot=await consulta.limit(lim).get();
-        return snapshot.docs.map(doc=>({id:doc.id,...doc.data()}));
+        const registros=[];
+        let ultimo=null;
+        do{
+          let pagina=consulta.limit(completo?400:lim);
+          if(ultimo)pagina=pagina.startAfter(ultimo);
+          const snapshot=await pagina.get();
+          snapshot.docs.forEach(doc=>registros.push({id:doc.id,...doc.data()}));
+          if(!completo||snapshot.docs.length<400)break;
+          ultimo=snapshot.docs[snapshot.docs.length-1];
+        }while(ultimo);
+        return registros;
       }catch(erro){
         console.error('[MASTER GLOBAL] Falha ao carregar '+col,erro);
         if(['clientes_integro','usuarios'].includes(col))throw erro;
