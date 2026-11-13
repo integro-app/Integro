@@ -212,7 +212,7 @@ test("todas as ações do Master Global usam callable protegida e nenhum formul�
   const route = [
     "listarPainel", "salvarPlano", "salvarDepartamento", "salvarUsuarioInterno", "editarMasterLocal",
     "alterarAcessoUsuario", "salvarConfiguracoes", "criarNotificacao", "marcarNotificacaoLida",
-    "listarChat", "enviarChat"
+    "listarChat", "enviarChat", "listarAvisosInternos"
   ];
   for (const action of route) assert.match(index, new RegExp(action + ": gestaoGlobal\\." + action));
   assert.match(index, /return protegerSessao\(handler\)\(entrada, contexto\)/);
@@ -228,4 +228,18 @@ test("todas as ações do Master Global usam callable protegida e nenhum formul�
   assert.doesNotMatch(html, /mgDb\.collection\('departamentos_integro'\)\.add\(/);
   assert.doesNotMatch(html, /mgDb\.collection\('configuracoes_globais'\)\.doc\(/);
   assert.doesNotMatch(html, /mgDb\.collection\('notificacoes'\)\.add\(/);
+});
+
+test("usuário interno possui rota própria, sem acesso a cadastros globais", () => {
+  const portal = fs.readFileSync(path.join(__dirname, "..", "usuario-integro.html"), "utf8");
+  const config = fs.readFileSync(path.join(__dirname, "..", "js", "config.js"), "utf8");
+  const operacional = fs.readFileSync(path.join(__dirname, "..", "js", "utils", "operational.js"), "utf8");
+  assert.match(config, /usuario_integro: "usuario-integro\.html"/);
+  assert.match(operacional, /tipoUsuarioOficial === "usuario_integro"\) rotaPadrao = "usuario-integro\.html"/);
+  assert.match(portal, /tipoUsuario!=='usuario_integro'/);
+  assert.match(portal, /listarAvisosInternos/);
+  assert.match(portal, /listarChat/);
+  assert.match(portal, /enviarChat/);
+  assert.doesNotMatch(portal, /salvarClienteIntegroGlobal/);
+  assert.doesNotMatch(portal, /\.collection\('clientes_integro'\)/);
 });
