@@ -395,3 +395,27 @@ test("guard do vendedor consulta o caixa confirmado pela sessão, sem buscar por
   assert.equal(naoConfirmado.permitido,null,"ausência de ID na sessão não prova caixa fechado");
   assert.equal(consultas.length,1);
 });
+
+test("login interno ÍNTEGRO não exige tenant, mas operador do cliente continua exigindo", () => {
+  const contexto = {
+    CONFIG: {
+      ERROS: { CADASTRO_INCOMPLETO: "Cadastro incompleto", USUARIO_NAO_ENCONTRADO: "Não encontrado",
+        USUARIO_INATIVO: "Inativo", USUARIO_BLOQUEADO: "Bloqueado", ACESSO_BLOQUEADO: "Sem acesso" },
+      STATUS_USUARIO: { INATIVO: "INATIVO", BLOQUEADO: "BLOQUEADO" }
+    }
+  };
+  contexto.window = { IntegroOperacional: { normalizarAcessoUsuario: u => ({
+    tipoUsuarioOficial: u.tipoUsuario,
+    isMasterGlobal: u.tipoUsuario === "master_global",
+    isUsuarioIntegro: u.tipoUsuario === "usuario_integro"
+  }) } };
+  vm.createContext(contexto);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "js", "utils", "validators.js"), "utf8") +
+    "\n;this.__validar = Validators.validarUsuario.bind(Validators)", contexto);
+  const base = { status: "ATIVO", acessoLiberado: true };
+  assert.equal(contexto.__validar({ ...base, tipoUsuario: "usuario_integro" }).ok, true);
+  assert.equal(contexto.__validar({ ...base, tipoUsuario: "master_global" }).ok, true);
+  assert.equal(contexto.__validar({ ...base, tipoUsuario: "usuario_cliente", cargoChave: "vendedor" }).ok, false);
+  assert.equal(contexto.__validar({ ...base, tipoUsuario: "usuario_cliente", clientePlataformaId: "tenant-a" }).ok, true);
+  assert.equal(contexto.__validar({ ...base, tipoUsuario: "usuario_integro", acessoLiberado: false }).ok, false);
+});
