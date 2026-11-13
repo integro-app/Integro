@@ -1335,9 +1335,15 @@
 
 
   function callableClientes(nome) {
-    const chamada = window.firebase?.app?.()?.functions?.("southamerica-east1")?.httpsCallable?.(nome);
+    const rotas = {
+      consultarDocumentoClienteV27: "CONSULTAR_DOCUMENTO_CLIENTE_V27",
+      cadastrarClienteOperacionalV27: "CADASTRAR_CLIENTE_OPERACIONAL_V27"
+    };
+    const rota = rotas[nome] || "";
+    const destino = rota ? "solicitarCadastroDuplicadoV27" : nome;
+    const chamada = window.firebase?.app?.()?.functions?.("southamerica-east1")?.httpsCallable?.(destino);
     if (typeof chamada !== "function") throw new Error("Serviço seguro indisponível. Atualize a página e tente novamente.");
-    return chamada;
+    return dados => chamada(rota ? { ...(dados || {}), __integroRota: rota } : dados);
   }
 
   function documentoFiscalVendedor(valor) {
