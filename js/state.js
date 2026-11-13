@@ -62,8 +62,20 @@ const State = {
   // ===============================
   // SETTERS - DADOS
   // ===============================
+  // Última barreira visual: um resultado tardio ou um cache legado nunca
+  // mistura documentos de empresas diferentes na sessão operacional.
+  _dadosTenant(data) {
+    const lista = Array.isArray(data) ? data : [];
+    const papel = String(this.usuario?.tipoUsuario || "").toUpperCase();
+    if (["MASTER_GLOBAL", "USUARIO_INTEGRO"].includes(papel)) return lista;
+    const tenant = String(this.tenantId || "");
+    if (!this.usuario || !tenant) return [];
+    return lista.filter(item => item && item.excluido !== true &&
+      String(item.clientePlataformaId || item.tenantId || item.empresaId || "") === tenant);
+  },
+
   setUsuarios(data) {
-    const usuarios = Array.isArray(data) ? data : [];
+    const usuarios = this._dadosTenant(data);
     const porIdentidade = new Map();
 
     const pontuar = usuario => {
@@ -106,47 +118,47 @@ const State = {
   },
 
   setCargos(data) {
-    this.cargos = data || [];
+    this.cargos = this._dadosTenant(data);
   },
 
   setEquipes(data) {
-    this.equipes = data || [];
+    this.equipes = this._dadosTenant(data);
   },
 
   setCaixas(data) {
-    this.caixas = data || [];
+    this.caixas = this._dadosTenant(data);
   },
 
   setClientes(data) {
-    this.clientes = data || [];
+    this.clientes = this._dadosTenant(data);
   },
 
   setVendas(data) {
-    this.vendas = data || [];
+    this.vendas = this._dadosTenant(data);
   },
 
   setPagamentos(data) {
-    this.pagamentos = data || [];
+    this.pagamentos = this._dadosTenant(data);
   },
 
   setParcelas(data) {
-    this.parcelas = data || [];
+    this.parcelas = this._dadosTenant(data);
   },
 
   setHistoricoCobrancas(data) {
-    this.historicoCobrancas = data || [];
+    this.historicoCobrancas = this._dadosTenant(data);
   },
 
   setSolicitacoes(data) {
-    this.solicitacoes = data || [];
+    this.solicitacoes = this._dadosTenant(data);
   },
 
   setLancamentosFinanceiros(data) {
-    this.lancamentosFinanceiros = Array.isArray(data) ? data : [];
+    this.lancamentosFinanceiros = this._dadosTenant(data);
   },
 
   setLogs(data) {
-    this.logs = data || [];
+    this.logs = this._dadosTenant(data);
   },
 
   // ===============================

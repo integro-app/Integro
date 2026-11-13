@@ -21,6 +21,7 @@
   };
 
   let telaAtiva = "";
+  let geracaoSessao = 0;
 
   function agora() { return Date.now(); }
   function texto(valor) { return String(valor ?? "").trim(); }
@@ -38,6 +39,12 @@
   function tenantAtual() {
     const usuario = global.State?.getUsuario?.() || global.usuarioLogado || global.currentUserData || {};
     return texto(global.State?.getTenantId?.() || usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId);
+  }
+  function identidadeValida(identidade, tenantId = "") {
+    return identidadeConsulta() === identidade && (!tenantId || tenantAtual() === tenantId);
+  }
+  function documentoDoTenant(item, tenantId) {
+    return texto(item?.clientePlataformaId || item?.tenantId || item?.empresaId) === tenantId;
   }
 
   function registrarColecao(colecao, campo, quantidade = 0) {
@@ -80,8 +87,10 @@
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
     const forcar = opcoes.forcar === true;
     if (!db || !colecao || !tenantId) return [];
+    if (tenantId !== tenantAtual()) throw new Error("Consulta fora da empresa autenticada.");
 
     const identidade = identidadeConsulta();
+    const geracao = geracaoSessao;
     const chave = chavePrivada(identidade, chaveConsulta({ colecao, tenantId, filtros, limite, ordem }), opcoes.chave);
     const salvo = cache.get(chave);
     if (!forcar && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
@@ -100,7 +109,11 @@
       try {
         const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
         const snap = await ref.get();
-        const dados = snap.docs.map(docData).filter(item => item.excluido !== true);
+        // Mesmo que uma consulta antiga conclua após troca de empresa ou logout,
+        // seus registros jamais chegam à interface ou ao cache do novo usuário.
+        if (geracao !== geracaoSessao || !identidadeValida(identidade, tenantId)) return [];
+        const dados = snap.docs.map(docData)
+          .filter(item => item.excluido !== true && documentoDoTenant(item, tenantId));
         metricas.documentosRecebidos += dados.length;
         registrarColecao(colecao, "documentos", dados.length);
         if (cacheMs > 0 && pendentes.get(chave) === promessa && identidadeConsulta() === identidade) {
@@ -126,8 +139,10 @@
     const id = texto(opcoes.id);
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
     const identidade = identidadeConsulta();
+    const geracao = geracaoSessao;
     const chave = chavePrivada(identidade, "doc:" + colecao + ":" + id, opcoes.chave);
-    if (!db || !colecao || !id) return null;
+    if (!db || !colecao || !id || !tenantAtual()) return null;
+    if (["clientes_integro", "clientes_plataforma"].includes(colecao) && id !== tenantAtual()) return null;
     const salvo = cache.get(chave);
     if (opcoes.forcar !== true && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
       metricas.consultasCache++;
@@ -143,7 +158,11 @@
       registrarColecao(colecao, "consultas", 1);
       try {
         const snap = await db.collection(colecao).doc(id).get();
-        const dados = snap.exists ? docData(snap) : null;
+        if (geracao !== geracaoSessao || !identidadeValida(identidade)) return null;
+        const registro = snap.exists ? docData(snap) : null;
+        const dados = registro && (["clientes_integro", "clientes_plataforma"].includes(colecao)
+          ? (!registro.clientePlataformaId || documentoDoTenant(registro, tenantAtual()))
+          : documentoDoTenant(registro, tenantAtual())) ? registro : null;
         if (dados) {
           metricas.documentosRecebidos++;
           registrarColecao(colecao, "documentos", 1);
@@ -173,11 +192,12 @@
     const limite = Math.max(1, Number(opcoes.limite || 200));
     const ordem = Array.isArray(opcoes.ordem) ? opcoes.ordem : [];
     const identidade = identidadeConsulta();
+    const geracao = geracaoSessao;
     const assinatura = chavePrivada(identidade, chaveConsulta({ colecao, tenantId, filtros, limite, ordem }));
     const chaveExterna = texto(opcoes.chave || (opcoes.escopo || "global") + ":" + assinatura);
     const chave = chavePrivada(identidade, assinatura, chaveExterna);
     const escopo = texto(opcoes.escopo || "global");
-    if (!db || !colecao || !tenantId || !chave || typeof opcoes.aoAtualizar !== "function") return () => {};
+    if (!db || !colecao || !tenantId || tenantId !== tenantAtual() || !chave || typeof opcoes.aoAtualizar !== "function") return () => {};
 
     const atual = listeners.get(chave);
     if (atual) return atual.parar;
@@ -187,7 +207,9 @@
       const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
       grupo = { assinatura, colecao, tenantId, inscritos: new Map(), unsubscribe: null, ultimoDados: null, ultimoSnapshot: null, criadoEm: agora() };
       grupo.unsubscribe = ref.onSnapshot(snapshot => {
-        const dados = snapshot.docs.map(docData).filter(item => item.excluido !== true);
+        if (geracao !== geracaoSessao || !identidadeValida(identidade, tenantId)) return;
+        const dados = snapshot.docs.map(docData)
+          .filter(item => item.excluido !== true && documentoDoTenant(item, tenantId));
         metricas.documentosRecebidos += dados.length;
         registrarColecao(colecao, "documentos", dados.length);
         grupo.ultimoDados = dados;
@@ -248,6 +270,11 @@
 
   function invalidar(prefixo = "") {
     const alvo = texto(prefixo);
+    if (!alvo) {
+      geracaoSessao++;
+      pararTodos();
+      pendentes.clear();
+    }
     [...cache.keys()].forEach(chave => { if (!alvo || chave.includes(alvo)) cache.delete(chave); });
   }
 
@@ -293,6 +320,7 @@
   global.firebase?.auth?.()?.onAuthStateChanged?.(usuario => {
     const uid = texto(usuario?.uid);
     if (uid !== ultimoUid || !usuario) {
+      geracaoSessao++;
       pararTodos();
       cache.clear();
       // Respostas iniciadas na sessão anterior não podem repopular o cache.

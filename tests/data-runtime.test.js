@@ -25,7 +25,7 @@ function carregarRuntime() {
   vm.createContext(contexto);
   const fonte = fs.readFileSync(path.join(__dirname, "..", "js", "data-runtime.js"), "utf8");
   vm.runInContext(fonte, contexto);
-  return { runtime: contexto.IntegroDataRuntime, listenersDocumento };
+  return { runtime: contexto.IntegroDataRuntime, listenersDocumento, contexto };
 }
 
 function bancoFake() {
@@ -125,7 +125,7 @@ test("runtime e idempotente quando o script e executado duas vezes", () => {
 });
 
 
-test("cache com alias igual separa empresas e filtros", async () => {
+test("consulta não aceita empresa diferente da sessão, mesmo com alias de cache", async () => {
   const {runtime} = carregarRuntime();
   let contagem = 0;
   const ref = {
@@ -145,11 +145,10 @@ test("cache com alias igual separa empresas e filtros", async () => {
   const db={collection:()=>ref};
   const base={db,colecao:"pagamentos",limite:20,cacheMs:30000,chave:"caixa-tela"};
   const a=await runtime.consultarTenant({...base,tenantId:"tenant_a",filtros:[["status","==","CONFIRMADO"]]});
-  const b=await runtime.consultarTenant({...base,tenantId:"tenant_b",filtros:[["status","==","CONFIRMADO"]]});
-  const c=await runtime.consultarTenant({...base,tenantId:"tenant_b",filtros:[["status","==","PENDENTE"]]});
-  assert.equal(contagem,3);
+  await assert.rejects(runtime.consultarTenant({...base,tenantId:"tenant_b",filtros:[["status","==","CONFIRMADO"]]}),/empresa autenticada/);
+  const c=await runtime.consultarTenant({...base,tenantId:"tenant_a",filtros:[["status","==","PENDENTE"]]});
+  assert.equal(contagem,2);
   assert.equal(a[0].clientePlataformaId,"tenant_a");
-  assert.equal(b[0].clientePlataformaId,"tenant_b");
   assert.equal(c[0].status,"PENDENTE");
 });
 
@@ -162,9 +161,9 @@ test("documentos com alias igual não compartilham dados entre documentos",async
   const base={db,colecao:"clientes_integro",cacheMs:30000,chave:"empresa-atual"};
   const a=await runtime.lerDocumento({...base,id:"tenant_a"});
   const b=await runtime.lerDocumento({...base,id:"tenant_b"});
-  assert.equal(contagem,2);
+  assert.equal(contagem,1);
   assert.equal(a.clientePlataformaId,"tenant_a");
-  assert.equal(b.clientePlataformaId,"tenant_b");
+  assert.equal(b,null);
 });
 
 test("assinaturas com mesmo alias não compartilham dados entre tenants",()=>{
@@ -175,16 +174,16 @@ test("assinaturas com mesmo alias não compartilham dados entre tenants",()=>{
     where(campo,op,valor){return {...this,tenant:valor};},
     limit(){return this;},
     onSnapshot(callback){
-      assinas++;callback({docs:[{id:this.tenant,data:()=>({tenant:this.tenant})}]});
+      assinas++;callback({docs:[{id:this.tenant,data:()=>({clientePlataformaId:this.tenant})}]});
       return ()=>{};
     }
   })};
   const opcoes={db:banco,colecao:"caixas",chave:"mesma-chave",escopo:"tela:caixas"};
   const cancelarA=runtime.ouvir({...opcoes,tenantId:"tenant_a",aoAtualizar:l=>recebidosA=l});
   const cancelarB=runtime.ouvir({...opcoes,tenantId:"tenant_b",aoAtualizar:l=>recebidosB=l});
-  assert.equal(assinas,2);
-  assert.equal(recebidosA[0].tenant,"tenant_a");
-  assert.equal(recebidosB[0].tenant,"tenant_b");
+  assert.equal(assinas,1);
+  assert.equal(recebidosA[0].clientePlataformaId,"tenant_a");
+  assert.equal(recebidosB.length,0);
   cancelarA();cancelarB();
 });
 
@@ -231,7 +230,7 @@ test("refresh forcado de documento nao permite que a resposta antiga substitua o
   }) };
   const opcoes = { db, colecao: "clientes_integro", id: "tenant_a", cacheMs: 30000 };
   const documento = valor => ({
-    exists: true, id: "tenant_a", data: () => ({ nome: valor })
+    exists: true, id: "tenant_a", data: () => ({ clientePlataformaId: "tenant_a", nome: valor })
   });
 
   const antiga = runtime.lerDocumento(opcoes);
@@ -277,4 +276,73 @@ test("logout invalida consultas pendentes e impede repopular o cache", async () 
   concluir({ docs: [{ id: "caixa_antigo", data: () => ({ clientePlataformaId: "tenant_a" }) }] });
   await leitura;
   assert.equal(runtime.diagnostico().cacheEntradas, 0);
+});
+
+test("resposta em trânsito após troca de empresa nunca chega à interface", async () => {
+  const {runtime,contexto}=carregarRuntime();
+  let concluir;
+  const db={collection:()=>({
+    where(){return this;},limit(){return this;},
+    get(){return new Promise(resolve=>{concluir=resolve;});}
+  })};
+  const leitura=runtime.consultarTenant({db,colecao:"vendas",tenantId:"tenant_a",cacheMs:30000});
+  await Promise.resolve();
+  assert.equal(typeof concluir,"function");
+  contexto.State.getTenantId=()=> "tenant_b";
+  contexto.State.getUsuario=()=>({clientePlataformaId:"tenant_b"});
+  concluir({docs:[{id:"venda-antiga",data:()=>({clientePlataformaId:"tenant_a"})}]});
+  assert.deepEqual(Array.from(await leitura),[]);
+  assert.equal(runtime.diagnostico().cacheEntradas,0);
+});
+
+test("consulta e listener descartam documentos de outro tenant mesmo em snapshot misto",async()=>{
+  const {runtime}=carregarRuntime();
+  const docs=[
+    {id:"a",data:()=>({clientePlataformaId:"tenant_a"})},
+    {id:"b",data:()=>({clientePlataformaId:"tenant_b"})},
+    {id:"sem-tenant",data:()=>({valor:123})}
+  ];
+  const db={collection:()=>({
+    where(){return this;},limit(){return this;},
+    get:async()=>({docs}),
+    onSnapshot(callback){callback({docs});return ()=>{};}
+  })};
+  const lidos=await runtime.consultarTenant({db,colecao:"clientes_operacionais"});
+  assert.deepEqual(Array.from(lidos,x=>x.id),["a"]);
+  let observados=[];
+  runtime.ouvir({db,colecao:"vendas",aoAtualizar:lista=>{observados=lista;}});
+  assert.deepEqual(Array.from(observados,x=>x.id),["a"]);
+});
+
+test("State nunca mistura vendas, caixas, clientes ou operadores entre tenants",()=>{
+  const ctx={
+    window:{},
+    console,
+    sessionStorage:{setItem(){}},
+    localStorage:{removeItem(){}}
+  };
+  ctx.window=ctx;
+  vm.createContext(ctx);
+  const fonte=fs.readFileSync(path.join(__dirname,"..","js","state.js"),"utf8");
+  const state=vm.runInContext(fonte+"\n;State",ctx);
+  state.setUsuario({id:"doc-a",authUid:"auth-a",tipoUsuario:"usuario_cliente",clientePlataformaId:"tenant_a"});
+  const lista=[
+    {id:"correto",clientePlataformaId:"tenant_a"},
+    {id:"de-outra-empresa",clientePlataformaId:"tenant_b"},
+    {id:"sem-empresa"}
+  ];
+  for(const [setter,getter] of [
+    ["setClientes","getClientes"],["setVendas","getVendas"],
+    ["setCaixas","getCaixas"],["setPagamentos","getPagamentos"],
+    ["setParcelas","getParcelas"],["setUsuarios","getUsuarios"],
+    ["setEquipes","getEquipes"],["setSolicitacoes","getSolicitacoes"],
+    ["setLancamentosFinanceiros","getLancamentosFinanceiros"]
+  ]){
+    state[setter](lista);
+    assert.deepEqual(Array.from(state[getter](),item=>item.id),["correto"],setter);
+  }
+  state.setUsuario({id:"doc-b",authUid:"auth-b",tipoUsuario:"usuario_cliente",clientePlataformaId:"tenant_b"});
+  assert.equal(state.getVendas().length,0);
+  assert.equal(state.getCaixas().length,0);
+  assert.equal(state.getClientes().length,0);
 });
