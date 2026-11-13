@@ -33,6 +33,7 @@ const requiredIgnorePatterns = [
 const allowedRootFiles = new Set([
   "index.html",
   "master-global.html",
+  "usuario-integro.html",
   "master-local.html",
   "supervisor.html",
   "vendedor.html",
