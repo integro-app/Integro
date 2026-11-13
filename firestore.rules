@@ -104,26 +104,12 @@ service cloud.firestore {
       return role() == "captador" || cargo() == "captador";
     }
 
-    // Consulta única ao cadastro canônico do tenant. Evita exceder o limite
-    // de expressões das Rules em batches operacionais com múltiplas escritas.
-    function tenantLiberadoPelaPlataforma() {
-      let caminho = /databases/$(database)/documents/clientes_integro/$(userTenantId());
-      let empresa = hasTenant() && exists(caminho) ? get(caminho).data : {};
-      return isMasterGlobal() || isUsuarioIntegro() || (
-        hasTenant() &&
-        empresa.get("acessoLiberado", true) != false &&
-        (empresa.get("testeAtivo", false) != true ||
-          !("dataFimTesteEm" in empresa) || empresa.dataFimTesteEm > request.time)
-      );
-    }
-
     function isActiveUser() {
       return isAuthenticated() &&
         exists(userPath()) &&
         userDoc().get("authUid", "") == currentUid() &&
         !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        userDoc().get("acessoLiberado", false) == true &&
-        tenantLiberadoPelaPlataforma();
+        userDoc().get("acessoLiberado", false) == true;
     }
 
     function isOwnAuthProfile(data) {
@@ -152,7 +138,6 @@ service cloud.firestore {
         !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
         user.get("acessoLiberado", false) == true &&
         user.get("tipoUsuario", "") == "master_local" &&
-        tenantLiberadoPelaPlataforma() &&
         user.get("clientePlataformaId", "") is string &&
         user.get("clientePlataformaId", "").size() > 0 &&
         data.get("clientePlataformaId", "") == user.get("clientePlataformaId", "");
