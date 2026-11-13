@@ -1,0 +1,41 @@
+name: Deploy autorizado - cadastro seguro comercial
+on:
+  push:
+    branches:
+      - feat/demo-cliente-venda-caixa-20261112
+    paths:
+      - ".github/workflows/implantar-cadastro-comercial-temp.yml"
+permissions:
+  contents: read
+concurrency:
+  group: integro-novo-cadastro-comercial-producao
+  cancel-in-progress: false
+jobs:
+  deploy_firebase_backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias da aplicacao
+        run: npm ci
+      - name: Instalar dependencias das Cloud Functions
+        run: npm --prefix functions ci
+      - name: Validar antes de qualquer publicacao
+        run: |
+          npm run verify
+          node --test tests/cadastro-venda-demo.test.js
+      - name: Autenticar Firebase com identidade existente do projeto
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - name: Implantar indices Firestore por tenant
+        run: npx --yes firebase-tools@latest deploy --only firestore:indexes --project integro-novo --non-interactive
+      - name: Implantar quatro callables de consulta, cadastro e autorizacao
+        run: >-
+          npx --yes firebase-tools@latest deploy
+          --only functions:consultarDocumentoClienteV27,functions:cadastrarClienteOperacionalV27,functions:solicitarCadastroDuplicadoV27,functions:decidirCadastroDuplicadoV27
+          --project integro-novo --non-interactive
