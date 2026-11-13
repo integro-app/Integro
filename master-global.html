@@ -214,7 +214,7 @@
 
     document.addEventListener('DOMContentLoaded',()=>{bindEventosFixos(); iniciarMasterGlobal();});
     function bindEventosFixos(){safe('btnMenu',e=>e.onclick=abrirSidebar);safe('sidebarOverlay',e=>e.onclick=fecharSidebar);safe('drawerOverlay',e=>e.onclick=fecharDrawer);safe('btnLogout',e=>e.onclick=logout);safe('btnAtualizar',e=>e.onclick=carregarTudo);safe('btnAcaoPrincipal',e=>e.onclick=abrirFormCliente);document.querySelectorAll('.menu button[data-screen]').forEach(btn=>btn.onclick=()=>trocarTela(btn.dataset.screen,btn));document.querySelectorAll('[data-kpi]').forEach(card=>card.onclick=()=>abrirResumoKpi(card.dataset.kpi));document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}})}
-    async function iniciarMasterGlobal(){try{atualizarLoadingPremium(4,'Iniciando Master Global...'); await aguardar(80); if(typeof firebase==='undefined')throw new Error('Firebase não carregou. Confira js/firebase-config.js e internet.'); atualizarLoadingPremium(14,'Conectando ao Firebase...'); if(!firebase.apps.length && typeof firebaseConfig!=='undefined')firebase.initializeApp(firebaseConfig); mgDb=window.db || firebase.firestore(); mgAuth=window.auth || firebase.auth(); fireOk=true; atualizarLoadingPremium(26,'Validando sessão e permissões...'); await validarSessaoMasterGlobal(); atualizarLoadingPremium(42,'Carregando dados globais...'); await carregarTudo(true); atualizarLoadingPremium(96,'Preparando interface...'); await aguardar(180); finalizarLoadingPremium();}catch(e){console.error('Erro inicial:',e); finalizarLoadingPremium(); abrirDrawer('Erro de inicialização','O layout continua funcionando, mas o Firebase não carregou.',`<div class="notice">${esc(e.message||e)}</div>`); renderTudo();}}
+    async function iniciarMasterGlobal(){try{atualizarLoadingPremium(4,'Iniciando Master Global...'); await aguardar(80); if(typeof firebase==='undefined')throw new Error('Firebase não carregou. Confira js/firebase-config.js e internet.'); atualizarLoadingPremium(14,'Conectando ao Firebase...'); if(!firebase.apps.length && typeof firebaseConfig!=='undefined')firebase.initializeApp(firebaseConfig); mgDb=window.db || firebase.firestore(); mgAuth=window.auth || firebase.auth(); fireOk=true; atualizarLoadingPremium(26,'Validando sessão e permissões...'); await validarSessaoMasterGlobal(); atualizarLoadingPremium(42,'Carregando dados globais...'); await carregarTudo(true); atualizarLoadingPremium(96,'Preparando interface...'); await aguardar(180); finalizarLoadingPremium();}catch(e){console.error('Erro inicial:',e); finalizarLoadingPremium(); abrirDrawer('Falha ao carregar dados reais','Os indicadores não serão apresentados como zero enquanto a consulta falhar.',`<div class="notice">${esc(e.message||e)}</div><button class="btn btn-primary" onclick="location.reload()">Tentar novamente</button>`);}}
     async function bloquearSessaoMasterGlobal(mensagem){try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioLogado,limparFila:false});notificarIntegro(mensagem);location.replace('index.html');throw new Error(mensagem)}
     async function validarSessaoMasterGlobal(){const user=mgAuth.currentUser||await new Promise(r=>{const off=mgAuth.onAuthStateChanged(u=>{off();r(u)})});if(!user)return bloquearSessaoMasterGlobal('Sessão expirada. Faça login novamente.');usuarioLogado=await buscarUsuarioFirestore(user);if(!usuarioLogado)return bloquearSessaoMasterGlobal('Usuário autenticado não encontrado no cadastro interno.');const tipo=String(usuarioLogado.tipoUsuario||usuarioLogado.funcao||'').toLowerCase();if(tipo!=='master_global')return bloquearSessaoMasterGlobal('Acesso negado: tipoUsuario precisa ser master_global.');if(String(usuarioLogado.status||'ATIVO').toUpperCase()!=='ATIVO'||usuarioLogado.acessoLiberado===false)return bloquearSessaoMasterGlobal('Usuário inativo ou acesso bloqueado.');localStorage.setItem('usuario',JSON.stringify(usuarioLogado));setText('usuarioNome',usuarioLogado.nome||usuarioLogado.nomeCompleto||usuarioLogado.email||'Master Global');setText('usuarioEmpresa',usuarioLogado.clientePlataformaNome||usuarioLogado.empresaNome||'ÍNTEGRO');setText('usuarioPerfil',usuarioLogado.cargoNome||usuarioLogado.cargo||'Master Global')}
     async function buscarUsuarioFirestore(user){
@@ -225,31 +225,45 @@
       if(consulta.docs.length!==1)return null;
       return {id:consulta.docs[0].id,...consulta.docs[0].data()};
     }
-    async function getCol(col,lim=1000,ord=null){
-      if(!fireOk||!mgDb)throw new Error('Firestore indisponível.');
-      try{
-        const completo=['clientes_integro','usuarios'].includes(col);
-        let consulta=mgDb.collection(col);
-        if(ord)consulta=consulta.orderBy(ord,'desc');
-        const registros=[];
-        let ultimo=null;
-        do{
-          let pagina=consulta.limit(completo?400:lim);
-          if(ultimo)pagina=pagina.startAfter(ultimo);
-          const snapshot=await pagina.get();
-          snapshot.docs.forEach(doc=>registros.push({id:doc.id,...doc.data()}));
-          if(!completo||snapshot.docs.length<400)break;
-          ultimo=snapshot.docs[snapshot.docs.length-1];
-        }while(ultimo);
-        return registros;
-      }catch(erro){
-        console.error('[MASTER GLOBAL] Falha ao carregar '+col,erro);
-        if(['clientes_integro','usuarios'].includes(col))throw erro;
-        return [];
-      }
+    async function chamarGestaoGlobal(acao,dados={}){
+      if(!fireOk||!mgAuth?.currentUser)throw new Error('Faça login no Master Global novamente.');
+      const resposta=await firebase.app().functions('southamerica-east1')
+        .httpsCallable('solicitarCadastroDuplicadoV27')({...dados,__integroRota:'MASTER_GLOBAL_ONBOARDING_V1',acao});
+      if(!resposta?.data?.ok)throw new Error('O servidor não confirmou a operação '+acao+'.');
+      return resposta.data;
     }
-    async function carregarTudo(modoBoot=false){if(modoBoot)atualizarLoadingPremium(50,'Carregando clientes da plataforma...'); clientesIntegro=await getCol('clientes_integro'); if(modoBoot)atualizarLoadingPremium(62,'Carregando usuários e masters locais...'); usuariosSistema=await getCol('usuarios',1500); if(modoBoot)atualizarLoadingPremium(72,'Carregando departamentos e planos...'); departamentos=await getCol('departamentos_integro'); planos=await getCol('planos'); if(modoBoot)atualizarLoadingPremium(82,'Carregando notificações e auditoria...'); notificacoes=await getCol('notificacoes',200,'criadoEm'); logs=await getCol('logs',200,'criadoEm'); if(modoBoot)atualizarLoadingPremium(90,'Atualizando indicadores do painel...'); renderTudo()}
-    function renderTudo(){renderDashboard();renderClientes();renderMasters();renderUsuariosInternos();renderDepartamentos();renderPlanos();renderNotificacoes();renderLogs()}
+    async function carregarTudo(modoBoot=false){
+      if(carregandoGlobal)return;
+      carregandoGlobal=true;
+      const btn=byId('btnAtualizar');if(btn)btn.disabled=true;
+      try{
+        if(modoBoot)atualizarLoadingPremium(50,'Consultando registros reais no servidor...');
+        const dados=await chamarGestaoGlobal('listarPainel');
+        if(!Array.isArray(dados.clientes)||!Array.isArray(dados.usuarios)||
+          !Array.isArray(dados.planos)||!Array.isArray(dados.departamentos)||
+          !Array.isArray(dados.logs)||!Array.isArray(dados.notificacoes)) {
+          throw new Error('Resposta incompleta do servidor. Indicadores não atualizados.');
+        }
+        clientesIntegro=dados.clientes;usuariosSistema=dados.usuarios;
+        departamentos=dados.departamentos;planos=dados.planos;
+        notificacoes=dados.notificacoes;logs=dados.logs;
+        configuracoesGlobal=dados.configuracoes||{nome:'ÍNTEGRO',diasTestePadrao:7};
+        atualizadoEmGlobal=dados.atualizadoEm||'';
+        dadosGlobaisCarregados=true;
+        if(modoBoot)atualizarLoadingPremium(90,'Conferindo indicadores e vínculos...');
+        renderTudo();
+      }catch(erro){
+        console.error('[MASTER GLOBAL] Consulta administrativa falhou',erro);
+        if(!dadosGlobaisCarregados)document.querySelectorAll('[id^="kpi"]').forEach(e=>e.textContent='—');
+        notificarIntegro('Não foi possível atualizar dados globais: '+mensagemErroGlobal(erro));
+        throw erro;
+      }finally{carregandoGlobal=false;if(btn)btn.disabled=false;}
+    }
+    function renderTudo(){
+      renderDashboard();renderClientes();renderMasters();renderUsuariosInternos();
+      renderDepartamentos();renderPlanos();renderNotificacoes();renderLogs();
+      renderConfiguracoes();renderRelatorios();
+    }
     function dataGlobalMs(valor){if(valor?.toMillis)return valor.toMillis();if(valor?.toDate)return valor.toDate().getTime();return valor?Date.parse(valor):NaN}
     function clienteLiberadoGlobal(c){
       if(c.acessoLiberado===false||c.ativo===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status)))return false;
