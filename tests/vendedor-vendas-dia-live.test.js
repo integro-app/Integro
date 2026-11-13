@@ -47,6 +47,7 @@ function criarCenario() {
     }},
     firebase:{auth:()=>({currentUser:{uid:"auth-a"}})},
     IntegroPerfisUnificados:{
+      vendaPertenceAoVendedor: venda => venda.clientePlataformaId === "tenant-a" && venda.vendedorAuthUid === "auth-a",
       async carregarVendasVendedor(clientes, opcoes) {
         consulta={clientes,opcoes};
         return []; // Uma consulta atrasada nunca pode apagar a venda lida no servidor.
@@ -100,13 +101,15 @@ test("filtro do dia mostra só hoje e não atribui venda de outro vendedor por t
     input[key]={checked:false};
   }
   const vendas=[
-    {id:"atual",vendedorAuthUid:"auth-a",dataVenda:"2026-11-12",clienteNome:"Maria"},
-    {id:"anterior",vendedorAuthUid:"auth-a",dataVenda:"2026-11-11",clienteNome:"Maria"},
-    {id:"deOutro",vendedorAuthUid:"auth-b",dataVenda:"2026-11-12",clienteNome:"Maria",clienteId:"cliente-atual"},
-    {id:"legado",dataVenda:"2026-11-12",clienteId:"cliente-atual"}
+    {id:"atual",clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-a",dataVenda:"2026-11-12",clienteNome:"Maria"},
+    {id:"anterior",clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-a",dataVenda:"2026-11-11",clienteNome:"Maria"},
+    {id:"deOutro",clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-b",dataVenda:"2026-11-12",clienteNome:"Maria",clienteId:"cliente-atual"},
+    {id:"outraEmpresa",clientePlataformaId:"tenant-b",vendedorAuthUid:"auth-a",dataVenda:"2026-11-12",clienteNome:"Maria"},
+    {id:"legado",clientePlataformaId:"tenant-a",dataVenda:"2026-11-12",clienteId:"cliente-atual"}
   ];
   const ctx={
     document:{getElementById:id=>input[id]||null},
+    window:{IntegroPerfisUnificados:{vendaPertenceAoVendedor:v=>v.clientePlataformaId==="tenant-a" && v.vendedorAuthUid==="auth-a"}},
     State:{getVendas:()=>vendas,getClientes:()=>[{id:"cliente-atual",nome:"Maria",vendedorAuthUid:"auth-a"}]},
     hoje:()=>"2026-11-12",
     texto:valor=>String(valor??"").trim(),
@@ -116,9 +119,9 @@ test("filtro do dia mostra só hoje e não atribui venda de outro vendedor por t
   };
   const api=vm.runInNewContext(bloco("  function vendasFiltradas() {","\n  function renderVendasDia() {")+"\n;vendasFiltradas",ctx);
   const ids=()=>Array.from(api(),x=>x.id).sort();
-  assert.deepEqual(ids(),["atual","legado"]);
+  assert.deepEqual(ids(),["atual"]);
   input.buscaVendaVendedorInput.value="Maria";
-  assert.deepEqual(ids(),["atual","legado"]);
+  assert.deepEqual(ids(),["atual"]);
   input.buscaVendaVendedorInput.value="nenhum";
   assert.deepEqual(ids(),[]);
 });
@@ -135,4 +138,68 @@ test("Vendas usa pesquisa dinâmica e apenas Filtros, sem botão Buscar gerado n
   assert.match(vendedor,/agendarRefreshOperacaoVendedor\(\{ render: "vendas" \}\)/);
   assert.match(vendedor,/carregarVendaConfirmadaServidor\(vendaConfirmadaId\)/);
   assert.match(perfis,/exigirConsultaValida: opcoes\.exigirConsultaValida === true/);
+});
+
+
+test("venda e caixa rejeitam proprietário, empresa ou autoria contraditórios",()=>{
+  const inicio=perfis.indexOf("  function caixaPertenceAoVendedor(caixa = {}) {");
+  const fim=perfis.indexOf("\n  function statusCaixa",inicio);
+  // A função de status fica antes do escopo; delimitar pelas funções adjacentes.
+  const a=perfis.indexOf("  function caixaPertenceAoVendedor(caixa = {}) {");
+  const b=perfis.indexOf("\n  function caixaPersistido()",a);
+  const c=b>=0?b:perfis.indexOf("\n  function tempoCaixa",a);
+  assert.ok(a>=0 && c>a);
+  const fonte=perfis.slice(a,c);
+  const ctx={
+    acesso:()=>({tenantId:"tenant-a",authUid:"auth-a"}),
+    identidadesProprias:()=>["auth-a","doc-a"],
+    window:{firebase:{auth:()=>({currentUser:{uid:"auth-a"}})}}
+  };
+  const api=vm.runInNewContext(fonte+"\n;({caixaPertenceAoVendedor,vendaPertenceAoVendedor})",ctx);
+  const venda={clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-a",vendedorId:"doc-a"};
+  const caixa={clientePlataformaId:"tenant-a",vendedorAuthUid:"auth-a",vendedorId:"doc-a"};
+  assert.equal(api.vendaPertenceAoVendedor(venda),true);
+  assert.equal(api.caixaPertenceAoVendedor(caixa),true);
+  assert.equal(api.vendaPertenceAoVendedor({...venda,clientePlataformaId:"tenant-b"}),false);
+  assert.equal(api.vendaPertenceAoVendedor({...venda,vendedorAuthUid:"auth-b"}),false);
+  assert.equal(api.vendaPertenceAoVendedor({...venda,vendedorId:"doc-b"}),false);
+  assert.equal(api.vendaPertenceAoVendedor({clientePlataformaId:"tenant-a"}),false);
+  assert.equal(api.caixaPertenceAoVendedor({...caixa,clientePlataformaId:"tenant-b"}),false);
+  assert.equal(api.caixaPertenceAoVendedor({...caixa,vendedorAuthUid:"auth-b"}),false);
+  assert.equal(api.caixaPertenceAoVendedor({...caixa,vendedorId:"doc-b"}),false);
+  assert.equal(api.caixaPertenceAoVendedor({clientePlataformaId:"tenant-a",abertoPorUid:"auth-a"}),false);
+});
+
+test("caixa salvo no navegador não autoriza operação; servidor confirma antes de usar",async()=>{
+  let caixas=[];
+  const servidor={id:"caixa-servidor",clientePlataformaId:"tenant-a",status:"ABERTO",vendedorAuthUid:"auth-a"};
+  const estado={
+    getCaixas:()=>caixas,
+    setCaixas:lista=>{caixas=lista;},
+    getTenantId:()=>"tenant-a",
+    getUsuario:()=>({authUid:"auth-a"})
+  };
+  let consultou=0;
+  const ctx={
+    usuarioAtual:{authUid:"auth-a"},
+    State:estado,
+    window:{
+      caixaAtual:{id:"caixa-stale",clientePlataformaId:"tenant-a",status:"ABERTO",vendedorAuthUid:"auth-a"},
+      IntegroPerfisUnificados:{
+        caixaPertenceAoVendedor:caixa=>caixa.vendedorAuthUid==="auth-a",
+        async carregarCaixasVendedor(){consultou++;return [servidor];}
+      }
+    },
+    localStorage:{getItem:()=>JSON.stringify({id:"caixa-stale",status:"ABERTO"}),setItem(){}},
+    texto:valor=>String(valor??"").trim(),
+    dataRegistro:()=>"",
+    Map,console
+  };
+  const fonte=bloco("  function caixaAberto() {","\n  function valorCentavosMovimentacao");
+  const api=vm.runInNewContext(fonte+"\n;({caixaAberto,garantirCaixaAberto})",ctx);
+  assert.equal(api.caixaAberto(),null);
+  const confirmado=await api.garantirCaixaAberto();
+  assert.equal(consultou,1);
+  assert.equal(confirmado.id,"caixa-servidor");
+  assert.equal(api.caixaAberto().id,"caixa-servidor");
 });
