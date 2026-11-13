@@ -772,6 +772,7 @@
     vendaPertenceAoVendedor,
     carregarPagamentosHojePorPerfil,
     carregarCaixasVendedor,
+    caixaPertenceAoVendedor,
     carregarLancamentosVendedor,
     carregarMovimentacoesVendedor,
     get ativo() { return instalado; }
