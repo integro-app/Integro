@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ÍNTEGRO • Equipe interna</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root{--nav:#071a33;--orange:#ff7900;--bg:#f5f7fb;--line:#e4e9f1;--text:#17253a}
+    *{box-sizing:border-box}body{margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text);font-weight:400}
+    button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{opacity:.5;cursor:wait}
+    .shell{min-height:100dvh;display:grid;grid-template-columns:255px 1fr}
+    aside{background:var(--nav);color:white;padding:28px 16px;display:flex;flex-direction:column;gap:18px}
+    .logo{font-size:27px;letter-spacing:-1px;font-weight:600;padding:4px 12px}.logo span{color:var(--orange)}
+    .perfil{padding:14px 12px;border:1px solid #28405c;border-radius:16px;overflow-wrap:anywhere}
+    .perfil small{color:#b6c5d7}.perfil p{margin:8px 0 0;font-size:13px;color:#cbd7e5}
+    .menu{display:grid;gap:8px}.menu button,.sair{border:0;border-radius:12px;padding:14px 16px;text-align:left;color:#e6edf7;background:transparent}
+    .menu button.active{background:var(--orange);color:white}.menu button:hover,.sair:hover{background:#1d3654}
+    .sair{margin-top:auto;border:1px solid #28405c}
+    main{padding:24px;max-width:1200px;width:100%;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:24px}
+    h1{font-size:25px;font-weight:600;margin:0}h2{font-size:19px;font-weight:600;margin:0 0 8px}
+    .muted{font-size:13px;color:#66758b;line-height:1.5}.panel{background:white;border:1px solid var(--line);border-radius:20px;padding:22px;margin-bottom:18px;box-shadow:0 12px 28px #10233e0a}
+    .aba{display:none}.aba.active{display:block}.linha{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+    .btn{border:1px solid var(--line);border-radius:12px;background:#fff;padding:11px 16px;color:var(--text)}
+    .btn.primary{background:var(--orange);color:white;border-color:var(--orange)}
+    .registro{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:10px;overflow-wrap:anywhere}
+    .registro p{white-space:pre-wrap;margin:9px 0 0;line-height:1.5}
+    .form{display:grid;gap:12px}textarea{width:100%;min-height:110px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:12px}
+    .status{padding:12px 16px;border-radius:12px;background:#fff4e9;color:#8d4300;margin-bottom:14px}
+    .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .kpi{background:white;border:1px solid var(--line);border-radius:18px;padding:20px}
+    .kpi strong{font-size:27px;font-weight:600;display:block;margin-top:9px}
+    @media(max-width:820px){.shell{display:block}aside{padding:14px;gap:10px}.logo{font-size:23px}.menu{display:flex;overflow-x:auto}.menu button{flex-shrink:0}.perfil{display:none}.sair{margin-top:0}main{padding:14px}header{align-items:flex-start}h1{font-size:21px}.panel{padding:16px}.kpis{grid-template-columns:1fr 1fr}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <aside>
+    <div class="logo">ÍNTE<span>GRO</span></div>
+    <div class="perfil"><small>Equipe interna</small><div id="nomeSidebar">Autenticando...</div><p id="cargoSidebar">ÍNTEGRO</p></div>
+    <nav class="menu" aria-label="Módulos internos">
+      <button class="active" data-aba="inicio" type="button">Dashboard</button>
+      <button data-aba="avisos" type="button">Avisos globais</button>
+      <button data-aba="chat" type="button">Chat interno</button>
+      <button data-aba="perfil" type="button">Meu perfil</button>
+    </nav>
+    <button class="sair" id="btnSair" type="button">Sair da conta</button>
+  </aside>
+  <main>
+    <header><div><h1 id="titulo">Equipe interna ÍNTEGRO</h1><div class="muted" id="subtitulo">Acesso exclusivo da plataforma.</div></div><button id="btnAtualizar" class="btn" type="button">Atualizar</button></header>
+    <div id="avisoSistema" class="status" role="status">Validando autenticação e sessão...</div>
+    <section class="aba active" id="inicio">
+      <div class="kpis"><div class="kpi"><span class="muted">Avisos não lidos</span><strong id="kpiAvisos">—</strong></div><div class="kpi"><span class="muted">Mensagens recentes</span><strong id="kpiMensagens">—</strong></div></div>
+      <div class="panel" style="margin-top:18px"><h2>Área interna</h2><p class="muted">Esta conta pertence à equipe ÍNTEGRO. O acesso administrativo de criação de clientes e empresas permanece exclusivo do Master Global.</p></div>
+    </section>
+    <section class="aba" id="avisos"><div class="panel"><div class="linha"><h2>Avisos da plataforma</h2><button class="btn" id="btnAtualizarAvisos" type="button">Atualizar avisos</button></div><div id="listaAvisos" class="muted">Carregando avisos...</div></div></section>
+    <section class="aba" id="chat"><div class="panel"><div class="linha"><h2>Mensagens internas</h2><button class="btn" id="btnAtualizarChat" type="button">Atualizar mensagens</button></div><div id="listaMensagens" class="muted">Carregando mensagens...</div></div><form class="panel form" id="formChat"><label for="textoChat">Enviar mensagem para a equipe</label><textarea id="textoChat" maxlength="1200" required placeholder="Digite uma mensagem..."></textarea><button class="btn primary" id="btnEnviar" type="submit">Enviar</button></form></section>
+    <section class="aba" id="perfil"><div class="panel"><h2>Meu perfil</h2><div id="dadosPerfil" class="muted">Carregando dados...</div></div></section>
+  </main>
+</div>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script>
+<script src="js/firebase-config.js?v=20260728-3"></script>
+<script src="js/utils/operational.js"></script>
+<script>
+  let usuarioInterno=null,avisosInternos=[],mensagensInternas=[],authInterno=null,dbInterno=null;
+  const el=id=>document.getElementById(id);
+  const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+  const data=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'-':d.toLocaleString('pt-BR')};
+  const mostrar=mensagem=>{el('avisoSistema').textContent=mensagem;el('avisoSistema').hidden=!mensagem};
+  const erro=e=>{console.error('[ÍNTEGRO INTERNO]',e);mostrar(e?.message||'Não foi possível concluir a operação.')};
+  async function chamar(acao,entrada={}){
+    if(!authInterno?.currentUser)throw new Error('Sessão expirada. Entre novamente.');
+    const r=await firebase.app().functions('southamerica-east1').httpsCallable('solicitarCadastroDuplicadoV27')({
+      ...entrada,__integroRota:'MASTER_GLOBAL_ONBOARDING_V1',acao
+    });
+    if(!r?.data?.ok)throw new Error('Resposta inválida do servidor.');
+    return r.data;
+  }
+  function trocar(aba){
+    document.querySelectorAll('.aba').forEach(x=>x.classList.toggle('active',x.id===aba));
+    document.querySelectorAll('[data-aba]').forEach(x=>x.classList.toggle('active',x.dataset.aba===aba));
+    el('titulo').textContent={inicio:'Dashboard interno',avisos:'Avisos globais',chat:'Chat interno',perfil:'Meu perfil'}[aba]||'Equipe ÍNTEGRO';
+    if(aba==='avisos')carregarAvisos().catch(erro);
+    if(aba==='chat')carregarChat().catch(erro);
+  }
+  async function carregarAvisos(){
+    const r=await chamar('listarAvisosInternos');avisosInternos=r.notificacoes||[];
+    const naoLidos=avisosInternos.filter(n=>!(n.lidaPorUids||[]).includes(usuarioInterno.authUid)).length;
+    el('kpiAvisos').textContent=naoLidos;
+    el('listaAvisos').innerHTML=avisosInternos.length?avisosInternos.map(n=>{
+      const lida=(n.lidaPorUids||[]).includes(usuarioInterno.authUid);
+      return '<div class="registro"><div class="linha"><strong>'+esc(n.titulo||'Aviso')+'</strong>'+
+        (lida?'<span class="muted">Lida</span>':'<button class="btn" data-aviso="'+esc(n.id)+'" type="button">Marcar lida</button>')+
+        '</div><span class="muted">'+esc(data(n.criadoEm))+'</span><p>'+esc(n.mensagem||'')+'</p></div>';
+    }).join(''):'<div class="registro">Nenhum aviso global.</div>';
+  }
+  async function carregarChat(){
+    const r=await chamar('listarChat');mensagensInternas=r.mensagens||[];
+    el('kpiMensagens').textContent=mensagensInternas.length;
+    el('listaMensagens').innerHTML=mensagensInternas.length?mensagensInternas.map(m=>
+      '<div class="registro"><strong>'+esc(m.autorNome||'Equipe ÍNTEGRO')+'</strong><span class="muted"> · '+esc(data(m.criadoEm))+
+      '</span><p>'+esc(m.mensagem||'')+'</p></div>'
+    ).join(''):'<div class="registro">Nenhuma mensagem ainda.</div>';
+  }
+  async function atualizar(){
+    mostrar('Atualizando informações...');
+    try{await Promise.all([carregarAvisos(),carregarChat()]);mostrar('');}
+    catch(e){erro(e);}
+  }
+  async function sair(){
+    try{await authInterno?.signOut()}catch(e){}
+    window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioInterno,limparFila:true});
+    location.replace('index.html');
+  }
+  async function iniciar(){
+    try{
+      if(typeof firebase==='undefined')throw new Error('Firebase não carregado.');
+      if(!firebase.apps.length&&typeof firebaseConfig!=='undefined')firebase.initializeApp(firebaseConfig);
+      authInterno=window.auth||firebase.auth();dbInterno=window.db||firebase.firestore();
+      const user=authInterno.currentUser||await new Promise(resolve=>{
+        const off=authInterno.onAuthStateChanged(u=>{off();resolve(u)});
+      });
+      if(!user)return location.replace('index.html');
+      const snap=await dbInterno.collection('usuarios').doc(user.uid).get();
+      if(!snap.exists||snap.data()?.authUid!==user.uid||
+        snap.data()?.tipoUsuario!=='usuario_integro'||snap.data()?.acessoLiberado!==true||
+        snap.data()?.empresaBloqueada===true||['BLOQUEADO','INATIVO','SUSPENSO'].includes(snap.data()?.status)) {
+        throw new Error('Este usuário não possui acesso interno válido.');
+      }
+      usuarioInterno={id:user.uid,...snap.data()};
+      el('nomeSidebar').textContent=usuarioInterno.nome||usuarioInterno.email;
+      el('cargoSidebar').textContent=usuarioInterno.cargoNome||'Equipe ÍNTEGRO';
+      el('dadosPerfil').innerHTML='<div class="registro"><strong>'+esc(usuarioInterno.nome||'')+
+        '</strong><p>E-mail: '+esc(usuarioInterno.email||'')+'</p><p>Perfil: '+esc(usuarioInterno.cargoNome||'')+
+        '</p><p>UID: '+esc(user.uid)+'</p></div>';
+      await atualizar();
+    }catch(e){erro(e);el('btnAtualizar').disabled=true;}
+  }
+  document.querySelectorAll('[data-aba]').forEach(btn=>btn.addEventListener('click',()=>trocar(btn.dataset.aba)));
+  el('btnAtualizar').onclick=atualizar;el('btnAtualizarAvisos').onclick=()=>carregarAvisos().catch(erro);
+  el('btnAtualizarChat').onclick=()=>carregarChat().catch(erro);
+  el('btnSair').onclick=sair;
+  el('listaAvisos').addEventListener('click',async e=>{
+    const b=e.target.closest('[data-aviso]');if(!b||b.disabled)return;
+    b.disabled=true;try{await chamar('marcarNotificacaoLida',{id:b.dataset.aviso});await carregarAvisos();}
+    catch(x){erro(x);b.disabled=false;}
+  });
+  el('formChat').addEventListener('submit',async e=>{
+    e.preventDefault();const mensagem=el('textoChat').value.trim();
+    if(!mensagem||el('btnEnviar').disabled)return;
+    el('btnEnviar').disabled=true;
+    try{await chamar('enviarChat',{mensagem});el('textoChat').value='';await carregarChat();mostrar('');}
+    catch(x){erro(x);}
+    finally{el('btnEnviar').disabled=false;}
+  });
+  document.addEventListener('DOMContentLoaded',iniciar);
+</script>
+</body>
+</html>
