@@ -235,6 +235,8 @@ test("telas comerciais exigem consulta e mostram simulação; caixa permanece tr
   assert.match(fechar,/registrarFechamentoCaixaTransacional/);
   assert.match(fechar,/data-fechamento-atualizar/);
   assert.match(css,/integro-venda-simulacao/);
-  assert.match(indice,/exports\.consultarDocumentoClienteV27/);
-  assert.match(indice,/exports\.cadastrarClienteOperacionalV27/);
+  assert.match(indice,/exports\.solicitarCadastroDuplicadoV27/);
+  assert.match(indice,/CONSULTAR_DOCUMENTO_CLIENTE_V27/);
+  assert.match(indice,/CADASTRAR_CLIENTE_OPERACIONAL_V27/);
+  assert.match(indice,/protegerSessao\(aprovacoesClientesV27\.cadastrarCliente\)/);
 });
