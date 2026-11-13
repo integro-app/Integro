@@ -159,10 +159,11 @@
     <div class="user-card"><small>Usuário logado</small><strong id="usuarioNome">Carregando...</strong><small id="usuarioEmpresa">ÍNTEGRO</small><small id="usuarioPerfil">Master Global</small><span class="status-online">Online</span></div>
     <div class="menu-section"><div class="menu-title">Comunicação</div><div class="menu"><button data-screen="notificacoes"><span class="menu-left"><span class="material-symbols-rounded">notifications</span>Notificações</span><span id="badgeNotificacoes">0</span></button><button data-screen="chat"><span class="menu-left"><span class="material-symbols-rounded">chat</span>Chat interno</span><span class="material-symbols-rounded">chevron_right</span></button></div></div>
     <div class="menu-section"><div class="menu-title">Gestão global</div><div class="menu"><button data-screen="dashboard" class="active"><span class="menu-left"><span class="material-symbols-rounded">dashboard</span>Dashboard</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="clientes"><span class="menu-left"><span class="material-symbols-rounded">business</span>Clientes ÍNTEGRO</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="masters"><span class="menu-left"><span class="material-symbols-rounded">admin_panel_settings</span>Masters locais</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="usuarios"><span class="menu-left"><span class="material-symbols-rounded">groups</span>Usuários internos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="departamentos"><span class="menu-left"><span class="material-symbols-rounded">account_tree</span>Departamentos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="planos"><span class="menu-left"><span class="material-symbols-rounded">payments</span>Planos</span><span class="material-symbols-rounded">chevron_right</span></button></div></div>
-    <div class="menu-section"><div class="menu-title">Sistema</div><div class="menu"><button data-screen="logs"><span class="menu-left"><span class="material-symbols-rounded">policy</span>Logs/Auditoria</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="config"><span class="menu-left"><span class="material-symbols-rounded">settings</span>Configurações</span><span class="material-symbols-rounded">chevron_right</span></button><button id="btnLogout"><span class="menu-left"><span class="material-symbols-rounded">logout</span>Sair</span><span class="material-symbols-rounded">close</span></button></div></div>
+    <div class="menu-section"><div class="menu-title">Sistema</div><div class="menu"><button data-screen="relatorios"><span class="menu-left"><span class="material-symbols-rounded">bar_chart</span>Relatórios</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="logs"><span class="menu-left"><span class="material-symbols-rounded">policy</span>Logs/Auditoria</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="config"><span class="menu-left"><span class="material-symbols-rounded">settings</span>Configurações</span><span class="material-symbols-rounded">chevron_right</span></button><button id="btnLogout"><span class="menu-left"><span class="material-symbols-rounded">logout</span>Sair</span><span class="material-symbols-rounded">close</span></button></div></div>
   </aside>
   <main class="main">
     <header class="topbar"><div class="top-left"><button id="btnMenu" class="hamburger" aria-label="Abrir menu" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button><div><h1 id="pageTitle">Dashboard Master Global</h1><p id="pageSubtitle">Visão executiva da plataforma ÍNTEGRO.</p></div></div><div class="top-actions"><button class="btn btn-light" type="button" onclick="trocarTela('notificacoes')"><span class="material-symbols-rounded">notifications</span> <span id="notificationCount">0</span></button><button id="btnAtualizar" class="btn btn-light">Atualizar</button><button id="btnAcaoPrincipal" class="btn btn-primary">Novo cliente</button></div></header>
+    <div id="estadoDadosGlobais" class="notice" role="alert" hidden style="margin-bottom:16px"></div>
     <section id="dashboard" class="screen active"><div class="grid grid-4"><div class="card card-gradient card-blue clickable" data-kpi="clientes"><small>Clientes da plataforma</small><strong id="kpiClientes">0</strong><p>Empresas/PFs contratantes cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="ativos"><small>Acessos liberados</small><strong id="kpiAtivos">0</strong><p>Clientes com acesso ativo/liberado.</p></div><div class="card card-gradient card-orange clickable" data-kpi="teste"><small>Em teste</small><strong id="kpiTeste">0</strong><p>Clientes usando período experimental.</p></div><div class="card card-gradient card-purple clickable" data-kpi="masters"><small>Masters locais</small><strong id="kpiMasters">0</strong><p>Usuários administradores dos clientes.</p></div><div class="card card-gradient card-red clickable" data-kpi="bloqueados"><small>Bloqueados</small><strong id="kpiBloqueados">0</strong><p>Clientes/usuários sem acesso.</p></div><div class="card card-gradient card-blue clickable" data-kpi="internos"><small>Equipe ÍNTEGRO</small><strong id="kpiInternos">0</strong><p>Usuários internos cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="planos"><small>Planos</small><strong id="kpiPlanos">0</strong><p>Planos comerciais configurados.</p></div><div class="card card-gradient card-orange clickable" data-kpi="notificacoes"><small>Notificações</small><strong id="kpiNotificacoes">0</strong><p>Pendências globais de comunicação.</p></div></div><div class="grid grid-2" style="margin-top:20px"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Resumo operacional</h2><p>Principais pontos da plataforma.</p></div></div><div id="resumoOperacional" class="list"></div></div><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Alertas globais</h2><p>Itens que exigem atenção.</p></div></div><div id="alertasGlobais" class="list"></div></div></div></section>
     <section id="clientes" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Clientes ÍNTEGRO</h2><p>Contratantes da plataforma, PF ou PJ.</p></div><button class="btn btn-primary" onclick="abrirFormCliente()">Novo cliente</button></div><div class="toolbar"><input id="buscaClientes" class="form-input" placeholder="Buscar por nome, documento, email ou telefone"><button class="btn btn-primary" onclick="renderClientes()">Buscar</button><button class="btn btn-light" onclick="limparBusca('buscaClientes');renderClientes()">Limpar</button></div><div id="contadorClientes" class="muted" style="margin-bottom:12px"></div><div id="listaClientes" class="list"></div></div></section>
     <section id="masters" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Masters locais</h2><p>Administradores vinculados aos clientes.</p></div><button class="btn btn-primary" onclick="abrirFormMasterLocal()">Criar Master Local</button></div><div id="listaMasters" class="list"></div></div></section>
@@ -170,15 +171,18 @@
     <section id="departamentos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Departamentos internos</h2><p>Comercial, financeiro, suporte e administrativo.</p></div><button class="btn btn-primary" onclick="abrirFormDepartamento()">Novo departamento</button></div><div id="listaDepartamentos" class="list"></div></div></section>
     <section id="planos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Planos da plataforma</h2><p>Planos comerciais do SaaS.</p></div><button class="btn btn-primary" onclick="abrirFormPlano()">Novo plano</button></div><div id="listaPlanos" class="list"></div></div></section>
     <section id="notificacoes" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Notificações</h2><p>Central global de avisos.</p></div><button class="btn btn-primary" onclick="abrirFormNotificacao()">Nova notificação</button></div><div id="listaNotificacoes" class="list"></div></div></section>
-    <section id="chat" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Chat interno</h2><p>Comunicação entre funcionários.</p></div></div><div id="integroChatRoot"></div></div></section>
-    <section id="logs" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Logs e auditoria</h2><p>Registro de ações críticas.</p></div><button class="btn btn-light" onclick="carregarLogs().then(renderLogs)">Atualizar logs</button></div><div id="listaLogs" class="list"></div></div></section>
+    <section id="chat" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Chat interno</h2><p>Comunicação entre funcionários.</p></div></div><div id="integroChatRoot"><div class="grid"><div class="panel" style="min-height:280px"><div class="panel-title"><div><h2>Mensagens da equipe ÍNTEGRO</h2><p>Canal exclusivo da administração, separado das conversas dos clientes.</p></div><button class="btn btn-light" onclick="carregarChatGlobal()">Atualizar</button></div><div id="listaChatGlobal" class="list"><div class="empty">Abra a aba para carregar mensagens.</div></div></div><form id="formChatGlobal" class="panel" onsubmit="enviarMensagemGlobal(event)"><label class="form-label" for="chatGlobalTexto">Nova mensagem</label><textarea id="chatGlobalTexto" class="form-textarea" maxlength="1200" required placeholder="Digite sua mensagem para a equipe..."></textarea><button id="btnChatGlobalEnviar" class="btn btn-primary" type="submit">Enviar mensagem</button></form></div></div></div></section>
+    <section id="relatorios" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title"><div><h2>Relatórios da plataforma</h2><p>Indicadores de cadastros e planos vinculados, sem confundir mensalidade contratada com receita recebida.</p></div><button class="btn btn-light" onclick="carregarTudo()">Atualizar dados</button></div><div class="grid grid-2" id="resumoRelatorios"></div><div class="toolbar" style="margin-top:18px"><button class="btn btn-primary" onclick="exportarRelatorioGlobal('clientes')">Exportar clientes CSV</button><button class="btn btn-light" onclick="exportarRelatorioGlobal('usuarios')">Exportar usuários CSV</button><button class="btn btn-light" onclick="exportarRelatorioGlobal('planos')">Exportar planos CSV</button></div><div id="distribuicaoPlanos" class="list"></div></div></section>
+    <section id="logs" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Logs e auditoria</h2><p>Registro das últimas 200 ações do sistema, em ordem de criação.</p></div><button class="btn btn-light" onclick="carregarLogs().then(renderLogs).catch(e=>notificarIntegro(mensagemErroGlobal(e)))">Atualizar logs</button></div><div id="listaLogs" class="list"></div></div></section>
     <section id="config" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Configurações globais</h2><p>Padrões da plataforma.</p></div><button class="btn btn-primary" onclick="salvarConfiguracoesGlobais()">Salvar</button></div><div class="grid grid-2"><div><label class="form-label">Nome da plataforma</label><input id="cfgNomePlataforma" class="form-input" value="ÍNTEGRO"></div><div><label class="form-label">Dias de teste padrão</label><input id="cfgDiasTeste" type="number" class="form-input" value="7"></div></div></div></section>
   </main>
-  <div id="drawerOverlay" class="drawer-overlay"></div><aside id="drawer" class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Detalhes</h2><p id="drawerSubtitle">Informações</p></div><button class="close-btn" onclick="fecharDrawer()">?</button></div><div id="drawerBody" class="drawer-body"></div></aside>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script><script src="js/services/chat-service.js?v=20261105-chat-history-v2"></script><script src="js/chat-ui.js?v=20261105-chat-history-v2"></script>
+  <div id="drawerOverlay" class="drawer-overlay"></div><aside id="drawer" class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Detalhes</h2><p id="drawerSubtitle">Informações</p></div><button class="close-btn" onclick="fecharDrawer()" aria-label="Fechar detalhes">×</button></div><div id="drawerBody" class="drawer-body"></div></aside>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script>
   <script>
-    let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false; let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[];
-    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
+    let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false,promessaCarregamentoGlobal=null;
+    let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
+    let dadosGlobaisCarregados=false,atualizadoEmGlobal='';
+    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
 
     let integroBootPercentualAtual = 0;
 
@@ -210,8 +214,28 @@
     }
 
     document.addEventListener('DOMContentLoaded',()=>{bindEventosFixos(); iniciarMasterGlobal();});
-    function bindEventosFixos(){safe('btnMenu',e=>e.onclick=abrirSidebar);safe('sidebarOverlay',e=>e.onclick=fecharSidebar);safe('drawerOverlay',e=>e.onclick=fecharDrawer);safe('btnLogout',e=>e.onclick=logout);safe('btnAtualizar',e=>e.onclick=carregarTudo);safe('btnAcaoPrincipal',e=>e.onclick=abrirFormCliente);document.querySelectorAll('.menu button[data-screen]').forEach(btn=>btn.onclick=()=>trocarTela(btn.dataset.screen,btn));document.querySelectorAll('[data-kpi]').forEach(card=>card.onclick=()=>abrirResumoKpi(card.dataset.kpi));document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}})}
-    async function iniciarMasterGlobal(){try{atualizarLoadingPremium(4,'Iniciando Master Global...'); await aguardar(80); if(typeof firebase==='undefined')throw new Error('Firebase não carregou. Confira js/firebase-config.js e internet.'); atualizarLoadingPremium(14,'Conectando ao Firebase...'); if(!firebase.apps.length && typeof firebaseConfig!=='undefined')firebase.initializeApp(firebaseConfig); mgDb=window.db || firebase.firestore(); mgAuth=window.auth || firebase.auth(); fireOk=true; atualizarLoadingPremium(26,'Validando sessão e permissões...'); await validarSessaoMasterGlobal(); atualizarLoadingPremium(42,'Carregando dados globais...'); await carregarTudo(true); atualizarLoadingPremium(96,'Preparando interface...'); await aguardar(180); finalizarLoadingPremium();}catch(e){console.error('Erro inicial:',e); finalizarLoadingPremium(); abrirDrawer('Erro de inicialização','O layout continua funcionando, mas o Firebase não carregou.',`<div class="notice">${esc(e.message||e)}</div>`); renderTudo();}}
+    function bindEventosFixos(){safe('btnMenu',e=>e.onclick=abrirSidebar);safe('sidebarOverlay',e=>e.onclick=fecharSidebar);safe('drawerOverlay',e=>e.onclick=fecharDrawer);safe('btnLogout',e=>e.onclick=logout);safe('btnAtualizar',e=>e.onclick=()=>carregarTudo().catch(err=>console.warn('[MASTER GLOBAL] Atualização',err)));safe('btnAcaoPrincipal',e=>e.onclick=abrirFormCliente);document.querySelectorAll('.menu button[data-screen]').forEach(btn=>btn.onclick=()=>trocarTela(btn.dataset.screen,btn));document.querySelectorAll('[data-kpi]').forEach(card=>card.onclick=()=>abrirResumoKpi(card.dataset.kpi));document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}})
+      if(!window.__mgDelegacao){
+        window.__mgDelegacao=true;
+        document.addEventListener('click',e=>{
+          const btn=e.target.closest?.('[data-mg-action]');if(!btn)return;
+          const id=btn.dataset.id,acao=btn.dataset.mgAction;
+          const mapa={
+            departamento:()=>abrirFormDepartamento(id),plano:()=>abrirFormPlano(id),
+            'ver-usuario':()=>abrirDetalheUsuario(id),
+            'editar-master':()=>abrirEdicaoMasterLocal(id),
+            'editar-interno':()=>abrirFormUsuarioInterno(id),
+            'provisionar-interno':()=>provisionarInternoLegado(id),
+            'acesso-usuario':()=>alternarAcessoUsuario(id),
+            'ler-notificacao':()=>marcarNotificacaoLida(id),
+            'editar-cliente':()=>abrirFormCliente(id),
+            'criar-master':()=>abrirFormMasterLocal(id)
+          };
+          if(mapa[acao])mapa[acao]();
+        });
+      }
+    }
+    async function iniciarMasterGlobal(){try{atualizarLoadingPremium(4,'Iniciando Master Global...'); await aguardar(80); if(typeof firebase==='undefined')throw new Error('Firebase não carregou. Confira js/firebase-config.js e internet.'); atualizarLoadingPremium(14,'Conectando ao Firebase...'); if(!firebase.apps.length && typeof firebaseConfig!=='undefined')firebase.initializeApp(firebaseConfig); mgDb=window.db || firebase.firestore(); mgAuth=window.auth || firebase.auth(); fireOk=true; atualizarLoadingPremium(26,'Validando sessão e permissões...'); await validarSessaoMasterGlobal(); atualizarLoadingPremium(42,'Carregando dados globais...'); await carregarTudo(true); atualizarLoadingPremium(96,'Preparando interface...'); await aguardar(180); finalizarLoadingPremium();}catch(e){console.error('Erro inicial:',e); finalizarLoadingPremium(); abrirDrawer('Falha ao carregar dados reais','Os indicadores não serão apresentados como zero enquanto a consulta falhar.',`<div class="notice">${esc(e.message||e)}</div><button class="btn btn-primary" onclick="location.reload()">Tentar novamente</button>`);}}
     async function bloquearSessaoMasterGlobal(mensagem){try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioLogado,limparFila:false});notificarIntegro(mensagem);location.replace('index.html');throw new Error(mensagem)}
     async function validarSessaoMasterGlobal(){const user=mgAuth.currentUser||await new Promise(r=>{const off=mgAuth.onAuthStateChanged(u=>{off();r(u)})});if(!user)return bloquearSessaoMasterGlobal('Sessão expirada. Faça login novamente.');usuarioLogado=await buscarUsuarioFirestore(user);if(!usuarioLogado)return bloquearSessaoMasterGlobal('Usuário autenticado não encontrado no cadastro interno.');const tipo=String(usuarioLogado.tipoUsuario||usuarioLogado.funcao||'').toLowerCase();if(tipo!=='master_global')return bloquearSessaoMasterGlobal('Acesso negado: tipoUsuario precisa ser master_global.');if(String(usuarioLogado.status||'ATIVO').toUpperCase()!=='ATIVO'||usuarioLogado.acessoLiberado===false)return bloquearSessaoMasterGlobal('Usuário inativo ou acesso bloqueado.');localStorage.setItem('usuario',JSON.stringify(usuarioLogado));setText('usuarioNome',usuarioLogado.nome||usuarioLogado.nomeCompleto||usuarioLogado.email||'Master Global');setText('usuarioEmpresa',usuarioLogado.clientePlataformaNome||usuarioLogado.empresaNome||'ÍNTEGRO');setText('usuarioPerfil',usuarioLogado.cargoNome||usuarioLogado.cargo||'Master Global')}
     async function buscarUsuarioFirestore(user){
@@ -222,31 +246,52 @@
       if(consulta.docs.length!==1)return null;
       return {id:consulta.docs[0].id,...consulta.docs[0].data()};
     }
-    async function getCol(col,lim=1000,ord=null){
-      if(!fireOk||!mgDb)throw new Error('Firestore indisponível.');
-      try{
-        const completo=['clientes_integro','usuarios'].includes(col);
-        let consulta=mgDb.collection(col);
-        if(ord)consulta=consulta.orderBy(ord,'desc');
-        const registros=[];
-        let ultimo=null;
-        do{
-          let pagina=consulta.limit(completo?400:lim);
-          if(ultimo)pagina=pagina.startAfter(ultimo);
-          const snapshot=await pagina.get();
-          snapshot.docs.forEach(doc=>registros.push({id:doc.id,...doc.data()}));
-          if(!completo||snapshot.docs.length<400)break;
-          ultimo=snapshot.docs[snapshot.docs.length-1];
-        }while(ultimo);
-        return registros;
-      }catch(erro){
-        console.error('[MASTER GLOBAL] Falha ao carregar '+col,erro);
-        if(['clientes_integro','usuarios'].includes(col))throw erro;
-        return [];
-      }
+    async function chamarGestaoGlobal(acao,dados={}){
+      if(!fireOk||!mgAuth?.currentUser)throw new Error('Faça login no Master Global novamente.');
+      const resposta=await firebase.app().functions('southamerica-east1')
+        .httpsCallable('solicitarCadastroDuplicadoV27')({...dados,__integroRota:'MASTER_GLOBAL_ONBOARDING_V1',acao});
+      if(!resposta?.data?.ok)throw new Error('O servidor não confirmou a operação '+acao+'.');
+      return resposta.data;
     }
-    async function carregarTudo(modoBoot=false){if(modoBoot)atualizarLoadingPremium(50,'Carregando clientes da plataforma...'); clientesIntegro=await getCol('clientes_integro'); if(modoBoot)atualizarLoadingPremium(62,'Carregando usuários e masters locais...'); usuariosSistema=await getCol('usuarios',1500); if(modoBoot)atualizarLoadingPremium(72,'Carregando departamentos e planos...'); departamentos=await getCol('departamentos_integro'); planos=await getCol('planos'); if(modoBoot)atualizarLoadingPremium(82,'Carregando notificações e auditoria...'); notificacoes=await getCol('notificacoes',200,'criadoEm'); logs=await getCol('logs',200,'criadoEm'); if(modoBoot)atualizarLoadingPremium(90,'Atualizando indicadores do painel...'); renderTudo()}
-    function renderTudo(){renderDashboard();renderClientes();renderMasters();renderUsuariosInternos();renderDepartamentos();renderPlanos();renderNotificacoes();renderLogs()}
+    async function carregarTudo(modoBoot=false){
+      if(promessaCarregamentoGlobal)return promessaCarregamentoGlobal;
+      promessaCarregamentoGlobal=(async()=>{
+      carregandoGlobal=true;
+      const btn=byId('btnAtualizar');if(btn)btn.disabled=true;
+      try{
+        if(modoBoot)atualizarLoadingPremium(50,'Consultando registros reais no servidor...');
+        const dados=await chamarGestaoGlobal('listarPainel');
+        if(!Array.isArray(dados.clientes)||!Array.isArray(dados.usuarios)||
+          !Array.isArray(dados.planos)||!Array.isArray(dados.departamentos)||
+          !Array.isArray(dados.logs)||!Array.isArray(dados.notificacoes)) {
+          throw new Error('Resposta incompleta do servidor. Indicadores não atualizados.');
+        }
+        clientesIntegro=dados.clientes;usuariosSistema=dados.usuarios;
+        departamentos=dados.departamentos;planos=dados.planos;
+        notificacoes=dados.notificacoes;logs=dados.logs;
+        configuracoesGlobal=dados.configuracoes||{nome:'ÍNTEGRO',diasTestePadrao:7};
+        atualizadoEmGlobal=dados.atualizadoEm||'';
+        dadosGlobaisCarregados=true;
+        const alerta=byId('estadoDadosGlobais');if(alerta){alerta.hidden=true;alerta.textContent='';}
+        if(modoBoot)atualizarLoadingPremium(90,'Conferindo indicadores e vínculos...');
+        renderTudo();
+      }catch(erro){
+        console.error('[MASTER GLOBAL] Consulta administrativa falhou',erro);
+        if(!dadosGlobaisCarregados)document.querySelectorAll('[id^="kpi"]').forEach(e=>e.textContent='—');
+        const alerta=byId('estadoDadosGlobais');
+        if(alerta){alerta.hidden=false;alerta.textContent='Falha na atualização. '+(dadosGlobaisCarregados?'Os dados exibidos podem estar desatualizados.':'Os dados reais ainda não foram carregados.')+' '+mensagemErroGlobal(erro);}
+        notificarIntegro('Não foi possível atualizar dados globais: '+mensagemErroGlobal(erro));
+        throw erro;
+      }finally{carregandoGlobal=false;if(btn)btn.disabled=false;}
+      })();
+      try{return await promessaCarregamentoGlobal;}
+      finally{promessaCarregamentoGlobal=null;}
+    }
+    function renderTudo(){
+      renderDashboard();renderClientes();renderMasters();renderUsuariosInternos();
+      renderDepartamentos();renderPlanos();renderNotificacoes();renderLogs();
+      renderConfiguracoes();renderRelatorios();
+    }
     function dataGlobalMs(valor){if(valor?.toMillis)return valor.toMillis();if(valor?.toDate)return valor.toDate().getTime();return valor?Date.parse(valor):NaN}
     function clienteLiberadoGlobal(c){
       if(c.acessoLiberado===false||c.ativo===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status)))return false;
@@ -258,24 +303,180 @@
       }
       return true;
     }
-    function renderDashboard(){const ativos=clientesIntegro.filter(clienteLiberadoGlobal).length;const bloqueados=clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).length;const teste=clientesIntegro.filter(c=>c.testeAtivo===true&&clienteLiberadoGlobal(c)).length;const masters=getMastersLocais().length,internos=getUsuariosInternos().length,pend=notificacoes.filter(n=>!['LIDA','RESOLVIDA'].includes(status(n.status))).length;setText('kpiClientes',clientesIntegro.length);setText('kpiAtivos',ativos);setText('kpiTeste',teste);setText('kpiMasters',masters);setText('kpiBloqueados',bloqueados);setText('kpiInternos',internos);setText('kpiPlanos',planos.length);setText('kpiNotificacoes',pend);setText('badgeNotificacoes',pend);setText('notificationCount',pend);byId('resumoOperacional').innerHTML=[box('Clientes ativos',ativos+' com acesso liberado'),box('Masters locais',masters+' administrador(es)'),box('Usuários internos',internos+' funcionário(s)')].join('');byId('alertasGlobais').innerHTML=(bloqueados||teste)?[bloqueados?box('Clientes bloqueados',bloqueados+' sem acesso'):'',teste?box('Clientes em teste',teste+' em período experimental'):''].join(''):empty('Nenhum alerta crítico no momento.')}
+    function notificacaoLidaGlobal(n){
+      return (n.lidaPorUids||[]).includes(usuarioLogado?.authUid)||['LIDA','RESOLVIDA'].includes(status(n.status));
+    }
+    function renderDashboard(){
+      const ativos=clientesIntegro.filter(clienteLiberadoGlobal).length;
+      const bloqueados=clientesIntegro.length-ativos;
+      const teste=clientesIntegro.filter(c=>c.testeAtivo===true&&clienteLiberadoGlobal(c)).length;
+      const masters=getMastersLocais().filter(u=>u.id===u.authUid).length;
+      const internos=getUsuariosInternos().filter(u=>u.id===u.authUid).length;
+      const pend=notificacoes.filter(n=>!notificacaoLidaGlobal(n)).length;
+      [['kpiClientes',clientesIntegro.length],['kpiAtivos',ativos],['kpiTeste',teste],
+        ['kpiMasters',masters],['kpiBloqueados',bloqueados],['kpiInternos',internos],
+        ['kpiPlanos',planos.filter(p=>status(p.status)!=='INATIVO').length],
+        ['kpiNotificacoes',pend],['badgeNotificacoes',pend],['notificationCount',pend]]
+        .forEach(([id,valor])=>setText(id,valor));
+      const badgeGlobal=byId('badgeNotificacoes');
+      if(badgeGlobal)badgeGlobal.style.display=pend?'':'none';
+      byId('resumoOperacional').innerHTML=[
+        box('Clientes com acesso contratual ativo',ativos+' de '+clientesIntegro.length),
+        box('Masters Locais provisionados',masters+' contas Auth vinculadas'),
+        box('Usuários internos provisionados',internos+' contas Auth'),
+        box('Última consulta',atualizadoEmGlobal?dataCurta(atualizadoEmGlobal):'Sem confirmação')
+      ].join('');
+      byId('alertasGlobais').innerHTML=(bloqueados||teste)?
+        [bloqueados?box('Clientes sem acesso contratual',bloqueados+' bloqueados ou expirados'):'',
+          teste?box('Períodos de teste ativos',teste+' clientes em avaliação'):''].join(''):
+        empty('Nenhum alerta contratual nos cadastros carregados.');
+    }
     function renderClientes(){const termo=val('buscaClientes').toLowerCase();let lista=clientesIntegro.filter(c=>match(c,termo,['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone']));setText('contadorClientes',`${lista.length} cliente(s) exibido(s).`);byId('listaClientes').innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente encontrado.')}
     function renderMasters(){const lista=getMastersLocais();byId('listaMasters').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
     function renderUsuariosInternos(){const lista=getUsuariosInternos();byId('listaUsuarios').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'interno')).join(''):empty('Nenhum usuário interno encontrado.')}
-    function renderDepartamentos(){byId('listaDepartamentos').innerHTML=departamentos.length?departamentos.map(d=>`<div class="list-card"><div class="list-bar" style="background:#7c3aed"></div><div><h3>${esc(d.nome||'Departamento')}</h3><p class="muted">${esc(d.descricao||'Sem descrição')}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirFormDepartamento('${d.id}')">Editar</button></div></div>`).join(''):empty('Nenhum departamento cadastrado.')}
-    function renderPlanos(){byId('listaPlanos').innerHTML=planos.length?planos.map(p=>`<div class="list-card"><div class="list-bar" style="background:#22c55e"></div><div><h3>${esc(p.nome||'Plano')}</h3><p class="muted">${moeda(p.valorMensal||p.valor||0)} / mês ? ${esc(p.descricao||'')}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirFormPlano('${p.id}')">Editar</button></div></div>`).join(''):empty('Nenhum plano cadastrado.')}
-    function renderNotificacoes(){byId('listaNotificacoes').innerHTML=notificacoes.length?notificacoes.map(n=>`<div class="list-card"><div class="list-bar" style="background:#ff6b00"></div><div><h3>${esc(n.titulo||n.tipo||'Notificação')}</h3><p class="muted">${esc(n.mensagem||n.descricao||'')} • ${esc(n.status||'PENDENTE')}</p></div><div class="list-actions"><button class="btn btn-success" onclick="marcarNotificacaoLida('${n.id}')">Lida</button></div></div>`).join(''):empty('Nenhuma notificação encontrada.')}
-    function renderLogs(){byId('listaLogs').innerHTML=logs.length?logs.map(l=>`<div class="list-card"><div class="list-bar" style="background:#0ea5e9"></div><div><h3>${esc(l.tipoAcao||l.tipo||'LOG')}</h3><p class="muted">${esc(l.detalhe||l.descricao||'Ação registrada')} • ${esc(l.usuarioNome||l.usuarioEmail||'Sistema')}</p></div><div><span class="chip">${dataCurta(l.criadoEm||l.data)}</span></div></div>`).join(''):empty('Nenhum log encontrado.')}
-    function cardCliente(c){const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente'; const bloq=!clienteLiberadoGlobal(c); const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status)); const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now(); return `<div class="list-card"><div class="list-bar" style="background:${bloq?'#ef4444':c.testeAtivo?'#ff6b00':'#22c55e'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(c.tipoPessoa||'PJ')} • ${esc(c.documento||'-')} • ${esc(c.email||'-')}</p><p>${badge(testeExpirado?'TESTE EXPIRADO':bloq?'BLOQUEADO':c.status||'ATIVO')} ${c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':''}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheCliente('${c.id}')">Ver</button><button class="btn btn-light" onclick="abrirFormCliente('${c.id}')">Editar</button><button class="btn btn-primary" onclick="abrirFormMasterLocal('${c.id}')">Master Local</button><button class="btn btn-success" onclick="ativarTesteCliente('${c.id}')">Teste 7d</button><button class="btn ${bloqueioManual?'btn-success':'btn-danger'}" onclick="alternarAcessoCliente('${c.id}')">${bloqueioManual?'Liberar':'Bloquear'}</button></div></div>`}
-    function cardUsuario(u,tipo){const nome=u.nome||u.nomeCompleto||u.email||'Usuário'; const bloq=u.acessoLiberado===false||status(u.status)==='BLOQUEADO'; return `<div class="list-card"><div class="list-bar" style="background:${tipo==='master'?'#ff6b00':'#0ea5e9'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(u.email||'-')} • ${esc(u.clientePlataformaNome||u.empresaNome||u.departamentoNome||'ÍNTEGRO')}</p><p>${badge(bloq?'BLOQUEADO':u.status||'ATIVO')} <span class="chip">${esc(u.tipoUsuario||'')}</span></p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheUsuario('${u.id}')">Ver</button><button class="btn ${bloq?'btn-success':'btn-danger'}" onclick="alternarAcessoUsuario('${u.id}')">${bloq?'Liberar':'Bloquear'}</button></div></div>`}
-    function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id)}
-    function atualizarBotaoAcao(id){const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],departamentos:['Novo departamento',abrirFormDepartamento],planos:['Novo plano',abrirFormPlano],notificacoes:['Nova notificação',abrirFormNotificacao]};const cfg=map[id]||['Novo cliente',abrirFormCliente];setText('btnAcaoPrincipal',cfg[0]);safe('btnAcaoPrincipal',b=>b.onclick=cfg[1])}
+    function renderDepartamentos(){
+      byId('listaDepartamentos').innerHTML=departamentos.length?departamentos.map(d=>
+        '<div class="list-card"><div class="list-bar" style="background:#7c3aed"></div><div><h3>'+
+        esc(d.nome||'Departamento')+'</h3><p class="muted">'+esc(d.descricao||'Sem descrição')+
+        '</p>'+badge(d.status||'ATIVO')+'</div><div class="list-actions"><button class="btn btn-light" data-mg-action="departamento" data-id="'+esc(d.id)+'">Editar</button></div></div>'
+      ).join(''):empty('Nenhum departamento cadastrado.');
+    }
+    function renderPlanos(){
+      byId('listaPlanos').innerHTML=planos.length?planos.map(p=>
+        '<div class="list-card"><div class="list-bar" style="background:#22c55e"></div><div><h3>'+
+        esc(p.nome||'Plano')+'</h3><p class="muted">'+moeda(p.valorMensal??p.valor??0)+
+        ' / mês · '+esc(p.descricao||'Sem descrição')+'</p>'+badge(p.status||'ATIVO')+
+        '</div><div class="list-actions"><button class="btn btn-light" data-mg-action="plano" data-id="'+esc(p.id)+'">Editar</button></div></div>'
+      ).join(''):empty('Nenhum plano cadastrado.');
+    }
+    function renderNotificacoes(){
+      byId('listaNotificacoes').innerHTML=notificacoes.length?notificacoes.map(n=>{
+        const lida=notificacaoLidaGlobal(n);
+        return '<div class="list-card"><div class="list-bar" style="background:#ff6b00"></div><div><h3>'+
+          esc(n.titulo||n.tipo||'Notificação')+'</h3><p class="muted">'+esc(n.mensagem||n.descricao||'')+
+          ' · '+esc(dataCurta(n.criadoEm))+'</p>'+badge(lida?'LIDA':'PENDENTE')+
+          '</div><div class="list-actions">'+(lida?'':('<button class="btn btn-success" data-mg-action="ler-notificacao" data-id="'+esc(n.id)+'">Marcar lida</button>'))+'</div></div>';
+      }).join(''):empty('Nenhuma notificação global recente.');
+    }
+    function renderLogs(){
+      byId('listaLogs').innerHTML=logs.length?logs.map(l=>
+        '<div class="list-card"><div class="list-bar" style="background:#0ea5e9"></div><div><h3>'+
+        esc(l.tipoAcao||l.tipo||'LOG')+'</h3><p class="muted">'+
+        esc(l.detalhe||l.descricao||'Ação registrada')+' · '+esc(l.usuarioNome||l.usuarioAuthUid||l.usuarioEmail||'Sistema')+
+        (l.clientePlataformaId?' · Empresa '+esc(l.clientePlataformaId):'')+
+        '</p></div><div><span class="chip">'+esc(dataCurta(l.criadoEm||l.data))+'</span></div></div>'
+      ).join(''):empty('Nenhum log recente.');
+    }
+    function renderConfiguracoes(){
+      setVal('cfgNomePlataforma',configuracoesGlobal.nome||'ÍNTEGRO');
+      setVal('cfgDiasTeste',configuracoesGlobal.diasTestePadrao??7);
+    }
+    function renderRelatorios(){
+      const vinculados=new Map();
+      clientesIntegro.forEach(c=>{const id=c.planoId||'SEM_PLANO';vinculados.set(id,(vinculados.get(id)||0)+1);});
+      const ativos=clientesIntegro.filter(clienteLiberadoGlobal);
+      const mrr=ativos.reduce((total,c)=>{
+        const plano=planos.find(p=>p.id===c.planoId);
+        return total+(plano?Number(plano.valorMensal??plano.valor??0):0);
+      },0);
+      byId('resumoRelatorios').innerHTML=[
+        box('Clientes ÍNTEGRO',String(clientesIntegro.length)),
+        box('Com acesso contratual ativo',String(ativos.length)),
+        box('Sem plano vinculado',String(vinculados.get('SEM_PLANO')||0)),
+        box('Mensalidade potencial dos contratos ativos',moeda(mrr)+' · não representa faturamento recebido')
+      ].join('');
+      byId('distribuicaoPlanos').innerHTML=planos.map(p=>box(p.nome||'Plano',
+        (vinculados.get(p.id)||0)+' cliente(s) · '+moeda(p.valorMensal??p.valor??0)+'/mês')).join('')+
+        ((vinculados.get('SEM_PLANO')||0)?box('Sem plano',(vinculados.get('SEM_PLANO')||0)+' cliente(s)'):'');
+    }
+    async function carregarChatGlobal(){
+      const raiz=byId('listaChatGlobal');if(!raiz)return;
+      raiz.innerHTML=empty('Carregando mensagens da equipe...');
+      try{
+        const r=await chamarGestaoGlobal('listarChat');
+        if(!Array.isArray(r.mensagens))throw new Error('Resposta de mensagens incompleta.');
+        raiz.innerHTML=r.mensagens.length?r.mensagens.map(m=>
+          '<div class="empty" style="border-style:solid"><strong>'+esc(m.autorNome||'Equipe ÍNTEGRO')+
+          '</strong><span class="muted"> · '+esc(dataCurta(m.criadoEm))+'</span>'+
+          '<p style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:8px">'+esc(m.mensagem||'')+'</p></div>'
+        ).join(''):empty('Nenhuma mensagem publicada.');
+      }catch(e){raiz.innerHTML=empty('Falha ao carregar mensagens. Tente novamente.');throw e;}
+    }
+    async function enviarMensagemGlobal(evento){
+      evento?.preventDefault?.();
+      const mensagem=val('chatGlobalTexto');if(!mensagem)return;
+      const botao=byId('btnChatGlobalEnviar');if(botao?.disabled)return;
+      if(botao)botao.disabled=true;
+      try{
+        await chamarGestaoGlobal('enviarChat',{mensagem});
+        setVal('chatGlobalTexto','');
+        await carregarChatGlobal();
+      }catch(e){notificarIntegro(mensagemErroGlobal(e));}
+      finally{if(botao)botao.disabled=false;}
+    }
+    function exportarRelatorioGlobal(tipo){
+      if(!dadosGlobaisCarregados)return notificarIntegro('Carregue os dados reais antes de exportar.');
+      const definicoes={
+        clientes:{cab:['ID','Nome','CPF/CNPJ','Tipo','E-mail','Telefone','Plano','Status','Acesso','Teste até'],
+          linhas:clientesIntegro.map(c=>[c.id,c.nome||c.razaoSocial,c.documento,c.tipoPessoa,c.email,c.telefone,
+            planos.find(p=>p.id===c.planoId)?.nome||'',c.status,clienteLiberadoGlobal(c)?'LIBERADO':'SEM ACESSO',c.dataFimTeste||''])},
+        usuarios:{cab:['UID','Nome','E-mail','Perfil','Empresa','Status'],
+          linhas:usuariosSistema.filter(u=>u.id===u.authUid).map(u=>[u.authUid,u.nome,u.email,u.tipoUsuario,
+            clientesIntegro.find(c=>c.id===u.clientePlataformaId)?.nome||'',u.status])},
+        planos:{cab:['ID','Plano','Valor mensal','Status','Clientes vinculados'],
+          linhas:planos.map(p=>[p.id,p.nome,p.valorMensal??p.valor??0,p.status,
+            clientesIntegro.filter(c=>c.planoId===p.id).length])}
+      };
+      const def=definicoes[tipo];if(!def)return;
+      const celula=v=>{
+        let t=String(v??'');
+        if(/^[\s]*[=+@-]/.test(t))t="'"+t;
+        return '"'+t.replace(/"/g,'""')+'"';
+      };
+      const csv='\uFEFF'+[def.cab,...def.linhas].map(l=>l.map(celula).join(';')).join('\r\n');
+      const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+      const a=document.createElement('a');a.href=url;a.download='integro-'+tipo+'-'+new Date().toISOString().slice(0,10)+'.csv';
+      document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+    }
+    function cardCliente(c){const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente'; const bloq=!clienteLiberadoGlobal(c); const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status)); const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now(); return `<div class="list-card"><div class="list-bar" style="background:${bloq?'#ef4444':c.testeAtivo?'#ff6b00':'#22c55e'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(c.tipoPessoa||'PJ')} • ${esc(c.documento||'-')} • ${esc(c.email||'-')}</p><p>${badge(testeExpirado?'TESTE EXPIRADO':bloq?'BLOQUEADO':c.status||'ATIVO')} ${c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':''}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheCliente('${c.id}')">Ver</button><button class="btn btn-light" onclick="abrirFormCliente('${c.id}')">Editar</button><button class="btn btn-primary" onclick="abrirFormMasterLocal('${c.id}')">Master Local</button><button class="btn btn-success" onclick="ativarTesteCliente('${c.id}')">Teste ${Number(configuracoesGlobal.diasTestePadrao)||7}d</button><button class="btn ${bloqueioManual?'btn-success':'btn-danger'}" onclick="alternarAcessoCliente('${c.id}')">${bloqueioManual?'Liberar':'Bloquear'}</button></div></div>`}
+    function cardUsuario(u,tipo){
+      const nome=u.nome||u.nomeCompleto||u.email||'Usuário';
+      const bloq=u.acessoLiberado===false||status(u.status)==='BLOQUEADO';
+      const bloqueioEmpresa=u.empresaBloqueada===true;
+      const provisionado=u.id===u.authUid&&Boolean(u.authUid);
+      const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+      const contexto=tipo==='master'?(empresa?.nome||u.clientePlataformaNome||'Empresa não identificada'):
+        (departamentos.find(d=>d.id===u.departamentoId)?.nome||'Equipe ÍNTEGRO');
+      return '<div class="list-card"><div class="list-bar" style="background:'+
+        (tipo==='master'?'#ff6b00':'#0ea5e9')+'"></div><div><h3>'+esc(nome)+'</h3>'+
+        '<p class="muted">'+esc(u.email||'-')+' · '+esc(contexto)+'</p>'+
+        badge(provisionado?(bloqueioEmpresa?'EMPRESA BLOQUEADA':bloq?'BLOQUEADO':u.status||'ATIVO'):'LEGADO / PENDENTE')+
+        ' <span class="chip">'+esc(u.cargoNome||u.tipoUsuario||'')+'</span></div><div class="list-actions">'+
+        '<button class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver</button>'+
+        (provisionado?
+          '<button class="btn btn-light" data-mg-action="'+(tipo==='master'?'editar-master':'editar-interno')+'" data-id="'+esc(u.id)+'">Editar</button>'+
+          (bloqueioEmpresa?'<span class="chip">Acesso gerenciado pela empresa</span>':
+            '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>'):
+          (tipo==='interno'&&status(u.status)!=='PROVISIONADO'?
+            '<button class="btn btn-primary" data-mg-action="provisionar-interno" data-id="'+esc(u.id)+'">Provisionar Auth</button>':''))+
+        '</div></div>';
+    }
+    function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
+    function atualizarBotaoAcao(id){
+      const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],
+        masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],
+        departamentos:['Novo departamento',abrirFormDepartamento],planos:['Novo plano',abrirFormPlano],
+        notificacoes:['Nova notificação',abrirFormNotificacao]};
+      const botao=byId('btnAcaoPrincipal');if(!botao)return;
+      const cfg=map[id];botao.style.display=cfg?'':'none';
+      if(cfg){botao.textContent=cfg[0];botao.onclick=cfg[1];}
+    }
     function abrirSidebar(){byId('sidebar').classList.add('show');byId('sidebarOverlay').classList.add('show');document.body.classList.add('menu-mobile-open')} function fecharSidebar(){byId('sidebar').classList.remove('show');byId('sidebarOverlay').classList.remove('show');document.body.classList.remove('menu-mobile-open')} function abrirDrawer(t,s,h){setText('drawerTitle',t);setText('drawerSubtitle',s);byId('drawerBody').innerHTML=h;byId('drawer').classList.add('show');byId('drawerOverlay').classList.add('show')} function fecharDrawer(){byId('drawer').classList.remove('show');byId('drawerOverlay').classList.remove('show')}
-    function abrirFormCliente(id=null){const c=id?clientesIntegro.find(x=>x.id===id):{};abrirDrawer(id?'Editar cliente ÍNTEGRO':'Novo cliente ÍNTEGRO','Cadastro PF/PJ da plataforma',`<div class="grid"><div class="field-grid"><div><label class="form-label">Tipo</label><select id="cliTipoPessoa" class="form-select"><option value="PJ">PJ</option><option value="PF">PF</option></select></div><div><label class="form-label">Documento</label><input id="cliDocumento" class="form-input" value="${esc(c?.documento||'')}"></div></div><div><label class="form-label">Nome/Razão social</label><input id="cliNome" class="form-input" value="${esc(c?.nome||c?.razaoSocial||'')}"></div><div class="field-grid"><div><label class="form-label">Email</label><input id="cliEmail" class="form-input" value="${esc(c?.email||'')}"></div><div><label class="form-label">Telefone</label><input id="cliTelefone" class="form-input" value="${esc(c?.telefone||'')}"></div></div><button class="btn btn-primary" onclick="salvarClienteIntegro('${id||''}')">Salvar cliente</button></div>`);setVal('cliTipoPessoa',c?.tipoPessoa||'PJ');
+    function abrirFormCliente(id=null){const c=id?clientesIntegro.find(x=>x.id===id):{};abrirDrawer(id?'Editar cliente ÍNTEGRO':'Novo cliente ÍNTEGRO','Cadastro PF/PJ da plataforma',`<div class="grid"><div class="field-grid"><div><label class="form-label">Tipo</label><select id="cliTipoPessoa" class="form-select"><option value="PJ">PJ</option><option value="PF">PF</option></select></div><div><label class="form-label">Documento</label><input id="cliDocumento" class="form-input" value="${esc(c?.documento||'')}" ${id?'readonly':''}></div></div><div><label class="form-label">Nome/Razão social</label><input id="cliNome" class="form-input" value="${esc(c?.nome||c?.razaoSocial||'')}"></div><div class="field-grid"><div><label class="form-label">Email</label><input id="cliEmail" class="form-input" value="${esc(c?.email||'')}"></div><div><label class="form-label">Telefone</label><input id="cliTelefone" class="form-input" value="${esc(c?.telefone||'')}"></div></div><button class="btn btn-primary" onclick="salvarClienteIntegro('${id||''}')">Salvar cliente</button></div>`);setVal('cliTipoPessoa',c?.tipoPessoa||'PJ');
       const botao=byId('drawerBody')?.querySelector('button.btn-primary');
       if(botao){
         const campo=document.createElement('div');
-        const opcoes=planos.map(p=>'<option value="'+esc(p.id)+'">'+esc(p.nome||'Plano')+'</option>').join('');
+        const opcoes=planos.filter(p=>status(p.status)!=='INATIVO'||p.id===c?.planoId).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.nome||'Plano')+'</option>').join('');
         campo.innerHTML='<label class="form-label">Plano comercial</label><select id="cliPlano" class="form-select"><option value="">Sem plano definido</option>'+opcoes+'</select><p class="muted" style="margin-top:6px">Após cadastrar, você poderá criar o Master Local e ativar o período de teste.</p>';
         botao.before(campo);
         setVal('cliPlano',c?.planoId||'');
@@ -353,15 +554,125 @@
       }catch(erro){console.error('[MASTER GLOBAL] Criação Master Local',erro);notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
     }
-    function abrirFormUsuarioInterno(){abrirDrawer('Novo usuário interno','Equipe da empresa ÍNTEGRO',`<div class="grid"><div class="field-grid"><div><label class="form-label">Nome</label><input id="uiNome" class="form-input"></div><div><label class="form-label">Email</label><input id="uiEmail" class="form-input"></div></div><div><label class="form-label">Tipo interno</label><select id="uiTipo" class="form-select"><option value="interno_integro">Interno ÍNTEGRO</option><option value="comercial_integro">Comercial ÍNTEGRO</option><option value="financeiro_integro">Financeiro ÍNTEGRO</option><option value="suporte_integro">Suporte ÍNTEGRO</option></select></div><button class="btn btn-primary" onclick="salvarUsuarioInterno()">Salvar usuário</button></div>`)}
-    async function salvarUsuarioInterno(){if(!fireOk)return notificarIntegro('Firebase não carregado.');const tipoInterno=val('uiTipo');const cargoInterno={interno_integro:'Interno ÍNTEGRO',comercial_integro:'Comercial ÍNTEGRO',financeiro_integro:'Financeiro ÍNTEGRO',suporte_integro:'Suporte ÍNTEGRO'}[tipoInterno]||'Usuário ÍNTEGRO';const dados={nome:val('uiNome'),email:val('uiEmail'),tipoUsuario:'usuario_integro',tipoUsuarioOficial:'usuario_integro',tipoUsuarioLegado:tipoInterno,perfilLegado:tipoInterno,cargoChave:tipoInterno,cargoNome:cargoInterno,usuarioInternoIntegro:true,status:'ATIVO',acessoLiberado:true,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};if(!dados.nome||!dados.email)return notificarIntegro('Informe nome e email.');await mgDb.collection('usuarios').add(dados);await log('CRIAR_USUARIO_INTERNO',dados.email);fecharDrawer();await carregarTudo()}
-    function abrirFormDepartamento(){abrirDrawer('Novo departamento','Estrutura interna',`<div class="grid"><label class="form-label">Nome</label><input id="depNome" class="form-input"><label class="form-label">Descrição</label><textarea id="depDescricao" class="form-textarea"></textarea><button class="btn btn-primary" onclick="salvarDepartamento()">Salvar</button></div>`)} async function salvarDepartamento(){if(!fireOk)return notificarIntegro('Firebase não carregado.');await mgDb.collection('departamentos_integro').add({nome:val('depNome'),descricao:val('depDescricao'),status:'ATIVO',criadoEm:firebase.firestore.FieldValue.serverTimestamp()});fecharDrawer();await carregarTudo()}
-    function abrirFormPlano(){abrirDrawer('Novo plano','Plano comercial',`<div class="grid"><label class="form-label">Nome</label><input id="plNome" class="form-input"><label class="form-label">Valor mensal</label><input id="plValor" type="number" class="form-input"><label class="form-label">Descrição</label><textarea id="plDescricao" class="form-textarea"></textarea><button class="btn btn-primary" onclick="salvarPlano()">Salvar</button></div>`)} async function salvarPlano(){if(!fireOk)return notificarIntegro('Firebase não carregado.');await mgDb.collection('planos').add({nome:val('plNome'),valorMensal:Number(val('plValor')||0),descricao:val('plDescricao'),status:'ATIVO',criadoEm:firebase.firestore.FieldValue.serverTimestamp()});fecharDrawer();await carregarTudo()}
-    function abrirFormNotificacao(){abrirDrawer('Nova notificação','Aviso global',`<div class="grid"><label class="form-label">Título</label><input id="notTitulo" class="form-input"><label class="form-label">Mensagem</label><textarea id="notMensagem" class="form-textarea"></textarea><button class="btn btn-primary" onclick="salvarNotificacao()">Enviar</button></div>`)} async function salvarNotificacao(){if(!fireOk)return notificarIntegro('Firebase não carregado.');await mgDb.collection('notificacoes').add({titulo:val('notTitulo'),mensagem:val('notMensagem'),status:'PENDENTE',publico:'GLOBAL',criadoEm:firebase.firestore.FieldValue.serverTimestamp()});fecharDrawer();await carregarTudo()}
+    async function executarAcaoGlobal(acao,dados,mensagem,{manterDrawer=false}={}){
+      if(processandoCadastroGlobal)return false;
+      processandoCadastroGlobal=true;
+      try{
+        await chamarGestaoGlobal(acao,dados);
+        await carregarTudo();
+        if(!manterDrawer)fecharDrawer();
+        if(mensagem)notificarIntegro(mensagem);
+        return true;
+      }catch(erro){
+        console.error('[MASTER GLOBAL] '+acao,erro);
+        notificarIntegro(mensagemErroGlobal(erro));
+        return false;
+      }finally{processandoCadastroGlobal=false;}
+    }
+    function abrirFormUsuarioInterno(id=null){
+      const u=id?usuariosSistema.find(x=>x.id===id&&x.tipoUsuario==='usuario_integro'):null;
+      if(id&&!u)return notificarIntegro('Usuário interno não encontrado.');
+      const deps=departamentos.filter(d=>status(d.status)!=='INATIVO'||d.id===u?.departamentoId);
+      const options=deps.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.nome||'Departamento')+'</option>').join('');
+      abrirDrawer(id?'Editar usuário interno':'Novo usuário interno','Conta real no Firebase Authentication',
+        '<div class="grid"><div class="field-grid"><div><label class="form-label">Nome</label><input id="uiNome" class="form-input" maxlength="180" value="'+esc(u?.nome||'')+'"></div>'+
+        '<div><label class="form-label">E-mail de login</label><input id="uiEmail" type="email" class="form-input" maxlength="254" value="'+esc(u?.email||'')+'" '+(id?'readonly':'')+'></div></div>'+
+        '<div><label class="form-label">Cargo interno</label><select id="uiTipo" class="form-select">'+
+        '<option value="interno_integro">Interno ÍNTEGRO</option><option value="comercial_integro">Comercial ÍNTEGRO</option>'+
+        '<option value="financeiro_integro">Financeiro ÍNTEGRO</option><option value="suporte_integro">Suporte ÍNTEGRO</option></select></div>'+
+        '<div><label class="form-label">Departamento</label><select id="uiDepartamento" class="form-select"><option value="">Sem departamento</option>'+options+'</select></div>'+
+        '<div class="notice">O usuário será autenticado pelo Firebase e não terá acesso a dados de outra empresa por associação de e-mail. A senha será definida pelo próprio usuário.</div>'+
+        '<button class="btn btn-primary" id="btnSalvarInterno">Salvar usuário</button></div>');
+      setVal('uiTipo',u?.cargoChave||'interno_integro');setVal('uiDepartamento',u?.departamentoId||'');
+      byId('btnSalvarInterno').onclick=()=>salvarUsuarioInterno(id);
+    }
+    async function salvarUsuarioInterno(id=null){
+      if(processandoCadastroGlobal)return;
+      const dados={id:id||'',nome:val('uiNome'),email:val('uiEmail').toLowerCase(),
+        tipoInterno:val('uiTipo'),departamentoId:val('uiDepartamento')};
+      if(!dados.nome||!dados.email)return notificarIntegro('Informe nome e e-mail.');
+      processandoCadastroGlobal=true;
+      try{
+        const r=await chamarGestaoGlobal('salvarUsuarioInterno',dados);
+        if(!r.authUid)throw new Error('O servidor não confirmou a conta Auth.');
+        const enviado=id?true:await enviarAcessoMasterLocal(dados.email);
+        try{await carregarTudo();}catch(e){console.warn('[MASTER GLOBAL] Atualização de listagem pendente',e);}
+        abrirDrawer(id?'Usuário atualizado':'Usuário interno criado',dados.nome,
+          '<div class="notice">'+(id?'Dados salvos no Firebase.':(enviado?'Conta criada e link de definição de senha enviado.':'Conta criada, mas o envio do link precisa ser repetido.'))+'</div>'+
+          '<div class="empty">'+esc(dados.email)+'</div>'+
+          '<button class="btn btn-primary" id="btnReenviarInterno">Enviar link de acesso</button>'+
+          '<button class="btn btn-light" onclick="fecharDrawer()">Concluir</button>');
+        byId('btnReenviarInterno').onclick=()=>enviarAcessoMasterLocal(dados.email);
+      }catch(e){notificarIntegro(mensagemErroGlobal(e));}
+      finally{processandoCadastroGlobal=false;}
+    }
+    async function provisionarInternoLegado(id){
+      const legado=usuariosSistema.find(u=>u.id===id);
+      if(!legado||legado.authUid)return notificarIntegro('Este cadastro já possui conta Auth ou não existe.');
+      if(!confirm('Criar conta Firebase para '+(legado.nome||legado.email)+' e inativar o cadastro legado?'))return;
+      if(processandoCadastroGlobal)return;
+      processandoCadastroGlobal=true;
+      try{
+        const r=await chamarGestaoGlobal('provisionarInternoLegado',{id});
+        if(!r.authUid)throw new Error('Provisionamento não confirmado.');
+        const enviado=await enviarAcessoMasterLocal(r.email);
+        try{await carregarTudo();}catch(e){console.warn('[MASTER GLOBAL] Listagem pendente',e);}
+        abrirDrawer('Usuário legado regularizado',legado.nome||legado.email,
+          '<div class="notice">Conta Auth vinculada ao UID '+esc(r.authUid)+
+          (enviado?'. Link de senha enviado.':'. O envio do link precisa ser repetido.')+'</div>'+
+          '<button class="btn btn-primary" id="btnReenviarLegado">Reenviar link de acesso</button>');
+        byId('btnReenviarLegado').onclick=()=>enviarAcessoMasterLocal(r.email);
+      }catch(e){notificarIntegro(mensagemErroGlobal(e));}
+      finally{processandoCadastroGlobal=false;}
+    }
+    function abrirFormDepartamento(id=null){
+      const d=id?departamentos.find(x=>x.id===id):null;
+      if(id&&!d)return notificarIntegro('Departamento não encontrado.');
+      abrirDrawer(id?'Editar departamento':'Novo departamento','Estrutura interna da plataforma',
+        '<div class="grid"><label class="form-label">Nome</label><input id="depNome" class="form-input" maxlength="100" value="'+esc(d?.nome||'')+'">'+
+        '<label class="form-label">Descrição</label><textarea id="depDescricao" maxlength="500" class="form-textarea">'+esc(d?.descricao||'')+'</textarea>'+
+        '<label class="form-label">Situação</label><select id="depStatus" class="form-select"><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option></select>'+
+        '<button class="btn btn-primary" id="btnSalvarDepartamento">Salvar departamento</button></div>');
+      setVal('depStatus',d?.status||'ATIVO');
+      byId('btnSalvarDepartamento').onclick=()=>salvarDepartamento(id);
+    }
+    async function salvarDepartamento(id=null){
+      await executarAcaoGlobal('salvarDepartamento',{id:id||'',nome:val('depNome'),
+        descricao:val('depDescricao'),status:val('depStatus')},'Departamento salvo.');
+    }
+    function abrirFormPlano(id=null){
+      const p=id?planos.find(x=>x.id===id):null;
+      if(id&&!p)return notificarIntegro('Plano não encontrado.');
+      abrirDrawer(id?'Editar plano':'Novo plano','Plano comercial do SaaS',
+        '<div class="grid"><label class="form-label">Nome</label><input id="plNome" class="form-input" maxlength="100" value="'+esc(p?.nome||'')+'">'+
+        '<label class="form-label">Valor mensal (R$)</label><input id="plValor" type="number" min="0" max="1000000" step="0.01" class="form-input" value="'+esc(p?.valorMensal??p?.valor??0)+'">'+
+        '<label class="form-label">Descrição</label><textarea id="plDescricao" maxlength="1000" class="form-textarea">'+esc(p?.descricao||'')+'</textarea>'+
+        '<label class="form-label">Situação</label><select id="plStatus" class="form-select"><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option></select>'+
+        '<div class="notice">Mensalidade cadastrada não é pagamento recebido. Planos inativos deixam de estar disponíveis para novos vínculos.</div>'+
+        '<button class="btn btn-primary" id="btnSalvarPlano">Salvar plano</button></div>');
+      setVal('plStatus',p?.status||'ATIVO');
+      byId('btnSalvarPlano').onclick=()=>salvarPlano(id);
+    }
+    async function salvarPlano(id=null){
+      await executarAcaoGlobal('salvarPlano',{id:id||'',nome:val('plNome'),
+        valorMensal:val('plValor'),descricao:val('plDescricao'),status:val('plStatus')},'Plano salvo.');
+    }
+    function abrirFormNotificacao(){
+      abrirDrawer('Nova notificação global','Aviso para a administração da plataforma',
+        '<div class="grid"><label class="form-label">Título</label><input id="notTitulo" class="form-input" maxlength="120">'+
+        '<label class="form-label">Mensagem</label><textarea id="notMensagem" maxlength="2000" class="form-textarea"></textarea>'+
+        '<div class="notice">Este aviso é global da plataforma, não uma cobrança ou notificação individual de clientes operacionais.</div>'+
+        '<button class="btn btn-primary" id="btnEnviarNotificacao">Publicar aviso</button></div>');
+      byId('btnEnviarNotificacao').onclick=salvarNotificacao;
+    }
+    async function salvarNotificacao(){
+      await executarAcaoGlobal('criarNotificacao',{titulo:val('notTitulo'),mensagem:val('notMensagem')},'Aviso global publicado.');
+    }
     async function alternarAcessoCliente(id){
       const cliente=clientesIntegro.find(c=>c.id===id);
       if(!cliente)return;
       if(processandoCadastroGlobal)return;
+      if(!confirm((cliente.acessoLiberado===false?'Liberar':'Bloquear')+' a empresa '+(cliente.nome||cliente.razaoSocial||id)+' e seus usuários?'))return;
       processandoCadastroGlobal=true;
       try{
         await funcaoMasterGlobal('alterarAcessoClienteIntegroGlobal')({id,liberado:cliente.acessoLiberado===false});
@@ -376,14 +687,79 @@
       if(processandoCadastroGlobal)return;
       processandoCadastroGlobal=true;
       try{
-        await funcaoMasterGlobal('ativarTesteClienteIntegroGlobal')({id,dias:7});
+        await funcaoMasterGlobal('ativarTesteClienteIntegroGlobal')({id,dias:Number(configuracoesGlobal.diasTestePadrao)||7});
         await carregarTudo();
-        notificarIntegro('Período de teste ativado por 7 dias.');
+        notificarIntegro('Período de teste ativado por '+(Number(configuracoesGlobal.diasTestePadrao)||7)+' dias.');
       }catch(erro){notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
-    } async function alternarAcessoUsuario(id){const u=usuariosSistema.find(x=>x.id===id);if(!u)return;if(!u.authUid||u.convitePendente===true||u.status==='CONVITE_PENDENTE')return notificarIntegro('Este usuário ainda aguarda provisionamento Auth pelo backend e não pode ser liberado.');const novo=u.acessoLiberado===false;await mgDb.collection('usuarios').doc(id).update({acessoLiberado:novo,status:novo?'ATIVO':'BLOQUEADO'});await carregarTudo()} async function marcarNotificacaoLida(id){await mgDb.collection('notificacoes').doc(id).update({status:'LIDA'});await carregarTudo()} async function salvarConfiguracoesGlobais(){await mgDb.collection('configuracoes_globais').doc('plataforma').set({nome:val('cfgNomePlataforma'),diasTestePadrao:Number(val('cfgDiasTeste')||7),atualizadoEm:firebase.firestore.FieldValue.serverTimestamp()},{merge:true});notificarIntegro('Configurações salvas.')}
-    async function log(tipo,detalhe){try{if(fireOk)await mgDb.collection('logs').add({tipoAcao:tipo,detalhe,usuarioId:usuarioLogado?.id||'',usuarioNome:usuarioLogado?.nome||usuarioLogado?.email||'',origem:'master_global',criadoEm:firebase.firestore.FieldValue.serverTimestamp(),criadoEmTexto:window.IntegroOperacional?.dataHoraSP?.()||new Date().toISOString()})}catch(e){console.warn(e)}} async function logout(){const usuarioSaindo=usuarioLogado;try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioSaindo,limparFila:true});location.href='index.html'}
-    function abrirResumoKpi(tipo){const map={clientes:['Clientes da plataforma',clientesIntegro.map(c=>c.nome||c.razaoSocial||c.email||c.id)],ativos:['Acessos liberados',clientesIntegro.filter(clienteLiberadoGlobal).map(c=>c.nome||c.razaoSocial||c.id)],teste:['Clientes em teste',clientesIntegro.filter(c=>c.testeAtivo&&clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],masters:['Masters locais',getMastersLocais().map(u=>u.nome||u.email)],bloqueados:['Bloqueados',clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],internos:['Equipe interna',getUsuariosInternos().map(u=>u.nome||u.email)],planos:['Planos',planos.map(p=>p.nome)],notificacoes:['Notificações',notificacoes.map(n=>n.titulo||n.tipo)]};const m=map[tipo]||['Resumo',[]];abrirDrawer(m[0],`${m[1].length} registro(s)`,`<div class="list">${m[1].length?m[1].map(x=>box(x,'')).join(''):empty('Sem registros.')}</div>`)} function abrirDetalheCliente(id){const c=clientesIntegro.find(x=>x.id===id);if(c)abrirDrawer('Cliente ÍNTEGRO',c.nome||c.razaoSocial||'Cliente',`${info('Documento',c.documento)}${info('Email',c.email)}${info('Telefone',c.telefone)}<button class="btn btn-primary" onclick="abrirFormMasterLocal('${id}')">Criar Master Local</button>`)} function abrirDetalheUsuario(id){const u=usuariosSistema.find(x=>x.id===id);if(u)abrirDrawer('Usuário',u.nome||u.email||'Usuário',`${info('Email',u.email)}${info('Tipo',u.tipoUsuario)}${info('Status',u.status||'ATIVO')}`)}
+    }
+    async function alternarAcessoUsuario(id){
+      const u=usuariosSistema.find(x=>x.id===id);
+      if(!u)return notificarIntegro('Usuário não encontrado.');
+      if(u.id!==u.authUid||!['master_local','usuario_integro'].includes(u.tipoUsuario))
+        return notificarIntegro('Perfil legado não provisionado: acesso não pode ser alterado nesta tela.');
+      if(!confirm((u.acessoLiberado===false?'Liberar':'Bloquear')+' o acesso individual de '+(u.nome||u.email)+'?'))return;
+      await executarAcaoGlobal('alterarAcessoUsuario',{id,liberado:u.acessoLiberado===false},
+        u.acessoLiberado===false?'Usuário liberado.':'Usuário bloqueado e sessão revogável pelo backend.');
+    }
+    async function marcarNotificacaoLida(id){
+      await executarAcaoGlobal('marcarNotificacaoLida',{id},'Notificação marcada como lida.');
+    }
+    async function salvarConfiguracoesGlobais(){
+      await executarAcaoGlobal('salvarConfiguracoes',{nome:val('cfgNomePlataforma'),
+        diasTestePadrao:Number(val('cfgDiasTeste'))},'Configurações globais salvas.',{manterDrawer:true});
+    }
+    function abrirEdicaoMasterLocal(id){
+      const u=usuariosSistema.find(x=>x.id===id&&x.tipoUsuario==='master_local'&&x.authUid===x.id);
+      if(!u)return notificarIntegro('Master Local não provisionado ou não encontrado.');
+      const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+      abrirDrawer('Editar Master Local','Empresa vinculada não pode ser trocada',
+        '<div class="grid"><label class="form-label">Empresa</label><input class="form-input" readonly value="'+esc(empresa?.nome||u.clientePlataformaNome||u.clientePlataformaId)+'">'+
+        '<label class="form-label">E-mail de login</label><input class="form-input" readonly value="'+esc(u.email||'')+'">'+
+        '<label class="form-label">Nome</label><input id="mlEdicaoNome" maxlength="180" class="form-input" value="'+esc(u.nome||'')+'">'+
+        '<button class="btn btn-primary" id="btnSalvarEdicaoMaster">Salvar alterações</button>'+
+        '<button class="btn btn-light" id="btnReenviarEdicaoMaster">Reenviar link de acesso</button></div>');
+      byId('btnSalvarEdicaoMaster').onclick=()=>executarAcaoGlobal('editarMasterLocal',
+        {id,nome:val('mlEdicaoNome')},'Master Local atualizado.');
+      byId('btnReenviarEdicaoMaster').onclick=()=>enviarAcessoMasterLocal(u.email);
+    }
+ async function logout(){const usuarioSaindo=usuarioLogado;try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioSaindo,limparFila:true});location.href='index.html'}
+    function abrirResumoKpi(tipo){
+      const map={
+        clientes:['Clientes da plataforma',clientesIntegro.map(c=>c.nome||c.razaoSocial||c.email||c.id)],
+        ativos:['Acessos contratuais ativos',clientesIntegro.filter(clienteLiberadoGlobal).map(c=>c.nome||c.razaoSocial||c.id)],
+        teste:['Clientes em teste',clientesIntegro.filter(c=>c.testeAtivo&&clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],
+        masters:['Masters Locais',getMastersLocais().filter(u=>u.id===u.authUid).map(u=>u.nome||u.email)],
+        bloqueados:['Clientes sem acesso contratual',clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],
+        internos:['Equipe ÍNTEGRO',getUsuariosInternos().filter(u=>u.id===u.authUid).map(u=>u.nome||u.email)],
+        planos:['Planos ativos',planos.filter(p=>status(p.status)!=='INATIVO').map(p=>p.nome)],
+        notificacoes:['Notificações não lidas',notificacoes.filter(n=>!notificacaoLidaGlobal(n)).map(n=>n.titulo||n.tipo)]
+      };
+      const m=map[tipo]||['Resumo',[]];
+      abrirDrawer(m[0],m[1].length+' registro(s)','<div class="list">'+
+        (m[1].length?m[1].map(x=>box(x,'')).join(''):empty('Sem registros.'))+'</div>');
+    }
+    function abrirDetalheCliente(id){
+      const c=clientesIntegro.find(x=>x.id===id);if(!c)return;
+      const plano=planos.find(p=>p.id===c.planoId);
+      const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id&&u.id===u.authUid);
+      abrirDrawer('Cliente ÍNTEGRO',c.nome||c.razaoSocial||'Cliente',
+        info('Documento',c.documento)+info('E-mail',c.email)+info('Telefone',c.telefone)+
+        info('Plano comercial',plano?.nome||'Sem plano')+
+        info('Acesso contratual',clienteLiberadoGlobal(c)?'LIBERADO':'SEM ACESSO')+
+        info('Fim do teste',c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem teste')+
+        info('Masters Locais',masters.length?masters.map(u=>u.nome+' ('+u.email+')').join(', '):'Nenhum provisionado')+
+        '<button class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
+        '<button class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>');
+    }
+    function abrirDetalheUsuario(id){
+      const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
+      const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+      abrirDrawer('Usuário',u.nome||u.email||'Usuário',
+        info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
+        info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
+        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado'));
+    }
     function getMastersLocais(){
       const unicos=new Map();
       usuariosSistema.filter(u=>String(u.tipoUsuario||'').toLowerCase()==='master_local'&&
@@ -393,10 +769,10 @@
         if(!anterior||(u.id&&u.authUid&&u.id===u.authUid))unicos.set(chave,u);
       });
       return [...unicos.values()];
-    } function getUsuariosInternos(){return usuariosSistema.filter(u=>String(u.tipoUsuario||'').toLowerCase().includes('_integro')||u.usuarioInternoIntegro===true)} function byId(id){return document.getElementById(id)} function safe(id,fn){const e=byId(id);if(e)fn(e)} function val(id){return byId(id)?.value?.trim?.()||''} function setVal(id,v){if(byId(id))byId(id).value=v} function setText(id,v){if(byId(id))byId(id).innerText=v} function status(v){return String(v||'').toUpperCase()} function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} function limparBusca(id){if(byId(id))byId(id).value=''} function match(obj,termo,campos){if(!termo)return true;return campos.map(c=>String(obj[c]||'')).join(' ').toLowerCase().includes(termo)} function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))} function badge(s){const st=status(s||'ATIVO');const cls=st==='ATIVO'?'green':st==='BLOQUEADO'?'red':st==='INATIVO'?'orange':'';return `<span class="chip ${cls}">${esc(st)}</span>`} function empty(t){return `<div class="empty">${esc(t)}</div>`} function box(t,p){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong>${p?`<p class="muted" style="margin-top:5px">${esc(p)}</p>`:''}</div>`} function info(t,v){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong><p class="muted" style="margin-top:5px">${esc(v||'-')}</p></div>`} function dataCurta(v){try{if(v?.toDate)return v.toDate().toLocaleString('pt-BR'); if(v)return new Date(v).toLocaleString('pt-BR')}catch(e){}return '-'}
+    } function getUsuariosInternos(){return usuariosSistema.filter(u=>(String(u.tipoUsuario||'').toLowerCase().includes('_integro')||u.usuarioInternoIntegro===true)&&status(u.status)!=='PROVISIONADO')} function byId(id){return document.getElementById(id)} function safe(id,fn){const e=byId(id);if(e)fn(e)} function val(id){return byId(id)?.value?.trim?.()||''} function setVal(id,v){if(byId(id))byId(id).value=v} function setText(id,v){if(byId(id))byId(id).innerText=v} function status(v){return String(v||'').toUpperCase()} function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} function limparBusca(id){if(byId(id))byId(id).value=''} function match(obj,termo,campos){if(!termo)return true;return campos.map(c=>String(obj[c]||'')).join(' ').toLowerCase().includes(termo)} function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))} function badge(s){const st=status(s||'ATIVO');const cls=st==='ATIVO'?'green':st==='BLOQUEADO'?'red':st==='INATIVO'?'orange':'';return `<span class="chip ${cls}">${esc(st)}</span>`} function empty(t){return `<div class="empty">${esc(t)}</div>`} function box(t,p){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong>${p?`<p class="muted" style="margin-top:5px">${esc(p)}</p>`:''}</div>`} function info(t,v){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong><p class="muted" style="margin-top:5px">${esc(v||'-')}</p></div>`} function dataCurta(v){try{if(v?.toDate)return v.toDate().toLocaleString('pt-BR'); if(v)return new Date(v).toLocaleString('pt-BR')}catch(e){}return '-'}
 
     async function carregarLogs(){
-      logs = await getCol('logs',200,'criadoEm');
+      await carregarTudo();
       return logs;
     }
 
@@ -411,7 +787,7 @@
         }
       }catch(e){console.warn('Fallback eventos master global:', e);}
     });
-    Object.assign(window,{abrirFormCliente,salvarClienteIntegro,abrirFormMasterLocal,salvarMasterLocal,abrirFormUsuarioInterno,salvarUsuarioInterno,abrirFormDepartamento,salvarDepartamento,abrirFormPlano,salvarPlano,abrirFormNotificacao,salvarNotificacao,renderClientes,limparBusca,fecharDrawer,alternarAcessoCliente,ativarTesteCliente,alternarAcessoUsuario,marcarNotificacaoLida,salvarConfiguracoesGlobais,carregarLogs,renderLogs,abrirDetalheCliente,abrirDetalheUsuario});
+    Object.assign(window,{abrirFormCliente,salvarClienteIntegro,abrirFormMasterLocal,salvarMasterLocal,abrirFormUsuarioInterno,salvarUsuarioInterno,abrirFormDepartamento,salvarDepartamento,abrirFormPlano,salvarPlano,abrirFormNotificacao,salvarNotificacao,renderClientes,limparBusca,fecharDrawer,alternarAcessoCliente,ativarTesteCliente,alternarAcessoUsuario,marcarNotificacaoLida,salvarConfiguracoesGlobais,carregarLogs,renderLogs,abrirDetalheCliente,abrirDetalheUsuario,abrirEdicaoMasterLocal,exportarRelatorioGlobal,carregarChatGlobal,enviarMensagemGlobal});
   </script>
   <script src="js/integro-connectivity-guard.js?v=20261101-operacao3"></script>
 <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1"></script>

@@ -82,19 +82,20 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
         (telefone && (telefone.length < 10 || telefone.length > 13))) {
       erro("invalid-argument", "Informe nome, e-mail e telefone válidos.");
     }
-    if (planoId) {
-      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(planoId)) erro("invalid-argument", "Plano inválido.");
-      const plano = await db.collection("planos").doc(planoId).get();
-      if (!plano.exists || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(plano.data()?.status))) {
-        erro("failed-precondition", "Plano comercial não encontrado ou inativo.");
-      }
-    }
     const principal = db.collection("clientes_integro");
     const legado = db.collection("clientes_plataforma");
     const ref = id ? principal.doc(id) : principal.doc();
     const reserva = db.collection("documentos_clientes_integro").doc(documentoNormalizado);
     const existente = id ? await ref.get() : null;
     if (id && !existente.exists) erro("not-found", "Cliente ÍNTEGRO não encontrado.");
+    if (planoId) {
+      if (!/^[a-zA-Z0-9_-]{1,128}$/.test(planoId)) erro("invalid-argument", "Plano inválido.");
+      const plano = await db.collection("planos").doc(planoId).get();
+      if (!plano.exists || (["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(plano.data()?.status)) &&
+          !(id && existente.data()?.planoId === planoId))) {
+        erro("failed-precondition", "Plano comercial não encontrado ou inativo.");
+      }
+    }
     if (id && digits(existente.data()?.documento) !== documentoNormalizado) {
       erro("failed-precondition", "O documento de um cliente já cadastrado não pode ser alterado.");
     }
@@ -105,7 +106,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
       nome, razaoSocial: nome, email, emailNormalizado: email, telefone,
       atualizadoEm: agora(), atualizadoPorUid: autor.uid
     };
-    if (planoId) atualizacao.planoId = planoId;
+    atualizacao.planoId = planoId; // Permite desvincular plano explicitamente.
     if (id) {
       await db.runTransaction(async tx => {
         const [original, reservada] = await Promise.all([tx.get(ref), tx.get(reserva)]);
@@ -143,6 +144,41 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     return { ok: true, id: ref.id, criado: true };
   }
 
+  async function usuariosDoTenant(id) {
+    const q = await db.collection("usuarios").where("clientePlataformaId", "==", id).limit(351).get();
+    if (q.docs.length > 350) erro("resource-exhausted", "Empresa com mais de 350 usuários: bloqueio exige operação em lotes. Nenhuma alteração realizada.");
+    return q.docs;
+  }
+  async function sincronizarBloqueioUsuarios(tx, docs, id, bloqueada) {
+    // As Rules já bloqueiam acessoLiberado=false. Preservamos o estado individual
+    // anterior para não liberar usuário manualmente bloqueado após reativar empresa.
+    const atuais = await Promise.all(docs.map(doc => tx.get(doc.ref)));
+    atuais.forEach((snap, indice) => {
+      if (!snap.exists || snap.data()?.clientePlataformaId !== id) return;
+      const usuario = snap.data();
+      if (["master_global", "usuario_integro"].includes(usuario.tipoUsuario)) {
+        erro("failed-precondition", "Vínculo inválido: usuário da plataforma associado ao tenant.");
+      }
+      if (bloqueada) {
+        tx.set(docs[indice].ref, {
+          empresaBloqueada: true, acessoLiberado: false, status: "BLOQUEADO",
+          ...(usuario.empresaBloqueada !== true ? {
+            acessoAntesBloqueioPlataforma: usuario.acessoLiberado === true,
+            statusAntesBloqueioPlataforma: usuario.status || "ATIVO"
+          } : {})
+        }, { merge: true });
+      } else if (usuario.empresaBloqueada === true) {
+        tx.set(docs[indice].ref, {
+          empresaBloqueada: false,
+          acessoLiberado: usuario.acessoAntesBloqueioPlataforma === true,
+          status: usuario.statusAntesBloqueioPlataforma || "BLOQUEADO",
+          acessoAntesBloqueioPlataforma: null,
+          statusAntesBloqueioPlataforma: null
+        }, { merge: true });
+      }
+    });
+  }
+
   async function alterarAcesso(dados, contexto) {
     const autor = await autorGlobal(contexto);
     const id = txt(dados?.id);
@@ -150,9 +186,15 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     const liberado = dados?.liberado;
     if (typeof liberado !== "boolean") erro("invalid-argument", "Informe o estado de acesso.");
     const ref = db.collection("clientes_integro").doc(id);
+    const usuarios = await usuariosDoTenant(id);
     await db.runTransaction(async tx => {
       const atual = await tx.get(ref);
       if (!atual.exists) erro("not-found", "Cliente não encontrado.");
+      if (liberado && atual.data()?.testeAtivo === true && atual.data()?.dataFimTeste &&
+          Date.parse(atual.data().dataFimTeste) <= Date.now()) {
+        erro("failed-precondition", "Teste expirado. Ative novo teste antes de liberar a empresa.");
+      }
+      await sincronizarBloqueioUsuarios(tx, usuarios, id, !liberado);
       const patch = { acessoLiberado: liberado, status: liberado ? "ATIVO" : "BLOQUEADO",
         atualizadoEm: agora(), atualizadoPorUid: autor.uid };
       tx.set(ref, patch, { merge: true });
@@ -174,9 +216,11 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     }
     const inicio = new Date(), fim = new Date(inicio.getTime() + dias * 86400000);
     const ref = db.collection("clientes_integro").doc(id);
+    const usuarios = await usuariosDoTenant(id);
     await db.runTransaction(async tx => {
       const atual = await tx.get(ref);
       if (!atual.exists) erro("not-found", "Cliente não encontrado.");
+      await sincronizarBloqueioUsuarios(tx, usuarios, id, false);
       const patch = { testeAtivo: true, dataInicioTeste: inicio.toISOString(), dataFimTeste: fim.toISOString(),
         dataFimTesteEm: admin.firestore.Timestamp.fromDate(fim),
         acessoLiberado: true, status: "ATIVO", atualizadoEm: agora(), atualizadoPorUid: autor.uid };
@@ -250,7 +294,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
           tipoUsuario: "master_local", tipoUsuarioOficial: "master_local",
           perfilLegado: "master_local", cargoChave: "master_local", cargoNome: "Master Local",
           clientePlataformaId: clienteId, clientePlataformaNome: empresaNome, empresaNome,
-          status: "ATIVO", acessoLiberado: true, ativo: true, convitePendente: false,
+          status: "ATIVO", acessoLiberado: true, ativo: true, empresaBloqueada: false, convitePendente: false,
           provisionamentoAuth: "PROVISIONADO", criadoPorUid: autor.uid, criadoEm: agora()
         });
         if (!empresaAtual.data().masterLocalAuthUid) {

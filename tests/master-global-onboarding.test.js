@@ -167,7 +167,14 @@ test("Master Local recebe conta Auth canônica, empresa correta e auditoria", as
 test("bloqueio e teste sincronizam empresas e impedem Master Local bloqueado", async () => {
   const c = ambiente();
   const { id } = await c.api.salvarCliente(cliente, c.contexto);
+  c.dados.set("usuarios/vendedor-do-tenant", {
+    authUid: "vendedor-do-tenant", tipoUsuario: "vendedor",
+    clientePlataformaId: id, acessoLiberado: true
+  });
   await c.api.alterarAcesso({ id, liberado: false }, c.contexto);
+  assert.equal(c.dados.get("usuarios/vendedor-do-tenant").empresaBloqueada, true);
+  assert.equal(c.dados.get("usuarios/vendedor-do-tenant").acessoLiberado, false);
+  assert.equal(c.dados.get("usuarios/vendedor-do-tenant").acessoAntesBloqueioPlataforma, true);
   assert.equal(c.dados.get("clientes_integro/" + id).status, "BLOQUEADO");
   assert.equal(c.dados.get("clientes_plataforma/" + id).acessoLiberado, false);
   await assert.rejects(c.api.criarMasterLocal({ clienteId: id, nome: "Bloqueado", email: "bloqueado@empresa.com.br" }, c.contexto),
@@ -175,6 +182,8 @@ test("bloqueio e teste sincronizam empresas e impedem Master Local bloqueado", a
   await c.api.ativarTeste({ id, dias: 7 }, c.contexto);
   assert.equal(c.dados.get("clientes_integro/" + id).testeAtivo, true);
   assert.equal(c.dados.get("clientes_plataforma/" + id).acessoLiberado, true);
+  assert.equal(c.dados.get("usuarios/vendedor-do-tenant").empresaBloqueada, false);
+  assert.equal(c.dados.get("usuarios/vendedor-do-tenant").acessoLiberado, true);
 });
 
 test("falha de transação após criação Auth reverte conta nova", async () => {
@@ -233,4 +242,19 @@ test("lista global de Masters não conta convite provisionado em duplicidade", (
   const ctx = { usuariosSistema, Map, String, status: valor => String(valor || "").toUpperCase() };
   const listar = vm.runInNewContext(html.slice(a, b) + "\n;getMastersLocais", ctx);
   assert.deepEqual(Array.from(listar(), u => u.id), ["uid-1", "uid-2"]);
+});
+
+test("bloqueio do tenant preserva bloqueios individuais ao reativar", async () => {
+  const c = ambiente();
+  const { id } = await c.api.salvarCliente(cliente, c.contexto);
+  c.dados.set("usuarios/vendedor-inativo", {
+    authUid: "vendedor-inativo", tipoUsuario: "vendedor",
+    clientePlataformaId: id, acessoLiberado: false, status: "BLOQUEADO"
+  });
+  await c.api.alterarAcesso({ id, liberado: false }, c.contexto);
+  assert.equal(c.dados.get("usuarios/vendedor-inativo").acessoAntesBloqueioPlataforma, false);
+  await c.api.alterarAcesso({ id, liberado: true }, c.contexto);
+  assert.equal(c.dados.get("usuarios/vendedor-inativo").empresaBloqueada, false);
+  assert.equal(c.dados.get("usuarios/vendedor-inativo").acessoLiberado, false);
+  assert.equal(c.dados.get("usuarios/vendedor-inativo").status, "BLOQUEADO");
 });

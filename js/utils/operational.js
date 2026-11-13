@@ -175,6 +175,7 @@
 
     let rotaPadrao = "";
     if (tipoUsuarioOficial === "master_global") rotaPadrao = "master-global.html";
+    if (tipoUsuarioOficial === "usuario_integro") rotaPadrao = "usuario-integro.html";
     if (tipoUsuarioOficial === "master_local") rotaPadrao = "master-local.html";
     if (tipoUsuarioOficial === "usuario_cliente") rotaPadrao = "master-local.html";
 

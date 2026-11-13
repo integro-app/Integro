@@ -12,6 +12,8 @@ const dbSessaoProtegida = sessionAuthorization.db;
 
 const { criarOnboardingMasterGlobal } = require("./master-global-onboarding");
 const onboardingGlobal = criarOnboardingMasterGlobal({ admin, functions, db: dbSessaoProtegida });
+const { criarGestaoMasterGlobal } = require("./master-global-management");
+const gestaoGlobal = criarGestaoMasterGlobal({ admin, functions, db: dbSessaoProtegida });
 // O Firebase do projeto não permite criar novos endpoints por IAM.
 // Rotas globais seguem a callable existente com invoker autorizado,
 // mantendo a validação de sessão e o papel master_global no servidor.
@@ -27,6 +29,7 @@ function senhaTemporaria() {
 exports.provisionarUsuario = functions
   .region("southamerica-east1")
   .https.onCall(async (dados, contexto) => {
+    await sessionAuthorization.validate(contexto);
     if (!contexto.auth?.uid) erroHttps("unauthenticated", "Sessao nao autenticada.");
 
     const conviteId = String(dados?.conviteId || "").trim();
@@ -44,13 +47,15 @@ exports.provisionarUsuario = functions
     if (
       autor.authUid !== contexto.auth.uid ||
       autor.tipoUsuario !== "master_local" ||
-      autor.acessoLiberado !== true ||
+      autor.acessoLiberado !== true || autor.empresaBloqueada === true ||
       ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(String(autor.status || "").toUpperCase()) ||
       !tenant || String(convite.clientePlataformaId || "") !== tenant
     ) {
       erroHttps("permission-denied", "Sem permissao para provisionar este usuario.");
     }
 
+    const { exigirEmpresaOperacional } = require("./company-access");
+    await exigirEmpresaOperacional({ db, functions, usuario: autor, tenantId: tenant });
     const email = String(convite.emailNormalizado || convite.email || "").trim().toLowerCase();
     if (!email) erroHttps("failed-precondition", "Convite sem e-mail valido.");
     if (!["CONVITE_PENDENTE", "PROVISIONADO"].includes(String(convite.status || ""))) {
@@ -85,6 +90,7 @@ exports.provisionarUsuario = functions
       emailNormalizado: email,
       status: "ATIVO",
       acessoLiberado: true,
+      empresaBloqueada: false,
       convitePendente: false,
       provisionamentoAuth: "PROVISIONADO",
       conviteOrigemId: conviteId,
@@ -229,7 +235,20 @@ exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").h
       salvarCliente: onboardingGlobal.salvarCliente,
       alterarAcesso: onboardingGlobal.alterarAcesso,
       ativarTeste: onboardingGlobal.ativarTeste,
-      criarMasterLocal: onboardingGlobal.criarMasterLocal
+      criarMasterLocal: onboardingGlobal.criarMasterLocal,
+      listarPainel: gestaoGlobal.listarPainel,
+      salvarDepartamento: gestaoGlobal.salvarDepartamento,
+      salvarPlano: gestaoGlobal.salvarPlano,
+      salvarConfiguracoes: gestaoGlobal.salvarConfiguracoes,
+      salvarUsuarioInterno: gestaoGlobal.salvarUsuarioInterno,
+      provisionarInternoLegado: gestaoGlobal.provisionarInternoLegado,
+      editarMasterLocal: gestaoGlobal.editarMasterLocal,
+      alterarAcessoUsuario: gestaoGlobal.alterarAcessoUsuario,
+      criarNotificacao: gestaoGlobal.criarNotificacao,
+      marcarNotificacaoLida: gestaoGlobal.marcarNotificacaoLida,
+      listarAvisosInternos: gestaoGlobal.listarAvisosInternos,
+      listarChat: gestaoGlobal.listarChat,
+      enviarChat: gestaoGlobal.enviarChat
     };
     const acao = String(dados?.acao || "");
     const handler = Object.prototype.hasOwnProperty.call(handlers, acao) ? handlers[acao] : null;

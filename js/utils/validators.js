@@ -22,7 +22,9 @@ const Validators = {
       : null;
 
     const tenantId = String(usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId || "").trim();
-    const isMasterGlobal = acesso?.isMasterGlobal || String(usuario.tipoUsuario || usuario.tipo || "").toLowerCase() === "master_global";
+    const tipoUsuarioPlataforma = String(usuario.tipoUsuario || usuario.tipo || "").toLowerCase();
+    const isUsuarioPlataforma = acesso?.isMasterGlobal || acesso?.isUsuarioIntegro ||
+      ["master_global", "usuario_integro"].includes(tipoUsuarioPlataforma);
     const perfilValido = Boolean(
       acesso?.tipoUsuarioOficial ||
       usuario.tipoUsuario ||
@@ -39,7 +41,7 @@ const Validators = {
       };
     }
 
-    if (!isMasterGlobal && !tenantId) {
+    if (!isUsuarioPlataforma && !tenantId) {
       return {
         ok: false,
         mensagem: "Cadastro operacional sem empresa vinculada. Procure o administrador."
