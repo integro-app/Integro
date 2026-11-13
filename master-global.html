@@ -472,11 +472,101 @@
       }catch(erro){console.error('[MASTER GLOBAL] Criação Master Local',erro);notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
     }
-    function abrirFormUsuarioInterno(){abrirDrawer('Novo usuário interno','Equipe da empresa ÍNTEGRO',`<div class="grid"><div class="field-grid"><div><label class="form-label">Nome</label><input id="uiNome" class="form-input"></div><div><label class="form-label">Email</label><input id="uiEmail" class="form-input"></div></div><div><label class="form-label">Tipo interno</label><select id="uiTipo" class="form-select"><option value="interno_integro">Interno ÍNTEGRO</option><option value="comercial_integro">Comercial ÍNTEGRO</option><option value="financeiro_integro">Financeiro ÍNTEGRO</option><option value="suporte_integro">Suporte ÍNTEGRO</option></select></div><button class="btn btn-primary" onclick="salvarUsuarioInterno()">Salvar usuário</button></div>`)}
-    async function salvarUsuarioInterno(){if(!fireOk)return notificarIntegro('Firebase não carregado.');const tipoInterno=val('uiTipo');const cargoInterno={interno_integro:'Interno ÍNTEGRO',comercial_integro:'Comercial ÍNTEGRO',financeiro_integro:'Financeiro ÍNTEGRO',suporte_integro:'Suporte ÍNTEGRO'}[tipoInterno]||'Usuário ÍNTEGRO';const dados={nome:val('uiNome'),email:val('uiEmail'),tipoUsuario:'usuario_integro',tipoUsuarioOficial:'usuario_integro',tipoUsuarioLegado:tipoInterno,perfilLegado:tipoInterno,cargoChave:tipoInterno,cargoNome:cargoInterno,usuarioInternoIntegro:true,status:'ATIVO',acessoLiberado:true,criadoEm:firebase.firestore.FieldValue.serverTimestamp()};if(!dados.nome||!dados.email)return notificarIntegro('Informe nome e email.');await mgDb.collection('usuarios').add(dados);await log('CRIAR_USUARIO_INTERNO',dados.email);fecharDrawer();await carregarTudo()}
-    function abrirFormDepartamento(){abrirDrawer('Novo departamento','Estrutura interna',`<div class="grid"><label class="form-label">Nome</label><input id="depNome" class="form-input"><label class="form-label">Descrição</label><textarea id="depDescricao" class="form-textarea"></textarea><button class="btn btn-primary" onclick="salvarDepartamento()">Salvar</button></div>`)} async function salvarDepartamento(){if(!fireOk)return notificarIntegro('Firebase não carregado.');await mgDb.collection('departamentos_integro').add({nome:val('depNome'),descricao:val('depDescricao'),status:'ATIVO',criadoEm:firebase.firestore.FieldValue.serverTimestamp()});fecharDrawer();await carregarTudo()}
-    function abrirFormPlano(){abrirDrawer('Novo plano','Plano comercial',`<div class="grid"><label class="form-label">Nome</label><input id="plNome" class="form-input"><label class="form-label">Valor mensal</label><input id="plValor" type="number" class="form-input"><label class="form-label">Descrição</label><textarea id="plDescricao" class="form-textarea"></textarea><button class="btn btn-primary" onclick="salvarPlano()">Salvar</button></div>`)} async function salvarPlano(){if(!fireOk)return notificarIntegro('Firebase não carregado.');await mgDb.collection('planos').add({nome:val('plNome'),valorMensal:Number(val('plValor')||0),descricao:val('plDescricao'),status:'ATIVO',criadoEm:firebase.firestore.FieldValue.serverTimestamp()});fecharDrawer();await carregarTudo()}
-    function abrirFormNotificacao(){abrirDrawer('Nova notificação','Aviso global',`<div class="grid"><label class="form-label">Título</label><input id="notTitulo" class="form-input"><label class="form-label">Mensagem</label><textarea id="notMensagem" class="form-textarea"></textarea><button class="btn btn-primary" onclick="salvarNotificacao()">Enviar</button></div>`)} async function salvarNotificacao(){if(!fireOk)return notificarIntegro('Firebase não carregado.');await mgDb.collection('notificacoes').add({titulo:val('notTitulo'),mensagem:val('notMensagem'),status:'PENDENTE',publico:'GLOBAL',criadoEm:firebase.firestore.FieldValue.serverTimestamp()});fecharDrawer();await carregarTudo()}
+    async function executarAcaoGlobal(acao,dados,mensagem,{manterDrawer=false}={}){
+      if(processandoCadastroGlobal)return false;
+      processandoCadastroGlobal=true;
+      try{
+        await chamarGestaoGlobal(acao,dados);
+        await carregarTudo();
+        if(!manterDrawer)fecharDrawer();
+        if(mensagem)notificarIntegro(mensagem);
+        return true;
+      }catch(erro){
+        console.error('[MASTER GLOBAL] '+acao,erro);
+        notificarIntegro(mensagemErroGlobal(erro));
+        return false;
+      }finally{processandoCadastroGlobal=false;}
+    }
+    function abrirFormUsuarioInterno(id=null){
+      const u=id?usuariosSistema.find(x=>x.id===id&&x.tipoUsuario==='usuario_integro'):null;
+      if(id&&!u)return notificarIntegro('Usuário interno não encontrado.');
+      const deps=departamentos.filter(d=>status(d.status)!=='INATIVO'||d.id===u?.departamentoId);
+      const options=deps.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.nome||'Departamento')+'</option>').join('');
+      abrirDrawer(id?'Editar usuário interno':'Novo usuário interno','Conta real no Firebase Authentication',
+        '<div class="grid"><div class="field-grid"><div><label class="form-label">Nome</label><input id="uiNome" class="form-input" maxlength="180" value="'+esc(u?.nome||'')+'"></div>'+
+        '<div><label class="form-label">E-mail de login</label><input id="uiEmail" type="email" class="form-input" maxlength="254" value="'+esc(u?.email||'')+'" '+(id?'readonly':'')+'></div></div>'+
+        '<div><label class="form-label">Cargo interno</label><select id="uiTipo" class="form-select">'+
+        '<option value="interno_integro">Interno ÍNTEGRO</option><option value="comercial_integro">Comercial ÍNTEGRO</option>'+
+        '<option value="financeiro_integro">Financeiro ÍNTEGRO</option><option value="suporte_integro">Suporte ÍNTEGRO</option></select></div>'+
+        '<div><label class="form-label">Departamento</label><select id="uiDepartamento" class="form-select"><option value="">Sem departamento</option>'+options+'</select></div>'+
+        '<div class="notice">O usuário será autenticado pelo Firebase e não terá acesso a dados de outra empresa por associação de e-mail. A senha será definida pelo próprio usuário.</div>'+
+        '<button class="btn btn-primary" id="btnSalvarInterno">Salvar usuário</button></div>');
+      setVal('uiTipo',u?.cargoChave||'interno_integro');setVal('uiDepartamento',u?.departamentoId||'');
+      byId('btnSalvarInterno').onclick=()=>salvarUsuarioInterno(id);
+    }
+    async function salvarUsuarioInterno(id=null){
+      if(processandoCadastroGlobal)return;
+      const dados={id:id||'',nome:val('uiNome'),email:val('uiEmail').toLowerCase(),
+        tipoInterno:val('uiTipo'),departamentoId:val('uiDepartamento')};
+      if(!dados.nome||!dados.email)return notificarIntegro('Informe nome e e-mail.');
+      processandoCadastroGlobal=true;
+      try{
+        const r=await chamarGestaoGlobal('salvarUsuarioInterno',dados);
+        if(!r.authUid)throw new Error('O servidor não confirmou a conta Auth.');
+        const enviado=id?true:await enviarAcessoMasterLocal(dados.email);
+        try{await carregarTudo();}catch(e){console.warn('[MASTER GLOBAL] Atualização de listagem pendente',e);}
+        abrirDrawer(id?'Usuário atualizado':'Usuário interno criado',dados.nome,
+          '<div class="notice">'+(id?'Dados salvos no Firebase.':(enviado?'Conta criada e link de definição de senha enviado.':'Conta criada, mas o envio do link precisa ser repetido.'))+'</div>'+
+          '<div class="empty">'+esc(dados.email)+'</div>'+
+          '<button class="btn btn-primary" id="btnReenviarInterno">Enviar link de acesso</button>'+
+          '<button class="btn btn-light" onclick="fecharDrawer()">Concluir</button>');
+        byId('btnReenviarInterno').onclick=()=>enviarAcessoMasterLocal(dados.email);
+      }catch(e){notificarIntegro(mensagemErroGlobal(e));}
+      finally{processandoCadastroGlobal=false;}
+    }
+    function abrirFormDepartamento(id=null){
+      const d=id?departamentos.find(x=>x.id===id):null;
+      if(id&&!d)return notificarIntegro('Departamento não encontrado.');
+      abrirDrawer(id?'Editar departamento':'Novo departamento','Estrutura interna da plataforma',
+        '<div class="grid"><label class="form-label">Nome</label><input id="depNome" class="form-input" maxlength="100" value="'+esc(d?.nome||'')+'">'+
+        '<label class="form-label">Descrição</label><textarea id="depDescricao" maxlength="500" class="form-textarea">'+esc(d?.descricao||'')+'</textarea>'+
+        '<label class="form-label">Situação</label><select id="depStatus" class="form-select"><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option></select>'+
+        '<button class="btn btn-primary" id="btnSalvarDepartamento">Salvar departamento</button></div>');
+      setVal('depStatus',d?.status||'ATIVO');
+      byId('btnSalvarDepartamento').onclick=()=>salvarDepartamento(id);
+    }
+    async function salvarDepartamento(id=null){
+      await executarAcaoGlobal('salvarDepartamento',{id:id||'',nome:val('depNome'),
+        descricao:val('depDescricao'),status:val('depStatus')},'Departamento salvo.');
+    }
+    function abrirFormPlano(id=null){
+      const p=id?planos.find(x=>x.id===id):null;
+      if(id&&!p)return notificarIntegro('Plano não encontrado.');
+      abrirDrawer(id?'Editar plano':'Novo plano','Plano comercial do SaaS',
+        '<div class="grid"><label class="form-label">Nome</label><input id="plNome" class="form-input" maxlength="100" value="'+esc(p?.nome||'')+'">'+
+        '<label class="form-label">Valor mensal (R$)</label><input id="plValor" type="number" min="0" max="1000000" step="0.01" class="form-input" value="'+esc(p?.valorMensal??p?.valor??0)+'">'+
+        '<label class="form-label">Descrição</label><textarea id="plDescricao" maxlength="1000" class="form-textarea">'+esc(p?.descricao||'')+'</textarea>'+
+        '<label class="form-label">Situação</label><select id="plStatus" class="form-select"><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option></select>'+
+        '<div class="notice">Mensalidade cadastrada não é pagamento recebido. Planos inativos deixam de estar disponíveis para novos vínculos.</div>'+
+        '<button class="btn btn-primary" id="btnSalvarPlano">Salvar plano</button></div>');
+      setVal('plStatus',p?.status||'ATIVO');
+      byId('btnSalvarPlano').onclick=()=>salvarPlano(id);
+    }
+    async function salvarPlano(id=null){
+      await executarAcaoGlobal('salvarPlano',{id:id||'',nome:val('plNome'),
+        valorMensal:val('plValor'),descricao:val('plDescricao'),status:val('plStatus')},'Plano salvo.');
+    }
+    function abrirFormNotificacao(){
+      abrirDrawer('Nova notificação global','Aviso para a administração da plataforma',
+        '<div class="grid"><label class="form-label">Título</label><input id="notTitulo" class="form-input" maxlength="120">'+
+        '<label class="form-label">Mensagem</label><textarea id="notMensagem" maxlength="2000" class="form-textarea"></textarea>'+
+        '<div class="notice">Este aviso é global da plataforma, não uma cobrança ou notificação individual de clientes operacionais.</div>'+
+        '<button class="btn btn-primary" id="btnEnviarNotificacao">Publicar aviso</button></div>');
+      byId('btnEnviarNotificacao').onclick=salvarNotificacao;
+    }
+    async function salvarNotificacao(){
+      await executarAcaoGlobal('criarNotificacao',{titulo:val('notTitulo'),mensagem:val('notMensagem')},'Aviso global publicado.');
+    }
     async function alternarAcessoCliente(id){
       const cliente=clientesIntegro.find(c=>c.id===id);
       if(!cliente)return;
