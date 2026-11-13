@@ -225,6 +225,7 @@
             'ver-usuario':()=>abrirDetalheUsuario(id),
             'editar-master':()=>abrirEdicaoMasterLocal(id),
             'editar-interno':()=>abrirFormUsuarioInterno(id),
+            'provisionar-interno':()=>provisionarInternoLegado(id),
             'acesso-usuario':()=>alternarAcessoUsuario(id),
             'ler-notificacao':()=>marcarNotificacaoLida(id),
             'editar-cliente':()=>abrirFormCliente(id),
@@ -455,7 +456,9 @@
         (provisionado?
           '<button class="btn btn-light" data-mg-action="'+(tipo==='master'?'editar-master':'editar-interno')+'" data-id="'+esc(u.id)+'">Editar</button>'+
           (bloqueioEmpresa?'<span class="chip">Acesso gerenciado pela empresa</span>':
-            '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>'):'')+
+            '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>'):
+          (tipo==='interno'&&status(u.status)!=='PROVISIONADO'?
+            '<button class="btn btn-primary" data-mg-action="provisionar-interno" data-id="'+esc(u.id)+'">Provisionar Auth</button>':''))+
         '</div></div>';
     }
     function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
@@ -603,6 +606,25 @@
       }catch(e){notificarIntegro(mensagemErroGlobal(e));}
       finally{processandoCadastroGlobal=false;}
     }
+    async function provisionarInternoLegado(id){
+      const legado=usuariosSistema.find(u=>u.id===id);
+      if(!legado||legado.authUid)return notificarIntegro('Este cadastro já possui conta Auth ou não existe.');
+      if(!confirm('Criar conta Firebase para '+(legado.nome||legado.email)+' e inativar o cadastro legado?'))return;
+      if(processandoCadastroGlobal)return;
+      processandoCadastroGlobal=true;
+      try{
+        const r=await chamarGestaoGlobal('provisionarInternoLegado',{id});
+        if(!r.authUid)throw new Error('Provisionamento não confirmado.');
+        const enviado=await enviarAcessoMasterLocal(r.email);
+        try{await carregarTudo();}catch(e){console.warn('[MASTER GLOBAL] Listagem pendente',e);}
+        abrirDrawer('Usuário legado regularizado',legado.nome||legado.email,
+          '<div class="notice">Conta Auth vinculada ao UID '+esc(r.authUid)+
+          (enviado?'. Link de senha enviado.':'. O envio do link precisa ser repetido.')+'</div>'+
+          '<button class="btn btn-primary" id="btnReenviarLegado">Reenviar link de acesso</button>');
+        byId('btnReenviarLegado').onclick=()=>enviarAcessoMasterLocal(r.email);
+      }catch(e){notificarIntegro(mensagemErroGlobal(e));}
+      finally{processandoCadastroGlobal=false;}
+    }
     function abrirFormDepartamento(id=null){
       const d=id?departamentos.find(x=>x.id===id):null;
       if(id&&!d)return notificarIntegro('Departamento não encontrado.');
@@ -747,7 +769,7 @@
         if(!anterior||(u.id&&u.authUid&&u.id===u.authUid))unicos.set(chave,u);
       });
       return [...unicos.values()];
-    } function getUsuariosInternos(){return usuariosSistema.filter(u=>String(u.tipoUsuario||'').toLowerCase().includes('_integro')||u.usuarioInternoIntegro===true)} function byId(id){return document.getElementById(id)} function safe(id,fn){const e=byId(id);if(e)fn(e)} function val(id){return byId(id)?.value?.trim?.()||''} function setVal(id,v){if(byId(id))byId(id).value=v} function setText(id,v){if(byId(id))byId(id).innerText=v} function status(v){return String(v||'').toUpperCase()} function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} function limparBusca(id){if(byId(id))byId(id).value=''} function match(obj,termo,campos){if(!termo)return true;return campos.map(c=>String(obj[c]||'')).join(' ').toLowerCase().includes(termo)} function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))} function badge(s){const st=status(s||'ATIVO');const cls=st==='ATIVO'?'green':st==='BLOQUEADO'?'red':st==='INATIVO'?'orange':'';return `<span class="chip ${cls}">${esc(st)}</span>`} function empty(t){return `<div class="empty">${esc(t)}</div>`} function box(t,p){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong>${p?`<p class="muted" style="margin-top:5px">${esc(p)}</p>`:''}</div>`} function info(t,v){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong><p class="muted" style="margin-top:5px">${esc(v||'-')}</p></div>`} function dataCurta(v){try{if(v?.toDate)return v.toDate().toLocaleString('pt-BR'); if(v)return new Date(v).toLocaleString('pt-BR')}catch(e){}return '-'}
+    } function getUsuariosInternos(){return usuariosSistema.filter(u=>(String(u.tipoUsuario||'').toLowerCase().includes('_integro')||u.usuarioInternoIntegro===true)&&status(u.status)!=='PROVISIONADO')} function byId(id){return document.getElementById(id)} function safe(id,fn){const e=byId(id);if(e)fn(e)} function val(id){return byId(id)?.value?.trim?.()||''} function setVal(id,v){if(byId(id))byId(id).value=v} function setText(id,v){if(byId(id))byId(id).innerText=v} function status(v){return String(v||'').toUpperCase()} function moeda(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})} function limparBusca(id){if(byId(id))byId(id).value=''} function match(obj,termo,campos){if(!termo)return true;return campos.map(c=>String(obj[c]||'')).join(' ').toLowerCase().includes(termo)} function esc(s){return String(s??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]))} function badge(s){const st=status(s||'ATIVO');const cls=st==='ATIVO'?'green':st==='BLOQUEADO'?'red':st==='INATIVO'?'orange':'';return `<span class="chip ${cls}">${esc(st)}</span>`} function empty(t){return `<div class="empty">${esc(t)}</div>`} function box(t,p){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong>${p?`<p class="muted" style="margin-top:5px">${esc(p)}</p>`:''}</div>`} function info(t,v){return `<div class="empty" style="border-style:solid"><strong>${esc(t)}</strong><p class="muted" style="margin-top:5px">${esc(v||'-')}</p></div>`} function dataCurta(v){try{if(v?.toDate)return v.toDate().toLocaleString('pt-BR'); if(v)return new Date(v).toLocaleString('pt-BR')}catch(e){}return '-'}
 
     async function carregarLogs(){
       await carregarTudo();
