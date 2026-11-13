@@ -15,23 +15,11 @@ service firebase.storage {
       return firestore.get(/databases/(default)/documents/usuarios/$(request.auth.uid)).data;
     }
 
-    function tenantLiberadoNoStorage() {
-      let caminho = /databases/(default)/documents/clientes_integro/$(userTenantId());
-      let empresa = userTenantId() is string && userTenantId().size() > 0 &&
-        firestore.exists(caminho) ? firestore.get(caminho).data : {};
-      return isMasterGlobal() || userDoc().get("tipoUsuario", "") == "usuario_integro" ||
-        (userTenantId() is string && userTenantId().size() > 0 &&
-          empresa.get("acessoLiberado", true) != false &&
-          (empresa.get("testeAtivo", false) != true ||
-            !("dataFimTesteEm" in empresa) || empresa.dataFimTesteEm > request.time));
-    }
-
     function isActiveUser() {
       return hasUserDoc() &&
         userDoc().get("authUid", "") == request.auth.uid &&
         userDoc().get("acessoLiberado", false) == true &&
-        !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        tenantLiberadoNoStorage();
+        !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]);
     }
 
     function userTenantId() {
