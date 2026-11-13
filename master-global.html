@@ -275,14 +275,116 @@
       }
       return true;
     }
-    function renderDashboard(){const ativos=clientesIntegro.filter(clienteLiberadoGlobal).length;const bloqueados=clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).length;const teste=clientesIntegro.filter(c=>c.testeAtivo===true&&clienteLiberadoGlobal(c)).length;const masters=getMastersLocais().length,internos=getUsuariosInternos().length,pend=notificacoes.filter(n=>!['LIDA','RESOLVIDA'].includes(status(n.status))).length;setText('kpiClientes',clientesIntegro.length);setText('kpiAtivos',ativos);setText('kpiTeste',teste);setText('kpiMasters',masters);setText('kpiBloqueados',bloqueados);setText('kpiInternos',internos);setText('kpiPlanos',planos.length);setText('kpiNotificacoes',pend);setText('badgeNotificacoes',pend);setText('notificationCount',pend);byId('resumoOperacional').innerHTML=[box('Clientes ativos',ativos+' com acesso liberado'),box('Masters locais',masters+' administrador(es)'),box('Usuários internos',internos+' funcionário(s)')].join('');byId('alertasGlobais').innerHTML=(bloqueados||teste)?[bloqueados?box('Clientes bloqueados',bloqueados+' sem acesso'):'',teste?box('Clientes em teste',teste+' em período experimental'):''].join(''):empty('Nenhum alerta crítico no momento.')}
+    function notificacaoLidaGlobal(n){
+      return (n.lidaPorUids||[]).includes(usuarioLogado?.authUid)||['LIDA','RESOLVIDA'].includes(status(n.status));
+    }
+    function renderDashboard(){
+      const ativos=clientesIntegro.filter(clienteLiberadoGlobal).length;
+      const bloqueados=clientesIntegro.length-ativos;
+      const teste=clientesIntegro.filter(c=>c.testeAtivo===true&&clienteLiberadoGlobal(c)).length;
+      const masters=getMastersLocais().filter(u=>u.id===u.authUid).length;
+      const internos=getUsuariosInternos().filter(u=>u.id===u.authUid).length;
+      const pend=notificacoes.filter(n=>!notificacaoLidaGlobal(n)).length;
+      [['kpiClientes',clientesIntegro.length],['kpiAtivos',ativos],['kpiTeste',teste],
+        ['kpiMasters',masters],['kpiBloqueados',bloqueados],['kpiInternos',internos],
+        ['kpiPlanos',planos.filter(p=>status(p.status)!=='INATIVO').length],
+        ['kpiNotificacoes',pend],['badgeNotificacoes',pend],['notificationCount',pend]]
+        .forEach(([id,valor])=>setText(id,valor));
+      const badgeGlobal=byId('badgeNotificacoes');
+      if(badgeGlobal)badgeGlobal.style.display=pend?'':'none';
+      byId('resumoOperacional').innerHTML=[
+        box('Clientes com acesso contratual ativo',ativos+' de '+clientesIntegro.length),
+        box('Masters Locais provisionados',masters+' contas Auth vinculadas'),
+        box('Usuários internos provisionados',internos+' contas Auth'),
+        box('Última consulta',atualizadoEmGlobal?dataCurta(atualizadoEmGlobal):'Sem confirmação')
+      ].join('');
+      byId('alertasGlobais').innerHTML=(bloqueados||teste)?
+        [bloqueados?box('Clientes sem acesso contratual',bloqueados+' bloqueados ou expirados'):'',
+          teste?box('Períodos de teste ativos',teste+' clientes em avaliação'):''].join(''):
+        empty('Nenhum alerta contratual nos cadastros carregados.');
+    }
     function renderClientes(){const termo=val('buscaClientes').toLowerCase();let lista=clientesIntegro.filter(c=>match(c,termo,['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone']));setText('contadorClientes',`${lista.length} cliente(s) exibido(s).`);byId('listaClientes').innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente encontrado.')}
     function renderMasters(){const lista=getMastersLocais();byId('listaMasters').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
     function renderUsuariosInternos(){const lista=getUsuariosInternos();byId('listaUsuarios').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'interno')).join(''):empty('Nenhum usuário interno encontrado.')}
-    function renderDepartamentos(){byId('listaDepartamentos').innerHTML=departamentos.length?departamentos.map(d=>`<div class="list-card"><div class="list-bar" style="background:#7c3aed"></div><div><h3>${esc(d.nome||'Departamento')}</h3><p class="muted">${esc(d.descricao||'Sem descrição')}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirFormDepartamento('${d.id}')">Editar</button></div></div>`).join(''):empty('Nenhum departamento cadastrado.')}
-    function renderPlanos(){byId('listaPlanos').innerHTML=planos.length?planos.map(p=>`<div class="list-card"><div class="list-bar" style="background:#22c55e"></div><div><h3>${esc(p.nome||'Plano')}</h3><p class="muted">${moeda(p.valorMensal||p.valor||0)} / mês ? ${esc(p.descricao||'')}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirFormPlano('${p.id}')">Editar</button></div></div>`).join(''):empty('Nenhum plano cadastrado.')}
-    function renderNotificacoes(){byId('listaNotificacoes').innerHTML=notificacoes.length?notificacoes.map(n=>`<div class="list-card"><div class="list-bar" style="background:#ff6b00"></div><div><h3>${esc(n.titulo||n.tipo||'Notificação')}</h3><p class="muted">${esc(n.mensagem||n.descricao||'')} • ${esc(n.status||'PENDENTE')}</p></div><div class="list-actions"><button class="btn btn-success" onclick="marcarNotificacaoLida('${n.id}')">Lida</button></div></div>`).join(''):empty('Nenhuma notificação encontrada.')}
-    function renderLogs(){byId('listaLogs').innerHTML=logs.length?logs.map(l=>`<div class="list-card"><div class="list-bar" style="background:#0ea5e9"></div><div><h3>${esc(l.tipoAcao||l.tipo||'LOG')}</h3><p class="muted">${esc(l.detalhe||l.descricao||'Ação registrada')} • ${esc(l.usuarioNome||l.usuarioEmail||'Sistema')}</p></div><div><span class="chip">${dataCurta(l.criadoEm||l.data)}</span></div></div>`).join(''):empty('Nenhum log encontrado.')}
+    function renderDepartamentos(){
+      byId('listaDepartamentos').innerHTML=departamentos.length?departamentos.map(d=>
+        '<div class="list-card"><div class="list-bar" style="background:#7c3aed"></div><div><h3>'+
+        esc(d.nome||'Departamento')+'</h3><p class="muted">'+esc(d.descricao||'Sem descrição')+
+        '</p>'+badge(d.status||'ATIVO')+'</div><div class="list-actions"><button class="btn btn-light" data-mg-action="departamento" data-id="'+esc(d.id)+'">Editar</button></div></div>'
+      ).join(''):empty('Nenhum departamento cadastrado.');
+    }
+    function renderPlanos(){
+      byId('listaPlanos').innerHTML=planos.length?planos.map(p=>
+        '<div class="list-card"><div class="list-bar" style="background:#22c55e"></div><div><h3>'+
+        esc(p.nome||'Plano')+'</h3><p class="muted">'+moeda(p.valorMensal??p.valor??0)+
+        ' / mês · '+esc(p.descricao||'Sem descrição')+'</p>'+badge(p.status||'ATIVO')+
+        '</div><div class="list-actions"><button class="btn btn-light" data-mg-action="plano" data-id="'+esc(p.id)+'">Editar</button></div></div>'
+      ).join(''):empty('Nenhum plano cadastrado.');
+    }
+    function renderNotificacoes(){
+      byId('listaNotificacoes').innerHTML=notificacoes.length?notificacoes.map(n=>{
+        const lida=notificacaoLidaGlobal(n);
+        return '<div class="list-card"><div class="list-bar" style="background:#ff6b00"></div><div><h3>'+
+          esc(n.titulo||n.tipo||'Notificação')+'</h3><p class="muted">'+esc(n.mensagem||n.descricao||'')+
+          ' · '+esc(dataCurta(n.criadoEm))+'</p>'+badge(lida?'LIDA':'PENDENTE')+
+          '</div><div class="list-actions">'+(lida?'':('<button class="btn btn-success" data-mg-action="ler-notificacao" data-id="'+esc(n.id)+'">Marcar lida</button>'))+'</div></div>';
+      }).join(''):empty('Nenhuma notificação global recente.');
+    }
+    function renderLogs(){
+      byId('listaLogs').innerHTML=logs.length?logs.map(l=>
+        '<div class="list-card"><div class="list-bar" style="background:#0ea5e9"></div><div><h3>'+
+        esc(l.tipoAcao||l.tipo||'LOG')+'</h3><p class="muted">'+
+        esc(l.detalhe||l.descricao||'Ação registrada')+' · '+esc(l.usuarioNome||l.usuarioAuthUid||l.usuarioEmail||'Sistema')+
+        (l.clientePlataformaId?' · Empresa '+esc(l.clientePlataformaId):'')+
+        '</p></div><div><span class="chip">'+esc(dataCurta(l.criadoEm||l.data))+'</span></div></div>'
+      ).join(''):empty('Nenhum log recente.');
+    }
+    function renderConfiguracoes(){
+      setVal('cfgNomePlataforma',configuracoesGlobal.nome||'ÍNTEGRO');
+      setVal('cfgDiasTeste',configuracoesGlobal.diasTestePadrao??7);
+    }
+    function renderRelatorios(){
+      const vinculados=new Map();
+      clientesIntegro.forEach(c=>{const id=c.planoId||'SEM_PLANO';vinculados.set(id,(vinculados.get(id)||0)+1);});
+      const ativos=clientesIntegro.filter(clienteLiberadoGlobal);
+      const mrr=ativos.reduce((total,c)=>{
+        const plano=planos.find(p=>p.id===c.planoId);
+        return total+(plano?Number(plano.valorMensal??plano.valor??0):0);
+      },0);
+      byId('resumoRelatorios').innerHTML=[
+        box('Clientes ÍNTEGRO',String(clientesIntegro.length)),
+        box('Com acesso contratual ativo',String(ativos.length)),
+        box('Sem plano vinculado',String(vinculados.get('SEM_PLANO')||0)),
+        box('Mensalidade potencial dos contratos ativos',moeda(mrr)+' · não representa faturamento recebido')
+      ].join('');
+      byId('distribuicaoPlanos').innerHTML=planos.map(p=>box(p.nome||'Plano',
+        (vinculados.get(p.id)||0)+' cliente(s) · '+moeda(p.valorMensal??p.valor??0)+'/mês')).join('')+
+        ((vinculados.get('SEM_PLANO')||0)?box('Sem plano',(vinculados.get('SEM_PLANO')||0)+' cliente(s)'):'');
+    }
+    function exportarRelatorioGlobal(tipo){
+      if(!dadosGlobaisCarregados)return notificarIntegro('Carregue os dados reais antes de exportar.');
+      const definicoes={
+        clientes:{cab:['ID','Nome','CPF/CNPJ','Tipo','E-mail','Telefone','Plano','Status','Acesso','Teste até'],
+          linhas:clientesIntegro.map(c=>[c.id,c.nome||c.razaoSocial,c.documento,c.tipoPessoa,c.email,c.telefone,
+            planos.find(p=>p.id===c.planoId)?.nome||'',c.status,clienteLiberadoGlobal(c)?'LIBERADO':'SEM ACESSO',c.dataFimTeste||''])},
+        usuarios:{cab:['UID','Nome','E-mail','Perfil','Empresa','Status'],
+          linhas:usuariosSistema.filter(u=>u.id===u.authUid).map(u=>[u.authUid,u.nome,u.email,u.tipoUsuario,
+            clientesIntegro.find(c=>c.id===u.clientePlataformaId)?.nome||'',u.status])},
+        planos:{cab:['ID','Plano','Valor mensal','Status','Clientes vinculados'],
+          linhas:planos.map(p=>[p.id,p.nome,p.valorMensal??p.valor??0,p.status,
+            clientesIntegro.filter(c=>c.planoId===p.id).length])}
+      };
+      const def=definicoes[tipo];if(!def)return;
+      const celula=v=>{
+        let t=String(v??'');
+        if(/^[\s]*[=+@-]/.test(t))t="'"+t;
+        return '"'+t.replace(/"/g,'""')+'"';
+      };
+      const csv='\uFEFF'+[def.cab,...def.linhas].map(l=>l.map(celula).join(';')).join('\r\n');
+      const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+      const a=document.createElement('a');a.href=url;a.download='integro-'+tipo+'-'+new Date().toISOString().slice(0,10)+'.csv';
+      document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
+    }
     function cardCliente(c){const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente'; const bloq=!clienteLiberadoGlobal(c); const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status)); const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now(); return `<div class="list-card"><div class="list-bar" style="background:${bloq?'#ef4444':c.testeAtivo?'#ff6b00':'#22c55e'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(c.tipoPessoa||'PJ')} • ${esc(c.documento||'-')} • ${esc(c.email||'-')}</p><p>${badge(testeExpirado?'TESTE EXPIRADO':bloq?'BLOQUEADO':c.status||'ATIVO')} ${c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':''}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheCliente('${c.id}')">Ver</button><button class="btn btn-light" onclick="abrirFormCliente('${c.id}')">Editar</button><button class="btn btn-primary" onclick="abrirFormMasterLocal('${c.id}')">Master Local</button><button class="btn btn-success" onclick="ativarTesteCliente('${c.id}')">Teste 7d</button><button class="btn ${bloqueioManual?'btn-success':'btn-danger'}" onclick="alternarAcessoCliente('${c.id}')">${bloqueioManual?'Liberar':'Bloquear'}</button></div></div>`}
     function cardUsuario(u,tipo){const nome=u.nome||u.nomeCompleto||u.email||'Usuário'; const bloq=u.acessoLiberado===false||status(u.status)==='BLOQUEADO'; return `<div class="list-card"><div class="list-bar" style="background:${tipo==='master'?'#ff6b00':'#0ea5e9'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(u.email||'-')} • ${esc(u.clientePlataformaNome||u.empresaNome||u.departamentoNome||'ÍNTEGRO')}</p><p>${badge(bloq?'BLOQUEADO':u.status||'ATIVO')} <span class="chip">${esc(u.tipoUsuario||'')}</span></p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheUsuario('${u.id}')">Ver</button><button class="btn ${bloq?'btn-success':'btn-danger'}" onclick="alternarAcessoUsuario('${u.id}')">${bloq?'Liberar':'Bloquear'}</button></div></div>`}
     function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id)}
