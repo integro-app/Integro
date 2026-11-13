@@ -5,6 +5,7 @@ on:
     paths:
       - ".github/workflows/master-global-functions-deploy.yml"
       - "functions/master-global-onboarding.js"
+      - "functions/master-global-management.js"
       - "functions/index.js"
   workflow_dispatch:
 permissions:
