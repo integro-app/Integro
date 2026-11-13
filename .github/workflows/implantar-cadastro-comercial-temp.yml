@@ -35,8 +35,8 @@ jobs:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
       - name: Implantar e confirmar indices Firestore por API oficial
         run: node scripts/deploy-demo-indexes-rest.mjs
-      - name: Implantar quatro callables de consulta, cadastro e autorizacao
+      - name: Atualizar endpoints existentes sem necessidade de novo IAM
         run: >-
           npx --yes firebase-tools@latest deploy
-          --only functions:consultarDocumentoClienteV27,functions:cadastrarClienteOperacionalV27,functions:solicitarCadastroDuplicadoV27,functions:decidirCadastroDuplicadoV27
+          --only functions:solicitarCadastroDuplicadoV27,functions:decidirCadastroDuplicadoV27
           --project integro-novo --non-interactive
