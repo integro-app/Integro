@@ -29,6 +29,7 @@ function senhaTemporaria() {
 exports.provisionarUsuario = functions
   .region("southamerica-east1")
   .https.onCall(async (dados, contexto) => {
+    await sessionAuthorization.validate(contexto);
     if (!contexto.auth?.uid) erroHttps("unauthenticated", "Sessao nao autenticada.");
 
     const conviteId = String(dados?.conviteId || "").trim();
@@ -46,13 +47,15 @@ exports.provisionarUsuario = functions
     if (
       autor.authUid !== contexto.auth.uid ||
       autor.tipoUsuario !== "master_local" ||
-      autor.acessoLiberado !== true ||
+      autor.acessoLiberado !== true || autor.empresaBloqueada === true ||
       ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(String(autor.status || "").toUpperCase()) ||
       !tenant || String(convite.clientePlataformaId || "") !== tenant
     ) {
       erroHttps("permission-denied", "Sem permissao para provisionar este usuario.");
     }
 
+    const { exigirEmpresaOperacional } = require("./company-access");
+    await exigirEmpresaOperacional({ db, functions, usuario: autor, tenantId: tenant });
     const email = String(convite.emailNormalizado || convite.email || "").trim().toLowerCase();
     if (!email) erroHttps("failed-precondition", "Convite sem e-mail valido.");
     if (!["CONVITE_PENDENTE", "PROVISIONADO"].includes(String(convite.status || ""))) {
@@ -87,6 +90,7 @@ exports.provisionarUsuario = functions
       emailNormalizado: email,
       status: "ATIVO",
       acessoLiberado: true,
+      empresaBloqueada: false,
       convitePendente: false,
       provisionamentoAuth: "PROVISIONADO",
       conviteOrigemId: conviteId,
