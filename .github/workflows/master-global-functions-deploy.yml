@@ -1,0 +1,36 @@
+name: Deploy Firebase - Master Global onboarding
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/master-global-functions-deploy.yml"
+      - "functions/master-global-onboarding.js"
+      - "functions/index.js"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: integro-master-global-functions
+  cancel-in-progress: false
+jobs:
+  validar_publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm --prefix functions ci
+      - name: Validar aplicação e regras antes de publicar
+        run: npm run verify
+      - name: Confirmar testes de onboarding
+        run: node --test tests/master-global-onboarding.test.js
+      - name: Autenticar no Firebase
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - name: Publicar somente as quatro Functions do Master Global
+        run: npx firebase deploy --only functions:salvarClienteIntegroGlobal,functions:alterarAcessoClienteIntegroGlobal,functions:ativarTesteClienteIntegroGlobal,functions:criarMasterLocalGlobal --project integro-novo --non-interactive
