@@ -187,3 +187,14 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Saneamento legado:** usuários internos criados anteriormente sem Auth recebem ação explícita `Provisionar Auth`, que cria perfil canônico, inativa o registro legado e gera link de senha; conflitos com Auth preexistente exigem reconciliação manual, sem assumir identidades por e-mail.
 - **Dependências que impedem 100% nesta fase:** testes manuais com Master Global e usuário interno reais, e-mail de ativação, primeiro login, inspeção visual desktop/mobile, bloqueio/reativação real do tenant, verificação de expiração automática de testes no acesso direto Firestore/Storage, integração de faturamento efetivamente recebido (M21), escala/paginação além de limites seguros, validação do chat por usuários internos fora da tela Master Global e aceite do proprietário.
 - **Veredito:** **NÃO FECHADO** até conclusão das evidências de homologação; não confundir deploy/CI com 100% operacional.
+
+## 15. M01 — Evidências de publicação e homologação técnica (13/11/2026)
+
+- **Merge:** [PR #45](https://github.com/integro-app/Integro/pull/45), commit de produção `28ad161a77bcf7944a638a6a6ec8b3f3f8871309`.
+- **CI da versão aprovada:** [Auditoria integrada 43512447208](https://github.com/integro-app/Integro/actions/runs/43512447208): **636/636 testes de código aprovados**, integridade de 9 HTML, scripts inline, sintaxe JS, Hosting, integrações Auth/Firestore de Clientes, Vendas/Financeiro e Rules/Storage aprovadas.
+- **Hosting:** [deploy 43512820209](https://github.com/integro-app/Integro/actions/runs/43512820209) **sucesso**; inclui `master-global.html` e novo `usuario-integro.html`.
+- **Backend Master Global:** [deploy 43512820602](https://github.com/integro-app/Integro/actions/runs/43512820602) **sucesso**; callable existente `solicitarCadastroDuplicadoV27` atualizada, seguida de `provisionarUsuario`; **636/636 testes gerais e 11/11 testes de onboarding aprovados**.
+- **Smoke test externo sem login:** `usuario-integro.html` retornou HTTP 200, encaminhou usuário não autenticado ao login e não exibiu conteúdo interno.
+- **Regras:** `firestore.rules` e `storage.rules` não foram alteradas no merge. O bloqueio de tenant passa a revogar `acessoLiberado` dos usuários por transação, respeitando as Rules existentes.
+- **Pendências impeditivas de 100%:** ainda não foram realizados testes autenticados reais de cadastro de cliente, plano, Master Local, usuário interno, e-mail, login, bloqueio/reativação, avisos, chat, relatório CSV, nem validação visual com sessão real em desktop/mobile. A expiração automática do teste em acesso direto a dados, o suporte a empresas com mais de 350 usuários e faturamento efetivamente recebido (M21) seguem pendentes.
+- **Estado formal:** **EM HOMOLOGAÇÃO / NÃO FECHADO**. Publicação e testes automatizados concluídos; o aceite operacional exige evidências com contas reais e aprovação do proprietário.
