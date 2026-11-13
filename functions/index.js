@@ -10,6 +10,13 @@ const sessionAuthorization = require("./session-authorization").criarProtecaoSes
 const protegerSessao = sessionAuthorization.protect;
 const dbSessaoProtegida = sessionAuthorization.db;
 
+const { criarOnboardingMasterGlobal } = require("./master-global-onboarding");
+const onboardingGlobal = criarOnboardingMasterGlobal({ admin, functions, db: dbSessaoProtegida });
+exports.salvarClienteIntegroGlobal = functions.region("southamerica-east1").https.onCall(protegerSessao(onboardingGlobal.salvarCliente));
+exports.alterarAcessoClienteIntegroGlobal = functions.region("southamerica-east1").https.onCall(protegerSessao(onboardingGlobal.alterarAcesso));
+exports.ativarTesteClienteIntegroGlobal = functions.region("southamerica-east1").https.onCall(protegerSessao(onboardingGlobal.ativarTeste));
+exports.criarMasterLocalGlobal = functions.region("southamerica-east1").https.onCall(protegerSessao(onboardingGlobal.criarMasterLocal));
+
 function erroHttps(codigo, mensagem) {
   throw new functions.https.HttpsError(codigo, mensagem);
 }
