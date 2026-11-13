@@ -6,6 +6,7 @@ const root = path.resolve(__dirname, "..");
 const pages = [
   "index.html",
   "master-global.html",
+  "usuario-integro.html",
   "master-local.html",
   "supervisor.html",
   "vendedor.html",
