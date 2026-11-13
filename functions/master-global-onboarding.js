@@ -272,8 +272,17 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
       return { ok: true, authUid: novo.uid, email, existente: false };
     } catch (e) {
       if (novo?.uid) {
-        try { await admin.auth().deleteUser(novo.uid); } catch (rollback) {
-          console.error("[MASTER GLOBAL] Falha ao reverter Auth após erro no Firestore.", rollback);
+        try {
+          // Em resposta ambígua da rede, a transação pode ter sido confirmada.
+          // Nunca apagar Auth de um Master Local já persistido.
+          const confirmado = await usuarios.doc(novo.uid).get();
+          if (confirmado.exists && confirmado.data()?.clientePlataformaId === clienteId &&
+              confirmado.data()?.authUid === novo.uid) {
+            return { ok: true, authUid: novo.uid, email, existente: false };
+          }
+          await admin.auth().deleteUser(novo.uid);
+        } catch (rollback) {
+          console.error("[MASTER GLOBAL] Falha ao reconciliar Auth após erro no Firestore.", rollback);
         }
       }
       throw e;
