@@ -183,6 +183,7 @@
 
   <style id="mg-mobile-keyboard-20261113">
     @media(max-width:980px){
+      html body[data-integro-page="master-global"].mg-form-drawer-open{overflow-y:hidden!important;}
       html body[data-integro-page="master-global"] #drawer{
         top:var(--mg-visual-top,0px)!important;
         height:var(--mg-visual-height,100dvh)!important;
@@ -571,6 +572,7 @@
       setText('drawerTitle',t);setText('drawerSubtitle',s);
       byId('drawerBody').innerHTML=h;
       byId('drawer').classList.add('show');byId('drawerOverlay').classList.add('show');
+      document.body.classList.add('mg-form-drawer-open');
       byId('drawer').scrollTop=0;
       prepararCamposDrawerMasterGlobal();
       sincronizarAreaVisivelMasterGlobal();
@@ -578,6 +580,7 @@
     function fecharDrawer(){
       if(document.activeElement?.closest?.('#drawer'))document.activeElement.blur();
       byId('drawer').classList.remove('show');byId('drawerOverlay').classList.remove('show');
+      document.body.classList.remove('mg-form-drawer-open');
     }
     function sincronizarAreaVisivelMasterGlobal(){
       const vv=window.visualViewport;
