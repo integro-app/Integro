@@ -1,9 +1,5 @@
 name: Deploy M02 - callable de administracao global
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/deploy-m02-callable.yml"
   workflow_dispatch:
 permissions:
   contents: read
