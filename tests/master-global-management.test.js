@@ -261,3 +261,61 @@ test("cadastro interno legado sem Auth é migrado sem manter duas contas ativas"
   await assert.rejects(c.api.provisionarInternoLegado({ id: r.authUid }, c.local),
     e => e.code === "permission-denied");
 });
+
+test("M02: Master Global delega consulta a empresas e funcionario so recebe o autorizado", async () => {
+  const c = ambiente();
+  c.dados.set("clientes_integro/tenant-a", { nome: "Empresa A", tipoPessoa: "PJ", status: "ATIVO", documento: "SEGREDO" });
+  c.dados.set("clientes_integro/tenant-b", { nome: "Empresa B", tipoPessoa: "PF", status: "ATIVO" });
+  c.dados.set("clientes_integro/tenant-c", { nome: "Empresa C", tipoPessoa: "PJ", status: "ATIVO" });
+  await assert.rejects(
+    c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: ["tenant-a"] }, c.interno),
+    e => e.code === "permission-denied"
+  );
+  await assert.rejects(
+    c.api.salvarClientesConsultaFuncionario({ usuarioId: "local", clientesIds: ["tenant-a"] }, c.global),
+    e => e.code === "permission-denied"
+  );
+  await c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: ["tenant-b", "tenant-a"] }, c.global);
+  assert.deepEqual(c.dados.get("usuarios/interno").clientesLeituraAutorizada, ["tenant-a", "tenant-b"]);
+  assert.equal(c.dados.get("usuarios/interno").clientePlataformaId, undefined);
+  const result = await c.api.listarClientesConsultaFuncionario({}, c.interno);
+  assert.equal(result.acesso, "CONSULTA_ADMINISTRATIVA");
+  assert.deepEqual(result.clientes.map(x => x.id), ["tenant-a", "tenant-b"]);
+  assert.equal(result.clientes[0].documento, undefined, "Dados sensiveis nao saem na consulta");
+  assert.equal(result.clientes.some(x => x.id === "tenant-c"), false);
+  assert.ok([...c.dados.values()].some(x => x.tipoAcao === "ALTERAR_CLIENTES_CONSULTA_FUNCIONARIO"));
+  await c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: [] }, c.global);
+  assert.deepEqual((await c.api.listarClientesConsultaFuncionario({}, c.interno)).clientes, []);
+});
+
+test("M02: delegacao recusa empresas inexistentes, IDs forjados e lista duplicada", async () => {
+  const c = ambiente();
+  c.dados.set("clientes_integro/tenant-a", { nome: "Empresa A" });
+  await assert.rejects(
+    c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: ["tenant-x"] }, c.global),
+    e => e.code === "failed-precondition"
+  );
+  await assert.rejects(
+    c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: ["tenant-a", "tenant-a"] }, c.global),
+    e => e.code === "invalid-argument"
+  );
+  await assert.rejects(
+    c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: ["tenant-a/evil"] }, c.global),
+    e => e.code === "invalid-argument"
+  );
+  assert.equal(c.dados.get("usuarios/interno").clientesLeituraAutorizada, undefined);
+  await assert.rejects(c.api.listarClientesConsultaFuncionario({}, c.local), e => e.code === "permission-denied");
+  c.dados.get("usuarios/interno").acessoLiberado = false;
+  await assert.rejects(c.api.listarClientesConsultaFuncionario({}, c.interno), e => e.code === "permission-denied");
+});
+
+test("M02: callable protegida inclui rotas restritas e telas exibem delegacao separada", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "master-global.html"), "utf8");
+  const equipe = fs.readFileSync(path.join(__dirname, "..", "usuario-integro.html"), "utf8");
+  const index = fs.readFileSync(path.join(__dirname, "..", "functions/index.js"), "utf8");
+  assert.match(index, /salvarClientesConsultaFuncionario: gestaoGlobal\.salvarClientesConsultaFuncionario/);
+  assert.match(index, /listarClientesConsultaFuncionario: gestaoGlobal\.listarClientesConsultaFuncionario/);
+  assert.match(html, /data-mg-action="clientes-interno"/);
+  assert.match(equipe, /chamar\('listarClientesConsultaFuncionario'\)/);
+  assert.doesNotMatch(equipe, /listarPainel/);
+});
