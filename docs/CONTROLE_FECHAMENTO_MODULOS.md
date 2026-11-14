@@ -21,7 +21,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | PR #45: correções em cadastro Auth, CRUD, painel, relatórios, chat e bloqueio de tenant; aguarda deploy e homologação real | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Isolamento de tenant reforçado e delegação Master Global → equipe interna por empresa implementada como consulta administrativa limitada; testes adicionados; publicação Hosting confirmada e deploy da callable em verificação. Seleção multiempresa para clientes e homologação Firebase real ainda pendentes. | EM DESENVOLVIMENTO |
+| M02 | Empresas/multiempresa | Isolamento de tenant reforçado e delegação Master Global → equipe interna por empresa implementada como consulta administrativa limitada; testes adicionados; publicação Hosting e atualização da callable confirmadas no GitHub Actions. Seleção multiempresa para clientes e homologação Firebase real ainda pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
@@ -61,7 +61,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Escopo:** delegação é **apenas leitura administrativa de identificação e situação da empresa**, não permite escrever ou consultar dados financeiros/operação dos clientes; controles de empresa e perfil seguem aplicáveis.
 - **Testes:** 3 cenários adicionados a `tests/master-global-management.test.js`, incluindo negação de autoconcessão, limite por tenant, revogação e IDs inválidos; não há homologação com sessão real registrada nesta etapa.
 - **Commits:** `cb127c3` (backend), `58059dc` (rotas), `a7025a6` (campos seguros), `967ed87` (Master Global), `9eaadbb` (painel interno), `1c78b92` (testes).
-- **Hosting:** workflow #716 do Firebase Hosting reportou sucesso. **Functions:** workflow específico `deploy-m02-callable.yml` (#1, commit `be71b9c`) acionado para publicar apenas `solicitarCadastroDuplicadoV27`; confirmar conclusão antes de considerar a delegação ativa.
+- **Hosting:** workflow #716 do Firebase Hosting reportou sucesso. **Functions:** workflow específico `deploy-m02-callable.yml` (#1, commit `be71b9c`) concluiu com sucesso no GitHub Actions: `solicitarCadastroDuplicadoV27(southamerica-east1)` atualizada em `integro-novo`, com `Deploy complete!`. Mantida publicação futura somente por acionamento manual.
 - **Pendente M02:** segurança e UX da seleção de múltiplas empresas para Master Local quando legalmente vinculado, acesso delegado de funcionários a outros módulos apenas mediante permissão expressa, testes reais de isolamento e leitura cruzada, controle de versões e aceite.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
