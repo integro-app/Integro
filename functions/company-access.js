@@ -11,7 +11,14 @@ function empresaLiberada(empresa = {}, agora = Date.now()) {
   return true;
 }
 async function exigirEmpresaOperacional({ db, functions, usuario, tenantId }) {
-  if (['MASTER_GLOBAL','USUARIO_INTEGRO'].includes(core.normalizarStatus(usuario.tipoUsuario))) return;
+  const perfil = core.normalizarStatus(usuario?.tipoUsuario);
+  // M02: apenas o proprietário global pode atravessar tenants por comando administrativo.
+  // Funcionários internos da ÍNTEGRO não são usuários operacionais dos clientes.
+  if (perfil === 'MASTER_GLOBAL') return;
+  if (perfil === 'USUARIO_INTEGRO') {
+    throw new functions.https.HttpsError('permission-denied',
+      'Funcionário da plataforma não possui acesso operacional direto aos dados do cliente.');
+  }
   const deny = () => { throw new functions.https.HttpsError('permission-denied', 'Empresa bloqueada ou período de teste expirado.'); };
   if (usuario.empresaBloqueada === true || usuario.acessoEmpresaLiberado === false || ['BLOQUEADO','INATIVO','SUSPENSO'].includes(core.normalizarStatus(usuario.clientePlataformaStatus || usuario.empresaStatus))) deny();
   const empresaUsuario = String(usuario.clientePlataformaId || usuario.tenantId || usuario.empresaId || '').trim();
