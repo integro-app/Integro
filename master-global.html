@@ -670,16 +670,18 @@
     async function salvarNotificacao(){
       await executarAcaoGlobal('criarNotificacao',{titulo:val('notTitulo'),mensagem:val('notMensagem')},'Aviso global publicado.');
     }
-    async async function alternarAcessoCliente(id){
+    async function alternarAcessoCliente(id){
       const cliente=clientesIntegro.find(c=>c.id===id);
       if(!cliente)return;
       if(processandoCadastroGlobal)return;
-      if(!confirm((cliente.acessoLiberado===false?'Liberar':'Bloquear')+' a empresa '+(cliente.nome||cliente.razaoSocial||id)+' e seus usuários?'))return;
+      const bloqueioManual=cliente.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(cliente.status));
+      const liberar=bloqueioManual;
+      if(!confirm((liberar?'Liberar':'Bloquear')+' a empresa '+(cliente.nome||cliente.razaoSocial||id)+' e seus usuários?'))return;
       processandoCadastroGlobal=true;
       try{
-        await funcaoMasterGlobal('alterarAcessoClienteIntegroGlobal')({id,liberado:cliente.acessoLiberado===false});
+        await funcaoMasterGlobal('alterarAcessoClienteIntegroGlobal')({id,liberado:liberar});
         await carregarTudo();
-        notificarIntegro(cliente.acessoLiberado===false
+        notificarIntegro(liberar
           ? 'Acesso contratual liberado. Confirme o login e as permissões do tenant.'
           : 'Novas operações via backend bloqueadas. Revogação completa de leituras Firestore/Storage ainda depende de homologação.');
       }catch(erro){notificarIntegro(mensagemErroGlobal(erro));}
