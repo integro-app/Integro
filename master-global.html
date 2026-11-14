@@ -229,7 +229,9 @@
             'acesso-usuario':()=>alternarAcessoUsuario(id),
             'ler-notificacao':()=>marcarNotificacaoLida(id),
             'editar-cliente':()=>abrirFormCliente(id),
-            'criar-master':()=>abrirFormMasterLocal(id)
+            'criar-master':()=>abrirFormMasterLocal(id),
+            'teste-cliente':()=>ativarTesteCliente(id),
+            'acesso-cliente':()=>alternarAcessoCliente(id)
           };
           if(mapa[acao])mapa[acao]();
         });
@@ -668,7 +670,7 @@
     async function salvarNotificacao(){
       await executarAcaoGlobal('criarNotificacao',{titulo:val('notTitulo'),mensagem:val('notMensagem')},'Aviso global publicado.');
     }
-    async function alternarAcessoCliente(id){
+    async async function alternarAcessoCliente(id){
       const cliente=clientesIntegro.find(c=>c.id===id);
       if(!cliente)return;
       if(processandoCadastroGlobal)return;
@@ -742,15 +744,30 @@
     function abrirDetalheCliente(id){
       const c=clientesIntegro.find(x=>x.id===id);if(!c)return;
       const plano=planos.find(p=>p.id===c.planoId);
-      const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id&&u.id===u.authUid);
-      abrirDrawer('Cliente ÍNTEGRO',c.nome||c.razaoSocial||'Cliente',
-        info('Documento',c.documento)+info('E-mail',c.email)+info('Telefone',c.telefone)+
-        info('Plano comercial',plano?.nome||'Sem plano')+
-        info('Acesso contratual',clienteLiberadoGlobal(c)?'LIBERADO':'SEM ACESSO')+
-        info('Fim do teste',c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem teste')+
-        info('Masters Locais',masters.length?masters.map(u=>u.nome+' ('+u.email+')').join(', '):'Nenhum provisionado')+
+      const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id);
+      const usuariosVinculados=usuariosSistema.filter(u=>u.clientePlataformaId===id&&u.tipoUsuario!=='master_global'&&u.tipoUsuario!=='usuario_integro');
+      const liberado=clienteLiberadoGlobal(c);
+      const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status));
+      const nome=c.nome||c.razaoSocial||'Cliente';
+      abrirDrawer('Ficha 360° · Cliente ÍNTEGRO',nome,
+        '<div class="grid">'+
+        '<div class="notice">Ficha administrativa baseada nos registros carregados do servidor. Não representa movimentação financeira do cliente.</div>'+
+        info('Tipo / Documento',(c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+
+        info('Nome / Razão social',nome)+info('E-mail',c.email)+info('Telefone',c.telefone)+
+        info('Plano comercial',plano?((plano.nome||'Plano')+' · '+moeda(plano.valorMensal??plano.valor??0)+'/mês'):'Sem plano definido')+
+        info('Situação cadastral',c.status||'ATIVO')+
+        info('Acesso à plataforma',liberado?'LIBERADO':'RESTRITO')+
+        info('Período de teste',c.testeAtivo===true?(c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem prazo confirmado'):'Não ativo')+
+        info('Usuários vinculados no painel',String(usuariosVinculados.length))+
+        '<div class="empty" style="border-style:solid"><strong>Masters Locais vinculados ('+masters.length+')</strong>'+
+        (masters.length?masters.map(u=>'<div style="margin-top:10px"><span>'+esc(u.nome||u.email||'Master Local')+'</span><p class="muted">'+esc(u.email||'-')+' · '+esc(u.id===u.authUid&&u.authUid?'Auth provisionado':'Cadastro pendente')+'</p>'+
+          (u.id===u.authUid&&u.authUid?'<button class="btn btn-light" data-mg-action="editar-master" data-id="'+esc(u.id)+'">Editar Master</button>':'')+'</div>').join(''):'<p class="muted">Nenhum Master Local vinculado.</p>')+
+        '</div><div class="list-actions" style="flex-wrap:wrap">'+
         '<button class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
-        '<button class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>');
+        '<button class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
+        '<button class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">Ativar teste</button>'+
+        '<button class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
+        '</div></div>');
     }
     function abrirDetalheUsuario(id){
       const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
