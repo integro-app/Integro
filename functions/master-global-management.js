@@ -324,6 +324,65 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     return { ok: true, id, liberado };
   }
 
+
+  // M02: delegação de consulta administrativa. Não autoriza mutações operacionais.
+  async function salvarClientesConsultaFuncionario(dados, contexto) {
+    const a = await autor(contexto);
+    const usuarioId = txt(dados?.usuarioId);
+    const entradas = dados?.clientesIds;
+    if (!idValido(usuarioId) || !Array.isArray(entradas) || entradas.length > 100 ||
+        entradas.some(id => typeof id !== "string" || !idValido(id)) ||
+        new Set(entradas).size !== entradas.length) {
+      fail("invalid-argument", "Funcionário ou lista de empresas inválida.");
+    }
+    const ids = [...entradas].sort();
+    const usuarioRef = db.collection("usuarios").doc(usuarioId);
+    await db.runTransaction(async tx => {
+      const usuarioSnap = await tx.get(usuarioRef);
+      const perfil = usuarioSnap.exists ? usuarioSnap.data() : null;
+      if (!perfil || perfil.authUid !== usuarioId || perfil.tipoUsuario !== "usuario_integro" ||
+          perfil.usuarioInternoIntegro === false) {
+        fail("permission-denied", "Somente um funcionário interno provisionado pode receber acesso delegado.");
+      }
+      const clientes = await Promise.all(ids.map(id => tx.get(db.collection("clientes_integro").doc(id))));
+      if (clientes.some(snap => !snap.exists)) fail("failed-precondition", "Há cliente ÍNTEGRO inexistente na seleção.");
+      tx.set(usuarioRef, {
+        clientesLeituraAutorizada: ids, atualizadoEm: agora(), atualizadoPorUid: a.uid
+      }, { merge: true });
+      log(tx, "ALTERAR_CLIENTES_CONSULTA_FUNCIONARIO", a,
+        "Acessos administrativos de leitura atualizados",
+        { usuarioAlvoUid: usuarioId, totalClientesAutorizados: ids.length });
+    });
+    return { ok: true, usuarioId, clientesIds: ids };
+  }
+
+  async function listarClientesConsultaFuncionario(dados, contexto) {
+    const a = await autor(contexto, true);
+    if (a.papel !== "usuario_integro") {
+      fail("permission-denied", "Esta consulta é reservada à equipe interna.");
+    }
+    const usuarioSnap = await db.collection("usuarios").doc(a.uid).get();
+    if (!usuarioSnap.exists || usuarioSnap.data()?.authUid !== a.uid ||
+        usuarioSnap.data()?.tipoUsuario !== "usuario_integro") {
+      fail("permission-denied", "Perfil interno não encontrado.");
+    }
+    const ids = usuarioSnap.data()?.clientesLeituraAutorizada || [];
+    if (!Array.isArray(ids) || ids.length > 100 || ids.some(id => !idValido(id))) {
+      fail("failed-precondition", "Configuração de acesso inválida. Contate o Master Global.");
+    }
+    const unicos = [...new Set(ids)];
+    const registros = await Promise.all(unicos.map(id => db.collection("clientes_integro").doc(id).get()));
+    const clientes = registros.filter(snap => snap.exists).map(snap => {
+      const c = snap.data() || {};
+      return {
+        id: snap.id, nome: txt(c.nome || c.razaoSocial || "Cliente ÍNTEGRO"),
+        tipoPessoa: txt(c.tipoPessoa), status: txt(c.status || "ATIVO"),
+        acessoLiberado: c.acessoLiberado !== false
+      };
+    });
+    return { ok: true, clientes, acesso: "CONSULTA_ADMINISTRATIVA", atualizadoEm: new Date().toISOString() };
+  }
+
   async function criarNotificacao(dados, contexto) {
     const a = await autor(contexto), titulo = txt(dados?.titulo), mensagem = txt(dados?.mensagem);
     if (titulo.length < 3 || titulo.length > 120 || mensagem.length < 3 || mensagem.length > 2000) {
@@ -384,6 +443,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
 
   return { listarPainel, salvarDepartamento, salvarPlano, salvarConfiguracoes,
     salvarUsuarioInterno, provisionarInternoLegado, editarMasterLocal, alterarAcessoUsuario,
+    salvarClientesConsultaFuncionario, listarClientesConsultaFuncionario,
     criarNotificacao, marcarNotificacaoLida, listarAvisosInternos, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };
