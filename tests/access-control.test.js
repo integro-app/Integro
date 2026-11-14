@@ -73,3 +73,83 @@ test("todos os perfis locais acessam a propria conta", () => {
     assert.equal(acesso.pode(usuario, "minha_conta.ver", {}), true);
   });
 });
+
+
+// M02 — segurança de fronteira entre plataforma e empresas.
+// Estes cenários exercitam a proteção do backend real, não apenas a UI.
+const { exigirEmpresaOperacional } = require('../functions/company-access');
+const functionsM02 = { https: { HttpsError: class HttpsError extends Error {
+  constructor(code, message) { super(message); this.code = code; }
+} } };
+function bancoEmpresasM02(registros, acessos) {
+  return {
+    collection(nome) {
+      return {
+        doc(id) {
+          return {
+            async get() {
+              acessos.push(nome + '/' + id);
+              const dado = registros[nome + '/' + id];
+              return { exists: Boolean(dado), data: () => dado };
+            }
+          };
+        }
+      };
+    }
+  };
+}
+
+test('M02: funcionario interno da plataforma nao atravessa operacao de tenant', async () => {
+  const acessos = [];
+  const db = bancoEmpresasM02({}, acessos);
+  await assert.rejects(
+    exigirEmpresaOperacional({
+      db, functions: functionsM02,
+      usuario: { tipoUsuario: 'usuario_integro', acessoLiberado: true, clientePlataformaId: 'tenant-a' },
+      tenantId: 'tenant-a'
+    }),
+    erro => erro.code === 'permission-denied' && /plataforma/i.test(erro.message)
+  );
+  assert.equal(acessos.length, 0);
+});
+
+test('M02: usuario local acessa somente a sua empresa operacional ativa', async () => {
+  const acessos = [], db = bancoEmpresasM02({
+    'clientes_integro/tenant-a': { status: 'ATIVO', acessoLiberado: true },
+    'clientes_plataforma/tenant-a': { status: 'ATIVO', acessoLiberado: true }
+  }, acessos);
+  const usuario = { tipoUsuario: 'master_local', clientePlataformaId: 'tenant-a', acessoLiberado: true };
+  await exigirEmpresaOperacional({ db, functions: functionsM02, usuario, tenantId: 'tenant-a' });
+  assert.deepEqual(acessos, ['clientes_integro/tenant-a', 'clientes_plataforma/tenant-a']);
+  acessos.length = 0;
+  await assert.rejects(
+    exigirEmpresaOperacional({ db, functions: functionsM02, usuario, tenantId: 'tenant-b' }),
+    erro => erro.code === 'permission-denied'
+  );
+  assert.deepEqual(acessos, []);
+});
+
+test('M02: bloqueio em qualquer cadastro da empresa impede operacao', async () => {
+  const db = bancoEmpresasM02({
+    'clientes_integro/tenant-a': { status: 'BLOQUEADO', acessoLiberado: false },
+    'clientes_plataforma/tenant-a': { status: 'ATIVO', acessoLiberado: true }
+  }, []);
+  await assert.rejects(
+    exigirEmpresaOperacional({
+      db, functions: functionsM02,
+      usuario: { tipoUsuario: 'vendedor', clientePlataformaId: 'tenant-a' },
+      tenantId: 'tenant-a'
+    }),
+    erro => erro.code === 'permission-denied'
+  );
+});
+
+test('M02: Master Global preserva autoridade administrativa entre empresas', async () => {
+  const acessos = [], db = bancoEmpresasM02({}, acessos);
+  await exigirEmpresaOperacional({
+    db, functions: functionsM02,
+    usuario: { tipoUsuario: 'master_global' },
+    tenantId: 'tenant-a'
+  });
+  assert.deepEqual(acessos, []);
+});
