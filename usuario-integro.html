@@ -45,6 +45,7 @@
       <button class="active" data-aba="inicio" type="button">Dashboard</button>
       <button data-aba="avisos" type="button">Avisos globais</button>
       <button data-aba="chat" type="button">Chat interno</button>
+      <button data-aba="clientes" type="button">Empresas autorizadas</button>
       <button data-aba="perfil" type="button">Meu perfil</button>
     </nav>
     <button class="sair" id="btnSair" type="button">Sair da conta</button>
@@ -58,6 +59,7 @@
     </section>
     <section class="aba" id="avisos"><div class="panel"><div class="linha"><h2>Avisos da plataforma</h2><button class="btn" id="btnAtualizarAvisos" type="button">Atualizar avisos</button></div><div id="listaAvisos" class="muted">Carregando avisos...</div></div></section>
     <section class="aba" id="chat"><div class="panel"><div class="linha"><h2>Mensagens internas</h2><button class="btn" id="btnAtualizarChat" type="button">Atualizar mensagens</button></div><div id="listaMensagens" class="muted">Carregando mensagens...</div></div><form class="panel form" id="formChat"><label for="textoChat">Enviar mensagem para a equipe</label><textarea id="textoChat" maxlength="1200" required placeholder="Digite uma mensagem..."></textarea><button class="btn primary" id="btnEnviar" type="submit">Enviar</button></form></section>
+    <section class="aba" id="clientes"><div class="panel"><div class="linha"><h2>Empresas autorizadas</h2><button class="btn" id="btnAtualizarClientes" type="button">Atualizar</button></div><p class="muted">Consulta administrativa autorizada pelo Master Global. Nenhum acesso operacional é concedido nesta tela.</p><div id="listaClientesAutorizados" class="muted" style="margin-top:12px">Selecione a aba para consultar.</div></div></section>
     <section class="aba" id="perfil"><div class="panel"><h2>Meu perfil</h2><div id="dadosPerfil" class="muted">Carregando dados...</div></div></section>
   </main>
 </div>
@@ -85,9 +87,10 @@
   function trocar(aba){
     document.querySelectorAll('.aba').forEach(x=>x.classList.toggle('active',x.id===aba));
     document.querySelectorAll('[data-aba]').forEach(x=>x.classList.toggle('active',x.dataset.aba===aba));
-    el('titulo').textContent={inicio:'Dashboard interno',avisos:'Avisos globais',chat:'Chat interno',perfil:'Meu perfil'}[aba]||'Equipe ÍNTEGRO';
+    el('titulo').textContent={inicio:'Dashboard interno',avisos:'Avisos globais',chat:'Chat interno',clientes:'Empresas autorizadas',perfil:'Meu perfil'}[aba]||'Equipe ÍNTEGRO';
     if(aba==='avisos')carregarAvisos().catch(erro);
     if(aba==='chat')carregarChat().catch(erro);
+    if(aba==='clientes')carregarClientesAutorizados().catch(erro);
   }
   async function carregarAvisos(){
     const r=await chamar('listarAvisosInternos');avisosInternos=r.notificacoes||[];
@@ -107,6 +110,16 @@
       '<div class="registro"><strong>'+esc(m.autorNome||'Equipe ÍNTEGRO')+'</strong><span class="muted"> · '+esc(data(m.criadoEm))+
       '</span><p>'+esc(m.mensagem||'')+'</p></div>'
     ).join(''):'<div class="registro">Nenhuma mensagem ainda.</div>';
+  }
+  async function carregarClientesAutorizados(){
+    const r=await chamar('listarClientesConsultaFuncionario');
+    const lista=Array.isArray(r.clientes)?r.clientes:[];
+    el('listaClientesAutorizados').innerHTML=lista.length?lista.map(c=>
+      '<div class="registro"><strong>'+esc(c.nome||'Cliente ÍNTEGRO')+
+      '</strong><p class="muted">Tipo: '+esc(c.tipoPessoa||'-')+
+      ' · Situação: '+esc(c.status||'ATIVO')+
+      ' · Acesso: '+(c.acessoLiberado?'Liberado':'Bloqueado')+
+      '</p></div>').join(''):'<div class="registro">Nenhuma empresa foi delegada pelo Master Global.</div>';
   }
   async function atualizar(){
     mostrar('Atualizando informações...');
@@ -145,6 +158,7 @@
   document.querySelectorAll('[data-aba]').forEach(btn=>btn.addEventListener('click',()=>trocar(btn.dataset.aba)));
   el('btnAtualizar').onclick=atualizar;el('btnAtualizarAvisos').onclick=()=>carregarAvisos().catch(erro);
   el('btnAtualizarChat').onclick=()=>carregarChat().catch(erro);
+  el('btnAtualizarClientes').onclick=()=>carregarClientesAutorizados().catch(erro);
   el('btnSair').onclick=sair;
   el('listaAvisos').addEventListener('click',async e=>{
     const b=e.target.closest('[data-aviso]');if(!b||b.disabled)return;
