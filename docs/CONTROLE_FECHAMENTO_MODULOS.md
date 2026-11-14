@@ -21,7 +21,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | PR #45: correções em cadastro Auth, CRUD, painel, relatórios, chat e bloqueio de tenant; aguarda deploy e homologação real | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Etapa de isolamento iniciada: funcionário interno deixa de ignorar a verificação de tenant; 4 regressões adicionadas e 6 cenários simulados aprovados. Seleção multiempresa e homologação de leitura cruzada ainda pendentes. | EM DESENVOLVIMENTO |
+| M02 | Empresas/multiempresa | Isolamento de tenant reforçado e delegação Master Global → equipe interna por empresa implementada como consulta administrativa limitada; testes adicionados; publicação Hosting confirmada e deploy da callable em verificação. Seleção multiempresa para clientes e homologação Firebase real ainda pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
@@ -51,6 +51,18 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Validação nesta etapa:** 6/6 cenários simulados executados sobre o código real da função com mocks de banco e erros HTTPS; **a suíte Node completa e o deploy das Functions não foram executados/confirmados aqui**.
 - **Preservação:** nenhum arquivo M01 nem regra Firestore alterados nesta etapa.
 - **Pendências para avançar:** identificar implantação da seleção de empresa pós-login para usuários multiempresa; impedir alteração de tenant via armazenamento do navegador; homologar read/write de dois tenants e consolidado somente leitura, com Auth/Firestore real; publicar a Function alterada de modo controlado e validar o acesso negado em produção.
+
+### M02 — Etapa 2: hierarquia e consulta delegada (14/11/2026)
+
+- **Hierarquia preservada:** Master Global possui gestão administrativa completa; funcionários ÍNTEGRO não herdam a autoridade global; clientes e seus usuários continuam isolados.
+- **Backend:** `functions/master-global-management.js` adiciona `salvarClientesConsultaFuncionario` (somente master global, auditoria, validação de IDs e existência) e `listarClientesConsultaFuncionario` (somente funcionário interno autenticado, consulta de metadados de empresas previamente autorizadas).
+- **Rota protegida:** `functions/index.js` usa o callable `solicitarCadastroDuplicadoV27`, protegido por sessão V27.
+- **Master Global:** `master-global.html` incorpora ação *Empresas autorizadas* em usuários internos para definir/revogar delegações; a tela interna `usuario-integro.html` mostra somente empresas autorizadas.
+- **Escopo:** delegação é **apenas leitura administrativa de identificação e situação da empresa**, não permite escrever ou consultar dados financeiros/operação dos clientes; controles de empresa e perfil seguem aplicáveis.
+- **Testes:** 3 cenários adicionados a `tests/master-global-management.test.js`, incluindo negação de autoconcessão, limite por tenant, revogação e IDs inválidos; não há homologação com sessão real registrada nesta etapa.
+- **Commits:** `cb127c3` (backend), `58059dc` (rotas), `a7025a6` (campos seguros), `967ed87` (Master Global), `9eaadbb` (painel interno), `1c78b92` (testes).
+- **Hosting:** workflow #716 do Firebase Hosting reportou sucesso. **Functions:** workflow específico `deploy-m02-callable.yml` (#1, commit `be71b9c`) acionado para publicar apenas `solicitarCadastroDuplicadoV27`; confirmar conclusão antes de considerar a delegação ativa.
+- **Pendente M02:** segurança e UX da seleção de múltiplas empresas para Master Local quando legalmente vinculado, acesso delegado de funcionários a outros módulos apenas mediante permissão expressa, testes reais de isolamento e leitura cruzada, controle de versões e aceite.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
 
