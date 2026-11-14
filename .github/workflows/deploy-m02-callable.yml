@@ -1,0 +1,43 @@
+name: Deploy M02 - callable de administracao global
+on:
+  push:
+    branches: [main]
+    paths:
+      - "functions/master-global-management.js"
+      - "functions/index.js"
+      - "tests/master-global-management.test.js"
+      - ".github/workflows/deploy-m02-callable.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firebase-m02-global-callable
+  cancel-in-progress: false
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Verificar regressoes e sintaxe do projeto
+        run: npm run verify
+      - name: Instalar dependencias das Cloud Functions
+        run: npm ci --prefix functions
+      - name: Publicar somente a callable de administracao
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          if [ -z "$FIREBASE_SA_JSON" ]; then
+            echo "Secret de conta de servico Firebase nao configurado." >&2
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SA_JSON" > "$RUNNER_TEMP/firebase-m02-service-account.json"
+          chmod 600 "$RUNNER_TEMP/firebase-m02-service-account.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-m02-service-account.json"
+          npx --yes firebase-tools@14.23.0 deploy --only functions:solicitarCadastroDuplicadoV27 --project integro-novo --non-interactive
