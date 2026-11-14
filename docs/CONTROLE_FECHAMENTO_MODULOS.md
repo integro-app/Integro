@@ -8,7 +8,7 @@
 
 ## 1. Estado de execução
 
-- **Tópico ativo:** **M01 — Master Global / fechamento operacional solicitado em 13/11/2026**. M22 continua com pendências próprias, sem aceite formal. Histórico anterior: **M22 — Navegação do vendedor / Operação: Cobranças e Vendas**. Em 12/11/2026, correções adicionais estão na branch `fix/m22-operacao-vendedor-permissoes-abas-20261112` com CI aprovado (59/59 testes focados e 596/596 gerais). Faltam revisão, publicação autorizada e homologação real desktop/mobile; **NÃO FECHADO**.
+- **Tópico ativo:** **M02 — Empresas/multiempresa**, com prioridade no isolamento entre empresas e no vínculo de usuários. **M01 permanece preservada em homologação**, com entrega operacional aprovada e testes reais pendentes. M22 continua com pendências próprias, sem aceite formal. Histórico anterior: **M22 — Navegação do vendedor / Operação: Cobranças e Vendas**. Em 12/11/2026, correções adicionais estão na branch `fix/m22-operacao-vendedor-permissoes-abas-20261112` com CI aprovado (59/59 testes focados e 596/596 gerais). Faltam revisão, publicação autorizada e homologação real desktop/mobile; **NÃO FECHADO**.
 - **Próxima prioridade sugerida pela auditoria:** **M12 — Caixas operacionais**, começando pelo fechamento, persistência do status e disponibilidade dos botões. Risco crítico para uso real.
 - **Dependências críticas:** M03 Login, M02 Multiempresa, M05 Permissões, M11 Pagamentos e M13 Ledger. Podem ser inspecionadas para validar M12, mas não serão declaradas concluídas automaticamente.
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
@@ -21,7 +21,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | PR #45: correções em cadastro Auth, CRUD, painel, relatórios, chat e bloqueio de tenant; aguarda deploy e homologação real | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Isolamento e seleção existem em desenho; testar troca e leitura cruzada | A HOMOLOGAR |
+| M02 | Empresas/multiempresa | Etapa de isolamento iniciada: funcionário interno deixa de ignorar a verificação de tenant; 4 regressões adicionadas e 6 cenários simulados aprovados. Seleção multiempresa e homologação de leitura cruzada ainda pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
@@ -42,6 +42,15 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | M20 | Configurações | Conjunto v27.2; testar persistência e efeito em módulos | A HOMOLOGAR |
 | M21 | Assinaturas SaaS | Issue #14 aberta; integração comercial ainda não homologada | A HOMOLOGAR |
 | M22 | Interface/performance/offline | Padronização parcial; mobile, cache, latência e fila exigem prova | A HOMOLOGAR |
+
+## M02 — Evidências de execução (etapa 1: fronteira de tenant)
+
+- **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.
+- **Correção gravada:** `813e519ff6fda04e91fd09e83672423dbfc28d46` — mantém exceção exclusivamente para `master_global`; usuários internos da plataforma ficam sem acesso operacional direto por essa função.
+- **Regressões acrescentadas:** `ecea1d1f7174820e9d5b17cb43d0353ac8f623c1` — 4 novos testes em `tests/access-control.test.js` para funcionário interno, tenant correto/incorreto, bloqueio na cópia e Master Global.
+- **Validação nesta etapa:** 6/6 cenários simulados executados sobre o código real da função com mocks de banco e erros HTTPS; **a suíte Node completa e o deploy das Functions não foram executados/confirmados aqui**.
+- **Preservação:** nenhum arquivo M01 nem regra Firestore alterados nesta etapa.
+- **Pendências para avançar:** identificar implantação da seleção de empresa pós-login para usuários multiempresa; impedir alteração de tenant via armazenamento do navegador; homologar read/write de dois tenants e consolidado somente leitura, com Auth/Firestore real; publicar a Function alterada de modo controlado e validar o acesso negado em produção.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
 
