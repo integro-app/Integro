@@ -59,7 +59,7 @@
     </section>
     <section class="aba" id="avisos"><div class="panel"><div class="linha"><h2>Avisos da plataforma</h2><button class="btn" id="btnAtualizarAvisos" type="button">Atualizar avisos</button></div><div id="listaAvisos" class="muted">Carregando avisos...</div></div></section>
     <section class="aba" id="chat"><div class="panel"><div class="linha"><h2>Mensagens internas</h2><button class="btn" id="btnAtualizarChat" type="button">Atualizar mensagens</button></div><div id="listaMensagens" class="muted">Carregando mensagens...</div></div><form class="panel form" id="formChat"><label for="textoChat">Enviar mensagem para a equipe</label><textarea id="textoChat" maxlength="1200" required placeholder="Digite uma mensagem..."></textarea><button class="btn primary" id="btnEnviar" type="submit">Enviar</button></form></section>
-    <section class="aba" id="clientes"><div class="panel"><div class="linha"><h2>Empresas autorizadas</h2><button class="btn" id="btnAtualizarClientes" type="button">Atualizar</button></div><p class="muted">Consulta administrativa autorizada pelo Master Global. Nenhum acesso operacional é concedido nesta tela.</p><div id="listaClientesAutorizados" class="muted" style="margin-top:12px">Selecione a aba para consultar.</div></div></section>
+    <section class="aba" id="clientes"><div class="panel"><div class="linha"><h2>Empresas autorizadas</h2><button class="btn" id="btnAtualizarClientes" type="button">Atualizar</button></div><p class="muted">Consulta administrativa autorizada pelo Master Global. Nenhum acesso operacional é concedido nesta tela.</p><div id="listaClientesAutorizados" class="muted" style="margin-top:12px">Selecione a aba para consultar.</div><div id="detalheClienteAutorizado" class="registro" hidden aria-live="polite" style="margin-top:14px"></div></div></section>
     <section class="aba" id="perfil"><div class="panel"><h2>Meu perfil</h2><div id="dadosPerfil" class="muted">Carregando dados...</div></div></section>
   </main>
 </div>
@@ -71,6 +71,7 @@
 <script src="js/utils/operational.js"></script>
 <script>
   let usuarioInterno=null,avisosInternos=[],mensagensInternas=[],authInterno=null,dbInterno=null;
+  let consultaClienteAtual=0;
   const el=id=>document.getElementById(id);
   const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const data=v=>{const d=new Date(v);return Number.isNaN(d.getTime())?'-':d.toLocaleString('pt-BR')};
@@ -112,14 +113,49 @@
     ).join(''):'<div class="registro">Nenhuma mensagem ainda.</div>';
   }
   async function carregarClientesAutorizados(){
-    const r=await chamar('listarClientesConsultaFuncionario');
-    const lista=Array.isArray(r.clientes)?r.clientes:[];
-    el('listaClientesAutorizados').innerHTML=lista.length?lista.map(c=>
-      '<div class="registro"><strong>'+esc(c.nome||'Cliente ÍNTEGRO')+
-      '</strong><p class="muted">Tipo: '+esc(c.tipoPessoa||'-')+
-      ' · Situação: '+esc(c.status||'ATIVO')+
-      ' · Acesso: '+(c.acessoLiberado?'Liberado':'Bloqueado')+
-      '</p></div>').join(''):'<div class="registro">Nenhuma empresa foi delegada pelo Master Global.</div>';
+    const sequencia=++consultaClienteAtual;
+    const detalhe=el('detalheClienteAutorizado');
+    detalhe.hidden=true;detalhe.textContent='';
+    el('listaClientesAutorizados').textContent='Atualizando empresas autorizadas...';
+    try{
+      const r=await chamar('listarClientesConsultaFuncionario');
+      if(sequencia!==consultaClienteAtual)return;
+      const lista=Array.isArray(r.clientes)?r.clientes:[];
+      el('listaClientesAutorizados').innerHTML=lista.length?lista.map(c=>
+        '<div class="registro"><div class="linha"><strong>'+esc(c.nome||'Cliente ÍNTEGRO')+'</strong>'+
+        '<button class="btn" data-consultar-cliente="'+esc(c.id)+'" type="button">Consultar</button></div>'+
+        '<p class="muted">Tipo: '+esc(c.tipoPessoa||'-')+
+        ' · Situação: '+esc(c.status||'ATIVO')+
+        ' · Acesso: '+(c.acessoLiberado?'Liberado':'Bloqueado')+
+        '</p></div>').join(''):'<div class="registro">Nenhuma empresa foi delegada pelo Master Global.</div>';
+    }catch(e){
+      if(sequencia===consultaClienteAtual){
+        el('listaClientesAutorizados').textContent='Não foi possível validar a lista de empresas.';
+        erro(e);
+      }
+    }
+  }
+  async function consultarClienteAutorizado(clienteId){
+    if(!clienteId)return;
+    const sequencia=++consultaClienteAtual;
+    const detalhe=el('detalheClienteAutorizado');
+    detalhe.hidden=false;
+    detalhe.textContent='Validando sua autorização no servidor...';
+    try{
+      const r=await chamar('consultarClienteAutorizadoFuncionario',{clienteId});
+      if(sequencia!==consultaClienteAtual)return;
+      if(!r.cliente||r.cliente.id!==clienteId)throw new Error('Resposta da empresa não corresponde à seleção.');
+      const c=r.cliente;
+      detalhe.innerHTML='<h2>'+esc(c.nome||'Empresa')+'</h2>'+
+        '<p class="muted">Tipo: '+esc(c.tipoPessoa||'-')+
+        ' · Situação: '+esc(c.status||'ATIVO')+'</p>'+
+        '<p class="muted">Acesso: '+(c.acessoLiberado?'Liberado':'Bloqueado ou expirado')+'</p>'+
+        '<p class="muted">Consulta somente leitura autorizada pelo Master Global. Dados financeiros e operações não estão disponíveis.</p>';
+    }catch(e){
+      if(sequencia!==consultaClienteAtual)return;
+      detalhe.textContent='Consulta não autorizada ou temporariamente indisponível. Atualize suas empresas autorizadas.';
+      erro(e);
+    }
   }
   async function atualizar(){
     mostrar('Atualizando informações...');
@@ -159,6 +195,10 @@
   el('btnAtualizar').onclick=atualizar;el('btnAtualizarAvisos').onclick=()=>carregarAvisos().catch(erro);
   el('btnAtualizarChat').onclick=()=>carregarChat().catch(erro);
   el('btnAtualizarClientes').onclick=()=>carregarClientesAutorizados().catch(erro);
+  el('listaClientesAutorizados').addEventListener('click',e=>{
+    const botao=e.target.closest('[data-consultar-cliente]');
+    if(botao&&!botao.disabled)consultarClienteAutorizado(botao.dataset.consultarCliente);
+  });
   el('btnSair').onclick=sair;
   el('listaAvisos').addEventListener('click',async e=>{
     const b=e.target.closest('[data-aviso]');if(!b||b.disabled)return;
