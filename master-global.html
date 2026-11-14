@@ -250,7 +250,7 @@
     <section id="chat" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Chat interno</h2><p>Comunicação entre funcionários.</p></div></div><div id="integroChatRoot"><div class="grid"><div class="panel" style="min-height:280px"><div class="panel-title"><div><h2>Mensagens da equipe ÍNTEGRO</h2><p>Canal exclusivo da administração, separado das conversas dos clientes.</p></div><button class="btn btn-light" onclick="carregarChatGlobal()">Atualizar</button></div><div id="listaChatGlobal" class="list"><div class="empty">Abra a aba para carregar mensagens.</div></div></div><form id="formChatGlobal" class="panel" onsubmit="enviarMensagemGlobal(event)"><label class="form-label" for="chatGlobalTexto">Nova mensagem</label><textarea id="chatGlobalTexto" class="form-textarea" maxlength="1200" required placeholder="Digite sua mensagem para a equipe..."></textarea><button id="btnChatGlobalEnviar" class="btn btn-primary" type="submit">Enviar mensagem</button></form></div></div></div></section>
     <section id="relatorios" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title"><div><h2>Relatórios da plataforma</h2><p>Indicadores de cadastros e planos vinculados, sem confundir mensalidade contratada com receita recebida.</p></div><button class="btn btn-light" onclick="carregarTudo()">Atualizar dados</button></div><div class="grid grid-2" id="resumoRelatorios"></div><div class="toolbar" style="margin-top:18px"><button class="btn btn-primary" onclick="exportarRelatorioGlobal('clientes')">Exportar clientes CSV</button><button class="btn btn-light" onclick="exportarRelatorioGlobal('usuarios')">Exportar usuários CSV</button><button class="btn btn-light" onclick="exportarRelatorioGlobal('planos')">Exportar planos CSV</button></div><div id="distribuicaoPlanos" class="list"></div></div></section>
     <section id="logs" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Logs e auditoria</h2><p>Registro das últimas 200 ações do sistema, em ordem de criação.</p></div><button class="btn btn-light" onclick="carregarLogs().then(renderLogs).catch(e=>notificarIntegro(mensagemErroGlobal(e)))">Atualizar logs</button></div><div id="listaLogs" class="list"></div></div></section>
-    <section id="config" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Configurações globais</h2><p>Padrões da plataforma.</p></div><button class="btn btn-primary" onclick="salvarConfiguracoesGlobais()">Salvar</button></div><div class="grid grid-2"><div><label class="form-label">Nome da plataforma</label><input id="cfgNomePlataforma" class="form-input" value="ÍNTEGRO"></div><div><label class="form-label">Dias de teste padrão</label><input id="cfgDiasTeste" type="number" class="form-input" value="7"></div></div></div></section>
+    <section id="config" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Configurações globais</h2><p>Padrões da plataforma.</p></div><button class="btn btn-primary" onclick="salvarConfiguracoesGlobais()">Salvar</button></div><div class="grid grid-2"><div><label class="form-label" for="cfgNomePlataforma">Nome da plataforma</label><input id="cfgNomePlataforma" class="form-input" minlength="2" maxlength="80" required value="ÍNTEGRO"></div><div><label class="form-label" for="cfgDiasTeste">Dias de teste padrão</label><input id="cfgDiasTeste" type="number" inputmode="numeric" min="1" max="90" step="1" required class="form-input" value="7"></div></div></div></section>
   </main>
   <div id="drawerOverlay" class="drawer-overlay"></div><aside id="drawer" class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Detalhes</h2><p id="drawerSubtitle">Informações</p></div><button class="close-btn" onclick="fecharDrawer()" aria-label="Fechar detalhes">×</button></div><div id="drawerBody" class="drawer-body"></div></aside>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script>
@@ -689,7 +689,7 @@
       if(processandoCadastroGlobal)return;
       const dados={id:id||'',tipoPessoa:val('cliTipoPessoa'),documento:val('cliDocumento'),
         nome:val('cliNome'),email:val('cliEmail'),telefone:val('cliTelefone'),planoId:val('cliPlano')};
-      if(!dados.nome||!dados.documento||!dados.email)return notificarIntegro('Informe nome, CPF/CNPJ e e-mail.');
+      if(!validarPreenchimentoMasterGlobal(['cliTipoPessoa','cliDocumento','cliNome','cliEmail','cliTelefone']))return;
       processandoCadastroGlobal=true;
       try{
         const resposta=await funcaoMasterGlobal('salvarClienteIntegroGlobal')(dados);
@@ -724,7 +724,7 @@
       const cliente=clientesIntegro.find(c=>c.id===val('mlCliente'));
       if(!cliente)return notificarIntegro('Selecione o cliente ÍNTEGRO.');
       const dados={clienteId:cliente.id,nome:val('mlNome'),email:val('mlEmail').toLowerCase()};
-      if(!dados.nome||!dados.email)return notificarIntegro('Informe nome e e-mail.');
+      if(!validarPreenchimentoMasterGlobal(['mlCliente','mlNome','mlEmail']))return;
       processandoCadastroGlobal=true;
       try{
         const resposta=await funcaoMasterGlobal('criarMasterLocalGlobal')(dados);
@@ -776,7 +776,7 @@
       if(processandoCadastroGlobal)return;
       const dados={id:id||'',nome:val('uiNome'),email:val('uiEmail').toLowerCase(),
         tipoInterno:val('uiTipo'),departamentoId:val('uiDepartamento')};
-      if(!dados.nome||!dados.email)return notificarIntegro('Informe nome e e-mail.');
+      if(!validarPreenchimentoMasterGlobal(['uiNome','uiEmail','uiTipo']))return;
       processandoCadastroGlobal=true;
       try{
         const r=await chamarGestaoGlobal('salvarUsuarioInterno',dados);
@@ -823,6 +823,7 @@
       byId('btnSalvarDepartamento').onclick=()=>salvarDepartamento(id);
     }
     async function salvarDepartamento(id=null){
+      if(!validarPreenchimentoMasterGlobal(['depNome','depStatus']))return;
       await executarAcaoGlobal('salvarDepartamento',{id:id||'',nome:val('depNome'),
         descricao:val('depDescricao'),status:val('depStatus')},'Departamento salvo.');
     }
@@ -840,6 +841,7 @@
       byId('btnSalvarPlano').onclick=()=>salvarPlano(id);
     }
     async function salvarPlano(id=null){
+      if(!validarPreenchimentoMasterGlobal(['plNome','plValor','plStatus']))return;
       await executarAcaoGlobal('salvarPlano',{id:id||'',nome:val('plNome'),
         valorMensal:val('plValor'),descricao:val('plDescricao'),status:val('plStatus')},'Plano salvo.');
     }
@@ -852,6 +854,7 @@
       byId('btnEnviarNotificacao').onclick=salvarNotificacao;
     }
     async function salvarNotificacao(){
+      if(!validarPreenchimentoMasterGlobal(['notTitulo','notMensagem']))return;
       await executarAcaoGlobal('criarNotificacao',{titulo:val('notTitulo'),mensagem:val('notMensagem')},'Aviso global publicado.');
     }
     async function alternarAcessoCliente(id){
@@ -894,6 +897,7 @@
       await executarAcaoGlobal('marcarNotificacaoLida',{id},'Notificação marcada como lida.');
     }
     async function salvarConfiguracoesGlobais(){
+      if(!validarPreenchimentoMasterGlobal(['cfgNomePlataforma','cfgDiasTeste']))return;
       await executarAcaoGlobal('salvarConfiguracoes',{nome:val('cfgNomePlataforma'),
         diasTestePadrao:Number(val('cfgDiasTeste'))},'Configurações globais salvas.',{manterDrawer:true});
     }
@@ -907,8 +911,10 @@
         '<label class="form-label">Nome</label><input id="mlEdicaoNome" maxlength="180" class="form-input" value="'+esc(u.nome||'')+'">'+
         '<button class="btn btn-primary" id="btnSalvarEdicaoMaster">Salvar alterações</button>'+
         '<button class="btn btn-light" id="btnReenviarEdicaoMaster">Reenviar link de acesso</button></div>');
-      byId('btnSalvarEdicaoMaster').onclick=()=>executarAcaoGlobal('editarMasterLocal',
-        {id,nome:val('mlEdicaoNome')},'Master Local atualizado.');
+      byId('btnSalvarEdicaoMaster').onclick=()=>{
+        if(!validarPreenchimentoMasterGlobal(['mlEdicaoNome']))return;
+        executarAcaoGlobal('editarMasterLocal',{id,nome:val('mlEdicaoNome')},'Master Local atualizado.');
+      };
       byId('btnReenviarEdicaoMaster').onclick=()=>enviarAcessoMasterLocal(u.email);
     }
  async function logout(){const usuarioSaindo=usuarioLogado;try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioSaindo,limparFila:true});location.href='index.html'}
