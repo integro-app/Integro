@@ -319,3 +319,57 @@ test("M02: callable protegida inclui rotas restritas e telas exibem delegacao se
   assert.match(equipe, /chamar\('listarClientesConsultaFuncionario'\)/);
   assert.doesNotMatch(equipe, /listarPainel/);
 });
+
+test("M02: selecao de empresa valida no servidor a cada consulta e bloqueia acesso cruzado", async () => {
+  const c = ambiente();
+  c.dados.set("clientes_integro/tenant-a", {
+    nome: "Empresa A", tipoPessoa: "PJ", status: "ATIVO", documento: "DADO-SENSIVEL", email: "privado@example.com"
+  });
+  c.dados.set("clientes_integro/tenant-b", { nome: "Empresa B", status: "ATIVO" });
+  await c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: ["tenant-a"] }, c.global);
+  const r = await c.api.consultarClienteAutorizadoFuncionario({ clienteId: "tenant-a" }, c.interno);
+  assert.equal(r.acesso, "CONSULTA_ADMINISTRATIVA");
+  assert.equal(r.cliente.id, "tenant-a");
+  assert.equal(r.cliente.nome, "Empresa A");
+  assert.equal(r.cliente.documento, undefined);
+  assert.equal(r.cliente.email, undefined);
+  await assert.rejects(
+    c.api.consultarClienteAutorizadoFuncionario({ clienteId: "tenant-b" }, c.interno),
+    erro => erro.code === "permission-denied"
+  );
+  await assert.rejects(
+    c.api.consultarClienteAutorizadoFuncionario({ clienteId: "tenant-a/evil" }, c.interno),
+    erro => erro.code === "invalid-argument"
+  );
+  await assert.rejects(
+    c.api.consultarClienteAutorizadoFuncionario({ clienteId: "tenant-a" }, c.local),
+    erro => erro.code === "permission-denied"
+  );
+  await c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: [] }, c.global);
+  await assert.rejects(
+    c.api.consultarClienteAutorizadoFuncionario({ clienteId: "tenant-a" }, c.interno),
+    erro => erro.code === "permission-denied"
+  );
+});
+
+test("M02: empresa com teste expirado aparece bloqueada mesmo com flag liberada", async () => {
+  const c = ambiente();
+  c.dados.set("clientes_integro/tenant-a", {
+    nome: "Teste expirado", status: "ATIVO", acessoLiberado: true,
+    testeAtivo: true, dataFimTeste: "2020-01-01T00:00:00Z"
+  });
+  await c.api.salvarClientesConsultaFuncionario({ usuarioId: "interno", clientesIds: ["tenant-a"] }, c.global);
+  const lista = await c.api.listarClientesConsultaFuncionario({}, c.interno);
+  assert.equal(lista.clientes[0].acessoLiberado, false);
+  const detalhe = await c.api.consultarClienteAutorizadoFuncionario({ clienteId: "tenant-a" }, c.interno);
+  assert.equal(detalhe.cliente.acessoLiberado, false);
+});
+
+test("M02: seletor da equipe nao altera tenant de sessao e consulta via callable protegida", () => {
+  const equipe = fs.readFileSync(path.join(__dirname, "..", "usuario-integro.html"), "utf8");
+  const index = fs.readFileSync(path.join(__dirname, "..", "functions/index.js"), "utf8");
+  assert.match(index, /consultarClienteAutorizadoFuncionario: gestaoGlobal\.consultarClienteAutorizadoFuncionario/);
+  assert.match(equipe, /chamar\('consultarClienteAutorizadoFuncionario',\{clienteId\}\)/);
+  assert.match(equipe, /data-consultar-cliente/);
+  assert.doesNotMatch(equipe, /localStorage\.setItem\(['"]clientePlataformaId/);
+});
