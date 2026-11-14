@@ -21,7 +21,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | PR #45: correções em cadastro Auth, CRUD, painel, relatórios, chat e bloqueio de tenant; aguarda deploy e homologação real | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Isolamento de tenant reforçado e delegação Master Global → equipe interna por empresa implementada como consulta administrativa limitada; testes adicionados; publicação Hosting e atualização da callable confirmadas no GitHub Actions. Seleção multiempresa para clientes e homologação Firebase real ainda pendentes. | EM DESENVOLVIMENTO |
+| M02 | Empresas/multiempresa | Isolamento reforçado; delegação de empresas por Master Global; seleção pela equipe com revalidação por consulta no backend e revogação; 646/646 testes unitários e CI integrado aprovados; Hosting e callable publicados. Multiempresa real para Masters Locais e homologação autenticada ainda pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
@@ -63,6 +63,17 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Commits:** `cb127c3` (backend), `58059dc` (rotas), `a7025a6` (campos seguros), `967ed87` (Master Global), `9eaadbb` (painel interno), `1c78b92` (testes).
 - **Hosting:** workflow #716 do Firebase Hosting reportou sucesso. **Functions:** workflow específico `deploy-m02-callable.yml` (#1, commit `be71b9c`) concluiu com sucesso no GitHub Actions: `solicitarCadastroDuplicadoV27(southamerica-east1)` atualizada em `integro-novo`, com `Deploy complete!`. Mantida publicação futura somente por acionamento manual.
 - **Pendente M02:** segurança e UX da seleção de múltiplas empresas para Master Local quando legalmente vinculado, acesso delegado de funcionários a outros módulos apenas mediante permissão expressa, testes reais de isolamento e leitura cruzada, controle de versões e aceite.
+
+### M02 — Etapa 3: seleção segura de empresa delegada e publicação (14/11/2026)
+
+- **Funcionalidade:** equipe ÍNTEGRO pode selecionar uma empresa da lista delegada na tela `usuario-integro.html` e consultar apenas nome, tipo, situação e liberação administrativa.
+- **Autorização real:** `consultarClienteAutorizadoFuncionario` relê `usuarios/{Auth UID}`, valida `clientesLeituraAutorizada` e lê somente `clientes_integro/{clienteId}`; IDs do browser ou armazenamento local não delegam escopo. Consultas fora da lista e após revogação são negadas.
+- **Integridade dos indicadores:** `empresaLiberada` considera bloqueio, inatividade e prazo de teste expirado. Tela protege contra resposta antiga sobrescrevendo a nova seleção.
+- **Regressões:** 3 novos testes em `tests/master-global-management.test.js`. CI `Auditoria integrada - Integro` execução #424: código/telas/sintaxe, Rules, integração de clientes e integração de vendas/financeiro concluídos com sucesso. `npm run verify`: **646/646 testes aprovados, zero falhas**.
+- **Publicação Hosting:** execução #722 do workflow `firebase-hosting-merge.yml` concluída com sucesso. **Cloud Function:** execução #2 do workflow `deploy-m02-callable.yml` ([run 43639117317](https://github.com/integro-app/Integro/actions/runs/43639117317)) concluiu `solicitarCadastroDuplicadoV27(southamerica-east1)` com `Successful update operation` e `Deploy complete!`. Apenas a callable existente foi implantada; nenhuma Rules foi alterada.
+- **Controle de publicação:** workflow de Function restaurado para `workflow_dispatch` após deploy, evitando atualizações automáticas de backend em pushes futuros.
+- **Commits da etapa:** `89c54f3` (backend), `37c293d` (roteamento), `92cb6e9` (interface), `f80bd3b` (regressões), `de69ed4` (disparo do deploy), `2f3c4fb` (deploy manual).
+- **Limites:** mudança de empresa para Master Local com múltiplos vínculos **não está implementada**; cada usuário de cliente permanece vinculado ao tenant individual. Não foi realizada homologação autenticada de produção com funcionários e dados reais neste ciclo. M01 preservada.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
 
