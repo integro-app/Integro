@@ -248,6 +248,7 @@ exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").h
       marcarNotificacaoLida: gestaoGlobal.marcarNotificacaoLida,
       salvarClientesConsultaFuncionario: gestaoGlobal.salvarClientesConsultaFuncionario,
       listarClientesConsultaFuncionario: gestaoGlobal.listarClientesConsultaFuncionario,
+      consultarClienteAutorizadoFuncionario: gestaoGlobal.consultarClienteAutorizadoFuncionario,
       listarAvisosInternos: gestaoGlobal.listarAvisosInternos,
       listarChat: gestaoGlobal.listarChat,
       enviarChat: gestaoGlobal.enviarChat
