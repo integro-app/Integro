@@ -1,5 +1,6 @@
 "use strict";
 const crypto = require("node:crypto");
+const { empresaLiberada } = require("./company-access");
 
 // Todas as rotas são chamadas por uma callable com sessão V27 validada.
 // Nenhuma operação administrativa depende de permissão de escrita do navegador.
@@ -377,10 +378,42 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       return {
         id: snap.id, nome: txt(c.nome || c.razaoSocial || "Cliente ÍNTEGRO"),
         tipoPessoa: txt(c.tipoPessoa), status: txt(c.status || "ATIVO"),
-        acessoLiberado: c.acessoLiberado !== false
+        acessoLiberado: empresaLiberada(c)
       };
     });
     return { ok: true, clientes, acesso: "CONSULTA_ADMINISTRATIVA", atualizadoEm: new Date().toISOString() };
+  }
+
+  // M02: trocar a empresa consultada nunca muda o tenant da sessão.
+  // O servidor revalida o vínculo em cada abertura; não confia em IDs do navegador.
+  async function consultarClienteAutorizadoFuncionario(dados, contexto) {
+    const a = await autor(contexto, true);
+    if (a.papel !== "usuario_integro") {
+      fail("permission-denied", "Consulta reservada à equipe interna.");
+    }
+    const clienteId = txt(dados?.clienteId);
+    if (!idValido(clienteId)) fail("invalid-argument", "Empresa selecionada inválida.");
+    const usuarioSnap = await db.collection("usuarios").doc(a.uid).get();
+    const usuario = usuarioSnap.exists ? usuarioSnap.data() : null;
+    if (!usuario || usuario.authUid !== a.uid || usuario.tipoUsuario !== "usuario_integro" ||
+        !Array.isArray(usuario.clientesLeituraAutorizada) ||
+        usuario.clientesLeituraAutorizada.length > 100 ||
+        !usuario.clientesLeituraAutorizada.includes(clienteId)) {
+      fail("permission-denied", "Esta empresa não está autorizada para sua conta.");
+    }
+    const snap = await db.collection("clientes_integro").doc(clienteId).get();
+    if (!snap.exists) fail("not-found", "Empresa não encontrada.");
+    const c = snap.data() || {};
+    return {
+      ok: true, acesso: "CONSULTA_ADMINISTRATIVA",
+      cliente: {
+        id: snap.id,
+        nome: txt(c.nome || c.razaoSocial || "Cliente ÍNTEGRO"),
+        tipoPessoa: txt(c.tipoPessoa),
+        status: txt(c.status || "ATIVO"),
+        acessoLiberado: empresaLiberada(c)
+      }
+    };
   }
 
   async function criarNotificacao(dados, contexto) {
@@ -444,6 +477,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
   return { listarPainel, salvarDepartamento, salvarPlano, salvarConfiguracoes,
     salvarUsuarioInterno, provisionarInternoLegado, editarMasterLocal, alterarAcessoUsuario,
     salvarClientesConsultaFuncionario, listarClientesConsultaFuncionario,
+    consultarClienteAutorizadoFuncionario,
     criarNotificacao, marcarNotificacaoLida, listarAvisosInternos, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };
