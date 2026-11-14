@@ -77,7 +77,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       "tipoUsuarioOficial", "cargoChave", "cargoNome", "clientePlataformaId",
       "clientePlataformaNome", "empresaNome", "departamentoId", "status",
       "acessoLiberado", "empresaBloqueada", "ativo", "convitePendente", "provisionamentoAuth",
-      "usuarioInternoIntegro", "criadoEm", "atualizadoEm"
+      "usuarioInternoIntegro", "clientesLeituraAutorizada", "criadoEm", "atualizadoEm"
     ];
     const usuariosSeguros = usuarios.map(u =>
       Object.fromEntries(camposUsuario.filter(c => Object.prototype.hasOwnProperty.call(u, c)).map(c => [c, u[c]]))
