@@ -316,6 +316,7 @@
             'ver-usuario':()=>abrirDetalheUsuario(id),
             'editar-master':()=>abrirEdicaoMasterLocal(id),
             'editar-interno':()=>abrirFormUsuarioInterno(id),
+            'clientes-interno':()=>abrirClientesConsultaFuncionario(id),
             'provisionar-interno':()=>provisionarInternoLegado(id),
             'acesso-usuario':()=>alternarAcessoUsuario(id),
             'ler-notificacao':()=>marcarNotificacaoLida(id),
@@ -552,6 +553,7 @@
         '<button class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver</button>'+
         (provisionado?
           '<button class="btn btn-light" data-mg-action="'+(tipo==='master'?'editar-master':'editar-interno')+'" data-id="'+esc(u.id)+'">Editar</button>'+
+          (tipo==='interno'?'<button class="btn btn-light" data-mg-action="clientes-interno" data-id="'+esc(u.id)+'">Empresas autorizadas</button>':'')+
           (bloqueioEmpresa?'<span class="chip">Acesso gerenciado pela empresa</span>':
             '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>'):
           (tipo==='interno'&&status(u.status)!=='PROVISIONADO'?
@@ -774,6 +776,28 @@
         '<button class="btn btn-primary" id="btnSalvarInterno">Salvar usuário</button></div>');
       setVal('uiTipo',u?.cargoChave||'interno_integro');setVal('uiDepartamento',u?.departamentoId||'');
       byId('btnSalvarInterno').onclick=()=>salvarUsuarioInterno(id);
+    }
+    // M02: apenas o Master Global altera as empresas que um funcionário interno pode consultar.
+    function abrirClientesConsultaFuncionario(usuarioId){
+      const u=usuariosSistema.find(x=>x.id===usuarioId&&x.authUid===x.id&&x.tipoUsuario==='usuario_integro');
+      if(!u)return notificarIntegro('Funcionário não provisionado ou não encontrado.');
+      const ids=new Set(Array.isArray(u.clientesLeituraAutorizada)?u.clientesLeituraAutorizada:[]);
+      const itens=clientesIntegro.map(c=>
+        '<label style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--line);border-radius:14px;cursor:pointer">'+
+        '<input type="checkbox" class="mg-cliente-autorizado" value="'+esc(c.id)+'" '+(ids.has(c.id)?'checked':'')+' style="width:20px;height:20px;flex:none">'+
+        '<span><strong>'+esc(c.nome||c.razaoSocial||'Cliente')+'</strong><span class="muted" style="display:block">'+esc(c.status||'ATIVO')+'</span></span></label>'
+      ).join('');
+      abrirDrawer('Empresas autorizadas',u.nome||u.email||'Equipe ÍNTEGRO',
+        '<div class="grid"><div class="notice">Delegação exclusiva para consulta administrativa básica. Não libera vendas, cobranças, clientes operacionais nem movimentação financeira.</div>'+
+        '<p class="muted">Selecione as empresas que este funcionário poderá consultar em seu painel interno.</p>'+
+        '<div id="mgClientesAutorizados" class="grid" style="max-height:50dvh;overflow-y:auto;gap:8px">'+(itens||'<p class="muted">Nenhum cliente ÍNTEGRO disponível.</p>')+'</div>'+
+        '<button id="btnSalvarClientesFuncionario" class="btn btn-primary">Salvar acessos de consulta</button></div>');
+      byId('btnSalvarClientesFuncionario').onclick=async()=>{
+        const selecionados=[...document.querySelectorAll('#mgClientesAutorizados input:checked')].map(x=>x.value);
+        if(selecionados.length>100)return notificarIntegro('Limite de 100 empresas por funcionário.');
+        await executarAcaoGlobal('salvarClientesConsultaFuncionario',
+          {usuarioId:u.id,clientesIds:selecionados},'Acessos de consulta atualizados.');
+      };
     }
     async function salvarUsuarioInterno(id=null){
       if(processandoCadastroGlobal)return;
