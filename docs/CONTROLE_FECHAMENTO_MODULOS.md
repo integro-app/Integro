@@ -100,8 +100,8 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Achado:** `criarMasterLocal` podia provisionar conta Auth para cliente com teste expirado, porque verificava apenas `status` e `acessoLiberado`; também não conferia bloqueio divergente entre `clientes_integro` e `clientes_plataforma`.
 - **Correção:** reutilizar `empresaLiberada` nas duas coleções, antes de criar usuário no Firebase Auth e novamente dentro da transação, protegendo contra mudança do estado de acesso entre a leitura inicial e a persistência. Clientes ativos permanecem atendidos.
 - **Regressões:** `tests/master-global-onboarding.test.js` ganhou 3 cenários: teste expirado, cópia legada bloqueada, reativação que preserva bloqueio manual por usuário e não ressuscita vendedor. `npm run verify`: **658/658 testes** sem falha; auditoria integrada workflow #440 com 4 jobs aprovados; Hosting workflow #742 com sucesso.
-- **Publicação da Cloud Function:** iniciada via workflow `deploy-m02-callable.yml` #4, run `43663662362` (publica **somente `solicitarCadastroDuplicadoV27`**, que reúne rotas administrativas M01/M02). O êxito deve ser registrado à parte antes de considerar a correção ativa em produção.
-- **Status:** etapa de código e testes concluída; validação com conta real de empresa expirada/bloqueada e login do Master Local permanece pendente. **M01 não está fechada**.
+- **Publicação da Cloud Function:** workflow `deploy-m02-callable.yml` #4, [run 43663662362](https://github.com/integro-app/Integro/actions/runs/43663662362) **concluído com sucesso** no projeto `integro-novo`, região `southamerica-east1`, função `solicitarCadastroDuplicadoV27`: logs registraram `Successful update operation` e `Deploy complete!`. Apenas essa callable foi atualizada. O workflow foi restaurado ao disparo manual para futuras atualizações de backend.
+- **Status:** código, testes e publicação em produção concluídos; validação com conta real de empresa expirada/bloqueada e login do Master Local permanece pendente. **M01 não está fechada**.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
 
