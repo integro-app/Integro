@@ -222,18 +222,62 @@ async function provisionarConviteUsuario(conviteId, email) {
   const callable = firebase.app().functions("southamerica-east1").httpsCallable("provisionarUsuario");
   const resposta = await callable({ conviteId });
   if (!resposta?.data?.ok) throw new Error("O provisionamento não foi confirmado pelo servidor.");
-  await auth.sendPasswordResetEmail(email);
   return resposta.data;
+}
+
+// A credencial nunca é guardada no Firestore, storage ou log.
+function exibirSenhaProvisoriaUsuario(email,senhaProvisoria) {
+  const anterior=document.getElementById("integroSenhaUsuarioCriado");
+  anterior?.remove();
+  const host=document.createElement("div");
+  host.id="integroSenhaUsuarioCriado";
+  host.setAttribute("role","dialog");
+  host.setAttribute("aria-modal","true");
+  host.style.cssText="position:fixed;inset:0;z-index:31000;background:rgba(3,11,24,.90);display:flex;justify-content:center;align-items:center;padding:18px";
+  host.innerHTML=[
+    '<div style="background:#fff;color:#172033;width:min(100%,450px);padding:26px;border-radius:18px">',
+    '<h2 style="margin:0 0 8px">Usuário criado</h2>',
+    '<p style="line-height:1.5">Copie os dados e encaminhe ao usuário por um canal privado. A senha provisória deverá ser trocada no primeiro login.</p>',
+    '<p id="senhaCriadaEmail" style="font-weight:700;overflow-wrap:anywhere;margin:12px 0"></p>',
+    senhaProvisoria?'<label>Senha provisória (exibida apenas agora)<input id="senhaCriadaValor" type="text" readonly autocomplete="off" style="width:100%;font-size:16px;padding:12px;border:1px solid #94a3b8;border-radius:9px;margin-top:6px"></label>':
+      '<p>Este usuário já possuía uma conta. Para redefinir, utilize a recuperação de senha.</p>',
+    senhaProvisoria?'<button id="senhaCriadaCopiar" type="button" style="display:block;width:100%;padding:12px;margin-top:12px">Copiar senha</button>':'',
+    '<button id="senhaCriadaEnviarLink" type="button" style="display:block;width:100%;padding:12px;margin-top:8px">Enviar link de senha por e-mail</button>',
+    '<button id="senhaCriadaConcluir" type="button" style="display:block;width:100%;padding:12px;margin-top:8px">Concluir</button>',
+    '</div>'
+  ].join("");
+  document.body.appendChild(host);
+  const get=id=>host.querySelector("#"+id);
+  get("senhaCriadaEmail").textContent=email;
+  if(senhaProvisoria) {
+    get("senhaCriadaValor").value=senhaProvisoria;
+    get("senhaCriadaCopiar").onclick=async()=>{
+      try{
+        await navigator.clipboard.writeText(get("senhaCriadaValor").value);
+        window.notificarIntegro?.("Senha copiada. Compartilhe por canal privado.");
+      }catch(_){window.notificarIntegro?.("Selecione e copie o campo de senha.");}
+    };
+  }
+  get("senhaCriadaEnviarLink").onclick=async()=>{
+    try{
+      await auth.sendPasswordResetEmail(email);
+      window.notificarIntegro?.("Link de definição de senha enviado.");
+    }catch(_){window.notificarIntegro?.("Não foi possível enviar o e-mail.");}
+  };
+  get("senhaCriadaConcluir").onclick=()=>{
+    const campo=get("senhaCriadaValor");if(campo)campo.value="";
+    host.remove();
+  };
 }
 
 async function provisionarUsuarioPendente(conviteId, email, recarregarLista = true) {
   try {
     if (!conviteId || !email) throw new Error("Convite sem identificação ou e-mail.");
-    if (window.notificarIntegro) window.notificarIntegro("Provisionando acesso e preparando o e-mail...");
-    await provisionarConviteUsuario(conviteId, email);
-    await FirestoreService.gravarLog("ENVIO_ATIVACAO_USUARIO", { conviteId, email });
-    if (window.notificarIntegro) window.notificarIntegro("Usuário provisionado. E-mail para definir a senha enviado.");
-    else UIHelpers.alerta("Usuário provisionado. E-mail para definir a senha enviado.");
+    if (window.notificarIntegro) window.notificarIntegro("Provisionando acesso Firebase...");
+    const acesso=await provisionarConviteUsuario(conviteId,email);
+    await FirestoreService.gravarLog("PROVISIONAMENTO_USUARIO", { conviteId, email });
+    exibirSenhaProvisoriaUsuario(email,acesso.senhaProvisoria || "");
+    if (window.notificarIntegro) window.notificarIntegro("Usuário provisionado com sucesso.");
     if (recarregarLista) await carregarTudoMasterLocal();
     return true;
   } catch (erro) {
