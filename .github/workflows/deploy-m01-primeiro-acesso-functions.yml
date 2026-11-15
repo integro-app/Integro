@@ -1,0 +1,40 @@
+name: Deploy M01 - primeiro acesso com acesso bloqueado ate troca
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy-m01-primeiro-acesso-functions.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firebase-m01-first-password-functions
+  cancel-in-progress: false
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Validar primeiro acesso e regressao completa
+        run: npm run verify
+      - name: Instalar dependencias de Cloud Functions
+        run: npm ci --prefix functions
+      - name: Publicar somente Functions de provisionamento e primeiro acesso
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          if [ -z "$FIREBASE_SA_JSON" ]; then
+            echo "Conta de servico Firebase nao configurada" >&2
+            exit 1
+          fi
+          printf '%s' "$FIREBASE_SA_JSON" > "$RUNNER_TEMP/firebase-m01-first-password.json"
+          chmod 600 "$RUNNER_TEMP/firebase-m01-first-password.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-m01-first-password.json"
+          npx --yes firebase-tools@14.23.0 deploy --only functions:solicitarCadastroDuplicadoV27,functions:provisionarUsuario,functions:iniciarSessaoV27 --project integro-novo --non-interactive
