@@ -1,4 +1,4 @@
-name: Deploy M01 - primeiro acesso com acesso bloqueado ate troca
+name: Deploy M01 - provisionamento e primeiro login obrigatorio
 on:
   push:
     branches: [main]
