@@ -345,6 +345,14 @@ const FirestoreService = {
     }
 
     if (usuario.acessoLiberado === false) {
+      // Permite resolver a identidade no login somente para trocar a senha
+      // inicial. O acesso operacional continua NEGADO pelas Rules atuais.
+      if (usuario.trocaSenhaObrigatoria === true &&
+          usuario.provisionamentoAuth === "PROVISIONADO" &&
+          status === "ATIVO" && usuario.ativo !== false &&
+          usuario.empresaBloqueada !== true && usuario.excluido !== true) {
+        return { ok: true, primeiroAcessoRestrito: true };
+      }
       return this.resultadoDiagnosticoAuth(false, "ACCESS_NOT_RELEASED", { usuario });
     }
 
