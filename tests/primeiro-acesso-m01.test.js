@@ -69,6 +69,8 @@ test("M01: login e regras impedem contornar troca abrindo uma rota direta",()=>{
   assert.match(login,/window\.IntegroPrimeiroAcesso\.exibir\(usuario, authUser\)/);
   assert.match(login,/window\.location\.href = "index\.html\?motivo=primeiro_acesso"/);
   assert.match(rules,/userDoc\(\)\.get\("trocaSenhaObrigatoria", false\) != true/);
+  assert.match(rules,/user\.get\("trocaSenhaObrigatoria", false\) != true/);
+  assert.match(rules,/function canReadCaixa\(data\) \{\s*return isActiveUser\(\) &&/);
   assert.match(sessao,/user\.trocaSenhaObrigatoria === true/);
   assert.match(iniciar,/actor\.trocaSenhaObrigatoria === true/);
   assert.match(portal,/firebase-functions-compat\.js/);
