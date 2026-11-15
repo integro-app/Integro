@@ -1,4 +1,4 @@
-name: Deploy M01 - primeiro acesso e senha provisoria (regras revisadas)
+name: Deploy M01 - primeiro acesso e senha provisoria (retry de Rules)
 on:
   push:
     branches: [main]
@@ -43,7 +43,18 @@ jobs:
           printf '%s' "$FIREBASE_SA_JSON" > "$RUNNER_TEMP/firebase-m01-first-access-sa.json"
           chmod 600 "$RUNNER_TEMP/firebase-m01-first-access-sa.json"
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/firebase-m01-first-access-sa.json"
-          npx --yes firebase-tools@14.23.0 deploy --only firestore:rules --project integro-novo --non-interactive
+          for tentativa in 1 2 3 4; do
+            echo "Publicacao de Firestore Rules - tentativa $tentativa/4"
+            if npx --yes firebase-tools@14.23.0 deploy --only firestore:rules --project integro-novo --non-interactive; then
+              echo "Rules publicadas."
+              break
+            fi
+            if [ "$tentativa" -eq 4 ]; then
+              echo "Falha persistente ao publicar as Rules; Cloud Functions permanecem sem deploy." >&2
+              exit 1
+            fi
+            sleep 20
+          done
       - name: Publicar somente Functions de acesso inicial
         env:
           FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
