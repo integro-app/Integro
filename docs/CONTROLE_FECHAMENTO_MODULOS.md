@@ -20,7 +20,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
-| M01 | Master Global | Cadastro PF/PJ em etapas com consulta automática do documento, trava de duplicidade, CRUD, Auth, painel e bloqueio publicados em Hosting e callable; 651/651 testes aprovados. Falta homologação com usuário real e aceite. | EM HOMOLOGAÇÃO |
+| M01 | Master Global | Cadastro PF/PJ em etapas e pré-consulta automática publicados, 651/651 testes aprovados e fluxo validado pelo proprietário. Persistência de cadastro, criação de Master Local, bloqueios, gestão, relatórios e demais testes reais ainda pendentes. | EM HOMOLOGAÇÃO |
 | M02 | Empresas/multiempresa | Isolamento reforçado; delegação de empresas por Master Global; seleção pela equipe com revalidação por consulta no backend e revogação; 646/646 testes unitários e CI integrado aprovados; Hosting e callable publicados. Multiempresa real para Masters Locais e homologação autenticada ainda pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
@@ -82,7 +82,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Regressão:** 3 testes adicionados no arquivo `tests/master-global-onboarding.test.js`, incluindo documento legado, reserva, perfil proibido, fluxo da tela e bloqueio após mudança do documento.
 - **Verificação:** execução `Auditoria integrada` #430 aprovada em todos os jobs; `npm run verify` com **651/651 testes aprovados, zero falhas**.
 - **Deploy:** Firebase Hosting #729 concluiu com sucesso; Cloud Function `solicitarCadastroDuplicadoV27` atualizada pela execução #3 ([run 43661380149](https://github.com/integro-app/Integro/actions/runs/43661380149)), tentativa 2 concluída com `Successful update operation` e `Deploy complete!`. A tentativa 1 falhou na atualização da Cloud Function, mas o retry teve êxito. Workflow devolvido ao acionamento manual.
-- **Aceite:** pendente validação real no celular pelo proprietário e testes de cadastro persistente/duplicidade com conta Master Global. **M01 permanece EM HOMOLOGAÇÃO**.
+- **Aceite parcial do proprietário (15/11/2026):** usuário respondeu **“Validado!”** após testar o fluxo publicado de seleção PF/PJ, máscara, pré-consulta automática e bloqueio/liberação por documento. **Este subfluxo está homologado pelo usuário.** Não há confirmação explícita, nesta etapa, de persistência pós-cadastro, criação de Master Local, bloqueios completos e demais áreas administrativas; **M01 permanece EM HOMOLOGAÇÃO**.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
 
