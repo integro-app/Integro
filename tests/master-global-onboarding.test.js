@@ -149,7 +149,10 @@ test("Master Local recebe conta Auth canônica, empresa correta e auditoria", as
   const resultado = await c.api.criarMasterLocal({ clienteId: id, nome: "Administrador", email: "master@empresa.com.br" }, c.contexto);
   assert.equal(resultado.ok, true);
   assert.equal(resultado.existente, false);
+  assert.ok(resultado.senhaProvisoria?.length > 35, "Senha individual exibida somente no cadastro");
   const usuario = c.dados.get("usuarios/" + resultado.authUid);
+  assert.equal(usuario.trocaSenhaObrigatoria, true);
+  assert.equal(usuario.senhaProvisoria, undefined, "Senha nunca persistida no Firestore");
   assert.equal(usuario.tipoUsuario, "master_local");
   assert.equal(usuario.clientePlataformaId, id);
   assert.equal(usuario.authUid, resultado.authUid);
@@ -159,6 +162,7 @@ test("Master Local recebe conta Auth canônica, empresa correta e auditoria", as
   assert.ok([...c.dados.values()].some(x => x.tipoAcao === "CRIAR_MASTER_LOCAL"));
   const repetido = await c.api.criarMasterLocal({ clienteId: id, nome: "Administrador", email: "master@empresa.com.br" }, c.contexto);
   assert.equal(repetido.existente, true);
+  assert.equal(repetido.senhaProvisoria,undefined,"Reabrir cadastro nunca revela a senha");
   const outro = await c.api.salvarCliente({ ...cliente, documento: "52998224725", tipoPessoa: "PF", email: "outro@empresa.com.br" }, c.contexto);
   await assert.rejects(c.api.criarMasterLocal({ clienteId: outro.id, nome: "Outro", email: "master@empresa.com.br" }, c.contexto),
     e => e.code === "already-exists");
