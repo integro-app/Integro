@@ -402,3 +402,63 @@ test("cadastro em etapas só libera campos após consulta e bloqueia duplicidade
   assert.match(fs.readFileSync(path.join(__dirname,"..","functions/index.js"),"utf8"),
     /consultarDocumento: onboardingGlobal\.consultarDocumento/);
 });
+
+test("M01: Master Local nao pode ser provisionado para teste expirado, ainda que status ativo", async () => {
+  const c=ambiente();
+  const { id } = await c.api.salvarCliente(cliente,c.contexto);
+  const global=c.dados.get("clientes_integro/"+id);
+  const legado=c.dados.get("clientes_plataforma/"+id);
+  Object.assign(global,{testeAtivo:true,dataFimTeste:"2020-01-01T00:00:00Z",status:"ATIVO",acessoLiberado:true});
+  Object.assign(legado,{testeAtivo:true,dataFimTeste:"2020-01-01T00:00:00Z",status:"ATIVO",acessoLiberado:true});
+  await assert.rejects(
+    c.api.criarMasterLocal({clienteId:id,nome:"Admin expirado",email:"expirado@teste.com"},c.contexto),
+    erro=>erro.code==="failed-precondition" && /teste expirado/i.test(erro.message)
+  );
+  assert.equal(c.authUsers.size,0,"Nao criar conta Auth inutilizavel");
+  assert.equal(global.masterLocalAuthUid,undefined);
+  await c.api.ativarTeste({id,dias:7},c.contexto);
+  const criado=await c.api.criarMasterLocal(
+    {clienteId:id,nome:"Admin liberado",email:"liberado@teste.com"},c.contexto
+  );
+  assert.equal(criado.ok,true);
+  assert.equal(c.dados.get("usuarios/"+criado.authUid).clientePlataformaId,id);
+});
+
+test("M01: cadastro Master Local bloqueia empresa espelhada inativa e nao cria Auth", async () => {
+  const c=ambiente();
+  const {id}=await c.api.salvarCliente(cliente,c.contexto);
+  const legado=c.dados.get("clientes_plataforma/"+id);
+  legado.acessoLiberado=false;
+  await assert.rejects(
+    c.api.criarMasterLocal({clienteId:id,nome:"Admin espelho",email:"espelho@teste.com"},c.contexto),
+    erro=>erro.code==="failed-precondition"
+  );
+  assert.equal(c.authUsers.size,0);
+  legado.acessoLiberado=true;
+  const criado=await c.api.criarMasterLocal(
+    {clienteId:id,nome:"Admin espelho",email:"espelho@teste.com"},c.contexto
+  );
+  assert.equal(criado.ok,true);
+});
+
+test("M01: reativacao preserva bloqueios individuais de Master Local e vendedor", async () => {
+  const c=ambiente();
+  const {id}=await c.api.salvarCliente(cliente,c.contexto);
+  const master=await c.api.criarMasterLocal(
+    {clienteId:id,nome:"Master teste",email:"master-regras@teste.com"},c.contexto
+  );
+  const masterRef=c.dados.get("usuarios/"+master.authUid);
+  const vendedor={authUid:"vendedor-manual",tipoUsuario:"vendedor",clientePlataformaId:id,
+    acessoLiberado:false,status:"BLOQUEADO"};
+  c.dados.set("usuarios/vendedor-manual",vendedor);
+  await c.api.alterarAcesso({id,liberado:false},c.contexto);
+  await c.api.alterarAcesso({id,liberado:false},c.contexto);
+  assert.equal(masterRef.empresaBloqueada,true);
+  assert.equal(vendedor.empresaBloqueada,true);
+  await c.api.alterarAcesso({id,liberado:true},c.contexto);
+  assert.equal(masterRef.acessoLiberado,true);
+  assert.equal(masterRef.empresaBloqueada,false);
+  assert.equal(vendedor.acessoLiberado,false);
+  assert.equal(vendedor.status,"BLOQUEADO");
+  assert.equal(vendedor.empresaBloqueada,false);
+});
