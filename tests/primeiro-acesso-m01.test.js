@@ -11,7 +11,7 @@ function ambiente() {
   const end=source.indexOf("exports.solicitarCadastroDuplicadoV27 =",start);
   assert.ok(start>0 && end>start);
   let perfil={authUid:"auth-1",tipoUsuario:"master_local",status:"ATIVO",
-    acessoLiberado:false,trocaSenhaObrigatoria:true};
+    acessoLiberado:false,trocaSenhaObrigatoria:true,provisionamentoAuth:"PROVISIONADO"};
   let usuarioAuth={disabled:false};
   const chamadas=[];
   const db={collection:n=>({doc:uid=>({
