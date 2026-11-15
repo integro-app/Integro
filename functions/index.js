@@ -241,7 +241,7 @@ async function concluirPrimeiroAcessoV27(dados, contexto) {
   if (!uid) erroHttps("unauthenticated", "Autentique-se com a senha provisoria.");
   const novaSenha = String(dados?.novaSenha || "");
   if (novaSenha.length < 12 || novaSenha.length > 128 ||
-      !/[A-Za-z]/.test(novaSenha) || !/\\d/.test(novaSenha)) {
+      !/[A-Za-z]/.test(novaSenha) || !/\d/.test(novaSenha)) {
     erroHttps("invalid-argument", "Use senha de 12 a 128 caracteres com letras e numeros.");
   }
   const perfilRef = db.collection("usuarios").doc(uid);
