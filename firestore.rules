@@ -105,12 +105,15 @@ service cloud.firestore {
     }
 
     function isActiveUser() {
+      // Uma única leitura do perfil evita estourar o limite de avaliacao das Rules
+      // em operações que validam caixa/ledger e permissões de supervisores.
+      let usuarioAtual = userDoc();
       return isAuthenticated() &&
         exists(userPath()) &&
-        userDoc().get("authUid", "") == currentUid() &&
-        userDoc().get("trocaSenhaObrigatoria", false) != true &&
-        !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
-        userDoc().get("acessoLiberado", false) == true;
+        usuarioAtual.get("authUid", "") == currentUid() &&
+        usuarioAtual.get("trocaSenhaObrigatoria", false) != true &&
+        !(usuarioAtual.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
+        usuarioAtual.get("acessoLiberado", false) == true;
     }
 
     function isOwnAuthProfile(data) {
