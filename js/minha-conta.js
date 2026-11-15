@@ -186,7 +186,7 @@
       // Best effort: encerrar sessão transacional e invalidar tokens antigos.
       try { await global.IntegroV27Session?.invalidateUserSessions?.(user.uid); }
       catch (e) { console.warn("[ÍNTEGRO] Não foi possível encerrar sessões remotas após a troca de senha."); }
-      await global.IntegroV27Session?.end?.({ silent: true }).catch(() => {});
+      try { await global.IntegroV27Session?.end?.({ silent: true }); } catch (_) {}
       await global.firebase.auth().signOut();
       global.State?.limparSessao?.();
       global.alert?.("Senha alterada com sucesso. Entre novamente usando a nova senha.");
