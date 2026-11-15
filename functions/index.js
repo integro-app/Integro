@@ -90,7 +90,7 @@ exports.provisionarUsuario = functions
       email,
       emailNormalizado: email,
       status: "ATIVO",
-      acessoLiberado: true,
+      acessoLiberado: senhaCriada ? false : true,
       empresaBloqueada: false,
       convitePendente: false,
       provisionamentoAuth: "PROVISIONADO",
@@ -250,8 +250,9 @@ async function concluirPrimeiroAcessoV27(dados, contexto) {
   const perfilRef = db.collection("usuarios").doc(uid);
   const snap = await perfilRef.get();
   const perfil = snap.exists ? snap.data() || {} : {};
-  if (perfil.authUid !== uid || perfil.acessoLiberado !== true ||
-      perfil.trocaSenhaObrigatoria !== true || perfil.excluido === true ||
+  if (perfil.authUid !== uid || perfil.acessoLiberado !== false ||
+      perfil.trocaSenhaObrigatoria !== true || perfil.empresaBloqueada === true ||
+      perfil.ativo === false || perfil.excluido === true ||
       ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(String(perfil.status || "").toUpperCase())) {
     erroHttps("failed-precondition", "Primeiro acesso nao autorizado para esta conta.");
   }
@@ -263,6 +264,7 @@ async function concluirPrimeiroAcessoV27(dados, contexto) {
   await admin.auth().updateUser(uid, { password: novaSenha });
   await perfilRef.set({
     trocaSenhaObrigatoria: false,
+    acessoLiberado: true,
     senhaInicialDefinidaEm: admin.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
   await admin.auth().revokeRefreshTokens(uid);
