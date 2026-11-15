@@ -100,6 +100,9 @@ exports.provisionarUsuario = functions
       atualizadoEm: agora
     };
     delete dadosCanonicos.__documentosDuplicados;
+    delete dadosCanonicos.senhaProvisoria;
+    delete dadosCanonicos.password;
+    delete dadosCanonicos.senha;
     // Nunca sobrescrever a situacao de primeiro acesso de um usuario ja existente.
     if (senhaCriada) dadosCanonicos.trocaSenhaObrigatoria = true;
     else delete dadosCanonicos.trocaSenhaObrigatoria;
