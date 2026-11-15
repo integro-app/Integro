@@ -451,6 +451,8 @@ test("M01: reativacao preserva bloqueios individuais de Master Local e vendedor"
   const master=await c.api.criarMasterLocal(
     {clienteId:id,nome:"Master teste",email:"master-regras@teste.com"},c.contexto
   );
+  // Este teste simula um Master Local que ja concluiu o primeiro acesso.
+  Object.assign(c.dados.get("usuarios/"+master.authUid),{acessoLiberado:true,trocaSenhaObrigatoria:false});
   c.dados.set("usuarios/vendedor-manual",{
     authUid:"vendedor-manual",tipoUsuario:"vendedor",clientePlataformaId:id,
     acessoLiberado:false,status:"BLOQUEADO"
