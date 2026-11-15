@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const estado = { montado: false, carregando: false, salvando: false };
+  const estado = { montado: false, carregando: false, salvando: false, alterandoSenha: false };
 
   function usuario() { return global.State?.getUsuario?.() || global.usuarioLogado || global.currentUserData || {}; }
   function acesso() { return global.IntegroAcesso?.acessoUsuario?.(usuario()) || {}; }
@@ -59,12 +59,24 @@
             <div><strong>Dispositivo atual</strong><span>${esc(device.tipo || "Dispositivo")}${device.plataforma ? ` • ${esc(device.plataforma)}` : ""}</span></div>
             <div><strong>Último acesso</strong><span>${esc(dados.ultimoAcessoEmTexto || dados.ultimoLoginEmTexto || "Sessão atual")}</span></div>
             <div><strong>Inatividade</strong><span>${Number(inactivity)} minutos antes da expiração automática.</span></div>
-            <div><strong>Recuperação de senha</strong><span>Solicite a um Supervisor, Gerente ou Master Local autorizado.</span></div>
+            <div><strong>Senha de acesso</strong><span>Para alterar, confirme sua senha atual. Se perdeu o acesso, peça recuperação a um superior autorizado.</span></div>
           </div>
           <div class="config-inline-actions">
-            <button class="ghost-btn" type="button" onclick="IntegroMinhaConta.solicitarRedefinicaoSenha()"><span class="material-symbols-rounded">lock_reset</span>Como trocar minha senha</button>
+            <button class="ghost-btn" type="button" onclick="IntegroMinhaConta.solicitarRedefinicaoSenha()"><span class="material-symbols-rounded">lock_reset</span>Alterar minha senha</button>
             <button class="danger-btn" type="button" onclick="IntegroMinhaConta.encerrarTodasSessoes()"><span class="material-symbols-rounded">logout</span>Encerrar sessão</button>
           </div>
+          <form id="minhaContaFormSenha" autocomplete="off" hidden style="display:none;margin-top:16px" onsubmit="IntegroMinhaConta.alterarMinhaSenha(event)">
+            <div class="config-form-grid">
+              <label>Senha atual<input id="minhaContaSenhaAtual" type="password" autocomplete="current-password" required maxlength="128"></label>
+              <label>Nova senha<input id="minhaContaNovaSenha" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+              <label>Confirme a nova senha<input id="minhaContaConfirmarSenha" type="password" autocomplete="new-password" minlength="12" maxlength="128" required></label>
+            </div>
+            <p style="margin:10px 0">Use no mínimo 12 caracteres, com letras e números. Não reutilize a senha anterior.</p>
+            <div class="config-inline-actions">
+              <button id="minhaContaConfirmarAlteracao" class="ghost-btn" type="submit">Confirmar alteração de senha</button>
+              <button class="ghost-btn" type="button" onclick="IntegroMinhaConta.solicitarRedefinicaoSenha()">Cancelar</button>
+            </div>
+          </form>
         </section>
       </div>
 
@@ -140,7 +152,58 @@
   }
 
   function solicitarRedefinicaoSenha() {
-    notify("Por segurança, solicite a redefinição da senha ao seu Supervisor, Gerente ou Master Local autorizado.", "info");
+    const form = document.getElementById("minhaContaFormSenha");
+    if (!form || estado.alterandoSenha) return;
+    const aberto = form.style.display !== "none";
+    form.hidden = aberto;
+    form.style.display = aberto ? "none" : "block";
+    if (aberto) form.reset();
+    else document.getElementById("minhaContaSenhaAtual")?.focus();
+  }
+
+  // Alteração autenticada pelo próprio usuário, sem depender do e-mail.
+  // A senha anterior deve ser comprovada ao Firebase antes da atualização.
+  async function alterarMinhaSenha(evento) {
+    evento?.preventDefault?.();
+    if (estado.alterandoSenha) return;
+    const atual = document.getElementById("minhaContaSenhaAtual")?.value || "";
+    const nova = document.getElementById("minhaContaNovaSenha")?.value || "";
+    const confirma = document.getElementById("minhaContaConfirmarSenha")?.value || "";
+    if (!atual) return notify("Informe sua senha atual.", "erro");
+    if (nova.length < 12 || !/[A-Za-zÀ-ÿ]/.test(nova) || !/\d/.test(nova))
+      return notify("Use uma senha de no mínimo 12 caracteres, com letras e números.", "erro");
+    if (nova === atual) return notify("A nova senha deve ser diferente da atual.", "erro");
+    if (nova !== confirma) return notify("A confirmação da nova senha não confere.", "erro");
+    const user = global.firebase?.auth?.()?.currentUser;
+    const credencial = global.firebase?.auth?.EmailAuthProvider?.credential;
+    if (!user?.email || !credencial) return notify("Autenticação indisponível. Entre novamente.", "erro");
+    estado.alterandoSenha = true;
+    const botao = document.getElementById("minhaContaConfirmarAlteracao");
+    if (botao) botao.disabled = true;
+    try {
+      await user.reauthenticateWithCredential(credencial(user.email, atual));
+      await user.updatePassword(nova);
+      // Best effort: encerrar sessão transacional e invalidar tokens antigos.
+      try { await global.IntegroV27Session?.invalidateUserSessions?.(user.uid); }
+      catch (e) { console.warn("[ÍNTEGRO] Não foi possível encerrar sessões remotas após a troca de senha."); }
+      await global.IntegroV27Session?.end?.({ silent: true }).catch(() => {});
+      await global.firebase.auth().signOut();
+      global.State?.limparSessao?.();
+      global.alert?.("Senha alterada com sucesso. Entre novamente usando a nova senha.");
+      global.location.href = "index.html";
+    } catch (erro) {
+      const codigo = String(erro?.code || "");
+      const mensagem = ["auth/wrong-password","auth/invalid-credential","auth/invalid-login-credentials"].includes(codigo)
+        ? "A senha atual não confere."
+        : codigo === "auth/too-many-requests" ? "Muitas tentativas. Tente novamente mais tarde."
+        : codigo === "auth/weak-password" ? "A nova senha não atende aos requisitos de segurança."
+        : codigo === "auth/network-request-failed" ? "Erro de conexão. Tente novamente."
+        : "Não foi possível alterar a senha. Verifique sua sessão e tente novamente.";
+      notify(mensagem, "erro");
+    } finally {
+      estado.alterandoSenha = false;
+      if (botao?.isConnected) botao.disabled = false;
+    }
   }
 
   async function encerrarTodasSessoes() {
@@ -160,5 +223,5 @@
   document.addEventListener("integro-tela-alterada", evento => { if (evento.detail?.tela === "minhaConta") render(); });
   document.addEventListener("DOMContentLoaded", () => setTimeout(ativar, 0));
 
-  global.IntegroMinhaConta = Object.freeze({ render, atualizar, salvarPerfil, solicitarRedefinicaoSenha, encerrarTodasSessoes });
+  global.IntegroMinhaConta = Object.freeze({ render, atualizar, salvarPerfil, solicitarRedefinicaoSenha, alterarMinhaSenha, encerrarTodasSessoes });
 })(window);
