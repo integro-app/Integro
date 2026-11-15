@@ -197,26 +197,27 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     try { existeAuth = await admin.auth().getUserByEmail(email); }
     catch (e) { if (e.code !== "auth/user-not-found") throw e; }
     if (existeAuth) fail("already-exists", "E-mail já possui conta Firebase Authentication.");
+    const senhaProvisoria = crypto.randomBytes(36).toString("base64url") + "A9!";
     let novo;
     try {
       novo = await admin.auth().createUser({
         email, displayName: nome, emailVerified: false,
-        password: crypto.randomBytes(36).toString("base64url") + "A9!"
+        password: senhaProvisoria
       });
       await db.runTransaction(async tx => {
         const ref = usuarios.doc(novo.uid);
         if ((await tx.get(ref)).exists) fail("already-exists", "Usuário já existe.");
         tx.create(ref, { ...campos, authUid: novo.uid, email, emailNormalizado: email,
           status: "ATIVO", acessoLiberado: true, ativo: true, convitePendente: false,
-          provisionamentoAuth: "PROVISIONADO", criadoEm: agora(), criadoPorUid: a.uid });
+          provisionamentoAuth: "PROVISIONADO", trocaSenhaObrigatoria: true, criadoEm: agora(), criadoPorUid: a.uid });
         log(tx, "CRIAR_USUARIO_INTERNO", a, email, { usuarioAlvoUid: novo.uid });
       });
-      return { ok: true, authUid: novo.uid, email, existente: false };
+      return { ok: true, authUid: novo.uid, email, existente: false, senhaProvisoria };
     } catch (e) {
       if (novo?.uid) {
         try {
           const perfil = await usuarios.doc(novo.uid).get();
-          if (perfil.exists && perfil.data()?.authUid === novo.uid) return { ok: true, authUid: novo.uid, email, existente: false };
+          if (perfil.exists && perfil.data()?.authUid === novo.uid) return { ok: true, authUid: novo.uid, email, existente: false, senhaProvisoria };
           await admin.auth().deleteUser(novo.uid);
         } catch (rollback) { console.error("[MASTER GLOBAL] Falha de rollback Auth interno", rollback); }
       }
@@ -242,11 +243,12 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     try { existeAuth = await admin.auth().getUserByEmail(email); }
     catch (e) { if (e.code !== "auth/user-not-found") throw e; }
     if (existeAuth) fail("already-exists", "E-mail já possui conta Auth; reconciliação manual necessária.");
+    const senhaProvisoria = crypto.randomBytes(36).toString("base64url") + "A9!";
     let novo;
     try {
       novo = await admin.auth().createUser({
         email, displayName: nome, emailVerified: false,
-        password: crypto.randomBytes(36).toString("base64url") + "A9!"
+        password: senhaProvisoria
       });
       await db.runTransaction(async tx => {
         const [atual, canonico] = await Promise.all([tx.get(legadoRef), tx.get(usuarios.doc(novo.uid))]);
@@ -262,7 +264,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
           cargoNome: txt(legado.cargoNome || "Equipe ÍNTEGRO"),
           usuarioInternoIntegro: true, departamentoId: txt(legado.departamentoId),
           clientePlataformaId: "", status: "ATIVO", acessoLiberado: true, ativo: true,
-          convitePendente: false, provisionamentoAuth: "PROVISIONADO",
+          convitePendente: false, provisionamentoAuth: "PROVISIONADO", trocaSenhaObrigatoria: true,
           criadoPorUid: a.uid, criadoEm: agora(), origemLegadaId: id
         });
         tx.set(legadoRef, { status: "PROVISIONADO", acessoLiberado: false,
@@ -270,13 +272,13 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
           atualizadoEm: agora(), atualizadoPorUid: a.uid }, { merge: true });
         log(tx, "PROVISIONAR_USUARIO_INTERNO_LEGADO", a, email, { usuarioAlvoUid: novo.uid });
       });
-      return { ok: true, authUid: novo.uid, email };
+      return { ok: true, authUid: novo.uid, email, senhaProvisoria };
     } catch (e) {
       if (novo?.uid) {
         try {
           const confirmado = await usuarios.doc(novo.uid).get();
           if (confirmado.exists && confirmado.data()?.authUid === novo.uid) {
-            return { ok: true, authUid: novo.uid, email };
+            return { ok: true, authUid: novo.uid, email, senhaProvisoria };
           }
           await admin.auth().deleteUser(novo.uid);
         } catch (rollback) { console.error("[MASTER GLOBAL] Falha rollback Auth legado", rollback); }
