@@ -588,6 +588,7 @@
     function fecharDrawer(){
       if(document.activeElement?.closest?.('#drawer'))document.activeElement.blur();
       const segredo=byId('senhaTemporariaMaster');if(segredo)segredo.textContent='';
+      const inicial=byId('mgSenhaCriada');if(inicial)inicial.value='';
       byId('drawer').classList.remove('show');byId('drawerOverlay').classList.remove('show');
       document.body.classList.remove('mg-form-drawer-open');
     }
@@ -903,6 +904,26 @@
         return false;
       }
     }
+    // A senha inicial existe apenas nesta resposta autenticada e no drawer atual.
+    function mostrarSenhaCriacao(titulo,nome,email,senhaProvisoria){
+      const senha=typeof senhaProvisoria==='string'?senhaProvisoria:'';
+      abrirDrawer(titulo,nome,
+        '<div class="grid"><div class="notice">Conta vinculada ao Firebase. Entregue as credenciais por canal privado. No primeiro login será obrigatória a troca da senha antes de abrir o sistema.</div>'+
+        '<div class="empty"><strong>'+esc(nome||'Usuário')+'</strong><p class="muted">'+esc(email||'')+'</p></div>'+
+        (senha?'<label class="form-label" for="mgSenhaCriada">Senha provisória — exibida somente agora</label>'+
+          '<input id="mgSenhaCriada" class="form-input" type="text" readonly autocomplete="off" value="'+esc(senha)+'">'+
+          '<button id="mgCopiarSenhaCriada" class="btn btn-primary" type="button">Copiar senha provisória</button>':
+          '<div class="notice">Esta conta já existia ou a senha não está disponível. Utilize a recuperação de acesso para emitir nova credencial.</div>')+
+        '<button id="mgEnviarLinkSenhaCriada" class="btn btn-light" type="button">Enviar link de definição por e-mail</button>'+
+        '<button id="mgFecharSenhaCriada" class="btn btn-light" type="button">Concluir</button></div>');
+      byId('mgFecharSenhaCriada').onclick=fecharDrawer;
+      byId('mgEnviarLinkSenhaCriada').onclick=()=>enviarAcessoMasterLocal(email);
+      if(senha)byId('mgCopiarSenhaCriada').onclick=async()=>{
+        try{await navigator.clipboard.writeText(byId('mgSenhaCriada')?.value||'');
+          notificarIntegro('Senha copiada. Compartilhe apenas com o titular por canal seguro.');
+        }catch(erro){notificarIntegro('Não foi possível copiar automaticamente. Selecione e copie o campo.');}
+      };
+    }
     async function salvarMasterLocal(){
       if(processandoCadastroGlobal)return;
       const cliente=clientesIntegro.find(c=>c.id===val('mlCliente'));
@@ -913,16 +934,8 @@
       try{
         const resposta=await funcaoMasterGlobal('criarMasterLocalGlobal')(dados);
         if(!resposta.data?.authUid)throw new Error('O servidor não confirmou a conta Auth.');
-        const enviado=await enviarAcessoMasterLocal(dados.email);
         try{await carregarTudo();}catch(atualizacao){console.warn('[MASTER GLOBAL] Atualização de listagens pendente.',atualizacao);}
-        abrirDrawer('Master Local criado',cliente.nome||cliente.razaoSocial||'Cliente',
-          '<div class="notice">Conta autenticada e vinculada à empresa. '+(enviado?'O link para definir a senha foi enviado.':'O envio do link de acesso precisa ser repetido.')+'</div>'+
-          '<div class="empty"><strong>'+esc(dados.nome)+'</strong><p class="muted">'+esc(dados.email)+'</p></div>'+
-          '<button class="btn btn-primary" id="btnReenviarAcessoMaster">Reenviar link de acesso</button>'+
-          '<button class="btn btn-light" id="btnRecuperarAcessoMasterCriado">Gerar senha provisória sem e-mail</button>'+
-        '<button class="btn btn-light" onclick="fecharDrawer()">Concluir</button>');
-        byId('btnReenviarAcessoMaster').onclick=()=>enviarAcessoMasterLocal(dados.email);
-        byId('btnRecuperarAcessoMasterCriado').onclick=()=>abrirRecuperacaoSenhaMasterLocal(resposta.data.authUid);
+        mostrarSenhaCriacao('Master Local criado',dados.nome,dados.email,resposta.data.senhaProvisoria);
       }catch(erro){console.error('[MASTER GLOBAL] Criação Master Local',erro);notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
     }
@@ -989,14 +1002,9 @@
       try{
         const r=await chamarGestaoGlobal('salvarUsuarioInterno',dados);
         if(!r.authUid)throw new Error('O servidor não confirmou a conta Auth.');
-        const enviado=id?true:await enviarAcessoMasterLocal(dados.email);
         try{await carregarTudo();}catch(e){console.warn('[MASTER GLOBAL] Atualização de listagem pendente',e);}
-        abrirDrawer(id?'Usuário atualizado':'Usuário interno criado',dados.nome,
-          '<div class="notice">'+(id?'Dados salvos no Firebase.':(enviado?'Conta criada e link de definição de senha enviado.':'Conta criada, mas o envio do link precisa ser repetido.'))+'</div>'+
-          '<div class="empty">'+esc(dados.email)+'</div>'+
-          '<button class="btn btn-primary" id="btnReenviarInterno">Enviar link de acesso</button>'+
-          '<button class="btn btn-light" onclick="fecharDrawer()">Concluir</button>');
-        byId('btnReenviarInterno').onclick=()=>enviarAcessoMasterLocal(dados.email);
+        if(id) { notificarIntegro('Funcionário atualizado.'); fecharDrawer(); }
+        else mostrarSenhaCriacao('Usuário interno criado',dados.nome,dados.email,r.senhaProvisoria);
       }catch(e){notificarIntegro(mensagemErroGlobal(e));}
       finally{processandoCadastroGlobal=false;}
     }
@@ -1009,13 +1017,8 @@
       try{
         const r=await chamarGestaoGlobal('provisionarInternoLegado',{id});
         if(!r.authUid)throw new Error('Provisionamento não confirmado.');
-        const enviado=await enviarAcessoMasterLocal(r.email);
         try{await carregarTudo();}catch(e){console.warn('[MASTER GLOBAL] Listagem pendente',e);}
-        abrirDrawer('Usuário legado regularizado',legado.nome||legado.email,
-          '<div class="notice">Conta Auth vinculada ao UID '+esc(r.authUid)+
-          (enviado?'. Link de senha enviado.':'. O envio do link precisa ser repetido.')+'</div>'+
-          '<button class="btn btn-primary" id="btnReenviarLegado">Reenviar link de acesso</button>');
-        byId('btnReenviarLegado').onclick=()=>enviarAcessoMasterLocal(r.email);
+        mostrarSenhaCriacao('Usuário legado regularizado',legado.nome||r.email,r.email,r.senhaProvisoria);
       }catch(e){notificarIntegro(mensagemErroGlobal(e));}
       finally{processandoCadastroGlobal=false;}
     }
