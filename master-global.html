@@ -319,6 +319,7 @@
             departamento:()=>abrirFormDepartamento(id),plano:()=>abrirFormPlano(id),
             'ver-usuario':()=>abrirDetalheUsuario(id),
             'editar-master':()=>abrirEdicaoMasterLocal(id),
+            'recuperar-master':()=>abrirRecuperacaoSenhaMasterLocal(id),
             'editar-interno':()=>abrirFormUsuarioInterno(id),
             'clientes-interno':()=>abrirClientesConsultaFuncionario(id),
             'provisionar-interno':()=>provisionarInternoLegado(id),
@@ -558,6 +559,7 @@
         (provisionado?
           '<button class="btn btn-light" data-mg-action="'+(tipo==='master'?'editar-master':'editar-interno')+'" data-id="'+esc(u.id)+'">Editar</button>'+
           (tipo==='interno'?'<button class="btn btn-light" data-mg-action="clientes-interno" data-id="'+esc(u.id)+'">Empresas autorizadas</button>':'')+
+          (tipo==='master'?'<button class="btn btn-light" data-mg-action="recuperar-master" data-id="'+esc(u.id)+'">Recuperar acesso</button>':'')+
           (bloqueioEmpresa?'<span class="chip">Acesso gerenciado pela empresa</span>':
             '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>'):
           (tipo==='interno'&&status(u.status)!=='PROVISIONADO'?
@@ -585,6 +587,7 @@
     }
     function fecharDrawer(){
       if(document.activeElement?.closest?.('#drawer'))document.activeElement.blur();
+      const segredo=byId('senhaTemporariaMaster');if(segredo)segredo.textContent='';
       byId('drawer').classList.remove('show');byId('drawerOverlay').classList.remove('show');
       document.body.classList.remove('mg-form-drawer-open');
     }
@@ -916,8 +919,10 @@
           '<div class="notice">Conta autenticada e vinculada à empresa. '+(enviado?'O link para definir a senha foi enviado.':'O envio do link de acesso precisa ser repetido.')+'</div>'+
           '<div class="empty"><strong>'+esc(dados.nome)+'</strong><p class="muted">'+esc(dados.email)+'</p></div>'+
           '<button class="btn btn-primary" id="btnReenviarAcessoMaster">Reenviar link de acesso</button>'+
-          '<button class="btn btn-light" onclick="fecharDrawer()">Concluir</button>');
+          '<button class="btn btn-light" id="btnRecuperarAcessoMasterCriado">Gerar senha provisória sem e-mail</button>'+
+        '<button class="btn btn-light" onclick="fecharDrawer()">Concluir</button>');
         byId('btnReenviarAcessoMaster').onclick=()=>enviarAcessoMasterLocal(dados.email);
+        byId('btnRecuperarAcessoMasterCriado').onclick=()=>abrirRecuperacaoSenhaMasterLocal(resposta.data.authUid);
       }catch(erro){console.error('[MASTER GLOBAL] Criação Master Local',erro);notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
     }
@@ -1104,6 +1109,43 @@
       await executarAcaoGlobal('salvarConfiguracoes',{nome:val('cfgNomePlataforma'),
         diasTestePadrao:Number(val('cfgDiasTeste'))},'Configurações globais salvas.',{manterDrawer:true});
     }
+    // Recuperação excepcional: backend V27 protege o reset por perfil e sessão.
+    function abrirRecuperacaoSenhaMasterLocal(id){
+      const u=usuariosSistema.find(x=>x.id===id&&x.authUid===x.id&&x.tipoUsuario==='master_local');
+      if(!u)return notificarIntegro('Selecione um Master Local com conta Auth válida.');
+      abrirDrawer('Recuperar acesso do Master Local','Somente Master Global · recuperação excepcional',
+        '<div class="grid"><div class="notice">Se o e-mail não estiver acessível, confirme a identidade do responsável por um canal independente antes de gerar a senha. Esta ação substitui a senha atual e encerra sessões anteriores.</div>'+
+        '<div class="empty"><strong>'+esc(u.nome||'Master Local')+'</strong><p class="muted">'+esc(u.email||'')+'</p></div>'+
+        '<label style="display:flex;align-items:flex-start;gap:10px"><input id="masterIdentidadeVerificada" type="checkbox" style="width:20px;height:20px;flex:none"><span>Confirmei a identidade do Master Local por um canal independente.</span></label>'+
+        '<button class="btn btn-primary" id="btnGerarSenhaMaster" type="button">Gerar senha provisória segura</button>'+
+        '<div id="resultadoSenhaMaster" class="notice" hidden><strong>Senha provisória (exibida uma única vez)</strong><p id="senhaTemporariaMaster" style="font-size:17px;letter-spacing:.4px;overflow-wrap:anywhere;user-select:text"></p><p>Entregue a senha por um canal privado e verificado. Oriente o usuário a alterá-la em Minha conta no primeiro acesso.</p></div>'+
+        '<button class="btn btn-light" id="btnEnviarEmailSenhaMaster" type="button">Enviar link de definição de senha por e-mail</button></div>');
+      byId('btnEnviarEmailSenhaMaster').onclick=()=>enviarAcessoMasterLocal(u.email);
+      const botao=byId('btnGerarSenhaMaster');
+      botao.onclick=async()=>{
+        if(!byId('masterIdentidadeVerificada')?.checked)return notificarIntegro('Confirme a identidade do usuário antes do reset.');
+        if(typeof window.crypto?.getRandomValues!=='function')return notificarIntegro('Gerador seguro de senhas indisponível neste navegador.');
+        if(!window.confirm('Confirmar substituição da senha de '+(u.nome||u.email)+'? Sessões anteriores serão encerradas.'))return;
+        botao.disabled=true;
+        try{
+          const bytes=new Uint8Array(24);window.crypto.getRandomValues(bytes);
+          const senha='In-'+Array.from(bytes,x=>x.toString(16).padStart(2,'0')).join('')+'Aa9!';
+          const resposta=await firebase.app().functions('southamerica-east1')
+            .httpsCallable('redefinirSenhaUsuarioV27')({targetUid:u.authUid,novaSenha:senha});
+          if(resposta?.data?.ok!==true)throw new Error('O servidor não confirmou a redefinição.');
+          const resultado=byId('resultadoSenhaMaster'),segredo=byId('senhaTemporariaMaster');
+          if(!resultado||!segredo)return;
+          segredo.textContent=senha;
+          resultado.hidden=false;
+          botao.textContent='Senha redefinida';
+          notificarIntegro('Senha redefinida e sessões antigas encerradas. Entregue a senha por canal verificado.');
+        }catch(erro){
+          console.error('[MASTER GLOBAL] Falha na redefinição administrativa',erro?.code||'indisponivel');
+          notificarIntegro(mensagemErroGlobal(erro));
+          botao.disabled=false;
+        }
+      };
+    }
     function abrirEdicaoMasterLocal(id){
       const u=usuariosSistema.find(x=>x.id===id&&x.tipoUsuario==='master_local'&&x.authUid===x.id);
       if(!u)return notificarIntegro('Master Local não provisionado ou não encontrado.');
@@ -1113,12 +1155,14 @@
         '<label class="form-label">E-mail de login</label><input class="form-input" readonly value="'+esc(u.email||'')+'">'+
         '<label class="form-label">Nome</label><input id="mlEdicaoNome" maxlength="180" class="form-input" value="'+esc(u.nome||'')+'">'+
         '<button class="btn btn-primary" id="btnSalvarEdicaoMaster">Salvar alterações</button>'+
-        '<button class="btn btn-light" id="btnReenviarEdicaoMaster">Reenviar link de acesso</button></div>');
+        '<button class="btn btn-light" id="btnReenviarEdicaoMaster">Reenviar link de acesso</button>'+
+        '<button class="btn btn-light" id="btnRecuperarSenhaEdicaoMaster">Recuperar acesso sem e-mail</button></div>');
       byId('btnSalvarEdicaoMaster').onclick=()=>{
         if(!validarPreenchimentoMasterGlobal(['mlEdicaoNome']))return;
         executarAcaoGlobal('editarMasterLocal',{id,nome:val('mlEdicaoNome')},'Master Local atualizado.');
       };
       byId('btnReenviarEdicaoMaster').onclick=()=>enviarAcessoMasterLocal(u.email);
+      byId('btnRecuperarSenhaEdicaoMaster').onclick=()=>abrirRecuperacaoSenhaMasterLocal(id);
     }
  async function logout(){const usuarioSaindo=usuarioLogado;try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioSaindo,limparFila:true});location.href='index.html'}
     function abrirResumoKpi(tipo){
