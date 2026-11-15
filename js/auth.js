@@ -120,18 +120,28 @@ async function login() {
       return;
     }
 
+    // Primeiro acesso: o perfil fica sem acesso operacional até a troca.
+    // O Firebase Auth permite autenticar para a atualização da própria senha.
+    if (usuario.trocaSenhaObrigatoria === true) {
+      if (usuario.status !== "ATIVO" || usuario.ativo === false ||
+          usuario.empresaBloqueada === true || usuario.excluido === true ||
+          usuario.acessoLiberado !== false) {
+        await auth.signOut();
+        State.limparSessao();
+        UIHelpers.alerta("Conta não habilitada para primeiro acesso. Contate o administrador.");
+        return;
+      }
+      if (!window.IntegroPrimeiroAcesso?.exibir) throw new Error("Assistente de primeiro acesso indisponível.");
+      atualizarLoadingLogin(64, "Defina sua senha definitiva antes de entrar...");
+      window.IntegroPrimeiroAcesso.exibir(usuario, authUser);
+      return;
+    }
+
     const validacao = Validators.validarUsuario(usuario);
     if (!validacao.ok) {
       await auth.signOut();
       State.limparSessao();
       UIHelpers.alerta(validacao.mensagem);
-      return;
-    }
-
-    if (usuario.trocaSenhaObrigatoria === true) {
-      if (!window.IntegroPrimeiroAcesso?.exibir) throw new Error("Assistente de primeiro acesso indisponível.");
-      atualizarLoadingLogin(64, "Defina sua senha definitiva antes de entrar...");
-      window.IntegroPrimeiroAcesso.exibir(usuario, authUser);
       return;
     }
 
