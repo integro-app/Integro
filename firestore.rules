@@ -108,6 +108,7 @@ service cloud.firestore {
       return isAuthenticated() &&
         exists(userPath()) &&
         userDoc().get("authUid", "") == currentUid() &&
+        userDoc().get("trocaSenhaObrigatoria", false) != true &&
         !(userDoc().get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
         userDoc().get("acessoLiberado", false) == true;
     }
