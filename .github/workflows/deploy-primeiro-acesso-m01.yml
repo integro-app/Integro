@@ -1,4 +1,4 @@
-name: Deploy M01 - primeiro acesso e senha provisoria
+name: Deploy M01 - primeiro acesso e senha provisoria (regras revisadas)
 on:
   push:
     branches: [main]
