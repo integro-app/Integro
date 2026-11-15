@@ -252,9 +252,19 @@ async function concluirPrimeiroAcessoV27(dados, contexto) {
   const perfil = snap.exists ? snap.data() || {} : {};
   if (perfil.authUid !== uid || perfil.acessoLiberado !== false ||
       perfil.trocaSenhaObrigatoria !== true || perfil.empresaBloqueada === true ||
+      perfil.provisionamentoAuth !== "PROVISIONADO" ||
       perfil.ativo === false || perfil.excluido === true ||
-      ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(String(perfil.status || "").toUpperCase())) {
+      String(perfil.status || "").toUpperCase() !== "ATIVO") {
     erroHttps("failed-precondition", "Primeiro acesso nao autorizado para esta conta.");
+  }
+  const tenantInicial = String(perfil.clientePlataformaId || "").trim();
+  if (tenantInicial) {
+    const { empresaLiberada } = require("./company-access");
+    const bases = await Promise.all(["clientes_integro", "clientes_plataforma"].map(
+      colecao => db.collection(colecao).doc(tenantInicial).get()
+    ));
+    if (bases.some(doc => doc.exists && !empresaLiberada(doc.data() || {})))
+      erroHttps("permission-denied", "Empresa bloqueada ou periodo de teste expirado.");
   }
   const rawJwt = String(contexto.rawRequest?.headers?.authorization || "").replace(/^Bearer /i, "");
   if (rawJwt) await admin.auth().verifyIdToken(rawJwt, true);
