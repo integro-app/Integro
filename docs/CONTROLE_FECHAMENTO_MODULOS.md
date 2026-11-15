@@ -103,6 +103,16 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Publicação da Cloud Function:** workflow `deploy-m02-callable.yml` #4, [run 43663662362](https://github.com/integro-app/Integro/actions/runs/43663662362) **concluído com sucesso** no projeto `integro-novo`, região `southamerica-east1`, função `solicitarCadastroDuplicadoV27`: logs registraram `Successful update operation` e `Deploy complete!`. Apenas essa callable foi atualizada. O workflow foi restaurado ao disparo manual para futuras atualizações de backend.
 - **Status:** código, testes e publicação em produção concluídos; validação com conta real de empresa expirada/bloqueada e login do Master Local permanece pendente. **M01 não está fechada**.
 
+### M01 — Senha provisória exibida e troca obrigatória (14/11/2026 BRT)
+
+- **Decisão:** senha inicial **individual aleatória**, não `123456` compartilhada. Uma única exibição no popup pós-criação (Master Local, funcionário ÍNTEGRO ou subordinado criado pelo Master Local); copiar e compartilhar em canal privado, sem depender de e-mail real. Link por e-mail mantido como opção.
+- **Backend:** `functions/master-global-onboarding.js`, `functions/master-global-management.js` e `functions/index.js` retornam senha provisória apenas na resposta de criação nova e marcam `trocaSenhaObrigatoria: true` no perfil canônico. Nenhuma senha é persistida nos documentos ou auditoria.
+- **Primeiro acesso:** `js/primeiro-acesso.js` e `js/auth.js` exibem solicitação de senha antiga, nova e confirmação **antes** de abrir a sessão, com reautenticação Firebase Auth. Rota `PRIMEIRO_ACESSO_V1` usa a callable existente `solicitarCadastroDuplicadoV27`, valida próprio UID, altera a senha no Auth, apaga obrigatoriedade, revoga tokens e exige novo login.
+- **Proteção:** `functions/v27-admin.js`, `functions/session-authorization.js` e `firestore.rules` negam entrada nos módulos e leituras operacionais enquanto a troca é necessária. Usuário pode ler seu perfil para completar o processo.
+- **Testes:** `tests/primeiro-acesso-m01.test.js` adicionou quatro cenários (autorização, senha forte, fluxo e proteção). `npm run verify` **662/662 aprovados, zero falhas**. `npm run test:rules` com emulador passou após otimização do helper `isActiveUser`, preservando casos de supervisor, caixa e financeiro.
+- **Publicação:** Hosting publicado via workflow #767. A publicação da Rules **ainda não está confirmada**: workflows `deploy-primeiro-acesso-m01.yml` #1 e #2 tiveram `HTTP 503` no endpoint `firebaserules.googleapis.com/v1/projects/integro-novo:test`; o pipeline corretamente não publicou as Functions. Workflow #3, [run 43665882577](https://github.com/integro-app/Integro/actions/runs/43665882577), com retentativas automáticas em execução; verificar status antes de considerar o fluxo disponível em produção.
+- **Aceite:** homologação com novos usuários reais e e-mail fictício ainda pendente. **Não marcar M01 fechada**.
+
 ## 3. Protocolo de avanço (sem pular tópicos)
 
 1. **ALINHAMENTO:** congelar o escopo exato do tópico ativo, regras do proprietário, perfis, botões e comportamento esperado; resolver divergências pertinentes.
