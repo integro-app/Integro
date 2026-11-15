@@ -208,7 +208,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
         const ref = usuarios.doc(novo.uid);
         if ((await tx.get(ref)).exists) fail("already-exists", "Usuário já existe.");
         tx.create(ref, { ...campos, authUid: novo.uid, email, emailNormalizado: email,
-          status: "ATIVO", acessoLiberado: true, ativo: true, convitePendente: false,
+          status: "ATIVO", acessoLiberado: false, ativo: true, convitePendente: false,
           provisionamentoAuth: "PROVISIONADO", trocaSenhaObrigatoria: true, criadoEm: agora(), criadoPorUid: a.uid });
         log(tx, "CRIAR_USUARIO_INTERNO", a, email, { usuarioAlvoUid: novo.uid });
       });
@@ -263,7 +263,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
           cargoChave: txt(legado.cargoChave || "interno_integro"),
           cargoNome: txt(legado.cargoNome || "Equipe ÍNTEGRO"),
           usuarioInternoIntegro: true, departamentoId: txt(legado.departamentoId),
-          clientePlataformaId: "", status: "ATIVO", acessoLiberado: true, ativo: true,
+          clientePlataformaId: "", status: "ATIVO", acessoLiberado: false, ativo: true,
           convitePendente: false, provisionamentoAuth: "PROVISIONADO", trocaSenhaObrigatoria: true,
           criadoPorUid: a.uid, criadoEm: agora(), origemLegadaId: id
         });
