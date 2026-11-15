@@ -66,6 +66,28 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     return "";
   }
 
+  // Pré-consulta: somente Master Global, sem expor dados do titular.
+  // A reserva transacional continua sendo a garantia definitiva no salvamento.
+  async function consultarDocumento(dados, contexto) {
+    await autorGlobal(contexto);
+    const tipoPessoa = upper(dados?.tipoPessoa);
+    const documento = digits(dados?.documento);
+    if (!["PF", "PJ"].includes(tipoPessoa) ||
+        documento.length !== (tipoPessoa === "PF" ? 11 : 14) ||
+        !documentoValido(documento)) {
+      return { ok: true, disponivel: false, motivo: "INVALIDO" };
+    }
+    const reserva = await db.collection("documentos_clientes_integro").doc(documento).get();
+    if (reserva.exists) {
+      return { ok: true, disponivel: false, motivo: "JA_CADASTRADO" };
+    }
+    const duplicadoLegado = await encontrarDocumento(documento);
+    if (duplicadoLegado) {
+      return { ok: true, disponivel: false, motivo: "JA_CADASTRADO" };
+    }
+    return { ok: true, disponivel: true, motivo: "DISPONIVEL" };
+  }
+
   async function salvarCliente(dados, contexto) {
     const autor = await autorGlobal(contexto);
     const id = txt(dados?.id);
@@ -334,7 +356,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     }
   }
 
-  return { salvarCliente, alterarAcesso, ativarTeste, criarMasterLocal, documentoValido };
+  return { salvarCliente, consultarDocumento, alterarAcesso, ativarTeste, criarMasterLocal, documentoValido };
 }
 
 module.exports = { criarOnboardingMasterGlobal };
