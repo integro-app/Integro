@@ -319,7 +319,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
           tipoUsuario: "master_local", tipoUsuarioOficial: "master_local",
           perfilLegado: "master_local", cargoChave: "master_local", cargoNome: "Master Local",
           clientePlataformaId: clienteId, clientePlataformaNome: empresaNome, empresaNome,
-          status: "ATIVO", acessoLiberado: true, ativo: true, empresaBloqueada: false, convitePendente: false,
+          status: "ATIVO", acessoLiberado: false, ativo: true, empresaBloqueada: false, convitePendente: false,
           provisionamentoAuth: "PROVISIONADO", trocaSenhaObrigatoria: true, criadoPorUid: autor.uid, criadoEm: agora()
         });
         if (!empresaAtual.data().masterLocalAuthUid) {
