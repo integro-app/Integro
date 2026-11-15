@@ -20,7 +20,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
-| M01 | Master Global | Cadastro PF/PJ em etapas e pré-consulta automática publicados, 651/651 testes aprovados e fluxo validado pelo proprietário. Persistência de cadastro, criação de Master Local, bloqueios, gestão, relatórios e demais testes reais ainda pendentes. | EM HOMOLOGAÇÃO |
+| M01 | Master Global | Cadastro CPF/CNPJ homologado; usuário confirmou empresa e Master Local criados; recuperação de acesso por link ou reset administrativo seguro e troca em Minha conta implementadas/publicadas. 655/655 testes e auditoria integrada aprovados. Persistência pós-recarga, bloqueios e demais áreas ainda precisam de homologação. | EM HOMOLOGAÇÃO |
 | M02 | Empresas/multiempresa | Isolamento reforçado; delegação de empresas por Master Global; seleção pela equipe com revalidação por consulta no backend e revogação; 646/646 testes unitários e CI integrado aprovados; Hosting e callable publicados. Multiempresa real para Masters Locais e homologação autenticada ainda pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
@@ -83,6 +83,17 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Verificação:** execução `Auditoria integrada` #430 aprovada em todos os jobs; `npm run verify` com **651/651 testes aprovados, zero falhas**.
 - **Deploy:** Firebase Hosting #729 concluiu com sucesso; Cloud Function `solicitarCadastroDuplicadoV27` atualizada pela execução #3 ([run 43661380149](https://github.com/integro-app/Integro/actions/runs/43661380149)), tentativa 2 concluída com `Successful update operation` e `Deploy complete!`. A tentativa 1 falhou na atualização da Cloud Function, mas o retry teve êxito. Workflow devolvido ao acionamento manual.
 - **Aceite parcial do proprietário (15/11/2026):** usuário respondeu **“Validado!”** após testar o fluxo publicado de seleção PF/PJ, máscara, pré-consulta automática e bloqueio/liberação por documento. **Este subfluxo está homologado pelo usuário.** Não há confirmação explícita, nesta etapa, de persistência pós-cadastro, criação de Master Local, bloqueios completos e demais áreas administrativas; **M01 permanece EM HOMOLOGAÇÃO**.
+
+### M01 — Contas Master Local, senha e recuperação (14/11/2026, BRT)
+
+- **Homologação informada pelo proprietário:** empresa ÍNTEGRO e respectivo Master Local criados com sucesso. Considerar criação validada; persistência após novo login, verificação do e-mail de acesso e testes completos de bloqueio ainda não confirmados.
+- **Senha inicial:** Firebase Auth já cria uma credencial randômica exclusiva (36 bytes criptográficos + sufixo) e a interface envia link de definição de senha para o e-mail cadastrado. **Não foi implementada senha fixa `123456` em produção**, pois permitiria tentativa previsível de acesso às contas dos clientes.
+- **Alteração pelo usuário:** `js/minha-conta.js` exibe formulário de senha atual, nova e confirmação; exige reautenticação no Firebase, mínimo 12 caracteres com letras e números, e encerra sessão após alteração.
+- **Recuperação sem e-mail do Master Local:** `master-global.html` adiciona ação `Recuperar acesso` em Masters Locais provisionados; operador Master Global confirma manualmente identidade, gera senha randômica com `crypto.getRandomValues`, invoca callable `redefinirSenhaUsuarioV27`, mostra senha provisória somente uma vez e limpa o conteúdo ao fechar o drawer. Compartilhamento deve ocorrer por canal privado e verificado; não envolve e-mail perdido.
+- **Redefinição de subordinados:** Master Local mantém permissões da rotina V27 para usuários da sua própria empresa; o backend `functions/v27-admin.js` agora exige senha de 12 a 128 caracteres com letras e números. Conta Master Global e outro Master Local não podem ser redefinidos por Master Local.
+- **Testes:** `tests/password-recovery-m01.test.js` (4 novos testes) incluído no `npm test`; auditoria integrada #437: todas as etapas aprovadas, **655/655 testes unitários aprovados e zero falhas**. Teste funcional com conta real ainda pendente.
+- **Publicação:** Firebase Hosting #738 concluiu com sucesso; Cloud Function `redefinirSenhaUsuarioV27(southamerica-east1)` publicada isoladamente no projeto `integro-novo`, workflow `deploy-password-m01.yml` #1 ([run 43662894967](https://github.com/integro-app/Integro/actions/runs/43662894967)) `Deploy complete!`. Workflow restaurado a disparo manual.
+- **Risco operacional restante:** recuperação de identidade sem e-mail depende da verificação fora do sistema pelo Master Global; a caixa de seleção apenas registra a declaração, não é prova automática de identidade. Não há declaração de M01 100% fechada.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
 
