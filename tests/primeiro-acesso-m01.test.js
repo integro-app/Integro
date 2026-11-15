@@ -11,7 +11,7 @@ function ambiente() {
   const end=source.indexOf("exports.solicitarCadastroDuplicadoV27 =",start);
   assert.ok(start>0 && end>start);
   let perfil={authUid:"auth-1",tipoUsuario:"master_local",status:"ATIVO",
-    acessoLiberado:true,trocaSenhaObrigatoria:true};
+    acessoLiberado:false,trocaSenhaObrigatoria:true};
   let usuarioAuth={disabled:false};
   const chamadas=[];
   const db={collection:n=>({doc:uid=>({
@@ -50,6 +50,7 @@ test("M01: conclusão troca senha apenas do próprio UID e encerra tokens anteri
   });
   assert.deepEqual(r,{ok:true,requerNovoLogin:true});
   assert.equal(e.getPerfil().trocaSenhaObrigatoria,false);
+  assert.equal(e.getPerfil().acessoLiberado,true);
   assert.equal(e.getPerfil().senhaInicialDefinidaEm,"server-timestamp");
   assert.equal(e.getPerfil().senhaProvisoria,undefined);
   const ops=e.chamadas.map(v=>v[0]);
@@ -66,6 +67,8 @@ test("M01: login e regras impedem contornar troca abrindo uma rota direta",()=>{
     portal=read("index.html"),
     primeiro=read("js/primeiro-acesso.js");
   assert.ok(login.indexOf("usuario.trocaSenhaObrigatoria === true") < login.indexOf("State.setUsuario(usuario);"));
+  assert.ok(login.indexOf("usuario.trocaSenhaObrigatoria === true") < login.indexOf("const validacao = Validators.validarUsuario(usuario);"));
+  assert.match(login,/usuario\.acessoLiberado !== false/);
   assert.match(login,/window\.IntegroPrimeiroAcesso\.exibir\(usuario, authUser\)/);
   assert.match(login,/window\.location\.href = "index\.html\?motivo=primeiro_acesso"/);
   assert.match(rules,/usuarioAtual\.get\("trocaSenhaObrigatoria", false\) != true/);
@@ -89,6 +92,7 @@ test("M01: credenciais temporárias só aparecem na criação e nunca são persi
   const painel=read("master-global.html");
   const usuarios=read("js/usuarios.js");
   assert.match(globalOnboarding,/trocaSenhaObrigatoria: true/);
+  assert.match(globalOnboarding,/status: "ATIVO", acessoLiberado: false/);
   assert.match(globalOnboarding,/senhaProvisoria: senha/);
   assert.match(globalManagement,/trocaSenhaObrigatoria: true/);
   assert.match(globalManagement,/senhaProvisoria/);
