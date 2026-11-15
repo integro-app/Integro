@@ -275,8 +275,10 @@ async function provisionarUsuarioPendente(conviteId, email, recarregarLista = tr
     if (!conviteId || !email) throw new Error("Convite sem identificação ou e-mail.");
     if (window.notificarIntegro) window.notificarIntegro("Provisionando acesso Firebase...");
     const acesso=await provisionarConviteUsuario(conviteId,email);
-    await FirestoreService.gravarLog("PROVISIONAMENTO_USUARIO", { conviteId, email });
+    // Não perder a credencial de exibição única se o registro auxiliar falhar.
     exibirSenhaProvisoriaUsuario(email,acesso.senhaProvisoria || "");
+    try { await FirestoreService.gravarLog("PROVISIONAMENTO_USUARIO", { conviteId, email }); }
+    catch (_) { console.warn("[USUÁRIOS] Registro auxiliar pendente após provisionamento."); }
     if (window.notificarIntegro) window.notificarIntegro("Usuário provisionado com sucesso.");
     if (recarregarLista) await carregarTudoMasterLocal();
     return true;
