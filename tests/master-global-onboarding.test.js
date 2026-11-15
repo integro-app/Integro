@@ -447,18 +447,20 @@ test("M01: reativacao preserva bloqueios individuais de Master Local e vendedor"
   const master=await c.api.criarMasterLocal(
     {clienteId:id,nome:"Master teste",email:"master-regras@teste.com"},c.contexto
   );
-  const masterRef=c.dados.get("usuarios/"+master.authUid);
-  const vendedor={authUid:"vendedor-manual",tipoUsuario:"vendedor",clientePlataformaId:id,
-    acessoLiberado:false,status:"BLOQUEADO"};
-  c.dados.set("usuarios/vendedor-manual",vendedor);
+  c.dados.set("usuarios/vendedor-manual",{
+    authUid:"vendedor-manual",tipoUsuario:"vendedor",clientePlataformaId:id,
+    acessoLiberado:false,status:"BLOQUEADO"
+  });
   await c.api.alterarAcesso({id,liberado:false},c.contexto);
   await c.api.alterarAcesso({id,liberado:false},c.contexto);
-  assert.equal(masterRef.empresaBloqueada,true);
-  assert.equal(vendedor.empresaBloqueada,true);
+  assert.equal(c.dados.get("usuarios/"+master.authUid).empresaBloqueada,true);
+  assert.equal(c.dados.get("usuarios/vendedor-manual").empresaBloqueada,true);
   await c.api.alterarAcesso({id,liberado:true},c.contexto);
-  assert.equal(masterRef.acessoLiberado,true);
-  assert.equal(masterRef.empresaBloqueada,false);
-  assert.equal(vendedor.acessoLiberado,false);
-  assert.equal(vendedor.status,"BLOQUEADO");
-  assert.equal(vendedor.empresaBloqueada,false);
+  const masterAtual=c.dados.get("usuarios/"+master.authUid);
+  const vendedorAtual=c.dados.get("usuarios/vendedor-manual");
+  assert.equal(masterAtual.acessoLiberado,true);
+  assert.equal(masterAtual.empresaBloqueada,false);
+  assert.equal(vendedorAtual.acessoLiberado,false);
+  assert.equal(vendedorAtual.status,"BLOQUEADO");
+  assert.equal(vendedorAtual.empresaBloqueada,false);
 });
