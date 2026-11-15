@@ -1,6 +1,7 @@
 "use strict";
 
 const crypto = require("node:crypto");
+const { empresaLiberada } = require("./company-access");
 
 function criarOnboardingMasterGlobal({ admin, functions, db }) {
   const txt = valor => String(valor ?? "").trim();
@@ -264,11 +265,12 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     if (!/^[a-zA-Z0-9_-]{1,128}$/.test(clienteId) || nome.length < 3 || nome.length > 180 ||
         !emailValido(email) || email.length > 254) erro("invalid-argument", "Empresa, nome ou e-mail inválido.");
     const clienteRef = db.collection("clientes_integro").doc(clienteId);
-    const clienteSnap = await clienteRef.get();
+    const legadoRef = db.collection("clientes_plataforma").doc(clienteId);
+    const [clienteSnap, legadoSnap] = await Promise.all([clienteRef.get(), legadoRef.get()]);
     if (!clienteSnap.exists) erro("not-found", "Cliente ÍNTEGRO não encontrado.");
-    const cliente = clienteSnap.data() || {};
-    if (cliente.acessoLiberado === false || ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(cliente.status))) {
-      erro("failed-precondition", "Libere o acesso do cliente antes de criar o Master Local.");
+    if (!empresaLiberada(clienteSnap.data() || {}) ||
+        (legadoSnap.exists && !empresaLiberada(legadoSnap.data() || {}))) {
+      erro("failed-precondition", "Empresa bloqueada ou teste expirado. Libere o acesso antes de criar o Master Local.");
     }
     const usuarios = db.collection("usuarios");
     const [porEmail, porEmailLegado] = await Promise.all([
@@ -304,10 +306,11 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
       novo = await admin.auth().createUser({ email, displayName: nome, password: senha, emailVerified: false });
       const usuarioRef = usuarios.doc(novo.uid);
       await db.runTransaction(async tx => {
-        const [empresaAtual, perfilExistente] = await Promise.all([tx.get(clienteRef), tx.get(usuarioRef)]);
-        if (!empresaAtual.exists || empresaAtual.data().acessoLiberado === false ||
-            ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(empresaAtual.data().status))) {
-          erro("failed-precondition", "Empresa bloqueada durante o provisionamento.");
+        const [empresaAtual, legadoAtual, perfilExistente] =
+          await Promise.all([tx.get(clienteRef), tx.get(legadoRef), tx.get(usuarioRef)]);
+        if (!empresaAtual.exists || !empresaLiberada(empresaAtual.data() || {}) ||
+            (legadoAtual.exists && !empresaLiberada(legadoAtual.data() || {}))) {
+          erro("failed-precondition", "Empresa bloqueada ou teste expirado durante o provisionamento.");
         }
         if (perfilExistente.exists) erro("already-exists", "Usuário já cadastrado.");
         const empresaNome = txt(empresaAtual.data().nome || empresaAtual.data().razaoSocial);
