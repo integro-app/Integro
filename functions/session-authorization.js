@@ -28,7 +28,7 @@ function criarProtecaoSessao({ db, functions }) {
       if (legacy.docs.length === 1) user = legacy.docs[0].data();
     }
     const current = session.exists ? session.data() : null;
-    if (!user || user.authUid !== uid || user.acessoLiberado !== true || user.ativo === false || user.excluido === true ||
+    if (!user || user.trocaSenhaObrigatoria === true || user.authUid !== uid || user.acessoLiberado !== true || user.ativo === false || user.excluido === true ||
         ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(text(user.status).toUpperCase())) deny("Usuário sem acesso.");
     if (!current || current.uid !== uid || current.sessionId !== sid || current.encerrada === true ||
         !Number.isFinite(current.expiresAtMs) || current.expiresAtMs <= Date.now() ||
