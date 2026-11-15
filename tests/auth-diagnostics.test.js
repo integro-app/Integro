@@ -419,3 +419,26 @@ test("login interno ÍNTEGRO não exige tenant, mas operador do cliente continua
   assert.equal(contexto.__validar({ ...base, tipoUsuario: "usuario_cliente", clientePlataformaId: "tenant-a" }).ok, true);
   assert.equal(contexto.__validar({ ...base, tipoUsuario: "usuario_integro", acessoLiberado: false }).ok, false);
 });
+
+test("primeiro acesso restrito pode ler identidade sem obter acesso operacional", async () => {
+  const temporario = usuarioBase({
+    tipoUsuario:"master_local", acessoLiberado:false, status:"ATIVO",
+    trocaSenhaObrigatoria:true, provisionamentoAuth:"PROVISIONADO", empresaBloqueada:false
+  });
+  const { FirestoreService } = carregarContexto({
+    "usuarios/uid_1":temporario,
+    "clientes_integro/tenant_1":{status:"ATIVO",acessoLiberado:true}
+  });
+  const resultado=await FirestoreService.resolverUsuarioAutenticado(authUser);
+  assert.equal(resultado.ok,true);
+  assert.equal(resultado.usuario.acessoLiberado,false);
+  assert.equal(resultado.usuario.trocaSenhaObrigatoria,true);
+  const bloqueado=await FirestoreService.validarUsuarioResolvidoAuth({
+    ...temporario,empresaBloqueada:true
+  });
+  assert.equal(bloqueado.ok,false);
+  const semMarcador=await FirestoreService.validarUsuarioResolvidoAuth({
+    ...temporario,trocaSenhaObrigatoria:false
+  });
+  assert.equal(semMarcador.ok,false);
+});
