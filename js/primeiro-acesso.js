@@ -59,6 +59,7 @@
       try{
         const credencial=global.firebase.auth.EmailAuthProvider.credential(usuarioAuth.email,antiga);
         await usuarioAuth.reauthenticateWithCredential(credencial);
+        await usuarioAuth.getIdToken(true);
         const chamada=global.firebase.app().functions("southamerica-east1").httpsCallable("solicitarCadastroDuplicadoV27");
         const resposta=await chamada({__integroRota:"PRIMEIRO_ACESSO_V1",novaSenha:nova});
         if(resposta?.data?.ok!==true||resposta.data.requerNovoLogin!==true)
