@@ -312,3 +312,93 @@ test("cadastro M01: clique Novo cliente nao encaminha MouseEvent como ID", () =>
   assert.match(html, /id="cliDocumento" type="text" inputmode="numeric"/);
   assert.match(html, /configurarDocumentoClienteIntegro\(Boolean\(id\)\)/);
 });
+
+
+test("pré-consulta automática distingue documento válido, duplicado e dados legados sem escrita", async () => {
+  const c = ambiente();
+  const entrada = {tipoPessoa:"PJ",documento:cliente.documento};
+  const livre = await c.api.consultarDocumento(entrada,c.contexto);
+  assert.deepEqual(livre,{ok:true,disponivel:true,motivo:"DISPONIVEL"});
+  assert.equal([...c.dados.keys()].filter(k=>k.startsWith("clientes_integro/")).length,0);
+  assert.deepEqual(await c.api.consultarDocumento({tipoPessoa:"PF",documento:cliente.documento},c.contexto),
+    {ok:true,disponivel:false,motivo:"INVALIDO"});
+  assert.deepEqual(await c.api.consultarDocumento({tipoPessoa:"PJ",documento:"11.111.111/1111-11"},c.contexto),
+    {ok:true,disponivel:false,motivo:"INVALIDO"});
+  c.dados.set("clientes_plataforma/legado",{documento:"11.222.333/0001-81",nome:"Titular protegido"});
+  const legado = await c.api.consultarDocumento(entrada,c.contexto);
+  assert.deepEqual(legado,{ok:true,disponivel:false,motivo:"JA_CADASTRADO"});
+  assert.equal(legado.nome,undefined);
+  c.dados.delete("clientes_plataforma/legado");
+  c.dados.set("documentos_clientes_integro/11222333000181",{clientePlataformaId:"outro-tenant"});
+  assert.deepEqual(await c.api.consultarDocumento(entrada,c.contexto),
+    {ok:true,disponivel:false,motivo:"JA_CADASTRADO"});
+  c.dados.delete("documentos_clientes_integro/11222333000181");
+  const salvo=await c.api.salvarCliente(cliente,c.contexto);
+  assert.ok(salvo.id);
+  const novo=await c.api.consultarDocumento(entrada,c.contexto);
+  assert.equal(novo.disponivel,false);
+  assert.equal(novo.motivo,"JA_CADASTRADO");
+});
+
+test("pré-consulta CPF/CNPJ é restrita ao Master Global autenticado", async () => {
+  const c=ambiente(), entrada={tipoPessoa:"PF",documento:"529.982.247-25"};
+  await assert.rejects(c.api.consultarDocumento(entrada,{}),e=>e.code==="unauthenticated");
+  c.dados.get("usuarios/global-uid").tipoUsuario="usuario_integro";
+  await assert.rejects(c.api.consultarDocumento(entrada,c.contexto),e=>e.code==="permission-denied");
+  c.dados.get("usuarios/global-uid").tipoUsuario="master_global";
+  c.dados.get("usuarios/global-uid").acessoLiberado=false;
+  await assert.rejects(c.api.consultarDocumento(entrada,c.contexto),e=>e.code==="permission-denied");
+});
+
+test("cadastro em etapas só libera campos após consulta e bloqueia duplicidade", async () => {
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    function iniciarPreConsultaDocumentoClienteIntegro(");
+  const b=html.indexOf("    function abrirFormCliente(id=null){",a);
+  assert.ok(a>=0&&b>a,"Controlador de etapa não encontrado");
+  const events={}, controls=[{disabled:false},{disabled:false},{disabled:false}];
+  const tipo={value:"",addEventListener(ev,cb){events["tipo:"+ev]=cb;}};
+  const doc={value:"",dataset:{},addEventListener(ev,cb){events["doc:"+ev]=cb;}};
+  const etapa={hidden:false}, dados={hidden:false,querySelectorAll(){return controls;}};
+  const status={style:{},dataset:{},textContent:""};
+  const repetir={hidden:true,addEventListener(ev,cb){events["retry:"+ev]=cb;}};
+  const dom={cliTipoPessoa:tipo,cliDocumento:doc,cliDocumentoEtapa:etapa,
+    cliDadosComplementares:dados,cliDocumentoStatus:status,cliReverificarDocumento:repetir};
+  const chamadas=[];
+  const ctx={byId:id=>dom[id],clearTimeout,setTimeout,console,
+    chamarGestaoGlobal:async (acao,entrada)=>{
+      chamadas.push({acao,entrada});
+      return {ok:true,disponivel:entrada.documento==="52998224725",
+        motivo:entrada.documento==="52998224725"?"DISPONIVEL":"JA_CADASTRADO"};
+    }};
+  const init=vm.runInNewContext(html.slice(a,b)+"\niniciarPreConsultaDocumentoClienteIntegro",ctx);
+  init(false);
+  assert.equal(etapa.hidden,true);
+  assert.equal(dados.hidden,true);
+  assert.equal(controls[0].disabled,true);
+  tipo.value="PF";
+  events["tipo:change"]();
+  assert.equal(etapa.hidden,false);
+  assert.equal(dados.hidden,true);
+  doc.value="529.982.247-25";
+  events["doc:blur"]();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(chamadas.length,1);
+  assert.equal(chamadas[0].acao,"consultarDocumento");
+  assert.equal(chamadas[0].entrada.documento,"52998224725");
+  assert.equal(dados.hidden,false);
+  assert.equal(controls[0].disabled,false);
+  doc.value="111.222.333-44";
+  events["doc:input"]();
+  assert.equal(dados.hidden,true,"Alterar documento precisa travar imediatamente");
+  events["doc:blur"]();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(dados.hidden,true);
+  assert.equal(status.dataset.estado,"bloqueado");
+  tipo.value="PJ";
+  events["tipo:change"]();
+  assert.equal(doc.dataset.documentoAprovado,"");
+  assert.equal(dados.hidden,true);
+  assert.match(html,/doc\.dataset\.documentoAprovado!==numero/);
+  assert.match(fs.readFileSync(path.join(__dirname,"..","functions/index.js"),"utf8"),
+    /consultarDocumento: onboardingGlobal\.consultarDocumento/);
+});
