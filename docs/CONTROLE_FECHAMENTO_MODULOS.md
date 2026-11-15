@@ -20,7 +20,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
-| M01 | Master Global | PR #45: correções em cadastro Auth, CRUD, painel, relatórios, chat e bloqueio de tenant; aguarda deploy e homologação real | EM HOMOLOGAÇÃO |
+| M01 | Master Global | Cadastro PF/PJ em etapas com consulta automática do documento, trava de duplicidade, CRUD, Auth, painel e bloqueio publicados em Hosting e callable; 651/651 testes aprovados. Falta homologação com usuário real e aceite. | EM HOMOLOGAÇÃO |
 | M02 | Empresas/multiempresa | Isolamento reforçado; delegação de empresas por Master Global; seleção pela equipe com revalidação por consulta no backend e revogação; 646/646 testes unitários e CI integrado aprovados; Hosting e callable publicados. Multiempresa real para Masters Locais e homologação autenticada ainda pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
@@ -74,6 +74,15 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Controle de publicação:** workflow de Function restaurado para `workflow_dispatch` após deploy, evitando atualizações automáticas de backend em pushes futuros.
 - **Commits da etapa:** `89c54f3` (backend), `37c293d` (roteamento), `92cb6e9` (interface), `f80bd3b` (regressões), `de69ed4` (disparo do deploy), `2f3c4fb` (deploy manual).
 - **Limites:** mudança de empresa para Master Local com múltiplos vínculos **não está implementada**; cada usuário de cliente permanece vinculado ao tenant individual. Não foi realizada homologação autenticada de produção com funcionários e dados reais neste ciclo. M01 preservada.
+
+### M01 — Cadastro progressivo por CPF/CNPJ (14/11/2026, BRT)
+
+- **Novo fluxo:** selecionar PF/PJ, digitar CPF/CNPJ com máscara, consultar automaticamente ao completar os dígitos ou sair do campo; dados complementares permanecem ocultos e desabilitados até verificação positiva. Cadastro existente e documento inválido são barrados antecipadamente.
+- **Servidor:** `consultarDocumento` em `functions/master-global-onboarding.js` verifica autenticação Master Global, checksum, reserva `documentos_clientes_integro`, `clientes_integro` e `clientes_plataforma`. Resposta expõe apenas disponibilidade e motivo; operação de salvar mantém reserva transacional contra corrida.
+- **Regressão:** 3 testes adicionados no arquivo `tests/master-global-onboarding.test.js`, incluindo documento legado, reserva, perfil proibido, fluxo da tela e bloqueio após mudança do documento.
+- **Verificação:** execução `Auditoria integrada` #430 aprovada em todos os jobs; `npm run verify` com **651/651 testes aprovados, zero falhas**.
+- **Deploy:** Firebase Hosting #729 concluiu com sucesso; Cloud Function `solicitarCadastroDuplicadoV27` atualizada pela execução #3 ([run 43661380149](https://github.com/integro-app/Integro/actions/runs/43661380149)), tentativa 2 concluída com `Successful update operation` e `Deploy complete!`. A tentativa 1 falhou na atualização da Cloud Function, mas o retry teve êxito. Workflow devolvido ao acionamento manual.
+- **Aceite:** pendente validação real no celular pelo proprietário e testes de cadastro persistente/duplicidade com conta Master Global. **M01 permanece EM HOMOLOGAÇÃO**.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
 
