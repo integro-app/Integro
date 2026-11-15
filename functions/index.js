@@ -62,7 +62,7 @@ exports.provisionarUsuario = functions
       erroHttps("failed-precondition", "Este cadastro nao esta pendente de provisionamento.");
     }
 
-    let conta;
+    let conta, senhaCriada = "";
     try {
       conta = await admin.auth().getUserByEmail(email);
       const canonicoExistente = await db.collection("usuarios").doc(conta.uid).get();
@@ -72,10 +72,11 @@ exports.provisionarUsuario = functions
     } catch (erro) {
       if (erro instanceof functions.https.HttpsError) throw erro;
       if (erro?.code !== "auth/user-not-found") throw erro;
+      senhaCriada = senhaTemporaria();
       conta = await admin.auth().createUser({
         email,
         displayName: String(convite.nomeCompleto || convite.nome || "Usuario Integro"),
-        password: senhaTemporaria(),
+        password: senhaCriada,
         disabled: false,
         emailVerified: false
       });
@@ -99,6 +100,9 @@ exports.provisionarUsuario = functions
       atualizadoEm: agora
     };
     delete dadosCanonicos.__documentosDuplicados;
+    // Nunca sobrescrever a situacao de primeiro acesso de um usuario ja existente.
+    if (senhaCriada) dadosCanonicos.trocaSenhaObrigatoria = true;
+    else delete dadosCanonicos.trocaSenhaObrigatoria;
 
     const lote = db.batch();
     lote.set(canonicoRef, dadosCanonicos, { merge: true });
@@ -125,7 +129,8 @@ exports.provisionarUsuario = functions
     }, { merge: false });
     await lote.commit();
 
-    return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: false };
+    return { ok: true, authUid: conta.uid, email, redefinicaoNecessaria: Boolean(senhaCriada),
+      ...(senhaCriada ? { senhaProvisoria: senhaCriada } : {}) };
   });
 
 const { criarOperacoesFinanceiras } = require("./financial-callables");
@@ -229,7 +234,40 @@ const { criarAprovacoesClientesV27 } = require("./v27-client-approvals");
 const aprovacoesClientesV27 = criarAprovacoesClientesV27({ admin, functions, db });
 // Reutiliza a callable existente, cujo IAM já está provisionado no Firebase.
 // As duas novas rotas mantêm validação de sessão e isolamento por tenant no servidor.
+// Primeiro acesso autentica pelo Firebase Auth, antes da sessao operacional V27.
+// Reusa a callable existente para nao criar novas permissoes IAM.
+async function concluirPrimeiroAcessoV27(dados, contexto) {
+  const uid = String(contexto?.auth?.uid || "");
+  if (!uid) erroHttps("unauthenticated", "Autentique-se com a senha provisoria.");
+  const novaSenha = String(dados?.novaSenha || "");
+  if (novaSenha.length < 12 || novaSenha.length > 128 ||
+      !/[A-Za-z]/.test(novaSenha) || !/\\d/.test(novaSenha)) {
+    erroHttps("invalid-argument", "Use senha de 12 a 128 caracteres com letras e numeros.");
+  }
+  const perfilRef = db.collection("usuarios").doc(uid);
+  const snap = await perfilRef.get();
+  const perfil = snap.exists ? snap.data() || {} : {};
+  if (perfil.authUid !== uid || perfil.acessoLiberado !== true ||
+      perfil.trocaSenhaObrigatoria !== true || perfil.excluido === true ||
+      ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(String(perfil.status || "").toUpperCase())) {
+    erroHttps("failed-precondition", "Primeiro acesso nao autorizado para esta conta.");
+  }
+  const rawJwt = String(contexto.rawRequest?.headers?.authorization || "").replace(/^Bearer /i, "");
+  if (rawJwt) await admin.auth().verifyIdToken(rawJwt, true);
+  const usuarioAuth = await admin.auth().getUser(uid);
+  if (usuarioAuth.disabled) erroHttps("permission-denied", "Conta bloqueada.");
+  // Atualiza apenas a propria credencial. Nunca guarda ou registra a senha.
+  await admin.auth().updateUser(uid, { password: novaSenha });
+  await perfilRef.set({
+    trocaSenhaObrigatoria: false,
+    senhaInicialDefinidaEm: admin.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+  await admin.auth().revokeRefreshTokens(uid);
+  return { ok: true, requerNovoLogin: true };
+}
+
 exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").https.onCall((dados, contexto) => {
+  if (dados?.__integroRota === "PRIMEIRO_ACESSO_V1") return concluirPrimeiroAcessoV27(dados, contexto);
   if (dados?.__integroRota === "MASTER_GLOBAL_ONBOARDING_V1") {
     const handlers = {
       salvarCliente: onboardingGlobal.salvarCliente,
