@@ -387,7 +387,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     const actor = await actorContext(context);
     const targetUid = text(data?.targetUid);
     const password = text(data?.novaSenha);
-    if (!targetUid || password.length < 6) error("invalid-argument", "Usuário e nova senha de pelo menos 6 caracteres são obrigatórios.");
+    if (!targetUid || password.length < 12 || password.length > 128 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) error("invalid-argument", "Informe uma senha forte de 12 a 128 caracteres, com letras e números.");
     const target = await userProfile(targetUid);
     if (!target || !canManage(actor, target, "redefinir_senha")) error("permission-denied", "Sem permissão para redefinir a senha deste usuário.");
     await db.runTransaction(async tx => {
