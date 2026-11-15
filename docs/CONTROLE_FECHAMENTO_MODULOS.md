@@ -20,7 +20,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
-| M01 | Master Global | Cadastro CPF/CNPJ homologado; usuário confirmou empresa e Master Local criados; recuperação de acesso por link ou reset administrativo seguro e troca em Minha conta implementadas/publicadas. 655/655 testes e auditoria integrada aprovados. Persistência pós-recarga, bloqueios e demais áreas ainda precisam de homologação. | EM HOMOLOGAÇÃO |
+| M01 | Master Global | Cadastro CPF/CNPJ homologado e criação de empresa/Master Local confirmada pelo proprietário. Senhas e recuperação publicadas; guarda contra provisionar Master Local com tenant bloqueado ou teste expirado implementada e testada (658/658, auditoria integrada aprovada). Bloqueios e persistência pós-recarga em produção ainda exigem homologação. | EM HOMOLOGAÇÃO |
 | M02 | Empresas/multiempresa | Isolamento reforçado; delegação de empresas por Master Global; seleção pela equipe com revalidação por consulta no backend e revogação; 646/646 testes unitários e CI integrado aprovados; Hosting e callable publicados. Multiempresa real para Masters Locais e homologação autenticada ainda pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
@@ -94,6 +94,14 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Testes:** `tests/password-recovery-m01.test.js` (4 novos testes) incluído no `npm test`; auditoria integrada #437: todas as etapas aprovadas, **655/655 testes unitários aprovados e zero falhas**. Teste funcional com conta real ainda pendente.
 - **Publicação:** Firebase Hosting #738 concluiu com sucesso; Cloud Function `redefinirSenhaUsuarioV27(southamerica-east1)` publicada isoladamente no projeto `integro-novo`, workflow `deploy-password-m01.yml` #1 ([run 43662894967](https://github.com/integro-app/Integro/actions/runs/43662894967)) `Deploy complete!`. Workflow restaurado a disparo manual.
 - **Risco operacional restante:** recuperação de identidade sem e-mail depende da verificação fora do sistema pelo Master Global; a caixa de seleção apenas registra a declaração, não é prova automática de identidade. Não há declaração de M01 100% fechada.
+
+### M01 — Etapa adicional: guarda de acesso do Master Local (14/11/2026 BRT)
+
+- **Achado:** `criarMasterLocal` podia provisionar conta Auth para cliente com teste expirado, porque verificava apenas `status` e `acessoLiberado`; também não conferia bloqueio divergente entre `clientes_integro` e `clientes_plataforma`.
+- **Correção:** reutilizar `empresaLiberada` nas duas coleções, antes de criar usuário no Firebase Auth e novamente dentro da transação, protegendo contra mudança do estado de acesso entre a leitura inicial e a persistência. Clientes ativos permanecem atendidos.
+- **Regressões:** `tests/master-global-onboarding.test.js` ganhou 3 cenários: teste expirado, cópia legada bloqueada, reativação que preserva bloqueio manual por usuário e não ressuscita vendedor. `npm run verify`: **658/658 testes** sem falha; auditoria integrada workflow #440 com 4 jobs aprovados; Hosting workflow #742 com sucesso.
+- **Publicação da Cloud Function:** iniciada via workflow `deploy-m02-callable.yml` #4, run `43663662362` (publica **somente `solicitarCadastroDuplicadoV27`**, que reúne rotas administrativas M01/M02). O êxito deve ser registrado à parte antes de considerar a correção ativa em produção.
+- **Status:** etapa de código e testes concluída; validação com conta real de empresa expirada/bloqueada e login do Master Local permanece pendente. **M01 não está fechada**.
 
 ## 3. Protocolo de avanço (sem pular tópicos)
 
