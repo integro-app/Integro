@@ -1,15 +1,11 @@
 name: Deploy M01 - provisionamento e primeiro login obrigatorio
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/deploy-m01-primeiro-acesso-functions.yml"
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: firebase-m01-first-password-functions
-  cancel-in-progress: true
+  cancel-in-progress: false
 jobs:
   validate-and-deploy:
     runs-on: ubuntu-latest
