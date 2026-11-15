@@ -258,3 +258,57 @@ test("bloqueio do tenant preserva bloqueios individuais ao reativar", async () =
   assert.equal(c.dados.get("usuarios/vendedor-inativo").acessoLiberado, false);
   assert.equal(c.dados.get("usuarios/vendedor-inativo").status, "BLOQUEADO");
 });
+
+test("cadastro M01: CPF/CNPJ dinamico e teclado de documento livre", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "master-global.html"), "utf8");
+  const a = html.indexOf("    function formatarDocumentoClienteIntegro(");
+  const b = html.indexOf("    function abrirFormCliente(id=null){", a);
+  assert.ok(a >= 0 && b > a, "implementacao de documento precisa existir");
+  const elementos = {};
+  const eventos = {};
+  const tipo = { value: "PF", disabled: false, addEventListener(n, cb) { eventos["tipo:"+n] = cb; } };
+  const documento = {
+    value: "", type: "text", readOnly: false, selectionStart: 0,
+    setAttribute(n,v){ this[n]=v; },
+    addEventListener(n, cb){ eventos["documento:"+n]=cb; },
+    setCustomValidity(v){ this.validade=v; },
+    setSelectionRange(a,b){ this.selectionStart=a;this.selectionEnd=b; }
+  };
+  const label = { textContent: "" }, ajuda = { textContent: "" };
+  Object.assign(elementos, {cliTipoPessoa:tipo,cliDocumento:documento,cliDocumentoLabel:label,cliDocumentoAjuda:ajuda});
+  const context = { byId: id => elementos[id], String, Boolean };
+  const init = vm.runInNewContext(html.slice(a,b) + "\n({formatarDocumentoClienteIntegro,configurarDocumentoClienteIntegro})", context);
+  init.configurarDocumentoClienteIntegro(false);
+  assert.equal(documento.readOnly, false, "Novo cliente deve abrir teclado numerico");
+  assert.equal(documento.inputMode, "numeric");
+  assert.equal(documento.maxLength, 14);
+  assert.equal(documento.placeholder, "000.000.000-00");
+  documento.value = "52998224725"; documento.selectionStart = 11;
+  eventos["documento:input"]({});
+  assert.equal(documento.value,"529.982.247-25");
+  assert.equal(documento.value.length,14);
+  assert.equal(ajuda.textContent,"11/11 dígitos • somente números");
+  tipo.value="PJ";
+  eventos["tipo:change"]();
+  assert.equal(documento.value,"");
+  assert.equal(documento.maxLength,18);
+  assert.equal(label.textContent,"CNPJ");
+  documento.value="11222333000181888"; documento.selectionStart=documento.value.length;
+  eventos["documento:input"]({});
+  assert.equal(documento.value,"11.222.333/0001-81");
+  assert.equal(documento.value.replace(/\D/g,"").length,14);
+  assert.equal(ajuda.textContent,"14/14 dígitos • somente números");
+  assert.equal(init.formatarDocumentoClienteIntegro("529.982.247-25","PF"),"529.982.247-25");
+  init.configurarDocumentoClienteIntegro(true);
+  assert.equal(documento.readOnly,true,"Edição existente deve manter identidade imutável");
+  assert.equal(tipo.disabled,true);
+});
+
+test("cadastro M01: clique Novo cliente nao encaminha MouseEvent como ID", () => {
+  const html = fs.readFileSync(path.join(__dirname, "..", "master-global.html"), "utf8");
+  assert.match(html, /safe\('btnAcaoPrincipal',e=>e\.onclick=\(\)=>abrirFormCliente\(\)\)/);
+  assert.match(html, /botao\.onclick=\(\)=>cfg\[1\]\(\)/);
+  assert.match(html, /id=typeof id==='string'&&id\.trim\(\)\?id:null/);
+  assert.match(html, /id="cliDocumento" type="text" inputmode="numeric"/);
+  assert.match(html, /configurarDocumentoClienteIntegro\(Boolean\(id\)\)/);
+});
