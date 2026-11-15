@@ -236,6 +236,7 @@ function criarAdministracaoV27({ admin, functions, db }) {
     // a callable existente (invoker ja autorizado), sem abrir nova IAM policy.
     if (data?.verificarEmpresa === true) return consultarAcessoEmpresaLogin(data, context);
     const actor = await actorContext(context, true);
+    if (actor.trocaSenhaObrigatoria === true) error("failed-precondition", "Altere a senha provisoria antes de acessar os modulos.");
     const uid = context.auth.uid;
     const tenantId = tenant(actor);
     if (!tenantId && !["master_global", "usuario_integro"].includes(lower(actor.tipoUsuario))) error("failed-precondition", "Empresa não identificada.");
