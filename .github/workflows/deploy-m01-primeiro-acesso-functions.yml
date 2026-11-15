@@ -9,7 +9,7 @@ permissions:
   contents: read
 concurrency:
   group: firebase-m01-first-password-functions
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   validate-and-deploy:
     runs-on: ubuntu-latest
