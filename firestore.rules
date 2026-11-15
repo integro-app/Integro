@@ -136,6 +136,7 @@ service cloud.firestore {
       return isAuthenticated() &&
         exists(userPath()) &&
         user.get("authUid", "") == currentUid() &&
+        user.get("trocaSenhaObrigatoria", false) != true &&
         !(user.get("status", "") in ["BLOQUEADO", "INATIVO", "SUSPENSO"]) &&
         user.get("acessoLiberado", false) == true &&
         user.get("tipoUsuario", "") == "master_local" &&
@@ -605,9 +606,11 @@ service cloud.firestore {
     }
 
     function canReadCaixa(data) {
-      return isActiveMasterLocalFor(data) || isOperationalReader(data) ||
+      return isActiveUser() && (
+        isActiveMasterLocalFor(data) || isOperationalReader(data) ||
         (isFinanceiro() && isSameTenantRead() && hasPermission("podeVerReconciliacao")) ||
-        (isAuditor() && isSameTenantRead());
+        (isAuditor() && isSameTenantRead())
+      );
     }
 
     function canCreateCaixa(data) {
