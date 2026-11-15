@@ -128,6 +128,13 @@ async function login() {
       return;
     }
 
+    if (usuario.trocaSenhaObrigatoria === true) {
+      if (!window.IntegroPrimeiroAcesso?.exibir) throw new Error("Assistente de primeiro acesso indisponível.");
+      atualizarLoadingLogin(64, "Defina sua senha definitiva antes de entrar...");
+      window.IntegroPrimeiroAcesso.exibir(usuario, authUser);
+      return;
+    }
+
     State.setUsuario(usuario);
     atualizarLoadingLogin(64, "Preparando empresa e sessão segura...");
     const configuracoesPromise = carregarConfiguracoesEmpresaDoUsuario(usuario);
@@ -249,6 +256,13 @@ function protegerPagina(tipoObrigatorio = null) {
         await auth.signOut();
         State.limparSessao();
         window.location.href = "index.html";
+        return;
+      }
+
+      if (usuario.trocaSenhaObrigatoria === true) {
+        await auth.signOut().catch(() => {});
+        State.limparSessao();
+        window.location.href = "index.html?motivo=primeiro_acesso";
         return;
       }
 
