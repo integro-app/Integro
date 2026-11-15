@@ -305,7 +305,7 @@
         window.visualViewport?.addEventListener('scroll',atualizar,{passive:true});
         window.addEventListener('orientationchange',atualizar,{passive:true});
       }
-      safe('btnMenu',e=>e.onclick=abrirSidebar);safe('btnFecharMenu',e=>e.onclick=fecharSidebar);safe('sidebarOverlay',e=>e.onclick=fecharSidebar);safe('drawerOverlay',e=>e.onclick=fecharDrawer);safe('btnLogout',e=>e.onclick=logout);safe('btnAtualizar',e=>e.onclick=()=>carregarTudo().catch(err=>console.warn('[MASTER GLOBAL] Atualização',err)));safe('btnAcaoPrincipal',e=>e.onclick=abrirFormCliente);document.querySelectorAll('.menu button[data-screen]').forEach(btn=>btn.onclick=()=>trocarTela(btn.dataset.screen,btn));document.querySelectorAll('[data-kpi]').forEach(card=>card.onclick=()=>abrirResumoKpi(card.dataset.kpi));document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}})
+      safe('btnMenu',e=>e.onclick=abrirSidebar);safe('btnFecharMenu',e=>e.onclick=fecharSidebar);safe('sidebarOverlay',e=>e.onclick=fecharSidebar);safe('drawerOverlay',e=>e.onclick=fecharDrawer);safe('btnLogout',e=>e.onclick=logout);safe('btnAtualizar',e=>e.onclick=()=>carregarTudo().catch(err=>console.warn('[MASTER GLOBAL] Atualização',err)));safe('btnAcaoPrincipal',e=>e.onclick=()=>abrirFormCliente());document.querySelectorAll('.menu button[data-screen]').forEach(btn=>btn.onclick=()=>trocarTela(btn.dataset.screen,btn));document.querySelectorAll('[data-kpi]').forEach(card=>card.onclick=()=>abrirResumoKpi(card.dataset.kpi));document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}})
       if(!window.__mgDelegacao){
         window.__mgDelegacao=true;
         document.addEventListener('click',e=>{
@@ -568,7 +568,7 @@
         notificacoes:['Nova notificação',abrirFormNotificacao]};
       const botao=byId('btnAcaoPrincipal');if(!botao)return;
       const cfg=map[id];botao.style.display=cfg?'':'none';
-      if(cfg){botao.textContent=cfg[0];botao.onclick=cfg[1];}
+      if(cfg){botao.textContent=cfg[0];botao.onclick=()=>cfg[1]();}
     }
     function abrirSidebar(){byId('sidebar').classList.add('show');byId('sidebarOverlay').classList.add('show');document.body.classList.add('menu-mobile-open');byId('btnMenu')?.setAttribute('aria-expanded','true')} function fecharSidebar(){byId('sidebar').classList.remove('show');byId('sidebarOverlay').classList.remove('show');document.body.classList.remove('menu-mobile-open');byId('btnMenu')?.setAttribute('aria-expanded','false')} function abrirDrawer(t,s,h){
       setText('drawerTitle',t);setText('drawerSubtitle',s);
@@ -613,7 +613,7 @@
     function prepararCamposDrawerMasterGlobal(){
       const raiz=byId('drawerBody');if(!raiz)return;
       const campos={
-        cliTipoPessoa:{required:true},cliDocumento:{required:true,inputmode:'numeric',maxlength:18,autocomplete:'off'},
+        cliTipoPessoa:{required:true},cliDocumento:{required:true,type:'text',inputmode:'numeric',maxlength:18,autocomplete:'off',enterkeyhint:'next'},
         cliNome:{required:true,minlength:3,maxlength:180,autocomplete:'name'},
         cliEmail:{required:true,type:'email',inputmode:'email',maxlength:254,autocomplete:'email'},
         cliTelefone:{type:'tel',inputmode:'tel',maxlength:20,autocomplete:'tel'},
@@ -663,7 +663,70 @@
       }
       return true;
     }
-    function abrirFormCliente(id=null){const c=id?clientesIntegro.find(x=>x.id===id):{};abrirDrawer(id?'Editar cliente ÍNTEGRO':'Novo cliente ÍNTEGRO','Cadastro PF/PJ da plataforma',`<div class="grid"><div class="field-grid"><div><label class="form-label">Tipo</label><select id="cliTipoPessoa" class="form-select"><option value="PJ">PJ</option><option value="PF">PF</option></select></div><div><label class="form-label">Documento</label><input id="cliDocumento" class="form-input" value="${esc(c?.documento||'')}" ${id?'readonly':''}></div></div><div><label class="form-label">Nome/Razão social</label><input id="cliNome" class="form-input" value="${esc(c?.nome||c?.razaoSocial||'')}"></div><div class="field-grid"><div><label class="form-label">Email</label><input id="cliEmail" class="form-input" value="${esc(c?.email||'')}"></div><div><label class="form-label">Telefone</label><input id="cliTelefone" class="form-input" value="${esc(c?.telefone||'')}"></div></div><button class="btn btn-primary" onclick="salvarClienteIntegro('${id||''}')">Salvar cliente</button></div>`);setVal('cliTipoPessoa',c?.tipoPessoa||'PJ');
+
+    // M01: CPF/CNPJ com limite de digitos e formatacao progressiva.
+    function formatarDocumentoClienteIntegro(valor,tipoPessoa){
+      const d=String(valor||'').replace(/\D/g,'').slice(0,tipoPessoa==='PF'?11:14);
+      if(tipoPessoa==='PF'){
+        return [d.slice(0,3),d.slice(3,6),d.slice(6,9)].filter(Boolean).join('.')+
+          (d.length>9?'-'+d.slice(9):'');
+      }
+      return [d.slice(0,2),d.slice(2,5),d.slice(5,8)].filter(Boolean).join('.')+
+        (d.length>8?'/'+d.slice(8,12):'')+
+        (d.length>12?'-'+d.slice(12):'');
+    }
+    function configurarDocumentoClienteIntegro(somenteLeitura=false){
+      const tipo=byId('cliTipoPessoa'), campo=byId('cliDocumento'), ajuda=byId('cliDocumentoAjuda');
+      if(!tipo||!campo)return;
+      const atualizarTipo=()=>{
+        const cpf=tipo.value==='PF';
+        campo.type='text';
+        campo.inputMode='numeric';
+        campo.maxLength=cpf?14:18;
+        campo.placeholder=cpf?'000.000.000-00':'00.000.000/0000-00';
+        campo.setAttribute('aria-label',cpf?'CPF do cliente ÍNTEGRO':'CNPJ do cliente ÍNTEGRO');
+        const label=byId('cliDocumentoLabel');
+        if(label)label.textContent=cpf?'CPF':'CNPJ';
+        const formatado=formatarDocumentoClienteIntegro(campo.value,tipo.value);
+        if(campo.value!==formatado)campo.value=formatado;
+        const quantidade=campo.value.replace(/\D/g,'').length;
+        if(ajuda)ajuda.textContent=somenteLeitura?
+          'Documento registrado: alteração bloqueada para preservar o cadastro.':
+          quantidade+'/'+(cpf?11:14)+' dígitos • somente números';
+      };
+      const formatarEntrada=event=>{
+        if(event?.isComposing)return;
+        const anterior=campo.value;
+        const cursor=campo.selectionStart??anterior.length;
+        const antes=anterior.slice(0,cursor).replace(/\D/g,'').length;
+        const formatado=formatarDocumentoClienteIntegro(anterior,tipo.value);
+        if(anterior!==formatado){
+          campo.value=formatado;
+          let pos=0,total=0;
+          while(pos<formatado.length&&total<antes){
+            if(/\d/.test(formatado[pos]))total++;
+            pos++;
+          }
+          try{campo.setSelectionRange(pos,pos)}catch(_){}
+        }
+        campo.setCustomValidity('');
+        atualizarTipo();
+      };
+      tipo.disabled=Boolean(somenteLeitura);
+      campo.readOnly=Boolean(somenteLeitura);
+      campo.autocomplete='off';
+      campo.spellcheck=false;
+      atualizarTipo();
+      if(somenteLeitura)return;
+      campo.addEventListener('input',formatarEntrada);
+      campo.addEventListener('compositionend',formatarEntrada);
+      tipo.addEventListener('change',()=>{
+        campo.value='';
+        campo.setCustomValidity('');
+        atualizarTipo();
+      });
+    }
+    function abrirFormCliente(id=null){id=typeof id==='string'&&id.trim()?id:null;const c=id?clientesIntegro.find(x=>x.id===id):{};if(id&&!c)return notificarIntegro('Cliente ÍNTEGRO não encontrado.');abrirDrawer(id?'Editar cliente ÍNTEGRO':'Novo cliente ÍNTEGRO','Cadastro PF/PJ da plataforma',`<div class="grid"><div class="field-grid"><div><label class="form-label" for="cliTipoPessoa">Tipo de pessoa</label><select id="cliTipoPessoa" class="form-select"><option value="PJ">PJ</option><option value="PF">PF</option></select></div><div><label class="form-label" for="cliDocumento" id="cliDocumentoLabel">CNPJ</label><input id="cliDocumento" type="text" inputmode="numeric" enterkeyhint="next" autocomplete="off" maxlength="18" placeholder="00.000.000/0000-00" class="form-input" value="${esc(c?.documento||'')}" ${id?'readonly':''}><small id="cliDocumentoAjuda" class="muted" aria-live="polite"></small></div></div><div><label class="form-label">Nome/Razão social</label><input id="cliNome" class="form-input" value="${esc(c?.nome||c?.razaoSocial||'')}"></div><div class="field-grid"><div><label class="form-label">Email</label><input id="cliEmail" class="form-input" value="${esc(c?.email||'')}"></div><div><label class="form-label">Telefone</label><input id="cliTelefone" class="form-input" value="${esc(c?.telefone||'')}"></div></div><button class="btn btn-primary" onclick="salvarClienteIntegro('${id||''}')">Salvar cliente</button></div>`);setVal('cliTipoPessoa',c?.tipoPessoa||'PJ');configurarDocumentoClienteIntegro(Boolean(id));
       const botao=byId('drawerBody')?.querySelector('button.btn-primary');
       if(botao){
         const campo=document.createElement('div');
