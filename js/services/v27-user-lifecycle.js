@@ -170,7 +170,7 @@
     if (!target) throw new Error("Usuário não encontrado.");
     const pass = text(document.getElementById("v27NovaSenhaUsuario")?.value);
     const confirmPass = text(document.getElementById("v27ConfirmarSenhaUsuario")?.value);
-    if (pass.length < 6) throw new Error("A nova senha deve ter pelo menos 6 caracteres.");
+    if (pass.length < 12 || pass.length > 128 || !/[A-Za-z]/.test(pass) || !/\d/.test(pass)) throw new Error("Use senha de 12 a 128 caracteres, com letras e números.");
     if (pass !== confirmPass) throw new Error("As senhas informadas não conferem.");
     await global.IntegroV27Session?.resetPassword?.(userId(target), pass);
     global.UIHelpers?.alerta?.("Senha redefinida e sessões anteriores encerradas.");
@@ -183,7 +183,7 @@
     const section = document.createElement("div");
     section.id = "v27SecurityUserSection";
     section.className = "usuario-form-section";
-    section.innerHTML = `<h3>Segurança V27</h3><p>Redefinição administrativa. A nova senha pode permanecer provisória até o usuário optar por outra alteração.</p><div class="form-grid usuario-form-grid"><div class="form-group"><label>Nova senha</label><input id="v27NovaSenhaUsuario" type="password" autocomplete="new-password" minlength="6"></div><div class="form-group"><label>Confirmar senha</label><input id="v27ConfirmarSenhaUsuario" type="password" autocomplete="new-password" minlength="6"></div></div><button class="ghost-btn" type="button" onclick="IntegroV27UserLifecycle.resetPassword('${escapeHtml(targetId)}')">Redefinir senha e encerrar sessões</button>`;
+    section.innerHTML = `<h3>Segurança V27</h3><p>Redefinição administrativa. Confirme a identidade antes da redefinição. Use uma senha forte e oriente o usuário a alterá-la em Minha conta.</p><div class="form-grid usuario-form-grid"><div class="form-group"><label>Nova senha</label><input id="v27NovaSenhaUsuario" type="password" autocomplete="new-password" minlength="12" maxlength="128"></div><div class="form-group"><label>Confirmar senha</label><input id="v27ConfirmarSenhaUsuario" type="password" autocomplete="new-password" minlength="12" maxlength="128"></div></div><button class="ghost-btn" type="button" onclick="IntegroV27UserLifecycle.resetPassword('${escapeHtml(targetId)}')">Redefinir senha e encerrar sessões</button>`;
     save.closest(".drawer-actions")?.before(section);
   }
 
