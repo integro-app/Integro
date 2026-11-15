@@ -153,6 +153,9 @@ test("usuário interno é provisionado no Auth e vinculado ao UID, não a e-mail
   const u = c.dados.get("usuarios/" + r.authUid);
   assert.equal(u.authUid, r.authUid);
   assert.equal(u.tipoUsuario, "usuario_integro");
+  assert.equal(u.trocaSenhaObrigatoria, true);
+  assert.ok(r.senhaProvisoria?.length > 35);
+  assert.equal(u.senhaProvisoria, undefined);
   assert.equal(u.clientePlataformaId, "");
   assert.equal(u.departamentoId, "dep");
   assert.equal(c.authUsers.get(entrada.email).uid, r.authUid);
