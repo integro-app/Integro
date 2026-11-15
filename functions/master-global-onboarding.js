@@ -320,7 +320,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
           perfilLegado: "master_local", cargoChave: "master_local", cargoNome: "Master Local",
           clientePlataformaId: clienteId, clientePlataformaNome: empresaNome, empresaNome,
           status: "ATIVO", acessoLiberado: true, ativo: true, empresaBloqueada: false, convitePendente: false,
-          provisionamentoAuth: "PROVISIONADO", criadoPorUid: autor.uid, criadoEm: agora()
+          provisionamentoAuth: "PROVISIONADO", trocaSenhaObrigatoria: true, criadoPorUid: autor.uid, criadoEm: agora()
         });
         if (!empresaAtual.data().masterLocalAuthUid) {
           tx.set(clienteRef, { masterLocalAuthUid: novo.uid, masterLocalId: novo.uid, atualizadoEm: agora() }, { merge: true });
@@ -339,7 +339,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
           usuarioAlvoEmail: email, criadoEm: agora()
         });
       });
-      return { ok: true, authUid: novo.uid, email, existente: false };
+      return { ok: true, authUid: novo.uid, email, existente: false, senhaProvisoria: senha };
     } catch (e) {
       if (novo?.uid) {
         try {
@@ -348,7 +348,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
           const confirmado = await usuarios.doc(novo.uid).get();
           if (confirmado.exists && confirmado.data()?.clientePlataformaId === clienteId &&
               confirmado.data()?.authUid === novo.uid) {
-            return { ok: true, authUid: novo.uid, email, existente: false };
+            return { ok: true, authUid: novo.uid, email, existente: false, senhaProvisoria: senha };
           }
           await admin.auth().deleteUser(novo.uid);
         } catch (rollback) {
