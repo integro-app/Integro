@@ -154,6 +154,7 @@ test("usuário interno é provisionado no Auth e vinculado ao UID, não a e-mail
   assert.equal(u.authUid, r.authUid);
   assert.equal(u.tipoUsuario, "usuario_integro");
   assert.equal(u.trocaSenhaObrigatoria, true);
+  assert.equal(u.acessoLiberado,false,"Usuario sem acesso operacional ate troca obrigatoria");
   assert.ok(r.senhaProvisoria?.length > 35);
   assert.equal(u.senhaProvisoria, undefined);
   assert.equal(u.clientePlataformaId, "");
