@@ -156,7 +156,7 @@ test("Master Local recebe conta Auth canônica, empresa correta e auditoria", as
   assert.equal(usuario.tipoUsuario, "master_local");
   assert.equal(usuario.clientePlataformaId, id);
   assert.equal(usuario.authUid, resultado.authUid);
-  assert.equal(usuario.acessoLiberado, true);
+  assert.equal(usuario.acessoLiberado, false, "Primeiro acesso nao pode operar antes de trocar a senha");
   assert.equal(c.dados.get("clientes_integro/" + id).masterLocalAuthUid, resultado.authUid);
   assert.equal(c.dados.get("clientes_plataforma/" + id).masterLocalAuthUid, resultado.authUid);
   assert.ok([...c.dados.values()].some(x => x.tipoAcao === "CRIAR_MASTER_LOCAL"));
