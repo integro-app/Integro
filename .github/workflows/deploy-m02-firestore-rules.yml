@@ -1,5 +1,9 @@
 name: Publicar M02 - isolamento de funcionarios no Firestore
 on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/deploy-m02-firestore-rules.yml"
   workflow_dispatch:
 permissions:
   contents: read
