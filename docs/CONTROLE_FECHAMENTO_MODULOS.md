@@ -21,7 +21,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | CPF/CNPJ e criação de empresa/Master Local confirmados pelo proprietário. Senha inicial aleatória com exibição única, primeiro acesso obrigatório e recuperação administrativa publicados em Hosting e três Cloud Functions; 663/663 testes automatizados. Falta homologação em conta real e demais fluxos administrativos. | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Isolamento de funcionários corrigido e aprovado em CI (663 testes gerais, 58 Rules, 8 clientes e 23 vendas). **Duas execuções de deploy isolado falharam com HTTP 503 do Firebase Rules**, incluindo retry autorizado pelo proprietário em 16/11/2026; **Rules ainda não publicadas**. Homologação real e multiempresa Master Local pendentes. | BLOQUEADO PARA PUBLICAÇÃO |
+| M02 | Empresas/multiempresa | Isolamento de funcionários testado (Rules ainda sem deploy por HTTP 503). Vínculos de múltiplas empresas para Master Local em desenvolvimento na branch `feat/m02-master-local-vinculos-leitura-20261116`, com concessão/revogação exclusiva do Master Global e consulta limitada a metadados; sem troca de tenant nem operações cruzadas. **Não publicado / não homologado**. | EM DESENVOLVIMENTO (DEPLOY PENDENTE) |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
@@ -84,6 +84,16 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Commits:** `74911df` e `7dc20fa` (Rules), `7a68ab7` e `bd383d7` (testes/escopo de tenant), `c323d18` (guarda central `hasTenant`).
 - **Hosting:** workflow `firebase-hosting-merge.yml` #786 publicado com sucesso, mas Hosting não implanta Rules. `deploy-m02-firestore-rules.yml` preparado somente para acionamento **manual** e implantação isolada das Rules, com testes antes do deploy e sem alteração de Functions. **A publicação das Rules foi tentada em 16/11/2026 e falhou nas três chamadas ao endpoint de verificação remota do Google com HTTP 503.** O comportamento em produção ainda depende da publicação e homologação autenticada.
 - **Outros limites de M02:** seleção multiempresa para Master Local e visão consolidada somente leitura ainda pendentes; não declarar módulo fechado.
+
+### M02 — Etapa 5: preparação de vínculos multiempresa para Master Local (branch, SEM DEPLOY)
+
+- **Branch de desenvolvimento:** `feat/m02-master-local-vinculos-leitura-20261116`, derivada de `main`, aguardando revisão e autorização explícita de merge/publicação. Nenhuma alteração feita na produção nesta etapa.
+- **Master Global:** nova ação “Empresas vinculadas” para Master Local provisionado; seleciona empresas para futura visão consolidada de consulta. A empresa principal é obrigatória e não pode ser removida.
+- **Backend:** `salvarVinculosMasterLocal` valida Master Global autenticado, Master Local com UID canônico, limite de 25 IDs válidos e únicos, existência de todas as empresas e manutenção da principal; executa gravação transacional auditada em `usuarios/{authUid}` usando os campos `empresasVinculadasIds` e `tipoVinculoMultiempresa=CONSULTA_SOMENTE_LEITURA`.
+- **Leitura Master Local:** `listarEmpresasVinculadasMasterLocal` verifica o próprio UID, status, bloqueios, empresa principal e vínculos atuais; devolve apenas id/nome/situação/empresa principal/disponibilidade, sem CPF, e-mail, caixa, parcelas, saldo, clientes operacionais ou vendas. Empresas revogadas deixam de aparecer na consulta seguinte.
+- **Segurança preservada:** `clientePlataformaId` permanece a única empresa de sessão/negócio. Não há seletor operacional e o campo de vínculos não concede permissões de Firestore, Functions, caixa ou vendas. Fingerprint de sessão inclui vínculos para detectar revogações. Funcionários internos da ÍNTEGRO não podem gerenciar nem consumir vínculos locais.
+- **Testes:** cinco novos cenários em `tests/master-global-management.test.js` abrangem concessão, revogação, empresa principal obrigatória, bloqueios, dados sanitizados, permissões e ausência de troca do tenant operacional. Executar CI via PR em rascunho antes de concluir.
+- **Pendente:** implementação de visão consolidada somente leitura no painel do Master Local; decisão e implementação posterior de troca segura de empresa operacional com validação de sessão, Firestore Rules e backend, mais homologação real. **NÃO PUBLICADO.**
 
 ### M02 — Segunda tentativa de publicação (16/11/2026)
 
