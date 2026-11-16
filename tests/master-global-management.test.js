@@ -398,8 +398,14 @@ test("M02: Master Global vincula empresas a Master Local sem alterar empresa ope
   const usuario=c.dados.get("usuarios/local");
   assert.equal(usuario.clientePlataformaId,"tenant-a",
     "Empresa operacional não pode ser trocada por vínculo de consulta");
-  assert.deepEqual(usuario.empresasVinculadasIds,["tenant-a","tenant-b"]);
-  assert.equal(usuario.tipoVinculoMultiempresa,"CONSULTA_SOMENTE_LEITURA");
+  assert.equal(usuario.empresasVinculadasIds,undefined,"Perfil do tenant não guarda permissões multiempresa");
+  const vinculo=c.dados.get("vinculos_multiempresa_master_local/local");
+  assert.deepEqual(vinculo.empresasIds,["tenant-a","tenant-b"]);
+  assert.equal(vinculo.empresaPrincipalId,"tenant-a");
+  assert.equal(vinculo.masterLocalAuthUid,"local");
+  assert.equal(vinculo.modo,"CONSULTA_SOMENTE_LEITURA");
+  const consultaGlobal=await c.api.consultarVinculosMasterLocal({usuarioId:"local"},c.global);
+  assert.deepEqual(consultaGlobal.empresasIds,["tenant-a","tenant-b"]);
   assert.ok([...c.dados.values()].some(x=>
     x.tipoAcao==="ALTERAR_VINCULOS_MULTIEMPRESA_MASTER_LOCAL" &&
     x.totalEmpresasVinculadas===2 && x.clientePlataformaId==="tenant-a"));
@@ -418,7 +424,8 @@ test("M02: Master Global vincula empresas a Master Local sem alterar empresa ope
   }
   const painel=await c.api.listarPainel({},c.global);
   const perfil=painel.usuarios.find(u=>u.authUid==="local");
-  assert.deepEqual(perfil.empresasVinculadasIds,["tenant-a","tenant-b"]);
+  assert.equal(perfil.empresasVinculadasIds,undefined,
+    "Mesmo no painel global, permissões não vêm do perfil editável");
   assert.equal(perfil.clientePlataformaId,"tenant-a");
 });
 
@@ -437,6 +444,7 @@ test("M02: revogar vínculo remove consulta da lista imediatamente e não altera
   assert.deepEqual(resp.empresas.map(e=>e.id),["tenant-a"]);
   assert.equal(c.dados.get("usuarios/local").clientePlataformaId,"tenant-a");
   assert.equal(c.dados.get("usuarios/local").clientePlataformaNome,undefined);
+  assert.deepEqual(c.dados.get("vinculos_multiempresa_master_local/local").empresasIds,["tenant-a"]);
   assert.equal(resp.modo,"CONSULTA_SOMENTE_LEITURA");
 });
 
@@ -456,8 +464,12 @@ test("M02: somente Master Global gerencia vínculos, e empresa principal não po
     await assert.rejects(c.api.salvarVinculosMasterLocal({usuarioId:"local",empresasIds},c.global),
       e=>["invalid-argument","failed-precondition"].includes(e.code));
   }
-  assert.equal(c.dados.get("usuarios/local").empresasVinculadasIds,undefined,
+  assert.equal(c.dados.get("vinculos_multiempresa_master_local/local"),undefined,
     "Erros de validação não podem gravar vínculos parciais");
+  await assert.rejects(c.api.consultarVinculosMasterLocal({usuarioId:"local"},c.local),
+    e=>e.code==="permission-denied");
+  await assert.rejects(c.api.consultarVinculosMasterLocal({usuarioId:"interno"},c.global),
+    e=>e.code==="permission-denied");
   await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({empresaId:"tenant-b"},c.local),
     e=>e.code==="invalid-argument");
   await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.interno),
@@ -496,12 +508,59 @@ test("M02: seleção multiempresa não concede acesso operacional nem altera as 
   const state=fs.readFileSync(path.join(__dirname,"..","js/state.js"),"utf8");
   assert.match(index,/salvarVinculosMasterLocal: gestaoGlobal\.salvarVinculosMasterLocal/);
   assert.match(index,/listarEmpresasVinculadasMasterLocal: gestaoGlobal\.listarEmpresasVinculadasMasterLocal/);
+  assert.match(index,/consultarVinculosMasterLocal: gestaoGlobal\.consultarVinculosMasterLocal/);
   assert.match(index,/return protegerSessao\(handler\)\(entrada, contexto\)/);
-  assert.match(sessao,/"empresasVinculadasIds"/);
+  assert.doesNotMatch(sessao,/"empresasVinculadasIds"/,
+    "A autorização é validada na coleção privada, não no perfil da sessão");
   assert.match(html,/data-mg-action="vinculos-master"/);
   assert.match(html,/abrirVinculosMasterLocal\(id\)/);
+  assert.match(html,/chamarGestaoGlobal\('consultarVinculosMasterLocal'/);
   assert.match(html,/executarAcaoGlobal\('salvarVinculosMasterLocal'/);
   assert.match(html,/Esta etapa NÃO altera a empresa operacional do login/);
   assert.match(state,/this\.tenantId = usuario\.clientePlataformaId/);
   assert.doesNotMatch(state,/this\.tenantId = usuario\.empresasVinculadasIds/);
+});
+
+
+test("M02: forjar empresasVinculadasIds no perfil não concede acesso a outra empresa", async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"Empresa A",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("clientes_integro/tenant-b",{nome:"Empresa B",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("clientes_integro/tenant-c",{nome:"Empresa C",status:"ATIVO",acessoLiberado:true});
+  await c.api.salvarVinculosMasterLocal({usuarioId:"local",empresasIds:["tenant-a","tenant-b"]},c.global);
+  const usuario=c.dados.get("usuarios/local");
+  usuario.empresasVinculadasIds=["tenant-a","tenant-c"];
+  usuario.tipoVinculoMultiempresa="CONSULTA_SOMENTE_LEITURA";
+  const lista=await c.api.listarEmpresasVinculadasMasterLocal({},c.local);
+  assert.deepEqual(lista.empresas.map(e=>e.id),["tenant-a","tenant-b"]);
+  assert.equal(lista.empresas.some(e=>e.id==="tenant-c"),false);
+  const vistaGlobal=await c.api.consultarVinculosMasterLocal({usuarioId:"local"},c.global);
+  assert.deepEqual(vistaGlobal.empresasIds,["tenant-a","tenant-b"]);
+  const pane=await c.api.listarPainel({},c.global);
+  assert.equal(pane.usuarios.find(x=>x.authUid==="local").empresasVinculadasIds,undefined);
+  // Documento de autorização está fora de usuarios, sob chave canônica do UID.
+  assert.deepEqual(c.dados.get("vinculos_multiempresa_master_local/local").empresasIds,
+    ["tenant-a","tenant-b"]);
+});
+
+test("M02: documento privado inválido, sem dono ou com empresa principal trocada é rejeitado",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A"});
+  c.dados.set("clientes_integro/tenant-b",{nome:"B"});
+  await c.api.salvarVinculosMasterLocal({usuarioId:"local",empresasIds:["tenant-a","tenant-b"]},c.global);
+  const ref=c.dados.get("vinculos_multiempresa_master_local/local");
+  ref.masterLocalAuthUid="outro-uid";
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.local),
+    e=>e.code==="failed-precondition");
+  ref.masterLocalAuthUid="local";
+  ref.empresaPrincipalId="tenant-b";
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.local),
+    e=>e.code==="failed-precondition");
+  ref.empresaPrincipalId="tenant-a";
+  ref.modo="OPERACIONAL";
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.local),
+    e=>e.code==="failed-precondition");
+  ref.modo="CONSULTA_SOMENTE_LEITURA";
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({usuarioId:"outro"},c.local),
+    e=>e.code==="invalid-argument");
 });
