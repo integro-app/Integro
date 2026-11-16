@@ -296,6 +296,18 @@
     return true;
   }
 
+  // Ao trocar identidade/perfil, descarta qualquer lista em tela.
+  document.addEventListener("usuario-validado", evento => {
+    if (dialogo) encerrar();
+    const perfil = evento.detail;
+    if (!perfil || String(perfil.tipoUsuario || "").toLowerCase() !== "master_local") {
+      if (botao?.isConnected) botao.remove();
+      botao = null;
+      return;
+    }
+    inicializar(perfil);
+  });
+
   raiz.IntegroM02VisaoConsolidada = Object.freeze({
     inicializar, abrir: () => {
       const atual = usuarioAtual();
