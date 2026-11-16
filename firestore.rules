@@ -23,7 +23,9 @@ service cloud.firestore {
     }
 
     function hasTenant() {
-      return userTenantId() is string && userTenantId().size() > 0;
+      // M02: funcionarios da plataforma nao sao operadores de qualquer tenant,
+      // mesmo se um identificador de empresa for gravado indevidamente no perfil.
+      return !isUsuarioIntegro() && userTenantId() is string && userTenantId().size() > 0;
     }
 
     function resourceTenantId() {
