@@ -1,5 +1,6 @@
 "use strict";
 const crypto = require("node:crypto");
+const m02Financeiro = require("./m02-financial-consolidation");
 const { empresaLiberada } = require("./company-access");
 
 // Todas as rotas são chamadas por uma callable com sessão V27 validada.
@@ -454,6 +455,58 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       atualizadoEm: new Date().toISOString() };
   }
 
+  // A consulta financeira usa exclusivamente as autorizações revalidadas
+  // da própria conta, nunca IDs fornecidos pelo navegador.
+  async function listarIndicadoresFinanceirosConsolidadosMasterLocal(dados, contexto) {
+    if (dados && Object.keys(dados).length) {
+      fail("invalid-argument", "Consulta financeira nao recebe IDs ou filtros de empresas.");
+    }
+    const empresas = await listarEmpresasVinculadasMasterLocal({}, contexto);
+    if (empresas.empresas.some(e => !e.acessoLiberado)) {
+      fail("failed-precondition",
+        "Ha empresas vinculadas indisponiveis. Regularize o acesso antes de consolidar.");
+    }
+    const hoje = m02Financeiro.dataSP(new Date());
+    // Consulta limitada. Retornar um total parcial seria mais perigoso do que
+    // indisponibilidade explícita. Nenhum resultado financeiro é persistido.
+    const limite = m02Financeiro.LIMIT_POR_COLECAO;
+    const resumoPorEmpresa = [];
+    for (const empresa of empresas.empresas) {
+      const tenantId = empresa.id;
+      const [vendasSnap,pagamentosSnap] = await Promise.all([
+        db.collection("vendas").where("clientePlataformaId","==",tenantId).limit(limite+1).get(),
+        db.collection("pagamentos").where("clientePlataformaId","==",tenantId).limit(limite+1).get()
+      ]);
+      if (vendasSnap.docs.length>limite || pagamentosSnap.docs.length>limite) {
+        fail("resource-exhausted",
+          "A empresa excede o limite seguro de leitura para a consolidacao. Use um resumo materializado e auditado.");
+      }
+      const registros = snap => snap.docs.map(doc => ({...doc.data(),id:doc.id}));
+      let calculo;
+      try {
+        calculo = m02Financeiro.calcularTenant({
+          tenantId,hoje,vendas:registros(vendasSnap),pagamentos:registros(pagamentosSnap)
+        });
+      } catch (_) {
+        fail("failed-precondition","Inconsistencia nos dados financeiros. A consolidacao foi interrompida.");
+      }
+      resumoPorEmpresa.push(calculo);
+    }
+    let global;
+    try { global = m02Financeiro.consolidar(resumoPorEmpresa); }
+    catch (_) { fail("failed-precondition","Nao foi possivel consolidar os valores com precisao."); }
+    return {
+      ok:true,modo:"CONSULTA_SOMENTE_LEITURA",dataOperacional:hoje,
+      empresaPrincipalId:empresas.empresaPrincipalId,
+      empresasConsultadas:global.empresas,completo:global.completo,
+      indicadores:global.indicadores,
+      // Somente erros de integridade agregados; nao retorna linhas brutas,
+      // dados pessoais ou identificadores de venda e pagamento.
+      avisos:[...new Set(resumoPorEmpresa.flatMap(x=>x.pendencias))].sort(),
+      geradoEm:new Date().toISOString()
+    };
+  }
+
   // M02: delegação de consulta administrativa. Não autoriza mutações operacionais.
   async function salvarClientesConsultaFuncionario(dados, contexto) {
     const a = await autor(contexto);
@@ -607,6 +660,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     salvarClientesConsultaFuncionario, listarClientesConsultaFuncionario,
     consultarClienteAutorizadoFuncionario,
     salvarVinculosMasterLocal, consultarVinculosMasterLocal, listarEmpresasVinculadasMasterLocal,
+    listarIndicadoresFinanceirosConsolidadosMasterLocal,
     criarNotificacao, marcarNotificacaoLida, listarAvisosInternos, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };
