@@ -21,7 +21,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | CPF/CNPJ e criação de empresa/Master Local confirmados pelo proprietário. Senha inicial aleatória com exibição única, primeiro acesso obrigatório e recuperação administrativa publicados em Hosting e três Cloud Functions; 663/663 testes automatizados. Falta homologação em conta real e demais fluxos administrativos. | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Isolamento reforçado; delegação de empresas por Master Global; seleção pela equipe com revalidação por consulta no backend e revogação; 646/646 testes unitários e CI integrado aprovados; Hosting e callable publicados. Multiempresa real para Masters Locais e homologação autenticada ainda pendentes. | EM DESENVOLVIMENTO |
+| M02 | Empresas/multiempresa | Delegação administrativa já publicada; eliminados em código os acessos diretos implícitos dos funcionários ÍNTEGRO a tenants e finanças, mesmo com tenant preenchido por engano. CI #480 aprovado: 663 testes gerais, 58 de Rules, 8 clientes e 23 vendas. **Deploy de Firestore Rules pendente**; multiempresa do Master Local e homologação real pendentes. | EM DESENVOLVIMENTO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
@@ -74,6 +74,16 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Controle de publicação:** workflow de Function restaurado para `workflow_dispatch` após deploy, evitando atualizações automáticas de backend em pushes futuros.
 - **Commits da etapa:** `89c54f3` (backend), `37c293d` (roteamento), `92cb6e9` (interface), `f80bd3b` (regressões), `de69ed4` (disparo do deploy), `2f3c4fb` (deploy manual).
 - **Limites:** mudança de empresa para Master Local com múltiplos vínculos **não está implementada**; cada usuário de cliente permanece vinculado ao tenant individual. Não foi realizada homologação autenticada de produção com funcionários e dados reais neste ciclo. M01 preservada.
+
+### M02 — Etapa 4: isolamento do funcionário no Firestore (16/11/2026)
+
+- **Falha identificada:** as Rules atribuíam bypass geral a `usuario_integro` em leituras/gravações operacionais (vendas, caixas, ledger, parcelas, solicitações, notificações, cargos/equipes e cadastro de empresas), ainda que o backend de consulta administrativa exigisse delegação.
+- **Implementado:** removidas as autorizações globais implícitas de `usuario_integro` em `firestore.rules`. `hasTenant()` passa a negar escopo de cliente a funcionário interno mesmo se `clientePlataformaId` for indevidamente informado. Consulta administrativa delegada via callable não foi alterada; notificações diretamente endereçadas ao próprio funcionário e autoridade do `master_global` foram preservadas.
+- **Testes adicionados:** dois cenários em `tests/firestore-rules.test.js`: acesso interno delegado sem tenant não consulta dados via SDK; funcionário com tenant preenchido indevidamente também não atravessa fronteiras, incluindo dados financeiros, configurações, logs e catálogos, preservando consultas legítimas do Master Global/Master Local.
+- **Evidência:** auditoria integrada `#480`, [run 43939191331](https://github.com/integro-app/Integro/actions/runs/43939191331), todos os quatro jobs aprovados. `npm run verify`: **663/663**; `npm run test:rules` em emulador: **58/58**; integração Clientes: **8/8**; integração Vendas e Financeiro: **23/23**.
+- **Commits:** `74911df` e `7dc20fa` (Rules), `7a68ab7` e `bd383d7` (testes/escopo de tenant), `c323d18` (guarda central `hasTenant`).
+- **Hosting:** workflow `firebase-hosting-merge.yml` #786 publicado com sucesso, mas Hosting não implanta Rules. `deploy-m02-firestore-rules.yml` preparado somente para acionamento **manual** e implantação isolada das Rules, com testes antes do deploy e sem alteração de Functions. **O deploy de Rules não foi executado nesta etapa**; o comportamento em produção ainda depende da publicação e homologação autenticada.
+- **Outros limites de M02:** seleção multiempresa para Master Local e visão consolidada somente leitura ainda pendentes; não declarar módulo fechado.
 
 ### M01 — Cadastro progressivo por CPF/CNPJ (14/11/2026, BRT)
 
