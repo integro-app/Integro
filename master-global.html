@@ -1151,12 +1151,22 @@
         }
       };
     }
-    function abrirVinculosMasterLocal(id){
+    async function abrirVinculosMasterLocal(id){
       const u=usuariosSistema.find(x=>x.id===id&&x.authUid===x.id&&x.tipoUsuario==='master_local');
       if(!u)return notificarIntegro('Master Local provisionado não encontrado.');
       const principal=String(u.clientePlataformaId||'');
-      const atual=Array.isArray(u.empresasVinculadasIds)?u.empresasVinculadasIds:[principal];
-      const selecionados=new Set(atual);
+      let consulta;
+      try{
+        // NUNCA confiar nos campos editáveis de usuarios/{uid} para conceder vínculo.
+        consulta=await chamarGestaoGlobal('consultarVinculosMasterLocal',{usuarioId:id});
+        if(consulta.empresaPrincipalId!==principal||
+            consulta.modo!=='CONSULTA_SOMENTE_LEITURA'||
+            !Array.isArray(consulta.empresasIds))throw new Error('Vínculos retornados inconsistentes.');
+      }catch(erro){
+        console.error('[MASTER GLOBAL] Consulta de vínculos multiempresa',erro);
+        return notificarIntegro(mensagemErroGlobal(erro));
+      }
+      const selecionados=new Set(consulta.empresasIds);
       const linhas=clientesIntegro.map(c=>{
         const obrigatorio=c.id===principal;
         return '<label style="display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:12px;padding:11px 12px">'+
