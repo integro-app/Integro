@@ -472,7 +472,11 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     // indisponibilidade explícita. Nenhum resultado financeiro é persistido.
     const limite = m02Financeiro.LIMIT_POR_COLECAO;
     const resumoPorEmpresa = [];
-    for (const empresa of empresas.empresas) {
+    // Lotes de 3 empresas evitam 25 consultas seriais sem abrir dezenas de
+    // consultas simultaneas; uma empresa inválida interrompe todo o resultado.
+    for (let inicio=0;inicio<empresas.empresas.length;inicio+=3) {
+      const lote=empresas.empresas.slice(inicio,inicio+3);
+      const resultados=await Promise.all(lote.map(async empresa => {
       const tenantId = empresa.id;
       const limiteLedger = limite*3;
       const [vendasSnap,pagamentosSnap,ledgerSnap] = await Promise.all([
@@ -508,7 +512,9 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       } catch (_) {
         fail("failed-precondition","Inconsistencia nos dados financeiros. A consolidacao foi interrompida.");
       }
-      resumoPorEmpresa.push(calculo);
+      return calculo;
+      }));
+      resumoPorEmpresa.push(...resultados);
     }
     let global;
     try { global = m02Financeiro.consolidar(resumoPorEmpresa); }
