@@ -78,7 +78,8 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       "tipoUsuarioOficial", "cargoChave", "cargoNome", "clientePlataformaId",
       "clientePlataformaNome", "empresaNome", "departamentoId", "status",
       "acessoLiberado", "empresaBloqueada", "ativo", "convitePendente", "provisionamentoAuth",
-      "usuarioInternoIntegro", "clientesLeituraAutorizada", "criadoEm", "atualizadoEm"
+      "usuarioInternoIntegro", "clientesLeituraAutorizada", "empresasVinculadasIds",
+      "tipoVinculoMultiempresa", "criadoEm", "atualizadoEm"
     ];
     const usuariosSeguros = usuarios.map(u =>
       Object.fromEntries(camposUsuario.filter(c => Object.prototype.hasOwnProperty.call(u, c)).map(c => [c, u[c]]))
@@ -328,6 +329,100 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
   }
 
 
+  // M02: vinculos multiempresa sao autorizados SOMENTE pelo Master Global.
+  // A empresa operacional continua sendo clientePlataformaId: nao criar bypass
+  // em sessao, rules, caixa, vendas ou cobranças.
+  async function salvarVinculosMasterLocal(dados, contexto) {
+    const a = await autor(contexto);
+    const usuarioId = txt(dados?.usuarioId), entradas = dados?.empresasIds;
+    if (!idValido(usuarioId) || !Array.isArray(entradas) ||
+        entradas.length < 1 || entradas.length > 25 ||
+        entradas.some(id => typeof id !== "string" || !idValido(id)) ||
+        new Set(entradas).size !== entradas.length) {
+      fail("invalid-argument", "Master Local ou empresas vinculadas invalidos.");
+    }
+    const ids = [...entradas].sort();
+    const usuarioRef = db.collection("usuarios").doc(usuarioId);
+    await db.runTransaction(async tx => {
+      const usuarioSnap = await tx.get(usuarioRef);
+      const usuario = usuarioSnap.exists ? usuarioSnap.data() : null;
+      if (!usuario || usuario.authUid !== usuarioId ||
+          txt(usuario.tipoUsuario).toLowerCase() !== "master_local") {
+        fail("permission-denied", "Somente Master Local provisionado pode receber vinculos.");
+      }
+      const principal = txt(usuario.clientePlataformaId);
+      if (!idValido(principal) || !ids.includes(principal)) {
+        fail("failed-precondition", "Empresa operacional principal nao pode ser removida.");
+      }
+      const empresas = await Promise.all(ids.map(id => tx.get(db.collection("clientes_integro").doc(id))));
+      if (empresas.some(snap => !snap.exists)) {
+        fail("failed-precondition", "Ha uma empresa inexistente entre os vinculos.");
+      }
+      tx.set(usuarioRef, {
+        empresasVinculadasIds: ids,
+        tipoVinculoMultiempresa: "CONSULTA_SOMENTE_LEITURA",
+        atualizadoEm: agora(), atualizadoPorUid: a.uid
+      }, { merge: true });
+      log(tx, "ALTERAR_VINCULOS_MULTIEMPRESA_MASTER_LOCAL", a,
+        "Vinculos de consulta multiempresa atualizados",
+        { usuarioAlvoUid: usuarioId, clientePlataformaId: principal,
+          totalEmpresasVinculadas: ids.length });
+    });
+    return { ok: true, usuarioId, empresasIds: ids,
+      modo: "CONSULTA_SOMENTE_LEITURA" };
+  }
+
+  // A listagem se limita a metadados e verifica novamente o perfil canônico.
+  // E proibido usar empresas adicionais como tenant operacional nesta etapa.
+  async function listarEmpresasVinculadasMasterLocal(dados, contexto) {
+    const uid = txt(contexto?.auth?.uid);
+    if (!uid) fail("unauthenticated", "Faca login.");
+    if (dados?.empresaId || dados?.tenantId || dados?.clienteId) {
+      fail("invalid-argument", "Nao envie empresa para esta consulta.");
+    }
+    const snap = await db.collection("usuarios").doc(uid).get();
+    const perfil = snap.exists ? snap.data() || {} : {};
+    if (!snap.exists || perfil.authUid !== uid ||
+        txt(perfil.tipoUsuario).toLowerCase() !== "master_local" ||
+        perfil.acessoLiberado !== true || perfil.ativo === false ||
+        perfil.excluido === true || perfil.empresaBloqueada === true ||
+        perfil.trocaSenhaObrigatoria === true ||
+        ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(perfil.status))) {
+      fail("permission-denied", "Acesso multiempresa nao autorizado.");
+    }
+    const principal = txt(perfil.clientePlataformaId);
+    const ids = perfil.empresasVinculadasIds === undefined
+      ? [principal] : perfil.empresasVinculadasIds;
+    if (!idValido(principal) || !Array.isArray(ids) ||
+        ids.length < 1 || ids.length > 25 || !ids.includes(principal) ||
+        ids.some(id => typeof id !== "string" || !idValido(id)) ||
+        new Set(ids).size !== ids.length) {
+      fail("failed-precondition", "Vinculos de empresa inconsistentes. Contate o Master Global.");
+    }
+    const registros = await Promise.all(ids.map(async id => {
+      const [atual, legado] = await Promise.all([
+        db.collection("clientes_integro").doc(id).get(),
+        db.collection("clientes_plataforma").doc(id).get()
+      ]);
+      if (!atual.exists) {
+        fail("failed-precondition", "Uma empresa vinculada nao foi encontrada.");
+      }
+      const c = atual.data() || {};
+      return {
+        id, nome: txt(c.nome || c.razaoSocial || "Cliente INTEGRO"),
+        status: txt(c.status || "ATIVO"), principal: id === principal,
+        acessoLiberado: empresaLiberada(c) && (!legado.exists || empresaLiberada(legado.data() || {}))
+      };
+    }));
+    if (!registros.find(x => x.principal)?.acessoLiberado) {
+      fail("permission-denied", "Empresa principal bloqueada ou teste expirado.");
+    }
+    return { ok: true, modo: "CONSULTA_SOMENTE_LEITURA",
+      empresaPrincipalId: principal, empresas: registros,
+      // Nenhuma devolucao de CPF, e-mail, saldo, usuario, caixa, contrato ou venda.
+      atualizadoEm: new Date().toISOString() };
+  }
+
   // M02: delegação de consulta administrativa. Não autoriza mutações operacionais.
   async function salvarClientesConsultaFuncionario(dados, contexto) {
     const a = await autor(contexto);
@@ -480,6 +575,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     salvarUsuarioInterno, provisionarInternoLegado, editarMasterLocal, alterarAcessoUsuario,
     salvarClientesConsultaFuncionario, listarClientesConsultaFuncionario,
     consultarClienteAutorizadoFuncionario,
+    salvarVinculosMasterLocal, listarEmpresasVinculadasMasterLocal,
     criarNotificacao, marcarNotificacaoLida, listarAvisosInternos, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };
