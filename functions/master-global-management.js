@@ -1,5 +1,7 @@
 "use strict";
 const crypto = require("node:crypto");
+const m02Financeiro = require("./m02-financial-consolidation");
+const m02Ledger = require("./m02-ledger-audit");
 const { empresaLiberada } = require("./company-access");
 
 // Todas as rotas são chamadas por uma callable com sessão V27 validada.
@@ -328,6 +330,217 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
   }
 
 
+  // M02: o vínculo de autorização NÃO reside em usuarios/{uid}, porque
+  // os Masters Locais podem editar campos de perfis do proprio tenant via SDK.
+  // Esta colecao não possui grants de cliente nas Firestore Rules e só e
+  // alterada/lida no backend pelo Admin SDK.
+  const colecaoVinculosMaster = "vinculos_multiempresa_master_local";
+  const modoVinculoMaster = "CONSULTA_SOMENTE_LEITURA";
+
+  async function lerVinculosMasterSeguros(usuarioId, principal) {
+    const snap = await db.collection(colecaoVinculosMaster).doc(usuarioId).get();
+    if (!snap.exists) return [principal]; // Compatibilidade sem múltiplos vínculos
+    const v = snap.data() || {};
+    const ids = v.empresasIds;
+    if (v.masterLocalAuthUid !== usuarioId || v.empresaPrincipalId !== principal ||
+        v.modo !== modoVinculoMaster || !Array.isArray(ids) ||
+        ids.length < 1 || ids.length > 25 || !ids.includes(principal) ||
+        ids.some(id => typeof id !== "string" || !idValido(id)) ||
+        new Set(ids).size !== ids.length) {
+      fail("failed-precondition", "Vinculos multiempresa inconsistentes. Contate o Master Global.");
+    }
+    return [...ids].sort();
+  }
+
+  async function salvarVinculosMasterLocal(dados, contexto) {
+    const a = await autor(contexto);
+    const usuarioId = txt(dados?.usuarioId), entradas = dados?.empresasIds;
+    if (!idValido(usuarioId) || !Array.isArray(entradas) ||
+        entradas.length < 1 || entradas.length > 25 ||
+        entradas.some(id => typeof id !== "string" || !idValido(id)) ||
+        new Set(entradas).size !== entradas.length) {
+      fail("invalid-argument", "Master Local ou empresas vinculadas invalidos.");
+    }
+    const ids = [...entradas].sort();
+    const usuarioRef = db.collection("usuarios").doc(usuarioId);
+    const vinculoRef = db.collection(colecaoVinculosMaster).doc(usuarioId);
+    await db.runTransaction(async tx => {
+      const usuarioSnap = await tx.get(usuarioRef);
+      const usuario = usuarioSnap.exists ? usuarioSnap.data() : null;
+      if (!usuario || usuario.authUid !== usuarioId ||
+          txt(usuario.tipoUsuario).toLowerCase() !== "master_local") {
+        fail("permission-denied", "Somente Master Local provisionado pode receber vinculos.");
+      }
+      const principal = txt(usuario.clientePlataformaId);
+      if (!idValido(principal) || !ids.includes(principal)) {
+        fail("failed-precondition", "Empresa operacional principal nao pode ser removida.");
+      }
+      const empresas = await Promise.all(ids.map(id => tx.get(db.collection("clientes_integro").doc(id))));
+      if (empresas.some(snap => !snap.exists)) {
+        fail("failed-precondition", "Ha uma empresa inexistente entre os vinculos.");
+      }
+      // NUNCA grava IDs autorizados no perfil editável /usuarios/{uid}.
+      tx.set(vinculoRef, {
+        masterLocalAuthUid: usuarioId,
+        empresaPrincipalId: principal,
+        empresasIds: ids,
+        modo: modoVinculoMaster,
+        atualizadoEm: agora(), atualizadoPorUid: a.uid
+      }, { merge: false });
+      log(tx, "ALTERAR_VINCULOS_MULTIEMPRESA_MASTER_LOCAL", a,
+        "Vinculos de consulta multiempresa atualizados",
+        { usuarioAlvoUid: usuarioId, clientePlataformaId: principal,
+          totalEmpresasVinculadas: ids.length });
+    });
+    return { ok: true, usuarioId, empresasIds: ids, modo: modoVinculoMaster };
+  }
+
+  async function consultarVinculosMasterLocal(dados, contexto) {
+    await autor(contexto);
+    const usuarioId = txt(dados?.usuarioId);
+    if (!idValido(usuarioId)) fail("invalid-argument", "Master Local invalido.");
+    const snap = await db.collection("usuarios").doc(usuarioId).get();
+    const perfil = snap.exists ? snap.data() : null;
+    if (!perfil || perfil.authUid !== usuarioId ||
+        txt(perfil.tipoUsuario).toLowerCase() !== "master_local" ||
+        !idValido(perfil.clientePlataformaId)) {
+      fail("permission-denied", "Master Local nao provisionado.");
+    }
+    const empresaPrincipalId = txt(perfil.clientePlataformaId);
+    const empresasIds = await lerVinculosMasterSeguros(usuarioId, empresaPrincipalId);
+    return { ok: true, usuarioId, empresaPrincipalId, empresasIds,
+      modo: modoVinculoMaster };
+  }
+
+  // Consulta por Master Local apenas para o proprio UID e somente metadados.
+  // Revogacoes sao respeitadas em cada leitura do documento backend-only.
+  async function listarEmpresasVinculadasMasterLocal(dados, contexto) {
+    const uid = txt(contexto?.auth?.uid);
+    if (!uid) fail("unauthenticated", "Faca login.");
+    if (dados?.empresaId || dados?.tenantId || dados?.clienteId || dados?.usuarioId) {
+      fail("invalid-argument", "Nao envie empresa ou usuario para esta consulta.");
+    }
+    const snap = await db.collection("usuarios").doc(uid).get();
+    const perfil = snap.exists ? snap.data() || {} : {};
+    if (!snap.exists || perfil.authUid !== uid ||
+        txt(perfil.tipoUsuario).toLowerCase() !== "master_local" ||
+        perfil.acessoLiberado !== true || perfil.ativo === false ||
+        perfil.excluido === true || perfil.empresaBloqueada === true ||
+        perfil.trocaSenhaObrigatoria === true ||
+        ["BLOQUEADO", "INATIVO", "SUSPENSO"].includes(upper(perfil.status))) {
+      fail("permission-denied", "Acesso multiempresa nao autorizado.");
+    }
+    const principal = txt(perfil.clientePlataformaId);
+    if (!idValido(principal)) fail("failed-precondition", "Empresa principal invalida.");
+    const ids = await lerVinculosMasterSeguros(uid, principal);
+    const registros = await Promise.all(ids.map(async id => {
+      const [atual, legado] = await Promise.all([
+        db.collection("clientes_integro").doc(id).get(),
+        db.collection("clientes_plataforma").doc(id).get()
+      ]);
+      if (!atual.exists) {
+        fail("failed-precondition", "Uma empresa vinculada nao foi encontrada.");
+      }
+      const c = atual.data() || {};
+      return {
+        id, nome: txt(c.nome || c.razaoSocial || "Cliente INTEGRO"),
+        status: txt(c.status || "ATIVO"), principal: id === principal,
+        acessoLiberado: empresaLiberada(c) && (!legado.exists || empresaLiberada(legado.data() || {}))
+      };
+    }));
+    if (!registros.find(x => x.principal)?.acessoLiberado) {
+      fail("permission-denied", "Empresa principal bloqueada ou teste expirado.");
+    }
+    return { ok: true, modo: modoVinculoMaster,
+      empresaPrincipalId: principal, empresas: registros,
+      atualizadoEm: new Date().toISOString() };
+  }
+
+  // A consulta financeira usa exclusivamente as autorizações revalidadas
+  // da própria conta, nunca IDs fornecidos pelo navegador.
+  async function listarIndicadoresFinanceirosConsolidadosMasterLocal(dados, contexto) {
+    if (dados && Object.keys(dados).length) {
+      fail("invalid-argument", "Consulta financeira nao recebe IDs ou filtros de empresas.");
+    }
+    const empresas = await listarEmpresasVinculadasMasterLocal({}, contexto);
+    if (empresas.empresas.some(e => !e.acessoLiberado)) {
+      fail("failed-precondition",
+        "Ha empresas vinculadas indisponiveis. Regularize o acesso antes de consolidar.");
+    }
+    const hoje = m02Financeiro.dataSP(new Date());
+    // Consulta limitada. Retornar um total parcial seria mais perigoso do que
+    // indisponibilidade explícita. Nenhum resultado financeiro é persistido.
+    const limite = m02Financeiro.LIMIT_POR_COLECAO;
+    const resumoPorEmpresa = [];
+    // Lotes de 3 empresas evitam 25 consultas seriais sem abrir dezenas de
+    // consultas simultaneas; uma empresa inválida interrompe todo o resultado.
+    for (let inicio=0;inicio<empresas.empresas.length;inicio+=3) {
+      const lote=empresas.empresas.slice(inicio,inicio+3);
+      const resultados=await Promise.all(lote.map(async empresa => {
+      const tenantId = empresa.id;
+      const limiteLedger = limite*3;
+      const [vendasSnap,pagamentosSnap,ledgerSnap] = await Promise.all([
+        db.collection("vendas").where("clientePlataformaId","==",tenantId).limit(limite+1).get(),
+        db.collection("pagamentos").where("clientePlataformaId","==",tenantId).limit(limite+1).get(),
+        db.collection("lancamentos_financeiros").where("clientePlataformaId","==",tenantId)
+          .limit(limiteLedger+1).get()
+      ]);
+      if (vendasSnap.docs.length>limite || pagamentosSnap.docs.length>limite ||
+          ledgerSnap.docs.length>limiteLedger) {
+        fail("resource-exhausted",
+          "A empresa excede o limite seguro de leitura para a consolidacao. Use um resumo materializado e auditado.");
+      }
+      const registros = snap => snap.docs.map(doc => ({...doc.data(),id:doc.id}));
+      let calculo;
+      try {
+        const vendas = registros(vendasSnap);
+        const pagamentos = registros(pagamentosSnap);
+        calculo = m02Financeiro.calcularTenant({tenantId,hoje,vendas,pagamentos});
+        // O ledger nunca é somado aos totais. Ele confirma a existência e
+        // os valores dos lançamentos canônicos sem duplicar recebimentos.
+        const auditoria = m02Ledger.conferenciaLedgerTenant({
+          tenantId,vendas,pagamentos,ledger:registros(ledgerSnap)
+        });
+        if (!auditoria.conciliado) {
+          const indicadores = Object.fromEntries(
+            Object.keys(calculo.indicadores).map(chave => [chave,null]));
+          calculo = {
+            ...calculo,indicadores,pronto:false,
+            pendencias:[...new Set([...calculo.pendencias,...auditoria.pendencias])].sort()
+          };
+        }
+      } catch (_) {
+        fail("failed-precondition","Inconsistencia nos dados financeiros. A consolidacao foi interrompida.");
+      }
+      return calculo;
+      }));
+      resumoPorEmpresa.push(...resultados);
+    }
+    let global;
+    try { global = m02Financeiro.consolidar(resumoPorEmpresa); }
+    catch (_) { fail("failed-precondition","Nao foi possivel consolidar os valores com precisao."); }
+    // Concessões, bloqueios e revogações podem mudar DURANTE a leitura.
+    // Revalida o documento privado e o perfil imediatamente antes da resposta.
+    const ultimaVerificacao = await listarEmpresasVinculadasMasterLocal({}, contexto);
+    const assinatura = lista => lista.map(x => x.id+":"+x.acessoLiberado).sort().join("|");
+    if (ultimaVerificacao.empresaPrincipalId !== empresas.empresaPrincipalId ||
+        assinatura(ultimaVerificacao.empresas) !== assinatura(empresas.empresas)) {
+      fail("permission-denied","Vinculos alterados durante a consulta. Tente novamente.");
+    }
+    return {
+      ok:true,modo:"CONSULTA_SOMENTE_LEITURA",dataOperacional:hoje,
+      empresaPrincipalId:empresas.empresaPrincipalId,
+      empresasConsultadas:global.empresas,
+      empresasConsultadasIds:empresas.empresas.map(x=>x.id).sort(),
+      completo:global.completo,
+      indicadores:global.indicadores,
+      // Somente erros de integridade agregados; nao retorna linhas brutas,
+      // dados pessoais ou identificadores de venda e pagamento.
+      avisos:[...new Set(resumoPorEmpresa.flatMap(x=>x.pendencias))].sort(),
+      geradoEm:new Date().toISOString()
+    };
+  }
+
   // M02: delegação de consulta administrativa. Não autoriza mutações operacionais.
   async function salvarClientesConsultaFuncionario(dados, contexto) {
     const a = await autor(contexto);
@@ -480,6 +693,8 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     salvarUsuarioInterno, provisionarInternoLegado, editarMasterLocal, alterarAcessoUsuario,
     salvarClientesConsultaFuncionario, listarClientesConsultaFuncionario,
     consultarClienteAutorizadoFuncionario,
+    salvarVinculosMasterLocal, consultarVinculosMasterLocal, listarEmpresasVinculadasMasterLocal,
+    listarIndicadoresFinanceirosConsolidadosMasterLocal,
     criarNotificacao, marcarNotificacaoLida, listarAvisosInternos, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };

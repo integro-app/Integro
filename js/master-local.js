@@ -26,6 +26,9 @@ document.addEventListener("usuario-validado", event => {
       await window.IntegroPerfisUnificados.carregarTudo();
       return;
     }
+    // M02 - módulo desacoplado: não altera o Dashboard e os dados operacionais.
+    // Carregado somente para Master Local validado, sem troca de tenant.
+    iniciarVisaoConsolidadaMasterLocal(usuario);
     await carregarTudoMasterLocal();
   };
 
@@ -38,6 +41,30 @@ document.addEventListener("usuario-validado", event => {
     window.UIHelpers?.alerta?.("Não foi possível carregar o painel. Recarregue a página.");
   });
 });
+
+function iniciarVisaoConsolidadaMasterLocal(usuario) {
+  if (!usuario || String(usuario.tipoUsuario || "").toLowerCase() !== "master_local" ||
+      !usuario.authUid || !usuario.clientePlataformaId) return;
+  const uid = String(usuario.authUid), principal = String(usuario.clientePlataformaId);
+  const registrar = () => {
+    const atual = State.getUsuario?.();
+    if (!atual || String(atual.authUid) !== uid ||
+        String(State.getTenantId?.()) !== principal) return;
+    window.IntegroM02VisaoConsolidada?.inicializar?.(atual);
+  };
+  if (window.IntegroM02VisaoConsolidada?.inicializar) return registrar();
+  if (document.querySelector("script[data-integro-m02-consolidada]")) return;
+  const script = document.createElement("script");
+  script.src = "js/m02-visao-consolidada.js?v=20261116-branch-m02-v1";
+  script.async = true;
+  script.dataset.integroM02Consolidada = "1";
+  script.onload = registrar;
+  script.onerror = () => {
+    script.remove();
+    console.warn("[M02] Visão consolidada indisponível; Dashboard operacional preservado.");
+  };
+  document.head.appendChild(script);
+}
 
 function preencherUsuarioTopo() {
   const usuario = State.getUsuario();

@@ -320,6 +320,7 @@
             'ver-usuario':()=>abrirDetalheUsuario(id),
             'editar-master':()=>abrirEdicaoMasterLocal(id),
             'recuperar-master':()=>abrirRecuperacaoSenhaMasterLocal(id),
+            'vinculos-master':()=>abrirVinculosMasterLocal(id),
             'editar-interno':()=>abrirFormUsuarioInterno(id),
             'clientes-interno':()=>abrirClientesConsultaFuncionario(id),
             'provisionar-interno':()=>provisionarInternoLegado(id),
@@ -560,6 +561,7 @@
           '<button class="btn btn-light" data-mg-action="'+(tipo==='master'?'editar-master':'editar-interno')+'" data-id="'+esc(u.id)+'">Editar</button>'+
           (tipo==='interno'?'<button class="btn btn-light" data-mg-action="clientes-interno" data-id="'+esc(u.id)+'">Empresas autorizadas</button>':'')+
           (tipo==='master'?'<button class="btn btn-light" data-mg-action="recuperar-master" data-id="'+esc(u.id)+'">Recuperar acesso</button>':'')+
+          (tipo==='master'?'<button class="btn btn-light" data-mg-action="vinculos-master" data-id="'+esc(u.id)+'">Empresas vinculadas</button>':'')+
           (bloqueioEmpresa?'<span class="chip">Acesso gerenciado pela empresa</span>':
             '<button class="btn '+(bloq?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(u.id)+'">'+(bloq?'Liberar':'Bloquear')+'</button>'):
           (tipo==='interno'&&status(u.status)!=='PROVISIONADO'?
@@ -1147,6 +1149,48 @@
           notificarIntegro(mensagemErroGlobal(erro));
           botao.disabled=false;
         }
+      };
+    }
+    async function abrirVinculosMasterLocal(id){
+      const u=usuariosSistema.find(x=>x.id===id&&x.authUid===x.id&&x.tipoUsuario==='master_local');
+      if(!u)return notificarIntegro('Master Local provisionado não encontrado.');
+      const principal=String(u.clientePlataformaId||'');
+      let consulta;
+      try{
+        // NUNCA confiar nos campos editáveis de usuarios/{uid} para conceder vínculo.
+        consulta=await chamarGestaoGlobal('consultarVinculosMasterLocal',{usuarioId:id});
+        if(consulta.empresaPrincipalId!==principal||
+            consulta.modo!=='CONSULTA_SOMENTE_LEITURA'||
+            !Array.isArray(consulta.empresasIds))throw new Error('Vínculos retornados inconsistentes.');
+      }catch(erro){
+        console.error('[MASTER GLOBAL] Consulta de vínculos multiempresa',erro);
+        return notificarIntegro(mensagemErroGlobal(erro));
+      }
+      const selecionados=new Set(consulta.empresasIds);
+      const linhas=clientesIntegro.map(c=>{
+        const obrigatorio=c.id===principal;
+        return '<label style="display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:12px;padding:11px 12px">'+
+          '<input type="checkbox" class="mg-empresa-master" value="'+esc(c.id)+'" '+
+          (obrigatorio||selecionados.has(c.id)?'checked ':'')+(obrigatorio?'disabled ':'')+
+          'style="width:20px;height:20px;flex:none">'+
+          '<span><strong>'+esc(c.nome||c.razaoSocial||'Cliente ÍNTEGRO')+'</strong>'+
+          '<span class="muted" style="display:block">'+esc(c.status||'ATIVO')+
+          (obrigatorio?' · Empresa operacional principal (obrigatória)':' · Consulta vinculada')+
+          '</span></span></label>';
+      }).join('');
+      abrirDrawer('Empresas vinculadas do Master Local',u.nome||u.email||'Administrador',
+        '<div class="grid"><div class="notice">Vincule empresas para futura visão consolidada <strong>somente leitura</strong>. '+
+        'Esta etapa NÃO altera a empresa operacional do login, nem libera vendas, caixas, cobranças ou dados financeiros de outras empresas.</div>'+
+        '<p class="muted">Selecione até 25 empresas. A empresa principal não pode ser removida.</p>'+
+        '<div id="mgEmpresasVinculoMaster" class="grid" style="max-height:50dvh;overflow-y:auto;gap:8px">'+
+        (linhas||'<p class="muted">Nenhuma empresa cadastrada.</p>')+'</div>'+
+        '<button type="button" id="btnSalvarVinculosMaster" class="btn btn-primary">Salvar vínculos de consulta</button></div>');
+      byId('btnSalvarVinculosMaster').onclick=async()=>{
+        const empresasIds=[principal,...Array.from(document.querySelectorAll('#mgEmpresasVinculoMaster input.mg-empresa-master:checked'))
+          .map(c=>c.value)].filter((v,i,a)=>v&&a.indexOf(v)===i);
+        if(empresasIds.length>25)return notificarIntegro('É permitido vincular até 25 empresas.');
+        await executarAcaoGlobal('salvarVinculosMasterLocal',
+          {usuarioId:id,empresasIds},'Vínculos de consulta salvos. A empresa operacional continua inalterada.');
       };
     }
     function abrirEdicaoMasterLocal(id){

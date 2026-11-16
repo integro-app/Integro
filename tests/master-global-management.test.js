@@ -377,3 +377,351 @@ test("M02: seletor da equipe nao altera tenant de sessao e consulta via callable
   assert.match(equipe, /data-consultar-cliente/);
   assert.doesNotMatch(equipe, /localStorage\.setItem\(['"]clientePlataformaId/);
 });
+
+
+test("M02: Master Global vincula empresas a Master Local sem alterar empresa operacional", async () => {
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{
+    nome:"Empresa principal",status:"ATIVO",acessoLiberado:true,
+    documento:"DOC-PRIVADO",email:"sigilo@empresa.com",saldo:9000
+  });
+  c.dados.set("clientes_integro/tenant-b",{
+    nome:"Empresa adicional",status:"ATIVO",acessoLiberado:true,
+    documento:"DOC-PRIVADO-B",email:"sigilo-b@empresa.com",saldo:4500
+  });
+  const salvo=await c.api.salvarVinculosMasterLocal({
+    usuarioId:"local",empresasIds:["tenant-b","tenant-a"]
+  },c.global);
+  assert.equal(salvo.ok,true);
+  assert.equal(salvo.modo,"CONSULTA_SOMENTE_LEITURA");
+  assert.deepEqual(salvo.empresasIds,["tenant-a","tenant-b"]);
+  const usuario=c.dados.get("usuarios/local");
+  assert.equal(usuario.clientePlataformaId,"tenant-a",
+    "Empresa operacional não pode ser trocada por vínculo de consulta");
+  assert.equal(usuario.empresasVinculadasIds,undefined,"Perfil do tenant não guarda permissões multiempresa");
+  const vinculo=c.dados.get("vinculos_multiempresa_master_local/local");
+  assert.deepEqual(vinculo.empresasIds,["tenant-a","tenant-b"]);
+  assert.equal(vinculo.empresaPrincipalId,"tenant-a");
+  assert.equal(vinculo.masterLocalAuthUid,"local");
+  assert.equal(vinculo.modo,"CONSULTA_SOMENTE_LEITURA");
+  const consultaGlobal=await c.api.consultarVinculosMasterLocal({usuarioId:"local"},c.global);
+  assert.deepEqual(consultaGlobal.empresasIds,["tenant-a","tenant-b"]);
+  assert.ok([...c.dados.values()].some(x=>
+    x.tipoAcao==="ALTERAR_VINCULOS_MULTIEMPRESA_MASTER_LOCAL" &&
+    x.totalEmpresasVinculadas===2 && x.clientePlataformaId==="tenant-a"));
+  const resposta=await c.api.listarEmpresasVinculadasMasterLocal({},c.local);
+  assert.equal(resposta.modo,"CONSULTA_SOMENTE_LEITURA");
+  assert.equal(resposta.empresaPrincipalId,"tenant-a");
+  assert.deepEqual(resposta.empresas.map(e=>e.id),["tenant-a","tenant-b"]);
+  assert.deepEqual(resposta.empresas.map(e=>e.principal),[true,false]);
+  for(const e of resposta.empresas){
+    assert.equal(e.acessoLiberado,true);
+    assert.equal(e.documento,undefined);
+    assert.equal(e.email,undefined);
+    assert.equal(e.saldo,undefined);
+    assert.equal(e.vendas,undefined);
+    assert.equal(e.usuarios,undefined);
+  }
+  const painel=await c.api.listarPainel({},c.global);
+  const perfil=painel.usuarios.find(u=>u.authUid==="local");
+  assert.equal(perfil.empresasVinculadasIds,undefined,
+    "Mesmo no painel global, permissões não vêm do perfil editável");
+  assert.equal(perfil.clientePlataformaId,"tenant-a");
+});
+
+test("M02: revogar vínculo remove consulta da lista imediatamente e não altera tenant",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"Empresa A",status:"ATIVO"});
+  c.dados.set("clientes_integro/tenant-b",{nome:"Empresa B",status:"ATIVO"});
+  await c.api.salvarVinculosMasterLocal({
+    usuarioId:"local",empresasIds:["tenant-a","tenant-b"]
+  },c.global);
+  assert.equal((await c.api.listarEmpresasVinculadasMasterLocal({},c.local)).empresas.length,2);
+  await c.api.salvarVinculosMasterLocal({
+    usuarioId:"local",empresasIds:["tenant-a"]
+  },c.global);
+  const resp=await c.api.listarEmpresasVinculadasMasterLocal({},c.local);
+  assert.deepEqual(resp.empresas.map(e=>e.id),["tenant-a"]);
+  assert.equal(c.dados.get("usuarios/local").clientePlataformaId,"tenant-a");
+  assert.equal(c.dados.get("usuarios/local").clientePlataformaNome,undefined);
+  assert.deepEqual(c.dados.get("vinculos_multiempresa_master_local/local").empresasIds,["tenant-a"]);
+  assert.equal(resp.modo,"CONSULTA_SOMENTE_LEITURA");
+});
+
+test("M02: somente Master Global gerencia vínculos, e empresa principal não pode ser removida",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A"});
+  c.dados.set("clientes_integro/tenant-b",{nome:"B"});
+  const entrada={usuarioId:"local",empresasIds:["tenant-a","tenant-b"]};
+  await assert.rejects(c.api.salvarVinculosMasterLocal(entrada,{}),e=>e.code==="unauthenticated");
+  await assert.rejects(c.api.salvarVinculosMasterLocal(entrada,c.local),e=>e.code==="permission-denied");
+  await assert.rejects(c.api.salvarVinculosMasterLocal(entrada,c.interno),e=>e.code==="permission-denied");
+  await assert.rejects(c.api.salvarVinculosMasterLocal({usuarioId:"interno",empresasIds:["tenant-a"]},c.global),
+    e=>e.code==="permission-denied");
+  for(const empresasIds of [[],["tenant-b"],["tenant-a","tenant-a"],
+      ["tenant-a","tenant-x"],["tenant-a","tenant-b/evil"],
+      Array.from({length:26},(_,i)=>"tenant-"+i)]){
+    await assert.rejects(c.api.salvarVinculosMasterLocal({usuarioId:"local",empresasIds},c.global),
+      e=>["invalid-argument","failed-precondition"].includes(e.code));
+  }
+  assert.equal(c.dados.get("vinculos_multiempresa_master_local/local"),undefined,
+    "Erros de validação não podem gravar vínculos parciais");
+  await assert.rejects(c.api.consultarVinculosMasterLocal({usuarioId:"local"},c.local),
+    e=>e.code==="permission-denied");
+  await assert.rejects(c.api.consultarVinculosMasterLocal({usuarioId:"interno"},c.global),
+    e=>e.code==="permission-denied");
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({empresaId:"tenant-b"},c.local),
+    e=>e.code==="invalid-argument");
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.interno),
+    e=>e.code==="permission-denied");
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.global),
+    e=>e.code==="permission-denied");
+});
+
+test("M02: sem vínculos explícitos Master Local vê só a empresa principal; bloqueios são respeitados",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"Principal",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("clientes_plataforma/tenant-a",{status:"ATIVO",acessoLiberado:true});
+  c.dados.set("clientes_integro/tenant-b",{nome:"Adicional",status:"ATIVO",acessoLiberado:true});
+  const somente=await c.api.listarEmpresasVinculadasMasterLocal({},c.local);
+  assert.deepEqual(somente.empresas.map(x=>x.id),["tenant-a"]);
+  await c.api.salvarVinculosMasterLocal({
+    usuarioId:"local",empresasIds:["tenant-a","tenant-b"]
+  },c.global);
+  c.dados.get("clientes_integro/tenant-b").testeAtivo=true;
+  c.dados.get("clientes_integro/tenant-b").dataFimTeste="2020-01-01T00:00:00Z";
+  const visao=await c.api.listarEmpresasVinculadasMasterLocal({},c.local);
+  assert.equal(visao.empresas.find(x=>x.id==="tenant-b").acessoLiberado,false);
+  c.dados.get("clientes_plataforma/tenant-a").acessoLiberado=false;
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.local),
+    e=>e.code==="permission-denied");
+  c.dados.get("clientes_plataforma/tenant-a").acessoLiberado=true;
+  c.dados.get("usuarios/local").empresaBloqueada=true;
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.local),
+    e=>e.code==="permission-denied");
+});
+
+test("M02: seleção multiempresa não concede acesso operacional nem altera as rotas de sessão",()=>{
+  const index=fs.readFileSync(path.join(__dirname,"..","functions/index.js"),"utf8");
+  const sessao=fs.readFileSync(path.join(__dirname,"..","functions/session-authorization.js"),"utf8");
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const state=fs.readFileSync(path.join(__dirname,"..","js/state.js"),"utf8");
+  assert.match(index,/salvarVinculosMasterLocal: gestaoGlobal\.salvarVinculosMasterLocal/);
+  assert.match(index,/listarEmpresasVinculadasMasterLocal: gestaoGlobal\.listarEmpresasVinculadasMasterLocal/);
+  assert.match(index,/consultarVinculosMasterLocal: gestaoGlobal\.consultarVinculosMasterLocal/);
+  assert.match(index,/return protegerSessao\(handler\)\(entrada, contexto\)/);
+  assert.doesNotMatch(sessao,/"empresasVinculadasIds"/,
+    "A autorização é validada na coleção privada, não no perfil da sessão");
+  assert.match(html,/data-mg-action="vinculos-master"/);
+  assert.match(html,/abrirVinculosMasterLocal\(id\)/);
+  assert.match(html,/chamarGestaoGlobal\('consultarVinculosMasterLocal'/);
+  assert.match(html,/executarAcaoGlobal\('salvarVinculosMasterLocal'/);
+  assert.match(html,/Esta etapa NÃO altera a empresa operacional do login/);
+  assert.match(state,/this\.tenantId = usuario\.clientePlataformaId/);
+  assert.doesNotMatch(state,/this\.tenantId = usuario\.empresasVinculadasIds/);
+});
+
+
+test("M02: forjar empresasVinculadasIds no perfil não concede acesso a outra empresa", async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"Empresa A",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("clientes_integro/tenant-b",{nome:"Empresa B",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("clientes_integro/tenant-c",{nome:"Empresa C",status:"ATIVO",acessoLiberado:true});
+  await c.api.salvarVinculosMasterLocal({usuarioId:"local",empresasIds:["tenant-a","tenant-b"]},c.global);
+  const usuario=c.dados.get("usuarios/local");
+  usuario.empresasVinculadasIds=["tenant-a","tenant-c"];
+  usuario.tipoVinculoMultiempresa="CONSULTA_SOMENTE_LEITURA";
+  const lista=await c.api.listarEmpresasVinculadasMasterLocal({},c.local);
+  assert.deepEqual(lista.empresas.map(e=>e.id),["tenant-a","tenant-b"]);
+  assert.equal(lista.empresas.some(e=>e.id==="tenant-c"),false);
+  const vistaGlobal=await c.api.consultarVinculosMasterLocal({usuarioId:"local"},c.global);
+  assert.deepEqual(vistaGlobal.empresasIds,["tenant-a","tenant-b"]);
+  const pane=await c.api.listarPainel({},c.global);
+  assert.equal(pane.usuarios.find(x=>x.authUid==="local").empresasVinculadasIds,undefined);
+  // Documento de autorização está fora de usuarios, sob chave canônica do UID.
+  assert.deepEqual(c.dados.get("vinculos_multiempresa_master_local/local").empresasIds,
+    ["tenant-a","tenant-b"]);
+});
+
+test("M02: documento privado inválido, sem dono ou com empresa principal trocada é rejeitado",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A"});
+  c.dados.set("clientes_integro/tenant-b",{nome:"B"});
+  await c.api.salvarVinculosMasterLocal({usuarioId:"local",empresasIds:["tenant-a","tenant-b"]},c.global);
+  const ref=c.dados.get("vinculos_multiempresa_master_local/local");
+  ref.masterLocalAuthUid="outro-uid";
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.local),
+    e=>e.code==="failed-precondition");
+  ref.masterLocalAuthUid="local";
+  ref.empresaPrincipalId="tenant-b";
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.local),
+    e=>e.code==="failed-precondition");
+  ref.empresaPrincipalId="tenant-a";
+  ref.modo="OPERACIONAL";
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({},c.local),
+    e=>e.code==="failed-precondition");
+  ref.modo="CONSULTA_SOMENTE_LEITURA";
+  await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({usuarioId:"outro"},c.local),
+    e=>e.code==="invalid-argument");
+});
+
+
+test("M02 financeiro: endpoint só devolve indicadores dos vínculos privados de Master Local",async()=>{
+  const c=ambiente();
+  const hoje=require("../functions/m02-financial-consolidation").dataSP(new Date());
+  for(const id of ["tenant-a","tenant-b","tenant-c"]) c.dados.set("clientes_integro/"+id,{
+    nome:"Empresa "+id,status:"ATIVO",acessoLiberado:true
+  });
+  await c.api.salvarVinculosMasterLocal({
+    usuarioId:"local",empresasIds:["tenant-a","tenant-b"]
+  },c.global);
+  const financeiro=require("../functions/financial-core");
+  for (const [tenant,id] of [["tenant-a","a1"],["tenant-b","b1"],["tenant-c","c1"]]) {
+    c.dados.set("vendas/"+id,{
+      clientePlataformaId:tenant,operacaoId:id,statusVenda:"ATIVA",
+      saldoDevedorCentavos:10000,valorEmprestadoCentavos:5000,
+      valorTotalVendaCentavos:11300,totalPagoCentavos:1300,
+      diasAtrasoAtual:0,dataOperacional:hoje
+    });
+    c.dados.set("pagamentos/p"+id,{
+      clientePlataformaId:tenant,operacaoId:"p"+id,vendaId:id,
+      status:"CONFIRMADO",syncStatus:"SINCRONIZADO",
+      valorCentavos:1300,dataOperacional:hoje
+    });
+    c.dados.set("lancamentos_financeiros/"+financeiro.lancamentoVendaId(id),{
+      clientePlataformaId:tenant,origemId:id,tipoLancamento:"VENDA",
+      natureza:"DEBITO",statusLancamento:"CONFIRMADO",valorCentavos:5000
+    });
+    c.dados.set("lancamentos_financeiros/"+financeiro.lancamentoPagamentoId("p"+id),{
+      clientePlataformaId:tenant,origemId:"p"+id,origem:"PAGAMENTO",
+      tipoLancamento:"PAGAMENTO",natureza:"CREDITO",
+      statusLancamento:"CONFIRMADO",valorCentavos:1300
+    });
+  }
+  const resp=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(resp.ok,true);
+  assert.equal(resp.modo,"CONSULTA_SOMENTE_LEITURA");
+  assert.equal(resp.completo,true);
+  assert.equal(resp.empresaPrincipalId,"tenant-a");
+  assert.equal(resp.empresasConsultadas,2);
+  assert.deepEqual(resp.indicadores,{
+    carteiraCentavos:20000,inadimplenciaCentavos:0,
+    recebidoHojeCentavos:2600,vendasHojeCentavos:10000,vendasHojeQuantidade:2
+  });
+  assert.equal(resp.empresas,undefined);
+  assert.equal(resp.vendas,undefined);
+  assert.equal(resp.pagamentos,undefined);
+  assert.equal(resp.usuarios,undefined);
+  // Forjar campos editáveis do perfil não amplia o conjunto de consultas.
+  c.dados.get("usuarios/local").empresasVinculadasIds=["tenant-a","tenant-c"];
+  const novo=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.deepEqual(novo.indicadores,resp.indicadores);
+});
+
+test("M02 financeiro: divergência de ledger bloqueia totais sem retornar documentos",async()=>{
+  const c=ambiente();
+  const core=require("../functions/financial-core");
+  const hoje=require("../functions/m02-financial-consolidation").dataSP(new Date());
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("vendas/v1",{clientePlataformaId:"tenant-a",statusVenda:"ATIVA",
+    operacaoId:"v1",valorEmprestadoCentavos:5000,valorTotalVendaCentavos:11000,
+    saldoDevedorCentavos:10000,totalPagoCentavos:1000,
+    dataOperacional:hoje,diasAtrasoAtual:0});
+  c.dados.set("pagamentos/p1",{clientePlataformaId:"tenant-a",vendaId:"v1",
+    operacaoId:"p1",valorCentavos:1000,status:"CONFIRMADO",
+    syncStatus:"SINCRONIZADO",dataOperacional:hoje});
+  c.dados.set("lancamentos_financeiros/"+core.lancamentoVendaId("v1"),{
+    clientePlataformaId:"tenant-a",origemId:"v1",tipoLancamento:"VENDA",
+    natureza:"DEBITO",statusLancamento:"CONFIRMADO",valorCentavos:5000});
+  // Valor do ledger diferente do pagamento canônico: bloqueio sem divulgar montante.
+  c.dados.set("lancamentos_financeiros/"+core.lancamentoPagamentoId("p1"),{
+    clientePlataformaId:"tenant-a",origemId:"p1",origem:"PAGAMENTO",
+    tipoLancamento:"PAGAMENTO",natureza:"CREDITO",
+    statusLancamento:"CONFIRMADO",valorCentavos:1900});
+  const r=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(r.completo,false);
+  assert.ok(r.avisos.includes("LEDGER_PAGAMENTO_DIVERGENTE"));
+  for(const valor of Object.values(r.indicadores)) assert.equal(valor,null);
+  assert.equal(r.vendas,undefined);
+  assert.equal(r.pagamentos,undefined);
+  assert.equal(r.ledger,undefined);
+  c.dados.get("lancamentos_financeiros/"+core.lancamentoPagamentoId("p1")).valorCentavos=1000;
+  const aprovado=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(aprovado.completo,true);
+  assert.equal(aprovado.indicadores.recebidoHojeCentavos,1000);
+  assert.equal(aprovado.indicadores.carteiraCentavos,10000);
+});
+
+test("M02 financeiro: lançamento órfão e venda sem contrapartida impedem total confiável",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("lancamentos_financeiros/lf_pagamento_orfao",{
+    clientePlataformaId:"tenant-a",origemId:"orfao",origem:"PAGAMENTO",
+    tipoLancamento:"PAGAMENTO",natureza:"CREDITO",
+    statusLancamento:"CONFIRMADO",valorCentavos:12000});
+  const r=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(r.completo,false);
+  assert.ok(r.avisos.includes("LEDGER_PAGAMENTO_ORFAO"));
+  assert.equal(r.indicadores.recebidoHojeCentavos,null);
+});
+
+test("M02 financeiro: revogação e bloqueio de tenant impedem consolidação indevida",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("clientes_integro/tenant-b",{nome:"B",status:"ATIVO",acessoLiberado:true});
+  await c.api.salvarVinculosMasterLocal({
+    usuarioId:"local",empresasIds:["tenant-a","tenant-b"]
+  },c.global);
+  c.dados.get("clientes_integro/tenant-b").acessoLiberado=false;
+  await assert.rejects(
+    c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
+    e=>e.code==="failed-precondition");
+  c.dados.get("clientes_integro/tenant-b").acessoLiberado=true;
+  const ok=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(ok.empresasConsultadas,2);
+  await c.api.salvarVinculosMasterLocal({usuarioId:"local",empresasIds:["tenant-a"]},c.global);
+  const revogado=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(revogado.empresasConsultadas,1);
+  assert.equal(revogado.empresaPrincipalId,"tenant-a");
+});
+
+test("M02 financeiro: payload arbitrário e outros papéis são rejeitados",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  for(const payload of [{empresaId:"tenant-b"},{tenantId:"tenant-b"},
+    {empresasIds:["tenant-a","tenant-b"]},{somenteEstaEmpresa:"tenant-a"}]) {
+    await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal(payload,c.local),
+      e=>e.code==="invalid-argument");
+  }
+  for(const ctx of [c.global,c.interno,{}]) {
+    await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},ctx),
+      e=>["permission-denied","unauthenticated"].includes(e.code));
+  }
+  c.dados.get("usuarios/local").acessoLiberado=false;
+  await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
+    e=>e.code==="permission-denied");
+});
+
+test("M02 financeiro: limite seguro bloqueia totais parciais de empresa grande",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  for(let i=0;i<1001;i++) c.dados.set("vendas/v"+i,{
+    clientePlataformaId:"tenant-a",saldoDevedorCentavos:10,
+    statusVenda:"ATIVA",diasAtrasoAtual:0
+  });
+  await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
+    e=>e.code==="resource-exhausted");
+});
+
+
+test("M02 financeiro: excesso de lançamentos também bloqueia consolidação parcial",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  for(let i=0;i<3001;i++) c.dados.set("lancamentos_financeiros/lf_outro_"+i,{
+    clientePlataformaId:"tenant-a",tipoLancamento:"GASTO",
+    natureza:"DEBITO",valorCentavos:10,statusLancamento:"CONFIRMADO"
+  });
+  await assert.rejects(
+    c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
+    e=>e.code==="resource-exhausted");
+});
