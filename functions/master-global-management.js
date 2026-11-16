@@ -1,6 +1,7 @@
 "use strict";
 const crypto = require("node:crypto");
 const m02Financeiro = require("./m02-financial-consolidation");
+const m02Ledger = require("./m02-ledger-audit");
 const { empresaLiberada } = require("./company-access");
 
 // Todas as rotas são chamadas por uma callable com sessão V27 validada.
@@ -473,20 +474,37 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     const resumoPorEmpresa = [];
     for (const empresa of empresas.empresas) {
       const tenantId = empresa.id;
-      const [vendasSnap,pagamentosSnap] = await Promise.all([
+      const limiteLedger = limite*3;
+      const [vendasSnap,pagamentosSnap,ledgerSnap] = await Promise.all([
         db.collection("vendas").where("clientePlataformaId","==",tenantId).limit(limite+1).get(),
-        db.collection("pagamentos").where("clientePlataformaId","==",tenantId).limit(limite+1).get()
+        db.collection("pagamentos").where("clientePlataformaId","==",tenantId).limit(limite+1).get(),
+        db.collection("lancamentos_financeiros").where("clientePlataformaId","==",tenantId)
+          .limit(limiteLedger+1).get()
       ]);
-      if (vendasSnap.docs.length>limite || pagamentosSnap.docs.length>limite) {
+      if (vendasSnap.docs.length>limite || pagamentosSnap.docs.length>limite ||
+          ledgerSnap.docs.length>limiteLedger) {
         fail("resource-exhausted",
           "A empresa excede o limite seguro de leitura para a consolidacao. Use um resumo materializado e auditado.");
       }
       const registros = snap => snap.docs.map(doc => ({...doc.data(),id:doc.id}));
       let calculo;
       try {
-        calculo = m02Financeiro.calcularTenant({
-          tenantId,hoje,vendas:registros(vendasSnap),pagamentos:registros(pagamentosSnap)
+        const vendas = registros(vendasSnap);
+        const pagamentos = registros(pagamentosSnap);
+        calculo = m02Financeiro.calcularTenant({tenantId,hoje,vendas,pagamentos});
+        // O ledger nunca é somado aos totais. Ele confirma a existência e
+        // os valores dos lançamentos canônicos sem duplicar recebimentos.
+        const auditoria = m02Ledger.conferenciaLedgerTenant({
+          tenantId,vendas,pagamentos,ledger:registros(ledgerSnap)
         });
+        if (!auditoria.conciliado) {
+          const indicadores = Object.fromEntries(
+            Object.keys(calculo.indicadores).map(chave => [chave,null]));
+          calculo = {
+            ...calculo,indicadores,pronto:false,
+            pendencias:[...new Set([...calculo.pendencias,...auditoria.pendencias])].sort()
+          };
+        }
       } catch (_) {
         fail("failed-precondition","Inconsistencia nos dados financeiros. A consolidacao foi interrompida.");
       }
