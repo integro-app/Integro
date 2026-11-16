@@ -23,7 +23,8 @@ function valor(row, centavosKey, legacyKey) {
 function ativa(row, chaveStatus) {
   return row && row.excluido !== true && row.cancelado !== true &&
     row.estornado !== true && row.ativo !== false &&
-    !excludentes.has(upper(row[chaveStatus] || row.status));
+    !excludentes.has(upper(row[chaveStatus])) &&
+    !excludentes.has(upper(row.status));
 }
 
 function pagamentoConfirmado(row) {
