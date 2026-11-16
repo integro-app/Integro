@@ -21,7 +21,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | CPF/CNPJ e criação de empresa/Master Local confirmados pelo proprietário. Senha inicial aleatória com exibição única, primeiro acesso obrigatório e recuperação administrativa publicados em Hosting e três Cloud Functions; 663/663 testes automatizados. Falta homologação em conta real e demais fluxos administrativos. | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Isolamento de funcionários corrigido no GitHub, com 663 testes gerais, 58 de Rules, 8 de clientes e 23 de vendas aprovados. Tentativa de deploy isolado das Rules em 16/11/2026 bloqueada por HTTP 503 no serviço Firebase (3/3 tentativas); **Rules ainda não publicadas**. Homologação real e multiempresa do Master Local pendentes. | BLOQUEADO PARA PUBLICAÇÃO |
+| M02 | Empresas/multiempresa | Isolamento de funcionários corrigido e aprovado em CI (663 testes gerais, 58 Rules, 8 clientes e 23 vendas). **Duas execuções de deploy isolado falharam com HTTP 503 do Firebase Rules**, incluindo retry autorizado pelo proprietário em 16/11/2026; **Rules ainda não publicadas**. Homologação real e multiempresa Master Local pendentes. | BLOQUEADO PARA PUBLICAÇÃO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
@@ -84,6 +84,15 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Commits:** `74911df` e `7dc20fa` (Rules), `7a68ab7` e `bd383d7` (testes/escopo de tenant), `c323d18` (guarda central `hasTenant`).
 - **Hosting:** workflow `firebase-hosting-merge.yml` #786 publicado com sucesso, mas Hosting não implanta Rules. `deploy-m02-firestore-rules.yml` preparado somente para acionamento **manual** e implantação isolada das Rules, com testes antes do deploy e sem alteração de Functions. **A publicação das Rules foi tentada em 16/11/2026 e falhou nas três chamadas ao endpoint de verificação remota do Google com HTTP 503.** O comportamento em produção ainda depende da publicação e homologação autenticada.
 - **Outros limites de M02:** seleção multiempresa para Master Local e visão consolidada somente leitura ainda pendentes; não declarar módulo fechado.
+
+### M02 — Segunda tentativa de publicação (16/11/2026)
+
+- **Solicitação do proprietário:** “tente novamente” após falha anterior do Firebase Rules.
+- **Workflow acionado:** [run 43944097654](https://github.com/integro-app/Integro/actions/runs/43944097654), `deploy-m02-firestore-rules.yml`, exclusivamente `firestore:rules` em `integro-novo`.
+- **Validação:** `npm run test:rules` no emulador concluído com **58/58 testes aprovados e zero falhas**.
+- **Implantação remota:** três tentativas, todas recusadas com `HTTP 503` no endpoint `firebaserules.googleapis.com/v1/projects/integro-novo:test` (compilação remota); job concluído como `failure`. **Não declarar Rules publicadas.**
+- **Ação posterior:** gatilho temporário por push removido; workflow restaurado a `workflow_dispatch`, commit `33cd896`. Nenhuma Cloud Function ou dado operacional foi alterado.
+- **Situação:** aguardando funcionamento do serviço Firebase Rules para implantação e testes com usuários reais. M02 permanece **BLOQUEADO PARA PUBLICAÇÃO**.
 
 ### M02 — Tentativa de publicação das Rules (16/11/2026)
 
