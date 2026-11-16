@@ -119,7 +119,13 @@ function ambienteBrowser() {
     clientePlataformaId: "tenant-a", acessoLiberado: true
   };
   let uidAuth = "local-a", tenant = "tenant-a";
-  let dados = resposta(), chamadas = [];
+  let dados = resposta(), dadosFinanceiro = {
+    ok:true,modo:"CONSULTA_SOMENTE_LEITURA",empresaPrincipalId:"tenant-a",
+    empresasConsultadas:2,dataOperacional:"2026-11-16",completo:true,
+    indicadores:{carteiraCentavos:500000,inadimplenciaCentavos:80000,
+      recebidoHojeCentavos:10500,vendasHojeCentavos:220000,vendasHojeQuantidade:4},
+    avisos:[]
+  }, chamadas = [];
   const window = {
     State: { getUsuario: () => usuario, getTenantId: () => tenant },
     firebase: {
@@ -128,7 +134,8 @@ function ambienteBrowser() {
         functions: region => ({
           httpsCallable: nome => async payload => {
             chamadas.push({ region, nome, payload });
-            return { data: dados };
+            return { data: payload.acao === "listarIndicadoresFinanceirosConsolidadosMasterLocal"
+              ? dadosFinanceiro : dados };
           }
         })
       })
@@ -141,6 +148,7 @@ function ambienteBrowser() {
     window, document, actions, body, todosTextos,
     get chamadas() { return chamadas; },
     alterarDados(v) { dados = v; },
+    alterarFinanceiro(v) { dadosFinanceiro = v; },
     alterarUsuario(v) { usuario = v; },
     alterarUid(v) { uidAuth = v; },
     alterarTenant(v) { tenant = v; },
@@ -256,6 +264,68 @@ test("M02: erro ou negação na atualização apaga o resultado da leitura anter
   assert.match(e.todosTextos(e.body),/Não foi possível confirmar seus vínculos/);
 });
 
+
+function acharNo(node, check) {
+  if(check(node)) return node;
+  for(const child of node.children) {
+    const found=acharNo(child,check);
+    if(found) return found;
+  }
+  return null;
+}
+
+test("M02: conferência financeira exige clique próprio, servidor e vínculos atuais",async()=>{
+  const e=ambienteBrowser();
+  e.window.IntegroM02VisaoConsolidada.inicializar(e.window.State.getUsuario());
+  await e.buscar("m02AbrirVisaoConsolidada").click();
+  assert.equal(e.chamadas.length,1);
+  assert.doesNotMatch(e.todosTextos(e.body),/R\$\s?5\.000/);
+  const consultar=acharNo(e.buscar("m02VisaoConsolidadaDialogo"),item=>
+    item.tagName==="button" && item.textContent.includes("Consultar indicadores"));
+  assert.ok(consultar);
+  await consultar.click();
+  assert.equal(e.chamadas.length,2);
+  assert.equal(e.chamadas[1].payload.acao,
+    "listarIndicadoresFinanceirosConsolidadosMasterLocal");
+  assert.deepEqual(Object.keys(e.chamadas[1].payload).sort(),["__integroRota","acao"]);
+  assert.match(e.todosTextos(e.body),/5.000,00/);
+  assert.match(e.todosTextos(e.body),/800,00/);
+  assert.match(e.todosTextos(e.body),/105,00/);
+  assert.match(e.todosTextos(e.body),/2.200,00/);
+  assert.match(e.todosTextos(e.body),/Vendas hoje/);
+});
+
+test("M02: resposta financeira parcial nunca mostra valores de uma única empresa",async()=>{
+  const e=ambienteBrowser();
+  e.window.IntegroM02VisaoConsolidada.inicializar(e.window.State.getUsuario());
+  await e.buscar("m02AbrirVisaoConsolidada").click();
+  e.alterarFinanceiro({ok:true,modo:"CONSULTA_SOMENTE_LEITURA",
+    empresaPrincipalId:"tenant-a",empresasConsultadas:2,dataOperacional:"2026-11-16",
+    completo:false,indicadores:{carteiraCentavos:500000,
+      inadimplenciaCentavos:null,recebidoHojeCentavos:10500,
+      vendasHojeCentavos:220000,vendasHojeQuantidade:4}});
+  const consultar=acharNo(e.buscar("m02VisaoConsolidadaDialogo"),item=>
+    item.tagName==="button" && item.textContent.includes("Consultar indicadores"));
+  await consultar.click();
+  const text=e.todosTextos(e.body);
+  assert.match(text,/não pôde ser validada integralmente/);
+  assert.doesNotMatch(text,/5.000,00|800,00|105,00/);
+});
+
+test("M02: relatório com principal ou quantidade diferente é recusado",async()=>{
+  const e=ambienteBrowser();
+  e.window.IntegroM02VisaoConsolidada.inicializar(e.window.State.getUsuario());
+  await e.buscar("m02AbrirVisaoConsolidada").click();
+  e.alterarFinanceiro({ok:true,modo:"CONSULTA_SOMENTE_LEITURA",
+    empresaPrincipalId:"tenant-x",empresasConsultadas:2,dataOperacional:"2026-11-16",
+    completo:true,indicadores:{carteiraCentavos:999999,inadimplenciaCentavos:1,
+      recebidoHojeCentavos:1,vendasHojeCentavos:1,vendasHojeQuantidade:1}});
+  const btn=acharNo(e.buscar("m02VisaoConsolidadaDialogo"),item=>
+    item.tagName==="button" && item.textContent.includes("Consultar indicadores"));
+  await btn.click();
+  assert.match(e.todosTextos(e.body),/Não foi possível validar a consolidação financeira/);
+  assert.doesNotMatch(e.todosTextos(e.body),/9.999,99/);
+});
 test("M02: integração não altera página gigante, cache de tenant nem operações de outras empresas",()=>{
   const loader=read("js/master-local.js");
   const visao=read("js/m02-visao-consolidada.js");
