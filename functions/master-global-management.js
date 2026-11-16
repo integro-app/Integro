@@ -78,8 +78,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       "tipoUsuarioOficial", "cargoChave", "cargoNome", "clientePlataformaId",
       "clientePlataformaNome", "empresaNome", "departamentoId", "status",
       "acessoLiberado", "empresaBloqueada", "ativo", "convitePendente", "provisionamentoAuth",
-      "usuarioInternoIntegro", "clientesLeituraAutorizada", "empresasVinculadasIds",
-      "tipoVinculoMultiempresa", "criadoEm", "atualizadoEm"
+      "usuarioInternoIntegro", "clientesLeituraAutorizada", "criadoEm", "atualizadoEm"
     ];
     const usuariosSeguros = usuarios.map(u =>
       Object.fromEntries(camposUsuario.filter(c => Object.prototype.hasOwnProperty.call(u, c)).map(c => [c, u[c]]))
@@ -329,9 +328,28 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
   }
 
 
-  // M02: vinculos multiempresa sao autorizados SOMENTE pelo Master Global.
-  // A empresa operacional continua sendo clientePlataformaId: nao criar bypass
-  // em sessao, rules, caixa, vendas ou cobranças.
+  // M02: o vínculo de autorização NÃO reside em usuarios/{uid}, porque
+  // os Masters Locais podem editar campos de perfis do proprio tenant via SDK.
+  // Esta colecao não possui grants de cliente nas Firestore Rules e só e
+  // alterada/lida no backend pelo Admin SDK.
+  const colecaoVinculosMaster = "vinculos_multiempresa_master_local";
+  const modoVinculoMaster = "CONSULTA_SOMENTE_LEITURA";
+
+  async function lerVinculosMasterSeguros(usuarioId, principal) {
+    const snap = await db.collection(colecaoVinculosMaster).doc(usuarioId).get();
+    if (!snap.exists) return [principal]; // Compatibilidade sem múltiplos vínculos
+    const v = snap.data() || {};
+    const ids = v.empresasIds;
+    if (v.masterLocalAuthUid !== usuarioId || v.empresaPrincipalId !== principal ||
+        v.modo !== modoVinculoMaster || !Array.isArray(ids) ||
+        ids.length < 1 || ids.length > 25 || !ids.includes(principal) ||
+        ids.some(id => typeof id !== "string" || !idValido(id)) ||
+        new Set(ids).size !== ids.length) {
+      fail("failed-precondition", "Vinculos multiempresa inconsistentes. Contate o Master Global.");
+    }
+    return [...ids].sort();
+  }
+
   async function salvarVinculosMasterLocal(dados, contexto) {
     const a = await autor(contexto);
     const usuarioId = txt(dados?.usuarioId), entradas = dados?.empresasIds;
@@ -343,6 +361,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     }
     const ids = [...entradas].sort();
     const usuarioRef = db.collection("usuarios").doc(usuarioId);
+    const vinculoRef = db.collection(colecaoVinculosMaster).doc(usuarioId);
     await db.runTransaction(async tx => {
       const usuarioSnap = await tx.get(usuarioRef);
       const usuario = usuarioSnap.exists ? usuarioSnap.data() : null;
@@ -358,27 +377,46 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       if (empresas.some(snap => !snap.exists)) {
         fail("failed-precondition", "Ha uma empresa inexistente entre os vinculos.");
       }
-      tx.set(usuarioRef, {
-        empresasVinculadasIds: ids,
-        tipoVinculoMultiempresa: "CONSULTA_SOMENTE_LEITURA",
+      // NUNCA grava IDs autorizados no perfil editável /usuarios/{uid}.
+      tx.set(vinculoRef, {
+        masterLocalAuthUid: usuarioId,
+        empresaPrincipalId: principal,
+        empresasIds: ids,
+        modo: modoVinculoMaster,
         atualizadoEm: agora(), atualizadoPorUid: a.uid
-      }, { merge: true });
+      }, { merge: false });
       log(tx, "ALTERAR_VINCULOS_MULTIEMPRESA_MASTER_LOCAL", a,
         "Vinculos de consulta multiempresa atualizados",
         { usuarioAlvoUid: usuarioId, clientePlataformaId: principal,
           totalEmpresasVinculadas: ids.length });
     });
-    return { ok: true, usuarioId, empresasIds: ids,
-      modo: "CONSULTA_SOMENTE_LEITURA" };
+    return { ok: true, usuarioId, empresasIds: ids, modo: modoVinculoMaster };
   }
 
-  // A listagem se limita a metadados e verifica novamente o perfil canônico.
-  // E proibido usar empresas adicionais como tenant operacional nesta etapa.
+  async function consultarVinculosMasterLocal(dados, contexto) {
+    await autor(contexto);
+    const usuarioId = txt(dados?.usuarioId);
+    if (!idValido(usuarioId)) fail("invalid-argument", "Master Local invalido.");
+    const snap = await db.collection("usuarios").doc(usuarioId).get();
+    const perfil = snap.exists ? snap.data() : null;
+    if (!perfil || perfil.authUid !== usuarioId ||
+        txt(perfil.tipoUsuario).toLowerCase() !== "master_local" ||
+        !idValido(perfil.clientePlataformaId)) {
+      fail("permission-denied", "Master Local nao provisionado.");
+    }
+    const empresaPrincipalId = txt(perfil.clientePlataformaId);
+    const empresasIds = await lerVinculosMasterSeguros(usuarioId, empresaPrincipalId);
+    return { ok: true, usuarioId, empresaPrincipalId, empresasIds,
+      modo: modoVinculoMaster };
+  }
+
+  // Consulta por Master Local apenas para o proprio UID e somente metadados.
+  // Revogacoes sao respeitadas em cada leitura do documento backend-only.
   async function listarEmpresasVinculadasMasterLocal(dados, contexto) {
     const uid = txt(contexto?.auth?.uid);
     if (!uid) fail("unauthenticated", "Faca login.");
-    if (dados?.empresaId || dados?.tenantId || dados?.clienteId) {
-      fail("invalid-argument", "Nao envie empresa para esta consulta.");
+    if (dados?.empresaId || dados?.tenantId || dados?.clienteId || dados?.usuarioId) {
+      fail("invalid-argument", "Nao envie empresa ou usuario para esta consulta.");
     }
     const snap = await db.collection("usuarios").doc(uid).get();
     const perfil = snap.exists ? snap.data() || {} : {};
@@ -391,14 +429,8 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       fail("permission-denied", "Acesso multiempresa nao autorizado.");
     }
     const principal = txt(perfil.clientePlataformaId);
-    const ids = perfil.empresasVinculadasIds === undefined
-      ? [principal] : perfil.empresasVinculadasIds;
-    if (!idValido(principal) || !Array.isArray(ids) ||
-        ids.length < 1 || ids.length > 25 || !ids.includes(principal) ||
-        ids.some(id => typeof id !== "string" || !idValido(id)) ||
-        new Set(ids).size !== ids.length) {
-      fail("failed-precondition", "Vinculos de empresa inconsistentes. Contate o Master Global.");
-    }
+    if (!idValido(principal)) fail("failed-precondition", "Empresa principal invalida.");
+    const ids = await lerVinculosMasterSeguros(uid, principal);
     const registros = await Promise.all(ids.map(async id => {
       const [atual, legado] = await Promise.all([
         db.collection("clientes_integro").doc(id).get(),
@@ -417,9 +449,8 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     if (!registros.find(x => x.principal)?.acessoLiberado) {
       fail("permission-denied", "Empresa principal bloqueada ou teste expirado.");
     }
-    return { ok: true, modo: "CONSULTA_SOMENTE_LEITURA",
+    return { ok: true, modo: modoVinculoMaster,
       empresaPrincipalId: principal, empresas: registros,
-      // Nenhuma devolucao de CPF, e-mail, saldo, usuario, caixa, contrato ou venda.
       atualizadoEm: new Date().toISOString() };
   }
 
@@ -575,7 +606,7 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     salvarUsuarioInterno, provisionarInternoLegado, editarMasterLocal, alterarAcessoUsuario,
     salvarClientesConsultaFuncionario, listarClientesConsultaFuncionario,
     consultarClienteAutorizadoFuncionario,
-    salvarVinculosMasterLocal, listarEmpresasVinculadasMasterLocal,
+    salvarVinculosMasterLocal, consultarVinculosMasterLocal, listarEmpresasVinculadasMasterLocal,
     criarNotificacao, marcarNotificacaoLida, listarAvisosInternos, listarChat, enviarChat };
 }
 module.exports = { criarGestaoMasterGlobal };
