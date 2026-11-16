@@ -1,0 +1,52 @@
+name: Publicar M02 - isolamento de funcionarios no Firestore
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firebase-m02-firestore-rules
+  cancel-in-progress: false
+jobs:
+  validar-publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Instalar dependencias
+        run: npm ci
+      - name: Testar regras de isolamento no emulador
+        run: npm run test:rules
+      - name: Implantar somente Firestore Rules em integro-novo
+        env:
+          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+        run: |
+          set -eu
+          if [ -z "$FIREBASE_SA_JSON" ]; then
+            echo "Conta de servico Firebase nao configurada" >&2
+            exit 1
+          fi
+          arquivo="$RUNNER_TEMP/firebase-m02-rules-sa.json"
+          trap 'rm -f "$arquivo"' EXIT
+          printf '%s' "$FIREBASE_SA_JSON" > "$arquivo"
+          chmod 600 "$arquivo"
+          export GOOGLE_APPLICATION_CREDENTIALS="$arquivo"
+          for tentativa in 1 2 3; do
+            echo "Deploy de Rules: tentativa $tentativa/3"
+            if npx --yes firebase-tools@14.23.0 deploy --only firestore:rules --project integro-novo --non-interactive; then
+              echo "Regras publicadas em integro-novo."
+              exit 0
+            fi
+            if [ "$tentativa" -eq 3 ]; then
+              echo "Publicacao de Rules falhou. Nenhuma Function foi alterada." >&2
+              exit 1
+            fi
+            sleep 15
+          done
