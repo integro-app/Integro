@@ -495,10 +495,20 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     let global;
     try { global = m02Financeiro.consolidar(resumoPorEmpresa); }
     catch (_) { fail("failed-precondition","Nao foi possivel consolidar os valores com precisao."); }
+    // Concessões, bloqueios e revogações podem mudar DURANTE a leitura.
+    // Revalida o documento privado e o perfil imediatamente antes da resposta.
+    const ultimaVerificacao = await listarEmpresasVinculadasMasterLocal({}, contexto);
+    const assinatura = lista => lista.map(x => x.id+":"+x.acessoLiberado).sort().join("|");
+    if (ultimaVerificacao.empresaPrincipalId !== empresas.empresaPrincipalId ||
+        assinatura(ultimaVerificacao.empresas) !== assinatura(empresas.empresas)) {
+      fail("permission-denied","Vinculos alterados durante a consulta. Tente novamente.");
+    }
     return {
       ok:true,modo:"CONSULTA_SOMENTE_LEITURA",dataOperacional:hoje,
       empresaPrincipalId:empresas.empresaPrincipalId,
-      empresasConsultadas:global.empresas,completo:global.completo,
+      empresasConsultadas:global.empresas,
+      empresasConsultadasIds:empresas.empresas.map(x=>x.id).sort(),
+      completo:global.completo,
       indicadores:global.indicadores,
       // Somente erros de integridade agregados; nao retorna linhas brutas,
       // dados pessoais ou identificadores de venda e pagamento.
