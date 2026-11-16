@@ -224,6 +224,27 @@
     document.addEventListener("keydown", tecla);
     fechar.focus();
 
+    const mensagensPendencia = Object.freeze({
+      LEDGER_VENDA_AUSENTE:"Venda sem lançamento financeiro confirmado",
+      LEDGER_VENDA_DIVERGENTE:"Valor ou vínculo do lançamento de venda divergente",
+      LEDGER_PAGAMENTO_AUSENTE:"Pagamento sem lançamento financeiro confirmado",
+      LEDGER_PAGAMENTO_DIVERGENTE:"Valor ou vínculo do lançamento de pagamento divergente",
+      LEDGER_PAGAMENTO_ORFAO:"Lançamento financeiro sem pagamento correspondente",
+      LEDGER_CANCELAMENTO_DIVERGENTE:"Cancelamento e lançamento financeiro divergentes",
+      VENDA_BALANCO_DIVERGENTE:"Total, pagamentos e saldo da venda não conferem",
+      CARTEIRA_SALDO_AUSENTE:"Saldo de venda incompleto",
+      VENDA_STATUS_INDEFINIDO:"Situação de venda não reconhecida",
+      PAGAMENTO_STATUS_INDEFINIDO:"Situação de pagamento não reconhecida",
+      PAGAMENTO_SINCRONIA_PENDENTE:"Pagamento aguardando sincronização",
+      PAGAMENTO_PENDENTE_REVISAO:"Pagamento ainda pendente de revisão"
+    });
+    function diagnosticoFinanceiro(codigos) {
+      if (!Array.isArray(codigos)) return "";
+      const traducoes = [...new Set(codigos)].slice(0,3).map(codigo =>
+        typeof codigo === "string" && mensagensPendencia[codigo]
+          ? mensagensPendencia[codigo] : "Divergência que exige conferência");
+      return traducoes.length ? " Motivos: " + traducoes.join("; ") + "." : "";
+    }
     let modelo = null;
     let ultimaChaveVinculo = "";
     let sequenciaFinanceira = 0;
@@ -269,7 +290,8 @@
         // Nenhum total parcial aparece se qualquer empresa ou campo falhou.
         if (resultado.completo!==true || campos.some(x=>metas[x]===null||metas[x]===undefined)) {
           limparFinanceiro("A consolidação financeira não pôde ser validada integralmente. " +
-            "Não exibiremos valores parciais. Verifique a conciliação e os registros pendentes.");
+            "Não exibiremos valores parciais. Verifique a conciliação e os registros pendentes." +
+            diagnosticoFinanceiro(resultado.avisos));
           return;
         }
         const moeda = cents => (cents/100).toLocaleString("pt-BR",{
