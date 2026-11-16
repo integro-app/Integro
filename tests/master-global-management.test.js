@@ -712,3 +712,16 @@ test("M02 financeiro: limite seguro bloqueia totais parciais de empresa grande",
   await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
     e=>e.code==="resource-exhausted");
 });
+
+
+test("M02 financeiro: excesso de lançamentos também bloqueia consolidação parcial",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  for(let i=0;i<3001;i++) c.dados.set("lancamentos_financeiros/lf_outro_"+i,{
+    clientePlataformaId:"tenant-a",tipoLancamento:"GASTO",
+    natureza:"DEBITO",valorCentavos:10,statusLancamento:"CONFIRMADO"
+  });
+  await assert.rejects(
+    c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
+    e=>e.code==="resource-exhausted");
+});
