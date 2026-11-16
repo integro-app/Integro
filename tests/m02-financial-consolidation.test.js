@@ -93,3 +93,18 @@ test("M02 financeiro: no máximo 25 empresas e sem estouro de precisão",()=>{
  assert.equal(calc([venda("v1",{saldoDevedorCentavos:Number.MAX_SAFE_INTEGER}),
    venda("v2",{saldoDevedorCentavos:1})],[]).indicadores.carteiraCentavos,null);
 });
+
+test("M02 financeiro: status de venda desconhecido invalida todos os indicadores",()=>{
+ const r=calc([venda("v1",{statusVenda:"INDEFINIDA"})],[]);
+ assert.equal(r.pronto,false);
+ assert.ok(r.pendencias.includes("VENDA_STATUS_INDEFINIDO"));
+ for(const v of Object.values(r.indicadores)) assert.equal(v,null);
+});
+
+test("M02 financeiro: status de pagamento desconhecido invalida recebido, sem inventar zero",()=>{
+ const r=calc(undefined,[pagamento("p1",{status:"ANALISE_INCONSISTENTE"})]);
+ assert.equal(r.pronto,false);
+ assert.ok(r.pendencias.includes("PAGAMENTO_STATUS_INDEFINIDO"));
+ assert.equal(r.indicadores.recebidoHojeCentavos,null);
+ assert.equal(r.indicadores.carteiraCentavos,10000);
+});
