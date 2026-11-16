@@ -253,6 +253,9 @@
             resultado.modo!=="CONSULTA_SOMENTE_LEITURA" ||
             resultado.empresaPrincipalId!==principal ||
             resultado.empresasConsultadas!==modelo.empresas.length ||
+            !Array.isArray(resultado.empresasConsultadasIds) ||
+            JSON.stringify([...resultado.empresasConsultadasIds].sort()) !==
+              JSON.stringify(modelo.empresas.map(x=>x.id).sort()) ||
             resultado.dataOperacional===undefined) {
           throw new Error("Indicadores não correspondem à sessão e aos vínculos atuais.");
         }
@@ -274,7 +277,7 @@
         });
         const indicadores=[
           ["Carteira atual",moeda(metas.carteiraCentavos)],
-          ["Carteira em atraso",moeda(metas.inadimplenciaCentavos)],
+          ["Saldo sinalizado em atraso",moeda(metas.inadimplenciaCentavos)],
           ["Recebido hoje",moeda(metas.recebidoHojeCentavos)],
           ["Valor emprestado hoje",moeda(metas.vendasHojeCentavos)],
           ["Vendas hoje",String(metas.vendasHojeQuantidade)]
