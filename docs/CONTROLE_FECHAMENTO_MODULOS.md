@@ -21,7 +21,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | CPF/CNPJ e criação de empresa/Master Local confirmados pelo proprietário. Senha inicial aleatória com exibição única, primeiro acesso obrigatório e recuperação administrativa publicados em Hosting e três Cloud Functions; 663/663 testes automatizados. Falta homologação em conta real e demais fluxos administrativos. | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Delegação administrativa já publicada; eliminados em código os acessos diretos implícitos dos funcionários ÍNTEGRO a tenants e finanças, mesmo com tenant preenchido por engano. CI #480 aprovado: 663 testes gerais, 58 de Rules, 8 clientes e 23 vendas. **Deploy de Firestore Rules pendente**; multiempresa do Master Local e homologação real pendentes. | EM DESENVOLVIMENTO |
+| M02 | Empresas/multiempresa | Isolamento de funcionários corrigido no GitHub, com 663 testes gerais, 58 de Rules, 8 de clientes e 23 de vendas aprovados. Tentativa de deploy isolado das Rules em 16/11/2026 bloqueada por HTTP 503 no serviço Firebase (3/3 tentativas); **Rules ainda não publicadas**. Homologação real e multiempresa do Master Local pendentes. | BLOQUEADO PARA PUBLICAÇÃO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
@@ -82,8 +82,16 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Testes adicionados:** dois cenários em `tests/firestore-rules.test.js`: acesso interno delegado sem tenant não consulta dados via SDK; funcionário com tenant preenchido indevidamente também não atravessa fronteiras, incluindo dados financeiros, configurações, logs e catálogos, preservando consultas legítimas do Master Global/Master Local.
 - **Evidência:** auditoria integrada `#480`, [run 43939191331](https://github.com/integro-app/Integro/actions/runs/43939191331), todos os quatro jobs aprovados. `npm run verify`: **663/663**; `npm run test:rules` em emulador: **58/58**; integração Clientes: **8/8**; integração Vendas e Financeiro: **23/23**.
 - **Commits:** `74911df` e `7dc20fa` (Rules), `7a68ab7` e `bd383d7` (testes/escopo de tenant), `c323d18` (guarda central `hasTenant`).
-- **Hosting:** workflow `firebase-hosting-merge.yml` #786 publicado com sucesso, mas Hosting não implanta Rules. `deploy-m02-firestore-rules.yml` preparado somente para acionamento **manual** e implantação isolada das Rules, com testes antes do deploy e sem alteração de Functions. **O deploy de Rules não foi executado nesta etapa**; o comportamento em produção ainda depende da publicação e homologação autenticada.
+- **Hosting:** workflow `firebase-hosting-merge.yml` #786 publicado com sucesso, mas Hosting não implanta Rules. `deploy-m02-firestore-rules.yml` preparado somente para acionamento **manual** e implantação isolada das Rules, com testes antes do deploy e sem alteração de Functions. **A publicação das Rules foi tentada em 16/11/2026 e falhou nas três chamadas ao endpoint de verificação remota do Google com HTTP 503.** O comportamento em produção ainda depende da publicação e homologação autenticada.
 - **Outros limites de M02:** seleção multiempresa para Master Local e visão consolidada somente leitura ainda pendentes; não declarar módulo fechado.
+
+### M02 — Tentativa de publicação das Rules (16/11/2026)
+
+- **Autorização:** proprietário solicitou expressamente **“publique”**, referente às Firestore Rules da M02; objetivo era publicar somente `firestore:rules` no projeto `integro-novo`, sem alterações de Functions ou dados.
+- **CI/deploy:** execução `deploy-m02-firestore-rules.yml`, [run 43940463547](https://github.com/integro-app/Integro/actions/runs/43940463547). Validação em emulador aprovada: **58/58 testes**.
+- **Bloqueio remoto confirmado:** Firebase CLI v14.23.0 fez três tentativas no endpoint `firebaserules.googleapis.com/v1/projects/integro-novo:test` e recebeu **HTTP 503** em todas. Workflow encerrou com **failure** na etapa de publicação. **Não há evidência de implantação bem-sucedida das novas Rules**; considerar o projeto de produção com as regras anteriores.
+- **Prevenção:** trigger temporário por push foi removido; workflow devolvido a `workflow_dispatch` no commit `532d124`. Não executar novos retries automáticos sem nova verificação da disponibilidade do serviço.
+- **Próximo passo:** assim que a API Firebase Rules voltar a funcionar, executar novamente o deploy manual controlado e homologar em produção com funcionário interno, Master Global e Master Local; **M02 segue bloqueada para publicação, não fechada**.
 
 ### M01 — Cadastro progressivo por CPF/CNPJ (14/11/2026, BRT)
 
