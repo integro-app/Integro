@@ -61,6 +61,7 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
   };
   const motivos = new Set();
   const identificadores = new Set();
+  const operacoesVenda = new Set();
   let precisaInadimplencia = false;
   for (const venda of vendas) {
     if (!venda || texto(venda.clientePlataformaId) !== tenantId) {
@@ -71,6 +72,11 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
       throw new Error("Venda duplicada ou sem ID.");
     }
     identificadores.add(identificador);
+    const origem = texto(venda.operacaoId || venda.idempotencyKey);
+    if (origem) {
+      if (operacoesVenda.has(origem)) throw new Error("Origem de venda duplicada.");
+      operacoesVenda.add(origem);
+    }
     if (venda.ativo === false || venda.excluido === true || venda.cancelado === true ||
         STATUS_VENDA_EXCLUIDA.has(maiusculo(venda.statusVenda || venda.status))) continue;
 
@@ -106,6 +112,7 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
   }
   if (precisaInadimplencia) motivos.add("INADIMPLENCIA_STATUS_AUSENTE");
   const pagamentoIds = new Set();
+  const operacoesPagamento = new Set();
   for(const pagamento of pagamentos) {
     if (!pagamento || texto(pagamento.clientePlataformaId) !== tenantId) {
       throw new Error("Pagamento sem vínculo canônico ao tenant.");
@@ -113,6 +120,11 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
     const id = texto(pagamento.id);
     if(!id || pagamentoIds.has(id)) throw new Error("Pagamento duplicado ou sem ID.");
     pagamentoIds.add(id);
+    const origem = texto(pagamento.operacaoId || pagamento.idempotencyKey);
+    if (origem) {
+      if (operacoesPagamento.has(origem)) throw new Error("Pagamento com operação duplicada.");
+      operacoesPagamento.add(origem);
+    }
     const status=maiusculo(pagamento.status || pagamento.statusPagamento);
     if (pagamento.cancelado === true || pagamento.excluido === true ||
         pagamento.estornado === true || STATUS_PAGAMENTO_EXCLUIDO.has(status)) continue;
@@ -121,6 +133,10 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
         motivos.add("PAGAMENTO_PENDENTE_REVISAO");
       }
       continue;
+    }
+    const vendaId = texto(pagamento.vendaId);
+    if (!vendaId || !identificadores.has(vendaId)) {
+      motivos.add("PAGAMENTO_VENDA_NAO_CONCILIADA");
     }
     if (pagamento.syncStatus && maiusculo(pagamento.syncStatus) !== "SINCRONIZADO") {
       motivos.add("PAGAMENTO_SINCRONIA_PENDENTE");
@@ -143,7 +159,7 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
     carteiraCentavos: ["CARTEIRA_SALDO_AUSENTE","CARTEIRA_ACIMA_DO_LIMITE"],
     inadimplenciaCentavos: ["CARTEIRA_SALDO_AUSENTE","CARTEIRA_ACIMA_DO_LIMITE",
       "INADIMPLENCIA_STATUS_AUSENTE","INADIMPLENCIA_ACIMA_DO_LIMITE"],
-    recebidoHojeCentavos:["PAGAMENTO_PENDENTE_REVISAO","PAGAMENTO_SINCRONIA_PENDENTE",
+    recebidoHojeCentavos:["PAGAMENTO_PENDENTE_REVISAO","PAGAMENTO_VENDA_NAO_CONCILIADA","PAGAMENTO_SINCRONIA_PENDENTE",
       "PAGAMENTO_DATA_AUSENTE","PAGAMENTO_VALOR_AUSENTE","PAGAMENTO_LIMITE"],
     vendasHojeCentavos:["VENDAS_DATA_AUSENTE","VENDAS_VALOR_AUSENTE","VENDAS_LIMITE"],
     vendasHojeQuantidade:["VENDAS_DATA_AUSENTE","VENDAS_LIMITE"]
