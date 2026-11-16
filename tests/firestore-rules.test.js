@@ -318,6 +318,10 @@ test("M02: equipe interna nao herda bypass mesmo com tenant preenchido; Global p
       nome: "Empresa A", status: "ATIVO", acessoLiberado: true
     });
     await setDoc(doc(admin, "cargos", "cargo_a"), { clientePlataformaId: "tenant_a", nome: "Vendedor" });
+    await setDoc(doc(admin, "configuracoes_empresas", "tenant_a"), { clientePlataformaId: "tenant_a", operacao: { limite: 100 } });
+    await setDoc(doc(admin, "logs", "log_tenant_a"), { clientePlataformaId: "tenant_a", tipoAcao: "OPERACAO" });
+    await setDoc(doc(admin, "categoriasMovimentacao", "cat_tenant_a"), { clientePlataformaId: "tenant_a", nome: "Categoria" });
+    await setDoc(doc(admin, "transferencias_solicitacoes", "transf_tenant_a"), { clientePlataformaId: "tenant_a", valorCentavos: 100 });
     await setDoc(doc(admin, "notificacoes", "nota_interna"), {
       clientePlataformaId: "", destinatarioAuthUid: profiles.usuarioIntegro.uid,
       titulo: "Aviso individual", mensagem: "Atualizacao"
@@ -331,13 +335,16 @@ test("M02: equipe interna nao herda bypass mesmo com tenant preenchido; Global p
   for (const [colecao,id] of [
     ["clientes_integro","tenant_a"],["caixas","caixa_a_1"],
     ["vendas","venda_a_1"],["lancamentos_financeiros","lf_pagamento_1"],
-    ["cargos","cargo_a"]
+    ["cargos","cargo_a"], ["configuracoes_empresas","tenant_a"],
+    ["logs","log_tenant_a"], ["categoriasMovimentacao","cat_tenant_a"],
+    ["transferencias_solicitacoes","transf_tenant_a"]
   ]) await assertFails(getDoc(doc(interno,colecao,id)));
   await assertSucceeds(getDoc(doc(interno,"notificacoes","nota_interna")));
   await assertFails(getDoc(doc(interno,"notificacoes","nota_outro")));
   await assertSucceeds(getDoc(doc(appDb(profiles.masterGlobal),"clientes_integro","tenant_a")));
   await assertSucceeds(getDoc(doc(appDb(profiles.masterGlobal),"caixas","caixa_a_1")));
   await assertSucceeds(getDoc(doc(appDb(profiles.masterA),"clientes_integro","tenant_a")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterA),"configuracoes_empresas","tenant_a")));
 });
 
 test("tenant: usuario A le A e nao le B", async () => {
