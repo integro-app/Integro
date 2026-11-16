@@ -312,6 +312,29 @@ test("M02: resposta financeira parcial nunca mostra valores de uma única empres
   assert.doesNotMatch(text,/5.000,00|800,00|105,00/);
 });
 
+test("M02: divergência do ledger exibe diagnóstico sem dados pessoais ou valores parciais",async()=>{
+  const e=ambienteBrowser();
+  e.window.IntegroM02VisaoConsolidada.inicializar(e.window.State.getUsuario());
+  await e.buscar("m02AbrirVisaoConsolidada").click();
+  e.alterarFinanceiro({
+    ok:true,modo:"CONSULTA_SOMENTE_LEITURA",
+    empresaPrincipalId:"tenant-a",empresasConsultadas:2,
+    empresasConsultadasIds:["tenant-a","tenant-b"],
+    dataOperacional:"2026-11-16",completo:false,
+    indicadores:{carteiraCentavos:null,inadimplenciaCentavos:null,
+      recebidoHojeCentavos:null,vendasHojeCentavos:null,vendasHojeQuantidade:null},
+    avisos:["LEDGER_PAGAMENTO_DIVERGENTE","VENDA_BALANCO_DIVERGENTE"]
+  });
+  const consultar=acharNo(e.buscar("m02VisaoConsolidadaDialogo"),item=>
+    item.tagName==="button" && item.textContent.includes("Consultar indicadores"));
+  await consultar.click();
+  const conteudo=e.todosTextos(e.body);
+  assert.match(conteudo,/Valor ou vínculo do lançamento de pagamento divergente/);
+  assert.match(conteudo,/Total, pagamentos e saldo da venda não conferem/);
+  assert.match(conteudo,/Não exibiremos valores parciais/);
+  assert.doesNotMatch(conteudo,/5.000,00|800,00|105,00/);
+});
+
 test("M02: relatório com principal ou quantidade diferente é recusado",async()=>{
   const e=ambienteBrowser();
   e.window.IntegroM02VisaoConsolidada.inicializar(e.window.State.getUsuario());
