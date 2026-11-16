@@ -277,6 +277,69 @@ test.after(async () => {
   await testEnv.cleanup();
 });
 
+test("M02: funcionario Integro delegado nao consulta Firestore operacional nem listagem de empresas", async () => {
+  const funcionario = { ...profiles.usuarioIntegro, tenant: "" };
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    await setDoc(doc(admin, "usuarios", funcionario.uid), {
+      ...userDoc(funcionario), clientesLeituraAutorizada: ["tenant_a"]
+    });
+    await setDoc(doc(admin, "clientes_integro", "tenant_a"), {
+      nome: "Empresa A", status: "ATIVO", acessoLiberado: true
+    });
+    await setDoc(doc(admin, "clientes_integro", "tenant_b"), {
+      nome: "Empresa B", status: "ATIVO", acessoLiberado: true
+    });
+    await setDoc(doc(admin, "cargos", "cargo_a"), { clientePlataformaId: "tenant_a", nome: "Vendedor" });
+    await setDoc(doc(admin, "equipes", "equipe_a"), { clientePlataformaId: "tenant_a", nome: "Equipe" });
+    await setDoc(doc(admin, "permissoes_cargo", "permissao_a"), {
+      clientePlataformaId: "tenant_a", usuarios: true
+    });
+  });
+  await assertSucceeds(getDoc(doc(appDb(funcionario), "usuarios", funcionario.uid)));
+  for (const [colecao, id] of [
+    ["clientes_integro", "tenant_a"], ["clientes_integro", "tenant_b"],
+    ["caixas", "caixa_a_1"], ["vendas", "venda_a_1"],
+    ["lancamentos_financeiros", "lf_pagamento_1"], ["parcelas", "parcela_a_1"],
+    ["clientes_operacionais", "cliente_a_1"],
+    ["cargos", "cargo_a"], ["equipes", "equipe_a"], ["permissoes_cargo", "permissao_a"]
+  ]) {
+    await assertFails(getDoc(doc(appDb(funcionario), colecao, id)));
+  }
+  await assertFails(getDocs(collection(appDb(funcionario), "clientes_integro")));
+  // M02: delegacao concedida no perfil e insumo de validacao da callable,
+  // jamais uma autorizacao para leitura direta via SDK do Firestore.
+});
+
+test("M02: equipe interna nao herda bypass mesmo com tenant preenchido; Global preservado", async () => {
+  await testEnv.withSecurityRulesDisabled(async context => {
+    const admin = context.firestore();
+    await setDoc(doc(admin, "clientes_integro", "tenant_a"), {
+      nome: "Empresa A", status: "ATIVO", acessoLiberado: true
+    });
+    await setDoc(doc(admin, "cargos", "cargo_a"), { clientePlataformaId: "tenant_a", nome: "Vendedor" });
+    await setDoc(doc(admin, "notificacoes", "nota_interna"), {
+      clientePlataformaId: "", destinatarioAuthUid: profiles.usuarioIntegro.uid,
+      titulo: "Aviso individual", mensagem: "Atualizacao"
+    });
+    await setDoc(doc(admin, "notificacoes", "nota_outro"), {
+      clientePlataformaId: "tenant_a", destinatarioAuthUid: profiles.vendedor1.uid,
+      titulo: "Aviso privado", mensagem: "Outro usuario"
+    });
+  });
+  const interno = appDb(profiles.usuarioIntegro);
+  for (const [colecao,id] of [
+    ["clientes_integro","tenant_a"],["caixas","caixa_a_1"],
+    ["vendas","venda_a_1"],["lancamentos_financeiros","lf_pagamento_1"],
+    ["cargos","cargo_a"]
+  ]) await assertFails(getDoc(doc(interno,colecao,id)));
+  await assertSucceeds(getDoc(doc(interno,"notificacoes","nota_interna")));
+  await assertFails(getDoc(doc(interno,"notificacoes","nota_outro")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterGlobal),"clientes_integro","tenant_a")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterGlobal),"caixas","caixa_a_1")));
+  await assertSucceeds(getDoc(doc(appDb(profiles.masterA),"clientes_integro","tenant_a")));
+});
+
 test("tenant: usuario A le A e nao le B", async () => {
   await assertSucceeds(getDoc(doc(appDb(profiles.masterA), "caixas", "caixa_a_1")));
   await assertFails(getDoc(doc(appDb(profiles.masterA), "caixas", "caixa_b_1")));
