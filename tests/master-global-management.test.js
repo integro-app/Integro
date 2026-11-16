@@ -575,16 +575,27 @@ test("M02 financeiro: endpoint só devolve indicadores dos vínculos privados de
   await c.api.salvarVinculosMasterLocal({
     usuarioId:"local",empresasIds:["tenant-a","tenant-b"]
   },c.global);
+  const financeiro=require("../functions/financial-core");
   for (const [tenant,id] of [["tenant-a","a1"],["tenant-b","b1"],["tenant-c","c1"]]) {
     c.dados.set("vendas/"+id,{
       clientePlataformaId:tenant,operacaoId:id,statusVenda:"ATIVA",
       saldoDevedorCentavos:10000,valorEmprestadoCentavos:5000,
+      valorTotalVendaCentavos:11300,totalPagoCentavos:1300,
       diasAtrasoAtual:0,dataOperacional:hoje
     });
     c.dados.set("pagamentos/p"+id,{
       clientePlataformaId:tenant,operacaoId:"p"+id,vendaId:id,
       status:"CONFIRMADO",syncStatus:"SINCRONIZADO",
       valorCentavos:1300,dataOperacional:hoje
+    });
+    c.dados.set("lancamentos_financeiros/"+financeiro.lancamentoVendaId(id),{
+      clientePlataformaId:tenant,origemId:id,tipoLancamento:"VENDA",
+      natureza:"DEBITO",statusLancamento:"CONFIRMADO",valorCentavos:5000
+    });
+    c.dados.set("lancamentos_financeiros/"+financeiro.lancamentoPagamentoId("p"+id),{
+      clientePlataformaId:tenant,origemId:"p"+id,origem:"PAGAMENTO",
+      tipoLancamento:"PAGAMENTO",natureza:"CREDITO",
+      statusLancamento:"CONFIRMADO",valorCentavos:1300
     });
   }
   const resp=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
@@ -605,6 +616,53 @@ test("M02 financeiro: endpoint só devolve indicadores dos vínculos privados de
   c.dados.get("usuarios/local").empresasVinculadasIds=["tenant-a","tenant-c"];
   const novo=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
   assert.deepEqual(novo.indicadores,resp.indicadores);
+});
+
+test("M02 financeiro: divergência de ledger bloqueia totais sem retornar documentos",async()=>{
+  const c=ambiente();
+  const core=require("../functions/financial-core");
+  const hoje=require("../functions/m02-financial-consolidation").dataSP(new Date());
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("vendas/v1",{clientePlataformaId:"tenant-a",statusVenda:"ATIVA",
+    operacaoId:"v1",valorEmprestadoCentavos:5000,valorTotalVendaCentavos:11000,
+    saldoDevedorCentavos:10000,totalPagoCentavos:1000,
+    dataOperacional:hoje,diasAtrasoAtual:0});
+  c.dados.set("pagamentos/p1",{clientePlataformaId:"tenant-a",vendaId:"v1",
+    operacaoId:"p1",valorCentavos:1000,status:"CONFIRMADO",
+    syncStatus:"SINCRONIZADO",dataOperacional:hoje});
+  c.dados.set("lancamentos_financeiros/"+core.lancamentoVendaId("v1"),{
+    clientePlataformaId:"tenant-a",origemId:"v1",tipoLancamento:"VENDA",
+    natureza:"DEBITO",statusLancamento:"CONFIRMADO",valorCentavos:5000});
+  // Valor do ledger diferente do pagamento canônico: bloqueio sem divulgar montante.
+  c.dados.set("lancamentos_financeiros/"+core.lancamentoPagamentoId("p1"),{
+    clientePlataformaId:"tenant-a",origemId:"p1",origem:"PAGAMENTO",
+    tipoLancamento:"PAGAMENTO",natureza:"CREDITO",
+    statusLancamento:"CONFIRMADO",valorCentavos:1900});
+  const r=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(r.completo,false);
+  assert.ok(r.avisos.includes("LEDGER_PAGAMENTO_DIVERGENTE"));
+  for(const valor of Object.values(r.indicadores)) assert.equal(valor,null);
+  assert.equal(r.vendas,undefined);
+  assert.equal(r.pagamentos,undefined);
+  assert.equal(r.ledger,undefined);
+  c.dados.get("lancamentos_financeiros/"+core.lancamentoPagamentoId("p1")).valorCentavos=1000;
+  const aprovado=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(aprovado.completo,true);
+  assert.equal(aprovado.indicadores.recebidoHojeCentavos,1000);
+  assert.equal(aprovado.indicadores.carteiraCentavos,10000);
+});
+
+test("M02 financeiro: lançamento órfão e venda sem contrapartida impedem total confiável",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("lancamentos_financeiros/lf_pagamento_orfao",{
+    clientePlataformaId:"tenant-a",origemId:"orfao",origem:"PAGAMENTO",
+    tipoLancamento:"PAGAMENTO",natureza:"CREDITO",
+    statusLancamento:"CONFIRMADO",valorCentavos:12000});
+  const r=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(r.completo,false);
+  assert.ok(r.avisos.includes("LEDGER_PAGAMENTO_ORFAO"));
+  assert.equal(r.indicadores.recebidoHojeCentavos,null);
 });
 
 test("M02 financeiro: revogação e bloqueio de tenant impedem consolidação indevida",async()=>{
