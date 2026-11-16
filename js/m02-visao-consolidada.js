@@ -93,6 +93,12 @@
     style.textContent = [
       "#m02AbrirVisaoConsolidada{min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid #ffd0ae;background:#fff7f0;color:#a94709;border-radius:12px;padding:10px 15px;font:800 13px Inter,sans-serif;cursor:pointer}",
       "#m02AbrirVisaoConsolidada:focus-visible,.m02-consolidada button:focus-visible,.m02-consolidada input:focus-visible{outline:3px solid #ff6b00;outline-offset:2px}",
+      ".m02-financeiro{background:#fff;border:1px solid #dbe5f1;border-radius:15px;padding:17px;display:grid;gap:12px}",
+      ".m02-financeiro h3{font-size:17px;font-weight:900;color:#071a33;margin:0}",
+      ".m02-financeiro-grade{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}",
+      ".m02-financeiro-item{padding:12px;border:1px solid #e0e8f2;border-radius:12px;background:#f8fafc}",
+      ".m02-financeiro-item strong{display:block;font-size:18px;color:#0f2544;overflow-wrap:anywhere;margin:5px 0}",
+      ".m02-financeiro-item small{color:#64748b;font-weight:700}",
       ".m02-backdrop{position:fixed;inset:0;z-index:25000;background:rgba(5,16,31,.72);display:flex;justify-content:center;align-items:center;padding:16px;overflow-y:auto}",
       ".m02-consolidada{background:#f6f9fd;color:#0b1e35;border-radius:20px;box-shadow:0 32px 85px rgba(0,0,0,.32);width:min(100%,860px);max-height:calc(100dvh - 32px);display:flex;flex-direction:column;overflow:hidden;font-family:Inter,sans-serif}",
       ".m02-consolidada-header{padding:20px 22px;background:#071a33;color:#fff;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}",
@@ -194,7 +200,23 @@
     const status = criar("p", "m02-consolidada-status", "Consultando vínculos autorizados...");
     status.setAttribute("role", "status");
     const rodape = criar("p", "m02-consolidada-rodape");
-    corpo.append(indicadores, acoes, status, lista, rodape);
+    const financeiro = criar("section","m02-financeiro");
+    financeiro.setAttribute("aria-label","Indicadores financeiros consolidados");
+    financeiro.append(criar("h3","","Conferência financeira do grupo"));
+    financeiro.append(criar("p","m02-consolidada-nota",
+      "Consulta operacional sob demanda. Não substitui conciliação de caixas, " +
+      "fechamento ou demonstrativo contábil. Se algum registro estiver incompleto, " +
+      "não exibiremos total financeiro parcial como se fosse definitivo."));
+    const consultarFinanceiro = criar("button","m02-consolidada-atualizar",
+      "Consultar indicadores das empresas vinculadas");
+    consultarFinanceiro.type="button";
+    financeiro.append(consultarFinanceiro);
+    const statusFinanceiro = criar("p","m02-consolidada-status",
+      "Valores não consultados. A conferência é opcional.");
+    statusFinanceiro.setAttribute("role","status");
+    const gradeFinanceiro = criar("div","m02-financeiro-grade");
+    financeiro.append(statusFinanceiro,gradeFinanceiro);
+    corpo.append(indicadores, acoes, status, lista, rodape, financeiro);
     painel.append(cabecalho, corpo);
     fundo.append(painel);
     document.body.appendChild(fundo);
@@ -203,6 +225,78 @@
     fechar.focus();
 
     let modelo = null;
+    let ultimaChaveVinculo = "";
+    let sequenciaFinanceira = 0;
+    function limparFinanceiro(mensagem) {
+      sequenciaFinanceira += 1;
+      gradeFinanceiro.replaceChildren();
+      statusFinanceiro.textContent = mensagem || "Conferência ainda não realizada.";
+      consultarFinanceiro.disabled = false;
+    }
+    async function consultarIndicadoresFinanceiros() {
+      if (!modelo || !autorizado(uid,principal)) return limparFinanceiro("Sessão sem autorização válida.");
+      const seq = ++sequenciaFinanceira;
+      const chave = ultimaChaveVinculo;
+      gradeFinanceiro.replaceChildren();
+      consultarFinanceiro.disabled = true;
+      statusFinanceiro.textContent = "Verificando dados canônicos no servidor...";
+      try {
+        const call = raiz.firebase.app().functions("southamerica-east1")
+          .httpsCallable("solicitarCadastroDuplicadoV27");
+        const resultado = (await call({
+          __integroRota:"MASTER_GLOBAL_ONBOARDING_V1",
+          acao:"listarIndicadoresFinanceirosConsolidadosMasterLocal"
+        }))?.data;
+        if (seq!==sequenciaFinanceira || dialogo!==fundo) return;
+        if (!autorizado(uid,principal) || ultimaChaveVinculo!==chave ||
+            !resultado || resultado.ok!==true ||
+            resultado.modo!=="CONSULTA_SOMENTE_LEITURA" ||
+            resultado.empresaPrincipalId!==principal ||
+            resultado.empresasConsultadas!==modelo.empresas.length ||
+            resultado.dataOperacional===undefined) {
+          throw new Error("Indicadores não correspondem à sessão e aos vínculos atuais.");
+        }
+        const metas = resultado.indicadores || {};
+        const campos = ["carteiraCentavos","inadimplenciaCentavos",
+          "recebidoHojeCentavos","vendasHojeCentavos","vendasHojeQuantidade"];
+        if (campos.some(x=>metas[x]!==null &&
+            (!Number.isSafeInteger(metas[x]) || metas[x]<0))) {
+          throw new Error("Indicador inválido do servidor.");
+        }
+        // Nenhum total parcial aparece se qualquer empresa ou campo falhou.
+        if (resultado.completo!==true || campos.some(x=>metas[x]===null||metas[x]===undefined)) {
+          limparFinanceiro("A consolidação financeira não pôde ser validada integralmente. " +
+            "Não exibiremos valores parciais. Verifique a conciliação e os registros pendentes.");
+          return;
+        }
+        const moeda = cents => (cents/100).toLocaleString("pt-BR",{
+          style:"currency",currency:"BRL"
+        });
+        const indicadores=[
+          ["Carteira atual",moeda(metas.carteiraCentavos)],
+          ["Carteira em atraso",moeda(metas.inadimplenciaCentavos)],
+          ["Recebido hoje",moeda(metas.recebidoHojeCentavos)],
+          ["Valor emprestado hoje",moeda(metas.vendasHojeCentavos)],
+          ["Vendas hoje",String(metas.vendasHojeQuantidade)]
+        ];
+        for(const [titulo,valor] of indicadores){
+          const card=criar("article","m02-financeiro-item");
+          card.append(criar("small","",titulo),criar("strong","",valor));
+          gradeFinanceiro.append(card);
+        }
+        statusFinanceiro.textContent="Indicadores calculados dos registros canônicos de " +
+          resultado.empresasConsultadas+" empresa(s) em "+resultado.dataOperacional+
+          ". Valores operacionais sujeitos a atualizações após esta consulta.";
+      }catch(erro){
+        if(seq!==sequenciaFinanceira || dialogo!==fundo)return;
+        limparFinanceiro("Não foi possível validar a consolidação financeira. " +
+          "Nenhum total foi exibido. Confirme os dados e tente novamente.");
+        raiz.console?.warn?.("[M02] Consolidação financeira indisponível.",erro?.code||"erro");
+      }finally{
+        if(seq===sequenciaFinanceira&&dialogo===fundo) consultarFinanceiro.disabled=false;
+      }
+    }
+    consultarFinanceiro.addEventListener("click", consultarIndicadoresFinanceiros);
     function exibir() {
       lista.replaceChildren();
       indicadores.replaceChildren();
@@ -247,6 +341,7 @@
     async function atualizarDados() {
       const sequencia = ++requisicao;
       modelo = null;
+      limparFinanceiro("Revalidando empresas autorizadas antes da conferência financeira.");
       indicadores.replaceChildren();
       lista.replaceChildren();
       status.textContent = "Verificando vínculos e contratos no servidor...";
@@ -256,6 +351,11 @@
         if (sequencia !== requisicao || dialogo !== fundo) return;
         if (!autorizado(uid, principal) || proximo.empresaPrincipalId !== principal) {
           throw new Error("Sessão ou empresa principal alterada.");
+        }
+        const novaChave = proximo.empresas.map(x=>x.id+":"+x.acessoLiberado).join("|");
+        if (ultimaChaveVinculo!==novaChave) {
+          ultimaChaveVinculo=novaChave;
+          limparFinanceiro("Vínculos atualizados. Consulte novamente os indicadores financeiros.");
         }
         modelo = proximo;
         exibir();
