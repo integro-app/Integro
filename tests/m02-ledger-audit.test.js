@@ -118,3 +118,11 @@ test("M02 auditoria: pagamento sem venda canônica nunca passa na conciliação"
   const r=conciliar({pagamentos:[pagamento("p1",{vendaId:"apagada"})]});
   inclui(r,"LEDGER_PAGAMENTO_SEM_VENDA");
 });
+
+test("M02 auditoria: status divergente CANCELADO tem prioridade e não pode contabilizar pagamento",()=>{
+ const r=conciliar({
+  pagamentos:[pagamento("p1",{status:"CANCELADO",statusPagamento:"CONFIRMADO"})]
+ });
+ assert.equal(r.conciliado,false);
+ inclui(r,"LEDGER_CANCELAMENTO_DIVERGENTE");
+});
