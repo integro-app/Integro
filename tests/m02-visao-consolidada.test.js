@@ -103,11 +103,16 @@ function ambienteBrowser() {
     }
     return null;
   };
+  const eventos = new Map();
   const document = {
     body, head, createElement: tag => new Elemento(tag),
     getElementById: id => pesquisar(body, id) || pesquisar(head, id) || pesquisar(actions, id),
     querySelector: sel => sel === "#dashboard .dashboard-page-actions" ? actions : null,
-    addEventListener() {}, removeEventListener() {}
+    addEventListener(nome, funcao) {
+      if (!eventos.has(nome)) eventos.set(nome, new Set());
+      eventos.get(nome).add(funcao);
+    },
+    removeEventListener(nome, funcao) { eventos.get(nome)?.delete(funcao); }
   };
   let usuario = {
     authUid: "local-a", tipoUsuario: "master_local",
@@ -139,6 +144,9 @@ function ambienteBrowser() {
     alterarUsuario(v) { usuario = v; },
     alterarUid(v) { uidAuth = v; },
     alterarTenant(v) { tenant = v; },
+    dispararEvento(nome, detail) {
+      for (const listener of eventos.get(nome) || []) listener({ detail });
+    },
     buscar(id) { return document.getElementById(id); },
     buscarTag(tag) {
       function rec(node) {
@@ -215,6 +223,37 @@ test("M02: troca de identidade ou tenant fecha o acesso à consulta mesmo com bo
   await e.buscar("m02AbrirVisaoConsolidada").click();
   assert.equal(e.chamadas.length, 0);
   assert.equal(e.buscar("m02VisaoConsolidadaDialogo"), null);
+});
+
+
+test("M02: quando o usuário perde o perfil, fecha a consulta e remove o botão do Dashboard",async()=>{
+  const e=ambienteBrowser();
+  const usuario=e.window.State.getUsuario();
+  e.window.IntegroM02VisaoConsolidada.inicializar(usuario);
+  await e.buscar("m02AbrirVisaoConsolidada").click();
+  assert.ok(e.buscar("m02VisaoConsolidadaDialogo"));
+  e.alterarUsuario({authUid:"outro",tipoUsuario:"vendedor",clientePlataformaId:"tenant-a"});
+  e.dispararEvento("usuario-validado",{authUid:"outro",tipoUsuario:"vendedor",clientePlataformaId:"tenant-a"});
+  assert.equal(e.buscar("m02VisaoConsolidadaDialogo"),null);
+  assert.equal(e.buscar("m02AbrirVisaoConsolidada"),null);
+});
+
+test("M02: erro ou negação na atualização apaga o resultado da leitura anterior",async()=>{
+  const e=ambienteBrowser();
+  e.window.IntegroM02VisaoConsolidada.inicializar(e.window.State.getUsuario());
+  await e.buscar("m02AbrirVisaoConsolidada").click();
+  assert.match(e.todosTextos(e.body),/Empresa Vinculada/);
+  const negado=resposta();negado.modo="OPERACIONAL";e.alterarDados(negado);
+  function find(node, check) {
+    if(check(node)) return node;
+    for(const x of node.children) { const v=find(x,check); if(v) return v; }
+    return null;
+  }
+  const refresh=find(e.buscar("m02VisaoConsolidadaDialogo"),
+    x=>x.tagName==="button"&&x.textContent==="Atualizar consulta");
+  await refresh.click();
+  assert.doesNotMatch(e.todosTextos(e.body),/Empresa Vinculada/);
+  assert.match(e.todosTextos(e.body),/Não foi possível confirmar seus vínculos/);
 });
 
 test("M02: integração não altera página gigante, cache de tenant nem operações de outras empresas",()=>{
