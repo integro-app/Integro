@@ -6,6 +6,10 @@
 const STATUS_VENDA_EXCLUIDA = new Set(["CANCELADA","CANCELADO","ESTORNADA","ESTORNADO","EXCLUIDA","EXCLUIDO"]);
 const STATUS_PAGAMENTO_EXCLUIDO = new Set(["CANCELADA","CANCELADO","ESTORNADA","ESTORNADO","EXCLUIDA","EXCLUIDO"]);
 const STATUS_PAGAMENTO_CONFIRMADO = new Set(["CONFIRMADO","CONFIRMADA"]);
+const STATUS_VENDA_CONHECIDO = new Set([
+  "ATIVA","ATIVO","EM DIA","ADIANTADO","EM ATRASO","ATRASO GRAVE",
+  "VENCIDA","QUITADO","QUITADA","PARCIAL"
+]);
 const LIMIT_POR_COLECAO = 1000;
 
 const texto = value => String(value ?? "").trim();
@@ -79,6 +83,10 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
     }
     if (venda.ativo === false || venda.excluido === true || venda.cancelado === true ||
         STATUS_VENDA_EXCLUIDA.has(maiusculo(venda.statusVenda || venda.status))) continue;
+    if (!STATUS_VENDA_CONHECIDO.has(maiusculo(venda.statusVenda || venda.status))) {
+      motivos.add("VENDA_STATUS_INDEFINIDO");
+      continue;
+    }
 
     const saldo = inteiroCentavos(venda,"saldoDevedorCentavos",["saldoDevedor"]);
     if (saldo === null) motivos.add("CARTEIRA_SALDO_AUSENTE");
@@ -129,9 +137,10 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
     if (pagamento.cancelado === true || pagamento.excluido === true ||
         pagamento.estornado === true || STATUS_PAGAMENTO_EXCLUIDO.has(status)) continue;
     if (!STATUS_PAGAMENTO_CONFIRMADO.has(status)) {
-      if (status === "" || status === "SINCRONIZANDO" || status === "PENDENTE") {
+      if (status === "" || status === "SINCRONIZANDO" || status === "PENDENTE")
         motivos.add("PAGAMENTO_PENDENTE_REVISAO");
-      }
+      else
+        motivos.add("PAGAMENTO_STATUS_INDEFINIDO");
       continue;
     }
     const vendaId = texto(pagamento.vendaId);
@@ -156,13 +165,13 @@ function calcularTenant({tenantId, vendas=[], pagamentos=[], hoje}) {
     }
   }
   const falhas = {
-    carteiraCentavos: ["CARTEIRA_SALDO_AUSENTE","CARTEIRA_ACIMA_DO_LIMITE"],
-    inadimplenciaCentavos: ["CARTEIRA_SALDO_AUSENTE","CARTEIRA_ACIMA_DO_LIMITE",
+    carteiraCentavos: ["VENDA_STATUS_INDEFINIDO","CARTEIRA_SALDO_AUSENTE","CARTEIRA_ACIMA_DO_LIMITE"],
+    inadimplenciaCentavos: ["VENDA_STATUS_INDEFINIDO","CARTEIRA_SALDO_AUSENTE","CARTEIRA_ACIMA_DO_LIMITE",
       "INADIMPLENCIA_STATUS_AUSENTE","INADIMPLENCIA_ACIMA_DO_LIMITE"],
-    recebidoHojeCentavos:["PAGAMENTO_PENDENTE_REVISAO","PAGAMENTO_VENDA_NAO_CONCILIADA","PAGAMENTO_SINCRONIA_PENDENTE",
+    recebidoHojeCentavos:["VENDA_STATUS_INDEFINIDO","PAGAMENTO_PENDENTE_REVISAO","PAGAMENTO_STATUS_INDEFINIDO","PAGAMENTO_VENDA_NAO_CONCILIADA","PAGAMENTO_SINCRONIA_PENDENTE",
       "PAGAMENTO_DATA_AUSENTE","PAGAMENTO_VALOR_AUSENTE","PAGAMENTO_LIMITE"],
-    vendasHojeCentavos:["VENDAS_DATA_AUSENTE","VENDAS_VALOR_AUSENTE","VENDAS_LIMITE"],
-    vendasHojeQuantidade:["VENDAS_DATA_AUSENTE","VENDAS_LIMITE"]
+    vendasHojeCentavos:["VENDA_STATUS_INDEFINIDO","VENDAS_DATA_AUSENTE","VENDAS_VALOR_AUSENTE","VENDAS_LIMITE"],
+    vendasHojeQuantidade:["VENDA_STATUS_INDEFINIDO","VENDAS_DATA_AUSENTE","VENDAS_LIMITE"]
   };
   for (const [chave, causas] of Object.entries(falhas)) {
     if (causas.some(c => motivos.has(c))) metas[chave] = null;
