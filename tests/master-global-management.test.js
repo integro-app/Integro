@@ -564,3 +564,93 @@ test("M02: documento privado inválido, sem dono ou com empresa principal trocad
   await assert.rejects(c.api.listarEmpresasVinculadasMasterLocal({usuarioId:"outro"},c.local),
     e=>e.code==="invalid-argument");
 });
+
+
+test("M02 financeiro: endpoint só devolve indicadores dos vínculos privados de Master Local",async()=>{
+  const c=ambiente();
+  const hoje=require("../functions/m02-financial-consolidation").dataSP(new Date());
+  for(const id of ["tenant-a","tenant-b","tenant-c"]) c.dados.set("clientes_integro/"+id,{
+    nome:"Empresa "+id,status:"ATIVO",acessoLiberado:true
+  });
+  await c.api.salvarVinculosMasterLocal({
+    usuarioId:"local",empresasIds:["tenant-a","tenant-b"]
+  },c.global);
+  for (const [tenant,id] of [["tenant-a","a1"],["tenant-b","b1"],["tenant-c","c1"]]) {
+    c.dados.set("vendas/"+id,{
+      clientePlataformaId:tenant,operacaoId:id,statusVenda:"ATIVA",
+      saldoDevedorCentavos:10000,valorEmprestadoCentavos:5000,
+      diasAtrasoAtual:0,dataOperacional:hoje
+    });
+    c.dados.set("pagamentos/p"+id,{
+      clientePlataformaId:tenant,operacaoId:"p"+id,vendaId:id,
+      status:"CONFIRMADO",syncStatus:"SINCRONIZADO",
+      valorCentavos:1300,dataOperacional:hoje
+    });
+  }
+  const resp=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(resp.ok,true);
+  assert.equal(resp.modo,"CONSULTA_SOMENTE_LEITURA");
+  assert.equal(resp.completo,true);
+  assert.equal(resp.empresaPrincipalId,"tenant-a");
+  assert.equal(resp.empresasConsultadas,2);
+  assert.deepEqual(resp.indicadores,{
+    carteiraCentavos:20000,inadimplenciaCentavos:0,
+    recebidoHojeCentavos:2600,vendasHojeCentavos:10000,vendasHojeQuantidade:2
+  });
+  assert.equal(resp.empresas,undefined);
+  assert.equal(resp.vendas,undefined);
+  assert.equal(resp.pagamentos,undefined);
+  assert.equal(resp.usuarios,undefined);
+  // Forjar campos editáveis do perfil não amplia o conjunto de consultas.
+  c.dados.get("usuarios/local").empresasVinculadasIds=["tenant-a","tenant-c"];
+  const novo=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.deepEqual(novo.indicadores,resp.indicadores);
+});
+
+test("M02 financeiro: revogação e bloqueio de tenant impedem consolidação indevida",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  c.dados.set("clientes_integro/tenant-b",{nome:"B",status:"ATIVO",acessoLiberado:true});
+  await c.api.salvarVinculosMasterLocal({
+    usuarioId:"local",empresasIds:["tenant-a","tenant-b"]
+  },c.global);
+  c.dados.get("clientes_integro/tenant-b").acessoLiberado=false;
+  await assert.rejects(
+    c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
+    e=>e.code==="failed-precondition");
+  c.dados.get("clientes_integro/tenant-b").acessoLiberado=true;
+  const ok=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(ok.empresasConsultadas,2);
+  await c.api.salvarVinculosMasterLocal({usuarioId:"local",empresasIds:["tenant-a"]},c.global);
+  const revogado=await c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local);
+  assert.equal(revogado.empresasConsultadas,1);
+  assert.equal(revogado.empresaPrincipalId,"tenant-a");
+});
+
+test("M02 financeiro: payload arbitrário e outros papéis são rejeitados",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  for(const payload of [{empresaId:"tenant-b"},{tenantId:"tenant-b"},
+    {empresasIds:["tenant-a","tenant-b"]},{somenteEstaEmpresa:"tenant-a"}]) {
+    await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal(payload,c.local),
+      e=>e.code==="invalid-argument");
+  }
+  for(const ctx of [c.global,c.interno,{}]) {
+    await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},ctx),
+      e=>["permission-denied","unauthenticated"].includes(e.code));
+  }
+  c.dados.get("usuarios/local").acessoLiberado=false;
+  await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
+    e=>e.code==="permission-denied");
+});
+
+test("M02 financeiro: limite seguro bloqueia totais parciais de empresa grande",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"A",status:"ATIVO",acessoLiberado:true});
+  for(let i=0;i<1001;i++) c.dados.set("vendas/v"+i,{
+    clientePlataformaId:"tenant-a",saldoDevedorCentavos:10,
+    statusVenda:"ATIVA",diasAtrasoAtual:0
+  });
+  await assert.rejects(c.api.listarIndicadoresFinanceirosConsolidadosMasterLocal({},c.local),
+    e=>e.code==="resource-exhausted");
+});
