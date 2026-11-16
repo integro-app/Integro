@@ -1204,3 +1204,29 @@ test("usuarios: perfil legado autenticado por authUid pode editar apenas campos 
     telefone: "11000000000"
   }));
 });
+
+
+test("M02: vínculos multiempresa exclusivos do backend são inacessíveis pelo SDK", async()=>{
+  const colecao="vinculos_multiempresa_master_local";
+  const alvo=profiles.masterA.uid;
+  await testEnv.withSecurityRulesDisabled(async context=>{
+    await setDoc(doc(context.firestore(),colecao,alvo),{
+      masterLocalAuthUid:alvo,
+      empresaPrincipalId:"tenant_a",
+      empresasIds:["tenant_a","tenant_b"],
+      modo:"CONSULTA_SOMENTE_LEITURA"
+    });
+  });
+  for(const profile of [profiles.masterGlobal,profiles.masterA,
+      profiles.masterB,profiles.usuarioIntegro,profiles.gerenteA]){
+    const db=appDb(profile),documento=doc(db,colecao,alvo);
+    await assertFails(getDoc(documento));
+    await assertFails(setDoc(documento,{
+      masterLocalAuthUid:alvo,empresaPrincipalId:"tenant_a",
+      empresasIds:["tenant_a","tenant_b"],modo:"CONSULTA_SOMENTE_LEITURA"
+    }));
+    await assertFails(updateDoc(documento,{empresasIds:["tenant_c"]}));
+    await assertFails(deleteDoc(documento));
+    await assertFails(getDocs(collection(db,colecao)));
+  }
+});
