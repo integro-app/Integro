@@ -153,7 +153,7 @@ service cloud.firestore {
     }
 
     function hasPermission(permissionKey) {
-      return isMasterGlobal() || isUsuarioIntegro() || isMasterLocal() ||
+      return isMasterGlobal() || isMasterLocal() ||
         (permMap().get(permissionKey, false) == true) ||
         (permMap().get("financeiro", {}).get(permissionKey, false) == true) ||
         (permMap().get("caixas", {}).get(permissionKey, false) == true) ||
@@ -336,7 +336,7 @@ service cloud.firestore {
     }
 
     function isTeamAllowed(data) {
-      return isMasterGlobal() || isUsuarioIntegro() || isMasterLocal() ||
+      return isMasterGlobal() || isMasterLocal() ||
         (data.get("equipeId", "") is string && data.get("equipeId", "") in userEquipeIds());
     }
 
@@ -378,7 +378,6 @@ service cloud.firestore {
       let cargoAtual = cargo();
       return isActiveUser() && (
         perfil == "master_global" ||
-        perfil == "usuario_integro" ||
         (isSameTenantRead() && (
           perfil == "master_local" ||
           perfil == "gerente" || cargoAtual == "gerente" ||
@@ -396,7 +395,6 @@ service cloud.firestore {
       let cargoAtual = cargo();
       return isActiveUser() && (
         perfil == "master_global" ||
-        perfil == "usuario_integro" ||
         (isSameTenantWrite() && (
           perfil == "master_local" ||
           perfil == "gerente" || cargoAtual == "gerente" ||
@@ -467,7 +465,6 @@ service cloud.firestore {
       let cargoAtual = cargo();
       return isActiveUser() && (
         perfil == "master_global" ||
-        perfil == "usuario_integro" ||
         (isSameTenantRead() && (
           perfil == "master_local" ||
           perfil == "gerente" || cargoAtual == "gerente" ||
@@ -486,8 +483,7 @@ service cloud.firestore {
       let perfil = role();
       let cargoAtual = cargo();
       return isActiveUser() && (
-        isMasterGlobal() ||
-        isUsuarioIntegro() ||
+        isMasterGlobal()  ||
         isMasterLocal() ||
         perfil == "financeiro" || cargoAtual == "financeiro" ||
         ((perfil == "gerente" || cargoAtual == "gerente") && (hasPermission("podeVerLedgerFinanceiro") || hasPermission("criarLancamento"))) ||
@@ -509,8 +505,7 @@ service cloud.firestore {
         data.operacaoId is string &&
         data.origemId is string &&
         (
-          isMasterLocal() ||
-          isUsuarioIntegro() ||
+          isMasterLocal()  ||
           isMasterGlobal() ||
           (isGerente() && (
             hasPermission("podeVerLedgerFinanceiro") ||
@@ -569,8 +564,7 @@ service cloud.firestore {
         exists(/databases/$(database)/documents/caixas/$(caixaId)) &&
         get(/databases/$(database)/documents/caixas/$(caixaId)).data.get("status", "") in ["ABERTO", "REABERTO"] &&
         (
-          isMasterGlobal() ||
-          isUsuarioIntegro() ||
+          isMasterGlobal()  ||
           isMasterLocal() ||
           (isGerente() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento"))) ||
           (isFinanceiro() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento"))) ||
@@ -587,8 +581,7 @@ service cloud.firestore {
           (
             hasOnlyStatusLancamentoTransition() &&
             (
-              isMasterLocal() ||
-              isUsuarioIntegro() ||
+              isMasterLocal()  ||
               isMasterGlobal() ||
               (isFinanceiro() && hasPermission("podeEstornarLancamento")) ||
               (isSupervisor() && hasPermission("podeEstornarLancamento") && isTeamAllowed(resource.data))
@@ -637,8 +630,7 @@ service cloud.firestore {
           "totalIngressosCentavos", "totalGastosCentavos", "totalRetiradasCentavos", "atualizadoEm"
         ]) &&
         (
-          isMasterGlobal() ||
-          isUsuarioIntegro() ||
+          isMasterGlobal()  ||
           isMasterLocal() ||
           (isGerente() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento") || hasPermission("aprovar"))) ||
           (isFinanceiro() && (hasPermission("criarLancamento") || hasPermission("podeCriarLancamentoFinanceiro") || hasPermission("podeEstornarLancamento") || hasPermission("aprovar") || hasPermission("podeVerLedgerFinanceiro"))) ||
@@ -872,8 +864,7 @@ service cloud.firestore {
         (
           (isSupervisor() && isTeamAllowed(resource.data) && podeAprovarSolicitacao()) ||
           ((isGerente() || isFinanceiro()) && podeAprovarSolicitacao()) ||
-          isMasterLocal() ||
-          isUsuarioIntegro() ||
+          isMasterLocal()  ||
           isMasterGlobal() ||
           sellerCanCancelOwnSolicitacao()
         );
@@ -938,7 +929,7 @@ service cloud.firestore {
       let cargoAtual = cargo();
       return isActiveUser() && (
         perfil == "master_global" ||
-        perfil == "usuario_integro" ||
+        (perfil == "usuario_integro" && notificacaoDoUsuario(data)) ||
         (isSameTenantRead() && (
           perfil == "master_local" ||
           perfil == "gerente" ||
@@ -1406,8 +1397,9 @@ service cloud.firestore {
     }
 
     match /clientes_integro/{id} {
+      // M02: a equipe interna consulta empresas pela callable com escopo delegado.
       allow read: if isActiveUser() &&
-        (isMasterGlobal() || isUsuarioIntegro() || id == userTenantId());
+        (isMasterGlobal() || (id == userTenantId() && !isUsuarioIntegro()));
       allow create, update, delete: if false;
     }
 
@@ -1603,19 +1595,19 @@ service cloud.firestore {
     }
 
     match /cargos/{id} {
-      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
-      allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isUsuarioIntegro());
+      allow read: if isActiveUser() && (isMasterGlobal()  || isSameTenantRead());
+      allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() );
       allow delete: if false;
     }
 
     match /equipes/{id} {
-      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
+      allow read: if isActiveUser() && (isMasterGlobal()  || isSameTenantRead());
       allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isGerente());
       allow delete: if false;
     }
 
     match /permissoes_cargo/{id} {
-      allow read: if isActiveUser() && (isMasterGlobal() || isUsuarioIntegro() || isSameTenantRead());
+      allow read: if isActiveUser() && (isMasterGlobal()  || isSameTenantRead());
       allow create, update: if isActiveUser() && isSameTenantWrite() && isMasterLocal();
       allow delete: if false;
     }
