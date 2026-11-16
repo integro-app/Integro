@@ -85,6 +85,16 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Hosting:** workflow `firebase-hosting-merge.yml` #786 publicado com sucesso, mas Hosting não implanta Rules. `deploy-m02-firestore-rules.yml` preparado somente para acionamento **manual** e implantação isolada das Rules, com testes antes do deploy e sem alteração de Functions. **A publicação das Rules foi tentada em 16/11/2026 e falhou nas três chamadas ao endpoint de verificação remota do Google com HTTP 503.** O comportamento em produção ainda depende da publicação e homologação autenticada.
 - **Outros limites de M02:** seleção multiempresa para Master Local e visão consolidada somente leitura ainda pendentes; não declarar módulo fechado.
 
+### M02 — Etapa 6: Visão Consolidada no Dashboard Master Local (branch, SEM DEPLOY)
+
+- **Tela entregue em branch:** botão **Visão Consolidada** inserido no cabeçalho existente do Dashboard do Master Local por um módulo isolado, sem alterar o HTML grande nem os módulos aprovados. O módulo `js/m02-visao-consolidada.js` é carregado sob demanda por `js/master-local.js` somente após perfil Master Local validado.
+- **Experiência:** painel premium responsivo com busca por nome, empresas vinculadas, empresa principal, situação contratual e três indicadores (total autorizado, liberadas, indisponíveis). Informa explicitamente que indicadores financeiros consolidados ainda precisam ser homologados. Não exibe saldo, carteira, vendas, pagamentos, CPF/CNPJ, e-mails nem operações.
+- **Fonte única:** callable protegida `solicitarCadastroDuplicadoV27` com `__integroRota=MASTER_GLOBAL_ONBOARDING_V1` e `acao=listarEmpresasVinculadasMasterLocal`. Cada abertura/atualização revalida no backend o próprio UID, a empresa principal, os vínculos em coleção privada e os bloqueios atuais dos tenants.
+- **Segurança do navegador:** sanitização estrita da resposta para cinco campos permitidos; renderização dos nomes com `textContent` (não `innerHTML`), limpeza da lista após erro/revogação, proteção contra respostas assíncronas antigas, limpeza quando muda a identidade ou perfil, negação de navegação operacional entre empresas. A UI **não altera `State.tenantId`**.
+- **Testes:** `tests/m02-visao-consolidada.test.js` integrado ao `npm run verify`, cobrindo payload autenticado, tipagem, campos sensíveis, perfis proibidos, empresa revogada, resposta de erro, troca de identidade e preservação dos módulos. Revisão por CI do PR #46 em rascunho.
+- **Limitação consciente:** esta primeira Visão Consolidada apresenta **somente empresas e contratos**, não somas financeiras. A consolidação de carteira, recebido, vendas e inadimplência exige definir fontes contábeis autoritativas, agregação no backend e testes contra duplicidade/estornos; não exibir valores incompletos ou inventados.
+- **Publicação:** NÃO REALIZADA em produção. Branch `feat/m02-master-local-vinculos-leitura-20261116` / [PR #46](https://github.com/integro-app/Integro/pull/46). Implantação somente após autorização posterior do proprietário.
+
 ### M02 — Etapa 5: preparação de vínculos multiempresa para Master Local (branch, SEM DEPLOY)
 
 - **Branch de desenvolvimento:** `feat/m02-master-local-vinculos-leitura-20261116`, derivada de `main`, aguardando revisão e autorização explícita de merge/publicação. Nenhuma alteração feita na produção nesta etapa.
