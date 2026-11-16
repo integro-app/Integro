@@ -1595,19 +1595,19 @@ service cloud.firestore {
     }
 
     match /cargos/{id} {
-      allow read: if isActiveUser() && (isMasterGlobal()  || isSameTenantRead());
-      allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() );
+      allow read: if isActiveUser() && (isMasterGlobal() || (isSameTenantRead() && !isUsuarioIntegro()));
+      allow create, update: if isActiveUser() && isSameTenantWrite() && isMasterLocal();
       allow delete: if false;
     }
 
     match /equipes/{id} {
-      allow read: if isActiveUser() && (isMasterGlobal()  || isSameTenantRead());
+      allow read: if isActiveUser() && (isMasterGlobal() || (isSameTenantRead() && !isUsuarioIntegro()));
       allow create, update: if isActiveUser() && isSameTenantWrite() && (isMasterLocal() || isGerente());
       allow delete: if false;
     }
 
     match /permissoes_cargo/{id} {
-      allow read: if isActiveUser() && (isMasterGlobal()  || isSameTenantRead());
+      allow read: if isActiveUser() && (isMasterGlobal() || (isSameTenantRead() && !isUsuarioIntegro()));
       allow create, update: if isActiveUser() && isSameTenantWrite() && isMasterLocal();
       allow delete: if false;
     }
