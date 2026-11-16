@@ -121,7 +121,7 @@ function ambienteBrowser() {
   let uidAuth = "local-a", tenant = "tenant-a";
   let dados = resposta(), dadosFinanceiro = {
     ok:true,modo:"CONSULTA_SOMENTE_LEITURA",empresaPrincipalId:"tenant-a",
-    empresasConsultadas:2,dataOperacional:"2026-11-16",completo:true,
+    empresasConsultadas:2,empresasConsultadasIds:["tenant-a","tenant-b"],dataOperacional:"2026-11-16",completo:true,
     indicadores:{carteiraCentavos:500000,inadimplenciaCentavos:80000,
       recebidoHojeCentavos:10500,vendasHojeCentavos:220000,vendasHojeQuantidade:4},
     avisos:[]
@@ -300,7 +300,7 @@ test("M02: resposta financeira parcial nunca mostra valores de uma única empres
   e.window.IntegroM02VisaoConsolidada.inicializar(e.window.State.getUsuario());
   await e.buscar("m02AbrirVisaoConsolidada").click();
   e.alterarFinanceiro({ok:true,modo:"CONSULTA_SOMENTE_LEITURA",
-    empresaPrincipalId:"tenant-a",empresasConsultadas:2,dataOperacional:"2026-11-16",
+    empresaPrincipalId:"tenant-a",empresasConsultadas:2,empresasConsultadasIds:["tenant-a","tenant-b"],dataOperacional:"2026-11-16",
     completo:false,indicadores:{carteiraCentavos:500000,
       inadimplenciaCentavos:null,recebidoHojeCentavos:10500,
       vendasHojeCentavos:220000,vendasHojeQuantidade:4}});
@@ -317,7 +317,7 @@ test("M02: relatório com principal ou quantidade diferente é recusado",async()
   e.window.IntegroM02VisaoConsolidada.inicializar(e.window.State.getUsuario());
   await e.buscar("m02AbrirVisaoConsolidada").click();
   e.alterarFinanceiro({ok:true,modo:"CONSULTA_SOMENTE_LEITURA",
-    empresaPrincipalId:"tenant-x",empresasConsultadas:2,dataOperacional:"2026-11-16",
+    empresaPrincipalId:"tenant-x",empresasConsultadas:2,empresasConsultadasIds:["tenant-a","tenant-b"],dataOperacional:"2026-11-16",
     completo:true,indicadores:{carteiraCentavos:999999,inadimplenciaCentavos:1,
       recebidoHojeCentavos:1,vendasHojeCentavos:1,vendasHojeQuantidade:1}});
   const btn=acharNo(e.buscar("m02VisaoConsolidadaDialogo"),item=>
