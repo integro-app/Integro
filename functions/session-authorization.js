@@ -7,7 +7,8 @@ const text = value => String(value ?? "").trim();
 const stable = value => JSON.stringify(value, (_, item) => item && typeof item === "object" && !Array.isArray(item)
   ? Object.fromEntries(Object.keys(item).sort().map(key => [key, item[key]])) : item);
 const accessVersion = user => stable(Object.fromEntries([
-  "authUid", "clientePlataformaId", "tipoUsuario", "tipoUsuarioOficial", "perfil", "cargoId", "cargoChave", "cargoNome",
+  "authUid", "clientePlataformaId", "empresasVinculadasIds", "tipoVinculoMultiempresa",
+  "tipoUsuario", "tipoUsuarioOficial", "perfil", "cargoId", "cargoChave", "cargoNome",
   "equipeId", "equipesIds", "equipeIds", "permissoes", "permissoesCargo", "permissoesUsuario",
   "responsavelFinanceiro", "departamento", "status", "acessoLiberado", "ativo", "excluido"
 ].map(key => [key, user[key] ?? null])));
