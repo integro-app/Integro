@@ -27,7 +27,7 @@
 
 - Solicitação do proprietário: comparar todas as telas aos padrões de layout já aprovados. Matriz em [`MATRIZ_LAYOUT_PERFIS_20261117.md`](MATRIZ_LAYOUT_PERFIS_20261117.md) cobre os **nove HTML de acesso/perfis**.
 - Login, Master Local, Vendedor e Master Global preservados visualmente. Supervisor, Financeiro, Captador, Auditor e Equipe interna recebem camada CSS opt-in, sem normalização global de menu ou alterações de regras de negócio.
-- Supervisor: notificações somente pelo menu lateral; Equipe interna: menu lateral recolhido e responsivo com botão acessível, overlay, Escape e fechamento após seleção. Títulos, botões e superfícies harmonizados nos cinco perfis.
+- Supervisor: notificações somente pelo menu lateral; os outros quatro perfis antigos iniciam com menu recolhido no desktop, aproveitando os botões existentes; Equipe interna recebe botão acessível, overlay, Escape e fechamento após seleção. Títulos, botões e superfícies harmonizados nos cinco perfis.
 - **Status:** alterações em revisão e homologação; não constitui aceite nem fechamento M22. Validar visualmente com usuário autenticado em desktop/celular, inclusive modais, filtros e estados dinâmicos antes de publicar.
 
 ## 2. Mapa de todos os módulos
