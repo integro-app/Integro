@@ -13,9 +13,9 @@ body[data-integro-layout="padrao-perfis-v1"] {
 body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
   main.main > .topbar {
   position: relative;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr);
   align-items: center;
-  justify-content: space-between;
   gap: 14px;
   min-height: 76px;
   margin-bottom: 16px;
@@ -27,18 +27,26 @@ body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-int
 }
 body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
   main.main > .topbar > :first-child {
+  display: contents !important;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main > .topbar > :first-child > :is(div,h1,h2) {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 12px;
+}
+body[data-integro-layout="padrao-perfis-v1"][data-integro-page="supervisor"]
+  main.main > .topbar > :first-child > .hamburger {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
 }
 body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
   main.main > .topbar :is(h1,h2) {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  max-width: 43%;
+  position: static;
+  transform: none;
+  max-width: 100%;
   margin: 0;
   font-family: var(--it-font, Inter, system-ui, sans-serif);
   font-size: clamp(20px, 1.6vw, 26px);
@@ -55,16 +63,17 @@ body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-int
 }
 body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
   main.main > .topbar > :last-child {
-  position: relative;
-  z-index: 1;
-  margin-left: auto;
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  margin-left: 0;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   flex-wrap: wrap;
   gap: 8px;
   min-width: 0;
-  max-width: 43%;
+  max-width: 100%;
 }
 body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
   main.main > .topbar > :last-child button {
@@ -247,6 +256,7 @@ body[data-integro-page="usuario-integro"] #integroEquipeOverlay[hidden] {
   body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
     main.main > .topbar > :first-child {
     width: 100%;
+    display: flex !important;
     justify-content: center;
     min-height: 32px;
   }
