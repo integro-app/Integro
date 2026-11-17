@@ -968,7 +968,12 @@ test("M01: card e ficha usam a mesma situação; filtros separam inativo, bloque
   vals.filtroStatusClientes="TESTE_EXPIRADO";render();
   assert.equal(lista.innerHTML,"expirado");
   vals.filtroStatusClientes="BLOQUEADO";render();
-  assert.equal(lista.innerHTML,"inativobloqueadoexpirado");
+  assert.equal(lista.innerHTML,"bloqueado","bloqueado não inclui inativo nem teste expirado");
+  vals.filtroStatusClientes="SEM_ACESSO";render();
+  assert.equal(lista.innerHTML,"inativobloqueadoexpirado","sem acesso inclui todos os estados restritos");
+  assert.match(html,/<option value="BLOQUEADO">Bloqueado<\/option>/);
+  assert.match(html,/<option value="SEM_ACESSO">Sem acesso/);
+  assert.match(html,/data-kpi="bloqueados"><small>Sem acesso<\/small>/);
 });
 
 
