@@ -1697,9 +1697,19 @@
     function abrirDetalheCliente(id){
       const c=clientesIntegro.find(x=>x.id===id);if(!c)return;
       const plano=planos.find(p=>p.id===c.planoId);
-      const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id);
+      // Um cadastro canônico (documento ID = Auth UID) prevalece globalmente
+      // sobre cópias legadas, inclusive quando apontam para outro tenant.
+      const canonicosPorUid=new Map(usuariosSistema.filter(u=>
+        u.authUid&&String(u.id)===String(u.authUid)).map(u=>[String(u.authUid),u]));
+      const vinculoConfiavel=u=>{
+        const uid=String(u.authUid||'');
+        return !uid||!canonicosPorUid.has(uid)||canonicosPorUid.get(uid)===u;
+      };
+      const conflitosLegados=usuariosSistema.filter(u=>u.clientePlataformaId===id&&
+        !vinculoConfiavel(u)&&canonicosPorUid.get(String(u.authUid||''))?.clientePlataformaId!==id).length;
+      const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id&&vinculoConfiavel(u));
       const outros=new Map();
-      usuariosSistema.filter(u=>u.clientePlataformaId===id&&
+      usuariosSistema.filter(u=>u.clientePlataformaId===id&&vinculoConfiavel(u)&&
         !['master_global','usuario_integro','master_local'].includes(String(u.tipoUsuario||'').toLowerCase())&&
         u.convitePendente!==true).forEach(u=>{
           const chave=String(u.authUid||u.id||'');
@@ -1810,7 +1820,8 @@
         secao('Master Local ('+masters.length+')','Contas administradoras da empresa',
           masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>',true,'masters')+
         secao('Outros usuários vinculados ('+usuariosVinculados.length+')','Vendedores, supervisores e demais operadores',
-          usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>',false,'usuarios')+
+          (conflitosLegados?'<div class="notice">Atenção: '+conflitosLegados+' registro(s) legado(s) com vínculo empresarial conflitante não foram exibidos. Revise o cadastro canônico do usuário.</div>':'')+
+          (usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>'),false,'usuarios')+
         secao('Ações administrativas','Editar, criar Master Local e gerenciar acesso',acoes,false,'acoes')+
         '</div>');
       if(typeof hidratarLogoClienteIntegro==='function')hidratarLogoClienteIntegro(byId('drawerBody'));
