@@ -297,6 +297,19 @@
     }
     @media(max-width:390px){#clientes .mg-clientes-filtros{grid-template-columns:1fr}#clientes .mg-clientes-limpar{grid-column:1}}
   </style>
+  <style id="mg-cliente-cadastro-extra-20261117">
+    #drawer .mg-cli-extras{display:grid;gap:10px;min-width:0}
+    #drawer .mg-cli-extras details{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden}
+    #drawer .mg-cli-extras summary{padding:13px 15px;font-weight:850;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none}
+    #drawer .mg-cli-extras summary::-webkit-details-marker{display:none}
+    #drawer .mg-cli-extras summary small{font-size:12px;font-weight:550;color:#64748b}
+    #drawer .mg-cli-extra-grid{padding:13px 15px 17px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;border-top:1px solid var(--line)}
+    #drawer .mg-cli-extra-grid label{font-weight:700;font-size:13px;color:#475569;display:grid;gap:6px;min-width:0}
+    #drawer .mg-cli-extra-grid input{width:100%;min-width:0}
+    #drawer .mg-cli-extra-span{grid-column:1/-1}
+    #drawer .mg-cli-contact-separator{grid-column:1/-1;padding-top:8px;font-weight:850;font-size:13px;color:#0f172a;border-top:1px dashed var(--line)}
+    @media(max-width:540px){#drawer .mg-cli-extra-grid{grid-template-columns:minmax(0,1fr)}#drawer .mg-cli-extra-span{grid-column:1}#drawer .mg-cli-contact-separator{grid-column:1}}
+  </style>
   <style id="mg-ficha-identidade-status-20261117">
     /* Escopo exclusivo da ficha Cliente ÍNTEGRO — sem afetar cadastros e outros drawers. */
     #drawer .mg-ficha-hero{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;align-items:center;padding:15px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(120deg,#fff 0%,#fff7ed 100%);min-width:0}
@@ -926,11 +939,16 @@
           const tipo=val('cliTipoPessoa');
           if(digitos.length!==(tipo==='PF'?11:14))el.setCustomValidity('Informe '+(tipo==='PF'?'CPF com 11 dígitos.':'CNPJ com 14 dígitos.'));
         }
-        if(id==='cliTelefone'){
+        if(['cliTelefone','cliResponsavelTelefone','cliContato1Telefone','cliContato2Telefone'].includes(id)){
           const digitos=el.value.replace(/\D/g,'');
           if(digitos.length>0&&(digitos.length<10||digitos.length>13))el.setCustomValidity('Informe telefone válido com DDD.');
         }
+        if(id==='cliCep'&&el.value.replace(/\D/g,'').length>0&&el.value.replace(/\D/g,'').length!==8)
+          el.setCustomValidity('O CEP precisa ter 8 dígitos.');
+        if(id==='cliUf'&&el.value.trim()&&!/^[a-zA-Z]{2}$/.test(el.value.trim()))
+          el.setCustomValidity('Informe uma UF com 2 letras.');
         if(!el.checkValidity()){
+          const secao=el.closest?.('details.mg-cli-extra-grupo');if(secao)secao.open=true;
           el.focus({preventScroll:true});el.reportValidity();agendarFocoMasterGlobal(el);
           return false;
         }
@@ -1103,6 +1121,41 @@
       if(repetir)repetir.addEventListener('click',()=>consultar());
       atualizarEtapa();
     }
+    function montarComplementosFormularioCliente(c){
+      const endereco=c?.enderecoCadastral||{},responsavel=c?.responsavelContato||{};
+      const contatos=Array.isArray(c?.contatosAdicionais)?c.contatosAdicionais.slice(0,2):[];
+      const campo=(id,label,valor='',tipo='text',largura='',max=120)=>
+        '<label'+(largura?' class="mg-cli-extra-span"':'')+' for="'+id+'">'+esc(label)+
+        '<input id="'+id+'" class="form-input" type="'+tipo+'" maxlength="'+max+'" value="'+esc(valor||'')+'"></label>';
+      const bloco=(nome,conteudo)=>
+        '<details class="mg-cli-extra-grupo"><summary>'+esc(nome)+
+        '<small>Opcional · toque para preencher</small></summary>'+
+        '<div class="mg-cli-extra-grid">'+conteudo+'</div></details>';
+      const enderecoHtml=
+        campo('cliCep','CEP',endereco.cep,'text','',9)+
+        campo('cliUf','UF',endereco.uf,'text','',2)+
+        campo('cliRua','Logradouro',endereco.logradouro,'text','full',180)+
+        campo('cliNumero','Número',endereco.numero,'text','',30)+
+        campo('cliComplemento','Complemento',endereco.complemento,'text','',120)+
+        campo('cliBairro','Bairro',endereco.bairro,'text','',100)+
+        campo('cliCidade','Cidade',endereco.cidade,'text','',120);
+      const responsavelHtml=
+        campo('cliResponsavelNome','Nome do responsável',responsavel.nome,'text','full',120)+
+        campo('cliResponsavelCargo','Cargo / função',responsavel.cargo,'text','',90)+
+        campo('cliResponsavelTelefone','Telefone com DDD',responsavel.telefone,'tel','',30)+
+        campo('cliResponsavelEmail','E-mail',responsavel.email,'email','full',254);
+      const contatosHtml=[1,2].map((indice)=>{
+        const contato=contatos[indice-1]||{};
+        return '<div class="mg-cli-contact-separator">Contato adicional '+indice+'</div>'+
+          campo('cliContato'+indice+'Nome','Nome',contato.nome,'text','full',120)+
+          campo('cliContato'+indice+'Telefone','Telefone com DDD',contato.telefone,'tel','',30)+
+          campo('cliContato'+indice+'Email','E-mail',contato.email,'email','full',254);
+      }).join('');
+      return '<div class="mg-cli-extras">'+
+        bloco('Endereço comercial',enderecoHtml)+
+        bloco('Responsável administrativo',responsavelHtml)+
+        bloco('Contatos adicionais (até 2)',contatosHtml)+'</div>';
+    }
     function abrirFormCliente(id=null){id=typeof id==='string'&&id.trim()?id:null;const c=id?clientesIntegro.find(x=>x.id===id):{};if(id&&!c)return notificarIntegro('Cliente ÍNTEGRO não encontrado.');abrirDrawer(id?'Editar cliente ÍNTEGRO':'Novo cliente ÍNTEGRO','Cadastro PF/PJ da plataforma',`<div class="grid"><div class="field-grid"><div><label class="form-label" for="cliTipoPessoa">Tipo de pessoa</label><select id="cliTipoPessoa" class="form-select"><option value="">Selecione pessoa física ou jurídica</option><option value="PF">Pessoa física (CPF)</option><option value="PJ">Pessoa jurídica (CNPJ)</option></select></div><div id="cliDocumentoEtapa" hidden><label class="form-label" for="cliDocumento" id="cliDocumentoLabel">CNPJ</label><input id="cliDocumento" type="text" inputmode="numeric" enterkeyhint="next" autocomplete="off" maxlength="18" placeholder="00.000.000/0000-00" class="form-input" value="${esc(c?.documento||'')}" ${id?'readonly':''}><small id="cliDocumentoAjuda" class="muted" aria-live="polite"></small><div id="cliDocumentoStatus" class="notice" role="status" aria-live="polite" style="margin-top:10px;display:none"></div><button id="cliReverificarDocumento" class="btn btn-light" type="button" hidden style="margin-top:8px">Tentar verificação novamente</button></div></div><div id="cliDadosComplementares" class="grid" hidden><div><label class="form-label">Nome/Razão social</label><input id="cliNome" class="form-input" value="${esc(c?.nome||c?.razaoSocial||'')}"></div><div class="field-grid"><div><label class="form-label">Email</label><input id="cliEmail" class="form-input" value="${esc(c?.email||'')}"></div><div><label class="form-label">Telefone</label><input id="cliTelefone" class="form-input" value="${esc(c?.telefone||'')}"></div></div><button class="btn btn-primary" onclick="salvarClienteIntegro('${id||''}')">Salvar cliente</button></div></div>`);setVal('cliTipoPessoa',id?(c?.tipoPessoa||'PJ'):'');configurarDocumentoClienteIntegro(Boolean(id));iniciarPreConsultaDocumentoClienteIntegro(Boolean(id));
       const botao=byId('drawerBody')?.querySelector('button.btn-primary');
       if(botao){
@@ -1111,6 +1164,10 @@
         campo.innerHTML='<label class="form-label">Plano comercial</label><select id="cliPlano" class="form-select"><option value="">Sem plano definido</option>'+opcoes+'</select><p class="muted" style="margin-top:6px">Após cadastrar, você poderá criar o Master Local e ativar o período de teste.</p>';
         botao.before(campo);
         setVal('cliPlano',c?.planoId||'');
+        const complementos=document.createElement('div');
+        complementos.innerHTML=montarComplementosFormularioCliente(c);
+        const grupo=complementos.firstElementChild;
+        if(grupo)botao.before(grupo);
       }
     }
     function funcaoMasterGlobal(nome){
@@ -1134,14 +1191,33 @@
     async function salvarClienteIntegro(id){
       if(processandoCadastroGlobal)return;
       const dados={id:id||'',tipoPessoa:val('cliTipoPessoa'),documento:val('cliDocumento'),
-        nome:val('cliNome'),email:val('cliEmail'),telefone:val('cliTelefone'),planoId:val('cliPlano')};
+        nome:val('cliNome'),email:val('cliEmail'),telefone:val('cliTelefone'),planoId:val('cliPlano'),
+        enderecoCadastral:{
+          cep:val('cliCep'),logradouro:val('cliRua'),numero:val('cliNumero'),
+          complemento:val('cliComplemento'),bairro:val('cliBairro'),cidade:val('cliCidade'),uf:val('cliUf')
+        },
+        responsavelContato:{
+          nome:val('cliResponsavelNome'),cargo:val('cliResponsavelCargo'),
+          telefone:val('cliResponsavelTelefone'),email:val('cliResponsavelEmail')
+        },
+        contatosAdicionais:[1,2].map(i=>({
+          nome:val('cliContato'+i+'Nome'),telefone:val('cliContato'+i+'Telefone'),
+          email:val('cliContato'+i+'Email')
+        }))
+      };
       if(!id){
         const doc=byId('cliDocumento'),numero=val('cliDocumento').replace(/\D/g,'');
         if(!doc||!numero||doc.dataset.documentoAprovado!==numero||doc.dataset.tipoAprovado!==val('cliTipoPessoa')){
           notificarIntegro('Confirme primeiro a disponibilidade do CPF/CNPJ para continuar.');return;
         }
       }
-      if(!validarPreenchimentoMasterGlobal(['cliTipoPessoa','cliDocumento','cliNome','cliEmail','cliTelefone']))return;
+      if(!validarPreenchimentoMasterGlobal([
+        'cliTipoPessoa','cliDocumento','cliNome','cliEmail','cliTelefone',
+        'cliCep','cliUf','cliRua','cliNumero','cliComplemento','cliBairro','cliCidade',
+        'cliResponsavelNome','cliResponsavelCargo','cliResponsavelTelefone','cliResponsavelEmail',
+        'cliContato1Nome','cliContato1Telefone','cliContato1Email',
+        'cliContato2Nome','cliContato2Telefone','cliContato2Email'
+      ]))return;
       processandoCadastroGlobal=true;
       try{
         const resposta=await funcaoMasterGlobal('salvarClienteIntegroGlobal')(dados);
