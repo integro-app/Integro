@@ -775,7 +775,7 @@
       const estado=situacaoClienteIntegro(c);
       const chipCor=estado.cor==='ativo'?'green':['vencer','teste','inativo'].includes(estado.cor)?'orange':'red';
       const barra=estado.cor==='ativo'?'#22c55e':['vencer','teste','inativo'].includes(estado.cor)?'#f97316':'#ef4444';
-      const vencimento=(estado.nome==='A VENCER'&&Number.isFinite(estado.testeFim))?
+      const vencimento=(estado.nome==='A VENCER'&&estado.diasRestantes!==null&&estado.diasRestantes>=0&&estado.diasRestantes<=7)?
         '<span class="chip">Teste: '+esc(dataCurta(c.dataFimTeste))+'</span>':
         estado.nome==='A VENCER'&&Number.isFinite(estado.contratoMs)?
         '<span class="chip">Contrato: '+esc(dataCurta(estado.contratoVencimento))+'</span>':'';
