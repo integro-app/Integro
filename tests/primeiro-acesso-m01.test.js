@@ -195,6 +195,8 @@ test("M01: credenciais temporárias só aparecem na criação e nunca são persi
   assert.match(globalManagement,/senhaProvisoria/);
   assert.match(funcao,/if \(senhaCriada\) dadosCanonicos\.trocaSenhaObrigatoria = true/);
   assert.match(funcao,/senhaProvisoria: senhaCriada/);
+  assert.match(painel,/senha provisória individual, exibida uma única vez após salvar/);
+  assert.doesNotMatch(painel,/definirá sua senha pelo e-mail de recuperação, sem compartilhar senhas/);
   assert.match(painel,/mostrarSenhaCriacao/);
   assert.match(painel,/id="mgSenhaCriada"/);
   assert.match(painel,/const inicial=byId\('mgSenhaCriada'\);if\(inicial\)inicial\.value=''/);
