@@ -215,6 +215,50 @@
       }
     }
   </style>
+  <style id="mg-clientes-padrao-20261117">
+    html body[data-integro-page="master-global"].mg-clientes-ativa .topbar{background:transparent!important;border:0!important;box-shadow:none!important;padding:0 0 8px!important;margin-bottom:16px!important;min-height:0!important;display:block!important}
+    html body[data-integro-page="master-global"].mg-clientes-ativa .top-left{width:100%!important;justify-content:center!important;position:relative}
+    html body[data-integro-page="master-global"].mg-clientes-ativa .top-left>div{flex:1 1 auto;min-width:0;text-align:center}
+    html body[data-integro-page="master-global"].mg-clientes-ativa #pageTitle{font-size:clamp(23px,3vw,32px)!important;line-height:1.2!important;letter-spacing:-.9px;text-align:center!important}
+    html body[data-integro-page="master-global"].mg-clientes-ativa #pageSubtitle,html body[data-integro-page="master-global"].mg-clientes-ativa .top-actions{display:none!important}
+    #clientes .mg-clientes-panel{background:transparent;border:0;box-shadow:none;padding:0;min-width:0}
+    #clientes .mg-clientes-form{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:10px;align-items:stretch;margin:0 0 14px}
+    #clientes .mg-clientes-search{display:block;position:relative;min-width:0}
+    #clientes .mg-clientes-search .material-symbols-rounded{position:absolute;top:50%;left:15px;transform:translateY(-50%);font-size:23px;color:#64748b;pointer-events:none}
+    #clientes .mg-clientes-search .form-input{width:100%;height:52px;padding-left:47px;font-weight:550;background:#fff}
+    #clientes .mg-clientes-form .btn{min-height:52px;height:auto;white-space:nowrap;gap:7px}
+    #clientes .mg-clientes-novo{padding-inline:22px;box-shadow:0 10px 24px rgba(255,133,0,.22)}
+    #clientes .mg-clientes-filtros[hidden]{display:none!important}
+    #clientes .mg-clientes-filtros{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:12px;background:#fff;border:1px solid var(--line);border-radius:19px;padding:16px;margin-bottom:14px}
+    #clientes .mg-clientes-filtros .form-label{margin:0;min-width:0}
+    #clientes .mg-clientes-filtros .form-select{display:block;margin-top:7px;text-transform:none;letter-spacing:normal}
+    #clientes .mg-clientes-limpar{align-self:end}
+    #clientes .mg-clientes-contador{margin:8px 0 13px;font-size:13px}
+    #clientes .mg-clientes-lista{gap:12px}
+    #clientes .mg-empresa-card{width:100%;display:grid;grid-template-columns:6px minmax(0,1fr) auto;gap:15px;align-items:center;text-align:left;padding:18px 20px;background:#fff;border:1px solid var(--line);border-radius:23px;box-shadow:0 8px 24px rgba(15,23,42,.045);cursor:pointer;transition:box-shadow .18s,border-color .18s;min-width:0}
+    #clientes .mg-empresa-card:hover,#clientes .mg-empresa-card:focus-visible{border-color:#ffb86a;box-shadow:0 12px 30px rgba(15,23,42,.10);outline:none}
+    #clientes .mg-empresa-bar{width:6px;height:100%;min-height:76px;background:#22c55e;border-radius:999px}
+    #clientes .mg-empresa-content{min-width:0}
+    #clientes .mg-empresa-content h3{font-size:17px;font-weight:900;line-height:1.3;overflow-wrap:anywhere}
+    #clientes .mg-empresa-meta{margin:7px 0 10px;color:#64748b;font-weight:650;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+    #clientes .mg-empresa-open{display:inline-flex;align-items:center;gap:4px;color:#b45309;font-size:13px;font-weight:800;white-space:nowrap}
+    #clientes .mg-empresa-open .material-symbols-rounded{font-size:20px}
+    #clientes .mg-empresa-tags{display:flex;gap:8px;flex-wrap:wrap}
+    @media(max-width:980px){
+      html body[data-integro-page="master-global"].mg-clientes-ativa .topbar{margin-bottom:12px!important}
+      html body[data-integro-page="master-global"].mg-clientes-ativa .top-left{display:flex!important;flex-direction:column!important;align-items:stretch!important;justify-content:initial!important;gap:8px!important}
+      html body[data-integro-page="master-global"].mg-clientes-ativa .hamburger{position:static!important;margin:0!important;width:50px!important;height:50px!important;flex:0 0 50px!important}
+      #clientes .mg-clientes-form{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px}
+      #clientes .mg-clientes-search,#clientes .mg-clientes-novo{grid-column:1/-1}
+      #clientes .mg-clientes-form .btn{min-width:0!important;width:100%!important;min-height:46px!important;white-space:normal!important;font-size:14px!important}
+      #clientes .mg-clientes-novo{min-height:52px!important;font-size:15px!important}
+      #clientes .mg-clientes-filtros{grid-template-columns:1fr 1fr}
+      #clientes .mg-clientes-limpar{grid-column:1/-1}
+      #clientes .mg-empresa-card{padding:16px 13px;gap:11px;grid-template-columns:6px minmax(0,1fr)}
+      #clientes .mg-empresa-open{grid-column:2;justify-self:start}
+    }
+    @media(max-width:390px){#clientes .mg-clientes-filtros{grid-template-columns:1fr}#clientes .mg-clientes-limpar{grid-column:1}}
+  </style>
   <style id="mg-documento-gate">
     #cliDocumentoEtapa[hidden],#cliDadosComplementares[hidden],#cliReverificarDocumento[hidden]{display:none!important}
     #cliDocumentoStatus{font-size:13px;line-height:1.5;font-weight:650}
@@ -243,10 +287,26 @@
     <div class="menu-section"><div class="menu-title">Sistema</div><div class="menu"><button data-screen="relatorios"><span class="menu-left"><span class="material-symbols-rounded">bar_chart</span>Relatórios</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="logs"><span class="menu-left"><span class="material-symbols-rounded">policy</span>Logs/Auditoria</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="config"><span class="menu-left"><span class="material-symbols-rounded">settings</span>Configurações</span><span class="material-symbols-rounded">chevron_right</span></button><button id="btnLogout"><span class="menu-left"><span class="material-symbols-rounded">logout</span>Sair</span><span class="material-symbols-rounded">close</span></button></div></div>
   </aside>
   <main class="main">
-    <header class="topbar"><div class="top-left"><button id="btnMenu" class="hamburger" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button><div><h1 id="pageTitle">Dashboard Master Global</h1><p id="pageSubtitle">Visão executiva da plataforma ÍNTEGRO.</p></div></div><div class="top-actions"><button class="btn btn-light" type="button" onclick="trocarTela('notificacoes')"><span class="material-symbols-rounded">notifications</span> <span id="notificationCount">0</span></button><button id="btnAtualizar" class="btn btn-light">Atualizar</button><button id="btnAcaoPrincipal" class="btn btn-primary">Novo cliente</button></div></header>
+    <header class="topbar"><div class="top-left"><button id="btnMenu" class="hamburger" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button><div><h1 id="pageTitle">Dashboard Master Global</h1><p id="pageSubtitle">Visão executiva da plataforma ÍNTEGRO.</p></div></div><div class="top-actions"><button id="btnAtualizar" class="btn btn-light">Atualizar</button><button id="btnAcaoPrincipal" class="btn btn-primary">Novo cliente</button></div></header>
     <div id="estadoDadosGlobais" class="notice" role="alert" hidden style="margin-bottom:16px"></div>
     <section id="dashboard" class="screen active"><div class="grid grid-4"><div class="card card-gradient card-blue clickable" data-kpi="clientes"><small>Clientes da plataforma</small><strong id="kpiClientes">0</strong><p>Empresas/PFs contratantes cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="ativos"><small>Acessos liberados</small><strong id="kpiAtivos">0</strong><p>Clientes com acesso ativo/liberado.</p></div><div class="card card-gradient card-orange clickable" data-kpi="teste"><small>Em teste</small><strong id="kpiTeste">0</strong><p>Clientes usando período experimental.</p></div><div class="card card-gradient card-purple clickable" data-kpi="masters"><small>Masters locais</small><strong id="kpiMasters">0</strong><p>Usuários administradores dos clientes.</p></div><div class="card card-gradient card-red clickable" data-kpi="bloqueados"><small>Bloqueados</small><strong id="kpiBloqueados">0</strong><p>Clientes/usuários sem acesso.</p></div><div class="card card-gradient card-blue clickable" data-kpi="internos"><small>Equipe ÍNTEGRO</small><strong id="kpiInternos">0</strong><p>Usuários internos cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="planos"><small>Planos</small><strong id="kpiPlanos">0</strong><p>Planos comerciais configurados.</p></div><div class="card card-gradient card-orange clickable" data-kpi="notificacoes"><small>Notificações</small><strong id="kpiNotificacoes">0</strong><p>Pendências globais de comunicação.</p></div></div><div class="grid grid-2" style="margin-top:20px"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Resumo operacional</h2><p>Principais pontos da plataforma.</p></div></div><div id="resumoOperacional" class="list"></div></div><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Alertas globais</h2><p>Itens que exigem atenção.</p></div></div><div id="alertasGlobais" class="list"></div></div></div></section>
-    <section id="clientes" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Clientes ÍNTEGRO</h2><p>Contratantes da plataforma, PF ou PJ.</p></div><button class="btn btn-primary" onclick="abrirFormCliente()">Novo cliente</button></div><div class="toolbar"><input id="buscaClientes" class="form-input" placeholder="Buscar por nome, documento, email ou telefone"><button class="btn btn-primary" onclick="renderClientes()">Buscar</button><button class="btn btn-light" onclick="limparBusca('buscaClientes');renderClientes()">Limpar</button></div><div id="contadorClientes" class="muted" style="margin-bottom:12px"></div><div id="listaClientes" class="list"></div></div><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Masters locais vinculados</h2><p>Administradores dos Clientes ÍNTEGRO cadastrados.</p></div><button class="btn btn-primary" onclick="abrirFormMasterLocal()">Criar Master Local</button></div><div id="listaMasters" class="list"></div></div></section>
+    <section id="clientes" class="screen">
+      <div class="mg-clientes-panel">
+        <form id="mgClientesBusca" class="mg-clientes-form" onsubmit="event.preventDefault();renderClientes()">
+          <label class="mg-clientes-search" for="buscaClientes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaClientes" class="form-input" type="search" autocomplete="off" enterkeyhint="search" aria-label="Buscar cliente ÍNTEGRO" placeholder="Buscar empresa, CPF/CNPJ, e-mail ou telefone"></label>
+          <button type="button" id="btnFiltrosClientes" class="btn btn-light mg-clientes-filter-btn" aria-controls="filtrosClientes" aria-expanded="false" onclick="alternarFiltrosClientes()"><span class="material-symbols-rounded" aria-hidden="true">tune</span>Filtros</button>
+          <button type="submit" class="btn btn-light mg-clientes-buscar">Buscar</button>
+          <button type="button" class="btn btn-primary mg-clientes-novo" onclick="abrirFormCliente()"><span class="material-symbols-rounded" aria-hidden="true">add_circle</span>Novo cliente</button>
+        </form>
+        <div id="filtrosClientes" class="mg-clientes-filtros" hidden>
+          <label class="form-label" for="filtroTipoClientes">Tipo de cliente<select id="filtroTipoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos (PF e PJ)</option><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></label>
+          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso bloqueado</option><option value="TESTE">Em teste</option></select></label>
+          <button type="button" class="btn btn-light mg-clientes-limpar" onclick="limparFiltrosClientes()">Limpar filtros</button>
+        </div>
+        <p id="contadorClientes" class="muted mg-clientes-contador" role="status" aria-live="polite"></p>
+        <div id="listaClientes" class="list mg-clientes-lista" aria-label="Clientes contratantes da plataforma"></div>
+      </div>
+    </section>
     
     <section id="usuarios" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Usuários internos ÍNTEGRO</h2><p>Equipe interna que administra a plataforma.</p></div><button class="btn btn-primary" onclick="abrirFormUsuarioInterno()">Novo usuário interno</button></div><div id="listaUsuarios" class="list"></div></div></section>
     <section id="departamentos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Departamentos internos</h2><p>Comercial, financeiro, suporte e administrativo.</p></div><button class="btn btn-primary" onclick="abrirFormDepartamento()">Novo departamento</button></div><div id="listaDepartamentos" class="list"></div></div></section>
@@ -317,7 +377,8 @@
           const id=btn.dataset.id,acao=btn.dataset.mgAction;
           const mapa={
             departamento:()=>abrirFormDepartamento(id),plano:()=>abrirFormPlano(id),
-            'ver-usuario':()=>abrirDetalheUsuario(id),
+            'ver-cliente':()=>abrirDetalheCliente(id),
+             'ver-usuario':()=>abrirDetalheUsuario(id),
             'editar-master':()=>abrirEdicaoMasterLocal(id),
             'recuperar-master':()=>abrirRecuperacaoSenhaMasterLocal(id),
             'vinculos-master':()=>abrirVinculosMasterLocal(id),
@@ -332,6 +393,11 @@
             'acesso-cliente':()=>alternarAcessoCliente(id)
           };
           if(mapa[acao])mapa[acao]();
+        });
+        document.addEventListener('keydown',e=>{
+          if(e.key!=='Enter'&&e.key!==' ')return;
+          const card=e.target?.closest?.('.mg-empresa-card[data-mg-action="ver-cliente"]');
+          if(card&&e.target===card){e.preventDefault();card.click();}
         });
       }
     }
@@ -435,8 +501,33 @@
           teste?box('Períodos de teste ativos',teste+' clientes em avaliação'):''].join(''):
         empty('Nenhum alerta contratual nos cadastros carregados.');
     }
-    function renderClientes(){const termo=val('buscaClientes').toLowerCase();let lista=clientesIntegro.filter(c=>match(c,termo,['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone']));setText('contadorClientes',`${lista.length} cliente(s) exibido(s).`);byId('listaClientes').innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente encontrado.')}
-    function renderMasters(){const lista=getMastersLocais();byId('listaMasters').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
+    function alternarFiltrosClientes(){
+      const painel=byId('filtrosClientes'),botao=byId('btnFiltrosClientes');
+      if(!painel||!botao)return;
+      painel.hidden=!painel.hidden;
+      botao.setAttribute('aria-expanded',String(!painel.hidden));
+    }
+    function limparFiltrosClientes(){
+      setVal('buscaClientes','');setVal('filtroTipoClientes','');setVal('filtroStatusClientes','');
+      renderClientes();
+    }
+    function renderClientes(){
+      const termo=val('buscaClientes').toLowerCase();
+      const tipo=val('filtroTipoClientes');
+      const situacao=val('filtroStatusClientes');
+      // Somente contratantes de clientes_integro; os usuários ficam na ficha.
+      const lista=clientesIntegro.filter(c=>
+        match(c,termo,['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone']) &&
+        (!tipo||status(c.tipoPessoa)===tipo) &&
+        (!situacao||(situacao==='LIBERADO'&&clienteLiberadoGlobal(c))||
+          (situacao==='BLOQUEADO'&&!clienteLiberadoGlobal(c))||
+          (situacao==='TESTE'&&c.testeAtivo===true&&clienteLiberadoGlobal(c)))
+      );
+      setText('contadorClientes',lista.length+' cliente(s) ÍNTEGRO exibido(s).');
+      const host=byId('listaClientes');
+      if(host)host.innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente ÍNTEGRO encontrado com estes filtros.');
+    }
+    function renderMasters(){const host=byId('listaMasters');if(!host)return;const lista=getMastersLocais();host.innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
     function renderUsuariosInternos(){const lista=getUsuariosInternos();byId('listaUsuarios').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'interno')).join(''):empty('Nenhum usuário interno encontrado.')}
     function renderDepartamentos(){
       byId('listaDepartamentos').innerHTML=departamentos.length?departamentos.map(d=>
@@ -542,7 +633,18 @@
       const a=document.createElement('a');a.href=url;a.download='integro-'+tipo+'-'+new Date().toISOString().slice(0,10)+'.csv';
       document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
     }
-    function cardCliente(c){const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente'; const bloq=!clienteLiberadoGlobal(c); const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status)); const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now(); return `<div class="list-card"><div class="list-bar" style="background:${bloq?'#ef4444':c.testeAtivo?'#ff6b00':'#22c55e'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(c.tipoPessoa||'PJ')} • ${esc(c.documento||'-')} • ${esc(c.email||'-')}</p><p>${badge(testeExpirado?'TESTE EXPIRADO':bloq?'BLOQUEADO':c.status||'ATIVO')} ${c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':''}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheCliente('${c.id}')">Ver</button><button class="btn btn-light" onclick="abrirFormCliente('${c.id}')">Editar</button><button class="btn btn-primary" onclick="abrirFormMasterLocal('${c.id}')">Master Local</button><button class="btn btn-success" onclick="ativarTesteCliente('${c.id}')">Teste ${Number(configuracoesGlobal.diasTestePadrao)||7}d</button><button class="btn ${bloqueioManual?'btn-success':'btn-danger'}" onclick="alternarAcessoCliente('${c.id}')">${bloqueioManual?'Liberar':'Bloquear'}</button></div></div>`}
+    function cardCliente(c){
+      const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente ÍNTEGRO';
+      const bloqueado=!clienteLiberadoGlobal(c);
+      const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now();
+      const situacao=testeExpirado?'TESTE EXPIRADO':bloqueado?'BLOQUEADO':c.status||'ATIVO';
+      return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+'" aria-label="Abrir ficha de '+esc(nome)+'">'+
+        '<span class="mg-empresa-bar" aria-hidden="true" style="background:'+(bloqueado?'#ef4444':c.testeAtivo?'#ff9500':'#22c55e')+'"></span>'+
+        '<div class="mg-empresa-content"><h3>'+esc(nome)+'</h3>'+
+        '<p class="mg-empresa-meta">'+esc(c.tipoPessoa||'PJ')+' · '+esc(c.documento||'-')+' · '+esc(c.email||'-')+'</p>'+
+        '<div class="mg-empresa-tags">'+badge(situacao)+(c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':'')+'</div></div>'+
+        '<span class="mg-empresa-open">Ver detalhes<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></span></article>';
+    }
     function cardUsuario(u,tipo){
       const nome=u.nome||u.nomeCompleto||u.email||'Usuário';
       const bloq=u.acessoLiberado===false||status(u.status)==='BLOQUEADO';
@@ -568,7 +670,7 @@
             '<button class="btn btn-primary" data-mg-action="provisionar-interno" data-id="'+esc(u.id)+'">Provisionar Auth</button>':''))+
         '</div></div>';
     }
-    function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
+    function trocarTela(id,btn){document.body.classList.toggle('mg-clientes-ativa',id==='clientes');document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
     function atualizarBotaoAcao(id){
       const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],
         masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],
@@ -1231,37 +1333,64 @@
       const c=clientesIntegro.find(x=>x.id===id);if(!c)return;
       const plano=planos.find(p=>p.id===c.planoId);
       const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id);
-      const usuariosVinculados=usuariosSistema.filter(u=>u.clientePlataformaId===id&&u.tipoUsuario!=='master_global'&&u.tipoUsuario!=='usuario_integro');
+      const outros=new Map();
+      usuariosSistema.filter(u=>u.clientePlataformaId===id&&
+        !['master_global','usuario_integro','master_local'].includes(String(u.tipoUsuario||'').toLowerCase())&&
+        u.convitePendente!==true).forEach(u=>{
+          const chave=String(u.authUid||u.id||'');
+          if(!chave)return;
+          const anterior=outros.get(chave);
+          if(!anterior||(u.authUid&&u.id===u.authUid))outros.set(chave,u);
+        });
+      const usuariosVinculados=[...outros.values()];
       const liberado=clienteLiberadoGlobal(c);
       const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status));
       const nome=c.nome||c.razaoSocial||'Cliente';
-      abrirDrawer('Ficha 360° · Cliente ÍNTEGRO',nome,
+      const linhaUsuario=(u,tipo)=>{
+        const provisionado=u.id===u.authUid&&Boolean(u.authUid);
+        return '<div class="mg-cliente-usuario-item" style="padding:12px 0;border-bottom:1px solid var(--line)">'+
+          '<strong>'+esc(u.nome||u.nomeCompleto||u.email||tipo)+'</strong>'+
+          '<p class="muted">'+esc(u.email||'-')+' · '+esc(u.cargoNome||u.tipoUsuario||tipo)+
+          (provisionado?' · Auth ativo':' · cadastro pendente')+'</p>'+
+          '<div class="list-actions" style="margin-top:9px;justify-content:flex-start">'+
+          '<button type="button" class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver usuário</button>'+
+          (tipo==='Master Local'&&provisionado?
+            '<button type="button" class="btn btn-light" data-mg-action="editar-master" data-id="'+esc(u.id)+'">Editar</button>'+
+            '<button type="button" class="btn btn-light" data-mg-action="vinculos-master" data-id="'+esc(u.id)+'">Empresas vinculadas</button>':'')+
+          '</div></div>';
+      };
+      abrirDrawer('Cliente ÍNTEGRO · Detalhes',nome,
         '<div class="grid">'+
-        '<div class="notice">Ficha administrativa baseada nos registros carregados do servidor. Não representa movimentação financeira do cliente.</div>'+
+        '<div class="notice">Ficha administrativa da empresa. Dados e usuários vinculados ao cadastro do ÍNTEGRO.</div>'+
         info('Tipo / Documento',(c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+
         info('Nome / Razão social',nome)+info('E-mail',c.email)+info('Telefone',c.telefone)+
         info('Plano comercial',plano?((plano.nome||'Plano')+' · '+moeda(plano.valorMensal??plano.valor??0)+'/mês'):'Sem plano definido')+
         info('Situação cadastral',c.status||'ATIVO')+
         info('Acesso à plataforma',liberado?'LIBERADO':'RESTRITO')+
         info('Período de teste',c.testeAtivo===true?(c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem prazo confirmado'):'Não ativo')+
-        info('Usuários vinculados no painel',String(usuariosVinculados.length))+
-        '<div class="empty" style="border-style:solid"><strong>Masters Locais vinculados ('+masters.length+')</strong>'+
-        (masters.length?masters.map(u=>'<div style="margin-top:10px"><span>'+esc(u.nome||u.email||'Master Local')+'</span><p class="muted">'+esc(u.email||'-')+' · '+esc(u.id===u.authUid&&u.authUid?'Auth provisionado':'Cadastro pendente')+'</p>'+
-          (u.id===u.authUid&&u.authUid?'<button class="btn btn-light" data-mg-action="editar-master" data-id="'+esc(u.id)+'">Editar Master</button>':'')+'</div>').join(''):'<p class="muted">Nenhum Master Local vinculado.</p>')+
-        '</div><div class="list-actions" style="flex-wrap:wrap">'+
-        '<button class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
-        '<button class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
-        '<button class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">Ativar teste</button>'+
-        '<button class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
+        '<section class="empty" style="border-style:solid"><strong>Master Local ('+masters.length+')</strong>'+
+        (masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>')+
+        '</section>'+
+        '<section class="empty" style="border-style:solid"><strong>Outros usuários vinculados ('+usuariosVinculados.length+')</strong>'+
+        (usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>')+
+        '</section>'+
+        '<div class="list-actions" style="flex-wrap:wrap">'+
+        '<button type="button" class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
+        '<button type="button" class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
+        '<button type="button" class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">Ativar teste</button>'+
+        '<button type="button" class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
         '</div></div>');
     }
     function abrirDetalheUsuario(id){
       const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
       const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
       abrirDrawer('Usuário',u.nome||u.email||'Usuário',
+        '<div class="grid">'+
         info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
         info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
-        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado'));
+        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado')+
+        (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
+        '</div>');
     }
     function getMastersLocais(){
       const unicos=new Map();
