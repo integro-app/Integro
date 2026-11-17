@@ -259,6 +259,40 @@
       #clientes .mg-empresa-card{padding:16px 13px;gap:11px;grid-template-columns:6px minmax(0,1fr)}
       #clientes .mg-empresa-open{grid-column:2;justify-self:start}
     }
+
+    /* Ficha 360º do cliente: seções compactas e recolhíveis, preservando funções administrativas. */
+    #drawer .mg-ficha-empresa{display:grid;gap:12px;min-width:0}
+    #drawer .mg-ficha-resumo{border:1px solid var(--line);border-radius:18px;background:#f8fafc;padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+    #drawer .mg-ficha-resumo .mg-ficha-tipo{color:#475569;font-size:13px;font-weight:750}
+    #drawer .mg-ficha-secao{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;min-width:0}
+    #drawer .mg-ficha-secao>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:58px;padding:13px 16px;font-weight:900;color:#0f172a}
+    #drawer .mg-ficha-secao>summary::-webkit-details-marker{display:none}
+    #drawer .mg-ficha-secao>summary:focus-visible{outline:3px solid rgba(249,115,22,.35);outline-offset:-3px}
+    #drawer .mg-ficha-secao>summary small{display:block;font-size:12px;line-height:1.4;color:#64748b;font-weight:600;margin-top:4px}
+    #drawer .mg-ficha-secao>summary .material-symbols-rounded{flex:none;color:#64748b;transition:transform .18s}
+    #drawer .mg-ficha-secao[open]>summary .material-symbols-rounded{transform:rotate(180deg)}
+    #drawer .mg-ficha-secao[open]>summary{border-bottom:1px solid var(--line)}
+    #drawer .mg-ficha-conteudo{padding:14px 16px}
+    #drawer .mg-ficha-dados{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 18px;margin:0}
+    #drawer .mg-ficha-campo{min-width:0}
+    #drawer .mg-ficha-campo dt{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:.4px;font-weight:850;margin-bottom:4px}
+    #drawer .mg-ficha-campo dd{font-size:14px;color:#0f172a;font-weight:700;line-height:1.5;overflow-wrap:anywhere;margin:0}
+    #drawer .mg-ficha-usuario{padding:12px 0;border-bottom:1px solid var(--line);min-width:0}
+    #drawer .mg-ficha-usuario:last-child{border-bottom:0;padding-bottom:0}
+    #drawer .mg-ficha-usuario:first-child{padding-top:0}
+    #drawer .mg-ficha-usuario strong{display:block;font-size:14px;color:#0f172a;overflow-wrap:anywhere}
+    #drawer .mg-ficha-usuario .muted{margin-top:4px;font-size:12px;overflow-wrap:anywhere}
+    #drawer .mg-ficha-usuario .list-actions{margin-top:10px;display:flex!important;flex-wrap:wrap;justify-content:flex-start;gap:8px}
+    #drawer .mg-ficha-usuario .list-actions .btn{min-height:40px!important;width:auto!important;flex:0 1 auto}
+    #drawer .mg-ficha-acoes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+    #drawer .mg-ficha-acoes .btn{width:100%;min-height:46px;white-space:normal;line-height:1.25;height:auto}
+    @media(max-width:540px){
+      #drawer .mg-ficha-dados{grid-template-columns:minmax(0,1fr);gap:12px}
+      #drawer .mg-ficha-conteudo{padding:12px 14px}
+      #drawer .mg-ficha-acoes{grid-template-columns:minmax(0,1fr)}
+      #drawer .mg-ficha-usuario .list-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
+      #drawer .mg-ficha-usuario .list-actions .btn{width:100%!important;min-width:0!important}
+    }
     @media(max-width:390px){#clientes .mg-clientes-filtros{grid-template-columns:1fr}#clientes .mg-clientes-limpar{grid-column:1}}
   </style>
   <style id="mg-documento-gate">
