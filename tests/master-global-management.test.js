@@ -181,6 +181,51 @@ test("Master Local editável apenas no nome, preservando tenant e UID", async ()
     e => e.code === "permission-denied");
 });
 
+test("M01 painel resolve UID canonico no servidor e sinaliza tenants inconsistentes",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"Empresa A",status:"ATIVO"});
+  c.dados.set("clientes_integro/tenant-b",{nome:"Empresa B",status:"ATIVO"});
+  c.dados.set("usuarios/uid-principal",{
+    id:"id-forjado",authUid:"uid-principal",nome:"Operador canônico B",
+    tipoUsuario:"vendedor",clientePlataformaId:"tenant-b",senhaPrivada:"não expor"
+  });
+  c.dados.set("usuarios/legado-invalido",{
+    id:"uid-principal",authUid:"uid-principal",nome:"Operador legado A",
+    tipoUsuario:"vendedor",clientePlataformaId:"tenant-a"
+  });
+  c.dados.set("usuarios/legado-amb-a",{
+    authUid:"uid-ambiguo",nome:"Ambiguo A",tipoUsuario:"vendedor",clientePlataformaId:"tenant-a"
+  });
+  c.dados.set("usuarios/legado-amb-b",{
+    authUid:"uid-ambiguo",nome:"Ambiguo B",tipoUsuario:"vendedor",clientePlataformaId:"tenant-b"
+  });
+  c.dados.set("usuarios/legado-mesmo-a",{
+    authUid:"uid-mesmo",nome:"Antigo A",tipoUsuario:"vendedor",
+    clientePlataformaId:"tenant-a",atualizadoEm:"2025-01-01T00:00:00Z"
+  });
+  c.dados.set("usuarios/legado-mesmo-b",{
+    authUid:"uid-mesmo",nome:"Atual A",tipoUsuario:"vendedor",
+    clientePlataformaId:"tenant-a",atualizadoEm:"2026-01-01T00:00:00Z"
+  });
+  c.dados.set("usuarios/sem-auth",{
+    nome:"Cadastro pendente",tipoUsuario:"vendedor",clientePlataformaId:"tenant-a"
+  });
+  const painel=await c.api.listarPainel({},c.global);
+  const ids=painel.usuarios.map(u=>u.id);
+  assert.ok(ids.includes("uid-principal"),"ID físico canônico prevalece sobre campo id forjado");
+  assert.ok(ids.includes("legado-mesmo-b"),"cópia mais recente do mesmo tenant é escolhida");
+  assert.ok(ids.includes("sem-auth"),"cadastro pendente sem UID não é descartado");
+  for(const id of ["id-forjado","legado-invalido","legado-amb-a",
+    "legado-amb-b","legado-mesmo-a"]) assert.ok(!ids.includes(id),id+" não pode compor o painel");
+  const canonico=painel.usuarios.find(u=>u.id==="uid-principal");
+  assert.equal(canonico.clientePlataformaId,"tenant-b");
+  assert.equal(canonico.senhaPrivada,undefined,"segredo não sai do backend");
+  assert.equal(painel.diagnosticoVinculos.conflitosPorEmpresa["tenant-a"],2);
+  assert.equal(painel.diagnosticoVinculos.conflitosPorEmpresa["tenant-b"],1);
+  assert.equal(painel.usuarios.filter(u=>u.authUid==="uid-mesmo").length,1);
+  await assert.rejects(c.api.listarPainel({},c.local),e=>e.code==="permission-denied");
+});
+
 test("configuração e aviso global persistem, leitura individual não marca outros usuários", async () => {
   const c = ambiente();
   await c.api.salvarConfiguracoes({ nome: "ÍNTEGRO", diasTestePadrao: 21 }, c.global);
