@@ -283,7 +283,11 @@ test("M01 listagem de Masters e KPI não aceita vínculos legados de outro tenan
     {id:"old-regular-a",authUid:"uid-legado",tipoUsuario:"master_local",
       clientePlataformaId:"tenant-a",status:"ATIVO"},
     {id:"old-regular-duplicate",authUid:"uid-legado",tipoUsuario:"master_local",
-      clientePlataformaId:"tenant-a",status:"ATIVO"}
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"legacy-free",authUid:"uid-conflito",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO",acessoLiberado:true},
+    {id:"legacy-locked",authUid:"uid-conflito",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"BLOQUEADO",acessoLiberado:false}
   ];
   const listar=vm.runInNewContext(html.slice(a,b)+";getMastersLocais",{
     usuariosSistema,status:v=>String(v||"").toUpperCase()
