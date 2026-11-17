@@ -99,6 +99,67 @@ body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-int
   max-width: 100%;
 }
 
+/* Os quatro perfis antigos preservam seus eventos e IDs de menu,
+   mas passam a iniciar com lateral recolhida, como o shell aprovado.
+   O botão de menu existente continua operando show/open/active. */
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  [data-integro-sidebar] {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  width: min(310px, 86vw);
+  max-width: 86vw;
+  height: 100dvh;
+  z-index: 9999 !important;
+  transform: translateX(-105%) !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transition: transform .24s ease, visibility .24s ease;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  [data-integro-sidebar]:is(.show,.open,.active) {
+  transform: translateX(0) !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  [data-integro-sidebar-overlay] {
+  z-index: 9998 !important;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body[data-integro-layout="padrao-perfis-v1"][data-integro-page="supervisor"]
+  main.main > .topbar .hamburger {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 48px;
+}
+body[data-integro-layout="padrao-perfis-v1"]:is(
+  [data-integro-page="captador"],[data-integro-page="auditor"],[data-integro-page="financeiro"]
+) .mobile-menu-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+body[data-integro-layout="padrao-perfis-v1"]:is(
+  [data-integro-page="captador"],[data-integro-page="auditor"],[data-integro-page="financeiro"]
+) main.main {
+  padding-top: max(80px, calc(72px + env(safe-area-inset-top))) !important;
+}
+/* O modo compacto já existente do Financeiro continua funcional. */
+body[data-integro-layout="padrao-perfis-v1"][data-integro-page="financeiro"]
+  [data-integro-sidebar].collapsed.show {
+  width: 88px !important;
+  max-width: 88px !important;
+}
+
 /* Equipe interna: mesmo menu lateral recolhido, cabeçalho limpo e tokens
    do ÍNTEGRO. Estilos isolados para NÃO atingir outros perfis. */
 body[data-integro-page="usuario-integro"][data-integro-layout="padrao-perfis-v1"] {
