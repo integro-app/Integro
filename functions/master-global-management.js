@@ -53,13 +53,62 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
     if (limite >= 1000 && snap.docs.length > limite) {
       fail("resource-exhausted", "A lista " + nome + " excede o limite seguro. Solicite paginação antes de confiar nos indicadores.");
     }
-    return snap.docs.map(doc => ({ id: doc.id, ...normalizar(doc.data()) }));
+    return snap.docs.map(doc => ({ ...normalizar(doc.data()), id: doc.id }));
   }
 
   async function obterNotificacoesGlobais() {
     const snap = await db.collection("notificacoes").where("escopo", "==", "PLATAFORMA").limit(5001).get();
     if (snap.docs.length > 5000) fail("resource-exhausted", "Notificações globais excedem o limite seguro.");
-    return snap.docs.map(doc => ({ id: doc.id, ...normalizar(doc.data()) }));
+    return snap.docs.map(doc => ({ ...normalizar(doc.data()), id: doc.id }));
+  }
+
+  // Fonte única do painel: a identidade canônica (documento usuarios/{authUid})
+  // prevalece sobre duplicatas legadas, inclusive se apontam a outro tenant.
+  function reconciliarUsuariosPainel(usuarios) {
+    const registrosPorUid = new Map(), canonicosPorUid = new Map();
+    const conflitosPorEmpresa = new Map(), escolhidos = new Set();
+    const contarConflito = u => {
+      const empresa = txt(u.clientePlataformaId);
+      if (empresa) conflitosPorEmpresa.set(empresa, (conflitosPorEmpresa.get(empresa) || 0) + 1);
+    };
+    usuarios.forEach(u => {
+      const uid = txt(u.authUid);
+      if (!uid) return;
+      if (!registrosPorUid.has(uid)) registrosPorUid.set(uid, []);
+      registrosPorUid.get(uid).push(u);
+      if (txt(u.id) === uid) canonicosPorUid.set(uid, u);
+    });
+    for (const [uid, registros] of registrosPorUid) {
+      const canonico = canonicosPorUid.get(uid);
+      if (canonico) {
+        escolhidos.add(canonico.id);
+        registros.forEach(u => {
+          if (u.id !== canonico.id &&
+              txt(u.clientePlataformaId) !== txt(canonico.clientePlataformaId)) contarConflito(u);
+        });
+        continue;
+      }
+      const identidades = new Set(registros.map(u =>
+        txt(u.clientePlataformaId) + "|" + txt(u.tipoUsuario).toLowerCase()));
+      // Sem canônico e com empresas/papéis divergentes, não escolher um tenant arbitrário.
+      if (identidades.size > 1) {
+        registros.forEach(contarConflito);
+        continue;
+      }
+      // Cópias da mesma empresa/papel: apenas uma, por regra estável.
+      const escolhido = registros.slice().sort((a, b) => {
+        const dataA = Date.parse(txt(a.atualizadoEm)) || 0;
+        const dataB = Date.parse(txt(b.atualizadoEm)) || 0;
+        return dataB - dataA || txt(a.id).localeCompare(txt(b.id));
+      })[0];
+      escolhidos.add(escolhido.id);
+    }
+    return {
+      usuarios: usuarios.filter(u => !txt(u.authUid) || escolhidos.has(u.id)),
+      conflitosPorEmpresa: Object.fromEntries(
+        [...conflitosPorEmpresa.entries()].sort(([a], [b]) => a.localeCompare(b))
+      )
+    };
   }
 
   async function listarPainel(dados, contexto) {
@@ -82,11 +131,14 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
       "acessoLiberado", "empresaBloqueada", "ativo", "convitePendente", "provisionamentoAuth",
       "usuarioInternoIntegro", "clientesLeituraAutorizada", "criadoEm", "atualizadoEm"
     ];
-    const usuariosSeguros = usuarios.map(u =>
+    const reconciliacao = reconciliarUsuariosPainel(usuarios);
+    const usuariosSeguros = reconciliacao.usuarios.map(u =>
       Object.fromEntries(camposUsuario.filter(c => Object.prototype.hasOwnProperty.call(u, c)).map(c => [c, u[c]]))
     );
     return {
-      ok: true, clientes, usuarios: usuariosSeguros, departamentos, planos, notificacoes, logs,
+      ok: true, clientes, usuarios: usuariosSeguros,
+      diagnosticoVinculos: { conflitosPorEmpresa: reconciliacao.conflitosPorEmpresa },
+      departamentos, planos, notificacoes, logs,
       configuracoes: configSnap.exists ? normalizar(configSnap.data()) : { nome: "ÍNTEGRO", diasTestePadrao: 7 },
       totais: { notificacoesGlobais: notificacoes.length },
       limites: { logs: 200, notificacoes: 5000 },
