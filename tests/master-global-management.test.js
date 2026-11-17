@@ -226,6 +226,48 @@ test("M01 painel resolve UID canonico no servidor e sinaliza tenants inconsisten
   await assert.rejects(c.api.listarPainel({},c.local),e=>e.code==="permission-denied");
 });
 
+test("M01: perfis legados com acesso divergente ficam em quarentena, sem escolher usuário ativo",async()=>{
+  const c=ambiente();
+  c.dados.set("clientes_integro/tenant-a",{nome:"Empresa A",status:"ATIVO"});
+  c.dados.set("usuarios/uid-canonico",{
+    authUid:"uid-canonico",clientePlataformaId:"tenant-a",
+    tipoUsuario:"vendedor",status:"ATIVO",acessoLiberado:true
+  });
+  c.dados.set("usuarios/legado-cargo",{
+    authUid:"uid-canonico",clientePlataformaId:"tenant-a",
+    tipoUsuario:"master_local",status:"ATIVO",acessoLiberado:true
+  });
+  c.dados.set("usuarios/legado-ativo",{
+    authUid:"uid-conflito",clientePlataformaId:"tenant-a",
+    tipoUsuario:"vendedor",status:"ATIVO",acessoLiberado:true,
+    atualizadoEm:"2026-11-17T09:00:00Z"
+  });
+  c.dados.set("usuarios/legado-bloqueado",{
+    authUid:"uid-conflito",clientePlataformaId:"tenant-a",
+    tipoUsuario:"vendedor",status:"BLOQUEADO",acessoLiberado:false,
+    atualizadoEm:"2026-11-17T10:00:00Z"
+  });
+  c.dados.set("usuarios/legado-duplo-a",{
+    authUid:"uid-sem-status",clientePlataformaId:"tenant-a",
+    tipoUsuario:"vendedor",status:"ATIVO",atualizadoEm:"2026-11-17T09:00:00Z"
+  });
+  c.dados.set("usuarios/legado-duplo-b",{
+    authUid:"uid-sem-status",clientePlataformaId:"tenant-a",
+    tipoUsuario:"vendedor",atualizadoEm:"2026-11-17T10:00:00Z"
+  });
+  const painel=await c.api.listarPainel({},c.global);
+  const ids=painel.usuarios.map(u=>u.id);
+  assert.ok(ids.includes("uid-canonico"),"canônico prevalece sobre papel legado divergente");
+  assert.ok(!ids.includes("legado-cargo"));
+  assert.ok(!ids.includes("legado-ativo")&&!ids.includes("legado-bloqueado"),
+    "cópias com bloqueio contraditório não são exibidas");
+  assert.ok(ids.includes("legado-duplo-b"),
+    "status ausente em cópia antiga não cria conflito se não há valor contraditório");
+  assert.equal(painel.diagnosticoVinculos.conflitosPorEmpresa["tenant-a"],3,
+    "um conflito de papel mais dois conflitos explícitos de acesso");
+  assert.equal(painel.usuarios.filter(u=>u.authUid==="uid-conflito").length,0);
+});
+
 test("configuração e aviso global persistem, leitura individual não marca outros usuários", async () => {
   const c = ambiente();
   await c.api.salvarConfiguracoes({ nome: "ÍNTEGRO", diasTestePadrao: 21 }, c.global);
