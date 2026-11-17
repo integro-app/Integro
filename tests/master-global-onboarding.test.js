@@ -1085,10 +1085,10 @@ test("M01: miniaturas usam lazy load e cache por caminho, sem baixar logos fora 
   };
   const funcs=vm.runInNewContext(html.slice(a,b)+
     ";({hidratarLogoClienteIntegro,carregarImagemLogoClienteIntegro,cacheUrlsLogosClientesIntegro})",context);
-  const path="tenants/empresa-a/logos/"+"c".repeat(32)+".jpg";
+  const logoPath="tenants/empresa-a/logos/"+"c".repeat(32)+".jpg";
   const criarImagem=()=>({
     isConnected:true,hidden:true,dataset:{},
-    getAttribute:()=>path,closest:()=>({className:"mg-empresa-card"}),src:""
+    getAttribute:()=>logoPath,closest:()=>({className:"mg-empresa-card"}),src:""
   });
   const img1=criarImagem(),img2=criarImagem();
   const root={querySelectorAll:()=>[img1,img2]};
