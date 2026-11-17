@@ -838,7 +838,7 @@
       return '<div class="list-card"><div class="list-bar" style="background:'+
         (tipo==='master'?'#ff6b00':'#0ea5e9')+'"></div><div><h3>'+esc(nome)+'</h3>'+
         '<p class="muted">'+esc(u.email||'-')+' · '+esc(contexto)+'</p>'+
-        badge(provisionado?(bloqueioEmpresa?'EMPRESA BLOQUEADA':bloq?'BLOQUEADO':u.status||'ATIVO'):'LEGADO / PENDENTE')+
+        badge(provisionado?(bloqueioEmpresa?'EMPRESA BLOQUEADA':bloq?'BLOQUEADO':u.status||'NÃO INFORMADO'):'LEGADO / PENDENTE')+
         ' <span class="chip">'+esc(u.cargoNome||u.tipoUsuario||'')+'</span></div><div class="list-actions">'+
         '<button class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver</button>'+
         (provisionado?
@@ -1708,11 +1708,16 @@
       usuariosSistema.forEach(u=>{
         const uid=String(u.authUid||'');
         if(!uid||canonicosPorUid.has(uid))return;
-        if(!gruposSemCanonico.has(uid))gruposSemCanonico.set(uid,new Set());
-        gruposSemCanonico.get(uid).add(String(u.clientePlataformaId||'')+'|'+String(u.tipoUsuario||'').toLowerCase());
+        if(!gruposSemCanonico.has(uid))gruposSemCanonico.set(uid,[]);
+        gruposSemCanonico.get(uid).push(u);
       });
-      const uidsAmbiguos=new Set([...gruposSemCanonico].filter(([,identidades])=>
-        identidades.size>1).map(([uid])=>uid));
+      const divergenciaAcesso=registros=>
+        ['status','acessoLiberado','ativo','empresaBloqueada'].some(campo=>
+          new Set(registros.map(u=>u[campo]).filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='')
+            .map(v=>campo==='status'?status(v):String(v))).size>1);
+      const uidsAmbiguos=new Set([...gruposSemCanonico].filter(([,registros])=>
+        new Set(registros.map(u=>String(u.clientePlataformaId||'')+'|'+String(u.tipoUsuario||'').toLowerCase())).size>1||
+        divergenciaAcesso(registros)).map(([uid])=>uid));
       const vinculoConfiavel=u=>{
         const uid=String(u.authUid||'');
         return !uid||(!uidsAmbiguos.has(uid)&&
@@ -1721,7 +1726,10 @@
       const conflitosLocais=usuariosSistema.filter(u=>u.clientePlataformaId===id&&
         !vinculoConfiavel(u)&&
         (uidsAmbiguos.has(String(u.authUid||''))||
-          canonicosPorUid.get(String(u.authUid||''))?.clientePlataformaId!==id)).length;
+          (canonicosPorUid.has(String(u.authUid||''))&&
+            (canonicosPorUid.get(String(u.authUid||'')).clientePlataformaId!==id||
+              String(canonicosPorUid.get(String(u.authUid||'')).tipoUsuario||'').toLowerCase()!==
+              String(u.tipoUsuario||'').toLowerCase())))).length;
       const conflitosServidor=typeof inconsistenciasVinculosGlobal==='undefined'?0:
         Number(inconsistenciasVinculosGlobal[id]||0);
       const conflitosLegados=Math.max(conflitosLocais,
@@ -1839,7 +1847,7 @@
         secao('Master Local ('+masters.length+')','Contas administradoras da empresa',
           masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>',true,'masters')+
         secao('Outros usuários vinculados ('+usuariosVinculados.length+')','Vendedores, supervisores e demais operadores',
-          (conflitosLegados?'<div class="notice">Atenção: '+conflitosLegados+' registro(s) legado(s) com vínculo empresarial conflitante não foram exibidos. Revise o cadastro canônico do usuário.</div>':'')+
+          (conflitosLegados?'<div class="notice">Atenção: '+conflitosLegados+' registro(s) legado(s) com informações conflitantes não foram exibidos. Revise o cadastro canônico do usuário.</div>':'')+
           (usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>'),false,'usuarios')+
         secao('Ações administrativas','Editar, criar Master Local e gerenciar acesso',acoes,false,'acoes')+
         '</div>');
@@ -1882,10 +1890,15 @@
       usuariosSistema.forEach(u=>{
         const uid=String(u.authUid||'');
         if(!uid||canonicos.has(uid))return;
-        if(!identidadesPorUid.has(uid))identidadesPorUid.set(uid,new Set());
-        identidadesPorUid.get(uid).add(String(u.clientePlataformaId||'')+'|'+String(u.tipoUsuario||'').toLowerCase());
+        if(!identidadesPorUid.has(uid))identidadesPorUid.set(uid,[]);
+        identidadesPorUid.get(uid).push(u);
       });
-      const ambiguos=new Set([...identidadesPorUid].filter(([,v])=>v.size>1).map(([uid])=>uid));
+      const ambiguos=new Set([...identidadesPorUid].filter(([,registros])=>
+        new Set(registros.map(u=>String(u.clientePlataformaId||'')+'|'+String(u.tipoUsuario||'').toLowerCase())).size>1||
+        ['status','acessoLiberado','ativo','empresaBloqueada'].some(campo=>
+          new Set(registros.map(u=>u[campo]).filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='')
+            .map(v=>campo==='status'?status(v):String(v))).size>1)
+      ).map(([uid])=>uid));
       const unicos=new Map();
       usuariosSistema.filter(u=>{
         const uid=String(u.authUid||'');
