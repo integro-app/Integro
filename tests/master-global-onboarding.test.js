@@ -262,6 +262,35 @@ test("lista global de Masters não conta convite provisionado em duplicidade", (
   assert.deepEqual(Array.from(listar(), u => u.id), ["uid-1", "uid-2"]);
 });
 
+test("M01 listagem de Masters e KPI não aceita vínculos legados de outro tenant",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("function getMastersLocais(){");
+  const b=html.indexOf(" function getUsuariosInternos()",a);
+  assert.ok(a>=0&&b>a);
+  const usuariosSistema=[
+    {id:"uid-master-a",authUid:"uid-master-a",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"old-master-b",authUid:"uid-master-a",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-b",status:"ATIVO"},
+    {id:"uid-vendedor-b",authUid:"uid-vendedor-b",tipoUsuario:"vendedor",
+      clientePlataformaId:"tenant-b",status:"ATIVO"},
+    {id:"old-master-falso",authUid:"uid-vendedor-b",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"amb-a",authUid:"uid-sem-canonico",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"amb-b",authUid:"uid-sem-canonico",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-b",status:"ATIVO"},
+    {id:"old-regular-a",authUid:"uid-legado",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"old-regular-duplicate",authUid:"uid-legado",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"}
+  ];
+  const listar=vm.runInNewContext(html.slice(a,b)+";getMastersLocais",{
+    usuariosSistema,status:v=>String(v||"").toUpperCase()
+  });
+  assert.deepEqual(Array.from(listar(),u=>u.id),["uid-master-a","old-regular-a"]);
+});
+
 test("bloqueio do tenant preserva bloqueios individuais ao reativar", async () => {
   const c = ambiente();
   const { id } = await c.api.salvarCliente(cliente, c.contexto);
@@ -737,6 +766,10 @@ test("M01: ficha nao confunde tenant quando cadastro canonico substitui legado d
       tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
     {id:"old-master-a-2",authUid:"uid-master-a",nome:"Master legado duplicado",
       tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+    {id:"amb-legado-a",authUid:"uid-sem-canonico",nome:"Legado ambíguo A",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"amb-legado-b",authUid:"uid-sem-canonico",nome:"Legado ambíguo B",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"},
     {id:"old-sem-uid-a",nome:"Operador sem UID A",
       tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
     {id:"internal-a",authUid:"internal-a",nome:"Equipe plataforma indevida",
@@ -749,6 +782,7 @@ test("M01: ficha nao confunde tenant quando cadastro canonico substitui legado d
   const ctx={
     clientesIntegro:[{id:"empresa-a",nome:"Empresa A",acessoLiberado:true}],
     usuariosSistema:usuarios,planos:[],
+    inconsistenciasVinculosGlobal:{"empresa-a":4},
     getMastersLocais:()=>usuarios.filter(u=>u.tipoUsuario==="master_local"),
     clienteLiberadoGlobal:()=>true,
     situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,
@@ -764,8 +798,9 @@ test("M01: ficha nao confunde tenant quando cadastro canonico substitui legado d
   assert.match(painel,/Master canônico A|Vendedor canônico A|Operador sem UID A/);
   assert.doesNotMatch(painel,/Master legado de A|Vendedor legado de A|Vendedor legado duplicado/);
   assert.doesNotMatch(painel,/Master legado duplicado|Equipe plataforma indevida/);
-  assert.doesNotMatch(painel,/Master canônico B|Vendedor canônico B/);
-  assert.match(painel,/2 registro\(s\) legado\(s\) com vínculo empresarial conflitante/);
+  assert.doesNotMatch(painel,/Master canônico B|Vendedor canônico B|Legado ambíguo A/);
+  assert.match(painel,/4 registro\(s\) legado\(s\) com vínculo empresarial conflitante/,
+    "diagnóstico do backend prevalece mesmo após remover duplicatas na resposta");
   assert.match(painel,/data-mg-action="ver-usuario" data-id="uid-vendedor-a"/);
   assert.doesNotMatch(painel,/data-mg-action="ver-usuario" data-id="old-vendedor-a"/);
   assert.doesNotMatch(painel,/data-mg-action="ver-usuario" data-id="old-master-a"/);
