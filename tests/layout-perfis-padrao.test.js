@@ -40,6 +40,9 @@ test("Layout: CSS opt-in com tokens oficiais e limites de mobile e foco", () => 
   assert.match(css, /var\(--it-orange-500/);
   assert.match(css, /var\(--it-navy-900/);
   assert.match(css, /main\.main > \.topbar/);
+  assert.match(css, /grid-template-columns: minmax\(0, 1fr\) minmax\(0, max-content\) minmax\(0, 1fr\)/,
+    "menu e ações devem reservar áreas laterais para não sobrepor o título");
+  assert.match(css, /display: contents !important/);
   assert.match(css, /:focus-visible/);
   assert.match(css, /@media \(max-width: 980px\)/);
   assert.match(css, /@media \(max-width: 460px\)/);
