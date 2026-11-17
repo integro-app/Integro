@@ -686,6 +686,81 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
 });
 
 
+test("M01: ficha distingue status cadastral, UID Auth e empresa realmente vinculada",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    function abrirDetalheCliente(id){");
+  const b=html.indexOf("    function abrirDetalheUsuario(id){",a);
+  const c=html.indexOf("    function getMastersLocais(){",b);
+  assert.ok(a>=0&&b>a&&c>b);
+  const clientes=[{id:"empresa-a",nome:"Empresa A",tipoPessoa:"PJ",status:"ATIVO",acessoLiberado:true}];
+  const usuarios=[
+    {id:"master-a",authUid:"master-a",nome:"Master Bloqueado",tipoUsuario:"master_local",
+      clientePlataformaId:"empresa-a",status:"BLOQUEADO",acessoLiberado:false},
+    {id:"seller-a",authUid:"seller-a",nome:"Vendedor Inativo",tipoUsuario:"vendedor",
+      clientePlataformaId:"empresa-a",status:"INATIVO",acessoLiberado:true},
+    {id:"pending-a",nome:"Usuário Sem Dados",tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"orphan",authUid:"orphan",nome:"Usuário de Empresa Desconhecida",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-excluida",
+      clientePlataformaNome:"Empresa legada incorreta"},
+    {id:"outro",authUid:"outro",nome:"Usuário de Outra Empresa",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"}
+  ];
+  const esc=v=>String(v??"").replace(/[&<>'"]/g,ch=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
+  }[ch]));
+  let conteudo="";
+  const ctx={
+    clientesIntegro:clientes,usuariosSistema:usuarios,planos:[],
+    getMastersLocais:()=>[usuarios[0]],
+    clienteLiberadoGlobal:c=>c.acessoLiberado===true&&
+      !(c.testeAtivo===true&&Date.parse(c.dataFimTeste)<=Date.now()),
+    situacaoClienteIntegro:c=>({nome:c.testeAtivo===true&&Date.parse(c.dataFimTeste)<=Date.now()?
+      "TESTE EXPIRADO":c.acessoLiberado===false?"BLOQUEADO":"ATIVO",cor:"ativo",liberado:true,
+      testeFim:NaN,diasRestantes:null,expirou:false,contratoMs:NaN}),
+    status:v=>String(v||"").toUpperCase(),esc,
+    moeda:()=>"",dataCurta:()=>"",validarCaminhoLogoCliente:()=>"",
+    estadoFichasClientes:new Map(),
+    abrirDrawer:(_titulo,_descricao,html)=>{conteudo=html;},
+    info:(titulo,valor)=>titulo+": "+String(valor??"")+"\n"
+  };
+  const verEmpresa=vm.runInNewContext(html.slice(a,b)+";abrirDetalheCliente",ctx);
+  verEmpresa("empresa-a");
+  assert.match(conteudo,/Master Bloqueado/);
+  assert.match(conteudo,/Vendedor Inativo/);
+  assert.match(conteudo,/Cadastro: BLOQUEADO · ACESSO CADASTRAL RESTRITO · UID Auth vinculado/);
+  assert.match(conteudo,/Cadastro: INATIVO · ACESSO CADASTRAL RESTRITO · UID Auth vinculado/);
+  assert.match(conteudo,/Cadastro: NÃO INFORMADO · ACESSO CADASTRAL NÃO INFORMADO · UID Auth não confirmado/);
+  assert.doesNotMatch(conteudo,/Auth ativo|Usuário de Outra Empresa|Usuário de Empresa Desconhecida/);
+  assert.match(conteudo,/data-mg-action="ver-usuario"/);
+  const verUsuario=vm.runInNewContext(html.slice(b,c)+";abrirDetalheUsuario",ctx);
+  verUsuario("master-a");
+  assert.match(conteudo,/Status cadastral: BLOQUEADO/);
+  assert.match(conteudo,/Acesso cadastral: RESTRITO/);
+  assert.match(conteudo,/Empresa: Empresa A/);
+  assert.match(conteudo,/Acesso da empresa: LIBERADO NO CADASTRO DA EMPRESA/);
+  verUsuario("pending-a");
+  assert.match(conteudo,/Status cadastral: NÃO INFORMADO/);
+  assert.match(conteudo,/Acesso cadastral: NÃO INFORMADO/);
+  assert.doesNotMatch(conteudo,/Status cadastral: ATIVO/);
+  verUsuario("orphan");
+  assert.match(conteudo,/VÍNCULO DE EMPRESA NÃO LOCALIZADO/);
+  assert.match(conteudo,/Acesso da empresa: VÍNCULO NÃO CONFIRMADO/);
+  assert.doesNotMatch(conteudo,/Empresa legada incorreta|Equipe ÍNTEGRO|Voltar para empresa/);
+  clientes[0].acessoLiberado=false;
+  verEmpresa("empresa-a");
+  assert.match(conteudo,/EMPRESA SEM ACESSO \(BLOQUEADO\)/,
+    "usuário com UID não deve aparentar acesso à empresa bloqueada");
+  verUsuario("seller-a");
+  assert.match(conteudo,/Acesso da empresa: RESTRITO — BLOQUEADO/);
+  clientes[0].acessoLiberado=true;
+  clientes[0].testeAtivo=true;
+  clientes[0].dataFimTeste=new Date(Date.now()-86400000).toISOString();
+  verEmpresa("empresa-a");
+  assert.match(conteudo,/EMPRESA SEM ACESSO \(TESTE EXPIRADO\)/);
+  verUsuario("seller-a");
+  assert.match(conteudo,/Acesso da empresa: RESTRITO — TESTE EXPIRADO/);
+});
+
 test("M01: ao voltar para empresa, mantém as seções que estavam expandidas",()=>{
   const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
   const a=html.indexOf("    const estadoFichasClientes=new Map();");

@@ -14,6 +14,13 @@
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
 - **Política de regressão:** 'não mexer no que já funciona'; mudanças mínimas, integradas, com verificação técnica e funcional antes de concluir.
 
+### M01 — Integridade do estado de usuários na ficha empresarial (17/11/2026)
+
+- **Achado:** a ficha indicava “Auth ativo” apenas pela igualdade entre ID e UID; a visualização do usuário assumia “ATIVO” sem status cadastral, e empresa vinculada ausente podia ser mascarada por nome legado ou pelo rótulo “Equipe ÍNTEGRO”.
+- **Correção proposta:** separar status cadastral, liberação/restrição cadastral e presença de UID Auth; não afirmar que o login está habilitado sem consulta ao Firebase Auth. Mostrar vínculo empresarial não localizado em vez de empresa presumida. Dados exibidos continuam restritos ao cliente da ficha, com ações existentes preservadas.
+- **Cobertura:** regressão em `tests/master-global-onboarding.test.js` para bloqueado, inativo, status desconhecido, UID não confirmado, vínculo empresarial ausente, bloqueio da empresa e teste da empresa expirado. A ficha do operador mostra separadamente a restrição do contratante, mesmo se o cadastro do operador estiver liberado. Aguardar CI e validação manual com perfis reais; **M01 segue EM HOMOLOGAÇÃO**.
+- **Publicação:** nenhuma alteração automática de Firestore, Auth, Cloud Functions ou dados de produção nesta etapa.
+
 ### Marco M02 — Segurança multiempresa publicada (16/11/2026)
 
 - **Produção:** PR #49 incorporado no commit `27cff25d383aad7e9ef729ed1f1b34263a9c5ead`. Workflow [#43994254475](https://github.com/integro-app/Integro/actions/runs/43994254475) concluiu com sucesso a publicação de `firestore.rules` no Firebase `integro-novo`.

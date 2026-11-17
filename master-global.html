@@ -1718,10 +1718,17 @@
       };
       const linhaUsuario=(u,tipo)=>{
         const provisionado=u.id===u.authUid&&Boolean(u.authUid);
+        const situacaoUsuario=status(u.status)||'NÃO INFORMADO';
+        const acessoRestrito=u.acessoLiberado===false||u.ativo===false||u.empresaBloqueada===true||
+          ['BLOQUEADO','INATIVO','SUSPENSO'].includes(situacaoUsuario);
+        const acessoCadastral=acessoRestrito?'ACESSO CADASTRAL RESTRITO':
+          u.acessoLiberado===true?'ACESSO CADASTRAL LIBERADO':'ACESSO CADASTRAL NÃO INFORMADO';
         return '<div class="mg-ficha-usuario">'+
           '<strong>'+esc(u.nome||u.nomeCompleto||u.email||tipo)+'</strong>'+
           '<p class="muted">'+esc(u.email||'-')+' · '+esc(u.cargoNome||u.tipoUsuario||tipo)+
-          (provisionado?' · Auth ativo':' · cadastro pendente')+'</p>'+
+          esc(' · Cadastro: '+situacaoUsuario+' · '+acessoCadastral+
+            (provisionado?' · UID Auth vinculado':' · UID Auth não confirmado')+
+            (!liberado?' · EMPRESA SEM ACESSO ('+estado.nome+')':''))+'</p>'+
           '<div class="list-actions">'+
           '<button type="button" class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver usuário</button>'+
           (tipo==='Master Local'&&provisionado?
@@ -1795,11 +1802,28 @@
     function abrirDetalheUsuario(id){
       const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
       const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+      const tipoUsuario=String(u.tipoUsuario||'').toLowerCase();
+      const nomeEmpresa=empresa?.nome||empresa?.razaoSocial||
+        (u.clientePlataformaId?'VÍNCULO DE EMPRESA NÃO LOCALIZADO':
+          ['master_global','usuario_integro'].includes(tipoUsuario)?'Equipe ÍNTEGRO':'SEM EMPRESA VINCULADA');
+      const situacaoUsuario=status(u.status)||'NÃO INFORMADO';
+      const acessoRestrito=u.acessoLiberado===false||u.ativo===false||u.empresaBloqueada===true||
+        ['BLOQUEADO','INATIVO','SUSPENSO'].includes(situacaoUsuario);
+      const acessoCadastral=acessoRestrito?'RESTRITO':
+        u.acessoLiberado===true?'LIBERADO NO CADASTRO':'NÃO INFORMADO';
+      const acessoEmpresa=empresa?
+        (clienteLiberadoGlobal(empresa)?'LIBERADO NO CADASTRO DA EMPRESA':
+          'RESTRITO — '+situacaoClienteIntegro(empresa).nome):
+        ['master_global','usuario_integro'].includes(tipoUsuario)&&!u.clientePlataformaId?
+          'NÃO SE APLICA':'VÍNCULO NÃO CONFIRMADO';
       abrirDrawer('Usuário',u.nome||u.email||'Usuário',
         '<div class="grid">'+
         info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
-        info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
-        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado')+
+        info('Empresa',nomeEmpresa)+
+        info('Status cadastral',situacaoUsuario)+
+        info('Acesso cadastral',acessoCadastral)+
+        info('Acesso da empresa',acessoEmpresa)+
+        info('UID Auth',u.authUid||'Não informado')+
         (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
         '</div>');
     }
