@@ -286,6 +286,7 @@ exports.solicitarCadastroDuplicadoV27 = functions.region("southamerica-east1").h
   if (dados?.__integroRota === "MASTER_GLOBAL_ONBOARDING_V1") {
     const handlers = {
       salvarCliente: onboardingGlobal.salvarCliente,
+      salvarLogoCliente: onboardingGlobal.salvarLogoCliente,
       consultarDocumento: onboardingGlobal.consultarDocumento,
       alterarAcesso: onboardingGlobal.alterarAcesso,
       ativarTeste: onboardingGlobal.ativarTeste,
