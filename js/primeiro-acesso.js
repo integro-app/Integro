@@ -68,8 +68,11 @@
         global.alert?.("Senha definida com sucesso! Entre novamente com sua nova senha.");
       }catch(e){
         const codigo=String(e?.code||"");
+        const bloqueioConcorrente=/(?:^|\/)(?:permission-denied|failed-precondition)$/.test(codigo);
         erro.textContent=["auth/wrong-password","auth/invalid-credential"].includes(codigo)
-          ?"Senha provisória incorreta.":"Não foi possível concluir a troca. Verifique os dados e tente novamente.";
+          ?"Senha informada incorreta.":bloqueioConcorrente
+            ?"Conta ou empresa bloqueada ou alterada. A senha pode já ter sido atualizada. Saia e procure o administrador antes de tentar novamente."
+            :"Não foi possível concluir a troca. Se a senha foi alterada, saia e entre novamente com a nova senha.";
       }finally{
         ocupado=false;
         if(botao.isConnected){botao.disabled=false;botao.textContent="Confirmar nova senha";}

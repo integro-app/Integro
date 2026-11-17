@@ -248,35 +248,68 @@ async function concluirPrimeiroAcessoV27(dados, contexto) {
     erroHttps("invalid-argument", "Use senha de 12 a 128 caracteres com letras e numeros.");
   }
   const perfilRef = db.collection("usuarios").doc(uid);
-  const snap = await perfilRef.get();
-  const perfil = snap.exists ? snap.data() || {} : {};
-  if (perfil.authUid !== uid || perfil.acessoLiberado !== false ||
-      perfil.trocaSenhaObrigatoria !== true || perfil.empresaBloqueada === true ||
-      perfil.provisionamentoAuth !== "PROVISIONADO" ||
-      perfil.ativo === false || perfil.excluido === true ||
-      String(perfil.status || "").toUpperCase() !== "ATIVO") {
-    erroHttps("failed-precondition", "Primeiro acesso nao autorizado para esta conta.");
-  }
-  const tenantInicial = String(perfil.clientePlataformaId || "").trim();
-  if (tenantInicial) {
-    const { empresaLiberada } = require("./company-access");
+  const validarPerfil = perfil => {
+    if (perfil.authUid !== uid || perfil.acessoLiberado !== false ||
+        perfil.trocaSenhaObrigatoria !== true || perfil.empresaBloqueada === true ||
+        perfil.provisionamentoAuth !== "PROVISIONADO" ||
+        perfil.ativo === false || perfil.excluido === true ||
+        String(perfil.status || "").toUpperCase() !== "ATIVO") {
+      erroHttps("failed-precondition", "Primeiro acesso nao autorizado para esta conta.");
+    }
+  };
+  const { empresaLiberada } = require("./company-access");
+  const validarEmpresa = async (perfil, lerDocumento) => {
+    const tenantId = String(perfil.clientePlataformaId || "").trim();
+    const masterLocal = String(perfil.tipoUsuario || "").toLowerCase() === "master_local";
+    if (masterLocal && !tenantId)
+      erroHttps("failed-precondition", "Master Local sem empresa principal.");
+    if (!tenantId) return;
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(tenantId))
+      erroHttps("failed-precondition", "Vinculo empresarial invalido.");
     const bases = await Promise.all(["clientes_integro", "clientes_plataforma"].map(
-      colecao => db.collection(colecao).doc(tenantInicial).get()
+      colecao => lerDocumento(db.collection(colecao).doc(tenantId))
     ));
+    // O Master Local provisionado pelo M01 deve possuir empresa canônica.
+    // Para demais perfis legados, é suficiente que exista uma das bases.
+    if ((masterLocal && !bases[0].exists) || bases.every(doc => !doc.exists))
+      erroHttps("failed-precondition", "Empresa vinculada nao encontrada.");
     if (bases.some(doc => doc.exists && !empresaLiberada(doc.data() || {})))
       erroHttps("permission-denied", "Empresa bloqueada ou periodo de teste expirado.");
-  }
+  };
+  const snap = await perfilRef.get();
+  const perfil = snap.exists ? snap.data() || {} : {};
+  validarPerfil(perfil);
+  await validarEmpresa(perfil, ref => ref.get());
   const rawJwt = String(contexto.rawRequest?.headers?.authorization || "").replace(/^Bearer /i, "");
-  if (rawJwt) await admin.auth().verifyIdToken(rawJwt, true);
+  if (rawJwt) {
+    const tokenVerificado = await admin.auth().verifyIdToken(rawJwt, true);
+    if (tokenVerificado.uid !== uid)
+      erroHttps("permission-denied", "Sessao de autenticacao inconsistente.");
+  }
   const usuarioAuth = await admin.auth().getUser(uid);
   if (usuarioAuth.disabled) erroHttps("permission-denied", "Conta bloqueada.");
-  // Atualiza apenas a propria credencial. Nunca guarda ou registra a senha.
+
+  // Primeiro altera a credencial no Auth, mas sem conceder acesso operacional.
+  // A liberação só ocorre em transação após uma SEGUNDA validação do usuário
+  // e das empresas. Um bloqueio concorrente invalida/reexecuta a transação.
   await admin.auth().updateUser(uid, { password: novaSenha });
-  await perfilRef.set({
-    trocaSenhaObrigatoria: false,
-    acessoLiberado: true,
-    senhaInicialDefinidaEm: admin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
+  await db.runTransaction(async tx => {
+    const perfilAtualSnap = await tx.get(perfilRef);
+    const perfilAtual = perfilAtualSnap.exists ? perfilAtualSnap.data() || {} : {};
+    validarPerfil(perfilAtual);
+    if (String(perfilAtual.clientePlataformaId || "").trim() !==
+        String(perfil.clientePlataformaId || "").trim() ||
+        String(perfilAtual.tipoUsuario || "").toLowerCase() !==
+        String(perfil.tipoUsuario || "").toLowerCase()) {
+      erroHttps("failed-precondition", "Vinculo do usuario mudou durante o primeiro acesso.");
+    }
+    await validarEmpresa(perfilAtual, ref => tx.get(ref));
+    tx.set(perfilRef, {
+      trocaSenhaObrigatoria: false,
+      acessoLiberado: true,
+      senhaInicialDefinidaEm: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  });
   await admin.auth().revokeRefreshTokens(uid);
   return { ok: true, requerNovoLogin: true };
 }

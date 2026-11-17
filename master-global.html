@@ -384,7 +384,7 @@
   <main class="main">
     <header class="topbar"><div class="top-left"><button id="btnMenu" class="hamburger" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button><div><h1 id="pageTitle">Dashboard Master Global</h1><p id="pageSubtitle">Visão executiva da plataforma ÍNTEGRO.</p></div></div><div class="top-actions"><button id="btnAtualizar" class="btn btn-light">Atualizar</button><button id="btnAcaoPrincipal" class="btn btn-primary">Novo cliente</button></div></header>
     <div id="estadoDadosGlobais" class="notice" role="alert" hidden style="margin-bottom:16px"></div>
-    <section id="dashboard" class="screen active"><div class="grid grid-4"><div class="card card-gradient card-blue clickable" data-kpi="clientes"><small>Clientes da plataforma</small><strong id="kpiClientes">0</strong><p>Empresas/PFs contratantes cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="ativos"><small>Acessos liberados</small><strong id="kpiAtivos">0</strong><p>Clientes com acesso ativo/liberado.</p></div><div class="card card-gradient card-orange clickable" data-kpi="teste"><small>Em teste</small><strong id="kpiTeste">0</strong><p>Clientes usando período experimental.</p></div><div class="card card-gradient card-purple clickable" data-kpi="masters"><small>Masters locais</small><strong id="kpiMasters">0</strong><p>Usuários administradores dos clientes.</p></div><div class="card card-gradient card-red clickable" data-kpi="bloqueados"><small>Bloqueados</small><strong id="kpiBloqueados">0</strong><p>Clientes/usuários sem acesso.</p></div><div class="card card-gradient card-blue clickable" data-kpi="internos"><small>Equipe ÍNTEGRO</small><strong id="kpiInternos">0</strong><p>Usuários internos cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="planos"><small>Planos</small><strong id="kpiPlanos">0</strong><p>Planos comerciais configurados.</p></div><div class="card card-gradient card-orange clickable" data-kpi="notificacoes"><small>Notificações</small><strong id="kpiNotificacoes">0</strong><p>Pendências globais de comunicação.</p></div></div><div class="grid grid-2" style="margin-top:20px"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Resumo operacional</h2><p>Principais pontos da plataforma.</p></div></div><div id="resumoOperacional" class="list"></div></div><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Alertas globais</h2><p>Itens que exigem atenção.</p></div></div><div id="alertasGlobais" class="list"></div></div></div></section>
+    <section id="dashboard" class="screen active"><div class="grid grid-4"><div class="card card-gradient card-blue clickable" data-kpi="clientes"><small>Clientes da plataforma</small><strong id="kpiClientes">0</strong><p>Empresas/PFs contratantes cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="ativos"><small>Acessos liberados</small><strong id="kpiAtivos">0</strong><p>Clientes com acesso ativo/liberado.</p></div><div class="card card-gradient card-orange clickable" data-kpi="teste"><small>Em teste</small><strong id="kpiTeste">0</strong><p>Clientes usando período experimental.</p></div><div class="card card-gradient card-purple clickable" data-kpi="masters"><small>Masters locais</small><strong id="kpiMasters">0</strong><p>Usuários administradores dos clientes.</p></div><div class="card card-gradient card-red clickable" data-kpi="bloqueados"><small>Sem acesso</small><strong id="kpiBloqueados">0</strong><p>Clientes contratantes com acesso restrito ou expirado.</p></div><div class="card card-gradient card-blue clickable" data-kpi="internos"><small>Equipe ÍNTEGRO</small><strong id="kpiInternos">0</strong><p>Usuários internos cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="planos"><small>Planos</small><strong id="kpiPlanos">0</strong><p>Planos comerciais configurados.</p></div><div class="card card-gradient card-orange clickable" data-kpi="notificacoes"><small>Notificações</small><strong id="kpiNotificacoes">0</strong><p>Pendências globais de comunicação.</p></div></div><div class="grid grid-2" style="margin-top:20px"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Resumo operacional</h2><p>Principais pontos da plataforma.</p></div></div><div id="resumoOperacional" class="list"></div></div><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Alertas globais</h2><p>Itens que exigem atenção.</p></div></div><div id="alertasGlobais" class="list"></div></div></div></section>
     <section id="clientes" class="screen">
       <div class="mg-clientes-panel">
         <form id="mgClientesBusca" class="mg-clientes-form" onsubmit="event.preventDefault();renderClientes()">
@@ -395,7 +395,7 @@
         </form>
         <div id="filtrosClientes" class="mg-clientes-filtros" hidden>
           <label class="form-label" for="filtroTipoClientes">Tipo de cliente<select id="filtroTipoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos (PF e PJ)</option><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></label>
-          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso bloqueado</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option></select></label>
+          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Bloqueado</option><option value="SEM_ACESSO">Sem acesso (inativos, bloqueados ou expirados)</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option></select></label>
           <button type="button" class="btn btn-light mg-clientes-limpar" onclick="limparFiltrosClientes()">Limpar filtros</button>
         </div>
         <p id="contadorClientes" class="muted mg-clientes-contador" role="status" aria-live="polite"></p>
@@ -417,6 +417,7 @@
   <script>
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false,promessaCarregamentoGlobal=null;
     let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
+    let inconsistenciasVinculosGlobal={};
     let dadosGlobaisCarregados=false,atualizadoEmGlobal='';
     const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
 
@@ -533,6 +534,7 @@
           throw new Error('Resposta incompleta do servidor. Indicadores não atualizados.');
         }
         clientesIntegro=dados.clientes;usuariosSistema=dados.usuarios;
+        inconsistenciasVinculosGlobal=dados.diagnosticoVinculos?.conflitosPorEmpresa||{};
         departamentos=dados.departamentos;planos=dados.planos;
         notificacoes=dados.notificacoes;logs=dados.logs;
         configuracoesGlobal=dados.configuracoes||{nome:'ÍNTEGRO',diasTestePadrao:7};
@@ -618,7 +620,7 @@
         box('Última consulta',atualizadoEmGlobal?dataCurta(atualizadoEmGlobal):'Sem confirmação')
       ].join('');
       byId('alertasGlobais').innerHTML=(bloqueados||teste)?
-        [bloqueados?box('Clientes sem acesso contratual',bloqueados+' bloqueados ou expirados'):'',
+        [bloqueados?box('Clientes sem acesso contratual',bloqueados+' inativos, bloqueados ou expirados'):'',
           teste?box('Períodos de teste ativos',teste+' clientes em avaliação'):''].join(''):
         empty('Nenhum alerta contratual nos cadastros carregados.');
     }
@@ -678,7 +680,8 @@
         if(!situacao)return true;
         const estado=situacaoClienteIntegro(c);
         if(situacao==='LIBERADO')return estado.liberado;
-        if(situacao==='BLOQUEADO')return !estado.liberado;
+        if(situacao==='BLOQUEADO')return estado.nome==='BLOQUEADO';
+        if(situacao==='SEM_ACESSO')return !estado.liberado;
         if(situacao==='TESTE')return c.testeAtivo===true&&estado.liberado;
         return estado.nome===({
           ATIVO:'ATIVO',INATIVO:'INATIVO',A_VENCER:'A VENCER',
@@ -829,12 +832,13 @@
       const bloqueioEmpresa=u.empresaBloqueada===true;
       const provisionado=u.id===u.authUid&&Boolean(u.authUid);
       const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
-      const contexto=tipo==='master'?(empresa?.nome||u.clientePlataformaNome||'Empresa não identificada'):
+      const contexto=tipo==='master'?(empresa?.nome||empresa?.razaoSocial||
+        (u.clientePlataformaId?'VÍNCULO DE EMPRESA NÃO LOCALIZADO':'SEM EMPRESA VINCULADA')):
         (departamentos.find(d=>d.id===u.departamentoId)?.nome||'Equipe ÍNTEGRO');
       return '<div class="list-card"><div class="list-bar" style="background:'+
         (tipo==='master'?'#ff6b00':'#0ea5e9')+'"></div><div><h3>'+esc(nome)+'</h3>'+
         '<p class="muted">'+esc(u.email||'-')+' · '+esc(contexto)+'</p>'+
-        badge(provisionado?(bloqueioEmpresa?'EMPRESA BLOQUEADA':bloq?'BLOQUEADO':u.status||'ATIVO'):'LEGADO / PENDENTE')+
+        badge(provisionado?(bloqueioEmpresa?'EMPRESA BLOQUEADA':bloq?'BLOQUEADO':u.status||'NÃO INFORMADO'):'LEGADO / PENDENTE')+
         ' <span class="chip">'+esc(u.cargoNome||u.tipoUsuario||'')+'</span></div><div class="list-actions">'+
         '<button class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver</button>'+
         (provisionado?
@@ -1259,7 +1263,7 @@
       }catch(erro){console.error('[MASTER GLOBAL] Cadastro do cliente',erro);notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
     }
-    function abrirFormMasterLocal(clienteId=null){abrirDrawer('Criar Master Local','Usuário administrador do cliente',`<div class="grid"><div><label class="form-label">Cliente ÍNTEGRO</label><select id="mlCliente" class="form-select"><option value="">Selecione</option>${clientesIntegro.map(c=>`<option value="${c.id}">${esc(c.nome||c.razaoSocial||'Cliente')}</option>`).join('')}</select></div><div class="field-grid"><div><label class="form-label">Nome</label><input id="mlNome" class="form-input"></div><div><label class="form-label">Email</label><input id="mlEmail" class="form-input"></div></div><div class="notice">O acesso será criado no Firebase Authentication. O Master Local definirá sua senha pelo e-mail de recuperação, sem compartilhar senhas com a plataforma.</div><button class="btn btn-primary" onclick="salvarMasterLocal()">Salvar Master Local</button></div>`);setVal('mlCliente',clienteId||'')}
+    function abrirFormMasterLocal(clienteId=null){abrirDrawer('Criar Master Local','Usuário administrador do cliente',`<div class="grid"><div><label class="form-label">Cliente ÍNTEGRO</label><select id="mlCliente" class="form-select"><option value="">Selecione</option>${clientesIntegro.map(c=>`<option value="${c.id}">${esc(c.nome||c.razaoSocial||'Cliente')}</option>`).join('')}</select></div><div class="field-grid"><div><label class="form-label">Nome</label><input id="mlNome" class="form-input"></div><div><label class="form-label">Email</label><input id="mlEmail" class="form-input"></div></div><div class="notice">A conta será criada no Firebase Authentication com senha provisória individual, exibida uma única vez após salvar. No primeiro login, o Master Local deverá escolher outra senha antes de acessar o sistema. Se preferir, envie o link de definição por e-mail.</div><button class="btn btn-primary" onclick="salvarMasterLocal()">Salvar Master Local</button></div>`);setVal('mlCliente',clienteId||'')}
     async function enviarAcessoMasterLocal(email){
       if(!email)return false;
       try{
@@ -1442,6 +1446,11 @@
       if(processandoCadastroGlobal)return;
       const bloqueioManual=cliente.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(cliente.status));
       const liberar=bloqueioManual;
+      if(liberar&&cliente.testeAtivo===true&&Number.isFinite(dataGlobalMs(cliente.dataFimTeste))&&
+        dataGlobalMs(cliente.dataFimTeste)<=Date.now()){
+        notificarIntegro('O teste desta empresa expirou. Renove o teste antes de liberar o acesso.');
+        return;
+      }
       if(!confirm((liberar?'Liberar':'Bloquear')+' a empresa '+(cliente.nome||cliente.razaoSocial||id)+' e seus usuários?'))return;
       processandoCadastroGlobal=true;
       try{
@@ -1454,12 +1463,21 @@
       finally{processandoCadastroGlobal=false;}
     }
     async function ativarTesteCliente(id){
-      if(processandoCadastroGlobal)return;
+      const cliente=clientesIntegro.find(c=>c.id===id);
+      if(!cliente||processandoCadastroGlobal)return;
+      const dias=Number(configuracoesGlobal.diasTestePadrao)||7;
+      if(!Number.isInteger(dias)||dias<1||dias>90){
+        notificarIntegro('Defina um período padrão entre 1 e 90 dias nas configurações globais.');
+        return;
+      }
+      const nome=cliente.nome||cliente.razaoSocial||id;
+      const acao=cliente.testeAtivo===true?'Reiniciar':'Ativar';
+      if(!confirm(acao+' o período de teste de '+dias+' dia(s) para '+nome+'? Esta ação libera o acesso da empresa e restaura os estados anteriores de usuários bloqueados apenas pela plataforma.'))return;
       processandoCadastroGlobal=true;
       try{
-        await funcaoMasterGlobal('ativarTesteClienteIntegroGlobal')({id,dias:Number(configuracoesGlobal.diasTestePadrao)||7});
+        await funcaoMasterGlobal('ativarTesteClienteIntegroGlobal')({id,dias});
         await carregarTudo();
-        notificarIntegro('Período de teste ativado por '+(Number(configuracoesGlobal.diasTestePadrao)||7)+' dias.');
+        notificarIntegro('Período de teste ativado por '+dias+' dias. Acesso empresarial atualizado; confira os usuários.');
       }catch(erro){notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
     }
@@ -1682,9 +1700,43 @@
     function abrirDetalheCliente(id){
       const c=clientesIntegro.find(x=>x.id===id);if(!c)return;
       const plano=planos.find(p=>p.id===c.planoId);
-      const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id);
+      // Um cadastro canônico (documento ID = Auth UID) prevalece globalmente
+      // sobre cópias legadas, inclusive quando apontam para outro tenant.
+      const canonicosPorUid=new Map(usuariosSistema.filter(u=>
+        u.authUid&&String(u.id)===String(u.authUid)).map(u=>[String(u.authUid),u]));
+      const gruposSemCanonico=new Map();
+      usuariosSistema.forEach(u=>{
+        const uid=String(u.authUid||'');
+        if(!uid||canonicosPorUid.has(uid))return;
+        if(!gruposSemCanonico.has(uid))gruposSemCanonico.set(uid,[]);
+        gruposSemCanonico.get(uid).push(u);
+      });
+      const divergenciaAcesso=registros=>
+        ['status','acessoLiberado','ativo','empresaBloqueada'].some(campo=>
+          new Set(registros.map(u=>u[campo]).filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='')
+            .map(v=>campo==='status'?status(v):String(v))).size>1);
+      const uidsAmbiguos=new Set([...gruposSemCanonico].filter(([,registros])=>
+        new Set(registros.map(u=>String(u.clientePlataformaId||'')+'|'+String(u.tipoUsuario||'').toLowerCase())).size>1||
+        divergenciaAcesso(registros)).map(([uid])=>uid));
+      const vinculoConfiavel=u=>{
+        const uid=String(u.authUid||'');
+        return !uid||(!uidsAmbiguos.has(uid)&&
+          (!canonicosPorUid.has(uid)||String(u.id)===uid));
+      };
+      const conflitosLocais=usuariosSistema.filter(u=>u.clientePlataformaId===id&&
+        !vinculoConfiavel(u)&&
+        (uidsAmbiguos.has(String(u.authUid||''))||
+          (canonicosPorUid.has(String(u.authUid||''))&&
+            (canonicosPorUid.get(String(u.authUid||'')).clientePlataformaId!==id||
+              String(canonicosPorUid.get(String(u.authUid||'')).tipoUsuario||'').toLowerCase()!==
+              String(u.tipoUsuario||'').toLowerCase())))).length;
+      const conflitosServidor=typeof inconsistenciasVinculosGlobal==='undefined'?0:
+        Number(inconsistenciasVinculosGlobal[id]||0);
+      const conflitosLegados=Math.max(conflitosLocais,
+        Number.isFinite(conflitosServidor)?Math.max(0,conflitosServidor):0);
+      const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id&&vinculoConfiavel(u));
       const outros=new Map();
-      usuariosSistema.filter(u=>u.clientePlataformaId===id&&
+      usuariosSistema.filter(u=>u.clientePlataformaId===id&&vinculoConfiavel(u)&&
         !['master_global','usuario_integro','master_local'].includes(String(u.tipoUsuario||'').toLowerCase())&&
         u.convitePendente!==true).forEach(u=>{
           const chave=String(u.authUid||u.id||'');
@@ -1718,10 +1770,17 @@
       };
       const linhaUsuario=(u,tipo)=>{
         const provisionado=u.id===u.authUid&&Boolean(u.authUid);
+        const situacaoUsuario=status(u.status)||'NÃO INFORMADO';
+        const acessoRestrito=u.acessoLiberado===false||u.ativo===false||u.empresaBloqueada===true||
+          ['BLOQUEADO','INATIVO','SUSPENSO'].includes(situacaoUsuario);
+        const acessoCadastral=acessoRestrito?'ACESSO CADASTRAL RESTRITO':
+          u.acessoLiberado===true?'ACESSO CADASTRAL LIBERADO':'ACESSO CADASTRAL NÃO INFORMADO';
         return '<div class="mg-ficha-usuario">'+
           '<strong>'+esc(u.nome||u.nomeCompleto||u.email||tipo)+'</strong>'+
           '<p class="muted">'+esc(u.email||'-')+' · '+esc(u.cargoNome||u.tipoUsuario||tipo)+
-          (provisionado?' · Auth ativo':' · cadastro pendente')+'</p>'+
+          esc(' · Cadastro: '+situacaoUsuario+' · '+acessoCadastral+
+            (provisionado?' · UID Auth vinculado':' · UID Auth não confirmado')+
+            (!liberado?' · EMPRESA SEM ACESSO ('+estado.nome+')':''))+'</p>'+
           '<div class="list-actions">'+
           '<button type="button" class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver usuário</button>'+
           (tipo==='Master Local'&&provisionado?
@@ -1772,7 +1831,8 @@
       const acoes='<div class="mg-ficha-acoes">'+
         '<button type="button" class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
         '<button type="button" class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
-        '<button type="button" class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">Ativar teste</button>'+
+        '<button type="button" class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">'+
+        (c.testeAtivo===true?(expirou?'Renovar teste':'Reiniciar teste'):'Ativar teste')+'</button>'+
         '<button type="button" class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
         '</div>';
       abrirDrawer('Cliente ÍNTEGRO · Detalhes',nome,
@@ -1787,7 +1847,8 @@
         secao('Master Local ('+masters.length+')','Contas administradoras da empresa',
           masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>',true,'masters')+
         secao('Outros usuários vinculados ('+usuariosVinculados.length+')','Vendedores, supervisores e demais operadores',
-          usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>',false,'usuarios')+
+          (conflitosLegados?'<div class="notice">Atenção: '+conflitosLegados+' registro(s) legado(s) com informações conflitantes não foram exibidos. Revise o cadastro canônico do usuário.</div>':'')+
+          (usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>'),false,'usuarios')+
         secao('Ações administrativas','Editar, criar Master Local e gerenciar acesso',acoes,false,'acoes')+
         '</div>');
       if(typeof hidratarLogoClienteIntegro==='function')hidratarLogoClienteIntegro(byId('drawerBody'));
@@ -1795,18 +1856,56 @@
     function abrirDetalheUsuario(id){
       const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
       const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+      const tipoUsuario=String(u.tipoUsuario||'').toLowerCase();
+      const nomeEmpresa=empresa?.nome||empresa?.razaoSocial||
+        (u.clientePlataformaId?'VÍNCULO DE EMPRESA NÃO LOCALIZADO':
+          ['master_global','usuario_integro'].includes(tipoUsuario)?'Equipe ÍNTEGRO':'SEM EMPRESA VINCULADA');
+      const situacaoUsuario=status(u.status)||'NÃO INFORMADO';
+      const acessoRestrito=u.acessoLiberado===false||u.ativo===false||u.empresaBloqueada===true||
+        ['BLOQUEADO','INATIVO','SUSPENSO'].includes(situacaoUsuario);
+      const acessoCadastral=acessoRestrito?'RESTRITO':
+        u.acessoLiberado===true?'LIBERADO NO CADASTRO':'NÃO INFORMADO';
+      const acessoEmpresa=empresa?
+        (clienteLiberadoGlobal(empresa)?'LIBERADO NO CADASTRO DA EMPRESA':
+          'RESTRITO — '+situacaoClienteIntegro(empresa).nome):
+        ['master_global','usuario_integro'].includes(tipoUsuario)&&!u.clientePlataformaId?
+          'NÃO SE APLICA':'VÍNCULO NÃO CONFIRMADO';
       abrirDrawer('Usuário',u.nome||u.email||'Usuário',
         '<div class="grid">'+
         info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
-        info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
-        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado')+
+        info('Empresa',nomeEmpresa)+
+        info('Status cadastral',situacaoUsuario)+
+        info('Acesso cadastral',acessoCadastral)+
+        info('Acesso da empresa',acessoEmpresa)+
+        info('UID Auth',u.authUid||'Não informado')+
         (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
         '</div>');
     }
     function getMastersLocais(){
+      // A listagem e o indicador do dashboard seguem o mesmo UID canônico
+      // da ficha, mesmo antes do backend reconciliado entrar em produção.
+      const canonicos=new Set(usuariosSistema.filter(u=>
+        u.authUid&&String(u.id)===String(u.authUid)).map(u=>String(u.authUid)));
+      const identidadesPorUid=new Map();
+      usuariosSistema.forEach(u=>{
+        const uid=String(u.authUid||'');
+        if(!uid||canonicos.has(uid))return;
+        if(!identidadesPorUid.has(uid))identidadesPorUid.set(uid,[]);
+        identidadesPorUid.get(uid).push(u);
+      });
+      const ambiguos=new Set([...identidadesPorUid].filter(([,registros])=>
+        new Set(registros.map(u=>String(u.clientePlataformaId||'')+'|'+String(u.tipoUsuario||'').toLowerCase())).size>1||
+        ['status','acessoLiberado','ativo','empresaBloqueada'].some(campo=>
+          new Set(registros.map(u=>u[campo]).filter(v=>v!==null&&v!==undefined&&String(v).trim()!=='')
+            .map(v=>campo==='status'?status(v):String(v))).size>1)
+      ).map(([uid])=>uid));
       const unicos=new Map();
-      usuariosSistema.filter(u=>String(u.tipoUsuario||'').toLowerCase()==='master_local'&&
-        u.convitePendente!==true&&status(u.status)!=='PROVISIONADO').forEach(u=>{
+      usuariosSistema.filter(u=>{
+        const uid=String(u.authUid||'');
+        return String(u.tipoUsuario||'').toLowerCase()==='master_local'&&
+          u.convitePendente!==true&&status(u.status)!=='PROVISIONADO'&&
+          (!uid||!canonicos.has(uid)||String(u.id)===uid)&&!ambiguos.has(uid);
+      }).forEach(u=>{
         const chave=String(u.authUid||((u.clientePlataformaId||'')+'|'+(u.email||'').toLowerCase()));
         const anterior=unicos.get(chave);
         if(!anterior||(u.id&&u.authUid&&u.id===u.authUid))unicos.set(chave,u);
