@@ -299,6 +299,10 @@
   </style>
   <style id="mg-cliente-cadastro-extra-20261117">
     #drawer .mg-cli-extras{display:grid;gap:10px;min-width:0}
+    #drawer .mg-cli-ficha-contatos h4{font-size:13px;font-weight:900;color:#0f172a;margin:14px 0 10px}
+    #drawer .mg-cli-ficha-contatos h4:first-child{margin-top:0}
+    #drawer .mg-cli-ficha-contatos dl{padding-bottom:12px;border-bottom:1px solid var(--line)}
+    #drawer .mg-cli-ficha-contatos .mg-ficha-usuario{padding:10px 0}
     #drawer .mg-cli-extras details{border:1px solid var(--line);border-radius:16px;background:#fff;overflow:hidden}
     #drawer .mg-cli-extras summary{padding:13px 15px;font-weight:850;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none}
     #drawer .mg-cli-extras summary::-webkit-details-marker{display:none}
@@ -1677,6 +1681,30 @@
       };
       const planoTexto=plano?((plano.nome||'Plano')+' · '+moeda(plano.valorMensal??plano.valor??0)+'/mês'):'Sem plano definido';
       const testeTexto=c.testeAtivo===true?(c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem prazo confirmado'):'Não ativo';
+      const endereco=c.enderecoCadastral&&typeof c.enderecoCadastral==='object'?c.enderecoCadastral:{};
+      const responsavel=c.responsavelContato&&typeof c.responsavelContato==='object'?c.responsavelContato:{};
+      const contatos=Array.isArray(c.contatosAdicionais)?c.contatosAdicionais.slice(0,2):[];
+      const contatoCampo=(titulo,valor)=>campo(titulo,String(valor||'').trim()||'Não informado');
+      const enderecoHtml='<dl class="mg-ficha-dados">'+
+        contatoCampo('CEP',endereco.cep)+contatoCampo('UF',endereco.uf)+
+        contatoCampo('Logradouro',endereco.logradouro)+contatoCampo('Número',endereco.numero)+
+        contatoCampo('Complemento',endereco.complemento)+contatoCampo('Bairro',endereco.bairro)+
+        contatoCampo('Cidade',endereco.cidade)+
+        (typeof c.endereco==='string'&&c.endereco.trim()&&!endereco.logradouro?
+          contatoCampo('Endereço anterior',c.endereco):'')+'</dl>';
+      const responsavelHtml='<dl class="mg-ficha-dados">'+
+        contatoCampo('Nome',responsavel.nome)+contatoCampo('Cargo',responsavel.cargo)+
+        contatoCampo('Telefone',responsavel.telefone)+contatoCampo('E-mail',responsavel.email)+'</dl>';
+      const outrosContatos=contatos.filter(x=>x&&typeof x==='object'&&
+        (x.nome||x.telefone||x.email)).map((x,i)=>
+        '<div class="mg-ficha-usuario"><strong>'+esc(x.nome||'Contato '+(i+1))+'</strong>'+
+        '<p class="muted">'+esc([x.telefone,x.email].filter(Boolean).join(' · ')||'Sem dados de contato')+'</p></div>'
+      ).join('');
+      const contatosHtml='<div class="mg-cli-ficha-contatos">'+
+        '<h4>Endereço comercial</h4>'+enderecoHtml+
+        '<h4>Responsável administrativo</h4>'+responsavelHtml+
+        '<h4>Contatos adicionais ('+contatos.filter(x=>x&&(x.nome||x.telefone||x.email)).length+')</h4>'+
+        (outrosContatos||'<p class="muted">Nenhum contato adicional cadastrado.</p>')+'</div>';
       const dados='<dl class="mg-ficha-dados">'+
         campo('Nome / Razão social',nome)+campo('Tipo / Documento',(c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+
         campo('E-mail',c.email)+campo('Telefone',c.telefone)+
@@ -1705,6 +1733,7 @@
         '<div class="mg-ficha-statuses">'+resumoStatus(estado.nome,estado.cor)+
         resumoStatus(liberado?'ACESSO LIBERADO':'ACESSO RESTRITO',liberado?'ativo':'bloqueado')+'</div></div></div>'+
         secao('Dados da empresa','Cadastro, plano e acesso',dados,true,'dados')+
+        secao('Endereço e contatos','Localização, responsável e contatos adicionais',contatosHtml,false,'contatos')+
         secao('Master Local ('+masters.length+')','Contas administradoras da empresa',
           masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>',true,'masters')+
         secao('Outros usuários vinculados ('+usuariosVinculados.length+')','Vendedores, supervisores e demais operadores',
