@@ -18,6 +18,7 @@
 
 - **Listagem e dashboard:** filtro “Bloqueado” limitado ao estado `BLOQUEADO`; “Sem acesso” agrupa bloqueio, inatividade e teste expirado. Indicador do dashboard passou a nomear o conjunto corretamente (clientes contratantes, não usuários).
 - **Ficha administrativa:** mantém status real de operador, vínculo Auth cadastral e situação do contratante separadas; alerta quando o tenant está bloqueado/expirado, sem simular verificação do Firebase Auth.
+- **Ações administrativas:** confirmação explícita antes de iniciar/reiniciar teste (backend restaura acesso da empresa e estados individuais previamente bloqueados pela plataforma). Tentativa de liberar manualmente uma empresa cujo teste expirou é interrompida na UI com orientação para renovar, conforme a pré-condição existente do backend. Regressão cobre cancelamento, prazo inválido e recarregamento após sucesso.
 - **Escopo:** unificação para preview dos PRs #59 e #60, sem alterar Firestore Rules, Functions, financeiro ou produção. **M01 continua EM HOMOLOGAÇÃO** até testes autenticados e aceite.
 
 ### M01 — Integridade do estado de usuários na ficha empresarial (17/11/2026)
