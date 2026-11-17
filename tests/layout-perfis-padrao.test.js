@@ -70,7 +70,7 @@ test("Layout: menus legados iniciam recolhidos sem perder callbacks existentes",
   assert.match(css,/main\.main \{\s*margin-left: 0 !important/);
   const eventos={
     "supervisor.html":"toggleSidebar(true)",
-    "financeiro.html":"toggleSidebarFinanceiro()",
+    "financeiro.html":"toggleSidebarFinanceiro(true)",
     "captador.html":"toggleMenuCaptador()",
     "auditor.html":"toggleMenuAuditor()"
   };
