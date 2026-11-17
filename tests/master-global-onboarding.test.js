@@ -470,3 +470,116 @@ test("M01: reativacao preserva bloqueios individuais de Master Local e vendedor"
   assert.equal(vendedorAtual.status,"BLOQUEADO");
   assert.equal(vendedorAtual.empresaBloqueada,false);
 });
+
+
+test("M01 layout clientes ÍNTEGRO: só empresas na raiz, notificações no menu e ações responsivas", () => {
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const inicio=html.indexOf('<section id="clientes" class="screen">');
+  const fim=html.indexOf('</section>',inicio);
+  assert.ok(inicio>=0&&fim>inicio);
+  const section=html.slice(inicio,fim);
+  const header=html.match(/<header class="topbar">([\s\S]*?)<\/header>/)?.[1]||"";
+  assert.doesNotMatch(header,/onclick="trocarTela\('notificacoes'\)"/);
+  assert.match(html,/data-screen="notificacoes"/);
+  assert.match(section,/id="mgClientesBusca"/);
+  assert.match(section,/id="buscaClientes"/);
+  assert.match(section,/id="btnFiltrosClientes"/);
+  assert.match(section,/id="filtrosClientes"[^>]*hidden/);
+  assert.match(section,/id="filtroTipoClientes"/);
+  assert.match(section,/id="filtroStatusClientes"/);
+  assert.match(section,/type="submit" class="btn btn-light mg-clientes-buscar">Buscar/);
+  assert.match(section,/class="btn btn-primary mg-clientes-novo" onclick="abrirFormCliente\(\)"/);
+  assert.match(section,/id="listaClientes"/);
+  assert.doesNotMatch(section,/listaMasters|Criar Master Local|<h2>Clientes ÍNTEGRO<\/h2>/);
+  assert.match(html,/mg-clientes-ativa/);
+  assert.match(html,/\.mg-empresa-card:focus-visible/);
+  assert.match(html,/if\(card&&e\.target===card\)\{e\.preventDefault\(\);card\.click\(\);\}/);
+});
+
+test("M01 layout clientes ÍNTEGRO: pesquisa e filtros aplicados somente aos contratantes", () => {
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const start=html.indexOf("    function alternarFiltrosClientes(){");
+  const end=html.indexOf("    function renderMasters(){",start);
+  const cardStart=html.indexOf("    function cardCliente(c){");
+  const cardEnd=html.indexOf("    function cardUsuario(u,tipo)",cardStart);
+  assert.ok(start>=0&&end>start&&cardStart>=0&&cardEnd>cardStart);
+  const elements={
+    buscaClientes:{value:""},filtroTipoClientes:{value:""},
+    filtroStatusClientes:{value:""},contadorClientes:{text:""},
+    listaClientes:{innerHTML:""}
+  };
+  const data=[
+    {id:"empresa-a",nome:"CHL",tipoPessoa:"PJ",documento:"31.385.158/0001-50",email:"contato@chl.test",acessoLiberado:true},
+    {id:"pessoa-b",nome:"Pessoa de teste",tipoPessoa:"PF",documento:"111.111.111-11",email:"pf@teste.test",acessoLiberado:true,testeAtivo:true},
+    {id:"empresa-c",nome:"Bloqueada",tipoPessoa:"PJ",documento:"22.222.222/0001-22",email:"bloqueada@teste.test",acessoLiberado:false}
+  ];
+  const htmlEsc=value=>String(value??"").replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+  const ctx={
+    clientesIntegro:data,Date,Number,
+    byId:key=>elements[key],val:key=>elements[key]?.value||"",
+    setVal:(key,value)=>{elements[key].value=value;},
+    setText:(key,value)=>{elements[key].text=value;},
+    status:value=>String(value||"").toUpperCase(),
+    clienteLiberadoGlobal:cliente=>cliente.acessoLiberado!==false,
+    dataGlobalMs:()=>NaN,esc:htmlEsc,badge:value=>'<span>'+htmlEsc(value)+'</span>',
+    match:(item,term,fields)=>!term||fields.map(field=>String(item[field]||"")).join(" ").toLowerCase().includes(term),
+    empty:text=>'<div>'+htmlEsc(text)+'</div>'
+  };
+  const exports=vm.runInNewContext(html.slice(start,end)+html.slice(cardStart,cardEnd)+"\n;({renderClientes,cardCliente,limparFiltrosClientes})",ctx);
+  exports.renderClientes();
+  assert.match(elements.contadorClientes.text,/3 cliente/);
+  assert.equal((elements.listaClientes.innerHTML.match(/class="mg-empresa-card"/g)||[]).length,3);
+  assert.doesNotMatch(elements.listaClientes.innerHTML,/Master Local<\/button>|Bloquear<\/button>/);
+  elements.buscaClientes.value="CHL";
+  exports.renderClientes();
+  assert.match(elements.listaClientes.innerHTML,/CHL/);
+  assert.doesNotMatch(elements.listaClientes.innerHTML,/Pessoa de teste|Bloqueada/);
+  elements.buscaClientes.value="";
+  elements.filtroTipoClientes.value="PJ";
+  elements.filtroStatusClientes.value="BLOQUEADO";
+  exports.renderClientes();
+  assert.match(elements.listaClientes.innerHTML,/Bloqueada/);
+  assert.doesNotMatch(elements.listaClientes.innerHTML,/CHL|Pessoa de teste/);
+  elements.filtroTipoClientes.value="";
+  elements.filtroStatusClientes.value="TESTE";
+  exports.renderClientes();
+  assert.match(elements.listaClientes.innerHTML,/Pessoa de teste/);
+  assert.doesNotMatch(elements.listaClientes.innerHTML,/Bloqueada/);
+  exports.limparFiltrosClientes();
+  assert.match(elements.contadorClientes.text,/3 cliente/);
+  const injected=exports.cardCliente({...data[0],id:'<script>alert("x")</script>'});
+  assert.doesNotMatch(injected,/<script>/);
+  assert.match(injected,/&lt;script&gt;/);
+  assert.match(injected,/data-mg-action="ver-cliente"/);
+});
+
+test("M01 layout clientes ÍNTEGRO: ficha da empresa reúne Master Local e demais usuários",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    function abrirDetalheCliente(id){");
+  const b=html.indexOf("    function abrirDetalheUsuario(id){",a);
+  assert.ok(a>=0&&b>a);
+  const escape=value=>String(value??"").replace(/[&<>'"]/g,char=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[char]));
+  let painel="";
+  const ctx={
+    clientesIntegro:[{id:"empresa-a",nome:"Empresa A",tipoPessoa:"PJ",documento:"123",acessoLiberado:true}],
+    usuariosSistema:[
+      {id:"ml",authUid:"ml",nome:"Master A",tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+      {id:"seller",authUid:"seller",nome:"Vendedor A",tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+      {id:"other",authUid:"other",nome:"Vendedor Externo",tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"},
+      {id:"staff",authUid:"staff",nome:"Funcionário ÍNTEGRO",tipoUsuario:"usuario_integro",clientePlataformaId:"empresa-a"}
+    ],
+    planos:[],getMastersLocais:()=>[{id:"ml",authUid:"ml",nome:"Master A",tipoUsuario:"master_local",clientePlataformaId:"empresa-a"}],
+    clienteLiberadoGlobal:()=>true,status:s=>String(s||"").toUpperCase(),
+    esc:escape,info:(title,value)=>'<p>'+escape(title)+': '+escape(value)+'</p>',
+    moeda:()=>"",dataCurta:()=>"",
+    abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
+  };
+  const abrir=vm.runInNewContext(html.slice(a,b)+";abrirDetalheCliente",ctx);
+  abrir("empresa-a");
+  assert.match(painel,/Master A/);
+  assert.match(painel,/Vendedor A/);
+  assert.doesNotMatch(painel,/Vendedor Externo|Funcionário ÍNTEGRO/);
+  assert.match(painel,/Empresas vinculadas/);
+  assert.match(painel,/data-mg-action="ver-usuario"/);
+  assert.match(painel,/data-mg-action="criar-master"/);
+});
