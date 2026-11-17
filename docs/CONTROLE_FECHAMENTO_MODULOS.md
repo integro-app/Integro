@@ -14,6 +14,15 @@
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
 - **Política de regressão:** 'não mexer no que já funciona'; mudanças mínimas, integradas, com verificação técnica e funcional antes de concluir.
 
+### Marco M02 — Segurança multiempresa publicada (16/11/2026)
+
+- **Produção:** PR #49 incorporado no commit `27cff25d383aad7e9ef729ed1f1b34263a9c5ead`. Workflow [#43994254475](https://github.com/integro-app/Integro/actions/runs/43994254475) concluiu com sucesso a publicação de `firestore.rules` no Firebase `integro-novo`.
+- **Confirmação remota:** release `cloud.firestore` atualizada para o ruleset `projects/integro-novo/rulesets/effcd088-f8c4-46ac-b221-7d9e9a3054be`, SHA-256 `190a6e3c7fb3ba5574cd8dd49fb8650c83add5e57779fc7a057d5451f8523ad7`, com leitura de volta da release ativa e conteúdo validado.
+- **Testes:** 718/718 testes de código e 59/59 regras no emulador aprovados no fluxo de publicação. Integrações de Clientes e Vendas/Financeiro aprovadas no PR #49.
+- **Correção da causa:** 72 helpers específicos foram movidos do escopo compartilhado para seus blocos `match`, reduzindo 131 funções globais para 59, sem modificar nenhuma das 131 expressões de funções nem as 166 instruções de permissão.
+- **Não fechar formalmente M02 ainda:** faltam homologação autenticada de múltiplos perfis/empresas, teste de revogação em tempo real, comprovação do isolamento operacional e conferência de indicadores reais com estornos/atrasos. Evitar operações financeiras reais para homologar.
+- **Histórico:** menções anteriores neste documento a “sem deploy” ou “HTTP 503” descrevem etapas passadas, já superadas neste marco.
+
 ## 2. Mapa de todos os módulos
 
 Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de implementação, mas ainda não há fechamento pelo protocolo atual. A coluna "situação observada" é uma triagem, não uma certificação.
@@ -21,7 +30,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | ID | Módulo | Situação observada / necessidade principal | Estado formal |
 |---|---|---|---|
 | M01 | Master Global | CPF/CNPJ e criação de empresa/Master Local confirmados pelo proprietário. Senha inicial aleatória com exibição única, primeiro acesso obrigatório e recuperação administrativa publicados em Hosting e três Cloud Functions; 663/663 testes automatizados. Falta homologação em conta real e demais fluxos administrativos. | EM HOMOLOGAÇÃO |
-| M02 | Empresas/multiempresa | Isolamento de funcionários validado (Rules de produção pendentes por HTTP 503). Na branch `feat/m02-master-local-vinculos-leitura-20261116`: vínculos privados com concessão/revogação exclusiva do Master Global, painel consolidado e consulta financeira operacional sob demanda com bloqueio de totais parciais; nenhum tenant operacional é trocado. **Sem merge, sem deploy em produção e sem homologação real.** | EM DESENVOLVIMENTO (DEPLOY PENDENTE) |
+| M02 | Empresas/multiempresa | Master Global concede/revoga vínculos privados; Master Local tem Visão Consolidada somente leitura e conferência financeira sob demanda com bloqueio de totais parciais. Código da M02 publicado; isolamento Firestore em produção confirmado no workflow #43994254475 após otimização do escopo das 72 funções. **Ainda pendente: homologação autenticada desktop/mobile com dados reais, conciliação financeira e aceite do proprietário.** | EM HOMOLOGAÇÃO |
 | M03 | Login/sessão | Controles previstos; medir lentidão e expiração e resolver D-01 | A HOMOLOGAR |
 | M04 | Usuários | Cadastro/convites e ciclo de vida; testar provisionamento e saneamento | A HOMOLOGAR |
 | M05 | Cargos/permissões | Regras/guardas; provar cada permissão em UI, backend e Rules | A HOMOLOGAR |
