@@ -1419,40 +1419,50 @@
       const liberado=clienteLiberadoGlobal(c);
       const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status));
       const nome=c.nome||c.razaoSocial||'Cliente';
+      const campo=(titulo,valor)=>'<div class="mg-ficha-campo"><dt>'+esc(titulo)+'</dt><dd>'+esc(valor??'-')+'</dd></div>';
+      const secao=(titulo,descricao,conteudo,aberta=false)=>
+        '<details class="mg-ficha-secao"'+(aberta?' open':'')+'>'+
+        '<summary><span>'+esc(titulo)+'<small>'+esc(descricao)+'</small></span>'+
+        '<span class="material-symbols-rounded" aria-hidden="true">expand_more</span></summary>'+
+        '<div class="mg-ficha-conteudo">'+conteudo+'</div></details>';
       const linhaUsuario=(u,tipo)=>{
         const provisionado=u.id===u.authUid&&Boolean(u.authUid);
-        return '<div class="mg-cliente-usuario-item" style="padding:12px 0;border-bottom:1px solid var(--line)">'+
+        return '<div class="mg-ficha-usuario">'+
           '<strong>'+esc(u.nome||u.nomeCompleto||u.email||tipo)+'</strong>'+
           '<p class="muted">'+esc(u.email||'-')+' · '+esc(u.cargoNome||u.tipoUsuario||tipo)+
           (provisionado?' · Auth ativo':' · cadastro pendente')+'</p>'+
-          '<div class="list-actions" style="margin-top:9px;justify-content:flex-start">'+
+          '<div class="list-actions">'+
           '<button type="button" class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver usuário</button>'+
           (tipo==='Master Local'&&provisionado?
             '<button type="button" class="btn btn-light" data-mg-action="editar-master" data-id="'+esc(u.id)+'">Editar</button>'+
             '<button type="button" class="btn btn-light" data-mg-action="vinculos-master" data-id="'+esc(u.id)+'">Empresas vinculadas</button>':'')+
           '</div></div>';
       };
-      abrirDrawer('Cliente ÍNTEGRO · Detalhes',nome,
-        '<div class="grid">'+
-        '<div class="notice">Ficha administrativa da empresa. Dados e usuários vinculados ao cadastro do ÍNTEGRO.</div>'+
-        info('Tipo / Documento',(c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+
-        info('Nome / Razão social',nome)+info('E-mail',c.email)+info('Telefone',c.telefone)+
-        info('Plano comercial',plano?((plano.nome||'Plano')+' · '+moeda(plano.valorMensal??plano.valor??0)+'/mês'):'Sem plano definido')+
-        info('Situação cadastral',c.status||'ATIVO')+
-        info('Acesso à plataforma',liberado?'LIBERADO':'RESTRITO')+
-        info('Período de teste',c.testeAtivo===true?(c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem prazo confirmado'):'Não ativo')+
-        '<section class="empty" style="border-style:solid"><strong>Master Local ('+masters.length+')</strong>'+
-        (masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>')+
-        '</section>'+
-        '<section class="empty" style="border-style:solid"><strong>Outros usuários vinculados ('+usuariosVinculados.length+')</strong>'+
-        (usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>')+
-        '</section>'+
-        '<div class="list-actions" style="flex-wrap:wrap">'+
+      const planoTexto=plano?((plano.nome||'Plano')+' · '+moeda(plano.valorMensal??plano.valor??0)+'/mês'):'Sem plano definido';
+      const testeTexto=c.testeAtivo===true?(c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem prazo confirmado'):'Não ativo';
+      const dados='<dl class="mg-ficha-dados">'+
+        campo('Nome / Razão social',nome)+campo('Tipo / Documento',(c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+
+        campo('E-mail',c.email)+campo('Telefone',c.telefone)+
+        campo('Plano comercial',planoTexto)+campo('Situação cadastral',c.status||'ATIVO')+
+        campo('Acesso à plataforma',liberado?'LIBERADO':'RESTRITO')+campo('Período de teste',testeTexto)+
+        '</dl>';
+      const acoes='<div class="mg-ficha-acoes">'+
         '<button type="button" class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
         '<button type="button" class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
         '<button type="button" class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">Ativar teste</button>'+
         '<button type="button" class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
-        '</div></div>');
+        '</div>';
+      abrirDrawer('Cliente ÍNTEGRO · Detalhes',nome,
+        '<div class="mg-ficha-empresa">'+
+        '<div class="mg-ficha-resumo"><span class="mg-ficha-tipo">'+esc((c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+'</span>'+
+        badge(liberado?'ATIVO':'BLOQUEADO')+'</div>'+
+        secao('Dados da empresa','Cadastro, plano e acesso',dados,true)+
+        secao('Master Local ('+masters.length+')','Contas administradoras da empresa',
+          masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>',true)+
+        secao('Outros usuários vinculados ('+usuariosVinculados.length+')','Vendedores, supervisores e demais operadores',
+          usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>')+
+        secao('Ações administrativas','Editar, criar Master Local e gerenciar acesso',acoes)+
+        '</div>');
     }
     function abrirDetalheUsuario(id){
       const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
