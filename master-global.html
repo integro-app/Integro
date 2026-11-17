@@ -1703,7 +1703,7 @@
         u.authUid&&String(u.id)===String(u.authUid)).map(u=>[String(u.authUid),u]));
       const vinculoConfiavel=u=>{
         const uid=String(u.authUid||'');
-        return !uid||!canonicosPorUid.has(uid)||canonicosPorUid.get(uid)===u;
+        return !uid||!canonicosPorUid.has(uid)||String(u.id)===uid;
       };
       const conflitosLegados=usuariosSistema.filter(u=>u.clientePlataformaId===id&&
         !vinculoConfiavel(u)&&canonicosPorUid.get(String(u.authUid||''))?.clientePlataformaId!==id).length;
