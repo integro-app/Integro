@@ -53,7 +53,13 @@ function iniciarVisaoConsolidadaMasterLocal(usuario) {
     window.IntegroM02VisaoConsolidada?.inicializar?.(atual);
   };
   if (window.IntegroM02VisaoConsolidada?.inicializar) return registrar();
-  if (document.querySelector("script[data-integro-m02-consolidada]")) return;
+  const scriptPendente = document.querySelector("script[data-integro-m02-consolidada]");
+  if (scriptPendente) {
+    // Se a conta mudar durante o download, registra o novo perfil no evento load.
+    // O callback antigo continuará protegido pelas verificações de UID e tenant.
+    scriptPendente.addEventListener("load", registrar, { once: true });
+    return;
+  }
   const script = document.createElement("script");
   script.src = "js/m02-visao-consolidada.js?v=20261116-branch-m02-v1";
   script.async = true;
