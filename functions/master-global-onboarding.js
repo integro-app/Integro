@@ -89,6 +89,75 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     return { ok: true, disponivel: true, motivo: "DISPONIVEL" };
   }
 
+  // Dados cadastrais opcionais, isolados dos documentos e movimentações operacionais.
+  // Só atualiza cada grupo quando ele for informado explicitamente no formulário.
+  function normalizarComplementosCliente(dados) {
+    const patch = {};
+    const proprio = campo => Object.prototype.hasOwnProperty.call(dados || {}, campo);
+    const objeto = (valor, campo) => {
+      if (valor == null) return {};
+      if (typeof valor !== "object" || Array.isArray(valor)) {
+        erro("invalid-argument", campo + " deve ser um objeto.");
+      }
+      return valor;
+    };
+    const limitado = (valor, tamanho, rotulo) => {
+      if (valor != null && typeof valor !== "string") erro("invalid-argument", rotulo + " inválido.");
+      const texto = txt(valor);
+      if (texto.length > tamanho) erro("invalid-argument", rotulo + " excede o limite permitido.");
+      return texto;
+    };
+    const telefoneValido = (valor, rotulo) => {
+      const d = digits(limitado(valor, 30, rotulo));
+      if (d && (d.length < 10 || d.length > 13)) erro("invalid-argument", rotulo + " deve conter DDD.");
+      return d;
+    };
+    const contatoEmail = (valor, rotulo) => {
+      const email = limitado(valor, 254, rotulo).toLowerCase();
+      if (email && !emailValido(email)) erro("invalid-argument", rotulo + " inválido.");
+      return email;
+    };
+
+    if (proprio("enderecoCadastral")) {
+      const e = objeto(dados.enderecoCadastral, "Endereço");
+      const cep = digits(limitado(e.cep, 12, "CEP"));
+      const uf = upper(limitado(e.uf, 2, "UF"));
+      if (cep && cep.length !== 8) erro("invalid-argument", "CEP deve ter oito dígitos.");
+      if (uf && !/^[A-Z]{2}$/.test(uf)) erro("invalid-argument", "UF inválida.");
+      patch.enderecoCadastral = {
+        cep, uf,
+        logradouro: limitado(e.logradouro, 180, "Logradouro"),
+        numero: limitado(e.numero, 30, "Número"),
+        complemento: limitado(e.complemento, 120, "Complemento"),
+        bairro: limitado(e.bairro, 100, "Bairro"),
+        cidade: limitado(e.cidade, 120, "Cidade")
+      };
+    }
+    if (proprio("responsavelContato")) {
+      const r = objeto(dados.responsavelContato, "Responsável");
+      patch.responsavelContato = {
+        nome: limitado(r.nome, 120, "Nome do responsável"),
+        cargo: limitado(r.cargo, 90, "Cargo do responsável"),
+        telefone: telefoneValido(r.telefone, "Telefone do responsável"),
+        email: contatoEmail(r.email, "E-mail do responsável")
+      };
+    }
+    if (proprio("contatosAdicionais")) {
+      if (!Array.isArray(dados.contatosAdicionais) || dados.contatosAdicionais.length > 2) {
+        erro("invalid-argument", "Informe no máximo dois contatos adicionais.");
+      }
+      patch.contatosAdicionais = dados.contatosAdicionais.map((contato, indice) => {
+        const c = objeto(contato, "Contato " + (indice + 1));
+        return {
+          nome: limitado(c.nome, 120, "Nome do contato"),
+          telefone: telefoneValido(c.telefone, "Telefone do contato"),
+          email: contatoEmail(c.email, "E-mail do contato")
+        };
+      }).filter(c => c.nome || c.telefone || c.email);
+    }
+    return patch;
+  }
+
   async function salvarCliente(dados, contexto) {
     const autor = await autorGlobal(contexto);
     const id = txt(dados?.id);
@@ -127,6 +196,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     const atualizacao = {
       tipoPessoa, documento: formatoDocumento(documentoNormalizado), documentoNormalizado,
       nome, razaoSocial: nome, email, emailNormalizado: email, telefone,
+      ...normalizarComplementosCliente(dados),
       atualizadoEm: agora(), atualizadoPorUid: autor.uid
     };
     atualizacao.planoId = planoId; // Permite desvincular plano explicitamente.
