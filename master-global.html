@@ -1722,7 +1722,7 @@
         const acessoRestrito=u.acessoLiberado===false||u.ativo===false||u.empresaBloqueada===true||
           ['BLOQUEADO','INATIVO','SUSPENSO'].includes(situacaoUsuario);
         const acessoCadastral=acessoRestrito?'ACESSO CADASTRAL RESTRITO':
-          u.acessoLiberado===true?'LIBERAÇÃO CADASTRAL INFORMADA':'LIBERAÇÃO NÃO INFORMADA';
+          u.acessoLiberado===true?'ACESSO CADASTRAL LIBERADO':'ACESSO CADASTRAL NÃO INFORMADO';
         return '<div class="mg-ficha-usuario">'+
           '<strong>'+esc(u.nome||u.nomeCompleto||u.email||tipo)+'</strong>'+
           '<p class="muted">'+esc(u.email||'-')+' · '+esc(u.cargoNome||u.tipoUsuario||tipo)+
@@ -1809,7 +1809,7 @@
       const acessoRestrito=u.acessoLiberado===false||u.ativo===false||u.empresaBloqueada===true||
         ['BLOQUEADO','INATIVO','SUSPENSO'].includes(situacaoUsuario);
       const acessoCadastral=acessoRestrito?'RESTRITO':
-        u.acessoLiberado===true?'LIBERAÇÃO INFORMADA':'NÃO INFORMADO';
+        u.acessoLiberado===true?'LIBERADO NO CADASTRO':'NÃO INFORMADO';
       abrirDrawer('Usuário',u.nome||u.email||'Usuário',
         '<div class="grid">'+
         info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
