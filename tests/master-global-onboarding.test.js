@@ -612,3 +612,49 @@ test("M01 mobile: pesquisa dinâmica ignora acentos e pontuação de CPF/CNPJ",(
   assert.deepEqual(pendentes.map(x=>x.ms),[180,180]);
   assert.deepEqual(cancelados,[1],"nova digitação cancela pesquisa pendente");
 });
+
+
+test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administrativas",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  assert.match(html,/id="mg-clientes-padrao-20261117"/);
+  assert.match(html,/#drawer \.mg-ficha-secao>summary:focus-visible/);
+  assert.match(html,/#drawer \.mg-ficha-dados/);
+  const begin=html.indexOf("    function abrirDetalheCliente(id){");
+  const end=html.indexOf("    function abrirDetalheUsuario(id){",begin);
+  assert.ok(begin>=0&&end>begin);
+  const escape=value=>String(value??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  let painel="";
+  const ctx={
+    clientesIntegro:[{id:"empresa-a",nome:"Empresa A",tipoPessoa:"PJ",
+      documento:"12.345.678/0001-11",acessoLiberado:true,testeAtivo:true}],
+    usuariosSistema:[
+      {id:"ml",authUid:"ml",nome:"Admin A",tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+      {id:"seller",authUid:"seller",nome:"Operador A",tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+      {id:"seller-old",authUid:"seller",nome:"Operador legado",tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+      {id:"wrong",authUid:"wrong",nome:"Externo",tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"},
+      {id:"internal",authUid:"internal",nome:"Interno ÍNTEGRO",tipoUsuario:"usuario_integro",clientePlataformaId:"empresa-a"}
+    ],
+    planos:[],getMastersLocais:()=>[{id:"ml",authUid:"ml",nome:"Admin A",tipoUsuario:"master_local",clientePlataformaId:"empresa-a"}],
+    clienteLiberadoGlobal:c=>c.acessoLiberado!==false,
+    status:val=>String(val||"").toUpperCase(),esc:escape,
+    moeda:()=>"",dataCurta:()=>"",
+    badge:val=>'<span class="chip">'+escape(val)+'</span>',
+    abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
+  };
+  const abrir=vm.runInNewContext(html.slice(begin,end)+";abrirDetalheCliente",ctx);
+  abrir("empresa-a");
+  assert.equal((painel.match(/<details class="mg-ficha-secao"/g)||[]).length,4,"quatro grupos na ficha");
+  assert.match(painel,/<details class="mg-ficha-secao" open>/,"dados essenciais aparecem abertos");
+  assert.match(painel,/Master Local \(1\)/);
+  assert.match(painel,/Outros usuários vinculados \(1\)/,"duplicações legadas não inflam contador");
+  assert.match(painel,/Admin A|Operador A/);
+  assert.doesNotMatch(painel,/Externo|Interno ÍNTEGRO|Operador legado/);
+  for(const action of ["ver-usuario","editar-master","vinculos-master","editar-cliente",
+    "criar-master","teste-cliente","acesso-cliente"]){
+    assert.match(painel,new RegExp('data-mg-action="'+action+'"'),action+" preservada na ficha");
+  }
+  assert.match(painel,/mg-ficha-dados/);
+  assert.match(painel,/mg-ficha-acoes/);
+  abrir("empresa-inexistente");
+  assert.equal((painel.match(/<details class="mg-ficha-secao"/g)||[]).length,4,"empresa inválida não substitui ficha");
+});
