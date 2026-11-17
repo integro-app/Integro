@@ -304,3 +304,47 @@ test("botões de Caixas são liberados ao final da ação, mesmo após atualiza�
   assert.match(detail,/data-cx-close \$\{ui\.actionBusy\?'disabled':''\}/);
   assert.match(detail,/data-cx-reopen \$\{ui\.actionBusy\?'disabled':''\}/);
 });
+
+test("M12: supervisão não inventa R$ 0,00 quando saldo do caixa falta na fonte oficial", () => {
+  const vm = require("node:vm");
+  const source = fs.readFileSync(path.join(root, "js/modules/caixas-supervisao.js"), "utf8");
+  const fim = source.indexOf("  const overview = new Map()");
+  assert.ok(fim > 0, "O cálculo de caixas precisa permanecer desacoplável");
+  const runtime = { window: {}, console };
+  vm.runInNewContext(source.slice(0, fim) + "\n global.modeloEmTeste = model;\n})(window);", runtime);
+  const calcular = runtime.window.modeloEmTeste;
+  const box = {
+    id: "cx-um", clientePlataformaId: "empresa-um",
+    vendedorId: "vendedor-um", vendedorAuthUid: "uid-um",
+    status: "ABERTO", ativo: true
+  };
+  const naoRegistrado = calcular(box);
+  assert.equal(naoRegistrado.initial, null, "Saldo inicial ausente não é zero");
+  assert.equal(naoRegistrado.current, null, "Cache vazio não comprova caixa atual zero");
+  assert.equal(naoRegistrado.calculated, null, "Sem saldo inicial não há cálculo válido");
+  assert.equal(naoRegistrado.walletInitial, null, "Carteira inicial ausente não é zero");
+
+  const inicialApenas = calcular({...box, saldoInicialCentavos: 12000});
+  assert.equal(inicialApenas.initial, 12000);
+  assert.equal(inicialApenas.calculated, 12000);
+  assert.equal(inicialApenas.current, null, "Valor calculado não substitui saldo persistido");
+  const confirmado = calcular({...box, saldoInicialCentavos: 12000, saldoAtualCentavos: 8000});
+  assert.equal(confirmado.current, 8000, "Saldo autenticado do caixa deve prevalecer");
+
+  const encerrado = calcular({...box, status: "FECHADO", ativo: false}, {
+    closure: {
+      caixaId: "cx-um", clientePlataformaId: "empresa-um",
+      vendedorAuthUid: "uid-um", caixaInicialCentavos: 12000,
+      caixaFinalInformadoCentavos: 9300
+    }
+  });
+  assert.equal(encerrado.initial, 12000);
+  assert.equal(encerrado.current, 9300, "Fechamento confirmado é fonte válida");
+});
+
+test("M12: total e linhas de supervisão propagam saldo desconhecido sem convertê-lo em zero", () => {
+  const source = fs.readFileSync(path.join(root, "js/modules/caixas-supervisao.js"), "utf8");
+  assert.match(source, /cash\(entries\.some\(v=>v\.models\.some\(m=>m\.current==null\)\)\?null:total\('current'\)\)/);
+  assert.match(source, /cash\(models\.some\(m=>m\[k\]==null\)\?null:models\.reduce/);
+  assert.match(source, /const cash = v => v == null \? 'Não registrado'/);
+});
