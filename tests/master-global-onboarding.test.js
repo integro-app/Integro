@@ -761,6 +761,50 @@ test("M01: ficha distingue status cadastral, UID Auth e empresa realmente vincul
   assert.match(conteudo,/Acesso da empresa: RESTRITO — TESTE EXPIRADO/);
 });
 
+test("M01: ações de acesso e teste evitam liberação incorreta ou acidental",async()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    async function alternarAcessoCliente(id){");
+  const b=html.indexOf("    async function alternarAcessoUsuario(id){",a);
+  assert.ok(a>=0&&b>a);
+  const empresa={id:"empresa-a",nome:"Empresa A",status:"BLOQUEADO",acessoLiberado:false,
+    testeAtivo:true,dataFimTeste:new Date(Date.now()-86400000).toISOString()};
+  const pedidos=[],avisos=[],confirmacoes=[];
+  let permitir=false,carregamentos=0;
+  const contexto={
+    clientesIntegro:[empresa],configuracoesGlobal:{diasTestePadrao:7},
+    dataGlobalMs:v=>v?Date.parse(v):NaN,status:v=>String(v||"").toUpperCase(),
+    confirm:mensagem=>{confirmacoes.push(mensagem);return permitir;},
+    notificarIntegro:mensagem=>avisos.push(mensagem),
+    funcaoMasterGlobal:rota=>entrada=>{pedidos.push({rota,entrada});return Promise.resolve({data:{ok:true}});},
+    carregarTudo:async()=>{carregamentos++;}
+  };
+  const acoes=vm.runInNewContext(
+    "let processandoCadastroGlobal=false;\n"+html.slice(a,b)+
+    ";({alternarAcessoCliente,ativarTesteCliente})",contexto);
+  await acoes.alternarAcessoCliente("empresa-a");
+  assert.equal(pedidos.length,0,"teste expirado bloqueia tentativa desnecessária no backend");
+  assert.match(avisos.at(-1),/Renove o teste/);
+  assert.equal(confirmacoes.length,0,"não oferece liberar algo que o servidor vai rejeitar");
+  await acoes.ativarTesteCliente("empresa-a");
+  assert.equal(pedidos.length,0,"cancelar confirmação preserva dados");
+  assert.match(confirmacoes.at(-1),/libera o acesso da empresa/);
+  assert.match(confirmacoes.at(-1),/restaura os estados anteriores/);
+  permitir=true;
+  await acoes.ativarTesteCliente("empresa-a");
+  assert.equal(pedidos.length,1);
+  assert.equal(pedidos[0].rota,"ativarTesteClienteIntegroGlobal");
+  assert.equal(pedidos[0].entrada.id,"empresa-a");
+  assert.equal(pedidos[0].entrada.dias,7);
+  assert.equal(carregamentos,1,"recarrega dados somente depois do backend");
+  contexto.configuracoesGlobal.diasTestePadrao=91;
+  await acoes.ativarTesteCliente("empresa-a");
+  assert.equal(pedidos.length,1,"prazo inválido é recusado antes do servidor");
+  assert.match(avisos.at(-1),/entre 1 e 90 dias/);
+  assert.match(html,/Renovar teste/);
+  assert.match(html,/Reiniciar teste/);
+  assert.match(html,/data-mg-action="teste-cliente"/);
+});
+
 test("M01: ao voltar para empresa, mantém as seções que estavam expandidas",()=>{
   const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
   const a=html.indexOf("    const estadoFichasClientes=new Map();");
