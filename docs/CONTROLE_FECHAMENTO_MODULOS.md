@@ -18,7 +18,7 @@
 
 - **Achado:** a ficha indicava “Auth ativo” apenas pela igualdade entre ID e UID; a visualização do usuário assumia “ATIVO” sem status cadastral, e empresa vinculada ausente podia ser mascarada por nome legado ou pelo rótulo “Equipe ÍNTEGRO”.
 - **Correção proposta:** separar status cadastral, liberação/restrição cadastral e presença de UID Auth; não afirmar que o login está habilitado sem consulta ao Firebase Auth. Mostrar vínculo empresarial não localizado em vez de empresa presumida. Dados exibidos continuam restritos ao cliente da ficha, com ações existentes preservadas.
-- **Cobertura:** regressão em `tests/master-global-onboarding.test.js` para bloqueado, inativo, status desconhecido, UID não confirmado e vínculo empresarial ausente. Aguardar CI e validação manual com perfis reais; **M01 segue EM HOMOLOGAÇÃO**.
+- **Cobertura:** regressão em `tests/master-global-onboarding.test.js` para bloqueado, inativo, status desconhecido, UID não confirmado, vínculo empresarial ausente, bloqueio da empresa e teste da empresa expirado. A ficha do operador mostra separadamente a restrição do contratante, mesmo se o cadastro do operador estiver liberado. Aguardar CI e validação manual com perfis reais; **M01 segue EM HOMOLOGAÇÃO**.
 - **Publicação:** nenhuma alteração automática de Firestore, Auth, Cloud Functions ou dados de produção nesta etapa.
 
 ### Marco M02 — Segurança multiempresa publicada (16/11/2026)
