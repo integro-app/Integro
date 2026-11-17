@@ -1333,37 +1333,64 @@
       const c=clientesIntegro.find(x=>x.id===id);if(!c)return;
       const plano=planos.find(p=>p.id===c.planoId);
       const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id);
-      const usuariosVinculados=usuariosSistema.filter(u=>u.clientePlataformaId===id&&u.tipoUsuario!=='master_global'&&u.tipoUsuario!=='usuario_integro');
+      const outros=new Map();
+      usuariosSistema.filter(u=>u.clientePlataformaId===id&&
+        !['master_global','usuario_integro','master_local'].includes(String(u.tipoUsuario||'').toLowerCase())&&
+        u.convitePendente!==true).forEach(u=>{
+          const chave=String(u.authUid||u.id||'');
+          if(!chave)return;
+          const anterior=outros.get(chave);
+          if(!anterior||(u.authUid&&u.id===u.authUid))outros.set(chave,u);
+        });
+      const usuariosVinculados=[...outros.values()];
       const liberado=clienteLiberadoGlobal(c);
       const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status));
       const nome=c.nome||c.razaoSocial||'Cliente';
-      abrirDrawer('Ficha 360° · Cliente ÍNTEGRO',nome,
+      const linhaUsuario=(u,tipo)=>{
+        const provisionado=u.id===u.authUid&&Boolean(u.authUid);
+        return '<div class="mg-cliente-usuario-item" style="padding:12px 0;border-bottom:1px solid var(--line)">'+
+          '<strong>'+esc(u.nome||u.nomeCompleto||u.email||tipo)+'</strong>'+
+          '<p class="muted">'+esc(u.email||'-')+' · '+esc(u.cargoNome||u.tipoUsuario||tipo)+
+          (provisionado?' · Auth ativo':' · cadastro pendente')+'</p>'+
+          '<div class="list-actions" style="margin-top:9px;justify-content:flex-start">'+
+          '<button type="button" class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver usuário</button>'+
+          (tipo==='Master Local'&&provisionado?
+            '<button type="button" class="btn btn-light" data-mg-action="editar-master" data-id="'+esc(u.id)+'">Editar</button>'+
+            '<button type="button" class="btn btn-light" data-mg-action="vinculos-master" data-id="'+esc(u.id)+'">Empresas vinculadas</button>':'')+
+          '</div></div>';
+      };
+      abrirDrawer('Cliente ÍNTEGRO · Detalhes',nome,
         '<div class="grid">'+
-        '<div class="notice">Ficha administrativa baseada nos registros carregados do servidor. Não representa movimentação financeira do cliente.</div>'+
+        '<div class="notice">Ficha administrativa da empresa. Dados e usuários vinculados ao cadastro do ÍNTEGRO.</div>'+
         info('Tipo / Documento',(c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+
         info('Nome / Razão social',nome)+info('E-mail',c.email)+info('Telefone',c.telefone)+
         info('Plano comercial',plano?((plano.nome||'Plano')+' · '+moeda(plano.valorMensal??plano.valor??0)+'/mês'):'Sem plano definido')+
         info('Situação cadastral',c.status||'ATIVO')+
         info('Acesso à plataforma',liberado?'LIBERADO':'RESTRITO')+
         info('Período de teste',c.testeAtivo===true?(c.dataFimTeste?dataCurta(c.dataFimTeste):'Sem prazo confirmado'):'Não ativo')+
-        info('Usuários vinculados no painel',String(usuariosVinculados.length))+
-        '<div class="empty" style="border-style:solid"><strong>Masters Locais vinculados ('+masters.length+')</strong>'+
-        (masters.length?masters.map(u=>'<div style="margin-top:10px"><span>'+esc(u.nome||u.email||'Master Local')+'</span><p class="muted">'+esc(u.email||'-')+' · '+esc(u.id===u.authUid&&u.authUid?'Auth provisionado':'Cadastro pendente')+'</p>'+
-          (u.id===u.authUid&&u.authUid?'<button class="btn btn-light" data-mg-action="editar-master" data-id="'+esc(u.id)+'">Editar Master</button>':'')+'</div>').join(''):'<p class="muted">Nenhum Master Local vinculado.</p>')+
-        '</div><div class="list-actions" style="flex-wrap:wrap">'+
-        '<button class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
-        '<button class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
-        '<button class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">Ativar teste</button>'+
-        '<button class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
+        '<section class="empty" style="border-style:solid"><strong>Master Local ('+masters.length+')</strong>'+
+        (masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>')+
+        '</section>'+
+        '<section class="empty" style="border-style:solid"><strong>Outros usuários vinculados ('+usuariosVinculados.length+')</strong>'+
+        (usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>')+
+        '</section>'+
+        '<div class="list-actions" style="flex-wrap:wrap">'+
+        '<button type="button" class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
+        '<button type="button" class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
+        '<button type="button" class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">Ativar teste</button>'+
+        '<button type="button" class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
         '</div></div>');
     }
     function abrirDetalheUsuario(id){
       const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
       const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
       abrirDrawer('Usuário',u.nome||u.email||'Usuário',
+        '<div class="grid">'+
         info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
         info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
-        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado'));
+        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado')+
+        (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
+        '</div>');
     }
     function getMastersLocais(){
       const unicos=new Map();
