@@ -9,6 +9,7 @@ const { criarOnboardingMasterGlobal } = require("../functions/master-global-onbo
 function ambiente() {
   const dados = new Map();
   const authUsers = new Map();
+  const arquivosStorage = new Map();
   let sequence = 0;
   let createFail = false;
   const ref = (colecao, id) => ({
@@ -60,6 +61,19 @@ function ambiente() {
     }
   };
   const admin = {
+    storage: () => ({
+      bucket: name => {
+        assert.equal(name, "integro-novo.firebasestorage.app");
+        return {
+          file: caminho => ({
+            async getMetadata() {
+              if (!arquivosStorage.has(caminho)) throw Object.assign(new Error("not found"), { code: 404 });
+              return [arquivosStorage.get(caminho)];
+            }
+          })
+        };
+      }
+    }),
     firestore: { FieldValue: { serverTimestamp: () => "server-timestamp" },
       Timestamp: { fromDate: data => data } },
     auth: () => ({
@@ -87,7 +101,7 @@ function ambiente() {
   dados.set("usuarios/global-uid", {
     authUid: "global-uid", tipoUsuario: "master_global", acessoLiberado: true, status: "ATIVO"
   });
-  return { api, contexto, dados, authUsers, db, setCreateFail: value => { createFail = value; } };
+  return { api, contexto, dados, authUsers, arquivosStorage, db, setCreateFail: value => { createFail = value; } };
 }
 const cliente = {
   tipoPessoa: "PJ", documento: "11.222.333/0001-81", nome: "Empresa de Teste",
@@ -718,4 +732,87 @@ test("M02: consulta assíncrona de vínculos não reabre janela após troca de c
   resolveConsulta({empresaPrincipalId:"empresa-a",modo:"CONSULTA_SOMENTE_LEITURA",empresasIds:["empresa-a"]});
   await requisicao;
   assert.equal(aberturas,0,"resposta antiga não pode substituir drawer atual");
+});
+
+
+test("M01: gravação de logo exige Master Global, arquivo real e vínculo imutável ao tenant",async()=>{
+  const c=ambiente();
+  const {id}=await c.api.salvarCliente(cliente,c.contexto);
+  const token="a".repeat(32),caminho="tenants/"+id+"/logos/"+token+".png";
+  const entrada={id,logoStoragePath:caminho};
+  await assert.rejects(c.api.salvarLogoCliente(entrada,{}),e=>e.code==="unauthenticated");
+  await assert.rejects(c.api.salvarLogoCliente({...entrada,logoStoragePath:"tenants/outro/logos/"+token+".png"},c.contexto),
+    e=>e.code==="invalid-argument");
+  await assert.rejects(c.api.salvarLogoCliente(entrada,c.contexto),e=>e.code==="not-found");
+  c.arquivosStorage.set(caminho,{
+    contentType:"image/png",size:"2048",metadata:{clientePlataformaId:id}
+  });
+  const res=await c.api.salvarLogoCliente(entrada,c.contexto);
+  assert.equal(res.ok,true);
+  assert.equal(res.logoStoragePath,caminho);
+  assert.equal(c.dados.get("clientes_integro/"+id).logoStoragePath,caminho);
+  assert.equal(c.dados.get("clientes_plataforma/"+id).logoStoragePath,caminho);
+  assert.ok([...c.dados.values()].some(x=>x?.tipoAcao==="ATUALIZAR_LOGO_CLIENTE_INTEGRO"&&x.clientePlataformaId===id));
+  c.arquivosStorage.set(caminho,{contentType:"image/svg+xml",size:"2048",metadata:{clientePlataformaId:id}});
+  await assert.rejects(c.api.salvarLogoCliente(entrada,c.contexto),e=>e.code==="invalid-argument");
+  c.arquivosStorage.set(caminho,{contentType:"image/png",size:"3000000",metadata:{clientePlataformaId:id}});
+  await assert.rejects(c.api.salvarLogoCliente(entrada,c.contexto),e=>e.code==="invalid-argument");
+  c.arquivosStorage.set(caminho,{contentType:"image/png",size:"2048",metadata:{clientePlataformaId:"outro"}});
+  await assert.rejects(c.api.salvarLogoCliente(entrada,c.contexto),e=>e.code==="invalid-argument");
+  c.dados.get("usuarios/global-uid").tipoUsuario="master_local";
+  await assert.rejects(c.api.salvarLogoCliente(entrada,c.contexto),e=>e.code==="permission-denied");
+});
+
+test("M01: logo e situação administrativa usam dados reais, sem inventar vencimento",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const inicioLogo=html.indexOf("    function validarCaminhoLogoCliente(c){");
+  const inicioFicha=html.indexOf("    function abrirDetalheCliente(id){");
+  const fimFicha=html.indexOf("    function abrirDetalheUsuario(id){",inicioFicha);
+  assert.ok(inicioLogo>=0&&inicioFicha>inicioLogo&&fimFicha>inicioFicha);
+  assert.match(html,/firebase-storage-compat\.js/);
+  assert.match(html,/salvarLogoClienteIntegroGlobal:'salvarLogoCliente'/);
+  assert.match(fs.readFileSync(path.join(__dirname,"..","functions/index.js"),"utf8"),
+    /salvarLogoCliente: onboardingGlobal\.salvarLogoCliente/);
+  const campo="tenants/empresa-a/logos/"+"b".repeat(32)+".webp";
+  const v=vm.runInNewContext(html.slice(inicioLogo,html.indexOf("    function hidratarLogoClienteIntegro(",inicioLogo))+
+    ";validarCaminhoLogoCliente",{});
+  assert.equal(v({id:"empresa-a",logoStoragePath:campo}),campo);
+  assert.equal(v({id:"empresa-b",logoStoragePath:campo}),"","logo de outro tenant não é exibida");
+
+  let painel="";
+  const empresa={
+    id:"empresa-a",nome:"Empresa Exemplo",documento:"12.345.678/0001-01",
+    tipoPessoa:"PJ",status:"ATIVO",acessoLiberado:true,logoStoragePath:campo
+  };
+  const contexto={
+    clientesIntegro:[empresa],usuariosSistema:[],planos:[],
+    getMastersLocais:()=>[],clienteLiberadoGlobal:c=>c.acessoLiberado!==false&&c.status!=="BLOQUEADO",
+    status:v=>String(v||"").toUpperCase(),esc:v=>String(v??""),
+    dataCurta:v=>String(v||""),
+    moeda:()=>"",
+    validarCaminhoLogoCliente:v,
+    estadoFichasClientes:new Map(),
+    abrirDrawer:(_titulo,_subtitulo,conteudo)=>{painel=conteudo;}
+  };
+  const abrir=vm.runInNewContext(html.slice(inicioFicha,fimFicha)+";abrirDetalheCliente",contexto);
+  abrir(empresa.id);
+  assert.match(painel,/ATIVO/);
+  assert.match(painel,/ACESSO LIBERADO/);
+  assert.match(painel,/Vencimento da assinatura/);
+  assert.match(painel,/Não informado/);
+  assert.match(painel,/mgLogoClienteArquivo/);
+  assert.match(painel,/data-mg-logo-path/);
+  empresa.status="INATIVO";
+  abrir(empresa.id);
+  assert.match(painel,/mg-ficha-status--inativo">INATIVO/);
+  empresa.status="ATIVO";empresa.acessoLiberado=false;
+  abrir(empresa.id);
+  assert.match(painel,/mg-ficha-status--bloqueado">BLOQUEADO/);
+  empresa.acessoLiberado=true;
+  empresa.testeAtivo=true;empresa.dataFimTeste=new Date(Date.now()+2*86400000).toISOString();
+  abrir(empresa.id);
+  assert.match(painel,/mg-ficha-status--vencer">A VENCER/);
+  empresa.dataFimTeste=new Date(Date.now()-86400000).toISOString();
+  abrir(empresa.id);
+  assert.match(painel,/mg-ficha-status--expirado">TESTE EXPIRADO/);
 });
