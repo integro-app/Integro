@@ -291,6 +291,26 @@ test("M01 listagem de Masters e KPI não aceita vínculos legados de outro tenan
   assert.deepEqual(Array.from(listar(),u=>u.id),["uid-master-a","old-regular-a"]);
 });
 
+test("M01: card de Master sem status não afirma ATIVO nem usa nome empresarial legado",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("function cardUsuario(u,tipo){");
+  const b=html.indexOf("    function trocarTela(id,btn){",a);
+  assert.ok(a>=0&&b>a);
+  const esc=v=>String(v??"").replace(/[&<>'"]/g,ch=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
+  }[ch]));
+  const render=vm.runInNewContext(html.slice(a,b)+";cardUsuario",{
+    clientesIntegro:[],departamentos:[],status:v=>String(v||"").toUpperCase(),
+    esc,badge:val=>'<span class="chip">'+esc(val)+'</span>'
+  });
+  const card=render({id:"uid-a",authUid:"uid-a",nome:"Sem status",
+    tipoUsuario:"master_local",clientePlataformaId:"tenant-a",
+    clientePlataformaNome:"Empresa antiga incorreta"},"master");
+  assert.match(card,/NÃO INFORMADO/);
+  assert.match(card,/VÍNCULO DE EMPRESA NÃO LOCALIZADO/);
+  assert.doesNotMatch(card,/<span class="chip">ATIVO<\/span>|Empresa antiga incorreta/);
+});
+
 test("bloqueio do tenant preserva bloqueios individuais ao reativar", async () => {
   const c = ambiente();
   const { id } = await c.api.salvarCliente(cliente, c.contexto);
@@ -770,6 +790,12 @@ test("M01: ficha nao confunde tenant quando cadastro canonico substitui legado d
       tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
     {id:"amb-legado-b",authUid:"uid-sem-canonico",nome:"Legado ambíguo B",
       tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"},
+    {id:"legado-acesso-ativo",authUid:"uid-acesso-antigo",nome:"Cópia ativa duvidosa",
+      tipoUsuario:"vendedor",status:"ATIVO",acessoLiberado:true,clientePlataformaId:"empresa-a"},
+    {id:"legado-acesso-bloqueado",authUid:"uid-acesso-antigo",nome:"Cópia bloqueada duvidosa",
+      tipoUsuario:"vendedor",status:"BLOQUEADO",acessoLiberado:false,clientePlataformaId:"empresa-a"},
+    {id:"legado-cargo-a",authUid:"uid-vendedor-a",nome:"Master legado cargo inválido",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
     {id:"old-sem-uid-a",nome:"Operador sem UID A",
       tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
     {id:"internal-a",authUid:"internal-a",nome:"Equipe plataforma indevida",
@@ -782,7 +808,7 @@ test("M01: ficha nao confunde tenant quando cadastro canonico substitui legado d
   const ctx={
     clientesIntegro:[{id:"empresa-a",nome:"Empresa A",acessoLiberado:true}],
     usuariosSistema:usuarios,planos:[],
-    inconsistenciasVinculosGlobal:{"empresa-a":4},
+    inconsistenciasVinculosGlobal:{"empresa-a":7},
     getMastersLocais:()=>usuarios.filter(u=>u.tipoUsuario==="master_local"),
     clienteLiberadoGlobal:()=>true,
     situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,
@@ -797,9 +823,9 @@ test("M01: ficha nao confunde tenant quando cadastro canonico substitui legado d
   assert.match(painel,/Outros usuários vinculados \(2\)/,"um canônico e um legado sem UID");
   assert.match(painel,/Master canônico A|Vendedor canônico A|Operador sem UID A/);
   assert.doesNotMatch(painel,/Master legado de A|Vendedor legado de A|Vendedor legado duplicado/);
-  assert.doesNotMatch(painel,/Master legado duplicado|Equipe plataforma indevida/);
+  assert.doesNotMatch(painel,/Master legado duplicado|Equipe plataforma indevida|Cópia ativa duvidosa|Cópia bloqueada duvidosa|Master legado cargo inválido/);
   assert.doesNotMatch(painel,/Master canônico B|Vendedor canônico B|Legado ambíguo A/);
-  assert.match(painel,/4 registro\(s\) legado\(s\) com vínculo empresarial conflitante/,
+  assert.match(painel,/7 registro\(s\) legado\(s\) com informações conflitantes/,
     "diagnóstico do backend prevalece mesmo após remover duplicatas na resposta");
   assert.match(painel,/data-mg-action="ver-usuario" data-id="uid-vendedor-a"/);
   assert.doesNotMatch(painel,/data-mg-action="ver-usuario" data-id="old-vendedor-a"/);
