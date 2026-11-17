@@ -77,3 +77,17 @@ test("leads: indicacao nova aceita operador autorizado sem permitir criacao pelo
   assert.match(bloco, /!isVendedor\(\)/);
   assert.match(bloco, /canCreateLeadByPermission\(\)/);
 });
+
+test("M02: deploy REST exclusivo do Firestore valida fonte e release antes de afirmar sucesso", () => {
+  const publicador = path.join(__dirname, "..", "scripts", "deploy-m02-firestore-rules-rest.mjs");
+  const source = fs.readFileSync(publicador, "utf8");
+  const { spawnSync } = require("node:child_process");
+  const syntax = spawnSync(process.execPath, ["--check", publicador], { encoding: "utf8" });
+  assert.equal(syntax.status, 0, syntax.stderr || "Publicador REST deve ter sintaxe valida");
+  assert.match(source, /await install\('firestore\.rules','cloud\.firestore'\)/);
+  assert.doesNotMatch(source, /await install\('storage\.rules'/);
+  assert.match(source, /if \(current\.rulesetName !== previousName\)/);
+  assert.match(source, /remote\.source\?\.files\?\.some/);
+  assert.match(source, /verifiedActive\.source\?\.files\?\.some/);
+  assert.match(source, /updateMask:'rulesetName'/);
+});
