@@ -1448,7 +1448,7 @@
       const secao=(titulo,descricao,conteudo,aberta=false,chave='')=>{
         const guardado=estadoFichasClientes.get(id);
         const expandida=guardado?guardado.includes(chave):aberta;
-        return '<details class="mg-ficha-secao" data-secao="'+esc(chave)+'"'+(expandida?' open':'')+'>';'+
+        return '<details class="mg-ficha-secao" data-secao="'+esc(chave)+'"'+(expandida?' open':'')+'>'+
         '<summary><span>'+esc(titulo)+'<small>'+esc(descricao)+'</small></span>'+
         '<span class="material-symbols-rounded" aria-hidden="true">expand_more</span></summary>'+
         '<div class="mg-ficha-conteudo">'+conteudo+'</div></details>';
