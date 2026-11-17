@@ -1874,9 +1874,25 @@
         '</div>');
     }
     function getMastersLocais(){
+      // A listagem e o indicador do dashboard seguem o mesmo UID canônico
+      // da ficha, mesmo antes do backend reconciliado entrar em produção.
+      const canonicos=new Set(usuariosSistema.filter(u=>
+        u.authUid&&String(u.id)===String(u.authUid)).map(u=>String(u.authUid)));
+      const identidadesPorUid=new Map();
+      usuariosSistema.forEach(u=>{
+        const uid=String(u.authUid||'');
+        if(!uid||canonicos.has(uid))return;
+        if(!identidadesPorUid.has(uid))identidadesPorUid.set(uid,new Set());
+        identidadesPorUid.get(uid).add(String(u.clientePlataformaId||'')+'|'+String(u.tipoUsuario||'').toLowerCase());
+      });
+      const ambiguos=new Set([...identidadesPorUid].filter(([,v])=>v.size>1).map(([uid])=>uid));
       const unicos=new Map();
-      usuariosSistema.filter(u=>String(u.tipoUsuario||'').toLowerCase()==='master_local'&&
-        u.convitePendente!==true&&status(u.status)!=='PROVISIONADO').forEach(u=>{
+      usuariosSistema.filter(u=>{
+        const uid=String(u.authUid||'');
+        return String(u.tipoUsuario||'').toLowerCase()==='master_local'&&
+          u.convitePendente!==true&&status(u.status)!=='PROVISIONADO'&&
+          (!uid||!canonicos.has(uid)||String(u.id)===uid)&&!ambiguos.has(uid);
+      }).forEach(u=>{
         const chave=String(u.authUid||((u.clientePlataformaId||'')+'|'+(u.email||'').toLowerCase()));
         const anterior=unicos.get(chave);
         if(!anterior||(u.id&&u.authUid&&u.id===u.authUid))unicos.set(chave,u);
