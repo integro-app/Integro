@@ -574,6 +574,7 @@ test("M01 layout clientes ÍNTEGRO: ficha da empresa reúne Master Local e demai
     badge:value=>'<span class="chip">'+escape(value)+'</span>',
     moeda:()=>"",dataCurta:()=>"",
     estadoFichasClientes:new Map(),
+    validarCaminhoLogoCliente:()=>"",
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
   const abrir=vm.runInNewContext(html.slice(a,b)+";abrirDetalheCliente",ctx);
@@ -642,6 +643,7 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
     moeda:()=>"",dataCurta:()=>"",
     badge:val=>'<span class="chip">'+escape(val)+'</span>',
     estadoFichasClientes:new Map([["empresa-a",["usuarios","acoes"]]]),
+    validarCaminhoLogoCliente:()=>"",
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
   const abrir=vm.runInNewContext(html.slice(begin,end)+";abrirDetalheCliente",ctx);
