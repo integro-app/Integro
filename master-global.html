@@ -228,7 +228,9 @@
     #clientes .mg-clientes-search .form-input{width:100%;height:52px;padding-left:47px;font-weight:550;background:#fff}
     #clientes .mg-clientes-form .btn{min-height:52px;height:auto;white-space:nowrap;gap:7px}
     #clientes .mg-clientes-novo{padding-inline:22px;box-shadow:0 10px 24px rgba(255,133,0,.22)}
-    #clientes .mg-clientes-filtros[hidden]{display:none!important}
+    #clientes .mg-clientes-filtros[hidden],#clientes .mg-clientes-filter-count[hidden]{display:none!important}
+    #clientes .mg-clientes-filter-btn.mg-filtros-ativos{border-color:#fb923c;color:#9a3412;background:#fff7ed}
+    #clientes .mg-clientes-filter-count{display:inline-flex;align-items:center;justify-content:center;min-width:21px;height:21px;border-radius:999px;background:#ea580c;color:#fff;font-size:11px;font-weight:900;padding:0 5px}
     #clientes .mg-clientes-filtros{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:12px;background:#fff;border:1px solid var(--line);border-radius:19px;padding:16px;margin-bottom:14px}
     #clientes .mg-clientes-filtros .form-label{margin:0;min-width:0}
     #clientes .mg-clientes-filtros .form-select{display:block;margin-top:7px;text-transform:none;letter-spacing:normal}
@@ -293,8 +295,8 @@
     <section id="clientes" class="screen">
       <div class="mg-clientes-panel">
         <form id="mgClientesBusca" class="mg-clientes-form" onsubmit="event.preventDefault();renderClientes()">
-          <label class="mg-clientes-search" for="buscaClientes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaClientes" class="form-input" type="search" autocomplete="off" enterkeyhint="search" aria-label="Buscar cliente ÍNTEGRO" placeholder="Buscar empresa, CPF/CNPJ, e-mail ou telefone"></label>
-          <button type="button" id="btnFiltrosClientes" class="btn btn-light mg-clientes-filter-btn" aria-controls="filtrosClientes" aria-expanded="false" onclick="alternarFiltrosClientes()"><span class="material-symbols-rounded" aria-hidden="true">tune</span>Filtros</button>
+          <label class="mg-clientes-search" for="buscaClientes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaClientes" class="form-input" type="search" autocomplete="off" enterkeyhint="search" oninput="agendarBuscaClientes()" onsearch="renderClientes()" aria-label="Buscar cliente ÍNTEGRO" placeholder="Buscar empresa, CPF/CNPJ, e-mail ou telefone"></label>
+          <button type="button" id="btnFiltrosClientes" class="btn btn-light mg-clientes-filter-btn" aria-controls="filtrosClientes" aria-expanded="false" onclick="alternarFiltrosClientes()"><span class="material-symbols-rounded" aria-hidden="true">tune</span>Filtros<span id="contadorFiltrosClientes" class="mg-clientes-filter-count" hidden></span></button>
           <button type="submit" class="btn btn-light mg-clientes-buscar">Buscar</button>
           <button type="button" class="btn btn-primary mg-clientes-novo" onclick="abrirFormCliente()"><span class="material-symbols-rounded" aria-hidden="true">add_circle</span>Novo cliente</button>
         </form>
@@ -501,29 +503,66 @@
           teste?box('Períodos de teste ativos',teste+' clientes em avaliação'):''].join(''):
         empty('Nenhum alerta contratual nos cadastros carregados.');
     }
+    let temporizadorBuscaClientes=null;
+    function agendarBuscaClientes(){
+      // Digitação no celular não deve reconstruir a lista a cada tecla.
+      if(temporizadorBuscaClientes!==null)clearTimeout(temporizadorBuscaClientes);
+      temporizadorBuscaClientes=setTimeout(()=>{
+        temporizadorBuscaClientes=null;
+        renderClientes();
+      },180);
+    }
+    function normalizarBuscaClientes(valor){
+      return String(valor??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    }
+    function correspondeBuscaCliente(cliente,consulta){
+      if(!consulta)return true;
+      const termo=normalizarBuscaClientes(consulta);
+      const campos=['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone'];
+      if(campos.some(campo=>normalizarBuscaClientes(cliente[campo]).includes(termo)))return true;
+      // CPF/CNPJ e telefone também precisam funcionar digitando só números,
+      // mesmo com pontos, barras, traços ou parênteses armazenados.
+      if(!/^\d{3,}$/.test(termo))return false;
+      return ['documento','telefone'].some(campo=>String(cliente[campo]??'').replace(/\D/g,'').includes(termo));
+    }
+    function atualizarEstadoFiltrosClientes(){
+      const ativos=Number(Boolean(val('filtroTipoClientes')))+Number(Boolean(val('filtroStatusClientes')));
+      const indicador=byId('contadorFiltrosClientes'),botao=byId('btnFiltrosClientes');
+      if(indicador){indicador.hidden=ativos===0;indicador.textContent=ativos?String(ativos):'';}
+      if(botao){
+        botao.classList.toggle('mg-filtros-ativos',ativos>0);
+        botao.setAttribute('aria-label',ativos?'Filtros, '+ativos+' ativo(s)':'Filtros');
+      }
+    }
     function alternarFiltrosClientes(){
       const painel=byId('filtrosClientes'),botao=byId('btnFiltrosClientes');
       if(!painel||!botao)return;
       painel.hidden=!painel.hidden;
       botao.setAttribute('aria-expanded',String(!painel.hidden));
+      if(!painel.hidden)byId('filtroTipoClientes')?.focus({preventScroll:true});
     }
     function limparFiltrosClientes(){
+      if(temporizadorBuscaClientes!==null){
+        clearTimeout(temporizadorBuscaClientes);
+        temporizadorBuscaClientes=null;
+      }
       setVal('buscaClientes','');setVal('filtroTipoClientes','');setVal('filtroStatusClientes','');
       renderClientes();
     }
     function renderClientes(){
-      const termo=val('buscaClientes').toLowerCase();
+      const termo=val('buscaClientes');
       const tipo=val('filtroTipoClientes');
       const situacao=val('filtroStatusClientes');
       // Somente contratantes de clientes_integro; os usuários ficam na ficha.
       const lista=clientesIntegro.filter(c=>
-        match(c,termo,['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone']) &&
+        correspondeBuscaCliente(c,termo) &&
         (!tipo||status(c.tipoPessoa)===tipo) &&
         (!situacao||(situacao==='LIBERADO'&&clienteLiberadoGlobal(c))||
           (situacao==='BLOQUEADO'&&!clienteLiberadoGlobal(c))||
           (situacao==='TESTE'&&c.testeAtivo===true&&clienteLiberadoGlobal(c)))
       );
       setText('contadorClientes',lista.length+' cliente(s) ÍNTEGRO exibido(s).');
+      atualizarEstadoFiltrosClientes();
       const host=byId('listaClientes');
       if(host)host.innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente ÍNTEGRO encontrado com estes filtros.');
     }

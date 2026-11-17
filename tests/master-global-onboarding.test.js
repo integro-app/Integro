@@ -498,7 +498,7 @@ test("M01 layout clientes ÍNTEGRO: só empresas na raiz, notificações no menu
 
 test("M01 layout clientes ÍNTEGRO: pesquisa e filtros aplicados somente aos contratantes", () => {
   const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
-  const start=html.indexOf("    function alternarFiltrosClientes(){");
+  const start=html.indexOf("    let temporizadorBuscaClientes=null;");
   const end=html.indexOf("    function renderMasters(){",start);
   const cardStart=html.indexOf("    function cardCliente(c){");
   const cardEnd=html.indexOf("    function cardUsuario(u,tipo)",cardStart);
@@ -582,4 +582,33 @@ test("M01 layout clientes ÍNTEGRO: ficha da empresa reúne Master Local e demai
   assert.match(painel,/Empresas vinculadas/);
   assert.match(painel,/data-mg-action="ver-usuario"/);
   assert.match(painel,/data-mg-action="criar-master"/);
+});
+
+
+test("M01 mobile: pesquisa dinâmica ignora acentos e pontuação de CPF/CNPJ",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  assert.match(html,/id="buscaClientes"[^>]*oninput="agendarBuscaClientes\(\)"/);
+  assert.match(html,/id="contadorFiltrosClientes"[^>]*hidden/);
+  const start=html.indexOf("    let temporizadorBuscaClientes=null;");
+  const end=html.indexOf("    function renderMasters(){",start);
+  assert.ok(start>=0&&end>start);
+  const pendentes=[];
+  const cancelados=[];
+  const ctx={
+    setTimeout:(fn,ms)=>{pendentes.push({fn,ms});return pendentes.length;},
+    clearTimeout:id=>cancelados.push(id)
+  };
+  const funcs=vm.runInNewContext(html.slice(start,end)+
+    ";({correspondeBuscaCliente,agendarBuscaClientes,normalizarBuscaClientes})",ctx);
+  const cliente={nome:"São José Serviços",documento:"31.385.158/0001-50",telefone:"(11) 95839-6155"};
+  assert.equal(funcs.correspondeBuscaCliente(cliente,"sao jose"),true);
+  assert.equal(funcs.correspondeBuscaCliente(cliente,"31385158000150"),true);
+  assert.equal(funcs.correspondeBuscaCliente(cliente,"958396155"),true);
+  assert.equal(funcs.correspondeBuscaCliente(cliente,"958396999"),false);
+  assert.equal(funcs.correspondeBuscaCliente(cliente,""),true);
+  funcs.agendarBuscaClientes();
+  funcs.agendarBuscaClientes();
+  assert.equal(pendentes.length,2);
+  assert.deepEqual(pendentes.map(x=>x.ms),[180,180]);
+  assert.deepEqual(cancelados,[1],"nova digitação cancela pesquisa pendente");
 });
