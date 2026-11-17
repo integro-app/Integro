@@ -1727,7 +1727,8 @@
           '<strong>'+esc(u.nome||u.nomeCompleto||u.email||tipo)+'</strong>'+
           '<p class="muted">'+esc(u.email||'-')+' · '+esc(u.cargoNome||u.tipoUsuario||tipo)+
           esc(' · Cadastro: '+situacaoUsuario+' · '+acessoCadastral+
-            (provisionado?' · UID Auth vinculado':' · UID Auth não confirmado'))+'</p>'+
+            (provisionado?' · UID Auth vinculado':' · UID Auth não confirmado')+
+            (!liberado?' · EMPRESA SEM ACESSO ('+estado.nome+')':''))+'</p>'+
           '<div class="list-actions">'+
           '<button type="button" class="btn btn-light" data-mg-action="ver-usuario" data-id="'+esc(u.id)+'">Ver usuário</button>'+
           (tipo==='Master Local'&&provisionado?
@@ -1810,12 +1811,18 @@
         ['BLOQUEADO','INATIVO','SUSPENSO'].includes(situacaoUsuario);
       const acessoCadastral=acessoRestrito?'RESTRITO':
         u.acessoLiberado===true?'LIBERADO NO CADASTRO':'NÃO INFORMADO';
+      const acessoEmpresa=empresa?
+        (clienteLiberadoGlobal(empresa)?'LIBERADO NO CADASTRO DA EMPRESA':
+          'RESTRITO — '+situacaoClienteIntegro(empresa).nome):
+        ['master_global','usuario_integro'].includes(tipoUsuario)&&!u.clientePlataformaId?
+          'NÃO SE APLICA':'VÍNCULO NÃO CONFIRMADO';
       abrirDrawer('Usuário',u.nome||u.email||'Usuário',
         '<div class="grid">'+
         info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
         info('Empresa',nomeEmpresa)+
         info('Status cadastral',situacaoUsuario)+
         info('Acesso cadastral',acessoCadastral)+
+        info('Acesso da empresa',acessoEmpresa)+
         info('UID Auth',u.authUid||'Não informado')+
         (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
         '</div>');
