@@ -62,6 +62,29 @@ test("Layout: Supervisor usa notificações apenas no menu, sem botão duplicado
   assert.match(principal, /data-integro-menu-trigger/);
 });
 
+test("Layout: menus legados iniciam recolhidos sem perder callbacks existentes",()=>{
+  const css=ler("css/integro-layout-roles.css");
+  assert.match(css,/\[data-integro-sidebar\] \{/);
+  assert.match(css,/transform: translateX\(-105%\) !important/);
+  assert.match(css,/\[data-integro-sidebar\]:is\(\.show,\.open,\.active\)/);
+  assert.match(css,/main\.main \{\s*margin-left: 0 !important/);
+  const eventos={
+    "supervisor.html":"toggleSidebar(true)",
+    "financeiro.html":"toggleSidebarFinanceiro()",
+    "captador.html":"toggleMenuCaptador()",
+    "auditor.html":"toggleMenuAuditor()"
+  };
+  for(const [nome,callback] of Object.entries(eventos)){
+    const html=ler(nome);
+    assert.match(html,/data-integro-sidebar/);
+    assert.match(html,/data-integro-sidebar-overlay/);
+    assert.match(html,/data-integro-menu-trigger/);
+    assert.ok(html.includes(callback),nome+": botão continua chamando navegação existente");
+    assert.doesNotMatch(html, /integro-equipe-sidebar\.js/,
+      "o script exclusivo da Equipe não pode interferir nos quatro perfis");
+  }
+});
+
 test("Layout: Equipe ÍNTEGRO mantém rotas operacionais e adota menu responsivo", () => {
   const html = ler("usuario-integro.html");
   assert.match(html, /css\/integro-design-system\.css/);
