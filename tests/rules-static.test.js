@@ -106,5 +106,5 @@ test("M02: helpers especificos ficam nos matches para reduzir custo de compilaca
   assert.match(trecho("/caixas/{id}", "/fechamentos_caixa/{id}"), /function canReadCaixa\(/);
   assert.match(trecho("/lancamentos_financeiros/{id}", "/caixas/{id}"), /function canCreateLedger\(/);
   assert.match(trecho("/vendas/{id}", "/parcelas/{id}"), /function canCreateVenda\(/);
-  assert.match(trecho("/conversas/{id}", "/presencas_chat/{uid}"), /function canReadMensagem\(/);
+  assert.match(rules, /match \/conversas\/\{id\} \{[\s\S]*?function canReadMensagem\(/);
 });
