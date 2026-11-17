@@ -23,6 +23,13 @@
 - **Não fechar formalmente M02 ainda:** faltam homologação autenticada de múltiplos perfis/empresas, teste de revogação em tempo real, comprovação do isolamento operacional e conferência de indicadores reais com estornos/atrasos. Evitar operações financeiras reais para homologar.
 - **Histórico:** menções anteriores neste documento a “sem deploy” ou “HTTP 503” descrevem etapas passadas, já superadas neste marco.
 
+### M22 — Padronização visual comparativa por perfil (17/11/2026)
+
+- Solicitação do proprietário: comparar todas as telas aos padrões de layout já aprovados. Matriz em [`MATRIZ_LAYOUT_PERFIS_20261117.md`](MATRIZ_LAYOUT_PERFIS_20261117.md) cobre os **nove HTML de acesso/perfis**.
+- Login, Master Local, Vendedor e Master Global preservados visualmente. Supervisor, Financeiro, Captador, Auditor e Equipe interna recebem camada CSS opt-in, sem normalização global de menu ou alterações de regras de negócio.
+- Supervisor: notificações somente pelo menu lateral; Equipe interna: menu lateral recolhido e responsivo com botão acessível, overlay, Escape e fechamento após seleção. Títulos, botões e superfícies harmonizados nos cinco perfis.
+- **Status:** alterações em revisão e homologação; não constitui aceite nem fechamento M22. Validar visualmente com usuário autenticado em desktop/celular, inclusive modais, filtros e estados dinâmicos antes de publicar.
+
 ## 2. Mapa de todos os módulos
 
 Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de implementação, mas ainda não há fechamento pelo protocolo atual. A coluna "situação observada" é uma triagem, não uma certificação.
