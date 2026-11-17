@@ -67,6 +67,15 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
   function reconciliarUsuariosPainel(usuarios) {
     const registrosPorUid = new Map(), canonicosPorUid = new Map();
     const conflitosPorEmpresa = new Map(), escolhidos = new Set();
+    // Ausência de campo não cria um conflito; dois valores explícitos divergentes
+    // criam. Não escolher a cópia mais recente para simular autorização.
+    const divergenciaAcesso = registros =>
+      ["status", "acessoLiberado", "ativo", "empresaBloqueada"].some(campo => {
+        const valores = registros.map(u => u[campo])
+          .filter(v => v !== null && v !== undefined && txt(v) !== "")
+          .map(v => campo === "status" ? upper(v) : String(v));
+        return new Set(valores).size > 1;
+      });
     const contarConflito = u => {
       const empresa = txt(u.clientePlataformaId);
       if (empresa) conflitosPorEmpresa.set(empresa, (conflitosPorEmpresa.get(empresa) || 0) + 1);
@@ -84,18 +93,19 @@ function criarGestaoMasterGlobal({ admin, functions, db }) {
         escolhidos.add(canonico.id);
         registros.forEach(u => {
           if (u.id !== canonico.id &&
-              txt(u.clientePlataformaId) !== txt(canonico.clientePlataformaId)) contarConflito(u);
+              (txt(u.clientePlataformaId) !== txt(canonico.clientePlataformaId) ||
+               upper(u.tipoUsuario) !== upper(canonico.tipoUsuario))) contarConflito(u);
         });
         continue;
       }
       const identidades = new Set(registros.map(u =>
         txt(u.clientePlataformaId) + "|" + txt(u.tipoUsuario).toLowerCase()));
       // Sem canônico e com empresas/papéis divergentes, não escolher um tenant arbitrário.
-      if (identidades.size > 1) {
+      if (identidades.size > 1 || divergenciaAcesso(registros)) {
         registros.forEach(contarConflito);
         continue;
       }
-      // Cópias da mesma empresa/papel: apenas uma, por regra estável.
+      // Cópias da mesma empresa/papel e sem divergência de acesso: uma só, por regra estável.
       const escolhido = registros.slice().sort((a, b) => {
         const dataA = Date.parse(txt(a.atualizadoEm)) || 0;
         const dataB = Date.parse(txt(b.atualizadoEm)) || 0;
