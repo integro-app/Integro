@@ -377,7 +377,8 @@
           const id=btn.dataset.id,acao=btn.dataset.mgAction;
           const mapa={
             departamento:()=>abrirFormDepartamento(id),plano:()=>abrirFormPlano(id),
-            'ver-usuario':()=>abrirDetalheUsuario(id),
+            'ver-cliente':()=>abrirDetalheCliente(id),
+             'ver-usuario':()=>abrirDetalheUsuario(id),
             'editar-master':()=>abrirEdicaoMasterLocal(id),
             'recuperar-master':()=>abrirRecuperacaoSenhaMasterLocal(id),
             'vinculos-master':()=>abrirVinculosMasterLocal(id),
@@ -392,6 +393,11 @@
             'acesso-cliente':()=>alternarAcessoCliente(id)
           };
           if(mapa[acao])mapa[acao]();
+        });
+        document.addEventListener('keydown',e=>{
+          if(e.key!=='Enter'&&e.key!==' ')return;
+          const card=e.target?.closest?.('.mg-empresa-card[data-mg-action="ver-cliente"]');
+          if(card&&e.target===card){e.preventDefault();card.click();}
         });
       }
     }
@@ -495,8 +501,33 @@
           teste?box('Períodos de teste ativos',teste+' clientes em avaliação'):''].join(''):
         empty('Nenhum alerta contratual nos cadastros carregados.');
     }
-    function renderClientes(){const termo=val('buscaClientes').toLowerCase();let lista=clientesIntegro.filter(c=>match(c,termo,['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone']));setText('contadorClientes',`${lista.length} cliente(s) exibido(s).`);byId('listaClientes').innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente encontrado.')}
-    function renderMasters(){const lista=getMastersLocais();byId('listaMasters').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
+    function alternarFiltrosClientes(){
+      const painel=byId('filtrosClientes'),botao=byId('btnFiltrosClientes');
+      if(!painel||!botao)return;
+      painel.hidden=!painel.hidden;
+      botao.setAttribute('aria-expanded',String(!painel.hidden));
+    }
+    function limparFiltrosClientes(){
+      setVal('buscaClientes','');setVal('filtroTipoClientes','');setVal('filtroStatusClientes','');
+      renderClientes();
+    }
+    function renderClientes(){
+      const termo=val('buscaClientes').toLowerCase();
+      const tipo=val('filtroTipoClientes');
+      const situacao=val('filtroStatusClientes');
+      // Somente contratantes de clientes_integro; os usuários ficam na ficha.
+      const lista=clientesIntegro.filter(c=>
+        match(c,termo,['nome','nomeCompleto','razaoSocial','fantasia','documento','email','telefone']) &&
+        (!tipo||status(c.tipoPessoa)===tipo) &&
+        (!situacao||(situacao==='LIBERADO'&&clienteLiberadoGlobal(c))||
+          (situacao==='BLOQUEADO'&&!clienteLiberadoGlobal(c))||
+          (situacao==='TESTE'&&c.testeAtivo===true&&clienteLiberadoGlobal(c)))
+      );
+      setText('contadorClientes',lista.length+' cliente(s) ÍNTEGRO exibido(s).');
+      const host=byId('listaClientes');
+      if(host)host.innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente ÍNTEGRO encontrado com estes filtros.');
+    }
+    function renderMasters(){const host=byId('listaMasters');if(!host)return;const lista=getMastersLocais();host.innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
     function renderUsuariosInternos(){const lista=getUsuariosInternos();byId('listaUsuarios').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'interno')).join(''):empty('Nenhum usuário interno encontrado.')}
     function renderDepartamentos(){
       byId('listaDepartamentos').innerHTML=departamentos.length?departamentos.map(d=>
@@ -602,7 +633,18 @@
       const a=document.createElement('a');a.href=url;a.download='integro-'+tipo+'-'+new Date().toISOString().slice(0,10)+'.csv';
       document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
     }
-    function cardCliente(c){const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente'; const bloq=!clienteLiberadoGlobal(c); const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status)); const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now(); return `<div class="list-card"><div class="list-bar" style="background:${bloq?'#ef4444':c.testeAtivo?'#ff6b00':'#22c55e'}"></div><div><h3>${esc(nome)}</h3><p class="muted">${esc(c.tipoPessoa||'PJ')} • ${esc(c.documento||'-')} • ${esc(c.email||'-')}</p><p>${badge(testeExpirado?'TESTE EXPIRADO':bloq?'BLOQUEADO':c.status||'ATIVO')} ${c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':''}</p></div><div class="list-actions"><button class="btn btn-light" onclick="abrirDetalheCliente('${c.id}')">Ver</button><button class="btn btn-light" onclick="abrirFormCliente('${c.id}')">Editar</button><button class="btn btn-primary" onclick="abrirFormMasterLocal('${c.id}')">Master Local</button><button class="btn btn-success" onclick="ativarTesteCliente('${c.id}')">Teste ${Number(configuracoesGlobal.diasTestePadrao)||7}d</button><button class="btn ${bloqueioManual?'btn-success':'btn-danger'}" onclick="alternarAcessoCliente('${c.id}')">${bloqueioManual?'Liberar':'Bloquear'}</button></div></div>`}
+    function cardCliente(c){
+      const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente ÍNTEGRO';
+      const bloqueado=!clienteLiberadoGlobal(c);
+      const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now();
+      const situacao=testeExpirado?'TESTE EXPIRADO':bloqueado?'BLOQUEADO':c.status||'ATIVO';
+      return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+'" aria-label="Abrir ficha de '+esc(nome)+'">'+
+        '<span class="mg-empresa-bar" aria-hidden="true" style="background:'+(bloqueado?'#ef4444':c.testeAtivo?'#ff9500':'#22c55e')+'"></span>'+
+        '<div class="mg-empresa-content"><h3>'+esc(nome)+'</h3>'+
+        '<p class="mg-empresa-meta">'+esc(c.tipoPessoa||'PJ')+' · '+esc(c.documento||'-')+' · '+esc(c.email||'-')+'</p>'+
+        '<div class="mg-empresa-tags">'+badge(situacao)+(c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':'')+'</div></div>'+
+        '<span class="mg-empresa-open">Ver detalhes<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></span></article>';
+    }
     function cardUsuario(u,tipo){
       const nome=u.nome||u.nomeCompleto||u.email||'Usuário';
       const bloq=u.acessoLiberado===false||status(u.status)==='BLOQUEADO';
@@ -628,7 +670,7 @@
             '<button class="btn btn-primary" data-mg-action="provisionar-interno" data-id="'+esc(u.id)+'">Provisionar Auth</button>':''))+
         '</div></div>';
     }
-    function trocarTela(id,btn){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
+    function trocarTela(id,btn){document.body.classList.toggle('mg-clientes-ativa',id==='clientes');document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
     function atualizarBotaoAcao(id){
       const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],
         masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],
