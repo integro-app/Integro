@@ -262,6 +262,8 @@
 
     /* Ficha 360º do cliente: seções compactas e recolhíveis, preservando funções administrativas. */
     #drawer .mg-ficha-empresa{display:grid;gap:12px;min-width:0}
+    #drawer .mg-ficha-voltar{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:44px;margin-bottom:12px;font-weight:750}
+    #drawer .mg-ficha-voltar .material-symbols-rounded{font-size:19px}
     #drawer .mg-ficha-resumo{border:1px solid var(--line);border-radius:18px;background:#f8fafc;padding:14px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
     #drawer .mg-ficha-resumo .mg-ficha-tipo{color:#475569;font-size:13px;font-weight:750}
     #drawer .mg-ficha-secao{border:1px solid var(--line);border-radius:18px;background:#fff;overflow:hidden;min-width:0}
@@ -753,7 +755,24 @@
       const cfg=map[id];botao.style.display=cfg?'':'none';
       if(cfg){botao.textContent=cfg[0];botao.onclick=()=>cfg[1]();}
     }
-    function abrirSidebar(){byId('sidebar').classList.add('show');byId('sidebarOverlay').classList.add('show');document.body.classList.add('menu-mobile-open');byId('btnMenu')?.setAttribute('aria-expanded','true')} function fecharSidebar(){byId('sidebar').classList.remove('show');byId('sidebarOverlay').classList.remove('show');document.body.classList.remove('menu-mobile-open');byId('btnMenu')?.setAttribute('aria-expanded','false')} function abrirDrawer(t,s,h){
+    function abrirSidebar(){byId('sidebar').classList.add('show');byId('sidebarOverlay').classList.add('show');document.body.classList.add('menu-mobile-open');byId('btnMenu')?.setAttribute('aria-expanded','true')} function fecharSidebar(){byId('sidebar').classList.remove('show');byId('sidebarOverlay').classList.remove('show');document.body.classList.remove('menu-mobile-open');byId('btnMenu')?.setAttribute('aria-expanded','false')} // Guarda quais seções o usuário expandiu, para restaurar ao voltar da edição.
+    const estadoFichasClientes=new Map();
+    let geracaoDrawerMasterGlobal=0;
+    function salvarEstadoFichaCliente(){
+      const ficha=byId('drawerBody')?.querySelector('.mg-ficha-empresa[data-cliente-id]');
+      const id=ficha?.dataset?.clienteId;
+      if(!id)return;
+      estadoFichasClientes.set(id,Array.from(ficha.querySelectorAll('details.mg-ficha-secao[data-secao]'))
+        .filter(secao=>secao.open).map(secao=>secao.dataset.secao));
+    }
+    function botaoVoltarEmpresa(clienteId){
+      return clienteId&&clientesIntegro.some(c=>c.id===clienteId)?
+        '<button type="button" class="btn btn-light mg-ficha-voltar" data-mg-action="ver-cliente" data-id="'+esc(clienteId)+'">'+
+        '<span class="material-symbols-rounded" aria-hidden="true">arrow_back</span>Voltar para empresa</button>':'';
+    }
+    function abrirDrawer(t,s,h){
+      salvarEstadoFichaCliente();
+      geracaoDrawerMasterGlobal++;
       setText('drawerTitle',t);setText('drawerSubtitle',s);
       byId('drawerBody').innerHTML=h;
       byId('drawer').classList.add('show');byId('drawerOverlay').classList.add('show');
@@ -763,6 +782,8 @@
       sincronizarAreaVisivelMasterGlobal();
     }
     function fecharDrawer(){
+      salvarEstadoFichaCliente();
+      geracaoDrawerMasterGlobal++;
       if(document.activeElement?.closest?.('#drawer'))document.activeElement.blur();
       const segredo=byId('senhaTemporariaMaster');if(segredo)segredo.textContent='';
       const inicial=byId('mgSenhaCriada');if(inicial)inicial.value='';
@@ -1330,6 +1351,7 @@
       const u=usuariosSistema.find(x=>x.id===id&&x.authUid===x.id&&x.tipoUsuario==='master_local');
       if(!u)return notificarIntegro('Master Local provisionado não encontrado.');
       const principal=String(u.clientePlataformaId||'');
+      const geracaoInicial=geracaoDrawerMasterGlobal;
       let consulta;
       try{
         // NUNCA confiar nos campos editáveis de usuarios/{uid} para conceder vínculo.
@@ -1338,9 +1360,12 @@
             consulta.modo!=='CONSULTA_SOMENTE_LEITURA'||
             !Array.isArray(consulta.empresasIds))throw new Error('Vínculos retornados inconsistentes.');
       }catch(erro){
+        if(geracaoInicial!==geracaoDrawerMasterGlobal)return;
         console.error('[MASTER GLOBAL] Consulta de vínculos multiempresa',erro);
         return notificarIntegro(mensagemErroGlobal(erro));
       }
+      // Evita abrir um drawer de outro usuário depois de fechar ou navegar.
+      if(geracaoInicial!==geracaoDrawerMasterGlobal||!byId('drawer')?.classList.contains('show'))return;
       const selecionados=new Set(consulta.empresasIds);
       const linhas=clientesIntegro.map(c=>{
         const obrigatorio=c.id===principal;
@@ -1354,7 +1379,7 @@
           '</span></span></label>';
       }).join('');
       abrirDrawer('Empresas vinculadas do Master Local',u.nome||u.email||'Administrador',
-        '<div class="grid"><div class="notice">Vincule empresas para futura visão consolidada <strong>somente leitura</strong>. '+
+        '<div class="grid">'+botaoVoltarEmpresa(principal)+'<div class="notice">Vincule empresas para futura visão consolidada <strong>somente leitura</strong>. '+
         'Esta etapa NÃO altera a empresa operacional do login, nem libera vendas, caixas, cobranças ou dados financeiros de outras empresas.</div>'+
         '<p class="muted">Selecione até 25 empresas. A empresa principal não pode ser removida.</p>'+
         '<div id="mgEmpresasVinculoMaster" class="grid" style="max-height:50dvh;overflow-y:auto;gap:8px">'+
@@ -1373,7 +1398,7 @@
       if(!u)return notificarIntegro('Master Local não provisionado ou não encontrado.');
       const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
       abrirDrawer('Editar Master Local','Empresa vinculada não pode ser trocada',
-        '<div class="grid"><label class="form-label">Empresa</label><input class="form-input" readonly value="'+esc(empresa?.nome||u.clientePlataformaNome||u.clientePlataformaId)+'">'+
+        '<div class="grid">'+botaoVoltarEmpresa(u.clientePlataformaId)+'<label class="form-label">Empresa</label><input class="form-input" readonly value="'+esc(empresa?.nome||u.clientePlataformaNome||u.clientePlataformaId)+'">'+
         '<label class="form-label">E-mail de login</label><input class="form-input" readonly value="'+esc(u.email||'')+'">'+
         '<label class="form-label">Nome</label><input id="mlEdicaoNome" maxlength="180" class="form-input" value="'+esc(u.nome||'')+'">'+
         '<button class="btn btn-primary" id="btnSalvarEdicaoMaster">Salvar alterações</button>'+
@@ -1420,11 +1445,14 @@
       const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status));
       const nome=c.nome||c.razaoSocial||'Cliente';
       const campo=(titulo,valor)=>'<div class="mg-ficha-campo"><dt>'+esc(titulo)+'</dt><dd>'+esc(valor??'-')+'</dd></div>';
-      const secao=(titulo,descricao,conteudo,aberta=false)=>
-        '<details class="mg-ficha-secao"'+(aberta?' open':'')+'>'+
+      const secao=(titulo,descricao,conteudo,aberta=false,chave='')=>{
+        const guardado=estadoFichasClientes.get(id);
+        const expandida=guardado?guardado.includes(chave):aberta;
+        return '<details class="mg-ficha-secao" data-secao="'+esc(chave)+'"'+(expandida?' open':'')+'>'+
         '<summary><span>'+esc(titulo)+'<small>'+esc(descricao)+'</small></span>'+
         '<span class="material-symbols-rounded" aria-hidden="true">expand_more</span></summary>'+
         '<div class="mg-ficha-conteudo">'+conteudo+'</div></details>';
+      };
       const linhaUsuario=(u,tipo)=>{
         const provisionado=u.id===u.authUid&&Boolean(u.authUid);
         return '<div class="mg-ficha-usuario">'+
@@ -1453,15 +1481,15 @@
         '<button type="button" class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
         '</div>';
       abrirDrawer('Cliente ÍNTEGRO · Detalhes',nome,
-        '<div class="mg-ficha-empresa">'+
+        '<div class="mg-ficha-empresa" data-cliente-id="'+esc(id)+'">'+
         '<div class="mg-ficha-resumo"><span class="mg-ficha-tipo">'+esc((c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+'</span>'+
         badge(liberado?'ATIVO':'BLOQUEADO')+'</div>'+
-        secao('Dados da empresa','Cadastro, plano e acesso',dados,true)+
+        secao('Dados da empresa','Cadastro, plano e acesso',dados,true,'dados')+
         secao('Master Local ('+masters.length+')','Contas administradoras da empresa',
-          masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>',true)+
+          masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>',true,'masters')+
         secao('Outros usuários vinculados ('+usuariosVinculados.length+')','Vendedores, supervisores e demais operadores',
-          usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>')+
-        secao('Ações administrativas','Editar, criar Master Local e gerenciar acesso',acoes)+
+          usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>',false,'usuarios')+
+        secao('Ações administrativas','Editar, criar Master Local e gerenciar acesso',acoes,false,'acoes')+
         '</div>');
     }
     function abrirDetalheUsuario(id){

@@ -573,6 +573,7 @@ test("M01 layout clientes ÍNTEGRO: ficha da empresa reúne Master Local e demai
     esc:escape,info:(title,value)=>'<p>'+escape(title)+': '+escape(value)+'</p>',
     badge:value=>'<span class="chip">'+escape(value)+'</span>',
     moeda:()=>"",dataCurta:()=>"",
+    estadoFichasClientes:new Map(),
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
   const abrir=vm.runInNewContext(html.slice(a,b)+";abrirDetalheCliente",ctx);
@@ -640,12 +641,15 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
     status:val=>String(val||"").toUpperCase(),esc:escape,
     moeda:()=>"",dataCurta:()=>"",
     badge:val=>'<span class="chip">'+escape(val)+'</span>',
+    estadoFichasClientes:new Map([["empresa-a",["usuarios","acoes"]]]),
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
   const abrir=vm.runInNewContext(html.slice(begin,end)+";abrirDetalheCliente",ctx);
   abrir("empresa-a");
   assert.equal((painel.match(/<details class="mg-ficha-secao"/g)||[]).length,4,"quatro grupos na ficha");
-  assert.match(painel,/<details class="mg-ficha-secao" open>/,"dados essenciais aparecem abertos");
+  assert.match(painel,/<details class="mg-ficha-secao" data-secao="usuarios" open>/,"seção de usuários restaurada");
+  assert.match(painel,/<details class="mg-ficha-secao" data-secao="acoes" open>/,"ações restauradas");
+  assert.match(painel,/<details class="mg-ficha-secao" data-secao="dados">/,"estado anterior preservado");
   assert.match(painel,/Master Local \(1\)/);
   assert.match(painel,/Outros usuários vinculados \(1\)/,"duplicações legadas não inflam contador");
   assert.match(painel,/Admin A|Operador A/);
@@ -658,4 +662,58 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
   assert.match(painel,/mg-ficha-acoes/);
   abrir("empresa-inexistente");
   assert.equal((painel.match(/<details class="mg-ficha-secao"/g)||[]).length,4,"empresa inválida não substitui ficha");
+});
+
+
+test("M01: ao voltar para empresa, mantém as seções que estavam expandidas",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    const estadoFichasClientes=new Map();");
+  const b=html.indexOf("    function abrirDrawer(t,s,h){",a);
+  assert.ok(a>=0&&b>a,"Controlador de navegação e memória precisa existir");
+  const elems=[
+    {open:false,dataset:{secao:"dados"}},
+    {open:true,dataset:{secao:"masters"}},
+    {open:true,dataset:{secao:"usuarios"}},
+    {open:false,dataset:{secao:"acoes"}}
+  ];
+  const ficha={dataset:{clienteId:"empresa-a"},querySelectorAll:()=>elems};
+  const ctx={
+    clientesIntegro:[{id:"empresa-a",nome:"Empresa A"}],
+    byId:key=>key==="drawerBody"?{querySelector:()=>ficha}:null,
+    esc:val=>String(val)
+  };
+  const funcs=vm.runInNewContext(html.slice(a,b)+
+    ";({salvarEstadoFichaCliente,botaoVoltarEmpresa,estadoFichasClientes})",ctx);
+  funcs.salvarEstadoFichaCliente();
+  assert.equal(Array.from(funcs.estadoFichasClientes.get("empresa-a")).join(","),"masters,usuarios");
+  assert.match(funcs.botaoVoltarEmpresa("empresa-a"),/data-mg-action="ver-cliente"/);
+  assert.match(funcs.botaoVoltarEmpresa("empresa-a"),/Voltar para empresa/);
+  assert.equal(funcs.botaoVoltarEmpresa("empresa-b"),"","sem vínculo não há retorno inválido");
+});
+
+test("M02: consulta assíncrona de vínculos não reabre janela após troca de contexto",async()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    async function abrirVinculosMasterLocal(id){");
+  const b=html.indexOf("    function abrirEdicaoMasterLocal(id){",a);
+  assert.ok(a>=0&&b>a);
+  let resolveConsulta;
+  let aberturas=0;
+  const drawer={classList:{contains:()=>true}};
+  const ctx={
+    usuariosSistema:[{id:"master-a",authUid:"master-a",tipoUsuario:"master_local",clientePlataformaId:"empresa-a"}],
+    clientesIntegro:[{id:"empresa-a",nome:"Empresa A"},{id:"empresa-b",nome:"Empresa B"}],
+    geracaoDrawerMasterGlobal:5,
+    chamarGestaoGlobal:()=>new Promise(resolve=>{resolveConsulta=resolve;}),
+    byId:key=>key==="drawer"?drawer:{},
+    abrirDrawer:()=>{aberturas++;},
+    botaoVoltarEmpresa:()=>'<button data-mg-action="ver-cliente">Voltar para empresa</button>',
+    esc:val=>String(val),console,
+    notificarIntegro:()=>{throw Error("não deve mostrar aviso após fechar a ficha");}
+  };
+  const abrir=vm.runInNewContext(html.slice(a,b)+";abrirVinculosMasterLocal",ctx);
+  const requisicao=abrir("master-a");
+  ctx.geracaoDrawerMasterGlobal=6;
+  resolveConsulta({empresaPrincipalId:"empresa-a",modo:"CONSULTA_SOMENTE_LEITURA",empresasIds:["empresa-a"]});
+  await requisicao;
+  assert.equal(aberturas,0,"resposta antiga não pode substituir drawer atual");
 });
