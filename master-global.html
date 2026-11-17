@@ -369,7 +369,7 @@
         </form>
         <div id="filtrosClientes" class="mg-clientes-filtros" hidden>
           <label class="form-label" for="filtroTipoClientes">Tipo de cliente<select id="filtroTipoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos (PF e PJ)</option><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></label>
-          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso bloqueado</option><option value="TESTE">Em teste</option></select></label>
+          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso bloqueado</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option></select></label>
           <button type="button" class="btn btn-light mg-clientes-limpar" onclick="limparFiltrosClientes()">Limpar filtros</button>
         </div>
         <p id="contadorClientes" class="muted mg-clientes-contador" role="status" aria-live="polite"></p>
@@ -543,6 +543,31 @@
       }
       return true;
     }
+    // Fonte única de situação visual para cards, filtros e ficha administrativa.
+    // Status de acesso não certifica cobrança paga nem vencimento financeiro.
+    function situacaoClienteIntegro(c){
+      const agora=Date.now();
+      const testeFim=c.testeAtivo===true?dataGlobalMs(c.dataFimTeste):NaN;
+      const diasRestantes=Number.isFinite(testeFim)?Math.ceil((testeFim-agora)/86400000):null;
+      const expirou=Number.isFinite(testeFim)&&testeFim<=agora;
+      const inativo=c.ativo===false||status(c.status)==='INATIVO';
+      const bloqueioMs=dataGlobalMs(c.bloqueioAssinaturaEm);
+      const bloqueado=c.acessoLiberado===false||['BLOQUEADO','SUSPENSO'].includes(status(c.status))||
+        (Number.isFinite(bloqueioMs)&&bloqueioMs<=agora);
+      const liberado=clienteLiberadoGlobal(c);
+      const contratoVencimento=c.vencimentoAssinaturaEm||c.dataVencimentoAssinatura||null;
+      const contratoMs=dataGlobalMs(contratoVencimento);
+      const diasContrato=Number.isFinite(contratoMs)?Math.ceil((contratoMs-agora)/86400000):null;
+      const estado=inativo?{nome:'INATIVO',cor:'inativo'}:
+        bloqueado?{nome:'BLOQUEADO',cor:'bloqueado'}:
+        expirou?{nome:'TESTE EXPIRADO',cor:'expirado'}:
+        !liberado?{nome:'ACESSO RESTRITO',cor:'bloqueado'}:
+        (diasRestantes!==null&&diasRestantes>=0&&diasRestantes<=7)||
+        (diasContrato!==null&&diasContrato>=0&&diasContrato<=7)?{nome:'A VENCER',cor:'vencer'}:
+        c.testeAtivo===true?{nome:'EM TESTE',cor:'teste'}:
+        {nome:'ATIVO',cor:'ativo'};
+      return {...estado,liberado,testeFim,diasRestantes,expirou,contratoVencimento,contratoMs};
+    }
     function notificacaoLidaGlobal(n){
       return (n.lidaPorUids||[]).includes(usuarioLogado?.authUid)||['LIDA','RESOLVIDA'].includes(status(n.status));
     }
@@ -622,13 +647,18 @@
       const tipo=val('filtroTipoClientes');
       const situacao=val('filtroStatusClientes');
       // Somente contratantes de clientes_integro; os usuários ficam na ficha.
-      const lista=clientesIntegro.filter(c=>
-        correspondeBuscaCliente(c,termo) &&
-        (!tipo||status(c.tipoPessoa)===tipo) &&
-        (!situacao||(situacao==='LIBERADO'&&clienteLiberadoGlobal(c))||
-          (situacao==='BLOQUEADO'&&!clienteLiberadoGlobal(c))||
-          (situacao==='TESTE'&&c.testeAtivo===true&&clienteLiberadoGlobal(c)))
-      );
+      const lista=clientesIntegro.filter(c=>{
+        if(!correspondeBuscaCliente(c,termo)||tipo&&status(c.tipoPessoa)!==tipo)return false;
+        if(!situacao)return true;
+        const estado=situacaoClienteIntegro(c);
+        if(situacao==='LIBERADO')return estado.liberado;
+        if(situacao==='BLOQUEADO')return !estado.liberado;
+        if(situacao==='TESTE')return c.testeAtivo===true&&estado.liberado;
+        return estado.nome===({
+          ATIVO:'ATIVO',INATIVO:'INATIVO',A_VENCER:'A VENCER',
+          TESTE_EXPIRADO:'TESTE EXPIRADO'
+        }[situacao]||'__DESCONHECIDO__');
+      });
       setText('contadorClientes',lista.length+' cliente(s) ÍNTEGRO exibido(s).');
       atualizarEstadoFiltrosClientes();
       const host=byId('listaClientes');
@@ -742,14 +772,20 @@
     }
     function cardCliente(c){
       const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente ÍNTEGRO';
-      const bloqueado=!clienteLiberadoGlobal(c);
-      const testeExpirado=c.testeAtivo===true&&Number.isFinite(dataGlobalMs(c.dataFimTeste))&&dataGlobalMs(c.dataFimTeste)<=Date.now();
-      const situacao=testeExpirado?'TESTE EXPIRADO':bloqueado?'BLOQUEADO':c.status||'ATIVO';
+      const estado=situacaoClienteIntegro(c);
+      const chipCor=estado.cor==='ativo'?'green':['vencer','teste','inativo'].includes(estado.cor)?'orange':'red';
+      const barra=estado.cor==='ativo'?'#22c55e':['vencer','teste','inativo'].includes(estado.cor)?'#f97316':'#ef4444';
+      const vencimento=(estado.nome==='A VENCER'&&Number.isFinite(estado.testeFim))?
+        '<span class="chip">Teste: '+esc(dataCurta(c.dataFimTeste))+'</span>':
+        estado.nome==='A VENCER'&&Number.isFinite(estado.contratoMs)?
+        '<span class="chip">Contrato: '+esc(dataCurta(estado.contratoVencimento))+'</span>':'';
       return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+'" aria-label="Abrir ficha de '+esc(nome)+'">'+
-        '<span class="mg-empresa-bar" aria-hidden="true" style="background:'+(bloqueado?'#ef4444':c.testeAtivo?'#ff9500':'#22c55e')+'"></span>'+
+        '<span class="mg-empresa-bar" aria-hidden="true" style="background:'+barra+'"></span>'+
         '<div class="mg-empresa-content"><h3>'+esc(nome)+'</h3>'+
         '<p class="mg-empresa-meta">'+esc(c.tipoPessoa||'PJ')+' · '+esc(c.documento||'-')+' · '+esc(c.email||'-')+'</p>'+
-        '<div class="mg-empresa-tags">'+badge(situacao)+(c.testeAtivo&&clienteLiberadoGlobal(c)?'<span class="chip orange">Teste ativo</span>':'')+'</div></div>'+
+        '<div class="mg-empresa-tags"><span class="chip '+chipCor+'">'+esc(estado.nome)+'</span>'+
+        (c.testeAtivo===true&&estado.liberado&&estado.nome!=='EM TESTE'?'<span class="chip orange">Em teste</span>':'')+
+        vencimento+'</div></div>'+
         '<span class="mg-empresa-open">Ver detalhes<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></span></article>';
     }
     function cardUsuario(u,tipo){
@@ -1530,32 +1566,8 @@
       const liberado=clienteLiberadoGlobal(c);
       const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status));
       const nome=c.nome||c.razaoSocial||'Cliente';
-      // Status de acesso não é equivalente a pagamento de mensalidade.
-      // "A vencer" só aparece quando existe uma data explícita de vencimento.
-      const dataMs=valor=>{
-        if(valor?.toMillis)return valor.toMillis();
-        if(valor?.toDate)return valor.toDate().getTime();
-        return valor?Date.parse(valor):NaN;
-      };
-      const agora=Date.now();
-      const testeFim=c.testeAtivo===true?dataMs(c.dataFimTeste):NaN;
-      const diasRestantes=Number.isFinite(testeFim)?Math.ceil((testeFim-agora)/86400000):null;
-      const expirou=Number.isFinite(testeFim)&&testeFim<=agora;
-      const inativo=c.ativo===false||status(c.status)==='INATIVO';
-      const bloqueado=c.acessoLiberado===false||
-        ['BLOQUEADO','SUSPENSO'].includes(status(c.status))||
-        (Number.isFinite(dataMs(c.bloqueioAssinaturaEm))&&dataMs(c.bloqueioAssinaturaEm)<=agora);
-      const contratoVencimento=c.vencimentoAssinaturaEm||c.dataVencimentoAssinatura||null;
-      const contratoMs=dataMs(contratoVencimento);
-      const diasContrato=Number.isFinite(contratoMs)?Math.ceil((contratoMs-agora)/86400000):null;
-      const estado=inativo?{nome:'INATIVO',cor:'inativo'}:
-        bloqueado?{nome:'BLOQUEADO',cor:'bloqueado'}:
-        expirou?{nome:'TESTE EXPIRADO',cor:'expirado'}:
-        !liberado?{nome:'ACESSO RESTRITO',cor:'bloqueado'}:
-        (diasRestantes!==null&&diasRestantes>=0&&diasRestantes<=7)||
-        (diasContrato!==null&&diasContrato>=0&&diasContrato<=7)?{nome:'A VENCER',cor:'vencer'}:
-        c.testeAtivo===true?{nome:'EM TESTE',cor:'teste'}:
-        {nome:'ATIVO',cor:'ativo'};
+      const estado=situacaoClienteIntegro(c);
+      const {testeFim,diasRestantes,expirou,contratoVencimento,contratoMs}=estado;
       const vencimentoContrato=Number.isFinite(contratoMs)?dataCurta(contratoVencimento):'Não informado';
       const vencimentoTeste=c.testeAtivo===true?
         (Number.isFinite(testeFim)?dataCurta(c.dataFimTeste)+(expirou?' · expirado':diasRestantes<=7?' · a vencer':''):'Prazo não informado'):'Não está em teste';
