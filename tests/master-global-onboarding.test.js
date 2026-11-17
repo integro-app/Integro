@@ -277,6 +277,35 @@ test("bloqueio do tenant preserva bloqueios individuais ao reativar", async () =
   assert.equal(c.dados.get("usuarios/vendedor-inativo").status, "BLOQUEADO");
 });
 
+test("M01: renovar teste não desbloqueia usuário individualmente bloqueado nem cruza empresas",async()=>{
+  const c=ambiente();
+  const principal=await c.api.salvarCliente(cliente,c.contexto);
+  const outra=await c.api.salvarCliente({...cliente,documento:"52998224725",tipoPessoa:"PF",
+    nome:"Outro Cliente",email:"outro@empresa.com.br"},c.contexto);
+  c.dados.set("usuarios/vendedor-liberado",{
+    authUid:"vendedor-liberado",tipoUsuario:"vendedor",clientePlataformaId:principal.id,
+    acessoLiberado:true,status:"ATIVO"
+  });
+  c.dados.set("usuarios/vendedor-bloqueado",{
+    authUid:"vendedor-bloqueado",tipoUsuario:"vendedor",clientePlataformaId:principal.id,
+    acessoLiberado:false,status:"BLOQUEADO"
+  });
+  c.dados.set("usuarios/vendedor-outra-empresa",{
+    authUid:"vendedor-outra-empresa",tipoUsuario:"vendedor",clientePlataformaId:outra.id,
+    acessoLiberado:false,status:"BLOQUEADO"
+  });
+  await c.api.alterarAcesso({id:principal.id,liberado:false},c.contexto);
+  const externoAntes=JSON.stringify(c.dados.get("usuarios/vendedor-outra-empresa"));
+  await c.api.ativarTeste({id:principal.id,dias:7},c.contexto);
+  assert.equal(c.dados.get("clientes_integro/"+principal.id).acessoLiberado,true);
+  assert.equal(c.dados.get("usuarios/vendedor-liberado").acessoLiberado,true);
+  assert.equal(c.dados.get("usuarios/vendedor-liberado").empresaBloqueada,false);
+  assert.equal(c.dados.get("usuarios/vendedor-bloqueado").acessoLiberado,false);
+  assert.equal(c.dados.get("usuarios/vendedor-bloqueado").status,"BLOQUEADO");
+  assert.equal(JSON.stringify(c.dados.get("usuarios/vendedor-outra-empresa")),externoAntes,
+    "renovar teste de um cliente não altera usuário de outro tenant");
+});
+
 test("cadastro M01: CPF/CNPJ dinamico e teclado de documento livre", () => {
   const html = fs.readFileSync(path.join(__dirname, "..", "master-global.html"), "utf8");
   const a = html.indexOf("    function formatarDocumentoClienteIntegro(");
