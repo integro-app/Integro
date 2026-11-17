@@ -167,6 +167,51 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     return { ok: true, id: ref.id, criado: true };
   }
 
+  // A logo só pode ser vinculada por Master Global depois que o objeto existe
+  // no bucket esperado. O cliente não escolhe URL externa nem escreve no Firestore.
+  async function salvarLogoCliente(dados, contexto) {
+    const autor = await autorGlobal(contexto);
+    const id = txt(dados?.id);
+    const logoStoragePath = txt(dados?.logoStoragePath);
+    if (!/^[A-Za-z0-9_-]{1,128}$/.test(id)) erro("invalid-argument", "Cliente ÍNTEGRO inválido.");
+    const prefixo = "tenants/" + id + "/logos/";
+    if (!logoStoragePath.startsWith(prefixo) ||
+        !/^[A-Za-z0-9_-]{32}\.(png|jpg|webp)$/.test(logoStoragePath.slice(prefixo.length))) {
+      erro("invalid-argument", "Caminho da logo não corresponde ao cliente.");
+    }
+    const ref = db.collection("clientes_integro").doc(id);
+    const snap = await ref.get();
+    if (!snap.exists) erro("not-found", "Cliente ÍNTEGRO não encontrado.");
+    const bucket = admin.storage().bucket("integro-novo.firebasestorage.app");
+    let metadata;
+    try {
+      [metadata] = await bucket.file(logoStoragePath).getMetadata();
+    } catch (e) {
+      if (e?.code === 404) erro("not-found", "Logo não encontrada no armazenamento.");
+      erro("unavailable", "Não foi possível verificar o arquivo da logo.");
+    }
+    const mime = { png: "image/png", jpg: "image/jpeg", webp: "image/webp" }[
+      logoStoragePath.split(".").pop()];
+    if (metadata?.contentType !== mime || Number(metadata.size) <= 0 ||
+        Number(metadata.size) > 2 * 1024 * 1024 ||
+        metadata?.metadata?.clientePlataformaId !== id) {
+      erro("invalid-argument", "Arquivo da logo inválido para a empresa.");
+    }
+    await db.runTransaction(async tx => {
+      const atual = await tx.get(ref);
+      if (!atual.exists) erro("not-found", "Cliente não encontrado durante a atualização.");
+      const patch = { logoStoragePath, logoAtualizadaEm: agora(), atualizadoPorUid: autor.uid };
+      tx.set(ref, patch, { merge: true });
+      tx.set(db.collection("clientes_plataforma").doc(id), patch, { merge: true });
+      tx.create(db.collection("logs").doc(), {
+        tipoAcao: "ATUALIZAR_LOGO_CLIENTE_INTEGRO", clientePlataformaId: id,
+        usuarioId: autor.uid, usuarioAuthUid: autor.uid,
+        detalhe: "Identidade visual atualizada", criadoEm: agora()
+      });
+    });
+    return { ok: true, id, logoStoragePath };
+  }
+
   async function usuariosDoTenant(id) {
     const q = await db.collection("usuarios").where("clientePlataformaId", "==", id).limit(351).get();
     if (q.docs.length > 350) erro("resource-exhausted", "Empresa com mais de 350 usuários: bloqueio exige operação em lotes. Nenhuma alteração realizada.");
@@ -359,7 +404,7 @@ function criarOnboardingMasterGlobal({ admin, functions, db }) {
     }
   }
 
-  return { salvarCliente, consultarDocumento, alterarAcesso, ativarTeste, criarMasterLocal, documentoValido };
+  return { salvarCliente, salvarLogoCliente, consultarDocumento, alterarAcesso, ativarTeste, criarMasterLocal, documentoValido };
 }
 
 module.exports = { criarOnboardingMasterGlobal };
