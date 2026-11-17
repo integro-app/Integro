@@ -35,10 +35,14 @@
     .kpi strong{font-size:27px;font-weight:600;display:block;margin-top:9px}
     @media(max-width:820px){.shell{display:block}aside{padding:14px;gap:10px}.logo{font-size:23px}.menu{display:flex;overflow-x:auto}.menu button{flex-shrink:0}.perfil{display:none}.sair{margin-top:0}main{padding:14px}header{align-items:flex-start}h1{font-size:21px}.panel{padding:16px}.kpis{grid-template-columns:1fr 1fr}}
   </style>
+  <link rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2">
+  <link rel="stylesheet" href="css/integro-layout-roles.css?v=20261117-v1">
 </head>
-<body>
-<div class="shell">
-  <aside>
+<body data-integro-page="usuario-integro" data-integro-layout="padrao-perfis-v1">
+<button id="integroEquipeMenuToggle" type="button" aria-label="Abrir menu" aria-controls="integroEquipeSidebar" aria-expanded="false">☰</button>
+  <div id="integroEquipeOverlay" hidden></div>
+  <div class="shell">
+  <aside id="integroEquipeSidebar" aria-label="Menu interno ÍNTEGRO">
     <div class="logo">ÍNTE<span>GRO</span></div>
     <div class="perfil"><small>Equipe interna</small><div id="nomeSidebar">Autenticando...</div><p id="cargoSidebar">ÍNTEGRO</p></div>
     <nav class="menu" aria-label="Módulos internos">
@@ -215,5 +219,6 @@
   });
   document.addEventListener('DOMContentLoaded',iniciar);
 </script>
+  <script src="js/integro-equipe-sidebar.js?v=20261117-v1"></script>
 </body>
 </html>
