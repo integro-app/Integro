@@ -241,6 +241,12 @@
     #clientes .mg-empresa-card:hover,#clientes .mg-empresa-card:focus-visible{border-color:#ffb86a;box-shadow:0 12px 30px rgba(15,23,42,.10);outline:none}
     #clientes .mg-empresa-bar{width:6px;height:100%;min-height:76px;background:#22c55e;border-radius:999px}
     #clientes .mg-empresa-content{min-width:0}
+    #clientes .mg-empresa-identidade{display:flex;align-items:center;gap:14px;min-width:0}
+    #clientes .mg-empresa-avatar{position:relative;flex:0 0 58px;width:58px;height:58px;display:flex;align-items:center;justify-content:center;border-radius:16px;background:linear-gradient(135deg,#0b2340,#243f68);color:#fff;overflow:hidden;border:1px solid #dbe4ee}
+    #clientes .mg-empresa-avatar .mg-empresa-iniciais{font-size:18px;font-weight:900;letter-spacing:-.8px}
+    #clientes .mg-empresa-avatar img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+    #clientes .mg-empresa-avatar img[hidden]{display:none!important}
+    #clientes .mg-empresa-infos{flex:1 1 auto;min-width:0}
     #clientes .mg-empresa-content h3{font-size:17px;font-weight:900;line-height:1.3;overflow-wrap:anywhere}
     #clientes .mg-empresa-meta{margin:7px 0 10px;color:#64748b;font-weight:650;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
     #clientes .mg-empresa-open{display:inline-flex;align-items:center;gap:4px;color:#b45309;font-size:13px;font-weight:800;white-space:nowrap}
@@ -257,6 +263,9 @@
       #clientes .mg-clientes-filtros{grid-template-columns:1fr 1fr}
       #clientes .mg-clientes-limpar{grid-column:1/-1}
       #clientes .mg-empresa-card{padding:16px 13px;gap:11px;grid-template-columns:6px minmax(0,1fr)}
+      #clientes .mg-empresa-identidade{gap:10px;align-items:flex-start}
+      #clientes .mg-empresa-avatar{flex-basis:46px;width:46px;height:46px;border-radius:13px}
+      #clientes .mg-empresa-avatar .mg-empresa-iniciais{font-size:15px}
       #clientes .mg-empresa-open{grid-column:2;justify-self:start}
     }
 
@@ -679,7 +688,10 @@
       setText('contadorClientes',lista.length+' cliente(s) ÍNTEGRO exibido(s).');
       atualizarEstadoFiltrosClientes();
       const host=byId('listaClientes');
-      if(host)host.innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente ÍNTEGRO encontrado com estes filtros.');
+      if(host){
+        host.innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente ÍNTEGRO encontrado com estes filtros.');
+        hidratarLogoClienteIntegro(host);
+      }
     }
     function renderMasters(){const host=byId('listaMasters');if(!host)return;const lista=getMastersLocais();host.innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
     function renderUsuariosInternos(){const lista=getUsuariosInternos();byId('listaUsuarios').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'interno')).join(''):empty('Nenhum usuário interno encontrado.')}
@@ -796,13 +808,19 @@
         '<span class="chip">Teste: '+esc(dataCurta(c.dataFimTeste))+'</span>':
         estado.nome==='A VENCER'&&Number.isFinite(estado.contratoMs)?
         '<span class="chip">Contrato: '+esc(dataCurta(estado.contratoVencimento))+'</span>':'';
+      const iniciais=nome.trim().split(/\s+/).slice(0,2).map(parte=>parte.charAt(0)).join('').toUpperCase()||'IN';
+      const logoPath=validarCaminhoLogoCliente(c);
+      const avatar='<span class="mg-empresa-avatar" aria-hidden="true">'+
+        '<span class="mg-empresa-iniciais">'+esc(iniciais)+'</span>'+
+        (logoPath?'<img hidden loading="lazy" data-mg-logo-path="'+esc(logoPath)+'" alt="">':'')+'</span>';
       return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+'" aria-label="Abrir ficha de '+esc(nome)+'">'+
         '<span class="mg-empresa-bar" aria-hidden="true" style="background:'+barra+'"></span>'+
-        '<div class="mg-empresa-content"><h3>'+esc(nome)+'</h3>'+
+        '<div class="mg-empresa-content"><div class="mg-empresa-identidade">'+avatar+
+        '<div class="mg-empresa-infos"><h3>'+esc(nome)+'</h3>'+
         '<p class="mg-empresa-meta">'+esc(c.tipoPessoa||'PJ')+' · '+esc(c.documento||'-')+' · '+esc(c.email||'-')+'</p>'+
         '<div class="mg-empresa-tags"><span class="chip '+chipCor+'">'+esc(estado.nome)+'</span>'+
         (c.testeAtivo===true&&estado.liberado&&estado.nome!=='EM TESTE'?'<span class="chip orange">Em teste</span>':'')+
-        vencimento+'</div></div>'+
+        vencimento+'</div></div></div></div>'+
         '<span class="mg-empresa-open">Ver detalhes<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></span></article>';
     }
     function cardUsuario(u,tipo){
@@ -1584,18 +1602,47 @@
       return /^[A-Za-z0-9_-]{1,128}$/.test(id)&&p.startsWith('tenants/'+id+'/logos/')&&
         /^[A-Za-z0-9_-]{32}\.(png|jpg|webp)$/.test(p.slice(('tenants/'+id+'/logos/').length))?p:'';
     }
+    // Uma URL por arquivo de logo durante a sessão; listas grandes carregam só imagens visíveis.
+    const cacheUrlsLogosClientesIntegro=new Map();
+    let observadorLogosClientesIntegro=null;
+    function carregarImagemLogoClienteIntegro(img){
+      if(!img?.isConnected||img.dataset.carregado==='sim')return;
+      const path=img.getAttribute('data-mg-logo-path');
+      if(!path)return;
+      img.dataset.carregado='sim';
+      let consulta=cacheUrlsLogosClientesIntegro.get(path);
+      if(!consulta){
+        consulta=firebase.app().storage().ref(path).getDownloadURL().catch(erro=>{
+          cacheUrlsLogosClientesIntegro.delete(path);
+          throw erro;
+        });
+        cacheUrlsLogosClientesIntegro.set(path,consulta);
+      }
+      consulta.then(url=>{
+        if(!img.isConnected||img.getAttribute('data-mg-logo-path')!==path)return;
+        img.onload=()=>{if(img.isConnected)img.hidden=false;};
+        img.onerror=()=>{if(img.isConnected)img.hidden=true;};
+        img.src=url;
+      }).catch(()=>{if(img.isConnected)img.hidden=true;});
+    }
     function hidratarLogoClienteIntegro(raiz){
       if(typeof firebase?.storage!=='function'||!raiz)return;
+      if(!observadorLogosClientesIntegro&&typeof IntersectionObserver==='function'){
+        observadorLogosClientesIntegro=new IntersectionObserver(entradas=>{
+          entradas.forEach(entrada=>{
+            if(!entrada.isIntersecting)return;
+            observadorLogosClientesIntegro.unobserve(entrada.target);
+            carregarImagemLogoClienteIntegro(entrada.target);
+          });
+        },{rootMargin:'250px'});
+      }
       raiz.querySelectorAll('img[data-mg-logo-path]').forEach(img=>{
-        const path=img.getAttribute('data-mg-logo-path');
-        if(!path||img.dataset.carregado==='sim')return;
-        img.dataset.carregado='sim';
-        firebase.app().storage().ref(path).getDownloadURL().then(url=>{
-          if(!img.isConnected)return;
-          img.onload=()=>{if(img.isConnected)img.hidden=false;};
-          img.onerror=()=>{img.hidden=true;};
-          img.src=url;
-        }).catch(()=>{if(img.isConnected)img.hidden=true;});
+        if(!img.isConnected||img.dataset.carregado==='sim')return;
+        if(observadorLogosClientesIntegro&&img.closest('.mg-empresa-card')){
+          observadorLogosClientesIntegro.observe(img);
+        }else{
+          carregarImagemLogoClienteIntegro(img);
+        }
       });
     }
     async function salvarLogoClienteIntegro(id){
