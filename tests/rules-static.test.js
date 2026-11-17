@@ -91,3 +91,20 @@ test("M02: deploy REST exclusivo do Firestore valida fonte e release antes de af
   assert.match(source, /verifiedActive\.source\?\.files\?\.some/);
   assert.match(source, /updateMask:'rulesetName'/);
 });
+
+test("M02: helpers especificos ficam nos matches para reduzir custo de compilacao", () => {
+  const funcoesGlobais = (rules.match(/^    function [A-Za-z_]+\(/gm) || []).length;
+  const funcoesTotais = (rules.match(/^\s+function [A-Za-z_]+\(/gm) || []).length;
+  assert.equal(funcoesTotais, 131, "Nenhuma funcao de permissao pode desaparecer");
+  assert.ok(funcoesGlobais <= 65, "Helpers especificos nao devem voltar ao escopo global");
+  const trecho = (inicio, fim) => {
+    const i = rules.indexOf("match " + inicio + " {");
+    const j = rules.indexOf("match " + fim + " {", i + 1);
+    assert.ok(i >= 0 && j > i, "Matches esperados precisam existir");
+    return rules.slice(i, j);
+  };
+  assert.match(trecho("/caixas/{id}", "/fechamentos_caixa/{id}"), /function canReadCaixa\(/);
+  assert.match(trecho("/lancamentos_financeiros/{id}", "/caixas/{id}"), /function canCreateLedger\(/);
+  assert.match(trecho("/vendas/{id}", "/parcelas/{id}"), /function canCreateVenda\(/);
+  assert.match(rules, /match \/conversas\/\{id\} \{[\s\S]*?function canReadMensagem\(/);
+});
