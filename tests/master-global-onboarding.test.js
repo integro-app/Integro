@@ -538,6 +538,7 @@ test("M01 layout clientes ÍNTEGRO: pesquisa e filtros aplicados somente aos con
     status:value=>String(value||"").toUpperCase(),
     clienteLiberadoGlobal:cliente=>cliente.acessoLiberado!==false,
     dataGlobalMs:()=>NaN,esc:htmlEsc,badge:value=>'<span>'+htmlEsc(value)+'</span>',
+    validarCaminhoLogoCliente:()=>'',hidratarLogoClienteIntegro:()=>{},
     match:(item,term,fields)=>!term||fields.map(field=>String(item[field]||"")).join(" ").toLowerCase().includes(term),
     empty:text=>'<div>'+htmlEsc(text)+'</div>'
   };
@@ -862,7 +863,7 @@ test("M01: card e ficha usam a mesma situação; filtros separam inativo, bloque
   assert.equal(getState(dados.aVencer).nome,"A VENCER");
   assert.equal(getState(dados.expirado).nome,"TESTE EXPIRADO");
   const card=vm.runInNewContext(html.slice(cardStart,cardEnd)+";cardCliente",{
-    situacaoClienteIntegro:getState,esc:escape,dataCurta:()=> "19/11/2026"
+    situacaoClienteIntegro:getState,esc:escape,dataCurta:()=> "19/11/2026",validarCaminhoLogoCliente:()=>''
   });
   assert.match(card(dados.inativo),/>INATIVO</);
   assert.doesNotMatch(card(dados.inativo),/>BLOQUEADO</);
@@ -881,7 +882,7 @@ test("M01: card e ficha usam a mesma situação; filtros separam inativo, bloque
     status:shared.status,correspondeBuscaCliente:()=>true,
     clienteLiberadoGlobal:access,situacaoClienteIntegro:getState,
     cardCliente:c=>c.id,byId:key=>key==="listaClientes"?lista:null,
-    setText:()=>{},atualizarEstadoFiltrosClientes:()=>{},
+    setText:()=>{},atualizarEstadoFiltrosClientes:()=>{},hidratarLogoClienteIntegro:()=>{},
     empty:()=>"[vazio]"
   };
   const render=vm.runInNewContext(html.slice(renderStart,renderEnd)+";renderClientes",ctx);
@@ -1029,4 +1030,82 @@ test("M01: formulário envia complementos reais pela callable segura, sem escond
   assert.equal(payload.contatosAdicionais.length,2);
   assert.equal(payload.contatosAdicionais[0].email,"comercial@exemplo.com");
   assert.ok(carregou&&fechou);
+});
+
+
+test("M01: card empresarial usa logo autorizada, iniciais quando ausente e mantém navegação",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const validatorStart=html.indexOf("    function validarCaminhoLogoCliente(c){");
+  const validatorEnd=html.indexOf("    // Uma URL por arquivo de logo",validatorStart);
+  const cardStart=html.indexOf("    function cardCliente(c){");
+  const cardEnd=html.indexOf("    function cardUsuario(u,tipo){",cardStart);
+  assert.ok(validatorStart>=0&&validatorEnd>validatorStart&&cardStart>=0&&cardEnd>cardStart);
+  assert.match(html,/#clientes \.mg-empresa-avatar img\[hidden\]\{display:none!important\}/);
+  const valid=vm.runInNewContext(html.slice(validatorStart,validatorEnd)+";validarCaminhoLogoCliente",{});
+  const escape=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  const card=vm.runInNewContext(html.slice(cardStart,cardEnd)+";cardCliente",{
+    situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,diasRestantes:null,contratoMs:NaN}),
+    validarCaminhoLogoCliente:valid,esc:escape,dataCurta:()=>"-"
+  });
+  const logo="tenants/empresa-a/logos/"+"b".repeat(32)+".webp";
+  const withLogo=card({id:"empresa-a",nome:"Joaquim Pizzaria",documento:"123",logoStoragePath:logo});
+  assert.match(withLogo,/data-mg-action="ver-cliente"/);
+  assert.match(withLogo,/class="mg-empresa-avatar"/);
+  assert.match(withLogo,/class="mg-empresa-iniciais">JP</);
+  assert.match(withLogo,/data-mg-logo-path="tenants\/empresa-a\/logos\//);
+  assert.match(withLogo,/loading="lazy"/);
+  assert.match(withLogo,/>ATIVO</);
+  const external=card({id:"empresa-b",nome:"Outra Empresa",logoStoragePath:logo});
+  assert.match(external,/class="mg-empresa-iniciais">OE</);
+  assert.doesNotMatch(external,/data-mg-logo-path/,"não mostra logo de outro tenant");
+  const unsafe=card({id:"empresa-a",nome:'Empresa <script>Maliciosa</script>',logoStoragePath:"https://example.test/logo.png"});
+  assert.doesNotMatch(unsafe,/<script>/);
+  assert.doesNotMatch(unsafe,/data-mg-logo-path/);
+});
+
+test("M01: miniaturas usam lazy load e cache por caminho, sem baixar logos fora da tela",async()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    // Uma URL por arquivo de logo");
+  const b=html.indexOf("    async function salvarLogoClienteIntegro(id){",a);
+  assert.ok(a>=0&&b>a);
+  const chamadas=[];
+  let observer;
+  const context={
+    firebase:{
+      storage:()=>({}),
+      app:()=>({storage:()=>({ref:path=>({getDownloadURL:()=>{
+        chamadas.push(path);return Promise.resolve("https://storage.test/"+path);
+      }})})})
+    },
+    IntersectionObserver:class{
+      constructor(cb,options){this.callback=cb;this.options=options;this.observed=[];observer=this;}
+      observe(img){this.observed.push(img);}
+      unobserve(img){this.observed=this.observed.filter(x=>x!==img);}
+    }
+  };
+  const funcs=vm.runInNewContext(html.slice(a,b)+
+    ";({hidratarLogoClienteIntegro,carregarImagemLogoClienteIntegro,cacheUrlsLogosClientesIntegro})",context);
+  const path="tenants/empresa-a/logos/"+"c".repeat(32)+".jpg";
+  const criarImagem=()=>({
+    isConnected:true,hidden:true,dataset:{},
+    getAttribute:()=>path,closest:()=>({className:"mg-empresa-card"}),src:""
+  });
+  const img1=criarImagem(),img2=criarImagem();
+  const root={querySelectorAll:()=>[img1,img2]};
+  funcs.hidratarLogoClienteIntegro(root);
+  assert.equal(chamadas.length,0,"nada baixa antes de aparecer na tela");
+  assert.equal(observer.observed.length,2);
+  observer.callback([{target:img1,isIntersecting:true},{target:img2,isIntersecting:true}]);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(chamadas.length,1,"cards com mesmo logo reaproveitam mesma consulta");
+  assert.equal(img1.hidden,true,"não revelar imagem antes do onload");
+  assert.match(img1.src,/^https:\/\/storage\.test\/tenants\/empresa-a\/logos\//);
+  img1.onload();assert.equal(img1.hidden,false);
+  funcs.hidratarLogoClienteIntegro(root);
+  assert.equal(chamadas.length,1);
+  const img3=criarImagem();
+  funcs.carregarImagemLogoClienteIntegro(img3);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(chamadas.length,1,"cache da sessão reutilizado após nova busca");
+  img3.onerror();assert.equal(img3.hidden,true,"fallback continua visível se imagem falhar");
 });
