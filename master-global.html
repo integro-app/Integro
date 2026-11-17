@@ -1545,15 +1545,17 @@
       const bloqueado=c.acessoLiberado===false||
         ['BLOQUEADO','SUSPENSO'].includes(status(c.status))||
         (Number.isFinite(dataMs(c.bloqueioAssinaturaEm))&&dataMs(c.bloqueioAssinaturaEm)<=agora);
+      const contratoVencimento=c.vencimentoAssinaturaEm||c.dataVencimentoAssinatura||null;
+      const contratoMs=dataMs(contratoVencimento);
+      const diasContrato=Number.isFinite(contratoMs)?Math.ceil((contratoMs-agora)/86400000):null;
       const estado=inativo?{nome:'INATIVO',cor:'inativo'}:
         bloqueado?{nome:'BLOQUEADO',cor:'bloqueado'}:
         expirou?{nome:'TESTE EXPIRADO',cor:'expirado'}:
         !liberado?{nome:'ACESSO RESTRITO',cor:'bloqueado'}:
-        diasRestantes!==null&&diasRestantes<=7?{nome:'A VENCER',cor:'vencer'}:
+        (diasRestantes!==null&&diasRestantes>=0&&diasRestantes<=7)||
+        (diasContrato!==null&&diasContrato>=0&&diasContrato<=7)?{nome:'A VENCER',cor:'vencer'}:
         c.testeAtivo===true?{nome:'EM TESTE',cor:'teste'}:
         {nome:'ATIVO',cor:'ativo'};
-      const contratoVencimento=c.vencimentoAssinaturaEm||c.dataVencimentoAssinatura||null;
-      const contratoMs=dataMs(contratoVencimento);
       const vencimentoContrato=Number.isFinite(contratoMs)?dataCurta(contratoVencimento):'Não informado';
       const vencimentoTeste=c.testeAtivo===true?
         (Number.isFinite(testeFim)?dataCurta(c.dataFimTeste)+(expirou?' · expirado':diasRestantes<=7?' · a vencer':''):'Prazo não informado'):'Não está em teste';
