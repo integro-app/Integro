@@ -516,7 +516,9 @@ test("M01 layout clientes ÍNTEGRO: pesquisa e filtros aplicados somente aos con
   const end=html.indexOf("    function renderMasters(){",start);
   const cardStart=html.indexOf("    function cardCliente(c){");
   const cardEnd=html.indexOf("    function cardUsuario(u,tipo)",cardStart);
-  assert.ok(start>=0&&end>start&&cardStart>=0&&cardEnd>cardStart);
+  const statusStart=html.indexOf("    function situacaoClienteIntegro(c){");
+  const statusEnd=html.indexOf("    function notificacaoLidaGlobal(",statusStart);
+  assert.ok(start>=0&&end>start&&cardStart>=0&&cardEnd>cardStart&&statusStart>=0&&statusEnd>statusStart);
   const elements={
     buscaClientes:{value:""},filtroTipoClientes:{value:""},
     filtroStatusClientes:{value:""},contadorClientes:{text:""},
@@ -539,7 +541,7 @@ test("M01 layout clientes ÍNTEGRO: pesquisa e filtros aplicados somente aos con
     match:(item,term,fields)=>!term||fields.map(field=>String(item[field]||"")).join(" ").toLowerCase().includes(term),
     empty:text=>'<div>'+htmlEsc(text)+'</div>'
   };
-  const exports=vm.runInNewContext(html.slice(start,end)+html.slice(cardStart,cardEnd)+"\n;({renderClientes,cardCliente,limparFiltrosClientes})",ctx);
+  const exports=vm.runInNewContext(html.slice(statusStart,statusEnd)+html.slice(start,end)+html.slice(cardStart,cardEnd)+"\n;({renderClientes,cardCliente,limparFiltrosClientes})",ctx);
   exports.renderClientes();
   assert.match(elements.contadorClientes.text,/3 cliente/);
   assert.equal((elements.listaClientes.innerHTML.match(/class="mg-empresa-card"/g)||[]).length,3);
@@ -589,6 +591,7 @@ test("M01 layout clientes ÍNTEGRO: ficha da empresa reúne Master Local e demai
     moeda:()=>"",dataCurta:()=>"",
     estadoFichasClientes:new Map(),
     validarCaminhoLogoCliente:()=>"",
+    situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,testeFim:NaN,diasRestantes:null,expirou:false,contratoMs:NaN}),
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
   const abrir=vm.runInNewContext(html.slice(a,b)+";abrirDetalheCliente",ctx);
@@ -658,6 +661,7 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
     badge:val=>'<span class="chip">'+escape(val)+'</span>',
     estadoFichasClientes:new Map([["empresa-a",["usuarios","acoes"]]]),
     validarCaminhoLogoCliente:()=>"",
+    situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,testeFim:NaN,diasRestantes:null,expirou:false,contratoMs:NaN}),
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
   const abrir=vm.runInNewContext(html.slice(begin,end)+";abrirDetalheCliente",ctx);
@@ -794,7 +798,11 @@ test("M01: logo e situação administrativa usam dados reais, sem inventar venci
     estadoFichasClientes:new Map(),
     abrirDrawer:(_titulo,_subtitulo,conteudo)=>{painel=conteudo;}
   };
-  const abrir=vm.runInNewContext(html.slice(inicioFicha,fimFicha)+";abrirDetalheCliente",contexto);
+  const statusStart=html.indexOf("    function situacaoClienteIntegro(c){");
+  const statusEnd=html.indexOf("    function notificacaoLidaGlobal(",statusStart);
+  assert.ok(statusStart>=0&&statusEnd>statusStart);
+  contexto.dataGlobalMs=v=>v?Date.parse(v):NaN;
+  const abrir=vm.runInNewContext(html.slice(statusStart,statusEnd)+html.slice(inicioFicha,fimFicha)+";abrirDetalheCliente",contexto);
   abrir(empresa.id);
   assert.match(painel,/ATIVO/);
   assert.match(painel,/ACESSO LIBERADO/);
@@ -815,4 +823,74 @@ test("M01: logo e situação administrativa usam dados reais, sem inventar venci
   empresa.dataFimTeste=new Date(Date.now()-86400000).toISOString();
   abrir(empresa.id);
   assert.match(painel,/mg-ficha-status--expirado">TESTE EXPIRADO/);
+});
+
+
+test("M01: card e ficha usam a mesma situação; filtros separam inativo, bloqueado e a vencer",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const statusStart=html.indexOf("    function situacaoClienteIntegro(c){");
+  const statusEnd=html.indexOf("    function notificacaoLidaGlobal(",statusStart);
+  const cardStart=html.indexOf("    function cardCliente(c){");
+  const cardEnd=html.indexOf("    function cardUsuario(u,tipo){",cardStart);
+  const renderStart=html.indexOf("    function renderClientes(){");
+  const renderEnd=html.indexOf("    function renderMasters(){",renderStart);
+  assert.ok(statusStart>=0&&statusEnd>statusStart&&cardStart>=0&&cardEnd>cardStart&&renderStart>=0&&renderEnd>renderStart);
+  const access=c=>c.acessoLiberado!==false&&c.ativo!==false&&!["INATIVO","BLOQUEADO","SUSPENSO"].includes(c.status)&&
+    !(c.testeAtivo&&c.dataFimTeste&&Date.parse(c.dataFimTeste)<=Date.now());
+  const dados={
+    livre:{id:"livre",nome:"Empresa Ativa",status:"ATIVO",acessoLiberado:true,ativo:true},
+    inativo:{id:"inativo",nome:"Empresa Inativa",status:"INATIVO",acessoLiberado:true},
+    bloqueado:{id:"bloqueado",nome:"Empresa Bloqueada",status:"BLOQUEADO",acessoLiberado:false},
+    aVencer:{id:"vencer",nome:"Contrato Próximo",status:"ATIVO",acessoLiberado:true,
+      vencimentoAssinaturaEm:new Date(Date.now()+2*86400000).toISOString()},
+    testeLongoContratoProximo:{id:"misto",nome:"Teste Longo Contrato Próximo",status:"ATIVO",acessoLiberado:true,
+      testeAtivo:true,dataFimTeste:new Date(Date.now()+30*86400000).toISOString(),
+      vencimentoAssinaturaEm:new Date(Date.now()+2*86400000).toISOString()},
+    expirado:{id:"expirado",nome:"Teste Expirado",status:"ATIVO",acessoLiberado:true,
+      testeAtivo:true,dataFimTeste:new Date(Date.now()-2*86400000).toISOString()}
+  };
+  const escape=s=>String(s??"").replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  const shared={
+    status:v=>String(v||"").toUpperCase(),
+    dataGlobalMs:v=>v?Date.parse(v):NaN,
+    clienteLiberadoGlobal:access
+  };
+  const getState=vm.runInNewContext(html.slice(statusStart,statusEnd)+";situacaoClienteIntegro",shared);
+  assert.equal(getState(dados.livre).nome,"ATIVO");
+  assert.equal(getState(dados.inativo).nome,"INATIVO");
+  assert.equal(getState(dados.bloqueado).nome,"BLOQUEADO");
+  assert.equal(getState(dados.aVencer).nome,"A VENCER");
+  assert.equal(getState(dados.expirado).nome,"TESTE EXPIRADO");
+  const card=vm.runInNewContext(html.slice(cardStart,cardEnd)+";cardCliente",{
+    situacaoClienteIntegro:getState,esc:escape,dataCurta:()=> "19/11/2026"
+  });
+  assert.match(card(dados.inativo),/>INATIVO</);
+  assert.doesNotMatch(card(dados.inativo),/>BLOQUEADO</);
+  assert.match(card(dados.bloqueado),/>BLOQUEADO</);
+  assert.match(card(dados.aVencer),/>A VENCER</);
+  assert.match(card(dados.testeLongoContratoProximo),/Contrato: 19\/11\/2026/);
+  assert.doesNotMatch(card(dados.testeLongoContratoProximo),/Teste: 19\/11\/2026/);
+  assert.match(card(dados.expirado),/>TESTE EXPIRADO</);
+  for(const option of ["INATIVO","A_VENCER","TESTE_EXPIRADO"]){
+    assert.match(html,new RegExp('option value="'+option+'"'));
+  }
+  const vals={buscaClientes:"",filtroTipoClientes:"",filtroStatusClientes:""};
+  const lista={innerHTML:""};
+  const ctx={
+    clientesIntegro:Object.values(dados),val:key=>vals[key]||"",
+    status:shared.status,correspondeBuscaCliente:()=>true,
+    clienteLiberadoGlobal:access,situacaoClienteIntegro:getState,
+    cardCliente:c=>c.id,byId:key=>key==="listaClientes"?lista:null,
+    setText:()=>{},atualizarEstadoFiltrosClientes:()=>{},
+    empty:()=>"[vazio]"
+  };
+  const render=vm.runInNewContext(html.slice(renderStart,renderEnd)+";renderClientes",ctx);
+  vals.filtroStatusClientes="INATIVO";render();
+  assert.equal(lista.innerHTML,"inativo");
+  vals.filtroStatusClientes="A_VENCER";render();
+  assert.equal(lista.innerHTML,"vencermisto");
+  vals.filtroStatusClientes="TESTE_EXPIRADO";render();
+  assert.equal(lista.innerHTML,"expirado");
+  vals.filtroStatusClientes="BLOQUEADO";render();
+  assert.equal(lista.innerHTML,"inativobloqueadoexpirado");
 });
