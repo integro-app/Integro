@@ -26,12 +26,27 @@ if (!oauth.ok || !responseToken.access_token) throw new Error('Falha ao autentic
 const token = responseToken.access_token;
 const headers = {Authorization: `Bearer ${token}`, 'Content-Type':'application/json'};
 async function request(method, path, body) {
-  const response = await fetch(base+path, {method, headers, ...(body ? {body:JSON.stringify(body)}:{})});
-  const payload = await response.json().catch(()=>({}));
-  if (!response.ok) {
-    throw new Error(`${method} ${path} HTTP ${response.status}: ${JSON.stringify(payload.error?.message || payload).slice(0,400)}`);
+  // Operações de leitura e criação imutável podem tentar novamente em erro
+  // transitório. O PATCH de publicação NUNCA é repetido automaticamente.
+  const tentativas = method === 'PATCH' ? 1 : 4;
+  for (let tentativa = 1; tentativa <= tentativas; tentativa++) {
+    let response;
+    try {
+      response = await fetch(base+path, {method, headers, ...(body ? {body:JSON.stringify(body)}:{})});
+    } catch (error) {
+      if (tentativa === tentativas) throw new Error(`${method} ${path}: serviço indisponível; liberação não confirmada`);
+      await new Promise(resolve => setTimeout(resolve, tentativa * 2000));
+      continue;
+    }
+    const payload = await response.json().catch(()=>({}));
+    if (response.ok) return payload;
+    if (![429, 500, 502, 503, 504].includes(response.status) || tentativa === tentativas) {
+      throw new Error(`${method} ${path} HTTP ${response.status}: ${JSON.stringify(payload.error?.message || payload).slice(0,400)}`);
+    }
+    console.warn(`${method} ${path}: HTTP ${response.status} transitório (${tentativa}/${tentativas}); tentando novamente`);
+    await new Promise(resolve => setTimeout(resolve, tentativa * 2000));
   }
-  return payload;
+  throw new Error('Não foi possível confirmar a operação de Rules');
 }
 const source = fs.readFileSync('firestore.rules','utf8');
 if (!source.includes('function isUsuarioIntegro()') ||
