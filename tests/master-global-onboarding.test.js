@@ -666,7 +666,7 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
   };
   const abrir=vm.runInNewContext(html.slice(begin,end)+";abrirDetalheCliente",ctx);
   abrir("empresa-a");
-  assert.equal((painel.match(/<details class="mg-ficha-secao"/g)||[]).length,4,"quatro grupos na ficha");
+  assert.equal((painel.match(/<details class="mg-ficha-secao"/g)||[]).length,5,"cinco grupos, incluindo endereço e contatos");
   assert.match(painel,/<details class="mg-ficha-secao" data-secao="usuarios" open>/,"seção de usuários restaurada");
   assert.match(painel,/<details class="mg-ficha-secao" data-secao="acoes" open>/,"ações restauradas");
   assert.match(painel,/<details class="mg-ficha-secao" data-secao="dados">/,"estado anterior preservado");
@@ -681,7 +681,7 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
   assert.match(painel,/mg-ficha-dados/);
   assert.match(painel,/mg-ficha-acoes/);
   abrir("empresa-inexistente");
-  assert.equal((painel.match(/<details class="mg-ficha-secao"/g)||[]).length,4,"empresa inválida não substitui ficha");
+  assert.equal((painel.match(/<details class="mg-ficha-secao"/g)||[]).length,5,"empresa inválida não substitui ficha");
 });
 
 
@@ -893,4 +893,140 @@ test("M01: card e ficha usam a mesma situação; filtros separam inativo, bloque
   assert.equal(lista.innerHTML,"expirado");
   vals.filtroStatusClientes="BLOQUEADO";render();
   assert.equal(lista.innerHTML,"inativobloqueadoexpirado");
+});
+
+
+test("M01: endereço, responsável e até dois contatos são gravados no tenant e no espelho", async () => {
+  const c=ambiente();
+  const novos={
+    enderecoCadastral:{
+      cep:"07000-120",logradouro:"Rua das Flores",numero:"153",
+      complemento:"Sala 2",bairro:"Centro",cidade:"Guarulhos",uf:"sp"
+    },
+    responsavelContato:{
+      nome:"Pessoa Responsável",cargo:"Direção",telefone:"(11) 95555-4444",
+      email:"RESPONSAVEL@EXEMPLO.COM"
+    },
+    contatosAdicionais:[
+      {nome:"Contato 1",telefone:"11 94444-3333",email:"PRIMEIRO@EXEMPLO.COM"},
+      {nome:"Contato 2",telefone:"11933332222",email:"segundo@exemplo.com"}
+    ]
+  };
+  const {id}=await c.api.salvarCliente({...cliente,...novos},c.contexto);
+  const salvo=c.dados.get("clientes_integro/"+id),espelho=c.dados.get("clientes_plataforma/"+id);
+  assert.deepEqual(salvo.enderecoCadastral,{
+    cep:"07000120",logradouro:"Rua das Flores",numero:"153",
+    complemento:"Sala 2",bairro:"Centro",cidade:"Guarulhos",uf:"SP"
+  });
+  assert.deepEqual(salvo.responsavelContato,{
+    nome:"Pessoa Responsável",cargo:"Direção",telefone:"11955554444",
+    email:"responsavel@exemplo.com"
+  });
+  assert.equal(salvo.contatosAdicionais.length,2);
+  assert.equal(salvo.contatosAdicionais[0].telefone,"11944443333");
+  assert.equal(salvo.contatosAdicionais[0].email,"primeiro@exemplo.com");
+  assert.deepEqual(espelho.enderecoCadastral,salvo.enderecoCadastral);
+  assert.deepEqual(espelho.responsavelContato,salvo.responsavelContato);
+  assert.deepEqual(espelho.contatosAdicionais,salvo.contatosAdicionais);
+  const dadosAnteriores=JSON.stringify(salvo.enderecoCadastral);
+  await c.api.salvarCliente({...cliente,id,nome:"Empresa Atualizada"},c.contexto);
+  assert.equal(JSON.stringify(c.dados.get("clientes_integro/"+id).enderecoCadastral),dadosAnteriores,
+    "Edição legada não deve apagar grupos opcionais ausentes do payload");
+  assert.equal(c.dados.get("clientes_integro/"+id).responsavelContato.nome,"Pessoa Responsável");
+  await c.api.salvarCliente({...cliente,id,contatosAdicionais:[]},c.contexto);
+  assert.deepEqual(c.dados.get("clientes_integro/"+id).contatosAdicionais,[],
+    "Contato pode ser apagado explicitamente sem afetar os demais grupos");
+  assert.equal(c.dados.get("clientes_integro/"+id).enderecoCadastral.cidade,"Guarulhos");
+});
+
+test("M01: validação rejeita CEP, UF, telefone, e-mail e quantidade excessiva de contatos", async () => {
+  const c=ambiente(),{id}=await c.api.salvarCliente(cliente,c.contexto);
+  const invalidos=[
+    {enderecoCadastral:{cep:"12345"}},
+    {enderecoCadastral:{uf:"SAO"}},
+    {enderecoCadastral:{logradouro:"A".repeat(181)}},
+    {responsavelContato:{telefone:"123"}},
+    {responsavelContato:{email:"invalido"}},
+    {contatosAdicionais:[{nome:"A",telefone:"123"}]},
+    {contatosAdicionais:[{email:"invalid"}]},
+    {contatosAdicionais:[{nome:"1"},{nome:"2"},{nome:"3"}]},
+    {enderecoCadastral:"uma string"},
+    {responsavelContato:["array"]},
+    {contatosAdicionais:"invalido"}
+  ];
+  for (const extras of invalidos){
+    await assert.rejects(c.api.salvarCliente({...cliente,id,...extras},c.contexto),
+      error=>error.code==="invalid-argument",JSON.stringify(extras));
+  }
+  assert.equal(c.dados.get("clientes_integro/"+id).enderecoCadastral,undefined);
+  c.dados.get("usuarios/global-uid").tipoUsuario="master_local";
+  await assert.rejects(c.api.salvarCliente({...cliente,id,enderecoCadastral:{cidade:"Guarulhos"}},c.contexto),
+    error=>error.code==="permission-denied");
+});
+
+test("M01: formulário exibe endereço, responsável e contatos com valores preservados na edição",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const begin=html.indexOf("    function montarComplementosFormularioCliente(c){");
+  const end=html.indexOf("    function abrirFormCliente(id=null){",begin);
+  assert.ok(begin>=0&&end>begin);
+  const escape=v=>String(v??"").replace(/[&<>'"]/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[ch]));
+  const render=vm.runInNewContext(html.slice(begin,end)+";montarComplementosFormularioCliente",{esc:escape});
+  const saida=render({
+    enderecoCadastral:{cep:"07000-120",logradouro:"Rua da Estação",numero:"50",
+      complemento:"Bloco A",cidade:"Guarulhos",uf:"SP"},
+    responsavelContato:{nome:'Responsável "Principal"',telefone:"11955554444",email:"responsavel@exemplo.com"},
+    contatosAdicionais:[{nome:"Comercial",email:"comercial@exemplo.com",telefone:"11944443333"}]
+  });
+  for(const id of ["cliCep","cliRua","cliNumero","cliComplemento","cliBairro","cliCidade","cliUf",
+    "cliResponsavelNome","cliResponsavelCargo","cliResponsavelTelefone","cliResponsavelEmail",
+    "cliContato1Nome","cliContato1Telefone","cliContato1Email",
+    "cliContato2Nome","cliContato2Telefone","cliContato2Email"]){
+    assert.match(saida,new RegExp('id="'+id+'"'),id+" deve existir no formulário");
+  }
+  assert.match(saida,/value="Rua da Estação"/);
+  assert.match(saida,/value="Responsável &quot;Principal&quot;"/);
+  assert.match(saida,/value="comercial@exemplo.com"/);
+  const formStart=html.indexOf("    function abrirFormCliente(id=null){");
+  const formEnd=html.indexOf("    function funcaoMasterGlobal(",formStart);
+  const form=html.slice(formStart,formEnd);
+  assert.ok(form.indexOf("montarComplementosFormularioCliente(c)")<form.indexOf("iniciarPreConsultaDocumentoClienteIntegro(Boolean(id));"),
+    "novos inputs devem ser inseridos antes da trava de CPF/CNPJ");
+  assert.match(html,/secao\('Endereço e contatos','Localização, responsável e contatos adicionais'/);
+});
+
+test("M01: formulário envia complementos reais pela callable segura, sem esconder o cadastro antigo",async()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const begin=html.indexOf("    async function salvarClienteIntegro(id){");
+  const end=html.indexOf("    function abrirFormMasterLocal(",begin);
+  assert.ok(begin>=0&&end>begin);
+  const campos={
+    cliTipoPessoa:"PJ",cliDocumento:"11.222.333/0001-81",cliNome:"Empresa Exemplo",
+    cliEmail:"empresa@exemplo.com",cliTelefone:"11999998888",cliPlano:"",
+    cliCep:"07000120",cliUf:"SP",cliRua:"Rua das Flores",cliNumero:"50",
+    cliComplemento:"",cliBairro:"Centro",cliCidade:"Guarulhos",
+    cliResponsavelNome:"Diretoria",cliResponsavelCargo:"Diretor",
+    cliResponsavelTelefone:"11955554444",cliResponsavelEmail:"direcao@exemplo.com",
+    cliContato1Nome:"Comercial",cliContato1Telefone:"11944443333",cliContato1Email:"comercial@exemplo.com",
+    cliContato2Nome:"",cliContato2Telefone:"",cliContato2Email:""
+  };
+  let payload,carregou=false,fechou=false;
+  const ctx={
+    val:id=>campos[id]||"",validarPreenchimentoMasterGlobal:()=>true,
+    funcaoMasterGlobal:acao=>{
+      assert.equal(acao,"salvarClienteIntegroGlobal");
+      return async dados=>{payload=dados;return {data:{id:"empresa-a"}};};
+    },
+    carregarTudo:async()=>{carregou=true;},
+    fecharDrawer:()=>{fechou=true;},
+    notificarIntegro:()=>{},console
+  };
+  const salvar=vm.runInNewContext("let processandoCadastroGlobal=false;\n"+
+    html.slice(begin,end)+";salvarClienteIntegro",ctx);
+  await salvar("empresa-a");
+  assert.equal(payload.id,"empresa-a");
+  assert.equal(payload.enderecoCadastral.cidade,"Guarulhos");
+  assert.equal(payload.responsavelContato.nome,"Diretoria");
+  assert.equal(payload.contatosAdicionais.length,2);
+  assert.equal(payload.contatosAdicionais[0].email,"comercial@exemplo.com");
+  assert.ok(carregou&&fechou);
 });
