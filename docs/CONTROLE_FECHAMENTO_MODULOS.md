@@ -14,6 +14,14 @@
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
 - **Política de regressão:** 'não mexer no que já funciona'; mudanças mínimas, integradas, com verificação técnica e funcional antes de concluir.
 
+### M01 — Segurança da troca obrigatória no primeiro acesso (17/11/2026)
+
+- **Falha corrigida:** a callable `PRIMEIRO_ACESSO_V1` verificava inicialmente usuário/empresa, alterava a senha no Auth e depois definia `acessoLiberado: true` sem revalidar o cadastro. Um bloqueio administrativo entre essas etapas poderia ser indevidamente revertido.
+- **Correção:** manter a alteração de credencial sem liberar módulos; em seguida, revalidar o perfil atual e as duas bases empresariais dentro de uma **transação Firestore** antes de conceder acesso. Bloqueios e alterações de tenant/papel concorrentes impedem o commit. Para Master Local, exigir o documento canônico do cliente; conferir também UID do token recebido.
+- **UI:** o formulário de criação de Master Local informa a senha provisória individual exibida uma vez e a troca obrigatória, mantendo o recurso de envio de link por e-mail.
+- **Regressão:** `tests/primeiro-acesso-m01.test.js` cobre bloqueio de usuário e empresa durante troca, tenant ausente, token de outra conta e fluxo de sucesso sem gravação da senha no Firestore. **M01 permanece EM HOMOLOGAÇÃO.**
+- **Limite da evidência:** testes em mocks/emuladores não demonstram funcionamento autenticado em dados reais; alterações aguardam merge e deploy específico autorizados. Em caso de bloqueio concorrente após a troca da senha no Auth, a conta não é liberada; pode ser necessário novo login com a nova senha após o administrador resolver a restrição.
+
 ### M01 — Fonte canônica de usuários no painel administrativo (17/11/2026)
 
 - **Causa raiz identificada:** o endpoint `listarPainel` devolvia perfis canônicos e cópias legadas sem reconciliação, enquanto listagem, dashboard e ficha adotavam regras divergentes, podendo atribuir um mesmo UID a empresas diferentes.
