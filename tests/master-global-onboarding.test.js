@@ -571,6 +571,7 @@ test("M01 layout clientes ÍNTEGRO: ficha da empresa reúne Master Local e demai
     planos:[],getMastersLocais:()=>[{id:"ml",authUid:"ml",nome:"Master A",tipoUsuario:"master_local",clientePlataformaId:"empresa-a"}],
     clienteLiberadoGlobal:()=>true,status:s=>String(s||"").toUpperCase(),
     esc:escape,info:(title,value)=>'<p>'+escape(title)+': '+escape(value)+'</p>',
+    badge:value=>'<span class="chip">'+escape(value)+'</span>',
     moeda:()=>"",dataCurta:()=>"",
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
