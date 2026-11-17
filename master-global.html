@@ -457,6 +457,7 @@
             'acesso-usuario':()=>alternarAcessoUsuario(id),
             'ler-notificacao':()=>marcarNotificacaoLida(id),
             'editar-cliente':()=>abrirFormCliente(id),
+            'salvar-logo-cliente':()=>salvarLogoClienteIntegro(id),
             'criar-master':()=>abrirFormMasterLocal(id),
             'teste-cliente':()=>ativarTesteCliente(id),
             'acesso-cliente':()=>alternarAcessoCliente(id)
@@ -1459,6 +1460,59 @@
       abrirDrawer(m[0],m[1].length+' registro(s)','<div class="list">'+
         (m[1].length?m[1].map(x=>box(x,'')).join(''):empty('Sem registros.'))+'</div>');
     }
+    function validarCaminhoLogoCliente(c){
+      const id=String(c?.id||''),p=String(c?.logoStoragePath||'');
+      return /^[A-Za-z0-9_-]{1,128}$/.test(id)&&p.startsWith('tenants/'+id+'/logos/')&&
+        /^[A-Za-z0-9_-]{32}\.(png|jpg|webp)$/.test(p.slice(('tenants/'+id+'/logos/').length))?p:'';
+    }
+    function hidratarLogoClienteIntegro(raiz){
+      if(typeof firebase?.storage!=='function'||!raiz)return;
+      raiz.querySelectorAll('img[data-mg-logo-path]').forEach(img=>{
+        const path=img.getAttribute('data-mg-logo-path');
+        if(!path||img.dataset.carregado==='sim')return;
+        img.dataset.carregado='sim';
+        firebase.app().storage().ref(path).getDownloadURL().then(url=>{
+          if(!img.isConnected)return;
+          img.onload=()=>{if(img.isConnected)img.hidden=false;};
+          img.onerror=()=>{img.hidden=true;};
+          img.src=url;
+        }).catch(()=>{if(img.isConnected)img.hidden=true;});
+      });
+    }
+    async function salvarLogoClienteIntegro(id){
+      const cliente=clientesIntegro.find(c=>c.id===id),campo=byId('mgLogoClienteArquivo'),botao=byId('mgLogoClienteSalvar');
+      if(!cliente||!campo||!botao)return;
+      const arquivo=campo.files?.[0];
+      const tipos={'image/png':'png','image/jpeg':'jpg','image/webp':'webp'};
+      if(!arquivo)return notificarIntegro('Escolha um arquivo de logo antes de salvar.');
+      if(!tipos[arquivo.type]||arquivo.size<=0||arquivo.size>2*1024*1024)
+        return notificarIntegro('A logo deve ser PNG, JPG ou WebP, com no máximo 2 MB.');
+      if(typeof firebase?.storage!=='function'||typeof window.crypto?.getRandomValues!=='function')
+        return notificarIntegro('Armazenamento seguro indisponível neste dispositivo.');
+      const token=Array.from(window.crypto.getRandomValues(new Uint8Array(16)),
+        v=>v.toString(16).padStart(2,'0')).join('');
+      const caminho='tenants/'+id+'/logos/'+token+'.'+tipos[arquivo.type];
+      botao.disabled=true;botao.textContent='Enviando logo...';
+      try{
+        await firebase.app().storage().ref(caminho).put(arquivo,{
+          contentType:arquivo.type,customMetadata:{clientePlataformaId:id}
+        });
+        const resposta=await funcaoMasterGlobal('salvarLogoClienteIntegroGlobal')({
+          id,logoStoragePath:caminho
+        });
+        if(resposta?.data?.ok!==true||resposta.data.id!==id||resposta.data.logoStoragePath!==caminho)
+          throw new Error('O servidor não confirmou o vínculo da logo à empresa.');
+        cliente.logoStoragePath=caminho;
+        renderClientes();
+        abrirDetalheCliente(id);
+        notificarIntegro('Logo da empresa salva e vinculada ao cliente.');
+      }catch(erro){
+        console.error('[MASTER GLOBAL] Logo do cliente',erro?.code||'erro');
+        notificarIntegro(mensagemErroGlobal(erro));
+      }finally{
+        if(botao.isConnected){botao.disabled=false;botao.textContent='Salvar logo';}
+      }
+    }
     function abrirDetalheCliente(id){
       const c=clientesIntegro.find(x=>x.id===id);if(!c)return;
       const plano=planos.find(p=>p.id===c.planoId);
@@ -1476,6 +1530,39 @@
       const liberado=clienteLiberadoGlobal(c);
       const bloqueioManual=c.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(c.status));
       const nome=c.nome||c.razaoSocial||'Cliente';
+      // Status de acesso não é equivalente a pagamento de mensalidade.
+      // "A vencer" só aparece quando existe uma data explícita de vencimento.
+      const dataMs=valor=>{
+        if(valor?.toMillis)return valor.toMillis();
+        if(valor?.toDate)return valor.toDate().getTime();
+        return valor?Date.parse(valor):NaN;
+      };
+      const agora=Date.now();
+      const testeFim=c.testeAtivo===true?dataMs(c.dataFimTeste):NaN;
+      const diasRestantes=Number.isFinite(testeFim)?Math.ceil((testeFim-agora)/86400000):null;
+      const expirou=Number.isFinite(testeFim)&&testeFim<=agora;
+      const inativo=c.ativo===false||status(c.status)==='INATIVO';
+      const bloqueado=c.acessoLiberado===false||
+        ['BLOQUEADO','SUSPENSO'].includes(status(c.status))||
+        (Number.isFinite(dataMs(c.bloqueioAssinaturaEm))&&dataMs(c.bloqueioAssinaturaEm)<=agora);
+      const estado=inativo?{nome:'INATIVO',cor:'inativo'}:
+        bloqueado?{nome:'BLOQUEADO',cor:'bloqueado'}:
+        expirou?{nome:'TESTE EXPIRADO',cor:'expirado'}:
+        !liberado?{nome:'ACESSO RESTRITO',cor:'bloqueado'}:
+        diasRestantes!==null&&diasRestantes<=7?{nome:'A VENCER',cor:'vencer'}:
+        c.testeAtivo===true?{nome:'EM TESTE',cor:'teste'}:
+        {nome:'ATIVO',cor:'ativo'};
+      const contratoVencimento=c.vencimentoAssinaturaEm||c.dataVencimentoAssinatura||null;
+      const contratoMs=dataMs(contratoVencimento);
+      const vencimentoContrato=Number.isFinite(contratoMs)?dataCurta(contratoVencimento):'Não informado';
+      const vencimentoTeste=c.testeAtivo===true?
+        (Number.isFinite(testeFim)?dataCurta(c.dataFimTeste)+(expirou?' · expirado':diasRestantes<=7?' · a vencer':''):'Prazo não informado'):'Não está em teste';
+      const nomeCurto=nome.trim().split(/\s+/).slice(0,2).map(parte=>parte.charAt(0)).join('').toUpperCase()||'IN';
+      const logoPath=validarCaminhoLogoCliente(c);
+      const resumoStatus=(rotulo,cor)=>'<span class="mg-ficha-status mg-ficha-status--'+esc(cor)+'">'+esc(rotulo)+'</span>';
+      const logoMarkup='<div class="mg-ficha-logo"><span class="mg-ficha-logo-fallback">'+esc(nomeCurto)+'</span>'+
+        (logoPath?'<img hidden data-mg-logo-path="'+esc(logoPath)+'" alt="Logo da empresa '+esc(nome)+'">':'')+'</div>';
+
       const campo=(titulo,valor)=>'<div class="mg-ficha-campo"><dt>'+esc(titulo)+'</dt><dd>'+esc(valor??'-')+'</dd></div>';
       const secao=(titulo,descricao,conteudo,aberta=false,chave='')=>{
         const guardado=estadoFichasClientes.get(id);
@@ -1503,9 +1590,17 @@
       const dados='<dl class="mg-ficha-dados">'+
         campo('Nome / Razão social',nome)+campo('Tipo / Documento',(c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+
         campo('E-mail',c.email)+campo('Telefone',c.telefone)+
-        campo('Plano comercial',planoTexto)+campo('Situação cadastral',c.status||'ATIVO')+
-        campo('Acesso à plataforma',liberado?'LIBERADO':'RESTRITO')+campo('Período de teste',testeTexto)+
-        '</dl>';
+        campo('Plano comercial',planoTexto)+campo('Situação cadastral',c.status||'Não informado')+
+        campo('Acesso à plataforma',liberado?'LIBERADO':'RESTRITO')+
+        campo('Situação atual',estado.nome)+campo('Vencimento do teste',vencimentoTeste)+
+        campo('Vencimento da assinatura',vencimentoContrato)+
+        campo('Cadastro criado em',c.criadoEm?dataCurta(c.criadoEm):'Não informado')+
+        campo('Última atualização',c.atualizadoEm?dataCurta(c.atualizadoEm):'Não informado')+
+        '</dl>'+
+        '<div class="mg-ficha-logo-upload"><div><label for="mgLogoClienteArquivo">Logo da empresa</label>'+
+        '<input id="mgLogoClienteArquivo" type="file" accept="image/png,image/jpeg,image/webp" aria-label="Escolher logo da empresa">'+
+        '<small>PNG, JPG ou WebP · até 2 MB. O arquivo será armazenado na pasta desta empresa.</small></div>'+
+        '<button id="mgLogoClienteSalvar" type="button" class="btn btn-light" data-mg-action="salvar-logo-cliente" data-id="'+esc(id)+'">Salvar logo</button></div>';
       const acoes='<div class="mg-ficha-acoes">'+
         '<button type="button" class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
         '<button type="button" class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
@@ -1514,8 +1609,11 @@
         '</div>';
       abrirDrawer('Cliente ÍNTEGRO · Detalhes',nome,
         '<div class="mg-ficha-empresa" data-cliente-id="'+esc(id)+'">'+
-        '<div class="mg-ficha-resumo"><span class="mg-ficha-tipo">'+esc((c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+'</span>'+
-        badge(liberado?'ATIVO':'BLOQUEADO')+'</div>'+
+        '<div class="mg-ficha-hero">'+logoMarkup+
+        '<div class="mg-ficha-hero-info"><strong>'+esc(nome)+'</strong>'+
+        '<small>'+esc((c.tipoPessoa||'PJ')+' · '+(c.documento||'-'))+'</small>'+
+        '<div class="mg-ficha-statuses">'+resumoStatus(estado.nome,estado.cor)+
+        resumoStatus(liberado?'ACESSO LIBERADO':'ACESSO RESTRITO',liberado?'ativo':'bloqueado')+'</div></div></div>'+
         secao('Dados da empresa','Cadastro, plano e acesso',dados,true,'dados')+
         secao('Master Local ('+masters.length+')','Contas administradoras da empresa',
           masters.length?masters.map(u=>linhaUsuario(u,'Master Local')).join(''):'<p class="muted">Nenhum Master Local vinculado.</p>',true,'masters')+
@@ -1523,6 +1621,7 @@
           usuariosVinculados.length?usuariosVinculados.map(u=>linhaUsuario(u,'Usuário')).join(''):'<p class="muted">Nenhum outro usuário registrado nesta empresa.</p>',false,'usuarios')+
         secao('Ações administrativas','Editar, criar Master Local e gerenciar acesso',acoes,false,'acoes')+
         '</div>');
+      if(typeof hidratarLogoClienteIntegro==='function')hidratarLogoClienteIntegro(byId('drawerBody'));
     }
     function abrirDetalheUsuario(id){
       const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
