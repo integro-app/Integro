@@ -297,6 +297,37 @@
     }
     @media(max-width:390px){#clientes .mg-clientes-filtros{grid-template-columns:1fr}#clientes .mg-clientes-limpar{grid-column:1}}
   </style>
+  <style id="mg-ficha-identidade-status-20261117">
+    /* Escopo exclusivo da ficha Cliente ÍNTEGRO — sem afetar cadastros e outros drawers. */
+    #drawer .mg-ficha-hero{display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;align-items:center;padding:15px;border:1px solid var(--line);border-radius:20px;background:linear-gradient(120deg,#fff 0%,#fff7ed 100%);min-width:0}
+    #drawer .mg-ficha-logo{position:relative;width:76px;height:76px;border-radius:18px;overflow:hidden;border:1px solid #e2e8f0;background:#102844;display:flex;justify-content:center;align-items:center;flex:none}
+    #drawer .mg-ficha-logo-fallback{font-size:23px;font-weight:900;color:#fff;letter-spacing:-1px}
+    #drawer .mg-ficha-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+    #drawer .mg-ficha-logo img[hidden]{display:none!important}
+    #drawer .mg-ficha-hero-info{min-width:0}
+    #drawer .mg-ficha-hero-info strong{display:block;font-size:17px;font-weight:900;line-height:1.3;overflow-wrap:anywhere}
+    #drawer .mg-ficha-hero-info small{display:block;font-size:12px;color:#64748b;margin-top:4px;overflow-wrap:anywhere}
+    #drawer .mg-ficha-statuses{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+    #drawer .mg-ficha-status{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:5px 9px;font-size:11px;font-weight:900;line-height:1.3;background:#f1f5f9;color:#475569}
+    #drawer .mg-ficha-status::before{content:'';display:block;width:7px;height:7px;border-radius:50%;background:currentColor}
+    #drawer .mg-ficha-status--ativo{background:#dcfce7;color:#166534}
+    #drawer .mg-ficha-status--vencer{background:#ffedd5;color:#9a3412}
+    #drawer .mg-ficha-status--teste{background:#e0f2fe;color:#075985}
+    #drawer .mg-ficha-status--bloqueado,#drawer .mg-ficha-status--expirado{background:#fee2e2;color:#991b1b}
+    #drawer .mg-ficha-status--inativo{background:#e2e8f0;color:#334155}
+    #drawer .mg-ficha-logo-upload{border-top:1px solid var(--line);padding-top:15px;margin-top:16px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:end}
+    #drawer .mg-ficha-logo-upload label{display:block;font-size:13px;font-weight:800;margin-bottom:7px}
+    #drawer .mg-ficha-logo-upload input{display:block;width:100%;min-width:0;font-size:13px}
+    #drawer .mg-ficha-logo-upload small{display:block;margin-top:7px;color:#64748b;font-size:12px}
+    #drawer .mg-ficha-logo-upload .btn{min-height:44px}
+    @media(max-width:540px){
+      #drawer .mg-ficha-hero{grid-template-columns:62px minmax(0,1fr);gap:11px;padding:12px}
+      #drawer .mg-ficha-logo{width:62px;height:62px;border-radius:15px}
+      #drawer .mg-ficha-logo-fallback{font-size:19px}
+      #drawer .mg-ficha-logo-upload{grid-template-columns:minmax(0,1fr)}
+      #drawer .mg-ficha-logo-upload .btn{width:100%}
+    }
+  </style>
   <style id="mg-documento-gate">
     #cliDocumentoEtapa[hidden],#cliDadosComplementares[hidden],#cliReverificarDocumento[hidden]{display:none!important}
     #cliDocumentoStatus{font-size:13px;line-height:1.5;font-weight:650}
@@ -356,7 +387,7 @@
     <section id="config" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Configurações globais</h2><p>Padrões da plataforma.</p></div><button class="btn btn-primary" onclick="salvarConfiguracoesGlobais()">Salvar</button></div><div class="grid grid-2"><div><label class="form-label" for="cfgNomePlataforma">Nome da plataforma</label><input id="cfgNomePlataforma" class="form-input" minlength="2" maxlength="80" required value="ÍNTEGRO"></div><div><label class="form-label" for="cfgDiasTeste">Dias de teste padrão</label><input id="cfgDiasTeste" type="number" inputmode="numeric" min="1" max="90" step="1" required class="form-input" value="7"></div></div></div></section>
   </main>
   <div id="drawerOverlay" class="drawer-overlay"></div><aside id="drawer" class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Detalhes</h2><p id="drawerSubtitle">Informações</p></div><button class="close-btn" onclick="fecharDrawer()" aria-label="Fechar detalhes">×</button></div><div id="drawerBody" class="drawer-body"></div></aside>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script>
   <script>
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false,promessaCarregamentoGlobal=null;
     let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
@@ -1050,6 +1081,7 @@
         throw new Error('Firebase Auth/Functions indisponível. Faça login novamente.');
       const acoes={
         salvarClienteIntegroGlobal:'salvarCliente',
+        salvarLogoClienteIntegroGlobal:'salvarLogoCliente',
         alterarAcessoClienteIntegroGlobal:'alterarAcesso',
         ativarTesteClienteIntegroGlobal:'ativarTeste',
         criarMasterLocalGlobal:'criarMasterLocal'
