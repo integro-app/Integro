@@ -364,3 +364,49 @@ test("M02: integração não altera página gigante, cache de tenant nem operaç
   assert.doesNotMatch(visao,/FirestoreService\.loadCollection|db\.collection|\.setUsuario\(|\.tenantId\s*=|salvarVinculosMasterLocal|carregarVendas|carregarCaixas/);
   assert.doesNotMatch(visao,/\.innerHTML\s*=/);
 });
+
+test("M02: troca de Master Local durante carregamento mantém botão da conta nova", () => {
+  const codigo = read("js/master-local.js");
+  const inicio = codigo.indexOf("function iniciarVisaoConsolidadaMasterLocal(usuario) {");
+  const fim = codigo.indexOf("\nfunction preencherUsuarioTopo()", inicio);
+  assert.ok(inicio >= 0 && fim > inicio, "Função de inicialização M02 deve existir");
+
+  const listeners = [];
+  let scriptPendente = null;
+  let usuarioAtual = { tipoUsuario: "master_local", authUid: "usuario-a", clientePlataformaId: "empresa-a" };
+  const iniciados = [];
+  const context = {
+    State: {
+      getUsuario: () => usuarioAtual,
+      getTenantId: () => usuarioAtual.clientePlataformaId
+    },
+    window: {
+      IntegroM02VisaoConsolidada: null
+    },
+    document: {
+      querySelector: () => scriptPendente,
+      createElement: () => ({
+        dataset: {},
+        addEventListener: (_tipo, fn) => listeners.push(fn),
+        remove() {}
+      }),
+      head: {
+        appendChild: script => { scriptPendente = script; }
+      }
+    },
+    console
+  };
+  vm.runInNewContext(codigo.slice(inicio, fim), context);
+  context.iniciarVisaoConsolidadaMasterLocal(usuarioAtual);
+  assert.ok(scriptPendente, "Primeiro perfil inicia carregamento");
+
+  // Antes do onload, o usuário A sai e o usuário B inicia a sessão.
+  usuarioAtual = { tipoUsuario: "master_local", authUid: "usuario-b", clientePlataformaId: "empresa-b" };
+  context.iniciarVisaoConsolidadaMasterLocal(usuarioAtual);
+  context.window.IntegroM02VisaoConsolidada = {
+    inicializar: usuario => iniciados.push(usuario.authUid)
+  };
+  scriptPendente.onload();
+  for (const listener of listeners) listener();
+  assert.deepEqual(iniciados, ["usuario-b"], "Novo perfil precisa ser inicializado sem reaproveitar A");
+});
