@@ -14,6 +14,12 @@
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
 - **Política de regressão:** 'não mexer no que já funciona'; mudanças mínimas, integradas, com verificação técnica e funcional antes de concluir.
 
+### M01 — Correção integrada de situações e vínculos (17/11/2026)
+
+- **Listagem e dashboard:** filtro “Bloqueado” limitado ao estado `BLOQUEADO`; “Sem acesso” agrupa bloqueio, inatividade e teste expirado. Indicador do dashboard passou a nomear o conjunto corretamente (clientes contratantes, não usuários).
+- **Ficha administrativa:** mantém status real de operador, vínculo Auth cadastral e situação do contratante separadas; alerta quando o tenant está bloqueado/expirado, sem simular verificação do Firebase Auth.
+- **Escopo:** unificação para preview dos PRs #59 e #60, sem alterar Firestore Rules, Functions, financeiro ou produção. **M01 continua EM HOMOLOGAÇÃO** até testes autenticados e aceite.
+
 ### M01 — Integridade do estado de usuários na ficha empresarial (17/11/2026)
 
 - **Achado:** a ficha indicava “Auth ativo” apenas pela igualdade entre ID e UID; a visualização do usuário assumia “ATIVO” sem status cadastral, e empresa vinculada ausente podia ser mascarada por nome legado ou pelo rótulo “Equipe ÍNTEGRO”.
