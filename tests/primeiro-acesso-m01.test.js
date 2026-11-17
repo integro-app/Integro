@@ -180,6 +180,8 @@ test("M01: login e regras impedem contornar troca abrindo uma rota direta",()=>{
   assert.match(primeiro,/primeiroAcessoNova/);
   assert.match(primeiro,/primeiroAcessoConfirmar/);
   assert.match(primeiro,/PRIMEIRO_ACESSO_V1/);
+  assert.match(primeiro,/bloqueioConcorrente/);
+  assert.match(primeiro,/A senha pode já ter sido atualizada/);
 });
 
 test("M01: credenciais temporárias só aparecem na criação e nunca são persistidas",()=>{
