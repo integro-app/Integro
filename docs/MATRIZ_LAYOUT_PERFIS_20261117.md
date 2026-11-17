@@ -24,6 +24,7 @@
 - `js/integro-equipe-sidebar.js` implementa **somente** abertura/fechamento do menu interno. Não executa leituras nem gravações de dados, não altera a autorização, não substitui o roteamento existente.
 - O botão de notificações retirado do cabeçalho do Supervisor é redundante: a ação de notificações continua no menu lateral, com contador do módulo existente.
 - Cabeçalhos do grupo pendente usam título centralizado, ações responsivas e superfícies de baixo contraste visual. Submenus existentes e seus callbacks permanecem.
+- Supervisor, Financeiro, Captador e Auditor passam a abrir com menu lateral recolhido também no desktop, via classes CSS somente nesses perfis. Os botões e callbacks existentes abrem o menu; `show/open/active` são preservados, e o modo compacto do Financeiro continua disponível. O conteúdo deixa de reservar margem lateral permanente.
 - Não fazer normalização global de `.sidebar`, `.topbar` ou `body` sem escopo: relatório de regressão V2 prova que isso alterou layouts aprovados.
 - Os ajustes de layout são **visuais**: não equivalem à conclusão dos módulos M01–M22.
 
