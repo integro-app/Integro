@@ -14,6 +14,13 @@
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
 - **Política de regressão:** 'não mexer no que já funciona'; mudanças mínimas, integradas, com verificação técnica e funcional antes de concluir.
 
+### M01 — Fonte canônica de usuários no painel administrativo (17/11/2026)
+
+- **Causa raiz identificada:** o endpoint `listarPainel` devolvia perfis canônicos e cópias legadas sem reconciliação, enquanto listagem, dashboard e ficha adotavam regras divergentes, podendo atribuir um mesmo UID a empresas diferentes.
+- **Backend corrigido (PR #61):** `functions/master-global-management.js` usa o ID real do documento Firestore, prioriza `usuarios/{authUid}`, elimina cópias antigas e não escolhe arbitrariamente registros de UID ambíguo entre tenants ou papéis. Só retorna contagens de divergência por empresa para auditoria, sem segredos ou dados de outro usuário no alerta.
+- **Frontend defensivo:** até a Cloud Function atualizada estar implantada, a ficha também recusa UID ambíguo, a lista/KPI dos Masters Locais prioriza o canônico, e a informação de empresa inexistente não usa nome legado. O painel recebe `diagnosticoVinculos.conflitosPorEmpresa` quando disponível.
+- **Validação prevista:** cenários em `tests/master-global-management.test.js` (dois tenants, documento com ID forjado, legado conflitante, duplicata, UID sem canônico e perfil sem Auth) e `tests/master-global-onboarding.test.js`. **Não tratar preview Hosting como implantação do backend**. Testes autenticados e implantação da função ainda necessários; sem alteração em dados reais.
+
 ### M01 — Correção integrada de situações e vínculos (17/11/2026)
 
 - **Listagem e dashboard:** filtro “Bloqueado” limitado ao estado `BLOQUEADO`; “Sem acesso” agrupa bloqueio, inatividade e teste expirado. Indicador do dashboard passou a nomear o conjunto corretamente (clientes contratantes, não usuários).
