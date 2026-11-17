@@ -715,6 +715,62 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
 });
 
 
+test("M01: ficha nao confunde tenant quando cadastro canonico substitui legado de outro cliente",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const inicio=html.indexOf("    function abrirDetalheCliente(id){");
+  const fim=html.indexOf("    function abrirDetalheUsuario(id){",inicio);
+  assert.ok(inicio>=0&&fim>inicio);
+  const usuarios=[
+    {id:"old-master-a",authUid:"uid-master-b",nome:"Master legado de A",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+    {id:"uid-master-b",authUid:"uid-master-b",nome:"Master canônico B",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-b"},
+    {id:"old-vendedor-a",authUid:"uid-vendedor-b",nome:"Vendedor legado de A",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"uid-vendedor-b",authUid:"uid-vendedor-b",nome:"Vendedor canônico B",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"},
+    {id:"uid-vendedor-a",authUid:"uid-vendedor-a",nome:"Vendedor canônico A",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"old-vendedor-a-2",authUid:"uid-vendedor-a",nome:"Vendedor legado duplicado",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"uid-master-a",authUid:"uid-master-a",nome:"Master canônico A",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+    {id:"old-master-a-2",authUid:"uid-master-a",nome:"Master legado duplicado",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+    {id:"old-sem-uid-a",nome:"Operador sem UID A",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"internal-a",authUid:"internal-a",nome:"Equipe plataforma indevida",
+      tipoUsuario:"usuario_integro",clientePlataformaId:"empresa-a"}
+  ];
+  const esc=v=>String(v??"").replace(/[&<>'"]/g,ch=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
+  }[ch]));
+  let painel="";
+  const ctx={
+    clientesIntegro:[{id:"empresa-a",nome:"Empresa A",acessoLiberado:true}],
+    usuariosSistema:usuarios,planos:[],
+    getMastersLocais:()=>usuarios.filter(u=>u.tipoUsuario==="master_local"),
+    clienteLiberadoGlobal:()=>true,
+    situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,
+      testeFim:NaN,diasRestantes:null,expirou:false,contratoMs:NaN}),
+    status:v=>String(v||"").toUpperCase(),esc,moeda:()=>"",dataCurta:()=>"",
+    validarCaminhoLogoCliente:()=>"",estadoFichasClientes:new Map(),
+    abrirDrawer:(_titulo,_descricao,conteudo)=>{painel=conteudo;}
+  };
+  const abrir=vm.runInNewContext(html.slice(inicio,fim)+";abrirDetalheCliente",ctx);
+  abrir("empresa-a");
+  assert.match(painel,/Master Local \(1\)/,"apenas master canônico do tenant A");
+  assert.match(painel,/Outros usuários vinculados \(2\)/,"um canônico e um legado sem UID");
+  assert.match(painel,/Master canônico A|Vendedor canônico A|Operador sem UID A/);
+  assert.doesNotMatch(painel,/Master legado de A|Vendedor legado de A|Vendedor legado duplicado/);
+  assert.doesNotMatch(painel,/Master legado duplicado|Equipe plataforma indevida/);
+  assert.doesNotMatch(painel,/Master canônico B|Vendedor canônico B/);
+  assert.match(painel,/2 registro\(s\) legado\(s\) com vínculo empresarial conflitante/);
+  assert.match(painel,/data-mg-action="ver-usuario" data-id="uid-vendedor-a"/);
+  assert.doesNotMatch(painel,/data-mg-action="ver-usuario" data-id="old-vendedor-a"/);
+  assert.doesNotMatch(painel,/data-mg-action="ver-usuario" data-id="old-master-a"/);
+});
+
 test("M01: ficha distingue status cadastral, UID Auth e empresa realmente vinculada",()=>{
   const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
   const a=html.indexOf("    function abrirDetalheCliente(id){");
