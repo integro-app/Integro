@@ -1,5 +1,11 @@
 name: Publicar M02 - isolamento de funcionarios no Firestore
 on:
+  push:
+    branches: [main]
+    paths:
+      - "firestore.rules"
+      - "scripts/deploy-m02-firestore-rules-rest.mjs"
+      - ".github/workflows/deploy-m02-firestore-rules.yml"
   workflow_dispatch:
 permissions:
   contents: read
@@ -22,31 +28,15 @@ jobs:
           java-version: '21'
       - name: Instalar dependencias
         run: npm ci
-      - name: Testar regras de isolamento no emulador
+      - name: Auditar codigo antes da publicacao
+        run: npm run verify
+      - name: Testar isolamento e regras no emulador
         run: npm run test:rules
-      - name: Implantar somente Firestore Rules em integro-novo
-        env:
-          FIREBASE_SA_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
-        run: |
-          set -eu
-          if [ -z "$FIREBASE_SA_JSON" ]; then
-            echo "Conta de servico Firebase nao configurada" >&2
-            exit 1
-          fi
-          arquivo="$RUNNER_TEMP/firebase-m02-rules-sa.json"
-          trap 'rm -f "$arquivo"' EXIT
-          printf '%s' "$FIREBASE_SA_JSON" > "$arquivo"
-          chmod 600 "$arquivo"
-          export GOOGLE_APPLICATION_CREDENTIALS="$arquivo"
-          for tentativa in 1 2 3; do
-            echo "Deploy de Rules: tentativa $tentativa/3"
-            if npx --yes firebase-tools@14.23.0 deploy --only firestore:rules --project integro-novo --non-interactive; then
-              echo "Regras publicadas em integro-novo."
-              exit 0
-            fi
-            if [ "$tentativa" -eq 3 ]; then
-              echo "Publicacao de Rules falhou. Nenhuma Function foi alterada." >&2
-              exit 1
-            fi
-            sleep 15
-          done
+      - name: Autenticar conta de servico aprovada
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
+      - name: Validar sintaxe do publicador
+        run: node --check scripts/deploy-m02-firestore-rules-rest.mjs
+      - name: Publicar apenas Firestore Rules pelo REST oficial
+        run: node scripts/deploy-m02-firestore-rules-rest.mjs
