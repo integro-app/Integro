@@ -1443,6 +1443,11 @@
       if(processandoCadastroGlobal)return;
       const bloqueioManual=cliente.acessoLiberado===false||['BLOQUEADO','INATIVO','SUSPENSO'].includes(status(cliente.status));
       const liberar=bloqueioManual;
+      if(liberar&&cliente.testeAtivo===true&&Number.isFinite(dataGlobalMs(cliente.dataFimTeste))&&
+        dataGlobalMs(cliente.dataFimTeste)<=Date.now()){
+        notificarIntegro('O teste desta empresa expirou. Renove o teste antes de liberar o acesso.');
+        return;
+      }
       if(!confirm((liberar?'Liberar':'Bloquear')+' a empresa '+(cliente.nome||cliente.razaoSocial||id)+' e seus usuários?'))return;
       processandoCadastroGlobal=true;
       try{
@@ -1455,12 +1460,21 @@
       finally{processandoCadastroGlobal=false;}
     }
     async function ativarTesteCliente(id){
-      if(processandoCadastroGlobal)return;
+      const cliente=clientesIntegro.find(c=>c.id===id);
+      if(!cliente||processandoCadastroGlobal)return;
+      const dias=Number(configuracoesGlobal.diasTestePadrao)||7;
+      if(!Number.isInteger(dias)||dias<1||dias>90){
+        notificarIntegro('Defina um período padrão entre 1 e 90 dias nas configurações globais.');
+        return;
+      }
+      const nome=cliente.nome||cliente.razaoSocial||id;
+      const acao=cliente.testeAtivo===true?'Reiniciar':'Ativar';
+      if(!confirm(acao+' o período de teste de '+dias+' dia(s) para '+nome+'? Esta ação libera o acesso da empresa e restaura os estados anteriores de usuários bloqueados apenas pela plataforma.'))return;
       processandoCadastroGlobal=true;
       try{
-        await funcaoMasterGlobal('ativarTesteClienteIntegroGlobal')({id,dias:Number(configuracoesGlobal.diasTestePadrao)||7});
+        await funcaoMasterGlobal('ativarTesteClienteIntegroGlobal')({id,dias});
         await carregarTudo();
-        notificarIntegro('Período de teste ativado por '+(Number(configuracoesGlobal.diasTestePadrao)||7)+' dias.');
+        notificarIntegro('Período de teste ativado por '+dias+' dias. Acesso empresarial atualizado; confira os usuários.');
       }catch(erro){notificarIntegro(mensagemErroGlobal(erro));}
       finally{processandoCadastroGlobal=false;}
     }
@@ -1780,7 +1794,8 @@
       const acoes='<div class="mg-ficha-acoes">'+
         '<button type="button" class="btn btn-primary" data-mg-action="editar-cliente" data-id="'+esc(id)+'">Editar cliente</button>'+
         '<button type="button" class="btn btn-light" data-mg-action="criar-master" data-id="'+esc(id)+'">Criar Master Local</button>'+
-        '<button type="button" class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">Ativar teste</button>'+
+        '<button type="button" class="btn btn-light" data-mg-action="teste-cliente" data-id="'+esc(id)+'">'+
+        (c.testeAtivo===true?(expirou?'Renovar teste':'Reiniciar teste'):'Ativar teste')+'</button>'+
         '<button type="button" class="btn '+(bloqueioManual?'btn-success':'btn-danger')+'" data-mg-action="acesso-cliente" data-id="'+esc(id)+'">'+(bloqueioManual?'Liberar acesso':'Bloquear acesso')+'</button>'+
         '</div>';
       abrirDrawer('Cliente ÍNTEGRO · Detalhes',nome,
