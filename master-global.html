@@ -417,6 +417,7 @@
   <script>
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false,promessaCarregamentoGlobal=null;
     let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
+    let inconsistenciasVinculosGlobal={};
     let dadosGlobaisCarregados=false,atualizadoEmGlobal='';
     const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
 
@@ -533,6 +534,7 @@
           throw new Error('Resposta incompleta do servidor. Indicadores não atualizados.');
         }
         clientesIntegro=dados.clientes;usuariosSistema=dados.usuarios;
+        inconsistenciasVinculosGlobal=dados.diagnosticoVinculos?.conflitosPorEmpresa||{};
         departamentos=dados.departamentos;planos=dados.planos;
         notificacoes=dados.notificacoes;logs=dados.logs;
         configuracoesGlobal=dados.configuracoes||{nome:'ÍNTEGRO',diasTestePadrao:7};
@@ -830,7 +832,8 @@
       const bloqueioEmpresa=u.empresaBloqueada===true;
       const provisionado=u.id===u.authUid&&Boolean(u.authUid);
       const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
-      const contexto=tipo==='master'?(empresa?.nome||u.clientePlataformaNome||'Empresa não identificada'):
+      const contexto=tipo==='master'?(empresa?.nome||empresa?.razaoSocial||
+        (u.clientePlataformaId?'VÍNCULO DE EMPRESA NÃO LOCALIZADO':'SEM EMPRESA VINCULADA')):
         (departamentos.find(d=>d.id===u.departamentoId)?.nome||'Equipe ÍNTEGRO');
       return '<div class="list-card"><div class="list-bar" style="background:'+
         (tipo==='master'?'#ff6b00':'#0ea5e9')+'"></div><div><h3>'+esc(nome)+'</h3>'+
@@ -1701,12 +1704,28 @@
       // sobre cópias legadas, inclusive quando apontam para outro tenant.
       const canonicosPorUid=new Map(usuariosSistema.filter(u=>
         u.authUid&&String(u.id)===String(u.authUid)).map(u=>[String(u.authUid),u]));
+      const gruposSemCanonico=new Map();
+      usuariosSistema.forEach(u=>{
+        const uid=String(u.authUid||'');
+        if(!uid||canonicosPorUid.has(uid))return;
+        if(!gruposSemCanonico.has(uid))gruposSemCanonico.set(uid,new Set());
+        gruposSemCanonico.get(uid).add(String(u.clientePlataformaId||'')+'|'+String(u.tipoUsuario||'').toLowerCase());
+      });
+      const uidsAmbiguos=new Set([...gruposSemCanonico].filter(([,identidades])=>
+        identidades.size>1).map(([uid])=>uid));
       const vinculoConfiavel=u=>{
         const uid=String(u.authUid||'');
-        return !uid||!canonicosPorUid.has(uid)||String(u.id)===uid;
+        return !uid||(!uidsAmbiguos.has(uid)&&
+          (!canonicosPorUid.has(uid)||String(u.id)===uid));
       };
-      const conflitosLegados=usuariosSistema.filter(u=>u.clientePlataformaId===id&&
-        !vinculoConfiavel(u)&&canonicosPorUid.get(String(u.authUid||''))?.clientePlataformaId!==id).length;
+      const conflitosLocais=usuariosSistema.filter(u=>u.clientePlataformaId===id&&
+        !vinculoConfiavel(u)&&
+        (uidsAmbiguos.has(String(u.authUid||''))||
+          canonicosPorUid.get(String(u.authUid||''))?.clientePlataformaId!==id)).length;
+      const conflitosServidor=typeof inconsistenciasVinculosGlobal==='undefined'?0:
+        Number(inconsistenciasVinculosGlobal[id]||0);
+      const conflitosLegados=Math.max(conflitosLocais,
+        Number.isFinite(conflitosServidor)?Math.max(0,conflitosServidor):0);
       const masters=getMastersLocais().filter(u=>u.clientePlataformaId===id&&vinculoConfiavel(u));
       const outros=new Map();
       usuariosSistema.filter(u=>u.clientePlataformaId===id&&vinculoConfiavel(u)&&
