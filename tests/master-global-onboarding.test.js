@@ -516,7 +516,9 @@ test("M01 layout clientes ÍNTEGRO: pesquisa e filtros aplicados somente aos con
   const end=html.indexOf("    function renderMasters(){",start);
   const cardStart=html.indexOf("    function cardCliente(c){");
   const cardEnd=html.indexOf("    function cardUsuario(u,tipo)",cardStart);
-  assert.ok(start>=0&&end>start&&cardStart>=0&&cardEnd>cardStart);
+  const statusStart=html.indexOf("    function situacaoClienteIntegro(c){");
+  const statusEnd=html.indexOf("    function notificacaoLidaGlobal(",statusStart);
+  assert.ok(start>=0&&end>start&&cardStart>=0&&cardEnd>cardStart&&statusStart>=0&&statusEnd>statusStart);
   const elements={
     buscaClientes:{value:""},filtroTipoClientes:{value:""},
     filtroStatusClientes:{value:""},contadorClientes:{text:""},
@@ -539,7 +541,7 @@ test("M01 layout clientes ÍNTEGRO: pesquisa e filtros aplicados somente aos con
     match:(item,term,fields)=>!term||fields.map(field=>String(item[field]||"")).join(" ").toLowerCase().includes(term),
     empty:text=>'<div>'+htmlEsc(text)+'</div>'
   };
-  const exports=vm.runInNewContext(html.slice(start,end)+html.slice(cardStart,cardEnd)+"\n;({renderClientes,cardCliente,limparFiltrosClientes})",ctx);
+  const exports=vm.runInNewContext(html.slice(statusStart,statusEnd)+html.slice(start,end)+html.slice(cardStart,cardEnd)+"\n;({renderClientes,cardCliente,limparFiltrosClientes})",ctx);
   exports.renderClientes();
   assert.match(elements.contadorClientes.text,/3 cliente/);
   assert.equal((elements.listaClientes.innerHTML.match(/class="mg-empresa-card"/g)||[]).length,3);
@@ -589,6 +591,7 @@ test("M01 layout clientes ÍNTEGRO: ficha da empresa reúne Master Local e demai
     moeda:()=>"",dataCurta:()=>"",
     estadoFichasClientes:new Map(),
     validarCaminhoLogoCliente:()=>"",
+    situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,testeFim:NaN,diasRestantes:null,expirou:false,contratoMs:NaN}),
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
   const abrir=vm.runInNewContext(html.slice(a,b)+";abrirDetalheCliente",ctx);
@@ -658,6 +661,7 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
     badge:val=>'<span class="chip">'+escape(val)+'</span>',
     estadoFichasClientes:new Map([["empresa-a",["usuarios","acoes"]]]),
     validarCaminhoLogoCliente:()=>"",
+    situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,testeFim:NaN,diasRestantes:null,expirou:false,contratoMs:NaN}),
     abrirDrawer:(_title,_subtitle,content)=>{painel=content;}
   };
   const abrir=vm.runInNewContext(html.slice(begin,end)+";abrirDetalheCliente",ctx);
@@ -794,7 +798,11 @@ test("M01: logo e situação administrativa usam dados reais, sem inventar venci
     estadoFichasClientes:new Map(),
     abrirDrawer:(_titulo,_subtitulo,conteudo)=>{painel=conteudo;}
   };
-  const abrir=vm.runInNewContext(html.slice(inicioFicha,fimFicha)+";abrirDetalheCliente",contexto);
+  const statusStart=html.indexOf("    function situacaoClienteIntegro(c){");
+  const statusEnd=html.indexOf("    function notificacaoLidaGlobal(",statusStart);
+  assert.ok(statusStart>=0&&statusEnd>statusStart);
+  contexto.dataGlobalMs=v=>v?Date.parse(v):NaN;
+  const abrir=vm.runInNewContext(html.slice(statusStart,statusEnd)+html.slice(inicioFicha,fimFicha)+";abrirDetalheCliente",contexto);
   abrir(empresa.id);
   assert.match(painel,/ATIVO/);
   assert.match(painel,/ACESSO LIBERADO/);
