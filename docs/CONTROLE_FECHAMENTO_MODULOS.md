@@ -344,3 +344,12 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Regras:** `firestore.rules` e `storage.rules` não foram alteradas no merge. O bloqueio de tenant passa a revogar `acessoLiberado` dos usuários por transação, respeitando as Rules existentes.
 - **Pendências impeditivas de 100%:** ainda não foram realizados testes autenticados reais de cadastro de cliente, plano, Master Local, usuário interno, e-mail, login, bloqueio/reativação, avisos, chat, relatório CSV, nem validação visual com sessão real em desktop/mobile. A expiração automática do teste em acesso direto a dados, o suporte a empresas com mais de 350 usuários e faturamento efetivamente recebido (M21) seguem pendentes.
 - **Estado formal:** **EM HOMOLOGAÇÃO / NÃO FECHADO**. Publicação e testes automatizados concluídos; o aceite operacional exige evidências com contas reais e aprovação do proprietário.
+
+
+### M22 — Menu desktop retrátil (18/11/2026, em homologação)
+
+- **Escopo aprovado:** reproduzir o protótipo da sidebar desktop (expandida 268 px, compacta 78 px), mantendo a gaveta mobile inalterada e a identidade visual ÍNTEGRO.
+- **Código em revisão:** branch `feat/menu-desktop-retratil-20261118` com controlador `js/integro-desktop-navigation.js`, CSS isolado `css/integro-desktop-navigation.css`, carregamento via shell `js/integro-mobile-navigation.js` e regressão em `tests/sidebar-navigation-regression.test.js`.
+- **Controle de conflito:** hambúrguer desktop passa a ser interceptado pelo controlador único; o botão flutuante legado fica oculto no desktop, com menu sempre visível em dois tamanhos. Submenu expande antes de abrir; preferência persistida no navegador.
+- **Validação prévia:** análise de sintaxe JS, chaves CSS e 12/12 cenários simulados em ambiente isolado; teste de regressão registrado na suíte oficial. **Não equivale a teste visual/autenticado no navegador.**
+- **Pendente:** CI do PR, homologação visual e funcional em desktop (Master Global, Master Local e Vendedor), confirmação de que mobile permaneceu estável. **Sem deploy, merge ou aceite final nesta etapa.**
