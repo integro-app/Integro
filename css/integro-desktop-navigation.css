@@ -127,6 +127,7 @@
     color: #f8fbff !important;
   }
   html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-title,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-group-title,
   html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-label,
   html body[data-integro-page].integro-desktop-nav-compact .sidebar .iv-category-arrow,
   html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-new,
@@ -142,11 +143,13 @@
   }
   html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu,
   html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu {
-    display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     gap: 6px !important;
     padding: 0 !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu {
+    display: flex !important;
   }
   html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu button,
   html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu > button {
