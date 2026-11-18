@@ -291,3 +291,151 @@ html.integro-login-loading-concluido { background: #071323; }
     animation-duration: 1.8s;
   }
 }
+
+/* ACESSO V2 — fonte visual única para login e boot dos cinco perfis.
+   Mesmo DOM interno, dimensões e posição em ambas as páginas.
+   ID escopado vence as folhas antigas específicas de cada perfil. */
+#loginFlowLoader.login-flow-loader,
+#integroBootLoader.integro-boot-loader {
+  box-sizing: border-box !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 20000 !important;
+  display: grid !important;
+  place-items: center !important;
+  padding: 24px !important;
+  background: #071323 !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+#loginFlowLoader[hidden] { display: none !important; }
+#integroBootLoader.hide {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+#loginFlowLoader .login-flow-card[data-integro-loading-component="acesso-v1"],
+#integroBootLoader .login-flow-card[data-integro-loading-component="acesso-v1"] {
+  box-sizing: border-box !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: flex-start !important;
+  width: min(430px, calc(100vw - 48px)) !important;
+  height: 380px !important;
+  min-height: 380px !important;
+  padding: 34px 30px 30px !important;
+  margin: 0 !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  border-radius: 26px !important;
+  background: linear-gradient(145deg,rgba(17,35,61,.96),rgba(7,20,40,.97)) !important;
+  box-shadow: 0 28px 80px rgba(0,0,0,.42) !important;
+  color: #fff !important;
+  text-align: center !important;
+  font-family: Inter,Arial,sans-serif !important;
+}
+#loginFlowLoader [data-integro-loading-component="acesso-v1"] > *,
+#integroBootLoader [data-integro-loading-component="acesso-v1"] > * {
+  box-sizing: border-box !important;
+  order: 0 !important;
+  flex-shrink: 0 !important;
+}
+#loginFlowLoader .login-flow-brand,
+#integroBootLoader .login-flow-brand {
+  display: block !important;
+  margin: 0 0 24px !important;
+  color: #fff !important;
+  font: 950 29px/1.1 Inter,Arial,sans-serif !important;
+  letter-spacing: -1.5px !important;
+}
+#loginFlowLoader .login-flow-brand span,
+#integroBootLoader .login-flow-brand span {
+  color: #ff8a00 !important;
+}
+#loginFlowLoader .login-flow-spinner,
+#integroBootLoader .login-flow-spinner {
+  display: block !important;
+  width: 52px !important;
+  height: 52px !important;
+  margin: 0 auto 22px !important;
+  border: 4px solid rgba(255,255,255,.12) !important;
+  border-top-color: #ff8a00 !important;
+  border-radius: 50% !important;
+  animation: integroLoadingSpin .8s linear infinite;
+}
+#loginFlowLoader .login-flow-card h2,
+#integroBootLoader .login-flow-card h2 {
+  display: block !important;
+  margin: 0 0 9px !important;
+  padding: 0 !important;
+  color: #fff !important;
+  font: 900 21px/1.25 Inter,Arial,sans-serif !important;
+}
+#loginFlowLoader .login-flow-step,
+#integroBootLoader .login-flow-step {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  margin: 0 0 22px !important;
+  padding: 0 !important;
+  color: #cbd9ea !important;
+  font: 700 14px/1.5 Inter,Arial,sans-serif !important;
+}
+#loginFlowLoader .login-flow-track,
+#integroBootLoader .login-flow-track {
+  display: block !important;
+  width: 100% !important;
+  height: 7px !important;
+  min-height: 7px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: rgba(255,255,255,.1) !important;
+}
+#loginFlowLoader .login-flow-progress,
+#integroBootLoader .login-flow-progress {
+  display: block !important;
+  width: 0;
+  height: 100% !important;
+  margin: 0 !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg,#ff6b00,#ffb25c) !important;
+  box-shadow: 0 0 18px rgba(255,107,0,.5) !important;
+  transition: width .32s ease;
+}
+#loginFlowLoader .login-flow-hint,
+#integroBootLoader .login-flow-hint {
+  display: block !important;
+  margin: 13px 0 0 !important;
+  padding: 0 !important;
+  color: #8195ad !important;
+  font: 700 12px/1.4 Inter,Arial,sans-serif !important;
+  letter-spacing: 0 !important;
+}
+#integroBootLoader .integro-loader-percent::after { content: " concluído" !important; }
+#integroBootLoader .integro-loader-caption,
+#integroBootLoader .integro-loader-hint { display: none !important; }
+#integroBootLoader.integro-boot-failed .login-flow-spinner {
+  animation: none !important;
+  border-color: #ff8a00 !important;
+}
+@media(max-width:520px) {
+  #loginFlowLoader.login-flow-loader,
+  #integroBootLoader.integro-boot-loader { padding: 18px !important; }
+  #loginFlowLoader .login-flow-card[data-integro-loading-component="acesso-v1"],
+  #integroBootLoader .login-flow-card[data-integro-loading-component="acesso-v1"] {
+    width: min(430px, calc(100vw - 36px)) !important;
+    padding: 30px 22px 26px !important;
+    border-radius: 24px !important;
+  }
+}
+@media(prefers-reduced-motion:reduce) {
+  #loginFlowLoader .login-flow-spinner,
+  #integroBootLoader .login-flow-spinner { animation-duration: 1.8s !important; }
+  #loginFlowLoader .login-flow-progress,
+  #integroBootLoader .login-flow-progress { transition: none !important; }
+}
