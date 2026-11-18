@@ -117,23 +117,37 @@ test("Loading único: estado expirado é descartado sem reaproveitar sessão de 
   assert.equal(x.storage.has("integroLoadingContinuo"),false);
 });
 
-test("Loading único: componentes visuais e versões idênticos em todos os perfis com boot",()=>{
+test("Loading único: mesmo card, marca, spinner e versão de CSS em todos os perfis",()=>{
   const login=ler("index.html");
   assert.match(login,/id="loginFlowLoader"/);
+  assert.match(login,/class="login-flow-card" data-integro-loading-component="acesso-v1"/);
   assert.match(login,/<div class="login-flow-brand">ÍNTE<span>GRO<\/span><\/div>/);
-  assert.match(login,/css\/integro-loading\.css\?v=20261117-unico1/);
+  assert.match(login,/css\/integro-loading\.css\?v=20261118-acesso-v2/);
   assert.match(login,/js\/auth\.js\?v=20261117-unico1/);
+  const assinatura=["login-flow-brand","login-flow-spinner","integro-loader-title",
+    "integro-loader-step","integro-loader-bar","integro-loader-percent"];
   for(const pagina of paineis){
     const html=ler(pagina);
-    assert.match(html,/id="integroBootLoader"/,pagina);
-    assert.match(html,/class="integro-loader-logo"[^>]*>ÍNTE<span>GRO<\/span><\/div>/,pagina);
-    assert.match(html,/<div class="integro-loader-title">Preparando seu acesso<\/div>/,pagina);
-    assert.match(html,/css\/integro-loading\.css\?v=20261117-unico1/,pagina);
-    assert.match(html,/js\/integro-loading-handoff\.js\?v=20261117-unico1/,pagina);
+    const inicio=html.indexOf('id="integroBootLoader"');
+    assert.ok(inicio>0,pagina+": loader de boot presente");
+    const recorte=html.slice(inicio,inicio+1300);
+    assert.match(recorte,/class="login-flow-card integro-loader-card" data-integro-loading-component="acesso-v1"/,pagina);
+    assert.match(recorte,/<div class="login-flow-brand">ÍNTE<span>GRO<\/span><\/div>/,pagina);
+    assert.match(recorte,/<div class="login-flow-spinner" aria-hidden="true"><\/div>/,pagina);
+    assert.match(recorte,/<h2 class="integro-loader-title">Preparando seu acesso<\/h2>/,pagina);
+    assert.match(recorte,/id="integroLoaderPercent">0%<\/div>/,pagina);
+    assert.doesNotMatch(recorte,/ÍNTEGRO<span>\.<\/span>|Preparando Master Global/,pagina);
+    const indices=assinatura.map(token=>recorte.indexOf(token));
+    assert.ok(indices.every(i=>i>=0),pagina+": falta elemento do card padrão");
+    assert.deepEqual(indices,[...indices].sort((a,b)=>a-b),pagina+": ordem visual é a mesma");
+    assert.match(html,/css\/integro-loading\.css\?v=20261118-acesso-v2/,pagina);
+    assert.match(html,/js\/integro-loading-handoff\.js\?v=20261118-acesso-v2/,pagina);
+    assert.match(recorte,/window\.IntegroLoadingContinuo\?\.iniciar\(\)/,
+      pagina+": recuperar progresso antes da primeira pintura, sem flash de 0%");
+    assert.ok(html.lastIndexOf('css/integro-loading.css?v=20261118-acesso-v2')<html.indexOf("</head>"));
   }
-  for(const pagina of ["vendedor.html","master-local.html","master-global.html","supervisor.html","financeiro.html"]){
+  for(const pagina of paineis)
     assert.match(ler(pagina),/IntegroLoadingContinuo\?\.percentual/,pagina);
-  }
 });
 
 test("Loading único: fases do login são crescentes e ainda exigem sessão e caixa do vendedor",()=>{
@@ -178,6 +192,15 @@ test("Loading único: rota sem bootstrap limpa o handoff, rota de vendedor prese
   assert.equal(state.has("integroLoadingContinuo"),true);
   assert.equal(navegar({tipoUsuario:"sem-rota"}),false);
   assert.equal(alertas.length,1);
+});
+
+test("Loading único: variação do percentual é monotônica mesmo ao entrar no Master Global",()=>{
+  const fonte=ler("master-global.html");
+  assert.match(fonte,/function atualizarLoadingPremium\(percentual, texto\)/);
+  assert.match(fonte,/window\.IntegroLoadingContinuo\?\.percentual/);
+  assert.match(fonte,/window\.IntegroLoadingContinuo\.percentual\(etapaPercentual\)/);
+  assert.doesNotMatch(fonte,/const valor = Math\.max\(0, Math\.min\(100, Number\(percentual\) \|\| 0\)\);\s*integroBootPercentualAtual = valor/,
+    "proibir reiniciar o progresso local em 0% após um login já validado");
 });
 
 test("Loading único: identidade visual centralizada sem tocar em menu e login aprovado",()=>{
