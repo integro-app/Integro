@@ -242,7 +242,7 @@ test("login preserva progresso visual entre autenticação e painel", () => {
   const login = fs.readFileSync(path.join(__dirname, "..", "index.html"), "utf8");
   const master = fs.readFileSync(path.join(__dirname, "..", "master-local.html"), "utf8");
   assert.match(auth, /integroLoadingContinuo/);
-  assert.match(auth, /atualizarLoadingLogin\(92,/);
+  assert.match(auth, /atualizarLoadingLogin\(78,/);
   assert.match(login, /id="loginFlowLoader"/);
   assert.match(master, /IntegroLoadingContinuo\?\.percentual/);
   assert.match(master, /IntegroLoadingContinuo\?\.iniciar/);
