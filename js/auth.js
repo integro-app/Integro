@@ -100,7 +100,7 @@ async function login() {
 
   try {
     __integroLoginRedirecionando = false;
-    atualizarLoadingLogin(8, "Validando suas credenciais...");
+    atualizarLoadingLogin(6, "Validando suas credenciais...");
     if (botaoLogin) {
       botaoLogin.disabled = true;
       botaoLogin.dataset.textoOriginal = botaoLogin.innerText;
@@ -108,10 +108,10 @@ async function login() {
     }
 
     const credencial = await auth.signInWithEmailAndPassword(email, senha);
-    atualizarLoadingLogin(34, "Credenciais confirmadas...");
+    atualizarLoadingLogin(25, "Credenciais confirmadas. Localizando seu perfil...");
     const authUser = credencial.user;
     const usuario = await FirestoreService.buscarUsuarioPorAuthUid(authUser);
-    atualizarLoadingLogin(54, "Validando seu acesso...");
+    atualizarLoadingLogin(43, "Validando seu vínculo e suas permissões...");
 
     if (!usuario) {
       await auth.signOut();
@@ -132,7 +132,7 @@ async function login() {
         return;
       }
       if (!window.IntegroPrimeiroAcesso?.exibir) throw new Error("Assistente de primeiro acesso indisponível.");
-      atualizarLoadingLogin(64, "Defina sua senha definitiva antes de entrar...");
+      atualizarLoadingLogin(55, "Validando o primeiro acesso...");
       window.IntegroPrimeiroAcesso.exibir(usuario, authUser);
       return;
     }
@@ -146,7 +146,7 @@ async function login() {
     }
 
     State.setUsuario(usuario);
-    atualizarLoadingLogin(64, "Preparando empresa e sessão segura...");
+    atualizarLoadingLogin(62, "Preparando sua empresa e sua sessão segura...");
     const configuracoesPromise = carregarConfiguracoesEmpresaDoUsuario(usuario);
     const sessaoPromise = garantirServicoSessaoV27();
 
@@ -161,15 +161,14 @@ async function login() {
         await sessao.end({ silent: true }).catch(() => {});
         throw new Error("Não foi possível confirmar o vínculo do caixa do vendedor. Solicite conferência ao supervisor.");
       }
-      atualizarLoadingLogin(92, "Abrindo seu painel...");
+      atualizarLoadingLogin(78, "Sessão confirmada. Carregando o painel...");
     } catch (erroSessao) {
       await auth.signOut().catch(() => {});
       State.limparSessao();
       throw erroSessao;
     }
 
-    __integroLoginRedirecionando = true;
-    redirecionarUsuario(usuario);
+    __integroLoginRedirecionando = redirecionarUsuario(usuario) === true;
   } catch (erro) {
     console.error("ERRO LOGIN:", erro);
     let mensagem = "Erro ao realizar login.";
@@ -230,9 +229,16 @@ function redirecionarUsuario(usuario) {
   const rota = acesso?.rotaPadrao || CONFIG.ROTAS_POR_CARGO_CLIENTE?.[acesso?.cargoChave] || CONFIG.ROTAS_POR_TIPO[tipo];
   if (!rota) {
     UIHelpers.alerta("Tipo de usuário sem rota liberada: " + (tipo || acesso?.tipoUsuarioOficial || "-"));
-    return;
+    return false;
+  }
+  // Perfis sem bootstrap visual não precisam deixar progresso temporário
+  // para a próxima página, evitando reativar o loader em outra navegação.
+  const destinoComBootstrap = /(?:^|\/)(?:vendedor|master-local|master-global|supervisor|financeiro)\.html(?:[?#]|$)/i.test(String(rota));
+  if (!destinoComBootstrap) {
+    try { sessionStorage.removeItem("integroLoadingContinuo"); } catch (_) {}
   }
   window.location.href = rota;
+  return true;
 }
 
 // ===============================

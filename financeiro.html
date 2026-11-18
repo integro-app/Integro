@@ -266,8 +266,8 @@
   <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2" rel="stylesheet">
   <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2">
   <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261101-visualrestore2">
-  <link rel="stylesheet" href="css/integro-loading.css?v=20261101-visualrestore1">
-  <script src="js/integro-loading-handoff.js?v=20261101-visualrestore1"></script>
+  
+  <script src="js/integro-loading-handoff.js?v=20261118-acesso-v2"></script>
   <link rel="stylesheet" href="css/integro-visual.css?v=20261101-visualrestore1">
   <script defer src="js/integro-menu-categorias.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-palette.css?v=20261101-visualrestore1">
@@ -275,20 +275,24 @@
   <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-visualrestore1">
   <script defer src="js/integro-filter-drawer.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-visualrestore1&fix=20261104-chat-func-v1">
+  <link rel="stylesheet" href="css/integro-loading.css?v=20261118-acesso-v2">
 </head>
 
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="financeiro">
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
-    <div class="integro-loader-card">
-      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
-      <div class="integro-loader-title">Preparando financeiro</div>
-      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel financeiro...</div>
-      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
-      <div class="integro-loader-bar"><span id="integroLoaderBarFill"></span></div>
-      <div class="integro-loader-hint">Validando acesso, agenda, contas, caixas e solicitações.</div>
+    <div class="login-flow-card integro-loader-card" data-integro-loading-component="acesso-v1">
+      <div class="login-flow-brand">ÍNTE<span>GRO</span></div>
+      <div class="login-flow-spinner" aria-hidden="true"></div>
+      <h2 class="integro-loader-title">Preparando seu acesso</h2>
+      <div class="login-flow-step integro-loader-step" id="integroLoaderStep">Conferindo dados do seu painel...</div>
+      <div class="login-flow-track integro-loader-bar" role="progressbar" aria-label="Progresso do acesso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span id="integroLoaderBarFill" class="login-flow-progress"></span>
+      </div>
+      <div class="login-flow-hint integro-loader-percent" id="integroLoaderPercent">0%</div>
     </div>
   </div>
+  <script>window.IntegroLoadingContinuo?.iniciar();</script>
 
   <button class="mobile-menu-btn" type="button" onclick="toggleSidebarFinanceiro(true)" aria-label="Abrir menu" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button>
   <div class="layout">
@@ -451,7 +455,9 @@
     }
 
     function setLoaderFinanceiroStep(texto, porcentagem = 0) {
-      const percentual = Math.max(0, Math.min(100, Number(porcentagem) || 0));
+      const etapa = Math.max(0, Math.min(100, Number(porcentagem) || 0));
+      const percentual = window.IntegroLoadingContinuo?.percentual
+        ? window.IntegroLoadingContinuo.percentual(etapa) : etapa;
       const step = document.getElementById("integroLoaderStep");
       const percent = document.getElementById("integroLoaderPercent");
       const fill = document.getElementById("integroLoaderBarFill");

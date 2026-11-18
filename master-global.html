@@ -131,8 +131,8 @@
   <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2" rel="stylesheet">
   <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2">
   <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261101-visualrestore2">
-  <link rel="stylesheet" href="css/integro-loading.css?v=20261101-visualrestore1">
-  <script src="js/integro-loading-handoff.js?v=20261101-visualrestore1"></script>
+  
+  <script src="js/integro-loading-handoff.js?v=20261118-acesso-v2"></script>
   <link rel="stylesheet" href="css/integro-visual.css?v=20261101-visualrestore1">
   <script defer src="js/integro-menu-categorias.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-palette.css?v=20261101-visualrestore1">
@@ -216,6 +216,18 @@
     }
   </style>
   <style id="mg-clientes-padrao-20261117">
+    /* Cabeçalho do Master Global deve ficar solto sobre o canvas:
+       sem moldura de card, fundo branco nem sombra.
+       Não altera menu, título, ações ou os estados específicos de Clientes. */
+    html body[data-integro-page="master-global"] main.main > header.topbar{
+      background:transparent!important;
+      border:0!important;
+      border-radius:0!important;
+      box-shadow:none!important;
+      padding:0 0 8px!important;
+      min-height:64px!important;
+      margin-bottom:16px!important;
+    }
     html body[data-integro-page="master-global"].mg-clientes-ativa .topbar{background:transparent!important;border:0!important;box-shadow:none!important;padding:0 0 8px!important;margin-bottom:16px!important;min-height:0!important;display:block!important}
     html body[data-integro-page="master-global"].mg-clientes-ativa .top-left{width:100%!important;justify-content:center!important;position:relative}
     html body[data-integro-page="master-global"].mg-clientes-ativa .top-left>div{flex:1 1 auto;min-width:0;text-align:center}
@@ -358,19 +370,73 @@
     #cliDocumentoEtapa[hidden],#cliDadosComplementares[hidden],#cliReverificarDocumento[hidden]{display:none!important}
     #cliDocumentoStatus{font-size:13px;line-height:1.5;font-weight:650}
   </style>
+
+  <style id="mg-sidebar-unificada-20261118">
+    /* Desktop reproduz a navegação mobile, sem lateral permanente.
+       Aplicação exclusiva ao Master Global; preservar o mobile até 820px. */
+    @media (min-width: 821px) {
+      html body[data-integro-page="master-global"] main.main {
+        margin-left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+      }
+      html body[data-integro-page="master-global"] #sidebar.sidebar {
+        transform: translateX(-105%) !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+      }
+      html body[data-integro-page="master-global"] #sidebar.sidebar.show {
+        transform: translateX(0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        padding-top: 84px !important;
+      }
+      html body[data-integro-page="master-global"] #sidebarOverlay.overlay {
+        display: block !important;
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+      html body[data-integro-page="master-global"] #sidebarOverlay.overlay.show {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+      html body[data-integro-page="master-global"] #btnMenu.hamburger {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+      }
+      /* Ao abrir, o mesmo hambúrguer continua clicável dentro da lateral. */
+      html body[data-integro-page="master-global"].menu-mobile-open #btnMenu.hamburger {
+        position: fixed !important;
+        top: 18px !important;
+        left: 18px !important;
+        z-index: 1250 !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+      }
+    }
+  </style>
+  <link rel="stylesheet" href="css/integro-loading.css?v=20261118-acesso-v2">
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-global">
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
-    <div class="integro-loader-card">
-      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
-      <div class="integro-loader-title">Preparando Master Global</div>
-      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
-      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
-      <div class="integro-loader-bar"><span id="integroLoaderProgress"></span></div>
-      <div class="integro-loader-caption">Validando acesso, dados globais e permissões da plataforma.</div>
+    <div class="login-flow-card integro-loader-card" data-integro-loading-component="acesso-v1">
+      <div class="login-flow-brand">ÍNTE<span>GRO</span></div>
+      <div class="login-flow-spinner" aria-hidden="true"></div>
+      <h2 class="integro-loader-title">Preparando seu acesso</h2>
+      <div class="login-flow-step integro-loader-step" id="integroLoaderStep">Conferindo dados do seu painel...</div>
+      <div class="login-flow-track integro-loader-bar" role="progressbar" aria-label="Progresso do acesso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span id="integroLoaderProgress" class="login-flow-progress"></span>
+      </div>
+      <div class="login-flow-hint integro-loader-percent" id="integroLoaderPercent">0%</div>
     </div>
   </div>
+  <script>window.IntegroLoadingContinuo?.iniciar();</script>
 
   <div id="sidebarOverlay" class="overlay" data-integro-sidebar-overlay></div>
   <aside id="sidebar" class="sidebar" data-integro-sidebar aria-label="Menu principal do Master Global">
@@ -423,7 +489,9 @@
     let integroBootPercentualAtual = 0;
 
     function atualizarLoadingPremium(percentual, texto){
-      const valor = Math.max(0, Math.min(100, Number(percentual) || 0));
+      const etapaPercentual = Math.max(0, Math.min(100, Number(percentual) || 0));
+      const valor = window.IntegroLoadingContinuo?.percentual
+        ? window.IntegroLoadingContinuo.percentual(etapaPercentual) : etapaPercentual;
       integroBootPercentualAtual = valor;
       const barra = document.getElementById('integroLoaderProgress');
       const numero = document.getElementById('integroLoaderPercent');
@@ -464,7 +532,7 @@
         window.visualViewport?.addEventListener('scroll',atualizar,{passive:true});
         window.addEventListener('orientationchange',atualizar,{passive:true});
       }
-      safe('btnMenu',e=>e.onclick=abrirSidebar);safe('btnFecharMenu',e=>e.onclick=fecharSidebar);safe('sidebarOverlay',e=>e.onclick=fecharSidebar);safe('drawerOverlay',e=>e.onclick=fecharDrawer);safe('btnLogout',e=>e.onclick=logout);safe('btnAtualizar',e=>e.onclick=()=>carregarTudo().catch(err=>console.warn('[MASTER GLOBAL] Atualização',err)));safe('btnAcaoPrincipal',e=>e.onclick=()=>abrirFormCliente());document.querySelectorAll('.menu button[data-screen]').forEach(btn=>btn.onclick=()=>trocarTela(btn.dataset.screen,btn));document.querySelectorAll('[data-kpi]').forEach(card=>card.onclick=()=>abrirResumoKpi(card.dataset.kpi));document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}})
+      safe('btnMenu',e=>e.onclick=alternarSidebar);safe('btnFecharMenu',e=>e.onclick=fecharSidebar);safe('sidebarOverlay',e=>e.onclick=fecharSidebar);safe('drawerOverlay',e=>e.onclick=fecharDrawer);safe('btnLogout',e=>e.onclick=logout);safe('btnAtualizar',e=>e.onclick=()=>carregarTudo().catch(err=>console.warn('[MASTER GLOBAL] Atualização',err)));safe('btnAcaoPrincipal',e=>e.onclick=()=>abrirFormCliente());document.querySelectorAll('.menu button[data-screen]').forEach(btn=>btn.onclick=()=>trocarTela(btn.dataset.screen,btn));document.querySelectorAll('[data-kpi]').forEach(card=>card.onclick=()=>abrirResumoKpi(card.dataset.kpi));document.addEventListener('keydown',e=>{if(e.key==='Escape'){fecharSidebar();fecharDrawer();}})
       if(!window.__mgDelegacao){
         window.__mgDelegacao=true;
         document.addEventListener('click',e=>{
@@ -858,7 +926,24 @@
       const cfg=map[id];botao.style.display=cfg?'':'none';
       if(cfg){botao.textContent=cfg[0];botao.onclick=()=>cfg[1]();}
     }
-    function abrirSidebar(){byId('sidebar').classList.add('show');byId('sidebarOverlay').classList.add('show');document.body.classList.add('menu-mobile-open');byId('btnMenu')?.setAttribute('aria-expanded','true')} function fecharSidebar(){byId('sidebar').classList.remove('show');byId('sidebarOverlay').classList.remove('show');document.body.classList.remove('menu-mobile-open');byId('btnMenu')?.setAttribute('aria-expanded','false')} // Guarda quais seções o usuário expandiu, para restaurar ao voltar da edição.
+    function abrirSidebar(){
+      byId('sidebar').classList.add('show');
+      byId('sidebarOverlay').classList.add('show');
+      document.body.classList.add('menu-mobile-open');
+      byId('btnMenu')?.setAttribute('aria-expanded','true');
+      byId('btnMenu')?.setAttribute('aria-label','Fechar menu');
+    }
+    function fecharSidebar(){
+      byId('sidebar').classList.remove('show');
+      byId('sidebarOverlay').classList.remove('show');
+      document.body.classList.remove('menu-mobile-open');
+      byId('btnMenu')?.setAttribute('aria-expanded','false');
+      byId('btnMenu')?.setAttribute('aria-label','Abrir menu');
+    }
+    function alternarSidebar(){
+      if(byId('sidebar')?.classList.contains('show')) fecharSidebar();
+      else abrirSidebar();
+    } // Guarda quais seções o usuário expandiu, para restaurar ao voltar da edição.
     const estadoFichasClientes=new Map();
     let geracaoDrawerMasterGlobal=0;
     function salvarEstadoFichaCliente(){
