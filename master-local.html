@@ -2512,8 +2512,8 @@ body.integro-data-refreshing .section-card{
   @media(max-width:760px){#clientes.clientes-standardized > .clientes-section-card{padding:14px;border-radius:16px;}#clientes .clientes-page-header{align-items:stretch;flex-direction:column;}#clientes .clientes-page-actions,#clientes .clientes-header-create{width:100%;}#clientes .clientes-header-create{justify-content:center;}#clientes .clientes-master-resumo{grid-template-columns:1fr;}#clientes .clientes-master-searchbar{grid-template-columns:1fr 1fr;}#clientes .clientes-search-field{grid-column:1/-1;}#clientes .clientes-empty-table-head{display:none;}}
 </style>
 
-<link href="css/integro-loading.css?v=20260827-single1&build=20261101-ui-october-safe2" rel="stylesheet">
-<script src="js/integro-loading-handoff.js?v=20260827-single1&build=20261101-ui-october-safe2"></script>
+
+<script src="js/integro-loading-handoff.js?v=20261118-acesso-v2"></script>
 <link rel="stylesheet" href="css/logout-flow.css?v=20261101-ui-october-safe2">
 <script src="js/logout-flow.js?v=20261101-ui-october-safe2"></script>
 <link rel="stylesheet" href="css/caixa-date-ui.css?v=20261101-ui-october-safe2">
@@ -2526,21 +2526,24 @@ body.integro-data-refreshing .section-card{
 <script defer src="js/integro-filter-drawer.js?v=20261112-vendas-busca-instantanea-v1"></script>
 <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-ui-october-safe2&fix=20261104-chat-func-v1">
 
+  <link rel="stylesheet" href="css/integro-loading.css?v=20261118-acesso-v2">
 </head>
 
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-local">
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
-    <div class="integro-loader-card">
-      <div class="integro-loader-logo" aria-label="ÍNTEGRO">ÍNTE<span>GRO</span></div>
-      <div class="integro-loader-title">Preparando seu acesso</div>
-      <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
-      <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
-      <div class="integro-loader-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-        <span id="integroLoaderBarFill"></span>
+    <div class="login-flow-card integro-loader-card" data-integro-loading-component="acesso-v1">
+      <div class="login-flow-brand">ÍNTE<span>GRO</span></div>
+      <div class="login-flow-spinner" aria-hidden="true"></div>
+      <h2 class="integro-loader-title">Preparando seu acesso</h2>
+      <div class="login-flow-step integro-loader-step" id="integroLoaderStep">Conferindo dados do seu painel...</div>
+      <div class="login-flow-track integro-loader-bar" role="progressbar" aria-label="Progresso do acesso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span id="integroLoaderBarFill" class="login-flow-progress"></span>
       </div>
+      <div class="login-flow-hint integro-loader-percent" id="integroLoaderPercent">0%</div>
     </div>
   </div>
+  <script>window.IntegroLoadingContinuo?.iniciar();</script>
 
   
   <button class="mobile-menu-btn" type="button" onclick="toggleSidebar(true)" aria-label="Abrir menu" data-integro-menu-trigger>
