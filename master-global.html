@@ -216,6 +216,18 @@
     }
   </style>
   <style id="mg-clientes-padrao-20261117">
+    /* Cabeçalho do Master Global deve ficar solto sobre o canvas:
+       sem moldura de card, fundo branco nem sombra.
+       Não altera menu, título, ações ou os estados específicos de Clientes. */
+    html body[data-integro-page="master-global"] main.main > header.topbar{
+      background:transparent!important;
+      border:0!important;
+      border-radius:0!important;
+      box-shadow:none!important;
+      padding:0 0 8px!important;
+      min-height:64px!important;
+      margin-bottom:16px!important;
+    }
     html body[data-integro-page="master-global"].mg-clientes-ativa .topbar{background:transparent!important;border:0!important;box-shadow:none!important;padding:0 0 8px!important;margin-bottom:16px!important;min-height:0!important;display:block!important}
     html body[data-integro-page="master-global"].mg-clientes-ativa .top-left{width:100%!important;justify-content:center!important;position:relative}
     html body[data-integro-page="master-global"].mg-clientes-ativa .top-left>div{flex:1 1 auto;min-width:0;text-align:center}
