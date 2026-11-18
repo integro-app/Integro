@@ -113,3 +113,64 @@ test("Master Global: cabeçalho fica sem moldura sem alterar ações nem outros 
       pagina + ": ajuste não deve afetar telas aprovadas");
   }
 });
+
+
+test("Master Global: desktop mantém menu recolhido e usa o mesmo hambúrguer para abrir e fechar", () => {
+  const html=read("master-global.html");
+  const style=html.match(/<style id="mg-sidebar-unificada-20261118">([\s\S]*?)<\/style>/);
+  assert.ok(style,"regras do menu devem permanecer isoladas no Master Global");
+  assert.match(style[1],/@media \(min-width: 981px\)/);
+  assert.match(style[1],/#sidebar\.sidebar\s*\{[^}]*translateX\(-105%\) !important/);
+  assert.match(style[1],/#sidebar\.sidebar\.show\s*\{[^}]*translateX\(0\) !important/);
+  assert.match(style[1],/main\.main\s*\{[^}]*margin-left: 0 !important/);
+  assert.match(style[1],/#sidebarOverlay\.overlay\.show\s*\{[^}]*display: block !important/);
+  assert.match(style[1],/\.menu-mobile-open #btnMenu\.hamburger\s*\{[^}]*pointer-events: auto !important/);
+  assert.match(html,/safe\('btnMenu',e=>e\.onclick=alternarSidebar\)/);
+  assert.match(html,/safe\('sidebarOverlay',e=>e\.onclick=fecharSidebar\)/);
+  assert.match(html,/safe\('btnFecharMenu',e=>e\.onclick=fecharSidebar\)/);
+  assert.match(html,/if\(e\.key==='Escape'\)\{fecharSidebar\(\)/);
+  assert.match(html,/function trocarTela\(id,btn\)[^\n]*fecharSidebar\(\)/);
+  assert.ok(html.indexOf('style id="mg-sidebar-unificada-20261118"') > html.indexOf('style id="mg-clientes-padrao-20261117"'),
+    "regra nova deve prevalecer sobre o desktop legado sem modificar layout de Clientes");
+  for(const name of ["master-local.html","vendedor.html","supervisor.html"])
+    assert.doesNotMatch(read(name),/mg-sidebar-unificada-20261118/);
+});
+
+test("Master Global: alternar menu atualiza overlay, aria e estado do corpo", () => {
+  const html=read("master-global.html");
+  const start=html.indexOf("function abrirSidebar(){");
+  const end=html.indexOf("// Guarda quais seções",start);
+  assert.ok(start>=0 && end>start);
+  const atributos=new Map();
+  const criarElemento=()=>{
+    const estados=new Set();
+    return {
+      classList:{
+        add:n=>estados.add(n),
+        remove:n=>estados.delete(n),
+        contains:n=>estados.has(n)
+      },
+      setAttribute:(n,v)=>atributos.set(n,v)
+    };
+  };
+  const sidebar=criarElemento(),overlay=criarElemento(),hamburger=criarElemento(),body=criarElemento();
+  const ids={sidebar,sidebarOverlay:overlay,btnMenu:hamburger};
+  const actions=new Function("byId","document",
+    html.slice(start,end)+"\nreturn {abrirSidebar,fecharSidebar,alternarSidebar};")(
+      id=>ids[id],{body});
+  actions.alternarSidebar();
+  assert.equal(sidebar.classList.contains("show"),true);
+  assert.equal(overlay.classList.contains("show"),true);
+  assert.equal(body.classList.contains("menu-mobile-open"),true);
+  assert.equal(atributos.get("aria-expanded"),"true");
+  assert.equal(atributos.get("aria-label"),"Fechar menu");
+  actions.alternarSidebar();
+  assert.equal(sidebar.classList.contains("show"),false);
+  assert.equal(overlay.classList.contains("show"),false);
+  assert.equal(body.classList.contains("menu-mobile-open"),false);
+  assert.equal(atributos.get("aria-expanded"),"false");
+  assert.equal(atributos.get("aria-label"),"Abrir menu");
+  actions.abrirSidebar();
+  actions.fecharSidebar(); // Mesmo fechamento acionado por overlay e Escape
+  assert.equal(sidebar.classList.contains("show"),false);
+});
