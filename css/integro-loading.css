@@ -235,3 +235,59 @@ body.integro-booting .main {
 @media (max-width: 520px) {
   .login-flow-card, .integro-loader-card { width: min(430px, calc(100vw - 36px)); }
 }
+
+
+/* Loading único do login ao painel: mesma marca, mesma dimensão e fases.
+   Escopo estrito dos dois overlays existentes; não muda sidebar/layout. */
+html.integro-login-loading-concluido { background: #071323; }
+#loginFlowLoader .login-flow-brand,
+#integroBootLoader .integro-loader-logo {
+  font-family: Inter, Arial, sans-serif !important;
+  color: #fff !important;
+  font-size: 29px !important;
+  font-weight: 950 !important;
+  line-height: 1.1 !important;
+  letter-spacing: -1.5px !important;
+}
+#loginFlowLoader .login-flow-brand > span,
+#integroBootLoader .integro-loader-logo > span {
+  color: var(--integro-loading-orange, #ff8a00) !important;
+}
+#loginFlowLoader .login-flow-card h2,
+#integroBootLoader .integro-loader-title {
+  color: #fff !important;
+  font: 900 21px/1.25 Inter, Arial, sans-serif !important;
+}
+#integroBootLoader .integro-loader-caption,
+#integroBootLoader .integro-loader-hint {
+  display: none !important;
+}
+#loginFlowLoader .login-flow-track,
+#integroBootLoader .integro-loader-bar {
+  height: 7px !important;
+}
+#loginFlowLoader .login-flow-step,
+#integroBootLoader .integro-loader-step {
+  margin-bottom: 22px !important;
+  color: #cbd9ea !important;
+  font: 700 14px/1.5 Inter, Arial, sans-serif !important;
+}
+#loginFlowLoader .login-flow-hint,
+#integroBootLoader .integro-loader-percent {
+  color: #8195ad !important;
+  font: 700 12px/1.4 Inter, Arial, sans-serif !important;
+  letter-spacing: 0 !important;
+}
+/* O spinner da primeira etapa corresponde ao da segunda etapa. */
+#integroBootLoader .integro-loader-logo::after {
+  width: 52px !important;
+  height: 52px !important;
+  margin: 24px auto 22px !important;
+  border-width: 4px !important;
+  animation: integroLoadingSpin .8s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  #integroBootLoader .integro-loader-logo::after {
+    animation-duration: 1.8s;
+  }
+}
