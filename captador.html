@@ -91,7 +91,7 @@
         <div class="kpi integro-client-kpi"><small>Encerradas</small><strong id="capEncerradas">0</strong></div>
       </section>
       <section id="telaNovaCaptador" class="panel" style="display:none" data-integro-ui-component="surface">
-        <div class="panel-head" data-integro-ui-component="surface"><h2>Nova indicação</h2></div>
+        <div class="panel-head" data-integro-ui-component="panel-header"><h2>Nova indicação</h2></div>
         <form id="formIndicacaoCaptador" class="grid" onsubmit="salvarIndicacaoCaptador(event)">
           <div><label>Nome do cliente</label><input id="capNomeCliente" required></div>
           <div><label>Telefone principal</label><input id="capTelefone" required inputmode="tel"></div>
@@ -108,7 +108,7 @@
         </form>
       </section>
       <section id="telaMinhasCaptador" class="panel" data-integro-ui-component="surface">
-        <div class="panel-head" data-integro-ui-component="surface">
+        <div class="panel-head" data-integro-ui-component="panel-header">
           <h2>Minhas indicações</h2>
           <select id="filtroStatusCaptador" onchange="renderCaptador()" style="max-width:220px">
             <option value="">Todos os status</option>
@@ -124,11 +124,11 @@
         <div id="listaIndicacoesCaptador"></div>
       </section>
       <section id="telaRelatorioCaptador" class="panel" style="display:none" data-integro-ui-component="surface">
-        <div class="panel-head" data-integro-ui-component="surface"><h2>Relatório</h2></div>
+        <div class="panel-head" data-integro-ui-component="panel-header"><h2>Relatório</h2></div>
         <div id="relatorioCaptador"></div>
       </section>
       <section id="telaChatCaptador" class="panel" style="display:none" data-integro-ui-component="surface">
-        <div class="panel-head" data-integro-ui-component="surface"><h2>Chat interno</h2></div>
+        <div class="panel-head" data-integro-ui-component="panel-header"><h2>Chat interno</h2></div>
         <div id="integroChatRoot"></div>
       </section>
     </main>
