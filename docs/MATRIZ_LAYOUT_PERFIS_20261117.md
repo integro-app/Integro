@@ -18,6 +18,13 @@
 | `auditor.html` | Header e ações com alinhamento próprios; submenu já funcional | Centralização de título, foco e espaçamento, sem alterar filtros/exportação | Implementado, a homologar |
 | `usuario-integro.html` | Tela interna não carregava design system; menu lateral fixo em desktop, barra horizontal no mobile | Tokens oficiais, menu lateral recolhido com botão, overlay, Escape e fechamento ao selecionar módulo | Implementado, a homologar |
 
+## Correção adicional: componentes internos (18/11/2026)
+
+- **Causa visual identificada no código:** `panel-head` de Financeiro (2), Captador (4) e Auditor (2) estava marcado como `data-integro-ui-component="surface"` **dentro de outro `panel` também marcado como surface**. Isso criava cartão dentro de cartão com borda/sombra repetida. Os oito cabeçalhos agora usam o marcador semântico `panel-header` e estilo sem nova superfície.
+- **Componentes compartilhados:** novo bloco de estilo em `css/integro-layout-roles.css`, com escopo exclusivo `data-integro-layout="padrao-perfis-v1"`, estabelece cores, raios, espaçamento e bordas de painéis, cabeçalhos internos, barra de ferramentas, campos, filtros e cabeçalhos de tabelas. Os toolbars de clientes do Supervisor também foram marcados.
+- **Proteção funcional:** não foram modificados `onclick`, `onchange`, `oninput`, IDs, lógica de pesquisa, regras Firebase nem estados de filtros. O CSS preserva `display:none` / `.show` originais dos filtros. Dois novos testes asseguram que não existam novamente cabeçalhos com surface aninhada e que a padronização não atinja telas de referência.
+- **Pendência:** ainda faltam auditoria visual real por módulo nos quatro perfis de referência (especialmente Caixas, Cobranças e Vendas) e aceite em desktop/mobile. A interface corrigida está somente no PR até integração autorizada.
+
 ## Regras de compatibilidade
 
 - Nova camada `css/integro-layout-roles.css` exige `data-integro-layout="padrao-perfis-v1"` e atua somente nos **cinco perfis modificados**. Não afeta login, Master Global, Master Local, Vendedor, caixas, regras financeiras ou Firebase.
