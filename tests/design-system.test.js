@@ -86,3 +86,30 @@ test("tokens de interface paralelos não permanecem na camada unificada", () => 
   assert.doesNotMatch(interfaceCss, /--integro-blue-|--integro-border|--integro-orange|--integro-text/);
   assert.match(interfaceCss, /var\(--it-/);
 });
+
+
+test("Master Global: cabeçalho fica sem moldura sem alterar ações nem outros perfis", () => {
+  const master = read("master-global.html");
+  const regra = master.match(/html body\[data-integro-page="master-global"\] main\.main > header\.topbar\s*\{([^}]+)\}/);
+  assert.ok(regra, "o cabeçalho tem regra exclusiva e específica após os CSS globais");
+  for (const propriedade of [
+    "background:transparent!important",
+    "border:0!important",
+    "border-radius:0!important",
+    "box-shadow:none!important"
+  ]) assert.ok(regra[1].includes(propriedade), propriedade);
+  assert.ok(master.indexOf("css/integro-theme.css") < master.indexOf(regra[0]),
+    "a regra do Master Global deve sobrescrever a moldura do tema");
+  assert.ok(master.indexOf(regra[0]) <
+    master.indexOf('body[data-integro-page="master-global"].mg-clientes-ativa .topbar'),
+    "a variante Clientes deve continuar com seu próprio layout aprovado");
+  const cabecalho = master.match(/<header class="topbar">([\s\S]*?)<\/header>/);
+  assert.ok(cabecalho);
+  for (const id of ["btnMenu", "pageTitle", "btnAtualizar", "btnAcaoPrincipal"])
+    assert.match(cabecalho[1], new RegExp('id="' + id + '"'));
+  assert.match(master, /data-integro-page="master-global"/);
+  for (const pagina of ["index.html", "master-local.html", "vendedor.html"]) {
+    assert.doesNotMatch(read(pagina), /Cabeçalho do Master Global deve ficar solto/,
+      pagina + ": ajuste não deve afetar telas aprovadas");
+  }
+});
