@@ -1925,8 +1925,8 @@
 <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2" rel="stylesheet"/>
 </meta><link href="css/vendedor-operacao.css?v=20261101-visualrestore1" rel="stylesheet"/>  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2">
   <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261101-visualrestore2">
-  <link rel="stylesheet" href="css/integro-loading.css?v=20261117-unico1">
-  <script src="js/integro-loading-handoff.js?v=20261117-unico1"></script>
+  
+  <script src="js/integro-loading-handoff.js?v=20261118-acesso-v2"></script>
   <link rel="stylesheet" href="css/integro-visual.css?v=20261101-visualrestore1">
   <script defer src="js/integro-menu-categorias.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-palette.css?v=20261101-visualrestore1">
@@ -1934,19 +1934,22 @@
   <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-visualrestore1">
   <script defer src="js/integro-filter-drawer.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-visualrestore1&fix=20261104-chat-func-v1">
+  <link rel="stylesheet" href="css/integro-loading.css?v=20261118-acesso-v2">
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="vendedor">
 <div aria-live="polite" class="integro-boot-loader" id="integroBootLoader" role="status">
-<div class="integro-loader-card">
-<div class="integro-loader-logo">ÍNTE<span>GRO</span></div>
-<div class="integro-loader-title">Preparando seu acesso</div>
-<div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
-<div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
-<div aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="integro-loader-bar" role="progressbar">
-<span id="integroLoaderBarFill"></span>
-</div>
-</div>
-</div>
+    <div class="login-flow-card integro-loader-card" data-integro-loading-component="acesso-v1">
+      <div class="login-flow-brand">ÍNTE<span>GRO</span></div>
+      <div class="login-flow-spinner" aria-hidden="true"></div>
+      <h2 class="integro-loader-title">Preparando seu acesso</h2>
+      <div class="login-flow-step integro-loader-step" id="integroLoaderStep">Conferindo dados do seu painel...</div>
+      <div class="login-flow-track integro-loader-bar" role="progressbar" aria-label="Progresso do acesso" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <span id="integroLoaderBarFill" class="login-flow-progress"></span>
+      </div>
+      <div class="login-flow-hint integro-loader-percent" id="integroLoaderPercent">0%</div>
+    </div>
+  </div>
+  <script>window.IntegroLoadingContinuo?.iniciar();</script>
 <div class="overlay" data-integro-sidebar-overlay id="overlay" onclick="toggleSidebar(false)"></div>
 <div class="app">
 <!-- SIDEBAR -->
