@@ -407,6 +407,9 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
     getAttribute(name) { return this.attrs[name] ?? null; },
     removeAttribute(name) { delete this.attrs[name]; },
     addEventListener(name, handler) { this.events[name] = handler; },
+    appendChild(node) { (this.children ||= []).push(node); },
+    insertBefore(node) { (this.children ||= []).unshift(node); },
+    contains() { return true; },
     querySelector() { return null; },
     querySelectorAll() { return []; }
   });
@@ -447,6 +450,10 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   assert.equal(flags.has("integro-desktop-nav-ready"), true);
   assert.equal(flags.has("sidebar-desktop-fechada"), false);
   assert.equal(button.getAttribute("aria-expanded"), "true");
+  assert.ok(sidebar.children.some(el => el.className === "integro-desktop-brand"), "logo empresarial premium");
+  assert.ok(sidebar.children.some(el => el.className === "integro-desktop-profile"), "perfil fixo no rodapé");
+  assert.match(style, /\\.integro-desktop-profile/);
+  assert.match(style, /#integroDesktopRailTooltip/);
 
   let blocked = false;
   onclick({
