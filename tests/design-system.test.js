@@ -119,7 +119,7 @@ test("Master Global: desktop mantém menu recolhido e usa o mesmo hambúrguer pa
   const html=read("master-global.html");
   const style=html.match(/<style id="mg-sidebar-unificada-20261118">([\s\S]*?)<\/style>/);
   assert.ok(style,"regras do menu devem permanecer isoladas no Master Global");
-  assert.match(style[1],/@media \(min-width: 981px\)/);
+  assert.match(style[1],/@media \(min-width: 821px\)/);
   assert.match(style[1],/#sidebar\.sidebar\s*\{[^}]*translateX\(-105%\) !important/);
   assert.match(style[1],/#sidebar\.sidebar\.show\s*\{[^}]*translateX\(0\) !important/);
   assert.match(style[1],/main\.main\s*\{[^}]*margin-left: 0 !important/);
