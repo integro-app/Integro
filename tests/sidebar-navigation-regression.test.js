@@ -380,3 +380,88 @@ test("Operação do vendedor seleciona apenas abas permitidas e preserva a confe
   assert.equal(nenhuma.elementos.vendedorOperacaoTitulo.textContent, "Operação indisponível");
   assert.ok(!nenhuma.eventos.some(item => item[0] === "renderCobrancas" || item[0] === "renderVendasDia"));
 });
+
+
+test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer mobile", () => {
+  const style = read("css/integro-desktop-navigation.css");
+  const shared = read("js/integro-mobile-navigation.js");
+  assert.match(style, /@media \(min-width: 981px\)/);
+  assert.match(style, /--integro-desktop-rail-width: 78px/);
+  assert.match(shared, /js\/integro-desktop-navigation\.js\?v=/);
+
+  const flags = new Set(["sidebar-desktop-fechada"]);
+  const classes = {
+    add(...values) { values.forEach(v => flags.add(v)); },
+    remove(...values) { values.forEach(v => flags.delete(v)); },
+    contains(value) { return flags.has(value); },
+    toggle(value, enabled) {
+      if (enabled === undefined) enabled = !flags.has(value);
+      enabled ? flags.add(value) : flags.delete(value);
+      return enabled;
+    }
+  };
+  const element = () => ({
+    dataset: {}, attrs: {}, events: {},
+    setAttribute(name, value) { this.attrs[name] = value; },
+    getAttribute(name) { return this.attrs[name] ?? null; },
+    removeAttribute(name) { delete this.attrs[name]; },
+    addEventListener(name, handler) { this.events[name] = handler; },
+    querySelector() { return null; },
+    querySelectorAll() { return []; }
+  });
+  const body = element(), sidebar = element(), topbar = element(), button = element();
+  const overlay = element();
+  body.dataset.integroPage = "vendedor";
+  body.classList = classes;
+  topbar.querySelector = () => button;
+  let onclick;
+  const document = {
+    body, readyState: "complete",
+    getElementById: () => null,
+    createElement: () => element(),
+    querySelector(selector) {
+      if (selector.includes("[data-integro-sidebar]")) return sidebar;
+      if (selector.includes(".topbar")) return topbar;
+      if (selector === ".main") return {};
+      return null;
+    },
+    querySelectorAll: selector => selector.includes("overlay") ? [overlay] : [],
+    addEventListener(type, callback, capture) {
+      if (type === "click" && capture) onclick = callback;
+    }
+  };
+  body.appendChild = node => { node.sheet = {}; node.events.load?.(); };
+  const storage = new Map();
+  const media = { matches: true, addEventListener(_name, callback) { this.callback = callback; } };
+  const window = {
+    matchMedia: () => media,
+    localStorage: {
+      getItem: key => storage.get(key),
+      setItem: (key, value) => storage.set(key, value)
+    },
+    addEventListener() {}
+  };
+
+  vm.runInNewContext(read("js/integro-desktop-navigation.js"), { window, document });
+  assert.equal(flags.has("integro-desktop-nav-ready"), true);
+  assert.equal(flags.has("sidebar-desktop-fechada"), false);
+  assert.equal(button.getAttribute("aria-expanded"), "true");
+
+  let blocked = false;
+  onclick({
+    target: { closest: selector => selector === "[data-integro-desktop-rail-toggle]" ? button : null },
+    preventDefault() {},
+    stopImmediatePropagation() { blocked = true; }
+  });
+  assert.equal(blocked, true, "não executa o onclick legado do hambúrguer");
+  assert.equal(flags.has("integro-desktop-nav-compact"), true);
+  assert.equal(storage.get("integro.desktop.sidebar.mode.v1"), "compact");
+  assert.equal(button.getAttribute("aria-expanded"), "false");
+
+  media.matches = false;
+  media.callback();
+  assert.equal(flags.has("integro-desktop-nav-ready"), false, "não interfere no mobile");
+  media.matches = true;
+  media.callback();
+  assert.equal(flags.has("integro-desktop-nav-compact"), true, "restaura estado desktop");
+});
