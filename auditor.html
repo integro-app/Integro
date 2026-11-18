@@ -98,10 +98,10 @@
         <div class="kpi"><small>Caixas</small><strong id="kpiCaixas">0</strong></div>
       </section>
       <section id="auditoriaAuditorPanel" class="panel" data-integro-ui-component="surface">
-        <div class="panel-head" data-integro-ui-component="surface">
+        <div class="panel-head" data-integro-ui-component="panel-header">
           <h2 id="tituloAuditor">Logs e eventos</h2>
         </div>
-        <div class="filters">
+        <div class="filters" data-integro-ui-component="filters">
           <input id="buscaAuditor" placeholder="Buscar" oninput="renderAuditoria()">
           <select id="tipoAuditor" onchange="renderAuditoria()">
             <option value="">Todos os tipos</option>
@@ -112,7 +112,7 @@
         <div id="conteudoAuditor"></div>
       </section>
       <section id="chatAuditorPanel" class="panel" style="display:none" data-integro-ui-component="surface">
-        <div class="panel-head" data-integro-ui-component="surface"><h2>Chat interno</h2></div>
+        <div class="panel-head" data-integro-ui-component="panel-header"><h2>Chat interno</h2></div>
         <div id="integroChatRoot"></div>
       </section>
     </main>
