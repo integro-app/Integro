@@ -402,6 +402,7 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   };
   const element = () => ({
     dataset: {}, attrs: {}, events: {},
+    classList: { remove() {}, add() {} },
     setAttribute(name, value) { this.attrs[name] = value; },
     getAttribute(name) { return this.attrs[name] ?? null; },
     removeAttribute(name) { delete this.attrs[name]; },
