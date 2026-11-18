@@ -1,0 +1,194 @@
+/* ÍNTEGRO | Menu desktop retrátil — somente largura acima de 980px.
+   Não altera o drawer do mobile nem a identidade visual validada. */
+@media (min-width: 981px) {
+  html body[data-integro-page].integro-desktop-nav-ready {
+    --integro-desktop-rail-width: 268px;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready.integro-desktop-nav-compact {
+    --integro-desktop-rail-width: 78px;
+  }
+
+  html body[data-integro-page].integro-desktop-nav-ready #sidebar,
+  html body[data-integro-page].integro-desktop-nav-ready [data-integro-sidebar] {
+    display: block !important;
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    height: 100dvh !important;
+    max-width: none !important;
+    width: var(--integro-desktop-rail-width) !important;
+    min-width: var(--integro-desktop-rail-width) !important;
+    transform: translate3d(0,0,0) !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    z-index: 1200 !important;
+    transition: width .23s cubic-bezier(.2,.8,.2,1) !important;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.18) transparent;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .main,
+  html body[data-integro-page].integro-desktop-nav-ready main.main {
+    margin-left: var(--integro-desktop-rail-width) !important;
+    width: calc(100% - var(--integro-desktop-rail-width)) !important;
+    max-width: calc(100% - var(--integro-desktop-rail-width)) !important;
+    min-width: 0 !important;
+    transition: margin-left .23s cubic-bezier(.2,.8,.2,1), width .23s cubic-bezier(.2,.8,.2,1), max-width .23s cubic-bezier(.2,.8,.2,1) !important;
+  }
+
+  /* O único gatilho fica no cabeçalho, nunca flutuando ao lado da sidebar. */
+  html body[data-integro-page].integro-desktop-nav-ready #desktopMenuToggleIntegro,
+  html body[data-integro-page].integro-desktop-nav-ready .desktop-menu-toggle-integro {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .topbar [data-integro-desktop-rail-toggle] {
+    display: inline-flex !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex: 0 0 42px !important;
+    width: 42px !important;
+    min-width: 42px !important;
+    height: 42px !important;
+    min-height: 42px !important;
+    padding: 0 !important;
+    border-radius: 12px !important;
+    cursor: pointer !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .topbar [data-integro-desktop-rail-toggle]:focus-visible {
+    outline: 3px solid #ff8a32 !important;
+    outline-offset: 2px !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready [data-integro-sidebar-overlay] {
+    display: none !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Modo compacto: preservar ícones, ações e seleção de tela. */
+  html body[data-integro-page].integro-desktop-nav-compact #sidebar,
+  html body[data-integro-page].integro-desktop-nav-compact [data-integro-sidebar] {
+    padding-left: 9px !important;
+    padding-right: 9px !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar > .logo {
+    font-size: 0 !important;
+    width: 58px !important;
+    height: 52px !important;
+    margin: 0 auto 15px !important;
+    padding: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar > .logo::before {
+    content: "Í" !important;
+    color: #fff !important;
+    font-size: 30px !important;
+    font-weight: 900 !important;
+    letter-spacing: -1px !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar > .logo > * { display: none !important; }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .user-card,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .sidebar-profile-card,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .user-card-premium {
+    display: flex !important;
+    width: 54px !important;
+    min-width: 0 !important;
+    min-height: 52px !important;
+    height: 52px !important;
+    margin: 0 auto 14px !important;
+    padding: 0 !important;
+    border-radius: 15px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .user-card > *,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .sidebar-profile-card > *,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .user-card-premium > * {
+    display: none !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .user-card::before,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .sidebar-profile-card::before,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .user-card-premium::before {
+    content: "person" !important;
+    font-family: "Material Symbols Rounded" !important;
+    font-size: 27px !important;
+    color: #f8fbff !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-title,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-label,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .iv-category-arrow,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-new,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-badge,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .integro-chat-menu-badge,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .iv-sidebar-children {
+    display: none !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-section {
+    margin: 8px 0 !important;
+    padding: 6px 0 0 !important;
+    border-top: 1px solid rgba(255,255,255,.09) !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 6px !important;
+    padding: 0 !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu button,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu > button {
+    box-sizing: border-box !important;
+    width: 54px !important;
+    max-width: 54px !important;
+    min-width: 0 !important;
+    min-height: 48px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    flex-shrink: 0 !important;
+    white-space: nowrap !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-left {
+    font-size: 0 !important;
+    gap: 0 !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu button > .material-symbols-rounded,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu button > .menu-badge,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu button > .menu-new {
+    display: none !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu-left .material-symbols-rounded,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu .menu-icon {
+    display: inline-flex !important;
+    width: 28px !important;
+    height: 28px !important;
+    justify-content: center !important;
+    align-items: center !important;
+    font-size: 25px !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar [data-menu-unificado] {
+    font-size: 0 !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar .menu button:focus-visible,
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu > button:focus-visible {
+    outline: 2px solid #ff8a32 !important;
+    outline-offset: 2px !important;
+  }
+}
