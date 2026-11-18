@@ -23,6 +23,14 @@
 - **Não fechar formalmente M02 ainda:** faltam homologação autenticada de múltiplos perfis/empresas, teste de revogação em tempo real, comprovação do isolamento operacional e conferência de indicadores reais com estornos/atrasos. Evitar operações financeiras reais para homologar.
 - **Histórico:** menções anteriores neste documento a “sem deploy” ou “HTTP 503” descrevem etapas passadas, já superadas neste marco.
 
+### M03 — Um único loading no login e no acesso ao painel (17/11/2026)
+
+- **Solicitação do proprietário:** após clicar em Entrar, evitar duas telas de carregamento com logos diferentes e barra reiniciada. Manter uma apresentação única com fases de credenciais, vínculo, permissões, sessão e dados do painel.
+- **Causa corrigida:** `js/auth.js` já transmitia progresso pelo `sessionStorage`, mas quatro perfis ignoravam o mapeamento existente em `js/integro-loading-handoff.js`. O logo antigo `ÍNTEGRO.` também era diferente do login `ÍNTE` branco + `GRO` laranja.
+- **Implementação:** o login avança até 78% ao confirmar sessão; Vendedor, Master Local, Master Global, Supervisor e Financeiro continuam dos 78% até 100% no mesmo padrão de cartão, marca, spinner, título e barra. Handoff é **exclusivamente visual** e temporário, sem transportar tokens ou substituir a guarda de sessão/permissões do painel. Limpa o progresso após a conclusão e descarta estado expirado.
+- **Regressão:** `tests/loading-continuo-fases.test.js` cobre monotonicidade, expiração, acesso direto ao painel, identidade visual dos cinco perfis, permissões/sessão/caixa e escopo do CSS. O cache dos assets atualizados é invalidado por versão.
+- **Limite da evidência:** o login e o painel permanecem documentos separados por navegação; a UI é contínua visualmente, não uma única sessão de DOM. Testes de automação e preview não substituem teste autenticado desktop/mobile. **M03 e M22 não são declarados concluídos**, e não há deploy de produção nesta etapa.
+
 ## 2. Mapa de todos os módulos
 
 Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de implementação, mas ainda não há fechamento pelo protocolo atual. A coluna "situação observada" é uma triagem, não uma certificação.
