@@ -452,7 +452,7 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   assert.equal(button.getAttribute("aria-expanded"), "true");
   assert.ok(sidebar.children.some(el => el.className === "integro-desktop-brand"), "logo empresarial premium");
   assert.ok(sidebar.children.some(el => el.className === "integro-desktop-profile"), "perfil fixo no rodapé");
-  assert.match(style, /\\.integro-desktop-profile/);
+  assert.ok(style.includes(".integro-desktop-profile"));
   assert.match(style, /#integroDesktopRailTooltip/);
 
   let blocked = false;
