@@ -149,6 +149,11 @@
 
   function applyMode() {
     if (!ready) return;
+    /* Não antecipar a exibição da navegação antes da validação de sessão. */
+    if (body.classList.contains("integro-booting") || body.classList.contains("integro-shell-pending")) {
+      body.classList.remove("integro-desktop-nav-ready", "integro-desktop-nav-compact");
+      return;
+    }
     if (!DESKTOP.matches) {
       hideTooltip();
       body.classList.remove("integro-desktop-nav-ready", "integro-desktop-nav-compact");
