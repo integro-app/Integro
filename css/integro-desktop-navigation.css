@@ -290,13 +290,22 @@
     text-overflow: ellipsis !important;
   }
   html body[data-integro-page].integro-desktop-nav-ready .integro-desktop-profile-indicator {
-    display: block !important;
+    display: none !important; /* Não presumir conexão ativa pelo navegador. */
     width: 7px !important;
     min-width: 7px !important;
     height: 7px !important;
     border-radius: 50% !important;
     background: #4ade80 !important;
     box-shadow: 0 0 0 3px rgba(74,222,128,.08) !important;
+  }
+
+  /* Cabeçalho de aplicação, sem contorno de card ou sombra grosseira. */
+  html body[data-integro-page].integro-desktop-nav-ready .main > .topbar {
+    border: 0 !important;
+    border-bottom: 1px solid #e6edf6 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: rgba(255,255,255,.96) !important;
   }
 
   /* Botão do cabeçalho sempre visível: substitui o controle flutuante antigo. */
