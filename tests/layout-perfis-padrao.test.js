@@ -145,3 +145,38 @@ test("Layout: menu interno abre, fecha por overlay, opção e Escape sem alterar
   assert.doesNotMatch(source, /firebase|firestore|signOut|updateDoc/,
     "menu de apresentação não realiza operação em banco/Auth");
 });
+
+
+test("Layout: cabeçalhos internos não recebem surface aninhada",()=>{
+  const esperados={"financeiro.html":2,"captador.html":4,"auditor.html":2};
+  for(const [pagina,quantidade] of Object.entries(esperados)){
+    const html=ler(pagina);
+    const headers=[...html.matchAll(/class="panel-head" data-integro-ui-component="panel-header"/g)];
+    assert.equal(headers.length,quantidade,pagina+": marcação padronizada de títulos internos");
+    assert.doesNotMatch(html,/class="panel-head" data-integro-ui-component="surface"/,
+      pagina+": não aplicar sombra e borda de card ao cabeçalho interno");
+  }
+  const financeiro=ler("financeiro.html");
+  assert.ok((financeiro.match(/class="section-header" data-integro-ui-component="panel-header"/g)||[]).length>=6);
+  assert.ok((financeiro.match(/class="toolbar" data-integro-ui-component="toolbar"/g)||[]).length>=2);
+  assert.match(financeiro,/class="filters" id="filtrosContas" data-integro-ui-component="filters"/);
+  assert.match(ler("auditor.html"),/class="filters" data-integro-ui-component="filters"/);
+  const supervisor=ler("supervisor.html");
+  assert.equal((supervisor.match(/class="clientes-toolbar integro-data-toolbar" data-integro-ui-component="toolbar"/g)||[]).length,2);
+});
+
+test("Layout: componentes internos compartilham tokens sem liberar filtros ocultos",()=>{
+  const css=ler("css/integro-layout-roles.css");
+  for(const token of ['[data-integro-ui-component="panel-header"]',
+    '[data-integro-ui-component="toolbar"]','[data-integro-ui-component="filters"]']){
+    assert.ok(css.includes(token),token);
+  }
+  assert.match(css,/\[data-integro-ui-component="panel-header"\] \{/);
+  assert.match(css,/border-bottom: 1px solid var\(--integro-role-line/);
+  assert.match(css,/main\.main[\s\S]*:is\(\.table-wrap,\.table-container\) th/);
+  assert.match(css,/Respeita display:none de filtros ocultos/);
+  assert.doesNotMatch(css,/main\.main\s+\[data-integro-ui-component="filters"\]\s*\{[^}]*display\s*:/,
+    "não tornar visível um filtro que a regra da tela mantém oculto");
+  assert.doesNotMatch(css,/(?:^|\n)\s*(?:\.panel-head|\.panel|\.filters|\.toolbar)\s*\{/,
+    "as regras não podem atingir módulos aprovados que não optaram pelo padrão");
+});
