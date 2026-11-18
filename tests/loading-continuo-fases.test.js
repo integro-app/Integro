@@ -149,6 +149,37 @@ test("Loading único: fases do login são crescentes e ainda exigem sessão e ca
   assert.match(fonte,/redirecionarUsuario\(usuario\) === true/);
 });
 
+test("Loading único: rota sem bootstrap limpa o handoff, rota de vendedor preserva",()=>{
+  const source=ler("js/auth.js");
+  const start=source.indexOf("function redirecionarUsuario(usuario) {");
+  const end=source.indexOf("// ===============================\n// PROTEGER PÁGINAS",start);
+  assert.ok(start>=0 && end>start);
+  const state=new Map([["integroLoadingContinuo","em trânsito"]]);
+  const sessionStorage={
+    removeItem:key=>state.delete(key),
+    getItem:key=>state.get(key)
+  };
+  const tela={ location:{href:"index.html"} };
+  const alertas=[];
+  const CONFIG={
+    ROTAS_POR_TIPO:{auditor:"auditor.html",vendedor:"vendedor.html"},
+    ROTAS_POR_CARGO_CLIENTE:{}
+  };
+  const UIHelpers={alerta:x=>alertas.push(x)};
+  const navegar=new Function("window","CONFIG","UIHelpers","sessionStorage",
+    source.slice(start,end)+"\nreturn redirecionarUsuario;")(
+      tela,CONFIG,UIHelpers,sessionStorage);
+  assert.equal(navegar({tipoUsuario:"auditor"}),true);
+  assert.equal(tela.location.href,"auditor.html");
+  assert.equal(state.has("integroLoadingContinuo"),false);
+  state.set("integroLoadingContinuo","em trânsito");
+  assert.equal(navegar({tipoUsuario:"vendedor"}),true);
+  assert.equal(tela.location.href,"vendedor.html");
+  assert.equal(state.has("integroLoadingContinuo"),true);
+  assert.equal(navegar({tipoUsuario:"sem-rota"}),false);
+  assert.equal(alertas.length,1);
+});
+
 test("Loading único: identidade visual centralizada sem tocar em menu e login aprovado",()=>{
   const css=ler("css/integro-loading.css");
   for(const seletor of ["#loginFlowLoader .login-flow-brand",
