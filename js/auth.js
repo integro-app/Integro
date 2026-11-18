@@ -231,6 +231,12 @@ function redirecionarUsuario(usuario) {
     UIHelpers.alerta("Tipo de usuário sem rota liberada: " + (tipo || acesso?.tipoUsuarioOficial || "-"));
     return false;
   }
+  // Perfis sem bootstrap visual não precisam deixar progresso temporário
+  // para a próxima página, evitando reativar o loader em outra navegação.
+  const destinoComBootstrap = /(?:^|\/)(?:vendedor|master-local|master-global|supervisor|financeiro)\.html(?:[?#]|$)/i.test(String(rota));
+  if (!destinoComBootstrap) {
+    try { sessionStorage.removeItem("integroLoadingContinuo"); } catch (_) {}
+  }
   window.location.href = rota;
   return true;
 }
