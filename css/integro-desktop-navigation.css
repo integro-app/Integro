@@ -475,4 +475,54 @@
       transition: none !important;
     }
   }
+  /* Uma navegação por perfil: nunca duplicar os botões antigos com os módulos unificados. */
+  html body[data-integro-page].integro-desktop-nav-unified.integro-desktop-nav-ready .sidebar > .menu-section {
+    display: none !important;
+  }
+
+  /* Estado hidden tem prioridade absoluta sobre os estilos dos botões da rail.
+     Importante: permissões e condições continuam controladas pelos módulos. */
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar :is(button[hidden],button[aria-hidden="true"],.menu-item[hidden],.iv-nav-child[hidden]) {
+    display: none !important;
+    pointer-events: none !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar :is(.menu button,#integroSidebarMenu > button)[style*="display: none"],
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar :is(.menu button,#integroSidebarMenu > button)[style*="display:none"] {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
+  /* Menu corporativo: textos sempre legíveis, sem quebrar linha nem empurrar ícones. */
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar #integroSidebarMenu > button .menu-label {
+    flex: 1 1 auto !important;
+    overflow: hidden !important;
+    min-width: 0 !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar .menu-left {
+    overflow: hidden !important;
+    white-space: nowrap !important;
+    text-overflow: ellipsis !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar #integroSidebarMenu > button[data-modulo="sair"] {
+    margin-top: 10px !important;
+    color: #9db2ca !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar #integroSidebarMenu > button[data-modulo="sair"]:hover {
+    background: rgba(255,255,255,.055) !important;
+    color: #fff !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu > button .menu-label {
+    display: none !important;
+  }
+
+  /* Redução de movimento e estabilidade em telas desktop de menor largura. */
+  @media (max-width: 1199px) {
+    html body[data-integro-page].integro-desktop-nav-ready .main,
+    html body[data-integro-page].integro-desktop-nav-ready main.main {
+      overflow-x: clip;
+    }
+  }
+
 }
