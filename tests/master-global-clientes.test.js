@@ -91,8 +91,8 @@ test("Clientes: pesquisa e filtros combinados não vazam usuários e mantêm tot
   assert.match(make("mgClientesRestritos").textContent,/1/);
   assert.match(make("mgClientesTestes").textContent,/1/);
   assert.equal(make("btnCarregarMaisClientes").hidden,false);
-  assert.match(make("listaClientes").innerHTML,/data-client="c2" data-masters="1"/);
   ctx.carregarMaisClientes();
+  assert.match(make("listaClientes").innerHTML,/data-client="c2" data-masters="1"/);
   assert.match(make("contadorClientes").textContent,/27 de 27 resultado/);
   assert.equal(make("btnCarregarMaisClientes").hidden,true);
 
