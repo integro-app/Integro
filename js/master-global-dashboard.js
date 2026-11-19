@@ -76,7 +76,7 @@
           target:"clientes",filter:"A_VENCER",count:vencendo},
         semPlano.length && {type:"warning",icon:"assignment_late",title:"Clientes sem plano identificado",
           detail:num(semPlano.length)+" cadastro(s) sem plano vinculado ou identificado na lista",
-          target:"clientes",filter:"",count:semPlano.length},
+          target:"clientes",filter:"SEM_PLANO",count:semPlano.length},
         pending.length && {type:"info",icon:"notifications_active",title:"Notificações pendentes",
           detail:num(pending.length)+" aviso(s) ainda não lido(s)",
           target:"notificacoes",filter:"",count:pending.length}
