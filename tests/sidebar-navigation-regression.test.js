@@ -387,6 +387,8 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   const shared = read("js/integro-mobile-navigation.js");
   assert.match(style, /@media \(min-width: 981px\)/);
   assert.match(style, /--integro-desktop-rail-width: 78px/);
+  assert.match(style, /\.integro-desktop-nav-unified\.integro-desktop-nav-ready \.sidebar > \.menu-section/);
+  assert.match(style, /button\[hidden\]/, "botões ocultos não podem reaparecer no menu");
   assert.match(shared, /js\/integro-desktop-navigation\.js\?v=/);
 
   const flags = new Set(["sidebar-desktop-fechada"]);
@@ -415,6 +417,8 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   });
   const body = element(), sidebar = element(), topbar = element(), button = element();
   const overlay = element();
+  let unifiedMenuRendered = false;
+  sidebar.querySelector = selector => selector === "#integroSidebarMenu [data-menu-unificado]" && unifiedMenuRendered ? {} : null;
   body.dataset.integroPage = "vendedor";
   body.classList = classes;
   topbar.querySelector = () => button;
@@ -449,6 +453,10 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   vm.runInNewContext(read("js/integro-desktop-navigation.js"), { window, document });
   assert.equal(flags.has("integro-desktop-nav-ready"), true);
   assert.equal(flags.has("sidebar-desktop-fechada"), false);
+  assert.equal(flags.has("integro-desktop-nav-unified"), false);
+  unifiedMenuRendered = true;
+  window.IntegroDesktopNavigation.sync();
+  assert.equal(flags.has("integro-desktop-nav-unified"), true, "remove menu legado quando menu autorizado está disponível");
   assert.equal(button.getAttribute("aria-expanded"), "true");
   assert.ok(sidebar.children.some(el => el.className === "integro-desktop-brand"), "logo empresarial premium");
   assert.ok(sidebar.children.some(el => el.className === "integro-desktop-profile"), "perfil fixo no rodapé");
@@ -469,6 +477,7 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   media.matches = false;
   media.callback();
   assert.equal(flags.has("integro-desktop-nav-ready"), false, "não interfere no mobile");
+  assert.equal(flags.has("integro-desktop-nav-unified"), false, "não oculta menus mobile");
   media.matches = true;
   media.callback();
   assert.equal(flags.has("integro-desktop-nav-compact"), true, "restaura estado desktop");
