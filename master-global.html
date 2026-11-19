@@ -423,10 +423,10 @@
     let integroBootPercentualAtual = 0;
 
     function atualizarLoadingPremium(percentual, texto){
-      const etapa = Math.max(0, Math.min(100, Number(percentual) || 0));
+      const progressoEtapa = Math.max(0, Math.min(100, Number(percentual) || 0));
       const valor = window.IntegroLoadingContinuo?.percentual
-        ? window.IntegroLoadingContinuo.percentual(etapa)
-        : etapa;
+        ? window.IntegroLoadingContinuo.percentual(progressoEtapa)
+        : progressoEtapa;
       integroBootPercentualAtual = valor;
       const barra = document.getElementById('integroLoaderProgress');
       const numero = document.getElementById('integroLoaderPercent');
