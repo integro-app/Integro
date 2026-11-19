@@ -1925,8 +1925,8 @@
 <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2" rel="stylesheet"/>
 </meta><link href="css/vendedor-operacao.css?v=20261101-visualrestore1" rel="stylesheet"/>  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2">
   <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261101-visualrestore2">
-  <link rel="stylesheet" href="css/integro-loading.css?v=20261101-visualrestore1">
-  <script src="js/integro-loading-handoff.js?v=20261101-visualrestore1"></script>
+  <link rel="stylesheet" href="css/integro-loading.css?v=20261119-card-unico1">
+  <script src="js/integro-loading-handoff.js?v=20261119-card-unico1"></script>
   <link rel="stylesheet" href="css/integro-visual.css?v=20261101-visualrestore1">
   <script defer src="js/integro-menu-categorias.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-palette.css?v=20261101-visualrestore1">
@@ -1939,7 +1939,7 @@
 <div aria-live="polite" class="integro-boot-loader" id="integroBootLoader" role="status">
 <div class="integro-loader-card">
 <div class="integro-loader-logo">ÍNTE<span>GRO</span></div>
-<div class="integro-loader-title">Preparando seu painel</div>
+<div class="integro-loader-title">Preparando seu acesso</div>
 <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
 <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
 <div aria-valuemax="100" aria-valuemin="0" aria-valuenow="0" class="integro-loader-bar" role="progressbar">
@@ -6352,7 +6352,10 @@
         }
 
         function setLoaderProgress(percentual) {
-          const valor = limitarPercentualLoader(percentual);
+          const etapa = limitarPercentualLoader(percentual);
+          const valor = window.IntegroLoadingContinuo?.percentual
+            ? window.IntegroLoadingContinuo.percentual(etapa)
+            : etapa;
           integroLoaderPercentualAtual = valor;
 
           const texto = document.getElementById("integroLoaderPercent");
