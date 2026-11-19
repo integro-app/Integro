@@ -1661,19 +1661,45 @@
     }
  async function logout(){const usuarioSaindo=usuarioLogado;try{if(mgAuth)await mgAuth.signOut()}catch(e){}window.IntegroOperacional?.limparSessaoLocal?.({usuario:usuarioSaindo,limparFila:true});location.href='index.html'}
     function abrirResumoKpi(tipo){
-      const map={
-        clientes:['Clientes da plataforma',clientesIntegro.map(c=>c.nome||c.razaoSocial||c.email||c.id)],
-        ativos:['Acessos contratuais ativos',clientesIntegro.filter(clienteLiberadoGlobal).map(c=>c.nome||c.razaoSocial||c.id)],
-        teste:['Clientes em teste',clientesIntegro.filter(c=>c.testeAtivo&&clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],
-        masters:['Masters Locais',getMastersLocais().filter(u=>u.id===u.authUid).map(u=>u.nome||u.email)],
-        bloqueados:['Clientes sem acesso contratual',clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).map(c=>c.nome||c.razaoSocial||c.id)],
-        internos:['Equipe ÍNTEGRO',getUsuariosInternos().filter(u=>u.id===u.authUid).map(u=>u.nome||u.email)],
-        planos:['Planos ativos',planos.filter(p=>status(p.status)!=='INATIVO').map(p=>p.nome)],
-        notificacoes:['Notificações não lidas',notificacoes.filter(n=>!notificacaoLidaGlobal(n)).map(n=>n.titulo||n.tipo)]
+      const cliente=(c)=>({
+        id:c.id||'',nome:c.nome||c.razaoSocial||c.email||'Cliente ÍNTEGRO',
+        contexto:c.tipoPessoa||'Contratante',situacao:situacaoClienteIntegro(c).nome
+      });
+      const usuario=(u)=>({
+        id:u.id||'',nome:u.nome||u.nomeCompleto||u.email||'Usuário',
+        contexto:u.email||u.cargoNome||'',situacao:u.status||'ATIVO'
+      });
+      const opcoes={
+        clientes:{titulo:'Clientes da plataforma',tipo:'cliente',linhas:clientesIntegro.map(cliente)},
+        ativos:{titulo:'Acessos liberados',tipo:'cliente',linhas:clientesIntegro.filter(clienteLiberadoGlobal).map(cliente)},
+        teste:{titulo:'Contratantes em período de teste',tipo:'cliente',linhas:clientesIntegro.filter(c=>c.testeAtivo===true&&clienteLiberadoGlobal(c)).map(cliente)},
+        bloqueados:{titulo:'Acessos restritos',tipo:'cliente',linhas:clientesIntegro.filter(c=>!clienteLiberadoGlobal(c)).map(cliente)},
+        masters:{titulo:'Masters Locais provisionados',tipo:'usuario',linhas:getMastersLocais().filter(u=>u.id===u.authUid).map(usuario)},
+        internos:{titulo:'Equipe ÍNTEGRO provisionada',tipo:'usuario',linhas:getUsuariosInternos().filter(u=>u.id===u.authUid).map(usuario)},
+        planos:{titulo:'Planos comerciais ativos',tipo:'plano',linhas:planos.filter(p=>status(p.status)!=='INATIVO')
+          .map(p=>({id:p.id||'',nome:p.nome||'Plano comercial',contexto:moeda(p.valorMensal??p.valor??0)+' por mês · valor contratado, não recebido',situacao:p.status||'ATIVO'}))},
+        notificacoes:{titulo:'Notificações não lidas',tipo:'notificacao',linhas:notificacoes.filter(n=>!notificacaoLidaGlobal(n))
+          .map(n=>({id:n.id||'',nome:n.titulo||n.tipo||'Notificação',contexto:n.mensagem||n.descricao||'Aviso global',situacao:'PENDENTE'}))}
       };
-      const m=map[tipo]||['Resumo',[]];
-      abrirDrawer(m[0],m[1].length+' registro(s)','<div class="list">'+
-        (m[1].length?m[1].map(x=>box(x,'')).join(''):empty('Sem registros.'))+'</div>');
+      const selecionada=opcoes[tipo]||{titulo:'Detalhes do indicador',tipo:'registro',linhas:[]};
+      const rows=selecionada.linhas||[];
+      const html=rows.map(item=>{
+        const nome=String(item.nome||'Registro');
+        const sigla=nome.trim().split(/\s+/).filter(Boolean).slice(0,2).map(p=>p.charAt(0)).join('').toLocaleUpperCase('pt-BR')||'IG';
+        const acao=selecionada.tipo==='cliente'?'ver-cliente':selecionada.tipo==='usuario'?'ver-usuario':'';
+        return '<article class="mgd-detail-row"><span class="mgd-detail-avatar" aria-hidden="true">'+esc(sigla)+'</span>'+
+          '<div class="mgd-detail-copy"><strong>'+esc(nome)+'</strong>'+
+          '<small>'+esc(item.contexto||'—')+'</small>'+
+          '<span class="mgd-detail-status">'+esc(item.situacao||'—')+'</span></div>'+
+          (acao&&item.id?'<button type="button" class="mgd-detail-action" data-mg-action="'+acao+'" data-id="'+esc(item.id)+'">Ver ficha'+
+            '<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button>':'')+
+          '</article>';
+      }).join('');
+      abrirDrawer(selecionada.titulo,rows.length+' registro(s) consultado(s) no servidor',
+        '<div class="mgd-detail-list">'+(rows.length?html:'<div class="mgd-detail-empty">'+
+        '<span class="material-symbols-rounded" aria-hidden="true">inbox</span>'+
+        '<strong>Nenhum registro nesta categoria</strong><p>Os dados serão exibidos aqui quando houver resultados.</p></div>')+
+        '</div>');
     }
     function validarCaminhoLogoCliente(c){
       const id=String(c?.id||''),p=String(c?.logoStoragePath||'');
