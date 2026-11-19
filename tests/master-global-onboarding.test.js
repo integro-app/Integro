@@ -533,8 +533,12 @@ test("M01 layout clientes ÍNTEGRO: pesquisa e filtros aplicados somente aos con
   const ctx={
     clientesIntegro:data,Date,Number,
     byId:key=>elements[key],val:key=>elements[key]?.value||"",
-    setVal:(key,value)=>{elements[key].value=value;},
-    setText:(key,value)=>{elements[key].text=value;},
+    setVal:(key,value)=>{if(elements[key])elements[key].value=value;},
+    setText:(key,value)=>{if(elements[key])elements[key].text=value;},
+    getMastersLocais:()=>[],
+    planos:[],
+    document:{querySelectorAll:()=>[]},
+    atualizadoEmGlobal:'',
     status:value=>String(value||"").toUpperCase(),
     clienteLiberadoGlobal:cliente=>cliente.acessoLiberado!==false,
     dataGlobalMs:()=>NaN,esc:htmlEsc,badge:value=>'<span>'+htmlEsc(value)+'</span>',
@@ -883,6 +887,9 @@ test("M01: card e ficha usam a mesma situação; filtros separam inativo, bloque
     clienteLiberadoGlobal:access,situacaoClienteIntegro:getState,
     cardCliente:c=>c.id,byId:key=>key==="listaClientes"?lista:null,
     setText:()=>{},atualizarEstadoFiltrosClientes:()=>{},hidratarLogoClienteIntegro:()=>{},
+    preencherFiltroPlanosClientes:()=>{},resumoMastersDiretosClientes:()=>new Map(),
+    planos:[],dataGlobalMs:shared.dataGlobalMs,
+    quantidadeVisivelClientes:24,assinaturaConsultaClientes:'',LIMITE_CLIENTES_LISTA:24,
     empty:()=>"[vazio]"
   };
   const render=vm.runInNewContext(html.slice(renderStart,renderEnd)+";renderClientes",ctx);
@@ -893,7 +900,7 @@ test("M01: card e ficha usam a mesma situação; filtros separam inativo, bloque
   vals.filtroStatusClientes="TESTE_EXPIRADO";render();
   assert.equal(lista.innerHTML,"expirado");
   vals.filtroStatusClientes="BLOQUEADO";render();
-  assert.equal(lista.innerHTML,"inativobloqueadoexpirado");
+  assert.equal(lista.innerHTML,"bloqueadoinativoexpirado"); // nova ordenação alfabética padrão
 });
 
 
