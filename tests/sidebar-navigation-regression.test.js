@@ -591,6 +591,13 @@ test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplica
     addEventListener(type, callback) { this.events[type] = callback; },
     insertBefore(child) { child.parentElement = this; this.children.unshift(child); },
     appendChild(child) { child.parentElement = this; this.children.push(child); },
+    remove() {
+      if (!this.parentElement) return;
+      const siblings = this.parentElement.children;
+      const idx = siblings.indexOf(this);
+      if (idx >= 0) siblings.splice(idx, 1);
+      this.parentElement = null;
+    },
     querySelector(selector) {
       if (selector === ".integro-desktop-bell-count" &&
           this.className?.includes("integro-desktop-notifications")) {
@@ -640,9 +647,14 @@ test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplica
     originalAppend.call(body, node);
     if (node.rel === "stylesheet") { node.sheet = {}; node.events.load?.(); }
   };
+  let headerNotificationVisible = false;
   const document = {
     body, readyState: "complete",
-    getElementById: () => null,
+    getElementById(id) {
+      return id === "integroNotificationButton" && headerNotificationVisible
+        ? { hidden: false, getClientRects: () => [{}] }
+        : null;
+    },
     createElement: element,
     addEventListener() {},
     querySelector(selector) {
@@ -677,6 +689,15 @@ test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplica
   bellBadge.hidden = true;
   window.IntegroDesktopNavigation.sync();
   assert.equal(shortcuts[0].badge.hidden, true, "remove indicador ao zerar aviso");
+
+  headerNotificationVisible = true;
+  window.IntegroDesktopNavigation.sync();
+  assert.equal(host.children.filter(child => child.dataset.integroDesktopNotifications).length, 0,
+    "não duplica sino se o cabeçalho já oferece a mesma ação");
+  headerNotificationVisible = false;
+  window.IntegroDesktopNavigation.sync();
+  assert.equal(host.children.filter(child => child.dataset.integroDesktopNotifications).length, 1,
+    "restaura ação caso o cabeçalho não a exiba");
 
   media.matches = false;
   media.callback();
