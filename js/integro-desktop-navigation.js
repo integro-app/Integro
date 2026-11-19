@@ -22,14 +22,17 @@
     return document.querySelector("[data-integro-sidebar], #sidebar");
   }
   function topbar() {
-    return document.querySelector(".main .topbar, main.main .topbar, .topbar");
+    // Master Local utiliza .integro-global-header como cabeçalho real.
+    // Priorizar o filho direto evita capturar um header de módulo oculto.
+    return document.querySelector(".main > .integro-global-header, main.main > .integro-global-header") ||
+      document.querySelector(".main > .topbar, main.main > .topbar, .main .topbar, .topbar");
   }
   function ensureTrigger() {
     const bar = topbar();
     if (!bar) return null;
     trigger = bar.querySelector("[data-integro-menu-trigger], #btnMenu, .hamburger, [data-integro-desktop-rail-toggle]");
     if (!trigger) {
-      const host = bar.querySelector(".top-left") || bar;
+      const host = bar.matches?.(".integro-global-header") ? bar : (bar.querySelector(".top-left") || bar);
       trigger = document.createElement("button");
       trigger.type = "button";
       // O gatilho criado para desktop não pertence aos seletores do drawer mobile.
@@ -184,6 +187,9 @@
     const bar = sidebar();
     if (!bar || !document.querySelector(".main")) return;
 
+    // O estado "collapsed" do controlador legado não pode disputar a geometria
+    // com a rail moderna; as classes de preferência continuam no body.
+    bar.classList.remove("collapsed");
     ensureBrand();
     ensureProfile();
     ensureTrigger();
