@@ -7,7 +7,7 @@
 
   const DESKTOP = global.matchMedia("(min-width: 981px)");
   const STORAGE_KEY = "integro.desktop.sidebar.mode.v1";
-  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261119-saas3";
+  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261119-saas4";
   const CSS_ID = "integroDesktopNavigationCss";
   let compact = false;
   let ready = false;
@@ -32,7 +32,9 @@
       const host = bar.querySelector(".top-left") || bar;
       trigger = document.createElement("button");
       trigger.type = "button";
-      trigger.className = "hamburger";
+      // O gatilho criado para desktop não pertence aos seletores do drawer mobile.
+      // Evita um segundo hambúrguer no celular e captura de cliques no controlador errado.
+      trigger.className = "integro-desktop-trigger";
       trigger.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">menu</span>';
       host.insertBefore(trigger, host.firstChild);
     }
@@ -113,6 +115,7 @@
     }
     const bar = sidebar();
     if (!bar) return;
+    hideTooltip();
     // Não renderizar dois menus quando o controlador por perfil já construiu
     // uma navegação autorizada. A troca de empresa reconstrói esta lista.
     const unified = Boolean(bar.querySelector("#integroSidebarMenu [data-menu-unificado]"));
@@ -121,8 +124,12 @@
       const label = labelFor(item);
       if (!label) return;
       // O próprio tooltip do ÍNTEGRO substitui o tooltip nativo duplicado.
-      if (DESKTOP.matches && item.hasAttribute("title")) item.removeAttribute("title");
+      if (item.hasAttribute("title")) item.removeAttribute("title");
       item.dataset.integroRailLabel = label;
+      // O item ativo continua identificável por leitores de tela quando o menu recolhe.
+      const active = item.classList?.contains?.("active") === true;
+      if (active) item.setAttribute("aria-current", "page");
+      else if (item.getAttribute("aria-current") === "page") item.removeAttribute("aria-current");
     });
     ensureProfile();
   }
@@ -234,6 +241,9 @@
     document.addEventListener("focusin", event => { if (compact) showTooltip(menuItemAt(event)); });
     document.addEventListener("focusout", hideTooltip);
     document.addEventListener("keydown", event => { if (event.key === "Escape") hideTooltip(); });
+    // Não deixar uma dica flutuante presa quando a sidebar rola ou muda de largura.
+    global.addEventListener("scroll", hideTooltip, true);
+    global.addEventListener("resize", hideTooltip, { passive: true });
     document.addEventListener("integro-menu-unificado-renderizado", refreshLabels);
     // Sincroniza labels/visibilidade ao retornar de um fluxo que reconstitui a sidebar.
     document.addEventListener("integro-tela-alterada", refreshLabels);
