@@ -360,6 +360,7 @@
   </style>
   <link rel="stylesheet" href="css/integro-platform-chat.css?v=20261119-chat-saas1">
   <link rel="stylesheet" href="css/master-global-dashboard.css?v=20261119-exec1">
+  <link rel="stylesheet" href="css/master-global-clientes.css?v=20261119-clientes-premium1">
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-global">
 
@@ -380,7 +381,7 @@
     <div class="logo">ÍNTE<span>GRO</span></div>
     <div class="user-card"><small>Usuário logado</small><strong id="usuarioNome">Carregando...</strong><small id="usuarioEmpresa">ÍNTEGRO</small><small id="usuarioPerfil">Master Global</small><span class="status-online">Online</span></div>
     <div class="menu-section"><div class="menu-title">Comunicação</div><div class="menu"><button data-screen="notificacoes"><span class="menu-left"><span class="material-symbols-rounded">notifications</span>Notificações</span><span id="badgeNotificacoes">0</span></button><button data-screen="chat"><span class="menu-left"><span class="material-symbols-rounded">chat</span>Chat interno</span><span class="material-symbols-rounded">chevron_right</span></button></div></div>
-    <div class="menu-section"><div class="menu-title">Gestão global</div><div class="menu"><button data-screen="dashboard" class="active"><span class="menu-left"><span class="material-symbols-rounded">dashboard</span>Dashboard</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="clientes"><span class="menu-left"><span class="material-symbols-rounded">business</span>Clientes ÍNTEGRO</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="usuarios"><span class="menu-left"><span class="material-symbols-rounded">groups</span>Usuários internos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="departamentos"><span class="menu-left"><span class="material-symbols-rounded">account_tree</span>Departamentos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="planos"><span class="menu-left"><span class="material-symbols-rounded">payments</span>Planos</span><span class="material-symbols-rounded">chevron_right</span></button></div></div>
+    <div class="menu-section"><div class="menu-title">Gestão global</div><div class="menu"><button data-screen="dashboard" class="active"><span class="menu-left"><span class="material-symbols-rounded">dashboard</span>Dashboard</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="clientes"><span class="menu-left"><span class="material-symbols-rounded">business</span>Clientes</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="usuarios"><span class="menu-left"><span class="material-symbols-rounded">groups</span>Usuários internos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="departamentos"><span class="menu-left"><span class="material-symbols-rounded">account_tree</span>Departamentos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="planos"><span class="menu-left"><span class="material-symbols-rounded">payments</span>Planos</span><span class="material-symbols-rounded">chevron_right</span></button></div></div>
     <div class="menu-section"><div class="menu-title">Sistema</div><div class="menu"><button data-screen="relatorios"><span class="menu-left"><span class="material-symbols-rounded">bar_chart</span>Relatórios</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="logs"><span class="menu-left"><span class="material-symbols-rounded">policy</span>Logs/Auditoria</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="config"><span class="menu-left"><span class="material-symbols-rounded">settings</span>Configurações</span><span class="material-symbols-rounded">chevron_right</span></button><button id="btnLogout"><span class="menu-left"><span class="material-symbols-rounded">logout</span>Sair</span><span class="material-symbols-rounded">close</span></button></div></div>
   </aside>
   <main class="main">
@@ -455,22 +456,52 @@
     </section>
     <section id="clientes" class="screen">
       <div class="mg-clientes-panel">
+        <div class="mg-clientes-overview">
+          <div class="mg-clientes-overview-copy">
+            <span class="mg-clientes-eyebrow"><span class="material-symbols-rounded" aria-hidden="true">domain</span> CLIENTES DA PLATAFORMA</span>
+            <p>Gestão dos contratantes PF e PJ, planos e condições de acesso.</p>
+          </div>
+          <span class="mg-clientes-sync"><span class="material-symbols-rounded" aria-hidden="true">verified</span><span id="mgClientesUltimaConsulta">Dados da consulta administrativa</span></span>
+        </div>
+        <div class="mg-clientes-resumo" id="mgClientesResumo" aria-label="Filtros rápidos de clientes">
+          <button class="mg-clientes-resumo-item is-current" type="button" data-clientes-rapido="" onclick="aplicarFiltroRapidoClientes('')" aria-pressed="true">
+            <span>Todos</span><strong id="mgClientesTotal">—</strong>
+          </button>
+          <button class="mg-clientes-resumo-item" type="button" data-clientes-rapido="LIBERADO" onclick="aplicarFiltroRapidoClientes('LIBERADO')" aria-pressed="false">
+            <span>Liberados</span><strong id="mgClientesLiberados">—</strong>
+          </button>
+          <button class="mg-clientes-resumo-item" type="button" data-clientes-rapido="TESTE" onclick="aplicarFiltroRapidoClientes('TESTE')" aria-pressed="false">
+            <span>Em teste</span><strong id="mgClientesTestes">—</strong>
+          </button>
+          <button class="mg-clientes-resumo-item" type="button" data-clientes-rapido="A_VENCER" onclick="aplicarFiltroRapidoClientes('A_VENCER')" aria-pressed="false">
+            <span>A vencer</span><strong id="mgClientesVencendo">—</strong>
+          </button>
+          <button class="mg-clientes-resumo-item" type="button" data-clientes-rapido="BLOQUEADO" onclick="aplicarFiltroRapidoClientes('BLOQUEADO')" aria-pressed="false">
+            <span>Restritos</span><strong id="mgClientesRestritos">—</strong>
+          </button>
+        </div>
         <form id="mgClientesBusca" class="mg-clientes-form" onsubmit="event.preventDefault();renderClientes()">
-          <label class="mg-clientes-search" for="buscaClientes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaClientes" class="form-input" type="search" autocomplete="off" enterkeyhint="search" oninput="agendarBuscaClientes()" onsearch="renderClientes()" aria-label="Buscar cliente ÍNTEGRO" placeholder="Buscar empresa, CPF/CNPJ, e-mail ou telefone"></label>
+          <label class="mg-clientes-search" for="buscaClientes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaClientes" class="form-input" type="search" autocomplete="off" enterkeyhint="search" oninput="agendarBuscaClientes()" onsearch="renderClientes()" aria-label="Buscar cliente" placeholder="Buscar por nome, CPF/CNPJ, e-mail ou telefone"></label>
           <button type="button" id="btnFiltrosClientes" class="btn btn-light mg-clientes-filter-btn" aria-controls="filtrosClientes" aria-expanded="false" onclick="alternarFiltrosClientes()"><span class="material-symbols-rounded" aria-hidden="true">tune</span>Filtros<span id="contadorFiltrosClientes" class="mg-clientes-filter-count" hidden></span></button>
           <button type="submit" class="btn btn-light mg-clientes-buscar">Buscar</button>
           <button type="button" class="btn btn-primary mg-clientes-novo" onclick="abrirFormCliente()"><span class="material-symbols-rounded" aria-hidden="true">add_circle</span>Novo cliente</button>
         </form>
         <div id="filtrosClientes" class="mg-clientes-filtros" hidden>
-          <label class="form-label" for="filtroTipoClientes">Tipo de cliente<select id="filtroTipoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos (PF e PJ)</option><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></label>
-          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso bloqueado</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option><option value="SEM_PLANO">Sem plano identificado</option></select></label>
-          <button type="button" class="btn btn-light mg-clientes-limpar" onclick="limparFiltrosClientes()">Limpar filtros</button>
+          <label class="form-label" for="filtroTipoClientes">Tipo de contratante<select id="filtroTipoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos (PF e PJ)</option><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></label>
+          <label class="form-label" for="filtroStatusClientes">Situação de acesso<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas as situações</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso restrito</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option><option value="SEM_PLANO">Sem plano identificado</option></select></label>
+          <label class="form-label" for="filtroPlanoClientes">Plano comercial<select id="filtroPlanoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos os planos</option></select></label>
+          <label class="form-label" for="ordenacaoClientes">Ordenar por<select id="ordenacaoClientes" class="form-select" onchange="renderClientes()"><option value="NOME_ASC">Nome (A–Z)</option><option value="NOME_DESC">Nome (Z–A)</option><option value="NOVOS">Cadastros mais recentes</option><option value="ANTIGOS">Cadastros mais antigos</option></select></label>
+          <button type="button" class="btn btn-light mg-clientes-limpar" onclick="limparFiltrosClientes()"><span class="material-symbols-rounded" aria-hidden="true">filter_alt_off</span>Limpar filtros</button>
         </div>
-        <p id="contadorClientes" class="muted mg-clientes-contador" role="status" aria-live="polite"></p>
+        <div class="mg-clientes-list-toolbar">
+          <p id="contadorClientes" class="muted mg-clientes-contador" role="status" aria-live="polite"></p>
+          <span class="mg-clientes-security"><span class="material-symbols-rounded" aria-hidden="true">verified_user</span>Somente contratantes da plataforma</span>
+        </div>
         <div id="listaClientes" class="list mg-clientes-lista" aria-label="Clientes contratantes da plataforma"></div>
+        <div class="mg-clientes-load-more"><button id="btnCarregarMaisClientes" type="button" class="btn btn-light" onclick="carregarMaisClientes()" hidden>Carregar mais clientes <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div>
       </div>
     </section>
-    
+
     <section id="usuarios" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Usuários internos ÍNTEGRO</h2><p>Equipe interna que administra a plataforma.</p></div><button class="btn btn-primary" onclick="abrirFormUsuarioInterno()">Novo usuário interno</button></div><div id="listaUsuarios" class="list"></div></div></section>
     <section id="departamentos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Departamentos internos</h2><p>Comercial, financeiro, suporte e administrativo.</p></div><button class="btn btn-primary" onclick="abrirFormDepartamento()">Novo departamento</button></div><div id="listaDepartamentos" class="list"></div></div></section>
     <section id="planos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Planos da plataforma</h2><p>Planos comerciais do SaaS.</p></div><button class="btn btn-primary" onclick="abrirFormPlano()">Novo plano</button></div><div id="listaPlanos" class="list"></div></div></section>
@@ -490,7 +521,7 @@
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false,promessaCarregamentoGlobal=null;
     let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
     let dadosGlobaisCarregados=false,atualizadoEmGlobal='';
-    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
+    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes','Contratantes da plataforma ÍNTEGRO, pessoas físicas e jurídicas.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
 
     let integroBootPercentualAtual = 0;
 
@@ -737,14 +768,66 @@
       if(!/^\d{3,}$/.test(termo))return false;
       return ['documento','telefone'].some(campo=>String(cliente[campo]??'').replace(/\D/g,'').includes(termo));
     }
+    // A listagem Master Global contém apenas contratantes de clientes_integro.
+    // Os usuários da empresa continuam exclusivamente na ficha 360º.
+    const LIMITE_CLIENTES_LISTA=24;
+    let quantidadeVisivelClientes=LIMITE_CLIENTES_LISTA;
+    let assinaturaConsultaClientes='';
+    function resumoMastersDiretosClientes(){
+      const porCliente=new Map();
+      getMastersLocais().filter(u=>u.id===u.authUid&&u.clientePlataformaId).forEach(u=>{
+        const id=String(u.clientePlataformaId);
+        porCliente.set(id,(porCliente.get(id)||0)+1);
+      });
+      return porCliente;
+    }
+    let assinaturaPlanosFiltroClientes='';
+    function preencherFiltroPlanosClientes(){
+      const campo=byId('filtroPlanoClientes');
+      if(!campo)return;
+      const assinatura=JSON.stringify(planos.map(p=>[p.id,p.nome,p.status]));
+      if(assinatura===assinaturaPlanosFiltroClientes)return;
+      const antigo=campo.value||'';
+      campo.innerHTML='<option value="">Todos os planos</option>'+
+        planos.filter(p=>p.id).slice().sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'))
+          .map(p=>'<option value="'+esc(String(p.id))+'">'+esc(p.nome||'Plano comercial')+
+            (status(p.status)==='INATIVO'?' (inativo)':'')+'</option>').join('');
+      campo.value=antigo;
+      assinaturaPlanosFiltroClientes=assinatura;
+    }
+    function atualizarResumoClientes(){
+      const total=clientesIntegro.length;
+      const liberados=clientesIntegro.filter(clienteLiberadoGlobal).length;
+      const emTeste=clientesIntegro.filter(c=>c.testeAtivo===true&&clienteLiberadoGlobal(c)).length;
+      const vencendo=clientesIntegro.filter(c=>situacaoClienteIntegro(c).nome==='A VENCER').length;
+      [['mgClientesTotal',total],['mgClientesLiberados',liberados],['mgClientesTestes',emTeste],
+        ['mgClientesVencendo',vencendo],['mgClientesRestritos',total-liberados]]
+        .forEach(([id,qtd])=>setText(id,qtd));
+      const ativo=val('filtroStatusClientes');
+      document.querySelectorAll('#mgClientesResumo [data-clientes-rapido]').forEach(botao=>{
+        const selecionado=botao.dataset.clientesRapido===ativo;
+        botao.classList.toggle('is-current',selecionado);
+        botao.setAttribute('aria-pressed',String(selecionado));
+      });
+      setText('mgClientesUltimaConsulta',
+        atualizadoEmGlobal ? 'Consulta: '+dataCurta(atualizadoEmGlobal) : 'Horário da consulta não informado');
+    }
+    function aplicarFiltroRapidoClientes(tipo){
+      const permitido=['','LIBERADO','TESTE','A_VENCER','BLOQUEADO'];
+      if(!permitido.includes(tipo))return;
+      setVal('filtroStatusClientes',tipo);
+      renderClientes();
+    }
     function atualizarEstadoFiltrosClientes(){
-      const ativos=Number(Boolean(val('filtroTipoClientes')))+Number(Boolean(val('filtroStatusClientes')));
+      const ativos=Number(Boolean(val('filtroTipoClientes')))+Number(Boolean(val('filtroStatusClientes')))+
+        Number(Boolean(val('filtroPlanoClientes')));
       const indicador=byId('contadorFiltrosClientes'),botao=byId('btnFiltrosClientes');
       if(indicador){indicador.hidden=ativos===0;indicador.textContent=ativos?String(ativos):'';}
       if(botao){
         botao.classList.toggle('mg-filtros-ativos',ativos>0);
         botao.setAttribute('aria-label',ativos?'Filtros, '+ativos+' ativo(s)':'Filtros');
       }
+      atualizarResumoClientes();
     }
     function alternarFiltrosClientes(){
       const painel=byId('filtrosClientes'),botao=byId('btnFiltrosClientes');
@@ -758,16 +841,34 @@
         clearTimeout(temporizadorBuscaClientes);
         temporizadorBuscaClientes=null;
       }
-      setVal('buscaClientes','');setVal('filtroTipoClientes','');setVal('filtroStatusClientes','');
+      setVal('buscaClientes','');
+      setVal('filtroTipoClientes','');
+      setVal('filtroStatusClientes','');
+      setVal('filtroPlanoClientes','');
+      setVal('ordenacaoClientes','NOME_ASC');
+      quantidadeVisivelClientes=LIMITE_CLIENTES_LISTA;
+      assinaturaConsultaClientes='';
+      renderClientes();
+    }
+    function carregarMaisClientes(){
+      quantidadeVisivelClientes+=LIMITE_CLIENTES_LISTA;
       renderClientes();
     }
     function renderClientes(){
+      preencherFiltroPlanosClientes();
       const termo=val('buscaClientes');
       const tipo=val('filtroTipoClientes');
       const situacao=val('filtroStatusClientes');
-      // Somente contratantes de clientes_integro; os usuários ficam na ficha.
+      const plano=val('filtroPlanoClientes');
+      const ordem=val('ordenacaoClientes')||'NOME_ASC';
+      const assinatura=JSON.stringify([termo,tipo,situacao,plano,ordem]);
+      if(assinatura!==assinaturaConsultaClientes){
+        quantidadeVisivelClientes=LIMITE_CLIENTES_LISTA;
+        assinaturaConsultaClientes=assinatura;
+      }
       const lista=clientesIntegro.filter(c=>{
         if(!correspondeBuscaCliente(c,termo)||tipo&&status(c.tipoPessoa)!==tipo)return false;
+        if(plano&&String(c.planoId||'')!==plano)return false;
         if(!situacao)return true;
         const estado=situacaoClienteIntegro(c);
         if(situacao==='LIBERADO')return estado.liberado;
@@ -779,13 +880,42 @@
           TESTE_EXPIRADO:'TESTE EXPIRADO'
         }[situacao]||'__DESCONHECIDO__');
       });
-      setText('contadorClientes',lista.length+' cliente(s) ÍNTEGRO exibido(s).');
+      const nomeCliente=c=>String(c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente');
+      const compararNome=(a,b)=>nomeCliente(a).localeCompare(nomeCliente(b),'pt-BR',{sensitivity:'base'});
+      lista.sort((a,b)=>{
+        if(ordem==='NOME_DESC')return -compararNome(a,b);
+        if(ordem==='NOVOS'||ordem==='ANTIGOS'){
+          const aData=dataGlobalMs(a.criadoEm),bData=dataGlobalMs(b.criadoEm);
+          if(!Number.isFinite(aData)&&!Number.isFinite(bData))return compararNome(a,b);
+          if(!Number.isFinite(aData))return 1;
+          if(!Number.isFinite(bData))return -1;
+          const diferenca=ordem==='NOVOS'?bData-aData:aData-bData;
+          return diferenca||compararNome(a,b);
+        }
+        return compararNome(a,b);
+      });
+      const visiveis=lista.slice(0,quantidadeVisivelClientes);
+      const total=clientesIntegro.length;
+      setText('contadorClientes',visiveis.length+' de '+lista.length+' resultado(s) · '+total+' cliente(s) cadastrado(s)');
       atualizarEstadoFiltrosClientes();
       const host=byId('listaClientes');
       if(host){
-        host.innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente ÍNTEGRO encontrado com estes filtros.');
-        hidratarLogoClienteIntegro(host);
+        if(visiveis.length){
+          const masters=resumoMastersDiretosClientes();
+          host.innerHTML=visiveis.map(c=>cardCliente(c,masters.get(String(c.id))||0)).join('');
+          hidratarLogoClienteIntegro(host);
+        }else if(total===0){
+          host.innerHTML='<div class="mg-clientes-empty"><span class="material-symbols-rounded" aria-hidden="true">domain_add</span>'+
+            '<strong>Nenhum contratante cadastrado</strong><p>Cadastre o primeiro cliente da plataforma para começar a administrar seus acessos.</p>'+
+            '<button type="button" class="btn btn-primary" onclick="abrirFormCliente()">Novo cliente</button></div>';
+        }else{
+          host.innerHTML='<div class="mg-clientes-empty"><span class="material-symbols-rounded" aria-hidden="true">manage_search</span>'+
+            '<strong>Nenhum cliente corresponde aos filtros</strong><p>Revise a busca ou limpe os filtros para exibir os contratantes cadastrados.</p>'+
+            '<button type="button" class="btn btn-light" onclick="limparFiltrosClientes()">Limpar filtros</button></div>';
+        }
       }
+      const mais=byId('btnCarregarMaisClientes');
+      if(mais){mais.hidden=visiveis.length>=lista.length;mais.disabled=visiveis.length>=lista.length;}
     }
     function renderMasters(){const host=byId('listaMasters');if(!host)return;const lista=getMastersLocais();host.innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
     function renderUsuariosInternos(){const lista=getUsuariosInternos();byId('listaUsuarios').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'interno')).join(''):empty('Nenhum usuário interno encontrado.')}
@@ -878,28 +1008,53 @@
       document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
     }
     function cardCliente(c){
-      const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente ÍNTEGRO';
+      const mastersDiretos=Number(arguments[1]||0);
+      const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente da plataforma';
       const estado=situacaoClienteIntegro(c);
       const chipCor=estado.cor==='ativo'?'green':['vencer','teste','inativo'].includes(estado.cor)?'orange':'red';
-      const barra=estado.cor==='ativo'?'#22c55e':['vencer','teste','inativo'].includes(estado.cor)?'#f97316':'#ef4444';
-      const vencimento=(estado.nome==='A VENCER'&&estado.diasRestantes!==null&&estado.diasRestantes>=0&&estado.diasRestantes<=7)?
-        '<span class="chip">Teste: '+esc(dataCurta(c.dataFimTeste))+'</span>':
-        estado.nome==='A VENCER'&&Number.isFinite(estado.contratoMs)?
-        '<span class="chip">Contrato: '+esc(dataCurta(estado.contratoVencimento))+'</span>':'';
-      const iniciais=nome.trim().split(/\s+/).slice(0,2).map(parte=>parte.charAt(0)).join('').toUpperCase()||'IN';
+      const barra=estado.cor==='ativo'?'#25b975':['vencer','teste','inativo'].includes(estado.cor)?'#f59b33':'#e96771';
+      const iniciais=nome.trim().split(/\s+/).slice(0,2).map(parte=>parte.charAt(0)).join('').toUpperCase()||'CL';
       const logoPath=validarCaminhoLogoCliente(c);
       const avatar='<span class="mg-empresa-avatar" aria-hidden="true">'+
         '<span class="mg-empresa-iniciais">'+esc(iniciais)+'</span>'+
         (logoPath?'<img hidden loading="lazy" data-mg-logo-path="'+esc(logoPath)+'" alt="">':'')+'</span>';
-      return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+'" aria-label="Abrir ficha de '+esc(nome)+'">'+
+      const plano=typeof planos!=='undefined'
+        ? planos.find(p=>String(p.id||'')===String(c.planoId||'')&&Boolean(c.planoId)):null;
+      const nomePlano=plano?.nome||((c.planoId)?'Plano não identificado':'Não vinculado');
+      const lerData=valor=>typeof dataGlobalMs==='function'?dataGlobalMs(valor):
+        (valor?(Date.parse(valor)||NaN):NaN);
+      const msTeste=c.testeAtivo===true?lerData(c.dataFimTeste):NaN;
+      const msContrato=Number.isFinite(estado.contratoMs)?estado.contratoMs:lerData(estado.contratoVencimento);
+      // Havendo prazo de teste e assinatura, destacar a data mais próxima.
+      const contratoPrimeiro=Number.isFinite(msContrato)&&
+        (!Number.isFinite(msTeste)||msContrato<=msTeste);
+      const prazo=contratoPrimeiro?
+        {titulo:'Próximo vencimento',valor:'Contrato: '+dataCurta(estado.contratoVencimento)}:
+        Number.isFinite(msTeste)?
+        {titulo:'Próximo vencimento',valor:'Teste: '+dataCurta(c.dataFimTeste)}:
+        {titulo:'Vencimento',valor:'Não informado'};
+      const contato=c.email||'E-mail não informado';
+      const tipoPessoa=String(c.tipoPessoa||'').toUpperCase();
+      const tipo=tipoPessoa==='PF'?'Pessoa física':tipoPessoa==='PJ'?'Pessoa jurídica':'Tipo não informado';
+      return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+
+        '" aria-label="Abrir ficha do cliente '+esc(nome)+'">'+
         '<span class="mg-empresa-bar" aria-hidden="true" style="background:'+barra+'"></span>'+
         '<div class="mg-empresa-content"><div class="mg-empresa-identidade">'+avatar+
-        '<div class="mg-empresa-infos"><h3>'+esc(nome)+'</h3>'+
-        '<p class="mg-empresa-meta">'+esc(c.tipoPessoa||'PJ')+' · '+esc(c.documento||'-')+' · '+esc(c.email||'-')+'</p>'+
-        '<div class="mg-empresa-tags"><span class="chip '+chipCor+'">'+esc(estado.nome)+'</span>'+
-        (c.testeAtivo===true&&estado.liberado&&estado.nome!=='EM TESTE'?'<span class="chip orange">Em teste</span>':'')+
-        vencimento+'</div></div></div></div>'+
-        '<span class="mg-empresa-open">Ver detalhes<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></span></article>';
+        '<div class="mg-empresa-infos">'+
+        '<div class="mg-empresa-title-row"><h3>'+esc(nome)+'</h3><span class="chip '+chipCor+'">'+esc(estado.nome)+'</span></div>'+
+        '<p class="mg-empresa-meta">'+esc(tipo)+'<span class="mg-empresa-meta-divider">·</span>'+esc(c.documento||'Documento não informado')+'</p>'+
+        '<p class="mg-empresa-email"><span class="material-symbols-rounded" aria-hidden="true">alternate_email</span>'+esc(contato)+'</p>'+
+        '</div></div>'+
+        '<div class="mg-empresa-secondary">'+
+          '<div class="mg-empresa-detail"><span class="material-symbols-rounded" aria-hidden="true">sell</span><div><small>Plano comercial</small><strong>'+esc(nomePlano)+'</strong></div></div>'+
+          '<div class="mg-empresa-detail"><span class="material-symbols-rounded" aria-hidden="true">manage_accounts</span><div><small>Masters Locais diretos</small><strong>'+esc(String(mastersDiretos))+' provisionado(s)</strong></div></div>'+
+          '<div class="mg-empresa-detail"><span class="material-symbols-rounded" aria-hidden="true">event</span><div><small>'+esc(prazo.titulo)+'</small><strong>'+esc(prazo.valor)+'</strong></div></div>'+
+        '</div>'+
+        '<div class="mg-empresa-bottom"><div class="mg-empresa-tags">'+
+          (c.testeAtivo===true&&estado.liberado&&estado.nome!=='EM TESTE'?'<span class="mg-empresa-mini-tag">Período de teste</span>':'')+
+          (!estado.liberado?'<span class="mg-empresa-mini-tag is-restricted">Acesso não liberado</span>':'')+
+        '</div><span class="mg-empresa-open">Abrir ficha completa <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></span></div>'+
+        '</div></article>';
     }
     function cardUsuario(u,tipo){
       const nome=u.nome||u.nomeCompleto||u.email||'Usuário';

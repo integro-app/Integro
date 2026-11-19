@@ -388,3 +388,14 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Detalhamento:** oito KPIs preservam `data-kpi` e `abrirResumoKpi` aprovados. Alertas levam à aba de Clientes com filtro pertinente, ou à de Notificações; atividade abre Logs/Auditoria. Nenhuma operação de escrita é executada pelos cards.
 - **Arquivos:** `master-global.html`, `js/master-global-dashboard.js`, `css/master-global-dashboard.css`, `tests/master-global-dashboard.test.js` e inclusão no `npm test`.
 - **Status:** PR de homologação sobre o Chat Interno e Menu Desktop ainda em revisão. Requer testes automáticos e inspeção visual/autenticada; **sem publicação em produção**.
+
+
+### M01 — Clientes (contratantes da plataforma) · Revisão 19/11/2026
+
+- **Nomenclatura aprovada para homologação:** o menu e o cabeçalho do Master Global passam de “Clientes ÍNTEGRO” para **“Clientes”**; a legenda **“Clientes da plataforma”** identifica a base SaaS, distinta dos clientes operacionais de cada tenant. Nenhum nome de coleção ou contrato de API foi alterado.
+- **Redesign:** grade premium de duas colunas no desktop com logos cadastradas, nome, PF/PJ, documento, e-mail, status de acesso, nome do plano, número de Masters Locais diretamente associados e vencimento conhecido. Card inteiro abre a ficha 360º existente (inclusive pelo teclado). Nenhuma ação financeira nem bloqueio automático é executado.
+- **Indicadores/ação:** cinco filtros rápidos (Todos, Liberados, Em teste, A vencer, Restritos) calculados com a mesma lógica oficial `clienteLiberadoGlobal` e `situacaoClienteIntegro`. Filtros combináveis por tipo de contratante, situação de acesso, plano e ordenação (nome e data de criação). Busca por nome/CPF/CNPJ/e-mail/telefone, incluindo documentos numéricos. Botões de limpar e buscar preservados.
+- **Performance:** carregamento visual inicial limitado a 24 cards (botão “Carregar mais”); o backend continua consultando `listarPainel` e preservando seu controle de permissão. Os usuários e Masters permanecem em seus módulos/fichas; a lista raiz só usa `clientes_integro`.
+- **Consistência:** totais sempre refletem a lista obtida do servidor, nunca valores inventados. “Masters Locais diretos” conta somente as contas Auth provisionadas com vínculo direto ao cliente; não presume vínculos adicionais fora dessa relação. Se plano/vencimento não estiver informado, a UI declara ausência de informação.
+- **Arquivos:** `master-global.html`, `css/master-global-clientes.css`, `tests/master-global-clientes.test.js`, `package.json`.
+- **Status:** em homologação, branch empilhada sobre PR #69; requer testes automáticos e inspeção autenticada desktop/mobile. Sem deploy de produção.
