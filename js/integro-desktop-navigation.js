@@ -66,6 +66,51 @@
       : parts[0].slice(0, 2)).toLocaleUpperCase("pt-BR");
   }
 
+  // O vendedor já tem um sino funcional no card legado. Como o visual
+  // desktop esconde esse card, espelhar somente o ACESSO à ação existente;
+  // nunca copiar listeners, dados, permissões ou implementar nova rota.
+  function ensureNotificationShortcut() {
+    const bar = sidebar();
+    const host = bar?.querySelector?.("#integroSidebarMenu");
+    if (!host) return;
+    const sourceBell = bar.querySelector(".user-card [data-notification-bell], .sidebar-profile-card [data-notification-bell]");
+    let shortcut = host.querySelector("[data-integro-desktop-notifications]");
+    if (!sourceBell || !DESKTOP.matches) {
+      shortcut?.remove?.();
+      return;
+    }
+    if (!shortcut) {
+      shortcut = document.createElement("button");
+      shortcut.type = "button";
+      shortcut.className = "menu-item integro-desktop-notifications";
+      shortcut.dataset.integroDesktopNotifications = "true";
+      shortcut.dataset.integroRailLabel = "Notificações";
+      shortcut.setAttribute("aria-label", "Abrir notificações");
+      shortcut.setAttribute("aria-haspopup", "dialog");
+      shortcut.innerHTML = '<span class="menu-icon material-symbols-rounded" aria-hidden="true">notifications</span>' +
+        '<span class="menu-label">Notificações</span>' +
+        '<span class="integro-desktop-bell-count" aria-hidden="true" hidden></span>';
+      shortcut.addEventListener("click", () => {
+        const original = sidebar()?.querySelector(".user-card [data-notification-bell], .sidebar-profile-card [data-notification-bell]");
+        original?.click?.();
+      });
+    }
+    const signout = host.querySelector('[data-menu-unificado][data-modulo="sair"]');
+    if (shortcut.parentElement !== host) {
+      if (signout) host.insertBefore(shortcut, signout);
+      else host.appendChild(shortcut);
+    }
+    const badge = sourceBell.querySelector("[data-notification-count]");
+    const mirror = shortcut.querySelector(".integro-desktop-bell-count");
+    if (mirror) {
+      const count = Number(badge?.textContent?.trim() || 0);
+      const visible = Boolean(badge && !badge.hidden && Number.isFinite(count) && count > 0);
+      mirror.hidden = !visible;
+      if (visible && mirror.textContent !== String(count)) mirror.textContent = String(count);
+      if (!visible && mirror.textContent) mirror.textContent = "";
+    }
+  }
+
   function ensureProfile() {
     if (!DESKTOP.matches) return;
     const bar = sidebar();
@@ -95,6 +140,7 @@
     if (avatarSlot && avatarSlot.textContent !== initials(safeName)) avatarSlot.textContent = initials(safeName);
     if (profile.title !== label) profile.title = label;
     profile.dataset.integroRailLabel = label;
+    ensureNotificationShortcut();
     if (source && source !== observedProfileSource && global.MutationObserver) {
       // O card de origem muda após troca de empresa/perfil: escutar somente o atual.
       profileObserver?.disconnect?.();
