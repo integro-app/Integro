@@ -497,6 +497,7 @@
           <span class="mg-clientes-security"><span class="material-symbols-rounded" aria-hidden="true">verified_user</span>Somente contratantes da plataforma</span>
         </div>
         <div id="listaClientes" class="list mg-clientes-lista" aria-label="Clientes contratantes da plataforma"></div>
+        <div class="mg-clientes-load-more"><button id="btnCarregarMaisClientes" type="button" class="btn btn-light" onclick="carregarMaisClientes()" hidden>Carregar mais clientes <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div>
       </div>
     </section>
 
@@ -766,14 +767,62 @@
       if(!/^\d{3,}$/.test(termo))return false;
       return ['documento','telefone'].some(campo=>String(cliente[campo]??'').replace(/\D/g,'').includes(termo));
     }
+    // A listagem Master Global contém apenas contratantes de clientes_integro.
+    // Os usuários da empresa continuam exclusivamente na ficha 360º.
+    const LIMITE_CLIENTES_LISTA=24;
+    let quantidadeVisivelClientes=LIMITE_CLIENTES_LISTA;
+    let assinaturaConsultaClientes='';
+    function resumoMastersDiretosClientes(){
+      const porCliente=new Map();
+      getMastersLocais().filter(u=>u.id===u.authUid&&u.clientePlataformaId).forEach(u=>{
+        const id=String(u.clientePlataformaId);
+        porCliente.set(id,(porCliente.get(id)||0)+1);
+      });
+      return porCliente;
+    }
+    function preencherFiltroPlanosClientes(){
+      const campo=byId('filtroPlanoClientes');
+      if(!campo)return;
+      const antigo=campo.value||'';
+      campo.innerHTML='<option value="">Todos os planos</option>'+
+        planos.filter(p=>p.id).slice().sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'))
+          .map(p=>'<option value="'+esc(String(p.id))+'">'+esc(p.nome||'Plano comercial')+
+            (status(p.status)==='INATIVO'?' (inativo)':'')+'</option>').join('');
+      campo.value=antigo;
+    }
+    function atualizarResumoClientes(){
+      const total=clientesIntegro.length;
+      const liberados=clientesIntegro.filter(clienteLiberadoGlobal).length;
+      const emTeste=clientesIntegro.filter(c=>c.testeAtivo===true&&clienteLiberadoGlobal(c)).length;
+      const vencendo=clientesIntegro.filter(c=>situacaoClienteIntegro(c).nome==='A VENCER').length;
+      [['mgClientesTotal',total],['mgClientesLiberados',liberados],['mgClientesTestes',emTeste],
+        ['mgClientesVencendo',vencendo],['mgClientesRestritos',total-liberados]]
+        .forEach(([id,qtd])=>setText(id,qtd));
+      const ativo=val('filtroStatusClientes');
+      document.querySelectorAll('#mgClientesResumo [data-clientes-rapido]').forEach(botao=>{
+        const selecionado=botao.dataset.clientesRapido===ativo;
+        botao.classList.toggle('is-current',selecionado);
+        botao.setAttribute('aria-pressed',String(selecionado));
+      });
+      setText('mgClientesUltimaConsulta',
+        atualizadoEmGlobal ? 'Consulta: '+dataCurta(atualizadoEmGlobal) : 'Horário da consulta não informado');
+    }
+    function aplicarFiltroRapidoClientes(tipo){
+      const permitido=['','LIBERADO','TESTE','A_VENCER','BLOQUEADO'];
+      if(!permitido.includes(tipo))return;
+      setVal('filtroStatusClientes',tipo);
+      renderClientes();
+    }
     function atualizarEstadoFiltrosClientes(){
-      const ativos=Number(Boolean(val('filtroTipoClientes')))+Number(Boolean(val('filtroStatusClientes')));
+      const ativos=Number(Boolean(val('filtroTipoClientes')))+Number(Boolean(val('filtroStatusClientes')))+
+        Number(Boolean(val('filtroPlanoClientes')));
       const indicador=byId('contadorFiltrosClientes'),botao=byId('btnFiltrosClientes');
       if(indicador){indicador.hidden=ativos===0;indicador.textContent=ativos?String(ativos):'';}
       if(botao){
         botao.classList.toggle('mg-filtros-ativos',ativos>0);
         botao.setAttribute('aria-label',ativos?'Filtros, '+ativos+' ativo(s)':'Filtros');
       }
+      atualizarResumoClientes();
     }
     function alternarFiltrosClientes(){
       const painel=byId('filtrosClientes'),botao=byId('btnFiltrosClientes');
@@ -787,16 +836,34 @@
         clearTimeout(temporizadorBuscaClientes);
         temporizadorBuscaClientes=null;
       }
-      setVal('buscaClientes','');setVal('filtroTipoClientes','');setVal('filtroStatusClientes','');
+      setVal('buscaClientes','');
+      setVal('filtroTipoClientes','');
+      setVal('filtroStatusClientes','');
+      setVal('filtroPlanoClientes','');
+      setVal('ordenacaoClientes','NOME_ASC');
+      quantidadeVisivelClientes=LIMITE_CLIENTES_LISTA;
+      assinaturaConsultaClientes='';
+      renderClientes();
+    }
+    function carregarMaisClientes(){
+      quantidadeVisivelClientes+=LIMITE_CLIENTES_LISTA;
       renderClientes();
     }
     function renderClientes(){
+      preencherFiltroPlanosClientes();
       const termo=val('buscaClientes');
       const tipo=val('filtroTipoClientes');
       const situacao=val('filtroStatusClientes');
-      // Somente contratantes de clientes_integro; os usuários ficam na ficha.
+      const plano=val('filtroPlanoClientes');
+      const ordem=val('ordenacaoClientes')||'NOME_ASC';
+      const assinatura=JSON.stringify([termo,tipo,situacao,plano,ordem]);
+      if(assinatura!==assinaturaConsultaClientes){
+        quantidadeVisivelClientes=LIMITE_CLIENTES_LISTA;
+        assinaturaConsultaClientes=assinatura;
+      }
       const lista=clientesIntegro.filter(c=>{
         if(!correspondeBuscaCliente(c,termo)||tipo&&status(c.tipoPessoa)!==tipo)return false;
+        if(plano&&String(c.planoId||'')!==plano)return false;
         if(!situacao)return true;
         const estado=situacaoClienteIntegro(c);
         if(situacao==='LIBERADO')return estado.liberado;
@@ -808,13 +875,42 @@
           TESTE_EXPIRADO:'TESTE EXPIRADO'
         }[situacao]||'__DESCONHECIDO__');
       });
-      setText('contadorClientes',lista.length+' cliente(s) ÍNTEGRO exibido(s).');
+      const nomeCliente=c=>String(c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente');
+      const compararNome=(a,b)=>nomeCliente(a).localeCompare(nomeCliente(b),'pt-BR',{sensitivity:'base'});
+      lista.sort((a,b)=>{
+        if(ordem==='NOME_DESC')return -compararNome(a,b);
+        if(ordem==='NOVOS'||ordem==='ANTIGOS'){
+          const aData=dataGlobalMs(a.criadoEm),bData=dataGlobalMs(b.criadoEm);
+          if(!Number.isFinite(aData)&&!Number.isFinite(bData))return compararNome(a,b);
+          if(!Number.isFinite(aData))return 1;
+          if(!Number.isFinite(bData))return -1;
+          const diferenca=ordem==='NOVOS'?bData-aData:aData-bData;
+          return diferenca||compararNome(a,b);
+        }
+        return compararNome(a,b);
+      });
+      const visiveis=lista.slice(0,quantidadeVisivelClientes);
+      const total=clientesIntegro.length;
+      setText('contadorClientes',visiveis.length+' de '+lista.length+' resultado(s) · '+total+' cliente(s) cadastrado(s)');
       atualizarEstadoFiltrosClientes();
       const host=byId('listaClientes');
       if(host){
-        host.innerHTML=lista.length?lista.map(cardCliente).join(''):empty('Nenhum cliente ÍNTEGRO encontrado com estes filtros.');
-        hidratarLogoClienteIntegro(host);
+        if(visiveis.length){
+          const masters=resumoMastersDiretosClientes();
+          host.innerHTML=visiveis.map(c=>cardCliente(c,masters.get(String(c.id))||0)).join('');
+          hidratarLogoClienteIntegro(host);
+        }else if(total===0){
+          host.innerHTML='<div class="mg-clientes-empty"><span class="material-symbols-rounded" aria-hidden="true">domain_add</span>'+
+            '<strong>Nenhum contratante cadastrado</strong><p>Cadastre o primeiro cliente da plataforma para começar a administrar seus acessos.</p>'+
+            '<button type="button" class="btn btn-primary" onclick="abrirFormCliente()">Novo cliente</button></div>';
+        }else{
+          host.innerHTML='<div class="mg-clientes-empty"><span class="material-symbols-rounded" aria-hidden="true">manage_search</span>'+
+            '<strong>Nenhum cliente corresponde aos filtros</strong><p>Revise a busca ou limpe os filtros para exibir os contratantes cadastrados.</p>'+
+            '<button type="button" class="btn btn-light" onclick="limparFiltrosClientes()">Limpar filtros</button></div>';
+        }
       }
+      const mais=byId('btnCarregarMaisClientes');
+      if(mais){mais.hidden=visiveis.length>=lista.length;mais.disabled=visiveis.length>=lista.length;}
     }
     function renderMasters(){const host=byId('listaMasters');if(!host)return;const lista=getMastersLocais();host.innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
     function renderUsuariosInternos(){const lista=getUsuariosInternos();byId('listaUsuarios').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'interno')).join(''):empty('Nenhum usuário interno encontrado.')}
