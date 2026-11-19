@@ -7,7 +7,7 @@
 
   const DESKTOP = global.matchMedia("(min-width: 981px)");
   const STORAGE_KEY = "integro.desktop.sidebar.mode.v1";
-  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261118-premium2";
+  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261119-saas3";
   const CSS_ID = "integroDesktopNavigationCss";
   let compact = false;
   let ready = false;
@@ -104,10 +104,15 @@
   function refreshLabels() {
     const bar = sidebar();
     if (!bar) return;
+    // Não renderizar dois menus quando o controlador por perfil já construiu
+    // uma navegação autorizada. A troca de empresa reconstrói esta lista.
+    const unified = Boolean(bar.querySelector("#integroSidebarMenu [data-menu-unificado]"));
+    body.classList.toggle("integro-desktop-nav-unified", unified);
     bar.querySelectorAll(".menu button, #integroSidebarMenu > button, [data-menu-unificado]").forEach(item => {
       const label = labelFor(item);
       if (!label) return;
-      if (item.title !== label) item.title = label;
+      // O próprio tooltip do ÍNTEGRO substitui o tooltip nativo duplicado.
+      if (DESKTOP.matches && item.hasAttribute("title")) item.removeAttribute("title");
       item.dataset.integroRailLabel = label;
     });
     ensureProfile();
@@ -128,7 +133,8 @@
   }
 
   function showTooltip(item) {
-    if (!ready || !DESKTOP.matches || !compact || !item || !item.getBoundingClientRect) {
+    if (!ready || !DESKTOP.matches || !compact || !item || !item.getBoundingClientRect ||
+        item.hidden || item.getAttribute("aria-hidden") === "true") {
       hideTooltip();
       return;
     }
@@ -156,7 +162,7 @@
     }
     if (!DESKTOP.matches) {
       hideTooltip();
-      body.classList.remove("integro-desktop-nav-ready", "integro-desktop-nav-compact");
+      body.classList.remove("integro-desktop-nav-ready", "integro-desktop-nav-compact", "integro-desktop-nav-unified");
       return;
     }
     const bar = sidebar();
@@ -220,6 +226,8 @@
     document.addEventListener("focusout", hideTooltip);
     document.addEventListener("keydown", event => { if (event.key === "Escape") hideTooltip(); });
     document.addEventListener("integro-menu-unificado-renderizado", refreshLabels);
+    // Sincroniza labels/visibilidade ao retornar de um fluxo que reconstitui a sidebar.
+    document.addEventListener("integro-tela-alterada", refreshLabels);
     document.addEventListener("integro-shell-ready", applyMode);
     document.addEventListener("integro-app-ready", applyMode);
     document.addEventListener("usuario-validado", ensureProfile);
