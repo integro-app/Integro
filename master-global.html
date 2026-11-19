@@ -1002,29 +1002,44 @@
       const a=document.createElement('a');a.href=url;a.download='integro-'+tipo+'-'+new Date().toISOString().slice(0,10)+'.csv';
       document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
     }
-    function cardCliente(c){
-      const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente ÍNTEGRO';
+    function cardCliente(c,mastersDiretos=0){
+      const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente da plataforma';
       const estado=situacaoClienteIntegro(c);
       const chipCor=estado.cor==='ativo'?'green':['vencer','teste','inativo'].includes(estado.cor)?'orange':'red';
-      const barra=estado.cor==='ativo'?'#22c55e':['vencer','teste','inativo'].includes(estado.cor)?'#f97316':'#ef4444';
-      const vencimento=(estado.nome==='A VENCER'&&estado.diasRestantes!==null&&estado.diasRestantes>=0&&estado.diasRestantes<=7)?
-        '<span class="chip">Teste: '+esc(dataCurta(c.dataFimTeste))+'</span>':
-        estado.nome==='A VENCER'&&Number.isFinite(estado.contratoMs)?
-        '<span class="chip">Contrato: '+esc(dataCurta(estado.contratoVencimento))+'</span>':'';
-      const iniciais=nome.trim().split(/\s+/).slice(0,2).map(parte=>parte.charAt(0)).join('').toUpperCase()||'IN';
+      const barra=estado.cor==='ativo'?'#25b975':['vencer','teste','inativo'].includes(estado.cor)?'#f59b33':'#e96771';
+      const iniciais=nome.trim().split(/\s+/).slice(0,2).map(parte=>parte.charAt(0)).join('').toUpperCase()||'CL';
       const logoPath=validarCaminhoLogoCliente(c);
       const avatar='<span class="mg-empresa-avatar" aria-hidden="true">'+
         '<span class="mg-empresa-iniciais">'+esc(iniciais)+'</span>'+
         (logoPath?'<img hidden loading="lazy" data-mg-logo-path="'+esc(logoPath)+'" alt="">':'')+'</span>';
-      return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+'" aria-label="Abrir ficha de '+esc(nome)+'">'+
+      const plano=planos.find(p=>String(p.id||'')===String(c.planoId||'')&&Boolean(c.planoId));
+      const nomePlano=plano?.nome||((c.planoId)?'Plano não identificado':'Não vinculado');
+      const msTeste=c.testeAtivo===true?dataGlobalMs(c.dataFimTeste):NaN;
+      const msContrato=dataGlobalMs(estado.contratoVencimento);
+      const prazo=Number.isFinite(msTeste)?{titulo:'Fim do teste',valor:dataCurta(c.dataFimTeste)}:
+        Number.isFinite(msContrato)?{titulo:'Vencimento',valor:dataCurta(estado.contratoVencimento)}:
+        {titulo:'Vencimento',valor:'Não informado'};
+      const contato=c.email||'E-mail não informado';
+      const tipo=status(c.tipoPessoa)==='PF'?'Pessoa física':status(c.tipoPessoa)==='PJ'?'Pessoa jurídica':'Tipo não informado';
+      return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+
+        '" aria-label="Abrir ficha do cliente '+esc(nome)+'">'+
         '<span class="mg-empresa-bar" aria-hidden="true" style="background:'+barra+'"></span>'+
         '<div class="mg-empresa-content"><div class="mg-empresa-identidade">'+avatar+
-        '<div class="mg-empresa-infos"><h3>'+esc(nome)+'</h3>'+
-        '<p class="mg-empresa-meta">'+esc(c.tipoPessoa||'PJ')+' · '+esc(c.documento||'-')+' · '+esc(c.email||'-')+'</p>'+
-        '<div class="mg-empresa-tags"><span class="chip '+chipCor+'">'+esc(estado.nome)+'</span>'+
-        (c.testeAtivo===true&&estado.liberado&&estado.nome!=='EM TESTE'?'<span class="chip orange">Em teste</span>':'')+
-        vencimento+'</div></div></div></div>'+
-        '<span class="mg-empresa-open">Ver detalhes<span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></span></article>';
+        '<div class="mg-empresa-infos">'+
+        '<div class="mg-empresa-title-row"><h3>'+esc(nome)+'</h3><span class="chip '+chipCor+'">'+esc(estado.nome)+'</span></div>'+
+        '<p class="mg-empresa-meta">'+esc(tipo)+'<span class="mg-empresa-meta-divider">·</span>'+esc(c.documento||'Documento não informado')+'</p>'+
+        '<p class="mg-empresa-email"><span class="material-symbols-rounded" aria-hidden="true">alternate_email</span>'+esc(contato)+'</p>'+
+        '</div></div>'+
+        '<div class="mg-empresa-secondary">'+
+          '<div class="mg-empresa-detail"><span class="material-symbols-rounded" aria-hidden="true">sell</span><div><small>Plano comercial</small><strong>'+esc(nomePlano)+'</strong></div></div>'+
+          '<div class="mg-empresa-detail"><span class="material-symbols-rounded" aria-hidden="true">manage_accounts</span><div><small>Masters Locais diretos</small><strong>'+esc(String(mastersDiretos))+' provisionado(s)</strong></div></div>'+
+          '<div class="mg-empresa-detail"><span class="material-symbols-rounded" aria-hidden="true">event</span><div><small>'+esc(prazo.titulo)+'</small><strong>'+esc(prazo.valor)+'</strong></div></div>'+
+        '</div>'+
+        '<div class="mg-empresa-bottom"><div class="mg-empresa-tags">'+
+          (c.testeAtivo===true&&estado.liberado&&estado.nome!=='EM TESTE'?'<span class="mg-empresa-mini-tag">Período de teste</span>':'')+
+          (!estado.liberado?'<span class="mg-empresa-mini-tag is-restricted">Acesso não liberado</span>':'')+
+        '</div><span class="mg-empresa-open">Abrir ficha completa <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></span></div>'+
+        '</div></article>';
     }
     function cardUsuario(u,tipo){
       const nome=u.nome||u.nomeCompleto||u.email||'Usuário';
