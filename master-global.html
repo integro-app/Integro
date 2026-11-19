@@ -1007,7 +1007,8 @@
       const a=document.createElement('a');a.href=url;a.download='integro-'+tipo+'-'+new Date().toISOString().slice(0,10)+'.csv';
       document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1500);
     }
-    function cardCliente(c,mastersDiretos=0){
+    function cardCliente(c){
+      const mastersDiretos=Number(arguments[1]||0);
       const nome=c.nome||c.nomeCompleto||c.razaoSocial||c.fantasia||'Cliente da plataforma';
       const estado=situacaoClienteIntegro(c);
       const chipCor=estado.cor==='ativo'?'green':['vencer','teste','inativo'].includes(estado.cor)?'orange':'red';
@@ -1017,15 +1018,24 @@
       const avatar='<span class="mg-empresa-avatar" aria-hidden="true">'+
         '<span class="mg-empresa-iniciais">'+esc(iniciais)+'</span>'+
         (logoPath?'<img hidden loading="lazy" data-mg-logo-path="'+esc(logoPath)+'" alt="">':'')+'</span>';
-      const plano=planos.find(p=>String(p.id||'')===String(c.planoId||'')&&Boolean(c.planoId));
+      const plano=typeof planos!=='undefined'
+        ? planos.find(p=>String(p.id||'')===String(c.planoId||'')&&Boolean(c.planoId)):null;
       const nomePlano=plano?.nome||((c.planoId)?'Plano não identificado':'Não vinculado');
-      const msTeste=c.testeAtivo===true?dataGlobalMs(c.dataFimTeste):NaN;
-      const msContrato=dataGlobalMs(estado.contratoVencimento);
-      const prazo=Number.isFinite(msTeste)?{titulo:'Fim do teste',valor:dataCurta(c.dataFimTeste)}:
-        Number.isFinite(msContrato)?{titulo:'Vencimento',valor:dataCurta(estado.contratoVencimento)}:
+      const lerData=valor=>typeof dataGlobalMs==='function'?dataGlobalMs(valor):
+        (valor?(Date.parse(valor)||NaN):NaN);
+      const msTeste=c.testeAtivo===true?lerData(c.dataFimTeste):NaN;
+      const msContrato=Number.isFinite(estado.contratoMs)?estado.contratoMs:lerData(estado.contratoVencimento);
+      // Havendo prazo de teste e assinatura, destacar a data mais próxima.
+      const contratoPrimeiro=Number.isFinite(msContrato)&&
+        (!Number.isFinite(msTeste)||msContrato<=msTeste);
+      const prazo=contratoPrimeiro?
+        {titulo:'Próximo vencimento',valor:'Contrato: '+dataCurta(estado.contratoVencimento)}:
+        Number.isFinite(msTeste)?
+        {titulo:'Próximo vencimento',valor:'Teste: '+dataCurta(c.dataFimTeste)}:
         {titulo:'Vencimento',valor:'Não informado'};
       const contato=c.email||'E-mail não informado';
-      const tipo=status(c.tipoPessoa)==='PF'?'Pessoa física':status(c.tipoPessoa)==='PJ'?'Pessoa jurídica':'Tipo não informado';
+      const tipoPessoa=String(c.tipoPessoa||'').toUpperCase();
+      const tipo=tipoPessoa==='PF'?'Pessoa física':tipoPessoa==='PJ'?'Pessoa jurídica':'Tipo não informado';
       return '<article class="mg-empresa-card" role="button" tabindex="0" data-mg-action="ver-cliente" data-id="'+esc(c.id)+
         '" aria-label="Abrir ficha do cliente '+esc(nome)+'">'+
         '<span class="mg-empresa-bar" aria-hidden="true" style="background:'+barra+'"></span>'+
