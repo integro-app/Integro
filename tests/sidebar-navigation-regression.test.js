@@ -387,6 +387,9 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   const shared = read("js/integro-mobile-navigation.js");
   assert.match(style, /@media \(min-width: 981px\)/);
   assert.match(style, /--integro-desktop-rail-width: 78px/);
+  assert.match(style, /\.integro-desktop-trigger/, "o gatilho extra nunca deve aparecer no mobile");
+  assert.match(read("js/integro-desktop-navigation.js"), /"aria-current", "page"/,
+    "o módulo ativo informa sua posição aos leitores de tela");
   assert.match(style, /\.integro-desktop-nav-unified\.integro-desktop-nav-ready \.sidebar > \.menu-section/);
   assert.match(style, /button\[hidden\]/, "botões ocultos não podem reaparecer no menu");
   assert.ok(style.includes("#integroSidebarMenu > button[hidden]"), "regra hidden deve superar o botão com ID");
@@ -482,4 +485,62 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   media.matches = true;
   media.callback();
   assert.equal(flags.has("integro-desktop-nav-compact"), true, "restaura estado desktop");
+});
+
+
+test("menu desktop: novo gatilho não cria hambúrguer extra no mobile", () => {
+  const element = () => ({
+    dataset: {}, attrs: {}, children: [], events: {}, style: {},
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+    setAttribute(name, value) { this.attrs[name] = value; },
+    getAttribute(name) { return this.attrs[name] ?? null; },
+    removeAttribute(name) { delete this.attrs[name]; },
+    hasAttribute(name) { return name in this.attrs; },
+    appendChild(child) { this.children.push(child); if (child.rel === "stylesheet") child.events.load?.(); },
+    insertBefore(child) { this.children.unshift(child); },
+    addEventListener(name, callback) { this.events[name] = callback; },
+    querySelector() { return null; },
+    querySelectorAll() { return []; }
+  });
+  const classes = new Set();
+  const body = element(), sidebar = element(), bar = element();
+  body.dataset.integroPage = "master-local";
+  body.classList = {
+    add(...values) { values.forEach(value => classes.add(value)); },
+    remove(...values) { values.forEach(value => classes.delete(value)); },
+    toggle(value, on) { on ? classes.add(value) : classes.delete(value); },
+    contains(value) { return classes.has(value); }
+  };
+  const media = { matches: true, addEventListener(_event, callback) { this.callback = callback; } };
+  const document = {
+    body, readyState: "complete",
+    getElementById() { return null; },
+    createElement: element,
+    addEventListener() {},
+    querySelector(selector) {
+      if (selector.includes("[data-integro-sidebar]")) return sidebar;
+      if (selector.includes(".topbar")) return bar;
+      if (selector === ".main") return {};
+      return null;
+    },
+    querySelectorAll() { return []; }
+  };
+  const window = {
+    matchMedia: () => media,
+    localStorage: { getItem() { return null; }, setItem() {} },
+    addEventListener() {}
+  };
+  vm.runInNewContext(read("js/integro-desktop-navigation.js"), {window,document});
+  const own = bar.children.find(node => node.className === "integro-desktop-trigger");
+  assert.ok(own, "cria gatilho quando cabeçalho não possui botão nativo");
+  assert.equal(own.dataset.integroDesktopRailToggle, "true");
+  assert.equal(own.className.includes("hamburger"), false,
+    "não entra nos seletores globais de hambúrguer mobile");
+  assert.equal(own.getAttribute("aria-expanded"), "true");
+  media.matches = false;
+  media.callback();
+  assert.equal(classes.has("integro-desktop-nav-ready"), false);
+  assert.ok(read("css/integro-desktop-navigation.css").includes(
+    ".integro-desktop-profile,\n.integro-desktop-trigger,"),
+    "CSS oculta gatilho extra fora do breakpoint desktop");
 });
