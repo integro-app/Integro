@@ -359,6 +359,7 @@
     #cliDocumentoStatus{font-size:13px;line-height:1.5;font-weight:650}
   </style>
   <link rel="stylesheet" href="css/integro-platform-chat.css?v=20261119-chat-saas1">
+  <link rel="stylesheet" href="css/master-global-dashboard.css?v=20261119-exec1">
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-global">
 
@@ -385,7 +386,73 @@
   <main class="main">
     <header class="topbar"><div class="top-left"><button id="btnMenu" class="hamburger" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sidebar" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button><div><h1 id="pageTitle">Dashboard Master Global</h1><p id="pageSubtitle">Visão executiva da plataforma ÍNTEGRO.</p></div></div><div class="top-actions"><button id="btnAtualizar" class="btn btn-light">Atualizar</button><button id="btnAcaoPrincipal" class="btn btn-primary">Novo cliente</button></div></header>
     <div id="estadoDadosGlobais" class="notice" role="alert" hidden style="margin-bottom:16px"></div>
-    <section id="dashboard" class="screen active"><div class="grid grid-4"><div class="card card-gradient card-blue clickable" data-kpi="clientes"><small>Clientes da plataforma</small><strong id="kpiClientes">0</strong><p>Empresas/PFs contratantes cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="ativos"><small>Acessos liberados</small><strong id="kpiAtivos">0</strong><p>Clientes com acesso ativo/liberado.</p></div><div class="card card-gradient card-orange clickable" data-kpi="teste"><small>Em teste</small><strong id="kpiTeste">0</strong><p>Clientes usando período experimental.</p></div><div class="card card-gradient card-purple clickable" data-kpi="masters"><small>Masters locais</small><strong id="kpiMasters">0</strong><p>Usuários administradores dos clientes.</p></div><div class="card card-gradient card-red clickable" data-kpi="bloqueados"><small>Bloqueados</small><strong id="kpiBloqueados">0</strong><p>Clientes/usuários sem acesso.</p></div><div class="card card-gradient card-blue clickable" data-kpi="internos"><small>Equipe ÍNTEGRO</small><strong id="kpiInternos">0</strong><p>Usuários internos cadastrados.</p></div><div class="card card-gradient card-green clickable" data-kpi="planos"><small>Planos</small><strong id="kpiPlanos">0</strong><p>Planos comerciais configurados.</p></div><div class="card card-gradient card-orange clickable" data-kpi="notificacoes"><small>Notificações</small><strong id="kpiNotificacoes">0</strong><p>Pendências globais de comunicação.</p></div></div><div class="grid grid-2" style="margin-top:20px"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Resumo operacional</h2><p>Principais pontos da plataforma.</p></div></div><div id="resumoOperacional" class="list"></div></div><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Alertas globais</h2><p>Itens que exigem atenção.</p></div></div><div id="alertasGlobais" class="list"></div></div></div></section>
+    <section id="dashboard" class="screen active mgd-dashboard" aria-label="Visão executiva da plataforma ÍNTEGRO">
+      <div class="mgd-intro">
+        <div><div class="mgd-overline"><span class="material-symbols-rounded" aria-hidden="true">analytics</span> GESTÃO DA PLATAFORMA</div>
+          <h2>Panorama da operação</h2><p>Indicadores administrativos dos contratantes, acessos e equipe ÍNTEGRO.</p></div>
+        <div class="mgd-sync"><span class="mgd-sync-source"><span class="material-symbols-rounded" aria-hidden="true">verified</span> Dados consultados no servidor</span>
+          <time id="mgdUpdated">Consultando...</time></div>
+      </div>
+
+      <div class="mgd-stats" aria-label="Indicadores principais">
+        <button type="button" class="mgd-stat" data-kpi="clientes" aria-label="Ver todos os clientes da plataforma">
+          <span class="mgd-stat-head"><span class="mgd-stat-label">Clientes da plataforma</span><span class="mgd-stat-icon"><span class="material-symbols-rounded" aria-hidden="true">domain</span></span></span>
+          <strong id="kpiClientes" class="mgd-stat-value">—</strong><span class="mgd-stat-meta">Contratantes PF e PJ cadastrados</span>
+          <span class="mgd-stat-foot"><span>Ver empresas cadastradas</span><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></span>
+        </button>
+        <button type="button" class="mgd-stat is-orange" data-kpi="ativos" aria-label="Ver clientes com acesso liberado">
+          <span class="mgd-stat-head"><span class="mgd-stat-label">Acessos liberados</span><span class="mgd-stat-icon"><span class="material-symbols-rounded" aria-hidden="true">verified_user</span></span></span>
+          <strong id="kpiAtivos" class="mgd-stat-value">—</strong><span class="mgd-stat-meta" id="mgdActivePercent">—</span>
+          <span class="mgd-stat-foot"><span>Clientes com acesso contratual</span><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></span>
+        </button>
+        <button type="button" class="mgd-stat is-restricted" data-kpi="bloqueados" aria-label="Ver clientes com acesso restrito">
+          <span class="mgd-stat-head"><span class="mgd-stat-label">Acessos restritos</span><span class="mgd-stat-icon"><span class="material-symbols-rounded" aria-hidden="true">lock</span></span></span>
+          <strong id="kpiBloqueados" class="mgd-stat-value">—</strong><span class="mgd-stat-meta" id="mgdBlockedPercent">—</span>
+          <span class="mgd-stat-foot"><span>Bloqueados, inativos ou expirados</span><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></span>
+        </button>
+        <button type="button" class="mgd-stat" data-kpi="teste" aria-label="Ver contratantes em período de teste">
+          <span class="mgd-stat-head"><span class="mgd-stat-label">Em período de teste</span><span class="mgd-stat-icon"><span class="material-symbols-rounded" aria-hidden="true">hourglass_top</span></span></span>
+          <strong id="kpiTeste" class="mgd-stat-value">—</strong><span class="mgd-stat-meta">Testes ativos e com acesso</span>
+          <span class="mgd-stat-foot"><span id="mgdTestCaption">—</span><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></span>
+        </button>
+      </div>
+
+      <div class="mgd-small-stats" aria-label="Estrutura administrativa da plataforma">
+        <button type="button" class="mgd-small-stat" data-kpi="masters"><span class="mgd-small-stat-copy"><span>Masters Locais</span><strong id="kpiMasters">—</strong></span><span class="mgd-small-icon"><span class="material-symbols-rounded" aria-hidden="true">supervisor_account</span></span><small class="mgd-small-stat-meta">Contas Auth vinculadas</small></button>
+        <button type="button" class="mgd-small-stat" data-kpi="internos"><span class="mgd-small-stat-copy"><span>Equipe ÍNTEGRO</span><strong id="kpiInternos">—</strong></span><span class="mgd-small-icon"><span class="material-symbols-rounded" aria-hidden="true">groups</span></span><small class="mgd-small-stat-meta">Usuários internos provisionados</small></button>
+        <button type="button" class="mgd-small-stat" data-kpi="planos"><span class="mgd-small-stat-copy"><span>Planos ativos</span><strong id="kpiPlanos">—</strong></span><span class="mgd-small-icon"><span class="material-symbols-rounded" aria-hidden="true">credit_card</span></span><small class="mgd-small-stat-meta">Opções comerciais habilitadas</small></button>
+        <button type="button" class="mgd-small-stat is-notifications" data-kpi="notificacoes"><span class="mgd-small-stat-copy"><span>Notificações pendentes</span><strong id="kpiNotificacoes">—</strong></span><span class="mgd-small-icon"><span class="material-symbols-rounded" aria-hidden="true">notifications_active</span></span><small class="mgd-small-stat-meta">Avisos da plataforma não lidos</small></button>
+      </div>
+
+      <div class="mgd-sections">
+        <section class="mgd-panel" aria-labelledby="mgdSituationTitle">
+          <div class="mgd-panel-head"><div><h3 id="mgdSituationTitle">Situação dos contratantes</h3><p>Distribuição por condição de acesso e vencimento.</p></div>
+          <span class="mgd-panel-count">Base atual</span></div>
+          <div class="mgd-health-highlight"><strong id="mgdBreakdownTitle">Aguardando dados...</strong></div>
+          <div id="mgdDistributionBar" class="mgd-distribution" aria-hidden="true"></div>
+          <div id="mgdAccessibleStatus" class="sr-only" role="status" aria-live="polite"></div>
+          <div id="mgdDistributionLegend" class="mgd-legend" aria-label="Categorias de acesso"></div>
+          <p class="mgd-chart-note">Categorias exclusivas; contratos a vencer incluem testes ou assinaturas com prazo em até 7 dias. Não representa faturamento recebido.</p>
+        </section>
+
+        <section class="mgd-panel" aria-labelledby="mgdAttentionTitle">
+          <div class="mgd-panel-head"><div><h3 id="mgdAttentionTitle">Atenção administrativa</h3><p>O que merece acompanhamento agora.</p></div>
+          <span class="mgd-panel-count" id="mgdAlertCount">—</span></div>
+          <div id="mgdAttentionList" class="mgd-alert-list" aria-live="polite"><div class="mgd-clear-state"><strong>Consultando registros...</strong></div></div>
+        </section>
+      </div>
+
+      <section class="mgd-panel mgd-activity-panel" aria-labelledby="mgdActivityTitle">
+        <div class="mgd-panel-head"><div><h3 id="mgdActivityTitle">Atividade administrativa recente</h3><p>Últimas ações disponíveis no histórico do servidor.</p></div>
+          <button type="button" class="mgd-section-link" data-mgd-target="logs">Abrir auditoria <span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span></button></div>
+        <div id="mgdActivityList" class="mgd-activity-list"><div class="mgd-clear-state mgd-empty-activity"><strong>Carregando histórico...</strong></div></div>
+        <div class="mgd-shortcuts" aria-label="Atalhos administrativos">
+          <button type="button" class="mgd-quick-link" data-mgd-target="clientes"><span class="material-symbols-rounded" aria-hidden="true">business</span>Clientes ÍNTEGRO</button>
+          <button type="button" class="mgd-quick-link" data-mgd-target="usuarios"><span class="material-symbols-rounded" aria-hidden="true">groups</span>Equipe interna</button>
+          <button type="button" class="mgd-quick-link" data-mgd-target="planos"><span class="material-symbols-rounded" aria-hidden="true">credit_card</span>Planos</button>
+        </div>
+      </section>
+    </section>
     <section id="clientes" class="screen">
       <div class="mg-clientes-panel">
         <form id="mgClientesBusca" class="mg-clientes-form" onsubmit="event.preventDefault();renderClientes()">
@@ -457,7 +524,15 @@
       return new Promise(resolve => setTimeout(resolve, ms));
     }
 
-    document.addEventListener('DOMContentLoaded',()=>{bindEventosFixos(); iniciarMasterGlobal();});
+    document.addEventListener('DOMContentLoaded',()=>{bindEventosFixos(); window.IntegroGlobalDashboard?.iniciarNavegacao?.((tela,filtro)=>{
+      trocarTela(tela);
+      if(tela==='clientes'){
+        setVal('buscaClientes','');
+        setVal('filtroTipoClientes','');
+        setVal('filtroStatusClientes',filtro||'');
+        renderClientes();
+      }
+    }); iniciarMasterGlobal();});
     function bindEventosFixos(){
       if(!window.__mgMobileKeyboardBound){
         window.__mgMobileKeyboardBound=true;
@@ -609,26 +684,36 @@
       const ativos=clientesIntegro.filter(clienteLiberadoGlobal).length;
       const bloqueados=clientesIntegro.length-ativos;
       const teste=clientesIntegro.filter(c=>c.testeAtivo===true&&clienteLiberadoGlobal(c)).length;
-      const masters=getMastersLocais().filter(u=>u.id===u.authUid).length;
-      const internos=getUsuariosInternos().filter(u=>u.id===u.authUid).length;
+      const masters=getMastersLocais().filter(u=>u.id===u.authUid);
+      const internos=getUsuariosInternos().filter(u=>u.id===u.authUid);
       const pend=notificacoes.filter(n=>!notificacaoLidaGlobal(n)).length;
+      // Compatibilidade de IDs e do detalhamento já homologado dos oito indicadores.
       [['kpiClientes',clientesIntegro.length],['kpiAtivos',ativos],['kpiTeste',teste],
-        ['kpiMasters',masters],['kpiBloqueados',bloqueados],['kpiInternos',internos],
+        ['kpiMasters',masters.length],['kpiBloqueados',bloqueados],
+        ['kpiInternos',internos.length],
         ['kpiPlanos',planos.filter(p=>status(p.status)!=='INATIVO').length],
         ['kpiNotificacoes',pend],['badgeNotificacoes',pend],['notificationCount',pend]]
         .forEach(([id,valor])=>setText(id,valor));
       const badgeGlobal=byId('badgeNotificacoes');
       if(badgeGlobal)badgeGlobal.style.display=pend?'':'none';
-      byId('resumoOperacional').innerHTML=[
-        box('Clientes com acesso contratual ativo',ativos+' de '+clientesIntegro.length),
-        box('Masters Locais provisionados',masters+' contas Auth vinculadas'),
-        box('Usuários internos provisionados',internos+' contas Auth'),
-        box('Última consulta',atualizadoEmGlobal?dataCurta(atualizadoEmGlobal):'Sem confirmação')
-      ].join('');
-      byId('alertasGlobais').innerHTML=(bloqueados||teste)?
-        [bloqueados?box('Clientes sem acesso contratual',bloqueados+' bloqueados ou expirados'):'',
-          teste?box('Períodos de teste ativos',teste+' clientes em avaliação'):''].join(''):
-        empty('Nenhum alerta contratual nos cadastros carregados.');
+      const componente=window.IntegroGlobalDashboard;
+      if(!componente){
+        const aviso=byId('estadoDadosGlobais');
+        if(aviso){aviso.hidden=false;aviso.textContent='A apresentação executiva do Dashboard não foi carregada. Atualize a página.';}
+        return;
+      }
+      componente.renderizar({
+        clientes:clientesIntegro.map(c=>({
+          id:c.id,nome:c.nome||c.razaoSocial||c.email||'Cliente ÍNTEGRO',
+          situacao:situacaoClienteIntegro(c).nome,
+          liberado:clienteLiberadoGlobal(c),
+          testeAtivo:c.testeAtivo===true,
+          planoId:c.planoId||''
+        })),
+        masters:getMastersLocais(),internos:getUsuariosInternos(),
+        planos,notificacoes,logs,usuarioId:usuarioLogado?.authUid||'',
+        updatedAt:atualizadoEmGlobal
+      });
     }
     let temporizadorBuscaClientes=null;
     function agendarBuscaClientes(){
@@ -1824,6 +1909,7 @@
     });
     Object.assign(window,{abrirFormCliente,salvarClienteIntegro,abrirFormMasterLocal,salvarMasterLocal,abrirFormUsuarioInterno,salvarUsuarioInterno,abrirFormDepartamento,salvarDepartamento,abrirFormPlano,salvarPlano,abrirFormNotificacao,salvarNotificacao,renderClientes,limparBusca,fecharDrawer,alternarAcessoCliente,ativarTesteCliente,alternarAcessoUsuario,marcarNotificacaoLida,salvarConfiguracoesGlobais,carregarLogs,renderLogs,abrirDetalheCliente,abrirDetalheUsuario,abrirEdicaoMasterLocal,exportarRelatorioGlobal,carregarChatGlobal,enviarMensagemGlobal});
   </script>
+  <script src="js/master-global-dashboard.js?v=20261119-exec1"></script>
   <script src="js/integro-platform-chat.js?v=20261119-chat-saas1"></script>
   <script>
     window.IntegroPlatformChat?.mount?.({
