@@ -60,6 +60,7 @@ test("Dashboard Master Global: números exclusivos, estados reais e sem faturame
   assert.equal(m.planos,1);
   assert.equal(m.notificacoes,1);
   assert.equal(m.semPlano,1);
+  assert.ok(m.alerts.some(x=>x.filter==="SEM_PLANO"),"alerta de plano deve abrir clientes filtrados");
   assert.deepEqual([
     m.status.regular.length,m.status.teste.length,m.status.vencer.length,m.status.restrito.length
   ],[2,1,1,2]);
@@ -101,6 +102,8 @@ test("Dashboard Master Global: KPIs preservados, prioridades navegáveis e telas
   for(const id of ["mgdDistributionBar","mgdDistributionLegend","mgdAttentionList","mgdActivityList"])
     assert.ok(html.includes('id="'+id+'"'),"Componente obrigatório: "+id);
   assert.match(html,/IntegroGlobalDashboard\?\.iniciarNavegacao\?/);
+  assert.match(html, /value="SEM_PLANO"/);
+  assert.match(html, /if\(situacao==='SEM_PLANO'\)/);
   assert.match(html,/chamarGestaoGlobal\('listarPainel'\)/);
   assert.match(css,/#dashboard\.mgd-dashboard/);
   assert.match(css,/@media \(max-width: 760px\)/);
