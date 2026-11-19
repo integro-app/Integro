@@ -389,6 +389,7 @@ test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer m
   assert.match(style, /--integro-desktop-rail-width: 78px/);
   assert.match(style, /\.integro-desktop-nav-unified\.integro-desktop-nav-ready \.sidebar > \.menu-section/);
   assert.match(style, /button\[hidden\]/, "botões ocultos não podem reaparecer no menu");
+  assert.ok(style.includes("#integroSidebarMenu > button[hidden]"), "regra hidden deve superar o botão com ID");
   assert.match(shared, /js\/integro-desktop-navigation\.js\?v=/);
 
   const flags = new Set(["sidebar-desktop-fechada"]);
