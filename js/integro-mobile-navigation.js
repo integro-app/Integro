@@ -623,7 +623,7 @@
 
   // Desktop: módulo separado, sem modificar os gestos nem a gaveta mobile.
   const desktopNavigationScript = document.createElement("script");
-  desktopNavigationScript.src = "js/integro-desktop-navigation.js?v=20261118-rail1";
+  desktopNavigationScript.src = "js/integro-desktop-navigation.js?v=20261119-saas4";
   desktopNavigationScript.async = true;
   body.appendChild(desktopNavigationScript);
 
