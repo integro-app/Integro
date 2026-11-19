@@ -74,8 +74,11 @@
     const host = bar?.querySelector?.("#integroSidebarMenu");
     if (!host) return;
     const sourceBell = bar.querySelector(".user-card [data-notification-bell], .sidebar-profile-card [data-notification-bell]");
+    const headerBell = document.getElementById("integroNotificationButton");
+    const headerHasBell = Boolean(headerBell && !headerBell.hidden && headerBell.getClientRects?.().length);
     let shortcut = host.querySelector("[data-integro-desktop-notifications]");
-    if (!sourceBell || !DESKTOP.matches) {
+    // Alguns perfis já exibem o sino no cabeçalho desktop. Não duplicar a ação.
+    if (!sourceBell || !DESKTOP.matches || headerHasBell) {
       shortcut?.remove?.();
       return;
     }
