@@ -380,7 +380,7 @@
     <div class="logo">ÍNTE<span>GRO</span></div>
     <div class="user-card"><small>Usuário logado</small><strong id="usuarioNome">Carregando...</strong><small id="usuarioEmpresa">ÍNTEGRO</small><small id="usuarioPerfil">Master Global</small><span class="status-online">Online</span></div>
     <div class="menu-section"><div class="menu-title">Comunicação</div><div class="menu"><button data-screen="notificacoes"><span class="menu-left"><span class="material-symbols-rounded">notifications</span>Notificações</span><span id="badgeNotificacoes">0</span></button><button data-screen="chat"><span class="menu-left"><span class="material-symbols-rounded">chat</span>Chat interno</span><span class="material-symbols-rounded">chevron_right</span></button></div></div>
-    <div class="menu-section"><div class="menu-title">Gestão global</div><div class="menu"><button data-screen="dashboard" class="active"><span class="menu-left"><span class="material-symbols-rounded">dashboard</span>Dashboard</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="clientes"><span class="menu-left"><span class="material-symbols-rounded">business</span>Clientes ÍNTEGRO</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="usuarios"><span class="menu-left"><span class="material-symbols-rounded">groups</span>Usuários internos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="departamentos"><span class="menu-left"><span class="material-symbols-rounded">account_tree</span>Departamentos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="planos"><span class="menu-left"><span class="material-symbols-rounded">payments</span>Planos</span><span class="material-symbols-rounded">chevron_right</span></button></div></div>
+    <div class="menu-section"><div class="menu-title">Gestão global</div><div class="menu"><button data-screen="dashboard" class="active"><span class="menu-left"><span class="material-symbols-rounded">dashboard</span>Dashboard</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="clientes"><span class="menu-left"><span class="material-symbols-rounded">business</span>Clientes</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="usuarios"><span class="menu-left"><span class="material-symbols-rounded">groups</span>Usuários internos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="departamentos"><span class="menu-left"><span class="material-symbols-rounded">account_tree</span>Departamentos</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="planos"><span class="menu-left"><span class="material-symbols-rounded">payments</span>Planos</span><span class="material-symbols-rounded">chevron_right</span></button></div></div>
     <div class="menu-section"><div class="menu-title">Sistema</div><div class="menu"><button data-screen="relatorios"><span class="menu-left"><span class="material-symbols-rounded">bar_chart</span>Relatórios</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="logs"><span class="menu-left"><span class="material-symbols-rounded">policy</span>Logs/Auditoria</span><span class="material-symbols-rounded">chevron_right</span></button><button data-screen="config"><span class="menu-left"><span class="material-symbols-rounded">settings</span>Configurações</span><span class="material-symbols-rounded">chevron_right</span></button><button id="btnLogout"><span class="menu-left"><span class="material-symbols-rounded">logout</span>Sair</span><span class="material-symbols-rounded">close</span></button></div></div>
   </aside>
   <main class="main">
@@ -453,24 +453,53 @@
         </div>
       </section>
     </section>
-    <section id="clientes" class="screen">
+    <section id="clientes" class="screen" aria-label="Clientes da plataforma">
       <div class="mg-clientes-panel">
+        <div class="mg-clientes-overview">
+          <div class="mg-clientes-overview-copy">
+            <span class="mg-clientes-eyebrow"><span class="material-symbols-rounded" aria-hidden="true">domain</span> CLIENTES DA PLATAFORMA</span>
+            <p>Gestão dos contratantes PF e PJ, planos e condições de acesso.</p>
+          </div>
+          <span class="mg-clientes-sync"><span class="material-symbols-rounded" aria-hidden="true">verified</span><span id="mgClientesUltimaConsulta">Dados da consulta administrativa</span></span>
+        </div>
+        <div class="mg-clientes-resumo" id="mgClientesResumo" aria-label="Filtros rápidos de clientes">
+          <button class="mg-clientes-resumo-item is-current" type="button" data-clientes-rapido="" onclick="aplicarFiltroRapidoClientes('')" aria-pressed="true">
+            <span>Todos</span><strong id="mgClientesTotal">—</strong>
+          </button>
+          <button class="mg-clientes-resumo-item" type="button" data-clientes-rapido="LIBERADO" onclick="aplicarFiltroRapidoClientes('LIBERADO')" aria-pressed="false">
+            <span>Liberados</span><strong id="mgClientesLiberados">—</strong>
+          </button>
+          <button class="mg-clientes-resumo-item" type="button" data-clientes-rapido="TESTE" onclick="aplicarFiltroRapidoClientes('TESTE')" aria-pressed="false">
+            <span>Em teste</span><strong id="mgClientesTestes">—</strong>
+          </button>
+          <button class="mg-clientes-resumo-item" type="button" data-clientes-rapido="A_VENCER" onclick="aplicarFiltroRapidoClientes('A_VENCER')" aria-pressed="false">
+            <span>A vencer</span><strong id="mgClientesVencendo">—</strong>
+          </button>
+          <button class="mg-clientes-resumo-item" type="button" data-clientes-rapido="BLOQUEADO" onclick="aplicarFiltroRapidoClientes('BLOQUEADO')" aria-pressed="false">
+            <span>Restritos</span><strong id="mgClientesRestritos">—</strong>
+          </button>
+        </div>
         <form id="mgClientesBusca" class="mg-clientes-form" onsubmit="event.preventDefault();renderClientes()">
-          <label class="mg-clientes-search" for="buscaClientes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaClientes" class="form-input" type="search" autocomplete="off" enterkeyhint="search" oninput="agendarBuscaClientes()" onsearch="renderClientes()" aria-label="Buscar cliente ÍNTEGRO" placeholder="Buscar empresa, CPF/CNPJ, e-mail ou telefone"></label>
+          <label class="mg-clientes-search" for="buscaClientes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaClientes" class="form-input" type="search" autocomplete="off" enterkeyhint="search" oninput="agendarBuscaClientes()" onsearch="renderClientes()" aria-label="Buscar cliente" placeholder="Buscar por nome, CPF/CNPJ, e-mail ou telefone"></label>
           <button type="button" id="btnFiltrosClientes" class="btn btn-light mg-clientes-filter-btn" aria-controls="filtrosClientes" aria-expanded="false" onclick="alternarFiltrosClientes()"><span class="material-symbols-rounded" aria-hidden="true">tune</span>Filtros<span id="contadorFiltrosClientes" class="mg-clientes-filter-count" hidden></span></button>
           <button type="submit" class="btn btn-light mg-clientes-buscar">Buscar</button>
           <button type="button" class="btn btn-primary mg-clientes-novo" onclick="abrirFormCliente()"><span class="material-symbols-rounded" aria-hidden="true">add_circle</span>Novo cliente</button>
         </form>
         <div id="filtrosClientes" class="mg-clientes-filtros" hidden>
-          <label class="form-label" for="filtroTipoClientes">Tipo de cliente<select id="filtroTipoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos (PF e PJ)</option><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></label>
-          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso bloqueado</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option><option value="SEM_PLANO">Sem plano identificado</option></select></label>
-          <button type="button" class="btn btn-light mg-clientes-limpar" onclick="limparFiltrosClientes()">Limpar filtros</button>
+          <label class="form-label" for="filtroTipoClientes">Tipo de contratante<select id="filtroTipoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos (PF e PJ)</option><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></label>
+          <label class="form-label" for="filtroStatusClientes">Situação de acesso<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas as situações</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso restrito</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option><option value="SEM_PLANO">Sem plano identificado</option></select></label>
+          <label class="form-label" for="filtroPlanoClientes">Plano comercial<select id="filtroPlanoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos os planos</option></select></label>
+          <label class="form-label" for="ordenacaoClientes">Ordenar por<select id="ordenacaoClientes" class="form-select" onchange="renderClientes()"><option value="NOME_ASC">Nome (A–Z)</option><option value="NOME_DESC">Nome (Z–A)</option><option value="NOVOS">Cadastros mais recentes</option><option value="ANTIGOS">Cadastros mais antigos</option></select></label>
+          <button type="button" class="btn btn-light mg-clientes-limpar" onclick="limparFiltrosClientes()"><span class="material-symbols-rounded" aria-hidden="true">filter_alt_off</span>Limpar filtros</button>
         </div>
-        <p id="contadorClientes" class="muted mg-clientes-contador" role="status" aria-live="polite"></p>
+        <div class="mg-clientes-list-toolbar">
+          <p id="contadorClientes" class="muted mg-clientes-contador" role="status" aria-live="polite"></p>
+          <span class="mg-clientes-security"><span class="material-symbols-rounded" aria-hidden="true">verified_user</span>Somente contratantes da plataforma</span>
+        </div>
         <div id="listaClientes" class="list mg-clientes-lista" aria-label="Clientes contratantes da plataforma"></div>
       </div>
     </section>
-    
+
     <section id="usuarios" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Usuários internos ÍNTEGRO</h2><p>Equipe interna que administra a plataforma.</p></div><button class="btn btn-primary" onclick="abrirFormUsuarioInterno()">Novo usuário interno</button></div><div id="listaUsuarios" class="list"></div></div></section>
     <section id="departamentos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Departamentos internos</h2><p>Comercial, financeiro, suporte e administrativo.</p></div><button class="btn btn-primary" onclick="abrirFormDepartamento()">Novo departamento</button></div><div id="listaDepartamentos" class="list"></div></div></section>
     <section id="planos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Planos da plataforma</h2><p>Planos comerciais do SaaS.</p></div><button class="btn btn-primary" onclick="abrirFormPlano()">Novo plano</button></div><div id="listaPlanos" class="list"></div></div></section>
@@ -490,7 +519,7 @@
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false,promessaCarregamentoGlobal=null;
     let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
     let dadosGlobaisCarregados=false,atualizadoEmGlobal='';
-    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes ÍNTEGRO','Contratantes da plataforma, PF ou PJ.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
+    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes','Contratantes da plataforma ÍNTEGRO, pessoas físicas e jurídicas.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
 
     let integroBootPercentualAtual = 0;
 
