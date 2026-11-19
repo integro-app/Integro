@@ -344,3 +344,11 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Regras:** `firestore.rules` e `storage.rules` não foram alteradas no merge. O bloqueio de tenant passa a revogar `acessoLiberado` dos usuários por transação, respeitando as Rules existentes.
 - **Pendências impeditivas de 100%:** ainda não foram realizados testes autenticados reais de cadastro de cliente, plano, Master Local, usuário interno, e-mail, login, bloqueio/reativação, avisos, chat, relatório CSV, nem validação visual com sessão real em desktop/mobile. A expiração automática do teste em acesso direto a dados, o suporte a empresas com mais de 350 usuários e faturamento efetivamente recebido (M21) seguem pendentes.
 - **Estado formal:** **EM HOMOLOGAÇÃO / NÃO FECHADO**. Publicação e testes automatizados concluídos; o aceite operacional exige evidências com contas reais e aprovação do proprietário.
+
+
+### M03 — Card único de carregamento de login (19/11/2026)
+
+- **Diagnóstico:** duas estruturas de loading com CSS e logos distintos entre `index.html` e painéis, criando troca perceptível de tamanho/posição. Master Global ainda mostrava `ÍNTEGRO.` em vez de `ÍNTE` branco + `GRO` laranja; alguns perfis reiniciavam a porcentagem da etapa visual em zero após navegação.
+- **Correção em homologação:** um conjunto de estilos autoritativo em `css/integro-loading.css` para login e boot dos perfis (mesmas dimensões, centralização, cores, spinner e posição da barra); cache atualizado em login/Master Local/Master Global/Vendedor; logos e títulos unificados; `js/integro-loading-handoff.js` restaura imediatamente o percentual do login e `master-global.html`/`vendedor.html` respeitam a progressão contínua; `js/auth.js` atualiza ARIA.
+- **Regressão:** `tests/production-shell.test.js` verifica consistência do HTML/CSS e progresso monotônico na troca de rota. Sem alterações nas regras Firebase, contas, sessão e negócio.
+- **Status:** em desenvolvimento/homologação, sem merge/deploy em produção; falta CI e conferência visual/autenticada de login, transição e mobile para aceite final. M03 permanece aberto.
