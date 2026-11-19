@@ -61,8 +61,24 @@
                 max-width .23s cubic-bezier(.2,.8,.2,1) !important;
   }
 
+  /* O Master Local possui regras antigas com seletor #sidebar que podem
+     vencer a margem do shell. Igualar a especificidade e não deixar a
+     largura da área principal depender da classe .collapsed do HTML legado. */
+  html body[data-integro-page].integro-desktop-nav-ready .layout > aside#sidebar.sidebar + main.main {
+    margin-left: var(--integro-desktop-rail-width) !important;
+    width: calc(100% - var(--integro-desktop-rail-width)) !important;
+    max-width: calc(100% - var(--integro-desktop-rail-width)) !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+    padding-left: clamp(18px, 2.5vw, 34px) !important;
+    padding-right: clamp(18px, 2.5vw, 34px) !important;
+  }
+
   /* Uma única identidade visual, independente do perfil e do menu legado. */
-  html body[data-integro-page].integro-desktop-nav-ready .sidebar > .logo {
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar > :is(.logo,.brand,.brand-premium,.sidebar-brand) {
+    display: none !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar .collapse-btn {
     display: none !important;
   }
   html body[data-integro-page].integro-desktop-nav-ready .sidebar > .integro-desktop-brand {
@@ -301,12 +317,22 @@
   }
 
   /* Cabeçalho de aplicação, sem contorno de card ou sombra grosseira. */
-  html body[data-integro-page].integro-desktop-nav-ready .main > .topbar {
+  html body[data-integro-page].integro-desktop-nav-ready .main > .topbar,
+  html body[data-integro-page].integro-desktop-nav-ready .main > .integro-global-header {
     border: 0 !important;
     border-bottom: 1px solid #e6edf6 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
-    background: rgba(255,255,255,.96) !important;
+    background: transparent !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-ready .main > .integro-global-header {
+    position: relative !important;
+    display: flex !important;
+    align-items: center !important;
+    min-height: 58px !important;
+    gap: 12px !important;
+    padding: 0 0 12px !important;
+    margin: 0 0 20px !important;
   }
 
   /* O gatilho inserido exclusivamente para desktop nunca vira
@@ -323,7 +349,8 @@
     visibility: hidden !important;
     pointer-events: none !important;
   }
-  html body[data-integro-page].integro-desktop-nav-ready .topbar [data-integro-desktop-rail-toggle] {
+  html body[data-integro-page].integro-desktop-nav-ready .topbar [data-integro-desktop-rail-toggle],
+  html body[data-integro-page].integro-desktop-nav-ready .integro-global-header [data-integro-desktop-rail-toggle] {
     display: inline-flex !important;
     flex: 0 0 42px !important;
     justify-content: center !important;
@@ -343,11 +370,13 @@
     box-shadow: 0 2px 6px rgba(10,34,66,.03) !important;
     cursor: pointer !important;
   }
-  html body[data-integro-page].integro-desktop-nav-ready .topbar [data-integro-desktop-rail-toggle]:hover {
+  html body[data-integro-page].integro-desktop-nav-ready .topbar [data-integro-desktop-rail-toggle]:hover,
+  html body[data-integro-page].integro-desktop-nav-ready .integro-global-header [data-integro-desktop-rail-toggle]:hover {
     background: #f2f6fb !important;
     border-color: #cddbea !important;
   }
-  html body[data-integro-page].integro-desktop-nav-ready .topbar [data-integro-desktop-rail-toggle]:focus-visible {
+  html body[data-integro-page].integro-desktop-nav-ready .topbar [data-integro-desktop-rail-toggle]:focus-visible,
+  html body[data-integro-page].integro-desktop-nav-ready .integro-global-header [data-integro-desktop-rail-toggle]:focus-visible {
     outline: 3px solid #ff8a32 !important;
     outline-offset: 2px !important;
   }
