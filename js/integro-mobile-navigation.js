@@ -621,6 +621,12 @@
   setViewportClasses();
   loadAuthoritativeStylesheet().then(attemptShellReady);
 
+  // Desktop: módulo separado, sem modificar os gestos nem a gaveta mobile.
+  const desktopNavigationScript = document.createElement("script");
+  desktopNavigationScript.src = "js/integro-desktop-navigation.js?v=20261119-saas5";
+  desktopNavigationScript.async = true;
+  body.appendChild(desktopNavigationScript);
+
   /* Fallback seguro: só libera páginas sem boot loader se o usuário já está no State. */
   window.setTimeout(() => {
     try {
