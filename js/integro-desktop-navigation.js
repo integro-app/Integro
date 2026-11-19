@@ -14,6 +14,7 @@
   let trigger = null;
   let hoverTooltip = null;
   let profileObserver = null;
+  let observedProfileSource = null;
 
   try { compact = global.localStorage.getItem(STORAGE_KEY) === "compact"; } catch (_) {}
 
@@ -61,6 +62,7 @@
   }
 
   function ensureProfile() {
+    if (!DESKTOP.matches) return;
     const bar = sidebar();
     if (!bar) return;
     let profile = bar.querySelector(".integro-desktop-profile");
@@ -88,9 +90,12 @@
     if (avatarSlot && avatarSlot.textContent !== initials(safeName)) avatarSlot.textContent = initials(safeName);
     if (profile.title !== label) profile.title = label;
     profile.dataset.integroRailLabel = label;
-    if (source && !profileObserver && global.MutationObserver) {
+    if (source && source !== observedProfileSource && global.MutationObserver) {
+      // O card de origem muda após troca de empresa/perfil: escutar somente o atual.
+      profileObserver?.disconnect?.();
       profileObserver = new MutationObserver(ensureProfile);
       profileObserver.observe(source, { childList: true, characterData: true, subtree: true });
+      observedProfileSource = source;
     }
   }
 
@@ -102,6 +107,10 @@
   }
 
   function refreshLabels() {
+    if (!DESKTOP.matches) {
+      body.classList.remove("integro-desktop-nav-unified");
+      return;
+    }
     const bar = sidebar();
     if (!bar) return;
     // Não renderizar dois menus quando o controlador por perfil já construiu
