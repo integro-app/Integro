@@ -560,6 +560,10 @@ test("Master Local: sidebar premium usa cabeçalho verdadeiro e vence colapso le
     "geometria deve vencer as regras antigas de margem do Master Local");
   assert.match(style, /\.integro-global-header \[data-integro-desktop-rail-toggle\]/,
     "botão também recebe estilo dentro da barra do Master Local");
+  assert.match(style, /\.integro-desktop-nav-ready > \.mobile-menu-btn/,
+    "gatilho mobile externo não pode reaparecer no desktop");
+  assert.match(style, /border-bottom: 0 !important/,
+    "cabeçalho não deve receber borda decorativa");
 });
 
 test("Vendedor: sino continua acessível ao ocultar o card legado", () => {
