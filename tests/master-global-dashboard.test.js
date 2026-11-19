@@ -130,3 +130,20 @@ test("Dashboard Master Global: vazio, dados incompletos e avisos já lidos", () 
   assert.equal(withRead.notificacoes,0);
   assert.equal(api.calcular({clientes:[make("x","ACESSO RESTRITO",false)]}).bloqueados,1);
 });
+
+
+test("Dashboard Master Global: gaveta abre ficha existente sem ações financeiras ou escrita implícita", () => {
+  const html=read("master-global.html");
+  const a=html.indexOf("    function abrirResumoKpi(tipo){");
+  const b=html.indexOf("    function validarCaminhoLogoCliente(c){",a);
+  assert.ok(a>=0&&b>a,"gaveta de KPI não encontrada");
+  const trecho=html.slice(a,b);
+  assert.match(trecho,/clienteLiberadoGlobal/);
+  assert.match(trecho,/situacaoClienteIntegro/);
+  assert.match(trecho,/data-mg-action/);
+  assert.match(trecho,/ver-cliente/);
+  assert.match(trecho,/ver-usuario/);
+  assert.match(trecho,/esc\(nome\)/);
+  assert.match(trecho,/esc\(item\.contexto/);
+  assert.doesNotMatch(trecho,/alterarAcesso|excluir|salvarCliente|enviarChat/);
+});
