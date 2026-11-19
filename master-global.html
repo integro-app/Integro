@@ -781,15 +781,19 @@
       });
       return porCliente;
     }
+    let assinaturaPlanosFiltroClientes='';
     function preencherFiltroPlanosClientes(){
       const campo=byId('filtroPlanoClientes');
       if(!campo)return;
+      const assinatura=JSON.stringify(planos.map(p=>[p.id,p.nome,p.status]));
+      if(assinatura===assinaturaPlanosFiltroClientes)return;
       const antigo=campo.value||'';
       campo.innerHTML='<option value="">Todos os planos</option>'+
         planos.filter(p=>p.id).slice().sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'))
           .map(p=>'<option value="'+esc(String(p.id))+'">'+esc(p.nome||'Plano comercial')+
             (status(p.status)==='INATIVO'?' (inativo)':'')+'</option>').join('');
       campo.value=antigo;
+      assinaturaPlanosFiltroClientes=assinatura;
     }
     function atualizarResumoClientes(){
       const total=clientesIntegro.length;
