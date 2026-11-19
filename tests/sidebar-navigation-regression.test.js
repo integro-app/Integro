@@ -544,3 +544,34 @@ test("menu desktop: novo gatilho não cria hambúrguer extra no mobile", () => {
     ".integro-desktop-profile,\n.integro-desktop-trigger,"),
     "CSS oculta gatilho extra fora do breakpoint desktop");
 });
+
+
+test("Master Local: sidebar premium usa cabeçalho verdadeiro e vence colapso legado", () => {
+  const page = read("master-local.html");
+  const script = read("js/integro-desktop-navigation.js");
+  const style = read("css/integro-desktop-navigation.css");
+
+  assert.match(page, /class="integro-global-header"/, "Master Local usa cabeçalho global, não .topbar");
+  assert.match(script, /\.main > \.integro-global-header/, "usa o cabeçalho real para inserir o gatilho");
+  assert.match(script, /bar\.classList\.remove\("collapsed"\)/, "não disputa classe collapsed legada");
+  assert.match(style, /\.sidebar > :is\(\.logo,\.brand,\.brand-premium,\.sidebar-brand\)/,
+    "oculta logo legado para não mostrar duas marcas");
+  assert.match(style, /\.layout > aside#sidebar\.sidebar \+ main\.main/,
+    "geometria deve vencer as regras antigas de margem do Master Local");
+  assert.match(style, /\.integro-global-header \[data-integro-desktop-rail-toggle\]/,
+    "botão também recebe estilo dentro da barra do Master Local");
+});
+
+test("Vendedor: sino continua acessível ao ocultar o card legado", () => {
+  const navigation = read("js/integro-desktop-navigation.js");
+  const style = read("css/integro-desktop-navigation.css");
+  const unified = read("js/unified-navigation.js");
+
+  assert.match(unified, /data-notification-bell/, "origem do botão de notificações aprovado");
+  assert.match(navigation, /function ensureNotificationShortcut\(\)/);
+  assert.match(navigation, /original\?\.click\?\.\(\)/,
+    "novo botão precisa delegar à ação original sem recriar lógica");
+  assert.match(navigation, /data-integro-desktop-notifications/);
+  assert.match(style, /\.integro-desktop-bell-count\[hidden\]/);
+  assert.match(style, /\.integro-desktop-nav-compact #integroSidebarMenu > \.integro-desktop-notifications/);
+});
