@@ -63,6 +63,7 @@ function atualizarLoadingLogin(percentual, mensagem) {
   }
   if (etapa && mensagem) etapa.textContent = mensagem;
   if (progresso) progresso.style.width = valor + "%";
+  loader?.querySelector('[role="progressbar"]')?.setAttribute("aria-valuenow", String(valor));
   if (hint) hint.textContent = valor + "% concluído";
   try {
     sessionStorage.setItem("integroLoadingContinuo", JSON.stringify({
