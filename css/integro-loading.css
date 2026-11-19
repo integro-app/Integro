@@ -235,3 +235,238 @@ body.integro-booting .main {
 @media (max-width: 520px) {
   .login-flow-card, .integro-loader-card { width: min(430px, calc(100vw - 36px)); }
 }
+
+
+/* ÍNTEGRO — CARD ÚNICO DE ACESSO | 19/11/2026
+   Mesma geometria, logo, animação e tipografia no login e no bootstrap
+   de todos os perfis. A especificidade prevalece sobre loaders legados
+   declarados nas páginas após a folha compartilhada. */
+html body .login-flow-loader,
+html body .integro-boot-loader {
+  box-sizing: border-box !important;
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 20000 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 100dvh !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  padding: 18px !important;
+  background: #071323 !important;
+  background-image: radial-gradient(ellipse at 50% 24%,rgba(28,62,102,.24),transparent 66%) !important;
+  color: #fff !important;
+  overflow: auto !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+html body .login-flow-loader[hidden] {
+  display: none !important;
+}
+html body .login-flow-loader:not(.is-visible),
+html body .integro-boot-loader.hide {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+html body .login-flow-loader.is-visible,
+html body .integro-boot-loader:not(.hide) {
+  opacity: 1 !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+html body .login-flow-loader > .login-flow-card,
+html body .integro-boot-loader > .integro-loader-card {
+  box-sizing: border-box !important;
+  width: min(372px, 100%) !important;
+  min-width: 0 !important;
+  max-width: 372px !important;
+  height: 316px !important;
+  min-height: 316px !important;
+  max-height: none !important;
+  margin: 0 auto !important;
+  padding: 24px 27px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(166,192,225,.17) !important;
+  border-radius: 20px !important;
+  background: linear-gradient(150deg,#122844 0%,#0b203a 53%,#091a30 100%) !important;
+  box-shadow: 0 20px 55px rgba(0,0,0,.27),inset 0 1px rgba(255,255,255,.045) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  text-align: center !important;
+  font-family: Inter,system-ui,Arial,sans-serif !important;
+}
+html body .login-flow-loader .login-flow-brand,
+html body .integro-boot-loader .integro-loader-logo {
+  box-sizing: content-box !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 0 !important;
+  margin: 0 0 17px !important;
+  padding: 0 !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  font: 900 30px/34px Inter,system-ui,Arial,sans-serif !important;
+  letter-spacing: -1.7px !important;
+  text-shadow: none !important;
+  white-space: nowrap !important;
+}
+html body .login-flow-loader .login-flow-brand span,
+html body .integro-boot-loader .integro-loader-logo span {
+  color: #ff8a00 !important;
+  -webkit-text-fill-color: #ff8a00 !important;
+  background: none !important;
+}
+html body .login-flow-loader .login-flow-spinner,
+html body .integro-boot-loader .integro-loader-logo::after {
+  box-sizing: border-box !important;
+  display: block !important;
+  width: 40px !important;
+  height: 40px !important;
+  min-width: 40px !important;
+  min-height: 40px !important;
+  flex: 0 0 40px !important;
+  margin: 0 auto 19px !important;
+  padding: 0 !important;
+  border: 3px solid rgba(226,236,250,.12) !important;
+  border-top-color: #ff8a00 !important;
+  border-radius: 50% !important;
+  background: transparent !important;
+  content: "" !important;
+  animation: integroLoadingSpin .9s linear infinite !important;
+  box-shadow: none !important;
+}
+/* O anel do bootstrap ocupa o mesmo ponto do anel do login. */
+html body .integro-boot-loader .integro-loader-logo {
+  margin-bottom: 0 !important;
+}
+html body .integro-boot-loader .integro-loader-logo::after {
+  margin-top: 17px !important;
+}
+html body .login-flow-loader .login-flow-card > h2,
+html body .integro-boot-loader .integro-loader-title {
+  box-sizing: border-box !important;
+  order: 3 !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  width: 100% !important;
+  margin: 0 0 7px !important;
+  padding: 0 !important;
+  color: #f7faff !important;
+  font: 800 18px/23px Inter,system-ui,Arial,sans-serif !important;
+  letter-spacing: -.35px !important;
+  text-align: center !important;
+}
+html body .login-flow-loader .login-flow-step,
+html body .integro-boot-loader .integro-loader-step {
+  box-sizing: border-box !important;
+  order: 4 !important;
+  display: flex !important;
+  flex: 0 0 40px !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  width: 100% !important;
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+  margin: 0 0 10px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  color: #b6c8df !important;
+  font: 600 12.5px/19px Inter,system-ui,Arial,sans-serif !important;
+  letter-spacing: 0 !important;
+  text-align: center !important;
+}
+html body .login-flow-loader .login-flow-track,
+html body .integro-boot-loader .integro-loader-bar {
+  box-sizing: border-box !important;
+  order: 5 !important;
+  display: block !important;
+  flex: 0 0 6px !important;
+  width: 100% !important;
+  height: 6px !important;
+  min-height: 6px !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 999px !important;
+  overflow: hidden !important;
+  background: rgba(210,226,247,.13) !important;
+}
+html body .login-flow-loader .login-flow-progress,
+html body .integro-boot-loader .integro-loader-bar > span {
+  box-sizing: border-box !important;
+  display: block !important;
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg,#ff7500,#ffb15a) !important;
+  box-shadow: none !important;
+}
+html body .login-flow-loader .login-flow-hint,
+html body .integro-boot-loader .integro-loader-percent {
+  box-sizing: border-box !important;
+  order: 6 !important;
+  display: block !important;
+  flex: 0 0 auto !important;
+  min-height: 18px !important;
+  height: 18px !important;
+  width: 100% !important;
+  margin: 12px 0 0 !important;
+  padding: 0 !important;
+  color: #8ea4bf !important;
+  font: 600 11px/18px Inter,system-ui,Arial,sans-serif !important;
+  letter-spacing: 0 !important;
+  text-align: center !important;
+}
+html body .integro-boot-loader .integro-loader-caption {
+  display: none !important;
+}
+html body.integro-boot-failed .integro-boot-loader > .integro-loader-card {
+  height: auto !important;
+  min-height: 316px !important;
+  overflow: visible !important;
+}
+html body .integro-boot-failed .integro-loader-card [data-boot-retry],
+html body.integro-boot-failed .integro-loader-card [data-boot-retry] {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+/* A tela compacta jamais deve perder conteúdo ao girar o celular. */
+@media (max-height: 370px) {
+  html body .login-flow-loader > .login-flow-card,
+  html body .integro-boot-loader > .integro-loader-card {
+    height: auto !important;
+    min-height: 0 !important;
+    padding: 14px 22px !important;
+  }
+  html body .login-flow-loader,
+  html body .integro-boot-loader {
+    align-items: flex-start !important;
+  }
+}
+@media (max-width: 520px) {
+  html body .login-flow-loader,
+  html body .integro-boot-loader { padding: 16px !important; }
+  html body .login-flow-loader > .login-flow-card,
+  html body .integro-boot-loader > .integro-loader-card {
+    max-width: 352px !important;
+    width: 100% !important;
+    border-radius: 18px !important;
+    padding: 22px 22px !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body .login-flow-loader .login-flow-spinner,
+  html body .integro-boot-loader .integro-loader-logo::after {
+    animation-duration: 1.8s !important;
+  }
+}

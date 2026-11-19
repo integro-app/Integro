@@ -131,8 +131,8 @@
   <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2" rel="stylesheet">
   <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2">
   <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261101-visualrestore2">
-  <link rel="stylesheet" href="css/integro-loading.css?v=20261101-visualrestore1">
-  <script src="js/integro-loading-handoff.js?v=20261101-visualrestore1"></script>
+  <link rel="stylesheet" href="css/integro-loading.css?v=20261119-card-unico1">
+  <script src="js/integro-loading-handoff.js?v=20261119-card-unico1"></script>
   <link rel="stylesheet" href="css/integro-visual.css?v=20261101-visualrestore1">
   <script defer src="js/integro-menu-categorias.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-palette.css?v=20261101-visualrestore1">
@@ -363,8 +363,8 @@
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
-      <div class="integro-loader-logo">ÍNTEGRO<span>.</span></div>
-      <div class="integro-loader-title">Preparando Master Global</div>
+      <div class="integro-loader-logo" aria-label="ÍNTEGRO">ÍNTE<span>GRO</span></div>
+      <div class="integro-loader-title">Preparando seu acesso</div>
       <div class="integro-loader-step" id="integroLoaderStep">Carregando painel...</div>
       <div class="integro-loader-percent" id="integroLoaderPercent">0%</div>
       <div class="integro-loader-bar"><span id="integroLoaderProgress"></span></div>
@@ -423,7 +423,10 @@
     let integroBootPercentualAtual = 0;
 
     function atualizarLoadingPremium(percentual, texto){
-      const valor = Math.max(0, Math.min(100, Number(percentual) || 0));
+      const progressoEtapa = Math.max(0, Math.min(100, Number(percentual) || 0));
+      const valor = window.IntegroLoadingContinuo?.percentual
+        ? window.IntegroLoadingContinuo.percentual(progressoEtapa)
+        : progressoEtapa;
       integroBootPercentualAtual = valor;
       const barra = document.getElementById('integroLoaderProgress');
       const numero = document.getElementById('integroLoaderPercent');
