@@ -137,7 +137,7 @@ test("Clientes: ordenação, paginação, estado vazio e filtro sem plano",()=>{
 
 test("Clientes: card mantém status e conteúdo seguro, plano e vínculo são rótulos reais",()=>{
   const html=read("master-global.html");
-  const start=html.indexOf("    function cardCliente(c,mastersDiretos=0){");
+  const start=html.indexOf("    function cardCliente(c){");
   const end=html.indexOf("    function cardUsuario(u,tipo){",start);
   assert.ok(start>=0&&end>start);
   const code=html.slice(start,end);
@@ -156,7 +156,7 @@ test("Clientes: card mantém status e conteúdo seguro, plano e vínculo são r�
     validarCaminhoLogoCliente:()=>"tenants/abc/logos/a".repeat(0),
     dataGlobalMs:()=>NaN,
     dataCurta:value=>value,
-    esc:v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;"),
+    esc:v=>String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"),
     Number,String,Boolean
   });
   const card=result({id:"c1",nome:"Nome <script>",email:'" onmouseover="alert(1)',planoId:"p1",tipoPessoa:"PJ"},1);
