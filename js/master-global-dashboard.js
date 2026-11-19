@@ -53,8 +53,9 @@
     const liberados = total - status.restrito.length;
     const emTeste = clientes.filter(c=>c?.testeAtivo===true && c?.liberado===true).length;
     const vencendo = status.vencer.length;
+    const testesVencendo = status.vencer.filter(c=>c.testeAtivo===true).length;
     const planoIds = new Set(planos.map(p=>String(p.id||"")).filter(Boolean));
-    const semPlano = clientes.filter(c=>!c?.planoId || (planoIds.size>0 && !planoIds.has(String(c.planoId))));
+    const semPlano = clientes.filter(c=>!c?.planoId || !planoIds.has(String(c.planoId)));
     const provisionadosMaster = masters.filter(u=>String(u.id||"") && String(u.id)===String(u.authUid||""));
     const provisionadosInterno = internos.filter(u=>String(u.id||"") && String(u.id)===String(u.authUid||""));
     const planosAtivos = planos.filter(p=>String(p.status||"").toUpperCase()!=="INATIVO");
@@ -62,7 +63,7 @@
       .sort((a,b)=>(Date.parse(b.criadoEm||"")||0)-(Date.parse(a.criadoEm||"")||0))
       .slice(0, MAX_ACTIVITY);
     return {
-      total, liberados, emTeste, vencendo, bloqueados:status.restrito.length,
+      total, liberados, emTeste, vencendo, testesVencendo, bloqueados:status.restrito.length,
       masters:provisionadosMaster.length, internos:provisionadosInterno.length,
       planos:planosAtivos.length, notificacoes:pending.length,
       semPlano:semPlano.length, status, atividades, updatedAt:dados?.updatedAt||"",
@@ -74,7 +75,7 @@
           detail:num(vencendo)+" cliente(s) com teste ou assinatura a vencer em até 7 dias",
           target:"clientes",filter:"A_VENCER",count:vencendo},
         semPlano.length && {type:"warning",icon:"assignment_late",title:"Clientes sem plano identificado",
-          detail:num(semPlano.length)+" cadastro(s) sem plano ativo na referência disponível",
+          detail:num(semPlano.length)+" cadastro(s) sem plano vinculado ou identificado na lista",
           target:"clientes",filter:"",count:semPlano.length},
         pending.length && {type:"info",icon:"notifications_active",title:"Notificações pendentes",
           detail:num(pending.length)+" aviso(s) ainda não lido(s)",
@@ -97,7 +98,7 @@
     ].forEach(([key,value])=>write(key,num(value)));
     write("mgdActivePercent",percent(model.liberados,model.total)+"%"+titleSuffix);
     write("mgdBlockedPercent",percent(model.bloqueados,model.total)+"%"+titleSuffix);
-    write("mgdTestCaption",model.vencendo+" com vencimento próximo");
+    write("mgdTestCaption",model.testesVencendo+" teste(s) com vencimento próximo");
     write("mgdUpdated",model.updatedAt ? displayTime(model.updatedAt) : "Atualização não confirmada");
     write("mgdBreakdownTitle",num(model.total)+" contratante"+(model.total!==1?"s":"")+" analisado"+(model.total!==1?"s":""));
     write("mgdAccessibleStatus",model.liberados+" liberado(s), "+model.bloqueados+" restrito(s), "+
