@@ -3,6 +3,7 @@
    Brand/profile suplementares ficam ocultos em mobile para preservar o drawer homologado. */
 .integro-desktop-brand,
 .integro-desktop-profile,
+.integro-desktop-trigger,
 #integroDesktopRailTooltip {
   display: none !important;
 }
@@ -306,6 +307,12 @@
     border-radius: 0 !important;
     box-shadow: none !important;
     background: rgba(255,255,255,.96) !important;
+  }
+
+  /* O gatilho inserido exclusivamente para desktop nunca vira
+     um segundo botão de menu quando o dispositivo é reduzido ao mobile. */
+  html body[data-integro-page].integro-desktop-nav-ready .topbar .integro-desktop-trigger {
+    display: inline-flex !important;
   }
 
   /* Botão do cabeçalho sempre visível: substitui o controle flutuante antigo. */
