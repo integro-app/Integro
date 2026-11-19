@@ -378,3 +378,13 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Escopo/segurança:** Master Global e `usuario_integro` usam exatamente as mesmas callables `listarChat` e `enviarChat` existentes em `functions/master-global-management.js`; backend autoriza apenas contas internas ativas e limita 100 mensagens recentes e 1.200 caracteres por envio. Nenhuma regra Firebase, credencial, coleção ou Function foi alterada. Chat dos tenants permanece separado.
 - **Integração:** substituídas apenas as seções antigas de `master-global.html` e `usuario-integro.html`. Dashboard, onboarding, permissões e demais módulos preservados. Testes `tests/platform-chat-ui.test.js` incorporados ao `npm test`.
 - **Status:** PR próprio sobre o menu em homologação; requer sucesso no CI e conferência de envio/leitura autenticada com duas contas internas antes do aceite. Sem produção nesta etapa.
+
+
+### M01 — Dashboard Executivo Master Global (19/11/2026, em homologação)
+
+- **Diagnóstico visual:** grade de 8 cards altos, redundância de títulos, área de “Resumo operacional” em caixas semelhantes a formulários e painel de alertas sem aproveitamento visual, conforme captura enviada pelo proprietário.
+- **Nova estrutura:** 4 KPIs principais de contratantes, acessos liberados, restritos e testes; 4 indicadores compactos de Masters Locais provisionados, equipe interna, planos e avisos; distribuição exclusiva de estados de acesso; prioridades administrativas clicáveis; últimos 5 logs administrativos; atalhos para clientes, equipe, planos e auditoria. Cabeçalho centralizado na hierarquia já existente e sem bordas decorativas adicionais.
+- **Dados e integridade:** fonte exclusiva `listarPainel` já autorizada no backend, sem dados fictícios nem acesso entre tenants. A situação de cada cliente reutiliza `situacaoClienteIntegro` e `clienteLiberadoGlobal` preexistentes. Gráfico expressa **distribuição da base atual**, não crescimento ou receita. Os logs exibidos são os últimos recebidos, e as notificações descontam as já lidas pelo usuário.
+- **Detalhamento:** oito KPIs preservam `data-kpi` e `abrirResumoKpi` aprovados. Alertas levam à aba de Clientes com filtro pertinente, ou à de Notificações; atividade abre Logs/Auditoria. Nenhuma operação de escrita é executada pelos cards.
+- **Arquivos:** `master-global.html`, `js/master-global-dashboard.js`, `css/master-global-dashboard.css`, `tests/master-global-dashboard.test.js` e inclusão no `npm test`.
+- **Status:** PR de homologação sobre o Chat Interno e Menu Desktop ainda em revisão. Requer testes automáticos e inspeção visual/autenticada; **sem publicação em produção**.
