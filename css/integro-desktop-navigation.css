@@ -486,6 +486,15 @@
     display: none !important;
     pointer-events: none !important;
   }
+  /* O ID do menu unificado precisa constar na regra: seu display:flex tem
+     especificidade mais alta que um [hidden] genérico. */
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar #integroSidebarMenu > button[hidden],
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar #integroSidebarMenu > button[aria-hidden="true"],
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar #integroSidebarMenu > button[style*="display: none"],
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar #integroSidebarMenu > button[style*="display:none"] {
+    display: none !important;
+    pointer-events: none !important;
+  }
   html body[data-integro-page].integro-desktop-nav-ready .sidebar :is(.menu button,#integroSidebarMenu > button)[style*="display: none"],
   html body[data-integro-page].integro-desktop-nav-ready .sidebar :is(.menu button,#integroSidebarMenu > button)[style*="display:none"] {
     display: none !important;
