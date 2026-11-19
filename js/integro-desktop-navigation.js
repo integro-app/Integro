@@ -7,7 +7,7 @@
 
   const DESKTOP = global.matchMedia("(min-width: 981px)");
   const STORAGE_KEY = "integro.desktop.sidebar.mode.v1";
-  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261119-saas4";
+  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261119-saas5";
   const CSS_ID = "integroDesktopNavigationCss";
   let compact = false;
   let ready = false;
@@ -103,7 +103,7 @@
     const badge = sourceBell.querySelector("[data-notification-count]");
     const mirror = shortcut.querySelector(".integro-desktop-bell-count");
     if (mirror) {
-      const count = Number(badge?.textContent?.trim() || 0);
+      const count = Number.parseInt(String(badge?.textContent || "0").replace(/[^0-9]/g, ""), 10) || 0;
       const visible = Boolean(badge && !badge.hidden && Number.isFinite(count) && count > 0);
       mirror.hidden = !visible;
       if (visible && mirror.textContent !== String(count)) mirror.textContent = String(count);
