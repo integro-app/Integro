@@ -321,7 +321,7 @@
   html body[data-integro-page].integro-desktop-nav-ready .main > .topbar,
   html body[data-integro-page].integro-desktop-nav-ready .main > .integro-global-header {
     border: 0 !important;
-    border-bottom: 1px solid #e6edf6 !important;
+    border-bottom: 0 !important;
     border-radius: 0 !important;
     box-shadow: none !important;
     background: transparent !important;
@@ -340,6 +340,15 @@
      um segundo botão de menu quando o dispositivo é reduzido ao mobile. */
   html body[data-integro-page].integro-desktop-nav-ready .topbar .integro-desktop-trigger {
     display: inline-flex !important;
+  }
+
+  /* O botão flutuante de mobile não reaparece no desktop quando uma regra
+     legada o força com display:flex. Mantemos um único gatilho no cabeçalho. */
+  html body[data-integro-page].integro-desktop-nav-ready > .mobile-menu-btn,
+  html body[data-integro-page].integro-desktop-nav-ready > [data-integro-menu-trigger] {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
   }
 
   /* Botão do cabeçalho sempre visível: substitui o controle flutuante antigo. */
