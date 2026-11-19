@@ -145,7 +145,10 @@
       // O card de origem muda após troca de empresa/perfil: escutar somente o atual.
       profileObserver?.disconnect?.();
       profileObserver = new MutationObserver(ensureProfile);
-      profileObserver.observe(source, { childList: true, characterData: true, subtree: true });
+      profileObserver.observe(source, {
+        childList: true, characterData: true, attributes: true,
+        attributeFilter: ["hidden", "data-count", "aria-label"], subtree: true
+      });
       observedProfileSource = source;
     }
   }
