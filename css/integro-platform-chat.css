@@ -522,7 +522,7 @@
 #chat .ipc-retry:focus-visible,
 #chat .ipc-jump:focus-visible { outline: 2px solid #ff8a00; outline-offset: 2px; }
 @keyframes ipc-spin { to { transform: rotate(360deg); } }
-body[data-integro-page="master-global"].integro-platform-chat-active #btnAtualizar,
+body.integro-platform-chat-active #btnAtualizar,
 body.integro-platform-chat-active #btnAtualizarChat { display: none !important; }
 @media (max-width: 1030px) {
   #chat .integro-platform-chat { grid-template-columns: 205px minmax(0,1fr); }
