@@ -39,4 +39,12 @@
     }
   }
   window.IntegroLoadingContinuo = {percentual,iniciar};
+  // Nas páginas autenticadas o valor recebido do login aparece no primeiro frame
+  // disponível; o controlador do painel pode chamar iniciar() novamente.
+  // O percentual segue monotônico, sem retornar visualmente a zero na troca de rota.
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", iniciar, {once:true});
+  } else {
+    iniciar();
+  }
 })();
