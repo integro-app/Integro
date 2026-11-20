@@ -319,6 +319,157 @@
     });
   }
 
+  // M22: um único resumo de conferência oficial é reaproveitado pelo Dashboard
+  // e pelo fechamento. Nenhum valor financeiro é estimado no cliente.
+  const caixaCompartilhado = {
+    chave: "", caixaId: "", snapshot: null, confirmadoEm: 0,
+    invalidado: false, revisao: 0, carregando: null, ultimaConsulta: 0,
+    proximaConsulta: null, observador: null, observadorChave: "",
+    assinaturaDocumento: ""
+  };
+
+  function chaveCaixaCompartilhado(caixa = caixaAbertoLocal()) {
+    const usuario = usuarioAtual();
+    const tenant = tenantUsuario(usuario);
+    const uid = texto(global.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
+    const caixaId = texto(caixa?.id || caixa?.caixaId || caixa?.docId);
+    return ehVendedor(usuario) && tenant && uid && caixaId ? [tenant, uid, caixaId].join(":") : "";
+  }
+
+  function limparCaixaCompartilhado() {
+    if (caixaCompartilhado.proximaConsulta) clearTimeout(caixaCompartilhado.proximaConsulta);
+    try { caixaCompartilhado.observador?.(); } catch (_) {}
+    Object.assign(caixaCompartilhado, {
+      chave: "", caixaId: "", snapshot: null, confirmadoEm: 0,
+      invalidado: false, revisao: caixaCompartilhado.revisao + 1,
+      carregando: null, ultimaConsulta: 0, proximaConsulta: null,
+      observador: null, observadorChave: "", assinaturaDocumento: ""
+    });
+  }
+
+  function garantirEscopoCaixaCompartilhado(caixa) {
+    const chave = chaveCaixaCompartilhado(caixa);
+    if (!chave) return "";
+    if (caixaCompartilhado.chave && caixaCompartilhado.chave !== chave) limparCaixaCompartilhado();
+    if (!caixaCompartilhado.chave) {
+      caixaCompartilhado.chave = chave;
+      caixaCompartilhado.caixaId = texto(caixa.id || caixa.caixaId || caixa.docId);
+    }
+    return chave;
+  }
+
+  function obterResumoCompartilhado(caixa = caixaAbertoLocal()) {
+    const chave = chaveCaixaCompartilhado(caixa);
+    if (!chave || caixaCompartilhado.chave !== chave || !caixaCompartilhado.snapshot) return null;
+    return {
+      caixaId: caixaCompartilhado.caixaId,
+      snapshot: caixaCompartilhado.snapshot,
+      confirmadoEm: caixaCompartilhado.confirmadoEm,
+      desatualizado: caixaCompartilhado.invalidado || Boolean(caixaCompartilhado.carregando)
+    };
+  }
+
+  function publicarResumoCompartilhado(caixa, snapshot, revisao = caixaCompartilhado.revisao) {
+    const chave = chaveCaixaCompartilhado(caixa);
+    if (!chave || chave !== caixaCompartilhado.chave) return false;
+    const retornoCaixa = texto(snapshot?.caixa?.id || snapshot?.caixa?.caixaId || snapshot?.caixaId);
+    if (retornoCaixa && retornoCaixa !== caixaCompartilhado.caixaId) return false;
+    if (!snapshot || !Number.isSafeInteger(snapshot.caixaFinalEsperadoCentavos)) return false;
+    caixaCompartilhado.snapshot = snapshot;
+    caixaCompartilhado.confirmadoEm = Date.now();
+    caixaCompartilhado.invalidado = caixaCompartilhado.revisao !== revisao;
+    global.document?.dispatchEvent?.(new CustomEvent("integro-vendedor-caixa-resumo-atualizado", {
+      detail: {
+        caixaId: caixaCompartilhado.caixaId,
+        confirmadoEm: caixaCompartilhado.confirmadoEm,
+        desatualizado: caixaCompartilhado.invalidado
+      }
+    }));
+    return true;
+  }
+
+  async function atualizarResumoCompartilhado({ caixa = caixaAbertoLocal(), forcar = false } = {}) {
+    const chave = garantirEscopoCaixaCompartilhado(caixa);
+    if (!chave) return null;
+    if (caixaCompartilhado.carregando) return caixaCompartilhado.carregando;
+    if (!forcar && caixaCompartilhado.snapshot && !caixaCompartilhado.invalidado &&
+        Date.now() - caixaCompartilhado.confirmadoEm < 10000) return caixaCompartilhado.snapshot;
+    const revisao = caixaCompartilhado.revisao;
+    caixaCompartilhado.ultimaConsulta = Date.now();
+    const consulta = (async () => {
+      const snapshot = await prepararSnapshot(caixa);
+      if (!publicarResumoCompartilhado(caixa, snapshot, revisao)) return null;
+      return snapshot;
+    })();
+    caixaCompartilhado.carregando = consulta;
+    try { return await consulta; }
+    finally {
+      if (caixaCompartilhado.chave === chave && caixaCompartilhado.carregando === consulta) {
+        caixaCompartilhado.carregando = null;
+        if (caixaCompartilhado.invalidado) agendarResumoCompartilhado(caixa);
+      }
+    }
+  }
+
+  function agendarResumoCompartilhado(caixa = caixaAbertoLocal()) {
+    if (!garantirEscopoCaixaCompartilhado(caixa) || global.__integroLogoutEmAndamento) return;
+    if (caixaCompartilhado.proximaConsulta) clearTimeout(caixaCompartilhado.proximaConsulta);
+    // Eventos em rajada compartilham uma única consulta; não multiplicar
+    // transações Firestore de conciliação a cada movimento da tela.
+    const espera = Math.max(350, 3000 - (Date.now() - caixaCompartilhado.ultimaConsulta));
+    caixaCompartilhado.proximaConsulta = setTimeout(() => {
+      caixaCompartilhado.proximaConsulta = null;
+      atualizarResumoCompartilhado({ caixa, forcar: true }).catch(erro =>
+        console.warn("[ÍNTEGRO] Resumo oficial do caixa pendente de nova sincronização.", erro?.message || erro));
+    }, espera);
+  }
+
+  function invalidarResumoCompartilhado(caixa = caixaAbertoLocal()) {
+    if (!garantirEscopoCaixaCompartilhado(caixa)) return;
+    caixaCompartilhado.revisao += 1;
+    caixaCompartilhado.invalidado = true;
+    agendarResumoCompartilhado(caixa);
+    global.document?.dispatchEvent?.(new CustomEvent("integro-vendedor-caixa-resumo-sincronizando", {
+      detail: { caixaId: caixaCompartilhado.caixaId }
+    }));
+  }
+
+  function observarCaixaCompartilhado() {
+    if (!ehVendedor() || global.__integroLogoutEmAndamento) {
+      limparCaixaCompartilhado();
+      return;
+    }
+    const caixa = caixaAbertoLocal();
+    const chave = garantirEscopoCaixaCompartilhado(caixa);
+    if (!chave || caixaCompartilhado.observadorChave === chave) return;
+    try { caixaCompartilhado.observador?.(); } catch (_) {}
+    caixaCompartilhado.observador = null;
+    caixaCompartilhado.observadorChave = chave;
+    caixaCompartilhado.assinaturaDocumento = "";
+    const db = global.db || global.firebase?.firestore?.();
+    if (db?.collection) {
+      try {
+        caixaCompartilhado.observador = db.collection("caixas").doc(caixaCompartilhado.caixaId).onSnapshot(doc => {
+          if (caixaCompartilhado.observadorChave !== chave || !doc.exists) return;
+          const registro = doc.data() || {};
+          if (texto(registro.clientePlataformaId || registro.tenantId || registro.empresaId) !== tenantUsuario()) return;
+          const assinatura = [normalizar(registro.status), registro.saldoAtualCentavos,
+            registro.atualizadoEm?.seconds, registro.fechamentoId].join("|");
+          if (assinatura === caixaCompartilhado.assinaturaDocumento) return;
+          caixaCompartilhado.assinaturaDocumento = assinatura;
+          if (["ABERTO", "REABERTO"].includes(normalizar(registro.status))) {
+            invalidarResumoCompartilhado(caixa);
+          } else {
+            limparCaixaCompartilhado();
+          }
+        }, erro => console.warn("[ÍNTEGRO] Monitoramento do caixa indisponível.", erro?.message || erro));
+      } catch (erro) {
+        console.warn("[ÍNTEGRO] Não foi possível monitorar o caixa.", erro?.message || erro);
+      }
+    }
+    agendarResumoCompartilhado(caixa);
+  }
+
   function resumoOficial(snapshot, caixa) {
     const vendas = global.State?.getVendas?.() || global.vendasCache || [];
     const divisao = resumirVendas({ vendas, caixa, usuario: usuarioAtual(), totalVendasCentavos: snapshot.totalVendasCentavos });
