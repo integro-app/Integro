@@ -112,6 +112,30 @@
   }
 }
 
+/* Estrutura do conteúdo: o menu nunca pode cobrir o primeiro card ou forçar a
+   tela inteira a rolar horizontalmente por causa de um módulo interno. */
+html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main > .screen,
+html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main > .screen.active,
+html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main .section-card,
+html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main .integro-shared-surface {
+  box-sizing:border-box!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+@media (min-width:981px) {
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main > .integro-global-header {
+    display:flex!important;
+    align-items:center!important;
+    min-height:54px!important;
+    height:auto!important;
+    margin:0 0 12px!important;
+    padding:4px 0!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+}
+
 /* O Dashboard do Vendedor trabalha com a largura útil do MAIN e não com o viewport.
  * O grid legado travava cinco colunas com !important e empurrava o primeiro
  * KPI para baixo da sidebar, mesmo no modo recolhido.
