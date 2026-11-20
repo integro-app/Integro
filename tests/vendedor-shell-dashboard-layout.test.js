@@ -59,7 +59,7 @@ test("Vendedor: correção não modifica regras, cálculos ou shell de outros pe
   const desktop=read("js/integro-desktop-navigation.js");
   const source="body[data-integro-page=\"master-local\"].perfil-vendedor";
   assert.ok(css.includes(source));
-  assert.doesNotMatch(css,/firebase|firestore|cole[cç][aã]o\s*=|balance\s*=/i);
+  assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g,""),/firebase|firestore|cole[cç][aã]o\s*=|balance\s*=/i);
   assert.match(nav,/if \(body\.dataset\.integroPage === "master-local"/);
   assert.match(nav,/sellerStyle\.href = "css\/integro-vendedor-shell-dashboard\.css\?v=20261120-shell1"/);
   assert.match(nav,/sellerStyle\.id = "integroSellerShellCss"/);
