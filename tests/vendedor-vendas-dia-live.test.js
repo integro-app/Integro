@@ -136,3 +136,61 @@ test("Vendas usa pesquisa dinâmica e apenas Filtros, sem botão Buscar gerado n
   assert.match(vendedor,/carregarVendaConfirmadaServidor\(vendaConfirmadaId\)/);
   assert.match(perfis,/exigirConsultaValida: opcoes\.exigirConsultaValida === true/);
 });
+
+
+test("M22: vendas exibidas têm indicadores reais do filtro, estados e conteúdo HTML seguro", () => {
+  let vendas = [{
+    id:"venda-1", clienteId:"cliente-1", clienteNome:"Nome do servidor",
+    statusVenda:"ATIVA", tipoVenda:"RENOVACAO", dataVenda:"2026-11-20",
+    valorEmprestado:100, valorTotalVenda:115, valorParcela:23
+  }];
+  const elements = {
+    listaVendasDia:{innerHTML:""}, contadorVendasDia:{innerHTML:""},
+    buscaVendaVendedorInput:{value:""},
+    filtroVendaAtiva:{checked:false}, filtroVendaQuitada:{checked:false},
+    filtroVendaCancelada:{checked:false}, filtroVendaNova:{checked:false},
+    filtroVendaRenovacao:{checked:false}
+  };
+  const textoSeguro = valor => String(valor??"").trim();
+  const esc = valor => textoSeguro(valor).replace(/[&<>"']/g, caractere =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" })[caractere]);
+  const context = {
+    document:{getElementById:id=>elements[id]||null},
+    State:{getClientes:()=>[{id:"cliente-1",apelido:"<img src=x onerror=alert(1)>",nomeCompleto:"João & Cia"}]},
+    vendasFiltradas:()=>vendas,
+    hoje:()=>"2026-11-20", numero:v=>Number(v??0)||0,
+    moeda:v=>"R$ "+Number(v).toFixed(2),
+    texto:textoSeguro, esc,
+    dataRegistro:registro=>registro.dataVenda
+  };
+  const source = bloco("  function renderVendasDia() {","\n  // O contêiner da Operação");
+  const render = vm.runInNewContext(source+"\nrenderVendasDia",context);
+  render();
+  assert.match(elements.contadorVendasDia.innerHTML,/Vendas exibidas/);
+  assert.match(elements.contadorVendasDia.innerHTML,/R\$ 100\.00/);
+  assert.match(elements.contadorVendasDia.innerHTML,/Carteira gerada/);
+  assert.match(elements.listaVendasDia.innerHTML,/Renovação/);
+  assert.match(elements.listaVendasDia.innerHTML,/Ativa/);
+  assert.match(elements.listaVendasDia.innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);
+  assert.doesNotMatch(elements.listaVendasDia.innerHTML,/<img/);
+  assert.match(elements.listaVendasDia.innerHTML,/João &amp; Cia/);
+  vendas[0].statusVenda="EM_ATRASO";
+  render();
+  assert.match(elements.listaVendasDia.innerHTML,/vendedor-venda-status atraso/);
+  assert.match(elements.listaVendasDia.innerHTML,/Em atraso/);
+  vendas[0].statusVenda="ATRASO_GRAVE";
+  render();
+  assert.match(elements.listaVendasDia.innerHTML,/vendedor-venda-status grave/);
+  assert.match(elements.listaVendasDia.innerHTML,/Atraso grave/);
+  vendas[0].statusVenda="ADIANTADO";
+  render();
+  assert.match(elements.listaVendasDia.innerHTML,/vendedor-venda-status adiantada/);
+  vendas=[];
+  render();
+  assert.match(elements.listaVendasDia.innerHTML,/Nenhuma venda registrada hoje/);
+  elements.buscaVendaVendedorInput.value="sem resultado";
+  render();
+  assert.match(elements.listaVendasDia.innerHTML,/Nenhuma venda corresponde à pesquisa/);
+  assert.match(css,/\.vendedor-vendas-resumo\s*\{/);
+  assert.match(css,/#abaVendasDia \.vendedor-venda-card\s*\{/);
+});

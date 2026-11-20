@@ -65,6 +65,18 @@
         ]
       },
       {
+        "source": "/js/vendedor-unificado.js",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/css/vendedor-operacao.css",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, max-age=0, must-revalidate" }
+        ]
+      },
+      {
         "source": "/js/services/vendedor-fechamento-caixa.js",
         "headers": [
           {

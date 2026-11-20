@@ -170,7 +170,7 @@ test("Vendas mantém busca visível e Nova venda no canto inferior direito", () 
 test("Vendas sem resultados exibe área vazia e preserva ação Nova venda no mobile", () => {
   const render = trecho(vendedor, "  function renderVendasDia() {", "\n  function abrirAba(");
   const lista = { innerHTML: "conteúdo anterior" };
-  const contador = { textContent: "contador anterior" };
+  const contador = { innerHTML: "" };
   const ctx = {
     document: { getElementById: id =>
       id === "listaVendasDia" ? lista :
@@ -178,13 +178,16 @@ test("Vendas sem resultados exibe área vazia e preserva ação Nova venda no mo
     vendasFiltradas: () => [],
     hoje: () => "2026-11-07",
     numero: value => Number(value) || 0,
-    moeda: () => "R$ 0,00"
+    moeda: () => "R$ 0,00",
+    texto: value => String(value ?? "").trim(),
+    esc: value => String(value ?? "").replace(/&/g, "&amp;")
   };
   const executar = vm.runInNewContext(render + "\nrenderVendasDia", ctx);
   executar();
-  assert.equal(lista.innerHTML, "", "sem card nem mensagem vazia");
-  assert.equal(contador.textContent, "", "sem contador quando lista vazia");
-  assert.doesNotMatch(render, /Nenhuma venda encontrada|Não há vendas vinculadas/);
+  assert.match(lista.innerHTML, /Nenhuma venda registrada hoje/, "estado vazio deve explicar ausência de vendas");
+  assert.match(contador.innerHTML, /Vendas exibidas/, "painel mantém indicadores zerados");
+  assert.match(contador.innerHTML, /<strong>0<\/strong>/);
+  assert.doesNotMatch(lista.innerHTML, /<article class="vendedor-venda-card"/);
   const painel = trecho(vendedor, '        <div id="abaVendasDia" style="display:none">', '\n        <div id="abaFechamentoCaixa"');
   assert.match(painel, /id="btnNovaVendaOperacao"/);
   assert.match(painel, /onclick="abrirListaNovaVendaVendedor\(\)"/);

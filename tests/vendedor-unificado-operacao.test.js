@@ -64,7 +64,8 @@ test("card de cobrança contém whatsapp, situação, parcelas e somente ações
 test("vendas mostram somente vendas de hoje e usam filtros por checkbox", () => {
   assert.doesNotMatch(unificado, /id="filtroPeriodoVendaVendedor"/);
   assert.match(unificado, /dataVenda !== dataHoje/);
-  assert.match(unificado, /venda\(s\) de hoje/);
+  assert.match(unificado, /Vendas exibidas/);
+  assert.match(unificado, /Nenhuma venda registrada hoje/);
   assert.match(unificado, /filtroVendaAtiva/);
   assert.match(unificado, /filtroVendaRenovacao/);
   assert.match(unificado, /Data da venda/);
@@ -529,6 +530,10 @@ test("resumo parcial do caixa permanece visível com visitas pendentes, mas fech
   const html = htmlResumo(snapshot, {});
   assert.match(html, /Conferência do caixa/);
   assert.match(html, /Visitas e baixas/);
+  assert.match(html, /5 de 7 visitas com baixa/);
+  assert.match(html, /value="71"/);
+  assert.match(html, /Conciliação automática/);
+  assert.match(html, /Conferência final/);
   assert.match(html, /Consulta liberada — fechamento ainda bloqueado/);
   assert.match(html, /2 visita\(s\) ainda sem baixa/);
   assert.match(html, /Caixa atual/);
