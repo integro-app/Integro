@@ -12,7 +12,8 @@
 #usuarios .mgui-create {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border:0;border-radius:11px;background:linear-gradient(100deg,#ff9a32,#ff7f06);color:#fff;font:850 12px/1 Inter,system-ui,sans-serif;cursor:pointer;box-shadow:0 8px 19px rgba(247,127,12,.17);white-space:nowrap;}
 #usuarios .mgui-create .material-symbols-rounded {font-size:19px;}
 #usuarios .mgui-create:hover {filter:brightness(1.04);}
-body.mgui-users-active #btnAcaoPrincipal {display:none !important;}
+body.mgui-users-active #btnAcaoPrincipal,
+body.mgui-users-active #btnAtualizar {display:none !important;}
 #usuarios .mgui-snapshot {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:0 0 17px;}
 #usuarios .mgui-snapshot-card {display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:94px;padding:18px;border:1px solid #e1eaf3;border-radius:15px;background:#fff;text-align:left;color:#192f4a;box-shadow:0 6px 18px rgba(14,35,64,.035);cursor:pointer;transition:border-color .16s,box-shadow .16s,transform .16s;}
 #usuarios .mgui-snapshot-card:hover {border-color:#f6be87;transform:translateY(-1px);}
@@ -155,3 +156,6 @@ body.mgui-users-active #btnAcaoPrincipal {display:none !important;}
   #usuarios .mgui-badges {margin-left:0;}
 }
 @media (prefers-reduced-motion: reduce) {#usuarios .mgui-snapshot-card {transition:none;}}
+
+/* A ficha abre fora da seção #usuarios: reaproveitar o avatar no drawer. */
+#drawer .mgui-profile .mgui-avatar {display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:13px;background:linear-gradient(140deg,#123252,#27547e);color:#fff;font:900 14px/1 Inter,system-ui,sans-serif;}
