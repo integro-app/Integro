@@ -70,6 +70,42 @@
     padding-left:12px!important;
     padding-right:12px!important;
   }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu {
+    box-sizing:border-box!important;
+    display:flex!important;
+    width:100%!important;
+    min-width:0!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu > button.menu-item {
+    box-sizing:border-box!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:0!important;
+    width:52px!important;
+    min-width:52px!important;
+    max-width:52px!important;
+    min-height:49px!important;
+    padding:0!important;
+    margin:0 auto 4px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu > button.menu-item .menu-label,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu > button.menu-item .chevron {
+    display:none!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu > button.menu-item .menu-icon {
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:26px!important;
+    min-width:26px!important;
+    height:26px!important;
+    font-size:23px!important;
+  }
   html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed .integro-desktop-brand,
   html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed .integro-desktop-profile {
     max-width:100%!important;
