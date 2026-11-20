@@ -572,7 +572,9 @@ test("abrir conferência consulta o servidor sem exigir visitas concluídas; fec
   const preview = close.split("  async function abrirResumoFechamento({ inline = false } = {}) {")[1]?.split("  function atualizarBotaoFechamento() {")[0] || "";
   const fechamento = close.split("  async function executarFechamento(")[1]?.split("  async function abrirResumoFechamento({ inline = false } = {}) {")[0] || "";
   assert.ok(preview && fechamento);
-  assert.match(preview, /const snapshot = await prepararSnapshot\(caixa\);\s*if \(!dialog\.isConnected\) return;\s*dialog\.innerHTML = htmlResumo\(snapshot, caixa\)/);
+  assert.match(preview, /const anterior = obterResumoCompartilhado\(caixa\)/);
+  assert.match(preview, /renderizarResumoCompartilhado\(dialog, anterior\.snapshot, caixa/);
+  assert.match(preview, /const snapshot = await atualizarResumoCompartilhado\(\{ caixa, forcar: true \}\)/);
   assert.doesNotMatch(preview, /await sincronizarAntesDoFechamento\(caixa\)/);
   assert.doesNotMatch(preview, /return notificar\(.*cobrança\(s\) sem baixa/);
   assert.match(preview, /!impedimentosFechamento\(snapshot, operacoesAindaSincronizando\(\)\)\.podeFechar/);
@@ -605,7 +607,11 @@ test("Fechar caixa abre imediatamente como terceira aba antes da resposta do ser
     preparandoFechamento: false, garantirEstilos: () => {},
     htmlCarregamentoPainel: () => "PAINEL ABERTO",
     caixaAbertoLocal: () => ({ id:"caixa-aberto" }),
-    prepararSnapshot: () => { consultas++; return consulta; },
+    garantirEscopoCaixaCompartilhado: () => "tenant:uid:caixa-aberto",
+    observarCaixaCompartilhado: () => {},
+    obterResumoCompartilhado: () => null,
+    atualizarResumoCompartilhado: () => { consultas++; return consulta; },
+    renderizarResumoCompartilhado: (dialog, snapshot) => { dialog.innerHTML = "RESUMO OFICIAL"; },
     htmlResumo: () => "RESUMO OFICIAL",
     atualizarBotaoFechamento: () => {},
     atualizarConferencia: () => {},
