@@ -70,8 +70,18 @@ test("consulta Firestore da conferência reatribui a rota pelo cliente canônico
    clientes:[]
  };
  const ref=(collection,id)=>({collection,id});
- const db={collection:collection=>({doc:id=>ref(collection,id)})};
+ const db={collection:collection=>({
+   doc:id=>ref(collection,id),
+   where(field,op,value){return {
+     limit(){return {collection,field,value};}
+   };}
+ })};
  const transaction={get:async r=>{
+   if(r.field){
+     const values=Array.isArray(r.value)?r.value:[r.value];
+     const rows=(loja[r.collection]||[]).filter(x=>values.includes(x[r.field]));
+     return {docs:rows.map(row=>({id:row.id,data:()=>row}))};
+   }
    const row=(loja[r.collection]||[]).find(x=>x.id===r.id);
    return {id:r.id,exists:!!row,data:()=>row};
  }};
