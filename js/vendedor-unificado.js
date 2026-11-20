@@ -983,10 +983,38 @@
     // sem duplicar consultas ao Firestore nem usar dados de outras empresas.
     atualizar("kpiCaixaAtual", snapshot.caixaFinalEsperadoCentavos);
     atualizar("kpiCarteira", snapshot.carteiraFinalCentavos);
+    if (Number.isSafeInteger(snapshot.carteiraFinalCentavos) &&
+        Number.isSafeInteger(snapshot.carteiraInicialCentavos)) {
+      const anterior = snapshot.carteiraInicialCentavos;
+      const diferenca = snapshot.carteiraFinalCentavos - anterior;
+      const tendencia = document.getElementById("kpiCarteiraTrend");
+      if (tendencia) {
+        tendencia.className = "kpi-trend " + (anterior > 0 ? (diferenca >= 0 ? "up" : "down") : "neutral");
+        tendencia.textContent = anterior > 0
+          ? (diferenca >= 0 ? "↑ Subiu " : "↓ Desceu ") +
+            (Math.abs(diferenca / anterior * 100)).toLocaleString("pt-BR", {maximumFractionDigits:1}) +
+            "% vs. carteira inicial do caixa"
+          : "Sem carteira anterior para comparar";
+      }
+    }
     atualizar("kpiVendasHoje", vendasTotal);
     atualizar("kpiVendasNovas", vendasNovas);
     atualizar("kpiVendasRenovadas", renovacoes);
     atualizar("kpiRecebidoHoje", snapshot.totalPagamentosCentavos);
+    if (Number.isSafeInteger(snapshot.totalPrevistoCentavos) &&
+        Number.isSafeInteger(snapshot.totalPagamentosCentavos)) {
+      const previsto = snapshot.totalPrevistoCentavos;
+      const pago = snapshot.totalPagamentosCentavos;
+      const porcentagem = previsto > 0 ? Math.min(100, Math.max(0, pago / previsto * 100)) : 0;
+      const progresso = document.getElementById("recebidoProgressFill");
+      if (progresso?.style) progresso.style.width = porcentagem.toFixed(1) + "%";
+      const pct = document.getElementById("recebidoProgressPct");
+      if (pct) pct.textContent = Math.round(porcentagem) + "%";
+      const label = document.getElementById("recebidoProgressLabel");
+      if (label) label.textContent = "Recolhimento pretendido: " + dinheiro(previsto);
+      const sub = document.getElementById("recebidoProgressSub");
+      if (sub) sub.textContent = "Recebido " + dinheiro(pago) + " de " + dinheiro(previsto);
+    }
     atualizar("kpiGastosHoje", snapshot.totalGastosCentavos);
     atualizar("kpiDespesasValor", snapshot.totalGastosCentavos);
     if (Number.isSafeInteger(snapshot.totalRetiradasCentavos) &&
