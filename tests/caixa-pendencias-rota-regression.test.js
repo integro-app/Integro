@@ -137,3 +137,13 @@ test("fechamento explica quitados inconsistentes sem pedir não pagamento fictí
  assert.match(ui,/detalhesQuitados/);
  assert.match(ui,/contraditório/);
 });
+
+test("leitura autoritativa sem ficha operacional classifica venda órfã como conciliação, não visita",()=>{
+ const s=calcularConferencia({box,sales:[sale],clients:[],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.avisosCarteira.length,1);
+ assert.match(s.inconsistencias[0],/^CLIENTE_SEM_FICHA_OPERACIONAL:/);
+});
