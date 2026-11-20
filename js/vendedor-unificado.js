@@ -952,15 +952,71 @@
     sincronizarMovimentosDashboardVendedor(false);
   }
 
+  function sincronizarCardsDashboardComFechamento() {
+    const caixa = caixaAberto();
+    const compartilhar = window.IntegroVendedorFechamentoCaixa?.obterResumoCompartilhado?.(caixa);
+    if (!compartilhar || compartilhar.desatualizado || !caixa) return false;
+    const dashboard = document.getElementById("dashboard");
+    if (!dashboard || perfil(usuarioAtual || State.getUsuario?.()) !== "vendedor") return false;
+    const dia = dataCaixa();
+    const inicio = texto(document.getElementById("dashboardDataInicio")?.value || dia);
+    const fim = texto(document.getElementById("dashboardDataFim")?.value || dia);
+    // Filtros de período histórico devem continuar com suas próprias consultas.
+    if (inicio !== dia || fim !== dia) return false;
+    const snapshot = compartilhar.snapshot || {};
+    const caixaId = texto(caixa.id || caixa.caixaId || caixa.docId);
+    const retornoId = texto(snapshot.caixa?.id || snapshot.caixa?.caixaId || snapshot.caixaId);
+    if (retornoId && retornoId !== caixaId) return false;
+    const dinheiro = centavos => (centavos / 100).toLocaleString("pt-BR", { style:"currency", currency:"BRL" });
+    const atualizar = (id, valor) => {
+      if (!Number.isSafeInteger(valor)) return;
+      const el = document.getElementById(id);
+      if (el) el.textContent = dinheiro(valor);
+    };
+    const vendasNovas = snapshot.totalVendasNovasCentavos;
+    const renovacoes = snapshot.totalVendasRenovadasCentavos;
+    const vendasTotal = Number.isSafeInteger(snapshot.totalVendasCentavos)
+      ? snapshot.totalVendasCentavos
+      : Number.isSafeInteger(vendasNovas) && Number.isSafeInteger(renovacoes)
+        ? vendasNovas + renovacoes : null;
+    // Cartões comuns leem exatamente a MESMA conferência oficial do fechamento,
+    // sem duplicar consultas ao Firestore nem usar dados de outras empresas.
+    atualizar("kpiCaixaAtual", snapshot.caixaFinalEsperadoCentavos);
+    atualizar("kpiCarteira", snapshot.carteiraFinalCentavos);
+    atualizar("kpiVendasHoje", vendasTotal);
+    atualizar("kpiVendasNovas", vendasNovas);
+    atualizar("kpiVendasRenovadas", renovacoes);
+    atualizar("kpiRecebidoHoje", snapshot.totalPagamentosCentavos);
+    atualizar("kpiGastosHoje", snapshot.totalGastosCentavos);
+    atualizar("kpiDespesasValor", snapshot.totalGastosCentavos);
+    if (Number.isSafeInteger(snapshot.totalRetiradasCentavos) &&
+        Number.isSafeInteger(snapshot.totalRecolhimentosCentavos)) {
+      atualizar("kpiRetiradasValor", snapshot.totalRetiradasCentavos + snapshot.totalRecolhimentosCentavos);
+    }
+    const sub = document.getElementById("kpiCaixaAtualSub");
+    if (sub) sub.textContent = "Caixa conferido no Firebase às " +
+      new Date(compartilhar.confirmadoEm).toLocaleTimeString("pt-BR", {
+        timeZone:"America/Sao_Paulo", hour:"2-digit", minute:"2-digit"
+      });
+    return true;
+  }
+
   function recalcularDashboardVendedor(origem = "vendedor") {
     try {
       if (typeof window.renderizarDashboardGerencialComCache === "function") {
-        return window.renderizarDashboardGerencialComCache({ tempoReal: true, origem });
+        const resultado = window.renderizarDashboardGerencialComCache({ tempoReal: true, origem });
+        sincronizarCardsDashboardComFechamento();
+        return resultado;
       }
       if (typeof window.atualizarDashboardGerencialReal === "function") {
-        return window.atualizarDashboardGerencialReal();
+        const resultado = window.atualizarDashboardGerencialReal();
+        if (resultado?.then) resultado.then(sincronizarCardsDashboardComFechamento);
+        else sincronizarCardsDashboardComFechamento();
+        return resultado;
       }
-      return window.renderDashboardMasterLocal?.();
+      const resultado = window.renderDashboardMasterLocal?.();
+      sincronizarCardsDashboardComFechamento();
+      return resultado;
     } catch (erro) {
       console.warn("[ÍNTEGRO VENDEDOR] Não foi possível recalcular o Dashboard.", erro);
       return null;
@@ -2982,6 +3038,13 @@
   document.addEventListener("integro-operacoes-tempo-real-atualizadas", () => {
     if (!instalado) return;
     recalcularDashboardVendedor("operacoes-tempo-real");
+  });
+  document.addEventListener("integro-vendedor-caixa-resumo-atualizado", () => {
+    if (!instalado) return;
+    recalcularDashboardVendedor("caixa-confirmado-no-servidor");
+  });
+  document.addEventListener("integro-dashboard-periodo-aplicado", () => {
+    if (instalado) sincronizarCardsDashboardComFechamento();
   });
   document.addEventListener("integro-tela-alterada", evento => {
     if (evento.detail?.tela === "clientes") setTimeout(() => renderClientesVendedor(), 0);
