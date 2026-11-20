@@ -21,11 +21,11 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro > .dashboard-section
 html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-header {
   position: relative;
   display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 68px;
-  margin: -8px 0 9px !important;
-  padding: 0 0 7px !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 48px !important;
+  margin: 0 0 12px !important;
+  padding: 0 !important;
   border: 0 !important;
   background: transparent !important;
   box-shadow: none !important;
@@ -476,4 +476,28 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-mo
   html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go {
     transition: none !important;
   }
+}
+/* M06: remove a reserva vertical do cabeçalho global somente no Dashboard
+   do Vendedor. No mobile permanece a folga para a navegação fixa. */
+@media (min-width: 901px) {
+  html body.perfil-vendedor:has(#dashboard.active) main.main {
+    padding-top: 18px !important;
+  }
+}
+@media (max-width: 900px) {
+  html body.perfil-vendedor:has(#dashboard.active) main.main {
+    padding-top: calc(76px + env(safe-area-inset-top)) !important;
+  }
+}
+html body.perfil-vendedor:has(#dashboard.active) #dashboard.dashboard-vendedor-pro {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+/* Notificações ficam no menu lateral do vendedor; não no topo do conteúdo. */
+html body.perfil-vendedor .seller-duplicate-notification-bell {
+  display: none !important;
+}
+html body.perfil-vendedor main.main :is(header, .topbar, .top-actions)
+  button:is([aria-label*="notifica" i], [title*="notifica" i]) {
+  display: none !important;
 }

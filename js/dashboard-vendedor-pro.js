@@ -25,7 +25,7 @@
     const link = document.createElement("link");
     link.id = CSS_ID;
     link.rel = "stylesheet";
-    link.href = "css/dashboard-vendedor-pro.css?v=20261120-m06-cards-uniformes2";
+    link.href = "css/dashboard-vendedor-pro.css?v=20261120-m06-headercompact3";
     document.head.appendChild(link);
   }
 
@@ -65,6 +65,19 @@
       button.addEventListener("click", openOperation);
       header.appendChild(button);
     }
+  }
+
+  function hideDuplicateBells() {
+    // Mantém o sino do menu lateral e ações internas da central de notificações.
+    document.querySelectorAll("button").forEach(function (button) {
+      if (button.closest("#sidebar, .sidebar, #integroSidebarMenu, [data-menu-unificado], [role='dialog'], #notificacoes, .integro-nc, .integro-notification-center, .notification-drawer")) return;
+      const icon = button.querySelector(".material-symbols-rounded, .material-icons, .material-symbols-outlined");
+      const isBell = /^notifications(?:_none|_active|_unread)?$/.test((icon?.textContent || "").trim());
+      const label = [button.getAttribute("aria-label"), button.getAttribute("title")].filter(Boolean).join(" ").trim().toLowerCase();
+      if (isBell || label.includes("notifica")) {
+        button.classList.add("seller-duplicate-notification-bell");
+      }
+    });
   }
 
   function enhanceCards(shell) {
@@ -167,6 +180,7 @@
     loadCSS();
     shell.classList.add("dashboard-vendedor-pro");
     enhanceHeader(shell);
+    hideDuplicateBells();
     enhanceCards(shell);
     renderSingleDay(shell);
   }

@@ -55,6 +55,8 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 ### M06 — Dashboard do Vendedor: experiência desktop/mobile (20/11/2026)
 
+- **Correção complementar (20/11):** cabeçalho centralizado com prioridade sobre a regra compartilhada; espaço superior removido apenas no Dashboard do vendedor, respeitando a navegação fixa no mobile; sino duplicado fora do menu lateral ocultado. Testes estáticos direcionados atualizados. Pendente verificar workflow de Hosting e homologação visual autenticada.
+
 - **Estado:** implementação em branch de homologação `feat/m06-dashboard-vendedor-desktop-mobile-20261120`; **NÃO FECHADO**, **NÃO PUBLICADO**.
 - **Problema observado:** KPIs em linhas assimétricas e gráfico de série temporal com um único ponto produziam área vazia desproporcional; havia excesso de bordas, tipografia pequena e pouca adaptação mobile.
 - **Solução isolada:** camada CSS/JS exclusiva de `body.perfil-vendedor #dashboard`; grade equilibrada de cinco KPIs, cabeçalho limpo, CTA da Operação, detalhamento via cards com teclado, painel diário compacto usando exclusivamente valores já renderizados pelo dashboard autorizado. Para períodos maiores, preserva o gráfico histórico original.

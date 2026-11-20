@@ -113,8 +113,9 @@ test("M06: título elevado e os cinco cards têm largura uniforme no desktop", (
   const css = read("css/dashboard-vendedor-pro.css");
   const header = css.match(/\.dashboard-page-header\s*\{([\s\S]*?)\}/)?.[1] || "";
   const grid = css.match(/\.dashboard-kpis-primary\s*\{([\s\S]*?)\}/)?.[1] || "";
-  assert.match(header, /min-height:\s*68px/);
-  assert.match(header, /margin:\s*-8px 0 9px/);
+  assert.match(header, /min-height:\s*48px !important/);
+  assert.match(header, /margin:\s*0 0 12px !important/);
+  assert.match(header, /justify-content:\s*center !important/);
   assert.match(grid, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(grid, /grid-auto-rows:\s*minmax\(0,\s*1fr\)/);
   assert.match(css, /kpi-card:nth-child\(n\+4\)\s*\{\s*grid-column:\s*span 1 !important/);
@@ -136,6 +137,18 @@ test("M06: recursos são atualizados sem depender do cache antigo", () => {
   const seller = read("js/vendedor-unificado.js");
   const visual = read("js/dashboard-vendedor-pro.js");
   assert.match(html, /js\/vendedor-unificado\.js\?v=20261120-m06-cards-uniformes2/);
-  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261120-m06-cards-uniformes2/);
-  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261120-m06-cards-uniformes2/);
+  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261120-m06-headercompact3/);
+  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261120-m06-headercompact3/);
+});
+
+test("M06: dashboard compacto e sino acessível apenas pelo menu", () => {
+  const css = read("css/dashboard-vendedor-pro.css");
+  const visual = read("js/dashboard-vendedor-pro.js");
+  assert.match(css, /body\.perfil-vendedor:has\(#dashboard\.active\) main\.main/);
+  assert.match(css, /padding-top:\s*18px !important/);
+  assert.match(css, /calc\(76px \+ env\(safe-area-inset-top\)\)/);
+  assert.match(css, /seller-duplicate-notification-bell/);
+  assert.match(visual, /function hideDuplicateBells\(\)/);
+  assert.match(visual, /#sidebar, \.sidebar, #integroSidebarMenu/);
+  assert.match(visual, /hideDuplicateBells\(\);/);
 });
