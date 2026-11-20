@@ -1625,16 +1625,29 @@
       if(id&&!u)return notificarIntegro('Usuário interno não encontrado.');
       const deps=departamentos.filter(d=>status(d.status)!=='INATIVO'||d.id===u?.departamentoId);
       const options=deps.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.nome||'Departamento')+'</option>').join('');
-      abrirDrawer(id?'Editar usuário interno':'Novo usuário interno','Conta real no Firebase Authentication',
-        '<div class="grid"><div class="field-grid"><div><label class="form-label">Nome</label><input id="uiNome" class="form-input" maxlength="180" value="'+esc(u?.nome||'')+'"></div>'+
-        '<div><label class="form-label">E-mail de login</label><input id="uiEmail" type="email" class="form-input" maxlength="254" value="'+esc(u?.email||'')+'" '+(id?'readonly':'')+'></div></div>'+
-        '<div><label class="form-label">Cargo interno</label><select id="uiTipo" class="form-select">'+
-        '<option value="interno_integro">Interno ÍNTEGRO</option><option value="comercial_integro">Comercial ÍNTEGRO</option>'+
-        '<option value="financeiro_integro">Financeiro ÍNTEGRO</option><option value="suporte_integro">Suporte ÍNTEGRO</option></select></div>'+
-        '<div><label class="form-label">Departamento</label><select id="uiDepartamento" class="form-select"><option value="">Sem departamento</option>'+options+'</select></div>'+
-        '<div class="notice">O usuário será autenticado pelo Firebase e não terá acesso a dados de outra empresa por associação de e-mail. A senha será definida pelo próprio usuário.</div>'+
-        '<button class="btn btn-primary" id="btnSalvarInterno">Salvar usuário</button></div>');
-      setVal('uiTipo',u?.cargoChave||'interno_integro');setVal('uiDepartamento',u?.departamentoId||'');
+      abrirDrawer(id?'Editar usuário interno':'Novo usuário interno',
+        id?'Atualize os dados permitidos da conta existente':'Crie uma conta administrativa com Auth e senha provisória gerada pelo servidor',
+        '<div class="mgui-form">'+
+          '<div class="mgui-form-top"><span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>'+
+            '<div><strong>'+(id?'Dados do funcionário':'Cadastro seguro de funcionário')+'</strong>'+
+            '<small>'+(id?'O e-mail de login permanece vinculado à conta Auth atual.':'Apenas funcionários da plataforma ÍNTEGRO; não vincula usuários a um tenant.')+'</small></div></div>'+
+          '<div><label class="form-label" for="uiNome">Nome completo</label><input id="uiNome" class="form-input" type="text" autocomplete="name" maxlength="180" placeholder="Nome e sobrenome" value="'+esc(u?.nome||'')+'"></div>'+
+          '<div><label class="form-label" for="uiEmail">E-mail de login</label><input id="uiEmail" type="email" class="form-input" autocomplete="off" maxlength="254" placeholder="funcionario@empresa.com" value="'+esc(u?.email||'')+'" '+(id?'readonly':'')+'></div>'+
+          '<div><label class="form-label" for="uiTipo">Cargo interno</label><select id="uiTipo" class="form-select">'+
+            '<option value="interno_integro">Interno ÍNTEGRO</option>'+
+            '<option value="comercial_integro">Comercial ÍNTEGRO</option>'+
+            '<option value="financeiro_integro">Financeiro ÍNTEGRO</option>'+
+            '<option value="suporte_integro">Suporte ÍNTEGRO</option></select></div>'+
+          '<div><label class="form-label" for="uiDepartamento">Departamento</label><select id="uiDepartamento" class="form-select">'+
+            '<option value="">Sem departamento</option>'+options+'</select></div>'+
+          '<div class="mgui-form-notice"><strong>Segurança do acesso</strong>'+
+            (id?'A edição do perfil não redefine a senha ou libera o acesso automaticamente.':
+              'O servidor gera uma senha provisória aleatória, exibida uma única vez após a criação. A conta exige troca de senha no primeiro login e sua liberação é administrada separadamente.')+
+            '</div>'+
+          '<button class="btn btn-primary" type="button" id="btnSalvarInterno">'+(id?'Salvar alterações':'Criar usuário interno')+'</button>'+
+        '</div>');
+      setVal('uiTipo',u?.cargoChave||'interno_integro');
+      setVal('uiDepartamento',u?.departamentoId||'');
       byId('btnSalvarInterno').onclick=()=>salvarUsuarioInterno(id);
     }
     // M02: apenas o Master Global altera as empresas que um funcionário interno pode consultar.
@@ -2117,14 +2130,55 @@
       if(typeof hidratarLogoClienteIntegro==='function')hidratarLogoClienteIntegro(byId('drawerBody'));
     }
     function abrirDetalheUsuario(id){
-      const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
-      const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
-      abrirDrawer('Usuário',u.nome||u.email||'Usuário',
-        '<div class="grid">'+
-        info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
-        info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
-        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado')+
-        (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
+      const u=usuariosSistema.find(x=>x.id===id);if(!u)return notificarIntegro('Usuário não encontrado na última consulta.');
+      if(u.tipoUsuario!=='usuario_integro'){
+        const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+        abrirDrawer('Usuário',u.nome||u.email||'Usuário',
+          '<div class="grid">'+info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
+          info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
+          info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado')+
+          (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
+          '</div>');
+        return;
+      }
+      const model=window.IntegroInternalUsers;
+      const state=model?.classification(u)||{label:u.status||'Não informado'};
+      const auth=Boolean(u.id&&u.authUid&&u.id===u.authUid);
+      const nome=u.nome||u.nomeCompleto||u.email||'Usuário interno';
+      const sigla=nome.trim().split(/\s+/).filter(Boolean).slice(0,2).map(parte=>parte.charAt(0)).join('').toUpperCase()||'UI';
+      const dep=departamentos.find(d=>d.id===u.departamentoId&&u.departamentoId);
+      const qtd=Array.isArray(u.clientesLeituraAutorizada)?u.clientesLeituraAutorizada.length:null;
+      const autorizadas=Array.isArray(u.clientesLeituraAutorizada)?u.clientesLeituraAutorizada
+        .map(cid=>clientesIntegro.find(c=>c.id===cid))
+        .filter(Boolean)
+        .map(c=>c.nome||c.razaoSocial||c.id):[];
+      const campo=(titulo,valor)=>'<div class="mgui-profile-field"><small>'+esc(titulo)+'</small><strong>'+esc(valor??'Não informado')+'</strong></div>';
+      const data=valor=>{try{return valor?dataCurta(valor):'Não informada'}catch(_){return 'Não informada'}};
+      const actions=auth?
+        '<button type="button" class="btn btn-light" data-mg-action="editar-interno" data-id="'+esc(id)+'">Editar cadastro</button>'+
+        '<button type="button" class="btn btn-light" data-mg-action="clientes-interno" data-id="'+esc(id)+'">Empresas autorizadas</button>'+
+        '<button type="button" class="btn '+(u.acessoLiberado===false?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(id)+'">'+
+        (u.acessoLiberado===false?'Liberar acesso':'Bloquear acesso')+'</button>':
+        '<button type="button" class="btn btn-primary" data-mg-action="provisionar-interno" data-id="'+esc(id)+'">Regularizar conta Auth</button>';
+      abrirDrawer('Ficha do usuário interno','Dados administrativos consultados no servidor',
+        '<div class="mgui-profile">'+
+        '<div class="mgui-profile-hero"><span class="mgui-avatar" aria-hidden="true">'+esc(sigla)+'</span>'+
+          '<div><strong>'+esc(nome)+'</strong><small>'+esc(u.email||'E-mail não informado')+'</small>'+
+          '<span class="mgui-status is-'+esc(model?.classification(u)?.tone||'muted')+'">'+esc(state.label)+'</span></div></div>'+
+        '<div class="mgui-profile-grid">'+
+          campo('Cargo',u.cargoNome||u.cargoChave||'Não informado')+
+          campo('Departamento',dep?.nome||'Sem departamento')+
+          campo('Conta Firebase Auth',auth?'Provisionada e vinculada':'Não provisionada')+
+          campo('UID Auth',auth?u.authUid:'Sem UID vinculado')+
+          campo('Empresas autorizadas',qtd===null?'Não informado':String(qtd))+
+          campo('Data do cadastro',data(u.criadoEm))+
+          campo('Atualizado em',data(u.atualizadoEm))+
+          campo('Situação do cadastro',u.status||'Não informada')+
+        '</div>'+
+        (autorizadas.length?'<div class="mgui-profile-field"><small>Empresas com consulta autorizada</small>'+
+          '<strong>'+esc(autorizadas.join(' · '))+'</strong></div>':'')+
+        '<div class="mgui-form-notice"><strong>Permissões protegidas</strong>Consultar empresas não concede autorização para movimentações financeiras, vendas ou acesso irrestrito aos dados operacionais.</div>'+
+        '<div class="mgui-profile-actions">'+actions+'</div>'+
         '</div>');
     }
     function getMastersLocais(){
