@@ -529,6 +529,10 @@ test("resumo parcial do caixa permanece visível com visitas pendentes, mas fech
   const html = htmlResumo(snapshot, {});
   assert.match(html, /Conferência do caixa/);
   assert.match(html, /Visitas e baixas/);
+  assert.match(html, /5 de 7 visitas com baixa/);
+  assert.match(html, /value="71"/);
+  assert.match(html, /Conciliação automática/);
+  assert.match(html, /Conferência final/);
   assert.match(html, /Consulta liberada — fechamento ainda bloqueado/);
   assert.match(html, /2 visita\(s\) ainda sem baixa/);
   assert.match(html, /Caixa atual/);
