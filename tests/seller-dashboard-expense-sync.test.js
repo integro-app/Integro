@@ -72,3 +72,38 @@ test("entrada no dashboard reconstrói o ledger do caixa atual antes do resumo",
   assert.match(vendor, /if \(evento\.detail\?\.tela === "dashboard"\)[\s\S]*sincronizarMovimentosDashboardVendedor/);
   assert.match(vendor, /integro-operacoes-tempo-real-atualizadas[\s\S]*recalcularDashboardVendedor/);
 });
+
+
+test("M06 aplica a camada premium somente ao dashboard vendedor", () => {
+  const seller = read("js/vendedor-unificado.js");
+  const visual = read("js/dashboard-vendedor-pro.js");
+  const css = read("css/dashboard-vendedor-pro.css");
+
+  assert.match(seller, /function configurarDashboardVendedor\(\)[\s\S]*?integro-dashboard-vendedor-pro-script/);
+  assert.match(visual, /document\.body\.classList\.contains\("perfil-vendedor"\)/);
+  assert.match(visual, /document\.addEventListener\("integro-dashboard-periodo-aplicado", init\)/);
+  assert.match(css, /html body\.perfil-vendedor #dashboard\.dashboard-vendedor-pro/);
+  assert.doesNotMatch(visual, /firebase\.firestore|collection\(|addDoc\(|updateDoc\(/);
+});
+
+test("M06 substitui o gráfico diário vazio sem modificar séries históricas ou valores", () => {
+  const visual = read("js/dashboard-vendedor-pro.js");
+  assert.match(visual, /const singleDay = period\.start === period\.end/);
+  assert.match(visual, /if \(!singleDay\) return/);
+  for (const id of ["kpiVendasNovas","kpiVendasRenovadas","kpiRecebidoHoje","kpiDespesasValor","kpiRetiradasValor"]) {
+    assert.match(visual, new RegExp(id));
+  }
+  assert.match(visual, /if \(!hasFullData\) return/);
+  assert.match(visual, /host\.replaceChildren\(content\)/);
+  assert.match(visual, /Nenhuma movimentação financeira neste dia/);
+});
+
+test("M06: desktop equilibra cards; tablet e mobile possuem breakpoints dedicados", () => {
+  const css = read("css/dashboard-vendedor-pro.css");
+  assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
+  assert.match(css, /kpi-card:nth-child\(n\+4\)/);
+  assert.match(css, /@media \(min-width: 700px\) and \(max-width: 1180px\)/);
+  assert.match(css, /@media \(max-width: 699px\)/);
+  assert.match(css, /@media \(max-width: 360px\)/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+});

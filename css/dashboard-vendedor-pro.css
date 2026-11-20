@@ -1,0 +1,453 @@
+/* M06 · Dashboard do Vendedor — versão isolada para desktop e mobile.
+   Não altera outros perfis, dados, ledger, regras ou controles de acesso. */
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro {
+  --seller-ink: #112843;
+  --seller-muted: #60758f;
+  --seller-border: #dde7f1;
+  --seller-radius: 20px;
+  width: 100%;
+  min-width: 0;
+  overflow: visible;
+}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro > .dashboard-section-card {
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  overflow: visible !important;
+}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-header {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 92px;
+  margin: 0 0 14px !important;
+  padding: 8px 0 14px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-title {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  text-align: center;
+  min-width: 0;
+}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-title h2 {
+  margin: 0 !important;
+  color: var(--seller-ink) !important;
+  font-size: clamp(24px, 2.1vw, 31px) !important;
+  font-weight: 850 !important;
+  line-height: 1.15 !important;
+  letter-spacing: -.9px !important;
+}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-subtitle {
+  color: var(--seller-muted);
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.4;
+}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-actions,
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .integro-dashboard-nav {
+  display: none !important;
+}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 15px;
+  border: 1px solid #cfdfed;
+  border-radius: 12px;
+  background: #fff;
+  color: #183858;
+  box-shadow: 0 5px 16px rgba(12, 38, 67, .055);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: box-shadow .18s ease, border-color .18s ease, transform .18s ease;
+}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go:hover {
+  transform: translateY(calc(-50% - 1px));
+  border-color: #91b4d2;
+  box-shadow: 0 8px 20px rgba(12, 38, 67, .10);
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go .material-symbols-rounded {font-size:19px;}
+
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary {
+  display: grid !important;
+  grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+  margin: 0 0 18px !important;
+  align-items: stretch !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card {
+  grid-column: span 2;
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 14px !important;
+  position: relative;
+  min-width: 0;
+  min-height: 180px !important;
+  padding: 22px 20px !important;
+  border-radius: 19px !important;
+  box-shadow: 0 13px 25px rgba(15, 36, 69, .12) !important;
+  isolation: isolate;
+  outline-offset: 3px;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card:nth-child(n+4) {
+  grid-column: span 3;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  right: -30px;
+  top: -85px;
+  width: 205px;
+  height: 205px;
+  border: 1px solid rgba(255,255,255,.13);
+  border-radius: 50%;
+  z-index: -1;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 33px rgba(15,36,69,.17) !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card:focus-visible,
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go:focus-visible {
+  outline: 3px solid #93c5fd !important;
+  outline-offset: 3px;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-icon {
+  flex: 0 0 46px !important;
+  width: 46px !important;
+  height: 46px !important;
+  border-radius: 14px !important;
+  display: grid;
+  place-items: center;
+  margin: 0 !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-content {
+  position: static !important;
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0 !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-label {
+  margin: 1px 0 6px !important;
+  font-size: 10px !important;
+  letter-spacing: .75px !important;
+  line-height: 1.4 !important;
+  font-weight: 850 !important;
+  text-transform: uppercase !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-value {
+  margin: 0 !important;
+  font-size: clamp(23px, 2.2vw, 32px) !important;
+  font-weight: 900 !important;
+  line-height: 1.18 !important;
+  letter-spacing: -.85px !important;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-sub,
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-trend,
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .progress-head {
+  margin-top: 9px !important;
+  font-size: 11px !important;
+  line-height: 1.45 !important;
+  font-weight: 700 !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-breakdown {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-breakdown span {
+  padding: 8px 10px !important;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 11px;
+  background: rgba(255,255,255,.11);
+  min-width: 0;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-breakdown small {
+  font-size: 9px !important;
+  line-height: 1.3 !important;
+  letter-spacing: .35px;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-breakdown strong {
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  font-variant-numeric: tabular-nums;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .progress-bar {
+  height: 7px !important;
+  border-radius: 99px;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-sparkline {
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  bottom: 10px;
+  height: 23px;
+  opacity: .3;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro.seller-single-day .kpi-sparkline {
+  display: none !important;
+}
+
+/* Um dia = distribuição de movimentações, não uma série temporal vazia. */
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-analytics-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 0 !important;
+  margin: 0 0 18px !important;
+  min-width: 0;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-team-ranking-panel,
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .bottom-grid {
+  display: none !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-evolution-panel {
+  min-width: 0;
+  min-height: 0 !important;
+  padding: 22px 24px !important;
+  border: 1px solid var(--seller-border) !important;
+  border-radius: var(--seller-radius) !important;
+  background: #fff !important;
+  box-shadow: 0 10px 27px rgba(15, 36, 69, .045) !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-evolution-head {
+  min-height: 0 !important;
+  margin: 0 0 14px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-evolution-head h3 {
+  color: var(--seller-ink) !important;
+  font-size: 16px !important;
+  line-height: 1.3 !important;
+  font-weight: 850 !important;
+  letter-spacing: -.3px !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-chart-legend {
+  gap: 10px 17px;
+  margin: 0 0 16px !important;
+  font-size: 11px !important;
+  color: #627892 !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro.seller-single-day .dashboard-chart-legend {
+  display: none !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-evolution-chart {
+  min-width: 0;
+  height: 285px !important;
+  padding: 8px !important;
+  overflow-x: auto !important;
+  border: 1px solid #e7eef6 !important;
+  border-radius: 15px !important;
+  background: #fbfdff !important;
+  scrollbar-width: thin;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-evolution-chart > svg {
+  min-width: 620px;
+  height: 100%;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro.seller-single-day .dashboard-evolution-chart {
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-breakdown {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  width: 100%;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-entry {
+  min-width: 0;
+  padding: 15px 14px 14px;
+  border: 1px solid #e4ecf5;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-entry-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-dot {
+  display: inline-block;
+  flex: 0 0 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--day-color, #64748b);
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-label {
+  color: #60758c;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.35;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-amount {
+  display: block;
+  color: #142f4c;
+  margin-bottom: 12px;
+  font-size: clamp(12px, 1.25vw, 17px);
+  line-height: 1.2;
+  font-weight: 900;
+  letter-spacing: -.25px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 100px;
+  background: #e5ebf3;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-fill {
+  height: 100%;
+  min-width: 0;
+  border-radius: inherit;
+  background: var(--day-color, #64748b);
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-movement {
+  min-height: 145px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px dashed #dce6f1;
+  border-radius: 15px;
+  background: linear-gradient(180deg,#fcfdff,#f7faff);
+  text-align: center;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-movement .material-symbols-rounded {
+  color: #8ca2b9;
+  font-size: 27px;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-movement strong {
+  color: #244261;
+  font-size: 13px;
+  font-weight: 850;
+}
+html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-movement small {
+  color: #6b8198;
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+@media (min-width: 700px) and (max-width: 1180px) {
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card {
+    grid-column: span 1 !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card:last-child {
+    grid-column: 1 / -1 !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-breakdown {
+    grid-template-columns: repeat(3,minmax(0,1fr));
+  }
+}
+@media (max-width: 699px) {
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-header {
+    min-height: 0;
+    margin-bottom: 12px !important;
+    padding: 4px 0 6px !important;
+    flex-direction: column;
+    gap: 12px;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-title h2 {
+    font-size: 24px !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go {
+    position: static;
+    transform: none !important;
+    min-height: 38px;
+    width: 100%;
+    max-width: 260px;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary {
+    grid-template-columns: minmax(0,1fr) !important;
+    gap: 11px !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card,
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary > .kpi-card:nth-child(n+4) {
+    grid-column: 1 !important;
+    min-height: 128px !important;
+    padding: 16px !important;
+    gap: 12px !important;
+    border-radius: 16px !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-icon {
+    width: 42px !important;
+    height: 42px !important;
+    flex-basis: 42px !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-value {
+    font-size: clamp(22px, 6.6vw, 28px) !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary .kpi-breakdown {
+    gap: 6px;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-evolution-panel {
+    padding: 16px !important;
+    border-radius: 17px !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-evolution-head h3 {
+    font-size: 15px !important;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-breakdown {
+    grid-template-columns: repeat(2,minmax(0,1fr));
+    gap: 8px;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-entry {
+    padding: 12px;
+  }
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-amount {
+    font-size: 14px;
+  }
+}
+@media (max-width: 360px) {
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-breakdown {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .kpi-card,
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go {
+    transition: none !important;
+  }
+}

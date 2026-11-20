@@ -52,6 +52,18 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | M21 | Assinaturas SaaS | Issue #14 aberta; integração comercial ainda não homologada | A HOMOLOGAR |
 | M22 | Interface/performance/offline | Padronização parcial; mobile, cache, latência e fila exigem prova | A HOMOLOGAR |
 
+
+### M06 — Dashboard do Vendedor: experiência desktop/mobile (20/11/2026)
+
+- **Estado:** implementação em branch de homologação `feat/m06-dashboard-vendedor-desktop-mobile-20261120`; **NÃO FECHADO**, **NÃO PUBLICADO**.
+- **Problema observado:** KPIs em linhas assimétricas e gráfico de série temporal com um único ponto produziam área vazia desproporcional; havia excesso de bordas, tipografia pequena e pouca adaptação mobile.
+- **Solução isolada:** camada CSS/JS exclusiva de `body.perfil-vendedor #dashboard`; grade equilibrada de cinco KPIs, cabeçalho limpo, CTA da Operação, detalhamento via cards com teclado, painel diário compacto usando exclusivamente valores já renderizados pelo dashboard autorizado. Para períodos maiores, preserva o gráfico histórico original.
+- **Arquivos:** `css/dashboard-vendedor-pro.css`, `js/dashboard-vendedor-pro.js`, `js/vendedor-unificado.js`, `tests/seller-dashboard-expense-sync.test.js`.
+- **Regressão focada:** sintaxe dos dois scripts JS validada; seis cenários em DOM simulado passaram (dia com movimento, dia sem movimento, múltiplos dias, isolamento por perfil, carregamento e breakpoint). Os testes integrados de Node e a homologação visual/autenticada em navegador ainda **não** foram executados.
+- **Sem alterações** de cálculo, Firebase, permissões, ledger, regras do Firestore ou perfil Master Local.
+- **Aceite pendente:** testar em desktop 1440px, tablet 768px e celular 390px/360px; abrir cada card e a Operação, cruzar valores e período com ledger/caixa real, verificar ausência de rolagem horizontal e aprovar a interface.
+
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.
