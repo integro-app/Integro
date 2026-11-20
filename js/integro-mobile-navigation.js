@@ -627,6 +627,16 @@
   desktopNavigationScript.async = true;
   body.appendChild(desktopNavigationScript);
 
+  /* Reparo de layout do Vendedor no shell unificado: carregamento tardio,
+     após os estilos legados. É estritamente escopado a body.perfil-vendedor. */
+  if (body.dataset.integroPage === "master-local" && !document.getElementById("integroSellerShellCss")) {
+    const sellerStyle = document.createElement("link");
+    sellerStyle.id = "integroSellerShellCss";
+    sellerStyle.rel = "stylesheet";
+    sellerStyle.href = "css/integro-vendedor-shell-dashboard.css?v=20261120-shell1";
+    body.appendChild(sellerStyle);
+  }
+
   /* Fallback seguro: só libera páginas sem boot loader se o usuário já está no State. */
   window.setTimeout(() => {
     try {
