@@ -84,6 +84,8 @@
   };
 
   const vendaAtiva = venda => venda?.excluido !== true && !STATUS_ENCERRADOS.has(maiusculo(venda?.statusVenda || venda?.status));
+  const clienteQuitado = cliente => cliente && ["QUITADO","QUITADA"].some(status =>
+    [maiusculo(cliente.statusCliente),maiusculo(cliente.status)].includes(status));
 
   const saldoVenda = venda => venda?.saldoDevedorCentavos != null ? numero(venda.saldoDevedorCentavos) / 100 : numero(primeiroValor(venda, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
   const saldoCliente = cliente => numero(primeiroValor(cliente, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
@@ -147,7 +149,12 @@
       })
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
-        return saldoVenda(item) > 0.01 || saldoCliente(clientesPorId.get(clienteId)) > 0.01 || vendasComPagamentoHoje.has(id(item.id || item.vendaId));
+        const clienteVinculado = clientesPorId.get(clienteId);
+        const pagoNoCaixa = vendasComPagamentoHoje.has(id(item.id || item.vendaId));
+        // QUITADO não gera cobrança fantasma só porque a venda antiga
+        // conservou uma parcela ou um saldo desatualizado.
+        if (clienteQuitado(clienteVinculado) && !pagoNoCaixa) return false;
+        return saldoVenda(item) > 0.01 || saldoCliente(clienteVinculado) > 0.01 || pagoNoCaixa;
       });
 
     const vendasPorCliente = new Map();
