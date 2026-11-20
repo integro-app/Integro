@@ -197,3 +197,29 @@ test("refresh parcial usa caixas recém-carregados antes de selecionar pagamento
   assert.deepEqual(recebido,["caixa-novo"]);
   assert.equal(renders,1);
 });
+
+test("vendedor não vê cobrança histórica de cliente transferido para outra carteira",()=>{
+  const dados=base({
+    clientes:[{id:"cli-1",vendedorAuthUid:"auth-2",vendedorId:"vend-1",clientePlataformaId:"tenant-1",saldoDevedor:180}],
+    vendas:[{id:"venda-1",clienteId:"cli-1",vendedorAuthUid:"auth-1",vendedorId:"vend-1",clientePlataformaId:"tenant-1",saldoDevedor:180,status:"ATIVA"}]
+  });
+  assert.deepEqual(operacao.montarCarteira(dados),[]);
+});
+test("nova carteira vê venda antiga referenciada no cliente transferido",()=>{
+  const dados=base({
+    clientes:[{id:"cli-1",vendedorAuthUid:"auth-1",vendedorId:"vend-1",clientePlataformaId:"tenant-1",saldoDevedor:180}],
+    vendas:[{id:"venda-antiga",clienteId:"cli-1",vendedorAuthUid:"auth-anterior",vendedorId:"vend-antigo",clientePlataformaId:"tenant-1",saldoDevedor:180,status:"ATIVA"}],
+    parcelas:[{id:"p-1",vendaId:"venda-antiga",vendedorAuthUid:"auth-anterior",clientePlataformaId:"tenant-1",dataVencimento:"2026-08-03",valorCentavos:6000,status:"PENDENTE"}]
+  });
+  const carteira=operacao.montarCarteira(dados);
+  assert.equal(carteira.length,1);
+  assert.equal(carteira[0].vendaId,"venda-antiga");
+  assert.equal(carteira[0].comCobrancaHoje,true);
+});
+test("venda de outro cliente não reaparece só pelo vendedor histórico",()=>{
+  const dados=base({
+    clientes:[],
+    vendas:[{id:"venda-1",clienteId:"cli-fora",vendedorId:"vend-1",clientePlataformaId:"tenant-1",saldoDevedor:300,status:"ATIVA"}]
+  });
+  assert.deepEqual(operacao.montarCarteira(dados),[]);
+});
