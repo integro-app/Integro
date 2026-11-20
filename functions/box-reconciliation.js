@@ -87,7 +87,8 @@ function calcularConferencia({box, sales, clients=[], clientesConferidos=false, 
   const clienteDaVenda = sale =>
     clientsById.get(text(sale.clienteOperacionalId)) || clientsById.get(text(sale.clienteId));
   const statusCliente = client => norm(client?.statusCliente || client?.status);
-  const clienteQuitado = client => !!client && ["QUITADO","QUITADA"].includes(statusCliente(client));
+  const clienteQuitado = client => !!client && ["QUITADO","QUITADA"].some(valor =>
+    [norm(client.statusCliente),norm(client.status)].includes(valor));
   const saldoClienteOficial = client => {
     if (!client) return null;
     if (client.saldoDevedorCentavos !== undefined && client.saldoDevedorCentavos !== null)
