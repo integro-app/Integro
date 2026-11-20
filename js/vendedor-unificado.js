@@ -236,7 +236,10 @@
     }
     if (!forcar && Date.now() - ultimaConsultaVendasDiaEm < 5000) return;
     if (consultaVendasDiaPromessa) return consultaVendasDiaPromessa;
+    const statusSync = window.document?.getElementById?.("vendasDiaSincronizacao");
+    if (statusSync) statusSync.textContent = "Conferindo vendas no Firebase…";
     consultaVendasDiaPromessa = (async () => {
+      try {
       const vendas = await svc.carregarVendasVendedor(State.getClientes?.() || [],
         { forcar: true, exigirConsultaValida: true });
       if (escopo !== escopoVendasDiaAtual()) return;
@@ -244,6 +247,13 @@
       caches();
       ultimaConsultaVendasDiaEm = Date.now();
       if (abaAtual === "vendas") renderVendasDia();
+      if (statusSync && escopo === escopoVendasDiaAtual()) {
+        statusSync.textContent = "Vendas conferidas no servidor às " + new Date().toLocaleTimeString("pt-BR", {timeZone:"America/Sao_Paulo",hour:"2-digit",minute:"2-digit"});
+      }
+      } catch (erro) {
+        if (statusSync && escopo === escopoVendasDiaAtual()) statusSync.textContent = "Não foi possível conferir o Firebase. Exibindo a última lista carregada.";
+        throw erro;
+      }
     })();
     try { return await consultaVendasDiaPromessa; }
     finally { consultaVendasDiaPromessa = null; }
