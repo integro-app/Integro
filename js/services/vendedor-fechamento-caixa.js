@@ -511,11 +511,14 @@
     const pendencias = Math.max(0, inteiro(snapshot.pendenciasCobranca));
     const pagamentosPendentes = Math.max(0, inteiro(snapshot.pagamentosPendentes));
     const aprovacoesPendentes = Math.max(0, inteiro(snapshot.aprovacoesPendentes));
-    const inconsistencias = Array.isArray(snapshot.inconsistencias) ? snapshot.inconsistencias.length : 0;
+    const avisosCarteira = Array.isArray(snapshot.avisosCarteira) ? snapshot.avisosCarteira.length : 0;
+    const inconsistencias = Array.isArray(snapshot.inconsistencias)
+      ? snapshot.inconsistencias.filter(item => !["VENDA_ENCERRADA_COM_SALDO:","CLIENTE_QUITADO_COM_VENDA_ABERTA:"].some(prefix => texto(item).startsWith(prefix))).length : 0;
     const motivos = [];
     if (pendencias) motivos.push(`${pendencias} visita(s) ainda sem baixa de Pago ou Não pagamento.`);
     if (pagamentosPendentes) motivos.push(`${pagamentosPendentes} pagamento(s) aguardando confirmação no servidor.`);
     if (aprovacoesPendentes) motivos.push(`${aprovacoesPendentes} aprovação(ões) obrigatória(s) pendente(s).`);
+    if (avisosCarteira) motivos.push(`${avisosCarteira} contrato(s) encerrado(s) ou cliente(s) quitado(s) com saldo contraditório. É necessária conciliação pelo gestor, não uma visita fictícia.`);
     if (inconsistencias) motivos.push(`${inconsistencias} inconsistência(s) financeira(s) para regularizar.`);
     if (operacoesPendentes > 0) motivos.push("Existem baixas locais ainda sincronizando.");
     return { podeFechar: motivos.length === 0, pendencias, motivos };
@@ -530,6 +533,7 @@
     const visitadas = Math.max(0, inteiro(snapshot.totalVisitadas));
     const progressoPercentual = totalVisitas > 0 ? Math.min(100, Math.round(visitadas / totalVisitas * 100)) : 0;
     const pendentesOficiais = Array.isArray(snapshot.pendenciasCobrancas) ? snapshot.pendenciasCobrancas : [];
+    const quitadosEmConflito = Array.isArray(snapshot.avisosCarteira) ? snapshot.avisosCarteira : [];
     const escapar = valor => texto(valor).replace(/[&<>"']/g, caractere =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[caractere]);
     const detalhesPendencias = pendentesOficiais.length ? `
@@ -539,6 +543,14 @@
           `<li>${escapar(item.clienteNome || "Cliente sem nome")} <small>(venda ${escapar(item.vendaId || "sem ID")})</small></li>`
         ).join("")}</ul>
         <p>Se estes clientes não aparecem em Cobranças, a carteira e a conferência precisam ser conciliadas. Não registre baixas fictícias.</p>
+      </details>` : "";
+    const detalhesQuitados = quitadosEmConflito.length ? `
+      <details class="integro-fechamento-pendencias-detalhes" open>
+        <summary>Ver ${quitadosEmConflito.length} registro(s) quitado(s)/encerrado(s) com saldo divergente</summary>
+        <ul>${quitadosEmConflito.map(item =>
+          `<li>${escapar(item.clienteNome || "Cliente sem nome")} <small>(venda ${escapar(item.vendaId || "sem ID")} · ${escapar(item.statusVenda || "sem situação")} · venda ${moedaCentavos(item.saldoVendaCentavos)})</small></li>`
+        ).join("")}</ul>
+        <p>Esses registros não são visitas pendentes. A ficha está marcada como quitada/encerrada, mas os saldos não coincidem. Solicite a conciliação por um responsável, sem criar pagamentos ou não pagamentos fictícios.</p>
       </details>` : "";
     return `
       <div class="integro-fechamento-head">
@@ -574,6 +586,7 @@
           <strong>${situacao.podeFechar ? "Visitas concluídas. Confira o dinheiro do caixa." : "Consulta liberada — fechamento ainda bloqueado"}</strong>
           ${situacao.motivos.map(motivo => `<div>${motivo}</div>`).join("")}
           ${detalhesPendencias}
+          ${detalhesQuitados}
         </div>
         <div class="integro-fechamento-conferencia">
           <div class="integro-fechamento-secao-cabeca"><h3>Conferência final</h3><small>Confirmação em duas etapas</small></div>
