@@ -1515,3 +1515,355 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .ig-querybar > .ig-query-submit {
   display: none !important;
 }
+
+
+/* M22 · Vendas e conferência: layout SaaS responsivo, isolado ao vendedor. */
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia #contadorVendasDia {
+  margin: 16px 0 14px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo {
+  display: grid !important;
+  grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+  gap: 10px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo-item {
+  min-width: 0;
+  padding: 16px 17px !important;
+  border-radius: 15px !important;
+  border: 1px solid #dfe7f0 !important;
+  background: #f8fafc !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo-item.principal {
+  background: linear-gradient(118deg,#0c294a,#17466f) !important;
+  border-color: #173f64 !important;
+  box-shadow: 0 10px 20px rgba(8,35,69,.1);
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo-item > span {
+  color: #64758b !important;
+  font-size: 11px !important;
+  font-weight: 750 !important;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo-item > strong {
+  display: block !important;
+  font-size: clamp(18px,1.65vw,25px) !important;
+  line-height: 1.2 !important;
+  font-weight: 820 !important;
+  color: #0b2139 !important;
+  overflow-wrap: anywhere;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo-item > small {
+  color: #738499 !important;
+  font-size: 11px !important;
+  font-weight: 550 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo-item.principal > * {
+  color: #fff !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-sync {
+  min-height: 19px;
+  margin: 0 2px 10px;
+  color: #65778a;
+  font-size: 11px;
+  font-weight: 650;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-dia {
+  display: grid !important;
+  gap: 10px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-card {
+  display: grid !important;
+  grid-template-columns: minmax(210px,1.4fr) repeat(4,minmax(110px,.7fr)) !important;
+  align-items: center !important;
+  gap: 14px !important;
+  padding: 18px !important;
+  border: 1px solid #e0e7ef !important;
+  border-left: 4px solid #ff970e !important;
+  border-radius: 16px !important;
+  background: #fff !important;
+  box-shadow: 0 5px 18px rgba(17,43,75,.04);
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-identidade {
+  min-width: 0;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-identidade > strong {
+  display: block;
+  color: #0d2540 !important;
+  font-size: 15px !important;
+  font-weight: 820 !important;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-identidade > small {
+  display: block !important;
+  margin-top: 3px;
+  color: #708299 !important;
+  font-size: 11px !important;
+  font-weight: 580 !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-identidade > .vendedor-venda-codigo {
+  color: #9b6b2c !important;
+  font-size: 10px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-etiquetas {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-etiquetas > span {
+  display: inline-flex !important;
+  width: auto !important;
+  align-items: center;
+  border-radius: 99px;
+  padding: 4px 9px;
+  font-size: 10px !important;
+  line-height: 1.15;
+  font-weight: 780 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-tipo {
+  color: #935105 !important;
+  background: #fff3df !important;
+  border: 1px solid #ffdca3;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.ativa {
+  color: #087e47 !important; background: #dff8ea !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.quitada {
+  color: #0e6b9b !important; background: #e1f3fc !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.cancelada {
+  color: #a82635 !important; background: #fde8eb !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.analise {
+  color: #995903 !important; background: #fff0c6 !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-metrica {
+  min-width: 0;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-metrica > span {
+  display: block !important;
+  color: #65778f !important;
+  font-size: 10px !important;
+  font-weight: 780 !important;
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-metrica > strong {
+  display: block !important;
+  color: #0a223d !important;
+  font-size: clamp(12px,1.15vw,16px) !important;
+  font-weight: 810 !important;
+  line-height: 1.3;
+  margin-top: 5px;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-vazio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 170px;
+  padding: 25px;
+  text-align: center;
+  border: 1px dashed #ccd9e9;
+  border-radius: 16px;
+  background: #f8fafc;
+  color: #30435b;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-vazio > .material-symbols-rounded {
+  font-size: 34px;
+  color: #ff9700;
+  margin-bottom: 8px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-vazio > strong {
+  font-size: 16px;
+  color: #102a46;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-vazio > p {
+  max-width: 400px;
+  color: #71839a;
+  margin: 8px auto 0;
+  font-size: 13px;
+}
+
+/* Conferência: saldo em destaque, progresso da rota e dupla validação. */
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-secao-cabeca {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+  margin: 0 0 12px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-secao-cabeca h3 {
+  margin: 0 !important;
+  color: #102944;
+  font-size: 15px;
+  font-weight: 820;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-secao-cabeca small {
+  color: #6e8197;
+  font-size: 11px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-body > .integro-fechamento-grid {
+  grid-template-columns: repeat(3,minmax(0,1fr)) !important;
+  gap: 10px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card {
+  min-width: 0 !important;
+  border: 1px solid #e2e9f2 !important;
+  border-radius: 14px !important;
+  padding: 15px 16px !important;
+  background: #f8fafc !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card small {
+  color: #657b94 !important;
+  font-size: 11px !important;
+  font-weight: 730;
+  text-transform: uppercase;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card strong {
+  display: block;
+  margin-top: 6px;
+  color: #0d2540 !important;
+  font-size: clamp(16px,1.7vw,22px) !important;
+  font-weight: 840;
+  overflow-wrap: anywhere;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card.destaque {
+  grid-column: 1/-1 !important;
+  background: linear-gradient(115deg,#0a2342,#17466f) !important;
+  border-color: #133e67 !important;
+  box-shadow: 0 12px 25px rgba(12,42,75,.13) !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card.destaque small,
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card.destaque strong {
+  color: #fff !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card.destaque strong {
+  font-size: clamp(25px,3vw,38px) !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-equacao {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin: 12px 0 21px;
+  padding: 11px 14px;
+  border: 1px solid #dfe8f2;
+  border-radius: 12px;
+  background: #f5f9fd;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-equacao > .material-symbols-rounded {
+  font-size: 22px;
+  color: #0b4a79;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-equacao p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #5d7087;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-progresso {
+  margin: 0 0 14px;
+  padding: 13px 16px;
+  background: #fff7ea;
+  border: 1px solid #ffe3b8;
+  border-radius: 13px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-progresso > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: #8c4e0a;
+  margin-bottom: 9px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-progresso progress {
+  display: block;
+  width: 100%;
+  height: 9px;
+  accent-color: #ff9700;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-conferencia {
+  margin-top: 20px;
+  border: 1px solid #dce7f2;
+  background: #f7fafc;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-conferencia > .integro-fechamento-secao-cabeca {
+  margin-bottom: 14px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-ajuda {
+  color: #718299;
+  font-size: 12px;
+  line-height: 1.55;
+  margin: 10px 0 0;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-actions {
+  display: grid !important;
+  grid-template-columns: minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr) !important;
+  gap: 10px !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-actions button {
+  min-height: 48px;
+  width: 100%;
+}
+@media (max-width: 1000px) {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-card {
+    grid-template-columns: minmax(180px,1.25fr) repeat(2,minmax(100px,1fr)) !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-identidade {
+    grid-column: 1/-1 !important;
+  }
+}
+@media (max-width: 760px) {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 8px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo-item {
+    padding: 12px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-vendas-resumo-item > strong {
+    font-size: clamp(16px,4.5vw,21px) !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-card {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    padding: 14px !important;
+    gap: 12px 8px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-identidade {
+    grid-column: 1/-1 !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-body > .integro-fechamento-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 8px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-visitas .integro-fechamento-grid {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card:last-child:not(.destaque) {
+    grid-column: auto !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-actions {
+    grid-template-columns: repeat(2,minmax(0,1fr)) !important;
+    gap: 8px !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa #integroFechamentoAtualizar {
+    grid-column: 1/-1 !important;
+    grid-row: 1 !important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-secao-cabeca {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
