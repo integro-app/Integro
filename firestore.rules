@@ -251,19 +251,26 @@ service cloud.firestore {
     }
 
     function isOwnSellerData(data) {
-      // Campos de proprietário canônicos primeiro: mesma autorização, menos
-      // avaliações no emulador e nos casos comuns de leitura/escrita.
-      return isCurrentUserValue(data.get("vendedorAuthUid", "")) ||
-        isCurrentUserValue(data.get("vendedorId", "")) ||
-        isCurrentUserValue(data.get("vendedorUid", "")) ||
-        isCurrentUserValue(data.get("vendedorDocumentoId", "")) ||
-        isCurrentUserValue(data.get("usuarioId", "")) ||
-        isCurrentUserValue(data.get("responsavelId", "")) ||
-        isCurrentUserValue(data.get("abertoPorUid", "")) ||
-        isCurrentUserValue(data.get("uid", "")) ||
-        isCurrentUserValue(data.get("userId", "")) ||
-        isCurrentUserValue(data.get("criadoPorId", "")) ||
-        isCurrentUserValue(data.get("criadoPor", ""));
+      // Identidade autenticada atual prevalece sobre criador, hierarquia
+      // histórica ou alias anterior. Transferência não concede acesso duplo.
+      let canonical = data.get("vendedorAuthUid", "") != ""
+        ? data.get("vendedorAuthUid", "")
+        : (data.get("vendedorUid", "") != ""
+          ? data.get("vendedorUid", "")
+          : data.get("responsavelAuthUid", ""));
+      return isNonEmptyString(canonical)
+        ? isCurrentUserValue(canonical)
+        : (
+          isCurrentUserValue(data.get("vendedorId", "")) ||
+          isCurrentUserValue(data.get("vendedorDocumentoId", "")) ||
+          isCurrentUserValue(data.get("usuarioId", "")) ||
+          isCurrentUserValue(data.get("responsavelId", "")) ||
+          isCurrentUserValue(data.get("abertoPorUid", "")) ||
+          isCurrentUserValue(data.get("uid", "")) ||
+          isCurrentUserValue(data.get("userId", "")) ||
+          isCurrentUserValue(data.get("criadoPorId", "")) ||
+          isCurrentUserValue(data.get("criadoPor", ""))
+        );
     }
 
     function isOperationalReader(data) {
