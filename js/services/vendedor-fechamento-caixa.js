@@ -467,7 +467,11 @@
           const assinatura = [normalizar(registro.status), registro.saldoAtualCentavos,
             registro.atualizadoEm?.seconds, registro.fechamentoId].join("|");
           if (assinatura === caixaCompartilhado.assinaturaDocumento) return;
+          const primeiraLeitura = !caixaCompartilhado.assinaturaDocumento;
           caixaCompartilhado.assinaturaDocumento = assinatura;
+          // O primeiro evento do listener não deve duplicar uma conferência
+          // oficial já em voo. Eventos posteriores invalidam normalmente.
+          if (primeiraLeitura && caixaCompartilhado.carregando) return;
           if (["ABERTO", "REABERTO"].includes(normalizar(registro.status))) {
             invalidarResumoCompartilhado(caixa);
           } else {
