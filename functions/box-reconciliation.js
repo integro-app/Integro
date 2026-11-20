@@ -3,7 +3,7 @@ const core = require("./financial-core");
 const norm = core.normalizarStatus, text = core.texto;
 const inactive = row => row.excluido === true || row.cancelado === true || row.estornado === true || ["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA","EXCLUIDO","EXCLUIDA"].includes(norm(row.status || row.statusLancamento));
 const confirmed = value => ["CONFIRMADO","CONFIRMADA","ATIVO","ATIVA","APROVADO","APROVADA"].includes(norm(value));
-function calcularConferencia({box, sales, clients=[], installments, payments, requests, visits, ledger, ownerUid, sellerIds=[], fail}) {
+function calcularConferencia({box, sales, clients=[], clientesConferidos=false, installments, payments, requests, visits, ledger, ownerUid, sellerIds=[], fail}) {
   const money = (row, field="valorCentavos", aliases=["valor","valorPago","valorRecebido","valorTotal"]) => {
     if (row[field] !== undefined && !Number.isSafeInteger(row[field])) fail("failed-precondition", "Valor financeiro inválido: " + field);
     for (const alias of aliases) if (row[field] === undefined && row[alias] !== undefined && !Number.isFinite(Number(row[alias]))) fail("failed-precondition", "Valor financeiro inválido: " + alias);
@@ -108,7 +108,7 @@ function calcularConferencia({box, sales, clients=[], installments, payments, re
     const recebidaNoCaixa=confirmedPayments.some(p=>p.vendaId===sale.id);
     const quitadaVenda=vendaEncerrada(sale);
     const quitadoCliente=clienteQuitado(client);
-    if(!client && !recebidaNoCaixa && saldoVenda>1 && !quitadaVenda) {
+    if(clientesConferidos===true && !client && !recebidaNoCaixa && saldoVenda>1 && !quitadaVenda) {
       const codigo="CLIENTE_SEM_FICHA_OPERACIONAL:"+sale.id;
       avisosCarteira.push({codigo,vendaId:sale.id,clienteId:text(sale.clienteId || sale.clienteOperacionalId),
         clienteNome:text(sale.clienteNome || sale.nomeCliente),statusVenda:statusVenda(sale),
