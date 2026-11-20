@@ -159,3 +159,49 @@ body.mgui-users-active #btnAtualizar {display:none !important;}
 
 /* A ficha abre fora da seção #usuarios: reaproveitar o avatar no drawer. */
 #drawer .mgui-profile .mgui-avatar {display:grid;place-items:center;flex:0 0 48px;width:48px;height:48px;border-radius:13px;background:linear-gradient(140deg,#123252,#27547e);color:#fff;font:900 14px/1 Inter,system-ui,sans-serif;}
+
+/* Cabeçalho alinhado ao padrão aprovado das telas Master Global. */
+html body[data-integro-page="master-global"].mgui-users-active .topbar {
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  padding:0 0 8px!important;
+  margin-bottom:16px!important;
+}
+html body[data-integro-page="master-global"].mgui-users-active .top-left {
+  width:100%!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  position:relative!important;
+}
+html body[data-integro-page="master-global"].mgui-users-active .top-left > div {
+  flex:1 1 auto;
+  min-width:0;
+  text-align:center!important;
+}
+html body[data-integro-page="master-global"].mgui-users-active #pageTitle {
+  margin:0;
+  text-align:center!important;
+  font-size:clamp(23px,2.7vw,32px)!important;
+  line-height:1.25!important;
+  letter-spacing:-.8px;
+}
+html body[data-integro-page="master-global"].mgui-users-active #pageSubtitle,
+html body[data-integro-page="master-global"].mgui-users-active .top-actions {
+  display:none!important;
+}
+@media (max-width:980px) {
+  html body[data-integro-page="master-global"].mgui-users-active .top-left {
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:8px;
+  }
+  html body[data-integro-page="master-global"].mgui-users-active .top-left .hamburger {
+    position:static!important;
+    margin:0!important;
+  }
+  html body[data-integro-page="master-global"].mgui-users-active #pageTitle {
+    font-size:clamp(21px,5.4vw,28px)!important;
+  }
+}
