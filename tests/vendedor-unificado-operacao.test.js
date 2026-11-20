@@ -18,7 +18,7 @@ const vendedorHtml = fs.readFileSync(path.join(root, "vendedor.html"), "utf8");
 
 test("painel unificado carrega a operação específica do vendedor", () => {
   assert.match(master, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261120-m06-cards-uniformes2/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261120-m06-global-header-fix5/);
   assert.match(master, /css\/vendedor-operacao\.css\?v=20261112-vendas-busca-instantanea-v1/);
   assert.match(unificado, /Clientes com saldo devedor em aberto/);
   assert.match(unificado, /dataset\.modulo = "cobrancas"/);
@@ -263,7 +263,7 @@ test("movimentações confirmadas não somem ao sair e voltar da tela", () => {
   assert.match(perfis, /const camposVendedor = camposProprios\(colecao\)/);
   assert.doesNotMatch(perfis, /filtros: \[\["caixaId", "==", caixaId\]\]/);
   assert.match(master, /js\/perfis-unificados\.js\?v=20261112-vendas-dia-sync-v1/);
-  assert.match(master, /js\/vendedor-unificado\.js\?v=20261120-m06-cards-uniformes2/);
+  assert.match(master, /js\/vendedor-unificado\.js\?v=20261120-m06-global-header-fix5/);
 });
 
 

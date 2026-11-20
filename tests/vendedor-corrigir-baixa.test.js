@@ -161,7 +161,7 @@ test("resumo sai dos cards e cada filtro recebe seu contador", () => {
   const visual = fs.readFileSync(path.join(__dirname, "../css/integro-visual.css"), "utf8");
   assert.match(visual, /#cobrancas\.screen #contadorCobrancas,[\s\S]*?display: none !important/);
   assert.match(pagina, /js\/vendedor-operacao\.js\?v=20261107-vendedor-icone-send2/);
-  assert.match(pagina, /js\/vendedor-unificado\.js\?v=20261120-m06-cards-uniformes2/);
+  assert.match(pagina, /js\/vendedor-unificado\.js\?v=20261120-m06-global-header-fix5/);
   assert.match(pagina, /css\/integro-visual\.css\?v=20261112-m22-correcoes-v1/);
 
   assert.match(operacao, /function atualizarContagensFiltrosCobranca\(carteira\)/);
