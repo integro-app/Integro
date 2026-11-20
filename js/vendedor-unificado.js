@@ -889,7 +889,8 @@
             </div>
             <div class="vendedor-filtros-actions"><button class="ghost-btn" type="button" onclick="limparFiltrosVendasVendedor()">Limpar</button><button class="primary-btn" type="button" onclick="renderVendasDia()">Aplicar filtros</button></div>
           </div>
-          <div id="contadorVendasDia" class="vendedor-operacao-contador"></div>
+          <div id="contadorVendasDia" class="vendedor-operacao-contador" aria-live="polite"></div>
+          <div id="vendasDiaSincronizacao" class="vendedor-vendas-sync" role="status" aria-live="polite"></div>
           <div id="listaVendasDia" class="vendedor-vendas-dia"></div>
           <div class="vendedor-nova-venda-acoes">
             <button id="btnNovaVendaOperacao" class="primary-btn vendedor-nova-venda-btn" type="button" onclick="abrirListaNovaVendaVendedor()" aria-label="Criar nova venda"><span class="material-symbols-rounded" aria-hidden="true">add</span><span>Nova venda</span></button>
@@ -1042,20 +1043,72 @@
     if (!el) return;
     const vendas = vendasFiltradas();
     const data = hoje();
-    const total = vendas.reduce((s, v) => s + numero(v.valorEmprestado || v.valorVenda || v.valor), 0);
+    const diaFormatado = data.split("-").reverse().join("/");
+    const valorPrincipal = venda => numero(venda.valorEmprestado ?? venda.valorVenda ?? venda.valor ?? 0);
+    const valorCarteira = venda => numero(venda.valorTotalVenda ?? venda.valorTotal ?? venda.saldoDevedor ?? 0);
+    const totalLiberado = vendas.reduce((soma, venda) => soma + valorPrincipal(venda), 0);
+    const totalCarteira = vendas.reduce((soma, venda) => soma + valorCarteira(venda), 0);
+    const renovacoes = vendas.filter(venda =>
+      texto(venda.tipoVenda || venda.tipo || "NOVA").toUpperCase().normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "").includes("RENOV")).length;
     const contador = document.getElementById("contadorVendasDia");
-    if (contador) contador.textContent = vendas.length ? `${vendas.length} venda(s) de hoje (${data.split("-").reverse().join("/")}) • Total vendido: ${moeda(total)}` : "";
-    el.innerHTML = vendas.length ? vendas.map(v => {
-      const cliente = (State.getClientes?.() || []).find(c => texto(c.id || c.clienteId) === texto(v.clienteId || v.clienteOperacionalId)) || {};
-      return `<article class="vendedor-venda-card">
-        <div class="vendedor-venda-identidade"><strong>${texto(cliente.apelido || v.clienteApelido || cliente.nome || cliente.nomeCompleto || v.clienteNome || "Cliente")}</strong><small>${texto(cliente.nomeCompleto || cliente.nome || v.clienteNome || "")}</small><small>${texto(v.codigo || v.numero || v.id || "")}</small></div>
-        <div><span>Data da venda</span><strong>${dataRegistro(v) ? dataRegistro(v).split("-").reverse().join("/") : "Não informada"}</strong></div>
-        <div><span>Valor vendido</span><strong>${moeda(v.valorEmprestado || v.valorVenda || v.valor || 0)}</strong></div>
-        <div><span>Carteira gerada</span><strong>${moeda(v.valorTotalVenda || v.saldoDevedor || 0)}</strong></div>
-        <div><span>Parcela</span><strong>${moeda(v.valorParcela || 0)}</strong></div>
-        <div><span>Status</span><strong>${texto(v.statusVenda || v.status || "ATIVA")}</strong></div>
-      </article>`;
-    }).join("") : "";
+    if (contador) contador.innerHTML = [
+      '<div class="vendedor-vendas-resumo" aria-label="Indicadores das vendas exibidas">',
+      '<div class="vendedor-vendas-resumo-item"><span>Vendas exibidas</span><strong>', vendas.length, '</strong><small>', esc(diaFormatado), '</small></div>',
+      '<div class="vendedor-vendas-resumo-item principal"><span>Valor liberado</span><strong>', moeda(totalLiberado), '</strong><small>Principal das vendas exibidas</small></div>',
+      '<div class="vendedor-vendas-resumo-item"><span>Carteira gerada</span><strong>', moeda(totalCarteira), '</strong><small>Valor total contratado</small></div>',
+      '<div class="vendedor-vendas-resumo-item"><span>Renovações</span><strong>', renovacoes, '</strong><small>Entre as vendas exibidas</small></div>',
+      '</div>'
+    ].join("");
+    const filtrosAtivos = Boolean(texto(document.getElementById("buscaVendaVendedorInput")?.value)) ||
+      ["filtroVendaAtiva", "filtroVendaQuitada", "filtroVendaCancelada", "filtroVendaNova", "filtroVendaRenovacao"]
+        .some(id => document.getElementById(id)?.checked === true);
+    if (!vendas.length) {
+      el.innerHTML = [
+        '<div class="vendedor-vendas-vazio" role="status">',
+        '<span class="material-symbols-rounded" aria-hidden="true">receipt_long</span>',
+        '<strong>', filtrosAtivos ? 'Nenhuma venda corresponde à pesquisa' : 'Nenhuma venda registrada hoje', '</strong>',
+        '<p>', filtrosAtivos ? 'Revise os filtros ou limpe a busca para conferir as vendas do dia.' :
+          'As vendas confirmadas no Firebase aparecerão aqui. Utilize Nova venda para iniciar uma operação.', '</p>',
+        '</div>'
+      ].join("");
+      return;
+    }
+    const clientes = State.getClientes?.() || [];
+    el.innerHTML = vendas.map(venda => {
+      const cliente = clientes.find(c => texto(c.id || c.clienteId || c.clienteOperacionalId) ===
+        texto(venda.clienteId || venda.clienteOperacionalId)) || {};
+      const nome = esc(cliente.apelido || venda.clienteApelido || cliente.nome || cliente.nomeCompleto || venda.clienteNome || "Cliente");
+      const nomeCompleto = esc(cliente.nomeCompleto || cliente.nome || venda.clienteNome || "");
+      const codigo = esc(venda.codigo || venda.numero || venda.id || "Sem código");
+      const status = texto(venda.statusVenda || venda.status || "ATIVA").toUpperCase();
+      const situacao = ["QUITADO", "QUITADA"].includes(status) ? "Quitada" :
+        ["CANCELADO", "CANCELADA"].includes(status) ? "Cancelada" :
+        status === "PENDENTE" ? "Em análise" : "Ativa";
+      const classeStatus = situacao === "Quitada" ? "quitada" :
+        situacao === "Cancelada" ? "cancelada" : situacao === "Em análise" ? "analise" : "ativa";
+      const tipo = texto(venda.tipoVenda || venda.tipo || "NOVA").toUpperCase().includes("RENOV") ? "Renovação" : "Nova venda";
+      const dataVenda = dataRegistro(venda);
+      return [
+        '<article class="vendedor-venda-card" aria-label="Venda ', codigo, '">',
+        '<div class="vendedor-venda-identidade">',
+        '<div class="vendedor-venda-etiquetas"><span class="vendedor-venda-tipo">', tipo, '</span>',
+        '<span class="vendedor-venda-status ', classeStatus, '">', situacao, '</span></div>',
+        '<strong title="', nome, '">', nome, '</strong>',
+        '<small title="', nomeCompleto, '">', nomeCompleto, '</small>',
+        '<small class="vendedor-venda-codigo">', codigo, '</small>',
+        '</div>',
+        '<div class="vendedor-venda-metrica"><span>Data da venda</span><strong>',
+          esc(dataVenda ? dataVenda.split("-").reverse().join("/") : "Não informada"), '</strong></div>',
+        '<div class="vendedor-venda-metrica"><span>Valor liberado</span><strong>',
+          moeda(valorPrincipal(venda)), '</strong></div>',
+        '<div class="vendedor-venda-metrica"><span>Carteira gerada</span><strong>',
+          moeda(valorCarteira(venda)), '</strong></div>',
+        '<div class="vendedor-venda-metrica"><span>Parcela</span><strong>',
+          moeda(venda.valorParcela ?? 0), '</strong></div>',
+        '</article>'
+      ].join("");
+    }).join("");
   }
 
   // O contêiner da Operação é "cobrancas", mas cada aba exige a sua permissão.
@@ -1093,7 +1146,7 @@
     const subtitulo = document.getElementById("vendedorOperacaoSubtitulo");
     if (titulo) titulo.textContent = abaAtual === "cobrancas" ? "Cobranças" : abaAtual === "vendas" ? "Vendas" : "Conferência do caixa";
     if (subtitulo) subtitulo.textContent = abaAtual === "cobrancas" ? "Clientes com saldo devedor em aberto."
-      : abaAtual === "vendas" ? "Vendas vinculadas ao vendedor, incluindo o histórico que compõe a carteira."
+      : abaAtual === "vendas" ? "Vendas realizadas hoje e confirmadas para o vendedor logado."
       : "Consulte os valores do caixa antes de finalizar o expediente.";
     if (!abaAtual) {
       if (titulo) titulo.textContent = "Operação indisponível";
