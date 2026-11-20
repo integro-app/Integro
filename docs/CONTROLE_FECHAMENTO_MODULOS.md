@@ -307,6 +307,13 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Risco/dependência:** pagamentos de vendas anteriores após transferência podem exigir evolução de autorização operacional e conciliação da migração; verificar antes de declarar o fluxo completo.
 - **Próximo aceite:** conferir, no Firebase real, as cinco vendas e seus clientes canônicos e comparar Cobranças × Conferência do caixa para vendedor e gestor. Não forçar fechamento sem confirmação.
 
+### M22 — Quitados indevidamente cobrados no fechamento (20/11/2026)
+- **Estado:** correção em branch `fix/m22-quitados-nao-bloqueiam-rota-20261120`; NÃO publicado, NÃO homologado.
+- **Causa técnica:** a rota no backend não descartava vendas com `statusVenda=QUITADO`, enquanto a tela do vendedor as oculta; histórico de parcelas pendentes e saldos residuais podia produzir cobranças invisíveis.
+- **Solução:** filtrar vendas encerradas e clientes quitados da rota, preservar pagamentos do caixa; se venda/cliente marcado QUITADO ainda conserva saldo contraditório, mostrar aviso detalhado e bloquear por conciliação financeira, nunca por visita não realizada. Sem alterar dados, saldos ou históricos reais.
+- **Teste obrigatório:** reconsultar as cinco vendas apontadas no fechamento e verificar situação, saldos e propriedade em Firestore; confirmar que cobranças reais permanecem e que casos quitados não geram pendência.
+- **Próximo passo:** executar CI de código, regras e integrações; homologação autenticada e publicação somente com autorização do proprietário.
+
 ## 9. Atualização — M22 / Operação do Vendedor (12/11/2026)
 
 - **Base:** `main` em `45019b73d732d3eef10c128452c088e2904b1e0b`.
