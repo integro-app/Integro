@@ -174,6 +174,17 @@ test("M22: vendas exibidas têm indicadores reais do filtro, estados e conteúdo
   assert.match(elements.listaVendasDia.innerHTML,/&lt;img src=x onerror=alert\(1\)&gt;/);
   assert.doesNotMatch(elements.listaVendasDia.innerHTML,/<img/);
   assert.match(elements.listaVendasDia.innerHTML,/João &amp; Cia/);
+  vendas[0].statusVenda="EM_ATRASO";
+  render();
+  assert.match(elements.listaVendasDia.innerHTML,/vendedor-venda-status atraso/);
+  assert.match(elements.listaVendasDia.innerHTML,/Em atraso/);
+  vendas[0].statusVenda="ATRASO_GRAVE";
+  render();
+  assert.match(elements.listaVendasDia.innerHTML,/vendedor-venda-status grave/);
+  assert.match(elements.listaVendasDia.innerHTML,/Atraso grave/);
+  vendas[0].statusVenda="ADIANTADO";
+  render();
+  assert.match(elements.listaVendasDia.innerHTML,/vendedor-venda-status adiantada/);
   vendas=[];
   render();
   assert.match(elements.listaVendasDia.innerHTML,/Nenhuma venda registrada hoje/);
