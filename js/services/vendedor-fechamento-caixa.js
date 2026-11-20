@@ -513,12 +513,12 @@
     const aprovacoesPendentes = Math.max(0, inteiro(snapshot.aprovacoesPendentes));
     const avisosCarteira = Array.isArray(snapshot.avisosCarteira) ? snapshot.avisosCarteira.length : 0;
     const inconsistencias = Array.isArray(snapshot.inconsistencias)
-      ? snapshot.inconsistencias.filter(item => !["VENDA_ENCERRADA_COM_SALDO:","CLIENTE_QUITADO_COM_VENDA_ABERTA:"].some(prefix => texto(item).startsWith(prefix))).length : 0;
+      ? snapshot.inconsistencias.filter(item => !["VENDA_ENCERRADA_COM_SALDO:","CLIENTE_QUITADO_COM_VENDA_ABERTA:","CLIENTE_SEM_FICHA_OPERACIONAL:"].some(prefix => texto(item).startsWith(prefix))).length : 0;
     const motivos = [];
     if (pendencias) motivos.push(`${pendencias} visita(s) ainda sem baixa de Pago ou Não pagamento.`);
     if (pagamentosPendentes) motivos.push(`${pagamentosPendentes} pagamento(s) aguardando confirmação no servidor.`);
     if (aprovacoesPendentes) motivos.push(`${aprovacoesPendentes} aprovação(ões) obrigatória(s) pendente(s).`);
-    if (avisosCarteira) motivos.push(`${avisosCarteira} contrato(s) encerrado(s) ou cliente(s) quitado(s) com saldo contraditório. É necessária conciliação pelo gestor, não uma visita fictícia.`);
+    if (avisosCarteira) motivos.push(`${avisosCarteira} registro(s) exigem conciliação de carteira (quitado com saldo ou cliente sem ficha vinculada). Regularize com um gestor, sem baixa fictícia.`);
     if (inconsistencias) motivos.push(`${inconsistencias} inconsistência(s) financeira(s) para regularizar.`);
     if (operacoesPendentes > 0) motivos.push("Existem baixas locais ainda sincronizando.");
     return { podeFechar: motivos.length === 0, pendencias, motivos };
@@ -546,11 +546,11 @@
       </details>` : "";
     const detalhesQuitados = quitadosEmConflito.length ? `
       <details class="integro-fechamento-pendencias-detalhes" open>
-        <summary>Ver ${quitadosEmConflito.length} registro(s) quitado(s)/encerrado(s) com saldo divergente</summary>
+        <summary>Ver ${quitadosEmConflito.length} inconsistência(s) de vínculo/saldo da carteira</summary>
         <ul>${quitadosEmConflito.map(item =>
           `<li>${escapar(item.clienteNome || "Cliente sem nome")} <small>(venda ${escapar(item.vendaId || "sem ID")} · ${escapar(item.statusVenda || "sem situação")} · venda ${moedaCentavos(item.saldoVendaCentavos)})</small></li>`
         ).join("")}</ul>
-        <p>Esses registros não são visitas pendentes. A ficha está marcada como quitada/encerrada, mas os saldos não coincidem. Solicite a conciliação por um responsável, sem criar pagamentos ou não pagamentos fictícios.</p>
+        <p>Esses registros não são visitas pendentes: há ficha quitada com saldo contraditório ou venda sem ficha operacional localizada. Solicite a conciliação por um responsável, sem criar pagamentos ou não pagamentos fictícios.</p>
       </details>` : "";
     return `
       <div class="integro-fechamento-head">
