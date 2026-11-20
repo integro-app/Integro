@@ -916,7 +916,7 @@
     if (!document.getElementById("integro-dashboard-vendedor-pro-script")) {
       const proScript = document.createElement("script");
       proScript.id = "integro-dashboard-vendedor-pro-script";
-      proScript.src = "js/dashboard-vendedor-pro.js?v=20261120-m06-pro1";
+      proScript.src = "js/dashboard-vendedor-pro.js?v=20261120-m06-cards-uniformes2";
       proScript.async = true;
       document.head.appendChild(proScript);
     }
