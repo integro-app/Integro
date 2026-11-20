@@ -64,6 +64,12 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Aceite pendente:** testar em desktop 1440px, tablet 768px e celular 390px/360px; abrir cada card e a Operação, cruzar valores e período com ledger/caixa real, verificar ausência de rolagem horizontal e aprovar a interface.
 
 
+### M06 — Refinamento de alinhamento do Dashboard do Vendedor (20/11/2026)
+
+- **PR #75:** título deslocado para cima, cinco cards padronizados em largura/altura pela grade responsiva e versões de CSS/JS atualizadas para evitar exibição de arquivos antigos em cache.
+- **Escopo preservado:** não altera banco, cálculos, coleções, regras, permissões, outros perfis ou valores exibidos.
+- **Conferência:** regressões CSS/M06 adicionadas; a homologação visual autenticada em desktop e mobile e a conciliação de valores continuam necessárias antes do fechamento formal do módulo.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

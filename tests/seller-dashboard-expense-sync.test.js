@@ -102,8 +102,40 @@ test("M06: desktop equilibra cards; tablet e mobile possuem breakpoints dedicado
   const css = read("css/dashboard-vendedor-pro.css");
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(css, /kpi-card:nth-child\(n\+4\)/);
-  assert.match(css, /@media \(min-width: 700px\) and \(max-width: 1180px\)/);
+  assert.match(css, /@media \(min-width: 900px\) and \(max-width: 1599px\)/);
   assert.match(css, /@media \(max-width: 699px\)/);
   assert.match(css, /@media \(max-width: 360px\)/);
   assert.match(css, /prefers-reduced-motion: reduce/);
+});
+
+
+test("M06: título elevado e os cinco cards têm largura uniforme no desktop", () => {
+  const css = read("css/dashboard-vendedor-pro.css");
+  const header = css.match(/\.dashboard-page-header\s*\{([\s\S]*?)\}/)?.[1] || "";
+  const grid = css.match(/\.dashboard-kpis-primary\s*\{([\s\S]*?)\}/)?.[1] || "";
+  assert.match(header, /min-height:\s*68px/);
+  assert.match(header, /margin:\s*-8px 0 9px/);
+  assert.match(grid, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(grid, /grid-auto-rows:\s*minmax\(0,\s*1fr\)/);
+  assert.match(css, /kpi-card:nth-child\(n\+4\)\s*\{\s*grid-column:\s*span 1 !important/);
+});
+
+test("M06: breakpoints mantêm dimensões iguais e evitam quebra de valores", () => {
+  const css = read("css/dashboard-vendedor-pro.css");
+  assert.match(css, /@media \(min-width:\s*900px\) and \(max-width:\s*1599px\)/);
+  assert.match(css, /grid-column:\s*2 \/ span 2 !important/);
+  assert.match(css, /grid-column:\s*4 \/ span 2 !important/);
+  assert.match(css, /@media \(min-width:\s*700px\) and \(max-width:\s*899px\)/);
+  assert.match(css, /@media \(max-width:\s*699px\)/);
+  assert.match(css, /flex-direction:\s*row !important/);
+  assert.match(css, /height:\s*auto !important/);
+});
+
+test("M06: recursos são atualizados sem depender do cache antigo", () => {
+  const html = read("master-local.html");
+  const seller = read("js/vendedor-unificado.js");
+  const visual = read("js/dashboard-vendedor-pro.js");
+  assert.match(html, /js\/vendedor-unificado\.js\?v=20261120-m06-cards-uniformes2/);
+  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261120-m06-cards-uniformes2/);
+  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261120-m06-cards-uniformes2/);
 });
