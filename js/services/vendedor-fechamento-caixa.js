@@ -471,7 +471,8 @@
           caixaCompartilhado.assinaturaDocumento = assinatura;
           // O primeiro evento do listener não deve duplicar uma conferência
           // oficial já em voo. Eventos posteriores invalidam normalmente.
-          if (primeiraLeitura && caixaCompartilhado.carregando) return;
+          if (primeiraLeitura && caixaCompartilhado.carregando &&
+              ["ABERTO", "REABERTO"].includes(normalizar(registro.status))) return;
           if (["ABERTO", "REABERTO"].includes(normalizar(registro.status))) {
             invalidarResumoCompartilhado(caixa);
           } else {
