@@ -142,9 +142,8 @@
       (users.length?"manage_search":"group_add")+'</span><strong>'+
       (users.length?"Nenhum usuário corresponde à pesquisa":"Sua equipe começa aqui")+'</strong><p>'+
       (users.length?"Revise os filtros ou limpe a pesquisa para encontrar um funcionário.":
-        "Cadastre o primeiro funcionário interno. A conta será criada no Firebase com uma senha provisória; a liberação do acesso é uma etapa separada.")+
-      '</p>'+(users.length?'<button type="button" class="btn btn-light" onclick="limparFiltrosUsuariosInternos()">Limpar filtros</button>':
-        '<button type="button" class="btn btn-primary" onclick="abrirFormUsuarioInterno()">Cadastrar usuário interno</button>')+
+        "Use “Novo usuário interno” acima para criar a primeira conta com senha provisória. A liberação de acesso será feita separadamente.")+
+      '</p>'+(users.length?'<button type="button" class="btn btn-light" onclick="limparFiltrosUsuariosInternos()">Limpar filtros</button>':'')+
       '</div>';
     if (el.count) el.count.textContent=filtered.length===users.length ?
       (shown.length+" de "+users.length+" usuário(s) interno(s)") :
