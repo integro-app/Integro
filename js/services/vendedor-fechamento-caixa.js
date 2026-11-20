@@ -513,7 +513,7 @@
     const aprovacoesPendentes = Math.max(0, inteiro(snapshot.aprovacoesPendentes));
     const avisosCarteira = Array.isArray(snapshot.avisosCarteira) ? snapshot.avisosCarteira.length : 0;
     const inconsistencias = Array.isArray(snapshot.inconsistencias)
-      ? snapshot.inconsistencias.filter(item => !["VENDA_ENCERRADA_COM_SALDO:","CLIENTE_QUITADO_COM_VENDA_ABERTA:","CLIENTE_SEM_FICHA_OPERACIONAL:"].some(prefix => texto(item).startsWith(prefix))).length : 0;
+      ? snapshot.inconsistencias.filter(item => !["VENDA_ENCERRADA_COM_SALDO:","CLIENTE_QUITADO_COM_VENDA_ABERTA:","CLIENTE_SEM_FICHA_OPERACIONAL:"].some(prefix => String(item ?? "").startsWith(prefix))).length : 0;
     const motivos = [];
     if (pendencias) motivos.push(`${pendencias} visita(s) ainda sem baixa de Pago ou Não pagamento.`);
     if (pagamentosPendentes) motivos.push(`${pagamentosPendentes} pagamento(s) aguardando confirmação no servidor.`);
