@@ -1782,18 +1782,57 @@
     function abrirFormDepartamento(id=null){
       const d=id?departamentos.find(x=>x.id===id):null;
       if(id&&!d)return notificarIntegro('Departamento não encontrado.');
-      abrirDrawer(id?'Editar departamento':'Novo departamento','Estrutura interna da plataforma',
-        '<div class="grid"><label class="form-label">Nome</label><input id="depNome" class="form-input" maxlength="100" value="'+esc(d?.nome||'')+'">'+
-        '<label class="form-label">Descrição</label><textarea id="depDescricao" maxlength="500" class="form-textarea">'+esc(d?.descricao||'')+'</textarea>'+
-        '<label class="form-label">Situação</label><select id="depStatus" class="form-select"><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option></select>'+
-        '<button class="btn btn-primary" id="btnSalvarDepartamento">Salvar departamento</button></div>');
+      const equipe=id&&window.IntegroDepartments?
+        window.IntegroDepartments.membersFor(d,getUsuariosInternos()):[];
+      abrirDrawer(id?'Editar departamento':'Novo departamento',
+        id?'Atualize as informações da estrutura administrativa':'Organize os funcionários internos da plataforma',
+        '<div class="mgdp-form">'+
+          '<div class="mgdp-form-intro"><span class="material-symbols-rounded" aria-hidden="true">account_tree</span>'+
+            '<div><strong>'+(id?'Informações do departamento':'Criar estrutura interna')+'</strong>'+
+              '<small>'+(id?'As alterações serão registradas na auditoria do Master Global.':
+                'O departamento poderá ser vinculado aos funcionários da equipe ÍNTEGRO.')+'</small></div></div>'+
+          '<div><label class="form-label" for="depNome">Nome do departamento</label>'+
+            '<input id="depNome" type="text" autocomplete="off" maxlength="100" class="form-input" placeholder="Ex.: Suporte, Comercial ou Financeiro" value="'+esc(d?.nome||'')+'"></div>'+
+          '<div><label class="form-label" for="depDescricao">Descrição e finalidade</label>'+
+            '<textarea id="depDescricao" class="form-textarea" maxlength="500" rows="4" placeholder="Descreva as atribuições deste departamento.">'+esc(d?.descricao||'')+'</textarea></div>'+
+          '<div><label class="form-label" for="depStatus">Situação do departamento</label>'+
+            '<select id="depStatus" class="form-select"><option value="ATIVO">Ativo</option><option value="INATIVO">Inativo</option></select></div>'+
+          (id&&equipe.length?'<div class="mgdp-form-hint mgdp-form-warning"><strong>'+equipe.length+
+            ' funcionário(s) vinculado(s)</strong>O status do departamento não altera nem transfere automaticamente as contas vinculadas. Revise os vínculos antes de inativar.</div>':
+            '<div class="mgdp-form-hint"><strong>Funcionários e permissões</strong>Salvar este departamento não cria contas, não altera permissões e não concede acesso a empresas clientes da plataforma.</div>')+
+          '<button type="button" class="btn btn-primary" id="btnSalvarDepartamento">'+
+            (id?'Salvar alterações':'Criar departamento')+'</button></div>');
       setVal('depStatus',d?.status||'ATIVO');
       byId('btnSalvarDepartamento').onclick=()=>salvarDepartamento(id);
     }
     async function salvarDepartamento(id=null){
-      if(!validarPreenchimentoMasterGlobal(['depNome','depStatus']))return;
-      await executarAcaoGlobal('salvarDepartamento',{id:id||'',nome:val('depNome'),
-        descricao:val('depDescricao'),status:val('depStatus')},'Departamento salvo.');
+      if(processandoCadastroGlobal)return false;
+      if(!validarPreenchimentoMasterGlobal(['depNome','depStatus']))return false;
+      const nome=val('depNome'),descricao=val('depDescricao'),situacao=status(val('depStatus'));
+      if(nome.length<2||nome.length>100){
+        notificarIntegro('Informe um nome com 2 a 100 caracteres.');
+        byId('depNome')?.focus();
+        return false;
+      }
+      if(descricao.length>500){
+        notificarIntegro('A descrição deve ter no máximo 500 caracteres.');
+        return false;
+      }
+      if(!['ATIVO','INATIVO'].includes(situacao)){
+        notificarIntegro('Situação do departamento inválida.');
+        return false;
+      }
+      const atual=id?departamentos.find(x=>x.id===id):null;
+      if(id&&!atual)return notificarIntegro('Departamento não encontrado na consulta atual.');
+      const funcionarios=atual&&window.IntegroDepartments?
+        window.IntegroDepartments.membersFor(atual,getUsuariosInternos()):[];
+      if(atual&&status(atual.status)!=='INATIVO'&&situacao==='INATIVO'&&funcionarios.length){
+        if(!confirm('Este departamento tem '+funcionarios.length+
+          ' funcionário(s) vinculado(s). Inativar o departamento não altera essas contas nem transfere os vínculos. Deseja continuar?'))return false;
+      }
+      return executarAcaoGlobal('salvarDepartamento',
+        {id:id||'',nome,descricao,status:situacao},
+        id?'Departamento atualizado.':'Departamento criado.');
     }
     function abrirFormPlano(id=null){
       const p=id?planos.find(x=>x.id===id):null;
