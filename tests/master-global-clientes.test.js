@@ -17,7 +17,10 @@ test("Master Global: menu se chama Clientes, mas base permanece clientes_integro
   assert.match(html,/id="btnCarregarMaisClientes"/);
   assert.match(html,/css\/master-global-clientes\.css\?v=20261119-clientes-premium1/);
   assert.match(html,/clientesIntegro\.filter\(c=>\{/);
-  assert.doesNotMatch(html.slice(html.indexOf('<section id="clientes" class="screen"'),html.indexOf('<section id="usuarios" class="screen"')),/id="listaMasters"|id="listaUsuarios"/);
+  const inicioClientes=html.indexOf('<section id="clientes" class="screen"');
+  const fimClientes=html.indexOf('</section>',inicioClientes);
+  assert.ok(inicioClientes>=0&&fimClientes>inicioClientes,'delimitação da seção Clientes');
+  assert.doesNotMatch(html.slice(inicioClientes,fimClientes),/id="listaMasters"|id="listaUsuarios"/);
   assert.match(css,/#clientes \.mg-clientes-lista/);
   assert.match(css,/@media\(max-width: 650px\)/);
   assert.match(css,/@media\(max-width: 390px\)/);
