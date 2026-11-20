@@ -16,10 +16,19 @@ async function consultarCarteiraCaixa({ transaction, db, tenant, uid, sellerIds,
     ...aliases.map(id => query("vendas","vendedorId",id)),
     query("vendas","caixaId",boxId)
   ];
+  // Consultas por um único campo usam índices automáticos. A condição de
+  // tenant é verificada a seguir, sem exigir índices compostos novos.
+  const queryClient = async (field,value) => {
+    const snap=await transaction.get(db.collection("clientes_operacionais")
+      .where(field,"==",value).limit(1001));
+    if(snap.docs.length>1000) fail("resource-exhausted","Vínculos de clientes exigem conferência assistida.");
+    return snap.docs.map(doc=>({...doc.data(),id:doc.id}))
+      .filter(row=>text(row.clientePlataformaId)===tenant);
+  };
   const clientQueries = [
-    query("clientes_operacionais","vendedorAuthUid",uid),
-    query("clientes_operacionais","vendedorUid",uid),
-    ...aliases.map(id=>query("clientes_operacionais","vendedorId",id))
+    queryClient("vendedorAuthUid",uid),
+    queryClient("vendedorUid",uid),
+    ...aliases.map(id=>queryClient("vendedorId",id))
   ];
   const [saleLists,clientLists] = await Promise.all([
     Promise.all(directQueries),
@@ -44,9 +53,7 @@ async function consultarCarteiraCaixa({ transaction, db, tenant, uid, sellerIds,
 
   // A transferência pode ter ocorrido antes de o campo vendaAtivaId existir.
   // Faz uma busca pontual só para clientes transferidos com saldo e sem venda localizada.
-  const byClient=new Set([...directSales,...references].flatMap(s=>[text(s.clienteId),text(s.clienteOperacionalId)]));
-  const transferred=own.filter(c=>text(c.transferidoParaAuthUid)===uid && saldo(c)>1 &&
-    ![text(c.id),text(c.clienteLegadoId)].some(id=>byClient.has(id)));
+  const transferred=own.filter(c=>text(c.transferidoParaAuthUid)===uid && saldo(c)>1);
   if(transferred.length>100) fail("resource-exhausted","Transferências sem venda vinculada exigem conciliação assistida.");
   const transferredIds=[...new Set(transferred.flatMap(c=>[c.id,c.clienteLegadoId]).map(text).filter(Boolean))];
   const transferQueries=[];
@@ -54,11 +61,11 @@ async function consultarCarteiraCaixa({ transaction, db, tenant, uid, sellerIds,
     const ids=transferredIds.slice(i,i+8);
     for(const field of ["clienteId","clienteOperacionalId"]) {
       const snap=await transaction.get(db.collection("vendas")
-        .where("clientePlataformaId","==",tenant)
         .where(field,ids.length===1?"==":"in",ids.length===1?ids[0]:ids)
         .limit(1001));
       if(snap.docs.length>1000) fail("resource-exhausted","Vendas transferidas exigem conciliação assistida.");
-      transferQueries.push(...snap.docs.map(doc=>({...doc.data(),id:doc.id})));
+      transferQueries.push(...snap.docs.map(doc=>({...doc.data(),id:doc.id}))
+        .filter(row=>text(row.clientePlataformaId)===tenant));
     }
   }
   const sales=unique([...directSales,...references,...transferQueries]).sort((a,b)=>a.id.localeCompare(b.id));
