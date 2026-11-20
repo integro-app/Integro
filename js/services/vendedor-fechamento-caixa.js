@@ -301,11 +301,13 @@
 
   async function sincronizarAntesDoFechamento(caixa) {
     const caixaId = texto(caixa?.id || caixa?.caixaId || caixa?.docId);
-    if (global.sincronizarMovimentosDashboardVendedor) await global.sincronizarMovimentosDashboardVendedor(true);
-    if (caixaId && global.IntegroPerfisUnificados?.carregarMovimentacoesVendedor) {
+    // Dashboard e fechamento compartilham esta sincronização. Executá-la
+    // duas vezes atrasava a confirmação e duplicava leituras do mesmo caixa.
+    if (typeof global.sincronizarMovimentosDashboardVendedor === "function") {
+      await global.sincronizarMovimentosDashboardVendedor(true);
+    } else if (caixaId && global.IntegroPerfisUnificados?.carregarMovimentacoesVendedor) {
       await global.IntegroPerfisUnificados.carregarMovimentacoesVendedor(caixaId);
     }
-    await new Promise(resolve => setTimeout(resolve, 60));
   }
 
   async function prepararSnapshot(caixa) {
@@ -317,6 +319,173 @@
       clientePlataformaId: tenantUsuario(),
       ignorarPendencias: false
     });
+  }
+
+  // M22: um único resumo de conferência oficial é reaproveitado pelo Dashboard
+  // e pelo fechamento. Nenhum valor financeiro é estimado no cliente.
+  const caixaCompartilhado = {
+    chave: "", caixaId: "", snapshot: null, confirmadoEm: 0,
+    invalidado: false, revisao: 0, carregando: null, ultimaConsulta: 0,
+    proximaConsulta: null, observador: null, observadorChave: "",
+    errosConsecutivos: 0, assinaturaDocumento: ""
+  };
+
+  function chaveCaixaCompartilhado(caixa = caixaAbertoLocal()) {
+    const usuario = usuarioAtual();
+    const tenant = tenantUsuario(usuario);
+    const uid = texto(global.firebase?.auth?.()?.currentUser?.uid || usuario.authUid || usuario.uid);
+    const caixaId = texto(caixa?.id || caixa?.caixaId || caixa?.docId);
+    return ehVendedor(usuario) && tenant && uid && caixaId ? [tenant, uid, caixaId].join(":") : "";
+  }
+
+  function limparCaixaCompartilhado() {
+    if (caixaCompartilhado.proximaConsulta) clearTimeout(caixaCompartilhado.proximaConsulta);
+    try { caixaCompartilhado.observador?.(); } catch (_) {}
+    Object.assign(caixaCompartilhado, {
+      chave: "", caixaId: "", snapshot: null, confirmadoEm: 0,
+      invalidado: false, revisao: caixaCompartilhado.revisao + 1,
+      carregando: null, ultimaConsulta: 0, proximaConsulta: null,
+      observador: null, observadorChave: "", errosConsecutivos: 0, assinaturaDocumento: ""
+    });
+  }
+
+  function garantirEscopoCaixaCompartilhado(caixa) {
+    const chave = chaveCaixaCompartilhado(caixa);
+    if (!chave) return "";
+    if (caixaCompartilhado.chave && caixaCompartilhado.chave !== chave) limparCaixaCompartilhado();
+    if (!caixaCompartilhado.chave) {
+      caixaCompartilhado.chave = chave;
+      caixaCompartilhado.caixaId = texto(caixa.id || caixa.caixaId || caixa.docId);
+    }
+    return chave;
+  }
+
+  function obterResumoCompartilhado(caixa = caixaAbertoLocal()) {
+    const chave = chaveCaixaCompartilhado(caixa);
+    if (!chave || caixaCompartilhado.chave !== chave || !caixaCompartilhado.snapshot) return null;
+    return {
+      caixaId: caixaCompartilhado.caixaId,
+      snapshot: caixaCompartilhado.snapshot,
+      confirmadoEm: caixaCompartilhado.confirmadoEm,
+      desatualizado: caixaCompartilhado.invalidado
+    };
+  }
+
+  function publicarResumoCompartilhado(caixa, snapshot, revisao = caixaCompartilhado.revisao) {
+    const chave = chaveCaixaCompartilhado(caixa);
+    if (!chave || chave !== caixaCompartilhado.chave) return false;
+    const retornoCaixa = texto(snapshot?.caixa?.id || snapshot?.caixa?.caixaId || snapshot?.caixaId);
+    if (retornoCaixa && retornoCaixa !== caixaCompartilhado.caixaId) return false;
+    if (!snapshot || !Number.isSafeInteger(snapshot.caixaFinalEsperadoCentavos)) return false;
+    caixaCompartilhado.snapshot = snapshot;
+    caixaCompartilhado.errosConsecutivos = 0;
+    caixaCompartilhado.confirmadoEm = Date.now();
+    caixaCompartilhado.invalidado = caixaCompartilhado.revisao !== revisao;
+    global.document?.dispatchEvent?.(new CustomEvent("integro-vendedor-caixa-resumo-atualizado", {
+      detail: {
+        caixaId: caixaCompartilhado.caixaId,
+        confirmadoEm: caixaCompartilhado.confirmadoEm,
+        desatualizado: caixaCompartilhado.invalidado
+      }
+    }));
+    return true;
+  }
+
+  async function atualizarResumoCompartilhado({ caixa = caixaAbertoLocal(), forcar = false } = {}) {
+    const chave = garantirEscopoCaixaCompartilhado(caixa);
+    if (!chave) return null;
+    if (caixaCompartilhado.carregando) return caixaCompartilhado.carregando;
+    if (!forcar && caixaCompartilhado.snapshot && !caixaCompartilhado.invalidado &&
+        Date.now() - caixaCompartilhado.confirmadoEm < 10000) return caixaCompartilhado.snapshot;
+    const revisao = caixaCompartilhado.revisao;
+    if (forcar && caixaCompartilhado.snapshot) caixaCompartilhado.invalidado = true;
+    caixaCompartilhado.ultimaConsulta = Date.now();
+    const consulta = (async () => {
+      const snapshot = await prepararSnapshot(caixa);
+      if (!publicarResumoCompartilhado(caixa, snapshot, revisao)) return null;
+      return snapshot;
+    })();
+    caixaCompartilhado.carregando = consulta;
+    try { return await consulta; }
+    catch (erro) {
+      if (caixaCompartilhado.chave === chave) {
+        caixaCompartilhado.invalidado = true;
+        caixaCompartilhado.errosConsecutivos += 1;
+      }
+      throw erro;
+    }
+    finally {
+      if (caixaCompartilhado.chave === chave && caixaCompartilhado.carregando === consulta) {
+        caixaCompartilhado.carregando = null;
+        if (caixaCompartilhado.invalidado) agendarResumoCompartilhado(caixa);
+      }
+    }
+  }
+
+  function agendarResumoCompartilhado(caixa = caixaAbertoLocal()) {
+    if (!garantirEscopoCaixaCompartilhado(caixa) || global.__integroLogoutEmAndamento) return;
+    if (caixaCompartilhado.proximaConsulta) clearTimeout(caixaCompartilhado.proximaConsulta);
+    // Eventos em rajada compartilham uma única consulta; não multiplicar
+    // transações Firestore de conciliação a cada movimento da tela.
+    const espera = caixaCompartilhado.errosConsecutivos
+      ? Math.min(60000, 5000 * (2 ** Math.min(4, caixaCompartilhado.errosConsecutivos - 1)))
+      : Math.max(350, 1800 - (Date.now() - caixaCompartilhado.ultimaConsulta));
+    caixaCompartilhado.proximaConsulta = setTimeout(() => {
+      caixaCompartilhado.proximaConsulta = null;
+      atualizarResumoCompartilhado({ caixa, forcar: true }).catch(erro =>
+        console.warn("[ÍNTEGRO] Resumo oficial do caixa pendente de nova sincronização.", erro?.message || erro));
+    }, espera);
+  }
+
+  function invalidarResumoCompartilhado(caixa = caixaAbertoLocal()) {
+    if (!garantirEscopoCaixaCompartilhado(caixa)) return;
+    caixaCompartilhado.revisao += 1;
+    caixaCompartilhado.invalidado = true;
+    agendarResumoCompartilhado(caixa);
+    global.document?.dispatchEvent?.(new CustomEvent("integro-vendedor-caixa-resumo-sincronizando", {
+      detail: { caixaId: caixaCompartilhado.caixaId }
+    }));
+  }
+
+  function observarCaixaCompartilhado() {
+    if (!ehVendedor() || global.__integroLogoutEmAndamento) {
+      limparCaixaCompartilhado();
+      return;
+    }
+    const caixa = caixaAbertoLocal();
+    const chave = garantirEscopoCaixaCompartilhado(caixa);
+    if (!chave || caixaCompartilhado.observadorChave === chave) return;
+    try { caixaCompartilhado.observador?.(); } catch (_) {}
+    caixaCompartilhado.observador = null;
+    caixaCompartilhado.observadorChave = chave;
+    caixaCompartilhado.assinaturaDocumento = "";
+    const db = global.db || global.firebase?.firestore?.();
+    if (db?.collection) {
+      try {
+        caixaCompartilhado.observador = db.collection("caixas").doc(caixaCompartilhado.caixaId).onSnapshot(doc => {
+          if (caixaCompartilhado.observadorChave !== chave || !doc.exists) return;
+          const registro = doc.data() || {};
+          if (texto(registro.clientePlataformaId || registro.tenantId || registro.empresaId) !== tenantUsuario()) return;
+          const assinatura = [normalizar(registro.status), registro.saldoAtualCentavos,
+            registro.atualizadoEm?.seconds, registro.fechamentoId].join("|");
+          if (assinatura === caixaCompartilhado.assinaturaDocumento) return;
+          const primeiraLeitura = !caixaCompartilhado.assinaturaDocumento;
+          caixaCompartilhado.assinaturaDocumento = assinatura;
+          // O primeiro evento do listener não deve duplicar uma conferência
+          // oficial já em voo. Eventos posteriores invalidam normalmente.
+          if (primeiraLeitura && caixaCompartilhado.carregando &&
+              ["ABERTO", "REABERTO"].includes(normalizar(registro.status))) return;
+          if (["ABERTO", "REABERTO"].includes(normalizar(registro.status))) {
+            invalidarResumoCompartilhado(caixa);
+          } else {
+            limparCaixaCompartilhado();
+          }
+        }, erro => console.warn("[ÍNTEGRO] Monitoramento do caixa indisponível.", erro?.message || erro));
+      } catch (erro) {
+        console.warn("[ÍNTEGRO] Não foi possível monitorar o caixa.", erro?.message || erro);
+      }
+    }
+    agendarResumoCompartilhado(caixa);
   }
 
   function resumoOficial(snapshot, caixa) {
@@ -428,7 +597,10 @@
     const conferencia = conferenciaValor(input?.value, snapshot.caixaFinalEsperadoCentavos);
     const impedimentos = impedimentosFechamento(snapshot, operacoesAindaSincronizando());
     // Mesmo com valor físico correto, visita sem baixa impede a confirmação.
-    confirmar.disabled = !conferencia.confere || !impedimentos.podeFechar;
+    const compartilhado = typeof obterResumoCompartilhado === "function"
+      ? obterResumoCompartilhado() : null;
+    const atualizando = compartilhado?.desatualizado === true;
+    confirmar.disabled = !conferencia.confere || !impedimentos.podeFechar || atualizando;
     if (!conferencia.valido) {
       validar.textContent = impedimentos.podeFechar
         ? "Digite o valor contado no caixa."
@@ -443,9 +615,12 @@
       validar.textContent = "Valor físico confere, mas o fechamento ainda está bloqueado: " + impedimentos.motivos.join(" ");
       validar.className = "integro-fechamento-validacao erro";
     } else {
-      validar.textContent = "Valor confirmado. Todas as visitas possuem baixa. Fechamento liberado.";
+      validar.textContent = atualizando
+        ? "Valor físico confere. Atualizando a conferência oficial antes de liberar o fechamento."
+        : "Valor confirmado. Todas as visitas possuem baixa. Fechamento liberado.";
       validar.className = "integro-fechamento-validacao ok";
     }
+    if (atualizando) validar.className = "integro-fechamento-validacao";
     return conferencia;
   }
 
@@ -504,6 +679,7 @@
 
       etapa(dialog, "validar", "processando");
       const snapshotAtualizado = await prepararSnapshot(caixa);
+      publicarResumoCompartilhado(caixa, snapshotAtualizado);
       const impedimentos = impedimentosFechamento(snapshotAtualizado, operacoesAindaSincronizando());
       if (!impedimentos.podeFechar) {
         const erro = new Error("Fechamento não autorizado: " + impedimentos.motivos.join(" "));
@@ -557,6 +733,47 @@
     }
   }
 
+  function renderizarResumoCompartilhado(dialog, snapshot, caixa, cancelar, inline = false) {
+    if (!dialog?.isConnected || fechamentoEmAndamento) return;
+    const anterior = dialog.querySelector?.("#integroFechamentoValorInformado");
+    const valorDigitado = anterior?.value || "";
+    const mantinhaFoco = global.document?.activeElement === anterior;
+    dialog.innerHTML = htmlResumo(snapshot, caixa);
+    const informativo = dialog.querySelector(".integro-fechamento-origem");
+    const compartilhado = obterResumoCompartilhado(caixa);
+    if (informativo && compartilhado) {
+      informativo.textContent = compartilhado.desatualizado
+        ? "Última conferência do Firebase · atualizando movimentações…"
+        : "Dados conferidos no Firebase · " + new Date(compartilhado.confirmadoEm)
+          .toLocaleTimeString("pt-BR", { timeZone:"America/Sao_Paulo", hour:"2-digit", minute:"2-digit" });
+    }
+    const input = dialog.querySelector("#integroFechamentoValorInformado");
+    const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
+    if (input) input.value = valorDigitado;
+    dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao =>
+      botao.addEventListener("click", cancelar));
+    dialog.querySelectorAll("[data-fechamento-atualizar]").forEach(botao =>
+      botao.addEventListener("click", () => {
+        invalidarResumoCompartilhado(caixa);
+        atualizarResumoCompartilhado({ caixa, forcar: true }).catch(erro =>
+          notificar(erro?.message || "Não foi possível consultar o caixa no servidor."));
+      }));
+    input?.addEventListener("input", () => atualizarConferencia(dialog, snapshot));
+    input?.addEventListener("keydown", evento => {
+      if (evento.key === "Enter" && !confirmar?.disabled) confirmar.click();
+    });
+    confirmar?.addEventListener("click", () => {
+      const conferencia = atualizarConferencia(dialog, snapshot);
+      if (!conferencia.confere || confirmar.disabled ||
+          !impedimentosFechamento(snapshot, operacoesAindaSincronizando()).podeFechar) return;
+      executarFechamento(dialog, caixa, conferencia.informadoCentavos, cancelar, inline);
+    });
+    atualizarConferencia(dialog, snapshot);
+    if (mantinhaFoco) input?.focus?.({ preventScroll: true });
+    else if (!global.matchMedia?.("(max-width: 760px)")?.matches && !valorDigitado &&
+        !inline) setTimeout(() => input?.focus?.({ preventScroll: true }), 20);
+  }
+
   async function abrirResumoFechamento({ inline = false } = {}) {
     if (!ehVendedor()) return notificar("Este fechamento é exclusivo do perfil vendedor.");
     if (fechamentoEmAndamento || preparandoFechamento) return;
@@ -591,29 +808,25 @@
         global.State?.setCaixas?.([caixa, ...existentes.filter(item =>
           texto(item.id || item.caixaId) !== texto(caixa.id))]);
       }
-      // A consulta é somente leitura. Pendências e sincronizações aparecem
-      // no resumo; elas bloqueiam apenas a confirmação transacional.
-      // Consulta somente leitura: evita sincronização geral e não exige
-      // visitas concluídas para mostrar os valores atuais do caixa.
-      const snapshot = await prepararSnapshot(caixa);
-      if (!dialog.isConnected) return;
-      dialog.innerHTML = htmlResumo(snapshot, caixa);
-      const input = dialog.querySelector("#integroFechamentoValorInformado");
-      const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
-      dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao => botao.addEventListener("click", cancelar));
-      dialog.querySelectorAll("[data-fechamento-atualizar]").forEach(botao => botao.addEventListener("click", () => abrirResumoFechamento({ inline: !!painel })));
-      input?.addEventListener("input", () => atualizarConferencia(dialog, snapshot));
-      input?.addEventListener("keydown", evento => {
-        if (evento.key === "Enter" && !confirmar?.disabled) confirmar.click();
-      });
-      confirmar?.addEventListener("click", () => {
-        const conferencia = atualizarConferencia(dialog, snapshot);
-        if (!conferencia.confere || !impedimentosFechamento(snapshot, operacoesAindaSincronizando()).podeFechar) return;
-        executarFechamento(dialog, caixa, conferencia.informadoCentavos, cancelar, !!painel);
-      });
-      if (!global.matchMedia?.("(max-width: 760px)")?.matches) {
-        setTimeout(() => input?.focus({ preventScroll: true }), 20);
+      // Compartilha a última conferência oficial com o Dashboard.
+      // Havendo snapshot validado, os cards aparecem no mesmo frame da abertura.
+      garantirEscopoCaixaCompartilhado(caixa);
+      observarCaixaCompartilhado();
+      const anterior = obterResumoCompartilhado(caixa);
+      if (anterior) {
+        renderizarResumoCompartilhado(dialog, anterior.snapshot, caixa, cancelar, !!painel);
+        if (!anterior.desatualizado && Date.now() - anterior.confirmadoEm < 10000) return;
+        // Quando está desatualizado, mantém os valores anteriores VISÍVEIS
+        // enquanto a nova conferência chega; sem bloquear a navegação.
+        atualizarResumoCompartilhado({ caixa, forcar: true }).catch(erro => {
+          console.warn("[ÍNTEGRO] Nova conferência aguardando conexão.", erro?.message || erro);
+        });
+        return;
       }
+      const snapshot = await atualizarResumoCompartilhado({ caixa, forcar: true });
+      if (!dialog.isConnected) return;
+      if (!snapshot) throw new Error("Conferência oficial indisponível.");
+      renderizarResumoCompartilhado(dialog, snapshot, caixa, cancelar, !!painel);
     } catch (erro) {
       console.error("[ÍNTEGRO] Não foi possível preparar o fechamento.", erro);
       const mensagem = erro?.message || "Não foi possível preparar o fechamento do caixa.";
@@ -734,6 +947,31 @@
     global.validarEAbrirFechamentoCaixa = abrirResumoFechamento;
     global.abrirFechamentoCaixa = abrirResumoFechamento;
     garantirEstilos();
+    // O mesmo snapshot oficial abastece a conferência aberta e os indicadores
+    // compartilhados do dashboard, sem cada aba executar uma consulta separada.
+    document.addEventListener("integro-vendedor-caixa-resumo-atualizado", () => {
+      if (fechamentoEmAndamento) return;
+      const caixa = caixaAbertoLocal();
+      const dado = obterResumoCompartilhado(caixa);
+      if (!dado) return;
+      const painel = document.getElementById("abaFechamentoCaixa");
+      if (painel && painel.style.display !== "none" && painel.isConnected) {
+        renderizarResumoCompartilhado(painel, dado.snapshot, caixa,
+          () => global.abrirAbaVendasCobrancas?.("cobrancas"), true);
+      }
+      const dialog = document.getElementById("integroVendedorFechamentoDialog");
+      if (dialog?.isConnected) renderizarResumoCompartilhado(dialog, dado.snapshot, caixa, removerDialogo, false);
+    });
+    document.addEventListener("integro-vendedor-caixa-resumo-sincronizando", () => {
+      const painel = document.getElementById("abaFechamentoCaixa");
+      const dialog = painel?.style?.display !== "none" ? painel : document.getElementById("integroVendedorFechamentoDialog");
+      if (dialog?.querySelector?.("#integroFechamentoValidacao")) {
+        const resumo = obterResumoCompartilhado();
+        if (resumo) atualizarConferencia(dialog, resumo.snapshot);
+        const origem = dialog.querySelector(".integro-fechamento-origem");
+        if (origem) origem.textContent = "Última conferência do Firebase · atualizando movimentações…";
+      }
+    });
     instalarObserverBotao();
 
     document.addEventListener("usuario-validado", evento => {
@@ -743,17 +981,32 @@
       setTimeout(atualizarBotaoFechamento, 0);
       setTimeout(atualizarBotaoFechamento, 350);
     });
+    ["integro-perfil-dados-carregados", "integro-tela-alterada"].forEach(nome => {
+      document.addEventListener(nome, () => setTimeout(observarCaixaCompartilhado, 0));
+    });
+    ["integro-operacoes-tempo-real-atualizadas", "integro-vendedor-operacao-sync",
+      "integro-vendedor-baixa-confirmada", "integro-vendedor-operacao-atualizada"].forEach(nome => {
+      document.addEventListener(nome, () => {
+        if (ehVendedor()) invalidarResumoCompartilhado();
+      });
+    });
     ["integro-perfil-dados-carregados", "integro-operacoes-tempo-real-atualizadas", "integro-tela-alterada", "integro-vendedor-operacao-sync", "integro-vendedor-baixa-confirmada"].forEach(nome => {
       document.addEventListener(nome, () => setTimeout(atualizarBotaoFechamento, 0));
     });
     setTimeout(atualizarBotaoFechamento, 0);
     setTimeout(atualizarBotaoFechamento, 500);
     setTimeout(atualizarBotaoFechamento, 1500);
+    setTimeout(observarCaixaCompartilhado, 350);
+    setTimeout(observarCaixaCompartilhado, 1200);
   }
 
   return Object.freeze({
     install,
     abrirResumoFechamento,
+    obterResumoCompartilhado,
+    atualizarResumoCompartilhado,
+    invalidarResumoCompartilhado,
+    observarCaixaCompartilhado,
     atualizarBotaoFechamento,
     bloquearAcessoSemCaixa,
     localizarCaixaAbertoPersistido,
