@@ -577,7 +577,7 @@ test("abrir conferência consulta o servidor sem exigir visitas concluídas; fec
   assert.match(preview, /const snapshot = await atualizarResumoCompartilhado\(\{ caixa, forcar: true \}\)/);
   assert.doesNotMatch(preview, /await sincronizarAntesDoFechamento\(caixa\)/);
   assert.doesNotMatch(preview, /return notificar\(.*cobrança\(s\) sem baixa/);
-  assert.match(preview, /!impedimentosFechamento\(snapshot, operacoesAindaSincronizando\(\)\)\.podeFechar/);
+  assert.match(fechamento, /!impedimentosFechamento\(snapshot, operacoesAindaSincronizando\(\)\)\.podeFechar/);
   assert.match(fechamento, /await sincronizarAntesDoFechamento\(caixa\)/);
   assert.match(fechamento, /const snapshotAtualizado = await prepararSnapshot\(caixa\)/);
   assert.match(fechamento, /if \(!impedimentos\.podeFechar\)/);
