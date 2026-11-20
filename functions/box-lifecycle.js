@@ -290,9 +290,16 @@ function criarCicloCaixa({ db, functions }) {
     const linked=await transaction.get(db.collection("usuarios").where("clientePlataformaId","==",who.tenant).where("authUid","==",uid).limit(3));
     if(linked.docs.length>=3) fail("failed-precondition","Identidade do vendedor exige regularização.");
     const sellerIds=new Set([box.vendedorId,seller.id,uid,...linked.docs.map(d=>d.id)]);
-    const saleResults=await Promise.all([query("vendas","vendedorAuthUid",uid),...Array.from(sellerIds,sellerId=>query("vendas","vendedorId",sellerId)),query("vendas","caixaId",boxId)]);
-    const sales=[...new Map(saleResults.flat().map(s=>[s.id,s])).values()].sort((a,b)=>a.id.localeCompare(b.id));
-    if(sales.some(s=>(s.vendedorAuthUid ? s.vendedorAuthUid!==uid : !sellerIds.has(s.vendedorId)) && !(core.texto(s.caixaId || s.idCaixa)===boxId && s.vendedorOriginalAuthUid===uid && s.transferidoParaAuthUid===s.vendedorAuthUid))) fail("failed-precondition","Venda com vínculo de vendedor inconsistente.");
+    const {sales,clients}=await require("./box-portfolio").consultarCarteiraCaixa({
+      transaction,db,tenant:who.tenant,uid,sellerIds:[...sellerIds],boxId,query,fail
+    });
+    // Uma venda originada NESTE caixa não pode apontar para outro vendedor.
+    // Vendas de caixas antigos entram somente quando o cliente foi transferido
+    // para a carteira atual, sem alterar a autoria ou o histórico financeiro.
+    if(sales.some(s=>core.texto(s.caixaId || s.idCaixa)===boxId &&
+      (s.vendedorAuthUid ? s.vendedorAuthUid!==uid : !sellerIds.has(s.vendedorId)) &&
+      !(s.vendedorOriginalAuthUid===uid && s.transferidoParaAuthUid===s.vendedorAuthUid)))
+      fail("failed-precondition","Venda do caixa com vínculo de vendedor inconsistente.");
     // Cada venda exigia uma consulta Firestore própria para parcelas. Em
     // carteiras grandes isso multiplicava RPCs e podia esgotar o tempo da
     // callable. Agrupa até 8 vendas (máximo operacional: 90 parcelas/venda)
@@ -317,7 +324,7 @@ function criarCicloCaixa({ db, functions }) {
       query("pagamentos","caixaId",boxId),query("solicitacoes","caixaId",boxId),query("historicoCobrancas","caixaId",boxId),query("lancamentos_financeiros","caixaId",boxId),
       ...installmentQueries
     ]);
-    const raw={box,sales,installments:parts.flat(),payments,requests,visits,ledger,ownerUid:uid,sellerIds:[...sellerIds]};
+    const raw={box,sales,clients,installments:parts.flat(),payments,requests,visits,ledger,ownerUid:uid,sellerIds:[...sellerIds]};
     const result=require("./box-reconciliation").calcularConferencia({...raw,fail});
     const stable=value=>JSON.stringify(value,(_,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
     result.conferenciaId=require("node:crypto").createHash("sha256").update(stable(raw)).digest("hex");
