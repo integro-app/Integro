@@ -365,7 +365,7 @@
       caixaId: caixaCompartilhado.caixaId,
       snapshot: caixaCompartilhado.snapshot,
       confirmadoEm: caixaCompartilhado.confirmadoEm,
-      desatualizado: caixaCompartilhado.invalidado || Boolean(caixaCompartilhado.carregando)
+      desatualizado: caixaCompartilhado.invalidado
     };
   }
 
@@ -395,6 +395,7 @@
     if (!forcar && caixaCompartilhado.snapshot && !caixaCompartilhado.invalidado &&
         Date.now() - caixaCompartilhado.confirmadoEm < 10000) return caixaCompartilhado.snapshot;
     const revisao = caixaCompartilhado.revisao;
+    if (forcar && caixaCompartilhado.snapshot) caixaCompartilhado.invalidado = true;
     caixaCompartilhado.ultimaConsulta = Date.now();
     const consulta = (async () => {
       const snapshot = await prepararSnapshot(caixa);
@@ -929,6 +930,31 @@
     global.validarEAbrirFechamentoCaixa = abrirResumoFechamento;
     global.abrirFechamentoCaixa = abrirResumoFechamento;
     garantirEstilos();
+    // O mesmo snapshot oficial abastece a conferência aberta e os indicadores
+    // compartilhados do dashboard, sem cada aba executar uma consulta separada.
+    document.addEventListener("integro-vendedor-caixa-resumo-atualizado", () => {
+      if (fechamentoEmAndamento) return;
+      const caixa = caixaAbertoLocal();
+      const dado = obterResumoCompartilhado(caixa);
+      if (!dado) return;
+      const painel = document.getElementById("abaFechamentoCaixa");
+      if (painel && painel.style.display !== "none" && painel.isConnected) {
+        renderizarResumoCompartilhado(painel, dado.snapshot, caixa,
+          () => global.abrirAbaVendasCobrancas?.("cobrancas"), true);
+      }
+      const dialog = document.getElementById("integroVendedorFechamentoDialog");
+      if (dialog?.isConnected) renderizarResumoCompartilhado(dialog, dado.snapshot, caixa, removerDialogo, false);
+    });
+    document.addEventListener("integro-vendedor-caixa-resumo-sincronizando", () => {
+      const painel = document.getElementById("abaFechamentoCaixa");
+      const dialog = painel?.style?.display !== "none" ? painel : document.getElementById("integroVendedorFechamentoDialog");
+      if (dialog?.querySelector?.("#integroFechamentoValidacao")) {
+        const resumo = obterResumoCompartilhado();
+        if (resumo) atualizarConferencia(dialog, resumo.snapshot);
+        const origem = dialog.querySelector(".integro-fechamento-origem");
+        if (origem) origem.textContent = "Última conferência do Firebase · atualizando movimentações…";
+      }
+    });
     instalarObserverBotao();
 
     document.addEventListener("usuario-validado", evento => {
@@ -938,17 +964,32 @@
       setTimeout(atualizarBotaoFechamento, 0);
       setTimeout(atualizarBotaoFechamento, 350);
     });
+    ["integro-perfil-dados-carregados", "integro-tela-alterada"].forEach(nome => {
+      document.addEventListener(nome, () => setTimeout(observarCaixaCompartilhado, 0));
+    });
+    ["integro-operacoes-tempo-real-atualizadas", "integro-vendedor-operacao-sync",
+      "integro-vendedor-baixa-confirmada", "integro-vendedor-operacao-atualizada"].forEach(nome => {
+      document.addEventListener(nome, () => {
+        if (ehVendedor()) invalidarResumoCompartilhado();
+      });
+    });
     ["integro-perfil-dados-carregados", "integro-operacoes-tempo-real-atualizadas", "integro-tela-alterada", "integro-vendedor-operacao-sync", "integro-vendedor-baixa-confirmada"].forEach(nome => {
       document.addEventListener(nome, () => setTimeout(atualizarBotaoFechamento, 0));
     });
     setTimeout(atualizarBotaoFechamento, 0);
     setTimeout(atualizarBotaoFechamento, 500);
     setTimeout(atualizarBotaoFechamento, 1500);
+    setTimeout(observarCaixaCompartilhado, 350);
+    setTimeout(observarCaixaCompartilhado, 1200);
   }
 
   return Object.freeze({
     install,
     abrirResumoFechamento,
+    obterResumoCompartilhado,
+    atualizarResumoCompartilhado,
+    invalidarResumoCompartilhado,
+    observarCaixaCompartilhado,
     atualizarBotaoFechamento,
     bloquearAcessoSemCaixa,
     localizarCaixaAbertoPersistido,
