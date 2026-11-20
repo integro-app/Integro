@@ -21,9 +21,9 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro > .dashboard-section
 html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-header {
   position: relative;
   display: flex;
-  justify-content: center !important;
+  justify-content: space-between !important;
   align-items: center !important;
-  min-height: 48px !important;
+  min-height: 36px !important;
   margin: 0 0 12px !important;
   padding: 0 !important;
   border: 0 !important;
@@ -35,8 +35,8 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-titl
   display: flex;
   flex-direction: column;
   gap: 5px;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start !important;
+  text-align: left !important;
   min-width: 0;
 }
 
@@ -62,16 +62,16 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .integro-dashboard-n
 }
 
 html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go {
-  position: absolute;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
+  position: static;
+  right: auto;
+  top: auto;
+  transform: none;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 42px;
-  padding: 0 15px;
+  min-height: 36px;
+  padding: 0 13px;
   border: 1px solid #cfdfed;
   border-radius: 12px;
   background: #fff;
@@ -85,7 +85,7 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go
 }
 
 html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go:hover {
-  transform: translateY(calc(-50% - 1px));
+  transform: translateY(-1px);
   border-color: #91b4d2;
   box-shadow: 0 8px 20px rgba(12, 38, 67, .10);
 }
@@ -370,7 +370,7 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-mo
   line-height: 1.4;
 }
 
-@media (min-width: 900px) and (max-width: 1599px) {
+@media (min-width: 900px) and (max-width: 1349px) {
   html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary {
     grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
   }
@@ -406,22 +406,26 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-mo
 }
 @media (max-width: 699px) {
   html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-header {
-    min-height: 0;
-    margin-top: -5px !important;
+    min-height: 36px !important;
+    margin-top: 0 !important;
     margin-bottom: 11px !important;
-    padding: 0 0 6px !important;
-    flex-direction: column;
-    gap: 12px;
+    padding: 0 !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 8px;
   }
   html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-page-title h2 {
-    font-size: 24px !important;
+    font-size: clamp(20px, 5.8vw, 24px) !important;
   }
   html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go {
     position: static;
     transform: none !important;
-    min-height: 38px;
-    width: 100%;
-    max-width: 260px;
+    min-height: 36px;
+    width: auto;
+    max-width: none;
+    padding: 0 10px;
+    font-size: 11px;
+    flex-shrink: 0;
   }
   html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-kpis-primary {
     grid-template-columns: minmax(0,1fr) !important;
@@ -467,6 +471,11 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-mo
   }
 }
 @media (max-width: 360px) {
+  html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-seller-go {
+    padding: 0 8px;
+    gap: 4px;
+    font-size: 10px;
+  }
   html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-breakdown {
     grid-template-columns: 1fr;
   }
@@ -481,7 +490,7 @@ html body.perfil-vendedor #dashboard.dashboard-vendedor-pro .dashboard-day-no-mo
    do Vendedor. No mobile permanece a folga para a navegação fixa. */
 @media (min-width: 901px) {
   html body.perfil-vendedor:has(#dashboard.active) main.main {
-    padding-top: 18px !important;
+    padding-top: 16px !important;
   }
 }
 @media (max-width: 900px) {

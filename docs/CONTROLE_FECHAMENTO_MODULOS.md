@@ -55,6 +55,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 ### M06 — Dashboard do Vendedor: experiência desktop/mobile (20/11/2026)
 
+- **Referência visual aprovada (20/11, ajuste):** título alinhado à esquerda, ação “Ir para operação” à direita e KPIs em cinco colunas iguais já a partir de 1350px (imagem enviada em 20/11), faixa intermediária responsiva até 1349px, cabeçalho compacto no mobile sem deslocar o conteúdo. Correção apenas de CSS/carregamento e testes de regressão, sem alterar cálculos ou regras do caixa. Pendente comprovação do workflow e homologação visual no navegador autenticado.
 - **Correção complementar (20/11):** cabeçalho centralizado com prioridade sobre a regra compartilhada; espaço superior removido apenas no Dashboard do vendedor, respeitando a navegação fixa no mobile; sino duplicado fora do menu lateral ocultado. Testes estáticos direcionados atualizados. Pendente verificar workflow de Hosting e homologação visual autenticada.
 
 - **Estado:** implementação em branch de homologação `feat/m06-dashboard-vendedor-desktop-mobile-20261120`; **NÃO FECHADO**, **NÃO PUBLICADO**.

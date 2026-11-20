@@ -102,7 +102,7 @@ test("M06: desktop equilibra cards; tablet e mobile possuem breakpoints dedicado
   const css = read("css/dashboard-vendedor-pro.css");
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(css, /kpi-card:nth-child\(n\+4\)/);
-  assert.match(css, /@media \(min-width: 900px\) and \(max-width: 1599px\)/);
+  assert.match(css, /@media \(min-width: 900px\) and \(max-width: 1349px\)/);
   assert.match(css, /@media \(max-width: 699px\)/);
   assert.match(css, /@media \(max-width: 360px\)/);
   assert.match(css, /prefers-reduced-motion: reduce/);
@@ -113,9 +113,9 @@ test("M06: título elevado e os cinco cards têm largura uniforme no desktop", (
   const css = read("css/dashboard-vendedor-pro.css");
   const header = css.match(/\.dashboard-page-header\s*\{([\s\S]*?)\}/)?.[1] || "";
   const grid = css.match(/\.dashboard-kpis-primary\s*\{([\s\S]*?)\}/)?.[1] || "";
-  assert.match(header, /min-height:\s*48px !important/);
+  assert.match(header, /min-height:\s*36px !important/);
   assert.match(header, /margin:\s*0 0 12px !important/);
-  assert.match(header, /justify-content:\s*center !important/);
+  assert.match(header, /justify-content:\s*space-between !important/);
   assert.match(grid, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\)/);
   assert.match(grid, /grid-auto-rows:\s*minmax\(0,\s*1fr\)/);
   assert.match(css, /kpi-card:nth-child\(n\+4\)\s*\{\s*grid-column:\s*span 1 !important/);
@@ -123,7 +123,7 @@ test("M06: título elevado e os cinco cards têm largura uniforme no desktop", (
 
 test("M06: breakpoints mantêm dimensões iguais e evitam quebra de valores", () => {
   const css = read("css/dashboard-vendedor-pro.css");
-  assert.match(css, /@media \(min-width:\s*900px\) and \(max-width:\s*1599px\)/);
+  assert.match(css, /@media \(min-width:\s*900px\) and \(max-width:\s*1349px\)/);
   assert.match(css, /grid-column:\s*2 \/ span 2 !important/);
   assert.match(css, /grid-column:\s*4 \/ span 2 !important/);
   assert.match(css, /@media \(min-width:\s*700px\) and \(max-width:\s*899px\)/);
@@ -137,18 +137,36 @@ test("M06: recursos são atualizados sem depender do cache antigo", () => {
   const seller = read("js/vendedor-unificado.js");
   const visual = read("js/dashboard-vendedor-pro.js");
   assert.match(html, /js\/vendedor-unificado\.js\?v=20261120-m06-cards-uniformes2/);
-  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261120-m06-headercompact3/);
-  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261120-m06-headercompact3/);
+  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261120-m06-referencia-aprovada4/);
+  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261120-m06-referencia-aprovada4/);
 });
 
 test("M06: dashboard compacto e sino acessível apenas pelo menu", () => {
   const css = read("css/dashboard-vendedor-pro.css");
   const visual = read("js/dashboard-vendedor-pro.js");
   assert.match(css, /body\.perfil-vendedor:has\(#dashboard\.active\) main\.main/);
-  assert.match(css, /padding-top:\s*18px !important/);
+  assert.match(css, /padding-top:\s*16px !important/);
   assert.match(css, /calc\(76px \+ env\(safe-area-inset-top\)\)/);
   assert.match(css, /seller-duplicate-notification-bell/);
   assert.match(visual, /function hideDuplicateBells\(\)/);
   assert.match(visual, /#sidebar, \.sidebar, #integroSidebarMenu/);
   assert.match(visual, /hideDuplicateBells\(\);/);
+});
+
+
+test("M06: imagem aprovada, título à esquerda e cinco KPIs em uma linha a partir de 1350px", () => {
+  const css = read("css/dashboard-vendedor-pro.css");
+  const header = css.match(/\.dashboard-page-header\s*\{([\s\S]*?)\}/)?.[1] || "";
+  const title = css.match(/\.dashboard-page-title\s*\{([\s\S]*?)\}/)?.[1] || "";
+  const cta = css.match(/\.dashboard-seller-go\s*\{([\s\S]*?)\}/)?.[1] || "";
+  assert.match(header, /justify-content:\s*space-between !important/);
+  assert.match(header, /min-height:\s*36px !important/);
+  assert.match(title, /align-items:\s*flex-start !important/);
+  assert.match(title, /text-align:\s*left !important/);
+  assert.match(cta, /position:\s*static/);
+  assert.match(cta, /transform:\s*none/);
+  assert.match(css, /grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\) !important/);
+  assert.match(css, /@media \(min-width:\s*900px\) and \(max-width:\s*1349px\)/);
+  assert.doesNotMatch(css, /max-width:\s*1599px/);
+  assert.match(css, /@media \(max-width: 699px\)[\s\S]*?flex-direction:\s*row !important/);
 });
