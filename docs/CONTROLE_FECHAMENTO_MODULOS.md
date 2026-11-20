@@ -399,3 +399,13 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Consistência:** totais sempre refletem a lista obtida do servidor, nunca valores inventados. “Masters Locais diretos” conta somente as contas Auth provisionadas com vínculo direto ao cliente; não presume vínculos adicionais fora dessa relação. Se plano/vencimento não estiver informado, a UI declara ausência de informação.
 - **Arquivos:** `master-global.html`, `css/master-global-clientes.css`, `tests/master-global-clientes.test.js`, `package.json`.
 - **Status:** em homologação, branch empilhada sobre PR #69; requer testes automáticos e inspeção autenticada desktop/mobile. Sem deploy de produção.
+
+
+### M01 — Usuários Internos · Auditoria de interface e gestão (20/11/2026)
+
+- **Diagnóstico por captura:** tela apresentava título e botão de criação duplicados, quadro quase vazio sem resumo de equipe, sem busca/filtros, sem experiência profissional de cadastro ou ficha.
+- **Escopo implantado em homologação:** título “Usuários internos”, indicadores de total, acesso liberado, acesso restrito e cadastros sem Auth; pesquisa acento-insensível por nome, e-mail, cargo e departamento; filtros combináveis de cargo/departamento/situação; ordenação por nome ou criação; cards administrativos desktop, vista compacta mobile e paginação local (20 usuários). Estado vazio com explicação do fluxo de criação e CTA real.
+- **Identidade/controles:** cabeçalho centralizado, um só botão de criação e um só controle de atualização por viewport; logo/sidebar e login aprovados preservados. Ficha com cargo, departamento, status, Auth, data de cadastro, empresas de consulta e atalhos para as ações autorizadas existentes.
+- **Fonte e segurança:** usa `listarPainel` através de `getUsuariosInternos`, sem coleções paralelas, contas fictícias, métricas de presença online ou alteração em Rules/Functions. Cadastrar/editar chama `salvarUsuarioInterno` do backend; acesso individual via `alterarAcessoUsuario`, empresas de consulta via `salvarClientesConsultaFuncionario`; provisionamento de legado protegido; autenticação gera senha aleatória, mostra credencial no fluxo de criação e obriga troca no primeiro acesso. Contas recém-criadas ficam sem acesso liberado até ato administrativo posterior.
+- **Arquivos:** `master-global.html`, `css/master-global-usuarios-internos.css`, `js/master-global-usuarios-internos.js`, `tests/master-global-usuarios-internos.test.js`, `package.json`.
+- **Status:** aguardando CI e validação autenticada desktop/mobile. Preview apenas, sem alterar produção. Base em PR #70/69/68/66 ainda em homologação.

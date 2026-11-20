@@ -361,6 +361,7 @@
   <link rel="stylesheet" href="css/integro-platform-chat.css?v=20261119-chat-saas1">
   <link rel="stylesheet" href="css/master-global-dashboard.css?v=20261119-exec1">
   <link rel="stylesheet" href="css/master-global-clientes.css?v=20261119-clientes-premium1">
+  <link rel="stylesheet" href="css/master-global-usuarios-internos.css?v=20261120-usuarios1">
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-global">
 
@@ -502,7 +503,39 @@
       </div>
     </section>
 
-    <section id="usuarios" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Usuários internos ÍNTEGRO</h2><p>Equipe interna que administra a plataforma.</p></div><button class="btn btn-primary" onclick="abrirFormUsuarioInterno()">Novo usuário interno</button></div><div id="listaUsuarios" class="list"></div></div></section>
+    <section id="usuarios" class="screen mgui-users" aria-label="Gestão da equipe interna ÍNTEGRO">
+      <div class="mgui-intro">
+        <div><div class="mgui-overline"><span class="material-symbols-rounded" aria-hidden="true">groups</span>EQUIPE DA PLATAFORMA</div>
+          <p>Gerencie funcionários, cargos, departamentos, liberações e autorizações de consulta.</p></div>
+        <div class="mgui-intro-actions">
+          <span class="mgui-last-sync"><span class="material-symbols-rounded" aria-hidden="true">verified</span><span id="dataConsultaUsuariosInternos">Dados da consulta administrativa</span></span>
+          <button type="button" class="mgui-create" onclick="abrirFormUsuarioInterno()"><span class="material-symbols-rounded" aria-hidden="true">person_add</span>Novo usuário interno</button>
+        </div>
+      </div>
+      <div class="mgui-snapshot" aria-label="Indicadores de usuários internos">
+        <button type="button" class="mgui-snapshot-card is-selected" data-mgui-quick="" aria-pressed="true" onclick="aplicarFiltroRapidoUsuariosInternos('')"><div><span>Total da equipe</span><strong id="mguiTotal">—</strong></div><div class="mgui-snapshot-icon"><span class="material-symbols-rounded" aria-hidden="true">groups</span></div></button>
+        <button type="button" class="mgui-snapshot-card" data-mgui-quick="ATIVO" aria-pressed="false" onclick="aplicarFiltroRapidoUsuariosInternos('ATIVO')"><div><span>Acesso liberado</span><strong id="mguiActive">—</strong></div><div class="mgui-snapshot-icon"><span class="material-symbols-rounded" aria-hidden="true">verified_user</span></div></button>
+        <button type="button" class="mgui-snapshot-card" data-mgui-quick="RESTRITO" aria-pressed="false" onclick="aplicarFiltroRapidoUsuariosInternos('RESTRITO')"><div><span>Acesso restrito</span><strong id="mguiRestricted">—</strong></div><div class="mgui-snapshot-icon"><span class="material-symbols-rounded" aria-hidden="true">lock</span></div></button>
+        <button type="button" class="mgui-snapshot-card" data-mgui-quick="SEM_AUTH" aria-pressed="false" onclick="aplicarFiltroRapidoUsuariosInternos('SEM_AUTH')"><div><span>Cadastro pendente</span><strong id="mguiPending">—</strong></div><div class="mgui-snapshot-icon"><span class="material-symbols-rounded" aria-hidden="true">person_alert</span></div></button>
+      </div>
+      <div class="mgui-controls">
+        <label class="mgui-search" for="buscaUsuariosInternos"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaUsuariosInternos" type="search" autocomplete="off" enterkeyhint="search" placeholder="Buscar nome, e-mail, cargo ou departamento" aria-label="Buscar funcionários internos" oninput="renderUsuariosInternos()"></label>
+        <div class="mgui-toolbar-actions">
+          <button class="mgui-filters-btn" id="btnFiltrosUsuariosInternos" type="button" aria-expanded="false" aria-controls="painelFiltrosUsuariosInternos" onclick="alternarFiltrosUsuariosInternos()"><span class="material-symbols-rounded" aria-hidden="true">tune</span>Filtros</button>
+          <button class="mgui-refresh-btn" type="button" onclick="carregarTudo().catch(err=>notificarIntegro(mensagemErroGlobal(err)))"><span class="material-symbols-rounded" aria-hidden="true">refresh</span>Atualizar dados</button>
+        </div>
+      </div>
+      <div class="mgui-filters" id="painelFiltrosUsuariosInternos" hidden>
+        <label for="filtroCargoUsuariosInternos">Cargo<select id="filtroCargoUsuariosInternos" onchange="renderUsuariosInternos()"><option value="">Todos os cargos</option><option value="interno_integro">Interno ÍNTEGRO</option><option value="comercial_integro">Comercial</option><option value="financeiro_integro">Financeiro</option><option value="suporte_integro">Suporte</option></select></label>
+        <label for="filtroDepartamentoUsuariosInternos">Departamento<select id="filtroDepartamentoUsuariosInternos" onchange="renderUsuariosInternos()"><option value="">Todos os departamentos</option></select></label>
+        <label for="filtroStatusUsuariosInternos">Situação de acesso<select id="filtroStatusUsuariosInternos" onchange="renderUsuariosInternos()"><option value="">Todas as situações</option><option value="ATIVO">Liberado</option><option value="RESTRITO">Restrito</option><option value="SEM_AUTH">Sem Auth</option></select></label>
+        <label for="ordemUsuariosInternos">Ordenar<select id="ordemUsuariosInternos" onchange="renderUsuariosInternos()"><option value="AZ">Nome (A–Z)</option><option value="ZA">Nome (Z–A)</option><option value="NEW">Cadastro mais recente</option><option value="OLD">Cadastro mais antigo</option></select></label>
+        <button type="button" class="mgui-filters-clear" onclick="limparFiltrosUsuariosInternos()">Limpar filtros</button>
+      </div>
+      <div class="mgui-results"><p id="contadorUsuariosInternos" role="status" aria-live="polite">Carregando a equipe...</p><span><span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>Acesso administrativo restrito</span></div>
+      <div id="listaUsuarios" class="mgui-list" aria-label="Usuários internos da plataforma"></div>
+      <div class="mgui-load-more"><button type="button" id="btnMaisUsuariosInternos" class="btn btn-light" onclick="carregarMaisUsuariosInternos()" hidden>Carregar mais usuários <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div>
+    </section>
     <section id="departamentos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Departamentos internos</h2><p>Comercial, financeiro, suporte e administrativo.</p></div><button class="btn btn-primary" onclick="abrirFormDepartamento()">Novo departamento</button></div><div id="listaDepartamentos" class="list"></div></div></section>
     <section id="planos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Planos da plataforma</h2><p>Planos comerciais do SaaS.</p></div><button class="btn btn-primary" onclick="abrirFormPlano()">Novo plano</button></div><div id="listaPlanos" class="list"></div></div></section>
     <section id="notificacoes" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Notificações</h2><p>Central global de avisos.</p></div><button class="btn btn-primary" onclick="abrirFormNotificacao()">Nova notificação</button></div><div id="listaNotificacoes" class="list"></div></div></section>
@@ -517,11 +550,12 @@
   </main>
   <div id="drawerOverlay" class="drawer-overlay"></div><aside id="drawer" class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Detalhes</h2><p id="drawerSubtitle">Informações</p></div><button class="close-btn" onclick="fecharDrawer()" aria-label="Fechar detalhes">×</button></div><div id="drawerBody" class="drawer-body"></div></aside>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script>
+  <script src="js/master-global-usuarios-internos.js?v=20261120-usuarios1"></script>
   <script>
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false,promessaCarregamentoGlobal=null;
     let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
     let dadosGlobaisCarregados=false,atualizadoEmGlobal='';
-    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes','Contratantes da plataforma ÍNTEGRO, pessoas físicas e jurídicas.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos ÍNTEGRO','Equipe interna que gerencia a ÍNTEGRO.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
+    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes','Contratantes da plataforma ÍNTEGRO, pessoas físicas e jurídicas.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos','Equipe e permissões administrativas da plataforma.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
 
     let integroBootPercentualAtual = 0;
 
@@ -918,7 +952,38 @@
       if(mais){mais.hidden=visiveis.length>=lista.length;mais.disabled=visiveis.length>=lista.length;}
     }
     function renderMasters(){const host=byId('listaMasters');if(!host)return;const lista=getMastersLocais();host.innerHTML=lista.length?lista.map(u=>cardUsuario(u,'master')).join(''):empty('Nenhum Master Local encontrado.')}
-    function renderUsuariosInternos(){const lista=getUsuariosInternos();byId('listaUsuarios').innerHTML=lista.length?lista.map(u=>cardUsuario(u,'interno')).join(''):empty('Nenhum usuário interno encontrado.')}
+    function renderUsuariosInternos(){
+      if(!window.IntegroInternalUsers){
+        const lista=byId('listaUsuarios');
+        if(lista)lista.textContent='A interface da equipe não carregou. Atualize a página.';
+        return;
+      }
+      window.IntegroInternalUsers.draw({
+        users:getUsuariosInternos(),departments:departamentos,updatedAt:atualizadoEmGlobal
+      });
+    }
+    function aplicarFiltroRapidoUsuariosInternos(valor){
+      if(!['','ATIVO','RESTRITO','SEM_AUTH'].includes(valor))return;
+      setVal('filtroStatusUsuariosInternos',valor);
+      renderUsuariosInternos();
+    }
+    function alternarFiltrosUsuariosInternos(){
+      const painel=byId('painelFiltrosUsuariosInternos');
+      const botao=byId('btnFiltrosUsuariosInternos');
+      if(!painel||!botao)return;
+      painel.hidden=!painel.hidden;
+      botao.setAttribute('aria-expanded',String(!painel.hidden));
+    }
+    function limparFiltrosUsuariosInternos(){
+      for(const id of ['buscaUsuariosInternos','filtroCargoUsuariosInternos','filtroDepartamentoUsuariosInternos','filtroStatusUsuariosInternos'])setVal(id,'');
+      setVal('ordemUsuariosInternos','AZ');
+      window.IntegroInternalUsers?.reset();
+      renderUsuariosInternos();
+    }
+    function carregarMaisUsuariosInternos(){
+      window.IntegroInternalUsers?.loadMore();
+      renderUsuariosInternos();
+    }
     function renderDepartamentos(){
       byId('listaDepartamentos').innerHTML=departamentos.length?departamentos.map(d=>
         '<div class="list-card"><div class="list-bar" style="background:#7c3aed"></div><div><h3>'+
@@ -1081,7 +1146,7 @@
             '<button class="btn btn-primary" data-mg-action="provisionar-interno" data-id="'+esc(u.id)+'">Provisionar Auth</button>':''))+
         '</div></div>';
     }
-    function trocarTela(id,btn){document.body.classList.toggle('mg-clientes-ativa',id==='clientes');document.body.classList.toggle('integro-platform-chat-active',id==='chat');document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
+    function trocarTela(id,btn){document.body.classList.toggle('mgui-users-active',id==='usuarios');document.body.classList.toggle('mg-clientes-ativa',id==='clientes');document.body.classList.toggle('integro-platform-chat-active',id==='chat');document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
     function atualizarBotaoAcao(id){
       const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],
         masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],
@@ -1560,16 +1625,29 @@
       if(id&&!u)return notificarIntegro('Usuário interno não encontrado.');
       const deps=departamentos.filter(d=>status(d.status)!=='INATIVO'||d.id===u?.departamentoId);
       const options=deps.map(d=>'<option value="'+esc(d.id)+'">'+esc(d.nome||'Departamento')+'</option>').join('');
-      abrirDrawer(id?'Editar usuário interno':'Novo usuário interno','Conta real no Firebase Authentication',
-        '<div class="grid"><div class="field-grid"><div><label class="form-label">Nome</label><input id="uiNome" class="form-input" maxlength="180" value="'+esc(u?.nome||'')+'"></div>'+
-        '<div><label class="form-label">E-mail de login</label><input id="uiEmail" type="email" class="form-input" maxlength="254" value="'+esc(u?.email||'')+'" '+(id?'readonly':'')+'></div></div>'+
-        '<div><label class="form-label">Cargo interno</label><select id="uiTipo" class="form-select">'+
-        '<option value="interno_integro">Interno ÍNTEGRO</option><option value="comercial_integro">Comercial ÍNTEGRO</option>'+
-        '<option value="financeiro_integro">Financeiro ÍNTEGRO</option><option value="suporte_integro">Suporte ÍNTEGRO</option></select></div>'+
-        '<div><label class="form-label">Departamento</label><select id="uiDepartamento" class="form-select"><option value="">Sem departamento</option>'+options+'</select></div>'+
-        '<div class="notice">O usuário será autenticado pelo Firebase e não terá acesso a dados de outra empresa por associação de e-mail. A senha será definida pelo próprio usuário.</div>'+
-        '<button class="btn btn-primary" id="btnSalvarInterno">Salvar usuário</button></div>');
-      setVal('uiTipo',u?.cargoChave||'interno_integro');setVal('uiDepartamento',u?.departamentoId||'');
+      abrirDrawer(id?'Editar usuário interno':'Novo usuário interno',
+        id?'Atualize os dados permitidos da conta existente':'Crie uma conta administrativa com Auth e senha provisória gerada pelo servidor',
+        '<div class="mgui-form">'+
+          '<div class="mgui-form-top"><span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>'+
+            '<div><strong>'+(id?'Dados do funcionário':'Cadastro seguro de funcionário')+'</strong>'+
+            '<small>'+(id?'O e-mail de login permanece vinculado à conta Auth atual.':'Apenas funcionários da plataforma ÍNTEGRO; não vincula usuários a um tenant.')+'</small></div></div>'+
+          '<div><label class="form-label" for="uiNome">Nome completo</label><input id="uiNome" class="form-input" type="text" autocomplete="name" maxlength="180" placeholder="Nome e sobrenome" value="'+esc(u?.nome||'')+'"></div>'+
+          '<div><label class="form-label" for="uiEmail">E-mail de login</label><input id="uiEmail" type="email" class="form-input" autocomplete="off" maxlength="254" placeholder="funcionario@empresa.com" value="'+esc(u?.email||'')+'" '+(id?'readonly':'')+'></div>'+
+          '<div><label class="form-label" for="uiTipo">Cargo interno</label><select id="uiTipo" class="form-select">'+
+            '<option value="interno_integro">Interno ÍNTEGRO</option>'+
+            '<option value="comercial_integro">Comercial ÍNTEGRO</option>'+
+            '<option value="financeiro_integro">Financeiro ÍNTEGRO</option>'+
+            '<option value="suporte_integro">Suporte ÍNTEGRO</option></select></div>'+
+          '<div><label class="form-label" for="uiDepartamento">Departamento</label><select id="uiDepartamento" class="form-select">'+
+            '<option value="">Sem departamento</option>'+options+'</select></div>'+
+          '<div class="mgui-form-notice"><strong>Segurança do acesso</strong>'+
+            (id?'A edição do perfil não redefine a senha ou libera o acesso automaticamente.':
+              'O servidor gera uma senha provisória aleatória, exibida uma única vez após a criação. A conta exige troca de senha no primeiro login e sua liberação é administrada separadamente.')+
+            '</div>'+
+          '<button class="btn btn-primary" type="button" id="btnSalvarInterno">'+(id?'Salvar alterações':'Criar usuário interno')+'</button>'+
+        '</div>');
+      setVal('uiTipo',u?.cargoChave||'interno_integro');
+      setVal('uiDepartamento',u?.departamentoId||'');
       byId('btnSalvarInterno').onclick=()=>salvarUsuarioInterno(id);
     }
     // M02: apenas o Master Global altera as empresas que um funcionário interno pode consultar.
@@ -2052,14 +2130,55 @@
       if(typeof hidratarLogoClienteIntegro==='function')hidratarLogoClienteIntegro(byId('drawerBody'));
     }
     function abrirDetalheUsuario(id){
-      const u=usuariosSistema.find(x=>x.id===id);if(!u)return;
-      const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
-      abrirDrawer('Usuário',u.nome||u.email||'Usuário',
-        '<div class="grid">'+
-        info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
-        info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
-        info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado')+
-        (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
+      const u=usuariosSistema.find(x=>x.id===id);if(!u)return notificarIntegro('Usuário não encontrado na última consulta.');
+      if(u.tipoUsuario!=='usuario_integro'){
+        const empresa=clientesIntegro.find(c=>c.id===u.clientePlataformaId);
+        abrirDrawer('Usuário',u.nome||u.email||'Usuário',
+          '<div class="grid">'+info('E-mail',u.email)+info('Tipo',u.tipoUsuario)+
+          info('Empresa',empresa?.nome||u.clientePlataformaNome||'Equipe ÍNTEGRO')+
+          info('Status',u.status||'ATIVO')+info('UID Auth',u.authUid||'Não provisionado')+
+          (empresa?'<button type="button" class="btn btn-light" data-mg-action="ver-cliente" data-id="'+esc(empresa.id)+'">Voltar para empresa</button>':'')+
+          '</div>');
+        return;
+      }
+      const model=window.IntegroInternalUsers;
+      const state=model?.classification(u)||{label:u.status||'Não informado'};
+      const auth=Boolean(u.id&&u.authUid&&u.id===u.authUid);
+      const nome=u.nome||u.nomeCompleto||u.email||'Usuário interno';
+      const sigla=nome.trim().split(/\s+/).filter(Boolean).slice(0,2).map(parte=>parte.charAt(0)).join('').toUpperCase()||'UI';
+      const dep=departamentos.find(d=>d.id===u.departamentoId&&u.departamentoId);
+      const qtd=Array.isArray(u.clientesLeituraAutorizada)?u.clientesLeituraAutorizada.length:null;
+      const autorizadas=Array.isArray(u.clientesLeituraAutorizada)?u.clientesLeituraAutorizada
+        .map(cid=>clientesIntegro.find(c=>c.id===cid))
+        .filter(Boolean)
+        .map(c=>c.nome||c.razaoSocial||c.id):[];
+      const campo=(titulo,valor)=>'<div class="mgui-profile-field"><small>'+esc(titulo)+'</small><strong>'+esc(valor??'Não informado')+'</strong></div>';
+      const data=valor=>{try{return valor?dataCurta(valor):'Não informada'}catch(_){return 'Não informada'}};
+      const actions=auth?
+        '<button type="button" class="btn btn-light" data-mg-action="editar-interno" data-id="'+esc(id)+'">Editar cadastro</button>'+
+        '<button type="button" class="btn btn-light" data-mg-action="clientes-interno" data-id="'+esc(id)+'">Empresas autorizadas</button>'+
+        '<button type="button" class="btn '+(u.acessoLiberado===false?'btn-success':'btn-danger')+'" data-mg-action="acesso-usuario" data-id="'+esc(id)+'">'+
+        (u.acessoLiberado===false?'Liberar acesso':'Bloquear acesso')+'</button>':
+        '<button type="button" class="btn btn-primary" data-mg-action="provisionar-interno" data-id="'+esc(id)+'">Regularizar conta Auth</button>';
+      abrirDrawer('Ficha do usuário interno','Dados administrativos consultados no servidor',
+        '<div class="mgui-profile">'+
+        '<div class="mgui-profile-hero"><span class="mgui-avatar" aria-hidden="true">'+esc(sigla)+'</span>'+
+          '<div><strong>'+esc(nome)+'</strong><small>'+esc(u.email||'E-mail não informado')+'</small>'+
+          '<span class="mgui-status is-'+esc(model?.classification(u)?.tone||'muted')+'">'+esc(state.label)+'</span></div></div>'+
+        '<div class="mgui-profile-grid">'+
+          campo('Cargo',u.cargoNome||u.cargoChave||'Não informado')+
+          campo('Departamento',dep?.nome||'Sem departamento')+
+          campo('Conta Firebase Auth',auth?'Provisionada e vinculada':'Não provisionada')+
+          campo('UID Auth',auth?u.authUid:'Sem UID vinculado')+
+          campo('Empresas autorizadas',qtd===null?'Não informado':String(qtd))+
+          campo('Data do cadastro',data(u.criadoEm))+
+          campo('Atualizado em',data(u.atualizadoEm))+
+          campo('Situação do cadastro',u.status||'Não informada')+
+        '</div>'+
+        (autorizadas.length?'<div class="mgui-profile-field"><small>Empresas com consulta autorizada</small>'+
+          '<strong>'+esc(autorizadas.join(' · '))+'</strong></div>':'')+
+        '<div class="mgui-form-notice"><strong>Permissões protegidas</strong>Consultar empresas não concede autorização para movimentações financeiras, vendas ou acesso irrestrito aos dados operacionais.</div>'+
+        '<div class="mgui-profile-actions">'+actions+'</div>'+
         '</div>');
     }
     function getMastersLocais(){
