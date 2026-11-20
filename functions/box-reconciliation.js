@@ -108,6 +108,13 @@ function calcularConferencia({box, sales, clients=[], installments, payments, re
     const recebidaNoCaixa=confirmedPayments.some(p=>p.vendaId===sale.id);
     const quitadaVenda=vendaEncerrada(sale);
     const quitadoCliente=clienteQuitado(client);
+    if(!client && !recebidaNoCaixa && saldoVenda>1 && !quitadaVenda) {
+      const codigo="CLIENTE_SEM_FICHA_OPERACIONAL:"+sale.id;
+      avisosCarteira.push({codigo,vendaId:sale.id,clienteId:text(sale.clienteId || sale.clienteOperacionalId),
+        clienteNome:text(sale.clienteNome || sale.nomeCliente),statusVenda:statusVenda(sale),
+        statusCliente:"CADASTRO_NAO_LOCALIZADO",saldoVendaCentavos:saldoVenda,saldoClienteCentavos:null});
+      continue;
+    }
     if(quitadaVenda || quitadoCliente) {
       const contradicao=(quitadaVenda && saldoVenda>1) ||
         (quitadoCliente && (saldoVenda>1 || (saldoCliente !== null && saldoCliente>1)));
