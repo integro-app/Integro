@@ -299,6 +299,14 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 
 **Este é o controle oficial de acompanhamento.** O código-fonte continua sendo prova da implementação; o dossiê de aceite é prova da conclusão operacional.
 
+### M22 — Conciliação de carteira e fechamento (20/11/2026)
+- **Estado: EM HOMOLOGAÇÃO, NÃO PUBLICADO, NÃO FECHADO.** PR [#78](https://github.com/integro-app/Integro/pull/78), branch `fix/m22-conciliacao-carteira-caixa-20261120`.
+- **Causa comprovada no código:** conferência contabilizava a autoria histórica da venda em vez do responsável atual do cliente; transferência de carteira atualiza cliente, não a autoria da venda.
+- **Alterações isoladas:** rota no servidor consulta proprietário canônico do cliente e suas vendas referenciadas; tela Cobranças e regra de leitura priorizam o proprietário atual; testes para cliente transferido, venda antiga e legados. Nenhuma baixa, ajuste financeiro ou migração de dados reais executada.
+- **Testes:** CI de código inicial: 761/761 aprovados; auditoria completa e emuladores devem ser confirmados para o último SHA da PR. Publicação em produção depende de autorização e homologação com o caso real das cinco pendências.
+- **Risco/dependência:** pagamentos de vendas anteriores após transferência podem exigir evolução de autorização operacional e conciliação da migração; verificar antes de declarar o fluxo completo.
+- **Próximo aceite:** conferir, no Firebase real, as cinco vendas e seus clientes canônicos e comparar Cobranças × Conferência do caixa para vendedor e gestor. Não forçar fechamento sem confirmação.
+
 ## 9. Atualização — M22 / Operação do Vendedor (12/11/2026)
 
 - **Base:** `main` em `45019b73d732d3eef10c128452c088e2904b1e0b`.
