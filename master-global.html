@@ -362,6 +362,7 @@
   <link rel="stylesheet" href="css/master-global-dashboard.css?v=20261119-exec1">
   <link rel="stylesheet" href="css/master-global-clientes.css?v=20261119-clientes-premium1">
   <link rel="stylesheet" href="css/master-global-usuarios-internos.css?v=20261120-usuarios1">
+  <link rel="stylesheet" href="css/master-global-departamentos.css?v=20261120-departamentos1">
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-global">
 
@@ -536,7 +537,40 @@
       <div id="listaUsuarios" class="mgui-list" aria-label="Usuários internos da plataforma"></div>
       <div class="mgui-load-more"><button type="button" id="btnMaisUsuariosInternos" class="btn btn-light" onclick="carregarMaisUsuariosInternos()" hidden>Carregar mais usuários <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div>
     </section>
-    <section id="departamentos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Departamentos internos</h2><p>Comercial, financeiro, suporte e administrativo.</p></div><button class="btn btn-primary" onclick="abrirFormDepartamento()">Novo departamento</button></div><div id="listaDepartamentos" class="list"></div></div></section>
+    <section id="departamentos" class="screen mgdp-screen" aria-label="Gestão dos departamentos internos">
+      <div class="mgdp-heading">
+        <div><span class="mgdp-eyebrow"><span class="material-symbols-rounded" aria-hidden="true">account_tree</span>ESTRUTURA DA PLATAFORMA</span>
+          <p class="mgdp-description">Organize os setores e acompanhe os funcionários internos vinculados a cada um.</p></div>
+        <div class="mgdp-heading-actions">
+          <span class="mgdp-sync"><span class="material-symbols-rounded" aria-hidden="true">verified</span><span id="consultaDepartamentosEm">Consulta administrativa</span></span>
+          <button type="button" class="mgdp-add" onclick="abrirFormDepartamento()"><span class="material-symbols-rounded" aria-hidden="true">add_circle</span>Novo departamento</button>
+        </div>
+      </div>
+      <div class="mgdp-summary" aria-label="Indicadores de departamentos">
+        <button type="button" class="mgdp-summary-card is-selected" data-mgdp-quick="" aria-pressed="true" onclick="aplicarFiltroRapidoDepartamentos('')"><span class="mgdp-summary-copy"><span>Total de departamentos</span><strong id="mgdpTotal">—</strong></span><span class="mgdp-summary-icon"><span class="material-symbols-rounded" aria-hidden="true">account_tree</span></span></button>
+        <button type="button" class="mgdp-summary-card" data-mgdp-quick="ATIVO" aria-pressed="false" onclick="aplicarFiltroRapidoDepartamentos('ATIVO')"><span class="mgdp-summary-copy"><span>Ativos</span><strong id="mgdpAtivos">—</strong></span><span class="mgdp-summary-icon"><span class="material-symbols-rounded" aria-hidden="true">check_circle</span></span></button>
+        <button type="button" class="mgdp-summary-card" data-mgdp-quick="INATIVO" aria-pressed="false" onclick="aplicarFiltroRapidoDepartamentos('INATIVO')"><span class="mgdp-summary-copy"><span>Inativos</span><strong id="mgdpInativos">—</strong></span><span class="mgdp-summary-icon"><span class="material-symbols-rounded" aria-hidden="true">cancel</span></span></button>
+        <button type="button" class="mgdp-summary-card" data-mgdp-quick="SEM" aria-pressed="false" onclick="aplicarFiltroRapidoDepartamentos('SEM')"><span class="mgdp-summary-copy"><span>Sem equipe</span><strong id="mgdpSemEquipe">—</strong></span><span class="mgdp-summary-icon"><span class="material-symbols-rounded" aria-hidden="true">person_off</span></span></button>
+      </div>
+      <div class="mgdp-toolbar">
+        <label class="mgdp-search" for="buscaDepartamentosInternos"><span class="material-symbols-rounded" aria-hidden="true">search</span>
+          <input id="buscaDepartamentosInternos" type="search" autocomplete="off" enterkeyhint="search" placeholder="Buscar por nome ou descrição do departamento" aria-label="Buscar departamentos" oninput="renderDepartamentos()"></label>
+        <div class="mgdp-toolbar-actions">
+          <button type="button" class="mgdp-toolbar-btn" id="btnFiltrosDepartamentos" aria-controls="painelFiltrosDepartamentos" aria-expanded="false" onclick="alternarFiltrosDepartamentos()"><span class="material-symbols-rounded" aria-hidden="true">tune</span>Filtros</button>
+          <button type="button" class="mgdp-toolbar-btn" onclick="carregarTudo().catch(err=>notificarIntegro(mensagemErroGlobal(err)))"><span class="material-symbols-rounded" aria-hidden="true">refresh</span>Atualizar dados</button>
+        </div>
+      </div>
+      <div class="mgdp-filters" id="painelFiltrosDepartamentos" hidden>
+        <label for="filtroStatusDepartamentos">Situação<select id="filtroStatusDepartamentos" onchange="renderDepartamentos()"><option value="">Todas as situações</option><option value="ATIVO">Ativos</option><option value="INATIVO">Inativos</option></select></label>
+        <label for="filtroEquipeDepartamentos">Funcionários<select id="filtroEquipeDepartamentos" onchange="renderDepartamentos()"><option value="">Com ou sem equipe</option><option value="COM">Com funcionários</option><option value="SEM">Sem funcionários</option></select></label>
+        <label for="ordemDepartamentos">Ordenar por<select id="ordemDepartamentos" onchange="renderDepartamentos()"><option value="AZ">Nome (A–Z)</option><option value="ZA">Nome (Z–A)</option><option value="MEMBERS">Maior equipe</option><option value="NEW">Mais recentes</option><option value="OLD">Mais antigos</option></select></label>
+        <button type="button" class="mgdp-reset" onclick="limparFiltrosDepartamentos()">Limpar filtros</button>
+      </div>
+      <div class="mgdp-resultbar"><p id="contadorDepartamentos" role="status" aria-live="polite">Consultando departamentos…</p>
+        <span class="mgdp-source"><span class="material-symbols-rounded" aria-hidden="true">admin_panel_settings</span>Gestão exclusiva da plataforma</span></div>
+      <div id="listaDepartamentos" class="mgdp-list" aria-label="Departamentos da plataforma"></div>
+      <div class="mgdp-more-row"><button type="button" id="btnMaisDepartamentos" class="btn btn-light" onclick="carregarMaisDepartamentos()" hidden>Carregar mais departamentos <span class="material-symbols-rounded" aria-hidden="true">expand_more</span></button></div>
+    </section>
     <section id="planos" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Planos da plataforma</h2><p>Planos comerciais do SaaS.</p></div><button class="btn btn-primary" onclick="abrirFormPlano()">Novo plano</button></div><div id="listaPlanos" class="list"></div></div></section>
     <section id="notificacoes" class="screen"><div class="panel" data-integro-ui-component="surface"><div class="panel-title" data-integro-ui-component="surface"><div><h2>Notificações</h2><p>Central global de avisos.</p></div><button class="btn btn-primary" onclick="abrirFormNotificacao()">Nova notificação</button></div><div id="listaNotificacoes" class="list"></div></div></section>
     <section id="chat" class="screen" aria-label="Chat interno da equipe ÍNTEGRO">
@@ -551,11 +585,12 @@
   <div id="drawerOverlay" class="drawer-overlay"></div><aside id="drawer" class="drawer"><div class="drawer-head"><div><h2 id="drawerTitle">Detalhes</h2><p id="drawerSubtitle">Informações</p></div><button class="close-btn" onclick="fecharDrawer()" aria-label="Fechar detalhes">×</button></div><div id="drawerBody" class="drawer-body"></div></aside>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-functions-compat.js"></script><script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script><script src="js/firebase-config.js?v=20260728-3"></script><script src="js/utils/ui-helpers.js"></script><script src="js/utils/operational.js"></script>
   <script src="js/master-global-usuarios-internos.js?v=20261120-usuarios1"></script>
+  <script src="js/master-global-departamentos.js?v=20261120-departamentos1"></script>
   <script>
     let mgDb=null,mgAuth=null,usuarioLogado=null,fireOk=false,processandoCadastroGlobal=false,carregandoGlobal=false,promessaCarregamentoGlobal=null;
     let clientesIntegro=[],usuariosSistema=[],departamentos=[],planos=[],notificacoes=[],logs=[],configuracoesGlobal={nome:'ÍNTEGRO',diasTestePadrao:7};
     let dadosGlobaisCarregados=false,atualizadoEmGlobal='';
-    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes','Contratantes da plataforma ÍNTEGRO, pessoas físicas e jurídicas.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos','Equipe e permissões administrativas da plataforma.'],departamentos:['Departamentos internos','Estrutura interna da ÍNTEGRO.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
+    const TITULOS={dashboard:['Dashboard Master Global','Visão executiva da plataforma ÍNTEGRO.'],clientes:['Clientes','Contratantes da plataforma ÍNTEGRO, pessoas físicas e jurídicas.'],masters:['Masters locais','Usuários administradores dos clientes.'],usuarios:['Usuários internos','Equipe e permissões administrativas da plataforma.'],departamentos:['Departamentos','Estrutura e equipes internas da plataforma.'],planos:['Planos','Planos comerciais da plataforma.'],notificacoes:['Notificações','Comunicação e avisos do sistema.'],chat:['Chat interno','Comunicação entre funcionários.'],logs:['Logs/Auditoria','Rastreabilidade de ações críticas.'],relatorios:['Relatórios','Cadastros, planos e indicadores comerciais.'],config:['Configurações globais','Parâmetros gerais da plataforma.']};
 
     let integroBootPercentualAtual = 0;
 
@@ -619,7 +654,10 @@
           const btn=e.target.closest?.('[data-mg-action]');if(!btn)return;
           const id=btn.dataset.id,acao=btn.dataset.mgAction;
           const mapa={
-            departamento:()=>abrirFormDepartamento(id),plano:()=>abrirFormPlano(id),
+            departamento:()=>abrirFormDepartamento(id),
+            'ver-departamento':()=>abrirDetalheDepartamento(id),
+            'usuarios-departamento':()=>verEquipeDepartamento(id),
+            plano:()=>abrirFormPlano(id),
             'ver-cliente':()=>abrirDetalheCliente(id),
              'ver-usuario':()=>abrirDetalheUsuario(id),
             'editar-master':()=>abrirEdicaoMasterLocal(id),
@@ -985,11 +1023,51 @@
       renderUsuariosInternos();
     }
     function renderDepartamentos(){
-      byId('listaDepartamentos').innerHTML=departamentos.length?departamentos.map(d=>
-        '<div class="list-card"><div class="list-bar" style="background:#7c3aed"></div><div><h3>'+
-        esc(d.nome||'Departamento')+'</h3><p class="muted">'+esc(d.descricao||'Sem descrição')+
-        '</p>'+badge(d.status||'ATIVO')+'</div><div class="list-actions"><button class="btn btn-light" data-mg-action="departamento" data-id="'+esc(d.id)+'">Editar</button></div></div>'
-      ).join(''):empty('Nenhum departamento cadastrado.');
+      const host=byId('listaDepartamentos');
+      if(!window.IntegroDepartments){
+        if(host)host.textContent='Não foi possível iniciar a interface de departamentos. Atualize a página.';
+        return;
+      }
+      window.IntegroDepartments.render({
+        departments:departamentos,users:getUsuariosInternos(),updatedAt:atualizadoEmGlobal
+      });
+    }
+    function aplicarFiltroRapidoDepartamentos(tipo){
+      if(!['','ATIVO','INATIVO','SEM'].includes(tipo))return;
+      setVal('filtroStatusDepartamentos',tipo==='SEM'?'':tipo);
+      setVal('filtroEquipeDepartamentos',tipo==='SEM'?'SEM':'');
+      renderDepartamentos();
+    }
+    function alternarFiltrosDepartamentos(){
+      const painel=byId('painelFiltrosDepartamentos'),botao=byId('btnFiltrosDepartamentos');
+      if(!painel||!botao)return;
+      painel.hidden=!painel.hidden;
+      botao.setAttribute('aria-expanded',String(!painel.hidden));
+    }
+    function limparFiltrosDepartamentos(){
+      for(const id of ['buscaDepartamentosInternos','filtroStatusDepartamentos','filtroEquipeDepartamentos'])
+        setVal(id,'');
+      setVal('ordemDepartamentos','AZ');
+      window.IntegroDepartments?.reset();
+      renderDepartamentos();
+    }
+    function carregarMaisDepartamentos(){
+      window.IntegroDepartments?.loadMore();
+      renderDepartamentos();
+    }
+    function abrirDetalheDepartamento(id){
+      const d=departamentos.find(x=>x.id===id);
+      if(!d)return notificarIntegro('Departamento não encontrado na consulta.');
+      abrirDrawer('Departamento','Estrutura administrativa da plataforma',
+        window.IntegroDepartments?.detail(d,getUsuariosInternos())||'Detalhamento indisponível.');
+    }
+    function verEquipeDepartamento(id){
+      const d=departamentos.find(x=>x.id===id);
+      if(!d)return notificarIntegro('Departamento não encontrado na consulta.');
+      fecharDrawer();
+      trocarTela('usuarios');
+      setVal('filtroDepartamentoUsuariosInternos',id);
+      renderUsuariosInternos();
     }
     function renderPlanos(){
       byId('listaPlanos').innerHTML=planos.length?planos.map(p=>
@@ -1146,7 +1224,7 @@
             '<button class="btn btn-primary" data-mg-action="provisionar-interno" data-id="'+esc(u.id)+'">Provisionar Auth</button>':''))+
         '</div></div>';
     }
-    function trocarTela(id,btn){document.body.classList.toggle('mgui-users-active',id==='usuarios');document.body.classList.toggle('mg-clientes-ativa',id==='clientes');document.body.classList.toggle('integro-platform-chat-active',id==='chat');document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
+    function trocarTela(id,btn){document.body.classList.toggle('mgdp-screen-active',id==='departamentos');document.body.classList.toggle('mgui-users-active',id==='usuarios');document.body.classList.toggle('mg-clientes-ativa',id==='clientes');document.body.classList.toggle('integro-platform-chat-active',id==='chat');document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));byId(id)?.classList.add('active');document.querySelectorAll('.menu button').forEach(b=>b.classList.remove('active'));(btn||document.querySelector(`.menu button[data-screen="${id}"]`))?.classList.add('active');setText('pageTitle',TITULOS[id]?.[0]||'ÍNTEGRO');setText('pageSubtitle',TITULOS[id]?.[1]||'');fecharSidebar();atualizarBotaoAcao(id);if(id==='chat')carregarChatGlobal().catch(err=>notificarIntegro(mensagemErroGlobal(err)))}
     function atualizarBotaoAcao(id){
       const map={dashboard:['Novo cliente',abrirFormCliente],clientes:['Novo cliente',abrirFormCliente],
         masters:['Criar Master Local',abrirFormMasterLocal],usuarios:['Novo usuário interno',abrirFormUsuarioInterno],
