@@ -1092,18 +1092,27 @@
       const nomeCompleto = esc(cliente.nomeCompleto || cliente.nome || venda.clienteNome || "");
       const codigo = esc(venda.codigo || venda.numero || venda.id || "Sem código");
       const status = texto(venda.statusVenda || venda.status || "ATIVA").toUpperCase();
-      const situacao = ["QUITADO", "QUITADA"].includes(status) ? "Quitada" :
-        ["CANCELADO", "CANCELADA"].includes(status) ? "Cancelada" :
-        status === "PENDENTE" ? "Em análise" : "Ativa";
-      const classeStatus = situacao === "Quitada" ? "quitada" :
-        situacao === "Cancelada" ? "cancelada" : situacao === "Em análise" ? "analise" : "ativa";
+      const statusNormalizado = status.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, "_");
+      const situacao = ["QUITADO", "QUITADA"].includes(statusNormalizado) ? "Quitada" :
+        ["CANCELADO", "CANCELADA"].includes(statusNormalizado) ? "Cancelada" :
+        ["PENDENTE", "EM_ANALISE", "AGUARDANDO_APROVACAO"].includes(statusNormalizado) ? "Em análise" :
+        ["EM_DIA", "EMDIA"].includes(statusNormalizado) ? "Em dia" :
+        ["ADIANTADO", "ADIANTADA"].includes(statusNormalizado) ? "Adiantada" :
+        ["ATRASO_GRAVE", "EM_ATRASO_GRAVE"].includes(statusNormalizado) ? "Atraso grave" :
+        ["EM_ATRASO", "ATRASADO", "ATRASADA"].includes(statusNormalizado) ? "Em atraso" :
+        statusNormalizado === "ATIVA" || statusNormalizado === "ATIVO" ? "Ativa" :
+        status.replace(/_/g, " ");
+      const classeStatus = ["Quitada"].includes(situacao) ? "quitada" :
+        situacao === "Cancelada" ? "cancelada" : situacao === "Em análise" ? "analise" :
+        situacao === "Em dia" ? "emdia" : situacao === "Adiantada" ? "adiantada" :
+        situacao === "Em atraso" ? "atraso" : situacao === "Atraso grave" ? "grave" : "ativa";
       const tipo = texto(venda.tipoVenda || venda.tipo || "NOVA").toUpperCase().includes("RENOV") ? "Renovação" : "Nova venda";
       const dataVenda = dataRegistro(venda);
       return [
         '<article class="vendedor-venda-card" aria-label="Venda ', codigo, '">',
         '<div class="vendedor-venda-identidade">',
         '<div class="vendedor-venda-etiquetas"><span class="vendedor-venda-tipo">', tipo, '</span>',
-        '<span class="vendedor-venda-status ', classeStatus, '">', situacao, '</span></div>',
+        '<span class="vendedor-venda-status ', classeStatus, '">', esc(situacao), '</span></div>',
         '<strong title="', nome, '">', nome, '</strong>',
         '<small title="', nomeCompleto, '">', nomeCompleto, '</small>',
         '<small class="vendedor-venda-codigo">', codigo, '</small>',
