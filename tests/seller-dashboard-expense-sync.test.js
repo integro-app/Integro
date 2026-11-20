@@ -102,7 +102,7 @@ test("M06: desktop equilibra cards; tablet e mobile possuem breakpoints dedicado
   const css = read("css/dashboard-vendedor-pro.css");
   assert.match(css, /grid-template-columns: repeat\(6, minmax\(0, 1fr\)\)/);
   assert.match(css, /kpi-card:nth-child\(n\+4\)/);
-  assert.match(css, /@media \(min-width: 700px\) and \(max-width: 1180px\)/);
+  assert.match(css, /@media \(min-width: 900px\) and \(max-width: 1599px\)/);
   assert.match(css, /@media \(max-width: 699px\)/);
   assert.match(css, /@media \(max-width: 360px\)/);
   assert.match(css, /prefers-reduced-motion: reduce/);
