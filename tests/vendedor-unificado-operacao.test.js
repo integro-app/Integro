@@ -64,7 +64,8 @@ test("card de cobrança contém whatsapp, situação, parcelas e somente ações
 test("vendas mostram somente vendas de hoje e usam filtros por checkbox", () => {
   assert.doesNotMatch(unificado, /id="filtroPeriodoVendaVendedor"/);
   assert.match(unificado, /dataVenda !== dataHoje/);
-  assert.match(unificado, /venda\(s\) de hoje/);
+  assert.match(unificado, /Vendas exibidas/);
+  assert.match(unificado, /Nenhuma venda registrada hoje/);
   assert.match(unificado, /filtroVendaAtiva/);
   assert.match(unificado, /filtroVendaRenovacao/);
   assert.match(unificado, /Data da venda/);
