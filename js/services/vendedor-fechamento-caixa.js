@@ -325,7 +325,7 @@
     chave: "", caixaId: "", snapshot: null, confirmadoEm: 0,
     invalidado: false, revisao: 0, carregando: null, ultimaConsulta: 0,
     proximaConsulta: null, observador: null, observadorChave: "",
-    assinaturaDocumento: ""
+    errosConsecutivos: 0, assinaturaDocumento: ""
   };
 
   function chaveCaixaCompartilhado(caixa = caixaAbertoLocal()) {
@@ -343,7 +343,7 @@
       chave: "", caixaId: "", snapshot: null, confirmadoEm: 0,
       invalidado: false, revisao: caixaCompartilhado.revisao + 1,
       carregando: null, ultimaConsulta: 0, proximaConsulta: null,
-      observador: null, observadorChave: "", assinaturaDocumento: ""
+      observador: null, observadorChave: "", errosConsecutivos: 0, assinaturaDocumento: ""
     });
   }
 
@@ -376,6 +376,7 @@
     if (retornoCaixa && retornoCaixa !== caixaCompartilhado.caixaId) return false;
     if (!snapshot || !Number.isSafeInteger(snapshot.caixaFinalEsperadoCentavos)) return false;
     caixaCompartilhado.snapshot = snapshot;
+    caixaCompartilhado.errosConsecutivos = 0;
     caixaCompartilhado.confirmadoEm = Date.now();
     caixaCompartilhado.invalidado = caixaCompartilhado.revisao !== revisao;
     global.document?.dispatchEvent?.(new CustomEvent("integro-vendedor-caixa-resumo-atualizado", {
@@ -404,6 +405,13 @@
     })();
     caixaCompartilhado.carregando = consulta;
     try { return await consulta; }
+    catch (erro) {
+      if (caixaCompartilhado.chave === chave) {
+        caixaCompartilhado.invalidado = true;
+        caixaCompartilhado.errosConsecutivos += 1;
+      }
+      throw erro;
+    }
     finally {
       if (caixaCompartilhado.chave === chave && caixaCompartilhado.carregando === consulta) {
         caixaCompartilhado.carregando = null;
@@ -417,7 +425,9 @@
     if (caixaCompartilhado.proximaConsulta) clearTimeout(caixaCompartilhado.proximaConsulta);
     // Eventos em rajada compartilham uma única consulta; não multiplicar
     // transações Firestore de conciliação a cada movimento da tela.
-    const espera = Math.max(350, 3000 - (Date.now() - caixaCompartilhado.ultimaConsulta));
+    const espera = caixaCompartilhado.errosConsecutivos
+      ? Math.min(60000, 5000 * (2 ** Math.min(4, caixaCompartilhado.errosConsecutivos - 1)))
+      : Math.max(350, 1800 - (Date.now() - caixaCompartilhado.ultimaConsulta));
     caixaCompartilhado.proximaConsulta = setTimeout(() => {
       caixaCompartilhado.proximaConsulta = null;
       atualizarResumoCompartilhado({ caixa, forcar: true }).catch(erro =>
