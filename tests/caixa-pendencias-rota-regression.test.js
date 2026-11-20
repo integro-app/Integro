@@ -100,3 +100,40 @@ test("consulta Firestore da conferência reatribui a rota pelo cliente canônico
  assert.equal(nova.pendenciasCobranca,1,"responsável atual deve assumir a pendência real");
  assert.equal(nova.pendenciasVendasIds[0],"v1");
 });
+
+
+test("venda QUITADA com saldo zero não exige baixa mesmo que parcela legada esteja pendente",()=>{
+ const s=conferir({sales:[{...sale,statusVenda:"QUITADO",saldoDevedorCentavos:0}],
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}]});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.inconsistencias.length,0);
+});
+test("venda QUITADA com saldo residual deixa de ser visita pendente e revela discrepância financeira",()=>{
+ const s=conferir({sales:[{...sale,statusVenda:"QUITADO",saldoDevedorCentavos:10000}],
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}]});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.avisosCarteira.length,1);
+ assert.match(s.inconsistencias[0],/^VENDA_ENCERRADA_COM_SALDO:/);
+});
+test("cliente QUITADO com saldo zero não vira visita fantasma por venda antiga ativa",()=>{
+ const s=conferir({clients:[{id:"cliente-1",statusCliente:"QUITADO",saldoDevedorCentavos:0,vendedorAuthUid:"gu"}],
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}]});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.avisosCarteira.length,1);
+ assert.match(s.inconsistencias[0],/^CLIENTE_QUITADO_COM_VENDA_ABERTA:/);
+});
+test("cliente ATIVO com parcela vencida mantém bloqueio legítimo",()=>{
+ const s=conferir({clients:[{id:"cliente-1",statusCliente:"ATIVO",saldoDevedorCentavos:10000,vendedorAuthUid:"gu"}],
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}]});
+ assert.equal(s.pendenciasCobranca,1);
+ assert.equal(s.avisosCarteira.length,0);
+});
+test("fechamento explica quitados inconsistentes sem pedir não pagamento fictício",()=>{
+ const ui=fs.readFileSync(path.join(__dirname,"..","js/services/vendedor-fechamento-caixa.js"),"utf8");
+ assert.match(ui,/quitadosEmConflito/);
+ assert.match(ui,/detalhesQuitados/);
+ assert.match(ui,/contraditório/);
+});
