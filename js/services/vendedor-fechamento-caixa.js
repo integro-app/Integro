@@ -579,7 +579,10 @@
     const conferencia = conferenciaValor(input?.value, snapshot.caixaFinalEsperadoCentavos);
     const impedimentos = impedimentosFechamento(snapshot, operacoesAindaSincronizando());
     // Mesmo com valor físico correto, visita sem baixa impede a confirmação.
-    confirmar.disabled = !conferencia.confere || !impedimentos.podeFechar;
+    const compartilhado = typeof obterResumoCompartilhado === "function"
+      ? obterResumoCompartilhado() : null;
+    const atualizando = compartilhado?.desatualizado === true;
+    confirmar.disabled = !conferencia.confere || !impedimentos.podeFechar || atualizando;
     if (!conferencia.valido) {
       validar.textContent = impedimentos.podeFechar
         ? "Digite o valor contado no caixa."
@@ -594,9 +597,12 @@
       validar.textContent = "Valor físico confere, mas o fechamento ainda está bloqueado: " + impedimentos.motivos.join(" ");
       validar.className = "integro-fechamento-validacao erro";
     } else {
-      validar.textContent = "Valor confirmado. Todas as visitas possuem baixa. Fechamento liberado.";
+      validar.textContent = atualizando
+        ? "Valor físico confere. Atualizando a conferência oficial antes de liberar o fechamento."
+        : "Valor confirmado. Todas as visitas possuem baixa. Fechamento liberado.";
       validar.className = "integro-fechamento-validacao ok";
     }
+    if (atualizando) validar.className = "integro-fechamento-validacao";
     return conferencia;
   }
 
@@ -655,6 +661,7 @@
 
       etapa(dialog, "validar", "processando");
       const snapshotAtualizado = await prepararSnapshot(caixa);
+      publicarResumoCompartilhado(caixa, snapshotAtualizado);
       const impedimentos = impedimentosFechamento(snapshotAtualizado, operacoesAindaSincronizando());
       if (!impedimentos.podeFechar) {
         const erro = new Error("Fechamento não autorizado: " + impedimentos.motivos.join(" "));
@@ -708,6 +715,47 @@
     }
   }
 
+  function renderizarResumoCompartilhado(dialog, snapshot, caixa, cancelar, inline = false) {
+    if (!dialog?.isConnected || fechamentoEmAndamento) return;
+    const anterior = dialog.querySelector?.("#integroFechamentoValorInformado");
+    const valorDigitado = anterior?.value || "";
+    const mantinhaFoco = global.document?.activeElement === anterior;
+    dialog.innerHTML = htmlResumo(snapshot, caixa);
+    const informativo = dialog.querySelector(".integro-fechamento-origem");
+    const compartilhado = obterResumoCompartilhado(caixa);
+    if (informativo && compartilhado) {
+      informativo.textContent = compartilhado.desatualizado
+        ? "Última conferência do Firebase · atualizando movimentações…"
+        : "Dados conferidos no Firebase · " + new Date(compartilhado.confirmadoEm)
+          .toLocaleTimeString("pt-BR", { timeZone:"America/Sao_Paulo", hour:"2-digit", minute:"2-digit" });
+    }
+    const input = dialog.querySelector("#integroFechamentoValorInformado");
+    const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
+    if (input) input.value = valorDigitado;
+    dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao =>
+      botao.addEventListener("click", cancelar));
+    dialog.querySelectorAll("[data-fechamento-atualizar]").forEach(botao =>
+      botao.addEventListener("click", () => {
+        invalidarResumoCompartilhado(caixa);
+        atualizarResumoCompartilhado({ caixa, forcar: true }).catch(erro =>
+          notificar(erro?.message || "Não foi possível consultar o caixa no servidor."));
+      }));
+    input?.addEventListener("input", () => atualizarConferencia(dialog, snapshot));
+    input?.addEventListener("keydown", evento => {
+      if (evento.key === "Enter" && !confirmar?.disabled) confirmar.click();
+    });
+    confirmar?.addEventListener("click", () => {
+      const conferencia = atualizarConferencia(dialog, snapshot);
+      if (!conferencia.confere || confirmar.disabled ||
+          !impedimentosFechamento(snapshot, operacoesAindaSincronizando()).podeFechar) return;
+      executarFechamento(dialog, caixa, conferencia.informadoCentavos, cancelar, inline);
+    });
+    atualizarConferencia(dialog, snapshot);
+    if (mantinhaFoco) input?.focus?.({ preventScroll: true });
+    else if (!global.matchMedia?.("(max-width: 760px)")?.matches && !valorDigitado &&
+        !inline) setTimeout(() => input?.focus?.({ preventScroll: true }), 20);
+  }
+
   async function abrirResumoFechamento({ inline = false } = {}) {
     if (!ehVendedor()) return notificar("Este fechamento é exclusivo do perfil vendedor.");
     if (fechamentoEmAndamento || preparandoFechamento) return;
@@ -742,29 +790,25 @@
         global.State?.setCaixas?.([caixa, ...existentes.filter(item =>
           texto(item.id || item.caixaId) !== texto(caixa.id))]);
       }
-      // A consulta é somente leitura. Pendências e sincronizações aparecem
-      // no resumo; elas bloqueiam apenas a confirmação transacional.
-      // Consulta somente leitura: evita sincronização geral e não exige
-      // visitas concluídas para mostrar os valores atuais do caixa.
-      const snapshot = await prepararSnapshot(caixa);
-      if (!dialog.isConnected) return;
-      dialog.innerHTML = htmlResumo(snapshot, caixa);
-      const input = dialog.querySelector("#integroFechamentoValorInformado");
-      const confirmar = dialog.querySelector("#integroFechamentoConfirmar");
-      dialog.querySelectorAll("[data-fechamento-cancelar]").forEach(botao => botao.addEventListener("click", cancelar));
-      dialog.querySelectorAll("[data-fechamento-atualizar]").forEach(botao => botao.addEventListener("click", () => abrirResumoFechamento({ inline: !!painel })));
-      input?.addEventListener("input", () => atualizarConferencia(dialog, snapshot));
-      input?.addEventListener("keydown", evento => {
-        if (evento.key === "Enter" && !confirmar?.disabled) confirmar.click();
-      });
-      confirmar?.addEventListener("click", () => {
-        const conferencia = atualizarConferencia(dialog, snapshot);
-        if (!conferencia.confere || !impedimentosFechamento(snapshot, operacoesAindaSincronizando()).podeFechar) return;
-        executarFechamento(dialog, caixa, conferencia.informadoCentavos, cancelar, !!painel);
-      });
-      if (!global.matchMedia?.("(max-width: 760px)")?.matches) {
-        setTimeout(() => input?.focus({ preventScroll: true }), 20);
+      // Compartilha a última conferência oficial com o Dashboard.
+      // Havendo snapshot validado, os cards aparecem no mesmo frame da abertura.
+      garantirEscopoCaixaCompartilhado(caixa);
+      observarCaixaCompartilhado();
+      const anterior = obterResumoCompartilhado(caixa);
+      if (anterior) {
+        renderizarResumoCompartilhado(dialog, anterior.snapshot, caixa, cancelar, !!painel);
+        if (!anterior.desatualizado && Date.now() - anterior.confirmadoEm < 10000) return;
+        // Quando está desatualizado, mantém os valores anteriores VISÍVEIS
+        // enquanto a nova conferência chega; sem bloquear a navegação.
+        atualizarResumoCompartilhado({ caixa, forcar: true }).catch(erro => {
+          console.warn("[ÍNTEGRO] Nova conferência aguardando conexão.", erro?.message || erro);
+        });
+        return;
       }
+      const snapshot = await atualizarResumoCompartilhado({ caixa, forcar: true });
+      if (!dialog.isConnected) return;
+      if (!snapshot) throw new Error("Conferência oficial indisponível.");
+      renderizarResumoCompartilhado(dialog, snapshot, caixa, cancelar, !!painel);
     } catch (erro) {
       console.error("[ÍNTEGRO] Não foi possível preparar o fechamento.", erro);
       const mensagem = erro?.message || "Não foi possível preparar o fechamento do caixa.";
