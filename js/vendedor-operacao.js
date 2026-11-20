@@ -120,6 +120,8 @@
     clientesValidos.forEach(cliente => {
       const clienteId = id(cliente.id || cliente.clienteId || cliente.clienteOperacionalId);
       if (clienteId) clientesPorId.set(clienteId, cliente);
+      const legadoId = id(cliente.clienteLegadoId);
+      if (legadoId && !clientesPorId.has(legadoId)) clientesPorId.set(legadoId, cliente);
     });
 
     const vendasComPagamentoHoje = new Set(
@@ -137,8 +139,11 @@
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
         const clienteVinculado = clientesPorId.get(clienteId);
-        return (!clientesPorId.has(clienteId) && clientes.some(c => id(c.id || c.clienteId) === clienteId)) ? false :
-          pertenceAoVendedor(item, usuario) || (!idsRegistroVendedor(item).length && pertenceAoVendedor(clienteVinculado, usuario));
+        // A carteira exibida é a carteira ATUAL do cliente, não a lista de
+        // vendas criadas historicamente por este usuário. Uma transferência
+        // altera a rota sem reescrever a autoria da venda.
+        if (clienteId) return Boolean(clienteVinculado);
+        return pertenceAoVendedor(item, usuario);
       })
       .filter(item => {
         const clienteId = id(item.clienteId || item.clienteOperacionalId);
@@ -169,7 +174,12 @@
       candidatos.set(clienteId, { cliente, venda });
     });
 
+    const idsVendasNaCarteira = new Set(vendasValidas.map(v => id(v.id || v.vendaId)).filter(Boolean));
     const registroFilhoPermitido = item => {
+      const vendaId = id(item.vendaId);
+      // Parcelas da venda anterior acompanham o cliente transferido.
+      // Não basta um campo vendedorId antigo para esconder uma parcela própria.
+      if (vendaId) return idsVendasNaCarteira.has(vendaId);
       const vinculos = idsRegistroVendedor(item);
       return !vinculos.length || pertenceAoVendedor(item, usuario);
     };

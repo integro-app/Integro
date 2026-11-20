@@ -121,8 +121,12 @@
         .filter(Boolean).map(String);
       const vinculos = [cliente.vendedorAuthUid, cliente.vendedorUid, cliente.vendedorId,
         cliente.responsavelId, cliente.usuarioId].filter(Boolean).map(String);
-      return identidades.some(id => vinculos.includes(id) ||
-        (Array.isArray(cliente.hierarquiaIds) && cliente.hierarquiaIds.includes(id)));
+      // A hierarquia é informativa. Em transferências, hierarquiaIds pode
+      // guardar o vendedor anterior: nunca prevalece sobre o responsável atual.
+      const canonico = texto(cliente.vendedorAuthUid || cliente.vendedorUid || cliente.responsavelAuthUid);
+      if (canonico) return identidades.includes(canonico);
+      if (vinculos.length) return vinculos.some(id => identidades.includes(id));
+      return identidades.some(id => Array.isArray(cliente.hierarquiaIds) && cliente.hierarquiaIds.includes(id));
     }
     if (["gerente", "socio", "proprietario"].includes(cargo)) {
       const equipes = equipesUsuario(usuario);
