@@ -61,3 +61,32 @@ test("venda legada sem ficha operacional permanece rastreável e não recebe bai
  assert.equal(snapshot.pendenciasCobranca,1);
  assert.equal(snapshot.pendenciasVendasIds[0],"v1");
 });
+
+test("consulta Firestore da conferência reatribui a rota pelo cliente canônico",async()=>{
+ const {consultarCarteiraCaixa}=require("../functions/box-portfolio");
+ const loja={
+   vendas:[{...sale,clientePlataformaId:"tenant-a",vendedorAuthUid:"gu",vendedorId:"gu",caixaId:"caixa-antigo"}],
+   clientes_operacionais:[{id:"cliente-1",clientePlataformaId:"tenant-a",vendedorAuthUid:"novo",vendedorId:"novo",vendaAtivaId:"v1",saldoDevedorCentavos:10000,transferidoParaAuthUid:"novo"}],
+   clientes:[]
+ };
+ const ref=(collection,id)=>({collection,id});
+ const db={collection:collection=>({doc:id=>ref(collection,id)})};
+ const transaction={get:async r=>{
+   const row=(loja[r.collection]||[]).find(x=>x.id===r.id);
+   return {id:r.id,exists:!!row,data:()=>row};
+ }};
+ const query=async(collection,field,value)=>(loja[collection]||[])
+   .filter(row=>row.clientePlataformaId==="tenant-a"&&String(row[field]??"")===String(value));
+ async function snapshot(uid){
+   const info=await consultarCarteiraCaixa({transaction,db,tenant:"tenant-a",uid,
+     sellerIds:[uid],boxId:"cx-1",query,fail});
+   return calcularConferencia({box,sales:info.sales,clients:info.clients,
+     installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+     payments:[],requests:[],visits:[],ledger:[],ownerUid:uid,sellerIds:[uid],fail});
+ }
+ const antiga=await snapshot("gu");
+ assert.equal(antiga.pendenciasCobranca,0,"vendedor anterior não pode ter cobrança fantasma");
+ const nova=await snapshot("novo");
+ assert.equal(nova.pendenciasCobranca,1,"responsável atual deve assumir a pendência real");
+ assert.equal(nova.pendenciasVendasIds[0],"v1");
+});
