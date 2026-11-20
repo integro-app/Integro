@@ -409,3 +409,15 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Fonte e segurança:** usa `listarPainel` através de `getUsuariosInternos`, sem coleções paralelas, contas fictícias, métricas de presença online ou alteração em Rules/Functions. Cadastrar/editar chama `salvarUsuarioInterno` do backend; acesso individual via `alterarAcessoUsuario`, empresas de consulta via `salvarClientesConsultaFuncionario`; provisionamento de legado protegido; autenticação gera senha aleatória, mostra credencial no fluxo de criação e obriga troca no primeiro acesso. Contas recém-criadas ficam sem acesso liberado até ato administrativo posterior.
 - **Arquivos:** `master-global.html`, `css/master-global-usuarios-internos.css`, `js/master-global-usuarios-internos.js`, `tests/master-global-usuarios-internos.test.js`, `package.json`.
 - **Status:** aguardando CI e validação autenticada desktop/mobile. Preview apenas, sem alterar produção. Base em PR #70/69/68/66 ainda em homologação.
+
+
+### M01 — Departamentos Internos (20/11/2026, homologação desktop/mobile)
+
+- **Problema identificado pela captura:** título e ação de criação duplicados, painel genérico semelhante a formulário e nenhuma organização da equipe. Layout inconsistente com Clientes e Usuários Internos.
+- **Redesign do módulo:** cabeçalho “Departamentos” centralizado, introdutório discreto, ação única “Novo departamento”; cartões informativos responsivos (2 colunas desktop, 1 em tablet/mobile), contadores reais de total, ativos, inativos e sem funcionários, filtros rápidos, busca acento-insensível por nome/descrição, situação, presença de equipe, ordenação e paginação visual (18 por lote).
+- **Vínculos reais:** quantidade de funcionários internos vinculados via `departamentoId`; contas com Auth identificadas por `authUid === id`. Não computar Masters Locais como equipe interna e não inventar departamento, funcionário ou dados de presença.
+- **Ficha:** descrição, status, datas disponíveis, listagem de funcionários diretamente vinculados, botão “Ver ficha” do usuário e navegação ao módulo Usuários com filtro do departamento selecionado.
+- **Formulário:** mesmo contrato do backend `salvarDepartamento` (nome, descrição, status) e logs já existentes. Campos claros, validações antes da callable, informação dos funcionários vinculados e confirmação explícita antes de inativar um departamento ocupado. Inativar não exclui nem transfere automaticamente funcionários.
+- **Segurança:** leitura exclusivamente de `listarPainel`, escrita exclusivamente via `solicitarCadastroDuplicadoV27`/rota existente de Master Global; sem acesso Firestore paralelo, sem nova coleção, sem mudança nas Rules e Functions.
+- **Arquivos:** `master-global.html`, `js/master-global-departamentos.js`, `css/master-global-departamentos.css`, `tests/master-global-departamentos.test.js`, `package.json`.
+- **Status:** PR de prévia empilhado sobre Usuários Internos (#71). Aguardar CI e homologação autenticada para aceite; produção não alterada.
