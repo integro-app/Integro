@@ -2459,7 +2459,7 @@ body.integro-data-refreshing .section-card{
 
 <style id="integro-vendedor-topbar-ajuste-final">
   body.perfil-vendedor #dashboardPeriodoToolbar{display:none!important;}
-  body.perfil-vendedor #integroNotificationButton{display:grid!important;}
+  body.perfil-vendedor #integroNotificationButton{display:none!important;}
   body.perfil-vendedor .integro-global-actions{min-width:0;}
   #sidebar .integro-sidebar-menu-compacto .integro-notificacoes-menu-lateral{position:relative;}
   #sidebar .integro-sidebar-menu-compacto .integro-notificacoes-menu-lateral #badgeNotificacoesMenu{position:absolute;right:14px;top:50%;transform:translateY(-50%);min-width:20px;height:20px;border-radius:999px;background:#ff8a00;color:#fff;font-size:11px;font-weight:950;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 8px 18px rgba(255,138,0,.28);}
@@ -2525,6 +2525,33 @@ body.integro-data-refreshing .section-card{
 <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-ui-october-safe2">
 <script defer src="js/integro-filter-drawer.js?v=20261112-vendas-busca-instantanea-v1"></script>
 <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-ui-october-safe2&fix=20261104-chat-func-v1">
+
+
+<style id="integro-m06-dashboard-vendedor-topo-corrigido">
+  /* Cabeçalho global (54px + margem) não pertence ao vendedor: sino no menu. */
+  html body.perfil-vendedor .layout > main.main > .integro-global-header {
+    display: none !important;
+    min-height: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  html body.perfil-vendedor #integroNotificationButton {
+    display: none !important;
+  }
+  /* Desktop: dashboard inicia no topo sem o espaço do cabeçalho global. */
+  @media (min-width: 901px) {
+    html body.perfil-vendedor:has(#dashboard.screen.active) .layout > main.main {
+      padding-top: 16px !important;
+    }
+  }
+  /* Mobile: mantém a área reservada para navegação fixa. */
+  @media (max-width: 900px) {
+    html body.perfil-vendedor:has(#dashboard.screen.active) .layout > main.main {
+      padding-top: calc(76px + env(safe-area-inset-top)) !important;
+    }
+  }
+</style>
 
 </head>
 
@@ -25248,7 +25275,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2&scroll=20261107-directional1"></script>
   <script src="js/vendedor-operacao.js?v=20261107-vendedor-icone-send2"></script>
   <script src="js/services/seller-box-dashboard.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/vendedor-unificado.js?v=20261120-m06-cards-uniformes2"></script>
+  <script src="js/vendedor-unificado.js?v=20261120-m06-global-header-fix5"></script>
 
 <script id="integro-financeiro-admin-unificado-router">
 (function(){

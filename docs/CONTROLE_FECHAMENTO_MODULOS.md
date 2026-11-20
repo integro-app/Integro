@@ -55,6 +55,9 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 ### M06 — Dashboard do Vendedor: experiência desktop/mobile (20/11/2026)
 
+- **Correção de causa-raiz (20/11):** o master-local.html ainda reservava 54px e margem de 14px para o cabeçalho global contendo apenas o sino, além de forçar display:grid para o vendedor. O cabeçalho passa a ficar oculto nesse perfil, preservando notificações no menu, e o Dashboard tem padding superior de 16px no desktop, mantendo a distância de segurança do cabeçalho mobile. A versão do vendedor-unificado.js foi renovada no HTML principal. Pendente homologação visual autenticada.
+
+
 - **Referência visual aprovada (20/11, ajuste):** título alinhado à esquerda, ação “Ir para operação” à direita e KPIs em cinco colunas iguais já a partir de 1350px (imagem enviada em 20/11), faixa intermediária responsiva até 1349px, cabeçalho compacto no mobile sem deslocar o conteúdo. Correção apenas de CSS/carregamento e testes de regressão, sem alterar cálculos ou regras do caixa. Pendente comprovação do workflow e homologação visual no navegador autenticado.
 - **Correção complementar (20/11):** cabeçalho centralizado com prioridade sobre a regra compartilhada; espaço superior removido apenas no Dashboard do vendedor, respeitando a navegação fixa no mobile; sino duplicado fora do menu lateral ocultado. Testes estáticos direcionados atualizados. Pendente verificar workflow de Hosting e homologação visual autenticada.
 

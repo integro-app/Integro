@@ -136,7 +136,7 @@ test("M06: recursos são atualizados sem depender do cache antigo", () => {
   const html = read("master-local.html");
   const seller = read("js/vendedor-unificado.js");
   const visual = read("js/dashboard-vendedor-pro.js");
-  assert.match(html, /js\/vendedor-unificado\.js\?v=20261120-m06-cards-uniformes2/);
+  assert.match(html, /js\/vendedor-unificado\.js\?v=20261120-m06-global-header-fix5/);
   assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261120-m06-referencia-aprovada4/);
   assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261120-m06-referencia-aprovada4/);
 });
@@ -169,4 +169,14 @@ test("M06: imagem aprovada, título à esquerda e cinco KPIs em uma linha a part
   assert.match(css, /@media \(min-width:\s*900px\) and \(max-width:\s*1349px\)/);
   assert.doesNotMatch(css, /max-width:\s*1599px/);
   assert.match(css, /@media \(max-width: 699px\)[\s\S]*?flex-direction:\s*row !important/);
+});
+
+
+test("M06: HTML principal elimina a faixa superior global do vendedor", () => {
+  const html = read("master-local.html");
+  assert.match(html, /id="integro-m06-dashboard-vendedor-topo-corrigido"/);
+  assert.match(html, /html body\.perfil-vendedor \.layout > main\.main > \.integro-global-header\s*\{\s*display:\s*none !important/);
+  assert.match(html, /body\.perfil-vendedor #integroNotificationButton\{display:none!important;\}/);
+  assert.match(html, /perfil-vendedor:has\(#dashboard\.screen\.active\) \.layout > main\.main/);
+  assert.match(html, /js\/vendedor-unificado\.js\?v=20261120-m06-global-header-fix5/);
 });
