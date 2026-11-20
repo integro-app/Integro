@@ -25,7 +25,7 @@
     const link = document.createElement("link");
     link.id = CSS_ID;
     link.rel = "stylesheet";
-    link.href = "css/dashboard-vendedor-pro.css?v=20261120-m06-pro1";
+    link.href = "css/dashboard-vendedor-pro.css?v=20261120-m06-cards-uniformes2";
     document.head.appendChild(link);
   }
 
