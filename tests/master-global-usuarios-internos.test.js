@@ -116,7 +116,9 @@ test("M01: paginação 20 usuários e estado vazio contextualizado",()=>{
   model=api.draw({users:[]});
   assert.equal(model.shown,0);
   assert.match(cell("listaUsuarios").innerHTML,/Sua equipe começa aqui/);
-  assert.match(cell("listaUsuarios").innerHTML,/Cadastrar usuário interno/);
+  assert.match(cell("listaUsuarios").innerHTML,/Novo usuário interno/);
+  assert.doesNotMatch(cell("listaUsuarios").innerHTML,/onclick="abrirFormUsuarioInterno\(\)"/,
+    "estado vazio não duplica o botão de criação já presente no cabeçalho do módulo");
 });
 
 test("M01: UI ligada à callable existente, com formulário real e sem botões duplicados",()=>{
