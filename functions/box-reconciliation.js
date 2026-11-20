@@ -3,7 +3,7 @@ const core = require("./financial-core");
 const norm = core.normalizarStatus, text = core.texto;
 const inactive = row => row.excluido === true || row.cancelado === true || row.estornado === true || ["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA","EXCLUIDO","EXCLUIDA"].includes(norm(row.status || row.statusLancamento));
 const confirmed = value => ["CONFIRMADO","CONFIRMADA","ATIVO","ATIVA","APROVADO","APROVADA"].includes(norm(value));
-function calcularConferencia({box, sales, installments, payments, requests, visits, ledger, ownerUid, sellerIds=[], fail}) {
+function calcularConferencia({box, sales, clients=[], installments, payments, requests, visits, ledger, ownerUid, sellerIds=[], fail}) {
   const money = (row, field="valorCentavos", aliases=["valor","valorPago","valorRecebido","valorTotal"]) => {
     if (row[field] !== undefined && !Number.isSafeInteger(row[field])) fail("failed-precondition", "Valor financeiro inválido: " + field);
     for (const alias of aliases) if (row[field] === undefined && row[alias] !== undefined && !Number.isFinite(Number(row[alias]))) fail("failed-precondition", "Valor financeiro inválido: " + alias);
@@ -58,7 +58,28 @@ function calcularConferencia({box, sales, installments, payments, requests, visi
     if (type==="ESTORNO" && !ledger.some(original=>original.id===l.reversaoDeId)) inconsistencies.push("ESTORNO_ORFAO:"+l.id);
     if (!['CREDITO','DEBITO'].includes(norm(l.natureza)) || money(l)<0) inconsistencies.push("LEDGER_INVALIDO:"+l.id);
   }
-  const portfolioSales=activeSales.filter(s=>!ownerUid || (s.vendedorAuthUid ? s.vendedorAuthUid===ownerUid : sellerIds.includes(s.vendedorId)));
+  // A autoria original da venda não define quem atende o cliente hoje.
+  // Depois de uma transferência, o cadastro operacional é a fonte canônica
+  // da rota; a venda original continua vinculada ao caixa que a gerou.
+  const clientsById=new Map();
+  for(const client of [...clients].sort((a,b)=>
+    Number(b.origemColecaoConferencia==="clientes_operacionais")-Number(a.origemColecaoConferencia==="clientes_operacionais"))) {
+    for(const key of [client.id,client.clienteOperacionalId,client.clienteLegadoId].map(text).filter(Boolean)) {
+      if(!clientsById.has(key)) clientsById.set(key,client);
+    }
+  }
+  const portfolioSales=activeSales.filter(s=>{
+    const client=clientsById.get(text(s.clienteOperacionalId)) || clientsById.get(text(s.clienteId));
+    if(client) {
+      const canonical=text(client.vendedorAuthUid || client.vendedorUid || client.responsavelAuthUid);
+      if(canonical) return !ownerUid || canonical===ownerUid;
+      const legacy=text(client.vendedorId || client.responsavelId || client.usuarioId);
+      if(legacy) return !ownerUid || legacy===ownerUid || sellerIds.includes(legacy);
+    }
+    // Só vendas realmente órfãs (sem cadastro atual) seguem o vínculo da
+    // venda, sem trocar de proprietário nem ocultar dívida por inferência.
+    return !ownerUid || (s.vendedorAuthUid ? s.vendedorAuthUid===ownerUid : sellerIds.includes(s.vendedorId));
+  });
   const selected=new Map();
   // A rota existente trabalha com a venda atual de cada cliente, pela data de criação.
   for (const sale of portfolioSales) {
