@@ -301,11 +301,13 @@
 
   async function sincronizarAntesDoFechamento(caixa) {
     const caixaId = texto(caixa?.id || caixa?.caixaId || caixa?.docId);
-    if (global.sincronizarMovimentosDashboardVendedor) await global.sincronizarMovimentosDashboardVendedor(true);
-    if (caixaId && global.IntegroPerfisUnificados?.carregarMovimentacoesVendedor) {
+    // Dashboard e fechamento compartilham esta sincronização. Executá-la
+    // duas vezes atrasava a confirmação e duplicava leituras do mesmo caixa.
+    if (typeof global.sincronizarMovimentosDashboardVendedor === "function") {
+      await global.sincronizarMovimentosDashboardVendedor(true);
+    } else if (caixaId && global.IntegroPerfisUnificados?.carregarMovimentacoesVendedor) {
       await global.IntegroPerfisUnificados.carregarMovimentacoesVendedor(caixaId);
     }
-    await new Promise(resolve => setTimeout(resolve, 60));
   }
 
   async function prepararSnapshot(caixa) {
