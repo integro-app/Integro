@@ -1644,6 +1644,18 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.cancelada {
   color: #a82635 !important; background: #fde8eb !important;
 }
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.emdia {
+  color: #087e47 !important; background: #dff8ea !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.adiantada {
+  color: #0c6499 !important; background: #dff1fd !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.atraso {
+  color: #99600b !important; background: #fff0ce !important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.grave {
+  color: #aa2234 !important; background: #ffe6e9 !important;
+}
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-status.analise {
   color: #995903 !important; background: #fff0c6 !important;
 }
