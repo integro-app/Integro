@@ -22,6 +22,8 @@
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
     .replace(/\s+/g, "_");
+  const escaparHtml = valor => texto(valor).replace(/[&<>"\']/g, caractere =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[caractere]);
   const inteiro = valor => {
     const numero = Number(valor);
     return Number.isFinite(numero) ? Math.round(numero) : 0;
@@ -357,6 +359,7 @@
     const totalPagas = Math.max(0, inteiro(snapshot.totalPagas));
     const totalNaoPagas = Math.max(0, inteiro(snapshot.totalNaoPagas));
     const visitadas = Math.max(0, inteiro(snapshot.totalVisitadas));
+    const progressoPercentual = totalVisitas > 0 ? Math.min(100, Math.round(visitadas / totalVisitas * 100)) : 0;
     const pendentesOficiais = Array.isArray(snapshot.pendenciasCobrancas) ? snapshot.pendenciasCobrancas : [];
     const escapar = valor => texto(valor).replace(/[&<>"']/g, caractere =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[caractere]);
@@ -374,6 +377,7 @@
         <button class="integro-fechamento-close" type="button" data-fechamento-cancelar aria-label="Fechar">×</button>
       </div>
       <div class="integro-fechamento-body">
+        <div class="integro-fechamento-secao-cabeca"><h3>Movimentações do caixa</h3><small>Valores confirmados pelo servidor</small></div>
         <div class="integro-fechamento-grid">
           <div class="integro-fechamento-card destaque"><small>Caixa atual</small><strong>${moedaCentavos(resumo.caixaAtualCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Caixa inicial</small><strong>${moedaCentavos(resumo.caixaInicialCentavos)}</strong></div>
@@ -386,8 +390,10 @@
           <div class="integro-fechamento-card"><small>Carteira final</small><strong>${moedaCentavos(resumo.carteiraFinalCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Recolhido</small><strong>${moedaCentavos(resumo.recolhimentosCentavos)}</strong></div>
         </div>
+        <div class="integro-fechamento-equacao"><span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span><p><strong>Conciliação automática:</strong> caixa inicial + recebimentos + ingressos − vendas − gastos − retiradas − recolhimentos, considerando os ajustes oficiais. O valor esperado acima é calculado pelo servidor.</p></div>
         <div class="integro-fechamento-visitas" aria-label="Resumo das visitas">
-          <h3>Visitas e baixas</h3>
+          <div class="integro-fechamento-secao-cabeca"><h3>Visitas e baixas</h3><small>Controle de produtividade</small></div>
+          <div class="integro-fechamento-progresso"><div><strong>${visitadas} de ${totalVisitas} visitas com baixa</strong><span>${progressoPercentual}%</span></div><progress max="100" value="${progressoPercentual}" aria-label="Progresso das visitas com baixa"></progress></div>
           <div class="integro-fechamento-grid">
             <div class="integro-fechamento-card"><small>Previstas</small><strong>${totalVisitas}</strong></div>
             <div class="integro-fechamento-card"><small>Com baixa</small><strong>${visitadas}</strong></div>
@@ -401,8 +407,10 @@
           ${detalhesPendencias}
         </div>
         <div class="integro-fechamento-conferencia">
-          <label for="integroFechamentoValorInformado">Digite o valor do caixa atual para confirmar</label>
-          <input id="integroFechamentoValorInformado" inputmode="decimal" autocomplete="off" placeholder="0,00" aria-describedby="integroFechamentoValidacao">
+          <div class="integro-fechamento-secao-cabeca"><h3>Conferência final</h3><small>Confirmação em duas etapas</small></div>
+          <label for="integroFechamentoValorInformado">Informe o valor contado fisicamente no caixa</label>
+          <input id="integroFechamentoValorInformado" inputmode="decimal" autocomplete="off" placeholder="Ex.: 250,00" aria-describedby="integroFechamentoValidacao">
+          <p class="integro-fechamento-ajuda">O valor precisa coincidir com o saldo esperado. A confirmação será revalidada no Firebase antes de fechar e encerrar a sessão.</p>
           <div id="integroFechamentoValidacao" class="integro-fechamento-validacao">Aguardando conferência.</div>
         </div>
       </div>
@@ -542,7 +550,7 @@
       etapaAtual?.classList.remove("processando");
       etapaAtual?.classList.add("erro");
       const host = dialog.querySelector("#integroFechamentoErro");
-      if (host) host.innerHTML = `<div class="integro-encerramento-erro"><strong>Caixa não fechado.</strong><div>${texto(erro?.message || "Não foi possível concluir o fechamento.")}</div><div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="secundario" id="integroFechamentoCancelarErro">Cancelar</button><button type="button" class="primario" id="integroFechamentoReabrirResumo">Conferir novamente</button></div></div>`;
+      if (host) host.innerHTML = `<div class="integro-encerramento-erro"><strong>Caixa não fechado.</strong><div>${escaparHtml(erro?.message || "Não foi possível concluir o fechamento.")}</div><div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="secundario" id="integroFechamentoCancelarErro">Cancelar</button><button type="button" class="primario" id="integroFechamentoReabrirResumo">Conferir novamente</button></div></div>`;
       dialog.querySelector("#integroFechamentoCancelarErro")?.addEventListener("click", cancelar);
       dialog.querySelector("#integroFechamentoReabrirResumo")?.addEventListener("click", () => abrirResumoFechamento({ inline }));
       atualizarBotaoFechamento();
