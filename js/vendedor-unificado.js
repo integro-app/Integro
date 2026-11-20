@@ -912,6 +912,14 @@
   function configurarDashboardVendedor() {
     const dashboard = document.getElementById("dashboard");
     if (!dashboard) return;
+    // M06: camada visual específica do vendedor. Não altera dados nem demais perfis.
+    if (!document.getElementById("integro-dashboard-vendedor-pro-script")) {
+      const proScript = document.createElement("script");
+      proScript.id = "integro-dashboard-vendedor-pro-script";
+      proScript.src = "js/dashboard-vendedor-pro.js?v=20261120-m06-pro1";
+      proScript.async = true;
+      document.head.appendChild(proScript);
+    }
     dashboard.dataset.dashboardInitialView = "visao-geral";
     dashboard.querySelectorAll("[data-dashboard-view]").forEach(botao => {
       if (botao.dataset.dashboardView === "visao-geral") {
