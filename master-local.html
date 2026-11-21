@@ -2847,11 +2847,25 @@ body.integro-data-refreshing .section-card{
             <button class="clientes-module-tab active" type="button" data-clientes-tela="clientes" aria-selected="true" onclick="navegarModuloClientesMasterLocal('clientes')"><span class="material-symbols-outlined">manage_search</span> Consultar</button>
             <button class="clientes-module-tab" type="button" data-clientes-tela="indicacoes" aria-selected="false" onclick="navegarModuloClientesMasterLocal('indicacoes')"><span class="material-symbols-outlined">campaign</span> Leads</button>
           </nav>
-          <div class="search-row">
-            <input type="search" placeholder="Buscar cliente">
-            <button class="ghost-btn">Filtros</button>
+          <div class="search-row mlc-client-searchbar">
+            <input type="search" id="buscaClientes" placeholder="Buscar cliente por nome, documento ou telefone"
+              autocomplete="off" aria-label="Pesquisar clientes históricos" oninput="renderClientes()">
+            <button type="button" class="ghost-btn" id="btnFiltrosClientesMasterLocal"
+              onclick="toggleFiltrosClientesMasterLocal()" aria-expanded="false" aria-controls="clientesFiltrosMasterLocal">Filtros</button>
+            <button type="button" class="primary-btn" onclick="renderClientes()">Buscar</button>
           </div>
-          <div id="listaClientes" class="placeholder">Área pronta para conexão com clientes.</div>
+          <div id="clientesFiltrosMasterLocal" class="mlc-client-filters" hidden>
+            <label>Origem do cadastro<select id="filtroOrigemClientes" onchange="renderClientes()">
+              <option value="todos">Todas as origens</option>
+              <option value="diretos">Cadastros diretos</option>
+              <option value="leads">Leads e indicações</option>
+              <option value="em_atendimento">Em atendimento</option>
+            </select></label>
+            <button type="button" class="ghost-btn" onclick="limparFiltrosClientesMasterLocal()">Limpar filtros</button>
+          </div>
+          <div class="mlc-client-label"><strong>Cadastros históricos</strong><small>Registros da coleção original de clientes</small></div>
+          <div id="listaClientes" class="placeholder">Consultando clientes históricos...</div>
+          <div id="clientesOperacionaisMasterLocal" class="mlc-client-operacionais" aria-label="Clientes da carteira operacional atual"></div>
         </div>
       </section>
       <section id="movimentacoes" class="screen integro-shared-screen">
@@ -3220,12 +3234,12 @@ body.integro-data-refreshing .section-card{
   <script src="js/equipes.js?v=20261104-equipes-exclusao-v2"></script>
   <script src="js/caixas.js?v=20261120-master-local-escopo-v1"></script>
   <script src="js/usuarios.js?v=20261120-master-local-usuarios-v3"></script>
-  <script src="js/clientes.js?v=20261104-clientes-botoes-tenant-v1"></script>
+  <script src="js/clientes.js?v=20261121-master-local-clientes-v2"></script>
   <script src="js/vendas.js?v=20261104-vendas-centavos-v2"></script>
   <script src="js/services/master-local-metrics.js?v=20261120-master-local-kpis-2"></script>
   <script src="js/services/master-local-reconciliation.js?v=20261121-v2"></script>
-  <script src="js/modules/master-local-reconciliation-ui.js?v=20261121-v2"></script>
-  <script src="js/master-local.js?v=20261121-conciliacao-v2"></script>
+  <script src="js/modules/master-local-reconciliation-ui.js?v=20261121-v3"></script>
+  <script src="js/master-local.js?v=20261121-conciliacao-v3"></script>
   <script src="js/painel-unificado.js?v=20261105-relatorios-route-v1"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
   <script src="js/perfis-unificados.js?v=20261112-vendas-dia-sync-v1&build=20261101-ui-october-safe2"></script>
