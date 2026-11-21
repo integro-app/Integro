@@ -3,10 +3,13 @@ on:
   push:
     branches:
       - feat/master-local-auditoria-dados-kpis-20261120
+      - fix/master-local-caixas-equipes-vazias-20261121
     paths:
       - "tests/master-local-*.test.js"
       - "js/master-local.js"
       - "js/caixas.js"
+      - "js/modules/caixas-supervisao.js"
+      - "js/caixa-team-date-ui.js"
       - "js/usuarios.js"
       - "js/services/master-local-metrics.js"
       - ".github/workflows/master-local-smoke.yml"
@@ -24,5 +27,7 @@ jobs:
       - run: node --check js/master-local.js
       - run: node --check js/usuarios.js
       - run: node --check js/caixas.js
+      - run: node --check js/modules/caixas-supervisao.js
+      - run: node --check js/caixa-team-date-ui.js
       - run: node --check js/services/master-local-metrics.js
-      - run: node --test tests/master-local-metrics.test.js tests/master-local-integridade.test.js
+      - run: node --test tests/master-local-metrics.test.js tests/master-local-integridade.test.js tests/master-local-caixas-equipes.test.js
