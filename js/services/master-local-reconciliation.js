@@ -17,10 +17,10 @@
   const saldoVenda=v=>dinheiro(v?.saldoDevedorCentavos,v?.saldoDevedor??v?.saldoAtual);
   const saldoCliente=v=>dinheiro(v?.saldoDevedorCentavos,v?.saldoDevedor??v?.saldoAtual);
   const statusVenda=v=>normal(v?.statusVenda||v?.status);
-  const statusCliente=v=>normal(v?.statusFinanceiro||v?.statusCliente||v?.status);
+  const statusCliente=v=>normal(v?.statusCliente||v?.statusFinanceiro||v?.status);
   const encerrada=v=>["QUITADO","QUITADA","CANCELADO","CANCELADA","ESTORNADO","ESTORNADA","EXCLUIDO","EXCLUIDA"].includes(statusVenda(v))||
     v?.excluido===true||v?.cancelado===true||v?.ativo===false;
-  const quitado=c=>["QUITADO","QUITADA"].includes(statusCliente(c));
+  const quitado=c=>[c?.statusCliente,c?.statusFinanceiro,c?.status].some(v=>["QUITADO","QUITADA"].includes(normal(v)));
   const doc=c=>texto(c?.documentoNormalizado||c?.cpfCnpjNormalizado||c?.documento||c?.cpf||c?.cnpj).replace(/\D/g,"");
   const id=c=>texto(c?.id);
   const doTenant=(a,tenant)=>(Array.isArray(a)?a:[]).filter(x=>
