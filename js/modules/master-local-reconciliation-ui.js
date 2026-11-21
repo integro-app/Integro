@@ -1,6 +1,6 @@
 (function(global){
   "use strict";
-  const state={search:"",filter:"TODOS",page:0,perPage:20,last:null,loading:false,expanded:false,scope:""};
+  const state={search:"",filter:"TODOS",page:0,perPage:20,last:null,loading:false,expanded:false,scope:"",clientSearch:""};
   const scope=()=>{
     const u=global.State?.getUsuario?.()||{};
     return String(global.State?.getTenantId?.()||"")+":"+String(u.authUid||u.uid||u.id||"");
@@ -9,7 +9,7 @@
     const atual=scope();
     if(atual===state.scope)return;
     state.scope=atual;
-    state.last=null;state.search="";state.filter="TODOS";state.page=0;
+    state.last=null;state.search="";state.filter="TODOS";state.page=0;state.clientSearch="";
   };
   const E=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const fmt=v=>((Number.isSafeInteger(v)?v:0)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -179,6 +179,68 @@
       if(state.last)renderLista(host,state.last);
     });
   }
+  function renderClientesOperacionaisLista(host,clientes,parcial){
+    const cont=host.querySelector("[data-mlc-client-results]");
+    if(!cont)return;
+    const termo=state.clientSearch.trim().toLocaleLowerCase("pt-BR");
+    const filtrados=clientes.filter(c=>!termo||[c.nomeCompleto,c.nome,c.apelido,
+      c.documentoNormalizado,c.documento,c.vendedorNome,c.responsavelNome,c.id]
+      .join(" ").toLocaleLowerCase("pt-BR").includes(termo));
+    const mostrar=filtrados.slice(0,50);
+    const lista=mostrar.map(c=>`<article class="mlc-operational-item">
+      <div><strong>${E(c.nomeCompleto||c.nome||"Cliente sem nome")}</strong>
+        <small>${E(c.vendedorNome||c.responsavelNome||"Responsável não identificado")}</small></div>
+      <span>${E(c.statusFinanceiro||c.statusCliente||c.status||"SEM_STATUS")}</span>
+      <strong>${fmt(global.IntegroConciliacaoMasterLocal?.saldoCliente(c)||0)}</strong>
+      <button type="button" class="mlc-action" data-mlc-client-open="${E(c.id)}">Cliente 360°</button>
+    </article>`).join("");
+    cont.innerHTML=`<p class="mlc-client-result-count">${filtrados.length} de ${clientes.length} clientes operacionais consultados
+      ${filtrados.length>50?" · mostrando primeiros 50":""}${parcial?" · lista potencialmente parcial":""}</p>
+      ${lista||'<div class="mlc-empty"><strong>Nenhum cliente operacional encontrado</strong><p>Altere a pesquisa ou confira os filtros.</p></div>'}`;
+  }
+  function renderClientesOperacionais(){
+    const host=global.document.getElementById("clientesOperacionaisMasterLocal");
+    if(!host)return false;
+    const atual=data();
+    const acesso=global.IntegroAcesso?.acessoUsuario?.(global.State?.getUsuario?.())?.perfil;
+    if(acesso&&acesso!=="master_local"){host.hidden=true;return false;}
+    host.hidden=false;
+    if(!atual.carregada){
+      host.innerHTML='<div class="mlc-client-head"><h3>Carteira operacional</h3><p>Dados ainda não confirmados. Atualize a consulta na Conciliação.</p></div>';
+      return false;
+    }
+    const clientes=atual.clientesOperacionais||[];
+    const parcial=Number(atual.limites?.clientesOperacionais)>0&&
+      clientes.length>=Number(atual.limites.clientesOperacionais);
+    host.innerHTML=`<div class="mlc-client-head"><div><small>BASE ATUAL</small><h3>Carteira operacional</h3>
+      <p>Clientes da operação corrente. A listagem histórica acima permanece separada.</p></div>
+      <button type="button" class="mlc-primary" data-mlc-client-concil>Ver conciliação</button></div>
+      <label class="mlc-client-query"><span class="material-symbols-rounded" aria-hidden="true">search</span>
+        <input type="search" data-mlc-client-search value="${E(state.clientSearch)}"
+          placeholder="Buscar cliente operacional" aria-label="Pesquisar carteira operacional"></label>
+      <div data-mlc-client-results></div>`;
+    if(host.dataset.mlcClientBound!=="1"){
+      host.dataset.mlcClientBound="1";
+      host.addEventListener("input",e=>{
+        if(!e.target.matches("[data-mlc-client-search]"))return;
+        state.clientSearch=e.target.value;
+        renderClientesOperacionaisLista(host,data().clientesOperacionais||[],parcial);
+      });
+      host.addEventListener("click",e=>{
+        const button=e.target.closest("button");
+        if(!button)return;
+        if(button.hasAttribute("data-mlc-client-concil"))return navegar();
+        if(!button.hasAttribute("data-mlc-client-open"))return;
+        const doc=(data().clientesOperacionais||[]).find(x=>
+          String(x.id)===button.dataset.mlcClientOpen);
+        if(!doc)return global.UIHelpers?.alerta?.("Cliente fora da carteira consultada.");
+        if(typeof global.abrirCliente360==="function")global.abrirCliente360(doc);
+        else global.UIHelpers?.alerta?.("A ficha Cliente 360° está indisponível no momento.");
+      });
+    }
+    renderClientesOperacionaisLista(host,clientes,parcial);
+    return true;
+  }
   const plano={
     QUITADO_COM_SALDO:"Conferir parcelas e pagamentos confirmados; identificar se o status ou o saldo está incorreto antes de qualquer ajuste.",
     VENDA_QUITADA_COM_SALDO:"Confirmar a quitação no contrato e comparar com parcelas, pagamentos e saldo residual antes de regularizar.",
@@ -204,5 +266,5 @@
     global.navegarModuloClientesMasterLocal?.("clientes") ?? global.trocarTela?.("clientes");
     global.setTimeout?.(()=>global.abrirVerCliente?.(botao.dataset.mlcProfile),100);
   });
-  global.IntegroConciliacaoUI=Object.freeze({tela,renderResumo,consultar,detalhes,atualizar,navegar,get estado(){return {...state}}});
+  global.IntegroConciliacaoUI=Object.freeze({tela,renderResumo,renderClientesOperacionais,consultar,detalhes,atualizar,navegar,get estado(){return {...state}}});
 })(window);
