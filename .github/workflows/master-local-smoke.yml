@@ -1,0 +1,28 @@
+name: Master Local - smoke tests de KPIs e isolamento
+on:
+  push:
+    branches:
+      - feat/master-local-auditoria-dados-kpis-20261120
+    paths:
+      - "tests/master-local-*.test.js"
+      - "js/master-local.js"
+      - "js/caixas.js"
+      - "js/usuarios.js"
+      - "js/services/master-local-metrics.js"
+      - ".github/workflows/master-local-smoke.yml"
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check js/master-local.js
+      - run: node --check js/usuarios.js
+      - run: node --check js/caixas.js
+      - run: node --check js/services/master-local-metrics.js
+      - run: node --test tests/master-local-metrics.test.js tests/master-local-integridade.test.js
