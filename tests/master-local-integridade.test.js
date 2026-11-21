@@ -9,7 +9,7 @@ const ler=file=>fs.readFileSync(path.join(__dirname,"..",file),"utf8");
 test("caixas não recuam ao tenant salvo no navegador quando sessão foi encerrada",()=>{
  const source=ler("js/caixas.js");
  const ctx={State:{getTenantId(){return ""},tenantId:""},
-  window:{},document:{addEventListener(){}},localStorage:{getItem:()=> "tenant-antigo"},console};
+  window:{addEventListener(){}},document:{addEventListener(){}},localStorage:{getItem:()=> "tenant-antigo"},console};
  vm.runInNewContext(source,ctx,{filename:"caixas.js"});
  assert.equal(ctx.getTenantIdSeguroCaixas(),"");
  ctx.State.getTenantId=()=>"empresa-atual";
