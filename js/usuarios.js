@@ -351,6 +351,7 @@ async function salvarNovoUsuario() {
     fecharDrawer();
     await carregarUsuarios(true);
     renderUsuarios();
+    if (typeof renderDashboardMasterLocal === "function") renderDashboardMasterLocal();
   } catch (erro) {
     console.error("Erro ao criar usuário:", erro);
     const mensagem = erro?.code === "usuario/email-duplicado"
@@ -409,6 +410,7 @@ async function salvarEdicaoUsuario(id) {
     fecharDrawer();
     await carregarUsuarios(true);
     renderUsuarios();
+    if (typeof renderDashboardMasterLocal === "function") renderDashboardMasterLocal();
 
   } catch (erro) {
     console.error("Erro ao editar usuário:", erro);
@@ -440,6 +442,7 @@ async function alterarAcessoUsuario(id, liberar) {
 
     await carregarUsuarios(true);
     renderUsuarios();
+    if (typeof renderDashboardMasterLocal === "function") renderDashboardMasterLocal();
 
   } catch (erro) {
     console.error("Erro ao alterar acesso:", erro);
@@ -475,6 +478,7 @@ async function excluirUsuarioLogico(id) {
 
     await carregarUsuarios(true);
     renderUsuarios();
+    if (typeof renderDashboardMasterLocal === "function") renderDashboardMasterLocal();
 
   } catch (erro) {
     console.error("Erro ao excluir usuário:", erro);
