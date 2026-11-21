@@ -75,7 +75,7 @@
     el.hidden=false;
     if(!report){el.innerHTML=`<div class="mlc-summary-head"><div><small>QUALIDADE DA CARTEIRA</small><h3>Conciliação de dados</h3></div></div>
       <p>Os dados operacionais ainda não foram confirmados. Verifique a conexão e atualize a página.</p>
-      <button type="button" class="mlc-primary" data-mlc-navigate>Ver central de conciliação</button>`;return;}
+      <button type="button" class="mlc-primary" data-mlc-navigate>Ver central de conciliação</button>`;bind(el);return;}
     const qualidade=cobertura(report);
     const itens=report.registros.slice(0,3).map(r=>`<div class="mlc-recent-item">
       <span class="mlc-recent-dot ${r.gravidade==="ALTA"?"high":"medium"}"></span>
