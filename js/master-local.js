@@ -4,6 +4,7 @@
 // ========================================
 
 let categoriasMovimentacaoMasterLocal = [];
+let carteiraOperacionalMasterLocal = {escopo:"",carregada:false,parcial:false,clientes:[],erro:""};
 let bootstrapMasterLocalAtual = null;
 function escopoMasterLocal(){const u=State.getUsuario?.()||{};return [String(State.getTenantId?.()||""),String(u.authUid||u.uid||u.id||"")].join(":");}
 function sessaoMasterLocalValida(escopo){return !!State.getTenantId?.() && escopo===escopoMasterLocal();}
@@ -105,6 +106,7 @@ async function carregarTudoMasterLocal(forcar = false) {
     const tarefas = [
       ["usuários", () => carregarUsuarios(forcar)],
       ["clientes", () => carregarClientes(forcar)],
+      ["carteira operacional", () => carregarCarteiraOperacionalMasterLocal(forcar)],
       ["caixas", () => carregarCaixas(forcar)],
       ["vendas", () => carregarVendas(forcar)],
       ["pagamentos", () => carregarPagamentosHoje(forcar)],
@@ -168,7 +170,7 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
         renderCargos?.();
         break;
       case "clientes":
-        await carregarClientes(forcar);
+        await Promise.all([carregarClientes(forcar),carregarCarteiraOperacionalMasterLocal(forcar)]);
         renderClientes?.();
         break;
       case "vendas":
@@ -249,6 +251,25 @@ async function carregarClientes(forcar = false) {
     if(sessaoMasterLocalValida(escopo))State.setClientes(data);
   } catch (erro) {
     console.error("Erro ao carregar clientes:", erro);
+    throw erro;
+  }
+}
+
+async function carregarCarteiraOperacionalMasterLocal(forcar = false) {
+  const escopo=escopoMasterLocal(),tenantId=String(State.getTenantId?.()||"");
+  if(!sessaoMasterLocalValida(escopo))return;
+  try {
+    const limite=CONFIG.LIMITS?.CLIENTES || 500;
+    const data=await FirestoreService.loadCollection("clientes_operacionais",tenantId,limite,
+      {cacheMs:30000,forcar,chave:`master-local:operacionais:${tenantId}`});
+    if(!sessaoMasterLocalValida(escopo))return;
+    carteiraOperacionalMasterLocal={escopo,carregada:true,parcial:data.length>=limite,
+      clientes:data.filter(c=>String(c.clientePlataformaId||"")===tenantId&&c.excluido!==true),erro:""};
+  }catch(erro){
+    console.error("[ÍNTEGRO] Consulta da carteira operacional indisponível.",erro);
+    if(sessaoMasterLocalValida(escopo))carteiraOperacionalMasterLocal={
+      escopo,carregada:false,parcial:false,clientes:[],erro:"Não foi possível confirmar a carteira operacional no Firebase."
+    };
     throw erro;
   }
 }
@@ -353,7 +374,10 @@ function renderDashboardMasterLocal(){
   const tenantId=String(State.getTenantId?.()||"");
   const M=window.IntegroMasterLocalMetrics;
   if(!M?.calcular){console.error("[ÍNTEGRO] Indicadores do Master Local não carregados.");return;}
-  const k=M.calcular({tenantId,clientes:State.getClientes?.()||[],caixas:State.getCaixas?.()||[],
+  const carteiraCanonica=carteiraOperacionalMasterLocal.escopo===escopoMasterLocal() &&
+    carteiraOperacionalMasterLocal.carregada;
+  const k=M.calcular({tenantId,clientes:carteiraCanonica
+    ? carteiraOperacionalMasterLocal.clientes : State.getClientes?.()||[],caixas:State.getCaixas?.()||[],
     vendas:State.getVendas?.()||[],pagamentos:State.getPagamentos?.()||[],
     solicitacoes:State.getSolicitacoes?.()||[],usuarios:State.getUsuarios?.()||[]});
   for(const [id,valor] of [["kpiCarteira",moedaCentavosMasterLocal(k.carteiraCentavos)],
@@ -368,6 +392,41 @@ function renderDashboardMasterLocal(){
   renderTopClientes(k.clientes,k.vendasComSaldo);
   renderPerformanceEquipe(k.usuariosDados,k.vendasValidas);
   renderResumoVendas(k.vendasValidas);
+  renderAuditoriaCarteiraMasterLocal();
+}
+
+function renderAuditoriaCarteiraMasterLocal(){
+  const host=document.getElementById("masterLocalConciliacaoCarteira");
+  if(!host)return;
+  const M=window.IntegroMasterLocalMetrics,tenantId=String(State.getTenantId?.()||"");
+  const atual=carteiraOperacionalMasterLocal;
+  host.hidden=false;
+  if(!atual.carregada||atual.escopo!==escopoMasterLocal()){
+    host.innerHTML='<div class="ml-audit-head"><h3>Conciliação de carteira</h3><small>Diagnóstico indisponível</small></div><p>Não foi possível confirmar a base de clientes operacionais. Os contratos não foram alterados.</p>';
+    return;
+  }
+  const auditoria=M.auditarCarteira({tenantId,clientesLegados:State.getClientes?.()||[],
+    clientesOperacionais:atual.clientes,vendas:State.getVendas?.()||[]});
+  const avisoParcial=atual.parcial?' Consulta operacional atingiu o limite de registros; os totais podem ser parciais.':'';
+  const linhas=auditoria.registros.slice(0,30).map(item=>`<tr>
+    <td><strong>${escaparMasterLocal(item.nome)}</strong><small>${escaparMasterLocal(item.vendedorNome||"Vendedor não identificado")}</small></td>
+    <td>${escaparMasterLocal(item.status)}</td>
+    <td>${item.contratosAtivos}</td>
+    <td>${item.motivo==="QUITADO_COM_SALDO"?"Quitado com saldo contraditório":"Sem ficha operacional"}</td>
+  </tr>`).join("");
+  host.innerHTML=`<div class="ml-audit-head">
+    <div><h3>Conciliação de carteira</h3>
+    <p>Clientes históricos ainda não vinculados à carteira operacional. Somente leitura: nenhum pagamento ou saldo será alterado.</p></div>
+    <span class="ml-audit-counter">${auditoria.total} pendência(s)</span>
+  </div>
+  <div class="ml-audit-stats"><div><small>Registros legados</small><strong>${auditoria.total}</strong></div>
+    <div><small>Com contratos em aberto</small><strong>${auditoria.comContratos}</strong></div>
+    <div><small>Quitados com divergência</small><strong>${auditoria.contraditorios}</strong></div></div>
+  ${avisoParcial?`<p class="ml-audit-warning">${escaparMasterLocal(avisoParcial)}</p>`:""}
+  ${auditoria.total?`<details><summary>Consultar os registros históricos (até 30)</summary>
+    <div class="ml-audit-table-scroll"><table><thead><tr><th>Cliente / responsável</th><th>Situação</th><th>Contratos</th><th>Conciliação necessária</th></tr></thead>
+    <tbody>${linhas}</tbody></table></div></details>`: '<p class="ml-audit-empty">Nenhuma divergência entre clientes históricos e a carteira operacional foi encontrada nesta consulta.</p>'}
+  `;
 }
 
 function setTextSafe(id, valor) {
