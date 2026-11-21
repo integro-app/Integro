@@ -470,7 +470,7 @@ function renderDashboardMasterLocal(){
   if(movOk){
     const lancamentos=M.apenasTenant(State.getLancamentosFinanceiros?.()||[],tenantId)
       .filter(l=>M.diaSP(l.dataOperacional||l.data||l.criadoEm)===hoje&&
-        !["CANCELADO","ESTORNADO"].includes(String(l.statusLancamento||l.status||"CONFIRMADO").toUpperCase())&&
+        ["CONFIRMADO","CONFIRMADA"].includes(String(l.statusLancamento||l.status||"CONFIRMADO").toUpperCase())&&
         l.cancelado!==true&&l.estornado!==true);
     const tipo=l=>String(l.tipoLancamento||l.tipoMovimentacao||l.tipo||"").toUpperCase();
     const gastos=lancamentos.filter(l=>["GASTO","DESPESA"].includes(tipo(l)));
