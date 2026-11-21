@@ -1,0 +1,22 @@
+/* Master Local — diagnóstico read-only da carteira operacional. */
+#masterLocalConciliacaoCarteira[hidden]{display:none!important}
+#masterLocalConciliacaoCarteira{margin-top:20px;padding:22px 24px;background:#fff;border:1px solid #e2eaf4;border-radius:18px;box-shadow:0 10px 30px rgba(7,26,51,.04);color:#112844}
+#masterLocalConciliacaoCarteira .ml-audit-head{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;flex-wrap:wrap}
+#masterLocalConciliacaoCarteira h3{font-size:1.15rem;font-weight:800;line-height:1.4;margin:0;color:#071a33}
+#masterLocalConciliacaoCarteira p{font-size:.89rem;line-height:1.6;color:#647991;margin:8px 0 0;max-width:780px}
+#masterLocalConciliacaoCarteira .ml-audit-counter{font-size:.8rem;font-weight:800;color:#9a4807;background:#fff5e9;border:1px solid #ffdfb7;border-radius:999px;padding:8px 12px;white-space:nowrap}
+#masterLocalConciliacaoCarteira .ml-audit-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 16px}
+#masterLocalConciliacaoCarteira .ml-audit-stats>div{padding:14px 16px;background:#f6f9fd;border:1px solid #e4ecf6;border-radius:13px;display:flex;flex-direction:column;gap:6px}
+#masterLocalConciliacaoCarteira .ml-audit-stats small{color:#607892;font-size:.77rem;font-weight:700}
+#masterLocalConciliacaoCarteira .ml-audit-stats strong{font-weight:850;font-size:1.35rem;color:#102b48}
+#masterLocalConciliacaoCarteira details{border-top:1px solid #e7edf5;padding-top:13px}
+#masterLocalConciliacaoCarteira summary{cursor:pointer;font-weight:750;font-size:.87rem;color:#1b4a75;outline-offset:4px}
+#masterLocalConciliacaoCarteira .ml-audit-table-scroll{margin-top:14px;overflow:auto;max-width:100%;border:1px solid #e4ecf6;border-radius:12px}
+#masterLocalConciliacaoCarteira table{width:100%;border-collapse:collapse;font-size:.81rem;min-width:580px}
+#masterLocalConciliacaoCarteira th{text-align:left;background:#f2f6fb;color:#46627e;padding:12px 14px;white-space:nowrap}
+#masterLocalConciliacaoCarteira td{padding:12px 14px;border-top:1px solid #edf2f8;color:#28445f}
+#masterLocalConciliacaoCarteira td small{display:block;color:#7289a0;margin-top:3px}
+#masterLocalConciliacaoCarteira .ml-audit-warning{color:#97540d;background:#fff8ed;padding:10px 12px;border-radius:9px}
+#masterLocalConciliacaoCarteira .ml-audit-empty{color:#39765b}
+@media(max-width:700px){#masterLocalConciliacaoCarteira{margin-top:14px;padding:16px;border-radius:14px}#masterLocalConciliacaoCarteira .ml-audit-stats{grid-template-columns:repeat(2,minmax(0,1fr))}#masterLocalConciliacaoCarteira .ml-audit-stats>div{padding:12px}#masterLocalConciliacaoCarteira h3{font-size:1.02rem}}
+@media(max-width:390px){#masterLocalConciliacaoCarteira .ml-audit-stats{grid-template-columns:1fr}}

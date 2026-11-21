@@ -4,7 +4,12 @@
 // ========================================
 
 let categoriasMovimentacaoMasterLocal = [];
+let carteiraOperacionalMasterLocal = {escopo:"",carregada:false,parcial:false,clientes:[],erro:""};
 let bootstrapMasterLocalAtual = null;
+function escopoMasterLocal(){const u=State.getUsuario?.()||{};return [String(State.getTenantId?.()||""),String(u.authUid||u.uid||u.id||"")].join(":");}
+function sessaoMasterLocalValida(escopo){return !!State.getTenantId?.() && escopo===escopoMasterLocal();}
+function escaparMasterLocal(v){return String(v??"").replace(/[&<>"\']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","\'":"&#39;"}[c]));}
+function moedaCentavosMasterLocal(v){return moeda((Number.isSafeInteger(v)?v:0)/100);}
 const modulosMasterLocalCarregados = new Map();
 
 // Listener de usuário validado
@@ -94,12 +99,14 @@ function preencherUsuarioTopo() {
 }
 
 async function carregarTudoMasterLocal(forcar = false) {
-  if (bootstrapMasterLocalAtual && !forcar) return bootstrapMasterLocalAtual;
-
-  bootstrapMasterLocalAtual = (async () => {
+  const escopo=escopoMasterLocal();
+  if(!sessaoMasterLocalValida(escopo))throw new Error("Sessão sem empresa válida.");
+  if(bootstrapMasterLocalAtual?.escopo===escopo && !forcar)return bootstrapMasterLocalAtual.promessa;
+  const promessa = (async () => {
     const tarefas = [
       ["usuários", () => carregarUsuarios(forcar)],
       ["clientes", () => carregarClientes(forcar)],
+      ["carteira operacional", () => carregarCarteiraOperacionalMasterLocal(forcar)],
       ["caixas", () => carregarCaixas(forcar)],
       ["vendas", () => carregarVendas(forcar)],
       ["pagamentos", () => carregarPagamentosHoje(forcar)],
@@ -113,6 +120,7 @@ async function carregarTudoMasterLocal(forcar = false) {
       }
     });
 
+    if(!sessaoMasterLocalValida(escopo))return false;
     renderDashboardMasterLocal();
     if (typeof renderClientes === "function") renderClientes();
 
@@ -128,19 +136,18 @@ async function carregarTudoMasterLocal(forcar = false) {
 
     return true;
   })();
-
-  try {
-    return await bootstrapMasterLocalAtual;
-  } finally {
-    bootstrapMasterLocalAtual = null;
-  }
+  bootstrapMasterLocalAtual={escopo,promessa};
+  try{return await promessa;}finally{if(bootstrapMasterLocalAtual?.promessa===promessa)bootstrapMasterLocalAtual=null;}
 }
 
 async function carregarModuloMasterLocal(modulo, forcar = false) {
   const chave = String(modulo || "").trim();
   if (!chave) return;
   const agora = Date.now();
-  const ultimo = Number(modulosMasterLocalCarregados.get(chave) || 0);
+  const escopo=escopoMasterLocal();
+  if(!sessaoMasterLocalValida(escopo))return;
+  const cacheKey=escopo+":"+chave;
+  const ultimo = Number(modulosMasterLocalCarregados.get(cacheKey) || 0);
   if (!forcar && ultimo && agora - ultimo < 30000) return;
 
   const executar = async () => {
@@ -163,7 +170,7 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
         renderCargos?.();
         break;
       case "clientes":
-        await carregarClientes(forcar);
+        await Promise.all([carregarClientes(forcar),carregarCarteiraOperacionalMasterLocal(forcar)]);
         renderClientes?.();
         break;
       case "vendas":
@@ -201,7 +208,7 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
       default:
         break;
     }
-    modulosMasterLocalCarregados.set(chave, Date.now());
+    if(sessaoMasterLocalValida(escopo))modulosMasterLocalCarregados.set(cacheKey, Date.now());
   };
 
   try {
@@ -215,6 +222,7 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
 window.carregarModuloMasterLocal = carregarModuloMasterLocal;
 
 async function carregarUsuarios(forcar = false) {
+  const escopo=escopoMasterLocal();
   try {
     const data = await FirestoreService.loadCollection(
       CONFIG.COLECOES.USUARIOS,
@@ -223,7 +231,7 @@ async function carregarUsuarios(forcar = false) {
       { cacheMs: 30000, forcar }
     );
 
-    State.setUsuarios(data);
+    if(sessaoMasterLocalValida(escopo))State.setUsuarios(data);
   } catch (erro) {
     console.error("Erro ao carregar usuários:", erro);
     throw erro;
@@ -231,6 +239,7 @@ async function carregarUsuarios(forcar = false) {
 }
 
 async function carregarClientes(forcar = false) {
+  const escopo=escopoMasterLocal();
   try {
     const data = await FirestoreService.loadCollection(
       CONFIG.COLECOES.CLIENTES,
@@ -239,14 +248,34 @@ async function carregarClientes(forcar = false) {
       { cacheMs: 20000, forcar }
     );
 
-    State.setClientes(data);
+    if(sessaoMasterLocalValida(escopo))State.setClientes(data);
   } catch (erro) {
     console.error("Erro ao carregar clientes:", erro);
     throw erro;
   }
 }
 
+async function carregarCarteiraOperacionalMasterLocal(forcar = false) {
+  const escopo=escopoMasterLocal(),tenantId=String(State.getTenantId?.()||"");
+  if(!sessaoMasterLocalValida(escopo))return;
+  try {
+    const limite=CONFIG.LIMITS?.CLIENTES || 500;
+    const data=await FirestoreService.loadCollection("clientes_operacionais",tenantId,limite,
+      {cacheMs:30000,forcar,chave:`master-local:operacionais:${tenantId}`});
+    if(!sessaoMasterLocalValida(escopo))return;
+    carteiraOperacionalMasterLocal={escopo,carregada:true,parcial:data.length>=limite,
+      clientes:data.filter(c=>String(c.clientePlataformaId||"")===tenantId&&c.excluido!==true),erro:""};
+  }catch(erro){
+    console.error("[ÍNTEGRO] Consulta da carteira operacional indisponível.",erro);
+    if(sessaoMasterLocalValida(escopo))carteiraOperacionalMasterLocal={
+      escopo,carregada:false,parcial:false,clientes:[],erro:"Não foi possível confirmar a carteira operacional no Firebase."
+    };
+    throw erro;
+  }
+}
+
 async function carregarVendas(forcar = false) {
+  const escopo=escopoMasterLocal();
   try {
     const data = await FirestoreService.loadCollection(
       CONFIG.COLECOES.VENDAS,
@@ -255,7 +284,7 @@ async function carregarVendas(forcar = false) {
       { cacheMs: 15000, forcar }
     );
 
-    State.setVendas(data);
+    if(sessaoMasterLocalValida(escopo))State.setVendas(data);
   } catch (erro) {
     console.error("Erro ao carregar vendas:", erro);
     throw erro;
@@ -263,47 +292,43 @@ async function carregarVendas(forcar = false) {
 }
 
 async function carregarPagamentosHoje(forcar = false) {
+  const escopo = escopoMasterLocal();
   try {
-    const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", {
-      timeZone: "America/Sao_Paulo"
-    });
-    const tenantId = State.getTenantId();
-
-    let ref = db.collection(CONFIG.COLECOES.PAGAMENTOS).where("data", "==", hoje);
-
-    if (tenantId) {
-      ref = db
-        .collection(CONFIG.COLECOES.PAGAMENTOS)
-        .where("clientePlataformaId", "==", tenantId)
-        .where("data", "==", hoje);
-    }
-
-    const runtime = window.IntegroDataRuntime;
-    let data;
-    if (runtime?.consultarTenant && tenantId) {
-      data = await runtime.consultarTenant({
-        db,
-        colecao: CONFIG.COLECOES.PAGAMENTOS,
-        tenantId,
-        filtros: [["data", "==", hoje]],
-        limite: CONFIG.LIMITS.PAGAMENTOS,
-        cacheMs: 15000,
-        forcar,
-        chave: `pagamentos-hoje:${tenantId}:${hoje}`
+    const tenantId=String(State.getTenantId?.()||"");
+    if (!tenantId) throw new Error("Empresa não identificada para consultar pagamentos.");
+    const M=window.IntegroMasterLocalMetrics;
+    const hoje=M?.hojeSP?.() || window.IntegroOperacional?.hojeSP?.() ||
+      new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
+    const runtime=window.IntegroDataRuntime;
+    const campos=["data","dataOperacional","dataPagamento"];
+    const resultados=await Promise.allSettled(campos.map(async campo=>{
+      if(runtime?.consultarTenant)return runtime.consultarTenant({
+        db,colecao:CONFIG.COLECOES.PAGAMENTOS,tenantId,
+        filtros:[[campo,"==",hoje]],limite:CONFIG.LIMITS.PAGAMENTOS,
+        cacheMs:15000,forcar,chave:`master-local:pagamentos:${tenantId}:${campo}:${hoje}`
       });
-    } else {
-      const snap = await ref.limit(CONFIG.LIMITS.PAGAMENTOS).get();
-      data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-
-    State.setPagamentos(data);
-  } catch (erro) {
-    console.error("Erro ao carregar pagamentos:", erro);
+      const snap=await db.collection(CONFIG.COLECOES.PAGAMENTOS)
+        .where("clientePlataformaId","==",tenantId).where(campo,"==",hoje)
+        .limit(CONFIG.LIMITS.PAGAMENTOS).get();
+      return snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+    }));
+    if(!resultados.some(r=>r.status==="fulfilled"))
+      throw resultados.find(r=>r.status==="rejected")?.reason ||
+        new Error("Consultas de pagamentos indisponíveis.");
+    const registros=new Map();
+    resultados.filter(r=>r.status==="fulfilled").forEach(r=>(r.value||[]).forEach(p=>{
+      if(p.id && String(p.clientePlataformaId||p.tenantId||"")===tenantId)
+        registros.set(String(p.id),p);
+    }));
+    if(sessaoMasterLocalValida(escopo))State.setPagamentos([...registros.values()]);
+  }catch(erro){
+    console.error("Erro ao carregar pagamentos de hoje:",erro);
     throw erro;
   }
 }
 
 async function carregarSolicitacoes(forcar = false) {
+  const escopo=escopoMasterLocal();
   try {
     const data = await FirestoreService.loadCollection(
       CONFIG.COLECOES.SOLICITACOES,
@@ -312,7 +337,7 @@ async function carregarSolicitacoes(forcar = false) {
       { cacheMs: 15000, forcar }
     );
 
-    State.setSolicitacoes(data);
+    if(sessaoMasterLocalValida(escopo))State.setSolicitacoes(data);
   } catch (erro) {
     console.error("Erro ao carregar solicitações:", erro);
     throw erro;
@@ -341,70 +366,67 @@ async function carregarLogs(forcar = false) {
     State.setLogs(data);
   } catch (erro) {
     console.error("Erro ao carregar logs:", erro);
-    State.setLogs([]);
+    // Falha de rede não apaga registros de auditoria já carregados.
   }
 }
 
-function renderDashboardMasterLocal() {
-  const clientes = State.getClientes ? State.getClientes() : [];
-  const caixas = State.getCaixas ? State.getCaixas() : [];
-  const vendas = State.getVendas ? State.getVendas() : [];
-  const pagamentos = State.getPagamentos ? State.getPagamentos() : [];
-  const solicitacoes = State.getSolicitacoes ? State.getSolicitacoes() : [];
-  const usuarios = State.getUsuarios ? State.getUsuarios() : [];
-  const logs = State.getLogs ? State.getLogs() : [];
+function renderDashboardMasterLocal(){
+  const tenantId=String(State.getTenantId?.()||"");
+  const M=window.IntegroMasterLocalMetrics;
+  if(!M?.calcular){console.error("[ÍNTEGRO] Indicadores do Master Local não carregados.");return;}
+  const carteiraCanonica=carteiraOperacionalMasterLocal.escopo===escopoMasterLocal() &&
+    carteiraOperacionalMasterLocal.carregada;
+  const k=M.calcular({tenantId,clientes:carteiraCanonica
+    ? carteiraOperacionalMasterLocal.clientes : State.getClientes?.()||[],caixas:State.getCaixas?.()||[],
+    vendas:State.getVendas?.()||[],pagamentos:State.getPagamentos?.()||[],
+    solicitacoes:State.getSolicitacoes?.()||[],usuarios:State.getUsuarios?.()||[]});
+  for(const [id,valor] of [["kpiCarteira",moedaCentavosMasterLocal(k.carteiraCentavos)],
+    ["kpiRecebidoHoje",moedaCentavosMasterLocal(k.recebidoHojeCentavos)],
+    ["kpiClientes",k.clientesAtivos],["kpiInadimplencia",moedaCentavosMasterLocal(k.inadimplenciaCentavos)],
+    ["kpiCaixas",k.caixasAbertos],["kpiUsuarios",k.usuarios],["kpiVendasHoje",k.vendasHoje],
+    ["kpiSolicitacoes",k.solicitacoesPendentes],["badgeSolicitacoes",k.solicitacoesPendentes]])
+    setTextSafe(id,valor);
+  const data=document.getElementById("topData");
+  if(data)data.innerText=k.dataOperacional.split("-").reverse().join("/");
+  renderAtividadesRecentes(M.apenasTenant(State.getLogs?.()||[],tenantId),k.pagamentos,k.vendasValidas);
+  renderTopClientes(k.clientes,k.vendasComSaldo);
+  renderPerformanceEquipe(k.usuariosDados,k.vendasValidas);
+  renderResumoVendas(k.vendasValidas);
+  renderAuditoriaCarteiraMasterLocal();
+}
 
-  const vendasValidas = vendas.filter(v =>
-    String(v.statusVenda || "").toUpperCase() !== "CANCELADA" &&
-    v.ativo !== false
-  );
-
-  const clientesAtivos = clientes.filter(c =>
-    String(c.status || "").toUpperCase() === "ATIVO" ||
-    Number(c.saldoDevedor || 0) > 1
-  );
-
-  const carteira = vendasValidas.reduce((total, v) => {
-    return total + Number(v.saldoDevedor || 0);
-  }, 0);
-
-  const recebidoHoje = pagamentos
-    .filter(p => pagamentoEhHoje(p))
-    .reduce((total, p) => total + Number(p.valorRecebido || p.valor || 0), 0);
-
-  const inadimplencia = vendasValidas.reduce((total, v) => {
-    const atrasado = Number(v.diasAtrasoAtual || 0) > 0 || v.inadimplente === true;
-    return atrasado ? total + Number(v.saldoDevedor || 0) : total;
-  }, 0);
-
-  const caixasAbertos = caixas.filter(c =>
-    String(c.status || "").toUpperCase() === "ABERTO" &&
-    c.ativo !== false
-  ).length;
-
-  const vendasHoje = vendasValidas.filter(v => dataEhHoje(v.dataVenda || v.criadoEm)).length;
-
-  const solicitacoesPendentes = solicitacoes.filter(s =>
-    ["PENDENTE", "PENDENTE_APROVACAO"].includes(String(s.status || "").toUpperCase())
-  ).length;
-
-  setTextSafe("kpiCarteira", moeda(carteira));
-  setTextSafe("kpiRecebidoHoje", moeda(recebidoHoje));
-  setTextSafe("kpiClientes", clientesAtivos.length);
-  setTextSafe("kpiInadimplencia", moeda(inadimplencia));
-  setTextSafe("kpiCaixas", caixasAbertos);
-  setTextSafe("kpiUsuarios", usuarios.length);
-  setTextSafe("kpiVendasHoje", vendasHoje);
-  setTextSafe("kpiSolicitacoes", solicitacoesPendentes);
-  setTextSafe("badgeSolicitacoes", solicitacoesPendentes);
-
-  const dataEl = document.getElementById("topData");
-  if (dataEl) dataEl.innerText = new Date().toLocaleDateString("pt-BR");
-
-  renderAtividadesRecentes(logs, pagamentos, vendas);
-  renderTopClientes(clientes, vendasValidas);
-  renderPerformanceEquipe(usuarios, vendasValidas);
-  renderResumoVendas(vendasValidas);
+function renderAuditoriaCarteiraMasterLocal(){
+  const host=document.getElementById("masterLocalConciliacaoCarteira");
+  if(!host)return;
+  const M=window.IntegroMasterLocalMetrics,tenantId=String(State.getTenantId?.()||"");
+  const atual=carteiraOperacionalMasterLocal;
+  host.hidden=false;
+  if(!atual.carregada||atual.escopo!==escopoMasterLocal()){
+    host.innerHTML='<div class="ml-audit-head"><h3>Conciliação de carteira</h3><small>Diagnóstico indisponível</small></div><p>Não foi possível confirmar a base de clientes operacionais. Os contratos não foram alterados.</p>';
+    return;
+  }
+  const auditoria=M.auditarCarteira({tenantId,clientesLegados:State.getClientes?.()||[],
+    clientesOperacionais:atual.clientes,vendas:State.getVendas?.()||[]});
+  const avisoParcial=atual.parcial?' Consulta operacional atingiu o limite de registros; os totais podem ser parciais.':'';
+  const linhas=auditoria.registros.slice(0,30).map(item=>`<tr>
+    <td><strong>${escaparMasterLocal(item.nome)}</strong><small>${escaparMasterLocal(item.vendedorNome||"Vendedor não identificado")}</small></td>
+    <td>${escaparMasterLocal(item.status)}</td>
+    <td>${item.contratosAtivos}</td>
+    <td>${item.motivo==="QUITADO_COM_SALDO"?"Quitado com saldo contraditório":"Sem ficha operacional"}</td>
+  </tr>`).join("");
+  host.innerHTML=`<div class="ml-audit-head">
+    <div><h3>Conciliação de carteira</h3>
+    <p>Clientes históricos ainda não vinculados à carteira operacional. Somente leitura: nenhum pagamento ou saldo será alterado.</p></div>
+    <span class="ml-audit-counter">${auditoria.total} pendência(s)</span>
+  </div>
+  <div class="ml-audit-stats"><div><small>Registros legados</small><strong>${auditoria.total}</strong></div>
+    <div><small>Com contratos em aberto</small><strong>${auditoria.comContratos}</strong></div>
+    <div><small>Quitados com divergência</small><strong>${auditoria.contraditorios}</strong></div></div>
+  ${avisoParcial?`<p class="ml-audit-warning">${escaparMasterLocal(avisoParcial)}</p>`:""}
+  ${auditoria.total?`<details><summary>Consultar os registros históricos (até 30)</summary>
+    <div class="ml-audit-table-scroll"><table><thead><tr><th>Cliente / responsável</th><th>Situação</th><th>Contratos</th><th>Conciliação necessária</th></tr></thead>
+    <tbody>${linhas}</tbody></table></div></details>`: '<p class="ml-audit-empty">Nenhuma divergência entre clientes históricos e a carteira operacional foi encontrada nesta consulta.</p>'}
+  `;
 }
 
 function setTextSafe(id, valor) {
@@ -412,36 +434,8 @@ function setTextSafe(id, valor) {
   if (el) el.innerText = valor;
 }
 
-function dataEhHoje(valor) {
-  if (!valor) return false;
-
-  let data;
-
-  if (valor.toDate) {
-    data = valor.toDate();
-  } else {
-    data = new Date(valor);
-  }
-
-  if (isNaN(data.getTime())) return false;
-
-  const hoje = new Date();
-
-  return (
-    data.getFullYear() === hoje.getFullYear() &&
-    data.getMonth() === hoje.getMonth() &&
-    data.getDate() === hoje.getDate()
-  );
-}
-
-function pagamentoEhHoje(pagamento) {
-  return dataEhHoje(
-    pagamento.registradoEm ||
-    pagamento.criadoEm ||
-    pagamento.dataPagamento ||
-    pagamento.data
-  );
-}
+function dataEhHoje(valor){const M=window.IntegroMasterLocalMetrics;return !!M&&!!M.diaSP(valor)&&M.diaSP(valor)===M.hojeSP();}
+function pagamentoEhHoje(p){const M=window.IntegroMasterLocalMetrics;return !!M&&M.diaPagamento(p)===M.hojeSP();}
 
 function renderAtividadesRecentes(logs = [], pagamentos = [], vendas = []) {
   const container = document.querySelector(".activity-list");
@@ -454,7 +448,7 @@ function renderAtividadesRecentes(logs = [], pagamentos = [], vendas = []) {
       icone: "$",
       classe: "ico-green",
       titulo: "Recebimento registrado",
-      desc: `${p.clienteNome || "Cliente"} — ${moeda(p.valorRecebido || p.valor || 0)}`,
+      desc: `${p.clienteNome || "Cliente"} — ${moedaCentavosMasterLocal(window.IntegroMasterLocalMetrics.valorPagamento(p))}`,
       tempo: "recente"
     });
   });
@@ -464,7 +458,7 @@ function renderAtividadesRecentes(logs = [], pagamentos = [], vendas = []) {
       icone: "🛒",
       classe: "ico-blue",
       titulo: "Venda registrada",
-      desc: `${v.clienteNome || "Cliente"} — ${moeda(v.valorTotalVenda || v.valorEmprestado || 0)}`,
+      desc: `${v.clienteNome || "Cliente"} — ${moedaCentavosMasterLocal(window.IntegroMasterLocalMetrics.valorVenda(v))}`,
       tempo: "recente"
     });
   });
@@ -490,73 +484,35 @@ function renderAtividadesRecentes(logs = [], pagamentos = [], vendas = []) {
 
   container.innerHTML = atividades.slice(0, 5).map(a => `
     <div class="activity">
-      <div class="dot ${a.classe}">${a.icone}</div>
+      <div class="dot ${a.classe}">${escaparMasterLocal(a.icone)}</div>
       <div>
-        <strong>${a.titulo}</strong>
-        <small>${a.desc}</small>
+        <strong>${escaparMasterLocal(a.titulo)}</strong>
+        <small>${escaparMasterLocal(a.desc)}</small>
       </div>
-      <span class="time">${a.tempo}</span>
+      <span class="time">${escaparMasterLocal(a.tempo)}</span>
     </div>
   `).join("");
 }
 
-function renderTopClientes(clientes = [], vendas = []) {
-  const tbody = document.querySelector(".bottom-grid table tbody");
-  if (!tbody) return;
-
-  const mapa = {};
-
-  clientes.forEach(c => {
-    mapa[c.id] = {
-      nome: c.nomeCompleto || c.nome || c.apelido || "Cliente",
-      saldo: Number(c.saldoDevedor || 0),
-      total: 0,
-      ultima: "-"
-    };
+function renderTopClientes(clientes=[],vendas=[]){
+  const tbody=document.querySelector(".bottom-grid table tbody");if(!tbody)return;
+  const M=window.IntegroMasterLocalMetrics, mapa=new Map();
+  clientes.forEach(c=>{if(!c.id)return;mapa.set(String(c.id),{nome:c.nomeCompleto||c.nome||c.apelido||"Cliente",
+    saldoCentavos:M.saldoCliente(c),totalCentavos:0,temVendas:false,ultima:"-"});});
+  vendas.forEach(v=>{const id=String(v.clienteOperacionalId||v.clienteId||v.clienteUid||v.clienteRef||v.id||"");
+    if(!id)return;
+    const linha=mapa.get(id)||{nome:v.clienteNome||"Cliente",saldoCentavos:0,totalCentavos:0,temVendas:false,ultima:"-"};
+    if(!linha.temVendas)linha.saldoCentavos=0;
+    linha.temVendas=true;linha.totalCentavos+=M.valorVenda(v);linha.saldoCentavos+=M.saldoVenda(v);
+    if(v.dataVenda||v.criadoEm)linha.ultima=formatarData(v.dataVenda||v.criadoEm);
+    mapa.set(id,linha);
   });
-
-  vendas.forEach(v => {
-    const id = v.clienteId || v.clienteUid || v.clienteRef || v.clienteNome;
-
-    if (!mapa[id]) {
-      mapa[id] = {
-        nome: v.clienteNome || "Cliente",
-        saldo: 0,
-        total: 0,
-        ultima: "-"
-      };
-    }
-
-    mapa[id].total += Number(v.valorTotalVenda || v.valorEmprestado || 0);
-    mapa[id].saldo += Number(v.saldoDevedor || 0);
-
-    if (v.dataVenda) {
-      mapa[id].ultima = formatarData(v.dataVenda);
-    }
-  });
-
-  const top = Object.values(mapa)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
-
-  if (!top.length) {
-    tbody.innerHTML = `
-      <tr>
-        <td colspan="5">Sem clientes para exibir.</td>
-      </tr>
-    `;
-    return;
-  }
-
-  tbody.innerHTML = top.map((c, index) => `
-    <tr>
-      <td>${index + 1}</td>
-      <td>${c.nome}</td>
-      <td>${moeda(c.total)}</td>
-      <td>${moeda(c.saldo)}</td>
-      <td>${c.ultima}</td>
-    </tr>
-  `).join("");
+  const top=[...mapa.values()].sort((a,b)=>b.totalCentavos-a.totalCentavos).slice(0,5);
+  if(!top.length){tbody.innerHTML='<tr><td colspan="5">Sem clientes para exibir.</td></tr>';return;}
+  tbody.innerHTML=top.map((c,i)=>`<tr><td>${i+1}</td><td>${escaparMasterLocal(c.nome)}</td>
+    <td>${moedaCentavosMasterLocal(c.totalCentavos)}</td>
+    <td>${moedaCentavosMasterLocal(c.saldoCentavos)}</td>
+    <td>${escaparMasterLocal(c.ultima)}</td></tr>`).join("");
 }
 
 function renderPerformanceEquipe(usuarios = [], vendas = []) {
@@ -586,7 +542,7 @@ function renderPerformanceEquipe(usuarios = [], vendas = []) {
       };
     }
 
-    mapa[id].total += Number(venda.valorTotalVenda || venda.valorEmprestado || 0);
+    mapa[id].total += window.IntegroMasterLocalMetrics.valorVenda(venda)/100;
   });
 
   const ranking = Object.values(mapa)
@@ -602,7 +558,7 @@ function renderPerformanceEquipe(usuarios = [], vendas = []) {
           <div class="ranking-item">
             <strong>${index + 1}</strong>
             <div>
-              <strong>${v.nome}</strong>
+              <strong>${escaparMasterLocal(v.nome)}</strong>
               <div class="bar"><span style="width:${pct}%"></span></div>
             </div>
             <strong>${moeda(v.total)}</strong>
@@ -627,7 +583,7 @@ function renderResumoVendas(vendas = []) {
 
   const vendasHoje = vendas.filter(v => dataEhHoje(v.dataVenda || v.criadoEm));
   const valorHoje = vendasHoje.reduce((total, v) => {
-    return total + Number(v.valorTotalVenda || v.valorEmprestado || v.valor || 0);
+    return total + window.IntegroMasterLocalMetrics.valorVenda(v)/100;
   }, 0);
 
   if (!vendas.length) {
@@ -650,7 +606,7 @@ function renderResumoVendas(vendas = []) {
         <strong>Total carregado</strong>
         <div class="bar"><span style="width:100%"></span></div>
       </div>
-      <strong>${moeda(vendas.reduce((total, v) => total + Number(v.valorTotalVenda || v.valorEmprestado || v.valor || 0), 0))}</strong>
+      <strong>${moeda(vendas.reduce((total,v)=>total+window.IntegroMasterLocalMetrics.valorVenda(v)/100,0))}</strong>
     </div>
   `;
 }
@@ -871,7 +827,7 @@ async function salvarCategoriaMovimentacao(botao = null) {
 
     UIHelpers.alerta("Categoria salva com sucesso.");
     fecharDrawer();
-    await carregarCategoriasMovimentacaoMasterLocal();
+    await carregarCategoriasMovimentacaoMasterLocal(true);
     renderCategoriasMovimentacaoMasterLocal();
   } catch (erro) {
     console.error("Erro ao salvar categoria de movimentação:", erro);
@@ -909,7 +865,7 @@ async function desativarCategoriaMovimentacao(id) {
     });
 
     UIHelpers.alerta("Categoria desativada com sucesso.");
-    await carregarCategoriasMovimentacaoMasterLocal();
+    await carregarCategoriasMovimentacaoMasterLocal(true);
     renderCategoriasMovimentacaoMasterLocal();
   } catch (erro) {
     console.error("Erro ao desativar categoria de movimentação:", erro);

@@ -7,6 +7,7 @@
 let equipesSelecionadasCaixa = new Set();
 
 let caixasRealtimeIniciado = false;
+let caixasRealtimeTenant = "";
 let unsubscribeCaixasTempoReal = null;
 let unsubscribeEquipesTempoReal = null;
 let unsubscribeUsuariosTempoReal = null;
@@ -22,32 +23,9 @@ let equipeDetalheAtualId = null;
 // ========================================
 
 function getTenantIdSeguroCaixas() {
-  let tenantId = "";
-
-  try {
-    tenantId =
-      State.getTenantId?.() ||
-      State.tenantId ||
-      localStorage.getItem("clientePlataformaId") ||
-      "";
-  } catch (_) {}
-
-  if (!tenantId) {
-    try {
-      const usuarioStorage =
-        JSON.parse(localStorage.getItem("usuario") || "null") ||
-        JSON.parse(localStorage.getItem("usuarioLogado") || "null") ||
-        JSON.parse(localStorage.getItem("usuarioAtual") || "null");
-
-      tenantId =
-        usuarioStorage?.clientePlataformaId ||
-        usuarioStorage?.empresaId ||
-        usuarioStorage?.tenantId ||
-        "";
-    } catch (_) {}
-  }
-
-  return tenantId || "";
+  // Nunca buscar o tenant em localStorage: sessões antigas podem permanecer
+  // gravadas no navegador depois da troca de empresa ou logout.
+  return String(State.getTenantId?.() || State.tenantId || "").trim();
 }
 
 function getEmpresaNomeSeguroCaixas() {
@@ -229,7 +207,9 @@ async function carregarDadosIniciaisSupervisaoCaixas(forcar = false, incluirEstr
     );
 
     if (!incluirEstrutura) {
-      caixasCaixaTempoReal = await caixasPromise;
+      const caixas = await caixasPromise;
+      if (getTenantIdSeguroCaixas() !== tenantId) return;
+      caixasCaixaTempoReal = caixas;
       State.setCaixas?.(caixasCaixaTempoReal);
       return;
     }
@@ -240,6 +220,7 @@ async function carregarDadosIniciaisSupervisaoCaixas(forcar = false, incluirEstr
       caixasPromise
     ]);
 
+    if (getTenantIdSeguroCaixas() !== tenantId) return;
     equipesCaixaTempoReal = equipes;
     vendedoresCaixaTempoReal = usuarios;
     caixasCaixaTempoReal = caixas;
@@ -257,10 +238,18 @@ async function carregarDadosIniciaisSupervisaoCaixas(forcar = false, incluirEstr
 
 function iniciarCaixasTempoReal() {
   const tenantId = getTenantIdSeguroCaixas();
-  if (!tenantId || !telaCaixasAtiva() || caixasRealtimeIniciado) return;
-
+  if (!tenantId || !telaCaixasAtiva()) return;
+  if (caixasRealtimeIniciado && caixasRealtimeTenant === tenantId) return;
+  if (caixasRealtimeTenant && caixasRealtimeTenant !== tenantId) {
+    equipesSelecionadasCaixa.clear();
+    equipeDetalheAtualId = null;
+    equipesCaixaTempoReal = [];
+    vendedoresCaixaTempoReal = [];
+    caixasCaixaTempoReal = [];
+  }
   pararCaixasTempoReal();
   caixasRealtimeIniciado = true;
+  caixasRealtimeTenant = tenantId;
   carregarDadosIniciaisSupervisaoCaixas(false, true);
 
   const runtime = window.IntegroDataRuntime;
@@ -273,6 +262,7 @@ function iniciarCaixasTempoReal() {
       tenantId,
       limite: CONFIG.LIMITS?.CAIXAS || 500,
       aoAtualizar: dados => {
+        if (getTenantIdSeguroCaixas() !== tenantId) return;
         caixasCaixaTempoReal = dados;
         State.setCaixas?.(dados);
         limparSelecaoInvalidaEquipesCaixa();
@@ -288,6 +278,7 @@ function iniciarCaixasTempoReal() {
     .where("clientePlataformaId", "==", tenantId)
     .limit(CONFIG.LIMITS?.CAIXAS || 500)
     .onSnapshot(snap => {
+      if (getTenantIdSeguroCaixas() !== tenantId) return;
       caixasCaixaTempoReal = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       State.setCaixas?.(caixasCaixaTempoReal);
       limparSelecaoInvalidaEquipesCaixa();
@@ -306,6 +297,7 @@ function pararCaixasTempoReal() {
   unsubscribeEquipesTempoReal = null;
   unsubscribeUsuariosTempoReal = null;
   caixasRealtimeIniciado = false;
+  caixasRealtimeTenant = "";
 }
 
 async function carregarCaixas(forcar = false) {
