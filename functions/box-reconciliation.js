@@ -109,11 +109,35 @@ function calcularConferencia({box, sales, clients=[], clientesConferidos=false, 
     const recebidaNoCaixa=confirmedPayments.some(p=>p.vendaId===sale.id);
     const quitadaVenda=vendaEncerrada(sale);
     const quitadoCliente=clienteQuitado(client);
-    if(clientesConferidos===true && !client && !recebidaNoCaixa && saldoVenda>1 && !quitadaVenda) {
+    // A coleção clientes_operacionais é a única origem da carteira do vendedor.
+    // Contratos históricos cuja ficha existe apenas em clientes (legado) ou
+    // sequer existe não podem exigir uma visita invisível no caixa ATUAL.
+    // Essa separação não quita a dívida, não toca em parcelas e mantém alerta
+    // de reconciliação auditável para o gestor.
+    const movimentoNoCaixa=recebidaNoCaixa||visits.some(v=>v.vendaId===sale.id&&!inactive(v));
+    const caixaOrigem=text(sale.caixaId || sale.idCaixa);
+    const contratoDeCaixaHistorico=!!caixaOrigem&&caixaOrigem!==boxId;
+    const clienteSoLegado=clientesConferidos===true && client?.origemColecaoConferencia==="clientes";
+    const clienteNaoLocalizado=clientesConferidos===true && !client;
+    if((clienteSoLegado||clienteNaoLocalizado)&&contratoDeCaixaHistorico&&!movimentoNoCaixa){
+      const codigo=(clienteSoLegado?"CARTEIRA_LEGADA_SEM_FICHA_OPERACIONAL:":"CLIENTE_SEM_FICHA_OPERACIONAL:")+sale.id;
+      avisosCarteira.push({codigo,vendaId:sale.id,
+        clienteId:text(sale.clienteId || sale.clienteOperacionalId),
+        clienteNome:text(client?.nome || client?.nomeCompleto || sale.clienteNome || sale.nomeCliente),
+        statusVenda:statusVenda(sale),statusCliente:statusCliente(client),
+        saldoVendaCentavos:saldoVenda,saldoClienteCentavos:saldoCliente,
+        origemCarteira:clienteSoLegado?"LEGADA":"SEM_CADASTRO",
+        bloqueiaFechamento:false});
+      continue;
+    }
+    if(clienteNaoLocalizado && !movimentoNoCaixa && saldoVenda>1 && !quitadaVenda){
       const codigo="CLIENTE_SEM_FICHA_OPERACIONAL:"+sale.id;
-      avisosCarteira.push({codigo,vendaId:sale.id,clienteId:text(sale.clienteId || sale.clienteOperacionalId),
-        clienteNome:text(sale.clienteNome || sale.nomeCliente),statusVenda:statusVenda(sale),
-        statusCliente:"CADASTRO_NAO_LOCALIZADO",saldoVendaCentavos:saldoVenda,saldoClienteCentavos:null});
+      avisosCarteira.push({codigo,vendaId:sale.id,
+        clienteId:text(sale.clienteId || sale.clienteOperacionalId),
+        clienteNome:text(sale.clienteNome || sale.nomeCliente),
+        statusVenda:statusVenda(sale),statusCliente:"CADASTRO_NAO_LOCALIZADO",
+        saldoVendaCentavos:saldoVenda,saldoClienteCentavos:null,
+        bloqueiaFechamento:true});
       continue;
     }
     if(quitadaVenda || quitadoCliente) {
@@ -139,7 +163,7 @@ function calcularConferencia({box, sales, clients=[], clientesConferidos=false, 
   }
   // Contradição de saldos não é baixa fictícia nem visita pendente:
   // exige revisão da ficha e do contrato antes de fechar o caixa.
-  inconsistencies.push(...avisosCarteira.map(a=>a.codigo));
+  inconsistencies.push(...avisosCarteira.filter(a=>a.bloqueiaFechamento!==false).map(a=>a.codigo));
   const route=[...selected.values()].map(sale=>{
     const parts=installments.filter(p=>p.vendaId===sale.id&&!inactive(p));
     const received=confirmedPayments.some(p=>p.vendaId===sale.id&&money(p)>0);
