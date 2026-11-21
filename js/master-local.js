@@ -178,6 +178,8 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
       case "conciliacao":
         await Promise.all([carregarClientes(forcar),carregarCarteiraOperacionalMasterLocal(forcar),
           carregarVendas(forcar),carregarUsuarios(forcar)]);
+        ["clientes","vendas","usuários","carteira operacional"].forEach(nome=>
+          window.__integroCoreColecoesCarregadas?.add(nome));
         window.IntegroConciliacaoUI?.tela?.();
         break;
       case "vendas":
@@ -495,6 +497,9 @@ function renderDashboardMasterLocal(){
 }
 
 function renderAuditoriaCarteiraMasterLocal(){
+  const host=document.getElementById("masterLocalConciliacaoCarteira");
+  const perfil=window.IntegroAcesso?.acessoUsuario?.(State.getUsuario?.())?.perfil;
+  if(perfil&&perfil!=="master_local"){if(host)host.hidden=true;return;}
   const ui=window.IntegroConciliacaoUI;
   if(ui?.renderResumo)ui.renderResumo(ui.consultar());
 }
