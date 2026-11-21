@@ -26,10 +26,12 @@
   const doTenant=(a,tenant)=>(Array.isArray(a)?a:[]).filter(x=>
     texto(tenant)!==""&&texto(x?.clientePlataformaId||x?.empresaId||x?.tenantId)===texto(tenant)&&x?.excluido!==true);
   const nome=c=>texto(c?.nomeCompleto||c?.nome||c?.apelido||c?.clienteNome||"Cliente sem nome");
-  const prioridade={QUITADO_COM_SALDO:0,CLIENTE_QUITADO_COM_VENDA_ATIVA:1,VENDA_SEM_CLIENTE:2,
+  const prioridade={QUITADO_COM_SALDO:0,VENDA_QUITADA_COM_SALDO:0,
+    CLIENTE_QUITADO_COM_VENDA_ATIVA:1,VENDA_SEM_CLIENTE:2,
     DUPLICIDADE_DOCUMENTO:3,SEM_FICHA_OPERACIONAL:4,CLIENTE_LEGADO_COM_SALDO:5,TRANSFERENCIA_CONFERIR:6};
   const razoes={
     QUITADO_COM_SALDO:"Quitado com saldo residual",
+    VENDA_QUITADA_COM_SALDO:"Venda quitada com saldo residual",
     CLIENTE_QUITADO_COM_VENDA_ATIVA:"Cliente quitado com venda ativa",
     VENDA_SEM_CLIENTE:"Venda sem ficha localizada",
     DUPLICIDADE_DOCUMENTO:"Possível duplicidade de documento",
@@ -96,6 +98,9 @@
       const antigo=ids.map(x=>mapaLegado.get(x)).find(Boolean);
       if(antigo)juntar(vendasPorLegado,id(antigo),v);
       if(operativo)juntar(vendasPorAtual,id(operativo),v);
+      if(["QUITADO","QUITADA"].includes(statusVenda(v))&&saldoVenda(v)>1)
+        registrar("VENDA_QUITADA_COM_SALDO",id(v),operativo||antigo||v,operativo,[v],
+          "Contrato quitado mantém saldo diferente de zero; comparar parcelas, pagamentos e histórico.");
       if(!antigo&&!operativo&&saldoVenda(v)>1&&!encerrada(v))
         registrar("VENDA_SEM_CLIENTE",id(v),v,null,[v],
           "Nenhuma ficha correspondente foi localizada nas bases consultadas.");
@@ -131,6 +136,10 @@
           "Saldo na ficha histórica sem carteira operacional correspondente.");
     });
     atual.forEach(c=>{
+      const d=doc(c);
+      if((d.length===11||d.length===14)&&(porDocumento.get(d)||[]).length>1)
+        registrar("DUPLICIDADE_DOCUMENTO",id(c),c,c,vendasPorAtual.get(id(c))||[],
+          "Mais de uma ficha operacional possui o mesmo documento. Conferir duplicidade.");
       const relacionados=vendasPorAtual.get(id(c))||[];
       if(quitado(c)&&saldoCliente(c)>1)registrar("QUITADO_COM_SALDO",id(c),c,c,relacionados,
         "Cadastro operacional está quitado, porém apresenta saldo.");
@@ -144,7 +153,7 @@
     return {
       total:linhas.length,criticos:linhas.filter(r=>r.gravidade==="ALTA").length,
       historicos:linhas.filter(r=>r.origem==="LEGADO").length,
-      quitados:linhas.filter(r=>["QUITADO_COM_SALDO","CLIENTE_QUITADO_COM_VENDA_ATIVA"].includes(r.codigo)).length,
+      quitados:linhas.filter(r=>["QUITADO_COM_SALDO","VENDA_QUITADA_COM_SALDO","CLIENTE_QUITADO_COM_VENDA_ATIVA"].includes(r.codigo)).length,
       semFicha:linhas.filter(r=>["SEM_FICHA_OPERACIONAL","VENDA_SEM_CLIENTE","CLIENTE_LEGADO_COM_SALDO"].includes(r.codigo)).length,
       // Uma venda pode provocar mais de um alerta; o saldo é contado
       // uma única vez, pelo identificador do contrato original.
