@@ -105,7 +105,13 @@ function calcularConferencia({box, sales, clients=[], clientesConferidos=false, 
   for (const sale of portfolioSales) {
     const client=clienteDaVenda(sale);
     const saldoVenda=money(sale,"saldoDevedorCentavos",["saldoDevedor","saldoAtual"]);
-    const saldoCliente=saldoClienteOficial(client);
+    // A ficha legada não participa da carteira atual e pode ter campos
+    // financeiros antigos sem o esquema estrito dos documentos canônicos.
+    const legadoForaDaCarteira=clientesConferidos===true &&
+      client?.origemColecaoConferencia==="clientes";
+    const saldoCliente=legadoForaDaCarteira
+      ? (Number.isSafeInteger(client.saldoDevedorCentavos) ? client.saldoDevedorCentavos : null)
+      : saldoClienteOficial(client);
     const recebidaNoCaixa=confirmedPayments.some(p=>p.vendaId===sale.id);
     const quitadaVenda=vendaEncerrada(sale);
     const quitadoCliente=clienteQuitado(client);
