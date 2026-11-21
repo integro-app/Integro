@@ -29,7 +29,7 @@
       const fil=state.filter;
       if(fil==="ALTA"&&r.gravidade!=="ALTA")return false;
       if(fil==="SEM_FICHA"&&!["SEM_FICHA_OPERACIONAL","VENDA_SEM_CLIENTE","CLIENTE_LEGADO_COM_SALDO"].includes(r.codigo))return false;
-      if(fil==="QUITADOS"&&!["QUITADO_COM_SALDO","CLIENTE_QUITADO_COM_VENDA_ATIVA"].includes(r.codigo))return false;
+      if(fil==="QUITADOS"&&!["QUITADO_COM_SALDO","VENDA_QUITADA_COM_SALDO","CLIENTE_QUITADO_COM_VENDA_ATIVA"].includes(r.codigo))return false;
       if(fil==="VINCULOS"&&!["DUPLICIDADE_DOCUMENTO","TRANSFERENCIA_CONFERIR"].includes(r.codigo))return false;
       return !termo||[r.nome,r.vendedorNome,r.clienteId,r.clienteOperacionalId,r.codigo,
         ...(r.contratoIds||[])].join(" ").toLocaleLowerCase("pt-BR").includes(termo);
@@ -181,6 +181,7 @@
   }
   const plano={
     QUITADO_COM_SALDO:"Conferir parcelas e pagamentos confirmados; identificar se o status ou o saldo está incorreto antes de qualquer ajuste.",
+    VENDA_QUITADA_COM_SALDO:"Confirmar a quitação no contrato e comparar com parcelas, pagamentos e saldo residual antes de regularizar.",
     CLIENTE_QUITADO_COM_VENDA_ATIVA:"Comparar a ficha operacional com a venda e identificar o documento financeiro que determina a situação correta.",
     VENDA_SEM_CLIENTE:"Consultar a origem da venda e o caixa histórico para reconstruir o vínculo cadastral, sem atribuir a dívida a outro cliente por semelhança de nome.",
     DUPLICIDADE_DOCUMENTO:"Conferir documento, identidade, histórico e empresa. Não unir cadastros ou transferir contratos automaticamente.",
