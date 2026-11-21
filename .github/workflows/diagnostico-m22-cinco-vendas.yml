@@ -1,25 +1,24 @@
-name: Auditoria M22 - cinco vendas de fechamento (somente leitura)
+name: Testes focados M22 - fechamento carteira atual
 on:
   push:
     branches:
       - audit/m22-cinco-vendas-20261120
     paths:
-      - "scripts/diagnostico-m22-cinco-vendas.cjs"
       - ".github/workflows/diagnostico-m22-cinco-vendas.yml"
 permissions:
   contents: read
 jobs:
-  diagnostico:
+  smoke_m22:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: fix/m22-quitados-nao-bloqueiam-rota-20261120
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - run: npm --prefix functions ci
-      - uses: google-github-actions/auth@v2
-        with:
-          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_INTEGRO_NOVO }}
-      - name: Ler cinco documentos e vinculos (sem mutacao)
-        run: node scripts/diagnostico-m22-cinco-vendas.cjs
+      - name: Testar segregacao de carteira e fechamento
+        run: node --test tests/caixa-pendencias-rota-regression.test.js tests/vendedor-operacao-consolidada.test.js
+      - name: Conferir sintaxe do calculo e interface
+        run: node --check functions/box-reconciliation.js && node --check js/services/vendedor-fechamento-caixa.js && node --check js/vendedor-operacao.js
