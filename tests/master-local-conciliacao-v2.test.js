@@ -146,3 +146,22 @@ test("múltiplos alertas do mesmo contrato não duplicam exposição financeira"
  assert.ok(a.registros.length>=2);
  assert.equal(a.saldoEmAnaliseCentavos,10000);
 });
+
+test("módulo Clientes possui pesquisa e filtros conectados ao JavaScript",()=>{
+ const html=fs.readFileSync(path.join(__dirname,"..","master-local.html"),"utf8");
+ const js=fs.readFileSync(path.join(__dirname,"..","js/clientes.js"),"utf8");
+ const css=fs.readFileSync(path.join(__dirname,"..","css/master-local-conciliacao-v2.css"),"utf8");
+ for(const id of ['id="buscaClientes"','id="filtroOrigemClientes"','id="clientesFiltrosMasterLocal"','id="clientesOperacionaisMasterLocal"'])
+   assert.ok(html.includes(id),"missing "+id);
+ assert.match(js,/function toggleFiltrosClientesMasterLocal/);
+ assert.match(js,/function limparFiltrosClientesMasterLocal/);
+ assert.match(css,/\.mlc-operational-item/);
+});
+test("ficha Cliente 360 da carteira operacional recebe documento da empresa corrente",()=>{
+ const ui=fs.readFileSync(path.join(__dirname,"..","js/modules/master-local-reconciliation-ui.js"),"utf8");
+ assert.match(ui,/renderClientesOperacionais\(/);
+ assert.match(ui,/global\.abrirCliente360\(doc\)/);
+ assert.match(ui,/data-mlc-client-search/);
+ assert.match(ui,/data-mlc-client-open/);
+ assert.match(ui,/renderClientesOperacionaisLista/);
+});
