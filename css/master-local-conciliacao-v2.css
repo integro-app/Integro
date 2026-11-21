@@ -221,3 +221,32 @@ html[data-perfil-integro="master_local"] #dashboard .bottom-grid{min-width:0}
 @media(prefers-reduced-motion:reduce){
   .mlc-primary,.mlc-action{transition:none}
 }
+
+/* Acesso rápido apenas para o Master Local; nunca expor comandos aos vendedores. */
+.mlc-shortcuts{display:none}
+html[data-perfil-integro="master_local"] .mlc-shortcuts{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin:17px 0 6px
+}
+.mlc-shortcuts button{
+  display:flex;align-items:center;justify-content:center;gap:8px;min-width:0;min-height:48px;
+  padding:10px 12px;background:#fff;border:1px solid #e0e9f3;border-radius:12px;
+  color:#24415f;font-weight:780;font-size:.82rem;cursor:pointer;
+  box-shadow:0 4px 10px rgba(7,26,51,.02);transition:background .15s,border-color .15s
+}
+.mlc-shortcuts button:hover{background:#f7fafc;border-color:#adc7df}
+.mlc-shortcuts button:focus-visible{outline:3px solid #f2a345;outline-offset:2px}
+.mlc-shortcuts .material-symbols-rounded{font-size:20px;color:#ef8e28}
+html:not([data-perfil-integro="master_local"]) #masterLocalConciliacaoCarteira{display:none!important}
+@media(max-width:1000px){
+ html[data-perfil-integro="master_local"] .mlc-shortcuts{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:680px){
+ html[data-perfil-integro="master_local"] .mlc-shortcuts{
+  display:flex;overflow-x:auto;padding:0 0 6px;gap:8px;-webkit-overflow-scrolling:touch;
+  scrollbar-width:none;scroll-snap-type:x proximity
+ }
+ html[data-perfil-integro="master_local"] .mlc-shortcuts::-webkit-scrollbar{display:none}
+ .mlc-shortcuts button{flex:0 0 auto;min-height:43px;min-width:112px;padding:9px 11px;
+  font-size:.78rem;scroll-snap-align:start}
+ .mlc-shortcuts .material-symbols-rounded{font-size:17px}
+}
