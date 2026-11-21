@@ -1,6 +1,6 @@
 (function(global){
   "use strict";
-  const state={search:"",filter:"TODOS",page:0,perPage:20,last:null,loading:false,expanded:false,scope:"",clientSearch:""};
+  const state={search:"",filter:"TODOS",page:0,perPage:20,clientPage:0,clientPerPage:20,last:null,loading:false,expanded:false,scope:"",clientSearch:""};
   const scope=()=>{
     const u=global.State?.getUsuario?.()||{};
     return String(global.State?.getTenantId?.()||"")+":"+String(u.authUid||u.uid||u.id||"");
@@ -9,7 +9,7 @@
     const atual=scope();
     if(atual===state.scope)return;
     state.scope=atual;
-    state.last=null;state.search="";state.filter="TODOS";state.page=0;state.clientSearch="";
+    state.last=null;state.search="";state.filter="TODOS";state.page=0;state.clientPage=0;state.clientSearch="";
   };
   const E=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const fmt=v=>((Number.isSafeInteger(v)?v:0)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
@@ -19,6 +19,13 @@
     const x=data();
     if(!x.carregada)return null;
     return global.IntegroConciliacaoMasterLocal?.analisar?.(x)||null;
+  }
+  function cobertura(report){
+    const x=data();
+    const falhas=Array.isArray(x.falhas)?x.falhas:[];
+    const incompleto=!!report?.parcial||!!x.parcial||falhas.length>0;
+    return {incompleto,rotulo:incompleto?"Consulta parcial — não homologada":"Consulta carregada",
+      aviso:"Há registros não confirmados. Não utilize estes totais para fechar ou ajustar saldos."};
   }
   function titulo(r){return r?.rotulo||r?.codigo||"Registro em conciliação";}
   function prioridade(r){return r.gravidade==="ALTA"?"Prioridade alta":"Revisar vínculo";}
@@ -69,6 +76,7 @@
     if(!report){el.innerHTML=`<div class="mlc-summary-head"><div><small>QUALIDADE DA CARTEIRA</small><h3>Conciliação de dados</h3></div></div>
       <p>Os dados operacionais ainda não foram confirmados. Verifique a conexão e atualize a página.</p>
       <button type="button" class="mlc-primary" data-mlc-navigate>Ver central de conciliação</button>`;return;}
+    const qualidade=cobertura(report);
     const itens=report.registros.slice(0,3).map(r=>`<div class="mlc-recent-item">
       <span class="mlc-recent-dot ${r.gravidade==="ALTA"?"high":"medium"}"></span>
       <span><strong>${E(r.nome)}</strong><small>${E(titulo(r))}</small></span>
@@ -80,7 +88,7 @@
       <div><small>Prioridade alta</small><strong>${report.criticos}</strong></div>
       <div><small>Sem ficha operacional</small><strong>${report.semFicha}</strong></div>
       <div><small>Quitações divergentes</small><strong>${report.quitados}</strong></div></div>
-      ${report.parcial?'<p class="mlc-warning">Dados parciais: limite de consulta atingido. Não considere estes totais definitivos.</p>':""}
+      ${qualidade.incompleto?`<p class="mlc-warning" role="status">${E(qualidade.rotulo)}. ${E(qualidade.aviso)}</p>`:""}
       <div class="mlc-recent">${itens||'<p class="mlc-empty-summary">Nenhuma inconsistência identificada nos dados consultados.</p>'}</div>`;
     bind(el);
   }
@@ -93,6 +101,7 @@
           <button class="mlc-primary" data-mlc-refresh type="button">Tentar novamente</button></div>`;
       bind(host);renderResumo(null);return false;
     }
+    const qualidade=cobertura(report);
     host.innerHTML=`<div class="mlc-hero"><div><small>GESTÃO E AUDITORIA</small><h2>Conciliação de dados</h2>
       <p>Um único lugar para comparar fichas históricas, carteira operacional, vendas e responsáveis, sem criar baixas ou alterar contratos.</p></div>
       <button type="button" class="mlc-primary" data-mlc-refresh>${state.loading?"Atualizando...":"Atualizar dados"}</button></div>
@@ -100,7 +109,7 @@
         <article><small>Prioridade alta</small><strong>${report.criticos}</strong><span>Exigem conferência gerencial</span></article>
         <article><small>Sem ficha operacional</small><strong>${report.semFicha}</strong><span>Históricos e órfãos</span></article>
         <article><small>Quitações divergentes</small><strong>${report.quitados}</strong><span>Não lançar baixas fictícias</span></article></div>
-      ${report.parcial?'<div class="mlc-warning" role="status">Consulta limitada. Os totais podem estar incompletos; atualize a base antes de conciliar.</div>':""}
+      ${qualidade.incompleto?`<div class="mlc-warning" role="status">${E(qualidade.rotulo)}. ${E(qualidade.aviso)}</div>`:""}
       <div class="mlc-controls"><label class="mlc-search"><span class="material-symbols-rounded" aria-hidden="true">search</span>
         <input data-mlc-search type="search" placeholder="Buscar cliente, responsável ou contrato" value="${E(state.search)}" aria-label="Pesquisar divergências"></label>
         <label class="mlc-select">Situação <select data-mlc-filter>
@@ -146,7 +155,7 @@
     state.loading=true;tela();
     try{
       global.IntegroDataRuntime?.invalidar?.();
-      await global.carregarTudoMasterLocal?.(true);
+      await global.carregarModuloMasterLocal?.("conciliacao",true);
       state.page=0;tela();
     }catch(e){
       global.UIHelpers?.alerta?.("Falha ao atualizar a conciliação: "+String(e?.message||e));
@@ -186,7 +195,10 @@
     const filtrados=clientes.filter(c=>!termo||[c.nomeCompleto,c.nome,c.apelido,
       c.documentoNormalizado,c.documento,c.vendedorNome,c.responsavelNome,c.id]
       .join(" ").toLocaleLowerCase("pt-BR").includes(termo));
-    const mostrar=filtrados.slice(0,50);
+    const paginas=Math.max(1,Math.ceil(filtrados.length/state.clientPerPage));
+    state.clientPage=Math.min(state.clientPage,paginas-1);
+    const inicio=state.clientPage*state.clientPerPage;
+    const mostrar=filtrados.slice(inicio,inicio+state.clientPerPage);
     const lista=mostrar.map(c=>`<article class="mlc-operational-item">
       <div><strong>${E(c.nomeCompleto||c.nome||"Cliente sem nome")}</strong>
         <small>${E(c.vendedorNome||c.responsavelNome||"Responsável não identificado")}</small></div>
@@ -195,8 +207,13 @@
       <button type="button" class="mlc-action" data-mlc-client-open="${E(c.id)}">Cliente 360°</button>
     </article>`).join("");
     cont.innerHTML=`<p class="mlc-client-result-count">${filtrados.length} de ${clientes.length} clientes operacionais consultados
-      ${filtrados.length>50?" · mostrando primeiros 50":""}${parcial?" · lista potencialmente parcial":""}</p>
-      ${lista||'<div class="mlc-empty"><strong>Nenhum cliente operacional encontrado</strong><p>Altere a pesquisa ou confira os filtros.</p></div>'}`;
+       · página ${state.clientPage+1} de ${paginas}${parcial?" · lista potencialmente parcial":""}</p>
+      ${lista||'<div class="mlc-empty"><strong>Nenhum cliente operacional encontrado</strong><p>Altere a pesquisa ou confira os filtros.</p></div>'}
+      <nav class="mlc-pagination mlc-client-pagination" aria-label="Páginas da carteira operacional">
+        <span>${filtrados.length} resultado(s)</span>
+        <div><button type="button" data-mlc-client-prev ${state.clientPage===0?"disabled":""}>Anterior</button>
+        <button type="button" data-mlc-client-next ${state.clientPage+1>=paginas?"disabled":""}>Próxima</button></div>
+      </nav>`;
   }
   function renderClientesOperacionais(){
     const host=global.document.getElementById("clientesOperacionaisMasterLocal");
@@ -223,13 +240,20 @@
       host.dataset.mlcClientBound="1";
       host.addEventListener("input",e=>{
         if(!e.target.matches("[data-mlc-client-search]"))return;
-        state.clientSearch=e.target.value;
+        state.clientSearch=e.target.value;state.clientPage=0;
         renderClientesOperacionaisLista(host,data().clientesOperacionais||[],parcial);
       });
       host.addEventListener("click",e=>{
         const button=e.target.closest("button");
         if(!button)return;
         if(button.hasAttribute("data-mlc-client-concil"))return navegar();
+        if(button.hasAttribute("data-mlc-client-prev")||button.hasAttribute("data-mlc-client-next")){
+          state.clientPage=Math.max(0,state.clientPage+(button.hasAttribute("data-mlc-client-next")?1:-1));
+          const dados=data(),limite=Number(dados.limites?.clientesOperacionais)||0;
+          renderClientesOperacionaisLista(host,dados.clientesOperacionais||[],
+            limite>0&&(dados.clientesOperacionais||[]).length>=limite);
+          return;
+        }
         if(!button.hasAttribute("data-mlc-client-open"))return;
         const doc=(data().clientesOperacionais||[]).find(x=>
           String(x.id)===button.dataset.mlcClientOpen);
