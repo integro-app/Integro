@@ -173,3 +173,9 @@ test("statusCliente QUITADO prevalece como alerta mesmo se statusFinanceiro lega
  assert.ok(a.registros.some(r=>r.codigo==="QUITADO_COM_SALDO"));
  assert.equal(a.quitados,1);
 });
+
+test("gastos de Master Local são calculados apenas com lançamentos confirmados",()=>{
+ const js=fs.readFileSync(path.join(__dirname,"..","js/master-local.js"),"utf8");
+ assert.match(js,/\["CONFIRMADO","CONFIRMADA"\]\.includes/);
+ assert.match(js,/l\.cancelado!==true&&l\.estornado!==true/);
+});
