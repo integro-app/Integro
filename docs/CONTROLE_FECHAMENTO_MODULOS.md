@@ -307,6 +307,16 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Risco/dependência:** pagamentos de vendas anteriores após transferência podem exigir evolução de autorização operacional e conciliação da migração; verificar antes de declarar o fluxo completo.
 - **Próximo aceite:** conferir, no Firebase real, as cinco vendas e seus clientes canônicos e comparar Cobranças × Conferência do caixa para vendedor e gestor. Não forçar fechamento sem confirmação.
 
+### M22 — Quitados indevidamente cobrados no fechamento (20/11/2026)
+- **Estado:** correção em branch `fix/m22-quitados-nao-bloqueiam-rota-20261120`; NÃO publicado, NÃO homologado.
+- **Causa técnica:** a rota no backend não descartava vendas com `statusVenda=QUITADO`, enquanto a tela do vendedor as oculta; histórico de parcelas pendentes e saldos residuais podia produzir cobranças invisíveis.
+- **Solução:** filtrar vendas encerradas e clientes quitados da rota, preservar pagamentos do caixa; se venda/cliente marcado QUITADO ainda conserva saldo contraditório, mostrar aviso detalhado e bloquear por conciliação financeira, nunca por visita não realizada. Sem alterar dados, saldos ou históricos reais.
+- **Teste obrigatório:** reconsultar as cinco vendas apontadas no fechamento e verificar situação, saldos e propriedade em Firestore; confirmar que cobranças reais permanecem e que casos quitados não geram pendência.
+- **Auditoria de produção (somente leitura, 20/11/2026):** os cinco IDs completos exibidos no bloqueio (Maria do Carmo, Henrique Soares Muniz, Rafael dos Santos, Pizzaria, Francisco Almeida) são vendas antigas com `ATIVA`, saldos não zerados, vendedor histórico comum e caixas de origem já `FECHADO`. Os cinco clientes foram localizados apenas em `clientes` (legado), sem ficha correspondente encontrada em `clientes_operacionais`. A ficha legada de Maria consta `QUITADO` com saldo contraditório; as outras constam `ATIVO`. Não houve escrita na base.
+- **Causa específica comprovada:** a tela do vendedor usa só `clientes_operacionais`, mas a conferência incluía contratos de `clientes` legados de caixas antigos como visitas obrigatórias no caixa atual. A mera troca de status QUITADO não resolveria os cinco casos.
+- **Tratamento proposto no PR:** separar contratos históricos sem ficha operacional e sem movimentação no caixa atual em alertas de conciliação não bloqueantes; preservar a dívida e os registros originais sem baixa fictícia. Fichas canônicas com parcelas vencidas continuam bloqueando. Caixa de origem atual ou movimentações reais do caixa atual não recebem exclusão automática.
+- **Próximo passo:** verificar CI na versão final, publicar código quando autorizado, repetir fechamento autenticado e elaborar migração auditável das fichas legadas para `clientes_operacionais` sem alterar contratos financeiros.
+
 ## 9. Atualização — M22 / Operação do Vendedor (12/11/2026)
 
 - **Base:** `main` em `45019b73d732d3eef10c128452c088e2904b1e0b`.

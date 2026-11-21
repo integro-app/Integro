@@ -3,7 +3,7 @@ const core = require("./financial-core");
 const norm = core.normalizarStatus, text = core.texto;
 const inactive = row => row.excluido === true || row.cancelado === true || row.estornado === true || ["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA","EXCLUIDO","EXCLUIDA"].includes(norm(row.status || row.statusLancamento));
 const confirmed = value => ["CONFIRMADO","CONFIRMADA","ATIVO","ATIVA","APROVADO","APROVADA"].includes(norm(value));
-function calcularConferencia({box, sales, clients=[], installments, payments, requests, visits, ledger, ownerUid, sellerIds=[], fail}) {
+function calcularConferencia({box, sales, clients=[], clientesConferidos=false, installments, payments, requests, visits, ledger, ownerUid, sellerIds=[], fail}) {
   const money = (row, field="valorCentavos", aliases=["valor","valorPago","valorRecebido","valorTotal"]) => {
     if (row[field] !== undefined && !Number.isSafeInteger(row[field])) fail("failed-precondition", "Valor financeiro inválido: " + field);
     for (const alias of aliases) if (row[field] === undefined && row[alias] !== undefined && !Number.isFinite(Number(row[alias]))) fail("failed-precondition", "Valor financeiro inválido: " + alias);
@@ -80,13 +80,96 @@ function calcularConferencia({box, sales, clients=[], installments, payments, re
     // venda, sem trocar de proprietário nem ocultar dívida por inferência.
     return !ownerUid || (s.vendedorAuthUid ? s.vendedorAuthUid===ownerUid : sellerIds.includes(s.vendedorId));
   });
-  const selected=new Map();
-  // A rota existente trabalha com a venda atual de cada cliente, pela data de criação.
+  const statusVenda = sale => norm(sale.statusVenda || sale.status);
+  const vendaEncerrada = sale => [
+    "QUITADO","QUITADA","CANCELADO","CANCELADA","FINALIZADO","FINALIZADA","ENCERRADO","ENCERRADA"
+  ].includes(statusVenda(sale));
+  const clienteDaVenda = sale =>
+    clientsById.get(text(sale.clienteOperacionalId)) || clientsById.get(text(sale.clienteId));
+  const statusCliente = client => norm(client?.statusCliente || client?.status);
+  const clienteQuitado = client => !!client && ["QUITADO","QUITADA"].some(valor =>
+    [norm(client.statusCliente),norm(client.status)].includes(valor));
+  const saldoClienteOficial = client => {
+    if (!client) return null;
+    if (client.saldoDevedorCentavos !== undefined && client.saldoDevedorCentavos !== null)
+      return money(client,"saldoDevedorCentavos",["saldoDevedor","saldoAtual","saldo"]);
+    if (["saldoDevedor","saldoAtual","saldo"].some(k=>client[k] !== undefined && client[k] !== null))
+      return money(client,"saldoDevedorCentavos",["saldoDevedor","saldoAtual","saldo"]);
+    return null;
+  };
+  const selected=new Map(), avisosCarteira=[];
+  const carteiraAtiva=[];
+  // O fechamento não deve cobrar uma venda QUITADA nem uma ficha já QUITADA.
+  // Se houver saldo residual contraditório, o problema é de conciliação
+  // financeira e NÃO uma visita pendente que o vendedor não consegue enxergar.
   for (const sale of portfolioSales) {
-    if (money(sale,"saldoDevedorCentavos",["saldoDevedor","saldoAtual"])<=1 && !confirmedPayments.some(p=>p.vendaId===sale.id)) continue;
-    const client=text(sale.clienteId || sale.clienteOperacionalId || sale.id), old=selected.get(client);
-    if (!old || Number(sale.criadoEmMs || sale.dataCriacaoMs || sale.timestamp || 0)>Number(old.criadoEmMs || old.dataCriacaoMs || old.timestamp || 0)) selected.set(client,sale);
+    const client=clienteDaVenda(sale);
+    const saldoVenda=money(sale,"saldoDevedorCentavos",["saldoDevedor","saldoAtual"]);
+    // A ficha legada não participa da carteira atual e pode ter campos
+    // financeiros antigos sem o esquema estrito dos documentos canônicos.
+    const legadoForaDaCarteira=clientesConferidos===true &&
+      client?.origemColecaoConferencia==="clientes";
+    const saldoCliente=legadoForaDaCarteira
+      ? (Number.isSafeInteger(client.saldoDevedorCentavos) ? client.saldoDevedorCentavos : null)
+      : saldoClienteOficial(client);
+    const recebidaNoCaixa=confirmedPayments.some(p=>p.vendaId===sale.id);
+    const quitadaVenda=vendaEncerrada(sale);
+    const quitadoCliente=clienteQuitado(client);
+    // A coleção clientes_operacionais é a única origem da carteira do vendedor.
+    // Contratos históricos cuja ficha existe apenas em clientes (legado) ou
+    // sequer existe não podem exigir uma visita invisível no caixa ATUAL.
+    // Essa separação não quita a dívida, não toca em parcelas e mantém alerta
+    // de reconciliação auditável para o gestor.
+    const movimentoNoCaixa=recebidaNoCaixa||visits.some(v=>v.vendaId===sale.id&&!inactive(v));
+    const caixaOrigem=text(sale.caixaId || sale.idCaixa);
+    const contratoDeCaixaHistorico=!!caixaOrigem&&caixaOrigem!==boxId;
+    const clienteSoLegado=clientesConferidos===true && client?.origemColecaoConferencia==="clientes";
+    const clienteNaoLocalizado=clientesConferidos===true && !client;
+    if((clienteSoLegado||clienteNaoLocalizado)&&contratoDeCaixaHistorico&&!movimentoNoCaixa){
+      const codigo=(clienteSoLegado?"CARTEIRA_LEGADA_SEM_FICHA_OPERACIONAL:":"CLIENTE_SEM_FICHA_OPERACIONAL:")+sale.id;
+      avisosCarteira.push({codigo,vendaId:sale.id,
+        clienteId:text(sale.clienteId || sale.clienteOperacionalId),
+        clienteNome:text(client?.nome || client?.nomeCompleto || sale.clienteNome || sale.nomeCliente),
+        statusVenda:statusVenda(sale),statusCliente:statusCliente(client),
+        saldoVendaCentavos:saldoVenda,saldoClienteCentavos:saldoCliente,
+        origemCarteira:clienteSoLegado?"LEGADA":"SEM_CADASTRO",
+        bloqueiaFechamento:false});
+      continue;
+    }
+    if(clienteNaoLocalizado && !movimentoNoCaixa && saldoVenda>1 && !quitadaVenda){
+      const codigo="CLIENTE_SEM_FICHA_OPERACIONAL:"+sale.id;
+      avisosCarteira.push({codigo,vendaId:sale.id,
+        clienteId:text(sale.clienteId || sale.clienteOperacionalId),
+        clienteNome:text(sale.clienteNome || sale.nomeCliente),
+        statusVenda:statusVenda(sale),statusCliente:"CADASTRO_NAO_LOCALIZADO",
+        saldoVendaCentavos:saldoVenda,saldoClienteCentavos:null,
+        bloqueiaFechamento:true});
+      continue;
+    }
+    if(quitadaVenda || quitadoCliente) {
+      const contradicao=(quitadaVenda && saldoVenda>1) ||
+        (quitadoCliente && (saldoVenda>1 || (saldoCliente !== null && saldoCliente>1)));
+      if(contradicao) {
+        const categoria=quitadaVenda ? "VENDA_ENCERRADA_COM_SALDO" : "CLIENTE_QUITADO_COM_VENDA_ABERTA";
+        const motivo=categoria+":"+sale.id;
+        if(!avisosCarteira.some(a=>a.codigo===motivo))
+          avisosCarteira.push({codigo:motivo,vendaId:sale.id,clienteId:text(sale.clienteId || sale.clienteOperacionalId),
+            clienteNome:text(client?.nome || client?.nomeCompleto || sale.clienteNome || sale.nomeCliente),
+            statusVenda:statusVenda(sale),statusCliente:statusCliente(client),
+            saldoVendaCentavos:saldoVenda,saldoClienteCentavos:saldoCliente});
+      }
+      // Preserva a visita paga NESTE caixa para o resumo de produtividade.
+      // Não cria uma cobrança a pagar para uma venda quitada.
+      if(!recebidaNoCaixa) continue;
+    }
+    if(saldoVenda<=1 && !recebidaNoCaixa) continue;
+    carteiraAtiva.push(sale);
+    const chave=text(sale.clienteOperacionalId || sale.clienteId || sale.id), old=selected.get(chave);
+    if (!old || Number(sale.criadoEmMs || sale.dataCriacaoMs || sale.timestamp || 0)>Number(old.criadoEmMs || old.dataCriacaoMs || old.timestamp || 0)) selected.set(chave,sale);
   }
+  // Contradição de saldos não é baixa fictícia nem visita pendente:
+  // exige revisão da ficha e do contrato antes de fechar o caixa.
+  inconsistencies.push(...avisosCarteira.filter(a=>a.bloqueiaFechamento!==false).map(a=>a.codigo));
   const route=[...selected.values()].map(sale=>{
     const parts=installments.filter(p=>p.vendaId===sale.id&&!inactive(p));
     const received=confirmedPayments.some(p=>p.vendaId===sale.id&&money(p)>0);
@@ -114,6 +197,6 @@ function calcularConferencia({box, sales, clients=[], installments, payments, re
   const newSales=currentSales.filter(s=>!s.renovacao&&!s.renovada&&!norm(s.tipoVenda || s.tipo).includes('RENOV'));
   const totalVendasNovasCentavos=newSales.reduce((n,s)=>n+money(s,'valorEmprestadoCentavos',['valorEmprestado','valor','valorVenda']),0);
   const totalVendasRenovadasCentavos=currentSales.filter(s=>!newSales.includes(s)).reduce((n,s)=>n+money(s,'valorEmprestadoCentavos',['valorEmprestado','valor','valorVenda']),0);
-  return {quantidadeVendas:currentSales.length,totalVendasNovasCentavos,totalVendasRenovadasCentavos,versaoCalculo:"fechamento_backend_v1",caixa:box,dataOperacional:day,caixaInicialCentavos:initial,caixaFinalEsperadoCentavos:expected,carteiraInicialCentavos:money(box,"carteiraInicialCentavos",["carteiraInicial"]),carteiraFinalCentavos:portfolioSales.reduce((n,s)=>n+money(s,"saldoDevedorCentavos",["saldoDevedor","saldoAtual"]),0),...totals,totalPrevistoCentavos:route.reduce((n,r)=>n+r.expected,0),totalCobrancas:route.length,totalVisitadas:route.filter(r=>r.received||r.physicallyVisited).length,totalPagas:route.filter(r=>r.received).length,totalNaoPagas:route.filter(r=>!r.received&&r.visited).length,totalSemBaixaGerencial:route.filter(r=>!r.received&&r.managerialMissing).length,pendenciasCobranca:route.filter(r=>!r.received&&!r.visited).length,pendenciasVendasIds:route.filter(r=>!r.received&&!r.visited).map(r=>r.id),pendenciasCobrancas:route.filter(r=>!r.received&&!r.visited).map(r=>({vendaId:r.id,clienteId:r.clienteId,clienteNome:r.clienteNome})),pagamentosPendentes:pendingPayments.length,aprovacoesPendentes:pendingApprovals.length,inconsistencias:inconsistencies,vendasIds:currentSales.map(s=>s.id),pagamentosIds:confirmedPayments.map(p=>p.id)};
+  return {quantidadeVendas:currentSales.length,totalVendasNovasCentavos,totalVendasRenovadasCentavos,versaoCalculo:"fechamento_backend_v1",caixa:box,dataOperacional:day,caixaInicialCentavos:initial,caixaFinalEsperadoCentavos:expected,carteiraInicialCentavos:money(box,"carteiraInicialCentavos",["carteiraInicial"]),carteiraFinalCentavos:carteiraAtiva.filter(s=>!vendaEncerrada(s) && !clienteQuitado(clienteDaVenda(s))).reduce((n,s)=>n+money(s,"saldoDevedorCentavos",["saldoDevedor","saldoAtual"]),0),avisosCarteira,...totals,totalPrevistoCentavos:route.reduce((n,r)=>n+r.expected,0),totalCobrancas:route.length,totalVisitadas:route.filter(r=>r.received||r.physicallyVisited).length,totalPagas:route.filter(r=>r.received).length,totalNaoPagas:route.filter(r=>!r.received&&r.visited).length,totalSemBaixaGerencial:route.filter(r=>!r.received&&r.managerialMissing).length,pendenciasCobranca:route.filter(r=>!r.received&&!r.visited).length,pendenciasVendasIds:route.filter(r=>!r.received&&!r.visited).map(r=>r.id),pendenciasCobrancas:route.filter(r=>!r.received&&!r.visited).map(r=>({vendaId:r.id,clienteId:r.clienteId,clienteNome:r.clienteNome})),pagamentosPendentes:pendingPayments.length,aprovacoesPendentes:pendingApprovals.length,inconsistencias:inconsistencies,vendasIds:currentSales.map(s=>s.id),pagamentosIds:confirmedPayments.map(p=>p.id)};
 }
 module.exports={calcularConferencia};

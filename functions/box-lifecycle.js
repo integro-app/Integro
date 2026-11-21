@@ -324,7 +324,7 @@ function criarCicloCaixa({ db, functions }) {
       query("pagamentos","caixaId",boxId),query("solicitacoes","caixaId",boxId),query("historicoCobrancas","caixaId",boxId),query("lancamentos_financeiros","caixaId",boxId),
       ...installmentQueries
     ]);
-    const raw={box,sales,clients,installments:parts.flat(),payments,requests,visits,ledger,ownerUid:uid,sellerIds:[...sellerIds]};
+    const raw={box,sales,clients,clientesConferidos:true,installments:parts.flat(),payments,requests,visits,ledger,ownerUid:uid,sellerIds:[...sellerIds]};
     const result=require("./box-reconciliation").calcularConferencia({...raw,fail});
     const stable=value=>JSON.stringify(value,(_,v)=>v&&typeof v==="object"&&!Array.isArray(v)?Object.fromEntries(Object.keys(v).sort().map(k=>[k,v[k]])):v);
     result.conferenciaId=require("node:crypto").createHash("sha256").update(stable(raw)).digest("hex");

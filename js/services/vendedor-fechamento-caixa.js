@@ -511,11 +511,15 @@
     const pendencias = Math.max(0, inteiro(snapshot.pendenciasCobranca));
     const pagamentosPendentes = Math.max(0, inteiro(snapshot.pagamentosPendentes));
     const aprovacoesPendentes = Math.max(0, inteiro(snapshot.aprovacoesPendentes));
-    const inconsistencias = Array.isArray(snapshot.inconsistencias) ? snapshot.inconsistencias.length : 0;
+    const avisosCarteira = Array.isArray(snapshot.avisosCarteira)
+      ? snapshot.avisosCarteira.filter(item => item?.bloqueiaFechamento !== false).length : 0;
+    const inconsistencias = Array.isArray(snapshot.inconsistencias)
+      ? snapshot.inconsistencias.filter(item => !["VENDA_ENCERRADA_COM_SALDO:","CLIENTE_QUITADO_COM_VENDA_ABERTA:","CLIENTE_SEM_FICHA_OPERACIONAL:"].some(prefix => String(item ?? "").startsWith(prefix))).length : 0;
     const motivos = [];
     if (pendencias) motivos.push(`${pendencias} visita(s) ainda sem baixa de Pago ou Não pagamento.`);
     if (pagamentosPendentes) motivos.push(`${pagamentosPendentes} pagamento(s) aguardando confirmação no servidor.`);
     if (aprovacoesPendentes) motivos.push(`${aprovacoesPendentes} aprovação(ões) obrigatória(s) pendente(s).`);
+    if (avisosCarteira) motivos.push(`${avisosCarteira} registro(s) exigem conciliação de carteira (quitado com saldo ou cliente sem ficha vinculada). Regularize com um gestor, sem baixa fictícia.`);
     if (inconsistencias) motivos.push(`${inconsistencias} inconsistência(s) financeira(s) para regularizar.`);
     if (operacoesPendentes > 0) motivos.push("Existem baixas locais ainda sincronizando.");
     return { podeFechar: motivos.length === 0, pendencias, motivos };
@@ -530,6 +534,9 @@
     const visitadas = Math.max(0, inteiro(snapshot.totalVisitadas));
     const progressoPercentual = totalVisitas > 0 ? Math.min(100, Math.round(visitadas / totalVisitas * 100)) : 0;
     const pendentesOficiais = Array.isArray(snapshot.pendenciasCobrancas) ? snapshot.pendenciasCobrancas : [];
+    const avisos = Array.isArray(snapshot.avisosCarteira) ? snapshot.avisosCarteira : [];
+    const quitadosEmConflito = avisos.filter(item => item?.bloqueiaFechamento !== false);
+    const historicosForaDaRota = avisos.filter(item => item?.bloqueiaFechamento === false);
     const escapar = valor => texto(valor).replace(/[&<>"']/g, caractere =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[caractere]);
     const detalhesPendencias = pendentesOficiais.length ? `
@@ -539,6 +546,22 @@
           `<li>${escapar(item.clienteNome || "Cliente sem nome")} <small>(venda ${escapar(item.vendaId || "sem ID")})</small></li>`
         ).join("")}</ul>
         <p>Se estes clientes não aparecem em Cobranças, a carteira e a conferência precisam ser conciliadas. Não registre baixas fictícias.</p>
+      </details>` : "";
+    const detalhesQuitados = quitadosEmConflito.length ? `
+      <details class="integro-fechamento-pendencias-detalhes" open>
+        <summary>Ver ${quitadosEmConflito.length} inconsistência(s) de vínculo/saldo da carteira</summary>
+        <ul>${quitadosEmConflito.map(item =>
+          `<li>${escapar(item.clienteNome || "Cliente sem nome")} <small>(venda ${escapar(item.vendaId || "sem ID")} · ${escapar(item.statusVenda || "sem situação")} · venda ${moedaCentavos(item.saldoVendaCentavos)})</small></li>`
+        ).join("")}</ul>
+        <p>Esses registros não são visitas pendentes: há ficha quitada com saldo contraditório ou venda sem ficha operacional localizada. Solicite a conciliação por um responsável, sem criar pagamentos ou não pagamentos fictícios.</p>
+      </details>` : "";
+    const detalhesHistoricos = historicosForaDaRota.length ? `
+      <details class="integro-fechamento-pendencias-detalhes" open>
+        <summary>${historicosForaDaRota.length} contrato(s) históricos fora da carteira operacional — não são visitas pendentes</summary>
+        <ul>${historicosForaDaRota.map(item =>
+          `<li>${escapar(item.clienteNome || "Cliente sem nome")} <small>(venda ${escapar(item.vendaId || "sem ID")} · saldo registrado ${moedaCentavos(item.saldoVendaCentavos)})</small></li>`
+        ).join("")}</ul>
+        <p>Esses contratos permanecem no histórico financeiro. O gestor deve conciliar/migrar as fichas antigas antes de cobrar novamente. Eles não impedem o encerramento do caixa atual, pois não pertencem à rota operacional exibida.</p>
       </details>` : "";
     return `
       <div class="integro-fechamento-head">
@@ -574,7 +597,9 @@
           <strong>${situacao.podeFechar ? "Visitas concluídas. Confira o dinheiro do caixa." : "Consulta liberada — fechamento ainda bloqueado"}</strong>
           ${situacao.motivos.map(motivo => `<div>${motivo}</div>`).join("")}
           ${detalhesPendencias}
+          ${detalhesQuitados}
         </div>
+        ${detalhesHistoricos ? `<div class="integro-fechamento-aviso historico" role="note"><strong>Carteira histórica separada da operação</strong>${detalhesHistoricos}</div>` : ""}
         <div class="integro-fechamento-conferencia">
           <div class="integro-fechamento-secao-cabeca"><h3>Conferência final</h3><small>Confirmação em duas etapas</small></div>
           <label for="integroFechamentoValorInformado">Informe o valor contado fisicamente no caixa</label>

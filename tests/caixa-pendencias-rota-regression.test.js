@@ -100,3 +100,115 @@ test("consulta Firestore da conferência reatribui a rota pelo cliente canônico
  assert.equal(nova.pendenciasCobranca,1,"responsável atual deve assumir a pendência real");
  assert.equal(nova.pendenciasVendasIds[0],"v1");
 });
+
+
+test("venda QUITADA com saldo zero não exige baixa mesmo que parcela legada esteja pendente",()=>{
+ const s=conferir({sales:[{...sale,statusVenda:"QUITADO",saldoDevedorCentavos:0}],
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}]});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.inconsistencias.length,0);
+});
+test("venda QUITADA com saldo residual deixa de ser visita pendente e revela discrepância financeira",()=>{
+ const s=conferir({sales:[{...sale,statusVenda:"QUITADO",saldoDevedorCentavos:10000}],
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}]});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.avisosCarteira.length,1);
+ assert.match(s.inconsistencias[0],/^VENDA_ENCERRADA_COM_SALDO:/);
+});
+test("cliente QUITADO com saldo zero não vira visita fantasma por venda antiga ativa",()=>{
+ const s=conferir({clients:[{id:"cliente-1",statusCliente:"QUITADO",saldoDevedorCentavos:0,vendedorAuthUid:"gu"}],
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}]});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.avisosCarteira.length,1);
+ assert.match(s.inconsistencias[0],/^CLIENTE_QUITADO_COM_VENDA_ABERTA:/);
+});
+test("cliente ATIVO com parcela vencida mantém bloqueio legítimo",()=>{
+ const s=conferir({clients:[{id:"cliente-1",statusCliente:"ATIVO",saldoDevedorCentavos:10000,vendedorAuthUid:"gu"}],
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}]});
+ assert.equal(s.pendenciasCobranca,1);
+ assert.equal(s.avisosCarteira.length,0);
+});
+test("fechamento explica quitados inconsistentes sem pedir não pagamento fictício",()=>{
+ const ui=fs.readFileSync(path.join(__dirname,"..","js/services/vendedor-fechamento-caixa.js"),"utf8");
+ assert.match(ui,/quitadosEmConflito/);
+ assert.match(ui,/detalhesQuitados/);
+ assert.match(ui,/contraditório/);
+});
+
+test("leitura autoritativa sem ficha operacional classifica venda órfã como conciliação, não visita",()=>{
+ const s=calcularConferencia({box,sales:[sale],clients:[],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.avisosCarteira.length,1);
+ assert.match(s.inconsistencias[0],/^CLIENTE_SEM_FICHA_OPERACIONAL:/);
+});
+
+test("contrato historico com ficha apenas em clientes nao exige baixa invisivel",()=>{
+ const legado={id:"cliente-1",origemColecaoConferencia:"clientes",status:"ATIVO",
+   vendedorId:"gu",saldoDevedorCentavos:10000};
+ const anterior={...sale,caixaId:"caixa-fechado-anterior",statusVenda:"ATIVA"};
+ const s=calcularConferencia({box,sales:[anterior],clients:[legado],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.inconsistencias.length,0);
+ assert.equal(s.avisosCarteira.length,1);
+ assert.equal(s.avisosCarteira[0].bloqueiaFechamento,false);
+ assert.match(s.avisosCarteira[0].codigo,/^CARTEIRA_LEGADA_SEM_FICHA_OPERACIONAL:/);
+ assert.equal(s.avisosCarteira[0].saldoVendaCentavos,10000,"dívida histórica preservada no alerta");
+});
+test("contrato historico de cliente legado QUITADO com saldo contraditorio fica segregado",()=>{
+ const legado={id:"cliente-1",origemColecaoConferencia:"clientes",statusCliente:"QUITADO",
+   vendedorId:"gu",saldoDevedorCentavos:10000};
+ const s=calcularConferencia({box,sales:[{...sale,caixaId:"caixa-fechado-anterior"}],
+   clients:[legado],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.inconsistencias.length,0);
+ assert.equal(s.avisosCarteira[0].statusCliente,"QUITADO");
+ assert.equal(s.avisosCarteira[0].bloqueiaFechamento,false);
+});
+test("cliente operacional ATIVO mantem exigencia real de visita no caixa",()=>{
+ const operacional={id:"cliente-1",origemColecaoConferencia:"clientes_operacionais",
+   statusCliente:"ATIVO",vendedorAuthUid:"gu",saldoDevedorCentavos:10000};
+ const s=calcularConferencia({box,sales:[{...sale,caixaId:"caixa-fechado-anterior"}],
+   clients:[operacional],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,1);
+ assert.equal(s.avisosCarteira.length,0);
+});
+test("contrato legado criado no caixa atual nao recebe exclusao automatica",()=>{
+ const legado={id:"cliente-1",origemColecaoConferencia:"clientes",statusCliente:"ATIVO",
+   vendedorId:"gu",saldoDevedorCentavos:10000};
+ const s=calcularConferencia({box,sales:[{...sale,caixaId:box.id}],
+   clients:[legado],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,1,"venda do caixa corrente exige visita");
+});
+test("interface separa aviso historico nao bloqueante de inconsistencias reais",()=>{
+ const ui=fs.readFileSync(path.join(__dirname,"..","js/services/vendedor-fechamento-caixa.js"),"utf8");
+ assert.match(ui,/historicosForaDaRota/);
+ assert.match(ui,/item\?\.bloqueiaFechamento !== false/);
+ assert.match(ui,/nao sao visitas pendentes|não são visitas pendentes/);
+});
+
+test("saldo legado fora de esquema numerico nao impede fechamento da carteira canonica",()=>{
+ const legado={id:"cliente-1",origemColecaoConferencia:"clientes",statusCliente:"ATIVO",
+   vendedorId:"gu",saldoDevedorCentavos:"10000",saldoDevedor:"100,00"};
+ const s=calcularConferencia({box,sales:[{...sale,caixaId:"caixa-fechado-anterior"}],
+   clients:[legado],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.inconsistencias.length,0);
+ assert.equal(s.avisosCarteira[0].bloqueiaFechamento,false);
+});

@@ -223,3 +223,15 @@ test("venda de outro cliente não reaparece só pelo vendedor histórico",()=>{
   });
   assert.deepEqual(operacao.montarCarteira(dados),[]);
 });
+
+
+test("cliente quitado não aparece em Cobranças por saldo residual de venda antiga",()=>{
+ const dados=base({
+   clientes:[{id:"cli-1",nome:"Cliente quitado",vendedorId:"vend-1",statusCliente:"QUITADO",saldoDevedorCentavos:0,clientePlataformaId:"tenant-1"}],
+   vendas:[{id:"venda-antiga",clienteId:"cli-1",vendedorId:"vend-1",statusVenda:"ATIVA",
+     saldoDevedorCentavos:15000,clientePlataformaId:"tenant-1"}],
+   parcelas:[{id:"parcela-antiga",vendaId:"venda-antiga",statusParcela:"PENDENTE",
+     dataVencimento:"2026-08-03",valorCentavos:5000,clientePlataformaId:"tenant-1"}]
+ });
+ assert.equal(operacao.montarCarteira(dados).length,0);
+});
