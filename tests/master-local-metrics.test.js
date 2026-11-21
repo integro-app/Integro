@@ -72,7 +72,7 @@ test("renderDashboardMasterLocal exibe quantidades financeiras isoladas por empr
    getSolicitacoes:()=>[],getUsuarios:()=>[],getLogs:()=>[]};
  const document={addEventListener(){},getElementById(id){if(!ids.has(id))ids.set(id,{innerText:""});return ids.get(id)},
    querySelector(){return null},querySelectorAll(){return []}};
- const context={State,document,window:{IntegroMasterLocalMetrics:M},console,
+ const context={State,document,window:{IntegroMasterLocalMetrics:{...M,calcular:entrada=>M.calcular(entrada,dia)}},console,
    moeda:v=>v.toFixed(2),CustomEvent:class{},Date,Map,Set,setTimeout,clearTimeout};
  vm.runInNewContext(origem,context,{filename:"master-local.js"});
  context.renderDashboardMasterLocal();
@@ -88,4 +88,42 @@ test("Master Local vincula núcleo de métricas antes do bootstrap e invalida o 
  assert.match(source,/escaparMasterLocal\(c.nome\)/);
  const usuarios=fs.readFileSync(path.join(__dirname,"..","js/usuarios.js"),"utf8");
  assert.match(usuarios,/await carregarUsuarios\(true\);/);
+});
+
+test("reconciliação aponta fichas legadas ativas fora da operação sem apagar contratos",()=>{
+ const M=require("../js/services/master-local-metrics");
+ const old=[
+   cliente("legada-a",{nome:"Cliente A",statusCliente:"QUITADO",saldoDevedorCentavos:5000}),
+   cliente("legada-b",{nome:"Cliente B",statusCliente:"ATIVO",saldoDevedorCentavos:10000}),
+   cliente("migrado",{nome:"Cliente já migrado",documentoNormalizado:"12345678901"}),
+   cliente("outro",{clientePlataformaId:"empresa-b",saldoDevedorCentavos:100000})
+ ];
+ const op=[cliente("operacional",{clienteLegadoId:"migrado",documentoNormalizado:"12345678901"})];
+ const vs=[venda("a",{clienteId:"legada-a"}),venda("b",{clienteId:"legada-b"}),
+   venda("outra",{clienteId:"outro",clientePlataformaId:"empresa-b"})];
+ const a=M.auditarCarteira({tenantId:tenant,clientesLegados:old,clientesOperacionais:op,vendas:vs});
+ assert.equal(a.total,2);
+ assert.equal(a.contraditorios,1);
+ assert.equal(a.comContratos,2);
+ assert.equal(a.registros[0].motivo,"QUITADO_COM_SALDO");
+ assert.equal(a.registros.find(c=>c.id==="legada-b").contratosAtivos,1);
+});
+test("cliente operacional com mesmo documento não aparece como legado duplicado",()=>{
+ const M=require("../js/services/master-local-metrics");
+ const a=M.auditarCarteira({tenantId:tenant,
+   clientesLegados:[cliente("legacy",{documentoNormalizado:"12345678901"})],
+   clientesOperacionais:[cliente("new",{documentoNormalizado:"12345678901"})],
+   vendas:[venda("v1",{clienteId:"legacy"})]});
+ assert.equal(a.total,0);
+});
+test("Dashboard inclui painel de conciliação e carrega carteira operacional isolada",()=>{
+ const html=fs.readFileSync(path.join(__dirname,"..","master-local.html"),"utf8");
+ const metrics=html.indexOf('js/services/master-local-metrics.js');
+ const master=html.indexOf('js/master-local.js');
+ assert.ok(metrics>0&&master>metrics);
+ assert.match(html,/id="masterLocalConciliacaoCarteira"/);
+ assert.match(html,/css\/master-local-auditoria\.css/);
+ const js=fs.readFileSync(path.join(__dirname,"..","js/master-local.js"),"utf8");
+ assert.match(js,/carregarCarteiraOperacionalMasterLocal/);
+ assert.match(js,/renderAuditoriaCarteiraMasterLocal/);
 });
