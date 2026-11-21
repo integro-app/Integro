@@ -180,8 +180,10 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
       case "conciliacao":
         await Promise.all([carregarClientes(forcar),carregarCarteiraOperacionalMasterLocal(forcar),
           carregarVendas(forcar),carregarUsuarios(forcar)]);
+        if(!window.__integroCoreColecoesCarregadas)
+          window.__integroCoreColecoesCarregadas=new Set();
         ["clientes","vendas","usuários","carteira operacional"].forEach(nome=>
-          window.__integroCoreColecoesCarregadas?.add(nome));
+          window.__integroCoreColecoesCarregadas.add(nome));
         window.IntegroConciliacaoUI?.tela?.();
         break;
       case "vendas":
@@ -227,6 +229,7 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
   } catch (erro) {
     console.error(`[ÍNTEGRO] Falha ao carregar módulo ${chave}.`, erro);
     window.notificarIntegro?.("Não foi possível atualizar este módulo agora.");
+    if(forcar && chave==="conciliacao")throw erro;
   }
 }
 
@@ -306,7 +309,7 @@ function dadosConcilMasterLocal(){
   const core=window.__integroCoreColecoesCarregadas;
   const canon=carteiraOperacionalMasterLocal;
   const pronta=Boolean(tenantId&&canon.carregada&&canon.escopo===escopoMasterLocal()&&
-    core?.has("clientes")&&core?.has("vendas")&&core?.has("carteira operacional"));
+    core?.has("clientes")&&core?.has("vendas")&&core?.has("usuários")&&core?.has("carteira operacional"));
   return {
     carregada:pronta,
     erro:pronta?"":(canon.erro||"Os dados ainda não foram confirmados. Atualize a consulta."),
@@ -315,6 +318,8 @@ function dadosConcilMasterLocal(){
     clientesOperacionais:pronta?canon.clientes:[],
     vendas:pronta?State.getVendas?.()||[]:[],
     usuarios:pronta?State.getUsuarios?.()||[]:[],
+    falhas:core ? ["clientes","vendas","usuários","carteira operacional"].filter(k=>!core.has(k)) : ["Dados não carregados"],
+    parcial:pronta&&canon.parcial,
     limites:{clientesLegados:CONFIG.LIMITS?.CLIENTES||500,
       clientesOperacionais:CONFIG.LIMITS?.CLIENTES||500,
       vendas:CONFIG.LIMITS?.VENDAS||500,
