@@ -146,7 +146,16 @@
       historicos:linhas.filter(r=>r.origem==="LEGADO").length,
       quitados:linhas.filter(r=>["QUITADO_COM_SALDO","CLIENTE_QUITADO_COM_VENDA_ATIVA"].includes(r.codigo)).length,
       semFicha:linhas.filter(r=>["SEM_FICHA_OPERACIONAL","VENDA_SEM_CLIENTE","CLIENTE_LEGADO_COM_SALDO"].includes(r.codigo)).length,
-      saldoEmAnaliseCentavos:linhas.reduce((n,r)=>n+r.saldoVendasCentavos,0),
+      // O mesmo contrato pode ter mais de um alerta. Jamais somar sua
+      // dívida duas vezes ao calcular a exposição financeira da conciliação.
+      saldoEmAnaliseCentavos:(()=>{
+        const saldos=new Map();
+        linhas.forEach(r=>(r.contratoIds||[]).forEach((id,index)=>{
+          if(!saldos.has(id))saldos.set(id,
+            r.contratoIds.length===1?r.saldoVendasCentavos:0);
+        }));
+        return [...saldos.values()].reduce((a,b)=>a+b,0);
+      })(),
       parcial,registros:linhas,
       consultados:{clientesLegados:legado.length,clientesOperacionais:atual.length,vendas:contratos.length,usuarios:pessoas.length}
     };
