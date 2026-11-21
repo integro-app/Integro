@@ -127,6 +127,7 @@ async function carregarTudoMasterLocal(forcar = false) {
     window.__integroCoreColecoesCarregadas = new Set(carregados);
     renderDashboardMasterLocal();
     if (typeof renderClientes === "function") renderClientes();
+    window.IntegroConciliacaoUI?.renderClientesOperacionais?.();
     window.IntegroConciliacaoUI?.tela?.();
     document.dispatchEvent(new CustomEvent("integro-master-local-core-carregado", {
       detail: {
@@ -174,6 +175,7 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
       case "clientes":
         await Promise.all([carregarClientes(forcar),carregarCarteiraOperacionalMasterLocal(forcar)]);
         renderClientes?.();
+        window.IntegroConciliacaoUI?.renderClientesOperacionais?.();
         break;
       case "conciliacao":
         await Promise.all([carregarClientes(forcar),carregarCarteiraOperacionalMasterLocal(forcar),
