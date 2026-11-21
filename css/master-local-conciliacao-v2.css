@@ -342,3 +342,12 @@ html[data-perfil-integro="master_local"] .mlc-action{
     min-width:0;overflow-wrap:anywhere;
   }
 }
+
+
+/* Evidência de vínculo ambíguo: leitura segura em drawer desktop e mobile. */
+.mlc-conflict-evidence{margin:15px 0;padding:15px 17px;background:#fff8ec;border:1px solid #edc994;border-left:4px solid #cd7628;border-radius:12px;color:#4e361c}
+.mlc-conflict-evidence strong{display:block;line-height:1.4;overflow-wrap:anywhere}
+.mlc-conflict-evidence p{font-size:.84rem;line-height:1.6;margin:7px 0;color:#6f5738}
+.mlc-conflict-evidence ul{padding-left:20px;margin:10px 0 0;max-height:180px;overflow:auto}
+.mlc-conflict-evidence code{overflow-wrap:anywhere;word-break:break-word;white-space:normal}
+@media(max-width:680px){.mlc-conflict-evidence{padding:12px}.mlc-conflict-evidence ul{max-height:130px}}
