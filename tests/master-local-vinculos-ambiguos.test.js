@@ -85,3 +85,46 @@ test("interface permite filtrar vínculos ambíguos e mantém layout mobile leg�
   assert.match(css,/\.mlc-conflict-evidence/);
   assert.match(css,/@media\(max-width:680px\)/);
 });
+
+
+test("ação Ver ficha só abre a candidata vinculada à empresa do Master Local",()=>{
+  const handlers={};let opened=null;let closed=0;
+  const tenantCurrent="empresa-a",usuario={authUid:"local-a"};
+  const client=op("op-a",{clienteLegadoId:"legacy-1"});
+  const globalWindow={State:{getTenantId:()=>tenantCurrent,getUsuario:()=>usuario,getClientes:()=>[]},
+    document:{addEventListener(name,handler){
+      if(!handlers[name])handlers[name]=[];
+      handlers[name].push(handler);
+    }},
+    IntegroAcesso:{acessoUsuario:()=>({perfil:"master_local"})},
+    IntegroConciliacaoMasterLocal:C,
+    IntegroMasterLocalConciliacaoDados:()=>({
+      tenantId:tenantCurrent,carregada:true,clientesLegados:[],vendas:[],clientesOperacionais:[
+        client,op("op-b",{clientePlataformaId:"empresa-b"})]}),
+    abrirCliente360:x=>{opened=x;},fecharDrawer:()=>{closed++;}
+  };
+  const js=fs.readFileSync(path.join(__dirname,"..","js/modules/master-local-reconciliation-ui.js"),"utf8");
+  vm.runInNewContext(js,{window:globalWindow});
+  const click=id=>({target:{closest(selector){
+    return selector==="[data-mlc-candidate-open]"?{dataset:{mlcCandidateOpen:id}}:null;
+  }}});
+  handlers.click.forEach(fn=>fn(click("op-b")));
+  assert.equal(opened,null,"nunca abrir ficha de outra empresa");
+  handlers.click.forEach(fn=>fn(click("op-a")));
+  assert.equal(opened,client);
+  assert.equal(closed,1);
+});
+test("ação Ver ficha não aparece operante para vendedor",()=>{
+  const handlers={};let opened=0;
+  const fake={State:{getTenantId:()=>tenant,getUsuario:()=>({authUid:"seller"})},
+    document:{addEventListener(name,handler){(handlers[name]??=[]).push(handler);}},
+    IntegroAcesso:{acessoUsuario:()=>({perfil:"vendedor"})},
+    IntegroMasterLocalConciliacaoDados:()=>({tenantId:tenant,carregada:true,
+      clientesOperacionais:[op("op-a")]}),
+    abrirCliente360:()=>opened++};
+  const js=fs.readFileSync(path.join(__dirname,"..","js/modules/master-local-reconciliation-ui.js"),"utf8");
+  vm.runInNewContext(js,{window:fake});
+  handlers.click.forEach(fn=>fn({target:{closest:selector=>
+    selector==="[data-mlc-candidate-open]"?{dataset:{mlcCandidateOpen:"op-a"}}:null}}));
+  assert.equal(opened,0);
+});
