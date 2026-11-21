@@ -16,7 +16,7 @@ function escaparUsuarioTabela(valor) {
 function usuariosDoTenant() {
   const tenant = String(State.getTenantId?.() || "");
   return tenant ? (State.getUsuarios?.() || []).filter(u =>
-    String(u.clientePlataformaId || u.empresaId || u.tenantId || "") === tenant) : [];
+    u.excluido !== true && String(u.clientePlataformaId || u.empresaId || u.tenantId || "") === tenant) : [];
 }
 function usuarioDoTenant(id) {
   return usuariosDoTenant().find(u => String(u.id) === String(id)) || null;
@@ -37,6 +37,19 @@ function equipesUsuarioTexto(usuario) {
   return nomes.length ? nomes.join(", ") : (usuario?.equipeNome || "-");
 }
 
+const PERFIS_PERMITIDOS_MASTER_LOCAL = new Set(["master_local","gerente","supervisor",
+  "financeiro","auditor","vendedor","captador"]);
+function validarPerfilUsuarioMasterLocal(perfil){
+  if(!PERFIS_PERMITIDOS_MASTER_LOCAL.has(String(perfil||"").toLowerCase()))
+    throw new Error("Perfil não permitido para esta empresa.");
+}
+function usuarioEhSessaoAtual(usuario){
+  const ativo=State.getUsuario?.()||{};
+  const uid=String(ativo.authUid||ativo.uid||"");
+  const id=String(ativo.id||State.usuarioId||"");
+  return !!usuario && ((uid && String(usuario.authUid||usuario.uid||"")===uid) ||
+    (id && String(usuario.id||"")===id));
+}
 let filtroStatusUsuariosEstrutura = "";
 
 function atualizarIndicadoresUsuariosEstrutura(todos) {
@@ -317,6 +330,7 @@ async function salvarNovoUsuario() {
     const exigeEquipe = ["gerente", "supervisor", "vendedor", "captador"].includes(tipoUsuario);
 
     if (!tenantId) throw new Error("Empresa não identificada na sessão.");
+    validarPerfilUsuarioMasterLocal(tipoUsuario);
     if (!nome || !email) throw new Error("Informe nome completo e e-mail.");
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Informe um e-mail válido.");
     if (!cargoId) throw new Error("Selecione o cargo do usuário.");
@@ -372,7 +386,8 @@ async function salvarNovoUsuario() {
 
 async function salvarEdicaoUsuario(id) {
   try {
-    if (!usuarioDoTenant(id)) throw new Error("Usuário fora da empresa selecionada.");
+    const usuarioEditado=usuarioDoTenant(id);
+    if (!usuarioEditado) throw new Error("Usuário fora da empresa selecionada.");
     const nome = UIHelpers.getInputValue("usuarioNome");
     const telefone = UIHelpers.getInputValue("usuarioTelefone");
     const tipoUsuario = UIHelpers.getInputValue("usuarioTipo");
@@ -381,6 +396,9 @@ async function salvarEdicaoUsuario(id) {
     const equipeId = equipesIds[0] || "";
     const status = UIHelpers.getInputValue("usuarioStatus");
     const exigeEquipe = ["gerente", "supervisor", "vendedor", "captador"].includes(tipoUsuario);
+    validarPerfilUsuarioMasterLocal(tipoUsuario);
+    if (usuarioEhSessaoAtual(usuarioEditado) && ["INATIVO","BLOQUEADO"].includes(String(status||"").toUpperCase()))
+      throw new Error("Não é permitido bloquear a conta atualmente autenticada.");
     if (!nome.trim()) throw new Error("Informe o nome.");
     if (!cargoId || !cargosUsuarioTenant().some(c => String(c.id) === String(cargoId)))
       throw new Error("Selecione um cargo válido desta empresa.");
@@ -431,6 +449,8 @@ async function alterarAcessoUsuario(id, liberar) {
       return;
     }
 
+    if (!liberar && usuarioEhSessaoAtual(usuario))
+      throw new Error("Não é permitido bloquear sua própria conta.");
     await FirestoreService.alterarAcessoUsuario(id, liberar);
 
     await FirestoreService.gravarLog(liberar ? "LIBERACAO_USUARIO" : "BLOQUEIO_USUARIO", {
@@ -467,6 +487,8 @@ async function excluirUsuarioLogico(id) {
       return;
     }
 
+    if (usuarioEhSessaoAtual(usuario))
+      throw new Error("Não é permitido excluir sua própria conta.");
     await FirestoreService.excluirUsuarioLogico(id);
 
     await FirestoreService.gravarLog("EXCLUSAO_LOGICA_USUARIO", {
