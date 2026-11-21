@@ -99,10 +99,10 @@
       if(antigo)juntar(vendasPorLegado,id(antigo),v);
       if(operativo)juntar(vendasPorAtual,id(operativo),v);
       if(["QUITADO","QUITADA"].includes(statusVenda(v))&&saldoVenda(v)>1)
-        registrar("VENDA_QUITADA_COM_SALDO",id(v),operativo||antigo||v,operativo,[v],
+        registrar("VENDA_QUITADA_COM_SALDO",id(v),operativo||antigo||null,operativo,[v],
           "Contrato quitado mantém saldo diferente de zero; comparar parcelas, pagamentos e histórico.");
       if(!antigo&&!operativo&&saldoVenda(v)>1&&!encerrada(v))
-        registrar("VENDA_SEM_CLIENTE",id(v),v,null,[v],
+        registrar("VENDA_SEM_CLIENTE",id(v),null,null,[v],
           "Nenhuma ficha correspondente foi localizada nas bases consultadas.");
       if(operativo&&quitado(operativo)&&!encerrada(v)&&saldoVenda(v)>1)
         registrar("CLIENTE_QUITADO_COM_VENDA_ATIVA",id(operativo),operativo,operativo,[v],
