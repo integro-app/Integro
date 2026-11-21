@@ -271,43 +271,37 @@ async function carregarVendas(forcar = false) {
 }
 
 async function carregarPagamentosHoje(forcar = false) {
-  const escopo=escopoMasterLocal();
+  const escopo = escopoMasterLocal();
   try {
-    const hoje = window.IntegroOperacional?.hojeSP?.() || new Date().toLocaleDateString("en-CA", {
-      timeZone: "America/Sao_Paulo"
-    });
-    const tenantId = State.getTenantId();
-
-    let ref = db.collection(CONFIG.COLECOES.PAGAMENTOS).where("data", "==", hoje);
-
-    if (tenantId) {
-      ref = db
-        .collection(CONFIG.COLECOES.PAGAMENTOS)
-        .where("clientePlataformaId", "==", tenantId)
-        .where("data", "==", hoje);
-    }
-
-    const runtime = window.IntegroDataRuntime;
-    let data;
-    if (runtime?.consultarTenant && tenantId) {
-      data = await runtime.consultarTenant({
-        db,
-        colecao: CONFIG.COLECOES.PAGAMENTOS,
-        tenantId,
-        filtros: [["data", "==", hoje]],
-        limite: CONFIG.LIMITS.PAGAMENTOS,
-        cacheMs: 15000,
-        forcar,
-        chave: `pagamentos-hoje:${tenantId}:${hoje}`
+    const tenantId=String(State.getTenantId?.()||"");
+    if (!tenantId) throw new Error("Empresa não identificada para consultar pagamentos.");
+    const M=window.IntegroMasterLocalMetrics;
+    const hoje=M?.hojeSP?.() || window.IntegroOperacional?.hojeSP?.() ||
+      new Date().toLocaleDateString("en-CA",{timeZone:"America/Sao_Paulo"});
+    const runtime=window.IntegroDataRuntime;
+    const campos=["data","dataOperacional","dataPagamento"];
+    const resultados=await Promise.allSettled(campos.map(async campo=>{
+      if(runtime?.consultarTenant)return runtime.consultarTenant({
+        db,colecao:CONFIG.COLECOES.PAGAMENTOS,tenantId,
+        filtros:[[campo,"==",hoje]],limite:CONFIG.LIMITS.PAGAMENTOS,
+        cacheMs:15000,forcar,chave:`master-local:pagamentos:${tenantId}:${campo}:${hoje}`
       });
-    } else {
-      const snap = await ref.limit(CONFIG.LIMITS.PAGAMENTOS).get();
-      data = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    }
-
-    if(sessaoMasterLocalValida(escopo))State.setPagamentos(data);
-  } catch (erro) {
-    console.error("Erro ao carregar pagamentos:", erro);
+      const snap=await db.collection(CONFIG.COLECOES.PAGAMENTOS)
+        .where("clientePlataformaId","==",tenantId).where(campo,"==",hoje)
+        .limit(CONFIG.LIMITS.PAGAMENTOS).get();
+      return snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+    }));
+    if(!resultados.some(r=>r.status==="fulfilled"))
+      throw resultados.find(r=>r.status==="rejected")?.reason ||
+        new Error("Consultas de pagamentos indisponíveis.");
+    const registros=new Map();
+    resultados.filter(r=>r.status==="fulfilled").forEach(r=>(r.value||[]).forEach(p=>{
+      if(p.id && String(p.clientePlataformaId||p.tenantId||"")===tenantId)
+        registros.set(String(p.id),p);
+    }));
+    if(sessaoMasterLocalValida(escopo))State.setPagamentos([...registros.values()]);
+  }catch(erro){
+    console.error("Erro ao carregar pagamentos de hoje:",erro);
     throw erro;
   }
 }
