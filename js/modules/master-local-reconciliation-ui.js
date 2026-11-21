@@ -37,9 +37,9 @@
       if(fil==="ALTA"&&r.gravidade!=="ALTA")return false;
       if(fil==="SEM_FICHA"&&!["SEM_FICHA_OPERACIONAL","VENDA_SEM_CLIENTE","CLIENTE_LEGADO_COM_SALDO"].includes(r.codigo))return false;
       if(fil==="QUITADOS"&&!["QUITADO_COM_SALDO","VENDA_QUITADA_COM_SALDO","CLIENTE_QUITADO_COM_VENDA_ATIVA"].includes(r.codigo))return false;
-      if(fil==="VINCULOS"&&!["DUPLICIDADE_DOCUMENTO","TRANSFERENCIA_CONFERIR"].includes(r.codigo))return false;
+      if(fil==="VINCULOS"&&!["DUPLICIDADE_DOCUMENTO","VINCULO_AMBIGUO","TRANSFERENCIA_CONFERIR"].includes(r.codigo))return false;
       return !termo||[r.nome,r.vendedorNome,r.clienteId,r.clienteOperacionalId,r.codigo,
-        ...(r.contratoIds||[])].join(" ").toLocaleLowerCase("pt-BR").includes(termo);
+        ...(r.contratoIds||[]),...(r.candidatosOperacionaisIds||[])].join(" ").toLocaleLowerCase("pt-BR").includes(termo);
     });
   }
   function statusBadges(r){
@@ -128,6 +128,15 @@
     const report=consultar();const r=report?.registros.find(x=>x.key===key);
     if(!r)return false;
     const items=(r.contratoIds||[]).map(x=>`<li><code>${E(x)}</code></li>`).join("")||"<li>Nenhum contrato identificado</li>";
+    const candidatos=(r.candidatosOperacionaisIds||[]);
+    const listaCandidatos=candidatos.length>1?`
+      <div class="mlc-conflict-evidence" role="note">
+        <strong>Vínculo ambíguo: ${candidatos.length} fichas operacionais candidatas</strong>
+        <p>Não há associação automática confiável. Verifique documento, histórico e titularidade antes de qualquer migração.</p>
+        <ul>${candidatos.map(x=>`<li class="mlc-candidate-row">
+          <code>${E(x)}</code><button type="button" class="mlc-action" data-mlc-candidate-open="${E(x)}">Ver ficha</button>
+        </li>`).join("")}</ul>
+      </div>`:"";
     const html=`<div class="mlc-detail">
       <div class="mlc-detail-cards"><div><small>Origem</small><strong>${E(r.origem)}</strong></div>
         <div><small>Prioridade</small><strong>${E(prioridade(r))}</strong></div>
@@ -139,6 +148,7 @@
       <p><strong>Cliente operacional:</strong> ${E(r.clienteOperacionalId||"Não localizado")}</p>
       <p><strong>Responsável:</strong> ${E(r.vendedorNome)}</p>
       <p><strong>Identificador do responsável:</strong> ${E(r.vendedorIdentificador||"Não informado")}</p>
+      ${listaCandidatos}
       <h4>Contratos vinculados</h4><ul>${items}</ul>
       <p class="mlc-detail-note">${E(r.observacao||"É necessário conferir a origem dos dados.")}</p>
       <h4>Próxima ação recomendada</h4><p>${E(plano[r.codigo]||"Solicite conferência documental e financeira antes de regularizar.")}</p>
@@ -271,6 +281,7 @@
     CLIENTE_QUITADO_COM_VENDA_ATIVA:"Comparar a ficha operacional com a venda e identificar o documento financeiro que determina a situação correta.",
     VENDA_SEM_CLIENTE:"Consultar a origem da venda e o caixa histórico para reconstruir o vínculo cadastral, sem atribuir a dívida a outro cliente por semelhança de nome.",
     DUPLICIDADE_DOCUMENTO:"Conferir documento, identidade, histórico e empresa. Não unir cadastros ou transferir contratos automaticamente.",
+    VINCULO_AMBIGUO:"Comparar as fichas candidatas e as referências de cliente em cada contrato; validar a origem antes de migrar, transferir ou lançar cobranças.",
     SEM_FICHA_OPERACIONAL:"Validar os dados da ficha histórica e preparar uma migração auditável para a carteira operacional.",
     CLIENTE_LEGADO_COM_SALDO:"Localizar as vendas e os pagamentos antigos que compõem o saldo antes de migrar a ficha.",
     TRANSFERENCIA_CONFERIR:"Confirmar no histórico se a carteira foi transferida e quem é o responsável atual, sem alterar a autoria da venda."
@@ -289,6 +300,26 @@
     global.fecharDrawer?.();
     global.navegarModuloClientesMasterLocal?.("clientes") ?? global.trocarTela?.("clientes");
     global.setTimeout?.(()=>global.abrirVerCliente?.(botao.dataset.mlcProfile),100);
+  });
+  global.document?.addEventListener("click",event=>{
+    const botao=event.target.closest?.("[data-mlc-candidate-open]");
+    if(!botao)return;
+    const usuario=global.State?.getUsuario?.()||{};
+    if(global.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil!=="master_local")return;
+    const empresa=String(global.State?.getTenantId?.()||"");
+    const base=data();
+    if(!base.carregada||!empresa||String(base.tenantId||"")!==empresa)return;
+    const candidato=(base.clientesOperacionais||[]).find(c=>
+      String(c.id)===String(botao.dataset.mlcCandidateOpen||"")&&
+      String(c.clientePlataformaId||c.tenantId||c.empresaId||"")===empresa);
+    if(!candidato){
+      global.UIHelpers?.alerta?.("Ficha não encontrada na carteira operacional atual.");
+      return;
+    }
+    if(typeof global.abrirCliente360==="function"){
+      global.fecharDrawer?.();
+      global.abrirCliente360(candidato);
+    }else global.UIHelpers?.alerta?.("A visualização Cliente 360° não está disponível nesta sessão.");
   });
   global.IntegroConciliacaoUI=Object.freeze({tela,renderResumo,renderClientesOperacionais,consultar,detalhes,atualizar,navegar,get estado(){return {...state}}});
 })(window);

@@ -28,13 +28,14 @@
   const nome=c=>texto(c?.nomeCompleto||c?.nome||c?.apelido||c?.clienteNome||"Cliente sem nome");
   const prioridade={QUITADO_COM_SALDO:0,VENDA_QUITADA_COM_SALDO:0,
     CLIENTE_QUITADO_COM_VENDA_ATIVA:1,VENDA_SEM_CLIENTE:2,
-    DUPLICIDADE_DOCUMENTO:3,SEM_FICHA_OPERACIONAL:4,CLIENTE_LEGADO_COM_SALDO:5,TRANSFERENCIA_CONFERIR:6};
+    DUPLICIDADE_DOCUMENTO:3,VINCULO_AMBIGUO:1,SEM_FICHA_OPERACIONAL:4,CLIENTE_LEGADO_COM_SALDO:5,TRANSFERENCIA_CONFERIR:6};
   const razoes={
     QUITADO_COM_SALDO:"Quitado com saldo residual",
     VENDA_QUITADA_COM_SALDO:"Venda quitada com saldo residual",
     CLIENTE_QUITADO_COM_VENDA_ATIVA:"Cliente quitado com venda ativa",
     VENDA_SEM_CLIENTE:"Venda sem ficha localizada",
     DUPLICIDADE_DOCUMENTO:"Possível duplicidade de documento",
+    VINCULO_AMBIGUO:"Mesmo vínculo cadastral aponta para várias fichas",
     SEM_FICHA_OPERACIONAL:"Cliente só na base histórica",
     CLIENTE_LEGADO_COM_SALDO:"Ficha histórica com saldo",
     TRANSFERENCIA_CONFERIR:"Responsável da venda diferente do atual"
@@ -48,19 +49,33 @@
       donoNome.set(chave,texto(u.nomeCompleto||u.nome||u.email||"Responsável não identificado"))));
     const mapaLegado=new Map(legado.map(c=>[id(c),c]));
     const mapaAtual=new Map(atual.map(c=>[id(c),c]));
-    const aliasAtual=new Map();
+    // Todos os vínculos precisam ser considerados antes de resolver uma venda.
+    // Um alias com duas fichas jamais pode selecionar silenciosamente a primeira.
+    const vinculosAtuais=new Map();
     const porDocumento=new Map();
+    const registrarVinculo=(chave,c)=>{
+      if(!chave)return;
+      if(!vinculosAtuais.has(chave))vinculosAtuais.set(chave,new Map());
+      vinculosAtuais.get(chave).set(id(c),c);
+    };
     atual.forEach(c=>{
-      [c.clienteLegadoId,c.clienteId,c.clienteOperacionalId].map(texto).filter(Boolean).forEach(chave=>{
-        if(!aliasAtual.has(chave))aliasAtual.set(chave,c);
-      });
+      [c.id,c.clienteLegadoId,c.clienteId,c.clienteOperacionalId]
+        .map(texto).filter(Boolean).forEach(chave=>registrarVinculo(chave,c));
       const d=doc(c);if(d.length===11||d.length===14){
         if(!porDocumento.has(d))porDocumento.set(d,[]);
         porDocumento.get(d).push(c);
       }
     });
+    const resolverVinculo=ids=>{
+      const candidatos=new Map();
+      ids.map(texto).filter(Boolean).forEach(chave=>
+        (vinculosAtuais.get(chave)||new Map()).forEach((c,idAtual)=>candidatos.set(idAtual,c)));
+      return {candidatos:[...candidatos.values()],
+        unico:candidatos.size===1?[...candidatos.values()][0]:null,
+        ambiguo:candidatos.size>1};
+    };
     const registros=new Map();
-    const registrar=(codigo,chave,cliente,vinculo,vendasRelacionadas,observacao="")=>{
+    const registrar=(codigo,chave,cliente,vinculo,vendasRelacionadas,observacao="",meta={})=>{
       const key=codigo+":"+texto(chave);
       if(registros.has(key))return;
       const saldoVendas=vendasRelacionadas.reduce((n,v)=>n+Math.max(0,saldoVenda(v)),0);
@@ -80,6 +95,7 @@
         vendedorNome:donoNome.get(vendedorId)||texto(cliente?.vendedorNome||vendasRelacionadas[0]?.vendedorNome||"Não identificado"),
         vendedorIdentificador:vendedorId,
         contratoIds:[...new Set(vendasRelacionadas.map(id).filter(Boolean))],
+        candidatosOperacionaisIds:meta.candidatosOperacionaisIds||[],
         contratosAtivos:vendasRelacionadas.filter(v=>!encerrada(v)&&saldoVenda(v)>1).length,
         saldoVendasCentavos:saldoVendas,
         saldoClienteCentavos:cliente?saldoCliente(cliente):null,
@@ -94,14 +110,21 @@
     };
     contratos.forEach(v=>{
       const ids=[v.clienteOperacionalId,v.clienteId].map(texto).filter(Boolean);
-      const operativo=ids.map(x=>mapaAtual.get(x)||aliasAtual.get(x)).find(Boolean);
+      const resultado=resolverVinculo(ids);
+      const operativo=resultado.unico;
       const antigo=ids.map(x=>mapaLegado.get(x)).find(Boolean);
+      const ambiguoPorAlias=ids.some(chave=>(vinculosAtuais.get(chave)?.size||0)>1);
+      if(resultado.ambiguo&&!ambiguoPorAlias)
+        registrar("VINCULO_AMBIGUO","venda:"+id(v),antigo||null,null,[v],
+          "Os identificadores da venda apontam para fichas operacionais diferentes. Não associar automaticamente esta dívida.",
+          {candidatosOperacionaisIds:resultado.candidatos.map(id)});
+      
       if(antigo)juntar(vendasPorLegado,id(antigo),v);
       if(operativo)juntar(vendasPorAtual,id(operativo),v);
       if(["QUITADO","QUITADA"].includes(statusVenda(v))&&saldoVenda(v)>1)
         registrar("VENDA_QUITADA_COM_SALDO",id(v),operativo||antigo||null,operativo,[v],
           "Contrato quitado mantém saldo diferente de zero; comparar parcelas, pagamentos e histórico.");
-      if(!antigo&&!operativo&&saldoVenda(v)>1&&!encerrada(v))
+      if(!antigo&&!operativo&&!resultado.ambiguo&&saldoVenda(v)>1&&!encerrada(v))
         registrar("VENDA_SEM_CLIENTE",id(v),null,null,[v],
           "Nenhuma ficha correspondente foi localizada nas bases consultadas.");
       if(operativo&&quitado(operativo)&&!encerrada(v)&&saldoVenda(v)>1)
@@ -117,9 +140,19 @@
             "Confirmar se houve transferência de carteira e atualização da rota.");
       }
     });
+    for(const [chave,candidatos] of vinculosAtuais){
+      if(candidatos.size<=1)continue;
+      const relacionados=contratos.filter(v=>
+        [v.clienteId,v.clienteOperacionalId].some(campo=>texto(campo)===chave));
+      const legadoVinculado=mapaLegado.get(chave)||null;
+      registrar("VINCULO_AMBIGUO","alias:"+chave,legadoVinculado,null,relacionados,
+        "Um identificador histórico aponta para múltiplas fichas operacionais. É necessária conferência documental e aprovação gerencial antes de vincular.",
+        {candidatosOperacionaisIds:[...candidatos.keys()]});
+    }
     legado.forEach(c=>{
       const relacionados=vendasPorLegado.get(id(c))||[];
-      const vinculada=mapaAtual.get(id(c))||aliasAtual.get(id(c));
+      const resolucao=resolverVinculo([id(c)]);
+      const vinculada=resolucao.unico;
       const documento=doc(c),candidatos=(documento.length===11||documento.length===14)?porDocumento.get(documento)||[]:[];
       if(quitado(c)&&saldoCliente(c)>1)
         registrar("QUITADO_COM_SALDO",id(c),c,vinculada,relacionados,
@@ -127,7 +160,7 @@
       if(!vinculada&&candidatos.length>0)
         registrar("DUPLICIDADE_DOCUMENTO",id(c),c,candidatos[0],relacionados,
           "Existe documento semelhante na base operacional; confirmar identidade antes de vincular.");
-      if(vinculada||candidatos.length>0)return;
+      if(vinculada||resolucao.ambiguo||candidatos.length>0)return;
       const ativas=relacionados.filter(v=>!encerrada(v)&&saldoVenda(v)>1);
       if(ativas.length)registrar("SEM_FICHA_OPERACIONAL",id(c),c,null,ativas,
         "Cliente possui contrato aberto, mas não foi encontrado na carteira operacional.");
