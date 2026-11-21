@@ -1,10 +1,21 @@
 (function(global){
   "use strict";
-  const state={search:"",filter:"TODOS",page:0,perPage:20,last:null,loading:false,expanded:false};
+  const state={search:"",filter:"TODOS",page:0,perPage:20,last:null,loading:false,expanded:false,scope:""};
+  const scope=()=>{
+    const u=global.State?.getUsuario?.()||{};
+    return String(global.State?.getTenantId?.()||"")+":"+String(u.authUid||u.uid||u.id||"");
+  };
+  const protegerSessao=()=>{
+    const atual=scope();
+    if(atual===state.scope)return;
+    state.scope=atual;
+    state.last=null;state.search="";state.filter="TODOS";state.page=0;
+  };
   const E=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const fmt=v=>((Number.isSafeInteger(v)?v:0)/100).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
   const data=()=>global.IntegroMasterLocalConciliacaoDados?.()||{carregada:false,erro:"Carregando dados operacionais..."};
   function consultar(){
+    protegerSessao();
     const x=data();
     if(!x.carregada)return null;
     return global.IntegroConciliacaoMasterLocal?.analisar?.(x)||null;
@@ -104,7 +115,8 @@
     bind(host);renderLista(host,report);renderResumo(report);return true;
   }
   function detalhes(key){
-    const report=state.last||consultar();const r=report?.registros.find(x=>x.key===key);
+    protegerSessao();
+    const report=consultar();const r=report?.registros.find(x=>x.key===key);
     if(!r)return false;
     const items=(r.contratoIds||[]).map(x=>`<li><code>${E(x)}</code></li>`).join("")||"<li>Nenhum contrato identificado</li>";
     const html=`<div class="mlc-detail">
