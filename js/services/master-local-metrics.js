@@ -96,6 +96,44 @@
       clientes:cl, pagamentos:pg, usuariosDados:us, solicitacoes:so
     };
   }
+  function auditarCarteira({tenantId,clientesLegados=[],clientesOperacionais=[],vendas=[]}={}) {
+    const legados=apenasTenant(clientesLegados,tenantId),operacionais=apenasTenant(clientesOperacionais,tenantId);
+    const chaveDoc=c=>texto(c.documentoNormalizado||c.cpfCnpjNormalizado||c.documento||c.cpf||c.cnpj).replace(/\D/g,"");
+    const idsCanonicos=new Set();
+    const documentosCanonicos=new Set();
+    operacionais.forEach(c=>{
+      [c.id,c.clienteLegadoId,c.clienteId,c.clienteOperacionalId].map(texto).filter(Boolean)
+        .forEach(id=>idsCanonicos.add(id));
+      const d=chaveDoc(c);if([11,14].includes(d.length))documentosCanonicos.add(d);
+    });
+    const vendasPorCliente=new Map();
+    apenasTenant(vendas,tenantId).filter(v=>!cancelada(v)&&!quitada(v)&&saldoVenda(v)>1).forEach(v=>{
+      const id=texto(v.clienteOperacionalId||v.clienteId);
+      if(!id)return;
+      const atual=vendasPorCliente.get(id)||[];
+      atual.push(v);vendasPorCliente.set(id,atual);
+    });
+    const registros=legados.filter(c=>{
+      if(idsCanonicos.has(texto(c.id))||idsCanonicos.has(texto(c.clienteOperacionalId)))return false;
+      const d=chaveDoc(c);
+      if([11,14].includes(d.length)&&documentosCanonicos.has(d))return false;
+      return (vendasPorCliente.get(texto(c.id))||[]).length>0||saldoCliente(c)>1;
+    }).map(c=>{
+      const contratos=vendasPorCliente.get(texto(c.id))||[];
+      const quitado=["QUITADO","QUITADA"].includes(status(c.statusCliente||c.statusFinanceiro||c.status));
+      const conflito=quitado&&(saldoCliente(c)>1||contratos.some(v=>saldoVenda(v)>1));
+      return {
+        id:texto(c.id), nome:texto(c.nomeCompleto||c.nome||"Cliente sem nome"),
+        vendedorNome:texto(c.vendedorNome||c.responsavelNome||""),
+        status:status(c.statusCliente||c.statusFinanceiro||c.status||"SEM_STATUS"),
+        motivo:conflito?"QUITADO_COM_SALDO":"SEM_FICHA_OPERACIONAL",
+        contratosAtivos:contratos.length, saldoClienteCentavos:saldoCliente(c)
+      };
+    }).sort((a,b)=>Number(b.motivo==="QUITADO_COM_SALDO")-Number(a.motivo==="QUITADO_COM_SALDO")||
+      b.contratosAtivos-a.contratosAtivos||a.nome.localeCompare(b.nome,"pt-BR"));
+    return {total:registros.length,contraditorios:registros.filter(r=>r.motivo==="QUITADO_COM_SALDO").length,
+      comContratos:registros.filter(r=>r.contratosAtivos>0).length,registros};
+  }
   return Object.freeze({ hojeSP,diaSP,centavos,reais,saldoVenda,saldoCliente,valorVenda,valorPagamento,
-    cancelada,quitada,pagamentoConfirmado,apenasTenant,diaPagamento,diaVenda,calcular });
+    cancelada,quitada,pagamentoConfirmado,apenasTenant,diaPagamento,diaVenda,calcular,auditarCarteira });
 });
