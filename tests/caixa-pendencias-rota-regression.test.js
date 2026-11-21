@@ -147,3 +147,56 @@ test("leitura autoritativa sem ficha operacional classifica venda órfã como co
  assert.equal(s.avisosCarteira.length,1);
  assert.match(s.inconsistencias[0],/^CLIENTE_SEM_FICHA_OPERACIONAL:/);
 });
+
+test("contrato historico com ficha apenas em clientes nao exige baixa invisivel",()=>{
+ const legado={id:"cliente-1",origemColecaoConferencia:"clientes",status:"ATIVO",
+   vendedorId:"gu",saldoDevedorCentavos:10000};
+ const anterior={...sale,caixaId:"caixa-fechado-anterior",statusVenda:"ATIVA"};
+ const s=calcularConferencia({box,sales:[anterior],clients:[legado],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.totalCobrancas,0);
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.inconsistencias.length,0);
+ assert.equal(s.avisosCarteira.length,1);
+ assert.equal(s.avisosCarteira[0].bloqueiaFechamento,false);
+ assert.match(s.avisosCarteira[0].codigo,/^CARTEIRA_LEGADA_SEM_FICHA_OPERACIONAL:/);
+ assert.equal(s.avisosCarteira[0].saldoVendaCentavos,10000,"dívida histórica preservada no alerta");
+});
+test("contrato historico de cliente legado QUITADO com saldo contraditorio fica segregado",()=>{
+ const legado={id:"cliente-1",origemColecaoConferencia:"clientes",statusCliente:"QUITADO",
+   vendedorId:"gu",saldoDevedorCentavos:10000};
+ const s=calcularConferencia({box,sales:[{...sale,caixaId:"caixa-fechado-anterior"}],
+   clients:[legado],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.inconsistencias.length,0);
+ assert.equal(s.avisosCarteira[0].statusCliente,"QUITADO");
+ assert.equal(s.avisosCarteira[0].bloqueiaFechamento,false);
+});
+test("cliente operacional ATIVO mantem exigencia real de visita no caixa",()=>{
+ const operacional={id:"cliente-1",origemColecaoConferencia:"clientes_operacionais",
+   statusCliente:"ATIVO",vendedorAuthUid:"gu",saldoDevedorCentavos:10000};
+ const s=calcularConferencia({box,sales:[{...sale,caixaId:"caixa-fechado-anterior"}],
+   clients:[operacional],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,1);
+ assert.equal(s.avisosCarteira.length,0);
+});
+test("contrato legado criado no caixa atual nao recebe exclusao automatica",()=>{
+ const legado={id:"cliente-1",origemColecaoConferencia:"clientes",statusCliente:"ATIVO",
+   vendedorId:"gu",saldoDevedorCentavos:10000};
+ const s=calcularConferencia({box,sales:[{...sale,caixaId:box.id}],
+   clients:[legado],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,1,"venda do caixa corrente exige visita");
+});
+test("interface separa aviso historico nao bloqueante de inconsistencias reais",()=>{
+ const ui=fs.readFileSync(path.join(__dirname,"..","js/services/vendedor-fechamento-caixa.js"),"utf8");
+ assert.match(ui,/historicosForaDaRota/);
+ assert.match(ui,/item\?\.bloqueiaFechamento !== false/);
+ assert.match(ui,/nao sao visitas pendentes|não são visitas pendentes/);
+});
