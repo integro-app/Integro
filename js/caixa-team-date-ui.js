@@ -8,10 +8,19 @@
     return !!day && !!info && day <= info.hoje && (day === info.dataParaConcluir || (!info.temCaixaAberto && (!info.ultimaData || day > info.ultimaData)));
   }
   global.IntegroCaixaDatas = { disponivel:available, abrir:open };
-  function open() {
+  async function open() {
     if (!allowed() || document.getElementById("caixaDateDialog")) return;
-    const sellers = (state()?.getUsuarios?.() || []).filter(item => global.IntegroAcesso?.acessoUsuario?.(item)?.perfil === "vendedor" && item.ativo !== false && !["INATIVO","BLOQUEADO","SUSPENSO"].includes(String(item.status || "").toUpperCase()) && global.IntegroAcesso?.validarEscopo?.(global.IntegroAcesso.acessoUsuario(user()),item) !== false);
-    const teams = [...new Set(sellers.map(item=>String(item.equipeId || "")).filter(Boolean))].map(id => (state()?.getEquipes?.() || []).find(item=>String(item.id) === id) || {id,nome:sellers.find(item=>String(item.equipeId) === id)?.equipeNome || id});
+    try {
+      await global.IntegroCaixasSupervisao?.carregarEstrutura?.();
+    } catch(error) {
+      global.UIHelpers?.alerta?.("Não foi possível consultar equipes: "+String(error.message||error));
+      return;
+    }
+    const teams = global.IntegroCaixasSupervisao?.rows?.() || [];
+    if(!teams.length){
+      global.UIHelpers?.alerta?.("Nenhuma equipe ativa disponível para abertura. Confira a vinculação dos vendedores no módulo Equipes.");
+      return;
+    }
     const dialog = document.createElement("dialog");
     dialog.id = "caixaDateDialog";
     dialog.className = "caixa-date-dialog";
