@@ -200,3 +200,15 @@ test("interface separa aviso historico nao bloqueante de inconsistencias reais",
  assert.match(ui,/item\?\.bloqueiaFechamento !== false/);
  assert.match(ui,/nao sao visitas pendentes|não são visitas pendentes/);
 });
+
+test("saldo legado fora de esquema numerico nao impede fechamento da carteira canonica",()=>{
+ const legado={id:"cliente-1",origemColecaoConferencia:"clientes",statusCliente:"ATIVO",
+   vendedorId:"gu",saldoDevedorCentavos:"10000",saldoDevedor:"100,00"};
+ const s=calcularConferencia({box,sales:[{...sale,caixaId:"caixa-fechado-anterior"}],
+   clients:[legado],clientesConferidos:true,
+   installments:[{...part,statusParcela:"PENDENTE",valorPagoCentavos:0}],
+   payments:[],requests:[],visits:[],ledger:[],ownerUid:"gu",sellerIds:["gu"],fail});
+ assert.equal(s.pendenciasCobranca,0);
+ assert.equal(s.inconsistencias.length,0);
+ assert.equal(s.avisosCarteira[0].bloqueiaFechamento,false);
+});
