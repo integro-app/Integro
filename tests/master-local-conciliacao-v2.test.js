@@ -37,6 +37,7 @@ test("venda sem cliente em ambas as coleções é destacada",()=>{
  const a=auditoria({vendas:[venda("v1",{clienteId:"desconhecido"})]});
  assert.equal(a.criticos,1);
  assert.equal(a.registros[0].codigo,"VENDA_SEM_CLIENTE");
+ assert.equal(a.registros[0].origem,"SEM_CADASTRO");
 });
 test("mesmo documento não deve ser automaticamente interpretado como vínculo homologado",()=>{
  const a=auditoria({clientesLegados:[cliente("legacy-a",{documentoNormalizado:"12345678901"})],
