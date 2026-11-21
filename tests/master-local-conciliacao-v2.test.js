@@ -165,3 +165,11 @@ test("ficha Cliente 360 da carteira operacional recebe documento da empresa corr
  assert.match(ui,/data-mlc-client-open/);
  assert.match(ui,/renderClientesOperacionaisLista/);
 });
+
+test("statusCliente QUITADO prevalece como alerta mesmo se statusFinanceiro legado diz ATIVO",()=>{
+ const a=auditoria({clientesLegados:[cliente("legacy-a",{
+   statusCliente:"QUITADO",statusFinanceiro:"ATIVO",saldoDevedorCentavos:7000
+ })],vendas:[venda("v1",{saldoDevedorCentavos:7000})]});
+ assert.ok(a.registros.some(r=>r.codigo==="QUITADO_COM_SALDO"));
+ assert.equal(a.quitados,1);
+});
