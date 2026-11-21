@@ -484,7 +484,7 @@ function renderDashboardMasterLocal(){
   setTextSafe("recebidoProgressLabel","Recebimento confirmado");
   setTextSafe("recebidoProgressPct","—");
   setTextSafe("recebidoProgressSub","Meta de recolhimento não configurada");
-  const fill=document.getElementById("recebidoProgressFill");if(fill)fill.style.width="0%";
+  const fill=document.getElementById("recebidoProgressFill");if(fill?.style)fill.style.width="0%";
   const dataEl=document.getElementById("topData");
   if(dataEl)dataEl.innerText=hoje.split("-").reverse().join("/");
   renderAtividadesRecentes(M.apenasTenant(State.getLogs?.()||[],tenantId),k.pagamentos,k.vendasValidas);
