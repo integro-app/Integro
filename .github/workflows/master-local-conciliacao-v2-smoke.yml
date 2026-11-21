@@ -1,0 +1,21 @@
+name: Master Local - Conciliacao v2 / regressao
+on:
+  push:
+    branches:
+      - feat/master-local-central-conciliacao-v2-20261121
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: node --check js/master-local.js
+      - run: node --check js/unified-navigation.js
+      - run: node --check js/services/master-local-reconciliation.js
+      - run: node --check js/modules/master-local-reconciliation-ui.js
+      - run: node --test tests/master-local-metrics.test.js tests/master-local-integridade.test.js tests/master-local-conciliacao-v2.test.js tests/interface-unified.test.js

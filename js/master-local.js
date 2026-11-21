@@ -5,6 +5,7 @@
 
 let categoriasMovimentacaoMasterLocal = [];
 let carteiraOperacionalMasterLocal = {escopo:"",carregada:false,parcial:false,clientes:[],erro:""};
+let movimentosMasterLocal = {escopo:"",carregada:false,parcial:false};
 let bootstrapMasterLocalAtual = null;
 function escopoMasterLocal(){const u=State.getUsuario?.()||{};return [String(State.getTenantId?.()||""),String(u.authUid||u.uid||u.id||"")].join(":");}
 function sessaoMasterLocalValida(escopo){return !!State.getTenantId?.() && escopo===escopoMasterLocal();}
@@ -107,6 +108,7 @@ async function carregarTudoMasterLocal(forcar = false) {
       ["usuários", () => carregarUsuarios(forcar)],
       ["clientes", () => carregarClientes(forcar)],
       ["carteira operacional", () => carregarCarteiraOperacionalMasterLocal(forcar)],
+      ["movimentações", () => carregarLancamentosMasterLocal(forcar)],
       ["caixas", () => carregarCaixas(forcar)],
       ["vendas", () => carregarVendas(forcar)],
       ["pagamentos", () => carregarPagamentosHoje(forcar)],
@@ -121,11 +123,12 @@ async function carregarTudoMasterLocal(forcar = false) {
     });
 
     if(!sessaoMasterLocalValida(escopo))return false;
-    renderDashboardMasterLocal();
-    if (typeof renderClientes === "function") renderClientes();
-
     const carregados = tarefas.filter((_, indice) => resultados[indice].status === "fulfilled").map(([nome]) => nome);
     window.__integroCoreColecoesCarregadas = new Set(carregados);
+    renderDashboardMasterLocal();
+    if (typeof renderClientes === "function") renderClientes();
+    window.IntegroConciliacaoUI?.renderClientesOperacionais?.();
+    window.IntegroConciliacaoUI?.tela?.();
     document.dispatchEvent(new CustomEvent("integro-master-local-core-carregado", {
       detail: {
         tenantId: State.getTenantId(),
@@ -172,6 +175,14 @@ async function carregarModuloMasterLocal(modulo, forcar = false) {
       case "clientes":
         await Promise.all([carregarClientes(forcar),carregarCarteiraOperacionalMasterLocal(forcar)]);
         renderClientes?.();
+        window.IntegroConciliacaoUI?.renderClientesOperacionais?.();
+        break;
+      case "conciliacao":
+        await Promise.all([carregarClientes(forcar),carregarCarteiraOperacionalMasterLocal(forcar),
+          carregarVendas(forcar),carregarUsuarios(forcar)]);
+        ["clientes","vendas","usuários","carteira operacional"].forEach(nome=>
+          window.__integroCoreColecoesCarregadas?.add(nome));
+        window.IntegroConciliacaoUI?.tela?.();
         break;
       case "vendas":
       case "operacao":
@@ -274,6 +285,44 @@ async function carregarCarteiraOperacionalMasterLocal(forcar = false) {
   }
 }
 
+async function carregarLancamentosMasterLocal(forcar=false){
+  const escopo=escopoMasterLocal(),tenant=String(State.getTenantId?.()||"");
+  try{
+    const limite=CONFIG.LIMITS?.LANCAMENTOS_FINANCEIROS||800;
+    const dados=await FirestoreService.loadCollection(
+      CONFIG.COLECOES?.LANCAMENTOS_FINANCEIROS||"lancamentos_financeiros",
+      tenant,limite,{forcar,cacheMs:8000,chave:`master-local:lancamentos:${tenant}`});
+    if(!sessaoMasterLocalValida(escopo))return;
+    State.setLancamentosFinanceiros(dados);
+    movimentosMasterLocal={escopo,carregada:true,parcial:dados.length>=limite};
+  }catch(erro){
+    if(sessaoMasterLocalValida(escopo))
+      movimentosMasterLocal={escopo,carregada:false,parcial:false};
+    throw erro;
+  }
+}
+function dadosConcilMasterLocal(){
+  const tenantId=String(State.getTenantId?.()||"");
+  const core=window.__integroCoreColecoesCarregadas;
+  const canon=carteiraOperacionalMasterLocal;
+  const pronta=Boolean(tenantId&&canon.carregada&&canon.escopo===escopoMasterLocal()&&
+    core?.has("clientes")&&core?.has("vendas")&&core?.has("carteira operacional"));
+  return {
+    carregada:pronta,
+    erro:pronta?"":(canon.erro||"Os dados ainda não foram confirmados. Atualize a consulta."),
+    tenantId,
+    clientesLegados:pronta?State.getClientes?.()||[]:[],
+    clientesOperacionais:pronta?canon.clientes:[],
+    vendas:pronta?State.getVendas?.()||[]:[],
+    usuarios:pronta?State.getUsuarios?.()||[]:[],
+    limites:{clientesLegados:CONFIG.LIMITS?.CLIENTES||500,
+      clientesOperacionais:CONFIG.LIMITS?.CLIENTES||500,
+      vendas:CONFIG.LIMITS?.VENDAS||500,
+      usuarios:CONFIG.LIMITS?.USUARIOS||300}
+  };
+}
+window.IntegroMasterLocalConciliacaoDados=dadosConcilMasterLocal;
+
 async function carregarVendas(forcar = false) {
   const escopo=escopoMasterLocal();
   try {
@@ -374,20 +423,74 @@ function renderDashboardMasterLocal(){
   const tenantId=String(State.getTenantId?.()||"");
   const M=window.IntegroMasterLocalMetrics;
   if(!M?.calcular){console.error("[ÍNTEGRO] Indicadores do Master Local não carregados.");return;}
-  const carteiraCanonica=carteiraOperacionalMasterLocal.escopo===escopoMasterLocal() &&
+  const canon=carteiraOperacionalMasterLocal.escopo===escopoMasterLocal()&&
     carteiraOperacionalMasterLocal.carregada;
-  const k=M.calcular({tenantId,clientes:carteiraCanonica
-    ? carteiraOperacionalMasterLocal.clientes : State.getClientes?.()||[],caixas:State.getCaixas?.()||[],
-    vendas:State.getVendas?.()||[],pagamentos:State.getPagamentos?.()||[],
-    solicitacoes:State.getSolicitacoes?.()||[],usuarios:State.getUsuarios?.()||[]});
-  for(const [id,valor] of [["kpiCarteira",moedaCentavosMasterLocal(k.carteiraCentavos)],
+  const k=M.calcular({tenantId,
+    clientes:canon?carteiraOperacionalMasterLocal.clientes:State.getClientes?.()||[],
+    caixas:State.getCaixas?.()||[],vendas:State.getVendas?.()||[],
+    pagamentos:State.getPagamentos?.()||[],solicitacoes:State.getSolicitacoes?.()||[],
+    usuarios:State.getUsuarios?.()||[]});
+  for(const [id,valor] of [
+    ["kpiCarteira",moedaCentavosMasterLocal(k.carteiraCentavos)],
     ["kpiRecebidoHoje",moedaCentavosMasterLocal(k.recebidoHojeCentavos)],
-    ["kpiClientes",k.clientesAtivos],["kpiInadimplencia",moedaCentavosMasterLocal(k.inadimplenciaCentavos)],
-    ["kpiCaixas",k.caixasAbertos],["kpiUsuarios",k.usuarios],["kpiVendasHoje",k.vendasHoje],
-    ["kpiSolicitacoes",k.solicitacoesPendentes],["badgeSolicitacoes",k.solicitacoesPendentes]])
-    setTextSafe(id,valor);
-  const data=document.getElementById("topData");
-  if(data)data.innerText=k.dataOperacional.split("-").reverse().join("/");
+    ["kpiClientes",k.clientesAtivos],
+    ["kpiInadimplencia",moedaCentavosMasterLocal(k.inadimplenciaCentavos)],
+    ["kpiCaixas",k.caixasAbertos],["kpiUsuarios",k.usuarios],
+    ["kpiSolicitacoes",k.solicitacoesPendentes],["badgeSolicitacoes",k.solicitacoesPendentes]
+  ])setTextSafe(id,valor);
+  const hoje=k.dataOperacional;
+  const vendasHoje=k.vendasValidas.filter(v=>M.diaVenda(v)===hoje);
+  const renovacoes=vendasHoje.filter(v=>{
+    const tipo=String(v.tipoVenda||v.tipo||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+    return tipo==="RENOVACAO";
+  });
+  const novas=vendasHoje.filter(v=>!renovacoes.includes(v));
+  const somar=lista=>lista.reduce((n,v)=>n+M.valorVenda(v),0);
+  setTextSafe("kpiVendasHoje",moedaCentavosMasterLocal(k.valorVendasHojeCentavos));
+  setTextSafe("kpiVendasNovas",moedaCentavosMasterLocal(somar(novas)));
+  setTextSafe("kpiVendasRenovadas",moedaCentavosMasterLocal(somar(renovacoes)));
+  setTextSafe("kpiVendasHojeSub",`${vendasHoje.length} venda(s) no dia`);
+  const caixas=M.apenasTenant(State.getCaixas?.()||[],tenantId)
+    .filter(c=>["ABERTO","REABERTO"].includes(String(c.status||"").toUpperCase())&&c.ativo!==false);
+  const valorCaixa=c=>{
+    if(c.saldoAtualCentavos!==undefined&&c.saldoAtualCentavos!==null){
+      const n=Number(c.saldoAtualCentavos);return Number.isSafeInteger(n)?n:null;
+    }
+    for(const key of ["saldoAtual","valorAtual","caixaAtual"]){
+      if(c[key]!==undefined&&c[key]!==null&&c[key]!=="")
+        return M.centavos(c,[],[key]);
+    }
+    return null;
+  };
+  const valores=caixas.map(valorCaixa);
+  const confiavel=valores.every(Number.isSafeInteger);
+  setTextSafe("kpiCaixaAtual",confiavel?moedaCentavosMasterLocal(valores.reduce((n,v)=>n+v,0)):"—");
+  setTextSafe("kpiCaixaAtualSub",`${caixas.length} caixa(s) aberto(s)${confiavel?"":" · saldo não confirmado"}`);
+  const movOk=movimentosMasterLocal.carregada&&movimentosMasterLocal.escopo===escopoMasterLocal();
+  if(movOk){
+    const lancamentos=M.apenasTenant(State.getLancamentosFinanceiros?.()||[],tenantId)
+      .filter(l=>M.diaSP(l.dataOperacional||l.data||l.criadoEm)===hoje&&
+        ["CONFIRMADO","CONFIRMADA"].includes(String(l.statusLancamento||l.status||"CONFIRMADO").toUpperCase())&&
+        l.cancelado!==true&&l.estornado!==true);
+    const tipo=l=>String(l.tipoLancamento||l.tipoMovimentacao||l.tipo||"").toUpperCase();
+    const gastos=lancamentos.filter(l=>["GASTO","DESPESA"].includes(tipo(l)));
+    const retiros=lancamentos.filter(l=>["RETIRADA","RETIRO"].includes(tipo(l)));
+    const valor=lista=>lista.reduce((n,l)=>n+M.centavos(l,["valorCentavos"],["valor","valorLancamento"]),0);
+    setTextSafe("kpiGastosHoje",moedaCentavosMasterLocal(valor(gastos)+valor(retiros)));
+    setTextSafe("kpiDespesasValor",moedaCentavosMasterLocal(valor(gastos)));
+    setTextSafe("kpiRetiradasValor",moedaCentavosMasterLocal(valor(retiros)));
+    setTextSafe("kpiGastosHojeSub",
+      `${gastos.length+retiros.length} lançamento(s)${movimentosMasterLocal.parcial?" · consulta parcial":""}`);
+  }else{
+    for(const id of ["kpiGastosHoje","kpiDespesasValor","kpiRetiradasValor"])setTextSafe(id,"—");
+    setTextSafe("kpiGastosHojeSub","Movimentações ainda não confirmadas");
+  }
+  setTextSafe("recebidoProgressLabel","Recebimento confirmado");
+  setTextSafe("recebidoProgressPct","—");
+  setTextSafe("recebidoProgressSub","Meta de recolhimento não configurada");
+  const fill=document.getElementById("recebidoProgressFill");if(fill?.style)fill.style.width="0%";
+  const dataEl=document.getElementById("topData");
+  if(dataEl)dataEl.innerText=hoje.split("-").reverse().join("/");
   renderAtividadesRecentes(M.apenasTenant(State.getLogs?.()||[],tenantId),k.pagamentos,k.vendasValidas);
   renderTopClientes(k.clientes,k.vendasComSaldo);
   renderPerformanceEquipe(k.usuariosDados,k.vendasValidas);
@@ -397,36 +500,10 @@ function renderDashboardMasterLocal(){
 
 function renderAuditoriaCarteiraMasterLocal(){
   const host=document.getElementById("masterLocalConciliacaoCarteira");
-  if(!host)return;
-  const M=window.IntegroMasterLocalMetrics,tenantId=String(State.getTenantId?.()||"");
-  const atual=carteiraOperacionalMasterLocal;
-  host.hidden=false;
-  if(!atual.carregada||atual.escopo!==escopoMasterLocal()){
-    host.innerHTML='<div class="ml-audit-head"><h3>Conciliação de carteira</h3><small>Diagnóstico indisponível</small></div><p>Não foi possível confirmar a base de clientes operacionais. Os contratos não foram alterados.</p>';
-    return;
-  }
-  const auditoria=M.auditarCarteira({tenantId,clientesLegados:State.getClientes?.()||[],
-    clientesOperacionais:atual.clientes,vendas:State.getVendas?.()||[]});
-  const avisoParcial=atual.parcial?' Consulta operacional atingiu o limite de registros; os totais podem ser parciais.':'';
-  const linhas=auditoria.registros.slice(0,30).map(item=>`<tr>
-    <td><strong>${escaparMasterLocal(item.nome)}</strong><small>${escaparMasterLocal(item.vendedorNome||"Vendedor não identificado")}</small></td>
-    <td>${escaparMasterLocal(item.status)}</td>
-    <td>${item.contratosAtivos}</td>
-    <td>${item.motivo==="QUITADO_COM_SALDO"?"Quitado com saldo contraditório":"Sem ficha operacional"}</td>
-  </tr>`).join("");
-  host.innerHTML=`<div class="ml-audit-head">
-    <div><h3>Conciliação de carteira</h3>
-    <p>Clientes históricos ainda não vinculados à carteira operacional. Somente leitura: nenhum pagamento ou saldo será alterado.</p></div>
-    <span class="ml-audit-counter">${auditoria.total} pendência(s)</span>
-  </div>
-  <div class="ml-audit-stats"><div><small>Registros legados</small><strong>${auditoria.total}</strong></div>
-    <div><small>Com contratos em aberto</small><strong>${auditoria.comContratos}</strong></div>
-    <div><small>Quitados com divergência</small><strong>${auditoria.contraditorios}</strong></div></div>
-  ${avisoParcial?`<p class="ml-audit-warning">${escaparMasterLocal(avisoParcial)}</p>`:""}
-  ${auditoria.total?`<details><summary>Consultar os registros históricos (até 30)</summary>
-    <div class="ml-audit-table-scroll"><table><thead><tr><th>Cliente / responsável</th><th>Situação</th><th>Contratos</th><th>Conciliação necessária</th></tr></thead>
-    <tbody>${linhas}</tbody></table></div></details>`: '<p class="ml-audit-empty">Nenhuma divergência entre clientes históricos e a carteira operacional foi encontrada nesta consulta.</p>'}
-  `;
+  const perfil=window.IntegroAcesso?.acessoUsuario?.(State.getUsuario?.())?.perfil;
+  if(perfil&&perfil!=="master_local"){if(host)host.hidden=true;return;}
+  const ui=window.IntegroConciliacaoUI;
+  if(ui?.renderResumo)ui.renderResumo(ui.consultar());
 }
 
 function setTextSafe(id, valor) {
@@ -934,9 +1011,10 @@ function trocarTela(id, el = null) {
     if (menu) menu.classList.add("active");
   }
 
-  if (id === "configuracoes") {
-    renderCategoriasMovimentacaoMasterLocal();
-  }
+  if (id === "configuracoes") renderCategoriasMovimentacaoMasterLocal();
+  if (id === "conciliacao")
+    Promise.resolve(carregarModuloMasterLocal("conciliacao")).catch(erro=>
+      console.warn("[ÍNTEGRO] falha ao carregar conciliação",erro));
 
   if (window.innerWidth <= 900) {
     toggleSidebar(false);
