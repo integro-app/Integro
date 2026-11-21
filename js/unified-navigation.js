@@ -13,6 +13,7 @@
     { id: "dashboard", rotulo: "Dashboard", icone: "dashboard", permissao: "dashboard.ver", abrir: "tela" },
     { id: "chatInterno", rotulo: "Chat", icone: "forum", permissao: "chat_interno.ver", abrir: "chat" },
     { id: "clientes", rotulo: "Clientes", icone: "groups", permissao: "clientes.ver", abrir: "clientes" },
+    { id: "conciliacao", rotulo: "Conciliação", icone: "rule", permissao: "logs.ver", abrir: "tela" },
     { id: "movimentacoes", rotulo: "Movimentações", icone: "sync_alt", permissoes: ["financeiro.movimentacoes", "solicitacoes.criar", "caixa.ver_proprio"], abrir: "tela" },
     { id: "financeiro", rotulo: "Financeiro", icone: "payments", permissoes: ["controleFinanceiro.ver", "financeiro.ver"], abrir: "tela" },
     { id: "auditoria", rotulo: "Auditoria", icone: "manage_search", permissao: "logs.ver", abrir: "tela" },
@@ -63,6 +64,7 @@
   function permitido(usuario, item) {
     if (!item) return false;
     if (item.sempre) return true;
+    if (item.id === "conciliacao") return perfil(usuario) === "master_local";
     const perfilAtual = perfil(usuario);
     if (perfilAtual === "vendedor" && item.id === "caixas") return false;
     if (item.id === "movimentacoes") {
