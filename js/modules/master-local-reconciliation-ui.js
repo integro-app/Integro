@@ -120,6 +120,7 @@
       <p><strong>Identificador do responsável:</strong> ${E(r.vendedorIdentificador||"Não informado")}</p>
       <h4>Contratos vinculados</h4><ul>${items}</ul>
       <p class="mlc-detail-note">${E(r.observacao||"É necessário conferir a origem dos dados.")}</p>
+      <h4>Próxima ação recomendada</h4><p>${E(plano[r.codigo]||"Solicite conferência documental e financeira antes de regularizar.")}</p>
       <p class="mlc-detail-note"><strong>Segurança:</strong> nenhuma quitação, pagamento, transferência ou atualização de saldo será executada por esta consulta.</p>
       ${r.clienteId&&global.State?.getClientes?.()?.some(c=>String(c.id)===r.clienteId)?
         `<button class="mlc-primary" type="button" data-mlc-profile="${E(r.clienteId)}">Abrir ficha histórica</button>`:""}
@@ -166,6 +167,23 @@
       if(state.last)renderLista(host,state.last);
     });
   }
+  const plano={
+    QUITADO_COM_SALDO:"Conferir parcelas e pagamentos confirmados; identificar se o status ou o saldo está incorreto antes de qualquer ajuste.",
+    CLIENTE_QUITADO_COM_VENDA_ATIVA:"Comparar a ficha operacional com a venda e identificar o documento financeiro que determina a situação correta.",
+    VENDA_SEM_CLIENTE:"Consultar a origem da venda e o caixa histórico para reconstruir o vínculo cadastral, sem atribuir a dívida a outro cliente por semelhança de nome.",
+    DUPLICIDADE_DOCUMENTO:"Conferir documento, identidade, histórico e empresa. Não unir cadastros ou transferir contratos automaticamente.",
+    SEM_FICHA_OPERACIONAL:"Validar os dados da ficha histórica e preparar uma migração auditável para a carteira operacional.",
+    CLIENTE_LEGADO_COM_SALDO:"Localizar as vendas e os pagamentos antigos que compõem o saldo antes de migrar a ficha.",
+    TRANSFERENCIA_CONFERIR:"Confirmar no histórico se a carteira foi transferida e quem é o responsável atual, sem alterar a autoria da venda."
+  };
+  global.document?.addEventListener("click",event=>{
+    const shortcut=event.target.closest?.("[data-mlc-shortcut]");
+    if(shortcut){
+      if(global.document?.documentElement?.dataset?.perfilIntegro!=="master_local")return;
+      global.IntegroNavegacaoUnificada?.abrirPorId?.(shortcut.dataset.mlcShortcut);
+      return;
+    }
+  });
   global.document?.addEventListener("click",event=>{
     const botao=event.target.closest?.("[data-mlc-profile]");
     if(!botao)return;
