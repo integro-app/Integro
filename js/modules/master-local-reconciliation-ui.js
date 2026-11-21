@@ -133,7 +133,9 @@
       <div class="mlc-conflict-evidence" role="note">
         <strong>Vínculo ambíguo: ${candidatos.length} fichas operacionais candidatas</strong>
         <p>Não há associação automática confiável. Verifique documento, histórico e titularidade antes de qualquer migração.</p>
-        <ul>${candidatos.map(x=>`<li><code>${E(x)}</code></li>`).join("")}</ul>
+        <ul>${candidatos.map(x=>`<li class="mlc-candidate-row">
+          <code>${E(x)}</code><button type="button" class="mlc-action" data-mlc-candidate-open="${E(x)}">Ver ficha</button>
+        </li>`).join("")}</ul>
       </div>`:"";
     const html=`<div class="mlc-detail">
       <div class="mlc-detail-cards"><div><small>Origem</small><strong>${E(r.origem)}</strong></div>
@@ -298,6 +300,26 @@
     global.fecharDrawer?.();
     global.navegarModuloClientesMasterLocal?.("clientes") ?? global.trocarTela?.("clientes");
     global.setTimeout?.(()=>global.abrirVerCliente?.(botao.dataset.mlcProfile),100);
+  });
+  global.document?.addEventListener("click",event=>{
+    const botao=event.target.closest?.("[data-mlc-candidate-open]");
+    if(!botao)return;
+    const usuario=global.State?.getUsuario?.()||{};
+    if(global.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil!=="master_local")return;
+    const empresa=String(global.State?.getTenantId?.()||"");
+    const base=data();
+    if(!base.carregada||!empresa||String(base.tenantId||"")!==empresa)return;
+    const candidato=(base.clientesOperacionais||[]).find(c=>
+      String(c.id)===String(botao.dataset.mlcCandidateOpen||"")&&
+      String(c.clientePlataformaId||c.tenantId||c.empresaId||"")===empresa);
+    if(!candidato){
+      global.UIHelpers?.alerta?.("Ficha não encontrada na carteira operacional atual.");
+      return;
+    }
+    if(typeof global.abrirCliente360==="function"){
+      global.fecharDrawer?.();
+      global.abrirCliente360(candidato);
+    }else global.UIHelpers?.alerta?.("A visualização Cliente 360° não está disponível nesta sessão.");
   });
   global.IntegroConciliacaoUI=Object.freeze({tela,renderResumo,renderClientesOperacionais,consultar,detalhes,atualizar,navegar,get estado(){return {...state}}});
 })(window);
