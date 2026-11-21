@@ -159,7 +159,8 @@
       // uma única vez, pelo identificador do contrato original.
       saldoEmAnaliseCentavos:(()=>{
         const ids=new Set(linhas.flatMap(r=>r.contratoIds||[]));
-        return contratos.filter(v=>ids.has(id(v))&&!encerrada(v))
+        return contratos.filter(v=>ids.has(id(v))&&saldoVenda(v)>1&&
+          !["CANCELADO","CANCELADA","ESTORNADO","ESTORNADA"].includes(statusVenda(v)))
           .reduce((n,v)=>n+Math.max(0,saldoVenda(v)),0);
       })(),
       parcial,registros:linhas,
