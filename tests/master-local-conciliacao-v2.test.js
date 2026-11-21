@@ -121,3 +121,27 @@ test("interface de conciliação usa formulários reais, filtros e visualizaçã
  assert.match(css,/@media\(max-width:680px\)/);
  assert.match(css,/\.mlc-table td::before/);
 });
+
+test("venda quitada que manteve saldo é exibida mesmo que cadastro esteja ATIVO",()=>{
+ const a=auditoria({clientesLegados:[cliente("legacy-a",{statusCliente:"ATIVO",saldoDevedorCentavos:0})],
+   vendas:[venda("v1",{statusVenda:"QUITADO",saldoDevedorCentavos:7400})]});
+ assert.equal(a.quitados,1);
+ assert.equal(a.criticos,1);
+ assert.ok(a.registros.some(r=>r.codigo==="VENDA_QUITADA_COM_SALDO"));
+ assert.equal(a.saldoEmAnaliseCentavos,7400);
+});
+test("documentos duplicados exclusivamente na coleção operacional são identificados",()=>{
+ const a=auditoria({clientesOperacionais:[
+   cliente("ca",{documentoNormalizado:"12345678901",saldoDevedorCentavos:0}),
+   cliente("cb",{documentoNormalizado:"12345678901",saldoDevedorCentavos:0})
+ ]});
+ assert.equal(a.registros.filter(r=>r.codigo==="DUPLICIDADE_DOCUMENTO").length,2);
+});
+test("múltiplos alertas do mesmo contrato não duplicam exposição financeira",()=>{
+ const a=auditoria({
+   clientesLegados:[cliente("legacy-a",{statusCliente:"QUITADO",saldoDevedorCentavos:10000})],
+   vendas:[venda("v1",{statusVenda:"QUITADO",saldoDevedorCentavos:10000})]
+ });
+ assert.ok(a.registros.length>=2);
+ assert.equal(a.saldoEmAnaliseCentavos,10000);
+});
