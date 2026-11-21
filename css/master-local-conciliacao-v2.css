@@ -300,3 +300,45 @@ html:not([data-perfil-integro="master_local"]) #masterLocalConciliacaoCarteira{d
   .mlc-operational-item>div{grid-column:1/-1}
   .mlc-operational-item>button{grid-column:1/-1;width:100%}
 }
+
+
+/* Master Local: navegação e leitura consistente em telas compactas. */
+html[data-perfil-integro="master_local"] .mlc-client-pagination{
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin-top:16px;padding:12px 0 0;border-top:1px solid #e5edf5;
+}
+html[data-perfil-integro="master_local"] .mlc-client-pagination button{
+  min-width:88px;min-height:44px;touch-action:manipulation;
+}
+html[data-perfil-integro="master_local"] .mlc-client-pagination button:disabled{
+  opacity:.42;cursor:not-allowed;
+}
+html[data-perfil-integro="master_local"] .mlc-warning{
+  border-left:3px solid #df8925;line-height:1.55;overflow-wrap:anywhere;
+}
+html[data-perfil-integro="master_local"] .mlc-primary,
+html[data-perfil-integro="master_local"] .mlc-action{
+  touch-action:manipulation;
+}
+@media(max-width:680px){
+  html[data-perfil-integro="master_local"] .mlc-hero,
+  html[data-perfil-integro="master_local"] .mlc-controls,
+  html[data-perfil-integro="master_local"] .mlc-client-operacionais{
+    max-width:100%;min-width:0;box-sizing:border-box;
+  }
+  html[data-perfil-integro="master_local"] .mlc-client-query input{
+    font-size:16px;max-width:100%;
+  }
+  html[data-perfil-integro="master_local"] .mlc-client-pagination{
+    flex-wrap:wrap;align-items:center;
+  }
+  html[data-perfil-integro="master_local"] .mlc-client-pagination>div{
+    display:flex;gap:8px;width:100%;
+  }
+  html[data-perfil-integro="master_local"] .mlc-client-pagination button{
+    flex:1;min-width:0;
+  }
+  html[data-perfil-integro="master_local"] .mlc-operational-item{
+    min-width:0;overflow-wrap:anywhere;
+  }
+}
