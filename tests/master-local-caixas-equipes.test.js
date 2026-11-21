@@ -5,12 +5,19 @@ const fs=require("node:fs");
 const vm=require("node:vm");
 const source=fs.readFileSync(require("node:path").join(__dirname,"../js/modules/caixas-supervisao.js"),"utf8");
 function setup(){
- const docs=(items)=>({docs:items.map(x=>({id:x.id,data:()=>({...x})}))});
- const db={collection(name){return {where(field,op,value){assert.equal(field,"clientePlataformaId");assert.equal(value,"tenant-a");return {limit(){return {get:async()=>docs(name==="equipes"?[
+ const docs=items=>({docs:items.map(x=>({id:x.id,data:()=>({...x})}))});
+ const equipes=[
  {id:"e1",nome:"Equipe Alfa",clientePlataformaId:"tenant-a",status:"ATIVO"},
- {id:"e2",nome:"Equipe Bloqueada",clientePlataformaId:"tenant-a",status:"INATIVO"}]:
- [{id:"u1",nome:"Vendedor",tipoUsuario:"vendedor",equipeId:"e1",clientePlataformaId:"tenant-a",status:"ATIVO"},
- {id:"u2",nome:"Outro",tipoUsuario:"vendedor",equipeId:"e1",clientePlataformaId:"tenant-b",status:"ATIVO"}])};}};}}};
+ {id:"e2",nome:"Equipe Bloqueada",clientePlataformaId:"tenant-a",status:"INATIVO"}];
+ const usuarios=[
+ {id:"u1",nome:"Vendedor",tipoUsuario:"vendedor",equipeId:"e1",clientePlataformaId:"tenant-a",status:"ATIVO"},
+ {id:"u2",nome:"Outro",tipoUsuario:"vendedor",equipeId:"e1",clientePlataformaId:"tenant-b",status:"ATIVO"}];
+ const db={collection(name){
+   return {where(field,op,value){
+     assert.equal(field,"clientePlataformaId");assert.equal(value,"tenant-a");
+     return {limit(){return {get:async()=>docs(name==="equipes"?equipes:usuarios)};}};
+   }};
+ }};
  const control={disabled:false,addEventListener(){},setAttribute(){},dataset:{},isConnected:true};
  const host={innerHTML:"",querySelector:()=>control,querySelectorAll:()=>[]};
  const global={State:{getUsuario:()=>({authUid:"auth",clientePlataformaId:"tenant-a"}),getTenantId:()=>"tenant-a",getCaixas:()=>[]},
