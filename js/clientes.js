@@ -16,6 +16,20 @@ function saldoClienteGestao(c) {
   return moeda(centavos / 100);
 }
 
+function toggleFiltrosClientesMasterLocal() {
+  const filtros=document.getElementById("clientesFiltrosMasterLocal");
+  const botao=document.getElementById("btnFiltrosClientesMasterLocal");
+  if(!filtros)return;
+  filtros.hidden=!filtros.hidden;
+  botao?.setAttribute("aria-expanded",String(!filtros.hidden));
+}
+function limparFiltrosClientesMasterLocal() {
+  const busca=document.getElementById("buscaClientes");
+  const origem=document.getElementById("filtroOrigemClientes");
+  if(busca)busca.value="";
+  if(origem)origem.value="todos";
+  renderClientes();
+}
 function getClientesFiltrados() {
   const termo = (UIHelpers.getInputValue("buscaClientes") || "").toLowerCase();
   const filtro = document.getElementById("filtroOrigemClientes")?.value || "todos";
