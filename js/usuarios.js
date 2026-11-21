@@ -109,7 +109,7 @@ function formularioUsuario(usuario = null) {
     ? window.IntegroOperacional.normalizarAcessoUsuario(usuario || {})
     : null;
   const tipoSelecionado = acessoUsuario?.perfilCompat || usuario?.tipoUsuario || "vendedor";
-  const equipesSelecionadas = new Set((usuario?.equipesIds || usuario?.equipeIds || [usuario?.equipeId]).filter(Boolean).map(String));
+  const equipesSelecionadas = new Set((Array.isArray(usuario?.equipesIds) ? usuario.equipesIds : Array.isArray(usuario?.equipeIds) ? usuario.equipeIds : [usuario?.equipeId]).filter(Boolean).map(String));
 
   const cargosOptions = cargos.length
     ? `<option value="">SELECIONE O CARGO</option>` + cargos.map(c => `
@@ -349,7 +349,8 @@ async function salvarNovoUsuario() {
       window.notificarIntegro("Convite salvo. O provisionamento permanece pendente.");
     }
     fecharDrawer();
-    await carregarTudoMasterLocal();
+    await carregarUsuarios(true);
+    renderUsuarios();
   } catch (erro) {
     console.error("Erro ao criar usuário:", erro);
     const mensagem = erro?.code === "usuario/email-duplicado"
@@ -406,7 +407,8 @@ async function salvarEdicaoUsuario(id) {
     UIHelpers.alerta("Usuário atualizado com sucesso.");
 
     fecharDrawer();
-    await carregarTudoMasterLocal();
+    await carregarUsuarios(true);
+    renderUsuarios();
 
   } catch (erro) {
     console.error("Erro ao editar usuário:", erro);
@@ -436,7 +438,8 @@ async function alterarAcessoUsuario(id, liberar) {
 
     UIHelpers.alerta(liberar ? "Usuário liberado." : "Usuário bloqueado.");
 
-    await carregarTudoMasterLocal();
+    await carregarUsuarios(true);
+    renderUsuarios();
 
   } catch (erro) {
     console.error("Erro ao alterar acesso:", erro);
@@ -470,7 +473,8 @@ async function excluirUsuarioLogico(id) {
 
     UIHelpers.alerta("Usuário excluído logicamente.");
 
-    await carregarTudoMasterLocal();
+    await carregarUsuarios(true);
+    renderUsuarios();
 
   } catch (erro) {
     console.error("Erro ao excluir usuário:", erro);
