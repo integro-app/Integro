@@ -16,7 +16,7 @@
     master_local: ["*"],
     gerente: [
       "dashboard.ver", "minha_conta.ver", "clientes.ver", "clientes.criar", "clientes.editar", "clientes.direcionar",
-      "vendas.ver", "vendas.aprovar", "cobrancas.ver", "caixas.ver", "solicitacoes.ver", "solicitacoes.aprovar", "relatorios.ver",
+      "vendas.ver", "vendas.aprovar", "cobrancas.ver", "caixas.ver", "caixas.abrir", "caixas.fechar", "caixas.reabrir", "solicitacoes.ver", "solicitacoes.aprovar", "relatorios.ver",
       "usuarios.ver", "equipes.ver", "chat_interno.ver", "notificacoes.ver", "indicacoes.ver"
     ],
     administrativo: [
@@ -26,7 +26,7 @@
     ],
     supervisor: [
       "dashboard.ver", "minha_conta.ver", "clientes.ver", "clientes.editar", "clientes.direcionar", "clientes.atender",
-      "vendas.ver", "cobrancas.ver", "caixas.ver", "caixas.fechar", "caixas.reabrir",
+      "vendas.ver", "cobrancas.ver", "caixas.ver", "caixas.abrir", "caixas.fechar", "caixas.reabrir",
       "solicitacoes.ver", "solicitacoes.aprovar", "chat_interno.ver", "notificacoes.ver", "vendas.aprovar", "equipe.ver", "relatorios.ver", "indicacoes.ver"
     ],
     vendedor: [
@@ -35,7 +35,7 @@
       "caixa.ver_proprio", "caixas.ver", "solicitacoes.ver_proprio", "solicitacoes.criar", "financeiro.movimentacoes", "chat_interno.ver", "notificacoes.ver", "operacao.ver", "operacao.cobrancas", "operacao.vendas"
     ],
     financeiro: [
-      "dashboard.ver", "minha_conta.ver", "clientes.ver", "vendas.ver", "caixas.ver", "financeiro.ver",
+      "dashboard.ver", "minha_conta.ver", "clientes.ver", "vendas.ver", "caixas.ver", "caixas.abrir", "caixas.fechar", "financeiro.ver",
       "financeiro.reconciliar", "financeiro.regularizar", "financeiro.estornar", "relatorios.ver",
       "solicitacoes.ver", "solicitacoes.aprovar", "chat_interno.ver", "notificacoes.ver"
     ],
