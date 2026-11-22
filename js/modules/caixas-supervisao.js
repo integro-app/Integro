@@ -95,6 +95,32 @@
   // A lista de equipes vem do Firestore via caixas.js, não de um global
   // opcional que pode não existir na rota Master Local.
   let estrutura={context:'',loaded:false,loading:false,error:'',equipes:[],usuarios:[]};
+  // Vínculos antigos podem usar equipe principal, lista ou objeto; nunca
+  // associar vendedor por nome quando existem IDs explícitos diferentes.
+  const equipeNomeNormalizado = v => text(v).normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('pt-BR');
+  function vendedorPertenceEquipe(v,e,lista=[]) {
+    if(tenantOf(v)!==tenantOf(e))return false;
+    const referencias=[v.equipeId,v.timeId,v.unidadeId,
+      ...(Array.isArray(v.equipesIds)?v.equipesIds:[]),
+      ...(Array.isArray(v.equipeIds)?v.equipeIds:[]),
+      ...(Array.isArray(v.equipes)?v.equipes:[]),
+      v.equipe&&typeof v.equipe==='object'?v.equipe:null]
+      .map(item=>text(typeof item==='object'?(item?.id||item?.equipeId):item)).filter(Boolean);
+    if(referencias.length)return referencias.includes(id(e));
+    const nome=equipeNomeNormalizado(v.equipeNome||v.nomeEquipe||v.timeNome||v.unidadeNome||
+      (typeof v.equipe==='string'?v.equipe:''));
+    if(!nome||nome!==equipeNomeNormalizado(e.nome||e.nomeEquipe))return false;
+    // Nomes iguais em duas equipes não autorizam uma associação ambígua.
+    return lista.filter(item=>equipeNomeNormalizado(item.nome||item.nomeEquipe)===nome).length===1;
+  }
+  function vendedorAtivo(v) {
+    const perfil=upper(v.tipoUsuario||v.tipo||v.perfil);
+    const cargo=upper(v.cargoNome||v.cargo||v.funcao);
+    const ehVendedor=perfil==='VENDEDOR'||(
+      (!perfil||['USUARIO_CLIENTE','OPERADOR','CLIENTE'].includes(perfil))&&cargo==='VENDEDOR');
+    return ehVendedor&&v.excluido!==true&&v.ativo!==false&&v.acessoLiberado!==false&&
+      !['INATIVO','BLOQUEADO','SUSPENSO'].includes(upper(v.status));
+  }
   function rows() {
     if(!allowed())return [];
     const lista=estrutura.loaded?estrutura.equipes:[];
@@ -102,14 +128,7 @@
       !['INATIVA','INATIVO','BLOQUEADA','BLOQUEADO'].includes(upper(e.status))&&
       global.IntegroAcesso?.validarEscopo?.(access(),{equipeId:id(e)})!==false)
       .map(e=>({id:id(e),nome:text(e.nome||e.nomeEquipe||id(e)),equipe:e,caixas:[],
-        vendedores:estrutura.usuarios.filter(v=>{
-          const tipo=text(v.tipoUsuario||v.tipo||v.perfil).toLowerCase();
-          const equipes=[v.equipeId,...(Array.isArray(v.equipesIds)?v.equipesIds:[]),
-            ...(Array.isArray(v.equipeIds)?v.equipeIds:[])].map(text);
-          return tipo==='vendedor'&&v.excluido!==true&&v.ativo!==false&&
-            !['INATIVO','BLOQUEADO','SUSPENSO'].includes(upper(v.status))&&v.acessoLiberado!==false&&
-            equipes.includes(id(e));
-        })}));
+        vendedores:estrutura.usuarios.filter(v=>vendedorAtivo(v)&&vendedorPertenceEquipe(v,e,lista))}));
   }
   async function carregarEstrutura(forcar=false){
     syncContext();
