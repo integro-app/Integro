@@ -344,7 +344,106 @@ test("M12: supervisão não inventa R$ 0,00 quando saldo do caixa falta na fonte
 
 test("M12: total e linhas de supervisão propagam saldo desconhecido sem convertê-lo em zero", () => {
   const source = fs.readFileSync(path.join(root, "js/modules/caixas-supervisao.js"), "utf8");
-  assert.match(source, /cash\(entries\.some\(v=>v\.models\.some\(m=>m\.current==null\)\)\?null:total\('current'\)\)/);
+  assert.match(source, /abertosNaTela\.length!==modelosAbertos\.length/);
   assert.match(source, /cash\(models\.some\(m=>m\[k\]==null\)\?null:models\.reduce/);
   assert.match(source, /const cash = v => v == null \? 'Não registrado'/);
+});
+
+
+test("master local: operação pesquisa vendedores em tempo real e preserva seleção durante carregamento",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/\[row\.nome,\.\.\.row\.vendedores\.flatMap/);
+  assert.match(source,/querySelector\('\[data-cx-search\]'\)\.oninput/);
+  assert.match(source,/if\(estrutura\.loaded\)\{/);
+  assert.match(source,/idsPermitidos\.has\(selectedId\)/);
+});
+
+test("master local: indicador de caixa atual considera apenas caixas abertos",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/active=history\.filter\(openBox\)/);
+  assert.match(source,/latest=active\[0\]\|\|history\[0\]/);
+  assert.match(source,/modelosAbertos=entries\.flatMap/);
+  assert.match(source,/abertosNaTela\.length!==modelosAbertos\.length/);
+});
+
+
+test("Master Local reconhece vínculos múltiplos, antigos e respeita isolamento da empresa",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  const equipeNomeNormalizado =");
+  const end=source.indexOf("  async function carregarEstrutura(",start);
+  assert.ok(start>=0&&end>start);
+  const ctx={
+    text:value=>String(value??"").trim(),
+    upper:value=>String(value??"").trim().toUpperCase(),
+    id:value=>String(value?.id||value?.docId||""),
+    tenantOf:value=>String(value?.clientePlataformaId||value?.tenantId||value?.empresaId||"")
+  };
+  const helpers=vm.runInNewContext(source.slice(start,end)+";({vendedorPertenceEquipe,vendedorAtivo})",ctx);
+  const alfa={id:"alfa",nome:"Equipe Alfa",clientePlataformaId:"tenant-a"};
+  const beta={id:"beta",nome:"Equipe Beta",clientePlataformaId:"tenant-a"};
+  const seller={id:"v1",tipoUsuario:"vendedor",clientePlataformaId:"tenant-a"};
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeId:"alfa"},alfa,[alfa,beta]),true);
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeIds:["alfa","beta"]},beta,[alfa,beta]),true);
+  assert.equal(helpers.vendedorPertenceEquipe({...seller}, {...beta,vendedoresIds:["v1"]},[alfa,beta]),true,
+    "O vínculo inverso no cadastro oficial da equipe é válido");
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeId:"alfa"}, {...beta,vendedoresIds:["v1"]},[alfa,beta]),true,
+    "Um vendedor pode estar em mais de uma equipe");
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,equipes:[{id:"beta"}]},beta,[alfa,beta]),true);
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeNome:"Equipe Álfa"},alfa,[alfa,beta]),true);
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeId:"beta",equipeNome:"Equipe Alfa"},alfa,[alfa,beta]),false);
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,clientePlataformaId:"tenant-b",equipeId:"alfa"},alfa,[alfa,beta]),false);
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeNome:"Equipe Alfa"},alfa,[alfa,{...alfa,id:"duplicada"}]),false);
+  assert.equal(helpers.vendedorAtivo({...seller,ativo:false}),false);
+  assert.equal(helpers.vendedorAtivo({...seller,acessoLiberado:false}),false);
+  assert.equal(helpers.vendedorAtivo({...seller,tipoUsuario:"usuario_cliente",cargoNome:"Vendedor"}),true);
+});
+
+test("Master Local usa filtros instantâneos e não opera equipes ocultas pela pesquisa",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const render=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
+  assert.match(render,/const allEntries=all\.map\(row=>/);
+  assert.match(render,/const entries=searchedEntries\.filter/);
+  assert.match(render,/if\(!exibidas\.has\(selectedId\)\)ui\.selected\.delete\(selectedId\)/);
+  assert.match(render,/data-cx-quick/);
+  assert.match(render,/data-cx-search-clear/);
+  assert.match(render,/class="cx-sellers"/);
+  assert.match(render,/class="cx-operational-pulse"/);
+  assert.match(render,/role="status"/);
+});
+
+test("Equipe sem caixa pode abrir calendário já associado à equipe autorizada",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
+  assert.match(source,/class="cx-empty-state"/);
+  assert.match(source,/Nenhum caixa registrado para esta equipe/);
+  assert.match(source,/global\.IntegroCaixaDatas\.abrir\(\{equipeId:ui\.detail\}\)/);
+  assert.match(calendar,/async function open\(options = \{\}\)/);
+  assert.match(calendar,/teams\.some\(team=>String\(team\.id\)===equipeSolicitada\)/);
+  assert.match(calendar,/void load\(\)/);
+  assert.match(calendar,/httpsCallable\("consultarDatasCaixaEquipe"\)/);
+});
+
+test("Operação adota interface acessível e responsiva sem alterar tabela de detalhes",()=>{
+  const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
+  assert.match(css,/\.cx-quickfilters button\.active/);
+  assert.match(css,/\.cx-seller-chip\.is-open/);
+  assert.match(css,/\.cx-operational-pulse/);
+  assert.match(css,/\.cx-empty-state/);
+  assert.match(css,/\.cx-details \.cx-table-scroll table\{display:table/);
+});
+
+
+test("Indicadores financeiros não confundem cache ou histórico incompleto com zero confirmado",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const render=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
+  assert.match(render,/const overviewConferido=m=>/);
+  assert.match(render,/verifiedBoxes\.has\(id\(caixa\)\)/);
+  assert.match(render,/registro\.fingerprint===fingerprint/);
+  assert.match(render,/semResumoHistorico=modelosNaTela\.some/);
+  assert.match(render,/const valorAtual=/);
+  assert.match(render,/const indicadorFinanceiro=key=>/);
+  assert.match(render,/!totaisConferidos\?'Conferindo…'/);
+  assert.match(render,/stat\('Caixa atual',valorAtual\)/);
+  assert.match(render,/stat\('Recebido',indicadorFinanceiro\('received'\),'green'\)/);
 });
