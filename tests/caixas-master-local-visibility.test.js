@@ -266,7 +266,7 @@ test("ações de Caixas dependem da conferência no servidor e calendário não 
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const overview=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
   const detail=source.slice(source.indexOf("  function renderDetail(host)"),source.indexOf("  function confirmClosure("));
-  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\)/);
+  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
   assert.match(overview,/botaoAbrir\.disabled=!acoes\.podeAbrir/);
   assert.match(overview,/botaoFechar\.disabled=!acoes\.podeFechar/);
   assert.match(source,/httpsCallable\('consultarDatasCaixaEquipe'\)/);
@@ -516,4 +516,15 @@ test("Conferência em lote recusa valor ausente e divergência sem justificativa
   assert.equal(confirmed.valores.get("cx-1"),9000);
   assert.equal(confirmed.motivo,reason.value);
   assert.equal(dialog.removed,true);
+});
+
+
+test("Caixas antigos ausentes da consulta do servidor não reaparecem pelo cache",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/const idsConsultados=new Set\(\)/);
+  assert.match(source,/idsConsultados\.add\(id\(caixa\)\)/);
+  assert.match(source,/verifiedBoxes\.delete\(key\);overview\.delete\(key\)/);
+  assert.match(source,/estrutura\.caixasIds=idsConsultados/);
+  assert.match(source,/estrutura\.caixasChecked\|\|estrutura\.caixasIds\.has\(id\(b\)\)/);
+  assert.match(source,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
 });
