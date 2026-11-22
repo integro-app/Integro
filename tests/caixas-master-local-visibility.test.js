@@ -557,7 +557,7 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
   assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-mobile-proporcoes-v2/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-layout-aprovado-v1/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-mobile-proporcoes-v2/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
