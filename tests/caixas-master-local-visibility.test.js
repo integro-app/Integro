@@ -150,12 +150,12 @@ test("master local invalida cache dos controladores do módulo Caixas",()=>{
 });
 
 
-test("botões de abertura e fechamento estão antes da lista, próximos aos indicadores",()=>{
+test("abertura e fechamento permanecem no botão Ações antes da lista de equipes",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const overview=source.slice(source.indexOf("function render() {"),source.indexOf("async function query("));
-  assert.ok(overview.indexOf('<div class="cx-stats">')>=0,"indicadores da supervisão presentes");
-  assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-stats">'));
-  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('<div class="cx-table-scroll cx-overview-scroll">'));
+  assert.doesNotMatch(overview,/<div class="cx-stats">/);
+  assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-query-row">'));
+  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('class="cx-box-grid"'));
   assert.match(overview,/id="btnAbrirCaixasSelecionadas"/);
   assert.match(overview,/id="btnFecharCaixasSelecionadas"/);
 });
@@ -215,7 +215,7 @@ test("supervisão não usa caixa inexistente no servidor para inflar indicador",
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/caixasInexistentesServidor\.add\(key\)/);
   assert.match(source,/!caixasInexistentesServidor\.has\(id\(b\)\)/);
-  assert.match(source,/Equipes em operação/);
+  assert.match(source,/const overviewConferido=m=>/);
   assert.match(source,/verifiedBoxes\.has\(id\(b\)\)/);
   assert.match(source,/avisosDuplicidadePorVendedor\(row,history\)/);
 });
@@ -556,7 +556,8 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-caixas-admin-mobile-hierarchy-v3/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-layout-aprovado-v1/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-layout-aprovado-v1/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
@@ -656,8 +657,10 @@ test("Master Local apresenta uma jornada por equipe e filtro de situação ativo
   assert.match(source,/const situacao=!row\.ativa\?'INATIVA'/);
   assert.match(source,/const teams=rows\(true\)\.filter/);
   assert.match(source,/const equipes=rows\(\)\.filter/);
-  assert.match(source,/Equipes em operação/);
-  assert.match(source,/Caixas individuais abertos/);
+  assert.match(source,/const overviewConferido=m=>/);
+  assert.match(source,/class="cx-approved-meta"/);
+  assert.match(source,/Caixas abertos/);
+  assert.match(source,/Na jornada/);
 });
 
 test("Reabertura é apenas individual e no backend exige motivo e último caixa",()=>{
