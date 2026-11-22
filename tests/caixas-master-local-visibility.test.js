@@ -432,3 +432,18 @@ test("Operação adota interface acessível e responsiva sem alterar tabela de d
   assert.match(css,/\.cx-empty-state/);
   assert.match(css,/\.cx-details \.cx-table-scroll table\{display:table/);
 });
+
+
+test("Indicadores financeiros não confundem cache ou histórico incompleto com zero confirmado",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const render=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
+  assert.match(render,/const overviewConferido=m=>/);
+  assert.match(render,/verifiedBoxes\.has\(id\(caixa\)\)/);
+  assert.match(render,/registro\.fingerprint===fingerprint/);
+  assert.match(render,/semResumoHistorico=modelosNaTela\.some/);
+  assert.match(render,/const valorAtual=/);
+  assert.match(render,/const indicadorFinanceiro=key=>/);
+  assert.match(render,/!totaisConferidos\?'Conferindo…'/);
+  assert.match(render,/stat\('Caixa atual',valorAtual\)/);
+  assert.match(render,/stat\('Recebido',indicadorFinanceiro\('received'\),'green'\)/);
+});
