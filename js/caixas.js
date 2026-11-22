@@ -253,38 +253,45 @@ function iniciarCaixasTempoReal() {
   carregarDadosIniciaisSupervisaoCaixas(false, true);
 
   const runtime = window.IntegroDataRuntime;
-  if (runtime?.ouvir) {
-    unsubscribeCaixasTempoReal = runtime.ouvir({
-      chave: `tela-caixas:${tenantId}:caixas`,
-      escopo: "tela:caixas",
-      db,
-      colecao: CONFIG.COLECOES.CAIXAS,
-      tenantId,
-      limite: CONFIG.LIMITS?.CAIXAS || 500,
-      aoAtualizar: dados => {
+  const ouvirColecao = (colecao, limite, atualizar, nome) => {
+    if (runtime?.ouvir) {
+      return runtime.ouvir({
+        chave: `tela-caixas:${tenantId}:${nome}`,
+        escopo: "tela:caixas",
+        db, colecao, tenantId, limite,
+        aoAtualizar: dados => {
+          if (getTenantIdSeguroCaixas() !== tenantId) return;
+          atualizar(dados);
+        },
+        aoErro: erro => console.error(`[SUPERVISÃO CAIXAS] erro realtime ${nome}:`, erro)
+      });
+    }
+    return db.collection(colecao).where("clientePlataformaId", "==", tenantId)
+      .limit(limite).onSnapshot(snap => {
         if (getTenantIdSeguroCaixas() !== tenantId) return;
-        caixasCaixaTempoReal = dados;
-        State.setCaixas?.(dados);
-        limparSelecaoInvalidaEquipesCaixa();
-        if (equipeDetalheAtualId) renderDetalhesEquipeSupervisao(equipeDetalheAtualId);
-        else renderCaixas();
-      },
-      aoErro: erro => console.error("[SUPERVISÃO CAIXAS] erro realtime caixas:", erro)
-    });
-    return;
-  }
-
-  unsubscribeCaixasTempoReal = db.collection(CONFIG.COLECOES.CAIXAS)
-    .where("clientePlataformaId", "==", tenantId)
-    .limit(CONFIG.LIMITS?.CAIXAS || 500)
-    .onSnapshot(snap => {
-      if (getTenantIdSeguroCaixas() !== tenantId) return;
-      caixasCaixaTempoReal = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      State.setCaixas?.(caixasCaixaTempoReal);
-      limparSelecaoInvalidaEquipesCaixa();
-      if (equipeDetalheAtualId) renderDetalhesEquipeSupervisao(equipeDetalheAtualId);
-      else renderCaixas();
-    }, erro => console.error("[SUPERVISÃO CAIXAS] erro realtime caixas:", erro));
+        atualizar(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      }, erro => console.error(`[SUPERVISÃO CAIXAS] erro realtime ${nome}:`, erro));
+  };
+  const atualizarTela = () => {
+    limparSelecaoInvalidaEquipesCaixa();
+    if (equipeDetalheAtualId) renderDetalhesEquipeSupervisao(equipeDetalheAtualId);
+    else renderCaixas();
+  };
+  unsubscribeEquipesTempoReal = ouvirColecao(CONFIG.COLECOES.EQUIPES, CONFIG.LIMITS?.EQUIPES || 300, dados => {
+    equipesCaixaTempoReal = dados;
+    State.setEquipes?.(dados);
+    atualizarTela();
+  }, "equipes");
+  unsubscribeUsuariosTempoReal = ouvirColecao(CONFIG.COLECOES.USUARIOS, CONFIG.LIMITS?.USUARIOS || 500, dados => {
+    vendedoresCaixaTempoReal = dados;
+    State.setUsuarios?.(dados);
+    atualizarTela();
+  }, "usuarios");
+  unsubscribeCaixasTempoReal = ouvirColecao(CONFIG.COLECOES.CAIXAS, CONFIG.LIMITS?.CAIXAS || 500, dados => {
+    caixasCaixaTempoReal = dados;
+    State.setCaixas?.(dados);
+    atualizarTela();
+  }, "caixas");
 }
 
 function pararCaixasTempoReal() {
@@ -312,7 +319,7 @@ async function carregarCaixas(forcar = false) {
 
 function getEquipesBaseSupervisao() {
   const stateEquipes = State.getEquipes ? State.getEquipes() : [];
-  const base = equipesCaixaTempoReal.length ? equipesCaixaTempoReal : stateEquipes;
+  const base = caixasRealtimeIniciado ? equipesCaixaTempoReal : stateEquipes;
 
   return (base || []).filter(e => {
     const status = String(e.status || "ATIVO").toUpperCase();
@@ -322,7 +329,7 @@ function getEquipesBaseSupervisao() {
 
 function getVendedoresBaseSupervisao() {
   const stateUsuarios = State.getUsuarios ? State.getUsuarios() : [];
-  const base = vendedoresCaixaTempoReal.length ? vendedoresCaixaTempoReal : stateUsuarios;
+  const base = caixasRealtimeIniciado ? vendedoresCaixaTempoReal : stateUsuarios;
 
   return (base || []).filter(u => {
     const tipo = String(u.tipoUsuario || "").toLowerCase();
@@ -340,7 +347,7 @@ function getVendedoresBaseSupervisao() {
 
 function getCaixasBaseSupervisao() {
   const stateCaixas = State.getCaixas ? State.getCaixas() : [];
-  const base = caixasCaixaTempoReal.length ? caixasCaixaTempoReal : stateCaixas;
+  const base = caixasRealtimeIniciado ? caixasCaixaTempoReal : stateCaixas;
 
   return (base || []).filter(c => c.excluido !== true);
 }
@@ -482,8 +489,10 @@ function getResumoEquipeSupervisao(equipe) {
     ["ABERTO", "REABERTO"].includes(String(c.status || "").toUpperCase()) && c.ativo !== false
   );
 
+  const hoje = new Date().toLocaleDateString("en-CA");
   const caixasFechados = caixas.filter(c =>
-    String(c.status || "").toUpperCase() === "FECHADO"
+    String(c.status || "").toUpperCase() === "FECHADO" &&
+    String(c.dataOperacional || c.dataCaixa || c.dataAbertura || "").slice(0, 10) === hoje
   );
 
   const caixaInicial = caixasAbertos.reduce((total, c) => {
@@ -506,7 +515,7 @@ function getResumoEquipeSupervisao(equipe) {
 
   const totalVendedores = vendedores.length;
   const progresso = totalVendedores > 0
-    ? Math.round((caixasFechados.length / totalVendedores) * 100)
+    ? Math.min(100, Math.round((new Set(caixasFechados.map(c => c.vendedorId)).size / totalVendedores) * 100))
     : (caixasFechados.length ? 100 : 0);
 
   const ultimaAtualizacao = caixas
