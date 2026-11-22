@@ -666,6 +666,8 @@ test("Backend impede abertura em equipes inativas e mantém travas entre dias",(
   assert.match(backend,/Equipe inativa ou bloqueada não pode iniciar nova jornada de caixa/);
   assert.match(backend,/Equipe inativa não pode iniciar jornada de caixa/);
   assert.match(backend,/Feche os caixas abertos da equipe antes de abrir outro dia/);
+  assert.match(backend,/if \(latest === day && !teamBoxes\.some/);
+  assert.match(backend,/A jornada desta equipe já foi encerrada nessa data\. Abra apenas no dia seguinte/);
   assert.match(backend,/Já existe caixa nessa data\. Apenas o mais recente pode ser reaberto/);
   assert.match(backend,/Existem múltiplos caixas abertos para o mesmo vendedor/);
 });
