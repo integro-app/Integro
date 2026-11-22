@@ -120,7 +120,7 @@
 [data-caixas-supervisao] .cx-metric>span{flex:1;min-width:0}
 [data-caixas-supervisao] .cx-metric>strong{flex:1;min-width:0;font-variant-numeric:tabular-nums}
 [data-caixas-supervisao] .cx-details .cx-table-scroll{overscroll-behavior-inline:contain}
-[data-caixas-supervisao] .cx-close-dialog .cx-close-actions{position:sticky;bottom:-26px;background:#fff;padding:14px 0 0;z-index:1}
+.cx-close-dialog .cx-close-actions{position:sticky;bottom:-26px;background:#fff;padding:14px 0 0;z-index:1}
 [data-caixas-supervisao] .cx-filter-options summary:focus-visible,[data-caixas-supervisao] .cx-team-link:focus-visible{outline:3px solid #70a5f3;outline-offset:3px}
 @media(max-width:760px){
  [data-caixas-supervisao] .cx-tabs{margin:12px 0 16px}
