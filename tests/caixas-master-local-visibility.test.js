@@ -215,7 +215,7 @@ test("supervisão não usa caixa inexistente no servidor para inflar indicador",
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/caixasInexistentesServidor\.add\(key\)/);
   assert.match(source,/!caixasInexistentesServidor\.has\(id\(b\)\)/);
-  assert.match(source,/Caixas abertos \(confirmados\)/);
+  assert.match(source,/Equipes em operação/);
   assert.match(source,/verifiedBoxes\.has\(id\(b\)\)/);
   assert.match(source,/avisosDuplicidadePorVendedor\(row,history\)/);
 });
@@ -229,7 +229,8 @@ test("botão Abrir caixas não é travado pelo status agregado de equipe parcial
   assert.ok(start>=0&&end>start);
   const ctx={
     text:v=>String(v??"").trim(),
-    openBox:box=>["ABERTO","REABERTO"].includes(String(box.status||"").toUpperCase())&&box.ativo!==false
+    openBox:box=>["ABERTO","REABERTO"].includes(String(box.status||"").toUpperCase())&&box.ativo!==false,
+    podeGerir:()=>false
   };
   const helpers=vm.runInNewContext(source.slice(start,end)+
     ";({disponibilidadeAcoesEquipes,totalFalhasFechamento})",ctx);
@@ -444,7 +445,7 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/const valorAtual=/);
   assert.match(render,/const indicadorFinanceiro=key=>/);
   assert.match(render,/!totaisConferidos\?'Conferindo…'/);
-  assert.match(render,/stat\('Caixa atual',valorAtual\)/);
+  assert.match(render,/stat\('Caixa atual',valorAtual,'primary'\)/);
   assert.match(render,/stat\('Recebido',indicadorFinanceiro\('received'\),'green'\)/);
 });
 
@@ -551,7 +552,7 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261121-caixas-mobile-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-caixas-admin-mobile-hierarchy-v3/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
@@ -585,19 +586,26 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
     badge:box=>"<span>"+box.status+"</span>",
     dateBR:v=>v==="2026-11-21"?"21/11/2026":"—",
     boxDay:box=>box.dataOperacional,
-    cash:v=>String(v),
+    cash:v=>String(v),num:v=>Number(v)||0,
+    upper:v=>String(v??"").toUpperCase(),
     estrutura:{caixasChecked:true},
-    ui:{selectedBoxes:new Set(["cx-001"])}
+    ui:{selected:new Set(),selectedBoxes:new Set(["cx-001"]),expandedTeams:new Set()}
   });
   const cards=functions([{
-    row:{id:"equipe-1",nome:"Equipe Norte",vendedores:[{id:"v-1",nome:"Vendedor Um"}]},
+    row:{id:"equipe-1",nome:"Equipe Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Um"}]},
+    history:[{id:"cx-001",status:"ABERTO",vendedorId:"v-1",dataOperacional:"2026-11-21"}],
+    latest:{id:"cx-001",dataOperacional:"2026-11-21"},
+    avisos:[],
     models:[{box:{id:"cx-001",status:"ABERTO",vendedorNome:"Vendedor Um",vendedorId:"v-1",
       dataOperacional:"2026-11-21"},current:120000,wallet:800000,received:12000}]
   }],()=>true);
   assert.match(cards,/data-cx-open-box="cx-001"/);
   assert.match(cards,/data-cx-team="equipe-1"/);
   assert.match(cards,/data-cx-select-box="cx-001"/);
-  assert.match(cards,/Ver detalhamento/);
+  assert.match(cards,/Detalhes e histórico/);
+  assert.match(cards,/data-cx-members="equipe-1"/);
+  assert.match(cards,/class="cx-team-members"/);
+  assert.doesNotMatch(cards,/data-cx-members="equipe-1" open/,"vendedores recolhidos ao iniciar");
   assert.match(cards,/checked/);
   const mobile=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
   assert.match(mobile,/\[data-caixas-supervisao\] \.cx-box-grid\{display:grid/);
@@ -610,7 +618,9 @@ test("Fechamento em lote respeita caixa selecionado em vez de fechar toda equipe
   assert.match(source,/const caixaIdsSelecionados=new Set\(ui\.selectedBoxes\)/);
   assert.match(source,/!caixaIdsSelecionados\.size\|\|caixaIdsSelecionados\.has\(id\(box\)\)/);
   assert.match(source,/async function open\(teamId, boxId = ''\)/);
-  assert.match(source,/ui\.box=solicitado\|\|id\(ui\.history\.find\(openBox\)\|\|ui\.history\[0\]\)/);
+  assert.match(source,/ui\.teamDay=boxDay\(ui\.history\.find\(openBox\)\|\|ui\.history\[0\]\)/);
+  assert.match(source,/if\(!solicitado\)\{ui\.box='';ui\.loading=false;render\(\);return;\}/);
+  assert.match(source,/ui\.box=solicitado/);
 });
 
 
@@ -622,4 +632,136 @@ test("Filtro global não injeta Buscar/Filtros redundantes no módulo Caixas",()
   const modulo=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(modulo,/data-cx-search/);
   assert.match(modulo,/class="cx-filter-options"/);
+});
+
+
+test("Master Local apresenta uma jornada por equipe e filtro de situação ativo por padrão",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/equipesFiltro:'ativas'/);
+  assert.match(source,/function equipeAtiva\(e\)/);
+  assert.match(source,/function rows\(incluirInativas=false\)/);
+  assert.match(source,/const todasEquipes=rows\(true\)/);
+  assert.match(source,/const totalInativas=todasEquipes.length-totalAtivas/);
+  assert.match(source,/data-cx-team-situation/);
+  assert.match(source,/Ativas',totalAtivas/);
+  assert.match(source,/Inativas',totalInativas/);
+  assert.match(source,/Todas',todasEquipes.length/);
+  assert.match(source,/class="cx-team-day-card/);
+  assert.match(source,/const situacao=!row\.ativa\?'INATIVA'/);
+  assert.match(source,/const teams=rows\(true\)\.filter/);
+  assert.match(source,/const equipes=rows\(\)\.filter/);
+  assert.match(source,/Equipes em operação/);
+  assert.match(source,/Caixas individuais abertos/);
+});
+
+test("Reabertura é apenas individual e no backend exige motivo e último caixa",()=>{
+  const client=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const backend=fs.readFileSync(path.join(root,"functions/box-lifecycle.js"),"utf8");
+  assert.match(client,/data-cx-reopen/);
+  assert.doesNotMatch(client,/btnReabrirCaixasSelecionados/);
+  assert.match(backend,/Somente o caixa mais recente pode ser reaberto/);
+  assert.match(backend,/Reabertura exige um responsável autorizado e motivo/);
+  assert.match(backend,/Já existe outro caixa aberto/);
+  assert.match(backend,/Reative a equipe antes de reabrir seu caixa/);
+});
+
+test("Backend impede abertura em equipes inativas e mantém travas entre dias",()=>{
+  const backend=fs.readFileSync(path.join(root,"functions/box-lifecycle.js"),"utf8");
+  assert.match(backend,/Equipe inativa ou bloqueada não pode iniciar nova jornada de caixa/);
+  assert.match(backend,/Equipe inativa não pode iniciar jornada de caixa/);
+  assert.match(backend,/Feche os caixas abertos da equipe antes de abrir outro dia/);
+  assert.match(backend,/if \(latest === day && !teamBoxes\.some/);
+  assert.match(backend,/A jornada desta equipe já foi encerrada nessa data\. Abra apenas no dia seguinte/);
+  assert.match(backend,/Já existe caixa nessa data\. Apenas o mais recente pode ser reaberto/);
+  assert.match(backend,/Existem múltiplos caixas abertos para o mesmo vendedor/);
+  assert.match(backend,/if\(equipeSolicitada && equipeSolicitada!==teamId\)/);
+  assert.match(backend,/Equipe solicitada não corresponde à equipe operacional do vendedor/);
+});
+
+test("Financeiro participa da abertura e fechamento com permissões, sem reabertura automática",()=>{
+  const backend=fs.readFileSync(path.join(root,"functions/box-lifecycle.js"),"utf8");
+  const client=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
+  const acl=fs.readFileSync(path.join(root,"js/services/access-control.js"),"utf8");
+  assert.match(backend,/if\(action==="reabrir"\)/);
+  assert.match(backend,/Reabertura exige autorização específica do Financeiro/);
+  assert.match(backend,/exigirPermissao\(who,"abrir"\)/);
+  assert.match(client,/global\.IntegroAcesso\?\.pode\?\.\(user\(\),'caixas\.'\+acao/);
+  assert.match(calendar,/perfil==="financeiro" && global\.IntegroAcesso\?\.pode/);
+  assert.match(acl,/financeiro: \[[\s\S]*"caixas\.abrir", "caixas\.fechar"/);
+});
+
+
+test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function renderTeamDay(");
+  const end=source.indexOf("  function renderDetail(",start);
+  assert.ok(start>0&&end>start);
+  const detail=source.slice(start,end);
+  assert.match(source,/if\s*\(ui\.detail\) \{if\(!ui\.box&&!ui\.loading\)renderTeamDay\(host\);else renderDetail\(host\)/);
+  assert.match(detail,/rows\(true\)\.find/);
+  assert.match(detail,/Data da jornada/);
+  assert.match(detail,/Caixa inicial/);
+  assert.match(detail,/Caixa atual \/ final/);
+  assert.match(detail,/Recebimentos/);
+  assert.match(detail,/Ingressos/);
+  assert.match(detail,/Gastos/);
+  assert.match(detail,/Retiradas/);
+  assert.match(detail,/Últimas movimentações da jornada/);
+  assert.match(detail,/class="cx-team-detail-metrics cx-team-primary-metrics"/);
+  assert.match(detail,/class="cx-team-extra-metrics"/);
+  assert.match(detail,/data-cx-extra-metrics/);
+  assert.match(detail,/metricas\.slice\(0,3\)/);
+  assert.match(detail,/metricas\.slice\(3\)/);
+  assert.match(detail,/data-cx-team-box/);
+  assert.match(detail,/data-cx-team-close/);
+  assert.match(detail,/const confirmado=estrutura\.caixasChecked&&items\.every/);
+  assert.match(detail,/if\(estrutura\.caixasChecked\)boxes\.forEach\(loadOverview\)/);
+  assert.match(source,/const podeAbrir=row\.ativa&&podeGerir\('abrir'\)/);
+});
+
+
+test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente encerrada",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/const inconsistentes=history\.filter/);
+  assert.match(source,/inconsistentes\.length\?'REVISÃO'/);
+  assert.match(source,/const exigeRevisao=boxes\.some/);
+  assert.match(source,/exigeRevisao\?'REVISÃO':aberto\?'EM OPERAÇÃO'/);
+  assert.match(source,/history\.some\(b=>\['ABERTO','REABERTO'\]\.includes\(upper\(b\.status\)\)&&b\.ativo===false\)/);
+});
+
+
+test("Layout móvel dos caixas prioriza saldo, controles, equipes e reduz elementos duplicados",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
+  const overview=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
+  const title=overview.indexOf('<header class="cx-head">');
+  const mainBalance=overview.indexOf("stat('Caixa atual',valorAtual,'primary')");
+  const otherStats=overview.indexOf("stat('Equipes em operação'");
+  const actions=overview.indexOf('<footer class="cx-footer">');
+  const teamTabs=overview.indexOf('class="cx-team-tabs"');
+  const query=overview.indexOf('class="cx-query-row"');
+  const teamList=overview.indexOf('class="cx-box-grid"');
+  assert.ok(title>=0&&title<mainBalance&&mainBalance<otherStats&&otherStats<actions
+    &&actions<teamTabs&&teamTabs<query&&query<teamList);
+  assert.match(source,/expandedTeams:new Set\(\)/);
+  assert.match(source,/data-cx-members/);
+  assert.match(source,/host\.querySelectorAll\('\[data-cx-members\]'\)/);
+  assert.match(css,/@media\(max-width:850px\)/);
+  assert.match(css,/\.cx-quickfilters,#caixas \[data-caixas-supervisao\] \.cx-operational-pulse\{display:none!important/);
+  assert.match(css,/\.cx-team-members>summary/);
+  assert.match(css,/\.cx-query-row\{display:grid!important/);
+  assert.match(css,/\.cx-stat\.primary\{grid-column:1\/-1!important/);
+});
+
+
+test("Busca sem resultados mostra orientação útil no mobile e preserva acesso às outras equipes",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
+  assert.match(source,/class="cx-mobile-empty"/);
+  assert.match(source,/Nenhuma equipe ativa encontrada/);
+  assert.match(source,/Nenhuma equipe inativa encontrada/);
+  assert.match(source,/data-cx-show-all-teams/);
+  assert.match(source,/ui\.equipesFiltro='todas';ui\.team='';ui\.status='';ui\.search='';render\(\)/);
+  assert.match(css,/\.cx-mobile-empty\{display:grid/);
 });

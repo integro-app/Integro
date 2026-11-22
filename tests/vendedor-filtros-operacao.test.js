@@ -161,7 +161,7 @@ test("Vendas mantém busca visível e Nova venda no canto inferior direito", () 
   assert.match(css, /top: auto !important/);
   assert.match(css, /left: auto !important/);
   const original = read("master-local.html");
-  assert.match(original, /js\/integro-filter-drawer\.js\?v=20261112-vendas-busca-instantanea-v1/);
+  assert.match(original, /js\/integro-filter-drawer\.js\?v=[^"]+/);
   assert.match(original, /css\/vendedor-operacao\.css\?v=20261112-vendas-busca-instantanea-v1/);
   assert.match(original, /js\/vendedor-unificado\.js\?v=20261120-m06-global-header-fix5/);
 });

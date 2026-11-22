@@ -81,8 +81,16 @@ function criarCicloCaixa({ db, functions }) {
   }
   async function datasEquipe(data, context) {
     const who = await actor(context), teamId = id(data?.equipeId);
-    if (["VENDEDOR","FINANCEIRO"].includes(who.role)) fail("permission-denied","Somente responsáveis podem consultar abertura por equipe.");
+    if (who.role === "VENDEDOR") fail("permission-denied","Abertura por equipe exige responsável administrativo.");
+    exigirPermissao(who,"abrir");
     scope(who,{clientePlataformaId:who.tenant,equipeId:teamId});
+    const equipeSnap=await db.collection("equipes").doc(teamId).get();
+    if(equipeSnap.exists) {
+      const unidade=equipeSnap.data();
+      if(unidade.clientePlataformaId!==who.tenant) fail("permission-denied","Equipe fora da empresa.");
+      if(unidade.ativo===false || ["INATIVA","INATIVO","BLOQUEADA","BLOQUEADO","SUSPENSA"].includes(core.normalizarStatus(unidade.status)))
+        fail("failed-precondition","Equipe inativa não pode iniciar jornada de caixa.");
+    }
     const members = await db.collection("usuarios").where("clientePlataformaId","==",who.tenant).where("equipeId","==",teamId).get();
     const resolved = await Promise.all(members.docs.map(doc => sellerSnapshot({get:ref=>ref.get()},doc.id)));
     const identities = new Map();
@@ -111,8 +119,15 @@ function criarCicloCaixa({ db, functions }) {
   }
   function exigirPermissao(who, action) {
     if(who.role==="FINANCEIRO") {
-      const grant=[who.user.permissoesCargo,who.user.permissoes,who.user.permissoesUsuario].filter(Boolean).some(p=>p.caixas?.podeReabrirCaixa===true || p.financeiro?.podeReabrirCaixa===true);
-      if(action!=="reabrir" || !grant) fail("permission-denied","Financeiro sem autorização para esta operação de caixa.");
+      // Abertura e fechamento integram a rotina financeira. Reabertura continua
+      // excepcional e exige autorização explícita e justificativa.
+      if(!["abrir","fechar","reabrir"].includes(action))
+        fail("permission-denied","Operação de caixa não permitida ao Financeiro.");
+      if(action==="reabrir") {
+        const grant=[who.user.permissoesCargo,who.user.permissoes,who.user.permissoesUsuario]
+          .filter(Boolean).some(p=>p.caixas?.podeReabrirCaixa===true || p.financeiro?.podeReabrirCaixa===true);
+        if(!grant) fail("permission-denied","Reabertura exige autorização específica do Financeiro.");
+      }
     }
     for (const permissions of [who.user.permissoesCargo,who.user.permissoes,who.user.permissoesUsuario].filter(Boolean)) {
       const box=permissions.caixas;
@@ -144,7 +159,21 @@ function criarCicloCaixa({ db, functions }) {
       if (linked.docs.length >= 3) fail("failed-precondition","Cadastros de vendedor exigem revisão de identidade.");
       const sellerIds = new Set([sellerId,requestedSellerId,...linked.docs.map(doc => doc.id)]);
       const teamId = seller.equipeId ? id(seller.equipeId) : "";
+      const equipeSolicitada=core.texto(input.equipeId);
+      // Não desviar um movimento financeiro silenciosamente para a equipe
+      // principal quando a operação foi solicitada por outra unidade.
+      if(equipeSolicitada && equipeSolicitada!==teamId)
+        fail("failed-precondition","Equipe solicitada não corresponde à equipe operacional do vendedor. Regularize o vínculo antes de abrir caixa.");
       const teamControl = teamId ? db.collection("controle_caixas").doc(who.tenant + "_equipe_" + teamId) : null;
+      if(teamId) {
+        const unidade=await transaction.get(db.collection("equipes").doc(teamId));
+        if(unidade.exists) {
+          const equipe=unidade.data();
+          if(equipe.clientePlataformaId!==who.tenant) fail("permission-denied","Equipe fora da empresa.");
+          if(equipe.ativo===false || ["INATIVO","INATIVA","BLOQUEADO","BLOQUEADA","SUSPENSA"].includes(core.normalizarStatus(equipe.status)))
+            fail("failed-precondition","Equipe inativa ou bloqueada não pode iniciar nova jornada de caixa.");
+        }
+      }
       let sellerHistory;
       if (teamControl) {
         const [control,teamBoxes] = await Promise.all([transaction.get(teamControl),teamHistory(transaction,who,teamId)]);
@@ -156,6 +185,11 @@ function criarCicloCaixa({ db, functions }) {
         }).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
         const latest = [control.exists ? control.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
         if (latest > day) fail("failed-precondition","Já existe caixa posterior na equipe. Os dias anteriores estão bloqueados.");
+        // A abertura parcial é permitida SOMENTE enquanto a mesma jornada
+        // da equipe permanece aberta. Depois do último fechamento, ninguém
+        // pode criar um novo subcaixa nessa data; a próxima jornada é outro dia.
+        if (latest === day && !teamBoxes.some(box=>box.excluido!==true && isOpen(box) && boxDay(box)===day))
+          fail("failed-precondition","A jornada desta equipe já foi encerrada nessa data. Abra apenas no dia seguinte.");
         if (teamBoxes.some(box => (box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId)) && boxDay(box) === day && box.excluido === true)) fail("failed-precondition","Essa data já foi usada pelo vendedor e não pode ser criada novamente.");
         if (teamBoxes.some(box => box.excluido !== true && isOpen(box) && boxDay(box) !== day)) fail("failed-precondition","Feche os caixas abertos da equipe antes de abrir outro dia.");
       }
@@ -222,6 +256,14 @@ function criarCicloCaixa({ db, functions }) {
       if (!sellerUid || (box.vendedorAuthUid && sellerSnap.data().authUid && box.vendedorAuthUid !== sellerSnap.data().authUid)) fail("failed-precondition","Identidade do caixa exige regularização.");
       const teamId = box.equipeId || sellerSnap.data().equipeId;
       if (teamId) {
+        const unidadeSnap=await transaction.get(db.collection("equipes").doc(id(teamId)));
+        if(unidadeSnap.exists) {
+          const unidade=unidadeSnap.data();
+          if(unidade.clientePlataformaId!==who.tenant)
+            fail("permission-denied","Equipe fora da empresa.");
+          if(unidade.ativo===false || ["INATIVA","INATIVO","BLOQUEADA","BLOQUEADO","SUSPENSA"].includes(core.normalizarStatus(unidade.status)))
+            fail("failed-precondition","Reative a equipe antes de reabrir seu caixa.");
+        }
         const teamBoxes = await teamHistory(transaction,who,String(teamId));
         const teamControl = await transaction.get(db.collection("controle_caixas").doc(who.tenant + "_equipe_" + id(teamId)));
         const latest = [teamControl.exists ? teamControl.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
