@@ -8,7 +8,7 @@
     return !!day && !!info && day <= info.hoje && (day === info.dataParaConcluir || (!info.temCaixaAberto && (!info.ultimaData || day > info.ultimaData)));
   }
   global.IntegroCaixaDatas = { disponivel:available, abrir:open };
-  async function open() {
+  async function open(options = {}) {
     if (!allowed() || document.getElementById("caixaDateDialog")) return;
     try {
       await global.IntegroCaixasSupervisao?.carregarEstrutura?.();
@@ -125,6 +125,11 @@
       }
     };
     document.body.appendChild(dialog); dialog.showModal(); render();
+    const equipeSolicitada=String(options?.equipeId||'').trim();
+    if(equipeSolicitada&&teams.some(team=>String(team.id)===equipeSolicitada)){
+      select.value=equipeSolicitada;
+      void load(); // A data operacional continua sendo confirmada pelo backend.
+    }
     if (!teams.length) error.textContent = "Nenhuma equipe com vendedores disponível. Atualize a tela Caixas.";
   }
   function install() {
