@@ -387,7 +387,7 @@
           <small>${dateBR(boxDay(box))} · Caixa ${i+1}</small></div>
         <div class="cx-bulk-expected"><span>Calculado</span><strong>${cash(snapshot.caixaFinalEsperadoCentavos)}</strong></div>
         <label>Valor físico contado<input name="actual-${i}" type="number" step="0.01" inputmode="decimal" required
-          value="${(snapshot.caixaFinalEsperadoCentavos/100).toFixed(2)}" aria-label="Valor físico contado no caixa de ${esc(box.vendedorNome||box.vendedorId||'vendedor')}"></label>
+          placeholder="Informe o valor contado" aria-label="Valor físico contado no caixa de ${esc(box.vendedorNome||box.vendedorId||'vendedor')}"></label>
       </div>`).join('');
       dialog.innerHTML=`<form><div class="cx-bulk-head"><span>CONFERÊNCIA GERENCIAL</span>
         <h2 id="cxBulkCloseTitle">Fechar ${preparados.length} caixa(s)</h2>
@@ -848,7 +848,7 @@
       const managerOption=pending
         ? `<label style="display:flex;gap:10px;align-items:flex-start;margin:14px 0"><input type="checkbox" name="managerial" style="width:20px;flex-shrink:0"><span><strong>Encerrar ${pending} cobrança(s) sem baixa</strong><small style="display:block">Registrar automaticamente como NÃO PAGAS por decisão gerencial, sem presumir visita, sem gerar recebimento e mantendo o débito dos clientes.</small></span></label>`
         : '';
-      dialog.innerHTML=`<form><h2>Fechamento de caixa</h2><p>${esc(box.vendedorNome||'Vendedor')} · ${dateBR(boxDay(box))}</p><div class="cx-close-values">${metric('Caixa calculado',cash(snapshot.caixaFinalEsperadoCentavos))}${metric('Recebimentos',cash(snapshot.totalPagamentosCentavos))}${metric('Vendas / empréstimos',cash(snapshot.totalVendasCentavos))}</div>${managerOption}<label>Valor físico / real<input name="actual" type="number" step="0.01" required value="${snapshot.caixaFinalEsperadoCentavos/100}"></label><label>Observação<textarea name="reason" rows="3" placeholder="Obrigatória em fechamento gerencial ou com divergência"></textarea></label><p role="alert" data-cx-close-error></p><div class="cx-close-actions"><button type="button" class="ghost-btn" data-cx-cancel>Cancelar</button><button type="submit" class="primary-btn">Confirmar fechamento</button></div></form>`;
+      dialog.innerHTML=`<form><h2>Fechamento de caixa</h2><p>${esc(box.vendedorNome||'Vendedor')} · ${dateBR(boxDay(box))}</p><div class="cx-close-values">${metric('Caixa calculado',cash(snapshot.caixaFinalEsperadoCentavos))}${metric('Recebimentos',cash(snapshot.totalPagamentosCentavos))}${metric('Vendas / empréstimos',cash(snapshot.totalVendasCentavos))}</div>${managerOption}<label>Valor físico / real<input name="actual" type="number" step="0.01" inputmode="decimal" required placeholder="Digite o valor contado"></label><label>Observação<textarea name="reason" rows="3" placeholder="Obrigatória em fechamento gerencial ou com divergência"></textarea></label><p role="alert" data-cx-close-error></p><div class="cx-close-actions"><button type="button" class="ghost-btn" data-cx-cancel>Cancelar</button><button type="submit" class="primary-btn">Confirmar fechamento</button></div></form>`;
       const finish=value=>{dialog.close();dialog.remove();resolve(value);};
       dialog.querySelector('[data-cx-cancel]').onclick=()=>finish(null);dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});
       dialog.querySelector('form').onsubmit=event=>{
