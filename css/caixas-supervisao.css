@@ -556,3 +556,33 @@
  #caixas [data-caixas-supervisao] .cx-team-day-summary{gap:4px!important;padding:9px 8px!important}
  #caixas [data-caixas-supervisao] .cx-team-day-summary strong{font-size:13px!important}
 }
+
+/* Detalhamento responsivo: indicadores principais sempre visíveis; os demais à escolha. */
+#caixas .section-card.caixas-master-firebase{overflow:visible!important}
+[data-caixas-supervisao] .cx-team-extra-metrics{border:1px solid #e0e9f4;background:#fff;border-radius:13px;min-width:0}
+[data-caixas-supervisao] .cx-team-extra-metrics>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:9px;min-height:45px;padding:10px 14px;color:#29496e;font-size:12px;font-weight:850}
+[data-caixas-supervisao] .cx-team-extra-metrics>summary::-webkit-details-marker{display:none}
+[data-caixas-supervisao] .cx-team-extra-metrics>summary .material-symbols-rounded{font-size:19px;color:#6b87a8}
+[data-caixas-supervisao] .cx-team-extra-metrics>summary .cx-members-chevron{margin-left:auto;transition:transform .16s}
+[data-caixas-supervisao] .cx-team-extra-metrics[open]>summary .cx-members-chevron{transform:rotate(180deg)}
+[data-caixas-supervisao] .cx-team-extra-metrics .cx-team-detail-metrics{margin:0;padding:0 12px 12px}
+@media(max-width:850px){
+ #caixas [data-caixas-supervisao].cx-team-detail{display:grid!important;gap:11px!important;max-width:100%}
+ #caixas [data-caixas-supervisao].cx-team-detail>.cx-detail-header{margin:0 0 2px!important}
+ #caixas [data-caixas-supervisao] .cx-detail-header .cx-detail-back{margin-bottom:5px!important;min-height:36px!important}
+ #caixas [data-caixas-supervisao].cx-team-detail>.cx-team-toolbar{border-radius:12px;padding:9px 12px!important}
+ #caixas [data-caixas-supervisao].cx-team-detail>.cx-team-detail-metrics{margin:0!important;gap:8px!important;grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ #caixas [data-caixas-supervisao] .cx-team-primary-metrics article{min-height:75px!important;padding:12px!important;border-radius:12px!important}
+ #caixas [data-caixas-supervisao] .cx-team-primary-metrics article:first-child{grid-column:1/-1!important;min-height:67px!important;display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:space-between!important;background:#102d50!important;border-color:#102d50!important}
+ #caixas [data-caixas-supervisao] .cx-team-primary-metrics article:first-child small{color:#bbd0eb!important;font-size:12px}
+ #caixas [data-caixas-supervisao] .cx-team-primary-metrics article:first-child strong{color:#fff!important;font-size:21px}
+ #caixas [data-caixas-supervisao] .cx-team-primary-metrics article strong{font-size:17px!important}
+ #caixas [data-caixas-supervisao] .cx-team-secondary-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+ #caixas [data-caixas-supervisao] .cx-team-secondary-metrics article{min-height:75px!important;padding:11px!important;border-radius:11px!important}
+ #caixas [data-caixas-supervisao] .cx-team-extra-metrics>summary{min-height:44px;font-size:12px}
+ #caixas [data-caixas-supervisao] .cx-team-detail-section{margin:0!important;border-radius:13px!important;padding:12px!important}
+ #caixas [data-caixas-supervisao] .cx-team-detail-section .cx-list-heading{margin:0 0 12px!important}
+ #caixas [data-caixas-supervisao] .cx-team-detail-sellers{gap:7px!important}
+ #caixas [data-caixas-supervisao] .cx-team-detail-seller{min-height:56px!important;border-radius:11px!important}
+ #caixas [data-caixas-supervisao] .cx-team-detail-section .cx-table-scroll{overflow-x:auto!important;border-radius:10px}
+}
