@@ -335,3 +335,25 @@
 [data-caixas-supervisao] .cx-box-card-empty .cx-box-main p{font-size:12px;color:#69829d}
 @media(hover:hover){[data-caixas-supervisao] .cx-box-card:hover{transform:translateY(-2px);box-shadow:0 12px 27px #09203b18}}
 @media(prefers-reduced-motion:reduce){[data-caixas-supervisao] .cx-box-card{transition:none}}
+
+/* Detalhamento de caixa: transição visual e título inequívoco. */
+[data-caixas-supervisao] .cx-detail-header{display:flex!important;align-items:center!important;gap:12px!important;justify-content:space-between!important}
+[data-caixas-supervisao] .cx-detail-header>div{min-width:0;text-align:left}
+[data-caixas-supervisao] .cx-detail-header h2{text-align:left;margin:5px 0!important;font-size:clamp(20px,3vw,27px)!important}
+[data-caixas-supervisao] .cx-detail-header p{margin:0;color:#657a94;max-width:none}
+[data-caixas-supervisao] .cx-detail-back{display:inline-flex;gap:7px;align-items:center;min-height:38px!important;padding:6px 9px!important;background:#eef4fb!important;color:#18416e!important;border:1px solid #dce8f6!important;margin:0 0 11px;font-size:12px!important}
+[data-caixas-supervisao] .cx-detail-back .material-symbols-rounded{font-size:18px}
+[data-caixas-supervisao] .cx-detail-refresh{display:inline-flex;align-items:center;gap:5px;min-height:40px!important;flex-shrink:0;font-size:12px!important}
+[data-caixas-supervisao] .cx-detail-refresh .material-symbols-rounded{font-size:17px}
+@media(max-width:850px){
+ [data-caixas-supervisao] .cx-detail-header{display:grid!important;grid-template-columns:minmax(0,1fr) auto;align-items:end!important;gap:6px!important}
+ [data-caixas-supervisao] .cx-detail-header h2{font-size:23px!important;line-height:1.3}
+ [data-caixas-supervisao] .cx-detail-header .cx-eyebrow{display:block!important;font-size:9px;margin:3px 0}
+ [data-caixas-supervisao] .cx-detail-header p{display:block!important;font-size:11px;overflow-wrap:anywhere}
+ [data-caixas-supervisao] .cx-detail-refresh{font-size:0!important;min-height:40px!important;min-width:40px!important;padding:8px!important;margin-bottom:2px}
+ [data-caixas-supervisao] .cx-detail-refresh .material-symbols-rounded{font-size:21px}
+ [data-caixas-supervisao] .cx-detail-filters{margin:16px 0 10px!important;padding:12px!important;border:1px solid #e3eaf4;border-radius:15px;background:#f8fbff}
+ [data-caixas-supervisao] .cx-detail-filters label{font-size:11px}
+ [data-caixas-supervisao] .cx-tabs{margin:8px 0 14px!important}
+ [data-caixas-supervisao] .cx-summary-grid .cx-panel{box-shadow:0 5px 19px #091c350b}
+}
