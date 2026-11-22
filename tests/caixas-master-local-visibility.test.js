@@ -447,3 +447,73 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/stat\('Caixa atual',valorAtual\)/);
   assert.match(render,/stat\('Recebido',indicadorFinanceiro\('received'\),'green'\)/);
 });
+
+
+test("Abertura da tela Caixas consulta servidor por equipe sem depender apenas do cache",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/async function carregarCaixasServidor\(forcar=false\)/);
+  assert.match(source,/query\('caixas','equipeId',text\(row\.id\),text\(row\.id\)\)/);
+  assert.match(source,/if\(contexto!==ui\.context\)return/);
+  assert.match(source,/result\.caixas\.forEach\(rememberServerBox\)/);
+  assert.match(source,/estrutura\.caixasChecked=!falhas\.length/);
+  assert.match(source,/estrutura\.caixasError=falhas\.length/);
+  assert.match(source,/if\(estrutura\.loaded&&!estrutura\.loading&&!estrutura\.caixasAttempted\)void carregarCaixasServidor\(\)/);
+  assert.match(source,/!estrutura\.caixasChecked\?'CONFERINDO'/);
+  assert.match(source,/if\(estrutura\.caixasChecked\)unique\(entries\.flatMap/);
+});
+
+test("Fechamento em lote exige dinheiro físico informado separadamente e revalidação transacional",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/function confirmarFechamentoEmLote\(preparados,pendencias\)/);
+  assert.match(source,/const conferencia=await confirmarFechamentoEmLote\(preparados,pendencias\)/);
+  assert.match(source,/valorInformadoCentavos:conferencia\.valores\.get\(id\(box\)\)/);
+  assert.doesNotMatch(source,/valorInformadoCentavos:snapshot\.caixaFinalEsperadoCentavos/);
+  assert.match(source,/if\(\(pendencias\|\|divergiu\)&&!motivo\)/);
+  assert.match(source,/Number\.isSafeInteger\(centavos\)/);
+  assert.match(source,/registrarFechamentoCaixaTransacional/);
+  assert.match(source,/get\(\{source:'server'\}\)/);
+  assert.match(source,/name="actual-\$\{i\}".*required/);
+  assert.doesNotMatch(source,/name="actual-\$\{i\}"[\s\S]{0,100}value="\$\{/);
+});
+
+test("Conferência em lote recusa valor ausente e divergência sem justificativa",async()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const begin=source.indexOf("  function confirmarFechamentoEmLote(");
+  const end=source.indexOf("  async function fecharSelecionados(",begin);
+  assert.ok(begin>0&&end>begin);
+  const input={value:"",focus(){this.focused=true}};
+  const reason={value:"",focus(){this.focused=true}};
+  const error={textContent:""};
+  const form={onsubmit:null};
+  const cancel={onclick:null};
+  const dialog={
+    innerHTML:"",id:"",className:"",setAttribute(){},showModal(){this.open=true},
+    close(){this.open=false},remove(){this.removed=true},addEventListener(){},
+    querySelector(sel){
+      if(sel==='form')return form;
+      if(sel==='[data-cx-cancel]')return cancel;
+      if(sel==='[data-cx-bulk-error]')return error;
+      if(sel==='[name="actual-0"]')return input;
+      if(sel==='[name="reason"]')return reason;
+      return null;
+    }
+  };
+  const mockGlobal={document:{getElementById(){return null},createElement(){return dialog},body:{appendChild(){}}}};
+  const ctx={global:mockGlobal,id:v=>v.id,text:v=>String(v??"").trim(),esc:v=>String(v),
+    dateBR:()=> "21/11/2026",boxDay:()=> "2026-11-21",cash:v=>String(v)};
+  const fn=vm.runInNewContext(source.slice(begin,end)+";confirmarFechamentoEmLote",ctx);
+  const promise=fn([{box:{id:"cx-1",vendedorNome:"Vendedor A"},snapshot:{caixaFinalEsperadoCentavos:10000}}],1);
+  assert.equal(dialog.open,true);
+  form.onsubmit({preventDefault(){}});
+  assert.match(error.textContent,/valor físico válido/);
+  input.value="90.00";
+  form.onsubmit({preventDefault(){}});
+  assert.match(error.textContent,/justificativa é obrigatória/);
+  reason.value="Divergência física conferida na presença do gerente";
+  form.onsubmit({preventDefault(){}});
+  const confirmed=await promise;
+  assert.equal(confirmed.valores.get("cx-1"),9000);
+  assert.equal(confirmed.motivo,reason.value);
+  assert.equal(dialog.removed,true);
+});
