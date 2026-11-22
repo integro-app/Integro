@@ -246,6 +246,14 @@ function criarCicloCaixa({ db, functions }) {
       if (!sellerUid || (box.vendedorAuthUid && sellerSnap.data().authUid && box.vendedorAuthUid !== sellerSnap.data().authUid)) fail("failed-precondition","Identidade do caixa exige regularização.");
       const teamId = box.equipeId || sellerSnap.data().equipeId;
       if (teamId) {
+        const unidadeSnap=await transaction.get(db.collection("equipes").doc(id(teamId)));
+        if(unidadeSnap.exists) {
+          const unidade=unidadeSnap.data();
+          if(unidade.clientePlataformaId!==who.tenant)
+            fail("permission-denied","Equipe fora da empresa.");
+          if(unidade.ativo===false || ["INATIVA","INATIVO","BLOQUEADA","BLOQUEADO","SUSPENSA"].includes(core.normalizarStatus(unidade.status)))
+            fail("failed-precondition","Reative a equipe antes de reabrir seu caixa.");
+        }
         const teamBoxes = await teamHistory(transaction,who,String(teamId));
         const teamControl = await transaction.get(db.collection("controle_caixas").doc(who.tenant + "_equipe_" + id(teamId)));
         const latest = [teamControl.exists ? teamControl.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
