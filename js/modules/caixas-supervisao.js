@@ -375,6 +375,65 @@
     global.IntegroAberturaCaixa?.incorporar?.({caixaId:id(box),caixa:box});
   }
 
+  function confirmarFechamentoEmLote(preparados,pendencias) {
+    if(!Array.isArray(preparados)||!preparados.length)return Promise.resolve(null);
+    if(global.document.getElementById('cxBulkCloseDialog'))return Promise.resolve(null);
+    return new Promise(resolve=>{
+      const dialog=global.document.createElement('dialog');
+      dialog.id='cxBulkCloseDialog';dialog.className='cx-close-dialog cx-bulk-close-dialog';
+      dialog.setAttribute('aria-labelledby','cxBulkCloseTitle');
+      const rows=preparados.map(({box,snapshot},i)=>`<div class="cx-bulk-line">
+        <div class="cx-bulk-person"><strong>${esc(box.vendedorNome||box.vendedorId||'Vendedor')}</strong>
+          <small>${dateBR(boxDay(box))} · Caixa ${i+1}</small></div>
+        <div class="cx-bulk-expected"><span>Calculado</span><strong>${cash(snapshot.caixaFinalEsperadoCentavos)}</strong></div>
+        <label>Valor físico contado<input name="actual-${i}" type="number" step="0.01" inputmode="decimal" required
+          value="${(snapshot.caixaFinalEsperadoCentavos/100).toFixed(2)}" aria-label="Valor físico contado no caixa de ${esc(box.vendedorNome||box.vendedorId||'vendedor')}"></label>
+      </div>`).join('');
+      dialog.innerHTML=`<form><div class="cx-bulk-head"><span>CONFERÊNCIA GERENCIAL</span>
+        <h2 id="cxBulkCloseTitle">Fechar ${preparados.length} caixa(s)</h2>
+        <p>Confira o dinheiro físico de cada vendedor antes de confirmar. Os valores serão revalidados pelo servidor.</p></div>
+        ${pendencias?`<p class="cx-bulk-warning" role="status"><strong>${pendencias} cobrança(s) sem baixa.</strong>
+          O encerramento gerencial registrará essas ocorrências como NÃO PAGAS, sem criar recebimento nem presumir visita.</p>`:''}
+        <div class="cx-bulk-lines">${rows}</div>
+        <label>Justificativa / observação<textarea name="reason" maxlength="1000" rows="3"
+          placeholder="Obrigatória quando houver divergência ou baixa gerencial"></textarea></label>
+        <p class="cx-bulk-error" data-cx-bulk-error role="alert"></p>
+        <div class="cx-close-actions"><button type="button" class="ghost-btn" data-cx-cancel>Cancelar</button>
+          <button type="submit" class="danger-btn">Confirmar fechamento</button></div></form>`;
+      let finished=false;
+      const finish=value=>{
+        if(finished)return;
+        finished=true;dialog.close();dialog.remove();resolve(value);
+      };
+      dialog.querySelector('[data-cx-cancel]').onclick=()=>finish(null);
+      dialog.addEventListener('cancel',event=>{event.preventDefault();finish(null);});
+      dialog.querySelector('form').onsubmit=event=>{
+        event.preventDefault();
+        const values=new Map(),error=dialog.querySelector('[data-cx-bulk-error]');
+        let divergiu=false;
+        for(let i=0;i<preparados.length;i++){
+          const input=dialog.querySelector(`[name="actual-${i}"]`);
+          const valor=Number(input?.value),centavos=Math.round(valor*100);
+          if(!input?.value||!Number.isFinite(valor)||!Number.isSafeInteger(centavos)){
+            error.textContent='Informe um valor físico válido para todos os caixas.';
+            input?.focus();return;
+          }
+          const {box,snapshot}=preparados[i];
+          values.set(id(box),centavos);
+          if(centavos!==snapshot.caixaFinalEsperadoCentavos)divergiu=true;
+        }
+        const motivo=text(dialog.querySelector('[name="reason"]').value);
+        if((pendencias||divergiu)&&!motivo){
+          error.textContent='A justificativa é obrigatória para divergências e encerramento gerencial.';
+          dialog.querySelector('[name="reason"]').focus();return;
+        }
+        finish({valores:values,motivo});
+      };
+      global.document.body.appendChild(dialog);
+      dialog.showModal();
+    });
+  }
+
   async function fecharSelecionados() {
     if(!['master_local','gerente','supervisor'].includes(access().perfil))
       throw Error('Perfil sem permissão para fechar caixas.');
@@ -415,23 +474,19 @@
     if(!preparados.length)
       return {fechados:0,divergentes:0,bloqueados:0,erros:falhas.length,falhas};
     const pendencias=preparados.reduce((n,item)=>n+Math.max(0,Number(item.snapshot.pendenciasCobranca)||0),0);
-    const confirmado=global.confirm?.(
-      'Confirmar fechamento de '+preparados.length+' caixa(s)?'+
-      (pendencias?'\n'+pendencias+' cobrança(s) sem baixa serão registradas como NÃO PAGAS, sem presumir visita e sem reduzir a dívida.':'')+
-      '\nO saldo de cada caixa será conferido novamente pelo servidor.'
-    );
-    if(!confirmado)return {fechados:0,divergentes:0,cancelados:preparados.length,bloqueados:0,erros:falhas.length,falhas};
-    const motivo=pendencias?text(global.prompt?.(
-      'Justificativa obrigatória para encerrar '+pendencias+' cobrança(s) sem baixa:')||''):'';
-    if(pendencias&&!motivo)
+    // Cada caixa requer conferência do valor físico. Nunca usar o valor
+    // calculado como se fosse o dinheiro contado pelo responsável.
+    const conferencia=await confirmarFechamentoEmLote(preparados,pendencias);
+    if(!conferencia)
       return {fechados:0,divergentes:0,cancelados:preparados.length,bloqueados:0,erros:falhas.length,falhas};
+    const motivo=conferencia.motivo;
     const result={fechados:0,divergentes:0,bloqueados:0,erros:falhas.length,falhas};
     for(const {box,snapshot} of preparados) {
       try {
         const resposta=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({
           caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),
           vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,
-          valorInformadoCentavos:snapshot.caixaFinalEsperadoCentavos,
+          valorInformadoCentavos:conferencia.valores.get(id(box)),
           justificativa:motivo,encerramentoGerencial:Number(snapshot.pendenciasCobranca)>0,
           snapshot,origem:'supervisor_fechamento_equipe'
         });
