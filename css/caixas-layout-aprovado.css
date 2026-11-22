@@ -386,3 +386,14 @@
 @media(prefers-reduced-motion:reduce){
  #caixas [data-caixas-supervisao] .cx-approved-team{transition:none!important}
 }
+
+/* Ações contextuais só ficam visíveis quando o usuário abre o menu do cartão. */
+#caixas [data-caixas-supervisao] .cx-team-card-menu:not([open])>.cx-team-card-menu-panel{
+  display:none!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team:focus-within{border-color:#9bbfe6}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-card-menu summary:focus-visible,
+#caixas [data-caixas-supervisao] .cx-team-open:focus-visible,
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail:focus-visible{
+  outline:3px solid #80b7f4;outline-offset:3px
+}
