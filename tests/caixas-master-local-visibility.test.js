@@ -528,3 +528,20 @@ test("Caixas antigos ausentes da consulta do servidor não reaparecem pelo cache
   assert.match(source,/!estrutura\.caixasChecked\|\|estrutura\.caixasIds\.has\(id\(b\)\)/);
   assert.match(source,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
 });
+
+
+test("Troca de empresa ou usuário interrompe novas transações financeiras do Master Local",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function validarContextoOperacao(");
+  const end=source.indexOf("  async function abrirSelecionados(",start);
+  assert.ok(start>0&&end>start);
+  const context={ui:{context:"empresa-1|usuario-1|master_local"},tenant:()=>"empresa-1",allowed:()=>true};
+  const verificar=vm.runInNewContext(source.slice(start,end)+";validarContextoOperacao",context);
+  assert.doesNotThrow(()=>verificar("empresa-1|usuario-1|master_local","empresa-1"));
+  context.ui.context="empresa-2|usuario-2|master_local";
+  assert.throws(()=>verificar("empresa-1|usuario-1|master_local","empresa-1"),/empresa ou o usuário mudou/);
+  assert.match(source,/validarContextoOperacao\(contextoOperacao,tenantOperacao\)/);
+  assert.match(source,/const tarefas=propostas\.map\(proposta=>async\(\)=>\{\s*validarContextoOperacao/);
+  assert.match(source,/for\(const \{box,snapshot\} of preparados\) \{\s*try \{\s*validarContextoOperacao/);
+});
