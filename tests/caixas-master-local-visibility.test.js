@@ -612,3 +612,14 @@ test("Fechamento em lote respeita caixa selecionado em vez de fechar toda equipe
   assert.match(source,/async function open\(teamId, boxId = ''\)/);
   assert.match(source,/ui\.box=solicitado\|\|id\(ui\.history\.find\(openBox\)\|\|ui\.history\[0\]\)/);
 });
+
+
+test("Filtro global não injeta Buscar/Filtros redundantes no módulo Caixas",()=>{
+  const shared=fs.readFileSync(path.join(root,"js/integro-filter-drawer.js"),"utf8");
+  assert.match(shared,/!el\.closest\('\[data-caixas-supervisao\]'\)/);
+  assert.match(shared,/if\(field\.closest\('\[data-caixas-supervisao\]'\)\)return/);
+  assert.match(html,/js\/integro-filter-drawer\.js\?v=20261121-caixas-mobile-v2/);
+  const modulo=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(modulo,/data-cx-search/);
+  assert.match(modulo,/class="cx-filter-options"/);
+});
