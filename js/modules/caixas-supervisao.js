@@ -867,6 +867,9 @@
       ui.team='';ui.status='';ui.selected.clear();ui.selectedBoxes.clear();render();
     });
     host.querySelectorAll('[data-cx-quick]').forEach(button=>button.onclick=()=>{ui.status=button.dataset.cxQuick;render();});
+    host.querySelector('[data-cx-order]')?.addEventListener('change',event=>{
+      ui.order=event.target.value;render();
+    });
     host.querySelector('[data-cx-search-clear]').onclick=()=>{ui.search='';render();host.querySelector('[data-cx-search]')?.focus();};
     host.querySelector('[data-cx-team]').onchange=e=>{ui.team=e.target.value;render();};host.querySelector('[data-cx-status]').onchange=e=>{ui.status=e.target.value;render();};
     host.querySelector('[data-cx-search]').oninput=e=>{const field=e.currentTarget;const position=field.selectionStart;ui.search=field.value;render();const next=host.querySelector('[data-cx-search]');if(next){next.focus();try{next.setSelectionRange(position,position);}catch(_){}}};
@@ -888,6 +891,35 @@
     host.querySelectorAll('[data-cx-open]').forEach(b=>b.onclick=()=>open(b.dataset.cxOpen));
     host.querySelectorAll('[data-cx-open-box]').forEach(button=>{
       button.onclick=()=>open(button.dataset.cxTeam,button.dataset.cxOpenBox);
+    });
+    host.querySelectorAll('[data-cx-toggle-members]').forEach(button=>{
+      button.onclick=()=>{
+        const teamId=text(button.dataset.cxToggleMembers);
+        if(ui.expandedTeams.has(teamId))ui.expandedTeams.delete(teamId);
+        else ui.expandedTeams.add(teamId);
+        render();
+      };
+    });
+    host.querySelectorAll('[data-cx-menu-select-team]').forEach(button=>{
+      button.onclick=()=>{
+        const teamId=text(button.dataset.cxMenuSelectTeam);
+        if(!rows().some(row=>text(row.id)===teamId)){actionFeedback('Equipe sem permissão para operar.',true);return;}
+        ui.selectedBoxes.clear();
+        if(ui.selected.has(teamId))ui.selected.delete(teamId);
+        else ui.selected.add(teamId);
+        render();
+      };
+    });
+    host.querySelectorAll('[data-cx-menu-calendar]').forEach(button=>{
+      button.onclick=()=>{
+        const teamId=text(button.dataset.cxMenuCalendar);
+        if(!podeGerir('abrir')||!rows().some(row=>text(row.id)===teamId)){
+          actionFeedback('Equipe ou permissão indisponível para abertura.',true);return;
+        }
+        if(typeof global.IntegroCaixaDatas?.abrir==='function')
+          global.IntegroCaixaDatas.abrir({equipeId:teamId});
+        else actionFeedback('Calendário de abertura indisponível.',true);
+      };
     });
     host.querySelectorAll('[data-cx-members]').forEach(detail=>{
       detail.addEventListener('toggle',()=>{
