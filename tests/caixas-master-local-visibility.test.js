@@ -708,3 +708,13 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
   assert.match(detail,/if\(estrutura\.caixasChecked\)boxes\.forEach\(loadOverview\)/);
   assert.match(source,/const podeAbrir=row\.ativa&&podeGerir\('abrir'\)/);
 });
+
+
+test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente encerrada",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/const inconsistentes=history\.filter/);
+  assert.match(source,/inconsistentes\.length\?'REVISÃO'/);
+  assert.match(source,/const exigeRevisao=boxes\.some/);
+  assert.match(source,/exigeRevisao\?'REVISÃO':aberto\?'EM OPERAÇÃO'/);
+  assert.match(source,/history\.some\(b=>\['ABERTO','REABERTO'\]\.includes\(upper\(b\.status\)\)&&b\.ativo===false\)/);
+});
