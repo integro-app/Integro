@@ -216,7 +216,7 @@ test("supervisão não usa caixa inexistente no servidor para inflar indicador",
   assert.match(source,/caixasInexistentesServidor\.add\(key\)/);
   assert.match(source,/!caixasInexistentesServidor\.has\(id\(b\)\)/);
   assert.match(source,/const overviewConferido=m=>/);
-  assert.match(source,/verifiedBoxes\.has\(id\(b\)\)/);
+  assert.match(source,/verifiedBoxes\.has\(id\(caixa\)\)/);
   assert.match(source,/avisosDuplicidadePorVendedor\(row,history\)/);
 });
 
