@@ -268,7 +268,7 @@ test("ações de Caixas dependem da conferência no servidor e calendário não 
   const detail=source.slice(source.indexOf("  function renderDetail(host)"),source.indexOf("  function confirmClosure("));
   assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
   assert.match(overview,/botaoAbrir\.disabled=!acoes\.podeAbrir/);
-  assert.match(overview,/botaoFechar\.disabled=!acoes\.podeFechar/);
+  assert.match(overview,/botaoFechar\.disabled=!\(ui\.selectedBoxes\.size\?podeFecharCaixa:acoes\.podeFechar\)/);
   assert.match(source,/httpsCallable\('consultarDatasCaixaEquipe'\)/);
   assert.doesNotMatch(detail,/data-cx-open-date \$\{openBox\(box\)\?'disabled':''\}/);
   assert.match(detail,/data-cx-open-date title="Abrir calendário/);
