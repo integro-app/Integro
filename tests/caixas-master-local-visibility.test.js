@@ -454,7 +454,7 @@ test("Abertura da tela Caixas consulta servidor por equipe sem depender apenas d
   assert.match(source,/async function carregarCaixasServidor\(forcar=false\)/);
   assert.match(source,/query\('caixas','equipeId',text\(row\.id\),text\(row\.id\)\)/);
   assert.match(source,/if\(contexto!==ui\.context\)return/);
-  assert.match(source,/result\.caixas\.forEach\(rememberServerBox\)/);
+  assert.match(source,/result\.caixas\.forEach\(caixa=>\{idsConsultados\.add\(id\(caixa\)\);rememberServerBox\(caixa\);\}\)/);
   assert.match(source,/estrutura\.caixasChecked=!falhas\.length/);
   assert.match(source,/estrutura\.caixasError=falhas\.length/);
   assert.match(source,/if\(estrutura\.loaded&&!estrutura\.loading&&!estrutura\.caixasAttempted\)void carregarCaixasServidor\(\)/);
@@ -544,4 +544,71 @@ test("Troca de empresa ou usuário interrompe novas transações financeiras do 
   assert.match(source,/validarContextoOperacao\(contextoOperacao,tenantOperacao\)/);
   assert.match(source,/const tarefas=propostas\.map\(proposta=>async\(\)=>\{\s*validarContextoOperacao/);
   assert.match(source,/for\(const \{box,snapshot\} of preparados\) \{\s*try \{\s*validarContextoOperacao/);
+});
+
+
+test("Caixas mobile remove sino do cabeçalho global sem remover notificações do menu",()=>{
+  assert.doesNotMatch(html,/id="integroNotificationButton"/);
+  assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
+  assert.match(html,/js\/unified-navigation\.js/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261121-caixas-mobile-v2/);
+  const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
+  assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
+  assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
+});
+
+test("Cabeçalho de Caixas traz indicadores e Ações antes de pesquisa e filtros",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function render() {"),end=source.indexOf("  async function query(",start);
+  const overview=source.slice(start,end);
+  const header=overview.indexOf('<header class="cx-head">');
+  const stats=overview.indexOf('<div class="cx-stats">');
+  const actions=overview.indexOf('<footer class="cx-footer">');
+  const search=overview.indexOf('<div class="cx-commandbar">');
+  assert.ok(header>0&&header<stats&&stats<actions&&actions<search);
+  assert.match(overview,/class="cx-actions-dropdown"/);
+  assert.match(overview,/data-cx-open-date-from-actions/);
+  assert.match(overview,/data-cx-select-all-teams/);
+  assert.match(overview,/data-cx-select-open-boxes/);
+  assert.match(overview,/data-cx-clear-marks/);
+  assert.match(overview,/data-cx-refresh/);
+});
+
+test("Cartões de caixas no mobile permitem seleção individual e abrem o documento correto",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function renderCardsCaixa("),end=source.indexOf("  function render() {",start);
+  assert.ok(start>0&&end>start);
+  const functions=vm.runInNewContext(source.slice(start,end)+";renderCardsCaixa",{
+    esc:v=>String(v??""),text:v=>String(v??"").trim(),id:v=>String(v?.id||""),
+    openBox:box=>box.status==="ABERTO"&&box.ativo!==false,
+    badge:box=>"<span>"+box.status+"</span>",
+    dateBR:v=>v==="2026-11-21"?"21/11/2026":"—",
+    boxDay:box=>box.dataOperacional,
+    cash:v=>String(v),
+    estrutura:{caixasChecked:true},
+    ui:{selectedBoxes:new Set(["cx-001"])}
+  });
+  const cards=functions([{
+    row:{id:"equipe-1",nome:"Equipe Norte",vendedores:[{id:"v-1",nome:"Vendedor Um"}]},
+    models:[{box:{id:"cx-001",status:"ABERTO",vendedorNome:"Vendedor Um",vendedorId:"v-1",
+      dataOperacional:"2026-11-21"},current:120000,wallet:800000,received:12000}]
+  }],()=>true);
+  assert.match(cards,/data-cx-open-box="cx-001"/);
+  assert.match(cards,/data-cx-team="equipe-1"/);
+  assert.match(cards,/data-cx-select-box="cx-001"/);
+  assert.match(cards,/Ver detalhamento/);
+  assert.match(cards,/checked/);
+  const mobile=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
+  assert.match(mobile,/\[data-caixas-supervisao\] \.cx-box-grid\{display:grid/);
+  assert.match(mobile,/\[data-caixas-supervisao\] \.cx-overview-scroll\{display:none!important/);
+});
+
+test("Fechamento em lote respeita caixa selecionado em vez de fechar toda equipe",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/selectedBoxes:new Set\(\)/);
+  assert.match(source,/const caixaIdsSelecionados=new Set\(ui\.selectedBoxes\)/);
+  assert.match(source,/!caixaIdsSelecionados\.size\|\|caixaIdsSelecionados\.has\(id\(box\)\)/);
+  assert.match(source,/async function open\(teamId, boxId = ''\)/);
+  assert.match(source,/ui\.box=solicitado\|\|id\(ui\.history\.find\(openBox\)\|\|ui\.history\[0\]\)/);
 });
