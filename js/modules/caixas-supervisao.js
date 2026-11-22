@@ -738,9 +738,39 @@
       }finally{ui.actionBusy=false;if(button.isConnected)button.disabled=false;render();}
     };
     host.querySelectorAll('[data-cx-open]').forEach(b=>b.onclick=()=>open(b.dataset.cxOpen));
+    host.querySelectorAll('[data-cx-open-box]').forEach(button=>{
+      button.onclick=()=>open(button.dataset.cxTeam,button.dataset.cxOpenBox);
+    });
+    host.querySelectorAll('[data-cx-select-box]').forEach(checkbox=>{
+      checkbox.onchange=()=>{
+        const caixaId=text(checkbox.dataset.cxSelectBox);
+        checkbox.checked?ui.selectedBoxes.add(caixaId):ui.selectedBoxes.delete(caixaId);
+        // Uma seleção individual não deve fechar caixas não selecionados da equipe.
+        if(checkbox.checked)ui.selected.clear();
+        render();
+      };
+    });
+    host.querySelector('[data-cx-open-date-from-actions]')?.addEventListener('click',()=>{
+      host.querySelector('[data-cx-actions]').open=false;
+      if(typeof global.IntegroCaixaDatas?.abrir==='function')global.IntegroCaixaDatas.abrir();
+      else actionFeedback('Calendário de abertura indisponível. Atualize a página.',true);
+    });
+    host.querySelector('[data-cx-select-all-teams]')?.addEventListener('click',()=>{
+      ui.selectedBoxes.clear();
+      entries.forEach(entry=>ui.selected.add(text(entry.row.id)));
+      render();
+    });
+    host.querySelector('[data-cx-select-open-boxes]')?.addEventListener('click',()=>{
+      ui.selected.clear();
+      entries.flatMap(entry=>entry.models).filter(m=>openBox(m.box)).forEach(m=>ui.selectedBoxes.add(id(m.box)));
+      render();
+    });
+    host.querySelector('[data-cx-clear-marks]')?.addEventListener('click',()=>{
+      ui.selected.clear();ui.selectedBoxes.clear();render();
+    });
     host.querySelectorAll('[data-cx-row]').forEach(row=>{row.onclick=e=>{if(!e.target.closest('button,input,select,a'))open(row.dataset.cxRow);};row.onkeydown=e=>{if(e.target===row&&['Enter',' '].includes(e.key)){e.preventDefault();open(row.dataset.cxRow);}};});
-    host.querySelectorAll('[data-caixas-equipe]').forEach(c=>c.onchange=e=>{const team=text(c.dataset.caixasEquipe);e.target.checked?ui.selected.add(team):ui.selected.delete(team);render();});
-    host.querySelector('[data-cx-all]').onchange=e=>{entries.forEach(v=>e.target.checked?selected.add(text(v.row.id)):selected.delete(text(v.row.id)));render();};
+    host.querySelectorAll('[data-caixas-equipe]').forEach(c=>c.onchange=e=>{const team=text(c.dataset.caixasEquipe);ui.selectedBoxes.clear();e.target.checked?ui.selected.add(team):ui.selected.delete(team);render();});
+    host.querySelector('[data-cx-all]').onchange=e=>{ui.selectedBoxes.clear();entries.forEach(v=>e.target.checked?selected.add(text(v.row.id)):selected.delete(text(v.row.id)));render();};
     host.querySelector('#btnAbrirCaixasSelecionadas').onclick=async()=>{if(ui.actionBusy)return;ui.actionBusy=true;try{await abrirSelecionados();}catch(error){actionFeedback(error.message||'Não foi possível abrir os caixas.',true);}finally{ui.actionBusy=false;render();}};
     host.querySelector('#btnFecharCaixasSelecionadas').onclick=async event=>{
       if (ui.actionBusy) return;
@@ -765,14 +795,15 @@
     const acoes=disponibilidadeAcoesEquipes(entries,selected,access().perfil,ui.actionBusy||!estrutura.caixasChecked);
     const botaoAbrir=host.querySelector("#btnAbrirCaixasSelecionadas");
     const botaoFechar=host.querySelector("#btnFecharCaixasSelecionadas");
+    const podeFecharCaixa=estrutura.caixasChecked&&!ui.actionBusy&&['master_local','gerente','supervisor'].includes(access().perfil)&&caixasMarcados.some(openBox);
     botaoAbrir.disabled=!acoes.podeAbrir;
-    botaoFechar.disabled=!acoes.podeFechar;
+    botaoFechar.disabled=!(ui.selectedBoxes.size?podeFecharCaixa:acoes.podeFechar);
     botaoAbrir.title=acoes.equipesSelecionadas
       ? 'Consultar elegibilidade e abrir apenas caixas permitidos pelo servidor'
       : 'Selecione uma equipe para abrir caixas elegíveis';
-    botaoFechar.title=acoes.podeFechar
-      ? 'Conferir e fechar caixas abertos da equipe selecionada'
-      : 'Selecione uma equipe que possua caixas abertos';
+    botaoFechar.title=ui.selectedBoxes.size
+      ? 'Conferir os caixas individuais selecionados'
+      : acoes.podeFechar?'Conferir caixas abertos das equipes selecionadas':'Selecione equipe ou caixa aberto';
     if(estrutura.error)actionFeedback('Erro ao consultar equipes: '+estrutura.error,true);
     else if(ui.actionMessage)actionFeedback(ui.actionMessage,ui.actionError);
     if(estrutura.caixasChecked)unique(entries.flatMap(v=>[...v.models.map(m=>m.box),...v.history.filter(openBox)])).forEach(loadOverview);return true;
