@@ -97,7 +97,7 @@
   let estrutura={context:'',loaded:false,loading:false,error:'',equipes:[],usuarios:[]};
   // Vínculos antigos podem usar equipe principal, lista ou objeto; nunca
   // associar vendedor por nome quando existem IDs explícitos diferentes.
-  const equipeNomeNormalizado = v => text(v).normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('pt-BR');
+  const equipeNomeNormalizado = v => text(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
   function vendedorPertenceEquipe(v,e,lista=[]) {
     if(tenantOf(v)!==tenantOf(e))return false;
     const referencias=[v.equipeId,v.timeId,v.unidadeId,
@@ -485,8 +485,42 @@
       for(const selectedId of ui.selected)if(!idsPermitidos.has(selectedId))ui.selected.delete(selectedId);
     }
     if (ui.detail) { renderDetail(host);return true; }
-    const all = rows(), visible = all.filter(r => (!ui.team || text(r.id)===ui.team) && (!ui.search || [r.nome,...r.vendedores.flatMap(v=>[v.nome,v.nomeCompleto,v.email])].some(value=>text(value).toLocaleLowerCase('pt-BR').includes(ui.search.toLocaleLowerCase('pt-BR')))));
-    const entries = visible.map(row => {const history=teamBoxes(row),active=history.filter(openBox),latest=active[0]||history[0],boxes=latest?history.filter(b=>boxDay(b)===boxDay(latest)):[];const models=boxes.map(b=>{const cache=overview.get(id(b)),current=JSON.stringify([b.status,b.atualizadoEm,b.saldoAtualCentavos]);return model(b,cache?.fingerprint===current?cache.data:cachedData());});return {row,latest,history,models,avisos:[...new Set([...history.map(box=>avisoVinculoCaixa(row,box)).filter(Boolean),...avisosDuplicidadePorVendedor(row,history)])],status:active.length?'ABERTO':latest?(['FECHADO','FECHADA'].includes(upper(latest.status))?'FECHADO':upper(latest.status)):'SEM_CAIXA'};}).filter(v=>!ui.status||v.status===ui.status);
+    const all = rows();
+    const searchTerm=equipeNomeNormalizado(ui.search);
+    const matchesSearch=row=>!searchTerm||
+      [row.nome,...row.vendedores.flatMap(v=>[v.nome,v.nomeCompleto,v.email])]
+        .some(value=>equipeNomeNormalizado(value).includes(searchTerm));
+    const allEntries=all.map(row=>{
+      const history=teamBoxes(row),active=history.filter(openBox),
+        latest=active[0]||history[0],
+        boxes=latest?history.filter(b=>boxDay(b)===boxDay(latest)):[];
+      const models=boxes.map(b=>{
+        const cache=overview.get(id(b));
+        const current=JSON.stringify([b.status,b.atualizadoEm,b.saldoAtualCentavos]);
+        return model(b,cache?.fingerprint===current?cache.data:cachedData());
+      });
+      return {row,latest,history,models,
+        avisos:[...new Set([...history.map(box=>avisoVinculoCaixa(row,box)).filter(Boolean),
+          ...avisosDuplicidadePorVendedor(row,history)])],
+        status:active.length?'ABERTO':latest?
+          (['FECHADO','FECHADA'].includes(upper(latest.status))?'FECHADO':upper(latest.status)):'SEM_CAIXA'};
+    });
+    const searchedEntries=allEntries.filter(v=>(!ui.team||text(v.row.id)===ui.team)&&matchesSearch(v.row));
+    const entries=searchedEntries.filter(v=>!ui.status||v.status===ui.status);
+    // Ações em lote nunca podem atingir uma equipe que desapareceu dos filtros.
+    if(estrutura.loaded){
+      const exibidas=new Set(entries.map(v=>text(v.row.id)));
+      for(const selectedId of ui.selected)if(!exibidas.has(selectedId))ui.selected.delete(selectedId);
+    }
+    const situacoes=[
+      ['', 'Todas', searchedEntries.length],
+      ['ABERTO','Em operação',searchedEntries.filter(v=>v.status==='ABERTO').length],
+      ['FECHADO','Fechadas',searchedEntries.filter(v=>v.status==='FECHADO').length],
+      ['SEM_CAIXA','Sem caixa',searchedEntries.filter(v=>v.status==='SEM_CAIXA').length],
+      ['DIVERGENTE','Divergentes',searchedEntries.filter(v=>v.status==='DIVERGENTE').length]
+    ];
+    const vendedoresUnicos=new Set(all.flatMap(row=>row.vendedores.map(v=>id(v)||text(v.authUid||v.email)))).size;
+    const equipesSemVendedor=all.filter(row=>!row.vendedores.length).length;
     const total = key => entries.reduce((n,v)=>n+v.models.reduce((n,m)=>n+num(m[key]),0),0), selected=ui.selected;
     const selecionadasNaTela = entries.filter(v=>selected.has(text(v.row.id)));
     const caixasSelecionados = selecionadasNaTela.reduce((n,v)=>n+v.models.length,0);
