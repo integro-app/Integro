@@ -348,3 +348,20 @@ test("M12: total e linhas de supervisão propagam saldo desconhecido sem convert
   assert.match(source, /cash\(models\.some\(m=>m\[k\]==null\)\?null:models\.reduce/);
   assert.match(source, /const cash = v => v == null \? 'Não registrado'/);
 });
+
+
+test("master local: operação pesquisa vendedores em tempo real e preserva seleção durante carregamento",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/\[r\.nome,\.\.\.r\.vendedores\.flatMap/);
+  assert.match(source,/\['data-cx-search'\]\)\.oninput/);
+  assert.match(source,/if\(estrutura\.loaded\)\{/);
+  assert.match(source,/idsPermitidos\.has\(selectedId\)/);
+});
+
+test("master local: indicador de caixa atual considera apenas caixas abertos",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/active=history\.filter\(openBox\)/);
+  assert.match(source,/latest=active\[0\]\|\|history\[0\]/);
+  assert.match(source,/modelosAbertos=entries\.flatMap/);
+  assert.match(source,/abertosNaTela\.length!==modelosAbertos\.length/);
+});
