@@ -1,0 +1,405 @@
+
+/* ÍNTEGRO | Master Local · Caixas — layout homologado em 22/11/2026.
+   Interface isolada por #caixas para não afetar os demais perfis/módulos.
+   Fonte única dos valores: JS + Firestore; estilos não simulam dados. */
+#caixas [data-caixas-supervisao]{--cx-ap-navy:#0a2445;--cx-ap-ink:#102d50;--cx-ap-muted:#637991;--cx-ap-line:#dae6f2;color:var(--cx-ap-ink);min-width:0}
+#caixas [data-caixas-supervisao] .cx-approved-head{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  padding:10px 0 18px!important;margin:0!important;border:0!important;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-head-brand{
+  display:flex!important;align-items:center;justify-content:flex-start;gap:18px;
+  min-width:0;text-align:left!important
+}
+#caixas [data-caixas-supervisao] .cx-brand-wordmark{
+  display:none;font-weight:950;font-size:24px;letter-spacing:-.07em;white-space:nowrap;color:#fff
+}
+#caixas [data-caixas-supervisao] .cx-brand-wordmark b{font-weight:950;color:#ff9416}
+#caixas [data-caixas-supervisao] .cx-brand-divider{display:none;width:1px;height:35px;background:#ffffff80}
+#caixas [data-caixas-supervisao] .cx-approved-head h2{
+  margin:0!important;font-size:clamp(25px,2.6vw,34px)!important;
+  letter-spacing:-.045em!important;color:#092443!important;font-weight:900!important;text-align:left!important
+}
+/* Uma única barra de comando: pesquisar, filtrar, agir. */
+#caixas [data-caixas-supervisao] .cx-query-row{
+  display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;
+  align-items:start;gap:10px!important;margin:0 0 15px!important;min-width:0;overflow:visible!important
+}
+#caixas [data-caixas-supervisao] .cx-query-row .cx-commandbar{
+  display:block!important;min-width:0;max-width:none!important;margin:0!important
+}
+#caixas [data-caixas-supervisao] .cx-query-row .cx-commandbar .cx-searchbar{
+  margin:0!important;width:100%;max-width:none;flex:initial
+}
+#caixas [data-caixas-supervisao] .cx-query-row .cx-searchbar input{
+  min-height:49px!important;width:100%;border:1px solid #cad9ea!important;
+  border-radius:14px!important;background:#fff!important;padding-left:45px;
+  box-shadow:0 3px 12px #061b310a;color:#123050;font-size:13px!important
+}
+#caixas [data-caixas-supervisao] .cx-sync-state{font-size:10px;margin:6px 0 0;color:#73849a}
+#caixas [data-caixas-supervisao] .cx-query-row .cx-filter-options{
+  position:relative;margin:0!important;border:0!important;box-shadow:none!important;
+  overflow:visible!important;background:transparent!important;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-query-row .cx-filter-options>summary{
+  min-height:49px;display:flex!important;gap:7px;align-items:center;justify-content:center;
+  white-space:nowrap;padding:10px 14px!important;border:1px solid #ccd9e9!important;
+  border-radius:14px!important;background:#fff!important;font-size:13px!important;
+  font-weight:850;color:#102d50;box-shadow:0 3px 12px #071a330a
+}
+#caixas [data-caixas-supervisao] .cx-filter-options>summary .material-symbols-rounded{font-size:21px}
+#caixas [data-caixas-supervisao] .cx-filter-options>summary .cx-filter-state{display:none!important}
+#caixas [data-caixas-supervisao] .cx-filter-options[open]>summary{
+  background:#f1f6fc!important;border-color:#8db2dc!important
+}
+#caixas [data-caixas-supervisao] .cx-filter-options>.cx-filters{
+  position:absolute;z-index:180;top:calc(100% + 8px);right:0;
+  display:grid;grid-template-columns:1fr;gap:10px;width:min(350px,calc(100vw - 32px));
+  padding:15px;background:#fff;border:1px solid #dce7f3;border-radius:15px;
+  box-shadow:0 18px 42px #091e3840
+}
+#caixas [data-caixas-supervisao] .cx-query-row .cx-footer{
+  position:relative;margin:0!important;padding:0!important;border:0!important;
+  background:transparent!important;box-shadow:none!important;display:block!important;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-footer #caixasSelectionCount{display:none!important}
+#caixas [data-caixas-supervisao] .cx-footer .cx-actions-dropdown{position:relative}
+#caixas [data-caixas-supervisao] .cx-footer .cx-actions-dropdown>summary{
+  min-height:49px!important;display:flex!important;align-items:center;justify-content:center;
+  padding:9px 15px!important;gap:7px;white-space:nowrap;border:0!important;
+  border-radius:14px!important;background:linear-gradient(120deg,#ffa82a,#ff7905)!important;
+  color:#fff!important;font-weight:900;font-size:13px!important;
+  box-shadow:0 7px 17px #e9841328
+}
+#caixas [data-caixas-supervisao] .cx-footer .cx-actions-panel{
+  width:min(350px,calc(100vw - 32px));right:0;top:calc(100% + 8px);max-height:65dvh;z-index:190
+}
+/* Apenas abas de equipes na listagem. Situação individual continua nos Filtros. */
+#caixas [data-caixas-supervisao] .cx-team-tabs{
+  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:6px!important;padding:6px!important;margin:0 0 17px!important;
+  border:1px solid #dfe8f3;border-radius:17px;background:#f0f4fa;overflow:hidden!important
+}
+#caixas [data-caixas-supervisao] .cx-team-tabs button{
+  min-width:0;display:flex!important;align-items:center;justify-content:center;gap:8px;
+  min-height:47px!important;border:0!important;background:transparent!important;
+  border-radius:12px!important;padding:7px 9px!important;color:#5c728e!important;
+  font-weight:850!important;font-size:12px!important;box-shadow:none!important
+}
+#caixas [data-caixas-supervisao] .cx-team-tabs button.active{
+  background:linear-gradient(135deg,#122f55,#071d39)!important;color:#fff!important;
+  box-shadow:0 5px 12px #071a332a!important
+}
+#caixas [data-caixas-supervisao] .cx-team-tabs button>span{
+  min-width:23px;min-height:23px;display:grid;place-items:center;padding:2px 5px;
+  border-radius:9px;background:#dce7f5;color:#193a60;font-size:11px
+}
+#caixas [data-caixas-supervisao] .cx-team-tabs button.active>span{background:#ffffff2a;color:#fff}
+#caixas [data-caixas-supervisao] .cx-quickfilters,
+#caixas [data-caixas-supervisao] .cx-operational-pulse{display:none!important}
+#caixas [data-caixas-supervisao] .cx-list-heading{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;margin:5px 0 13px!important
+}
+#caixas [data-caixas-supervisao] .cx-list-heading h3{
+  display:flex;align-items:center;gap:8px;color:#0c2b50;
+  font-size:20px;font-weight:900;letter-spacing:-.04em;margin:0 0 3px
+}
+#caixas [data-caixas-supervisao] .cx-list-heading h3 .material-symbols-rounded{font-size:22px}
+#caixas [data-caixas-supervisao] .cx-list-heading p{font-size:11px;color:#7386a1}
+#caixas [data-caixas-supervisao] .cx-order-control{
+  display:flex;align-items:center;gap:4px;position:relative;white-space:nowrap;
+  font-size:12px;font-weight:850;color:#173859
+}
+#caixas [data-caixas-supervisao] .cx-order-control>.material-symbols-rounded{font-size:18px}
+#caixas [data-caixas-supervisao] .cx-order-control select{
+  position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer
+}
+#caixas [data-caixas-supervisao] .cx-order-control:focus-within{outline:3px solid #7eacdc;border-radius:6px}
+/* Card de jornada: estado e seleção separados da área financeira. */
+#caixas [data-caixas-supervisao] .cx-box-grid{
+  display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));
+  gap:16px!important;margin:0 0 24px!important
+}
+#caixas [data-caixas-supervisao] .cx-overview-scroll{display:none!important}
+#caixas [data-caixas-supervisao] .cx-approved-team{
+  position:relative;min-width:0;display:flex;flex-direction:column;gap:0;
+  padding:18px!important;border:1px solid #d8e5f2;border-left:5px solid #aab9c9;
+  border-radius:22px!important;box-shadow:0 10px 30px #071e3820!important;
+  background:#fff!important;overflow:visible
+}
+#caixas [data-caixas-supervisao] .cx-approved-team.is-open{border-left-color:#09b66d}
+#caixas [data-caixas-supervisao] .cx-approved-team.is-warning{border-left-color:#ff8a00}
+#caixas [data-caixas-supervisao] .cx-approved-team.is-inactive{border-left-color:#8da0b5;opacity:.85}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{
+  padding:0!important;display:flex;align-items:center;gap:9px;min-width:0;margin-bottom:15px
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-select{
+  flex:0 0 34px;width:34px;height:38px;border-radius:11px
+}
+#caixas [data-caixas-supervisao] .cx-team-avatar{
+  display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;
+  border-radius:13px;background:#edf3fb;color:#1c4c83;font-size:24px
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open{min-width:0;flex:1;text-align:left}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-title{
+  display:block;font-size:clamp(16px,2vw,20px);font-weight:950;color:#0c2b50;line-height:1.15
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-date{
+  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:11px;font-weight:650;color:#788ba4;margin-top:5px
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{
+  flex:0 1 auto;min-width:0;max-width:155px;gap:6px;display:inline-flex;align-items:center;
+  padding:6px 8px;border:0;border-radius:11px;background:#eef1f6;color:#526983;
+  font-size:10px;font-weight:900;line-height:1.2;text-align:center
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status.is-open{
+  background:#ddf7e9;color:#087445
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status.is-warning{
+  background:#fff0d2;color:#95530f
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status.is-inactive{
+  background:#eef1f6;color:#65748a
+}
+#caixas [data-caixas-supervisao] .cx-status-dot{
+  display:block;width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:currentColor
+}
+#caixas [data-caixas-supervisao] .cx-team-card-menu{
+  position:relative;flex:0 0 29px;align-self:center;z-index:8
+}
+#caixas [data-caixas-supervisao] .cx-team-card-menu summary{
+  display:grid;place-items:center;width:29px;height:37px;cursor:pointer;
+  list-style:none;border-radius:10px;color:#102e50
+}
+#caixas [data-caixas-supervisao] .cx-team-card-menu summary::-webkit-details-marker{display:none}
+#caixas [data-caixas-supervisao] .cx-team-card-menu summary .material-symbols-rounded{font-size:23px}
+#caixas [data-caixas-supervisao] .cx-team-card-menu-panel{
+  position:absolute;z-index:200;right:0;top:calc(100% + 6px);
+  width:min(250px,calc(100vw - 45px));display:grid;gap:3px;
+  border:1px solid #dce6f2;border-radius:12px;padding:6px;
+  background:#fff;box-shadow:0 13px 28px #071a3338
+}
+#caixas [data-caixas-supervisao] .cx-team-card-menu-panel button{
+  text-align:left;background:transparent!important;border:0!important;
+  font-size:12px!important;font-weight:750;padding:9px 11px!important;
+  border-radius:9px!important;color:#163a5d!important;min-height:40px!important
+}
+#caixas [data-caixas-supervisao] .cx-team-card-menu-panel button:hover{background:#eff5fc!important}
+/* Indicadores aprovados — 3 minicards independentes. */
+#caixas [data-caixas-supervisao] .cx-approved-metrics{
+  display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:10px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-metric{
+  display:flex;align-items:center;gap:9px;min-width:0;min-height:100px;
+  padding:13px!important;border-radius:16px!important;color:#fff;
+  box-shadow:0 5px 14px #061b3420
+}
+#caixas [data-caixas-supervisao] .cx-approved-current{
+  background:linear-gradient(137deg,#14568f,#082441)!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-sales{
+  background:linear-gradient(137deg,#34be73,#078851)!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-expenses{
+  background:linear-gradient(137deg,#fb6166,#c92b3e)!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-icon{
+  display:grid;place-items:center;flex:0 0 37px;width:37px;height:37px;
+  border-radius:12px;background:#ffffff22;font-size:24px;color:#fff
+}
+#caixas [data-caixas-supervisao] .cx-approved-value{display:grid;gap:5px;min-width:0;flex:1}
+#caixas [data-caixas-supervisao] .cx-approved-value small{
+  display:block;color:#fff;font-size:11px;font-weight:750;line-height:1.25;white-space:nowrap
+}
+#caixas [data-caixas-supervisao] .cx-approved-value strong{
+  display:block;color:#fff;font-size:clamp(15px,1.7vw,22px);
+  font-weight:900;letter-spacing:-.04em;line-height:1.18;
+  overflow-wrap:anywhere;font-variant-numeric:tabular-nums
+}
+/* Dados de operação são secundários, sem competir com os valores. */
+#caixas [data-caixas-supervisao] .cx-approved-meta{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:0;margin:14px 0 12px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-meta>div{
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  min-width:0;padding:2px 6px;border-right:1px solid #d8e4f1
+}
+#caixas [data-caixas-supervisao] .cx-approved-meta>div:last-child{border-right:0}
+#caixas [data-caixas-supervisao] .cx-approved-meta .material-symbols-rounded{
+  flex:none;color:#476a92;font-size:21px
+}
+#caixas [data-caixas-supervisao] .cx-approved-meta>div>span:last-child{
+  display:grid;gap:3px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-meta small{
+  font-size:10px;color:#697e99;font-weight:700;line-height:1.2
+}
+#caixas [data-caixas-supervisao] .cx-approved-meta strong{
+  font-size:17px;color:#113353;font-weight:900;font-variant-numeric:tabular-nums
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail{
+  display:flex;align-items:center;gap:11px;justify-content:flex-start;
+  margin:0!important;width:100%!important;min-height:51px!important;
+  padding:11px 14px!important;border:0!important;border-radius:13px!important;
+  background:linear-gradient(110deg,#f3f7fe,#e0e9f8)!important;
+  color:#0d3868!important;font-size:14px;font-weight:900;box-shadow:none!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail>span:first-child{
+  font-size:22px;color:#0d5794
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail .cx-approved-arrow{
+  margin-left:auto;font-size:24px;color:#0b4c83
+}
+#caixas [data-caixas-supervisao] .cx-team-members-extra:not([open]){display:none!important}
+#caixas [data-caixas-supervisao] .cx-team-members-extra[open]{
+  margin-bottom:12px;border:1px solid #dfebf7;border-radius:12px;overflow:hidden
+}
+#caixas [data-caixas-supervisao] .cx-team-members-extra>summary{
+  display:flex;align-items:center;justify-content:space-between;cursor:pointer;
+  padding:10px 12px;background:#f5f9ff;font-size:11px;font-weight:800;color:#284f7a
+}
+/* A versão mobile preserva o menu global já funcional, sem criar outro hambúrguer. */
+@media(max-width:760px){
+ html body:has(#caixas.screen.active) .layout>main.main{
+   padding:0 0 22px!important;margin-left:0!important;width:100%!important
+ }
+ html body:has(#caixas.screen.active) .mobile-menu-btn{
+   position:fixed!important;top:14px!important;left:12px!important;
+   background:#ffffff25!important;color:#fff!important;border:1px solid #ffffff20!important;
+   box-shadow:none!important;z-index:10001!important;width:52px!important;height:52px!important
+ }
+ #caixas.screen.active{padding:0!important;margin:0!important}
+ #caixas.screen.active>.section-card.caixas-master-firebase{
+   display:block!important;margin:0!important;border:0!important;border-radius:0!important;
+   padding:0 14px 22px!important;background:#fff!important;box-shadow:none!important;
+   overflow:visible!important
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-head{
+   position:relative;display:flex!important;min-height:92px!important;align-items:center!important;
+   padding:10px 16px 10px 74px!important;margin:0 -14px 15px!important;
+   background:linear-gradient(115deg,#071a33,#112c4c)!important;overflow:hidden;
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-head::after{
+   content:"";position:absolute;right:0;top:0;bottom:0;width:56px;
+   background:linear-gradient(140deg,#ff9816,#fb7404);
+   clip-path:polygon(100% 0,100% 100%,0 100%)
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-head .cx-head-brand{
+   position:relative;z-index:1;gap:11px;display:flex!important;flex-wrap:nowrap
+ }
+ #caixas [data-caixas-supervisao] .cx-brand-wordmark{
+   display:block!important;font-size:clamp(18px,4.6vw,24px)
+ }
+ #caixas [data-caixas-supervisao] .cx-brand-divider{display:block;height:29px}
+ #caixas [data-caixas-supervisao] .cx-approved-head h2{
+   font-size:clamp(21px,5.5vw,27px)!important;color:#fff!important;white-space:nowrap
+ }
+ #caixas [data-caixas-supervisao] .cx-query-row{
+   grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:9px!important;margin-bottom:13px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-query-row>.cx-commandbar{
+   grid-column:1/-1;grid-row:1;min-width:0
+ }
+ #caixas [data-caixas-supervisao] .cx-query-row>.cx-filter-options{grid-column:1;grid-row:2}
+ #caixas [data-caixas-supervisao] .cx-query-row>.cx-footer{grid-column:2;grid-row:2}
+ #caixas [data-caixas-supervisao] .cx-query-row .cx-filter-options>summary,
+ #caixas [data-caixas-supervisao] .cx-query-row .cx-actions-dropdown>summary{
+   width:100%;min-height:47px!important;box-sizing:border-box
+ }
+ #caixas [data-caixas-supervisao] .cx-query-row .cx-sync-state{
+   padding:0 2px;margin:5px 0 0
+ }
+ #caixas [data-caixas-supervisao] .cx-team-tabs{
+   margin-bottom:14px!important;border-radius:15px;padding:5px!important;gap:3px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-team-tabs button{
+   min-height:43px!important;font-size:12px!important;padding:7px 4px!important;gap:5px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-list-heading h3{font-size:18px}
+ #caixas [data-caixas-supervisao] .cx-box-grid{
+   display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:13px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-team{
+   padding:13px!important;border-radius:18px!important;box-shadow:0 6px 18px #091d3421!important
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{gap:6px;margin-bottom:13px}
+ #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-select{
+   flex:0 0 30px;width:30px;height:33px;border-radius:9px
+ }
+ #caixas [data-caixas-supervisao] .cx-team-avatar{
+   flex:0 0 32px;width:32px;height:32px;font-size:20px;border-radius:10px
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-title{font-size:16px}
+ #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-date{font-size:10px}
+ #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{
+   font-size:9px;max-width:94px;padding:6px 7px;min-height:27px
+ }
+ #caixas [data-caixas-supervisao] .cx-team-card-menu{flex-basis:25px}
+ #caixas [data-caixas-supervisao] .cx-approved-metrics{
+   grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-current{
+   grid-column:1/-1;min-height:85px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-metric{
+   min-height:77px!important;padding:11px!important;gap:7px;border-radius:13px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-metric .cx-approved-icon{
+   flex:0 0 31px;width:31px;height:31px;font-size:21px;border-radius:10px
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-current .cx-approved-icon{
+   flex:0 0 40px;width:40px;height:40px;font-size:26px
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-value small{font-size:11px}
+ #caixas [data-caixas-supervisao] .cx-approved-value strong{
+   font-size:clamp(14px,4.1vw,19px)!important;line-height:1.1
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-current .cx-approved-value strong{
+   font-size:clamp(23px,6.5vw,29px)!important
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-meta{margin:13px 0 11px}
+ #caixas [data-caixas-supervisao] .cx-approved-meta>div{padding:0 3px;gap:5px}
+ #caixas [data-caixas-supervisao] .cx-approved-meta .material-symbols-rounded{font-size:18px}
+ #caixas [data-caixas-supervisao] .cx-approved-meta small{font-size:9px}
+ #caixas [data-caixas-supervisao] .cx-approved-meta strong{font-size:15px}
+ #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail{
+   min-height:48px!important;padding:10px!important;font-size:13px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-team-card-menu-panel{
+   width:min(232px,calc(100vw - 35px))
+ }
+}
+@media(max-width:360px){
+ #caixas [data-caixas-supervisao] .cx-approved-head{
+   padding-left:70px!important;padding-right:10px!important
+ }
+ #caixas [data-caixas-supervisao] .cx-brand-wordmark{font-size:18px!important}
+ #caixas [data-caixas-supervisao] .cx-approved-head h2{font-size:20px!important}
+ #caixas [data-caixas-supervisao] .cx-approved-metric .cx-approved-icon{
+   flex-basis:28px;width:28px;height:28px;font-size:19px
+ }
+ #caixas [data-caixas-supervisao] .cx-approved-value strong{font-size:13px!important}
+ #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{max-width:80px;font-size:8px}
+}
+@media(prefers-reduced-motion:reduce){
+ #caixas [data-caixas-supervisao] .cx-approved-team{transition:none!important}
+}
+
+/* Ações contextuais só ficam visíveis quando o usuário abre o menu do cartão. */
+#caixas [data-caixas-supervisao] .cx-team-card-menu:not([open])>.cx-team-card-menu-panel{
+  display:none!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team:focus-within{border-color:#9bbfe6}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-card-menu summary:focus-visible,
+#caixas [data-caixas-supervisao] .cx-team-open:focus-visible,
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail:focus-visible{
+  outline:3px solid #80b7f4;outline-offset:3px
+}
+
+#caixas [data-caixas-supervisao] .cx-action-count{
+  display:inline-grid;place-items:center;min-width:21px;height:21px;box-sizing:border-box;
+  padding:2px 5px;border-radius:7px;background:#ffffff37;color:#fff;
+  font-weight:900;font-size:10px
+}

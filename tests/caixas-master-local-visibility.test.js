@@ -150,12 +150,12 @@ test("master local invalida cache dos controladores do módulo Caixas",()=>{
 });
 
 
-test("botões de abertura e fechamento estão antes da lista, próximos aos indicadores",()=>{
+test("abertura e fechamento permanecem no botão Ações antes da lista de equipes",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const overview=source.slice(source.indexOf("function render() {"),source.indexOf("async function query("));
-  assert.ok(overview.indexOf('<div class="cx-stats">')>=0,"indicadores da supervisão presentes");
-  assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-stats">'));
-  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('<div class="cx-table-scroll cx-overview-scroll">'));
+  assert.doesNotMatch(overview,/<div class="cx-stats">/);
+  assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-query-row">'));
+  assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('class="cx-box-grid"'));
   assert.match(overview,/id="btnAbrirCaixasSelecionadas"/);
   assert.match(overview,/id="btnFecharCaixasSelecionadas"/);
 });
@@ -215,8 +215,8 @@ test("supervisão não usa caixa inexistente no servidor para inflar indicador",
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/caixasInexistentesServidor\.add\(key\)/);
   assert.match(source,/!caixasInexistentesServidor\.has\(id\(b\)\)/);
-  assert.match(source,/Equipes em operação/);
-  assert.match(source,/verifiedBoxes\.has\(id\(b\)\)/);
+  assert.match(source,/const overviewConferido=m=>/);
+  assert.match(source,/verifiedBoxes\.has\(id\(caixa\)\)/);
   assert.match(source,/avisosDuplicidadePorVendedor\(row,history\)/);
 });
 
@@ -445,8 +445,12 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/const valorAtual=/);
   assert.match(render,/const indicadorFinanceiro=key=>/);
   assert.match(render,/!totaisConferidos\?'Conferindo…'/);
-  assert.match(render,/stat\('Caixa atual',valorAtual,'primary'\)/);
-  assert.match(render,/stat\('Recebido',indicadorFinanceiro\('received'\),'green'\)/);
+  assert.match(source,/class="cx-approved-metric cx-approved-current"/);
+  assert.match(source,/class="cx-approved-metric cx-approved-sales"/);
+  assert.match(source,/class="cx-approved-metric cx-approved-expenses"/);
+  assert.match(source,/valor\('current'\)/);
+  assert.match(source,/valor\('loans'\)/);
+  assert.match(source,/valor\('expenses'\)/);
 });
 
 
@@ -552,7 +556,8 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-caixas-admin-mobile-hierarchy-v3/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-layout-aprovado-v1/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-layout-aprovado-v1/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
@@ -562,11 +567,13 @@ test("Cabeçalho de Caixas traz indicadores e Ações antes de pesquisa e filtro
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const start=source.indexOf("  function render() {"),end=source.indexOf("  async function query(",start);
   const overview=source.slice(start,end);
-  const header=overview.indexOf('<header class="cx-head">');
-  const stats=overview.indexOf('<div class="cx-stats">');
+  const header=overview.indexOf('<header class="cx-head cx-approved-head">');
+  const search=overview.indexOf('<div class="cx-query-row">');
   const actions=overview.indexOf('<footer class="cx-footer">');
-  const search=overview.indexOf('<div class="cx-commandbar">');
-  assert.ok(header>0&&header<stats&&stats<actions&&actions<search);
+  const teamTabs=overview.indexOf('class="cx-team-tabs"');
+  const cards=overview.indexOf('class="cx-box-grid"');
+  assert.ok(header>0&&header<search&&search<actions&&actions<teamTabs&&teamTabs<cards);
+  assert.doesNotMatch(overview, /<div class="cx-stats">/);
   assert.match(overview,/class="cx-actions-dropdown"/);
   assert.match(overview,/data-cx-open-date-from-actions/);
   assert.match(overview,/data-cx-select-all-teams/);
@@ -587,7 +594,7 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
     dateBR:v=>v==="2026-11-21"?"21/11/2026":"—",
     boxDay:box=>box.dataOperacional,
     cash:v=>String(v),num:v=>Number(v)||0,
-    upper:v=>String(v??"").toUpperCase(),
+    upper:v=>String(v??"").toUpperCase(),podeGerir:()=>false,
     estrutura:{caixasChecked:true},
     ui:{selected:new Set(),selectedBoxes:new Set(["cx-001"]),expandedTeams:new Set()}
   });
@@ -597,14 +604,14 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
     latest:{id:"cx-001",dataOperacional:"2026-11-21"},
     avisos:[],
     models:[{box:{id:"cx-001",status:"ABERTO",vendedorNome:"Vendedor Um",vendedorId:"v-1",
-      dataOperacional:"2026-11-21"},current:120000,wallet:800000,received:12000}]
+      dataOperacional:"2026-11-21"},current:120000,wallet:800000,received:12000,loans:23000,expenses:5000}]
   }],()=>true);
   assert.match(cards,/data-cx-open-box="cx-001"/);
   assert.match(cards,/data-cx-team="equipe-1"/);
   assert.match(cards,/data-cx-select-box="cx-001"/);
   assert.match(cards,/Detalhes e histórico/);
   assert.match(cards,/data-cx-members="equipe-1"/);
-  assert.match(cards,/class="cx-team-members"/);
+  assert.match(cards,/class="cx-team-members cx-team-members-extra"/);
   assert.doesNotMatch(cards,/data-cx-members="equipe-1" open/,"vendedores recolhidos ao iniciar");
   assert.match(cards,/checked/);
   const mobile=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
@@ -650,8 +657,10 @@ test("Master Local apresenta uma jornada por equipe e filtro de situação ativo
   assert.match(source,/const situacao=!row\.ativa\?'INATIVA'/);
   assert.match(source,/const teams=rows\(true\)\.filter/);
   assert.match(source,/const equipes=rows\(\)\.filter/);
-  assert.match(source,/Equipes em operação/);
-  assert.match(source,/Caixas individuais abertos/);
+  assert.match(source,/const overviewConferido=m=>/);
+  assert.match(source,/class="cx-approved-meta"/);
+  assert.match(source,/Caixas abertos/);
+  assert.match(source,/Na jornada/);
 });
 
 test("Reabertura é apenas individual e no backend exige motivo e último caixa",()=>{
@@ -724,36 +733,35 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
 test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente encerrada",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/const inconsistentes=history\.filter/);
-  assert.match(source,/inconsistentes\.length\?'REVISÃO'/);
+  assert.match(source,/inconsistentes\.length\|\|possuiDivergencia\?'REVISÃO'/);
   assert.match(source,/const exigeRevisao=boxes\.some/);
   assert.match(source,/exigeRevisao\?'REVISÃO':aberto\?'EM OPERAÇÃO'/);
   assert.match(source,/history\.some\(b=>\['ABERTO','REABERTO'\]\.includes\(upper\(b\.status\)\)&&b\.ativo===false\)/);
 });
 
 
-test("Layout móvel dos caixas prioriza saldo, controles, equipes e reduz elementos duplicados",()=>{
+test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões financeiros",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
-  const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
+  const css=fs.readFileSync(path.join(root,"css/caixas-layout-aprovado.css"),"utf8");
   const overview=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
-  const title=overview.indexOf('<header class="cx-head">');
-  const mainBalance=overview.indexOf("stat('Caixa atual',valorAtual,'primary')");
-  const otherStats=overview.indexOf("stat('Equipes em operação'");
+  const title=overview.indexOf('<header class="cx-head cx-approved-head">');
+  const query=overview.indexOf('class="cx-query-row"');
   const actions=overview.indexOf('<footer class="cx-footer">');
   const teamTabs=overview.indexOf('class="cx-team-tabs"');
-  const query=overview.indexOf('class="cx-query-row"');
   const teamList=overview.indexOf('class="cx-box-grid"');
-  assert.ok(title>=0&&title<mainBalance&&mainBalance<otherStats&&otherStats<actions
-    &&actions<teamTabs&&teamTabs<query&&query<teamList);
+  assert.ok(title>=0&&title<query&&query<actions&&actions<teamTabs&&teamTabs<teamList);
+  assert.doesNotMatch(overview,/<div class="cx-stats">/);
   assert.match(source,/expandedTeams:new Set\(\)/);
   assert.match(source,/data-cx-members/);
-  assert.match(source,/host\.querySelectorAll\('\[data-cx-members\]'\)/);
-  assert.match(css,/@media\(max-width:850px\)/);
-  assert.match(css,/\.cx-quickfilters,#caixas \[data-caixas-supervisao\] \.cx-operational-pulse\{display:none!important/);
-  assert.match(css,/\.cx-team-members>summary/);
-  assert.match(css,/\.cx-query-row\{display:grid!important/);
-  assert.match(css,/\.cx-stat\.primary\{grid-column:1\/-1!important/);
+  assert.match(source,/data-cx-team-card-menu|class="cx-team-card-menu"/);
+  assert.match(source,/data-cx-order/);
+  assert.match(css,/\.cx-approved-current/);
+  assert.match(css,/\.cx-approved-sales/);
+  assert.match(css,/\.cx-approved-expenses/);
+  assert.match(css,/@media\(max-width:760px\)/);
+  assert.match(css,/\.cx-approved-current\{\s*grid-column:1\/-1/);
+  assert.match(css,/\.cx-overview-scroll\{display:none!important/);
 });
-
 
 test("Busca sem resultados mostra orientação útil no mobile e preserva acesso às outras equipes",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
@@ -764,4 +772,38 @@ test("Busca sem resultados mostra orientação útil no mobile e preserva acesso
   assert.match(source,/data-cx-show-all-teams/);
   assert.match(source,/ui\.equipesFiltro='todas';ui\.team='';ui\.status='';ui\.search='';render\(\)/);
   assert.match(css,/\.cx-mobile-empty\{display:grid/);
+});
+
+
+test("Indicadores de equipe no layout aprovado são obtidos de caixas verificados, sem valores fictícios",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function renderCardsCaixa(");
+  const end=source.indexOf("  function render() {",start);
+  const context={
+    Intl,Date,esc:v=>String(v??""),text:v=>String(v??"").trim(),id:v=>String(v?.id||""),
+    boxDay:box=>box.dataOperacional,dateBR:v=>v,
+    openBox:box=>box.status==="ABERTO",upper:v=>String(v??"").toUpperCase(),
+    num:v=>Number(v)||0,cash:v=>"T"+v,podeGerir:()=>false,
+    estrutura:{caixasChecked:true},
+    ui:{selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set()}
+  };
+  const renderCards=vm.runInNewContext(source.slice(start,end)+";renderCardsCaixa",context);
+  const box={id:"box-1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Vendedor Norte"};
+  const cards=renderCards([{
+    row:{id:"team-1",nome:"Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Norte"}]},
+    latest:box,history:[box],avisos:[],
+    models:[{box,current:1234500,loans:1850000,expenses:614500}]
+  }],()=>true);
+  assert.match(cards,/Caixa Atual/);
+  assert.match(cards,/Vendas/);
+  assert.match(cards,/Gastos/);
+  assert.match(cards,/T1234500/);
+  assert.match(cards,/T1850000/);
+  assert.match(cards,/T614500/);
+  assert.match(cards,/PENDENTE DE FECHAMENTO/);
+  assert.match(cards,/data-cx-card-menu/);
+  assert.match(cards,/data-cx-open="team-1"/);
+  assert.match(cards,/data-caixas-equipe="team-1"/);
+  assert.doesNotMatch(cards,/R\$ 18\.420,00/);
 });
