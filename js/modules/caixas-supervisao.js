@@ -635,9 +635,9 @@
       const possuiDivergencia=history.some(box=>upper(box.status)==='DIVERGENTE');
       const pendente=abertos.some(box=>boxDay(box)&&boxDay(box)<diaAtual);
       const dataJornada=latest?dateBR(boxDay(latest)):'Sem jornada';
-      const conferido=estrutura.caixasChecked&&models.every(conferido);
+      const validado=estrutura.caixasChecked&&models.every(conferido);
       const valor=key=>!estrutura.caixasChecked?'Conferindo…':
-        !models.length?'—':!conferido?'Conferindo…':
+        !models.length?'—':!validado?'Conferindo…':
         models.some(m=>m[key]==null)?'Não registrado':
         cash(models.reduce((n,m)=>n+num(m[key]),0));
       const situacao=!row.ativa?'INATIVA':!estrutura.caixasChecked?'CONFERINDO':
