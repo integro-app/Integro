@@ -692,7 +692,7 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
   const end=source.indexOf("  function renderDetail(",start);
   assert.ok(start>0&&end>start);
   const detail=source.slice(start,end);
-  assert.match(source,/if\(ui\.detail\) \{if\(!ui\.box&&!ui\.loading\)renderTeamDay\(host\);else renderDetail\(host\)/);
+  assert.match(source,/if\s*\(ui\.detail\) \{if\(!ui\.box&&!ui\.loading\)renderTeamDay\(host\);else renderDetail\(host\)/);
   assert.match(detail,/rows\(true\)\.find/);
   assert.match(detail,/Data da jornada/);
   assert.match(detail,/Caixa inicial/);
