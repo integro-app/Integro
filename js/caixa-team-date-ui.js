@@ -2,7 +2,11 @@
   "use strict";
   const state = () => global.State || (typeof State !== "undefined" ? State : null);
   const user = () => state()?.getUsuario?.() || {};
-  const allowed = () => ["master_local","gerente","supervisor"].includes(global.IntegroAcesso?.acessoUsuario?.(user())?.perfil);
+  const allowed = () => {
+    const perfil=global.IntegroAcesso?.acessoUsuario?.(user())?.perfil;
+    if(["master_local","gerente","supervisor"].includes(perfil))return true;
+    return perfil==="financeiro" && global.IntegroAcesso?.pode?.(user(),"caixas.abrir")===true;
+  };
   const today = () => global.IntegroOperacional.hojeSP();
   function available(day, info) {
     return !!day && !!info && day <= info.hoje && (day === info.dataParaConcluir || (!info.temCaixaAberto && (!info.ultimaData || day > info.ultimaData)));
