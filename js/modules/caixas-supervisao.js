@@ -936,6 +936,14 @@
     }
   }
   const metric = (label,value) => `<div class="cx-metric"><span>${label}</span><strong>${value==null?'Não registrado':value}</strong></div>`;
+  function tipoLancamentoCaixa(v) {
+    const tipo=upper(v.tipoSolicitacao||v.tipo||v.natureza||v.operacao);
+    if(['GASTO','DESPESA'].includes(tipo))return 'Gastos';
+    if(['INGRESSO','ENTRADA','DEPOSITO'].includes(tipo))return 'Entradas';
+    if(['RETIRADA','RECOLHIMENTO','SAIDA'].includes(tipo))return 'Saídas';
+    if(tipo==='AJUSTE')return 'Ajustes';
+    return 'Movimentações';
+  }
   function renderTeamDay(host) {
     const row=rows(true).find(item=>text(item.id)===ui.detail);
     if(!row){ui.detail='';ui.box='';render();return;}
@@ -963,14 +971,7 @@
       const documentos=[
         ...(data.sales||[]).map(v=>({v,tipo:'Venda',valor:amount(v,['valorEmprestado','valorLiberado','valor'])})),
         ...(data.payments||[]).map(v=>({v,tipo:'Recebimento',valor:amount(v,['valorRecebido','valorPago','valor'])})),
-        ...(data.moves||[]).map(v=>{
-          const name=upper(v.tipoSolicitacao||v.tipo||v.natureza||v.operacao);
-          const tipo=['GASTO','DESPESA'].includes(name)?'Gasto':
-            ['INGRESSO','ENTRADA','DEPOSITO'].includes(name)?'Entrada':
-            ['RETIRADA','RECOLHIMENTO','SAIDA'].includes(name)?'Saída':
-            name==='AJUSTE'?'Ajuste':'Movimentação';
-          return {v,tipo,valor:amount(v,['valor','valorTotal'])};
-        })
+        ...(data.moves||[]).map(v=>({v,tipo:tipoLancamentoCaixa(v),valor:amount(v,['valor','valorTotal'])}))
       ];
       return documentos.map(entry=>({...entry,vendedor:box.vendedorNome||box.vendedorId||'Vendedor',
         data:entry.v.criadoEm||entry.v.dataHora||entry.v.dataPagamento||entry.v.dataOperacional}));
@@ -1184,8 +1185,8 @@
     return `<div class="cx-summary-grid"><article class="cx-panel"><header class="cx-panel-head blue"><span>Caixa ${openBox(b)?'atual':'final'}</span><strong>${cash(m.current)}</strong><small>${esc(b.vendedorNome||row.vendedores?.find(v=>id(v)===text(b.vendedorId))?.nome||'Vendedor')}</small></header><div class="cx-panel-body">${metric('Caixa inicial',cash(m.initial))}${metric('Vendas novas',cash(m.newSales))}${metric('Vendas renovadas',cash(m.renewedSales))}${metric('Total de vendas / empréstimos',cash(m.loans))}${metric('Recebimentos',cash(m.received))}${metric('Ingressos',cash(m.income))}${metric('Despesas',cash(m.expenses))}${metric('Retiradas',cash(m.withdrawals))}${metric('Recolhimentos',cash(m.collected))}${metric('Ajustes',cash(m.adjustments))}${!openBox(b)?metric('Valor calculado',cash(m.calculated)):''}</div></article><article class="cx-panel"><header class="cx-panel-head orange"><span>Desempenho</span><strong>${m.progress==null?'—':m.progress+'%'}</strong><small>Progresso das cobranças</small></header><div class="cx-panel-body">${metric('Carteira inicial',cash(m.walletInitial))}${metric('Carteira final',cash(m.wallet))}${metric('Variação da carteira',m.wallet==null||!m.walletInitial?'—':((m.wallet-m.walletInitial)/m.walletInitial*100).toFixed(2).replace('.',',')+'%')}${metric('Previsto no caixa',cash(m.expected))}${metric('Recebido',cash(m.received))}${metric('% recebido',ratio==null?'—':ratio+'%')}${metric('Clientes / cobranças previstos',m.clients)}${metric('Visitados / baixas registradas',m.visited)}${metric('Pagos',m.paid)}${metric('Não pagamentos',m.unpaid)}${metric('Sem baixa gerencial, sem visita confirmada',m.semBaixaGerencial)}<p class="cx-note">${!openBox(b)?'Indicadores preservados no fechamento. Dados não registrados aparecem identificados.':'Cobranças vinculadas à data operacional deste caixa.'}</p></div></article><article class="cx-panel"><header class="cx-panel-head purple"><span>Informações</span><strong>${esc(row.nome)}</strong><small>${esc(b.vendedorNome || 'Vendedor')}</small></header><div class="cx-panel-body">${metric('Estado',badge(b))}${metric('Data operacional',dateBR(boxDay(b)))}${metric('Abertura',dateTime(b.abertoEm||b.criadoEm))}${metric('Fechamento',dateTime(b.fechadoEm))}${metric('Última atualização',dateTime(b.atualizadoEm||b.abertoEm))}${metric('Aberto por',esc(b.abertoPorNome||'—'))}${metric('Fechado por',esc(b.fechadoPorNome||'—'))}${metric('Vendas registradas',m.salesCount)}<p class="cx-note">${esc(b.observacaoFechamento||b.motivoReabertura||b.motivoRetroativo||'')}</p><details class="cx-identifiers"><summary>Identificação do caixa</summary><p>${esc(id(b))}</p></details></div></article></div>`;
   }
   function details(m) {
-    const records=[...m.sales.map(v=>({v,type:'Vendas',value:amount(v,['valorEmprestado','valorLiberado','valor'])})),...m.payments.map(v=>({v,type:'Recebimentos',value:amount(v,['valorRecebido','valorPago','valor'])})),...m.moves.map(v=>({v,type:'Movimentações',value:amount(v,['valor','valorTotal'])})),...m.visits.map(v=>({v,type:v.semBaixaGerencial===true?'Sem baixa gerencial':'Visitas',value:null}))].filter(r=>ui.records==='todos'||r.type===ui.records);
-    return `<div class="cx-details"><label>Exibir<select data-cx-records>${['todos','Vendas','Recebimentos','Movimentações','Visitas','Sem baixa gerencial'].map(v=>option(v,v==='todos'?'Todos os registros':v,ui.records)).join('')}</select></label><div class="cx-table-scroll"><table><thead><tr><th>Tipo</th><th>Cliente / descrição</th><th>Valor</th><th>Estado</th><th>Data</th></tr></thead><tbody>${records.map(({v,type,value})=>`<tr><td>${type}</td><td>${esc(v.clienteNome||v.descricao||v.vendedorNome||v.clienteId||id(v))}</td><td>${value==null?'—':cash(value)}</td><td>${esc(v.semBaixaGerencial===true?'NÃO PAGO — SEM BAIXA GERENCIAL':v.statusVenda||v.status||v.tipo||'Confirmado')}</td><td>${dateTime(v.criadoEm||v.dataHora||v.dataPagamento||v.dataOperacional)}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum registro confirmado neste caixa.</td></tr>'}</tbody></table></div></div>`;
+    const records=[...m.sales.map(v=>({v,type:'Vendas',value:amount(v,['valorEmprestado','valorLiberado','valor'])})),...m.payments.map(v=>({v,type:'Recebimentos',value:amount(v,['valorRecebido','valorPago','valor'])})),...m.moves.map(v=>({v,type:tipoLancamentoCaixa(v),value:amount(v,['valor','valorTotal'])})),...m.visits.map(v=>({v,type:v.semBaixaGerencial===true?'Sem baixa gerencial':'Visitas',value:null}))].filter(r=>ui.records==='todos'||r.type===ui.records);
+    return `<div class="cx-details"><label>Exibir<select data-cx-records>${['todos','Vendas','Recebimentos','Entradas','Saídas','Gastos','Ajustes','Movimentações','Visitas','Sem baixa gerencial'].map(v=>option(v,v==='todos'?'Todos os registros':v,ui.records)).join('')}</select></label><div class="cx-table-scroll"><table><thead><tr><th>Tipo</th><th>Cliente / descrição</th><th>Valor</th><th>Estado</th><th>Data</th></tr></thead><tbody>${records.map(({v,type,value})=>`<tr><td>${type}</td><td>${esc(v.clienteNome||v.descricao||v.vendedorNome||v.clienteId||id(v))}</td><td>${value==null?'—':cash(value)}</td><td>${esc(v.semBaixaGerencial===true?'NÃO PAGO — SEM BAIXA GERENCIAL':v.statusVenda||v.status||v.tipo||'Confirmado')}</td><td>${dateTime(v.criadoEm||v.dataHora||v.dataPagamento||v.dataOperacional)}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum registro confirmado neste caixa.</td></tr>'}</tbody></table></div></div>`;
   }
   global.IntegroCaixasSupervisao = {render,open,selectBox,model,teamBoxes,rows,carregarEstrutura,get state(){return ui;}};
 })(window);
