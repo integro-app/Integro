@@ -385,6 +385,10 @@ test("Master Local reconhece vínculos múltiplos, antigos e respeita isolamento
   const seller={id:"v1",tipoUsuario:"vendedor",clientePlataformaId:"tenant-a"};
   assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeId:"alfa"},alfa,[alfa,beta]),true);
   assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeIds:["alfa","beta"]},beta,[alfa,beta]),true);
+  assert.equal(helpers.vendedorPertenceEquipe({...seller}, {...beta,vendedoresIds:["v1"]},[alfa,beta]),true,
+    "O vínculo inverso no cadastro oficial da equipe é válido");
+  assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeId:"alfa"}, {...beta,vendedoresIds:["v1"]},[alfa,beta]),true,
+    "Um vendedor pode estar em mais de uma equipe");
   assert.equal(helpers.vendedorPertenceEquipe({...seller,equipes:[{id:"beta"}]},beta,[alfa,beta]),true);
   assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeNome:"Equipe Álfa"},alfa,[alfa,beta]),true);
   assert.equal(helpers.vendedorPertenceEquipe({...seller,equipeId:"beta",equipeNome:"Equipe Alfa"},alfa,[alfa,beta]),false);
