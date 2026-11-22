@@ -525,6 +525,6 @@ test("Caixas antigos ausentes da consulta do servidor não reaparecem pelo cache
   assert.match(source,/idsConsultados\.add\(id\(caixa\)\)/);
   assert.match(source,/verifiedBoxes\.delete\(key\);overview\.delete\(key\)/);
   assert.match(source,/estrutura\.caixasIds=idsConsultados/);
-  assert.match(source,/estrutura\.caixasChecked\|\|estrutura\.caixasIds\.has\(id\(b\)\)/);
+  assert.match(source,/!estrutura\.caixasChecked\|\|estrutura\.caixasIds\.has\(id\(b\)\)/);
   assert.match(source,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
 });
