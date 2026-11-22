@@ -587,8 +587,9 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
     dateBR:v=>v==="2026-11-21"?"21/11/2026":"—",
     boxDay:box=>box.dataOperacional,
     cash:v=>String(v),num:v=>Number(v)||0,
+    upper:v=>String(v??"").toUpperCase(),
     estrutura:{caixasChecked:true},
-    ui:{selected:new Set(),selectedBoxes:new Set(["cx-001"])}
+    ui:{selected:new Set(),selectedBoxes:new Set(["cx-001"]),expandedTeams:new Set()}
   });
   const cards=functions([{
     row:{id:"equipe-1",nome:"Equipe Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Um"}]},
@@ -601,7 +602,10 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
   assert.match(cards,/data-cx-open-box="cx-001"/);
   assert.match(cards,/data-cx-team="equipe-1"/);
   assert.match(cards,/data-cx-select-box="cx-001"/);
-  assert.match(cards,/Ver detalhamento/);
+  assert.match(cards,/Detalhes e histórico/);
+  assert.match(cards,/data-cx-members="equipe-1"/);
+  assert.match(cards,/class="cx-team-members"/);
+  assert.doesNotMatch(cards,/data-cx-members="equipe-1" open/,"vendedores recolhidos ao iniciar");
   assert.match(cards,/checked/);
   const mobile=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
   assert.match(mobile,/\[data-caixas-supervisao\] \.cx-box-grid\{display:grid/);
@@ -719,4 +723,28 @@ test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente ence
   assert.match(source,/const exigeRevisao=boxes\.some/);
   assert.match(source,/exigeRevisao\?'REVISÃO':aberto\?'EM OPERAÇÃO'/);
   assert.match(source,/history\.some\(b=>\['ABERTO','REABERTO'\]\.includes\(upper\(b\.status\)\)&&b\.ativo===false\)/);
+});
+
+
+test("Layout móvel dos caixas prioriza saldo, controles, equipes e reduz elementos duplicados",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
+  const overview=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
+  const title=overview.indexOf('<header class="cx-head">');
+  const mainBalance=overview.indexOf("stat('Caixa atual',valorAtual,'primary')");
+  const otherStats=overview.indexOf("stat('Equipes em operação'");
+  const actions=overview.indexOf('<footer class="cx-footer">');
+  const teamTabs=overview.indexOf('class="cx-team-tabs"');
+  const query=overview.indexOf('class="cx-query-row"');
+  const teamList=overview.indexOf('class="cx-box-grid"');
+  assert.ok(title>=0&&title<mainBalance&&mainBalance<otherStats&&otherStats<actions
+    &&actions<teamTabs&&teamTabs<query&&query<teamList);
+  assert.match(source,/expandedTeams:new Set\(\)/);
+  assert.match(source,/data-cx-members/);
+  assert.match(source,/host\.querySelectorAll\('\[data-cx-members\]'\)/);
+  assert.match(css,/@media\(max-width:850px\)/);
+  assert.match(css,/\.cx-quickfilters,#caixas \[data-caixas-supervisao\] \.cx-operational-pulse\{display:none!important/);
+  assert.match(css,/\.cx-team-members>summary/);
+  assert.match(css,/\.cx-query-row\{display:grid!important/);
+  assert.match(css,/\.cx-stat\.primary\{grid-column:1\/-1!important/);
 });
