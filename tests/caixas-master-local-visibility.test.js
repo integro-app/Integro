@@ -614,7 +614,9 @@ test("Fechamento em lote respeita caixa selecionado em vez de fechar toda equipe
   assert.match(source,/const caixaIdsSelecionados=new Set\(ui\.selectedBoxes\)/);
   assert.match(source,/!caixaIdsSelecionados\.size\|\|caixaIdsSelecionados\.has\(id\(box\)\)/);
   assert.match(source,/async function open\(teamId, boxId = ''\)/);
-  assert.match(source,/ui\.box=solicitado\|\|id\(ui\.history\.find\(openBox\)\|\|ui\.history\[0\]\)/);
+  assert.match(source,/ui\.teamDay=boxDay\(ui\.history\.find\(openBox\)\|\|ui\.history\[0\]\)/);
+  assert.match(source,/if\(!solicitado\)\{ui\.box='';ui\.loading=false;render\(\);return;\}/);
+  assert.match(source,/ui\.box=solicitado/);
 });
 
 
@@ -678,4 +680,28 @@ test("Financeiro participa da abertura e fechamento com permissões, sem reabert
   assert.match(client,/global\.IntegroAcesso\?\.pode\?\.\(user\(\),'caixas\.'\+acao/);
   assert.match(calendar,/perfil==="financeiro" && global\.IntegroAcesso\?\.pode/);
   assert.match(acl,/financeiro: \[[\s\S]*"caixas\.abrir", "caixas\.fechar"/);
+});
+
+
+test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function renderTeamDay(");
+  const end=source.indexOf("  function renderDetail(",start);
+  assert.ok(start>0&&end>start);
+  const detail=source.slice(start,end);
+  assert.match(source,/if\(ui\.detail\) \{if\(!ui\.box&&!ui\.loading\)renderTeamDay\(host\);else renderDetail\(host\)/);
+  assert.match(detail,/rows\(true\)\.find/);
+  assert.match(detail,/Data da jornada/);
+  assert.match(detail,/Caixa inicial/);
+  assert.match(detail,/Caixa atual \/ final/);
+  assert.match(detail,/Recebimentos/);
+  assert.match(detail,/Ingressos/);
+  assert.match(detail,/Gastos/);
+  assert.match(detail,/Retiradas/);
+  assert.match(detail,/Últimas movimentações da jornada/);
+  assert.match(detail,/data-cx-team-box/);
+  assert.match(detail,/data-cx-team-close/);
+  assert.match(detail,/const confirmado=estrutura\.caixasChecked&&items\.every/);
+  assert.match(detail,/if\(estrutura\.caixasChecked\)boxes\.forEach\(loadOverview\)/);
+  assert.match(source,/const podeAbrir=row\.ativa&&podeGerir\('abrir'\)/);
 });
