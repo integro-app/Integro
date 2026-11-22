@@ -644,6 +644,7 @@
         inconsistentes.length||possuiDivergencia?'REVISÃO':
         pendente?'PENDENTE DE FECHAMENTO':abertos.length?'EM OPERAÇÃO':
         latest?'FECHADA':'SEM CAIXA';
+      const situacaoMobile=situacao==='PENDENTE DE FECHAMENTO'?'PENDENTE':situacao;
       const classeStatus=!row.ativa?'is-inactive':
         inconsistentes.length||possuiDivergencia||pendente?'is-warning':
         abertos.length?'is-open':'is-closed';
@@ -688,8 +689,11 @@
             <span class="cx-team-open-title">${esc(row.nome)}</span>
             <span class="cx-team-open-date">${esc(dataJornada)} · ${row.vendedores.length} vendedor(es)</span>
           </button>
-          <span class="cx-team-day-status ${classeStatus}" title="${esc(situacao)}">
-            <span class="cx-status-dot" aria-hidden="true"></span>${esc(situacao)}
+          <span class="cx-team-day-status ${classeStatus}" title="${esc(situacao)}"
+            aria-label="${esc(situacao)}">
+            <span class="cx-status-dot" aria-hidden="true"></span>
+            <span class="cx-status-full">${esc(situacao)}</span>
+            <span class="cx-status-mobile" aria-hidden="true">${esc(situacaoMobile)}</span>
           </span>
           <details class="cx-team-card-menu" data-cx-card-menu>
             <summary aria-label="Mais ações da equipe ${esc(row.nome)}"
