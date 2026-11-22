@@ -239,3 +239,12 @@
  .cx-bulk-line input{width:100%}
  .cx-bulk-close-dialog .cx-close-actions{bottom:-15px}
 }
+
+/* Confiança dos indicadores: diferenciar consulta pendente, confirmada e com erro. */
+[data-caixas-supervisao] .cx-sync-state.is-loading::before{background:#d69828;box-shadow:0 0 0 3px #d6982824}
+[data-caixas-supervisao] .cx-sync-state.is-error{color:#a6462e;font-weight:750}
+[data-caixas-supervisao] .cx-sync-state.is-error::before{background:#cf5045;box-shadow:0 0 0 3px #cf504528}
+[data-caixas-supervisao] .cx-state.closed:has(+ .cx-verification-note){background:#f1f6fb}
+[data-caixas-supervisao] .cx-seller-chip.is-pending{background:#f6f8fc;border-color:#e2e9f2;color:#647792}
+[data-caixas-supervisao] .cx-seller-chip.is-pending small{color:#647792}
+[data-caixas-supervisao] .cx-bulk-close-dialog input:focus-visible{outline:3px solid #70a7f2;outline-offset:2px}
