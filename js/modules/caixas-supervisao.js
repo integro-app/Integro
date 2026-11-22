@@ -621,7 +621,7 @@
       return models.map(m=>{
         const box=m.box,ativo=openBox(box),confirmado=estrutura.caixasChecked&&conferido(m);
         const vendedor=text(box.vendedorNome||row.vendedores.find(v=>id(v)===text(box.vendedorId))?.nome||'Vendedor');
-        const nomeCurto=vendedor.split(/\\s+/).filter(Boolean).slice(0,2).map(parte=>parte.charAt(0)).join('').toLocaleUpperCase('pt-BR')||'CX';
+        const nomeCurto=vendedor.split(/\s+/).filter(Boolean).slice(0,2).map(parte=>parte.charAt(0)).join('').toLocaleUpperCase('pt-BR')||'CX';
         return `<article class="cx-box-card ${ativo?'cx-box-card-open':'cx-box-card-closed'}" data-cx-card-id="${esc(id(box))}">
           <div class="cx-box-card-head"><span class="cx-box-avatar" aria-hidden="true">${esc(nomeCurto)}</span>
             ${badge(box)}
