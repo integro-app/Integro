@@ -445,9 +445,9 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/const valorAtual=/);
   assert.match(render,/const indicadorFinanceiro=key=>/);
   assert.match(render,/!totaisConferidos\?'Conferindo…'/);
-  assert.match(source,/class="cx-approved-current"/);
-  assert.match(source,/class="cx-approved-sales"/);
-  assert.match(source,/class="cx-approved-expenses"/);
+  assert.match(source,/class="cx-approved-metric cx-approved-current"/);
+  assert.match(source,/class="cx-approved-metric cx-approved-sales"/);
+  assert.match(source,/class="cx-approved-metric cx-approved-expenses"/);
   assert.match(source,/valor\('current'\)/);
   assert.match(source,/valor\('loans'\)/);
   assert.match(source,/valor\('expenses'\)/);
