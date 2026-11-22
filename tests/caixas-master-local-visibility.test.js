@@ -708,7 +708,7 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
   assert.match(detail,/Gastos/);
   assert.match(detail,/Retiradas/);
   assert.match(detail,/Últimas movimentações da jornada/);
-  assert.match(detail,/class="cx-team-primary-metrics"/);
+  assert.match(detail,/class="cx-team-detail-metrics cx-team-primary-metrics"/);
   assert.match(detail,/class="cx-team-extra-metrics"/);
   assert.match(detail,/data-cx-extra-metrics/);
   assert.match(detail,/metricas\.slice\(0,3\)/);
@@ -752,4 +752,16 @@ test("Layout móvel dos caixas prioriza saldo, controles, equipes e reduz elemen
   assert.match(css,/\.cx-team-members>summary/);
   assert.match(css,/\.cx-query-row\{display:grid!important/);
   assert.match(css,/\.cx-stat\.primary\{grid-column:1\/-1!important/);
+});
+
+
+test("Busca sem resultados mostra orientação útil no mobile e preserva acesso às outras equipes",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
+  assert.match(source,/class="cx-mobile-empty"/);
+  assert.match(source,/Nenhuma equipe ativa encontrada/);
+  assert.match(source,/Nenhuma equipe inativa encontrada/);
+  assert.match(source,/data-cx-show-all-teams/);
+  assert.match(source,/ui\.equipesFiltro='todas';ui\.team='';ui\.status='';ui\.search='';render\(\)/);
+  assert.match(css,/\.cx-mobile-empty\{display:grid/);
 });
