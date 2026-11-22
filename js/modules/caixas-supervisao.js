@@ -623,6 +623,8 @@
   function renderCardsCaixa(entries,conferido) {
     return entries.map(({row,latest,history,models,avisos})=>{
       const abertos=history.filter(openBox),abertosDia=models.filter(m=>openBox(m.box));
+      const inconsistentes=history.filter(box=>
+        ['ABERTO','REABERTO'].includes(upper(box.status))&&box.ativo===false);
       const dia=latest?dateBR(boxDay(latest)):'Sem abertura registrada';
       const verificado=estrutura.caixasChecked&&models.every(conferido);
       const saldoAtual=verificado&&models.length?
@@ -630,7 +632,9 @@
         models.length?'Conferindo…':'—';
       const vendedoresUnicos=new Set(models.map(m=>text(m.box.vendedorAuthUid||m.box.vendedorId)).filter(Boolean)).size;
       const situacao=!row.ativa?'INATIVA':!estrutura.caixasChecked?'CONFERINDO':
-        abertos.length?'EM OPERAÇÃO':latest?'FECHADA':'SEM CAIXA';
+        inconsistentes.length?'REVISÃO':abertos.length?'EM OPERAÇÃO':
+        history.some(box=>upper(box.status)==='DIVERGENTE')?'DIVERGENTE':
+        latest?'FECHADA':'SEM CAIXA';
       const filhos=models.slice(0,6).map(m=>{
         const box=m.box,ativo=openBox(box),responsavel=text(box.vendedorNome||
           row.vendedores.find(v=>id(v)===text(box.vendedorId))?.nome||'Vendedor');
@@ -709,7 +713,10 @@
       return {row,latest,history,models,
         avisos:[...new Set([...history.map(box=>avisoVinculoCaixa(row,box)).filter(Boolean),
           ...avisosDuplicidadePorVendedor(row,history)])],
-        status:!row.ativa?'INATIVA':!estrutura.caixasChecked?'CONFERINDO':active.length?'ABERTO':latest?
+        status:!row.ativa?'INATIVA':!estrutura.caixasChecked?'CONFERINDO':
+          history.some(b=>['ABERTO','REABERTO'].includes(upper(b.status))&&b.ativo===false)||
+          history.some(b=>upper(b.status)==='DIVERGENTE')?'DIVERGENTE':
+          active.length?'ABERTO':latest?
           (['FECHADO','FECHADA'].includes(upper(latest.status))?'FECHADO':upper(latest.status)):'SEM_CAIXA'};
     });
     const searchedEntries=allEntries.filter(v=>(!ui.team||text(v.row.id)===ui.team)&&matchesSearch(v.row));
@@ -963,6 +970,8 @@
       items.some(item=>item.m[key]==null)?'Não registrado':
       cash(items.reduce((sum,item)=>sum+num(item.m[key]),0));
     const aberto=boxes.some(openBox);
+    const exigeRevisao=boxes.some(box=>['ABERTO','REABERTO'].includes(upper(box.status))&&box.ativo===false)||
+      boxes.some(box=>upper(box.status)==='DIVERGENTE');
     const podeAbrir=row.ativa&&podeGerir('abrir');
     const podeFechar=aberto&&podeGerir('fechar');
     const historico=items.flatMap(({box,verified})=>{
@@ -993,7 +1002,7 @@
       <div class="cx-team-toolbar">
         <label>Data da jornada<select data-cx-team-day>${dates.map(date=>option(date,dateBR(date),selectedDay)).join('')||
           option('','Nenhuma data registrada','')}</select></label>
-        <span class="cx-team-day-status ${aberto?'is-open':''}">${!estrutura.caixasChecked?'CONFERINDO':aberto?'EM OPERAÇÃO':items.length?'ENCERRADA':'SEM CAIXA'}</span>
+        <span class="cx-team-day-status ${aberto?'is-open':''}">${!estrutura.caixasChecked?'CONFERINDO':exigeRevisao?'REVISÃO':aberto?'EM OPERAÇÃO':items.length?'ENCERRADA':'SEM CAIXA'}</span>
       </div>
       <div class="cx-team-actions">
         ${podeAbrir?`<button type="button" class="success-btn" data-cx-team-calendar>
