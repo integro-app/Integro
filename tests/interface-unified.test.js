@@ -15,8 +15,8 @@ test("submenus usam barra horizontal oficial e o período fica dentro do Dashboa
   assert.match(css, /integro-horizontal-module-nav/);
   const dashboard = master.indexOf('id="dashboard"');
   const periodo = master.indexOf('id="dashboardPeriodoToolbar"');
-  const notificacao = master.indexOf('id="integroNotificationButton"');
-  assert.ok(dashboard > notificacao && periodo > dashboard);
+  assert.ok(dashboard >= 0 && periodo > dashboard);
+  assert.doesNotMatch(master, /id="integroNotificationButton"/);
   assert.match(css, /#dashboard #dashboardPeriodoToolbar/);
   assert.match(css, /display:flex!important/);
   assert.match(ui, /montarBarrasInternas/);
