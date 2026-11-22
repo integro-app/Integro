@@ -98,7 +98,9 @@ test("sino do Master Local abre a gaveta uma única vez mesmo com fallback legad
   const vm = require("node:vm");
   const master = read("master-local.html");
   const source = read("js/modules/notification-center.js");
-  assert.match(master, /IntegroNotificationCenter\?\.toggle\?\.\(\)\s*\?\?\s*window\.abrirNotificacoes\?\.\(\)/);
+  assert.doesNotMatch(master, /id="integroNotificationButton"/);
+  const navigation = read("js/unified-navigation.js");
+  assert.match(navigation, /if \(typeof global\.IntegroNotificationCenter\?\.toggle === "function"\) return global\.IntegroNotificationCenter\.toggle\(\)/);
   const start = source.indexOf("  function toggle() {");
   const end = source.indexOf("\n  function install() {", start);
   assert.ok(start >= 0 && end > start, "toggle deve continuar exportado pela central");
