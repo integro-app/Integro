@@ -107,7 +107,7 @@
           const equipes=[v.equipeId,...(Array.isArray(v.equipesIds)?v.equipesIds:[]),
             ...(Array.isArray(v.equipeIds)?v.equipeIds:[])].map(text);
           return tipo==='vendedor'&&v.excluido!==true&&v.ativo!==false&&
-            !['INATIVO','BLOQUEADO','SUSPENSO'].includes(upper(v.status))&&
+            !['INATIVO','BLOQUEADO','SUSPENSO'].includes(upper(v.status))&&v.acessoLiberado!==false&&
             equipes.includes(id(e));
         })}));
   }
