@@ -658,6 +658,7 @@ test("Reabertura é apenas individual e no backend exige motivo e último caixa"
   assert.match(backend,/Somente o caixa mais recente pode ser reaberto/);
   assert.match(backend,/Reabertura exige um responsável autorizado e motivo/);
   assert.match(backend,/Já existe outro caixa aberto/);
+  assert.match(backend,/Reative a equipe antes de reabrir seu caixa/);
 });
 
 test("Backend impede abertura em equipes inativas e mantém travas entre dias",()=>{
