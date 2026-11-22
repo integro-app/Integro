@@ -87,10 +87,10 @@
   }
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
-  const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
+  const ui = {context:'',team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',selected:new Set(),selectedBoxes:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
+    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',selected:new Set(),selectedBoxes:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   // A lista de equipes vem do Firestore via caixas.js, não de um global
   // opcional que pode não existir na rota Master Local.
@@ -127,13 +127,16 @@
     return ehVendedor&&v.excluido!==true&&v.ativo!==false&&v.acessoLiberado!==false&&
       !['INATIVO','BLOQUEADO','SUSPENSO'].includes(upper(v.status));
   }
-  function rows() {
+  function equipeAtiva(e) {
+    return e.ativo!==false&&!['INATIVA','INATIVO','BLOQUEADA','BLOQUEADO','SUSPENSA'].includes(upper(e.status));
+  }
+  function rows(incluirInativas=false) {
     if(!allowed())return [];
     const lista=estrutura.loaded?estrutura.equipes:[];
-    return lista.filter(e=>tenantOf(e)===tenant()&&e.excluido!==true&&e.ativo!==false&&
-      !['INATIVA','INATIVO','BLOQUEADA','BLOQUEADO'].includes(upper(e.status))&&
+    return lista.filter(e=>tenantOf(e)===tenant()&&e.excluido!==true&&
+      (incluirInativas||equipeAtiva(e))&&
       global.IntegroAcesso?.validarEscopo?.(access(),{equipeId:id(e)})!==false)
-      .map(e=>({id:id(e),nome:text(e.nome||e.nomeEquipe||id(e)),equipe:e,caixas:[],
+      .map(e=>({id:id(e),nome:text(e.nome||e.nomeEquipe||id(e)),equipe:e,ativa:equipeAtiva(e),caixas:[],
         vendedores:estrutura.usuarios.filter(v=>vendedorAtivo(v)&&vendedorPertenceEquipe(v,e,lista))}));
   }
   async function carregarEstrutura(forcar=false){
@@ -651,7 +654,11 @@
       for(const selectedId of ui.selected)if(!idsPermitidos.has(selectedId))ui.selected.delete(selectedId);
     }
     if (ui.detail) { renderDetail(host);return true; }
-    const all = rows();
+    const todasEquipes=rows(true);
+    const totalAtivas=todasEquipes.filter(row=>row.ativa).length;
+    const totalInativas=todasEquipes.length-totalAtivas;
+    const all=todasEquipes.filter(row=>ui.equipesFiltro==='todas'||
+      (ui.equipesFiltro==='inativas'?!row.ativa:row.ativa));
     const searchTerm=equipeNomeNormalizado(ui.search);
     const matchesSearch=row=>!searchTerm||
       [row.nome,...row.vendedores.flatMap(v=>[v.nome,v.nomeCompleto,v.email])]
@@ -818,7 +825,7 @@
     return snap.docs.map(d=>({...d.data(),id:d.id})).filter(v=>!scopedTeam || text(v[field])===text(value));
   }
   async function open(teamId, boxId = '') {
-    syncContext();const row=rows().find(r=>text(r.id)===text(teamId));if(!row)return;
+    syncContext();const row=rows(true).find(r=>text(r.id)===text(teamId));if(!row)return;
     const revision=++ui.revision;ui.detail=text(row.id);ui.box='';ui.data=null;ui.tab='resumo';ui.error='';ui.loading=true;ui.history=teamBoxes(row);render();
     try {
       const lists=await Promise.all([query('caixas','equipeId',text(row.id)),...(row.vendedores||[]).map(v=>query('caixas','vendedorId',id(v)))]);
@@ -887,7 +894,7 @@
   }
   const metric = (label,value) => `<div class="cx-metric"><span>${label}</span><strong>${value==null?'Não registrado':value}</strong></div>`;
   function renderDetail(host) {
-    const row=rows().find(r=>text(r.id)===ui.detail);if(!row){ui.detail='';render();return;}
+    const row=rows(true).find(r=>text(r.id)===ui.detail);if(!row){ui.detail='';render();return;}
     const box=ui.history.find(b=>id(b)===ui.box),m=box&&ui.data?model(box,ui.data):null;
     const canManage=['master_local','gerente','supervisor'].includes(access().perfil);
     host.innerHTML=`<div data-caixas-supervisao><header class="cx-head cx-detail-header"><div><button class="cx-detail-back ghost-btn" data-cx-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Voltar para Caixas</button><span class="cx-eyebrow">MASTER LOCAL · OPERAÇÃO</span><h2>Detalhamento do caixa</h2><p>${esc(row.nome)}${box?' · '+esc(box.vendedorNome||box.vendedorId||'Vendedor'):''}</p></div><button class="cx-detail-refresh ghost-btn" data-cx-refresh ${ui.loading?'disabled':''} title="Conferir novamente no servidor"><span class="material-symbols-rounded" aria-hidden="true">refresh</span> Atualizar</button></header><div class="cx-filters cx-detail-filters"><label>Equipe<select data-cx-team>${rows().map(r=>option(r.id,r.nome,ui.detail)).join('')}</select></label><label>Caixa<select data-cx-box ${ui.loading?'disabled':''}>${ui.history.map(b=>option(id(b),`${dateBR(boxDay(b))} · ${upper(b.status)} · ${b.vendedorNome || b.vendedorId || 'Vendedor'}`,ui.box)).join('')||option('','Nenhum caixa registrado','')}</select></label></div><nav class="cx-tabs" aria-label="Consulta do caixa"><button data-cx-tab="resumo" class="${ui.tab==='resumo'?'active':''}" aria-pressed="${ui.tab==='resumo'}">Resumo</button><button data-cx-tab="detalhes" class="${ui.tab==='detalhes'?'active':''}" aria-pressed="${ui.tab==='detalhes'}">Detalhes</button></nav>${ui.loading?'<p class="cx-loading" role="status">Consultando o caixa selecionado…</p>':ui.error?`<p class="cx-error" role="alert">${esc(ui.error)} <button class="ghost-btn" data-cx-retry>Tentar novamente</button></p>`:!box?`<section class="cx-empty-state"><span class="cx-empty-illustration" aria-hidden="true">▦</span><h3>Nenhum caixa registrado para esta equipe</h3><p>Confira os vendedores vinculados e inicie a abertura com a data validada pelo servidor.</p>${!row.vendedores.length?'<p class="cx-empty-warning">Esta equipe não possui vendedores elegíveis. Verifique os vínculos no cadastro de Equipes.</p>':''}${canManage?`<button class="success-btn" data-cx-open-date title="Abrir calendário de caixas da equipe">Abrir caixas por data</button>`:''}</section>`:m?`<footer class="cx-footer"><span>${badge(box)} · ${dateBR(boxDay(box))}</span><div>${canManage?`<button class="success-btn" data-cx-open-date title="Abrir calendário para caixas elegíveis da equipe" ${ui.actionBusy?'disabled':''}>Abrir por data</button>${openBox(box)?`<button class="danger-btn" data-cx-close ${ui.actionBusy?'disabled':''}>Fechar caixa</button>`:id(box)===id(ui.history.filter(b=>text(b.vendedorId)===text(box.vendedorId))[0])?`<button class="ghost-btn" data-cx-reopen ${ui.actionBusy?'disabled':''}>Reabrir caixa</button>`:''}`:''}</div></footer>${ui.tab==='resumo'?summary(m,row):details(m)}`:''}</div>`;
