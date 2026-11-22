@@ -196,3 +196,12 @@
  [data-caixas-supervisao] .cx-operational-pulse{grid-template-columns:repeat(2,minmax(0,1fr))}
  [data-caixas-supervisao] .cx-operational-pulse>div:last-child{grid-column:1/-1}
 }
+
+/* Estado vazio utilizável: abertura não depende da existência de caixa anterior. */
+[data-caixas-supervisao] .cx-empty-state{display:grid;justify-items:center;text-align:center;gap:11px;margin:18px 0;padding:clamp(24px,5vw,45px) 18px;border:1px dashed #b9cbe2;border-radius:20px;background:linear-gradient(145deg,#f8fbff,#f1f6fd);color:#132c49}
+[data-caixas-supervisao] .cx-empty-illustration{display:grid;place-items:center;width:60px;height:60px;font-size:30px;color:#3269b0;border-radius:18px;background:#e5f0ff}
+[data-caixas-supervisao] .cx-empty-state h3{margin:3px 0 0;font-size:clamp(17px,2vw,21px);line-height:1.3;letter-spacing:-.025em}
+[data-caixas-supervisao] .cx-empty-state p{margin:0;max-width:480px;color:#627994;font-size:13px;line-height:1.6}
+[data-caixas-supervisao] .cx-empty-state .cx-empty-warning{color:#9a5620;font-weight:750}
+[data-caixas-supervisao] .cx-empty-state .success-btn{margin-top:9px;min-height:46px!important;background:#0c875e!important;color:#fff!important;border-radius:12px!important;border:0!important;padding:12px 21px!important;font-weight:850!important}
+@media(max-width:760px){[data-caixas-supervisao] .cx-empty-state{margin:12px 0;padding:26px 14px}[data-caixas-supervisao] .cx-empty-state .success-btn{width:100%;max-width:330px}}
