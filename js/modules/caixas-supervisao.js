@@ -622,70 +622,120 @@
   // de cada vendedor continuam independentes para saldo, auditoria e baixa.
   // No mobile, a equipe ocupa um único cartão de jornada. Os subcaixas
   // ficam acessíveis sem competir com os indicadores ou a ação principal.
+
+  // Um cartão = jornada da equipe. Todos os valores vêm do modelo conciliado
+  // dos caixas individuais vinculados à data operacional selecionada.
   function renderCardsCaixa(entries,conferido) {
+    const diaAtual=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',
+      year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     return entries.map(({row,latest,history,models,avisos})=>{
       const abertos=history.filter(openBox);
       const inconsistentes=history.filter(box=>
         ['ABERTO','REABERTO'].includes(upper(box.status))&&box.ativo===false);
-      const dia=latest?dateBR(boxDay(latest)):'Sem abertura registrada';
-      const verificado=estrutura.caixasChecked&&models.every(conferido);
-      const saldoAtual=verificado&&models.length?
-        cash(models.some(m=>m.current==null)?null:models.reduce((n,m)=>n+num(m.current),0)):
-        models.length?'Conferindo…':'—';
+      const possuiDivergencia=history.some(box=>upper(box.status)==='DIVERGENTE');
+      const pendente=abertos.some(box=>boxDay(box)&&boxDay(box)<diaAtual);
+      const dataJornada=latest?dateBR(boxDay(latest)):'Sem jornada';
+      const conferido=estrutura.caixasChecked&&models.every(conferido);
+      const valor=key=>!estrutura.caixasChecked?'Conferindo…':
+        !models.length?'—':!conferido?'Conferindo…':
+        models.some(m=>m[key]==null)?'Não registrado':
+        cash(models.reduce((n,m)=>n+num(m[key]),0));
       const situacao=!row.ativa?'INATIVA':!estrutura.caixasChecked?'CONFERINDO':
-        inconsistentes.length?'REVISÃO':abertos.length?'EM OPERAÇÃO':
-        history.some(box=>upper(box.status)==='DIVERGENTE')?'DIVERGENTE':
+        inconsistentes.length||possuiDivergencia?'REVISÃO':
+        pendente?'PENDENTE DE FECHAMENTO':abertos.length?'EM OPERAÇÃO':
         latest?'FECHADA':'SEM CAIXA';
-      const statusVisual=!row.ativa?'is-inactive':inconsistentes.length?'is-warning':
-        abertos.length?'is-open':history.some(b=>upper(b.status)==='DIVERGENTE')?'is-warning':'is-closed';
-      const filhos=models.slice(0,6).map(m=>{
-        const box=m.box,ativo=openBox(box),responsavel=text(box.vendedorNome||
-          row.vendedores.find(v=>id(v)===text(box.vendedorId))?.nome||'Vendedor');
-        return `<div class="cx-team-seller">
-          <span class="cx-team-seller-icon material-symbols-rounded" aria-hidden="true">person</span>
-          <button type="button" data-cx-open-box="${esc(id(box))}" data-cx-team="${esc(row.id)}"
-            aria-label="Consultar caixa de ${esc(responsavel)}"><strong>${esc(responsavel)}</strong>
-            <small>${ativo?'Em operação':'Fechado ou histórico'}</small></button>
-          <span class="cx-team-seller-value">${!estrutura.caixasChecked||!conferido(m)?'Conferindo…':cash(m.current)}</span>
-          <label class="cx-box-check" title="Selecionar este caixa">
-            <input type="checkbox" data-cx-select-box="${esc(id(box))}" aria-label="Selecionar caixa de ${esc(responsavel)}"
-              ${ui.selectedBoxes.has(id(box))?'checked':''} ${!ativo||!estrutura.caixasChecked||!row.ativa?'disabled':''}>
-            <span class="material-symbols-rounded" aria-hidden="true">check</span>
-          </label>
-        </div>`;
-      }).join('');
+      const classeStatus=!row.ativa?'is-inactive':
+        inconsistentes.length||possuiDivergencia||pendente?'is-warning':
+        abertos.length?'is-open':'is-closed';
+      const podeSelecionar=row.ativa&&estrutura.caixasChecked;
       const membros=models.length?`
-        <details class="cx-team-members" data-cx-members="${esc(row.id)}" ${ui.expandedTeams.has(text(row.id))?'open':''}>
-          <summary><span class="material-symbols-rounded" aria-hidden="true">groups</span>
-            <strong>Caixas dos vendedores</strong><small>${models.length}</small>
-            <span class="material-symbols-rounded cx-members-chevron" aria-hidden="true">expand_more</span></summary>
-          <div class="cx-team-day-sellers" aria-label="Caixas individuais dos vendedores">
-            ${filhos}
-            ${models.length>6?`<small class="cx-team-more">+${models.length-6} caixa(s). Consulte todos no detalhamento.</small>`:''}
+        <details class="cx-team-members cx-team-members-extra" data-cx-members="${esc(row.id)}"
+          ${ui.expandedTeams.has(text(row.id))?'open':''}>
+          <summary>Caixas dos vendedores <span class="material-symbols-rounded">expand_more</span></summary>
+          <div class="cx-team-day-sellers">
+            ${models.map(m=>{
+              const box=m.box,responsavel=text(box.vendedorNome||
+                row.vendedores.find(v=>id(v)===text(box.vendedorId))?.nome||'Vendedor');
+              return `<div class="cx-team-seller">
+                <span class="material-symbols-rounded cx-team-seller-icon" aria-hidden="true">person</span>
+                <button type="button" data-cx-open-box="${esc(id(box))}" data-cx-team="${esc(row.id)}">
+                  <strong>${esc(responsavel)}</strong><small>${openBox(box)?'Caixa aberto':'Histórico do caixa'}</small>
+                </button>
+                <span class="cx-team-seller-value">${estrutura.caixasChecked&&conferido(m)?cash(m.current):'Conferindo…'}</span>
+                <label class="cx-box-check" title="Selecionar caixa">
+                  <input type="checkbox" data-cx-select-box="${esc(id(box))}"
+                    aria-label="Selecionar caixa de ${esc(responsavel)}"
+                    ${ui.selectedBoxes.has(id(box))?'checked':''}
+                    ${!openBox(box)||!podeSelecionar?'disabled':''}>
+                  <span class="material-symbols-rounded" aria-hidden="true">check</span>
+                </label>
+              </div>`;
+            }).join('')}
           </div>
-        </details>`:`<p class="cx-team-empty">Sem caixas nesta equipe. Consulte a abertura por data no menu Ações.</p>`;
-      return `<article class="cx-team-day-card ${statusVisual}" data-cx-card-team="${esc(row.id)}">
+        </details>`:'';
+      return `<article class="cx-team-day-card cx-approved-team ${classeStatus}"
+        data-cx-card-team="${esc(row.id)}">
         <div class="cx-team-day-top">
-          <label class="cx-team-select" title="Selecionar equipe para operação em lote">
-            <input type="checkbox" data-caixas-equipe="${esc(row.id)}" aria-label="Selecionar equipe ${esc(row.nome)}"
-              ${ui.selected.has(text(row.id))?'checked':''} ${!row.ativa||!estrutura.caixasChecked?'disabled':''}>
+          <label class="cx-team-select" title="Selecionar equipe">
+            <input type="checkbox" data-caixas-equipe="${esc(row.id)}"
+              aria-label="Selecionar equipe ${esc(row.nome)}"
+              ${ui.selected.has(text(row.id))?'checked':''} ${!podeSelecionar?'disabled':''}>
             <span class="material-symbols-rounded" aria-hidden="true">check</span>
           </label>
-          <button type="button" class="cx-team-open" data-cx-open="${esc(row.id)}">
+          <span class="cx-team-avatar material-symbols-rounded" aria-hidden="true">groups</span>
+          <button class="cx-team-open" type="button" data-cx-open="${esc(row.id)}"
+            aria-label="Abrir jornada da equipe ${esc(row.nome)}">
             <span class="cx-team-open-title">${esc(row.nome)}</span>
-            <span class="cx-team-open-date">${esc(dia)} · ${row.vendedores.length} vendedor(es)</span>
+            <span class="cx-team-open-date">${esc(dataJornada)} · ${row.vendedores.length} vendedor(es)</span>
           </button>
-          <span class="cx-team-day-status ${abertos.length?'is-open':''}">${situacao}</span>
+          <span class="cx-team-day-status ${classeStatus}" title="${esc(situacao)}">
+            <span class="cx-status-dot" aria-hidden="true"></span>${esc(situacao)}
+          </span>
+          <details class="cx-team-card-menu" data-cx-card-menu>
+            <summary aria-label="Mais ações da equipe ${esc(row.nome)}"
+              title="Mais ações"><span class="material-symbols-rounded" aria-hidden="true">more_vert</span></summary>
+            <div class="cx-team-card-menu-panel">
+              <button type="button" data-cx-open="${esc(row.id)}">Detalhes e histórico</button>
+              ${models.length?`<button type="button" data-cx-toggle-members="${esc(row.id)}">
+                ${ui.expandedTeams.has(text(row.id))?'Ocultar caixas dos vendedores':'Ver caixas dos vendedores'}</button>`:''}
+              ${podeSelecionar?`<button type="button" data-cx-menu-select-team="${esc(row.id)}">
+                ${ui.selected.has(text(row.id))?'Desmarcar equipe':'Selecionar equipe'}</button>`:''}
+              ${row.ativa&&podeGerir('abrir')?`<button type="button" data-cx-menu-calendar="${esc(row.id)}">
+                Abrir caixa por data</button>`:''}
+            </div>
+          </details>
         </div>
-        <div class="cx-team-day-summary" aria-label="Resumo financeiro da equipe">
-          <span><small>Saldo da equipe</small><strong>${saldoAtual}</strong></span>
-          <span><small>Abertos</small><strong>${estrutura.caixasChecked?abertos.length:'—'}</strong></span>
-          <span><small>Na jornada</small><strong>${estrutura.caixasChecked?models.length:'—'}</strong></span>
+        <div class="cx-approved-metrics" aria-label="Indicadores financeiros de ${esc(row.nome)}">
+          <div class="cx-approved-metric cx-approved-current">
+            <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
+            <span class="cx-approved-value"><small>Caixa Atual</small>
+              <strong>${valor('current')}</strong></span>
+          </div>
+          <div class="cx-approved-metric cx-approved-sales">
+            <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">trending_up</span>
+            <span class="cx-approved-value"><small>Vendas</small>
+              <strong>${valor('loans')}</strong></span>
+          </div>
+          <div class="cx-approved-metric cx-approved-expenses">
+            <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">receipt_long</span>
+            <span class="cx-approved-value"><small>Gastos</small>
+              <strong>${valor('expenses')}</strong></span>
+          </div>
+        </div>
+        <div class="cx-approved-meta" aria-label="Resumo da equipe">
+          <div><span class="material-symbols-rounded" aria-hidden="true">point_of_sale</span>
+            <span><small>Caixas abertos</small><strong>${estrutura.caixasChecked?abertos.length:'—'}</strong></span></div>
+          <div><span class="material-symbols-rounded" aria-hidden="true">event_available</span>
+            <span><small>Na jornada</small><strong>${estrutura.caixasChecked?models.length:'—'}</strong></span></div>
+          <div><span class="material-symbols-rounded" aria-hidden="true">groups</span>
+            <span><small>Vendedores</small><strong>${row.vendedores.length}</strong></span></div>
         </div>
         ${membros}
         ${avisos.length?`<p class="cx-team-alert" role="status">${esc(avisos.join(' · '))}</p>`:''}
         <button type="button" class="cx-team-day-detail" data-cx-open="${esc(row.id)}">
-          <span>Detalhes e histórico</span><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
+          <span class="material-symbols-rounded" aria-hidden="true">bar_chart</span>
+          <span>Detalhes e histórico</span>
+          <span class="material-symbols-rounded cx-approved-arrow" aria-hidden="true">chevron_right</span>
         </button>
       </article>`;
     }).join('');
