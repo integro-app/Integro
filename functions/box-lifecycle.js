@@ -180,6 +180,11 @@ function criarCicloCaixa({ db, functions }) {
         }).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
         const latest = [control.exists ? control.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
         if (latest > day) fail("failed-precondition","Já existe caixa posterior na equipe. Os dias anteriores estão bloqueados.");
+        // A abertura parcial é permitida SOMENTE enquanto a mesma jornada
+        // da equipe permanece aberta. Depois do último fechamento, ninguém
+        // pode criar um novo subcaixa nessa data; a próxima jornada é outro dia.
+        if (latest === day && !teamBoxes.some(box=>box.excluido!==true && isOpen(box) && boxDay(box)===day))
+          fail("failed-precondition","A jornada desta equipe já foi encerrada nessa data. Abra apenas no dia seguinte.");
         if (teamBoxes.some(box => (box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId)) && boxDay(box) === day && box.excluido === true)) fail("failed-precondition","Essa data já foi usada pelo vendedor e não pode ser criada novamente.");
         if (teamBoxes.some(box => box.excluido !== true && isOpen(box) && boxDay(box) !== day)) fail("failed-precondition","Feche os caixas abertos da equipe antes de abrir outro dia.");
       }
