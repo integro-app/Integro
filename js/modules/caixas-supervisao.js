@@ -90,11 +90,11 @@
   const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',selected:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',selected:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
+    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',selected:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   // A lista de equipes vem do Firestore via caixas.js, não de um global
   // opcional que pode não existir na rota Master Local.
-  let estrutura={context:'',loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',equipes:[],usuarios:[]};
+  let estrutura={context:'',loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]};
   // Vínculos antigos podem usar equipe principal, lista ou objeto; nunca
   // associar vendedor por nome quando existem IDs explícitos diferentes.
   const equipeNomeNormalizado = v => text(v).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('pt-BR');
@@ -139,7 +139,7 @@
   async function carregarEstrutura(forcar=false){
     syncContext();
     const contexto=ui.context;
-    if(estrutura.context!==contexto)estrutura={context:contexto,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',equipes:[],usuarios:[]};
+    if(estrutura.context!==contexto)estrutura={context:contexto,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]};
     if(estrutura.loading||(!forcar&&estrutura.loaded))return;
     estrutura.loading=true;estrutura.error='';
     if(forcar){estrutura.caixasAttempted=true;estrutura.caixasChecked=false;estrutura.caixasError='';}
@@ -176,6 +176,7 @@
     try {
       const permitidas=rows();
       const falhas=[];
+      const idsConsultados=new Set();
       // Lotes limitados evitam dezenas de leituras simultâneas no Firestore.
       for(let pos=0;pos<permitidas.length;pos+=3){
         const lote=permitidas.slice(pos,pos+3);
@@ -186,10 +187,21 @@
         if(contexto!==ui.context)return;
         for(const result of resultados){
           if(result.error)falhas.push(text(result.row.nome)+': '+text(result.error.message));
-          else result.caixas.forEach(rememberServerBox);
+          else result.caixas.forEach(caixa=>{idsConsultados.add(id(caixa));rememberServerBox(caixa);});
         }
       }
       if(contexto!==ui.context)return;
+      if(!falhas.length){
+        // A consulta completa é a fonte de verdade para caixas com equipeId.
+        // Retirar documentos antigos do cache quando não existem mais no servidor.
+        const permitidos=new Set(permitidas.map(row=>text(row.id)));
+        for(const [key,box] of verifiedBoxes){
+          if(permitidos.has(text(box.equipeId))&&!idsConsultados.has(key)){
+            verifiedBoxes.delete(key);overview.delete(key);
+          }
+        }
+        estrutura.caixasIds=idsConsultados;
+      }
       estrutura.caixasChecked=!falhas.length;
       estrutura.caixasError=falhas.length?
         'Falha na conferência de '+falhas.length+' equipe(s). '+falhas[0]:'';
@@ -225,6 +237,7 @@
     // Uma consulta atrasada nunca pode reabrir visualmente um caixa já fechado.
     if (old && oldTime && (!newTime || newTime < oldTime)) return old;
     verifiedBoxes.set(key,box);
+    if(estrutura.caixasChecked)estrutura.caixasIds.add(key);
     caixasInexistentesServidor.delete(key);
     caixasFalhaConferencia.delete(key);
     return box;
@@ -238,7 +251,7 @@
     // comprovada pelo servidor precisa ficar por último, nunca primeiro.
     const all = unique([...(global.CX?.caixas || []),...(S()?.getCaixas?.() || []),...(row.caixas || []),...verifiedBoxes.values()]);
     return all.filter(b => !caixasInexistentesServidor.has(id(b)) && tenantOf(b) === tenant() &&
-      b.excluido !== true && upper(b.status) !== 'ANULADO_DUPLICIDADE' && (b.equipeId ? text(b.equipeId) === text(row.id) : [...identities(b)].some(v=>sellerIds.has(v))))
+      b.excluido !== true && upper(b.status) !== 'ANULADO_DUPLICIDADE' && (b.equipeId ? text(b.equipeId) === text(row.id) && (!estrutura.caixasChecked||estrutura.caixasIds.has(id(b))) : [...identities(b)].some(v=>sellerIds.has(v))))
       .sort((a,b) => boxDay(b).localeCompare(boxDay(a)) || id(b).localeCompare(id(a)));
   }
   function cachedData() { return {sales:global.CX?.vendas || S()?.getVendas?.() || [],payments:global.CX?.pagamentos || S()?.getPagamentos?.() || [],moves:global.CX?.solicitacoes || S()?.getSolicitacoes?.() || []}; }
@@ -695,7 +708,7 @@
         global.notificarIntegro?.(error?.message || 'Não foi possível executar o fechamento.');
       } finally {ui.actionBusy=false;if(button.isConnected)button.disabled=false;render();}
     };
-    const acoes=disponibilidadeAcoesEquipes(entries,selected,access().perfil,ui.actionBusy);
+    const acoes=disponibilidadeAcoesEquipes(entries,selected,access().perfil,ui.actionBusy||!estrutura.caixasChecked);
     const botaoAbrir=host.querySelector("#btnAbrirCaixasSelecionadas");
     const botaoFechar=host.querySelector("#btnFecharCaixasSelecionadas");
     botaoAbrir.disabled=!acoes.podeAbrir;
