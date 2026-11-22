@@ -159,6 +159,11 @@ function criarCicloCaixa({ db, functions }) {
       if (linked.docs.length >= 3) fail("failed-precondition","Cadastros de vendedor exigem revisão de identidade.");
       const sellerIds = new Set([sellerId,requestedSellerId,...linked.docs.map(doc => doc.id)]);
       const teamId = seller.equipeId ? id(seller.equipeId) : "";
+      const equipeSolicitada=core.texto(input.equipeId);
+      // Não desviar um movimento financeiro silenciosamente para a equipe
+      // principal quando a operação foi solicitada por outra unidade.
+      if(equipeSolicitada && equipeSolicitada!==teamId)
+        fail("failed-precondition","Equipe solicitada não corresponde à equipe operacional do vendedor. Regularize o vínculo antes de abrir caixa.");
       const teamControl = teamId ? db.collection("controle_caixas").doc(who.tenant + "_equipe_" + teamId) : null;
       if(teamId) {
         const unidade=await transaction.get(db.collection("equipes").doc(teamId));
