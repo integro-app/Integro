@@ -8,6 +8,11 @@
   const user = () => S()?.getUsuario?.() || {}, tenant = () => text(S()?.getTenantId?.() || tenantOf(user()));
   const access = () => global.IntegroAcesso?.acessoUsuario?.(user()) || {};
   const allowed = () => !!tenant() && ['master_local','gerente','supervisor','financeiro','auditor','administrativo'].includes(access().perfil);
+  const podeGerir = acao => {
+    if(['master_local','gerente','supervisor'].includes(access().perfil))return true;
+    return access().perfil==='financeiro' &&
+      global.IntegroAcesso?.pode?.(user(),'caixas.'+acao,{clientePlataformaId:tenant()})===true;
+  };
   const num = v => typeof v === 'string' && v.includes(',') ? Number(v.replace(/[^\d,-]/g,'').replace(',','.')) || 0 : Number(v) || 0;
   function amount(v, names, fallback = 0) {
     for (const name of names) {
@@ -333,7 +338,7 @@
       throw Error('A empresa ou o usuário mudou durante a operação. Nenhuma nova movimentação será executada.');
   }
   async function abrirSelecionados() {
-    if(!['master_local','gerente','supervisor','financeiro'].includes(access().perfil))
+    if(!podeGerir('abrir'))
       throw Error('Perfil sem permissão para abrir caixas.');
     const contextoOperacao=ui.context,tenantOperacao=tenant();
     validarContextoOperacao(contextoOperacao,tenantOperacao);
@@ -500,7 +505,7 @@
   }
 
   async function fecharSelecionados() {
-    if(!['master_local','gerente','supervisor','financeiro'].includes(access().perfil))
+    if(!podeGerir('fechar'))
       throw Error('Perfil sem permissão para fechar caixas.');
     const contextoOperacao=ui.context,tenantOperacao=tenant();
     validarContextoOperacao(contextoOperacao,tenantOperacao);
@@ -596,11 +601,14 @@
   // apenas o status agregado da equipe para travar ações de todos os vendedores.
   // A abertura efetiva continua dependendo da pré-conferência no servidor.
   function disponibilidadeAcoesEquipes(entries, selected, perfil, busy = false) {
-    const podeGerir = ['master_local','gerente','supervisor','financeiro'].includes(perfil);
+    const permitido = ['master_local','gerente','supervisor'].includes(perfil) ||
+      (perfil==='financeiro'&&podeGerir('abrir'));
+    const podeFechar = ['master_local','gerente','supervisor'].includes(perfil) ||
+      (perfil==='financeiro'&&podeGerir('fechar'));
     const escolhidas = entries.filter(v => selected.has(text(v.row.id)));
     return {
-      podeAbrir: podeGerir && !busy && escolhidas.length > 0,
-      podeFechar: podeGerir && !busy && escolhidas.some(v => (v.history || []).some(openBox)),
+      podeAbrir: permitido && !busy && escolhidas.length > 0,
+      podeFechar: podeFechar && !busy && escolhidas.some(v => (v.history || []).some(openBox)),
       equipesSelecionadas: escolhidas.length
     };
   }
@@ -836,7 +844,7 @@
     const acoes=disponibilidadeAcoesEquipes(entries,selected,access().perfil,ui.actionBusy||!estrutura.caixasChecked);
     const botaoAbrir=host.querySelector("#btnAbrirCaixasSelecionadas");
     const botaoFechar=host.querySelector("#btnFecharCaixasSelecionadas");
-    const podeFecharCaixa=estrutura.caixasChecked&&!ui.actionBusy&&['master_local','gerente','supervisor','financeiro'].includes(access().perfil)&&caixasMarcados.some(openBox);
+    const podeFecharCaixa=estrutura.caixasChecked&&!ui.actionBusy&&podeGerir('fechar')&&caixasMarcados.some(openBox);
     botaoAbrir.disabled=!acoes.podeAbrir;
     botaoFechar.disabled=!(ui.selectedBoxes.size?podeFecharCaixa:acoes.podeFechar);
     botaoAbrir.title=acoes.equipesSelecionadas
@@ -930,8 +938,10 @@
   function renderDetail(host) {
     const row=rows(true).find(r=>text(r.id)===ui.detail);if(!row){ui.detail='';render();return;}
     const box=ui.history.find(b=>id(b)===ui.box),m=box&&ui.data?model(box,ui.data):null;
-    const canManage=['master_local','gerente','supervisor','financeiro'].includes(access().perfil);
-    host.innerHTML=`<div data-caixas-supervisao><header class="cx-head cx-detail-header"><div><button class="cx-detail-back ghost-btn" data-cx-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Voltar para Caixas</button><span class="cx-eyebrow">MASTER LOCAL · OPERAÇÃO</span><h2>Detalhamento do caixa</h2><p>${esc(row.nome)}${box?' · '+esc(box.vendedorNome||box.vendedorId||'Vendedor'):''}</p></div><button class="cx-detail-refresh ghost-btn" data-cx-refresh ${ui.loading?'disabled':''} title="Conferir novamente no servidor"><span class="material-symbols-rounded" aria-hidden="true">refresh</span> Atualizar</button></header><div class="cx-filters cx-detail-filters"><label>Equipe<select data-cx-team>${rows(true).map(r=>option(r.id,r.nome,ui.detail)).join('')}</select></label><label>Caixa<select data-cx-box ${ui.loading?'disabled':''}>${ui.history.map(b=>option(id(b),`${dateBR(boxDay(b))} · ${upper(b.status)} · ${b.vendedorNome || b.vendedorId || 'Vendedor'}`,ui.box)).join('')||option('','Nenhum caixa registrado','')}</select></label></div><nav class="cx-tabs" aria-label="Consulta do caixa"><button data-cx-tab="resumo" class="${ui.tab==='resumo'?'active':''}" aria-pressed="${ui.tab==='resumo'}">Resumo</button><button data-cx-tab="detalhes" class="${ui.tab==='detalhes'?'active':''}" aria-pressed="${ui.tab==='detalhes'}">Detalhes</button></nav>${ui.loading?'<p class="cx-loading" role="status">Consultando o caixa selecionado…</p>':ui.error?`<p class="cx-error" role="alert">${esc(ui.error)} <button class="ghost-btn" data-cx-retry>Tentar novamente</button></p>`:!box?`<section class="cx-empty-state"><span class="cx-empty-illustration" aria-hidden="true">▦</span><h3>Nenhum caixa registrado para esta equipe</h3><p>Confira os vendedores vinculados e inicie a abertura com a data validada pelo servidor.</p>${!row.vendedores.length?'<p class="cx-empty-warning">Esta equipe não possui vendedores elegíveis. Verifique os vínculos no cadastro de Equipes.</p>':''}${canManage&&row.ativa?`<button class="success-btn" data-cx-open-date title="Abrir calendário de caixas da equipe">Abrir caixas por data</button>`:''}</section>`:m?`<footer class="cx-footer"><span>${badge(box)} · ${dateBR(boxDay(box))}</span><div>${canManage?`${row.ativa?`<button class="success-btn" data-cx-open-date title="Abrir calendário para caixas elegíveis da equipe" ${ui.actionBusy?'disabled':''}>Abrir por data</button>`:''}${openBox(box)?`<button class="danger-btn" data-cx-close ${ui.actionBusy?'disabled':''}>Fechar caixa</button>`:id(box)===id(ui.history.filter(b=>text(b.vendedorId)===text(box.vendedorId))[0])?`<button class="ghost-btn" data-cx-reopen ${ui.actionBusy?'disabled':''}>Reabrir caixa</button>`:''}`:''}</div></footer>${ui.tab==='resumo'?summary(m,row):details(m)}`:''}</div>`;
+    const canOpen=podeGerir('abrir')&&row.ativa;
+    const canClose=podeGerir('fechar');
+    const canReopen=podeGerir('reabrir');
+    host.innerHTML=`<div data-caixas-supervisao><header class="cx-head cx-detail-header"><div><button class="cx-detail-back ghost-btn" data-cx-back><span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Voltar para Caixas</button><span class="cx-eyebrow">MASTER LOCAL · OPERAÇÃO</span><h2>Detalhamento do caixa</h2><p>${esc(row.nome)}${box?' · '+esc(box.vendedorNome||box.vendedorId||'Vendedor'):''}</p></div><button class="cx-detail-refresh ghost-btn" data-cx-refresh ${ui.loading?'disabled':''} title="Conferir novamente no servidor"><span class="material-symbols-rounded" aria-hidden="true">refresh</span> Atualizar</button></header><div class="cx-filters cx-detail-filters"><label>Equipe<select data-cx-team>${rows(true).map(r=>option(r.id,r.nome,ui.detail)).join('')}</select></label><label>Caixa<select data-cx-box ${ui.loading?'disabled':''}>${ui.history.map(b=>option(id(b),`${dateBR(boxDay(b))} · ${upper(b.status)} · ${b.vendedorNome || b.vendedorId || 'Vendedor'}`,ui.box)).join('')||option('','Nenhum caixa registrado','')}</select></label></div><nav class="cx-tabs" aria-label="Consulta do caixa"><button data-cx-tab="resumo" class="${ui.tab==='resumo'?'active':''}" aria-pressed="${ui.tab==='resumo'}">Resumo</button><button data-cx-tab="detalhes" class="${ui.tab==='detalhes'?'active':''}" aria-pressed="${ui.tab==='detalhes'}">Detalhes</button></nav>${ui.loading?'<p class="cx-loading" role="status">Consultando o caixa selecionado…</p>':ui.error?`<p class="cx-error" role="alert">${esc(ui.error)} <button class="ghost-btn" data-cx-retry>Tentar novamente</button></p>`:!box?`<section class="cx-empty-state"><span class="cx-empty-illustration" aria-hidden="true">▦</span><h3>Nenhum caixa registrado para esta equipe</h3><p>Confira os vendedores vinculados e inicie a abertura com a data validada pelo servidor.</p>${!row.vendedores.length?'<p class="cx-empty-warning">Esta equipe não possui vendedores elegíveis. Verifique os vínculos no cadastro de Equipes.</p>':''}${canOpen?`<button class="success-btn" data-cx-open-date title="Abrir calendário de caixas da equipe">Abrir caixas por data</button>`:''}</section>`:m?`<footer class="cx-footer"><span>${badge(box)} · ${dateBR(boxDay(box))}</span><div>${canOpen?`<button class="success-btn" data-cx-open-date title="Abrir calendário para caixas elegíveis da equipe" ${ui.actionBusy?'disabled':''}>Abrir por data</button>`:''}${canClose&&openBox(box)?`<button class="danger-btn" data-cx-close ${ui.actionBusy?'disabled':''}>Fechar caixa</button>`:canReopen&&!openBox(box)&&id(box)===id(ui.history.filter(b=>text(b.vendedorId)===text(box.vendedorId))[0])?`<button class="ghost-btn" data-cx-reopen ${ui.actionBusy?'disabled':''}>Reabrir caixa</button>`:''}</div></footer>${ui.tab==='resumo'?summary(m,row):details(m)}`:''}</div>`;
     if (ui.actionMessage) actionFeedback(ui.actionMessage, ui.actionError);
     host.querySelector('[data-cx-back]').onclick=()=>{ui.revision++;ui.detail='';ui.data=null;render();};host.querySelector('[data-cx-team]').onchange=e=>open(e.target.value);
     host.querySelector('[data-cx-box]').onchange=e=>selectBox(e.target.value);
