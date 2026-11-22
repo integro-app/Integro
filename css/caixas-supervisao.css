@@ -205,3 +205,46 @@
 [data-caixas-supervisao] .cx-empty-state .cx-empty-warning{color:#9a5620;font-weight:750}
 [data-caixas-supervisao] .cx-empty-state .success-btn{margin-top:9px;min-height:46px!important;background:#0c875e!important;color:#fff!important;border-radius:12px!important;border:0!important;padding:12px 21px!important;font-weight:850!important}
 @media(max-width:760px){[data-caixas-supervisao] .cx-empty-state{margin:12px 0;padding:26px 14px}[data-caixas-supervisao] .cx-empty-state .success-btn{width:100%;max-width:330px}}
+
+/* ÍNTEGRO · conferência financeira em lote com valores físicos por vendedor */
+.cx-bulk-close-dialog{width:min(770px,calc(100% - 28px));padding:0;max-height:calc(100dvh - 28px);overflow:hidden}
+.cx-bulk-close-dialog form{display:flex;flex-direction:column;max-height:calc(100dvh - 28px);padding:24px;overflow-y:auto;overscroll-behavior:contain}
+.cx-bulk-head{padding-bottom:15px;border-bottom:1px solid #e3eaf3}
+.cx-bulk-head>span{font-size:10px;letter-spacing:.16em;font-weight:900;color:#5c7797}
+.cx-bulk-head h2{font-size:clamp(21px,3.4vw,27px);line-height:1.2;letter-spacing:-.03em;margin:8px 0}
+.cx-bulk-head p{color:#687c95;font-size:13px;line-height:1.6;margin:0}
+.cx-bulk-warning{padding:13px 15px;background:#fff9eb;border:1px solid #f3d9a3;border-radius:12px;color:#8a5d20;font-size:12px;line-height:1.55}
+.cx-bulk-lines{display:grid;gap:11px;margin:18px 0;max-height:min(43dvh,400px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding:3px}
+.cx-bulk-line{display:grid;grid-template-columns:minmax(100px,1fr) minmax(105px,.75fr) minmax(145px,1fr);align-items:center;gap:12px;padding:13px 15px;border:1px solid #dfe8f3;border-radius:13px;background:linear-gradient(115deg,#f8fbff,#fff)}
+.cx-bulk-person{min-width:0}
+.cx-bulk-person strong{display:block;color:#102b4c;font-size:13px;overflow-wrap:anywhere}
+.cx-bulk-person small{display:block;color:#75879c;font-size:11px;margin-top:4px}
+.cx-bulk-expected{display:grid;gap:4px;min-width:0}
+.cx-bulk-expected span{font-size:10px;color:#6d829d;font-weight:750}
+.cx-bulk-expected strong{font-size:14px;color:#23436a;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cx-bulk-close-dialog .cx-bulk-line label{margin:0;font-size:11px;color:#52708f}
+.cx-bulk-close-dialog .cx-bulk-line input{margin-top:0;min-height:45px;font-weight:800;font-size:15px;font-variant-numeric:tabular-nums}
+.cx-bulk-error{min-height:0;color:#bd302b!important;font-size:12px;font-weight:800}
+.cx-bulk-close-dialog .cx-close-actions{position:sticky;bottom:-24px;background:#fff;border-top:1px solid #e3eaf3;z-index:2;padding:16px 0 0;margin-top:auto}
+.cx-bulk-close-dialog .cx-close-actions button{flex:1;min-height:47px}
+.cx-bulk-close-dialog .cx-close-actions .danger-btn{background:#b53332;color:#fff;border:1px solid #b53332;border-radius:11px;font-weight:850}
+@media(max-width:680px){
+ .cx-bulk-close-dialog{width:calc(100% - 14px);max-height:calc(100dvh - 14px);border-radius:17px}
+ .cx-bulk-close-dialog form{padding:15px;max-height:calc(100dvh - 14px)}
+ .cx-bulk-lines{max-height:44dvh}
+ .cx-bulk-line{grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+ .cx-bulk-person{grid-column:1}
+ .cx-bulk-expected{grid-column:2;text-align:right}
+ .cx-bulk-line label{grid-column:1/-1}
+ .cx-bulk-line input{width:100%}
+ .cx-bulk-close-dialog .cx-close-actions{bottom:-15px}
+}
+
+/* Confiança dos indicadores: diferenciar consulta pendente, confirmada e com erro. */
+[data-caixas-supervisao] .cx-sync-state.is-loading::before{background:#d69828;box-shadow:0 0 0 3px #d6982824}
+[data-caixas-supervisao] .cx-sync-state.is-error{color:#a6462e;font-weight:750}
+[data-caixas-supervisao] .cx-sync-state.is-error::before{background:#cf5045;box-shadow:0 0 0 3px #cf504528}
+[data-caixas-supervisao] .cx-state.closed:has(+ .cx-verification-note){background:#f1f6fb}
+[data-caixas-supervisao] .cx-seller-chip.is-pending{background:#f6f8fc;border-color:#e2e9f2;color:#647792}
+[data-caixas-supervisao] .cx-seller-chip.is-pending small{color:#647792}
+[data-caixas-supervisao] .cx-bulk-close-dialog input:focus-visible{outline:3px solid #70a7f2;outline-offset:2px}

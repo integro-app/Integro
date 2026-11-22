@@ -266,7 +266,7 @@ test("ações de Caixas dependem da conferência no servidor e calendário não 
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const overview=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
   const detail=source.slice(source.indexOf("  function renderDetail(host)"),source.indexOf("  function confirmClosure("));
-  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\)/);
+  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
   assert.match(overview,/botaoAbrir\.disabled=!acoes\.podeAbrir/);
   assert.match(overview,/botaoFechar\.disabled=!acoes\.podeFechar/);
   assert.match(source,/httpsCallable\('consultarDatasCaixaEquipe'\)/);
@@ -446,4 +446,102 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/!totaisConferidos\?'Conferindo…'/);
   assert.match(render,/stat\('Caixa atual',valorAtual\)/);
   assert.match(render,/stat\('Recebido',indicadorFinanceiro\('received'\),'green'\)/);
+});
+
+
+test("Abertura da tela Caixas consulta servidor por equipe sem depender apenas do cache",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/async function carregarCaixasServidor\(forcar=false\)/);
+  assert.match(source,/query\('caixas','equipeId',text\(row\.id\),text\(row\.id\)\)/);
+  assert.match(source,/if\(contexto!==ui\.context\)return/);
+  assert.match(source,/result\.caixas\.forEach\(rememberServerBox\)/);
+  assert.match(source,/estrutura\.caixasChecked=!falhas\.length/);
+  assert.match(source,/estrutura\.caixasError=falhas\.length/);
+  assert.match(source,/if\(estrutura\.loaded&&!estrutura\.loading&&!estrutura\.caixasAttempted\)void carregarCaixasServidor\(\)/);
+  assert.match(source,/!estrutura\.caixasChecked\?'CONFERINDO'/);
+  assert.match(source,/if\(estrutura\.caixasChecked\)unique\(entries\.flatMap/);
+});
+
+test("Fechamento em lote exige dinheiro físico informado separadamente e revalidação transacional",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/function confirmarFechamentoEmLote\(preparados,pendencias\)/);
+  assert.match(source,/const conferencia=await confirmarFechamentoEmLote\(preparados,pendencias\)/);
+  assert.match(source,/valorInformadoCentavos:conferencia\.valores\.get\(id\(box\)\)/);
+  assert.doesNotMatch(source,/valorInformadoCentavos:snapshot\.caixaFinalEsperadoCentavos/);
+  assert.match(source,/if\(\(pendencias\|\|divergiu\)&&!motivo\)/);
+  assert.match(source,/Number\.isSafeInteger\(centavos\)/);
+  assert.match(source,/registrarFechamentoCaixaTransacional/);
+  assert.match(source,/get\(\{source:'server'\}\)/);
+  assert.match(source,/name="actual-\$\{i\}".*required/);
+  assert.doesNotMatch(source,/name="actual-\$\{i\}"[\s\S]{0,100}value="\$\{/);
+});
+
+test("Conferência em lote recusa valor ausente e divergência sem justificativa",async()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const begin=source.indexOf("  function confirmarFechamentoEmLote(");
+  const end=source.indexOf("  async function fecharSelecionados(",begin);
+  assert.ok(begin>0&&end>begin);
+  const input={value:"",focus(){this.focused=true}};
+  const reason={value:"",focus(){this.focused=true}};
+  const error={textContent:""};
+  const form={onsubmit:null};
+  const cancel={onclick:null};
+  const dialog={
+    innerHTML:"",id:"",className:"",setAttribute(){},showModal(){this.open=true},
+    close(){this.open=false},remove(){this.removed=true},addEventListener(){},
+    querySelector(sel){
+      if(sel==='form')return form;
+      if(sel==='[data-cx-cancel]')return cancel;
+      if(sel==='[data-cx-bulk-error]')return error;
+      if(sel==='[name="actual-0"]')return input;
+      if(sel==='[name="reason"]')return reason;
+      return null;
+    }
+  };
+  const mockGlobal={document:{getElementById(){return null},createElement(){return dialog},body:{appendChild(){}}}};
+  const ctx={global:mockGlobal,id:v=>v.id,text:v=>String(v??"").trim(),esc:v=>String(v),
+    dateBR:()=> "21/11/2026",boxDay:()=> "2026-11-21",cash:v=>String(v)};
+  const fn=vm.runInNewContext(source.slice(begin,end)+";confirmarFechamentoEmLote",ctx);
+  const promise=fn([{box:{id:"cx-1",vendedorNome:"Vendedor A"},snapshot:{caixaFinalEsperadoCentavos:10000}}],1);
+  assert.equal(dialog.open,true);
+  form.onsubmit({preventDefault(){}});
+  assert.match(error.textContent,/valor físico válido/);
+  input.value="90.00";
+  form.onsubmit({preventDefault(){}});
+  assert.match(error.textContent,/justificativa é obrigatória/);
+  reason.value="Divergência física conferida na presença do gerente";
+  form.onsubmit({preventDefault(){}});
+  const confirmed=await promise;
+  assert.equal(confirmed.valores.get("cx-1"),9000);
+  assert.equal(confirmed.motivo,reason.value);
+  assert.equal(dialog.removed,true);
+});
+
+
+test("Caixas antigos ausentes da consulta do servidor não reaparecem pelo cache",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/const idsConsultados=new Set\(\)/);
+  assert.match(source,/idsConsultados\.add\(id\(caixa\)\)/);
+  assert.match(source,/verifiedBoxes\.delete\(key\);overview\.delete\(key\)/);
+  assert.match(source,/estrutura\.caixasIds=idsConsultados/);
+  assert.match(source,/!estrutura\.caixasChecked\|\|estrutura\.caixasIds\.has\(id\(b\)\)/);
+  assert.match(source,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
+});
+
+
+test("Troca de empresa ou usuário interrompe novas transações financeiras do Master Local",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function validarContextoOperacao(");
+  const end=source.indexOf("  async function abrirSelecionados(",start);
+  assert.ok(start>0&&end>start);
+  const context={ui:{context:"empresa-1|usuario-1|master_local"},tenant:()=>"empresa-1",allowed:()=>true};
+  const verificar=vm.runInNewContext(source.slice(start,end)+";validarContextoOperacao",context);
+  assert.doesNotThrow(()=>verificar("empresa-1|usuario-1|master_local","empresa-1"));
+  context.ui.context="empresa-2|usuario-2|master_local";
+  assert.throws(()=>verificar("empresa-1|usuario-1|master_local","empresa-1"),/empresa ou o usuário mudou/);
+  assert.match(source,/validarContextoOperacao\(contextoOperacao,tenantOperacao\)/);
+  assert.match(source,/const tarefas=propostas\.map\(proposta=>async\(\)=>\{\s*validarContextoOperacao/);
+  assert.match(source,/for\(const \{box,snapshot\} of preparados\) \{\s*try \{\s*validarContextoOperacao/);
 });
