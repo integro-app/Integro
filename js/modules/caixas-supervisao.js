@@ -325,9 +325,15 @@
     feedback.textContent = ui.actionMessage;
   }
 
+  function validarContextoOperacao(contexto,tenantId) {
+    if(ui.context!==contexto||tenant()!==tenantId||!allowed())
+      throw Error('A empresa ou o usuário mudou durante a operação. Nenhuma nova movimentação será executada.');
+  }
   async function abrirSelecionados() {
     if(!['master_local','gerente','supervisor'].includes(access().perfil))
       throw Error('Perfil sem permissão para abrir caixas.');
+    const contextoOperacao=ui.context,tenantOperacao=tenant();
+    validarContextoOperacao(contextoOperacao,tenantOperacao);
     const equipes=rows().filter(row=>ui.selected.has(text(row.id)));
     if(!equipes.length)throw Error('Selecione pelo menos uma equipe.');
     if(!global.firebase?.app || !global.IntegroCaixa?.registrarAberturaCaixaTransacional ||
@@ -339,6 +345,7 @@
     for(const row of equipes){
       try{
         const response=await callable({equipeId:text(row.id)});
+        validarContextoOperacao(contextoOperacao,tenantOperacao);
         const info=response?.data||{};
         const dia=text(info.dataParaConcluir || info.hoje);
         if(!/^\d{4}-\d{2}-\d{2}$/.test(dia))
@@ -366,6 +373,7 @@
     }
     if(!propostas.length)
       throw Error('Nenhum caixa elegível. '+bloqueadas.slice(0,2).join(' '));
+    validarContextoOperacao(contextoOperacao,tenantOperacao);
     const retro=propostas.filter(p=>p.retro);
     const resumoPorEquipe=[...new Set(propostas.map(p=>p.equipeNome))].join(', ');
     if(!global.confirm?.(
@@ -387,6 +395,7 @@
     const db=global.db&&typeof global.db!=='function'?global.db:global.firebase.firestore();
     try{
       const tarefas=propostas.map(proposta=>async()=>{
+        validarContextoOperacao(contextoOperacao,tenantOperacao);
         const result=await global.IntegroCaixa.registrarAberturaCaixaTransacional({
           usuario:user(),clientePlataformaId:tenant(),vendedorId:proposta.vendedorId,
           equipeId:proposta.equipeId,equipeNome:proposta.equipeNome,
@@ -490,6 +499,8 @@
   async function fecharSelecionados() {
     if(!['master_local','gerente','supervisor'].includes(access().perfil))
       throw Error('Perfil sem permissão para fechar caixas.');
+    const contextoOperacao=ui.context,tenantOperacao=tenant();
+    validarContextoOperacao(contextoOperacao,tenantOperacao);
     const teams=rows().filter(row=>ui.selected.has(text(row.id)));
     if(!teams.length) throw Error('Selecione pelo menos uma equipe.');
     if(!global.IntegroCaixa?.prepararSnapshotFechamentoCaixa ||
@@ -500,11 +511,13 @@
     // Inclui os caixas do servidor e os legados conhecidos. Cada documento
     // será relido e validado antes de qualquer movimento financeiro.
     const lists=await Promise.all(teams.map(row=>query('caixas','equipeId',text(row.id),text(row.id))));
+    validarContextoOperacao(contextoOperacao,tenantOperacao);
     const all=unique([...lists.flat(),...teams.flatMap(row=>teamBoxes(row))])
       .filter(box=>openBox(box)&&tenantOf(box)===tenant());
     const preparados=[],falhas=[];
     for(const antigo of all) {
       try {
+        validarContextoOperacao(contextoOperacao,tenantOperacao);
         const doc=await db.collection('caixas').doc(id(antigo)).get({source:'server'});
         if(!doc.exists) throw Error('Caixa não encontrado no servidor.');
         const box={...doc.data(),id:doc.id};
@@ -532,10 +545,12 @@
     const conferencia=await confirmarFechamentoEmLote(preparados,pendencias);
     if(!conferencia)
       return {fechados:0,divergentes:0,cancelados:preparados.length,bloqueados:0,erros:falhas.length,falhas};
+    validarContextoOperacao(contextoOperacao,tenantOperacao);
     const motivo=conferencia.motivo;
     const result={fechados:0,divergentes:0,bloqueados:0,erros:falhas.length,falhas};
     for(const {box,snapshot} of preparados) {
       try {
+        validarContextoOperacao(contextoOperacao,tenantOperacao);
         const resposta=await global.IntegroCaixa.registrarFechamentoCaixaTransacional({
           caixaId:id(box),usuario:user(),clientePlataformaId:tenant(),
           vendedorId:box.vendedorId,vendedorAuthUid:box.vendedorAuthUid,
