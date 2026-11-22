@@ -132,15 +132,6 @@
     }
     if (!teams.length) error.textContent = "Nenhuma equipe com vendedores disponível. Atualize a tela Caixas.";
   }
-  function install() {
-    const screen = document.getElementById("caixas");
-    if (!screen || !allowed() || screen.querySelector("[data-open-specific-box]")) return;
-    const button = document.createElement("button"); button.type = "button"; button.className = "primary-btn caixa-date-trigger"; button.dataset.openSpecificBox = "true"; button.textContent = "Abrir caixa por data"; button.onclick = open;
-    (screen.querySelector(".section-card") || screen).prepend(button);
-  }
-  let timer = null;
-  const schedule = () => { if (timer) return; timer = setTimeout(() => { timer = null; install(); },100); };
-  new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
-  ["usuario-validado","integro-perfil-dados-carregados","integro-tela-alterada"].forEach(name => document.addEventListener(name,schedule));
-  schedule();
+  // A abertura fica no menu Ações da tela Caixas. Não injetar botão solto
+  // antes do título nem reinstalá-lo a cada atualização do DOM.
 })(window);

@@ -15,8 +15,8 @@ test("submenus usam barra horizontal oficial e o período fica dentro do Dashboa
   assert.match(css, /integro-horizontal-module-nav/);
   const dashboard = master.indexOf('id="dashboard"');
   const periodo = master.indexOf('id="dashboardPeriodoToolbar"');
-  const notificacao = master.indexOf('id="integroNotificationButton"');
-  assert.ok(dashboard > notificacao && periodo > dashboard);
+  assert.ok(dashboard >= 0 && periodo > dashboard);
+  assert.doesNotMatch(master, /id="integroNotificationButton"/);
   assert.match(css, /#dashboard #dashboardPeriodoToolbar/);
   assert.match(css, /display:flex!important/);
   assert.match(ui, /montarBarrasInternas/);
@@ -160,9 +160,10 @@ test("financeiro e auditoria respeitam cabeçalho, submenu e conteúdo", () => {
 
 
 test("sino real e chat possuem pontos de montagem no painel local", () => {
-  assert.match(master, /id="integroNotificationButton"/);
-  assert.match(master, /data-notification-count/);
-  assert.match(master, /IntegroNotificationCenter\?\.toggle/);
+  assert.doesNotMatch(master, /id="integroNotificationButton"/);
+  assert.match(nav, /id: "notificacoes"/);
+  assert.match(nav, /data-notification-count/);
+  assert.match(nav, /IntegroNotificationCenter\?\.toggle/);
   assert.match(master, /id="chatInterno"/);
   assert.match(master, /id="integroChatRoot"/);
   assert.match(master, /css\/integro-chat-mobile\.css\?v=/);
