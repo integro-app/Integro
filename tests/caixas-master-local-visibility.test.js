@@ -215,7 +215,7 @@ test("supervisão não usa caixa inexistente no servidor para inflar indicador",
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/caixasInexistentesServidor\.add\(key\)/);
   assert.match(source,/!caixasInexistentesServidor\.has\(id\(b\)\)/);
-  assert.match(source,/Caixas abertos \(confirmados\)/);
+  assert.match(source,/Equipes em operação/);
   assert.match(source,/verifiedBoxes\.has\(id\(b\)\)/);
   assert.match(source,/avisosDuplicidadePorVendedor\(row,history\)/);
 });
@@ -229,7 +229,8 @@ test("botão Abrir caixas não é travado pelo status agregado de equipe parcial
   assert.ok(start>=0&&end>start);
   const ctx={
     text:v=>String(v??"").trim(),
-    openBox:box=>["ABERTO","REABERTO"].includes(String(box.status||"").toUpperCase())&&box.ativo!==false
+    openBox:box=>["ABERTO","REABERTO"].includes(String(box.status||"").toUpperCase())&&box.ativo!==false,
+    podeGerir:()=>false
   };
   const helpers=vm.runInNewContext(source.slice(start,end)+
     ";({disponibilidadeAcoesEquipes,totalFalhasFechamento})",ctx);
@@ -585,12 +586,15 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
     badge:box=>"<span>"+box.status+"</span>",
     dateBR:v=>v==="2026-11-21"?"21/11/2026":"—",
     boxDay:box=>box.dataOperacional,
-    cash:v=>String(v),
+    cash:v=>String(v),num:v=>Number(v)||0,
     estrutura:{caixasChecked:true},
-    ui:{selectedBoxes:new Set(["cx-001"])}
+    ui:{selected:new Set(),selectedBoxes:new Set(["cx-001"])}
   });
   const cards=functions([{
-    row:{id:"equipe-1",nome:"Equipe Norte",vendedores:[{id:"v-1",nome:"Vendedor Um"}]},
+    row:{id:"equipe-1",nome:"Equipe Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Um"}]},
+    history:[{id:"cx-001",status:"ABERTO",vendedorId:"v-1",dataOperacional:"2026-11-21"}],
+    latest:{id:"cx-001",dataOperacional:"2026-11-21"},
+    avisos:[],
     models:[{box:{id:"cx-001",status:"ABERTO",vendedorNome:"Vendedor Um",vendedorId:"v-1",
       dataOperacional:"2026-11-21"},current:120000,wallet:800000,received:12000}]
   }],()=>true);
@@ -622,4 +626,56 @@ test("Filtro global não injeta Buscar/Filtros redundantes no módulo Caixas",()
   const modulo=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(modulo,/data-cx-search/);
   assert.match(modulo,/class="cx-filter-options"/);
+});
+
+
+test("Master Local apresenta uma jornada por equipe e filtro de situação ativo por padrão",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(source,/equipesFiltro:'ativas'/);
+  assert.match(source,/function equipeAtiva\(e\)/);
+  assert.match(source,/function rows\(incluirInativas=false\)/);
+  assert.match(source,/const todasEquipes=rows\(true\)/);
+  assert.match(source,/const totalInativas=todasEquipes.length-totalAtivas/);
+  assert.match(source,/data-cx-team-situation/);
+  assert.match(source,/Ativas',totalAtivas/);
+  assert.match(source,/Inativas',totalInativas/);
+  assert.match(source,/Todas',todasEquipes.length/);
+  assert.match(source,/class="cx-team-day-card/);
+  assert.match(source,/const situacao=!row\.ativa\?'INATIVA'/);
+  assert.match(source,/const teams=rows\(true\)\.filter/);
+  assert.match(source,/const equipes=rows\(\)\.filter/);
+  assert.match(source,/Equipes em operação/);
+  assert.match(source,/Caixas individuais abertos/);
+});
+
+test("Reabertura é apenas individual e no backend exige motivo e último caixa",()=>{
+  const client=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const backend=fs.readFileSync(path.join(root,"functions/box-lifecycle.js"),"utf8");
+  assert.match(client,/data-cx-reopen/);
+  assert.doesNotMatch(client,/btnReabrirCaixasSelecionados/);
+  assert.match(backend,/Somente o caixa mais recente pode ser reaberto/);
+  assert.match(backend,/Reabertura exige um responsável autorizado e motivo/);
+  assert.match(backend,/Já existe outro caixa aberto/);
+});
+
+test("Backend impede abertura em equipes inativas e mantém travas entre dias",()=>{
+  const backend=fs.readFileSync(path.join(root,"functions/box-lifecycle.js"),"utf8");
+  assert.match(backend,/Equipe inativa ou bloqueada não pode iniciar nova jornada de caixa/);
+  assert.match(backend,/Equipe inativa não pode iniciar jornada de caixa/);
+  assert.match(backend,/Feche os caixas abertos da equipe antes de abrir outro dia/);
+  assert.match(backend,/Já existe caixa nessa data\. Apenas o mais recente pode ser reaberto/);
+  assert.match(backend,/Existem múltiplos caixas abertos para o mesmo vendedor/);
+});
+
+test("Financeiro participa da abertura e fechamento com permissões, sem reabertura automática",()=>{
+  const backend=fs.readFileSync(path.join(root,"functions/box-lifecycle.js"),"utf8");
+  const client=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
+  const acl=fs.readFileSync(path.join(root,"js/services/access-control.js"),"utf8");
+  assert.match(backend,/if\(action==="reabrir"\)/);
+  assert.match(backend,/Reabertura exige autorização específica do Financeiro/);
+  assert.match(backend,/exigirPermissao\(who,"abrir"\)/);
+  assert.match(client,/global\.IntegroAcesso\?\.pode\?\.\(user\(\),'caixas\.'\+acao/);
+  assert.match(calendar,/perfil==="financeiro" && global\.IntegroAcesso\?\.pode/);
+  assert.match(acl,/financeiro: \[[\s\S]*"caixas\.abrir", "caixas\.fechar"/);
 });
