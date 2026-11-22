@@ -556,7 +556,7 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-layout-aprovado-v1/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-mobile-proporcoes-v2/);
   assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-layout-aprovado-v1/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
@@ -806,4 +806,49 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   assert.match(cards,/data-cx-open="team-1"/);
   assert.match(cards,/data-caixas-equipe="team-1"/);
   assert.doesNotMatch(cards,/R\$ 18\.420,00/);
+});
+
+
+test("Caixas mobile preserva identidade sem sobrepor menu, e reduz altura dos componentes",()=>{
+  const css=fs.readFileSync(path.join(root,"css/caixas-layout-aprovado.css"),"utf8");
+  assert.match(css,/height:66px!important;min-height:66px!important;max-height:66px!important/);
+  assert.match(css,/margin-left:62px!important;gap:8px!important/);
+  assert.match(css,/width:43px!important;height:43px!important/);
+  assert.match(css,/\.cx-approved-head::after\{width:37px!important\}/);
+  assert.match(css,/\.cx-approved-metric\{\s*box-sizing:border-box!important;min-height:62px!important/);
+  assert.match(css,/\.cx-approved-current\{\s*min-height:70px!important/);
+  assert.match(css,/\.cx-team-day-detail\{\s*min-height:43px!important/);
+  assert.match(css,/\.cx-team-select \.material-symbols-rounded\{opacity:0\}/);
+  assert.match(css,/\.cx-team-select:has\(input:checked\) \.material-symbols-rounded\{opacity:1\}/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-mobile-proporcoes-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-mobile-proporcoes-v2/);
+});
+
+test("Badge da jornada pendente é curto no mobile e mantém estado completo para acessibilidade",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const begin=source.indexOf("  function renderCardsCaixa(");
+  const end=source.indexOf("  function render() {",begin);
+  assert.ok(begin>0&&end>begin);
+  const context={
+    Intl,Date,esc:v=>String(v??""),text:v=>String(v??"").trim(),
+    id:v=>String(v?.id||""),boxDay:box=>box.dataOperacional,
+    dateBR:v=>v,openBox:box=>box.status==="ABERTO",
+    upper:v=>String(v??"").toUpperCase(),
+    num:v=>Number(v)||0,cash:v=>String(v),podeGerir:()=>false,
+    estrutura:{caixasChecked:true},
+    ui:{selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set()}
+  };
+  const render=vm.runInNewContext(source.slice(begin,end)+";renderCardsCaixa",context);
+  const box={id:"cx1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Norte"};
+  const htmlCard=render([{
+    row:{id:"equipe-norte",nome:"Norte",ativa:true,vendedores:[]},
+    latest:box,history:[box],models:[{box,current:100,loans:0,expenses:0}],avisos:[]
+  }],()=>true);
+  assert.match(htmlCard,/aria-label="PENDENTE DE FECHAMENTO"/);
+  assert.match(htmlCard,/class="cx-status-full">PENDENTE DE FECHAMENTO<\/span>/);
+  assert.match(htmlCard,/class="cx-status-mobile" aria-hidden="true">PENDENTE<\/span>/);
+  const css=fs.readFileSync(path.join(root,"css/caixas-layout-aprovado.css"),"utf8");
+  assert.match(css,/\.cx-status-full\{display:none!important\}/);
+  assert.match(css,/\.cx-status-mobile\{display:inline!important\}/);
 });
