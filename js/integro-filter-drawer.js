@@ -199,7 +199,7 @@
   function scan(){
     scheduled=false;
     for(const config of configs)if(!config.sources.every(source=>source.isConnected)){if(current?.config===config)close(false);for(const source of config.sources){owners.delete(source);source.removeAttribute("data-ig-filter-source");}config.apply?.removeAttribute("data-ig-filter-source");config.trigger.removeAttribute("data-ig-filter-trigger");if(config.search?.bar.isConnected){config.search.bar.before(config.trigger);if(config.clear)config.search.bar.before(config.clear);config.search.bar.remove();}if(config.generated)config.trigger.remove();configs.delete(config);}
-    const found=[...document.querySelectorAll(SELECTORS.join(','))].filter(el=>!owners.has(el)&&!el.parentElement?.closest('[data-ig-filter-source]')&&!el.closest('.vendedor-clientes-gestao,.ig-filter-layer,form,.cliente-modal,.vendedor-filtros-side,.modal-content')&&(!el.closest('.drawer-side,.drawer-content')||el.matches('.insight-filters'))&&(el.closest('main')||el.id==='dashboardPeriodoPopover')&&(el.querySelector(controls)||el.matches('.vendedor-clientes-chips,.cfe-work-queue')));
+    const found=[...document.querySelectorAll(SELECTORS.join(','))].filter(el=>!el.closest('[data-caixas-supervisao]')&&!owners.has(el)&&!el.parentElement?.closest('[data-ig-filter-source]')&&!el.closest('.vendedor-clientes-gestao,.ig-filter-layer,form,.cliente-modal,.vendedor-filtros-side,.modal-content')&&(!el.closest('.drawer-side,.drawer-content')||el.matches('.insight-filters'))&&(el.closest('main')||el.id==='dashboardPeriodoPopover')&&(el.querySelector(controls)||el.matches('.vendedor-clientes-chips,.cfe-work-queue')));
     for(const node of found){if(owners.has(node)||found.some(parent=>parent!==node&&parent.contains(node)))continue;
       const group=[node];
       if(node.matches('.cfe-work-queue,.cfe-compact-filters,.cfe-premium-filter-panel')){const panel=node.closest('.unified-panel');if(panel)group.push(...[...panel.querySelectorAll('.cfe-work-queue,.cfe-compact-filters,.cfe-premium-filter-panel')].filter(s=>s!==node&&!owners.has(s)));}
@@ -207,6 +207,8 @@
       register(group);
     }
     document.querySelectorAll('main input[type=search],main input[placeholder],main input[id*=filtro i],main select[aria-label],main select[id*=filtro i],main [data-cx-records]').forEach(field=>{
+      // Caixas já possui pesquisa dinâmica e filtros nativos; não duplicar Buscar/Filtros.
+      if(field.closest('[data-caixas-supervisao]'))return;
       if(field.matches('input[placeholder]')&&field.type!=='search'&&!/buscar|pesquis|filtrar/.test(normal(field.placeholder))&&!/filtro/i.test(field.id))return;
       if(field.closest('.vendedor-clientes-gestao,.integro-chat,.ig-querybar,[data-ig-filter-source],.ig-filter-layer,form,.drawer-side,.drawer-content,.cliente-modal,.modal-content,.vendedor-filtros-side'))return;
       const context=field.closest('.unified-panel,.section-card,.panel,[data-cfe-view],.screen')||field.parentElement;
