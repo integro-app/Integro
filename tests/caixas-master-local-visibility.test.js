@@ -445,7 +445,7 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/const valorAtual=/);
   assert.match(render,/const indicadorFinanceiro=key=>/);
   assert.match(render,/!totaisConferidos\?'Conferindo…'/);
-  assert.match(render,/stat\('Caixa atual',valorAtual\)/);
+  assert.match(render,/stat\('Caixa atual',valorAtual,'primary'\)/);
   assert.match(render,/stat\('Recebido',indicadorFinanceiro\('received'\),'green'\)/);
 });
 
@@ -708,6 +708,11 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
   assert.match(detail,/Gastos/);
   assert.match(detail,/Retiradas/);
   assert.match(detail,/Últimas movimentações da jornada/);
+  assert.match(detail,/class="cx-team-primary-metrics"/);
+  assert.match(detail,/class="cx-team-extra-metrics"/);
+  assert.match(detail,/data-cx-extra-metrics/);
+  assert.match(detail,/metricas\.slice\(0,3\)/);
+  assert.match(detail,/metricas\.slice\(3\)/);
   assert.match(detail,/data-cx-team-box/);
   assert.match(detail,/data-cx-team-close/);
   assert.match(detail,/const confirmado=estrutura\.caixasChecked&&items\.every/);
