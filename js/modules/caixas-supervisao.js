@@ -92,10 +92,10 @@
   }
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
-  const ui = {context:'',team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
+  const ui = {context:'',team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
+    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   // A lista de equipes vem do Firestore via caixas.js, não de um global
   // opcional que pode não existir na rota Master Local.
@@ -1032,9 +1032,18 @@
         ${podeFechar?`<button type="button" class="danger-btn" data-cx-team-close ${ui.actionBusy?'disabled':''}>
           <span class="material-symbols-rounded">lock</span> Conferir e fechar jornada</button>`:''}
       </div>
-      <div class="cx-team-detail-metrics">
-        ${metricas.map(([label,key])=>`<article><small>${label}</small><strong>${soma(key)}</strong></article>`).join('')}
+      <div class="cx-team-detail-metrics cx-team-primary-metrics">
+        ${metricas.slice(0,3).map(([label,key])=>`<article><small>${label}</small><strong>${soma(key)}</strong></article>`).join('')}
       </div>
+      <details class="cx-team-extra-metrics" data-cx-extra-metrics
+        ${ui.financeMetricsExpanded||global.matchMedia?.('(min-width: 851px)')?.matches?'open':''}>
+        <summary><span class="material-symbols-rounded" aria-hidden="true">monitoring</span>
+          Demais indicadores da jornada
+          <span class="material-symbols-rounded cx-members-chevron" aria-hidden="true">expand_more</span></summary>
+        <div class="cx-team-detail-metrics cx-team-secondary-metrics">
+          ${metricas.slice(3).map(([label,key])=>`<article><small>${label}</small><strong>${soma(key)}</strong></article>`).join('')}
+        </div>
+      </details>
       <section class="cx-team-detail-section"><div class="cx-list-heading">
         <div><h3>Caixas dos vendedores</h3><p>${items.length} caixa(s) registrados nesta jornada</p></div>
       </div>
@@ -1065,6 +1074,9 @@
     host.querySelector('[data-cx-team-day]').onchange=event=>{
       ui.teamDay=event.target.value;render();
     };
+    host.querySelector('[data-cx-extra-metrics]')?.addEventListener('toggle',event=>{
+      ui.financeMetricsExpanded=event.target.open;
+    });
     host.querySelectorAll('[data-cx-team-box]').forEach(button=>
       button.onclick=()=>selectBox(button.dataset.cxTeamBox));
     host.querySelector('[data-cx-team-calendar]')?.addEventListener('click',()=>{
