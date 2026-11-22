@@ -87,10 +87,10 @@
   }
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
-  const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',selected:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
+  const ui = {context:'',team:'',status:'',search:'',detail:'',box:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',selected:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
+    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',detail:'',box:'',selected:new Set(),selectedBoxes:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   // A lista de equipes vem do Firestore via caixas.js, não de um global
   // opcional que pode não existir na rota Master Local.
@@ -501,8 +501,10 @@
       throw Error('Perfil sem permissão para fechar caixas.');
     const contextoOperacao=ui.context,tenantOperacao=tenant();
     validarContextoOperacao(contextoOperacao,tenantOperacao);
-    const teams=rows().filter(row=>ui.selected.has(text(row.id)));
-    if(!teams.length) throw Error('Selecione pelo menos uma equipe.');
+    const caixaIdsSelecionados=new Set(ui.selectedBoxes);
+    const teams=rows().filter(row=>ui.selected.has(text(row.id))||
+      teamBoxes(row).some(box=>caixaIdsSelecionados.has(id(box))));
+    if(!teams.length) throw Error('Selecione pelo menos uma equipe ou caixa.');
     if(!global.IntegroCaixa?.prepararSnapshotFechamentoCaixa ||
        !global.IntegroCaixa?.registrarFechamentoCaixaTransacional)
       throw Error('Serviço transacional de fechamento indisponível.');
@@ -513,7 +515,8 @@
     const lists=await Promise.all(teams.map(row=>query('caixas','equipeId',text(row.id),text(row.id))));
     validarContextoOperacao(contextoOperacao,tenantOperacao);
     const all=unique([...lists.flat(),...teams.flatMap(row=>teamBoxes(row))])
-      .filter(box=>openBox(box)&&tenantOf(box)===tenant());
+      .filter(box=>openBox(box)&&tenantOf(box)===tenant()&&
+        (!caixaIdsSelecionados.size||caixaIdsSelecionados.has(id(box))));
     const preparados=[],falhas=[];
     for(const antigo of all) {
       try {
@@ -582,7 +585,7 @@
       // exibindo ABERTO por uma lista anterior à operação.
       render();
     }
-    if(!result.falhas.length) ui.selected.clear();
+    if(!result.falhas.length) {ui.selected.clear();ui.selectedBoxes.clear();}
     return result;
   }
 
@@ -653,6 +656,9 @@
     const equipesSemVendedor=all.filter(row=>!row.vendedores.length).length;
     const total = key => entries.reduce((n,v)=>n+v.models.reduce((n,m)=>n+num(m[key]),0),0), selected=ui.selected;
     const selecionadasNaTela = entries.filter(v=>selected.has(text(v.row.id)));
+    const caixaVisivel=new Set(entries.flatMap(v=>v.models.map(m=>id(m.box))));
+    for(const selecionado of ui.selectedBoxes)if(!caixaVisivel.has(selecionado))ui.selectedBoxes.delete(selecionado);
+    const caixasMarcados=entries.flatMap(v=>v.models.map(m=>m.box)).filter(b=>ui.selectedBoxes.has(id(b)));
     const caixasSelecionados = selecionadasNaTela.reduce((n,v)=>n+v.models.length,0);
     // Indicadores do topo consideram apenas caixas abertos da equipe e nunca
     // misturam o último caixa fechado com a operação corrente.
@@ -747,13 +753,17 @@
     if (snap.docs.length>=5000) throw new Error('Há muitos registros para exibir integralmente. Refine a consulta.');
     return snap.docs.map(d=>({...d.data(),id:d.id})).filter(v=>!scopedTeam || text(v[field])===text(value));
   }
-  async function open(teamId) {
+  async function open(teamId, boxId = '') {
     syncContext();const row=rows().find(r=>text(r.id)===text(teamId));if(!row)return;
     const revision=++ui.revision;ui.detail=text(row.id);ui.box='';ui.data=null;ui.tab='resumo';ui.error='';ui.loading=true;ui.history=teamBoxes(row);render();
     try {
       const lists=await Promise.all([query('caixas','equipeId',text(row.id)),...(row.vendedores||[]).map(v=>query('caixas','vendedorId',id(v)))]);
       if(revision!==ui.revision||!allowed())return;
-      ui.history=teamBoxes(row,lists.flat());ui.box=id(ui.history.find(openBox)||ui.history[0]);
+      ui.history=teamBoxes(row,lists.flat());
+      const solicitado=text(boxId);
+      if(solicitado&&!ui.history.some(b=>id(b)===solicitado))
+        throw Error('Este caixa não foi confirmado para a equipe selecionada.');
+      ui.box=solicitado||id(ui.history.find(openBox)||ui.history[0]);
       if(!ui.box){ui.loading=false;render();return;}
       await selectBox(ui.box);
     }catch(error){if(revision===ui.revision){ui.loading=false;ui.error=error.message||'Não foi possível consultar o histórico.';render();}}
