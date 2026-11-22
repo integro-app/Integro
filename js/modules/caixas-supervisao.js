@@ -106,7 +106,13 @@
       ...(Array.isArray(v.equipes)?v.equipes:[]),
       v.equipe&&typeof v.equipe==='object'?v.equipe:null]
       .map(item=>text(typeof item==='object'?(item?.id||item?.equipeId):item)).filter(Boolean);
-    if(referencias.length)return referencias.includes(id(e));
+    // O cadastro oficial de Equipes também mantém vendedoresIds.
+    const usuariosEquipe=[...(Array.isArray(e.vendedoresIds)?e.vendedoresIds:[]),
+      ...(Array.isArray(e.usuariosIds)?e.usuariosIds:[])]
+      .map(item=>text(typeof item==='object'?(item?.id||item?.usuarioId):item)).filter(Boolean);
+    const identidadesVendedor=[id(v),v.authUid,v.uid].map(text).filter(Boolean);
+    if(referencias.length||usuariosEquipe.length)
+      return referencias.includes(id(e))||usuariosEquipe.some(ref=>identidadesVendedor.includes(ref));
     const nome=equipeNomeNormalizado(v.equipeNome||v.nomeEquipe||v.timeNome||v.unidadeNome||
       (typeof v.equipe==='string'?v.equipe:''));
     if(!nome||nome!==equipeNomeNormalizado(e.nome||e.nomeEquipe))return false;
