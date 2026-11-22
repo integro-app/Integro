@@ -460,8 +460,11 @@
     if (!allowed()) return false;
     syncContext();const host = card();if (!host) return false;
     if(!estrutura.loaded&&!estrutura.loading&&!estrutura.error)void carregarEstrutura();
+    // Seleções de equipes removidas ou fora do escopo não podem acionar operações em lote.
+    const idsPermitidos=new Set(rows().map(row=>text(row.id)));
+    for(const selectedId of ui.selected)if(!idsPermitidos.has(selectedId))ui.selected.delete(selectedId);
     if (ui.detail) { renderDetail(host);return true; }
-    const all = rows(), visible = all.filter(r => (!ui.team || text(r.id)===ui.team) && (!ui.search || text(r.nome).toLowerCase().includes(ui.search.toLowerCase())));
+    const all = rows(), visible = all.filter(r => (!ui.team || text(r.id)===ui.team) && (!ui.search || [r.nome,...r.vendedores.flatMap(v=>[v.nome,v.nomeCompleto,v.email])].some(value=>text(value).toLocaleLowerCase('pt-BR').includes(ui.search.toLocaleLowerCase('pt-BR')))));
     const entries = visible.map(row => {const history=teamBoxes(row),latest=history[0],boxes=latest?history.filter(b=>boxDay(b)===boxDay(latest)):[];const models=boxes.map(b=>{const cache=overview.get(id(b)),current=JSON.stringify([b.status,b.atualizadoEm,b.saldoAtualCentavos]);return model(b,cache?.fingerprint===current?cache.data:cachedData());});return {row,latest,history,models,avisos:[...new Set([...history.map(box=>avisoVinculoCaixa(row,box)).filter(Boolean),...avisosDuplicidadePorVendedor(row,history)])],status:boxes.some(openBox)?'ABERTO':latest?(upper(latest.status)==='FECHADA'?'FECHADO':upper(latest.status)):'SEM_CAIXA'};}).filter(v=>!ui.status||v.status===ui.status);
     const total = key => entries.reduce((n,v)=>n+v.models.reduce((n,m)=>n+num(m[key]),0),0), selected=ui.selected;
     const selecionadasNaTela = entries.filter(v=>selected.has(text(v.row.id)));
@@ -470,7 +473,7 @@
     host.querySelector('[data-cx-filters]').ontoggle=e=>{if(e.currentTarget.isConnected)ui.filtersOpen=e.currentTarget.open;};
     host.querySelector('[data-cx-clear]').onclick=()=>{ui.team='';ui.status='';ui.search='';render();};
     host.querySelector('[data-cx-team]').onchange=e=>{ui.team=e.target.value;render();};host.querySelector('[data-cx-status]').onchange=e=>{ui.status=e.target.value;render();};
-    host.querySelector('[data-cx-search]').onchange=e=>{ui.search=e.target.value;render();};
+    host.querySelector('[data-cx-search]').oninput=e=>{const field=e.currentTarget;const position=field.selectionStart;ui.search=field.value;render();const next=host.querySelector('[data-cx-search]');if(next){next.focus();try{next.setSelectionRange(position,position);}catch(_){}}};
     host.querySelector('[data-cx-refresh]').onclick=async event=>{
       await carregarEstrutura(true);
       if(estrutura.error){actionFeedback('Falha ao atualizar equipes: '+estrutura.error,true);return;}
