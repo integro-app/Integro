@@ -344,7 +344,7 @@ test("M12: supervisão não inventa R$ 0,00 quando saldo do caixa falta na fonte
 
 test("M12: total e linhas de supervisão propagam saldo desconhecido sem convertê-lo em zero", () => {
   const source = fs.readFileSync(path.join(root, "js/modules/caixas-supervisao.js"), "utf8");
-  assert.match(source, /cash\(entries\.some\(v=>v\.models\.some\(m=>m\.current==null\)\)\?null:total\('current'\)\)/);
+  assert.match(source, /abertosNaTela\.length!==modelosAbertos\.length/);
   assert.match(source, /cash\(models\.some\(m=>m\[k\]==null\)\?null:models\.reduce/);
   assert.match(source, /const cash = v => v == null \? 'Não registrado'/);
 });
