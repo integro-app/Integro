@@ -936,6 +936,128 @@
     }
   }
   const metric = (label,value) => `<div class="cx-metric"><span>${label}</span><strong>${value==null?'Não registrado':value}</strong></div>`;
+  function renderTeamDay(host) {
+    const row=rows(true).find(item=>text(item.id)===ui.detail);
+    if(!row){ui.detail='';ui.box='';render();return;}
+    const dates=[...new Set(ui.history.map(boxDay).filter(Boolean))].sort().reverse();
+    const selectedDay=dates.includes(ui.teamDay)?ui.teamDay:dates[0]||'';
+    ui.teamDay=selectedDay;
+    const boxes=ui.history.filter(box=>boxDay(box)===selectedDay);
+    const items=boxes.map(box=>{
+      const fingerprint=JSON.stringify([box.status,box.atualizadoEm,box.saldoAtualCentavos]);
+      const cache=overview.get(id(box));
+      const verified=verifiedBoxes.has(id(box))&&cache?.data&&!cache.error&&cache.fingerprint===fingerprint;
+      const m=model(box,verified?cache.data:cachedData());
+      return {box,m,verified};
+    });
+    const confirmado=estrutura.caixasChecked&&items.every(item=>item.verified);
+    const soma=key=>!items.length?'—':!confirmado?'Conferindo…':
+      items.some(item=>item.m[key]==null)?'Não registrado':
+      cash(items.reduce((sum,item)=>sum+num(item.m[key]),0));
+    const aberto=boxes.some(openBox);
+    const podeAbrir=row.ativa&&podeGerir('abrir');
+    const podeFechar=aberto&&podeGerir('fechar');
+    const historico=items.flatMap(({box,verified})=>{
+      if(!verified)return [];
+      const data=overview.get(id(box))?.data||{};
+      const documentos=[
+        ...(data.sales||[]).map(v=>({v,tipo:'Venda',valor:amount(v,['valorEmprestado','valorLiberado','valor'])})),
+        ...(data.payments||[]).map(v=>({v,tipo:'Recebimento',valor:amount(v,['valorRecebido','valorPago','valor'])})),
+        ...(data.moves||[]).map(v=>{
+          const name=upper(v.tipoSolicitacao||v.tipo||v.natureza||v.operacao);
+          const tipo=['GASTO','DESPESA'].includes(name)?'Gasto':
+            ['INGRESSO','ENTRADA','DEPOSITO'].includes(name)?'Entrada':
+            ['RETIRADA','RECOLHIMENTO','SAIDA'].includes(name)?'Saída':
+            name==='AJUSTE'?'Ajuste':'Movimentação';
+          return {v,tipo,valor:amount(v,['valor','valorTotal'])};
+        })
+      ];
+      return documentos.map(entry=>({...entry,vendedor:box.vendedorNome||box.vendedorId||'Vendedor',
+        data:entry.v.criadoEm||entry.v.dataHora||entry.v.dataPagamento||entry.v.dataOperacional}));
+    }).sort((a,b)=>stampMillis(b.data)-stampMillis(a.data)).slice(0,12);
+    const metricas=[
+      ['Caixa inicial','initial'],['Caixa atual / final','current'],['Carteira final','wallet'],
+      ['Vendas / empréstimos','loans'],['Recebimentos','received'],['Ingressos','income'],
+      ['Gastos','expenses'],['Retiradas','withdrawals'],['Recolhimentos','collected']
+    ];
+    host.innerHTML=`<div data-caixas-supervisao class="cx-team-detail">
+      <header class="cx-head cx-detail-header"><div>
+        <button type="button" class="cx-detail-back ghost-btn" data-cx-back-all>
+          <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Voltar às equipes
+        </button><span class="cx-eyebrow">MASTER LOCAL · JORNADA OPERACIONAL</span>
+        <h2>${esc(row.nome)}</h2>
+        <p>${row.ativa?'Equipe ativa':'Equipe inativa'} · ${row.vendedores.length} vendedor(es) vinculado(s)</p>
+      </div><button type="button" class="ghost-btn cx-detail-refresh" data-cx-team-reload
+        aria-label="Atualizar jornada no servidor"><span class="material-symbols-rounded">refresh</span> Atualizar</button></header>
+      <div class="cx-team-toolbar">
+        <label>Data da jornada<select data-cx-team-day>${dates.map(date=>option(date,dateBR(date),selectedDay)).join('')||
+          option('','Nenhuma data registrada','')}</select></label>
+        <span class="cx-team-day-status ${aberto?'is-open':''}">${!estrutura.caixasChecked?'CONFERINDO':aberto?'EM OPERAÇÃO':items.length?'ENCERRADA':'SEM CAIXA'}</span>
+      </div>
+      <div class="cx-team-actions">
+        ${podeAbrir?`<button type="button" class="success-btn" data-cx-team-calendar>
+          <span class="material-symbols-rounded">calendar_month</span> Abrir por data</button>`:''}
+        ${podeFechar?`<button type="button" class="danger-btn" data-cx-team-close ${ui.actionBusy?'disabled':''}>
+          <span class="material-symbols-rounded">lock</span> Conferir e fechar jornada</button>`:''}
+      </div>
+      <div class="cx-team-detail-metrics">
+        ${metricas.map(([label,key])=>`<article><small>${label}</small><strong>${soma(key)}</strong></article>`).join('')}
+      </div>
+      <section class="cx-team-detail-section"><div class="cx-list-heading">
+        <div><h3>Caixas dos vendedores</h3><p>${items.length} caixa(s) registrados nesta jornada</p></div>
+      </div>
+      <div class="cx-team-detail-sellers">
+        ${items.map(({box,m,verified})=>`<button type="button" data-cx-team-box="${esc(id(box))}"
+          class="cx-team-detail-seller">
+          <span class="material-symbols-rounded" aria-hidden="true">account_circle</span>
+          <span><strong>${esc(box.vendedorNome||box.vendedorId||'Vendedor')}</strong>
+            <small>${esc(upper(box.status))} · ${dateBR(boxDay(box))}</small></span>
+          <b>${verified?cash(m.current):'Conferindo…'}</b>
+          <span aria-hidden="true">→</span>
+        </button>`).join('')||'<p class="cx-team-empty">Sem caixas nesta data.</p>'}
+      </div></section>
+      <section class="cx-team-detail-section"><div class="cx-list-heading">
+        <div><h3>Últimas movimentações da jornada</h3><p>Vendas, entradas, saídas, recebimentos e gastos</p></div>
+      </div>
+      ${!confirmado&&items.length?'<p class="cx-loading" role="status">Conferindo lançamentos no servidor…</p>':
+        `<div class="cx-table-scroll"><table><thead><tr><th>Tipo</th><th>Vendedor</th><th>Descrição</th><th>Valor</th><th>Data</th></tr></thead>
+        <tbody>${historico.map(({v,tipo,valor,vendedor,data})=>`<tr><td>${esc(tipo)}</td>
+          <td>${esc(vendedor)}</td><td>${esc(v.clienteNome||v.descricao||v.categoriaNome||id(v))}</td>
+          <td>${cash(valor)}</td><td>${dateTime(data)}</td></tr>`).join('')||
+          '<tr><td colspan="5">Nenhuma movimentação confirmada nesta data.</td></tr>'}</tbody></table></div>`}
+      </section></div>`;
+    if(ui.actionMessage)actionFeedback(ui.actionMessage,ui.actionError);
+    host.querySelector('[data-cx-back-all]').onclick=()=>{
+      ui.revision++;ui.detail='';ui.box='';ui.teamDay='';ui.data=null;render();
+    };
+    host.querySelector('[data-cx-team-day]').onchange=event=>{
+      ui.teamDay=event.target.value;render();
+    };
+    host.querySelectorAll('[data-cx-team-box]').forEach(button=>
+      button.onclick=()=>selectBox(button.dataset.cxTeamBox));
+    host.querySelector('[data-cx-team-calendar]')?.addEventListener('click',()=>{
+      if(typeof global.IntegroCaixaDatas?.abrir==='function')
+        global.IntegroCaixaDatas.abrir({equipeId:ui.detail});
+      else actionFeedback('Calendário de abertura indisponível.',true);
+    });
+    host.querySelector('[data-cx-team-reload]').onclick=()=>open(row.id);
+    host.querySelector('[data-cx-team-close]')?.addEventListener('click',async()=>{
+      if(ui.actionBusy)return;
+      ui.selected.clear();ui.selectedBoxes.clear();ui.selected.add(text(row.id));
+      ui.actionBusy=true;
+      try {
+        const result=await fecharSelecionados();
+        actionFeedback(result?.falhas?.length?
+          'Fechamento com pendências: '+text(result.falhas[0]?.message):
+          (result?.fechados||0)+' caixa(s) encerrado(s) no servidor.',
+          !!result?.falhas?.length);
+      }catch(error){
+        actionFeedback(text(error.message||'Falha na conferência da equipe.'),true);
+      }finally{ui.actionBusy=false;await open(row.id);}
+    });
+    if(estrutura.caixasChecked)boxes.forEach(loadOverview);
+  }
+
   function renderDetail(host) {
     const row=rows(true).find(r=>text(r.id)===ui.detail);if(!row){ui.detail='';render();return;}
     const box=ui.history.find(b=>id(b)===ui.box),m=box&&ui.data?model(box,ui.data):null;
