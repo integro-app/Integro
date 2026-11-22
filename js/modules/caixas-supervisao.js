@@ -92,10 +92,10 @@
   }
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
-  const ui = {context:'',team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
+  const ui = {context:'',team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',selected:new Set(),selectedBoxes:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
+    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   // A lista de equipes vem do Firestore via caixas.js, não de um global
   // opcional que pode não existir na rota Master Local.
@@ -620,9 +620,11 @@
   }
   // Uma unidade visual representa o ciclo da equipe no dia; os documentos
   // de cada vendedor continuam independentes para saldo, auditoria e baixa.
+  // No mobile, a equipe ocupa um único cartão de jornada. Os subcaixas
+  // ficam acessíveis sem competir com os indicadores ou a ação principal.
   function renderCardsCaixa(entries,conferido) {
     return entries.map(({row,latest,history,models,avisos})=>{
-      const abertos=history.filter(openBox),abertosDia=models.filter(m=>openBox(m.box));
+      const abertos=history.filter(openBox);
       const inconsistentes=history.filter(box=>
         ['ABERTO','REABERTO'].includes(upper(box.status))&&box.ativo===false);
       const dia=latest?dateBR(boxDay(latest)):'Sem abertura registrada';
@@ -630,11 +632,12 @@
       const saldoAtual=verificado&&models.length?
         cash(models.some(m=>m.current==null)?null:models.reduce((n,m)=>n+num(m.current),0)):
         models.length?'Conferindo…':'—';
-      const vendedoresUnicos=new Set(models.map(m=>text(m.box.vendedorAuthUid||m.box.vendedorId)).filter(Boolean)).size;
       const situacao=!row.ativa?'INATIVA':!estrutura.caixasChecked?'CONFERINDO':
         inconsistentes.length?'REVISÃO':abertos.length?'EM OPERAÇÃO':
         history.some(box=>upper(box.status)==='DIVERGENTE')?'DIVERGENTE':
         latest?'FECHADA':'SEM CAIXA';
+      const statusVisual=!row.ativa?'is-inactive':inconsistentes.length?'is-warning':
+        abertos.length?'is-open':history.some(b=>upper(b.status)==='DIVERGENTE')?'is-warning':'is-closed';
       const filhos=models.slice(0,6).map(m=>{
         const box=m.box,ativo=openBox(box),responsavel=text(box.vendedorNome||
           row.vendedores.find(v=>id(v)===text(box.vendedorId))?.nome||'Vendedor');
@@ -642,7 +645,7 @@
           <span class="cx-team-seller-icon material-symbols-rounded" aria-hidden="true">person</span>
           <button type="button" data-cx-open-box="${esc(id(box))}" data-cx-team="${esc(row.id)}"
             aria-label="Consultar caixa de ${esc(responsavel)}"><strong>${esc(responsavel)}</strong>
-            <small>${ativo?'Caixa aberto':'Histórico do caixa'}</small></button>
+            <small>${ativo?'Em operação':'Fechado ou histórico'}</small></button>
           <span class="cx-team-seller-value">${!estrutura.caixasChecked||!conferido(m)?'Conferindo…':cash(m.current)}</span>
           <label class="cx-box-check" title="Selecionar este caixa">
             <input type="checkbox" data-cx-select-box="${esc(id(box))}" aria-label="Selecionar caixa de ${esc(responsavel)}"
@@ -651,7 +654,17 @@
           </label>
         </div>`;
       }).join('');
-      return `<article class="cx-team-day-card ${row.ativa?'':'is-inactive'}" data-cx-card-team="${esc(row.id)}">
+      const membros=models.length?`
+        <details class="cx-team-members" data-cx-members="${esc(row.id)}" ${ui.expandedTeams.has(text(row.id))?'open':''}>
+          <summary><span class="material-symbols-rounded" aria-hidden="true">groups</span>
+            <strong>Caixas dos vendedores</strong><small>${models.length}</small>
+            <span class="material-symbols-rounded cx-members-chevron" aria-hidden="true">expand_more</span></summary>
+          <div class="cx-team-day-sellers" aria-label="Caixas individuais dos vendedores">
+            ${filhos}
+            ${models.length>6?`<small class="cx-team-more">+${models.length-6} caixa(s). Consulte todos no detalhamento.</small>`:''}
+          </div>
+        </details>`:`<p class="cx-team-empty">Sem caixas nesta equipe. Consulte a abertura por data no menu Ações.</p>`;
+      return `<article class="cx-team-day-card ${statusVisual}" data-cx-card-team="${esc(row.id)}">
         <div class="cx-team-day-top">
           <label class="cx-team-select" title="Selecionar equipe para operação em lote">
             <input type="checkbox" data-caixas-equipe="${esc(row.id)}" aria-label="Selecionar equipe ${esc(row.nome)}"
@@ -660,23 +673,19 @@
           </label>
           <button type="button" class="cx-team-open" data-cx-open="${esc(row.id)}">
             <span class="cx-team-open-title">${esc(row.nome)}</span>
-            <span class="cx-team-open-date">${esc(dia)} · ${row.vendedores.length} vendedor(es) vinculado(s)</span>
+            <span class="cx-team-open-date">${esc(dia)} · ${row.vendedores.length} vendedor(es)</span>
           </button>
           <span class="cx-team-day-status ${abertos.length?'is-open':''}">${situacao}</span>
         </div>
-        <button type="button" class="cx-team-day-summary" data-cx-open="${esc(row.id)}"
-          aria-label="Detalhamento completo da equipe ${esc(row.nome)}">
+        <div class="cx-team-day-summary" aria-label="Resumo financeiro da equipe">
           <span><small>Saldo da equipe</small><strong>${saldoAtual}</strong></span>
-          <span><small>Caixas em aberto</small><strong>${estrutura.caixasChecked?abertos.length:'—'}</strong></span>
-          <span><small>Caixas na data</small><strong>${estrutura.caixasChecked?models.length:'—'}</strong></span>
-        </button>
-        <div class="cx-team-day-sellers" aria-label="Caixas individuais dos vendedores">
-          ${filhos||'<p class="cx-team-empty">Nenhum caixa registrado nesta equipe. Abra a jornada para iniciar a operação.</p>'}
-          ${models.length>6?`<small class="cx-team-more">+${models.length-6} caixa(s). Consulte todos no detalhamento.</small>`:''}
+          <span><small>Abertos</small><strong>${estrutura.caixasChecked?abertos.length:'—'}</strong></span>
+          <span><small>Na jornada</small><strong>${estrutura.caixasChecked?models.length:'—'}</strong></span>
         </div>
+        ${membros}
         ${avisos.length?`<p class="cx-team-alert" role="status">${esc(avisos.join(' · '))}</p>`:''}
         <button type="button" class="cx-team-day-detail" data-cx-open="${esc(row.id)}">
-          Ver detalhamento e histórico <span aria-hidden="true">→</span>
+          <span>Detalhes e histórico</span><span class="material-symbols-rounded" aria-hidden="true">arrow_forward</span>
         </button>
       </article>`;
     }).join('');
@@ -796,6 +805,19 @@
     host.querySelectorAll('[data-cx-open]').forEach(b=>b.onclick=()=>open(b.dataset.cxOpen));
     host.querySelectorAll('[data-cx-open-box]').forEach(button=>{
       button.onclick=()=>open(button.dataset.cxTeam,button.dataset.cxOpenBox);
+    });
+    host.querySelectorAll('[data-cx-members]').forEach(detail=>{
+      detail.addEventListener('toggle',()=>{
+        const equipeId=text(detail.dataset.cxMembers);
+        if(detail.open)ui.expandedTeams.add(equipeId);
+        else ui.expandedTeams.delete(equipeId);
+      });
+    });
+    host.querySelectorAll('[data-cx-card-team]').forEach(card=>{
+      card.addEventListener('click',event=>{
+        if(event.target.closest('button,input,label,summary,details,a,select'))return;
+        open(card.dataset.cxCardTeam);
+      });
     });
     host.querySelectorAll('[data-cx-select-box]').forEach(checkbox=>{
       checkbox.onchange=()=>{
