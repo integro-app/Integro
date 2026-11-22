@@ -353,7 +353,7 @@ test("M12: total e linhas de supervisão propagam saldo desconhecido sem convert
 test("master local: operação pesquisa vendedores em tempo real e preserva seleção durante carregamento",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/\[r\.nome,\.\.\.r\.vendedores\.flatMap/);
-  assert.match(source,/\['data-cx-search'\]\)\.oninput/);
+  assert.match(source,/querySelector\('\[data-cx-search\]'\)\.oninput/);
   assert.match(source,/if\(estrutura\.loaded\)\{/);
   assert.match(source,/idsPermitidos\.has\(selectedId\)/);
 });
