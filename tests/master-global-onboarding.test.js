@@ -262,6 +262,59 @@ test("lista global de Masters não conta convite provisionado em duplicidade", (
   assert.deepEqual(Array.from(listar(), u => u.id), ["uid-1", "uid-2"]);
 });
 
+test("M01 listagem de Masters e KPI não aceita vínculos legados de outro tenant",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("function getMastersLocais(){");
+  const b=html.indexOf(" function getUsuariosInternos()",a);
+  assert.ok(a>=0&&b>a);
+  const usuariosSistema=[
+    {id:"uid-master-a",authUid:"uid-master-a",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"old-master-b",authUid:"uid-master-a",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-b",status:"ATIVO"},
+    {id:"uid-vendedor-b",authUid:"uid-vendedor-b",tipoUsuario:"vendedor",
+      clientePlataformaId:"tenant-b",status:"ATIVO"},
+    {id:"old-master-falso",authUid:"uid-vendedor-b",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"amb-a",authUid:"uid-sem-canonico",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"amb-b",authUid:"uid-sem-canonico",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-b",status:"ATIVO"},
+    {id:"old-regular-a",authUid:"uid-legado",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"old-regular-duplicate",authUid:"uid-legado",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO"},
+    {id:"legacy-free",authUid:"uid-conflito",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"ATIVO",acessoLiberado:true},
+    {id:"legacy-locked",authUid:"uid-conflito",tipoUsuario:"master_local",
+      clientePlataformaId:"tenant-a",status:"BLOQUEADO",acessoLiberado:false}
+  ];
+  const listar=vm.runInNewContext(html.slice(a,b)+";getMastersLocais",{
+    usuariosSistema,status:v=>String(v||"").toUpperCase()
+  });
+  assert.deepEqual(Array.from(listar(),u=>u.id),["uid-master-a","old-regular-a"]);
+});
+
+test("M01: card de Master sem status não afirma ATIVO nem usa nome empresarial legado",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("function cardUsuario(u,tipo){");
+  const b=html.indexOf("    function trocarTela(id,btn){",a);
+  assert.ok(a>=0&&b>a);
+  const esc=v=>String(v??"").replace(/[&<>'"]/g,ch=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
+  }[ch]));
+  const render=vm.runInNewContext(html.slice(a,b)+";cardUsuario",{
+    clientesIntegro:[],departamentos:[],status:v=>String(v||"").toUpperCase(),
+    esc,badge:val=>'<span class="chip">'+esc(val)+'</span>'
+  });
+  const card=render({id:"uid-a",authUid:"uid-a",nome:"Sem status",
+    tipoUsuario:"master_local",clientePlataformaId:"tenant-a",
+    clientePlataformaNome:"Empresa antiga incorreta"},"master");
+  assert.match(card,/NÃO INFORMADO/);
+  assert.match(card,/VÍNCULO DE EMPRESA NÃO LOCALIZADO/);
+  assert.doesNotMatch(card,/<span class="chip">ATIVO<\/span>|Empresa antiga incorreta/);
+});
+
 test("bloqueio do tenant preserva bloqueios individuais ao reativar", async () => {
   const c = ambiente();
   const { id } = await c.api.salvarCliente(cliente, c.contexto);
@@ -275,6 +328,35 @@ test("bloqueio do tenant preserva bloqueios individuais ao reativar", async () =
   assert.equal(c.dados.get("usuarios/vendedor-inativo").empresaBloqueada, false);
   assert.equal(c.dados.get("usuarios/vendedor-inativo").acessoLiberado, false);
   assert.equal(c.dados.get("usuarios/vendedor-inativo").status, "BLOQUEADO");
+});
+
+test("M01: renovar teste não desbloqueia usuário individualmente bloqueado nem cruza empresas",async()=>{
+  const c=ambiente();
+  const principal=await c.api.salvarCliente(cliente,c.contexto);
+  const outra=await c.api.salvarCliente({...cliente,documento:"52998224725",tipoPessoa:"PF",
+    nome:"Outro Cliente",email:"outro@empresa.com.br"},c.contexto);
+  c.dados.set("usuarios/vendedor-liberado",{
+    authUid:"vendedor-liberado",tipoUsuario:"vendedor",clientePlataformaId:principal.id,
+    acessoLiberado:true,status:"ATIVO"
+  });
+  c.dados.set("usuarios/vendedor-bloqueado",{
+    authUid:"vendedor-bloqueado",tipoUsuario:"vendedor",clientePlataformaId:principal.id,
+    acessoLiberado:false,status:"BLOQUEADO"
+  });
+  c.dados.set("usuarios/vendedor-outra-empresa",{
+    authUid:"vendedor-outra-empresa",tipoUsuario:"vendedor",clientePlataformaId:outra.id,
+    acessoLiberado:false,status:"BLOQUEADO"
+  });
+  await c.api.alterarAcesso({id:principal.id,liberado:false},c.contexto);
+  const externoAntes=JSON.stringify(c.dados.get("usuarios/vendedor-outra-empresa"));
+  await c.api.ativarTeste({id:principal.id,dias:7},c.contexto);
+  assert.equal(c.dados.get("clientes_integro/"+principal.id).acessoLiberado,true);
+  assert.equal(c.dados.get("usuarios/vendedor-liberado").acessoLiberado,true);
+  assert.equal(c.dados.get("usuarios/vendedor-liberado").empresaBloqueada,false);
+  assert.equal(c.dados.get("usuarios/vendedor-bloqueado").acessoLiberado,false);
+  assert.equal(c.dados.get("usuarios/vendedor-bloqueado").status,"BLOQUEADO");
+  assert.equal(JSON.stringify(c.dados.get("usuarios/vendedor-outra-empresa")),externoAntes,
+    "renovar teste de um cliente não altera usuário de outro tenant");
 });
 
 test("cadastro M01: CPF/CNPJ dinamico e teclado de documento livre", () => {
@@ -686,6 +768,193 @@ test("M01 ficha 360 compacta mantém agrupamento, permissões e ações administ
 });
 
 
+test("M01: ficha nao confunde tenant quando cadastro canonico substitui legado de outro cliente",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const inicio=html.indexOf("    function abrirDetalheCliente(id){");
+  const fim=html.indexOf("    function abrirDetalheUsuario(id){",inicio);
+  assert.ok(inicio>=0&&fim>inicio);
+  const usuarios=[
+    {id:"old-master-a",authUid:"uid-master-b",nome:"Master legado de A",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+    {id:"uid-master-b",authUid:"uid-master-b",nome:"Master canônico B",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-b"},
+    {id:"old-vendedor-a",authUid:"uid-vendedor-b",nome:"Vendedor legado de A",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"uid-vendedor-b",authUid:"uid-vendedor-b",nome:"Vendedor canônico B",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"},
+    {id:"uid-vendedor-a",authUid:"uid-vendedor-a",nome:"Vendedor canônico A",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"old-vendedor-a-2",authUid:"uid-vendedor-a",nome:"Vendedor legado duplicado",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"uid-master-a",authUid:"uid-master-a",nome:"Master canônico A",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+    {id:"old-master-a-2",authUid:"uid-master-a",nome:"Master legado duplicado",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+    {id:"amb-legado-a",authUid:"uid-sem-canonico",nome:"Legado ambíguo A",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"amb-legado-b",authUid:"uid-sem-canonico",nome:"Legado ambíguo B",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"},
+    {id:"legado-acesso-ativo",authUid:"uid-acesso-antigo",nome:"Cópia ativa duvidosa",
+      tipoUsuario:"vendedor",status:"ATIVO",acessoLiberado:true,clientePlataformaId:"empresa-a"},
+    {id:"legado-acesso-bloqueado",authUid:"uid-acesso-antigo",nome:"Cópia bloqueada duvidosa",
+      tipoUsuario:"vendedor",status:"BLOQUEADO",acessoLiberado:false,clientePlataformaId:"empresa-a"},
+    {id:"legado-cargo-a",authUid:"uid-vendedor-a",nome:"Master legado cargo inválido",
+      tipoUsuario:"master_local",clientePlataformaId:"empresa-a"},
+    {id:"old-sem-uid-a",nome:"Operador sem UID A",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"internal-a",authUid:"internal-a",nome:"Equipe plataforma indevida",
+      tipoUsuario:"usuario_integro",clientePlataformaId:"empresa-a"}
+  ];
+  const esc=v=>String(v??"").replace(/[&<>'"]/g,ch=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
+  }[ch]));
+  let painel="";
+  const ctx={
+    clientesIntegro:[{id:"empresa-a",nome:"Empresa A",acessoLiberado:true}],
+    usuariosSistema:usuarios,planos:[],
+    inconsistenciasVinculosGlobal:{"empresa-a":7},
+    getMastersLocais:()=>usuarios.filter(u=>u.tipoUsuario==="master_local"),
+    clienteLiberadoGlobal:()=>true,
+    situacaoClienteIntegro:()=>({nome:"ATIVO",cor:"ativo",liberado:true,
+      testeFim:NaN,diasRestantes:null,expirou:false,contratoMs:NaN}),
+    status:v=>String(v||"").toUpperCase(),esc,moeda:()=>"",dataCurta:()=>"",
+    validarCaminhoLogoCliente:()=>"",estadoFichasClientes:new Map(),
+    abrirDrawer:(_titulo,_descricao,conteudo)=>{painel=conteudo;}
+  };
+  const abrir=vm.runInNewContext(html.slice(inicio,fim)+";abrirDetalheCliente",ctx);
+  abrir("empresa-a");
+  assert.match(painel,/Master Local \(1\)/,"apenas master canônico do tenant A");
+  assert.match(painel,/Outros usuários vinculados \(2\)/,"um canônico e um legado sem UID");
+  assert.match(painel,/Master canônico A|Vendedor canônico A|Operador sem UID A/);
+  assert.doesNotMatch(painel,/Master legado de A|Vendedor legado de A|Vendedor legado duplicado/);
+  assert.doesNotMatch(painel,/Master legado duplicado|Equipe plataforma indevida|Cópia ativa duvidosa|Cópia bloqueada duvidosa|Master legado cargo inválido/);
+  assert.doesNotMatch(painel,/Master canônico B|Vendedor canônico B|Legado ambíguo A/);
+  assert.match(painel,/7 registro\(s\) legado\(s\) com informações conflitantes/,
+    "diagnóstico do backend prevalece mesmo após remover duplicatas na resposta");
+  assert.match(painel,/data-mg-action="ver-usuario" data-id="uid-vendedor-a"/);
+  assert.doesNotMatch(painel,/data-mg-action="ver-usuario" data-id="old-vendedor-a"/);
+  assert.doesNotMatch(painel,/data-mg-action="ver-usuario" data-id="old-master-a"/);
+});
+
+test("M01: ficha distingue status cadastral, UID Auth e empresa realmente vinculada",()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    function abrirDetalheCliente(id){");
+  const b=html.indexOf("    function abrirDetalheUsuario(id){",a);
+  const c=html.indexOf("    function getMastersLocais(){",b);
+  assert.ok(a>=0&&b>a&&c>b);
+  const clientes=[{id:"empresa-a",nome:"Empresa A",tipoPessoa:"PJ",status:"ATIVO",acessoLiberado:true}];
+  const usuarios=[
+    {id:"master-a",authUid:"master-a",nome:"Master Bloqueado",tipoUsuario:"master_local",
+      clientePlataformaId:"empresa-a",status:"BLOQUEADO",acessoLiberado:false},
+    {id:"seller-a",authUid:"seller-a",nome:"Vendedor Inativo",tipoUsuario:"vendedor",
+      clientePlataformaId:"empresa-a",status:"INATIVO",acessoLiberado:true},
+    {id:"pending-a",nome:"Usuário Sem Dados",tipoUsuario:"vendedor",clientePlataformaId:"empresa-a"},
+    {id:"orphan",authUid:"orphan",nome:"Usuário de Empresa Desconhecida",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-excluida",
+      clientePlataformaNome:"Empresa legada incorreta"},
+    {id:"outro",authUid:"outro",nome:"Usuário de Outra Empresa",
+      tipoUsuario:"vendedor",clientePlataformaId:"empresa-b"}
+  ];
+  const esc=v=>String(v??"").replace(/[&<>'"]/g,ch=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"
+  }[ch]));
+  let conteudo="";
+  const ctx={
+    clientesIntegro:clientes,usuariosSistema:usuarios,planos:[],
+    getMastersLocais:()=>[usuarios[0]],
+    clienteLiberadoGlobal:c=>c.acessoLiberado===true&&
+      !(c.testeAtivo===true&&Date.parse(c.dataFimTeste)<=Date.now()),
+    situacaoClienteIntegro:c=>({nome:c.testeAtivo===true&&Date.parse(c.dataFimTeste)<=Date.now()?
+      "TESTE EXPIRADO":c.acessoLiberado===false?"BLOQUEADO":"ATIVO",cor:"ativo",liberado:true,
+      testeFim:NaN,diasRestantes:null,expirou:false,contratoMs:NaN}),
+    status:v=>String(v||"").toUpperCase(),esc,
+    moeda:()=>"",dataCurta:()=>"",validarCaminhoLogoCliente:()=>"",
+    estadoFichasClientes:new Map(),
+    abrirDrawer:(_titulo,_descricao,html)=>{conteudo=html;},
+    info:(titulo,valor)=>titulo+": "+String(valor??"")+"\n"
+  };
+  const verEmpresa=vm.runInNewContext(html.slice(a,b)+";abrirDetalheCliente",ctx);
+  verEmpresa("empresa-a");
+  assert.match(conteudo,/Master Bloqueado/);
+  assert.match(conteudo,/Vendedor Inativo/);
+  assert.match(conteudo,/Cadastro: BLOQUEADO · ACESSO CADASTRAL RESTRITO · UID Auth vinculado/);
+  assert.match(conteudo,/Cadastro: INATIVO · ACESSO CADASTRAL RESTRITO · UID Auth vinculado/);
+  assert.match(conteudo,/Cadastro: NÃO INFORMADO · ACESSO CADASTRAL NÃO INFORMADO · UID Auth não confirmado/);
+  assert.doesNotMatch(conteudo,/Auth ativo|Usuário de Outra Empresa|Usuário de Empresa Desconhecida/);
+  assert.match(conteudo,/data-mg-action="ver-usuario"/);
+  const verUsuario=vm.runInNewContext(html.slice(b,c)+";abrirDetalheUsuario",ctx);
+  verUsuario("master-a");
+  assert.match(conteudo,/Status cadastral: BLOQUEADO/);
+  assert.match(conteudo,/Acesso cadastral: RESTRITO/);
+  assert.match(conteudo,/Empresa: Empresa A/);
+  assert.match(conteudo,/Acesso da empresa: LIBERADO NO CADASTRO DA EMPRESA/);
+  verUsuario("pending-a");
+  assert.match(conteudo,/Status cadastral: NÃO INFORMADO/);
+  assert.match(conteudo,/Acesso cadastral: NÃO INFORMADO/);
+  assert.doesNotMatch(conteudo,/Status cadastral: ATIVO/);
+  verUsuario("orphan");
+  assert.match(conteudo,/VÍNCULO DE EMPRESA NÃO LOCALIZADO/);
+  assert.match(conteudo,/Acesso da empresa: VÍNCULO NÃO CONFIRMADO/);
+  assert.doesNotMatch(conteudo,/Empresa legada incorreta|Equipe ÍNTEGRO|Voltar para empresa/);
+  clientes[0].acessoLiberado=false;
+  verEmpresa("empresa-a");
+  assert.match(conteudo,/EMPRESA SEM ACESSO \(BLOQUEADO\)/,
+    "usuário com UID não deve aparentar acesso à empresa bloqueada");
+  verUsuario("seller-a");
+  assert.match(conteudo,/Acesso da empresa: RESTRITO — BLOQUEADO/);
+  clientes[0].acessoLiberado=true;
+  clientes[0].testeAtivo=true;
+  clientes[0].dataFimTeste=new Date(Date.now()-86400000).toISOString();
+  verEmpresa("empresa-a");
+  assert.match(conteudo,/EMPRESA SEM ACESSO \(TESTE EXPIRADO\)/);
+  verUsuario("seller-a");
+  assert.match(conteudo,/Acesso da empresa: RESTRITO — TESTE EXPIRADO/);
+});
+
+test("M01: ações de acesso e teste evitam liberação incorreta ou acidental",async()=>{
+  const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
+  const a=html.indexOf("    async function alternarAcessoCliente(id){");
+  const b=html.indexOf("    async function alternarAcessoUsuario(id){",a);
+  assert.ok(a>=0&&b>a);
+  const empresa={id:"empresa-a",nome:"Empresa A",status:"BLOQUEADO",acessoLiberado:false,
+    testeAtivo:true,dataFimTeste:new Date(Date.now()-86400000).toISOString()};
+  const pedidos=[],avisos=[],confirmacoes=[];
+  let permitir=false,carregamentos=0;
+  const contexto={
+    clientesIntegro:[empresa],configuracoesGlobal:{diasTestePadrao:7},
+    dataGlobalMs:v=>v?Date.parse(v):NaN,status:v=>String(v||"").toUpperCase(),
+    confirm:mensagem=>{confirmacoes.push(mensagem);return permitir;},
+    notificarIntegro:mensagem=>avisos.push(mensagem),
+    funcaoMasterGlobal:rota=>entrada=>{pedidos.push({rota,entrada});return Promise.resolve({data:{ok:true}});},
+    carregarTudo:async()=>{carregamentos++;}
+  };
+  const acoes=vm.runInNewContext(
+    "let processandoCadastroGlobal=false;\n"+html.slice(a,b)+
+    ";({alternarAcessoCliente,ativarTesteCliente})",contexto);
+  await acoes.alternarAcessoCliente("empresa-a");
+  assert.equal(pedidos.length,0,"teste expirado bloqueia tentativa desnecessária no backend");
+  assert.match(avisos.at(-1),/Renove o teste/);
+  assert.equal(confirmacoes.length,0,"não oferece liberar algo que o servidor vai rejeitar");
+  await acoes.ativarTesteCliente("empresa-a");
+  assert.equal(pedidos.length,0,"cancelar confirmação preserva dados");
+  assert.match(confirmacoes.at(-1),/libera o acesso da empresa/);
+  assert.match(confirmacoes.at(-1),/restaura os estados anteriores/);
+  permitir=true;
+  await acoes.ativarTesteCliente("empresa-a");
+  assert.equal(pedidos.length,1);
+  assert.equal(pedidos[0].rota,"ativarTesteClienteIntegroGlobal");
+  assert.equal(pedidos[0].entrada.id,"empresa-a");
+  assert.equal(pedidos[0].entrada.dias,7);
+  assert.equal(carregamentos,1,"recarrega dados somente depois do backend");
+  contexto.configuracoesGlobal.diasTestePadrao=91;
+  await acoes.ativarTesteCliente("empresa-a");
+  assert.equal(pedidos.length,1,"prazo inválido é recusado antes do servidor");
+  assert.match(avisos.at(-1),/entre 1 e 90 dias/);
+  assert.match(html,/Renovar teste/);
+  assert.match(html,/Reiniciar teste/);
+  assert.match(html,/data-mg-action="teste-cliente"/);
+});
+
 test("M01: ao voltar para empresa, mantém as seções que estavam expandidas",()=>{
   const html=fs.readFileSync(path.join(__dirname,"..","master-global.html"),"utf8");
   const a=html.indexOf("    const estadoFichasClientes=new Map();");
@@ -893,7 +1162,12 @@ test("M01: card e ficha usam a mesma situação; filtros separam inativo, bloque
   vals.filtroStatusClientes="TESTE_EXPIRADO";render();
   assert.equal(lista.innerHTML,"expirado");
   vals.filtroStatusClientes="BLOQUEADO";render();
-  assert.equal(lista.innerHTML,"inativobloqueadoexpirado");
+  assert.equal(lista.innerHTML,"bloqueado","bloqueado não inclui inativo nem teste expirado");
+  vals.filtroStatusClientes="SEM_ACESSO";render();
+  assert.equal(lista.innerHTML,"inativobloqueadoexpirado","sem acesso inclui todos os estados restritos");
+  assert.match(html,/<option value="BLOQUEADO">Bloqueado<\/option>/);
+  assert.match(html,/<option value="SEM_ACESSO">Sem acesso/);
+  assert.match(html,/data-kpi="bloqueados"><small>Sem acesso<\/small>/);
 });
 
 
