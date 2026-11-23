@@ -1193,7 +1193,7 @@
         <div><h3>Últimas movimentações da jornada</h3><p>Vendas, entradas, saídas, recebimentos e gastos</p></div>
       </div>
       ${falhasConferencia.length||estrutura.caixasError?
-        `<p class="cx-team-sync-error" role="alert">
+        `<p class="cx-team-alert cx-team-sync-error" role="alert">
           Não foi possível confirmar todos os dados da jornada. Use Atualizar para consultar novamente o servidor.
         </p>`:
         !confirmado&&items.length?'<p class="cx-loading" role="status">Conferindo lançamentos no servidor…</p>':
