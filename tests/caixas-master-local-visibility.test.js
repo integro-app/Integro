@@ -735,7 +735,8 @@ test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente ence
   assert.match(source,/const inconsistentes=history\.filter/);
   assert.match(source,/inconsistentes\.length\|\|possuiDivergencia\?'REVISÃO'/);
   assert.match(source,/const exigeRevisao=boxes\.some/);
-  assert.match(source,/exigeRevisao\?'REVISÃO':aberto\?'EM OPERAÇÃO'/);
+  assert.match(source,/exigeRevisao\?'REVISÃO':/);
+  assert.match(source,/pendenteAnterior\?'PENDENTE DE FECHAMENTO':aberto\?'EM OPERAÇÃO'/);
   assert.match(source,/history\.some\(b=>\['ABERTO','REABERTO'\]\.includes\(upper\(b\.status\)\)&&b\.ativo===false\)/);
 });
 
