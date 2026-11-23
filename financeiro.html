@@ -2164,8 +2164,7 @@
       auditoria:"Auditoria"
     };
     if (titulos[tela]) {
-      document.getElementById("pageTitle").innerText = titulos[tela][0];
-      document.getElementById("pageSubtitle").innerText = titulos[tela][1];
+      document.getElementById("pageTitle").innerText = titulos[tela];
     }
     if (tela === "contas") renderLancamentosFinanceiroReal();
     if (tela === "caixas") renderCaixasFinanceiroReal();

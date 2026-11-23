@@ -18,6 +18,8 @@ const navegacao = fs.readFileSync(path.join(root, "js", "unified-navigation.js")
 test("pagina financeira legada continua como fallback e carrega o servico operacional", () => {
   assert.match(financeiroLegado, /redirect-to-master-local/);
   assert.match(financeiroLegado, /js\/services\/financial-operations\.js/);
+  assert.match(financeiroLegado, /getElementById\("pageTitle"\)\.innerText = titulos\[tela\]/);
+  assert.doesNotMatch(financeiroLegado, /getElementById\("pageSubtitle"\)/);
 });
 
 test("dashboard operacional usa resumo oficial por periodo e tenant", () => {
