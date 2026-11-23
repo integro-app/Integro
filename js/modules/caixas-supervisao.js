@@ -1128,6 +1128,9 @@
       boxes.some(box=>upper(box.status)==='DIVERGENTE');
     const podeAbrir=row.ativa&&podeGerir('abrir');
     const podeFechar=aberto&&podeGerir('fechar');
+    const situacaoJornada=!estrutura.caixasChecked?'CONFERINDO':exigeRevisao?'REVISÃO':
+      pendenteAnterior?'PENDENTE DE FECHAMENTO':aberto?'EM OPERAÇÃO':
+      items.length?'ENCERRADA':'SEM CAIXA';
     const historico=items.flatMap(({box,verified})=>{
       if(!verified)return [];
       const data=overview.get(id(box))?.data||{};
@@ -1156,7 +1159,11 @@
       <div class="cx-team-toolbar">
         <label>Data da jornada<select data-cx-team-day>${dates.map(date=>option(date,dateBR(date),selectedDay)).join('')||
           option('','Nenhuma data registrada','')}</select></label>
-        <span class="cx-team-day-status ${aberto?'is-open':''}">${!estrutura.caixasChecked?'CONFERINDO':exigeRevisao?'REVISÃO':pendenteAnterior?'PENDENTE DE FECHAMENTO':aberto?'EM OPERAÇÃO':items.length?'ENCERRADA':'SEM CAIXA'}</span>
+        <span class="cx-team-day-status ${aberto?'is-open':''}"
+          title="${esc(situacaoJornada)}" aria-label="${esc(situacaoJornada)}">
+          <span class="cx-status-full">${esc(situacaoJornada)}</span>
+          <span class="cx-status-mobile" aria-hidden="true">${esc(pendenteAnterior?'PENDENTE':situacaoJornada)}</span>
+        </span>
       </div>
       <div class="cx-team-actions">
         ${podeAbrir?`<button type="button" class="success-btn" data-cx-team-calendar>
