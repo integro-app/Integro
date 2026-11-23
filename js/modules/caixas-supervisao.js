@@ -1063,7 +1063,12 @@
         overview.set(key,{fingerprint,error:error.message});
       }
     }
-    finally {pending.delete(key);overviewLoads--;if(ctx===ui.context&&!ui.detail)render();}
+    finally {
+      pending.delete(key);overviewLoads--;
+      // Também atualizar a jornada da equipe: antes o detalhamento permanecia
+      // em "Conferindo…" mesmo depois de concluir a leitura do Firestore.
+      if(ctx===ui.context && (!ui.detail || (!ui.box && !ui.loading)))render();
+    }
   }
   async function selectBox(boxId, strict = false) {
     const box=ui.history.find(b=>id(b)===text(boxId));
@@ -1095,6 +1100,9 @@
   function renderTeamDay(host) {
     const row=rows(true).find(item=>text(item.id)===ui.detail);
     if(!row){ui.detail='';ui.box='';render();return;}
+    // Relê a fotografia autenticada mais recente sem trocar de empresa/equipe.
+    // Isso atualiza o status depois de abertura/fechamento mesmo com o detalhe aberto.
+    ui.history=teamBoxes(row,ui.history);
     const dates=[...new Set(ui.history.map(boxDay).filter(Boolean))].sort().reverse();
     const selectedDay=dates.includes(ui.teamDay)?ui.teamDay:dates[0]||'';
     ui.teamDay=selectedDay;
@@ -1106,8 +1114,10 @@
       const m=model(box,verified?cache.data:cachedData());
       return {box,m,verified};
     });
+    const falhasConferencia=items.filter(item=>!!overview.get(id(item.box))?.error);
     const confirmado=estrutura.caixasChecked&&items.every(item=>item.verified);
-    const soma=key=>!items.length?'—':!confirmado?'Conferindo…':
+    const soma=key=>!items.length?'—':falhasConferencia.length?'Não confirmado':
+      !confirmado?'Conferindo…':
       items.some(item=>item.m[key]==null)?'Não registrado':
       cash(items.reduce((sum,item)=>sum+num(item.m[key]),0));
     const aberto=boxes.some(openBox);
@@ -1179,7 +1189,11 @@
       <section class="cx-team-detail-section"><div class="cx-list-heading">
         <div><h3>Últimas movimentações da jornada</h3><p>Vendas, entradas, saídas, recebimentos e gastos</p></div>
       </div>
-      ${!confirmado&&items.length?'<p class="cx-loading" role="status">Conferindo lançamentos no servidor…</p>':
+      ${falhasConferencia.length?
+        `<p class="cx-team-sync-error" role="alert">
+          Não foi possível confirmar ${falhasConferencia.length} caixa(s). Use Atualizar para consultar novamente o servidor.
+        </p>`:
+        !confirmado&&items.length?'<p class="cx-loading" role="status">Conferindo lançamentos no servidor…</p>':
         `<div class="cx-table-scroll"><table><thead><tr><th>Tipo</th><th>Vendedor</th><th>Descrição</th><th>Valor</th><th>Data</th></tr></thead>
         <tbody>${historico.map(({v,tipo,valor,vendedor,data})=>`<tr><td>${esc(tipo)}</td>
           <td>${esc(vendedor)}</td><td>${esc(v.clienteNome||v.descricao||v.categoriaNome||id(v))}</td>
@@ -1203,10 +1217,21 @@
         global.IntegroCaixaDatas.abrir({equipeId:ui.detail});
       else actionFeedback('Calendário de abertura indisponível.',true);
     });
-    host.querySelector('[data-cx-team-reload]').onclick=()=>open(row.id);
+    host.querySelector('[data-cx-team-reload]').onclick=()=>{
+      if(ui.actionBusy)return;
+      // A atualização explícita deve recuperar consultas anteriores com erro,
+      // não devolver a mesma fotografia armazenada em cache.
+      ui.history.forEach(box=>overview.delete(id(box)));
+      open(row.id);
+    };
     host.querySelector('[data-cx-team-close]')?.addEventListener('click',async()=>{
       if(ui.actionBusy)return;
-      ui.selected.clear();ui.selectedBoxes.clear();ui.selected.add(text(row.id));
+      // Fechar apenas os subcaixas abertos NA DATA exibida, nunca outras
+      // jornadas da mesma equipe incluídas em consultas de histórico.
+      const idsDoDia=boxes.filter(openBox).map(id).filter(Boolean);
+      if(!idsDoDia.length){actionFeedback('Nenhum caixa aberto nesta jornada.',true);return;}
+      ui.selected.clear();ui.selectedBoxes.clear();
+      idsDoDia.forEach(boxId=>ui.selectedBoxes.add(boxId));
       ui.actionBusy=true;
       try {
         const result=await fecharSelecionados();
