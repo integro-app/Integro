@@ -465,6 +465,12 @@ body[data-integro-page] [class*="table-container"] {
     padding-top: max(76px, calc(62px + env(safe-area-inset-top))) !important;
   }
 
+  html body[data-integro-page="master-local"].integro-mobile-app-mode .layout > aside#sidebar.sidebar + main.main {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-inline: 0 !important;
+  }
+
   /* Master Local tem uma barra própria no topo; ela já reserva o botão. */
   body[data-integro-page="master-local"] .main {
     /* Reserva uma única faixa para menu, contexto, período e notificações. */

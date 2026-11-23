@@ -3,7 +3,9 @@
 
   const VERSION = "2026-08-05-v2";
   const EXCLUDED_PAGES = new Set(["login", "recuperacao", "loading"]);
-  const VALID_COMPONENTS = new Set(["surface", "button", "field", "badge", "table", "table-region"]);
+  const VALID_COMPONENTS = new Set([
+    "surface", "panel-header", "toolbar", "filters", "button", "field", "badge", "table", "table-region"
+  ]);
 
   function currentPage() {
     return String(document.body?.dataset?.integroPage || "").trim().toLowerCase();

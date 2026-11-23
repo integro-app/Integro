@@ -19,7 +19,7 @@ test("Layout: padrão opt-in aplicado às 5 telas pendentes, preservando 4 refer
   for (const nome of perfisPendentes) {
     const html = ler(nome);
     assert.match(html, /data-integro-layout="padrao-perfis-v1"/, nome);
-    assert.match(html, /css\/integro-layout-roles\.css\?v=20261117-v1/, nome);
+    assert.match(html, /css\/integro-layout-roles\.css\?v=20261123-padrao1/, nome);
     const inicioEstilo = html.indexOf("<style>");
     const fimEstilo = html.indexOf("</style>");
     const stylesheet = html.indexOf("integro-layout-roles.css");
@@ -166,16 +166,16 @@ test("Layout: cabeçalhos internos não recebem surface aninhada",()=>{
 });
 
 test("Layout: componentes internos compartilham tokens sem liberar filtros ocultos",()=>{
-  const css=ler("css/integro-layout-roles.css");
+  const css=ler("css/integro-design-system.css");
+  const roles=ler("css/integro-layout-roles.css");
   for(const token of ['[data-integro-ui-component="panel-header"]',
     '[data-integro-ui-component="toolbar"]','[data-integro-ui-component="filters"]']){
     assert.ok(css.includes(token),token);
   }
   assert.match(css,/\[data-integro-ui-component="panel-header"\] \{/);
-  assert.match(css,/border-bottom: 1px solid var\(--integro-role-line/);
-  assert.match(css,/main\.main[\s\S]*:is\(\.table-wrap,\.table-container\) th/);
-  assert.match(css,/Respeita display:none de filtros ocultos/);
-  assert.doesNotMatch(css,/main\.main\s+\[data-integro-ui-component="filters"\]\s*\{[^}]*display\s*:/,
+  assert.match(css,/border-bottom: 1px solid var\(--it-slate-200/);
+  assert.match(roles,/main\.main[\s\S]*:is\(\.table-wrap,\.table-container\) th/);
+  assert.doesNotMatch(css,/\[data-integro-ui-component="filters"\]\s*\{[^}]*display\s*:/,
     "não tornar visível um filtro que a regra da tela mantém oculto");
   assert.doesNotMatch(css,/(?:^|\n)\s*(?:\.panel-head|\.panel|\.filters|\.toolbar)\s*\{/,
     "as regras não podem atingir módulos aprovados que não optaram pelo padrão");
