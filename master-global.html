@@ -395,7 +395,7 @@
         </form>
         <div id="filtrosClientes" class="mg-clientes-filtros" hidden>
           <label class="form-label" for="filtroTipoClientes">Tipo de cliente<select id="filtroTipoClientes" class="form-select" onchange="renderClientes()"><option value="">Todos (PF e PJ)</option><option value="PF">Pessoa física</option><option value="PJ">Pessoa jurídica</option></select></label>
-          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Acesso bloqueado</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option></select></label>
+          <label class="form-label" for="filtroStatusClientes">Situação<select id="filtroStatusClientes" class="form-select" onchange="renderClientes()"><option value="">Todas</option><option value="LIBERADO">Acesso liberado</option><option value="BLOQUEADO">Bloqueado</option><option value="SEM_ACESSO">Sem acesso (inativos, bloqueados ou expirados)</option><option value="ATIVO">Ativo (fora de teste)</option><option value="INATIVO">Inativo</option><option value="A_VENCER">A vencer (até 7 dias)</option><option value="TESTE">Em teste</option><option value="TESTE_EXPIRADO">Teste expirado</option></select></label>
           <button type="button" class="btn btn-light mg-clientes-limpar" onclick="limparFiltrosClientes()">Limpar filtros</button>
         </div>
         <p id="contadorClientes" class="muted mg-clientes-contador" role="status" aria-live="polite"></p>
@@ -681,7 +681,8 @@
         if(!situacao)return true;
         const estado=situacaoClienteIntegro(c);
         if(situacao==='LIBERADO')return estado.liberado;
-        if(situacao==='BLOQUEADO')return !estado.liberado;
+        if(situacao==='BLOQUEADO')return estado.nome==='BLOQUEADO';
+        if(situacao==='SEM_ACESSO')return !estado.liberado;
         if(situacao==='TESTE')return c.testeAtivo===true&&estado.liberado;
         return estado.nome===({
           ATIVO:'ATIVO',INATIVO:'INATIVO',A_VENCER:'A VENCER',

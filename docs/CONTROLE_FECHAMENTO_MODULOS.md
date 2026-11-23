@@ -14,6 +14,12 @@
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
 - **Política de regressão:** 'não mexer no que já funciona'; mudanças mínimas, integradas, com verificação técnica e funcional antes de concluir.
 
+### M01 — Separação dos filtros de situação (17/11/2026)
+
+- **Achado na ficha/listagem:** o filtro “Acesso bloqueado” incluía também clientes inativos e com teste expirado, embora o status exibido no card/ficha fosse diferente.
+- **Correção proposta:** “Bloqueado” filtra exclusivamente a situação `BLOQUEADO`; “Sem acesso” preserva a consulta abrangente dos cadastros inativos, bloqueados e expirados; filtro “Acesso liberado”, badges, permissões e regras de autenticação permanecem intactos.
+- **Validação:** testes de regressão atualizados em `tests/master-global-onboarding.test.js`; aguardar CI e homologação manual de perfis reais. **M01 permanece EM HOMOLOGAÇÃO**, sem aceite de encerramento.
+
 ### Marco M02 — Segurança multiempresa publicada (16/11/2026)
 
 - **Produção:** PR #49 incorporado no commit `27cff25d383aad7e9ef729ed1f1b34263a9c5ead`. Workflow [#43994254475](https://github.com/integro-app/Integro/actions/runs/43994254475) concluiu com sucesso a publicação de `firestore.rules` no Firebase `integro-novo`.
