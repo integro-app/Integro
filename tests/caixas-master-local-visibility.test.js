@@ -556,7 +556,7 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-mobile-proporcoes-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261123-detail-conciliacao-v3/);
   assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-mobile-proporcoes-v2/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
@@ -821,7 +821,7 @@ test("Caixas mobile preserva identidade sem sobrepor menu, e reduz altura dos co
   assert.match(css,/\.cx-team-select \.material-symbols-rounded\{opacity:0\}/);
   assert.match(css,/\.cx-team-select:has\(input:checked\) \.material-symbols-rounded\{opacity:1\}/);
   assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-mobile-proporcoes-v2/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-mobile-proporcoes-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261123-detail-conciliacao-v3/);
 });
 
 test("Badge da jornada pendente é curto no mobile e mantém estado completo para acessibilidade",()=>{
