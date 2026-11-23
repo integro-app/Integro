@@ -22,6 +22,7 @@
   }
 
   html body[data-integro-page].integro-desktop-nav-ready #sidebar,
+  html body[data-integro-page].integro-desktop-nav-ready .layout > aside#sidebar.sidebar,
   html body[data-integro-page].integro-desktop-nav-ready [data-integro-sidebar] {
     display: flex !important;
     flex-direction: column !important;

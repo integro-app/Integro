@@ -145,13 +145,14 @@
     /* Master Global: ajustes isolados para manter todas as funções acessíveis no celular. */
     .mg-menu-close{display:none}
     @media(max-width:980px){
-      html body[data-integro-page="master-global"] .main{min-width:0!important;width:100%!important;margin-left:0!important;padding:12px max(12px,env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom))!important}
+      html body[data-integro-page="master-global"] .main{min-width:0!important;width:100%!important;margin-left:0!important;padding:12px max(12px,env(safe-area-inset-left)) calc(28px + env(safe-area-inset-bottom))!important;transition:none!important}
       html body[data-integro-page="master-global"] .topbar{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:12px!important;height:auto!important;min-height:0!important;padding:14px!important;overflow:visible!important}
+      html body[data-integro-page="master-global"] .topbar{border:0!important;box-shadow:none!important;background:transparent!important}
       html body[data-integro-page="master-global"] .top-left{display:flex!important;align-items:center!important;gap:12px!important;min-width:0!important;width:100%!important}
       html body[data-integro-page="master-global"] .top-left>div{flex:1;min-width:0}
       html body[data-integro-page="master-global"] .topbar h1{font-size:clamp(18px,5vw,23px)!important;line-height:1.2!important}
       html body[data-integro-page="master-global"] .topbar p{font-size:12px!important;line-height:1.35!important}
-      html body[data-integro-page="master-global"] .top-actions{display:grid!important;grid-template-columns:48px minmax(0,1fr) minmax(0,1.2fr)!important;width:100%!important;gap:8px!important;min-width:0!important}
+      html body[data-integro-page="master-global"] .top-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;width:100%!important;gap:8px!important;min-width:0!important}
       html body[data-integro-page="master-global"] .top-actions .btn{width:100%!important;height:auto!important;min-height:44px!important;min-width:0!important;padding:8px 6px!important;font-size:12px!important;white-space:normal!important}
       html body[data-integro-page="master-global"] .hamburger{display:inline-flex!important;flex:0 0 48px!important;align-items:center!important;justify-content:center!important}
       html body[data-integro-page="master-global"] .sidebar{overflow-y:auto!important;-webkit-overflow-scrolling:touch!important;padding-bottom:max(28px,env(safe-area-inset-bottom))!important}
@@ -359,7 +360,7 @@
     #cliDocumentoStatus{font-size:13px;line-height:1.5;font-weight:650}
   </style>
   <link rel="stylesheet" href="css/integro-platform-chat.css?v=20261119-chat-saas1">
-  <link rel="stylesheet" href="css/master-global-dashboard.css?v=20261119-exec1">
+  <link rel="stylesheet" href="css/master-global-dashboard.css?v=20261123-padrao2">
   <link rel="stylesheet" href="css/master-global-clientes.css?v=20261119-clientes-premium1">
   <link rel="stylesheet" href="css/master-global-usuarios-internos.css?v=20261120-usuarios1">
   <link rel="stylesheet" href="css/master-global-departamentos.css?v=20261120-departamentos1">
@@ -391,8 +392,7 @@
     <div id="estadoDadosGlobais" class="notice" role="alert" hidden style="margin-bottom:16px"></div>
     <section id="dashboard" class="screen active mgd-dashboard" aria-label="Visão executiva da plataforma ÍNTEGRO">
       <div class="mgd-intro">
-        <div><div class="mgd-overline"><span class="material-symbols-rounded" aria-hidden="true">analytics</span> GESTÃO DA PLATAFORMA</div>
-          <h2>Panorama da operação</h2><p>Indicadores administrativos dos contratantes, acessos e equipe ÍNTEGRO.</p></div>
+        <h2>Panorama da operação</h2>
         <div class="mgd-sync"><span class="mgd-sync-source"><span class="material-symbols-rounded" aria-hidden="true">verified</span> Dados consultados no servidor</span>
           <time id="mgdUpdated">Consultando...</time></div>
       </div>
@@ -2340,9 +2340,9 @@
     });
   </script>
   <script src="js/integro-connectivity-guard.js?v=20261101-operacao3"></script>
-<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao1"></script>
+<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao2"></script>
   <script src="js/integro-ui.js?v=20260805-v2&layout=20261123-padrao1"></script>
-  <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2"></script>
+  <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2&headers=20261123"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-route-v1"></script>

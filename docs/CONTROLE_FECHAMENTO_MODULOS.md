@@ -213,6 +213,12 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Publicações comprovadas:** Firebase Hosting `#780` (e `#777`) com sucesso; as três Cloud Functions `provisionarUsuario`, `solicitarCadastroDuplicadoV27`, `iniciarSessaoV27` atualizadas em `southamerica-east1` no projeto `integro-novo`, workflow `deploy-m01-primeiro-acesso-functions.yml` #3 [run 43666820433](https://github.com/integro-app/Integro/actions/runs/43666820433), com `Successful update operation` e `Deploy complete!`. Workflow de Functions restaurado para acionamento manual após deploy.
 - **Pendente de aceite real:** criar conta com e-mail fictício, copiar senha única, entrar, informar senha antiga e criar/confirmar nova, verificar sessão bloqueada antes da troca e novo login funcionando depois. **M01 permanece EM HOMOLOGAÇÃO**, sem declaração de fechamento formal.
 
+### M22 — Padronização da navegação e dos componentes (23/11/2026)
+
+- Branch `feat/padronizacao-global-integro-20261123` e [PR #94](https://github.com/integro-app/Integro/pull/94). Navegação desktop/mobile, componentes compartilhados e telas do Master Global integrados a partir da versão de Caixas da `main`.
+- Corrigida a disputa entre as camadas de visibilidade do painel, que ocultava Caixas mesmo quando o módulo estava autorizado. Corrigida também a inicialização do serviço do Vendedor enquanto o caixa ainda carrega.
+- **Em homologação.** A matriz, as capturas e as pendências da auditoria integrada estão no [registro de validação](evidencias-homologacao/2026-11-23-padronizacao/README.md).
+
 ## 3. Protocolo de avanço (sem pular tópicos)
 
 1. **ALINHAMENTO:** congelar o escopo exato do tópico ativo, regras do proprietário, perfis, botões e comportamento esperado; resolver divergências pertinentes.

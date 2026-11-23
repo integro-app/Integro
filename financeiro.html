@@ -650,14 +650,14 @@
 
     function trocarTelaFinanceiro(tela, el = null) {
       const titulos = {
-        dashboard:["Dashboard Financeiro","Resumo de contas, pagamentos, caixas e solicitações."],
-        contas:["Contas","Contas a pagar, agenda, pagamentos e recorrências."],
-        solicitacoes:["Solicitações","Aprovações financeiras e operações fora da regra."],
-        caixas:["Caixas","Abertos, fechados e divergências de caixa."],
-        fornecedores:["Fornecedores","Base de fornecedores e dados banc?rios."],
-        relatorios:["Relatórios","Indicadores e exportações futuras."],
-        auditoria:["Auditoria","Logs financeiros e rastreabilidade."],
-        configuracoes:["Configurações","Categorias, formas de pagamento, alertas e permissões."]
+        dashboard:"Dashboard Financeiro",
+        contas:"Contas",
+        solicitacoes:"Solicitações",
+        caixas:"Caixas",
+        fornecedores:"Fornecedores",
+        relatorios:"Relatórios",
+        auditoria:"Auditoria",
+        configuracoes:"Configurações"
       };
 
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -670,8 +670,8 @@
           .find(btn => btn.getAttribute("onclick")?.includes(`'${tela}'`) || btn.getAttribute("onclick")?.includes(`\"${tela}\"`));
         if (menu) menu.classList.add("active");
       }
-      document.getElementById("pageTitle").innerText = titulos[tela]?.[0] || "Financeiro";
-      document.getElementById("pageSubtitle").innerText = titulos[tela]?.[1] || "";
+      document.getElementById("pageTitle").innerText = titulos[tela] || "Financeiro";
+
       if (tela === "contas") renderContas();
       if (window.innerWidth <= 900) toggleSidebarFinanceiro(false);
     }
@@ -2158,10 +2158,10 @@
   window.trocarTelaFinanceiro = function(tela, el){
     if (typeof trocarTelaAntiga === "function") trocarTelaAntiga(tela, el);
     const titulos = {
-      contas:["Lançamentos","Ledger financeiro oficial e imutável."],
-      solicitacoes:["Divergências","Divergências, tratamentos e regularizações."],
-      fornecedores:["Diagnóstico legado","Registros reais ainda sem lançamento financeiro."],
-      auditoria:["Auditoria","Reconciliação, logs e rastreabilidade financeira."]
+      contas:"Lançamentos",
+      solicitacoes:"Divergências",
+      fornecedores:"Diagnóstico legado",
+      auditoria:"Auditoria"
     };
     if (titulos[tela]) {
       document.getElementById("pageTitle").innerText = titulos[tela][0];
@@ -2200,9 +2200,9 @@
 })();
 </script>
   <script src="js/integro-connectivity-guard.js?v=20261101-operacao3"></script>
-<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao1"></script>
+<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao2"></script>
   <script src="js/integro-ui.js?v=20260805-v2&layout=20261123-padrao1"></script>
-  <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2"></script>
+  <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2&headers=20261123"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-route-v1"></script>

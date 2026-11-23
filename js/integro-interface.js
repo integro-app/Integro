@@ -247,7 +247,7 @@
       ".dashboard-page-header > div:first-child > p",
       ".integro-shared-header > div:first-child > p"
     ];
-    seletores.forEach(seletor => raiz.querySelectorAll?.(seletor).forEach(elemento => elemento.remove()));
+    seletores.forEach(seletor => raiz.querySelectorAll?.(seletor).forEach(elemento => { elemento.hidden = true; }));
   }
 
   const TELAS_ESTRUTURA_COMPARTILHADA = Object.freeze([
@@ -294,7 +294,8 @@
       if (cabecalho) {
         cabecalho.classList.add("integro-shared-header", "integro-page-header-standard");
         const titulo = cabecalho.querySelector(":scope > div:first-child, :scope > .dashboard-page-title, :scope > .top-left > div");
-        titulo?.querySelector(":scope > p")?.remove();
+        const subtitulo = titulo?.querySelector(":scope > p");
+        if (subtitulo) subtitulo.hidden = true;
         cabecalho.querySelectorAll(":scope > .clientes-page-actions, :scope > .unified-profile-actions, :scope > .dashboard-page-actions, :scope > .top-actions, :scope > .actions")
           .forEach(acoes => acoes.classList.add("integro-shared-actions"));
       }

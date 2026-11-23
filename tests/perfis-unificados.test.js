@@ -50,3 +50,12 @@ test("vendedor usa carregamento único e consulta canônica de clientes", () => 
   assert.match(clientes, /Promise\.allSettled\(\[\.\.\.unicas\.values\(\)\]/);
   assert.match(master, /executarUmaVez/);
 });
+
+
+test("proteção de ações não sobrescreve visibilidade autorizada pelo painel", () => {
+  const adaptador = read("js/perfis-unificados.js");
+  const html = read("master-local.html");
+  assert.match(adaptador, /\[data-permissao\]:not\(\.screen\[data-acesso-permitido\]\)/);
+  assert.match(adaptador, /window\.IntegroAcesso\.pode\(usuarioAtual, el\.dataset\.permissao/);
+  assert.match(html, /data-integro-menu-trigger data-acao-leitura="true"/);
+});

@@ -111,7 +111,7 @@
       : (Array.isArray(global.caixasCache) ? global.caixasCache : []);
   }
 
-  function boxId(box = {}) { return text(box.id || box.caixaId || box.docId); }
+  function boxId(box) { return text(box?.id || box?.caixaId || box?.docId); }
   function boxTeamId(box = {}) { return text(box.equipeId || box.equipeUid || box.unidadeId || box.timeId); }
   function boxStatus(box = {}) { return upper(box.status || box.statusCaixa || box.situacao || box.estado); }
   function isOpenBox(box = {}) {

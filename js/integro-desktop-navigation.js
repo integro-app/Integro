@@ -7,7 +7,7 @@
 
   const DESKTOP = global.matchMedia("(min-width: 981px)");
   const STORAGE_KEY = "integro.desktop.sidebar.mode.v1";
-  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261123-padrao1";
+  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261123-padrao2";
   const CSS_ID = "integroDesktopNavigationCss";
   let compact = false;
   let ready = false;

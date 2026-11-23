@@ -2555,7 +2555,7 @@ body.integro-data-refreshing .section-card{
 
   <link rel="stylesheet" href="css/master-local-auditoria.css?v=20261120-v1">
   <link rel="stylesheet" href="css/master-local-conciliacao-v2.css?v=20261121-v4">
-  <link rel="stylesheet" href="css/caixas-layout-aprovado.css?v=20261122-mobile-proporcoes-v2">
+  <link rel="stylesheet" href="css/caixas-layout-aprovado.css?v=20261122-mobile-proporcoes-v2&ui=20261123-estados">
 </head>
 
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-local">
@@ -2573,7 +2573,7 @@ body.integro-data-refreshing .section-card{
   </div>
 
   
-  <button class="mobile-menu-btn" type="button" onclick="toggleSidebar(true)" aria-label="Abrir menu" data-integro-menu-trigger>
+  <button class="mobile-menu-btn" type="button" onclick="toggleSidebar(true)" aria-label="Abrir menu" data-integro-menu-trigger data-acao-leitura="true">
   <span class="material-symbols-rounded">menu</span>
 </button>
 
@@ -3231,10 +3231,10 @@ body.integro-data-refreshing .section-card{
   <script src="js/services/master-local-reconciliation.js?v=20261121-v4"></script>
   <script src="js/modules/master-local-reconciliation-ui.js?v=20261121-v6"></script>
   <script src="js/master-local.js?v=20261121-conciliacao-v6"></script>
-  <script src="js/painel-unificado.js?v=20261105-relatorios-route-v1"></script>
+  <script src="js/painel-unificado.js?v=20261123-visibilidade-permissoes"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
-  <script src="js/perfis-unificados.js?v=20261112-vendas-dia-sync-v1&build=20261101-ui-october-safe2"></script>
-  <script src="js/services/realtime-operations-service.js?v=20260805-dashboard-caixa-v8"></script>
+  <script src="js/perfis-unificados.js?v=20261112-vendas-dia-sync-v1&build=20261101-ui-october-safe2&screen=20261123-visibilidade-telas"></script>
+  <script src="js/services/realtime-operations-service.js?v=20261123-caixa-pendente"></script>
 <script src="js/chat-ui.js?v=20261105-chat-history-v2"></script>
 <script src="js/dashboard-navigation.js"></script>
 
@@ -25295,7 +25295,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/unified-navigation.js?v=20261107-vendedor-dashboard-primeiro&conciliacao=20261121-v2"></script>
   <script src="js/usuarios-permissoes-config.js?v=20261104-permissoes-escopo-v1"></script>
   <script src="js/integro-connectivity-guard.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2&scroll=20261107-directional1&desktop=20261123-padrao1"></script>
+  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2&scroll=20261107-directional1&desktop=20261123-padrao2"></script>
   <script src="js/vendedor-operacao.js?v=20261107-vendedor-icone-send2&fix=20261120-quitados1"></script>
   <script src="js/services/seller-box-dashboard.js?v=20261101-ui-october-safe2"></script>
   <script src="js/vendedor-unificado.js?v=20261120-m06-global-header-fix5"></script>
@@ -25404,7 +25404,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
 </script>
 
   <script src="js/integro-ui.js?v=20260805-v2&layout=20261123-padrao1"></script>
-  <script src="js/integro-interface.js?v=20260806-v20"></script>
+  <script src="js/integro-interface.js?v=20260806-v20&headers=20261123"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-ui-october-safe2&fix=20261104-route-v1"></script>
@@ -25412,7 +25412,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/modules/notification-center.js?v=20260813-v25&build=20261101-ui-october-safe2&fix=20261104-drawer-v1"></script>
   <script src="js/caixa-opening-progress.js?v=20261101-ui-october-safe2"></script>
   <script src="js/caixa-team-date-ui.js?v=20261122-caixas-admin-mobile-hierarchy-v3"></script>
-  <script src="js/modules/caixas-supervisao.js?v=20261123-detail-conciliacao-v3"></script>
+  <script src="js/modules/caixas-supervisao.js?v=20261123-detail-conciliacao-v3&ui=20261123-estados"></script>
   <script id="integro-caixas-premium-bridge">
   (function(){
     "use strict";

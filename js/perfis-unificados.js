@@ -713,10 +713,13 @@
   function protegerAcoes() {
     if (!usuarioAtual || !window.IntegroAcesso) return;
     const somenteLeitura = acesso().perfil === "auditor";
-    document.querySelectorAll("[data-permissao]").forEach(el => {
+    // O painel já calculou a visibilidade de módulos e permissões alternativas.
+    // A proteção das ações continua aplicada aos controles dentro de cada tela.
+    document.querySelectorAll("[data-permissao]:not(.screen[data-acesso-permitido])").forEach(el => {
       const permitido = window.IntegroAcesso.pode(usuarioAtual, el.dataset.permissao, {});
-      el.hidden = !permitido;
+      if (el.hidden === permitido) el.hidden = !permitido;
       if (!permitido) el.setAttribute("aria-hidden", "true");
+      else if (el.getAttribute("aria-hidden") === "true") el.removeAttribute("aria-hidden");
     });
     if (somenteLeitura) {
       document.querySelectorAll("button[onclick], input, select, textarea").forEach(el => {
