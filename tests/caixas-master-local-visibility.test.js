@@ -556,7 +556,7 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-mobile-proporcoes-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261123-detail-conciliacao-v3/);
   assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-mobile-proporcoes-v2/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
@@ -735,7 +735,8 @@ test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente ence
   assert.match(source,/const inconsistentes=history\.filter/);
   assert.match(source,/inconsistentes\.length\|\|possuiDivergencia\?'REVISÃO'/);
   assert.match(source,/const exigeRevisao=boxes\.some/);
-  assert.match(source,/exigeRevisao\?'REVISÃO':aberto\?'EM OPERAÇÃO'/);
+  assert.match(source,/exigeRevisao\?'REVISÃO':/);
+  assert.match(source,/pendenteAnterior\?'PENDENTE DE FECHAMENTO':aberto\?'EM OPERAÇÃO'/);
   assert.match(source,/history\.some\(b=>\['ABERTO','REABERTO'\]\.includes\(upper\(b\.status\)\)&&b\.ativo===false\)/);
 });
 
@@ -821,7 +822,7 @@ test("Caixas mobile preserva identidade sem sobrepor menu, e reduz altura dos co
   assert.match(css,/\.cx-team-select \.material-symbols-rounded\{opacity:0\}/);
   assert.match(css,/\.cx-team-select:has\(input:checked\) \.material-symbols-rounded\{opacity:1\}/);
   assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261122-mobile-proporcoes-v2/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261122-mobile-proporcoes-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261123-detail-conciliacao-v3/);
 });
 
 test("Badge da jornada pendente é curto no mobile e mantém estado completo para acessibilidade",()=>{
@@ -851,4 +852,92 @@ test("Badge da jornada pendente é curto no mobile e mantém estado completo par
   const css=fs.readFileSync(path.join(root,"css/caixas-layout-aprovado.css"),"utf8");
   assert.match(css,/\.cx-status-full\{display:none!important\}/);
   assert.match(css,/\.cx-status-mobile\{display:inline!important\}/);
+});
+
+
+test("M12: detalhe da jornada atualiza quando consultas dos caixas terminam no servidor",async()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  async function loadOverview("),end=source.indexOf("  async function selectBox(",start);
+  assert.ok(start>0&&end>start);
+  const vm=require("node:vm");
+  const overview=new Map(),pending=new Set(),errors=new Set(),missing=new Set();
+  const ui={context:"tenant-1|master-1",detail:"equipe-1",box:"",loading:false};
+  let renders=0,fetches=0;
+  const ctx={
+    overview,pending,caixasInexistentesServidor:missing,caixasFalhaConferencia:errors,
+    ui,id:box=>box.id,text:v=>String(v??"").trim(),render:()=>{renders++},
+    fetchBox:async()=>{fetches++;return {fresh:{id:"cx-1"},data:{sales:[],payments:[],moves:[]}};}
+  };
+  const fn=vm.runInNewContext("let overviewLoads=0;\n"+source.slice(start,end)+"\nloadOverview",ctx);
+  const box={id:"cx-1",status:"ABERTO",saldoAtualCentavos:12500};
+  await fn(box);
+  assert.equal(fetches,1);
+  assert.equal(renders,1,"Detalhe precisa renderizar ao finalizar a leitura");
+  assert.ok(overview.get("cx-1")?.data);
+  await fn(box);
+  assert.equal(fetches,1,"Sem mudança no caixa, não repetir a consulta");
+});
+
+test("M12: detalhe apresenta falha real da conferência e permite tentar de novo",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const detail=source.slice(source.indexOf("  function renderTeamDay("),
+    source.indexOf("  function renderDetail("));
+  assert.match(detail,/falhasConferencia=items\.filter/);
+  assert.match(detail,/falhasConferencia\.length\|\|estrutura\.caixasError\?'Não confirmado'/);
+  assert.match(detail,/role="alert"/);
+  assert.match(detail,/if\(!estrutura\.caixasChecked\|\|estrutura\.caixasError\)/);
+  assert.match(detail,/await carregarCaixasServidor\(true\)/);
+  assert.match(detail,/ui\.history\.forEach\(box=>overview\.delete\(id\(box\)\)\)/);
+  assert.match(detail,/await open\(row\.id\)/);
+});
+
+test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecionado",async()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const start=source.indexOf("  function renderTeamDay("),end=source.indexOf("  function renderDetail(",start);
+  assert.ok(start>0&&end>start);
+  const prior={id:"anterior",equipeId:"equipe-1",vendedorNome:"A",status:"ABERTO",dataOperacional:"2025-01-02"};
+  const selected={id:"selecionado",equipeId:"equipe-1",vendedorNome:"B",status:"ABERTO",dataOperacional:"2025-01-03"};
+  const ui={detail:"equipe-1",box:"",teamDay:"2025-01-03",history:[prior,selected],
+    selected:new Set(),selectedBoxes:new Set(),actionBusy:false,actionMessage:""};
+  const overview=new Map(),verifiedBoxes=new Map();
+  for(const box of ui.history){
+    verifiedBoxes.set(box.id,box);
+    overview.set(box.id,{fingerprint:JSON.stringify([box.status,box.atualizadoEm,box.saldoAtualCentavos]),
+      data:{sales:[],payments:[],moves:[]}});
+  }
+  const handlers={};
+  const host={
+    innerHTML:"",
+    querySelector:q=>({
+      addEventListener:(type,fn)=>{handlers[q+"|"+type]=fn;},
+      set onclick(fn){handlers[q+"|click"]=fn;},
+      set onchange(fn){handlers[q+"|change"]=fn;}
+    }),
+    querySelectorAll:()=>[]
+  };
+  let captured=null,opened=null;
+  const ctx={
+    Intl,Date,ui,overview,verifiedBoxes,estrutura:{caixasChecked:true,caixasError:""},
+    rows:()=>[{id:"equipe-1",nome:"Equipe 1",ativa:true,vendedores:[]}],
+    teamBoxes:(row,list)=>list,boxDay:box=>box.dataOperacional,dateBR:x=>x,
+    text:x=>String(x??"").trim(),id:box=>box.id,esc:x=>String(x??""),
+    openBox:box=>box.status==="ABERTO",upper:x=>String(x??"").toUpperCase(),
+    model:box=>({current:500,initial:100,wallet:1200,loans:0,received:0,income:0,expenses:0,withdrawals:0,collected:0}),
+    cachedData:()=>({}),cash:x=>String(x),num:x=>Number(x)||0,
+    amount:()=>0,stampMillis:()=>0,dateTime:()=>"",
+    option:(a,b)=>"<option>"+b+"</option>",podeGerir:()=>true,
+    actionFeedback:()=>{},render:()=>{},loadOverview:()=>{},selectBox:()=>{},
+    abrirSelecionados:()=>{},carregarCaixasServidor:async()=>{},
+    fecharSelecionados:async()=>{captured=[...ui.selectedBoxes];return {fechados:1,falhas:[]};},
+    open:async id=>{opened=id;},global:{}
+  };
+  const fn=vm.runInNewContext(source.slice(start,end)+"\nrenderTeamDay",ctx);
+  fn(host);
+  assert.match(host.innerHTML,/PENDENTE DE FECHAMENTO/);
+  const onClose=handlers["[data-cx-team-close]|click"];
+  assert.equal(typeof onClose,"function");
+  await onClose();
+  assert.deepEqual(captured,["selecionado"],"Não fechar caixa anterior fora do dia selecionado");
+  assert.equal(opened,"equipe-1");
 });
