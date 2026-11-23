@@ -1116,7 +1116,7 @@
     });
     const falhasConferencia=items.filter(item=>!!overview.get(id(item.box))?.error);
     const confirmado=estrutura.caixasChecked&&items.every(item=>item.verified);
-    const soma=key=>!items.length?'—':falhasConferencia.length?'Não confirmado':
+    const soma=key=>!items.length?'—':falhasConferencia.length||estrutura.caixasError?'Não confirmado':
       !confirmado?'Conferindo…':
       items.some(item=>item.m[key]==null)?'Não registrado':
       cash(items.reduce((sum,item)=>sum+num(item.m[key]),0));
@@ -1192,9 +1192,9 @@
       <section class="cx-team-detail-section"><div class="cx-list-heading">
         <div><h3>Últimas movimentações da jornada</h3><p>Vendas, entradas, saídas, recebimentos e gastos</p></div>
       </div>
-      ${falhasConferencia.length?
+      ${falhasConferencia.length||estrutura.caixasError?
         `<p class="cx-team-sync-error" role="alert">
-          Não foi possível confirmar ${falhasConferencia.length} caixa(s). Use Atualizar para consultar novamente o servidor.
+          Não foi possível confirmar todos os dados da jornada. Use Atualizar para consultar novamente o servidor.
         </p>`:
         !confirmado&&items.length?'<p class="cx-loading" role="status">Conferindo lançamentos no servidor…</p>':
         `<div class="cx-table-scroll"><table><thead><tr><th>Tipo</th><th>Vendedor</th><th>Descrição</th><th>Valor</th><th>Data</th></tr></thead>
@@ -1220,12 +1220,22 @@
         global.IntegroCaixaDatas.abrir({equipeId:ui.detail});
       else actionFeedback('Calendário de abertura indisponível.',true);
     });
-    host.querySelector('[data-cx-team-reload]').onclick=()=>{
+    host.querySelector('[data-cx-team-reload]').onclick=async()=>{
       if(ui.actionBusy)return;
-      // A atualização explícita deve recuperar consultas anteriores com erro,
-      // não devolver a mesma fotografia armazenada em cache.
-      ui.history.forEach(box=>overview.delete(id(box)));
-      open(row.id);
+      ui.actionBusy=true;
+      try {
+        // Uma falha na consulta inicial requer nova conferência das equipes,
+        // não apenas reabrir o detalhe usando o snapshot anterior.
+        if(!estrutura.caixasChecked||estrutura.caixasError){
+          await carregarCaixasServidor(true);
+          if(estrutura.caixasError)throw Error(estrutura.caixasError);
+        }
+        // Consultas detalhadas com erro não devem reutilizar dados do cache.
+        ui.history.forEach(box=>overview.delete(id(box)));
+        await open(row.id);
+      }catch(error){
+        actionFeedback('Falha ao atualizar a jornada: '+text(error.message),true);
+      }finally{ui.actionBusy=false;}
     };
     host.querySelector('[data-cx-team-close]')?.addEventListener('click',async()=>{
       if(ui.actionBusy)return;
