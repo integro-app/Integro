@@ -1121,6 +1121,9 @@
       items.some(item=>item.m[key]==null)?'Não registrado':
       cash(items.reduce((sum,item)=>sum+num(item.m[key]),0));
     const aberto=boxes.some(openBox);
+    const diaAtual=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',
+      year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const pendenteAnterior=aberto&&selectedDay&&selectedDay<diaAtual;
     const exigeRevisao=boxes.some(box=>['ABERTO','REABERTO'].includes(upper(box.status))&&box.ativo===false)||
       boxes.some(box=>upper(box.status)==='DIVERGENTE');
     const podeAbrir=row.ativa&&podeGerir('abrir');
@@ -1153,7 +1156,7 @@
       <div class="cx-team-toolbar">
         <label>Data da jornada<select data-cx-team-day>${dates.map(date=>option(date,dateBR(date),selectedDay)).join('')||
           option('','Nenhuma data registrada','')}</select></label>
-        <span class="cx-team-day-status ${aberto?'is-open':''}">${!estrutura.caixasChecked?'CONFERINDO':exigeRevisao?'REVISÃO':aberto?'EM OPERAÇÃO':items.length?'ENCERRADA':'SEM CAIXA'}</span>
+        <span class="cx-team-day-status ${aberto?'is-open':''}">${!estrutura.caixasChecked?'CONFERINDO':exigeRevisao?'REVISÃO':pendenteAnterior?'PENDENTE DE FECHAMENTO':aberto?'EM OPERAÇÃO':items.length?'ENCERRADA':'SEM CAIXA'}</span>
       </div>
       <div class="cx-team-actions">
         ${podeAbrir?`<button type="button" class="success-btn" data-cx-team-calendar>
