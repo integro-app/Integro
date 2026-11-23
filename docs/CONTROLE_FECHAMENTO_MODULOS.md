@@ -14,6 +14,37 @@
 - **Mudanças de escopo:** só por solicitação do proprietário ou bloqueador P0 evidenciado no tópico ativo.
 - **Política de regressão:** 'não mexer no que já funciona'; mudanças mínimas, integradas, com verificação técnica e funcional antes de concluir.
 
+### M01 — Segurança da troca obrigatória no primeiro acesso (17/11/2026)
+
+- **Falha corrigida:** a callable `PRIMEIRO_ACESSO_V1` verificava inicialmente usuário/empresa, alterava a senha no Auth e depois definia `acessoLiberado: true` sem revalidar o cadastro. Um bloqueio administrativo entre essas etapas poderia ser indevidamente revertido.
+- **Correção:** manter a alteração de credencial sem liberar módulos; em seguida, revalidar o perfil atual e as duas bases empresariais dentro de uma **transação Firestore** antes de conceder acesso. Bloqueios e alterações de tenant/papel concorrentes impedem o commit. Para Master Local, exigir o documento canônico do cliente; conferir também UID do token recebido.
+- **UI:** o formulário de criação de Master Local informa a senha provisória individual exibida uma vez e a troca obrigatória, mantendo o recurso de envio de link por e-mail.
+- **Regressão:** `tests/primeiro-acesso-m01.test.js` cobre bloqueio de usuário e empresa durante troca, tenant ausente, token de outra conta e fluxo de sucesso sem gravação da senha no Firestore. **M01 permanece EM HOMOLOGAÇÃO.**
+- **Limite da evidência:** testes em mocks/emuladores não demonstram funcionamento autenticado em dados reais; alterações aguardam merge e deploy específico autorizados. Em caso de bloqueio concorrente após a troca da senha no Auth, a conta não é liberada; pode ser necessário novo login com a nova senha após o administrador resolver a restrição.
+
+### M01 — Fonte canônica de usuários no painel administrativo (17/11/2026)
+
+- **Causa raiz identificada:** o endpoint `listarPainel` devolvia perfis canônicos e cópias legadas sem reconciliação, enquanto listagem, dashboard e ficha adotavam regras divergentes, podendo atribuir um mesmo UID a empresas diferentes.
+- **Backend corrigido (PR #61):** `functions/master-global-management.js` usa o ID real do documento Firestore, prioriza `usuarios/{authUid}`, elimina cópias antigas e não escolhe arbitrariamente registros de UID ambíguo entre tenants ou papéis. Só retorna contagens de divergência por empresa para auditoria, sem segredos ou dados de outro usuário no alerta.
+- **Conflito explícito de acesso:** se cópias legadas sem perfil canônico divergirem em `status`, `acessoLiberado`, `ativo` ou `empresaBloqueada`, o backend omite o UID do painel em vez de selecionar a cópia mais recente. Discordância de cargo entre cópia e canônico também entra no diagnóstico. O frontend evita declarar `ATIVO` sem status informado nos cards administrativos e aplica proteção equivalente enquanto houver backend antigo.
+- **Frontend defensivo:** até a Cloud Function atualizada estar implantada, a ficha também recusa UID ambíguo, a lista/KPI dos Masters Locais prioriza o canônico, e a informação de empresa inexistente não usa nome legado. O painel recebe `diagnosticoVinculos.conflitosPorEmpresa` quando disponível.
+- **Validação prevista:** cenários em `tests/master-global-management.test.js` (dois tenants, documento com ID forjado, legado conflitante, duplicata, UID sem canônico e perfil sem Auth) e `tests/master-global-onboarding.test.js`. **Não tratar preview Hosting como implantação do backend**. Testes autenticados e implantação da função ainda necessários; sem alteração em dados reais.
+
+### M01 — Correção integrada de situações e vínculos (17/11/2026)
+
+- **Listagem e dashboard:** filtro “Bloqueado” limitado ao estado `BLOQUEADO`; “Sem acesso” agrupa bloqueio, inatividade e teste expirado. Indicador do dashboard passou a nomear o conjunto corretamente (clientes contratantes, não usuários).
+- **Ficha administrativa:** mantém status real de operador, vínculo Auth cadastral e situação do contratante separadas; alerta quando o tenant está bloqueado/expirado, sem simular verificação do Firebase Auth.
+- **Conflitos legados de tenant:** a ficha confronta registros antigos com o cadastro canônico (documento `usuarios/{authUid}`) **antes** de filtrar a empresa. Um cadastro canônico de outro cliente prevalece e o vínculo legado conflitante não é exibido; somente a contagem da divergência é sinalizada ao Master Global. Cobertura com dois tenants, masters, operadores, UID ausente e duplicatas dentro do mesmo tenant.
+- **Ações administrativas:** confirmação explícita antes de iniciar/reiniciar teste (backend restaura acesso da empresa e estados individuais previamente bloqueados pela plataforma). Tentativa de liberar manualmente uma empresa cujo teste expirou é interrompida na UI com orientação para renovar, conforme a pré-condição existente do backend. Regressão cobre cancelamento, prazo inválido e recarregamento após sucesso. Teste do backend cobre renovação preservando bloqueios manuais individuais e isolamento de outro tenant.
+- **Escopo:** unificação para preview dos PRs #59 e #60, sem alterar Firestore Rules, Functions, financeiro ou produção. **M01 continua EM HOMOLOGAÇÃO** até testes autenticados e aceite.
+
+### M01 — Integridade do estado de usuários na ficha empresarial (17/11/2026)
+
+- **Achado:** a ficha indicava “Auth ativo” apenas pela igualdade entre ID e UID; a visualização do usuário assumia “ATIVO” sem status cadastral, e empresa vinculada ausente podia ser mascarada por nome legado ou pelo rótulo “Equipe ÍNTEGRO”.
+- **Correção proposta:** separar status cadastral, liberação/restrição cadastral e presença de UID Auth; não afirmar que o login está habilitado sem consulta ao Firebase Auth. Mostrar vínculo empresarial não localizado em vez de empresa presumida. Dados exibidos continuam restritos ao cliente da ficha, com ações existentes preservadas.
+- **Cobertura:** regressão em `tests/master-global-onboarding.test.js` para bloqueado, inativo, status desconhecido, UID não confirmado, vínculo empresarial ausente, bloqueio da empresa e teste da empresa expirado. A ficha do operador mostra separadamente a restrição do contratante, mesmo se o cadastro do operador estiver liberado. Aguardar CI e validação manual com perfis reais; **M01 segue EM HOMOLOGAÇÃO**.
+- **Publicação:** nenhuma alteração automática de Firestore, Auth, Cloud Functions ou dados de produção nesta etapa.
+
 ### Marco M02 — Segurança multiempresa publicada (16/11/2026)
 
 - **Produção:** PR #49 incorporado no commit `27cff25d383aad7e9ef729ed1f1b34263a9c5ead`. Workflow [#43994254475](https://github.com/integro-app/Integro/actions/runs/43994254475) concluiu com sucesso a publicação de `firestore.rules` no Firebase `integro-novo`.
