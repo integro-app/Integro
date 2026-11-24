@@ -207,8 +207,8 @@
       register(group);
     }
     document.querySelectorAll('main input[type=search],main input[placeholder],main input[id*=filtro i],main select[aria-label],main select[id*=filtro i],main [data-cx-records]').forEach(field=>{
-      // Caixas já possui pesquisa dinâmica e filtros nativos; não duplicar Buscar/Filtros.
-      if(field.closest('[data-caixas-supervisao]'))return;
+      // Preserva as barras de busca que já têm controles próprios.
+      if(field.closest('[data-caixas-supervisao],[data-ig-native-query]'))return;
       if(field.matches('input[placeholder]')&&field.type!=='search'&&!/buscar|pesquis|filtrar/.test(normal(field.placeholder))&&!/filtro/i.test(field.id))return;
       if(field.closest('.vendedor-clientes-gestao,.integro-chat,.ig-querybar,[data-ig-filter-source],.ig-filter-layer,form,.drawer-side,.drawer-content,.cliente-modal,.modal-content,.vendedor-filtros-side'))return;
       const context=field.closest('.unified-panel,.section-card,.panel,[data-cfe-view],.screen')||field.parentElement;

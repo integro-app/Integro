@@ -1,4 +1,4 @@
-html[data-perfil-integro="master_local"] .equipes-surface {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface {
   --equipes-border: var(--it-slate-200);
   --equipes-gap: clamp(10px, 1.2vw, 16px);
   container: equipes / inline-size;
@@ -8,13 +8,13 @@ html[data-perfil-integro="master_local"] .equipes-surface {
   box-shadow: var(--it-shadow-sm) !important;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .equipes-header {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .equipes-header {
   margin: 0 0 var(--equipes-gap);
   padding-inline-start: 10px;
   border-inline-start: 3px solid var(--it-orange-500);
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .equipes-header h2 {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .equipes-header h2 {
   margin: 0;
   color: var(--it-navy-900);
   font-size: clamp(25px, 2.6vw, 34px);
@@ -23,136 +23,173 @@ html[data-perfil-integro="master_local"] .equipes-surface .equipes-header h2 {
   letter-spacing: -.045em;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-indicadores {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-indicadores {
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--equipes-gap);
   margin: 0 0 var(--equipes-gap);
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-kpi {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-kpi {
+  display: flex;
+  align-items: center;
   gap: 9px;
-  min-height: 74px;
-  padding: 10px 11px;
-  border-color: var(--equipes-border) !important;
+  min-width: 0;
+  min-height: 74px !important;
+  padding: 10px 11px !important;
+  border: 1px solid var(--equipes-border) !important;
   border-radius: var(--it-radius-md) !important;
   background: var(--it-white) !important;
   box-shadow: var(--it-shadow-xs) !important;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-kpi > .material-symbols-rounded {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-kpi::after {
+  content: none !important;
+}
+
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-kpi > .material-symbols-rounded {
+  display: grid;
+  place-items: center;
   flex: 0 0 33px;
   width: 33px;
   height: 33px;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
   border-radius: 10px !important;
   background: var(--it-blue-100) !important;
   color: var(--it-navy-800) !important;
   font-size: 19px !important;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-kpi small {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-kpi > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-kpi small {
   color: var(--it-slate-600) !important;
+  font-size: 10px;
+  font-weight: 800;
   line-height: 1.2;
+  text-transform: uppercase;
   overflow-wrap: anywhere;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-kpi strong {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-kpi strong {
   color: var(--it-navy-900) !important;
   font-size: clamp(20px, 2vw, 26px);
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-toolbar {
-  grid-template-columns: minmax(0, 1fr) var(--it-control-h) auto auto;
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-toolbar {
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 8px;
   margin-bottom: var(--equipes-gap);
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-toolbar > * {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-toolbar :is(.estrutura-search, button) {
   min-height: var(--it-control-h) !important;
   min-width: 0;
   border-radius: var(--it-radius-md) !important;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-search {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .equipes-query {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--it-control-h);
+  gap: 8px;
+  min-width: 0;
+}
+
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-search {
+  grid-column: auto;
   padding-inline: 10px;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-search input {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-search input {
   font-size: 13px;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-more-btn {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-more-btn {
   width: var(--it-control-h);
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-filter-btn {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-filter-btn {
   padding-inline: 12px;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-filter-btn small {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-filter-btn small {
   line-height: 1.2;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-search-btn {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-search-btn {
   background: var(--it-navy-800) !important;
   border-color: var(--it-navy-800) !important;
   color: var(--it-white) !important;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-search-btn:hover {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-search-btn:hover {
   background: var(--it-navy-900) !important;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-lista {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-lista {
   border-color: var(--equipes-border);
   border-radius: var(--it-radius-lg) var(--it-radius-lg) 0 0;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table {
   min-width: 0;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table :is(th, td) {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table :is(th, td) {
   padding: 9px 12px;
   overflow-wrap: anywhere;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-identidade {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-identidade {
   min-width: 0;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-identidade :is(strong, small) {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-identidade :is(strong, small) {
   white-space: normal;
   overflow-wrap: anywhere;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .usuario-table-actions {
-  display: flex;
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .usuario-table-actions {
+  display: flex !important;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table-footer {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table-footer {
   border-color: var(--equipes-border);
   border-radius: 0 0 var(--it-radius-lg) var(--it-radius-lg);
 }
 
-html[data-perfil-integro="master_local"] .equipes-surface .estrutura-empty {
+html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-empty {
   padding: 28px 14px;
   text-align: center;
 }
 
+@container equipes (min-width: 741px) {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table td:last-child {
+    min-width: 220px;
+  }
+}
+
 @container equipes (max-width: 740px) {
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table-scroll {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table-scroll {
     padding: 10px;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table {
     display: block;
     width: 100%;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table thead {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table thead {
     position: absolute;
     display: block;
     width: 1px;
@@ -161,13 +198,13 @@ html[data-perfil-integro="master_local"] .equipes-surface .estrutura-empty {
     clip-path: inset(50%);
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table tbody {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table tbody {
     display: grid;
     width: 100%;
     gap: 8px;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table tr {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table tr {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 10px;
@@ -178,7 +215,7 @@ html[data-perfil-integro="master_local"] .equipes-surface .estrutura-empty {
     background: var(--it-white);
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table td {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table td {
     display: block;
     padding: 0;
     border: 0;
@@ -186,7 +223,7 @@ html[data-perfil-integro="master_local"] .equipes-surface .estrutura-empty {
     text-align: start;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table td::before {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table td::before {
     content: attr(data-label);
     display: block;
     margin-bottom: 3px;
@@ -196,49 +233,52 @@ html[data-perfil-integro="master_local"] .equipes-surface .estrutura-empty {
     text-transform: uppercase;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table td:is(:first-child, :nth-child(2), :last-child) {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table td:is(:first-child, :nth-child(2), :last-child) {
     grid-column: 1 / -1;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table td:first-child::before {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table td:first-child::before {
     display: none;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .usuario-table-actions button {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .usuario-table-actions button {
     flex: 1 1 auto;
     min-height: 40px;
   }
 }
 
 @container equipes (max-width: 560px) {
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-indicadores {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-indicadores {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-kpi:last-child {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-kpi:last-child {
     grid-column: 1 / -1;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-toolbar {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) var(--it-control-h);
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-toolbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-search,
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-search-btn {
-    grid-column: span 2;
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .equipes-query {
+    grid-column: 1 / -1;
+  }
+
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-filter-btn {
+    padding-inline: 6px;
   }
 }
 
 @media (max-width: 760px) {
-  html[data-perfil-integro="master_local"] .equipes-surface {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface {
     padding: 12px !important;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .equipes-header h2 {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .equipes-header h2 {
     font-size: 22px;
   }
 
-  html[data-perfil-integro="master_local"] .equipes-surface .estrutura-table-scroll {
+  html[data-perfil-integro="master_local"] :is(#equipes, #configuracoes) .equipes-surface .estrutura-table-scroll {
     max-height: none;
   }
 }

@@ -88,8 +88,8 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Escopo.** Equipes em Configurações → Usuários e permissões no Master Local. Indicadores compactos, busca e filtro reorganizados, tabela em áreas largas e cartões quando o espaço é reduzido.
 - **Visibilidade.** A navegação sincroniza a exibição das abas de Configurações e chama a implementação ativa ao trocar de tela. Isso evita que a implementação anterior volte à aba Empresa depois de abrir Usuários e permissões.
 - **Comportamento preservado.** A consulta continua restrita à empresa ativa. Os controles reutilizam as ações, filtros e formulários existentes.
-- **Verificação.** Passaram 60 testes direcionados e as verificações de integridade HTML e da superfície de Hosting.
-- **Estado.** Em homologação. Conferir a consulta de Equipes e os controles em celular e desktop com uma conta Master Local.
+- **Verificação.** Passaram 60 testes direcionados e as verificações de integridade HTML e da superfície de Hosting. A barra nativa da tela evita que a adaptação global gere outro botão Buscar.
+- **Estado.** Em homologação. O login e a navegação foram conferidos no emulador. A instabilidade da leitura do Firestore exigiu registros de teste em memória para verificar a lista. Ainda falta validar a consulta com dados reais de homologação.
 
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 

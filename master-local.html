@@ -2523,7 +2523,7 @@ body.integro-data-refreshing .section-card{
 <link rel="stylesheet" href="css/integro-palette.css?v=20261101-ui-october-safe2">
 <link rel="stylesheet" href="css/integro-logo.css?v=20261101-ui-october-safe2">
 <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-ui-october-safe2">
-<script defer src="js/integro-filter-drawer.js?v=20261121-caixas-mobile-v2"></script>
+<script defer src="js/integro-filter-drawer.js?v=20261121-caixas-mobile-v2&busca=20261124"></script>
 <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-ui-october-safe2&fix=20261104-chat-func-v1">
 
 
@@ -2977,9 +2977,11 @@ body.integro-data-refreshing .section-card{
         <div class="section-card equipes-surface" data-integro-ui-component="surface">
           <header class="equipes-header"><h2>Equipes</h2></header>
           <div id="equipesIndicadores" class="estrutura-indicadores" aria-label="Indicadores de equipes"></div>
-          <div class="estrutura-toolbar">
-            <label class="estrutura-search" for="buscaEquipes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaEquipes" type="search" aria-label="Buscar equipes" placeholder="Equipe, supervisor ou descrição" onkeydown="if(event.key==='Enter'){event.preventDefault();renderEquipes()}"></label>
-            <button class="estrutura-more-btn" type="button" title="Limpar pesquisa" aria-label="Limpar pesquisa" onclick="document.getElementById('buscaEquipes').value='';renderEquipes()"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+          <div class="estrutura-toolbar" data-ig-native-query>
+            <div class="equipes-query">
+              <label class="estrutura-search" for="buscaEquipes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaEquipes" type="search" aria-label="Buscar equipes" placeholder="Equipe, supervisor ou descrição" onkeydown="if(event.key==='Enter'){event.preventDefault();renderEquipes()}"></label>
+              <button class="estrutura-more-btn" type="button" title="Limpar pesquisa" aria-label="Limpar pesquisa" onclick="document.getElementById('buscaEquipes').value='';renderEquipes()"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+            </div>
             <button class="estrutura-filter-btn" type="button" onclick="abrirFiltrosEquipesEstrutura()"><span class="material-symbols-rounded" aria-hidden="true">tune</span><span>Filtros<small id="equipesFiltroResumo">Todas as equipes</small></span></button>
             <button class="estrutura-search-btn" type="button" onclick="renderEquipes()"><span class="material-symbols-rounded" aria-hidden="true">search</span>Buscar</button>
           </div>
