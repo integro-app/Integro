@@ -7,7 +7,7 @@
 
   const DESKTOP = global.matchMedia("(min-width: 981px)");
   const STORAGE_KEY = "integro.desktop.sidebar.mode.v1";
-  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261123-padrao2";
+  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261124-menu-lateral";
   const CSS_ID = "integroDesktopNavigationCss";
   let compact = false;
   let ready = false;
@@ -22,10 +22,9 @@
     return document.querySelector("[data-integro-sidebar], #sidebar");
   }
   function topbar() {
-    // Master Local utiliza .integro-global-header como cabeçalho real.
-    // Priorizar o filho direto evita capturar um header de módulo oculto.
-    return document.querySelector(".main > .integro-global-header, main.main > .integro-global-header") ||
-      document.querySelector(".main > .topbar, main.main > .topbar, .main .topbar, .topbar");
+    const header = document.querySelector(".main > .integro-global-header, main.main > .integro-global-header");
+    if (header || body.dataset.integroPage === "master-local") return header;
+    return document.querySelector(".main > .topbar, main.main > .topbar, .main .topbar, .topbar");
   }
   function ensureTrigger() {
     const bar = topbar();
@@ -39,8 +38,8 @@
       // Evita um segundo hambúrguer no celular e captura de cliques no controlador errado.
       trigger.className = "integro-desktop-trigger";
       trigger.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">menu</span>';
-      const placement = bar?.querySelector(".top-left") || host;
-      placement.insertBefore(trigger, placement.firstChild);
+      const placement = bar ? bar.querySelector(".top-left") || host : host.querySelector(".integro-desktop-brand") || host;
+      placement.insertBefore(trigger, bar ? placement.firstChild : null);
     }
     trigger.dataset.integroDesktopRailToggle = "true";
     trigger.setAttribute("aria-controls", sidebar()?.id || "sidebar");
@@ -52,8 +51,9 @@
     if (!bar || bar.querySelector(".integro-desktop-brand")) return;
     const brand = document.createElement("div");
     brand.className = "integro-desktop-brand";
+    brand.setAttribute("role", "group");
     brand.setAttribute("aria-label", "ÍNTEGRO - Gestão inteligente");
-    brand.innerHTML = '<span class="integro-desktop-brand-mark" aria-hidden="true">I</span>' +
+    brand.innerHTML = '<span class="integro-desktop-brand-mark" aria-hidden="true"></span>' +
       '<span class="integro-desktop-brand-type"><strong>ÍNTE<span>GRO</span></strong>' +
       '<small>GESTÃO INTELIGENTE</small></span>';
     bar.insertBefore(brand, bar.firstChild);
@@ -197,7 +197,8 @@
     if (trigger.getAttribute("aria-expanded") !== String(!compact)) trigger.setAttribute("aria-expanded", String(!compact));
     if (trigger.title !== caption) trigger.title = caption;
     const icon = trigger.querySelector(".material-symbols-rounded");
-    if (icon && icon.textContent !== "menu") icon.textContent = "menu";
+    const symbol = compact || !trigger.closest?.(".integro-desktop-brand") ? "menu" : "menu_open";
+    if (icon && icon.textContent !== symbol) icon.textContent = symbol;
   }
 
   function hideTooltip() {
