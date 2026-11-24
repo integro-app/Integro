@@ -74,27 +74,35 @@
 #caixas [data-caixas-supervisao] .cx-footer .cx-actions-panel{
   width:min(350px,calc(100vw - 32px));right:0;top:calc(100% + 8px);max-height:65dvh;z-index:190
 }
-/* Apenas abas de equipes na listagem. Situação individual continua nos Filtros. */
-#caixas [data-caixas-supervisao] .cx-team-tabs{
-  display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
-  gap:6px!important;padding:6px!important;margin:0 0 17px!important;
-  border:1px solid #dfe8f3;border-radius:17px;background:#f0f4fa;overflow:hidden!important
+/* Os filtros da equipe e do caixa ficam na mesma gaveta. */
+#caixas [data-caixas-supervisao] .cx-team-situation{
+  min-width:0;margin:0;padding:0;border:0
 }
-#caixas [data-caixas-supervisao] .cx-team-tabs button{
-  min-width:0;display:flex!important;align-items:center;justify-content:center;gap:8px;
-  min-height:47px!important;border:0!important;background:transparent!important;
-  border-radius:12px!important;padding:7px 9px!important;color:#5c728e!important;
-  font-weight:850!important;font-size:12px!important;box-shadow:none!important
+#caixas [data-caixas-supervisao] .cx-team-situation legend{
+  margin-bottom:6px;font-size:12px;font-weight:800;color:#163a5d
 }
-#caixas [data-caixas-supervisao] .cx-team-tabs button.active{
-  background:linear-gradient(135deg,#122f55,#071d39)!important;color:#fff!important;
-  box-shadow:0 5px 12px #071a332a!important
+#caixas [data-caixas-supervisao] .cx-team-situation-options{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;
+  padding:4px;border:1px solid #dfe8f3;border-radius:12px;background:#f0f4fa
 }
-#caixas [data-caixas-supervisao] .cx-team-tabs button>span{
-  min-width:23px;min-height:23px;display:grid;place-items:center;padding:2px 5px;
-  border-radius:9px;background:#dce7f5;color:#193a60;font-size:11px
+#caixas [data-caixas-supervisao] .cx-team-situation-options button{
+  min-width:0;min-height:38px!important;display:flex!important;align-items:center;
+  justify-content:center;gap:4px;padding:4px 3px!important;border:0!important;
+  border-radius:8px!important;background:transparent!important;color:#516984!important;
+  font-size:11px!important;font-weight:800!important;box-shadow:none!important
 }
-#caixas [data-caixas-supervisao] .cx-team-tabs button.active>span{background:#ffffff2a;color:#fff}
+#caixas [data-caixas-supervisao] .cx-team-situation-options button.active{
+  background:#102e50!important;color:#fff!important
+}
+#caixas [data-caixas-supervisao] .cx-team-situation-options button:focus-visible{
+  outline:2px solid #3871a8;outline-offset:2px
+}
+#caixas [data-caixas-supervisao] .cx-team-situation-options button>span{
+  min-width:16px;padding:2px 3px;border-radius:5px;background:#dce7f5;color:#193a60
+}
+#caixas [data-caixas-supervisao] .cx-team-situation-options button.active>span{
+  background:#ffffff2a;color:#fff
+}
 #caixas [data-caixas-supervisao] .cx-quickfilters,
 #caixas [data-caixas-supervisao] .cx-operational-pulse{display:none!important}
 #caixas [data-caixas-supervisao] .cx-list-heading{
@@ -117,14 +125,14 @@
 #caixas [data-caixas-supervisao] .cx-order-control:focus-within{outline:3px solid #7eacdc;border-radius:6px}
 /* Card de jornada: estado e seleção separados da área financeira. */
 #caixas [data-caixas-supervisao] .cx-box-grid{
-  display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr));
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
   gap:16px!important;margin:0 0 24px!important
 }
 #caixas [data-caixas-supervisao] .cx-overview-scroll{display:none!important}
 #caixas [data-caixas-supervisao] .cx-approved-team{
-  position:relative;min-width:0;display:flex;flex-direction:column;gap:0;
-  padding:18px!important;border:1px solid #d8e5f2;border-left:5px solid #aab9c9;
-  border-radius:22px!important;box-shadow:0 10px 30px #071e3820!important;
+  position:relative;min-width:0;display:flex;flex-direction:column;gap:0;container:caixa-jornada / inline-size;
+  padding:16px!important;border:1px solid #d8e5f2;border-left:4px solid #aab9c9;
+  border-radius:18px!important;box-shadow:0 4px 16px #15385d10!important;
   background:#fff!important;overflow:visible
 }
 #caixas [data-caixas-supervisao] .cx-approved-team.is-open{border-left-color:#09b66d}
@@ -134,7 +142,7 @@
   padding:0!important;display:flex;align-items:center;gap:9px;min-width:0;margin-bottom:15px
 }
 #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-select{
-  flex:0 0 34px;width:34px;height:38px;border-radius:11px
+  flex:0 0 28px;width:28px;height:30px;border-radius:8px
 }
 #caixas [data-caixas-supervisao] .cx-team-avatar{
   display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;
@@ -143,10 +151,6 @@
 #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open{min-width:0;flex:1;text-align:left}
 #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-title{
   display:block;font-size:clamp(16px,2vw,20px);font-weight:950;color:#0c2b50;line-height:1.15
-}
-#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-date{
-  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-size:11px;font-weight:650;color:#788ba4;margin-top:5px
 }
 #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{
   flex:0 1 auto;min-width:0;max-width:155px;gap:6px;display:inline-flex;align-items:center;
@@ -186,23 +190,54 @@
   border-radius:9px!important;color:#163a5d!important;min-height:40px!important
 }
 #caixas [data-caixas-supervisao] .cx-team-card-menu-panel button:hover{background:#eff5fc!important}
-/* Indicadores aprovados — 3 minicards independentes. */
+/* O saldo é o destaque. As movimentações compartilham uma superfície. */
 #caixas [data-caixas-supervisao] .cx-approved-metrics{
-  display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:10px;min-width:0
+  display:grid;grid-template-columns:1fr;gap:9px;min-width:0
 }
+#caixas [data-caixas-supervisao] .cx-approved-jornada-info{
+  display:grid;align-content:start;gap:5px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-movements{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;
+  gap:4px 10px;min-width:0;min-height:73px;padding:10px 12px;
+  border:1px solid #e1e9f3;border-radius:13px;background:#f5f8fc
+}
+#caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-metric{
+  min-height:35px;padding:3px 0!important;border:0!important;border-radius:0!important;
+  background:none!important;box-shadow:none!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-icon{
+  background:#e7eff9;color:#315579
+}
+#caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-sales .cx-approved-icon{
+  background:#e2f3e9;color:#106647
+}
+#caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-expenses .cx-approved-icon{
+  background:#fae8e9;color:#a13f49
+}
+#caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-value small{color:#526a84}
+#caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-value strong{
+  color:#132f4e;font-size:clamp(13px,1.02vw,17px);letter-spacing:-.025em
+}
+#caixas [data-caixas-supervisao] .cx-balance-breakdown{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 10px;
+  margin-top:4px;padding-top:7px;border-top:1px solid #ffffff39
+}
+#caixas [data-caixas-supervisao] .cx-approved-current .cx-balance-breakdown :is(small,strong){
+  font-size:11px!important;line-height:1.25!important;white-space:normal
+}
+#caixas [data-caixas-supervisao] .cx-balance-breakdown small{margin-bottom:2px;color:#e0ecf9}
 #caixas [data-caixas-supervisao] .cx-approved-metric{
   display:flex;align-items:center;gap:9px;min-width:0;min-height:100px;
   padding:13px!important;border-radius:16px!important;color:#fff;
   box-shadow:0 5px 14px #061b3420
 }
 #caixas [data-caixas-supervisao] .cx-approved-current{
-  background:linear-gradient(137deg,#14568f,#082441)!important
+  align-items:flex-start;background:linear-gradient(120deg,#143658,#0a223c)!important;
+  box-shadow:none
 }
-#caixas [data-caixas-supervisao] .cx-approved-sales{
-  background:linear-gradient(137deg,#34be73,#078851)!important
-}
-#caixas [data-caixas-supervisao] .cx-approved-expenses{
-  background:linear-gradient(137deg,#fb6166,#c92b3e)!important
+#caixas [data-caixas-supervisao] .cx-approved-current .cx-approved-icon{
+  margin-top:1px
 }
 #caixas [data-caixas-supervisao] .cx-approved-icon{
   display:grid;place-items:center;flex:0 0 37px;width:37px;height:37px;
@@ -217,16 +252,17 @@
   font-weight:900;letter-spacing:-.04em;line-height:1.18;
   overflow-wrap:anywhere;font-variant-numeric:tabular-nums
 }
-/* Dados de operação são secundários, sem competir com os valores. */
+/* Resumo operacional e histórico ficam alinhados no rodapé. */
+#caixas [data-caixas-supervisao] .cx-team-day-footer{
+  display:grid;align-items:center;gap:8px;min-width:0
+}
 #caixas [data-caixas-supervisao] .cx-approved-meta{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:0;margin:14px 0 12px;min-width:0
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;min-width:0
 }
 #caixas [data-caixas-supervisao] .cx-approved-meta>div{
-  display:flex;align-items:center;justify-content:center;gap:9px;
-  min-width:0;padding:2px 6px;border-right:1px solid #d8e4f1
+  display:flex;align-items:center;justify-content:flex-start;gap:8px;
+  min-width:0;padding:2px 6px
 }
-#caixas [data-caixas-supervisao] .cx-approved-meta>div:last-child{border-right:0}
 #caixas [data-caixas-supervisao] .cx-approved-meta .material-symbols-rounded{
   flex:none;color:#476a92;font-size:21px
 }
@@ -242,9 +278,15 @@
 #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail{
   display:flex;align-items:center;gap:11px;justify-content:flex-start;
   margin:0!important;width:100%!important;min-height:51px!important;
-  padding:11px 14px!important;border:0!important;border-radius:13px!important;
-  background:linear-gradient(110deg,#f3f7fe,#e0e9f8)!important;
-  color:#0d3868!important;font-size:14px;font-weight:900;box-shadow:none!important
+  padding:9px 12px!important;border:1px solid #d5e2f1!important;border-radius:10px!important;
+  background:#f5f8fc!important;color:#173e65!important;
+  font-size:13px;font-weight:800;box-shadow:none!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail:hover{
+  background:#eaf2fa!important;border-color:#aec6e0!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail > span:not(.material-symbols-rounded){
+  font-size:inherit!important;white-space:nowrap
 }
 #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail>span:first-child{
   font-size:22px;color:#0d5794
@@ -311,12 +353,6 @@
  #caixas [data-caixas-supervisao] .cx-query-row .cx-sync-state{
    padding:0 2px;margin:5px 0 0
  }
- #caixas [data-caixas-supervisao] .cx-team-tabs{
-   margin-bottom:14px!important;border-radius:15px;padding:5px!important;gap:3px!important
- }
- #caixas [data-caixas-supervisao] .cx-team-tabs button{
-   min-height:43px!important;font-size:12px!important;padding:7px 4px!important;gap:5px!important
- }
  #caixas [data-caixas-supervisao] .cx-list-heading h3{font-size:18px}
  #caixas [data-caixas-supervisao] .cx-box-grid{
    display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:13px!important
@@ -332,17 +368,12 @@
    flex:0 0 32px;width:32px;height:32px;font-size:20px;border-radius:10px
  }
  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-title{font-size:16px}
- #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-date{font-size:10px}
  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{
    font-size:9px;max-width:94px;padding:6px 7px;min-height:27px
  }
  #caixas [data-caixas-supervisao] .cx-team-card-menu{flex-basis:25px}
- #caixas [data-caixas-supervisao] .cx-approved-metrics{
-   grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important
- }
- #caixas [data-caixas-supervisao] .cx-approved-current{
-   grid-column:1/-1;min-height:85px!important
- }
+ #caixas [data-caixas-supervisao] .cx-approved-metrics{gap:8px!important}
+ #caixas [data-caixas-supervisao] .cx-approved-current{min-height:85px!important}
  #caixas [data-caixas-supervisao] .cx-approved-metric{
    min-height:77px!important;padding:11px!important;gap:7px;border-radius:13px!important
  }
@@ -359,7 +390,6 @@
  #caixas [data-caixas-supervisao] .cx-approved-current .cx-approved-value strong{
    font-size:clamp(23px,6.5vw,29px)!important
  }
- #caixas [data-caixas-supervisao] .cx-approved-meta{margin:13px 0 11px}
  #caixas [data-caixas-supervisao] .cx-approved-meta>div{padding:0 3px;gap:5px}
  #caixas [data-caixas-supervisao] .cx-approved-meta .material-symbols-rounded{font-size:18px}
  #caixas [data-caixas-supervisao] .cx-approved-meta small{font-size:9px}
@@ -457,12 +487,6 @@
   #caixas [data-caixas-supervisao] .cx-query-row .cx-sync-state{
     margin:4px 0 0!important;font-size:10px!important
   }
-  #caixas [data-caixas-supervisao] .cx-team-tabs{
-    padding:4px!important;margin-bottom:11px!important;border-radius:13px!important
-  }
-  #caixas [data-caixas-supervisao] .cx-team-tabs button{
-    min-height:40px!important;height:40px!important;font-size:11px!important
-  }
   #caixas [data-caixas-supervisao] .cx-list-heading{
     margin:2px 0 10px!important;align-items:center!important
   }
@@ -487,9 +511,6 @@
   }
   #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-title{
     font-size:15px!important;letter-spacing:-.03em!important;line-height:1.18!important
-  }
-  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-date{
-    font-size:10px!important;line-height:1.25!important;margin-top:3px!important
   }
   #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{
     flex:0 0 auto!important;max-width:104px!important;min-height:27px!important;
@@ -540,7 +561,7 @@
     font-size:clamp(20px,5.8vw,25px)!important;line-height:1.15!important
   }
   #caixas [data-caixas-supervisao] .cx-approved-meta{
-    min-height:36px!important;margin:10px 0 9px!important
+    min-height:36px!important
   }
   #caixas [data-caixas-supervisao] .cx-approved-meta>div{
     padding:1px 3px!important;gap:5px!important
@@ -579,4 +600,376 @@
   letter-spacing: normal;
   line-height: 1.3;
   overflow-wrap: normal;
+}
+
+#caixas [data-caixas-supervisao] .cx-approved-meta > :is(.cx-team-sync,.cx-team-progress){
+  display:grid;align-content:center;justify-content:stretch;gap:4px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-team-sync strong{font-size:12px!important;overflow-wrap:anywhere}
+#caixas [data-caixas-supervisao] .cx-team-progress > div{
+  display:grid;gap:3px
+}
+#caixas [data-caixas-supervisao] .cx-team-progress progress{
+  display:block;width:100%;height:7px;accent-color:#176cae
+}
+
+/* Um cartão por linha, com os indicadores da jornada lado a lado no desktop. */
+@media(min-width:761px){
+  #caixas [data-caixas-supervisao] .cx-approved-team{
+    display:grid;grid-template-columns:minmax(0,1fr);
+    gap:10px;padding:13px 16px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{margin:0}
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open{
+    display:grid;justify-items:start;justify-content:start
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-metrics{
+    grid-template-columns:minmax(190px,1fr) minmax(0,2.9fr);gap:10px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-metric{
+    min-height:49px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-current{
+    padding:10px 12px!important;border-radius:13px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-icon{
+    flex-basis:29px;width:29px;height:29px;border-radius:9px;font-size:18px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-value{gap:3px}
+  #caixas [data-caixas-supervisao] .cx-approved-value small{white-space:normal}
+  #caixas [data-caixas-supervisao] .cx-approved-value strong{font-size:clamp(14px,1.3vw,20px)}
+  #caixas [data-caixas-supervisao] .cx-approved-current .cx-approved-value > strong{
+    font-size:clamp(22px,1.65vw,30px)
+  }
+  #caixas [data-caixas-supervisao] .cx-team-day-footer{
+    grid-template-columns:minmax(0,1fr) 182px;gap:10px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-meta{
+    grid-template-columns:minmax(0,.85fr) minmax(0,1fr) minmax(0,1.4fr) minmax(0,.8fr)
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-meta>div{justify-content:flex-start;padding-inline:5px}
+  #caixas [data-caixas-supervisao] .cx-approved-meta .material-symbols-rounded{font-size:17px}
+  #caixas [data-caixas-supervisao] .cx-approved-meta strong{font-size:14px}
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail{
+    min-height:40px!important;padding:7px 9px!important;gap:7px;font-size:12px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-detail .material-symbols-rounded{
+    flex:0 0 18px;width:18px;overflow:hidden;font-size:18px
+  }
+}
+
+@container caixa-jornada (min-width:1120px){
+  #caixas [data-caixas-supervisao] .cx-approved-movements{
+    grid-template-columns:repeat(6,minmax(0,1fr))
+  }
+}
+
+@container caixa-jornada (max-width:750px){
+  #caixas [data-caixas-supervisao] .cx-approved-metrics{grid-template-columns:minmax(0,1fr)}
+}
+
+@container caixa-jornada (max-width:620px){
+  #caixas [data-caixas-supervisao] .cx-team-day-footer{grid-template-columns:minmax(0,1fr)}
+  #caixas [data-caixas-supervisao] .cx-approved-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+@media(min-width:761px) and (max-width:1120px){
+  #caixas [data-caixas-supervisao] .cx-approved-metric .cx-approved-icon,
+  #caixas [data-caixas-supervisao] .cx-approved-meta > div > .material-symbols-rounded{display:none}
+}
+
+
+@media(max-width:760px){
+  #caixas [data-caixas-supervisao] .cx-approved-movements{
+    grid-template-columns:repeat(2,minmax(0,1fr))
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-metric{
+    min-height:41px!important;padding:4px 0!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-icon{
+    flex-basis:23px!important;width:23px!important;height:23px!important;
+    border-radius:7px!important;font-size:16px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-value small{
+    white-space:normal;overflow-wrap:anywhere
+  }
+  #caixas [data-caixas-supervisao] .cx-query-row .cx-filter-options>.cx-filters{
+    left:0;right:auto;width:min(310px,calc(100vw - 28px))!important;
+    max-height:65dvh;box-sizing:border-box;overflow:auto
+  }
+}
+
+/* Jornada da equipe: saldo principal, carteira, cobranças e lançamentos. */
+#caixas [data-caixas-supervisao].cx-team-detail{
+  container:caixas-jornada / inline-size;
+  display:grid;grid-template-columns:minmax(0,1fr);gap:14px;
+  min-width:0
+}
+#caixas [data-caixas-supervisao].cx-team-detail > .cx-detail-header{
+  margin:0!important;padding:0 0 4px!important;align-items:flex-start!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-detail-header h2{
+  margin:10px 0 3px!important;letter-spacing:-.035em;
+  font-size:clamp(24px,3vw,36px)!important;color:#0b2849;overflow-wrap:anywhere
+}
+#caixas [data-caixas-supervisao].cx-team-detail :is(.cx-detail-back,.cx-detail-refresh){
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  min-height:39px!important;background:#f5f8fc!important;
+  border:1px solid #dce7f4!important;color:#173e66!important;border-radius:10px!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-detail-header button .material-symbols-rounded{
+  font-size:17px
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-toolbar{
+  display:flex;flex-wrap:wrap;align-items:end;gap:9px 12px;
+  border:1px solid #dce7f4;border-radius:13px;background:#f5f8fc;
+  padding:10px 12px!important;margin:0
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-toolbar label{
+  flex:0 1 220px;min-width:0
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-toolbar .cx-team-day-status{
+  align-self:end;justify-content:center;max-width:180px;min-height:36px;
+  margin-bottom:3px;padding:5px 8px;border-radius:9px;background:#eaf0f7;color:#3d5878
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-toolbar .cx-team-day-status.is-open{
+  background:#dcf4e8;color:#146045
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-toolbar .cx-team-day-status.is-warning{
+  background:#fff0d2;color:#805017
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-actions{
+  display:flex;flex-wrap:wrap;gap:7px;margin-left:auto
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-actions button{
+  min-height:43px!important;line-height:1.25
+}
+
+#caixas [data-caixas-supervisao].cx-team-detail > .cx-team-primary-metrics{
+  grid-template-columns:minmax(0,1.2fr) repeat(2,minmax(0,1fr))!important;
+  margin:0!important;gap:11px!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-primary-metrics > article{
+  display:grid!important;grid-column:auto!important;align-content:start;
+  gap:10px!important;min-height:0!important;padding:15px!important;border-radius:15px!important;
+  border:1px solid #dce7f3!important;box-shadow:0 3px 12px #15385d09!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-primary-metrics h3{
+  display:flex;align-items:center;gap:7px;margin:0;
+  color:#163b63;font-size:13px;font-weight:900;line-height:1.2
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-primary-metrics h3 .material-symbols-rounded{
+  flex:none;font-size:19px
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-primary-metrics > .cx-journey-balance{
+  background:linear-gradient(120deg,#143658,#0a233e)!important;border-color:#102d4a!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-balance h3{
+  color:#d8e9fc
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-balance .cx-journey-balance-value{
+  color:#fff!important;font-size:clamp(23px,3vw,38px)!important;line-height:1.09;letter-spacing:-.045em
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-balance small{color:#bdd3eb!important}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-balance strong{color:#fff!important}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-primary-metrics > .cx-journey-portfolio{
+  background:#eff5fd!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-primary-metrics > .cx-journey-performance{
+  background:#f0f8f4!important;border-color:#dceee3!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-performance h3{
+  color:#215d48
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-figures{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-balance .cx-journey-figures{
+  padding-top:8px;border-top:1px solid #ffffff35
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-figures > div{
+  display:grid;align-content:start;gap:4px;min-width:0
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-figures strong{
+  font-size:clamp(13px,1.45vw,19px)!important;line-height:1.2
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-coverage{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:6px 10px;
+  color:#365e51;font-size:12px;font-weight:750
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-coverage progress{
+  grid-column:1/-1;width:100%;height:8px;accent-color:#208466
+}
+
+#caixas [data-caixas-supervisao].cx-team-detail [data-cx-tone="amber"]{--cx-tone:#815313;--cx-tint:#fff2dc}
+#caixas [data-caixas-supervisao].cx-team-detail [data-cx-tone="green"]{--cx-tone:#1a6445;--cx-tint:#e3f5ea}
+#caixas [data-caixas-supervisao].cx-team-detail [data-cx-tone="teal"]{--cx-tone:#185f6d;--cx-tint:#e5f4f7}
+#caixas [data-caixas-supervisao].cx-team-detail [data-cx-tone="rose"]{--cx-tone:#934348;--cx-tint:#fae9ec}
+#caixas [data-caixas-supervisao].cx-team-detail [data-cx-tone="blue"]{--cx-tone:#305680;--cx-tint:#e9f0fa}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-extra-metrics{
+  margin:0;border:1px solid #dce7f4;border-radius:14px;background:#f8fafd
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-extra-metrics > summary{
+  min-height:42px;color:#173e65
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-secondary-metrics{
+  grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important;
+  padding:0 12px 10px
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-team-secondary-metrics > .cx-journey-kpi{
+  display:grid;grid-template-columns:auto minmax(0,1fr);align-content:center;align-items:center;
+  gap:7px;min-height:55px!important;padding:8px!important;border-radius:10px!important;
+  background:var(--cx-tint)!important;border:0!important;box-shadow:none!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-kpi > .material-symbols-rounded{
+  color:var(--cx-tone);font-size:18px
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-kpi small{
+  display:block;color:var(--cx-tone);overflow-wrap:anywhere
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-kpi strong{
+  display:block;font-size:clamp(13px,1.3vw,18px)!important
+}
+
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-lower{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:12px;align-items:start
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-lower > section{
+  margin:0!important;min-width:0
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-records .cx-list-heading{
+  flex-wrap:wrap;align-items:end
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-records label{
+  display:grid;gap:4px;color:#526b87;font-size:11px;font-weight:800;min-width:0
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-records select{
+  min-height:38px;max-width:100%;padding:6px 9px;border:1px solid #d5e3f3;
+  border-radius:9px;background:#fff;color:#173e65
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-records .cx-table-scroll{
+  display:block;max-width:100%;max-height:620px;overflow:auto!important
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-records td{
+  white-space:normal!important;overflow-wrap:anywhere
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-record-type{
+  display:inline-flex;padding:4px 7px;border-radius:7px;
+  background:var(--cx-tint);color:var(--cx-tone);font-size:11px;font-weight:800
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-journey-records td small{
+  display:block;margin-top:4px;color:#5b728c;line-height:1.3
+}
+#caixas [data-caixas-supervisao].cx-team-detail .cx-table-scroll:focus-visible{
+  outline:2px solid #2e70b5;outline-offset:2px
+}
+#caixas .cx-team-detail :is(.cx-team-primary-metrics > article,.cx-journey-kpi,.cx-journey-client){position:relative}
+#caixas .cx-team-detail .cx-team-primary-metrics h3{padding-right:22px}
+#caixas .cx-team-detail .cx-journey-kpi > div{padding-right:14px;min-width:0}
+#caixas .cx-team-detail .cx-journey-indicator-link{
+  position:absolute;inset:0;z-index:1;display:flex;justify-content:flex-end;align-items:flex-start;
+  width:100%;height:100%;padding:12px;border:0;border-radius:inherit;box-shadow:none;background:transparent;
+  color:var(--cx-tone,#315b84);cursor:pointer
+}
+#caixas .cx-team-detail .cx-journey-indicator-link:is(:hover,:focus-visible){background:#386f9b09}
+#caixas .cx-team-detail .cx-journey-indicator-link:focus-visible{outline:2px solid #2875bd;outline-offset:2px}
+#caixas .cx-team-detail .cx-journey-indicator-link .material-symbols-rounded{font-size:19px}
+#caixas .cx-team-detail .cx-journey-balance .cx-journey-indicator-link{color:#d8e9fc}
+#caixas .cx-team-detail .cx-journey-kpi .cx-journey-indicator-link{padding:0 3px;align-items:center}
+#caixas .cx-team-detail .cx-journey-kpi .cx-journey-indicator-link .material-symbols-rounded{font-size:16px}
+#caixas .cx-team-detail :is(.cx-journey-customers,.cx-journey-records){scroll-margin-top:18px}
+#caixas .cx-team-detail .cx-journey-client-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0}
+#caixas .cx-team-detail .cx-journey-client-tabs button{
+  display:inline-flex;align-items:center;gap:7px;min-height:40px;padding:7px 11px;
+  border:1px solid #d9e5f2;border-radius:9px;color:#34597f;background:#fff;font-weight:800;cursor:pointer
+}
+#caixas .cx-team-detail .cx-journey-client-tabs button[aria-pressed="true"]{
+  color:var(--cx-tone);background:var(--cx-tint);border-color:currentColor
+}
+#caixas .cx-team-detail .cx-journey-client-tabs button span{border-radius:7px;padding:2px 5px;background:var(--cx-tint);color:var(--cx-tone)}
+#caixas .cx-team-detail .cx-journey-client-grid{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:10px
+}
+#caixas .cx-team-detail .cx-journey-client{
+  min-width:0;padding:12px;border:1px solid #dce7f3;border-left:3px solid var(--cx-tone);
+  border-radius:12px;background:linear-gradient(165deg,var(--cx-tint),#fff 76%)
+}
+#caixas .cx-team-detail .cx-journey-client header{
+  display:flex;align-items:center;justify-content:space-between;gap:8px 14px;flex-wrap:wrap;padding-right:24px
+}
+#caixas .cx-team-detail .cx-journey-client header h4{margin:0;color:#142f4c;font-size:14px;overflow-wrap:anywhere}
+#caixas .cx-team-detail .cx-journey-client header small{color:var(--cx-tone);font-weight:800}
+#caixas .cx-team-detail .cx-journey-score{
+  display:inline-flex;align-items:center;flex-wrap:wrap;gap:3px 8px;max-width:100%;
+  padding:5px 8px;border:1px solid #cbd9e9;border-radius:8px;background:#fff;color:#19436c;font-size:11px
+}
+#caixas .cx-team-detail .cx-journey-score span{font-weight:700}
+#caixas .cx-team-detail .cx-journey-score strong{font-size:12px;color:#112e4a}
+#caixas .cx-team-detail .cx-journey-score-detail{
+  margin-top:12px;padding:10px;border:1px solid #dce7f3;border-radius:10px;background:#f2f6fb;color:#345573
+}
+#caixas .cx-team-detail .cx-journey-score-detail p{margin:7px 0 0;font-size:12px;line-height:1.4}
+#caixas .cx-team-detail .cx-journey-data{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;margin:10px 0 0
+}
+#caixas .cx-team-detail .cx-journey-client .cx-journey-data{
+  grid-template-columns:repeat(auto-fit,minmax(min(100%,105px),1fr))
+}
+#caixas .cx-team-detail .cx-journey-data dt{color:#4e657e;font-size:11px;font-weight:700;line-height:1.25}
+#caixas .cx-team-detail .cx-journey-data dd{margin:2px 0 0;color:#163655;font-size:13px;font-weight:850;overflow-wrap:anywhere}
+#caixas .cx-team-detail .cx-journey-client-note{margin:8px 0 0;color:var(--cx-tone);font-size:12px;overflow-wrap:anywhere}
+#caixas .cx-team-detail .cx-journey-dialog{
+  position:fixed;inset:0;margin:auto;box-sizing:border-box;width:min(calc(100% - 28px),620px);
+  max-height:min(84dvh,780px);padding:0;border:1px solid #dce7f3;border-radius:16px;
+  overflow:auto;background:#fff;color:#173a5d;box-shadow:0 20px 60px #061e3e30;text-align:left
+}
+#caixas .cx-team-detail .cx-journey-dialog::backdrop{background:#091e38a6}
+#caixas .cx-team-detail .cx-journey-dialog-head{
+  position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:14px 17px;background:#f2f6fb;border-bottom:1px solid #dce7f3
+}
+#caixas .cx-team-detail .cx-journey-dialog-head :is(h3,p){margin:0;overflow-wrap:anywhere}
+#caixas .cx-team-detail .cx-journey-dialog-head p{margin-top:3px;color:#526b87}
+#caixas .cx-team-detail .cx-journey-dialog-content{padding:2px 17px 17px}
+#caixas .cx-team-detail .cx-journey-dialog-content > button{display:block;margin-top:12px}
+#caixas .cx-team-detail .cx-journey-dialog-content h4{margin:16px 0 5px;font-size:13px}
+#caixas .cx-team-detail .cx-journey-wallet-list{display:grid;gap:0;list-style:none;margin:0;padding:0}
+#caixas .cx-team-detail .cx-journey-wallet-list li{
+  display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid #dce7f3;overflow-wrap:anywhere
+}
+#caixas .cx-team-detail .cx-journey-history{display:grid;gap:8px;list-style:none;margin:10px 0 0;padding:0}
+#caixas .cx-team-detail .cx-journey-history li{padding:10px;border:1px solid #dce7f3;border-radius:10px}
+#caixas .cx-team-detail .cx-journey-history small{display:block;margin-top:3px;color:#526b87}
+@container caixas-jornada (max-width:1000px){
+  #caixas [data-caixas-supervisao].cx-team-detail .cx-team-secondary-metrics{
+    grid-template-columns:repeat(3,minmax(0,1fr))!important
+  }
+}
+@container caixas-jornada (max-width:650px){
+  #caixas [data-caixas-supervisao].cx-team-detail > .cx-team-primary-metrics{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important
+  }
+  #caixas [data-caixas-supervisao].cx-team-detail .cx-team-primary-metrics > .cx-journey-balance{
+    grid-column:1/-1!important
+  }
+  #caixas [data-caixas-supervisao].cx-team-detail .cx-team-actions{
+    margin-left:0
+  }
+}
+@container caixas-jornada (max-width:465px){
+  #caixas [data-caixas-supervisao].cx-team-detail > .cx-team-primary-metrics{
+    grid-template-columns:minmax(0,1fr)!important
+  }
+  #caixas [data-caixas-supervisao].cx-team-detail .cx-team-secondary-metrics{
+    grid-template-columns:repeat(2,minmax(0,1fr))!important
+  }
+  #caixas [data-caixas-supervisao].cx-team-detail .cx-team-toolbar label{
+    flex:1 1 130px
+  }
+  #caixas [data-caixas-supervisao].cx-team-detail .cx-team-actions{
+    display:grid;grid-template-columns:repeat(2,minmax(0,1fr));width:100%
+  }
+  #caixas [data-caixas-supervisao].cx-team-detail .cx-journey-records label{
+    width:100%
+  }
 }

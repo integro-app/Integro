@@ -406,7 +406,9 @@ test("Master Local usa filtros instantâneos e não opera equipes ocultas pela p
   assert.match(render,/const allEntries=all\.map\(row=>/);
   assert.match(render,/const entries=searchedEntries\.filter/);
   assert.match(render,/if\(!exibidas\.has\(selectedId\)\)ui\.selected\.delete\(selectedId\)/);
-  assert.match(render,/data-cx-quick/);
+  assert.match(render,/data-cx-status/);
+  assert.match(render,/data-cx-team-situation/);
+  assert.doesNotMatch(render,/data-cx-quick/);
   assert.match(render,/data-cx-search-clear/);
   assert.match(render,/class="cx-sellers"/);
   assert.match(render,/class="cx-operational-pulse"/);
@@ -441,7 +443,7 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/const overviewConferido=m=>/);
   assert.match(render,/verifiedBoxes\.has\(id\(caixa\)\)/);
   assert.match(render,/registro\.fingerprint===fingerprint/);
-  assert.match(render,/semResumoHistorico=modelosNaTela\.some/);
+  assert.match(render,/semResumoHistorico:models\.some\(m=>!openBox\(m\.box\).*\.data\?\.closure\)/);
   assert.match(render,/const valorAtual=/);
   assert.match(render,/const indicadorFinanceiro=key=>/);
   assert.match(render,/!totaisConferidos\?'Conferindo…'/);
@@ -564,16 +566,19 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
 });
 
-test("Cabeçalho de Caixas traz indicadores e Ações antes de pesquisa e filtros",()=>{
+test("Cabeçalho de Caixas concentra a situação das equipes dentro de Filtros",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const start=source.indexOf("  function render() {"),end=source.indexOf("  async function query(",start);
   const overview=source.slice(start,end);
   const header=overview.indexOf('<header class="cx-head cx-approved-head">');
   const search=overview.indexOf('<div class="cx-query-row">');
   const actions=overview.indexOf('<footer class="cx-footer">');
-  const teamTabs=overview.indexOf('class="cx-team-tabs"');
+  const filters=overview.indexOf('<details class="cx-filter-options"');
+  const situation=overview.indexOf('data-cx-team-situation=');
+  const filtersEnd=overview.indexOf('</details>',filters);
   const cards=overview.indexOf('class="cx-box-grid"');
-  assert.ok(header>0&&header<search&&search<actions&&actions<teamTabs&&teamTabs<cards);
+  assert.ok(header>0&&header<search&&search<filters&&filters<situation&&situation<filtersEnd&&filtersEnd<actions&&actions<cards);
+  assert.doesNotMatch(overview,/class="cx-team-tabs"/);
   assert.doesNotMatch(overview, /<div class="cx-stats">/);
   assert.match(overview,/class="cx-actions-dropdown"/);
   assert.match(overview,/data-cx-open-date-from-actions/);
@@ -596,7 +601,7 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
     boxDay:box=>box.dataOperacional,
     cash:v=>String(v),num:v=>Number(v)||0,
     upper:v=>String(v??"").toUpperCase(),podeGerir:()=>false,
-    estrutura:{caixasChecked:true},
+    dateTime:()=>"—",estrutura:{caixasChecked:true,caixasIds:new Set()},
     ui:{selected:new Set(),selectedBoxes:new Set(["cx-001"]),expandedTeams:new Set()}
   });
   const cards=functions([{
@@ -660,8 +665,8 @@ test("Master Local apresenta uma jornada por equipe e filtro de situação ativo
   assert.match(source,/const equipes=rows\(\)\.filter/);
   assert.match(source,/const overviewConferido=m=>/);
   assert.match(source,/class="cx-approved-meta"/);
-  assert.match(source,/Caixas abertos/);
-  assert.match(source,/Na jornada/);
+  assert.match(source,/Data do caixa/);
+  assert.match(source,/Caixas no histórico/);
 });
 
 test("Reabertura é apenas individual e no backend exige motivo e último caixa",()=>{
@@ -712,21 +717,25 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
   assert.match(detail,/rows\(true\)\.find/);
   assert.match(detail,/Data da jornada/);
   assert.match(detail,/Caixa inicial/);
-  assert.match(detail,/Caixa atual \/ final/);
+  assert.match(detail,/encerrada\?'Caixa final':'Caixa atual'/);
   assert.match(detail,/Recebimentos/);
   assert.match(detail,/Ingressos/);
   assert.match(detail,/Gastos/);
   assert.match(detail,/Retiradas/);
-  assert.match(detail,/Últimas movimentações da jornada/);
+  assert.match(detail,/Movimentações da jornada/);
   assert.match(detail,/class="cx-team-detail-metrics cx-team-primary-metrics"/);
   assert.match(detail,/class="cx-team-extra-metrics"/);
   assert.match(detail,/data-cx-extra-metrics/);
-  assert.match(detail,/metricas\.slice\(0,3\)/);
-  assert.match(detail,/metricas\.slice\(3\)/);
+  assert.match(detail,/Carteira da equipe/);
+  assert.match(detail,/Desempenho de cobranças/);
+  assert.match(detail,/data-cx-team-records/);
+  assert.match(detail,/Clientes da jornada/);
+  assert.doesNotMatch(detail,/Caixas dos vendedores/);
+  assert.match(detail,/linkIndicadorJornada\(destino/);
   assert.match(detail,/data-cx-team-box/);
   assert.match(detail,/data-cx-team-close/);
   assert.match(detail,/const confirmado=estrutura\.caixasChecked&&items\.every/);
-  assert.match(detail,/if\(estrutura\.caixasChecked\)boxes\.forEach\(loadOverview\)/);
+  assert.match(detail,/if\(estrutura\.caixasChecked\)boxes\.forEach\(box=>loadOverview\(box,true\)\)/);
   assert.match(source,/const podeAbrir=row\.ativa&&podeGerir\('abrir'\)/);
 });
 
@@ -734,7 +743,8 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
 test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente encerrada",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/const inconsistentes=history\.filter/);
-  assert.match(source,/inconsistentes\.length\|\|possuiDivergencia\?'REVISÃO'/);
+  assert.match(source,/const emConferencia=!estrutura\.caixasChecked\|\|inconsistentes\.length>0\|\|possuiDivergencia/);
+  assert.match(source,/emConferencia\?'EM CONFERÊNCIA'/);
   assert.match(source,/const exigeRevisao=boxes\.some/);
   assert.match(source,/exigeRevisao\?'REVISÃO':/);
   assert.match(source,/pendenteAnterior\?'PENDENTE DE FECHAMENTO':aberto\?'EM OPERAÇÃO'/);
@@ -749,9 +759,8 @@ test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões
   const title=overview.indexOf('<header class="cx-head cx-approved-head">');
   const query=overview.indexOf('class="cx-query-row"');
   const actions=overview.indexOf('<footer class="cx-footer">');
-  const teamTabs=overview.indexOf('class="cx-team-tabs"');
   const teamList=overview.indexOf('class="cx-box-grid"');
-  assert.ok(title>=0&&title<query&&query<actions&&actions<teamTabs&&teamTabs<teamList);
+  assert.ok(title>=0&&title<query&&query<actions&&actions<teamList);
   assert.doesNotMatch(overview,/<div class="cx-stats">/);
   assert.match(source,/expandedTeams:new Set\(\)/);
   assert.match(source,/data-cx-members/);
@@ -760,19 +769,21 @@ test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões
   assert.match(css,/\.cx-approved-current/);
   assert.match(css,/\.cx-approved-sales/);
   assert.match(css,/\.cx-approved-expenses/);
+  assert.match(css,/\.cx-box-grid\{\s*display:grid!important;grid-template-columns:minmax\(0,1fr\)!important/);
+  assert.match(css,/@media\(max-width:760px\)\{\s*#caixas \[data-caixas-supervisao\] \.cx-approved-movements\{\s*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css,/@media\(max-width:760px\)/);
-  assert.match(css,/\.cx-approved-current\{\s*grid-column:1\/-1/);
+  assert.match(css,/@container caixa-jornada \(max-width:750px\)\{\s*#caixas \[data-caixas-supervisao\] \.cx-approved-metrics\{grid-template-columns:minmax\(0,1fr\)/);
   assert.match(css,/\.cx-overview-scroll\{display:none!important/);
 });
 
-test("Busca sem resultados mostra orientação útil no mobile e preserva acesso às outras equipes",()=>{
+test("Busca sem resultados direciona para os filtros de equipe",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
   assert.match(source,/class="cx-mobile-empty"/);
   assert.match(source,/Nenhuma equipe ativa encontrada/);
   assert.match(source,/Nenhuma equipe inativa encontrada/);
-  assert.match(source,/data-cx-show-all-teams/);
-  assert.match(source,/ui\.equipesFiltro='todas';ui\.team='';ui\.status='';ui\.search='';render\(\)/);
+  assert.match(source,/data-cx-open-filters>Abrir filtros/);
+  assert.match(source,/ui\.filtersOpen=true;filters\.open=true/);
   assert.match(css,/\.cx-mobile-empty\{display:grid/);
 });
 
@@ -787,22 +798,60 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
     boxDay:box=>box.dataOperacional,dateBR:v=>v,
     openBox:box=>box.status==="ABERTO",upper:v=>String(v??"").toUpperCase(),
     num:v=>Number(v)||0,cash:v=>"T"+v,podeGerir:()=>false,
-    estrutura:{caixasChecked:true},
+    dateTime:v=>v ? "24/11/2026, 09:30" : "—",
+    estrutura:{caixasChecked:true,caixasIds:new Set(["box-1","box-2","antigo"]),caixasSincronizadosEm:1},
     ui:{selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set()}
   };
   const renderCards=vm.runInNewContext(source.slice(start,end)+";renderCardsCaixa",context);
-  const box={id:"box-1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Vendedor Norte"};
-  const cards=renderCards([{
+  const box={id:"box-1",equipeId:"team-1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Vendedor Norte"};
+  const box2={...box,id:"box-2"};
+  const antigo={...box,id:"antigo",status:"FECHADO",dataOperacional:"2026-10-30"};
+  const caixa={box,current:1234500,initial:1100000,loans:1850000,expenses:614500,received:42000,
+    collected:8000,income:10000,withdrawals:20000,clients:10,visited:5};
+  const entry={
     row:{id:"team-1",nome:"Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Norte"}]},
-    latest:box,history:[box],avisos:[],
-    models:[{box,current:1234500,loans:1850000,expenses:614500}]
-  }],()=>true);
+    latest:box,history:[box,box2,antigo,{id:"cache",equipeId:"team-1",status:"FECHADO"}],avisos:[],
+    models:[caixa,{...caixa,box:box2,current:0,initial:0,loans:0,expenses:0,received:0,
+      collected:0,income:0,withdrawals:0,clients:2,visited:2}]
+  };
+  const cards=renderCards([entry],()=>true);
   assert.match(cards,/Caixa Atual/);
   assert.match(cards,/Vendas/);
   assert.match(cards,/Gastos/);
   assert.match(cards,/T1234500/);
   assert.match(cards,/T1850000/);
   assert.match(cards,/T614500/);
+  assert.match(cards,/<small>Recebido<\/small>\s*<strong>T42000<\/strong>/);
+  assert.match(cards,/<small>Caixa inicial<\/small>\s*<strong>T1100000<\/strong>/);
+  assert.match(cards,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">Em aberto<\/strong>/);
+  assert.match(cards,/<small>Ingressos<\/small>\s*<strong>T10000<\/strong>/);
+  assert.match(cards,/<small>Retiros<\/small>\s*<strong>T20000<\/strong>/);
+  assert.match(cards,/<small>Data do caixa<\/small><strong>2026-10-31<\/strong>[\s\S]*<small>Caixas no histórico<\/small><strong>3<\/strong>/);
+  assert.doesNotMatch(cards,/cx-team-open-date|Movimentações da jornada|<small>Na jornada<\/small>/);
+  const jornadaVazia=renderCards([{...entry,latest:undefined,history:[],models:[]}],()=>true);
+  assert.match(jornadaVazia,/<small>Data do caixa<\/small><strong>—<\/strong>/);
+  assert.match(cards,/<small>Última sincronização<\/small><strong>24\/11\/2026, 09:30<\/strong>/);
+  assert.match(cards,/<progress max="100" value="58" aria-label="Cobranças tratadas">/);
+  assert.match(cards,/7 de 12 cobranças tratadas/);
+  assert.match(cards,/<small>Recolhimentos<\/small>\s*<strong>T8000<\/strong>/);
+  const legado=renderCards([{...entry,latest:antigo,history:[antigo],
+    models:[{...caixa,box:antigo,fechamento:{totalVendasCentavos:1850000}}]}],()=>true);
+  assert.match(legado,/<small>Vendas<\/small>\s*<strong>T1850000<\/strong>/);
+  assert.match(legado,/<small>Recebido<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
+  assert.match(legado,/<small>Recolhimentos<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
+  assert.doesNotMatch(renderCards([entry],()=>false),/T42000|T8000/);
+  const fechado={...box,status:"FECHADO"};
+  const encerrado=renderCards([{...entry,latest:fechado,history:[fechado],
+    models:[{...caixa,box:fechado,final:1200000,clients:null,visited:null}]}],()=>true);
+  assert.match(encerrado,/aria-label="FECHADO"/);
+  assert.match(encerrado,/<small>Caixa final<\/small>\s*<strong>T1200000<\/strong>/);
+  assert.match(encerrado,/<small>Progresso do caixa<\/small><strong>Não registrado<\/strong>/);
+  assert.doesNotMatch(encerrado,/<progress/);
+  const divergente={...box,status:"DIVERGENTE"};
+  const emConferencia=renderCards([{...entry,latest:divergente,history:[divergente],
+    models:[{...caixa,box:divergente}]}],()=>true);
+  assert.match(emConferencia,/aria-label="EM CONFERÊNCIA"/);
+  assert.match(emConferencia,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">Em conferência<\/strong>/);
   assert.match(cards,/PENDENTE DE FECHAMENTO/);
   assert.match(cards,/data-cx-card-menu/);
   assert.match(cards,/data-cx-open="team-1"/);
@@ -838,7 +887,7 @@ test("Badge da jornada pendente é curto no mobile e mantém estado completo par
     dateBR:v=>v,openBox:box=>box.status==="ABERTO",
     upper:v=>String(v??"").toUpperCase(),
     num:v=>Number(v)||0,cash:v=>String(v),podeGerir:()=>false,
-    estrutura:{caixasChecked:true},
+    dateTime:()=>"—",estrutura:{caixasChecked:true,caixasIds:new Set()},
     ui:{selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set()}
   };
   const render=vm.runInNewContext(source.slice(begin,end)+";renderCardsCaixa",context);
@@ -863,20 +912,26 @@ test("M12: detalhe da jornada atualiza quando consultas dos caixas terminam no s
   const vm=require("node:vm");
   const overview=new Map(),pending=new Set(),errors=new Set(),missing=new Set();
   const ui={context:"tenant-1|master-1",detail:"equipe-1",box:"",loading:false};
-  let renders=0,fetches=0;
+  let renders=0;
+  const fetches=[];
   const ctx={
     overview,pending,caixasInexistentesServidor:missing,caixasFalhaConferencia:errors,
     ui,id:box=>box.id,text:v=>String(v??"").trim(),render:()=>{renders++},
-    fetchBox:async()=>{fetches++;return {fresh:{id:"cx-1"},data:{sales:[],payments:[],moves:[]}};}
+    fetchBox:async(box,overviewOnly)=>{fetches.push(overviewOnly);return {fresh:{id:box.id},data:{sales:[],payments:[],moves:[]}};}
   };
   const fn=vm.runInNewContext("let overviewLoads=0;\n"+source.slice(start,end)+"\nloadOverview",ctx);
   const box={id:"cx-1",status:"ABERTO",saldoAtualCentavos:12500};
   await fn(box);
-  assert.equal(fetches,1);
+  assert.deepEqual(fetches,[true]);
   assert.equal(renders,1,"Detalhe precisa renderizar ao finalizar a leitura");
   assert.ok(overview.get("cx-1")?.data);
   await fn(box);
-  assert.equal(fetches,1,"Sem mudança no caixa, não repetir a consulta");
+  assert.deepEqual(fetches,[true],"Sem mudança no caixa, não repetir a consulta da lista");
+  await fn(box,true);
+  assert.deepEqual(fetches,[true,false],"Abrir a jornada completa o cache do caixa");
+  assert.equal(overview.get("cx-1")?.comRegistros,true);
+  await fn(box,true);
+  assert.deepEqual(fetches,[true,false],"O cache completo atende novas renderizações da jornada");
 });
 
 test("M12: detalhe apresenta falha real da conferência e permite tentar de novo",()=>{
@@ -904,7 +959,7 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   const overview=new Map(),verifiedBoxes=new Map();
   for(const box of ui.history){
     verifiedBoxes.set(box.id,box);
-    overview.set(box.id,{fingerprint:JSON.stringify([box.status,box.atualizadoEm,box.saldoAtualCentavos]),
+    overview.set(box.id,{fingerprint:JSON.stringify([box.status,box.atualizadoEm,box.saldoAtualCentavos]),comRegistros:true,
       data:{sales:[],payments:[],moves:[]}});
   }
   const handlers={};
@@ -920,15 +975,20 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   let captured=null,opened=null;
   const ctx={
     Intl,Date,ui,overview,verifiedBoxes,estrutura:{caixasChecked:true,caixasError:""},
+    diaSaoPaulo:new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Sao_Paulo"}),
     rows:()=>[{id:"equipe-1",nome:"Equipe 1",ativa:true,vendedores:[]}],
     teamBoxes:(row,list)=>list,boxDay:box=>box.dataOperacional,dateBR:x=>x,
     text:x=>String(x??"").trim(),id:box=>box.id,esc:x=>String(x??""),
     openBox:box=>box.status==="ABERTO",upper:x=>String(x??"").toUpperCase(),
-    model:box=>({current:500,initial:100,wallet:1200,loans:0,received:0,income:0,expenses:0,withdrawals:0,collected:0}),
+    model:box=>({current:500,initial:100,wallet:1200,loans:0,received:0,income:0,expenses:0,withdrawals:0,collected:0,
+      clients:10,visited:4,sales:[{id:`venda-${box.id}`,clienteNome:`Cliente da venda ${box.id}`}],visits:[{id:`visita-${box.id}`,clienteNome:`Cliente da visita ${box.id}`,tipo:"NAO_PAGAMENTO",motivo:"Sem retorno"}]}),
     cachedData:()=>({}),cash:x=>String(x),num:x=>Number(x)||0,
     amount:()=>0,stampMillis:()=>0,dateTime:()=>"",
     option:(a,b)=>"<option>"+b+"</option>",podeGerir:()=>true,
     actionFeedback:()=>{},render:()=>{},loadOverview:()=>{},selectBox:()=>{},
+    estadoClientesJornada:()=>({clientes:[],rotas:new Map([[selected.id,{clients:10,visited:4}]])}),
+    painelClientesJornada:()=>"",linkIndicadorJornada:()=>"",naoPagamento:v=>v.tipo==="NAO_PAGAMENTO",
+    vendaRef:v=>v.vendaId,
     abrirSelecionados:()=>{},carregarCaixasServidor:async()=>{},
     fecharSelecionados:async()=>{captured=[...ui.selectedBoxes];return {fechados:1,falhas:[]};},
     open:async id=>{opened=id;},global:{}
@@ -936,9 +996,153 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   const fn=vm.runInNewContext(source.slice(start,end)+"\nrenderTeamDay",ctx);
   fn(host);
   assert.match(host.innerHTML,/PENDENTE DE FECHAMENTO/);
+  assert.match(host.innerHTML,/<progress max="100" value="40"/);
+  assert.match(host.innerHTML,/Não pagamentos \(1\)/);
+  assert.match(host.innerHTML,/Cliente da venda selecionado/);
+  assert.doesNotMatch(host.innerHTML,/Cliente da venda anterior/);
+  handlers["[data-cx-team-records]|change"]({target:{value:"nao-pagamentos"}});
+  fn(host);
+  assert.match(host.innerHTML,/Cliente da visita selecionado/);
+  assert.match(host.innerHTML,/Sem retorno/);
+  assert.doesNotMatch(host.innerHTML,/Cliente da venda selecionado/);
   const onClose=handlers["[data-cx-team-close]|click"];
   assert.equal(typeof onClose,"function");
   await onClose();
   assert.deepEqual(captured,["selecionado"],"Não fechar caixa anterior fora do dia selecionado");
   assert.equal(opened,"equipe-1");
+});
+
+function carregarJornadaClientes(window = {}) {
+  const vm = require("node:vm");
+  const source = fs.readFileSync(path.join(root, "js/modules/caixas-supervisao.js"), "utf8");
+  const seller = fs.readFileSync(path.join(root, "js/vendedor-operacao.js"), "utf8");
+  vm.runInNewContext(seller, { window });
+  const withTests = source.replace("global.IntegroCaixasSupervisao = {", "global.IntegroCaixasSupervisao = {consultarClientesJornada,montarClientesJornada,registrosDeClientes,historicoClienteJornada,scoreClienteJornada,");
+  vm.runInNewContext(withTests, { window });
+  return window.IntegroCaixasSupervisao;
+}
+
+test("M12: clientes de caixa encerrado usam as baixas da jornada e o histórico real do contrato", () => {
+  const {montarClientesJornada,registrosDeClientes,historicoClienteJornada} = carregarJornadaClientes();
+  const vendasAntigas = Array.from({length:32}, (_, i) => ({id:`antiga-${i}`,clienteId:"legado-a",dataVenda:`2025-01-${String(i % 28 + 1).padStart(2,'0')}`,statusVenda:"QUITADA"}));
+  const vendas = [...vendasAntigas, {id:"atual",clienteId:"legado-a",clienteOperacionalId:"a",clienteNome:"Alice",dataVenda:"2026-10-01",
+    valorEmprestadoCentavos:100000,valorTotalVendaCentavos:120000,totalPagoCentavos:50000,saldoDevedorCentavos:70000},
+    {id:"seguinte",clienteOperacionalId:"a",dataVenda:"2026-11-18"},
+    {id:"b1",clienteId:"b",clienteNome:"Bruno",dataVenda:"2026-10-01"},
+    {id:"c1",clienteId:"c",clienteNome:"Carla",dataVenda:"2026-10-01"}];
+  const items = [{box:{id:"caixa-antigo",status:"FECHADO"},m:{
+    payments:[{id:"p1",vendaId:"atual",valorRecebidoCentavos:12500},{id:"p2",vendaId:"atual",valorPagoCentavos:2500}],
+    visits:[{vendaId:"atual",tipo:"NAO_PAGAMENTO"},{vendaId:"b1",semBaixaGerencial:true},
+      {vendaId:"d1",tipo:"VISITA"}],
+    fechamento:{snapshotAuditoria:{pendenciasCobrancas:[{vendaId:"c1",clienteId:"c"}]}}
+  }}];
+  const registros = registrosDeClientes(items);
+  const {clientes} = montarClientesJornada({items,registros,clientes:[],vendas,parcelas:[
+    {vendaId:"atual",vencimento:"2026-11-20",valorParcelaCentavos:6000,valorPagoCentavos:2000},
+    {vendaId:"atual",vencimento:"2026-10-30",valorParcelaCentavos:6000,valorPagoCentavos:6000}
+  ],data:"2026-10-30",hoje:"2026-11-24",historicoCompleto:true});
+  const [alice,bruno,carla] = clientes;
+  assert.deepEqual([alice.nome,alice.numero,alice.status,alice.pagoDia,alice.pagoContrato,alice.saldo,alice.atraso],
+    ["Alice",33,"recebidos",15000,50000,70000,4]);
+  assert.equal(alice.historico.length,34);
+  assert.match(historicoClienteJornada(alice), /33º empréstimo · Jornada selecionada/);
+  assert.equal(bruno.status,"nao-pagos");
+  assert.equal(bruno.motivo,"Sem baixa gerencial");
+  assert.equal(carla.status,"pendentes");
+  assert.equal(clientes.length,3);
+});
+
+test("M12: consulta da carteira inclui somente cobranças previstas e mantém o histórico no escopo autorizado", async () => {
+  const empresa = "empresa",equipe = "equipe",vendedor = "vendedor";
+  const cliente = (id, nome) => ({id,nome,clientePlataformaId:empresa,equipeId:equipe,vendedorId:vendedor});
+  const venda = (id, clienteId, dataPrimeiraCobranca) => ({id,clienteId,dataPrimeiraCobranca,clientePlataformaId:empresa,equipeId:equipe,
+    dataVenda:"2026-11-01",statusVenda:"ATIVA",saldoDevedorCentavos:25000,valorParcelaCentavos:10000});
+  const records = {
+    clientes_operacionais:[cliente("a","Alice"),cliente("b","Bruno")],
+    vendas:[venda("a1","a","2026-11-24"),venda("b1","b","2026-11-25"),
+      {...venda("outra-equipe","a","2026-11-24"),equipeId:"outra"},
+      {...venda("outra-empresa","a","2026-11-24"),clientePlataformaId:"outra"}],
+    parcelas:[]
+  };
+  const consultas = [];
+  const makeQuery = (colecao, where = []) => ({
+    where: (...clause) => makeQuery(colecao,[...where,clause]),
+    limit: () => makeQuery(colecao,where),
+    get: async (options) => {
+      consultas.push({colecao,where,options});
+      const rows = records[colecao].filter(v => where.every(([campo,op,valor]) => op === "in" ? valor.includes(v[campo]) : v[campo] === valor));
+      return {docs:rows.map(v => ({id:v.id,data:() => v}))};
+    }
+  });
+  const window = { db:{collection:makeQuery}, State:{getTenantId:() => empresa}, IntegroAcesso:{acessoUsuario:() => ({perfil:"supervisor"})} };
+  const {consultarClientesJornada} = carregarJornadaClientes(window);
+  const box = {id:"caixa",status:"ABERTO",vendedorId:vendedor,clientePlataformaId:empresa};
+  const {clientes,rotas} = await consultarClientesJornada([{box,m:{sales:[],payments:[],visits:[]}}],equipe,"2026-11-24","2026-11-24");
+  assert.equal(clientes.length,1);
+  assert.deepEqual([clientes[0].nome,clientes[0].status,clientes[0].numero,clientes[0].historico.length],["Alice","pendentes",0,1]);
+  assert.equal(rotas.get("caixa").expected,10000);
+  assert.equal(rotas.get("caixa").clients,1);
+  assert.equal(clientes[0].score.historicoDaEquipe,true);
+  assert.equal(clientes[0].score.nota,null);
+  for (const {where,options} of consultas) {
+    assert.equal(options.source,"server");
+    assert.ok(where.some(([f,op,v]) => f === "clientePlataformaId" && op === "==" && v === empresa));
+    assert.ok(where.some(([f,op,v]) => f === "equipeId" && op === "==" && v === equipe));
+  }
+});
+
+test("M12: score confronta prazo e quitação e recalcula atraso em aberto a cada data", () => {
+  const {scoreClienteJornada,historicoClienteJornada} = carregarJornadaClientes();
+  const contrato = (id, saldo) => ({id,dataVenda:"2026-10-01",quantidadeParcelas:1,saldoDevedorCentavos:saldo});
+  const parcela = (previsto, pago) => ({vencimento:previsto,valorCentavos:10000,valorPagoCentavos:pago?10000:0,
+    statusParcela:pago?"PAGA":"PENDENTE",dataPagamento:pago});
+  const vendas = [contrato("adiantado",0),contrato("atrasado",0),contrato("em-aberto",10000),contrato("em-dia",10000),
+    {...contrato("sem-data",0),atualizadoEm:"2026-10-22"},contrato("incompleto",10000)];
+  const parcelas = new Map([
+    ["adiantado",[parcela("2026-10-21","2026-10-18")]],
+    ["atrasado",[parcela("2026-10-21","2026-10-26T01:30:00Z")]],
+    ["em-aberto",[parcela("2026-10-21")]],
+    ["em-dia",[parcela("2026-11-21")]],
+    ["sem-data",[{...parcela("2026-10-21"),statusParcela:"PAGA",valorPagoCentavos:10000}]]
+  ]);
+  const score = scoreClienteJornada(vendas,parcelas,"2026-10-29",false);
+  assert.equal(score.nota,80);
+  assert.equal(score.avaliados,3);
+  assert.deepEqual(Array.from(score.prazos,([id,p])=>[id,p.previsto,p.real,p.decorridos,p.pontos]),[
+    ["adiantado",20,17,null,100],["atrasado",20,24,null,80],["em-aberto",20,null,28,60],
+    ["em-dia",51,null,28,null],["sem-data",20,null,null,null],["incompleto",null,null,28,null]
+  ]);
+  assert.equal(scoreClienteJornada(vendas,parcelas,"2026-10-30",false).nota,78);
+  assert.equal(scoreClienteJornada(vendas,parcelas,"2026-12-01",false).prazos.get("em-aberto").pontos,0);
+  const dialog = historicoClienteJornada({historico:vendas,historicoCompleto:true,score});
+  assert.match(dialog,/Prazo previsto<\/dt><dd>20 dias/);
+  assert.match(dialog,/Quitado em<\/dt><dd>17 dias/);
+  assert.match(dialog,/3 de 6 contratos avaliados/);
+});
+
+test("M12: cronograma mantém parcelas pendentes e usa as parcelas dos contratos anteriores", async () => {
+  const empresa = "empresa",equipe = "equipe";
+  const venda = {id:"atual",clienteId:"cliente",clienteNome:"Alice",clientePlataformaId:empresa,equipeId:equipe,
+    dataVenda:"2026-10-01",quantidadeParcelas:2,saldoDevedorCentavos:10000};
+  const anterior = {...venda,id:"anterior",dataVenda:"2026-09-01",quantidadeParcelas:1,saldoDevedorCentavos:0};
+  const parcela = (id,vendaId,vencimento,status,extras={})=>({id,vendaId,vencimento,status,valorCentavos:10000,
+    clientePlataformaId:empresa,equipeId:equipe,...extras});
+  const records = {vendas:[venda,anterior],clientes_operacionais:[{id:"cliente",clientePlataformaId:empresa,equipeId:equipe}],parcelas:[
+    parcela("a","atual","2026-10-21","PAGA",{dataPagamento:"2026-10-21",valorPagoCentavos:10000}),
+    parcela("b","atual","2026-10-31","PENDENTE",{valorPagoCentavos:0}),
+    parcela("c","atual","2026-12-01","CANCELADA"),
+    parcela("d","anterior","2026-09-21","PAGA",{dataPagamento:"2026-09-21",valorPagoCentavos:10000})]};
+  const consulta = (colecao,criterios=[])=>({
+    where:(...filtro)=>consulta(colecao,[...criterios,filtro]),limit:()=>consulta(colecao,criterios),
+    get:async()=>({docs:records[colecao].filter(doc=>criterios.every(([campo,op,valor])=>
+      op==="in"?valor.includes(doc[campo]):doc[campo]===valor)).map(doc=>({id:doc.id,data:()=>doc}))})
+  });
+  const window = {db:{collection:consulta},State:{getTenantId:()=>empresa},
+    firebase:{firestore:{FieldPath:{documentId:()=>"id"}}},IntegroAcesso:{acessoUsuario:()=>({perfil:"master_local"})}};
+  const {consultarClientesJornada} = carregarJornadaClientes(window);
+  const items = [{box:{status:"FECHADO"},m:{sales:[venda],payments:[{vendaId:"atual",valorPagoCentavos:10000}],visits:[]}}];
+  const {clientes:[cliente]} = await consultarClientesJornada(items,equipe,"2026-10-21","2026-11-06");
+  assert.equal(cliente.score.nota,90);
+  assert.equal(cliente.score.prazos.get("atual").previsto,30);
+  assert.equal(cliente.score.prazos.get("anterior").real,20);
 });

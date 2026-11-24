@@ -92,6 +92,45 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Navegador.** Login e navegação conferidos no Chromium em dez larguras entre 320 e 1920 px. Busca, estado vazio, limpeza, filtro e abertura do editor conferidos com registros de teste em memória devido à instabilidade da leitura do Firestore no emulador.
 - **Estado.** Em homologação. Ainda falta conferir a consulta com dados reais de homologação em celular e desktop.
 
+### M12 — Lista de equipes em Caixas no desktop (24/11/2026)
+
+- **Layout.** Um cartão horizontal por equipe, com indicadores mais baixos e acesso ao histórico junto ao resumo. Recebimentos e Recolhimentos foram incluídos no desktop e usam os dados conferidos da jornada.
+- **Filtros.** Ativas, Inativas e Todas ficam dentro de Filtros, junto da seleção de equipe e do estado do caixa. Limpar filtros retorna à consulta inicial de equipes ativas.
+- **Verificação.** Passaram os 848 testes de `npm run verify`. No Chromium autenticado no emulador, a lista ficou em uma coluna em nove larguras entre 320 e 1920 px. Foram conferidos os filtros de situação, a limpeza, a busca e a abertura do histórico.
+- **Estado.** Em homologação. Conferir os valores com jornadas reais no Master Local.
+
+### M12 — Resumo da jornada no cartão de Caixas (24/11/2026)
+
+- **Saldos e movimentações.** Caixa Atual em destaque, com Inicial e Final no mesmo bloco. O Final usa o valor de fechamento quando a jornada está fechada. Vendas, recebimentos, gastos, retiros, ingressos e recolhimentos usam os lançamentos conferidos da jornada exibida.
+- **Acompanhamento.** O card mostra o estado do caixa, a quantidade de caixas confirmados no histórico da equipe e o horário da última consulta bem-sucedida ao servidor. O progresso é calculado sobre as cobranças tratadas e previstas da jornada.
+- **Refinamento visual.** Caixa Atual ganha hierarquia tipográfica, as seis movimentações compartilham um painel e o rodapé alinha contagens, sincronização, progresso e histórico. A leitura foi conferida em 11 larguras entre 320 e 1920 px no Chromium, com registros simulados, valores longos e progresso visível.
+- **Ajuste de composição.** O cabeçalho do cartão exibe o nome da equipe. No desktop, o bloco de saldo acompanha a altura das movimentações e do rodapé. A data operacional aparece imediatamente antes de Caixas no histórico. A posição da data e a leitura do cartão foram conferidas no Chromium em 11 larguras com registros simulados.
+- **Verificação.** Passaram os 848 testes de `npm run verify`. Os testes do cartão cobrem jornada aberta e fechada, valores ausentes em histórico parcial e progresso ponderado por cobranças. No Chromium, layout e filtros passaram em nove larguras de 320 a 1920 px. A leitura individual dos caixas no emulador ficou em conferência, com contagem, status e sincronização da listagem verificados.
+- **Estado.** Em homologação. A conferência com jornadas reais permanece pendente.
+
+### M12 — Detalhe da jornada da equipe em Caixas (24/11/2026)
+
+- **Layout.** Saldo atual ou final em azul-marinho, com painéis de carteira e desempenho de cobranças. Entradas e saídas têm indicadores coloridos. Caixas dos vendedores e movimentações aparecem lado a lado quando há espaço.
+- **Movimentações.** A data selecionada delimita os registros. O filtro separa vendas, recebimentos, não pagamentos registrados, ingressos, saídas e outros lançamentos. Jornadas fechadas carregam os lançamentos ao abrir o detalhe.
+- **Verificação.** Passaram os 848 testes de `npm run verify`. No Chromium, a apresentação foi conferida com registros simulados em 12 larguras entre 320 e 1920 px, incluindo o filtro de não pagamentos e a exibição de uma jornada fechada.
+- **Estado.** Em homologação com jornadas reais no Master Local.
+
+### M12 — Indicadores e clientes clicáveis na jornada de Caixas (24/11/2026)
+
+- **Indicadores.** Saldo e carteira abrem a composição e o detalhamento. Desempenho leva aos clientes da data. Cada indicador financeiro abre seu tipo de lançamento, com retiradas e recolhimentos em consultas próprias.
+- **Clientes.** Recebidos, Não pagos e Pendentes substituem a lista de caixas por vendedor. A situação acompanha a data selecionada. Cada card mostra o número do empréstimo calculado pelo histórico autorizado, venda com e sem juros, pagamento da jornada e do contrato, saldo devedor e atraso atuais. O histórico abre na própria tela.
+- **Consulta.** Caixas encerrados usam recebimentos, não pagamentos e pendências registrados no caixa selecionado. Caixas abertos usam a carteira da equipe para localizar cobranças previstas. As leituras preservam o escopo de empresa e, para supervisores, de equipe.
+- **Verificação.** Passaram 58 testes direcionados. No Chromium, foram conferidos os nove indicadores, as três situações de cobrança e um histórico de 33 empréstimos com registros simulados, incluindo navegação por teclado, troca para uma jornada encerrada e layout entre 320 e 1920 px.
+- **Estado.** Em homologação com jornadas reais do Master Local.
+
+### M12 — Clientes em lista e score de pagamento na jornada (24/11/2026)
+
+- **Layout.** Um cliente por linha em Recebidos, Não pagos e Pendentes, com o score atual no card e o cálculo no histórico de vendas.
+- **Cálculo.** Compara os dias corridos entre a contratação e o último vencimento do cronograma com os dias até a quitação confirmada. Quitação até o prazo vale 100. O atraso reduz a nota na proporção dos dias de atraso sobre o prazo contratado, com piso de zero. Para contratos em aberto, conta o maior atraso entre as parcelas em aberto. A média inclui os contratos quitados e os contratos com atraso confirmado. O histórico mostra quantos contratos foram avaliados.
+- **Atualização.** O cálculo usa a data de São Paulo, ao consultar a jornada e à virada do dia para uma jornada que permaneça aberta. Usa as parcelas e o histórico disponíveis no escopo autorizado, sem gravar no Firebase.
+- **Verificação.** Passaram 60 testes direcionados. O Chromium confirmou a coluna única em 12 larguras, a comparação entre prazo e quitação no histórico e a mudança do score após a meia-noite, com dados simulados.
+- **Estado.** Em homologação com contratos reais no Master Local.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.
