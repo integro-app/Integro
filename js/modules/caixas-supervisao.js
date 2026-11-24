@@ -95,6 +95,7 @@
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
   let clientesJornada = null;
+  let viradaScoreJornada = null;
   const filtrosClientesJornada = [
     ['recebidos','Recebidos','green'],['nao-pagos','Não pagos','rose'],['pendentes','Pendentes','amber']
   ];
@@ -1180,6 +1181,70 @@
   const naoPagamento = v => v.semBaixaGerencial===true || [v.tipo,v.tipoHistorico,v.acao,v.status,v.resultado]
     .some(valor=>['NAO_PAGAMENTO','NAO_PAGO'].includes(upper(valor)));
 
+  const diaSaoPaulo = new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',year:'numeric',month:'2-digit',day:'2-digit'});
+  const horaSaoPaulo = new Intl.DateTimeFormat('en-GB',{timeZone:'America/Sao_Paulo',hourCycle:'h23',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const incluirParcelaJornada = p => {
+    const status=upper(p.statusParcela||p.status);
+    return p.ativo!==false&&!['CANCELADO','CANCELADA','ESTORNADO','ESTORNADA'].includes(status)&&
+      effective({...p,status:status==='PENDENTE'?'':status,statusSync:p.statusSync||p.syncStatus});
+  };
+  function diaDoContrato(valor){
+    const br=text(valor).match(/^(\d{2})\/(\d{2})\/(\d{4})(?:$|[ T])/);
+    const data=br?`${br[3]}-${br[2]}-${br[1]}`:valor;
+    if(typeof data==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(data)){
+      const ms=Date.parse(data);
+      return Number.isFinite(ms)&&new Date(ms).toISOString().slice(0,10)===data?data:'';
+    }
+    const ms=valor instanceof Date?valor.getTime():stampMillis(data);
+    return ms&&Number.isFinite(ms)?diaSaoPaulo.format(ms):'';
+  }
+  const diferencaDias = (inicio,fim) => Math.round((Date.parse(fim)-Date.parse(inicio))/86400000);
+  const vencimentoParcela = p => p.vencimento||p.dataVencimento||p.dataPrevista||p.dataCobranca;
+  function parcelaQuitadaNoScore(p){
+    const pago=amount(p,['valorPago'],null),valor=amount(p,['valorParcela','valor','valorPrevisto'],null);
+    if(pago!=null&&valor!=null&&valor>0)return pago>=valor;
+    return ['PAGA','PAGO','QUITADA','QUITADO'].includes(upper(p.statusParcela||p.status));
+  }
+
+  function prazoDoEmprestimo(venda,parcelas,hoje){
+    const inicio=diaDoContrato(vendaData(venda)||venda.dataOperacional||venda.data);
+    const vencimentos=parcelas.map(p=>diaDoContrato(vencimentoParcela(p)));
+    const quantidade=Number(venda.quantidadeParcelas||venda.numeroParcelas||parcelas[0]?.totalParcelas);
+    const cronogramaCompleto=quantidade>0&&quantidade===vencimentos.length&&vencimentos.every(d=>d&&d>=inicio);
+    const vencimento=cronogramaCompleto?vencimentos.slice().sort().at(-1):'';
+    const previsto=inicio&&vencimento?diferencaDias(inicio,vencimento):null;
+    const saldo=amount(venda,['saldoDevedor','saldoAtual','valorAberto'],null);
+    const status=upper(venda.statusVenda||venda.status);
+    if(!inicio||inicio>hoje)return {previsto:null,real:null,decorridos:null,atraso:null,pontos:null};
+
+    let quitacao='';
+    const quitado=saldo===0||(saldo==null&&['QUITADO','QUITADA'].includes(status));
+    if(quitado){
+      quitacao=diaDoContrato(venda.quitadoEm||venda.dataQuitacao||venda.ultimaDataPagamento);
+      if(!quitacao&&cronogramaCompleto&&parcelas.every(parcelaQuitadaNoScore)){
+        const baixas=parcelas.map(p=>diaDoContrato(p.dataPagamento||p.pagoEm));
+        if(baixas.every(d=>d&&d>=inicio&&d<=hoje))quitacao=baixas.sort().at(-1);
+      }
+      if(quitacao<inicio||quitacao>hoje)quitacao='';
+    }
+    const real=quitacao?diferencaDias(inicio,quitacao):null;
+    const emAberto=saldo>0&&!['QUITADO','QUITADA','FINALIZADO','FINALIZADA','ENCERRADO','ENCERRADA','RENEGOCIADO','RENEGOCIADA'].includes(status);
+    const decorridos=emAberto?diferencaDias(inicio,hoje):null;
+    const atraso=previsto==null?null:real!=null?Math.max(0,real-previsto):emAberto?
+      parcelas.reduce((maior,p,i)=>!parcelaQuitadaNoScore(p)&&vencimentos[i]<hoje?
+        Math.max(maior,diferencaDias(vencimentos[i],hoje)):maior,Math.max(0,decorridos-previsto)):null;
+    const pontos=atraso==null||(real==null&&atraso===0)?null:
+      Math.round(100*Math.max(0,1-atraso/Math.max(previsto,1)));
+    return {previsto,real,decorridos,atraso,pontos};
+  }
+
+  function scoreClienteJornada(historico,parcelasPorVenda,hoje,historicoDaEquipe){
+    const prazos=new Map(historico.map(v=>[id(v),prazoDoEmprestimo(v,parcelasPorVenda.get(id(v))||[],hoje)]));
+    const pontuados=[...prazos.values()].filter(p=>p.pontos!=null);
+    const nota=pontuados.length?Math.round(pontuados.reduce((soma,p)=>soma+p.pontos,0)/pontuados.length):null;
+    return {nota,prazos,avaliados:pontuados.length,hoje,historicoDaEquipe};
+  }
+
   async function buscarRegistrosJornada(colecao, campos, valores, equipeId) {
     const chaves=[...new Set(valores.filter(Boolean))];
     if(!chaves.length)return [];
@@ -1196,7 +1261,8 @@
         registros.push(...snap.docs.map(doc=>({...doc.data(),id:doc.id})));
       }
     }
-    return unique(registros).filter(v=>tenantOf(v)===empresa&&effective(v));
+    const aceitar=colecao==='parcelas'?incluirParcelaJornada:effective;
+    return unique(registros).filter(v=>tenantOf(v)===empresa&&aceitar(v));
   }
 
   function listaFechamento(fechamento,chave){
@@ -1296,7 +1362,7 @@
       const saldo=amount(v,['saldoDevedor','saldoAtual','valorAberto'],null);
       const partes=v?parcelasVenda.get(id(v))||[]:[];
       const dias=partes.reduce((max,p)=>{
-        const vencimento=day(p.vencimento||p.dataVencimento||p.dataPrevista||p.dataCobranca);
+        const vencimento=day(vencimentoParcela(p));
         const restante=amount(p,['valorParcela','valor','valorPrevisto'],null);
         if(!vencimento||vencimento>=hoje||restante==null||['PAGA','PAGO','QUITADA','QUITADO'].includes(upper(p.statusParcela||p.status))||
           restante<=amount(p,['valorPago']))return max;
@@ -1336,11 +1402,44 @@
     const idsParcelas=vendas.filter(v=>idsHistorico.has(id(v))||
       (abertos.length&&amount(v,['saldoDevedor','saldoAtual','valorAberto'])>0)).map(id);
     const parcelas=await buscarRegistrosJornada('parcelas',['vendaId'],idsParcelas,equipeId);
-    return montarClientesJornada({items,registros,clientes,vendas,parcelas,data,hoje,historicoCompleto:access().perfil!=='supervisor'});
+    const historicoDaEquipe=access().perfil==='supervisor';
+    const resultado=montarClientesJornada({items,registros,clientes,vendas,parcelas,data,hoje,historicoCompleto:!historicoDaEquipe});
+    const consultados=new Set(idsParcelas);
+    const contratosAnteriores=resultado.clientes.flatMap(c=>c.historico.map(id)).filter(chave=>!consultados.has(chave));
+    try{
+      const anteriores=await buscarRegistrosJornada('parcelas',['vendaId'],contratosAnteriores,equipeId);
+      const porVenda=new Map();
+      for(const p of [...parcelas,...anteriores]){
+        const chave=vendaRef(p),lista=porVenda.get(chave)||[];
+        lista.push(p);
+        porVenda.set(chave,lista);
+      }
+      for(const c of resultado.clientes)c.score=scoreClienteJornada(c.historico,porVenda,hoje,historicoDaEquipe);
+    }catch{
+      for(const c of resultado.clientes)c.score={indisponivel:true};
+    }
+    return resultado;
   }
 
-  function estadoClientesJornada(items,data,hoje){
-    const chave=JSON.stringify([ui.context,ui.detail,ui.revision,data,items.map(({box})=>[id(box),box.atualizadoEm,box.status])]);
+  function agendarViradaDoScore(host){
+    if(!global.setTimeout||viradaScoreJornada?.host===host)return;
+    if(viradaScoreJornada)global.clearTimeout(viradaScoreJornada.timer);
+    const [hora,minuto,segundo]=horaSaoPaulo.format(new Date()).split(':').map(Number);
+    const espera=(86400-hora*3600-minuto*60-segundo)*1000+100;
+    const timer=global.setTimeout(()=>{
+      viradaScoreJornada=null;
+      if(host.isConnected&&host.closest('#caixas.active')&&ui.detail&&!ui.box&&host.querySelector('.cx-team-detail')){
+        const dialog=host.querySelector('[data-cx-journey-dialog][open]');
+        if(dialog)dialog.addEventListener('close',render,{once:true});
+        else render();
+      }
+    },espera);
+    viradaScoreJornada={host,timer};
+  }
+
+  function estadoClientesJornada(items,data,hoje,host){
+    if(items.length)agendarViradaDoScore(host);
+    const chave=JSON.stringify([ui.context,ui.detail,ui.revision,data,hoje,items.map(({box})=>[id(box),box.atualizadoEm,box.status])]);
     if(clientesJornada?.chave===chave)return clientesJornada;
     const equipe=ui.detail;
     const contexto=ui.context;
@@ -1363,6 +1462,8 @@
 
   const dadosJornada = pares => `<dl class="cx-journey-data">${pares.map(([rotulo,valor])=>
     `<div><dt>${rotulo}</dt><dd>${esc(valor)}</dd></div>`).join('')}</dl>`;
+  const diasTexto = dias => dias==null?'Não registrado':`${dias} ${dias===1?'dia':'dias'}`;
+  const resumoScore = score => score?.nota!=null?`${score.nota}/100`:score?.indisponivel?'Indisponível':'Sem base de cálculo';
   const linkIndicadorJornada = (destino,label) => `<button type="button" class="cx-journey-indicator-link" data-cx-indicator="${destino}"
     aria-label="${label}"><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button>`;
 
@@ -1378,10 +1479,11 @@
       ${ativo.key==='pendentes'&&semPendenciasHistoricas?'<p class="cx-team-empty">Há caixas encerrados sem lista de pendências registrada.</p>':''}
       ${ativo.lista.length?`<div class="cx-journey-client-grid">${ativo.lista.map(c=>`<article class="cx-journey-client" data-cx-tone="${ativo.cor}">
         <header><div><h4>${esc(c.nome||'Cliente')}</h4><small>${c.numero?`${c.numero}º empréstimo`:'Ordem do empréstimo indisponível'}</small></div>
+          <div class="cx-journey-score"><span>Score atual</span><strong>${resumoScore(c.score)}</strong></div>
           <button type="button" class="cx-journey-indicator-link" data-cx-client="${esc(c.chave)}"
             aria-label="Histórico de vendas de ${esc(c.nome||'Cliente')}"><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button></header>
         ${dadosJornada([['Valor da venda',cash(c.principal)],['Venda com juros',cash(c.contratado)],['Pago na jornada',cash(c.pagoDia)],
-          ['Pago no contrato',cash(c.pagoContrato)],['Saldo devedor atual',cash(c.saldo)],['Atraso atual',c.atraso==null?'Não registrado':`${c.atraso} ${c.atraso===1?'dia':'dias'}`]])}
+          ['Pago no contrato',cash(c.pagoContrato)],['Saldo devedor atual',cash(c.saldo)],['Atraso atual',diasTexto(c.atraso)]])}
         ${c.status==='nao-pagos'&&c.motivo?`<p class="cx-journey-client-note">${esc(c.motivo)}</p>`:''}
       </article>`).join('')}</div>`:'<p class="cx-team-empty">Nenhum cliente nesta situação para a data selecionada.</p>'}`;
   }
@@ -1399,14 +1501,24 @@
 
   function historicoClienteJornada(cliente){
     if(!cliente.historico.length)return '<p class="cx-team-empty">Nenhuma venda vinculada ao cliente foi localizada.</p>';
-    return `<ol class="cx-journey-history">${cliente.historico.slice().reverse().map((v,indice)=>{
+    const score=cliente.score;
+    const resumo=score?`<section class="cx-journey-score-detail" aria-label="Cálculo do score"><div class="cx-journey-score">
+      <span>Score atual</span><strong>${resumoScore(score)}</strong></div>
+      ${score.indisponivel?'<p>Não foi possível consultar as parcelas do histórico. Use Atualizar na jornada para tentar novamente.</p>':
+        `<p><strong>${score.avaliados} de ${cliente.historico.length} contratos avaliados</strong> · ${dateBR(score.hoje)}${score.historicoDaEquipe?' · Histórico da equipe':''}</p>
+        <p>Quitações até o prazo valem 100. O atraso reduz a nota proporcionalmente ao prazo do contrato. A média inclui quitações e contratos em aberto com parcelas vencidas.</p>`}</section>`:'';
+    return `${resumo}<ol class="cx-journey-history">${cliente.historico.slice().reverse().map((v,indice)=>{
       const numero=cliente.historico.length-indice;
       const status=upper(v.statusVenda||v.statusFinanceiro||v.status);
+      const prazo=score?.prazos?.get(id(v));
       return `<li><div><strong>${cliente.historicoCompleto?`${numero}º empréstimo`:'Empréstimo'}${id(v)===id(cliente.venda)?' · Jornada selecionada':''}</strong>
         <small>${dateBR(vendaData(v))}${status?` · ${esc(status)}`:''}</small></div>
         ${dadosJornada([['Valor da venda',cash(amount(v,['valorEmprestado','valorLiberado','valorPrincipal','valorVenda','valor'],null))],
           ['Venda com juros',cash(amount(v,['valorTotalVenda','valorTotal','valorContrato'],null))],
-          ['Valor pago atual',cash(amount(v,['totalPago','valorPago'],null))],['Saldo devedor atual',cash(amount(v,['saldoDevedor','saldoAtual','valorAberto'],null))]])}</li>`;
+          ['Valor pago atual',cash(amount(v,['totalPago','valorPago'],null))],['Saldo devedor atual',cash(amount(v,['saldoDevedor','saldoAtual','valorAberto'],null))],
+          ['Prazo previsto',diasTexto(prazo?.previsto)],
+          prazo?.decorridos!=null?['Dias em aberto',diasTexto(prazo.decorridos)]:['Quitado em',diasTexto(prazo?.real)],
+          ['Atraso no score',diasTexto(prazo?.atraso)],['Nota do contrato',prazo?.pontos!=null?`${prazo.pontos}/100`:'Sem base de cálculo']])}</li>`;
     }).join('')}</ol>`;
   }
   function renderTeamDay(host) {
@@ -1434,10 +1546,9 @@
       items.some(item=>item.m[key]==null)?'Não registrado':
       cash(items.reduce((sum,item)=>sum+num(item.m[key]),0));
     const aberto=boxes.some(openBox);
-    const diaAtual=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',
-      year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    const diaAtual=diaSaoPaulo.format(new Date());
     const pendenteAnterior=aberto&&selectedDay&&selectedDay<diaAtual;
-    const estado=registrosConferidos?estadoClientesJornada(items,selectedDay,diaAtual):null;
+    const estado=registrosConferidos?estadoClientesJornada(items,selectedDay,diaAtual,host):null;
     const exigeRevisao=boxes.some(box=>['ABERTO','REABERTO'].includes(upper(box.status))&&box.ativo===false)||
       boxes.some(box=>upper(box.status)==='DIVERGENTE');
     const podeAbrir=row.ativa&&podeGerir('abrir');

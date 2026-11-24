@@ -123,6 +123,14 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Verificação.** Passaram 58 testes direcionados. No Chromium, foram conferidos os nove indicadores, as três situações de cobrança e um histórico de 33 empréstimos com registros simulados, incluindo navegação por teclado, troca para uma jornada encerrada e layout entre 320 e 1920 px.
 - **Estado.** Em homologação com jornadas reais do Master Local.
 
+### M12 — Clientes em lista e score de pagamento na jornada (24/11/2026)
+
+- **Layout.** Um cliente por linha em Recebidos, Não pagos e Pendentes, com o score atual no card e o cálculo no histórico de vendas.
+- **Cálculo.** Compara os dias corridos entre a contratação e o último vencimento do cronograma com os dias até a quitação confirmada. Quitação até o prazo vale 100. O atraso reduz a nota na proporção dos dias de atraso sobre o prazo contratado, com piso de zero. Para contratos em aberto, conta o maior atraso entre as parcelas em aberto. A média inclui os contratos quitados e os contratos com atraso confirmado. O histórico mostra quantos contratos foram avaliados.
+- **Atualização.** O cálculo usa a data de São Paulo, ao consultar a jornada e à virada do dia para uma jornada que permaneça aberta. Usa as parcelas e o histórico disponíveis no escopo autorizado, sem gravar no Firebase.
+- **Verificação.** Passaram 60 testes direcionados. O Chromium confirmou a coluna única em 12 larguras, a comparação entre prazo e quitação no histórico e a mudança do score após a meia-noite, com dados simulados.
+- **Estado.** Em homologação com contratos reais no Master Local.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

@@ -975,6 +975,7 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   let captured=null,opened=null;
   const ctx={
     Intl,Date,ui,overview,verifiedBoxes,estrutura:{caixasChecked:true,caixasError:""},
+    diaSaoPaulo:new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Sao_Paulo"}),
     rows:()=>[{id:"equipe-1",nome:"Equipe 1",ativa:true,vendedores:[]}],
     teamBoxes:(row,list)=>list,boxDay:box=>box.dataOperacional,dateBR:x=>x,
     text:x=>String(x??"").trim(),id:box=>box.id,esc:x=>String(x??""),
@@ -1016,7 +1017,7 @@ function carregarJornadaClientes(window = {}) {
   const source = fs.readFileSync(path.join(root, "js/modules/caixas-supervisao.js"), "utf8");
   const seller = fs.readFileSync(path.join(root, "js/vendedor-operacao.js"), "utf8");
   vm.runInNewContext(seller, { window });
-  const withTests = source.replace("global.IntegroCaixasSupervisao = {", "global.IntegroCaixasSupervisao = {consultarClientesJornada,montarClientesJornada,registrosDeClientes,historicoClienteJornada,");
+  const withTests = source.replace("global.IntegroCaixasSupervisao = {", "global.IntegroCaixasSupervisao = {consultarClientesJornada,montarClientesJornada,registrosDeClientes,historicoClienteJornada,scoreClienteJornada,");
   vm.runInNewContext(withTests, { window });
   return window.IntegroCaixasSupervisao;
 }
@@ -1081,9 +1082,67 @@ test("M12: consulta da carteira inclui somente cobranças previstas e mantém o 
   assert.deepEqual([clientes[0].nome,clientes[0].status,clientes[0].numero,clientes[0].historico.length],["Alice","pendentes",0,1]);
   assert.equal(rotas.get("caixa").expected,10000);
   assert.equal(rotas.get("caixa").clients,1);
+  assert.equal(clientes[0].score.historicoDaEquipe,true);
+  assert.equal(clientes[0].score.nota,null);
   for (const {where,options} of consultas) {
     assert.equal(options.source,"server");
     assert.ok(where.some(([f,op,v]) => f === "clientePlataformaId" && op === "==" && v === empresa));
     assert.ok(where.some(([f,op,v]) => f === "equipeId" && op === "==" && v === equipe));
   }
+});
+
+test("M12: score confronta prazo e quitação e recalcula atraso em aberto a cada data", () => {
+  const {scoreClienteJornada,historicoClienteJornada} = carregarJornadaClientes();
+  const contrato = (id, saldo) => ({id,dataVenda:"2026-10-01",quantidadeParcelas:1,saldoDevedorCentavos:saldo});
+  const parcela = (previsto, pago) => ({vencimento:previsto,valorCentavos:10000,valorPagoCentavos:pago?10000:0,
+    statusParcela:pago?"PAGA":"PENDENTE",dataPagamento:pago});
+  const vendas = [contrato("adiantado",0),contrato("atrasado",0),contrato("em-aberto",10000),contrato("em-dia",10000),
+    {...contrato("sem-data",0),atualizadoEm:"2026-10-22"},contrato("incompleto",10000)];
+  const parcelas = new Map([
+    ["adiantado",[parcela("2026-10-21","2026-10-18")]],
+    ["atrasado",[parcela("2026-10-21","2026-10-26T01:30:00Z")]],
+    ["em-aberto",[parcela("2026-10-21")]],
+    ["em-dia",[parcela("2026-11-21")]],
+    ["sem-data",[{...parcela("2026-10-21"),statusParcela:"PAGA",valorPagoCentavos:10000}]]
+  ]);
+  const score = scoreClienteJornada(vendas,parcelas,"2026-10-29",false);
+  assert.equal(score.nota,80);
+  assert.equal(score.avaliados,3);
+  assert.deepEqual(Array.from(score.prazos,([id,p])=>[id,p.previsto,p.real,p.decorridos,p.pontos]),[
+    ["adiantado",20,17,null,100],["atrasado",20,24,null,80],["em-aberto",20,null,28,60],
+    ["em-dia",51,null,28,null],["sem-data",20,null,null,null],["incompleto",null,null,28,null]
+  ]);
+  assert.equal(scoreClienteJornada(vendas,parcelas,"2026-10-30",false).nota,78);
+  assert.equal(scoreClienteJornada(vendas,parcelas,"2026-12-01",false).prazos.get("em-aberto").pontos,0);
+  const dialog = historicoClienteJornada({historico:vendas,historicoCompleto:true,score});
+  assert.match(dialog,/Prazo previsto<\/dt><dd>20 dias/);
+  assert.match(dialog,/Quitado em<\/dt><dd>17 dias/);
+  assert.match(dialog,/3 de 6 contratos avaliados/);
+});
+
+test("M12: cronograma mantém parcelas pendentes e usa as parcelas dos contratos anteriores", async () => {
+  const empresa = "empresa",equipe = "equipe";
+  const venda = {id:"atual",clienteId:"cliente",clienteNome:"Alice",clientePlataformaId:empresa,equipeId:equipe,
+    dataVenda:"2026-10-01",quantidadeParcelas:2,saldoDevedorCentavos:10000};
+  const anterior = {...venda,id:"anterior",dataVenda:"2026-09-01",quantidadeParcelas:1,saldoDevedorCentavos:0};
+  const parcela = (id,vendaId,vencimento,status,extras={})=>({id,vendaId,vencimento,status,valorCentavos:10000,
+    clientePlataformaId:empresa,equipeId:equipe,...extras});
+  const records = {vendas:[venda,anterior],clientes_operacionais:[{id:"cliente",clientePlataformaId:empresa,equipeId:equipe}],parcelas:[
+    parcela("a","atual","2026-10-21","PAGA",{dataPagamento:"2026-10-21",valorPagoCentavos:10000}),
+    parcela("b","atual","2026-10-31","PENDENTE",{valorPagoCentavos:0}),
+    parcela("c","atual","2026-12-01","CANCELADA"),
+    parcela("d","anterior","2026-09-21","PAGA",{dataPagamento:"2026-09-21",valorPagoCentavos:10000})]};
+  const consulta = (colecao,criterios=[])=>({
+    where:(...filtro)=>consulta(colecao,[...criterios,filtro]),limit:()=>consulta(colecao,criterios),
+    get:async()=>({docs:records[colecao].filter(doc=>criterios.every(([campo,op,valor])=>
+      op==="in"?valor.includes(doc[campo]):doc[campo]===valor)).map(doc=>({id:doc.id,data:()=>doc}))})
+  });
+  const window = {db:{collection:consulta},State:{getTenantId:()=>empresa},
+    firebase:{firestore:{FieldPath:{documentId:()=>"id"}}},IntegroAcesso:{acessoUsuario:()=>({perfil:"master_local"})}};
+  const {consultarClientesJornada} = carregarJornadaClientes(window);
+  const items = [{box:{status:"FECHADO"},m:{sales:[venda],payments:[{vendaId:"atual",valorPagoCentavos:10000}],visits:[]}}];
+  const {clientes:[cliente]} = await consultarClientesJornada(items,equipe,"2026-10-21","2026-11-06");
+  assert.equal(cliente.score.nota,90);
+  assert.equal(cliente.score.prazos.get("atual").previsto,30);
+  assert.equal(cliente.score.prazos.get("anterior").real,20);
 });
