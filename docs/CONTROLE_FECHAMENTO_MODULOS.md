@@ -108,6 +108,13 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Verificação.** Passaram os 848 testes de `npm run verify`. Os testes do cartão cobrem jornada aberta e fechada, valores ausentes em histórico parcial e progresso ponderado por cobranças. No Chromium, layout e filtros passaram em nove larguras de 320 a 1920 px. A leitura individual dos caixas no emulador ficou em conferência, com contagem, status e sincronização da listagem verificados.
 - **Estado.** Em homologação. A conferência com jornadas reais permanece pendente.
 
+### M12 — Detalhe da jornada da equipe em Caixas (24/11/2026)
+
+- **Layout.** Saldo atual ou final em azul-marinho, com painéis de carteira e desempenho de cobranças. Entradas e saídas têm indicadores coloridos. Caixas dos vendedores e movimentações aparecem lado a lado quando há espaço.
+- **Movimentações.** A data selecionada delimita os registros. O filtro separa vendas, recebimentos, não pagamentos registrados, ingressos, saídas e outros lançamentos. Jornadas fechadas carregam os lançamentos ao abrir o detalhe.
+- **Verificação.** Passaram os 848 testes de `npm run verify`. No Chromium, a apresentação foi conferida com registros simulados em 12 larguras entre 320 e 1920 px, incluindo o filtro de não pagamentos e a exibição de uma jornada fechada.
+- **Estado.** Em homologação com jornadas reais no Master Local.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

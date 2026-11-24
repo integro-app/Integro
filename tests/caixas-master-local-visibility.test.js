@@ -717,7 +717,7 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
   assert.match(detail,/rows\(true\)\.find/);
   assert.match(detail,/Data da jornada/);
   assert.match(detail,/Caixa inicial/);
-  assert.match(detail,/Caixa atual \/ final/);
+  assert.match(detail,/encerrada\?'Caixa final':'Caixa atual'/);
   assert.match(detail,/Recebimentos/);
   assert.match(detail,/Ingressos/);
   assert.match(detail,/Gastos/);
@@ -726,12 +726,13 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
   assert.match(detail,/class="cx-team-detail-metrics cx-team-primary-metrics"/);
   assert.match(detail,/class="cx-team-extra-metrics"/);
   assert.match(detail,/data-cx-extra-metrics/);
-  assert.match(detail,/metricas\.slice\(0,3\)/);
-  assert.match(detail,/metricas\.slice\(3\)/);
+  assert.match(detail,/Carteira da equipe/);
+  assert.match(detail,/Desempenho de cobranças/);
+  assert.match(detail,/data-cx-team-records/);
   assert.match(detail,/data-cx-team-box/);
   assert.match(detail,/data-cx-team-close/);
   assert.match(detail,/const confirmado=estrutura\.caixasChecked&&items\.every/);
-  assert.match(detail,/if\(estrutura\.caixasChecked\)boxes\.forEach\(loadOverview\)/);
+  assert.match(detail,/if\(estrutura\.caixasChecked\)boxes\.forEach\(box=>loadOverview\(box,true\)\)/);
   assert.match(source,/const podeAbrir=row\.ativa&&podeGerir\('abrir'\)/);
 });
 
@@ -908,20 +909,26 @@ test("M12: detalhe da jornada atualiza quando consultas dos caixas terminam no s
   const vm=require("node:vm");
   const overview=new Map(),pending=new Set(),errors=new Set(),missing=new Set();
   const ui={context:"tenant-1|master-1",detail:"equipe-1",box:"",loading:false};
-  let renders=0,fetches=0;
+  let renders=0;
+  const fetches=[];
   const ctx={
     overview,pending,caixasInexistentesServidor:missing,caixasFalhaConferencia:errors,
     ui,id:box=>box.id,text:v=>String(v??"").trim(),render:()=>{renders++},
-    fetchBox:async()=>{fetches++;return {fresh:{id:"cx-1"},data:{sales:[],payments:[],moves:[]}};}
+    fetchBox:async(box,overviewOnly)=>{fetches.push(overviewOnly);return {fresh:{id:box.id},data:{sales:[],payments:[],moves:[]}};}
   };
   const fn=vm.runInNewContext("let overviewLoads=0;\n"+source.slice(start,end)+"\nloadOverview",ctx);
   const box={id:"cx-1",status:"ABERTO",saldoAtualCentavos:12500};
   await fn(box);
-  assert.equal(fetches,1);
+  assert.deepEqual(fetches,[true]);
   assert.equal(renders,1,"Detalhe precisa renderizar ao finalizar a leitura");
   assert.ok(overview.get("cx-1")?.data);
   await fn(box);
-  assert.equal(fetches,1,"Sem mudança no caixa, não repetir a consulta");
+  assert.deepEqual(fetches,[true],"Sem mudança no caixa, não repetir a consulta da lista");
+  await fn(box,true);
+  assert.deepEqual(fetches,[true,false],"Abrir a jornada completa o cache do caixa");
+  assert.equal(overview.get("cx-1")?.comRegistros,true);
+  await fn(box,true);
+  assert.deepEqual(fetches,[true,false],"O cache completo atende novas renderizações da jornada");
 });
 
 test("M12: detalhe apresenta falha real da conferência e permite tentar de novo",()=>{
@@ -949,7 +956,7 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   const overview=new Map(),verifiedBoxes=new Map();
   for(const box of ui.history){
     verifiedBoxes.set(box.id,box);
-    overview.set(box.id,{fingerprint:JSON.stringify([box.status,box.atualizadoEm,box.saldoAtualCentavos]),
+    overview.set(box.id,{fingerprint:JSON.stringify([box.status,box.atualizadoEm,box.saldoAtualCentavos]),comRegistros:true,
       data:{sales:[],payments:[],moves:[]}});
   }
   const handlers={};
@@ -969,7 +976,8 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
     teamBoxes:(row,list)=>list,boxDay:box=>box.dataOperacional,dateBR:x=>x,
     text:x=>String(x??"").trim(),id:box=>box.id,esc:x=>String(x??""),
     openBox:box=>box.status==="ABERTO",upper:x=>String(x??"").toUpperCase(),
-    model:box=>({current:500,initial:100,wallet:1200,loans:0,received:0,income:0,expenses:0,withdrawals:0,collected:0}),
+    model:box=>({current:500,initial:100,wallet:1200,loans:0,received:0,income:0,expenses:0,withdrawals:0,collected:0,
+      clients:10,visited:4,sales:[{id:`venda-${box.id}`}],visits:[{id:`visita-${box.id}`,tipo:"NAO_PAGAMENTO",motivo:"Sem retorno"}]}),
     cachedData:()=>({}),cash:x=>String(x),num:x=>Number(x)||0,
     amount:()=>0,stampMillis:()=>0,dateTime:()=>"",
     option:(a,b)=>"<option>"+b+"</option>",podeGerir:()=>true,
@@ -981,6 +989,15 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   const fn=vm.runInNewContext(source.slice(start,end)+"\nrenderTeamDay",ctx);
   fn(host);
   assert.match(host.innerHTML,/PENDENTE DE FECHAMENTO/);
+  assert.match(host.innerHTML,/<progress max="100" value="40"/);
+  assert.match(host.innerHTML,/Não pagamentos \(1\)/);
+  assert.match(host.innerHTML,/venda-selecionado/);
+  assert.doesNotMatch(host.innerHTML,/venda-anterior/);
+  handlers["[data-cx-team-records]|change"]({target:{value:"nao-pagamentos"}});
+  fn(host);
+  assert.match(host.innerHTML,/visita-selecionado/);
+  assert.match(host.innerHTML,/Sem retorno/);
+  assert.doesNotMatch(host.innerHTML,/venda-selecionado/);
   const onClose=handlers["[data-cx-team-close]|click"];
   assert.equal(typeof onClose,"function");
   await onClose();

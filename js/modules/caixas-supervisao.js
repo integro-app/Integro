@@ -94,10 +94,10 @@
   }
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
-  const ui = {context:'',team:'',status:'',search:'',order:'name',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
+  const ui = {context:'',team:'',status:'',search:'',order:'name',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',teamRecords:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',order:'name',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
+    if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',order:'name',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',teamRecords:'',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   // A lista de equipes vem do Firestore via caixas.js, não de um global
   // opcional que pode não existir na rota Master Local.
@@ -1066,7 +1066,7 @@
       : acoes.podeFechar?'Conferir caixas abertos das equipes selecionadas':'Selecione equipe ou caixa aberto';
     if(estrutura.error)actionFeedback('Erro ao consultar equipes: '+estrutura.error,true);
     else if(ui.actionMessage)actionFeedback(ui.actionMessage,ui.actionError);
-    if(estrutura.caixasChecked)unique(entries.flatMap(v=>[...v.models.map(m=>m.box),...v.history.filter(openBox)])).forEach(loadOverview);return true;
+    if(estrutura.caixasChecked)unique(entries.flatMap(v=>[...v.models.map(m=>m.box),...v.history.filter(openBox)])).forEach(box=>loadOverview(box));return true;
   }
   async function query(collection, field, value, teamId = ui.detail) {
     if (!value) return [];
@@ -1079,7 +1079,7 @@
   }
   async function open(teamId, boxId = '') {
     syncContext();const row=rows(true).find(r=>text(r.id)===text(teamId));if(!row)return;
-    const revision=++ui.revision;ui.detail=text(row.id);ui.box='';ui.teamDay='';ui.data=null;ui.tab='resumo';ui.error='';ui.loading=true;ui.history=teamBoxes(row);render();
+    const revision=++ui.revision;ui.detail=text(row.id);ui.box='';ui.teamDay='';ui.teamRecords='';ui.data=null;ui.tab='resumo';ui.error='';ui.loading=true;ui.history=teamBoxes(row);render();
     try {
       const lists=await Promise.all([query('caixas','equipeId',text(row.id)),...(row.vendedores||[]).map(v=>query('caixas','vendedorId',id(v)))]);
       if(revision!==ui.revision||!allowed())return;
@@ -1114,11 +1114,17 @@
     ]);
     return {fresh,data:{sales,payments,moves,visits,closure:closureSnap.exists?closureSnap.data():null,portfolio,installments,portfolioReady:openBox(fresh)}};
   }
-  async function loadOverview(box) {
+  async function loadOverview(box, detalhe=false) {
     const ctx=ui.context,key=id(box),fingerprint=JSON.stringify([box.status,box.atualizadoEm,box.saldoAtualCentavos]);
-    if(overviewLoads>=2||pending.has(key)||overview.get(key)?.fingerprint===fingerprint)return;
+    const cache=overview.get(key);
+    if(overviewLoads>=2||pending.has(key)||
+      (cache?.fingerprint===fingerprint&&(!detalhe||cache.comRegistros||cache.error)))return;
     pending.add(key);overviewLoads++;
-    try {const result=await fetchBox(box,true);if(ctx!==ui.context)return;overview.set(key,{...result,fingerprint});}
+    try {
+      const result=await fetchBox(box,!detalhe);
+      if(ctx!==ui.context)return;
+      overview.set(key,{...result,fingerprint,comRegistros:detalhe||result.data.portfolioReady===true});
+    }
     catch(error){
       if(ctx===ui.context) {
         if(/Caixa não encontrado\./i.test(text(error.message))) caixasInexistentesServidor.add(key);
@@ -1156,7 +1162,7 @@
     const tipo=upper(v.tipoSolicitacao||v.tipo||v.natureza||v.operacao);
     if(['GASTO','DESPESA'].includes(tipo))return 'Gastos';
     if(['INGRESSO','ENTRADA','DEPOSITO'].includes(tipo))return 'Entradas';
-    if(['RETIRADA','RECOLHIMENTO','SAIDA'].includes(tipo))return 'Saídas';
+    if(['RETIRADA','RETIRO','RECOLHIMENTO','RECOLHIDO','SAIDA'].includes(tipo))return 'Saídas';
     if(tipo==='AJUSTE')return 'Ajustes';
     return 'Movimentações';
   }
@@ -1175,12 +1181,13 @@
       const cache=overview.get(id(box));
       const verified=verifiedBoxes.has(id(box))&&cache?.data&&!cache.error&&cache.fingerprint===fingerprint;
       const m=model(box,verified?cache.data:cachedData());
-      return {box,m,verified};
+      return {box,m,verified,comRegistros:verified&&cache.comRegistros};
     });
     const falhasConferencia=items.filter(item=>!!overview.get(id(item.box))?.error);
     const confirmado=estrutura.caixasChecked&&items.every(item=>item.verified);
+    const registrosConferidos=confirmado&&items.every(item=>item.comRegistros);
     const soma=key=>!items.length?'—':falhasConferencia.length||estrutura.caixasError?'Não confirmado':
-      !confirmado?'Conferindo…':
+      !registrosConferidos?'Conferindo…':
       items.some(item=>item.m[key]==null)?'Não registrado':
       cash(items.reduce((sum,item)=>sum+num(item.m[key]),0));
     const aberto=boxes.some(openBox);
@@ -1194,92 +1201,162 @@
     const situacaoJornada=!estrutura.caixasChecked?'CONFERINDO':exigeRevisao?'REVISÃO':
       pendenteAnterior?'PENDENTE DE FECHAMENTO':aberto?'EM OPERAÇÃO':
       items.length?'ENCERRADA':'SEM CAIXA';
-    const historico=items.flatMap(({box,verified})=>{
-      if(!verified)return [];
-      const data=overview.get(id(box))?.data||{};
+    const corSituacao=situacaoJornada==='EM OPERAÇÃO'?'is-open':
+      pendenteAnterior||exigeRevisao?'is-warning':'';
+    const encerrada=items.length>0&&boxes.every(box=>['FECHADO','FECHADA'].includes(upper(box.status)));
+    const resumoCobrancas=registrosConferidos&&items.length>0&&items.every(({m})=>
+      Number.isInteger(m.clients)&&Number.isInteger(m.visited)&&m.visited>=0&&m.visited<=m.clients);
+    const totalCobrancas=resumoCobrancas?items.reduce((total,{m})=>total+m.clients,0):0;
+    const tratadas=resumoCobrancas?items.reduce((total,{m})=>total+m.visited,0):0;
+    const progresso=totalCobrancas?Math.round(100*tratadas/totalCobrancas):null;
+    const acompanhamento=progresso!==null?`${tratadas} de ${totalCobrancas} tratadas`:
+      resumoCobrancas?'Sem cobranças previstas nesta jornada':items.length?'Progresso não confirmado':'Sem caixas nesta data';
+    const categorias=[
+      ['vendas','Vendas','amber'],['pagamentos','Recebimentos','green'],
+      ['nao-pagamentos','Não pagamentos','rose'],['entradas','Ingressos','teal'],
+      ['saidas','Gastos e saídas','rose'],['outros','Outros lançamentos','blue']
+    ];
+    const historico=registrosConferidos?items.flatMap(({box,m})=>{
       const documentos=[
-        ...(data.sales||[]).map(v=>({v,tipo:'Venda',valor:amount(v,['valorEmprestado','valorLiberado','valor'])})),
-        ...(data.payments||[]).map(v=>({v,tipo:'Recebimento',valor:amount(v,['valorRecebido','valorPago','valor'])})),
-        ...(data.moves||[]).map(v=>({v,tipo:tipoLancamentoCaixa(v),valor:amount(v,['valor','valorTotal'])}))
+        ...(m.sales||[]).map(v=>({v,categoria:'vendas',tipo:'Venda',valor:amount(v,['valorEmprestado','valorLiberado','valorPrincipal','valor'],null)})),
+        ...(m.payments||[]).map(v=>({v,categoria:'pagamentos',tipo:'Recebimento',valor:amount(v,['valorRecebido','valorPago','valor'],null)})),
+        ...(m.moves||[]).map(v=>{
+          const tipo=tipoLancamentoCaixa(v);
+          const categoria=tipo==='Entradas'?'entradas':['Gastos','Saídas'].includes(tipo)?'saidas':'outros';
+          return {v,categoria,tipo,valor:amount(v,['valor','valorTotal','valorPago'],null)};
+        }),
+        ...(m.visits||[]).map(v=>{
+          const naoPago=v.semBaixaGerencial===true||['NAO_PAGAMENTO','NAO_PAGO'].some(estado=>
+            [v.tipo,v.status,v.resultado].some(valor=>upper(valor)===estado));
+          return {v,categoria:naoPago?'nao-pagamentos':'outros',
+            tipo:v.semBaixaGerencial===true?'Sem baixa gerencial':naoPago?'Não pagamento':'Visita',valor:null};
+        })
       ];
       return documentos.map(entry=>({...entry,vendedor:box.vendedorNome||box.vendedorId||'Vendedor',
         data:entry.v.criadoEm||entry.v.dataHora||entry.v.dataPagamento||entry.v.dataOperacional}));
-    }).sort((a,b)=>stampMillis(b.data)-stampMillis(a.data)).slice(0,12);
+    }).sort((a,b)=>stampMillis(b.data)-stampMillis(a.data)):[];
+    const filtro=categorias.some(([key])=>key===ui.teamRecords)?ui.teamRecords:'';
+    const filtrados=filtro?historico.filter(item=>item.categoria===filtro):historico;
+    const recentes=filtrados.slice(0,12);
     const metricas=[
-      ['Caixa inicial','initial'],['Caixa atual / final','current'],['Carteira final','wallet'],
-      ['Vendas / empréstimos','loans'],['Recebimentos','received'],['Ingressos','income'],
-      ['Gastos','expenses'],['Retiradas','withdrawals'],['Recolhimentos','collected']
+      ['Vendas','loans','trending_up','amber'],['Recebimentos','received','payments','green'],
+      ['Ingressos','income','add_card','teal'],['Gastos','expenses','receipt_long','rose'],
+      ['Retiradas','withdrawals','outbox','rose'],['Recolhimentos','collected','savings','blue']
     ];
     host.innerHTML=`<div data-caixas-supervisao class="cx-team-detail">
       <header class="cx-head cx-detail-header"><div>
         <button type="button" class="cx-detail-back ghost-btn" data-cx-back-all>
           <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Voltar às equipes
-        </button><span class="cx-eyebrow">MASTER LOCAL · JORNADA OPERACIONAL</span>
+        </button>
         <h2>${esc(row.nome)}</h2>
         <p>${row.ativa?'Equipe ativa':'Equipe inativa'} · ${row.vendedores.length} vendedor(es) vinculado(s)</p>
       </div><button type="button" class="ghost-btn cx-detail-refresh" data-cx-team-reload
-        aria-label="Atualizar jornada no servidor"><span class="material-symbols-rounded">refresh</span> Atualizar</button></header>
+        aria-label="Atualizar jornada no servidor"><span class="material-symbols-rounded" aria-hidden="true">refresh</span> Atualizar</button></header>
       <div class="cx-team-toolbar">
         <label>Data da jornada<select data-cx-team-day>${dates.map(date=>option(date,dateBR(date),selectedDay)).join('')||
           option('','Nenhuma data registrada','')}</select></label>
-        <span class="cx-team-day-status ${aberto?'is-open':''}"
+        <span class="cx-team-day-status ${corSituacao}"
           title="${esc(situacaoJornada)}" aria-label="${esc(situacaoJornada)}">
           <span class="cx-status-full">${esc(situacaoJornada)}</span>
-          <span class="cx-status-mobile" aria-hidden="true">${esc(pendenteAnterior?'PENDENTE':situacaoJornada)}</span>
+          <span class="cx-status-mobile" aria-hidden="true">${esc(situacaoJornada==='PENDENTE DE FECHAMENTO'?'PENDENTE':situacaoJornada)}</span>
         </span>
-      </div>
-      <div class="cx-team-actions">
-        ${podeAbrir?`<button type="button" class="success-btn" data-cx-team-calendar>
-          <span class="material-symbols-rounded">calendar_month</span> Abrir por data</button>`:''}
-        ${podeFechar?`<button type="button" class="danger-btn" data-cx-team-close ${ui.actionBusy?'disabled':''}>
-          <span class="material-symbols-rounded">lock</span> Conferir e fechar jornada</button>`:''}
+        <div class="cx-team-actions">
+          ${podeAbrir?`<button type="button" class="success-btn" data-cx-team-calendar>
+            <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span> Abrir por data</button>`:''}
+          ${podeFechar?`<button type="button" class="danger-btn" data-cx-team-close ${ui.actionBusy?'disabled':''}>
+            <span class="material-symbols-rounded" aria-hidden="true">lock</span> Conferir e fechar jornada</button>`:''}
+        </div>
       </div>
       <div class="cx-team-detail-metrics cx-team-primary-metrics">
-        ${metricas.slice(0,3).map(([label,key])=>`<article><small>${label}</small><strong>${soma(key)}</strong></article>`).join('')}
+        <article class="cx-journey-balance">
+          <h3><span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
+            ${encerrada?'Caixa final':'Caixa atual'}</h3>
+          <strong class="cx-journey-balance-value">${soma(encerrada?'final':'current')}</strong>
+          <div class="cx-journey-figures">
+            <div><small>Caixa inicial</small><strong>${soma('initial')}</strong></div>
+            <div><small>Caixas na jornada</small><strong>${items.length}</strong></div>
+          </div>
+        </article>
+        <article class="cx-journey-portfolio">
+          <h3><span class="material-symbols-rounded" aria-hidden="true">wallet</span> Carteira da equipe</h3>
+          <div class="cx-journey-figures">
+            <div><small>Carteira inicial</small><strong>${soma('walletInitial')}</strong></div>
+            <div><small>Carteira final</small><strong>${soma('wallet')}</strong></div>
+          </div>
+        </article>
+        <article class="cx-journey-performance">
+          <h3><span class="material-symbols-rounded" aria-hidden="true">monitoring</span> Desempenho de cobranças</h3>
+          <div class="cx-journey-coverage">
+            <span>${acompanhamento}</span>${progresso===null?'':`<strong>${progresso}%</strong>
+              <progress max="100" value="${progresso}" aria-label="Cobranças tratadas"></progress>`}
+          </div>
+          <div class="cx-journey-figures">
+            <div><small>Previsto</small><strong>${soma('expected')}</strong></div>
+            <div><small>Recebido</small><strong>${soma('received')}</strong></div>
+          </div>
+        </article>
       </div>
       <details class="cx-team-extra-metrics" data-cx-extra-metrics
         ${ui.financeMetricsExpanded||global.matchMedia?.('(min-width: 851px)')?.matches?'open':''}>
-        <summary><span class="material-symbols-rounded" aria-hidden="true">monitoring</span>
-          Demais indicadores da jornada
+        <summary><span class="material-symbols-rounded" aria-hidden="true">swap_vert</span>
+          Entradas e saídas da jornada
           <span class="material-symbols-rounded cx-members-chevron" aria-hidden="true">expand_more</span></summary>
         <div class="cx-team-detail-metrics cx-team-secondary-metrics">
-          ${metricas.slice(3).map(([label,key])=>`<article><small>${label}</small><strong>${soma(key)}</strong></article>`).join('')}
+          ${metricas.map(([label,key,icone,cor])=>`<article class="cx-journey-kpi" data-cx-tone="${cor}">
+            <span class="material-symbols-rounded" aria-hidden="true">${icone}</span>
+            <div><small>${label}</small><strong>${soma(key)}</strong></div></article>`).join('')}
         </div>
       </details>
-      <section class="cx-team-detail-section"><div class="cx-list-heading">
-        <div><h3>Caixas dos vendedores</h3><p>${items.length} caixa(s) registrados nesta jornada</p></div>
+      <div class="cx-journey-lower">
+        <section class="cx-team-detail-section"><div class="cx-list-heading">
+          <div><h3>Caixas dos vendedores</h3><p>${items.length} caixa(s) registrados nesta jornada</p></div>
+        </div>
+        <div class="cx-team-detail-sellers">
+          ${items.map(({box,m,verified})=>`<button type="button" data-cx-team-box="${esc(id(box))}"
+            class="cx-team-detail-seller">
+            <span class="material-symbols-rounded" aria-hidden="true">account_circle</span>
+            <span><strong>${esc(box.vendedorNome||box.vendedorId||'Vendedor')}</strong>
+              <small>${esc(upper(box.status))} · ${dateBR(boxDay(box))}</small></span>
+            <b>${verified?cash(m.current):'Conferindo…'}</b>
+            <span aria-hidden="true">→</span>
+          </button>`).join('')||'<p class="cx-team-empty">Sem caixas nesta data.</p>'}
+        </div></section>
+        <section class="cx-team-detail-section cx-journey-records"><div class="cx-list-heading">
+          <div><h3>Últimas movimentações da jornada</h3>
+            ${registrosConferidos?`<p role="status">${recentes.length} de ${filtrados.length} registro(s) confirmado(s)</p>`:''}</div>
+          ${registrosConferidos&&historico.length?`<label>Tipo de registro<select data-cx-team-records>
+            ${option('',`Todos (${historico.length})`,filtro)}
+            ${categorias.map(([key,label])=>option(key,`${label} (${historico.filter(item=>item.categoria===key).length})`,filtro)).join('')}
+          </select></label>`:''}
+        </div>
+        ${falhasConferencia.length||estrutura.caixasError?
+          `<p class="cx-team-alert cx-team-sync-error" role="alert">
+            Não foi possível confirmar todos os dados da jornada. Use Atualizar para consultar novamente o servidor.
+          </p>`:
+          !registrosConferidos?'<p class="cx-loading" role="status">Conferindo lançamentos no servidor…</p>':
+          recentes.length?`<div class="cx-table-scroll" tabindex="0" role="region" aria-label="Lançamentos da jornada">
+            <table><thead><tr><th>Tipo</th><th>Vendedor</th><th>Descrição</th><th>Valor</th><th>Data</th></tr></thead>
+            <tbody>${recentes.map(({v,categoria,tipo,valor,vendedor,data})=>`<tr>
+              <td><span class="cx-journey-record-type" data-cx-tone="${categorias.find(([key])=>key===categoria)[2]}">${esc(tipo)}</span></td>
+              <td>${esc(vendedor)}</td><td>${esc(v.clienteNome||v.descricao||v.categoriaNome||id(v))}
+                ${v.motivo?`<small>${esc(v.motivo)}</small>`:''}</td>
+              <td>${valor==null?'—':cash(valor)}</td><td>${dateTime(data)}</td></tr>`).join('')}</tbody></table></div>`:
+          '<p class="cx-team-empty">Nenhuma movimentação confirmada para este filtro.</p>'}
+        </section>
       </div>
-      <div class="cx-team-detail-sellers">
-        ${items.map(({box,m,verified})=>`<button type="button" data-cx-team-box="${esc(id(box))}"
-          class="cx-team-detail-seller">
-          <span class="material-symbols-rounded" aria-hidden="true">account_circle</span>
-          <span><strong>${esc(box.vendedorNome||box.vendedorId||'Vendedor')}</strong>
-            <small>${esc(upper(box.status))} · ${dateBR(boxDay(box))}</small></span>
-          <b>${verified?cash(m.current):'Conferindo…'}</b>
-          <span aria-hidden="true">→</span>
-        </button>`).join('')||'<p class="cx-team-empty">Sem caixas nesta data.</p>'}
-      </div></section>
-      <section class="cx-team-detail-section"><div class="cx-list-heading">
-        <div><h3>Últimas movimentações da jornada</h3><p>Vendas, entradas, saídas, recebimentos e gastos</p></div>
-      </div>
-      ${falhasConferencia.length||estrutura.caixasError?
-        `<p class="cx-team-alert cx-team-sync-error" role="alert">
-          Não foi possível confirmar todos os dados da jornada. Use Atualizar para consultar novamente o servidor.
-        </p>`:
-        !confirmado&&items.length?'<p class="cx-loading" role="status">Conferindo lançamentos no servidor…</p>':
-        `<div class="cx-table-scroll"><table><thead><tr><th>Tipo</th><th>Vendedor</th><th>Descrição</th><th>Valor</th><th>Data</th></tr></thead>
-        <tbody>${historico.map(({v,tipo,valor,vendedor,data})=>`<tr><td>${esc(tipo)}</td>
-          <td>${esc(vendedor)}</td><td>${esc(v.clienteNome||v.descricao||v.categoriaNome||id(v))}</td>
-          <td>${cash(valor)}</td><td>${dateTime(data)}</td></tr>`).join('')||
-          '<tr><td colspan="5">Nenhuma movimentação confirmada nesta data.</td></tr>'}</tbody></table></div>`}
-      </section></div>`;
+      </div>`;
     if(ui.actionMessage)actionFeedback(ui.actionMessage,ui.actionError);
     host.querySelector('[data-cx-back-all]').onclick=()=>{
       ui.revision++;ui.detail='';ui.box='';ui.teamDay='';ui.data=null;render();
     };
     host.querySelector('[data-cx-team-day]').onchange=event=>{
-      ui.teamDay=event.target.value;render();
+      ui.teamDay=event.target.value;ui.teamRecords='';render();
+      host.querySelector('[data-cx-team-day]')?.focus?.();
     };
+    host.querySelector('[data-cx-team-records]')?.addEventListener('change',event=>{
+      ui.teamRecords=event.target.value;render();
+      host.querySelector('[data-cx-team-records]')?.focus?.();
+    });
     host.querySelector('[data-cx-extra-metrics]')?.addEventListener('toggle',event=>{
       ui.financeMetricsExpanded=event.target.open;
     });
@@ -1326,7 +1403,7 @@
         actionFeedback(text(error.message||'Falha na conferência da equipe.'),true);
       }finally{ui.actionBusy=false;await open(row.id);}
     });
-    if(estrutura.caixasChecked)boxes.forEach(loadOverview);
+    if(estrutura.caixasChecked)boxes.forEach(box=>loadOverview(box,true));
   }
 
   function renderDetail(host) {
