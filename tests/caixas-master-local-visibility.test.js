@@ -470,6 +470,46 @@ test("Abertura da tela Caixas consulta servidor por equipe sem depender apenas d
   assert.match(source,/if\(estrutura\.caixasChecked\)unique\(entries\.flatMap/);
 });
 
+test("Caixas incorpora fechamento vindo de outra sessão depois do snapshot confirmado",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const helpers=source.slice(source.indexOf("  const verifiedBoxes ="),source.indexOf("  function teamBoxes("));
+  const open={id:"norte",equipeId:"eq-norte",clientePlataformaId:"empresa",status:"ABERTO",ativo:true,atualizadoEm:100};
+  const ui={context:"empresa|master",box:"",history:[open]};
+  const estrutura={caixasChecked:true,caixasIds:new Set()};
+  const overview=new Map([["norte",{data:{}}]]);
+  let entregar,cancelou=0,renderizou=0,visivel=true;
+  const context={ui,estrutura,overview,id:box=>box.id,text:v=>String(v??""),
+    tenantOf:v=>v.clientePlataformaId,tenant:()=>"empresa",allowed:()=>true,
+    upper:v=>String(v??"").toUpperCase(),openBox:b=>b.status==="ABERTO"&&b.ativo,
+    render:()=>{renderizou++;},global:{
+      document:{getElementById:()=>({classList:{contains:()=>visivel}})},
+      db:{collection:()=>({doc:()=>({onSnapshot(options,next){
+        assert.equal(options.includeMetadataChanges,true);
+        entregar=next;
+        return ()=>cancelou++;
+      }})})}
+    }};
+  const api=vm.runInNewContext(helpers+"\n;({rememberServerBox,observarFechamentos,verifiedBoxes})",context);
+  api.rememberServerBox(open);
+  api.observarFechamentos();
+  const fechado={...open,status:"FECHADO",ativo:false,atualizadoEm:200,saldoAtualCentavos:1869100};
+  const snapshot=(metadata,data=fechado)=>({id:"norte",exists:true,metadata,data:()=>data});
+  entregar(snapshot({fromCache:true,hasPendingWrites:false}));
+  entregar(snapshot({fromCache:false,hasPendingWrites:true}));
+  entregar(snapshot({fromCache:false,hasPendingWrites:false},{...fechado,equipeId:"outra"}));
+  assert.equal(api.verifiedBoxes.get("norte").status,"ABERTO");
+  assert.equal(renderizou,0);
+  entregar(snapshot({fromCache:false,hasPendingWrites:false}));
+  assert.equal(api.verifiedBoxes.get("norte").status,"FECHADO");
+  assert.equal(ui.history[0].status,"FECHADO");
+  assert.equal(overview.has("norte"),false);
+  assert.equal(renderizou,1);
+  visivel=false;
+  api.observarFechamentos();
+  assert.equal(cancelou,1);
+});
+
 test("Fechamento em lote exige dinheiro físico informado separadamente e revalidação transacional",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/function confirmarFechamentoEmLote\(preparados,pendencias\)/);

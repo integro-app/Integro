@@ -131,6 +131,11 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Verificação.** Passaram 60 testes direcionados. O Chromium confirmou a coluna única em 12 larguras, a comparação entre prazo e quitação no histórico e a mudança do score após a meia-noite, com dados simulados.
 - **Estado.** Em homologação com contratos reais no Master Local.
 
+### M12 — Atualização do fechamento na lista de equipes (24/11/2026)
+
+- A lista e o detalhe observam o estado dos caixas abertos enquanto a tela está ativa. Uma alteração confirmada no Firestore atualiza a jornada e descarta o resumo anterior. Ao voltar à tela, o Master Local consulta o servidor novamente.
+- O teste de regressão cobre fechamento em outra sessão, rejeição de snapshots locais e encerramento da observação ao sair. O fluxo segue em homologação com caixas reais.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

@@ -102,7 +102,7 @@
   const ui = {context:'',team:'',status:'',search:'',order:'name',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',teamRecords:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
-    if(key!==ui.context)clientesJornada=null;
+    if(key!==ui.context){clientesJornada=null;pararObservacaoCaixas();}
     if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',order:'name',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',teamRecords:'',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   // A lista de equipes vem do Firestore via caixas.js, não de um global
@@ -237,6 +237,54 @@
   const verifiedBoxes = new Map();
   const caixasInexistentesServidor = new Set();
   const caixasFalhaConferencia = new Set();
+  const caixasObservados = new Map();
+
+  function pararObservacaoCaixas(){
+    for(const cancelar of caixasObservados.values())cancelar();
+    caixasObservados.clear();
+  }
+
+  function telaCaixasAtiva(){
+    return !!global.document?.getElementById('caixas')?.classList.contains('active');
+  }
+
+  function observarFechamentos(){
+    if(!telaCaixasAtiva()){pararObservacaoCaixas();return;}
+    const atuais=new Set([...verifiedBoxes.values()].filter(box=>openBox(box)||id(box)===ui.box).map(id));
+    for(const [caixaId,cancelar] of caixasObservados){
+      if(!atuais.has(caixaId)){cancelar();caixasObservados.delete(caixaId);}
+    }
+    const db=global.db&&typeof global.db!=='function'?global.db:global.firebase?.firestore?.();
+    if(!db)return;
+    const contexto=ui.context;
+    for(const caixaId of atuais){
+      if(caixasObservados.has(caixaId))continue;
+      const ref=db.collection('caixas').doc(caixaId);
+      if(typeof ref.onSnapshot!=='function')continue;
+      const cancelar=ref.onSnapshot({includeMetadataChanges:true},snapshot=>{
+        if(contexto!==ui.context||!allowed()||!telaCaixasAtiva()||!snapshot.exists||
+          snapshot.metadata.fromCache||snapshot.metadata.hasPendingWrites)return;
+        const conhecido=verifiedBoxes.get(caixaId);
+        const caixa={...snapshot.data(),id:snapshot.id};
+        if(!conhecido||tenantOf(caixa)!==tenant()||text(caixa.equipeId)!==text(conhecido.equipeId)||
+          (upper(caixa.status)===upper(conhecido.status)&&caixa.ativo===conhecido.ativo))return;
+        if(rememberServerBox(caixa)!==caixa)return;
+        overview.delete(caixaId);
+        estrutura.caixasSincronizadosEm=Date.now();
+        ui.history=ui.history.map(item=>id(item)===caixaId?caixa:item);
+        if(ui.box===caixaId)void selectBox(caixaId);
+        else render();
+      },()=>caixasObservados.delete(caixaId));
+      caixasObservados.set(caixaId,cancelar);
+    }
+  }
+
+  function revalidarCaixasVisiveis(){
+    if(!allowed()||!telaCaixasAtiva()){pararObservacaoCaixas();return;}
+    syncContext();
+    if(estrutura.caixasAttempted)void carregarCaixasServidor(true);
+    else render();
+  }
   function stampMillis(value) {
     if (!value) return 0;
     if (typeof value.toMillis === 'function') return value.toMillis();
@@ -810,10 +858,11 @@
     }).join('');
   }
   function render() {
-    if (!allowed()) return false;
+    if (!allowed()) {pararObservacaoCaixas();return false;}
     syncContext();const host = card();if (!host) return false;
     if(!estrutura.loaded&&!estrutura.loading&&!estrutura.error)void carregarEstrutura();
     if(estrutura.loaded&&!estrutura.loading&&!estrutura.caixasAttempted)void carregarCaixasServidor();
+    if(estrutura.caixasChecked)observarFechamentos();
     // Seleções de equipes removidas ou fora do escopo não podem acionar operações em lote.
     if(estrutura.loaded){
       const idsPermitidos=new Set(rows().map(row=>text(row.id)));
@@ -1935,5 +1984,12 @@
     const records=[...m.sales.map(v=>({v,type:'Vendas',value:amount(v,['valorEmprestado','valorLiberado','valor'])})),...m.payments.map(v=>({v,type:'Recebimentos',value:amount(v,['valorRecebido','valorPago','valor'])})),...m.moves.map(v=>({v,type:tipoLancamentoCaixa(v),value:amount(v,['valor','valorTotal'])})),...m.visits.map(v=>({v,type:v.semBaixaGerencial===true?'Sem baixa gerencial':'Visitas',value:null}))].filter(r=>ui.records==='todos'||r.type===ui.records);
     return `<div class="cx-details"><label>Exibir<select data-cx-records>${['todos','Vendas','Recebimentos','Entradas','Saídas','Gastos','Ajustes','Movimentações','Visitas','Sem baixa gerencial'].map(v=>option(v,v==='todos'?'Todos os registros':v,ui.records)).join('')}</select></label><div class="cx-table-scroll"><table><thead><tr><th>Tipo</th><th>Cliente / descrição</th><th>Valor</th><th>Estado</th><th>Data</th></tr></thead><tbody>${records.map(({v,type,value})=>`<tr><td>${type}</td><td>${esc(v.clienteNome||v.descricao||v.vendedorNome||v.clienteId||id(v))}</td><td>${value==null?'—':cash(value)}</td><td>${esc(v.semBaixaGerencial===true?'NÃO PAGO — SEM BAIXA GERENCIAL':v.statusVenda||v.status||v.tipo||'Confirmado')}</td><td>${dateTime(v.criadoEm||v.dataHora||v.dataPagamento||v.dataOperacional)}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum registro confirmado neste caixa.</td></tr>'}</tbody></table></div></div>`;
   }
+  global.document?.addEventListener?.('integro-tela-alterada',evento=>{
+    if(evento.detail?.tela==='caixas')revalidarCaixasVisiveis();
+    else pararObservacaoCaixas();
+  });
+  global.document?.addEventListener?.('visibilitychange',()=>{
+    if(!global.document.hidden)revalidarCaixasVisiveis();
+  });
   global.IntegroCaixasSupervisao = {render,open,selectBox,model,teamBoxes,rows,carregarEstrutura,get state(){return ui;}};
 })(window);
