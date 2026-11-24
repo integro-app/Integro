@@ -722,13 +722,16 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
   assert.match(detail,/Ingressos/);
   assert.match(detail,/Gastos/);
   assert.match(detail,/Retiradas/);
-  assert.match(detail,/Últimas movimentações da jornada/);
+  assert.match(detail,/Movimentações da jornada/);
   assert.match(detail,/class="cx-team-detail-metrics cx-team-primary-metrics"/);
   assert.match(detail,/class="cx-team-extra-metrics"/);
   assert.match(detail,/data-cx-extra-metrics/);
   assert.match(detail,/Carteira da equipe/);
   assert.match(detail,/Desempenho de cobranças/);
   assert.match(detail,/data-cx-team-records/);
+  assert.match(detail,/Clientes da jornada/);
+  assert.doesNotMatch(detail,/Caixas dos vendedores/);
+  assert.match(detail,/linkIndicadorJornada\(destino/);
   assert.match(detail,/data-cx-team-box/);
   assert.match(detail,/data-cx-team-close/);
   assert.match(detail,/const confirmado=estrutura\.caixasChecked&&items\.every/);
@@ -977,11 +980,14 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
     text:x=>String(x??"").trim(),id:box=>box.id,esc:x=>String(x??""),
     openBox:box=>box.status==="ABERTO",upper:x=>String(x??"").toUpperCase(),
     model:box=>({current:500,initial:100,wallet:1200,loans:0,received:0,income:0,expenses:0,withdrawals:0,collected:0,
-      clients:10,visited:4,sales:[{id:`venda-${box.id}`}],visits:[{id:`visita-${box.id}`,tipo:"NAO_PAGAMENTO",motivo:"Sem retorno"}]}),
+      clients:10,visited:4,sales:[{id:`venda-${box.id}`,clienteNome:`Cliente da venda ${box.id}`}],visits:[{id:`visita-${box.id}`,clienteNome:`Cliente da visita ${box.id}`,tipo:"NAO_PAGAMENTO",motivo:"Sem retorno"}]}),
     cachedData:()=>({}),cash:x=>String(x),num:x=>Number(x)||0,
     amount:()=>0,stampMillis:()=>0,dateTime:()=>"",
     option:(a,b)=>"<option>"+b+"</option>",podeGerir:()=>true,
     actionFeedback:()=>{},render:()=>{},loadOverview:()=>{},selectBox:()=>{},
+    estadoClientesJornada:()=>({clientes:[],rotas:new Map([[selected.id,{clients:10,visited:4}]])}),
+    painelClientesJornada:()=>"",linkIndicadorJornada:()=>"",naoPagamento:v=>v.tipo==="NAO_PAGAMENTO",
+    vendaRef:v=>v.vendaId,
     abrirSelecionados:()=>{},carregarCaixasServidor:async()=>{},
     fecharSelecionados:async()=>{captured=[...ui.selectedBoxes];return {fechados:1,falhas:[]};},
     open:async id=>{opened=id;},global:{}
@@ -991,16 +997,93 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   assert.match(host.innerHTML,/PENDENTE DE FECHAMENTO/);
   assert.match(host.innerHTML,/<progress max="100" value="40"/);
   assert.match(host.innerHTML,/Não pagamentos \(1\)/);
-  assert.match(host.innerHTML,/venda-selecionado/);
-  assert.doesNotMatch(host.innerHTML,/venda-anterior/);
+  assert.match(host.innerHTML,/Cliente da venda selecionado/);
+  assert.doesNotMatch(host.innerHTML,/Cliente da venda anterior/);
   handlers["[data-cx-team-records]|change"]({target:{value:"nao-pagamentos"}});
   fn(host);
-  assert.match(host.innerHTML,/visita-selecionado/);
+  assert.match(host.innerHTML,/Cliente da visita selecionado/);
   assert.match(host.innerHTML,/Sem retorno/);
-  assert.doesNotMatch(host.innerHTML,/venda-selecionado/);
+  assert.doesNotMatch(host.innerHTML,/Cliente da venda selecionado/);
   const onClose=handlers["[data-cx-team-close]|click"];
   assert.equal(typeof onClose,"function");
   await onClose();
   assert.deepEqual(captured,["selecionado"],"Não fechar caixa anterior fora do dia selecionado");
   assert.equal(opened,"equipe-1");
+});
+
+function carregarJornadaClientes(window = {}) {
+  const vm = require("node:vm");
+  const source = fs.readFileSync(path.join(root, "js/modules/caixas-supervisao.js"), "utf8");
+  const seller = fs.readFileSync(path.join(root, "js/vendedor-operacao.js"), "utf8");
+  vm.runInNewContext(seller, { window });
+  const withTests = source.replace("global.IntegroCaixasSupervisao = {", "global.IntegroCaixasSupervisao = {consultarClientesJornada,montarClientesJornada,registrosDeClientes,historicoClienteJornada,");
+  vm.runInNewContext(withTests, { window });
+  return window.IntegroCaixasSupervisao;
+}
+
+test("M12: clientes de caixa encerrado usam as baixas da jornada e o histórico real do contrato", () => {
+  const {montarClientesJornada,registrosDeClientes,historicoClienteJornada} = carregarJornadaClientes();
+  const vendasAntigas = Array.from({length:32}, (_, i) => ({id:`antiga-${i}`,clienteId:"legado-a",dataVenda:`2025-01-${String(i % 28 + 1).padStart(2,'0')}`,statusVenda:"QUITADA"}));
+  const vendas = [...vendasAntigas, {id:"atual",clienteId:"legado-a",clienteOperacionalId:"a",clienteNome:"Alice",dataVenda:"2026-10-01",
+    valorEmprestadoCentavos:100000,valorTotalVendaCentavos:120000,totalPagoCentavos:50000,saldoDevedorCentavos:70000},
+    {id:"seguinte",clienteOperacionalId:"a",dataVenda:"2026-11-18"},
+    {id:"b1",clienteId:"b",clienteNome:"Bruno",dataVenda:"2026-10-01"},
+    {id:"c1",clienteId:"c",clienteNome:"Carla",dataVenda:"2026-10-01"}];
+  const items = [{box:{id:"caixa-antigo",status:"FECHADO"},m:{
+    payments:[{id:"p1",vendaId:"atual",valorRecebidoCentavos:12500},{id:"p2",vendaId:"atual",valorPagoCentavos:2500}],
+    visits:[{vendaId:"atual",tipo:"NAO_PAGAMENTO"},{vendaId:"b1",semBaixaGerencial:true},
+      {vendaId:"d1",tipo:"VISITA"}],
+    fechamento:{snapshotAuditoria:{pendenciasCobrancas:[{vendaId:"c1",clienteId:"c"}]}}
+  }}];
+  const registros = registrosDeClientes(items);
+  const {clientes} = montarClientesJornada({items,registros,clientes:[],vendas,parcelas:[
+    {vendaId:"atual",vencimento:"2026-11-20",valorParcelaCentavos:6000,valorPagoCentavos:2000},
+    {vendaId:"atual",vencimento:"2026-10-30",valorParcelaCentavos:6000,valorPagoCentavos:6000}
+  ],data:"2026-10-30",hoje:"2026-11-24",historicoCompleto:true});
+  const [alice,bruno,carla] = clientes;
+  assert.deepEqual([alice.nome,alice.numero,alice.status,alice.pagoDia,alice.pagoContrato,alice.saldo,alice.atraso],
+    ["Alice",33,"recebidos",15000,50000,70000,4]);
+  assert.equal(alice.historico.length,34);
+  assert.match(historicoClienteJornada(alice), /33º empréstimo · Jornada selecionada/);
+  assert.equal(bruno.status,"nao-pagos");
+  assert.equal(bruno.motivo,"Sem baixa gerencial");
+  assert.equal(carla.status,"pendentes");
+  assert.equal(clientes.length,3);
+});
+
+test("M12: consulta da carteira inclui somente cobranças previstas e mantém o histórico no escopo autorizado", async () => {
+  const empresa = "empresa",equipe = "equipe",vendedor = "vendedor";
+  const cliente = (id, nome) => ({id,nome,clientePlataformaId:empresa,equipeId:equipe,vendedorId:vendedor});
+  const venda = (id, clienteId, dataPrimeiraCobranca) => ({id,clienteId,dataPrimeiraCobranca,clientePlataformaId:empresa,equipeId:equipe,
+    dataVenda:"2026-11-01",statusVenda:"ATIVA",saldoDevedorCentavos:25000,valorParcelaCentavos:10000});
+  const records = {
+    clientes_operacionais:[cliente("a","Alice"),cliente("b","Bruno")],
+    vendas:[venda("a1","a","2026-11-24"),venda("b1","b","2026-11-25"),
+      {...venda("outra-equipe","a","2026-11-24"),equipeId:"outra"},
+      {...venda("outra-empresa","a","2026-11-24"),clientePlataformaId:"outra"}],
+    parcelas:[]
+  };
+  const consultas = [];
+  const makeQuery = (colecao, where = []) => ({
+    where: (...clause) => makeQuery(colecao,[...where,clause]),
+    limit: () => makeQuery(colecao,where),
+    get: async (options) => {
+      consultas.push({colecao,where,options});
+      const rows = records[colecao].filter(v => where.every(([campo,op,valor]) => op === "in" ? valor.includes(v[campo]) : v[campo] === valor));
+      return {docs:rows.map(v => ({id:v.id,data:() => v}))};
+    }
+  });
+  const window = { db:{collection:makeQuery}, State:{getTenantId:() => empresa}, IntegroAcesso:{acessoUsuario:() => ({perfil:"supervisor"})} };
+  const {consultarClientesJornada} = carregarJornadaClientes(window);
+  const box = {id:"caixa",status:"ABERTO",vendedorId:vendedor,clientePlataformaId:empresa};
+  const {clientes,rotas} = await consultarClientesJornada([{box,m:{sales:[],payments:[],visits:[]}}],equipe,"2026-11-24","2026-11-24");
+  assert.equal(clientes.length,1);
+  assert.deepEqual([clientes[0].nome,clientes[0].status,clientes[0].numero,clientes[0].historico.length],["Alice","pendentes",0,1]);
+  assert.equal(rotas.get("caixa").expected,10000);
+  assert.equal(rotas.get("caixa").clients,1);
+  for (const {where,options} of consultas) {
+    assert.equal(options.source,"server");
+    assert.ok(where.some(([f,op,v]) => f === "clientePlataformaId" && op === "==" && v === empresa));
+    assert.ok(where.some(([f,op,v]) => f === "equipeId" && op === "==" && v === equipe));
+  }
 });

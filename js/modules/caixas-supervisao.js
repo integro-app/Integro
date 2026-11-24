@@ -94,9 +94,14 @@
   }
   const overview = new Map(), pending = new Set();
   let overviewLoads = 0;
+  let clientesJornada = null;
+  const filtrosClientesJornada = [
+    ['recebidos','Recebidos','green'],['nao-pagos','Não pagos','rose'],['pendentes','Pendentes','amber']
+  ];
   const ui = {context:'',team:'',status:'',search:'',order:'name',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',teamRecords:'',tab:'resumo',records:'todos',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,loading:false,error:'',revision:0,actionBusy:false,actionMessage:'',actionError:false};
   function syncContext() {
     const a = access(), key = [tenant(),a.authUid || user().authUid,a.perfil,(a.equipeIds || []).join(',')].join('|');
+    if(key!==ui.context)clientesJornada=null;
     if (key !== ui.context) { estrutura={context:key,loaded:false,loading:false,error:'',caixasAttempted:false,caixasLoading:false,caixasChecked:false,caixasError:'',caixasIds:new Set(),equipes:[],usuarios:[]}; Object.assign(ui,{context:key,team:'',status:'',search:'',order:'name',equipesFiltro:'ativas',detail:'',box:'',teamDay:'',teamRecords:'',selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set(),financeMetricsExpanded:false,history:[],data:null,error:'',loading:false,actionBusy:false,actionMessage:'',actionError:false});ui.revision++;overview.clear();verifiedBoxes.clear();caixasInexistentesServidor.clear();caixasFalhaConferencia.clear(); }
   }
   // A lista de equipes vem do Firestore via caixas.js, não de um global
@@ -1079,7 +1084,8 @@
   }
   async function open(teamId, boxId = '') {
     syncContext();const row=rows(true).find(r=>text(r.id)===text(teamId));if(!row)return;
-    const revision=++ui.revision;ui.detail=text(row.id);ui.box='';ui.teamDay='';ui.teamRecords='';ui.data=null;ui.tab='resumo';ui.error='';ui.loading=true;ui.history=teamBoxes(row);render();
+    clientesJornada=null;
+    const revision=++ui.revision;ui.detail=text(row.id);ui.box='';ui.teamDay='';ui.teamRecords='';ui.teamClientFilter='';ui.data=null;ui.tab='resumo';ui.error='';ui.loading=true;ui.history=teamBoxes(row);render();
     try {
       const lists=await Promise.all([query('caixas','equipeId',text(row.id)),...(row.vendedores||[]).map(v=>query('caixas','vendedorId',id(v)))]);
       if(revision!==ui.revision||!allowed())return;
@@ -1159,12 +1165,249 @@
   }
   const metric = (label,value) => `<div class="cx-metric"><span>${label}</span><strong>${value==null?'Não registrado':value}</strong></div>`;
   function tipoLancamentoCaixa(v) {
-    const tipo=upper(v.tipoSolicitacao||v.tipo||v.natureza||v.operacao);
+    const tipo=upper(v.tipoSolicitacao||v.tipo||v.tipoMovimentacao||v.natureza||v.operacao);
     if(['GASTO','DESPESA'].includes(tipo))return 'Gastos';
     if(['INGRESSO','ENTRADA','DEPOSITO'].includes(tipo))return 'Entradas';
     if(['RETIRADA','RETIRO','RECOLHIMENTO','RECOLHIDO','SAIDA'].includes(tipo))return 'Saídas';
     if(tipo==='AJUSTE')return 'Ajustes';
     return 'Movimentações';
+  }
+  const clienteRefs = v => [v?.clienteOperacionalId,v?.clienteId,v?.clienteLegadoId].map(text).filter(Boolean);
+  const vendaRef = v => text(v?.vendaId || v?.idVenda);
+  const vendaData = v => v.dataVenda || v.criadoEmTexto || v.criadoEm;
+  const vendaOrdem = v => stampMillis(v.criadoEmMs || v.dataCriacaoMs || v.criadoEm || v.criadoEmTexto || v.dataVenda);
+  const campoDocumento = () => global.firebase.firestore.FieldPath.documentId();
+  const naoPagamento = v => v.semBaixaGerencial===true || [v.tipo,v.tipoHistorico,v.acao,v.status,v.resultado]
+    .some(valor=>['NAO_PAGAMENTO','NAO_PAGO'].includes(upper(valor)));
+
+  async function buscarRegistrosJornada(colecao, campos, valores, equipeId) {
+    const chaves=[...new Set(valores.filter(Boolean))];
+    if(!chaves.length)return [];
+    const db=global.db && typeof global.db!=='function'?global.db:global.firebase.firestore();
+    const empresa=tenant();
+    let base=db.collection(colecao).where('clientePlataformaId','==',empresa);
+    if(access().perfil==='supervisor')base=base.where('equipeId','==',equipeId);
+    const registros=[];
+    for(let inicio=0;inicio<chaves.length;inicio+=30){
+      const lote=chaves.slice(inicio,inicio+30);
+      const snapshots=await Promise.all(campos.map(campo=>base.where(campo,'in',lote).limit(5000).get({source:'server'})));
+      for(const snap of snapshots){
+        if(snap.docs.length>=5000)throw Error('A consulta atingiu o limite de registros.');
+        registros.push(...snap.docs.map(doc=>({...doc.data(),id:doc.id})));
+      }
+    }
+    return unique(registros).filter(v=>tenantOf(v)===empresa&&effective(v));
+  }
+
+  function listaFechamento(fechamento,chave){
+    return [fechamento?.[chave],fechamento?.snapshotAuditoria?.[chave]].find(Array.isArray);
+  }
+
+  function registrosDeClientes(items) {
+    return items.flatMap(({m})=>{
+      const pendencias=listaFechamento(m.fechamento,'pendenciasCobrancas')||[];
+      const idsPendentes=listaFechamento(m.fechamento,'pendenciasVendasIds')||[];
+      return [
+        ...m.payments.filter(v=>amount(v,['valorRecebido','valorPago','valor'])>0).map(v=>({v,status:'recebidos'})),
+        ...m.visits.filter(naoPagamento).map(v=>({v,status:'nao-pagos'})),
+        ...[...pendencias,...idsPendentes.map(vendaId=>({vendaId}))].map(v=>({v,status:'pendentes'}))
+      ];
+    });
+  }
+
+  function montarClientesJornada({items,registros,clientes,vendas,parcelas,data,hoje,historicoCompleto}) {
+    const porVenda=new Map(vendas.map(v=>[id(v),v]));
+    const aliases=new Map();
+    for(const v of vendas){
+      const chaves=clienteRefs(v);
+      if(chaves.length>1)for(const chave of chaves)aliases.set(chave,chaves[0]);
+    }
+    for(const c of clientes)for(const chave of [id(c),...clienteRefs(c)]) aliases.set(chave,id(c));
+    const chaveCliente=v=>{
+      const [ref]=clienteRefs(v);
+      return aliases.get(ref)||ref;
+    };
+    const chaveDoRegistro=v=>chaveCliente(porVenda.get(vendaRef(v)))||chaveCliente(v)||vendaRef(v);
+    const porCliente=new Map();
+    for(const v of vendas){
+      const chave=chaveCliente(v);
+      if(!chave)continue;
+      const lista=porCliente.get(chave)||[];
+      lista.push(v);
+      porCliente.set(chave,lista);
+    }
+    const compararVendas=(a,b)=>vendaOrdem(a)-vendaOrdem(b)||id(a).localeCompare(id(b));
+    for(const lista of porCliente.values())lista.sort(compararVendas);
+    const parcelasVenda=new Map();
+    for(const p of parcelas){
+      const chave=vendaRef(p),lista=parcelasVenda.get(chave)||[];
+      lista.push(p);
+      parcelasVenda.set(chave,lista);
+    }
+    const clientesPorId=new Map(clientes.map(c=>[id(c),c]));
+    const porSituacao=new Map(), ordem={pendentes:0,'nao-pagos':1,recebidos:2};
+    function incluir(v,status){
+      const venda=porVenda.get(vendaRef(v));
+      const chave=chaveDoRegistro(v);
+      if(!chave)return;
+      const resumo=porSituacao.get(chave)||{chave,nome:'',venda:null,status:'pendentes',pagoDia:0,motivo:''};
+      resumo.nome=clientesPorId.get(chave)?.nome||clientesPorId.get(chave)?.nomeCompleto||venda?.clienteNome||venda?.nomeCliente||v.clienteNome||v.nomeCliente||resumo.nome;
+      if(!resumo.venda||(venda&&compararVendas(resumo.venda,venda)<0))resumo.venda=venda||null;
+      if(ordem[status]>=ordem[resumo.status]){
+        if(status==='nao-pagos')resumo.motivo=v.motivo||v.observacao||(v.semBaixaGerencial?'Sem baixa gerencial':'');
+        resumo.status=status;
+      }
+      if(status==='recebidos')resumo.pagoDia+=amount(v,['valorRecebido','valorPago','valor']);
+      porSituacao.set(chave,resumo);
+    }
+    for(const {v,status} of registros)incluir(v,status);
+
+    const rotas=new Map(),carteira=new Map();
+    const vendasCanonicas=vendas.filter(v=>!day(vendaData(v))||day(vendaData(v))<=data)
+      .map(v=>({...v,clienteId:chaveCliente(v)}));
+    // A rota atual serve apenas aos caixas abertos. Jornadas encerradas usam os registros do próprio caixa.
+    for(const {box,m} of items.filter(({box})=>openBox(box))){
+      const seller={id:box.vendedorId,authUid:box.vendedorAuthUid||box.vendedorUid,clientePlataformaId:tenantOf(box)};
+      const rota=global.IntegroVendedorOperacao?.montarCarteira?.({clientes,vendas:vendasCanonicas,parcelas,
+        pagamentosHoje:m.payments,historico:m.visits,usuario:seller,caixaId:id(box),hoje:data});
+      if(!rota)continue;
+      const previstas=new Map(rota.filter(v=>v.comCobrancaHoje||v.pagoHoje||v.naoPagoHoje)
+        .map(r=>[chaveDoRegistro(r),Math.round(num(r.valorParcela)*100)]));
+      const tratadas=new Set();
+      for(const {v,status} of registrosDeClientes([{m}])){
+        const chave=chaveDoRegistro(v);
+        if(!chave)continue;
+        if(!previstas.has(chave))previstas.set(chave,amount(porVenda.get(vendaRef(v)),['valorParcela','parcelaValor']));
+        if(status==='recebidos'||(status==='nao-pagos'&&!v.semBaixaGerencial&&v.visitaRealizada!==false))tratadas.add(chave);
+      }
+      rotas.set(id(box),{clients:previstas.size,visited:tratadas.size,
+        expected:[...previstas.values()].reduce((total,valor)=>total+valor,0)});
+      for(const r of rota){
+        if(r.vendaId&&r.saldoDevedor>0)carteira.set(r.vendaId,{nome:r.clienteNome,saldo:Math.round(r.saldoDevedor*100)});
+      }
+      for(const r of rota.filter(v=>v.pendenteHoje&&v.vendaId))incluir({vendaId:r.vendaId,clienteId:r.clienteId,clienteNome:r.clienteNome},'pendentes');
+    }
+
+    const resumos=[...porSituacao.values()].map(resumo=>{
+      const v=resumo.venda;
+      const historico=porCliente.get(resumo.chave)|| (v?[v]:[]);
+      const ordemConfirmada=historicoCompleto&&porCliente.has(resumo.chave)&&(historico.length===1||historico.every(vendaOrdem));
+      const numero=v&&ordemConfirmada?historico.findIndex(s=>id(s)===id(v))+1:0;
+      const saldo=amount(v,['saldoDevedor','saldoAtual','valorAberto'],null);
+      const partes=v?parcelasVenda.get(id(v))||[]:[];
+      const dias=partes.reduce((max,p)=>{
+        const vencimento=day(p.vencimento||p.dataVencimento||p.dataPrevista||p.dataCobranca);
+        const restante=amount(p,['valorParcela','valor','valorPrevisto'],null);
+        if(!vencimento||vencimento>=hoje||restante==null||['PAGA','PAGO','QUITADA','QUITADO'].includes(upper(p.statusParcela||p.status))||
+          restante<=amount(p,['valorPago']))return max;
+        return Math.max(max,Math.round((Date.parse(hoje)-Date.parse(vencimento))/86400000));
+      },0);
+      const informado=v?.diasAtrasoAtual??v?.diasAtraso;
+      const atraso=saldo===0?0:partes.length?dias:informado!=null?Math.max(0,num(informado)):null;
+      return {...resumo,numero,historico,historicoCompleto:ordemConfirmada,atraso,saldo,
+        principal:amount(v,['valorEmprestado','valorLiberado','valorPrincipal','valorVenda','valor'],null),
+        contratado:amount(v,['valorTotalVenda','valorTotal','valorContrato'],null),
+        pagoContrato:amount(v,['totalPago','valorPago'],null)};
+    }).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')||a.chave.localeCompare(b.chave));
+    return {clientes:resumos,rotas,carteira:[...carteira.values()].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'))};
+  }
+
+  async function consultarClientesJornada(items,equipeId,data,hoje){
+    const registros=registrosDeClientes(items);
+    const abertos=items.filter(({box})=>openBox(box));
+    const vendedores=[...new Set(abertos.map(({box})=>text(box.vendedorId)).filter(Boolean))];
+    const carteiraEquipe=abertos.length?unique((await Promise.all([query('clientes_operacionais','equipeId',equipeId),
+      ...vendedores.map(vendedor=>query('clientes_operacionais','vendedorId',vendedor,equipeId))])).flat())
+      .filter(v=>tenantOf(v)===tenant()&&v.excluido!==true&&(!v.equipeId||text(v.equipeId)===equipeId)):[];
+    const eventos=registros.map(({v})=>v);
+    const conhecidas=unique(items.flatMap(({m})=>m.sales));
+    const refs=new Set(conhecidas.map(id));
+    const idsContrato=[...new Set(eventos.map(vendaRef).filter(v=>v&&!v.includes('/')&&!refs.has(v)))];
+    const vinculadas=idsContrato.length?await buscarRegistrosJornada('vendas',[campoDocumento()],idsContrato,equipeId):[];
+    const chaves=[...eventos.flatMap(clienteRefs),...conhecidas.flatMap(clienteRefs),...vinculadas.flatMap(clienteRefs)];
+    const clientesDaCarteira=new Set(carteiraEquipe.flatMap(c=>[id(c),...clienteRefs(c)]));
+    const outrosIds=chaves.filter(chave=>!chave.includes('/')&&!clientesDaCarteira.has(chave));
+    const outrosClientes=outrosIds.length?await buscarRegistrosJornada('clientes_operacionais',[campoDocumento()],outrosIds,equipeId):[];
+    const clientes=unique([...carteiraEquipe,...outrosClientes]);
+    chaves.push(...clientes.flatMap(c=>[id(c),...clienteRefs(c)]));
+    const historico=await buscarRegistrosJornada('vendas',['clienteId','clienteOperacionalId'],chaves,equipeId);
+    const vendas=unique([...conhecidas,...vinculadas,...historico]);
+    const idsHistorico=new Set(eventos.map(vendaRef));
+    const idsParcelas=vendas.filter(v=>idsHistorico.has(id(v))||
+      (abertos.length&&amount(v,['saldoDevedor','saldoAtual','valorAberto'])>0)).map(id);
+    const parcelas=await buscarRegistrosJornada('parcelas',['vendaId'],idsParcelas,equipeId);
+    return montarClientesJornada({items,registros,clientes,vendas,parcelas,data,hoje,historicoCompleto:access().perfil!=='supervisor'});
+  }
+
+  function estadoClientesJornada(items,data,hoje){
+    const chave=JSON.stringify([ui.context,ui.detail,ui.revision,data,items.map(({box})=>[id(box),box.atualizadoEm,box.status])]);
+    if(clientesJornada?.chave===chave)return clientesJornada;
+    const equipe=ui.detail;
+    const contexto=ui.context;
+    const estado={chave,loading:items.length>0,erro:false,clientes:[],rotas:new Map(),carteira:[]};
+    clientesJornada=estado;
+    if(!items.length)return estado;
+    void consultarClientesJornada(items,equipe,data,hoje).then(result=>Object.assign(estado,result))
+      .catch(()=>{estado.erro=true;})
+      .finally(()=>{
+        estado.loading=false;
+        const atualizar=()=>{
+          if(clientesJornada===estado&&ui.context===contexto&&ui.detail===equipe&&ui.teamDay===data&&!ui.box)render();
+        };
+        const dialog=card()?.querySelector('[data-cx-journey-dialog][open]');
+        if(dialog)dialog.addEventListener('close',atualizar,{once:true});
+        else atualizar();
+      });
+    return estado;
+  }
+
+  const dadosJornada = pares => `<dl class="cx-journey-data">${pares.map(([rotulo,valor])=>
+    `<div><dt>${rotulo}</dt><dd>${esc(valor)}</dd></div>`).join('')}</dl>`;
+  const linkIndicadorJornada = (destino,label) => `<button type="button" class="cx-journey-indicator-link" data-cx-indicator="${destino}"
+    aria-label="${label}"><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button>`;
+
+  function painelClientesJornada(estado,semPendenciasHistoricas){
+    if(!estado||estado.loading)return '<p class="cx-loading" role="status">Consultando os clientes da jornada…</p>';
+    if(estado.erro)return `<p class="cx-team-alert cx-team-sync-error" role="alert">Não foi possível consultar os clientes e empréstimos desta jornada.</p>
+      <button type="button" class="ghost-btn" data-cx-clients-retry>Tentar novamente</button>`;
+    const grupos=filtrosClientesJornada.map(([key,label,cor])=>({key,label,cor,lista:estado.clientes.filter(c=>c.status===key)}));
+    const ativo=grupos.find(g=>g.key===ui.teamClientFilter)||grupos.find(g=>g.lista.length)||grupos[0];
+    return `<div class="cx-journey-client-tabs" role="group" aria-label="Situação dos clientes">
+      ${grupos.map(({key,label,cor,lista})=>`<button type="button" data-cx-client-filter="${key}" data-cx-tone="${cor}"
+        aria-pressed="${key===ativo.key}">${label}<span>${lista.length}</span></button>`).join('')}</div>
+      ${ativo.key==='pendentes'&&semPendenciasHistoricas?'<p class="cx-team-empty">Há caixas encerrados sem lista de pendências registrada.</p>':''}
+      ${ativo.lista.length?`<div class="cx-journey-client-grid">${ativo.lista.map(c=>`<article class="cx-journey-client" data-cx-tone="${ativo.cor}">
+        <header><div><h4>${esc(c.nome||'Cliente')}</h4><small>${c.numero?`${c.numero}º empréstimo`:'Ordem do empréstimo indisponível'}</small></div>
+          <button type="button" class="cx-journey-indicator-link" data-cx-client="${esc(c.chave)}"
+            aria-label="Histórico de vendas de ${esc(c.nome||'Cliente')}"><span class="material-symbols-rounded" aria-hidden="true">chevron_right</span></button></header>
+        ${dadosJornada([['Valor da venda',cash(c.principal)],['Venda com juros',cash(c.contratado)],['Pago na jornada',cash(c.pagoDia)],
+          ['Pago no contrato',cash(c.pagoContrato)],['Saldo devedor atual',cash(c.saldo)],['Atraso atual',c.atraso==null?'Não registrado':`${c.atraso} ${c.atraso===1?'dia':'dias'}`]])}
+        ${c.status==='nao-pagos'&&c.motivo?`<p class="cx-journey-client-note">${esc(c.motivo)}</p>`:''}
+      </article>`).join('')}</div>`:'<p class="cx-team-empty">Nenhum cliente nesta situação para a data selecionada.</p>'}`;
+  }
+
+  function abrirDialogoJornada(host,titulo,subtitulo,markup){
+    const dialog=host.querySelector('[data-cx-journey-dialog]');
+    if(!dialog||dialog.open)return null;
+    dialog.innerHTML=`<div class="cx-journey-dialog-head"><div><h3 id="cx-journey-dialog-title">${esc(titulo)}</h3>
+      <p>${esc(subtitulo)}</p></div><form method="dialog"><button type="submit" class="ghost-btn" aria-label="Fechar detalhes" autofocus>
+      <span class="material-symbols-rounded" aria-hidden="true">close</span></button></form></div>
+      <div class="cx-journey-dialog-content">${markup}</div>`;
+    dialog.showModal();
+    return dialog;
+  }
+
+  function historicoClienteJornada(cliente){
+    if(!cliente.historico.length)return '<p class="cx-team-empty">Nenhuma venda vinculada ao cliente foi localizada.</p>';
+    return `<ol class="cx-journey-history">${cliente.historico.slice().reverse().map((v,indice)=>{
+      const numero=cliente.historico.length-indice;
+      const status=upper(v.statusVenda||v.statusFinanceiro||v.status);
+      return `<li><div><strong>${cliente.historicoCompleto?`${numero}º empréstimo`:'Empréstimo'}${id(v)===id(cliente.venda)?' · Jornada selecionada':''}</strong>
+        <small>${dateBR(vendaData(v))}${status?` · ${esc(status)}`:''}</small></div>
+        ${dadosJornada([['Valor da venda',cash(amount(v,['valorEmprestado','valorLiberado','valorPrincipal','valorVenda','valor'],null))],
+          ['Venda com juros',cash(amount(v,['valorTotalVenda','valorTotal','valorContrato'],null))],
+          ['Valor pago atual',cash(amount(v,['totalPago','valorPago'],null))],['Saldo devedor atual',cash(amount(v,['saldoDevedor','saldoAtual','valorAberto'],null))]])}</li>`;
+    }).join('')}</ol>`;
   }
   function renderTeamDay(host) {
     const row=rows(true).find(item=>text(item.id)===ui.detail);
@@ -1194,6 +1437,7 @@
     const diaAtual=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',
       year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
     const pendenteAnterior=aberto&&selectedDay&&selectedDay<diaAtual;
+    const estado=registrosConferidos?estadoClientesJornada(items,selectedDay,diaAtual):null;
     const exigeRevisao=boxes.some(box=>['ABERTO','REABERTO'].includes(upper(box.status))&&box.ativo===false)||
       boxes.some(box=>upper(box.status)==='DIVERGENTE');
     const podeAbrir=row.ativa&&podeGerir('abrir');
@@ -1204,52 +1448,61 @@
     const corSituacao=situacaoJornada==='EM OPERAÇÃO'?'is-open':
       pendenteAnterior||exigeRevisao?'is-warning':'';
     const encerrada=items.length>0&&boxes.every(box=>['FECHADO','FECHADA'].includes(upper(box.status)));
-    const resumoCobrancas=registrosConferidos&&items.length>0&&items.every(({m})=>
+    const desempenho=items.map(({box,m})=>openBox(box)?estado?.rotas.get(id(box))||{}:m);
+    const resumoCobrancas=registrosConferidos&&desempenho.length>0&&desempenho.every(m=>
       Number.isInteger(m.clients)&&Number.isInteger(m.visited)&&m.visited>=0&&m.visited<=m.clients);
-    const totalCobrancas=resumoCobrancas?items.reduce((total,{m})=>total+m.clients,0):0;
-    const tratadas=resumoCobrancas?items.reduce((total,{m})=>total+m.visited,0):0;
+    const totalCobrancas=resumoCobrancas?desempenho.reduce((total,m)=>total+m.clients,0):0;
+    const tratadas=resumoCobrancas?desempenho.reduce((total,m)=>total+m.visited,0):0;
     const progresso=totalCobrancas?Math.round(100*tratadas/totalCobrancas):null;
     const acompanhamento=progresso!==null?`${tratadas} de ${totalCobrancas} tratadas`:
-      resumoCobrancas?'Sem cobranças previstas nesta jornada':items.length?'Progresso não confirmado':'Sem caixas nesta data';
+      resumoCobrancas?'Sem cobranças previstas nesta jornada':estado?.loading?'Consultando cobranças…':
+      items.length?'Progresso não confirmado':'Sem caixas nesta data';
+    const previsto=estado?.loading&&aberto?'Conferindo…':registrosConferidos&&desempenho.length&&desempenho.every(m=>m.expected!=null)?
+      cash(desempenho.reduce((total,m)=>total+num(m.expected),0)):'Não registrado';
     const categorias=[
       ['vendas','Vendas','amber'],['pagamentos','Recebimentos','green'],
       ['nao-pagamentos','Não pagamentos','rose'],['entradas','Ingressos','teal'],
-      ['saidas','Gastos e saídas','rose'],['outros','Outros lançamentos','blue']
+      ['gastos','Gastos','rose'],['retiradas','Retiradas','rose'],['recolhimentos','Recolhimentos','blue'],
+      ['outros','Outros lançamentos','blue']
     ];
-    const historico=registrosConferidos?items.flatMap(({box,m})=>{
+    const historico=registrosConferidos?items.flatMap(({m})=>{
       const documentos=[
         ...(m.sales||[]).map(v=>({v,categoria:'vendas',tipo:'Venda',valor:amount(v,['valorEmprestado','valorLiberado','valorPrincipal','valor'],null)})),
         ...(m.payments||[]).map(v=>({v,categoria:'pagamentos',tipo:'Recebimento',valor:amount(v,['valorRecebido','valorPago','valor'],null)})),
         ...(m.moves||[]).map(v=>{
           const tipo=tipoLancamentoCaixa(v);
-          const categoria=tipo==='Entradas'?'entradas':['Gastos','Saídas'].includes(tipo)?'saidas':'outros';
-          return {v,categoria,tipo,valor:amount(v,['valor','valorTotal','valorPago'],null)};
+          const recolhimento=['RECOLHIMENTO','RECOLHIDO'].includes(upper(v.tipoSolicitacao||v.tipo||v.tipoMovimentacao||v.natureza||v.operacao));
+          const categoria=recolhimento?'recolhimentos':({Entradas:'entradas',Gastos:'gastos',Saídas:'retiradas'}[tipo]||'outros');
+          return {v,categoria,tipo:recolhimento?'Recolhimento':tipo==='Saídas'?'Retirada':tipo,valor:amount(v,['valor','valorTotal','valorPago'],null)};
         }),
         ...(m.visits||[]).map(v=>{
-          const naoPago=v.semBaixaGerencial===true||['NAO_PAGAMENTO','NAO_PAGO'].some(estado=>
-            [v.tipo,v.status,v.resultado].some(valor=>upper(valor)===estado));
+          const naoPago=naoPagamento(v);
           return {v,categoria:naoPago?'nao-pagamentos':'outros',
             tipo:v.semBaixaGerencial===true?'Sem baixa gerencial':naoPago?'Não pagamento':'Visita',valor:null};
         })
       ];
-      return documentos.map(entry=>({...entry,vendedor:box.vendedorNome||box.vendedorId||'Vendedor',
+      return documentos.map(entry=>({...entry,
         data:entry.v.criadoEm||entry.v.dataHora||entry.v.dataPagamento||entry.v.dataOperacional}));
     }).sort((a,b)=>stampMillis(b.data)-stampMillis(a.data)):[];
     const filtro=categorias.some(([key])=>key===ui.teamRecords)?ui.teamRecords:'';
     const filtrados=filtro?historico.filter(item=>item.categoria===filtro):historico;
-    const recentes=filtrados.slice(0,12);
+    const recentes=filtro?filtrados:filtrados.slice(0,12);
     const metricas=[
-      ['Vendas','loans','trending_up','amber'],['Recebimentos','received','payments','green'],
-      ['Ingressos','income','add_card','teal'],['Gastos','expenses','receipt_long','rose'],
-      ['Retiradas','withdrawals','outbox','rose'],['Recolhimentos','collected','savings','blue']
+      ['Vendas','loans','trending_up','amber','vendas'],['Recebimentos','received','payments','green','pagamentos'],
+      ['Ingressos','income','add_card','teal','entradas'],['Gastos','expenses','receipt_long','rose','gastos'],
+      ['Retiradas','withdrawals','outbox','rose','retiradas'],['Recolhimentos','collected','savings','blue','recolhimentos']
     ];
+    const clientesPorChave=new Map((estado?.clientes||[]).map(c=>[c.chave,c]));
+    const nomePorVenda=new Map((estado?.clientes||[]).flatMap(c=>c.historico.map(v=>[id(v),c.nome])));
+    const semPendenciasHistoricas=items.some(({box,m})=>!openBox(box)&&
+      !listaFechamento(m.fechamento,'pendenciasCobrancas')&&!listaFechamento(m.fechamento,'pendenciasVendasIds'));
     host.innerHTML=`<div data-caixas-supervisao class="cx-team-detail">
       <header class="cx-head cx-detail-header"><div>
         <button type="button" class="cx-detail-back ghost-btn" data-cx-back-all>
           <span class="material-symbols-rounded" aria-hidden="true">arrow_back</span> Voltar às equipes
         </button>
         <h2>${esc(row.nome)}</h2>
-        <p>${row.ativa?'Equipe ativa':'Equipe inativa'} · ${row.vendedores.length} vendedor(es) vinculado(s)</p>
+        <p>${row.ativa?'Equipe ativa':'Equipe inativa'}</p>
       </div><button type="button" class="ghost-btn cx-detail-refresh" data-cx-team-reload
         aria-label="Atualizar jornada no servidor"><span class="material-symbols-rounded" aria-hidden="true">refresh</span> Atualizar</button></header>
       <div class="cx-team-toolbar">
@@ -1271,6 +1524,7 @@
         <article class="cx-journey-balance">
           <h3><span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
             ${encerrada?'Caixa final':'Caixa atual'}</h3>
+          ${linkIndicadorJornada('saldo','Ver composição do saldo do caixa')}
           <strong class="cx-journey-balance-value">${soma(encerrada?'final':'current')}</strong>
           <div class="cx-journey-figures">
             <div><small>Caixa inicial</small><strong>${soma('initial')}</strong></div>
@@ -1279,6 +1533,7 @@
         </article>
         <article class="cx-journey-portfolio">
           <h3><span class="material-symbols-rounded" aria-hidden="true">wallet</span> Carteira da equipe</h3>
+          ${linkIndicadorJornada('carteira','Ver detalhes da carteira')}
           <div class="cx-journey-figures">
             <div><small>Carteira inicial</small><strong>${soma('walletInitial')}</strong></div>
             <div><small>Carteira final</small><strong>${soma('wallet')}</strong></div>
@@ -1286,12 +1541,13 @@
         </article>
         <article class="cx-journey-performance">
           <h3><span class="material-symbols-rounded" aria-hidden="true">monitoring</span> Desempenho de cobranças</h3>
+          ${linkIndicadorJornada('cobrancas','Ver clientes por situação de cobrança')}
           <div class="cx-journey-coverage">
             <span>${acompanhamento}</span>${progresso===null?'':`<strong>${progresso}%</strong>
               <progress max="100" value="${progresso}" aria-label="Cobranças tratadas"></progress>`}
           </div>
           <div class="cx-journey-figures">
-            <div><small>Previsto</small><strong>${soma('expected')}</strong></div>
+            <div><small>Previsto</small><strong>${previsto}</strong></div>
             <div><small>Recebido</small><strong>${soma('received')}</strong></div>
           </div>
         </article>
@@ -1302,27 +1558,19 @@
           Entradas e saídas da jornada
           <span class="material-symbols-rounded cx-members-chevron" aria-hidden="true">expand_more</span></summary>
         <div class="cx-team-detail-metrics cx-team-secondary-metrics">
-          ${metricas.map(([label,key,icone,cor])=>`<article class="cx-journey-kpi" data-cx-tone="${cor}">
+          ${metricas.map(([label,key,icone,cor,destino])=>`<article class="cx-journey-kpi" data-cx-tone="${cor}">
             <span class="material-symbols-rounded" aria-hidden="true">${icone}</span>
-            <div><small>${label}</small><strong>${soma(key)}</strong></div></article>`).join('')}
+            <div><small>${label}</small><strong>${soma(key)}</strong></div>
+            ${linkIndicadorJornada(destino,`Ver lançamentos de ${label.toLowerCase()}`)}</article>`).join('')}
         </div>
       </details>
       <div class="cx-journey-lower">
-        <section class="cx-team-detail-section"><div class="cx-list-heading">
-          <div><h3>Caixas dos vendedores</h3><p>${items.length} caixa(s) registrados nesta jornada</p></div>
-        </div>
-        <div class="cx-team-detail-sellers">
-          ${items.map(({box,m,verified})=>`<button type="button" data-cx-team-box="${esc(id(box))}"
-            class="cx-team-detail-seller">
-            <span class="material-symbols-rounded" aria-hidden="true">account_circle</span>
-            <span><strong>${esc(box.vendedorNome||box.vendedorId||'Vendedor')}</strong>
-              <small>${esc(upper(box.status))} · ${dateBR(boxDay(box))}</small></span>
-            <b>${verified?cash(m.current):'Conferindo…'}</b>
-            <span aria-hidden="true">→</span>
-          </button>`).join('')||'<p class="cx-team-empty">Sem caixas nesta data.</p>'}
-        </div></section>
-        <section class="cx-team-detail-section cx-journey-records"><div class="cx-list-heading">
-          <div><h3>Últimas movimentações da jornada</h3>
+        <section class="cx-team-detail-section cx-journey-customers" data-cx-jornada-clientes tabindex="-1"><div class="cx-list-heading">
+          <div><h3>Clientes da jornada</h3><p>Cobranças de ${dateBR(selectedDay)}</p></div>
+        </div>${falhasConferencia.length||estrutura.caixasError?'<p class="cx-team-empty">Aguardando confirmação do caixa no servidor.</p>':
+          painelClientesJornada(estado,semPendenciasHistoricas)}</section>
+        <section class="cx-team-detail-section cx-journey-records" data-cx-jornada-registros tabindex="-1"><div class="cx-list-heading">
+          <div><h3>${filtro?esc(categorias.find(([key])=>key===filtro)[1])+' da jornada':'Movimentações da jornada'}</h3>
             ${registrosConferidos?`<p role="status">${recentes.length} de ${filtrados.length} registro(s) confirmado(s)</p>`:''}</div>
           ${registrosConferidos&&historico.length?`<label>Tipo de registro<select data-cx-team-records>
             ${option('',`Todos (${historico.length})`,filtro)}
@@ -1335,22 +1583,23 @@
           </p>`:
           !registrosConferidos?'<p class="cx-loading" role="status">Conferindo lançamentos no servidor…</p>':
           recentes.length?`<div class="cx-table-scroll" tabindex="0" role="region" aria-label="Lançamentos da jornada">
-            <table><thead><tr><th>Tipo</th><th>Vendedor</th><th>Descrição</th><th>Valor</th><th>Data</th></tr></thead>
-            <tbody>${recentes.map(({v,categoria,tipo,valor,vendedor,data})=>`<tr>
+            <table><thead><tr><th>Tipo</th><th>Cliente ou descrição</th><th>Valor</th><th>Data</th></tr></thead>
+            <tbody>${recentes.map(({v,categoria,tipo,valor,data})=>`<tr>
               <td><span class="cx-journey-record-type" data-cx-tone="${categorias.find(([key])=>key===categoria)[2]}">${esc(tipo)}</span></td>
-              <td>${esc(vendedor)}</td><td>${esc(v.clienteNome||v.descricao||v.categoriaNome||id(v))}
+              <td>${esc(v.clienteNome||v.nomeCliente||nomePorVenda.get(vendaRef(v))||v.descricao||v.categoriaNome||tipo)}
                 ${v.motivo?`<small>${esc(v.motivo)}</small>`:''}</td>
               <td>${valor==null?'—':cash(valor)}</td><td>${dateTime(data)}</td></tr>`).join('')}</tbody></table></div>`:
           '<p class="cx-team-empty">Nenhuma movimentação confirmada para este filtro.</p>'}
         </section>
       </div>
+      <dialog class="cx-journey-dialog" data-cx-journey-dialog aria-labelledby="cx-journey-dialog-title"></dialog>
       </div>`;
     if(ui.actionMessage)actionFeedback(ui.actionMessage,ui.actionError);
     host.querySelector('[data-cx-back-all]').onclick=()=>{
-      ui.revision++;ui.detail='';ui.box='';ui.teamDay='';ui.data=null;render();
+      clientesJornada=null;ui.revision++;ui.detail='';ui.box='';ui.teamDay='';ui.data=null;render();
     };
     host.querySelector('[data-cx-team-day]').onchange=event=>{
-      ui.teamDay=event.target.value;ui.teamRecords='';render();
+      clientesJornada=null;ui.teamDay=event.target.value;ui.teamRecords='';ui.teamClientFilter='';render();
       host.querySelector('[data-cx-team-day]')?.focus?.();
     };
     host.querySelector('[data-cx-team-records]')?.addEventListener('change',event=>{
@@ -1360,8 +1609,48 @@
     host.querySelector('[data-cx-extra-metrics]')?.addEventListener('toggle',event=>{
       ui.financeMetricsExpanded=event.target.open;
     });
-    host.querySelectorAll('[data-cx-team-box]').forEach(button=>
-      button.onclick=()=>selectBox(button.dataset.cxTeamBox));
+    const focarPainel=seletor=>{
+      const painel=host.querySelector(seletor);
+      painel?.focus?.({preventScroll:true});
+      painel?.scrollIntoView?.({block:'start'});
+    };
+    host.querySelectorAll('[data-cx-indicator]').forEach(button=>button.onclick=()=>{
+      const destino=button.dataset.cxIndicator;
+      if(destino==='cobrancas')return focarPainel('[data-cx-jornada-clientes]');
+      if(destino==='carteira'){
+        const inicial=items.reduce((total,{m})=>total+num(m.walletInitial),0);
+        const final=items.reduce((total,{m})=>total+num(m.wallet),0);
+        const variacao=registrosConferidos&&items.length&&items.every(({m})=>m.walletInitial!=null&&m.wallet!=null)?cash(final-inicial):'Não registrada';
+        const carteira=estado?.carteira||[];
+        const composicao=carteira.length?`<h4>Contratos em aberto dos caixas ativos</h4><ul class="cx-journey-wallet-list">
+          ${carteira.map(({nome,saldo})=>`<li><span>${esc(nome||'Cliente')}</span><strong>${cash(saldo)}</strong></li>`).join('')}</ul>`:
+          encerrada?'<p class="cx-journey-client-note">O fechamento preserva os totais da carteira. As cobranças registradas estão nos clientes da jornada.</p>':'';
+        const dialog=abrirDialogoJornada(host,'Carteira da equipe',dateBR(selectedDay),dadosJornada([
+          ['Carteira inicial',soma('walletInitial')],['Carteira final',soma('wallet')],['Variação da carteira',variacao]
+        ])+composicao+'<button type="button" class="ghost-btn" data-cx-wallet-clients>Ver clientes da jornada</button>');
+        dialog?.querySelector('[data-cx-wallet-clients]')?.addEventListener('click',()=>{dialog.close();focarPainel('[data-cx-jornada-clientes]');});
+        return;
+      }
+      if(destino==='saldo'){
+        const dialog=abrirDialogoJornada(host,'Composição do caixa',dateBR(selectedDay),dadosJornada([
+          ['Caixa inicial',soma('initial')],[encerrada?'Caixa final':'Caixa atual',soma(encerrada?'final':'current')],
+          ['Saldo calculado',soma('calculated')],['Ajustes',soma('adjustments')]
+        ])+items.map(({box,verified},i)=>verified?`<button type="button" class="ghost-btn" data-cx-team-box="${esc(id(box))}">
+          ${items.length===1?'Abrir detalhamento do caixa':`Abrir caixa ${i+1} · ${esc(box.vendedorNome||upper(box.status))}`}</button>`:'').join(''));
+        dialog?.querySelectorAll('[data-cx-team-box]').forEach(btn=>btn.onclick=()=>{dialog.close();selectBox(btn.dataset.cxTeamBox);});
+        return;
+      }
+      ui.teamRecords=destino;render();focarPainel('[data-cx-jornada-registros]');
+    });
+    host.querySelectorAll('[data-cx-client-filter]').forEach(button=>button.onclick=()=>{
+      ui.teamClientFilter=button.dataset.cxClientFilter;render();
+      host.querySelector(`[data-cx-client-filter="${ui.teamClientFilter}"]`)?.focus?.();
+    });
+    host.querySelectorAll('[data-cx-client]').forEach(button=>button.onclick=()=>{
+      const cliente=clientesPorChave.get(button.dataset.cxClient);
+      if(cliente)abrirDialogoJornada(host,'Histórico de vendas',cliente.nome||'Cliente',historicoClienteJornada(cliente));
+    });
+    host.querySelector('[data-cx-clients-retry]')?.addEventListener('click',()=>{clientesJornada=null;render();});
     host.querySelector('[data-cx-team-calendar]')?.addEventListener('click',()=>{
       if(typeof global.IntegroCaixaDatas?.abrir==='function')
         global.IntegroCaixaDatas.abrir({equipeId:ui.detail});

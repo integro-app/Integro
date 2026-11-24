@@ -115,6 +115,14 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Verificação.** Passaram os 848 testes de `npm run verify`. No Chromium, a apresentação foi conferida com registros simulados em 12 larguras entre 320 e 1920 px, incluindo o filtro de não pagamentos e a exibição de uma jornada fechada.
 - **Estado.** Em homologação com jornadas reais no Master Local.
 
+### M12 — Indicadores e clientes clicáveis na jornada de Caixas (24/11/2026)
+
+- **Indicadores.** Saldo e carteira abrem a composição e o detalhamento. Desempenho leva aos clientes da data. Cada indicador financeiro abre seu tipo de lançamento, com retiradas e recolhimentos em consultas próprias.
+- **Clientes.** Recebidos, Não pagos e Pendentes substituem a lista de caixas por vendedor. A situação acompanha a data selecionada. Cada card mostra o número do empréstimo calculado pelo histórico autorizado, venda com e sem juros, pagamento da jornada e do contrato, saldo devedor e atraso atuais. O histórico abre na própria tela.
+- **Consulta.** Caixas encerrados usam recebimentos, não pagamentos e pendências registrados no caixa selecionado. Caixas abertos usam a carteira da equipe para localizar cobranças previstas. As leituras preservam o escopo de empresa e, para supervisores, de equipe.
+- **Verificação.** Passaram 58 testes direcionados. No Chromium, foram conferidos os nove indicadores, as três situações de cobrança e um histórico de 33 empréstimos com registros simulados, incluindo navegação por teclado, troca para uma jornada encerrada e layout entre 320 e 1920 px.
+- **Estado.** Em homologação com jornadas reais do Master Local.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.
