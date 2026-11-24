@@ -601,7 +601,7 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
     boxDay:box=>box.dataOperacional,
     cash:v=>String(v),num:v=>Number(v)||0,
     upper:v=>String(v??"").toUpperCase(),podeGerir:()=>false,
-    estrutura:{caixasChecked:true},
+    dateTime:()=>"—",estrutura:{caixasChecked:true,caixasIds:new Set()},
     ui:{selected:new Set(),selectedBoxes:new Set(["cx-001"]),expandedTeams:new Set()}
   });
   const cards=functions([{
@@ -739,7 +739,8 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
 test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente encerrada",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/const inconsistentes=history\.filter/);
-  assert.match(source,/inconsistentes\.length\|\|possuiDivergencia\?'REVISÃO'/);
+  assert.match(source,/const emConferencia=!estrutura\.caixasChecked\|\|inconsistentes\.length>0\|\|possuiDivergencia/);
+  assert.match(source,/emConferencia\?'EM CONFERÊNCIA'/);
   assert.match(source,/const exigeRevisao=boxes\.some/);
   assert.match(source,/exigeRevisao\?'REVISÃO':/);
   assert.match(source,/pendenteAnterior\?'PENDENTE DE FECHAMENTO':aberto\?'EM OPERAÇÃO'/);
@@ -765,7 +766,7 @@ test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões
   assert.match(css,/\.cx-approved-sales/);
   assert.match(css,/\.cx-approved-expenses/);
   assert.match(css,/\.cx-box-grid\{\s*display:grid!important;grid-template-columns:minmax\(0,1fr\)!important/);
-  assert.match(css,/@media\(max-width:760px\)\{\s*#caixas \[data-caixas-supervisao\] \.cx-approved-metric-secondary\{display:none!important/);
+  assert.match(css,/@media\(max-width:760px\)\{\s*#caixas \[data-caixas-supervisao\] \.cx-approved-movements\{\s*grid-column:1\/-1;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css,/@media\(max-width:760px\)/);
   assert.match(css,/\.cx-approved-current\{\s*grid-column:1\/-1/);
   assert.match(css,/\.cx-overview-scroll\{display:none!important/);
@@ -793,15 +794,21 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
     boxDay:box=>box.dataOperacional,dateBR:v=>v,
     openBox:box=>box.status==="ABERTO",upper:v=>String(v??"").toUpperCase(),
     num:v=>Number(v)||0,cash:v=>"T"+v,podeGerir:()=>false,
-    estrutura:{caixasChecked:true},
+    dateTime:v=>v ? "24/11/2026, 09:30" : "—",
+    estrutura:{caixasChecked:true,caixasIds:new Set(["box-1","box-2","antigo"]),caixasSincronizadosEm:1},
     ui:{selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set()}
   };
   const renderCards=vm.runInNewContext(source.slice(start,end)+";renderCardsCaixa",context);
-  const box={id:"box-1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Vendedor Norte"};
+  const box={id:"box-1",equipeId:"team-1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Vendedor Norte"};
+  const box2={...box,id:"box-2"};
+  const antigo={...box,id:"antigo",status:"FECHADO",dataOperacional:"2026-10-30"};
+  const caixa={box,current:1234500,initial:1100000,loans:1850000,expenses:614500,received:42000,
+    collected:8000,income:10000,withdrawals:20000,clients:10,visited:5};
   const entry={
     row:{id:"team-1",nome:"Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Norte"}]},
-    latest:box,history:[box],avisos:[],
-    models:[{box,current:1234500,loans:1850000,expenses:614500,received:42000,collected:8000}]
+    latest:box,history:[box,box2,antigo,{id:"cache",equipeId:"team-1",status:"FECHADO"}],avisos:[],
+    models:[caixa,{...caixa,box:box2,current:0,initial:0,loans:0,expenses:0,received:0,
+      collected:0,income:0,withdrawals:0,clients:2,visited:2}]
   };
   const cards=renderCards([entry],()=>true);
   assert.match(cards,/Caixa Atual/);
@@ -810,12 +817,34 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   assert.match(cards,/T1234500/);
   assert.match(cards,/T1850000/);
   assert.match(cards,/T614500/);
-  assert.match(cards,/<small>Recebimentos<\/small>\s*<strong>T42000<\/strong>/);
+  assert.match(cards,/<small>Recebido<\/small>\s*<strong>T42000<\/strong>/);
+  assert.match(cards,/<small>Caixa inicial<\/small>\s*<strong>T1100000<\/strong>/);
+  assert.match(cards,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">Em aberto<\/strong>/);
+  assert.match(cards,/<small>Ingressos<\/small>\s*<strong>T10000<\/strong>/);
+  assert.match(cards,/<small>Retiros<\/small>\s*<strong>T20000<\/strong>/);
+  assert.match(cards,/<small>Caixas no histórico<\/small><strong>3<\/strong>/);
+  assert.match(cards,/<small>Última sincronização<\/small><strong>24\/11\/2026, 09:30<\/strong>/);
+  assert.match(cards,/<progress max="100" value="58" aria-label="Cobranças tratadas">/);
+  assert.match(cards,/7 de 12 cobranças tratadas/);
   assert.match(cards,/<small>Recolhimentos<\/small>\s*<strong>T8000<\/strong>/);
-  const legado=renderCards([{...entry,semResumoHistorico:true}],()=>true);
-  assert.match(legado,/<small>Recebimentos<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
+  const legado=renderCards([{...entry,latest:antigo,history:[antigo],
+    models:[{...caixa,box:antigo,fechamento:{totalVendasCentavos:1850000}}]}],()=>true);
+  assert.match(legado,/<small>Vendas<\/small>\s*<strong>T1850000<\/strong>/);
+  assert.match(legado,/<small>Recebido<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
   assert.match(legado,/<small>Recolhimentos<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
   assert.doesNotMatch(renderCards([entry],()=>false),/T42000|T8000/);
+  const fechado={...box,status:"FECHADO"};
+  const encerrado=renderCards([{...entry,latest:fechado,history:[fechado],
+    models:[{...caixa,box:fechado,final:1200000,clients:null,visited:null}]}],()=>true);
+  assert.match(encerrado,/aria-label="FECHADO"/);
+  assert.match(encerrado,/<small>Caixa final<\/small>\s*<strong>T1200000<\/strong>/);
+  assert.match(encerrado,/<small>Progresso do caixa<\/small><strong>Não registrado<\/strong>/);
+  assert.doesNotMatch(encerrado,/<progress/);
+  const divergente={...box,status:"DIVERGENTE"};
+  const emConferencia=renderCards([{...entry,latest:divergente,history:[divergente],
+    models:[{...caixa,box:divergente}]}],()=>true);
+  assert.match(emConferencia,/aria-label="EM CONFERÊNCIA"/);
+  assert.match(emConferencia,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">Em conferência<\/strong>/);
   assert.match(cards,/PENDENTE DE FECHAMENTO/);
   assert.match(cards,/data-cx-card-menu/);
   assert.match(cards,/data-cx-open="team-1"/);
@@ -851,7 +880,7 @@ test("Badge da jornada pendente é curto no mobile e mantém estado completo par
     dateBR:v=>v,openBox:box=>box.status==="ABERTO",
     upper:v=>String(v??"").toUpperCase(),
     num:v=>Number(v)||0,cash:v=>String(v),podeGerir:()=>false,
-    estrutura:{caixasChecked:true},
+    dateTime:()=>"—",estrutura:{caixasChecked:true,caixasIds:new Set()},
     ui:{selected:new Set(),selectedBoxes:new Set(),expandedTeams:new Set()}
   };
   const render=vm.runInNewContext(source.slice(begin,end)+";renderCardsCaixa",context);

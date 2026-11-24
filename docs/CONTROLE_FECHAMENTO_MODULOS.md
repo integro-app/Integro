@@ -99,6 +99,13 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Verificação.** Passaram os 848 testes de `npm run verify`. No Chromium autenticado no emulador, a lista ficou em uma coluna em nove larguras entre 320 e 1920 px. Foram conferidos os filtros de situação, a limpeza, a busca e a abertura do histórico.
 - **Estado.** Em homologação. Conferir os valores com jornadas reais no Master Local.
 
+### M12 — Resumo da jornada no cartão de Caixas (24/11/2026)
+
+- **Saldos e movimentações.** Caixa Atual em destaque, com Inicial e Final no mesmo bloco. O Final usa o valor de fechamento quando a jornada está fechada. Vendas, recebimentos, gastos, retiros, ingressos e recolhimentos usam os lançamentos conferidos da jornada exibida.
+- **Acompanhamento.** O card mostra o estado do caixa, a quantidade de caixas confirmados no histórico da equipe e o horário da última consulta bem-sucedida ao servidor. O progresso é calculado sobre as cobranças tratadas e previstas da jornada.
+- **Verificação.** Passaram os 848 testes de `npm run verify`. Os testes do cartão cobrem jornada aberta e fechada, valores ausentes em histórico parcial e progresso ponderado por cobranças. No Chromium, layout e filtros passaram em nove larguras de 320 a 1920 px. A leitura individual dos caixas no emulador ficou em conferência, com contagem, status e sincronização da listagem verificados.
+- **Estado.** Em homologação. A conferência com jornadas reais permanece pendente.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

@@ -70,6 +70,8 @@
     // Não transformar cache incompleto em saldo oficial; somente o documento do caixa
     // ou o fechamento confirmado podem fornecer valor atual persistido.
     const current = !openBox(box) ? amount(box,['valorRealFechamento','valorFisicoFechamento','saldoAtual','valorAtual'],frozen?.caixaFinalInformadoCentavos ?? null) : amount(box,['saldoAtual','valorAtual','caixaAtual'],null);
+    const final = openBox(box) ? null : amount(box,['valorRealFechamento','valorFisicoFechamento'],
+      frozen?.caixaFinalInformadoCentavos ?? current);
     const portfolio = unique((data.portfolio || []).filter(v => sameTenant(v) && owned(v,box) && effective(v)));
     const walletInitial = frozen?.carteiraInicialCentavos ?? amount(box,['carteiraInicial'],null);
     const wallet = frozen?.carteiraFinalCentavos ?? (!openBox(box) ? amount(box,['carteiraFinal'],null) : portfolio.length ? sum(portfolio,['saldoDevedor','saldoAtual','valorAberto']) : amount(box,['carteiraFinal'],null));
@@ -86,7 +88,7 @@
     }
     const semBaixaGerencial=pick('totalSemBaixaGerencial',visits.filter(v=>v.semBaixaGerencial===true).length);
     const newSales = sales.filter(v => !v.renovacao && !v.renovada && !upper(v.tipoVenda || v.tipo).includes('RENOV'));
-    return {box,initial,current,calculated,walletInitial,wallet,received,loans,income,expenses,withdrawals,collected,adjustments,sales,payments,moves,visits,expected,clients,visited,paid,unpaid,semBaixaGerencial,
+    return {box,initial,current,final,fechamento:frozen,calculated,walletInitial,wallet,received,loans,income,expenses,withdrawals,collected,adjustments,sales,payments,moves,visits,expected,clients,visited,paid,unpaid,semBaixaGerencial,
       salesCount:pick('quantidadeVendas',!openBox(box)&&loans>0&&!sales.length?null:sales.length),newSales:pick('totalVendasNovasCentavos',!openBox(box)&&loans>0&&!sales.length?null:sum(newSales,['valorEmprestado','valorLiberado','valorPrincipal','valor'])),renewedSales:pick('totalVendasRenovadasCentavos',!openBox(box)&&loans>0&&!sales.length?null:sum(sales.filter(v=>!newSales.includes(v)),['valorEmprestado','valorLiberado','valorPrincipal','valor'])),
       progress:clients ? Math.round(visited/clients*100) : clients === 0 ? 0 : null};
   }
@@ -209,6 +211,7 @@
           }
         }
         estrutura.caixasIds=idsConsultados;
+        estrutura.caixasSincronizadosEm=Date.now();
       }
       estrutura.caixasChecked=!falhas.length;
       estrutura.caixasError=falhas.length?
@@ -628,7 +631,9 @@
   function renderCardsCaixa(entries,conferido) {
     const diaAtual=new Intl.DateTimeFormat('sv-SE',{timeZone:'America/Sao_Paulo',
       year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
-    return entries.map(({row,latest,history,models,avisos,semResumoHistorico})=>{
+    const camposFechamento={loans:'totalVendasCentavos',expenses:'totalGastosCentavos',received:'totalPagamentosCentavos',
+      income:'totalIngressosCentavos',withdrawals:'totalRetiradasCentavos',collected:'totalRecolhimentosCentavos'};
+    return entries.map(({row,latest,history,models,avisos})=>{
       const abertos=history.filter(openBox);
       const inconsistentes=history.filter(box=>
         ['ABERTO','REABERTO'].includes(upper(box.status))&&box.ativo===false);
@@ -636,23 +641,38 @@
       const pendente=abertos.some(box=>boxDay(box)&&boxDay(box)<diaAtual);
       const dataJornada=latest?dateBR(boxDay(latest)):'Sem jornada';
       const validado=estrutura.caixasChecked&&models.every(conferido);
+      const emConferencia=!estrutura.caixasChecked||inconsistentes.length>0||possuiDivergencia;
+      const jornadaFechada=models.length>0&&models.every(m=>['FECHADO','FECHADA'].includes(upper(m.box.status)));
+      const totalCaixas=estrutura.caixasChecked?history.filter(box=>
+        text(box.equipeId)===text(row.id)&&estrutura.caixasIds.has(id(box))).length:'—';
+      const ultimaSincronizacao=dateTime(estrutura.caixasSincronizadosEm);
       function valorIndicador(key) {
-        if (!estrutura.caixasChecked || !validado) return '<strong class="cx-metric-state">Conferindo…</strong>';
+        if (!validado) return '<strong class="cx-metric-state">Conferindo…</strong>';
         if (!models.length) return '<strong>—</strong>';
-        if (models.some(m=>m[key]==null)||
-          (semResumoHistorico&&(key==='received'||key==='collected'))) {
+        const campoFechamento=camposFechamento[key];
+        if (models.some(m=>m[key]==null||
+          (!openBox(m.box)&&campoFechamento&&m.fechamento?.[campoFechamento]==null))) {
           return '<strong class="cx-metric-state">Não registrado</strong>';
         }
         return `<strong>${cash(models.reduce((n,m)=>n+num(m[key]),0))}</strong>`;
       }
-      const situacao=!row.ativa?'INATIVA':!estrutura.caixasChecked?'CONFERINDO':
-        inconsistentes.length||possuiDivergencia?'REVISÃO':
-        pendente?'PENDENTE DE FECHAMENTO':abertos.length?'EM OPERAÇÃO':
-        latest?'FECHADA':'SEM CAIXA';
-      const situacaoMobile=situacao==='PENDENTE DE FECHAMENTO'?'PENDENTE':situacao;
+      const valorFinal=jornadaFechada||!validado||!models.length?valorIndicador('final'):
+        `<strong class="cx-metric-state">${emConferencia||!abertos.length?'Em conferência':'Em aberto'}</strong>`;
+      const situacao=!row.ativa?'INATIVA':emConferencia?'EM CONFERÊNCIA':
+        pendente?'PENDENTE DE FECHAMENTO':abertos.length?'ABERTO':
+        jornadaFechada?'FECHADO':latest?'EM CONFERÊNCIA':'SEM CAIXA';
+      const situacaoMobile=situacao==='PENDENTE DE FECHAMENTO'?'PENDENTE':
+        situacao==='EM CONFERÊNCIA'?'CONFERINDO':situacao;
       const classeStatus=!row.ativa?'is-inactive':
-        inconsistentes.length||possuiDivergencia||pendente?'is-warning':
+        situacao==='EM CONFERÊNCIA'||pendente?'is-warning':
         abertos.length?'is-open':'is-closed';
+      const progressoConhecido=validado&&models.length>0&&models.every(({clients,visited})=>
+        Number.isInteger(clients)&&Number.isInteger(visited)&&visited>=0&&visited<=clients);
+      const cobrancas=progressoConhecido?models.reduce((total,m)=>total+m.clients,0):0;
+      const tratadas=progressoConhecido?models.reduce((total,m)=>total+m.visited,0):0;
+      const progresso=cobrancas>0?Math.round(100*tratadas/cobrancas):null;
+      const progressoTexto=!validado?'Conferindo…':!models.length?'—':
+        !progressoConhecido?'Não registrado':progresso===null?'Sem cobranças':`${progresso}%`;
       const podeSelecionar=row.ativa&&estrutura.caixasChecked;
       const membros=models.length?`
         <details class="cx-team-members cx-team-members-extra" data-cx-members="${esc(row.id)}"
@@ -717,28 +737,45 @@
         <div class="cx-approved-metrics" aria-label="Indicadores financeiros de ${esc(row.nome)}">
           <div class="cx-approved-metric cx-approved-current">
             <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
-            <span class="cx-approved-value"><small>Caixa Atual</small>
-              ${valorIndicador('current')}</span>
+            <div class="cx-approved-value"><small>Caixa Atual</small>
+              ${valorIndicador('current')}
+              <div class="cx-balance-breakdown">
+                <div><small>Caixa inicial</small>${valorIndicador('initial')}</div>
+                <div><small>Caixa final</small>${valorFinal}</div>
+              </div>
+            </div>
           </div>
-          <div class="cx-approved-metric cx-approved-sales">
-            <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">trending_up</span>
-            <span class="cx-approved-value"><small>Vendas</small>
-              ${valorIndicador('loans')}</span>
-          </div>
-          <div class="cx-approved-metric cx-approved-expenses">
-            <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">receipt_long</span>
-            <span class="cx-approved-value"><small>Gastos</small>
-              ${valorIndicador('expenses')}</span>
-          </div>
-          <div class="cx-approved-metric cx-approved-metric-secondary">
-            <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">payments</span>
-            <span class="cx-approved-value"><small>Recebimentos</small>
-              ${valorIndicador('received')}</span>
-          </div>
-          <div class="cx-approved-metric cx-approved-metric-secondary">
-            <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">savings</span>
-            <span class="cx-approved-value"><small>Recolhimentos</small>
-              ${valorIndicador('collected')}</span>
+          <div class="cx-approved-movements">
+            <div class="cx-approved-metric cx-approved-sales">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">trending_up</span>
+              <span class="cx-approved-value"><small>Vendas</small>
+                ${valorIndicador('loans')}</span>
+            </div>
+            <div class="cx-approved-metric cx-approved-expenses">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">receipt_long</span>
+              <span class="cx-approved-value"><small>Gastos</small>
+                ${valorIndicador('expenses')}</span>
+            </div>
+            <div class="cx-approved-metric cx-approved-metric-secondary">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">payments</span>
+              <span class="cx-approved-value"><small>Recebido</small>
+                ${valorIndicador('received')}</span>
+            </div>
+            <div class="cx-approved-metric cx-approved-metric-secondary">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">add_card</span>
+              <span class="cx-approved-value"><small>Ingressos</small>
+                ${valorIndicador('income')}</span>
+            </div>
+            <div class="cx-approved-metric cx-approved-metric-secondary">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">outbox</span>
+              <span class="cx-approved-value"><small>Retiros</small>
+                ${valorIndicador('withdrawals')}</span>
+            </div>
+            <div class="cx-approved-metric cx-approved-metric-secondary">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">savings</span>
+              <span class="cx-approved-value"><small>Recolhimentos</small>
+                ${valorIndicador('collected')}</span>
+            </div>
           </div>
         </div>
         <div class="cx-approved-meta" aria-label="Resumo da equipe">
@@ -746,8 +783,14 @@
             <span><small>Caixas abertos</small><strong>${estrutura.caixasChecked?abertos.length:'—'}</strong></span></div>
           <div><span class="material-symbols-rounded" aria-hidden="true">event_available</span>
             <span><small>Na jornada</small><strong>${estrutura.caixasChecked?models.length:'—'}</strong></span></div>
-          <div><span class="material-symbols-rounded" aria-hidden="true">groups</span>
-            <span><small>Vendedores</small><strong>${row.vendedores.length}</strong></span></div>
+          <div><span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
+            <span><small>Caixas no histórico</small><strong>${totalCaixas}</strong></span></div>
+          <div class="cx-team-sync"><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></div>
+          <div class="cx-team-progress">
+            <div><small>Progresso do caixa</small><strong>${progressoTexto}</strong></div>
+            ${progresso===null?'':`<progress max="100" value="${progresso}" aria-label="Cobranças tratadas"></progress>
+              <small>${tratadas} de ${cobrancas} cobranças tratadas</small>`}
+          </div>
         </div>
         ${membros}
         ${avisos.length?`<p class="cx-team-alert" role="status">${esc(avisos.join(' · '))}</p>`:''}
