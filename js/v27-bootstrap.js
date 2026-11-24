@@ -98,9 +98,9 @@
   async function ensureSellerCollectionCorrections() {
     if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
     try {
-      await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections", "20261107-vendedor-baixas-filtros1");
+      await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections", "20261124-baixas-imediatas");
       global.IntegroVendedorCobrancaCorrecoes?.install?.();
-      await loadIfMissing(() => Boolean(global.IntegroVendedorPagamentoFlexivel), "js/services/vendedor-pagamento-flexivel.js", "seller-flexible-payment");
+      await loadIfMissing(() => Boolean(global.IntegroVendedorPagamentoFlexivel), "js/services/vendedor-pagamento-flexivel.js", "seller-flexible-payment", "20261124-baixas-imediatas");
       global.IntegroVendedorPagamentoFlexivel?.install?.();
       return true;
     } catch (error) {

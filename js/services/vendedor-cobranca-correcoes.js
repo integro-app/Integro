@@ -265,6 +265,8 @@
   }
 
   function abrirNaoPagamento(vendaId) {
+    const status = global.IntegroVendedorAsync?.statusDaCobranca?.({ vendaId })?.status;
+    if (status === "QUEUED" || status === "PROCESSING") return notificar("Aguarde a confirmação da baixa deste cliente.");
     const item = itemPorVenda(vendaId);
     const caixa = caixaAtual();
     if (!item || !caixa) return notificar("Cobrança ou caixa aberto não encontrado.");
@@ -316,14 +318,22 @@
         clienteId: texto(item.clienteId),
         motivo, observacao, origem: "painel_unificado_vendedor"
       };
-      const resposta = novaBaixa
-        ? await callable("registrarNaoPagamentoOperacional")({ entrada: {
-          ...payload, dataOperacional: dataCaixa(caixa)
-        } })
-        : await callable()({ ...payload, acao: "NAO_PAGAMENTO" });
-      if (resposta?.data?.ok !== true) throw new Error("Servidor não confirmou o não pagamento.");
-      removerDialogo();
-      atualizarCachesAposResultado(item, caixa, resposta.data, "NAO_PAGAMENTO", 0, motivo, observacao);
+      const executar = async () => {
+        const resposta = novaBaixa
+          ? await callable("registrarNaoPagamentoOperacional")({ entrada: {
+            ...payload, dataOperacional: dataCaixa(caixa)
+          } })
+          : await callable()({ ...payload, acao: "NAO_PAGAMENTO" });
+        if (resposta?.data?.ok !== true) throw new Error("Servidor não confirmou o não pagamento.");
+        return resposta.data;
+      };
+      const aplicar = resultado => atualizarCachesAposResultado(item, caixa, resultado, "NAO_PAGAMENTO", 0, motivo, observacao);
+      const executarBaixa = global.IntegroVendedorAsync?.executarBaixa;
+      const resultado = executarBaixa
+        ? await executarBaixa({ vendaId, caixa, tipo: "NAO_PAGAMENTO", fechar: removerDialogo, executar, aplicar })
+        : await executar();
+      if (!resultado) return;
+      if (!executarBaixa) { removerDialogo(); aplicar(resultado); }
       notificar(item.pagoHoje ? "Pagamento cancelado e baixa alterada para não pagamento." : (item.naoPagoHoje ? "Não pagamento atualizado." : "Não pagamento registrado."));
     } catch (erro) {
       console.error("[ÍNTEGRO] Falha ao corrigir não pagamento.", erro);
@@ -380,7 +390,7 @@
   }
 
   function instalarBindings() {
-    global.confirmarPagamentoVendedorUnificado = confirmarPagamento;
+    global.confirmarPagamentoVendedorUnificado = global.IntegroVendedorPagamentoFlexivel?.confirmarPagamento || confirmarPagamento;
     global.abrirNaoPagamentoVenda = abrirNaoPagamento;
     global.registrarNaoPagamentoVenda = abrirNaoPagamento;
     global.confirmarNaoPagamentoVendedorUnificado = salvarNaoPagamento;

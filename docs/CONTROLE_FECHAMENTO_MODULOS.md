@@ -92,6 +92,13 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Navegador.** Login e navegação conferidos no Chromium em dez larguras entre 320 e 1920 px. Busca, estado vazio, limpeza, filtro e abertura do editor conferidos com registros de teste em memória devido à instabilidade da leitura do Firestore no emulador.
 - **Estado.** Em homologação. Ainda falta conferir a consulta com dados reais de homologação em celular e desktop.
 
+### M11 — Retorno imediato ao registrar baixa (24/11/2026)
+
+- Ao confirmar pagamento ou não pagamento na operação do vendedor, o modal fecha e o card mostra a sincronização. Os saldos e o resultado da cobrança são atualizados após a confirmação do servidor.
+- A mesma cobrança fica bloqueada durante o envio. Baixas de clientes diferentes entram na fila do caixa. Em caso de falha, a cobrança volta a aceitar nova tentativa e a tela mostra a mensagem do servidor.
+- Passaram 61 testes direcionados. No Chromium, o modal fechou em 3 ms no cenário com servidor simulado em 5 s, e o card confirmou o valor após a resposta.
+- O fluxo segue em homologação com baixas reais do vendedor.
+
 ### M12 — Lista de equipes em Caixas no desktop (24/11/2026)
 
 - **Layout.** Um cartão horizontal por equipe, com indicadores mais baixos e acesso ao histórico junto ao resumo. Recebimentos e Recolhimentos foram incluídos no desktop e usam os dados conferidos da jornada.

@@ -135,6 +135,73 @@ test("pagamento flexível não mistura caixas, datas e empresas ao atualizar cac
  assert.equal(window.caixasCache.find(x=>x.clientePlataformaId==="empresa-b").saldoAtual,999);
 });
 
+test("baixas fecham os dois modais imediatamente e aguardam a confirmação antes de atualizar saldos",async()=>{
+ const vm=require("node:vm");
+ const root=path.resolve(__dirname,"..");
+ const caixa={id:"cx",status:"ABERTO",dataOperacional:"2026-11-24",clientePlataformaId:"empresa",saldoAtualCentavos:10000};
+ const clientes=[{id:"cliente-a",saldoDevedor:50},{id:"cliente-b",saldoDevedor:50}];
+ const vendas=[{id:"a",saldoDevedor:50},{id:"b",saldoDevedor:50}];
+ const parcelas=[{id:"pa",vendaId:"a",numeroParcela:1,valorCentavos:2600,status:"PENDENTE"},
+   {id:"pb",vendaId:"b",numeroParcela:1,valorCentavos:2600,status:"PENDENTE"}];
+ let pagamentos=[],historico=[],modalPagamento=true,modalNaoPagamento=true,caixas=[caixa];
+ const state={getTenantId:()=>"empresa",getUsuario:()=>({authUid:"vendedor"}),getClientes:()=>clientes,getVendas:()=>vendas,
+   getCaixas:()=>caixas,setCaixas:rows=>{caixas=rows;},getParcelas:()=>parcelas,
+   getPagamentos:()=>pagamentos,setPagamentos:rows=>{pagamentos=rows;},
+   getHistoricoCobrancas:()=>historico,setHistoricoCobrancas:rows=>{historico=rows;}};
+ const campos={vendedorPagamentoValor:{value:"26,00"},vendedorPagamentoConfirmar:{textContent:"Confirmar"},
+   integroCorrecaoMotivo:{value:"Cliente ausente"},integroCorrecaoObservacao:{value:"Visita"},
+   integroCorrecaoConfirmar:{textContent:"Confirmar"},integroCorrecaoBaixaDialog:{remove:()=>{modalNaoPagamento=false;}}};
+ const doc={getElementById:id=>campos[id]||null,dispatchEvent(){},querySelectorAll:()=>[],addEventListener(){}};
+ const avisos=[],chamadas=[],timeouts=[];
+ const window={State:state,caixaAtual:caixa,fecharModalVendedorOperacao:()=>{modalPagamento=false;},
+   IntegroVendedorOperacao:{montarCarteira:()=>vendas.map((v,i)=>({vendaId:v.id,clienteId:clientes[i].id,parcelas:[parcelas[i]],venda:v,saldoDevedor:50}))},
+   UIHelpers:{alerta:msg=>avisos.push(msg)},setTimeout:fn=>timeouts.push(fn),
+   firebase:{app:()=>({functions:()=>({httpsCallable:nome=>payload=>new Promise(resolve=>chamadas.push({nome,payload,resolve}))})})}};
+ const unificado=fs.readFileSync(path.join(root,"js/vendedor-unificado.js"),"utf8");
+ const context=vm.createContext({window,document:doc,CustomEvent:class {},setTimeout:()=>0,console:{error(){}}});
+ vm.runInContext(unificado.slice(0,unificado.indexOf("  const idsUsuario ="))+
+   "window.IntegroVendedorAsync = {executarBaixa,statusDaCobranca:statusOperacaoCobranca};})();",context);
+ for(const arquivo of ["vendedor-pagamento-flexivel","vendedor-cobranca-correcoes"]){
+   vm.runInContext(fs.readFileSync(path.join(root,"js/services",arquivo+".js"),"utf8"),context);
+ }
+ window.document=doc;
+ const status=vendaId=>window.IntegroVendedorAsync.statusDaCobranca({vendaId})?.status;
+ const pagamento=window.IntegroVendedorPagamentoFlexivel.confirmarPagamento("a");
+ assert.equal(modalPagamento,false);
+ assert.equal(status("a"),"QUEUED");
+ assert.equal(pagamentos.length,0);
+ await Promise.resolve();
+ assert.equal(status("a"),"PROCESSING");
+ assert.equal(chamadas.length,1);
+ assert.equal(chamadas[0].nome,"registrarPagamentoOperacional");
+ await window.IntegroVendedorCobrancaCorrecoes.salvarNaoPagamento("a");
+ assert.equal(chamadas.length,1,"outra ação no mesmo cliente não duplica a baixa");
+ const naoPagamento=window.IntegroVendedorCobrancaCorrecoes.salvarNaoPagamento("b");
+ assert.equal(modalNaoPagamento,false);
+ assert.equal(status("b"),"QUEUED");
+ assert.equal(chamadas.length,1,"os saldos do caixa são aplicados na ordem da fila");
+ chamadas[0].resolve({data:{ok:true,pagamentoId:"paix",valorPagoParcelaCentavos:2600,statusParcela:"PAGA",
+   saldoVendaCentavos:2400,saldoClienteCentavos:2400,saldoCaixaCentavos:12600,deltaCentavos:2600}});
+ await pagamento;
+ assert.equal(status("a"),"CONFIRMED");
+ assert.equal(pagamentos[0].status,"CONFIRMADO");
+ assert.equal(caixas[0].saldoAtualCentavos,12600);
+ assert.equal(chamadas[1].nome,"registrarNaoPagamentoOperacional");
+ chamadas[1].resolve({data:{ok:false}});
+ await naoPagamento;
+ assert.equal(status("b"),"FAILED");
+ assert.equal(historico.length,0);
+ assert.equal(avisos.at(-1),"Servidor não confirmou o não pagamento.");
+ const retentativa=window.IntegroVendedorCobrancaCorrecoes.salvarNaoPagamento("b");
+ await Promise.resolve();
+ timeouts[1]();
+ assert.equal(status("b"),"PROCESSING","a limpeza da tentativa anterior preserva a atual");
+ chamadas[2].resolve({data:{ok:true,historicoId:"visita-b"}});
+ await retentativa;
+ assert.equal(status("b"),"CONFIRMED");
+ assert.equal(historico[0].id,"visita-b");
+});
+
 
 test("vendedor mantém rótulos fixos das baixas e destaca ação confirmada", () => {
   const operacao = fs.readFileSync(path.join(__dirname, "../js/vendedor-operacao.js"), "utf8");
@@ -170,7 +237,8 @@ test("resumo sai dos cards e cada filtro recebe seu contador", () => {
     assert.ok(unificado.includes('data-cobranca-contagem="' + chave + '"'), "contador de " + chave);
   }
   const bootstrap = fs.readFileSync(path.join(__dirname, "../js/v27-bootstrap.js"), "utf8");
-  assert.match(bootstrap, /seller-collection-corrections", "20261107-vendedor-baixas-filtros1"/);
+  assert.match(bootstrap, /seller-collection-corrections", "20261124-baixas-imediatas"/);
+  assert.match(bootstrap, /seller-flexible-payment", "20261124-baixas-imediatas"/);
 });
 
 
