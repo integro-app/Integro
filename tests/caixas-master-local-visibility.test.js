@@ -406,7 +406,9 @@ test("Master Local usa filtros instantâneos e não opera equipes ocultas pela p
   assert.match(render,/const allEntries=all\.map\(row=>/);
   assert.match(render,/const entries=searchedEntries\.filter/);
   assert.match(render,/if\(!exibidas\.has\(selectedId\)\)ui\.selected\.delete\(selectedId\)/);
-  assert.match(render,/data-cx-quick/);
+  assert.match(render,/data-cx-status/);
+  assert.match(render,/data-cx-team-situation/);
+  assert.doesNotMatch(render,/data-cx-quick/);
   assert.match(render,/data-cx-search-clear/);
   assert.match(render,/class="cx-sellers"/);
   assert.match(render,/class="cx-operational-pulse"/);
@@ -441,7 +443,7 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/const overviewConferido=m=>/);
   assert.match(render,/verifiedBoxes\.has\(id\(caixa\)\)/);
   assert.match(render,/registro\.fingerprint===fingerprint/);
-  assert.match(render,/semResumoHistorico=modelosNaTela\.some/);
+  assert.match(render,/semResumoHistorico:models\.some\(m=>!openBox\(m\.box\).*\.data\?\.closure\)/);
   assert.match(render,/const valorAtual=/);
   assert.match(render,/const indicadorFinanceiro=key=>/);
   assert.match(render,/!totaisConferidos\?'Conferindo…'/);
@@ -564,16 +566,19 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
 });
 
-test("Cabeçalho de Caixas traz indicadores e Ações antes de pesquisa e filtros",()=>{
+test("Cabeçalho de Caixas concentra a situação das equipes dentro de Filtros",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const start=source.indexOf("  function render() {"),end=source.indexOf("  async function query(",start);
   const overview=source.slice(start,end);
   const header=overview.indexOf('<header class="cx-head cx-approved-head">');
   const search=overview.indexOf('<div class="cx-query-row">');
   const actions=overview.indexOf('<footer class="cx-footer">');
-  const teamTabs=overview.indexOf('class="cx-team-tabs"');
+  const filters=overview.indexOf('<details class="cx-filter-options"');
+  const situation=overview.indexOf('data-cx-team-situation=');
+  const filtersEnd=overview.indexOf('</details>',filters);
   const cards=overview.indexOf('class="cx-box-grid"');
-  assert.ok(header>0&&header<search&&search<actions&&actions<teamTabs&&teamTabs<cards);
+  assert.ok(header>0&&header<search&&search<filters&&filters<situation&&situation<filtersEnd&&filtersEnd<actions&&actions<cards);
+  assert.doesNotMatch(overview,/class="cx-team-tabs"/);
   assert.doesNotMatch(overview, /<div class="cx-stats">/);
   assert.match(overview,/class="cx-actions-dropdown"/);
   assert.match(overview,/data-cx-open-date-from-actions/);
@@ -749,9 +754,8 @@ test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões
   const title=overview.indexOf('<header class="cx-head cx-approved-head">');
   const query=overview.indexOf('class="cx-query-row"');
   const actions=overview.indexOf('<footer class="cx-footer">');
-  const teamTabs=overview.indexOf('class="cx-team-tabs"');
   const teamList=overview.indexOf('class="cx-box-grid"');
-  assert.ok(title>=0&&title<query&&query<actions&&actions<teamTabs&&teamTabs<teamList);
+  assert.ok(title>=0&&title<query&&query<actions&&actions<teamList);
   assert.doesNotMatch(overview,/<div class="cx-stats">/);
   assert.match(source,/expandedTeams:new Set\(\)/);
   assert.match(source,/data-cx-members/);
@@ -760,19 +764,21 @@ test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões
   assert.match(css,/\.cx-approved-current/);
   assert.match(css,/\.cx-approved-sales/);
   assert.match(css,/\.cx-approved-expenses/);
+  assert.match(css,/\.cx-box-grid\{\s*display:grid!important;grid-template-columns:minmax\(0,1fr\)!important/);
+  assert.match(css,/@media\(max-width:760px\)\{\s*#caixas \[data-caixas-supervisao\] \.cx-approved-metric-secondary\{display:none!important/);
   assert.match(css,/@media\(max-width:760px\)/);
   assert.match(css,/\.cx-approved-current\{\s*grid-column:1\/-1/);
   assert.match(css,/\.cx-overview-scroll\{display:none!important/);
 });
 
-test("Busca sem resultados mostra orientação útil no mobile e preserva acesso às outras equipes",()=>{
+test("Busca sem resultados direciona para os filtros de equipe",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
   assert.match(source,/class="cx-mobile-empty"/);
   assert.match(source,/Nenhuma equipe ativa encontrada/);
   assert.match(source,/Nenhuma equipe inativa encontrada/);
-  assert.match(source,/data-cx-show-all-teams/);
-  assert.match(source,/ui\.equipesFiltro='todas';ui\.team='';ui\.status='';ui\.search='';render\(\)/);
+  assert.match(source,/data-cx-open-filters>Abrir filtros/);
+  assert.match(source,/ui\.filtersOpen=true;filters\.open=true/);
   assert.match(css,/\.cx-mobile-empty\{display:grid/);
 });
 
@@ -792,17 +798,24 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   };
   const renderCards=vm.runInNewContext(source.slice(start,end)+";renderCardsCaixa",context);
   const box={id:"box-1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Vendedor Norte"};
-  const cards=renderCards([{
+  const entry={
     row:{id:"team-1",nome:"Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Norte"}]},
     latest:box,history:[box],avisos:[],
-    models:[{box,current:1234500,loans:1850000,expenses:614500}]
-  }],()=>true);
+    models:[{box,current:1234500,loans:1850000,expenses:614500,received:42000,collected:8000}]
+  };
+  const cards=renderCards([entry],()=>true);
   assert.match(cards,/Caixa Atual/);
   assert.match(cards,/Vendas/);
   assert.match(cards,/Gastos/);
   assert.match(cards,/T1234500/);
   assert.match(cards,/T1850000/);
   assert.match(cards,/T614500/);
+  assert.match(cards,/<small>Recebimentos<\/small>\s*<strong>T42000<\/strong>/);
+  assert.match(cards,/<small>Recolhimentos<\/small>\s*<strong>T8000<\/strong>/);
+  const legado=renderCards([{...entry,semResumoHistorico:true}],()=>true);
+  assert.match(legado,/<small>Recebimentos<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
+  assert.match(legado,/<small>Recolhimentos<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
+  assert.doesNotMatch(renderCards([entry],()=>false),/T42000|T8000/);
   assert.match(cards,/PENDENTE DE FECHAMENTO/);
   assert.match(cards,/data-cx-card-menu/);
   assert.match(cards,/data-cx-open="team-1"/);

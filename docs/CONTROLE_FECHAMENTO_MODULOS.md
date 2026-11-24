@@ -92,6 +92,13 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Navegador.** Login e navegação conferidos no Chromium em dez larguras entre 320 e 1920 px. Busca, estado vazio, limpeza, filtro e abertura do editor conferidos com registros de teste em memória devido à instabilidade da leitura do Firestore no emulador.
 - **Estado.** Em homologação. Ainda falta conferir a consulta com dados reais de homologação em celular e desktop.
 
+### M12 — Lista de equipes em Caixas no desktop (24/11/2026)
+
+- **Layout.** Um cartão horizontal por equipe, com indicadores mais baixos e acesso ao histórico junto ao resumo. Recebimentos e Recolhimentos foram incluídos no desktop e usam os dados conferidos da jornada.
+- **Filtros.** Ativas, Inativas e Todas ficam dentro de Filtros, junto da seleção de equipe e do estado do caixa. Limpar filtros retorna à consulta inicial de equipes ativas.
+- **Verificação.** Passaram 56 testes direcionados, a validação de HTML e a verificação da superfície de Hosting. Os testes cobrem os valores conferidos, o histórico incompleto e a posição do filtro na página.
+- **Estado.** Em homologação. Conferir os valores com jornadas reais no Master Local.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.
