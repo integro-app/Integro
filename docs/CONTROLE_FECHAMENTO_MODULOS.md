@@ -96,7 +96,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 - **Layout.** Um cartão horizontal por equipe, com indicadores mais baixos e acesso ao histórico junto ao resumo. Recebimentos e Recolhimentos foram incluídos no desktop e usam os dados conferidos da jornada.
 - **Filtros.** Ativas, Inativas e Todas ficam dentro de Filtros, junto da seleção de equipe e do estado do caixa. Limpar filtros retorna à consulta inicial de equipes ativas.
-- **Verificação.** Passaram 56 testes direcionados, a validação de HTML e a verificação da superfície de Hosting. Os testes cobrem os valores conferidos, o histórico incompleto e a posição do filtro na página.
+- **Verificação.** Passaram os 848 testes de `npm run verify`. No Chromium autenticado no emulador, a lista ficou em uma coluna em nove larguras entre 320 e 1920 px. Foram conferidos os filtros de situação, a limpeza, a busca e a abertura do histórico.
 - **Estado.** Em homologação. Conferir os valores com jornadas reais no Master Local.
 
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
