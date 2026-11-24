@@ -83,6 +83,15 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Verificação.** Passaram 119 testes direcionados, a validação das nove páginas HTML e a validação da superfície de Hosting. O layout foi verificado no Chromium com login no emulador entre 320 e 1920 px.
 - **Estado.** A homologar visualmente com uma conta Master Local em celular e desktop. O módulo segue aberto.
 
+### M07 — Acabamento visual da consulta de Equipes (24/11/2026)
+
+- **Escopo.** Equipes em Configurações → Usuários e permissões no Master Local. Indicadores compactos, busca e filtro reorganizados, tabela em áreas largas e cartões quando o espaço é reduzido.
+- **Visibilidade.** A navegação sincroniza a exibição das abas de Configurações e chama a implementação ativa ao trocar de tela. Isso evita que a implementação anterior volte à aba Empresa depois de abrir Usuários e permissões.
+- **Comportamento preservado.** A consulta continua restrita à empresa ativa. Os controles reutilizam as ações, filtros e formulários existentes.
+- **Verificação.** Passaram 60 testes direcionados e as verificações de integridade HTML e da superfície de Hosting. A barra nativa da tela evita que a adaptação global gere outro botão Buscar.
+- **Navegador.** Login e navegação conferidos no Chromium em dez larguras entre 320 e 1920 px. Busca, estado vazio, limpeza, filtro e abertura do editor conferidos com registros de teste em memória devido à instabilidade da leitura do Firestore no emulador.
+- **Estado.** Em homologação. Ainda falta conferir a consulta com dados reais de homologação em celular e desktop.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

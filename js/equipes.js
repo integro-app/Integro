@@ -74,9 +74,9 @@ function renderEquipes() {
   if (host) host.innerHTML = [["hub","Total",todas.length],["verified","Ativas",ativas],
     ["block","Inativas",todas.length - ativas],["person_alert","Sem supervisor",semSupervisor],
     ["groups","Usuários vinculados",vinculados]].map(([i,r,v]) =>
-      '<div class="estrutura-kpi"><span class="material-symbols-rounded">'+i+
+      '<div class="estrutura-kpi"><span class="material-symbols-rounded" aria-hidden="true">'+i+
       '</span><div><small>'+r+'</small><strong>'+v+
-      '</strong><em>Atualização em tempo real</em></div></div>').join("");
+      '</strong></div></div>').join("");
   const resumo = document.getElementById("equipesFiltroResumo");
   if (resumo) resumo.textContent = filtroStatusEquipesEstrutura || "Todas as equipes";
   const contador = document.getElementById("equipesContador");
@@ -108,7 +108,7 @@ function renderEquipes() {
         <button type="button" class="danger-btn usuario-action-muted" data-equipe-acao="excluir" data-equipe-id="${id}">Excluir</button>
       </div></td></tr>`;
   }).join("");
-  el.innerHTML = '<div class="estrutura-table-scroll"><table class="estrutura-table"><thead><tr><th>Equipe</th><th>Supervisor</th><th>Vendedores</th><th>Usuários</th><th>Status</th><th>Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
+  el.innerHTML = '<div class="estrutura-table-scroll"><table class="estrutura-table" aria-label="Equipes"><thead><tr><th scope="col">Equipe</th><th scope="col">Supervisor</th><th scope="col">Vendedores</th><th scope="col">Usuários</th><th scope="col">Status</th><th scope="col">Ações</th></tr></thead><tbody>'+linhas+'</tbody></table></div>';
   if (contador) contador.textContent = equipes.length+' equipe'+(equipes.length===1?'':'s')+
     ' exibida'+(equipes.length===1?'':'s');
   el.onclick = event => {

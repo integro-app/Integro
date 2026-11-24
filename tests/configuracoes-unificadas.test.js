@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const root = path.join(__dirname, "..");
 const read = file => fs.readFileSync(path.join(root, file), "utf8");
@@ -47,4 +48,33 @@ test("master local carrega o módulo unificado de Configurações após o servi�
   const service = master.indexOf("js/services/configuracoes-empresa-service.js");
   const moduleIndex = master.indexOf("js/modules/configuracoes-unificadas.js?v=20261105-config-v1");
   assert.ok(service >= 0 && moduleIndex > service);
+});
+
+test("abrir Usuários e permissões restaura a visibilidade após a seleção de Empresa", () => {
+  const empresa = { style: {} };
+  const usuarios = { style: {} };
+  const listeners = new Map();
+  const document = {
+    readyState: "loading",
+    addEventListener: (name, listener) => listeners.set(name, listener),
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    getElementById: id => ({ configEmpresaBox: empresa, configUsuariosPermissoesBox: usuarios })[id] || null,
+  };
+  const context = vm.createContext({ window: {}, document, setTimeout: callback => callback() });
+  vm.runInContext(moduleJs, context);
+  context.window.abrirAbaConfiguracoes("empresa");
+  assert.equal(usuarios.hidden, true);
+
+  vm.runInContext(read("js/configuracoes-master-local.js"), context);
+  context.window.abrirAbaConfiguracoes("usuariosPermissoes");
+  assert.equal(usuarios.hidden, false);
+  assert.equal(usuarios.style.display, "block");
+  assert.equal(empresa.hidden, true);
+
+  let renderCount = 0;
+  context.window.renderConfiguracoesMasterLocal = () => { renderCount++; };
+  listeners.get("integro-tela-alterada")({ detail: { tela: "configuracoes" } });
+  assert.equal(renderCount, 1);
+  assert.equal(usuarios.hidden, false);
 });

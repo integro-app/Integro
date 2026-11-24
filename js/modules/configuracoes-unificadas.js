@@ -229,6 +229,6 @@
   });
 
   document.addEventListener("integro-tela-alterada", event => {
-    if (event.detail?.tela === "configuracoes") setTimeout(() => renderConfiguracoesMasterLocal(), 0);
+    if (event.detail?.tela === "configuracoes") setTimeout(() => global.renderConfiguracoesMasterLocal?.(), 0);
   });
 })(window);
