@@ -152,10 +152,6 @@
 #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-title{
   display:block;font-size:clamp(16px,2vw,20px);font-weight:950;color:#0c2b50;line-height:1.15
 }
-#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-date{
-  display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-size:11px;font-weight:650;color:#788ba4;margin-top:5px
-}
 #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{
   flex:0 1 auto;min-width:0;max-width:155px;gap:6px;display:inline-flex;align-items:center;
   padding:6px 8px;border:0;border-radius:11px;background:#eef1f6;color:#526983;
@@ -198,13 +194,13 @@
 #caixas [data-caixas-supervisao] .cx-approved-metrics{
   display:grid;grid-template-columns:1fr;gap:9px;min-width:0
 }
-#caixas [data-caixas-supervisao] .cx-approved-movements{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 10px;min-width:0;
-  padding:11px 12px;border:1px solid #e1e9f3;border-radius:13px;background:#f5f8fc
+#caixas [data-caixas-supervisao] .cx-approved-jornada-info{
+  display:grid;align-content:start;gap:5px;min-width:0
 }
-#caixas [data-caixas-supervisao] .cx-movements-title{
-  grid-column:1/-1;margin:0 0 2px;padding-bottom:7px;border-bottom:1px solid #e1e9f3;
-  color:#37516e;font-size:11px;font-weight:800
+#caixas [data-caixas-supervisao] .cx-approved-movements{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));align-items:center;
+  gap:4px 10px;min-width:0;min-height:73px;padding:10px 12px;
+  border:1px solid #e1e9f3;border-radius:13px;background:#f5f8fc
 }
 #caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-metric{
   min-height:35px;padding:3px 0!important;border:0!important;border-radius:0!important;
@@ -258,14 +254,13 @@
 }
 /* Resumo operacional e histórico ficam alinhados no rodapé. */
 #caixas [data-caixas-supervisao] .cx-team-day-footer{
-  min-width:0;margin-top:10px;padding-top:9px;border-top:1px solid #e2eaf4
+  display:grid;align-items:center;gap:8px;min-width:0
 }
 #caixas [data-caixas-supervisao] .cx-approved-meta{
-  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
-  gap:0;margin:14px 0 12px;min-width:0
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px;min-width:0
 }
 #caixas [data-caixas-supervisao] .cx-approved-meta>div{
-  display:flex;align-items:center;justify-content:center;gap:9px;
+  display:flex;align-items:center;justify-content:flex-start;gap:8px;
   min-width:0;padding:2px 6px
 }
 #caixas [data-caixas-supervisao] .cx-approved-meta .material-symbols-rounded{
@@ -373,17 +368,12 @@
    flex:0 0 32px;width:32px;height:32px;font-size:20px;border-radius:10px
  }
  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-title{font-size:16px}
- #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-date{font-size:10px}
  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{
    font-size:9px;max-width:94px;padding:6px 7px;min-height:27px
  }
  #caixas [data-caixas-supervisao] .cx-team-card-menu{flex-basis:25px}
- #caixas [data-caixas-supervisao] .cx-approved-metrics{
-   grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important
- }
- #caixas [data-caixas-supervisao] .cx-approved-current{
-   grid-column:1/-1;min-height:85px!important
- }
+ #caixas [data-caixas-supervisao] .cx-approved-metrics{gap:8px!important}
+ #caixas [data-caixas-supervisao] .cx-approved-current{min-height:85px!important}
  #caixas [data-caixas-supervisao] .cx-approved-metric{
    min-height:77px!important;padding:11px!important;gap:7px;border-radius:13px!important
  }
@@ -400,7 +390,6 @@
  #caixas [data-caixas-supervisao] .cx-approved-current .cx-approved-value strong{
    font-size:clamp(23px,6.5vw,29px)!important
  }
- #caixas [data-caixas-supervisao] .cx-approved-meta{margin:13px 0 11px}
  #caixas [data-caixas-supervisao] .cx-approved-meta>div{padding:0 3px;gap:5px}
  #caixas [data-caixas-supervisao] .cx-approved-meta .material-symbols-rounded{font-size:18px}
  #caixas [data-caixas-supervisao] .cx-approved-meta small{font-size:9px}
@@ -523,9 +512,6 @@
   #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-title{
     font-size:15px!important;letter-spacing:-.03em!important;line-height:1.18!important
   }
-  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-open-date{
-    font-size:10px!important;line-height:1.25!important;margin-top:3px!important
-  }
   #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-status{
     flex:0 0 auto!important;max-width:104px!important;min-height:27px!important;
     padding:5px 7px!important;gap:5px!important;border-radius:8px!important;
@@ -575,7 +561,7 @@
     font-size:clamp(20px,5.8vw,25px)!important;line-height:1.15!important
   }
   #caixas [data-caixas-supervisao] .cx-approved-meta{
-    min-height:36px!important;margin:10px 0 9px!important
+    min-height:36px!important
   }
   #caixas [data-caixas-supervisao] .cx-approved-meta>div{
     padding:1px 3px!important;gap:5px!important
@@ -656,10 +642,10 @@
     font-size:clamp(22px,1.65vw,30px)
   }
   #caixas [data-caixas-supervisao] .cx-team-day-footer{
-    display:grid;grid-template-columns:minmax(0,1fr) 182px;align-items:center;gap:12px;margin:0
+    grid-template-columns:minmax(0,1fr) 182px;gap:10px
   }
   #caixas [data-caixas-supervisao] .cx-approved-meta{
-    margin:0;grid-template-columns:repeat(3,minmax(0,.85fr)) minmax(0,1.35fr) minmax(0,1.65fr)
+    grid-template-columns:minmax(0,.85fr) minmax(0,1fr) minmax(0,1.4fr) minmax(0,.8fr)
   }
   #caixas [data-caixas-supervisao] .cx-approved-meta>div{justify-content:flex-start;padding-inline:5px}
   #caixas [data-caixas-supervisao] .cx-approved-meta .material-symbols-rounded{font-size:17px}
@@ -678,11 +664,13 @@
   }
 }
 
-@container caixa-jornada (max-width:550px){
-  #caixas [data-caixas-supervisao] .cx-approved-metrics,
-  #caixas [data-caixas-supervisao] .cx-team-day-footer{
-    grid-template-columns:minmax(0,1fr)
-  }
+@container caixa-jornada (max-width:750px){
+  #caixas [data-caixas-supervisao] .cx-approved-metrics{grid-template-columns:minmax(0,1fr)}
+}
+
+@container caixa-jornada (max-width:620px){
+  #caixas [data-caixas-supervisao] .cx-team-day-footer{grid-template-columns:minmax(0,1fr)}
+  #caixas [data-caixas-supervisao] .cx-approved-meta{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 
 @media(min-width:761px) and (max-width:1120px){
@@ -690,17 +678,10 @@
   #caixas [data-caixas-supervisao] .cx-approved-meta > div > .material-symbols-rounded{display:none}
 }
 
-@media(max-width:1120px){
-  #caixas [data-caixas-supervisao] .cx-approved-meta{
-    grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 0
-  }
-  #caixas [data-caixas-supervisao] .cx-approved-meta>div{grid-column:span 2}
-  #caixas [data-caixas-supervisao] .cx-approved-meta > :is(.cx-team-sync,.cx-team-progress){grid-column:span 3}
-}
 
 @media(max-width:760px){
   #caixas [data-caixas-supervisao] .cx-approved-movements{
-    grid-column:1/-1;grid-template-columns:repeat(2,minmax(0,1fr))
+    grid-template-columns:repeat(2,minmax(0,1fr))
   }
   #caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-metric{
     min-height:41px!important;padding:4px 0!important
@@ -708,9 +689,6 @@
   #caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-icon{
     flex-basis:23px!important;width:23px!important;height:23px!important;
     border-radius:7px!important;font-size:16px!important
-  }
-  #caixas [data-caixas-supervisao] .cx-team-day-footer .cx-approved-meta{
-    margin:0 0 9px!important
   }
   #caixas [data-caixas-supervisao] .cx-approved-movements .cx-approved-value small{
     white-space:normal;overflow-wrap:anywhere

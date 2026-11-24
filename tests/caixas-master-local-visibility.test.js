@@ -665,8 +665,8 @@ test("Master Local apresenta uma jornada por equipe e filtro de situação ativo
   assert.match(source,/const equipes=rows\(\)\.filter/);
   assert.match(source,/const overviewConferido=m=>/);
   assert.match(source,/class="cx-approved-meta"/);
-  assert.match(source,/Caixas abertos/);
-  assert.match(source,/Na jornada/);
+  assert.match(source,/Data do caixa/);
+  assert.match(source,/Caixas no histórico/);
 });
 
 test("Reabertura é apenas individual e no backend exige motivo e último caixa",()=>{
@@ -766,9 +766,9 @@ test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões
   assert.match(css,/\.cx-approved-sales/);
   assert.match(css,/\.cx-approved-expenses/);
   assert.match(css,/\.cx-box-grid\{\s*display:grid!important;grid-template-columns:minmax\(0,1fr\)!important/);
-  assert.match(css,/@media\(max-width:760px\)\{\s*#caixas \[data-caixas-supervisao\] \.cx-approved-movements\{\s*grid-column:1\/-1;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css,/@media\(max-width:760px\)\{\s*#caixas \[data-caixas-supervisao\] \.cx-approved-movements\{\s*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.match(css,/@media\(max-width:760px\)/);
-  assert.match(css,/\.cx-approved-current\{\s*grid-column:1\/-1/);
+  assert.match(css,/@container caixa-jornada \(max-width:750px\)\{\s*#caixas \[data-caixas-supervisao\] \.cx-approved-metrics\{grid-template-columns:minmax\(0,1fr\)/);
   assert.match(css,/\.cx-overview-scroll\{display:none!important/);
 });
 
@@ -822,7 +822,10 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   assert.match(cards,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">Em aberto<\/strong>/);
   assert.match(cards,/<small>Ingressos<\/small>\s*<strong>T10000<\/strong>/);
   assert.match(cards,/<small>Retiros<\/small>\s*<strong>T20000<\/strong>/);
-  assert.match(cards,/<small>Caixas no histórico<\/small><strong>3<\/strong>/);
+  assert.match(cards,/<small>Data do caixa<\/small><strong>2026-10-31<\/strong>[\s\S]*<small>Caixas no histórico<\/small><strong>3<\/strong>/);
+  assert.doesNotMatch(cards,/cx-team-open-date|Movimentações da jornada|<small>Na jornada<\/small>/);
+  const jornadaVazia=renderCards([{...entry,latest:undefined,history:[],models:[]}],()=>true);
+  assert.match(jornadaVazia,/<small>Data do caixa<\/small><strong>—<\/strong>/);
   assert.match(cards,/<small>Última sincronização<\/small><strong>24\/11\/2026, 09:30<\/strong>/);
   assert.match(cards,/<progress max="100" value="58" aria-label="Cobranças tratadas">/);
   assert.match(cards,/7 de 12 cobranças tratadas/);
