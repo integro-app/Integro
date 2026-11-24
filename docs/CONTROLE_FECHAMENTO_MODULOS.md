@@ -274,6 +274,11 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - Corrigida a disputa entre as camadas de visibilidade do painel, que ocultava Caixas mesmo quando o módulo estava autorizado. Corrigida também a inicialização do serviço do Vendedor enquanto o caixa ainda carrega.
 - **Em homologação.** A matriz, as capturas e as pendências da auditoria integrada estão no [registro de validação](evidencias-homologacao/2026-11-23-padronizacao/README.md).
 
+### M22 — Marca e controle do menu lateral (24/11/2026)
+
+- A navegação desktop ganha contraste entre fundo azul-marinho, ícones e item ativo em laranja. O Master Local alinha o hambúrguer com a marca em um cabeçalho fixo durante a rolagem.
+- Passaram 23 testes direcionados. O Chromium confirmou expansão e recolhimento, foco e teclado, preferência persistida, rolagem e ocultação do controle desktop no celular. A homologação com sessão real segue pendente.
+
 ## 3. Protocolo de avanço (sem pular tópicos)
 
 1. **ALINHAMENTO:** congelar o escopo exato do tópico ativo, regras do proprietário, perfis, botões e comportamento esperado; resolver divergências pertinentes.

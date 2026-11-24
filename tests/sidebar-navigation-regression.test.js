@@ -510,6 +510,8 @@ test("menu desktop: novo gatilho não cria hambúrguer extra no mobile", () => {
   const classes = new Set();
   const body = element(), sidebar = element(), bar = element();
   body.dataset.integroPage = "master-local";
+  sidebar.querySelector = selector => selector === ".integro-desktop-brand" ?
+    sidebar.children.find(node => node.className === "integro-desktop-brand") : null;
   body.classList = {
     add(...values) { values.forEach(value => classes.add(value)); },
     remove(...values) { values.forEach(value => classes.delete(value)); },
@@ -536,8 +538,10 @@ test("menu desktop: novo gatilho não cria hambúrguer extra no mobile", () => {
     addEventListener() {}
   };
   vm.runInNewContext(read("js/integro-desktop-navigation.js"), {window,document});
-  const own = bar.children.find(node => node.className === "integro-desktop-trigger");
-  assert.ok(own, "cria gatilho quando cabeçalho não possui botão nativo");
+  const brand = sidebar.children.find(node => node.className === "integro-desktop-brand");
+  const own = brand.children.find(node => node.className === "integro-desktop-trigger");
+  assert.ok(own, "o gatilho fica junto à marca no Master Local");
+  assert.equal(bar.children.length, 0, "o cabeçalho de um módulo não recebe o controle da barra lateral");
   assert.equal(own.dataset.integroDesktopRailToggle, "true");
   assert.equal(own.className.includes("hamburger"), false,
     "não entra nos seletores globais de hambúrguer mobile");
@@ -564,7 +568,8 @@ test("Master Local: sidebar recolhível mantém o cabeçalho aprovado de Caixas"
   assert.match(style, /\.layout > aside#sidebar\.sidebar \+ main\.main/,
     "geometria deve vencer as regras antigas de margem do Master Local");
   assert.match(style, /\.sidebar > \[data-integro-desktop-rail-toggle\]/,
-    "botão recebe estilo dentro do menu lateral do Master Local");
+    "botão tem estilo de fallback dentro do menu lateral");
+  assert.match(style, /\.integro-desktop-brand > \[data-integro-desktop-rail-toggle\]:focus-visible/);
   assert.match(style, /\.integro-desktop-nav-ready > \.mobile-menu-btn/,
     "gatilho mobile externo não pode reaparecer no desktop");
   assert.match(style, /border-bottom: 0 !important/,
