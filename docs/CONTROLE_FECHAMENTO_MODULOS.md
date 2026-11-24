@@ -76,6 +76,13 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Escopo preservado:** não altera banco, cálculos, coleções, regras, permissões, outros perfis ou valores exibidos.
 - **Conferência:** regressões CSS/M06 adicionadas; a homologação visual autenticada em desktop e mobile e a conciliação de valores continuam necessárias antes do fechamento formal do módulo.
 
+### M06 — Acabamento visual do Dashboard do Master Local (23/11/2026)
+
+- **Layout.** Cabeçalho mobile inspirado em Caixas, indicadores mais compactos, filtro de período acessível no celular e superfícies de gráfico e ranking ajustadas à largura da tela.
+- **Visibilidade.** A aplicação de permissões seleciona somente os botões das abas internas. A seção principal também guarda a aba ativa nesse atributo e era ocultada durante a validação de usuário. As permissões das abas e os cálculos do painel foram preservados.
+- **Verificação.** Passaram 119 testes direcionados, a validação das nove páginas HTML e a validação da superfície de Hosting. O layout foi verificado no Chromium com login no emulador entre 320 e 1920 px.
+- **Estado.** A homologar visualmente com uma conta Master Local em celular e desktop. O módulo segue aberto.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

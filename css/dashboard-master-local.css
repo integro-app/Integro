@@ -1,0 +1,318 @@
+/* Dashboard do Master Local. A marca, a densidade e as superfícies seguem Caixas. */
+html[data-perfil-integro="master_local"] #dashboard {
+  --dashboard-line: var(--it-slate-200);
+  --dashboard-gap: clamp(10px, 1.2vw, 16px);
+  --indicator-start: #194e82;
+  --indicator-end: #0b274d;
+}
+
+.dashboard-heading-wordmark {
+  display: none;
+}
+
+html[data-perfil-integro="master_local"] #dashboard.dashboard-standardized > .dashboard-section-card {
+  padding: clamp(16px, 2vw, 26px) !important;
+  border-color: var(--dashboard-line) !important;
+  border-radius: var(--it-radius-xl) !important;
+  box-shadow: var(--it-shadow-sm) !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-page-header {
+  gap: var(--dashboard-gap) !important;
+  margin: 0 0 var(--dashboard-gap) !important;
+  padding: 0 !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-page-title h2 {
+  font-size: clamp(25px, 2.6vw, 34px) !important;
+  letter-spacing: -.045em !important;
+  text-align: start !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-page-title {
+  margin-inline: 0;
+  justify-content: flex-start;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-period-trigger {
+  min-height: var(--it-control-h) !important;
+  border-color: var(--dashboard-line) !important;
+  border-radius: var(--it-radius-md) !important;
+  box-shadow: var(--it-shadow-xs) !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-period-trigger-icon {
+  background: var(--it-blue-100) !important;
+  color: var(--it-navy-800) !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-period-trigger-copy small {
+  display: block !important;
+  color: var(--it-slate-600) !important;
+  font-size: 10px !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard #m02AbrirVisaoConsolidada {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary {
+  grid-template-columns: repeat(auto-fit, minmax(min(178px, 100%), 1fr)) !important;
+  gap: var(--dashboard-gap) !important;
+  margin-bottom: var(--it-space-4) !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary > .kpi-card[data-dashboard-card] {
+  display: block;
+  position: relative;
+  min-width: 0;
+  min-height: 158px !important;
+  padding: 15px 13px 43px !important;
+  border: 1px solid #ffffff24 !important;
+  border-radius: var(--it-radius-lg) !important;
+  background: linear-gradient(145deg, var(--indicator-start), var(--indicator-end)) !important;
+  box-shadow: 0 5px 14px #071a331c !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .kpi-card[data-dashboard-card="carteira-final"] {
+  --indicator-start: #a65308;
+  --indicator-end: #743806;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .kpi-card[data-dashboard-card="vendas-hoje"] {
+  --indicator-start: #6943a4;
+  --indicator-end: #462e79;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .kpi-card[data-dashboard-card="recebido-hoje"] {
+  --indicator-start: #187553;
+  --indicator-end: #0a523d;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .kpi-card[data-dashboard-card="gastos-hoje"] {
+  --indicator-start: #a93449;
+  --indicator-end: #77243a;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-icon {
+  position: absolute;
+  inset: 11px 11px auto auto;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-icon .material-symbols-rounded {
+  font-size: 19px !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-label {
+  min-height: 24px;
+  padding-inline-end: 34px;
+  font-size: 12px !important;
+  line-height: 1.25 !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-value {
+  font-size: clamp(20px, 2vw, 28px) !important;
+  line-height: 1.12 !important;
+  font-variant-numeric: tabular-nums;
+  white-space: normal !important;
+  overflow-wrap: anywhere;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary :is(.kpi-sub, .kpi-trend, .progress-head) {
+  line-height: 1.3 !important;
+  overflow-wrap: anywhere;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .progress-head strong {
+  white-space: nowrap;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(64px, 100%), 1fr));
+  gap: 5px !important;
+  margin-top: 7px !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-breakdown span {
+  padding: 5px !important;
+  border-radius: var(--it-radius-sm);
+  overflow-wrap: anywhere;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-breakdown strong {
+  font-size: 11px !important;
+  white-space: normal;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-sparkline {
+  inset: auto 13px 11px;
+  height: 23px;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-card:focus-visible {
+  outline: 3px solid var(--it-blue-600);
+  outline-offset: 3px;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-analytics-grid {
+  gap: var(--dashboard-gap) !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard :is(.dashboard-analytics-grid, .bottom-grid) > .panel {
+  padding: clamp(14px, 1.5vw, 21px) !important;
+  border-radius: var(--it-radius-lg) !important;
+  box-shadow: var(--it-shadow-xs) !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard :is(.dashboard-evolution-panel, .dashboard-team-ranking-panel) {
+  min-height: 0 !important;
+}
+
+html[data-perfil-integro="master_local"] #dashboard .dashboard-empty-state {
+  min-height: 120px !important;
+}
+
+@media (max-width: 760px) {
+  html[data-perfil-integro="master_local"] body[data-integro-page="master-local"]:has(#dashboard.screen.active) .layout > main.main {
+    padding-top: env(safe-area-inset-top) !important;
+  }
+
+  html[data-perfil-integro="master_local"] body[data-integro-page="master-local"]:has(#dashboard.screen.active) > .mobile-menu-btn {
+    top: calc(11px + env(safe-area-inset-top)) !important;
+    left: max(12px, env(safe-area-inset-left)) !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    background: #ffffff18 !important;
+    border: 1px solid #ffffff2a !important;
+    color: var(--it-white) !important;
+    box-shadow: none !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard.dashboard-standardized > .dashboard-section-card {
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    overflow: visible !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-page-header {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-page-title {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    min-height: 66px;
+    margin-inline: calc(-1 * var(--it-mobile-gutter));
+    padding: 0 34px 0 max(72px, calc(62px + env(safe-area-inset-left)));
+    background: linear-gradient(115deg, var(--it-navy-900), var(--it-navy-800));
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-page-title::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 34px;
+    background: var(--it-orange-500);
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-heading-wordmark {
+    display: block;
+    flex: 0 0 auto;
+    padding-inline-end: 9px;
+    border-inline-end: 1px solid #ffffff70;
+    color: var(--it-white);
+    font: 900 17px/1.28 var(--it-font);
+    letter-spacing: -.055em;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-heading-wordmark b {
+    color: var(--it-orange-400);
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-page-title h2 {
+    color: var(--it-white) !important;
+    font-size: clamp(18px, 5.4vw, 22px) !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-page-actions {
+    display: flex;
+    width: 100%;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard #m02AbrirVisaoConsolidada {
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+
+  html[data-perfil-integro="master_local"] body[data-integro-page="master-local"] #dashboard.screen.active #dashboardPeriodoToolbar:not([hidden]) {
+    display: flex !important;
+    flex: 1 1 auto;
+  }
+
+  html[data-perfil-integro="master_local"] body[data-integro-page="master-local"] #dashboard.screen.active #dashboardPeriodoToolbar:not([hidden]) .dashboard-period-trigger {
+    display: grid !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary > .kpi-card[data-dashboard-card] {
+    min-height: 111px !important;
+    padding: 12px 10px 33px !important;
+    border-radius: var(--it-radius-md) !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-value {
+    font-size: clamp(18px, 5vw, 24px) !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-icon {
+    inset: 8px 8px auto auto;
+    width: 27px !important;
+    height: 27px !important;
+    min-width: 27px !important;
+    min-height: 27px !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-label {
+    min-height: 24px;
+    padding-inline-end: 28px;
+    font-size: 11px !important;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary .kpi-sparkline {
+    inset: auto 10px 8px;
+    height: 17px;
+  }
+
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-evolution-chart {
+    height: clamp(192px, 43vw, 256px) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  html[data-perfil-integro="master_local"] #dashboard .dashboard-kpis-primary > [data-dashboard-card="vendas-hoje"] {
+    grid-column: 1 / -1;
+  }
+}

@@ -156,7 +156,7 @@ test("desktop e mobile preservam nós do menu quando acesso não muda, isolando 
 
 test("desktop: reaplicar permissões não altera abas cuja visibilidade já está correta", () => {
   let permitido = false;
-  const writes = { dashboard: 0, cobrancas: 0, vendas: 0 };
+  const writes = { dashboard: 0, cobrancas: 0, vendas: 0, tela: 0 };
   function botao(id, chave = "") {
     let hidden = false;
     return {
@@ -166,11 +166,15 @@ test("desktop: reaplicar permissões não altera abas cuja visibilidade já est�
     };
   }
   const dashboard = botao("dashboard", "visao-geral");
+  const tela = botao("tela", "visao-geral");
   const cobrancas = botao("cobrancas");
   const vendas = botao("vendas");
   const document = {
     addEventListener() {},
-    querySelectorAll: selector => selector === "[data-dashboard-view]" ? [dashboard] : [],
+    querySelectorAll(selector) {
+      if (selector === "[data-dashboard-view]") return [dashboard, tela];
+      return selector === "button[data-dashboard-view]" ? [dashboard] : [];
+    },
     getElementById: id => ({ tabCobrancasBtn: cobrancas, tabVendasDiaBtn: vendas })[id] || null
   };
   const window = {
@@ -186,10 +190,11 @@ test("desktop: reaplicar permissões não altera abas cuja visibilidade já est�
   const usuario = { tipoUsuario: "supervisor" };
   aplicar(usuario);
   assert.equal(dashboard.hidden, true);
+  assert.equal(tela.hidden, false, "a seção usa o mesmo atributo para guardar a aba ativa");
   assert.equal(cobrancas.hidden, true);
   assert.equal(vendas.hidden, true);
   aplicar(usuario);
-  assert.deepEqual(writes, { dashboard: 1, cobrancas: 1, vendas: 1 },
+  assert.deepEqual(writes, { dashboard: 1, cobrancas: 1, vendas: 1, tela: 0 },
     "reaplicação não cria mutações sem mudança de permissões");
 
   permitido = true;
@@ -197,7 +202,7 @@ test("desktop: reaplicar permissões não altera abas cuja visibilidade já est�
   assert.equal(dashboard.hidden, false);
   assert.equal(cobrancas.hidden, false);
   assert.equal(vendas.hidden, false);
-  assert.deepEqual(writes, { dashboard: 2, cobrancas: 2, vendas: 2 },
+  assert.deepEqual(writes, { dashboard: 2, cobrancas: 2, vendas: 2, tela: 0 },
     "mudança real de permissões atualiza todas as abas");
 });
 

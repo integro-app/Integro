@@ -189,7 +189,7 @@
 
   function aplicarSubmodulos(usuario) {
     const vendedor = perfil(usuario) === "vendedor";
-    document.querySelectorAll("[data-dashboard-view]").forEach(botao => {
+    document.querySelectorAll("button[data-dashboard-view]").forEach(botao => {
       const chave = botao.dataset.dashboardView;
       const permissao = `dashboard.${String(chave || "").replace(/-/g, "_")}`;
       const permitir = chave === "visao-geral"
