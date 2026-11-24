@@ -103,6 +103,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 
 - **Saldos e movimentações.** Caixa Atual em destaque, com Inicial e Final no mesmo bloco. O Final usa o valor de fechamento quando a jornada está fechada. Vendas, recebimentos, gastos, retiros, ingressos e recolhimentos usam os lançamentos conferidos da jornada exibida.
 - **Acompanhamento.** O card mostra o estado do caixa, a quantidade de caixas confirmados no histórico da equipe e o horário da última consulta bem-sucedida ao servidor. O progresso é calculado sobre as cobranças tratadas e previstas da jornada.
+- **Refinamento visual.** Caixa Atual ganha hierarquia tipográfica, as seis movimentações compartilham um painel e o rodapé alinha contagens, sincronização, progresso e histórico. A leitura foi conferida em 11 larguras entre 320 e 1920 px no Chromium, com registros simulados, valores longos e progresso visível.
 - **Verificação.** Passaram os 848 testes de `npm run verify`. Os testes do cartão cobrem jornada aberta e fechada, valores ausentes em histórico parcial e progresso ponderado por cobranças. No Chromium, layout e filtros passaram em nove larguras de 320 a 1920 px. A leitura individual dos caixas no emulador ficou em conferência, com contagem, status e sincronização da listagem verificados.
 - **Estado.** Em homologação. A conferência com jornadas reais permanece pendente.
 

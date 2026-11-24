@@ -746,6 +746,7 @@
             </div>
           </div>
           <div class="cx-approved-movements">
+            <div class="cx-movements-title">Movimentações da jornada</div>
             <div class="cx-approved-metric cx-approved-sales">
               <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">trending_up</span>
               <span class="cx-approved-value"><small>Vendas</small>
@@ -756,49 +757,51 @@
               <span class="cx-approved-value"><small>Gastos</small>
                 ${valorIndicador('expenses')}</span>
             </div>
-            <div class="cx-approved-metric cx-approved-metric-secondary">
+            <div class="cx-approved-metric">
               <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">payments</span>
               <span class="cx-approved-value"><small>Recebido</small>
                 ${valorIndicador('received')}</span>
             </div>
-            <div class="cx-approved-metric cx-approved-metric-secondary">
+            <div class="cx-approved-metric">
               <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">add_card</span>
               <span class="cx-approved-value"><small>Ingressos</small>
                 ${valorIndicador('income')}</span>
             </div>
-            <div class="cx-approved-metric cx-approved-metric-secondary">
+            <div class="cx-approved-metric">
               <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">outbox</span>
               <span class="cx-approved-value"><small>Retiros</small>
                 ${valorIndicador('withdrawals')}</span>
             </div>
-            <div class="cx-approved-metric cx-approved-metric-secondary">
+            <div class="cx-approved-metric">
               <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">savings</span>
               <span class="cx-approved-value"><small>Recolhimentos</small>
                 ${valorIndicador('collected')}</span>
             </div>
           </div>
         </div>
-        <div class="cx-approved-meta" aria-label="Resumo da equipe">
-          <div><span class="material-symbols-rounded" aria-hidden="true">point_of_sale</span>
-            <span><small>Caixas abertos</small><strong>${estrutura.caixasChecked?abertos.length:'—'}</strong></span></div>
-          <div><span class="material-symbols-rounded" aria-hidden="true">event_available</span>
-            <span><small>Na jornada</small><strong>${estrutura.caixasChecked?models.length:'—'}</strong></span></div>
-          <div><span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
-            <span><small>Caixas no histórico</small><strong>${totalCaixas}</strong></span></div>
-          <div class="cx-team-sync"><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></div>
-          <div class="cx-team-progress">
-            <div><small>Progresso do caixa</small><strong>${progressoTexto}</strong></div>
-            ${progresso===null?'':`<progress max="100" value="${progresso}" aria-label="Cobranças tratadas"></progress>
-              <small>${tratadas} de ${cobrancas} cobranças tratadas</small>`}
-          </div>
-        </div>
         ${membros}
         ${avisos.length?`<p class="cx-team-alert" role="status">${esc(avisos.join(' · '))}</p>`:''}
-        <button type="button" class="cx-team-day-detail" data-cx-open="${esc(row.id)}">
-          <span class="material-symbols-rounded" aria-hidden="true">bar_chart</span>
-          <span>Detalhes e histórico</span>
-          <span class="material-symbols-rounded cx-approved-arrow" aria-hidden="true">chevron_right</span>
-        </button>
+        <div class="cx-team-day-footer">
+          <div class="cx-approved-meta" aria-label="Resumo da equipe">
+            <div><span class="material-symbols-rounded" aria-hidden="true">point_of_sale</span>
+              <span><small>Caixas abertos</small><strong>${estrutura.caixasChecked?abertos.length:'—'}</strong></span></div>
+            <div><span class="material-symbols-rounded" aria-hidden="true">event_available</span>
+              <span><small>Na jornada</small><strong>${estrutura.caixasChecked?models.length:'—'}</strong></span></div>
+            <div><span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
+              <span><small>Caixas no histórico</small><strong>${totalCaixas}</strong></span></div>
+            <div class="cx-team-sync"><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></div>
+            <div class="cx-team-progress">
+              <div><small>Progresso do caixa</small><strong>${progressoTexto}</strong></div>
+              ${progresso===null?'':`<progress max="100" value="${progresso}" aria-label="Cobranças tratadas"></progress>
+                <small>${tratadas} de ${cobrancas} cobranças tratadas</small>`}
+            </div>
+          </div>
+          <button type="button" class="cx-team-day-detail" data-cx-open="${esc(row.id)}">
+            <span class="material-symbols-rounded" aria-hidden="true">bar_chart</span>
+            <span>Detalhes e histórico</span>
+            <span class="material-symbols-rounded cx-approved-arrow" aria-hidden="true">chevron_right</span>
+          </button>
+        </div>
       </article>`;
     }).join('');
   }
