@@ -1,0 +1,490 @@
+/* M01 | Clientes — gestão dos contratantes SaaS da plataforma
+ * Somente #clientes no Master Global. Não afeta módulos operacionais ou o login.
+ * A ordem após o CSS legado garante o padrão novo sem apagar funções aprovadas.
+ */
+html body[data-integro-page="master-global"] #clientes {
+  --cl-ink: #152b45;
+  --cl-muted: #788da5;
+  --cl-line: #e3eaf3;
+  --cl-orange: #ff8a0d;
+  color: var(--cl-ink);
+  min-width: 0;
+}
+html body[data-integro-page="master-global"] #clientes .mg-clientes-panel { width: 100%; min-width: 0; }
+#clientes .mg-clientes-overview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 0 2px 17px;
+}
+#clientes .mg-clientes-eyebrow {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  color: #e8790a;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1.12px;
+  line-height: 1.3;
+}
+#clientes .mg-clientes-eyebrow .material-symbols-rounded { font-size: 18px; }
+#clientes .mg-clientes-overview-copy p {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 650;
+  color: #8291a6;
+}
+#clientes .mg-clientes-sync {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #648977;
+  font-size: 11px;
+  font-weight: 700;
+}
+#clientes .mg-clientes-sync .material-symbols-rounded { font-size: 17px; }
+#clientes .mg-clientes-resumo {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0,1fr));
+  gap: 12px;
+  margin: 0 0 16px;
+}
+#clientes .mg-clientes-resumo-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  align-items: flex-start;
+  justify-content: space-between;
+  min-width: 0;
+  min-height: 89px;
+  padding: 15px 17px;
+  border: 1px solid #e2eaf3;
+  border-radius: 15px;
+  background: #fff;
+  box-shadow: 0 6px 16px rgba(16,38,64,.035);
+  color: #7589a1;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .16s,background .16s,box-shadow .16s,transform .16s;
+}
+#clientes .mg-clientes-resumo-item:hover {
+  border-color: #f6bb82;
+  background: #fffdfb;
+  transform: translateY(-1px);
+}
+#clientes .mg-clientes-resumo-item.is-current {
+  border-color: rgba(255,137,18,.55);
+  background: #fff9f1;
+  box-shadow: 0 6px 18px rgba(246,134,17,.08);
+}
+#clientes .mg-clientes-resumo-item.is-current::before {
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 3px;
+  border-radius: 0 8px 8px 0;
+  background: #fa8c17;
+}
+#clientes .mg-clientes-resumo-item > span {
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.3;
+  white-space: normal;
+}
+#clientes .mg-clientes-resumo-item strong {
+  color: #18324f;
+  font-size: 29px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: -1px;
+}
+#clientes .mg-clientes-resumo-item.is-current strong { color: #e87a0d; }
+#clientes .mg-clientes-resumo-item:focus-visible,
+#clientes .mg-empresa-card:focus-visible,
+#clientes .mg-clientes-load-more button:focus-visible {
+  outline: 3px solid #ffb25f !important;
+  outline-offset: 2px;
+}
+#clientes .mg-clientes-form {
+  margin: 0 0 12px;
+  gap: 9px;
+}
+#clientes .mg-clientes-form .form-input,
+#clientes .mg-clientes-form .btn { height: 49px; min-height: 49px; }
+#clientes .mg-clientes-search .form-input {
+  border-color: #dfe8f3;
+  border-radius: 13px;
+  font-size: 12.5px;
+  font-weight: 630;
+}
+#clientes .mg-clientes-search .form-input:focus-visible {
+  outline: none;
+  border-color: #f4b571;
+  box-shadow: 0 0 0 3px rgba(255,140,20,.075);
+}
+#clientes .mg-clientes-form .btn {
+  border-radius: 12px;
+  padding-inline: 16px;
+  font-size: 12px;
+  font-weight: 850;
+}
+#clientes .mg-clientes-form .mg-clientes-novo {
+  padding-inline: 18px;
+  box-shadow: 0 7px 17px rgba(250,134,14,.18);
+}
+#clientes .mg-clientes-form .mg-clientes-novo:hover { filter: brightness(1.04); }
+#clientes .mg-clientes-filtros {
+  grid-template-columns: repeat(4,minmax(0,1fr)) auto;
+  gap: 11px;
+  align-items: end;
+  padding: 17px;
+  border: 1px solid #e3eaf2;
+  background: #fff;
+  border-radius: 15px;
+  box-shadow: 0 5px 18px rgba(14,36,64,.035);
+}
+#clientes .mg-clientes-filtros .form-label {
+  display: block;
+  color: #657b93;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: .25px;
+}
+#clientes .mg-clientes-filtros .form-select {
+  margin-top: 8px;
+  min-height: 46px;
+  height: 46px;
+  padding-inline: 12px;
+  border-radius: 10px;
+  border-color: #dfe7f1;
+  color: #263d59;
+  font-size: 12px;
+  font-weight: 690;
+}
+#clientes .mg-clientes-filtros .mg-clientes-limpar {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: 11px;
+  white-space: nowrap;
+  font-size: 11px;
+}
+#clientes .mg-clientes-filtros .mg-clientes-limpar .material-symbols-rounded { font-size: 17px; }
+#clientes .mg-clientes-list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+  padding: 4px 2px 13px;
+}
+#clientes .mg-clientes-contador {
+  margin: 0;
+  color: #71869e;
+  font-size: 11.5px;
+  font-weight: 710;
+}
+#clientes .mg-clientes-security {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #8a9aab;
+  white-space: nowrap;
+  font-size: 10px;
+  font-weight: 690;
+}
+#clientes .mg-clientes-security .material-symbols-rounded { color: #699e87; font-size: 17px; }
+#clientes .mg-clientes-lista {
+  display: grid;
+  grid-template-columns: repeat(2,minmax(0,1fr));
+  gap: 13px;
+  align-items: stretch;
+}
+#clientes .mg-empresa-card {
+  display: grid;
+  grid-template-columns: 4px minmax(0,1fr);
+  gap: 0 15px;
+  align-items: stretch;
+  min-width: 0;
+  height: 100%;
+  min-height: 214px;
+  padding: 16px 18px 15px 0;
+  overflow: hidden;
+  border-radius: 17px;
+  border: 1px solid #e2eaf3;
+  background: #fff;
+  box-shadow: 0 8px 21px rgba(12,35,62,.045);
+  transition: border-color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+#clientes .mg-empresa-card:hover {
+  transform: translateY(-2px);
+  border-color: #fac38c;
+  box-shadow: 0 15px 29px rgba(12,34,58,.085);
+}
+#clientes .mg-empresa-bar {
+  grid-row: 1/-1;
+  width: 4px;
+  height: auto;
+  min-height: 100%;
+  border-radius: 0 5px 5px 0;
+}
+#clientes .mg-empresa-content { min-width: 0; }
+#clientes .mg-empresa-identidade { gap: 12px; align-items: flex-start; }
+#clientes .mg-empresa-avatar {
+  flex: 0 0 47px;
+  width: 47px;
+  height: 47px;
+  border-radius: 12px;
+  background: linear-gradient(145deg,#0f2948,#1b3d66);
+}
+#clientes .mg-empresa-avatar .mg-empresa-iniciais { font-size: 15px; }
+#clientes .mg-empresa-infos { min-width: 0; flex: 1 1 auto; }
+#clientes .mg-empresa-title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  justify-content: space-between;
+  min-width: 0;
+}
+#clientes .mg-empresa-title-row h3 {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #132c48;
+  font-size: 14px;
+  line-height: 1.34;
+  font-weight: 900;
+  letter-spacing: -.23px;
+  overflow-wrap: anywhere;
+}
+#clientes .mg-empresa-title-row .chip {
+  flex: 0 0 auto;
+  padding: 4px 7px;
+  margin: 0;
+  font-size: 9px;
+  font-weight: 900;
+  border-radius: 7px;
+}
+#clientes .mg-empresa-meta {
+  margin: 4px 0 4px;
+  color: #8290a4;
+  font-weight: 650;
+  font-size: 10.5px;
+  line-height: 1.35;
+}
+#clientes .mg-empresa-meta-divider { margin: 0 7px; color: #bdc9d6; }
+#clientes .mg-empresa-email {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  margin: 0;
+  color: #7a90a7;
+  font-size: 10.5px;
+  line-height: 1.4;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+#clientes .mg-empresa-email .material-symbols-rounded { flex: 0 0 auto; font-size: 14px; color: #9aabc0; }
+#clientes .mg-empresa-secondary {
+  display: grid;
+  grid-template-columns: repeat(3,minmax(0,1fr));
+  gap: 12px 10px;
+  padding: 14px 0 12px;
+  margin-top: 14px;
+  border-top: 1px solid #edf1f6;
+  border-bottom: 1px solid #edf1f6;
+}
+#clientes .mg-empresa-detail {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  min-width: 0;
+}
+#clientes .mg-empresa-detail > .material-symbols-rounded {
+  flex: 0 0 auto;
+  color: #9baabc;
+  font-size: 16px;
+  margin-top: 2px;
+}
+#clientes .mg-empresa-detail > div { min-width: 0; }
+#clientes .mg-empresa-detail small {
+  display: block;
+  color: #8799aa;
+  font-size: 9px;
+  line-height: 1.4;
+  font-weight: 700;
+}
+#clientes .mg-empresa-detail strong {
+  display: block;
+  margin-top: 3px;
+  color: #304a65;
+  font-size: 10.5px;
+  line-height: 1.45;
+  font-weight: 810;
+  overflow-wrap: anywhere;
+}
+#clientes .mg-empresa-bottom {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  min-height: 28px;
+  padding-top: 12px;
+}
+#clientes .mg-empresa-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+}
+#clientes .mg-empresa-mini-tag {
+  display: inline-flex;
+  padding: 4px 7px;
+  font-size: 9px;
+  font-weight: 730;
+  border-radius: 8px;
+  background: #fff2e2;
+  color: #bd741c;
+}
+#clientes .mg-empresa-mini-tag.is-restricted { background: #fff0f1; color: #c5676b; }
+#clientes .mg-empresa-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 850;
+  color: #be6b1c;
+  white-space: nowrap;
+}
+#clientes .mg-empresa-open .material-symbols-rounded { font-size: 16px; }
+#clientes .mg-clientes-empty {
+  grid-column: 1/-1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 230px;
+  padding: 34px 22px;
+  border: 1px dashed #d9e4f0;
+  border-radius: 18px;
+  text-align: center;
+  color: #8697ac;
+  background: #fff;
+}
+#clientes .mg-clientes-empty > .material-symbols-rounded {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 3px;
+  border-radius: 17px;
+  background: #fff1e2;
+  color: #ec861c;
+  font-size: 28px;
+}
+#clientes .mg-clientes-empty strong {
+  color: #233a56;
+  font-size: 14px;
+  font-weight: 860;
+}
+#clientes .mg-clientes-empty p {
+  max-width: 420px;
+  color: #7e90a6;
+  font-size: 11.5px;
+  line-height: 1.6;
+  font-weight: 620;
+}
+#clientes .mg-clientes-empty .btn {
+  min-height: 40px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+#clientes .mg-clientes-load-more {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0 6px;
+}
+#clientes .mg-clientes-load-more button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+#clientes .mg-clientes-load-more button[hidden] { display: none !important; }
+#clientes .mg-clientes-load-more button .material-symbols-rounded { font-size: 18px; }
+#clientes .mg-clientes-filtros[hidden],#clientes .mg-clientes-filter-count[hidden] { display: none !important; }
+
+@media(max-width: 1570px) {
+  #clientes .mg-clientes-filtros { grid-template-columns: repeat(2,minmax(0,1fr)) auto; }
+  #clientes .mg-clientes-filtros .mg-clientes-limpar { align-self: end; }
+  #clientes .mg-empresa-secondary { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #clientes .mg-empresa-detail:last-child { grid-column: 1/-1; }
+}
+@media(max-width: 1310px) {
+  #clientes .mg-clientes-resumo { gap: 8px; }
+  #clientes .mg-clientes-resumo-item { min-height: 81px; padding: 13px 12px; }
+  #clientes .mg-clientes-lista { grid-template-columns: minmax(0,1fr); }
+  #clientes .mg-empresa-secondary { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  #clientes .mg-empresa-detail:last-child { grid-column: auto; }
+}
+@media(max-width: 900px) {
+  #clientes .mg-clientes-sync { white-space: normal; text-align: right; }
+  #clientes .mg-clientes-filtros { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #clientes .mg-clientes-filtros .mg-clientes-limpar { grid-column: 1/-1; justify-content: center; }
+  #clientes .mg-clientes-form .btn { min-height: 46px; }
+  #clientes .mg-empresa-detail { min-width: 0; }
+}
+@media(max-width: 650px) {
+  #clientes .mg-clientes-overview { flex-direction: column; align-items: flex-start; gap: 10px; padding-bottom: 14px; }
+  #clientes .mg-clientes-sync { text-align: left; }
+  #clientes .mg-clientes-resumo {
+    display: flex;
+    gap: 9px;
+    padding: 1px 1px 11px;
+    margin-bottom: 7px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: x proximity;
+    scrollbar-width: thin;
+  }
+  #clientes .mg-clientes-resumo-item {
+    min-width: 123px;
+    flex: 0 0 123px;
+    min-height: 78px;
+    scroll-snap-align: start;
+  }
+  #clientes .mg-clientes-resumo-item strong { font-size: 26px; }
+  #clientes .mg-clientes-form { gap: 8px; margin-bottom: 9px; }
+  #clientes .mg-clientes-form .btn { min-height: 45px; height: auto; }
+  #clientes .mg-clientes-form .mg-clientes-novo { min-height: 47px; }
+  #clientes .mg-clientes-list-toolbar { align-items: flex-start; }
+  #clientes .mg-clientes-security { display: none; }
+  #clientes .mg-clientes-contador { font-size: 10.5px; }
+  #clientes .mg-empresa-card { min-height: 0; padding: 14px 13px 13px 0; gap: 0 11px; }
+  #clientes .mg-empresa-title-row { flex-wrap: wrap; gap: 7px; }
+  #clientes .mg-empresa-title-row .chip { order: 2; }
+  #clientes .mg-empresa-avatar { flex: 0 0 43px; width: 43px; height: 43px; }
+  #clientes .mg-empresa-secondary { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 11px 9px; }
+  #clientes .mg-empresa-detail:last-child { grid-column: 1/-1; }
+  #clientes .mg-empresa-detail strong { font-size: 10px; }
+  #clientes .mg-empresa-bottom { flex-wrap: wrap; }
+  #clientes .mg-empresa-open { font-size: 10px; }
+}
+@media(max-width: 390px) {
+  #clientes .mg-clientes-filtros { grid-template-columns: minmax(0,1fr); }
+  #clientes .mg-clientes-filtros .mg-clientes-limpar { grid-column: 1; }
+  #clientes .mg-empresa-secondary { grid-template-columns: minmax(0,1fr); }
+  #clientes .mg-empresa-detail:last-child { grid-column: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #clientes .mg-clientes-resumo-item,#clientes .mg-empresa-card { transition: none; }
+}

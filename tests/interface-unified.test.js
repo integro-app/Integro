@@ -109,10 +109,19 @@ test("todas as telas autenticadas usam a única camada de interface", () => {
   }
 });
 
-test("subtítulos principais são removidos na origem e em conteúdo dinâmico", () => {
+test("subtítulos principais saem do desenho e mantêm referências da navegação", () => {
   assert.doesNotMatch(read("js/modules/financeiro-unificado.js"), /<h2>Financeiro<\/h2><p>/);
   assert.doesNotMatch(read("js/modules/auditoria-unificada.js"), /<h2>Auditoria<\/h2><p>/);
-  assert.match(ui, /removerSubtitulosDeModulo/);
+  const vm = require("node:vm");
+  const window = {};
+  const document = { addEventListener() {} };
+  vm.runInNewContext(ui, { window, document });
+  const subtitulo = { hidden: false, innerText: "Descrição inicial" };
+  window.IntegroInterface.removerSubtitulosDeModulo({
+    querySelectorAll: selector => selector === ".topbar > .top-left > div > p" ? [subtitulo] : []
+  });
+  assert.equal(subtitulo.hidden, true);
+  assert.equal(subtitulo.innerText, "Descrição inicial");
   assert.match(master, /config-page-header-standard/);
 });
 

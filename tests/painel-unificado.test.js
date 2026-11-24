@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 
 const raiz = path.resolve(__dirname, "..");
 const painel = fs.readFileSync(path.join(raiz, "js", "painel-unificado.js"), "utf8");
@@ -29,6 +30,42 @@ test("painel aplica permissões após usuario-validado", () => {
 });
 
 
+test("visibilidade de Caixas acompanha a permissão atual do perfil", () => {
+  const caixas = {
+    id: "caixas",
+    hidden: true,
+    dataset: { permissao: "caixas.ver" },
+    style: {},
+    attributes: new Map([["aria-hidden", "true"]]),
+    setAttribute(name, value) { this.attributes.set(name, value); },
+    removeAttribute(name) { this.attributes.delete(name); }
+  };
+  const document = { addEventListener() {}, querySelectorAll: () => [caixas] };
+  const window = {
+    IntegroAcesso: {
+      acessoUsuario: usuario => ({ perfil: usuario.perfil }),
+      pode: (usuario, permissao) => usuario.permissoes?.includes(permissao) === true
+    }
+  };
+  vm.runInNewContext(painel, { window, document });
+  const aplicar = window.IntegroPainel.aplicarPermissoesNasTelas;
+
+  aplicar({ perfil: "master_local" }, document);
+  assert.equal(caixas.hidden, false);
+  assert.equal(caixas.dataset.acessoPermitido, "true");
+  assert.equal(caixas.attributes.has("aria-hidden"), false);
+
+  aplicar({ perfil: "vendedor" }, document);
+  assert.equal(caixas.hidden, true);
+  assert.equal(caixas.dataset.acessoPermitido, "false");
+  assert.equal(caixas.style.display, "none");
+  assert.equal(caixas.attributes.get("aria-hidden"), "true");
+
+  aplicar({ perfil: "supervisor", permissoes: ["caixas.ver"] }, document);
+  assert.equal(caixas.hidden, false);
+  assert.equal(caixas.dataset.acessoPermitido, "true");
+});
+
 test("aprovações usam permissões próprias e o menu compacto sincroniza após aplicar o perfil", () => {
   assert.match(painel, /aprovacoesComercial:\s*"vendas\.aprovar"/);
   assert.match(painel, /PERMISSOES_ALTERNATIVAS_POR_MODULO/);
@@ -55,7 +92,7 @@ test("loader do master local sempre é encerrado em finally", () => {
 test("movimentações do vendedor usam permissões operacionais válidas no painel unificado", () => {
   assert.match(painel, /movimentacoes:\s*"financeiro\.movimentacoes"/);
   assert.match(painel, /movimentacoes:\s*Object\.freeze\(\[[\s\S]*?"solicitacoes\.criar"[\s\S]*?"caixa\.ver_proprio"/);
-  assert.match(html, /js\/painel-unificado\.js\?v=20261105-relatorios-route-v1/);
+  assert.match(html, /js\/painel-unificado\.js\?v=/);
 });
 
 

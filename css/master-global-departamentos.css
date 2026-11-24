@@ -1,0 +1,176 @@
+/* ÍNTEGRO | M01 Departamentos · Master Global · 20/11/2026
+   Escopo exclusivo #departamentos, ficha no drawer e topbar quando ativo. */
+#departamentos.mgdp-screen,#departamentos.mgdp-screen * {box-sizing:border-box;}
+#departamentos.mgdp-screen {--mgdp-line:#e2eaf3;--mgdp-navy:#172e48;--mgdp-muted:#7d90a5;min-width:0;padding:0;}
+#departamentos .mgdp-heading {display:flex;align-items:center;justify-content:space-between;gap:18px;margin-bottom:19px;}
+#departamentos .mgdp-eyebrow {display:flex;align-items:center;gap:7px;color:#d97819;font:850 10px/1.45 Inter,system-ui,sans-serif;letter-spacing:1px;}
+#departamentos .mgdp-eyebrow .material-symbols-rounded {font-size:17px;}
+#departamentos .mgdp-description {margin:5px 0 0;color:#758aa1;font:600 12px/1.5 Inter,system-ui,sans-serif;}
+#departamentos .mgdp-heading-actions {display:flex;align-items:center;gap:17px;}
+#departamentos .mgdp-sync {display:flex;align-items:center;gap:5px;color:#719384;font-size:11px;font-weight:700;white-space:nowrap;}
+#departamentos .mgdp-sync .material-symbols-rounded {font-size:17px;}
+#departamentos .mgdp-add {display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:45px;padding:0 17px;background:linear-gradient(100deg,#ff9f39,#ff8006);color:#fff;border:0;border-radius:11px;font:850 12px/1 Inter,system-ui,sans-serif;cursor:pointer;box-shadow:0 8px 18px rgba(242,130,18,.15);white-space:nowrap;}
+#departamentos .mgdp-add .material-symbols-rounded {font-size:18px;}
+#departamentos .mgdp-add:hover {filter:brightness(1.045);}
+body.mgdp-screen-active #btnAtualizar,body.mgdp-screen-active #btnAcaoPrincipal {display:none!important;}
+#departamentos .mgdp-summary {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px;}
+#departamentos .mgdp-summary-card {display:flex;justify-content:space-between;align-items:center;min-width:0;gap:12px;min-height:92px;padding:16px 17px;background:#fff;border:1px solid #e1e9f2;border-radius:15px;text-align:left;box-shadow:0 6px 16px rgba(15,40,65,.04);cursor:pointer;transition:border-color .17s,transform .17s,box-shadow .17s;}
+#departamentos .mgdp-summary-card:hover {border-color:#ffc891;transform:translateY(-1px);}
+#departamentos .mgdp-summary-card.is-selected {border-color:#ffca90;background:#fffaf3;box-shadow:0 5px 18px rgba(255,146,27,.075);}
+#departamentos .mgdp-summary-copy {display:block;min-width:0;}
+#departamentos .mgdp-summary-copy > span {display:block;color:#7a8ea5;font-size:11px;font-weight:810;line-height:1.4;}
+#departamentos .mgdp-summary-copy strong {display:block;margin-top:6px;color:#1a334e;font-size:29px;font-weight:900;line-height:1.1;letter-spacing:-1px;}
+#departamentos .mgdp-summary-icon {display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:#edf3fa;color:#57748f;}
+#departamentos .mgdp-summary-icon .material-symbols-rounded {font-size:22px;}
+#departamentos .mgdp-summary-card[data-mgdp-quick="ATIVO"] .mgdp-summary-icon {background:#eaf9f1;color:#2f9a70;}
+#departamentos .mgdp-summary-card[data-mgdp-quick="INATIVO"] .mgdp-summary-icon {background:#fff1ed;color:#bf775a;}
+#departamentos .mgdp-summary-card[data-mgdp-quick="SEM"] .mgdp-summary-icon {background:#fff3e5;color:#d28a27;}
+#departamentos .mgdp-toolbar {display:grid;grid-template-columns:minmax(200px,1fr) auto;align-items:center;gap:10px;margin-bottom:12px;}
+#departamentos .mgdp-search {display:flex;align-items:center;gap:9px;min-width:0;height:49px;padding:0 14px;border:1px solid #dce6f1;border-radius:12px;background:#fff;}
+#departamentos .mgdp-search:focus-within {border-color:#ffbd7c;box-shadow:0 0 0 3px rgba(255,145,30,.075);}
+#departamentos .mgdp-search .material-symbols-rounded {color:#8396aa;font-size:21px;}
+#departamentos .mgdp-search input {width:100%;min-width:0;flex:1;height:100%;padding:0;border:0;box-shadow:none;outline:0;background:transparent;color:#233d58;font:650 12px/1.5 Inter,system-ui,sans-serif;}
+#departamentos .mgdp-search input::placeholder {color:#9aaaae;}
+#departamentos .mgdp-toolbar-actions {display:flex;gap:9px;}
+#departamentos .mgdp-toolbar-btn {display:inline-flex;align-items:center;justify-content:center;gap:7px;height:47px;padding:0 14px;border:1px solid #dae5ef;background:#fff;border-radius:11px;color:#29435c;font:800 11px/1 Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;}
+#departamentos .mgdp-toolbar-btn .material-symbols-rounded {font-size:19px;}
+#departamentos .mgdp-toolbar-btn:hover {background:#fffaf5;border-color:#ffc991;}
+#departamentos .mgdp-filters {display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;align-items:end;gap:12px;margin-bottom:15px;padding:17px;border:1px solid #e1eaf3;border-radius:14px;background:#fff;}
+#departamentos .mgdp-filters[hidden] {display:none!important;}
+#departamentos .mgdp-filters label {min-width:0;color:#71869c;font-size:10px;font-weight:820;}
+#departamentos .mgdp-filters select {display:block;width:100%;min-width:0;min-height:43px;margin-top:8px;padding:0 11px;border:1px solid #dce6f1;border-radius:10px;background:#fff;color:#2a445e;font:700 11px Inter,system-ui,sans-serif;}
+#departamentos .mgdp-reset {min-height:43px;padding:0 14px;border:1px solid #e0e9f2;border-radius:10px;background:#f6f9fc;color:#607991;font:800 11px Inter,system-ui,sans-serif;cursor:pointer;white-space:nowrap;}
+#departamentos .mgdp-resultbar {display:flex;justify-content:space-between;align-items:center;gap:12px;margin:0 2px 13px;color:#748aa2;font-size:11px;font-weight:720;}
+#departamentos .mgdp-resultbar p {margin:0;}
+#departamentos .mgdp-source {display:flex;align-items:center;gap:5px;color:#8495a8;white-space:nowrap;font-size:10px;}
+#departamentos .mgdp-source .material-symbols-rounded {font-size:17px;color:#5d9f80;}
+#departamentos .mgdp-list {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;align-items:stretch;}
+#departamentos .mgdp-card {display:flex;flex-direction:column;min-width:0;min-height:224px;padding:18px 19px 15px;border:1px solid #e0e9f2;border-radius:17px;background:#fff;box-shadow:0 7px 23px rgba(13,37,66,.045);transition:border-color .16s,transform .16s;}
+#departamentos .mgdp-card:hover {border-color:#ffc28b;transform:translateY(-1px);}
+#departamentos .mgdp-card.is-inactive {background:linear-gradient(100deg,#fff,#f9fafc);border-color:#e3e7ed;}
+#departamentos .mgdp-card-main {display:flex;align-items:flex-start;gap:12px;min-width:0;}
+#departamentos .mgdp-card-icon {display:grid;place-items:center;flex:0 0 47px;width:47px;height:47px;border-radius:13px;background:linear-gradient(135deg,#133252,#244e79);color:#fff;}
+#departamentos .mgdp-card-icon .material-symbols-rounded {font-size:23px;}
+#departamentos .mgdp-card.is-inactive .mgdp-card-icon {background:#e8eef5;color:#71849b;}
+#departamentos .mgdp-card-heading {min-width:0;flex:1;}
+#departamentos .mgdp-card-title {display:flex;align-items:flex-start;justify-content:space-between;gap:10px;min-width:0;}
+#departamentos .mgdp-card-title h3 {margin:0;min-width:0;flex:1;color:#182e47;font-size:14px;font-weight:900;line-height:1.4;letter-spacing:-.2px;overflow-wrap:anywhere;}
+#departamentos .mgdp-card-heading > p {margin:5px 0 0;max-width:100%;min-height:18px;color:#7b90a6;font-size:11px;font-weight:600;line-height:1.45;overflow-wrap:anywhere;}
+#departamentos .mgdp-status {flex:0 0 auto;display:inline-flex;align-items:center;padding:5px 8px;border-radius:8px;font-size:9px;font-weight:880;line-height:1.2;}
+#departamentos .mgdp-status.is-active {background:#e8f9f0;color:#2a8458;}
+#departamentos .mgdp-status.is-inactive {background:#f1f3f6;color:#718097;}
+#departamentos .mgdp-card-metrics {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;padding:16px 0;margin:14px 0 0;border-top:1px solid #eff3f8;border-bottom:1px solid #eff3f8;}
+#departamentos .mgdp-card-metrics > div {min-width:0;}
+#departamentos .mgdp-card-metrics small {display:block;color:#8495a9;font-size:9.5px;line-height:1.4;font-weight:700;}
+#departamentos .mgdp-card-metrics strong {display:block;margin-top:5px;color:#2c4764;font-size:13px;font-weight:850;line-height:1.4;overflow-wrap:anywhere;}
+#departamentos .mgdp-card-bottom {display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding-top:14px;margin-top:auto;}
+#departamentos .mgdp-quiet {display:inline-flex;align-items:center;gap:5px;color:#90a1b3;font-size:10px;line-height:1.4;font-weight:660;}
+#departamentos .mgdp-quiet .material-symbols-rounded {font-size:15px;color:#cf9b3c;}
+#departamentos .mgdp-card-actions {display:flex;align-items:center;gap:7px;margin-left:auto;}
+#departamentos .mgdp-action {display:inline-flex;align-items:center;justify-content:center;gap:5px;min-height:36px;padding:0 12px;border:1px solid #ffd5aa;border-radius:9px;background:#fff2e6;color:#b36c26;font:850 11px Inter,system-ui,sans-serif;cursor:pointer;}
+#departamentos .mgdp-action .material-symbols-rounded {font-size:16px;}
+#departamentos .mgdp-icon-btn {display:grid;place-items:center;width:36px;height:36px;background:#fff;border:1px solid #dde6ef;border-radius:9px;color:#6c8298;cursor:pointer;}
+#departamentos .mgdp-icon-btn .material-symbols-rounded {font-size:19px;}
+#departamentos .mgdp-action:hover,#departamentos .mgdp-icon-btn:hover {border-color:#f9be86;background:#fff9f2;}
+#departamentos .mgdp-empty {grid-column:1/-1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;min-height:290px;padding:33px 21px;background:#fff;border:1px dashed #d9e4f1;border-radius:18px;text-align:center;}
+#departamentos .mgdp-empty > .material-symbols-rounded {display:grid;place-items:center;width:67px;height:67px;border-radius:20px;background:#fff2e5;color:#ed891a;font-size:33px;}
+#departamentos .mgdp-empty strong {color:#263f59;font-size:15px;font-weight:870;}
+#departamentos .mgdp-empty p {max-width:440px;margin:0;color:#8395a9;font-size:12px;font-weight:610;line-height:1.65;}
+#departamentos .mgdp-clear-empty {margin-top:10px;min-height:40px;padding:0 15px;border:1px solid #dfe8f2;border-radius:9px;background:#f7f9fc;color:#5a718a;font-size:11px;font-weight:800;cursor:pointer;}
+#departamentos .mgdp-more-row {display:flex;justify-content:center;padding:18px 0 5px;}
+#departamentos .mgdp-more-row button[hidden] {display:none!important;}
+#departamentos .mgdp-more-row button {display:inline-flex;align-items:center;gap:7px;}
+#departamentos button:focus-visible {outline:3px solid #ffb367;outline-offset:2px;}
+/* Ficha no drawer, fora da seção departamentos. */
+#drawer .mgdp-profile {display:grid;gap:15px;}
+#drawer .mgdp-profile-hero {display:flex;align-items:center;gap:14px;padding:16px;border:1px solid #e3eaf2;background:#f7f9fc;border-radius:14px;}
+#drawer .mgdp-profile-avatar {display:grid;place-items:center;flex:0 0 49px;width:49px;height:49px;background:#133b64;color:#fff;border-radius:13px;font-size:24px;}
+#drawer .mgdp-profile-hero > div {min-width:0;}
+#drawer .mgdp-profile-hero strong {display:block;color:#253b54;font-size:15px;font-weight:860;overflow-wrap:anywhere;}
+#drawer .mgdp-profile-hero p {color:#8293a6;font-size:11px;line-height:1.6;margin:5px 0 0;overflow-wrap:anywhere;}
+#drawer .mgdp-profile-info {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+#drawer .mgdp-profile-info > div {min-width:0;border:1px solid #e3eaf2;border-radius:11px;background:#fff;padding:13px;}
+#drawer .mgdp-profile-info small {display:block;color:#8599ac;font-size:10px;font-weight:760;}
+#drawer .mgdp-profile-info strong {display:block;margin-top:5px;color:#30465e;font-size:12px;font-weight:830;overflow-wrap:anywhere;}
+#drawer .mgdp-profile-team {min-width:0;}
+#drawer .mgdp-profile-team h3 {display:flex;align-items:center;gap:8px;margin:0 0 9px;color:#2c4058;font-size:13px;font-weight:870;}
+#drawer .mgdp-profile-team h3 span {display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;color:#aa6325;background:#ffedda;border-radius:99px;font-size:10px;}
+#drawer .mgdp-person {display:flex;align-items:center;gap:10px;min-width:0;padding:12px 6px;border-bottom:1px solid #eff2f7;}
+#drawer .mgdp-person > .material-symbols-rounded {flex:0 0 auto;font-size:20px;color:#7e94a9;}
+#drawer .mgdp-person > div {flex:1;min-width:0;}
+#drawer .mgdp-person strong {display:block;font-size:11.5px;color:#304a65;font-weight:850;overflow-wrap:anywhere;}
+#drawer .mgdp-person small {display:block;color:#8b9dad;font-size:10px;margin-top:4px;overflow-wrap:anywhere;}
+#drawer .mgdp-person-status {font-size:9px;font-weight:780;color:#7a91a7;white-space:nowrap;}
+#drawer .mgdp-person-action {min-height:34px;padding:0 8px;border:1px solid #e1e8f1;border-radius:8px;background:#f7f9fc;color:#4e6983;font-size:10px;font-weight:830;cursor:pointer;}
+#drawer .mgdp-empty-members {padding:18px;border:1px dashed #dce5f0;border-radius:12px;background:#fafbfd;color:#8092a5;font-size:11px;text-align:center;}
+#drawer .mgdp-profile-note {padding:14px 15px;border:1px solid #dce8f3;border-radius:12px;background:#f5f9fc;color:#69819b;font-size:11px;line-height:1.65;}
+#drawer .mgdp-profile-note strong {display:block;color:#35536f;margin-bottom:4px;}
+#drawer .mgdp-profile-actions {display:flex;flex-wrap:wrap;gap:9px;}
+#drawer .mgdp-profile-actions .btn {flex:1 1 auto;min-height:43px;}
+#drawer .mgdp-form {display:grid;gap:15px;}
+#drawer .mgdp-form .form-label {display:block;margin:0 0 8px;color:#5b718b;font-size:11px;font-weight:830;}
+#drawer .mgdp-form .form-input,#drawer .mgdp-form .form-select,#drawer .mgdp-form .form-textarea {border-radius:11px;}
+#drawer .mgdp-form .form-input,#drawer .mgdp-form .form-select {min-height:46px;}
+#drawer .mgdp-form .form-textarea {min-height:90px;resize:vertical;}
+#drawer .mgdp-form-intro {display:flex;gap:12px;align-items:center;padding:14px;border:1px solid #e5ebf3;border-radius:13px;background:#f8fafc;}
+#drawer .mgdp-form-intro > .material-symbols-rounded {font-size:25px;color:#d8842b;}
+#drawer .mgdp-form-intro strong {display:block;color:#2d435b;font-size:12px;font-weight:850;}
+#drawer .mgdp-form-intro small {display:block;color:#8295a7;margin-top:4px;line-height:1.5;font-size:11px;}
+#drawer .mgdp-form-hint {padding:13px 14px;border:1px solid #dfebf2;border-radius:10px;background:#f3f9fd;color:#53748d;font-size:11px;line-height:1.6;}
+#drawer .mgdp-form-hint strong {display:block;color:#345470;margin-bottom:5px;}
+#drawer .mgdp-form-warning {border-color:#ffd6a8;background:#fff8ed;color:#9f641f;}
+#drawer .mgdp-form-warning strong {color:#99601d;}
+/* Header existente: esconder redundâncias e manter menu do celular. */
+body.mgdp-screen-active .topbar {border:0!important;box-shadow:none!important;background:transparent!important;padding:0 0 8px!important;margin-bottom:15px!important;}
+body.mgdp-screen-active .top-left {display:flex!important;align-items:center!important;justify-content:center!important;position:relative!important;width:100%!important;}
+body.mgdp-screen-active .top-left > div {flex:1;min-width:0;text-align:center!important;}
+body.mgdp-screen-active #pageTitle {margin:0;text-align:center!important;font-size:clamp(22px,2.7vw,32px)!important;line-height:1.2;letter-spacing:-.7px;}
+body.mgdp-screen-active #pageSubtitle,body.mgdp-screen-active .top-actions {display:none!important;}
+@media(max-width:1450px) {
+  #departamentos .mgdp-list {grid-template-columns:minmax(0,1fr);}
+  #departamentos .mgdp-filters {grid-template-columns:repeat(2,minmax(0,1fr));}
+  #departamentos .mgdp-reset {grid-column:1/-1;}
+}
+@media(max-width:980px) {
+  #departamentos .mgdp-heading {flex-direction:column;align-items:stretch;gap:11px;}
+  #departamentos .mgdp-heading-actions {flex-wrap:wrap;justify-content:space-between;gap:9px;}
+  #departamentos .mgdp-summary {grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;}
+  #departamentos .mgdp-summary-card {min-height:81px;padding:13px;border-radius:13px;}
+  #departamentos .mgdp-summary-copy strong {font-size:26px;}
+  #departamentos .mgdp-summary-icon {width:34px;height:34px;flex-basis:34px;}
+  #departamentos .mgdp-sync {white-space:normal;}
+  body.mgdp-screen-active .top-left {flex-direction:column!important;align-items:stretch!important;gap:8px;}
+  body.mgdp-screen-active .top-left .hamburger {position:static!important;margin:0!important;}
+  body.mgdp-screen-active #pageTitle {font-size:clamp(21px,5.2vw,28px)!important;}
+}
+@media(max-width:640px) {
+  #departamentos .mgdp-heading-actions {align-items:stretch;flex-direction:column-reverse;}
+  #departamentos .mgdp-add {width:100%;}
+  #departamentos .mgdp-toolbar {grid-template-columns:minmax(0,1fr);}
+  #departamentos .mgdp-toolbar-actions {display:grid;grid-template-columns:1fr 1fr;width:100%;}
+  #departamentos .mgdp-toolbar-btn {width:100%;min-height:44px;}
+  #departamentos .mgdp-filters {grid-template-columns:minmax(0,1fr);gap:12px;padding:13px;}
+  #departamentos .mgdp-reset {grid-column:auto;}
+  #departamentos .mgdp-resultbar {flex-direction:column;align-items:flex-start;gap:5px;}
+  #departamentos .mgdp-source {display:none;}
+  #departamentos .mgdp-card {min-height:0;padding:15px 13px;border-radius:14px;}
+  #departamentos .mgdp-card-main {gap:9px;}
+  #departamentos .mgdp-card-icon {width:41px;height:41px;flex-basis:41px;border-radius:10px;}
+  #departamentos .mgdp-card-title {flex-wrap:wrap;}
+  #departamentos .mgdp-card-title h3 {font-size:13px;}
+  #departamentos .mgdp-card-metrics {gap:8px;}
+  #departamentos .mgdp-card-metrics small {font-size:9px;}
+  #departamentos .mgdp-card-metrics strong {font-size:11px;}
+  #departamentos .mgdp-card-bottom {gap:7px;}
+  #drawer .mgdp-profile-info {grid-template-columns:minmax(0,1fr);}
+  #drawer .mgdp-person {flex-wrap:wrap;}
+  #drawer .mgdp-person-status {margin-left:auto;}
+}
+@media(max-width:380px) {
+  #departamentos .mgdp-summary-icon {display:none;}
+  #departamentos .mgdp-card-metrics {grid-template-columns:repeat(2,minmax(0,1fr));}
+  #departamentos .mgdp-card-metrics > div:last-child {grid-column:1/-1;}
+}
+@media(prefers-reduced-motion:reduce) {
+  #departamentos .mgdp-summary-card,#departamentos .mgdp-card {transition:none;}
+}

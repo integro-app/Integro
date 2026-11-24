@@ -4,11 +4,14 @@
   window.__INTEGRO_MOBILE_NAVIGATION_INSTALLED__ = true;
 
   const STYLE_ID = "integroResponsiveAuthoritative";
-  const STYLE_HREF = "css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2";
+  const STYLE_HREF = "css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2&layout=20261123-padrao1";
   const MOBILE_QUERY = window.matchMedia("(max-width: 980px)");
   const body = document.body;
 
   if (!body || !body.dataset.integroPage) return;
+
+  const desktopDrawer = body.dataset.integroLayout === "padrao-perfis-v1";
+  let previousMobileViewport = MOBILE_QUERY.matches;
 
   let usuarioValidado = false;
   let stylesheetReady = false;
@@ -20,6 +23,7 @@
   let lastMenuScrollY = 0;
   let menuScrollAnchor = 0;
   let menuScrollDirection = 0;
+  let lastVisualViewportHeight = 0;
 
   const SELECTORS = {
     trigger: "[data-integro-menu-trigger], .mobile-menu-btn, .hamburger, #btnMenu",
@@ -98,7 +102,8 @@
 
   function syncVisualViewport() {
     const height = window.visualViewport?.height || window.innerHeight || document.documentElement.clientHeight || 0;
-    if (height > 0) {
+    if (height > 0 && height !== lastVisualViewportHeight) {
+      lastVisualViewportHeight = height;
       document.documentElement.style.setProperty("--integro-visual-vh", `${height}px`);
     }
   }
@@ -134,11 +139,10 @@
       trigger.removeAttribute("aria-hidden");
     });
 
-    if (isMobile()) {
+    if (desktopDrawer || isMobile()) {
       menuTriggerHiddenOnScroll = false;
       resetMenuScrollTracking();
       closeSidebar({ restoreFocus: false });
-      forceMenuVisualState(false);
       armHistoryGuard();
     }
     document.dispatchEvent(new CustomEvent("integro-shell-ready"));
@@ -280,15 +284,17 @@
   }
 
   function setMenuAria(open) {
+    const sidebar = primarySidebar();
     document.querySelectorAll(SELECTORS.trigger).forEach((trigger) => {
       trigger.setAttribute("aria-expanded", String(open));
+      if (sidebar?.id) trigger.setAttribute("aria-controls", sidebar.id);
+      if (desktopDrawer || isMobile()) trigger.setAttribute("aria-label", open ? "Fechar menu" : "Abrir menu");
     });
-    const sidebar = primarySidebar();
     if (sidebar) sidebar.setAttribute("aria-hidden", String(!open));
   }
 
   function openSidebar() {
-    if (!isMobile() || !shellReady) return;
+    if ((!desktopDrawer && !isMobile()) || !shellReady) return;
     const sidebar = primarySidebar();
     if (!sidebar) return;
 
@@ -526,8 +532,14 @@
   document.addEventListener("touchcancel", resetTouchGesture, { passive: true });
   document.addEventListener("scroll", onMenuScroll, { capture: true, passive: true });
   window.addEventListener("scroll", onMenuScroll, { passive: true });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || (!desktopDrawer && !isMobile()) || !shellReady || !menuIsOpen()) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    closeSidebar();
+  }, true);
   document.addEventListener("click", (event) => {
-    if (!isMobile() || !shellReady) return;
+    if ((!desktopDrawer && !isMobile()) || !shellReady) return;
 
     const trigger = event.target.closest(SELECTORS.trigger);
     if (trigger) {
@@ -574,14 +586,18 @@
   function handleViewportChange() {
     syncVisualViewport();
     setViewportClasses();
-    if (isMobile()) {
+    const mobileNow = isMobile();
+    const changed = mobileNow !== previousMobileViewport;
+    previousMobileViewport = mobileNow;
+    if (mobileNow) {
       menuTriggerHiddenOnScroll = false;
       resetMenuScrollTracking();
       if (shellReady) {
+        if (changed) setMenuAria(menuIsOpen());
         updateMenuTriggerVisualState(menuIsOpen());
         armHistoryGuard();
       }
-    } else {
+    } else if (changed) {
       menuTriggerHiddenOnScroll = false;
       historyArmed = false;
       closeSidebar({ restoreFocus: false });
@@ -589,7 +605,7 @@
       // Ao voltar para desktop, nenhuma marcação mobile pode deixar
       // os gatilhos (ou a sidebar permanente) ocultos para acessibilidade.
       document.querySelectorAll(SELECTORS.trigger).forEach(trigger => trigger.removeAttribute("aria-hidden"));
-      primarySidebar()?.removeAttribute("aria-hidden");
+      if (!desktopDrawer) primarySidebar()?.removeAttribute("aria-hidden");
     }
   }
 
@@ -620,6 +636,23 @@
   syncVisualViewport();
   setViewportClasses();
   loadAuthoritativeStylesheet().then(attemptShellReady);
+
+  if (!desktopDrawer) {
+    const desktopNavigationScript = document.createElement("script");
+    desktopNavigationScript.src = "js/integro-desktop-navigation.js?v=20261123-padrao2";
+    desktopNavigationScript.async = true;
+    body.appendChild(desktopNavigationScript);
+  }
+
+  /* Reparo de layout do Vendedor no shell unificado: carregamento tardio,
+     após os estilos legados. É estritamente escopado a body.perfil-vendedor. */
+  if (body.dataset.integroPage === "master-local" && !document.getElementById("integroSellerShellCss")) {
+    const sellerStyle = document.createElement("link");
+    sellerStyle.id = "integroSellerShellCss";
+    sellerStyle.rel = "stylesheet";
+    sellerStyle.href = "css/integro-vendedor-shell-dashboard.css?v=20261120-shell1";
+    body.appendChild(sellerStyle);
+  }
 
   /* Fallback seguro: só libera páginas sem boot loader se o usuário já está no State. */
   window.setTimeout(() => {

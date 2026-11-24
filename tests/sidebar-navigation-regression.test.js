@@ -380,3 +380,331 @@ test("Operação do vendedor seleciona apenas abas permitidas e preserva a confe
   assert.equal(nenhuma.elementos.vendedorOperacaoTitulo.textContent, "Operação indisponível");
   assert.ok(!nenhuma.eventos.some(item => item[0] === "renderCobrancas" || item[0] === "renderVendasDia"));
 });
+
+
+test("menu desktop retrátil: alterna, persiste e devolve o controle ao drawer mobile", () => {
+  const style = read("css/integro-desktop-navigation.css");
+  const shared = read("js/integro-mobile-navigation.js");
+  assert.match(style, /@media \(min-width: 981px\)/);
+  assert.match(style, /--integro-desktop-rail-width: 78px/);
+  assert.match(style, /\.integro-desktop-trigger/, "o gatilho extra nunca deve aparecer no mobile");
+  assert.match(read("js/integro-desktop-navigation.js"), /"aria-current", "page"/,
+    "o módulo ativo informa sua posição aos leitores de tela");
+  assert.match(style, /\.integro-desktop-nav-unified\.integro-desktop-nav-ready \.sidebar > \.menu-section/);
+  assert.match(style, /button\[hidden\]/, "botões ocultos não podem reaparecer no menu");
+  assert.ok(style.includes("#integroSidebarMenu > button[hidden]"), "regra hidden deve superar o botão com ID");
+  assert.match(shared, /js\/integro-desktop-navigation\.js\?v=/);
+
+  const flags = new Set(["sidebar-desktop-fechada"]);
+  const classes = {
+    add(...values) { values.forEach(v => flags.add(v)); },
+    remove(...values) { values.forEach(v => flags.delete(v)); },
+    contains(value) { return flags.has(value); },
+    toggle(value, enabled) {
+      if (enabled === undefined) enabled = !flags.has(value);
+      enabled ? flags.add(value) : flags.delete(value);
+      return enabled;
+    }
+  };
+  const element = () => ({
+    dataset: {}, attrs: {}, events: {},
+    classList: { remove() {}, add() {} },
+    setAttribute(name, value) { this.attrs[name] = value; },
+    getAttribute(name) { return this.attrs[name] ?? null; },
+    removeAttribute(name) { delete this.attrs[name]; },
+    addEventListener(name, handler) { this.events[name] = handler; },
+    appendChild(node) { (this.children ||= []).push(node); },
+    insertBefore(node) { (this.children ||= []).unshift(node); },
+    contains() { return true; },
+    querySelector() { return null; },
+    querySelectorAll() { return []; }
+  });
+  const body = element(), sidebar = element(), topbar = element(), button = element();
+  const overlay = element();
+  let unifiedMenuRendered = false;
+  sidebar.querySelector = selector => selector === "#integroSidebarMenu [data-menu-unificado]" && unifiedMenuRendered ? {} : null;
+  body.dataset.integroPage = "vendedor";
+  body.classList = classes;
+  topbar.querySelector = () => button;
+  let onclick;
+  const document = {
+    body, readyState: "complete",
+    getElementById: () => null,
+    createElement: () => element(),
+    querySelector(selector) {
+      if (selector.includes("[data-integro-sidebar]")) return sidebar;
+      if (selector.includes(".topbar")) return topbar;
+      if (selector === ".main") return {};
+      return null;
+    },
+    querySelectorAll: selector => selector.includes("overlay") ? [overlay] : [],
+    addEventListener(type, callback, capture) {
+      if (type === "click" && capture) onclick = callback;
+    }
+  };
+  body.appendChild = node => { node.sheet = {}; node.events.load?.(); };
+  const storage = new Map();
+  const media = { matches: true, addEventListener(_name, callback) { this.callback = callback; } };
+  const window = {
+    matchMedia: () => media,
+    localStorage: {
+      getItem: key => storage.get(key),
+      setItem: (key, value) => storage.set(key, value)
+    },
+    addEventListener() {}
+  };
+
+  vm.runInNewContext(read("js/integro-desktop-navigation.js"), { window, document });
+  assert.equal(flags.has("integro-desktop-nav-ready"), true);
+  assert.equal(flags.has("sidebar-desktop-fechada"), false);
+  assert.equal(flags.has("integro-desktop-nav-unified"), false);
+  unifiedMenuRendered = true;
+  window.IntegroDesktopNavigation.sync();
+  assert.equal(flags.has("integro-desktop-nav-unified"), true, "remove menu legado quando menu autorizado está disponível");
+  assert.equal(button.getAttribute("aria-expanded"), "true");
+  assert.ok(sidebar.children.some(el => el.className === "integro-desktop-brand"), "logo empresarial premium");
+  assert.ok(sidebar.children.some(el => el.className === "integro-desktop-profile"), "perfil fixo no rodapé");
+  assert.ok(style.includes(".integro-desktop-profile"));
+  assert.match(style, /#integroDesktopRailTooltip/);
+
+  let blocked = false;
+  onclick({
+    target: { closest: selector => selector === "[data-integro-desktop-rail-toggle]" ? button : null },
+    preventDefault() {},
+    stopImmediatePropagation() { blocked = true; }
+  });
+  assert.equal(blocked, true, "não executa o onclick legado do hambúrguer");
+  assert.equal(flags.has("integro-desktop-nav-compact"), true);
+  assert.equal(storage.get("integro.desktop.sidebar.mode.v1"), "compact");
+  assert.equal(button.getAttribute("aria-expanded"), "false");
+
+  media.matches = false;
+  media.callback();
+  assert.equal(flags.has("integro-desktop-nav-ready"), false, "não interfere no mobile");
+  assert.equal(flags.has("integro-desktop-nav-unified"), false, "não oculta menus mobile");
+  media.matches = true;
+  media.callback();
+  assert.equal(flags.has("integro-desktop-nav-compact"), true, "restaura estado desktop");
+});
+
+
+test("menu desktop: novo gatilho não cria hambúrguer extra no mobile", () => {
+  const element = () => ({
+    dataset: {}, attrs: {}, children: [], events: {}, style: {},
+    classList: { add() {}, remove() {}, toggle() {}, contains() { return false; } },
+    setAttribute(name, value) { this.attrs[name] = value; },
+    getAttribute(name) { return this.attrs[name] ?? null; },
+    removeAttribute(name) { delete this.attrs[name]; },
+    hasAttribute(name) { return name in this.attrs; },
+    appendChild(child) { this.children.push(child); if (child.rel === "stylesheet") child.events.load?.(); },
+    insertBefore(child) { this.children.unshift(child); },
+    addEventListener(name, callback) { this.events[name] = callback; },
+    querySelector() { return null; },
+    querySelectorAll() { return []; }
+  });
+  const classes = new Set();
+  const body = element(), sidebar = element(), bar = element();
+  body.dataset.integroPage = "master-local";
+  body.classList = {
+    add(...values) { values.forEach(value => classes.add(value)); },
+    remove(...values) { values.forEach(value => classes.delete(value)); },
+    toggle(value, on) { on ? classes.add(value) : classes.delete(value); },
+    contains(value) { return classes.has(value); }
+  };
+  const media = { matches: true, addEventListener(_event, callback) { this.callback = callback; } };
+  const document = {
+    body, readyState: "complete",
+    getElementById() { return null; },
+    createElement: element,
+    addEventListener() {},
+    querySelector(selector) {
+      if (selector.includes("[data-integro-sidebar]")) return sidebar;
+      if (selector.includes(".topbar")) return bar;
+      if (selector === ".main") return {};
+      return null;
+    },
+    querySelectorAll() { return []; }
+  };
+  const window = {
+    matchMedia: () => media,
+    localStorage: { getItem() { return null; }, setItem() {} },
+    addEventListener() {}
+  };
+  vm.runInNewContext(read("js/integro-desktop-navigation.js"), {window,document});
+  const own = bar.children.find(node => node.className === "integro-desktop-trigger");
+  assert.ok(own, "cria gatilho quando cabeçalho não possui botão nativo");
+  assert.equal(own.dataset.integroDesktopRailToggle, "true");
+  assert.equal(own.className.includes("hamburger"), false,
+    "não entra nos seletores globais de hambúrguer mobile");
+  assert.equal(own.getAttribute("aria-expanded"), "true");
+  media.matches = false;
+  media.callback();
+  assert.equal(classes.has("integro-desktop-nav-ready"), false);
+  assert.ok(read("css/integro-desktop-navigation.css").includes(
+    ".integro-desktop-profile,\n.integro-desktop-trigger,"),
+    "CSS oculta gatilho extra fora do breakpoint desktop");
+});
+
+
+test("Master Local: sidebar recolhível mantém o cabeçalho aprovado de Caixas", () => {
+  const page = read("master-local.html");
+  const script = read("js/integro-desktop-navigation.js");
+  const style = read("css/integro-desktop-navigation.css");
+
+  assert.doesNotMatch(page, /class="integro-global-header"/, "preserva a retirada do cabeçalho global");
+  assert.ok(script.includes('const host = bar || sidebar();'));
+  assert.match(script, /bar\.classList\.remove\("collapsed"\)/, "não disputa classe collapsed legada");
+  assert.match(style, /\.sidebar > :is\(\.logo,\.brand,\.brand-premium,\.sidebar-brand\)/,
+    "oculta logo legado para não mostrar duas marcas");
+  assert.match(style, /\.layout > aside#sidebar\.sidebar \+ main\.main/,
+    "geometria deve vencer as regras antigas de margem do Master Local");
+  assert.match(style, /\.sidebar > \[data-integro-desktop-rail-toggle\]/,
+    "botão recebe estilo dentro do menu lateral do Master Local");
+  assert.match(style, /\.integro-desktop-nav-ready > \.mobile-menu-btn/,
+    "gatilho mobile externo não pode reaparecer no desktop");
+  assert.match(style, /border-bottom: 0 !important/,
+    "cabeçalho não deve receber borda decorativa");
+});
+
+test("Vendedor: sino continua acessível ao ocultar o card legado", () => {
+  const navigation = read("js/integro-desktop-navigation.js");
+  const style = read("css/integro-desktop-navigation.css");
+  const unified = read("js/unified-navigation.js");
+
+  assert.match(unified, /data-notification-bell/, "origem do botão de notificações aprovado");
+  assert.match(navigation, /function ensureNotificationShortcut\(\)/);
+  assert.match(navigation, /original\?\.click\?\.\(\)/,
+    "novo botão precisa delegar à ação original sem recriar lógica");
+  assert.match(navigation, /data-integro-desktop-notifications/);
+  assert.match(style, /\.integro-desktop-bell-count\[hidden\]/);
+  assert.match(style, /\.integro-desktop-nav-compact #integroSidebarMenu > \.integro-desktop-notifications/);
+});
+
+
+test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplicar no mobile", () => {
+  const style = read("css/integro-desktop-navigation.css");
+  assert.match(style, /\.integro-desktop-notifications,\s*#integroDesktopRailTooltip/);
+
+  const element = () => ({
+    dataset: {}, attrs: {}, events: {}, children: [], style: {},
+    classList: { add() {}, remove() {}, contains() { return false; } },
+    setAttribute(key, value) { this.attrs[key] = String(value); },
+    getAttribute(key) { return this.attrs[key] ?? null; },
+    hasAttribute(key) { return key in this.attrs; },
+    removeAttribute(key) { delete this.attrs[key]; },
+    addEventListener(type, callback) { this.events[type] = callback; },
+    insertBefore(child) { child.parentElement = this; this.children.unshift(child); },
+    appendChild(child) { child.parentElement = this; this.children.push(child); },
+    remove() {
+      if (!this.parentElement) return;
+      const siblings = this.parentElement.children;
+      const idx = siblings.indexOf(this);
+      if (idx >= 0) siblings.splice(idx, 1);
+      this.parentElement = null;
+    },
+    querySelector(selector) {
+      if (selector === ".integro-desktop-bell-count" &&
+          this.className?.includes("integro-desktop-notifications")) {
+        return this.badge ||= { hidden: true, textContent: "" };
+      }
+      return null;
+    },
+    querySelectorAll() { return []; },
+    matches() { return false; }
+  });
+  const flags = new Set();
+  const body = element(), sidebar = element(), header = element(), host = element();
+  const profileSource = element(), bell = element();
+  const bellBadge = { textContent: "3", hidden: false };
+  let opened = 0;
+  bell.querySelector = selector => selector === "[data-notification-count]" ? bellBadge : null;
+  bell.click = () => { opened++; };
+  profileSource.querySelector = selector => {
+    if (selector === "strong, .profile-name") return { textContent: "Vendedor Teste" };
+    if (selector.includes("#empresaNome")) return { textContent: "Empresa Teste" };
+    return null;
+  };
+  host.querySelector = selector => {
+    if (selector === "[data-integro-desktop-notifications]")
+      return host.children.find(child => child.dataset.integroDesktopNotifications) || null;
+    return null;
+  };
+  sidebar.querySelector = selector => {
+    if (selector === "#integroSidebarMenu") return host;
+    if (selector === "#integroSidebarMenu [data-menu-unificado]") return {};
+    if (selector.includes("[data-notification-bell]")) return bell;
+    if (selector === ".user-card, .sidebar-profile-card, .user-card-premium") return profileSource;
+    if (selector === ".integro-desktop-profile") return sidebar.children.find(child => child.className === "integro-desktop-profile") || null;
+    if (selector === ".integro-desktop-brand") return sidebar.children.find(child => child.className === "integro-desktop-brand") || null;
+    return null;
+  };
+  header.matches = selector => selector === ".integro-global-header";
+  body.dataset.integroPage = "master-local";
+  body.classList = {
+    add(...names) { names.forEach(name => flags.add(name)); },
+    remove(...names) { names.forEach(name => flags.delete(name)); },
+    contains(name) { return flags.has(name); },
+    toggle(name, enabled) { enabled ? flags.add(name) : flags.delete(name); }
+  };
+  const originalAppend = body.appendChild;
+  body.appendChild = node => {
+    originalAppend.call(body, node);
+    if (node.rel === "stylesheet") { node.sheet = {}; node.events.load?.(); }
+  };
+  let headerNotificationVisible = false;
+  const document = {
+    body, readyState: "complete",
+    getElementById(id) {
+      return id === "integroNotificationButton" && headerNotificationVisible
+        ? { hidden: false, getClientRects: () => [{}] }
+        : null;
+    },
+    createElement: element,
+    addEventListener() {},
+    querySelector(selector) {
+      if (selector.includes("[data-integro-sidebar]")) return sidebar;
+      if (selector.includes(".integro-global-header")) return header;
+      if (selector === ".main") return {};
+      return null;
+    },
+    querySelectorAll: () => []
+  };
+  const media = { matches: true, addEventListener(_type, callback) { this.callback = callback; } };
+  const window = {
+    matchMedia: () => media,
+    innerHeight: 850,
+    localStorage: { getItem() { return null; }, setItem() {} },
+    addEventListener() {}
+  };
+  vm.runInNewContext(read("js/integro-desktop-navigation.js"), {window, document});
+  assert.equal(flags.has("integro-desktop-nav-ready"), true);
+  assert.ok(header.children.some(child => child.dataset.integroDesktopRailToggle),
+    "gatilho deve aparecer no cabeçalho verdadeiro do Master Local");
+
+  const shortcuts = host.children.filter(child => child.dataset.integroDesktopNotifications);
+  assert.equal(shortcuts.length, 1, "não criar mais de um atalho");
+  assert.equal(shortcuts[0].getAttribute("aria-label"), "Abrir notificações");
+  assert.equal(shortcuts[0].badge.hidden, false);
+  assert.equal(shortcuts[0].badge.textContent, "3");
+  shortcuts[0].events.click();
+  assert.equal(opened, 1, "aciona sino real do usuário");
+
+  bellBadge.textContent = "0";
+  bellBadge.hidden = true;
+  window.IntegroDesktopNavigation.sync();
+  assert.equal(shortcuts[0].badge.hidden, true, "remove indicador ao zerar aviso");
+
+  headerNotificationVisible = true;
+  window.IntegroDesktopNavigation.sync();
+  assert.equal(host.children.filter(child => child.dataset.integroDesktopNotifications).length, 0,
+    "não duplica sino se o cabeçalho já oferece a mesma ação");
+  headerNotificationVisible = false;
+  window.IntegroDesktopNavigation.sync();
+  assert.equal(host.children.filter(child => child.dataset.integroDesktopNotifications).length, 1,
+    "restaura ação caso o cabeçalho não a exiba");
+
+  media.matches = false;
+  media.callback();
+  assert.equal(flags.has("integro-desktop-nav-ready"), false);
+  assert.match(style, /\.integro-desktop-notifications,/, "atalho é oculto no mobile");
+});

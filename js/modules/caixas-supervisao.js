@@ -636,10 +636,12 @@
       const pendente=abertos.some(box=>boxDay(box)&&boxDay(box)<diaAtual);
       const dataJornada=latest?dateBR(boxDay(latest)):'Sem jornada';
       const validado=estrutura.caixasChecked&&models.every(conferido);
-      const valor=key=>!estrutura.caixasChecked?'Conferindo…':
-        !models.length?'—':!validado?'Conferindo…':
-        models.some(m=>m[key]==null)?'Não registrado':
-        cash(models.reduce((n,m)=>n+num(m[key]),0));
+      function valorIndicador(key) {
+        if (!estrutura.caixasChecked || !validado) return '<strong class="cx-metric-state">Conferindo…</strong>';
+        if (!models.length) return '<strong>—</strong>';
+        if (models.some(m=>m[key]==null)) return '<strong class="cx-metric-state">Não registrado</strong>';
+        return `<strong>${cash(models.reduce((n,m)=>n+num(m[key]),0))}</strong>`;
+      }
       const situacao=!row.ativa?'INATIVA':!estrutura.caixasChecked?'CONFERINDO':
         inconsistentes.length||possuiDivergencia?'REVISÃO':
         pendente?'PENDENTE DE FECHAMENTO':abertos.length?'EM OPERAÇÃO':
@@ -713,17 +715,17 @@
           <div class="cx-approved-metric cx-approved-current">
             <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
             <span class="cx-approved-value"><small>Caixa Atual</small>
-              <strong>${valor('current')}</strong></span>
+              ${valorIndicador('current')}</span>
           </div>
           <div class="cx-approved-metric cx-approved-sales">
             <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">trending_up</span>
             <span class="cx-approved-value"><small>Vendas</small>
-              <strong>${valor('loans')}</strong></span>
+              ${valorIndicador('loans')}</span>
           </div>
           <div class="cx-approved-metric cx-approved-expenses">
             <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">receipt_long</span>
             <span class="cx-approved-value"><small>Gastos</small>
-              <strong>${valor('expenses')}</strong></span>
+              ${valorIndicador('expenses')}</span>
           </div>
         </div>
         <div class="cx-approved-meta" aria-label="Resumo da equipe">

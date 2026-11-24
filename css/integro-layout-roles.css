@@ -1,0 +1,478 @@
+/* ÍNTEGRO · padrão visual por perfil · 17/11/2026
+   Uso explicitamente opt-in. NÃO altera Login, Master Local, Master Global,
+   Vendedor ou os shells aprovados. Sem alterações de permissões/negócio. */
+
+body[data-integro-layout="padrao-perfis-v1"] {
+  --integro-role-surface: var(--it-white, #fff);
+  --integro-role-line: var(--it-slate-200, #e2e8f0);
+  --integro-role-text: var(--it-navy-900, #071a33);
+  --integro-role-muted: var(--it-slate-500, #64748b);
+  --integro-role-orange: var(--it-orange-500, #ff8a00);
+}
+
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main > .topbar {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, max-content) minmax(0, 1fr);
+  align-items: center;
+  gap: 14px;
+  min-height: 76px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  background: var(--integro-role-surface);
+  border: 1px solid var(--integro-role-line);
+  border-radius: 18px;
+  box-shadow: 0 8px 24px rgba(15,39,74,.045);
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main > .topbar > :first-child {
+  display: contents !important;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main > .topbar > :first-child > :is(div,h1,h2) {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: center;
+  min-width: 0;
+}
+body[data-integro-layout="padrao-perfis-v1"][data-integro-page="supervisor"]
+  main.main > .topbar > :first-child > .hamburger {
+  grid-column: 1;
+  grid-row: 1;
+  justify-self: start;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main > .topbar :is(h1,h2) {
+  position: static;
+  transform: none;
+  max-width: 100%;
+  margin: 0;
+  font-family: var(--it-font, Inter, system-ui, sans-serif);
+  font-size: clamp(20px, 1.6vw, 26px);
+  line-height: 1.2;
+  font-weight: 850;
+  letter-spacing: -.025em;
+  color: var(--integro-role-text);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main > .topbar > :first-child p {
+  display: none;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main > .topbar > :last-child {
+  grid-column: 3;
+  grid-row: 1;
+  justify-self: end;
+  margin-left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+  max-width: 100%;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main > .topbar > :last-child button {
+  min-height: 44px;
+  border-radius: 12px;
+  font-weight: 750;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main :is(.panel,.section-card)[data-integro-ui-component="surface"] {
+  border-radius: var(--it-radius-lg, 18px);
+  border-color: var(--integro-role-line);
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main :is(input,select,textarea):focus-visible,
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main button:focus-visible {
+  outline: 3px solid rgba(255,138,0,.26);
+  outline-offset: 2px;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main :is(.kpi,.panel,.section-card,.topbar,.filters,.toolbar) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Os quatro perfis antigos preservam seus eventos e IDs de menu,
+   mas passam a iniciar com lateral recolhida, como o shell aprovado.
+   O botão de menu existente continua operando show/open/active. */
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  [data-integro-sidebar] {
+  position: fixed !important;
+  inset: 0 auto 0 0 !important;
+  width: min(310px, 86vw);
+  max-width: 86vw;
+  height: 100dvh;
+  z-index: 9999 !important;
+  transform: translateX(-105%) !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  transition: transform .24s ease, visibility .24s ease;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  [data-integro-sidebar]:is(.show,.open,.active) {
+  transform: translateX(0) !important;
+  visibility: visible !important;
+  pointer-events: auto !important;
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  [data-integro-sidebar-overlay] {
+  position: fixed;
+  inset: 0;
+  z-index: 9998 !important;
+}
+@media (min-width: 981px) {
+  body[data-integro-layout="padrao-perfis-v1"].integro-mobile-locked {
+    overflow: hidden;
+  }
+  body[data-integro-layout="padrao-perfis-v1"] [data-integro-sidebar-overlay].show {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    background: rgba(7, 26, 51, .48);
+  }
+}
+body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+  main.main {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+body[data-integro-layout="padrao-perfis-v1"][data-integro-page="supervisor"]
+  main.main > .topbar .hamburger {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 48px;
+}
+body[data-integro-layout="padrao-perfis-v1"]:is(
+  [data-integro-page="captador"],[data-integro-page="auditor"],[data-integro-page="financeiro"]
+) .mobile-menu-btn {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+body[data-integro-layout="padrao-perfis-v1"]:is(
+  [data-integro-page="captador"],[data-integro-page="auditor"],[data-integro-page="financeiro"]
+) main.main {
+  padding-top: max(80px, calc(72px + env(safe-area-inset-top))) !important;
+}
+/* O modo compacto já existente do Financeiro continua funcional. */
+body[data-integro-layout="padrao-perfis-v1"][data-integro-page="financeiro"]
+  [data-integro-sidebar].collapsed.show {
+  width: 88px !important;
+  max-width: 88px !important;
+}
+
+/* Equipe interna: mesmo menu lateral recolhido, cabeçalho limpo e tokens
+   do ÍNTEGRO. Estilos isolados para NÃO atingir outros perfis. */
+body[data-integro-page="usuario-integro"][data-integro-layout="padrao-perfis-v1"] {
+  --nav: var(--it-navy-900, #071a33);
+  --orange: var(--it-orange-500, #ff8a00);
+  --bg: var(--it-canvas, #f3f6fa);
+  --line: var(--it-slate-200, #e2e8f0);
+  --text: var(--it-navy-900, #071a33);
+  font-family: var(--it-font, Inter, system-ui, sans-serif);
+}
+body[data-integro-page="usuario-integro"] .shell {
+  display: block;
+  min-height: 100dvh;
+}
+body[data-integro-page="usuario-integro"] .shell > aside {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(310px, 86vw);
+  height: 100dvh;
+  max-height: 100dvh;
+  z-index: 1100;
+  padding: 82px 18px max(20px, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: linear-gradient(180deg, #071a33, #0d2d59);
+  box-shadow: 12px 0 36px rgba(2, 6, 23, .18);
+  transform: translateX(-105%);
+  visibility: hidden;
+  pointer-events: none;
+  transition: transform .23s ease, visibility .23s ease;
+}
+body[data-integro-page="usuario-integro"] .shell > aside.is-open {
+  transform: translateX(0);
+  visibility: visible;
+  pointer-events: auto;
+}
+body[data-integro-page="usuario-integro"] .menu {
+  display: grid;
+  gap: 7px;
+  overflow: visible;
+}
+body[data-integro-page="usuario-integro"] .menu button,
+body[data-integro-page="usuario-integro"] .sair {
+  min-height: 46px;
+  font-size: 13px;
+  font-weight: 750;
+}
+body[data-integro-page="usuario-integro"] .menu button.active {
+  background: rgba(255,138,0,.20);
+  box-shadow: inset 3px 0 0 var(--orange);
+  color: white;
+}
+body[data-integro-page="usuario-integro"] .logo {
+  font-size: 32px;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+  padding-left: 10px;
+}
+body[data-integro-page="usuario-integro"] .perfil {
+  display: block;
+}
+body[data-integro-page="usuario-integro"] main {
+  width: 100%;
+  max-width: 1400px;
+  padding: 24px;
+}
+body[data-integro-page="usuario-integro"] main > header {
+  position: relative;
+  min-height: 80px;
+  border: 1px solid var(--integro-role-line);
+  border-radius: 18px;
+  background: var(--integro-role-surface);
+  padding: 16px 20px;
+  box-shadow: 0 8px 24px rgba(15,39,74,.045);
+  margin-bottom: 18px;
+}
+body[data-integro-page="usuario-integro"] main > header h1 {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 55%;
+  text-align: center;
+  font-size: clamp(20px, 1.6vw, 26px);
+  font-weight: 850;
+  letter-spacing: -.025em;
+  color: var(--integro-role-text);
+}
+body[data-integro-page="usuario-integro"] main > header #subtitulo {
+  display: none;
+}
+body[data-integro-page="usuario-integro"] main > header > button {
+  margin-left: auto;
+  min-height: 44px;
+}
+body[data-integro-page="usuario-integro"] :is(.panel,.kpi,.registro) {
+  border-color: var(--integro-role-line);
+  border-radius: 18px;
+}
+body[data-integro-page="usuario-integro"] :is(.panel,.kpi) {
+  box-shadow: 0 8px 24px rgba(15,39,74,.05);
+}
+body[data-integro-page="usuario-integro"] :is(.btn,input,textarea) {
+  border-radius: 12px;
+}
+body[data-integro-page="usuario-integro"] .btn {
+  min-height: 44px;
+  font-weight: 750;
+}
+body[data-integro-page="usuario-integro"] :is(button,input,textarea):focus-visible {
+  outline: 3px solid rgba(255,138,0,.28);
+  outline-offset: 2px;
+}
+body[data-integro-page="usuario-integro"] #integroEquipeMenuToggle {
+  position: fixed;
+  top: max(14px, env(safe-area-inset-top));
+  left: 16px;
+  z-index: 1200;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--integro-role-line);
+  border-radius: 14px;
+  background: white;
+  color: var(--it-navy-900, #071a33);
+  box-shadow: 0 6px 20px rgba(15,39,74,.12);
+  font-size: 26px;
+  font-weight: 700;
+}
+body[data-integro-page="usuario-integro"] #integroEquipeOverlay:not([hidden]) {
+  position: fixed;
+  inset: 0;
+  z-index: 1050;
+  display: block;
+  background: rgba(2, 6, 23, .55);
+}
+body[data-integro-page="usuario-integro"] #integroEquipeOverlay[hidden] {
+  display: none !important;
+}
+@media (max-width: 980px) {
+  body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+    main.main > .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    min-height: 0;
+    gap: 12px;
+    padding: 14px;
+  }
+  body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+    main.main > .topbar > :first-child {
+    width: 100%;
+    display: flex !important;
+    justify-content: center;
+    min-height: 32px;
+  }
+  body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+    main.main > .topbar :is(h1,h2) {
+    position: static;
+    transform: none;
+    max-width: 100%;
+    text-align: center;
+    white-space: normal;
+  }
+  body[data-integro-layout="padrao-perfis-v1"][data-integro-page="supervisor"]
+    main.main > .topbar > :first-child .hamburger {
+    position: absolute;
+    left: 14px;
+    top: 12px;
+  }
+  body[data-integro-layout="padrao-perfis-v1"]:not([data-integro-page="usuario-integro"])
+    main.main > .topbar > :last-child {
+    width: 100%;
+    max-width: 100%;
+    margin-left: 0;
+    justify-content: center;
+  }
+  body[data-integro-page="usuario-integro"] main {
+    padding: 78px 14px 18px;
+  }
+  body[data-integro-page="usuario-integro"] main > header {
+    min-height: 70px;
+    padding: 14px 12px;
+  }
+  body[data-integro-page="usuario-integro"] main > header h1 {
+    max-width: calc(100% - 122px);
+    font-size: 20px;
+  }
+  body[data-integro-page="usuario-integro"] main > header > button {
+    min-width: 44px;
+  }
+  body[data-integro-page="usuario-integro"] .shell > aside {
+    display: flex;
+    padding-top: 78px;
+  }
+  body[data-integro-page="usuario-integro"] .menu {
+    display: grid;
+    overflow: visible;
+  }
+  body[data-integro-page="usuario-integro"] .perfil {
+    display: block;
+  }
+}
+@media (max-width: 460px) {
+  body[data-integro-page="usuario-integro"] main > header h1 {
+    max-width: 100%;
+    position: static;
+    transform: none;
+    font-size: 20px;
+    padding-top: 6px;
+  }
+  body[data-integro-page="usuario-integro"] main > header {
+    display: grid;
+    justify-items: stretch;
+    gap: 10px;
+  }
+  body[data-integro-page="usuario-integro"] main > header > button {
+    width: 100%;
+  }
+  body[data-integro-page="usuario-integro"] .kpis {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  body[data-integro-page="usuario-integro"] .shell > aside {
+    transition: none;
+  }
+}
+
+/* Componentes internos: mesmas dimensões para superfície, cabeçalho de seção,
+   filtros e ferramentas. Sem alterar display/hidden, eventos ou regras de negócio. */
+body[data-integro-layout="padrao-perfis-v1"] main.main :is(.panel,.section-card)[data-integro-ui-component="surface"],
+body[data-integro-layout="padrao-perfis-v1"][data-integro-page="usuario-integro"] main .panel {
+  border: 1px solid var(--integro-role-line, #e2e8f0);
+  border-radius: 18px;
+  background: var(--integro-role-surface, #fff);
+  box-shadow: 0 8px 24px rgba(15,39,74,.05);
+  padding: clamp(16px, 1.6vw, 22px);
+  min-width: 0;
+}
+/* Respeita display:none de filtros ocultos e a classe .show para expansão. */
+body[data-integro-layout="padrao-perfis-v1"] main.main
+  :is(input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),select,textarea) {
+  min-height: 44px;
+  max-width: 100%;
+  border: 1px solid var(--integro-role-line, #e2e8f0);
+  border-radius: 12px;
+  background-color: var(--integro-role-surface, #fff);
+  color: var(--integro-role-text, #071a33);
+  font-family: var(--it-font, Inter, system-ui, sans-serif);
+}
+body[data-integro-layout="padrao-perfis-v1"] main.main
+  :is(input,select,textarea)::placeholder {
+  color: var(--integro-role-muted, #64748b);
+}
+body[data-integro-layout="padrao-perfis-v1"] main.main
+  :is(.table-wrap,.table-container) {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--integro-role-line, #e2e8f0);
+}
+body[data-integro-layout="padrao-perfis-v1"] main.main
+  :is(.table-wrap,.table-container) table {
+  border-collapse: collapse;
+  width: 100%;
+  background: var(--integro-role-surface, #fff);
+}
+body[data-integro-layout="padrao-perfis-v1"] main.main
+  :is(.table-wrap,.table-container) th {
+  background: var(--it-slate-50, #f8fafc);
+  color: var(--it-slate-600, #475569);
+  border-bottom: 1px solid var(--integro-role-line, #e2e8f0);
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+body[data-integro-layout="padrao-perfis-v1"] main.main
+  :is(.table-wrap,.table-container) td {
+  border-bottom: 1px solid var(--integro-role-line, #e2e8f0);
+}
+body[data-integro-layout="padrao-perfis-v1"] main.main
+  :is(.table-wrap,.table-container) tr:last-child td {
+  border-bottom: 0;
+}
+@media(max-width: 980px) {
+  body[data-integro-layout="padrao-perfis-v1"] main.main
+    [data-integro-ui-component="toolbar"] > :is(.toolbar-group,.search-field) {
+    max-width: 100%;
+  }
+  body[data-integro-layout="padrao-perfis-v1"] main.main
+    [data-integro-ui-component="panel-header"] {
+    align-items: flex-start;
+  }
+}

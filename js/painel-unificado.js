@@ -138,6 +138,7 @@
       if (permissao && !tela.dataset.permissao) tela.dataset.permissao = permissao;
       const permitido = perfil === "master_local" || (!permissao ? false : podeModulo(usuario, modulo));
       tela.dataset.acessoPermitido = String(permitido);
+      if (tela.hidden === permitido) tela.hidden = !permitido;
       if (!permitido) {
         tela.style.display = "none";
         tela.setAttribute("aria-hidden", "true");

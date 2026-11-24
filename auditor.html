@@ -43,8 +43,8 @@
     @media(max-width:1100px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.filters{grid-template-columns:repeat(2,minmax(0,1fr))}}
     @media(max-width:860px){.mobile-menu-btn{display:block}.sidebar{transform:translateX(-105%);z-index:9999}.sidebar.show{transform:translateX(0)}.main{margin-left:0;width:100%;padding:82px 14px 18px}.topbar{flex-direction:column}.actions{width:100%}.btn{flex:1}.kpis,.filters{grid-template-columns:1fr}.table-wrap table,.table-wrap thead,.table-wrap tbody,.table-wrap tr,.table-wrap th,.table-wrap td{display:block}.table-wrap thead{display:none}.table-wrap tr{border-bottom:1px solid var(--line);padding:10px}.table-wrap td{border:0;padding:7px 4px;white-space:normal}.table-wrap td::before{content:attr(data-label);display:block;color:#64748b;font-size:11px;font-weight:900;text-transform:uppercase;margin-bottom:2px}}
   </style>
-  <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2" rel="stylesheet">
-  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2">
+  <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2&layout=20261123-padrao1" rel="stylesheet">
+  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2&layout=20261123-padrao1">
   <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261101-visualrestore2">
   <link rel="stylesheet" href="css/integro-visual.css?v=20261101-visualrestore1">
   <script defer src="js/integro-menu-categorias.js?v=20261101-visualrestore1"></script>
@@ -53,8 +53,9 @@
   <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-visualrestore1">
   <script defer src="js/integro-filter-drawer.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-visualrestore1&fix=20261104-chat-func-v1">
+  <link rel="stylesheet" href="css/integro-layout-roles.css?v=20261123-padrao1">
 </head>
-<body class="integro-topnav-pattern integro-shell-pending" data-integro-page="auditor">
+<body class="integro-topnav-pattern integro-shell-pending" data-integro-page="auditor" data-integro-layout="padrao-perfis-v1">
   <button class="mobile-menu-btn" type="button" onclick="toggleMenuAuditor()" aria-label="Abrir menu" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button>
   <div id="overlayAuditor" class="overlay" onclick="fecharMenuAuditor()" data-integro-sidebar-overlay></div>
   <div class="layout">
@@ -97,10 +98,10 @@
         <div class="kpi"><small>Caixas</small><strong id="kpiCaixas">0</strong></div>
       </section>
       <section id="auditoriaAuditorPanel" class="panel" data-integro-ui-component="surface">
-        <div class="panel-head" data-integro-ui-component="surface">
+        <div class="panel-head" data-integro-ui-component="panel-header">
           <h2 id="tituloAuditor">Logs e eventos</h2>
         </div>
-        <div class="filters">
+        <div class="filters" data-integro-ui-component="filters">
           <input id="buscaAuditor" placeholder="Buscar" oninput="renderAuditoria()">
           <select id="tipoAuditor" onchange="renderAuditoria()">
             <option value="">Todos os tipos</option>
@@ -111,7 +112,7 @@
         <div id="conteudoAuditor"></div>
       </section>
       <section id="chatAuditorPanel" class="panel" style="display:none" data-integro-ui-component="surface">
-        <div class="panel-head" data-integro-ui-component="surface"><h2>Chat interno</h2></div>
+        <div class="panel-head" data-integro-ui-component="panel-header"><h2>Chat interno</h2></div>
         <div id="integroChatRoot"></div>
       </section>
     </main>
@@ -415,9 +416,9 @@
     });
   </script>
   <script src="js/integro-connectivity-guard.js?v=20261101-operacao3"></script>
-<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1"></script>
-  <script src="js/integro-ui.js?v=20260805-v2"></script>
-  <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2"></script>
+<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao2"></script>
+  <script src="js/integro-ui.js?v=20260805-v2&layout=20261123-padrao1"></script>
+  <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2&headers=20261123"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-route-v1"></script>

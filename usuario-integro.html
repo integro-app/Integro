@@ -35,10 +35,16 @@
     .kpi strong{font-size:27px;font-weight:600;display:block;margin-top:9px}
     @media(max-width:820px){.shell{display:block}aside{padding:14px;gap:10px}.logo{font-size:23px}.menu{display:flex;overflow-x:auto}.menu button{flex-shrink:0}.perfil{display:none}.sair{margin-top:0}main{padding:14px}header{align-items:flex-start}h1{font-size:21px}.panel{padding:16px}.kpis{grid-template-columns:1fr 1fr}}
   </style>
+  <link rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&layout=20261123-padrao1">
+  <link rel="stylesheet" href="css/integro-layout-roles.css?v=20261123-padrao1">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/integro-platform-chat.css?v=20261119-chat-saas1">
 </head>
-<body>
-<div class="shell">
-  <aside>
+<body data-integro-page="usuario-integro" data-integro-layout="padrao-perfis-v1">
+<button id="integroEquipeMenuToggle" type="button" aria-label="Abrir menu" aria-controls="integroEquipeSidebar" aria-expanded="false">☰</button>
+  <div id="integroEquipeOverlay" hidden></div>
+  <div class="shell">
+  <aside id="integroEquipeSidebar" aria-label="Menu interno ÍNTEGRO">
     <div class="logo">ÍNTE<span>GRO</span></div>
     <div class="perfil"><small>Equipe interna</small><div id="nomeSidebar">Autenticando...</div><p id="cargoSidebar">ÍNTEGRO</p></div>
     <nav class="menu" aria-label="Módulos internos">
@@ -58,7 +64,9 @@
       <div class="panel" style="margin-top:18px"><h2>Área interna</h2><p class="muted">Esta conta pertence à equipe ÍNTEGRO. O acesso administrativo de criação de clientes e empresas permanece exclusivo do Master Global.</p></div>
     </section>
     <section class="aba" id="avisos"><div class="panel"><div class="linha"><h2>Avisos da plataforma</h2><button class="btn" id="btnAtualizarAvisos" type="button">Atualizar avisos</button></div><div id="listaAvisos" class="muted">Carregando avisos...</div></div></section>
-    <section class="aba" id="chat"><div class="panel"><div class="linha"><h2>Mensagens internas</h2><button class="btn" id="btnAtualizarChat" type="button">Atualizar mensagens</button></div><div id="listaMensagens" class="muted">Carregando mensagens...</div></div><form class="panel form" id="formChat"><label for="textoChat">Enviar mensagem para a equipe</label><textarea id="textoChat" maxlength="1200" required placeholder="Digite uma mensagem..."></textarea><button class="btn primary" id="btnEnviar" type="submit">Enviar</button></form></section>
+    <section class="aba" id="chat" aria-label="Chat interno da equipe ÍNTEGRO">
+      <div id="integroChatRoot"><div class="panel" role="status">Preparando canal interno seguro...</div></div>
+    </section>
     <section class="aba" id="clientes"><div class="panel"><div class="linha"><h2>Empresas autorizadas</h2><button class="btn" id="btnAtualizarClientes" type="button">Atualizar</button></div><p class="muted">Consulta administrativa autorizada pelo Master Global. Nenhum acesso operacional é concedido nesta tela.</p><div id="listaClientesAutorizados" class="muted" style="margin-top:12px">Selecione a aba para consultar.</div><div id="detalheClienteAutorizado" class="registro" hidden aria-live="polite" style="margin-top:14px"></div></div></section>
     <section class="aba" id="perfil"><div class="panel"><h2>Meu perfil</h2><div id="dadosPerfil" class="muted">Carregando dados...</div></div></section>
   </main>
@@ -86,6 +94,7 @@
     return r.data;
   }
   function trocar(aba){
+    document.body.classList.toggle('integro-platform-chat-active',aba==='chat');
     document.querySelectorAll('.aba').forEach(x=>x.classList.toggle('active',x.id===aba));
     document.querySelectorAll('[data-aba]').forEach(x=>x.classList.toggle('active',x.dataset.aba===aba));
     el('titulo').textContent={inicio:'Dashboard interno',avisos:'Avisos globais',chat:'Chat interno',clientes:'Empresas autorizadas',perfil:'Meu perfil'}[aba]||'Equipe ÍNTEGRO';
@@ -105,12 +114,11 @@
     }).join(''):'<div class="registro">Nenhum aviso global.</div>';
   }
   async function carregarChat(){
-    const r=await chamar('listarChat');mensagensInternas=r.mensagens||[];
+    // Somente callable da plataforma; nunca ler diretamente uma coleção de outros tenants.
+    const resultado=await window.IntegroPlatformChat?.refresh?.();
+    mensagensInternas=window.IntegroPlatformChat?.getMessages?.()||[];
     el('kpiMensagens').textContent=mensagensInternas.length;
-    el('listaMensagens').innerHTML=mensagensInternas.length?mensagensInternas.map(m=>
-      '<div class="registro"><strong>'+esc(m.autorNome||'Equipe ÍNTEGRO')+'</strong><span class="muted"> · '+esc(data(m.criadoEm))+
-      '</span><p>'+esc(m.mensagem||'')+'</p></div>'
-    ).join(''):'<div class="registro">Nenhuma mensagem ainda.</div>';
+    return resultado;
   }
   async function carregarClientesAutorizados(){
     const sequencia=++consultaClienteAtual;
@@ -193,7 +201,6 @@
   }
   document.querySelectorAll('[data-aba]').forEach(btn=>btn.addEventListener('click',()=>trocar(btn.dataset.aba)));
   el('btnAtualizar').onclick=atualizar;el('btnAtualizarAvisos').onclick=()=>carregarAvisos().catch(erro);
-  el('btnAtualizarChat').onclick=()=>carregarChat().catch(erro);
   el('btnAtualizarClientes').onclick=()=>carregarClientesAutorizados().catch(erro);
   el('listaClientesAutorizados').addEventListener('click',e=>{
     const botao=e.target.closest('[data-consultar-cliente]');
@@ -205,15 +212,20 @@
     b.disabled=true;try{await chamar('marcarNotificacaoLida',{id:b.dataset.aviso});await carregarAvisos();}
     catch(x){erro(x);b.disabled=false;}
   });
-  el('formChat').addEventListener('submit',async e=>{
-    e.preventDefault();const mensagem=el('textoChat').value.trim();
-    if(!mensagem||el('btnEnviar').disabled)return;
-    el('btnEnviar').disabled=true;
-    try{await chamar('enviarChat',{mensagem});el('textoChat').value='';await carregarChat();mostrar('');}
-    catch(x){erro(x);}
-    finally{el('btnEnviar').disabled=false;}
-  });
   document.addEventListener('DOMContentLoaded',iniciar);
+</script>
+  <script src="js/integro-equipe-sidebar.js?v=20261117-v1"></script>
+<script src="js/integro-platform-chat.js?v=20261119-chat-saas1"></script>
+<script>
+  window.IntegroPlatformChat?.mount?.({
+    rootId: "integroChatRoot",
+    read: () => chamar("listarChat"),
+    send: mensagem => chamar("enviarChat", { mensagem }),
+    identity: () => usuarioInterno || {},
+    isActive: () => Boolean(document.querySelector("#chat.aba.active")),
+    onMessages: lista => { mensagensInternas = lista; el("kpiMensagens").textContent = lista.length; },
+    onError: e => console.warn("[ÍNTEGRO INTERNO] Chat:",e)
+  });
 </script>
 </body>
 </html>

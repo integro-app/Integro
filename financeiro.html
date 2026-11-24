@@ -263,8 +263,8 @@
     }
 
   </style>
-  <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2" rel="stylesheet">
-  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2">
+  <link href="css/integro-mobile.css?v=20260818-v272-perf1&build=20261101-visualrestore2&layout=20261123-padrao1" rel="stylesheet">
+  <link id="integroDesignSystem" rel="stylesheet" href="css/integro-design-system.css?v=20260805-v2&build=20261101-visualrestore2&layout=20261123-padrao1">
   <link rel="stylesheet" href="css/integro-interface.css?v=20260806-v20&build=20261101-visualrestore2">
   <link rel="stylesheet" href="css/integro-loading.css?v=20261101-visualrestore1">
   <script src="js/integro-loading-handoff.js?v=20261101-visualrestore1"></script>
@@ -275,9 +275,10 @@
   <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-visualrestore1">
   <script defer src="js/integro-filter-drawer.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-visualrestore1&fix=20261104-chat-func-v1">
+  <link rel="stylesheet" href="css/integro-layout-roles.css?v=20261123-padrao1">
 </head>
 
-<body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="financeiro">
+<body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="financeiro" data-integro-layout="padrao-perfis-v1">
 
   <div id="integroBootLoader" class="integro-boot-loader" role="status" aria-live="polite">
     <div class="integro-loader-card">
@@ -345,7 +346,7 @@
         <div class="kpi-grid" id="dashboardFinanceiroCards"></div>
 
         <div class="panel" data-integro-ui-component="surface">
-          <div class="panel-head" data-integro-ui-component="surface">
+          <div class="panel-head" data-integro-ui-component="panel-header">
             <div>
               <h3>Agenda de pagamentos</h3>
               <p>Próximos vencimentos e recorrências em destaque.</p>
@@ -358,14 +359,14 @@
 
       <section id="contas" class="screen">
         <div class="section-card" data-integro-ui-component="surface">
-          <div class="section-header">
+          <div class="section-header" data-integro-ui-component="panel-header">
             <div>
               <h2>Contas</h2>
               <p>Contas a pagar, pagas, vencidas, recorrentes e canceladas.</p>
             </div>
           </div>
 
-          <div class="toolbar">
+          <div class="toolbar" data-integro-ui-component="toolbar">
             <div class="toolbar-group">
               <button class="primary-btn" type="button" onclick="abrirNovaConta()">Nova conta</button>
               <button class="ghost-btn" type="button" onclick="abrirNovaRecorrencia()">Nova recorrência</button>
@@ -380,7 +381,7 @@
 
           <div class="tabs" id="tabsContas"></div>
 
-          <div class="filters" id="filtrosContas">
+          <div class="filters" id="filtrosContas" data-integro-ui-component="filters">
             <div><label>Status</label><select id="filtroStatus"><option value="">Todos</option><option>VENCIDA</option><option>VENCE_HOJE</option><option>PROXIMA</option><option>PAGA</option><option>RECORRENTE</option><option>CANCELADA</option></select></div>
             <div><label>Fornecedor</label><select id="filtroFornecedor"><option value="">Todos</option></select></div>
             <div><label>Categoria</label><select id="filtroCategoria"><option value="">Todas</option><option>Aluguel</option><option>Marketing</option><option>Operacional</option><option>Serviços</option><option>Tecnologia</option></select></div>
@@ -398,13 +399,13 @@
         </div>
       </section>
 
-      <section id="solicitacoes" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Solicitações financeiras</h2><p>Ingressos, retiradas, gastos e vendas fora da regra.</p></div></div><div id="listaSolicitacoesFinanceiras" class="cards-grid"></div></div></section>
-      <section id="caixas" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Caixas</h2><p>Caixas abertos, fechados e divergências.</p></div></div><div id="listaCaixasFinanceiro" class="table-wrap"></div></div></section>
-      <section id="fornecedores" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Fornecedores</h2><p>Cadastro base para contas a pagar.</p></div><button class="primary-btn" type="button" onclick="abrirNovoFornecedorMock()">Novo fornecedor</button></div><div id="listaFornecedores" class="cards-grid"></div></div></section>
-      <section id="relatorios" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Relatórios</h2><p>Estrutura preparada para indicadores e exportações futuras.</p></div></div><div id="listaRelatoriosFinanceiro" class="cards-grid"></div></div></section>
-      <section id="auditoria" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Auditoria</h2><p>Logs financeiros e rastreabilidade.</p></div></div><div id="listaAuditoriaFinanceira" class="table-wrap"></div></div></section>
-      <section id="chatInterno" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Chat interno</h2><p>Comunicação com gestores, equipes e operação.</p></div></div><div id="integroChatRoot"></div></div></section>
-      <section id="configuracoes" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header"><div><h2>Configurações</h2><p>Categorias, formas de pagamento, alertas e permissões financeiras.</p></div></div><div id="listaConfiguracoesFinanceiras" class="cards-grid"></div></div></section>
+      <section id="solicitacoes" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header" data-integro-ui-component="panel-header"><div><h2>Solicitações financeiras</h2><p>Ingressos, retiradas, gastos e vendas fora da regra.</p></div></div><div id="listaSolicitacoesFinanceiras" class="cards-grid"></div></div></section>
+      <section id="caixas" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header" data-integro-ui-component="panel-header"><div><h2>Caixas</h2><p>Caixas abertos, fechados e divergências.</p></div></div><div id="listaCaixasFinanceiro" class="table-wrap"></div></div></section>
+      <section id="fornecedores" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header" data-integro-ui-component="panel-header"><div><h2>Fornecedores</h2><p>Cadastro base para contas a pagar.</p></div><button class="primary-btn" type="button" onclick="abrirNovoFornecedorMock()">Novo fornecedor</button></div><div id="listaFornecedores" class="cards-grid"></div></div></section>
+      <section id="relatorios" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header" data-integro-ui-component="panel-header"><div><h2>Relatórios</h2><p>Estrutura preparada para indicadores e exportações futuras.</p></div></div><div id="listaRelatoriosFinanceiro" class="cards-grid"></div></div></section>
+      <section id="auditoria" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header" data-integro-ui-component="panel-header"><div><h2>Auditoria</h2><p>Logs financeiros e rastreabilidade.</p></div></div><div id="listaAuditoriaFinanceira" class="table-wrap"></div></div></section>
+      <section id="chatInterno" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header" data-integro-ui-component="panel-header"><div><h2>Chat interno</h2><p>Comunicação com gestores, equipes e operação.</p></div></div><div id="integroChatRoot"></div></div></section>
+      <section id="configuracoes" class="screen"><div class="section-card" data-integro-ui-component="surface"><div class="section-header" data-integro-ui-component="panel-header"><div><h2>Configurações</h2><p>Categorias, formas de pagamento, alertas e permissões financeiras.</p></div></div><div id="listaConfiguracoesFinanceiras" class="cards-grid"></div></div></section>
     </main>
   </div>
 
@@ -649,14 +650,14 @@
 
     function trocarTelaFinanceiro(tela, el = null) {
       const titulos = {
-        dashboard:["Dashboard Financeiro","Resumo de contas, pagamentos, caixas e solicitações."],
-        contas:["Contas","Contas a pagar, agenda, pagamentos e recorrências."],
-        solicitacoes:["Solicitações","Aprovações financeiras e operações fora da regra."],
-        caixas:["Caixas","Abertos, fechados e divergências de caixa."],
-        fornecedores:["Fornecedores","Base de fornecedores e dados banc?rios."],
-        relatorios:["Relatórios","Indicadores e exportações futuras."],
-        auditoria:["Auditoria","Logs financeiros e rastreabilidade."],
-        configuracoes:["Configurações","Categorias, formas de pagamento, alertas e permissões."]
+        dashboard:"Dashboard Financeiro",
+        contas:"Contas",
+        solicitacoes:"Solicitações",
+        caixas:"Caixas",
+        fornecedores:"Fornecedores",
+        relatorios:"Relatórios",
+        auditoria:"Auditoria",
+        configuracoes:"Configurações"
       };
 
       document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -669,8 +670,8 @@
           .find(btn => btn.getAttribute("onclick")?.includes(`'${tela}'`) || btn.getAttribute("onclick")?.includes(`\"${tela}\"`));
         if (menu) menu.classList.add("active");
       }
-      document.getElementById("pageTitle").innerText = titulos[tela]?.[0] || "Financeiro";
-      document.getElementById("pageSubtitle").innerText = titulos[tela]?.[1] || "";
+      document.getElementById("pageTitle").innerText = titulos[tela] || "Financeiro";
+
       if (tela === "contas") renderContas();
       if (window.innerWidth <= 900) toggleSidebarFinanceiro(false);
     }
@@ -897,7 +898,7 @@
       const inicio = new Date(primeiro);
       inicio.setDate(primeiro.getDate() - primeiro.getDay());
       const dias = ["Dom","Seg","Ter","Qua","Qui","Sex","S?b"];
-      let html = `<div class="panel-head" data-integro-ui-component="surface"><div><h3>${base.toLocaleDateString("pt-BR", { month:"long", year:"numeric" })}</h3><p>Calendário mensal de contas.</p></div></div><div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
+      let html = `<div class="panel-head" data-integro-ui-component="panel-header"><div><h3>${base.toLocaleDateString("pt-BR", { month:"long", year:"numeric" })}</h3><p>Calendário mensal de contas.</p></div></div><div class="calendar">${dias.map(d => `<div class="calendar-head">${d}</div>`).join("")}`;
 
       for (let i = 0; i < 42; i++) {
         const dia = new Date(inicio);
@@ -1862,7 +1863,7 @@
 
   function filtrosPeriodoHtml(){
     return `
-      <div class="toolbar">
+      <div class="toolbar" data-integro-ui-component="toolbar">
         <div class="toolbar-group">
           <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('hoje')">Hoje</button>
           <button class="ghost-btn" onclick="setPeriodoFinanceiroReal('7dias')">Ultimos 7 dias</button>
@@ -1913,7 +1914,7 @@
     const opts = arr => arr.map(v => `<option value="${esc(v)}" ${FIN.filtros.tipo===v||FIN.filtros.natureza===v||FIN.filtros.status===v||FIN.ordenacao===v?"selected":""}>${esc(v || "Todos")}</option>`).join("");
     return `
       ${filtrosPeriodoHtml()}
-      <div class="filters show">
+      <div class="filters show" data-integro-ui-component="filters">
         <div><label>Tipo</label><select onchange="setFiltroFinanceiroReal('tipo',this.value)">${opts(tipos)}</select></div>
         <div><label>Natureza</label><select onchange="setFiltroFinanceiroReal('natureza',this.value)">${["","CREDITO","DEBITO"].map(v=>`<option value="${v}" ${FIN.filtros.natureza===v?"selected":""}>${v||"Todas"}</option>`).join("")}</select></div>
         <div><label>Status</label><select onchange="setFiltroFinanceiroReal('status',this.value)">${["","CONFIRMADO","PENDENTE","ESTORNADO","CANCELADO"].map(v=>`<option value="${v}" ${FIN.filtros.status===v?"selected":""}>${v||"Todos"}</option>`).join("")}</select></div>
@@ -1948,7 +1949,7 @@
             <td onclick="event.stopPropagation()"><button class="ghost-btn" onclick="abrirDetalheLancamentoFinanceiro('${esc(l.id || l.lancamentoId)}')">Ver</button></td>
           </tr>`).join("")}</tbody>
       </table></div>
-      ${fim < total ? `<div class="toolbar"><button class="ghost-btn" onclick="carregarMaisLancamentosFinanceiro()">Carregar mais (${visiveis.length}/${total})</button></div>` : ""}
+      ${fim < total ? `<div class="toolbar" data-integro-ui-component="toolbar"><button class="ghost-btn" onclick="carregarMaisLancamentosFinanceiro()">Carregar mais (${visiveis.length}/${total})</button></div>` : ""}
     ` : empty("Nenhum lancamento financeiro real encontrado para os filtros selecionados."));
   }
 
@@ -2157,14 +2158,13 @@
   window.trocarTelaFinanceiro = function(tela, el){
     if (typeof trocarTelaAntiga === "function") trocarTelaAntiga(tela, el);
     const titulos = {
-      contas:["Lançamentos","Ledger financeiro oficial e imutável."],
-      solicitacoes:["Divergências","Divergências, tratamentos e regularizações."],
-      fornecedores:["Diagnóstico legado","Registros reais ainda sem lançamento financeiro."],
-      auditoria:["Auditoria","Reconciliação, logs e rastreabilidade financeira."]
+      contas:"Lançamentos",
+      solicitacoes:"Divergências",
+      fornecedores:"Diagnóstico legado",
+      auditoria:"Auditoria"
     };
     if (titulos[tela]) {
-      document.getElementById("pageTitle").innerText = titulos[tela][0];
-      document.getElementById("pageSubtitle").innerText = titulos[tela][1];
+      document.getElementById("pageTitle").innerText = titulos[tela];
     }
     if (tela === "contas") renderLancamentosFinanceiroReal();
     if (tela === "caixas") renderCaixasFinanceiroReal();
@@ -2199,9 +2199,9 @@
 })();
 </script>
   <script src="js/integro-connectivity-guard.js?v=20261101-operacao3"></script>
-<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1"></script>
-  <script src="js/integro-ui.js?v=20260805-v2"></script>
-  <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2"></script>
+<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao2"></script>
+  <script src="js/integro-ui.js?v=20260805-v2&layout=20261123-padrao1"></script>
+  <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2&headers=20261123"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-route-v1"></script>

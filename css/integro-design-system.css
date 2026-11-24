@@ -149,6 +149,56 @@
   box-shadow: var(--it-shadow-sm);
 }
 
+/* Cabeçalhos internos, barras de ações e filtros aderem por marcação. */
+[data-integro-ui-component="panel-header"] {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--it-space-2) var(--it-space-4);
+  min-width: 0;
+  margin: 0 0 var(--it-space-4);
+  padding: 0 0 var(--it-space-3);
+  border: 0;
+  border-bottom: 1px solid var(--it-slate-200);
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+[data-integro-ui-component="panel-header"] :is(h2,h3) {
+  color: var(--it-navy-900);
+  font-size: clamp(17px, 1.45vw, 21px);
+  line-height: 1.3;
+  letter-spacing: -.02em;
+  font-weight: 850;
+  margin: 0;
+}
+[data-integro-ui-component="panel-header"] p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--it-slate-500);
+}
+[data-integro-ui-component="toolbar"] {
+  display: flex;
+  gap: var(--it-space-3);
+  flex-wrap: wrap;
+  align-items: center;
+  min-width: 0;
+  max-width: 100%;
+  margin-bottom: var(--it-space-4);
+}
+[data-integro-ui-component="toolbar"] > :is(.toolbar-group,.search-field,.search-input) {
+  min-width: 0;
+}
+[data-integro-ui-component="filters"] {
+  min-width: 0;
+  max-width: 100%;
+  gap: var(--it-space-3);
+  padding: var(--it-space-4);
+  border: 1px solid var(--it-slate-200);
+  border-radius: var(--it-radius-md);
+  background: var(--it-slate-50);
+}
 [data-integro-ui-component="button"] {
   min-height: var(--it-control-h);
   padding: 0 16px;
@@ -254,6 +304,21 @@
   font-weight: 850;
   letter-spacing: .45px;
   text-transform: uppercase;
+}
+
+[data-integro-ui-component="field"]:is([aria-invalid="true"], :user-invalid) {
+  border-color: var(--it-danger-600);
+}
+
+[data-integro-ui-component="field"]:disabled {
+  background-color: var(--it-slate-100);
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  [data-integro-ui-component="field"]:is(input, select, textarea):focus {
+    font-size: max(16px, var(--it-text-sm));
+  }
 }
 
 /* Utilitários seguros para novos módulos. */

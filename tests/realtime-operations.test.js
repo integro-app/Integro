@@ -162,6 +162,16 @@ test("runtime abre somente os listeners necessários para cada vínculo", () => 
   assert.ok(sellerRuntime.listeners.some(listener => listener.filtros[0][2] === "box-v1"));
 });
 
+test("vendedor inicia a atualização em tempo real antes de o painel receber caixaAtual", () => {
+  const { listeners } = executeServiceFor({
+    perfil: "vendedor", clientePlataformaId: "tenant-a", id: "v1", authUid: "auth-v1"
+  });
+
+  assert.equal(listeners.length, 4);
+  assert.ok(listeners.every(listener => listener.tenantId === "tenant-a"));
+  assert.ok(listeners.every(listener => listener.filtros[0][0] !== "caixaId"));
+});
+
 test("regras permitem leitura hierárquica sem ampliar permissões de escrita", () => {
   const financeRead = rules.match(/function canReadFinance\(data\) \{[\s\S]*?\n\s*\}/)?.[0] || "";
   assert.match(financeRead, /perfil == "master_local"/);

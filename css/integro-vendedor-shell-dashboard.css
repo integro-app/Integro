@@ -1,0 +1,374 @@
+/* ÍNTEGRO — Vendedor | reparo de geometria do shell e Dashboard
+ * 2026-11-20. Somente no perfil Vendedor autenticado dentro do Master Local.
+ * Unifica a largura do menu retrátil e remove o overflow da grade de KPIs.
+ * Nenhum dado, permissão, leitura ou gravação do Firebase é alterado.
+ */
+@media (min-width:981px) {
+  html body[data-integro-page="master-local"].perfil-vendedor {
+    --seller-rail-width:268px;
+  }
+  /* Compactador atual (body) e compacto legado (.collapsed) são equivalentes.
+     A classe antiga deixava ícones de 78px dentro de um sidebar de ~290px. */
+  html body[data-integro-page="master-local"].perfil-vendedor.integro-desktop-nav-compact,
+  html body[data-integro-page="master-local"].perfil-vendedor:has(.layout > aside#sidebar.sidebar.collapsed) {
+    --seller-rail-width:78px;
+  }
+  /* Se o mecanismo antigo ocultar a sidebar totalmente sem a navegação nova. */
+  html body[data-integro-page="master-local"].perfil-vendedor.sidebar-hidden:not(.integro-desktop-nav-ready) {
+    --seller-rail-width:0px;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout {
+    box-sizing:border-box!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar {
+    box-sizing:border-box!important;
+    width:var(--seller-rail-width)!important;
+    min-width:var(--seller-rail-width)!important;
+    max-width:var(--seller-rail-width)!important;
+    height:100dvh!important;
+    left:0!important;
+    top:0!important;
+    bottom:0!important;
+    position:fixed!important;
+    padding-left:12px!important;
+    padding-right:12px!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+    transform:translateX(0)!important;
+    opacity:1!important;
+    visibility:visible!important;
+    pointer-events:auto!important;
+    z-index:1200!important;
+    transition:width .22s ease,max-width .22s ease,min-width .22s ease!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor.sidebar-hidden:not(.integro-desktop-nav-ready) .layout > aside#sidebar.sidebar {
+    transform:translateX(-110%)!important;
+    visibility:hidden!important;
+    pointer-events:none!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar + main.main,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed + main.main {
+    box-sizing:border-box!important;
+    flex:0 0 auto!important;
+    display:block!important;
+    position:relative!important;
+    margin:0!important;
+    margin-left:var(--seller-rail-width)!important;
+    padding:20px clamp(16px,2.1vw,30px) 28px!important;
+    width:calc(100% - var(--seller-rail-width))!important;
+    max-width:calc(100% - var(--seller-rail-width))!important;
+    min-width:0!important;
+    overflow:visible!important;
+    transition:margin-left .22s ease,width .22s ease,max-width .22s ease!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed {
+    /* Mesmo quando a classe legada persistir, esconder labels de maneira uniforme. */
+    padding-left:12px!important;
+    padding-right:12px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu {
+    box-sizing:border-box!important;
+    display:flex!important;
+    width:100%!important;
+    min-width:0!important;
+    flex-direction:column!important;
+    align-items:center!important;
+    padding-left:0!important;
+    padding-right:0!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu > button.menu-item {
+    box-sizing:border-box!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:0!important;
+    width:52px!important;
+    min-width:52px!important;
+    max-width:52px!important;
+    min-height:49px!important;
+    padding:0!important;
+    margin:0 auto 4px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu > button.menu-item .menu-label,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu > button.menu-item .chevron {
+    display:none!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed #integroSidebarMenu > button.menu-item .menu-icon {
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    width:26px!important;
+    min-width:26px!important;
+    height:26px!important;
+    font-size:23px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed .integro-desktop-brand,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed .integro-desktop-profile {
+    max-width:100%!important;
+  }
+}
+
+/* Estrutura do conteúdo: o menu nunca pode cobrir o primeiro card ou forçar a
+   tela inteira a rolar horizontalmente por causa de um módulo interno. */
+html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main > .screen,
+html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main > .screen.active,
+html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main .section-card,
+html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main .integro-shared-surface {
+  box-sizing:border-box!important;
+  min-width:0!important;
+  max-width:100%!important;
+}
+@media (min-width:981px) {
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main > .integro-global-header {
+    display:flex!important;
+    align-items:center!important;
+    min-height:54px!important;
+    height:auto!important;
+    margin:0 0 12px!important;
+    padding:4px 0!important;
+    border:0!important;
+    background:transparent!important;
+    box-shadow:none!important;
+  }
+}
+
+/* O Dashboard do Vendedor trabalha com a largura útil do MAIN e não com o viewport.
+ * O grid legado travava cinco colunas com !important e empurrava o primeiro
+ * KPI para baixo da sidebar, mesmo no modo recolhido.
+ */
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard,
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard.dashboard-standardized,
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard > .dashboard-section-card {
+  box-sizing:border-box!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  margin-left:0!important;
+  margin-right:0!important;
+  transform:none!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard > .dashboard-section-card {
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-page-header {
+  display:flex!important;
+  min-height:52px!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0 0 14px!important;
+  margin:0 0 13px!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
+  border-radius:0!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-page-title {
+  display:block!important;
+  flex:1 1 auto!important;
+  min-width:0!important;
+  text-align:center!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-page-title h2 {
+  display:block!important;
+  margin:0!important;
+  color:#122c48!important;
+  font:900 clamp(20px,2.05vw,29px)/1.25 Inter,system-ui,sans-serif!important;
+  letter-spacing:-.7px!important;
+  text-align:center!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-page-actions {
+  display:none!important; /* vendedor não altera período fechado do próprio caixa */
+}
+/* Ranking e perspectivas gerenciais são exclusivos de perfis gestores. */
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-team-ranking-panel,
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard [data-dashboard-view="equipe"],
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard [data-dashboard-views="equipe"] {
+  display:none!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary {
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  grid-auto-flow:row!important;
+  align-items:stretch!important;
+  column-gap:13px!important;
+  row-gap:13px!important;
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  padding:0!important;
+  margin:0 0 16px!important;
+  position:relative!important;
+  left:auto!important;
+  right:auto!important;
+  transform:none!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary > .kpi-card {
+  box-sizing:border-box!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:158px!important;
+  padding:17px 17px 21px!important;
+  border-radius:17px!important;
+  overflow:hidden!important;
+  align-self:stretch!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-content,
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-breakdown,
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-sub,
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-trend {
+  box-sizing:border-box!important;
+  min-width:0!important;
+  max-width:100%!important;
+  overflow-wrap:anywhere!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-value {
+  font-size:clamp(21px,1.85vw,29px)!important;
+  line-height:1.12!important;
+  overflow-wrap:anywhere!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-breakdown {
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:7px!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-breakdown > span {
+  box-sizing:border-box!important;
+  min-width:0!important;
+  width:auto!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-analytics-grid {
+  box-sizing:border-box!important;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  gap:14px!important;
+  min-width:0!important;
+  max-width:100%!important;
+  width:100%!important;
+  margin:0 0 15px!important;
+  transform:none!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-analytics-grid > .panel {
+  box-sizing:border-box!important;
+  min-width:0!important;
+  max-width:100%!important;
+  min-height:0!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-evolution-chart {
+  box-sizing:border-box!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard .bottom-grid {
+  min-width:0!important;
+  max-width:100%!important;
+  grid-template-columns:minmax(0,1fr)!important;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #dashboard :is(.dashboard-page-header,.dashboard-analytics-grid,.bottom-grid,.dashboard-kpis-primary) {
+  scroll-margin-top:80px;
+}
+@media (min-width:981px) and (max-width:1500px) {
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+}
+@media (min-width:981px) and (max-width:1100px) {
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main {
+    padding-left:15px!important;
+    padding-right:15px!important;
+  }
+}
+@media (max-width:980px) {
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar + main.main,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed + main.main {
+    box-sizing:border-box!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin-left:0!important;
+    padding:calc(62px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 24px max(14px,env(safe-area-inset-left))!important;
+    overflow:visible!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed {
+    width:min(88vw,310px)!important;
+    min-width:0!important;
+    max-width:min(88vw,310px)!important;
+    transform:translateX(-110%)!important;
+    visibility:hidden!important;
+    opacity:1!important;
+    pointer-events:none!important;
+    transition:transform .22s ease,visibility .22s ease!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor.menu-mobile-open .layout > aside#sidebar.sidebar,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.show,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.open {
+    transform:translateX(0)!important;
+    visibility:visible!important;
+    pointer-events:auto!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    column-gap:10px!important;
+    row-gap:10px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary > .kpi-card {
+    min-height:142px!important;
+    padding:14px 12px 18px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-value {
+    font-size:clamp(19px,3.6vw,27px)!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-breakdown {
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-page-header {
+    margin-top:0!important;
+    min-height:45px!important;
+    margin-bottom:11px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-evolution-panel {
+    min-height:0!important;
+    padding:14px!important;
+  }
+}
+@media (max-width:620px) {
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main,
+  html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar + main.main {
+    padding:calc(58px + env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) 18px max(12px,env(safe-area-inset-left))!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary {
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:10px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary > .kpi-card {
+    min-height:128px!important;
+    padding:14px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-breakdown {
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-kpis-primary .kpi-value {
+    font-size:clamp(22px,5.6vw,29px)!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-analytics-grid > .panel {
+    min-height:0!important;
+    padding:14px!important;
+  }
+  html body[data-integro-page="master-local"].perfil-vendedor #dashboard .dashboard-evolution-chart {
+    max-height:260px!important;
+  }
+}
+@media (prefers-reduced-motion:reduce) {
+  html body[data-integro-page="master-local"].perfil-vendedor :is(.layout > main.main,.layout > #sidebar,.dashboard-kpis-primary > .kpi-card) {
+    transition:none!important;
+  }
+}
