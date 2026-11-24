@@ -2557,6 +2557,7 @@ body.integro-data-refreshing .section-card{
   <link rel="stylesheet" href="css/master-local-conciliacao-v2.css?v=20261121-v4">
   <link rel="stylesheet" href="css/caixas-layout-aprovado.css?v=20261122-mobile-proporcoes-v2&ui=20261123-estados">
   <link rel="stylesheet" href="css/dashboard-master-local.css?v=20261124-v1">
+  <link rel="stylesheet" href="css/equipes-master-local.css?v=20261124-v1">
 </head>
 
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-local">
@@ -2973,16 +2974,17 @@ body.integro-data-refreshing .section-card{
         </div>
       </section>
       <section id="equipes" class="screen">
-        <div class="section-card" data-integro-ui-component="surface">
+        <div class="section-card equipes-surface" data-integro-ui-component="surface">
+          <header class="equipes-header"><h2>Equipes</h2></header>
           <div id="equipesIndicadores" class="estrutura-indicadores" aria-label="Indicadores de equipes"></div>
           <div class="estrutura-toolbar">
-            <label class="estrutura-search" for="buscaEquipes"><span class="material-symbols-rounded">search</span><input id="buscaEquipes" type="search" placeholder="Buscar por equipe, supervisor ou descrição" onkeydown="if(event.key==='Enter'){event.preventDefault();renderEquipes()}"></label>
-            <button class="estrutura-more-btn" type="button" title="Limpar pesquisa" aria-label="Limpar pesquisa" onclick="document.getElementById('buscaEquipes').value='';renderEquipes()"><span class="material-symbols-rounded">more_horiz</span></button>
-            <button class="estrutura-filter-btn" type="button" onclick="abrirFiltrosEquipesEstrutura()"><span class="material-symbols-rounded">tune</span><span>Filtros<small id="equipesFiltroResumo">Todos os registros</small></span></button>
-            <button class="estrutura-search-btn" type="button" onclick="renderEquipes()"><span class="material-symbols-rounded">search</span>Buscar</button>
+            <label class="estrutura-search" for="buscaEquipes"><span class="material-symbols-rounded" aria-hidden="true">search</span><input id="buscaEquipes" type="search" aria-label="Buscar equipes" placeholder="Equipe, supervisor ou descrição" onkeydown="if(event.key==='Enter'){event.preventDefault();renderEquipes()}"></label>
+            <button class="estrutura-more-btn" type="button" title="Limpar pesquisa" aria-label="Limpar pesquisa" onclick="document.getElementById('buscaEquipes').value='';renderEquipes()"><span class="material-symbols-rounded" aria-hidden="true">close</span></button>
+            <button class="estrutura-filter-btn" type="button" onclick="abrirFiltrosEquipesEstrutura()"><span class="material-symbols-rounded" aria-hidden="true">tune</span><span>Filtros<small id="equipesFiltroResumo">Todas as equipes</small></span></button>
+            <button class="estrutura-search-btn" type="button" onclick="renderEquipes()"><span class="material-symbols-rounded" aria-hidden="true">search</span>Buscar</button>
           </div>
           <div id="listaEquipes" class="estrutura-lista"></div>
-          <div id="equipesContador" class="estrutura-table-footer">0 equipes exibidas</div>
+          <div id="equipesContador" class="estrutura-table-footer" role="status">0 equipes exibidas</div>
         </div>
       </section>
 <section id="caixas" class="screen">
@@ -3215,7 +3217,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/services/indicacoes-service.js?v=20260813-leads-v25-1&build=20261101-ui-october-safe2"></script>
   <script src="js/services/chat-service.js?v=20261105-chat-history-v2"></script>
   <script src="js/services/configuracoes-empresa-service.js?v=20261105-sessao-30min-v1"></script>
-  <script src="js/modules/configuracoes-unificadas.js?v=20261105-config-v1"></script>
+  <script src="js/modules/configuracoes-unificadas.js?v=20261105-config-v1&abas=20261124"></script>
   <script src="js/services/financial-operations.js?v=20260812-v24-4&build=20261101-ui-october-safe2"></script>
   <script src="js/services/movement-view-service.js?v=20260805-dashboard-caixa-v8"></script>
   <script src="js/utils/validators.js"></script>
@@ -3223,7 +3225,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/app.js?v=20260812-v24-6"></script>
   <script src="js/auth.js?v=20261105-sessao-30min-v1"></script>
   <script src="js/cargos.js?v=20261104-cargos-exclusao-v2"></script>
-  <script src="js/equipes.js?v=20261104-equipes-exclusao-v2"></script>
+  <script src="js/equipes.js?v=20261104-equipes-exclusao-v2&ui=20261124-v1"></script>
   <script src="js/caixas.js?v=20261120-master-local-escopo-v1"></script>
   <script src="js/usuarios.js?v=20261120-master-local-usuarios-v3"></script>
   <script src="js/clientes.js?v=20261121-master-local-clientes-v4"></script>
@@ -22433,7 +22435,7 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
   setTimeout(aplicarPadrao, 2800);
 })();
 </script>
-  <script src="js/configuracoes-master-local.js?v=20260805-producao-otimizada1&fix=20261104-tenant-v1"></script>
+  <script src="js/configuracoes-master-local.js?v=20260805-producao-otimizada1&fix=20261104-tenant-v1&abas=20261124"></script>
 
 
 

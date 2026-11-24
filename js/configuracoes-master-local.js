@@ -49,7 +49,18 @@
 
   function navHtml(active=abaAtual){return `<nav class="config-module-nav config-module-nav-v272 integro-shared-nav" data-config-navigation aria-label="Módulos das configurações">${ABAS.map(([id,icon,label])=>`<button id="tabConfig${id[0].toUpperCase()+id.slice(1)}" class="config-module-tab${active===id?" active":""}" type="button" onclick="abrirPaginaConfiguracaoIntegro('${id}')"><span class="material-symbols-rounded">${icon}</span><span>${label}</span></button>`).join("")}</nav>`;}
   function installNav(){ensureBoxes();const host=document.querySelector("#configuracoes [data-config-navigation-host]");if(host)host.innerHTML=navHtml();}
-  function showOnly(aba){ensureBoxes();Object.entries(BOXES).forEach(([key,id])=>{const box=document.getElementById(id);if(box)box.style.display=key===aba?"block":"none";});document.querySelectorAll("#configuracoes .config-module-tab").forEach(btn=>btn.classList.toggle("active",btn.id===`tabConfig${aba[0].toUpperCase()+aba.slice(1)}`));}
+  function showOnly(aba) {
+    ensureBoxes();
+    Object.entries(BOXES).forEach(([key, id]) => {
+      const box = document.getElementById(id);
+      if (!box) return;
+      const ativo = key === aba;
+      box.style.display = ativo ? "block" : "none";
+      box.hidden = !ativo;
+    });
+    document.querySelectorAll("#configuracoes .config-module-tab").forEach(btn =>
+      btn.classList.toggle("active", btn.id === `tabConfig${aba[0].toUpperCase() + aba.slice(1)}`));
+  }
 
   async function load(force=false){
     const id=String(tenantId()||"");
