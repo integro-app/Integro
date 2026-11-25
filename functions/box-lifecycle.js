@@ -63,7 +63,7 @@ function criarCicloCaixa({ db, functions }) {
     }
     return [...union.values()].filter(box => box.excluido !== true && core.normalizarStatus(box.status) !== "ANULADO_DUPLICIDADE").sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
   }
-  const boxDay = box => String(box.dataOperacional || box.dataCaixa || "").slice(0,10);
+  const boxDay = (box = {}) => String(box.dataOperacional || box.dataCaixa || "").slice(0,10);
   const isOpen = box => ["ABERTO","REABERTO"].includes(core.normalizarStatus(box.status));
   async function teamHistory(reader, who, teamId, members) {
     // Preserve caixas legados sem equipeId, consultando apenas os membros da equipe.
@@ -109,13 +109,15 @@ function criarCicloCaixa({ db, functions }) {
       teamHistory({get:ref=>ref.get()},who,teamId,members),
       db.collection("controle_caixas").doc(who.tenant + "_equipe_" + teamId).get()
     ]);
-    const latest = [control.exists ? control.data().dataOperacional : "",...history.map(boxDay)].filter(Boolean).sort().pop() || "";
+    const datasUsadas = [...new Set([control.exists ? control.data().dataOperacional : "",...history.map(boxDay)].filter(Boolean))].sort();
     const open = history.filter(box => box.excluido !== true && isOpen(box));
+    const dataAberta = boxDay(open[0]);
     const sellerUids = new Map([...identities.values()].map(doc => [doc.id,doc.data().authUid]));
     const memberUids = new Map(members.docs.map(doc => [doc.id,doc.data().authUid]));
-    const pending = sellers.filter(seller => !history.some(box => (box.vendedorAuthUid || memberUids.get(box.vendedorId) || box.vendedorId) === sellerUids.get(seller.id) && boxDay(box) === latest));
-    const continuation = latest && open.length && open.every(box => boxDay(box) === latest) && pending.length ? latest : "";
-    return {hoje:core.hojeSP(),ultimaData:latest,temCaixaAberto:open.length > 0,dataParaConcluir:continuation,vendedores:sellers,pendentes:pending.map(seller=>seller.id)};
+    const pending = dataAberta ? sellers.filter(seller => !history.some(box =>
+      (box.vendedorAuthUid || memberUids.get(box.vendedorId) || box.vendedorId) === sellerUids.get(seller.id) && boxDay(box) === dataAberta)) : [];
+    const continuation = dataAberta && open.every(box => boxDay(box) === dataAberta) && pending.length ? dataAberta : "";
+    return {hoje:core.hojeSP(),ultimaData:datasUsadas.at(-1) || "",datasUsadas,temCaixaAberto:open.length > 0,dataParaConcluir:continuation,vendedores:sellers,pendentes:pending.map(seller=>seller.id)};
   }
   function exigirPermissao(who, action) {
     if(who.role==="FINANCEIRO") {
@@ -174,7 +176,7 @@ function criarCicloCaixa({ db, functions }) {
             fail("failed-precondition","Equipe inativa ou bloqueada não pode iniciar nova jornada de caixa.");
         }
       }
-      let sellerHistory;
+      let sellerHistory, ultimaDataEquipe = "";
       if (teamControl) {
         const [control,teamBoxes] = await Promise.all([transaction.get(teamControl),teamHistory(transaction,who,teamId)]);
         sellerHistory = teamBoxes.filter(box => {
@@ -183,13 +185,11 @@ function criarCicloCaixa({ db, functions }) {
             fail("failed-precondition", "Caixa com identidade divergente para este vendedor. Regularize antes de abrir novo caixa.");
           return box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId);
         }).sort((a,b) => boxDay(b).localeCompare(boxDay(a)));
-        const latest = [control.exists ? control.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
-        if (latest > day) fail("failed-precondition","Já existe caixa posterior na equipe. Os dias anteriores estão bloqueados.");
-        // A abertura parcial é permitida SOMENTE enquanto a mesma jornada
-        // da equipe permanece aberta. Depois do último fechamento, ninguém
-        // pode criar um novo subcaixa nessa data; a próxima jornada é outro dia.
-        if (latest === day && !teamBoxes.some(box=>box.excluido!==true && isOpen(box) && boxDay(box)===day))
-          fail("failed-precondition","A jornada desta equipe já foi encerrada nessa data. Abra apenas no dia seguinte.");
+        const dataControle = control.exists ? control.data().dataOperacional : "";
+        ultimaDataEquipe = [dataControle,...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
+        const caixasDoDia = teamBoxes.filter(box=>boxDay(box)===day);
+        if ((caixasDoDia.length || dataControle===day) && !caixasDoDia.some(box=>box.excluido!==true && isOpen(box)))
+          fail("failed-precondition","A jornada desta equipe já foi encerrada nessa data. Escolha outra data disponível.");
         if (teamBoxes.some(box => (box.vendedorAuthUid ? box.vendedorAuthUid === seller.authUid : sellerIds.has(box.vendedorId)) && boxDay(box) === day && box.excluido === true)) fail("failed-precondition","Essa data já foi usada pelo vendedor e não pode ser criada novamente.");
         if (teamBoxes.some(box => box.excluido !== true && isOpen(box) && boxDay(box) !== day)) fail("failed-precondition","Feche os caixas abertos da equipe antes de abrir outro dia.");
       }
@@ -208,8 +208,7 @@ function criarCicloCaixa({ db, functions }) {
       }
       if (open.length) fail("failed-precondition","Feche o caixa aberto antes de abrir outro dia.");
       if (history.some(box => String(box.dataOperacional || box.dataCaixa) === day)) fail("failed-precondition","Já existe caixa nessa data. Apenas o mais recente pode ser reaberto.");
-      const last = history[0];
-      if (last && String(last.dataOperacional || last.dataCaixa) > day) fail("failed-precondition","Abra os caixas em ordem cronológica. Já existe caixa de data posterior.");
+      const last = history.find(box => boxDay(box) && boxDay(box) < day);
       if (last && !["FECHADO","FECHADA"].includes(core.normalizarStatus(last.status))) {
         if(core.normalizarStatus(last.status)!=="DIVERGENTE" || last.divergenciaAceita!==true) fail("failed-precondition","Regularize o último caixa antes de abrir outro.");
         const previousClosure=await transaction.get(db.collection("fechamentos_caixa").doc("fechamento_"+last.id));
@@ -218,16 +217,19 @@ function criarCicloCaixa({ db, functions }) {
         const approval=await transaction.get(db.collection("tratamentos_divergencia_caixa").doc(id(treatment.tratamentoId)));
         if(!approval.exists || approval.data().clientePlataformaId!==who.tenant || approval.data().caixaId!==last.id || approval.data().decisao!=="ACEITAR_DIVERGENCIA" || approval.data().statusTratamento!=="ACEITA" || previousClosure.data().divergenciaAceita!==true) fail("failed-precondition","Aprovação da divergência inválida.");
       }
-      const initial = last ? (Number.isInteger(last.saldoAposMovimentacoesCentavos) ? last.saldoAposMovimentacoesCentavos : Number.isInteger(last.valorRealFechamentoCentavos) ? last.valorRealFechamentoCentavos : core.centavosDe(last,"saldoAtualCentavos",["valorRealFechamento","valorCalculadoFechamento","caixaFinal","saldoAtual","valorAtual"])) : core.inteiro(input.valorInicialCentavos ?? core.inteiro(Number(input.valorInicial || 0)*100));
-      const wallet = last ? core.centavosDe(last,"carteiraFinalCentavos",["carteiraFinal"]) : core.inteiro(input.carteiraInicialCentavos);
+      // Uma lacuna anterior ao primeiro caixa não herda os valores de uma data posterior.
+      const initial = last ? (Number.isInteger(last.saldoAposMovimentacoesCentavos) ? last.saldoAposMovimentacoesCentavos : Number.isInteger(last.valorRealFechamentoCentavos) ? last.valorRealFechamentoCentavos : core.centavosDe(last,"saldoAtualCentavos",["valorRealFechamento","valorCalculadoFechamento","caixaFinal","saldoAtual","valorAtual"])) :
+        history.length ? 0 : core.inteiro(input.valorInicialCentavos ?? core.inteiro(Number(input.valorInicial || 0)*100));
+      const wallet = last ? core.centavosDe(last,"carteiraFinalCentavos",["carteiraFinal"]) : history.length ? 0 : core.inteiro(input.carteiraInicialCentavos);
       // O saldo de um fechamento pode ser negativo e deve ser carregado sem
       // alterar o histórico. Valores manuais negativos continuam proibidos.
       if ((!last && initial < 0) || wallet < 0) fail("invalid-argument","Saldo inicial inválido.");
       const boxId = "caixa_" + who.tenant + "_" + sellerId + "_" + day;
       const payload = { clientePlataformaId:who.tenant,vendedorId:sellerId,vendedorAuthUid:seller.authUid,vendedorUid:seller.authUid,vendedorNome:seller.nome || seller.nomeCompleto || seller.email || "",equipeId:seller.equipeId || "",equipeNome:seller.equipeNome || input.equipeNome || "",dataOperacional:day,dataCaixa:day,dataAbertura:day,status:"ABERTO",ativo:true,excluido:false,saldoInicialCentavos:initial,saldoAtualCentavos:initial,valorInicial:initial/100,saldoInicial:initial/100,saldoAtual:initial/100,valorAtual:initial/100,caixaAtual:initial/100,carteiraInicialCentavos:wallet,carteiraFinalCentavos:wallet,carteiraInicial:wallet/100,carteiraFinal:wallet/100,ultimoCaixaFechadoId:last?.id || "",retroativo:retro,motivoRetroativo:retro ? reason : "",abertoPorUid:who.uid,abertoPorNome:who.user.nome || who.user.email || "",criadoEm:FieldValue.serverTimestamp(),abertoEm:FieldValue.serverTimestamp(),atualizadoEm:FieldValue.serverTimestamp() };
       transaction.set(db.collection("caixas").doc(boxId),payload);
-      transaction.set(controlRef,{clientePlataformaId:who.tenant,vendedorId:sellerId,ultimoCaixaId:boxId,dataOperacional:day,atualizadoEm:FieldValue.serverTimestamp()});
-      if (teamControl) transaction.set(teamControl,{clientePlataformaId:who.tenant,equipeId:teamId,dataOperacional:day,atualizadoEm:FieldValue.serverTimestamp()});
+      const maisRecente = boxDay(history[0]) > day ? history[0] : {id:boxId,dataOperacional:day};
+      transaction.set(controlRef,{clientePlataformaId:who.tenant,vendedorId:sellerId,ultimoCaixaId:maisRecente.id,dataOperacional:boxDay(maisRecente),atualizadoEm:FieldValue.serverTimestamp()});
+      if (teamControl) transaction.set(teamControl,{clientePlataformaId:who.tenant,equipeId:teamId,dataOperacional:ultimaDataEquipe > day ? ultimaDataEquipe : day,atualizadoEm:FieldValue.serverTimestamp()});
       transaction.set(db.collection("logs").doc(),{tipoAcao:retro ? "CAIXA_RETROATIVO_ABERTO" : "CAIXA_ABERTO",clientePlataformaId:who.tenant,caixaId:boxId,dataOperacional:day,motivo:reason,usuarioAuthUid:who.uid,criadoEm:FieldValue.serverTimestamp()});
       return {modo:"CRIACAO",caixaId:boxId,caixa:{id:boxId,...payload,criadoEm:core.hojeSP(),abertoEm:core.hojeSP(),atualizadoEm:core.hojeSP()}};
     });
@@ -265,6 +267,8 @@ function criarCicloCaixa({ db, functions }) {
             fail("failed-precondition","Reative a equipe antes de reabrir seu caixa.");
         }
         const teamBoxes = await teamHistory(transaction,who,String(teamId));
+        if (teamBoxes.some(item => item.excluido !== true && isOpen(item) && boxDay(item) !== boxDay(box)))
+          fail("failed-precondition","Feche os caixas abertos da equipe antes de reabrir outro dia.");
         const teamControl = await transaction.get(db.collection("controle_caixas").doc(who.tenant + "_equipe_" + id(teamId)));
         const latest = [teamControl.exists ? teamControl.data().dataOperacional : "",...teamBoxes.map(boxDay)].filter(Boolean).sort().pop() || "";
         if (latest > boxDay(box)) fail("failed-precondition","Já existe caixa posterior na equipe. Os dias anteriores estão bloqueados.");

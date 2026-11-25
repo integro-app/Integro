@@ -444,8 +444,9 @@
           bloqueadas.push(text(row.nome)+': '+bloqueio);
           continue;
         }
-        if(!info.dataParaConcluir && text(info.ultimaData)>=dia){
-          bloqueadas.push(text(row.nome)+': última data usada '+dateBR(info.ultimaData)+'. Escolha uma data posterior quando estiver disponível.');
+        const dataUsada=Array.isArray(info.datasUsadas)?info.datasUsadas.includes(dia):text(info.ultimaData)>=dia;
+        if(!info.dataParaConcluir && dataUsada){
+          bloqueadas.push(text(row.nome)+': a data '+dateBR(dia)+' está indisponível. Consulte Abrir caixa por data.');
           continue;
         }
         const sellers=Array.isArray(info.vendedores)?info.vendedores:[];

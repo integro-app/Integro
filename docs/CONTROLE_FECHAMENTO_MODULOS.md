@@ -144,6 +144,12 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - Passaram 62 testes direcionados. No Chromium, o detalhe alternou Aberto e Fechado por data e o calendário completou a abertura após a liberação simulada do servidor.
 - A conferência dos caixas reais da Norte e Sul segue em homologação.
 
+### M12 — Abertura em datas passadas disponíveis (25/11/2026)
+
+- O calendário e o servidor permitem datas livres até hoje em São Paulo, inclusive antes de jornadas já encerradas. Datas já utilizadas e jornadas abertas em outro dia continuam sujeitas às validações da operação. A abertura parcial pode ser concluída na data em que começou.
+- O saldo de abertura e a carteira usam o fechamento anterior à data escolhida. Uma abertura antes do primeiro caixa registrado inicia com zero. A abertura retroativa preserva os registros e saldos das jornadas já encerradas.
+- Passaram 77 testes direcionados e a abertura entre dois fechamentos no emulador do Firestore. O Chromium confirmou a seleção de data passada, a justificativa e o bloqueio de datas futuras e já usadas. A homologação em produção depende do deploy das Functions de Caixas.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

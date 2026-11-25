@@ -428,6 +428,22 @@ test("Equipe sem caixa pode abrir calendário já associado à equipe autorizada
   assert.match(calendar,/httpsCallable\("consultarDatasCaixaEquipe"\)/);
 });
 
+test("Calendário libera datas passadas livres e bloqueia datas futuras e jornadas encerradas",()=>{
+  const vm=require("node:vm");
+  const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
+  const window={};
+  vm.runInNewContext(calendar,{window});
+  const {disponivel}=window.IntegroCaixaDatas;
+  const info={hoje:"2026-11-25",ultimaData:"2026-11-24",datasUsadas:["2026-11-22","2026-11-24"]};
+  assert.equal(disponivel("2026-11-23",info),true);
+  assert.equal(disponivel("2026-11-25",info),true);
+  assert.equal(disponivel("2026-11-26",info),false);
+  assert.equal(disponivel("2026-11-22",info),false);
+  assert.equal(disponivel("2026-11-23",{...info,temCaixaAberto:true}),false);
+  assert.equal(disponivel("2026-11-22",{...info,temCaixaAberto:true,dataParaConcluir:"2026-11-22"}),true);
+  assert.equal(disponivel("2026-11-23",{...info,datasUsadas:undefined}),false,"resposta antiga preserva a trava vigente no servidor");
+});
+
 test("Operação adota interface acessível e responsiva sem alterar tabela de detalhes",()=>{
   const css=fs.readFileSync(path.join(root,"css/caixas-supervisao.css"),"utf8");
   assert.match(css,/\.cx-quickfilters button\.active/);
@@ -760,8 +776,8 @@ test("Backend impede abertura em equipes inativas e mantém travas entre dias",(
   assert.match(backend,/Equipe inativa ou bloqueada não pode iniciar nova jornada de caixa/);
   assert.match(backend,/Equipe inativa não pode iniciar jornada de caixa/);
   assert.match(backend,/Feche os caixas abertos da equipe antes de abrir outro dia/);
-  assert.match(backend,/if \(latest === day && !teamBoxes\.some/);
-  assert.match(backend,/A jornada desta equipe já foi encerrada nessa data\. Abra apenas no dia seguinte/);
+  assert.match(backend,/if \(\(caixasDoDia\.length \|\| dataControle===day\) && !caixasDoDia\.some/);
+  assert.match(backend,/A jornada desta equipe já foi encerrada nessa data\. Escolha outra data disponível/);
   assert.match(backend,/Já existe caixa nessa data\. Apenas o mais recente pode ser reaberto/);
   assert.match(backend,/Existem múltiplos caixas abertos para o mesmo vendedor/);
   assert.match(backend,/if\(equipeSolicitada && equipeSolicitada!==teamId\)/);
