@@ -28,6 +28,31 @@ function carregarRuntime() {
   return { runtime: contexto.IntegroDataRuntime, listenersDocumento };
 }
 
+test("consulta paginada percorre todas as vendas e mantém o cache separado da consulta limitada", async () => {
+  const { runtime } = carregarRuntime();
+  const docs = Array.from({ length: 5 }, (_, i) => ({
+    id: String(i), data: () => ({ clientePlataformaId: "tenant_a" })
+  }));
+  let leituras = 0;
+  function referencia(inicio = 0, limite = docs.length) {
+    return {
+      where() { return this; },
+      limit(novoLimite) { return referencia(inicio, novoLimite); },
+      startAfter(cursor) { return referencia(Number(cursor.id) + 1, limite); },
+      async get() {
+        leituras++;
+        return { docs: docs.slice(inicio, inicio + limite) };
+      }
+    };
+  }
+  const opcoes = { db: { collection: () => referencia() }, colecao: "vendas", limite: 2, cacheMs: 10000 };
+  assert.equal((await runtime.consultarTenant(opcoes)).length, 2);
+  const todos = await runtime.consultarTenant({ ...opcoes, paginar: true });
+  assert.deepEqual(Array.from(todos, item => item.id), ["0", "1", "2", "3", "4"]);
+  assert.equal((await runtime.consultarTenant({ ...opcoes, paginar: true })).length, 5);
+  assert.equal(leituras, 4);
+});
+
 function bancoFake() {
   let gets = 0;
   let snapshots = 0;

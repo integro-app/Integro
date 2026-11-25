@@ -100,7 +100,7 @@
 ## M06 — Dashboard e indicadores
 
 **Requisitos**
-- M06-R01 [REGRA] Indicadores operacionais previstos: Carteira Final, Caixa Atual, Ingressos, Recebido, Vendas, Despesas e Inadimplência.
+- M06-R01 [REGRA] Indicadores operacionais previstos: Carteira Final, Caixa Atual, Ingressos, Recebido, Vendas, Despesas e Inadimplência. No Dashboard do vendedor, Carteira atual soma o saldo devedor de todas as vendas em aberto sob sua responsabilidade, independentemente da data ou caixa exibido.
 - M06-R02 [REGRA] Cards clicáveis abrem detalhes/drawers consistentes; cabeçalhos, nomes de colunas e totais claros.
 - M06-R03 [REGRA] Rankings de equipes e métricas respeitam período, tenant, perfil e escopo do vendedor.
 - M06-R04 [REGRA] Filtros são acionados em **Filtros** e confirmados por **Buscar**; não disparar consultas massivas a cada toque/digitação.

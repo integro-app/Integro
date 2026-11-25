@@ -79,10 +79,12 @@
     const ordem = Array.isArray(opcoes.ordem) ? opcoes.ordem : [];
     const cacheMs = Math.max(0, Number(opcoes.cacheMs || 0));
     const forcar = opcoes.forcar === true;
+    const paginar = opcoes.paginar === true;
     if (!db || !colecao || !tenantId) return [];
 
     const identidade = identidadeConsulta();
-    const chave = chavePrivada(identidade, chaveConsulta({ colecao, tenantId, filtros, limite, ordem }), opcoes.chave);
+    const chaveConsultaLimitada = chavePrivada(identidade, chaveConsulta({ colecao, tenantId, filtros, limite, ordem }), opcoes.chave);
+    const chave = paginar ? chaveConsultaLimitada + ":todas-paginas" : chaveConsultaLimitada;
     const salvo = cache.get(chave);
     if (!forcar && cacheMs > 0 && salvo && salvo.expiraEm > agora()) {
       metricas.consultasCache++;
@@ -99,8 +101,13 @@
       registrarColecao(colecao, "consultas", 1);
       try {
         const ref = construirRef({ db, colecao, tenantId, filtros, limite, ordem });
-        const snap = await ref.get();
-        const dados = snap.docs.map(docData).filter(item => item.excluido !== true);
+        let snap = await ref.get();
+        const docs = [...snap.docs];
+        while (paginar && snap.docs.length === limite) {
+          snap = await ref.startAfter(snap.docs[snap.docs.length - 1]).get();
+          docs.push(...snap.docs);
+        }
+        const dados = docs.map(docData).filter(item => item.excluido !== true);
         metricas.documentosRecebidos += dados.length;
         registrarColecao(colecao, "documentos", dados.length);
         if (cacheMs > 0 && pendentes.get(chave) === promessa && identidadeConsulta() === identidade) {

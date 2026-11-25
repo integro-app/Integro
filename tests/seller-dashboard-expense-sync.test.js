@@ -10,6 +10,34 @@ const realtime = read("js/services/realtime-operations-service.js");
 const profiles = read("js/perfis-unificados.js");
 const master = read("master-local.html");
 
+test("Carteira atual soma todas as vendas em aberto do vendedor, independentemente do caixa", () => {
+  const { carteiraAtualVendedor } = require("../js/vendedor-operacao.js");
+  const usuario = { authUid: "vendedor", clientePlataformaId: "empresa" };
+  const clientes = [
+    { id: "transferido", vendedorAuthUid: "vendedor", clientePlataformaId: "empresa" },
+    { id: "fora", vendedorAuthUid: "outro", clientePlataformaId: "empresa" }
+  ];
+  const venda = { vendedorAuthUid: "vendedor", clientePlataformaId: "empresa", statusVenda: "ATIVA" };
+  const vendas = [
+    { ...venda, id: "parcial", caixaId: "caixa-anterior", saldoDevedorCentavos: 30000 },
+    { ...venda, id: "parcial", caixaId: "caixa-anterior", saldoDevedorCentavos: 29000 },
+    { ...venda, id: "outra", caixaId: "caixa-atual", saldoDevedor: 50.01 },
+    { ...venda, id: "legada", valorTotalVendaCentavos: 12000, totalPagoCentavos: 3000 },
+    { ...venda, id: "transferida", clienteId: "transferido", vendedorAuthUid: "anterior", valorEmprestado: 100, jurosValor: 30, totalPago: 20 },
+    { ...venda, id: "repassada", clienteId: "fora", saldoDevedorCentavos: 9000 },
+    { ...venda, id: "outra-empresa", clientePlataformaId: "outro-tenant", saldoDevedorCentavos: 9000 },
+    { ...venda, id: "outra-pessoa", vendedorAuthUid: "outro", saldoDevedorCentavos: 9000 },
+    { ...venda, id: "cancelada", statusVenda: "CANCELADA", saldoDevedorCentavos: 9000 },
+    { ...venda, id: "quitada", statusVenda: "QUITADA", saldoDevedorCentavos: 1000 },
+    { ...venda, id: "zero", saldoDevedorCentavos: 0, valorTotalVendaCentavos: 9000 }
+  ];
+  const atual = carteiraAtualVendedor({ vendas, clientes, usuario });
+  assert.deepEqual(atual.emAberto.map(item => item.venda.id), ["parcial", "outra", "legada", "transferida"]);
+  assert.equal(atual.saldoCentavos, 54001);
+  assert.equal(atual.incompleta, false);
+  assert.equal(carteiraAtualVendedor({ vendas: [{ ...venda, id: "sem-dados" }], usuario }).incompleta, true);
+});
+
 test("listener do vendedor consulta authUid e id documental sem exclusividade", () => {
   assert.match(realtime, /addOwnPart\("vendedor-auth", "vendedorAuthUid", authUid\)/);
   assert.match(realtime, /addOwnPart\("vendedor-id", "vendedorId", sellerId\)/);
