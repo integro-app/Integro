@@ -136,6 +136,14 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - A lista e o detalhe observam o estado dos caixas abertos enquanto a tela está ativa. Uma alteração confirmada no Firestore atualiza a jornada e descarta o resumo anterior. Ao voltar à tela, o Master Local consulta o servidor novamente.
 - O teste de regressão cobre fechamento em outra sessão, rejeição de snapshots locais e encerramento da observação ao sair. O fluxo segue em homologação com caixas reais.
 
+### M12 — Elegibilidade de abertura e situação do caixa (25/11/2026)
+
+- Lista, filtros e detalhes exibem Aberto, Fechado ou Em conferência. A situação acompanha a jornada consultada. Um caixa aberto de data anterior permanece Aberto, e uma divergência histórica de outra data não altera a situação exibida.
+- Quando existe um caixa aberto que impede a abertura, a tela informa a data confirmada pelo servidor no lote e no calendário. A confirmação do lote exibe as datas que serão abertas. As validações transacionais de elegibilidade permanecem vigentes.
+- O calendário começa no mês do dia operacional ou da abertura parcial. A confirmação usa os vendedores retornados pelo servidor e a lista é consultada novamente depois da abertura.
+- Passaram 62 testes direcionados. No Chromium, o detalhe alternou Aberto e Fechado por data e o calendário completou a abertura após a liberação simulada do servidor.
+- A conferência dos caixas reais da Norte e Sul segue em homologação.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.
