@@ -360,3 +360,54 @@ test("abertura retroativa respeita a data escolhida, herança inicial e não dup
     await refAntigo.delete();
   }
 });
+
+test("jornada livre anterior a um fechamento posterior pode ser aberta sem alterar o histórico",async()=>{
+  const {criarCicloCaixa}=require("../functions/box-lifecycle");
+  const ciclo=criarCicloCaixa({db,functions:{https:{HttpsError}}});
+  const tenant="tenant-abertura-retroativa",equipe="equipe-abertura-retroativa";
+  const master="master-abertura-retroativa",vendedor="vendedor-abertura-retroativa",segundo="segundo-abertura-retroativa";
+  const contexto={auth:{uid:master}};
+  const hoje=core.hojeSP();
+  const data=passo=>new Date(Date.parse(hoje+"T12:00:00Z")+passo*86400000).toISOString().slice(0,10);
+  const anterior=data(-5),escolhida=data(-3),outraLivre=data(-4);
+  const comum={clientePlataformaId:tenant,equipeId:equipe,ativo:true,acessoLiberado:true};
+  const fechado=(seller,dia,saldo,carteira)=>({clientePlataformaId:tenant,equipeId:equipe,vendedorId:seller,vendedorAuthUid:seller,
+    dataOperacional:dia,status:"FECHADO",ativo:false,valorRealFechamentoCentavos:saldo,carteiraFinalCentavos:carteira});
+  const refPosterior=db.collection("caixas").doc("caixa-retroatividade-posterior");
+  const registroPosterior=fechado(vendedor,hoje,7900,12000);
+  const batch=db.batch();
+  batch.set(db.collection("equipes").doc(equipe),comum);
+  batch.set(db.collection("usuarios").doc(master),{...comum,authUid:master,tipoUsuario:"master_local"});
+  for(const uid of [vendedor,segundo])batch.set(db.collection("usuarios").doc(uid),{...comum,authUid:uid,tipoUsuario:"vendedor"});
+  batch.set(db.collection("caixas").doc("caixa-retroatividade-anterior"),fechado(vendedor,anterior,3200,9500));
+  batch.set(refPosterior,registroPosterior);
+  batch.set(db.collection("caixas").doc("caixa-retroatividade-segundo"),fechado(segundo,hoje,10000,20000));
+  await batch.commit();
+
+  const antes=await ciclo.datasEquipe({equipeId:equipe},contexto);
+  assert.deepEqual(antes.datasUsadas,[anterior,hoje]);
+  assert.equal(antes.temCaixaAberto,false);
+  const entrada={equipeId:equipe,vendedorId:vendedor,dataOperacional:escolhida,motivoRetroativo:"Registrar jornada histórica"};
+  await assert.rejects(()=>ciclo.abrir({...entrada,dataOperacional:data(1)},contexto),/até hoje/);
+  await assert.rejects(()=>ciclo.abrir({...entrada,motivoRetroativo:""},contexto),/motivo da abertura retroativa/);
+  await assert.rejects(()=>ciclo.abrir({...entrada,dataOperacional:anterior},contexto),/já foi encerrada nessa data/);
+
+  const aberta=await ciclo.abrir(entrada,contexto);
+  assert.equal(aberta.caixa.dataOperacional,escolhida);
+  assert.equal(aberta.caixa.saldoInicialCentavos,3200);
+  assert.equal(aberta.caixa.carteiraInicialCentavos,9500);
+  assert.deepEqual((await refPosterior.get()).data(),registroPosterior);
+  assert.equal((await db.collection("controle_caixas").doc(tenant+"_equipe_"+equipe).get()).data().dataOperacional,hoje);
+  assert.equal((await db.collection("controle_caixas").doc(tenant+"_"+vendedor).get()).data().ultimoCaixaId,refPosterior.id);
+  assert.equal((await ciclo.abrir(entrada,contexto)).caixaId,aberta.caixaId);
+  await assert.rejects(()=>ciclo.abrir({...entrada,dataOperacional:outraLivre},contexto),/Feche os caixas abertos/);
+  await assert.rejects(()=>ciclo.reabrir({caixaId:refPosterior.id,operacaoId:"reabrir-teste-retro",motivo:"Conferir"},contexto),/antes de reabrir outro dia/);
+
+  const parcial=await ciclo.datasEquipe({equipeId:equipe},contexto);
+  assert.equal(parcial.dataParaConcluir,escolhida);
+  assert.deepEqual(parcial.pendentes,[segundo]);
+  const completada=await ciclo.abrir({...entrada,vendedorId:segundo,valorInicialCentavos:10000,carteiraInicialCentavos:20000},contexto);
+  assert.equal(completada.caixa.saldoInicialCentavos,0);
+  assert.equal(completada.caixa.carteiraInicialCentavos,0);
+  assert.equal((await ciclo.datasEquipe({equipeId:equipe},contexto)).dataParaConcluir,"");
+});

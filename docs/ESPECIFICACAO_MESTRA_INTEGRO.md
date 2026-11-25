@@ -171,7 +171,7 @@
 
 **Requisitos**
 - M12-R01 [REGRA] Estados ABERTO, FECHADO e REABERTO, com log e histórico das transições; divergência/regularização registradas separadamente quando existentes.
-- M12-R02 [REGRA] Abertura única por vendedor no ciclo/dia permitido; não abrir outro se já existe caixa anterior aberto. Valor inicial herda saldo final do último caixa fechado conforme política.
+- M12-R02 [REGRA] Abertura única por vendedor em data disponível até o dia atual em São Paulo. Datas passadas livres podem ser abertas por perfil autorizado com justificativa, inclusive quando existem fechamentos posteriores. Havendo caixa aberto em outro dia, encerrar o atual antes de iniciar uma jornada. O saldo inicial é herdado do fechamento anterior à data escolhida.
 - M12-R03 [REGRA] Abertura de caixas em lote deve mostrar quantos são elegíveis, concluídos, bloqueados e duplicados; não confundir total de equipe com duplicidade do vendedor.
 - M12-R04 [REGRA] Vendedor só opera quando seu caixa está aberto e não fecha havendo cobranças sem baixa segundo a regra de sua função.
 - M12-R05 [REGRA] Supervisor/Gerente/Master autorizado pode fechar caixa com pendências, sem perda de cobrança; **[VALIDAR]** fechamento supervisionado deve registrar automaticamente 'não pagamento' com origem/auditoria e justificativa, conforme PR #2 ainda aberta.
