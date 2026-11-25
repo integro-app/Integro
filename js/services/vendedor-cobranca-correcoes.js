@@ -354,6 +354,7 @@
       const item = itens.get(texto(card.dataset.vendaId));
       if (!item) return;
       const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
+      const { pagoHoje, naoPagoHoje } = global.IntegroVendedorOperacao?.baixaVisual?.(item, sync) || item;
       const bloqueado = !caixa || ["QUEUED", "PROCESSING"].includes(normalizar(sync?.status));
       const pago = card.querySelector(".btn-pago-clean");
       const naoPago = card.querySelector(".btn-nao-pago-clean");
@@ -362,8 +363,8 @@
         pago.title = item.pagoHoje ? "Editar pagamento lançado" : (item.naoPagoHoje ? "Alterar esta baixa para pagamento" : "Registrar pagamento");
         const rotulo = pago.querySelector("span:last-child");
         const textoRotulo = "Pago";
-        pago.classList.toggle("is-active", !!item.pagoHoje);
-        pago.setAttribute("aria-pressed", item.pagoHoje ? "true" : "false");
+        pago.classList.toggle("is-active", !!pagoHoje);
+        pago.setAttribute("aria-pressed", pagoHoje ? "true" : "false");
         if (rotulo && rotulo.textContent !== textoRotulo) rotulo.textContent = textoRotulo;
       }
       if (naoPago) {
@@ -371,8 +372,8 @@
         naoPago.title = item.pagoHoje ? "Alterar esta baixa para não pagamento" : (item.naoPagoHoje ? "Editar não pagamento" : "Registrar não pagamento");
         const rotulo = naoPago.querySelector("span:last-child");
         const textoRotulo = "Não pagamento";
-        naoPago.classList.toggle("is-active", !!item.naoPagoHoje);
-        naoPago.setAttribute("aria-pressed", item.naoPagoHoje ? "true" : "false");
+        naoPago.classList.toggle("is-active", !!naoPagoHoje);
+        naoPago.setAttribute("aria-pressed", naoPagoHoje ? "true" : "false");
         if (rotulo && rotulo.textContent !== textoRotulo) rotulo.textContent = textoRotulo;
       }
     });

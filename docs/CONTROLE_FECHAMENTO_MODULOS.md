@@ -98,6 +98,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - A mesma cobrança fica bloqueada durante o envio. Baixas de clientes diferentes entram na fila do caixa. Em caso de falha, a cobrança volta a aceitar nova tentativa e a tela mostra a mensagem do servidor.
 - Passaram 61 testes direcionados. No Chromium, o modal fechou em 3 ms no cenário com servidor simulado em 5 s, e o card confirmou o valor após a resposta.
 - **Revalidação em 25/11/2026.** A produção ainda carregava o fluxo que espera o servidor. Atualizada a prévia sobre a versão atual do sistema. No Chromium, com 6 s de espera simulada, o modal da versão de produção levou cerca de 6 s para fechar. A correção fechou em 1–2 ms, exibiu a sincronização, tratou a rejeição e permitiu nova tentativa sem saldo duplicado. Passaram 128 testes direcionados.
+- **Retorno visual da escolha.** Ao confirmar, botão e lateral do card assumem verde em Pago ou vermelho em Não pagamento, com o aviso Sincronizando. A confirmação do servidor atualiza os valores e, se houver rejeição, o destaque volta à baixa anterior e os botões são liberados. No Chromium, as cores mudaram em até 5 ms com 6 s de latência simulada. Verificados pagamento, não pagamento e retorno de vermelho para verde após rejeição de uma correção. Passaram 128 testes direcionados.
 - O fluxo segue em homologação com baixas reais do vendedor.
 
 ### M12 — Lista de equipes em Caixas no desktop (24/11/2026)

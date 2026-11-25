@@ -304,6 +304,13 @@
     return { chave: "SEM_ROTA", titulo: "Sem cobrança hoje", cor: "#94a3b8", classe: "is-neutral" };
   }
 
+  function baixaVisual(item, sync) {
+    const sincronizando = sync?.status === "QUEUED" || sync?.status === "PROCESSING";
+    if (sincronizando && sync.tipo === "PAGAMENTO") return { sincronizando, pagoHoje: true, naoPagoHoje: false };
+    if (sincronizando && sync.tipo === "NAO_PAGAMENTO") return { sincronizando, pagoHoje: false, naoPagoHoje: true };
+    return { sincronizando, pagoHoje: !!item.pagoHoje, naoPagoHoje: !!item.naoPagoHoje };
+  }
+
   function situacaoVisual(item) {
     if (item.situacao === "ATRASADO") return `Atrasado ${numero(item.diasIndicador)} dia(s)`;
     if (item.situacao === "ADIANTADO") return `Adiantado ${numero(item.diasIndicador)} dia(s)`;
@@ -338,26 +345,27 @@
   }
 
   function card(item) {
-    const status = statusVisual(item);
+    const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
+    // A cor acompanha a ação selecionada. Os dados da carteira seguem os registros confirmados.
+    const { sincronizando, pagoHoje, naoPagoHoje } = baixaVisual(item, sync);
+    const status = statusVisual({ ...item, pagoHoje, naoPagoHoje });
     const corFinanceira = corSituacao(item);
     const nome = item.clienteNome || "Cliente";
     const apelido = item.clienteApelido || nome;
     const total = Math.max(1, numero(item.totalParcelas));
     const progresso = Math.max(0, numero(item.progresso));
     const percentual = Math.max(0, Math.min(100, Math.round((progresso / total) * 100)));
-    const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
-    const sincronizando = sync?.status === "PROCESSING" || sync?.status === "QUEUED";
     const bloquear = !item.podeOperar || sincronizando || (typeof global.caixaEstaFechado === "function" && global.caixaEstaFechado());
     const bloquearNaoPagamento = bloquear;
     const whatsapp = telefoneWhatsapp(item.telefone);
-    const syncMeta = sync?.status === "PROCESSING" || sync?.status === "QUEUED"
+    const syncMeta = sincronizando
       ? { classe: "sync-processing", texto: "Sincronizando" }
       : sync?.status === "CONFIRMED"
         ? { classe: "sync-confirmed", texto: "Confirmado" }
         : sync?.status === "FAILED"
           ? { classe: "sync-failed", texto: "Falhou" }
           : null;
-    const syncBadge = syncMeta ? '<span class="cobranca-chip-status vendedor-sync-badge ' + syncMeta.classe + '">' + escapar(syncMeta.texto) + '</span>' : "";
+    const syncBadge = syncMeta ? '<span role="status" class="cobranca-chip-status vendedor-sync-badge ' + syncMeta.classe + '">' + escapar(syncMeta.texto) + '</span>' : "";
 
     return `
       <article class="cobranca-card-operacional ${status.classe}" data-cliente-id="${escapar(item.clienteId)}" data-venda-id="${escapar(item.vendaId)}" tabindex="0" title="Abrir opções do cliente" onclick="abrirOpcoesCardCobranca(event,this)" onkeydown="if(event.target===this &amp;&amp; (event.key==='Enter'||event.key===' ')){event.preventDefault();abrirOpcoesCardCobranca(event,this)}">
@@ -390,8 +398,8 @@
         </div>
 
         <div class="cobranca-actions-clean">
-          <button class="btn btn-pago-clean ${item.pagoHoje ? "is-active" : ""}" type="button" aria-pressed="${item.pagoHoje ? "true" : "false"}" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
-          <button class="btn btn-nao-pago-clean ${item.naoPagoHoje ? "is-active" : ""}" type="button" aria-pressed="${item.naoPagoHoje ? "true" : "false"}" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
+          <button class="btn btn-pago-clean ${pagoHoje ? "is-active" : ""}" type="button" aria-pressed="${pagoHoje ? "true" : "false"}" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
+          <button class="btn btn-nao-pago-clean ${naoPagoHoje ? "is-active" : ""}" type="button" aria-pressed="${naoPagoHoje ? "true" : "false"}" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
         </div>
       </article>`;
   }
@@ -595,6 +603,7 @@
     pertenceAoVendedor,
     pertenceAoTenant,
     statusVisual,
+    baixaVisual,
     situacaoVisual,
     corSituacao,
     formatarProximaCobranca,

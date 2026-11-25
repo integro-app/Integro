@@ -98,7 +98,7 @@
   async function ensureSellerCollectionCorrections() {
     if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
     try {
-      await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections", "20261124-baixas-imediatas");
+      await loadIfMissing(() => Boolean(global.IntegroVendedorCobrancaCorrecoes), "js/services/vendedor-cobranca-correcoes.js", "seller-collection-corrections", "20261125-cores-da-baixa");
       global.IntegroVendedorCobrancaCorrecoes?.install?.();
       await loadIfMissing(() => Boolean(global.IntegroVendedorPagamentoFlexivel), "js/services/vendedor-pagamento-flexivel.js", "seller-flexible-payment", "20261124-baixas-imediatas");
       global.IntegroVendedorPagamentoFlexivel?.install?.();
