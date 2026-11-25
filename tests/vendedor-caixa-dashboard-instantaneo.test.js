@@ -98,7 +98,7 @@ test("snapshot oficial de outro caixa nunca pode ser publicado",async()=>{
   assert.equal(c.api.obterResumoCompartilhado().snapshot.caixaFinalEsperadoCentavos,10000);
 });
 
-test("Dashboard espelha somente o caixa e o dia conferidos, mantendo pesquisa histórica",()=>{
+test("Dashboard espelha o caixa conferido e preserva a carteira atual e a pesquisa histórica",()=>{
   const ids=["kpiCaixaAtual","kpiCarteira","kpiVendasHoje","kpiVendasNovas","kpiVendasRenovadas",
     "kpiRecebidoHoje","kpiGastosHoje","kpiDespesasValor","kpiRetiradasValor","kpiCaixaAtualSub",
     "dashboardDataInicio","dashboardDataFim","kpiCarteiraTrend",
@@ -107,6 +107,8 @@ test("Dashboard espelha somente o caixa e o dia conferidos, mantendo pesquisa hi
   elements.recebidoProgressFill.style={};
   elements.dashboardDataInicio.value="2026-11-20";
   elements.dashboardDataFim.value="2026-11-20";
+  elements.kpiCarteira.textContent="R$ 4.050,00";
+  elements.kpiCarteiraTrend.textContent="Saldo a receber de 2 vendas";
   const snapshot={
     caixa:{id:"box-a"},caixaFinalEsperadoCentavos:12500,carteiraFinalCentavos:300000,
     carteiraInicialCentavos:250000,totalPrevistoCentavos:10000,
@@ -131,10 +133,10 @@ test("Dashboard espelha somente o caixa e o dia conferidos, mantendo pesquisa hi
     "  function recalcularDashboardVendedor(")+"\nsincronizarCardsDashboardComFechamento",ctx);
   assert.equal(fn(),true);
   assert.match(elements.kpiCaixaAtual.textContent,/125,00/);
-  assert.match(elements.kpiCarteira.textContent,/3.000,00/);
+  assert.equal(elements.kpiCarteira.textContent,"R$ 4.050,00");
   assert.match(elements.kpiRecebidoHoje.textContent,/76,00/);
   assert.match(elements.kpiVendasHoje.textContent,/60,00/);
-  assert.match(elements.kpiCarteiraTrend.textContent,/20.*% vs\. carteira inicial do caixa/);
+  assert.equal(elements.kpiCarteiraTrend.textContent,"Saldo a receber de 2 vendas");
   assert.equal(elements.recebidoProgressFill.style.width,"76.0%");
   assert.equal(elements.recebidoProgressPct.textContent,"76%");
   elements.dashboardDataInicio.value="2026-11-19";
