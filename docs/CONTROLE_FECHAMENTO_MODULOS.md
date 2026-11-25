@@ -144,6 +144,12 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - Passaram 62 testes direcionados. No Chromium, o detalhe alternou Aberto e Fechado por data e o calendário completou a abertura após a liberação simulada do servidor.
 - A conferência dos caixas reais da Norte e Sul segue em homologação.
 
+### M12 — Seleção em lote na lista de Caixas (25/11/2026)
+
+- **Selecionar todos** marca as equipes ativas exibidas pela busca e pelos filtros. A lista mostra quantas equipes estão selecionadas e quantos caixas abertos foram incluídos. O mesmo controle desmarca a seleção completa.
+- Em **Ações**, a abertura consulta a elegibilidade das equipes selecionadas no servidor. O fechamento apresenta na conferência somente os caixas abertos da jornada exibida nos cartões selecionados ou os caixas marcados individualmente.
+- Passaram 63 testes direcionados. O Chromium verificou o controle por teclado, os filtros e os dois fluxos até a confirmação, com dados simulados e larguras de 320 a 1920 px. A etapa seguinte é o aceite em homologação.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

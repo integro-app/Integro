@@ -62,7 +62,6 @@
   position:relative;margin:0!important;padding:0!important;border:0!important;
   background:transparent!important;box-shadow:none!important;display:block!important;min-width:0
 }
-#caixas [data-caixas-supervisao] .cx-footer #caixasSelectionCount{display:none!important}
 #caixas [data-caixas-supervisao] .cx-footer .cx-actions-dropdown{position:relative}
 #caixas [data-caixas-supervisao] .cx-footer .cx-actions-dropdown>summary{
   min-height:49px!important;display:flex!important;align-items:center;justify-content:center;
@@ -123,6 +122,25 @@
   position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer
 }
 #caixas [data-caixas-supervisao] .cx-order-control:focus-within{outline:3px solid #7eacdc;border-radius:6px}
+#caixas [data-caixas-supervisao] .cx-list-selection{
+  display:flex;flex-wrap:wrap;align-items:center;gap:0 14px;margin:0 0 12px;
+  padding:2px 12px 2px 15px;border:1px solid var(--cx-ap-line);
+  border-radius:12px;background:#f2f6fb
+}
+#caixas [data-caixas-supervisao] .cx-list-selection .cx-select-all{
+  display:inline-flex;align-items:center;gap:9px;min-height:42px;
+  margin:0;font-size:13px;font-weight:850;color:var(--cx-ap-ink);cursor:pointer
+}
+#caixas [data-caixas-supervisao] .cx-select-all:has(input:disabled){cursor:default;opacity:.65}
+#caixas [data-caixas-supervisao] .cx-select-all input{
+  appearance:auto;width:18px;height:18px;margin:0;accent-color:#098363;cursor:inherit
+}
+#caixas [data-caixas-supervisao] .cx-select-all input:focus-visible{
+  outline:2px solid #3871a8;outline-offset:3px
+}
+#caixas [data-caixas-supervisao] .cx-list-selection #caixasSelectionCount{
+  display:block;padding:3px 0;color:var(--cx-ap-muted);font-size:12px;font-weight:650
+}
 /* Card de jornada: estado e seleção separados da área financeira. */
 #caixas [data-caixas-supervisao] .cx-box-grid{
   display:grid!important;grid-template-columns:minmax(0,1fr)!important;
