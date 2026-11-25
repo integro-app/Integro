@@ -150,6 +150,12 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - O saldo de abertura e a carteira usam o fechamento anterior à data escolhida. Uma abertura antes do primeiro caixa registrado inicia com zero. A abertura retroativa preserva os registros e saldos das jornadas já encerradas.
 - Passaram 77 testes direcionados e a abertura entre dois fechamentos no emulador do Firestore. O Chromium confirmou a seleção de data passada, a justificativa e o bloqueio de datas futuras e já usadas. A homologação em produção depende do deploy das Functions de Caixas.
 
+### M12 — Seleção em lote na lista de Caixas (25/11/2026)
+
+- **Selecionar todos** marca as equipes ativas exibidas pela busca e pelos filtros. A lista mostra quantas equipes estão selecionadas e quantos caixas abertos foram incluídos. O mesmo controle desmarca a seleção completa.
+- Em **Ações**, a abertura consulta a elegibilidade das equipes selecionadas no servidor. O fechamento apresenta na conferência somente os caixas abertos da jornada exibida nos cartões selecionados ou os caixas marcados individualmente.
+- Passaram 63 testes direcionados. O Chromium verificou o controle por teclado, os filtros e os dois fluxos até a confirmação, com dados simulados e larguras de 320 a 1920 px. A etapa seguinte é o aceite em homologação.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

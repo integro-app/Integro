@@ -104,8 +104,8 @@ test("ações em lote da supervisão possuem handlers reais e seleção preserva
   assert.match(source,/selected:new Set\(\)/);
   assert.match(source,/selected=ui\.selected/);
   assert.match(source,/function abrirSelecionados\(\)/);
-  assert.match(source,/function fecharSelecionados\(\)/);
-  assert.match(source,/const result=await fecharSelecionados\(\)/);
+  assert.match(source,/function fecharSelecionados\(caixaIdsSelecionados\)/);
+  assert.match(source,/const result=await fecharSelecionados\(new Set\(/);
   assert.match(source,/prepararSnapshotFechamentoCaixa/);
   assert.match(source,/registrarFechamentoCaixaTransacional/);
   assert.match(source,/get\(\{source:'server'\}\)/);
@@ -157,6 +157,9 @@ test("abertura e fechamento permanecem no botão Ações antes da lista de equip
   assert.doesNotMatch(overview,/<div class="cx-stats">/);
   assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-query-row">'));
   assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('class="cx-box-grid"'));
+  assert.ok(overview.indexOf('class="cx-list-heading"') < overview.indexOf('data-cx-all'));
+  assert.ok(overview.indexOf('data-cx-all') < overview.indexOf('class="cx-box-grid"'));
+  assert.match(overview,/selecionarTodos\.indeterminate=/);
   assert.match(overview,/id="btnAbrirCaixasSelecionadas"/);
   assert.match(overview,/id="btnFecharCaixasSelecionadas"/);
 });
@@ -230,23 +233,36 @@ test("botão Abrir caixas não é travado pelo status agregado de equipe parcial
   assert.ok(start>=0&&end>start);
   const ctx={
     text:v=>String(v??"").trim(),
+    id:box=>box.id,
+    unique:boxes=>[...new Map(boxes.map(box=>[box.id,box])).values()],
     openBox:box=>["ABERTO","REABERTO"].includes(String(box.status||"").toUpperCase())&&box.ativo!==false,
     podeGerir:()=>false
   };
   const helpers=vm.runInNewContext(source.slice(start,end)+
     ";({disponibilidadeAcoesEquipes,totalFalhasFechamento})",ctx);
+  const aberto={id:"cx-1",status:"ABERTO",ativo:true};
+  const outroAberto={id:"cx-2",status:"ABERTO",ativo:true};
+  const caixaAntigo={id:"cx-antigo",status:"ABERTO",ativo:true};
+  const fechado={id:"cx-3",status:"FECHADO",ativo:false};
+  const entry=(id,ativa,boxes,history=boxes)=>({row:{id,ativa},models:boxes.map(box=>({box})),history});
   const entries=[
-    {row:{id:"equipe-mista"},status:"ABERTO",history:[
-      {id:"cx-1",status:"ABERTO",ativo:true,vendedorId:"v-1"},
-      {id:"cx-antigo",status:"FECHADO",ativo:false,vendedorId:"v-2"}
-    ]},
-    {row:{id:"equipe-fechada"},status:"FECHADO",history:[
-      {id:"cx-2",status:"FECHADO",ativo:false,vendedorId:"v-3"}
-    ]}
+    entry("equipe-mista",true,[aberto,outroAberto,fechado],[aberto,outroAberto,fechado,caixaAntigo]),
+    entry("equipe-fechada",true,[fechado]),
+    entry("equipe-inativa",false,[{id:"cx-inativo",status:"ABERTO",ativo:true}])
   ];
   const mista=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"master_local");
   assert.equal(mista.podeAbrir,true,"servidor decide quais vendedores podem abrir; a equipe parcialmente aberta não pode bloquear o botão");
   assert.equal(mista.podeFechar,true,"caixa aberto na equipe deve permitir conferência de fechamento");
+  assert.equal(mista.todasSelecionadas,false);
+  const todas=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista","equipe-fechada","equipe-filtrada","equipe-inativa"]),"master_local");
+  assert.equal(todas.todasSelecionadas,true);
+  assert.equal(todas.equipesSelecionadas,2);
+  assert.deepEqual(Array.from(todas.caixasParaFechar,ctx.id),["cx-1","cx-2"]);
+  const individual=helpers.disponibilidadeAcoesEquipes(entries,new Set(),"master_local",false,[outroAberto]);
+  assert.equal(individual.podeAbrir,false);
+  assert.equal(individual.podeFechar,true);
+  assert.equal(individual.todasSelecionadas,false);
+  assert.deepEqual(Array.from(individual.caixasParaFechar,ctx.id),["cx-2"]);
   const fechada=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-fechada"]),"master_local");
   assert.equal(fechada.podeAbrir,true);
   assert.equal(fechada.podeFechar,false);
@@ -256,6 +272,7 @@ test("botão Abrir caixas não é travado pelo status agregado de equipe parcial
   const semPermissao=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"financeiro");
   assert.equal(semPermissao.podeAbrir,false);
   assert.equal(semPermissao.podeFechar,false);
+  assert.equal(semPermissao.podeSelecionar,false);
   const ocupado=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"gerente",true);
   assert.equal(ocupado.podeAbrir,false);
   assert.equal(ocupado.podeFechar,false);
@@ -268,9 +285,9 @@ test("ações de Caixas dependem da conferência no servidor e calendário não 
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const overview=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
   const detail=source.slice(source.indexOf("  function renderDetail(host)"),source.indexOf("  function confirmClosure("));
-  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
-  assert.match(overview,/botaoAbrir\.disabled=!acoes\.podeAbrir/);
-  assert.match(overview,/botaoFechar\.disabled=!\(ui\.selectedBoxes\.size\?podeFecharCaixa:acoes\.podeFechar\)/);
+  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked,caixasMarcados\)/);
+  assert.match(overview,/id="btnAbrirCaixasSelecionadas"[^>]+\$\{acoes\.podeAbrir\?'':'disabled'\}/);
+  assert.match(overview,/id="btnFecharCaixasSelecionadas"[^>]+\$\{acoes\.podeFechar\?'':'disabled'\}/);
   assert.match(source,/httpsCallable\('consultarDatasCaixaEquipe'\)/);
   assert.doesNotMatch(detail,/data-cx-open-date \$\{openBox\(box\)\?'disabled':''\}/);
   assert.match(detail,/data-cx-open-date title="Abrir calendário/);
@@ -296,7 +313,7 @@ test("botões de Caixas são liberados ao final da ação, mesmo após atualiza�
   const overview=src.slice(src.indexOf("  function render() {"),src.indexOf("  async function query("));
   assert.match(overview,/abrirSelecionados\(\);[\s\S]*finally\{ui\.actionBusy=false;render\(\);\}/,
     "abertura deve redesenhar somente após liberar o estado em andamento");
-  assert.match(overview,/fecharSelecionados\(\);[\s\S]*finally\s*\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/,
+  assert.match(overview,/fecharSelecionados\(new Set\(acoes\.caixasParaFechar\.map\(id\)\)\);[\s\S]*finally\s*\{ui\.actionBusy=false;render\(\);\}/,
     "fechamento deve redesenhar os botões após concluir");
   assert.doesNotThrow(()=>new (require("node:vm").Script)(src),
     "HTML de botões condicionais precisa manter JavaScript sintaticamente válido");
@@ -625,7 +642,7 @@ test("Caixas antigos ausentes da consulta do servidor não reaparecem pelo cache
   assert.match(source,/verifiedBoxes\.delete\(key\);overview\.delete\(key\)/);
   assert.match(source,/estrutura\.caixasIds=idsConsultados/);
   assert.match(source,/!estrutura\.caixasChecked\|\|estrutura\.caixasIds\.has\(id\(b\)\)/);
-  assert.match(source,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
+  assert.match(source,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked,caixasMarcados\)/);
 });
 
 
@@ -719,8 +736,9 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
 test("Fechamento em lote respeita caixa selecionado em vez de fechar toda equipe",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/selectedBoxes:new Set\(\)/);
-  assert.match(source,/const caixaIdsSelecionados=new Set\(ui\.selectedBoxes\)/);
-  assert.match(source,/!caixaIdsSelecionados\.size\|\|caixaIdsSelecionados\.has\(id\(box\)\)/);
+  assert.match(source,/function fecharSelecionados\(caixaIdsSelecionados\)/);
+  assert.match(source,/fecharSelecionados\(new Set\(acoes\.caixasParaFechar\.map\(id\)\)\)/);
+  assert.match(source,/openBox\(box\)&&tenantOf\(box\)===tenant\(\)&&caixaIdsSelecionados\.has\(id\(box\)\)/);
   assert.match(source,/async function open\(teamId, boxId = ''\)/);
   assert.match(source,/ui\.teamDay=boxDay\(ui\.history\.find\(openBox\)\|\|ui\.history\[0\]\)/);
   assert.match(source,/if\(!solicitado\)\{ui\.box='';ui\.loading=false;render\(\);return;\}/);
