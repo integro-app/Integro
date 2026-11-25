@@ -927,7 +927,7 @@
     if (!document.getElementById("integro-dashboard-vendedor-pro-script")) {
       const proScript = document.createElement("script");
       proScript.id = "integro-dashboard-vendedor-pro-script";
-      proScript.src = "js/dashboard-vendedor-pro.js?v=20261125-painel-vendedor";
+      proScript.src = "js/dashboard-vendedor-pro.js?v=20261125-painel-vendedor&carteira=20261125";
       proScript.async = true;
       document.head.appendChild(proScript);
     }

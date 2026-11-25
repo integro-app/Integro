@@ -81,11 +81,11 @@
 
   function enhanceCards(shell) {
     shell.querySelectorAll(".dashboard-kpis-primary [data-dashboard-card]").forEach(function (card) {
+      card.setAttribute("aria-label", "Ver detalhes de " + (card.querySelector(".kpi-label")?.textContent || "indicador").trim());
       if (card.dataset.sellerKeyboardReady === "1") return;
       card.dataset.sellerKeyboardReady = "1";
       card.tabIndex = 0;
       card.setAttribute("role", "button");
-      card.setAttribute("aria-label", "Ver detalhes de " + (card.querySelector(".kpi-label")?.textContent || "indicador").trim());
       card.addEventListener("keydown", function (event) {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
