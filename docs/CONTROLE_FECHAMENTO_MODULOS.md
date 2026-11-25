@@ -156,6 +156,11 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - Em **Ações**, a abertura consulta a elegibilidade das equipes selecionadas no servidor. O fechamento apresenta na conferência somente os caixas abertos da jornada exibida nos cartões selecionados ou os caixas marcados individualmente.
 - Passaram 63 testes direcionados. O Chromium verificou o controle por teclado, os filtros e os dois fluxos até a confirmação, com dados simulados e larguras de 320 a 1920 px. A etapa seguinte é o aceite em homologação.
 
+### M12 — Barra compacta acima da lista de Caixas (25/11/2026)
+
+- Contagem de equipes, seleção em lote, sincronização e ordenação ficaram na mesma barra. A confirmação ocupa o espaço do indicador de sincronização. Em telas estreitas, os avisos ficam abaixo dos controles e preservam o texto completo.
+- Os 63 testes direcionados passaram. O Chromium verificou a lista, seleção, ordenação, busca e avisos entre 320 e 1920 px. Com uma confirmação de abertura, o primeiro cartão subiu 141 px a 1440 px de largura e 90 px a 390 px. Em homologação.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.
