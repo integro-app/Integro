@@ -7,6 +7,7 @@ const path = require("node:path");
 
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "master-local.html"), "utf8");
+const rotulosSituacaoCaixa={ABERTO:"Aberto",FECHADO:"Fechado",CONFERENCIA:"Em conferência"};
 
 function trechoEntre(inicio, fim) {
   const start = html.indexOf(inicio);
@@ -103,8 +104,8 @@ test("ações em lote da supervisão possuem handlers reais e seleção preserva
   assert.match(source,/selected:new Set\(\)/);
   assert.match(source,/selected=ui\.selected/);
   assert.match(source,/function abrirSelecionados\(\)/);
-  assert.match(source,/function fecharSelecionados\(\)/);
-  assert.match(source,/const result=await fecharSelecionados\(\)/);
+  assert.match(source,/function fecharSelecionados\(caixaIdsSelecionados\)/);
+  assert.match(source,/const result=await fecharSelecionados\(new Set\(/);
   assert.match(source,/prepararSnapshotFechamentoCaixa/);
   assert.match(source,/registrarFechamentoCaixaTransacional/);
   assert.match(source,/get\(\{source:'server'\}\)/);
@@ -156,6 +157,9 @@ test("abertura e fechamento permanecem no botão Ações antes da lista de equip
   assert.doesNotMatch(overview,/<div class="cx-stats">/);
   assert.ok(overview.indexOf('<footer class="cx-footer">') > overview.indexOf('<div class="cx-query-row">'));
   assert.ok(overview.indexOf('<footer class="cx-footer">') < overview.indexOf('class="cx-box-grid"'));
+  assert.ok(overview.indexOf('class="cx-list-heading"') < overview.indexOf('data-cx-all'));
+  assert.ok(overview.indexOf('data-cx-all') < overview.indexOf('class="cx-box-grid"'));
+  assert.match(overview,/selecionarTodos\.indeterminate=/);
   assert.match(overview,/id="btnAbrirCaixasSelecionadas"/);
   assert.match(overview,/id="btnFecharCaixasSelecionadas"/);
 });
@@ -229,23 +233,36 @@ test("botão Abrir caixas não é travado pelo status agregado de equipe parcial
   assert.ok(start>=0&&end>start);
   const ctx={
     text:v=>String(v??"").trim(),
+    id:box=>box.id,
+    unique:boxes=>[...new Map(boxes.map(box=>[box.id,box])).values()],
     openBox:box=>["ABERTO","REABERTO"].includes(String(box.status||"").toUpperCase())&&box.ativo!==false,
     podeGerir:()=>false
   };
   const helpers=vm.runInNewContext(source.slice(start,end)+
     ";({disponibilidadeAcoesEquipes,totalFalhasFechamento})",ctx);
+  const aberto={id:"cx-1",status:"ABERTO",ativo:true};
+  const outroAberto={id:"cx-2",status:"ABERTO",ativo:true};
+  const caixaAntigo={id:"cx-antigo",status:"ABERTO",ativo:true};
+  const fechado={id:"cx-3",status:"FECHADO",ativo:false};
+  const entry=(id,ativa,boxes,history=boxes)=>({row:{id,ativa},models:boxes.map(box=>({box})),history});
   const entries=[
-    {row:{id:"equipe-mista"},status:"ABERTO",history:[
-      {id:"cx-1",status:"ABERTO",ativo:true,vendedorId:"v-1"},
-      {id:"cx-antigo",status:"FECHADO",ativo:false,vendedorId:"v-2"}
-    ]},
-    {row:{id:"equipe-fechada"},status:"FECHADO",history:[
-      {id:"cx-2",status:"FECHADO",ativo:false,vendedorId:"v-3"}
-    ]}
+    entry("equipe-mista",true,[aberto,outroAberto,fechado],[aberto,outroAberto,fechado,caixaAntigo]),
+    entry("equipe-fechada",true,[fechado]),
+    entry("equipe-inativa",false,[{id:"cx-inativo",status:"ABERTO",ativo:true}])
   ];
   const mista=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"master_local");
   assert.equal(mista.podeAbrir,true,"servidor decide quais vendedores podem abrir; a equipe parcialmente aberta não pode bloquear o botão");
   assert.equal(mista.podeFechar,true,"caixa aberto na equipe deve permitir conferência de fechamento");
+  assert.equal(mista.todasSelecionadas,false);
+  const todas=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista","equipe-fechada","equipe-filtrada","equipe-inativa"]),"master_local");
+  assert.equal(todas.todasSelecionadas,true);
+  assert.equal(todas.equipesSelecionadas,2);
+  assert.deepEqual(Array.from(todas.caixasParaFechar,ctx.id),["cx-1","cx-2"]);
+  const individual=helpers.disponibilidadeAcoesEquipes(entries,new Set(),"master_local",false,[outroAberto]);
+  assert.equal(individual.podeAbrir,false);
+  assert.equal(individual.podeFechar,true);
+  assert.equal(individual.todasSelecionadas,false);
+  assert.deepEqual(Array.from(individual.caixasParaFechar,ctx.id),["cx-2"]);
   const fechada=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-fechada"]),"master_local");
   assert.equal(fechada.podeAbrir,true);
   assert.equal(fechada.podeFechar,false);
@@ -255,6 +272,7 @@ test("botão Abrir caixas não é travado pelo status agregado de equipe parcial
   const semPermissao=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"financeiro");
   assert.equal(semPermissao.podeAbrir,false);
   assert.equal(semPermissao.podeFechar,false);
+  assert.equal(semPermissao.podeSelecionar,false);
   const ocupado=helpers.disponibilidadeAcoesEquipes(entries,new Set(["equipe-mista"]),"gerente",true);
   assert.equal(ocupado.podeAbrir,false);
   assert.equal(ocupado.podeFechar,false);
@@ -267,9 +285,9 @@ test("ações de Caixas dependem da conferência no servidor e calendário não 
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const overview=source.slice(source.indexOf("  function render() {"),source.indexOf("  async function query("));
   const detail=source.slice(source.indexOf("  function renderDetail(host)"),source.indexOf("  function confirmClosure("));
-  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
-  assert.match(overview,/botaoAbrir\.disabled=!acoes\.podeAbrir/);
-  assert.match(overview,/botaoFechar\.disabled=!\(ui\.selectedBoxes\.size\?podeFecharCaixa:acoes\.podeFechar\)/);
+  assert.match(overview,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked,caixasMarcados\)/);
+  assert.match(overview,/id="btnAbrirCaixasSelecionadas"[^>]+\$\{acoes\.podeAbrir\?'':'disabled'\}/);
+  assert.match(overview,/id="btnFecharCaixasSelecionadas"[^>]+\$\{acoes\.podeFechar\?'':'disabled'\}/);
   assert.match(source,/httpsCallable\('consultarDatasCaixaEquipe'\)/);
   assert.doesNotMatch(detail,/data-cx-open-date \$\{openBox\(box\)\?'disabled':''\}/);
   assert.match(detail,/data-cx-open-date title="Abrir calendário/);
@@ -295,7 +313,7 @@ test("botões de Caixas são liberados ao final da ação, mesmo após atualiza�
   const overview=src.slice(src.indexOf("  function render() {"),src.indexOf("  async function query("));
   assert.match(overview,/abrirSelecionados\(\);[\s\S]*finally\{ui\.actionBusy=false;render\(\);\}/,
     "abertura deve redesenhar somente após liberar o estado em andamento");
-  assert.match(overview,/fecharSelecionados\(\);[\s\S]*finally\s*\{ui\.actionBusy=false;if\(button\.isConnected\)button\.disabled=false;render\(\);\}/,
+  assert.match(overview,/fecharSelecionados\(new Set\(acoes\.caixasParaFechar\.map\(id\)\)\);[\s\S]*finally\s*\{ui\.actionBusy=false;render\(\);\}/,
     "fechamento deve redesenhar os botões após concluir");
   assert.doesNotThrow(()=>new (require("node:vm").Script)(src),
     "HTML de botões condicionais precisa manter JavaScript sintaticamente válido");
@@ -466,8 +484,82 @@ test("Abertura da tela Caixas consulta servidor por equipe sem depender apenas d
   assert.match(source,/estrutura\.caixasChecked=!falhas\.length/);
   assert.match(source,/estrutura\.caixasError=falhas\.length/);
   assert.match(source,/if\(estrutura\.loaded&&!estrutura\.loading&&!estrutura\.caixasAttempted\)void carregarCaixasServidor\(\)/);
-  assert.match(source,/!estrutura\.caixasChecked\?'CONFERINDO'/);
+  assert.match(source,/Situação a confirmar/);
   assert.match(source,/if\(estrutura\.caixasChecked\)unique\(entries\.flatMap/);
+});
+
+test("M12: abertura em lote informa a jornada anterior e libera a nova data após o fechamento",async()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const trecho=source.slice(source.indexOf("  function validarContextoOperacao("),source.indexOf("  function incorporarCaixaFechado("));
+  const equipe={id:"norte",nome:"Norte"};
+  let caixaAnterior={id:"outubro",equipeId:"norte",clientePlataformaId:"empresa",status:"ABERTO",dataOperacional:"2026-10-31"};
+  const novaData="2026-11-25",aberturas=[],confirmacoes=[];
+  const ui={context:"empresa|master",selected:new Set(["norte"])};
+  const ctx={ui,tenant:()=>"empresa",tenantOf:b=>b.clientePlataformaId,id:b=>b.id,text:v=>String(v??""),
+    upper:v=>String(v??"").toUpperCase(),dateBR:d=>d.split("-").reverse().join("/"),boxDay:b=>b.dataOperacional,
+    openBox:b=>b.status==="ABERTO"&&b.ativo!==false,identities:b=>new Set([b.vendedorId]),
+    rows:()=>[equipe],podeGerir:()=>true,allowed:()=>true,user:()=>({}),render:()=>{},actionFeedback:()=>{},
+    query:async()=>[caixaAnterior],incorporarCaixaFechado:()=>{},global:{
+      firebase:{app:()=>({functions:()=>({httpsCallable:()=>async()=>({data:{hoje:novaData,ultimaData:"2026-10-31",
+        temCaixaAberto:caixaAnterior.status==="ABERTO",vendedores:[{id:"vendedor",nome:"Vendedor"}]}})})})},
+      IntegroCaixa:{registrarAberturaCaixaTransacional:async dados=>{aberturas.push(dados);return {caixaId:"novembro"};}},
+      IntegroAberturaCaixa:{executar:async tarefas=>{for(const tarefa of tarefas)await tarefa();}},
+      confirm:msg=>{confirmacoes.push(msg);return true;},
+      db:{collection:()=>({doc:()=>({get:async()=>({exists:true,id:"novembro",data:()=>({
+        equipeId:"norte",clientePlataformaId:"empresa",status:"ABERTO",dataOperacional:novaData,vendedorId:"vendedor"
+      })})})})}
+    }};
+  const {abrir,explicar}=vm.runInNewContext(trecho+"({abrir:abrirSelecionados,explicar:explicarBloqueioAbertura})",ctx);
+  await assert.rejects(abrir(),/Norte: Há caixa em aberto em 31\/10\/2026\. Feche o caixa anterior/);
+  assert.equal(aberturas.length,0);
+  assert.match(await explicar("norte","2026-10-31"),/Já existe caixa aberto para 31\/10\/2026/);
+  caixaAnterior={...caixaAnterior,ativo:false};
+  assert.match(await explicar("norte",novaData),/inconsistência em 31\/10\/2026/);
+  caixaAnterior={...caixaAnterior,status:"FECHADO"};
+  assert.equal((await abrir()).abertos,1);
+  assert.equal(aberturas[0].dataOperacional,novaData);
+  assert.match(confirmacoes[0],/Norte · 25\/11\/2026/);
+});
+
+test("Caixas incorpora fechamento vindo de outra sessão depois do snapshot confirmado",()=>{
+  const vm=require("node:vm");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const helpers=source.slice(source.indexOf("  const verifiedBoxes ="),source.indexOf("  function teamBoxes("));
+  const open={id:"norte",equipeId:"eq-norte",clientePlataformaId:"empresa",status:"ABERTO",ativo:true,atualizadoEm:100};
+  const ui={context:"empresa|master",box:"",history:[open]};
+  const estrutura={caixasChecked:true,caixasIds:new Set()};
+  const overview=new Map([["norte",{data:{}}]]);
+  let entregar,cancelou=0,renderizou=0,visivel=true;
+  const context={ui,estrutura,overview,id:box=>box.id,text:v=>String(v??""),
+    tenantOf:v=>v.clientePlataformaId,tenant:()=>"empresa",allowed:()=>true,
+    upper:v=>String(v??"").toUpperCase(),openBox:b=>b.status==="ABERTO"&&b.ativo,
+    render:()=>{renderizou++;},global:{
+      document:{getElementById:()=>({classList:{contains:()=>visivel}})},
+      db:{collection:()=>({doc:()=>({onSnapshot(options,next){
+        assert.equal(options.includeMetadataChanges,true);
+        entregar=next;
+        return ()=>cancelou++;
+      }})})}
+    }};
+  const api=vm.runInNewContext(helpers+"\n;({rememberServerBox,observarFechamentos,verifiedBoxes})",context);
+  api.rememberServerBox(open);
+  api.observarFechamentos();
+  const fechado={...open,status:"FECHADO",ativo:false,atualizadoEm:200,saldoAtualCentavos:1869100};
+  const snapshot=(metadata,data=fechado)=>({id:"norte",exists:true,metadata,data:()=>data});
+  entregar(snapshot({fromCache:true,hasPendingWrites:false}));
+  entregar(snapshot({fromCache:false,hasPendingWrites:true}));
+  entregar(snapshot({fromCache:false,hasPendingWrites:false},{...fechado,equipeId:"outra"}));
+  assert.equal(api.verifiedBoxes.get("norte").status,"ABERTO");
+  assert.equal(renderizou,0);
+  entregar(snapshot({fromCache:false,hasPendingWrites:false}));
+  assert.equal(api.verifiedBoxes.get("norte").status,"FECHADO");
+  assert.equal(ui.history[0].status,"FECHADO");
+  assert.equal(overview.has("norte"),false);
+  assert.equal(renderizou,1);
+  visivel=false;
+  api.observarFechamentos();
+  assert.equal(cancelou,1);
 });
 
 test("Fechamento em lote exige dinheiro físico informado separadamente e revalidação transacional",()=>{
@@ -534,7 +626,7 @@ test("Caixas antigos ausentes da consulta do servidor não reaparecem pelo cache
   assert.match(source,/verifiedBoxes\.delete\(key\);overview\.delete\(key\)/);
   assert.match(source,/estrutura\.caixasIds=idsConsultados/);
   assert.match(source,/!estrutura\.caixasChecked\|\|estrutura\.caixasIds\.has\(id\(b\)\)/);
-  assert.match(source,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked\)/);
+  assert.match(source,/disponibilidadeAcoesEquipes\(entries,selected,access\(\)\.perfil,ui\.actionBusy\|\|!estrutura\.caixasChecked,caixasMarcados\)/);
 });
 
 
@@ -594,7 +686,7 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
   const start=source.indexOf("  function renderCardsCaixa("),end=source.indexOf("  function render() {",start);
   assert.ok(start>0&&end>start);
   const functions=vm.runInNewContext(source.slice(start,end)+";renderCardsCaixa",{
-    esc:v=>String(v??""),text:v=>String(v??"").trim(),id:v=>String(v?.id||""),
+    rotulosSituacaoCaixa,esc:v=>String(v??""),text:v=>String(v??"").trim(),id:v=>String(v?.id||""),
     openBox:box=>box.status==="ABERTO"&&box.ativo!==false,
     badge:box=>"<span>"+box.status+"</span>",
     dateBR:v=>v==="2026-11-21"?"21/11/2026":"—",
@@ -628,8 +720,9 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
 test("Fechamento em lote respeita caixa selecionado em vez de fechar toda equipe",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   assert.match(source,/selectedBoxes:new Set\(\)/);
-  assert.match(source,/const caixaIdsSelecionados=new Set\(ui\.selectedBoxes\)/);
-  assert.match(source,/!caixaIdsSelecionados\.size\|\|caixaIdsSelecionados\.has\(id\(box\)\)/);
+  assert.match(source,/function fecharSelecionados\(caixaIdsSelecionados\)/);
+  assert.match(source,/fecharSelecionados\(new Set\(acoes\.caixasParaFechar\.map\(id\)\)\)/);
+  assert.match(source,/openBox\(box\)&&tenantOf\(box\)===tenant\(\)&&caixaIdsSelecionados\.has\(id\(box\)\)/);
   assert.match(source,/async function open\(teamId, boxId = ''\)/);
   assert.match(source,/ui\.teamDay=boxDay\(ui\.history\.find\(openBox\)\|\|ui\.history\[0\]\)/);
   assert.match(source,/if\(!solicitado\)\{ui\.box='';ui\.loading=false;render\(\);return;\}/);
@@ -660,7 +753,7 @@ test("Master Local apresenta uma jornada por equipe e filtro de situação ativo
   assert.match(source,/Inativas',totalInativas/);
   assert.match(source,/Todas',todasEquipes.length/);
   assert.match(source,/class="cx-team-day-card/);
-  assert.match(source,/const situacao=!row\.ativa\?'INATIVA'/);
+  assert.match(source,/const status=estrutura\.caixasChecked&&boxes\.every\(b=>verifiedBoxes\.has\(id\(b\)\)\)/);
   assert.match(source,/const teams=rows\(true\)\.filter/);
   assert.match(source,/const equipes=rows\(\)\.filter/);
   assert.match(source,/const overviewConferido=m=>/);
@@ -741,16 +834,17 @@ test("Equipe abre jornada consolidada antes dos subcaixas individuais",()=>{
 
 
 test("Equipe com caixa ABERTO inativo ou divergente não aparece falsamente encerrada",()=>{
+  const vm=require("node:vm");
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
-  assert.match(source,/const inconsistentes=history\.filter/);
-  assert.match(source,/const emConferencia=!estrutura\.caixasChecked\|\|inconsistentes\.length>0\|\|possuiDivergencia/);
-  assert.match(source,/emConferencia\?'EM CONFERÊNCIA'/);
-  assert.match(source,/const exigeRevisao=boxes\.some/);
-  assert.match(source,/exigeRevisao\?'REVISÃO':/);
-  assert.match(source,/pendenteAnterior\?'PENDENTE DE FECHAMENTO':aberto\?'EM OPERAÇÃO'/);
-  assert.match(source,/history\.some\(b=>\['ABERTO','REABERTO'\]\.includes\(upper\(b\.status\)\)&&b\.ativo===false\)/);
+  const codigo=source.slice(source.indexOf("  const openBox ="),source.indexOf("  function day("));
+  const classificar=vm.runInNewContext(codigo+"estadoCaixasDoDia",{upper:v=>String(v??"").toUpperCase()});
+  assert.equal(classificar([{status:"ABERTO",ativo:false}]),"CONFERENCIA");
+  assert.equal(classificar([{status:"FECHADO"},{status:"DIVERGENTE"}]),"CONFERENCIA");
+  assert.equal(classificar([{status:"FECHADO"},{status:"REABERTO",dataOperacional:"2026-10-31"}]),"ABERTO");
+  assert.equal(classificar([{status:"FECHADA"}]),"FECHADO");
+  assert.equal(classificar([]),"");
+  assert.ok(source.includes("estadoCaixasDoDia(boxes)"));
 });
-
 
 test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões financeiros",()=>{
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
@@ -794,7 +888,7 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   const start=source.indexOf("  function renderCardsCaixa(");
   const end=source.indexOf("  function render() {",start);
   const context={
-    Intl,Date,esc:v=>String(v??""),text:v=>String(v??"").trim(),id:v=>String(v?.id||""),
+    Intl,Date,rotulosSituacaoCaixa,esc:v=>String(v??""),text:v=>String(v??"").trim(),id:v=>String(v?.id||""),
     boxDay:box=>box.dataOperacional,dateBR:v=>v,
     openBox:box=>box.status==="ABERTO",upper:v=>String(v??"").toUpperCase(),
     num:v=>Number(v)||0,cash:v=>"T"+v,podeGerir:()=>false,
@@ -810,7 +904,7 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
     collected:8000,income:10000,withdrawals:20000,clients:10,visited:5};
   const entry={
     row:{id:"team-1",nome:"Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Norte"}]},
-    latest:box,history:[box,box2,antigo,{id:"cache",equipeId:"team-1",status:"FECHADO"}],avisos:[],
+    latest:box,history:[box,box2,antigo,{id:"cache",equipeId:"team-1",status:"FECHADO"}],avisos:[],status:"ABERTO",
     models:[caixa,{...caixa,box:box2,current:0,initial:0,loans:0,expenses:0,received:0,
       collected:0,income:0,withdrawals:0,clients:2,visited:2}]
   };
@@ -828,7 +922,7 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   assert.match(cards,/<small>Retiros<\/small>\s*<strong>T20000<\/strong>/);
   assert.match(cards,/<small>Data do caixa<\/small><strong>2026-10-31<\/strong>[\s\S]*<small>Caixas no histórico<\/small><strong>3<\/strong>/);
   assert.doesNotMatch(cards,/cx-team-open-date|Movimentações da jornada|<small>Na jornada<\/small>/);
-  const jornadaVazia=renderCards([{...entry,latest:undefined,history:[],models:[]}],()=>true);
+  const jornadaVazia=renderCards([{...entry,latest:undefined,history:[],models:[],status:""}],()=>true);
   assert.match(jornadaVazia,/<small>Data do caixa<\/small><strong>—<\/strong>/);
   assert.match(cards,/<small>Última sincronização<\/small><strong>24\/11\/2026, 09:30<\/strong>/);
   assert.match(cards,/<progress max="100" value="58" aria-label="Cobranças tratadas">/);
@@ -841,18 +935,18 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   assert.match(legado,/<small>Recolhimentos<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
   assert.doesNotMatch(renderCards([entry],()=>false),/T42000|T8000/);
   const fechado={...box,status:"FECHADO"};
-  const encerrado=renderCards([{...entry,latest:fechado,history:[fechado],
+  const encerrado=renderCards([{...entry,latest:fechado,history:[fechado,{...antigo,status:"DIVERGENTE"}],status:"FECHADO",
     models:[{...caixa,box:fechado,final:1200000,clients:null,visited:null}]}],()=>true);
-  assert.match(encerrado,/aria-label="FECHADO"/);
+  assert.match(encerrado,/aria-label="Fechado"/);
   assert.match(encerrado,/<small>Caixa final<\/small>\s*<strong>T1200000<\/strong>/);
   assert.match(encerrado,/<small>Progresso do caixa<\/small><strong>Não registrado<\/strong>/);
   assert.doesNotMatch(encerrado,/<progress/);
   const divergente={...box,status:"DIVERGENTE"};
-  const emConferencia=renderCards([{...entry,latest:divergente,history:[divergente],
+  const emConferencia=renderCards([{...entry,latest:divergente,history:[divergente],status:"CONFERENCIA",
     models:[{...caixa,box:divergente}]}],()=>true);
-  assert.match(emConferencia,/aria-label="EM CONFERÊNCIA"/);
-  assert.match(emConferencia,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">Em conferência<\/strong>/);
-  assert.match(cards,/PENDENTE DE FECHAMENTO/);
+  assert.match(emConferencia,/aria-label="Em conferência"/);
+  assert.match(emConferencia,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">—<\/strong>/);
+  assert.match(cards,/aria-label="Aberto"/);
   assert.match(cards,/data-cx-card-menu/);
   assert.match(cards,/data-cx-open="team-1"/);
   assert.match(cards,/data-caixas-equipe="team-1"/);
@@ -875,14 +969,14 @@ test("Caixas mobile preserva identidade sem sobrepor menu, e reduz altura dos co
   assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261123-detail-conciliacao-v3/);
 });
 
-test("Badge da jornada pendente é curto no mobile e mantém estado completo para acessibilidade",()=>{
+test("Caixa aberto de data anterior usa o mesmo rótulo no desktop e no mobile",()=>{
   const vm=require("node:vm");
   const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
   const begin=source.indexOf("  function renderCardsCaixa(");
   const end=source.indexOf("  function render() {",begin);
   assert.ok(begin>0&&end>begin);
   const context={
-    Intl,Date,esc:v=>String(v??""),text:v=>String(v??"").trim(),
+    Intl,Date,rotulosSituacaoCaixa,esc:v=>String(v??""),text:v=>String(v??"").trim(),
     id:v=>String(v?.id||""),boxDay:box=>box.dataOperacional,
     dateBR:v=>v,openBox:box=>box.status==="ABERTO",
     upper:v=>String(v??"").toUpperCase(),
@@ -894,14 +988,10 @@ test("Badge da jornada pendente é curto no mobile e mantém estado completo par
   const box={id:"cx1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Norte"};
   const htmlCard=render([{
     row:{id:"equipe-norte",nome:"Norte",ativa:true,vendedores:[]},
-    latest:box,history:[box],models:[{box,current:100,loans:0,expenses:0}],avisos:[]
+    latest:box,history:[box],models:[{box,current:100,loans:0,expenses:0}],avisos:[],status:"ABERTO"
   }],()=>true);
-  assert.match(htmlCard,/aria-label="PENDENTE DE FECHAMENTO"/);
-  assert.match(htmlCard,/class="cx-status-full">PENDENTE DE FECHAMENTO<\/span>/);
-  assert.match(htmlCard,/class="cx-status-mobile" aria-hidden="true">PENDENTE<\/span>/);
-  const css=fs.readFileSync(path.join(root,"css/caixas-layout-aprovado.css"),"utf8");
-  assert.match(css,/\.cx-status-full\{display:none!important\}/);
-  assert.match(css,/\.cx-status-mobile\{display:inline!important\}/);
+  assert.match(htmlCard,/aria-label="Aberto"/);
+  assert.doesNotMatch(htmlCard,/PENDENTE DE FECHAMENTO|cx-status-mobile/);
 });
 
 
@@ -976,6 +1066,7 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   const ctx={
     Intl,Date,ui,overview,verifiedBoxes,estrutura:{caixasChecked:true,caixasError:""},
     diaSaoPaulo:new Intl.DateTimeFormat("sv-SE",{timeZone:"America/Sao_Paulo"}),
+    estadoCaixasDoDia:()=>"ABERTO",rotulosSituacaoCaixa,
     rows:()=>[{id:"equipe-1",nome:"Equipe 1",ativa:true,vendedores:[]}],
     teamBoxes:(row,list)=>list,boxDay:box=>box.dataOperacional,dateBR:x=>x,
     text:x=>String(x??"").trim(),id:box=>box.id,esc:x=>String(x??""),
@@ -995,7 +1086,7 @@ test("M12: fechamento via jornada é restrito aos caixas abertos do dia selecion
   };
   const fn=vm.runInNewContext(source.slice(start,end)+"\nrenderTeamDay",ctx);
   fn(host);
-  assert.match(host.innerHTML,/PENDENTE DE FECHAMENTO/);
+  assert.match(host.innerHTML,/class="cx-team-day-status is-open">Aberto</);
   assert.match(host.innerHTML,/<progress max="100" value="40"/);
   assert.match(host.innerHTML,/Não pagamentos \(1\)/);
   assert.match(host.innerHTML,/Cliente da venda selecionado/);

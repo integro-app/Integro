@@ -131,6 +131,30 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Verificação.** Passaram 60 testes direcionados. O Chromium confirmou a coluna única em 12 larguras, a comparação entre prazo e quitação no histórico e a mudança do score após a meia-noite, com dados simulados.
 - **Estado.** Em homologação com contratos reais no Master Local.
 
+### M12 — Atualização do fechamento na lista de equipes (24/11/2026)
+
+- A lista e o detalhe observam o estado dos caixas abertos enquanto a tela está ativa. Uma alteração confirmada no Firestore atualiza a jornada e descarta o resumo anterior. Ao voltar à tela, o Master Local consulta o servidor novamente.
+- O teste de regressão cobre fechamento em outra sessão, rejeição de snapshots locais e encerramento da observação ao sair. O fluxo segue em homologação com caixas reais.
+
+### M12 — Elegibilidade de abertura e situação do caixa (25/11/2026)
+
+- Lista, filtros e detalhes exibem Aberto, Fechado ou Em conferência. A situação acompanha a jornada consultada. Um caixa aberto de data anterior permanece Aberto, e uma divergência histórica de outra data não altera a situação exibida.
+- Quando existe um caixa aberto que impede a abertura, a tela informa a data confirmada pelo servidor no lote e no calendário. A confirmação do lote exibe as datas que serão abertas. As validações transacionais de elegibilidade permanecem vigentes.
+- O calendário começa no mês do dia operacional ou da abertura parcial. A confirmação usa os vendedores retornados pelo servidor e a lista é consultada novamente depois da abertura.
+- Passaram 62 testes direcionados. No Chromium, o detalhe alternou Aberto e Fechado por data e o calendário completou a abertura após a liberação simulada do servidor.
+- A conferência dos caixas reais da Norte e Sul segue em homologação.
+
+### M12 — Seleção em lote na lista de Caixas (25/11/2026)
+
+- **Selecionar todos** marca as equipes ativas exibidas pela busca e pelos filtros. A lista mostra quantas equipes estão selecionadas e quantos caixas abertos foram incluídos. O mesmo controle desmarca a seleção completa.
+- Em **Ações**, a abertura consulta a elegibilidade das equipes selecionadas no servidor. O fechamento apresenta na conferência somente os caixas abertos da jornada exibida nos cartões selecionados ou os caixas marcados individualmente.
+- Passaram 63 testes direcionados. O Chromium verificou o controle por teclado, os filtros e os dois fluxos até a confirmação, com dados simulados e larguras de 320 a 1920 px. A etapa seguinte é o aceite em homologação.
+
+### M12 — Barra compacta acima da lista de Caixas (25/11/2026)
+
+- Contagem de equipes, seleção em lote, sincronização e ordenação ficaram na mesma barra. A confirmação ocupa o espaço do indicador de sincronização. Em telas estreitas, os avisos ficam abaixo dos controles e preservam o texto completo.
+- Os 63 testes direcionados passaram. O Chromium verificou a lista, seleção, ordenação, busca e avisos entre 320 e 1920 px. Com uma confirmação de abertura, o primeiro cartão subiu 141 px a 1440 px de largura e 90 px a 390 px. Em homologação.
+
 ## M02 — Evidências de execução (etapa 1: fronteira de tenant)
 
 - **Achado:** o backend `functions/company-access.js` dispensava `usuario_integro` da verificação de empresa operacional, como se fosse `master_global`.

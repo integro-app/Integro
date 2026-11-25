@@ -23,7 +23,7 @@
 /* Uma única barra de comando: pesquisar, filtrar, agir. */
 #caixas [data-caixas-supervisao] .cx-query-row{
   display:grid!important;grid-template-columns:minmax(0,1fr) auto auto!important;
-  align-items:start;gap:10px!important;margin:0 0 15px!important;min-width:0;overflow:visible!important
+  align-items:start;gap:10px!important;margin:0 0 8px!important;min-width:0;overflow:visible!important
 }
 #caixas [data-caixas-supervisao] .cx-query-row .cx-commandbar{
   display:block!important;min-width:0;max-width:none!important;margin:0!important
@@ -36,7 +36,6 @@
   border-radius:14px!important;background:#fff!important;padding-left:45px;
   box-shadow:0 3px 12px #061b310a;color:#123050;font-size:13px!important
 }
-#caixas [data-caixas-supervisao] .cx-sync-state{font-size:10px;margin:6px 0 0;color:#73849a}
 #caixas [data-caixas-supervisao] .cx-query-row .cx-filter-options{
   position:relative;margin:0!important;border:0!important;box-shadow:none!important;
   overflow:visible!important;background:transparent!important;min-width:0
@@ -62,7 +61,6 @@
   position:relative;margin:0!important;padding:0!important;border:0!important;
   background:transparent!important;box-shadow:none!important;display:block!important;min-width:0
 }
-#caixas [data-caixas-supervisao] .cx-footer #caixasSelectionCount{display:none!important}
 #caixas [data-caixas-supervisao] .cx-footer .cx-actions-dropdown{position:relative}
 #caixas [data-caixas-supervisao] .cx-footer .cx-actions-dropdown>summary{
   min-height:49px!important;display:flex!important;align-items:center;justify-content:center;
@@ -114,15 +112,75 @@
 }
 #caixas [data-caixas-supervisao] .cx-list-heading h3 .material-symbols-rounded{font-size:22px}
 #caixas [data-caixas-supervisao] .cx-list-heading p{font-size:11px;color:#7386a1}
+#caixas [data-caixas-supervisao] .cx-list-toolbar{
+  display:grid;grid-template-columns:auto minmax(0,auto) minmax(115px,1fr) auto;
+  grid-template-areas:"equipes selecao avisos ordem";align-items:center;gap:0 16px;
+  padding:0 2px;border-bottom:1px solid var(--cx-ap-line);margin-bottom:10px
+}
+#caixas [data-caixas-supervisao] .cx-list-toolbar>.cx-list-heading{
+  grid-area:equipes;align-items:center!important;justify-content:flex-start!important;
+  gap:6px;margin:0!important;padding:0!important;white-space:nowrap
+}
+#caixas [data-caixas-supervisao] .cx-list-toolbar>.cx-list-heading h3{
+  margin:0!important;font-size:15px!important;letter-spacing:-.02em
+}
+#caixas [data-caixas-supervisao] .cx-list-toolbar>.cx-list-heading>span{
+  display:inline-flex!important;padding:2px 5px;border-radius:5px;background:#eaf0f8;
+  color:var(--cx-ap-muted);font-size:11px;font-weight:750
+}
 #caixas [data-caixas-supervisao] .cx-order-control{
   display:flex;align-items:center;gap:4px;position:relative;white-space:nowrap;
   font-size:12px;font-weight:850;color:#173859
+}
+#caixas [data-caixas-supervisao] .cx-list-toolbar>.cx-order-control{
+  grid-area:ordem;justify-self:end;min-height:40px;margin:0
 }
 #caixas [data-caixas-supervisao] .cx-order-control>.material-symbols-rounded{font-size:18px}
 #caixas [data-caixas-supervisao] .cx-order-control select{
   position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer
 }
 #caixas [data-caixas-supervisao] .cx-order-control:focus-within{outline:3px solid #7eacdc;border-radius:6px}
+#caixas [data-caixas-supervisao] .cx-list-selection{
+  grid-area:selecao;display:flex;flex-wrap:wrap;align-items:center;gap:0 10px;min-width:0;
+  padding-inline-start:14px;border-inline-start:1px solid var(--cx-ap-line)
+}
+#caixas [data-caixas-supervisao] .cx-list-selection .cx-select-all{
+  display:inline-flex;align-items:center;gap:7px;min-height:38px;
+  margin:0;font-size:12px;font-weight:850;color:var(--cx-ap-ink);cursor:pointer;white-space:nowrap
+}
+#caixas [data-caixas-supervisao] .cx-select-all:has(input:disabled){cursor:default;opacity:.65}
+#caixas [data-caixas-supervisao] .cx-list-selection .cx-select-all input[type="checkbox"]{
+  appearance:auto;flex:0 0 18px;width:18px!important;height:18px!important;min-height:0!important;
+  margin:0;accent-color:#098363;cursor:inherit
+}
+#caixas [data-caixas-supervisao] .cx-select-all input:focus-visible{
+  outline:2px solid #3871a8;outline-offset:3px
+}
+#caixas [data-caixas-supervisao] .cx-list-selection #caixasSelectionCount{
+  display:block;color:var(--cx-ap-muted);font-size:11px;font-weight:650
+}
+#caixas [data-caixas-supervisao] .cx-list-selection #caixasSelectionCount:empty{display:none}
+#caixas [data-caixas-supervisao] .cx-list-notices{
+  grid-area:avisos;display:grid;justify-items:end;gap:3px;min-width:0;padding:4px 0
+}
+#caixas [data-caixas-supervisao] .cx-list-notices :is(.cx-sync-state,[data-cx-action-feedback]){
+  max-width:none;margin:0;font-size:11px;line-height:1.35;overflow-wrap:break-word
+}
+#caixas [data-caixas-supervisao] .cx-list-notices:has([data-cx-action-feedback]) .cx-sync-state.is-ready{display:none}
+#caixas [data-caixas-supervisao] .cx-list-notices [data-cx-action-feedback]{
+  padding:3px 7px;border-radius:5px;background:#e8f6ee;color:#166534;font-weight:700
+}
+#caixas [data-caixas-supervisao] .cx-list-notices [data-cx-action-feedback][role="alert"]{
+  background:#fcebec;color:#a72528
+}
+@media(min-width:761px) and (max-width:1200px){
+  #caixas [data-caixas-supervisao] .cx-list-toolbar:has([data-cx-action-feedback],.cx-sync-state:not(.is-ready)){
+    grid-template-areas:"equipes selecao . ordem" "avisos avisos avisos avisos"
+  }
+  #caixas [data-caixas-supervisao] .cx-list-toolbar:has([data-cx-action-feedback],.cx-sync-state:not(.is-ready)) .cx-list-notices{
+    justify-items:start;padding:0 0 6px
+  }
+}
 /* Card de jornada: estado e seleção separados da área financeira. */
 #caixas [data-caixas-supervisao] .cx-box-grid{
   display:grid!important;grid-template-columns:minmax(0,1fr)!important;
@@ -350,8 +408,20 @@
  #caixas [data-caixas-supervisao] .cx-query-row .cx-actions-dropdown>summary{
    width:100%;min-height:47px!important;box-sizing:border-box
  }
- #caixas [data-caixas-supervisao] .cx-query-row .cx-sync-state{
-   padding:0 2px;margin:5px 0 0
+ #caixas [data-caixas-supervisao] .cx-list-toolbar{
+   grid-template-columns:auto minmax(80px,1fr) auto;
+   grid-template-areas:"equipes avisos ordem" "selecao selecao selecao";gap:0 8px
+ }
+ #caixas [data-caixas-supervisao] .cx-list-toolbar:has([data-cx-action-feedback],.cx-sync-state:not(.is-ready)){
+   grid-template-areas:"equipes . ordem" "selecao selecao selecao" "avisos avisos avisos"
+ }
+ #caixas [data-caixas-supervisao] .cx-list-toolbar>.cx-order-control{min-height:36px}
+ #caixas [data-caixas-supervisao] .cx-list-selection{
+   gap:0 8px;padding:0 0 3px;border-inline-start:0
+ }
+ #caixas [data-caixas-supervisao] .cx-list-selection .cx-select-all{min-height:36px}
+ #caixas [data-caixas-supervisao] .cx-list-toolbar:has([data-cx-action-feedback],.cx-sync-state:not(.is-ready)) .cx-list-notices{
+   justify-items:start;padding:0 0 6px
  }
  #caixas [data-caixas-supervisao] .cx-list-heading h3{font-size:18px}
  #caixas [data-caixas-supervisao] .cx-box-grid{
@@ -436,8 +506,7 @@
 
 /* Refinamento visual homologação mobile 22/11/26: somente proporções,
    sem alterar comportamento, dados ou paleta do layout aprovado. */
-#caixas [data-caixas-supervisao] .cx-status-mobile{display:none}
-#caixas [data-caixas-supervisao] .cx-status-full{display:inline}
+#caixas [data-caixas-supervisao] .cx-team-status-note{color:#4c6580;font-size:11px;font-weight:700}
 #caixas [data-caixas-supervisao] .cx-team-select .material-symbols-rounded{opacity:0}
 #caixas [data-caixas-supervisao] .cx-team-select:has(input:checked) .material-symbols-rounded{opacity:1}
 @media(max-width:760px){
@@ -484,9 +553,6 @@
     min-height:43px!important;height:43px!important;border-radius:12px!important;
     font-size:12px!important;padding:8px 10px!important
   }
-  #caixas [data-caixas-supervisao] .cx-query-row .cx-sync-state{
-    margin:4px 0 0!important;font-size:10px!important
-  }
   #caixas [data-caixas-supervisao] .cx-list-heading{
     margin:2px 0 10px!important;align-items:center!important
   }
@@ -519,8 +585,6 @@
     overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important;
     text-transform:uppercase
   }
-  #caixas [data-caixas-supervisao] .cx-status-full{display:none!important}
-  #caixas [data-caixas-supervisao] .cx-status-mobile{display:inline!important}
   #caixas [data-caixas-supervisao] .cx-status-dot{
     width:6px!important;height:6px!important;flex:0 0 6px!important
   }
