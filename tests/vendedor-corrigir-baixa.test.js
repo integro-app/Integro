@@ -153,9 +153,10 @@ test("baixas fecham os dois modais imediatamente e aguardam a confirmação ante
    integroCorrecaoConfirmar:{textContent:"Confirmar"},integroCorrecaoBaixaDialog:{remove:()=>{modalNaoPagamento=false;}}};
  const doc={getElementById:id=>campos[id]||null,dispatchEvent(){},querySelectorAll:()=>[],addEventListener(){}};
  const avisos=[],chamadas=[],timeouts=[];
+ let renderizacoes=0;
  const window={State:state,caixaAtual:caixa,fecharModalVendedorOperacao:()=>{modalPagamento=false;},
    IntegroVendedorOperacao:{montarCarteira:()=>vendas.map((v,i)=>({vendaId:v.id,clienteId:clientes[i].id,parcelas:[parcelas[i]],venda:v,saldoDevedor:50}))},
-   UIHelpers:{alerta:msg=>avisos.push(msg)},setTimeout:fn=>timeouts.push(fn),
+   UIHelpers:{alerta:msg=>avisos.push(msg)},setTimeout:fn=>timeouts.push(fn),renderCobrancas:()=>{renderizacoes++;},
    firebase:{app:()=>({functions:()=>({httpsCallable:nome=>payload=>new Promise(resolve=>chamadas.push({nome,payload,resolve}))})})}};
  const unificado=fs.readFileSync(path.join(root,"js/vendedor-unificado.js"),"utf8");
  const context=vm.createContext({window,document:doc,CustomEvent:class {},setTimeout:()=>0,console:{error(){}}});
@@ -170,8 +171,10 @@ test("baixas fecham os dois modais imediatamente e aguardam a confirmação ante
  assert.equal(modalPagamento,false);
  assert.equal(status("a"),"QUEUED");
  assert.equal(pagamentos.length,0);
+ assert.equal(renderizacoes,1);
  await Promise.resolve();
  assert.equal(status("a"),"PROCESSING");
+ assert.equal(renderizacoes,1,"a lista já mostra a sincronização antes do envio");
  assert.equal(chamadas.length,1);
  assert.equal(chamadas[0].nome,"registrarPagamentoOperacional");
  await window.IntegroVendedorCobrancaCorrecoes.salvarNaoPagamento("a");
