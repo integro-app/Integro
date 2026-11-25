@@ -68,9 +68,16 @@
         const response = await global.firebase.app().functions("southamerica-east1").httpsCallable("consultarDatasCaixaEquipe")({equipeId:teamId});
         if (current !== request || !dialog.isConnected) return;
         info = response.data;
-        const next = info.dataParaConcluir || (info.ultimaData ? new Date(Date.parse(info.ultimaData + "T12:00:00Z") + 86400000).toISOString().slice(0,10) : info.hoje);
-        month = (next <= info.hoje ? next : info.hoje).slice(0,7);
-        summary.textContent = info.temCaixaAberto ? (info.dataParaConcluir ? "Abertura parcial: conclua a data já iniciada para os vendedores restantes." : "Feche os caixas abertos da equipe para abrir outra data.") : info.vendedores.length + " vendedor(es). " + (info.ultimaData ? "Última data usada: " + info.ultimaData.split("-").reverse().join("/") + "." : "A equipe ainda não possui caixas.");
+        month = (info.dataParaConcluir || info.hoje).slice(0,7);
+        if (info.temCaixaAberto && !info.dataParaConcluir) {
+          const bloqueio = await global.IntegroCaixasSupervisao?.explicarBloqueioAbertura?.(teamId, info.hoje);
+          if (current !== request || !dialog.isConnected) return;
+          summary.textContent = bloqueio || "Há caixa aberto na equipe. Confira o histórico antes de abrir outra data.";
+        } else if (info.dataParaConcluir) {
+          summary.textContent = "Abertura parcial em " + info.dataParaConcluir.split("-").reverse().join("/") + ". Selecione essa data para incluir os vendedores restantes.";
+        } else {
+          summary.textContent = info.vendedores.length + " vendedor(es). " + (info.ultimaData ? "Última data usada: " + info.ultimaData.split("-").reverse().join("/") + "." : "A equipe ainda não possui caixas.");
+        }
         render();
       } catch (failure) { if (current === request) { summary.textContent = "Datas indisponíveis para consulta."; error.textContent = failure.message || "Não foi possível consultar as datas."; } }
     }
@@ -81,6 +88,7 @@
       if (dialog.dataset.saving || !available(selected,info)) return;
       if (selected < info.hoje && !reason.value.trim()) { error.textContent = "Informe o motivo da abertura retroativa."; reason.focus(); return; }
       const team = teams.find(item=>String(item.id) === select.value), day = selected;
+      if (!team) { error.textContent = "Selecione uma equipe válida."; return; }
       const members = info.vendedores.filter(item=>day !== info.dataParaConcluir || info.pendentes.includes(item.id));
       let completed = 0;
       dialog.dataset.saving = "true";
@@ -90,8 +98,8 @@
       try {
         const result = await global.IntegroAberturaCaixa.executar(members.map(member => async () => {
           error.textContent = "Abrindo caixa " + (completed+1) + " de " + members.length + "…";
-          const seller = sellers.find(item=>String(item.id || item.authUid) === member.id);
-          if (!seller) throw new Error("Os vendedores da equipe mudaram. Atualize a tela Caixas.");
+          const seller = (team.vendedores || []).find(item =>
+            [item.id, item.authUid, item.uid].some(value => value && String(value) === String(member.id))) || member;
           const snapshot = global.snapshotAberturaCaixaVendedor?.(seller,team) || {caixaInicial:0,carteiraInicial:0};
           // O wrapper legado de abertura substitui a data solicitada pela data de hoje.
           // A função transacional do backend recebe a data selecionada explicitamente.
@@ -118,12 +126,13 @@
         }));
         if (!result) { delete dialog.dataset.saving; select.disabled = reason.disabled = false; dialog.querySelector("[data-cancel]").disabled = false; render(); return; }
         close();
-        global.__integroRenderCaixasCanonical?.(); global.notificarIntegro?.("Caixas da equipe abertos para a data selecionada.");
+        await global.IntegroCaixasSupervisao?.revalidarCaixasVisiveis?.();
+        global.notificarIntegro?.("Caixas da equipe abertos para a data selecionada.");
       } catch (failure) {
         delete dialog.dataset.saving;
         select.disabled = reason.disabled = false;
         dialog.querySelector("[data-cancel]").disabled = false;
-        global.__integroRenderCaixasCanonical?.();
+        void global.IntegroCaixasSupervisao?.revalidarCaixasVisiveis?.();
         await load();
         error.textContent = completed + " de " + members.length + " caixas abertos. " + (failure.message || "Não foi possível concluir a abertura.") + " Os caixas já abertos foram preservados.";
       }

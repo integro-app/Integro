@@ -436,8 +436,7 @@
 
 /* Refinamento visual homologação mobile 22/11/26: somente proporções,
    sem alterar comportamento, dados ou paleta do layout aprovado. */
-#caixas [data-caixas-supervisao] .cx-status-mobile{display:none}
-#caixas [data-caixas-supervisao] .cx-status-full{display:inline}
+#caixas [data-caixas-supervisao] .cx-team-status-note{color:#4c6580;font-size:11px;font-weight:700}
 #caixas [data-caixas-supervisao] .cx-team-select .material-symbols-rounded{opacity:0}
 #caixas [data-caixas-supervisao] .cx-team-select:has(input:checked) .material-symbols-rounded{opacity:1}
 @media(max-width:760px){
@@ -519,8 +518,6 @@
     overflow-wrap:normal!important;word-break:normal!important;hyphens:none!important;
     text-transform:uppercase
   }
-  #caixas [data-caixas-supervisao] .cx-status-full{display:none!important}
-  #caixas [data-caixas-supervisao] .cx-status-mobile{display:inline!important}
   #caixas [data-caixas-supervisao] .cx-status-dot{
     width:6px!important;height:6px!important;flex:0 0 6px!important
   }
