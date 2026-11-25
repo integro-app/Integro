@@ -927,7 +927,7 @@
     if (!document.getElementById("integro-dashboard-vendedor-pro-script")) {
       const proScript = document.createElement("script");
       proScript.id = "integro-dashboard-vendedor-pro-script";
-      proScript.src = "js/dashboard-vendedor-pro.js?v=20261120-m06-referencia-aprovada4";
+      proScript.src = "js/dashboard-vendedor-pro.js?v=20261125-painel-vendedor";
       proScript.async = true;
       document.head.appendChild(proScript);
     }
@@ -3039,6 +3039,7 @@
     montarTela();
     configurarDashboardVendedor();
     garantirMenu();
+    window.IntegroDesktopNavigation?.sync?.();
     caches();
     renderClientesVendedor();
     window.IntegroVendedorOperacao?.instalar?.();

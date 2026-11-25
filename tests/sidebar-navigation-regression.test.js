@@ -557,7 +557,7 @@ test("Master Local: sidebar recolhível mantém o cabeçalho aprovado de Caixas"
   const style = read("css/integro-desktop-navigation.css");
 
   assert.doesNotMatch(page, /class="integro-global-header"/, "preserva a retirada do cabeçalho global");
-  assert.ok(script.includes('const host = bar || sidebar();'));
+  assert.ok(script.includes('const host = sellerBrand || bar || sidebar();'));
   assert.match(script, /bar\.classList\.remove\("collapsed"\)/, "não disputa classe collapsed legada");
   assert.match(style, /\.sidebar > :is\(\.logo,\.brand,\.brand-premium,\.sidebar-brand\)/,
     "oculta logo legado para não mostrar duas marcas");

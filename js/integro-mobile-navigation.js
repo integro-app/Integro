@@ -639,7 +639,7 @@
 
   if (!desktopDrawer) {
     const desktopNavigationScript = document.createElement("script");
-    desktopNavigationScript.src = "js/integro-desktop-navigation.js?v=20261123-padrao2";
+    desktopNavigationScript.src = "js/integro-desktop-navigation.js?v=20261125-painel-vendedor";
     desktopNavigationScript.async = true;
     body.appendChild(desktopNavigationScript);
   }

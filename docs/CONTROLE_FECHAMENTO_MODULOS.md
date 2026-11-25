@@ -53,6 +53,12 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 | M22 | Interface/performance/offline | Padronização parcial; mobile, cache, latência e fila exigem prova | A HOMOLOGAR |
 
 
+### M06 — Dashboard e menu lateral do Vendedor (25/11/2026)
+
+- Título e período aparecem à esquerda e o acesso à Operação à direita. O caixa recebe destaque em azul-marinho. Os cinco indicadores ocupam uma linha em telas largas e se reorganizam em larguras menores. O resumo diário e o acesso aos detalhes ficam visíveis com os valores do dashboard.
+- O botão do menu desktop fica junto da marca, com expansão por teclado e preferência persistida. Quando a navegação do vendedor já apresenta Notificações, o atalho de reserva é removido e o item principal abre a central.
+- Passaram 36 testes direcionados. O Chromium validou 11 larguras de 320 a 1920 px, abertura do menu no celular, notificações, atalho Operação, ativação do card pelo teclado e preservação do gráfico histórico com dados de teste. Estado em homologação.
+
 ### M06 — Dashboard do Vendedor: experiência desktop/mobile (20/11/2026)
 
 - **Correção de causa-raiz (20/11):** o master-local.html ainda reservava 54px e margem de 14px para o cabeçalho global contendo apenas o sino, além de forçar display:grid para o vendedor. O cabeçalho passa a ficar oculto nesse perfil, preservando notificações no menu, e o Dashboard tem padding superior de 16px no desktop, mantendo a distância de segurança do cabeçalho mobile. A versão do vendedor-unificado.js foi renovada no HTML principal. Pendente homologação visual autenticada.

@@ -82,7 +82,7 @@ test("M06 aplica a camada premium somente ao dashboard vendedor", () => {
   assert.match(seller, /function configurarDashboardVendedor\(\)[\s\S]*?integro-dashboard-vendedor-pro-script/);
   assert.match(visual, /document\.body\.classList\.contains\("perfil-vendedor"\)/);
   assert.match(visual, /document\.addEventListener\("integro-dashboard-periodo-aplicado", init\)/);
-  assert.match(css, /html body\.perfil-vendedor #dashboard\.dashboard-vendedor-pro/);
+  assert.match(css, /html body\.perfil-vendedor\[data-integro-page="master-local"\] #dashboard\.dashboard-vendedor-pro/);
   assert.doesNotMatch(visual, /firebase\.firestore|collection\(|addDoc\(|updateDoc\(/);
 });
 
@@ -137,8 +137,8 @@ test("M06: recursos são atualizados sem depender do cache antigo", () => {
   const seller = read("js/vendedor-unificado.js");
   const visual = read("js/dashboard-vendedor-pro.js");
   assert.match(html, /js\/vendedor-unificado\.js\?v=20261120-m06-global-header-fix5/);
-  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261120-m06-referencia-aprovada4/);
-  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261120-m06-referencia-aprovada4/);
+  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261125-painel-vendedor/);
+  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261125-painel-vendedor/);
 });
 
 test("M06: dashboard compacto e sino acessível apenas pelo menu", () => {
