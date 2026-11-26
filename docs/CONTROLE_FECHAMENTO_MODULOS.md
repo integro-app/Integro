@@ -103,6 +103,13 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Rolagem na prévia de baixas, 26/11/2026.** A folha de estilo do vendedor anulava a rolagem da área principal nessa prévia. Aplicada a correção do shell no próprio [PR #99](https://github.com/integro-app/Integro/pull/99), com atualização do cache. No Chromium com toque, a lista de 120 cobranças rolou até o último cartão em 320 e 390 px. Os cenários de baixa simultaneamente em espera, rejeição e nova tentativa passaram com latência simulada. Passaram 70 testes direcionados.
 - O fluxo segue em homologação com baixas reais do vendedor.
 
+### M16 — Consulta e triagem na central de notificações (26/11/2026)
+
+- Busca por título e mensagem, filtro por categoria e contagem de Todas, Não lidas, Lidas e Lixeira. A gaveta lateral no desktop vira uma tela inteira com lista rolável no celular.
+- A seleção fica restrita aos avisos visíveis. Ações em lote exibem o resultado e mantêm selecionados os avisos que precisam de nova tentativa. Trocar de usuário ou empresa descarta a seleção e cancela os próximos envios do lote anterior.
+- Passaram 49 testes direcionados. No Chromium, com dados simulados a 320, 390, 768 e 1440 px, foram verificados leitura, lixeira, restauração, navegação à origem, badge e falha parcial. Também foram verificados rolagem por toque e bloqueio do lote após troca de empresa.
+- Em homologação. Pendente conferir a chegada de um aviso com conta autorizada, a abertura da origem e a persistência da leitura.
+
 ### M12 — Lista de equipes em Caixas no desktop (24/11/2026)
 
 - **Layout.** Um cartão horizontal por equipe, com indicadores mais baixos e acesso ao histórico junto ao resumo. Recebimentos e Recolhimentos foram incluídos no desktop e usam os dados conferidos da jornada.

@@ -223,7 +223,13 @@ test("gaveta descarta seleção antiga ao trocar tenant ou perder notificações
   assert.match(source, /syncSelectionScope\(state\);/);
 
   const client = { authUid: "auth-a", tenantId: "empresa-a" };
-  const sandbox = { global: { IntegroNotifications: client }, selectionScope: "", selected: new Set(), filter: "LIDAS", savedScrollTop: 87, Set };
+  const sandbox = {
+    scopeKey: () => JSON.stringify([client.authUid, client.tenantId]),
+    visibleItems: state => state.items,
+    feedback() {},
+    selectionScope: "", selected: new Set(), filter: "LIDAS", search: "", category: "",
+    refreshRequest: null, batchRequest: null, openingRequest: null, savedScrollTop: 87, Set
+  };
   vm.runInNewContext(source.slice(start, end) + "\nthis.sync = syncSelectionScope;", sandbox);
   sandbox.sync({ items: [{ id: "notificacao-igual" }], trashItems: [] });
   sandbox.selected.add("notificacao-igual");
@@ -237,16 +243,60 @@ test("gaveta descarta seleção antiga ao trocar tenant ou perder notificações
   client.tenantId = "empresa-b";
   sandbox.selected.add("notificacao-igual");
   sandbox.filter = "NAO_LIDAS";
+  sandbox.search = "ainda da empresa A";
+  sandbox.category = "CAIXA";
+  sandbox.batchRequest = { scope: sandbox.selectionScope };
   sandbox.savedScrollTop = 132;
   sandbox.sync({ items: [{ id: "notificacao-igual" }], trashItems: [] });
   assert.equal(sandbox.selected.size, 0);
   assert.equal(sandbox.filter, "TODAS");
+  assert.equal(sandbox.search, "");
+  assert.equal(sandbox.category, "");
+  assert.equal(sandbox.batchRequest, null);
   assert.equal(sandbox.savedScrollTop, 0);
 
   sandbox.selected.add("notificacao-igual");
   client.authUid = "auth-b";
   sandbox.sync({ items: [{ id: "notificacao-igual" }], trashItems: [] });
   assert.equal(sandbox.selected.size, 0);
+});
+
+test("lote de notificações interrompe os próximos envios após a troca de empresa", async () => {
+  const vm = require("node:vm");
+  const source = read("js/modules/notification-center.js");
+  const start = source.indexOf("  async function bulk(action) {");
+  const end = source.indexOf("\n  async function refresh()", start);
+  const pending = [{ id: "a", lida: false }, { id: "b", lida: false }];
+  const calls = [];
+  const messages = [];
+  let tenant = "empresa-a";
+  let finishFirst;
+  const sandbox = {
+    global: { IntegroNotifications: { markRead(id) {
+      calls.push(id);
+      return new Promise(resolve => { finishFirst = resolve; });
+    } } },
+    actions: { read: "markRead" },
+    snapshot: () => ({ items: pending }),
+    syncSelectionScope() {},
+    visibleItems: state => state.items,
+    isRead: item => item.lida,
+    canUseTrash: () => true,
+    scopeKey: () => tenant,
+    render() {},
+    feedback: msg => messages.push(msg),
+    selectionScope: tenant, filter: "TODAS", batchRequest: null,
+    selected: new Set(pending.map(item => item.id))
+  };
+  vm.runInNewContext(source.slice(start, end) + "\nthis.run = bulk;", sandbox);
+  const wait = sandbox.run("read");
+  assert.deepEqual(calls, ["a"]);
+  tenant = "empresa-b";
+  finishFirst(true);
+  await wait;
+  assert.deepEqual(calls, ["a"]);
+  assert.equal(messages.length, 1, "o resultado do lote anterior não aparece na nova sessão");
+  assert.equal(sandbox.batchRequest, null);
 });
 
 
