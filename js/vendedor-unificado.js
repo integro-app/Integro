@@ -927,7 +927,7 @@
     if (!document.getElementById("integro-dashboard-vendedor-pro-script")) {
       const proScript = document.createElement("script");
       proScript.id = "integro-dashboard-vendedor-pro-script";
-      proScript.src = "js/dashboard-vendedor-pro.js?v=20261120-m06-referencia-aprovada4";
+      proScript.src = "js/dashboard-vendedor-pro.js?v=20261125-painel-vendedor&carteira=20261125";
       proScript.async = true;
       document.head.appendChild(proScript);
     }
@@ -982,21 +982,6 @@
     // Cartões comuns leem exatamente a MESMA conferência oficial do fechamento,
     // sem duplicar consultas ao Firestore nem usar dados de outras empresas.
     atualizar("kpiCaixaAtual", snapshot.caixaFinalEsperadoCentavos);
-    atualizar("kpiCarteira", snapshot.carteiraFinalCentavos);
-    if (Number.isSafeInteger(snapshot.carteiraFinalCentavos) &&
-        Number.isSafeInteger(snapshot.carteiraInicialCentavos)) {
-      const anterior = snapshot.carteiraInicialCentavos;
-      const diferenca = snapshot.carteiraFinalCentavos - anterior;
-      const tendencia = document.getElementById("kpiCarteiraTrend");
-      if (tendencia) {
-        tendencia.className = "kpi-trend " + (anterior > 0 ? (diferenca >= 0 ? "up" : "down") : "neutral");
-        tendencia.textContent = anterior > 0
-          ? (diferenca >= 0 ? "↑ Subiu " : "↓ Desceu ") +
-            (Math.abs(diferenca / anterior * 100)).toLocaleString("pt-BR", {maximumFractionDigits:1}) +
-            "% vs. carteira inicial do caixa"
-          : "Sem carteira anterior para comparar";
-      }
-    }
     atualizar("kpiVendasHoje", vendasTotal);
     atualizar("kpiVendasNovas", vendasNovas);
     atualizar("kpiVendasRenovadas", renovacoes);
@@ -3039,6 +3024,7 @@
     montarTela();
     configurarDashboardVendedor();
     garantirMenu();
+    window.IntegroDesktopNavigation?.sync?.();
     caches();
     renderClientesVendedor();
     window.IntegroVendedorOperacao?.instalar?.();
@@ -3076,7 +3062,10 @@
   });
   document.addEventListener("integro-tela-alterada", evento => {
     if (evento.detail?.tela === "clientes") setTimeout(() => renderClientesVendedor(), 0);
-    if (evento.detail?.tela === "dashboard") setTimeout(() => sincronizarMovimentosDashboardVendedor(false), 0);
+    if (evento.detail?.tela === "dashboard") setTimeout(() => {
+      if (instalado) recalcularDashboardVendedor("entrada-dashboard");
+      sincronizarMovimentosDashboardVendedor(false);
+    }, 0);
     if (evento.detail?.tela === "movimentacoes") setTimeout(async () => {
       renderMovimentacoesVendedor();
       const caixa = caixaAberto();

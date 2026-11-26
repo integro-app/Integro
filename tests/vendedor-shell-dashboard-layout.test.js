@@ -44,6 +44,7 @@ test("Vendedor: grade de KPIs responde a espaço de trabalho, sem 5 colunas fixa
 test("Vendedor: mobile tem conteúdo 100% sem margem lateral e menu tipo drawer",()=>{
   const css=read("css/integro-vendedor-shell-dashboard.css");
   const mobile=css.slice(css.indexOf("@media (max-width:980px)"));
+  const areaPrincipal=mobile.slice(0,mobile.indexOf("  }"));
   assert.match(mobile,/width:100%!important/);
   assert.match(mobile,/margin-left:0!important/);
   assert.match(mobile,/transform:translateX\(-110%\)!important/);
@@ -51,6 +52,7 @@ test("Vendedor: mobile tem conteúdo 100% sem margem lateral e menu tipo drawer"
   assert.match(mobile,/\.sidebar\.show/);
   assert.match(mobile,/max-width:min\(88vw,310px\)!important/);
   assert.match(mobile,/env\(safe-area-inset-top\)/);
+  assert.doesNotMatch(areaPrincipal,/overflow(?:-y)?:\s*visible/, "a tela precisa continuar rolando no contêiner do shell mobile");
 });
 
 test("Vendedor: correção não modifica regras, cálculos ou shell de outros perfis",()=>{
@@ -61,7 +63,7 @@ test("Vendedor: correção não modifica regras, cálculos ou shell de outros pe
   assert.ok(css.includes(source));
   assert.doesNotMatch(css.replace(/\/\*[\s\S]*?\*\//g,""),/firebase|firestore|cole[cç][aã]o\s*=|balance\s*=/i);
   assert.match(nav,/if \(body\.dataset\.integroPage === "master-local"/);
-  assert.match(nav,/sellerStyle\.href = "css\/integro-vendedor-shell-dashboard\.css\?v=20261120-shell1"/);
+  assert.match(nav,/sellerStyle\.href = "css\/integro-vendedor-shell-dashboard\.css\?v=20261120-shell1&scroll=20261126"/);
   assert.match(nav,/sellerStyle\.id = "integroSellerShellCss"/);
   assert.match(desktop,/body\.classList\.toggle\("integro-desktop-nav-compact", compact\)/);
   assert.match(desktop,/bar\.classList\.remove\("collapsed"\)/);

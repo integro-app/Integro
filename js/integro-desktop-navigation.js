@@ -7,7 +7,7 @@
 
   const DESKTOP = global.matchMedia("(min-width: 981px)");
   const STORAGE_KEY = "integro.desktop.sidebar.mode.v1";
-  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261123-padrao2";
+  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261125-painel-vendedor";
   const CSS_ID = "integroDesktopNavigationCss";
   let compact = false;
   let ready = false;
@@ -28,9 +28,11 @@
       document.querySelector(".main > .topbar, main.main > .topbar, .main .topbar, .topbar");
   }
   function ensureTrigger() {
-    const bar = topbar();
-    const host = bar || sidebar();
+    const sellerBrand = body.classList.contains("perfil-vendedor") && sidebar()?.querySelector(".integro-desktop-brand");
+    const bar = sellerBrand ? null : topbar();
+    const host = sellerBrand || bar || sidebar();
     if (!host) return null;
+    const previous = trigger;
     trigger = host.querySelector("[data-integro-menu-trigger], #btnMenu, .hamburger, [data-integro-desktop-rail-toggle]");
     if (!trigger) {
       trigger = document.createElement("button");
@@ -40,7 +42,11 @@
       trigger.className = "integro-desktop-trigger";
       trigger.innerHTML = '<span class="material-symbols-rounded" aria-hidden="true">menu</span>';
       const placement = bar?.querySelector(".top-left") || host;
-      placement.insertBefore(trigger, placement.firstChild);
+      placement.insertBefore(trigger, sellerBrand ? null : placement.firstChild);
+    }
+    if (previous && previous !== trigger) {
+      if (previous.classList.contains("integro-desktop-trigger")) previous.remove();
+      else previous.removeAttribute("data-integro-desktop-rail-toggle");
     }
     trigger.dataset.integroDesktopRailToggle = "true";
     trigger.setAttribute("aria-controls", sidebar()?.id || "sidebar");
@@ -77,9 +83,12 @@
     const sourceBell = bar.querySelector(".user-card [data-notification-bell], .sidebar-profile-card [data-notification-bell]");
     const headerBell = document.getElementById("integroNotificationButton");
     const headerHasBell = Boolean(headerBell && !headerBell.hidden && headerBell.getClientRects?.().length);
+    const sellerHasMenuBell = body.classList.contains("perfil-vendedor") &&
+      Array.from(bar.querySelectorAll('[data-modulo="notificacoes"]')).some(item =>
+        !item.hidden && item.getAttribute("aria-hidden") !== "true" && item.getClientRects().length);
     let shortcut = host.querySelector("[data-integro-desktop-notifications]");
     // Alguns perfis já exibem o sino no cabeçalho desktop. Não duplicar a ação.
-    if (!sourceBell || !DESKTOP.matches || headerHasBell) {
+    if (!sourceBell || !DESKTOP.matches || headerHasBell || sellerHasMenuBell) {
       shortcut?.remove?.();
       return;
     }
@@ -197,7 +206,8 @@
     if (trigger.getAttribute("aria-expanded") !== String(!compact)) trigger.setAttribute("aria-expanded", String(!compact));
     if (trigger.title !== caption) trigger.title = caption;
     const icon = trigger.querySelector(".material-symbols-rounded");
-    if (icon && icon.textContent !== "menu") icon.textContent = "menu";
+    const symbol = !compact && trigger.closest?.(".integro-desktop-brand") ? "menu_open" : "menu";
+    if (icon && icon.textContent !== symbol) icon.textContent = symbol;
   }
 
   function hideTooltip() {
@@ -308,7 +318,7 @@
     document.addEventListener("integro-tela-alterada", refreshLabels);
     document.addEventListener("integro-shell-ready", applyMode);
     document.addEventListener("integro-app-ready", applyMode);
-    document.addEventListener("usuario-validado", ensureProfile);
+    document.addEventListener("usuario-validado", applyMode);
     DESKTOP.addEventListener?.("change", applyMode);
     global.addEventListener("pageshow", applyMode);
     applyMode();

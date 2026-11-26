@@ -58,6 +58,7 @@
           tenantId: escopo.tenantId,
           filtros: campo ? [[campo, "==", String(valor)]] : [],
           limite,
+          paginar: opcoes.paginar === true,
           cacheMs,
           forcar: opcoes.forcar === true,
           chave: `perfil:${escopo.tenantId}:${escopo.authUid || escopo.usuarioId}:${escopo.perfil}:${colecao}:${campo || "tenant"}:${valor || ""}:${limite}`
@@ -65,8 +66,14 @@
       }
       let ref = db.collection(colecao).where("clientePlataformaId", "==", escopo.tenantId);
       if (campo) ref = ref.where(campo, "==", String(valor));
-      const snap = await ref.limit(limite).get();
-      return snap.docs.map(docData);
+      const pagina = ref.limit(limite);
+      let snap = await pagina.get();
+      const docs = [...snap.docs];
+      while (opcoes.paginar === true && snap.docs.length === limite) {
+        snap = await pagina.startAfter(snap.docs[snap.docs.length - 1]).get();
+        docs.push(...snap.docs);
+      }
+      return docs.map(docData);
     };
 
     const resultados = await Promise.allSettled(consultas.map(executar));
@@ -509,12 +516,13 @@
     // Em atualização do dia, força leitura real e não transforma falha em lista vazia.
     const diretas = await consultar(CONFIG.COLECOES.VENDAS, camposProprios(CONFIG.COLECOES.VENDAS),
       CONFIG.LIMITS?.VENDAS || 500, {
+        paginar: true,
         cacheMs: opcoes.forcar === true ? 0 : undefined,
         forcar: opcoes.forcar === true,
         exigirConsultaValida: opcoes.exigirConsultaValida === true
       });
     const conhecidas = new Set(diretas.map(item => String(item.id)));
-    const referencias = idsVendasReferenciadas(clientes).filter(id => !conhecidas.has(id)).slice(0, 300);
+    const referencias = idsVendasReferenciadas(clientes).filter(id => !conhecidas.has(id));
     if (!referencias.length) return diretas;
 
     const db = dbAtual();

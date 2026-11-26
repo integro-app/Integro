@@ -90,6 +90,57 @@
   const saldoVenda = venda => venda?.saldoDevedorCentavos != null ? numero(venda.saldoDevedorCentavos) / 100 : numero(primeiroValor(venda, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
   const saldoCliente = cliente => numero(primeiroValor(cliente, ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto"]));
 
+  function saldoCarteiraCentavos(venda) {
+    const campo = (centavos, aliases) => {
+      const inteiro = primeiroValor(venda, [centavos]);
+      if (inteiro != null && Number.isSafeInteger(Number(inteiro))) return Number(inteiro);
+      const legado = primeiroValor(venda, aliases);
+      if (legado == null) return null;
+      return global.IntegroOperacional?.moedaParaCentavos?.(legado) ?? Math.round(numero(legado) * 100);
+    };
+    const saldo = campo("saldoDevedorCentavos", ["saldoDevedor", "saldoAtual", "saldo", "valorEmAberto", "valorAberto"]);
+    if (saldo != null) return saldo;
+    const total = campo("valorTotalVendaCentavos", ["valorTotalVenda", "valorTotal"]);
+    const principal = campo("valorEmprestadoCentavos", ["valorEmprestado"]);
+    const juros = campo("jurosValorCentavos", ["jurosValor"]);
+    const contratado = total ?? (principal != null && juros != null ? principal + juros : null);
+    if (contratado == null) return null;
+    return contratado - (campo("totalPagoCentavos", ["totalPago", "valorPago"]) ?? 0);
+  }
+
+  function carteiraAtualVendedor({ vendas = [], clientes = [], usuario = {} } = {}) {
+    if (!tenantUsuario(usuario) || !idsUsuario(usuario).size) return null;
+    const clientesPorId = new Map();
+    for (const cliente of clientes) {
+      if (!cliente || !pertenceAoTenant(cliente, usuario)) continue;
+      for (const chave of [cliente.id, cliente.clienteId, cliente.clienteOperacionalId, cliente.clienteLegadoId].map(id).filter(Boolean)) {
+        clientesPorId.set(chave, cliente);
+      }
+    }
+    const porId = new Map();
+    for (const venda of vendas) {
+      const vendaId = id(venda?.id || venda?.docId || venda?.vendaId);
+      if (vendaId && pertenceAoTenant(venda, usuario)) porId.set(vendaId, venda);
+    }
+    const emAberto = [];
+    let incompleta = false;
+    for (const venda of porId.values()) {
+      const status = maiusculo(venda.statusVenda || venda.status);
+      if (!vendaAtiva(venda) || venda.cancelado === true || venda.estornado === true ||
+          ["ESTORNADO", "ESTORNADA", "EXCLUIDO", "EXCLUIDA"].includes(status)) continue;
+      const cliente = clientesPorId.get(id(venda.clienteId || venda.clienteOperacionalId));
+      const vinculo = cliente && idsRegistroVendedor(cliente).length ? cliente : venda;
+      if (cliente?.excluido === true || !pertenceAoVendedor(vinculo, usuario)) continue;
+      const saldoCentavos = saldoCarteiraCentavos(venda);
+      if (saldoCentavos == null) {
+        incompleta = true;
+        continue;
+      }
+      if (saldoCentavos > 0) emAberto.push({ venda, saldoCentavos });
+    }
+    return { saldoCentavos: emAberto.reduce((total, item) => total + item.saldoCentavos, 0), emAberto, incompleta };
+  }
+
   const valorPagamento = pagamento => pagamento?.valorCentavos != null ? numero(pagamento.valorCentavos) / 100 : numero(primeiroValor(pagamento, ["valorPago", "valorRecebido", "valor"]));
   const valorParcela = (venda, parcelas) => venda?.valorParcelaCentavos != null ? numero(venda.valorParcelaCentavos) / 100 : numero(primeiroValor(venda, ["valorParcela", "parcelaValor"])) || (parcelas?.[0]?.valorCentavos != null ? numero(parcelas[0].valorCentavos) / 100 : numero(primeiroValor(parcelas?.[0], ["valorParcela", "valor", "valorPrevisto"])));
 
@@ -591,6 +642,7 @@
   return {
     instalar,
     montarCarteira,
+    carteiraAtualVendedor,
     resumoHoje,
     pertenceAoVendedor,
     pertenceAoTenant,

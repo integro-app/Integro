@@ -10,6 +10,34 @@ const realtime = read("js/services/realtime-operations-service.js");
 const profiles = read("js/perfis-unificados.js");
 const master = read("master-local.html");
 
+test("Carteira atual soma todas as vendas em aberto do vendedor, independentemente do caixa", () => {
+  const { carteiraAtualVendedor } = require("../js/vendedor-operacao.js");
+  const usuario = { authUid: "vendedor", clientePlataformaId: "empresa" };
+  const clientes = [
+    { id: "transferido", vendedorAuthUid: "vendedor", clientePlataformaId: "empresa" },
+    { id: "fora", vendedorAuthUid: "outro", clientePlataformaId: "empresa" }
+  ];
+  const venda = { vendedorAuthUid: "vendedor", clientePlataformaId: "empresa", statusVenda: "ATIVA" };
+  const vendas = [
+    { ...venda, id: "parcial", caixaId: "caixa-anterior", saldoDevedorCentavos: 30000 },
+    { ...venda, id: "parcial", caixaId: "caixa-anterior", saldoDevedorCentavos: 29000 },
+    { ...venda, id: "outra", caixaId: "caixa-atual", saldoDevedor: 50.01 },
+    { ...venda, id: "legada", valorTotalVendaCentavos: 12000, totalPagoCentavos: 3000 },
+    { ...venda, id: "transferida", clienteId: "transferido", vendedorAuthUid: "anterior", valorEmprestado: 100, jurosValor: 30, totalPago: 20 },
+    { ...venda, id: "repassada", clienteId: "fora", saldoDevedorCentavos: 9000 },
+    { ...venda, id: "outra-empresa", clientePlataformaId: "outro-tenant", saldoDevedorCentavos: 9000 },
+    { ...venda, id: "outra-pessoa", vendedorAuthUid: "outro", saldoDevedorCentavos: 9000 },
+    { ...venda, id: "cancelada", statusVenda: "CANCELADA", saldoDevedorCentavos: 9000 },
+    { ...venda, id: "quitada", statusVenda: "QUITADA", saldoDevedorCentavos: 1000 },
+    { ...venda, id: "zero", saldoDevedorCentavos: 0, valorTotalVendaCentavos: 9000 }
+  ];
+  const atual = carteiraAtualVendedor({ vendas, clientes, usuario });
+  assert.deepEqual(atual.emAberto.map(item => item.venda.id), ["parcial", "outra", "legada", "transferida"]);
+  assert.equal(atual.saldoCentavos, 54001);
+  assert.equal(atual.incompleta, false);
+  assert.equal(carteiraAtualVendedor({ vendas: [{ ...venda, id: "sem-dados" }], usuario }).incompleta, true);
+});
+
 test("listener do vendedor consulta authUid e id documental sem exclusividade", () => {
   assert.match(realtime, /addOwnPart\("vendedor-auth", "vendedorAuthUid", authUid\)/);
   assert.match(realtime, /addOwnPart\("vendedor-id", "vendedorId", sellerId\)/);
@@ -82,7 +110,7 @@ test("M06 aplica a camada premium somente ao dashboard vendedor", () => {
   assert.match(seller, /function configurarDashboardVendedor\(\)[\s\S]*?integro-dashboard-vendedor-pro-script/);
   assert.match(visual, /document\.body\.classList\.contains\("perfil-vendedor"\)/);
   assert.match(visual, /document\.addEventListener\("integro-dashboard-periodo-aplicado", init\)/);
-  assert.match(css, /html body\.perfil-vendedor #dashboard\.dashboard-vendedor-pro/);
+  assert.match(css, /html body\.perfil-vendedor\[data-integro-page="master-local"\] #dashboard\.dashboard-vendedor-pro/);
   assert.doesNotMatch(visual, /firebase\.firestore|collection\(|addDoc\(|updateDoc\(/);
 });
 
@@ -137,8 +165,8 @@ test("M06: recursos são atualizados sem depender do cache antigo", () => {
   const seller = read("js/vendedor-unificado.js");
   const visual = read("js/dashboard-vendedor-pro.js");
   assert.match(html, /js\/vendedor-unificado\.js\?v=20261120-m06-global-header-fix5/);
-  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261120-m06-referencia-aprovada4/);
-  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261120-m06-referencia-aprovada4/);
+  assert.match(seller, /js\/dashboard-vendedor-pro\.js\?v=20261125-painel-vendedor/);
+  assert.match(visual, /css\/dashboard-vendedor-pro\.css\?v=20261125-painel-vendedor/);
 });
 
 test("M06: dashboard compacto e sino acessível apenas pelo menu", () => {

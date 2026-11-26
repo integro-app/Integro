@@ -649,6 +649,60 @@
     display: none !important;
   }
 
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-ready .sidebar > .integro-desktop-brand {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    flex-basis: 72px !important;
+    height: 72px !important;
+    min-height: 72px !important;
+    margin-bottom: 7px !important;
+    padding-inline: 16px !important;
+    gap: 9px !important;
+    background: #122c48 !important;
+  }
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-ready .integro-desktop-brand-mark {
+    border-color: #a76b46 !important;
+    background: #332e35 !important;
+    color: #ff9b52 !important;
+  }
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-ready .integro-desktop-brand [data-integro-desktop-rail-toggle] {
+    display: inline-grid !important;
+    place-items: center;
+    flex: 0 0 38px !important;
+    width: 38px !important;
+    height: 38px !important;
+    margin-inline-start: auto;
+    padding: 0 !important;
+    border: 1px solid #4c6785 !important;
+    border-radius: 10px !important;
+    background: #213d5b !important;
+    color: #f0f6ff !important;
+    cursor: pointer;
+  }
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-ready .integro-desktop-brand [data-integro-desktop-rail-toggle]:hover {
+    border-color: #df945b !important;
+    background: #2b4868 !important;
+  }
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-ready .integro-desktop-brand [data-integro-desktop-rail-toggle]:focus-visible {
+    outline: 2px solid #ff9b52 !important;
+    outline-offset: 2px;
+  }
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-ready .sidebar #integroSidebarMenu > button {
+    min-height: 42px !important;
+    padding-block: 8px !important;
+  }
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-compact .sidebar > .integro-desktop-brand {
+    justify-content: center !important;
+    padding-inline: 0 !important;
+  }
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-compact .integro-desktop-brand :is(.integro-desktop-brand-mark, .integro-desktop-brand-type) {
+    display: none !important;
+  }
+  html body[data-integro-page].perfil-vendedor.integro-desktop-nav-compact .integro-desktop-brand [data-integro-desktop-rail-toggle] {
+    margin-inline-start: 0;
+  }
+
   /* Redução de movimento e estabilidade em telas desktop de menor largura. */
   @media (max-width: 1199px) {
     html body[data-integro-page].integro-desktop-nav-ready .main,

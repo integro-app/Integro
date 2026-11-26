@@ -25,7 +25,7 @@
     const link = document.createElement("link");
     link.id = CSS_ID;
     link.rel = "stylesheet";
-    link.href = "css/dashboard-vendedor-pro.css?v=20261120-m06-referencia-aprovada4";
+    link.href = "css/dashboard-vendedor-pro.css?v=20261125-painel-vendedor";
     document.head.appendChild(link);
   }
 
@@ -45,7 +45,6 @@
     if (!title.querySelector(".dashboard-seller-subtitle")) {
       const subtitle = document.createElement("p");
       subtitle.className = "dashboard-seller-subtitle";
-      subtitle.textContent = "Seus indicadores e movimentações do caixa";
       title.appendChild(subtitle);
     }
 
@@ -82,11 +81,11 @@
 
   function enhanceCards(shell) {
     shell.querySelectorAll(".dashboard-kpis-primary [data-dashboard-card]").forEach(function (card) {
+      card.setAttribute("aria-label", "Ver detalhes de " + (card.querySelector(".kpi-label")?.textContent || "indicador").trim());
       if (card.dataset.sellerKeyboardReady === "1") return;
       card.dataset.sellerKeyboardReady = "1";
       card.tabIndex = 0;
       card.setAttribute("role", "button");
-      card.setAttribute("aria-label", "Ver detalhes de " + (card.querySelector(".kpi-label")?.textContent || "indicador").trim());
       card.addEventListener("keydown", function (event) {
         if (event.key !== "Enter" && event.key !== " ") return;
         event.preventDefault();
@@ -122,6 +121,11 @@
     if (!host || !period) return;
     const singleDay = period.start === period.end;
     shell.classList.toggle("seller-single-day", singleDay);
+    const subtitle = shell.querySelector(".dashboard-seller-subtitle");
+    if (subtitle) {
+      const formatDate = iso => iso.split("-").reverse().join("/");
+      subtitle.textContent = singleDay ? formatDate(period.start) : formatDate(period.start) + " a " + formatDate(period.end);
+    }
 
     const heading = shell.querySelector(".dashboard-evolution-head h3");
     if (heading) heading.textContent = singleDay ? "Movimentações do dia" : "Evolução do período";

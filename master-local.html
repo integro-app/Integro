@@ -3209,7 +3209,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/utils/operational.js?v=20260803-console1"></script>
   <script src="js/services/access-control.js?v=20261122-caixas-admin-mobile-hierarchy-v3"></script>
   <script src="js/state.js?v=20260805-producao-otimizada1"></script>
-  <script src="js/data-runtime.js?v=20260805-producao-otimizada1"></script>
+  <script src="js/data-runtime.js?v=20260805-producao-otimizada1&carteira=20261125"></script>
   <script src="js/runtime-profile-guard.js?v=20260803-console1"></script>
   <script src="js/services/firestore.js?v=20260805-producao-otimizada1"></script>
   <script src="js/vendor/exceljs.min.js?v=20260729-1"></script>
@@ -3238,7 +3238,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/master-local.js?v=20261121-conciliacao-v6"></script>
   <script src="js/painel-unificado.js?v=20261123-visibilidade-permissoes"></script>
   <script src="js/supervisor-unificado.js?v=20260801-1"></script>
-  <script src="js/perfis-unificados.js?v=20261112-vendas-dia-sync-v1&build=20261101-ui-october-safe2&screen=20261123-visibilidade-telas"></script>
+  <script src="js/perfis-unificados.js?v=20261112-vendas-dia-sync-v1&build=20261101-ui-october-safe2&screen=20261123-visibilidade-telas&carteira=20261125"></script>
   <script src="js/services/realtime-operations-service.js?v=20261123-caixa-pendente"></script>
 <script src="js/chat-ui.js?v=20261105-chat-history-v2"></script>
 <script src="js/dashboard-navigation.js"></script>
@@ -16193,6 +16193,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function atualizarCarteiraCard(){
+    if(document.body.classList.contains("perfil-vendedor")) return;
     const atual = carteiraAtualReferencia();
     const anterior = snapshotCarteiraAte(yesterdayISO());
     const el = byId("kpiCarteiraTrend");
@@ -17092,6 +17093,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     const unicoDia = periodo.inicio === periodo.fim;
     text(byId("dashboardPeriodoResumo"), rotuloPeriodo(periodo));
     const labels = {
+      'carteira-final': usarCarteiraAtualVendedor() ? 'Carteira atual' : 'Carteira Final',
       'vendas-hoje': unicoDia ? 'VENDAS DO DIA' : 'VENDAS NO PERÍODO',
       'recebido-hoje': unicoDia ? 'RECEBIDO NO DIA' : 'RECEBIDO NO PERÍODO',
       'gastos-hoje': unicoDia ? 'SAÍDAS DO DIA' : 'SAÍDAS NO PERÍODO',
@@ -17123,6 +17125,18 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     });
     const total = Array.from(ultimos.values()).reduce((s,c)=>s+valorCarteiraCaixa(c),0);
     return total || (iso >= todayISO() ? carteiraFallbackClientes() : 0);
+  }
+
+  function usarCarteiraAtualVendedor(){
+    return isVendedor() || document.body.classList.contains("perfil-vendedor");
+  }
+
+  function dadosCarteiraAtualVendedor(){
+    return window.IntegroVendedorOperacao?.carteiraAtualVendedor?.({
+      vendas: window.State?.getVendas?.() || cache("vendas"),
+      clientes: window.State?.getClientes?.() || cache("clientes"),
+      usuario: { ...currentUser(), authUid: authUid(), clientePlataformaId: tenantPrincipal() }
+    });
   }
 
   function recebidoNoDia(iso){
@@ -17303,7 +17317,7 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function renderSparkCardsDashboard(serie){
-    const mapa={sparkCarteira:serie.map(x=>snapshotCarteiraAte(x.iso)),sparkCaixas:serie.map(x=>caixasAbertosNoPeriodo({inicio:x.iso,fim:x.iso}).reduce((s,c)=>s+valorCaixaAtual(c),0)),sparkVendas:serie.map(x=>x.novas+x.renovadas),sparkRecebido:serie.map(x=>x.recebido),sparkGastos:serie.map(x=>x.gastos+x.retiros)};
+    const mapa={sparkCarteira:usarCarteiraAtualVendedor()?[]:serie.map(x=>snapshotCarteiraAte(x.iso)),sparkCaixas:serie.map(x=>caixasAbertosNoPeriodo({inicio:x.iso,fim:x.iso}).reduce((s,c)=>s+valorCaixaAtual(c),0)),sparkVendas:serie.map(x=>x.novas+x.renovadas),sparkRecebido:serie.map(x=>x.recebido),sparkGastos:serie.map(x=>x.gastos+x.retiros)};
     Object.entries(mapa).forEach(([id,vals])=>{ const el=byId(id); if(el) el.innerHTML=svgSparklineDashboard(vals); });
   }
 
@@ -17375,8 +17389,11 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     atualizarRotulosPeriodo(periodo);
 
     const anterior = periodoAnterior(periodo);
-    const carteira = snapshotCarteiraAte(periodo.fim);
-    const carteiraAnterior = snapshotCarteiraAte(anterior.fim);
+    const vendedor = usarCarteiraAtualVendedor();
+    const carteiraAtual = vendedor ? dadosCarteiraAtualVendedor() : null;
+    const carteiraDisponivel = !vendedor || (carteiraAtual && !carteiraAtual.incompleta);
+    const carteira = vendedor ? (carteiraAtual?.saldoCentavos ?? 0) / 100 : snapshotCarteiraAte(periodo.fim);
+    const carteiraAnterior = vendedor ? 0 : snapshotCarteiraAte(anterior.fim);
     const recebido = somaPeriodo(recebidoNoDia, periodo);
     const previsto = somaPeriodo(previstoNoDia, periodo);
     const inad = clientesInadimplentes();
@@ -17389,14 +17406,22 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
     const gastos = gastosNoPeriodo(periodo);
     const sufixo = periodo.inicio === periodo.fim ? "no dia" : "no período";
 
-    text(byId("kpiCarteira"), money(carteira));
+    text(byId("kpiCarteira"), carteiraDisponivel ? money(carteira) : "—");
     text(byId("kpiCaixaAtual"), money(caixaAtual));
     text(byId("kpiCaixaAtualSub"), `${caixas.length} caixa(s) aberto(s) ${sufixo}`);
     text(byId("kpiGastosHoje"), money(gastos.total));
     text(byId("kpiGastosHojeSub"), `${gastos.lista.length} lançamento(s) ${sufixo}`);
 
     const trend = byId("kpiCarteiraTrend");
-    if(trend){
+    if(trend && vendedor){
+      trend.className = "kpi-sub";
+      trend.style.removeProperty("display");
+      const quantidade = carteiraAtual?.emAberto.length ?? 0;
+      text(trend, carteiraDisponivel ? (
+        quantidade === 0 ? "Nenhuma venda em aberto" :
+        quantidade === 1 ? "Saldo a receber de 1 venda" : `Saldo a receber de ${quantidade} vendas`
+      ) : "Saldo da carteira indisponível");
+    } else if(trend){
       if(carteiraAnterior > 0){
         const diff = carteira - carteiraAnterior;
         trend.className = `kpi-trend ${diff >= 0 ? "up" : "down"}`;
@@ -17488,6 +17513,22 @@ html body .sidebar.collapsed .user-card.user-card-premium.sidebar-profile-card{
   }
 
   function renderCarteira(tipo="7d", ini="", fim=""){
+    if(usarCarteiraAtualVendedor()){
+      const carteira = dadosCarteiraAtualVendedor();
+      const valor = carteira && !carteira.incompleta ? money(carteira.saldoCentavos / 100) : "—";
+      const lista = (carteira?.emAberto || []).map(({venda, saldoCentavos}) => `
+        <div class="insight-client-row">
+          <strong>${esc(nomeCliente(venda))}</strong>
+          <div class="insight-value-box"><strong>${money(saldoCentavos / 100)}</strong><small>Saldo devedor</small></div>
+        </div>`).join("");
+      const estado = carteira && !carteira.incompleta ? "Nenhuma venda em aberto." : "Saldo completo da carteira indisponível.";
+      openDrawer("Carteira atual", "Saldo a receber das vendas em aberto, com juros contratados e baixas confirmadas.", `
+        <div class="insight-summary-grid"><div class="insight-summary-item"><small>Total a receber</small><strong>${valor}</strong></div></div>
+        <div class="insight-list-card"><h4>Vendas em aberto</h4>
+          ${lista || `<div class="empty-insight">${estado}</div>`}
+        </div>`);
+      return;
+    }
     const datas = datasPeriodo(tipo, ini, fim);
     const atual = snapshotCarteiraAte(todayISO());
     const anterior = snapshotCarteiraAte(addDays(todayISO(),-1));
@@ -25162,16 +25203,16 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
     const single=period.start===period.end;
     const label=single ? "último dia de trabalho" : "período útil anterior";
 
-    const walletCurrent=snapshotWallet(period.end);
-    const walletPrevious=snapshotWallet(previousDates[previousDates.length-1]);
-
+    const vendedor=document.body.classList.contains("perfil-vendedor");
     const definitions=[
-      ['[data-dashboard-card="carteira-final"]',"kpiCarteiraWorkdayCompare",walletCurrent,walletPrevious,false],
       ['[data-dashboard-card="caixa-atual"]',"kpiCaixaWorkdayCompare",current.cash,previous.cash,false],
       ['[data-dashboard-card="vendas-hoje"]',"kpiVendasWorkdayCompare",current.sales,previous.sales,false],
       ['[data-dashboard-card="recebido-hoje"]',"kpiRecebidoWorkdayCompare",current.received,previous.received,false],
       ['[data-dashboard-card="gastos-hoje"]',"kpiGastosWorkdayCompare",current.exits,previous.exits,true]
     ];
+    if(vendedor) $("kpiCarteiraWorkdayCompare")?.remove();
+    else definitions.unshift(['[data-dashboard-card="carteira-final"]',"kpiCarteiraWorkdayCompare",
+      snapshotWallet(period.end),snapshotWallet(previousDates[previousDates.length-1]),false]);
 
     definitions.forEach(([selector,id,now,before,invert])=>{
       const row=ensureCompare(selector,id);
@@ -25185,7 +25226,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
 
     // Evita mensagem duplicada antiga no card Carteira.
     const legacy=$("kpiCarteiraTrend");
-    if(legacy) legacy.style.display="none";
+    if(legacy && !vendedor) legacy.style.display="none";
   }
 
   const dayLabels=[
@@ -25300,10 +25341,10 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/unified-navigation.js?v=20261107-vendedor-dashboard-primeiro&conciliacao=20261121-v2&abas=20261124"></script>
   <script src="js/usuarios-permissoes-config.js?v=20261104-permissoes-escopo-v1"></script>
   <script src="js/integro-connectivity-guard.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2&scroll=20261107-directional1&desktop=20261123-padrao2"></script>
-  <script src="js/vendedor-operacao.js?v=20261107-vendedor-icone-send2&fix=20261120-quitados1"></script>
+  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2&scroll=20261107-directional1&desktop=20261125-painel-vendedor&seller=20261126-rolagem"></script>
+  <script src="js/vendedor-operacao.js?v=20261107-vendedor-icone-send2&fix=20261120-quitados1&carteira=20261125"></script>
   <script src="js/services/seller-box-dashboard.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/vendedor-unificado.js?v=20261120-m06-global-header-fix5"></script>
+  <script src="js/vendedor-unificado.js?v=20261120-m06-global-header-fix5&ui=20261125-painel-vendedor&carteira=20261125"></script>
 
 <script id="integro-financeiro-admin-unificado-router">
 (function(){
