@@ -103,6 +103,13 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Rolagem na prévia de baixas, 26/11/2026.** A folha de estilo do vendedor anulava a rolagem da área principal nessa prévia. Aplicada a correção do shell no próprio [PR #99](https://github.com/integro-app/Integro/pull/99), com atualização do cache. No Chromium com toque, a lista de 120 cobranças rolou até o último cartão em 320 e 390 px. Os cenários de baixa simultaneamente em espera, rejeição e nova tentativa passaram com latência simulada. Passaram 70 testes direcionados.
 - O fluxo segue em homologação com baixas reais do vendedor.
 
+### M19 — Consulta de registros da Auditoria (26/11/2026)
+
+- Cada área carrega sob demanda e mantém sua própria mensagem de erro e opção de atualizar. A troca de sessão descarta respostas da sessão anterior.
+- A consulta tem busca por tipo, responsável e IDs, filtro de datas no fuso de São Paulo, atalhos de período, ordenação e paginação. A tela usa tabela no desktop e cartões com seletor de área no celular. Detalhes e CSV exibem os campos operacionais da consulta filtrada, incluindo antes e depois quando disponíveis.
+- Passaram 34 testes direcionados. No Chromium, com dados simulados em 320, 390, 768 e 1440 px, foram verificados filtros, paginação, ordenação, detalhes, CSV, recuperação de falha por área e descarte de resposta antiga em troca de empresa.
+- Em homologação. Pendente conferir os registros e o CSV usando uma sessão autorizada e comparando com os documentos oficiais.
+
 ### M12 — Lista de equipes em Caixas no desktop (24/11/2026)
 
 - **Layout.** Um cartão horizontal por equipe, com indicadores mais baixos e acesso ao histórico junto ao resumo. Recebimentos e Recolhimentos foram incluídos no desktop e usam os dados conferidos da jornada.
