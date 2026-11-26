@@ -60,6 +60,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - Passaram 36 testes direcionados. O Chromium validou 11 larguras de 320 a 1920 px, abertura do menu no celular, notificações, atalho Operação, ativação do card pelo teclado e preservação do gráfico histórico com dados de teste. Estado em homologação.
 - **Carteira atual do vendedor.** O card e seu detalhe somam os saldos devedores em centavos das vendas em aberto do vendedor, em qualquer data ou caixa. Dados legados podem usar o total contratado com juros menos o pago no contrato. As consultas autorizadas de vendas percorrem as páginas, e uma baixa confirmada atualiza o saldo. O valor do fechamento deixa de sobrescrever o indicador do vendedor.
 - Passaram 44 testes direcionados. No Chromium, com dados simulados e data anterior no Dashboard, a carteira de R$ 4.050,00 passou para R$ 3.650,00 depois de uma baixa confirmada. A gaveta mostrou as vendas do vendedor e o card exibiu R$ 0,00 quando a carteira de teste ficou vazia.
+- **Rolagem no celular.** A regra do shell do vendedor sobrescrevia a rolagem de `main` com `overflow: visible`. A área principal volta a usar a rolagem da camada mobile. Em 320 e 390 px, gestos de toque alcançaram o resumo de movimentações, e a rolagem voltou ao fechar o menu. Passaram 37 testes direcionados.
 
 ### M06 — Dashboard do Vendedor: experiência desktop/mobile (20/11/2026)
 

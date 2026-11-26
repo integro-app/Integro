@@ -650,7 +650,7 @@
     const sellerStyle = document.createElement("link");
     sellerStyle.id = "integroSellerShellCss";
     sellerStyle.rel = "stylesheet";
-    sellerStyle.href = "css/integro-vendedor-shell-dashboard.css?v=20261120-shell1";
+    sellerStyle.href = "css/integro-vendedor-shell-dashboard.css?v=20261120-shell1&scroll=20261126";
     body.appendChild(sellerStyle);
   }
 
