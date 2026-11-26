@@ -1209,6 +1209,11 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
   font-size: 18px;
   color: #071a33;
 }
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-close {
+  flex: 0 0 44px;
+  width: 44px;
+  height: 44px;
+}
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-body {
   padding: 16px 0 18px;
 }
@@ -1710,6 +1715,35 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
 }
 
 /* Conferência: saldo em destaque, progresso da rota e dupla validação. */
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-origem {
+  display: inline-block;
+  margin-bottom: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #edf4fb;
+  color: #345671;
+  font-size: 11px;
+  font-weight: 700;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-layout {
+  display: grid;
+  grid-template-columns: minmax(0,1fr);
+  align-items: start;
+  gap: 14px;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa :is(.integro-fechamento-movimentos,.integro-fechamento-visitas) {
+  min-width: 0;
+  margin: 0;
+  padding: clamp(10px,2vw,17px);
+  border: 1px solid #dce7f2;
+  border-radius: 15px;
+  background: #fff;
+}
+@media (min-width: 1200px) {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-layout {
+    grid-template-columns: minmax(0,1.25fr) minmax(0,1fr);
+  }
+}
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-secao-cabeca {
   display: flex;
   justify-content: space-between;
@@ -1727,7 +1761,7 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
   color: #6e8197;
   font-size: 11px;
 }
-html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-body > .integro-fechamento-grid {
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-movimentos > .integro-fechamento-grid {
   grid-template-columns: repeat(3,minmax(0,1fr)) !important;
   gap: 10px !important;
 }
@@ -1735,7 +1769,7 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
   min-width: 0 !important;
   border: 1px solid #e2e9f2 !important;
   border-radius: 14px !important;
-  padding: 15px 16px !important;
+  padding: 11px 12px !important;
   background: #f8fafc !important;
 }
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card small {
@@ -1758,18 +1792,28 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
   border-color: #133e67 !important;
   box-shadow: 0 12px 25px rgba(12,42,75,.13) !important;
 }
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-saldos .integro-fechamento-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 79px;
+  margin: 0;
+}
+html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-saldos .integro-fechamento-card.destaque {
+  grid-column: auto !important;
+}
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card.destaque small,
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card.destaque strong {
   color: #fff !important;
 }
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-card.destaque strong {
-  font-size: clamp(25px,3vw,38px) !important;
+  font-size: clamp(22px,3vw,36px) !important;
 }
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-equacao {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin: 12px 0 21px;
+  margin: 12px 0 0;
   padding: 11px 14px;
   border: 1px solid #dfe8f2;
   border-radius: 12px;
@@ -1807,7 +1851,7 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
   accent-color: #ff9700;
 }
 html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-conferencia {
-  margin-top: 20px;
+  margin-top: 14px;
   border: 1px solid #dce7f2;
   background: #f7fafc;
 }
@@ -1856,7 +1900,7 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
   html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaVendasDia .vendedor-venda-identidade {
     grid-column: 1/-1 !important;
   }
-  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-body > .integro-fechamento-grid {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-movimentos > .integro-fechamento-grid {
     grid-template-columns: repeat(2,minmax(0,1fr)) !important;
     gap: 8px !important;
   }
@@ -1870,9 +1914,8 @@ html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #a
     grid-template-columns: repeat(2,minmax(0,1fr)) !important;
     gap: 8px !important;
   }
-  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa #integroFechamentoAtualizar {
+  html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa #integroFechamentoConfirmar {
     grid-column: 1/-1 !important;
-    grid-row: 1 !important;
   }
   html body[data-integro-page="master-local"].perfil-vendedor #cobrancas.screen #abaFechamentoCaixa .integro-fechamento-secao-cabeca {
     flex-wrap: wrap;

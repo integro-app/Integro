@@ -488,3 +488,9 @@ Copiar/atualizar esta seção **na mesma ficha ativa** a cada rodada. Não criar
 - **Correção em homologação:** um conjunto de estilos autoritativo em `css/integro-loading.css` para login e boot dos perfis (mesmas dimensões, centralização, cores, spinner e posição da barra); cache atualizado em login/Master Local/Master Global/Vendedor; logos e títulos unificados; `js/integro-loading-handoff.js` restaura imediatamente o percentual do login e `master-global.html`/`vendedor.html` respeitam a progressão contínua; `js/auth.js` atualiza ARIA.
 - **Regressão:** `tests/production-shell.test.js` verifica consistência do HTML/CSS e progresso monotônico na troca de rota. Sem alterações nas regras Firebase, contas, sessão e negócio.
 - **Status:** em desenvolvimento/homologação, sem merge/deploy em produção; falta CI e conferência visual/autenticada de login, transição e mobile para aceite final. M03 permanece aberto.
+
+### M12 — Conferência do caixa do vendedor (26/11/2026)
+
+- **Layout:** caixa atual e inicial no topo. Movimentações e verificação lado a lado no desktop. No celular, os blocos seguem em sequência e o botão de confirmar ocupa a largura disponível.
+- **Verificação local:** 54 testes direcionados passaram. No Chromium, a tela foi verificada em quatro larguras de 320 a 1440 px com saldos simulados. O teste conferiu a rolagem por toque, a atualização dos valores e o bloqueio da confirmação com pendência ou diferença de centavos.
+- **Homologação:** a branch usa a correção de rolagem móvel do [PR #102](https://github.com/integro-app/Integro/pull/102). Pendente conferência com uma sessão de vendedor para o aceite.
