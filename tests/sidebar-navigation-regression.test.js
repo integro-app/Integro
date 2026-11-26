@@ -581,6 +581,9 @@ test("todos os perfis carregam o estilo do sino no cabeçalho", () => {
   const internal = read("usuario-integro.html");
   assert.match(internal, /<button[^>]*data-integro-sidebar-bell data-aba="avisos"/);
   assert.doesNotMatch(internal, /<button data-aba="avisos"/);
+  for (const perfil of ["vendedor", "captador", "auditor"]) {
+    assert.match(read(perfil + ".html"), /<div class="(?:app|layout)">\s*<div[^>]+data-integro-sidebar-overlay[^>]*><\/div>\s*(?:<!--.*?-->\s*)?<aside[^>]+data-integro-sidebar/, perfil);
+  }
 });
 
 test("o controlador desktop reposiciona o sino pela central ao mudar de modo", () => {
