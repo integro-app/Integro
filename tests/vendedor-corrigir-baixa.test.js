@@ -165,6 +165,11 @@ test("baixas fecham os dois modais imediatamente e aguardam a confirmação ante
  const montarCarteira=window.IntegroVendedorOperacao.montarCarteira;
  vm.runInContext(fs.readFileSync(path.join(root,"js/vendedor-operacao.js"),"utf8"),context);
  window.IntegroVendedorOperacao.montarCarteira=montarCarteira;
+ const atualizacoesDeCard=[];
+ window.IntegroVendedorOperacao.atualizarCardBaixa=vendaId=>{
+   atualizacoesDeCard.push(vendaId);
+   return true;
+ };
  for(const arquivo of ["vendedor-pagamento-flexivel","vendedor-cobranca-correcoes"]){
    vm.runInContext(fs.readFileSync(path.join(root,"js/services",arquivo+".js"),"utf8"),context);
  }
@@ -178,10 +183,11 @@ test("baixas fecham os dois modais imediatamente e aguardam a confirmação ante
  assert.equal(visual("a",{naoPagoHoje:true}).pagoHoje,true);
  assert.equal(visual("a",{naoPagoHoje:true}).naoPagoHoje,false);
  assert.equal(pagamentos.length,0);
- assert.equal(renderizacoes,1);
+ assert.deepEqual(atualizacoesDeCard,["a"]);
+ assert.equal(renderizacoes,0);
  await Promise.resolve();
  assert.equal(status("a"),"PROCESSING");
- assert.equal(renderizacoes,1,"a lista já mostra a sincronização antes do envio");
+ assert.equal(renderizacoes,0,"a lista inteira não é redesenhada antes do envio");
  assert.equal(chamadas.length,1);
  assert.equal(chamadas[0].nome,"registrarPagamentoOperacional");
  await window.IntegroVendedorCobrancaCorrecoes.salvarNaoPagamento("a");
@@ -191,6 +197,7 @@ test("baixas fecham os dois modais imediatamente e aguardam a confirmação ante
  assert.equal(status("b"),"QUEUED");
  assert.equal(visual("b",{pagoHoje:true}).pagoHoje,false);
  assert.equal(visual("b",{pagoHoje:true}).naoPagoHoje,true);
+ assert.deepEqual(atualizacoesDeCard,["a","b"]);
  assert.equal(chamadas.length,1,"os saldos do caixa são aplicados na ordem da fila");
  chamadas[0].resolve({data:{ok:true,pagamentoId:"paix",valorPagoParcelaCentavos:2600,statusParcela:"PAGA",
    saldoVendaCentavos:2400,saldoClienteCentavos:2400,saldoCaixaCentavos:12600,deltaCentavos:2600}});
@@ -200,11 +207,14 @@ test("baixas fecham os dois modais imediatamente e aguardam a confirmação ante
  assert.equal(caixas[0].saldoAtualCentavos,12600);
  assert.equal(chamadas[1].nome,"registrarNaoPagamentoOperacional");
  chamadas[1].resolve({data:{ok:false}});
+ const renderizacoesAntesDaFalha=renderizacoes;
  await naoPagamento;
  assert.equal(status("b"),"FAILED");
  assert.equal(visual("b",{pagoHoje:true}).pagoHoje,true);
  assert.equal(visual("b",{pagoHoje:true}).naoPagoHoje,false);
  assert.equal(historico.length,0);
+ assert.equal(renderizacoes,renderizacoesAntesDaFalha);
+ assert.deepEqual(atualizacoesDeCard,["a","b","b"]);
  assert.equal(avisos.at(-1),"Servidor não confirmou o não pagamento.");
  const retentativa=window.IntegroVendedorCobrancaCorrecoes.salvarNaoPagamento("b");
  await Promise.resolve();
@@ -253,8 +263,8 @@ test("resumo sai dos cards e cada filtro recebe seu contador", () => {
     assert.ok(unificado.includes('data-cobranca-contagem="' + chave + '"'), "contador de " + chave);
   }
   const bootstrap = fs.readFileSync(path.join(__dirname, "../js/v27-bootstrap.js"), "utf8");
-  assert.match(bootstrap, /seller-collection-corrections", "20261125-cores-da-baixa"/);
-  assert.match(bootstrap, /seller-flexible-payment", "20261124-baixas-imediatas"/);
+  assert.match(bootstrap, /seller-collection-corrections", "20261126-baixas-mobile"/);
+  assert.match(bootstrap, /seller-flexible-payment", "20261126-baixas-mobile"/);
 });
 
 

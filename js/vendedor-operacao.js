@@ -9,6 +9,7 @@
 
   const STATUS_ENCERRADOS = new Set(["CANCELADO", "CANCELADA", "QUITADO", "QUITADA", "FINALIZADO", "FINALIZADA", "ENCERRADO", "ENCERRADA"]);
   const STATUS_PAGOS = new Set(["PAGO", "PAGA", "QUITADO", "QUITADA"]);
+  let cobrancasRenderizadas = new Map();
 
   const numero = valor => {
     const n = Number(valor ?? 0);
@@ -344,20 +345,11 @@
     return digitos;
   }
 
-  function card(item) {
+  function apresentacaoBaixa(item) {
     const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
-    // A cor acompanha a ação selecionada. Os dados da carteira seguem os registros confirmados.
     const { sincronizando, pagoHoje, naoPagoHoje } = baixaVisual(item, sync);
     const status = statusVisual({ ...item, pagoHoje, naoPagoHoje });
-    const corFinanceira = corSituacao(item);
-    const nome = item.clienteNome || "Cliente";
-    const apelido = item.clienteApelido || nome;
-    const total = Math.max(1, numero(item.totalParcelas));
-    const progresso = Math.max(0, numero(item.progresso));
-    const percentual = Math.max(0, Math.min(100, Math.round((progresso / total) * 100)));
     const bloquear = !item.podeOperar || sincronizando || (typeof global.caixaEstaFechado === "function" && global.caixaEstaFechado());
-    const bloquearNaoPagamento = bloquear;
-    const whatsapp = telefoneWhatsapp(item.telefone);
     const syncMeta = sincronizando
       ? { classe: "sync-processing", texto: "Sincronizando" }
       : sync?.status === "CONFIRMED"
@@ -366,6 +358,44 @@
           ? { classe: "sync-failed", texto: "Falhou" }
           : null;
     const syncBadge = syncMeta ? '<span role="status" class="cobranca-chip-status vendedor-sync-badge ' + syncMeta.classe + '">' + escapar(syncMeta.texto) + '</span>' : "";
+    return { pagoHoje, naoPagoHoje, status, bloquear, syncBadge };
+  }
+
+  function atualizarCardBaixa(vendaId) {
+    const registro = cobrancasRenderizadas.get(id(vendaId));
+    const lista = global.document?.getElementById("listaCobrancas");
+    if (!registro || !lista || !global.CSS?.escape) return false;
+    const elemento = lista.querySelector(`.cobranca-card-operacional[data-venda-id="${global.CSS.escape(id(vendaId))}"]`);
+    const lateral = elemento?.querySelector(".cobranca-lateral-clean");
+    const linhaStatus = elemento?.querySelector(".cobranca-status-row");
+    const pago = elemento?.querySelector(".btn-pago-clean");
+    const naoPago = elemento?.querySelector(".btn-nao-pago-clean");
+    if (!lateral || !linhaStatus || !pago || !naoPago) return false;
+
+    const visual = apresentacaoBaixa(registro);
+    elemento.classList.remove("is-paid", "is-unpaid", "is-pending", "is-neutral");
+    elemento.classList.add(visual.status.classe);
+    lateral.style.background = visual.status.cor;
+    for (const [botao, ativo] of [[pago, visual.pagoHoje], [naoPago, visual.naoPagoHoje]]) {
+      botao.disabled = visual.bloquear;
+      botao.classList.toggle("is-active", ativo);
+      botao.setAttribute("aria-pressed", String(ativo));
+    }
+    linhaStatus.querySelector(".vendedor-sync-badge")?.remove();
+    if (visual.syncBadge) linhaStatus.insertAdjacentHTML("beforeend", visual.syncBadge);
+    return true;
+  }
+
+  function card(item) {
+    // O destaque segue a escolha. Os valores seguem os registros confirmados.
+    const { pagoHoje, naoPagoHoje, status, bloquear, syncBadge } = apresentacaoBaixa(item);
+    const corFinanceira = corSituacao(item);
+    const nome = item.clienteNome || "Cliente";
+    const apelido = item.clienteApelido || nome;
+    const total = Math.max(1, numero(item.totalParcelas));
+    const progresso = Math.max(0, numero(item.progresso));
+    const percentual = Math.max(0, Math.min(100, Math.round((progresso / total) * 100)));
+    const whatsapp = telefoneWhatsapp(item.telefone);
 
     return `
       <article class="cobranca-card-operacional ${status.classe}" data-cliente-id="${escapar(item.clienteId)}" data-venda-id="${escapar(item.vendaId)}" tabindex="0" title="Abrir opções do cliente" onclick="abrirOpcoesCardCobranca(event,this)" onkeydown="if(event.target===this &amp;&amp; (event.key==='Enter'||event.key===' ')){event.preventDefault();abrirOpcoesCardCobranca(event,this)}">
@@ -399,7 +429,7 @@
 
         <div class="cobranca-actions-clean">
           <button class="btn btn-pago-clean ${pagoHoje ? "is-active" : ""}" type="button" aria-pressed="${pagoHoje ? "true" : "false"}" ${bloquear ? "disabled" : ""} onclick="event.stopPropagation(); abrirPagamentoCliente('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">check_circle</span><span>Pago</span></button>
-          <button class="btn btn-nao-pago-clean ${naoPagoHoje ? "is-active" : ""}" type="button" aria-pressed="${naoPagoHoje ? "true" : "false"}" ${bloquearNaoPagamento ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
+          <button class="btn btn-nao-pago-clean ${naoPagoHoje ? "is-active" : ""}" type="button" aria-pressed="${naoPagoHoje ? "true" : "false"}" ${bloquear ? "disabled" : ""} ${item.pagoHoje ? 'title="O pagamento já foi registrado. Edite pelo botão Pago."' : ""} onclick="event.stopPropagation(); abrirNaoPagamentoVenda('${escapar(item.vendaId)}')"><span class="material-symbols-rounded">cancel</span><span>Não pagamento</span></button>
         </div>
       </article>`;
   }
@@ -521,6 +551,7 @@
     const carteira = dadosAtuais();
     global.IntegroVendedorUnificado?.renderHoje?.(carteira);
     const lista = ordenar(aplicarFiltros(carteira));
+    cobrancasRenderizadas = new Map(lista.filter(item => item.vendaId).map(item => [item.vendaId, item]));
     atualizarContagensFiltrosCobranca(carteira);
     const html = lista.length ? lista.map(card).join("") : `
       <div class="empty-state-operacao">
@@ -604,6 +635,7 @@
     pertenceAoTenant,
     statusVisual,
     baixaVisual,
+    atualizarCardBaixa,
     situacaoVisual,
     corSituacao,
     formatarProximaCobranca,

@@ -354,7 +354,10 @@
           ? normalizarBaixaSimples(resposta.data, item, parcela, valorCentavos)
           : resposta.data;
       };
-      const fechar = () => global.fecharModalVendedorOperacao?.();
+      const fechar = () => {
+        campo?.blur?.();
+        global.fecharModalVendedorOperacao?.();
+      };
       const aplicar = resultado => aplicarResultado(item, caixa, resultado);
       const executarBaixa = global.IntegroVendedorAsync?.executarBaixa;
       const resultado = executarBaixa

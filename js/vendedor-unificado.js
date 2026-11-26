@@ -152,8 +152,10 @@
       id, tipo, contexto, aguardar: filaDeBaixasPorCaixa.get(contexto),
       renderizar(status) {
         if (status === "QUEUED") fechar?.();
-        // A lista já mostra a baixa como "Sincronizando" enquanto está na fila.
-        if (status !== "PROCESSING" && noMesmoCaixa()) window.renderCobrancas?.();
+        if (status === "PROCESSING" || !noMesmoCaixa()) return;
+        if (status === "CONFIRMED" || !window.IntegroVendedorOperacao?.atualizarCardBaixa?.(vendaId)) {
+          window.renderCobrancas?.();
+        }
       },
       async executar() {
         if (!noMesmoCaixa()) throw new Error("O caixa ativo mudou antes do envio da baixa.");

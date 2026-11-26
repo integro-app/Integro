@@ -387,7 +387,7 @@
       corrigirBotoesCobranca();
       atualizarFechamento();
     });
-    observer.observe(lista, { childList: true, subtree: true });
+    observer.observe(lista, { childList: true });
   }
 
   function instalarBindings() {
@@ -409,7 +409,10 @@
       atualizarFechamento();
       observarLista();
     }, 0);
-    ["usuario-validado", "integro-perfil-dados-carregados", "integro-operacoes-tempo-real-atualizadas", "integro-tela-alterada", "integro-vendedor-operacao-sync", "integro-v27-pronto"].forEach(nome => document.addEventListener(nome, atualizar));
+    ["usuario-validado", "integro-perfil-dados-carregados", "integro-operacoes-tempo-real-atualizadas", "integro-tela-alterada", "integro-v27-pronto"].forEach(nome => document.addEventListener(nome, atualizar));
+    document.addEventListener("integro-vendedor-operacao-sync", evento => {
+      if (!evento.detail?.contexto || !global.IntegroVendedorOperacao?.atualizarCardBaixa) atualizar();
+    });
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", atualizar, { once: true }); else atualizar();
     setTimeout(atualizar, 400);
     setTimeout(atualizar, 1200);
