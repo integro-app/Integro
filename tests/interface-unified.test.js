@@ -131,7 +131,8 @@ test("auditoria normaliza Timestamp, ISO e formato brasileiro antes de exibir", 
   assert.match(utils, /Timestamp\\\(seconds=/);
   assert.match(utils, /value\.seconds \?\? value\._seconds/);
   assert.match(utils, /function dateLabel/);
-  assert.match(auditoria, /U\(\)\.dateLabel\(item, true\)/);
+  assert.match(auditoria, /U\(\)\.timestamp\(value\)/);
+  assert.match(auditoria, /timeZone: "America\/Sao_Paulo"/);
 });
 
 
@@ -164,7 +165,8 @@ test("financeiro e auditoria respeitam cabeçalho, submenu e conteúdo", () => {
   assert.ok(financeiro.indexOf("integro-shared-header") < financeiro.indexOf("integro-shared-nav"));
   assert.ok(financeiro.indexOf("integro-shared-nav") < financeiro.indexOf("finCustomPeriod"));
   assert.ok(auditoria.indexOf("integro-shared-header") < auditoria.indexOf("integro-shared-nav"));
-  assert.ok(auditoria.indexOf("integro-shared-nav") < auditoria.indexOf("unified-readonly-banner"));
+  assert.ok(auditoria.indexOf("integro-shared-nav") < auditoria.indexOf("audit-panel"));
+  assert.match(auditoria, /data-somente-leitura/);
 });
 
 
@@ -290,12 +292,62 @@ test("consulta tenant paginada percorre o histórico completo sem misturar empre
 
 test("auditoria ativa pagina tela, consulta histórico completo e exporta CSV protegido", () => {
   const auditoria = read("js/modules/auditoria-unificada.js");
-  assert.match(auditoria, /queryTenant\(name,\{paginate:true,pageSize:/);
-  assert.match(auditoria, /pageSize:100/);
+  assert.match(auditoria, /queryTenant\(name, \{ paginate: true, pageSize:/);
+  assert.match(auditoria, /pageSize: 100/);
   assert.match(auditoria, /changePage/);
   assert.match(auditoria, /replace\(\/\^\[\\s\]\*\(\[=\+@-\]\)\/u/);
   assert.match(auditoria, /\\uFEFF/);
   assert.match(auditoria, /rows\.join\("\\r\\n"\)/);
+});
+
+test("auditoria carrega por área e descarta respostas da empresa anterior", async () => {
+  const vm = require("node:vm");
+  const elements = new Map();
+  const document = {
+    addEventListener() {},
+    getElementById(id) {
+      if (id === "audRecordDetail") return null;
+      if (!elements.has(id)) elements.set(id, {
+        value: "", innerHTML: "", textContent: "",
+        setAttribute() {}, addEventListener() {}, querySelectorAll: () => [],
+        classList: { toggle() {} }
+      });
+      return elements.get(id);
+    }
+  };
+  let tenant = "empresa-a";
+  let releaseOldLogs;
+  const calls = [];
+  const window = { State: { getTenantId: () => tenant } };
+  const sandbox = vm.createContext({ window, document, setTimeout });
+  vm.runInContext(read("js/modules/unified-module-utils.js"), sandbox);
+  window.IntegroModuloUtils = {
+    ...window.IntegroModuloUtils,
+    access: () => ({ perfil: "master_local", authUid: tenant }),
+    db: () => ({}),
+    queryTenant: async (name, options) => {
+      calls.push([name, options.tenantId]);
+      if (name === "lancamentos_financeiros") throw new Error("Mensagem interna");
+      if (options.tenantId === "empresa-a") return new Promise(resolve => { releaseOldLogs = resolve; });
+      return [{ id: "empresa-b-registro", tipoAcao: "PAGAMENTO_CONFIRMADO", criadoEm: { seconds: 1795657200 } }];
+    }
+  };
+  vm.runInContext(read("js/modules/auditoria-unificada.js"), sandbox);
+  const module = window.IntegroAuditoriaUnificada;
+  const oldRequest = module.load();
+  await Promise.resolve();
+  assert.deepEqual(calls, [["logs", "empresa-a"]]);
+  assert.equal(await module.openTab("financeiro"), false);
+  assert.match(elements.get("audStatus").textContent, /Falha ao carregar esta área/);
+  assert.doesNotMatch(elements.get("audStatus").textContent, /Mensagem interna/);
+
+  tenant = "empresa-b";
+  assert.equal(await module.load(), true);
+  releaseOldLogs([{ id: "empresa-a-registro", origem: "ANTIGO" }]);
+  assert.equal(await oldRequest, false);
+  assert.deepEqual(calls, [["logs", "empresa-a"], ["lancamentos_financeiros", "empresa-a"], ["logs", "empresa-b"]]);
+  assert.match(elements.get("audContent").innerHTML, /empresa-b-registro/);
+  assert.doesNotMatch(elements.get("audContent").innerHTML, /empresa-a-registro|ANTIGO/);
 });
 
 
