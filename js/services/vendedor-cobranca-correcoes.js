@@ -265,6 +265,8 @@
   }
 
   function abrirNaoPagamento(vendaId) {
+    const status = global.IntegroVendedorAsync?.statusDaCobranca?.({ vendaId })?.status;
+    if (status === "QUEUED" || status === "PROCESSING") return notificar("Aguarde a confirmação da baixa deste cliente.");
     const item = itemPorVenda(vendaId);
     const caixa = caixaAtual();
     if (!item || !caixa) return notificar("Cobrança ou caixa aberto não encontrado.");
@@ -316,14 +318,22 @@
         clienteId: texto(item.clienteId),
         motivo, observacao, origem: "painel_unificado_vendedor"
       };
-      const resposta = novaBaixa
-        ? await callable("registrarNaoPagamentoOperacional")({ entrada: {
-          ...payload, dataOperacional: dataCaixa(caixa)
-        } })
-        : await callable()({ ...payload, acao: "NAO_PAGAMENTO" });
-      if (resposta?.data?.ok !== true) throw new Error("Servidor não confirmou o não pagamento.");
-      removerDialogo();
-      atualizarCachesAposResultado(item, caixa, resposta.data, "NAO_PAGAMENTO", 0, motivo, observacao);
+      const executar = async () => {
+        const resposta = novaBaixa
+          ? await callable("registrarNaoPagamentoOperacional")({ entrada: {
+            ...payload, dataOperacional: dataCaixa(caixa)
+          } })
+          : await callable()({ ...payload, acao: "NAO_PAGAMENTO" });
+        if (resposta?.data?.ok !== true) throw new Error("Servidor não confirmou o não pagamento.");
+        return resposta.data;
+      };
+      const aplicar = resultado => atualizarCachesAposResultado(item, caixa, resultado, "NAO_PAGAMENTO", 0, motivo, observacao);
+      const executarBaixa = global.IntegroVendedorAsync?.executarBaixa;
+      const resultado = executarBaixa
+        ? await executarBaixa({ vendaId, caixa, tipo: "NAO_PAGAMENTO", fechar: removerDialogo, executar, aplicar })
+        : await executar();
+      if (!resultado) return;
+      if (!executarBaixa) { removerDialogo(); aplicar(resultado); }
       notificar(item.pagoHoje ? "Pagamento cancelado e baixa alterada para não pagamento." : (item.naoPagoHoje ? "Não pagamento atualizado." : "Não pagamento registrado."));
     } catch (erro) {
       console.error("[ÍNTEGRO] Falha ao corrigir não pagamento.", erro);
@@ -344,6 +354,7 @@
       const item = itens.get(texto(card.dataset.vendaId));
       if (!item) return;
       const sync = global.IntegroVendedorAsync?.statusDaCobranca?.(item);
+      const { pagoHoje, naoPagoHoje } = global.IntegroVendedorOperacao?.baixaVisual?.(item, sync) || item;
       const bloqueado = !caixa || ["QUEUED", "PROCESSING"].includes(normalizar(sync?.status));
       const pago = card.querySelector(".btn-pago-clean");
       const naoPago = card.querySelector(".btn-nao-pago-clean");
@@ -352,8 +363,8 @@
         pago.title = item.pagoHoje ? "Editar pagamento lançado" : (item.naoPagoHoje ? "Alterar esta baixa para pagamento" : "Registrar pagamento");
         const rotulo = pago.querySelector("span:last-child");
         const textoRotulo = "Pago";
-        pago.classList.toggle("is-active", !!item.pagoHoje);
-        pago.setAttribute("aria-pressed", item.pagoHoje ? "true" : "false");
+        pago.classList.toggle("is-active", !!pagoHoje);
+        pago.setAttribute("aria-pressed", pagoHoje ? "true" : "false");
         if (rotulo && rotulo.textContent !== textoRotulo) rotulo.textContent = textoRotulo;
       }
       if (naoPago) {
@@ -361,8 +372,8 @@
         naoPago.title = item.pagoHoje ? "Alterar esta baixa para não pagamento" : (item.naoPagoHoje ? "Editar não pagamento" : "Registrar não pagamento");
         const rotulo = naoPago.querySelector("span:last-child");
         const textoRotulo = "Não pagamento";
-        naoPago.classList.toggle("is-active", !!item.naoPagoHoje);
-        naoPago.setAttribute("aria-pressed", item.naoPagoHoje ? "true" : "false");
+        naoPago.classList.toggle("is-active", !!naoPagoHoje);
+        naoPago.setAttribute("aria-pressed", naoPagoHoje ? "true" : "false");
         if (rotulo && rotulo.textContent !== textoRotulo) rotulo.textContent = textoRotulo;
       }
     });
@@ -376,11 +387,11 @@
       corrigirBotoesCobranca();
       atualizarFechamento();
     });
-    observer.observe(lista, { childList: true, subtree: true });
+    observer.observe(lista, { childList: true });
   }
 
   function instalarBindings() {
-    global.confirmarPagamentoVendedorUnificado = confirmarPagamento;
+    global.confirmarPagamentoVendedorUnificado = global.IntegroVendedorPagamentoFlexivel?.confirmarPagamento || confirmarPagamento;
     global.abrirNaoPagamentoVenda = abrirNaoPagamento;
     global.registrarNaoPagamentoVenda = abrirNaoPagamento;
     global.confirmarNaoPagamentoVendedorUnificado = salvarNaoPagamento;
@@ -398,7 +409,10 @@
       atualizarFechamento();
       observarLista();
     }, 0);
-    ["usuario-validado", "integro-perfil-dados-carregados", "integro-operacoes-tempo-real-atualizadas", "integro-tela-alterada", "integro-vendedor-operacao-sync", "integro-v27-pronto"].forEach(nome => document.addEventListener(nome, atualizar));
+    ["usuario-validado", "integro-perfil-dados-carregados", "integro-operacoes-tempo-real-atualizadas", "integro-tela-alterada", "integro-v27-pronto"].forEach(nome => document.addEventListener(nome, atualizar));
+    document.addEventListener("integro-vendedor-operacao-sync", evento => {
+      if (!evento.detail?.contexto || !global.IntegroVendedorOperacao?.atualizarCardBaixa) atualizar();
+    });
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", atualizar, { once: true }); else atualizar();
     setTimeout(atualizar, 400);
     setTimeout(atualizar, 1200);

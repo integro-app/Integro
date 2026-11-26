@@ -332,28 +332,39 @@
         pagamentosDaVendaNoCaixa(vendaId, caixa).length === 0 &&
         valorCentavos <= restanteParcelaCentavos(parcela, item);
       const caixaId = texto(caixa.id || caixa.caixaId);
-      const resposta = primeiroRecebimento
-        ? await callable("registrarPagamentoOperacional")({ entrada: {
-          caixaId, vendaId: texto(item.vendaId),
-          parcelaId: texto(parcela.id || parcela.parcelaId),
-          clienteId: texto(item.clienteId), valorCentavos,
-          origem: "painel_unificado_vendedor"
-        } })
-        : await callable()({
-          acao: "PAGAMENTO", caixaId, vendaId: texto(item.vendaId),
-          parcelaId: texto(parcela.id || parcela.parcelaId),
-          clienteId: texto(item.clienteId), valorCentavos,
-          motivo: item.naoPagoHoje
-            ? "Correção de não pagamento para pagamento antes do fechamento"
-            : "Ajuste de pagamento antes do fechamento",
-          origem: "painel_unificado_vendedor"
-        });
-      if (resposta?.data?.ok !== true) throw new Error("Servidor não confirmou o pagamento.");
-      const resultado = primeiroRecebimento
-        ? normalizarBaixaSimples(resposta.data, item, parcela, valorCentavos)
-        : resposta.data;
-      global.fecharModalVendedorOperacao?.();
-      aplicarResultado(item, caixa, resultado);
+      const executar = async () => {
+        const resposta = primeiroRecebimento
+          ? await callable("registrarPagamentoOperacional")({ entrada: {
+            caixaId, vendaId: texto(item.vendaId),
+            parcelaId: texto(parcela.id || parcela.parcelaId),
+            clienteId: texto(item.clienteId), valorCentavos,
+            origem: "painel_unificado_vendedor"
+          } })
+          : await callable()({
+            acao: "PAGAMENTO", caixaId, vendaId: texto(item.vendaId),
+            parcelaId: texto(parcela.id || parcela.parcelaId),
+            clienteId: texto(item.clienteId), valorCentavos,
+            motivo: item.naoPagoHoje
+              ? "Correção de não pagamento para pagamento antes do fechamento"
+              : "Ajuste de pagamento antes do fechamento",
+            origem: "painel_unificado_vendedor"
+          });
+        if (resposta?.data?.ok !== true) throw new Error("Servidor não confirmou o pagamento.");
+        return primeiroRecebimento
+          ? normalizarBaixaSimples(resposta.data, item, parcela, valorCentavos)
+          : resposta.data;
+      };
+      const fechar = () => {
+        campo?.blur?.();
+        global.fecharModalVendedorOperacao?.();
+      };
+      const aplicar = resultado => aplicarResultado(item, caixa, resultado);
+      const executarBaixa = global.IntegroVendedorAsync?.executarBaixa;
+      const resultado = executarBaixa
+        ? await executarBaixa({ vendaId, caixa, tipo: "PAGAMENTO", fechar, executar, aplicar })
+        : await executar();
+      if (!resultado) return;
+      if (!executarBaixa) { fechar(); aplicar(resultado); }
       const qtd = (resultado.alocacoes || []).filter(alocacao => Number(alocacao.valorCentavos || 0) > 0).length;
       notificar(qtd > 1 ? `Pagamento registrado e distribuído automaticamente em ${qtd} parcelas.` : "Pagamento registrado com sucesso.");
     } catch (erro) {
@@ -369,6 +380,8 @@
 
   async function abrirPagamentoFlexivel(vendaId) {
     if (typeof abrirPagamentoOriginal !== "function") return notificar("Tela de pagamento indisponível.");
+    const status = global.IntegroVendedorAsync?.statusDaCobranca?.({ vendaId })?.status;
+    if (status === "QUEUED" || status === "PROCESSING") return notificar("Aguarde a confirmação da baixa deste cliente.");
     const retorno = await abrirPagamentoOriginal(vendaId);
     const caixa = caixaAtual();
     const total = totalPagoNoCaixa(vendaId, caixa);

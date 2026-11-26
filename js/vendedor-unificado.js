@@ -34,6 +34,7 @@
   const MOVIMENTOS_SESSAO_LIMITE = 120;
   const OPERACAO_SYNC_STATUS = ["QUEUED", "PROCESSING", "CONFIRMED", "FAILED"];
   const operacoesAssincronas = new Map();
+  const filaDeBaixasPorCaixa = new Map();
   const metricasVendedorV273 = { feedbackMs: [], cacheHits: 0, rendersEvitados: 0, operacoes: { queued: 0, processing: 0, confirmed: 0, failed: 0 } };
 
   const texto = valor => String(valor ?? "").trim();
@@ -79,7 +80,21 @@
   function statusOperacaoCobranca(registro = {}) {
     const vendaId = texto(registro.vendaId || registro.id);
     if (!vendaId) return null;
-    return operacoesAssincronas.get("cobranca:" + vendaId) || operacoesAssincronas.get("venda:" + vendaId) || null;
+    return operacoesAssincronas.get(chaveBaixa(contextoBaixa(), vendaId)) ||
+      operacoesAssincronas.get("cobranca:" + vendaId) || operacoesAssincronas.get("venda:" + vendaId) || null;
+  }
+
+  function contextoBaixa(caixa = window.caixaAtual) {
+    const usuario = window.State?.getUsuario?.() || usuarioAtual || {};
+    return JSON.stringify([
+      texto(window.State?.getTenantId?.() || usuario.clientePlataformaId),
+      texto(usuario.authUid || usuario.uid || usuario.id),
+      texto(caixa?.id || caixa?.caixaId)
+    ]);
+  }
+
+  function chaveBaixa(contexto, vendaId) {
+    return operacaoChave("baixa:" + contexto + ":" + JSON.stringify(texto(vendaId)));
   }
 
   function setBotaoProcessando(botao, textoProcessando = "Sincronizando") {
@@ -97,12 +112,12 @@
     };
   }
 
-  async function executarOperacaoAssincrona({ id, tipo, aliases = [], botao = null, textoProcessando = "Sincronizando", executar, rollback, renderizar }) {
+  async function executarOperacaoAssincrona({ id, tipo, aliases = [], botao = null, textoProcessando = "Sincronizando", executar, rollback, renderizar, aguardar, contexto }) {
     const inicio = Date.now();
     const restaurarBotao = setBotaoProcessando(botao, textoProcessando);
-    registrarOperacaoAssincrona(id, { tipo, status: "QUEUED", aliases });
+    registrarOperacaoAssincrona(id, { tipo, status: "QUEUED", aliases, contexto, erro: "" });
     try { renderizar?.("QUEUED"); } catch (_) {}
-    await Promise.resolve();
+    await aguardar;
     registrarOperacaoAssincrona(id, { tipo, status: "PROCESSING", aliases });
     try { renderizar?.("PROCESSING"); } catch (_) {}
     try {
@@ -119,7 +134,54 @@
       restaurarBotao();
       registrarFeedbackOperacao(inicio);
       window.IntegroDataRuntime?.medirInteracao?.("vendedor." + texto(tipo).toLowerCase(), inicio);
-      window.setTimeout(() => removerOperacaoAssincrona(id), 7000);
+      const finalizada = operacoesAssincronas.get(operacaoChave(id));
+      window.setTimeout(() => {
+        if (operacoesAssincronas.get(operacaoChave(id)) !== finalizada) return;
+        removerOperacaoAssincrona(id);
+      }, 7000);
+    }
+  }
+
+  async function executarBaixa({ vendaId, caixa, tipo, fechar, executar, aplicar }) {
+    const contexto = contextoBaixa(caixa);
+    const id = chaveBaixa(contexto, vendaId);
+    const anterior = operacoesAssincronas.get(id)?.status;
+    if (anterior === "QUEUED" || anterior === "PROCESSING") return null;
+    const noMesmoCaixa = () => contextoBaixa() === contexto;
+    const execucao = executarOperacaoAssincrona({
+      id, tipo, contexto, aguardar: filaDeBaixasPorCaixa.get(contexto),
+      renderizar(status) {
+        if (status === "QUEUED") fechar?.();
+        if (status === "PROCESSING" || !noMesmoCaixa()) return;
+        if (status === "CONFIRMED" || !window.IntegroVendedorOperacao?.atualizarCardBaixa?.(vendaId)) {
+          window.renderCobrancas?.();
+        }
+      },
+      async executar() {
+        if (!noMesmoCaixa()) throw new Error("O caixa ativo mudou antes do envio da baixa.");
+        const resultado = await executar();
+        if (noMesmoCaixa()) {
+          try { aplicar(resultado); }
+          catch (erro) {
+            console.error("[ÍNTEGRO] Baixa confirmada. Falha ao atualizar a tela.", erro);
+            agendarRefreshOperacaoVendedor({ render: "cobrancas" });
+          }
+        }
+        return resultado;
+      }
+    });
+    // Os resultados contêm saldos absolutos. Aplicá-los em sequência evita
+    // que uma resposta mais antiga sobrescreva o saldo de uma baixa posterior.
+    const terminou = execucao.catch(() => {});
+    filaDeBaixasPorCaixa.set(contexto, terminou);
+    try {
+      const resultado = await execucao;
+      return noMesmoCaixa() ? resultado : null;
+    } catch (erro) {
+      if (noMesmoCaixa()) throw erro;
+      return null;
+    } finally {
+      if (filaDeBaixasPorCaixa.get(contexto) === terminou) filaDeBaixasPorCaixa.delete(contexto);
     }
   }
   const idsUsuario = usuario => new Set([
@@ -3109,8 +3171,11 @@
   window.editarCadastroCompletoClienteVendedor = editarCadastroCompletoCliente;
   window.IntegroVendedorAsync = Object.freeze({
     statusDaCobranca: statusOperacaoCobranca,
+    executarBaixa,
     statusPorId: id => operacoesAssincronas.get(operacaoChave(id)) || null,
-    diagnostico: () => ({ ...metricasVendedorV273, pendentes: [...operacoesAssincronas.values()].filter((item, index, lista) => lista.indexOf(item) === index).map(({ id, tipo, status, atualizadoEm }) => ({ id, tipo, status, atualizadoEm })) })
+    diagnostico: () => ({ ...metricasVendedorV273, pendentes: [...new Set(operacoesAssincronas.values())]
+      .filter(item => !item.contexto || item.contexto === contextoBaixa())
+      .map(({ id, tipo, status, atualizadoEm }) => ({ id, tipo, status, atualizadoEm })) })
   });
 
   window.venderClienteDrawerVendedor = venderClienteDrawer;

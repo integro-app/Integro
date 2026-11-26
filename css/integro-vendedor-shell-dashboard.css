@@ -286,6 +286,7 @@ html body[data-integro-page="master-local"].perfil-vendedor #dashboard :is(.dash
   }
 }
 @media (max-width:980px) {
+  /* A camada mobile controla a rolagem de main e a bloqueia com o menu aberto. */
   html body[data-integro-page="master-local"].perfil-vendedor .layout > main.main,
   html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar + main.main,
   html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed + main.main {
@@ -295,7 +296,6 @@ html body[data-integro-page="master-local"].perfil-vendedor #dashboard :is(.dash
     min-width:0!important;
     margin-left:0!important;
     padding:calc(62px + env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) 24px max(14px,env(safe-area-inset-left))!important;
-    overflow:visible!important;
   }
   html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar,
   html body[data-integro-page="master-local"].perfil-vendedor .layout > aside#sidebar.sidebar.collapsed {

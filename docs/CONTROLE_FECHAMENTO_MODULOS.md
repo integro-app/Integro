@@ -92,6 +92,17 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - **Navegador.** Login e navegação conferidos no Chromium em dez larguras entre 320 e 1920 px. Busca, estado vazio, limpeza, filtro e abertura do editor conferidos com registros de teste em memória devido à instabilidade da leitura do Firestore no emulador.
 - **Estado.** Em homologação. Ainda falta conferir a consulta com dados reais de homologação em celular e desktop.
 
+### M11 — Retorno imediato ao registrar baixa (24/11/2026)
+
+- Ao confirmar pagamento ou não pagamento na operação do vendedor, o modal fecha e o card mostra a sincronização. Os saldos e o resultado da cobrança são atualizados após a confirmação do servidor.
+- A mesma cobrança fica bloqueada durante o envio. Baixas de clientes diferentes entram na fila do caixa. Em caso de falha, a cobrança volta a aceitar nova tentativa e a tela mostra a mensagem do servidor.
+- Passaram 61 testes direcionados. No Chromium, o modal fechou em 3 ms no cenário com servidor simulado em 5 s, e o card confirmou o valor após a resposta.
+- **Revalidação em 25/11/2026.** A produção ainda carregava o fluxo que espera o servidor. Atualizada a prévia sobre a versão atual do sistema. No Chromium, com 6 s de espera simulada, o modal da versão de produção levou cerca de 6 s para fechar. A correção fechou em 1–2 ms, exibiu a sincronização, tratou a rejeição e permitiu nova tentativa sem saldo duplicado. Passaram 128 testes direcionados.
+- **Retorno visual da escolha.** Ao confirmar, botão e lateral do card assumem verde em Pago ou vermelho em Não pagamento, com o aviso Sincronizando. A confirmação do servidor atualiza os valores e, se houver rejeição, o destaque volta à baixa anterior e os botões são liberados. No Chromium, as cores mudaram em até 5 ms com 6 s de latência simulada. Verificados pagamento, não pagamento e retorno de vermelho para verde após rejeição de uma correção. Passaram 128 testes direcionados.
+- **Celular, 26/11/2026.** O toque em Confirmar atualiza o cartão da cobrança e devolve o controle à lista na mesma posição. A atualização de saldos e filtros ocorre na confirmação do servidor. Em 320 e 390 px, uma rota simulada com 120 cobranças mostrou o retorno visual em até 21 ms com 6 s de latência no primeiro envio. Validamos a segunda baixa enquanto a primeira aguardava, a recuperação de uma rejeição e a nova tentativa. Passaram 70 testes direcionados.
+- **Rolagem na prévia de baixas, 26/11/2026.** A folha de estilo do vendedor anulava a rolagem da área principal nessa prévia. Aplicada a correção do shell no próprio [PR #99](https://github.com/integro-app/Integro/pull/99), com atualização do cache. No Chromium com toque, a lista de 120 cobranças rolou até o último cartão em 320 e 390 px. Os cenários de baixa simultaneamente em espera, rejeição e nova tentativa passaram com latência simulada. Passaram 70 testes direcionados.
+- O fluxo segue em homologação com baixas reais do vendedor.
+
 ### M12 — Lista de equipes em Caixas no desktop (24/11/2026)
 
 - **Layout.** Um cartão horizontal por equipe, com indicadores mais baixos e acesso ao histórico junto ao resumo. Recebimentos e Recolhimentos foram incluídos no desktop e usam os dados conferidos da jornada.
