@@ -89,9 +89,7 @@
   function itemHtml(item) {
     const badge = item.id === "chatInterno"
       ? '<span id="badgeChatInterno" class="integro-chat-menu-badge" data-chat-unread-count hidden>0</span>'
-      : item.id === "notificacoes"
-        ? '<span id="badgeNotificacoesMenu" class="integro-chat-menu-badge" data-notification-count hidden>0</span>'
-        : "";
+      : "";
     return `<button class="menu-item" type="button" data-modulo="${item.id}" data-menu-unificado="true" aria-label="${item.rotulo}">
       <span class="menu-icon material-symbols-rounded">${item.icone}</span>
       <span class="menu-label">${item.rotulo}</span>${badge}
@@ -218,40 +216,12 @@
     });
   }
 
-  function garantirSinoNotificacoes(usuario) {
-    const sidebar = document.getElementById("sidebar");
-    if (!sidebar || perfil(usuario) !== "vendedor") return null;
-    const card = sidebar.querySelector(".user-card,.sidebar-profile-card,.user-card-premium");
-    if (!card) return null;
-    card.classList.add("integro-user-card-com-sino");
-    let sino = card.querySelector("[data-notification-bell]");
-    if (!sino) {
-      sino = document.createElement("button");
-      sino.type = "button";
-      sino.className = "integro-notification-bell";
-      sino.dataset.notificationBell = "true";
-      sino.setAttribute("aria-label", "Abrir notificações");
-      sino.title = "Notificações";
-      sino.innerHTML = '<span class="material-symbols-rounded">notifications</span><span class="integro-notification-bell-badge" data-notification-count hidden>0</span>';
-      sino.addEventListener("click", evento => {
-        evento.preventDefault();
-        evento.stopPropagation();
-        if (typeof global.abrirGavetaNotificacoesVendedor === "function") global.abrirGavetaNotificacoesVendedor(sino);
-        else if (typeof global.abrirGavetaNotificacoesMaster === "function") global.abrirGavetaNotificacoesMaster();
-        else abrirPorId("notificacoes", sino);
-      });
-      card.appendChild(sino);
-    }
-    global.setTimeout?.(() => global.atualizarBadgeNotificacoes?.(), 0);
-    return sino;
-  }
-
   function renderizar(usuario) {
     usuarioAtual = usuario || global.State?.getUsuario?.() || null;
     const host = garantirHost();
     if (!host || !usuarioAtual) return false;
     const perfilAtual = perfil(usuarioAtual);
-    const itens = CATALOGO.filter(item => permitido(usuarioAtual, item) && !(perfilAtual === "vendedor" && item.id === "notificacoes"));
+    const itens = CATALOGO.filter(item => item.id !== "notificacoes" && permitido(usuarioAtual, item));
     // Apenas no vendedor, Dashboard vem antes de Operação. Mantém os demais
     // perfis, permissões e ações do menu na ordem já homologada.
     if (perfilAtual === "vendedor") {
@@ -277,7 +247,6 @@
     }
     sanitizarSidebar();
     aplicarSubmodulos(usuarioAtual);
-    garantirSinoNotificacoes(usuarioAtual);
     // Um listener delegado continua funcionando após reconstruções do menu.
     // Itens com filhos expandem o grupo; apenas os filhos navegam.
     if (host.dataset.integroDelegatedClick !== "true") {
@@ -320,7 +289,7 @@
   global.IntegroNavegacaoUnificada = Object.freeze({
     CATALOGO, SUBMODULOS, MODULO_PAI, renderizar, permitido, abrir, abrirPorId, ativarItem, aplicarSubmodulos,
     abrirFinanceiroOperacional, abrirFinanceiroEmpresarial,
-    sanitizarSidebar, itemPorId, garantirSinoNotificacoes, get usuario() { return usuarioAtual; }
+    sanitizarSidebar, itemPorId, get usuario() { return usuarioAtual; }
   });
 })(window);
 

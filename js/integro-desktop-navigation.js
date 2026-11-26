@@ -7,7 +7,7 @@
 
   const DESKTOP = global.matchMedia("(min-width: 981px)");
   const STORAGE_KEY = "integro.desktop.sidebar.mode.v1";
-  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261123-padrao2";
+  const CSS_HREF = "css/integro-desktop-navigation.css?v=20261123-padrao2&notificacoes=20261126-topo";
   const CSS_ID = "integroDesktopNavigationCss";
   let compact = false;
   let ready = false;
@@ -67,54 +67,6 @@
       : parts[0].slice(0, 2)).toLocaleUpperCase("pt-BR");
   }
 
-  // O vendedor já tem um sino funcional no card legado. Como o visual
-  // desktop esconde esse card, espelhar somente o ACESSO à ação existente;
-  // nunca copiar listeners, dados, permissões ou implementar nova rota.
-  function ensureNotificationShortcut() {
-    const bar = sidebar();
-    const host = bar?.querySelector?.("#integroSidebarMenu");
-    if (!host) return;
-    const sourceBell = bar.querySelector(".user-card [data-notification-bell], .sidebar-profile-card [data-notification-bell]");
-    const headerBell = document.getElementById("integroNotificationButton");
-    const headerHasBell = Boolean(headerBell && !headerBell.hidden && headerBell.getClientRects?.().length);
-    let shortcut = host.querySelector("[data-integro-desktop-notifications]");
-    // Alguns perfis já exibem o sino no cabeçalho desktop. Não duplicar a ação.
-    if (!sourceBell || !DESKTOP.matches || headerHasBell) {
-      shortcut?.remove?.();
-      return;
-    }
-    if (!shortcut) {
-      shortcut = document.createElement("button");
-      shortcut.type = "button";
-      shortcut.className = "menu-item integro-desktop-notifications";
-      shortcut.dataset.integroDesktopNotifications = "true";
-      shortcut.dataset.integroRailLabel = "Notificações";
-      shortcut.setAttribute("aria-label", "Abrir notificações");
-      shortcut.setAttribute("aria-haspopup", "dialog");
-      shortcut.innerHTML = '<span class="menu-icon material-symbols-rounded" aria-hidden="true">notifications</span>' +
-        '<span class="menu-label">Notificações</span>' +
-        '<span class="integro-desktop-bell-count" aria-hidden="true" hidden></span>';
-      shortcut.addEventListener("click", () => {
-        const original = sidebar()?.querySelector(".user-card [data-notification-bell], .sidebar-profile-card [data-notification-bell]");
-        original?.click?.();
-      });
-    }
-    const signout = host.querySelector('[data-menu-unificado][data-modulo="sair"]');
-    if (shortcut.parentElement !== host) {
-      if (signout) host.insertBefore(shortcut, signout);
-      else host.appendChild(shortcut);
-    }
-    const badge = sourceBell.querySelector("[data-notification-count]");
-    const mirror = shortcut.querySelector(".integro-desktop-bell-count");
-    if (mirror) {
-      const count = Number.parseInt(String(badge?.textContent || "0").replace(/[^0-9]/g, ""), 10) || 0;
-      const visible = Boolean(badge && !badge.hidden && Number.isFinite(count) && count > 0);
-      mirror.hidden = !visible;
-      if (visible && mirror.textContent !== String(count)) mirror.textContent = String(count);
-      if (!visible && mirror.textContent) mirror.textContent = "";
-    }
-  }
-
   function ensureProfile() {
     if (!DESKTOP.matches) return;
     const bar = sidebar();
@@ -144,7 +96,6 @@
     if (avatarSlot && avatarSlot.textContent !== initials(safeName)) avatarSlot.textContent = initials(safeName);
     if (profile.title !== label) profile.title = label;
     profile.dataset.integroRailLabel = label;
-    ensureNotificationShortcut();
     if (source && source !== observedProfileSource && global.MutationObserver) {
       // O card de origem muda após troca de empresa/perfil: escutar somente o atual.
       profileObserver?.disconnect?.();
@@ -235,6 +186,7 @@
     if (!DESKTOP.matches) {
       hideTooltip();
       body.classList.remove("integro-desktop-nav-ready", "integro-desktop-nav-compact", "integro-desktop-nav-unified");
+      global.IntegroNotificationCenter?.syncSidebar?.();
       return;
     }
     const bar = sidebar();
@@ -255,6 +207,7 @@
     body.classList.add("integro-desktop-nav-ready");
     updateTrigger();
     refreshLabels();
+    global.IntegroNotificationCenter?.syncSidebar?.();
   }
 
   function setCompact(value, persist) {

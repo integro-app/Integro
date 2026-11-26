@@ -224,7 +224,66 @@
     return value.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   }
 
+  const sidebarElement = () => document.querySelector("[data-integro-sidebar], #sidebar.sidebar");
+
+  function ensureSidebarBell() {
+    const sidebar = sidebarElement();
+    if (!sidebar) return null;
+    const desktop = document.body.classList.contains("integro-desktop-nav-ready");
+    const brand = (desktop && sidebar.querySelector(":scope > .integro-desktop-brand")) ||
+      sidebar.querySelector(":scope > :is(.brand,.logo,.sidebar-brand)");
+    if (!brand) return null;
+    let bell = document.getElementById("integroSidebarBell");
+    if (!bell) {
+      bell = document.createElement("button");
+      bell.id = "integroSidebarBell";
+      bell.type = "button";
+      bell.dataset.integroSidebarBell = "";
+      bell.title = "Notificações";
+      bell.setAttribute("aria-label", "Abrir notificações");
+      bell.setAttribute("aria-controls", "integroNotificationCenter");
+      bell.setAttribute("aria-haspopup", "dialog");
+      bell.setAttribute("aria-expanded", String(rootElement()?.hidden === false));
+      bell.innerHTML = icon("notifications") + '<span data-nc-sidebar-count aria-hidden="true" hidden></span>';
+      bell.addEventListener("click", () => {
+        const mobile = global.IntegroMobileNavigation;
+        if (mobile?.isOpen?.()) mobile.closeSidebar();
+        toggle();
+      });
+    }
+    if (bell.parentElement !== brand) {
+      const textNodes = [...brand.childNodes].filter(node =>
+        node.nodeType === 3 || node.nodeType === 1 && node.matches("span:not([data-integro-sidebar-bell])"));
+      if (textNodes.some(node => node.nodeType === 3 && node.textContent.trim())) {
+        const wordmark = document.createElement("div");
+        wordmark.className = "integro-sidebar-wordmark";
+        brand.prepend(wordmark);
+        wordmark.append(...textNodes);
+      }
+      brand.classList.add("integro-sidebar-brand-notifications");
+      bell.parentElement?.classList.remove("integro-sidebar-brand-notifications");
+      brand.insertBefore(bell, brand.querySelector(":scope > .collapse-btn"));
+    }
+    return bell;
+  }
+
+  function renderSidebarBadge(count) {
+    const bell = ensureSidebarBell();
+    if (!bell) return;
+    const badge = bell.querySelector("[data-nc-sidebar-count]");
+    const label = count > 99 ? "99+" : String(count);
+    const accessible = count
+      ? `Abrir notificações, ${count} ${count === 1 ? "não lida" : "não lidas"}`
+      : "Abrir notificações";
+    if (badge.textContent !== label) badge.textContent = label;
+    if (badge.hidden !== !count) badge.hidden = !count;
+    if (bell.getAttribute("aria-label") !== accessible) bell.setAttribute("aria-label", accessible);
+  }
+
+  function syncSidebar() { renderSidebarBadge(snapshot().unreadCount); }
+
   function renderBadges(count) {
+    renderSidebarBadge(count);
     document.querySelectorAll("[data-notification-count]").forEach(el => {
       el.textContent = count > 99 ? "99+" : String(count);
       el.dataset.count = String(count);
@@ -451,6 +510,7 @@
     previousFocus = document.activeElement;
     root.hidden = false;
     render();
+    document.getElementById("integroSidebarBell")?.setAttribute("aria-expanded", "true");
     root.querySelector(".integro-nc-close").focus({ preventScroll: true });
     refresh();
   }
@@ -460,6 +520,7 @@
     if (!root || root.hidden) return;
     savedScrollTop = root.querySelector(".integro-nc-list").scrollTop;
     root.hidden = true;
+    document.getElementById("integroSidebarBell")?.setAttribute("aria-expanded", "false");
     if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
     previousFocus = null;
   }
@@ -495,6 +556,15 @@
       }
     });
     global.IntegroNotificationStore?.subscribe?.(() => render());
+    ["integro-menu-unificado-renderizado", "integro-tela-alterada", "usuario-validado"].forEach(event =>
+      document.addEventListener(event, syncSidebar));
+    syncSidebar();
+    const sidebar = sidebarElement();
+    if (sidebar && global.MutationObserver) {
+      new MutationObserver(() => {
+        if (!sidebar.querySelector("[data-integro-sidebar-bell]")) syncSidebar();
+      }).observe(sidebar, { childList: true });
+    }
     global.carregarNotificacoes = (...args) => global.IntegroNotifications?.list?.(...args);
     global.carregarNotificacoesLayout = (...args) => global.IntegroNotifications?.list?.(...args);
     global.atualizarBadgeNotificacoes = () => renderBadges(snapshot().unreadCount);
@@ -514,7 +584,7 @@
     global.IntegroNotifications?.install?.();
   }
 
-  global.IntegroNotificationCenter = Object.freeze({ open, close, toggle, render, install });
+  global.IntegroNotificationCenter = Object.freeze({ open, close, toggle, render, install, syncSidebar });
   document.addEventListener("DOMContentLoaded", install);
   document.addEventListener("usuario-validado", () => setTimeout(install, 0));
   setTimeout(install, 0);

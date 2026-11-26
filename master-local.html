@@ -2558,6 +2558,7 @@ body.integro-data-refreshing .section-card{
   <link rel="stylesheet" href="css/caixas-layout-aprovado.css?v=20261122-mobile-proporcoes-v2&ui=20261125-controles-compactos">
   <link rel="stylesheet" href="css/dashboard-master-local.css?v=20261124-v1">
   <link rel="stylesheet" href="css/equipes-master-local.css?v=20261124-v1">
+  <link rel="stylesheet" href="css/integro-sidebar-notifications.css?v=20261126-topo">
 </head>
 
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="master-local">
@@ -3219,7 +3220,7 @@ body.integro-data-refreshing .section-card{
   <script src="js/services/indicacoes-service.js?v=20260813-leads-v25-1&build=20261101-ui-october-safe2"></script>
   <script src="js/services/chat-service.js?v=20261105-chat-history-v2"></script>
   <script src="js/services/configuracoes-empresa-service.js?v=20261105-sessao-30min-v1"></script>
-  <script src="js/modules/configuracoes-unificadas.js?v=20261105-config-v1&abas=20261124"></script>
+  <script src="js/modules/configuracoes-unificadas.js?v=20261105-config-v1&abas=20261124&notificacoes=20261126-topo"></script>
   <script src="js/services/financial-operations.js?v=20260812-v24-4&build=20261101-ui-october-safe2"></script>
   <script src="js/services/movement-view-service.js?v=20260805-dashboard-caixa-v8"></script>
   <script src="js/utils/validators.js"></script>
@@ -23760,21 +23761,6 @@ body.integro-dashboard-atualizando #dashboard .kpi-trend{
         movimentacoes.onclick = evento => { window.trocarTela?.("movimentacoes", movimentacoes); window.renderMovimentacoesVendedor?.(); return false; };
         menu.appendChild(movimentacoes);
       }
-      const notificacoes = itemOriginal("notificacoes");
-      if(notificacoes){
-        notificacoes.classList.add("integro-menu-direto","integro-notificacoes-menu-lateral");
-        notificacoes.classList.remove("integro-modulo-agrupado","integro-estrutura-origem-config","menu-expanded","has-submenu","integro-menu-open");
-        notificacoes.style.removeProperty("display");
-        notificacoes.removeAttribute("hidden");
-        notificacoes.setAttribute("aria-hidden","false");
-        notificacoes.onclick = evento => window.abrirComunicacaoMasterLocal?.("notificacoes", notificacoes) ?? window.abrirGavetaNotificacoesMaster?.() ?? false;
-        const label = notificacoes.querySelector(".menu-label");
-        if(label) label.textContent = "Notificações";
-        if(!notificacoes.querySelector("#badgeNotificacoesMenu")){
-          notificacoes.insertAdjacentHTML("beforeend", '<span id="badgeNotificacoesMenu" class="integro-notification-count" data-empty="true" aria-label="0 notificações não lidas">0</span>');
-        }
-        menu.appendChild(notificacoes);
-      }
     }
 
     const sair = itemOriginal("sair");
@@ -25300,7 +25286,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/unified-navigation.js?v=20261107-vendedor-dashboard-primeiro&conciliacao=20261121-v2&abas=20261124"></script>
   <script src="js/usuarios-permissoes-config.js?v=20261104-permissoes-escopo-v1"></script>
   <script src="js/integro-connectivity-guard.js?v=20261101-ui-october-safe2"></script>
-  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2&scroll=20261107-directional1&desktop=20261123-padrao2&seller=20261126-rolagem"></script>
+  <script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-ui-october-safe2&scroll=20261107-directional1&desktop=20261123-padrao2&notificacoes=20261126-topo&seller=20261126-rolagem"></script>
   <script src="js/vendedor-operacao.js?v=20261107-vendedor-icone-send2&fix=20261126-baixas-mobile"></script>
   <script src="js/services/seller-box-dashboard.js?v=20261101-ui-october-safe2"></script>
   <script src="js/vendedor-unificado.js?v=20261120-m06-global-header-fix5&fix=20261126-baixas-mobile"></script>
@@ -25359,52 +25345,17 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
     const perfil = texto(window.IntegroAcesso?.acessoUsuario?.(usuario)?.perfil || usuario.tipo || usuario.cargo || document.getElementById("userCargo")?.textContent);
     return perfil.includes("vendedor");
   }
-  function prepararNotificacoesLaterais(){
+  function prepararPerfilVendedor(){
     if(!perfilVendedor()) return;
     document.body.classList.add("perfil-vendedor");
-    const topo = document.getElementById("integroNotificationButton");
-    if(topo) topo.style.removeProperty("display");
-    const periodo = document.getElementById("dashboardPeriodoToolbar");
-    if(periodo) periodo.style.setProperty("display","none","important");
-    // v13: notificações ficam em Minha conta; o trecho legado abaixo permanece apenas para rollback.
-    if(window.IntegroInterfaceV13) return;
-
-    const menu = document.querySelector("#sidebar .integro-sidebar-menu-compacto") || document.getElementById("integroSidebarMenu") || document.querySelector("#sidebar nav");
-    if(!menu || menu.querySelector('.integro-notificacoes-menu-lateral')) return;
-
-    let item = document.querySelector('#sidebar .menu-item[data-modulo="notificacoes"]');
-    if(!item){
-      item = document.createElement("button");
-      item.type = "button";
-      item.className = "menu-item integro-menu-direto";
-      item.dataset.modulo = "notificacoes";
-      item.innerHTML = '<span class="menu-icon material-symbols-rounded">notifications</span><span class="menu-label">Notificações</span>';
-    }
-    item.classList.add("integro-notificacoes-menu-lateral");
-    item.hidden = false;
-    item.disabled = false;
-    item.style.removeProperty("display");
-    item.setAttribute("aria-hidden","false");
-    item.onclick = function(evento){
-      evento.preventDefault();
-      return window.abrirComunicacaoMasterLocal?.("notificacoes", item) ?? window.abrirGavetaNotificacoesMaster?.() ?? false;
-    };
-    const label = item.querySelector(".menu-label");
-    if(label) label.textContent = "Notificações";
-    if(!item.querySelector("#badgeNotificacoesMenu")){
-      item.insertAdjacentHTML("beforeend", '<span id="badgeNotificacoesMenu" class="integro-notification-count" data-empty="true" aria-label="0 notificações não lidas">0</span>');
-    }
-    const sair = menu.querySelector('[data-modulo="sair"]');
-    if(sair) menu.insertBefore(item, sair); else menu.appendChild(item);
-    window.atualizarBadgeNotificacoes?.();
-    window.atualizarBadgeNotificacoesPermissoes?.();
+    document.getElementById("dashboardPeriodoToolbar")?.style.setProperty("display","none","important");
   }
-  function agendar(){ setTimeout(prepararNotificacoesLaterais, 0); setTimeout(prepararNotificacoesLaterais, 250); }
+  function agendar(){ setTimeout(prepararPerfilVendedor, 0); setTimeout(prepararPerfilVendedor, 250); }
   ["DOMContentLoaded","usuario-validado","integro-painel-permissoes-aplicadas","integro-tela-alterada"].forEach(nome => document.addEventListener(nome, agendar));
-  setTimeout(prepararNotificacoesLaterais, 100);
-  setTimeout(prepararNotificacoesLaterais, 600);
-  setTimeout(prepararNotificacoesLaterais, 1500);
-  setTimeout(prepararNotificacoesLaterais, 3000);
+  setTimeout(prepararPerfilVendedor, 100);
+  setTimeout(prepararPerfilVendedor, 600);
+  setTimeout(prepararPerfilVendedor, 1500);
+  setTimeout(prepararPerfilVendedor, 3000);
 })();
 </script>
 
@@ -25414,7 +25365,7 @@ body :not(#caixas) .integro-table-shell .integro-table-premium thead th{
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-ui-october-safe2&fix=20261104-route-v1"></script>
   <script src="js/services/notification-service.js?v=20260813-v25&build=20261101-ui-october-safe2"></script>
-  <script src="js/modules/notification-center.js?v=20260813-v25&build=20261101-ui-october-safe2&fix=20261104-drawer-v1&triagem=20261126"></script>
+  <script src="js/modules/notification-center.js?v=20260813-v25&build=20261101-ui-october-safe2&fix=20261104-drawer-v1&triagem=20261126&topo=20261126"></script>
   <script src="js/caixa-opening-progress.js?v=20261101-ui-october-safe2"></script>
   <script src="js/caixa-team-date-ui.js?v=20261122-caixas-admin-mobile-hierarchy-v3&ui=20261125-situacao-caixa"></script>
   <script src="js/modules/caixas-supervisao.js?v=20261123-detail-conciliacao-v3&ui=20261125-controles-compactos"></script>

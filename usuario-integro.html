@@ -39,17 +39,23 @@
   <link rel="stylesheet" href="css/integro-layout-roles.css?v=20261123-padrao1">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,300..500,0,0&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/integro-platform-chat.css?v=20261119-chat-saas1">
+  <link rel="stylesheet" href="css/integro-sidebar-notifications.css?v=20261126-topo">
 </head>
 <body data-integro-page="usuario-integro" data-integro-layout="padrao-perfis-v1">
 <button id="integroEquipeMenuToggle" type="button" aria-label="Abrir menu" aria-controls="integroEquipeSidebar" aria-expanded="false">☰</button>
   <div id="integroEquipeOverlay" hidden></div>
   <div class="shell">
   <aside id="integroEquipeSidebar" aria-label="Menu interno ÍNTEGRO">
-    <div class="logo">ÍNTE<span>GRO</span></div>
+    <div class="logo integro-sidebar-brand-notifications">
+      <div>ÍNTE<span>GRO</span></div>
+      <button id="integroSidebarBell" type="button" data-integro-sidebar-bell data-aba="avisos" aria-controls="avisos" aria-label="Abrir avisos globais" title="Avisos globais" disabled>
+        <span class="material-symbols-rounded" aria-hidden="true">notifications</span>
+        <span data-nc-sidebar-count aria-hidden="true" hidden></span>
+      </button>
+    </div>
     <div class="perfil"><small>Equipe interna</small><div id="nomeSidebar">Autenticando...</div><p id="cargoSidebar">ÍNTEGRO</p></div>
     <nav class="menu" aria-label="Módulos internos">
       <button class="active" data-aba="inicio" type="button">Dashboard</button>
-      <button data-aba="avisos" type="button">Avisos globais</button>
       <button data-aba="chat" type="button">Chat interno</button>
       <button data-aba="clientes" type="button">Empresas autorizadas</button>
       <button data-aba="perfil" type="button">Meu perfil</button>
@@ -98,7 +104,11 @@
     document.querySelectorAll('.aba').forEach(x=>x.classList.toggle('active',x.id===aba));
     document.querySelectorAll('[data-aba]').forEach(x=>x.classList.toggle('active',x.dataset.aba===aba));
     el('titulo').textContent={inicio:'Dashboard interno',avisos:'Avisos globais',chat:'Chat interno',clientes:'Empresas autorizadas',perfil:'Meu perfil'}[aba]||'Equipe ÍNTEGRO';
-    if(aba==='avisos')carregarAvisos().catch(erro);
+    const sino=el('integroSidebarBell');
+    if(aba==='avisos'){
+      sino.setAttribute('aria-current','page');
+      carregarAvisos().catch(erro);
+    }else sino.removeAttribute('aria-current');
     if(aba==='chat')carregarChat().catch(erro);
     if(aba==='clientes')carregarClientesAutorizados().catch(erro);
   }
@@ -106,6 +116,11 @@
     const r=await chamar('listarAvisosInternos');avisosInternos=r.notificacoes||[];
     const naoLidos=Number(r.totalNaoLidos??avisosInternos.filter(n=>!(n.lidaPorUids||[]).includes(usuarioInterno.authUid)).length);
     el('kpiAvisos').textContent=naoLidos;
+    const sino=el('integroSidebarBell');
+    const badge=sino.querySelector('[data-nc-sidebar-count]');
+    badge.textContent=naoLidos>99?'99+':String(naoLidos);
+    badge.hidden=naoLidos<=0;
+    sino.setAttribute('aria-label',naoLidos>0?`Abrir avisos globais, ${naoLidos} ${naoLidos===1?'não lido':'não lidos'}`:'Abrir avisos globais');
     el('listaAvisos').innerHTML=avisosInternos.length?avisosInternos.map(n=>{
       const lida=(n.lidaPorUids||[]).includes(usuarioInterno.authUid)||['LIDA','RESOLVIDA'].includes(n.status);
       return '<div class="registro"><div class="linha"><strong>'+esc(n.titulo||'Aviso')+'</strong>'+
@@ -191,6 +206,7 @@
         throw new Error('Este usuário não possui acesso interno válido.');
       }
       usuarioInterno={id:user.uid,...snap.data()};
+      el('integroSidebarBell').disabled=false;
       el('nomeSidebar').textContent=usuarioInterno.nome||usuarioInterno.email;
       el('cargoSidebar').textContent=usuarioInterno.cargoNome||'Equipe ÍNTEGRO';
       el('dadosPerfil').innerHTML='<div class="registro"><strong>'+esc(usuarioInterno.nome||'')+

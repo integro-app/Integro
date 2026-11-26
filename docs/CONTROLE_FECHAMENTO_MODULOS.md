@@ -108,6 +108,7 @@ Estado formal inicial **A HOMOLOGAR** = existe especificação e indícios de im
 - Busca por título e mensagem, filtro por categoria e contagem de Todas, Não lidas, Lidas e Lixeira. A gaveta lateral no desktop vira uma tela inteira com lista rolável no celular.
 - A seleção fica restrita aos avisos visíveis. Ações em lote exibem o resultado e mantêm selecionados os avisos que precisam de nova tentativa. Trocar de usuário ou empresa descarta a seleção e cancela os próximos envios do lote anterior.
 - Passaram 49 testes direcionados. No Chromium, com dados simulados a 320, 390, 768 e 1440 px, foram verificados leitura, lixeira, restauração, navegação à origem, badge e falha parcial. Também foram verificados rolagem por toque e bloqueio do lote após troca de empresa.
+- **Sino no cabeçalho lateral.** Ícone único com contador de não lidas nos perfis do painel unificado, nas páginas dedicadas e no portal da equipe interna. O portal abre os avisos globais na própria página. Nos demais perfis, o botão abre a central. Navegação e notificações passaram em 102 testes direcionados.
 - Em homologação. Pendente conferir a chegada de um aviso com conta autorizada, a abertura da origem e a persistência da leitura.
 
 ### M12 — Lista de equipes em Caixas no desktop (24/11/2026)
