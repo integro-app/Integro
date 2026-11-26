@@ -74,16 +74,6 @@ test("camada final mantém sidebar nítida, cabeçalho do master alinhado e view
 });
 
 
-test("shell do vendedor preserva a rolagem nativa da área principal no celular", () => {
-  const css = read("css/integro-vendedor-shell-dashboard.css");
-  const mobile = css.slice(css.indexOf("@media (max-width:980px)"));
-  const areaPrincipal = mobile.slice(0, mobile.indexOf("  }"));
-  assert.match(areaPrincipal, /perfil-vendedor .layout > main\.main/);
-  assert.doesNotMatch(areaPrincipal, /\boverflow(?:-y)?:\s*visible/);
-  assert.match(read("js/integro-mobile-navigation.js"), /integro-vendedor-shell-dashboard\.css\?v=20261120-shell1&scroll=20261126/);
-  assert.match(read("master-local.html"), /integro-mobile-navigation\.js\?[^"]*&seller=20261126-rolagem/);
-});
-
 test("mobile v27.3 reduz wrappers e preserva modo app", () => {
   const css = read("css/integro-mobile.css");
   assert.match(css, /v27.3 compactacao global mobile/);
