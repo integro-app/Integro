@@ -1934,6 +1934,7 @@
   <link rel="stylesheet" href="css/integro-filter-drawer.css?v=20261101-visualrestore1">
   <script defer src="js/integro-filter-drawer.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-visualrestore1&fix=20261104-chat-func-v1">
+  <link rel="stylesheet" href="css/integro-sidebar-notifications.css?v=20261126-topo">
 </head>
 <body class="integro-booting integro-topnav-pattern integro-shell-pending" data-integro-page="vendedor">
 <div aria-live="polite" class="integro-boot-loader" id="integroBootLoader" role="status">
@@ -1947,8 +1948,8 @@
 </div>
 </div>
 </div>
-<div class="overlay" data-integro-sidebar-overlay id="overlay" onclick="toggleSidebar(false)"></div>
 <div class="app">
+<div class="overlay" data-integro-sidebar-overlay id="overlay" onclick="toggleSidebar(false)"></div>
 <!-- SIDEBAR -->
 <aside class="sidebar" data-integro-sidebar id="sidebar">
 <div class="logo">
@@ -20953,7 +20954,7 @@ async function verificarCaixaAbertoDiaAnterior() {
 </script>
 
 <script src="js/integro-connectivity-guard.js?v=20261101-operacao3"></script>
-<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao2"></script>
+<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao2&notificacoes=20261126-topo"></script>
 <script src="js/vendedor-operacao.js?v=20260818-cobrancas-saldo1&build=20261101-operacao3&fix=20261120-quitados1"></script>  <script src="js/integro-ui.js?v=20260805-v2&layout=20261123-padrao1"></script>
   <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2&headers=20261123"></script>
 
@@ -21014,24 +21015,6 @@ async function verificarCaixaAbertoDiaAnterior() {
       const nav=painel.querySelector(":scope > .clientes-submenu-integro");
       if(nav && cabecalho.nextElementSibling!==nav) cabecalho.insertAdjacentElement("afterend",nav);
     });
-  }
-
-  function garantirNotificacoesSidebar(){
-    const sidebar=document.getElementById("sidebar");
-    if(!sidebar) return;
-    let item=sidebar.querySelector('.menu-item[data-modulo="notificacoes"]');
-    if(item){ item.style.display=""; item.hidden=false; return; }
-    item=document.createElement("div");
-    item.className="menu-item";
-    item.dataset.modulo="notificacoes";
-    item.setAttribute("role","button");
-    item.setAttribute("tabindex","0");
-    item.innerHTML='<span class="menu-icon material-symbols-rounded">notifications</span><span class="menu-label">Notificações</span><span class="menu-badge" id="badgeNotificacoes">0</span>';
-    item.addEventListener("click",()=>window.abrirGavetaNotificacoesVendedor?.(item));
-    item.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" ")window.abrirGavetaNotificacoesVendedor?.(item)});
-    const chat=sidebar.querySelector('.menu-item[data-modulo="chatInterno"]');
-    if(chat) chat.insertAdjacentElement("afterend",item);
-    else sidebar.querySelector(".user-card-premium,.sidebar-profile-card")?.insertAdjacentElement("afterend",item);
   }
 
   function garantirBadgeClientes(){
@@ -21096,7 +21079,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   }
 
   function atualizarAcessoLeads(){
-    garantirNotificacoesSidebar();
     const total=leadsNovos().length;
     const badgeMenu=garantirBadgeClientes();
     const badgeSub=garantirBadgeSubmenu();
@@ -21135,8 +21117,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   if(typeof renderAnterior==="function") window.renderIndicacoes=function(){const r=renderAnterior.apply(this,arguments);atualizarAcessoLeads();return r};
   const carregarIndicacoesAnterior=window.carregarIndicacoes;
   if(typeof carregarIndicacoesAnterior==="function") window.carregarIndicacoes=async function(){const r=await carregarIndicacoesAnterior.apply(this,arguments);atualizarAcessoLeads();return r};
-  const carregarNotificacoesAnterior=window.carregarNotificacoes;
-  if(typeof carregarNotificacoesAnterior==="function") window.carregarNotificacoes=async function(){const r=await carregarNotificacoesAnterior.apply(this,arguments);garantirNotificacoesSidebar();return r};
 
   function iniciarTempoReal(){
     if(window.__integroVendedorLeadRealtime) return;
@@ -21152,13 +21132,12 @@ async function verificarCaixaAbertoDiaAnterior() {
 
   function iniciar(){
     garantirCabecalhoClientes();
-    garantirNotificacoesSidebar();
     atualizarAcessoLeads();
     iniciarTempoReal();
     const sidebar=document.getElementById("sidebar");
     if(sidebar && !sidebar.dataset.leadObserver){
       sidebar.dataset.leadObserver="1";
-      new MutationObserver(()=>{garantirNotificacoesSidebar();atualizarAcessoLeads()}).observe(sidebar,{childList:true,subtree:true});
+      new MutationObserver(atualizarAcessoLeads).observe(sidebar,{childList:true,subtree:true});
     }
     setTimeout(()=>Promise.allSettled([window.carregarIndicacoes?.(),window.carregarNotificacoes?.()]).then(()=>{window.renderIndicacoes?.();garantirCabecalhoClientes();atualizarAcessoLeads()}),500);
   }
@@ -21173,6 +21152,6 @@ async function verificarCaixaAbertoDiaAnterior() {
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-route-v1"></script>
   <script src="js/services/notification-service.js?v=20260813-v25&build=20261101-operacao3"></script>
-  <script src="js/modules/notification-center.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-drawer-v1"></script>
+  <script src="js/modules/notification-center.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-drawer-v1&triagem=20261126&topo=20261126"></script>
 </body>
 </html>

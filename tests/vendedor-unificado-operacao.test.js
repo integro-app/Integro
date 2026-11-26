@@ -10,6 +10,7 @@ const state = fs.readFileSync(path.join(root, "js", "state.js"), "utf8");
 const unificado = fs.readFileSync(path.join(root, "js", "vendedor-unificado.js"), "utf8");
 const operacao = fs.readFileSync(path.join(root, "js", "vendedor-operacao.js"), "utf8");
 const nav = fs.readFileSync(path.join(root, "js", "unified-navigation.js"), "utf8");
+const notifications = fs.readFileSync(path.join(root, "js", "modules", "notification-center.js"), "utf8");
 const guard = fs.readFileSync(path.join(root, "js", "runtime-profile-guard.js"), "utf8");
 const accessControl = fs.readFileSync(path.join(root, "js", "services", "access-control.js"), "utf8");
 const financeiro = fs.readFileSync(path.join(root, "js", "services", "financial-operations.js"), "utf8");
@@ -144,8 +145,8 @@ test("caixa aberto do vendedor reconhece aliases legados e é recarregado antes 
 test("perfil vendedor remove periodo do topo e usa notificacoes na lateral", () => {
   assert.match(master, /body\.perfil-vendedor #dashboardPeriodoToolbar/);
   assert.match(master, /body\.perfil-vendedor #integroNotificationButton/);
-  assert.match(master, /integro-notificacoes-menu-lateral/);
-  assert.match(master, /badgeNotificacoesMenu/);
+  assert.match(master, /css\/integro-sidebar-notifications\.css\?v=20261126-topo/);
+  assert.match(notifications, /integroSidebarBell/);
 });
 
 test("clientes do vendedor limpam blocos legados sem depender do buscar", () => {
@@ -156,9 +157,10 @@ test("clientes do vendedor limpam blocos legados sem depender do buscar", () => 
 });
 
 
-test("shell do vendedor tem failsafe para esconder periodo e mover notificacoes", () => {
+test("shell do vendedor mantém o ajuste do período e delega o sino à central", () => {
   assert.match(master, /integro-vendedor-shell-failsafe-final/);
-  assert.match(master, /prepararNotificacoesLaterais/);
+  assert.match(master, /prepararPerfilVendedor/);
+  assert.doesNotMatch(master, /function prepararNotificacoesLaterais/);
   assert.match(master, /dashboardPeriodoToolbar/);
   assert.match(master, /integroNotificationButton/);
 });
@@ -169,7 +171,7 @@ test("loader do painel nao fica preso em zero sem contornar autenticacao", () =>
   assert.match(master, /aguardarUsuarioValidado\?\.\(10000\)/);
   assert.match(master, /Voltando ao login/);
   assert.match(master, /firebase\?\.auth\?\.\(\)\?\.signOut/);
-  assert.doesNotMatch(master, /new MutationObserver\(\(\) => prepararNotificacoesLaterais\(\)\)\.observe\(document\.documentElement/);
+  assert.doesNotMatch(master, /new MutationObserver\(\(\) => prepararPerfilVendedor\(\)\)\.observe\(document\.documentElement/);
 });
 
 

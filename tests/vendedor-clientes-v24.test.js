@@ -127,11 +127,12 @@ test('v24.4 gera notificacao ao aprovar ou recusar movimentacao', () => {
   assert.ok((financial.match(/transaction\.set\(notifRef, payloadNotificacaoSolicitacao/g) || []).length >= 3);
 });
 
-test('v24.4 restaura sino e direciona notificacoes do vendedor para origem', () => {
+test('sino do vendedor fica no cabeçalho e preserva a abertura da origem', () => {
   const nav = fs.readFileSync(path.join(root, 'js', 'unified-navigation.js'), 'utf8');
+  const central = fs.readFileSync(path.join(root, 'js', 'modules', 'notification-center.js'), 'utf8');
   const master = fs.readFileSync(path.join(root, 'master-local.html'), 'utf8');
-  assert.match(nav, /data-notification-bell/);
-  assert.match(nav, /integro-notification-bell-badge/);
+  assert.match(central, /bell\.dataset\.integroSidebarBell = ""/);
+  assert.match(central, /data-nc-sidebar-count/);
   assert.match(nav, /abrirGavetaNotificacoesMaster/);
   assert.match(master, /trocarAbaClientesVendedor\?\.\("leads"\)/);
   assert.match(master, /trocarTela\?\.\("movimentacoes"\)/);

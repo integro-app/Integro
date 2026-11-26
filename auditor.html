@@ -54,11 +54,12 @@
   <script defer src="js/integro-filter-drawer.js?v=20261101-visualrestore1"></script>
   <link rel="stylesheet" href="css/integro-chat-mobile.css?v=20261101-visualrestore1&fix=20261104-chat-func-v1">
   <link rel="stylesheet" href="css/integro-layout-roles.css?v=20261123-padrao1">
+  <link rel="stylesheet" href="css/integro-sidebar-notifications.css?v=20261126-topo">
 </head>
 <body class="integro-topnav-pattern integro-shell-pending" data-integro-page="auditor" data-integro-layout="padrao-perfis-v1">
   <button class="mobile-menu-btn" type="button" onclick="toggleMenuAuditor()" aria-label="Abrir menu" data-integro-menu-trigger><span class="material-symbols-rounded">menu</span></button>
-  <div id="overlayAuditor" class="overlay" onclick="fecharMenuAuditor()" data-integro-sidebar-overlay></div>
   <div class="layout">
+    <div id="overlayAuditor" class="overlay" onclick="fecharMenuAuditor()" data-integro-sidebar-overlay></div>
     <aside id="sidebarAuditor" class="sidebar" data-integro-sidebar>
       <div class="brand">ÍNTE<span>GRO</span></div>
       <div class="user-card">
@@ -416,13 +417,13 @@
     });
   </script>
   <script src="js/integro-connectivity-guard.js?v=20261101-operacao3"></script>
-<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao2"></script>
+<script src="js/integro-mobile-navigation.js?v=20260818-v272-perf1&build=20261101-visualrestore2&scroll=20261107-directional1&desktop=20261123-padrao2&notificacoes=20261126-topo"></script>
   <script src="js/integro-ui.js?v=20260805-v2&layout=20261123-padrao1"></script>
   <script src="js/integro-interface.js?v=20260806-v20&build=20261101-visualrestore2&headers=20261123"></script>
 
   <script src="js/stores/notification-store.js?v=20260813-v25"></script>
   <script src="js/routers/notification-router.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-route-v1"></script>
   <script src="js/services/notification-service.js?v=20260813-v25&build=20261101-operacao3"></script>
-  <script src="js/modules/notification-center.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-drawer-v1"></script>
+  <script src="js/modules/notification-center.js?v=20260813-v25&build=20261101-operacao3&fix=20261104-drawer-v1&triagem=20261126&topo=20261126"></script>
 </body>
 </html>

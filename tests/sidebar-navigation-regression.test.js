@@ -268,9 +268,8 @@ test("mobile do vendedor não reserva faixa global e coloca título com menu aci
   assert.match(css, /#vendedorOperacaoTitulo\s*\{[\s\S]*?text-align: center !important;/);
   assert.match(css, /\.vendedor-operacao-tabs\s*\{\s*display: grid !important;[\s\S]*?grid-template-columns: repeat\(3, minmax\(0, 1fr\)\) !important;/);
   assert.match(master, /css\/integro-visual\.css\?v=20261112-m22-correcoes-v1/);
-  // A notificação do perfil continua acessível pelo menu lateral, sem tocar no drawer.
-  assert.match(nav, /sidebar\.querySelector\("\.user-card,\.sidebar-profile-card,\.user-card-premium"\)/);
-  assert.match(nav, /sino\.dataset\.notificationBell = "true"/);
+  assert.match(nav, /item\.id !== "notificacoes"/);
+  assert.match(read("js/modules/notification-center.js"), /scope > :is\(\.brand,\.logo,\.sidebar-brand\)/);
 });
 
 
@@ -571,25 +570,24 @@ test("Master Local: sidebar recolhível mantém o cabeçalho aprovado de Caixas"
     "cabeçalho não deve receber borda decorativa");
 });
 
-test("Vendedor: sino continua acessível ao ocultar o card legado", () => {
-  const navigation = read("js/integro-desktop-navigation.js");
-  const style = read("css/integro-desktop-navigation.css");
-  const unified = read("js/unified-navigation.js");
-
-  assert.match(unified, /data-notification-bell/, "origem do botão de notificações aprovado");
-  assert.match(navigation, /function ensureNotificationShortcut\(\)/);
-  assert.match(navigation, /original\?\.click\?\.\(\)/,
-    "novo botão precisa delegar à ação original sem recriar lógica");
-  assert.match(navigation, /data-integro-desktop-notifications/);
-  assert.match(style, /\.integro-desktop-bell-count\[hidden\]/);
-  assert.match(style, /\.integro-desktop-nav-compact #integroSidebarMenu > \.integro-desktop-notifications/);
+test("todos os perfis carregam o estilo do sino no cabeçalho", () => {
+  for (const perfil of ["master-local", "master-global", "vendedor", "supervisor", "financeiro", "captador", "auditor", "usuario-integro"]) {
+    assert.match(read(perfil + ".html"), /css\/integro-sidebar-notifications\.css\?v=20261126-topo/, perfil);
+  }
+  const center = read("js/modules/notification-center.js");
+  assert.match(center, /bell\.dataset\.integroSidebarBell = ""/);
+  assert.match(center, /aria-controls", "integroNotificationCenter"/);
+  assert.match(center, /renderSidebarBadge\(count\)/);
+  const internal = read("usuario-integro.html");
+  assert.match(internal, /<button[^>]*data-integro-sidebar-bell data-aba="avisos"/);
+  assert.doesNotMatch(internal, /<button data-aba="avisos"/);
+  for (const perfil of ["vendedor", "captador", "auditor"]) {
+    assert.match(read(perfil + ".html"), /<div class="(?:app|layout)">\s*<div[^>]+data-integro-sidebar-overlay[^>]*><\/div>\s*(?:<!--.*?-->\s*)?<aside[^>]+data-integro-sidebar/, perfil);
+  }
 });
 
-
-test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplicar no mobile", () => {
-  const style = read("css/integro-desktop-navigation.css");
-  assert.match(style, /\.integro-desktop-notifications,\s*#integroDesktopRailTooltip/);
-
+test("o controlador desktop reposiciona o sino pela central ao mudar de modo", () => {
+  const vm = require("node:vm");
   const element = () => ({
     dataset: {}, attrs: {}, events: {}, children: [], style: {},
     classList: { add() {}, remove() {}, contains() { return false; } },
@@ -607,37 +605,22 @@ test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplica
       if (idx >= 0) siblings.splice(idx, 1);
       this.parentElement = null;
     },
-    querySelector(selector) {
-      if (selector === ".integro-desktop-bell-count" &&
-          this.className?.includes("integro-desktop-notifications")) {
-        return this.badge ||= { hidden: true, textContent: "" };
-      }
-      return null;
-    },
+    querySelector() { return null; },
     querySelectorAll() { return []; },
     matches() { return false; }
   });
   const flags = new Set();
   const body = element(), sidebar = element(), header = element(), host = element();
-  const profileSource = element(), bell = element();
-  const bellBadge = { textContent: "3", hidden: false };
-  let opened = 0;
-  bell.querySelector = selector => selector === "[data-notification-count]" ? bellBadge : null;
-  bell.click = () => { opened++; };
+  const profileSource = element();
+  const syncs = [];
   profileSource.querySelector = selector => {
     if (selector === "strong, .profile-name") return { textContent: "Vendedor Teste" };
     if (selector.includes("#empresaNome")) return { textContent: "Empresa Teste" };
     return null;
   };
-  host.querySelector = selector => {
-    if (selector === "[data-integro-desktop-notifications]")
-      return host.children.find(child => child.dataset.integroDesktopNotifications) || null;
-    return null;
-  };
   sidebar.querySelector = selector => {
     if (selector === "#integroSidebarMenu") return host;
     if (selector === "#integroSidebarMenu [data-menu-unificado]") return {};
-    if (selector.includes("[data-notification-bell]")) return bell;
     if (selector === ".user-card, .sidebar-profile-card, .user-card-premium") return profileSource;
     if (selector === ".integro-desktop-profile") return sidebar.children.find(child => child.className === "integro-desktop-profile") || null;
     if (selector === ".integro-desktop-brand") return sidebar.children.find(child => child.className === "integro-desktop-brand") || null;
@@ -656,14 +639,9 @@ test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplica
     originalAppend.call(body, node);
     if (node.rel === "stylesheet") { node.sheet = {}; node.events.load?.(); }
   };
-  let headerNotificationVisible = false;
   const document = {
     body, readyState: "complete",
-    getElementById(id) {
-      return id === "integroNotificationButton" && headerNotificationVisible
-        ? { hidden: false, getClientRects: () => [{}] }
-        : null;
-    },
+    getElementById() { return null; },
     createElement: element,
     addEventListener() {},
     querySelector(selector) {
@@ -678,6 +656,7 @@ test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplica
   const window = {
     matchMedia: () => media,
     innerHeight: 850,
+    IntegroNotificationCenter: { syncSidebar: () => syncs.push(flags.has("integro-desktop-nav-ready")) },
     localStorage: { getItem() { return null; }, setItem() {} },
     addEventListener() {}
   };
@@ -686,30 +665,14 @@ test("Master Local e Vendedor: comando desktop e sino real funcionam sem duplica
   assert.ok(header.children.some(child => child.dataset.integroDesktopRailToggle),
     "gatilho deve aparecer no cabeçalho verdadeiro do Master Local");
 
-  const shortcuts = host.children.filter(child => child.dataset.integroDesktopNotifications);
-  assert.equal(shortcuts.length, 1, "não criar mais de um atalho");
-  assert.equal(shortcuts[0].getAttribute("aria-label"), "Abrir notificações");
-  assert.equal(shortcuts[0].badge.hidden, false);
-  assert.equal(shortcuts[0].badge.textContent, "3");
-  shortcuts[0].events.click();
-  assert.equal(opened, 1, "aciona sino real do usuário");
-
-  bellBadge.textContent = "0";
-  bellBadge.hidden = true;
-  window.IntegroDesktopNavigation.sync();
-  assert.equal(shortcuts[0].badge.hidden, true, "remove indicador ao zerar aviso");
-
-  headerNotificationVisible = true;
-  window.IntegroDesktopNavigation.sync();
-  assert.equal(host.children.filter(child => child.dataset.integroDesktopNotifications).length, 0,
-    "não duplica sino se o cabeçalho já oferece a mesma ação");
-  headerNotificationVisible = false;
-  window.IntegroDesktopNavigation.sync();
-  assert.equal(host.children.filter(child => child.dataset.integroDesktopNotifications).length, 1,
-    "restaura ação caso o cabeçalho não a exiba");
+  assert.deepEqual(syncs, [true]);
+  assert.equal(host.children.length, 0, "não cria outro botão na lista");
 
   media.matches = false;
   media.callback();
   assert.equal(flags.has("integro-desktop-nav-ready"), false);
-  assert.match(style, /\.integro-desktop-notifications,/, "atalho é oculto no mobile");
+  assert.deepEqual(syncs, [true, false]);
+  media.matches = true;
+  media.callback();
+  assert.deepEqual(syncs, [true, false, true]);
 });

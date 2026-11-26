@@ -1,0 +1,94 @@
+/* Um único acesso às notificações no cabeçalho da barra lateral. */
+html body[data-integro-page] :is(#sidebar,[data-integro-sidebar]) :is(
+  [data-modulo="notificacoes"], [data-screen="notificacoes"],
+  [data-integro-desktop-notifications], [data-notification-bell]:not([data-integro-sidebar-bell]),
+  .menu button[onclick*="trocarTela('notificacoes'"]
+),
+html body[data-integro-page] :is(#integroNotificationButton,[data-mobile-notificacoes]) {
+  display: none !important;
+}
+
+html body[data-integro-page] .integro-sidebar-brand-notifications {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px;
+  box-sizing: border-box;
+}
+html body[data-integro-page] .integro-sidebar-wordmark {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+html body[data-integro-page] .integro-sidebar-brand-notifications > button[data-integro-sidebar-bell] {
+  display: inline-grid !important;
+  place-items: center;
+  flex: 0 0 44px;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  margin: 0 0 0 auto !important;
+  padding: 0 !important;
+  position: relative;
+  align-self: center;
+  border: 1px solid rgba(183, 205, 231, .24) !important;
+  border-radius: 12px !important;
+  color: #dfeaf8 !important;
+  background: rgba(153, 182, 217, .1) !important;
+  box-shadow: none !important;
+  cursor: pointer;
+}
+html body[data-integro-page] .integro-sidebar-brand-notifications > button[data-integro-sidebar-bell]:is(:hover,[aria-expanded="true"],[aria-current="page"]) {
+  color: #ffb579 !important;
+  border-color: rgba(255, 167, 91, .55) !important;
+  background: rgba(255, 142, 61, .15) !important;
+}
+html body[data-integro-page] .integro-sidebar-brand-notifications > button[data-integro-sidebar-bell]:focus-visible {
+  outline: 2px solid #ffc080;
+  outline-offset: 2px;
+}
+html body[data-integro-page] [data-integro-sidebar-bell] > .material-symbols-rounded {
+  color: inherit !important;
+  font-size: 22px !important;
+  line-height: 1;
+}
+html body[data-integro-page] [data-integro-sidebar-bell] [data-nc-sidebar-count] {
+  position: absolute;
+  inset: 3px 3px auto auto;
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 3px;
+  border: 1px solid #122b47;
+  border-radius: 20px;
+  color: #361b00 !important;
+  background: #ffaa68;
+  font: 800 9px/1 Inter, system-ui, sans-serif;
+  letter-spacing: 0;
+}
+html body[data-integro-page] [data-integro-sidebar-bell] [data-nc-sidebar-count][hidden] {
+  display: none !important;
+}
+
+@media (min-width: 981px) {
+  html body[data-integro-page].integro-desktop-nav-ready .sidebar > .integro-desktop-brand.integro-sidebar-brand-notifications {
+    gap: 10px !important;
+    overflow: visible !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .sidebar > .integro-desktop-brand.integro-sidebar-brand-notifications {
+    flex: 0 0 109px !important;
+    height: 109px !important;
+    min-height: 109px !important;
+    padding: 8px 0 !important;
+    flex-direction: column;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .integro-desktop-brand.integro-sidebar-brand-notifications .integro-desktop-brand-type {
+    display: none !important;
+  }
+  html body[data-integro-page].integro-desktop-nav-compact .integro-desktop-brand.integro-sidebar-brand-notifications > button[data-integro-sidebar-bell] {
+    margin-inline: auto !important;
+  }
+}

@@ -171,7 +171,7 @@ test("financeiro e auditoria respeitam cabeçalho, submenu e conteúdo", () => {
 test("sino real e chat possuem pontos de montagem no painel local", () => {
   assert.doesNotMatch(master, /id="integroNotificationButton"/);
   assert.match(nav, /id: "notificacoes"/);
-  assert.match(nav, /data-notification-count/);
+  assert.match(read("js/modules/notification-center.js"), /data-nc-sidebar-count/);
   assert.match(nav, /IntegroNotificationCenter\?\.toggle/);
   assert.match(master, /id="chatInterno"/);
   assert.match(master, /id="integroChatRoot"/);

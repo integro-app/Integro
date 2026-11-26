@@ -38,6 +38,7 @@
       ".cliente-modal-wrap.show",
       ".cliente-modal-wrap.open",
       ".notificacoes-vendedor-drawer.show",
+      "#integroNotificationCenter:not([hidden])",
       ".dashboard-insight.show",
       ".modal.show",
       ".modal.open",
@@ -639,7 +640,7 @@
 
   if (!desktopDrawer) {
     const desktopNavigationScript = document.createElement("script");
-    desktopNavigationScript.src = "js/integro-desktop-navigation.js?v=20261123-padrao2";
+    desktopNavigationScript.src = "js/integro-desktop-navigation.js?v=20261123-padrao2&notificacoes=20261126-topo";
     desktopNavigationScript.async = true;
     body.appendChild(desktopNavigationScript);
   }

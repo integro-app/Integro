@@ -4,7 +4,6 @@
 .integro-desktop-brand,
 .integro-desktop-profile,
 .integro-desktop-trigger,
-.integro-desktop-notifications,
 #integroDesktopRailTooltip {
   display: none !important;
 }
@@ -579,42 +578,6 @@
   }
   html body[data-integro-page].integro-desktop-nav-compact .sidebar #integroSidebarMenu > button .menu-label {
     display: none !important;
-  }
-
-  /* Acesso a notificações reaproveita o sino real do vendedor. O card
-     legado fica oculto, mas a ação permanece disponível na navegação. */
-  html body[data-integro-page].integro-desktop-nav-ready #integroSidebarMenu > .integro-desktop-notifications {
-    color: #c4d5e9 !important;
-  }
-  html body[data-integro-page].integro-desktop-nav-ready #integroSidebarMenu .integro-desktop-bell-count[hidden] {
-    display: none !important;
-  }
-  html body[data-integro-page].integro-desktop-nav-ready #integroSidebarMenu .integro-desktop-bell-count:not([hidden]) {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    flex: 0 0 auto !important;
-    min-width: 20px !important;
-    height: 20px !important;
-    padding: 0 5px !important;
-    border-radius: 999px !important;
-    background: rgba(255,138,50,.16) !important;
-    color: #ffb778 !important;
-    font: 800 10px/1 Inter,system-ui,sans-serif !important;
-  }
-  html body[data-integro-page].integro-desktop-nav-compact #integroSidebarMenu > .integro-desktop-notifications .integro-desktop-bell-count:not([hidden]) {
-    position: absolute !important;
-    top: 7px !important;
-    right: 7px !important;
-    min-width: 8px !important;
-    width: 8px !important;
-    height: 8px !important;
-    padding: 0 !important;
-    border: 2px solid #132b48 !important;
-    border-radius: 50% !important;
-    background: #ff9b42 !important;
-    color: transparent !important;
-    font-size: 0 !important;
   }
 
   /* Chat e notificações mantêm um indicador discreto no modo só-ícones.
