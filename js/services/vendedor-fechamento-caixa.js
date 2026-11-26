@@ -205,6 +205,8 @@
       .integro-fechamento-dialog::backdrop{background:rgba(15,23,42,.64);backdrop-filter:blur(3px)}
       .integro-fechamento-head{padding:22px 22px 10px;display:flex;gap:14px;align-items:flex-start;justify-content:space-between}.integro-fechamento-head h2{margin:0;font-size:24px}.integro-fechamento-head p{margin:6px 0 0;color:#64748b;line-height:1.45}.integro-fechamento-close{border:0;background:#f1f5f9;border-radius:12px;width:42px;height:42px;font-size:24px;cursor:pointer}
       .integro-fechamento-body{padding:12px 22px 22px}.integro-fechamento-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.integro-fechamento-card{border:1px solid #e2e8f0;border-radius:16px;padding:14px;background:#fff}.integro-fechamento-card.destaque{grid-column:1/-1;background:#fff7ed;border-color:#fed7aa}.integro-fechamento-card small{display:block;color:#64748b;font-weight:700;margin-bottom:5px}.integro-fechamento-card strong{font-size:21px}
+      .integro-fechamento-saldos{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:10px;margin-bottom:16px}
+      .integro-fechamento-saldos .integro-fechamento-card.destaque{grid-column:auto}
       .integro-fechamento-visitas{margin-top:16px}.integro-fechamento-visitas h3{font-size:15px;color:#0f2743;margin:0 0 9px;font-weight:800}.integro-fechamento-visitas .integro-fechamento-card{background:#f8fafc}
       .integro-fechamento-aviso{margin-top:14px;padding:12px 14px;border:1px solid #fed7aa;border-radius:13px;background:#fff7ed;color:#9a3412;line-height:1.5;font-size:13px}.integro-fechamento-aviso strong{display:block;font-weight:800;margin-bottom:3px}.integro-fechamento-aviso.liberado{border-color:#bbf7d0;background:#f0fdf4;color:#166534}
       .integro-fechamento-conferencia{margin-top:18px;padding:16px;border-radius:18px;background:#f8fafc;border:1px solid #e2e8f0}.integro-fechamento-conferencia label{display:block;font-weight:800;margin-bottom:8px}.integro-fechamento-conferencia input{width:100%;height:52px;border:1px solid #cbd5e1;border-radius:14px;padding:0 14px;font-size:20px;font-weight:800;outline:none}.integro-fechamento-conferencia input:focus{border-color:#f97316;box-shadow:0 0 0 3px rgba(249,115,22,.12)}.integro-fechamento-validacao{min-height:22px;margin-top:9px;font-weight:700;font-size:13px}.integro-fechamento-validacao.ok{color:#15803d}.integro-fechamento-validacao.erro{color:#b91c1c}
@@ -221,15 +223,16 @@
         #integroVendedorFechamentoDialog .integro-fechamento-body{min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:14px 16px 18px}
         #integroVendedorFechamentoDialog .integro-fechamento-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
         #integroVendedorFechamentoDialog .integro-fechamento-card{min-width:0;padding:11px 12px;border-radius:12px}
-        #integroVendedorFechamentoDialog .integro-fechamento-card.destaque{grid-column:1/-1}
+        #integroVendedorFechamentoDialog .integro-fechamento-saldos .integro-fechamento-card.destaque{grid-column:auto}
         #integroVendedorFechamentoDialog .integro-fechamento-card small{font-size:12px;margin-bottom:4px}
         #integroVendedorFechamentoDialog .integro-fechamento-card strong{font-size:17px;overflow-wrap:anywhere}
-        #integroVendedorFechamentoDialog .integro-fechamento-card.destaque strong{font-size:24px}
+        #integroVendedorFechamentoDialog .integro-fechamento-card.destaque strong{font-size:clamp(19px,5.7vw,24px)}
         #integroVendedorFechamentoDialog .integro-fechamento-conferencia{margin-top:14px;padding:12px;border-radius:12px}
         #integroVendedorFechamentoDialog .integro-fechamento-conferencia label{font-size:14px;line-height:1.4}
         #integroVendedorFechamentoDialog .integro-fechamento-conferencia input{height:48px;box-sizing:border-box;font-size:18px}
         #integroVendedorFechamentoDialog .integro-fechamento-actions{position:static;display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid #e2e8f0;background:#fff}
         #integroVendedorFechamentoDialog .integro-fechamento-actions button{width:100%;min-width:0;min-height:48px;height:auto;padding:10px 8px;font-size:13px;line-height:1.3;border-radius:12px}
+        #integroVendedorFechamentoDialog #integroFechamentoConfirmar{grid-column:1/-1}
         #integroVendedorFechamentoDialog .integro-encerramento{grid-row:1/-1;min-height:0;overflow-y:auto;padding:calc(24px + env(safe-area-inset-top,0px)) 16px calc(24px + env(safe-area-inset-bottom,0px))}
       }
     `;
@@ -265,9 +268,11 @@
     return `<div class="integro-fechamento-painel-carregando" role="status" aria-live="polite">
       <div class="integro-fechamento-head"><div><h2>Conferência do caixa</h2><p>Resumo do caixa aberto. Atualizando valores oficiais…</p></div></div>
       <div class="integro-fechamento-body">
-        <div class="integro-fechamento-grid">
+        <div class="integro-fechamento-saldos">
           <div class="integro-fechamento-card destaque"><small>Caixa atual</small><strong class="integro-fechamento-aguardando">Atualizando…</strong></div>
           <div class="integro-fechamento-card"><small>Caixa inicial</small><strong class="integro-fechamento-aguardando">—</strong></div>
+        </div>
+        <div class="integro-fechamento-grid">
           <div class="integro-fechamento-card"><small>Recebimentos</small><strong class="integro-fechamento-aguardando">—</strong></div>
           <div class="integro-fechamento-card"><small>Visitas com baixa</small><strong class="integro-fechamento-aguardando">—</strong></div>
         </div>
@@ -565,47 +570,55 @@
       </details>` : "";
     return `
       <div class="integro-fechamento-head">
-        <div><span class="integro-fechamento-origem">Dados oficiais do Firebase · conferência sem fechar</span><h2>Conferência do caixa</h2><p>Consulte os valores atualizados, confira todas as visitas e confirme o dinheiro físico. Esta tela não encerra o caixa sem sua confirmação.</p></div>
+        <div><span class="integro-fechamento-origem">Dados oficiais do Firebase · conferência sem fechar</span><h2>Conferência do caixa</h2><p>Confira o saldo, as baixas das visitas e o dinheiro contado antes de confirmar o fechamento.</p></div>
         <button class="integro-fechamento-close" type="button" data-fechamento-cancelar aria-label="Fechar">×</button>
       </div>
       <div class="integro-fechamento-body">
-        <div class="integro-fechamento-secao-cabeca"><h3>Movimentações do caixa</h3><small>Valores confirmados pelo servidor</small></div>
-        <div class="integro-fechamento-grid">
+        <div class="integro-fechamento-saldos">
           <div class="integro-fechamento-card destaque"><small>Caixa atual</small><strong>${moedaCentavos(resumo.caixaAtualCentavos)}</strong></div>
           <div class="integro-fechamento-card"><small>Caixa inicial</small><strong>${moedaCentavos(resumo.caixaInicialCentavos)}</strong></div>
-          <div class="integro-fechamento-card"><small>Vendas novas</small><strong>${moedaCentavos(resumo.vendasNovasCentavos)}</strong></div>
-          <div class="integro-fechamento-card"><small>Renovação</small><strong>${moedaCentavos(resumo.renovacoesCentavos)}</strong></div>
-          <div class="integro-fechamento-card"><small>Ingressos</small><strong>${moedaCentavos(resumo.ingressosCentavos)}</strong></div>
-          <div class="integro-fechamento-card"><small>Gastos</small><strong>${moedaCentavos(resumo.gastosCentavos)}</strong></div>
-          <div class="integro-fechamento-card"><small>Retiros</small><strong>${moedaCentavos(resumo.retiradasCentavos)}</strong></div>
-          <div class="integro-fechamento-card"><small>Recebimentos</small><strong>${moedaCentavos(resumo.pagamentosCentavos)}</strong></div>
-          <div class="integro-fechamento-card"><small>Carteira final</small><strong>${moedaCentavos(resumo.carteiraFinalCentavos)}</strong></div>
-          <div class="integro-fechamento-card"><small>Recolhido</small><strong>${moedaCentavos(resumo.recolhimentosCentavos)}</strong></div>
         </div>
-        <div class="integro-fechamento-equacao"><span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span><p><strong>Conciliação automática:</strong> caixa inicial + recebimentos + ingressos − vendas − gastos − retiradas − recolhimentos, considerando os ajustes oficiais. O valor esperado acima é calculado pelo servidor.</p></div>
-        <div class="integro-fechamento-visitas" aria-label="Resumo das visitas">
-          <div class="integro-fechamento-secao-cabeca"><h3>Visitas e baixas</h3><small>Controle de produtividade</small></div>
-          <div class="integro-fechamento-progresso"><div><strong>${visitadas} de ${totalVisitas} visitas com baixa</strong><span>${progressoPercentual}%</span></div><progress max="100" value="${progressoPercentual}" aria-label="Progresso das visitas com baixa"></progress></div>
-          <div class="integro-fechamento-grid">
-            <div class="integro-fechamento-card"><small>Previstas</small><strong>${totalVisitas}</strong></div>
-            <div class="integro-fechamento-card"><small>Com baixa</small><strong>${visitadas}</strong></div>
-            <div class="integro-fechamento-card"><small>Pagas</small><strong>${totalPagas}</strong></div>
-            <div class="integro-fechamento-card"><small>Não pagas</small><strong>${totalNaoPagas}</strong></div>
+        <div class="integro-fechamento-layout">
+          <section class="integro-fechamento-movimentos" aria-label="Movimentações do caixa">
+            <div class="integro-fechamento-secao-cabeca"><h3>Movimentações do caixa</h3><small>Valores confirmados pelo servidor</small></div>
+            <div class="integro-fechamento-grid">
+              <div class="integro-fechamento-card"><small>Recebimentos</small><strong>${moedaCentavos(resumo.pagamentosCentavos)}</strong></div>
+              <div class="integro-fechamento-card"><small>Ingressos</small><strong>${moedaCentavos(resumo.ingressosCentavos)}</strong></div>
+              <div class="integro-fechamento-card"><small>Vendas novas</small><strong>${moedaCentavos(resumo.vendasNovasCentavos)}</strong></div>
+              <div class="integro-fechamento-card"><small>Renovação</small><strong>${moedaCentavos(resumo.renovacoesCentavos)}</strong></div>
+              <div class="integro-fechamento-card"><small>Gastos</small><strong>${moedaCentavos(resumo.gastosCentavos)}</strong></div>
+              <div class="integro-fechamento-card"><small>Retiros</small><strong>${moedaCentavos(resumo.retiradasCentavos)}</strong></div>
+              <div class="integro-fechamento-card"><small>Recolhido</small><strong>${moedaCentavos(resumo.recolhimentosCentavos)}</strong></div>
+              <div class="integro-fechamento-card"><small>Carteira final</small><strong>${moedaCentavos(resumo.carteiraFinalCentavos)}</strong></div>
+            </div>
+            <div class="integro-fechamento-equacao"><span class="material-symbols-rounded" aria-hidden="true">account_balance_wallet</span><p><strong>Conciliação automática:</strong> caixa inicial + recebimentos + ingressos − vendas − gastos − retiradas − recolhimentos, considerando os ajustes oficiais. O valor esperado acima é calculado pelo servidor.</p></div>
+          </section>
+          <div class="integro-fechamento-verificacao">
+            <div class="integro-fechamento-visitas" aria-label="Resumo das visitas">
+              <div class="integro-fechamento-secao-cabeca"><h3>Visitas e baixas</h3><small>Controle de produtividade</small></div>
+              <div class="integro-fechamento-progresso"><div><strong>${visitadas} de ${totalVisitas} visitas com baixa</strong><span>${progressoPercentual}%</span></div><progress max="100" value="${progressoPercentual}" aria-label="Progresso das visitas com baixa"></progress></div>
+              <div class="integro-fechamento-grid">
+                <div class="integro-fechamento-card"><small>Previstas</small><strong>${totalVisitas}</strong></div>
+                <div class="integro-fechamento-card"><small>Com baixa</small><strong>${visitadas}</strong></div>
+                <div class="integro-fechamento-card"><small>Pagas</small><strong>${totalPagas}</strong></div>
+                <div class="integro-fechamento-card"><small>Não pagas</small><strong>${totalNaoPagas}</strong></div>
+              </div>
+            </div>
+            <div class="integro-fechamento-aviso ${situacao.podeFechar ? "liberado" : "pendente"}" role="status">
+              <strong>${situacao.podeFechar ? "Visitas concluídas. Confira o dinheiro do caixa." : "Consulta liberada — fechamento ainda bloqueado"}</strong>
+              ${situacao.motivos.map(motivo => `<div>${motivo}</div>`).join("")}
+              ${detalhesPendencias}
+              ${detalhesQuitados}
+            </div>
+            ${detalhesHistoricos ? `<div class="integro-fechamento-aviso historico" role="note"><strong>Carteira histórica separada da operação</strong>${detalhesHistoricos}</div>` : ""}
+            <div class="integro-fechamento-conferencia">
+              <div class="integro-fechamento-secao-cabeca"><h3>Conferência final</h3><small>Confirmação em duas etapas</small></div>
+              <label for="integroFechamentoValorInformado">Informe o valor contado fisicamente no caixa</label>
+              <input id="integroFechamentoValorInformado" inputmode="decimal" autocomplete="off" placeholder="Ex.: 250,00" aria-describedby="integroFechamentoValidacao">
+              <p class="integro-fechamento-ajuda">O valor precisa coincidir com o saldo esperado. A confirmação será revalidada no Firebase antes de fechar e encerrar a sessão.</p>
+              <div id="integroFechamentoValidacao" class="integro-fechamento-validacao" aria-live="polite">Aguardando conferência.</div>
+            </div>
           </div>
-        </div>
-        <div class="integro-fechamento-aviso ${situacao.podeFechar ? "liberado" : "pendente"}" role="status">
-          <strong>${situacao.podeFechar ? "Visitas concluídas. Confira o dinheiro do caixa." : "Consulta liberada — fechamento ainda bloqueado"}</strong>
-          ${situacao.motivos.map(motivo => `<div>${motivo}</div>`).join("")}
-          ${detalhesPendencias}
-          ${detalhesQuitados}
-        </div>
-        ${detalhesHistoricos ? `<div class="integro-fechamento-aviso historico" role="note"><strong>Carteira histórica separada da operação</strong>${detalhesHistoricos}</div>` : ""}
-        <div class="integro-fechamento-conferencia">
-          <div class="integro-fechamento-secao-cabeca"><h3>Conferência final</h3><small>Confirmação em duas etapas</small></div>
-          <label for="integroFechamentoValorInformado">Informe o valor contado fisicamente no caixa</label>
-          <input id="integroFechamentoValorInformado" inputmode="decimal" autocomplete="off" placeholder="Ex.: 250,00" aria-describedby="integroFechamentoValidacao">
-          <p class="integro-fechamento-ajuda">O valor precisa coincidir com o saldo esperado. A confirmação será revalidada no Firebase antes de fechar e encerrar a sessão.</p>
-          <div id="integroFechamentoValidacao" class="integro-fechamento-validacao">Aguardando conferência.</div>
         </div>
       </div>
       <div class="integro-fechamento-actions">

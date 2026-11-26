@@ -86,7 +86,7 @@
   async function ensureSellerCloseout() {
     if (!page.endsWith("/master-local.html") && !page.endsWith("/vendedor.html")) return false;
     try {
-      await loadIfMissing(() => Boolean(global.IntegroVendedorFechamentoCaixa), "js/services/vendedor-fechamento-caixa.js", "seller-closeout", "20261112-caixa-rota-real-v1");
+      await loadIfMissing(() => Boolean(global.IntegroVendedorFechamentoCaixa), "js/services/vendedor-fechamento-caixa.js", "seller-closeout", "20261126-layout-conferencia");
       global.IntegroVendedorFechamentoCaixa?.install?.();
       return true;
     } catch (error) {
