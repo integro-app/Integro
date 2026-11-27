@@ -861,6 +861,8 @@ test("Layout aprovado: Caixas sem dashboard no topo, com barra única e cartões
   assert.match(source,/data-cx-team-card-menu|class="cx-team-card-menu"/);
   assert.match(source,/data-cx-order/);
   assert.match(css,/\.cx-approved-current/);
+  assert.match(css,/\.cx-approved-balances\{\s*display:grid;grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+  assert.match(css,/\.cx-approved-team \.cx-approved-movements\{\s*display:grid;grid-template-columns:minmax\(0,1fr\)/);
   assert.match(css,/\.cx-approved-sales/);
   assert.match(css,/\.cx-approved-expenses/);
   assert.match(css,/\.cx-box-grid\{\s*display:grid!important;grid-template-columns:minmax\(0,1fr\)!important/);
@@ -900,12 +902,12 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   const box={id:"box-1",equipeId:"team-1",status:"ABERTO",dataOperacional:"2026-10-31",vendedorNome:"Vendedor Norte"};
   const box2={...box,id:"box-2"};
   const antigo={...box,id:"antigo",status:"FECHADO",dataOperacional:"2026-10-30"};
-  const caixa={box,current:1234500,initial:1100000,loans:1850000,expenses:614500,received:42000,
+  const caixa={box,current:1234500,initial:1100000,wallet:2400000,walletInitial:2000000,loans:1850000,expenses:614500,received:42000,
     collected:8000,income:10000,withdrawals:20000,clients:10,visited:5};
   const entry={
     row:{id:"team-1",nome:"Norte",ativa:true,vendedores:[{id:"v-1",nome:"Vendedor Norte"}]},
     latest:box,history:[box,box2,antigo,{id:"cache",equipeId:"team-1",status:"FECHADO"}],avisos:[],status:"ABERTO",
-    models:[caixa,{...caixa,box:box2,current:0,initial:0,loans:0,expenses:0,received:0,
+    models:[caixa,{...caixa,box:box2,current:0,initial:0,wallet:100000,walletInitial:50000,loans:0,expenses:0,received:0,
       collected:0,income:0,withdrawals:0,clients:2,visited:2}]
   };
   const cards=renderCards([entry],()=>true);
@@ -917,7 +919,11 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   assert.match(cards,/T614500/);
   assert.match(cards,/<small>Recebido<\/small>\s*<strong>T42000<\/strong>/);
   assert.match(cards,/<small>Caixa inicial<\/small>\s*<strong>T1100000<\/strong>/);
-  assert.match(cards,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">Em aberto<\/strong>/);
+  assert.match(cards,/<small>Carteira atual<\/small>\s*<strong>T2500000<\/strong>/);
+  assert.match(cards,/<small>Carteira inicial<\/small>\s*<strong>T2050000<\/strong>/);
+  assert.doesNotMatch(cards,/<small>Caixa final<\/small>/);
+  assert.doesNotMatch(cards,/class="cx-team-day-detail"/);
+  assert.ok(cards.indexOf("<small>Recebido</small>")<cards.indexOf("<small>Ingressos</small>")&&cards.indexOf("<small>Ingressos</small>")<cards.indexOf("<small>Vendas</small>")&&cards.indexOf("<small>Vendas</small>")<cards.indexOf("<small>Gastos</small>")&&cards.indexOf("<small>Gastos</small>")<cards.indexOf("<small>Retiros</small>"));
   assert.match(cards,/<small>Ingressos<\/small>\s*<strong>T10000<\/strong>/);
   assert.match(cards,/<small>Retiros<\/small>\s*<strong>T20000<\/strong>/);
   assert.match(cards,/<small>Data do caixa<\/small><strong>2026-10-31<\/strong>[\s\S]*<small>Caixas no histórico<\/small><strong>3<\/strong>/);
@@ -925,27 +931,31 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   const jornadaVazia=renderCards([{...entry,latest:undefined,history:[],models:[],status:""}],()=>true);
   assert.match(jornadaVazia,/<small>Data do caixa<\/small><strong>—<\/strong>/);
   assert.match(cards,/<small>Última sincronização<\/small><strong>24\/11\/2026, 09:30<\/strong>/);
-  assert.match(cards,/<progress max="100" value="58" aria-label="Cobranças tratadas">/);
-  assert.match(cards,/7 de 12 cobranças tratadas/);
-  assert.match(cards,/<small>Recolhimentos<\/small>\s*<strong>T8000<\/strong>/);
+  assert.doesNotMatch(cards,/<progress|<small>Recolhimentos<\/small>/);
+  assert.match(cards,/cx-approved-inflow/);
+  assert.match(cards,/cx-approved-sales/);
+  assert.match(cards,/cx-approved-expenses/);
   const legado=renderCards([{...entry,latest:antigo,history:[antigo],
     models:[{...caixa,box:antigo,fechamento:{totalVendasCentavos:1850000}}]}],()=>true);
   assert.match(legado,/<small>Vendas<\/small>\s*<strong>T1850000<\/strong>/);
   assert.match(legado,/<small>Recebido<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
-  assert.match(legado,/<small>Recolhimentos<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
+  assert.doesNotMatch(legado,/<small>Recolhimentos<\/small>/);
   assert.doesNotMatch(renderCards([entry],()=>false),/T42000|T8000/);
   const fechado={...box,status:"FECHADO"};
   const encerrado=renderCards([{...entry,latest:fechado,history:[fechado,{...antigo,status:"DIVERGENTE"}],status:"FECHADO",
     models:[{...caixa,box:fechado,final:1200000,clients:null,visited:null}]}],()=>true);
   assert.match(encerrado,/aria-label="Fechado"/);
   assert.match(encerrado,/<small>Caixa final<\/small>\s*<strong>T1200000<\/strong>/);
-  assert.match(encerrado,/<small>Progresso do caixa<\/small><strong>Não registrado<\/strong>/);
+  assert.match(encerrado,/<small>Carteira final<\/small>\s*<strong>T2400000<\/strong>/);
   assert.doesNotMatch(encerrado,/<progress/);
   const divergente={...box,status:"DIVERGENTE"};
   const emConferencia=renderCards([{...entry,latest:divergente,history:[divergente],status:"CONFERENCIA",
     models:[{...caixa,box:divergente}]}],()=>true);
   assert.match(emConferencia,/aria-label="Em conferência"/);
-  assert.match(emConferencia,/<small>Caixa final<\/small>\s*<strong class="cx-metric-state">—<\/strong>/);
+  assert.doesNotMatch(emConferencia,/<small>Caixa final<\/small>/);
+  const semCarteira=renderCards([{...entry,models:[{...caixa,wallet:null,walletInitial:null}]}],()=>true);
+  assert.match(semCarteira,/<small>Carteira atual<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
+  assert.match(semCarteira,/<small>Carteira inicial<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
   assert.match(cards,/aria-label="Aberto"/);
   assert.match(cards,/data-cx-card-menu/);
   assert.match(cards,/data-cx-open="team-1"/);
