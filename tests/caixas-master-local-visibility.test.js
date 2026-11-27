@@ -465,12 +465,14 @@ test("Indicadores financeiros não confundem cache ou histórico incompleto com 
   assert.match(render,/const valorAtual=/);
   assert.match(render,/const indicadorFinanceiro=key=>/);
   assert.match(render,/!totaisConferidos\?'Conferindo…'/);
-  assert.match(source,/class="cx-approved-metric cx-approved-current"/);
-  assert.match(source,/class="cx-approved-metric cx-approved-sales"/);
-  assert.match(source,/class="cx-approved-metric cx-approved-expenses"/);
-  assert.match(source,/valorIndicador\('current'\)/);
-  assert.match(source,/valorIndicador\('loans'\)/);
-  assert.match(source,/valorIndicador\('expenses'\)/);
+  assert.match(source,/class="cx-approved-metric cx-approved-current cx-approved-balance"/);
+  assert.match(source,/class="cx-approved-metric cx-approved-current cx-approved-balance cx-approved-wallet"/);
+  assert.match(source,/\[\x27loans\x27,\x27Vendas\x27,\x27trending_up\x27,\x27cx-approved-sales\x27\]/);
+  assert.match(source,/\[\x27expenses\x27,\x27Gastos\x27,\x27receipt_long\x27,\x27cx-approved-expenses\x27\]/);
+  assert.match(source,/valorIndicador\(jornadaFechada\?'final':'current'\)/);
+  assert.match(source,/valorIndicador\(key\)/);
+  assert.match(source,/valorIndicador\('wallet'\)/);
+  assert.match(source,/valorIndicador\('walletInitial'\)/);
   assert.match(source,/class="cx-metric-state">Conferindo…/);
 });
 
@@ -707,7 +709,9 @@ test("Cartões de caixas no mobile permitem seleção individual e abrem o docum
   assert.match(cards,/data-cx-open-box="cx-001"/);
   assert.match(cards,/data-cx-team="equipe-1"/);
   assert.match(cards,/data-cx-select-box="cx-001"/);
-  assert.match(cards,/Detalhes e histórico/);
+  assert.match(cards,/data-cx-card-team="equipe-1"/);
+  assert.match(cards,/data-cx-open="equipe-1">Abrir equipe<\/button>/);
+  assert.doesNotMatch(cards,/class="cx-team-day-detail"/);
   assert.match(cards,/data-cx-members="equipe-1"/);
   assert.match(cards,/class="cx-team-members cx-team-members-extra"/);
   assert.doesNotMatch(cards,/data-cx-members="equipe-1" open/,"vendedores recolhidos ao iniciar");
