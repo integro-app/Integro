@@ -722,7 +722,8 @@
   // dos caixas individuais vinculados à data operacional selecionada.
   function renderCardsCaixa(entries,conferido) {
     const camposFechamento={loans:'totalVendasCentavos',expenses:'totalGastosCentavos',received:'totalPagamentosCentavos',
-      income:'totalIngressosCentavos',withdrawals:'totalRetiradasCentavos'};
+      income:'totalIngressosCentavos',withdrawals:'totalRetiradasCentavos',
+      newSales:'totalVendasNovasCentavos',renewedSales:'totalVendasRenovadasCentavos'};
     return entries.map(({row,latest,history,models,avisos,status})=>{
       const dataJornada=latest?dateBR(boxDay(latest)):'—';
       const validado=estrutura.caixasChecked&&models.every(conferido);
@@ -823,15 +824,25 @@
                 </div>
               </div>
             </div>
+            <div class="cx-approved-metric cx-approved-current cx-approved-balance cx-approved-sales-total">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">trending_up</span>
+              <div class="cx-approved-value">
+                <small>Vendas</small>
+                ${valorIndicador('loans')}
+                <div class="cx-sales-breakdown">
+                  <div><small>Novas</small>${valorIndicador('newSales')}</div>
+                  <div><small>Renovações</small>${valorIndicador('renewedSales')}</div>
+                </div>
+              </div>
+            </div>
           </div>
           <div class="cx-approved-jornada-info">
             <div class="cx-approved-movements">
               ${[
                 ['received','Recebido','payments','cx-approved-inflow'],
-                ['income','Ingressos','add_card','cx-approved-inflow'],
-                ['loans','Vendas','trending_up','cx-approved-sales'],
+                ['income','Ingressos','add_card','cx-approved-income'],
                 ['expenses','Gastos','receipt_long','cx-approved-expenses'],
-                ['withdrawals','Retiros','outbox','cx-approved-expenses']
+                ['withdrawals','Retiros','outbox','cx-approved-withdrawals']
               ].map(([key,label,icon,classe])=>`<div class="cx-approved-metric ${classe}">
                 <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">${icon}</span>
                 <span class="cx-approved-value"><small>${label}</small>
@@ -846,6 +857,10 @@
                   <span><small>Caixas no histórico</small><strong>${totalCaixas}</strong></span></div>
                 <div class="cx-team-sync"><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></div>
               </div>
+              <button type="button" class="cx-team-detail-action" data-cx-open="${esc(row.id)}"
+                aria-label="Ver detalhes da equipe ${esc(row.nome)}">
+                <span class="material-symbols-rounded" aria-hidden="true">visibility</span>Ver detalhes
+              </button>
             </div>
           </div>
         </div>
