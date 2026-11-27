@@ -1339,3 +1339,130 @@
     grid-template-columns:repeat(2,minmax(0,1fr));row-gap:3px
   }
 }
+
+
+/* Acabamento de alinhamento da faixa: ritmo vertical comum aos 7 indicadores.
+   Desktop: ícone+título na mesma linha, valor no mesmo eixo, detalhes no rodapé.
+   Mobile: conserva a hierarquia com quebras responsivas sem alterar os dados. */
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-metrics{
+  align-items:stretch
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balances,
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements{
+  align-items:stretch
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance{
+  grid-template-rows:24px minmax(32px,auto) minmax(35px,1fr);
+  align-items:center;align-content:stretch;min-height:122px!important;
+  gap:4px 7px!important;padding:11px 12px!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance .cx-approved-icon{
+  align-self:center;justify-self:start
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance .cx-approved-value>small{
+  align-self:center;line-height:1.2!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance .cx-approved-value>strong{
+  grid-column:1/-1;grid-row:2;align-self:center;justify-self:start;
+  margin:0!important;font-variant-numeric:tabular-nums
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance .cx-balance-breakdown,
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance .cx-sales-breakdown{
+  grid-column:1/-1;grid-row:3;align-self:end;
+  width:100%;box-sizing:border-box;margin:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance .cx-balance-breakdown{
+  padding-top:7px
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance .cx-sales-breakdown{
+  padding-top:7px;align-items:start
+}
+/* Nos mini-cards, mesma posição de cabeçalho e moeda dos cards principais. */
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements .cx-approved-metric{
+  display:grid!important;
+  grid-template-columns:24px minmax(0,1fr);
+  grid-template-rows:24px minmax(32px,auto) minmax(35px,1fr);
+  align-items:center;align-content:stretch;justify-content:stretch;
+  min-height:122px!important;gap:4px 7px!important;
+  padding:11px 9px!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements .cx-approved-icon{
+  grid-column:1;grid-row:1;justify-self:start;align-self:center;
+  flex:none!important;width:24px!important;height:24px!important;
+  font-size:17px!important;border-radius:7px!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements .cx-approved-value{
+  display:contents!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements .cx-approved-value small{
+  grid-column:2;grid-row:1;align-self:center;justify-self:start;
+  font-size:10px!important;line-height:1.2!important;text-align:left!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements .cx-approved-value strong{
+  grid-column:1/-1;grid-row:2;align-self:center;justify-self:start;
+  max-width:100%;margin:0;
+  font-size:clamp(12px,1.2cqi,16px)!important;line-height:1.16!important;
+  text-align:left!important;letter-spacing:-.025em!important;
+  white-space:nowrap;font-variant-numeric:tabular-nums
+}
+/* Rodapé: três metadados partem do mesmo eixo, e o CTA fica à direita. */
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-footer{
+  display:flex;align-items:center;gap:14px;min-width:0;
+  margin-top:9px;padding:8px 2px 0;
+  border-top:1px solid #edf2f8
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-meta{
+  flex:1 1 auto;grid-template-columns:repeat(3,minmax(0,1fr));
+  align-items:center;gap:8px
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-meta>div{
+  align-items:center;min-height:28px;gap:6px;padding:0 3px!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-meta>div>span:last-child{
+  display:flex;align-items:baseline;flex-wrap:wrap;gap:3px 5px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-meta .material-symbols-rounded{
+  flex:0 0 17px;width:17px;font-size:17px
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-meta :is(small,strong){
+  margin:0;line-height:1.2!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-detail-action{
+  flex-shrink:0;min-height:34px
+}
+@container caixa-jornada (min-width:761px) and (max-width:1059px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements .cx-approved-metric{
+    min-height:76px!important;
+    grid-template-rows:24px auto;
+    gap:4px 7px!important
+  }
+}
+@container caixa-jornada (max-width:760px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-balance{
+    grid-template-rows:24px minmax(28px,auto) minmax(32px,1fr);
+    min-height:111px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements .cx-approved-metric{
+    grid-template-columns:24px minmax(0,1fr);
+    grid-template-rows:24px minmax(24px,auto);
+    align-content:center;min-height:70px!important;
+    padding:9px 10px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-movements .cx-approved-value strong{
+    white-space:normal;overflow-wrap:anywhere;font-size:clamp(11px,2.9cqi,15px)!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-footer{
+    align-items:center;gap:9px;margin-top:8px;padding-top:8px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-meta{
+    flex-basis:100%
+  }
+}
+@container caixa-jornada (max-width:430px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-meta>div{
+    min-height:24px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-meta .material-symbols-rounded{
+    display:none!important
+  }
+}
