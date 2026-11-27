@@ -722,7 +722,7 @@
   // dos caixas individuais vinculados à data operacional selecionada.
   function renderCardsCaixa(entries,conferido) {
     const camposFechamento={loans:'totalVendasCentavos',expenses:'totalGastosCentavos',received:'totalPagamentosCentavos',
-      income:'totalIngressosCentavos',withdrawals:'totalRetiradasCentavos',collected:'totalRecolhimentosCentavos'};
+      income:'totalIngressosCentavos',withdrawals:'totalRetiradasCentavos'};
     return entries.map(({row,latest,history,models,avisos,status})=>{
       const dataJornada=latest?dateBR(boxDay(latest)):'—';
       const validado=estrutura.caixasChecked&&models.every(conferido);
@@ -740,17 +740,8 @@
         }
         return `<strong>${cash(models.reduce((n,m)=>n+num(m[key]),0))}</strong>`;
       }
-      const valorFinal=jornadaFechada||!validado||!models.length?valorIndicador('final'):
-        `<strong class="cx-metric-state">${status==='ABERTO'?'Em aberto':'—'}</strong>`;
       const rotulo=rotulosSituacaoCaixa[status];
       const classeStatus=status==='CONFERENCIA'?'is-warning':status==='ABERTO'?'is-open':status==='FECHADO'?'is-closed':'';
-      const progressoConhecido=validado&&models.length>0&&models.every(({clients,visited})=>
-        Number.isInteger(clients)&&Number.isInteger(visited)&&visited>=0&&visited<=clients);
-      const cobrancas=progressoConhecido?models.reduce((total,m)=>total+m.clients,0):0;
-      const tratadas=progressoConhecido?models.reduce((total,m)=>total+m.visited,0):0;
-      const progresso=cobrancas>0?Math.round(100*tratadas/cobrancas):null;
-      const progressoTexto=!validado?'Conferindo…':!models.length?'—':
-        !progressoConhecido?'Não registrado':progresso===null?'Sem cobranças':`${progresso}%`;
       const podeSelecionar=row.ativa&&estrutura.caixasChecked&&!ui.actionBusy&&
         (podeGerir('abrir')||podeGerir('fechar'));
       const membros=models.length?`
@@ -800,7 +791,7 @@
             <summary aria-label="Mais ações da equipe ${esc(row.nome)}"
               title="Mais ações"><span class="material-symbols-rounded" aria-hidden="true">more_vert</span></summary>
             <div class="cx-team-card-menu-panel">
-              <button type="button" data-cx-open="${esc(row.id)}">Detalhes e histórico</button>
+              <button type="button" data-cx-open="${esc(row.id)}">Abrir equipe</button>
               ${models.length?`<button type="button" data-cx-toggle-members="${esc(row.id)}">
                 ${ui.expandedTeams.has(text(row.id))?'Ocultar caixas dos vendedores':'Ver caixas dos vendedores'}</button>`:''}
               ${podeSelecionar?`<button type="button" data-cx-menu-select-team="${esc(row.id)}">
@@ -811,48 +802,41 @@
           </details>
         </div>
         <div class="cx-approved-metrics" aria-label="Indicadores financeiros de ${esc(row.nome)}">
-          <div class="cx-approved-metric cx-approved-current">
-            <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
-            <div class="cx-approved-value"><small>Caixa Atual</small>
-              ${valorIndicador('current')}
-              <div class="cx-balance-breakdown">
-                <div><small>Caixa inicial</small>${valorIndicador('initial')}</div>
-                <div><small>Caixa final</small>${valorFinal}</div>
+          <div class="cx-approved-balances">
+            <div class="cx-approved-metric cx-approved-current cx-approved-balance">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">account_balance_wallet</span>
+              <div class="cx-approved-value">
+                <small>${jornadaFechada?'Caixa final':'Caixa Atual'}</small>
+                ${valorIndicador(jornadaFechada?'final':'current')}
+                <div class="cx-balance-breakdown">
+                  <div><small>Caixa inicial</small>${valorIndicador('initial')}</div>
+                </div>
+              </div>
+            </div>
+            <div class="cx-approved-metric cx-approved-current cx-approved-balance cx-approved-wallet">
+              <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">wallet</span>
+              <div class="cx-approved-value">
+                <small>${jornadaFechada?'Carteira final':'Carteira atual'}</small>
+                ${valorIndicador('wallet')}
+                <div class="cx-balance-breakdown">
+                  <div><small>Carteira inicial</small>${valorIndicador('walletInitial')}</div>
+                </div>
               </div>
             </div>
           </div>
           <div class="cx-approved-jornada-info">
             <div class="cx-approved-movements">
-              <div class="cx-approved-metric cx-approved-sales">
-                <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">trending_up</span>
-                <span class="cx-approved-value"><small>Vendas</small>
-                  ${valorIndicador('loans')}</span>
-              </div>
-              <div class="cx-approved-metric cx-approved-expenses">
-                <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">receipt_long</span>
-                <span class="cx-approved-value"><small>Gastos</small>
-                  ${valorIndicador('expenses')}</span>
-              </div>
-              <div class="cx-approved-metric">
-                <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">payments</span>
-                <span class="cx-approved-value"><small>Recebido</small>
-                  ${valorIndicador('received')}</span>
-              </div>
-              <div class="cx-approved-metric">
-                <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">add_card</span>
-                <span class="cx-approved-value"><small>Ingressos</small>
-                  ${valorIndicador('income')}</span>
-              </div>
-              <div class="cx-approved-metric">
-                <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">outbox</span>
-                <span class="cx-approved-value"><small>Retiros</small>
-                  ${valorIndicador('withdrawals')}</span>
-              </div>
-              <div class="cx-approved-metric">
-                <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">savings</span>
-                <span class="cx-approved-value"><small>Recolhimentos</small>
-                  ${valorIndicador('collected')}</span>
-              </div>
+              ${[
+                ['received','Recebido','payments','cx-approved-inflow'],
+                ['income','Ingressos','add_card','cx-approved-inflow'],
+                ['loans','Vendas','trending_up','cx-approved-sales'],
+                ['expenses','Gastos','receipt_long','cx-approved-expenses'],
+                ['withdrawals','Retiros','outbox','cx-approved-expenses']
+              ].map(([key,label,icon,classe])=>`<div class="cx-approved-metric ${classe}">
+                <span class="cx-approved-icon material-symbols-rounded" aria-hidden="true">${icon}</span>
+                <span class="cx-approved-value"><small>${label}</small>
+                  ${valorIndicador(key)}</span>
+              </div>`).join('')}
             </div>
             <div class="cx-team-day-footer">
               <div class="cx-approved-meta" aria-label="Resumo da equipe">
@@ -861,17 +845,7 @@
                 <div><span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
                   <span><small>Caixas no histórico</small><strong>${totalCaixas}</strong></span></div>
                 <div class="cx-team-sync"><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></div>
-                <div class="cx-team-progress">
-                  <div><small>Progresso do caixa</small><strong>${progressoTexto}</strong></div>
-                  ${progresso===null?'':`<progress max="100" value="${progresso}" aria-label="Cobranças tratadas"></progress>
-                    <small>${tratadas} de ${cobrancas} cobranças tratadas</small>`}
-                </div>
               </div>
-              <button type="button" class="cx-team-day-detail" data-cx-open="${esc(row.id)}">
-                <span class="material-symbols-rounded" aria-hidden="true">bar_chart</span>
-                <span>Detalhes e histórico</span>
-                <span class="material-symbols-rounded cx-approved-arrow" aria-hidden="true">chevron_right</span>
-              </button>
             </div>
           </div>
         </div>
