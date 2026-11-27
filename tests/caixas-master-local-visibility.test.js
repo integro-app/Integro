@@ -653,8 +653,8 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-faixa-v1/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-faixa-v1/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-alinhamento-v2/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-alinhamento-v2/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
@@ -985,8 +985,8 @@ test("Caixas mobile preserva identidade sem sobrepor menu, e reduz altura dos co
   assert.match(css,/\.cx-team-day-detail\{\s*min-height:43px!important/);
   assert.match(css,/\.cx-team-select \.material-symbols-rounded\{opacity:0\}/);
   assert.match(css,/\.cx-team-select:has\(input:checked\) \.material-symbols-rounded\{opacity:1\}/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-faixa-v1/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-faixa-v1/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-alinhamento-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-alinhamento-v2/);
 });
 
 test("Caixa aberto de data anterior usa o mesmo rótulo no desktop e no mobile",()=>{
@@ -1256,4 +1256,19 @@ test("M12: cronograma mantém parcelas pendentes e usa as parcelas dos contratos
   assert.equal(cliente.score.nota,90);
   assert.equal(cliente.score.prazos.get("atual").previsto,30);
   assert.equal(cliente.score.prazos.get("anterior").real,20);
+});
+
+
+test("Card em faixa mantém títulos, cifras e rodapé no mesmo eixo visual",()=>{
+  const css=fs.readFileSync(path.join(root,"css/caixas-layout-aprovado.css"),"utf8");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  assert.match(css,/Acabamento de alinhamento da faixa: ritmo vertical comum/);
+  assert.match(css,/\.cx-approved-team \.cx-approved-balance\{\s*grid-template-rows:24px minmax\(32px,auto\) minmax\(35px,1fr\)/);
+  assert.match(css,/\.cx-approved-team \.cx-approved-movements \.cx-approved-metric\{\s*display:grid!important;/);
+  assert.match(css,/\.cx-approved-team \.cx-approved-movements \.cx-approved-value\{\s*display:contents!important/);
+  assert.match(css,/\.cx-approved-team \.cx-approved-movements \.cx-approved-value strong\{\s*grid-column:1\/-1;grid-row:2/);
+  assert.match(css,/@container caixa-jornada \(max-width:760px\)\{/);
+  assert.match(source,/class="cx-team-sync"><span class="material-symbols-rounded" aria-hidden="true">sync<\/span>/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-alinhamento-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-alinhamento-v2/);
 });
