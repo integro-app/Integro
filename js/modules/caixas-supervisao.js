@@ -779,6 +779,10 @@
               ${ui.selected.has(text(row.id))?'checked':''} ${!podeSelecionar?'disabled':''}>
             <span class="material-symbols-rounded" aria-hidden="true">check</span>
           </label>
+          ${rotulo?`<span class="cx-team-day-status ${classeStatus}" aria-label="${rotulo}">
+            <span class="cx-status-dot" aria-hidden="true"></span>
+            ${rotulo}
+          </span>`:`<small class="cx-team-status-note">${!estrutura.caixasChecked||latest?'Situação a confirmar':'Sem caixa registrado'}</small>`}
           <span class="cx-team-avatar material-symbols-rounded" aria-hidden="true">groups</span>
           <div class="cx-team-head-main">
             <button class="cx-team-open" type="button" data-cx-open="${esc(row.id)}"
@@ -800,10 +804,7 @@
               </span>
             </div>
           </div>
-          ${rotulo?`<span class="cx-team-day-status ${classeStatus}" aria-label="${rotulo}">
-            <span class="cx-status-dot" aria-hidden="true"></span>
-            ${rotulo}
-          </span>`:`<small class="cx-team-status-note">${!estrutura.caixasChecked||latest?'Situação a confirmar':'Sem caixa registrado'}</small>`}
+
           <button type="button" class="cx-team-detail-action" data-cx-open="${esc(row.id)}"
             aria-label="Ver detalhes da equipe ${esc(row.nome)}" title="Ver detalhes da equipe">
             <span class="material-symbols-rounded" aria-hidden="true">visibility</span>Ver detalhes

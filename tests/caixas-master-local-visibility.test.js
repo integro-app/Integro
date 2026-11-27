@@ -653,8 +653,8 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-cabecalho-v3/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-cabecalho-v3/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-status-selecao-v4/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-status-selecao-v4/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
@@ -967,6 +967,11 @@ test("Indicadores de equipe no layout aprovado são obtidos de caixas verificado
   assert.match(semCarteira,/<small>Carteira atual<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
   assert.match(semCarteira,/<small>Carteira inicial<\/small>\s*<strong class="cx-metric-state">Não registrado<\/strong>/);
   assert.match(cards,/aria-label="Aberto"/);
+  const selecaoEquipe=cards.indexOf('data-caixas-equipe="team-1"');
+  const statusEquipe=cards.indexOf('class="cx-team-day-status is-open"');
+  const iconeEquipe=cards.indexOf('class="cx-team-avatar material-symbols-rounded"');
+  assert.ok(selecaoEquipe>=0&&statusEquipe>selecaoEquipe&&iconeEquipe>statusEquipe,
+    "Status deve aparecer imediatamente após a caixa de seleção, antes do ícone da equipe");
   assert.match(cards,/data-cx-card-menu/);
   assert.match(cards,/data-cx-open="team-1"/);
   assert.match(cards,/data-caixas-equipe="team-1"/);
@@ -985,8 +990,8 @@ test("Caixas mobile preserva identidade sem sobrepor menu, e reduz altura dos co
   assert.match(css,/\.cx-team-day-detail\{\s*min-height:43px!important/);
   assert.match(css,/\.cx-team-select \.material-symbols-rounded\{opacity:0\}/);
   assert.match(css,/\.cx-team-select:has\(input:checked\) \.material-symbols-rounded\{opacity:1\}/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-cabecalho-v3/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-cabecalho-v3/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-status-selecao-v4/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-status-selecao-v4/);
 });
 
 test("Caixa aberto de data anterior usa o mesmo rótulo no desktop e no mobile",()=>{
@@ -1269,8 +1274,8 @@ test("Card em faixa mantém títulos, cifras e rodapé no mesmo eixo visual",()=
   assert.match(css,/\.cx-approved-team \.cx-approved-movements \.cx-approved-value strong\{\s*grid-column:1\/-1;grid-row:2/);
   assert.match(css,/@container caixa-jornada \(max-width:760px\)\{/);
   assert.match(source,/class="cx-team-head-meta-item cx-team-sync">\s*<span class="material-symbols-rounded" aria-hidden="true">sync<\/span>/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-cabecalho-v3/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-cabecalho-v3/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-status-selecao-v4/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-status-selecao-v4/);
 });
 
 test("Resumo de equipe utiliza cabeçalho único e não mantém rodapé financeiro",()=>{
@@ -1288,6 +1293,24 @@ test("Resumo de equipe utiliza cabeçalho único e não mantém rodapé financei
   assert.doesNotMatch(render,/class="cx-approved-meta"/);
   assert.match(css,/Cabeçalho informativo compacto — metadados deixam o rodapé/);
   assert.match(css,/@container caixa-jornada \(max-width:760px\)/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-cabecalho-v3/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-cabecalho-v3/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-status-selecao-v4/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-status-selecao-v4/);
+});
+
+
+test("Selo de status permanece junto à seleção em desktop e mobile",()=>{
+  const css=fs.readFileSync(path.join(root,"css/caixas-layout-aprovado.css"),"utf8");
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const begin=source.indexOf("  function renderCardsCaixa(");
+  const end=source.indexOf("  function render() {",begin);
+  const render=source.slice(begin,end);
+  const checkbox=render.indexOf('class="cx-team-select"');
+  const badge=render.indexOf('class="cx-team-day-status ');
+  const avatar=render.indexOf('class="cx-team-avatar ');
+  assert.ok(checkbox>=0&&checkbox<badge&&badge<avatar);
+  assert.match(css,/Status da equipe ao lado da seleção — desktop e mobile/);
+  assert.match(css,/grid-template-columns:28px auto 32px minmax\(0,1fr\) 29px/);
+  assert.match(css,/\.cx-team-day-top>\.cx-team-day-status,[\s\S]*?grid-column:2;grid-row:1/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-status-selecao-v4/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-status-selecao-v4/);
 });
