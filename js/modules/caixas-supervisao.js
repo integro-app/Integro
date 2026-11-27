@@ -855,7 +855,7 @@
                   <span><small>Data do caixa</small><strong>${esc(dataJornada)}</strong></span></div>
                 <div><span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
                   <span><small>Caixas no histórico</small><strong>${totalCaixas}</strong></span></div>
-                <div class="cx-team-sync"><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></div>
+                <div class="cx-team-sync"><span class="material-symbols-rounded" aria-hidden="true">sync</span><span><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></span></div>
               </div>
               <button type="button" class="cx-team-detail-action" data-cx-open="${esc(row.id)}"
                 aria-label="Ver detalhes da equipe ${esc(row.nome)}">
