@@ -780,14 +780,34 @@
             <span class="material-symbols-rounded" aria-hidden="true">check</span>
           </label>
           <span class="cx-team-avatar material-symbols-rounded" aria-hidden="true">groups</span>
-          <button class="cx-team-open" type="button" data-cx-open="${esc(row.id)}"
-            aria-label="Abrir jornada da equipe ${esc(row.nome)}">
-            <span class="cx-team-open-title">${esc(row.nome)}</span>
-          </button>
+          <div class="cx-team-head-main">
+            <button class="cx-team-open" type="button" data-cx-open="${esc(row.id)}"
+              aria-label="Abrir jornada da equipe ${esc(row.nome)}">
+              <span class="cx-team-open-title">${esc(row.nome)}</span>
+            </button>
+            <div class="cx-team-head-meta" aria-label="Informações da jornada da equipe">
+              <span class="cx-team-head-meta-item cx-team-date">
+                <span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
+                <span><small>Data do caixa</small><strong>${esc(dataJornada)}</strong></span>
+              </span>
+              <span class="cx-team-head-meta-item">
+                <span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
+                <span><small>Caixas no histórico</small><strong>${totalCaixas}</strong></span>
+              </span>
+              <span class="cx-team-head-meta-item cx-team-sync">
+                <span class="material-symbols-rounded" aria-hidden="true">sync</span>
+                <span><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></span>
+              </span>
+            </div>
+          </div>
           ${rotulo?`<span class="cx-team-day-status ${classeStatus}" aria-label="${rotulo}">
             <span class="cx-status-dot" aria-hidden="true"></span>
             ${rotulo}
           </span>`:`<small class="cx-team-status-note">${!estrutura.caixasChecked||latest?'Situação a confirmar':'Sem caixa registrado'}</small>`}
+          <button type="button" class="cx-team-detail-action" data-cx-open="${esc(row.id)}"
+            aria-label="Ver detalhes da equipe ${esc(row.nome)}" title="Ver detalhes da equipe">
+            <span class="material-symbols-rounded" aria-hidden="true">visibility</span>Ver detalhes
+          </button>
           <details class="cx-team-card-menu" data-cx-card-menu>
             <summary aria-label="Mais ações da equipe ${esc(row.nome)}"
               title="Mais ações"><span class="material-symbols-rounded" aria-hidden="true">more_vert</span></summary>
@@ -848,19 +868,6 @@
                 <span class="cx-approved-value"><small>${label}</small>
                   ${valorIndicador(key)}</span>
               </div>`).join('')}
-            </div>
-            <div class="cx-team-day-footer">
-              <div class="cx-approved-meta" aria-label="Resumo da equipe">
-                <div class="cx-team-date"><span class="material-symbols-rounded" aria-hidden="true">calendar_month</span>
-                  <span><small>Data do caixa</small><strong>${esc(dataJornada)}</strong></span></div>
-                <div><span class="material-symbols-rounded" aria-hidden="true">inventory_2</span>
-                  <span><small>Caixas no histórico</small><strong>${totalCaixas}</strong></span></div>
-                <div class="cx-team-sync"><span class="material-symbols-rounded" aria-hidden="true">sync</span><span><small>Última sincronização</small><strong>${esc(ultimaSincronizacao)}</strong></span></div>
-              </div>
-              <button type="button" class="cx-team-detail-action" data-cx-open="${esc(row.id)}"
-                aria-label="Ver detalhes da equipe ${esc(row.nome)}">
-                <span class="material-symbols-rounded" aria-hidden="true">visibility</span>Ver detalhes
-              </button>
             </div>
           </div>
         </div>
