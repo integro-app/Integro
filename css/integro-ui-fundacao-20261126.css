@@ -88,6 +88,20 @@ html body[data-integro-page] main :is(.form-actions,.modal-actions,.cliente-moda
 html body[data-integro-page] main :is(.form-actions,.modal-actions,.cliente-modal-actions) > :is(button,a[role="button"]){
   min-height:42px;border-radius:var(--igui-radius-control)
 }
+/* Superfícies de uso geral usam o mesmo raio. Os KPIs, dashboards,
+   cartões financeiros e Caixas mantêm seus estilos específicos. */
+html body[data-integro-page] main :is(
+  .section-card[data-integro-ui-component="surface"],
+  .panel[data-integro-ui-component="surface"],
+  .unified-profile-module > .card:not(.card-gradient):not(.kpi-card),
+  .list-card:not(.kpi-card)
+){border-radius:var(--igui-radius-card)}
+html body[data-integro-page] main :is(
+  button.btn,button.btn-primary,button.btn-light,button.primary-btn,
+  button.ghost-btn,button.outline-btn,button.success-btn,button.danger-btn
+):not(.btn-icon):not(.btn-circle):not(.btn-floating){
+  border-radius:var(--igui-radius-control)
+}
 /* Listagens: largura fluida e scroll interno em vez de cortar tabelas. */
 html body[data-integro-page] main :is(.table-wrap,.table-container,.clientes-table-wrap,.caixas-table-wrap,.cx-table-scroll){
   min-width:0;max-width:100%;box-sizing:border-box;
