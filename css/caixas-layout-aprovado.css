@@ -1466,3 +1466,118 @@
     display:none!important
   }
 }
+
+
+/* Cabeçalho informativo compacto — metadados deixam o rodapé (27/11/2026).
+   Mantém ações e acessibilidade; apenas reorganiza o card de equipe. */
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{
+  display:flex!important;align-items:center!important;flex-wrap:nowrap;
+  gap:9px!important;margin:0 0 9px!important;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-main{
+  display:flex;flex:1 1 auto;align-items:center;gap:12px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-main .cx-team-open{
+  display:inline-flex!important;align-items:center;flex:0 1 auto!important;
+  min-width:0;white-space:nowrap;padding:0!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta{
+  display:flex;align-items:center;flex-wrap:wrap;gap:5px 14px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item{
+  display:inline-flex;align-items:center;gap:5px;min-width:0;white-space:nowrap
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item .material-symbols-rounded{
+  display:inline-grid;place-items:center;flex:0 0 15px;
+  width:15px;font-size:15px;color:#637d9a
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item>span:last-child{
+  display:inline-flex;align-items:baseline;flex-wrap:wrap;
+  gap:3px 5px;min-width:0
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item small{
+  font-size:10px!important;line-height:1.15!important;
+  color:#71849d!important;font-weight:700!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item strong{
+  font-size:11px!important;line-height:1.2!important;
+  color:#102f51!important;font-weight:850!important;
+  font-variant-numeric:tabular-nums
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-day-status,
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-status-note{
+  flex:0 0 auto;margin-left:auto;align-self:center
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-detail-action{
+  flex:0 0 auto;align-self:center;min-height:30px!important;
+  padding:5px 9px!important;font-size:10px!important;
+  border:1px solid #c1d3e7!important;box-shadow:none!important
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-card-menu{
+  flex:0 0 29px;align-self:center
+}
+/* A faixa financeira sucede imediatamente o cabeçalho, sem rodapé vazio. */
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-approved-metrics{
+  margin:0!important
+}
+@container caixa-jornada (max-width:1180px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-main{
+    flex-wrap:wrap;align-content:center;gap:3px 10px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta{
+    flex:1 1 100%;gap:4px 11px
+  }
+}
+@container caixa-jornada (max-width:760px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{
+    display:grid!important;grid-template-columns:28px 32px minmax(0,1fr) auto;
+    align-items:start!important;gap:5px 7px!important;margin-bottom:8px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-select{
+    grid-column:1;grid-row:1;align-self:start
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-avatar{
+    grid-column:2;grid-row:1;align-self:start
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-main{
+    grid-column:3;grid-row:1;display:flex;flex-direction:column;
+    align-items:flex-start;gap:4px;min-width:0
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta{
+    display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px;width:100%
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item{
+    gap:3px;white-space:normal
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item .material-symbols-rounded{
+    display:none
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item small{
+    font-size:9px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item strong{
+    font-size:10px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-day-status,
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-status-note{
+    grid-column:1/4;grid-row:2;justify-self:start;
+    margin-left:0;align-self:center
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-detail-action{
+    grid-column:4;grid-row:2;justify-self:end;min-height:30px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-card-menu{
+    grid-column:4;grid-row:1;justify-self:end;align-self:start
+  }
+}
+@container caixa-jornada (max-width:430px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta{
+    gap:3px 6px
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-meta-item{
+    flex-basis:100%
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-detail-action{
+    padding:5px 7px!important
+  }
+}
