@@ -653,8 +653,8 @@ test("Caixas mobile remove sino do cabeçalho global sem remover notificações 
   assert.doesNotMatch(html,/id="integroNotificationButton"/);
   assert.doesNotMatch(html,/<div class="integro-global-header" aria-label="Ações rápidas">/);
   assert.match(html,/js\/unified-navigation\.js/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-alinhamento-v2/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-alinhamento-v2/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-cabecalho-v3/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-cabecalho-v3/);
   const calendar=fs.readFileSync(path.join(root,"js/caixa-team-date-ui.js"),"utf8");
   assert.doesNotMatch(calendar,/className = "primary-btn caixa-date-trigger"/);
   assert.doesNotMatch(calendar,/new MutationObserver\(schedule\)/);
@@ -761,7 +761,7 @@ test("Master Local apresenta uma jornada por equipe e filtro de situação ativo
   assert.match(source,/const teams=rows\(true\)\.filter/);
   assert.match(source,/const equipes=rows\(\)\.filter/);
   assert.match(source,/const overviewConferido=m=>/);
-  assert.match(source,/class="cx-approved-meta"/);
+  assert.match(source,/class="cx-team-head-meta"/);
   assert.match(source,/Data do caixa/);
   assert.match(source,/Caixas no histórico/);
 });
@@ -985,8 +985,8 @@ test("Caixas mobile preserva identidade sem sobrepor menu, e reduz altura dos co
   assert.match(css,/\.cx-team-day-detail\{\s*min-height:43px!important/);
   assert.match(css,/\.cx-team-select \.material-symbols-rounded\{opacity:0\}/);
   assert.match(css,/\.cx-team-select:has\(input:checked\) \.material-symbols-rounded\{opacity:1\}/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-alinhamento-v2/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-alinhamento-v2/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-cabecalho-v3/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-cabecalho-v3/);
 });
 
 test("Caixa aberto de data anterior usa o mesmo rótulo no desktop e no mobile",()=>{
@@ -1268,7 +1268,26 @@ test("Card em faixa mantém títulos, cifras e rodapé no mesmo eixo visual",()=
   assert.match(css,/\.cx-approved-team \.cx-approved-movements \.cx-approved-value\{\s*display:contents!important/);
   assert.match(css,/\.cx-approved-team \.cx-approved-movements \.cx-approved-value strong\{\s*grid-column:1\/-1;grid-row:2/);
   assert.match(css,/@container caixa-jornada \(max-width:760px\)\{/);
-  assert.match(source,/class="cx-team-sync"><span class="material-symbols-rounded" aria-hidden="true">sync<\/span>/);
-  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-alinhamento-v2/);
-  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-alinhamento-v2/);
+  assert.match(source,/class="cx-team-head-meta-item cx-team-sync">\s*<span class="material-symbols-rounded" aria-hidden="true">sync<\/span>/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-cabecalho-v3/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-cabecalho-v3/);
+});
+
+test("Resumo de equipe utiliza cabeçalho único e não mantém rodapé financeiro",()=>{
+  const source=fs.readFileSync(path.join(root,"js/modules/caixas-supervisao.js"),"utf8");
+  const css=fs.readFileSync(path.join(root,"css/caixas-layout-aprovado.css"),"utf8");
+  const begin=source.indexOf('  function renderCardsCaixa(');
+  const end=source.indexOf('  function render() {',begin);
+  const render=source.slice(begin,end);
+  assert.match(render,/class="cx-team-head-main"/);
+  assert.match(render,/class="cx-team-head-meta"/);
+  assert.match(render,/class="cx-team-head-meta-item cx-team-sync"/);
+  assert.ok(render.indexOf('class="cx-team-head-meta"')<render.indexOf('class="cx-approved-metrics"'));
+  assert.match(render,/class="cx-team-detail-action" data-cx-open/);
+  assert.doesNotMatch(render,/class="cx-team-day-footer"/);
+  assert.doesNotMatch(render,/class="cx-approved-meta"/);
+  assert.match(css,/Cabeçalho informativo compacto — metadados deixam o rodapé/);
+  assert.match(css,/@container caixa-jornada \(max-width:760px\)/);
+  assert.match(html,/css\/caixas-layout-aprovado\.css\?v=20261127-caixas-cabecalho-v3/);
+  assert.match(html,/js\/modules\/caixas-supervisao\.js\?v=20261127-caixas-cabecalho-v3/);
 });
