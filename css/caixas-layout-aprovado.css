@@ -1581,3 +1581,66 @@
     padding:5px 7px!important
   }
 }
+
+
+/* Status da equipe ao lado da seleção — desktop e mobile. */
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-day-status,
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-status-note{
+  margin-left:0!important;margin-right:0!important;
+  flex:0 0 auto;justify-self:start;align-self:center
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-select{
+  flex:0 0 28px;align-self:center
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-avatar{
+  align-self:center
+}
+#caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-head-main{
+  min-width:0
+}
+@container caixa-jornada (max-width:760px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{
+    display:grid!important;
+    grid-template-columns:28px auto 32px minmax(0,1fr) 29px;
+    align-items:center!important;gap:5px 6px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-select{
+    grid-column:1;grid-row:1
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-day-status,
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-status-note{
+    grid-column:2;grid-row:1;max-width:96px;
+    margin:0!important;padding:5px 6px!important;
+    font-size:9px!important;line-height:1.2!important;
+    white-space:normal;justify-self:start
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-avatar{
+    grid-column:3;grid-row:1
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-head-main{
+    display:contents!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-main>.cx-team-open{
+    grid-column:4;grid-row:1;justify-self:start;min-width:0
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-head-main>.cx-team-head-meta{
+    grid-column:1/-1;grid-row:2;display:flex;
+    gap:3px 10px;width:100%;min-width:0
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-card-menu{
+    grid-column:5;grid-row:1;justify-self:end
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-detail-action{
+    grid-column:1/-1;grid-row:3;justify-self:end;min-height:30px!important
+  }
+}
+@container caixa-jornada (max-width:430px){
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top{
+    grid-template-columns:28px auto 30px minmax(0,1fr) 29px;
+    column-gap:5px!important
+  }
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-day-status,
+  #caixas [data-caixas-supervisao] .cx-approved-team .cx-team-day-top>.cx-team-status-note{
+    max-width:85px;padding:5px!important
+  }
+}
