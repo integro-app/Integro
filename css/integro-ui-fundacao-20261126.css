@@ -1,0 +1,123 @@
+/* ÍNTEGRO — padronização transversal | 26/11/2026
+   Oito painéis: preserva sidebar, sininho, login, caixa e cards operacionais.
+   Formulários, campos, ações e tabelas recebem tokens e medidas comuns. */
+html body[data-integro-page] {
+  --igui-navy: var(--it-navy-900,#071a33);
+  --igui-ink: var(--it-slate-900,#172033);
+  --igui-muted: var(--it-slate-500,#64748b);
+  --igui-border: var(--it-slate-200,#d9e3ef);
+  --igui-control: #fdfefe;
+  --igui-focus: #2278bf;
+  --igui-focus-halo: rgba(34,120,191,.16);
+  --igui-error: #b93a46;
+  --igui-control-height: 44px;
+  --igui-radius-control: 12px;
+  --igui-radius-card: 16px;
+}
+html body[data-integro-page] main :is(.section-card,.card,.panel,.form-grid,.field-grid,.toolbar,.form-group,.table-wrap,.table-container) {
+  min-width:0;max-width:100%;
+}
+/* Harmonização somente de controles de formulário; não atinge checkboxes,
+   radios, uploads ou as ações especializadas PAGO/NÃO PAGO. */
+html body[data-integro-page] main :is(
+  input.form-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select.form-input,textarea.form-input,
+  input.form-select,select.form-select,textarea.form-textarea,
+  .form-group > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+  .form-group > select,.form-group > textarea,
+  .form-grid input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="hidden"]),
+  .form-grid select,.form-grid textarea
+) {
+  box-sizing:border-box;min-width:0;max-width:100%;
+  min-height:var(--igui-control-height);
+  padding:10px 12px;
+  border:1px solid var(--igui-border);
+  border-radius:var(--igui-radius-control);
+  background:var(--igui-control);
+  color:var(--igui-ink);
+  font-family:inherit;font-size:14px;line-height:1.35;
+  box-shadow:0 1px 2px rgba(7,26,51,.03);
+  transition:border-color .16s ease,box-shadow .16s ease;
+}
+html body[data-integro-page] main :is(
+  textarea.form-input,textarea.form-textarea,.form-group > textarea,.form-grid textarea
+) {min-height:100px;resize:vertical;line-height:1.5}
+html body[data-integro-page] main :is(.form-label,.form-group > label,.field-grid > label) {
+  color:var(--igui-ink);font-size:12px;font-weight:750;line-height:1.4;
+}
+html body[data-integro-page] main .form-group{min-width:0}
+html body[data-integro-page] main .form-group > :is(label,.form-label){display:block;margin-bottom:6px}
+/* Campos de modal frequentemente são inseridos fora da árvore de main. */
+html body[data-integro-page] :is(.modal-content,.cliente-modal,.modal-card,[role="dialog"]) :is(
+  input.form-input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select.form-input,textarea.form-input,input.form-select,select.form-select,textarea.form-textarea
+) {
+  box-sizing:border-box;min-width:0;max-width:100%;min-height:44px;
+  padding:10px 12px;border:1px solid var(--igui-border);
+  border-radius:var(--igui-radius-control);background:var(--igui-control);
+  color:var(--igui-ink);font-family:inherit;font-size:14px;
+}
+html body[data-integro-page] :is(main,.modal-content,.cliente-modal,.modal-card,[role="dialog"])
+  :is(input.form-input,input.form-select,select.form-input,select.form-select,textarea.form-input,textarea.form-textarea,.form-group input,.form-group select,.form-group textarea)[aria-invalid="true"] {
+  border-color:var(--igui-error);box-shadow:0 0 0 3px rgba(185,58,70,.12)
+}
+html body[data-integro-page] :is(main,.modal-content,.cliente-modal,.modal-card,[role="dialog"])
+  :is(input.form-input,input.form-select,select.form-input,select.form-select,textarea.form-input,textarea.form-textarea,.form-group input,.form-group select,.form-group textarea):focus-visible {
+  outline:2px solid var(--igui-focus);outline-offset:1px;
+  border-color:var(--igui-focus);box-shadow:0 0 0 4px var(--igui-focus-halo)
+}
+html body[data-integro-page] :is(main,.modal-content,.cliente-modal,.modal-card,[role="dialog"])
+  :is(input.form-input,input.form-select,select.form-input,select.form-select,textarea.form-input,textarea.form-textarea,.form-group input,.form-group select,.form-group textarea):disabled {
+  opacity:.64;cursor:not-allowed;background:#f0f3f7
+}
+html body[data-integro-page] :is(main,.modal-content,.cliente-modal,.modal-card,[role="dialog"])
+  :is(.form-input,.form-select,.form-textarea)::placeholder{color:#8291a3;opacity:1}
+/* Botões: texto e foco consistentes, sem alterar cor ou tamanho dos botões
+   financeiros e sem alcançar o menu de navegação. */
+html body[data-integro-page] main :is(
+  button.btn,button.btn-primary,button.btn-light,button.primary-btn,
+  button.ghost-btn,button.outline-btn,button.success-btn,button.danger-btn
+) {box-sizing:border-box;font-family:inherit;font-weight:750;line-height:1.2;max-width:100%;vertical-align:middle}
+html body[data-integro-page] main :is(
+  button.btn,button.btn-primary,button.btn-light,button.primary-btn,
+  button.ghost-btn,button.outline-btn,button.success-btn,button.danger-btn
+):focus-visible{outline:3px solid var(--igui-focus);outline-offset:3px}
+html body[data-integro-page] main :is(.form-actions,.modal-actions,.cliente-modal-actions,.unified-profile-actions){
+  min-width:0;max-width:100%;gap:10px
+}
+html body[data-integro-page] main :is(.form-actions,.modal-actions,.cliente-modal-actions) > :is(button,a[role="button"]){
+  min-height:42px;border-radius:var(--igui-radius-control)
+}
+/* Listagens: largura fluida e scroll interno em vez de cortar tabelas. */
+html body[data-integro-page] main :is(.table-wrap,.table-container,.clientes-table-wrap,.caixas-table-wrap,.cx-table-scroll){
+  min-width:0;max-width:100%;box-sizing:border-box;
+  overflow-x:auto;overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;scrollbar-width:thin
+}
+html body[data-integro-page] main :is(.table-wrap,.table-container,.clientes-table-wrap,.caixas-table-wrap,.cx-table-scroll) table{
+  width:100%;font-variant-numeric:tabular-nums
+}
+html body[data-integro-page] main :is(.table-wrap,.table-container,.clientes-table-wrap,.caixas-table-wrap,.cx-table-scroll) th{
+  font-family:inherit;font-size:11px;font-weight:800;letter-spacing:.035em;line-height:1.35
+}
+html body[data-integro-page] main :is(.table-wrap,.table-container,.clientes-table-wrap,.caixas-table-wrap,.cx-table-scroll) td{
+  font-family:inherit;line-height:1.45;vertical-align:middle
+}
+html body[data-integro-page] main :is(.form-grid,.field-grid)>*{min-width:0}
+@media(max-width:640px){
+  html body[data-integro-page] main :is(.form-grid,.field-grid){
+    grid-template-columns:minmax(0,1fr);max-width:100%
+  }
+  html body[data-integro-page] :is(main,.modal-content,.cliente-modal,.modal-card,[role="dialog"]) :is(
+    input.form-input,input.form-select,select.form-input,select.form-select,textarea.form-input,textarea.form-textarea,
+    .form-group > input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+    .form-group > select,.form-group > textarea
+  ){min-width:0;max-width:100%;font-size:16px}
+  html body[data-integro-page] main :is(.form-actions,.modal-actions,.cliente-modal-actions,.unified-profile-actions){flex-wrap:wrap}
+  html body[data-integro-page] main :is(.table-wrap,.table-container,.clientes-table-wrap,.caixas-table-wrap,.cx-table-scroll){
+    max-width:calc(100vw - 24px)
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  html body[data-integro-page] main :is(.form-input,.form-select,.form-textarea){transition:none}
+}
